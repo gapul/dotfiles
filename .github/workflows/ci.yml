@@ -48,38 +48,35 @@ jobs:
           jq empty "$file" || { echo "Invalid JSON: $file"; exit 1; }
         done
         
+    - name: Install TOML parser
+      run: |
+        pip3 install tomli
+        
     - name: Validate TOML configuration files
       run: |
         echo "Validating TOML files..."
-        find configs -name "*.toml" -type f | while read -r file; do
-          echo "Validating $file"
-          python3 -c "
+        python3 -c "
+import tomli
 import sys
-try:
-    import tomllib
-except ImportError:
-    try:
-        import tomli as tomllib
-    except ImportError:
-        print('Installing tomli for TOML parsing...')
-        import subprocess
-        subprocess.check_call(['pip3', 'install', 'tomli'])
-        import tomli as tomllib
+import glob
 
-try:
-    with open('$file', 'rb') as f:
-        tomllib.load(f)
-    print('✅ $file is valid TOML')
-except Exception as e:
-    print('❌ Invalid TOML in $file: ' + str(e))
-    sys.exit(1)
-" || { echo "TOML validation failed for $file"; exit 1; }
-        done
+toml_files = glob.glob('configs/**/*.toml', recursive=True)
+if not toml_files:
+    print('No TOML files found to validate')
+    sys.exit(0)
+
+for file in toml_files:
+    print(f'Validating {file}')
+    try:
+        with open(file, 'rb') as f:
+            tomli.load(f)
+        print(f'✅ {file} is valid TOML')
+    except Exception as e:
+        print(f'❌ Invalid TOML in {file}: {e}')
+        sys.exit(1)
         
-        # TOMLファイルが見つからない場合の処理
-        if ! find configs -name "*.toml" -type f | head -1 | grep -q .; then
-          echo "No TOML files found to validate"
-        fi
+print('All TOML files are valid')
+"
 
   test-install:
     name: Test Installation Script
