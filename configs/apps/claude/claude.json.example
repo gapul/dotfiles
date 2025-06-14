@@ -1,0 +1,12 @@
+{
+  "telemetryEnabled": false,
+  "theme": "dark",
+  "keybindings": {
+    "send": "cmd+enter"
+  },
+  "fontSize": 14,
+  "preferences": {
+    "showLineNumbers": true,
+    "wordWrap": true
+  }
+}

@@ -79,6 +79,9 @@ DOTFILES_LIST=(
     # Phase 4: ウィンドウマネージャー設定（macOS限定・任意）
     "wm/yabai/yabairc:$HOME_DIR/.config/yabai/yabairc"
     "wm/skhd/skhdrc:$HOME_DIR/.config/skhd/skhdrc"
+    
+    # Note: Sensitive files (.gitconfig, ssh/config, claude.json) are excluded for security
+    # See .example files in respective directories for templates
 )
 
 # シンボリックリンクの状態をチェック
