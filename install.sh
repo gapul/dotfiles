@@ -120,8 +120,7 @@ done
 # format: "source_path:target_path"
 DOTFILES_LIST=(
     # Phase 1: 基本設定（必須）
-    "shell/.zshrc:$HOME_DIR/.zshrc"
-    "shell/.zprofile:$HOME_DIR/.zprofile"
+    "zsh/zshrc:$HOME_DIR/.zshrc"
     "terminal/starship.toml:$HOME_DIR/.config/starship.toml"
     "terminal/wezterm.lua:$HOME_DIR/.config/wezterm/wezterm.lua"
     
@@ -134,6 +133,7 @@ DOTFILES_LIST=(
     # Phase 3: エディター設定（任意）
     "editors/zed/settings.json:$HOME_DIR/.config/zed/settings.json"
     "editors/vscode/settings.json:$HOME_DIR/Library/Application Support/Code/User/settings.json"
+    "editors/nvim:$HOME_DIR/.config/nvim"
     
     # Phase 4: ウィンドウマネージャー設定（macOS限定・任意）
     "wm/yabai/yabairc:$HOME_DIR/.config/yabai/yabairc"
