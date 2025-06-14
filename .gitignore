@@ -30,8 +30,11 @@ backups/
 # Sensitive configuration files (excluded from dotfiles management)
 # These files contain personal information and should be managed separately:
 # - Git config (contains real name and email)
-# - SSH config (contains server information)
+# - SSH config (contains server information)  
 # - Claude config (contains user ID and project history)
+configs/git/.gitconfig
+configs/ssh/config
+configs/apps/claude/claude.json
 
 # API keys and tokens
 **/api_key*
