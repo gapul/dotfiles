@@ -122,6 +122,7 @@ done
 DOTFILES_LIST=(
     # Phase 1: 基本設定（必須）
     "zsh/zshrc:$HOME_DIR/.zshrc"
+    "zsh/zprofile:$HOME_DIR/.zprofile"
     "terminal/starship.toml:$HOME_DIR/.config/starship.toml"
     "terminal/wezterm.lua:$HOME_DIR/.config/wezterm/wezterm.lua"
     
