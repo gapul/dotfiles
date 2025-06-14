@@ -20,14 +20,17 @@ dotfiles/
 ├── 📄 README.md                    # このファイル
 ├── 🔍 DOTFILES_DISCOVERY.md        # ファイル探索結果  
 ├── 🔒 SECURITY.md                  # セキュリティガイドライン
+├── 🚀 WEZTERM_GUIDE.md             # Wezterm設定ガイド
 ├── ⚙️  install.sh                   # メインインストールスクリプト
+├── 🛠️  install-software.sh          # ソフトウェアインストールスクリプト
 ├── 📊 check-ci.sh                  # CI状態チェッカー
 ├── 🗂️  configs/                     # 設定ファイル格納ディレクトリ
 │   ├── 🐚 shell/                   # シェル設定
 │   │   ├── .zshrc
 │   │   └── .zprofile
 │   ├── 💻 terminal/                # ターミナル・プロンプト設定
-│   │   └── starship.toml
+│   │   ├── starship.toml
+│   │   └── wezterm.lua
 │   ├── 🔧 development/             # 開発ツール設定
 │   │   ├── .condarc
 │   │   └── docker/
@@ -73,6 +76,7 @@ dotfiles/
 ### Phase 1: 基本設定（必須）
 - **Shell**: `.zshrc`, `.zprofile` - Zsh環境設定
 - **Terminal**: `starship.toml` - 美しいプロンプト設定
+- **Wezterm**: `wezterm.lua` - 高度なターミナルエミュレータ設定
 
 ### Phase 2: 開発環境
 - **Docker**: `config.json`, `daemon.json` - コンテナ環境設定
@@ -99,10 +103,13 @@ dotfiles/
 git clone https://github.com/your-username/dotfiles.git ~/dotfiles
 cd ~/dotfiles
 
-# 2. ワンコマンドセットアップ
+# 2. 必要なソフトウェアのインストール（任意）
+./install-software.sh
+
+# 3. ドットファイルのセットアップ
 ./install.sh
 
-# 3. セキュリティガイドに従って個人設定を追加
+# 4. セキュリティガイドに従って個人設定を追加
 # SECURITY.md を参照してテンプレートファイルをカスタマイズ
 ```
 
@@ -188,7 +195,9 @@ ln -sf "$PWD/configs/ssh/config" ~/.ssh/config
    ./install.sh --force
    ```
 
-### 🎨 Starship設定のカスタマイズ
+### 🎨 ターミナル設定のカスタマイズ
+
+**Starship設定**
 ```bash
 # 設定編集
 vim configs/terminal/starship.toml
@@ -196,6 +205,22 @@ vim configs/terminal/starship.toml
 # 即座に反映（シンボリックリンクのため）
 # 新しいシェルセッションで確認
 ```
+
+**Wezterm設定**
+```bash
+# 設定編集
+vim configs/terminal/wezterm.lua
+
+# 設定リロード（Wezterm内で）
+# Cmd+Shift+R または Weztermを再起動
+```
+
+#### 🚀 Wezterm機能
+- **自動テーマ切り替え**: ダーク/ライトモードでCatppuccin Mocha/Latte
+- **高度なキーバインド**: Vim風ナビゲーション + macOS標準
+- **ワークスペース管理**: プロジェクト別環境の切り替え
+- **ペイン分割**: 水平・垂直分割とサイズ調整
+- **ビジュアル効果**: グラデーション背景と透明度
 
 ## 🧪 品質保証
 
@@ -276,4 +301,5 @@ MIT License - 詳細は [LICENSE](LICENSE) ファイルを参照
 **🔗 リンク集**
 - 📖 [セキュリティガイド](SECURITY.md)
 - 🔍 [ファイル探索結果](DOTFILES_DISCOVERY.md)
+- 🚀 [Wezterm設定ガイド](WEZTERM_GUIDE.md)
 - 🤖 [CI状況チェック](../../actions)
