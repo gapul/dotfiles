@@ -167,8 +167,8 @@ show_recent_history() {
 # メイン処理
 main() {
     local show_history=false
-    local wait_for_completion=false
-    local auto_yes=false
+    # local wait_for_completion=false  # used via environment variable
+    # local auto_yes=false  # used via environment variable
     
     # コマンドライン引数の処理
     while [[ $# -gt 0 ]]; do
