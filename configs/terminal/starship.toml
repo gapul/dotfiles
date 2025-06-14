@@ -1188,3 +1188,4 @@ detect_folders = []
 
 [custom]
 
+# Another test for starship config
