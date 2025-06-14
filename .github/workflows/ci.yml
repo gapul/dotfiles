@@ -72,22 +72,73 @@ jobs:
         mkdir -p test_home/.docker
         mkdir -p test_home/Library/Application\ Support/Code/User
         
-    - name: Test install script dry run
+    - name: Test install script comprehensive
       env:
         HOME: ${{ github.workspace }}/test_home
       run: |
-        echo "Testing install script..."
+        echo "Testing install script comprehensively..."
         # ヘルプオプションのテスト
         ./install.sh --help
         
-        echo "Creating minimal config files for testing..."
-        mkdir -p configs/shell
-        echo "# Test zshrc" > configs/shell/.zshrc
-        echo "# Test zprofile" > configs/shell/.zprofile
+        echo "Verifying all managed config files exist..."
+        # 管理対象ファイルの存在確認
+        missing_files=0
+        while IFS=':' read -r source_path target_path; do
+          if [[ -n "$source_path" && "$source_path" != *"#"* ]]; then
+            source_file="configs/${source_path#configs/}"
+            if [[ ! -f "$source_file" ]]; then
+              echo "❌ Missing: $source_file"
+              missing_files=$((missing_files + 1))
+            else
+              echo "✅ Found: $source_file"
+            fi
+          fi
+        done < <(grep -E '^\s*"[^"]*:[^"]*"' install.sh | sed 's/[",]//g' | sed 's/^\s*//')
         
-        # インストールスクリプトの実行テスト（実際にはシンボリックリンクは作成しない）
-        echo "Testing script execution..."
+        if [[ $missing_files -gt 0 ]]; then
+          echo "❌ $missing_files managed files are missing!"
+          exit 1
+        fi
+        
+        echo "Testing script syntax..."
         bash -n install.sh
+        
+        echo "Testing backup functionality..."
+        # テスト用のダミーファイルを作成
+        mkdir -p test_home
+        echo "# Test file" > test_home/.zshrc
+        echo "# Test profile" > test_home/.zprofile
+        echo "# Test starship config" > test_home/.config/starship.toml
+        
+        # 実際にinstall.shを実行してバックアップをテスト
+        echo "Running install.sh to test backup creation..."
+        ./install.sh || true
+        
+        # バックアップディレクトリが作成されたかチェック
+        if [[ -d "backups" ]] && [[ $(ls -1 backups/ | wc -l) -gt 0 ]]; then
+          echo "✅ Backup functionality working correctly"
+          ls -la backups/
+        else
+          echo "⚠️  No backups created (may be expected if no conflicts)"
+        fi
+        
+        echo "Verifying symlink creation..."
+        # 作成されたシンボリックリンクの確認
+        symlinks_created=0
+        if [[ -L "test_home/.zshrc" ]]; then
+          echo "✅ .zshrc symlink created"
+          symlinks_created=$((symlinks_created + 1))
+        fi
+        if [[ -L "test_home/.zprofile" ]]; then
+          echo "✅ .zprofile symlink created"
+          symlinks_created=$((symlinks_created + 1))
+        fi
+        if [[ -L "test_home/.config/starship.toml" ]]; then
+          echo "✅ starship.toml symlink created"
+          symlinks_created=$((symlinks_created + 1))
+        fi
+        
+        echo "Created $symlinks_created symlinks successfully"
         
     - name: Test idempotency
       env:
@@ -97,9 +148,37 @@ jobs:
         # 同一スクリプトを2回実行して冪等性を確認
         if [[ -f configs/shell/.zshrc ]]; then
           echo "Running install script twice to test idempotency..."
-          ./install.sh || echo "First run completed"
-          ./install.sh || echo "Second run completed"
-          echo "Idempotency test completed"
+          
+          # 1回目の実行
+          echo "=== First run ==="
+          ./install.sh
+          first_run_output=$(./install.sh 2>&1)
+          
+          # 2回目の実行 - 既存のリンクがある状態
+          echo "=== Second run ==="
+          second_run_output=$(./install.sh 2>&1)
+          
+          # 2回目の実行で "既に正しく設定されています" メッセージが含まれることを確認
+          if echo "$second_run_output" | grep -q "既に正しく設定されています"; then
+            echo "✅ Idempotency test passed - script correctly detected existing symlinks"
+          else
+            echo "⚠️  Idempotency test warning - script may be recreating existing symlinks"
+            echo "Second run output: $second_run_output"
+          fi
+          
+          # --force オプションのテスト
+          echo "=== Testing --force option ==="
+          force_output=$(./install.sh --force 2>&1)
+          if echo "$force_output" | grep -q "強制モード"; then
+            echo "✅ Force mode test passed"
+          else
+            echo "❌ Force mode test failed"
+            exit 1
+          fi
+          
+          echo "Idempotency test completed successfully"
+        else
+          echo "⚠️  Skipping idempotency test - .zshrc config not found"
         fi
 
   test-macos:
