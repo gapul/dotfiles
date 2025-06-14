@@ -131,6 +131,7 @@ DOTFILES_LIST=(
     "development/docker/config.json:$HOME_DIR/.docker/config.json"
     "development/docker/daemon.json:$HOME_DIR/.docker/daemon.json"
     "cli/gh/config.yml:$HOME_DIR/.config/gh/config.yml"
+    "apps/claude/mcp-servers.json:$HOME_DIR/.config/claude/mcp-servers.json"
     
     # Phase 3: エディター設定（任意）
     "editors/zed/settings.json:$HOME_DIR/.config/zed/settings.json"
@@ -191,9 +192,13 @@ cleanup_old_backups() {
         return
     fi
     
-    log_info "7日以上前のバックアップを削除しています..."
+    log_info "バックアップディレクトリをクリーンアップしています..."
+    
+    # .DS_Storeファイルを削除
+    find "$BACKUP_DIR" -name ".DS_Store" -delete 2>/dev/null || true
     
     local deleted_count=0
+    local empty_deleted_count=0
     local seven_days_ago
     seven_days_ago=$(date -d '7 days ago' +%Y%m%d 2>/dev/null || date -v-7d +%Y%m%d)
     
@@ -204,18 +209,32 @@ cleanup_old_backups() {
             local timestamp="${dir_name#backup_}"
             local date_part="${timestamp:0:8}"
             
-            if [[ "$date_part" < "$seven_days_ago" ]]; then
+            # 空のディレクトリをチェック
+            local file_count
+            file_count=$(find "$backup_dir" -type f | wc -l | tr -d ' ')
+            
+            if [[ "$file_count" -eq 0 ]]; then
                 rm -rf "$backup_dir"
-                log_info "削除しました: $dir_name"
+                log_info "空のバックアップを削除: $dir_name"
+                empty_deleted_count=$((empty_deleted_count + 1))
+            elif [[ "$date_part" < "$seven_days_ago" ]]; then
+                rm -rf "$backup_dir"
+                log_info "古いバックアップを削除: $dir_name (7日以上前)"
                 deleted_count=$((deleted_count + 1))
             fi
         fi
     done
     
-    if [[ $deleted_count -eq 0 ]]; then
+    # 削除結果の表示
+    local total_deleted=$((deleted_count + empty_deleted_count))
+    if [[ $total_deleted -eq 0 ]]; then
         log_info "削除対象のバックアップはありませんでした"
     else
-        log_success "$deleted_count 個の古いバックアップを削除しました"
+        local message="バックアップクリーンアップ完了: "
+        [[ $deleted_count -gt 0 ]] && message+="古いバックアップ${deleted_count}個 "
+        [[ $empty_deleted_count -gt 0 ]] && message+="空のバックアップ${empty_deleted_count}個 "
+        message+="を削除しました"
+        log_success "$message"
     fi
 }
 
