@@ -38,6 +38,8 @@ CONFIG_DIR="$DOTFILES_DIR/configs"
 
 # オプション設定
 FORCE_MODE=false
+CLEANUP_BACKUPS=false
+SHOW_BACKUPS=false
 
 # コマンドライン引数の処理
 while [[ $# -gt 0 ]]; do
@@ -46,11 +48,21 @@ while [[ $# -gt 0 ]]; do
             FORCE_MODE=true
             shift
             ;;
+        --cleanup-backups)
+            CLEANUP_BACKUPS=true
+            shift
+            ;;
+        --list-backups)
+            SHOW_BACKUPS=true
+            shift
+            ;;
         -h|--help)
             echo "使用方法: $0 [オプション]"
             echo "オプション:"
-            echo "  -f, --force    既存の設定を強制的に上書き"
-            echo "  -h, --help     このヘルプを表示"
+            echo "  -f, --force          既存の設定を強制的に上書き"
+            echo "  --cleanup-backups    古いバックアップ（7日以上前）を削除"
+            echo "  --list-backups       既存のバックアップ一覧を表示"
+            echo "  -h, --help           このヘルプを表示"
             exit 0
             ;;
         *)
@@ -86,6 +98,75 @@ DOTFILES_LIST=(
     # See .example files in respective directories for templates
 )
 
+# バックアップ一覧を表示
+list_backups() {
+    if [[ ! -d "$BACKUP_DIR" ]]; then
+        log_info "バックアップディレクトリが存在しません: $BACKUP_DIR"
+        return
+    fi
+    
+    log_info "既存のバックアップ一覧:"
+    echo
+    
+    local backup_count=0
+    for backup_dir in "$BACKUP_DIR"/backup_*; do
+        if [[ -d "$backup_dir" ]]; then
+            local dir_name=$(basename "$backup_dir")
+            local timestamp="${dir_name#backup_}"
+            local date_part="${timestamp:0:8}"
+            local time_part="${timestamp:9:6}"
+            local formatted_date="${date_part:0:4}-${date_part:4:2}-${date_part:6:2}"
+            local formatted_time="${time_part:0:2}:${time_part:2:2}:${time_part:4:2}"
+            local file_count=$(find "$backup_dir" -type f | wc -l | tr -d ' ')
+            
+            echo "  📁 $dir_name"
+            echo "     📅 $formatted_date $formatted_time"
+            echo "     📄 $file_count ファイル"
+            echo
+            backup_count=$((backup_count + 1))
+        fi
+    done
+    
+    if [[ $backup_count -eq 0 ]]; then
+        log_info "バックアップは見つかりませんでした"
+    else
+        log_info "合計 $backup_count 個のバックアップが見つかりました"
+    fi
+}
+
+# 古いバックアップを削除
+cleanup_old_backups() {
+    if [[ ! -d "$BACKUP_DIR" ]]; then
+        log_info "バックアップディレクトリが存在しません: $BACKUP_DIR"
+        return
+    fi
+    
+    log_info "7日以上前のバックアップを削除しています..."
+    
+    local deleted_count=0
+    local seven_days_ago=$(date -d '7 days ago' +%Y%m%d 2>/dev/null || date -v-7d +%Y%m%d)
+    
+    for backup_dir in "$BACKUP_DIR"/backup_*; do
+        if [[ -d "$backup_dir" ]]; then
+            local dir_name=$(basename "$backup_dir")
+            local timestamp="${dir_name#backup_}"
+            local date_part="${timestamp:0:8}"
+            
+            if [[ "$date_part" < "$seven_days_ago" ]]; then
+                rm -rf "$backup_dir"
+                log_info "削除しました: $dir_name"
+                deleted_count=$((deleted_count + 1))
+            fi
+        fi
+    done
+    
+    if [[ $deleted_count -eq 0 ]]; then
+        log_info "削除対象のバックアップはありませんでした"
+    else
+        log_success "$deleted_count 個の古いバックアップを削除しました"
+    fi
+}
+
 # シンボリックリンクの状態をチェック
 check_symlink_status() {
     local target_path="$1"
@@ -113,8 +194,8 @@ create_backup_dir() {
     local backup_session_dir="$BACKUP_DIR/backup_$timestamp"
     
     if [[ ! -d "$backup_session_dir" ]]; then
-        mkdir -p "$backup_session_dir"
-        log_info "バックアップディレクトリを作成しました: $backup_session_dir"
+        mkdir -p "$backup_session_dir" >/dev/null 2>&1
+        log_info "バックアップディレクトリを作成しました: $backup_session_dir" >&2
     fi
     
     echo "$backup_session_dir"
@@ -216,6 +297,18 @@ create_symlinks() {
 
 # メイン処理
 main() {
+    # バックアップ一覧表示のみの場合
+    if [[ "$SHOW_BACKUPS" == "true" ]]; then
+        list_backups
+        exit 0
+    fi
+    
+    # バックアップ削除のみの場合
+    if [[ "$CLEANUP_BACKUPS" == "true" ]]; then
+        cleanup_old_backups
+        exit 0
+    fi
+    
     log_info "ドットファイル管理システムのインストールを開始します"
     log_info "Dotfiles directory: $DOTFILES_DIR"
     
@@ -249,47 +342,44 @@ main() {
     echo
     log_info "作成されたシンボリックリンクの確認:"
     
-    # 個別にシンボリックリンクを確認
-    symlinks_found=false
-    if [[ -L "$HOME_DIR/.zshrc" ]]; then
-        echo "  .zshrc -> $(readlink "$HOME_DIR/.zshrc")"
-        symlinks_found=true
-    fi
-    if [[ -L "$HOME_DIR/.zprofile" ]]; then
-        echo "  .zprofile -> $(readlink "$HOME_DIR/.zprofile")"
-        symlinks_found=true
-    fi
-    if [[ -L "$HOME_DIR/.config/starship.toml" ]]; then
-        echo "  starship.toml -> $(readlink "$HOME_DIR/.config/starship.toml")"
-        symlinks_found=true
-    fi
-    if [[ -L "$HOME_DIR/.condarc" ]]; then
-        echo "  .condarc -> $(readlink "$HOME_DIR/.condarc")"
-        symlinks_found=true
-    fi
-    if [[ -L "$HOME_DIR/.docker/config.json" ]]; then
-        echo "  docker/config.json -> $(readlink "$HOME_DIR/.docker/config.json")"
-        symlinks_found=true
-    fi
-    if [[ -L "$HOME_DIR/.config/zed/settings.json" ]]; then
-        echo "  zed/settings.json -> $(readlink "$HOME_DIR/.config/zed/settings.json")"
-        symlinks_found=true
-    fi
-    if [[ -L "$HOME_DIR/Library/Application Support/Code/User/settings.json" ]]; then
-        echo "  vscode/settings.json -> $(readlink "$HOME_DIR/Library/Application Support/Code/User/settings.json")"
-        symlinks_found=true
-    fi
-    if [[ -L "$HOME_DIR/.config/yabai/yabairc" ]]; then
-        echo "  yabai/yabairc -> $(readlink "$HOME_DIR/.config/yabai/yabairc")"
-        symlinks_found=true
-    fi
-    if [[ -L "$HOME_DIR/.config/skhd/skhdrc" ]]; then
-        echo "  skhd/skhdrc -> $(readlink "$HOME_DIR/.config/skhd/skhdrc")"
-        symlinks_found=true
+    local total_links=0
+    local working_links=0
+    local missing_source_files=0
+    
+    for dotfile_entry in "${DOTFILES_LIST[@]}"; do
+        local source_path="${dotfile_entry%%:*}"
+        local target_path="${dotfile_entry##*:}"
+        local full_source_path="$CONFIG_DIR/$source_path"
+        local file_name=$(basename "$target_path")
+        
+        total_links=$((total_links + 1))
+        
+        if [[ ! -f "$full_source_path" ]]; then
+            echo "  ⚠️  $file_name (ソースファイルなし)"
+            missing_source_files=$((missing_source_files + 1))
+        elif [[ -L "$target_path" ]]; then
+            local link_target=$(readlink "$target_path")
+            if [[ "$link_target" == "$full_source_path" ]]; then
+                echo "  ✅ $file_name -> $(basename "$(dirname "$link_target")")/$(basename "$link_target")"
+                working_links=$((working_links + 1))
+            else
+                echo "  ❌ $file_name -> $link_target (間違ったリンク)"
+            fi
+        else
+            echo "  ❌ $file_name (リンクなし)"
+        fi
+    done
+    
+    echo
+    log_info "概要: $working_links/$total_links ファイルが正常に設定されました"
+    
+    if [[ $missing_source_files -gt 0 ]]; then
+        log_warning "$missing_source_files 個のソースファイルが見つかりませんでした"
     fi
     
-    if [[ "$symlinks_found" != true ]]; then
-        log_warning "シンボリックリンクが見つかりませんでした"
+    if [[ $working_links -eq 0 ]]; then
+        log_warning "シンボリックリンクが作成されませんでした"
+        log_info "configs/ ディレクトリの内容を確認してください"
     fi
 }
 
