@@ -48,17 +48,26 @@ jobs:
           jq empty "$file" || { echo "Invalid JSON: $file"; exit 1; }
         done
         
-    - name: Install starship for TOML validation
+    - name: Install TOML parser for validation
       run: |
-        curl -sS https://starship.rs/install.sh | sh -s -- -y
-        echo "$HOME/.local/bin" >> $GITHUB_PATH
+        pip3 install toml
         
     - name: Validate TOML configuration files
       run: |
         echo "Validating TOML files..."
         find configs -name "*.toml" -type f | while read -r file; do
           echo "Validating $file"
-          starship config "$file" --print > /dev/null || { echo "Invalid TOML: $file"; exit 1; }
+          python3 -c "
+import toml
+import sys
+try:
+    with open('$file', 'r') as f:
+        toml.load(f)
+    print('✅ $file is valid TOML')
+except Exception as e:
+    print('❌ Invalid TOML in $file: ' + str(e))
+    sys.exit(1)
+"
         done
 
   test-install:
