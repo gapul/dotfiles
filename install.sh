@@ -49,6 +49,7 @@ declare -A DOTFILES=(
     
     # Phase 3: エディター設定（任意）
     ["editors/zed/settings.json"]="$HOME_DIR/.config/zed/settings.json"
+    ["editors/vscode/settings.json"]="$HOME_DIR/Library/Application Support/Code/User/settings.json"
     
     # Phase 4: ウィンドウマネージャー設定（macOS限定・任意）
     ["wm/yabai/yabairc"]="$HOME_DIR/.config/yabai/yabairc"

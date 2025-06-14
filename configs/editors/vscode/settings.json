@@ -1,0 +1,29 @@
+{
+    "[python]": {
+        "editor.formatOnType": true
+    },
+    "workbench.startupEditor": "none",
+    "explorer.confirmDragAndDrop": false,
+    "cmake.configureOnOpen": true,
+    "files.autoSave": "afterDelay",
+    "git.enableSmartCommit": true,
+    "explorer.confirmDelete": false,
+    "terminal.integrated.enableMultiLinePasteWarning": false,
+    "diffEditor.ignoreTrimWhitespace": false,
+    "workbench.iconTheme": "ayu-mirage-zed",
+    "cmake.options.statusBarVisibility": "compact",
+    "workbench.preferredDarkColorTheme": "Tomorrow Night Blue",
+    "workbench.colorTheme": "Iceberg",
+    "workbench.preferredHighContrastColorTheme": "Tomorrow Night Blue",
+    "workbench.preferredHighContrastLightColorTheme": "Tomorrow Night Blue",
+    "editor.fontSize": 16,
+    "explorer.confirmPasteNative": false,
+    "figma.autocompleteBlocks": true,
+    "vscode_custom_css.imports": [],
+    "animations.Install-Method": "Apc Customize UI++",
+    "apc.imports": [
+        "file://${userHome}/.vscode/extensions/brandonkirbyson.vscode-animations-2.0.4/dist/updateHandler.js"
+    ],
+    "security.workspace.trust.untrustedFiles": "open",
+    "workbench.editor.empty.hint": "hidden"
+}
