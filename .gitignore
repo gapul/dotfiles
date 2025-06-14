@@ -26,3 +26,20 @@ backups/
 
 # System files
 *.orig
+
+# Sensitive configuration files (excluded from dotfiles management)
+# These files contain personal information and should be managed separately:
+# - Git config (contains real name and email)
+# - SSH config (contains server information)
+# - Claude config (contains user ID and project history)
+
+# API keys and tokens
+**/api_key*
+**/token*
+**/.env
+**/.env.local
+
+# User-specific data that shouldn't be shared
+configs/**/user_data/
+configs/**/cache/
+configs/**/sessions/

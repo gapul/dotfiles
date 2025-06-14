@@ -1,0 +1,14 @@
+# SSH Configuration Template
+# Copy this file to 'config' and customize for your environment
+
+Host github github.com
+  HostName github.com
+  IdentityFile ~/.ssh/id_rsa  # or ~/.ssh/id_ed25519
+  User git
+
+# Example: Custom server configuration
+# Host myserver
+#   HostName your-server.com
+#   IdentityFile ~/.ssh/id_rsa
+#   User your-username
+#   Port 22
