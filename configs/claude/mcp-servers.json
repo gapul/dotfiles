@@ -1,0 +1,69 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["@modelcontextprotocol/server-filesystem", "/Users/yuki/dotfiles"],
+      "description": "Secure file operations with configurable access controls for dotfiles management"
+    },
+    "git": {
+      "command": "npx", 
+      "args": ["@modelcontextprotocol/server-git", "/Users/yuki/dotfiles"],
+      "description": "Git repository operations for dotfiles version control"
+    },
+    "github": {
+      "command": "npx",
+      "args": ["@modelcontextprotocol/server-github"],
+      "description": "GitHub integration for repository management and collaboration",
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": ""
+      }
+    },
+    "brave-search": {
+      "command": "npx",
+      "args": ["@modelcontextprotocol/server-brave-search"],
+      "description": "Web and local search capabilities for documentation and troubleshooting",
+      "env": {
+        "BRAVE_SEARCH_API_KEY": ""
+      }
+    }
+  },
+  "installation": {
+    "instructions": [
+      "1. Install required packages: npm install -g @modelcontextprotocol/server-filesystem @modelcontextprotocol/server-git @modelcontextprotocol/server-github @modelcontextprotocol/server-brave-search",
+      "2. Configure environment variables for GitHub and Brave Search",
+      "3. Add servers using: claude mcp add <server-name> <command> [args...]",
+      "4. Verify installation: claude mcp list"
+    ],
+    "commands": [
+      "claude mcp add filesystem \"npx @modelcontextprotocol/server-filesystem\" \"/Users/yuki/dotfiles\"",
+      "claude mcp add git \"npx @modelcontextprotocol/server-git\" \"/Users/yuki/dotfiles\"", 
+      "claude mcp add github \"npx @modelcontextprotocol/server-github\"",
+      "claude mcp add brave-search \"npx @modelcontextprotocol/server-brave-search\""
+    ]
+  },
+  "benefits": {
+    "filesystem": [
+      "Safe file operations within dotfiles directory",
+      "Automated configuration file management",
+      "Real-time file system monitoring"
+    ],
+    "git": [
+      "Version control integration",
+      "Commit history analysis", 
+      "Branch management assistance",
+      "Automated backup verification"
+    ],
+    "github": [
+      "Repository management",
+      "Issue and PR tracking",
+      "Collaboration workflows",
+      "Remote synchronization"
+    ],
+    "brave-search": [
+      "Technical documentation lookup",
+      "Configuration examples search",
+      "Troubleshooting assistance",
+      "Best practices research"
+    ]
+  }
+}
