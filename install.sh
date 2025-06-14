@@ -71,6 +71,7 @@ DOTFILES_LIST=(
     # Phase 2: 開発ツール設定
     "development/.condarc:$HOME_DIR/.condarc"
     "development/docker/config.json:$HOME_DIR/.docker/config.json"
+    "development/docker/daemon.json:$HOME_DIR/.docker/daemon.json"
     
     # Phase 3: エディター設定（任意）
     "editors/zed/settings.json:$HOME_DIR/.config/zed/settings.json"
@@ -79,6 +80,7 @@ DOTFILES_LIST=(
     # Phase 4: ウィンドウマネージャー設定（macOS限定・任意）
     "wm/yabai/yabairc:$HOME_DIR/.config/yabai/yabairc"
     "wm/skhd/skhdrc:$HOME_DIR/.config/skhd/skhdrc"
+    "wm/sketchybar/sketchybarrc:$HOME_DIR/.config/sketchybar/sketchybarrc"
     
     # Note: Sensitive files (.gitconfig, ssh/config, claude.json) are excluded for security
     # See .example files in respective directories for templates
