@@ -36,6 +36,30 @@ HOME_DIR="$HOME"
 BACKUP_DIR="$DOTFILES_DIR/backups"
 CONFIG_DIR="$DOTFILES_DIR/configs"
 
+# オプション設定
+FORCE_MODE=false
+
+# コマンドライン引数の処理
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -f|--force)
+            FORCE_MODE=true
+            shift
+            ;;
+        -h|--help)
+            echo "使用方法: $0 [オプション]"
+            echo "オプション:"
+            echo "  -f, --force    既存の設定を強制的に上書き"
+            echo "  -h, --help     このヘルプを表示"
+            exit 0
+            ;;
+        *)
+            log_error "不明なオプション: $1"
+            exit 1
+            ;;
+    esac
+done
+
 # 管理対象ドットファイルの定義
 # format: "source_path:target_path"
 DOTFILES_LIST=(
@@ -57,33 +81,71 @@ DOTFILES_LIST=(
     "wm/skhd/skhdrc:$HOME_DIR/.config/skhd/skhdrc"
 )
 
-# バックアップディレクトリの作成
+# シンボリックリンクの状態をチェック
+check_symlink_status() {
+    local target_path="$1"
+    local expected_source="$2"
+    
+    if [[ -L "$target_path" ]]; then
+        local current_target=$(readlink "$target_path")
+        if [[ "$current_target" == "$expected_source" ]]; then
+            echo "correct"
+        else
+            echo "incorrect"
+        fi
+    elif [[ -e "$target_path" ]]; then
+        echo "file_exists"
+    else
+        echo "missing"
+    fi
+}
+
+# バックアップディレクトリの作成（条件付き）
 create_backup_dir() {
     local timestamp=$(date +"%Y%m%d_%H%M%S")
     local backup_session_dir="$BACKUP_DIR/backup_$timestamp"
     
     if [[ ! -d "$backup_session_dir" ]]; then
         mkdir -p "$backup_session_dir"
-        log_info "バックアップディレクトリを作成しました: $backup_session_dir" >&2
+        log_info "バックアップディレクトリを作成しました: $backup_session_dir"
     fi
     
     echo "$backup_session_dir"
 }
 
-# 既存ファイルのバックアップ
+# 既存ファイルのバックアップ（条件付き）
 backup_existing_files() {
     local backup_session_dir="$1"
-    log_info "既存のドットファイルをバックアップしています..."
+    local backup_needed=false
     
     for dotfile_entry in "${DOTFILES_LIST[@]}"; do
         local source_path="${dotfile_entry%%:*}"
         local target_path="${dotfile_entry##*:}"
+        local full_source_path="$CONFIG_DIR/$source_path"
         
-        if [[ -e "$target_path" ]] || [[ -L "$target_path" ]]; then
+        # ソースファイルが存在しない場合はスキップ
+        if [[ ! -f "$full_source_path" ]]; then
+            continue
+        fi
+        
+        local status=$(check_symlink_status "$target_path" "$full_source_path")
+        
+        # 正しいシンボリックリンクが既に存在し、強制モードでない場合はスキップ
+        if [[ "$status" == "correct" ]] && [[ "$FORCE_MODE" != "true" ]]; then
+            continue
+        fi
+        
+        # バックアップが必要な場合のみ処理
+        if [[ "$status" == "file_exists" ]] || [[ "$status" == "incorrect" ]]; then
+            if [[ "$backup_needed" == "false" ]]; then
+                log_info "バックアップが必要なファイルが見つかりました..."
+                backup_needed=true
+            fi
+            
             local backup_path="$backup_session_dir/$(basename "$target_path")"
             
             if [[ -L "$target_path" ]]; then
-                log_warning "$(basename "$target_path") は既にシンボリックリンクです"
+                log_warning "$(basename "$target_path") は不正なシンボリックリンクです"
                 echo "$(readlink "$target_path")" > "$backup_path.symlink_target"
                 rm "$target_path"
             else
@@ -92,11 +154,13 @@ backup_existing_files() {
             fi
         fi
     done
+    
+    echo "$backup_needed"
 }
 
-# シンボリックリンクの作成
+# シンボリックリンクの作成（冪等性対応）
 create_symlinks() {
-    log_info "シンボリックリンクを作成しています..."
+    local changes_made=false
     
     for dotfile_entry in "${DOTFILES_LIST[@]}"; do
         local source_path="${dotfile_entry%%:*}"
@@ -109,6 +173,20 @@ create_symlinks() {
             continue
         fi
         
+        local status=$(check_symlink_status "$target_path" "$full_source_path")
+        
+        # 既に正しいシンボリックリンクが存在し、強制モードでない場合はスキップ
+        if [[ "$status" == "correct" ]] && [[ "$FORCE_MODE" != "true" ]]; then
+            log_info "$(basename "$target_path") は既に正しく設定されています"
+            continue
+        fi
+        
+        # 初回のメッセージ出力
+        if [[ "$changes_made" == "false" ]]; then
+            log_info "シンボリックリンクを作成しています..."
+            changes_made=true
+        fi
+        
         # ターゲットディレクトリが存在しない場合は作成
         local target_dir=$(dirname "$target_path")
         if [[ ! -d "$target_dir" ]]; then
@@ -119,6 +197,10 @@ create_symlinks() {
         ln -sf "$full_source_path" "$target_path"
         log_success "$(basename "$target_path") のシンボリックリンクを作成しました"
     done
+    
+    if [[ "$changes_made" == "false" ]]; then
+        log_info "すべてのシンボリックリンクは既に正しく設定されています"
+    fi
 }
 
 # メイン処理
@@ -126,21 +208,29 @@ main() {
     log_info "ドットファイル管理システムのインストールを開始します"
     log_info "Dotfiles directory: $DOTFILES_DIR"
     
+    if [[ "$FORCE_MODE" == "true" ]]; then
+        log_info "強制モード: 既存の設定を上書きします"
+    fi
+    
     # 必要なディレクトリの存在確認
     if [[ ! -d "$CONFIG_DIR" ]]; then
         log_error "configs ディレクトリが見つかりません: $CONFIG_DIR"
         exit 1
     fi
     
-    # バックアップの実行
+    # バックアップの実行（条件付き）
     local backup_session_dir=$(create_backup_dir)
-    backup_existing_files "$backup_session_dir"
+    local backup_needed=$(backup_existing_files "$backup_session_dir")
     
     # シンボリックリンクの作成
     create_symlinks
     
     log_success "ドットファイル管理システムのインストールが完了しました"
-    log_info "バックアップは以下に保存されました: $backup_session_dir"
+    
+    # バックアップが実際に作成された場合のみメッセージを表示
+    if [[ "$backup_needed" == "true" ]]; then
+        log_info "バックアップは以下に保存されました: $backup_session_dir"
+    fi
     
     # インストール後の確認
     echo
