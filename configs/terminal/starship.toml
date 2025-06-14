@@ -34,18 +34,6 @@ disabled = true
 
 [azure.subscription_aliases]
 
-# [battery] - Configuration moved to custom section at end of file
-# full_symbol = "󰁹 "
-# charging_symbol = "󰂄 "
-# discharging_symbol = "󰂃 "
-# unknown_symbol = "󰁽 "
-# empty_symbol = "󰂎 "
-# disabled = false
-# format = "[$symbol$percentage]($style) "
-
-# [[battery.display]]
-# threshold = 10
-# style = "red bold"
 
 [buf]
 format = "with [$symbol($version )]($style)"
@@ -124,14 +112,6 @@ detect_files = [
 ]
 detect_folders = []
 
-# [cmd_duration] - Configuration moved to custom section at end of file
-# min_time = 2000
-# format = "took [$duration]($style) "
-# style = "yellow bold"
-# show_milliseconds = false
-# disabled = false
-# show_notifications = false
-# min_time_to_notify = 45000
 
 [cobol]
 format = "via [$symbol($version )]($style)"
@@ -214,20 +194,6 @@ detect_files = [
 ]
 detect_folders = []
 
-# [directory] - Configuration moved to custom section at end of file
-# truncation_length = 3
-# truncate_to_repo = true
-# fish_style_pwd_dir_length = 0
-# use_logical_path = true
-# format = "[$path]($style)[$read_only]($read_only_style) "
-# repo_root_format = "[$before_root_path]($before_repo_root_style)[$repo_root]($repo_root_style)[$path]($style)[$read_only]($read_only_style) "
-# style = "cyan bold"
-# disabled = false
-# read_only = "🔒"
-# read_only_style = "red"
-# truncation_symbol = ""
-# home_symbol = "~"
-# use_os_path_sep = true
 
 # [directory.substitutions]
 
@@ -360,16 +326,6 @@ detect_env_vars = []
 
 [gcloud.project_aliases]
 
-# [git_branch]
-# format = "on [$symbol$branch(:$remote_branch)]($style) "
-# symbol = " "
-# style = "bold purple"
-# truncation_length = 9223372036854775807
-# truncation_symbol = "…"
-# only_attached = false
-# always_show_remote = false
-# ignore_branches = []
-# disabled = false
 
 [git_commit]
 commit_hash_length = 7

@@ -18,49 +18,35 @@
 ```
 dotfiles/
 ├── 📄 README.md                    # このファイル
-├── 🔍 DOTFILES_DISCOVERY.md        # ファイル探索結果  
 ├── 🔒 SECURITY.md                  # セキュリティガイドライン
-├── 🚀 WEZTERM_GUIDE.md             # Wezterm設定ガイド
+├── 📚 docs/                        # ドキュメント
+│   ├── DOTFILES_DISCOVERY.md       # ファイル探索結果
+│   ├── WEZTERM_GUIDE.md            # Wezterm設定ガイド
+│   ├── NEOVIM_GUIDE.md             # Neovim設定ガイド
+│   └── MCP_SETUP.md                # MCP設定ガイド
 ├── ⚙️  install.sh                   # メインインストールスクリプト
 ├── 🛠️  install-software.sh          # ソフトウェアインストールスクリプト
 ├── 📊 check-ci.sh                  # CI状態チェッカー
 ├── 🗂️  configs/                     # 設定ファイル格納ディレクトリ
-│   ├── 🐚 shell/                   # シェル設定
-│   │   ├── .zshrc
-│   │   └── .zprofile
-│   ├── 💻 terminal/                # ターミナル・プロンプト設定
-│   │   ├── starship.toml
-│   │   └── wezterm.lua
-│   ├── 🔧 development/             # 開発ツール設定
-│   │   ├── .condarc
-│   │   └── docker/
-│   │       ├── config.json
-│   │       └── daemon.json
-│   ├── ⚡ cli/                     # コマンドラインツール設定
-│   │   └── gh/
-│   │       └── config.yml
-│   ├── 📝 editors/                 # エディター設定
-│   │   ├── vscode/
-│   │   │   └── settings.json
-│   │   └── zed/
-│   │       └── settings.json
-│   ├── 🖥️  wm/                     # ウィンドウマネージャー設定 (macOS)
-│   │   ├── yabai/
-│   │   │   └── yabairc
-│   │   ├── skhd/
-│   │   │   └── skhdrc
-│   │   └── sketchybar/
-│   │       ├── sketchybarrc
-│   │       ├── *.lua (設定モジュール)
-│   │       ├── helpers/ (ヘルパー)
-│   │       └── items/ (アイテム)
-│   ├── 🔐 git/                     # Git設定テンプレート
-│   │   └── .gitconfig.example
-│   ├── 🔑 ssh/                     # SSH設定テンプレート
-│   │   └── config.example
-│   └── 📱 apps/                    # アプリケーション設定
-│       └── claude/
-│           └── claude.json.example
+│   ├── 🐚 zsh/                     # Zshシェル設定
+│   │   ├── zshrc
+│   │   └── zprofile
+│   ├── 💻 terminal/                # ターミナル設定
+│   │   ├── starship.toml           # Starshipプロンプト設定
+│   │   └── wezterm.lua             # Weztermターミナル設定
+│   ├── ✏️  editors/                 # エディター設定
+│   │   ├── nvim/                   # Neovim設定
+│   │   ├── vscode/                 # VSCode設定
+│   │   └── zed/                    # Zed設定
+│   ├── 🚀 apps/                    # アプリケーション設定
+│   │   └── claude/                 # Claude Code設定
+│   └── 🖥️  wm/                      # ウィンドウマネージャー設定
+│       ├── yabai/                  # Yabai設定
+│       ├── skhd/                   # skhd設定
+│       └── sketchybar/             # SketchyBar設定
+├── 🔐 .gitconfig.example           # Git設定テンプレート  
+├── 🔑 ssh/                         # SSH設定テンプレート
+│   └── config.example
 ├── 💾 backups/                     # 自動バックアップ先
 ├── 🧪 .github/                     # CI/CD & 自動化
 │   ├── workflows/
