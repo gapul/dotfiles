@@ -60,11 +60,17 @@ dotfiles/
 ### 初回セットアップ
 ```bash
 # リポジトリをクローン
-git clone <リポジトリURL> ~/dotfiles
+git clone https://github.com/gapul/dotfiles.git ~/dotfiles
 cd ~/dotfiles
 
 # インストール実行
 ./install.sh
+```
+
+### 新しい環境での素早いセットアップ
+```bash
+# ワンライナーでセットアップ
+curl -fsSL https://raw.githubusercontent.com/gapul/dotfiles/main/install.sh | bash
 ```
 
 ### 既存環境のバックアップ

@@ -141,12 +141,49 @@ main() {
     # インストール後の確認
     echo
     log_info "作成されたシンボリックリンクの確認:"
-    for config_path in "${!DOTFILES[@]}"; do
-        local target_path="${DOTFILES[$config_path]}"
-        if [[ -L "$target_path" ]]; then
-            echo "  $(basename "$target_path") -> $(readlink "$target_path")"
-        fi
-    done
+    
+    # 個別にシンボリックリンクを確認
+    symlinks_found=false
+    if [[ -L "$HOME_DIR/.zshrc" ]]; then
+        echo "  .zshrc -> $(readlink "$HOME_DIR/.zshrc")"
+        symlinks_found=true
+    fi
+    if [[ -L "$HOME_DIR/.zprofile" ]]; then
+        echo "  .zprofile -> $(readlink "$HOME_DIR/.zprofile")"
+        symlinks_found=true
+    fi
+    if [[ -L "$HOME_DIR/.config/starship.toml" ]]; then
+        echo "  starship.toml -> $(readlink "$HOME_DIR/.config/starship.toml")"
+        symlinks_found=true
+    fi
+    if [[ -L "$HOME_DIR/.condarc" ]]; then
+        echo "  .condarc -> $(readlink "$HOME_DIR/.condarc")"
+        symlinks_found=true
+    fi
+    if [[ -L "$HOME_DIR/.docker/config.json" ]]; then
+        echo "  docker/config.json -> $(readlink "$HOME_DIR/.docker/config.json")"
+        symlinks_found=true
+    fi
+    if [[ -L "$HOME_DIR/.config/zed/settings.json" ]]; then
+        echo "  zed/settings.json -> $(readlink "$HOME_DIR/.config/zed/settings.json")"
+        symlinks_found=true
+    fi
+    if [[ -L "$HOME_DIR/Library/Application Support/Code/User/settings.json" ]]; then
+        echo "  vscode/settings.json -> $(readlink "$HOME_DIR/Library/Application Support/Code/User/settings.json")"
+        symlinks_found=true
+    fi
+    if [[ -L "$HOME_DIR/.config/yabai/yabairc" ]]; then
+        echo "  yabai/yabairc -> $(readlink "$HOME_DIR/.config/yabai/yabairc")"
+        symlinks_found=true
+    fi
+    if [[ -L "$HOME_DIR/.config/skhd/skhdrc" ]]; then
+        echo "  skhd/skhdrc -> $(readlink "$HOME_DIR/.config/skhd/skhdrc")"
+        symlinks_found=true
+    fi
+    
+    if [[ "$symlinks_found" != true ]]; then
+        log_warning "シンボリックリンクが見つかりませんでした"
+    fi
 }
 
 # スクリプトが直接実行された場合のみmainを呼び出す
