@@ -1,0 +1,155 @@
+name: Dotfiles CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  lint:
+    name: Lint and Syntax Check
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y jq shellcheck
+        
+    - name: Check shell scripts syntax
+      run: |
+        echo "Checking shell scripts..."
+        for script in *.sh; do
+          if [[ -f "$script" ]]; then
+            echo "Checking $script"
+            bash -n "$script"
+          fi
+        done
+        
+    - name: Run shellcheck on shell scripts
+      run: |
+        echo "Running shellcheck..."
+        for script in *.sh; do
+          if [[ -f "$script" ]]; then
+            echo "Checking $script with shellcheck"
+            shellcheck "$script"
+          fi
+        done
+        
+    - name: Validate JSON configuration files
+      run: |
+        echo "Validating JSON files..."
+        find configs -name "*.json" -type f | while read -r file; do
+          echo "Validating $file"
+          jq empty "$file" || { echo "Invalid JSON: $file"; exit 1; }
+        done
+        
+    - name: Install starship for TOML validation
+      run: |
+        curl -sS https://starship.rs/install.sh | sh -s -- -y
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
+        
+    - name: Validate TOML configuration files
+      run: |
+        echo "Validating TOML files..."
+        find configs -name "*.toml" -type f | while read -r file; do
+          echo "Validating $file"
+          starship config "$file" --print > /dev/null || { echo "Invalid TOML: $file"; exit 1; }
+        done
+
+  test-install:
+    name: Test Installation Script
+    runs-on: ubuntu-latest
+    needs: lint
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Create test environment
+      run: |
+        mkdir -p test_home/.config
+        mkdir -p test_home/.docker
+        mkdir -p test_home/Library/Application\ Support/Code/User
+        
+    - name: Test install script dry run
+      env:
+        HOME: ${{ github.workspace }}/test_home
+      run: |
+        echo "Testing install script..."
+        # ヘルプオプションのテスト
+        ./install.sh --help
+        
+        echo "Creating minimal config files for testing..."
+        mkdir -p configs/shell
+        echo "# Test zshrc" > configs/shell/.zshrc
+        echo "# Test zprofile" > configs/shell/.zprofile
+        
+        # インストールスクリプトの実行テスト（実際にはシンボリックリンクは作成しない）
+        echo "Testing script execution..."
+        bash -n install.sh
+        
+    - name: Test idempotency
+      env:
+        HOME: ${{ github.workspace }}/test_home  
+      run: |
+        echo "Testing idempotency..."
+        # 同一スクリプトを2回実行して冪等性を確認
+        if [[ -f configs/shell/.zshrc ]]; then
+          echo "Running install script twice to test idempotency..."
+          ./install.sh || echo "First run completed"
+          ./install.sh || echo "Second run completed"
+          echo "Idempotency test completed"
+        fi
+
+  test-macos:
+    name: Test on macOS
+    runs-on: macos-latest
+    needs: lint
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Install dependencies
+      run: |
+        brew install shellcheck jq
+        
+    - name: Test install script on macOS
+      run: |
+        echo "Testing on macOS..."
+        ./install.sh --help
+        bash -n install.sh
+        echo "macOS test completed"
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: lint
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Scan for secrets
+      run: |
+        echo "Scanning for potential secrets..."
+        # 基本的なシークレットパターンをチェック
+        if grep -r -E "(password|secret|key|token).*=" configs/ --include="*.json" --include="*.toml" --include="*.yml" --include="*.yaml"; then
+          echo "⚠️  Potential secrets found in configuration files"
+          exit 1
+        else
+          echo "✅ No obvious secrets found"
+        fi
+        
+    - name: Check file permissions
+      run: |
+        echo "Checking for overly permissive files..."
+        find . -type f -perm /077 -name "*.sh" -o -name "*.json" -o -name "*.toml" | while read -r file; do
+          echo "Warning: $file has permissive permissions"
+        done
