@@ -54,13 +54,14 @@ error_handler() {
     # 現在の状態を表示
     log_info "Current state check:"
     if [[ -d "$BACKUP_DIR" ]]; then
-        local latest_backup=$(ls -1t "$BACKUP_DIR" | head -1 2>/dev/null || echo "")
+        local latest_backup
+        latest_backup=$(find "$BACKUP_DIR" -maxdepth 1 -type d ! -path "$BACKUP_DIR" -exec stat -f "%m %N" {} \; 2>/dev/null | sort -nr | head -1 | cut -d' ' -f2- | xargs basename 2>/dev/null || echo "")
         if [[ -n "$latest_backup" ]]; then
             log_info "Latest backup available: $BACKUP_DIR/$latest_backup"
         fi
     fi
     
-    exit $error_code
+    exit "$error_code"
 }
 
 # エラーハンドラーを設定
@@ -157,13 +158,15 @@ list_backups() {
     local backup_count=0
     for backup_dir in "$BACKUP_DIR"/backup_*; do
         if [[ -d "$backup_dir" ]]; then
-            local dir_name=$(basename "$backup_dir")
+            local dir_name
+            dir_name=$(basename "$backup_dir")
             local timestamp="${dir_name#backup_}"
             local date_part="${timestamp:0:8}"
             local time_part="${timestamp:9:6}"
             local formatted_date="${date_part:0:4}-${date_part:4:2}-${date_part:6:2}"
             local formatted_time="${time_part:0:2}:${time_part:2:2}:${time_part:4:2}"
-            local file_count=$(find "$backup_dir" -type f | wc -l | tr -d ' ')
+            local file_count
+            file_count=$(find "$backup_dir" -type f | wc -l | tr -d ' ')
             
             echo "  📁 $dir_name"
             echo "     📅 $formatted_date $formatted_time"
@@ -190,11 +193,13 @@ cleanup_old_backups() {
     log_info "7日以上前のバックアップを削除しています..."
     
     local deleted_count=0
-    local seven_days_ago=$(date -d '7 days ago' +%Y%m%d 2>/dev/null || date -v-7d +%Y%m%d)
+    local seven_days_ago
+    seven_days_ago=$(date -d '7 days ago' +%Y%m%d 2>/dev/null || date -v-7d +%Y%m%d)
     
     for backup_dir in "$BACKUP_DIR"/backup_*; do
         if [[ -d "$backup_dir" ]]; then
-            local dir_name=$(basename "$backup_dir")
+            local dir_name
+            dir_name=$(basename "$backup_dir")
             local timestamp="${dir_name#backup_}"
             local date_part="${timestamp:0:8}"
             
@@ -413,7 +418,8 @@ main() {
         local source_path="${dotfile_entry%%:*}"
         local target_path="${dotfile_entry##*:}"
         local full_source_path="$CONFIG_DIR/$source_path"
-        local file_name=$(basename "$target_path")
+        local file_name
+        file_name=$(basename "$target_path")
         
         total_links=$((total_links + 1))
         
@@ -421,7 +427,8 @@ main() {
             echo "  ⚠️  $file_name (ソースファイルなし)"
             missing_source_files=$((missing_source_files + 1))
         elif [[ -L "$target_path" ]]; then
-            local link_target=$(readlink "$target_path")
+            local link_target
+            link_target=$(readlink "$target_path")
             if [[ "$link_target" == "$full_source_path" ]]; then
                 echo "  ✅ $file_name -> $(basename "$(dirname "$link_target")")/$(basename "$link_target")"
                 working_links=$((working_links + 1))
