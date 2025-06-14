@@ -34,14 +34,17 @@ DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HOME_DIR="$HOME"
 BACKUP_DIR="$DOTFILES_DIR/backups"
 
-# バックアップ対象ファイル
-declare -A DOTFILES=(
-    [".zshrc"]="$HOME_DIR/.zshrc"
-    [".zprofile"]="$HOME_DIR/.zprofile"
-    [".gitconfig"]="$HOME_DIR/.gitconfig"
-    [".condarc"]="$HOME_DIR/.condarc"
-    [".claude.json"]="$HOME_DIR/.claude.json"
-    [".vimrc"]="$HOME_DIR/.vimrc"
+# バックアップ対象ファイル（install.shと同期）
+DOTFILES_LIST=(
+    "shell/.zshrc:$HOME_DIR/.zshrc"
+    "shell/.zprofile:$HOME_DIR/.zprofile"
+    "terminal/starship.toml:$HOME_DIR/.config/starship.toml"
+    "development/.condarc:$HOME_DIR/.condarc"
+    "development/docker/config.json:$HOME_DIR/.docker/config.json"
+    "editors/zed/settings.json:$HOME_DIR/.config/zed/settings.json"
+    "editors/vscode/settings.json:$HOME_DIR/Library/Application Support/Code/User/settings.json"
+    "wm/yabai/yabairc:$HOME_DIR/.config/yabai/yabairc"
+    "wm/skhd/skhdrc:$HOME_DIR/.config/skhd/skhdrc"
 )
 
 # バックアップディレクトリの作成
@@ -60,24 +63,26 @@ backup_files() {
     
     log_info "ドットファイルのバックアップを開始します..."
     
-    for filename in "${!DOTFILES[@]}"; do
-        local source_path="${DOTFILES[$filename]}"
+    for dotfile_entry in "${DOTFILES_LIST[@]}"; do
+        local source_path="${dotfile_entry%%:*}"
+        local target_path="${dotfile_entry##*:}"
+        local filename=$(basename "$target_path")
         local backup_path="$backup_session_dir/$filename"
         
-        if [[ -e "$source_path" ]]; then
-            if [[ -L "$source_path" ]]; then
+        if [[ -e "$target_path" ]]; then
+            if [[ -L "$target_path" ]]; then
                 # シンボリックリンクの場合
-                local link_target=$(readlink "$source_path")
+                local link_target=$(readlink "$target_path")
                 echo "$link_target" > "$backup_path.symlink_target"
                 log_info "$filename (シンボリックリンク -> $link_target) をバックアップしました"
             else
                 # 通常ファイルの場合
-                cp "$source_path" "$backup_path"
+                cp "$target_path" "$backup_path"
                 log_info "$filename をバックアップしました"
             fi
             ((backup_count++))
         else
-            log_warning "$filename が見つかりません: $source_path"
+            log_warning "$filename が見つかりません: $target_path"
         fi
     done
     
@@ -100,16 +105,18 @@ save_backup_info() {
         echo "User: $(whoami)"
         echo ""
         echo "Backed up files:"
-        for filename in "${!DOTFILES[@]}"; do
-            local source_path="${DOTFILES[$filename]}"
-            if [[ -e "$source_path" ]]; then
+        for dotfile_entry in "${DOTFILES_LIST[@]}"; do
+            local source_path="${dotfile_entry%%:*}"
+            local target_path="${dotfile_entry##*:}"
+            local filename=$(basename "$target_path")
+            if [[ -e "$target_path" ]]; then
                 echo "  $filename"
-                if [[ -L "$source_path" ]]; then
+                if [[ -L "$target_path" ]]; then
                     echo "    Type: Symbolic Link"
-                    echo "    Target: $(readlink "$source_path")"
+                    echo "    Target: $(readlink "$target_path")"
                 else
                     echo "    Type: Regular File"
-                    echo "    Size: $(wc -c < "$source_path") bytes"
+                    echo "    Size: $(wc -c < "$target_path") bytes"
                 fi
             fi
         done
