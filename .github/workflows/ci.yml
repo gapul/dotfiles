@@ -55,25 +55,7 @@ jobs:
     - name: Validate TOML configuration files
       run: |
         echo "Validating TOML files..."
-        if find configs -name "*.toml" -type f | head -1 | grep -q .; then
-          echo "✅ TOML files found - validating syntax..."
-          find configs -name "*.toml" -type f | while read -r file; do
-            echo "Validating $file"
-            python3 -c "
-import tomli
-try:
-    with open('$file', 'rb') as f:
-        tomli.load(f)
-    print('✅ $file has valid TOML syntax')
-except Exception as e:
-    print('❌ Invalid TOML in $file: ' + str(e))
-    exit(1)
-"
-          done
-          echo "All TOML files have valid syntax"
-        else
-          echo "No TOML files found"
-        fi
+        python3 .github/scripts/validate_toml.py
 
   test-install:
     name: Test Installation Script
