@@ -123,6 +123,7 @@ DOTFILES_LIST=(
     "shell/.zshrc:$HOME_DIR/.zshrc"
     "shell/.zprofile:$HOME_DIR/.zprofile"
     "terminal/starship.toml:$HOME_DIR/.config/starship.toml"
+    "terminal/wezterm.lua:$HOME_DIR/.config/wezterm/wezterm.lua"
     
     # Phase 2: 開発ツール設定
     "development/.condarc:$HOME_DIR/.condarc"
