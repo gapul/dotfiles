@@ -360,16 +360,16 @@ detect_env_vars = []
 
 [gcloud.project_aliases]
 
-# [git_branch]
-# format = "on [$symbol$branch(:$remote_branch)]($style) "
-# symbol = " "
-# style = "bold purple"
-# truncation_length = 9223372036854775807
-# truncation_symbol = "…"
-# only_attached = false
-# always_show_remote = false
-# ignore_branches = []
-# disabled = false
+[git_branch]
+format = "on [$symbol$branch(:$remote_branch)]($style) "
+symbol = " "
+style = "bold purple"
+truncation_length = 9223372036854775807
+truncation_symbol = "…"
+only_attached = false
+always_show_remote = false
+ignore_branches = []
+disabled = false
 
 [git_commit]
 commit_hash_length = 7

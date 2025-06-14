@@ -105,6 +105,7 @@ create_symlinks() {
         
         if [[ ! -f "$full_source_path" ]]; then
             log_warning "ソースファイルが見つかりません: $full_source_path"
+            log_info "スキップします: $(basename "$target_path")"
             continue
         fi
         
