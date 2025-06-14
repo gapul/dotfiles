@@ -58,7 +58,8 @@ get_available_backups() {
 
 # バックアップの選択
 select_backup() {
-    local backups=($(get_available_backups))
+    local backups
+    mapfile -t backups < <(get_available_backups)
     
     if [[ ${#backups[@]} -eq 0 ]]; then
         log_error "利用可能なバックアップが見つかりません"
@@ -73,14 +74,16 @@ select_backup() {
     echo "利用可能なバックアップ:"
     for i in "${!backups[@]}"; do
         local backup="${backups[$i]}"
-        local backup_name=$(basename "$backup")
+        local backup_name
+        backup_name=$(basename "$backup")
         local backup_date=${backup_name#backup_}
-        local formatted_date=$(echo "$backup_date" | sed 's/_/ /')
+        local formatted_date=${backup_date//_/ }
         
         echo "  $((i+1)). $formatted_date"
         
         if [[ -f "$backup/backup_info.txt" ]]; then
-            local file_count=$(grep "Files Backed Up:" "$backup/backup_info.txt" 2>/dev/null | cut -d: -f2 | tr -d ' ' || echo "不明")
+            local file_count
+            file_count=$(grep "Files Backed Up:" "$backup/backup_info.txt" 2>/dev/null | cut -d: -f2 | tr -d ' ' || echo "不明")
             echo "     ($file_count files)"
         fi
     done
@@ -103,9 +106,10 @@ remove_current_files() {
     log_info "現在のドットファイルを削除しています..."
     
     for dotfile_entry in "${DOTFILES_LIST[@]}"; do
-        local source_path="${dotfile_entry%%:*}"
+        # local source_path="${dotfile_entry%%:*}"  # Currently unused
         local target_path="${dotfile_entry##*:}"
-        local filename=$(basename "$target_path")
+        local filename
+        filename=$(basename "$target_path")
         
         if [[ -e "$target_path" ]] || [[ -L "$target_path" ]]; then
             rm "$target_path"
@@ -122,9 +126,10 @@ restore_files() {
     log_info "バックアップからファイルを復元しています..."
     
     for dotfile_entry in "${DOTFILES_LIST[@]}"; do
-        local source_path="${dotfile_entry%%:*}"
+        # local source_path="${dotfile_entry%%:*}"  # Currently unused
         local target_path="${dotfile_entry##*:}"
-        local filename=$(basename "$target_path")
+        local filename
+        filename=$(basename "$target_path")
         local backup_path="$backup_dir/$filename"
         local symlink_path="$backup_path.symlink_target"
         
@@ -135,7 +140,8 @@ restore_files() {
             ((restore_count++))
         elif [[ -f "$symlink_path" ]]; then
             # シンボリックリンクの復元
-            local link_target=$(cat "$symlink_path")
+            local link_target
+            link_target=$(cat "$symlink_path")
             if [[ -e "$link_target" ]]; then
                 ln -sf "$link_target" "$target_path"
                 log_success "$filename (シンボリックリンク) を復元しました"
@@ -183,7 +189,8 @@ confirm_restore() {
 
 # バックアップ一覧の表示
 list_backups() {
-    local backups=($(get_available_backups))
+    local backups
+    mapfile -t backups < <(get_available_backups)
     
     if [[ ${#backups[@]} -eq 0 ]]; then
         log_info "利用可能なバックアップがありません"
@@ -192,14 +199,16 @@ list_backups() {
     
     echo "利用可能なバックアップ:"
     for backup in "${backups[@]}"; do
-        local backup_name=$(basename "$backup")
+        local backup_name
+        backup_name=$(basename "$backup")
         local backup_date=${backup_name#backup_}
-        local formatted_date=$(echo "$backup_date" | sed 's/_/ /')
+        local formatted_date=${backup_date//_/ }
         
         echo "  $formatted_date"
         
         if [[ -f "$backup/backup_info.txt" ]]; then
-            local file_count=$(grep "Files Backed Up:" "$backup/backup_info.txt" 2>/dev/null | cut -d: -f2 | tr -d ' ' || echo "不明")
+            local file_count
+            file_count=$(grep "Files Backed Up:" "$backup/backup_info.txt" 2>/dev/null | cut -d: -f2 | tr -d ' ' || echo "不明")
             echo "    Files: $file_count"
         fi
         
@@ -224,8 +233,7 @@ main() {
                 fi
             else
                 # インタラクティブにバックアップを選択
-                backup_dir=$(select_backup)
-                if [[ $? -ne 0 ]]; then
+                if ! backup_dir=$(select_backup); then
                     exit 1
                 fi
             fi
