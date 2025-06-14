@@ -34,14 +34,17 @@ DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HOME_DIR="$HOME"
 BACKUP_DIR="$DOTFILES_DIR/backups"
 
-# 復元対象ファイル
-declare -A DOTFILES=(
-    [".zshrc"]="$HOME_DIR/.zshrc"
-    [".zprofile"]="$HOME_DIR/.zprofile"
-    [".gitconfig"]="$HOME_DIR/.gitconfig"
-    [".condarc"]="$HOME_DIR/.condarc"
-    [".claude.json"]="$HOME_DIR/.claude.json"
-    [".vimrc"]="$HOME_DIR/.vimrc"
+# 復元対象ファイル（install.shと同期）
+DOTFILES_LIST=(
+    "shell/.zshrc:$HOME_DIR/.zshrc"
+    "shell/.zprofile:$HOME_DIR/.zprofile"
+    "terminal/starship.toml:$HOME_DIR/.config/starship.toml"
+    "development/.condarc:$HOME_DIR/.condarc"
+    "development/docker/config.json:$HOME_DIR/.docker/config.json"
+    "editors/zed/settings.json:$HOME_DIR/.config/zed/settings.json"
+    "editors/vscode/settings.json:$HOME_DIR/Library/Application Support/Code/User/settings.json"
+    "wm/yabai/yabairc:$HOME_DIR/.config/yabai/yabairc"
+    "wm/skhd/skhdrc:$HOME_DIR/.config/skhd/skhdrc"
 )
 
 # 利用可能なバックアップの取得
@@ -99,8 +102,10 @@ select_backup() {
 remove_current_files() {
     log_info "現在のドットファイルを削除しています..."
     
-    for filename in "${!DOTFILES[@]}"; do
-        local target_path="${DOTFILES[$filename]}"
+    for dotfile_entry in "${DOTFILES_LIST[@]}"; do
+        local source_path="${dotfile_entry%%:*}"
+        local target_path="${dotfile_entry##*:}"
+        local filename=$(basename "$target_path")
         
         if [[ -e "$target_path" ]] || [[ -L "$target_path" ]]; then
             rm "$target_path"
@@ -116,10 +121,12 @@ restore_files() {
     
     log_info "バックアップからファイルを復元しています..."
     
-    for filename in "${!DOTFILES[@]}"; do
+    for dotfile_entry in "${DOTFILES_LIST[@]}"; do
+        local source_path="${dotfile_entry%%:*}"
+        local target_path="${dotfile_entry##*:}"
+        local filename=$(basename "$target_path")
         local backup_path="$backup_dir/$filename"
         local symlink_path="$backup_path.symlink_target"
-        local target_path="${DOTFILES[$filename]}"
         
         if [[ -f "$backup_path" ]]; then
             # 通常ファイルの復元
