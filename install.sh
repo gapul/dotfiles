@@ -5,6 +5,11 @@
 # configs/ディレクトリからシンボリックリンクを作成します
 
 set -e  # エラー時に停止
+set -u  # 未定義変数使用時にエラー
+set -o pipefail  # パイプの途中でエラーが発生した場合も検出
+
+# デバッグモード用の環境変数
+DEBUG=${DEBUG:-false}
 
 # 色付きメッセージ用の定数
 RED='\033[0;31m'
@@ -27,8 +32,39 @@ log_warning() {
 }
 
 log_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
+    echo -e "${RED}[ERROR]${NC} $1" >&2
 }
+
+log_debug() {
+    if [[ "$DEBUG" == "true" ]]; then
+        echo -e "${BLUE}[DEBUG]${NC} $1" >&2
+    fi
+}
+
+# エラーハンドラー
+error_handler() {
+    local line_number=$1
+    local error_code=$2
+    local command="$3"
+    
+    log_error "Script failed at line $line_number with exit code $error_code"
+    log_error "Failed command: $command"
+    log_error "Dotfiles installation was interrupted"
+    
+    # 現在の状態を表示
+    log_info "Current state check:"
+    if [[ -d "$BACKUP_DIR" ]]; then
+        local latest_backup=$(ls -1t "$BACKUP_DIR" | head -1 2>/dev/null || echo "")
+        if [[ -n "$latest_backup" ]]; then
+            log_info "Latest backup available: $BACKUP_DIR/$latest_backup"
+        fi
+    fi
+    
+    exit $error_code
+}
+
+# エラーハンドラーを設定
+trap 'error_handler ${LINENO} $? "$BASH_COMMAND"' ERR
 
 # 現在のディレクトリ（dotfiles リポジトリのパス）
 DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -56,13 +92,21 @@ while [[ $# -gt 0 ]]; do
             SHOW_BACKUPS=true
             shift
             ;;
+        --debug)
+            DEBUG=true
+            shift
+            ;;
         -h|--help)
             echo "使用方法: $0 [オプション]"
             echo "オプション:"
             echo "  -f, --force          既存の設定を強制的に上書き"
             echo "  --cleanup-backups    古いバックアップ（7日以上前）を削除"
             echo "  --list-backups       既存のバックアップ一覧を表示"
+            echo "  --debug              デバッグ情報を表示"
             echo "  -h, --help           このヘルプを表示"
+            echo ""
+            echo "環境変数:"
+            echo "  DEBUG=true           デバッグモードを有効化"
             exit 0
             ;;
         *)
@@ -172,17 +216,24 @@ check_symlink_status() {
     local target_path="$1"
     local expected_source="$2"
     
+    log_debug "Checking symlink status: $target_path -> $expected_source"
+    
     if [[ -L "$target_path" ]]; then
         local current_target
         current_target=$(readlink "$target_path")
+        log_debug "Found symlink: $target_path -> $current_target"
         if [[ "$current_target" == "$expected_source" ]]; then
+            log_debug "Symlink is correct"
             echo "correct"
         else
+            log_debug "Symlink is incorrect (expected: $expected_source, found: $current_target)"
             echo "incorrect"
         fi
     elif [[ -e "$target_path" ]]; then
+        log_debug "File exists but is not a symlink: $target_path"
         echo "file_exists"
     else
+        log_debug "Target path does not exist: $target_path"
         echo "missing"
     fi
 }
@@ -252,23 +303,30 @@ backup_existing_files() {
 create_symlinks() {
     local changes_made=false
     
+    log_debug "Starting symlink creation process"
+    
     for dotfile_entry in "${DOTFILES_LIST[@]}"; do
         local source_path="${dotfile_entry%%:*}"
         local target_path="${dotfile_entry##*:}"
         local full_source_path="$CONFIG_DIR/$source_path"
         
+        log_debug "Processing: $source_path -> $target_path"
+        
         if [[ ! -f "$full_source_path" ]]; then
             log_warning "ソースファイルが見つかりません: $full_source_path"
             log_info "スキップします: $(basename "$target_path")"
+            log_debug "Skipping due to missing source file"
             continue
         fi
         
         local status
         status=$(check_symlink_status "$target_path" "$full_source_path")
+        log_debug "Symlink status for $target_path: $status"
         
         # 既に正しいシンボリックリンクが存在し、強制モードでない場合はスキップ
         if [[ "$status" == "correct" ]] && [[ "$FORCE_MODE" != "true" ]]; then
             log_info "$(basename "$target_path") は既に正しく設定されています"
+            log_debug "Skipping - already correctly configured"
             continue
         fi
         
@@ -282,16 +340,19 @@ create_symlinks() {
         local target_dir
         target_dir=$(dirname "$target_path")
         if [[ ! -d "$target_dir" ]]; then
+            log_debug "Creating target directory: $target_dir"
             mkdir -p "$target_dir"
         fi
         
         # シンボリックリンクを作成
+        log_debug "Creating symlink: ln -sf $full_source_path $target_path"
         ln -sf "$full_source_path" "$target_path"
         log_success "$(basename "$target_path") のシンボリックリンクを作成しました"
     done
     
     if [[ "$changes_made" == "false" ]]; then
         log_info "すべてのシンボリックリンクは既に正しく設定されています"
+        log_debug "No changes needed - all symlinks already correct"
     fi
 }
 
