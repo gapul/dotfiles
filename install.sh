@@ -87,7 +87,8 @@ check_symlink_status() {
     local expected_source="$2"
     
     if [[ -L "$target_path" ]]; then
-        local current_target=$(readlink "$target_path")
+        local current_target
+        current_target=$(readlink "$target_path")
         if [[ "$current_target" == "$expected_source" ]]; then
             echo "correct"
         else
@@ -102,7 +103,8 @@ check_symlink_status() {
 
 # バックアップディレクトリの作成（条件付き）
 create_backup_dir() {
-    local timestamp=$(date +"%Y%m%d_%H%M%S")
+    local timestamp
+    timestamp=$(date +"%Y%m%d_%H%M%S")
     local backup_session_dir="$BACKUP_DIR/backup_$timestamp"
     
     if [[ ! -d "$backup_session_dir" ]]; then
@@ -128,7 +130,8 @@ backup_existing_files() {
             continue
         fi
         
-        local status=$(check_symlink_status "$target_path" "$full_source_path")
+        local status
+        status=$(check_symlink_status "$target_path" "$full_source_path")
         
         # 正しいシンボリックリンクが既に存在し、強制モードでない場合はスキップ
         if [[ "$status" == "correct" ]] && [[ "$FORCE_MODE" != "true" ]]; then
@@ -142,11 +145,12 @@ backup_existing_files() {
                 backup_needed=true
             fi
             
-            local backup_path="$backup_session_dir/$(basename "$target_path")"
+            local backup_path
+            backup_path="$backup_session_dir/$(basename "$target_path")"
             
             if [[ -L "$target_path" ]]; then
                 log_warning "$(basename "$target_path") は不正なシンボリックリンクです"
-                echo "$(readlink "$target_path")" > "$backup_path.symlink_target"
+                readlink "$target_path" > "$backup_path.symlink_target"
                 rm "$target_path"
             else
                 mv "$target_path" "$backup_path"
@@ -173,7 +177,8 @@ create_symlinks() {
             continue
         fi
         
-        local status=$(check_symlink_status "$target_path" "$full_source_path")
+        local status
+        status=$(check_symlink_status "$target_path" "$full_source_path")
         
         # 既に正しいシンボリックリンクが存在し、強制モードでない場合はスキップ
         if [[ "$status" == "correct" ]] && [[ "$FORCE_MODE" != "true" ]]; then
@@ -188,7 +193,8 @@ create_symlinks() {
         fi
         
         # ターゲットディレクトリが存在しない場合は作成
-        local target_dir=$(dirname "$target_path")
+        local target_dir
+        target_dir=$(dirname "$target_path")
         if [[ ! -d "$target_dir" ]]; then
             mkdir -p "$target_dir"
         fi
@@ -219,8 +225,10 @@ main() {
     fi
     
     # バックアップの実行（条件付き）
-    local backup_session_dir=$(create_backup_dir)
-    local backup_needed=$(backup_existing_files "$backup_session_dir")
+    local backup_session_dir
+    backup_session_dir=$(create_backup_dir)
+    local backup_needed
+    backup_needed=$(backup_existing_files "$backup_session_dir")
     
     # シンボリックリンクの作成
     create_symlinks
