@@ -49,7 +49,8 @@ DOTFILES_LIST=(
 
 # バックアップディレクトリの作成
 create_backup_dir() {
-    local timestamp=$(date +"%Y%m%d_%H%M%S")
+    local timestamp
+    timestamp=$(date +"%Y%m%d_%H%M%S")
     local backup_session_dir="$BACKUP_DIR/backup_$timestamp"
     
     mkdir -p "$backup_session_dir"
@@ -64,15 +65,17 @@ backup_files() {
     log_info "ドットファイルのバックアップを開始します..."
     
     for dotfile_entry in "${DOTFILES_LIST[@]}"; do
-        local source_path="${dotfile_entry%%:*}"
+        # local source_path="${dotfile_entry%%:*}"  # unused variable
         local target_path="${dotfile_entry##*:}"
-        local filename=$(basename "$target_path")
+        local filename
+        filename=$(basename "$target_path")
         local backup_path="$backup_session_dir/$filename"
         
         if [[ -e "$target_path" ]]; then
             if [[ -L "$target_path" ]]; then
                 # シンボリックリンクの場合
-                local link_target=$(readlink "$target_path")
+                local link_target
+                link_target=$(readlink "$target_path")
                 echo "$link_target" > "$backup_path.symlink_target"
                 log_info "$filename (シンボリックリンク -> $link_target) をバックアップしました"
             else
@@ -106,9 +109,10 @@ save_backup_info() {
         echo ""
         echo "Backed up files:"
         for dotfile_entry in "${DOTFILES_LIST[@]}"; do
-            local source_path="${dotfile_entry%%:*}"
+            # local source_path="${dotfile_entry%%:*}"  # unused variable
             local target_path="${dotfile_entry##*:}"
-            local filename=$(basename "$target_path")
+            local filename
+            filename=$(basename "$target_path")
             if [[ -e "$target_path" ]]; then
                 echo "  $filename"
                 if [[ -L "$target_path" ]]; then
@@ -130,7 +134,8 @@ list_backups() {
         return
     fi
     
-    local backups=($(find "$BACKUP_DIR" -name "backup_*" -type d | sort -r))
+    local backups
+    mapfile -t backups < <(find "$BACKUP_DIR" -name "backup_*" -type d | sort -r)
     
     if [[ ${#backups[@]} -eq 0 ]]; then
         log_info "バックアップが見つかりません"
@@ -139,12 +144,15 @@ list_backups() {
     
     echo "利用可能なバックアップ:"
     for backup in "${backups[@]}"; do
-        local backup_name=$(basename "$backup")
+        local backup_name
+        backup_name=$(basename "$backup")
         local backup_date=${backup_name#backup_}
-        local formatted_date=$(echo "$backup_date" | sed 's/_/ /')
+        local formatted_date
+        formatted_date=${backup_date/_/ }
         
         if [[ -f "$backup/backup_info.txt" ]]; then
-            local file_count=$(grep "Files Backed Up:" "$backup/backup_info.txt" | cut -d: -f2 | tr -d ' ')
+            local file_count
+            file_count=$(grep "Files Backed Up:" "$backup/backup_info.txt" | cut -d: -f2 | tr -d ' ')
             echo "  $formatted_date ($file_count files)"
         else
             echo "  $formatted_date"
@@ -158,7 +166,8 @@ main() {
         "backup")
             log_info "ドットファイルのバックアップを開始します"
             
-            local backup_session_dir=$(create_backup_dir)
+            local backup_session_dir
+            backup_session_dir=$(create_backup_dir)
             backup_files "$backup_session_dir"
             local backup_count=$?
             
