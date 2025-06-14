@@ -128,6 +128,7 @@ DOTFILES_LIST=(
     "development/.condarc:$HOME_DIR/.condarc"
     "development/docker/config.json:$HOME_DIR/.docker/config.json"
     "development/docker/daemon.json:$HOME_DIR/.docker/daemon.json"
+    "cli/gh/config.yml:$HOME_DIR/.config/gh/config.yml"
     
     # Phase 3: エディター設定（任意）
     "editors/zed/settings.json:$HOME_DIR/.config/zed/settings.json"

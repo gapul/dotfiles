@@ -66,3 +66,57 @@ setopt PUSHD_IGNORE_DUPS     # 重複するディレクトリをpushdしない
 
 # ===== プロンプト初期化 =====
 eval "$(starship init zsh)"
+
+# ===== 現代的な開発ツール =====
+# fzf (ファジーファインダー) - インストールされている場合
+if command -v fzf >/dev/null 2>&1; then
+    eval "$(fzf --zsh)"
+fi
+
+# zoxide (smarter cd) - インストールされている場合  
+if command -v zoxide >/dev/null 2>&1; then
+    eval "$(zoxide init zsh)"
+    alias cd='z'
+fi
+
+# eza (modern ls) - インストールされている場合
+if command -v eza >/dev/null 2>&1; then
+    alias ls='eza'
+    alias ll='eza -la'
+    alias tree='eza --tree'
+fi
+
+# bat (modern cat) - インストールされている場合
+if command -v bat >/dev/null 2>&1; then
+    alias cat='bat'
+fi
+
+# ===== 環境変数 =====
+# エディター設定
+export EDITOR='code'
+export VISUAL='code'
+
+# 言語設定
+export LANG='en_US.UTF-8'
+export LC_ALL='en_US.UTF-8'
+
+# 開発関連
+export DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"
+
+# ===== 条件付き設定読み込み =====
+# ローカル設定ファイルがあれば読み込み（個人用カスタマイズ）
+[[ -f ~/.zshrc.local ]] && source ~/.zshrc.local
+
+# ===== 自動補完強化 =====
+# 大文字小文字を区別しない補完
+zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}'
+
+# 補完メニューをカラー化
+zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
+
+# ===== キーバインド =====
+# Emacs風キーバインド
+bindkey -e
+
+# 履歴検索
+bindkey '^R' history-incremental-search-backward

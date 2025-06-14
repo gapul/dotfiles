@@ -1,149 +1,279 @@
-# ドットファイル管理システム
+# 🏠 Dotfiles Management System
 
-このリポジトリは、macOS環境でのドットファイル管理を自動化するためのシステムです。
+> **セキュアで包括的なmacOS環境ドットファイル管理システム**
 
-## 概要
+このリポジトリは、macOS環境でのドットファイルを安全かつ効率的に管理するための完全なシステムです。
+シンボリックリンクベースの管理により、新しい環境での迅速なセットアップと設定の一元管理を実現します。
 
-シンボリックリンクを使用してドットファイルを中央管理し、新しい環境での迅速なセットアップを可能にします。
+## ✨ 特徴
 
-## ディレクトリ構造
+- 🔒 **セキュアな設計** - 個人情報を含むファイルは安全に除外
+- 🚀 **高速セットアップ** - 新環境で数秒でのドットファイル展開
+- 🔄 **自動バックアップ** - 既存設定の安全な保護
+- 🎯 **段階的導入** - Phase別の柔軟な管理
+- ✅ **包括的テスト** - TOML検証、冪等性チェック、CI統合
+
+## 📁 ディレクトリ構造
 
 ```
 dotfiles/
-├── README.md              # このファイル  
-├── DOTFILES_DISCOVERY.md  # ファイル探索結果
-├── install.sh            # インストール・セットアップスクリプト
-├── backup.sh             # バックアップスクリプト
-├── restore.sh            # 復元スクリプト
-├── setup.sh              # 初期セットアップスクリプト
-├── configs/              # ドットファイルの格納ディレクトリ
-│   ├── shell/            # シェル設定
+├── 📄 README.md                    # このファイル
+├── 🔍 DOTFILES_DISCOVERY.md        # ファイル探索結果  
+├── 🔒 SECURITY.md                  # セキュリティガイドライン
+├── ⚙️  install.sh                   # メインインストールスクリプト
+├── 📊 check-ci.sh                  # CI状態チェッカー
+├── 🗂️  configs/                     # 設定ファイル格納ディレクトリ
+│   ├── 🐚 shell/                   # シェル設定
 │   │   ├── .zshrc
 │   │   └── .zprofile
-│   ├── terminal/         # ターミナル・プロンプト設定
+│   ├── 💻 terminal/                # ターミナル・プロンプト設定
 │   │   └── starship.toml
-│   ├── development/      # 開発ツール設定
+│   ├── 🔧 development/             # 開発ツール設定
 │   │   ├── .condarc
 │   │   └── docker/
-│   │       └── config.json
-│   ├── editors/          # エディター設定
+│   │       ├── config.json
+│   │       └── daemon.json
+│   ├── ⚡ cli/                     # コマンドラインツール設定
+│   │   └── gh/
+│   │       └── config.yml
+│   ├── 📝 editors/                 # エディター設定
 │   │   ├── vscode/
 │   │   │   └── settings.json
 │   │   └── zed/
 │   │       └── settings.json
-│   ├── wm/              # ウィンドウマネージャー設定 (macOS)
+│   ├── 🖥️  wm/                     # ウィンドウマネージャー設定 (macOS)
 │   │   ├── yabai/
 │   │   │   └── yabairc
-│   │   └── skhd/
-│   │       └── skhdrc
-│   └── ssh/             # SSH設定例
-│       └── config.example
-└── backups/             # 既存ドットファイルのバックアップ
+│   │   ├── skhd/
+│   │   │   └── skhdrc
+│   │   └── sketchybar/
+│   │       ├── sketchybarrc
+│   │       ├── *.lua (設定モジュール)
+│   │       ├── helpers/ (ヘルパー)
+│   │       └── items/ (アイテム)
+│   ├── 🔐 git/                     # Git設定テンプレート
+│   │   └── .gitconfig.example
+│   ├── 🔑 ssh/                     # SSH設定テンプレート
+│   │   └── config.example
+│   └── 📱 apps/                    # アプリケーション設定
+│       └── claude/
+│           └── claude.json.example
+├── 💾 backups/                     # 自動バックアップ先
+├── 🧪 .github/                     # CI/CD & 自動化
+│   ├── workflows/
+│   │   ├── ci.yml
+│   │   └── test.yml
+│   └── scripts/
+│       └── validate_toml.py        # TOML検証スクリプト
+└── ⚙️  .vscode/                     # 開発環境設定
 ```
 
-## 管理対象ドットファイル
+## 🎯 管理対象設定ファイル
 
-以下のドットファイルを管理対象とします：
+### Phase 1: 基本設定（必須）
+- **Shell**: `.zshrc`, `.zprofile` - Zsh環境設定
+- **Terminal**: `starship.toml` - 美しいプロンプト設定
 
-### シェル・ターミナル関連
-- `.zshrc` - Zsh設定ファイル
-- `.zprofile` - Zshプロファイル
-- `starship.toml` - Starshipプロンプト設定
+### Phase 2: 開発環境
+- **Docker**: `config.json`, `daemon.json` - コンテナ環境設定
+- **Conda**: `.condarc` - Python環境管理
+- **GitHub CLI**: `config.yml` - Git操作・PR管理設定
+- **Editors**: VSCode, Zed設定
 
-### 開発ツール関連
-- `.condarc` - Conda設定
-- `docker/config.json` - Docker設定
+### Phase 3: デスクトップ環境（macOS）
+- **Yabai**: タイル型ウィンドウマネージャー
+- **skhd**: キーバインド設定
+- **Sketchybar**: カスタムステータスバー（完全なLua設定）
 
-### エディター関連
-- `zed/settings.json` - Zedエディター設定
+### 🔒 セキュリティ除外設定
+以下は個人情報保護のため`.gitignore`で除外：
+- `.gitconfig` - 実名・メールアドレス
+- `ssh/config` - サーバー情報・認証設定  
+- `claude.json` - ユーザーID・履歴
 
-### ウィンドウマネージャー関連（macOS）
-- `yabai/yabairc` - Yabaiタイル型ウィンドウマネージャー
-- `skhd/skhdrc` - skhdキーバインド設定
+## 🚀 クイックスタート
 
-## ⚠️ 管理対象外のファイル（セキュリティ上の理由）
-
-以下のファイルは個人情報を含むため、このドットファイル管理システムでは管理しません：
-- `.gitconfig` - 実名・メールアドレスを含む
-- `.ssh/config` - サーバー情報・IPアドレスを含む
-- `.claude.json` - ユーザーID・プロジェクト履歴を含む
-
-## 使用方法
-
-### 初回セットアップ
+### 🆕 新規環境セットアップ
 ```bash
-# リポジトリをクローン
-git clone https://github.com/gapul/dotfiles.git ~/dotfiles
+# 1. リポジトリクローン
+git clone https://github.com/your-username/dotfiles.git ~/dotfiles
 cd ~/dotfiles
 
-# インストール実行
+# 2. ワンコマンドセットアップ
 ./install.sh
+
+# 3. セキュリティガイドに従って個人設定を追加
+# SECURITY.md を参照してテンプレートファイルをカスタマイズ
 ```
 
-### 新しい環境での素早いセットアップ
+### 🔄 既存環境からの移行
 ```bash
-# ワンライナーでセットアップ
-curl -fsSL https://raw.githubusercontent.com/gapul/dotfiles/main/install.sh | bash
+# 1. 現在の設定をバックアップ
+./install.sh  # 自動的にバックアップされます
+
+# 2. 設定の確認
+ls -la ~/  # シンボリックリンクを確認
+
+# 3. 必要に応じて個人設定を追加
+cp configs/git/.gitconfig.example configs/git/.gitconfig
+# 実名・メールアドレスを編集
 ```
 
-### 既存環境のバックアップ
+## ⚙️ 高度な使用方法
+
+### 🔧 install.shオプション
 ```bash
-# 既存のドットファイルをバックアップ
-./backup.sh
+./install.sh --help          # ヘルプ表示
+./install.sh --force         # 既存設定を強制上書き
 ```
 
-### 復元
+### 🧪 設定検証
 ```bash
-# バックアップから復元
-./restore.sh
+# TOML設定の検証（冪等性・構文・Starship検証）
+python3 .github/scripts/validate_toml.py
+
+# CI状態の確認
+./check-ci.sh --history      # 実行履歴表示
+./check-ci.sh --wait         # 完了まで待機
 ```
 
-## インストールスクリプトの動作
-
-1. **既存ドットファイルのバックアップ**: 既存のドットファイルを `backups/` ディレクトリに移動
-2. **シンボリックリンク作成**: `configs/` 内のファイルからホームディレクトリへシンボリックリンクを作成
-3. **権限設定**: 必要に応じてスクリプトに実行権限を付与
-
-## バックアップ・復元システム
-
-### バックアップ機能
-- 現在のドットファイルをタイムスタンプ付きでバックアップ
-- バックアップ前に既存のシンボリックリンクを確認・解除
-
-### 復元機能
-- 最新のバックアップから復元
-- 復元前に現在のシンボリックリンクを解除
-
-## 注意事項
-
-- **バックアップの重要性**: 初回実行前に必ず重要なドットファイルをバックアップしてください
-- **シンボリックリンクの管理**: 手動でシンボリックリンクを削除しないでください
-- **権限**: スクリプト実行時は適切な権限を確認してください
-
-## カスタマイズ
-
-新しいドットファイルを管理対象に追加する場合：
-
-1. `configs/` の適切なサブディレクトリにファイルを配置
-2. `install.sh` の `DOTFILES` 配列に追加
-3. 必要に応じて `backup.sh` と `restore.sh` も更新
-
-## トラブルシューティング
-
-### シンボリックリンクが機能しない
+### 🔍 状態確認
 ```bash
-# リンクの状態を確認
-ls -la ~/
+# シンボリックリンク状態確認
+ls -la ~ | grep '\->'
+
+# バックアップ履歴確認  
+ls -la backups/
+
+# Git管理状況確認
+git status
 ```
 
-### バックアップが見つからない
+## 🔒 セキュリティ設定
+
+詳細は [`SECURITY.md`](SECURITY.md) を参照してください。
+
+### センシティブファイルの手動設定
 ```bash
-# バックアップディレクトリを確認
+# 1. テンプレートからコピー
+cp configs/git/.gitconfig.example configs/git/.gitconfig
+cp configs/ssh/config.example configs/ssh/config
+
+# 2. 個人情報を編集
+vim configs/git/.gitconfig  # 実名・メール設定
+
+# 3. 手動リンク作成
+ln -sf "$PWD/configs/git/.gitconfig" ~/.gitconfig
+ln -sf "$PWD/configs/ssh/config" ~/.ssh/config
+```
+
+## 🛠️ カスタマイズ
+
+### 新しい設定ファイルの追加
+1. **適切なディレクトリに配置**
+   ```bash
+   # 例: Vim設定追加
+   mkdir -p configs/editors/vim
+   cp ~/.vimrc configs/editors/vim/.vimrc
+   ```
+
+2. **install.shに登録**
+   ```bash
+   # DOTFILES_LIST に追加
+   "editors/vim/.vimrc:$HOME_DIR/.vimrc"
+   ```
+
+3. **テスト実行**
+   ```bash
+   ./install.sh --force
+   ```
+
+### 🎨 Starship設定のカスタマイズ
+```bash
+# 設定編集
+vim configs/terminal/starship.toml
+
+# 即座に反映（シンボリックリンクのため）
+# 新しいシェルセッションで確認
+```
+
+## 🧪 品質保証
+
+### ✅ 自動テスト
+- **TOML検証**: 構文・冪等性・Starship固有チェック
+- **スクリプト検証**: Shellcheck、構文チェック  
+- **CI/CD**: GitHub Actions自動実行
+
+### 🔄 継続的検証
+```bash
+# ローカルでの検証実行
+python3 .github/scripts/validate_toml.py
+shellcheck *.sh
+```
+
+## 📊 CI/CD統合
+
+GitHub Actionsによる自動化：
+- **Lint**: シェルスクリプト・JSON・TOML検証
+- **Test**: インストールスクリプトのテスト
+- **Security**: シークレットスキャン
+
+## 🆘 トラブルシューティング
+
+### よくある問題
+
+**Q: シンボリックリンクが作成されない**
+```bash
+# 解決方法
+ls -la ~/.zshrc  # 既存ファイル確認
+./install.sh --force  # 強制上書き
+```
+
+**Q: Starship設定が反映されない**
+```bash
+# 解決方法  
+which starship  # インストール確認
+starship config  # 設定パス確認
+source ~/.zshrc  # 設定再読み込み
+```
+
+**Q: セキュリティ警告が出る**
+```bash
+# 解決方法
+git check-ignore configs/git/.gitconfig  # 除外確認
+cat .gitignore | grep -E "(git|ssh|claude)"  # .gitignore確認
+```
+
+### 🔧 診断コマンド
+```bash
+# システム診断
+./install.sh --help
+python3 .github/scripts/validate_toml.py
+./check-ci.sh --history
 ls -la backups/
 ```
 
-### 権限エラー
-```bash
-# スクリプトに実行権限を付与
-chmod +x install.sh backup.sh restore.sh
-```
+## 🤝 コントリビューション
+
+1. Fork このリポジトリ
+2. Feature ブランチ作成 (`git checkout -b feature/amazing-feature`)
+3. 変更をコミット (`git commit -m 'Add amazing feature'`)
+4. ブランチにプッシュ (`git push origin feature/amazing-feature`)
+5. Pull Request作成
+
+## 📜 ライセンス
+
+MIT License - 詳細は [LICENSE](LICENSE) ファイルを参照
+
+## 🙏 謝辞
+
+- [Starship](https://starship.rs/) - クロスシェル対応プロンプト
+- [Yabai](https://github.com/koekeishiya/yabai) - macOSタイル型ウィンドウマネージャー
+- [Sketchybar](https://github.com/FelixKratz/SketchyBar) - macOSカスタムステータスバー
+
+---
+
+**🔗 リンク集**
+- 📖 [セキュリティガイド](SECURITY.md)
+- 🔍 [ファイル探索結果](DOTFILES_DISCOVERY.md)
+- 🤖 [CI状況チェック](../../actions)
