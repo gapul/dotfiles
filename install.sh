@@ -36,24 +36,25 @@ HOME_DIR="$HOME"
 BACKUP_DIR="$DOTFILES_DIR/backups"
 CONFIG_DIR="$DOTFILES_DIR/configs"
 
-# 管理対象ドットファイルの定義（相対パス:絶対パス）
-declare -A DOTFILES=(
+# 管理対象ドットファイルの定義
+# format: "source_path:target_path"
+DOTFILES_LIST=(
     # Phase 1: 基本設定（必須）
-    ["shell/.zshrc"]="$HOME_DIR/.zshrc"
-    ["shell/.zprofile"]="$HOME_DIR/.zprofile"
-    ["terminal/starship.toml"]="$HOME_DIR/.config/starship.toml"
+    "shell/.zshrc:$HOME_DIR/.zshrc"
+    "shell/.zprofile:$HOME_DIR/.zprofile"
+    "terminal/starship.toml:$HOME_DIR/.config/starship.toml"
     
     # Phase 2: 開発ツール設定
-    ["development/.condarc"]="$HOME_DIR/.condarc"
-    ["development/docker/config.json"]="$HOME_DIR/.docker/config.json"
+    "development/.condarc:$HOME_DIR/.condarc"
+    "development/docker/config.json:$HOME_DIR/.docker/config.json"
     
     # Phase 3: エディター設定（任意）
-    ["editors/zed/settings.json"]="$HOME_DIR/.config/zed/settings.json"
-    ["editors/vscode/settings.json"]="$HOME_DIR/Library/Application Support/Code/User/settings.json"
+    "editors/zed/settings.json:$HOME_DIR/.config/zed/settings.json"
+    "editors/vscode/settings.json:$HOME_DIR/Library/Application Support/Code/User/settings.json"
     
     # Phase 4: ウィンドウマネージャー設定（macOS限定・任意）
-    ["wm/yabai/yabairc"]="$HOME_DIR/.config/yabai/yabairc"
-    ["wm/skhd/skhdrc"]="$HOME_DIR/.config/skhd/skhdrc"
+    "wm/yabai/yabairc:$HOME_DIR/.config/yabai/yabairc"
+    "wm/skhd/skhdrc:$HOME_DIR/.config/skhd/skhdrc"
 )
 
 # バックアップディレクトリの作成
@@ -63,7 +64,7 @@ create_backup_dir() {
     
     if [[ ! -d "$backup_session_dir" ]]; then
         mkdir -p "$backup_session_dir"
-        log_info "バックアップディレクトリを作成しました: $backup_session_dir"
+        log_info "バックアップディレクトリを作成しました: $backup_session_dir" >&2
     fi
     
     echo "$backup_session_dir"
@@ -74,15 +75,16 @@ backup_existing_files() {
     local backup_session_dir="$1"
     log_info "既存のドットファイルをバックアップしています..."
     
-    for config_path in "${!DOTFILES[@]}"; do
-        local target_path="${DOTFILES[$config_path]}"
+    for dotfile_entry in "${DOTFILES_LIST[@]}"; do
+        local source_path="${dotfile_entry%%:*}"
+        local target_path="${dotfile_entry##*:}"
         
         if [[ -e "$target_path" ]] || [[ -L "$target_path" ]]; then
             local backup_path="$backup_session_dir/$(basename "$target_path")"
             
             if [[ -L "$target_path" ]]; then
                 log_warning "$(basename "$target_path") は既にシンボリックリンクです"
-                readlink "$target_path" > "$backup_path.symlink_target"
+                echo "$(readlink "$target_path")" > "$backup_path.symlink_target"
                 rm "$target_path"
             else
                 mv "$target_path" "$backup_path"
@@ -96,12 +98,13 @@ backup_existing_files() {
 create_symlinks() {
     log_info "シンボリックリンクを作成しています..."
     
-    for config_path in "${!DOTFILES[@]}"; do
-        local source_path="$CONFIG_DIR/$config_path"
-        local target_path="${DOTFILES[$config_path]}"
+    for dotfile_entry in "${DOTFILES_LIST[@]}"; do
+        local source_path="${dotfile_entry%%:*}"
+        local target_path="${dotfile_entry##*:}"
+        local full_source_path="$CONFIG_DIR/$source_path"
         
-        if [[ ! -f "$source_path" ]]; then
-            log_warning "ソースファイルが見つかりません: $source_path"
+        if [[ ! -f "$full_source_path" ]]; then
+            log_warning "ソースファイルが見つかりません: $full_source_path"
             continue
         fi
         
@@ -112,7 +115,7 @@ create_symlinks() {
         fi
         
         # シンボリックリンクを作成
-        ln -sf "$source_path" "$target_path"
+        ln -sf "$full_source_path" "$target_path"
         log_success "$(basename "$target_path") のシンボリックリンクを作成しました"
     done
 }
