@@ -1188,4 +1188,54 @@ detect_folders = []
 
 [custom]
 
-# Another test for starship config
+# ===== カスタム最適化設定 =====
+
+# プロンプトを2行にして見やすくする
+format = "$all$character"
+right_format = "$time"
+
+# ディレクトリ表示を最適化
+[directory]
+truncation_length = 5
+truncate_to_repo = true
+style = "bold cyan"
+
+# Gitブランチ表示を最適化
+[git_branch]
+format = "on [$symbol$branch]($style) "
+symbol = "🌱 "
+style = "bold purple"
+
+# Git状態表示を最適化
+[git_status]
+format = '([\[$all_status$ahead_behind\]]($style) )'
+style = "red bold"
+
+# コマンド実行時間表示
+[cmd_duration]
+min_time = 1000
+format = "took [$duration]($style) "
+style = "yellow bold"
+
+# 時刻表示（右側）
+[time]
+disabled = false
+format = "[$time]($style)"
+style = "bright-blue"
+
+# バッテリー表示（macOS）
+[battery]
+disabled = false
+format = "[$symbol$percentage]($style) "
+
+[[battery.display]]
+threshold = 20
+style = "red bold"
+
+[[battery.display]]
+threshold = 50
+style = "yellow"
+
+[[battery.display]]
+threshold = 100
+style = "green"
