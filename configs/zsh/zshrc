@@ -1,0 +1,75 @@
+# Zsh設定ファイル
+# dotfiles管理システム用の共通zsh設定
+
+# 基本設定
+export LANG=ja_JP.UTF-8
+export EDITOR=nvim
+export BROWSER=open
+
+# Homebrewパス設定（Apple Silicon Mac用）
+if [[ $(uname -m) == "arm64" ]]; then
+  export PATH="/opt/homebrew/bin:$PATH"
+else
+  export PATH="/usr/local/bin:$PATH"
+fi
+
+# 履歴設定
+HISTFILE=~/.zsh_history
+HISTSIZE=50000
+SAVEHIST=50000
+setopt HIST_IGNORE_DUPS
+setopt HIST_IGNORE_ALL_DUPS
+setopt HIST_SAVE_NO_DUPS
+setopt HIST_REDUCE_BLANKS
+setopt SHARE_HISTORY
+
+# 補完機能の設定
+# Homebrew補完パスを追加
+if type brew &>/dev/null; then
+  fpath=($(brew --prefix)/share/zsh/site-functions $fpath)
+fi
+
+autoload -Uz compinit
+compinit
+
+# zsh補完機能の設定
+zstyle ':completion:*' menu select
+zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}'
+zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
+
+# Starship プロンプト初期化
+if command -v starship >/dev/null 2>&1; then
+  eval "$(starship init zsh)"
+fi
+
+# その他の便利なエイリアス
+alias ll='ls -la'
+alias la='ls -la'
+alias l='ls -l'
+alias ..='cd ..'
+alias ...='cd ../..'
+alias grep='grep --color=auto'
+
+# Git エイリアス
+alias g='git'
+alias gs='git status'
+alias ga='git add'
+alias gc='git commit'
+alias gp='git push'
+alias gl='git log --oneline'
+
+# Docker エイリアス
+alias d='docker'
+alias dc='docker-compose'
+alias dps='docker ps'
+alias di='docker images'
+
+# Neovim エイリアス
+alias v='nvim'
+alias vim='nvim'
+
+# 開発関連のパス設定
+export PATH="$HOME/.local/bin:$PATH"
+
+# 追加設定の読み込み（ローカル設定など）
+[[ -f ~/.zshrc.local ]] && source ~/.zshrc.local
