@@ -32,17 +32,28 @@ dotfiles/
 
 以下のドットファイルを管理対象とします：
 
-### シェル関連
+### シェル・ターミナル関連
 - `.zshrc` - Zsh設定ファイル
 - `.zprofile` - Zshプロファイル
+- `starship.toml` - Starshipプロンプト設定
 
 ### 開発ツール関連
-- `.gitconfig` - Git設定
-- `.vimrc` - Vim設定（必要に応じて）
-
-### その他のツール
 - `.condarc` - Conda設定
-- `.claude.json` - Claude設定
+- `docker/config.json` - Docker設定
+
+### エディター関連
+- `zed/settings.json` - Zedエディター設定
+
+### ウィンドウマネージャー関連（macOS）
+- `yabai/yabairc` - Yabaiタイル型ウィンドウマネージャー
+- `skhd/skhdrc` - skhdキーバインド設定
+
+## ⚠️ 管理対象外のファイル（セキュリティ上の理由）
+
+以下のファイルは個人情報を含むため、このドットファイル管理システムでは管理しません：
+- `.gitconfig` - 実名・メールアドレスを含む
+- `.ssh/config` - サーバー情報・IPアドレスを含む
+- `.claude.json` - ユーザーID・プロジェクト履歴を含む
 
 ## 使用方法
 

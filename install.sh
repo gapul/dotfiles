@@ -41,12 +41,9 @@ declare -A DOTFILES=(
     # Phase 1: 基本設定（必須）
     ["shell/.zshrc"]="$HOME_DIR/.zshrc"
     ["shell/.zprofile"]="$HOME_DIR/.zprofile"
-    ["git/.gitconfig"]="$HOME_DIR/.gitconfig"
-    ["ssh/config"]="$HOME_DIR/.ssh/config"
     ["terminal/starship.toml"]="$HOME_DIR/.config/starship.toml"
     
     # Phase 2: 開発ツール設定
-    ["development/.claude.json"]="$HOME_DIR/.claude.json"
     ["development/.condarc"]="$HOME_DIR/.condarc"
     ["development/docker/config.json"]="$HOME_DIR/.docker/config.json"
     
