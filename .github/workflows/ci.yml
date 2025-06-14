@@ -55,20 +55,26 @@ jobs:
     - name: Validate TOML configuration files
       run: |
         echo "Validating TOML files..."
-        find configs -name "*.toml" -type f | while read -r file; do
-          echo "Validating $file"
-          python3 -c "
+        python3 << 'EOF'
 import toml
 import sys
-try:
-    with open('$file', 'r') as f:
-        toml.load(f)
-    print('✅ $file is valid TOML')
-except Exception as e:
-    print('❌ Invalid TOML in $file: ' + str(e))
-    sys.exit(1)
-"
-        done
+import os
+import glob
+
+toml_files = glob.glob("configs/**/*.toml", recursive=True)
+for file in toml_files:
+    print(f"Validating {file}")
+    try:
+        with open(file, 'r') as f:
+            toml.load(f)
+        print(f"✅ {file} is valid TOML")
+    except Exception as e:
+        print(f"❌ Invalid TOML in {file}: {e}")
+        sys.exit(1)
+        
+if not toml_files:
+    print("No TOML files found")
+EOF
 
   test-install:
     name: Test Installation Script
