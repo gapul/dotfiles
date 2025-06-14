@@ -51,14 +51,34 @@ jobs:
     - name: Validate TOML configuration files
       run: |
         echo "Validating TOML files..."
-        # 基本的なTOMLファイルの存在確認
-        if find configs -name "*.toml" -type f | head -1 | grep -q .; then
-          echo "✅ TOML files found"
-          find configs -name "*.toml" -type f | while read -r file; do
-            echo "Found: $file"
-          done
-        else
-          echo "No TOML files found"
+        find configs -name "*.toml" -type f | while read -r file; do
+          echo "Validating $file"
+          python3 -c "
+import sys
+try:
+    import tomllib
+except ImportError:
+    try:
+        import tomli as tomllib
+    except ImportError:
+        print('Installing tomli for TOML parsing...')
+        import subprocess
+        subprocess.check_call(['pip3', 'install', 'tomli'])
+        import tomli as tomllib
+
+try:
+    with open('$file', 'rb') as f:
+        tomllib.load(f)
+    print('✅ $file is valid TOML')
+except Exception as e:
+    print('❌ Invalid TOML in $file: ' + str(e))
+    sys.exit(1)
+" || { echo "TOML validation failed for $file"; exit 1; }
+        done
+        
+        # TOMLファイルが見つからない場合の処理
+        if ! find configs -name "*.toml" -type f | head -1 | grep -q .; then
+          echo "No TOML files found to validate"
         fi
 
   test-install:
