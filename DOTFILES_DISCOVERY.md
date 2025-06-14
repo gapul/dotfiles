@@ -114,37 +114,34 @@
 
 ```
 dotfiles/configs/
-├── shell/
+├── shell/               # シェル設定
 │   ├── .zshrc
 │   └── .zprofile
-├── git/
-│   └── .gitconfig
-├── ssh/
-│   └── config
-├── terminal/
+├── terminal/            # ターミナル・プロンプト設定
 │   └── starship.toml
-├── wm/                   # Window Manager
-│   ├── yabai/
-│   │   └── yabairc
-│   ├── skhd/
-│   │   └── skhdrc
-│   └── sketchybar/
-│       ├── init.lua
-│       ├── colors.lua
-│       └── ...
-├── editors/
+├── development/         # 開発ツール設定
+│   ├── .condarc
+│   └── docker/
+│       └── config.json
+├── editors/             # エディター設定
 │   ├── vscode/
 │   │   └── settings.json
 │   └── zed/
 │       └── settings.json
-├── development/
-│   ├── docker/
-│   │   └── config.json
-│   ├── .claude.json
-│   └── .condarc
-└── apps/                 # Optional
-    ├── discord/
-    └── claude/
+├── wm/                  # ウィンドウマネージャー設定 (macOS)
+│   ├── yabai/
+│   │   └── yabairc
+│   ├── skhd/
+│   │   └── skhdrc
+│   └── sketchybar/      # 未実装
+│       └── (準備中)
+└── ssh/                 # SSH設定例
+    └── config.example
+
+## 管理対象外（セキュリティ上の理由）
+- .gitconfig (実名・メールアドレス)
+- .ssh/config (サーバー情報・IP)  
+- .claude.json (ユーザーID・履歴)
 ```
 
 ## 🚀 実装計画

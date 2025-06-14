@@ -10,22 +10,35 @@
 
 ```
 dotfiles/
-├── README.md           # このファイル
-├── install.sh          # インストール・セットアップスクリプト
-├── backup.sh          # バックアップスクリプト
-├── restore.sh         # 復元スクリプト
-├── configs/           # ドットファイルの格納ディレクトリ
-│   ├── zsh/
+├── README.md              # このファイル  
+├── DOTFILES_DISCOVERY.md  # ファイル探索結果
+├── install.sh            # インストール・セットアップスクリプト
+├── backup.sh             # バックアップスクリプト
+├── restore.sh            # 復元スクリプト
+├── setup.sh              # 初期セットアップスクリプト
+├── configs/              # ドットファイルの格納ディレクトリ
+│   ├── shell/            # シェル設定
 │   │   ├── .zshrc
 │   │   └── .zprofile
-│   ├── git/
-│   │   └── .gitconfig
-│   ├── vim/
-│   │   └── .vimrc
-│   └── others/
-│       ├── .condarc
-│       └── .claude.json
-└── backups/           # 既存ドットファイルのバックアップ
+│   ├── terminal/         # ターミナル・プロンプト設定
+│   │   └── starship.toml
+│   ├── development/      # 開発ツール設定
+│   │   ├── .condarc
+│   │   └── docker/
+│   │       └── config.json
+│   ├── editors/          # エディター設定
+│   │   ├── vscode/
+│   │   │   └── settings.json
+│   │   └── zed/
+│   │       └── settings.json
+│   ├── wm/              # ウィンドウマネージャー設定 (macOS)
+│   │   ├── yabai/
+│   │   │   └── yabairc
+│   │   └── skhd/
+│   │       └── skhdrc
+│   └── ssh/             # SSH設定例
+│       └── config.example
+└── backups/             # 既存ドットファイルのバックアップ
 ```
 
 ## 管理対象ドットファイル

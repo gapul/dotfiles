@@ -1,5 +1,7 @@
-# SSH Configuration Template
-# Copy this file to 'config' and customize for your environment
+# SSH Configuration Example File
+# IMPORTANT: This is a template file. 
+# Copy this file to 'config' (without extension) and customize for your environment.
+# The actual 'config' file is excluded from version control for security reasons.
 
 Host github github.com
   HostName github.com
