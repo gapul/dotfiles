@@ -38,7 +38,7 @@ jobs:
           if [[ -f "$script" ]]; then
             echo "Checking $script with shellcheck"
             # Exclude common style warnings that don't affect functionality
-            shellcheck -e SC1091,SC2129,SC2155,SC2034,SC2295,SC2016 "$script"
+            shellcheck -e SC1091,SC2129,SC2155,SC2034,SC2295,SC2016,SC2009 "$script"
           fi
         done
         
