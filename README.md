@@ -25,8 +25,16 @@ dotfiles/
 │   ├── NEOVIM_GUIDE.md             # Neovim設定ガイド
 │   └── MCP_SETUP.md                # MCP設定ガイド
 ├── ⚙️  install.sh                   # メインインストールスクリプト
-├── 🛠️  install-software.sh          # ソフトウェアインストールスクリプト
-├── 📊 check-ci.sh                  # CI状態チェッカー
+├── 🛠️  setup.sh                     # 初回セットアップスクリプト
+├── 📂 scripts/                     # スクリプト管理ディレクトリ
+│   ├── install.sh                  # メインインストールスクリプト
+│   ├── setup.sh                    # セットアップスクリプト
+│   ├── backup.sh                   # バックアップ管理
+│   ├── restore.sh                  # 復元スクリプト
+│   ├── software.sh                 # ソフトウェアインストール
+│   ├── check-ci.sh                 # CI状態チェッカー
+│   ├── check-dependencies.sh       # 依存関係チェック
+│   └── utils.sh                    # 共通ユーティリティ関数
 ├── 🗂️  configs/                     # 設定ファイル格納ディレクトリ
 │   ├── 🐚 zsh/                     # Zshシェル設定
 │   │   ├── zshrc
@@ -213,6 +221,7 @@ vim configs/terminal/wezterm.lua
 ### ✅ 自動テスト
 - **TOML検証**: 構文・冪等性・Starship固有チェック
 - **スクリプト検証**: Shellcheck、構文チェック  
+- **依存関係チェック**: ファイル参照の整合性確認
 - **CI/CD**: GitHub Actions自動実行
 
 ### 🔄 継続的検証
@@ -220,6 +229,38 @@ vim configs/terminal/wezterm.lua
 # ローカルでの検証実行
 python3 .github/scripts/validate_toml.py
 shellcheck *.sh
+scripts/check-dependencies.sh --verbose
+```
+
+### 🔗 依存関係管理
+
+このシステムでは、ファイルやディレクトリの移動・変更時に発生する依存関係の問題を自動検出します：
+
+**依存関係チェック機能:**
+- **スクリプト参照**: ラッパーとターゲットスクリプトの整合性
+- **CI設定**: ワークフローファイル内のパス参照チェック
+- **設定ファイル**: 管理対象ファイルの存在確認
+- **ドキュメント**: Markdown内のファイル参照検証
+
+```bash
+# 依存関係チェック実行
+scripts/check-dependencies.sh
+
+# 詳細表示
+scripts/check-dependencies.sh --verbose
+
+# 自動修正（可能な場合）
+scripts/check-dependencies.sh --fix
+```
+
+**Pre-commitフック:**
+```bash
+# Pre-commitフックの設定
+pip install pre-commit
+pre-commit install
+
+# 手動実行
+pre-commit run --all-files
 ```
 
 ## 📊 CI/CD統合

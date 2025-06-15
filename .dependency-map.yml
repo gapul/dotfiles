@@ -1,0 +1,194 @@
+# ドットファイル管理システム - 依存関係マップ
+# このファイルはパス参照と依存関係を追跡し、整合性チェックに使用されます
+
+version: "1.0"
+
+# ファイル・ディレクトリパス依存関係
+path_dependencies:
+  # スクリプト依存関係
+  scripts:
+    - file: "install.sh"
+      references:
+        - "scripts/install.sh"
+      description: "メインインストールスクリプトのラッパー"
+    
+    - file: "setup.sh"
+      references:
+        - "scripts/setup.sh"
+      description: "セットアップスクリプトのラッパー"
+    
+    - file: "scripts/install.sh"
+      references:
+        - "scripts/utils.sh"
+        - "configs/"
+        - "backups/"
+      description: "メインインストールスクリプト"
+    
+    - file: "scripts/utils.sh"
+      references: []
+      description: "共通ユーティリティ関数"
+    
+    - file: "scripts/backup.sh"
+      references:
+        - "scripts/utils.sh"
+        - "backups/"
+      description: "バックアップ管理スクリプト"
+    
+    - file: "scripts/restore.sh"
+      references:
+        - "scripts/utils.sh"
+        - "backups/"
+      description: "復元スクリプト"
+    
+    - file: "scripts/setup.sh"
+      references:
+        - "scripts/utils.sh"
+        - "scripts/install.sh"
+      description: "初回セットアップスクリプト"
+    
+    - file: "scripts/software.sh"
+      references:
+        - "scripts/utils.sh"
+      description: "ソフトウェアインストールスクリプト"
+
+  # CI/CD依存関係
+  ci:
+    - file: ".github/workflows/ci.yml"
+      references:
+        - "install.sh"
+        - "scripts/install.sh"
+        - "scripts/*.sh"
+        - ".github/scripts/validate_toml.py"
+        - "configs/"
+      description: "メインCIワークフロー"
+    
+    - file: ".github/workflows/test.yml"
+      references:
+        - ".github/workflows/ci.yml"
+      description: "テストワークフロー"
+    
+    - file: ".github/scripts/validate_toml.py"
+      references:
+        - "configs/**/*.toml"
+      description: "TOML検証スクリプト"
+
+  # ドキュメント依存関係
+  documentation:
+    - file: "README.md"
+      references:
+        - "install.sh"
+        - "setup.sh"
+        - "scripts/"
+        - "configs/"
+      description: "メインREADME"
+    
+    - file: "CLAUDE.md"
+      references:
+        - "install.sh"
+        - "scripts/"
+        - "configs/"
+      description: "Claude Code設定メモ"
+    
+    - file: "docs/NEOVIM_GUIDE.md"
+      references:
+        - "configs/editors/nvim/"
+      description: "Neovim設定ガイド"
+    
+    - file: "docs/WEZTERM_GUIDE.md"
+      references:
+        - "configs/terminal/wezterm.lua"
+      description: "Wezterm設定ガイド"
+
+# 設定ファイル構造依存関係
+config_structure:
+  managed_configs:
+    - source: "configs/zsh/zshrc"
+      target: "~/.zshrc"
+      type: "symlink"
+    
+    - source: "configs/zsh/zprofile"
+      target: "~/.zprofile"
+      type: "symlink"
+    
+    - source: "configs/terminal/starship.toml"
+      target: "~/.config/starship.toml"
+      type: "symlink"
+    
+    - source: "configs/terminal/wezterm.lua"
+      target: "~/.config/wezterm/wezterm.lua"
+      type: "symlink"
+    
+    - source: "configs/development/docker/config.json"
+      target: "~/.docker/config.json"
+      type: "symlink"
+    
+    - source: "configs/development/docker/daemon.json"
+      target: "~/.docker/daemon.json"
+      type: "symlink"
+    
+    - source: "configs/cli/gh/config.yml"
+      target: "~/.config/gh/config.yml"
+      type: "symlink"
+    
+    - source: "configs/apps/claude/mcp-servers.json"
+      target: "~/Library/Application Support/Claude/mcp-servers.json"
+      type: "symlink"
+    
+    - source: "configs/editors/vscode/settings.json"
+      target: "~/Library/Application Support/Code/User/settings.json"
+      type: "symlink"
+    
+    - source: "configs/editors/zed/settings.json"
+      target: "~/.config/zed/settings.json"
+      type: "symlink"
+    
+    - source: "configs/editors/nvim/"
+      target: "~/.config/nvim/"
+      type: "directory_symlink"
+    
+    - source: "configs/wm/yabai/yabairc"
+      target: "~/.config/yabai/yabairc"
+      type: "symlink"
+    
+    - source: "configs/wm/skhd/skhdrc"
+      target: "~/.config/skhd/skhdrc"
+      type: "symlink"
+    
+    - source: "configs/wm/sketchybar/sketchybarrc"
+      target: "~/.config/sketchybar/sketchybarrc"
+      type: "symlink"
+
+# 重要なファイルパターン
+critical_patterns:
+  # これらのパターンに一致するファイルの変更は特に注意が必要
+  high_impact:
+    - "scripts/*.sh"
+    - ".github/workflows/*.yml"
+    - "install.sh"
+    - "setup.sh"
+    - "configs/**/.*"
+  
+  # ドキュメント更新が必要なパターン
+  docs_update_required:
+    - "scripts/"
+    - "configs/"
+    - "install.sh"
+    - "setup.sh"
+
+# 自動チェック設定
+validation_rules:
+  - rule: "script_wrapper_consistency"
+    description: "ラッパースクリプトとターゲットスクリプトの整合性"
+    pattern: "*.sh"
+  
+  - rule: "ci_script_references"
+    description: "CIスクリプトでのファイル参照の整合性"
+    pattern: ".github/workflows/*.yml"
+  
+  - rule: "config_source_existence"
+    description: "設定ファイルソースの存在確認"
+    pattern: "configs/**/*"
+  
+  - rule: "documentation_references"
+    description: "ドキュメント内のファイル参照の整合性"
+    pattern: "*.md"

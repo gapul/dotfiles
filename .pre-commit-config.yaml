@@ -1,0 +1,65 @@
+# Pre-commit hooks for dotfiles management system
+repos:
+  - repo: local
+    hooks:
+      # 依存関係チェック
+      - id: dependency-check
+        name: Check dependencies
+        entry: scripts/check-dependencies.sh
+        language: script
+        files: \.(sh|yml|yaml|md)$
+        pass_filenames: false
+        
+      # シェルスクリプト構文チェック
+      - id: shell-syntax
+        name: Shell syntax check
+        entry: bash -n
+        language: script
+        files: \.sh$
+        
+      # Shellcheck
+      - id: shellcheck
+        name: Shellcheck
+        entry: shellcheck
+        language: script
+        files: \.sh$
+        args: [-e, SC1091]  # source ファイル未発見警告を除外
+        
+      # YAML構文チェック
+      - id: yaml-check
+        name: YAML syntax check
+        entry: python3 -c "import yaml; yaml.safe_load(open(input()))"
+        language: script
+        files: \.(yml|yaml)$
+        
+      # JSON構文チェック
+      - id: json-check
+        name: JSON syntax check
+        entry: python3 -c "import json; json.load(open(input()))"
+        language: script
+        files: \.json$
+
+  # 標準的なPre-commitフック
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      # ファイル終端チェック
+      - id: end-of-file-fixer
+        exclude: \.(png|jpg|jpeg|gif|ico)$
+        
+      # 末尾空白除去
+      - id: trailing-whitespace
+        exclude: \.(png|jpg|jpeg|gif|ico)$
+        
+      # 大きなファイルチェック
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+        
+      # マージコンフリクトマーカーチェック
+      - id: check-merge-conflict
+        
+      # YAML構文チェック（標準）
+      - id: check-yaml
+        
+      # JSON構文チェック（標準）
+      - id: check-json
