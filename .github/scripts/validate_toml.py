@@ -1,7 +1,14 @@
 #!/usr/bin/env python3
 """TOML configuration files validator with enhanced checks and idempotency validation"""
 
-import tomli
+try:
+    import tomllib  # Python 3.11+
+except ImportError:
+    try:
+        import tomli as tomllib  # fallback for older Python
+    except ImportError:
+        print("Error: Neither tomllib nor tomli is available. Please install tomli: pip install tomli")
+        sys.exit(1)
 import sys
 import glob
 import os
@@ -166,7 +173,7 @@ def validate_idempotency(filepath):
     try:
         # Read and parse the original file
         with open(filepath, 'rb') as f:
-            original_data = tomli.load(f)
+            original_data = tomllib.load(f)
         
         # Create a temporary file to test round-trip serialization
         with tempfile.NamedTemporaryFile(mode='w', suffix='.toml', delete=False) as temp_file:
@@ -181,8 +188,8 @@ def validate_idempotency(filepath):
                 original_content = f.read()
             
             # Parse the content multiple times to check consistency
-            parse1 = tomli.loads(original_content)
-            parse2 = tomli.loads(original_content)
+            parse1 = tomllib.loads(original_content)
+            parse2 = tomllib.loads(original_content)
             
             # Check if both parses yield identical structures
             if parse1 != parse2:
@@ -336,7 +343,7 @@ def validate_toml_file(filepath):
     try:
         # Basic syntax validation
         with open(filepath, 'rb') as f:
-            data = tomli.load(f)
+            data = tomllib.load(f)
         print(f'  ✅ Valid TOML syntax')
         validation_results['syntax'] = True
         

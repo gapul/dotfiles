@@ -5,10 +5,10 @@
       "args": ["@modelcontextprotocol/server-filesystem", "/Users/yuki/dotfiles"],
       "description": "Secure file operations with configurable access controls for dotfiles management"
     },
-    "git": {
+    "postgres": {
       "command": "npx", 
-      "args": ["@modelcontextprotocol/server-git", "/Users/yuki/dotfiles"],
-      "description": "Git repository operations for dotfiles version control"
+      "args": ["@modelcontextprotocol/server-postgres", "postgresql://localhost/dotfiles"],
+      "description": "PostgreSQL database operations for configuration storage"
     },
     "github": {
       "command": "npx",
@@ -39,14 +39,15 @@
   },
   "installation": {
     "instructions": [
-      "1. Install required packages: npm install -g @modelcontextprotocol/server-filesystem @modelcontextprotocol/server-git @modelcontextprotocol/server-github @modelcontextprotocol/server-brave-search",
+      "1. Install required packages: npm install -g @modelcontextprotocol/server-filesystem @modelcontextprotocol/server-postgres @modelcontextprotocol/server-brave-search",
       "2. Configure environment variables for GitHub and Brave Search",
-      "3. Add servers using: claude mcp add <server-name> <command> [args...]",
-      "4. Verify installation: claude mcp list"
+      "3. Set up PostgreSQL database if using postgres server",
+      "4. Add servers using: claude mcp add <server-name> <command> [args...]",
+      "5. Verify installation: claude mcp list"
     ],
     "commands": [
       "claude mcp add filesystem \"npx @modelcontextprotocol/server-filesystem\" \"/Users/yuki/dotfiles\"",
-      "claude mcp add git \"npx @modelcontextprotocol/server-git\" \"/Users/yuki/dotfiles\"", 
+      "claude mcp add postgres \"npx @modelcontextprotocol/server-postgres\" \"postgresql://localhost/dotfiles\"", 
       "claude mcp add github \"npx @modelcontextprotocol/server-github\"",
       "claude mcp add brave-search \"npx @modelcontextprotocol/server-brave-search\"",
       "claude mcp add --transport sse figma-dev-mode-mcp-server http://127.0.0.1:3845/sse"
@@ -58,11 +59,11 @@
       "Automated configuration file management",
       "Real-time file system monitoring"
     ],
-    "git": [
-      "Version control integration",
-      "Commit history analysis", 
-      "Branch management assistance",
-      "Automated backup verification"
+    "postgres": [
+      "Database operations for configuration storage",
+      "SQL query execution and data management", 
+      "Configuration versioning and history",
+      "Structured data storage for dotfiles metadata"
     ],
     "github": [
       "Repository management",
