@@ -19,6 +19,7 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y jq shellcheck
+        python3 -m pip install --break-system-packages PyYAML
         
     - name: Check shell scripts syntax
       run: |
@@ -56,6 +57,12 @@ jobs:
       run: |
         echo "Validating TOML files..."
         python3 .github/scripts/validate_toml.py
+        
+    - name: Check dependencies
+      run: |
+        echo "Checking file dependencies and references..."
+        chmod +x scripts/check-dependencies.sh
+        scripts/check-dependencies.sh --verbose
 
   test-install:
     name: Test Installation Script
