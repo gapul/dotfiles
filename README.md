@@ -71,6 +71,7 @@ dotfiles/
 - **Shell**: `.zshrc`, `.zprofile` - Zsh環境設定
 - **Terminal**: `starship.toml` - 美しいプロンプト設定
 - **Wezterm**: `wezterm.lua` - 高度なターミナルエミュレータ設定
+- **tmux**: `tmux.conf` - セッション永続化（Yabai環境最適化）
 
 ### Phase 2: 開発環境
 - **Docker**: `config.json`, `daemon.json` - コンテナ環境設定
@@ -98,7 +99,10 @@ git clone https://github.com/your-username/dotfiles.git ~/dotfiles
 cd ~/dotfiles
 
 # 2. 必要なソフトウェアのインストール（任意）
-./install-software.sh
+./scripts/software.sh
+
+# 2.1. tmuxのインストール（セッション永続化に推奨）
+brew install tmux
 
 # 3. ドットファイルのセットアップ
 ./install.sh

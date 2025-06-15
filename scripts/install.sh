@@ -95,6 +95,7 @@ DOTFILES_LIST=(
     "zsh/zprofile:$HOME_DIR/.zprofile"
     "terminal/starship.toml:$HOME_DIR/.config/starship.toml"
     "terminal/wezterm.lua:$HOME_DIR/.config/wezterm/wezterm.lua"
+    "terminal/tmux.conf:$HOME_DIR/.tmux.conf"
     
     # Phase 2: 開発ツール設定
     "development/.condarc:$HOME_DIR/.condarc"
