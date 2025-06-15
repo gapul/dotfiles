@@ -56,6 +56,24 @@ claude mcp add brave-search "npx @modelcontextprotocol/server-brave-search"
 - トラブルシューティング
 - ベストプラクティス調査
 
+### 5. Figma Dev Mode Server 🎨
+**機能**: Figmaデザインからコード生成
+```bash
+claude mcp add --transport sse figma-dev-mode-mcp-server http://127.0.0.1:3845/sse
+```
+
+**利点**:
+- デザインフレームからコード生成
+- コンポーネント・変数の抽出
+- デザイントークン統合
+- リアルタイムデザインコンテキスト
+- React + Tailwind出力
+
+**要件**:
+- Figma Desktopアプリが起動している必要あり
+- Professional/Organization/Enterpriseプランのデベロッパーシート
+- FigmaのDev ModeでMCPサーバーが有効化されている
+
 ## 使用例
 
 ### ファイルシステム操作
@@ -84,6 +102,13 @@ claude -p "リポジトリの統計情報を表示して"
 claude -p "Neovimの最新プラグインについて検索して"
 claude -p "LazyNvimの設定方法を調べて"
 claude -p "macOSでの開発環境構築について検索して"
+```
+
+### Figma連携
+```bash
+claude -p "選択したFigmaフレームからReactコンポーネントを生成して"
+claude -p "Figmaのデザイントークンを抽出してCSS変数にして"
+claude -p "このUIデザインをTailwindクラスで実装して"
 ```
 
 ## 管理コマンド
