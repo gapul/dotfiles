@@ -1,47 +1,75 @@
 { config, pkgs, username, homeDirectory, dotfilesDirectory, ... }:
 
 {
-  # System-wide packages
+  # System-wide packages (minimal, stable set)
   environment.systemPackages = with pkgs; [
-    # Core CLI tools
+    # Core CLI tools that definitely work
     git
     gh
     jq
     ripgrep
     tree
+    eza  # Modern ls replacement
+    fd   # Modern find replacement
+    bat  # Modern cat replacement
+    fzf  # Fuzzy finder
+    unzip
+    gzip
+    gnutar
+    rsync
     
     # Terminal tools  
     tmux
     starship
+    zoxide  # Smart cd replacement
+    direnv
     
     # Development tools
     neovim
+    vim
     shellcheck
-    make
     gnumake
     cmake
+    curl
+    wget
+    openssh
     
-    # Language runtimes
+    # Language runtimes & tools
     python312
     nodejs_20
+    go
+    rustc
+    cargo
+    
+    # Development utilities
+    docker
+    docker-compose
     
     # System utilities
     mas  # Mac App Store CLI
+    htop
+    btop
     
-    # Optional: Yabai ecosystem (if available in nixpkgs)
-    # yabai
-    # skhd
-    # Note: May need to use overlays or keep in Homebrew
+    # Essential tools
+    nmap
+    
+    # Window management (Phase 3 migration targets)
+    # yabai     # To be migrated from Homebrew
+    # skhd      # To be migrated from Homebrew
+    # sketchybar # To be migrated from Homebrew
   ];
 
-  # Fonts
+  # Fonts (basic set)
   fonts.packages = with pkgs; [
-    (nerdfonts.override { fonts = [ "Hack" "FiraCode" "JetBrainsMono" ]; })
-    # Add Japanese fonts if available
+    nerd-fonts.hack
+    nerd-fonts.fira-code
+    nerd-fonts.jetbrains-mono
   ];
 
   # System preferences
   system = {
+    primaryUser = username;
+    
     defaults = {
       dock = {
         autohide = true;
@@ -60,27 +88,22 @@
         AppleShowAllExtensions = true;
         AppleShowAllFiles = true;
         CreateDesktop = false;
-        FXDefaultSearchScope = "SCcf"; # Search current folder
+        FXDefaultSearchScope = "SCcf";
         FXEnableExtensionChangeWarning = false;
-        FXPreferredViewStyle = "Nlsv"; # List view
+        FXPreferredViewStyle = "Nlsv";
         QuitMenuItem = true;
         ShowPathbar = true;
         ShowStatusBar = true;
       };
 
-      loginwindow = {
-        DisableConsoleAccess = true;
-        GuestEnabled = false;
-      };
-
       NSGlobalDomain = {
         AppleInterfaceStyle = "Dark";
-        AppleKeyboardUIMode = 3; # Full keyboard access
-        ApplePressAndHoldEnabled = false; # Disable press-and-hold for special characters
+        AppleKeyboardUIMode = 3;
+        ApplePressAndHoldEnabled = false;
         AppleShowAllExtensions = true;
         AppleShowScrollBars = "WhenScrolling";
-        InitialKeyRepeat = 15; # Fast key repeat
-        KeyRepeat = 2; # Very fast key repeat
+        InitialKeyRepeat = 15;
+        KeyRepeat = 2;
         NSAutomaticCapitalizationEnabled = false;
         NSAutomaticDashSubstitutionEnabled = false;
         NSAutomaticPeriodSubstitutionEnabled = false;
@@ -92,34 +115,17 @@
       };
 
       trackpad = {
-        Clicking = true; # Tap to click
+        Clicking = true;
         TrackpadRightClick = true;
         TrackpadThreeFingerDrag = true;
       };
-
-      # Custom user defaults
-      CustomUserPreferences = {
-        "com.apple.desktopservices" = {
-          DSDontWriteNetworkStores = true; # Disable .DS_Store on network drives
-          DSDontWriteUSBStores = true; # Disable .DS_Store on USB drives
-        };
-        "com.apple.screensaver" = {
-          askForPassword = 1;
-          askForPasswordDelay = 0;
-        };
-        "com.apple.TimeMachine" = {
-          DoNotOfferNewDisksForBackup = true;
-        };
-      };
     };
 
-    # Keyboard remapping
     keyboard = {
       enableKeyMapping = true;
       remapCapsLockToEscape = true;
     };
 
-    # System version (automatically managed)
     stateVersion = 5;
   };
 
@@ -127,29 +133,9 @@
   programs.zsh.enable = true;
   environment.shells = [ pkgs.zsh ];
 
-  # Services
-  services = {
-    # Nix daemon
-    nix-daemon.enable = true;
-    
-    # Optional: Custom services
-    # Note: Yabai, skhd, sketchybar services may need custom configuration
-  };
-
   # Nix configuration
   nix = {
-    package = pkgs.nix;
-    settings = {
-      experimental-features = [ "nix-command" "flakes" ];
-      extra-platforms = [ "x86_64-darwin" "aarch64-darwin" ];
-      trusted-users = [ "@admin" username ];
-      auto-optimise-store = true;
-    };
-    gc = {
-      automatic = true;
-      interval = { Weekday = 0; Hour = 2; Minute = 0; };
-      options = "--delete-older-than 30d";
-    };
+    enable = false; # Disable for Determinate Nix
   };
 
   # User configuration
@@ -159,10 +145,7 @@
     shell = pkgs.zsh;
   };
 
-  # Security
-  security.pam.enableSudoTouchId = true;
-
-  # Homebrew (for packages not available in nixpkgs)
+  # Homebrew (for all GUI apps and problematic packages)
   homebrew = {
     enable = true;
     onActivation = {
@@ -171,34 +154,119 @@
       upgrade = false;
     };
     
-    # Packages that must remain in Homebrew
     taps = [
       "koekeishiya/formulae"  # yabai, skhd
       "felixkratz/formulae"   # sketchybar
     ];
     
     brews = [
+      # Moving to nixpkgs in Phase 3
       "yabai"
       "skhd" 
       "sketchybar"
     ];
     
     casks = [
-      # GUI applications that are better managed via Homebrew
-      "wezterm"  # May move to nix later
-      
-      # Applications not available in nixpkgs
+      # Core productivity
       "raycast"
       "karabiner-elements"
-      
-      # Temporary: Keep critical apps in Homebrew during transition
+      "wezterm"
       "visual-studio-code"
+      
+      # Development & Programming
+      "cursor"
+      "zed"
+      "figma"
       "docker"
+      "virtualbox"
+      "podman-desktop"
+      "unity-hub"
+      "godot"
+      "freecad"
+      "kicad"
+      "goxel"
+      
+      # Creative & Design
+      "gimp"
+      "krita"
+      "inkscape"
+      "scribus"
+      "fontforge"
+      "material-maker"
+      "natron"
+      "opentoonz"
+      
+      # Browsers
+      "zen"
+      "firefox@developer-edition"
+      "floorp"
+      "vivaldi"
+      "google-chrome@dev"
+      "tor-browser"
+      
+      # Media & Entertainment
+      "vlc"
+      "obs"
+      "musescore"
+      "mixxx"
+      "surge-xt"
+      
+      # Gaming & Emulation
+      "steam"
+      "epic-games"
+      "minecraft"
+      "retroarch-metal"
+      "prismlauncher"
+      "whisky"
+      
+      # Communication & Productivity
+      # LINE available via MAS (already configured)
+      "discord"
+      "slack"
+      "thunderbird"
+      "obsidian"
+      "zotero"
+      
+      # Utilities & System
+      "bitwarden"
+      "espanso"
+      "shortcat"
+      "middleclick"
+      "jordanbaird-ice"
+      "syncthing"
+      "spacedrive"
+      "rustdesk"
+      "wireshark"
+      "cloudflare-warp"
+      "vmware-fusion"
+      
+      # Office & Documents
+      "libreoffice"
+      "onlyoffice"
+      "microsoft-excel"
+      "microsoft-word"
+      "microsoft-powerpoint"
+      
+      # AI & Assistant tools
+      "claude"
+      "chatgpt"
+      "ollama"
+      
+      # Fonts
+      "font-hackgen-nerd"
+      "font-udev-gothic-nf"
+      "font-plemol-jp-nf"  # Correct name
+      "font-cica"
+      "font-hack-nerd-font"
+      "font-sf-mono"
+      "font-sf-pro"
+      "sf-symbols"
     ];
     
     masApps = {
-      # Mac App Store applications
-      # "Xcode" = 497799835;
+      # Core Mac App Store applications
+      "GarageBand" = 682658836;
+      "LINE" = 539883307;
     };
   };
 }

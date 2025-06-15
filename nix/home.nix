@@ -20,23 +20,46 @@
     eza  # Modern ls replacement
     zoxide  # Smart cd
     fzf
+    delta  # Better git diff
     
     # Development tools
     direnv
     just  # Command runner
+    lazygit  # Git TUI
+    tig      # Git text interface
+    gitui    # Another Git TUI
+    
+    # CLI tools from uninstall logs
+    # bitwarden-cli  # Marked as broken in nixpkgs
     
     # File utilities
     unzip
     gzip
     rsync
+    tree
     
     # Network tools
     nmap
     speedtest-cli
+    # tshark included in wireshark system package
     
-    # Media tools (basic set)
+    # Media tools
     imagemagick
     ffmpeg
+    
+    # Productivity
+    pandoc   # Document converter
+    
+    # Text processing
+    jq       # JSON processor
+    yq       # YAML processor
+    
+    # System monitoring
+    lsof
+    
+    # Additional development tools
+    act      # Run GitHub Actions locally
+    gh       # GitHub CLI
     
     # Optional: Add more packages as needed
   ];
@@ -50,16 +73,16 @@
     zsh = {
       enable = true;
       enableCompletion = true;
-      enableAutosuggestions = true;
+      autosuggestion.enable = true;  # Updated option name
       syntaxHighlighting.enable = true;
       
-      # Use existing zshrc from dotfiles
-      initExtraFirst = ''
-        # Source existing zshrc configuration
-        if [[ -f "${dotfilesDirectory}/configs/zsh/zshrc" ]]; then
-          source "${dotfilesDirectory}/configs/zsh/zshrc"
-        fi
-      '';
+      # Use existing zshrc from dotfiles (temporarily disabled)
+      # initExtraFirst = ''
+      #   # Source existing zshrc configuration
+      #   if [[ -f "${dotfilesDirectory}/configs/zsh/zshrc" ]]; then
+      #     source "${dotfilesDirectory}/configs/zsh/zshrc"
+      #   fi
+      # '';
       
       shellAliases = {
         # Modern CLI replacements
@@ -68,6 +91,8 @@
         la = "eza -la --color=auto --icons";
         tree = "eza --tree --color=auto --icons";
         cat = "bat";
+        find = "fd";
+        cd = "z";  # zoxide
         
         # Git shortcuts
         g = "git";
@@ -75,10 +100,8 @@
         ga = "git add";
         gc = "git commit";
         gp = "git push";
-        gl = "git log --oneline";
-        
-        # Directory navigation
-        cd = "z";  # Use zoxide
+        gl = "git pull";
+        lg = "lazygit";
         
         # System shortcuts
         reload = "exec $SHELL";
@@ -112,15 +135,15 @@
     # Starship prompt
     starship = {
       enable = true;
-      # Use existing starship config from dotfiles
-      settings = pkgs.lib.importTOML "${dotfilesDirectory}/configs/terminal/starship.toml";
+      # Configuration will be managed via dotfiles symlinks
+      # settings = pkgs.lib.importTOML "${dotfilesDirectory}/configs/terminal/starship.toml";
     };
 
     # tmux
     tmux = {
       enable = true;
-      # Use existing tmux config from dotfiles
-      extraConfig = builtins.readFile "${dotfilesDirectory}/configs/terminal/tmux.conf";
+      # Configuration will be managed via dotfiles symlinks
+      # extraConfig = builtins.readFile "${dotfilesDirectory}/configs/terminal/tmux.conf";
     };
 
     # Neovim
@@ -165,25 +188,25 @@
     };
   };
 
-  # File management - Link existing dotfiles
-  home.file = {
-    # Terminal configurations
-    ".config/wezterm/wezterm.lua".source = "${dotfilesDirectory}/configs/terminal/wezterm.lua";
-    
-    # Editor configurations  
-    ".config/nvim".source = "${dotfilesDirectory}/configs/editors/nvim";
-    
-    # Development tool configurations
-    ".condarc".source = "${dotfilesDirectory}/configs/development/.condarc";
-    
-    # Application configurations
-    ".config/gh/config.yml".source = "${dotfilesDirectory}/configs/cli/gh/config.yml";
-    
-    # Window manager configurations (if using)
-    ".config/yabai/yabairc".source = "${dotfilesDirectory}/configs/wm/yabai/yabairc";
-    ".config/skhd/skhdrc".source = "${dotfilesDirectory}/configs/wm/skhd/skhdrc";
-    ".config/sketchybar/sketchybarrc".source = "${dotfilesDirectory}/configs/wm/sketchybar/sketchybarrc";
-  };
+  # File management - Link existing dotfiles (temporarily disabled for initial setup)
+  # home.file = {
+  #   # Terminal configurations
+  #   ".config/wezterm/wezterm.lua".source = "${dotfilesDirectory}/configs/terminal/wezterm.lua";
+  #   
+  #   # Editor configurations  
+  #   ".config/nvim".source = "${dotfilesDirectory}/configs/editors/nvim";
+  #   
+  #   # Development tool configurations
+  #   ".condarc".source = "${dotfilesDirectory}/configs/development/.condarc";
+  #   
+  #   # Application configurations
+  #   ".config/gh/config.yml".source = "${dotfilesDirectory}/configs/cli/gh/config.yml";
+  #   
+  #   # Window manager configurations (if using)
+  #   ".config/yabai/yabairc".source = "${dotfilesDirectory}/configs/wm/yabai/yabairc";
+  #   ".config/skhd/skhdrc".source = "${dotfilesDirectory}/configs/wm/skhd/skhdrc";
+  #   ".config/sketchybar/sketchybarrc".source = "${dotfilesDirectory}/configs/wm/sketchybar/sketchybarrc";
+  # };
 
   # Session variables
   home.sessionVariables = {
