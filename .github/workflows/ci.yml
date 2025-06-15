@@ -23,7 +23,7 @@ jobs:
     - name: Check shell scripts syntax
       run: |
         echo "Checking shell scripts..."
-        for script in *.sh; do
+        for script in *.sh scripts/*.sh; do
           if [[ -f "$script" ]]; then
             echo "Checking $script"
             bash -n "$script"
@@ -33,7 +33,7 @@ jobs:
     - name: Run shellcheck on shell scripts
       run: |
         echo "Running shellcheck..."
-        for script in *.sh; do
+        for script in *.sh scripts/*.sh; do
           if [[ -f "$script" ]]; then
             echo "Checking $script with shellcheck"
             shellcheck "$script"
@@ -93,7 +93,7 @@ jobs:
               echo "✅ Found: $source_file"
             fi
           fi
-        done < <(grep -E '^\s*"[^"]*:[^"]*"' install.sh | sed 's/[",]//g' | sed 's/^\s*//')
+        done < <(grep -E '^\s*"[^"]*:[^"]*"' scripts/install.sh | sed 's/[",]//g' | sed 's/^\s*//')
         
         if [[ $missing_files -gt 0 ]]; then
           echo "❌ $missing_files managed files are missing!"
@@ -102,6 +102,7 @@ jobs:
         
         echo "Testing script syntax..."
         bash -n install.sh
+        bash -n scripts/install.sh
         
         echo "Testing backup functionality..."
         # テスト用のダミーファイルを作成
