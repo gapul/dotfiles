@@ -76,7 +76,7 @@ dotfiles/
 ### Phase 2: 開発環境
 - **Docker**: `config.json`, `daemon.json` - コンテナ環境設定
 - **Conda**: `.condarc` - Python環境管理
-- **GitHub CLI**: `config.yml` - Git操作・PR管理設定
+- **GitHub CLI**: `gh/config.yml` - Git操作・PR管理設定
 - **Editors**: VSCode, Zed設定
 
 ### Phase 3: デスクトップ環境（macOS）
