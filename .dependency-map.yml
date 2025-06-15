@@ -118,6 +118,10 @@ config_structure:
       target: "~/.config/wezterm/wezterm.lua"
       type: "symlink"
     
+    - source: "configs/terminal/tmux.conf"
+      target: "~/.tmux.conf"
+      type: "symlink"
+    
     - source: "configs/development/docker/config.json"
       target: "~/.docker/config.json"
       type: "symlink"
