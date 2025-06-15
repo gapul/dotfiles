@@ -213,24 +213,24 @@ check_symlink_status() {
     local target_path="$1"
     local expected_source="$2"
     
-    log_debug "Checking symlink status: $target_path -> $expected_source"
+    debug "Checking symlink status: $target_path -> $expected_source"
     
     if [[ -L "$target_path" ]]; then
         local current_target
         current_target=$(readlink "$target_path")
-        log_debug "Found symlink: $target_path -> $current_target"
+        debug "Found symlink: $target_path -> $current_target"
         if [[ "$current_target" == "$expected_source" ]]; then
-            log_debug "Symlink is correct"
+            debug "Symlink is correct"
             echo "correct"
         else
-            log_debug "Symlink is incorrect (expected: $expected_source, found: $current_target)"
+            debug "Symlink is incorrect (expected: $expected_source, found: $current_target)"
             echo "incorrect"
         fi
     elif [[ -e "$target_path" ]]; then
-        log_debug "File exists but is not a symlink: $target_path"
+        debug "File exists but is not a symlink: $target_path"
         echo "file_exists"
     else
-        log_debug "Target path does not exist: $target_path"
+        debug "Target path does not exist: $target_path"
         echo "missing"
     fi
 }
@@ -300,30 +300,30 @@ backup_existing_files() {
 create_symlinks() {
     local changes_made=false
     
-    log_debug "Starting symlink creation process"
+    debug "Starting symlink creation process"
     
     for dotfile_entry in "${DOTFILES_LIST[@]}"; do
         local source_path="${dotfile_entry%%:*}"
         local target_path="${dotfile_entry##*:}"
         local full_source_path="$CONFIG_DIR/$source_path"
         
-        log_debug "Processing: $source_path -> $target_path"
+        debug "Processing: $source_path -> $target_path"
         
         if [[ ! -f "$full_source_path" ]]; then
             log_warning "ソースファイルが見つかりません: $full_source_path"
             log_info "スキップします: $(basename "$target_path")"
-            log_debug "Skipping due to missing source file"
+            debug "Skipping due to missing source file"
             continue
         fi
         
         local status
         status=$(check_symlink_status "$target_path" "$full_source_path")
-        log_debug "Symlink status for $target_path: $status"
+        debug "Symlink status for $target_path: $status"
         
         # 既に正しいシンボリックリンクが存在し、強制モードでない場合はスキップ
         if [[ "$status" == "correct" ]] && [[ "$FORCE_MODE" != "true" ]]; then
             log_info "$(basename "$target_path") は既に正しく設定されています"
-            log_debug "Skipping - already correctly configured"
+            debug "Skipping - already correctly configured"
             continue
         fi
         
@@ -337,19 +337,19 @@ create_symlinks() {
         local target_dir
         target_dir=$(dirname "$target_path")
         if [[ ! -d "$target_dir" ]]; then
-            log_debug "Creating target directory: $target_dir"
+            debug "Creating target directory: $target_dir"
             mkdir -p "$target_dir"
         fi
         
         # シンボリックリンクを作成
-        log_debug "Creating symlink: ln -sf $full_source_path $target_path"
+        debug "Creating symlink: ln -sf $full_source_path $target_path"
         ln -sf "$full_source_path" "$target_path"
         log_success "$(basename "$target_path") のシンボリックリンクを作成しました"
     done
     
     if [[ "$changes_made" == "false" ]]; then
         log_info "すべてのシンボリックリンクは既に正しく設定されています"
-        log_debug "No changes needed - all symlinks already correct"
+        debug "No changes needed - all symlinks already correct"
     fi
 }
 
