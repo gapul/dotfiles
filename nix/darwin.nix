@@ -52,11 +52,27 @@
     
     # Essential tools
     nmap
+    ncdu        # Disk usage analyzer
+    lsof        # List open files
+    watch       # Execute programs periodically
     
-    # Window management (Phase 3 migration targets)
-    # yabai     # To be migrated from Homebrew
-    # skhd      # To be migrated from Homebrew
-    # sketchybar # To be migrated from Homebrew
+    # Network tools
+    nss         # Network Security Services
+    tcpdump     # Network packet analyzer
+    
+    # Archive tools
+    p7zip       # 7-Zip archive tool
+    unar        # Archive extraction tool
+    
+    # Text processing
+    jq          # JSON processor
+    yq          # YAML processor
+    pandoc      # Document converter
+    
+    # Window management (Phase 3 migration completed)
+    yabai
+    skhd
+    sketchybar
   ];
 
   # Fonts (basic set)
@@ -160,10 +176,10 @@
     ];
     
     brews = [
-      # Moving to nixpkgs in Phase 3
-      "yabai"
-      "skhd" 
-      "sketchybar"
+      # Migrated to nixpkgs in Phase 3
+      # "yabai"
+      # "skhd" 
+      # "sketchybar"
     ];
     
     casks = [
