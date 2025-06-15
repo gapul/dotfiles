@@ -25,6 +25,16 @@
       "env": {
         "BRAVE_SEARCH_API_KEY": ""
       }
+    },
+    "figma-dev-mode": {
+      "transport": "sse",
+      "url": "http://127.0.0.1:3845/sse",
+      "description": "Figma Dev Mode integration for design-to-code workflows",
+      "requirements": [
+        "Figma Desktop app must be running",
+        "Dev or Full seat in Professional/Organization/Enterprise plan",
+        "MCP server enabled in Figma Dev Mode"
+      ]
     }
   },
   "installation": {
@@ -38,7 +48,8 @@
       "claude mcp add filesystem \"npx @modelcontextprotocol/server-filesystem\" \"/Users/yuki/dotfiles\"",
       "claude mcp add git \"npx @modelcontextprotocol/server-git\" \"/Users/yuki/dotfiles\"", 
       "claude mcp add github \"npx @modelcontextprotocol/server-github\"",
-      "claude mcp add brave-search \"npx @modelcontextprotocol/server-brave-search\""
+      "claude mcp add brave-search \"npx @modelcontextprotocol/server-brave-search\"",
+      "claude mcp add --transport sse figma-dev-mode-mcp-server http://127.0.0.1:3845/sse"
     ]
   },
   "benefits": {
@@ -64,6 +75,13 @@
       "Configuration examples search",
       "Troubleshooting assistance",
       "Best practices research"
+    ],
+    "figma-dev-mode": [
+      "Design-to-code generation from Figma frames",
+      "Component and variable extraction",
+      "Design token integration",
+      "Real-time design context for AI coding",
+      "Structured React + Tailwind output"
     ]
   }
 }
