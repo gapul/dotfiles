@@ -1,17 +1,17 @@
 {
   "mcpServers": {
     "filesystem": {
-      "command": "npx",
+      "command": "/Users/yuki/.nodebrew/current/bin/npx",
       "args": ["@modelcontextprotocol/server-filesystem", "/Users/yuki/dotfiles"],
       "description": "Secure file operations with configurable access controls for dotfiles management"
     },
     "postgres": {
-      "command": "npx", 
+      "command": "/Users/yuki/.nodebrew/current/bin/npx", 
       "args": ["@modelcontextprotocol/server-postgres", "postgresql://localhost/dotfiles"],
       "description": "PostgreSQL database operations for configuration storage"
     },
     "github": {
-      "command": "npx",
+      "command": "/Users/yuki/.nodebrew/current/bin/npx",
       "args": ["@modelcontextprotocol/server-github"],
       "description": "GitHub integration for repository management and collaboration",
       "env": {
@@ -19,7 +19,7 @@
       }
     },
     "brave-search": {
-      "command": "npx",
+      "command": "/Users/yuki/.nodebrew/current/bin/npx",
       "args": ["@modelcontextprotocol/server-brave-search"],
       "description": "Web and local search capabilities for documentation and troubleshooting",
       "env": {
@@ -35,11 +35,35 @@
         "Dev or Full seat in Professional/Organization/Enterprise plan",
         "MCP server enabled in Figma Dev Mode"
       ]
+    },
+    "playwright": {
+      "command": "/Users/yuki/.nodebrew/current/bin/npx",
+      "args": ["@executeautomation/playwright-mcp-server"],
+      "description": "Browser automation and web scraping using Playwright",
+      "capabilities": [
+        "Page navigation and interaction",
+        "Element clicking and form filling", 
+        "Screenshot capture",
+        "Text extraction from web pages",
+        "JavaScript execution in browser context"
+      ]
+    },
+    "puppeteer": {
+      "command": "/Users/yuki/.nodebrew/current/bin/npx",
+      "args": ["@modelcontextprotocol/server-puppeteer"],
+      "description": "Browser automation using Puppeteer for web scraping and testing",
+      "capabilities": [
+        "Headless browser control",
+        "Page content extraction",
+        "Screenshot and PDF generation",
+        "Form automation",
+        "Performance monitoring"
+      ]
     }
   },
   "installation": {
     "instructions": [
-      "1. Install required packages: npm install -g @modelcontextprotocol/server-filesystem @modelcontextprotocol/server-postgres @modelcontextprotocol/server-brave-search",
+      "1. Install required packages: npm install -g @modelcontextprotocol/server-filesystem @modelcontextprotocol/server-postgres @modelcontextprotocol/server-brave-search @executeautomation/playwright-mcp-server @modelcontextprotocol/server-puppeteer",
       "2. Configure environment variables for GitHub and Brave Search",
       "3. Set up PostgreSQL database if using postgres server",
       "4. Add servers using: claude mcp add <server-name> <command> [args...]",
@@ -50,6 +74,8 @@
       "claude mcp add postgres \"npx @modelcontextprotocol/server-postgres\" \"postgresql://localhost/dotfiles\"", 
       "claude mcp add github \"npx @modelcontextprotocol/server-github\"",
       "claude mcp add brave-search \"npx @modelcontextprotocol/server-brave-search\"",
+      "claude mcp add playwright \"npx @executeautomation/playwright-mcp-server\"",
+      "claude mcp add puppeteer \"npx @modelcontextprotocol/server-puppeteer\"",
       "claude mcp add --transport sse figma-dev-mode-mcp-server http://127.0.0.1:3845/sse"
     ]
   },
@@ -83,6 +109,22 @@
       "Design token integration",
       "Real-time design context for AI coding",
       "Structured React + Tailwind output"
+    ],
+    "playwright": [
+      "Advanced browser automation capabilities",
+      "Cross-browser testing support",
+      "High-quality screenshot capture",
+      "Form automation and data extraction",
+      "JavaScript execution in browser context",
+      "Network request monitoring"
+    ],
+    "puppeteer": [
+      "Headless Chrome browser control",
+      "PDF generation from web pages",
+      "Performance monitoring and analysis",
+      "Web scraping with JavaScript rendering",
+      "Automated testing workflows",
+      "Real-time browser interaction"
     ]
   }
 }
