@@ -267,6 +267,52 @@ pre-commit install
 pre-commit run --all-files
 ```
 
+### 🌐 Browser MCP統合
+
+Claude Codeでのブラウザ自動化機能：
+
+**利用可能な操作:**
+- **Webページアクセス**: 情報取得・データ抽出
+- **フォーム操作**: 検索・入力・送信自動化
+- **スクリーンショット**: ページの視覚的確認
+- **技術調査**: 最新情報・設定例の収集
+
+```bash
+# Browser MCPサーバー設定
+npm install -g @executeautomation/playwright-mcp-server
+npx playwright install
+
+# 設定適用
+./install.sh
+```
+
+### 📦 nix移行戦略
+
+Homebrewからnixへの段階的移行プラン：
+
+**移行フェーズ:**
+1. **Phase 1**: nix基盤構築・CLIツール移行（2週間）
+2. **Phase 2**: 開発環境移行（2週間）
+3. **Phase 3**: システムツール移行（1週間）
+4. **Phase 4**: 最適化・クリーンアップ（1週間）
+
+```bash
+# nix移行開始
+curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
+
+# 設定準備
+mkdir -p ~/.config/nix-darwin
+cp -r ~/dotfiles/nix/* ~/.config/nix-darwin/
+
+# nix-darwin導入
+nix run nix-darwin -- switch --flake ~/.config/nix-darwin
+```
+
+**詳細ガイド:**
+- `docs/NIX_MIGRATION_STRATEGY.md` - 包括的移行戦略
+- `docs/NIX_MIGRATION_PHASES.md` - 段階的実行プラン
+- `docs/NIX_QUICK_START.md` - 即座実行手順
+
 ## 📊 CI/CD統合
 
 GitHub Actionsによる自動化：
