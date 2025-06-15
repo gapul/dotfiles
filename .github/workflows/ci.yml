@@ -86,7 +86,7 @@ jobs:
         while IFS=':' read -r source_path target_path; do
           if [[ -n "$source_path" && "$source_path" != *"#"* ]]; then
             source_file="configs/${source_path#configs/}"
-            if [[ ! -f "$source_file" ]]; then
+            if [[ ! -f "$source_file" && ! -d "$source_file" ]]; then
               echo "❌ Missing: $source_file"
               missing_files=$((missing_files + 1))
             else
@@ -146,7 +146,7 @@ jobs:
       run: |
         echo "Testing idempotency..."
         # 同一スクリプトを2回実行して冪等性を確認
-        if [[ -f configs/shell/.zshrc ]]; then
+        if [[ -f configs/zsh/zshrc ]]; then
           echo "Running install script twice to test idempotency..."
           
           # 1回目の実行
