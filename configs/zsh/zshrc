@@ -72,4 +72,5 @@ alias vim='nvim'
 export PATH="$HOME/.local/bin:$PATH"
 
 # 追加設定の読み込み（ローカル設定など）
-[[ -f ~/.zshrc.local ]] && source ~/.zshrc.local
+[[ -f ~/.zshrc.local ]] && source ~/.zshrc.localexport
+PATH=$HOME/.nodebrew/current/bin:$PATH
