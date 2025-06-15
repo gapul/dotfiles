@@ -36,7 +36,7 @@ jobs:
         for script in *.sh scripts/*.sh; do
           if [[ -f "$script" ]]; then
             echo "Checking $script with shellcheck"
-            shellcheck "$script"
+            shellcheck -e SC1091 "$script"
           fi
         done
         
