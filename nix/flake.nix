@@ -29,21 +29,41 @@
     in
     {
       # System configuration
-      darwinConfigurations."Yukis-MacBook-Pro" = nix-darwin.lib.darwinSystem {
-        inherit system;
-        specialArgs = { inherit username homeDirectory dotfilesDirectory; };
-        modules = [
-          ./darwin.nix
-          home-manager.darwinModules.home-manager
-          {
-            home-manager = {
-              useGlobalPkgs = true;
-              useUserPackages = true;
-              users.${username} = import ./home.nix;
-              extraSpecialArgs = { inherit username homeDirectory dotfilesDirectory; };
-            };
-          }
-        ];
+      darwinConfigurations = {
+        "Yukis-Laptop" = nix-darwin.lib.darwinSystem {
+          inherit system;
+          specialArgs = { inherit username homeDirectory dotfilesDirectory; };
+          modules = [
+            ./darwin.nix
+            home-manager.darwinModules.home-manager
+            {
+              home-manager = {
+                useGlobalPkgs = true;
+                useUserPackages = true;
+                users.${username} = import ./home.nix;
+                extraSpecialArgs = { inherit username homeDirectory dotfilesDirectory; };
+              };
+            }
+          ];
+        };
+        
+        # Default configuration alias
+        default = nix-darwin.lib.darwinSystem {
+          inherit system;
+          specialArgs = { inherit username homeDirectory dotfilesDirectory; };
+          modules = [
+            ./darwin.nix
+            home-manager.darwinModules.home-manager
+            {
+              home-manager = {
+                useGlobalPkgs = true;
+                useUserPackages = true;
+                users.${username} = import ./home.nix;
+                extraSpecialArgs = { inherit username homeDirectory dotfilesDirectory; };
+              };
+            }
+          ];
+        };
       };
 
       # Standalone home-manager configuration (for non-nix-darwin systems)
