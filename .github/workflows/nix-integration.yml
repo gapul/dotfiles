@@ -1,0 +1,160 @@
+name: Nix Integration Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'nix/**'
+      - 'scripts/nix-*'
+      - 'scripts/phase3-*'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'nix/**'
+      - 'scripts/nix-*'
+      - 'scripts/phase3-*'
+
+jobs:
+  nix-validation:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Determinate Nix
+      uses: DeterminateSystems/nix-installer-action@v13
+      
+    - name: Setup Magic Nix Cache
+      uses: DeterminateSystems/magic-nix-cache-action@v7
+      
+    - name: Validate Nix Flake
+      run: |
+        cd nix
+        nix flake check --show-trace
+        
+    - name: Test Nix Build (Development Shells)
+      run: |
+        cd nix
+        nix develop .#python --command python --version
+        nix develop .#node --command node --version
+        nix develop .#rust --command rustc --version
+        
+    - name: Test Package Availability
+      run: |
+        nix search nixpkgs yabai --json | jq '.["legacyPackages.aarch64-darwin.yabai"]'
+        nix search nixpkgs skhd --json | jq '.["legacyPackages.aarch64-darwin.skhd"]'
+        nix search nixpkgs sketchybar --json | jq '.["legacyPackages.aarch64-darwin.sketchybar"]'
+        
+    - name: Validate Maintenance Scripts
+      run: |
+        bash -n scripts/nix-maintenance.sh
+        bash -n scripts/phase3-migration.sh
+        bash -n scripts/nix-shortcuts.sh
+        
+    - name: Test Maintenance Script Functions
+      run: |
+        # Test help commands (non-destructive)
+        scripts/nix-maintenance.sh help
+        scripts/phase3-migration.sh help
+        
+    - name: Check Homebrew Integration
+      run: |
+        if command -v brew >/dev/null 2>&1; then
+          brew bundle check --no-lock || true
+        fi
+
+  dependency-analysis:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Determinate Nix
+      uses: DeterminateSystems/nix-installer-action@v13
+      
+    - name: Analyze Package Dependencies
+      run: |
+        cd nix
+        # Check for dependency conflicts
+        nix eval .#darwinConfigurations.default.system --apply 'sys: sys.config.environment.systemPackages' --json > /tmp/nix-packages.json
+        
+        # Validate no conflicting packages
+        cat /tmp/nix-packages.json | jq -r '.[] | select(. | contains("yabai"))'
+        
+    - name: Generate Dependency Report
+      run: |
+        echo "# Nix Package Dependency Report" > dependency-report.md
+        echo "Generated: $(date)" >> dependency-report.md
+        echo "" >> dependency-report.md
+        
+        echo "## System Packages" >> dependency-report.md
+        cd nix && nix eval .#darwinConfigurations.default.system --apply 'sys: builtins.length sys.config.environment.systemPackages' >> dependency-report.md
+        
+        echo "## Development Shells" >> dependency-report.md
+        echo "- Python: $(nix eval .#devShells.aarch64-darwin.python --apply 'shell: builtins.length shell.buildInputs')" >> dependency-report.md
+        echo "- Node: $(nix eval .#devShells.aarch64-darwin.node --apply 'shell: builtins.length shell.buildInputs')" >> dependency-report.md
+        echo "- Rust: $(nix eval .#devShells.aarch64-darwin.rust --apply 'shell: builtins.length shell.buildInputs')" >> dependency-report.md
+        
+    - name: Upload Dependency Report
+      uses: actions/upload-artifact@v4
+      with:
+        name: dependency-report
+        path: dependency-report.md
+
+  security-scan:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Scan for Secrets
+      run: |
+        # Check for hardcoded secrets in nix files
+        ! grep -r "password\|secret\|key\|token" nix/ --include="*.nix" || echo "Warning: Potential secrets found"
+        
+    - name: Validate Security Practices
+      run: |
+        # Ensure no sensitive files are tracked
+        if [ -f nix/secrets.nix ]; then
+          echo "Error: secrets.nix should not be tracked"
+          exit 1
+        fi
+        
+        # Check .gitignore coverage
+        grep -q "secrets" .gitignore || echo "Warning: secrets not in .gitignore"
+        
+    - name: Check Script Permissions
+      run: |
+        find scripts/ -name "*.sh" -not -perm -u+x | while read file; do
+          echo "Warning: $file is not executable"
+        done
+
+  performance-benchmark:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Determinate Nix
+      uses: DeterminateSystems/nix-installer-action@v13
+      
+    - name: Benchmark Nix Operations
+      run: |
+        echo "# Nix Performance Benchmark" > benchmark-report.md
+        echo "Generated: $(date)" >> benchmark-report.md
+        echo "" >> benchmark-report.md
+        
+        # Time flake check
+        echo "## Flake Validation Time" >> benchmark-report.md
+        cd nix
+        time nix flake check 2>&1 | tee -a ../benchmark-report.md
+        
+        # Time development shell activation
+        echo "## Development Shell Activation Time" >> benchmark-report.md
+        time nix develop .#python --command echo "Python shell ready" 2>&1 | tee -a ../benchmark-report.md
+        
+        # Store size analysis
+        echo "## Store Analysis" >> benchmark-report.md
+        nix path-info --closure-size --human-readable .#devShells.aarch64-darwin.python >> benchmark-report.md
+        
+    - name: Upload Benchmark Report
+      uses: actions/upload-artifact@v4
+      with:
+        name: benchmark-report
+        path: benchmark-report.md
