@@ -23,8 +23,42 @@ config.freetype_load_target = 'HorizontalLcd'
 -- カラーテーマ（自動切り替え）
 config.color_scheme = scheme_for_appearance(wezterm.gui.get_appearance())
 
+-- フォント色とコントラストの調整
+config.colors = {
+  foreground = '#c9d1d9',
+  background = '#0d1117',
+  cursor_bg = '#58a6ff',
+  cursor_fg = '#ffffff',
+  cursor_border = '#58a6ff',
+  selection_fg = '#ffffff',
+  selection_bg = '#264f78',
+  scrollbar_thumb = '#30363d',
+  split = '#21262d',
+  
+  ansi = {
+    '#484f58', -- black
+    '#ff7b72', -- red
+    '#7ee787', -- green
+    '#f2cc60', -- yellow
+    '#79c0ff', -- blue
+    '#d2a8ff', -- magenta
+    '#56d4dd', -- cyan
+    '#e6edf3', -- white
+  },
+  brights = {
+    '#6e7681', -- bright black
+    '#ffa198', -- bright red
+    '#56d364', -- bright green
+    '#e3b341', -- bright yellow
+    '#79c0ff', -- bright blue
+    '#d2a8ff', -- bright magenta
+    '#56d4dd', -- bright cyan
+    '#f0f6fc', -- bright white
+  },
+}
+
 -- 背景設定とビジュアル効果
-config.window_background_opacity = 0.92
+config.window_background_opacity = 0.75
 config.macos_window_background_blur = 30
 config.window_background_gradient = {
   colors = { '#1a1b26', '#24283b', '#1a1b26' },
