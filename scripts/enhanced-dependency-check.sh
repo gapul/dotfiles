@@ -28,10 +28,14 @@ log_error() {
 }
 
 # Configuration
-readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-readonly PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-readonly REPORT_DIR="$PROJECT_ROOT/reports"
-readonly TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly SCRIPT_DIR
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+readonly PROJECT_ROOT
+REPORT_DIR="$PROJECT_ROOT/reports"
+readonly REPORT_DIR
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+readonly TIMESTAMP
 
 # Create reports directory
 mkdir -p "$REPORT_DIR"
@@ -108,7 +112,7 @@ EOF
     
     # Find all shell scripts
     find "$PROJECT_ROOT" -name "*.sh" -type f | while read -r script; do
-        local relative_path="${script#$PROJECT_ROOT/}"
+        local relative_path="${script#"$PROJECT_ROOT"/}"
         echo "" >> "$report_file"
         echo "### $relative_path" >> "$report_file"
         
@@ -119,7 +123,9 @@ EOF
         # Check file references
         echo "" >> "$report_file"
         echo "**File References:**" >> "$report_file"
-        grep -E '\$\{?[A-Z_]+\}?|/[a-zA-Z0-9_./\${}~-]+' "$script" | grep -v "^#" | head -5 | sed 's/^/- /' >> "$report_file" || echo "- None detected" >> "$report_file"
+        {
+            grep -E '\$\{?[A-Z_]+\}?|/[a-zA-Z0-9_./\${}~-]+' "$script" | grep -v "^#" | head -5 | sed 's/^/- /' || echo "- None detected"
+        } >> "$report_file"
         
         # Check script permissions
         if [[ -x "$script" ]]; then
@@ -171,7 +177,7 @@ EOF
     
     # JSON files
     find "$PROJECT_ROOT/configs" -name "*.json" -type f 2>/dev/null | while read -r json_file; do
-        local relative_path="${json_file#$PROJECT_ROOT/}"
+        local relative_path="${json_file#"$PROJECT_ROOT"/}"
         if jq empty "$json_file" 2>/dev/null; then
             echo "- ✅ $relative_path (valid JSON)" >> "$report_file"
         else
@@ -181,7 +187,7 @@ EOF
     
     # TOML files
     find "$PROJECT_ROOT/configs" -name "*.toml" -type f 2>/dev/null | while read -r toml_file; do
-        local relative_path="${toml_file#$PROJECT_ROOT/}"
+        local relative_path="${toml_file#"$PROJECT_ROOT"/}"
         if python3 -c "import tomli; tomli.load(open('$toml_file', 'rb'))" 2>/dev/null; then
             echo "- ✅ $relative_path (valid TOML)" >> "$report_file"
         else
@@ -235,7 +241,7 @@ EOF
     echo "### File Permissions" >> "$report_file"
     
     find "$PROJECT_ROOT" -type f \( -name "*.sh" -o -name "*.py" \) | while read -r file; do
-        local relative_path="${file#$PROJECT_ROOT/}"
+        local relative_path="${file#"$PROJECT_ROOT"/}"
         if [[ -x "$file" ]]; then
             echo "- ✅ $relative_path (executable)" >> "$report_file"
         else
@@ -264,7 +270,7 @@ EOF
     echo "### Script Syntax Check Performance" >> "$report_file"
     
     find "$PROJECT_ROOT" -name "*.sh" -type f | while read -r script; do
-        local relative_path="${script#$PROJECT_ROOT/}"
+        local relative_path="${script#"$PROJECT_ROOT"/}"
         local check_time
         check_time=$(time (bash -n "$script") 2>&1 | grep real | awk '{print $2}' || echo "unknown")
         echo "- $relative_path: $check_time" >> "$report_file"
@@ -281,7 +287,7 @@ EOF
     # Largest directories
     echo "- Largest directories:" >> "$report_file"
     du -sh "$PROJECT_ROOT"/{configs,scripts,nix,.git} 2>/dev/null | sort -hr | head -5 | while read -r size dir; do
-        local relative_dir="${dir#$PROJECT_ROOT/}"
+        local relative_dir="${dir#"$PROJECT_ROOT"/}"
         echo "  - $relative_dir: $size" >> "$report_file"
     done
     

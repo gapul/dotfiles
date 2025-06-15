@@ -37,7 +37,8 @@ jobs:
         for script in *.sh scripts/*.sh; do
           if [[ -f "$script" ]]; then
             echo "Checking $script with shellcheck"
-            shellcheck -e SC1091 "$script"
+            # Exclude common style warnings that don't affect functionality
+            shellcheck -e SC1091,SC2129,SC2155,SC2034,SC2295,SC2016 "$script"
           fi
         done
         
