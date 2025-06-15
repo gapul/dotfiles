@@ -184,7 +184,7 @@ check_documentation_references() {
         if [[ -n "$doc_file" ]]; then
             # Markdown ファイル内のファイルパス参照を抽出（configs/を含むもののみ）
             local file_refs
-            file_refs=$(grep -oE '\`(configs/[^`]*|scripts/[^`]*|[^`]*\.(sh|yml|yaml))\`' "$doc_file" 2>/dev/null | sed 's/`//g' || true)
+            file_refs=$(grep -oE "\`(configs/[^\`]*|scripts/[^\`]*|[^\`]*\.(sh|yml|yaml))\`" "$doc_file" 2>/dev/null | sed 's/`//g' || true)
             
             while IFS= read -r file_ref; do
                 if [[ -n "$file_ref" ]] && [[ ! "$file_ref" =~ ^~ ]] && [[ ! "$file_ref" =~ ^\/ ]]; then
@@ -229,24 +229,20 @@ check_utils_references() {
 
 # メイン実行関数
 main() {
-    local fix_mode=false
-    local verbose_mode=false
-    local check_only=false
-    
     # オプション解析
     while [[ $# -gt 0 ]]; do
         case $1 in
             --fix)
-                fix_mode=true
+                # 将来の修正機能用（現在は未実装）
+                log_info "自動修正機能は今後実装予定です"
                 shift
                 ;;
             --verbose)
-                verbose_mode=true
-                DEBUG=true
+                export DEBUG=true
                 shift
                 ;;
             --check-only)
-                check_only=true
+                # チェックのみモード（デフォルト動作）
                 shift
                 ;;
             --help)
