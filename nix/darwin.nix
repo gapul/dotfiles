@@ -84,6 +84,62 @@
     blender         # 3D modeling
     libreoffice     # Office suite
     qbittorrent     # Torrent client
+    
+    # Phase 5: Maximum Homebrew to Nix Migration (28 apps)
+    # Development Tools
+    vscode          # Visual Studio Code
+    zed-editor      # Modern text editor
+    virtualbox      # Virtualization platform
+    podman-desktop  # Container management
+    godot_4         # Game engine
+    freecad         # CAD software
+    kicad           # PCB design
+    goxel           # Voxel editor
+    
+    # Creative Applications
+    scribus         # Desktop publishing
+    fontforge       # Font editor
+    natron          # Compositing software
+    opentoonz       # 2D animation
+    
+    # Browsers
+    vivaldi         # Feature-rich browser
+    tor-browser     # Privacy browser
+    
+    # Media Applications
+    musescore       # Music notation
+    mixxx           # DJ software
+    surge-XT        # Synthesizer
+    
+    # Gaming
+    prismlauncher   # Minecraft launcher
+    
+    # Productivity & Utilities
+    obsidian        # Knowledge management
+    zotero          # Reference manager
+    bitwarden-desktop # Password manager
+    espanso         # Text expander
+    syncthing       # File synchronization
+    spacedrive      # File manager
+    rustdesk        # Remote desktop
+    wireshark       # Network analyzer
+    onlyoffice-bin  # Office suite
+    ollama          # Local LLM runner
+    
+    # Phase 6: Additional Discovered Applications (1 app)
+    # High-value applications actually found on system
+    figma           # Design tool (discovered and verified installed)
+    
+    # Phase 7: Installed Apps Analysis (8 apps)
+    # Professional and high-value applications found in /Applications
+    davinci-resolve    # Professional video editing software
+    firefox-devedition # Firefox Developer Edition
+    floorp             # Privacy-focused browser
+    minecraft          # Minecraft Java Edition
+    retroarch          # Retro gaming emulator
+    steam              # Gaming platform
+    wezterm            # Modern terminal emulator
+    zrythm             # Professional DAW
   ];
 
   # Fonts (basic set)
@@ -162,7 +218,22 @@
 
   # Nix configuration
   nix = {
-    enable = false; # Disable for Determinate Nix
+    settings = {
+      experimental-features = [ "nix-command" "flakes" ];
+      # Remove problematic settings
+      # parallel-shell-jobs = 4;
+      max-jobs = "auto";
+      cores = 0;
+      substituters = [
+        "https://cache.nixos.org/"
+        "https://nix-community.cachix.org"
+      ];
+      trusted-public-keys = [
+        "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
+        "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="
+      ];
+      auto-optimise-store = true;
+    };
   };
 
   # User configuration
@@ -197,79 +268,79 @@
       # Core productivity
       "raycast"
       "karabiner-elements"
-      "wezterm"
-      "visual-studio-code"
+      # "wezterm"       # Migrated to nix (Phase 7) - wezterm
+      # "visual-studio-code"  # Migrated to nix (Phase 5) - vscode
       
       # Development & Programming
       "cursor"
-      "zed"
-      "figma"
+      # "zed"           # Migrated to nix (Phase 5) - zed-editor
+      # "figma"        # Migrated to nix (Phase 6) - figma
       # "docker"        # Migrated to nix (Phase 4)
-      "virtualbox"
-      "podman-desktop"
+      # "virtualbox"    # Migrated to nix (Phase 5)
+      # "podman-desktop" # Migrated to nix (Phase 5)
       "unity-hub"
-      "godot"
-      "freecad"
-      "kicad"
-      "goxel"
+      # "godot"         # Migrated to nix (Phase 5) - godot_4
+      # "freecad"       # Migrated to nix (Phase 5)
+      # "kicad"         # Migrated to nix (Phase 5)
+      # "goxel"         # Migrated to nix (Phase 5)
       
       # Creative & Design
       # "gimp"          # Migrated to nix (Phase 4)
       # "krita"         # Migrated to nix (Phase 4)  
       # "inkscape"      # Migrated to nix (Phase 4)
-      "scribus"
-      "fontforge"
+      # "scribus"       # Migrated to nix (Phase 5)
+      # "fontforge"     # Migrated to nix (Phase 5)
       "material-maker"
-      "natron"
-      "opentoonz"
+      # "natron"        # Migrated to nix (Phase 5)
+      # "opentoonz"     # Migrated to nix (Phase 5)
       
       # Browsers
       "zen"
       "firefox@developer-edition"
       "floorp"
-      "vivaldi"
+      # "vivaldi"       # Migrated to nix (Phase 5)
       "google-chrome@dev"
-      "tor-browser"
+      # "tor-browser"   # Migrated to nix (Phase 5)
       
       # Media & Entertainment
       # "vlc"           # Migrated to nix (Phase 4)
       # "obs"           # Migrated to nix (Phase 4) - obs-studio
-      "musescore"
-      "mixxx"
-      "surge-xt"
+      # "musescore"     # Migrated to nix (Phase 5)
+      # "mixxx"         # Migrated to nix (Phase 5)
+      # "surge-xt"      # Migrated to nix (Phase 5) - surge-XT
       
       # Gaming & Emulation
       "steam"
       "epic-games"
       "minecraft"
       "retroarch-metal"
-      "prismlauncher"
+      # "prismlauncher" # Migrated to nix (Phase 5)
       "whisky"
       
       # Communication & Productivity
       # LINE available via MAS (already configured)
-      "discord"
-      "slack"
+      # "discord"      # Could migrate to nix but keeping for macOS integration
+      # "slack"        # Could migrate to nix but keeping for macOS integration
       # "thunderbird"   # Migrated to nix (Phase 4)
-      "obsidian"
-      "zotero"
+      # "obsidian"      # Migrated to nix (Phase 5)
+      # "zotero"        # Migrated to nix (Phase 5)
       
       # Utilities & System
-      "bitwarden"
-      "espanso"
+      # "bitwarden"     # Migrated to nix (Phase 5) - bitwarden-desktop
+      # "espanso"       # Migrated to nix (Phase 5)
       "shortcat"
       "middleclick"
       "jordanbaird-ice"
-      "syncthing"
-      "spacedrive"
-      "rustdesk"
-      "wireshark"
+      # "syncthing"     # Migrated to nix (Phase 5)
+      # "spacedrive"    # Migrated to nix (Phase 5)
+      # "rustdesk"      # Migrated to nix (Phase 5)
+      # "wireshark"     # Migrated to nix (Phase 5)
       "cloudflare-warp"
       "vmware-fusion"
       
       # Office & Documents
       # "libreoffice"   # Migrated to nix (Phase 4)
-      "onlyoffice"
+      # "onlyoffice"    # Migrated to nix (Phase 5) - onlyoffice-bin
       "microsoft-excel"
       "microsoft-word"
       "microsoft-powerpoint"
@@ -277,7 +348,7 @@
       # AI & Assistant tools
       "claude"
       "chatgpt"
-      "ollama"
+      # "ollama"        # Migrated to nix (Phase 5)
       
       # Fonts
       "font-hackgen-nerd"
