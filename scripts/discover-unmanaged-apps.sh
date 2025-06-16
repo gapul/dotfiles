@@ -111,8 +111,8 @@ discover_unmanaged_apps() {
         local app_variations=(
             "$app"
             "$(echo "$app" | sed 's/-/ /g' | sed 's/\b\w/\U&/g')"
-            "$(echo "$app" | sed 's/-//g')"
-            "$(echo "$app" | sed 's/browser/Browser/g')"
+            "${app//-/}"
+            "${app//browser/Browser}"
         )
         
         local found_installed=false
