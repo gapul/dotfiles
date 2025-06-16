@@ -74,7 +74,7 @@ jobs:
       run: |
         cd nix
         # Check for dependency conflicts
-        nix eval .#darwinConfigurations.default.system --apply 'sys: sys.config.environment.systemPackages' --json > /tmp/nix-packages.json
+        nix eval .#darwinConfigurations.yuki.config.environment.systemPackages --json > /tmp/nix-packages.json
         
         # Validate no conflicting packages
         cat /tmp/nix-packages.json | jq -r '.[] | select(. | contains("yabai"))'
@@ -151,7 +151,7 @@ jobs:
         
         # Store size analysis
         echo "## Store Analysis" >> benchmark-report.md
-        nix path-info --closure-size --human-readable .#devShells.aarch64-darwin.python >> benchmark-report.md
+        nix build .#devShells.aarch64-darwin.python --no-link --print-out-paths | head -1 | xargs nix path-info --closure-size --human-readable >> benchmark-report.md
         
     - name: Upload Benchmark Report
       uses: actions/upload-artifact@v4
