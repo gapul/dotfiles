@@ -28,11 +28,10 @@ analyze_usage_patterns() {
     if [[ -f "$HOME/.zsh_history" ]]; then
         # Extract most used commands
         log_info "Most frequently used commands:"
-        cat "$HOME/.zsh_history" | \
-            sed 's/^: [0-9]*:[0-9]*;//' | \
+        sed 's/^: [0-9]*:[0-9]*;//' "$HOME/.zsh_history" | \
             awk '{print $1}' | \
             sort | uniq -c | sort -nr | head -20 | \
-            while read count cmd; do
+            while read -r count cmd; do
                 printf "  %3d: %s\n" "$count" "$cmd"
             done
     fi
