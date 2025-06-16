@@ -69,10 +69,8 @@
     yq          # YAML processor
     pandoc      # Document converter
     
-    # Window management (Phase 3 migration completed)
-    yabai
-    skhd
-    sketchybar
+    # Window management packages (for manual installation)
+    # Note: yabai, skhd, sketchybar services configured below
   ];
 
   # Fonts (basic set)
@@ -176,10 +174,10 @@
     ];
     
     brews = [
-      # Migrated to nixpkgs in Phase 3
-      # "yabai"
-      # "skhd" 
-      # "sketchybar"
+      # Window management (requires Homebrew for proper macOS integration)
+      "yabai"
+      "skhd" 
+      "sketchybar"
     ];
     
     casks = [
