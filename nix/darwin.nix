@@ -72,71 +72,8 @@
     # Window management packages (for manual installation)
     # Note: yabai, skhd, sketchybar services configured below
     
-    # CORE APPLICATIONS - Apple Silicon Compatible Only
-    # Development & Programming (verified compatible)
-    docker          # Container runtime
-    vscode          # Visual Studio Code
-    zed-editor      # Modern text editor
-    # virtualbox    # Not supported on Apple Silicon - keeping in Homebrew
-    # podman-desktop # Potential compatibility issues - keeping in Homebrew
-    # godot_4       # Not supported on Apple Silicon - keeping in Homebrew
-    # freecad       # Not supported on Apple Silicon - keeping in Homebrew
-    # kicad         # Potential compatibility issues - keeping in Homebrew
-    # goxel         # Potential compatibility issues - keeping in Homebrew
-    
-    # Browsers (verified compatible)
-    firefox         # Web browser
-    firefox-devedition # Firefox Developer Edition
-    floorp          # Privacy-focused browser
-    # vivaldi       # Excluded per user request
-    tor-browser     # Privacy browser
-    
-    # Creative & Design (conservative selection)
-    # gimp          # Potential compatibility issues - keeping in Homebrew
-    # inkscape      # Potential compatibility issues - keeping in Homebrew
-    # krita         # Potential compatibility issues - keeping in Homebrew
-    # blender       # Potential compatibility issues - keeping in Homebrew
-    # scribus       # Potential compatibility issues - keeping in Homebrew
-    # fontforge     # Potential compatibility issues - keeping in Homebrew
-    # natron        # Potential compatibility issues - keeping in Homebrew
-    # opentoonz     # Potential compatibility issues - keeping in Homebrew
-    
-    # Media & Entertainment (conservative selection)
-    # vlc           # Not supported on Apple Silicon - keeping in Homebrew
-    # obs-studio    # Not supported on Apple Silicon - keeping in Homebrew
-    # musescore     # Potential compatibility issues - keeping in Homebrew
-    # mixxx         # Potential compatibility issues - keeping in Homebrew
-    # surge-XT      # Potential compatibility issues - keeping in Homebrew
-    
-    # Gaming & Emulation (conservative selection)
-    # steam         # Potential compatibility issues - keeping in Homebrew
-    minecraft       # Minecraft Java Edition
-    # retroarch     # Potential compatibility issues - keeping in Homebrew
-    # prismlauncher # Potential compatibility issues - keeping in Homebrew
-    
-    # Office & Productivity (verified compatible)
-    libreoffice     # Office suite
-    # onlyoffice-bin # Potential compatibility issues - keeping in Homebrew
-    thunderbird     # Email client
-    obsidian        # Knowledge management
-    zotero          # Reference manager
-    
-    # Utilities & System (conservative selection)
-    bitwarden-desktop # Password manager
-    espanso         # Text expander
-    syncthing       # File synchronization
-    # spacedrive    # Potential compatibility issues - keeping in Homebrew
-    # rustdesk      # Potential compatibility issues - keeping in Homebrew
-    # wireshark     # Potential compatibility issues - keeping in Homebrew
-    qbittorrent     # Torrent client
-    wezterm         # Modern terminal emulator
-    
-    # Professional Tools (conservative selection)
-    # davinci-resolve # Potential compatibility issues - keeping in Homebrew
-    # zrythm        # Potential compatibility issues - keeping in Homebrew
-    
-    # AI & Development (verified compatible)
-    ollama          # Local LLM runner
+    # NOTE: GUI applications are managed by Homebrew for better compatibility
+    # Only CLI tools and essential development packages are managed by nix
     
   ];
 
