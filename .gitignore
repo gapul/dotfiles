@@ -41,6 +41,12 @@ configs/apps/claude/claude.json
 **/token*
 **/.env
 **/.env.local
+*.key
+*.pem
+*.p12
+*.p8
+secrets.*
+private.*
 
 # User-specific data that shouldn't be shared
 configs/**/user_data/
