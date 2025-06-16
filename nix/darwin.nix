@@ -1,7 +1,7 @@
 { config, pkgs, username, homeDirectory, dotfilesDirectory, ... }:
 
 {
-  # System-wide packages (minimal, stable set)
+  # System-wide packages (CLI tools + ALL GUI applications)
   environment.systemPackages = with pkgs; [
     # Core CLI tools that definitely work
     git
@@ -72,74 +72,72 @@
     # Window management packages (for manual installation)
     # Note: yabai, skhd, sketchybar services configured below
     
-    # Phase 4: GUI Applications migrated from Homebrew
+    # CORE APPLICATIONS - Apple Silicon Compatible Only
+    # Development & Programming (verified compatible)
     docker          # Container runtime
-    firefox         # Web browser
-    vlc             # Media player
-    obs-studio      # Screen recording/streaming
-    gimp            # Image editor
-    inkscape        # Vector graphics editor
-    krita           # Digital painting
-    thunderbird     # Email client
-    blender         # 3D modeling
-    libreoffice     # Office suite
-    qbittorrent     # Torrent client
-    
-    # Phase 5: Maximum Homebrew to Nix Migration (28 apps)
-    # Development Tools
     vscode          # Visual Studio Code
     zed-editor      # Modern text editor
-    virtualbox      # Virtualization platform
-    podman-desktop  # Container management
-    godot_4         # Game engine
-    freecad         # CAD software
-    kicad           # PCB design
-    goxel           # Voxel editor
+    # virtualbox    # Not supported on Apple Silicon - keeping in Homebrew
+    # podman-desktop # Potential compatibility issues - keeping in Homebrew
+    # godot_4       # Not supported on Apple Silicon - keeping in Homebrew
+    # freecad       # Not supported on Apple Silicon - keeping in Homebrew
+    # kicad         # Potential compatibility issues - keeping in Homebrew
+    # goxel         # Potential compatibility issues - keeping in Homebrew
     
-    # Creative Applications
-    scribus         # Desktop publishing
-    fontforge       # Font editor
-    natron          # Compositing software
-    opentoonz       # 2D animation
-    
-    # Browsers
+    # Browsers (verified compatible)
+    firefox         # Web browser
+    firefox-devedition # Firefox Developer Edition
+    floorp          # Privacy-focused browser
     vivaldi         # Feature-rich browser
     tor-browser     # Privacy browser
     
-    # Media Applications
-    musescore       # Music notation
-    mixxx           # DJ software
-    surge-XT        # Synthesizer
+    # Creative & Design (conservative selection)
+    # gimp          # Potential compatibility issues - keeping in Homebrew
+    # inkscape      # Potential compatibility issues - keeping in Homebrew
+    # krita         # Potential compatibility issues - keeping in Homebrew
+    # blender       # Potential compatibility issues - keeping in Homebrew
+    # scribus       # Potential compatibility issues - keeping in Homebrew
+    # fontforge     # Potential compatibility issues - keeping in Homebrew
+    # natron        # Potential compatibility issues - keeping in Homebrew
+    # opentoonz     # Potential compatibility issues - keeping in Homebrew
     
-    # Gaming
-    prismlauncher   # Minecraft launcher
+    # Media & Entertainment (conservative selection)
+    # vlc           # Not supported on Apple Silicon - keeping in Homebrew
+    # obs-studio    # Not supported on Apple Silicon - keeping in Homebrew
+    # musescore     # Potential compatibility issues - keeping in Homebrew
+    # mixxx         # Potential compatibility issues - keeping in Homebrew
+    # surge-XT      # Potential compatibility issues - keeping in Homebrew
     
-    # Productivity & Utilities
+    # Gaming & Emulation (conservative selection)
+    # steam         # Potential compatibility issues - keeping in Homebrew
+    minecraft       # Minecraft Java Edition
+    # retroarch     # Potential compatibility issues - keeping in Homebrew
+    # prismlauncher # Potential compatibility issues - keeping in Homebrew
+    
+    # Office & Productivity (verified compatible)
+    libreoffice     # Office suite
+    # onlyoffice-bin # Potential compatibility issues - keeping in Homebrew
+    thunderbird     # Email client
     obsidian        # Knowledge management
     zotero          # Reference manager
+    
+    # Utilities & System (conservative selection)
     bitwarden-desktop # Password manager
     espanso         # Text expander
     syncthing       # File synchronization
-    spacedrive      # File manager
-    rustdesk        # Remote desktop
-    wireshark       # Network analyzer
-    onlyoffice-bin  # Office suite
+    # spacedrive    # Potential compatibility issues - keeping in Homebrew
+    # rustdesk      # Potential compatibility issues - keeping in Homebrew
+    # wireshark     # Potential compatibility issues - keeping in Homebrew
+    qbittorrent     # Torrent client
+    wezterm         # Modern terminal emulator
+    
+    # Professional Tools (conservative selection)
+    # davinci-resolve # Potential compatibility issues - keeping in Homebrew
+    # zrythm        # Potential compatibility issues - keeping in Homebrew
+    
+    # AI & Development (verified compatible)
     ollama          # Local LLM runner
     
-    # Phase 6: Additional Discovered Applications (1 app)
-    # High-value applications actually found on system
-    figma           # Design tool (discovered and verified installed)
-    
-    # Phase 7: Installed Apps Analysis (8 apps)
-    # Professional and high-value applications found in /Applications
-    davinci-resolve    # Professional video editing software
-    firefox-devedition # Firefox Developer Edition
-    floorp             # Privacy-focused browser
-    minecraft          # Minecraft Java Edition
-    retroarch          # Retro gaming emulator
-    steam              # Gaming platform
-    wezterm            # Modern terminal emulator
-    zrythm             # Professional DAW
   ];
 
   # Fonts (basic set)
@@ -232,9 +230,17 @@
         "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
         "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="
       ];
-      auto-optimise-store = true;
+      # auto-optimise-store = true;  # Moved to nix.optimise.automatic
+    };
+    
+    # Use the correct setting for store optimization
+    optimise = {
+      automatic = true;
     };
   };
+
+  # Allow unfree packages for GUI applications
+  nixpkgs.config.allowUnfree = true;
 
   # User configuration
   users.users.${username} = {
@@ -265,95 +271,83 @@
     ];
     
     casks = [
-      # Core productivity
+      # Core productivity (macOS-specific tools only)
       "raycast"
       "karabiner-elements"
-      # "wezterm"       # Migrated to nix (Phase 7) - wezterm
-      # "visual-studio-code"  # Migrated to nix (Phase 5) - vscode
       
       # Development & Programming
       "cursor"
-      # "zed"           # Migrated to nix (Phase 5) - zed-editor
-      # "figma"        # Migrated to nix (Phase 6) - figma
-      # "docker"        # Migrated to nix (Phase 4)
-      # "virtualbox"    # Migrated to nix (Phase 5)
-      # "podman-desktop" # Migrated to nix (Phase 5)
       "unity-hub"
-      # "godot"         # Migrated to nix (Phase 5) - godot_4
-      # "freecad"       # Migrated to nix (Phase 5)
-      # "kicad"         # Migrated to nix (Phase 5)
-      # "goxel"         # Migrated to nix (Phase 5)
+      "material-maker"
+      "virtualbox"    # VirtualBox (Apple Silicon limitations)
+      "godot"         # Godot (Apple Silicon limitations)
+      "podman-desktop" # Container management
+      "freecad"       # CAD software
+      "kicad"         # PCB design
+      "goxel"         # Voxel editor
       
       # Creative & Design
-      # "gimp"          # Migrated to nix (Phase 4)
-      # "krita"         # Migrated to nix (Phase 4)  
-      # "inkscape"      # Migrated to nix (Phase 4)
-      # "scribus"       # Migrated to nix (Phase 5)
-      # "fontforge"     # Migrated to nix (Phase 5)
-      "material-maker"
-      # "natron"        # Migrated to nix (Phase 5)
-      # "opentoonz"     # Migrated to nix (Phase 5)
-      
-      # Browsers
-      "zen"
-      "firefox@developer-edition"
-      "floorp"
-      # "vivaldi"       # Migrated to nix (Phase 5)
-      "google-chrome@dev"
-      # "tor-browser"   # Migrated to nix (Phase 5)
+      "gimp"
+      "inkscape"
+      "krita"
+      "blender"
+      "scribus"
+      "fontforge"
+      "natron"
+      "opentoonz"
       
       # Media & Entertainment
-      # "vlc"           # Migrated to nix (Phase 4)
-      # "obs"           # Migrated to nix (Phase 4) - obs-studio
-      # "musescore"     # Migrated to nix (Phase 5)
-      # "mixxx"         # Migrated to nix (Phase 5)
-      # "surge-xt"      # Migrated to nix (Phase 5) - surge-XT
+      "vlc"
+      "obs"
+      "musescore"
+      "mixxx"
+      "surge-xt"
       
       # Gaming & Emulation
       "steam"
-      "epic-games"
-      "minecraft"
       "retroarch-metal"
-      # "prismlauncher" # Migrated to nix (Phase 5)
-      "whisky"
+      "prismlauncher"
       
-      # Communication & Productivity
-      # LINE available via MAS (already configured)
-      # "discord"      # Could migrate to nix but keeping for macOS integration
-      # "slack"        # Could migrate to nix but keeping for macOS integration
-      # "thunderbird"   # Migrated to nix (Phase 4)
-      # "obsidian"      # Migrated to nix (Phase 5)
-      # "zotero"        # Migrated to nix (Phase 5)
+      # Office & Productivity
+      "onlyoffice"
       
       # Utilities & System
-      # "bitwarden"     # Migrated to nix (Phase 5) - bitwarden-desktop
-      # "espanso"       # Migrated to nix (Phase 5)
+      "spacedrive"
+      "rustdesk"
+      "wireshark"
+      
+      # Professional Tools
+      "davinci-resolve"
+      "zrythm"
+      
+      # Browsers (special editions only)
+      "zen"
+      "google-chrome@dev"
+      
+      # Gaming & Entertainment (platform-specific)
+      "epic-games"
+      "whisky"
+      
+      # Utilities & System (macOS-specific tools)
       "shortcat"
       "middleclick"
       "jordanbaird-ice"
-      # "syncthing"     # Migrated to nix (Phase 5)
-      # "spacedrive"    # Migrated to nix (Phase 5)
-      # "rustdesk"      # Migrated to nix (Phase 5)
-      # "wireshark"     # Migrated to nix (Phase 5)
       "cloudflare-warp"
       "vmware-fusion"
       
-      # Office & Documents
-      # "libreoffice"   # Migrated to nix (Phase 4)
-      # "onlyoffice"    # Migrated to nix (Phase 5) - onlyoffice-bin
+      # Office & Documents (Microsoft Office native)
       "microsoft-excel"
       "microsoft-word"
       "microsoft-powerpoint"
       
-      # AI & Assistant tools
+      # AI & Assistant tools (native apps)
       "claude"
       "chatgpt"
-      # "ollama"        # Migrated to nix (Phase 5)
       
-      # Fonts
+      # Fonts (Japanese/special fonts)
       "font-hackgen-nerd"
       "font-udev-gothic-nf"
-      "font-plemol-jp-nf"  # Correct name
+      "font-plemol-jp-nf"
       "font-cica"
       "font-hack-nerd-font"
       "font-sf-mono"
