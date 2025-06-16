@@ -115,6 +115,13 @@
         install = "~/dotfiles/install.sh";
         install-force = "~/dotfiles/install.sh --force";
         backup-list = "~/dotfiles/install.sh --list-backups";
+        
+        # Claude Code shortcuts (non-interactive mode)
+        claude-ask = "claude --print";
+        claude-review = "claude --print 'このコードをレビューしてください:'";
+        claude-fix = "claude --print 'このエラーの修正方法は？'";
+        claude-optimize = "claude --print 'このコードを最適化してください:'";
+        claude-doc = "claude --print 'このコードのドキュメントを生成してください:'";
       };
     };
 
