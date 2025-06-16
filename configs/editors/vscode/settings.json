@@ -25,5 +25,6 @@
         "file://${userHome}/.vscode/extensions/brandonkirbyson.vscode-animations-2.0.4/dist/updateHandler.js"
     ],
     "security.workspace.trust.untrustedFiles": "open",
-    "workbench.editor.empty.hint": "hidden"
+    "workbench.editor.empty.hint": "hidden",
+    "editor.unicodeHighlight.nonBasicASCII": false
 }
