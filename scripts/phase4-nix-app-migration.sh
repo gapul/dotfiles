@@ -61,8 +61,8 @@ case "${1:-}" in
     "verify")
         log_info "Verifying migrated applications..."
         for app_pair in "${MIGRATE_APPS[@]}"; do
-            local cask_name="${app_pair%:*}"
-            local nix_name="${app_pair#*:}"
+            cask_name="${app_pair%:*}"
+            nix_name="${app_pair#*:}"
             
             if command -v "$nix_name" >/dev/null 2>&1; then
                 log_success "$nix_name available via nix"
