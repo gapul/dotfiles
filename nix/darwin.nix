@@ -71,6 +71,19 @@
     
     # Window management packages (for manual installation)
     # Note: yabai, skhd, sketchybar services configured below
+    
+    # Phase 4: GUI Applications migrated from Homebrew
+    docker          # Container runtime
+    firefox         # Web browser
+    vlc             # Media player
+    obs-studio      # Screen recording/streaming
+    gimp            # Image editor
+    inkscape        # Vector graphics editor
+    krita           # Digital painting
+    thunderbird     # Email client
+    blender         # 3D modeling
+    libreoffice     # Office suite
+    qbittorrent     # Torrent client
   ];
 
   # Fonts (basic set)
@@ -191,7 +204,7 @@
       "cursor"
       "zed"
       "figma"
-      "docker"
+      # "docker"        # Migrated to nix (Phase 4)
       "virtualbox"
       "podman-desktop"
       "unity-hub"
@@ -201,9 +214,9 @@
       "goxel"
       
       # Creative & Design
-      "gimp"
-      "krita"
-      "inkscape"
+      # "gimp"          # Migrated to nix (Phase 4)
+      # "krita"         # Migrated to nix (Phase 4)  
+      # "inkscape"      # Migrated to nix (Phase 4)
       "scribus"
       "fontforge"
       "material-maker"
@@ -219,8 +232,8 @@
       "tor-browser"
       
       # Media & Entertainment
-      "vlc"
-      "obs"
+      # "vlc"           # Migrated to nix (Phase 4)
+      # "obs"           # Migrated to nix (Phase 4) - obs-studio
       "musescore"
       "mixxx"
       "surge-xt"
@@ -237,7 +250,7 @@
       # LINE available via MAS (already configured)
       "discord"
       "slack"
-      "thunderbird"
+      # "thunderbird"   # Migrated to nix (Phase 4)
       "obsidian"
       "zotero"
       
@@ -255,7 +268,7 @@
       "vmware-fusion"
       
       # Office & Documents
-      "libreoffice"
+      # "libreoffice"   # Migrated to nix (Phase 4)
       "onlyoffice"
       "microsoft-excel"
       "microsoft-word"
