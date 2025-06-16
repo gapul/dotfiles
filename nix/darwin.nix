@@ -88,7 +88,7 @@
     firefox         # Web browser
     firefox-devedition # Firefox Developer Edition
     floorp          # Privacy-focused browser
-    vivaldi         # Feature-rich browser
+    # vivaldi       # Excluded per user request
     tor-browser     # Privacy browser
     
     # Creative & Design (conservative selection)
@@ -323,6 +323,7 @@
       # Browsers (special editions only)
       "zen"
       "google-chrome@dev"
+      "vivaldi"        # Moved from nix per user request
       
       # Gaming & Entertainment (platform-specific)
       "epic-games"
