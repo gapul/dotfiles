@@ -69,20 +69,20 @@
     # Home Manager itself
     home-manager.enable = true;
 
-    # Shell configuration
+    # Shell configuration - integrate with existing zshrc
     zsh = {
       enable = true;
       enableCompletion = true;
-      autosuggestion.enable = true;  # Updated option name
+      autosuggestion.enable = true;
       syntaxHighlighting.enable = true;
       
-      # Use existing zshrc from dotfiles (temporarily disabled)
-      # initExtraFirst = ''
-      #   # Source existing zshrc configuration
-      #   if [[ -f "${dotfilesDirectory}/configs/zsh/zshrc" ]]; then
-      #     source "${dotfilesDirectory}/configs/zsh/zshrc"
-      #   fi
-      # '';
+      # Source existing zshrc configuration from dotfiles
+      initExtraFirst = ''
+        # Source existing zshrc configuration
+        if [[ -f "${dotfilesDirectory}/configs/zsh/zshrc" ]]; then
+          source "${dotfilesDirectory}/configs/zsh/zshrc"
+        fi
+      '';
       
       shellAliases = {
         # Modern CLI replacements
@@ -108,8 +108,13 @@
         path = "echo $PATH | tr ':' '\n'";
         
         # nix shortcuts
-        nrs = "darwin-rebuild switch --flake ~/.config/nix-darwin";
-        hms = "home-manager switch --flake ~/.config/nix-darwin";
+        nrs = "darwin-rebuild switch --flake ~/dotfiles/nix";
+        hms = "home-manager switch --flake ~/dotfiles/nix";
+        
+        # dotfiles management shortcuts
+        install = "~/dotfiles/install.sh";
+        install-force = "~/dotfiles/install.sh --force";
+        backup-list = "~/dotfiles/install.sh --list-backups";
       };
     };
 
@@ -132,18 +137,18 @@
       };
     };
 
-    # Starship prompt
+    # Starship prompt - use existing configuration
     starship = {
       enable = true;
-      # Configuration will be managed via dotfiles symlinks
-      # settings = pkgs.lib.importTOML "${dotfilesDirectory}/configs/terminal/starship.toml";
+      # Import existing starship.toml configuration
+      settings = pkgs.lib.importTOML "${dotfilesDirectory}/configs/terminal/starship.toml";
     };
 
-    # tmux
+    # tmux - use existing configuration
     tmux = {
       enable = true;
-      # Configuration will be managed via dotfiles symlinks
-      # extraConfig = builtins.readFile "${dotfilesDirectory}/configs/terminal/tmux.conf";
+      # Import existing tmux.conf configuration
+      extraConfig = builtins.readFile "${dotfilesDirectory}/configs/terminal/tmux.conf";
     };
 
     # Neovim
@@ -188,25 +193,38 @@
     };
   };
 
-  # File management - Link existing dotfiles (temporarily disabled for initial setup)
-  # home.file = {
-  #   # Terminal configurations
-  #   ".config/wezterm/wezterm.lua".source = "${dotfilesDirectory}/configs/terminal/wezterm.lua";
-  #   
-  #   # Editor configurations  
-  #   ".config/nvim".source = "${dotfilesDirectory}/configs/editors/nvim";
-  #   
-  #   # Development tool configurations
-  #   ".condarc".source = "${dotfilesDirectory}/configs/development/.condarc";
-  #   
-  #   # Application configurations
-  #   ".config/gh/config.yml".source = "${dotfilesDirectory}/configs/cli/gh/config.yml";
-  #   
-  #   # Window manager configurations (if using)
-  #   ".config/yabai/yabairc".source = "${dotfilesDirectory}/configs/wm/yabai/yabairc";
-  #   ".config/skhd/skhdrc".source = "${dotfilesDirectory}/configs/wm/skhd/skhdrc";
-  #   ".config/sketchybar/sketchybarrc".source = "${dotfilesDirectory}/configs/wm/sketchybar/sketchybarrc";
-  # };
+  # File management - Link existing dotfiles using home-manager
+  home.file = {
+    # Terminal configurations
+    ".config/wezterm/wezterm.lua".source = "${dotfilesDirectory}/configs/terminal/wezterm.lua";
+    ".config/starship.toml".source = "${dotfilesDirectory}/configs/terminal/starship.toml";
+    ".tmux.conf".source = "${dotfilesDirectory}/configs/terminal/tmux.conf";
+    
+    # Editor configurations  
+    ".config/nvim".source = "${dotfilesDirectory}/configs/editors/nvim";
+    ".config/Code/User/settings.json".source = "${dotfilesDirectory}/configs/editors/vscode/settings.json";
+    ".config/zed/settings.json".source = "${dotfilesDirectory}/configs/editors/zed/settings.json";
+    
+    # Development tool configurations
+    ".condarc".source = "${dotfilesDirectory}/configs/development/.condarc";
+    ".docker/config.json".source = "${dotfilesDirectory}/configs/development/docker/config.json";
+    ".docker/daemon.json".source = "${dotfilesDirectory}/configs/development/docker/daemon.json";
+    
+    # CLI Application configurations
+    ".config/gh/config.yml".source = "${dotfilesDirectory}/configs/cli/gh/config.yml";
+    
+    # Window manager configurations (optional, commented for safety)
+    # ".config/yabai/yabairc".source = "${dotfilesDirectory}/configs/wm/yabai/yabairc";
+    # ".config/skhd/skhdrc".source = "${dotfilesDirectory}/configs/wm/skhd/skhdrc";
+    # ".config/sketchybar".source = "${dotfilesDirectory}/configs/wm/sketchybar";
+    
+    # SSH configuration (template only - personal config excluded)
+    # ".ssh/config".source = "${dotfilesDirectory}/configs/ssh/config.example";
+    
+    # Application configurations (templates/examples)
+    ".config/claude/claude.json.example".source = "${dotfilesDirectory}/configs/apps/claude/claude.json.example";
+    ".config/claude/mcp-servers.json".source = "${dotfilesDirectory}/configs/apps/claude/mcp-servers.json";
+  };
 
   # Session variables
   home.sessionVariables = {
