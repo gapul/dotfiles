@@ -46,7 +46,9 @@ configs/apps/claude/claude.json
 *.p12
 *.p8
 secrets.*
+!secrets.*.example
 private.*
+!private.*.example
 
 # User-specific data that shouldn't be shared
 configs/**/user_data/
