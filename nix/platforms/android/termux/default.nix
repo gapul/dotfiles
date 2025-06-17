@@ -39,7 +39,7 @@
     rsync
     
     # Archive tools
-    tar
+    gnutar
   ];
 
   # Android-specific shell configuration
