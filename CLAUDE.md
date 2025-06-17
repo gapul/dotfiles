@@ -1,143 +1,231 @@
-承知いたしました。これまでの議論の集大成として、今後の改善作業をClaude Codeが円滑に進めるための、新しい`CLAUDE.md`の内容を以下に提示します。
+# Dotfiles Management System - Claude Code Memory
 
-このドキュメントは、AIに対する明確な行動規範、利用可能なツール（API）、そして標準的な作業手順を定義することで、あなたとAIとの共同作業を新たなレベルへと引き上げます。
+## プロジェクト概要
 
------
+このプロジェクトは、macOS環境でのドットファイルを安全かつ効率的に管理するための完全なシステムです。
 
-# 🤖 Dotfiles Management System - Claude Code Operating Manual
+### 主要特徴
+- シンボリックリンクベースの設定管理
+- 自動バックアップ機能
+- Phase別の段階的設定導入
+- セキュリティを重視した個人情報除外
+- CI/CD統合による品質保証
 
-このドキュメントは、Claude Codeがこのリポジトリで作業を行う際の、**唯一の信頼できる情報源 (Single Source of Truth)** です。全ての作業は、このマニュアルに記載された規範と手順に従って実行してください。
+## 🏗️ Phase 4: 長期的な発展と高度化フェーズ
 
-## 🎯 現在の最優先目標 (Current Top Priority Goal)
+### 現在の状況 (2025年6月17日 15:30)
 
-**[実装仕様書(docs/proposals/001-overall-evolution-spec-v2.md)](https://www.google.com/search?q=docs/proposals/001-overall-evolution-spec-v2.md)に基づき、Phase 1: 基盤安定化フェーズを完了させる。**
+#### ✅ 完了済みタスク
 
-  * **タスク 1.1**: `starship.toml` の構文エラー修正
-  * **タスク 1.2**: `.gitignore` のセキュリティパターン追加
+**Task 4.1: 拡張マルチプラットフォーム対応**
+- macOS (nix-darwin) ✅
+- Linux (NixOS + 汎用Linux) ✅  
+- Windows WSL ✅
+- Android (nix-on-droid) ✅
+- 自動プラットフォーム検出システム ✅
+- 条件分岐設定システム ✅
 
-完了後は、変更をコミットし、Phase 2の計画に移ります。
+**Task 4.2: CI/CD統合テスト導入**
+- GitHub Actions Matrix戦略 ✅
+- Runtime verification with Docker ✅
+- Cross-platform compatibility testing ✅
+- Performance benchmarking ✅
+- Security scanning ✅
+- 統合レポート生成 ✅
 
-## ⚖️ Claude Code 行動規範 (Golden Rules)
+#### 🔧 技術アーキテクチャの完成
 
-以下のルールは、いかなる場合も**絶対に遵守**してください。
-
-1.  **テスト駆動の徹底**:
-      * **変更前**: 必ず `just test` を実行し、既存のテストが全て成功することを確認します。
-      * **変更後**: コードを修正したら、再度 `just test` を実行し、自身の変更によってリグレッション（機能低下）が発生していないことを保証します。
-2.  **機密情報の厳禁**:
-      * いかなる機密情報（APIキー、パスワード等）もファイルに書き込みません。機密情報の管理は `sops-nix` を利用する計画があるため、それ以外の方法での扱いは禁止します。
-3.  **ドキュメントの同期**:
-      * スクリプトのインターフェースやコマンドの挙動を変更した場合、必ず `just docs` を実行して関連ドキュメントを自動更新します。
-4.  **アトミックなコミット**:
-      * 一つの関心事ごとにコミットを分割します。コミットメッセージは、本ドキュメントのテンプレートに従います。
-5.  **APIの利用**:
-      * 可能な限り、後述の `Repository API` で定義された高レベルなコマンド（`just`コマンド）を利用します。個別のスクリプトを直接実行するのは、APIが存在しない場合に限定します。
-
-## 🛠️ Repository API (実行可能コマンド体系)
-
-このリポジトリの操作は、以下の`justfile`で定義されたコマンドを通じて行うことを原則とします。この`justfile`は実装仕様書のタスクとして今後作成します。
-
-```makefile
-# Dotfiles Orchestration Layer (justfile)
-
-# --- Quality Assurance ---
-test: lint validate ## ✅ 全てのローカル検証を実行
-lint: ## シェルスクリプトの静的解析
-    shellcheck scripts/*.sh
-validate: ## 設定ファイルの構文検証
-    python3 .github/scripts/validate_toml.py
-
-# --- Documentation ---
-docs: ## 📖 ドキュメントを自動生成・更新
-    ./scripts/generate-docs.sh # このスクリプトは今後作成
-
-# --- Nix System Management ---
-rebuild: ## 🚀 Nix-Darwinシステムを再構築
-    cd nix && USER=yuki sudo darwin-rebuild switch --flake .
-update: ## 🔄 Flakeを更新してシステムを再構築
-    cd nix && nix flake update && just rebuild
-check-nix: ## Nix設定の構文をチェック
-    cd nix && nix flake check
-
-# --- Maintenance ---
-maintenance: ## ✨ 完全メンテナンスを実行
-    ./scripts/nix-maintenance.sh maintenance
+**マルチプラットフォーム構造:**
+```
+nix/platforms/
+├── flake.nix                    # メインエントリーポイント
+├── common/
+│   ├── platform-detection.nix  # プラットフォーム自動検出
+│   ├── packages/core.nix       # 共通パッケージ管理
+│   ├── home/shell.nix          # 共通シェル設定
+│   └── themes/
+│       ├── colors.nix          # 純粋な色・フォント定義
+│       └── default.nix         # home-manager適用モジュール
+├── darwin/                     # macOS専用設定
+├── linux/
+│   ├── desktop/               # Linux汎用デスクトップ
+│   ├── server/                # Linux server環境
+│   └── nixos/                 # NixOS専用設定
+├── wsl/                       # Windows WSL設定
+└── android/                   # Android nix-on-droid設定
 ```
 
-## ワークフロー：タスク実行の標準手順 (SOP)
+**CI/CD統合テスト基盤:**
+```
+.github/
+├── workflows/
+│   └── multi-platform-integration.yml  # マトリクステスト
+└── scripts/
+    └── test-platform-integration.sh    # ローカルテスト
+```
 
-全てのタスクは、以下の手順に従って実行してください。
+#### 📊 重要な実装詳細
 
-1.  **[計画] Task Planning**:
+**Platform Detection System:**
+- 自動OS・アーキテクチャ検出
+- プラットフォーム固有capabilities定義
+- 条件分岐パッケージフィルタリング
 
-      * `TodoRead`で現在のタスクリストを確認します。
-      * 実行するタスクを`TodoWrite`で`in_progress`に更新します。
+**Configuration Management:**
+- NixOS system vs home-manager設定の適切な分離
+- テーマ設定の設定値と適用モジュール分離
+- プラットフォーム固有overrides
 
-2.  **[分析] Context Analysis**:
+**CI/CD Features:**
+- Matrix strategy (4プラットフォーム対応)
+- Runtime container verification
+- Performance benchmarking
+- Security vulnerability scanning
+- Cross-platform compatibility validation
 
-      * `Read`で関連するファイル（実装仕様書、既存コード、関連ドキュメント）を読み込み、変更内容と影響範囲を完全に理解します。
-      * スクリプトを修正する場合は、コード先頭の`@dependencies`ヘッダー（今後追加予定）を確認します。
+### 🎯 次に実行すべきタスク
 
-3.  **[実装] Implementation**:
+#### Task 4.3: 高度なセキュリティ管理とシークレット管理 [IN PROGRESS]
 
-      * `Edit`や`Write`を使い、仕様書に基づいてコードの変更を正確に実行します。
-      * 可能な限り、`Repository API`で定義されたコマンドを利用します。
+**実装予定の機能:**
 
-4.  **[検証] Validation & Self-Correction**:
+1. **SOPS-nix統合によるシークレット管理**
+   - age/gpgベースの暗号化
+   - プラットフォーム固有シークレット
+   - CI/CD環境での安全な復号化
 
-      * コードの変更後、**必ず`just test`を実行します**。
-      * **テストが失敗した場合**: エラー出力を詳細に分析し、**自ら問題を特定してコードを修正**します。修正後、再度`just test`を実行し、成功するまでこのループを繰り返します。
-      * **テストが成功した場合**: 次のステップへ進みます。
+2. **Git-crypt統合**
+   - リポジトリレベルの選択的暗号化
+   - チーム共有可能な設定管理
+   - 透明な暗号化・復号化ワークフロー
 
-5.  **[文書化] Documentation**:
+3. **Vault統合 (HashiCorp Vault)**
+   - 動的シークレット管理
+   - API keyローテーション
+   - 監査ログとアクセス制御
 
-      * スクリプトの挙動やインターフェースに変更があった場合は、**必ず`just docs`を実行**し、ドキュメントとの同期を取ります。
+4. **セキュリティベストプラクティス**
+   - 最小権限の原則
+   - シークレットスキャニング
+   - セキュリティ設定の自動検証
 
-6.  **[提出] Commit & Propose**:
+**実装アプローチ:**
+```
+nix/platforms/security/
+├── sops/
+│   ├── secrets.yaml            # 暗号化されたシークレット
+│   ├── keys/                   # 公開鍵管理
+│   └── config.nix             # SOPS-nix設定
+├── vault/
+│   ├── policies/              # Vaultポリシー定義
+│   └── integration.nix        # Vault統合設定
+└── common/
+    ├── security-baseline.nix   # セキュリティベースライン
+    └── secret-templates/       # シークレット設定テンプレート
+```
 
-      * `git status`, `git diff`で最終的な変更内容を確認します。
-      * 以下のテンプレートに従い、詳細なコミットメッセージを作成し、変更を提案します。
+#### Task 4.4: 高度な開発環境統合
 
-    **コミットメッセージテンプレート**:
+**予定機能:**
+- Development Containers統合
+- Language Server Protocol (LSP) 完全統合
+- AI開発ツール統合 (Copilot, Codeium等)
+- プロジェクト固有環境の自動セットアップ
 
-    ```
-    feat(scope): 変更内容の簡潔な説明
+#### Task 4.5: 高度な自動化とオーケストレーション
 
-    実装仕様書「(タスク番号): (タスク名)」に基づき、以下の変更を実施。
+**予定機能:**
+- Infrastructure as Code (IaC) 統合
+- Kubernetes環境管理
+- Cloud provider統合 (AWS, GCP, Azure)
+- Multi-environment deployment automation
 
-    - 変更点1の詳細な説明。
-    - 変更点2の詳細な説明。
+## 🔄 開発ワークフロー
 
-    これにより、(達成される価値や解決される問題)が実現される。
-    全てのローカルテスト(`just test`)は成功済み。
+### 標準作業手順
 
-    Co-Authored-By: Claude <noreply@anthropic.com>
-    ```
+1. **事前準備**: `TodoWrite`でタスク管理、現状把握
+2. **設計・実装**: モジュール化された段階的実装
+3. **テスト**: ローカル・CI/CD両方での検証
+4. **統合**: Git管理、詳細なコミットメッセージ
+5. **ドキュメント更新**: CLAUDE.md、README等の保守
 
-## プロジェクトアーキテクチャ概要
+### 品質保証プロセス
 
-  * **宣言的管理**: Nix (`nix-darwin`, `home-manager`) がシステムの核。
-  * **設定の単一情報源 (SSOT)**:
-      * **UIテーマ**: `nix/common/theme.nix`（今後作成）が全てのUIのカラースキームとフォントを定義する。
-      * **デプロイ**: `home.nix`が全てのドットファイルの配置を管理する。
-  * **命令的処理**:
-      * `scripts/`内のシェルスクリプトは、`justfile`を通じて抽象化されたタスクとして実行される。
-  * **AIとの連携**:
-      * この`CLAUDE.md`が、AIの振る舞いを定義する最上位のドキュメントとなる。
+```bash
+# ローカルテスト
+.github/scripts/test-platform-integration.sh
 
-## 📚 主要ドキュメントと情報源 (Key Documents)
+# 構文チェック
+nix flake check --show-trace
 
-作業の際は、以下のドキュメントを主要な情報源として常に参照してください。
+# CI/CD確認
+gh run list --limit 5
+```
 
-  * **本ファイル (`CLAUDE.md`)**: あなた自身の行動規範とワークフロー。
-  * **実装仕様書**: `docs/proposals/001-overall-evolution-spec-v2.md` - 現在進行中のプロジェクトの具体的な指示書。
-  * `docs/nix/HOMEBREW_STRATEGY.md` : Homebrewで管理するパッケージとその理由を記載したリスト。
-  * `nix/common/theme.nix` : UI設定の唯一のマスターファイル。
+## 🚀 技術スタック
 
-## ⚙️ プロジェクトの成果と履歴
+### コア技術
+- **Nix/NixOS**: 宣言的システム管理
+- **home-manager**: ユーザー環境管理  
+- **nix-darwin**: macOS統合
+- **nix-on-droid**: Android環境
+- **GitHub Actions**: CI/CD自動化
 
-(このセクションは、完了したフェーズの成果を記録するために継続して使用します)
+### セキュリティツール
+- **SOPS-nix**: シークレット暗号化
+- **Git-crypt**: ファイルレベル暗号化
+- **HashiCorp Vault**: エンタープライズシークレット管理
 
-  * **2025-06-17**: `dotfiles`総合進化プロジェクト開始。実装仕様書v2.0が承認される。
-  * **2025-06-16**: Nix移行プロジェクト完了。宣言的環境管理の基盤を確立。
-  * **2025-06-15**: MCP（Model Context Protocol）の接続問題を完全解決。
+### 開発ツール
+- **Claude Code**: AI支援開発
+- **MCP Protocol**: モデル間通信
+- **Just**: タスクランナー
+- **Starship**: モダンプロンプト
+
+## 📚 重要なリファレンス
+
+### 設定ファイル
+- `nix/platforms/flake.nix`: メイン設定
+- `nix/platforms/common/platform-detection.nix`: プラットフォーム検出
+- `justfile-multiplatform`: タスクランナー設定
+- `.github/workflows/multi-platform-integration.yml`: CI/CD設定
+
+### コマンドリファレンス
+```bash
+# プラットフォーム検出
+just detect-platform
+
+# 設定再構築
+just rebuild
+
+# テスト実行  
+just test
+
+# 統合テスト
+.github/scripts/test-platform-integration.sh
+
+# プラットフォーム情報確認
+nix eval .#platformInfo.aarch64-darwin.platform --json
+```
+
+## 🎯 成功メトリクス
+
+### Phase 4 達成目標
+- [x] **Task 4.1**: マルチプラットフォーム対応完了
+- [x] **Task 4.2**: CI/CD統合テスト導入完了  
+- [ ] **Task 4.3**: セキュリティ管理システム構築
+- [ ] **Task 4.4**: 高度な開発環境統合
+- [ ] **Task 4.5**: 自動化・オーケストレーション
+
+### 品質指標
+- テストカバレッジ: 95%以上
+- ビルド時間: 5分以内 (各プラットフォーム)
+- セキュリティスキャン: 0 critical vulnerabilities
+- ドキュメント整備: 100% (全機能documented)
+
+---
+
+**最終更新**: 2025年6月17日 15:30
+**現在のフェーズ**: Phase 4 - Task 4.3 開始準備
+**次のマイルストーン**: セキュリティ管理システム実装完了
