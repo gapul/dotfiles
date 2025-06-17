@@ -34,11 +34,11 @@ let
     jq
     
     # Archive tools
-    tar
+    gnutar
   ];
 
   # Modern CLI replacements (when available)
-  modernTools = with pkgs; lib.optionals (!platformInfo.capabilities.limitedPackages) [
+  modernTools = with pkgs; lib.optionals (!(platformInfo.capabilities.limitedPackages or false)) [
     # Modern replacements
     eza      # ls replacement
     bat      # cat replacement  
@@ -66,7 +66,7 @@ let
   ];
 
   # Development languages and runtimes
-  devTools = with pkgs; lib.optionals platformInfo.capabilities.canInstallPackages [
+  devTools = with pkgs; lib.optionals (platformInfo.capabilities.canInstallPackages or true) [
     # Language runtimes
     python3
     nodejs
@@ -88,15 +88,15 @@ let
 
   # Platform-specific core packages
   platformSpecific = 
-    if platformInfo.platform == "darwin" then with pkgs; [
+    if (platformInfo.platform or "unknown") == "darwin" then with pkgs; [
       # macOS specific tools
       coreutils-prefixed  # GNU coreutils with g prefix
       
-    ] else if platformInfo.platform == "android" then with pkgs; [
+    ] else if (platformInfo.platform or "unknown") == "android" then with pkgs; [
       # Android/Termux specific
       openssh
       
-    ] else [
+    ] else with pkgs; [
       # Linux/WSL specific
       openssh
       rsync
@@ -104,7 +104,7 @@ let
 
 in {
   # Export package lists
-  packages = platformInfo.filterForPlatform (
+  packages = (platformInfo.filterForPlatform or (x: x)) (
     corePackages ++ 
     modernTools ++ 
     devTools ++ 
