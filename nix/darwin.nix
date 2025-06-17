@@ -3,7 +3,7 @@
 {
   # System-wide packages (CLI tools + ALL GUI applications)
   environment.systemPackages = with pkgs; [
-    # Core CLI tools that definitely work
+    # Core CLI tools
     git
     gh
     jq
@@ -23,6 +23,9 @@
     starship
     zoxide  # Smart cd replacement
     direnv
+    lazygit  # Git TUI
+    gitui    # Alternative Git TUI
+    delta    # Git diff tool
     
     # Development tools
     neovim
@@ -49,6 +52,9 @@
     mas  # Mac App Store CLI
     htop
     btop
+    bottom   # System monitor
+    procs    # Modern ps replacement
+    dust     # Modern du replacement
     
     # Essential tools
     nmap
@@ -59,6 +65,7 @@
     # Network tools
     nss         # Network Security Services
     tcpdump     # Network packet analyzer
+    bandwhich   # Network bandwidth monitor
     
     # Archive tools
     p7zip       # 7-Zip archive tool
@@ -69,11 +76,20 @@
     yq          # YAML processor
     pandoc      # Document converter
     
-    # Window management packages (for manual installation)
-    # Note: yabai, skhd, sketchybar services configured below
+    # Modern CLI replacements
+    sd          # Modern sed replacement
+    tokei       # Code statistics
+    tealdeer    # Modern man pages (tldr)
+    hyperfine   # Benchmarking tool
     
-    # NOTE: GUI applications are managed by Homebrew for better compatibility
-    # Only CLI tools and essential development packages are managed by nix
+    # File operations
+    rename      # Rename utility
+    
+    # GUI applications available in nixpkgs (better performance & reproducibility)
+    firefox          # Base Firefox browser
+    thunderbird      # Email client
+    
+    # Note: Many GUI apps still managed by Homebrew for better macOS integration
     
   ];
 
@@ -186,7 +202,7 @@
     ];
     
     casks = [
-      # Core productivity (macOS-specific tools only)
+      # Core productivity (macOS-specific tools only) 
       "raycast"
       "karabiner-elements"
       
@@ -197,7 +213,7 @@
       "virtualbox"    # VirtualBox (Apple Silicon limitations)
       "godot"         # Godot (Apple Silicon limitations)
       "podman-desktop" # Container management
-      "freecad"       # CAD software
+      "freecad"       # CAD software  
       "kicad"         # PCB design
       "goxel"         # Voxel editor
       
@@ -215,50 +231,70 @@
       "vlc"
       "obs"
       "musescore"
-      "mixxx"
+      "mixxx" 
       "surge-xt"
       
       # Gaming & Emulation
       "steam"
       "retroarch-metal"
       "prismlauncher"
+      "epic-games"
+      "whisky"
+      "minecraft"
       
       # Office & Productivity
       "onlyoffice"
+      "libreoffice"
+      "microsoft-excel"
+      "microsoft-word"
+      "microsoft-powerpoint"
       
       # Utilities & System
       "spacedrive"
       "rustdesk"
       "wireshark"
-      
-      # Professional Tools
-      "davinci-resolve"
-      "zrythm"
-      
-      # Browsers (special editions only)
-      "zen"
-      "google-chrome@dev"
-      "vivaldi"        # Moved from nix per user request
-      
-      # Gaming & Entertainment (platform-specific)
-      "epic-games"
-      "whisky"
-      
-      # Utilities & System (macOS-specific tools)
       "shortcat"
       "middleclick"
       "jordanbaird-ice"
       "cloudflare-warp"
       "vmware-fusion"
+      "syncthing"
+      "espanso"
       
-      # Office & Documents (Microsoft Office native)
-      "microsoft-excel"
-      "microsoft-word"
-      "microsoft-powerpoint"
+      # Professional Tools
+      "davinci-resolve"
+      "zrythm"
+      
+      # Browsers (special editions and macOS-optimized versions)
+      "zen"
+      "google-chrome@dev"
+      "vivaldi"
+      "floorp"
+      "firefox@developer-edition"
+      "tor-browser"
+      # Note: Base firefox moved to nix for better performance
+      
+      # Communication & Social
+      "discord"
+      "slack"
+      # "thunderbird" moved to nix
       
       # AI & Assistant tools (native apps)
       "claude"
       "chatgpt"
+      "ollama"
+      
+      # Development Tools & Editors
+      "visual-studio-code"
+      "zed"
+      "wezterm"
+      
+      # Research & Knowledge Management
+      "obsidian"
+      "zotero"
+      
+      # Media & Security
+      "bitwarden"
       
       # Fonts (Japanese/special fonts)
       "font-hackgen-nerd"
