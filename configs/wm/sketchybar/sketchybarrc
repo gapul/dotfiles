@@ -1,5 +1,8 @@
 #!/usr/bin/env lua
 
+-- Add current directory to package path for local modules
+package.path = package.path .. ";/Users/yuki/.config/sketchybar/?.lua;/Users/yuki/.config/sketchybar/?/init.lua"
+
 -- Load the sketchybar-package and prepare the helper binaries
 require("helpers")
 require("init")
