@@ -123,7 +123,7 @@ setup_git_crypt() {
     log_info "Available GPG keys:"
     gpg --list-secret-keys --keyid-format LONG
     
-    read -p "Enter GPG key ID to add: " gpg_key_id
+    read -r -p "Enter GPG key ID to add: " gpg_key_id
     if [ -n "$gpg_key_id" ]; then
         git-crypt add-gpg-user "$gpg_key_id"
         log_success "GPG user added to Git-crypt"
