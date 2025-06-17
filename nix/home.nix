@@ -1,5 +1,10 @@
 { config, pkgs, username, homeDirectory, dotfilesDirectory, ... }:
 
+let
+  # Import unified theme configuration
+  theme = import ./common/theme.nix { inherit pkgs; };
+in
+
 {
   # Basic home-manager configuration
   home = {
@@ -240,14 +245,36 @@
     # Note: Python packages managed via nix expressions rather than pip when possible
   };
 
-  # File management - Temporarily disabled due to pure evaluation mode
-  # Will be enabled once flake configuration is properly set up for impure builds
-  # home.file = {
-  #   # Terminal configurations
-  #   ".config/wezterm/wezterm.lua".source = "${dotfilesDirectory}/configs/terminal/wezterm.lua";
-  #   ".config/starship.toml".source = "${dotfilesDirectory}/configs/terminal/starship.toml";
-  #   ".tmux.conf".source = "${dotfilesDirectory}/configs/terminal/tmux.conf";
-  # };
+  # File management - Dotfiles deployment via home-manager
+  # Migrated from scripts/install.sh DOTFILES_LIST for declarative configuration
+  home.file = {
+    # Phase 1: 基本設定（必須）
+    ".zshrc".source = "${dotfilesDirectory}/configs/zsh/zshrc";
+    ".zprofile".source = "${dotfilesDirectory}/configs/zsh/zprofile";
+    ".config/starship.toml".source = "${dotfilesDirectory}/configs/terminal/starship.toml";
+    ".config/wezterm/wezterm.lua".source = "${dotfilesDirectory}/configs/terminal/wezterm.lua";
+    ".tmux.conf".source = "${dotfilesDirectory}/configs/terminal/tmux.conf";
+    
+    # Phase 2: 開発ツール設定
+    ".condarc".source = "${dotfilesDirectory}/configs/development/.condarc";
+    ".docker/config.json".source = "${dotfilesDirectory}/configs/development/docker/config.json";
+    ".docker/daemon.json".source = "${dotfilesDirectory}/configs/development/docker/daemon.json";
+    ".config/gh/config.yml".source = "${dotfilesDirectory}/configs/cli/gh/config.yml";
+    ".config/claude/mcp-servers.json".source = "${dotfilesDirectory}/configs/apps/claude/mcp-servers.json";
+    
+    # Phase 3: エディター設定（任意）
+    ".config/zed/settings.json".source = "${dotfilesDirectory}/configs/editors/zed/settings.json";
+    "Library/Application Support/Code/User/settings.json".source = "${dotfilesDirectory}/configs/editors/vscode/settings.json";
+    ".config/nvim".source = "${dotfilesDirectory}/configs/editors/nvim";
+    
+    # Phase 4: ウィンドウマネージャー設定（macOS限定・任意）
+    ".config/yabai/yabairc".source = "${dotfilesDirectory}/configs/wm/yabai/yabairc";
+    ".config/skhd/skhdrc".source = "${dotfilesDirectory}/configs/wm/skhd/skhdrc";
+    ".config/sketchybar/sketchybarrc".source = "${dotfilesDirectory}/configs/wm/sketchybar/sketchybarrc";
+    
+    # Note: Sensitive files (.gitconfig, ssh/config, claude.json) are excluded for security
+    # See .example files in respective directories for templates
+  };
 
   # Session variables
   home.sessionVariables = {
