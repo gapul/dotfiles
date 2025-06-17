@@ -1,8 +1,8 @@
 { config, pkgs, username, homeDirectory, dotfilesDirectory, ... }:
 
 let
-  # Import unified theme configuration
-  theme = import ./common/theme.nix { inherit pkgs; };
+  # Import unified theme configuration (SSOT)
+  theme = import ./theme.nix { };
 in
 
 {
@@ -310,7 +310,79 @@ in
     ".zshrc".source = ../configs/zsh/zshrc;
     ".zprofile".source = ../configs/zsh/zprofile;
     ".config/starship.toml".source = ../configs/terminal/starship.toml;
-    ".config/wezterm/wezterm.lua".source = ../configs/terminal/wezterm.lua;
+    # Wezterm config with theme integration (SSOT)
+    ".config/wezterm/wezterm.lua".text = ''
+      local wezterm = require 'wezterm'
+      local config = wezterm.config_builder()
+      
+      -- カラースキーム設定（自動切り替え）
+      local function scheme_for_appearance(appearance)
+        if appearance:find 'Dark' then
+          return 'Catppuccin Mocha'
+        else
+          return 'Catppuccin Latte'
+        end
+      end
+      config.color_scheme = scheme_for_appearance(wezterm.gui.get_appearance())
+      
+      -- フォント設定 (SSOT from theme.nix)
+      config.font = wezterm.font_with_fallback {
+        '${theme.fonts.primary}',
+        'SF Mono',
+        'Menlo',
+        'Monaco',
+      }
+      config.font_size = ${toString theme.fonts.size.medium}.0
+      config.line_height = 1.2
+      config.freetype_load_target = 'HorizontalLcd'
+      
+      -- カラー設定 (SSOT from theme.nix)
+      config.colors = {
+        foreground = '${theme.colors.text}',
+        background = '${theme.colors.base}',
+        cursor_bg = '${theme.colors.blue}',
+        cursor_fg = '${theme.colors.text}',
+        cursor_border = '${theme.colors.blue}',
+        selection_fg = '${theme.colors.text}',
+        selection_bg = '${theme.colors.surface1}',
+        scrollbar_thumb = '${theme.colors.surface0}',
+        split = '${theme.colors.surface0}',
+        
+        ansi = {
+          '${theme.colors.surface1}', -- black
+          '${theme.colors.red}',      -- red
+          '${theme.colors.green}',    -- green
+          '${theme.colors.yellow}',   -- yellow
+          '${theme.colors.blue}',     -- blue
+          '${theme.colors.mauve}',    -- magenta
+          '${theme.colors.teal}',     -- cyan
+          '${theme.colors.subtext1}', -- white
+        },
+        brights = {
+          '${theme.colors.surface2}', -- bright black
+          '${theme.colors.red}',      -- bright red
+          '${theme.colors.green}',    -- bright green
+          '${theme.colors.yellow}',   -- bright yellow
+          '${theme.colors.blue}',     -- bright blue
+          '${theme.colors.mauve}',    -- bright magenta
+          '${theme.colors.teal}',     -- bright cyan
+          '${theme.colors.text}',     -- bright white
+        },
+      }
+      
+      -- ターミナル設定
+      config.enable_tab_bar = false
+      config.window_decorations = "RESIZE"
+      config.window_background_opacity = 0.95
+      config.macos_window_background_blur = 20
+      
+      -- その他の設定
+      config.audible_bell = "Disabled"
+      config.scrollback_lines = 10000
+      config.enable_scroll_bar = false
+      
+      return config
+    '';
     ".tmux.conf".source = ../configs/terminal/tmux.conf;
     
     # Phase 2: 開発ツール設定
