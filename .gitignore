@@ -41,10 +41,17 @@ configs/apps/claude/claude.json
 **/token*
 **/.env
 **/.env.local
+*.env
 *.key
 *.pem
 *.p12
 *.p8
+*.crt
+*.csr
+*.jks
+*.keystore
+id_rsa*
+id_ed25519*
 secrets.*
 !secrets.*.example
 private.*

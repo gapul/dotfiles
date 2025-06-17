@@ -154,11 +154,18 @@ home-manager switch --flake ~/dotfiles/nix --switch-generation <generation-id>
 home-manager news
 ```
 
-### 🔧 install.sh（初回セットアップ用ラッパー）
+### 🏠 home-manager（推奨セットアップ方法）
 ```bash
-./install.sh --help          # ヘルプ表示
-./install.sh --force         # 既存設定を強制上書き
-# ※ 現在は初回セットアップやソフトウェアインストール補完用
+# 初回セットアップ
+cd ~/dotfiles/nix
+home-manager switch --flake .
+
+# 設定更新の適用
+home-manager switch --flake ~/dotfiles/nix
+
+# 世代管理（ロールバック）
+home-manager generations
+home-manager switch --flake ~/dotfiles/nix --switch-generation <generation-id>
 ```
 
 ### 🧪 設定検証
@@ -173,11 +180,14 @@ python3 .github/scripts/validate_toml.py
 
 ### 🔍 状態確認
 ```bash
-# シンボリックリンク状態確認
-ls -la ~ | grep '\->'
+# home-managerリンク状態確認
+ls -la ~ | grep '/nix/store'
 
-# バックアップ履歴確認  
-ls -la backups/
+# 世代履歴確認
+home-manager generations
+
+# 設定確認
+home-manager news
 
 # Git管理状況確認
 git status
@@ -211,15 +221,17 @@ ln -sf "$PWD/configs/ssh/config" ~/.ssh/config
    cp ~/.vimrc configs/editors/vim/.vimrc
    ```
 
-2. **install.shに登録**
-   ```bash
-   # DOTFILES_LIST に追加
-   "editors/vim/.vimrc:$HOME_DIR/.vimrc"
+2. **nix/home.nixにhome.fileエントリ追加**
+   ```nix
+   home.file = {
+     # 既存の設定...
+     ".vimrc".source = ../configs/editors/vim/.vimrc;
+   };
    ```
 
-3. **テスト実行**
+3. **設定適用**
    ```bash
-   ./install.sh --force
+   home-manager switch --flake ~/dotfiles/nix
    ```
 
 ### 🎨 ターミナル設定のカスタマイズ

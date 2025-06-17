@@ -34,17 +34,22 @@ DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HOME_DIR="$HOME"
 BACKUP_DIR="$DOTFILES_DIR/backups"
 
-# バックアップ対象ファイル（install.shと同期）
-DOTFILES_LIST=(
-    "shell/.zshrc:$HOME_DIR/.zshrc"
-    "shell/.zprofile:$HOME_DIR/.zprofile"
-    "terminal/starship.toml:$HOME_DIR/.config/starship.toml"
-    "development/.condarc:$HOME_DIR/.condarc"
-    "development/docker/config.json:$HOME_DIR/.docker/config.json"
-    "editors/zed/settings.json:$HOME_DIR/.config/zed/settings.json"
-    "editors/vscode/settings.json:$HOME_DIR/Library/Application Support/Code/User/settings.json"
-    "wm/yabai/yabairc:$HOME_DIR/.config/yabai/yabairc"
-    "wm/skhd/skhdrc:$HOME_DIR/.config/skhd/skhdrc"
+# DEPRECATED: File deployment now managed via nix home-manager
+# This list is kept for reference and migration verification only
+# All dotfiles are now deployed declaratively via nix/home.nix home.file configuration
+
+# Migration Notice: Backup functionality has been migrated to Nix-based approach
+# For backups, use: nix profile backup or Time Machine
+# For configuration rollback, use: home-manager generations
+
+DEPRECATED_DOTFILES_LIST=(
+    # MIGRATED TO: nix/home.nix home.file section
+    # Files now managed via home-manager declarative configuration
+    # This list is preserved for historical reference only
+    "shell/.zshrc:$HOME_DIR/.zshrc"  # → ".zshrc".source = ../configs/zsh/zshrc
+    "shell/.zprofile:$HOME_DIR/.zprofile"  # → ".zprofile".source = ../configs/zsh/zprofile
+    "terminal/starship.toml:$HOME_DIR/.config/starship.toml"  # → ".config/starship.toml".source = ../configs/terminal/starship.toml
+    # ... (See nix/home.nix for complete current list)
 )
 
 # バックアップディレクトリの作成
@@ -57,39 +62,26 @@ create_backup_dir() {
     echo "$backup_session_dir"
 }
 
-# ファイルのバックアップ
-backup_files() {
-    local backup_session_dir="$1"
-    local backup_count=0
+# DEPRECATED: Legacy file backup function removed
+# Backup functionality has been migrated to Nix-based approach
+# 
+# MIGRATION NOTICE:
+# - Individual file backups are no longer needed
+# - home-manager provides generation-based rollback: home-manager generations
+# - System-wide backups should use Time Machine or nix profile backup
+# - For development snapshots, use git commits in dotfiles repository
+#
+# This function is preserved for compatibility but should not be used
+
+legacy_backup_files() {
+    log_warning "⚠️  DEPRECATED: This backup method is no longer supported"
+    log_info "🔄 Recommended alternatives:"
+    log_info "  - home-manager generations          : Rollback home-manager changes"
+    log_info "  - Time Machine                     : System-wide backups"
+    log_info "  - git commit in dotfiles repository : Configuration snapshots"
+    log_info "  - nix profile backup                : Profile-based backups"
     
-    log_info "ドットファイルのバックアップを開始します..."
-    
-    for dotfile_entry in "${DOTFILES_LIST[@]}"; do
-        # local source_path="${dotfile_entry%%:*}"  # unused variable
-        local target_path="${dotfile_entry##*:}"
-        local filename
-        filename=$(basename "$target_path")
-        local backup_path="$backup_session_dir/$filename"
-        
-        if [[ -e "$target_path" ]]; then
-            if [[ -L "$target_path" ]]; then
-                # シンボリックリンクの場合
-                local link_target
-                link_target=$(readlink "$target_path")
-                echo "$link_target" > "$backup_path.symlink_target"
-                log_info "$filename (シンボリックリンク -> $link_target) をバックアップしました"
-            else
-                # 通常ファイルの場合
-                cp "$target_path" "$backup_path"
-                log_info "$filename をバックアップしました"
-            fi
-            ((backup_count++))
-        else
-            log_warning "$filename が見つかりません: $target_path"
-        fi
-    done
-    
-    return $backup_count
+    return 0
 }
 
 # バックアップ情報の保存

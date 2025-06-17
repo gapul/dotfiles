@@ -34,17 +34,22 @@ DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HOME_DIR="$HOME"
 BACKUP_DIR="$DOTFILES_DIR/backups"
 
-# 復元対象ファイル（install.shと同期）
-DOTFILES_LIST=(
-    "shell/.zshrc:$HOME_DIR/.zshrc"
-    "shell/.zprofile:$HOME_DIR/.zprofile"
-    "terminal/starship.toml:$HOME_DIR/.config/starship.toml"
-    "development/.condarc:$HOME_DIR/.condarc"
-    "development/docker/config.json:$HOME_DIR/.docker/config.json"
-    "editors/zed/settings.json:$HOME_DIR/.config/zed/settings.json"
-    "editors/vscode/settings.json:$HOME_DIR/Library/Application Support/Code/User/settings.json"
-    "wm/yabai/yabairc:$HOME_DIR/.config/yabai/yabairc"
-    "wm/skhd/skhdrc:$HOME_DIR/.config/skhd/skhdrc"
+# DEPRECATED: File deployment now managed via nix home-manager
+# This list is kept for reference and migration verification only
+# All dotfiles are now deployed declaratively via nix/home.nix home.file configuration
+
+# Migration Notice: Restore functionality has been migrated to Nix-based approach
+# For configuration rollback, use: home-manager generations
+# For system rollback, use: darwin-rebuild rollback
+
+DEPRECATED_DOTFILES_LIST=(
+    # MIGRATED TO: nix/home.nix home.file section
+    # Files now managed via home-manager declarative configuration
+    # For rollback, use: home-manager generations
+    "shell/.zshrc:$HOME_DIR/.zshrc"  # → Managed via home-manager
+    "shell/.zprofile:$HOME_DIR/.zprofile"  # → Managed via home-manager
+    "terminal/starship.toml:$HOME_DIR/.config/starship.toml"  # → Managed via home-manager
+    # ... (See home-manager generations for current state)
 )
 
 # 利用可能なバックアップの取得
