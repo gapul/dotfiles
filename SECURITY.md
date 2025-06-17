@@ -81,6 +81,95 @@ git check-ignore configs/apps/claude/claude.json
 
 すべて `configs/...` と表示されれば正常に除外されています。
 
+## 🔐 SOPS による宣言的シークレット管理
+
+### 概要
+
+`sops-nix` を使用して、機密情報を安全に暗号化・管理できます。これにより：
+- 機密情報を暗号化してリポジトリに保存可能
+- Nix設定から暗号化されたシークレットにアクセス
+- 環境の完全な宣言的再現が可能
+
+### セットアップ手順
+
+1. **Age keyの生成**
+   ```bash
+   # Age暗号化キーを生成
+   mkdir -p ~/.config/sops/age
+   age-keygen -o ~/.config/sops/age/keys.txt
+   
+   # 公開キーを確認（次の手順で使用）
+   grep "public key:" ~/.config/sops/age/keys.txt
+   ```
+
+2. **secrets.yamlファイルの作成**
+   ```bash
+   # テンプレートをコピー
+   cp secrets.yaml.example secrets.yaml
+   
+   # 実際のシークレット値を設定
+   vim secrets.yaml
+   ```
+
+3. **SOPSによる暗号化**
+   ```bash
+   # 公開キーを環境変数に設定（上記で確認した公開キー）
+   export SOPS_AGE_RECIPIENTS="age1your_public_key_here"
+   
+   # ファイルを暗号化
+   sops -e -i secrets.yaml
+   ```
+
+4. **Nix設定での利用**
+   ```nix
+   # darwin.nix での設定例
+   sops.secrets."github_token" = {
+     path = "/run/secrets/github_token";
+     owner = config.users.users.yuki.name;
+     group = "staff";
+     mode = "0400";
+   };
+   ```
+
+### ファイル編集
+
+```bash
+# 暗号化されたファイルの編集
+sops secrets.yaml
+
+# 特定のキーのみ編集
+sops --set '["new_key"] "new_value"' secrets.yaml
+```
+
+### 利用可能なシークレット
+
+`secrets.yaml.example` を参照して、以下のようなシークレットを管理できます：
+- GitHub API tokens
+- OpenAI/Claude API keys
+- SSH private keys
+- Database credentials
+- Cloud service keys
+- Application-specific secrets
+
+### トラブルシューティング
+
+**復号エラーが発生する場合：**
+```bash
+# キーファイルの権限確認
+ls -la ~/.config/sops/age/keys.txt
+chmod 600 ~/.config/sops/age/keys.txt
+
+# SOPS_AGE_KEY_FILE環境変数の設定
+export SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt
+```
+
+**darwin-rebuild時のエラー：**
+```bash
+# nix-darwin側でキーが見つからない場合
+sudo chmod 644 ~/.config/sops/age/keys.txt
+# 注意: 適切なファイル権限を設定してください
+```
+
 ## 📞 サポート
 
 セキュリティに関する質問や問題を発見した場合は、パブリックなIssueではなく、直接連絡してください。

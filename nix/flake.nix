@@ -13,11 +13,23 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     
+    # Secret management
+    sops-nix = {
+      url = "github:Mic92/sops-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    
+    # Mac App Store management
+    mas-nix = {
+      url = "github:johnstonsmith/mas-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    
     # Additional inputs for specific tools
     flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs, nix-darwin, home-manager, flake-utils }:
+  outputs = { self, nixpkgs, nix-darwin, home-manager, sops-nix, mas-nix, flake-utils }:
     let
       system = "aarch64-darwin"; # Apple Silicon Mac
       pkgs = nixpkgs.legacyPackages.${system};
@@ -35,6 +47,8 @@
           specialArgs = { inherit username homeDirectory dotfilesDirectory; };
           modules = [
             ./darwin.nix
+            sops-nix.darwinModules.sops
+            mas-nix.darwinModules.mas
             home-manager.darwinModules.home-manager
             {
               home-manager = {
@@ -53,6 +67,8 @@
           specialArgs = { inherit username homeDirectory dotfilesDirectory; };
           modules = [
             ./darwin.nix
+            sops-nix.darwinModules.sops
+            mas-nix.darwinModules.mas
             home-manager.darwinModules.home-manager
             {
               home-manager = {

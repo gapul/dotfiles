@@ -189,6 +189,64 @@ in
       # Manual starship.toml management via home.file
     };
 
+    # Atuin - enhanced shell history
+    atuin = {
+      enable = true;
+      enableZshIntegration = true;
+      enableBashIntegration = true;
+      settings = {
+        # Sync configuration (optional - can be disabled for privacy)
+        sync_address = "https://api.atuin.sh";
+        auto_sync = false;  # Disable automatic sync for privacy
+        
+        # History settings
+        update_check = false;
+        search_mode = "fuzzy";
+        filter_mode = "global";
+        filter_mode_shell = "session";
+        inline_height = 15;
+        show_preview = true;
+        max_preview_height = 4;
+        
+        # Key bindings - use Ctrl+R for search
+        keymap_mode = "auto";
+        
+        # Privacy settings
+        secrets_filter = true;
+        
+        # Storage settings
+        history_filter = [
+          "^cd "
+          "^ls "
+          "^ll "
+          "^la "
+          "^pwd"
+          "^exit"
+          "^clear"
+          "^history"
+        ];
+        
+        # UI settings
+        style = "compact";
+        show_help = true;
+        exit_mode = "return-original";
+        
+        # Statistics
+        common_prefix = ["sudo"];
+        common_subcommands = [
+          "git"
+          "cargo"
+          "npm"
+          "yarn"
+          "docker"
+          "kubectl"
+          "nix"
+          "home-manager"
+          "darwin-rebuild"
+        ];
+      };
+    };
+
     # tmux - enabled with basic configuration  
     tmux = {
       enable = true;
