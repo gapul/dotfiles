@@ -1,162 +1,89 @@
-# Unified UI Theme Configuration - Single Source of Truth (SSOT)
-# This file defines the master theme that is used across all UI components
-# including terminal, window manager, and editor configurations.
+# Theme Configuration Module for home-manager
+# Applies theme settings to various programs
 
-{ pkgs, ... }:
+{ config, lib, pkgs, ... }:
 
-{
-  # Font Configuration - Primary typography system
-  fonts = {
-    # Primary monospace font for terminals and code
-    monospace = {
-      name = "HackGen Console NF";
-      size = 14;
-      fallbacks = [
-        "SF Mono"
-        "Menlo"
-        "Monaco"
-        "DejaVu Sans Mono"
-      ];
-    };
-    
-    # UI font for system interface
-    ui = {
-      name = "SF Pro Display";
-      size = 13;
-      fallbacks = [
-        "Helvetica Neue" 
-        "Arial"
-        "sans-serif"
-      ];
-    };
-  };
-
-  # Color Palette - Catppuccin-based unified color scheme
-  colors = {
-    # Base colors (hex format for CSS/config files)
-    hex = {
-      # Dark theme (Catppuccin Mocha)
-      dark = {
-        base = "#1e1e2e";        # Background
-        mantle = "#181825";      # Secondary background
-        surface0 = "#313244";    # Surface
-        text = "#cdd6f4";        # Main text
-        
-        # Accent colors
-        red = "#f38ba8";         # Error/danger
-        green = "#a6e3a1";       # Success
-        blue = "#89b4fa";        # Info/primary
-        yellow = "#f9e2af";      # Warning
-        peach = "#fab387";       # Orange accent
-        
-        # Semantic colors
-        cursor = "#89b4fa";      # Cursor color
-        selection = "#313244";   # Selection background
-        border = "#45475a";      # Border color
-      };
-      
-      # Light theme (Catppuccin Latte)
-      light = {
-        base = "#eff1f5";        # Background
-        mantle = "#e6e9ef";      # Secondary background
-        surface0 = "#ccd0da";    # Surface
-        text = "#4c4f69";        # Main text
-        
-        # Accent colors (adjusted for light theme)
-        red = "#d20f39";         # Error/danger
-        green = "#40a02b";       # Success
-        blue = "#1e66f5";        # Info/primary
-        yellow = "#df8e1d";      # Warning
-        peach = "#fe640b";       # Orange accent
-        
-        # Semantic colors
-        cursor = "#1e66f5";      # Cursor color
-        selection = "#ccd0da";   # Selection background
-        border = "#bcc0cc";      # Border color
+let
+  themeConfig = import ./colors.nix;
+  colors = themeConfig.colors.str.dark;  # Default to dark theme
+in {
+  # Programs that need theme configuration
+  programs = {
+    # Terminal theme (if using Alacritty)
+    alacritty = lib.mkIf (config.programs.alacritty.enable or false) {
+      settings = {
+        colors = {
+          primary = {
+            background = colors.base;
+            foreground = colors.text;
+          };
+          cursor = {
+            text = colors.base;
+            cursor = colors.cursor;
+          };
+          selection = {
+            text = colors.text;
+            background = colors.selection;
+          };
+          normal = {
+            black = colors.surface0;
+            red = colors.red;
+            green = colors.green;
+            yellow = colors.yellow;
+            blue = colors.blue;
+            magenta = colors.peach;
+            cyan = colors.blue;
+            white = colors.text;
+          };
+        };
+        font = {
+          normal.family = themeConfig.typography.monospace.name;
+          size = themeConfig.typography.monospace.size;
+        };
       };
     };
     
-    # Integer format for Lua applications (sketchybar)
-    int = {
-      dark = {
-        base = "0xff1e1e2e";
-        mantle = "0xff181825";
-        surface0 = "0xff313244";
-        text = "0xffcdd6f4";
-        blue = "0xff89b4fa";
-        green = "0xffa6e3a1";
-        red = "0xfff38ba8";
-        yellow = "0xfff9e2af";
-        peach = "0xfffab387";
-        transparent = "0x00000000";
-      };
-      light = {
-        base = "0xffeff1f5";
-        mantle = "0xffe6e9ef";
-        surface0 = "0xffccd0da";
-        text = "0xff4c4f69";
-        blue = "0xff1e66f5";
-        green = "0xff40a02b";
-        red = "0xffd20f39";
-        yellow = "0xffdf8e1d";
-        peach = "0xfffe640b";
-        transparent = "0x00000000";
-      };
-    };
-  };
-
-  # Typography settings
-  typography = {
-    lineHeight = {
-      normal = 1.2;
-      relaxed = 1.4;
-    };
-  };
-
-  # Spacing system (8px base unit)
-  spacing = {
-    xs = 4;    # 0.25rem
-    sm = 8;    # 0.5rem  
-    md = 16;   # 1rem
-    lg = 24;   # 1.5rem
-    xl = 32;   # 2rem
-  };
-
-  # Common theme configurations for specific applications
-  applications = {
-    # Terminal applications (wezterm, kitty, etc.)
-    terminal = {
-      font = "HackGen Console NF";
-      fontSize = 14;
-      lineHeight = 1.2;
-      colorScheme = {
-        dark = "Catppuccin Mocha";
-        light = "Catppuccin Latte";
+    # Starship prompt theme
+    starship = lib.mkIf (config.programs.starship.enable or false) {
+      settings = {
+        palette = "catppuccin_mocha";
+        palettes.catppuccin_mocha = {
+          rosewater = "#f5e0dc";
+          flamingo = "#f2cdcd";
+          pink = "#f5c2e7";
+          mauve = "#cba6f7";
+          red = colors.red;
+          maroon = "#eba0ac";
+          peach = colors.peach;
+          yellow = colors.yellow;
+          green = colors.green;
+          teal = "#94e2d5";
+          sky = "#89dceb";
+          sapphire = "#74c7ec";
+          blue = colors.blue;
+          lavender = "#b4befe";
+          text = colors.text;
+          subtext1 = "#bac2de";
+          subtext0 = "#a6adc8";
+          overlay2 = "#9399b2";
+          overlay1 = "#7f849c";
+          overlay0 = "#6c7086";
+          surface2 = "#585b70";
+          surface1 = "#45475a";
+          surface0 = colors.surface0;
+          base = colors.base;
+          mantle = colors.mantle;
+          crust = "#11111b";
+        };
       };
     };
-    
-    # Window manager (yabai, sketchybar, skhd)
-    windowManager = {
-      barHeight = 32;
-      borderWidth = 2;
-      borderRadius = 8;
-      padding = 8;
-      margin = 4;
-    };
-    
-    # Editor configurations
-    editor = {
-      font = "HackGen Console NF";
-      fontSize = 14;
-      lineHeight = 1.2;
-      tabSize = 2;
-      colorTheme = "Catppuccin";
-    };
   };
 
-  # Theme switching configuration
-  themeMode = {
-    default = "auto";  # auto, dark, light
-    autoSwitch = true; # Follow system appearance
+  # Export theme configuration for other modules
+  home.sessionVariables = {
+    THEME_MODE = "dark";
+    THEME_BACKGROUND = colors.base;
+    THEME_FOREGROUND = colors.text;
+    THEME_ACCENT = colors.blue;
   };
 }
