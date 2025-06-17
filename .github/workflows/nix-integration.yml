@@ -73,11 +73,15 @@ jobs:
     - name: Analyze Package Dependencies
       run: |
         cd nix
-        # Check for dependency conflicts
-        nix eval .#darwinConfigurations.yuki.config.environment.systemPackages --json > /tmp/nix-packages.json
+        # Check for dependency conflicts using the default configuration
+        nix eval .#darwinConfigurations.default.config.environment.systemPackages --json > /tmp/nix-packages.json
         
-        # Validate no conflicting packages
-        cat /tmp/nix-packages.json | jq -r '.[] | select(. | contains("yabai"))'
+        # Validate no conflicting packages (yabai should not be in systemPackages as it's in homebrew)
+        if cat /tmp/nix-packages.json | jq -r '.[] | select(. | contains("yabai"))' | grep -q yabai; then
+          echo "Warning: yabai found in systemPackages - should be in homebrew.brews"
+        else
+          echo "✅ yabai correctly managed via Homebrew"
+        fi
         
     - name: Generate Dependency Report
       run: |
