@@ -215,9 +215,9 @@
       # Android configurations (nix-on-droid)
       nixOnDroidConfigurations = {
         "android" = nix-on-droid.lib.nixOnDroidConfiguration {
-          system = "aarch64-linux";
+          pkgs = import nixpkgs { system = "aarch64-linux"; config.allowUnfree = true; };
           extraSpecialArgs = (mkPlatformConfig "aarch64-linux").specialArgs;
-          modules = androidModules ++ [{ nixpkgs.config.allowUnfree = true; }];
+          modules = androidModules;
         };
       };
 
@@ -271,43 +271,7 @@
         nixpkgs.legacyPackages.${system}.nixpkgs-fmt
       );
       
-      # Platform information for CI/CD and debugging
-      platformInfo = flake-utils.lib.eachDefaultSystemMap (system:
-        let
-          pkgs = nixpkgs.legacyPackages.${system};
-          lib = nixpkgs.lib;
-          platformDetection = import ./common/platform-detection.nix { inherit lib pkgs; };
-        in {
-          inherit (platformDetection) platformInfo;
-          platform = platformDetection.platformInfo.platform;
-          capabilities = platformDetection.platformInfo.capabilities;
-          settings = platformDetection.platformInfo.currentSettings;
-        }
-      );
 
-      # CI/CD templates and examples
-      templates = {
-        # Platform-specific templates
-        darwin = {
-          path = ./templates/darwin;
-          description = "Template for macOS with nix-darwin";
-        };
-        
-        linux = {
-          path = ./templates/linux;
-          description = "Template for Linux with home-manager";
-        };
-        
-        wsl = {
-          path = ./templates/wsl;
-          description = "Template for WSL with Windows integration";
-        };
-        
-        android = {
-          path = ./templates/android;
-          description = "Template for Android with nix-on-droid";
-        };
-      };
       
       # Documentation and examples
       apps = flake-utils.lib.eachDefaultSystemMap (system:
