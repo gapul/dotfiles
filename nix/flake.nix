@@ -19,17 +19,13 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     
-    # Mac App Store management
-    mas-nix = {
-      url = "github:johnstonsmith/mas-nix";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
+# Note: Mac App Store management is built into nix-darwin via homebrew.masApps
     
     # Additional inputs for specific tools
     flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs, nix-darwin, home-manager, sops-nix, mas-nix, flake-utils }:
+  outputs = { self, nixpkgs, nix-darwin, home-manager, sops-nix, flake-utils }:
     let
       system = "aarch64-darwin"; # Apple Silicon Mac
       pkgs = nixpkgs.legacyPackages.${system};
@@ -48,7 +44,6 @@
           modules = [
             ./darwin.nix
             sops-nix.darwinModules.sops
-            mas-nix.darwinModules.mas
             home-manager.darwinModules.home-manager
             {
               home-manager = {
@@ -68,7 +63,6 @@
           modules = [
             ./darwin.nix
             sops-nix.darwinModules.sops
-            mas-nix.darwinModules.mas
             home-manager.darwinModules.home-manager
             {
               home-manager = {
