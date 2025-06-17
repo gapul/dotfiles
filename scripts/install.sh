@@ -87,35 +87,20 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# 管理対象ドットファイルの定義
-# format: "source_path:target_path"
-DOTFILES_LIST=(
-    # Phase 1: 基本設定（必須）
-    "zsh/zshrc:$HOME_DIR/.zshrc"
-    "zsh/zprofile:$HOME_DIR/.zprofile"
-    "terminal/starship.toml:$HOME_DIR/.config/starship.toml"
-    "terminal/wezterm.lua:$HOME_DIR/.config/wezterm/wezterm.lua"
-    "terminal/tmux.conf:$HOME_DIR/.tmux.conf"
-    
-    # Phase 2: 開発ツール設定
-    "development/.condarc:$HOME_DIR/.condarc"
-    "development/docker/config.json:$HOME_DIR/.docker/config.json"
-    "development/docker/daemon.json:$HOME_DIR/.docker/daemon.json"
-    "cli/gh/config.yml:$HOME_DIR/.config/gh/config.yml"
-    "apps/claude/mcp-servers.json:$HOME_DIR/.config/claude/mcp-servers.json"
-    
-    # Phase 3: エディター設定（任意）
-    "editors/zed/settings.json:$HOME_DIR/.config/zed/settings.json"
-    "editors/vscode/settings.json:$HOME_DIR/Library/Application Support/Code/User/settings.json"
-    "editors/nvim:$HOME_DIR/.config/nvim"
-    
-    # Phase 4: ウィンドウマネージャー設定（macOS限定・任意）
-    "wm/yabai/yabairc:$HOME_DIR/.config/yabai/yabairc"
-    "wm/skhd/skhdrc:$HOME_DIR/.config/skhd/skhdrc"
-    "wm/sketchybar/sketchybarrc:$HOME_DIR/.config/sketchybar/sketchybarrc"
-    
-    # Note: Sensitive files (.gitconfig, ssh/config, claude.json) are excluded for security
-    # See .example files in respective directories for templates
+# DEPRECATED: File deployment now managed via nix home-manager
+# This list is kept for reference and migration verification only
+# All dotfiles are now deployed declaratively via nix/home.nix home.file configuration
+
+# Migration Notice: This script now serves as a Nix setup wrapper
+# For file deployment, use: home-manager switch --flake ~/dotfiles/nix
+
+DEPRECATED_DOTFILES_LIST=(
+    # MIGRATED TO: nix/home.nix home.file section
+    # Phase 1: ".zshrc".source = "${dotfilesDirectory}/configs/zsh/zshrc"
+    # Phase 2: ".docker/config.json".source = "${dotfilesDirectory}/configs/development/docker/config.json"
+    # Phase 3: ".config/nvim".source = "${dotfilesDirectory}/configs/editors/nvim"
+    # Phase 4: ".config/yabai/yabairc".source = "${dotfilesDirectory}/configs/wm/yabai/yabairc"
+    # ... (See nix/home.nix for complete list)
 )
 
 # バックアップ一覧を表示
@@ -209,152 +194,48 @@ cleanup_old_backups() {
     fi
 }
 
-# シンボリックリンクの状態をチェック
-check_symlink_status() {
-    local target_path="$1"
-    local expected_source="$2"
+# DEPRECATED: Legacy symlink functions removed
+# These functions are no longer needed as file deployment is handled by home-manager
+# 
+# Legacy functions removed:
+# - check_symlink_status() 
+# - create_backup_dir()
+# - backup_existing_files()
+# - create_symlinks()
+#
+# Migration: All dotfile deployment is now managed declaratively via:
+# nix/home.nix home.file configuration
+
+# Nix初回セットアップ用ラッパー関数
+setup_nix_environment() {
+    log_info "Nix環境のセットアップを開始します..."
     
-    debug "Checking symlink status: $target_path -> $expected_source"
+    # Nix が利用可能かチェック
+    if ! command -v nix >/dev/null 2>&1; then
+        log_error "Nixが見つかりません。先にNixをインストールしてください:"
+        log_info "  curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install"
+        exit 1
+    fi
     
-    if [[ -L "$target_path" ]]; then
-        local current_target
-        current_target=$(readlink "$target_path")
-        debug "Found symlink: $target_path -> $current_target"
-        if [[ "$current_target" == "$expected_source" ]]; then
-            debug "Symlink is correct"
-            echo "correct"
-        else
-            debug "Symlink is incorrect (expected: $expected_source, found: $current_target)"
-            echo "incorrect"
-        fi
-    elif [[ -e "$target_path" ]]; then
-        debug "File exists but is not a symlink: $target_path"
-        echo "file_exists"
+    # nix-darwin がセットアップされているかチェック
+    if ! command -v darwin-rebuild >/dev/null 2>&1; then
+        log_warning "nix-darwinが見つかりません。システム設定はスキップします"
+        log_info "nix-darwinのセットアップは docs/nix/ を参照してください"
     else
-        debug "Target path does not exist: $target_path"
-        echo "missing"
-    fi
-}
-
-# バックアップディレクトリの作成（条件付き）
-create_backup_dir() {
-    local timestamp
-    timestamp=$(date +"%Y%m%d_%H%M%S")
-    local backup_session_dir="$BACKUP_DIR/backup_$timestamp"
-    
-    if [[ ! -d "$backup_session_dir" ]]; then
-        mkdir -p "$backup_session_dir" >/dev/null 2>&1
-        log_info "バックアップディレクトリを作成しました: $backup_session_dir" >&2
+        log_info "nix-darwinが利用可能です"
     fi
     
-    echo "$backup_session_dir"
-}
-
-# 既存ファイルのバックアップ（条件付き）
-backup_existing_files() {
-    local backup_session_dir="$1"
-    local backup_needed=false
-    
-    for dotfile_entry in "${DOTFILES_LIST[@]}"; do
-        local source_path="${dotfile_entry%%:*}"
-        local target_path="${dotfile_entry##*:}"
-        local full_source_path="$CONFIG_DIR/$source_path"
-        
-        # ソースファイルが存在しない場合はスキップ
-        if [[ ! -f "$full_source_path" ]]; then
-            continue
-        fi
-        
-        local status
-        status=$(check_symlink_status "$target_path" "$full_source_path")
-        
-        # 正しいシンボリックリンクが既に存在し、強制モードでない場合はスキップ
-        if [[ "$status" == "correct" ]] && [[ "$FORCE_MODE" != "true" ]]; then
-            continue
-        fi
-        
-        # バックアップが必要な場合のみ処理
-        if [[ "$status" == "file_exists" ]] || [[ "$status" == "incorrect" ]]; then
-            if [[ "$backup_needed" == "false" ]]; then
-                log_info "バックアップが必要なファイルが見つかりました..."
-                backup_needed=true
-            fi
-            
-            local backup_path
-            backup_path="$backup_session_dir/$(basename "$target_path")"
-            
-            if [[ -L "$target_path" ]]; then
-                log_warning "$(basename "$target_path") は不正なシンボリックリンクです"
-                readlink "$target_path" > "$backup_path.symlink_target"
-                rm "$target_path"
-            else
-                mv "$target_path" "$backup_path"
-                log_info "$(basename "$target_path") をバックアップしました"
-            fi
-        fi
-    done
-    
-    echo "$backup_needed"
-}
-
-# シンボリックリンクの作成（冪等性対応）
-create_symlinks() {
-    local changes_made=false
-    
-    debug "Starting symlink creation process"
-    
-    for dotfile_entry in "${DOTFILES_LIST[@]}"; do
-        local source_path="${dotfile_entry%%:*}"
-        local target_path="${dotfile_entry##*:}"
-        local full_source_path="$CONFIG_DIR/$source_path"
-        
-        debug "Processing: $source_path -> $target_path"
-        
-        if [[ ! -f "$full_source_path" ]]; then
-            log_warning "ソースファイルが見つかりません: $full_source_path"
-            log_info "スキップします: $(basename "$target_path")"
-            debug "Skipping due to missing source file"
-            continue
-        fi
-        
-        local status
-        status=$(check_symlink_status "$target_path" "$full_source_path")
-        debug "Symlink status for $target_path: $status"
-        
-        # 既に正しいシンボリックリンクが存在し、強制モードでない場合はスキップ
-        if [[ "$status" == "correct" ]] && [[ "$FORCE_MODE" != "true" ]]; then
-            log_info "$(basename "$target_path") は既に正しく設定されています"
-            debug "Skipping - already correctly configured"
-            continue
-        fi
-        
-        # 初回のメッセージ出力
-        if [[ "$changes_made" == "false" ]]; then
-            log_info "シンボリックリンクを作成しています..."
-            changes_made=true
-        fi
-        
-        # ターゲットディレクトリが存在しない場合は作成
-        local target_dir
-        target_dir=$(dirname "$target_path")
-        if [[ ! -d "$target_dir" ]]; then
-            debug "Creating target directory: $target_dir"
-            mkdir -p "$target_dir"
-        fi
-        
-        # シンボリックリンクを作成
-        debug "Creating symlink: ln -sf $full_source_path $target_path"
-        ln -sf "$full_source_path" "$target_path"
-        log_success "$(basename "$target_path") のシンボリックリンクを作成しました"
-    done
-    
-    if [[ "$changes_made" == "false" ]]; then
-        log_info "すべてのシンボリックリンクは既に正しく設定されています"
-        debug "No changes needed - all symlinks already correct"
+    # home-manager がセットアップされているかチェック
+    if ! command -v home-manager >/dev/null 2>&1; then
+        log_error "home-managerが見つかりません。先にhome-managerをセットアップしてください:"
+        log_info "  nix run home-manager/release-24.05 -- init --switch"
+        exit 1
     fi
+    
+    log_success "Nix環境のセットアップチェックが完了しました"
 }
 
-# メイン処理
+# メイン処理 - 新しいNix初回セットアップ用ラッパー
 main() {
     # バックアップ一覧表示のみの場合
     if [[ "$SHOW_BACKUPS" == "true" ]]; then
@@ -368,80 +249,52 @@ main() {
         exit 0
     fi
     
-    log_info "ドットファイル管理システムのインストールを開始します"
-    log_info "Dotfiles directory: $DOTFILES_DIR"
+    log_info "=== ドットファイル管理システム v2.0 - Nix統合版 ==="
+    log_warning "⚠️  MIGRATION NOTICE: このスクリプトの役割が変更されました"
+    echo
+    log_info "🔄 従来のシンボリックリンク管理は廃止されました"
+    log_info "✨ 代わりに home-manager による宣言的設定管理を使用します"
+    echo
     
-    if [[ "$FORCE_MODE" == "true" ]]; then
-        log_info "強制モード: 既存の設定を上書きします"
+    log_info "🏗️  推奨セットアップ手順:"
+    echo "  1. Nix環境のセットアップ確認"
+    echo "  2. home-manager による設定適用"
+    echo "  3. システム設定の適用（nix-darwin）"
+    echo
+    
+    # Nix環境のセットアップチェック
+    setup_nix_environment
+    
+    echo
+    log_info "📁 設定ファイルのデプロイを実行しますか？"
+    read -p "Continue? [y/N]: " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        log_info "セットアップをキャンセルしました"
+        exit 0
     fi
     
-    # 必要なディレクトリの存在確認
-    if [[ ! -d "$CONFIG_DIR" ]]; then
-        log_error "configs ディレクトリが見つかりません: $CONFIG_DIR"
+    # home-manager による設定適用
+    log_info "🏠 home-manager による設定適用を実行中..."
+    if cd "$DOTFILES_DIR/nix" && home-manager switch --flake .; then
+        log_success "✅ home-manager による設定適用が完了しました"
+    else
+        log_error "❌ home-manager の実行に失敗しました"
+        log_info "手動で実行してください: cd $DOTFILES_DIR/nix && home-manager switch --flake ."
         exit 1
     fi
     
-    # バックアップの実行（条件付き）
-    local backup_session_dir
-    backup_session_dir=$(create_backup_dir)
-    local backup_needed
-    backup_needed=$(backup_existing_files "$backup_session_dir")
-    
-    # シンボリックリンクの作成
-    create_symlinks
-    
-    log_success "ドットファイル管理システムのインストールが完了しました"
-    
-    # バックアップが実際に作成された場合のみメッセージを表示
-    if [[ "$backup_needed" == "true" ]]; then
-        log_info "バックアップは以下に保存されました: $backup_session_dir"
-    fi
-    
-    # インストール後の確認
     echo
-    log_info "作成されたシンボリックリンクの確認:"
-    
-    local total_links=0
-    local working_links=0
-    local missing_source_files=0
-    
-    for dotfile_entry in "${DOTFILES_LIST[@]}"; do
-        local source_path="${dotfile_entry%%:*}"
-        local target_path="${dotfile_entry##*:}"
-        local full_source_path="$CONFIG_DIR/$source_path"
-        local file_name
-        file_name=$(basename "$target_path")
-        
-        total_links=$((total_links + 1))
-        
-        if [[ ! -f "$full_source_path" ]]; then
-            echo "  ⚠️  $file_name (ソースファイルなし)"
-            missing_source_files=$((missing_source_files + 1))
-        elif [[ -L "$target_path" ]]; then
-            local link_target
-            link_target=$(readlink "$target_path")
-            if [[ "$link_target" == "$full_source_path" ]]; then
-                echo "  ✅ $file_name -> $(basename "$(dirname "$link_target")")/$(basename "$link_target")"
-                working_links=$((working_links + 1))
-            else
-                echo "  ❌ $file_name -> $link_target (間違ったリンク)"
-            fi
-        else
-            echo "  ❌ $file_name (リンクなし)"
-        fi
-    done
-    
+    log_success "🎉 ドットファイル管理システムのセットアップが完了しました！"
     echo
-    log_info "概要: $working_links/$total_links ファイルが正常に設定されました"
-    
-    if [[ $missing_source_files -gt 0 ]]; then
-        log_warning "$missing_source_files 個のソースファイルが見つかりませんでした"
-    fi
-    
-    if [[ $working_links -eq 0 ]]; then
-        log_warning "シンボリックリンクが作成されませんでした"
-        log_info "configs/ ディレクトリの内容を確認してください"
-    fi
+    log_info "📚 詳細なドキュメント:"
+    log_info "  - nix/README.md: Nix設定の詳細"
+    log_info "  - CLAUDE.md: 開発者向けガイド"
+    echo
+    log_info "🔧 よく使うコマンド:"
+    log_info "  - home-manager switch --flake ~/dotfiles/nix  : 設定の再適用"
+    log_info "  - darwin-rebuild switch --flake ~/dotfiles/nix : システム設定の適用"
+    log_info "  - just rebuild : 上記をまとめて実行（justfileが利用可能な場合）"
 }
 
 # スクリプトが直接実行された場合のみmainを呼び出す
