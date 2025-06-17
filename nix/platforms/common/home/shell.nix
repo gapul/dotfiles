@@ -159,7 +159,7 @@
   };
 
   # Direnv (when available)
-  programs.direnv = lib.mkIf (lib.elem pkgs.direnv platformInfo.packages) {
+  programs.direnv = {
     enable = true;
     enableZshIntegration = true;
     nix-direnv.enable = true;
