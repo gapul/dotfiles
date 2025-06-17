@@ -66,7 +66,6 @@
       # Common modules for all platforms
       commonModules = [
         ./common/platform-detection.nix
-        ./common/packages/core.nix
         ./common/home/shell.nix
         ./common/themes/default.nix
       ];
@@ -101,6 +100,7 @@
           system = "aarch64-darwin";
           specialArgs = (mkPlatformConfig "aarch64-darwin").specialArgs;
           modules = darwinModules ++ [
+            { nixpkgs.config.allowUnfree = true; }
             home-manager.darwinModules.home-manager
             {
               home-manager = {
@@ -118,6 +118,7 @@
           system = "x86_64-darwin";
           specialArgs = (mkPlatformConfig "x86_64-darwin").specialArgs;
           modules = darwinModules ++ [
+            { nixpkgs.config.allowUnfree = true; }
             home-manager.darwinModules.home-manager
             {
               home-manager = {
@@ -144,6 +145,7 @@
           specialArgs = (mkPlatformConfig "x86_64-linux").specialArgs;
           modules = [
             # Hardware configuration would be system-specific
+            { nixpkgs.config.allowUnfree = true; }
             ./linux/nixos/system.nix
             sops-nix.nixosModules.sops
             home-manager.nixosModules.home-manager
@@ -163,6 +165,7 @@
           system = "aarch64-linux";
           specialArgs = (mkPlatformConfig "aarch64-linux").specialArgs;
           modules = [
+            { nixpkgs.config.allowUnfree = true; }
             ./linux/server/default.nix
             sops-nix.nixosModules.sops
             home-manager.nixosModules.home-manager
@@ -182,28 +185,28 @@
       homeConfigurations = {
         # Generic Linux (non-NixOS)
         "${username}@linux" = home-manager.lib.homeManagerConfiguration {
-          pkgs = nixpkgs.legacyPackages.x86_64-linux;
+          pkgs = import nixpkgs { system = "x86_64-linux"; config.allowUnfree = true; };
           extraSpecialArgs = (mkPlatformConfig "x86_64-linux").specialArgs;
           modules = linuxModules;
         };
         
         # WSL configuration
         "${username}@wsl" = home-manager.lib.homeManagerConfiguration {
-          pkgs = nixpkgs.legacyPackages.x86_64-linux;
+          pkgs = import nixpkgs { system = "x86_64-linux"; config.allowUnfree = true; };
           extraSpecialArgs = (mkPlatformConfig "x86_64-linux").specialArgs;
           modules = wslModules;
         };
         
         # ARM Linux home-manager only
         "${username}@linux-arm" = home-manager.lib.homeManagerConfiguration {
-          pkgs = nixpkgs.legacyPackages.aarch64-linux;
+          pkgs = import nixpkgs { system = "aarch64-linux"; config.allowUnfree = true; };
           extraSpecialArgs = (mkPlatformConfig "aarch64-linux").specialArgs;
           modules = linuxModules;
         };
         
         # macOS home-manager only (fallback)
         "${username}@darwin" = home-manager.lib.homeManagerConfiguration {
-          pkgs = nixpkgs.legacyPackages.aarch64-darwin;
+          pkgs = import nixpkgs { system = "aarch64-darwin"; config.allowUnfree = true; };
           extraSpecialArgs = (mkPlatformConfig "aarch64-darwin").specialArgs;
           modules = commonModules;
         };
@@ -214,7 +217,7 @@
         "android" = nix-on-droid.lib.nixOnDroidConfiguration {
           system = "aarch64-linux";
           extraSpecialArgs = (mkPlatformConfig "aarch64-linux").specialArgs;
-          modules = androidModules;
+          modules = androidModules ++ [{ nixpkgs.config.allowUnfree = true; }];
         };
       };
 

@@ -1,5 +1,5 @@
 # Cross-platform shell configuration
-{ config, lib, pkgs, platformInfo, ... }:
+{ config, lib, pkgs, platformInfo ? {}, ... }:
 
 {
   # Zsh configuration (works on all platforms)
@@ -11,11 +11,11 @@
     # Platform-agnostic aliases
     shellAliases = {
       # Modern tool replacements (when available)
-      ls = if lib.elem pkgs.eza platformInfo.packages then "eza" else "ls --color=auto";
-      ll = if lib.elem pkgs.eza platformInfo.packages then "eza -la" else "ls -la";
-      cat = if lib.elem pkgs.bat platformInfo.packages then "bat" else "cat";
-      find = if lib.elem pkgs.fd platformInfo.packages then "fd" else "find";
-      grep = if lib.elem pkgs.ripgrep platformInfo.packages then "rg" else "grep";
+      ls = if lib.elem pkgs.eza (platformInfo.packages or []) then "eza" else "ls --color=auto";
+      ll = if lib.elem pkgs.eza (platformInfo.packages or []) then "eza -la" else "ls -la";
+      cat = if lib.elem pkgs.bat (platformInfo.packages or []) then "bat" else "cat";
+      find = if lib.elem pkgs.fd (platformInfo.packages or []) then "fd" else "find";
+      grep = if lib.elem pkgs.ripgrep (platformInfo.packages or []) then "rg" else "grep";
       
       # Git shortcuts
       g = "git";
@@ -35,21 +35,21 @@
       ns = "nix search";
       nf = "nix flake";
       
-    } // lib.optionalAttrs (platformInfo.platform == "darwin") {
+    } // lib.optionalAttrs (platformInfo.platform or "unknown" == "darwin") {
       # macOS specific aliases
       nrs = "nix run nix-darwin -- switch --flake .";
       hms = "home-manager switch --flake .";
       
-    } // lib.optionalAttrs (platformInfo.platform == "nixos") {
+    } // lib.optionalAttrs (platformInfo.platform or "unknown" == "nixos") {
       # NixOS specific aliases
       nrs = "sudo nixos-rebuild switch --flake .";
       hms = "home-manager switch --flake .";
       
-    } // lib.optionalAttrs (lib.elem platformInfo.platform ["linux" "wsl"]) {
+    } // lib.optionalAttrs (lib.elem (platformInfo.platform or "unknown") ["linux" "wsl"]) {
       # Linux/WSL specific aliases
       hms = "home-manager switch --flake .";
       
-    } // lib.optionalAttrs (platformInfo.platform == "android") {
+    } // lib.optionalAttrs (platformInfo.platform or "unknown" == "android") {
       # Android/nix-on-droid specific aliases
       nrs = "nix-on-droid switch --flake .";
     };
@@ -57,27 +57,27 @@
     # Environment variables
     sessionVariables = {
       EDITOR = "vim";
-      PAGER = if lib.elem pkgs.bat platformInfo.packages then "bat" else "less";
+      PAGER = if lib.elem pkgs.bat (platformInfo.packages or []) then "bat" else "less";
       
       # Platform-specific paths
       DOTFILES = "${config.home.homeDirectory}/dotfiles";
       
-    } // lib.optionalAttrs (platformInfo.platform == "darwin") {
+    } // lib.optionalAttrs (platformInfo.platform or "unknown" == "darwin") {
       # macOS specific environment
       HOMEBREW_NO_ANALYTICS = "1";
       HOMEBREW_NO_INSECURE_REDIRECT = "1";
       
-    } // lib.optionalAttrs (platformInfo.platform == "wsl") {
+    } // lib.optionalAttrs (platformInfo.platform or "unknown" == "wsl") {
       # WSL specific environment
       DISPLAY = ":0.0";
       
-    } // lib.optionalAttrs (platformInfo.platform == "android") {
+    } // lib.optionalAttrs (platformInfo.platform or "unknown" == "android") {
       # Android specific environment
       TERMUX_PKG_FORMAT = "nix";
     };
     
     # Platform-specific initialization
-    initExtra = ''
+    initContent = ''
       # Universal shell functions
       function mkcd() {
         mkdir -p "$1" && cd "$1"
@@ -100,19 +100,19 @@
         esac
       }
       
-      ${lib.optionalString (platformInfo.platform == "darwin") ''
+      ${lib.optionalString (platformInfo.platform or "unknown" == "darwin") ''
         # macOS specific shell setup
         if [[ -f /opt/homebrew/bin/brew ]]; then
           eval "$(/opt/homebrew/bin/brew shellenv)"
         fi
       ''}
       
-      ${lib.optionalString (platformInfo.platform == "wsl") ''
+      ${lib.optionalString (platformInfo.platform or "unknown" == "wsl") ''
         # WSL specific shell setup
         export PATH="$PATH:/mnt/c/Windows/System32"
       ''}
       
-      ${lib.optionalString (platformInfo.platform == "android") ''
+      ${lib.optionalString (platformInfo.platform or "unknown" == "android") ''
         # Android/Termux specific shell setup
         export PATH="$PATH:$PREFIX/bin"
       ''}
@@ -153,7 +153,7 @@
       hostname = {
         ssh_only = false;
         format = "[@$hostname](bold blue) ";
-        disabled = platformInfo.platform == "android";
+        disabled = platformInfo.platform or "unknown" == "android";
       };
     };
   };
@@ -166,13 +166,13 @@
   };
 
   # Zoxide (modern cd replacement)
-  programs.zoxide = lib.mkIf (lib.elem pkgs.zoxide platformInfo.packages) {
+  programs.zoxide = lib.mkIf (lib.elem pkgs.zoxide (platformInfo.packages or [])) {
     enable = true;
     enableZshIntegration = true;
   };
 
   # FZF (fuzzy finder)
-  programs.fzf = lib.mkIf (lib.elem pkgs.fzf platformInfo.packages) {
+  programs.fzf = lib.mkIf (lib.elem pkgs.fzf (platformInfo.packages or [])) {
     enable = true;
     enableZshIntegration = true;
     defaultOptions = [
