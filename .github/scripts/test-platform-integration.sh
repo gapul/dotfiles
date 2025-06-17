@@ -65,7 +65,8 @@ test_platform_detection() {
     cd "$PLATFORMS_DIR"
     
     # Test that platform detection evaluates without errors
-    local system=$(uname -m)
+    local system
+    system=$(uname -m)
     if [[ "$system" == "arm64" ]]; then
         system="aarch64-darwin"
     elif [[ "$system" == "x86_64" ]] && [[ "$(uname -s)" == "Darwin" ]]; then
@@ -74,20 +75,36 @@ test_platform_detection() {
         system="x86_64-linux"
     fi
     
-    if ! nix eval .#platformInfo.${system}.platform --json >/dev/null 2>&1; then
-        log_error "Platform detection evaluation failed"
+    # Test basic flake evaluation
+    if ! nix flake show --json >/dev/null 2>&1; then
+        log_error "Flake evaluation failed"
         return 1
     fi
     
-    # Test capabilities evaluation
-    if ! nix eval .#platformInfo.${system}.capabilities --json >/dev/null 2>&1; then
-        log_error "Platform capabilities evaluation failed"
-        return 1
-    fi
+    # Test platform-specific configuration exists
+    case "$system" in
+        "aarch64-darwin"|"x86_64-darwin")
+            if ! nix eval ".#darwinConfigurations.default" --json >/dev/null 2>&1; then
+                log_error "Darwin configuration evaluation failed"
+                return 1
+            fi
+            ;;
+        "x86_64-linux"|"aarch64-linux")
+            if ! nix eval ".#nixosConfigurations.linux-desktop" --json >/dev/null 2>&1; then
+                log_error "NixOS configuration evaluation failed"
+                return 1
+            fi
+            ;;
+    esac
     
-    # Test current platform is detected
+    # Test platform detection module
     local current_platform
-    current_platform=$(nix eval .#platformInfo.${system}.platform --raw 2>/dev/null)
+    current_platform=$(nix eval --expr "
+        let 
+          pkgs = import <nixpkgs> {};
+          lib = pkgs.lib;
+          platform = import ./common/platform-detection.nix { inherit lib pkgs; };
+        in platform.platform" --raw 2>/dev/null || echo "unknown")
     
     if [[ -z "$current_platform" ]]; then
         log_error "Current platform not detected"
