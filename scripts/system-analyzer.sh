@@ -30,6 +30,9 @@ COMMANDS:
   package-optimize     Nixパッケージ設定の最適化分析
   discover-apps       未管理アプリケーションの検出
   usage-patterns      パッケージ使用パターンの分析
+  homebrew-migration  Homebrew→Nix移行分析（旧: analyze-homebrew-nix-migration.sh）
+  dependencies        依存関係整合性チェック（旧: check-dependencies.sh）
+  enhanced-deps       高度な依存関係分析（旧: enhanced-dependency-check.sh）
   full-analysis       完全システム分析（全コマンド実行）
   
 OPTIONS:
@@ -298,6 +301,182 @@ EOF
     log_success "Usage pattern analysis completed: $report_file"
 }
 
+# Homebrew to Nix migration analysis (consolidated from analyze-homebrew-nix-migration.sh)
+analyze_homebrew_migration() {
+    log_info "=== Homebrew → Nix Migration Analysis ==="
+    
+    local report_file="$REPORT_DIR/homebrew-migration-$TIMESTAMP.md"
+    
+    {
+        echo "# Homebrew → Nix Migration Analysis Report"
+        echo "Generated: $(date)"
+        echo ""
+        
+        # Check Homebrew installation
+        if command -v brew >/dev/null 2>&1; then
+            echo "## Current Homebrew Status"
+            echo "- Homebrew version: $(brew --version | head -1)"
+            echo "- Installed formulae: $(brew list --formula | wc -l)"
+            echo "- Installed casks: $(brew list --cask | wc -l)"
+            echo ""
+            
+            echo "## Migration Candidates"
+            echo "### Formulae (CLI tools)"
+            brew list --formula | while read -r formula; do
+                echo "- $formula"
+            done
+            echo ""
+            
+            echo "### Casks (GUI applications)"
+            brew list --cask | while read -r cask; do
+                echo "- $cask"
+            done
+            echo ""
+        else
+            echo "## No Homebrew Installation Found"
+            echo "Homebrew is not installed or not in PATH."
+            echo ""
+        fi
+        
+        # Check current Nix packages
+        if [[ -f "$NIX_DIR/home.nix" ]]; then
+            echo "## Current Nix Packages"
+            echo "### From home.nix:"
+            grep -E '^\s*"[^"]+"\s*$' "$NIX_DIR/home.nix" | head -20 || echo "No packages found in standard format"
+            echo ""
+        fi
+        
+        echo "## Migration Recommendations"
+        echo "1. Review formulae list and identify Nix equivalents"
+        echo "2. Update nix/home.nix with new packages"
+        echo "3. Test package functionality after migration"
+        echo "4. Remove Homebrew packages after verification"
+        echo ""
+        
+    } > "$report_file"
+    
+    log_success "Homebrew migration analysis completed: $report_file"
+}
+
+# Dependencies integrity check (consolidated from check-dependencies.sh)
+check_dependencies() {
+    log_info "=== Dependencies Integrity Check ==="
+    
+    local report_file="$REPORT_DIR/dependencies-check-$TIMESTAMP.md"
+    local issues_found=0
+    
+    {
+        echo "# Dependencies Integrity Check Report"
+        echo "Generated: $(date)"
+        echo ""
+        
+        echo "## File Existence Check"
+        # Check critical dotfiles
+        local critical_files=(
+            "$HOME/.zshrc"
+            "$HOME/.config/starship.toml"
+            "$HOME/.config/wezterm/wezterm.lua"
+        )
+        
+        for file in "${critical_files[@]}"; do
+            if [[ -f "$file" ]]; then
+                echo "✅ $file - exists"
+            else
+                echo "❌ $file - missing"
+                ((issues_found++))
+            fi
+        done
+        echo ""
+        
+        echo "## Symlink Integrity"
+        # Check if files are properly linked via home-manager
+        for file in "${critical_files[@]}"; do
+            if [[ -L "$file" ]]; then
+                local target=$(readlink "$file")
+                if [[ "$target" == /nix/store/* ]]; then
+                    echo "✅ $file → $target (home-manager managed)"
+                else
+                    echo "⚠️  $file → $target (not home-manager managed)"
+                fi
+            elif [[ -f "$file" ]]; then
+                echo "⚠️  $file - regular file (should be symlink)"
+            fi
+        done
+        echo ""
+        
+        echo "## Summary"
+        if [[ $issues_found -eq 0 ]]; then
+            echo "✅ No critical issues found"
+        else
+            echo "❌ Found $issues_found issues that need attention"
+        fi
+        
+    } > "$report_file"
+    
+    log_success "Dependencies check completed: $report_file"
+}
+
+# Enhanced dependencies analysis (consolidated from enhanced-dependency-check.sh)
+check_enhanced_dependencies() {
+    log_info "=== Enhanced Dependencies Analysis ==="
+    
+    local report_file="$REPORT_DIR/enhanced-dependencies-$TIMESTAMP.md"
+    
+    {
+        echo "# Enhanced Dependencies Analysis Report"
+        echo "Generated: $(date)"
+        echo ""
+        
+        echo "## Nix Store Analysis"
+        # Check /nix/store usage
+        if [[ -d "/nix/store" ]]; then
+            local store_size=$(du -sh /nix/store 2>/dev/null | cut -f1)
+            local store_items=$(find /nix/store -maxdepth 1 -type d | wc -l)
+            echo "- Store size: $store_size"
+            echo "- Store items: $store_items"
+        else
+            echo "- Nix store not found"
+        fi
+        echo ""
+        
+        echo "## Home Manager Generations"
+        if command -v home-manager >/dev/null 2>&1; then
+            echo "### Available Generations:"
+            home-manager generations | head -10 || echo "No generations found"
+        else
+            echo "- Home Manager not available"
+        fi
+        echo ""
+        
+        echo "## Configuration Dependencies"
+        echo "### Critical Configuration Files:"
+        local config_files=(
+            "$NIX_DIR/flake.nix"
+            "$NIX_DIR/home.nix"
+            "$NIX_DIR/theme.nix"
+        )
+        
+        for file in "${config_files[@]}"; do
+            if [[ -f "$file" ]]; then
+                local lines=$(wc -l < "$file")
+                echo "✅ $file ($lines lines)"
+            else
+                echo "❌ $file - missing"
+            fi
+        done
+        echo ""
+        
+        echo "## Recommendations"
+        echo "1. Regular cleanup of old generations: home-manager expire-generations"
+        echo "2. Monitor /nix/store growth and cleanup unused packages"
+        echo "3. Verify configuration file integrity before major changes"
+        echo ""
+        
+    } > "$report_file"
+    
+    log_success "Enhanced dependencies analysis completed: $report_file"
+}
+
 # Full system analysis
 run_full_analysis() {
     log_info "=== 完全システム分析実行 ==="
@@ -307,6 +486,9 @@ run_full_analysis() {
     analyze_package_optimization
     analyze_unmanaged_applications  
     analyze_usage_patterns
+    analyze_homebrew_migration
+    check_dependencies
+    check_enhanced_dependencies
     
     local end_time=$(date +%s)
     local duration=$((end_time - start_time))
@@ -349,7 +531,7 @@ OUTPUT_DIR=""
 
 while [[ $# -gt 0 ]]; do
     case $1 in
-        package-optimize|discover-apps|usage-patterns|full-analysis)
+        package-optimize|discover-apps|usage-patterns|homebrew-migration|dependencies|enhanced-deps|full-analysis)
             COMMAND="$1"
             shift
             ;;
@@ -393,6 +575,15 @@ case "$COMMAND" in
         ;;
     usage-patterns)
         analyze_usage_patterns
+        ;;
+    homebrew-migration)
+        analyze_homebrew_migration
+        ;;
+    dependencies)
+        check_dependencies
+        ;;
+    enhanced-deps)
+        check_enhanced_dependencies
         ;;
     full-analysis)
         run_full_analysis

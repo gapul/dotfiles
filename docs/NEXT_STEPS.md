@@ -31,7 +31,7 @@ which sketchybar # /nix/store/... になることを確認
 ~/dotfiles/scripts/nix-package-optimizer.sh all
 
 # 依存関係総合チェック
-~/dotfiles/scripts/enhanced-dependency-check.sh all
+~/dotfiles/scripts/system-analyzer.sh enhanced-deps
 ```
 
 **期待される効果**:
@@ -178,7 +178,7 @@ nix build .#darwinConfigurations.default --system aarch64-linux
 1. **システム状態確認**
    ```bash
    scripts/nix-maintenance.sh health
-   scripts/enhanced-dependency-check.sh all
+   scripts/system-analyzer.sh enhanced-deps
    ```
 
 2. **段階的復旧手順**

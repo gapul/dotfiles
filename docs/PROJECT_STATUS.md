@@ -20,7 +20,7 @@
 - **nix-maintenance.sh**: ガーベージコレクション、ロールバック、最適化
 - **phase3-migration.sh**: 安全なYabaiエコシステム移行
 - **nix-shortcuts.sh**: 効率的なコマンドエイリアス
-- **enhanced-dependency-check.sh**: 多次元分析ツール
+- **system-analyzer.sh**: 統合分析ツール（依存関係、Homebrew移行等）
 - **nix-package-optimizer.sh**: 包括的最適化分析
 
 ### 4. 🏗️ CI/CD統合システム
