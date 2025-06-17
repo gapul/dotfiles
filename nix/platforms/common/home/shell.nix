@@ -120,7 +120,7 @@
   };
 
   # Starship prompt (universal)
-  programs.starship = lib.mkIf (lib.elem pkgs.starship platformInfo.packages) {
+  programs.starship = {
     enable = true;
     settings = {
       format = lib.concatStrings [
