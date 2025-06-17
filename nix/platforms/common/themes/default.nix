@@ -79,28 +79,28 @@
     # Integer format for Lua applications (sketchybar)
     int = {
       dark = {
-        base = 0xff1e1e2e;
-        mantle = 0xff181825;
-        surface0 = 0xff313244;
-        text = 0xffcdd6f4;
-        blue = 0xff89b4fa;
-        green = 0xffa6e3a1;
-        red = 0xfff38ba8;
-        yellow = 0xfff9e2af;
-        peach = 0xfffab387;
-        transparent = 0x00000000;
+        base = "0xff1e1e2e";
+        mantle = "0xff181825";
+        surface0 = "0xff313244";
+        text = "0xffcdd6f4";
+        blue = "0xff89b4fa";
+        green = "0xffa6e3a1";
+        red = "0xfff38ba8";
+        yellow = "0xfff9e2af";
+        peach = "0xfffab387";
+        transparent = "0x00000000";
       };
       light = {
-        base = 0xffeff1f5;
-        mantle = 0xffe6e9ef;
-        surface0 = 0xffccd0da;
-        text = 0xff4c4f69;
-        blue = 0xff1e66f5;
-        green = 0xff40a02b;
-        red = 0xffd20f39;
-        yellow = 0xffdf8e1d;
-        peach = 0xfffe640b;
-        transparent = 0x00000000;
+        base = "0xffeff1f5";
+        mantle = "0xffe6e9ef";
+        surface0 = "0xffccd0da";
+        text = "0xff4c4f69";
+        blue = "0xff1e66f5";
+        green = "0xff40a02b";
+        red = "0xffd20f39";
+        yellow = "0xffdf8e1d";
+        peach = "0xfffe640b";
+        transparent = "0x00000000";
       };
     };
   };
