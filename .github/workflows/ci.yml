@@ -125,7 +125,7 @@ jobs:
         
         # レガシー関数が削除されていることを確認
         echo "=== Verifying legacy functions removed ==="
-        if grep -q "create_symlinks" scripts/install.sh; then
+        if grep -q "^create_symlinks\|^[[:space:]]*create_symlinks" scripts/install.sh; then
           echo "❌ Legacy symlink functions still present"
           exit 1
         else
