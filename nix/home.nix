@@ -61,6 +61,17 @@
     act      # Run GitHub Actions locally
     gh       # GitHub CLI
     
+    # Package managers and runtimes
+    nodejs_20    # Node.js LTS
+    python312    # Python 3.12
+    python312Packages.pip  # pip for Python
+    python312Packages.virtualenv  # Virtual environments
+    python312Packages.pipx  # Install Python applications in isolated environments
+    
+    # Package management tools
+    yarn     # Alternative Node.js package manager
+    pnpm     # Fast, disk space efficient package manager
+    
     # Optional: Add more packages as needed
   ];
 
@@ -122,6 +133,28 @@
         claude-fix = "claude --print 'このエラーの修正方法は？'";
         claude-optimize = "claude --print 'このコードを最適化してください:'";
         claude-doc = "claude --print 'このコードのドキュメントを生成してください:'";
+        
+        # Package manager shortcuts
+        ni = "npm install";
+        nu = "npm uninstall";
+        nr = "npm run";
+        ns = "npm start";
+        nt = "npm test";
+        nb = "npm run build";
+        
+        # Python shortcuts
+        py = "python3";
+        pip = "pip3";
+        venv = "python3 -m venv";
+        activate = "source ./venv/bin/activate";
+        
+        # Yarn/pnpm alternatives
+        yi = "yarn install";
+        ya = "yarn add";
+        yr = "yarn run";
+        pi = "pnpm install";
+        pa = "pnpm add";
+        pr = "pnpm run";
       };
     };
 
@@ -198,6 +231,15 @@
         style = "numbers,changes,header";
       };
     };
+
+    # Node.js development environment
+    npm = {
+      enable = true;
+      # npmrc configuration can be managed here
+    };
+
+    # Python development environment  
+    # Note: Python packages managed via nix expressions rather than pip when possible
   };
 
   # File management - Temporarily disabled due to pure evaluation mode
@@ -221,6 +263,11 @@
     # Tool configurations
     BAT_THEME = "TwoDark";
     FZF_DEFAULT_COMMAND = "fd --type f";
+    
+    # Package manager configurations
+    NODE_OPTIONS = "--max-old-space-size=4096";
+    NPM_CONFIG_PREFIX = "${homeDirectory}/.npm-global";
+    PYTHON_VENV_PATH = "${homeDirectory}/.local/share/virtualenvs";
     
     # Nix-specific
     NIX_PATH = "$HOME/.nix-defexpr/channels:nixpkgs=/nix/var/nix/profiles/per-user/root/channels/nixpkgs:darwin-config=$HOME/.nixpkgs/darwin-configuration.nix";
