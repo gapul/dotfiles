@@ -1,6 +1,35 @@
 { config, pkgs, username, homeDirectory, dotfilesDirectory, ... }:
 
 {
+  # SOPS secrets management configuration
+  sops = {
+    defaultSopsFile = ../secrets.yaml;
+    defaultSopsFormat = "yaml";
+    
+    # Age key for encryption/decryption
+    age = {
+      # Generate with: age-keygen -o ~/.config/sops/age/keys.txt
+      keyFile = "${homeDirectory}/.config/sops/age/keys.txt";
+      generateKey = true;
+    };
+    
+    # Define secrets that will be decrypted and placed in the system
+    secrets = {
+      # Example secret definitions (uncomment when secrets.yaml exists)
+      # "github_token" = {
+      #   path = "/run/secrets/github_token";
+      #   owner = username;
+      #   group = "staff";
+      #   mode = "0400";
+      # };
+      # "openai_api_key" = {
+      #   path = "/run/secrets/openai_api_key";
+      #   owner = username;
+      #   group = "staff";
+      #   mode = "0400";
+      # };
+    };
+  };
   # System-wide packages (CLI tools + ALL GUI applications)
   environment.systemPackages = with pkgs; [
     # Core CLI tools
@@ -47,6 +76,10 @@
     # Development utilities
     docker
     docker-compose
+    
+    # Secret management tools
+    sops
+    age
     
     # System utilities
     mas  # Mac App Store CLI
@@ -199,7 +232,38 @@
     shell = pkgs.zsh;
   };
 
-  # Homebrew (for all GUI apps and problematic packages)
+  # Mac App Store management (mas-nix)
+  services.mas = {
+    enable = true;
+    packages = {
+      # Core Mac App Store applications
+      "GarageBand" = 682658836;
+      "LINE" = 539883307;
+      "Pages" = 409201541;
+      "Numbers" = 409203825;
+      "Keynote" = 409183694;
+      "Xcode" = 497799835;
+      "TestFlight" = 899247664;
+      "Logic Pro" = 634148309;
+      "Final Cut Pro" = 424389933;
+      "Motion" = 434290957;
+      "Compressor" = 424390742;
+      "MainStage" = 634159523;
+      "Transloader" = 1447648031;
+      "Day One" = 1055511498;
+      "Bear" = 1091189122;
+      "Taska for GitHub-GitLab Issues" = 1490804956;
+      "System Preferences" = 1564271834;
+      "Finder" = 1042394095;
+      "Safari" = 1146562112;
+      "Amphetamine" = 937984704;
+      "The Unarchiver" = 425424353;
+      "MoneyMoney" = 872698314;
+      "1Blocker- Ad Blocker & Privacy" = 1365531024;
+    };
+  };
+
+  # Homebrew (for GUI apps not available via mas-nix and problematic packages)
   homebrew = {
     enable = true;
     onActivation = {
@@ -326,10 +390,6 @@
       "sf-symbols"
     ];
     
-    masApps = {
-      # Core Mac App Store applications
-      "GarageBand" = 682658836;
-      "LINE" = 539883307;
-    };
+    # Note: masApps moved to services.mas for mas-nix integration
   };
 }
