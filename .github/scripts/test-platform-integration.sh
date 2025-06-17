@@ -65,20 +65,29 @@ test_platform_detection() {
     cd "$PLATFORMS_DIR"
     
     # Test that platform detection evaluates without errors
-    if ! nix eval .#platformInfo.platform --json >/dev/null 2>&1; then
+    local system=$(uname -m)
+    if [[ "$system" == "arm64" ]]; then
+        system="aarch64-darwin"
+    elif [[ "$system" == "x86_64" ]] && [[ "$(uname -s)" == "Darwin" ]]; then
+        system="x86_64-darwin"
+    elif [[ "$system" == "x86_64" ]] && [[ "$(uname -s)" == "Linux" ]]; then
+        system="x86_64-linux"
+    fi
+    
+    if ! nix eval .#platformInfo.${system}.platform --json >/dev/null 2>&1; then
         log_error "Platform detection evaluation failed"
         return 1
     fi
     
     # Test capabilities evaluation
-    if ! nix eval .#platformInfo.capabilities --json >/dev/null 2>&1; then
+    if ! nix eval .#platformInfo.${system}.capabilities --json >/dev/null 2>&1; then
         log_error "Platform capabilities evaluation failed"
         return 1
     fi
     
     # Test current platform is detected
     local current_platform
-    current_platform=$(nix eval .#platformInfo.platform --raw 2>/dev/null)
+    current_platform=$(nix eval .#platformInfo.${system}.platform --raw 2>/dev/null)
     
     if [[ -z "$current_platform" ]]; then
         log_error "Current platform not detected"
