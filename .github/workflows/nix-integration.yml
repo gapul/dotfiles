@@ -92,7 +92,7 @@ jobs:
         echo "" >> dependency-report.md
         
         echo "## System Packages" >> dependency-report.md
-        cd nix && nix eval .#darwinConfigurations.default.system --apply 'sys: builtins.length sys.config.environment.systemPackages' >> dependency-report.md
+        cd nix && nix eval .#darwinConfigurations.default.config.environment.systemPackages --apply 'pkgs: builtins.length pkgs' >> dependency-report.md
         
         echo "## Development Shells" >> dependency-report.md
         echo "- Python: $(nix eval .#devShells.aarch64-darwin.python --apply 'shell: builtins.length shell.buildInputs')" >> dependency-report.md
