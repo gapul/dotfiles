@@ -1,10 +1,10 @@
 # SOPS Creation Rules Configuration
 # Defines encryption rules and key management for different secret types
-{ lib, ... }:
+{ config, lib, pkgs, ... }:
 
 {
   # Creation rules for different secret categories
-  sops.secrets = {
+  sops = {
     # GitHub and Git secrets
     creation_rules = [
       {
@@ -118,13 +118,13 @@
   };
   
   # Key management helpers
-  environment.systemPackages = lib.mkIf (config.sops.age.generateKey) [
+  environment.systemPackages = lib.mkIf (config.sops.age.generateKey or false) [
     pkgs.age
     pkgs.sops
   ];
   
   # Age key generation script
-  system.activationScripts.sops-age-key = lib.mkIf config.sops.age.generateKey ''
+  system.activationScripts.sops-age-key = lib.mkIf (config.sops.age.generateKey or false) ''
     if [ ! -f "${config.sops.age.keyFile}" ]; then
       echo "Generating age key for SOPS..."
       mkdir -p "$(dirname "${config.sops.age.keyFile}")"

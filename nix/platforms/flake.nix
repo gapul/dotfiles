@@ -55,9 +55,9 @@
       # Platform detection and configuration
       mkPlatformConfig = system: 
         let
+          lib = nixpkgs.lib;
           pkgs = nixpkgs.legacyPackages.${system};
           platformInfo = import ./common/platform-detection.nix { inherit lib pkgs; };
-          lib = nixpkgs.lib;
         in {
           inherit pkgs platformInfo lib;
           specialArgs = { inherit username homeDirectory dotfilesDirectory platformInfo; };
@@ -166,14 +166,14 @@
           specialArgs = (mkPlatformConfig "aarch64-linux").specialArgs;
           modules = [
             { nixpkgs.config.allowUnfree = true; }
-            ./linux/server/default.nix
+            ./linux/nixos/system.nix
             sops-nix.nixosModules.sops
             home-manager.nixosModules.home-manager
             {
               home-manager = {
                 useGlobalPkgs = true;
                 useUserPackages = true;
-                users.${username} = import ./common/home/shell.nix;
+                users.${username} = import ./linux/nixos/home.nix;
                 extraSpecialArgs = (mkPlatformConfig "aarch64-linux").specialArgs;
               };
             }
