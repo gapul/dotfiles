@@ -180,30 +180,14 @@
         NSNavPanelExpandedStateForSaveMode = true;
         NSNavPanelExpandedStateForSaveMode2 = true;
         
-        # Trackpad tap behavior - disable all tap clicking, keep physical click only
-        "com.apple.mouse.tapBehavior" = 0;  # Disable all tap behaviors
-        "com.apple.trackpad.enableSecondaryClick" = true;  # Enable secondary click for physical press
-        "com.apple.AppleMultitouchTrackpad.Clicking" = false;  # Disable trackpad clicking via tap
-        "com.apple.AppleMultitouchTrackpad.TrackpadRightClick" = true;  # Enable two-finger physical right click
+        # Note: Trackpad settings managed via system.defaults.trackpad section below
       };
 
       trackpad = {
-        # 全てのタップクリックを無効化、物理押し込みクリックのみ有効
-        Clicking = false;  # Disable tap to click (all taps)
-        TrackpadRightClick = true;  # Enable two-finger physical right click (not tap)
-        TrackpadCornerSecondaryClick = 0;  # Disable corner secondary click
-        
-        # 有用なジェスチャーは維持
+        # Basic trackpad settings (nix-darwin supported options only)
+        Clicking = false;  # Disable tap to click
+        TrackpadRightClick = true;  # Enable two-finger right click
         TrackpadThreeFingerDrag = true;  # Keep three finger drag
-        
-        # 物理クリック関連（押し込みクリック）は有効のまま
-        # 1本指物理クリック = 左クリック、2本指物理クリック = 右クリック
-        ActuationStrength = 1;  # Light physical click sensitivity
-        ForceSuppressed = false;  # Enable Force Touch if available
-        
-        # タップジェスチャーは無効化（物理クリックは除く）
-        TrackpadTwoFingerDoubleTapGesture = 0;  # Disable two finger double tap
-        TrackpadOneFingerDoubleTapGesture = 0;  # Disable one finger double tap
       };
     };
 
