@@ -97,40 +97,6 @@ let
       else packages;
   };
 
-in {
-  # Export platform information
-  inherit platformInfo;
-  
-  # Helper functions
-  onPlatform = platform: config: 
-    if platformInfo.platform == platform then config else {};
-  
-  onPlatforms = platforms: config:
-    if lib.elem platformInfo.platform platforms then config else {};
-  
-  whenCapable = capability: config:
-    if platformInfo.capabilities.${capability} or false then config else {};
-  
-  # Cross-platform package filtering
-  filterForPlatform = platformInfo.filterForPlatform;
-  
-  # Platform-specific module imports
-  platformModules = 
-    if platformInfo.platform == "darwin" then [
-      ../darwin/system
-      ../darwin/homebrew
-    ]
-    else if platformInfo.platform == "nixos" then [
-      ../linux/desktop
-    ]
-    else if platformInfo.platform == "linux" then [
-      ../linux/server
-    ]
-    else if platformInfo.platform == "wsl" then [
-      ../wsl/integration
-    ]
-    else if platformInfo.platform == "android" then [
-      ../android/termux
-    ]
-    else [];
-}
+in
+# Direct export of platformInfo for import usage
+platformInfo
