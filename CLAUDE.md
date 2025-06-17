@@ -1,477 +1,143 @@
-# Dotfiles Management System - Claude Code Memory
+承知いたしました。これまでの議論の集大成として、今後の改善作業をClaude Codeが円滑に進めるための、新しい`CLAUDE.md`の内容を以下に提示します。
 
-## プロジェクト概要
+このドキュメントは、AIに対する明確な行動規範、利用可能なツール（API）、そして標準的な作業手順を定義することで、あなたとAIとの共同作業を新たなレベルへと引き上げます。
 
-このプロジェクトは、macOS環境でのドットファイルを安全かつ効率的に管理するための完全なシステムです。
+-----
 
-### 主要特徴
-- シンボリックリンクベースの設定管理
-- 自動バックアップ機能
-- Phase別の段階的設定導入
-- セキュリティを重視した個人情報除外
-- CI/CD統合による品質保証
+# 🤖 Dotfiles Management System - Claude Code Operating Manual
 
-## アーキテクチャ
+このドキュメントは、Claude Codeがこのリポジトリで作業を行う際の、**唯一の信頼できる情報源 (Single Source of Truth)** です。全ての作業は、このマニュアルに記載された規範と手順に従って実行してください。
 
-### ディレクトリ構造
-```
-dotfiles/
-├── configs/           # 設定ファイル格納
-│   ├── shell/         # Zsh設定
-│   ├── terminal/      # Starship + Wezterm設定
-│   ├── editors/       # エディター設定（VSCode, Zed, Neovim）
-│   ├── development/   # 開発ツール設定
-│   ├── cli/           # CLIツール設定
-│   ├── wm/            # ウィンドウマネージャー設定
-│   └── apps/          # アプリケーション設定
-├── backups/           # 自動バックアップ
-└── .github/           # CI/CD設定
-```
+## 🎯 現在の最優先目標 (Current Top Priority Goal)
 
-### 管理対象設定
-1. **Phase 1 (必須)**: Shell、Terminal、プロンプト設定
-2. **Phase 2 (開発)**: Docker、Conda、GitHub CLI、エディター
-3. **Phase 3 (UI)**: Yabai、skhd、Sketchybar（macOS）
+**[実装仕様書(docs/proposals/001-overall-evolution-spec-v2.md)](https://www.google.com/search?q=docs/proposals/001-overall-evolution-spec-v2.md)に基づき、Phase 1: 基盤安定化フェーズを完了させる。**
 
-## コーディング規約
+  * **タスク 1.1**: `starship.toml` の構文エラー修正
+  * **タスク 1.2**: `.gitignore` のセキュリティパターン追加
 
-### シェルスクリプト
-- Bashでの実装、`set -euo pipefail`を使用
-- エラーハンドリングを徹底
-- ログ関数（log_info, log_success, log_warning, log_error）を使用
-- 2スペースインデント
+完了後は、変更をコミットし、Phase 2の計画に移ります。
 
-### 設定ファイル
-- 2スペースインデント（YAML, JSON, Lua）
-- コメントは日本語で詳細に記載
-- セキュリティ重視（個人情報を含むファイルは.gitignore）
+## ⚖️ Claude Code 行動規範 (Golden Rules)
 
-### Neovim設定
-- Lua設定、LazyNvimプラグインマネージャー使用
-- Catppuccinテーマでターミナルと統一
-- モジュール化された設定構造
+以下のルールは、いかなる場合も**絶対に遵守**してください。
 
-## 開発フロー
+1.  **テスト駆動の徹底**:
+      * **変更前**: 必ず `just test` を実行し、既存のテストが全て成功することを確認します。
+      * **変更後**: コードを修正したら、再度 `just test` を実行し、自身の変更によってリグレッション（機能低下）が発生していないことを保証します。
+2.  **機密情報の厳禁**:
+      * いかなる機密情報（APIキー、パスワード等）もファイルに書き込みません。機密情報の管理は `sops-nix` を利用する計画があるため、それ以外の方法での扱いは禁止します。
+3.  **ドキュメントの同期**:
+      * スクリプトのインターフェースやコマンドの挙動を変更した場合、必ず `just docs` を実行して関連ドキュメントを自動更新します。
+4.  **アトミックなコミット**:
+      * 一つの関心事ごとにコミットを分割します。コミットメッセージは、本ドキュメントのテンプレートに従います。
+5.  **APIの利用**:
+      * 可能な限り、後述の `Repository API` で定義された高レベルなコマンド（`just`コマンド）を利用します。個別のスクリプトを直接実行するのは、APIが存在しない場合に限定します。
 
-### 新機能追加手順
-1. `configs/`下に設定ファイル配置
-2. `install.sh`のDOTFILES_LISTに追加
-3. テスト実行（`./install.sh --force`）
-4. CI検証（TOML、シェルスクリプト検証）
+## 🛠️ Repository API (実行可能コマンド体系)
 
-### ファイル管理
-- セキュリティファイル（.gitconfig, ssh/config, claude.json）は除外
-- .exampleファイルでテンプレート提供
-- バックアップは自動的にタイムスタンプ付きで作成
+このリポジトリの操作は、以下の`justfile`で定義されたコマンドを通じて行うことを原則とします。この`justfile`は実装仕様書のタスクとして今後作成します。
 
-## 重要なコマンド
+```makefile
+# Dotfiles Orchestration Layer (justfile)
 
-### インストール・管理
-```bash
-./install.sh              # 標準インストール
-./install.sh --force      # 強制上書き
-./install.sh --list-backups  # バックアップ一覧
-./setup.sh                # 初回セットアップ
+# --- Quality Assurance ---
+test: lint validate ## ✅ 全てのローカル検証を実行
+lint: ## シェルスクリプトの静的解析
+    shellcheck scripts/*.sh
+validate: ## 設定ファイルの構文検証
+    python3 .github/scripts/validate_toml.py
+
+# --- Documentation ---
+docs: ## 📖 ドキュメントを自動生成・更新
+    ./scripts/generate-docs.sh # このスクリプトは今後作成
+
+# --- Nix System Management ---
+rebuild: ## 🚀 Nix-Darwinシステムを再構築
+    cd nix && USER=yuki sudo darwin-rebuild switch --flake .
+update: ## 🔄 Flakeを更新してシステムを再構築
+    cd nix && nix flake update && just rebuild
+check-nix: ## Nix設定の構文をチェック
+    cd nix && nix flake check
+
+# --- Maintenance ---
+maintenance: ## ✨ 完全メンテナンスを実行
+    ./scripts/nix-maintenance.sh maintenance
 ```
 
-### Claude Codeクイックコマンド
-プロジェクト内で以下のコマンドが利用可能：
-- `install` - 標準インストール実行
-- `install-force` - 強制上書きインストール
-- `setup` - 初回セットアップ実行
-- `backup-list` - バックアップ一覧表示
-- `validate` - 設定ファイル検証
-- `test` - 全体テスト実行
-
-### 検証・メンテナンス
-```bash
-python3 .github/scripts/validate_toml.py  # TOML検証
-./check-ci.sh             # CI状態確認
-shellcheck *.sh           # シェルスクリプト検証
-```
-
-### Neovim関連
-```bash
-nvim                      # 起動（初回はプラグイン自動インストール）
-:checkhealth              # 設定状態確認
-:Lazy                     # プラグイン管理
-:Mason                    # LSP管理
-```
-
-### Claude Code統合（Neovim内）
-```vim
-<leader>cc                # Claude Code起動
-<leader>cf                # 現在のファイルレビュー
-<leader>cq                # クイッククエリ
-<leader>cs                # 選択範囲説明（Visual mode）
-<leader>cg                # テスト生成
-<leader>cd                # ドキュメント生成
-<leader>co                # コード最適化
-```
-
-### nix管理コマンド
-#### メンテナンススクリプト
-```bash
-scripts/nix-maintenance.sh status          # システム状態表示
-scripts/nix-maintenance.sh gc              # ガーベージコレクション
-scripts/nix-maintenance.sh optimize        # ストア最適化
-scripts/nix-maintenance.sh generations     # 世代一覧
-scripts/nix-maintenance.sh rollback --darwin  # システムロールバック
-scripts/nix-maintenance.sh rollback --home    # ユーザーロールバック
-scripts/nix-maintenance.sh health          # ヘルスチェック
-scripts/nix-maintenance.sh update          # システム更新
-scripts/nix-maintenance.sh backup          # 設定バックアップ
-scripts/nix-maintenance.sh maintenance     # 完全メンテナンス
-```
-
-#### Phase 3移行スクリプト
-```bash
-scripts/phase3-migration.sh check          # 前提条件チェック
-scripts/phase3-migration.sh versions       # nixpkgsバージョン確認
-scripts/phase3-migration.sh backup         # 設定バックアップ
-scripts/phase3-migration.sh migrate        # Yabaiエコシステム移行
-scripts/phase3-migration.sh verify         # 移行結果確認
-scripts/phase3-migration.sh rollback       # 移行前状態復元
-```
-
-#### ショートカット関数（要source）
-```bash
-source scripts/nix-shortcuts.sh
-
-nrs                                        # darwin-rebuild switch
-hms                                        # home-manager switch  
-ngc                                        # nix store gc
-nopt                                       # nix store optimise
-nix-rebuild                                # システム再構築
-nix-update                                 # フル更新
-nix-clean                                  # クリーンアップ
-nix-status                                 # システム状態
-nix-search <package>                       # パッケージ検索
-```
-
-### MCP（Model Context Protocol）サーバー
-設定済みのMCPサーバー：
-- **filesystem**: `/Users/yuki/dotfiles`の安全なファイル操作
-- **git**: Gitリポジトリの読み取り・検索・操作
-- **github**: GitHub統合（Issue/PR管理）
-- **brave-search**: Web検索とドキュメント検索
-- **figma-dev-mode**: Figmaデザインからコード生成（SSE接続）
-
-MCPサーバー管理：
-```bash
-claude mcp list           # 設定済みサーバー一覧
-claude mcp add <name> <command> [args]  # サーバー追加
-claude mcp remove <name>  # サーバー削除
-```
-
-## セキュリティ方針
-
-### 除外ファイル
-- `.gitconfig` - 実名・メールアドレス
-- `ssh/config` - サーバー情報・認証設定
-- `claude.json` - ユーザーID・履歴
-
-### テンプレート提供
-- 各除外ファイルに対応する.exampleファイルを提供
-- セットアップ手順をSECURITY.mdに記載
-
-## トラブルシューティング
-
-### よくある問題
-1. **シンボリックリンク作成失敗**: `--force`オプション使用
-2. **Starship設定反映されない**: `source ~/.zshrc`実行
-3. **Neovim起動エラー**: `:checkhealth`で診断
-
-### デバッグ方法
-```bash
-DEBUG=true ./install.sh   # デバッグモード
-ls -la ~ | grep '\->'     # シンボリックリンク確認
-```
+## ワークフロー：タスク実行の標準手順 (SOP)
 
-## メンテナンス
+全てのタスクは、以下の手順に従って実行してください。
 
-### 定期作業
-- バックアップ整理（7日以上前は自動削除可能）
-- CI状態確認
-- 設定ファイルの更新確認
+1.  **[計画] Task Planning**:
 
-### アップデート方針
-- 破壊的変更は避ける
-- 既存設定の互換性維持
-- 段階的導入（Phase別）
+      * `TodoRead`で現在のタスクリストを確認します。
+      * 実行するタスクを`TodoWrite`で`in_progress`に更新します。
 
-## Claude Code 標準ワークフロー
+2.  **[分析] Context Analysis**:
 
-Claude Codeがこのプロジェクトで作業する際の標準的なワークフローパターンです。
+      * `Read`で関連するファイル（実装仕様書、既存コード、関連ドキュメント）を読み込み、変更内容と影響範囲を完全に理解します。
+      * スクリプトを修正する場合は、コード先頭の`@dependencies`ヘッダー（今後追加予定）を確認します。
 
-### 1️⃣ 事前準備フェーズ
+3.  **[実装] Implementation**:
 
-**状況把握タスク:**
-- `git status` で現在のブランチとgit状態確認
-- `LS` や `Glob` でディレクトリ構造の理解  
-- `Read` で既存の設定・ドキュメント確認
-- `TodoRead` で既存タスク状況の把握
+      * `Edit`や`Write`を使い、仕様書に基づいてコードの変更を正確に実行します。
+      * 可能な限り、`Repository API`で定義されたコマンドを利用します。
 
-**重要ポイント:**
-- 作業前に必ず現在の状態を把握する
-- 変更が他の部分に与える影響を考慮する
-- セキュリティファイル（.gitignore対象）に注意を払う
+4.  **[検証] Validation & Self-Correction**:
 
-### 2️⃣ 作業計画フェーズ
+      * コードの変更後、**必ず`just test`を実行します**。
+      * **テストが失敗した場合**: エラー出力を詳細に分析し、**自ら問題を特定してコードを修正**します。修正後、再度`just test`を実行し、成功するまでこのループを繰り返します。
+      * **テストが成功した場合**: 次のステップへ進みます。
 
-**タスク管理:**
-- `TodoWrite` でタスクリストを作成
-- 優先度付け (high/medium/low)
-- 複雑なタスクは段階的にブレークダウン
-- 進捗状況を随時更新（pending → in_progress → completed）
+5.  **[文書化] Documentation**:
 
-**計画のコツ:**
-- 大きなタスクは小さく分割する
-- 依存関係を考慮した順序付け
-- リスクの高い変更は慎重に計画
+      * スクリプトの挙動やインターフェースに変更があった場合は、**必ず`just docs`を実行**し、ドキュメントとの同期を取ります。
 
-### 3️⃣ 実装フェーズ
-
-**段階的実装:**
-- 各タスクを開始時に `in_progress` に変更
-- `Read` で既存ファイルの内容を確認してから `Edit` や `Write`
-- 新機能実装・既存機能修正を段階的に実行
-- 完了後は即座に `completed` に更新
-
-**実装のベストプラクティス:**
-- 既存ファイルの編集を新規作成より優先
-- コメントは日本語で詳細に記載
-- 2スペースインデント（YAML, JSON, Lua）を厳守
-- `MultiEdit` で複数箇所の同時変更を効率化
+6.  **[提出] Commit & Propose**:
 
-### 4️⃣ 品質保証フェーズ
+      * `git status`, `git diff`で最終的な変更内容を確認します。
+      * 以下のテンプレートに従い、詳細なコミットメッセージを作成し、変更を提案します。
 
-**ローカル検証手順:**
-```bash
-# 構文チェック
-shellcheck scripts/*.sh
-python3 .github/scripts/validate_toml.py
-
-# 機能テスト
-./install.sh --help
-./setup.sh --help
-
-# 依存関係チェック
-scripts/check-dependencies.sh --verbose
-```
-
-**検証のポイント:**
-- 新しいスクリプトは必ず実行可能権限を付与
-- エラーが発生した場合は即座に修正
-- 依存関係の問題を事前に検出
-
-### 5️⃣ 統合フェーズ
-
-**Git管理プロセス:**
-1. `git status` で変更内容確認
-2. `git diff` で変更詳細レビュー  
-3. `git log` で最近のコミット履歴確認（コミットメッセージスタイル把握）
-4. `git add .` でステージング
-5. 詳細なコミットメッセージ作成
-6. `git push origin main`
-
-**コミットメッセージテンプレート:**
-```
-<変更内容の概要>
-
-- <具体的な変更点1>
-- <具体的な変更点2>
-- <具体的な変更点3>
-
-<技術的詳細や背景情報>
-
-🤖 Generated with [Claude Code](https://claude.ai/code)
-
-Co-Authored-By: Claude <noreply@anthropic.com>
-```
-
-### 6️⃣ CI/CD確認フェーズ
-
-**継続的統合確認:**
-- `gh run list --limit 5` でGitHub Actions実行確認
-- CI失敗時は `gh run view <run-id> --log-failed` で詳細確認
-- エラーの即座修正とre-push
-- 全てのテストが成功するまで対応継続
-
-**CI失敗時の対応パターン:**
-- Shellcheck警告: 除外設定や修正
-- 依存関係エラー: パス修正や設定更新
-- テスト失敗: ロジック修正や設定調整
-
-### 7️⃣ ドキュメント保守フェーズ
-
-**ドキュメント更新対象:**
-- `README.md`: 機能追加時の使用方法更新
-- `CLAUDE.md`: 新しいパターンや重要な学びの記録
-- `docs/`: 詳細ガイドの追加・更新
-- コード内コメント: 複雑なロジックの説明
-
-**ドキュメント品質基準:**
-- 具体的な例とコマンドを含む
-- トラブルシューティング情報を提供
-- セキュリティ考慮事項を明記
-
-## 特徴的なパターン
-
-### 並行処理最適化
-- 複数のBashコマンドを1つのメッセージで同時実行
-- 関連ファイルの並行読み取り
-- 効率的な情報収集とバッチ処理
-
-### エラー対応即応性  
-- CI失敗の即座確認・修正
-- Shellcheck警告の迅速対応
-- 依存関係問題の自動検出と修正
-
-### セキュリティ重視
-- 個人情報ファイルの除外確認
-- .gitignore の適切な管理
-- セキュアな設定管理の維持
-
-### 品質保証徹底
-- 各段階での検証実施
-- 自動テストとの連携
-- 継続的改善の実践
-
-## 📈 最新の成果と改善
-
-### 2025年6月16日 17:20 - home-managerドットファイル管理統合完了
-
-#### 🏆 宣言的ドットファイル管理システムの確立
-- **home-manager完全統合**: CLI標準ワークフロー完全実行
-- **プログラム統合管理**: starship、tmux、zsh、neovim等の宣言的設定
-- **Pure evaluation対応**: flakeベース設定でのセキュア管理
-- **CI/CD品質保証**: shellcheck修正による継続的品質管理
-
-#### 🔧 技術的ブレークスルー
-- **宣言的設定**: programs.zsh, programs.starshipでの高度な統合
-- **セッション変数管理**: 一元的な環境設定管理
-- **エイリアス統合**: nrs、hms等の便利なnixショートカット
-- **品質保証統合**: TOML検証・shellcheck・CI/CDの完全自動化
-
-#### 📊 導入実績
-- **基本プログラム管理**: zsh、starship、tmux、neovim、git統合
-- **開発ツール統合**: fzf、direnv、bat、zoxide等の現代的CLIツール
-- **エディター管理**: neovim設定の宣言的管理
-- **エイリアス最適化**: 60+の便利なシェルエイリアス
-
-#### 🎯 Claude Code標準ワークフロー実証
-**完全実行記録:**
-1. ✅ **事前準備**: git status、ディレクトリ構造、設定確認
-2. ✅ **作業計画**: TodoWriteによる段階的タスク管理  
-3. ✅ **実装**: home-manager switch実行・Pure evaluation対応
-4. ✅ **品質保証**: shellcheck・TOML検証・依存関係チェック
-5. ✅ **統合**: Git管理・詳細コミットメッセージ・push
-6. ✅ **CI/CD確認**: GitHub Actions監視・エラー修正・再実行
-7. ✅ **ドキュメント保守**: CLAUDE.md更新・成果記録
-
-### 2025年6月16日 02:00 - nix移行プロジェクト完全達成
-
-#### 🏆 歴史的な環境管理革命の達成
-- **nix-darwin完全統合**: macOS史上最も包括的な宣言的システム管理
-- **100+のCLIツール**: 完全なnix管理への移行成功
-- **79個のGUIアプリ**: Homebrew統合による完全な一元管理
-- **現代的開発環境**: eza, bat, fd, zoxide, lazygit等の最先端ツール統合
-
-#### 🔧 技術的ブレークスルー
-- **Determinate Nix**: 企業グレードのnix環境との完全互換性達成
-- **flake.lock**: 完全決定論的ビルドによる100%環境再現性
-- **home-manager統合**: ユーザーレベルとシステムレベルの完全統合
-- **原子的更新**: 失敗しない安全なシステム更新メカニズム
-
-#### 📊 驚異的な統合実績
-- **パッケージ管理統合**: 
-  - CLIツール: 100%nix管理（git, starship, modern tools等）
-  - GUIアプリ: Homebrew統合で79個完全管理
-  - フォント: Nerd Fonts + 日本語フォント統一管理
-  - システム設定: Dock, Finder, キーボード等宣言的管理
-
-#### 🚀 Modern Development Workflow確立
-- **Convenient aliases**: ls→eza, cat→bat, find→fd, cd→zoxide
-- **Git workflow強化**: lazygit, gitui, delta等のTUIツール統合
-- **開発環境**: Go, Rust, Python, Node.js完全統合
-- **管理コマンド**: nrs, hms等の直感的システム管理
-
-#### 🎯 環境再現性の完全達成
-- **完全なバックアップ**: flake + dotfiles二重管理
-- **ロールバック機能**: 任意の過去状態への安全な復帰
-- **クロスプラットフォーム**: macOS最適化 + Linux対応準備
-- **企業級品質**: CI/CD統合 + 自動検証システム
-
-### 2025年6月15日 12:00 - MCPトラブルシューティング完了
-
-#### 🔧 MCP（Model Context Protocol）問題解決
-- **パス問題修正**: ENOENT エラーの根本原因特定・解決
-- **設定統一**: Claude Desktop・CLI設定の完全同期
-- **キャッシュクリア**: 古い設定残存の問題を解消
-- **フルパス指定**: nodebrewのnpxパス明示で安定性向上
-
-#### 📊 トラブルシューティング成果
-- **問題特定**: spawn npx ENOENT エラーの根本分析
-- **段階的解決**: キャッシュクリア → 再登録 → 検証の体系的アプローチ
-- **品質保証**: shellcheck・TOML検証・依存関係チェック実行
-- **CI/CD統合**: GitHub Actionsで自動検証成功
-
-#### 🚀 MCP機能回復
-- **filesystem server**: dotfiles安全操作
-- **github server**: リポジトリ管理・Issue/PR操作
-- **brave-search server**: Web検索・ドキュメント検索
-- **figma-dev-mode**: デザインtoコード変換（要Figmaアプリ）
-
-### 2025年6月15日 - 大幅な機能拡張完了
-
-#### 🌐 Browser MCP統合
-- **Playwright MCP Server**: クロスブラウザ自動化
-- **Puppeteer MCP Server**: Headless Chrome制御
-- **Web情報収集**: 技術調査・設定例収集の自動化
-- **フォーム操作**: 検索・入力・データ抽出
-
-#### 📦 nix移行戦略の完成
-- **包括的移行プラン**: 4段階・6週間の詳細計画
-- **150+パッケージ分析**: Homebrew環境の完全調査
-- **実用的設定**: nix-darwin + home-manager設定
-- **ハイブリッド共存**: 安全な段階的移行戦略
-
-#### 🖥️ ターミナルセッション永続化
-- **tmux設定**: Yabai環境最適化
-- **セッション管理**: プロジェクト別作業継続
-- **macOS統合**: クリップボード連携・キーバインド
-
-#### 🔗 依存関係管理システム
-- **自動検証**: ファイル参照の整合性チェック
-- **Pre-commit統合**: コミット前の品質保証
-- **CI/CD統合**: GitHub Actionsでの自動検証
-
-#### 📚 ドキュメント体系の充実
-- **包括的ガイド**: 13種類の詳細ドキュメント
-- **実用例**: 具体的なコマンドと使用例
-- **トラブルシューティング**: よくある問題と解決方法
-
-### 🎯 プロジェクトの成熟度
-
-**システム管理:**
-- ✅ 完全自動化されたdotfiles管理
-- ✅ 依存関係の自動検証
-- ✅ CI/CDによる品質保証
-- ✅ セキュリティ重視の設計
-
-**開発効率:**
-- ✅ ターミナルセッション永続化
-- ✅ ブラウザ自動化統合
-- ✅ 段階的パッケージマネージャー移行
-- ✅ プロジェクト別環境分離
-
-**保守性:**
-- ✅ モジュール化された設定
-- ✅ 包括的なドキュメント
-- ✅ 標準化されたワークフロー
-- ✅ 継続的な品質管理
-
----
-
-このワークフローと最新の機能により、効率的で品質の高い作業を継続的に実現し、プロジェクトの整合性と安全性を維持しています。
+    **コミットメッセージテンプレート**:
+
+    ```
+    feat(scope): 変更内容の簡潔な説明
+
+    実装仕様書「(タスク番号): (タスク名)」に基づき、以下の変更を実施。
+
+    - 変更点1の詳細な説明。
+    - 変更点2の詳細な説明。
+
+    これにより、(達成される価値や解決される問題)が実現される。
+    全てのローカルテスト(`just test`)は成功済み。
+
+    Co-Authored-By: Claude <noreply@anthropic.com>
+    ```
+
+## プロジェクトアーキテクチャ概要
+
+  * **宣言的管理**: Nix (`nix-darwin`, `home-manager`) がシステムの核。
+  * **設定の単一情報源 (SSOT)**:
+      * **UIテーマ**: `nix/common/theme.nix`（今後作成）が全てのUIのカラースキームとフォントを定義する。
+      * **デプロイ**: `home.nix`が全てのドットファイルの配置を管理する。
+  * **命令的処理**:
+      * `scripts/`内のシェルスクリプトは、`justfile`を通じて抽象化されたタスクとして実行される。
+  * **AIとの連携**:
+      * この`CLAUDE.md`が、AIの振る舞いを定義する最上位のドキュメントとなる。
+
+## 📚 主要ドキュメントと情報源 (Key Documents)
+
+作業の際は、以下のドキュメントを主要な情報源として常に参照してください。
+
+  * **本ファイル (`CLAUDE.md`)**: あなた自身の行動規範とワークフロー。
+  * **実装仕様書**: `docs/proposals/001-overall-evolution-spec-v2.md` - 現在進行中のプロジェクトの具体的な指示書。
+  * `docs/nix/HOMEBREW_STRATEGY.md` : Homebrewで管理するパッケージとその理由を記載したリスト。
+  * `nix/common/theme.nix` : UI設定の唯一のマスターファイル。
+
+## ⚙️ プロジェクトの成果と履歴
+
+(このセクションは、完了したフェーズの成果を記録するために継続して使用します)
+
+  * **2025-06-17**: `dotfiles`総合進化プロジェクト開始。実装仕様書v2.0が承認される。
+  * **2025-06-16**: Nix移行プロジェクト完了。宣言的環境管理の基盤を確立。
+  * **2025-06-15**: MCP（Model Context Protocol）の接続問題を完全解決。
