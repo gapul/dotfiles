@@ -233,10 +233,8 @@
     };
 
     # Node.js development environment
-    npm = {
-      enable = true;
-      # npmrc configuration can be managed here
-    };
+    # Note: npm is managed via nodejs package installation
+    # Global npm packages should be installed via nix when possible
 
     # Python development environment  
     # Note: Python packages managed via nix expressions rather than pip when possible
@@ -292,8 +290,6 @@
   # Platform-specific configurations
   targets.darwin = {
     # Darwin-specific home-manager configurations
-    defaults = {
-      # Custom plist configurations can go here
-    };
+    # Note: System-level defaults managed via nix-darwin
   };
 }
