@@ -5,6 +5,12 @@
   # Boot configuration
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
+  
+  # File systems (placeholder - should be configured per system)
+  fileSystems."/" = {
+    device = "/dev/disk/by-label/nixos";
+    fsType = "ext4";
+  };
 
   # Networking
   networking.hostName = "nixos-desktop";
@@ -32,9 +38,14 @@
     displayManager.lightdm.enable = true;
   };
 
-  # Audio
-  sound.enable = true;
-  hardware.pulseaudio.enable = true;
+  # Audio (PipeWire recommended for modern NixOS)
+  security.rtkit.enable = true;
+  services.pipewire = {
+    enable = true;
+    alsa.enable = true;
+    alsa.support32Bit = true;
+    pulse.enable = true;
+  };
 
   # Users
   users.users.yuki = {
@@ -43,6 +54,9 @@
     extraGroups = [ "networkmanager" "wheel" "audio" "video" ];
     shell = pkgs.zsh;
   };
+  
+  # Enable zsh system-wide
+  programs.zsh.enable = true;
 
   # System packages
   environment.systemPackages = with pkgs; [
