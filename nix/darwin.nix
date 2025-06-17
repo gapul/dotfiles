@@ -146,12 +146,24 @@
         NSDocumentSaveNewDocumentsToCloud = false;
         NSNavPanelExpandedStateForSaveMode = true;
         NSNavPanelExpandedStateForSaveMode2 = true;
+        
+        # Trackpad tap behavior - allow left tap, disable right tap
+        "com.apple.mouse.tapBehavior" = 1;  # Enable left tap, disable right tap behaviors
       };
 
       trackpad = {
-        Clicking = false;  # Disable tap to click
-        TrackpadRightClick = true;
-        TrackpadThreeFingerDrag = true;
+        # 左タップクリックは有効、右タップクリックのみ無効化
+        Clicking = true;  # Enable tap to click (primary left click)
+        TrackpadRightClick = false;  # Disable right tap for right click
+        TrackpadCornerSecondaryClick = 0;  # Disable corner secondary click
+        
+        # 有用な機能は維持
+        TrackpadThreeFingerDrag = true;  # Keep three finger drag
+        
+        # 物理クリック関連（押し込みクリック）は有効のまま
+        # 物理的な右クリック（Control+Click相当や押し込み）は機能する
+        ActuationStrength = 1;  # Light physical click sensitivity
+        ForceSuppressed = false;  # Enable Force Touch if available
       };
     };
 
