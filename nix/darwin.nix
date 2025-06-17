@@ -332,7 +332,6 @@
       "zotero"
       
       # Media & Security
-      "bitwarden"
       
       # Fonts (Japanese/special fonts)
       "font-hackgen-nerd"
@@ -349,27 +348,8 @@
       # Core Mac App Store applications
       "GarageBand" = 682658836;
       "LINE" = 539883307;
-      "Pages" = 409201541;
-      "Numbers" = 409203825;
-      "Keynote" = 409183694;
+      "Bitwarden" = 1352778147;
       "Xcode" = 497799835;
-      "TestFlight" = 899247664;
-      "Logic Pro" = 634148309;
-      "Final Cut Pro" = 424389933;
-      "Motion" = 434290957;
-      "Compressor" = 424390742;
-      "MainStage" = 634159523;
-      "Transloader" = 1447648031;
-      "Day One" = 1055511498;
-      "Bear" = 1091189122;
-      "Taska for GitHub-GitLab Issues" = 1490804956;
-      "System Preferences" = 1564271834;
-      "Finder" = 1042394095;
-      "Safari" = 1146562112;
-      "Amphetamine" = 937984704;
-      "The Unarchiver" = 425424353;
-      "MoneyMoney" = 872698314;
-      "1Blocker- Ad Blocker & Privacy" = 1365531024;
     };
   };
 }
