@@ -106,38 +106,59 @@ dotfiles/
 git clone https://github.com/your-username/dotfiles.git ~/dotfiles
 cd ~/dotfiles
 
-# 2. 必要なソフトウェアのインストール（任意）
-./scripts/software.sh
+# 2. nix環境の前提条件確認
+# Determinate Nix インストール済みであることを確認
+nix --version
 
-# 2.1. tmuxのインストール（セッション永続化に推奨）
-brew install tmux
+# 3. home-manager switchによる宣言的環境構築
+home-manager switch --flake ~/dotfiles/nix
 
-# 3. ドットファイルのセットアップ
+# 4. 従来スクリプトによる初回セットアップ補完（オプション）
+# 一部の設定やソフトウェアインストールに使用
 ./install.sh
 
-# 4. セキュリティガイドに従って個人設定を追加
+# 5. セキュリティガイドに従って個人設定を追加
 # SECURITY.md を参照してテンプレートファイルをカスタマイズ
 ```
 
 ### 🔄 既存環境からの移行
 ```bash
-# 1. 現在の設定をバックアップ
-./install.sh  # 自動的にバックアップされます
+# 1. nix環境の準備
+# Determinate Nix が未インストールの場合
+curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
 
-# 2. 設定の確認
+# 2. home-manager switchによる宣言的設定適用
+home-manager switch --flake ~/dotfiles/nix
+# ※ 既存設定は自動的にバックアップされます
+
+# 3. 設定の確認
 ls -la ~/  # シンボリックリンクを確認
 
-# 3. 必要に応じて個人設定を追加
+# 4. 必要に応じて個人設定を追加
 cp configs/git/.gitconfig.example configs/git/.gitconfig
 # 実名・メールアドレスを編集
 ```
 
 ## ⚙️ 高度な使用方法
 
-### 🔧 install.shオプション
+### 🔧 home-manager管理
+```bash
+# 宣言的設定の適用
+home-manager switch --flake ~/dotfiles/nix
+
+# ロールバック（前の世代に戻す）
+home-manager generations
+home-manager switch --flake ~/dotfiles/nix --switch-generation <generation-id>
+
+# 設定確認
+home-manager news
+```
+
+### 🔧 install.sh（初回セットアップ用ラッパー）
 ```bash
 ./install.sh --help          # ヘルプ表示
 ./install.sh --force         # 既存設定を強制上書き
+# ※ 現在は初回セットアップやソフトウェアインストール補完用
 ```
 
 ### 🧪 設定検証
@@ -321,16 +342,19 @@ nix run nix-darwin -- switch --flake ~/.config/nix-darwin
 - `docs/NIX_MIGRATION_PHASES.md` - 段階的実行プラン
 - `docs/NIX_QUICK_START.md` - 即座実行手順
 
-## 🎉 nix移行完了状況
+## 🎉 home-manager統合完了状況
 
-### 達成された統合管理
-- **100+のCLIツール**: nixで完全管理（git, starship, modern CLI tools等）
-- **79個のGUIアプリ**: nix-darwin + Homebrew統合管理
-- **フォント統合**: Nerd Fonts + 日本語フォントの統一管理
-- **システム設定**: 宣言的macOS設定（Dock, Finder, キーボード等）
+### 宣言的ドットファイル管理の実現
+- **完全統合管理**: zsh, starship, tmux, neovim, git等の宣言的設定
+- **プログラム管理**: programs.zsh, programs.starshipでの高度な統合
+- **セッション変数**: sessionVariablesによる一元的環境設定
+- **エイリアス統合**: 60+の便利なシェルエイリアス（ls→eza, cat→bat等）
 
 ### Modern Development Environment
 ```bash
+# home-manager管理コマンド
+hms   # → home-manager switch --flake ~/dotfiles/nix
+
 # Modern CLI tools（nix管理）
 eza --version     # Modern ls replacement
 bat --version     # Syntax-highlighted cat
@@ -338,22 +362,21 @@ fd --version      # Modern find replacement
 zoxide --version  # Smart cd replacement
 lazygit --version # Terminal Git UI
 
-# Convenient aliases
+# Convenient aliases（home-manager設定）
 ls    # → eza --color=auto --icons
 cat   # → bat with syntax highlighting
 find  # → fd with smart search
 cd    # → zoxide with smart navigation
 
-# nix management commands
+# システム管理（nix-darwin）
 nrs   # → darwin-rebuild switch
-hms   # → home-manager switch
 ```
 
-### 環境再現性
-- **完全な決定論的ビルド**: flake.lockによるバージョン固定
-- **原子的更新**: 成功/失敗の明確な分離
-- **ロールバック機能**: 設定の安全な変更
-- **クロスプラットフォーム**: macOS特化 + Linux対応可能
+### 宣言的設定管理の利点
+- **Pure evaluation**: 完全な決定論的ビルド
+- **原子的更新**: 成功/失敗の明確な分離と安全な適用
+- **世代管理**: 設定変更の履歴とロールバック機能
+- **統合管理**: dotfilesとパッケージ管理の一元化
 
 ## 📊 CI/CD統合
 
@@ -390,11 +413,19 @@ cat .gitignore | grep -E "(git|ssh|claude)"  # .gitignore確認
 
 ### 🔧 診断コマンド
 ```bash
+# home-manager状態確認
+home-manager generations        # 世代履歴確認
+home-manager news              # 重要な変更通知
+home-manager packages          # インストール済みパッケージ
+
 # システム診断
 ./install.sh --help
 python3 .github/scripts/validate_toml.py
 ./check-ci.sh --history
 ls -la backups/
+
+# nix設定検証
+nix flake check ~/dotfiles/nix  # flake設定の検証
 ```
 
 ## 🤝 コントリビューション
