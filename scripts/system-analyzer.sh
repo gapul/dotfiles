@@ -214,7 +214,7 @@ analyze_usage_patterns() {
     if [[ "$format" == "json" ]]; then
         report_file="$REPORT_DIR/usage-patterns-$TIMESTAMP.json"
         echo "{" > "$report_file"
-        echo '  "generated": "'$(date)'",' >> "$report_file"
+        echo "  \"generated\": \"$(date)\"," >> "$report_file"
         echo '  "analysis": {' >> "$report_file"
     else
         cat > "$report_file" << EOF
