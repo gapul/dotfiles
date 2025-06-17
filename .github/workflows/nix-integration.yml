@@ -7,12 +7,14 @@ on:
       - 'nix/**'
       - 'scripts/nix-*'
       - 'scripts/phase3-*'
+      - '.github/workflows/nix-integration.yml'
   pull_request:
     branches: [ main ]
     paths:
       - 'nix/**'
       - 'scripts/nix-*'
       - 'scripts/phase3-*'
+      - '.github/workflows/nix-integration.yml'
 
 jobs:
   nix-validation:
