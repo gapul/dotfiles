@@ -307,28 +307,28 @@ in
   # Migrated from scripts/install.sh DOTFILES_LIST for declarative configuration
   home.file = {
     # Phase 1: 基本設定（必須）
-    ".zshrc".source = "${dotfilesDirectory}/configs/zsh/zshrc";
-    ".zprofile".source = "${dotfilesDirectory}/configs/zsh/zprofile";
-    ".config/starship.toml".source = "${dotfilesDirectory}/configs/terminal/starship.toml";
-    ".config/wezterm/wezterm.lua".source = "${dotfilesDirectory}/configs/terminal/wezterm.lua";
-    ".tmux.conf".source = "${dotfilesDirectory}/configs/terminal/tmux.conf";
+    ".zshrc".source = ../configs/zsh/zshrc;
+    ".zprofile".source = ../configs/zsh/zprofile;
+    ".config/starship.toml".source = ../configs/terminal/starship.toml;
+    ".config/wezterm/wezterm.lua".source = ../configs/terminal/wezterm.lua;
+    ".tmux.conf".source = ../configs/terminal/tmux.conf;
     
     # Phase 2: 開発ツール設定
-    ".condarc".source = "${dotfilesDirectory}/configs/development/.condarc";
-    ".docker/config.json".source = "${dotfilesDirectory}/configs/development/docker/config.json";
-    ".docker/daemon.json".source = "${dotfilesDirectory}/configs/development/docker/daemon.json";
-    ".config/gh/config.yml".source = "${dotfilesDirectory}/configs/cli/gh/config.yml";
-    ".config/claude/mcp-servers.json".source = "${dotfilesDirectory}/configs/apps/claude/mcp-servers.json";
+    ".condarc".source = ../configs/development/.condarc;
+    ".docker/config.json".source = ../configs/development/docker/config.json;
+    ".docker/daemon.json".source = ../configs/development/docker/daemon.json;
+    ".config/gh/config.yml".source = ../configs/cli/gh/config.yml;
+    ".config/claude/mcp-servers.json".source = ../configs/apps/claude/mcp-servers.json;
     
     # Phase 3: エディター設定（任意）
-    ".config/zed/settings.json".source = "${dotfilesDirectory}/configs/editors/zed/settings.json";
-    "Library/Application Support/Code/User/settings.json".source = "${dotfilesDirectory}/configs/editors/vscode/settings.json";
-    ".config/nvim".source = "${dotfilesDirectory}/configs/editors/nvim";
+    ".config/zed/settings.json".source = ../configs/editors/zed/settings.json;
+    "Library/Application Support/Code/User/settings.json".source = ../configs/editors/vscode/settings.json;
+    ".config/nvim".source = ../configs/editors/nvim;
     
     # Phase 4: ウィンドウマネージャー設定（macOS限定・任意）
-    ".config/yabai/yabairc".source = "${dotfilesDirectory}/configs/wm/yabai/yabairc";
-    ".config/skhd/skhdrc".source = "${dotfilesDirectory}/configs/wm/skhd/skhdrc";
-    ".config/sketchybar/sketchybarrc".source = "${dotfilesDirectory}/configs/wm/sketchybar/sketchybarrc";
+    ".config/yabai/yabairc".source = ../configs/wm/yabai/yabairc;
+    ".config/skhd/skhdrc".source = ../configs/wm/skhd/skhdrc;
+    ".config/sketchybar/sketchybarrc".source = ../configs/wm/sketchybar/sketchybarrc;
     
     # Note: Sensitive files (.gitconfig, ssh/config, claude.json) are excluded for security
     # See .example files in respective directories for templates
