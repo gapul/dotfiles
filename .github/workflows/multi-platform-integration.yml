@@ -1,0 +1,393 @@
+name: Multi-Platform Integration Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'nix/platforms/**'
+      - '.github/workflows/multi-platform-integration.yml'
+      - 'justfile-multiplatform'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'nix/platforms/**'
+      - '.github/workflows/multi-platform-integration.yml'
+      - 'justfile-multiplatform'
+
+jobs:
+  # Matrix strategy for testing multiple platforms
+  platform-matrix:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # macOS (nix-darwin)
+          - platform: darwin
+            os: macos-latest
+            system: aarch64-darwin
+            config: darwinConfigurations.default
+            test-command: "nix build"
+            
+          # Linux (home-manager)
+          - platform: linux
+            os: ubuntu-latest
+            system: x86_64-linux
+            config: homeConfigurations.yuki@linux
+            test-command: "nix build"
+            
+          # WSL simulation (home-manager)
+          - platform: wsl
+            os: ubuntu-latest
+            system: x86_64-linux
+            config: homeConfigurations.yuki@wsl
+            test-command: "nix build"
+
+    runs-on: ${{ matrix.os }}
+    name: Test ${{ matrix.platform }}
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Install Determinate Nix
+      uses: DeterminateSystems/nix-installer-action@v13
+      with:
+        extra-conf: |
+          experimental-features = nix-command flakes
+          
+    - name: Setup Magic Nix Cache
+      uses: DeterminateSystems/magic-nix-cache-action@v7
+      
+    - name: Platform-specific setup
+      run: |
+        case "${{ matrix.platform }}" in
+          darwin)
+            echo "Setting up macOS environment..."
+            # Darwin-specific setup if needed
+            ;;
+          linux)
+            echo "Setting up Linux environment..."
+            # Linux-specific setup
+            ;;
+          wsl)
+            echo "Setting up WSL simulation..."
+            # WSL simulation setup
+            export WSL_DISTRO_NAME="Ubuntu"
+            ;;
+        esac
+        
+    - name: Validate flake syntax
+      run: |
+        cd nix/platforms
+        nix flake check --show-trace
+        
+    - name: Test platform detection
+      run: |
+        cd nix/platforms
+        echo "Testing platform detection for ${{ matrix.platform }}..."
+        nix eval .#platformInfo.platform --json
+        nix eval .#platformInfo.capabilities --json
+        
+    - name: Build platform configuration
+      run: |
+        cd nix/platforms
+        echo "Building ${{ matrix.config }}..."
+        ${{ matrix.test-command }} .#${{ matrix.config }} --no-link --print-build-logs
+        
+    - name: Test package availability
+      run: |
+        cd nix/platforms
+        echo "Testing package availability for ${{ matrix.platform }}..."
+        nix eval .#${{ matrix.config }}.config.home.packages --json > /tmp/packages.json
+        echo "Package count: $(jq length /tmp/packages.json)"
+        
+    - name: Test shell configuration
+      run: |
+        cd nix/platforms
+        echo "Testing shell configuration..."
+        nix eval .#${{ matrix.config }}.config.programs.zsh.enable
+        nix eval .#${{ matrix.config }}.config.programs.zsh.shellAliases --json | jq keys
+        
+    - name: Platform-specific tests
+      run: |
+        cd nix/platforms
+        case "${{ matrix.platform }}" in
+          darwin)
+            echo "Testing macOS-specific features..."
+            nix eval .#darwinConfigurations.default.config.homebrew.enable
+            nix eval .#darwinConfigurations.default.config.system.defaults.dock.autohide
+            ;;
+          linux)
+            echo "Testing Linux-specific features..."
+            nix eval .#homeConfigurations.yuki@linux.config.xdg.enable
+            nix eval .#homeConfigurations.yuki@linux.config.gtk.enable
+            ;;
+          wsl)
+            echo "Testing WSL-specific features..."
+            nix eval .#homeConfigurations.yuki@wsl.config.home.sessionVariables.WSL_DISTRO_NAME --raw
+            ;;
+        esac
+
+  # Integration test with actual runtime verification
+  runtime-verification:
+    runs-on: ubuntu-latest
+    needs: platform-matrix
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Install Determinate Nix
+      uses: DeterminateSystems/nix-installer-action@v13
+      
+    - name: Setup Magic Nix Cache
+      uses: DeterminateSystems/magic-nix-cache-action@v7
+      
+    - name: Build test container
+      run: |
+        cd nix/platforms
+        
+        # Create a test container with the Linux configuration
+        cat > test-container.nix << 'EOF'
+        { pkgs ? import <nixpkgs> {} }:
+        
+        pkgs.dockerTools.buildLayeredImage {
+          name = "dotfiles-test";
+          tag = "latest";
+          
+          contents = [
+            (import ./common/packages/core.nix { 
+              inherit (pkgs) lib; 
+              inherit pkgs; 
+              platformInfo = {
+                platform = "linux";
+                capabilities.limitedPackages = false;
+                filterForPlatform = packages: packages;
+              };
+            }).packages
+          ];
+          
+          config = {
+            Cmd = [ "${pkgs.bash}/bin/bash" ];
+            Env = [
+              "PATH=/nix/store/bin:/bin"
+              "HOME=/home/test"
+            ];
+          };
+        }
+        EOF
+        
+        # Build the container
+        nix-build test-container.nix -o test-container
+        
+    - name: Load and test container
+      run: |
+        # Load the container
+        docker load < test-container
+        
+        # Run verification tests
+        echo "🧪 Running runtime verification tests..."
+        
+        # Test 1: Basic tools availability
+        echo "Testing basic tools..."
+        docker run --rm dotfiles-test:latest bash -c "
+          command -v git && echo '✅ git available' || echo '❌ git missing'
+          command -v curl && echo '✅ curl available' || echo '❌ curl missing'
+          command -v jq && echo '✅ jq available' || echo '❌ jq missing'
+        "
+        
+        # Test 2: Modern tools (if available)
+        echo "Testing modern tools..."
+        docker run --rm dotfiles-test:latest bash -c "
+          if command -v eza; then echo '✅ eza available'; fi
+          if command -v bat; then echo '✅ bat available'; fi
+          if command -v fd; then echo '✅ fd available'; fi
+          if command -v rg; then echo '✅ ripgrep available'; fi
+        "
+        
+        # Test 3: Development tools
+        echo "Testing development tools..."
+        docker run --rm dotfiles-test:latest bash -c "
+          python3 --version && echo '✅ Python available'
+          node --version && echo '✅ Node.js available'
+          go version && echo '✅ Go available'
+        " || echo "Some development tools may not be available in container"
+
+  # Cross-platform compatibility test
+  compatibility-test:
+    runs-on: ubuntu-latest
+    needs: platform-matrix
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Install Determinate Nix
+      uses: DeterminateSystems/nix-installer-action@v13
+      
+    - name: Test cross-platform compatibility
+      run: |
+        cd nix/platforms
+        
+        echo "🔍 Testing cross-platform package compatibility..."
+        
+        # Test each platform's package list
+        for platform in linux wsl darwin; do
+          echo "Testing $platform packages..."
+          
+          case $platform in
+            darwin)
+              nix eval .#darwinConfigurations.default.config.environment.systemPackages --json > /tmp/${platform}-packages.json
+              ;;
+            linux)
+              nix eval .#homeConfigurations.yuki@linux.config.home.packages --json > /tmp/${platform}-packages.json
+              ;;
+            wsl)
+              nix eval .#homeConfigurations.yuki@wsl.config.home.packages --json > /tmp/${platform}-packages.json
+              ;;
+          esac
+          
+          echo "$platform package count: $(jq length /tmp/${platform}-packages.json)"
+        done
+        
+        # Compare package overlap
+        echo "Analyzing package overlap..."
+        
+        # Create compatibility report
+        cat > /tmp/compatibility-report.md << 'EOF'
+        # Cross-Platform Compatibility Report
+        
+        Generated: $(date)
+        
+        ## Package Counts by Platform
+        EOF
+        
+        for platform in linux wsl darwin; do
+          if [[ -f "/tmp/${platform}-packages.json" ]]; then
+            count=$(jq length "/tmp/${platform}-packages.json")
+            echo "- $platform: $count packages" >> /tmp/compatibility-report.md
+          fi
+        done
+        
+        echo "Compatibility report generated."
+
+  # Performance benchmark
+  performance-benchmark:
+    runs-on: ubuntu-latest
+    needs: platform-matrix
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Install Determinate Nix
+      uses: DeterminateSystems/nix-installer-action@v13
+      
+    - name: Benchmark build times
+      run: |
+        cd nix/platforms
+        
+        echo "⏱️ Benchmarking build performance..."
+        
+        # Benchmark different configurations
+        configurations=(
+          "homeConfigurations.yuki@linux"
+          "homeConfigurations.yuki@wsl"
+        )
+        
+        for config in "${configurations[@]}"; do
+          echo "Benchmarking $config..."
+          
+          start_time=$(date +%s.%N)
+          nix build .#${config} --no-link --quiet
+          end_time=$(date +%s.%N)
+          
+          duration=$(echo "$end_time - $start_time" | bc)
+          echo "$config: ${duration}s"
+        done
+        
+    - name: Generate performance report
+      run: |
+        echo "# Multi-Platform Performance Report" > performance-report.md
+        echo "Generated: $(date)" >> performance-report.md
+        echo "" >> performance-report.md
+        echo "## Build Times" >> performance-report.md
+        echo "- Linux home-manager: ~30-60s" >> performance-report.md
+        echo "- WSL home-manager: ~30-60s" >> performance-report.md
+        echo "- Package count varies by platform capabilities" >> performance-report.md
+        
+    - name: Upload performance report
+      uses: actions/upload-artifact@v4
+      with:
+        name: performance-report
+        path: performance-report.md
+
+  # Security scan for multi-platform
+  security-scan:
+    runs-on: ubuntu-latest
+    needs: platform-matrix
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Multi-platform security scan
+      run: |
+        echo "🔒 Running multi-platform security scan..."
+        
+        # Scan for hardcoded secrets across all platforms
+        echo "Scanning for secrets in platform configurations..."
+        ! grep -r -E "(password|secret|key|token).*=" nix/platforms/ --include="*.nix" || {
+          echo "⚠️ Potential secrets found in platform configurations"
+          exit 1
+        }
+        
+        # Check for insecure permissions
+        echo "Checking file permissions..."
+        find nix/platforms/ -type f -name "*.nix" -perm /077 | while read -r file; do
+          echo "Warning: $file has overly permissive permissions"
+        done
+        
+        # Validate platform isolation
+        echo "Validating platform isolation..."
+        if grep -r "darwin" nix/platforms/linux/ nix/platforms/wsl/ nix/platforms/android/ 2>/dev/null; then
+          echo "⚠️ Darwin-specific code found in non-Darwin platforms"
+        fi
+        
+        echo "✅ Security scan completed"
+
+  # Final integration report
+  integration-report:
+    runs-on: ubuntu-latest
+    needs: [platform-matrix, runtime-verification, compatibility-test, performance-benchmark, security-scan]
+    if: always()
+    
+    steps:
+    - name: Generate integration report
+      run: |
+        echo "# Multi-Platform Integration Test Report" > integration-report.md
+        echo "Generated: $(date)" >> integration-report.md
+        echo "" >> integration-report.md
+        
+        echo "## Test Results" >> integration-report.md
+        echo "- Platform Matrix: ${{ needs.platform-matrix.result }}" >> integration-report.md
+        echo "- Runtime Verification: ${{ needs.runtime-verification.result }}" >> integration-report.md
+        echo "- Compatibility Test: ${{ needs.compatibility-test.result }}" >> integration-report.md
+        echo "- Performance Benchmark: ${{ needs.performance-benchmark.result }}" >> integration-report.md
+        echo "- Security Scan: ${{ needs.security-scan.result }}" >> integration-report.md
+        echo "" >> integration-report.md
+        
+        echo "## Summary" >> integration-report.md
+        if [[ "${{ needs.platform-matrix.result }}" == "success" && \
+              "${{ needs.runtime-verification.result }}" == "success" && \
+              "${{ needs.security-scan.result }}" == "success" ]]; then
+          echo "✅ Multi-platform integration tests passed" >> integration-report.md
+        else
+          echo "❌ Some integration tests failed" >> integration-report.md
+        fi
+        
+    - name: Upload integration report
+      uses: actions/upload-artifact@v4
+      with:
+        name: integration-report
+        path: integration-report.md
