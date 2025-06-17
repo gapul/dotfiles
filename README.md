@@ -41,7 +41,7 @@ dotfiles/
 │   ├── restore.sh                  # 復元スクリプト
 │   ├── software.sh                 # ソフトウェアインストール
 │   ├── check-ci.sh                 # CI状態チェッカー
-│   ├── check-dependencies.sh       # 依存関係チェック
+│   ├── system-analyzer.sh           # 統合分析ツール（依存関係チェック等）
 │   └── utils.sh                    # 共通ユーティリティ関数
 ├── 🗂️  configs/                     # 設定ファイル格納ディレクトリ
 │   ├── 🐚 zsh/                     # Zshシェル設定
@@ -274,7 +274,7 @@ vim configs/terminal/wezterm.lua
 # ローカルでの検証実行
 python3 .github/scripts/validate_toml.py
 shellcheck *.sh
-scripts/check-dependencies.sh --verbose
+scripts/system-analyzer.sh dependencies --verbose
 ```
 
 ### 🔗 依存関係管理
@@ -289,13 +289,16 @@ scripts/check-dependencies.sh --verbose
 
 ```bash
 # 依存関係チェック実行
-scripts/check-dependencies.sh
+scripts/system-analyzer.sh dependencies
 
-# 詳細表示
-scripts/check-dependencies.sh --verbose
+# 詳細表示  
+scripts/system-analyzer.sh dependencies --verbose
 
-# 自動修正（可能な場合）
-scripts/check-dependencies.sh --fix
+# Homebrew移行分析
+scripts/system-analyzer.sh homebrew-migration
+
+# 完全システム分析
+scripts/system-analyzer.sh full-analysis
 ```
 
 **Pre-commitフック:**
