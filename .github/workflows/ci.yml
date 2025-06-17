@@ -75,121 +75,89 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
       
-    - name: Create test environment
+    - name: Test Nix-integrated install script
       run: |
-        mkdir -p test_home/.config
-        mkdir -p test_home/.docker
-        mkdir -p test_home/Library/Application\ Support/Code/User
+        echo "Testing Nix-integrated install script..."
         
-    - name: Test install script comprehensive
-      env:
-        HOME: ${{ github.workspace }}/test_home
-      run: |
-        echo "Testing install script comprehensively..."
         # ヘルプオプションのテスト
+        echo "=== Testing --help option ==="
         ./install.sh --help
         
-        echo "Verifying all managed config files exist..."
-        # 管理対象ファイルの存在確認
-        missing_files=0
-        while IFS=':' read -r source_path target_path; do
-          if [[ -n "$source_path" && "$source_path" != *"#"* ]]; then
-            source_file="configs/${source_path#configs/}"
-            if [[ ! -f "$source_file" && ! -d "$source_file" ]]; then
-              echo "❌ Missing: $source_file"
-              missing_files=$((missing_files + 1))
-            else
-              echo "✅ Found: $source_file"
-            fi
-          fi
-        done < <(grep -E '^\s*"[^"]*:[^"]*"' scripts/install.sh | sed 's/[",]//g' | sed 's/^\s*//')
+        # バックアップ機能のテスト
+        echo "=== Testing backup functionality ==="
+        ./install.sh --list-backups
         
-        if [[ $missing_files -gt 0 ]]; then
-          echo "❌ $missing_files managed files are missing!"
+        # 設定ファイルの存在確認（home.nixベース）
+        echo "=== Verifying home.nix configuration ==="
+        if [[ -f "nix/home.nix" ]]; then
+          echo "✅ home.nix found"
+          # home.file セクションの存在確認
+          if grep -q "home.file" nix/home.nix; then
+            echo "✅ home.file configuration found"
+          else
+            echo "❌ home.file configuration not found"
+            exit 1
+          fi
+        else
+          echo "❌ nix/home.nix not found"
           exit 1
         fi
         
-        echo "Testing script syntax..."
+        # テーマ設定ファイルの確認
+        echo "=== Verifying theme configuration ==="
+        if [[ -f "nix/common/theme.nix" ]]; then
+          echo "✅ theme.nix found"
+        else
+          echo "❌ theme.nix not found"
+          exit 1
+        fi
+        
+        # 統合システムアナライザーのテスト
+        echo "=== Testing system analyzer ==="
+        if [[ -f "scripts/system-analyzer.sh" ]]; then
+          echo "✅ system-analyzer.sh found"
+          chmod +x scripts/system-analyzer.sh
+          scripts/system-analyzer.sh --help
+        else
+          echo "❌ system-analyzer.sh not found"
+          exit 1
+        fi
+        
+        # レガシー関数が削除されていることを確認
+        echo "=== Verifying legacy functions removed ==="
+        if grep -q "create_symlinks" scripts/install.sh; then
+          echo "❌ Legacy symlink functions still present"
+          exit 1
+        else
+          echo "✅ Legacy functions properly removed"
+        fi
+        
+        echo "Script syntax validation..."
         bash -n install.sh
         bash -n scripts/install.sh
         
-        echo "Testing backup functionality..."
-        # テスト用のダミーファイルを作成
-        mkdir -p test_home
-        echo "# Test file" > test_home/.zshrc
-        echo "# Test profile" > test_home/.zprofile
-        echo "# Test starship config" > test_home/.config/starship.toml
-        
-        # 実際にinstall.shを実行してバックアップをテスト
-        echo "Running install.sh to test backup creation..."
-        ./install.sh || true
-        
-        # バックアップディレクトリが作成されたかチェック
-        if [[ -d "backups" ]] && [[ $(ls -1 backups/ | wc -l) -gt 0 ]]; then
-          echo "✅ Backup functionality working correctly"
-          ls -la backups/
-        else
-          echo "⚠️  No backups created (may be expected if no conflicts)"
-        fi
-        
-        echo "Verifying symlink creation..."
-        # 作成されたシンボリックリンクの確認
-        symlinks_created=0
-        if [[ -L "test_home/.zshrc" ]]; then
-          echo "✅ .zshrc symlink created"
-          symlinks_created=$((symlinks_created + 1))
-        fi
-        if [[ -L "test_home/.zprofile" ]]; then
-          echo "✅ .zprofile symlink created"
-          symlinks_created=$((symlinks_created + 1))
-        fi
-        if [[ -L "test_home/.config/starship.toml" ]]; then
-          echo "✅ starship.toml symlink created"
-          symlinks_created=$((symlinks_created + 1))
-        fi
-        
-        echo "Created $symlinks_created symlinks successfully"
-        
-    - name: Test idempotency
-      env:
-        HOME: ${{ github.workspace }}/test_home  
+    - name: Test Nix wrapper functionality
       run: |
-        echo "Testing idempotency..."
-        # 同一スクリプトを2回実行して冪等性を確認
-        if [[ -f configs/zsh/zshrc ]]; then
-          echo "Running install script twice to test idempotency..."
-          
-          # 1回目の実行
-          echo "=== First run ==="
-          ./install.sh
-          first_run_output=$(./install.sh 2>&1)
-          
-          # 2回目の実行 - 既存のリンクがある状態
-          echo "=== Second run ==="
-          second_run_output=$(./install.sh 2>&1)
-          
-          # 2回目の実行で "既に正しく設定されています" メッセージが含まれることを確認
-          if echo "$second_run_output" | grep -q "既に正しく設定されています"; then
-            echo "✅ Idempotency test passed - script correctly detected existing symlinks"
-          else
-            echo "⚠️  Idempotency test warning - script may be recreating existing symlinks"
-            echo "Second run output: $second_run_output"
-          fi
-          
-          # --force オプションのテスト
-          echo "=== Testing --force option ==="
-          force_output=$(./install.sh --force 2>&1)
-          if echo "$force_output" | grep -q "強制モード"; then
-            echo "✅ Force mode test passed"
-          else
-            echo "❌ Force mode test failed"
-            exit 1
-          fi
-          
-          echo "Idempotency test completed successfully"
+        echo "Testing Nix wrapper functionality..."
+        
+        # Migration noticeの確認
+        echo "=== Testing migration notice ==="
+        output=$(./install.sh 2>&1 | head -20 || true)
+        if echo "$output" | grep -q "MIGRATION NOTICE"; then
+          echo "✅ Migration notice displayed correctly"
         else
-          echo "⚠️  Skipping idempotency test - .zshrc config not found"
+          echo "❌ Migration notice not found"
+          exit 1
         fi
+        
+        if echo "$output" | grep -q "home-manager"; then
+          echo "✅ home-manager references found"
+        else
+          echo "❌ home-manager references not found"
+          exit 1
+        fi
+        
+        echo "Nix wrapper test completed successfully"
 
   test-macos:
     name: Test on macOS
