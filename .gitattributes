@@ -1,0 +1,69 @@
+# Git-crypt selective encryption configuration
+# Files matching these patterns will be encrypted in the repository
+
+# Secret files and directories
+secrets/** filter=git-crypt diff=git-crypt
+nix/platforms/security/sops/keys/gpg/** filter=git-crypt diff=git-crypt
+nix/platforms/security/sops/*.yaml filter=git-crypt diff=git-crypt
+!nix/platforms/security/sops/*.yaml.example
+
+# Private keys
+*.key filter=git-crypt diff=git-crypt
+*.pem filter=git-crypt diff=git-crypt
+*.p12 filter=git-crypt diff=git-crypt
+*.p8 filter=git-crypt diff=git-crypt
+id_rsa filter=git-crypt diff=git-crypt
+id_ed25519 filter=git-crypt diff=git-crypt
+
+# Environment and configuration files with secrets
+.env filter=git-crypt diff=git-crypt
+.env.* filter=git-crypt diff=git-crypt
+secrets.* filter=git-crypt diff=git-crypt
+private.* filter=git-crypt diff=git-crypt
+
+# Vault tokens and certificates
+vault-token filter=git-crypt diff=git-crypt
+*.crt filter=git-crypt diff=git-crypt
+*.cer filter=git-crypt diff=git-crypt
+
+# Development credentials
+.npmrc filter=git-crypt diff=git-crypt
+.pypirc filter=git-crypt diff=git-crypt
+.dockercfg filter=git-crypt diff=git-crypt
+.docker/config.json filter=git-crypt diff=git-crypt
+
+# SSH configuration with potential keys
+.ssh/config filter=git-crypt diff=git-crypt
+.ssh/known_hosts filter=git-crypt diff=git-crypt
+
+# GPG keys
+*.gpg filter=git-crypt diff=git-crypt
+*.asc filter=git-crypt diff=git-crypt
+pubring.* filter=git-crypt diff=git-crypt
+secring.* filter=git-crypt diff=git-crypt
+
+# Platform-specific secure files
+# macOS
+*.keychain filter=git-crypt diff=git-crypt
+com.apple.* filter=git-crypt diff=git-crypt
+
+# Linux
+shadow filter=git-crypt diff=git-crypt
+passwd filter=git-crypt diff=git-crypt
+
+# Android/Termux
+com.termux* filter=git-crypt diff=git-crypt
+
+# Backup files that might contain secrets
+*.backup filter=git-crypt diff=git-crypt
+*.bak filter=git-crypt diff=git-crypt
+backup.* filter=git-crypt diff=git-crypt
+
+# Exclude example and template files from encryption
+*.example
+*.template
+*.tmpl
+*.sample
+README.*
+SECURITY.*
+LICENSE*
