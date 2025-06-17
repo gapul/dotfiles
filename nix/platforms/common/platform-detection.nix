@@ -81,7 +81,7 @@ let
     currentSettings = settings.${platform} or settings.linux;
     
     # Package filtering based on platform
-    filterPackages = packages: 
+    filterForPlatform = packages: 
       if platform == "android" then
         # Android has limited package availability
         lib.filter (pkg: 
@@ -111,14 +111,8 @@ in {
   whenCapable = capability: config:
     if platformInfo.capabilities.${capability} or false then config else {};
   
-  # Conditional package lists
-  darwinPackages = platformInfo.onPlatform "darwin";
-  linuxPackages = platformInfo.onPlatforms ["nixos" "linux"];
-  wslPackages = platformInfo.onPlatform "wsl";
-  androidPackages = platformInfo.onPlatform "android";
-  
   # Cross-platform package filtering
-  filterForPlatform = platformInfo.filterPackages;
+  filterForPlatform = platformInfo.filterForPlatform;
   
   # Platform-specific module imports
   platformModules = 
