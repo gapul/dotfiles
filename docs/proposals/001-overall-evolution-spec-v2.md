@@ -68,7 +68,7 @@
 * **対象ファイル**: `nix/home.nix` (修正), `scripts/install.sh`, `scripts/backup.sh`, `scripts/restore.sh` (削除/修正), `README.md` (修正)
 
 #### タスク 2.2: パッケージ分析スクリプトの統合
-* **現状の問題**: `nix-package-optimizer.sh`, `analyze-homebrew-nix-migration.sh` など、類似機能を持つスクリプトが複数存在する。
+* **現状の問題**: `nix-package-optimizer.sh` など、類似機能を持つスクリプトが複数存在していた。（※ 一部は `system-analyzer.sh` に統合済み）
 * **実装仕様**:
     1.  `scripts/system-analyzer.sh` という名前で新しいスクリプトを作成する。
     2.  既存の分析スクリプト群の機能を、この新しいスクリプトにサブコマンドとして集約する（例: `package-optimize`, `discover-apps`）。
