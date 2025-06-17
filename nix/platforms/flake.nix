@@ -144,14 +144,14 @@
           specialArgs = (mkPlatformConfig "x86_64-linux").specialArgs;
           modules = [
             # Hardware configuration would be system-specific
-            ./linux/desktop/default.nix
+            ./linux/nixos/system.nix
             sops-nix.nixosModules.sops
             home-manager.nixosModules.home-manager
             {
               home-manager = {
                 useGlobalPkgs = true;
                 useUserPackages = true;
-                users.${username} = import ./common/home/shell.nix;
+                users.${username} = import ./linux/nixos/home.nix;
                 extraSpecialArgs = (mkPlatformConfig "x86_64-linux").specialArgs;
               };
             }
@@ -268,6 +268,20 @@
         nixpkgs.legacyPackages.${system}.nixpkgs-fmt
       );
       
+      # Platform information for CI/CD and debugging
+      platformInfo = flake-utils.lib.eachDefaultSystemMap (system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+          lib = nixpkgs.lib;
+          platformDetection = import ./common/platform-detection.nix { inherit lib pkgs; };
+        in {
+          inherit (platformDetection) platformInfo;
+          platform = platformDetection.platformInfo.platform;
+          capabilities = platformDetection.platformInfo.capabilities;
+          settings = platformDetection.platformInfo.currentSettings;
+        }
+      );
+
       # CI/CD templates and examples
       templates = {
         # Platform-specific templates
