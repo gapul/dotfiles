@@ -149,7 +149,7 @@
       };
 
       trackpad = {
-        Clicking = true;
+        Clicking = false;  # Disable tap to click
         TrackpadRightClick = true;
         TrackpadThreeFingerDrag = true;
       };
