@@ -80,7 +80,13 @@
             home-manager = {
               useGlobalPkgs = true;
               useUserPackages = true;
-              users.${username} = import ./common/home/shell.nix;
+              users.${username} = { config, lib, pkgs, ... }: {
+                imports = [ ./common/home/shell.nix ];
+                # Explicitly set username to ensure consistency
+                home.username = lib.mkForce "yuki";
+                # Set USER environment variable through home-manager
+                home.sessionVariables.USER = lib.mkForce "yuki";
+              };
               extraSpecialArgs = (mkPlatformConfig system).specialArgs // {
                 inherit username;  # Ensure username is available to home-manager
               };
