@@ -1,4 +1,4 @@
-{ config, pkgs, username, homeDirectory, dotfilesDirectory, ... }:
+{ config, lib, pkgs, username, homeDirectory, dotfilesDirectory, platformInfo, ... }:
 
 {
   imports = [
@@ -50,108 +50,60 @@
       # };
     };
   };
-  # System-wide packages (CLI tools + ALL GUI applications)
-  environment.systemPackages = with pkgs; [
-    # Core CLI tools
-    git
-    gh
-    jq
-    ripgrep
-    tree
-    eza  # Modern ls replacement
-    fd   # Modern find replacement
-    bat  # Modern cat replacement
-    fzf  # Fuzzy finder
-    unzip
-    gzip
-    gnutar
-    rsync
-    
-    # Terminal tools  
-    tmux
-    starship
-    zoxide  # Smart cd replacement
-    direnv
-    lazygit  # Git TUI
-    gitui    # Alternative Git TUI
-    delta    # Git diff tool
-    
-    # Development tools
-    neovim
-    vim
-    shellcheck
-    gnumake
-    cmake
-    curl
-    wget
-    openssh
-    
-    # Language runtimes & tools
-    python312
-    nodejs_20
-    go
-    rustc
-    cargo
-    
-    # Development utilities
-    docker
-    docker-compose
-    
-    # Secret management tools
-    sops
-    age
-    
-    # System utilities
-    mas  # Mac App Store CLI
-    htop
-    btop
-    bottom   # System monitor
-    procs    # Modern ps replacement
-    dust     # Modern du replacement
-    
-    # Essential tools
-    nmap
-    ncdu        # Disk usage analyzer
-    lsof        # List open files
-    watch       # Execute programs periodically
-    
-    # Network tools
-    nss         # Network Security Services
-    tcpdump     # Network packet analyzer
-    bandwhich   # Network bandwidth monitor
-    
-    # Archive tools
-    p7zip       # 7-Zip archive tool
-    unar        # Archive extraction tool
-    
-    # Text processing
-    jq          # JSON processor
-    yq          # YAML processor
-    pandoc      # Document converter
-    
-    # Modern CLI replacements
-    sd          # Modern sed replacement
-    tokei       # Code statistics
-    tealdeer    # Modern man pages (tldr)
-    hyperfine   # Benchmarking tool
-    
-    # File operations
-    rename      # Rename utility
-    
-    # GUI applications available in nixpkgs (better performance & reproducibility)
-    chromium         # Open source Chrome
-    libreoffice      # Office suite
-    gimp             # Image editing
-    inkscape         # Vector graphics
-    vlc              # Media player
-    obs-studio       # Screen recording/streaming
-    discord          # Communication
-    slack            # Team communication
-    vscode           # Code editor
-    
-    # Note: Many GUI apps still managed by Homebrew for better macOS integration
-    
+  # Import core packages to avoid duplication
+  imports = [
+    ../../common/packages/core.nix
   ];
+
+  # System-wide packages (Darwin-specific + GUI applications)
+  environment.systemPackages = with pkgs; let
+    corePackages = (import ../../common/packages/core.nix { inherit lib pkgs platformInfo; }).packages;
+    darwinSpecific = [
+      # macOS specific tools
+      mas  # Mac App Store CLI
+      
+      # Development utilities (macOS optimized)
+      docker
+      docker-compose
+      
+      # Secret management tools
+      sops
+      age
+      
+      # Network tools
+      nss         # Network Security Services
+      tcpdump     # Network packet analyzer
+      bandwhich   # Network bandwidth monitor
+      
+      # Archive tools
+      p7zip       # 7-Zip archive tool
+      unar        # Archive extraction tool
+      
+      # Text processing
+      yq          # YAML processor
+      pandoc      # Document converter
+      
+      # Modern CLI replacements
+      sd          # Modern sed replacement
+      tokei       # Code statistics
+      tealdeer    # Modern man pages (tldr)
+      hyperfine   # Benchmarking tool
+      
+      # File operations
+      rename      # Rename utility
+      
+      # GUI applications available in nixpkgs (better performance & reproducibility)
+      chromium         # Open source Chrome
+      libreoffice      # Office suite
+      gimp             # Image editing
+      inkscape         # Vector graphics
+      vlc              # Media player
+      obs-studio       # Screen recording/streaming
+      discord          # Communication
+      slack            # Team communication
+      vscode           # Code editor
+    ];
+  in corePackages ++ darwinSpecific;
 
   # Fonts (basic set)
   fonts.packages = with pkgs; [
