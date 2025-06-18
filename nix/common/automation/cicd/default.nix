@@ -125,33 +125,33 @@ in
             mkdir -p .github/workflows
             
             # Main CI workflow
-            cat > .github/workflows/ci.yml << 'EOF'
-        name: CI Pipeline
+            cat > .github/workflows/ci.yml << 'END_OF_WORKFLOW'
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
         
-        on:
-          push:
-            branches: [ main, develop ]
-          pull_request:
-            branches: [ main ]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18, 20]
+
+    steps:
+    - uses: actions/checkout@v4
         
-        env:
-          REGISTRY: ghcr.io
-          IMAGE_NAME: ${{ github.repository }}
-        
-        jobs:
-          test:
-            runs-on: ubuntu-latest
-            strategy:
-              matrix:
-                node-version: [18, 20]
-        
-            steps:
-            - uses: actions/checkout@v4
-        
-            - name: Use Node.js ${{ matrix.node-version }}
+            - name: Use Node.js \${{ matrix.node-version }}
               uses: actions/setup-node@v4
               with:
-                node-version: ${{ matrix.node-version }}
+                node-version: \${{ matrix.node-version }}
                 cache: 'npm'
         
             - name: Install dependencies
@@ -178,8 +178,8 @@ in
             - name: SonarCloud Scan
               uses: SonarSource/sonarcloud-github-action@master
               env:
-                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-                SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+                GITHUB_TOKEN: \${{ secrets.GITHUB_TOKEN }}
+                SONAR_TOKEN: \${{ secrets.SONAR_TOKEN }}
         
           security-scan:
             runs-on: ubuntu-latest
@@ -216,15 +216,15 @@ in
             - name: Log in to Container Registry
               uses: docker/login-action@v3
               with:
-                registry: ${{ env.REGISTRY }}
-                username: ${{ github.actor }}
-                password: ${{ secrets.GITHUB_TOKEN }}
+                registry: \${{ env.REGISTRY }}
+                username: \${{ github.actor }}
+                password: \${{ secrets.GITHUB_TOKEN }}
         
             - name: Extract metadata
               id: meta
               uses: docker/metadata-action@v5
               with:
-                images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+                images: \${{ env.REGISTRY }}/\${{ env.IMAGE_NAME }}
                 tags: |
                   type=ref,event=branch
                   type=ref,event=pr
@@ -235,8 +235,8 @@ in
               with:
                 context: .
                 push: true
-                tags: ${{ steps.meta.outputs.tags }}
-                labels: ${{ steps.meta.outputs.labels }}
+                tags: \${{ steps.meta.outputs.tags }}
+                labels: \${{ steps.meta.outputs.labels }}
         
           deploy-staging:
             runs-on: ubuntu-latest
@@ -265,7 +265,7 @@ in
               run: |
                 echo "Deploying to production environment..."
                 # Add your deployment commands here
-        EOF
+        END_OF_WORKFLOW
             
             # Release workflow
             cat > .github/workflows/release.yml << 'EOF'
@@ -299,13 +299,13 @@ in
             - name: Create Release
               uses: actions/create-release@v1
               env:
-                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                GITHUB_TOKEN: \${{ secrets.GITHUB_TOKEN }}
               with:
-                tag_name: ${{ github.ref_name }}
-                release_name: Release ${{ github.ref_name }}
+                tag_name: \${{ github.ref_name }}
+                release_name: Release \${{ github.ref_name }}
                 body: |
                   ## Changes
-                  ${{ steps.changelog.outputs.changelog }}
+                  \${{ steps.changelog.outputs.changelog }}
                 draft: false
                 prerelease: false
         EOF

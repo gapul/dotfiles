@@ -77,9 +77,7 @@ with lib;
       })
     ]);
     
-    dotfiles.automation.cicd.enable = mkDefault (
-      elem config.dotfiles.automation.profile [ "standard" "full" "enterprise" ]
-    );
+    dotfiles.automation.cicd.enable = mkDefault false;  # Temporarily disabled due to YAML syntax issues
     
     dotfiles.automation.monitoring.enable = mkDefault (
       elem config.dotfiles.automation.profile [ "full" "enterprise" ]
