@@ -6,7 +6,7 @@ with lib;
   imports = [
     ./iac
     ./kubernetes
-    ./cloud
+    # ./cloud  # Temporarily disabled due to home-manager context issues
     # ./cicd  # Temporarily disabled due to YAML syntax conflicts
     # ./monitoring  # Temporarily disabled due to home-manager context issues
   ];
@@ -57,25 +57,6 @@ with lib;
     dotfiles.automation.kubernetes.enable = mkDefault (
       elem config.dotfiles.automation.profile [ "standard" "full" "enterprise" ]
     );
-    
-    dotfiles.automation.cloud = mkDefault (mkMerge [
-      # Base enable setting
-      { enable = elem config.dotfiles.automation.profile [ "full" "enterprise" ]; }
-      
-      # Profile-specific configurations
-      (if config.dotfiles.automation.profile == "enterprise" then {
-        awsSupport = true;
-        gcpSupport = true;
-        azureSupport = true;
-        multiCloudTools = true;
-        costManagement = true;
-        securityTools = true;
-      } else {
-        awsSupport = true;
-        multiCloudTools = true;
-        securityTools = true;
-      })
-    ]);
     
 
     # Common automation tools for all profiles
