@@ -68,7 +68,7 @@ in
       # Prometheus ecosystem
     ] ++ optionals cfg.prometheusStack [
       prometheus
-      promtool
+      # promtool is included with prometheus package
       pushgateway
     ] ++ optionals cfg.grafanaSupport [
       grafana
