@@ -100,15 +100,16 @@
       rename      # Rename utility
       
       # GUI applications available in nixpkgs (better performance & reproducibility)
-      chromium         # Open source Chrome
-      libreoffice      # Office suite
-      gimp             # Image editing
-      inkscape         # Vector graphics
-      vlc              # Media player
-      obs-studio       # Screen recording/streaming
-      discord          # Communication
-      slack            # Team communication
-      vscode           # Code editor
+      # Note: Many GUI apps not available on macOS, managed via Homebrew instead
+      # chromium - Not available on macOS ARM64
+      # libreoffice - Available via Homebrew for better macOS integration
+      # gimp - Available via Homebrew for better macOS integration
+      # inkscape - Available via Homebrew for better macOS integration
+      # vlc - Available via Homebrew for better macOS integration
+      # obs-studio - Available via Homebrew for better macOS integration
+      # discord - Available via Homebrew for better macOS integration
+      # slack - Available via Homebrew for better macOS integration
+      # vscode - Available via Homebrew for better macOS integration
     ];
   in corePackages ++ darwinSpecific;
 
