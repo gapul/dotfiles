@@ -48,8 +48,8 @@
       ];
       
       # User configuration
-      username = "yuki";
-      homeDirectory = if builtins.pathExists "/Users" then "/Users/${username}" else "/home/${username}";
+      username = "Yuki";
+      homeDirectory = "/Users/yuki";  # Actual home directory path
       dotfilesDirectory = "${homeDirectory}/dotfiles";
       
       # Platform detection and configuration

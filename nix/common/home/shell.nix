@@ -6,7 +6,7 @@
   home.stateVersion = lib.mkDefault "23.11";
   
   # Basic home configuration (can be overridden)
-  home.username = lib.mkDefault "yuki";
+  home.username = lib.mkDefault "Yuki";
   home.homeDirectory = lib.mkDefault (if pkgs.stdenv.isDarwin then "/Users/yuki" else "/home/yuki");
   # Zsh configuration (works on all platforms)
   programs.zsh = {
