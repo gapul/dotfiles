@@ -2,25 +2,25 @@
 
 {
   imports = [
-    ../../common/system/optimization.nix
-    ../../common/system/maintenance.nix
+    # ../../common/system/optimization.nix  # Temporarily disabled due to SpotlightServer config issues
+    # ../../common/system/maintenance.nix  # Temporarily disabled due to dependency on optimization
   ];
   
-  # Enable system optimization
-  dotfiles.system.optimization = {
-    enable = true;
-    nixBuildOptimization = true;
-    macOSOptimization = true;
-    performanceProfiles = "balanced";
-  };
+  # System optimization temporarily disabled
+  # dotfiles.system.optimization = {
+  #   enable = true;
+  #   nixBuildOptimization = true;
+  #   macOSOptimization = true;
+  #   performanceProfiles = "balanced";
+  # };
   
-  # Enable system maintenance
-  dotfiles.system.maintenance = {
-    enable = true;
-    autoGarbageCollection = true;
-    autoOptimization = true;
-    retentionDays = 30;
-  };
+  # System maintenance temporarily disabled
+  # dotfiles.system.maintenance = {
+  #   enable = true;
+  #   autoGarbageCollection = true;
+  #   autoOptimization = true;
+  #   retentionDays = 30;
+  # };
   # SOPS secrets management configuration
   sops = {
     defaultSopsFile = ../secrets.yaml;
@@ -54,7 +54,17 @@
 
   # System-wide packages (Darwin-specific + GUI applications)
   environment.systemPackages = with pkgs; let
-    corePackages = (import ../../common/packages/core.nix { inherit lib pkgs platformInfo; }).packages;
+    # Simplified core packages (no platformInfo dependency)
+    corePackages = [
+      # Essential tools
+      git vim curl wget jq htop
+      # GNU tools
+      coreutils gnugrep gnused gawk gnumake
+      # Development
+      python3 nodejs go rustc cargo
+      # Modern CLI tools
+      eza bat fd ripgrep fzf starship
+    ];
     darwinSpecific = [
       # macOS specific tools
       mas  # Mac App Store CLI
