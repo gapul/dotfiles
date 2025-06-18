@@ -73,7 +73,8 @@ in
       aws-iam-authenticator
       eksctl
       aws-sam-cli
-      aws-cdk
+      # aws-cdk available as nodePackages.aws-cdk
+      nodePackages.aws-cdk
       ssm-session-manager-plugin
     ] ++ optionals cfg.gcpSupport [
       google-cloud-sdk
