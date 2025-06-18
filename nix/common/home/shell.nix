@@ -2,6 +2,12 @@
 { config, lib, pkgs, platformInfo ? {}, ... }:
 
 {
+  # Home Manager needs state version for compatibility
+  home.stateVersion = "24.11";
+  
+  # Basic home configuration
+  home.username = "yuki";
+  home.homeDirectory = if pkgs.stdenv.isDarwin then "/Users/yuki" else "/home/yuki";
   # Zsh configuration (works on all platforms)
   programs.zsh = {
     enable = true;
