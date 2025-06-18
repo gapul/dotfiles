@@ -9,9 +9,6 @@
   home.username = lib.mkDefault "yuki";  # Force lowercase for consistency  
   home.homeDirectory = lib.mkDefault (if pkgs.stdenv.isDarwin then "/Users/yuki" else "/home/yuki");
   
-  # Override USER environment variable for consistency
-  home.sessionVariables.USER = lib.mkForce "yuki";
-  
   # Zsh configuration (works on all platforms)
   programs.zsh = {
     enable = true;
