@@ -196,6 +196,11 @@
   # Allow unfree packages for GUI applications
   nixpkgs.config.allowUnfree = true;
 
+  # System environment variables
+  environment.variables = {
+    USER = username;  # Ensure USER is set consistently
+  };
+
   # User configuration
   users.users.${username} = {
     name = username;
