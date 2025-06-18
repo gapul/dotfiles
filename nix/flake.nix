@@ -75,26 +75,46 @@
           ./darwin/system/default.nix
           sops-nix.darwinModules.sops
           { nixpkgs.config.allowUnfree = true; }
-          # home-manager.darwinModules.home-manager
-          # {
-          #   home-manager = {
-          #     useGlobalPkgs = true;
-          #     useUserPackages = true;
-          #     # Force the USER variable for the entire home-manager activation
-          #     sharedModules = [
-          #       ({ config, lib, pkgs, ... }: {
-          #         home.username = lib.mkForce "yuki";
-          #         home.sessionVariables.USER = lib.mkForce "yuki";
-          #       })
-          #     ];
-          #     users.${username} = { config, lib, pkgs, ... }: {
-          #       imports = [ ./common/home/shell.nix ];
-          #     };
-          #     extraSpecialArgs = (mkPlatformConfig system).specialArgs // {
-          #       inherit username;  # Ensure username is available to home-manager
-          #     };
-          #   };
-          # }
+          home-manager.darwinModules.home-manager
+          {
+            home-manager = {
+              useGlobalPkgs = true;
+              useUserPackages = true;
+              # Minimal user configuration to test basic functionality
+              users.${username} = { config, lib, pkgs, ... }: {
+                # Basic home manager configuration
+                home.username = "Yuki";  # Use actual macOS username to avoid USER mismatch
+                home.homeDirectory = "/Users/yuki";
+                home.stateVersion = "23.11";
+                
+                # Minimal shell configuration without complex imports
+                programs.zsh = {
+                  enable = true;
+                  autosuggestion.enable = true;
+                  syntaxHighlighting.enable = true;
+                  
+                  shellAliases = {
+                    ls = "eza";
+                    ll = "eza -la";
+                    cat = "bat";
+                    grep = "rg";
+                  };
+                  
+                  sessionVariables = {
+                    EDITOR = "nvim";
+                    PAGER = "less";
+                  };
+                };
+                
+                # Basic starship prompt
+                programs.starship.enable = true;
+                
+                # Enable home-manager management
+                programs.home-manager.enable = true;
+              };
+              extraSpecialArgs = (mkPlatformConfig system).specialArgs;
+            };
+          }
         ];
       };
 
