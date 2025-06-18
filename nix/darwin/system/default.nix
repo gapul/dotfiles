@@ -200,6 +200,11 @@
   environment.variables = {
     USER = username;  # Ensure USER is set consistently
   };
+  
+  # Override launchd environment for home-manager
+  launchd.user.envVariables = {
+    USER = username;
+  };
 
   # User configuration
   users.users.${username} = {
