@@ -119,9 +119,8 @@
       darwinConfigurations = {
         "Yukis-Laptop" = mkDarwinSystem "aarch64-darwin";
         "Intel-Mac" = mkDarwinSystem "x86_64-darwin";
-        default = if builtins.currentSystem == "aarch64-darwin" 
-          then self.darwinConfigurations."Yukis-Laptop"
-          else self.darwinConfigurations."Intel-Mac";
+        # Default to Apple Silicon (most common setup)
+        default = mkDarwinSystem "aarch64-darwin";
       };
 
       # NixOS configurations (for Linux)
