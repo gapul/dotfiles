@@ -465,16 +465,8 @@ with lib;
         echo ""
         echo "☁️  Cloud Providers:"
         
-        # AWS
-        ${if config.dotfiles.automation.cloud.awsSupport then ''
-          if command -v aws &> /dev/null && aws sts get-caller-identity &> /dev/null; then
-            echo "  ✅ AWS: Connected"
-          else
-            echo "  ⚠️  AWS: Not authenticated"
-          fi
-        '' else ''
-          echo "  ⚪ AWS: Disabled"
-        ''}
+        # Cloud providers temporarily disabled
+        echo "  ⚪ AWS: Temporarily disabled"
         
         # Kubernetes
         echo ""
@@ -492,37 +484,15 @@ with lib;
           echo "  ⚪ kubectl: Not installed"
         fi
         
-        # CI/CD
+        # CI/CD temporarily disabled
         echo ""
         echo "🚀 CI/CD:"
-        ${if config.dotfiles.automation.cicd.githubActionsSupport then ''
-          if command -v gh &> /dev/null && gh auth status &> /dev/null; then
-            echo "  ✅ GitHub CLI: Authenticated"
-          else
-            echo "  ⚠️  GitHub CLI: Not authenticated"
-          fi
-        '' else ''
-          echo "  ⚪ GitHub Actions: Disabled"
-        ''}
+        echo "  ⚪ CI/CD: Temporarily disabled"
         
-        # Monitoring
+        # Monitoring temporarily disabled
         echo ""
         echo "📊 Monitoring:"
-        ${if config.dotfiles.automation.monitoring.enable then ''
-          if curl -s http://localhost:9090/-/healthy &> /dev/null; then
-            echo "  ✅ Prometheus: Running"
-          else
-            echo "  ❌ Prometheus: Not running"
-          fi
-          
-          if curl -s http://localhost:3000/api/health &> /dev/null; then
-            echo "  ✅ Grafana: Running"
-          else
-            echo "  ❌ Grafana: Not running"
-          fi
-        '' else ''
-          echo "  ⚪ Monitoring: Disabled"
-        ''}
+        echo "  ⚪ Monitoring: Temporarily disabled"
         
         echo ""
         echo "📊 Summary:"
@@ -535,11 +505,11 @@ with lib;
         echo ""
         echo "💡 Profile: ${config.dotfiles.automation.profile}"
         echo "🔧 Components:"
-        echo "  • IaC: ${if config.dotfiles.automation.iac.enable then "Enabled" else "Disabled"}"
-        echo "  • Kubernetes: ${if config.dotfiles.automation.kubernetes.enable then "Enabled" else "Disabled"}"
-        echo "  • Cloud: ${if config.dotfiles.automation.cloud.enable then "Enabled" else "Disabled"}"
-        echo "  • CI/CD: ${if config.dotfiles.automation.cicd.enable then "Enabled" else "Disabled"}"
-        echo "  • Monitoring: ${if config.dotfiles.automation.monitoring.enable then "Enabled" else "Disabled"}"
+        echo "  • IaC: Temporarily disabled"
+        echo "  • Kubernetes: Temporarily disabled"
+        echo "  • Cloud: Temporarily disabled"
+        echo "  • CI/CD: Temporarily disabled"
+        echo "  • Monitoring: Temporarily disabled"
       '';
     };
 
