@@ -28,27 +28,13 @@ with lib;
   };
 
   config = mkIf config.dotfiles.automation.enable {
-    # Enable components based on profile
-    dotfiles.automation.iac.enable = mkDefault true;
-    
-    dotfiles.automation.kubernetes.enable = mkDefault (
-      elem config.dotfiles.automation.profile [ "standard" "full" "enterprise" ]
-    );
-    
-    dotfiles.automation.cloud.enable = mkDefault (
-      elem config.dotfiles.automation.profile [ "full" "enterprise" ]
-    );
-    
-    dotfiles.automation.cicd.enable = mkDefault (
-      elem config.dotfiles.automation.profile [ "standard" "full" "enterprise" ]
-    );
-    
-    dotfiles.automation.monitoring.enable = mkDefault (
-      elem config.dotfiles.automation.profile [ "full" "enterprise" ]
-    );
-
-    # Profile-specific configurations
-    dotfiles.automation.iac = mkDefault (
+    # Enable components based on profile and set profile-specific configurations
+    dotfiles.automation.iac = mkDefault (mkMerge [
+      # Base enable setting
+      { enable = true; }
+      
+      # Profile-specific configurations
+      (
       if config.dotfiles.automation.profile == "minimal" then {
         terraformSupport = true;
         ansibleSupport = false;
@@ -65,11 +51,19 @@ with lib;
         helmSupport = true;
         validationTools = true;
         secretsManagement = true;
-      }
+      })
+    ]);
+    
+    dotfiles.automation.kubernetes.enable = mkDefault (
+      elem config.dotfiles.automation.profile [ "standard" "full" "enterprise" ]
     );
-
-    dotfiles.automation.cloud = mkDefault (
-      if config.dotfiles.automation.profile == "enterprise" then {
+    
+    dotfiles.automation.cloud = mkDefault (mkMerge [
+      # Base enable setting
+      { enable = elem config.dotfiles.automation.profile [ "full" "enterprise" ]; }
+      
+      # Profile-specific configurations
+      (if config.dotfiles.automation.profile == "enterprise" then {
         awsSupport = true;
         gcpSupport = true;
         azureSupport = true;
@@ -80,7 +74,15 @@ with lib;
         awsSupport = true;
         multiCloudTools = true;
         securityTools = true;
-      }
+      })
+    ]);
+    
+    dotfiles.automation.cicd.enable = mkDefault (
+      elem config.dotfiles.automation.profile [ "standard" "full" "enterprise" ]
+    );
+    
+    dotfiles.automation.monitoring.enable = mkDefault (
+      elem config.dotfiles.automation.profile [ "full" "enterprise" ]
     );
 
     # Common automation tools for all profiles
