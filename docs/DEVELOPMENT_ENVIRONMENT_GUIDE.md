@@ -1,317 +1,402 @@
-# Development Environment Guide - Phase 4 Task 4.4
+# 🛠️ 開発環境ガイド
 
-このガイドでは、Phase 4 Task 4.4で実装された高度な開発環境統合システムの使用方法を説明します。
+> **Phase 4.4 AI統合開発環境の完全活用ガイド**
 
-## 🛠️ 開発環境統合システムの概要
+## 🎯 概要
 
-### 4段階プロファイル
+Phase 4.4で実装された開発環境統合システムは、Language Server Protocol (LSP)、コンテナ、AI開発ツールを統合した次世代開発環境です。
 
-1. **minimal**: 最小限の開発環境
-   - LSP: Nix, Bash, Markdown
-   - プロジェクトタイプ: Node.js, Python
-   - AI ツール: 無効
+## 🏗️ プロファイルシステム
 
-2. **standard**: 標準的な開発環境 (デフォルト)
-   - LSP: TypeScript, HTML, CSS, JSON, Python, Nix, YAML, Markdown, Bash
-   - プロジェクトタイプ: Node.js, Python, Rust, Go, React, Next.js, Docker
-   - AI ツール: 無効
+### プロファイル一覧
+- **minimal**: 基本ツール・軽量設定
+- **standard**: 完全開発環境・LSP統合（デフォルト）
+- **full**: AI統合・高度な開発ツール
+- **ai-powered**: Claude MCP・GitHub Copilot完全統合
 
-3. **full**: 完全な開発環境
-   - LSP: 15言語サーバー対応
-   - プロジェクトタイプ: 全タイプ対応
-   - AI ツール: 無効
-
-4. **ai-powered**: AI統合開発環境
-   - 全機能 + AI開発ツール統合
-   - GitHub Copilot, Claude, ChatGPT統合
-
-## 🚀 セットアップ手順
-
-### 1. 開発環境プロファイルの設定
-
-プロファイルを変更するには、`nix/platforms/common/development/default.nix`を編集:
-
-```nix
-config.dotfiles.development = {
-  enable = true;
-  profile = "ai-powered";  # minimal/standard/full/ai-powered
-};
-```
-
-### 2. 設定の適用
-
+### プロファイル設定
 ```bash
-# Darwin (macOS) の場合
-nix run nix-darwin -- switch --flake .#default
-
-# または justfile を使用
+# プロファイル変更
+export DOTFILES_DEV_PROFILE="ai-powered"
 just rebuild
+
+# 現在のプロファイル確認
+echo $DOTFILES_DEV_PROFILE
 ```
 
-### 3. 開発環境の確認
+---
 
+## 🚀 基本操作
+
+### 開発環境確認
 ```bash
-# 全体的なヘルスチェック
+# 開発環境全体のヘルスチェック
 dev-health
 
-# 各コンポーネントの確認
-lsp-health       # LSP サーバー
-ai-tools-health  # AI ツール (ai-powered プロファイルの場合)
-project-health   # プロジェクト環境
+# 各コンポーネント個別確認
+lsp-health          # Language Server状況
+ai-tools-health     # AI開発ツール状況
+containers-health   # コンテナ環境状況
 ```
 
-## 📋 Language Server Protocol (LSP) 統合
+---
 
-### 対応言語
+## 🧠 Language Server Protocol (LSP)
 
-- **Web開発**: TypeScript, JavaScript, HTML, CSS, JSON
-- **システム言語**: Rust, Go, C/C++
-- **スクリプト言語**: Python, Bash, Lua
-- **設定言語**: Nix, YAML, Markdown
-- **データベース**: SQL
+### サポート言語（fullプロファイル）
+- **Web**: TypeScript, JavaScript, HTML, CSS, JSON
+- **Systems**: Rust, Go, C/C++, Nix
+- **Scripting**: Python, Bash, Lua
+- **Data**: YAML, TOML, Markdown
+- **Infrastructure**: Terraform, Docker
 
-### Neovim での使用
-
-LSPは自動的に設定されます:
-
-```lua
--- 主要なキーバインディング (自動設定済み)
--- gd: 定義へジャンプ
--- K: ホバー情報表示
--- <leader>rn: リネーム
--- <leader>ca: コードアクション
--- <leader>f: フォーマット
-```
-
-### VS Code での使用
-
-LSPサーバーのパスが自動設定され、推奨拡張機能も設定されます。
-
-## 🤖 AI開発ツール統合 (ai-powered プロファイル)
-
-### GitHub Copilot
-
+### LSP管理
 ```bash
-# Copilot CLI の使用
-copilot suggest -t shell "ファイルをリネームしたい"
-copilot explain "git rebase -i HEAD~3"
+# LSP状況確認
+lsp-health
 
-# AI支援コミット
-ai-commit  # 変更内容から適切なコミットメッセージを生成
+# 言語別LSP確認
+lsp-status typescript
+lsp-status rust
+lsp-status python
+
+# LSP再起動
+lsp-restart typescript
+lsp-restart all
 ```
 
-### Claude Integration
+### エディター統合
 
-MCP (Model Context Protocol) 対応:
-
+#### Neovim
 ```bash
-# Claude 設定ファイル確認
-cat ~/.config/claude/claude.json
+# LSP設定確認
+nvim +checkhealth lsp
 
-# ファイルシステム MCP サーバーが設定済み
-# GitHub MCP サーバーが設定済み
+# キーバインド
+# gd: 定義へ移動
+# gr: 参照検索  
+# K: ドキュメント表示
+# <leader>ca: コードアクション
 ```
 
-### Neovim AI統合
-
-```lua
--- Copilot 設定 (自動適用済み)
--- <M-l>: 提案を受け入れ
--- <M-]>: 次の提案
--- <M-[>: 前の提案
--- <C-]>: 提案を拒否
-
--- ChatGPT 統合
--- :ChatGPT でチャット開始
-```
-
-## 🗂️ プロジェクト環境自動セットアップ
-
-### 新プロジェクト作成
-
+#### VSCode
 ```bash
-# 基本的な使用方法
-project-init my-app react ./projects/
+# 設定確認
+code --list-extensions | grep -E "(typescript|rust|python)"
 
-# 自動検出を使用
-project-init my-app auto
-
-# ショートカット (カレントディレクトリに作成)
-mkproject my-app react
+# 自動補完・診断が有効化
 ```
 
-### 対応プロジェクトタイプ
+---
 
-- **Web**: nodejs, react, nextjs, vue, angular
-- **システム**: rust, go, cpp
-- **スクリプト**: python, php, ruby
-- **モバイル**: flutter
-- **インフラ**: docker, terraform, ansible
+## 🤖 AI開発ツール統合
 
-### プロジェクト構造
+### GitHub Copilot（ai-poweredプロファイル）
 
-各プロジェクトには以下が自動生成されます:
-
-```
-my-project/
-├── .envrc              # direnv 設定
-├── shell.nix           # Nix 開発環境
-├── .vscode/            # VS Code 設定
-│   ├── settings.json
-│   └── extensions.json
-├── .gitignore          # プロジェクトタイプ別 gitignore
-└── README.md           # プロジェクト説明
-```
-
-## 🐳 Development Containers
-
-### Docker 統合
-
+#### CLI統合
 ```bash
-# Docker ステータス確認
-docker system info
+# コマンド提案
+gh copilot suggest "deploy to kubernetes"
 
-# 開発コンテナ用 Nix統合
-devcontainer-nix .devcontainer/devcontainer.json
+# コード説明
+gh copilot explain "docker run -d -p 80:80 nginx"
+
+# 設定確認
+gh copilot status
 ```
 
-### VS Code Dev Containers
-
-プロジェクト初期化時に`.devcontainer/devcontainer.json`が自動生成され、以下が含まれます:
-
-- 言語固有の開発環境
-- 必要な VS Code 拡張機能
-- AI ツール統合
-
-## ⚡ 開発ワークフロー
-
-### 日常的な使用パターン
-
+#### エディター統合
 ```bash
-# 1. 新プロジェクト開始
-mkproject awesome-app react
+# Neovim: GitHub Copilot有効確認
+nvim +checkhealth copilot
 
-# 2. プロジェクトディレクトリに移動
-cd awesome-app
-
-# 3. 開発環境確認
-devstatus
-
-# 4. 開発開始
-dev  # nix develop または direnv が自動実行
-
-# 5. AI支援開発
-ai-chat "Reactでカウンターコンポーネントを作りたい"
-copilot suggest -t shell "ESLintでTypeScriptのルールを設定"
-
-# 6. コミット
-ai-commit  # AI生成のコミットメッセージ
+# VSCode: Copilot拡張確認
+code --list-extensions | grep copilot
 ```
 
-### マルチプロジェクト管理
+### Claude MCP Protocol（ai-poweredプロファイル）
 
+#### ファイルシステム統合
 ```bash
-# プロジェクト間移動
-proj-cd  # 現在のプロジェクトルートへ
+# MCP サーバー状況確認
+ai-tools-health
 
-# プロジェクトタイプ確認
-proj-type
-
-# 開発環境クリーンアップ
-devclean  # Nix store, Docker, node_modules など
+# Claude Code でファイル操作・検索が自動化
 ```
 
-## 🔧 カスタマイズ
+#### GitHub統合
+```bash
+# GitHub MCP確認
+gh auth status
 
-### LSP 設定のカスタマイズ
+# PR・Issue管理がClaude経由で自動化
+```
 
-`nix/platforms/common/development/lsp/default.nix`で設定変更:
+---
 
-```nix
-config.dotfiles.development.lsp = {
-  enabledLanguages = [ "typescript" "python" "rust" ];
-  globalConfig.formatting.format_on_save = true;
-  nvimIntegration = true;
-  vscodeIntegration = true;
-};
+## 📦 コンテナ開発環境
+
+### Development Containers
+
+#### プロジェクト環境管理
+```bash
+# 利用可能な開発コンテナ確認
+dev-containers list
+
+# プロジェクト別環境起動
+dev-containers start my-project
+dev-containers stop my-project
+
+# 環境削除
+dev-containers remove old-project
+```
+
+#### VS Code Dev Containers
+```bash
+# devcontainer設定確認
+cat .devcontainer/devcontainer.json
+
+# Remote-Containers拡張で起動
+code .  # Dev Container: Reopen in Container
+```
+
+### Docker/Podman統合
+```bash
+# コンテナランタイム確認
+containers-health
+
+# Docker状況
+docker ps --format "table {{.Names}}\t{{.Status}}"
+
+# Podman状況（Linux）
+podman ps --format "table {{.Names}}\t{{.Status}}"
+```
+
+---
+
+## 🎨 プロジェクト環境管理
+
+### 自動環境切り替え（direnv）
+
+#### プロジェクト設定
+```bash
+# プロジェクトディレクトリで環境設定
+echo 'use flake' > .envrc
+direnv allow
+
+# 自動でプロジェクト固有の開発環境が有効化
+```
+
+#### Nix開発シェル
+```bash
+# プロジェクト別シェル定義
+echo '{
+  inputs = { nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable"; };
+  outputs = { nixpkgs, ... }: {
+    devShells.default = nixpkgs.legacyPackages.x86_64-linux.mkShell {
+      buildInputs = with nixpkgs.legacyPackages.x86_64-linux; [
+        nodejs_20 python312 rustc cargo
+      ];
+    };
+  };
+}' > flake.nix
+
+# 開発環境起動
+nix develop
+```
+
+### プロジェクトテンプレート
+```bash
+# React プロジェクト
+project-init react my-app
+cd my-app && npm start
+
+# Python API
+project-init fastapi my-api
+cd my-api && python main.py
+
+# Rust CLI
+project-init rust-cli my-tool
+cd my-tool && cargo run
+```
+
+---
+
+## ⚙️ カスタマイズ設定
+
+### LSP設定カスタマイズ
+```bash
+# カスタム言語サーバー追加
+nvim nix/platforms/common/development/lsp/default.nix
+
+# 設定例: Svelte サポート追加
+# svelte = { package = pkgs.nodePackages.svelte-language-server; };
 ```
 
 ### AI ツール設定
-
-`nix/platforms/common/development/ai-tools/default.nix`で設定:
-
-```nix
-config.dotfiles.development.ai-tools = {
-  copilotSupport = true;
-  claudeSupport = true;
-  mcpSupport = true;
-};
-```
-
-### プロジェクト環境設定
-
-`nix/platforms/common/development/project-env/default.nix`で設定:
-
-```nix
-config.dotfiles.development.project-env = {
-  supportedTypes = [ "nodejs" "python" "rust" "docker" ];
-  direnvIntegration = true;
-  vscodeIntegration = true;
-};
-```
-
-## 🩺 トラブルシューティング
-
-### 一般的な問題と解決策
-
-1. **LSP サーバーが起動しない**
-   ```bash
-   lsp-health  # 問題を特定
-   lsp-restart  # サーバー再起動
-   ```
-
-2. **AI ツールが動作しない**
-   ```bash
-   ai-tools-health  # 環境変数と依存関係を確認
-   ```
-
-3. **プロジェクト環境が読み込まれない**
-   ```bash
-   project-health  # 設定ファイルをチェック
-   direnv allow    # direnv を許可
-   ```
-
-4. **開発環境が重い**
-   ```bash
-   devclean  # 不要なファイルをクリーンアップ
-   ```
-
-### ログの確認
-
 ```bash
-# Neovim LSP ログ
-tail -f ~/.local/share/nvim/lsp.log
+# GitHub Copilot設定
+gh config set copilot.enabled true
 
-# direnv ログ
-direnv status
-
-# Docker ログ
-docker system events
+# Claude MCP設定確認
+cat ~/.claude/mcp_config.json
 ```
 
-## 📚 参考リンク
+### コンテナ設定
+```bash
+# Docker Compose設定テンプレート
+project-init docker-compose my-stack
 
-- [Language Server Protocol](https://langserver.org/)
-- [GitHub Copilot CLI](https://cli.github.com/manual/gh_copilot)
-- [Model Context Protocol](https://modelcontextprotocol.io/)
-- [Development Containers](https://containers.dev/)
-- [direnv](https://direnv.net/)
+# Kubernetes開発環境
+project-init k8s-dev my-microservice
+```
 
-## 🎯 次のステップ
+---
 
-1. プロファイルを`ai-powered`に設定してAI支援開発を体験
-2. 新しいプロジェクトで`project-init`を使用
-3. VS Code Dev Containersで一貫した開発環境を構築
-4. MCP統合でClaude Codeとの連携を強化
+## 🔧 統合ワークフロー
 
-このガイドは継続的に更新されます。新機能や改善点があれば、CLAUDE.mdも合わせて確認してください。
+### 典型的な開発フロー
+
+#### 1. プロジェクト開始
+```bash
+# 開発環境確認
+dev-health
+
+# プロジェクト作成
+project-init react my-web-app
+cd my-web-app
+
+# 自動環境切り替え
+echo 'use flake' > .envrc
+direnv allow
+```
+
+#### 2. 開発作業
+```bash
+# エディターで開発（AI支援付き）
+nvim src/App.tsx    # GitHub Copilot補完
+code .              # VS Code with Copilot
+
+# LSP機能活用
+# - 自動補完・診断
+# - 定義ジャンプ・参照検索
+# - コードアクション・リファクタリング
+```
+
+#### 3. テスト・デバッグ
+```bash
+# 開発コンテナでテスト
+dev-containers start test-env
+npm test
+
+# Docker環境でのテスト
+docker-compose up -d
+curl http://localhost:3000/api/health
+```
+
+#### 4. デプロイ準備
+```bash
+# Claude MCPでCI/CD設定生成
+# GitHub Actions workflow自動生成
+
+# コンテナイメージビルド
+docker build -t my-app:latest .
+```
+
+---
+
+## 📊 監視・メトリクス
+
+### 開発環境監視
+```bash
+# 開発ツール使用状況
+dev-metrics
+
+# LSP パフォーマンス
+lsp-metrics
+
+# AI ツール統計
+ai-tools-metrics
+
+# コンテナリソース使用量
+containers-metrics
+```
+
+---
+
+## 🆘 トラブルシューティング
+
+### よくある問題
+
+#### LSPが起動しない
+```bash
+# LSP状況確認
+lsp-health
+
+# 言語サーバー再起動
+lsp-restart typescript
+
+# Neovim LSP診断
+nvim +checkhealth lsp
+```
+
+#### GitHub Copilot が動作しない
+```bash
+# 認証確認
+gh auth status
+
+# Copilot状況
+gh copilot status
+
+# 再認証
+gh auth refresh
+```
+
+#### 開発コンテナエラー
+```bash
+# Docker状況確認
+docker system info
+
+# 開発コンテナ再構築
+dev-containers rebuild my-project
+
+# VS Code Dev Container診断
+code --list-extensions | grep container
+```
+
+### 診断コマンド
+```bash
+# 開発環境全体診断
+dev-health
+
+# 詳細診断
+dev-health --verbose
+
+# 特定コンポーネント診断
+lsp-health --check-all
+ai-tools-health --detailed
+containers-health --system-info
+```
+
+---
+
+## 📚 参考リソース
+
+### 設定ファイル
+- **LSP設定**: `nix/platforms/common/development/lsp/`
+- **AI統合**: `nix/platforms/common/development/ai-tools/`
+- **コンテナ**: `nix/platforms/common/development/containers/`
+
+### 外部ドキュメント
+- [LSP Specification](https://microsoft.github.io/language-server-protocol/)
+- [GitHub Copilot Documentation](https://docs.github.com/en/copilot)
+- [VS Code Dev Containers](https://code.visualstudio.com/docs/devcontainers/containers)
+
+### 関連ガイド
+- [自動化システムガイド](AUTOMATION_GUIDE.md)
+- [AI システム詳細](../CLAUDE.md)
+- [セキュリティガイド](../SECURITY.md)
+
+---
+
+*このガイドで開発環境の活用に関する疑問が解決しない場合は、[Issues](https://github.com/gapul/dotfiles/issues)で質問してください。*
