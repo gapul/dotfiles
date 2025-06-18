@@ -83,20 +83,23 @@ in
       podman-compose
     ];
 
-    # VS Code Dev Containers configuration
-    home.file = mkIf cfg.vscodeIntegration {
-      ".vscode/settings.json".text = builtins.toJSON {
-        "dev.containers.dockerPath" = "${pkgs.docker}/bin/docker";
-        "dev.containers.dockerComposePath" = "${pkgs.docker-compose}/bin/docker-compose";
-        "dev.containers.defaultExtensions" = [
-          "ms-vscode-remote.remote-containers"
-          "ms-vscode.vscode-json"
-        ];
-      };
-    };
-
-    # Nix shell integration scripts
-    home.file."bin/devcontainer-nix" = mkIf cfg.nixShellIntegration {
+    # Development container configurations
+    home.file = mkMerge [
+      # VS Code Dev Containers configuration
+      (mkIf cfg.vscodeIntegration {
+        ".vscode/settings.json".text = builtins.toJSON {
+          "dev.containers.dockerPath" = "${pkgs.docker}/bin/docker";
+          "dev.containers.dockerComposePath" = "${pkgs.docker-compose}/bin/docker-compose";
+          "dev.containers.defaultExtensions" = [
+            "ms-vscode-remote.remote-containers"
+            "ms-vscode.vscode-json"
+          ];
+        };
+      })
+      
+      # Nix shell integration scripts
+      (mkIf cfg.nixShellIntegration {
+        "bin/devcontainer-nix" = {
       executable = true;
       text = ''
         #!/usr/bin/env bash
@@ -126,7 +129,9 @@ in
         # Launch devcontainer with Nix integration
         ${pkgs.devcontainer}/bin/devcontainer up --workspace-folder "$PROJECT_DIR"
       '';
-    };
+        };
+      })
+    ];
 
     # Container health monitoring
     systemd.user.services.devcontainer-monitor = mkIf (cfg.dockerSupport && pkgs.stdenv.isLinux) {
