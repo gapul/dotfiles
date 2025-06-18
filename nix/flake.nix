@@ -71,7 +71,7 @@
           ./common/home/shell.nix
           ./common/themes/default.nix
           # ./common/development/default.nix  # Temporarily disabled due to home-manager context issues
-          ./common/automation/default.nix
+          # ./common/automation/default.nix  # Temporarily disabled due to home-manager context issues
           ./darwin/system/default.nix
           sops-nix.darwinModules.sops
           { nixpkgs.config.allowUnfree = true; }
@@ -134,7 +134,7 @@
           ./common/home/shell.nix
           ./common/themes/default.nix
           # ./common/development/default.nix  # Temporarily disabled due to home-manager context issues
-          ./common/automation/default.nix
+          # ./common/automation/default.nix  # Temporarily disabled due to home-manager context issues
         ];
       in {
         "${username}@linux" = mkHomeConfiguration "x86_64-linux" (commonModules ++ [ ./linux/desktop/default.nix ]);
