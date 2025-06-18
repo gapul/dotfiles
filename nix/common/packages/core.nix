@@ -73,10 +73,15 @@ let
     go
     rustc
     cargo
+    lua          # Lua programming language (migrated from Homebrew)
+    luarocks     # Lua package manager (migrated from Homebrew)
     
     # Build tools
     gnumake
     cmake
+    
+    # Math libraries
+    gmp          # GNU Multiple Precision Arithmetic Library (migrated from Homebrew)
     
     # Language servers (for editors)
     nil              # Nix LSP
@@ -84,6 +89,7 @@ let
     nodePackages.typescript-language-server
     gopls
     rust-analyzer
+    lua-language-server  # Lua LSP for enhanced development
   ];
 
   # Platform-specific core packages
