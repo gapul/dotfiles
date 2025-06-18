@@ -68,6 +68,8 @@
         ./common/platform-detection.nix
         ./common/home/shell.nix
         ./common/themes/default.nix
+        ./common/development/default.nix
+        ./common/automation/default.nix
       ];
       
       # Darwin-specific modules

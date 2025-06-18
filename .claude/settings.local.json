@@ -12,7 +12,10 @@
       "Read",
       "WebFetch",
       "WebSearch",
-      "Write"
+      "Write",
+      "mcp__filesystem__write_file",
+      "mcp__filesystem__edit_file",
+      "mcp__filesystem__create_directory"
     ],
     "deny": []
   }

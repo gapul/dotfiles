@@ -55,11 +55,13 @@ show_system_status() {
     echo "home-manager 世代数: $(home-manager generations | wc -l)"
     
     # Disk usage
-    local store_size=$(du -sh /nix/store 2>/dev/null | cut -f1 || echo "不明")
+    local store_size
+    store_size=$(du -sh /nix/store 2>/dev/null | cut -f1 || echo "不明")
     echo "nix store サイズ: $store_size"
     
     # Dead links
-    local dead_links=$(nix store gc --dry-run 2>&1 | grep -E '[0-9]+ store paths deleted' | grep -oE '[0-9]+' || echo "0")
+    local dead_links
+    dead_links=$(nix store gc --dry-run 2>&1 | grep -E '[0-9]+ store paths deleted' | grep -oE '[0-9]+' || echo "0")
     echo "削除可能なストアパス: $dead_links"
     
     echo ""
@@ -79,11 +81,13 @@ run_garbage_collection() {
     
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         log_info "ガーベージコレクション開始..."
-        local before_size=$(du -sh /nix/store 2>/dev/null | cut -f1 || echo "不明")
+        local before_size
+        before_size=$(du -sh /nix/store 2>/dev/null | cut -f1 || echo "不明")
         
         nix store gc
         
-        local after_size=$(du -sh /nix/store 2>/dev/null | cut -f1 || echo "不明")
+        local after_size
+        after_size=$(du -sh /nix/store 2>/dev/null | cut -f1 || echo "不明")
         log_success "ガーベージコレクション完了"
         log_info "ストアサイズ: $before_size → $after_size"
     else
@@ -172,7 +176,8 @@ health_check() {
     fi
     
     # Check disk space
-    local available_space=$(df -h /nix | tail -1 | awk '{print $4}' | tr -d 'Gi')
+    local available_space
+    available_space=$(df -h /nix | tail -1 | awk '{print $4}' | tr -d 'Gi')
     if [[ "$available_space" -lt 5 ]]; then
         log_warning "ディスク容量が不足しています (残り: ${available_space}GB)"
         ((issues++))
@@ -212,7 +217,8 @@ update_system() {
 
 # Create backup of current configuration
 create_backup() {
-    local backup_dir="$HOME/.nix-backups/$(date +%Y%m%d_%H%M%S)"
+    local backup_dir
+    backup_dir="$HOME/.nix-backups/$(date +%Y%m%d_%H%M%S)"
     
     log_info "=== 設定バックアップ作成 ==="
     log_info "バックアップ先: $backup_dir"

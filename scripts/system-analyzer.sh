@@ -13,10 +13,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/utils.sh"
 
 # Configuration
-readonly DOTFILES_DIR="$(get_dotfiles_dir)"
+readonly DOTFILES_DIR
+DOTFILES_DIR="$(get_dotfiles_dir)"
 readonly NIX_DIR="$DOTFILES_DIR/nix"
 readonly REPORT_DIR="$DOTFILES_DIR/reports"
-readonly TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+readonly TIMESTAMP
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
 # Create reports directory
 mkdir -p "$REPORT_DIR"
@@ -68,7 +70,7 @@ EOF
     # Analyze home.nix packages
     if [[ -f "$NIX_DIR/home.nix" ]]; then
         echo "### Home Manager Packages" >> "$report_file"
-        echo "" >> "$report_file"
+        { echo ""; } >> "$report_file"
         
         local package_count=0
         while IFS= read -r line; do
@@ -83,7 +85,7 @@ EOF
             fi
         done < <(sed -n '/home\.packages.*with pkgs;/,/\];/p' "$NIX_DIR/home.nix" | grep -E '^\s*[a-zA-Z0-9_-]+\s*$' || true)
         
-        echo "" >> "$report_file"
+        { echo ""; } >> "$report_file"
         echo "**Total packages: $package_count**" >> "$report_file"
         echo "" >> "$report_file"
     fi
@@ -240,8 +242,10 @@ EOF
         if [[ "$format" == "json" ]]; then
             echo '    "top_commands": [' >> "$report_file"
             echo "$top_commands" | while IFS= read -r line; do
-                local count=$(echo "$line" | awk '{print $1}')
-                local command=$(echo "$line" | awk '{print $2}')
+                local count
+                count=$(echo "$line" | awk '{print $1}')
+                local command
+                command=$(echo "$line" | awk '{print $2}')
                 echo "      {\"command\": \"$command\", \"count\": $count}," >> "$report_file"
             done
             echo '    ],' >> "$report_file"
@@ -249,8 +253,10 @@ EOF
             echo "### Most Used Commands" >> "$report_file"
             echo "" >> "$report_file"
             echo "$top_commands" | while IFS= read -r line; do
-                local count=$(echo "$line" | awk '{print $1}')
-                local command=$(echo "$line" | awk '{print $2}')
+                local count
+                count=$(echo "$line" | awk '{print $1}')
+                local command
+                command=$(echo "$line" | awk '{print $2}')
                 echo "- **$command** (used $count times)" >> "$report_file"
             done
             echo "" >> "$report_file"
@@ -392,7 +398,8 @@ check_dependencies() {
         # Check if files are properly linked via home-manager
         for file in "${critical_files[@]}"; do
             if [[ -L "$file" ]]; then
-                local target=$(readlink "$file")
+                local target
+                target=$(readlink "$file")
                 if [[ "$target" == /nix/store/* ]]; then
                     echo "✅ $file → $target (home-manager managed)"
                 else
@@ -430,8 +437,10 @@ check_enhanced_dependencies() {
         echo "## Nix Store Analysis"
         # Check /nix/store usage
         if [[ -d "/nix/store" ]]; then
-            local store_size=$(du -sh /nix/store 2>/dev/null | cut -f1)
-            local store_items=$(find /nix/store -maxdepth 1 -type d | wc -l)
+            local store_size
+            store_size=$(du -sh /nix/store 2>/dev/null | cut -f1)
+            local store_items
+            store_items=$(find /nix/store -maxdepth 1 -type d | wc -l)
             echo "- Store size: $store_size"
             echo "- Store items: $store_items"
         else
@@ -458,7 +467,8 @@ check_enhanced_dependencies() {
         
         for file in "${config_files[@]}"; do
             if [[ -f "$file" ]]; then
-                local lines=$(wc -l < "$file")
+                local lines
+                lines=$(wc -l < "$file")
                 echo "✅ $file ($lines lines)"
             else
                 echo "❌ $file - missing"
@@ -481,7 +491,8 @@ check_enhanced_dependencies() {
 run_full_analysis() {
     log_info "=== 完全システム分析実行 ==="
     
-    local start_time=$(date +%s)
+    local start_time
+    start_time=$(date +%s)
     
     analyze_package_optimization
     analyze_unmanaged_applications  
@@ -490,7 +501,8 @@ run_full_analysis() {
     check_dependencies
     check_enhanced_dependencies
     
-    local end_time=$(date +%s)
+    local end_time
+    end_time=$(date +%s)
     local duration=$((end_time - start_time))
     
     # Create summary report

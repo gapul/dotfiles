@@ -31,7 +31,8 @@ log_error() {
 # Configuration paths
 readonly NIX_DARWIN_DIR="$HOME/.config/nix-darwin"
 readonly DOTFILES_DIR="$HOME/dotfiles"
-readonly BACKUP_DIR="$HOME/.phase3-backups/$(date +%Y%m%d_%H%M%S)"
+readonly BACKUP_DIR
+BACKUP_DIR="$HOME/.phase3-backups/$(date +%Y%m%d_%H%M%S)"
 
 # Check prerequisites
 check_prerequisites() {
@@ -111,9 +112,12 @@ create_backup() {
 check_nixpkgs_versions() {
     log_info "=== nixpkgs バージョン確認 ==="
     
-    local yabai_version=$(nix search nixpkgs yabai | grep "yabai" | head -1)
-    local skhd_version=$(nix search nixpkgs skhd | grep "skhd" | head -1)
-    local sketchybar_version=$(nix search nixpkgs sketchybar | grep "sketchybar" | head -1)
+    local yabai_version
+    yabai_version=$(nix search nixpkgs yabai | grep "yabai" | head -1)
+    local skhd_version
+    skhd_version=$(nix search nixpkgs skhd | grep "skhd" | head -1)
+    local sketchybar_version
+    sketchybar_version=$(nix search nixpkgs sketchybar | grep "sketchybar" | head -1)
     
     echo "利用可能なバージョン:"
     echo "  yabai: $yabai_version"
@@ -307,7 +311,8 @@ verify_migration() {
     
     for cmd in yabai skhd sketchybar; do
         if command -v "$cmd" > /dev/null; then
-            local path=$(which "$cmd")
+            local path
+            path=$(which "$cmd")
             if [[ "$path" == *"/nix/store"* ]]; then
                 log_success "$cmd: $path (nix)"
             else
@@ -323,7 +328,7 @@ verify_migration() {
     # Check process status
     echo ""
     log_info "プロセス状態:"
-    ps aux | grep -E "(yabai|skhd|sketchybar)" | grep -v grep || echo "  プロセスが見つかりません"
+    pgrep -f "(yabai|skhd|sketchybar)" || echo "  プロセスが見つかりません"
     
     if $check_ok; then
         log_success "Phase 3 移行が完了しました！"
