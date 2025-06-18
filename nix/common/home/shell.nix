@@ -16,12 +16,12 @@
     
     # Platform-agnostic aliases
     shellAliases = {
-      # Modern tool replacements (when available)
-      ls = if lib.elem pkgs.eza (platformInfo.packages or []) then "eza" else "ls --color=auto";
-      ll = if lib.elem pkgs.eza (platformInfo.packages or []) then "eza -la" else "ls -la";
-      cat = if lib.elem pkgs.bat (platformInfo.packages or []) then "bat" else "cat";
-      find = if lib.elem pkgs.fd (platformInfo.packages or []) then "fd" else "find";
-      grep = if lib.elem pkgs.ripgrep (platformInfo.packages or []) then "rg" else "grep";
+      # Basic aliases (no platformInfo dependency for compatibility)
+      ls = "ls --color=auto";
+      ll = "ls -la";
+      cat = "cat";
+      find = "find";
+      grep = "grep";
       
       # Git shortcuts
       g = "git";
@@ -41,45 +41,19 @@
       ns = "nix search";
       nf = "nix flake";
       
-    } // lib.optionalAttrs (platformInfo.platform or "unknown" == "darwin") {
-      # macOS specific aliases
+      # Platform defaults (macOS assumed for now)
       nrs = "nix run nix-darwin -- switch --flake .";
       hms = "home-manager switch --flake .";
-      
-    } // lib.optionalAttrs (platformInfo.platform or "unknown" == "nixos") {
-      # NixOS specific aliases
-      nrs = "sudo nixos-rebuild switch --flake .";
-      hms = "home-manager switch --flake .";
-      
-    } // lib.optionalAttrs (lib.elem (platformInfo.platform or "unknown") ["linux" "wsl"]) {
-      # Linux/WSL specific aliases
-      hms = "home-manager switch --flake .";
-      
-    } // lib.optionalAttrs (platformInfo.platform or "unknown" == "android") {
-      # Android/nix-on-droid specific aliases
-      nrs = "nix-on-droid switch --flake .";
     };
     
-    # Environment variables
+    # Environment variables (basic setup)
     sessionVariables = {
       EDITOR = "vim";
-      PAGER = if lib.elem pkgs.bat (platformInfo.packages or []) then "bat" else "less";
-      
-      # Platform-specific paths
+      PAGER = "less";
       DOTFILES = "${config.home.homeDirectory}/dotfiles";
-      
-    } // lib.optionalAttrs (platformInfo.platform or "unknown" == "darwin") {
-      # macOS specific environment
-      HOMEBREW_NO_ANALYTICS = "1";
+      # macOS specific (safe to set on all platforms)
+      HOMEBREW_NO_ANALYTICS = "1"; 
       HOMEBREW_NO_INSECURE_REDIRECT = "1";
-      
-    } // lib.optionalAttrs (platformInfo.platform or "unknown" == "wsl") {
-      # WSL specific environment
-      DISPLAY = ":0.0";
-      
-    } // lib.optionalAttrs (platformInfo.platform or "unknown" == "android") {
-      # Android specific environment
-      TERMUX_PKG_FORMAT = "nix";
     };
     
     # Platform-specific initialization
@@ -106,43 +80,31 @@
         esac
       }
       
-      ${lib.optionalString (platformInfo.platform or "unknown" == "darwin") ''
-        # macOS specific shell setup
-        if [[ -f /opt/homebrew/bin/brew ]]; then
-          eval "$(/opt/homebrew/bin/brew shellenv)"
-        fi
+      # macOS specific shell setup (safe to run on all platforms)
+      if [[ -f /opt/homebrew/bin/brew ]]; then
+        eval "$(/opt/homebrew/bin/brew shellenv)"
+      fi
+      
+      # WezTerm shell integration for command completion notifications
+      if [[ "$TERM_PROGRAM" == "WezTerm" ]]; then
+        # Track command execution start time
+        preexec() {
+          __wezterm_command_start_time=$SECONDS
+          __wezterm_set_user_var WEZTERM_PROG "$1"
+        }
         
-        # WezTerm shell integration for command completion notifications
-        if [[ "$TERM_PROGRAM" == "WezTerm" ]]; then
-          # Track command execution start time
-          preexec() {
-            __wezterm_command_start_time=$SECONDS
-            __wezterm_set_user_var WEZTERM_PROG "$1"
-          }
-          
-          # Send notification for long-running commands when complete
-          precmd() {
-            if [[ -n "$__wezterm_command_start_time" ]]; then
-              local elapsed=$((SECONDS - __wezterm_command_start_time))
-              if [[ $elapsed -gt 5 ]]; then
-                # Send notification for commands longer than 5 seconds
-                printf "\033]777;notify;Command Completed;Command finished in %d seconds\033\\" "$elapsed"
-              fi
-              unset __wezterm_command_start_time
+        # Send notification for long-running commands when complete
+        precmd() {
+          if [[ -n "$__wezterm_command_start_time" ]]; then
+            local elapsed=$((SECONDS - __wezterm_command_start_time))
+            if [[ $elapsed -gt 5 ]]; then
+              # Send notification for commands longer than 5 seconds
+              printf "\033]777;notify;Command Completed;Command finished in %d seconds\033\\" "$elapsed"
             fi
-          }
-        fi
-      ''}
-      
-      ${lib.optionalString (platformInfo.platform or "unknown" == "wsl") ''
-        # WSL specific shell setup
-        export PATH="$PATH:/mnt/c/Windows/System32"
-      ''}
-      
-      ${lib.optionalString (platformInfo.platform or "unknown" == "android") ''
-        # Android/Termux specific shell setup
-        export PATH="$PATH:$PREFIX/bin"
-      ''}
+            unset __wezterm_command_start_time
+          fi
+        }
+      fi
     '';
   };
 
@@ -180,7 +142,7 @@
       hostname = {
         ssh_only = false;
         format = "[@$hostname](bold blue) ";
-        disabled = platformInfo.platform or "unknown" == "android";
+        disabled = false;  # Enable for all platforms
       };
     };
   };
@@ -192,21 +154,21 @@
     nix-direnv.enable = true;
   };
 
-  # Zoxide (modern cd replacement)
-  programs.zoxide = lib.mkIf (lib.elem pkgs.zoxide (platformInfo.packages or [])) {
-    enable = true;
-    enableZshIntegration = true;
-  };
+  # Zoxide (modern cd replacement) - disabled for compatibility
+  # programs.zoxide = {
+  #   enable = true;
+  #   enableZshIntegration = true;
+  # };
 
-  # FZF (fuzzy finder)
-  programs.fzf = lib.mkIf (lib.elem pkgs.fzf (platformInfo.packages or [])) {
-    enable = true;
-    enableZshIntegration = true;
-    defaultOptions = [
-      "--height 40%"
-      "--layout=reverse"
-      "--border"
-      "--inline-info"
-    ];
-  };
+  # FZF (fuzzy finder) - disabled for compatibility
+  # programs.fzf = {
+  #   enable = true;
+  #   enableZshIntegration = true;
+  #   defaultOptions = [
+  #     "--height 40%"
+  #     "--layout=reverse"
+  #     "--border"
+  #     "--inline-info"
+  #   ];
+  # };
 }
