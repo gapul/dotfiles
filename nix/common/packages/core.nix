@@ -118,8 +118,8 @@ in {
   );
   
   # Categorized for selective inclusion
-  core = corePackages;
-  modern = modernTools;
-  development = devTools;
-  platform = platformSpecific;
+  coreTools = corePackages;
+  modernTools = modernTools;
+  developmentTools = devTools;
+  platformSpecific = platformSpecific;
 }
