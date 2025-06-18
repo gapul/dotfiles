@@ -1,4 +1,4 @@
-{ config, pkgs, username, homeDirectory, dotfilesDirectory, ... }:
+{ config, pkgs, lib, username, homeDirectory, dotfilesDirectory, ... }:
 
 let
   # Import unified theme configuration (SSOT)
@@ -93,7 +93,7 @@ in
       syntaxHighlighting.enable = true;
       
       # Source existing zshrc configuration from dotfiles
-      initExtraFirst = ''
+      initExtra = lib.mkBefore ''
         # Source existing zshrc configuration
         if [[ -f "${dotfilesDirectory}/configs/zsh/zshrc" ]]; then
           source "${dotfilesDirectory}/configs/zsh/zshrc"

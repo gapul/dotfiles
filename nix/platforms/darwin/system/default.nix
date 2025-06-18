@@ -121,6 +121,15 @@
     # GUI applications available in nixpkgs (better performance & reproducibility)
     firefox          # Base Firefox browser
     thunderbird      # Email client
+    chromium         # Open source Chrome
+    libreoffice      # Office suite
+    gimp             # Image editing
+    inkscape         # Vector graphics
+    vlc              # Media player
+    obs-studio       # Screen recording/streaming
+    discord          # Communication
+    slack            # Team communication
+    vscode           # Code editor
     
     # Note: Many GUI apps still managed by Homebrew for better macOS integration
     
@@ -255,9 +264,7 @@
       "kicad"         # PCB design
       "goxel"         # Voxel editor
       
-      # Creative & Design
-      "gimp"
-      "inkscape"
+      # Creative & Design (macOS-specific versions only)
       "krita"
       "blender"
       "scribus"
@@ -265,9 +272,7 @@
       "natron"
       "opentoonz"
       
-      # Media & Entertainment
-      "vlc"
-      "obs"
+      # Media & Entertainment (macOS-specific versions only)
       "musescore"
       "mixxx" 
       "surge-xt"
@@ -280,9 +285,8 @@
       "whisky"
       "minecraft"
       
-      # Office & Productivity
+      # Office & Productivity (macOS-specific versions only)
       "onlyoffice"
-      "libreoffice"
       "microsoft-excel"
       "microsoft-word"
       "microsoft-powerpoint"
@@ -300,8 +304,7 @@
       "espanso"
       
       # Professional Tools
-      "davinci-resolve"
-      "zrythm"
+      # Note: DaVinci Resolve and Zrythm not available in Homebrew casks
       
       # Browsers (special editions and macOS-optimized versions)
       "zen"
@@ -312,9 +315,9 @@
       "tor-browser"
       # Note: Base firefox moved to nix for better performance
       
-      # Communication & Social
-      "discord"
-      "slack"
+      # Communication & Social (native macOS apps only)
+      # "discord" moved to nix
+      # "slack" moved to nix
       # "thunderbird" moved to nix
       
       # AI & Assistant tools (native apps)
@@ -322,10 +325,10 @@
       "chatgpt"
       "ollama"
       
-      # Development Tools & Editors
-      "visual-studio-code"
+      # Development Tools & Editors (macOS-specific versions only)
       "zed"
       "wezterm"
+      # "visual-studio-code" moved to nix
       
       # Research & Knowledge Management
       "obsidian"
