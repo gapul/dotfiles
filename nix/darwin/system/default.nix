@@ -4,6 +4,7 @@
   imports = [
     ../../common/system/optimization.nix
     ../../common/system/maintenance.nix
+    ../../common/packages/core.nix
   ];
   
   # Enable system optimization
@@ -50,10 +51,7 @@
       # };
     };
   };
-  # Import core packages to avoid duplication
-  imports = [
-    ../../common/packages/core.nix
-  ];
+  # Core packages imported above in main imports section
 
   # System-wide packages (Darwin-specific + GUI applications)
   environment.systemPackages = with pkgs; let
