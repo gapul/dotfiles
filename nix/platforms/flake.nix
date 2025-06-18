@@ -290,39 +290,101 @@
             ''}";
           };
           
-          # Quick setup utility
+          # Comprehensive setup utility (replaces install.sh/setup.sh)
           setup = {
             type = "app";
             program = "${pkgs.writeShellScript "setup" ''
               #!/bin/bash
-              echo "🔧 Setting up dotfiles for current platform..."
+              set -euo pipefail
               
-              # Detect platform and suggest appropriate command
+              # Colors
+              RED='\033[0;31m'
+              GREEN='\033[0;32m'
+              YELLOW='\033[1;33m'
+              BLUE='\033[0;34m'
+              NC='\033[0m'
+              
+              log_info() { echo -e "''${BLUE}[INFO]''${NC} $1"; }
+              log_success() { echo -e "''${GREEN}[SUCCESS]''${NC} $1"; }
+              log_warning() { echo -e "''${YELLOW}[WARNING]''${NC} $1"; }
+              log_error() { echo -e "''${RED}[ERROR]''${NC} $1"; }
+              
+              echo "🚀 Dotfiles System Setup - Phase 4 Complete"
+              echo "========================================="
+              
+              # Detect platform
               case "$(uname -s)" in
                 Darwin)
-                  echo "Detected: macOS"
-                  echo "Run: nix run nix-darwin -- switch --flake .#default"
+                  PLATFORM="macOS"
+                  INSTALL_CMD="nix run nix-darwin -- switch --flake .#default"
                   ;;
                 Linux)
                   if [[ -f /etc/nixos/configuration.nix ]]; then
-                    echo "Detected: NixOS"
-                    echo "Run: sudo nixos-rebuild switch --flake .#linux-desktop"
+                    PLATFORM="NixOS"
+                    INSTALL_CMD="sudo nixos-rebuild switch --flake .#linux-desktop"
                   elif [[ -n "''${WSL_DISTRO_NAME:-}" ]]; then
-                    echo "Detected: WSL"
-                    echo "Run: home-manager switch --flake .#${username}@wsl"
+                    PLATFORM="WSL"
+                    INSTALL_CMD="home-manager switch --flake .#${username}@wsl"
                   elif [[ -d /data/data/com.termux ]]; then
-                    echo "Detected: Android/Termux"
-                    echo "Run: nix-on-droid switch --flake .#android"
+                    PLATFORM="Android/Termux"
+                    INSTALL_CMD="nix-on-droid switch --flake .#android"
                   else
-                    echo "Detected: Generic Linux"
-                    echo "Run: home-manager switch --flake .#${username}@linux"
+                    PLATFORM="Generic Linux"
+                    INSTALL_CMD="home-manager switch --flake .#${username}@linux"
                   fi
                   ;;
                 *)
-                  echo "Unsupported platform: $(uname -s)"
+                  log_error "Unsupported platform: $(uname -s)"
                   exit 1
                   ;;
               esac
+              
+              log_info "Detected Platform: $PLATFORM"
+              echo ""
+              
+              # Check prerequisites
+              log_info "Checking prerequisites..."
+              
+              if ! command -v nix &> /dev/null; then
+                log_error "Nix is not installed. Please install Nix first:"
+                echo "curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install"
+                exit 1
+              fi
+              
+              log_success "Nix is available"
+              
+              # Execute installation
+              log_info "Executing: $INSTALL_CMD"
+              echo ""
+              
+              if eval "$INSTALL_CMD"; then
+                log_success "✅ System setup completed successfully!"
+                echo ""
+                log_info "🎯 Phase 4 Features Available:"
+                echo "  • AI Development Environment (dev-health, ai-tools-health)"
+                echo "  • Enterprise Automation (auto-health, deploy-manager)"
+                echo "  • Multi-platform Support (4 platforms)"
+                echo "  • Advanced Security (SOPS-nix, Git-crypt)"
+                echo ""
+                log_info "📚 Next steps:"
+                echo "  • Review: README.md for system overview"
+                echo "  • Setup: docs/SETUP_GUIDE.md for detailed configuration"
+                echo "  • Develop: docs/DEVELOPMENT_ENVIRONMENT_GUIDE.md"
+                echo "  • Automate: docs/AUTOMATION_GUIDE.md"
+              else
+                log_error "❌ Setup failed. Check error messages above."
+                exit 1
+              fi
+            ''}";
+          };
+          
+          # Quick install wrapper
+          install = {
+            type = "app";
+            program = "${pkgs.writeShellScript "install" ''
+              #!/bin/bash
+              echo "🔄 Redirecting to setup..."
+              exec nix run .#setup
             ''}";
           };
         }
