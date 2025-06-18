@@ -15,13 +15,9 @@ source "$SCRIPT_DIR/utils.sh"
 # Configuration
 readonly DOTFILES_DIR
 DOTFILES_DIR="$(get_dotfiles_dir)"
-readonly NIX_DIR="$DOTFILES_DIR/nix"
-readonly REPORT_DIR="$DOTFILES_DIR/reports"
+readonly NIX_DIR="$DOTFILES_DIR/nix/platforms"
 readonly TIMESTAMP
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-
-# Create reports directory
-mkdir -p "$REPORT_DIR"
 
 # Usage information
 show_usage() {
