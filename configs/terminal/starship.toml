@@ -65,7 +65,7 @@ detect_folders = []
 [c]
 format = "via [$symbol($version(-$name) )]($style)"
 version_format = "v${raw}"
-style = "149 bold"
+style = "bold bright-yellow"
 symbol = "C "
 disabled = false
 detect_extensions = [
@@ -445,7 +445,7 @@ detect_folders = []
 format = "via [$symbol($version )]($style)"
 version_format = "v${raw}"
 symbol = "⌘ "
-style = "bold fg:202"
+style = "bold bright-red"
 disabled = false
 detect_extensions = [
     "hx",
@@ -608,7 +608,7 @@ disabled = false
 [mojo]
 format = "with [$symbol($version )]($style)"
 symbol = "🔥 "
-style = "bold 208"
+style = "bold bright-red"
 disabled = false
 detect_extensions = [
     "mojo",
@@ -779,7 +779,7 @@ Windows = "🪟 "
 [package]
 format = "is [$symbol$version]($style) "
 symbol = "📦 "
-style = "208 bold"
+style = "bold bright-red"
 display_private = false
 disabled = false
 version_format = "v${raw}"
@@ -788,7 +788,7 @@ version_format = "v${raw}"
 format = "via [$symbol($version )]($style)"
 version_format = "v${raw}"
 symbol = "🐪 "
-style = "149 bold"
+style = "bold bright-yellow"
 disabled = false
 detect_extensions = [
     "pl",
@@ -810,7 +810,7 @@ detect_folders = []
 format = "via [$symbol($version )]($style)"
 version_format = "v${raw}"
 symbol = "🐘 "
-style = "147 bold"
+style = "bold bright-cyan"
 disabled = false
 detect_extensions = ["php"]
 detect_files = [
@@ -831,7 +831,7 @@ disabled = true
 format = "via [$symbol($username@)$stack]($style) "
 version_format = "v${raw}"
 symbol = " "
-style = "bold 5"
+style = "bold bright-magenta"
 disabled = false
 search_upwards = true
 
@@ -893,7 +893,7 @@ detect_folders = []
 format = "via [$symbol($version-$vm_version )]($style)"
 version_format = "${raw}"
 symbol = "🦋 "
-style = "149 bold"
+style = "bold bright-yellow"
 disabled = false
 detect_extensions = [
     "p6",
@@ -1054,7 +1054,7 @@ disabled = true
 format = "via [$symbol($version )]($style)"
 version_format = "v${raw}"
 symbol = "🐦 "
-style = "bold 202"
+style = "bold bright-red"
 disabled = false
 detect_extensions = ["swift"]
 detect_files = ["Package.swift"]
@@ -1064,7 +1064,7 @@ detect_folders = []
 format = "via [$symbol$workspace]($style) "
 version_format = "v${raw}"
 symbol = "💠 "
-style = "bold 105"
+style = "bold bright-magenta"
 disabled = false
 detect_extensions = [
     "tf",
