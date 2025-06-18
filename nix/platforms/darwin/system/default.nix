@@ -119,8 +119,6 @@
     rename      # Rename utility
     
     # GUI applications available in nixpkgs (better performance & reproducibility)
-    firefox          # Base Firefox browser
-    thunderbird      # Email client
     chromium         # Open source Chrome
     libreoffice      # Office suite
     gimp             # Image editing
@@ -313,12 +311,11 @@
       "floorp"
       "firefox@developer-edition"
       "tor-browser"
-      # Note: Base firefox moved to nix for better performance
+      # Note: Firefox and Thunderbird not managed by dotfiles
       
       # Communication & Social (native macOS apps only)
       # "discord" moved to nix
       # "slack" moved to nix
-      # "thunderbird" moved to nix
       
       # AI & Assistant tools (native apps)
       "claude"
