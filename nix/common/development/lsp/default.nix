@@ -262,37 +262,39 @@ in
 
     # VS Code LSP configuration
     home.file.".vscode/settings.json" = mkIf cfg.vscodeIntegration {
-      text = builtins.toJSON {
+      text = builtins.toJSON (
         # LSP server paths
-        ${concatStringsSep "\n" (mapAttrsToList (name: server: ''
-          "${name}.path" = "${server.package}/bin/${server.command}";
-        '') enabledServers)}
+        (listToAttrs (mapAttrsToList (name: server: {
+          name = "${name}.path";
+          value = "${server.package}/bin/${server.command}";
+        }) enabledServers)) //
+        {
+          # Global LSP settings
+          "editor.formatOnSave" = cfg.globalConfig.formatting.format_on_save;
+          "editor.hover.enabled" = cfg.globalConfig.hover.enable;
+          "editor.quickSuggestions" = cfg.globalConfig.completion.enable;
         
-        # Global LSP settings
-        "editor.formatOnSave" = cfg.globalConfig.formatting.format_on_save;
-        "editor.hover.enabled" = cfg.globalConfig.hover.enable;
-        "editor.quickSuggestions" = cfg.globalConfig.completion.enable;
-        
-        # Language-specific settings
-        "[typescript]" = {
-          "editor.defaultFormatter" = "esbenp.prettier-vscode";
-        };
-        "[javascript]" = {
-          "editor.defaultFormatter" = "esbenp.prettier-vscode";
-        };
-        "[python]" = {
-          "editor.defaultFormatter" = "ms-python.black-formatter";
-        };
-        "[rust]" = {
-          "editor.defaultFormatter" = "rust-lang.rust-analyzer";
-        };
-        "[go]" = {
-          "editor.defaultFormatter" = "golang.go";
-        };
-        "[nix]" = {
-          "editor.defaultFormatter" = "jnoortheen.nix-ide";
-        };
-      };
+          # Language-specific settings
+          "[typescript]" = {
+            "editor.defaultFormatter" = "esbenp.prettier-vscode";
+          };
+          "[javascript]" = {
+            "editor.defaultFormatter" = "esbenp.prettier-vscode";
+          };
+          "[python]" = {
+            "editor.defaultFormatter" = "ms-python.black-formatter";
+          };
+          "[rust]" = {
+            "editor.defaultFormatter" = "rust-lang.rust-analyzer";
+          };
+          "[go]" = {
+            "editor.defaultFormatter" = "golang.go";
+          };
+          "[nix]" = {
+            "editor.defaultFormatter" = "jnoortheen.nix-ide";
+          };
+        }
+      );
     };
 
     # Shell aliases for LSP management
