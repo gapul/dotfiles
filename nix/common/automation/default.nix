@@ -7,7 +7,7 @@ with lib;
     ./iac
     ./kubernetes
     ./cloud
-    ./cicd
+    # ./cicd  # Temporarily disabled due to YAML syntax conflicts
     ./monitoring
   ];
 
@@ -76,8 +76,6 @@ with lib;
         securityTools = true;
       })
     ]);
-    
-    dotfiles.automation.cicd.enable = mkDefault false;  # Temporarily disabled due to YAML syntax issues
     
     dotfiles.automation.monitoring.enable = mkDefault (
       elem config.dotfiles.automation.profile [ "full" "enterprise" ]
