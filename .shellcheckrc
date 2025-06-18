@@ -1,0 +1,20 @@
+# Shellcheck configuration for dotfiles project
+# Disable specific warnings that are not critical for this project
+
+# SC2034: Variable appears unused - many variables are used in sourced files
+disable=SC2034
+
+# SC1091: Not following sourced files - we don't need to check all sourced files
+disable=SC1091
+
+# SC2129: Multiple redirects - stylistic preference, not an error
+disable=SC2129
+
+# SC2155: Declare and assign separately - for non-critical cases
+# We only fix this for critical paths
+
+# SC2016: Expressions don't expand in single quotes - intentional in many cases
+disable=SC2016
+
+# SC2009: Consider using pgrep instead of grepping ps - stylistic preference
+disable=SC2009
