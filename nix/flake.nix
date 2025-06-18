@@ -48,7 +48,7 @@
       ];
       
       # User configuration
-      username = "Yuki";
+      username = "yuki";  # Consistent with dotfiles convention
       homeDirectory = "/Users/yuki";  # Actual home directory path
       dotfilesDirectory = "${homeDirectory}/dotfiles";
       
