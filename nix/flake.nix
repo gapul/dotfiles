@@ -68,7 +68,6 @@
         inherit system;
         specialArgs = (mkPlatformConfig system).specialArgs;
         modules = [
-          ./common/platform-detection.nix
           ./common/home/shell.nix
           ./common/themes/default.nix
           ./common/development/default.nix
@@ -132,7 +131,6 @@
       # Standalone home-manager configurations (for non-NixOS Linux, WSL)
       homeConfigurations = let
         commonModules = [
-          ./common/platform-detection.nix
           ./common/home/shell.nix
           ./common/themes/default.nix
           ./common/development/default.nix
