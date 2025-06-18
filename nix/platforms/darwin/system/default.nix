@@ -1,6 +1,26 @@
 { config, pkgs, username, homeDirectory, dotfilesDirectory, ... }:
 
 {
+  imports = [
+    ../../common/system/optimization.nix
+    ../../common/system/maintenance.nix
+  ];
+  
+  # Enable system optimization
+  dotfiles.system.optimization = {
+    enable = true;
+    nixBuildOptimization = true;
+    macOSOptimization = true;
+    performanceProfiles = "balanced";
+  };
+  
+  # Enable system maintenance
+  dotfiles.system.maintenance = {
+    enable = true;
+    autoGarbageCollection = true;
+    autoOptimization = true;
+    retentionDays = 30;
+  };
   # SOPS secrets management configuration
   sops = {
     defaultSopsFile = ../secrets.yaml;
