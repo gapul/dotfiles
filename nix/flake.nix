@@ -81,7 +81,9 @@
               useGlobalPkgs = true;
               useUserPackages = true;
               users.${username} = import ./common/home/shell.nix;
-              extraSpecialArgs = (mkPlatformConfig system).specialArgs;
+              extraSpecialArgs = (mkPlatformConfig system).specialArgs // {
+                inherit username;  # Ensure username is available to home-manager
+              };
             };
           }
         ];
