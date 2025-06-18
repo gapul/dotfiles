@@ -5,7 +5,7 @@
 secrets/** filter=git-crypt diff=git-crypt
 nix/platforms/security/sops/keys/gpg/** filter=git-crypt diff=git-crypt
 nix/platforms/security/sops/*.yaml filter=git-crypt diff=git-crypt
-!nix/platforms/security/sops/*.yaml.example
+nix/platforms/security/sops/*.yaml.example -filter
 
 # Private keys
 *.key filter=git-crypt diff=git-crypt
