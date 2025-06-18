@@ -284,7 +284,6 @@
       "retroarch-metal"
       "prismlauncher"
       "epic-games"
-      "whisky"
       "minecraft"
       
       # Office & Productivity (macOS-specific versions only)
