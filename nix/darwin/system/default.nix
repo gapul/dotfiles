@@ -96,6 +96,10 @@
       tealdeer    # Modern man pages (tldr)
       hyperfine   # Benchmarking tool
       
+      # Terminal tools
+      tmux        # Terminal multiplexer
+      neovim      # Modern Vim editor
+      
       # File operations
       rename      # Rename utility
       
