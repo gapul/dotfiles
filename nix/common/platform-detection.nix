@@ -6,7 +6,7 @@ let
   # Platform detection logic
   platformInfo = rec {
     # Basic system information
-    system = builtins.currentSystem;
+    system = pkgs.stdenv.system;
     isDarwin = pkgs.stdenv.isDarwin;
     isLinux = pkgs.stdenv.isLinux;
     isAarch64 = pkgs.stdenv.isAarch64;
