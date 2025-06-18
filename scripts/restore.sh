@@ -42,6 +42,7 @@ BACKUP_DIR="$DOTFILES_DIR/backups"
 # For configuration rollback, use: home-manager generations
 # For system rollback, use: darwin-rebuild rollback
 
+# shellcheck disable=SC2034
 DEPRECATED_DOTFILES_LIST=(
     # MIGRATED TO: nix/home.nix home.file section
     # Files now managed via home-manager declarative configuration
