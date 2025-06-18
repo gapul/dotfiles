@@ -272,14 +272,17 @@ config.max_fps = 60
 config.animation_fps = 60
 config.cursor_blink_rate = 800
 
--- ベルの設定
-config.audible_bell = "Disabled"
+-- ベルの設定 (Claude Code通知対応)
+config.audible_bell = "SystemBeep"
 config.visual_bell = {
   fade_in_function = 'EaseIn',
   fade_in_duration_ms = 150,
   fade_out_function = 'EaseOut',
   fade_out_duration_ms = 150,
 }
+
+-- 通知設定
+config.notification_handling = "AlwaysShow"
 
 -- 起動時のイベント処理
 wezterm.on('gui-startup', function(cmd)

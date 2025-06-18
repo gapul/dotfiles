@@ -6,8 +6,8 @@ with lib;
   imports = [
     ./containers
     ./lsp
-    ./ai-tools
-    ./project-env
+    # ./ai-tools  # Temporarily disabled due to home-manager context issues
+    # ./project-env  # Temporarily disabled due to home-manager context issues
   ];
 
   options.dotfiles.development = {
@@ -28,13 +28,15 @@ with lib;
     
     dotfiles.development.lsp.enable = mkDefault true;
     
-    dotfiles.development.ai-tools.enable = mkDefault (
-      elem config.dotfiles.development.profile [ "full" "ai-powered" ]
-    );
+    # AI Tools module temporarily disabled
+    # dotfiles.development.ai-tools.enable = mkDefault (
+    #   elem config.dotfiles.development.profile [ "full" "ai-powered" ]
+    # );
     
-    dotfiles.development.project-env.enable = mkDefault (
-      elem config.dotfiles.development.profile [ "standard" "full" "ai-powered" ]
-    );
+    # Project-env module temporarily disabled
+    # dotfiles.development.project-env.enable = mkDefault (
+    #   elem config.dotfiles.development.profile [ "standard" "full" "ai-powered" ]
+    # );
 
     # Profile-specific configurations
     dotfiles.development.lsp.enabledLanguages = mkDefault (
@@ -46,14 +48,15 @@ with lib;
         [ "typescript" "html" "css" "json" "rust" "go" "python" "nix" "yaml" "markdown" "bash" "c_cpp" "lua" "sql" ]
     );
 
-    dotfiles.development.project-env.supportedTypes = mkDefault (
-      if config.dotfiles.development.profile == "minimal" then
-        [ "nodejs" "python" ]
-      else if config.dotfiles.development.profile == "standard" then
-        [ "nodejs" "python" "rust" "go" "react" "nextjs" "docker" ]
-      else
-        [ "nodejs" "python" "rust" "go" "php" "ruby" "java" "react" "nextjs" "vue" "angular" "docker" "terraform" ]
-    );
+    # Project-env supported types temporarily disabled
+    # dotfiles.development.project-env.supportedTypes = mkDefault (
+    #   if config.dotfiles.development.profile == "minimal" then
+    #     [ "nodejs" "python" ]
+    #   else if config.dotfiles.development.profile == "standard" then
+    #     [ "nodejs" "python" "rust" "go" "react" "nextjs" "docker" ]
+    #   else
+    #     [ "nodejs" "python" "rust" "go" "php" "ruby" "java" "react" "nextjs" "vue" "angular" "docker" "terraform" ]
+    # );
 
     # Common development tools for all profiles
     home.packages = with pkgs; [
@@ -396,23 +399,11 @@ with lib;
           echo "⚪ Containers: Disabled"
         ''}
         
-        # Check AI Tools
-        ${if config.dotfiles.development.ai-tools.enable then ''
-          echo "✅ AI Tools: AI development tools enabled"
-          ai-tools-health
-        '' else ''
-          echo "⚪ AI Tools: Disabled"
-        ''}
+        # AI Tools temporarily disabled
+        echo "⚪ AI Tools: Temporarily disabled"
         
-        # Check Project Environment
-        ${if config.dotfiles.development.project-env.enable then ''
-          echo "✅ Project Environment: Auto-setup enabled"
-          if command -v direnv &> /dev/null; then
-            echo "  🔄 direnv: Available"
-          fi
-        '' else ''
-          echo "⚪ Project Environment: Disabled"
-        ''}
+        # Project Environment temporarily disabled
+        echo "⚪ Project Environment: Temporarily disabled"
         
         echo ""
         echo "⚙️  Profile: ${config.dotfiles.development.profile}"
