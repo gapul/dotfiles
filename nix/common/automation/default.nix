@@ -73,12 +73,12 @@ with lib;
       gnumake
       
       # Text processing
-      sed
-      awk
-      grep
+      gnused
+      gawk
+      gnugrep
       
       # Network tools
-      netcat
+      netcat-gnu
       socat
       
       # Deployment tools
@@ -91,18 +91,18 @@ with lib;
       kubectl
       helm
       
-      # Container tools
-      docker
-      docker-compose
+      # Container tools (Docker Desktop managed via Homebrew on macOS)
+      # docker - managed via Homebrew cask
+      # docker-compose - included with Docker Desktop
       
       # Monitoring basics
       htop
-      iotop
+      # iotop - Linux-specific, not available on macOS
       
     ] ++ optionals (elem config.dotfiles.automation.profile [ "full" "enterprise" ]) [
       # Advanced tools
-      kubernetes-helm
-      argocd
+      # kubernetes-helm - duplicates helm above
+      argocd-cli
       prometheus
       grafana
       
