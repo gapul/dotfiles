@@ -63,77 +63,62 @@
           specialArgs = { inherit username homeDirectory dotfilesDirectory platformInfo; };
         };
       
-      # Common modules for all platforms
-      commonModules = [
-        ./common/platform-detection.nix
-        ./common/home/shell.nix
-        ./common/themes/default.nix
-        ./common/development/default.nix
-        ./common/automation/default.nix
-      ];
-      
-      # Darwin-specific modules
-      darwinModules = commonModules ++ [
-        ./darwin/system/default.nix
-        sops-nix.darwinModules.sops
-      ];
-      
-      # Linux-specific modules  
-      linuxModules = commonModules ++ [
-        ./linux/desktop/default.nix
-      ];
-      
-      # WSL-specific modules
-      wslModules = commonModules ++ [
-        ./wsl/integration/default.nix
-      ];
-      
-      # Android-specific modules
-      androidModules = [
-        ./android/termux/default.nix
-      ];
+      # Helper functions for configuration generation
+      mkDarwinSystem = system: nix-darwin.lib.darwinSystem {
+        inherit system;
+        specialArgs = (mkPlatformConfig system).specialArgs;
+        modules = [
+          ./common/platform-detection.nix
+          ./common/home/shell.nix
+          ./common/themes/default.nix
+          ./common/development/default.nix
+          ./common/automation/default.nix
+          ./darwin/system/default.nix
+          sops-nix.darwinModules.sops
+          { nixpkgs.config.allowUnfree = true; }
+          home-manager.darwinModules.home-manager
+          {
+            home-manager = {
+              useGlobalPkgs = true;
+              useUserPackages = true;
+              users.${username} = import ./common/home/shell.nix;
+              extraSpecialArgs = (mkPlatformConfig system).specialArgs;
+            };
+          }
+        ];
+      };
+
+      mkNixosSystem = system: nixpkgs.lib.nixosSystem {
+        inherit system;
+        specialArgs = (mkPlatformConfig system).specialArgs;
+        modules = [
+          { nixpkgs.config.allowUnfree = true; }
+          ./linux/nixos/system.nix
+          sops-nix.nixosModules.sops
+          home-manager.nixosModules.home-manager
+          {
+            home-manager = {
+              useGlobalPkgs = true;
+              useUserPackages = true;
+              users.${username} = import ./linux/nixos/home.nix;
+              extraSpecialArgs = (mkPlatformConfig system).specialArgs;
+            };
+          }
+        ];
+      };
+
+      mkHomeConfiguration = system: modules: home-manager.lib.homeManagerConfiguration {
+        pkgs = import nixpkgs { inherit system; config.allowUnfree = true; };
+        extraSpecialArgs = (mkPlatformConfig system).specialArgs;
+        inherit modules;
+      };
 
     in
     {
       # macOS configurations (nix-darwin)
       darwinConfigurations = {
-        # Apple Silicon Mac
-        "Yukis-Laptop" = nix-darwin.lib.darwinSystem {
-          system = "aarch64-darwin";
-          specialArgs = (mkPlatformConfig "aarch64-darwin").specialArgs;
-          modules = darwinModules ++ [
-            { nixpkgs.config.allowUnfree = true; }
-            home-manager.darwinModules.home-manager
-            {
-              home-manager = {
-                useGlobalPkgs = true;
-                useUserPackages = true;
-                users.${username} = import ./common/home/shell.nix;
-                extraSpecialArgs = (mkPlatformConfig "aarch64-darwin").specialArgs;
-              };
-            }
-          ];
-        };
-        
-        # Intel Mac
-        "Intel-Mac" = nix-darwin.lib.darwinSystem {
-          system = "x86_64-darwin";
-          specialArgs = (mkPlatformConfig "x86_64-darwin").specialArgs;
-          modules = darwinModules ++ [
-            { nixpkgs.config.allowUnfree = true; }
-            home-manager.darwinModules.home-manager
-            {
-              home-manager = {
-                useGlobalPkgs = true;
-                useUserPackages = true;
-                users.${username} = import ./common/home/shell.nix;
-                extraSpecialArgs = (mkPlatformConfig "x86_64-darwin").specialArgs;
-              };
-            }
-          ];
-        };
-        
-        # Default (current system)
+        "Yukis-Laptop" = mkDarwinSystem "aarch64-darwin";
+        "Intel-Mac" = mkDarwinSystem "x86_64-darwin";
         default = if builtins.currentSystem == "aarch64-darwin" 
           then self.darwinConfigurations."Yukis-Laptop"
           else self.darwinConfigurations."Intel-Mac";
@@ -141,77 +126,24 @@
 
       # NixOS configurations (for Linux)
       nixosConfigurations = {
-        # Desktop Linux
-        "linux-desktop" = nixpkgs.lib.nixosSystem {
-          system = "x86_64-linux";
-          specialArgs = (mkPlatformConfig "x86_64-linux").specialArgs;
-          modules = [
-            # Hardware configuration would be system-specific
-            { nixpkgs.config.allowUnfree = true; }
-            ./linux/nixos/system.nix
-            sops-nix.nixosModules.sops
-            home-manager.nixosModules.home-manager
-            {
-              home-manager = {
-                useGlobalPkgs = true;
-                useUserPackages = true;
-                users.${username} = import ./linux/nixos/home.nix;
-                extraSpecialArgs = (mkPlatformConfig "x86_64-linux").specialArgs;
-              };
-            }
-          ];
-        };
-        
-        # ARM Linux (Raspberry Pi, etc.)
-        "linux-arm" = nixpkgs.lib.nixosSystem {
-          system = "aarch64-linux";
-          specialArgs = (mkPlatformConfig "aarch64-linux").specialArgs;
-          modules = [
-            { nixpkgs.config.allowUnfree = true; }
-            ./linux/nixos/system.nix
-            sops-nix.nixosModules.sops
-            home-manager.nixosModules.home-manager
-            {
-              home-manager = {
-                useGlobalPkgs = true;
-                useUserPackages = true;
-                users.${username} = import ./linux/nixos/home.nix;
-                extraSpecialArgs = (mkPlatformConfig "aarch64-linux").specialArgs;
-              };
-            }
-          ];
-        };
+        "linux-desktop" = mkNixosSystem "x86_64-linux";
+        "linux-arm" = mkNixosSystem "aarch64-linux";
       };
 
       # Standalone home-manager configurations (for non-NixOS Linux, WSL)
-      homeConfigurations = {
-        # Generic Linux (non-NixOS)
-        "${username}@linux" = home-manager.lib.homeManagerConfiguration {
-          pkgs = import nixpkgs { system = "x86_64-linux"; config.allowUnfree = true; };
-          extraSpecialArgs = (mkPlatformConfig "x86_64-linux").specialArgs;
-          modules = linuxModules;
-        };
-        
-        # WSL configuration
-        "${username}@wsl" = home-manager.lib.homeManagerConfiguration {
-          pkgs = import nixpkgs { system = "x86_64-linux"; config.allowUnfree = true; };
-          extraSpecialArgs = (mkPlatformConfig "x86_64-linux").specialArgs;
-          modules = wslModules;
-        };
-        
-        # ARM Linux home-manager only
-        "${username}@linux-arm" = home-manager.lib.homeManagerConfiguration {
-          pkgs = import nixpkgs { system = "aarch64-linux"; config.allowUnfree = true; };
-          extraSpecialArgs = (mkPlatformConfig "aarch64-linux").specialArgs;
-          modules = linuxModules;
-        };
-        
-        # macOS home-manager only (fallback)
-        "${username}@darwin" = home-manager.lib.homeManagerConfiguration {
-          pkgs = import nixpkgs { system = "aarch64-darwin"; config.allowUnfree = true; };
-          extraSpecialArgs = (mkPlatformConfig "aarch64-darwin").specialArgs;
-          modules = commonModules;
-        };
+      homeConfigurations = let
+        commonModules = [
+          ./common/platform-detection.nix
+          ./common/home/shell.nix
+          ./common/themes/default.nix
+          ./common/development/default.nix
+          ./common/automation/default.nix
+        ];
+      in {
+        "${username}@linux" = mkHomeConfiguration "x86_64-linux" (commonModules ++ [ ./linux/desktop/default.nix ]);
+        "${username}@wsl" = mkHomeConfiguration "x86_64-linux" (commonModules ++ [ ./wsl/integration/default.nix ]);
+        "${username}@linux-arm" = mkHomeConfiguration "aarch64-linux" (commonModules ++ [ ./linux/desktop/default.nix ]);
+        "${username}@darwin" = mkHomeConfiguration "aarch64-darwin" commonModules;
       };
 
       # Android configurations (nix-on-droid)
@@ -219,7 +151,7 @@
         "android" = nix-on-droid.lib.nixOnDroidConfiguration {
           pkgs = import nixpkgs { system = "aarch64-linux"; config.allowUnfree = true; };
           extraSpecialArgs = (mkPlatformConfig "aarch64-linux").specialArgs;
-          modules = androidModules;
+          modules = [ ./android/termux/default.nix ];
         };
       };
 
