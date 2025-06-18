@@ -70,7 +70,7 @@ with lib;
       
       # Automation essentials
       just
-      make
+      gnumake
       
       # Text processing
       sed
