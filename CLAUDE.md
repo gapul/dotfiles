@@ -271,6 +271,21 @@ cd monitoring && docker-compose restart
   - 状況: flake.nixから完全除外
   - 影響: 全自動化機能（下記含む）が無効
 
+### システム最適化モジュール（nix-darwin互換性問題）
+**system optimizationモジュール**もnix-darwin互換性問題により一時的に無効化されています：
+
+- **system/optimization.nix** - システム最適化設定
+  - ファイル: `nix/common/system/optimization.nix`
+  - 理由: `.GlobalPreferences."com.apple.SpotlightServer"`設定非対応
+  - 状況: darwin/system/default.nixから除外
+  - 影響: Nix最適化、macOS最適化、性能プロファイル設定が無効
+
+- **system/maintenance.nix** - システムメンテナンス
+  - ファイル: `nix/common/system/maintenance.nix`
+  - 理由: optimization.nixへの依存
+  - 状況: darwin/system/default.nixから除外
+  - 影響: 自動ガベージコレクション、自動最適化が無効
+
 以下のモジュールはautomation親モジュール無効化により間接的に無効化されています：
 
 - **kubernetes** - Kubernetes管理モジュール
