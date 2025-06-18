@@ -407,9 +407,10 @@
               log_warning() { echo -e "''${YELLOW}[WARNING]''${NC} $1"; }
               log_error() { echo -e "''${RED}[ERROR]''${NC} $1"; }
               
-              DOTFILES_DIR="$(cd "$(dirname "''${BASH_SOURCE[0]}")" && pwd)/../.."
+              DOTFILES_DIR="''${HOME}/dotfiles"
               TIMESTAMP=$(date +%Y%m%d_%H%M%S)
               REPORT_DIR="''${DOTFILES_DIR}/reports"
+              [[ -w "$(dirname "$REPORT_DIR")" ]] && mkdir -p "$REPORT_DIR" || REPORT_DIR="/tmp/dotfiles-reports"
               mkdir -p "$REPORT_DIR"
               
               show_usage() {
@@ -638,7 +639,6 @@
               
               echo "✅ Health check completed"
             ''}";
-          }
           };
         }
       );
