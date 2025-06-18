@@ -111,6 +111,27 @@
         if [[ -f /opt/homebrew/bin/brew ]]; then
           eval "$(/opt/homebrew/bin/brew shellenv)"
         fi
+        
+        # WezTerm shell integration for command completion notifications
+        if [[ "$TERM_PROGRAM" == "WezTerm" ]]; then
+          # Track command execution start time
+          preexec() {
+            __wezterm_command_start_time=$SECONDS
+            __wezterm_set_user_var WEZTERM_PROG "$1"
+          }
+          
+          # Send notification for long-running commands when complete
+          precmd() {
+            if [[ -n "$__wezterm_command_start_time" ]]; then
+              local elapsed=$((SECONDS - __wezterm_command_start_time))
+              if [[ $elapsed -gt 5 ]]; then
+                # Send notification for commands longer than 5 seconds
+                printf "\033]777;notify;Command Completed;Command finished in %d seconds\033\\" "$elapsed"
+              fi
+              unset __wezterm_command_start_time
+            fi
+          }
+        fi
       ''}
       
       ${lib.optionalString (platformInfo.platform or "unknown" == "wsl") ''
