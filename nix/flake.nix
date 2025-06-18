@@ -70,7 +70,7 @@
         modules = [
           ./common/home/shell.nix
           ./common/themes/default.nix
-          ./common/development/default.nix
+          # ./common/development/default.nix  # Temporarily disabled due to home-manager context issues
           ./common/automation/default.nix
           ./darwin/system/default.nix
           sops-nix.darwinModules.sops
@@ -133,7 +133,7 @@
         commonModules = [
           ./common/home/shell.nix
           ./common/themes/default.nix
-          ./common/development/default.nix
+          # ./common/development/default.nix  # Temporarily disabled due to home-manager context issues
           ./common/automation/default.nix
         ];
       in {
