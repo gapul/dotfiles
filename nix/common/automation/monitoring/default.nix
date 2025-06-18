@@ -69,15 +69,15 @@ in
     ] ++ optionals cfg.prometheusStack [
       prometheus
       # promtool is included with prometheus package
-      pushgateway
+      prometheus-pushgateway
     ] ++ optionals cfg.grafanaSupport [
       grafana
     ] ++ optionals cfg.lokiStack [
-      loki
+      grafana-loki
       promtail
-      logcli
+      # logcli is included with grafana-loki
     ] ++ optionals cfg.alertmanagerSupport [
-      alertmanager
+      prometheus-alertmanager
     ] ++ optionals cfg.nodeExporter [
       prometheus-node-exporter
     ] ++ optionals cfg.jaegerTracing [
