@@ -75,26 +75,26 @@
           ./darwin/system/default.nix
           sops-nix.darwinModules.sops
           { nixpkgs.config.allowUnfree = true; }
-          home-manager.darwinModules.home-manager
-          {
-            home-manager = {
-              useGlobalPkgs = true;
-              useUserPackages = true;
-              # Force the USER variable for the entire home-manager activation
-              sharedModules = [
-                ({ config, lib, pkgs, ... }: {
-                  home.username = lib.mkForce "yuki";
-                  home.sessionVariables.USER = lib.mkForce "yuki";
-                })
-              ];
-              users.${username} = { config, lib, pkgs, ... }: {
-                imports = [ ./common/home/shell.nix ];
-              };
-              extraSpecialArgs = (mkPlatformConfig system).specialArgs // {
-                inherit username;  # Ensure username is available to home-manager
-              };
-            };
-          }
+          # home-manager.darwinModules.home-manager
+          # {
+          #   home-manager = {
+          #     useGlobalPkgs = true;
+          #     useUserPackages = true;
+          #     # Force the USER variable for the entire home-manager activation
+          #     sharedModules = [
+          #       ({ config, lib, pkgs, ... }: {
+          #         home.username = lib.mkForce "yuki";
+          #         home.sessionVariables.USER = lib.mkForce "yuki";
+          #       })
+          #     ];
+          #     users.${username} = { config, lib, pkgs, ... }: {
+          #       imports = [ ./common/home/shell.nix ];
+          #     };
+          #     extraSpecialArgs = (mkPlatformConfig system).specialArgs // {
+          #       inherit username;  # Ensure username is available to home-manager
+          #     };
+          #   };
+          # }
         ];
       };
 
