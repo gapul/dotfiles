@@ -247,7 +247,83 @@ cd monitoring && docker-compose restart
 
 ---
 
+## 🔧 一時的に無効化されているシステム
+
+### 開発環境モジュール
+以下のモジュールはhome-manager context問題により一時的に無効化されています：
+
+- **ai-tools** - AI開発ツール統合モジュール
+  - ファイル: `nix/common/development/ai-tools/default.nix`
+  - 理由: home-manager context outside問題
+  - 状況: テンプレートファイルは保持済み
+
+- **project-env** - プロジェクト環境自動セットアップ
+  - ファイル: `nix/common/development/project-env/`
+  - 理由: home-manager context outside問題
+  - 状況: テンプレートファイル（nodejs, python, rust）は実装済み
+
+### 自動化モジュール（全体無効化）
+**automation module全体**がnix-darwin context問題により一時的に無効化されています：
+
+- **automation/default.nix** - 自動化システム全体
+  - ファイル: `nix/common/automation/default.nix`
+  - 理由: nix-darwinシステムレベルで`home.packages`/`home.file`使用不可
+  - 状況: flake.nixから完全除外
+  - 影響: 全自動化機能（下記含む）が無効
+
+以下のモジュールはautomation親モジュール無効化により間接的に無効化されています：
+
+- **kubernetes** - Kubernetes管理モジュール
+  - ファイル: `nix/common/automation/kubernetes/default.nix`
+  - 理由: kubens, helm-secrets, alertmanager パッケージ名問題
+  - 状況: importから除外
+
+- **cloud** - クラウドプロバイダー統合
+  - ファイル: `nix/common/automation/cloud/default.nix`
+  - 理由: home-manager context問題
+  - 状況: importから除外
+
+- **cicd** - CI/CD統合
+  - ファイル: `nix/common/automation/cicd/default.nix`
+  - 理由: YAML構文衝突、home-manager context問題
+  - 状況: importから除外
+
+- **monitoring** - モニタリングシステム
+  - ファイル: `nix/common/automation/monitoring/default.nix`
+  - 理由: home-manager context問題
+  - 状況: importから除外
+
+- **iac** - Infrastructure as Code
+  - ファイル: `nix/common/automation/iac/default.nix`
+  - 理由: パッケージ可用性問題
+  - 状況: importから除外
+
+### macOS非対応パッケージ
+以下のパッケージはmacOSでは代替手段で管理されています：
+
+- **docker, docker-compose** → Homebrew cask `docker` で管理
+- **iotop** → Linux専用、macOSでは`Activity Monitor`使用
+- **kubernetes-helm** → 重複削除（`helm`パッケージで提供済み）
+
+### 修正済みパッケージ名
+GNU系ツールのmacOS対応名に修正済み：
+
+- `make` → `gnumake`
+- `sed` → `gnused`  
+- `awk` → `gawk`
+- `grep` → `gnugrep`
+- `netcat` → `netcat-gnu`
+- `argocd` → `argocd-cli`
+
+### 再有効化計画
+1. **Phase 1**: パッケージ名・依存関係問題の個別解決
+2. **Phase 2**: home-manager context問題の根本的解決
+3. **Phase 3**: モジュール再統合とテスト
+4. **Phase 4**: 段階的機能復活とCI/CD検証
+
+---
+
 **🎉 Phase 4 完全達成** - 2025年6月18日  
 **次世代エンタープライズ開発・自動化システム** ✨
 
-*最終更新: 2025年6月18日*
+*最終更新: 2025年6月19日 - 無効化システム記録追加*
