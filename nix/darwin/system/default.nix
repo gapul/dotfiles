@@ -4,7 +4,6 @@
   imports = [
     ../../common/system/optimization.nix
     ../../common/system/maintenance.nix
-    ../../common/packages/core.nix
   ];
   
   # Enable system optimization
