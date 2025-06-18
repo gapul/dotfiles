@@ -209,6 +209,8 @@
     taps = [
       "koekeishiya/formulae"  # yabai, skhd
       "felixkratz/formulae"   # sketchybar
+      "voicevox/voicevox"     # VoiceVox for text-to-speech
+      "actuallymentor/battery" # Battery charge limiter for macOS
     ];
     
     brews = [
@@ -216,6 +218,12 @@
       "yabai"
       "skhd" 
       "sketchybar"
+      
+      # Specialized tools from taps
+      "voicevox"              # Text-to-speech synthesis
+      "actuallymentor/battery/battery"  # Battery charge limiter
+      
+      # Note: coreutils, gmp, lua, luarocks migrated to Nix for better reproducibility
     ];
     
     casks = [
@@ -273,6 +281,10 @@
       "syncthing"
       "espanso"
       
+      # Cloud Storage & Sync
+      "amazon-photos"         # Amazon Photos for cloud photo storage
+      "google-drive"          # Google Drive for cloud file storage
+      
       # Professional Tools
       # Note: DaVinci Resolve and Zrythm not available in Homebrew casks
       
@@ -286,8 +298,7 @@
       # Note: Firefox and Thunderbird not managed by dotfiles
       
       # Communication & Social (native macOS apps only)
-      # "discord" moved to nix
-      # "slack" moved to nix
+      # Note: discord, slack moved to Nix for better integration
       
       # AI & Assistant tools (native apps)
       "claude"
@@ -297,7 +308,7 @@
       # Development Tools & Editors (macOS-specific versions only)
       "zed"
       "wezterm"
-      # "visual-studio-code" moved to nix
+      # Note: visual-studio-code moved to Nix for better integration
       
       # Research & Knowledge Management
       "obsidian"
