@@ -4,8 +4,8 @@ with lib;
 
 {
   imports = [
-    ./iac
-    ./kubernetes
+    # ./iac  # Temporarily disabled due to package availability issues
+    # ./kubernetes  # Temporarily disabled due to package availability and home-manager context issues
     # ./cloud  # Temporarily disabled due to home-manager context issues
     # ./cicd  # Temporarily disabled due to YAML syntax conflicts
     # ./monitoring  # Temporarily disabled due to home-manager context issues
@@ -28,35 +28,36 @@ with lib;
   };
 
   config = mkIf config.dotfiles.automation.enable {
-    # Enable components based on profile and set profile-specific configurations
-    dotfiles.automation.iac = mkDefault (mkMerge [
-      # Base enable setting
-      { enable = true; }
-      
-      # Profile-specific configurations
-      (
-      if config.dotfiles.automation.profile == "minimal" then {
-        terraformSupport = true;
-        ansibleSupport = false;
-        validationTools = false;
-      } else if config.dotfiles.automation.profile == "standard" then {
-        terraformSupport = true;
-        ansibleSupport = true;
-        helmSupport = true;
-        validationTools = true;
-      } else {
-        terraformSupport = true;
-        ansibleSupport = true;
-        pulumiaSupport = true;
-        helmSupport = true;
-        validationTools = true;
-        secretsManagement = true;
-      })
-    ]);
+    # IAC module temporarily disabled
+    # dotfiles.automation.iac = mkDefault (mkMerge [
+    #   # Base enable setting
+    #   { enable = true; }
+    #   
+    #   # Profile-specific configurations
+    #   (
+    #   if config.dotfiles.automation.profile == "minimal" then {
+    #     terraformSupport = true;
+    #     ansibleSupport = false;
+    #     validationTools = false;
+    #   } else if config.dotfiles.automation.profile == "standard" then {
+    #     terraformSupport = true;
+    #     ansibleSupport = true;
+    #     helmSupport = true;
+    #     validationTools = true;
+    #   } else {
+    #     terraformSupport = true;
+    #     ansibleSupport = true;
+    #     pulumiaSupport = true;
+    #     helmSupport = true;
+    #     validationTools = true;
+    #     secretsManagement = true;
+    #   })
+    # ]);
     
-    dotfiles.automation.kubernetes.enable = mkDefault (
-      elem config.dotfiles.automation.profile [ "standard" "full" "enterprise" ]
-    );
+    # Kubernetes module temporarily disabled
+    # dotfiles.automation.kubernetes.enable = mkDefault (
+    #   elem config.dotfiles.automation.profile [ "standard" "full" "enterprise" ]
+    # );
     
 
     # Common automation tools for all profiles
