@@ -206,10 +206,9 @@
     USER = username;
   };
   
-  # System activation script with improved environment handling
+  # System activation script
   system.activationScripts.preActivation.text = ''
     export USER="${username}"
-    # Suppress $HOME ownership warning for system activation
     export HOME="${homeDirectory}"
     echo "System activation: Setting USER to $USER, HOME to $HOME"
   '';
