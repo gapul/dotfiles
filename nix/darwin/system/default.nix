@@ -205,6 +205,12 @@
   launchd.user.envVariables = {
     USER = username;
   };
+  
+  # System activation script to fix USER variable for home-manager
+  system.activationScripts.preActivation.text = ''
+    export USER="${username}"
+    echo "System activation: Setting USER to $USER"
+  '';
 
   # User configuration
   users.users.${username} = {
