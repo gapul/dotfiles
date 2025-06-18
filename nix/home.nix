@@ -93,7 +93,7 @@ in
       syntaxHighlighting.enable = true;
       
       # Source existing zshrc configuration from dotfiles
-      initExtra = lib.mkBefore ''
+      initContent = lib.mkBefore ''
         # Source existing zshrc configuration
         if [[ -f "${dotfilesDirectory}/configs/zsh/zshrc" ]]; then
           source "${dotfilesDirectory}/configs/zsh/zshrc"
