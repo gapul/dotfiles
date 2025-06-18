@@ -68,7 +68,7 @@
         inherit system;
         specialArgs = (mkPlatformConfig system).specialArgs;
         modules = [
-          ./common/home/shell.nix
+          # ./common/home/shell.nix  # Moved to home-manager.users configuration below
           # ./common/themes/default.nix  # Temporarily disabled due to home-manager context issues
           # ./common/development/default.nix  # Temporarily disabled due to home-manager context issues
           # ./common/automation/default.nix  # Temporarily disabled due to home-manager context issues
