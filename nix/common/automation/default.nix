@@ -8,7 +8,7 @@ with lib;
     ./kubernetes
     ./cloud
     # ./cicd  # Temporarily disabled due to YAML syntax conflicts
-    ./monitoring
+    # ./monitoring  # Temporarily disabled due to home-manager context issues
   ];
 
   options.dotfiles.automation = {
@@ -77,7 +77,6 @@ with lib;
       })
     ]);
     
-    dotfiles.automation.monitoring.enable = mkDefault false;  # Temporarily disabled due to home-manager context issues
 
     # Common automation tools for all profiles
     home.packages = with pkgs; [
