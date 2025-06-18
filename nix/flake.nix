@@ -69,7 +69,7 @@
         specialArgs = (mkPlatformConfig system).specialArgs;
         modules = [
           ./common/home/shell.nix
-          ./common/themes/default.nix
+          # ./common/themes/default.nix  # Temporarily disabled due to home-manager context issues
           # ./common/development/default.nix  # Temporarily disabled due to home-manager context issues
           # ./common/automation/default.nix  # Temporarily disabled due to home-manager context issues
           ./darwin/system/default.nix
@@ -132,7 +132,7 @@
       homeConfigurations = let
         commonModules = [
           ./common/home/shell.nix
-          ./common/themes/default.nix
+          # ./common/themes/default.nix  # Temporarily disabled due to home-manager context issues
           # ./common/development/default.nix  # Temporarily disabled due to home-manager context issues
           # ./common/automation/default.nix  # Temporarily disabled due to home-manager context issues
         ];
