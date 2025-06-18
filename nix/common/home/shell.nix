@@ -11,6 +11,7 @@
   
   # Override USER environment variable for consistency
   home.sessionVariables.USER = lib.mkForce "yuki";
+  
   # Zsh configuration (works on all platforms)
   programs.zsh = {
     enable = true;
