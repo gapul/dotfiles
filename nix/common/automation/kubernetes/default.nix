@@ -75,8 +75,7 @@ in
     home.packages = with pkgs; [
       # Essential cluster tools
       kubectl
-      kubectx
-      kubens
+      kubectx  # includes both kubectx and kubens
       k9s
       stern
       
@@ -88,7 +87,7 @@ in
       kubernetes-helm
       helmfile
       helm-docs
-      helm-secrets
+      kubernetes-helmPlugins.helm-secrets
     ] ++ optionals cfg.clusterManagement [
       # Cluster management
       kind
@@ -108,22 +107,16 @@ in
     ] ++ optionals cfg.monitoringStack [
       prometheus
       grafana
-      alertmanager
+      prometheus-alertmanager
     ] ++ optionals cfg.securityTools [
       # Security and policy
-      falco
       trivy
-      polaris
-      kube-score
-      kubesec
-      kubectl-who-can
+      # Note: Some packages may not be available in nixpkgs for Darwin
     ] ++ optionals cfg.developmentTools [
       # Development and debugging
       skaffold
-      telepresence2
-      kubectl-debug
-      kubectl-trace
       dive  # Container image analysis
+      # Note: Some kubectl plugins may not be available in nixpkgs for Darwin
     ] ++ optionals cfg.multiClusterSupport [
       # Multi-cluster tools
       fluxcd

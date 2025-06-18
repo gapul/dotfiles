@@ -27,6 +27,12 @@ in
       description = "Enable Claude Code support";
     };
     
+    claudeNotifications = mkOption {
+      type = types.bool;
+      default = true;
+      description = "Enable Claude Code notifications";
+    };
+    
     cursorSupport = mkOption {
       type = types.bool;
       default = false;
@@ -67,6 +73,10 @@ in
       # MCP-related tools
       nodejs
       nodePackages.npm
+    ] ++ optionals cfg.claudeNotifications [
+      # Claude Code notifications
+      terminal-notifier
+      jq
     ];
 
     # Neovim AI integration
@@ -182,6 +192,10 @@ in
       copilot = "gh copilot";
       ai-commit = "gh copilot suggest -t shell 'git commit with AI-generated message'";
       ai-explain = "gh copilot explain";
+    } // optionalAttrs cfg.claudeNotifications {
+      claude-notify = "~/.dotfiles/configs/apps/claude/claude-notifications.sh";
+      claude-monitor = "~/.dotfiles/configs/apps/claude/claude-notifications.sh monitor";
+      claude-test = "~/.dotfiles/configs/apps/claude/claude-notifications.sh test";
     };
 
     # Environment variables for AI tools
@@ -216,6 +230,16 @@ in
           };
         };
       };
+    };
+
+    # Claude Code notifications configuration
+    home.file.".dotfiles/configs/apps/claude/claude-notifications.sh" = mkIf cfg.claudeNotifications {
+      source = ../../configs/apps/claude/claude-notifications.sh;
+      executable = true;
+    };
+
+    home.file.".dotfiles/configs/apps/claude/notification-config.json" = mkIf cfg.claudeNotifications {
+      source = ../../configs/apps/claude/notification-config.json;
     };
 
     # AI development templates
@@ -336,6 +360,23 @@ in
         else
           echo "❌ AI Chat: Not available"
         fi
+        
+        # Check Claude notifications
+        ${if cfg.claudeNotifications then ''
+          if command -v terminal-notifier &> /dev/null; then
+            echo "✅ Claude Notifications: terminal-notifier available"
+          else
+            echo "❌ Claude Notifications: terminal-notifier not available"
+          fi
+          
+          if [[ -x "$HOME/.dotfiles/configs/apps/claude/claude-notifications.sh" ]]; then
+            echo "✅ Claude Notifications: Script available"
+          else
+            echo "❌ Claude Notifications: Script not found or not executable"
+          fi
+        '' else ''
+          echo "⚪ Claude Notifications: Disabled"
+        ''}
         
         # Check MCP support
         ${if cfg.mcpSupport then ''
