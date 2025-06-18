@@ -217,8 +217,7 @@
     taps = [
       "koekeishiya/formulae"  # yabai, skhd
       "felixkratz/formulae"   # sketchybar
-      "voicevox/voicevox"     # VoiceVox for text-to-speech
-      "actuallymentor/battery" # Battery charge limiter for macOS
+      "VOICEVOX/homebrew-voicevox"  # VoiceVox for text-to-speech (correct repo)
     ];
     
     brews = [
@@ -228,8 +227,8 @@
       "sketchybar"
       
       # Specialized tools from taps
-      "voicevox"              # Text-to-speech synthesis
-      "actuallymentor/battery/battery"  # Battery charge limiter
+      "VOICEVOX/homebrew-voicevox/voicevox"  # Text-to-speech synthesis (full path)
+      # "battery"              # Battery charge limiter - install manually if needed
       
       # Note: coreutils, gmp, lua, luarocks migrated to Nix for better reproducibility
     ];
