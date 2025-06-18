@@ -77,9 +77,7 @@ with lib;
       })
     ]);
     
-    dotfiles.automation.monitoring.enable = mkDefault (
-      elem config.dotfiles.automation.profile [ "full" "enterprise" ]
-    );
+    dotfiles.automation.monitoring.enable = mkDefault false;  # Temporarily disabled due to home-manager context issues
 
     # Common automation tools for all profiles
     home.packages = with pkgs; [
