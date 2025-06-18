@@ -36,26 +36,36 @@ configs/git/.gitconfig
 configs/ssh/config
 configs/apps/claude/claude.json
 
-# API keys and tokens
-**/api_key*
-**/token*
-**/.env
-**/.env.local
-*.env
+# Secret files & Environment variables
 *.key
 *.pem
 *.p12
 *.p8
+*.env
+secrets.*
+private.*
+
+# Additional security patterns
+**/api_key*
+**/token*
+**/.env
+**/.env.local
 *.crt
 *.csr
 *.jks
 *.keystore
 id_rsa*
 id_ed25519*
-secrets.*
 !secrets.*.example
-private.*
 !private.*.example
+
+# Database and auth files
+*.db-wal
+*.db-shm
+*.sqlite
+auth.json
+credentials.json
+service-account*.json
 
 # User-specific data that shouldn't be shared
 configs/**/user_data/
