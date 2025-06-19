@@ -1,2 +1,1 @@
--- Neovim Configuration Entry Point
-require("config")
+/nix/store/8rmsy08xbqwybdpz6q58h3ndzh7hmsf1-home-manager-files/.config/nvim/init.lua
