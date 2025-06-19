@@ -25,40 +25,45 @@ let
 
   currentConfig = secretsConfig.${platformInfo.platform} or secretsConfig.linux;
   
-  # Common secret definitions
+  # SOPS Unified Secret definitions
+  # All secrets managed through single SOPS file
   commonSecrets = {
-    # GitHub integration
-    "github/token" = {
-      mode = "0400";
-    };
+    # API Keys and Tokens
+    "api/github_token" = { mode = "0400"; };
+    "api/openai_key" = { mode = "0400"; };
+    "api/anthropic_key" = { mode = "0400"; };
+    "api/npm_token" = { mode = "0400"; };
     
-    # SSH keys
-    "ssh/personal_key" = {
-      mode = "0600";
-    };
+    # Git Configuration Secrets
+    "git/signing_key_id" = { mode = "0400"; };
+    "git/signing_key_private" = { mode = "0600"; };
     
-    "ssh/personal_key_pub" = {
-      mode = "0644";
-    };
+    # SSH Keys and Configuration
+    "ssh/private_key" = { mode = "0600"; };
+    "ssh/public_key" = { mode = "0644"; };
+    "ssh/config" = { mode = "0600"; };
     
-    # API credentials
-    "api/openai_key" = {
-      mode = "0400";
-    };
+    # SSL/TLS Certificates
+    "ssl/certificate" = { mode = "0644"; };
+    "ssl/private_key" = { mode = "0600"; };
     
-    "api/anthropic_key" = {
-      mode = "0400";
-    };
+    # Development Environment Files
+    "development/npmrc" = { mode = "0600"; };
+    "development/docker_config" = { mode = "0600"; };
     
-    # Git configuration
-    "git/signing_key" = {
-      mode = "0600";
-    };
+    # Cloud Provider Credentials
+    "cloud/aws/access_key_id" = { mode = "0400"; };
+    "cloud/aws/secret_access_key" = { mode = "0400"; };
+    "cloud/gcp/service_account_key" = { mode = "0600"; };
     
-    # Development tools
-    "dev/npm_token" = {
-      mode = "0400";
-    };
+    # Database Credentials
+    "databases/postgresql/password" = { mode = "0400"; };
+    "databases/mysql/password" = { mode = "0400"; };
+    
+    # Environment Variables
+    "development/env_vars/database_password" = { mode = "0400"; };
+    "development/env_vars/jwt_secret" = { mode = "0400"; };
+    "development/env_vars/encryption_key" = { mode = "0400"; };
   };
 
   # Platform-specific secrets
@@ -81,15 +86,10 @@ let
 
 in
 {
-  # SOPS configuration
+  # SOPS configuration - Unified approach
   sops = {
-    # Default secret file based on platform
-    defaultSopsFile = 
-      if platformInfo.platform == "darwin" then ./secrets-darwin.yaml
-      else if platformInfo.platform == "linux" then ./secrets-linux.yaml
-      else if platformInfo.platform == "wsl" then ./secrets-wsl.yaml
-      else if platformInfo.platform == "android" then ./secrets-android.yaml
-      else ./secrets.yaml;
+    # Single unified secrets file for all platforms
+    defaultSopsFile = ../secrets-unified.yaml;
     
     defaultSopsFormat = "yaml";
     

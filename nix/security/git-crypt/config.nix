@@ -1,34 +1,18 @@
-# Git-crypt Integration Configuration
-# Provides selective file encryption for sensitive configuration files
+# Legacy Git-crypt Configuration - DEPRECATED
+# All encryption now handled by SOPS-nix
+# This file kept for reference only
+
 { config, lib, pkgs, ... }:
 
 {
-  # Install git-crypt
-  environment.systemPackages = with pkgs; [
-    git-crypt
-    gnupg
-  ];
+  # Git-crypt removed - using SOPS-only strategy
+  # All secrets now managed through:
+  # - nix/security/sops/secrets-unified.yaml
+  # - SOPS-nix integration in default.nix
   
-  # Git-crypt configuration
-  programs.git = {
-    enable = true;
-    extraConfig = {
-      # Git-crypt filter configuration
-      filter."git-crypt" = {
-        clean = "${pkgs.git-crypt}/bin/git-crypt clean";
-        smudge = "${pkgs.git-crypt}/bin/git-crypt smudge";
-        required = true;
-      };
-      
-      diff."git-crypt" = {
-        textconv = "${pkgs.git-crypt}/bin/git-crypt diff";
-      };
-      
-      # Merge driver for encrypted files
-      merge."git-crypt" = {
-        name = "A custom merge driver used to merge git-crypt files.";
-        driver = "${pkgs.git-crypt}/bin/git-crypt merge %O %A %B";
-      };
-    };
-  };
+  # Optional: Keep gnupg for GPG operations (not Git-crypt)
+  environment.systemPackages = with pkgs; [
+    gnupg  # For GPG operations, SOPS GPG support
+    # git-crypt removed - no longer needed
+  ];
 }
