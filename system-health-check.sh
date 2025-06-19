@@ -18,7 +18,9 @@ echo "🏥 システム健全性包括確認"
 echo "=================================="
 echo ""
 
-cd /Users/yuki/dotfiles/nix
+# Dynamically detect script location and navigate to nix directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR/nix"
 
 ISSUES=0
 
@@ -127,13 +129,13 @@ echo ""
 
 # 9. 一時的に無効化されたモジュール確認
 log_info "9. モジュール状態確認"
-if grep -q "# ./common/automation/default.nix" /Users/yuki/dotfiles/nix/flake.nix; then
+if grep -q "# ./common/automation/default.nix" "$SCRIPT_DIR/nix/flake.nix"; then
     log_warning "Automation モジュール: 一時的に無効"
 else
     log_success "Automation モジュール: 有効"
 fi
 
-if grep -q "# ./common/development/default.nix" /Users/yuki/dotfiles/nix/flake.nix; then
+if grep -q "# ./common/development/default.nix" "$SCRIPT_DIR/nix/flake.nix"; then
     log_warning "Development モジュール: 一時的に無効"
 else
     log_success "Development モジュール: 有効"

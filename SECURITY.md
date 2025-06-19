@@ -1,6 +1,69 @@
 # セキュリティガイドライン
 
-このドットファイル管理システムはセキュリティを重視して設計されています。
+## 🔒 概要
+
+このドキュメントでは、dotfilesシステムのセキュリティ実装と運用ガイドラインを説明します。
+
+## 📋 暗号化戦略
+
+### **SOPS統一暗号化戦略 (2025年6月19日更新)**
+
+**Git-crypt廃止**: 全ての秘密情報をSOPSで統一管理
+
+#### **SOPS統一管理対象**
+| 機密情報の種類 | 管理場所 | 利点 |
+|---------------|----------|------|
+| **APIキー・認証トークン** | secrets.api.* | 構造化管理、Nix統合 |
+| **SSH秘密鍵・証明書** | secrets.ssh.*、secrets.ssl.* | マルチライン暗号化 |
+| **環境変数・設定値** | secrets.development.env_vars.* | 一元管理 |
+| **設定ファイル全体** | secrets.development.* | ファイル内容暗号化 |
+
+### **実装状況**
+- ✅ **SOPS-nix**: Age暗号化、統一secrets-unified.yaml管理
+- ❌ **Git-crypt**: 完全廃止 (2025年6月19日)
+- ✅ **セキュリティベースライン**: SSH/Firewall/Audit設定
+- ✅ **簡素化**: 1つのツール、1つの鍵、1つのファイルで全管理
+
+## 🎯 クイックスタート
+
+### **1. セキュリティシステム初期化**
+```bash
+# セキュリティモジュール有効化確認
+nix eval .#darwinConfigurations.default.config.sops.secrets
+
+# セットアップスクリプト実行
+./nix/security/scripts/setup-security.sh
+```
+
+### **2. SOPS設定**
+```bash
+# Age鍵生成
+age-keygen -o ~/.config/sops/age/keys.txt
+
+# シークレット編集
+sops nix/security/sops/secrets-darwin.yaml
+```
+
+### **3. 統一secrets設定**
+```bash
+# 統一secretsファイル作成
+cp nix/security/sops/secrets-unified.yaml.example nix/security/sops/secrets-unified.yaml
+
+# Age暗号化対象設定
+export SOPS_AGE_RECIPIENTS="$(age-keygen -y ~/.config/sops/age/keys.txt)"
+
+# ファイル暗号化
+sops -e -i nix/security/sops/secrets-unified.yaml
+
+# 暗号化済みファイル編集
+sops nix/security/sops/secrets-unified.yaml
+```
+
+---
+
+## 🔐 レガシー: 管理対象外ファイル（従来のセキュリティ方式）
+
+**注意**: 以下は従来の手動管理方式です。現在は上記のSOPS/Git-crypt統合システムの使用を推奨します。
 
 ## 🔒 管理対象外ファイル（セキュリティ上の理由）
 
@@ -164,11 +227,31 @@ export SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt
 ```
 
 **darwin-rebuild時のエラー：**
+
+⚠️  **重要**: Age鍵ファイルに`chmod 644`を設定することは**重大なセキュリティリスク**です。
+
+**推奨される解決策：**
 ```bash
-# nix-darwin側でキーが見つからない場合
-sudo chmod 644 ~/.config/sops/age/keys.txt
-# 注意: 適切なファイル権限を設定してください
+# 1. 安全な権限でAge鍵を維持
+chmod 600 ~/.config/sops/age/keys.txt
+
+# 2. nix-darwinでSOPS-nixを正しく設定
+# sops.age.keyFileオプションでNixデーモンがアクセス可能な場所を指定
+sops.age.keyFile = "/var/lib/sops-nix/keys.txt";  # システムレベル
+# または
+sops.age.keyFile = "${config.users.users.yuki.home}/.config/sops/age/keys.txt";  # ユーザーレベル
+
+# 3. システムレベルでの安全な鍵配置
+sudo mkdir -p /var/lib/sops-nix
+sudo cp ~/.config/sops/age/keys.txt /var/lib/sops-nix/keys.txt
+sudo chmod 600 /var/lib/sops-nix/keys.txt
+sudo chown root:wheel /var/lib/sops-nix/keys.txt
 ```
+
+**なぜ`chmod 644`が危険なのか：**
+- 秘密鍵が全ユーザーから読み取り可能になる
+- システム上の任意のプロセスが暗号化キーにアクセス可能
+- セキュリティモデルが完全に破綻する
 
 ## 📞 サポート
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 # Security Setup Script for Multi-Platform Dotfiles
-# Initializes SOPS-nix, Git-crypt, and security baseline
+# Initializes SOPS-nix unified encryption (Git-crypt deprecated)
 
 set -euo pipefail
 
@@ -39,8 +39,8 @@ check_prerequisites() {
     
     local missing_tools=()
     
-    # Check for required tools
-    for tool in nix age sops git-crypt gpg; do
+    # Check for required tools (SOPS-only setup)
+    for tool in nix age sops gpg; do
         if ! command -v "$tool" &> /dev/null; then
             missing_tools+=("$tool")
         fi
@@ -49,7 +49,7 @@ check_prerequisites() {
     if [ ${#missing_tools[@]} -gt 0 ]; then
         log_error "Missing required tools: ${missing_tools[*]}"
         log_info "Install missing tools with:"
-        log_info "  nix profile install nixpkgs#age nixpkgs#sops nixpkgs#git-crypt nixpkgs#gnupg"
+        log_info "  nix profile install nixpkgs#age nixpkgs#sops nixpkgs#gnupg"
         exit 1
     fi
     
@@ -83,9 +83,9 @@ setup_age_keys() {
     fi
 }
 
-# Setup GPG for git-crypt
+# Setup GPG for SOPS (optional, Age is primary)
 setup_gpg() {
-    log_info "Setting up GPG for Git-crypt..."
+    log_info "Setting up GPG for SOPS (optional)..."
     
     # Check if GPG key exists
     if ! gpg --list-secret-keys --keyid-format LONG 2>/dev/null | grep -q "sec"; then

@@ -284,9 +284,9 @@ config.visual_bell = {
 -- 通知設定
 config.notification_handling = "AlwaysShow"
 
--- Claude Code作業完了通知 (bellイベントをトースト通知に変換)
+-- コマンド完了通知 (bellイベントをトースト通知に変換)
 wezterm.on('bell', function(window, pane)
-  window:toast_notification('Claude Code', 'タスクが完了しました', nil, 4000)
+  window:toast_notification('Command Completed', 'Long-running task finished', nil, 4000)
 end)
 
 -- 起動時のイベント処理

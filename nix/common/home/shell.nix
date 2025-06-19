@@ -113,8 +113,8 @@
         precmd() {
           if [[ -n "$__wezterm_command_start_time" ]]; then
             local elapsed=$((SECONDS - __wezterm_command_start_time))
-            if [[ $elapsed -gt 5 ]]; then
-              # Send bell for commands longer than 5 seconds (WezTerm converts to toast)
+            if [[ $elapsed -gt 10 ]]; then
+              # Send bell for commands longer than 10 seconds (WezTerm converts to toast)
               echo -e "\a"
             fi
             unset __wezterm_command_start_time
