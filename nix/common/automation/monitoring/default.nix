@@ -59,8 +59,8 @@ in
   };
 
   config = mkIf cfg.enable {
-    # Monitoring tools
-    home.packages = with pkgs; [
+    # Monitoring tools (will be applied through home-manager when available)
+    home-manager.users.yuki.home.packages = mkIf (config ? home-manager) (with pkgs; [
       # Core monitoring
       curl
       jq
@@ -85,10 +85,10 @@ in
     ] ++ optionals cfg.cloudMonitoring [
       # Cloud monitoring tools
       awscli2  # CloudWatch
-    ];
+    ]);
 
     # Monitoring stack initialization
-    home.file."bin/monitoring-init" = {
+    home-manager.users.yuki.home.file."bin/monitoring-init" = mkIf (config ? home-manager) {
       executable = true;
       text = ''
         #!/usr/bin/env bash
@@ -440,7 +440,7 @@ in
     };
 
     # Monitoring dashboard manager
-    home.file."bin/monitoring-dashboard" = {
+    home-manager.users.yuki.home.file."bin/monitoring-dashboard" = mkIf (config ? home-manager) {
       executable = true;
       text = ''
         #!/usr/bin/env bash
@@ -588,7 +588,7 @@ in
     };
 
     # Shell aliases for monitoring
-    programs.zsh.shellAliases = {
+    home-manager.users.yuki.programs.zsh.shellAliases = mkIf (config ? home-manager) {
       # Monitoring shortcuts
       mon = "monitoring-dashboard";
       mon-status = "monitoring-dashboard status";
@@ -604,7 +604,7 @@ in
     };
 
     # Shell functions for monitoring
-    programs.zsh.initExtra = ''
+    home-manager.users.yuki.programs.zsh.initExtra = mkIf (config ? home-manager) ''
       # Quick metrics
       metrics() {
         echo "⚡ Quick System Metrics"
