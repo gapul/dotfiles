@@ -28,6 +28,12 @@
     profile = "standard";
     multiEnvironment = true;
   };
+
+  # Advanced development environment
+  dotfiles.development = {
+    enable = true;
+    profile = "full";
+  };
   # SOPS secrets management configuration
   sops = {
     defaultSopsFile = ../secrets.yaml;
