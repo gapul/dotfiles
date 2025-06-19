@@ -60,7 +60,7 @@ in
 
   config = mkIf cfg.enable {
     # AI-powered development packages
-    home.packages = with pkgs; [
+    home-manager.users.yuki.home.packages = with pkgs; [
       # AI CLI tools
       aichat
       chatgpt-cli
@@ -80,7 +80,7 @@ in
     ];
 
     # Neovim AI integration
-    programs.neovim = mkIf cfg.nvimAiIntegration {
+    home-manager.users.yuki.programs.neovim = mkIf cfg.nvimAiIntegration {
       plugins = with pkgs.vimPlugins; [
         # GitHub Copilot
         copilot-vim
@@ -163,7 +163,7 @@ in
     };
 
     # VS Code AI extensions configuration
-    home.file.".vscode/ai-settings.json" = mkIf cfg.vscodeAiIntegration {
+    home-manager.users.yuki.home.file.".vscode/ai-settings.json" = mkIf cfg.vscodeAiIntegration {
       text = builtins.toJSON {
         # GitHub Copilot settings
         "github.copilot.enable" = cfg.copilotSupport;
@@ -187,19 +187,21 @@ in
     };
 
     # AI tools aliases and commands
-    programs.zsh.shellAliases = {
+    home-manager.users.yuki.programs.zsh.shellAliases = {
       ai-chat = "aichat";
       copilot = "gh copilot";
       ai-commit = "gh copilot suggest -t shell 'git commit with AI-generated message'";
       ai-explain = "gh copilot explain";
-    } // optionalAttrs cfg.claudeNotifications {
-      claude-notify = "~/.dotfiles/configs/apps/claude/claude-notifications.sh";
-      claude-monitor = "~/.dotfiles/configs/apps/claude/claude-notifications.sh monitor";
-      claude-test = "~/.dotfiles/configs/apps/claude/claude-notifications.sh test";
     };
+    # Disabled claude notifications aliases - files not present
+    # } // optionalAttrs cfg.claudeNotifications {
+    #   claude-notify = "~/.dotfiles/configs/apps/claude/claude-notifications.sh";
+    #   claude-monitor = "~/.dotfiles/configs/apps/claude/claude-notifications.sh monitor";
+    #   claude-test = "~/.dotfiles/configs/apps/claude/claude-notifications.sh test";
+    # };
 
     # Environment variables for AI tools
-    home.sessionVariables = {
+    home-manager.users.yuki.home.sessionVariables = {
       # GitHub Copilot
       GITHUB_COPILOT_CLI_EDITOR = "nvim";
       
@@ -211,7 +213,7 @@ in
     };
 
     # MCP configuration for Claude
-    home.file.".config/claude/claude.json" = mkIf cfg.mcpSupport {
+    home-manager.users.yuki.home.file.".config/claude/claude.json" = mkIf cfg.mcpSupport {
       text = builtins.toJSON {
         mcpServers = {
           filesystem = {
@@ -232,18 +234,18 @@ in
       };
     };
 
-    # Claude Code notifications configuration
-    home.file.".dotfiles/configs/apps/claude/claude-notifications.sh" = mkIf cfg.claudeNotifications {
-      source = ../../configs/apps/claude/claude-notifications.sh;
-      executable = true;
-    };
+    # Claude Code notifications configuration (disabled - files not present)
+    # home-manager.users.yuki.home.file.".dotfiles/configs/apps/claude/claude-notifications.sh" = mkIf cfg.claudeNotifications {
+    #   source = ../../configs/apps/claude/claude-notifications.sh;
+    #   executable = true;
+    # };
 
-    home.file.".dotfiles/configs/apps/claude/notification-config.json" = mkIf cfg.claudeNotifications {
-      source = ../../configs/apps/claude/notification-config.json;
-    };
+    # home-manager.users.yuki.home.file.".dotfiles/configs/apps/claude/notification-config.json" = mkIf cfg.claudeNotifications {
+    #   source = ../../configs/apps/claude/notification-config.json;
+    # };
 
     # AI development templates
-    home.file."bin/ai-project-init" = {
+    home-manager.users.yuki.home.file."bin/ai-project-init" = {
       executable = true;
       text = ''
         #!/usr/bin/env bash
@@ -334,7 +336,7 @@ in
     };
 
     # AI tools health check
-    home.file."bin/ai-tools-health" = {
+    home-manager.users.yuki.home.file."bin/ai-tools-health" = {
       executable = true;
       text = ''
         #!/usr/bin/env bash

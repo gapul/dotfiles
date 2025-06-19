@@ -80,6 +80,7 @@
             home-manager = {
               useGlobalPkgs = true;
               useUserPackages = true;
+              backupFileExtension = "backup";
               # Minimal user configuration to test basic functionality
               users.${username} = { config, lib, pkgs, ... }: {
                 # Basic home manager configuration

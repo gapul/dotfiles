@@ -195,10 +195,12 @@ in
     #   };
     # };
 
-    # macOS-specific Docker Desktop integration
+    # macOS-specific Docker Desktop integration (disabled for compatibility)
+    # Note: launchd configuration requires system-level nix-darwin module access
+    # This would typically be configured at the system level, not in home-manager
+    /*
     launchd.agents.docker-desktop-integration = mkIf (cfg.dockerSupport && pkgs.stdenv.isDarwin) {
-      enable = true;
-      config = {
+      serviceConfig = {
         Label = "com.docker.docker-desktop-integration";
         ProgramArguments = [
           "${pkgs.docker}/bin/docker"
@@ -211,5 +213,6 @@ in
         KeepAlive = true;
       };
     };
+    */
   };
 }
