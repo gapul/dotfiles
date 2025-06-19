@@ -21,6 +21,13 @@
   #   autoOptimization = true;
   #   retentionDays = 30;
   # };
+
+  # Automation and orchestration
+  dotfiles.automation = {
+    enable = true;
+    profile = "standard";
+    multiEnvironment = true;
+  };
   # SOPS secrets management configuration
   sops = {
     defaultSopsFile = ../secrets.yaml;
