@@ -7,8 +7,8 @@ with lib;
     # ./iac  # Temporarily disabled due to package availability issues
     ./kubernetes  # Re-enabled and working
     ./cloud  # Re-enabled and working
-    ./cicd  # Re-enabled and working  
-    ./monitoring  # Re-enabled for testing
+    # ./cicd  # Temporarily disabled due to YAML syntax in Nix heredoc  
+    ./monitoring  # Re-enabled and working
   ];
 
   options.dotfiles.automation = {

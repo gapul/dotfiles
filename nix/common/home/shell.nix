@@ -57,6 +57,11 @@
       HOMEBREW_NO_INSECURE_REDIRECT = "1";
     };
     
+    # Additional PATH for nodebrew
+    sessionPath = [
+      "${config.home.homeDirectory}/.nodebrew/current/bin"
+    ];
+    
     # Platform-specific initialization
     initContent = ''
       # Universal shell functions
