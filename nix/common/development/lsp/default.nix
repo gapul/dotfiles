@@ -15,20 +15,20 @@ let
     };
     
     html = {
-      package = pkgs.nodePackages.vscode-html-languageserver-bin;
-      command = "html-languageserver";
+      package = pkgs.vscode-langservers-extracted;
+      command = "vscode-html-language-server";
       filetypes = [ "html" ];
     };
     
     css = {
-      package = pkgs.nodePackages.vscode-css-languageserver-bin;
-      command = "css-languageserver";
+      package = pkgs.vscode-langservers-extracted;
+      command = "vscode-css-language-server";
       filetypes = [ "css" "scss" "sass" "less" ];
     };
     
     json = {
-      package = pkgs.nodePackages.vscode-json-languageserver;
-      command = "json-languageserver";
+      package = pkgs.vscode-langservers-extracted;
+      command = "vscode-json-language-server";
       filetypes = [ "json" "jsonc" ];
     };
     
@@ -59,7 +59,7 @@ let
     };
     
     lua = {
-      package = pkgs.sumneko-lua-language-server;
+      package = pkgs.lua-language-server;
       command = "lua-language-server";
       filetypes = [ "lua" ];
     };
@@ -298,7 +298,7 @@ in
         nodePackages.prettier
         black
         rustfmt
-        gofmt
+        go  # gofmt is included with go
         shfmt
         nixpkgs-fmt
         

@@ -72,7 +72,7 @@ with lib;
       fd
       fzf
       jq
-      yq
+      yq-go  # YAML processor (Go version, consistent with automation modules)
       
       # Network tools
       curl
@@ -131,9 +131,9 @@ with lib;
         gl = "git log --oneline";
         gd = "git diff";
         
-        # Development shortcuts
-        ll = "exa -la";
-        lt = "exa --tree";
+        # Development shortcuts  
+        ll = mkDefault "eza -la";  # Updated from exa to eza
+        lt = mkDefault "eza --tree";
         cat = "bat";
         ps = "procs";
         
@@ -148,7 +148,7 @@ with lib;
         p = "podman";
       };
       
-      initExtra = ''
+      initContent = ''
         # Development environment helpers
         dev() {
           if [[ -f shell.nix ]] || [[ -f flake.nix ]]; then

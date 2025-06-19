@@ -111,12 +111,12 @@ in
             log_warning "Claude Code CLI: Not found (install with npm)"
           fi
           
-          # Test Ollama if enabled
-          ${if cfg.ai-tools.ollama then ''
+          # Test local AI models (Ollama managed via Homebrew casks)
+          if command -v ollama &>/dev/null; then
             run_test "Ollama Available" "command -v ollama"
-          '' else ''
-            log_info "Ollama: Disabled in configuration"
-          ''}
+          else
+            log_info "Ollama: Not available (install via: brew install --cask ollama)"
+          fi
         '' else ''
           log_warning "AI Tools Integration: Disabled in configuration"
         ''}
@@ -155,7 +155,7 @@ in
         run_test "Starship Prompt" "command -v starship"
         
         # Check memory usage of development tools
-        DEV_PROCESSES=$(ps aux | grep -E '(language-server|lsp|rust-analyzer|gopls|nil|ollama)' | grep -v grep | wc -l || echo "0")
+        DEV_PROCESSES=$(ps aux | grep -E '(language-server|lsp|rust-analyzer|gopls|nil)' | grep -v grep | wc -l || echo "0")
         if [[ $DEV_PROCESSES -lt 10 ]]; then
           log_success "Development Process Count: $DEV_PROCESSES (reasonable)"
         else
@@ -308,13 +308,13 @@ in
             find ~/.cache -name "*lsp*" -type d -exec rm -rf {} + 2>/dev/null || true
             find ~/.local/share -name "*lsp*" -type d -exec rm -rf {} + 2>/dev/null || true
             
-            # Clean AI model caches
-            if [[ -d ~/.ollama ]]; then
-              echo "  Optimizing AI model storage..."
-              # Clean temporary files
-              find ~/.ollama -name "*.tmp" -delete 2>/dev/null || true
-              find ~/.ollama -name "*.partial" -delete 2>/dev/null || true
-            fi
+            # Clean AI model caches (if present)
+            # if [[ -d ~/.ollama ]]; then
+            #   echo "  Optimizing AI model storage..."
+            #   # Clean temporary files
+            #   find ~/.ollama -name "*.tmp" -delete 2>/dev/null || true
+            #   find ~/.ollama -name "*.partial" -delete 2>/dev/null || true
+            # fi
             ;;
         esac
         
@@ -443,7 +443,7 @@ in
         #### Available Tools
         - GitHub Copilot
         - Claude Code CLI
-        - Local AI models (Ollama)
+        - Local AI models (Ollama via Homebrew)
         - AI-powered project analysis
         
         #### Commands
