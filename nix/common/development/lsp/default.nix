@@ -298,7 +298,7 @@ in
     };
 
     # Shell aliases for LSP management
-    programs.zsh.shellAliases = {
+    home-manager.users.yuki.programs.zsh.shellAliases = mkIf (config ? home-manager) {
       lsp-status = "ps aux | grep -E '(language-server|lsp|rust-analyzer|gopls|nil)'";
       lsp-restart = "pkill -f 'language-server|lsp|rust-analyzer|gopls|nil'";
     };
