@@ -1,0 +1,23 @@
+# Environment configuration for prod
+environment:
+  name: prod
+  region: us-west-2
+  cluster: prod-cluster
+  namespace: prod-apps
+  
+resources:
+  cpu_limit: 2000m
+  memory_limit: 2Gi
+  replicas: 3
+  
+security:
+  network_policies: strict
+  pod_security: restricted
+  
+monitoring:
+  enabled: true
+  alerts: true
+  
+backup:
+  enabled: true
+  retention: 30d
