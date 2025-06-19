@@ -133,39 +133,39 @@ in
       })
     ]);
 
-    # Container health monitoring
-    systemd.user.services.devcontainer-monitor = mkIf (cfg.dockerSupport && pkgs.stdenv.isLinux) {
-      Unit = {
-        Description = "Development container health monitor";
-        After = [ "docker.service" ];
-      };
-      
-      Service = {
-        Type = "oneshot";
-        ExecStart = ''
-          ${pkgs.docker}/bin/docker system prune -f --volumes --filter "until=24h"
-        '';
-      };
-      
-      Install = {
-        WantedBy = [ "default.target" ];
-      };
-    };
-    
-    systemd.user.timers.devcontainer-monitor = mkIf (cfg.dockerSupport && pkgs.stdenv.isLinux) {
-      Unit = {
-        Description = "Run devcontainer monitor daily";
-      };
-      
-      Timer = {
-        OnCalendar = "daily";
-        Persistent = true;
-      };
-      
-      Install = {
-        WantedBy = [ "timers.target" ];
-      };
-    };
+    # Container health monitoring (NixOS only - disabled for macOS compatibility)
+    # systemd.user.services.devcontainer-monitor = mkIf (cfg.dockerSupport && pkgs.stdenv.isLinux) {
+    #   Unit = {
+    #     Description = "Development container health monitor";
+    #     After = [ "docker.service" ];
+    #   };
+    #   
+    #   Service = {
+    #     Type = "oneshot";
+    #     ExecStart = ''
+    #       ${pkgs.docker}/bin/docker system prune -f --volumes --filter "until=24h"
+    #     '';
+    #   };
+    #   
+    #   Install = {
+    #     WantedBy = [ "default.target" ];
+    #   };
+    # };
+    # 
+    # systemd.user.timers.devcontainer-monitor = mkIf (cfg.dockerSupport && pkgs.stdenv.isLinux) {
+    #   Unit = {
+    #     Description = "Run devcontainer monitor daily";
+    #   };
+    #   
+    #   Timer = {
+    #     OnCalendar = "daily";
+    #     Persistent = true;
+    #   };
+    #   
+    #   Install = {
+    #     WantedBy = [ "timers.target" ];
+    #   };
+    # };
 
     # macOS-specific Docker Desktop integration
     launchd.agents.docker-desktop-integration = mkIf (cfg.dockerSupport && pkgs.stdenv.isDarwin) {
