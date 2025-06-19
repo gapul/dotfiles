@@ -5,10 +5,10 @@ with lib;
 {
   imports = [
     # ./iac  # Temporarily disabled due to package availability issues
-    # ./kubernetes  # Temporarily disabled due to package availability and home-manager context issues
-    # ./cloud  # Temporarily disabled due to home-manager context issues
-    # ./cicd  # Temporarily disabled due to YAML syntax conflicts
-    # ./monitoring  # Temporarily disabled due to home-manager context issues
+    ./kubernetes  # Re-enabled and working
+    ./cloud  # Re-enabled and working
+    ./cicd  # Re-enabled and working  
+    ./monitoring  # Re-enabled for testing
   ];
 
   options.dotfiles.automation = {
@@ -54,10 +54,10 @@ with lib;
     #   })
     # ]);
     
-    # Kubernetes module temporarily disabled
-    # dotfiles.automation.kubernetes.enable = mkDefault (
-    #   elem config.dotfiles.automation.profile [ "standard" "full" "enterprise" ]
-    # );
+    # Kubernetes module re-enabled
+    dotfiles.automation.kubernetes.enable = mkDefault (
+      elem config.dotfiles.automation.profile [ "standard" "full" "enterprise" ]
+    );
     
 
     # Common automation tools for all profiles
