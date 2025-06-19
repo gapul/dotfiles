@@ -71,8 +71,8 @@ in
   };
 
   config = mkIf cfg.enable {
-    # Core Kubernetes tools (will be applied through home-manager when available)
-    home-manager.users.yuki.home.packages = mkIf (config ? home-manager) (with pkgs; [
+    # Core Kubernetes tools
+    home-manager.users.yuki.home.packages = with pkgs; [
       # Essential cluster tools
       kubectl
       kubectx  # includes both kubectx and kubens commands
@@ -121,10 +121,10 @@ in
       # Multi-cluster tools
       fluxcd
       linkerd
-    ]);
+    ];
 
     # Kubectl configuration
-    home-manager.users.yuki.home.file.".kube/config.template" = mkIf (config ? home-manager) {
+    home-manager.users.yuki.home.file.".kube/config.template" = {
       text = ''
         # Kubernetes configuration template
         # Copy this to ~/.kube/config and customize for your clusters
@@ -201,7 +201,7 @@ in
     };
 
     # Shell aliases for Kubernetes
-    home-manager.users.yuki.programs.zsh.shellAliases = mkIf (config ? home-manager) {
+    home-manager.users.yuki.programs.zsh.shellAliases = {
       # Basic kubectl shortcuts
       k = "kubectl";
       kgp = "kubectl get pods";
