@@ -1,5 +1,5 @@
 # GitHub Packages用のDevelopment Container Image
-FROM mcr.microsoft.com/vscode/devcontainers/base:ubuntu-22.04
+FROM mcr.microsoft.com/vscode/devcontainers/base:ubuntu-24.04
 
 LABEL org.opencontainers.image.title="Dotfiles Development Environment"
 LABEL org.opencontainers.image.description="Complete development environment for dotfiles management with Nix, home-manager, and GitHub integration"
