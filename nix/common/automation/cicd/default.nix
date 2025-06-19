@@ -68,7 +68,7 @@ in
       
       # Build tools
       just
-      make
+      gnumake  # macOS compatible make
       
       # Container tools
       docker

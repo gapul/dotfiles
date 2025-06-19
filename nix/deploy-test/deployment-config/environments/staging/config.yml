@@ -1,0 +1,23 @@
+# Environment configuration for staging
+environment:
+  name: staging
+  region: us-west-2
+  cluster: staging-cluster
+  namespace: staging-apps
+  
+resources:
+  cpu_limit: 1000m
+  memory_limit: 1Gi
+  replicas: 2
+  
+security:
+  network_policies: standard
+  pod_security: baseline
+  
+monitoring:
+  enabled: true
+  alerts: false
+  
+backup:
+  enabled: false
+  retention: 7d

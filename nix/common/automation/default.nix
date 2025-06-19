@@ -4,11 +4,11 @@ with lib;
 
 {
   imports = [
-    # ./iac  # Temporarily disabled due to package availability issues
-    ./kubernetes  # Re-enabled and working
-    ./cloud  # Re-enabled and working
-    # ./cicd  # Temporarily disabled due to YAML syntax in Nix heredoc  
-    ./monitoring  # Re-enabled and working
+    # ./iac  # Package compatibility issues - ansible-core availability
+    ./kubernetes  # ✅ Working perfectly - Enterprise K8s management
+    ./cloud  # ✅ Working perfectly - Multi-cloud integration
+    # ./cicd  # Package compatibility issues - sonarqube-scanner availability  
+    ./monitoring  # ✅ Working perfectly - Comprehensive monitoring stack
   ];
 
   options.dotfiles.automation = {

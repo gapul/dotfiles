@@ -1,0 +1,47 @@
+# Application Template
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{APP_NAME}}
+  namespace: {{NAMESPACE}}
+  labels:
+    app: {{APP_NAME}}
+    environment: {{ENVIRONMENT}}
+spec:
+  replicas: {{REPLICAS}}
+  selector:
+    matchLabels:
+      app: {{APP_NAME}}
+  template:
+    metadata:
+      labels:
+        app: {{APP_NAME}}
+        environment: {{ENVIRONMENT}}
+    spec:
+      containers:
+      - name: {{APP_NAME}}
+        image: {{IMAGE}}:{{VERSION}}
+        ports:
+        - containerPort: 8080
+        env:
+        - name: ENVIRONMENT
+          value: {{ENVIRONMENT}}
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: {{CPU_LIMIT}}
+            memory: {{MEMORY_LIMIT}}
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
