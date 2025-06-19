@@ -83,8 +83,8 @@
               # Minimal user configuration to test basic functionality
               users.${username} = { config, lib, pkgs, ... }: {
                 # Basic home manager configuration
-                home.username = "Yuki";  # Use actual macOS username to avoid USER mismatch
-                home.homeDirectory = "/Users/yuki";
+                home.username = lib.mkForce "Yuki";  # Force actual macOS username to resolve conflicts
+                home.homeDirectory = lib.mkForce "/Users/yuki";
                 home.stateVersion = "23.11";
                 
                 # Minimal shell configuration without complex imports
