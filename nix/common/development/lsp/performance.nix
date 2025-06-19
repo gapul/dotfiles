@@ -5,6 +5,15 @@ with lib;
 
 let
   cfg = config.dotfiles.development.lsp;
+  
+  # Define LSP servers directly here to avoid circular imports
+  lspServers = {
+    typescript = { package = pkgs.nodePackages.typescript-language-server; command = "typescript-language-server"; };
+    rust = { package = pkgs.rust-analyzer; command = "rust-analyzer"; };
+    go = { package = pkgs.gopls; command = "gopls"; };
+    python = { package = pkgs.python3Packages.python-lsp-server; command = "pylsp"; };
+    nix = { package = pkgs.nil; command = "nil"; };
+  };
 in
 {
   config = mkIf (cfg.enable && cfg.performanceOptimization) {
@@ -74,7 +83,9 @@ in
       };
     };
 
-    # LSP resource limits (using systemd user services on Linux)
+    # LSP resource limits (using systemd user services on Linux only)
+    # Note: Disabled for macOS compatibility - systemd not available on Darwin
+    /*
     systemd.user.services = mkIf pkgs.stdenv.isLinux (listToAttrs (
       mapAttrsToList (name: server: {
         name = "lsp-${name}";
@@ -115,5 +126,6 @@ in
         elem name cfg.enabledLanguages
       ) lspServers)
     ));
+    */
   };
 }
