@@ -106,7 +106,7 @@ jobs:
             access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
             
       - name: Setup Cachix
-        uses: cachix/cachix-action@v12
+        uses: cachix/cachix-action@v16
         if: ${{ !github.event.repository.private }}
         with:
           name: dotfiles-cache
