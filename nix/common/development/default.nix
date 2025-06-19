@@ -119,7 +119,7 @@ with lib;
     ]);
 
     # Enhanced shell configuration for development
-    programs.zsh = {
+    home-manager.users.yuki.programs.zsh = mkIf (config ? home-manager) {
       enable = true;
       shellAliases = {
         # Git shortcuts
