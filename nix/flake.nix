@@ -185,11 +185,11 @@
         default = mkDarwinSystem "aarch64-darwin";
       };
 
-      # NixOS configurations (for Linux)
-      nixosConfigurations = {
-        "linux-desktop" = mkNixosSystem "x86_64-linux";
-        "linux-arm" = mkNixosSystem "aarch64-linux";
-      };
+      # NixOS configurations (for Linux) - temporarily disabled
+      # nixosConfigurations = {
+      #   "linux-desktop" = mkNixosSystem "x86_64-linux";
+      #   "linux-arm" = mkNixosSystem "aarch64-linux";
+      # };
 
       # Standalone home-manager configurations (for non-NixOS Linux, WSL)
       homeConfigurations = let
