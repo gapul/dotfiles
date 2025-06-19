@@ -58,8 +58,8 @@ with lib;
     #     [ "nodejs" "python" "rust" "go" "php" "ruby" "java" "react" "nextjs" "vue" "angular" "docker" "terraform" ]
     # );
 
-    # Common development tools for all profiles
-    home-manager.users.yuki.home.packages = mkIf (config ? home-manager) (with pkgs; [
+    # Common development tools for all profiles  
+    home-manager.users.yuki.home.packages = with pkgs; [
       # Version control
       git
       git-lfs
@@ -116,10 +116,10 @@ with lib;
       lsof
       tcpdump
       # netstat-nat - Linux only, not available on macOS
-    ]);
+    ];
 
     # Enhanced shell configuration for development
-    home-manager.users.yuki.programs.zsh = mkIf (config ? home-manager) {
+    home-manager.users.yuki.programs.zsh = {
       enable = true;
       shellAliases = {
         # Git shortcuts
@@ -243,7 +243,7 @@ with lib;
     };
 
     # Git configuration enhancements
-    home-manager.users.yuki.programs.git = mkIf (config ? home-manager) {
+    home-manager.users.yuki.programs.git = {
       enable = true;
       extraConfig = {
         init.defaultBranch = "main";
@@ -296,7 +296,7 @@ with lib;
     };
 
     # VS Code configuration for development
-    home-manager.users.yuki.home.file.".vscode/global-settings.json" = mkIf (config ? home-manager && config.dotfiles.development.lsp.vscodeIntegration) {
+    home-manager.users.yuki.home.file.".vscode/global-settings.json" = mkIf config.dotfiles.development.lsp.vscodeIntegration {
       text = builtins.toJSON {
         # Editor settings
         "editor.fontSize" = 14;
@@ -343,7 +343,7 @@ with lib;
     };
 
     # Development environment health check
-    home-manager.users.yuki.home.file."bin/dev-health" = mkIf (config ? home-manager) {
+    home-manager.users.yuki.home.file."bin/dev-health" = {
       executable = true;
       text = ''
         #!/usr/bin/env bash
