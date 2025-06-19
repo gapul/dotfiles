@@ -18,7 +18,9 @@ echo "🍎 macOS システム健全性確認"
 echo "=================================="
 echo ""
 
-cd /Users/yuki/dotfiles/nix
+# Dynamically detect script location and navigate to nix directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR/nix"
 
 ISSUES=0
 

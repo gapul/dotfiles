@@ -27,45 +27,32 @@ backups/
 # System files
 *.orig
 
-# Sensitive configuration files (excluded from dotfiles management)
-# These files contain personal information and should be managed separately:
-# - Git config (contains real name and email)
-# - SSH config (contains server information)  
-# - Claude config (contains user ID and project history)
+# SOPS Unified Encryption Strategy
+# All secrets now managed through SOPS - most .gitignore patterns no longer needed
+
+# Legacy sensitive configuration files (gradually migrating to SOPS)
 configs/git/.gitconfig
 configs/ssh/config
 configs/apps/claude/claude.json
 
-# Secret files & Environment variables
-*.key
-*.pem
-*.p12
-*.p8
-*.env
-secrets.*
-private.*
+# SOPS encrypted files (these SHOULD be in repository)
+!nix/security/sops/secrets-unified.yaml
 
-# Additional security patterns
-**/api_key*
-**/token*
-**/.env
-**/.env.local
-*.crt
-*.csr
-*.jks
-*.keystore
-id_rsa*
-id_ed25519*
-!secrets.*.example
-!private.*.example
+# Only exclude unencrypted secrets (emergency fallback)
+*.env.local
+**/api_key_unencrypted*
+**/token_unencrypted*
 
-# Database and auth files
-*.db-wal
-*.db-shm
-*.sqlite
-auth.json
-credentials.json
-service-account*.json
+# Allow example and template files
+!*.example
+!*.template
+!*.sample
+
+# Legacy patterns (most secrets now in SOPS)
+# *.key -> now in SOPS secrets.ssh.private_key
+# *.pem -> now in SOPS secrets.ssl.certificate
+# secrets.* -> now encrypted in secrets-unified.yaml
+# .env -> now in SOPS secrets.development.env_vars
 
 # User-specific data that shouldn't be shared
 configs/**/user_data/
