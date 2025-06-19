@@ -69,9 +69,9 @@
         specialArgs = (mkPlatformConfig system).specialArgs;
         modules = [
           # ./common/home/shell.nix  # Moved to home-manager.users configuration below
-          # ./common/themes/default.nix  # Temporarily disabled due to home-manager context issues
-          # ./common/development/default.nix  # Temporarily disabled due to home-manager context issues
-          # ./common/automation/default.nix  # Temporarily disabled due to home-manager context issues
+          # ./common/themes/default.nix  # Temporarily disabled due to home-manager context issues  
+          ./common/development/default.nix  # Re-enabled for enhanced development experience
+          ./common/automation/default.nix  # Re-enabled with full automation support
           ./darwin/system/default.nix
           sops-nix.darwinModules.sops
           { nixpkgs.config.allowUnfree = true; }
@@ -141,6 +141,22 @@
                 programs.home-manager.enable = true;
               };
               extraSpecialArgs = (mkPlatformConfig system).specialArgs;
+            };
+          }
+          
+          # Enable automation features
+          {
+            dotfiles.automation = {
+              enable = true;
+              profile = "standard";
+            };
+          }
+          
+          # Enable development features
+          {
+            dotfiles.development = {
+              enable = true;
+              profile = "full";
             };
           }
         ];

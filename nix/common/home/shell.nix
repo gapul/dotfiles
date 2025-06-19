@@ -86,6 +86,11 @@
         eval "$(/opt/homebrew/bin/brew shellenv)"
       fi
       
+      # Nodebrew setup for Node.js and claude command
+      if [[ -d "$HOME/.nodebrew" ]]; then
+        export PATH="$HOME/.nodebrew/current/bin:$PATH"
+      fi
+      
       # WezTerm shell integration for command completion notifications
       if [[ "$TERM_PROGRAM" == "WezTerm" ]]; then
         # Track command execution start time
