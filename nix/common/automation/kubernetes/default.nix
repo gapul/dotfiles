@@ -92,13 +92,15 @@ in
       # Cluster management
       kind
       minikube
-      k3s
       k3d
       
       # Node and resource management
       kubectl-node-shell
       kubectl-tree
       kubectl-view-allocations
+    ] ++ optionals (cfg.clusterManagement && pkgs.stdenv.isLinux) [
+      # Linux-only cluster management tools
+      k3s
     ] ++ optionals cfg.argocdSupport [
       argocd
       argo-rollouts
