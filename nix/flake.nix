@@ -98,11 +98,13 @@
                     ll = "eza -la";
                     cat = "bat";
                     grep = "rg";
+                    brew = "/opt/homebrew/bin/brew";
                   };
                   
                   sessionVariables = {
                     EDITOR = "nvim";
                     PAGER = "less";
+                    PATH = "/opt/homebrew/bin:$PATH";
                   };
                 };
                 

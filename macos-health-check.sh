@@ -154,6 +154,6 @@ fi
 
 echo ""
 echo "🔧 追加確認コマンド:"
-echo "  nix eval .#darwinConfigurations.default.system  # Darwin評価"
-echo "  brew doctor                                      # Homebrew健全性"
-echo "  git status                                       # Git状態"
+echo "  cd ~/dotfiles/nix && nix eval .#darwinConfigurations.default.system  # Darwin評価"
+echo "  /opt/homebrew/bin/brew doctor                                        # Homebrew健全性"
+echo "  git status                                                           # Git状態"
