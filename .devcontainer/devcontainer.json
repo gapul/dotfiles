@@ -1,0 +1,119 @@
+{
+  "name": "Dotfiles Development Environment",
+  "image": "mcr.microsoft.com/vscode/devcontainers/base:ubuntu-22.04",
+  
+  "features": {
+    "ghcr.io/devcontainers/features/nix:1": {
+      "version": "latest",
+      "multiUser": true,
+      "experimental": true
+    },
+    "ghcr.io/devcontainers/features/github-cli:1": {
+      "version": "latest"
+    },
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "lts",
+      "nodeGypDependencies": true
+    },
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "version": "latest",
+      "dockerDashComposeVersion": "v2"
+    }
+  },
+  
+  "postCreateCommand": ".devcontainer/postCreateCommand.sh",
+  "postStartCommand": ".devcontainer/postStartCommand.sh",
+  
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "zsh",
+        "terminal.integrated.profiles.linux": {
+          "zsh": {
+            "path": "/bin/zsh"
+          }
+        },
+        "files.associations": {
+          "*.nix": "nix",
+          "flake.lock": "json"
+        },
+        "nix.enableLanguageServer": true,
+        "nix.serverPath": "nil"
+      },
+      "extensions": [
+        // GitHub統合
+        "GitHub.copilot",
+        "GitHub.copilot-chat", 
+        "GitHub.vscode-pull-request-github",
+        "GitHub.remotehub",
+        
+        // Nix/dotfiles開発
+        "jnoortheen.nix-ide",
+        "arrterian.nix-env-selector",
+        "mkhl.direnv",
+        
+        // 言語サポート
+        "ms-vscode.vscode-json",
+        "redhat.vscode-yaml",
+        "tamasfe.even-better-toml",
+        "ms-python.python",
+        
+        // シェル/スクリプト
+        "timonwong.shellcheck",
+        "rogalmic.bash-debug",
+        "foxundermoon.shell-format",
+        
+        // Git/バージョン管理
+        "eamodio.gitlens",
+        "donjayamanne.githistory",
+        "GitHub.vscode-github-actions",
+        
+        // ドキュメント
+        "yzhang.markdown-all-in-one",
+        "davidanson.vscode-markdownlint",
+        "bierner.markdown-mermaid",
+        
+        // 品質管理
+        "ms-vscode.test-adapter-converter",
+        "hbenl.vscode-test-explorer",
+        "streetsidesoftware.code-spell-checker"
+      ]
+    }
+  },
+  
+  "forwardPorts": [
+    3000,  // Development server
+    8080,  // HTTP server
+    9090   // Prometheus (monitoring)
+  ],
+  "portsAttributes": {
+    "3000": {
+      "label": "Development Server",
+      "onAutoForward": "notify"
+    },
+    "8080": {
+      "label": "HTTP Server", 
+      "onAutoForward": "ignore"
+    },
+    "9090": {
+      "label": "Prometheus",
+      "onAutoForward": "ignore"
+    }
+  },
+  
+  "mounts": [
+    "source=dotfiles-nix-store,target=/nix,type=volume",
+    "source=dotfiles-cache,target=/home/vscode/.cache,type=volume"
+  ],
+  
+  "containerEnv": {
+    "DOTFILES_ENVIRONMENT": "codespaces",
+    "DOTFILES_PLATFORM": "linux",
+    "GITHUB_CODESPACES": "true"
+  },
+  
+  "remoteUser": "vscode",
+  "updateRemoteUserUID": true,
+  
+  "shutdownAction": "stopContainer"
+}

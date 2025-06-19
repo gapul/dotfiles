@@ -1,0 +1,179 @@
+name: GitHub Copilot Integration
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+  push:
+    branches: [main, develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  copilot-review:
+    name: Copilot Code Review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Setup GitHub CLI
+        run: |
+          gh --version
+          
+      - name: Copilot Code Review
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "🤖 Running GitHub Copilot code review..."
+          
+          # Get changed files
+          CHANGED_FILES=$(gh pr diff ${{ github.event.number }} --name-only)
+          echo "Changed files: $CHANGED_FILES"
+          
+          # Focus on key file types for review
+          REVIEW_FILES=$(echo "$CHANGED_FILES" | grep -E '\.(nix|sh|yml|yaml|json|md)$' || true)
+          
+          if [[ -n "$REVIEW_FILES" ]]; then
+            echo "Files for Copilot review: $REVIEW_FILES"
+            
+            # Generate review suggestions using gh copilot
+            echo "$REVIEW_FILES" | while read -r file; do
+              if [[ -f "$file" ]]; then
+                echo "Analyzing $file..."
+                gh copilot suggest "Review this file for best practices, security issues, and code quality: $file" || true
+              fi
+            done
+          else
+            echo "No reviewable files found in this PR"
+          fi
+
+  copilot-commit-analysis:
+    name: Copilot Commit Analysis
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+          
+      - name: Analyze Recent Commit
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "🔍 Analyzing recent commit with Copilot..."
+          
+          # Get the latest commit
+          LATEST_COMMIT=$(git rev-parse HEAD)
+          COMMIT_MESSAGE=$(git log -1 --pretty=format:"%s")
+          
+          echo "Latest commit: $LATEST_COMMIT"
+          echo "Commit message: $COMMIT_MESSAGE"
+          
+          # Get changed files in the latest commit
+          CHANGED_FILES=$(git diff-tree --no-commit-id --name-only -r $LATEST_COMMIT)
+          echo "Changed files: $CHANGED_FILES"
+          
+          # Analyze commit quality
+          gh copilot suggest "Analyze this commit message for clarity and conventionality: '$COMMIT_MESSAGE'" || true
+
+  copilot-documentation-check:
+    name: Copilot Documentation Check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Check Documentation Quality
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "📚 Checking documentation with Copilot..."
+          
+          # Check README quality
+          if [[ -f "README.md" ]]; then
+            gh copilot suggest "Review this README.md for completeness, clarity, and user-friendliness" || true
+          fi
+          
+          # Check documentation coverage
+          DOC_FILES=$(find . -name "*.md" -not -path "./.git/*" -not -path "./node_modules/*")
+          echo "Documentation files found: $DOC_FILES"
+          
+          # Suggest documentation improvements
+          gh copilot suggest "Suggest documentation improvements for a dotfiles repository with these files: $DOC_FILES" || true
+
+  copilot-security-scan:
+    name: Copilot Security Analysis
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Security Analysis with Copilot
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "🔒 Running security analysis with Copilot..."
+          
+          # Check shell scripts for security issues
+          SHELL_SCRIPTS=$(find . -name "*.sh" -not -path "./.git/*")
+          if [[ -n "$SHELL_SCRIPTS" ]]; then
+            echo "Analyzing shell scripts for security issues..."
+            echo "$SHELL_SCRIPTS" | while read -r script; do
+              if [[ -f "$script" ]]; then
+                gh copilot suggest "Review this shell script for security vulnerabilities and best practices: $script" || true
+              fi
+            done
+          fi
+          
+          # Check configuration files
+          CONFIG_FILES=$(find . \( -name "*.yml" -o -name "*.yaml" -o -name "*.json" \) -not -path "./.git/*")
+          if [[ -n "$CONFIG_FILES" ]]; then
+            echo "Analyzing configuration files..."
+            gh copilot suggest "Check these configuration files for security issues: $CONFIG_FILES" || true
+          fi
+          
+          # Check for hardcoded secrets patterns
+          gh copilot suggest "Scan this repository for potential hardcoded secrets or credentials" || true
+
+  copilot-suggestions:
+    name: Copilot Improvement Suggestions
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Generate Improvement Suggestions
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "💡 Generating improvement suggestions with Copilot..."
+          
+          # Repository structure analysis
+          gh copilot suggest "Analyze this dotfiles repository structure and suggest improvements for organization and maintainability" || true
+          
+          # Nix configuration analysis
+          if [[ -d "nix" ]]; then
+            gh copilot suggest "Review this Nix-based dotfiles configuration for best practices and optimization opportunities" || true
+          fi
+          
+          # CI/CD pipeline suggestions
+          if [[ -d ".github/workflows" ]]; then
+            gh copilot suggest "Suggest improvements for these GitHub Actions workflows for a dotfiles repository" || true
+          fi
+          
+          # Developer experience improvements
+          gh copilot suggest "Suggest developer experience improvements for this dotfiles repository, including setup automation and documentation" || true

@@ -1,0 +1,137 @@
+name: 🐛 Bug Report
+description: バグやエラーを報告
+title: "[BUG] "
+labels: ["bug", "needs-triage"]
+assignees:
+  - gapul
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 🐛 バグレポート
+        
+        バグを報告していただき、ありがとうございます。以下の情報を可能な限り詳細に記入してください。
+        
+  - type: textarea
+    id: description
+    attributes:
+      label: 🔍 問題の説明
+      description: 何が起こっているか、期待される動作と異なる点を説明してください
+      placeholder: 詳細な説明をここに記入...
+    validations:
+      required: true
+      
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 🔄 再現手順
+      description: 問題を再現するための具体的な手順
+      placeholder: |
+        1. コマンドXを実行
+        2. ファイルYを編集
+        3. エラーが発生
+      value: |
+        1. 
+        2. 
+        3. 
+    validations:
+      required: true
+      
+  - type: textarea
+    id: expected
+    attributes:
+      label: ✅ 期待される動作
+      description: 本来どのような動作をするべきかを説明してください
+    validations:
+      required: true
+      
+  - type: textarea
+    id: actual
+    attributes:
+      label: ❌ 実際の動作
+      description: 実際に何が起こっているかを説明してください
+    validations:
+      required: true
+      
+  - type: dropdown
+    id: platform
+    attributes:
+      label: 🖥️ プラットフォーム
+      description: 使用しているプラットフォームを選択してください
+      options:
+        - macOS (Apple Silicon)
+        - macOS (Intel)
+        - Linux (Ubuntu)
+        - Linux (Other)
+        - WSL (Windows Subsystem for Linux)
+        - Android (Termux)
+        - GitHub Codespaces
+        - その他
+    validations:
+      required: true
+      
+  - type: input
+    id: os-version
+    attributes:
+      label: 📱 OS バージョン
+      description: OSのバージョン (例: macOS 14.2, Ubuntu 22.04)
+      placeholder: macOS 14.2
+    validations:
+      required: true
+      
+  - type: dropdown
+    id: nix-type
+    attributes:
+      label: 🔧 Nix環境
+      description: 使用しているNix環境を選択してください
+      options:
+        - nix-darwin (macOS)
+        - home-manager (Linux)
+        - NixOS
+        - nix-on-droid (Android)
+        - Nix (standalone)
+        - 不明
+    validations:
+      required: true
+      
+  - type: textarea
+    id: environment
+    attributes:
+      label: 🌍 環境情報
+      description: 関連する環境情報を貼り付けてください
+      placeholder: |
+        Nix version: nix (Nix) 2.18.1
+        Home Manager version: 23.11
+        など
+      render: shell
+      
+  - type: textarea
+    id: logs
+    attributes:
+      label: 📋 ログ・エラーメッセージ
+      description: 関連するログやエラーメッセージを貼り付けてください
+      placeholder: エラーメッセージやログをここに貼り付け...
+      render: shell
+      
+  - type: textarea
+    id: additional
+    attributes:
+      label: 📎 追加情報
+      description: その他の関連情報があれば記入してください
+      placeholder: スクリーンショット、設定ファイルの一部など...
+      
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: ✅ チェックリスト
+      description: 報告前に以下を確認してください
+      options:
+        - label: 既存のissueで同様の問題が報告されていないことを確認しました
+          required: true
+        - label: 最新版のdotfilesを使用しています
+          required: true
+        - label: 問題を再現できることを確認しました
+          required: true
+        - label: 可能な限り詳細な情報を提供しました
+          required: true

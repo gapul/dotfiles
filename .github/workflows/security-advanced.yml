@@ -1,0 +1,354 @@
+name: Advanced GitHub Security
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Run daily security scans at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+  pull-requests: write
+
+jobs:
+  codeql-analysis:
+    name: CodeQL Security Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ['javascript', 'python']
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          config: |
+            name: "CodeQL Config"
+            disable-default-queries: false
+            queries:
+              - uses: security-extended
+              - uses: security-and-quality
+            paths-ignore:
+              - "**/*.md"
+              - "**/*.txt"
+              - ".github/workflows/**"
+              
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+        
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{matrix.language}}"
+
+  dependency-review:
+    name: Dependency Security Review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: moderate
+          allow-licenses: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC
+          deny-licenses: GPL-2.0, GPL-3.0, AGPL-1.0, AGPL-3.0
+          comment-summary-in-pr: true
+
+  secrets-scanning:
+    name: Advanced Secrets Scanning
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: TruffleHog OSS Secret Scanning
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: main
+          head: HEAD
+          extra_args: --debug --only-verified
+          
+      - name: GitLeaks Secret Detection
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+          
+      - name: Semgrep Security Analysis
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: >-
+            p/security-audit
+            p/secrets
+            p/dockerfile
+            p/kubernetes
+            p/terraform
+        env:
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+
+  container-security:
+    name: Container Security Scanning
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Build Docker image for scanning
+        run: |
+          docker build -t dotfiles-security-scan:latest -f .devcontainer/Dockerfile .
+          
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'dotfiles-security-scan:latest'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          
+      - name: Upload Trivy scan results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+          
+      - name: Docker Scout CVE scanning
+        uses: docker/scout-action@v1
+        if: ${{ github.event_name != 'pull_request' }}
+        with:
+          command: cves
+          image: dotfiles-security-scan:latest
+          sarif-file: scout-cves.sarif
+          
+      - name: Upload Docker Scout scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: ${{ github.event_name != 'pull_request' }}
+        with:
+          sarif_file: scout-cves.sarif
+
+  nix-security:
+    name: Nix Configuration Security
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Install Nix
+        uses: cachix/install-nix-action@v24
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            
+      - name: Security audit of Nix packages
+        run: |
+          echo "🔍 Auditing Nix configuration for security issues..."
+          
+          # Check for known vulnerable packages
+          echo "Checking for vulnerable packages..."
+          
+          # List all packages in flake
+          nix flake show --json > flake-outputs.json
+          
+          # Check for hardcoded secrets in Nix files
+          echo "Scanning Nix files for potential secrets..."
+          find nix/ -name "*.nix" -exec grep -l "password\|secret\|key\|token" {} \; | while read -r file; do
+            echo "⚠️  Potential secret found in: $file"
+            grep -n "password\|secret\|key\|token" "$file" || true
+          done
+          
+      - name: Check Nix security configuration
+        run: |
+          echo "🔒 Checking Nix security configuration..."
+          
+          # Check for secure defaults
+          if grep -r "allowUnfree.*true" nix/; then
+            echo "⚠️  Found allowUnfree = true - review unfree packages"
+          fi
+          
+          # Check for trusted users configuration
+          if grep -r "trusted-users" nix/; then
+            echo "ℹ️  Found trusted-users configuration"
+            grep -r "trusted-users" nix/
+          fi
+          
+          # Check SOPS configuration
+          if [[ -d "nix/security/sops" ]]; then
+            echo "✅ SOPS configuration found"
+            
+            # Verify SOPS files are encrypted
+            find nix/security/sops -name "*.yaml" -not -name "*.example" | while read -r file; do
+              if grep -q "sops:" "$file"; then
+                echo "✅ $file is properly encrypted"
+              else
+                echo "⚠️  $file may not be encrypted"
+              fi
+            done
+          fi
+
+  infrastructure-security:
+    name: Infrastructure as Code Security
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Checkov IaC Security Analysis
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: .
+          framework: dockerfile,github_actions,secrets
+          output_format: sarif
+          output_file_path: checkov.sarif
+          
+      - name: Upload Checkov scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: checkov.sarif
+          
+      - name: OPA Conftest Policy Testing
+        run: |
+          # Install conftest
+          wget -O conftest.tar.gz https://github.com/open-policy-agent/conftest/releases/latest/download/conftest_Linux_x86_64.tar.gz
+          tar xzf conftest.tar.gz
+          sudo mv conftest /usr/local/bin
+          
+          # Create security policies
+          mkdir -p policy
+          cat > policy/security.rego << 'EOF'
+          package security
+          
+          deny[msg] {
+            input.kind == "Dockerfile"
+            contains(input.contents, "sudo")
+            msg := "Dockerfile should not use sudo commands"
+          }
+          
+          deny[msg] {
+            input.kind == "Workflow"
+            input.on.push
+            not input.permissions
+            msg := "GitHub Actions workflow should define explicit permissions"
+          }
+          EOF
+          
+          # Test policies against configurations
+          echo "🔍 Testing security policies..."
+          conftest test --policy policy/ .github/workflows/*.yml || true
+          conftest test --policy policy/ .devcontainer/Dockerfile || true
+
+  security-scorecard:
+    name: OpenSSF Security Scorecard
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      id-token: write
+      
+    steps:
+      - name: Run OpenSSF Scorecard
+        uses: ossf/scorecard-action@v2.3.1
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          publish_results: true
+          
+      - name: Upload Scorecard results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: results.sarif
+
+  security-reporting:
+    name: Security Report Generation
+    runs-on: ubuntu-latest
+    needs: [codeql-analysis, secrets-scanning, container-security, nix-security, infrastructure-security]
+    if: always()
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Generate Security Report
+        run: |
+          echo "📊 Generating security report..."
+          
+          cat > security-report.md << 'EOF'
+          # Security Analysis Report
+          
+          **Date**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          **Repository**: ${{ github.repository }}
+          **Branch**: ${{ github.ref_name }}
+          **Commit**: ${{ github.sha }}
+          
+          ## Summary
+          
+          | Security Check | Status |
+          |----------------|--------|
+          | CodeQL Analysis | ${{ needs.codeql-analysis.result }} |
+          | Secrets Scanning | ${{ needs.secrets-scanning.result }} |
+          | Container Security | ${{ needs.container-security.result }} |
+          | Nix Security | ${{ needs.nix-security.result }} |
+          | Infrastructure Security | ${{ needs.infrastructure-security.result }} |
+          
+          ## Recommendations
+          
+          1. **Regular Updates**: Keep dependencies updated regularly
+          2. **Secret Management**: Use SOPS for all sensitive data
+          3. **Container Security**: Scan container images regularly
+          4. **Access Control**: Review and limit repository access
+          5. **Monitoring**: Enable GitHub Security alerts
+          
+          ## Next Actions
+          
+          - [ ] Review any security alerts in the Security tab
+          - [ ] Update vulnerable dependencies if any
+          - [ ] Rotate secrets if compromised
+          - [ ] Review access permissions
+          
+          ---
+          
+          *This report was generated automatically by GitHub Actions*
+          EOF
+          
+      - name: Upload Security Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-report
+          path: security-report.md
+          
+      - name: Comment Security Report on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('security-report.md', 'utf8');
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 🔒 Security Analysis Report\n\n${report}`
+            });

@@ -1,0 +1,141 @@
+name: ✨ Feature Request
+description: 新機能の提案
+title: "[FEATURE] "
+labels: ["enhancement", "needs-discussion"]
+assignees:
+  - gapul
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## ✨ 機能リクエスト
+        
+        新機能の提案をありがとうございます！以下の情報を記入してください。
+        
+  - type: textarea
+    id: problem
+    attributes:
+      label: 🤔 解決したい問題
+      description: この機能によってどのような問題を解決したいですか？
+      placeholder: 現在、〜という問題があり、〜したいのですが...
+    validations:
+      required: true
+      
+  - type: textarea
+    id: solution
+    attributes:
+      label: 💡 提案する解決策
+      description: どのような機能や改善を提案しますか？
+      placeholder: 〜という機能があれば、〜できるようになると思います...
+    validations:
+      required: true
+      
+  - type: dropdown
+    id: category
+    attributes:
+      label: 📂 カテゴリ
+      description: この機能はどのカテゴリに関連しますか？
+      options:
+        - 🔧 設定管理 (Nix/home-manager)
+        - 🖥️ シェル・ターミナル環境
+        - 📝 エディター設定 (Neovim/VSCode)
+        - 🐳 開発環境 (Docker/Codespaces)
+        - 🤖 AI統合 (GitHub Copilot/Claude)
+        - 🔒 セキュリティ (SOPS/暗号化)
+        - 📊 監視・ログ
+        - 🚀 CI/CD・自動化
+        - 📚 ドキュメント
+        - 🌐 マルチプラットフォーム対応
+        - その他
+    validations:
+      required: true
+      
+  - type: dropdown
+    id: priority
+    attributes:
+      label: 🎯 優先度
+      description: この機能の重要度はどの程度ですか？
+      options:
+        - 🔴 高 (重要な機能改善)
+        - 🟡 中 (あると便利な機能)
+        - 🟢 低 (nice to have)
+    validations:
+      required: true
+      
+  - type: textarea
+    id: use-cases
+    attributes:
+      label: 🎪 使用例
+      description: この機能をどのような場面で使用しますか？
+      placeholder: |
+        - 日常の開発作業で...
+        - 新しいマシンのセットアップ時に...
+        - チーム開発で...
+      
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 🔄 代替案
+      description: 他に考えられる解決方法はありますか？
+      placeholder: 現在は〜で回避していますが、〜という方法も考えられます...
+      
+  - type: textarea
+    id: implementation
+    attributes:
+      label: 🔨 実装案
+      description: 実装方法についてアイデアがあれば記入してください
+      placeholder: |
+        - Nixモジュールとして実装
+        - シェルスクリプトで対応
+        - GitHub Actionsで自動化
+        など
+        
+  - type: dropdown
+    id: platforms
+    attributes:
+      label: 🖥️ 対象プラットフォーム
+      description: どのプラットフォームで必要ですか？（複数選択可）
+      multiple: true
+      options:
+        - macOS (nix-darwin)
+        - Linux (home-manager)
+        - WSL
+        - Android (nix-on-droid)
+        - GitHub Codespaces
+        - すべてのプラットフォーム
+        
+  - type: checkboxes
+    id: research
+    attributes:
+      label: 🔍 調査済み項目
+      description: 提案前に以下を確認しましたか？
+      options:
+        - label: 既存のissueで同様の機能が提案されていないことを確認しました
+          required: true
+        - label: 現在の実装で対応できないことを確認しました
+          required: true
+        - label: 類似のツールや実装例を調査しました
+          required: false
+          
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: 🤝 貢献意思
+      description: この機能の実装に協力できますか？
+      options:
+        - label: 実装を手伝うことができます
+          required: false
+        - label: テストに協力できます
+          required: false
+        - label: ドキュメント作成に協力できます
+          required: false
+        - label: 議論にのみ参加したいです
+          required: false
+          
+  - type: textarea
+    id: additional
+    attributes:
+      label: 📎 追加情報
+      description: その他の関連情報があれば記入してください
+      placeholder: 参考資料、関連するツール、実装例など...
