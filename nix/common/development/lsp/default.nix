@@ -5,7 +5,7 @@ with lib;
 let
   cfg = config.dotfiles.development.lsp;
   
-  # LSP server configurations
+  # LSP server configurations with enhanced support
   lspServers = {
     # Web Development
     typescript = {
@@ -96,6 +96,73 @@ let
       command = "sqls";
       filetypes = [ "sql" ];
     };
+    
+    # Additional language servers for comprehensive support
+    java = {
+      package = pkgs.jdt-language-server;
+      command = "jdt-language-server";
+      filetypes = [ "java" ];
+    };
+    
+    php = {
+      package = pkgs.nodePackages.intelephense;
+      command = "intelephense";
+      filetypes = [ "php" ];
+    };
+    
+    ruby = {
+      package = pkgs.rubyPackages.solargraph;
+      command = "solargraph";
+      filetypes = [ "ruby" ];
+    };
+    
+    haskell = {
+      package = pkgs.haskell-language-server;
+      command = "hls";
+      filetypes = [ "haskell" "lhaskell" ];
+    };
+    
+    kotlin = {
+      package = pkgs.kotlin-language-server;
+      command = "kotlin-language-server";
+      filetypes = [ "kotlin" ];
+    };
+    
+    swift = {
+      package = pkgs.sourcekit-lsp;
+      command = "sourcekit-lsp";
+      filetypes = [ "swift" ];
+    };
+    
+    dart = {
+      package = pkgs.dart;
+      command = "dart";
+      filetypes = [ "dart" ];
+    };
+    
+    dockerfile = {
+      package = pkgs.nodePackages.dockerfile-language-server-nodejs;
+      command = "docker-langserver";
+      filetypes = [ "dockerfile" ];
+    };
+    
+    terraform = {
+      package = pkgs.terraform-lsp;
+      command = "terraform-lsp";
+      filetypes = [ "terraform" "tf" "hcl" ];
+    };
+    
+    toml = {
+      package = pkgs.taplo;
+      command = "taplo";
+      filetypes = [ "toml" ];
+    };
+    
+    vim = {
+      package = pkgs.nodePackages.vim-language-server;
+      command = "vim-language-server";
+      filetypes = [ "vim" ];
+    };
   };
   
   enabledServers = filterAttrs (name: server: 
@@ -109,8 +176,32 @@ in
     
     enabledLanguages = mkOption {
       type = types.listOf (types.enum (attrNames lspServers));
-      default = [ "typescript" "html" "css" "json" "rust" "go" "python" "nix" "yaml" "markdown" "bash" ];
+      default = [ "typescript" "html" "css" "json" "rust" "go" "python" "nix" "yaml" "markdown" "bash" "c_cpp" "lua" "sql" ];
       description = "List of LSP servers to enable";
+    };
+    
+    performanceOptimization = mkOption {
+      type = types.bool;
+      default = true;
+      description = "Enable performance optimizations for LSP servers";
+    };
+    
+    autoDetection = mkOption {
+      type = types.bool;
+      default = true;
+      description = "Automatically detect and configure LSP servers based on project files";
+    };
+    
+    memoryLimit = mkOption {
+      type = types.str;
+      default = "1G";
+      description = "Memory limit for LSP servers";
+    };
+    
+    logLevel = mkOption {
+      type = types.enum [ "error" "warn" "info" "debug" "trace" ];
+      default = "info";
+      description = "LSP server log level";
     };
     
     globalConfig = mkOption {
@@ -161,6 +252,39 @@ in
       type = types.bool;
       default = false;
       description = "Enable Emacs LSP integration";
+    };
+    
+    helixIntegration = mkOption {
+      type = types.bool;
+      default = false;
+      description = "Enable Helix editor LSP integration";
+    };
+    
+    sublimeIntegration = mkOption {
+      type = types.bool;
+      default = false;
+      description = "Enable Sublime Text LSP integration";
+    };
+    
+    universalLspConfig = mkOption {
+      type = types.attrs;
+      default = {
+        completion = {
+          keywordLength = 1;
+          maxItems = 50;
+          snippetSupport = true;
+        };
+        diagnostics = {
+          refreshSupport = true;
+          pullSupport = true;
+        };
+        workspace = {
+          didChangeWatchedFiles = {
+            dynamicRegistration = true;
+          };
+        };
+      };
+      description = "Universal LSP configuration applied to all servers";
     };
   };
 
