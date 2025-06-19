@@ -59,7 +59,7 @@ with lib;
     # );
 
     # Common development tools for all profiles
-    home.packages = with pkgs; [
+    home-manager.users.yuki.home.packages = mkIf (config ? home-manager) (with pkgs; [
       # Version control
       git
       git-lfs
@@ -80,7 +80,7 @@ with lib;
       
       # File management
       tree
-      exa
+      eza  # formerly exa
       bat
       
       # Process management
@@ -90,7 +90,7 @@ with lib;
       
       # Development utilities
       just
-      make
+      gnumake  # make command
       cmake
       
       # Documentation
@@ -114,9 +114,9 @@ with lib;
       
       # Monitoring
       lsof
-      netstat-nat
       tcpdump
-    ];
+      # netstat-nat - Linux only, not available on macOS
+    ]);
 
     # Enhanced shell configuration for development
     programs.zsh = {
@@ -243,7 +243,7 @@ with lib;
     };
 
     # Git configuration enhancements
-    programs.git = {
+    home-manager.users.yuki.programs.git = mkIf (config ? home-manager) {
       enable = true;
       extraConfig = {
         init.defaultBranch = "main";
@@ -296,7 +296,7 @@ with lib;
     };
 
     # VS Code configuration for development
-    home.file.".vscode/global-settings.json" = mkIf config.dotfiles.development.lsp.vscodeIntegration {
+    home-manager.users.yuki.home.file.".vscode/global-settings.json" = mkIf (config ? home-manager && config.dotfiles.development.lsp.vscodeIntegration) {
       text = builtins.toJSON {
         # Editor settings
         "editor.fontSize" = 14;
@@ -343,7 +343,7 @@ with lib;
     };
 
     # Development environment health check
-    home.file."bin/dev-health" = {
+    home-manager.users.yuki.home.file."bin/dev-health" = mkIf (config ? home-manager) {
       executable = true;
       text = ''
         #!/usr/bin/env bash

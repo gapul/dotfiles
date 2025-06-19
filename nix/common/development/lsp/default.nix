@@ -186,7 +186,7 @@ in
       ]);
 
     # Neovim LSP configuration
-    programs.neovim = mkIf cfg.nvimIntegration {
+    home-manager.users.yuki.programs.neovim = mkIf (config ? home-manager && cfg.nvimIntegration) {
       enable = true;
       plugins = with pkgs.vimPlugins; [
         nvim-lspconfig

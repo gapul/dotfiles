@@ -53,16 +53,16 @@ in
   };
 
   config = mkIf cfg.enable {
-    # Docker support
-    programs.docker = mkIf cfg.dockerSupport {
-      enable = true;
-      enableOnBoot = true;
-      autoPrune = {
-        enable = true;
-        dates = "weekly";
-        flags = [ "--all" ];
-      };
-    };
+    # Docker support (NixOS only - macOS uses Docker Desktop via Homebrew)
+    # programs.docker = mkIf (cfg.dockerSupport && pkgs.stdenv.isLinux) {
+    #   enable = true;
+    #   enableOnBoot = true;
+    #   autoPrune = {
+    #     enable = true;
+    #     dates = "weekly";
+    #     flags = [ "--all" ];
+    #   };
+    # };
 
     # Development tools
     home-manager.users.yuki.home.packages = mkIf (config ? home-manager) (with pkgs; [
@@ -182,6 +182,6 @@ in
         RunAtLoad = true;
         KeepAlive = true;
       };
-    });
+    };
   };
 }
