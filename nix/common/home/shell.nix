@@ -58,9 +58,9 @@
     };
     
     # Additional PATH for nodebrew and Claude CLI (macOS only)
-    # sessionPath = lib.mkIf pkgs.stdenv.isDarwin [
-    #   "${config.home.homeDirectory}/.nodebrew/current/bin"
-    # ];
+    sessionPath = lib.mkIf pkgs.stdenv.isDarwin [
+      "${config.home.homeDirectory}/.nodebrew/current/bin"
+    ];
     
     # Platform-specific initialization
     initContent = ''

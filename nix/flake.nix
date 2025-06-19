@@ -205,6 +205,8 @@
         "${username}@wsl" = mkHomeConfiguration "x86_64-linux" (commonModules ++ [ ./wsl/integration/default.nix ]);
         "${username}@linux-arm" = mkHomeConfiguration "aarch64-linux" (commonModules ++ [ ./linux/desktop/default.nix ]);
         "${username}@darwin" = mkHomeConfiguration "aarch64-darwin" commonModules;
+        # GitHub Codespaces configuration
+        "codespaces" = mkHomeConfiguration "x86_64-linux" (commonModules ++ [ ./codespaces/default.nix ]);
       };
 
       # Android configurations (nix-on-droid)
