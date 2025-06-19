@@ -604,7 +604,7 @@ in
     };
 
     # Shell functions for monitoring
-    home-manager.users.yuki.programs.zsh.initExtra = ''
+    home-manager.users.yuki.programs.zsh.initContent = ''
       # Quick metrics
       metrics() {
         echo "⚡ Quick System Metrics"

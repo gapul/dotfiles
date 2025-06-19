@@ -733,7 +733,7 @@ jobs:
     };
 
     # Shell functions for CI/CD
-    programs.zsh.initExtra = ''
+    programs.zsh.initContent = ''
       # Quick pipeline trigger
       trigger-pipeline() {
         local branch="''${1:-$(git branch --show-current)}"

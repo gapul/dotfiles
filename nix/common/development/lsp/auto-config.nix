@@ -291,7 +291,7 @@ in
     };
 
     # Auto-configuration trigger on directory change (zsh integration)
-    home-manager.users.yuki.programs.zsh.initExtra = mkAfter ''
+    home-manager.users.yuki.programs.zsh.initContent = mkAfter ''
       # LSP Auto-configuration on directory change
       lsp_auto_config_chpwd() {
         # Only run in project directories (has git, or specific project files)

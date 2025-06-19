@@ -960,7 +960,7 @@ in
     };
 
     # Shell functions for IaC management
-    programs.zsh.initExtra = ''
+    programs.zsh.initContent = ''
       # IaC environment management
       iac-env() {
         local env="$1"

@@ -514,7 +514,7 @@ in
     };
 
     # Shell functions for cloud management
-    home-manager.users.yuki.programs.zsh.initExtra = ''
+    home-manager.users.yuki.programs.zsh.initContent = ''
       # AWS profile switching
       aws-profile() {
         if [[ -z "''${1:-}" ]]; then

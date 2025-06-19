@@ -673,7 +673,7 @@ in
     };
 
     # Shell functions for Kubernetes management
-    home-manager.users.yuki.programs.zsh.initExtra = mkIf (config ? home-manager) ''
+    home-manager.users.yuki.programs.zsh.initContent = mkIf (config ? home-manager) ''
       # Quick cluster context switching
       kctx-quick() {
         local contexts=($(kubectl config get-contexts -o name))

@@ -530,7 +530,7 @@ with lib;
     };
 
     # Shell functions for automation
-    home-manager.users.yuki.programs.zsh.initExtra = ''
+    home-manager.users.yuki.programs.zsh.initContent = ''
       # Automation environment switcher
       auto-env() {
         local env="''${1:-}"
