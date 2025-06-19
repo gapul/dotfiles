@@ -5,9 +5,10 @@ with lib;
 {
   imports = [
     ./containers
-    ./lsp
-    # ./ai-tools  # Temporarily disabled due to home-manager context issues
-    # ./project-env  # Temporarily disabled due to home-manager context issues
+    ./lsp/module.nix
+    ./ai-tools
+    ./project-env
+    ./test-integration.nix
   ];
 
   options.dotfiles.development = {
@@ -28,15 +29,15 @@ with lib;
     
     dotfiles.development.lsp.enable = mkDefault true;
     
-    # AI Tools module temporarily disabled
-    # dotfiles.development.ai-tools.enable = mkDefault (
-    #   elem config.dotfiles.development.profile [ "full" "ai-powered" ]
-    # );
+    # AI Tools module
+    dotfiles.development.ai-tools.enable = mkDefault (
+      elem config.dotfiles.development.profile [ "full" "ai-powered" ]
+    );
     
-    # Project-env module temporarily disabled
-    # dotfiles.development.project-env.enable = mkDefault (
-    #   elem config.dotfiles.development.profile [ "standard" "full" "ai-powered" ]
-    # );
+    # Project-env module
+    dotfiles.development.project-env.enable = mkDefault (
+      elem config.dotfiles.development.profile [ "standard" "full" "ai-powered" ]
+    );
 
     # Profile-specific configurations
     dotfiles.development.lsp.enabledLanguages = mkDefault (

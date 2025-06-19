@@ -50,6 +50,34 @@ in
       default = {};
       description = "Custom devcontainer templates";
     };
+    
+    prebuiltImages = mkOption {
+      type = types.listOf types.str;
+      default = [
+        "node:18"
+        "python:3.11"
+        "golang:1.21"
+        "rust:latest"
+        "ubuntu:22.04"
+      ];
+      description = "Images to pre-pull for faster container startup";
+    };
+    
+    autoSetup = mkOption {
+      type = types.bool;
+      default = true;
+      description = "Automatically setup dev containers when entering project directories";
+    };
+    
+    resourceLimits = mkOption {
+      type = types.attrsOf types.str;
+      default = {
+        memory = "4g";
+        cpus = "2";
+        swap = "1g";
+      };
+      description = "Custom devcontainer templates";
+    };
   };
 
   config = mkIf cfg.enable {
