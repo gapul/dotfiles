@@ -136,7 +136,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE_NAME: \${{ github.repository }}
         
 jobs:
   test:
