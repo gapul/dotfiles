@@ -60,8 +60,8 @@ with lib;
     );
     
 
-    # Common automation tools for all profiles (will be applied through home-manager when available)
-    home-manager.users.yuki.home.packages = mkIf (config ? home-manager) (with pkgs; [
+    # Common automation tools for all profiles
+    home-manager.users.yuki.home.packages = with pkgs; [
       # Core tools
       git
       curl
@@ -113,10 +113,10 @@ with lib;
       # Multi-cloud
       awscli2
       google-cloud-sdk
-    ]);
+    ];
 
     # Multi-environment deployment automation
-    home-manager.users.yuki.home.file."bin/deploy-manager" = mkIf (config ? home-manager && config.dotfiles.automation.multiEnvironment) {
+    home-manager.users.yuki.home.file."bin/deploy-manager" = mkIf config.dotfiles.automation.multiEnvironment {
       executable = true;
       text = ''
         #!/usr/bin/env bash
@@ -427,7 +427,7 @@ with lib;
     };
 
     # Automation health check
-    home-manager.users.yuki.home.file."bin/automation-health" = mkIf (config ? home-manager) {
+    home-manager.users.yuki.home.file."bin/automation-health" = {
       executable = true;
       text = ''
         #!/usr/bin/env bash
@@ -514,7 +514,7 @@ with lib;
     };
 
     # Shell aliases for automation
-    home-manager.users.yuki.programs.zsh.shellAliases = mkIf (config ? home-manager) {
+    home-manager.users.yuki.programs.zsh.shellAliases = {
       # Automation management
       auto = "automation-health";
       auto-health = "automation-health";
@@ -530,7 +530,7 @@ with lib;
     };
 
     # Shell functions for automation
-    home-manager.users.yuki.programs.zsh.initExtra = mkIf (config ? home-manager) ''
+    home-manager.users.yuki.programs.zsh.initExtra = ''
       # Automation environment switcher
       auto-env() {
         local env="''${1:-}"

@@ -166,7 +166,7 @@ in
 
   config = mkIf cfg.enable {
     # Install LSP servers
-    home-manager.users.yuki.home.packages = mkIf (config ? home-manager) 
+    home-manager.users.yuki.home.packages = 
       (map (server: server.package) (attrValues enabledServers)) ++
       cfg.extraPackages ++
       (with pkgs; [
@@ -186,7 +186,7 @@ in
       ]);
 
     # Neovim LSP configuration
-    home-manager.users.yuki.programs.neovim = mkIf (config ? home-manager && cfg.nvimIntegration) {
+    home-manager.users.yuki.programs.neovim = mkIf cfg.nvimIntegration {
       enable = true;
       plugins = with pkgs.vimPlugins; [
         nvim-lspconfig
@@ -261,7 +261,7 @@ in
     };
 
     # VS Code LSP configuration
-    home-manager.users.yuki.home.file.".vscode/settings.json" = mkIf (config ? home-manager && cfg.vscodeIntegration) {
+    home-manager.users.yuki.home.file.".vscode/settings.json" = mkIf cfg.vscodeIntegration {
       text = builtins.toJSON (
         # LSP server paths
         (listToAttrs (mapAttrsToList (name: server: {
@@ -298,13 +298,13 @@ in
     };
 
     # Shell aliases for LSP management
-    home-manager.users.yuki.programs.zsh.shellAliases = mkIf (config ? home-manager) {
+    home-manager.users.yuki.programs.zsh.shellAliases = {
       lsp-status = "ps aux | grep -E '(language-server|lsp|rust-analyzer|gopls|nil)'";
       lsp-restart = "pkill -f 'language-server|lsp|rust-analyzer|gopls|nil'";
     };
 
     # LSP health check script
-    home-manager.users.yuki.home.file."bin/lsp-health" = mkIf (config ? home-manager) {
+    home-manager.users.yuki.home.file."bin/lsp-health" = {
       executable = true;
       text = ''
         #!/usr/bin/env bash
