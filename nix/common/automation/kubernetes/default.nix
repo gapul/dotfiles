@@ -71,8 +71,8 @@ in
   };
 
   config = mkIf cfg.enable {
-    # Core Kubernetes tools
-    home.packages = with pkgs; [
+    # Core Kubernetes tools (will be applied through home-manager when available)
+    home-manager.users.yuki.home.packages = mkIf (config ? home-manager) (with pkgs; [
       # Essential cluster tools
       kubectl
       kubectx  # includes both kubectx and kubens commands
@@ -121,10 +121,10 @@ in
       # Multi-cluster tools
       fluxcd
       linkerd
-    ];
+    ]);
 
     # Kubectl configuration
-    home.file.".kube/config.template" = {
+    home-manager.users.yuki.home.file.".kube/config.template" = mkIf (config ? home-manager) {
       text = ''
         # Kubernetes configuration template
         # Copy this to ~/.kube/config and customize for your clusters
@@ -156,7 +156,7 @@ in
     };
 
     # K9s configuration
-    home.file.".config/k9s/config.yml" = {
+    home-manager.users.yuki.home.file.".config/k9s/config.yml" = mkIf (config ? home-manager) {
       text = ''
         k9s:
           refreshRate: 2
@@ -201,7 +201,7 @@ in
     };
 
     # Shell aliases for Kubernetes
-    programs.zsh.shellAliases = {
+    home-manager.users.yuki.programs.zsh.shellAliases = mkIf (config ? home-manager) {
       # Basic kubectl shortcuts
       k = "kubectl";
       kgp = "kubectl get pods";
@@ -242,7 +242,7 @@ in
     };
 
     # Kubernetes cluster management script
-    home.file."bin/k8s-cluster" = {
+    home-manager.users.yuki.home.file."bin/k8s-cluster" = mkIf (config ? home-manager) {
       executable = true;
       text = ''
         #!/usr/bin/env bash
@@ -527,7 +527,7 @@ in
     };
 
     # Kubernetes manifest generator
-    home.file."bin/k8s-generate" = {
+    home-manager.users.yuki.home.file."bin/k8s-generate" = mkIf (config ? home-manager) {
       executable = true;
       text = ''
         #!/usr/bin/env bash
@@ -671,7 +671,7 @@ in
     };
 
     # Shell functions for Kubernetes management
-    programs.zsh.initExtra = ''
+    home-manager.users.yuki.programs.zsh.initExtra = mkIf (config ? home-manager) ''
       # Quick cluster context switching
       kctx-quick() {
         local contexts=($(kubectl config get-contexts -o name))

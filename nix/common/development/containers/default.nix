@@ -65,7 +65,7 @@ in
     };
 
     # Development tools
-    home.packages = with pkgs; [
+    home-manager.users.yuki.home.packages = mkIf (config ? home-manager) (with pkgs; [
       # Container tools
       docker-compose
       docker-buildx
@@ -81,10 +81,10 @@ in
     ] ++ optionals cfg.podmanSupport [
       podman
       podman-compose
-    ];
+    ]);
 
     # Development container configurations
-    home.file = mkMerge [
+    home-manager.users.yuki.home.file = mkIf (config ? home-manager) (mkMerge [
       # VS Code Dev Containers configuration
       (mkIf cfg.vscodeIntegration {
         ".vscode/settings.json".text = builtins.toJSON {
@@ -131,7 +131,7 @@ in
       '';
         };
       })
-    ];
+    ]);
 
     # Container health monitoring
     systemd.user.services.devcontainer-monitor = mkIf (cfg.dockerSupport && pkgs.stdenv.isLinux) {
@@ -182,6 +182,6 @@ in
         RunAtLoad = true;
         KeepAlive = true;
       };
-    };
+    });
   };
 }

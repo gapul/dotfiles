@@ -57,10 +57,10 @@
       HOMEBREW_NO_INSECURE_REDIRECT = "1";
     };
     
-    # Additional PATH for nodebrew
-    sessionPath = [
-      "${config.home.homeDirectory}/.nodebrew/current/bin"
-    ];
+    # Additional PATH for nodebrew - commented out due to platform compatibility
+    # sessionPath = [
+    #   "${config.home.homeDirectory}/.nodebrew/current/bin"
+    # ];
     
     # Platform-specific initialization
     initContent = ''

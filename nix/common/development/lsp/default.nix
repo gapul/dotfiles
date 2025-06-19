@@ -166,7 +166,7 @@ in
 
   config = mkIf cfg.enable {
     # Install LSP servers
-    home.packages = 
+    home-manager.users.yuki.home.packages = mkIf (config ? home-manager) 
       (map (server: server.package) (attrValues enabledServers)) ++
       cfg.extraPackages ++
       (with pkgs; [
@@ -261,7 +261,7 @@ in
     };
 
     # VS Code LSP configuration
-    home.file.".vscode/settings.json" = mkIf cfg.vscodeIntegration {
+    home-manager.users.yuki.home.file.".vscode/settings.json" = mkIf (config ? home-manager && cfg.vscodeIntegration) {
       text = builtins.toJSON (
         # LSP server paths
         (listToAttrs (mapAttrsToList (name: server: {
@@ -304,7 +304,7 @@ in
     };
 
     # LSP health check script
-    home.file."bin/lsp-health" = {
+    home-manager.users.yuki.home.file."bin/lsp-health" = mkIf (config ? home-manager) {
       executable = true;
       text = ''
         #!/usr/bin/env bash
