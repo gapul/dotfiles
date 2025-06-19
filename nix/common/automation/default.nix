@@ -89,7 +89,7 @@ with lib;
       ansible
       terraform
       kubectl
-      helm
+      kubernetes-helm
       
       # Container tools (Docker Desktop managed via Homebrew on macOS)
       # docker - managed via Homebrew cask
