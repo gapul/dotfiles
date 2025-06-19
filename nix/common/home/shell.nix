@@ -57,13 +57,18 @@
       HOMEBREW_NO_INSECURE_REDIRECT = "1";
     };
     
-    # Additional PATH for nodebrew - commented out due to platform compatibility
-    # sessionPath = [
+    # Additional PATH for nodebrew and Claude CLI (macOS only)
+    # sessionPath = lib.mkIf pkgs.stdenv.isDarwin [
     #   "${config.home.homeDirectory}/.nodebrew/current/bin"
     # ];
     
     # Platform-specific initialization
     initContent = ''
+      # Add nodebrew to PATH for Claude CLI (macOS only)
+      ${lib.optionalString pkgs.stdenv.isDarwin ''
+        export PATH="$HOME/.nodebrew/current/bin:$PATH"
+      ''}
+      
       # Universal shell functions
       function mkcd() {
         mkdir -p "$1" && cd "$1"
@@ -101,19 +106,27 @@
         # Track command execution start time
         preexec() {
           __wezterm_command_start_time=$SECONDS
-          __wezterm_set_user_var WEZTERM_PROG "$1"
+          __wezterm_command_name="$1"
         }
         
-        # Send notification for long-running commands when complete
+        # Send bell notification for long-running commands when complete
         precmd() {
           if [[ -n "$__wezterm_command_start_time" ]]; then
             local elapsed=$((SECONDS - __wezterm_command_start_time))
             if [[ $elapsed -gt 5 ]]; then
-              # Send notification for commands longer than 5 seconds
-              printf "\033]777;notify;Command Completed;Command finished in %d seconds\033\\" "$elapsed"
+              # Send bell for commands longer than 5 seconds (WezTerm converts to toast)
+              echo -e "\a"
             fi
             unset __wezterm_command_start_time
+            unset __wezterm_command_name
           fi
+        }
+        
+        # Claude Code specific notification wrapper
+        claude() {
+          command claude "$@"
+          # Always send bell notification when claude command completes
+          echo -e "\a"
         }
       fi
     '';
