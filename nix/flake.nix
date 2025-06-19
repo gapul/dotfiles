@@ -106,8 +106,36 @@
                   };
                 };
                 
-                # Basic starship prompt
-                programs.starship.enable = true;
+                # Starship prompt configuration (use system starship)
+                programs.starship = {
+                  enable = true;
+                  enableZshIntegration = true;
+                };
+                
+                # Basic packages
+                home.packages = with pkgs; [
+                  # Essential CLI tools already available in system
+                  # but ensuring they're in user environment
+                ];
+                
+                # Git configuration
+                programs.git = {
+                  enable = true;
+                  userName = lib.mkDefault "gapul";
+                  userEmail = lib.mkDefault "yukiak1103@gmail.com";
+                  extraConfig = {
+                    init.defaultBranch = "main";
+                    pull.rebase = true;
+                    push.autoSetupRemote = true;
+                  };
+                };
+                
+                # Direnv for development environments
+                programs.direnv = {
+                  enable = true;
+                  enableZshIntegration = true;
+                  nix-direnv.enable = true;
+                };
                 
                 # Enable home-manager management
                 programs.home-manager.enable = true;
