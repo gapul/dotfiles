@@ -75,7 +75,7 @@ in
     home.packages = with pkgs; [
       # Essential cluster tools
       kubectl
-      kubectx  # includes both kubectx and kubens
+      kubectx  # includes both kubectx and kubens commands
       k9s
       stern
       
