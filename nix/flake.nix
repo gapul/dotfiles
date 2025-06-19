@@ -122,7 +122,7 @@
                 programs.git = {
                   enable = true;
                   userName = lib.mkDefault "gapul";
-                  userEmail = lib.mkDefault "yukiak1103@gmail.com";
+                  userEmail = lib.mkDefault "92638132+gapul@users.noreply.github.com";
                   extraConfig = {
                     init.defaultBranch = "main";
                     pull.rebase = true;
