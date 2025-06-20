@@ -49,9 +49,6 @@
     
     # Environment variables (basic setup) 
     sessionVariables = lib.mkMerge [
-      (lib.mkIf pkgs.stdenv.isDarwin {
-        PATH = "${config.home.homeDirectory}/.nodebrew/current/bin:$PATH";
-      })
       {
         EDITOR = "vim";
         PAGER = "less";
@@ -64,10 +61,6 @@
     
     # Platform-specific initialization
     initContent = ''
-      # Add nodebrew to PATH for Claude CLI (macOS only)
-      ${lib.optionalString pkgs.stdenv.isDarwin ''
-        export PATH="$HOME/.nodebrew/current/bin:$PATH"
-      ''}
       
       # Universal shell functions
       function mkcd() {
@@ -96,10 +89,6 @@
         eval "$(/opt/homebrew/bin/brew shellenv)"
       fi
       
-      # Nodebrew setup for Node.js and claude command
-      if [[ -d "$HOME/.nodebrew" ]]; then
-        export PATH="$HOME/.nodebrew/current/bin:$PATH"
-      fi
       
       # WezTerm shell integration for command completion notifications
       if [[ "$TERM_PROGRAM" == "WezTerm" ]]; then
