@@ -286,7 +286,15 @@ config.notification_handling = "AlwaysShow"
 
 -- コマンド完了通知 (bellイベントをトースト通知に変換)
 wezterm.on('bell', function(window, pane)
-  window:toast_notification('Command Completed', 'Long-running task finished', nil, 4000)
+  wezterm.log_info('Bell received - showing notification')
+  window:toast_notification('WezTerm Notification', 'Command execution completed', nil, 4000)
+end)
+
+-- OSC 9 escape sequence handler for custom notifications
+wezterm.on('user-var-changed', function(window, pane, name, value)
+  if name == 'notification' then
+    window:toast_notification('Command Status', value, nil, 4000)
+  end
 end)
 
 -- 起動時のイベント処理

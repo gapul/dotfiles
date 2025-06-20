@@ -22,12 +22,12 @@
   #   retentionDays = 30;
   # };
 
-  # Automation and orchestration
-  dotfiles.automation = {
-    enable = true;
-    profile = "standard";
-    multiEnvironment = true;
-  };
+  # Automation and orchestration (temporarily disabled)
+  # dotfiles.automation = {
+  #   enable = true;
+  #   profile = "standard";
+  #   multiEnvironment = true;
+  # };
 
   # Advanced development environment
   dotfiles.development = {
@@ -73,8 +73,8 @@
       git vim curl wget jq htop
       # GNU tools
       coreutils gnugrep gnused gawk gnumake
-      # Development
-      python3 nodejs go rustc cargo lua
+      # Development (basic runtimes only, tools via home-manager)
+      # python3 nodejs go rustc cargo lua managed via home-manager core packages
       # Modern CLI tools
       eza bat fd ripgrep fzf starship
     ];
