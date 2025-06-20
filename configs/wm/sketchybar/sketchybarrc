@@ -1,8 +1,81 @@
-#!/usr/bin/env lua
+#!/bin/bash
 
--- Add current directory to package path for local modules
+# SketchyBar Configuration Selector
+# This script can switch between Shell and Lua configurations
+
+CONFIG_TYPE="${SKETCHYBAR_CONFIG_TYPE:-shell}"  # Default to shell config
+
+if [ "$CONFIG_TYPE" = "lua" ]; then
+    # Lua Configuration
+    echo "Loading Lua configuration..."
+    
+    # Check if Lua is available
+    if command -v lua >/dev/null 2>&1; then
+        # Try to execute Lua configuration
+        exec /run/current-system/sw/bin/lua << 'EOF'
+-- Add paths for modules
 package.path = package.path .. ";/Users/yuki/.config/sketchybar/?.lua;/Users/yuki/.config/sketchybar/?/init.lua"
+package.cpath = package.cpath .. ";/Users/yuki/.local/share/sketchybar_lua/?.so"
 
--- Load the sketchybar-package and prepare the helper binaries
+-- Load helpers and configuration
 require("helpers")
 require("init")
+EOF
+    else
+        echo "Lua not available, falling back to shell configuration"
+        CONFIG_TYPE="shell"
+    fi
+fi
+
+if [ "$CONFIG_TYPE" = "shell" ]; then
+    # Shell Configuration (Working version)
+    echo "Loading Shell configuration..."
+    
+    # Bar settings
+    sketchybar --bar height=32 \
+                     position=top \
+                     sticky=off \
+                     padding_left=10 \
+                     padding_right=10 \
+                     color=0x15000000 \
+                     corner_radius=9 \
+                     border_width=2 \
+                     border_color=0xff494d64
+
+    # Default item settings  
+    sketchybar --default icon.font="SF Pro:Bold:14.0" \
+                         icon.color=0xffffffff \
+                         label.font="SF Pro:Semibold:13.0" \
+                         label.color=0xffffffff \
+                         background.padding_left=5 \
+                         background.padding_right=5
+
+    # Left items
+    sketchybar --add item front_app left \
+               --set front_app script="sketchybar --set front_app label=\"\$(yabai -m query --windows --window | jq -r .app 2>/dev/null || echo 'Desktop')\"" \
+               --subscribe front_app front_app_switched
+
+    # Right items  
+    sketchybar --add item clock right \
+               --set clock script="sketchybar --set clock label=\"\$(date '+%H:%M')\"" \
+                           update_freq=10
+
+    sketchybar --add item battery right \
+               --set battery script="sketchybar --set battery label=\"\$(pmset -g batt | grep -Eo '[0-9]+%' | head -1)\"" \
+                             update_freq=60
+
+    # Add CPU usage
+    sketchybar --add item cpu right \
+               --set cpu script="sketchybar --set cpu label=\"CPU: \$(top -l 1 | grep 'CPU usage' | awk '{print \$3}')\"" \
+                         update_freq=5
+
+    # Subscribe to yabai events
+    sketchybar --add event window_focus \
+               --add event windows_on_spaces \
+               --subscribe front_app front_app_switched
+
+    # Run the configuration
+    sketchybar --update
+
+    echo "SketchyBar Shell configuration loaded successfully!"
+fi

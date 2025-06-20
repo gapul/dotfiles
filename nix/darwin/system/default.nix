@@ -74,7 +74,7 @@
       # GNU tools
       coreutils gnugrep gnused gawk gnumake
       # Development
-      python3 nodejs go rustc cargo
+      python3 nodejs go rustc cargo lua
       # Modern CLI tools
       eza bat fd ripgrep fzf starship
     ];
@@ -333,7 +333,6 @@
       "google-chrome@dev"
       "vivaldi"
       "floorp"
-      "firefox@developer-edition"
       "tor-browser"
       # Note: Firefox and Thunderbird not managed by dotfiles
       
@@ -341,8 +340,6 @@
       # Note: discord, slack moved to Nix for better integration
       
       # AI & Assistant tools (native apps)
-      "claude"
-      "chatgpt"
       "ollama"
       
       # Development Tools & Editors (macOS-specific versions only)
