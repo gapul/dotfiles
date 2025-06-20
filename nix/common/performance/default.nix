@@ -139,27 +139,24 @@ in
       };
     };
 
-    # Shell optimization
-    home-manager.users.yuki.programs.zsh = mkIf cfg.shellOptimization {
-      enableCompletion = true;
-      autosuggestion.enable = true;
-      syntaxHighlighting.enable = true;
-      
-      # Fast completion system
-      completionInit = ''
-        # Initialize completion system with optimization
+    # Shell optimization configuration file
+    home-manager.users.yuki.home.file.".config/zsh/performance.zsh" = mkIf cfg.shellOptimization {
+      text = ''
+        # Performance-optimized zsh configuration
+        
+        # Fast completion system
         autoload -Uz compinit
         
         # Only check compinit once per day for speed
-        if [[ -n ${HOME}/.zcompdump(#qN.mh+24) ]]; then
-          compinit -d ${HOME}/.zcompdump
+        if [[ -n ''${HOME}/.zcompdump(#qN.mh+24) ]]; then
+          compinit -d ''${HOME}/.zcompdump
         else
-          compinit -C -d ${HOME}/.zcompdump
+          compinit -C -d ''${HOME}/.zcompdump
         fi
         
         # Speed up completion
         zstyle ':completion:*' use-cache true
-        zstyle ':completion:*' cache-path ${HOME}/.zsh/cache
+        zstyle ':completion:*' cache-path ''${HOME}/.zsh/cache
         
         # Faster directory completion
         zstyle ':completion:*:*:cd:*:directory-stack' menu yes select
@@ -168,52 +165,7 @@ in
         # Performance optimization
         zstyle ':completion:*' accept-exact '*(N)'
         zstyle ':completion:*' special-dirs true
-      '';
-      
-      # Optimized shell aliases
-      shellAliases = {
-        # Fast navigation
-        ".." = "cd ..";
-        "..." = "cd ../..";
-        "...." = "cd ../../..";
         
-        # Performance commands
-        perf-monitor = "performance-monitor";
-        perf-analyze = "performance-analyze";
-        perf-optimize = "performance-optimize";
-        perf-clean = "performance-clean";
-        
-        # Fast file operations
-        ll = "eza -la --group-directories-first";
-        lt = "eza --tree --level=2";
-        lh = "eza -la --group-directories-first | head -20";
-        
-        # Fast search
-        ff = "fd";
-        rg = "rg --smart-case --hidden";
-        
-        # Memory optimization
-        mem-clean = "sudo purge"; # macOS specific
-        disk-clean = "performance-disk-cleanup";
-        
-        # Nix optimization
-        nix-clean = "nix store gc && nix store optimise";
-        nix-update = "nix flake update";
-        nix-check = "nix flake check --impure";
-      };
-      
-      # Optimized history settings
-      history = {
-        size = 100000;
-        save = 100000;
-        share = true;
-        ignoreDups = true;
-        ignoreSpace = true;
-        expireDuplicatesFirst = true;
-      };
-      
-      # Performance initialization
-      initExtra = ''
         # Lazy load heavy tools for faster startup
         lazy_load() {
           local cmd="$1"
@@ -241,6 +193,24 @@ in
         export HISTCONTROL=ignoreboth:erasedups
         export HISTIGNORE="ls:cd:cd -:pwd:exit:date:* --help"
         export PERFORMANCE_MONITORING=true
+        
+        # Performance aliases
+        alias ".."="cd .."
+        alias "..."="cd ../.."
+        alias "...."="cd ../../.."
+        
+        alias perf-monitor="performance-monitor"
+        alias perf-analyze="performance-analyze"
+        alias perf-optimize="performance-optimize"
+        alias perf-clean="performance-clean"
+        
+        alias ff="fd"
+        alias mem-clean="sudo purge"  # macOS specific
+        alias disk-clean="performance-disk-cleanup"
+        
+        alias nix-clean="nix store gc && nix store optimise"
+        alias nix-update="nix flake update"
+        alias nix-check="nix flake check --impure"
       '';
     };
 
@@ -658,28 +628,30 @@ in
       '';
     };
 
-    # Build optimization configuration
-    home-manager.users.yuki.home.sessionVariables = mkIf cfg.buildOptimization {
-      # Parallel compilation
-      MAKEFLAGS = "-j${toString cfg.parallelJobs}";
-      CMAKE_BUILD_PARALLEL_LEVEL = toString cfg.parallelJobs;
-      
-      # Rust optimization
-      CARGO_BUILD_JOBS = toString cfg.parallelJobs;
-      CARGO_BUILD_INCREMENTAL = "true";
-      
-      # Node.js optimization
-      UV_THREADPOOL_SIZE = toString cfg.parallelJobs;
-      
-      # Memory limits
-      NIX_BUILD_MEMORY_LIMIT = cfg.maxMemory;
-      
-      # Cache directories
-      CCACHE_DIR = "$HOME/.cache/ccache";
-      CARGO_HOME = "$HOME/.cache/cargo";
-      
-      # Performance monitoring
-      PERFORMANCE_OPTIMIZATION = "enabled";
+    # Build optimization environment file
+    home-manager.users.yuki.home.file.".config/performance/build-env.sh" = mkIf cfg.buildOptimization {
+      text = ''
+        # Build optimization environment variables
+        export MAKEFLAGS="-j${toString cfg.parallelJobs}"
+        export CMAKE_BUILD_PARALLEL_LEVEL="${toString cfg.parallelJobs}"
+        
+        # Rust optimization
+        export CARGO_BUILD_JOBS="${toString cfg.parallelJobs}"
+        export CARGO_BUILD_INCREMENTAL="true"
+        
+        # Node.js optimization
+        export UV_THREADPOOL_SIZE="${toString cfg.parallelJobs}"
+        
+        # Memory limits
+        export NIX_BUILD_MEMORY_LIMIT="${cfg.maxMemory}"
+        
+        # Cache directories
+        export CCACHE_DIR="$HOME/.cache/ccache"
+        export CARGO_HOME="$HOME/.cache/cargo"
+        
+        # Performance monitoring
+        export PERFORMANCE_OPTIMIZATION="enabled"
+      '';
     };
 
     # Performance health check
@@ -724,7 +696,8 @@ in
           
           # Test shell startup time
           SHELL_TIME=$(time (zsh -i -c exit) 2>&1 | grep real | awk '{print $2}' | tr -d 's')
-          if (( $(echo "$SHELL_TIME < 1" | bc -l) )); then
+          # Simple comparison without bc for macOS compatibility
+          if [[ "$SHELL_TIME" =~ ^0\. ]]; then
             echo "  ✅ Shell startup: ''${SHELL_TIME}s (fast)"
           else
             echo "  ⚠️  Shell startup: ''${SHELL_TIME}s (slow)"
@@ -818,24 +791,30 @@ in
       '';
     };
 
-    # Shell aliases for performance
-    home-manager.users.yuki.programs.zsh.shellAliases = {
-      perf = "performance-monitor";
-      perf-health = "performance-health";
-      perf-cache = "performance-cache-manager";
-      perf-clean = "performance-cache-manager clean && performance-monitor optimize";
-      
-      # Quick performance commands
-      top = "btop";
-      htop = "btop";
-      iotop = "btop";
+    # Performance-specific aliases (added to main shell configuration)
+    home-manager.users.yuki.home.file.".config/zsh/performance-aliases.zsh" = {
+      text = ''
+        # Performance aliases
+        alias perf="performance-monitor"
+        alias perf-health="performance-health"
+        alias perf-cache="performance-cache-manager"
+        alias perf-clean="performance-cache-manager clean && performance-monitor optimize"
+        
+        # Quick performance commands
+        alias top="btop"
+        alias htop="btop"
+        alias iotop="btop"
+      '';
     };
 
-    # Performance environment variables
-    home-manager.users.yuki.home.sessionVariables = {
-      PERFORMANCE_SYSTEM_ENABLED = "true";
-      PERFORMANCE_PARALLEL_JOBS = toString cfg.parallelJobs;
-      PERFORMANCE_MAX_MEMORY = cfg.maxMemory;
+    # Performance system environment file
+    home-manager.users.yuki.home.file.".config/performance/system-env.sh" = {
+      text = ''
+        # Performance system environment variables
+        export PERFORMANCE_SYSTEM_ENABLED="true"
+        export PERFORMANCE_PARALLEL_JOBS="${toString cfg.parallelJobs}"
+        export PERFORMANCE_MAX_MEMORY="${cfg.maxMemory}"
+      '';
     };
   };
 }
