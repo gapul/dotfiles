@@ -436,6 +436,16 @@ with lib;
           echo "⚪ Performance System: Disabled"
         ''}
         
+        # Check Enterprise Security (Phase 5)
+        ${if config.dotfiles.security.enterprise.enable or false then ''
+          echo "✅ Enterprise Security: Enabled"
+          if command -v security-health &> /dev/null; then
+            security-health
+          fi
+        '' else ''
+          echo "⚪ Enterprise Security: Disabled"
+        ''}
+        
         # Project Environment temporarily disabled
         echo "⚪ Project Environment: Temporarily disabled"
         
