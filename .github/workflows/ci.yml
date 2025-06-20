@@ -24,7 +24,7 @@ jobs:
     - name: Check shell scripts syntax
       run: |
         echo "Checking shell scripts..."
-        for script in *.sh scripts/*.sh; do
+        for script in *.sh archive/legacy-scripts/*.sh; do
           if [[ -f "$script" ]]; then
             echo "Checking $script"
             bash -n "$script"
