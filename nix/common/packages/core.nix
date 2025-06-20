@@ -67,12 +67,46 @@ let
 
   # Development languages and runtimes
   devTools = with pkgs; lib.optionals (platformInfo.capabilities.canInstallPackages or true) [
-    # Language runtimes
+    # Python runtime only (packages managed via project shells to avoid conflicts)
     python3
+    # Python packages will be managed via python3.withPackages in project-specific shells
+    
+    # Node.js runtime (Nix-managed)
     nodejs
+    # Essential Node.js tools only (avoid LICENSE conflicts)
+    nodePackages.npm
+    nodePackages.yarn
+    nodePackages.typescript-language-server
+    # Other tools (typescript, eslint, prettier, etc.) managed via project shells
+    
+    # Go with common tools (complete Nix integration)
     go
+    gopls           # Go language server
+    golangci-lint   # Go linter
+    # gotools removed due to bundle command conflict with Ruby
+    
+    # Rust with essential tools (complete Nix integration)
     rustc
     cargo
+    rust-analyzer
+    rustfmt
+    clippy
+    cargo-watch     # Auto-rebuild on file changes
+    cargo-edit      # Cargo add/remove/upgrade commands
+    
+    # Ruby with essential tools (complete Nix integration)  
+    ruby
+    # bundler is included in Ruby, no separate package needed
+    
+    # PHP with essential tools (complete Nix integration)  
+    php
+    # composer conflicts with prettier LICENSE, will be managed via project shells
+    
+    # Java ecosystem (complete Nix integration)
+    openjdk      # Java Development Kit
+    # maven and gradle managed via project shells to avoid conflicts
+    
+    # Other language runtimes
     lua          # Lua programming language (migrated from Homebrew)
     luarocks     # Lua package manager (migrated from Homebrew)
     
@@ -88,7 +122,6 @@ let
     
     # Language servers (for editors)
     nil              # Nix LSP
-    python3Packages.python-lsp-server
     nodePackages.typescript-language-server
     gopls
     rust-analyzer

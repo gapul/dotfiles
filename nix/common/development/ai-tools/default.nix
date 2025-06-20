@@ -204,12 +204,6 @@ in
     home-manager.users.yuki.home.sessionVariables = {
       # GitHub Copilot
       GITHUB_COPILOT_CLI_EDITOR = "nvim";
-      
-      # OpenAI/ChatGPT (user should set OPENAI_API_KEY)
-      OPENAI_MODEL = "gpt-4";
-      
-      # Claude API (user should set ANTHROPIC_API_KEY)
-      ANTHROPIC_MODEL = "claude-3-sonnet-20240229";
     };
 
     # MCP configuration for Claude
