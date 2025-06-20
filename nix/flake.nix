@@ -71,7 +71,12 @@
           # ./common/home/shell.nix  # Moved to home-manager.users configuration below
           # ./common/themes/default.nix  # Temporarily disabled due to home-manager context issues  
           ./common/development/default.nix  # Re-enabled successfully
-          # ./common/automation/default.nix  # Temporarily disabled due to package compatibility issues
+          ({ lib, ... }: { 
+            # Enable AI-powered development profile for Phase 5
+            dotfiles.development.enable = lib.mkForce true;
+            dotfiles.development.profile = lib.mkForce "ai-powered";
+          })
+          # ./common/automation/default.nix  # Move to home-manager context below
           ./darwin/system/default.nix
           sops-nix.darwinModules.sops
           { nixpkgs.config.allowUnfree = true; }
@@ -83,8 +88,18 @@
               backupFileExtension = "backup";
               # Minimal user configuration to test basic functionality
               users.${username} = { config, lib, pkgs, ... }: {
+                # Import automation modules in home-manager context
+                imports = [
+                  ./common/automation/default.nix
+                ];
+                
+                # Enable automation modules
+                dotfiles.automation.enable = true;
+                dotfiles.automation.profile = "enterprise";
+                dotfiles.automation.multiEnvironment = true;
+                
                 # Basic home manager configuration
-                home.username = lib.mkForce "Yuki";  # Force actual macOS username to resolve conflicts
+                home.username = lib.mkForce "yuki";  # Force actual macOS username to resolve conflicts
                 home.homeDirectory = lib.mkForce "/Users/yuki";
                 home.stateVersion = "23.11";
                 
