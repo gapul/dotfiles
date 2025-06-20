@@ -1,6 +1,6 @@
 #!/bin/bash
 # Security Setup Script for Multi-Platform Dotfiles
-# Initializes SOPS-nix unified encryption (Git-crypt deprecated)
+# Initializes SOPS-nix unified encryption system
 
 set -euo pipefail
 
@@ -39,7 +39,7 @@ check_prerequisites() {
     
     local missing_tools=()
     
-    # Check for required tools (SOPS-only setup)
+    # Check for required tools (SOPS unified setup)
     for tool in nix age sops gpg; do
         if ! command -v "$tool" &> /dev/null; then
             missing_tools+=("$tool")
@@ -102,34 +102,36 @@ setup_gpg() {
     fi
 }
 
-# Initialize Git-crypt
-setup_git_crypt() {
-    log_info "Setting up Git-crypt..."
+# SOPS unified encryption setup
+setup_sops_encryption() {
+    log_info "Setting up SOPS unified encryption..."
     
     cd "$DOTFILES_DIR"
     
-    # Check if git-crypt is already initialized
-    if [ -d ".git-crypt" ]; then
-        log_warning "Git-crypt already initialized"
-        return
+    local sops_config="$SECURITY_DIR/sops/config/.sops.yaml"
+    
+    if [ ! -f "$sops_config" ]; then
+        log_info "Creating SOPS configuration..."
+        
+        # Get Age public key
+        local age_public_key
+        age_public_key=$(age-keygen -y "$HOME/.config/sops/age/keys.txt")
+        
+        # Create SOPS config
+        mkdir -p "$(dirname "$sops_config")"
+        cat > "$sops_config" << EOF
+keys:
+  - &age_key $age_public_key
+
+creation_rules:
+  - path_regex: secrets.*\\.yaml$
+    age: *age_key
+EOF
+        
+        log_success "SOPS configuration created"
+    else
+        log_warning "SOPS configuration already exists"
     fi
-    
-    # Initialize git-crypt
-    log_info "Initializing Git-crypt..."
-    git-crypt init
-    
-    # Add GPG users (interactive)
-    log_info "Adding GPG user to Git-crypt..."
-    log_info "Available GPG keys:"
-    gpg --list-secret-keys --keyid-format LONG
-    
-    read -r -p "Enter GPG key ID to add: " gpg_key_id
-    if [ -n "$gpg_key_id" ]; then
-        git-crypt add-gpg-user "$gpg_key_id"
-        log_success "GPG user added to Git-crypt"
-    fi
-    
-    log_success "Git-crypt initialized"
 }
 
 # Create SOPS secret files
@@ -152,17 +154,16 @@ setup_sops_secrets() {
         if [ ! -f "$secret_file" ] && [ -f "$example_file" ]; then
             log_info "Creating $platform.yaml from example..."
             
-            # Copy example and update with real age key
+            # Copy example and encrypt with SOPS
             cp "$example_file" "$secret_file"
             
-            # Update the recipient in the new file
-            sed -i.bak "s/age1hl8rkwqkp6l7f5zxc9hjn8m5v3k9p4q7x6z2r8t4w5u6y7i8o9p0q1r2s3t4u5v6/$age_public_key/" "$secret_file"
-            rm "$secret_file.bak"
+            # Encrypt with SOPS
+            sops --config "$SECURITY_DIR/sops/config/.sops.yaml" --encrypt --in-place "$secret_file"
             
-            # Add to git-crypt
+            # Add to git
             git add "$secret_file"
             
-            log_success "Created $secret_file"
+            log_success "Created and encrypted $secret_file"
         fi
     done
 }
@@ -192,11 +193,11 @@ test_configuration() {
         fi
     fi
     
-    # Test git-crypt status
+    # Test SOPS configuration
     cd "$DOTFILES_DIR"
-    if command -v git-crypt &> /dev/null && [ -d ".git-crypt" ]; then
-        log_info "Git-crypt status:"
-        git-crypt status
+    if [ -f "$SECURITY_DIR/sops/config/.sops.yaml" ]; then
+        log_info "SOPS configuration validated"
+        sops --config "$SECURITY_DIR/sops/config/.sops.yaml" --version
     fi
     
     log_success "Configuration tests completed"
@@ -215,19 +216,19 @@ Generated on: $(date)
 
 ## Configuration Status
 
-### SOPS-nix
+### SOPS-nix Unified Encryption
 - Age key location: \`$HOME/.config/sops/age/keys.txt\`
 - Age public key: \`$(age-keygen -y "$HOME/.config/sops/age/keys.txt" 2>/dev/null || echo "Not available")\`
 - Secret files: $(find "$SECURITY_DIR/sops" -name "secrets*.yaml" -not -name "*.example" | wc -l)
 
-### Git-crypt
-- Status: $([ -d "$DOTFILES_DIR/.git-crypt" ] && echo "Initialized" || echo "Not initialized")
-- Protected patterns: $(grep -c "filter=git-crypt" "$DOTFILES_DIR/.gitattributes" 2>/dev/null || echo "0")
+### SOPS Unified Encryption
+- Status: $([ -f "$SECURITY_DIR/sops/config/.sops.yaml" ] && echo "Configured" || echo "Not configured")
+- Encrypted files: $(find "$SECURITY_DIR/sops" -name "secrets*.yaml" -not -name "*.example" | wc -l)
 
 ### Security Modules
 - SOPS configuration: ✅
 - Security baseline: ✅
-- Git-crypt integration: ✅
+- Unified encryption: ✅
 - Platform support: macOS, Linux, WSL, Android
 
 ## Next Steps
@@ -256,8 +257,8 @@ Generated on: $(date)
 ## Security Checklist
 
 - [ ] Age keys generated and secured
-- [ ] GPG keys configured
-- [ ] Git-crypt initialized
+- [ ] GPG keys configured (optional)
+- [ ] SOPS encryption configured
 - [ ] Secret files created and encrypted
 - [ ] Configuration tested
 - [ ] Applied to system
@@ -278,7 +279,7 @@ main() {
     check_prerequisites
     setup_age_keys
     setup_gpg
-    setup_git_crypt
+    setup_sops_encryption
     setup_sops_secrets
     test_configuration
     generate_report

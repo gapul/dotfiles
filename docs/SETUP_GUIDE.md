@@ -92,8 +92,8 @@ age-keygen -o ~/.config/sops/age/keys.txt
 cp nix/platforms/security/sops/secrets.yaml.example secrets.yaml
 sops secrets.yaml
 
-# 3. Git-crypt設定（オプション）
-git-crypt init
+# 3. SOPS暗号化テスト
+sops --version
 ```
 
 ### Phase 3: 開発環境

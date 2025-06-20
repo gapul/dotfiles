@@ -17,7 +17,7 @@
 - Cross-platform compatibility・Performance benchmarking
 
 **Task 4.3: セキュリティ管理システム**
-- SOPS-nix暗号化・Git-crypt統合・セキュリティベースライン
+- SOPS-nix統一暗号化・セキュリティベースライン
 - CI/CD環境安全管理・全プラットフォーム対応
 
 **Task 4.4: 開発環境統合** ✅ **完全達成**
@@ -139,14 +139,10 @@ test-alert <name>               # テストアラート送信
 
 ### セキュリティ管理
 ```bash
-# SOPS-nix シークレット管理
+# SOPS-nix シークレット管理（統一暗号化システム）
 sops nix/platforms/security/sops/secrets.yaml  # シークレット編集
 age-keygen -o ~/.config/sops/age/keys.txt       # Age鍵生成
-
-# Git-crypt ファイル暗号化
-git-crypt status                # 暗号化状況確認
-git-crypt lock                  # ロック
-git-crypt unlock                # アンロック
+sops --config nix/platforms/security/sops/config/.sops.yaml --encrypt secrets.yaml  # 暗号化
 
 # セキュリティスキャン
 cloud-security-scan terraform   # Terraformスキャン
