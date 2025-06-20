@@ -46,27 +46,27 @@ rebuild:
 # macOS rebuild (nix-darwin)
 rebuild-darwin:
     @echo "🍎 Rebuilding macOS configuration..."
-    cd nix/platforms && nix run nix-darwin -- switch --flake .
+    cd nix && nix run nix-darwin -- switch --flake .
 
 # NixOS rebuild
 rebuild-nixos:
     @echo "🐧 Rebuilding NixOS configuration..."
-    cd nix/platforms && sudo nixos-rebuild switch --flake .#linux-desktop
+    cd nix && sudo nixos-rebuild switch --flake .#linux-desktop
 
 # Generic Linux rebuild (home-manager)
 rebuild-linux:
     @echo "🐧 Rebuilding Linux home-manager configuration..."
-    cd nix/platforms && home-manager switch --flake .#yuki@linux
+    cd nix && home-manager switch --flake .#yuki@linux
 
 # WSL rebuild
 rebuild-wsl:
     @echo "🪟 Rebuilding WSL configuration..."
-    cd nix/platforms && home-manager switch --flake .#yuki@wsl
+    cd nix && home-manager switch --flake .#yuki@wsl
 
 # Android rebuild (nix-on-droid)
 rebuild-android:
     @echo "🤖 Rebuilding Android configuration..."
-    cd nix/platforms && nix-on-droid switch --flake .#android
+    cd nix && nix-on-droid switch --flake .#android
 
 # Quick aliases for rebuild
 nrs: rebuild
@@ -80,13 +80,13 @@ android: rebuild-android
 home-rebuild:
     @if [ "$(uname -s)" = "Darwin" ]; then \
         echo "🏠 Rebuilding home-manager (macOS)..."; \
-        cd nix/platforms && home-manager switch --flake .#yuki@darwin; \
+        cd nix && home-manager switch --flake .#yuki@darwin; \
     elif [ -n "${WSL_DISTRO_NAME:-}" ]; then \
         echo "🏠 Rebuilding home-manager (WSL)..."; \
-        cd nix/platforms && home-manager switch --flake .#yuki@wsl; \
+        cd nix && home-manager switch --flake .#yuki@wsl; \
     elif [ "$(uname -s)" = "Linux" ]; then \
         echo "🏠 Rebuilding home-manager (Linux)..."; \
-        cd nix/platforms && home-manager switch --flake .#yuki@linux; \
+        cd nix && home-manager switch --flake .#yuki@linux; \
     else \
         echo "❌ Home-manager not available on this platform"; \
     fi
@@ -96,7 +96,7 @@ hms: home-rebuild
 # System updates
 update:
     @echo "📦 Updating flake inputs..."
-    cd nix/platforms && nix flake update
+    cd nix && nix flake update
     @echo "🔄 Rebuilding with updated packages..."
     just rebuild
 
@@ -119,33 +119,33 @@ test:
 
 test-darwin:
     @echo "🧪 Testing macOS configuration..."
-    cd nix/platforms && nix flake check
+    cd nix && nix flake check
     @echo "✅ Testing home-manager build..."
-    cd nix/platforms && home-manager build --flake .#yuki@darwin
+    cd nix && home-manager build --flake .#yuki@darwin
 
 test-nixos:
     @echo "🧪 Testing NixOS configuration..."
-    cd nix/platforms && nix flake check
+    cd nix && nix flake check
     @echo "✅ Testing NixOS build..."
-    cd nix/platforms && nixos-rebuild dry-run --flake .#linux-desktop
+    cd nix && nixos-rebuild dry-run --flake .#linux-desktop
 
 test-linux:
     @echo "🧪 Testing Linux configuration..."
-    cd nix/platforms && nix flake check
+    cd nix && nix flake check
     @echo "✅ Testing home-manager build..."
-    cd nix/platforms && home-manager build --flake .#yuki@linux
+    cd nix && home-manager build --flake .#yuki@linux
 
 test-wsl:
     @echo "🧪 Testing WSL configuration..."
-    cd nix/platforms && nix flake check
+    cd nix && nix flake check
     @echo "✅ Testing home-manager build..."
-    cd nix/platforms && home-manager build --flake .#yuki@wsl
+    cd nix && home-manager build --flake .#yuki@wsl
 
 test-android:
     @echo "🧪 Testing Android configuration..."
-    cd nix/platforms && nix flake check
+    cd nix && nix flake check
     @echo "✅ Testing nix-on-droid build..."
-    cd nix/platforms && nix-on-droid build --flake .#android
+    cd nix && nix-on-droid build --flake .#android
 
 # Linting and validation
 lint:
@@ -155,7 +155,7 @@ lint:
     @echo "Validating TOML files..."
     python3 .github/scripts/validate_toml.py
     @echo "Checking Nix syntax..."
-    cd nix/platforms && nix flake check --show-trace
+    cd nix && nix flake check --show-trace
     @echo "✅ All lint checks passed"
 
 # Documentation and analysis
@@ -204,11 +204,11 @@ gc: clean
 # Development workflows
 dev-shell:
     @echo "🚀 Entering development shell..."
-    cd nix/platforms && nix develop
+    cd nix && nix develop
 
 dev-test:
     @echo "🧪 Entering testing shell..."
-    cd nix/platforms && nix develop .#test
+    cd nix && nix develop .#test
 
 # Backup and migration
 backup:
@@ -236,7 +236,7 @@ migrate-to-platforms:
     @echo "Creating backup of current configuration..."
     just backup
     @echo "Testing new platform structure..."
-    cd nix/platforms && nix flake check
+    cd nix && nix flake check
     @echo "✅ Migration test completed"
     @echo "To complete migration, run: just switch-to-platforms"
 
