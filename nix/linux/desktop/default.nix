@@ -5,7 +5,8 @@
   # Linux-specific system packages
   home.packages = with pkgs; platformInfo.filterForPlatform [
     # GUI applications for Linux
-    google-chrome
+    # google-chrome  # Disabled: not available on aarch64-linux
+    firefox          # Alternative browser for ARM Linux compatibility
     thunderbird
     
     # Development tools
@@ -79,12 +80,12 @@
     mimeApps = {
       enable = true;
       defaultApplications = {
-        "text/html" = "google-chrome.desktop";
-        "x-scheme-handler/http" = "google-chrome.desktop";
-        "x-scheme-handler/https" = "google-chrome.desktop";
-        "x-scheme-handler/about" = "google-chrome.desktop";
-        "x-scheme-handler/unknown" = "google-chrome.desktop";
-        "application/pdf" = "google-chrome.desktop";
+        "text/html" = "firefox.desktop";
+        "x-scheme-handler/http" = "firefox.desktop";
+        "x-scheme-handler/https" = "firefox.desktop";
+        "x-scheme-handler/about" = "firefox.desktop";
+        "x-scheme-handler/unknown" = "firefox.desktop";
+        "application/pdf" = "firefox.desktop";
         "text/plain" = "code.desktop";
         "application/json" = "code.desktop";
       };
@@ -143,7 +144,7 @@
     XDG_CURRENT_DESKTOP = "i3";
     
     # Development environment
-    BROWSER = "google-chrome";
+    BROWSER = "firefox";
   };
 
   # Desktop files for window management
