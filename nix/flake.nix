@@ -105,7 +105,7 @@
                   sessionVariables = {
                     EDITOR = "nvim";
                     PAGER = "less";
-                    PATH = "/opt/homebrew/bin:$PATH";
+                    PATH = "$HOME/.local/bin:/opt/homebrew/bin:$PATH";
                   };
                 };
                 
@@ -115,11 +115,10 @@
                   enableZshIntegration = true;
                 };
                 
-                # Basic packages
-                home.packages = with pkgs; [
-                  # Essential CLI tools already available in system
-                  # but ensuring they're in user environment
-                ];
+                # Import core packages for user environment
+                home.packages = let
+                  corePackages = import ../common/packages/core.nix { inherit lib pkgs; platformInfo = (import ../common/platform-detection.nix { inherit lib pkgs; }); };
+                in corePackages.packages;
                 
                 # Git configuration
                 programs.git = {
