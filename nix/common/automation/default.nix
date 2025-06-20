@@ -4,11 +4,11 @@ with lib;
 
 {
   imports = [
-    # ./iac  # Package compatibility issues - ansible-core availability
-    ./kubernetes  # ✅ Working perfectly - Enterprise K8s management
-    ./cloud  # ✅ Working perfectly - Multi-cloud integration
-    # ./cicd  # Package compatibility issues - sonarqube-scanner availability  
-    ./monitoring  # ✅ Working perfectly - Comprehensive monitoring stack
+    ./iac  # Re-enabled for Phase 4.5
+    ./kubernetes  # Re-enabled for Phase 4.5
+    ./cloud  # Re-enabled for Phase 4.5
+    # ./cicd  # Still disabled due to sonarqube-scanner availability  
+    # ./monitoring  # Still disabled due to package conflicts
   ];
 
   options.dotfiles.automation = {
@@ -61,7 +61,7 @@ with lib;
     
 
     # Common automation tools for all profiles
-    home-manager.users.yuki.home.packages = with pkgs; [
+    home.packages = with pkgs; [
       # Core tools
       git
       curl
@@ -92,8 +92,7 @@ with lib;
       kubernetes-helm
       
       # Container tools (Docker Desktop managed via Homebrew on macOS)
-      # docker - managed via Homebrew cask
-      # docker-compose - included with Docker Desktop
+      # Note: docker and docker-compose are managed via Homebrew cask on macOS
       
       # Monitoring basics
       htop
@@ -102,7 +101,7 @@ with lib;
     ] ++ optionals (elem config.dotfiles.automation.profile [ "full" "enterprise" ]) [
       # Advanced tools
       # kubernetes-helm - duplicates helm above
-      argocd-cli
+      argocd
       prometheus
       grafana
       
@@ -116,7 +115,7 @@ with lib;
     ];
 
     # Multi-environment deployment automation
-    home-manager.users.yuki.home.file."bin/deploy-manager" = mkIf config.dotfiles.automation.multiEnvironment {
+    home.file."bin/deploy-manager" = mkIf config.dotfiles.automation.multiEnvironment {
       executable = true;
       text = ''
         #!/usr/bin/env bash
@@ -427,7 +426,7 @@ with lib;
     };
 
     # Automation health check
-    home-manager.users.yuki.home.file."bin/automation-health" = {
+    home.file."bin/automation-health" = {
       executable = true;
       text = ''
         #!/usr/bin/env bash
@@ -503,7 +502,7 @@ with lib;
         fi
         
         echo ""
-        echo "💡 Profile: ${config.dotfiles.automation.profile}"
+        echo "💡 Profile: ''${DOTFILES_AUTO_PROFILE:-standard}"
         echo "🔧 Components:"
         echo "  • IaC: Temporarily disabled"
         echo "  • Kubernetes: Temporarily disabled"
@@ -514,7 +513,7 @@ with lib;
     };
 
     # Shell aliases for automation
-    home-manager.users.yuki.programs.zsh.shellAliases = {
+    programs.zsh.shellAliases = {
       # Automation management
       auto = "automation-health";
       auto-health = "automation-health";
@@ -530,7 +529,7 @@ with lib;
     };
 
     # Shell functions for automation
-    home-manager.users.yuki.programs.zsh.initContent = ''
+    programs.zsh.initContent = ''
       # Automation environment switcher
       auto-env() {
         local env="''${1:-}"
