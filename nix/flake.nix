@@ -74,6 +74,7 @@
           ./common/performance/default.nix  # Phase 5: Performance optimization system
           ./common/security/enterprise.nix  # Phase 5: Enterprise security system
           ./common/security/policies.nix    # Phase 5: Security policies and compliance
+          ./common/universal/platform-integration.nix  # Phase 5: Universal platform integration
           ./common/system/darwin-fixes.nix  # Fix nix-darwin warnings
           ({ lib, ... }: { 
             # Enable AI-powered development profile for Phase 5
@@ -93,6 +94,10 @@
             # Enable security policies and compliance
             dotfiles.security.policies.enable = lib.mkForce true;
             dotfiles.security.policies.complianceFramework = "soc2";
+            
+            # Enable universal platform integration
+            dotfiles.universal.platform.enable = lib.mkForce true;
+            dotfiles.universal.platform.supportedPlatforms = [ "darwin" "linux" "wsl" "android" "freebsd" "windows" "raspberrypi" "cloud" ];
           })
           # ./common/automation/default.nix  # Move to home-manager context below
           ./darwin/system/default.nix
