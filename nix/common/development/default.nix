@@ -446,6 +446,16 @@ with lib;
           echo "⚪ Enterprise Security: Disabled"
         ''}
         
+        # Check Universal Platform Integration (Phase 5)
+        ${if config.dotfiles.universal.platform.enable or false then ''
+          echo "✅ Universal Platform Integration: Enabled"
+          if command -v universal-platform-manager &> /dev/null; then
+            universal-platform-manager status
+          fi
+        '' else ''
+          echo "⚪ Universal Platform Integration: Disabled"
+        ''}
+        
         # Project Environment temporarily disabled
         echo "⚪ Project Environment: Temporarily disabled"
         
