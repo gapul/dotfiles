@@ -74,7 +74,7 @@
       # GNU tools
       coreutils gnugrep gnused gawk gnumake
       # Development
-      python3 nodejs go rustc cargo
+      python3 nodejs go rustc cargo lua
       # Modern CLI tools
       eza bat fd ripgrep fzf starship
     ];
