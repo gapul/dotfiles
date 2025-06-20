@@ -45,8 +45,7 @@ dotfiles/
 │   │   │   ├── cicd/              # CI/CD パイプライン
 │   │   │   └── monitoring/        # 監視・ログ集約
 │   │   ├── security/              # セキュリティシステム
-│   │   │   ├── sops/              # シークレット暗号化
-│   │   │   ├── git-crypt/         # ファイル暗号化
+│   │   │   ├── sops/              # 統一シークレット暗号化
 │   │   │   └── baseline/          # セキュリティベースライン
 │   │   └── themes/                # 統一テーマシステム
 │   ├── darwin/                    # macOS (nix-darwin)
@@ -185,15 +184,6 @@ age-keygen -o ~/.config/sops/age/keys.txt
 sops --encrypt --input-type yaml --output-type yaml secrets.yaml.example
 ```
 
-### Git-crypt ファイル暗号化
-```bash
-# 暗号化状況確認
-git-crypt status
-
-# ロック・アンロック
-git-crypt lock
-git-crypt unlock
-```
 
 ## 📊 監視・運用
 
