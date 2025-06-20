@@ -64,7 +64,7 @@
     curl
     wget
     vim
-    firefox
+    google-chrome
     alacritty
     i3
     i3status
