@@ -145,7 +145,7 @@
               # Send bell for commands longer than 3 seconds (WezTerm converts to toast)
               printf '\a'
               # Alternative: use WezTerm escape sequence for better control
-              printf '\e]9;%s\e\\' "Command completed in ${elapsed}s"
+              printf '\e]9;%s\e\\' "Command completed in ''${elapsed}s"
             fi
             unset __wezterm_command_start_time
             unset __wezterm_command_name

@@ -7,6 +7,7 @@ with lib;
     ./containers
     ./lsp/module.nix
     ./ai-tools
+    ./ai-platform  # Phase 5: Advanced AI integration
     ./project-env
     ./test-integration.nix
   ];
@@ -32,6 +33,11 @@ with lib;
     # AI Tools module
     dotfiles.development.ai-tools.enable = mkDefault (
       elem config.dotfiles.development.profile [ "full" "ai-powered" ]
+    );
+    
+    # AI Platform module (Phase 5)
+    dotfiles.development.ai-platform.enable = mkDefault (
+      config.dotfiles.development.profile == "ai-powered"
     );
     
     # Project-env module
@@ -400,8 +406,25 @@ with lib;
           echo "⚪ Containers: Disabled"
         ''}
         
-        # AI Tools temporarily disabled
-        echo "⚪ AI Tools: Temporarily disabled"
+        # Check AI Tools
+        ${if config.dotfiles.development.ai-tools.enable then ''
+          echo "✅ AI Tools: Enabled"
+          if command -v ai-tools-health &> /dev/null; then
+            ai-tools-health
+          fi
+        '' else ''
+          echo "⚪ AI Tools: Disabled"
+        ''}
+        
+        # Check AI Platform (Phase 5)
+        ${if config.dotfiles.development.ai-platform.enable then ''
+          echo "✅ AI Platform: Enabled"
+          if command -v ai-platform-health &> /dev/null; then
+            ai-platform-health
+          fi
+        '' else ''
+          echo "⚪ AI Platform: Disabled"
+        ''}
         
         # Project Environment temporarily disabled
         echo "⚪ Project Environment: Temporarily disabled"

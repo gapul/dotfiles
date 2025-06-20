@@ -72,7 +72,7 @@ in
 
   config = mkIf cfg.enable {
     # Core Kubernetes tools
-    home-manager.users.yuki.home.packages = with pkgs; [
+    home.packages = with pkgs; [
       # Essential cluster tools
       kubectl
       kubectx  # includes both kubectx and kubens commands
@@ -86,8 +86,8 @@ in
     ] ++ optionals cfg.helmSupport [
       kubernetes-helm
       helmfile
-      helm-docs
-      kubernetes-helmPlugins.helm-secrets
+      # helm-docs  # Not available in nixpkgs for macOS
+      # kubernetes-helmPlugins.helm-secrets  # Package availability issues
     ] ++ optionals cfg.clusterManagement [
       # Cluster management
       kind
@@ -102,8 +102,8 @@ in
       # Linux-only cluster management tools
       k3s
     ] ++ optionals cfg.argocdSupport [
-      argocd
-      argo-rollouts
+      argocd  # ArgoCD CLI
+      # argo-rollouts  # Not available in nixpkgs
     ] ++ optionals cfg.istioSupport [
       istioctl
     ] ++ optionals cfg.monitoringStack [
@@ -122,11 +122,11 @@ in
     ] ++ optionals cfg.multiClusterSupport [
       # Multi-cluster tools
       fluxcd
-      linkerd
+      # linkerd  # Not available as standalone package
     ];
 
     # Kubectl configuration
-    home-manager.users.yuki.home.file.".kube/config.template" = {
+    home.file.".kube/config.template" = {
       text = ''
         # Kubernetes configuration template
         # Copy this to ~/.kube/config and customize for your clusters
@@ -158,7 +158,7 @@ in
     };
 
     # K9s configuration
-    home-manager.users.yuki.home.file.".config/k9s/config.yml" = mkIf (config ? home-manager) {
+    home.file.".config/k9s/config.yml" = {
       text = ''
         k9s:
           refreshRate: 2
@@ -203,7 +203,7 @@ in
     };
 
     # Shell aliases for Kubernetes
-    home-manager.users.yuki.programs.zsh.shellAliases = {
+    programs.zsh.shellAliases = {
       # Basic kubectl shortcuts
       k = "kubectl";
       kgp = "kubectl get pods";
@@ -244,7 +244,7 @@ in
     };
 
     # Kubernetes cluster management script
-    home-manager.users.yuki.home.file."bin/k8s-cluster" = mkIf (config ? home-manager) {
+    home.file."bin/k8s-cluster" = {
       executable = true;
       text = ''
         #!/usr/bin/env bash
@@ -529,7 +529,7 @@ in
     };
 
     # Kubernetes manifest generator
-    home-manager.users.yuki.home.file."bin/k8s-generate" = mkIf (config ? home-manager) {
+    home.file."bin/k8s-generate" = {
       executable = true;
       text = ''
         #!/usr/bin/env bash
@@ -673,7 +673,7 @@ in
     };
 
     # Shell functions for Kubernetes management
-    home-manager.users.yuki.programs.zsh.initContent = mkIf (config ? home-manager) ''
+    programs.zsh.initContent = ''
       # Quick cluster context switching
       kctx-quick() {
         local contexts=($(kubectl config get-contexts -o name))
