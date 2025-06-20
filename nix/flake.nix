@@ -72,6 +72,7 @@
           # ./common/themes/default.nix  # Temporarily disabled due to home-manager context issues  
           ./common/development/default.nix  # Re-enabled successfully
           ./common/performance/default.nix  # Phase 5: Performance optimization system
+          ./common/system/darwin-fixes.nix  # Fix nix-darwin warnings
           ({ lib, ... }: { 
             # Enable AI-powered development profile for Phase 5
             dotfiles.development.enable = lib.mkForce true;
@@ -81,11 +82,6 @@
             dotfiles.performance.enable = lib.mkForce true;
             dotfiles.performance.parallelJobs = 8;
             dotfiles.performance.maxMemory = "8G";
-            
-            # Fix HOME directory ownership warning for sudo execution
-            environment.variables = {
-              HOME = lib.mkForce "/Users/yuki";
-            };
           })
           # ./common/automation/default.nix  # Move to home-manager context below
           ./darwin/system/default.nix
