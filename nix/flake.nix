@@ -71,7 +71,7 @@
           # ./common/home/shell.nix  # Moved to home-manager.users configuration below
           # ./common/themes/default.nix  # Temporarily disabled due to home-manager context issues  
           ./common/development/default.nix  # Re-enabled successfully
-          ./common/automation/default.nix  # Re-enabling automation module
+          # ./common/automation/default.nix  # Temporarily disabled due to package compatibility issues
           ./darwin/system/default.nix
           sops-nix.darwinModules.sops
           { nixpkgs.config.allowUnfree = true; }

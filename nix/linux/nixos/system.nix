@@ -64,7 +64,8 @@
     curl
     wget
     vim
-    google-chrome
+    # google-chrome  # Disabled: not available on aarch64-linux
+    firefox        # Alternative browser for ARM Linux
     alacritty
     i3
     i3status
