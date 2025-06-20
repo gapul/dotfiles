@@ -71,10 +71,16 @@
           # ./common/home/shell.nix  # Moved to home-manager.users configuration below
           # ./common/themes/default.nix  # Temporarily disabled due to home-manager context issues  
           ./common/development/default.nix  # Re-enabled successfully
+          ./common/performance/default.nix  # Phase 5: Performance optimization system
           ({ lib, ... }: { 
             # Enable AI-powered development profile for Phase 5
             dotfiles.development.enable = lib.mkForce true;
             dotfiles.development.profile = lib.mkForce "ai-powered";
+            
+            # Enable performance optimization system
+            dotfiles.performance.enable = lib.mkForce true;
+            dotfiles.performance.parallelJobs = 8;
+            dotfiles.performance.maxMemory = "8G";
           })
           # ./common/automation/default.nix  # Move to home-manager context below
           ./darwin/system/default.nix
