@@ -4,15 +4,15 @@ on:
   push:
     branches: [ main, develop ]
     paths:
-      - 'nix/platforms/**'
+      - 'nix/**'
       - '.github/workflows/multi-platform-integration.yml'
-      - 'justfile-multiplatform'
+      - 'justfile'
   pull_request:
     branches: [ main ]
     paths:
-      - 'nix/platforms/**'
+      - 'nix/**'
       - '.github/workflows/multi-platform-integration.yml'
-      - 'justfile-multiplatform'
+      - 'justfile'
 
 jobs:
   # Matrix strategy for testing multiple platforms
