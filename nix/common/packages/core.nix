@@ -83,6 +83,9 @@ let
     # Math libraries
     gmp          # GNU Multiple Precision Arithmetic Library (migrated from Homebrew)
     
+    # AI Development Tools
+    claude-code  # Anthropic Claude Code CLI (migrated from nodebrew)
+    
     # Language servers (for editors)
     nil              # Nix LSP
     python3Packages.python-lsp-server
@@ -90,6 +93,9 @@ let
     gopls
     rust-analyzer
     lua-language-server  # Lua LSP for enhanced development
+    
+    # MCP Server packages (migrated from nodebrew)
+    # Note: Some packages may need to be installed via npm if not available in nixpkgs
   ];
 
   # Platform-specific core packages

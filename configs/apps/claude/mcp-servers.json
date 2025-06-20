@@ -1,17 +1,17 @@
 {
   "mcpServers": {
     "filesystem": {
-      "command": "/Users/yuki/.nodebrew/current/bin/npx",
+      "command": "npx",
       "args": ["@modelcontextprotocol/server-filesystem", "/Users/yuki/dotfiles"],
       "description": "Secure file operations with configurable access controls for dotfiles management"
     },
     "postgres": {
-      "command": "/Users/yuki/.nodebrew/current/bin/npx", 
+      "command": "npx", 
       "args": ["@modelcontextprotocol/server-postgres", "postgresql://localhost/dotfiles"],
       "description": "PostgreSQL database operations for configuration storage"
     },
     "github": {
-      "command": "/Users/yuki/.nodebrew/current/bin/npx",
+      "command": "npx",
       "args": ["@modelcontextprotocol/server-github"],
       "description": "GitHub integration for repository management and collaboration",
       "env": {
@@ -19,7 +19,7 @@
       }
     },
     "brave-search": {
-      "command": "/Users/yuki/.nodebrew/current/bin/npx",
+      "command": "npx",
       "args": ["@modelcontextprotocol/server-brave-search"],
       "description": "Web and local search capabilities for documentation and troubleshooting",
       "env": {
@@ -37,7 +37,7 @@
       ]
     },
     "playwright": {
-      "command": "/Users/yuki/.nodebrew/current/bin/npx",
+      "command": "npx",
       "args": ["@executeautomation/playwright-mcp-server"],
       "description": "Browser automation and web scraping using Playwright",
       "capabilities": [
@@ -49,7 +49,7 @@
       ]
     },
     "puppeteer": {
-      "command": "/Users/yuki/.nodebrew/current/bin/npx",
+      "command": "npx",
       "args": ["@modelcontextprotocol/server-puppeteer"],
       "description": "Browser automation using Puppeteer for web scraping and testing",
       "capabilities": [
