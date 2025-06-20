@@ -284,12 +284,15 @@
       "goxel"         # Voxel editor
       
       # Creative & Design (macOS-specific versions only)
+      "gimp"          # GNU Image Manipulation Program
       "krita"
       "blender"
       "scribus"
       "fontforge"
       "natron"
       "opentoonz"
+      "darktable"     # Professional photo workflow
+      "inkscape"      # Vector graphics editor
       
       # Media & Entertainment (macOS-specific versions only)
       "musescore"
@@ -304,6 +307,7 @@
       "minecraft"
       
       # Office & Productivity (macOS-specific versions only)
+      "libreoffice"   # Open source office suite
       "onlyoffice"
       "microsoft-excel"
       "microsoft-word"
@@ -343,9 +347,9 @@
       "ollama"
       
       # Development Tools & Editors (macOS-specific versions only)
+      "visual-studio-code"  # Microsoft Visual Studio Code
       "zed"
       "wezterm"
-      # Note: visual-studio-code moved to Nix for better integration
       
       # Research & Knowledge Management
       "obsidian"
