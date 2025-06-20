@@ -81,6 +81,11 @@
             dotfiles.performance.enable = lib.mkForce true;
             dotfiles.performance.parallelJobs = 8;
             dotfiles.performance.maxMemory = "8G";
+            
+            # Fix HOME directory ownership warning for sudo execution
+            environment.variables = {
+              HOME = lib.mkForce "/Users/yuki";
+            };
           })
           # ./common/automation/default.nix  # Move to home-manager context below
           ./darwin/system/default.nix

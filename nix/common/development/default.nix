@@ -426,6 +426,16 @@ with lib;
           echo "⚪ AI Platform: Disabled"
         ''}
         
+        # Check Performance System (Phase 5)
+        ${if config.dotfiles.performance.enable or false then ''
+          echo "✅ Performance System: Enabled"
+          if command -v performance-health &> /dev/null; then
+            performance-health
+          fi
+        '' else ''
+          echo "⚪ Performance System: Disabled"
+        ''}
+        
         # Project Environment temporarily disabled
         echo "⚪ Project Environment: Temporarily disabled"
         
