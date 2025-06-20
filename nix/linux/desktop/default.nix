@@ -5,7 +5,7 @@
   # Linux-specific system packages
   home.packages = with pkgs; platformInfo.filterForPlatform [
     # GUI applications for Linux
-    firefox
+    google-chrome
     thunderbird
     
     # Development tools
@@ -79,12 +79,12 @@
     mimeApps = {
       enable = true;
       defaultApplications = {
-        "text/html" = "firefox.desktop";
-        "x-scheme-handler/http" = "firefox.desktop";
-        "x-scheme-handler/https" = "firefox.desktop";
-        "x-scheme-handler/about" = "firefox.desktop";
-        "x-scheme-handler/unknown" = "firefox.desktop";
-        "application/pdf" = "firefox.desktop";
+        "text/html" = "google-chrome.desktop";
+        "x-scheme-handler/http" = "google-chrome.desktop";
+        "x-scheme-handler/https" = "google-chrome.desktop";
+        "x-scheme-handler/about" = "google-chrome.desktop";
+        "x-scheme-handler/unknown" = "google-chrome.desktop";
+        "application/pdf" = "google-chrome.desktop";
         "text/plain" = "code.desktop";
         "application/json" = "code.desktop";
       };
@@ -143,7 +143,7 @@
     XDG_CURRENT_DESKTOP = "i3";
     
     # Development environment
-    BROWSER = "firefox";
+    BROWSER = "google-chrome";
   };
 
   # Desktop files for window management

@@ -47,19 +47,19 @@
       hms = "home-manager switch --flake .";
     };
     
-    # Environment variables (basic setup)
-    sessionVariables = {
-      EDITOR = "vim";
-      PAGER = "less";
-      DOTFILES = "${config.home.homeDirectory}/dotfiles";
-      # macOS specific (safe to set on all platforms)
-      HOMEBREW_NO_ANALYTICS = "1"; 
-      HOMEBREW_NO_INSECURE_REDIRECT = "1";
-    };
-    
-    # Additional PATH for nodebrew and Claude CLI (macOS only)
-    sessionPath = lib.mkIf pkgs.stdenv.isDarwin [
-      "${config.home.homeDirectory}/.nodebrew/current/bin"
+    # Environment variables (basic setup) 
+    sessionVariables = lib.mkMerge [
+      (lib.mkIf pkgs.stdenv.isDarwin {
+        PATH = "${config.home.homeDirectory}/.nodebrew/current/bin:$PATH";
+      })
+      {
+        EDITOR = "vim";
+        PAGER = "less";
+        DOTFILES = "${config.home.homeDirectory}/dotfiles";
+        # macOS specific (safe to set on all platforms)
+        HOMEBREW_NO_ANALYTICS = "1"; 
+        HOMEBREW_NO_INSECURE_REDIRECT = "1";
+      }
     ];
     
     # Platform-specific initialization
