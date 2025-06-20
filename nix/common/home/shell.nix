@@ -53,6 +53,42 @@
         EDITOR = "vim";
         PAGER = "less";
         DOTFILES = "${config.home.homeDirectory}/dotfiles";
+        
+        # Python Nix integration
+        PYTHONSTARTUP = "${config.home.homeDirectory}/dotfiles/configs/python/.pythonrc";
+        PIP_CONFIG_FILE = "${config.home.homeDirectory}/dotfiles/configs/python/pip.conf";
+        PYTHONDONTWRITEBYTECODE = "1";  # Prevent .pyc files
+        PYTHONUNBUFFERED = "1";         # Force unbuffered output
+        
+        # Node.js Nix integration
+        NPM_CONFIG_USERCONFIG = "${config.home.homeDirectory}/dotfiles/configs/nodejs/.npmrc";
+        NODE_OPTIONS = "--max-old-space-size=4096";  # Increase memory limit
+        
+        # Rust Nix integration
+        CARGO_HOME = "${config.home.homeDirectory}/.cargo";
+        RUSTUP_HOME = "${config.home.homeDirectory}/.rustup";
+        RUST_BACKTRACE = "1";  # Enable backtraces
+        
+        # Go Nix integration
+        GOPATH = "${config.home.homeDirectory}/go";
+        GOBIN = "${config.home.homeDirectory}/go/bin";
+        GO111MODULE = "on";
+        GOPROXY = "https://proxy.golang.org,direct";
+        
+        # Ruby Nix integration
+        GEM_HOME = "${config.home.homeDirectory}/.gem";
+        GEM_PATH = "${config.home.homeDirectory}/.gem";
+        GEMRC = "${config.home.homeDirectory}/dotfiles/configs/ruby/.gemrc";
+        
+        # PHP Nix integration
+        COMPOSER_HOME = "${config.home.homeDirectory}/.composer";
+        COMPOSER_CACHE_DIR = "${config.home.homeDirectory}/.composer/cache";
+        
+        # Java Nix integration
+        JAVA_HOME = "/nix/store/*-openjdk-*/lib/openjdk";  # Will be resolved by Nix
+        MAVEN_OPTS = "-Xmx2048m -XX:MaxPermSize=256m";
+        M2_HOME = "${config.home.homeDirectory}/.m2";
+        
         # macOS specific (safe to set on all platforms)
         HOMEBREW_NO_ANALYTICS = "1"; 
         HOMEBREW_NO_INSECURE_REDIRECT = "1";
@@ -92,30 +128,51 @@
       
       # WezTerm shell integration for command completion notifications
       if [[ "$TERM_PROGRAM" == "WezTerm" ]]; then
+        # Enable preexec and precmd hooks for zsh
+        autoload -Uz add-zsh-hook
+        
         # Track command execution start time
-        preexec() {
+        function __wezterm_preexec() {
           __wezterm_command_start_time=$SECONDS
           __wezterm_command_name="$1"
         }
         
         # Send bell notification for long-running commands when complete
-        precmd() {
+        function __wezterm_precmd() {
           if [[ -n "$__wezterm_command_start_time" ]]; then
             local elapsed=$((SECONDS - __wezterm_command_start_time))
-            if [[ $elapsed -gt 10 ]]; then
-              # Send bell for commands longer than 10 seconds (WezTerm converts to toast)
-              echo -e "\a"
+            if [[ $elapsed -gt 3 ]]; then
+              # Send bell for commands longer than 3 seconds (WezTerm converts to toast)
+              printf '\a'
+              # Alternative: use WezTerm escape sequence for better control
+              printf '\e]9;%s\e\\' "Command completed in ${elapsed}s"
             fi
             unset __wezterm_command_start_time
             unset __wezterm_command_name
           fi
         }
         
+        # Register hooks with zsh
+        add-zsh-hook preexec __wezterm_preexec
+        add-zsh-hook precmd __wezterm_precmd
+        
         # Claude Code specific notification wrapper
         claude() {
           command claude "$@"
-          # Always send bell notification when claude command completes
-          echo -e "\a"
+          local exit_code=$?
+          # Always send notification when claude command completes
+          printf '\a'
+          printf '\e]9;%s\e\\' "Claude Code session completed"
+          return $exit_code
+        }
+        
+        # General long-running command wrapper
+        notify() {
+          "$@"
+          local exit_code=$?
+          printf '\a'
+          printf '\e]9;%s\e\\' "Command '$1' completed with exit code $exit_code"
+          return $exit_code
         }
       fi
     '';

@@ -117,7 +117,7 @@
                 
                 # Import core packages for user environment
                 home.packages = let
-                  corePackages = import ../common/packages/core.nix { inherit lib pkgs; platformInfo = (import ../common/platform-detection.nix { inherit lib pkgs; }); };
+                  corePackages = import ./common/packages/core.nix { inherit lib pkgs; platformInfo = (import ./common/platform-detection.nix { inherit lib pkgs; }); };
                 in corePackages.packages;
                 
                 # Git configuration
