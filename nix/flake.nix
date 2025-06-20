@@ -75,6 +75,7 @@
           ./common/security/enterprise.nix  # Phase 5: Enterprise security system
           ./common/security/policies.nix    # Phase 5: Security policies and compliance
           ./common/universal/platform-integration.nix  # Phase 5: Universal platform integration
+          ./common/testing/phase5-integration.nix  # Phase 5: Integrated testing and documentation
           ./common/system/darwin-fixes.nix  # Fix nix-darwin warnings
           ({ lib, ... }: { 
             # Enable AI-powered development profile for Phase 5
@@ -98,6 +99,18 @@
             # Enable universal platform integration
             dotfiles.universal.platform.enable = lib.mkForce true;
             dotfiles.universal.platform.supportedPlatforms = [ "darwin" "linux" "wsl" "android" "freebsd" "windows" "raspberrypi" "cloud" ];
+            
+            # Enable Phase 5 integrated testing and documentation system
+            dotfiles.testing.phase5.enable = lib.mkForce true;
+            dotfiles.testing.phase5.testingFramework = "comprehensive";
+            dotfiles.testing.phase5.documentationLevel = "full";
+            dotfiles.testing.phase5.performanceBenchmarks = true;
+            dotfiles.testing.phase5.securityValidation = true;
+            dotfiles.testing.phase5.aiIntegrationTests = true;
+            dotfiles.testing.phase5.universalPlatformTests = true;
+            dotfiles.testing.phase5.automatedQualityAssurance = true;
+            dotfiles.testing.phase5.regressionTesting = true;
+            dotfiles.testing.phase5.reportGeneration = true;
           })
           # ./common/automation/default.nix  # Move to home-manager context below
           ./darwin/system/default.nix
