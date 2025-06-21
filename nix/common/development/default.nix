@@ -369,7 +369,7 @@ with lib;
           "zsh:Z shell"
           "curl:HTTP client"
           "jq:JSON processor"
-          "ripgrep:Fast text search"
+          "rg:Fast text search"
           "fd:Fast file finder"
           "fzf:Fuzzy finder"
         )
@@ -391,7 +391,7 @@ with lib;
         # Check LSP
         ${if config.dotfiles.development.lsp.enable then ''
           echo "✅ LSP: Language Server Protocol enabled"
-          lsp-health
+          $HOME/bin/lsp-health
         '' else ''
           echo "⚪ LSP: Disabled"
         ''}

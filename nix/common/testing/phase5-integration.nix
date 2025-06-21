@@ -81,13 +81,13 @@ in
       # Quality assurance
       gitlint
       
-      # System analysis
-      sysstat
-      iotop
+      # System analysis (macOS compatible)
+      # sysstat - Linux only, not available on macOS
+      # iotop - Linux only, not available on macOS
       
     ] ++ optionals cfg.performanceBenchmarks [
-      # Performance benchmarking
-      stress
+      # Performance benchmarking (macOS compatible)
+      # stress - May not be available on macOS, use alternative approaches
       
     ] ++ optionals cfg.securityValidation [
       # Security testing
@@ -236,7 +236,7 @@ in
                 # Extract timing from benchmark
                 if [[ -f "$BENCHMARK_FILE" ]]; then
                   MEAN_TIME=$(jq -r '.results[0].mean' "$BENCHMARK_FILE" 2>/dev/null || echo "unknown")
-                  echo "  📈 Mean evaluation time: ${MEAN_TIME}s"
+                  echo "  📈 Mean evaluation time: ${"$"}{MEAN_TIME}s"
                 fi
               else
                 log_test_result "Nix Evaluation Performance" "FAIL" "Performance benchmark failed"
@@ -251,17 +251,17 @@ in
             # Memory usage test
             MEMORY_USAGE=$(ps aux | awk '{sum+=$4}; END {print sum}' 2>/dev/null || echo "unknown")
             if [[ "$MEMORY_USAGE" != "unknown" ]] && (( $(echo "$MEMORY_USAGE < 80" | bc -l 2>/dev/null || echo 0) )); then
-              log_test_result "Memory Usage" "PASS" "System memory usage: ${MEMORY_USAGE}%"
+              log_test_result "Memory Usage" "PASS" "System memory usage: ${"$"}{MEMORY_USAGE}%"
             else
-              log_test_result "Memory Usage" "FAIL" "High memory usage: ${MEMORY_USAGE}%"
+              log_test_result "Memory Usage" "FAIL" "High memory usage: ${"$"}{MEMORY_USAGE}%"
             fi
             
             # Disk usage test
             DISK_USAGE=$(df -h / | awk 'NR==2{print $5}' | sed 's/%//' 2>/dev/null || echo "unknown")
             if [[ "$DISK_USAGE" != "unknown" ]] && [[ $DISK_USAGE -lt 90 ]]; then
-              log_test_result "Disk Usage" "PASS" "Root filesystem usage: ${DISK_USAGE}%"
+              log_test_result "Disk Usage" "PASS" "Root filesystem usage: ${"$"}{DISK_USAGE}%"
             else
-              log_test_result "Disk Usage" "FAIL" "High disk usage: ${DISK_USAGE}%"
+              log_test_result "Disk Usage" "FAIL" "High disk usage: ${"$"}{DISK_USAGE}%"
             fi
           '' else ''
             echo "⚡ Performance Tests: Disabled"
