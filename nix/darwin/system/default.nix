@@ -255,7 +255,6 @@
     
     brews = [
       # Window management (requires Homebrew for proper macOS integration)
-      "aerospace"
       "sketchybar"
       
       # Note: VoiceVox and Battery now managed as Homebrew casks below
@@ -263,6 +262,9 @@
     ];
     
     casks = [
+      # Window management
+      "nikitabobko/tap/aerospace"  # Modern tiling window manager
+      
       # Core productivity (macOS-specific tools only) 
       "raycast"
       "karabiner-elements"
