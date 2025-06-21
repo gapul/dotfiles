@@ -249,14 +249,13 @@
     };
     
     taps = [
-      "koekeishiya/formulae"  # yabai, skhd
+      "nikitabobko/tap"       # AeroSpace
       "felixkratz/formulae"   # sketchybar
     ];
     
     brews = [
       # Window management (requires Homebrew for proper macOS integration)
-      "yabai"
-      "skhd" 
+      "aerospace"
       "sketchybar"
       
       # Note: VoiceVox and Battery now managed as Homebrew casks below
