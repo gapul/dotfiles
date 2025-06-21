@@ -197,7 +197,7 @@
                 };
                 
                 # AeroSpace configuration
-                home.file.".config/aerospace/aerospace.toml".source = ../configs/aerospace/aerospace.toml;
+                home.file.".config/aerospace/aerospace.toml".source = ../configs/wm/aerospace/aerospace.toml;
                 
                 # Enable home-manager management
                 programs.home-manager.enable = true;
