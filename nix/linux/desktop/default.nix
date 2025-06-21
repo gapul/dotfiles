@@ -3,7 +3,7 @@
 
 {
   # Linux-specific system packages
-  home.packages = with pkgs; platformInfo.filterForPlatform [
+  home.packages = with pkgs; [
     # GUI applications for Linux
     # google-chrome  # Disabled: not available on aarch64-linux
     firefox          # Alternative browser for ARM Linux compatibility
