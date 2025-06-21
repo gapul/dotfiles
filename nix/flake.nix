@@ -318,6 +318,14 @@
         nixpkgs.legacyPackages.${system}.nixpkgs-fmt
       );
       
+      # Platform information (fix missing platformInfo)
+      platformInfo = flake-utils.lib.eachDefaultSystemMap (system:
+        let
+          lib = nixpkgs.lib;
+          pkgs = nixpkgs.legacyPackages.${system};
+        in import ./common/platform-detection.nix { inherit lib pkgs; }
+      );
+      
 
       
       # Documentation and examples
