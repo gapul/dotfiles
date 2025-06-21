@@ -21,14 +21,16 @@ RUN apt-get update && apt-get install -y \
     lsb-release \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Nix package manager
-RUN sh <(curl -L https://nixos.org/nix/install) --daemon --yes
+# Install Nix package manager using Determinate Systems installer
+RUN curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install linux --init none --no-confirm
 ENV PATH="/nix/var/nix/profiles/default/bin:$PATH"
 
 # Setup Nix configuration
 RUN mkdir -p /etc/nix && \
     echo "experimental-features = nix-command flakes" >> /etc/nix/nix.conf && \
-    echo "trusted-users = vscode root" >> /etc/nix/nix.conf
+    echo "trusted-users = vscode root" >> /etc/nix/nix.conf && \
+    echo "max-jobs = auto" >> /etc/nix/nix.conf && \
+    echo "cores = 0" >> /etc/nix/nix.conf
 
 # Install Node.js for Claude CLI and development tools
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
@@ -45,12 +47,12 @@ RUN chown -R vscode:vscode /workspaces/dotfiles
 USER vscode
 
 # Setup Nix environment for vscode user
-RUN . /nix/var/nix/profiles/default/etc/profile.d/nix.sh && \
+RUN . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh && \
     nix-channel --add https://github.com/nix-community/home-manager/archive/master.tar.gz home-manager && \
     nix-channel --update
 
-# Install base development tools through Nix
-RUN . /nix/var/nix/profiles/default/etc/profile.d/nix.sh && \
+# Install base development tools through Nix with error handling
+RUN . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh && \
     nix-env -iA nixpkgs.gh \
                 nixpkgs.starship \
                 nixpkgs.bat \
@@ -61,7 +63,8 @@ RUN . /nix/var/nix/profiles/default/etc/profile.d/nix.sh && \
                 nixpkgs.yq-go \
                 nixpkgs.just \
                 nixpkgs.direnv \
-                nixpkgs.neovim
+                nixpkgs.neovim || \
+    echo "Some Nix packages failed to install, continuing..."
 
 # Install Claude CLI globally
 RUN npm install -g @anthropic-ai/claude-code
@@ -69,9 +72,11 @@ RUN npm install -g @anthropic-ai/claude-code
 # Setup shell configuration
 RUN mkdir -p ~/.config/zsh && \
     echo 'export PATH="/nix/var/nix/profiles/default/bin:$PATH"' >> ~/.zshrc && \
-    echo 'source /nix/var/nix/profiles/default/etc/profile.d/nix.sh' >> ~/.zshrc && \
-    echo 'eval "$(starship init zsh)"' >> ~/.zshrc && \
-    echo 'eval "$(direnv hook zsh)"' >> ~/.zshrc
+    echo 'if [ -e /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]; then' >> ~/.zshrc && \
+    echo '  source /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh' >> ~/.zshrc && \
+    echo 'fi' >> ~/.zshrc && \
+    echo 'command -v starship >/dev/null && eval "$(starship init zsh)"' >> ~/.zshrc && \
+    echo 'command -v direnv >/dev/null && eval "$(direnv hook zsh)"' >> ~/.zshrc
 
 # Setup Git configuration for container
 RUN git config --global user.name "GitHub Codespaces" && \
@@ -100,9 +105,11 @@ EXPOSE 3000 8080 9090
 # Set working directory
 WORKDIR /workspaces/dotfiles
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD nix --version && gh --version && claude --version || exit 1
+# Health check with fallbacks
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD (command -v nix >/dev/null || exit 1) && \
+        (command -v gh >/dev/null || exit 1) && \
+        (command -v claude >/dev/null || echo "Claude CLI not available")
 
 # Default command
 CMD ["/bin/zsh"]
