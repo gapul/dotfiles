@@ -17,6 +17,14 @@ backups/
 *.swo
 *~
 
+# Node.js (npm/yarn dependencies should be managed by Nix)
+node_modules/
+package.json
+package-lock.json
+yarn.lock
+.npm/
+.yarn/
+
 # IDE
 .vscode/
 .idea/
