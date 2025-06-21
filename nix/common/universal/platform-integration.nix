@@ -69,7 +69,7 @@ in
       
       # Container orchestration (cross-platform)
       kubectl
-      helm
+      # helm - Not available on macOS ARM64, use Homebrew instead
       k9s
       
       # Service mesh tools (cross-platform)
@@ -926,9 +926,9 @@ in
         
         # Environment variables
         environment:
-          NODE_ENV: development
-          RUST_LOG: debug
-          PYTHONPATH: ./src
+          NODE_ENV: "development"
+          RUST_LOG: "debug"
+          PYTHONPATH: "./src"
         
         # Port mappings
         ports:
@@ -981,15 +981,15 @@ in
             glibc
           ];
           
-          shellHook = ''
+          shellHook = '''
             echo "🌍 Universal Environment: $ENV_NAME"
-            echo "Platform: ${builtins.currentSystem}"
+            echo "Platform: $(uname -s)/$(uname -m)"
             echo "Tools: nodejs, python, rust, git, curl, jq"
             
             export NODE_ENV=development
             export RUST_LOG=debug
             export PYTHONPATH=./src
-          '';
+          ''';
         }
         EOF
             

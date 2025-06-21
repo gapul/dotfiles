@@ -43,10 +43,20 @@ rebuild:
         exit 1; \
     fi
 
-# macOS rebuild (nix-darwin)
+# macOS rebuild (nix-darwin) 
 rebuild-darwin:
     @echo "🍎 Rebuilding macOS configuration..."
     cd nix && nix run nix-darwin -- switch --flake .
+
+# macOS rebuild with sudo (warning-free)
+rebuild-darwin-sudo:
+    @echo "🍎 Rebuilding macOS configuration with sudo (warning-free)..."
+    cd nix && sudo -E nix run nix-darwin -- switch --flake . --impure
+
+# Setup sudoers to eliminate warnings completely
+setup-nix-darwin-sudo:
+    @echo "🔧 Setting up sudoers for nix-darwin..."
+    ./scripts/setup-nix-darwin-sudo.sh
 
 # NixOS rebuild
 rebuild-nixos:
