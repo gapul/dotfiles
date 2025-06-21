@@ -132,13 +132,65 @@ in
             ;;
             
           "python")
-            if [[ ! -f requirements.txt ]]; then
-              touch requirements.txt
+            # Create pyproject.toml (modern Python standard)
+            if [[ ! -f pyproject.toml ]]; then
+              cat > pyproject.toml << EOF
+        [build-system]
+        requires = ["hatchling"]
+        build-backend = "hatchling.build"
+
+        [project]
+        name = "$PROJECT_NAME"
+        version = "0.1.0"
+        description = ""
+        readme = "README.md"
+        requires-python = ">=3.9"
+        dependencies = []
+
+        [project.optional-dependencies]
+        dev = [
+            "pytest",
+            "black",
+            "flake8",
+            "mypy",
+        ]
+
+        [tool.black]
+        line-length = 88
+        target-version = ['py39']
+
+        [tool.mypy]
+        python_version = "3.9"
+        warn_return_any = true
+        warn_unused_configs = true
+
+        [tool.pytest.ini_options]
+        testpaths = ["tests"]
+        python_files = ["test_*.py"]
+        EOF
             fi
             
             ${if cfg.direnvIntegration then ''
               if [[ ! -f .envrc ]]; then
-                echo "use python" > .envrc
+                echo "use nix" > .envrc
+              fi
+            '' else ""}
+            
+            ${if cfg.nixShellGeneration then ''
+              if [[ ! -f shell.nix ]]; then
+                cat > shell.nix << 'EOF'
+        { pkgs ? import <nixpkgs> {} }:
+        pkgs.mkShell {
+          buildInputs = with pkgs; [
+            (python3.withPackages (ps: with ps; [
+              pip setuptools wheel
+              black flake8 mypy pytest
+              requests pyyaml
+            ]))
+          ];
+          shellHook = "echo 'Python development environment ready!'";
+        }
+        EOF
               fi
             '' else ""}
             ;;
