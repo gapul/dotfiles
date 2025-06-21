@@ -14,7 +14,7 @@
   home.stateVersion = "23.11";
 
   # NixOS-specific packages
-  home.packages = with pkgs; platformInfo.filterForPlatform [
+  home.packages = with pkgs; [
     # Development tools
     vscode
     

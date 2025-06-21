@@ -3,7 +3,7 @@
 
 {
   # Android-specific packages (heavily limited)
-  home.packages = with pkgs; platformInfo.filterForPlatform [
+  home.packages = with pkgs; [
     # Essential tools that work on Android
     coreutils
     findutils

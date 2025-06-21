@@ -249,14 +249,12 @@
     };
     
     taps = [
-      "koekeishiya/formulae"  # yabai, skhd
+      "nikitabobko/tap"       # AeroSpace
       "felixkratz/formulae"   # sketchybar
     ];
     
     brews = [
       # Window management (requires Homebrew for proper macOS integration)
-      "yabai"
-      "skhd" 
       "sketchybar"
       
       # Note: VoiceVox and Battery now managed as Homebrew casks below
@@ -264,6 +262,9 @@
     ];
     
     casks = [
+      # Window management
+      "nikitabobko/tap/aerospace"  # Modern tiling window manager
+      
       # Core productivity (macOS-specific tools only) 
       "raycast"
       "karabiner-elements"

@@ -3,7 +3,7 @@
 
 {
   # WSL-specific packages (no GUI, Windows integration focus)
-  home.packages = with pkgs; platformInfo.filterForPlatform [
+  home.packages = with pkgs; [
     # Essential command line tools
     openssh
     rsync
