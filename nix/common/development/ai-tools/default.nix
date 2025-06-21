@@ -186,6 +186,19 @@ in
       };
     };
 
+    # Node.js and npm global packages for MCP
+    home-manager.users.yuki.programs.npm = mkIf cfg.mcpSupport {
+      enable = true;
+      globalPackages = [
+        "@modelcontextprotocol/server-filesystem"
+        "@modelcontextprotocol/server-postgres"
+        "@modelcontextprotocol/server-github"
+        "@modelcontextprotocol/server-brave-search"
+        "@modelcontextprotocol/server-puppeteer"
+        "@executeautomation/playwright-mcp-server"
+      ];
+    };
+
     # AI tools aliases and commands
     home-manager.users.yuki.programs.zsh.shellAliases = {
       ai-chat = "aichat";
