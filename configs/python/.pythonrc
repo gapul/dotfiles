@@ -1,0 +1,35 @@
+# Python startup configuration for Nix integration
+# This file is loaded when Python starts in interactive mode
+
+import sys
+import os
+
+# Force use of Nix-managed Python environment
+print("🐍 Using Nix-managed Python environment")
+print(f"Python: {sys.version}")
+print(f"Executable: {sys.executable}")
+
+# Prevent system pip usage warning
+import warnings
+warnings.filterwarnings("ignore", message=".*Defaulting to user installation.*")
+
+# Enhanced REPL experience
+try:
+    import readline
+    import rlcompleter
+    readline.parse_and_bind("tab: complete")
+    print("✅ Tab completion enabled")
+except ImportError:
+    pass
+
+# Rich traceback for better debugging (if available)
+try:
+    from rich.traceback import install
+    install(show_locals=True)
+    print("✅ Rich traceback enabled")
+except ImportError:
+    pass
+
+# IPython integration hint
+if 'IPython' not in sys.modules:
+    print("💡 For enhanced REPL, use: ipython")
