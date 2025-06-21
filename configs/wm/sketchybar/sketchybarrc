@@ -1,81 +1,105 @@
 #!/bin/bash
 
-# SketchyBar Configuration Selector
-# This script can switch between Shell and Lua configurations
+source "$CONFIG_DIR/colors.sh" # Loads all defined colors
+source "$CONFIG_DIR/icons.sh" # Loads all defined icons
 
-CONFIG_TYPE="${SKETCHYBAR_CONFIG_TYPE:-shell}"  # Default to shell config
+ITEM_DIR="$CONFIG_DIR/items" # Directory where the items are configured
+PLUGIN_DIR="$CONFIG_DIR/plugins" # Directory where all the plugin scripts are stored
 
-if [ "$CONFIG_TYPE" = "lua" ]; then
-    # Lua Configuration
-    echo "Loading Lua configuration..."
-    
-    # Check if Lua is available
-    if command -v lua >/dev/null 2>&1; then
-        # Try to execute Lua configuration
-        exec /run/current-system/sw/bin/lua << 'EOF'
--- Add paths for modules
-package.path = package.path .. ";/Users/yuki/.config/sketchybar/?.lua;/Users/yuki/.config/sketchybar/?/init.lua"
-package.cpath = package.cpath .. ";/Users/yuki/.local/share/sketchybar_lua/?.so"
+FONT="SF Pro" # Needs to have Regular, Bold, Semibold, Heavy and Black variants
+PADDINGS=3 # All paddings use this value (icon, label, background)
 
--- Load helpers and configuration
-require("helpers")
-require("init")
-EOF
-    else
-        echo "Lua not available, falling back to shell configuration"
-        CONFIG_TYPE="shell"
-    fi
-fi
+# aerospace setting
+AEROSPACE_FOCUSED_MONITOR_NO=$(aerospace list-workspaces --focused)
+AEROSPACE_LIST_OF_WINDOWS_IN_FOCUSED_MONITOR=$(aerospace list-windows --workspace $AEROSPACE_FOCUSED_MONITOR_NO | awk -F'|' '{gsub(/^ *| *$/, "", $2); print $2}')
 
-if [ "$CONFIG_TYPE" = "shell" ]; then
-    # Shell Configuration (Working version)
-    echo "Loading Shell configuration..."
-    
-    # Bar settings
-    sketchybar --bar height=32 \
-                     position=top \
-                     sticky=off \
-                     padding_left=10 \
-                     padding_right=10 \
-                     color=0x15000000 \
-                     corner_radius=9 \
-                     border_width=2 \
-                     border_color=0xff494d64
+# Setting up and starting the helper process
+HELPER=git.felix.helper
+killall helper
+(cd $CONFIG_DIR/helper && make)
+$CONFIG_DIR/helper/helper $HELPER > /dev/null 2>&1 &
 
-    # Default item settings  
-    sketchybar --default icon.font="SF Pro:Bold:14.0" \
-                         icon.color=0xffffffff \
-                         label.font="SF Pro:Semibold:13.0" \
-                         label.color=0xffffffff \
-                         background.padding_left=5 \
-                         background.padding_right=5
+# Unload the macOS on screen indicator overlay for volume change
+launchctl unload -F /System/Library/LaunchAgents/com.apple.OSDUIHelper.plist > /dev/null 2>&1 &
 
-    # Left items
-    sketchybar --add item front_app left \
-               --set front_app script="sketchybar --set front_app label=\"\$(yabai -m query --windows --window | jq -r .app 2>/dev/null || echo 'Desktop')\"" \
-               --subscribe front_app front_app_switched
+# Setting up the general bar appearance of the bar
+bar=(
+  height=45
+  color=$BAR_COLOR
+  border_width=2
+  border_color=$BAR_BORDER_COLOR
+  shadow=off
+  position=top
+  sticky=on
+  padding_right=10
+  padding_left=10
+  y_offset=-5
+  margin=-2
+  topmost=window
+  color=0x00000000
+  border_color=0x00000000
+)
 
-    # Right items  
-    sketchybar --add item clock right \
-               --set clock script="sketchybar --set clock label=\"\$(date '+%H:%M')\"" \
-                           update_freq=10
+sketchybar --bar "${bar[@]}"
 
-    sketchybar --add item battery right \
-               --set battery script="sketchybar --set battery label=\"\$(pmset -g batt | grep -Eo '[0-9]+%' | head -1)\"" \
-                             update_freq=60
+# Setting up default values
+defaults=(
+  updates=when_shown
+  icon.font="$FONT:Regular:14.0"
+  icon.color=$ICON_COLOR
+  icon.padding_left=$PADDINS
+  icon.padding_right=$PADDINGS
+  label.font="$FONT:Semibold:13.0"
+  label.color=$LABEL_COLOR
+  label.padding_left=$PADDINGS
+  label.padding_right=$PADDINGS
+  label.shadow.drawing=on
+  label.shadow.distance=2
+  label.shadow.color=0xff000000
+  padding_right=$PADDINGS
+  padding_left=$PADDINGS
+  background.height=26
+  background.corner_radius=9
+  background.border_width=2
+  popup.background.border_width=2
+  popup.background.corner_radius=9
+  popup.background.border_color=$POPUP_BORDER_COLOR
+  popup.background.color=$POPUP_BACKGROUND_COLOR
+  popup.blur_radius=20
+  popup.background.shadow.drawing=on
+  scroll_texts=on
 
-    # Add CPU usage
-    sketchybar --add item cpu right \
-               --set cpu script="sketchybar --set cpu label=\"CPU: \$(top -l 1 | grep 'CPU usage' | awk '{print \$3}')\"" \
-                         update_freq=5
+)
 
-    # Subscribe to yabai events
-    sketchybar --add event window_focus \
-               --add event windows_on_spaces \
-               --subscribe front_app front_app_switched
+sketchybar --default "${defaults[@]}"
 
-    # Run the configuration
-    sketchybar --update
 
-    echo "SketchyBar Shell configuration loaded successfully!"
-fi
+# Left
+source "$ITEM_DIR/apple.sh"
+source "$ITEM_DIR/spaces.sh"
+source "$ITEM_DIR/front_app.sh"
+#source "$ITEM_DIR/yabai.sh"
+
+# Center
+# source "$ITEM_DIR/spotify.sh"
+# source "$ITEM_DIR/media.sh"
+
+# Right
+source "$ITEM_DIR/calendar.sh"
+source "$ITEM_DIR/input_source.sh"
+source "$ITEM_DIR/battery.sh"
+#source "$ITEM_DIR/brew.sh"
+#source "$ITEM_DIR/github.sh"
+source "$ITEM_DIR/wifi.sh"
+source "$ITEM_DIR/volume.sh"
+source "$ITEM_DIR/svim.sh"
+
+source "$ITEM_DIR/cpu.sh"
+source "$ITEM_DIR/weather.sh"
+
+sketchybar --hotload on
+
+# Forcing all item scripts to run (never do this outside of sketchybarrc)
+sketchybar --update
+
+echo "sketchybar configuation loaded.."
