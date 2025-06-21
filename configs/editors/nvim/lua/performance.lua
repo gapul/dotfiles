@@ -1,1 +1,1 @@
-/nix/store/ac3mdk1chfj6f3nzxzlmdwqrz4bg9sxf-home-manager-files/.config/nvim/lua/performance.lua
+/nix/store/n9z0531iz4srhvhyfkgq46znd3c5jgd1-home-manager-files/.config/nvim/lua/performance.lua
