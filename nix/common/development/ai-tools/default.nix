@@ -186,17 +186,25 @@ in
       };
     };
 
-    # Node.js and npm global packages for MCP
-    home-manager.users.yuki.programs.npm = mkIf cfg.mcpSupport {
-      enable = true;
-      globalPackages = [
-        "@modelcontextprotocol/server-filesystem"
-        "@modelcontextprotocol/server-postgres"
-        "@modelcontextprotocol/server-github"
-        "@modelcontextprotocol/server-brave-search"
-        "@modelcontextprotocol/server-puppeteer"
-        "@executeautomation/playwright-mcp-server"
-      ];
+    # MCP server configuration for Claude (file-based configuration)
+    home-manager.users.yuki.home.file.".config/mcp/install-packages.sh" = mkIf cfg.mcpSupport {
+      executable = true;
+      text = ''
+        #!/usr/bin/env bash
+        # MCP global packages installation script
+        set -euo pipefail
+        
+        echo "📦 Installing MCP global packages..."
+        npm install -g \
+          "@modelcontextprotocol/server-filesystem" \
+          "@modelcontextprotocol/server-postgres" \
+          "@modelcontextprotocol/server-github" \
+          "@modelcontextprotocol/server-brave-search" \
+          "@modelcontextprotocol/server-puppeteer" \
+          "@executeautomation/playwright-mcp-server"
+        
+        echo "✅ MCP packages installed successfully!"
+      '';
     };
 
     # AI tools aliases and commands
@@ -205,6 +213,7 @@ in
       copilot = "gh copilot";
       ai-commit = "gh copilot suggest -t shell 'git commit with AI-generated message'";
       ai-explain = "gh copilot explain";
+      install-mcp = "~/.config/mcp/install-packages.sh";
     };
     # Disabled claude notifications aliases - files not present
     # } // optionalAttrs cfg.claudeNotifications {
@@ -219,8 +228,8 @@ in
       GITHUB_COPILOT_CLI_EDITOR = "nvim";
     };
 
-    # MCP configuration for Claude
-    home-manager.users.yuki.home.file.".config/claude/claude.json" = mkIf cfg.mcpSupport {
+    # MCP configuration for Claude (simple template)
+    home-manager.users.yuki.home.file.".config/claude/claude.json.example" = mkIf cfg.mcpSupport {
       text = builtins.toJSON {
         mcpServers = {
           filesystem = {
