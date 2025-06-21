@@ -87,15 +87,18 @@ cd ~/dotfiles/nix
 sudo darwin-rebuild switch --flake .#default --impure
 ```
 
-### 2. 旧設定の無効化
-AeroSpaceインストール後、以前のyabai/skhdサービスを停止：
-```bash
-# yabaiサービス停止
-brew services stop yabai
-brew services stop skhd
+**✅ 自動実行される内容**:
+- yabai, skhdの自動削除
+- AeroSpaceの自動インストール
+- tapの自動変更（koekeishiya/formulae → nikitabobko/tap）
+- 設定ファイルの自動配置
 
-# AeroSpace起動
-brew services start aerospace
+### 2. AeroSpace起動
+```bash
+# AeroSpaceアプリケーション起動
+open /Applications/AeroSpace.app
+
+# または、システム起動時自動起動が有効化済み
 ```
 
 ### 3. 設定確認
