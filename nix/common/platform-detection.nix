@@ -23,6 +23,6 @@ rec {
     useHomeManager = !isDarwin;  # Darwin uses nix-darwin
   };
   
-  # Filter packages for platform compatibility
-  filterForPlatform = packages: packages;
+  # Filter packages for platform compatibility (non-function for JSON compatibility)
+  filterForPlatformEnabled = true;
 }

@@ -3,7 +3,7 @@
 
 {
   # Server-focused packages (no GUI)
-  home.packages = with pkgs; platformInfo.filterForPlatform [
+  home.packages = with pkgs; [
     # Server administration
     openssh
     rsync

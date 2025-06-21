@@ -1,0 +1,24 @@
+# Ruby Gems configuration for Nix integration
+# This file configures gem installation behavior
+
+# Don't install documentation (faster installs)
+gem: --no-document
+
+# Use specific gem home for better organization
+# (Will be set via environment variables)
+
+# Gem sources (default registry)
+:sources:
+- https://rubygems.org/
+
+# Installation settings
+:bulk_threshold: 1000
+:verbose: false
+:update_sources: true
+:backtrace: false
+
+# SSL settings
+:ssl_verify_mode: 1
+
+# Benchmark settings
+:benchmark: false
