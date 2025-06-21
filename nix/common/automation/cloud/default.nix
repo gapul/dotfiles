@@ -60,7 +60,7 @@ in
 
   config = mkIf cfg.enable {
     # Core cloud tools
-    home-manager.users.yuki.home.packages = with pkgs; [
+    home.packages = with pkgs; [
       # Universal tools
       curl
       jq
@@ -101,7 +101,7 @@ in
     ];
 
     # AWS configuration
-    home-manager.users.yuki.home.file.".aws/config.template" = mkIf cfg.awsSupport {
+    home.file.".aws/config.template" = mkIf cfg.awsSupport {
       text = ''
         # AWS CLI configuration template
         # Copy to ~/.aws/config and customize
@@ -135,7 +135,7 @@ in
     };
 
     # GCP configuration
-    home-manager.users.yuki.home.file.".config/gcloud/configurations/config_default.template" = mkIf cfg.gcpSupport {
+    home.file.".config/gcloud/configurations/config_default.template" = mkIf cfg.gcpSupport {
       text = ''
         # Google Cloud SDK configuration template
         [core]
@@ -153,7 +153,7 @@ in
     };
 
     # Shell aliases for cloud tools
-    home-manager.users.yuki.programs.zsh.shellAliases = {
+    programs.zsh.shellAliases = {
       # AWS shortcuts
       aws-whoami = mkIf cfg.awsSupport "aws sts get-caller-identity";
       aws-regions = mkIf cfg.awsSupport "aws ec2 describe-regions --query 'Regions[].RegionName' --output table";
@@ -173,7 +173,7 @@ in
     };
 
     # Cloud management scripts
-    home-manager.users.yuki.home.file."bin/cloud-check-status" = {
+    home.file."bin/cloud-check-status" = {
       executable = true;
       text = ''
         #!/usr/bin/env bash
@@ -285,7 +285,7 @@ in
     };
 
     # Cloud cost management script
-    home-manager.users.yuki.home.file."bin/cloud-costs" = mkIf cfg.costManagement {
+    home.file."bin/cloud-costs" = mkIf cfg.costManagement {
       executable = true;
       text = ''
         #!/usr/bin/env bash
@@ -372,7 +372,7 @@ in
     };
 
     # Cloud security scanner
-    home-manager.users.yuki.home.file."bin/cloud-security-scan" = mkIf cfg.securityTools {
+    home.file."bin/cloud-security-scan" = mkIf cfg.securityTools {
       executable = true;
       text = ''
         #!/usr/bin/env bash
@@ -514,7 +514,7 @@ in
     };
 
     # Shell functions for cloud management
-    home-manager.users.yuki.programs.zsh.initContent = ''
+    programs.zsh.initContent = ''
       # AWS profile switching
       aws-profile() {
         if [[ -z "''${1:-}" ]]; then

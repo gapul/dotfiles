@@ -92,7 +92,7 @@ in
     ] ++ optionals cfg.ansibleSupport [
       ansible
       ansible-lint
-      ansible-core
+      # ansible-core  # Conflicts with ansible on some platforms
     ] ++ optionals cfg.pulumiaSupport [
       pulumi
       pulumictl

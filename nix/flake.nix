@@ -2,6 +2,12 @@
 # Supports: macOS (nix-darwin), Linux (NixOS + non-NixOS), WSL, Android (nix-on-droid)
 {
   description = "Cross-platform dotfiles configuration supporting macOS, Linux, WSL, and Android";
+  
+  # Specify supported flake outputs to avoid warnings
+  nixConfig = {
+    extra-platforms = "x86_64-darwin aarch64-darwin x86_64-linux aarch64-linux";
+    extra-substituters = "https://cache.nixos.org";
+  };
 
   inputs = {
     # Core inputs
@@ -71,7 +77,48 @@
           # ./common/home/shell.nix  # Moved to home-manager.users configuration below
           # ./common/themes/default.nix  # Temporarily disabled due to home-manager context issues  
           ./common/development/default.nix  # Re-enabled successfully
-          # ./common/automation/default.nix  # Temporarily disabled due to package compatibility issues
+          ./common/performance/default.nix  # Phase 5: Performance optimization system
+          ./common/security/enterprise.nix  # Phase 5: Enterprise security system
+          ./common/security/policies.nix    # Phase 5: Security policies and compliance
+          ./common/universal/platform-integration.nix  # Phase 5: Universal platform integration
+          ./common/testing/phase5-integration.nix  # Phase 5: Integrated testing and documentation
+          ./common/system/darwin-fixes.nix  # Fix nix-darwin warnings
+          ({ lib, ... }: { 
+            # Enable AI-powered development profile for Phase 5
+            dotfiles.development.enable = lib.mkForce true;
+            dotfiles.development.profile = lib.mkForce "ai-powered";
+            
+            # Enable performance optimization system
+            dotfiles.performance.enable = lib.mkForce true;
+            dotfiles.performance.parallelJobs = 8;
+            dotfiles.performance.maxMemory = "8G";
+            
+            # Enable enterprise security system
+            dotfiles.security.enterprise.enable = lib.mkForce true;
+            dotfiles.security.enterprise.securityLevel = "high";
+            dotfiles.security.enterprise.auditLogRetention = 90;
+            
+            # Enable security policies and compliance
+            dotfiles.security.policies.enable = lib.mkForce true;
+            dotfiles.security.policies.complianceFramework = "soc2";
+            
+            # Enable universal platform integration
+            dotfiles.universal.platform.enable = lib.mkForce true;
+            dotfiles.universal.platform.supportedPlatforms = [ "darwin" "linux" "wsl" "android" "freebsd" "windows" "raspberrypi" "cloud" ];
+            
+            # Enable Phase 5 integrated testing and documentation system
+            dotfiles.testing.phase5.enable = lib.mkForce true;
+            dotfiles.testing.phase5.testingFramework = "comprehensive";
+            dotfiles.testing.phase5.documentationLevel = "full";
+            dotfiles.testing.phase5.performanceBenchmarks = true;
+            dotfiles.testing.phase5.securityValidation = true;
+            dotfiles.testing.phase5.aiIntegrationTests = true;
+            dotfiles.testing.phase5.universalPlatformTests = true;
+            dotfiles.testing.phase5.automatedQualityAssurance = true;
+            dotfiles.testing.phase5.regressionTesting = true;
+            dotfiles.testing.phase5.reportGeneration = true;
+          })
+          # ./common/automation/default.nix  # Move to home-manager context below
           ./darwin/system/default.nix
           sops-nix.darwinModules.sops
           { nixpkgs.config.allowUnfree = true; }
@@ -83,8 +130,18 @@
               backupFileExtension = "backup";
               # Minimal user configuration to test basic functionality
               users.${username} = { config, lib, pkgs, ... }: {
+                # Import automation modules in home-manager context
+                imports = [
+                  ./common/automation/default.nix
+                ];
+                
+                # Enable automation modules
+                dotfiles.automation.enable = true;
+                dotfiles.automation.profile = "enterprise";
+                dotfiles.automation.multiEnvironment = true;
+                
                 # Basic home manager configuration
-                home.username = lib.mkForce "Yuki";  # Force actual macOS username to resolve conflicts
+                home.username = lib.mkForce "yuki";  # Force actual macOS username to resolve conflicts
                 home.homeDirectory = lib.mkForce "/Users/yuki";
                 home.stateVersion = "23.11";
                 
@@ -138,6 +195,9 @@
                   enableZshIntegration = true;
                   nix-direnv.enable = true;
                 };
+                
+                # AeroSpace configuration
+                home.file.".config/aerospace/aerospace.toml".source = ../configs/aerospace/aerospace.toml;
                 
                 # Enable home-manager management
                 programs.home-manager.enable = true;
@@ -267,6 +327,18 @@
         nixpkgs.legacyPackages.${system}.nixpkgs-fmt
       );
       
+      # Platform information as packages output (standard flake output)
+      packages = flake-utils.lib.eachDefaultSystemMap (system:
+        let
+          lib = nixpkgs.lib;
+          pkgs = nixpkgs.legacyPackages.${system};
+          platformInfo = import ./common/platform-detection.nix { inherit lib pkgs; };
+        in {
+          # Platform information package
+          platformInfo = pkgs.writeText "platform-info.json" (builtins.toJSON platformInfo);
+        }
+      );
+      
 
       
       # Documentation and examples
@@ -279,9 +351,15 @@
               #!/bin/bash
               echo "System: $(uname -s)"
               echo "Architecture: $(uname -m)"
-              echo "Platform: $(nix eval --raw .#platformInfo.platform)"
-              echo "Capabilities: $(nix eval --json .#platformInfo.capabilities | ${pkgs.jq}/bin/jq)"
+              echo "Platform: $(nix eval .#packages.${system}.platformInfo --apply 'info: builtins.fromJSON (builtins.readFile info)' --json 2>/dev/null | ${pkgs.jq}/bin/jq -r .platform || echo "unknown")"
+              echo "Capabilities:"
+              nix eval .#packages.${system}.platformInfo --apply 'info: builtins.fromJSON (builtins.readFile info)' --json 2>/dev/null | ${pkgs.jq}/bin/jq -r .capabilities || echo "{}"
             ''}";
+            meta = {
+              description = "Detect current platform and display system information";
+              longDescription = "Utility to detect the current platform (Darwin, Linux, WSL, Android) and display system capabilities";
+              license = "MIT";
+            };
           };
           
           # Comprehensive setup utility (replaces install.sh/setup.sh)
@@ -370,6 +448,11 @@
                 exit 1
               fi
             ''}";
+            meta = {
+              description = "Comprehensive system setup utility for multi-platform dotfiles";
+              longDescription = "Automated setup script that detects the current platform and installs the appropriate configuration";
+              license = "MIT";
+            };
           };
           
           # Quick install wrapper
@@ -380,6 +463,11 @@
               echo "🔄 Redirecting to setup..."
               exec nix run .#setup
             ''}";
+            meta = {
+              description = "Quick install wrapper that redirects to the comprehensive setup utility";
+              longDescription = "Convenience wrapper for the setup command, provides backward compatibility";
+              license = "MIT";
+            };
           };
           
           # System analyzer (replaces scripts/system-analyzer.sh)
@@ -593,6 +681,11 @@
                   ;;
               esac
             ''}";
+            meta = {
+              description = "System analyzer for comprehensive dotfiles analysis and optimization";
+              longDescription = "Analyzes Nix configuration, package usage, and system optimization opportunities";
+              license = "MIT";
+            };
           };
           
           # System health check
@@ -633,6 +726,11 @@
               
               echo "✅ Health check completed"
             ''}";
+            meta = {
+              description = "System health check utility for Nix environment validation";
+              longDescription = "Validates Nix store health, configuration syntax, and overall system status";
+              license = "MIT";
+            };
           };
         }
       );
