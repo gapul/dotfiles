@@ -2,6 +2,12 @@
 # Supports: macOS (nix-darwin), Linux (NixOS + non-NixOS), WSL, Android (nix-on-droid)
 {
   description = "Cross-platform dotfiles configuration supporting macOS, Linux, WSL, and Android";
+  
+  # Specify supported flake outputs to avoid warnings
+  nixConfig = {
+    extra-platforms = "x86_64-darwin aarch64-darwin x86_64-linux aarch64-linux";
+    extra-substituters = "https://cache.nixos.org";
+  };
 
   inputs = {
     # Core inputs
@@ -318,12 +324,16 @@
         nixpkgs.legacyPackages.${system}.nixpkgs-fmt
       );
       
-      # Platform information (fix missing platformInfo)
-      platformInfo = flake-utils.lib.eachDefaultSystemMap (system:
+      # Platform information as packages output (standard flake output)
+      packages = flake-utils.lib.eachDefaultSystemMap (system:
         let
           lib = nixpkgs.lib;
           pkgs = nixpkgs.legacyPackages.${system};
-        in import ./common/platform-detection.nix { inherit lib pkgs; }
+          platformInfo = import ./common/platform-detection.nix { inherit lib pkgs; };
+        in {
+          # Platform information package
+          platformInfo = pkgs.writeText "platform-info.json" (builtins.toJSON platformInfo);
+        }
       );
       
 
@@ -338,9 +348,15 @@
               #!/bin/bash
               echo "System: $(uname -s)"
               echo "Architecture: $(uname -m)"
-              echo "Platform: $(nix eval --raw .#platformInfo.platform)"
-              echo "Capabilities: $(nix eval --json .#platformInfo.capabilities | ${pkgs.jq}/bin/jq)"
+              echo "Platform: $(nix eval .#packages.${system}.platformInfo --apply 'info: builtins.fromJSON (builtins.readFile info)' --json 2>/dev/null | ${pkgs.jq}/bin/jq -r .platform || echo "unknown")"
+              echo "Capabilities:"
+              nix eval .#packages.${system}.platformInfo --apply 'info: builtins.fromJSON (builtins.readFile info)' --json 2>/dev/null | ${pkgs.jq}/bin/jq -r .capabilities || echo "{}"
             ''}";
+            meta = {
+              description = "Detect current platform and display system information";
+              longDescription = "Utility to detect the current platform (Darwin, Linux, WSL, Android) and display system capabilities";
+              license = "MIT";
+            };
           };
           
           # Comprehensive setup utility (replaces install.sh/setup.sh)
@@ -429,6 +445,11 @@
                 exit 1
               fi
             ''}";
+            meta = {
+              description = "Comprehensive system setup utility for multi-platform dotfiles";
+              longDescription = "Automated setup script that detects the current platform and installs the appropriate configuration";
+              license = "MIT";
+            };
           };
           
           # Quick install wrapper
@@ -439,6 +460,11 @@
               echo "🔄 Redirecting to setup..."
               exec nix run .#setup
             ''}";
+            meta = {
+              description = "Quick install wrapper that redirects to the comprehensive setup utility";
+              longDescription = "Convenience wrapper for the setup command, provides backward compatibility";
+              license = "MIT";
+            };
           };
           
           # System analyzer (replaces scripts/system-analyzer.sh)
@@ -652,6 +678,11 @@
                   ;;
               esac
             ''}";
+            meta = {
+              description = "System analyzer for comprehensive dotfiles analysis and optimization";
+              longDescription = "Analyzes Nix configuration, package usage, and system optimization opportunities";
+              license = "MIT";
+            };
           };
           
           # System health check
@@ -692,6 +723,11 @@
               
               echo "✅ Health check completed"
             ''}";
+            meta = {
+              description = "System health check utility for Nix environment validation";
+              longDescription = "Validates Nix store health, configuration syntax, and overall system status";
+              license = "MIT";
+            };
           };
         }
       );
