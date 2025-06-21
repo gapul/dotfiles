@@ -10,76 +10,76 @@ let
     # Web Development
     typescript = {
       package = pkgs.nodePackages.typescript-language-server;
-      command = "typescript-language-server";
+      command = "ts_ls";  # lspconfig name (updated)
       filetypes = [ "typescript" "javascript" "typescriptreact" "javascriptreact" ];
     };
     
     html = {
       package = pkgs.vscode-langservers-extracted;
-      command = "vscode-html-language-server";
+      command = "html";  # lspconfig name
       filetypes = [ "html" ];
     };
     
     css = {
       package = pkgs.vscode-langservers-extracted;
-      command = "vscode-css-language-server";
+      command = "cssls";  # lspconfig name
       filetypes = [ "css" "scss" "sass" "less" ];
     };
     
     json = {
       package = pkgs.vscode-langservers-extracted;
-      command = "vscode-json-language-server";
+      command = "jsonls";  # lspconfig name
       filetypes = [ "json" "jsonc" ];
     };
     
     # Systems Programming
     rust = {
       package = pkgs.rust-analyzer;
-      command = "rust-analyzer";
+      command = "rust_analyzer";  # lspconfig name
       filetypes = [ "rust" ];
     };
     
     go = {
       package = pkgs.gopls;
-      command = "gopls";
+      command = "gopls";  # lspconfig name
       filetypes = [ "go" "gomod" "gowork" ];
     };
     
     c_cpp = {
       package = pkgs.clang-tools;
-      command = "clangd";
+      command = "clangd";  # lspconfig name
       filetypes = [ "c" "cpp" "objc" "objcpp" ];
     };
     
     # Scripting Languages
     python = {
       package = pkgs.python3Packages.python-lsp-server;
-      command = "pylsp";
+      command = "pylsp";  # lspconfig name
       filetypes = [ "python" ];
     };
     
     lua = {
       package = pkgs.lua-language-server;
-      command = "lua-language-server";
+      command = "lua_ls";  # lspconfig name
       filetypes = [ "lua" ];
     };
     
     bash = {
       package = pkgs.nodePackages.bash-language-server;
-      command = "bash-language-server";
+      command = "bashls";  # lspconfig name
       filetypes = [ "sh" "bash" ];
     };
     
     # Configuration Languages
     nix = {
       package = pkgs.nil;
-      command = "nil";
+      command = "nil_ls";  # lspconfig name
       filetypes = [ "nix" ];
     };
     
     yaml = {
       package = pkgs.nodePackages.yaml-language-server;
-      command = "yaml-language-server";
+      command = "yamlls";  # lspconfig name
       filetypes = [ "yaml" "yml" ];
     };
     
@@ -355,7 +355,7 @@ in
         
         -- LSP servers configuration
         ${concatStringsSep "\n" (mapAttrsToList (name: server: ''
-          lspconfig.${server.command}:setup({
+          lspconfig['${server.command}']:setup({
             capabilities = require('cmp_nvim_lsp').default_capabilities(),
             on_attach = function(client, bufnr)
               -- Key mappings
