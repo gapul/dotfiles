@@ -184,7 +184,7 @@
                     PATH = "$HOME/.local/bin:/opt/homebrew/bin:$PATH";
                   };
                   
-                  initExtra = ''
+                  initContent = ''
                     # Atuin shell history
                     if command -v atuin &> /dev/null; then
                       eval "$(atuin init zsh)"
