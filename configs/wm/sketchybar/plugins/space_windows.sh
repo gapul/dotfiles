@@ -1,87 +1,79 @@
 #!/usr/bin/env bash
- 
-echo AEROSPACE_PREV_WORKSPACE: $AEROSPACE_PREV_WORKSPACE, \
- AEROSPACE_FOCUSED_WORKSPACE: $AEROSPACE_FOCUSED_WORKSPACE \
- SELECTED: $SELECTED \
- BG2: $BG2 \
- INFO: $INFO \
- SENDER: $SENDER \
- NAME: $NAME \
-  >> ~/aaaa
+
+set -euo pipefail
 
 source "$CONFIG_DIR/colors.sh"
 
-AEROSPACE_FOCUSED_MONITOR=$(aerospace list-monitors --focused | awk '{print $1}')
-AEROSAPCE_WORKSPACE_FOCUSED_MONITOR=$(aerospace list-workspaces --monitor focused --empty no)
-AEROSPACE_EMPTY_WORKESPACE=$(aerospace list-workspaces --monitor focused --empty)
+# キャッシュ変数
+declare -A workspace_cache
 
 reload_workspace_icon() {
-  # echo reload_workspace_icon "$@" >> ~/aaaa
-  apps=$(aerospace list-windows --workspace "$@" | awk -F'|' '{gsub(/^ *| *$/, "", $2); print $2}')
-
-  icon_strip=" "
-  if [ "${apps}" != "" ]; then
-    while read -r app
-    do
-      icon_strip+=" $($CONFIG_DIR/plugins/icon_map.sh "$app")"
-    done <<< "${apps}"
+  local workspace=$1
+  
+  # キャッシュ確認（1秒間有効）
+  local cache_key="ws_${workspace}"
+  local current_time
+  current_time=$(date +%s)
+  if [[ -n "${workspace_cache[$cache_key]:-}" ]] && [[ $current_time -lt ${workspace_cache[$cache_key]} ]]; then
+    return
+  fi
+  
+  # 一度のコマンドで必要な情報を取得（タイムアウト対策）
+  local apps_raw
+  apps_raw=$(timeout 3 aerospace list-windows --workspace "$workspace" 2>/dev/null | awk -F'|' '{gsub(/^ *| *$/, "", $2); print $2}' || echo "")
+  
+  local icon_strip=" "
+  if [[ -n "$apps_raw" ]]; then
+    # バッチ処理でアイコンマッピング
+    while IFS= read -r app; do
+      [[ -n "$app" ]] && icon_strip+=" $("$CONFIG_DIR"/plugins/icon_map.sh "$app")"
+    done <<< "$apps_raw"
   else
     icon_strip=" —"
   fi
-
-  sketchybar --animate sin 10 --set space.$@ label="$icon_strip"
+  
+  sketchybar --animate sin 10 --set space."$workspace" label="$icon_strip"
+  
+  # 1秒間キャッシュ
+  workspace_cache[$cache_key]=$((current_time + 1))
 }
 
-if [ "$SENDER" = "aerospace_workspace_change" ]; then
-
-  # if [ $i = "$FOCUSED_WORKSPACE" ]; then
-  #   sketchybar --set space.$FOCUSED_WORKSPACE background.drawing=on
-  # else
-  #   sketchybar --set space.$FOCUSED_WORKSPACE background.drawing=off
-  # fi
-  #echo 'space_windows_change: '$AEROSPACE_FOCUSED_WORKSPACE >> ~/aaaa
-  #echo space: $space >> ~/aaaa
-  #space="$(echo "$INFO" | jq -r '.space')"
-  #apps="$(echo "$INFO" | jq -r '.apps | keys[]')"
-  # apps=$(aerospace list-windows --workspace $AEROSPACE_FOCUSED_WORKSPACE | awk -F'|' '{gsub(/^ *| *$/, "", $2); print $2}')
-  #
-  # icon_strip=" "
-  # if [ "${apps}" != "" ]; then
-  #   while read -r app
-  #   do
-  #     icon_strip+=" $($CONFIG_DIR/plugins/icon_map.sh "$app")"
-  #   done <<< "${apps}"
-  # else
-  #   icon_strip=" —"
-  # fi
-
-  reload_workspace_icon "$AEROSPACE_PREV_WORKSPACE"
-  reload_workspace_icon "$AEROSPACE_FOCUSED_WORKSPACE"
-
-  #sketchybar --animate sin 10 --set space.$space label="$icon_strip"
-
-  # current workspace space border color
-  sketchybar --set space.$AEROSPACE_FOCUSED_WORKSPACE icon.highlight=true \
-                         label.highlight=true \
-                         background.border_color=$GREY
-
-  # prev workspace space border color
-  sketchybar --set space.$AEROSPACE_PREV_WORKSPACE icon.highlight=false \
-                         label.highlight=false \
-                         background.border_color=$BACKGROUND_2
-
-  # if [ "$AEROSPACE_FOCUSED_WORKSPACE" -gt 3 ]; then
-  #   sketchybar --animate sin 10 --set space.$AEROSPACE_FOCUSED_WORKSPACE display=1
-  # fi
-  ## focused 된 모니터에 space 상태 보이게 설정
-  for i in $AEROSAPCE_WORKSPACE_FOCUSED_MONITOR; do
-    sketchybar --set space.$i display=$AEROSPACE_FOCUSED_MONITOR
-  done
-
-  for i in $AEROSPACE_EMPTY_WORKESPACE; do
-    sketchybar --set space.$i display=0
-  done
-
-  sketchybar --set space.$AEROSPACE_FOCUSED_WORKSPACE display=$AEROSPACE_FOCUSED_MONITOR
-
+if [[ "$SENDER" = "aerospace_workspace_change" ]]; then
+  # 必要な情報を一度に取得（タイムアウト対策）
+  AEROSPACE_FOCUSED_MONITOR=$(timeout 3 aerospace list-monitors --focused 2>/dev/null | awk '{print $1}' || echo "1")
+  AEROSAPCE_WORKSPACE_FOCUSED_MONITOR=$(timeout 3 aerospace list-workspaces --monitor focused --empty no 2>/dev/null || echo "")
+  AEROSPACE_EMPTY_WORKESPACE=$(timeout 3 aerospace list-workspaces --monitor focused --empty 2>/dev/null || echo "")
+  
+  # 並列処理でワークスペースアイコンを更新
+  {
+    reload_workspace_icon "$AEROSPACE_PREV_WORKSPACE" &
+    reload_workspace_icon "$AEROSPACE_FOCUSED_WORKSPACE" &
+    wait
+  }
+  
+  # sketchybar更新（個別実行）
+  sketchybar --set space."$AEROSPACE_FOCUSED_WORKSPACE" \
+    icon.highlight=true \
+    label.highlight=true \
+    background.border_color="$GREY"
+  
+  sketchybar --set space."$AEROSPACE_PREV_WORKSPACE" \
+    icon.highlight=false \
+    label.highlight=false \
+    background.border_color="$BACKGROUND_2"
+  
+  # 必要時のみワークスペース表示状態を更新
+  if [[ -n "${AEROSAPCE_WORKSPACE_FOCUSED_MONITOR:-}" ]]; then
+    for i in $AEROSAPCE_WORKSPACE_FOCUSED_MONITOR; do
+      sketchybar --set space."$i" display="$AEROSPACE_FOCUSED_MONITOR"
+    done
+  fi
+  
+  if [[ -n "${AEROSPACE_EMPTY_WORKESPACE:-}" ]]; then
+    for i in $AEROSPACE_EMPTY_WORKESPACE; do
+      sketchybar --set space."$i" display=0
+    done
+  fi
+  
+  sketchybar --set space."$AEROSPACE_FOCUSED_WORKSPACE" display="$AEROSPACE_FOCUSED_MONITOR"
 fi

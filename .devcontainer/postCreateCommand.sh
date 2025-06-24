@@ -235,7 +235,7 @@ log_success "Claude CLI インストール完了"
 
 # 6. シェル設定反映
 log_info "シェル設定反映"
-sudo chsh -s $(which zsh) vscode
+sudo chsh -s "$(which zsh)" vscode
 log_success "デフォルトシェルをzshに変更"
 
 # 7. 開発環境ヘルスチェック
