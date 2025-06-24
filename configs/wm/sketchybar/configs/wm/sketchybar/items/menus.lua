@@ -61,13 +61,24 @@ menu_watcher:subscribe("front_app_switched", update_menus)
 space_menu_swap:subscribe("swap_menus_and_spaces", function(env)
   local drawing = menu_items[1]:query().geometry.drawing == "on"
   if drawing then
+    -- Hide menus, show aerospace workspaces
     menu_watcher:set( { updates = false })
     sbar.set("/menu\\..*/", { drawing = false })
-    sbar.set("/space\\..*/", { drawing = true })
+    -- Trigger aerospace workspace change to show active workspaces
+    sbar.exec("aerospace list-workspaces --focused", function(focused_workspace)
+      if focused_workspace and focused_workspace ~= "" then
+        focused_workspace = focused_workspace:gsub("^%s*(.-)%s*$", "%1")
+        sbar.trigger("aerospace_workspace_change", { AEROSPACE_FOCUSED_WORKSPACE = focused_workspace })
+      end
+    end)
     sbar.set("front_app", { drawing = true })
   else
+    -- Hide workspaces, show menus
     menu_watcher:set( { updates = true })
-    sbar.set("/space\\..*/", { drawing = false })
+    -- Hide all workspace items
+    for _, workspace_id in pairs({"1", "2", "3", "4", "5", "6", "7", "8"}) do
+      sbar.set("space." .. workspace_id, { drawing = false })
+    end
     sbar.set("front_app", { drawing = false })
     update_menus()
   end
