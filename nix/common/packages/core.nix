@@ -48,6 +48,10 @@ let
     zoxide   # cd replacement
     delta    # git diff tool
     
+    # Shell history and experience
+    atuin    # enhanced shell history with sync
+    fastfetch # system info display (modern neofetch)
+    
     # Development tools
     gh       # GitHub CLI
     lazygit  # Git TUI
@@ -56,6 +60,11 @@ let
     bottom   # top replacement
     procs    # ps replacement
     dust     # du replacement
+    duf      # df replacement (disk usage)
+    gdu      # enhanced du with TUI
+    
+    # File management
+    yazi     # modern file manager
     
     # Terminal multiplexer
     tmux
