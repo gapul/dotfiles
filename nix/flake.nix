@@ -145,31 +145,106 @@
                 home.homeDirectory = lib.mkForce "/Users/yuki";
                 home.stateVersion = "23.11";
                 
-                # Minimal shell configuration without complex imports
+                # Enhanced shell configuration with modern tools
                 programs.zsh = {
                   enable = true;
                   autosuggestion.enable = true;
                   syntaxHighlighting.enable = true;
                   
                   shellAliases = {
-                    ls = "eza";
-                    ll = "eza -la";
+                    # Core modern replacements
+                    ls = "eza --icons";
+                    ll = "eza -la --icons --git";
+                    la = "eza -la --icons --git";
+                    tree = "eza --tree --icons";
                     cat = "bat";
                     grep = "rg";
+                    find = "fd";
+                    ps = "procs";
+                    top = "btm";
+                    du = "dust";
+                    df = "duf";
+                    
+                    # Git shortcuts
+                    lg = "lazygit";
+                    
+                    # System info
+                    neofetch = "fastfetch";
+                    
+                    # File management
+                    fm = "yazi";
+                    
+                    # System specific
                     brew = "/opt/homebrew/bin/brew";
                   };
                   
                   sessionVariables = {
                     EDITOR = "nvim";
-                    PAGER = "less";
+                    PAGER = "bat";
                     PATH = "$HOME/.local/bin:/opt/homebrew/bin:$PATH";
                   };
+                  
+                  initContent = ''
+                    # Atuin shell history
+                    if command -v atuin &> /dev/null; then
+                      eval "$(atuin init zsh)"
+                    fi
+                    
+                    # Zoxide initialization
+                    if command -v zoxide &> /dev/null; then
+                      eval "$(zoxide init zsh)"
+                    fi
+                    
+                    # fzf configuration
+                    if command -v fzf &> /dev/null; then
+                      export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git'
+                      export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+                      export FZF_ALT_C_COMMAND="fd --type d --hidden --follow --exclude .git"
+                    fi
+                  '';
                 };
                 
-                # Starship prompt configuration (use system starship)
+                # Starship prompt configuration
                 programs.starship = {
                   enable = true;
                   enableZshIntegration = true;
+                };
+                
+                # Atuin configuration (shell history)
+                programs.atuin = {
+                  enable = true;
+                  enableZshIntegration = true;
+                  settings = {
+                    auto_sync = true;
+                    sync_frequency = "5m";
+                    search_mode = "fuzzy";
+                    filter_mode = "global";
+                    workspaces = true;
+                    secrets_filter = true;
+                    style = "compact";
+                    show_preview = true;
+                    max_preview_height = 4;
+                    sync = {
+                      records = true;
+                    };
+                  };
+                };
+                
+                # Enhanced fzf configuration
+                programs.fzf = {
+                  enable = true;
+                  enableZshIntegration = true;
+                  defaultCommand = "fd --type f --hidden --follow --exclude .git";
+                  defaultOptions = [
+                    "--height=40%"
+                    "--layout=reverse"
+                    "--border"
+                    "--preview='bat --style=numbers --color=always --line-range :500 {}'"
+                  ];
+                  historyWidgetOptions = [
+                    "--sort"
+                    "--exact"
+                  ];
                 };
                 
                 # Import core packages for user environment
