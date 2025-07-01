@@ -82,9 +82,11 @@
       # macOS specific tools
       mas  # Mac App Store CLI
       
-      # Development utilities (macOS optimized)
-      docker
-      docker-compose
+      # Development utilities (macOS optimized - Apple Container)
+      # Note: Using Apple's native container runtime for better macOS integration
+      # See: https://github.com/apple/container
+      # docker              # Replaced with Apple Container
+      # docker-compose      # Replaced with Apple Container orchestration
       
       # Secret management tools
       sops
@@ -279,7 +281,7 @@
       "material-maker"
       "virtualbox"    # VirtualBox (Apple Silicon limitations)
       "godot"         # Godot (Apple Silicon limitations)
-      "podman-desktop" # Container management
+      # "podman-desktop" # Replaced with Apple Container management
       "freecad"       # CAD software  
       "kicad"         # PCB design
       "goxel"         # Voxel editor

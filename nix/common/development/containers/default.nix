@@ -11,8 +11,14 @@ in
     
     dockerSupport = mkOption {
       type = types.bool;
+      default = false;  # Disabled in favor of Apple Container
+      description = "Enable Docker-based development containers (deprecated on macOS)";
+    };
+    
+    appleContainerSupport = mkOption {
+      type = types.bool;
       default = true;
-      description = "Enable Docker-based development containers";
+      description = "Enable Apple Container-based development containers (macOS only)";
     };
     
     podmanSupport = mkOption {
@@ -94,9 +100,9 @@ in
 
     # Development tools
     home-manager.users.yuki.home.packages = with pkgs; [
-      # Container tools
-      docker-compose
-      docker-buildx
+      # Container tools (Apple Container for macOS)
+      # docker-compose    # Replaced with Apple Container orchestration
+      # docker-buildx     # Replaced with Apple Container build tools
       
       # Development container CLI
       devcontainer
@@ -116,8 +122,11 @@ in
       # VS Code Dev Containers configuration
       (mkIf cfg.vscodeIntegration {
         ".vscode/settings.json".text = builtins.toJSON {
-          "dev.containers.dockerPath" = "${pkgs.docker}/bin/docker";
-          "dev.containers.dockerComposePath" = "${pkgs.docker-compose}/bin/docker-compose";
+          # Apple Container integration (macOS)
+          "dev.containers.containerTool" = "apple-container";
+          "dev.containers.appleContainerPath" = "/usr/local/bin/apple-container";
+          # "dev.containers.dockerPath" = "${pkgs.docker}/bin/docker";           # Disabled for Apple Container
+          # "dev.containers.dockerComposePath" = "${pkgs.docker-compose}/bin/docker-compose";  # Disabled for Apple Container
           "dev.containers.defaultExtensions" = [
             "ms-vscode-remote.remote-containers"
             "ms-vscode.vscode-json"

@@ -30,8 +30,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         
-      - name: Set up Docker Buildx
+      - name: Set up Docker Buildx (Linux)
+        if: runner.os == 'Linux'
         uses: docker/setup-buildx-action@v3
+        
+      - name: Set up Apple Container (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          # Install Apple Container if available
+          if ! command -v apple-container &> /dev/null; then
+            echo "Apple Container not available on this runner, skipping..."
+            exit 0
+          fi
         
       - name: Log in to Container Registry
         if: github.event_name != 'pull_request'
@@ -58,8 +68,9 @@ jobs:
             org.opencontainers.image.description=Complete development environment for dotfiles management
             org.opencontainers.image.vendor=gapul
             
-      - name: Build and push container image
+      - name: Build and push container image (Docker/Linux)
         id: build
+        if: runner.os == 'Linux'
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -70,6 +81,19 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          
+      - name: Build with Apple Container (macOS)
+        id: build-macos
+        if: runner.os == 'macOS'
+        run: |
+          if command -v apple-container &> /dev/null; then
+            echo "Building with Apple Container..."
+            # Apple Container build commands would go here
+            # This is a placeholder as Apple Container is not yet released
+            apple-container build -t dotfiles-dev .devcontainer/
+          else
+            echo "Apple Container not available, skipping macOS-specific build"
+          fi
           
       - name: Generate SBOM
         if: github.event_name != 'pull_request'

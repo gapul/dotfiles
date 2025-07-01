@@ -58,11 +58,16 @@ alias gc='git commit'
 alias gp='git push'
 alias gl='git log --oneline'
 
-# Docker エイリアス
-alias d='docker'
-alias dc='docker-compose'
-alias dps='docker ps'
-alias di='docker images'
+# Apple Container エイリアス (macOS native container runtime)
+alias ac='apple-container'
+alias acp='apple-container ps'
+alias aci='apple-container images'
+alias acr='apple-container run'
+# Legacy Docker aliases (commented out for Apple Container migration)
+# alias d='docker'
+# alias dc='docker-compose' 
+# alias dps='docker ps'
+# alias di='docker images'
 
 # Neovim エイリアス
 alias v='nvim'
