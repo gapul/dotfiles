@@ -285,6 +285,7 @@
       "goxel"         # Voxel editor
       
       # Creative & Design (macOS-specific versions only)
+      "figma"         # Design and prototyping tool
       "gimp"          # GNU Image Manipulation Program
       "krita"
       "blender"
