@@ -508,6 +508,14 @@ with lib;
             ;;
             
           "summary")
+            # Initialize variables for summary
+            TIME_PERIOD="''${TIME_PERIOD:-unknown}"
+            WORK_TIME="''${WORK_TIME:-unknown}"
+            LOCATION_TYPE="''${LOCATION_TYPE:-unknown}"
+            SITUATION="''${SITUATION:-unknown}"
+            ACTIVITY_LEVEL="''${ACTIVITY_LEVEL:-unknown}"
+            CONNECTIVITY="''${CONNECTIVITY:-unknown}"
+            
             echo "📋 Environment Summary:"
             echo "  ⏰ Time: $TIME_PERIOD ($WORK_TIME)"
             echo "  📍 Location: $LOCATION_TYPE"
@@ -592,7 +600,7 @@ EOF
           echo "  context-learn-location home"
           echo "  context-learn-location office add"
           echo "  context-learn-location cafe"
-          echo "  context-learn-location '' list"
+          echo "  context-learn-location \"\" list"
           exit 1
         fi
         
