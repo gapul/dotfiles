@@ -279,6 +279,12 @@
                 # AeroSpace configuration
                 home.file.".config/aerospace/aerospace.toml".source = ../configs/wm/aerospace/aerospace.toml;
                 
+                # SketchyBar configuration
+                home.file.".config/sketchybar" = {
+                  source = ../configs/wm/sketchybar;
+                  recursive = true;
+                };
+                
                 # Enable home-manager management
                 programs.home-manager.enable = true;
               };
