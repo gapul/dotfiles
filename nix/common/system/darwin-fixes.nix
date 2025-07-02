@@ -31,9 +31,18 @@ with lib;
     # Reduce verbosity for common operations
     warn-dirty = false;
     
+    # Allow dirty git trees (development environment)
+    allow-dirty = true;
+    
     # Improve build isolation
     sandbox = mkDefault true;
+    
+    # Disable deprecated channels in favor of flakes
+    use-registries = false;
   };
+  
+  # Disable legacy channel configuration to prevent warnings
+  nix.channel.enable = mkDefault false;
   
   # Ensure proper file permissions
   system.activationScripts.fixPermissions = {

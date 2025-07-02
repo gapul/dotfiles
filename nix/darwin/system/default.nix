@@ -246,6 +246,8 @@
       autoUpdate = false;
       cleanup = "zap";
       upgrade = false;
+      # Continue even if some operations fail
+      extraFlags = [ "--verbose" "--force" ];
     };
     
     taps = [

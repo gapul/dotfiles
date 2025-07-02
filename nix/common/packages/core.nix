@@ -37,8 +37,8 @@ let
     gnutar
   ];
 
-  # Modern CLI replacements (when available)
-  modernTools = with pkgs; lib.optionals (!(platformInfo.capabilities.limitedPackages or false)) [
+  # Modern CLI replacements (capability-aware)
+  modernTools = with pkgs; lib.optionals (!((platformInfo.capabilities.limitedPackages or false) || (platformInfo.capabilities.limitedResources or false))) [
     # Modern replacements
     eza      # ls replacement
     bat      # cat replacement  
@@ -74,8 +74,8 @@ let
     direnv   # environment management
   ];
 
-  # Development languages and runtimes
-  devTools = with pkgs; lib.optionals (platformInfo.capabilities.canInstallPackages or true) [
+  # Development languages and runtimes (capability-aware)
+  devTools = with pkgs; lib.optionals (platformInfo.capabilities.supportsFullDevEnvironment or true) [
     # Python runtime only (packages managed via project shells to avoid conflicts)
     python3
     # Python packages will be managed via python3.withPackages in project-specific shells
@@ -140,34 +140,89 @@ let
     # Note: Some packages may need to be installed via npm if not available in nixpkgs
   ];
 
-  # Platform-specific core packages
+  # Platform-specific packages (enhanced detection)
   platformSpecific = 
-    if (platformInfo.platform or "unknown") == "darwin" then with pkgs; [
+    if (lib.hasPrefix "darwin" (platformInfo.platform or "unknown")) then with pkgs; [
       # macOS specific tools
       coreutils-prefixed  # GNU coreutils with g prefix
-      
+      mas                 # Mac App Store CLI
+    ] ++ lib.optionals (platformInfo.optimizations.maxMemoryMB or 4096 > 8000) [
+      # Apple Silicon optimized tools
     ] else if (platformInfo.platform or "unknown") == "android" then with pkgs; [
-      # Android/Termux specific
+      # Android/Termux specific lightweight tools
       openssh
-      
+      rsync
+      busybox  # Space-efficient utilities
+    ] else if (platformInfo.platform or "unknown") == "wsl" then with pkgs; [
+      # WSL specific tools
+      openssh
+      rsync
+      wslu  # WSL utilities
+    ] else if (platformInfo.platform or "unknown") == "nixos" then with pkgs; [
+      # NixOS specific system tools
+      openssh
+      rsync
+      systemd
     ] else with pkgs; [
-      # Linux/WSL specific
+      # Generic Linux tools
       openssh
       rsync
     ];
 
-in {
-  # Export package lists
-  packages = (platformInfo.filterForPlatform or (x: x)) (
-    corePackages ++ 
-    modernTools ++ 
-    devTools ++ 
-    platformSpecific
+  # GUI applications (only where supported)
+  guiApplications = with pkgs; lib.optionals (platformInfo.capabilities.hasGUI or false) [
+    # Only install GUI apps where they're supported
+  ];
+  
+  # Heavy development tools (resource-aware)
+  heavyDevTools = with pkgs; lib.optionals (!(platformInfo.capabilities.limitedResources or false)) (
+    [
+      docker
+      docker-compose
+      # These are excluded on resource-limited platforms like Android
+    ] ++ lib.optionals (!(platformInfo.isDarwin or false)) [
+      # Linux-only tools
+      kubernetes
+    ]
   );
+
+in {
+  # Export package lists with intelligent filtering
+  packages = 
+    let 
+      allPackages = corePackages ++ modernTools ++ devTools ++ platformSpecific ++ guiApplications ++ heavyDevTools;
+      # Apply platform-specific filtering if available
+      filtered = if (platformInfo.filterForPlatform or null) != null 
+                 then platformInfo.filterForPlatform allPackages
+                 else allPackages;
+    in filtered;
   
   # Categorized for selective inclusion
   coreTools = corePackages;
   modernTools = modernTools;
   developmentTools = devTools;
-  platformSpecific = platformSpecific;
+  platformTools = platformSpecific;
+  guiTools = guiApplications;
+  heavyTools = heavyDevTools;
+  
+  # Platform capability summary for debugging
+  platformSummary = 
+    let 
+      allPackages = corePackages ++ modernTools ++ devTools ++ platformSpecific ++ guiApplications ++ heavyDevTools;
+      filtered = if (platformInfo.filterForPlatform or null) != null 
+                 then platformInfo.filterForPlatform allPackages
+                 else allPackages;
+    in {
+      platform = platformInfo.platform or "unknown";
+      capabilities = platformInfo.capabilities or {};
+      packageCount = builtins.length filtered;
+    categories = {
+      core = builtins.length corePackages;
+      modern = builtins.length modernTools;
+      development = builtins.length devTools;
+      platform = builtins.length platformSpecific;
+      gui = builtins.length guiApplications;
+      heavy = builtins.length heavyDevTools;
+    };
+  };
 }

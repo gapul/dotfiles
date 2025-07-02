@@ -74,50 +74,30 @@
         inherit system;
         specialArgs = (mkPlatformConfig system).specialArgs;
         modules = [
-          # ./common/home/shell.nix  # Moved to home-manager.users configuration below
-          # ./common/themes/default.nix  # Temporarily disabled due to home-manager context issues  
-          ./nix/common/development/default.nix  # Re-enabled successfully
-          ./nix/common/performance/default.nix  # Phase 5: Performance optimization system
-          ./nix/common/security/enterprise.nix  # Phase 5: Enterprise security system
-          ./nix/common/security/policies.nix    # Phase 5: Security policies and compliance
-          ./nix/common/universal/platform-integration.nix  # Phase 5: Universal platform integration
-          ./nix/common/testing/phase5-integration.nix  # Phase 5: Integrated testing and documentation
-          ./nix/common/system/darwin-fixes.nix  # Fix nix-darwin warnings
-          ({ lib, ... }: { 
-            # Enable AI-powered development profile for Phase 5
-            dotfiles.development.enable = lib.mkForce true;
-            dotfiles.development.profile = lib.mkForce "ai-powered";
+          # Core system modules with minimal development module for testing
+          ./nix/common/development/minimal.nix
+          ./nix/common/system/darwin-fixes.nix
+          # Performance monitoring system (Phase 1)
+          ./nix/common/performance
+          # AI Development Assistant System (Phase 2)
+          ./nix/common/ai
+          # Basic development module configuration
+          {
+            dotfiles.development.enable = true;
+            dotfiles.development.profile = "minimal";
             
-            # Enable performance optimization system
-            dotfiles.performance.enable = lib.mkForce true;
-            dotfiles.performance.parallelJobs = 8;
-            dotfiles.performance.maxMemory = "8G";
+            # Enable performance monitoring system
+            dotfiles.performance.enable = true;
+            dotfiles.performance.profile = "standard";
+            dotfiles.performance.monitoring = {
+              interval = 30;  # Collect metrics every 30 seconds
+              retention = 30; # Keep data for 30 days
+            };
             
-            # Enable enterprise security system
-            dotfiles.security.enterprise.enable = lib.mkForce true;
-            dotfiles.security.enterprise.securityLevel = "high";
-            dotfiles.security.enterprise.auditLogRetention = 90;
-            
-            # Enable security policies and compliance
-            dotfiles.security.policies.enable = lib.mkForce true;
-            dotfiles.security.policies.complianceFramework = "soc2";
-            
-            # Enable universal platform integration
-            dotfiles.universal.platform.enable = lib.mkForce true;
-            dotfiles.universal.platform.supportedPlatforms = [ "darwin" "linux" "wsl" "android" "freebsd" "windows" "raspberrypi" "cloud" ];
-            
-            # Enable Phase 5 integrated testing and documentation system
-            dotfiles.testing.phase5.enable = lib.mkForce true;
-            dotfiles.testing.phase5.testingFramework = "comprehensive";
-            dotfiles.testing.phase5.documentationLevel = "full";
-            dotfiles.testing.phase5.performanceBenchmarks = true;
-            dotfiles.testing.phase5.securityValidation = true;
-            dotfiles.testing.phase5.aiIntegrationTests = true;
-            dotfiles.testing.phase5.universalPlatformTests = true;
-            dotfiles.testing.phase5.automatedQualityAssurance = true;
-            dotfiles.testing.phase5.regressionTesting = true;
-            dotfiles.testing.phase5.reportGeneration = true;
-          })
+            # AI Development Assistant integration (minimal configuration for testing)
+            dotfiles.ai.enable = true;
+            dotfiles.ai.profile = "minimal"; # minimal, standard, comprehensive, enterprise
+          }
           # ./common/automation/default.nix  # Move to home-manager context below
           ./nix/darwin/system/default.nix
           sops-nix.darwinModules.sops
@@ -133,13 +113,18 @@
                 # Import core home-manager modules
                 imports = [
                   ./nix/common/home/shell.nix
-                  ./nix/common/automation/default.nix
                 ];
                 
-                # Enable automation modules
-                dotfiles.automation.enable = true;
-                dotfiles.automation.profile = "enterprise";
-                dotfiles.automation.multiEnvironment = true;
+                # Basic programs configuration
+                programs.git = {
+                  enable = true;
+                  userName = "yuki";
+                  userEmail = "user@example.com";
+                  extraConfig = {
+                    init.defaultBranch = "main";
+                    core.editor = "vim";
+                  };
+                };
                 
                 # Basic home manager configuration
                 home.username = lib.mkDefault "yuki";  # Use mkDefault instead of mkForce

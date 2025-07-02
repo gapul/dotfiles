@@ -43,10 +43,15 @@ rebuild:
        exit 1; \
     fi
 
-# macOS rebuild (nix-darwin) 
+# macOS rebuild (nix-darwin) - recommended method with preserved environment
 rebuild-darwin:
     @echo "🍎 Rebuilding macOS configuration..."
-    nix run nix-darwin -- switch --flake .
+    @echo "ℹ️  If you see Full Disk Access errors, please:"
+    @echo "   1. Go to System Settings → Privacy & Security → Full Disk Access"
+    @echo "   2. Add your terminal app (WezTerm, Terminal, etc.)"
+    @echo "   3. Restart terminal and try again"
+    @echo ""
+    sudo -E nix run nix-darwin -- switch --flake . --impure
 
 # macOS rebuild with sudo (warning-free)
 rebuild-darwin-sudo:
@@ -229,11 +234,11 @@ backup:
     mkdir -p "$backup_dir"; \
     echo "Backing up to: $backup_dir"; \
     if [ "$(uname -s)" = "Darwin" ]; then \
-       cp -r nix/platforms "$backup_dir/"; \
+       cp -r nix "$backup_dir/"; \
        cp -r configs "$backup_dir/" 2>/dev/null || true; \
        system_profiler SPSoftwareDataType > "$backup_dir/system-info.txt"; \
     elif [ "$(uname -s)" = "Linux" ]; then \
-       cp -r nix/platforms "$backup_dir/"; \
+       cp -r nix "$backup_dir/"; \
        cp -r configs "$backup_dir/" 2>/dev/null || true; \
        uname -a > "$backup_dir/system-info.txt"; \
        lsb_release -a >> "$backup_dir/system-info.txt" 2>/dev/null || true; \
@@ -258,7 +263,7 @@ switch-to-platforms:
     if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
        echo "🔄 Switching to platforms structure..."; \
        mv nix nix-legacy-$(date +%Y%m%d) || true; \
-       mv nix/platforms nix; \
+       mv nix nix; \
        echo "✅ Switched to multi-platform configuration"; \
        echo "Run 'just rebuild' to apply new configuration"; \
     else \
@@ -332,7 +337,7 @@ status:
     @echo ""
     @echo "📂 Configuration Status"
     @echo "======================"
-    @if [ -d "nix/platforms" ]; then \
+    @if [ -d "nix" ]; then \
        echo "✅ Multi-platform structure detected"; \
     else \
        echo "⚠️  Legacy structure detected - consider migration"; \
@@ -344,7 +349,7 @@ doctor:
     @echo "Checking Nix installation..."
     @nix --version || echo "❌ Nix not installed"
     @echo "Checking flake syntax..."
-    @cd nix/platforms && nix flake check --show-trace || echo "⚠️  Flake issues detected"
+    @nix flake check --show-trace || echo "⚠️  Flake issues detected"
     @if [ "$(uname -s)" = "Darwin" ]; then \
        echo "Checking nix-darwin..."; \
        darwin-rebuild --version || echo "❌ nix-darwin not available"; \
@@ -352,8 +357,162 @@ doctor:
        brew doctor || echo "⚠️  Homebrew issues detected"; \
     fi
     @echo "Checking home-manager..."
-    @cd nix/platforms && home-manager build --flake .#yuki@$(uname -s | tr '[:upper:]' '[:lower:]') || echo "⚠️  Home-manager configuration issues"
+    @home-manager build --flake .#yuki@$(uname -s | tr '[:upper:]' '[:lower:]') || echo "⚠️  Home-manager configuration issues"
     @echo "✅ Diagnostics completed"
+
+# Performance monitoring and analysis
+performance:
+    @echo "📊 Performance Monitoring Commands"
+    @echo "=================================="
+    @echo "just perf-status     - Show current performance status"
+    @echo "just perf-metrics    - View recent performance metrics"
+    @echo "just perf-builds     - Analyze build performance"
+    @echo "just perf-init       - Initialize performance monitoring"
+    @echo "just perf-baseline   - Establish performance baselines"
+
+# Performance monitoring commands
+perf-status:
+    @echo "📊 Current System Performance"
+    @dotfiles-view-metrics /var/lib/dotfiles-performance/metrics/performance.db 1
+
+perf-metrics:
+    @echo "📈 Performance Metrics (Last 24 hours)"
+    @dotfiles-view-metrics /var/lib/dotfiles-performance/metrics/performance.db 24
+
+perf-builds:
+    @echo "🔨 Build Performance Analysis"
+    @dotfiles-build-analysis /var/lib/dotfiles-performance/metrics/performance.db 7
+
+perf-init:
+    @echo "🚀 Initializing Performance Monitoring Database"
+    @dotfiles-init-database
+
+perf-baseline:
+    @echo "📊 Establishing Performance Baselines"
+    @dotfiles-establish-baseline
+
+perf-trends:
+    @echo "📈 Performance Trend Analysis"
+    @dotfiles-analyze-trends
+
+perf-anomalies:
+    @echo "🔍 Performance Anomaly Detection"
+    @dotfiles-detect-anomalies
+
+perf-alerts:
+    @echo "⚠️ Performance Alert Check"
+    @dotfiles-check-alerts
+
+perf-report:
+    @echo "📋 Generating Performance Report"
+    @dotfiles-generate-report weekly
+
+perf-tools:
+    @echo "🔧 Tool Performance Analysis"
+    @dotfiles-analyze-tools
+
+perf-optimize:
+    @echo "🚀 Running System Optimization"
+    @dotfiles-optimize-system
+
+perf-optimize-nix:
+    @echo "🔧 Running Nix Optimization"
+    @dotfiles-optimize-nix
+
+perf-optimize-resources:
+    @echo "📊 Running Resource Optimization"
+    @dotfiles-optimize-resources
+
+perf-tune:
+    @echo "⚙️ Generating Tuning Recommendations"
+    @dotfiles-tuning-recommendations
+
+perf-maintenance:
+    @echo "🧹 Running Database Maintenance"
+    @dotfiles-maintain-database
+
+perf-backup:
+    @echo "💾 Creating Database Backup"
+    @dotfiles-backup-database
+
+# AI Development Assistant Commands
+ai-status:
+    ai-assist status
+
+ai-commit:
+    ai-commit-message
+
+ai-review file:
+    ai-code-review {{file}}
+
+ai-test-gen file:
+    ai-test-generate {{file}}
+
+ai-docs file:
+    ai-doc-generate {{file}}
+
+ai-refactor file:
+    ai-refactor-suggest {{file}}
+
+ai-explain file line="":
+    ai-code-explain {{file}} {{line}}
+
+ai-index project=".":
+    ai-index-project {{project}}
+
+ai-query type="summary" project=".":
+    ai-query-context {{type}} {{project}}
+
+ai-perf:
+    ai-performance-tracker status
+
+# AI Workflow Commands  
+ai-pre-commit:
+    ai-pre-commit-review
+
+ai-branch type description="":
+    ai-branch-create {{type}} {{description}}
+
+ai-pr base="main":
+    ai-pr-create {{base}}
+
+ai-cicd:
+    ai-cicd-optimize
+
+ai-maintain command="health-check":
+    ai-project-maintain {{command}}
+
+ai-hooks-install:
+    #!/usr/bin/env bash
+    if [ -d ".git" ]; then
+        ln -sf ~/.local/share/dotfiles-ai/hooks/pre-commit .git/hooks/pre-commit
+        echo "✅ AI pre-commit hook installed"
+    else
+        echo "❌ Not in a git repository"
+    fi
+
+# AI Analysis Commands
+ai-analyze target="." type="comprehensive":
+    ai-analyze-code {{target}} {{type}}
+
+ai-optimize file:
+    ai-optimize-code {{file}}
+
+ai-dashboard project=".":
+    ai-quality-dashboard {{project}}
+
+ai-analysis-continuous project=".":
+    ai-continuous-analysis {{project}}
+
+# AI Context-Aware Commands
+ai-context project="." format="summary":
+    ai-detect-context {{project}} {{format}}
+
+ai-suggest action file="":
+    ai-context-suggest {{action}} {{file}}
+
+ai-workflow command="status":
+    ai-adaptive-workflow {{command}}
 
 # Information display
 info:

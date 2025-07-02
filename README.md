@@ -2,6 +2,17 @@
 
 Nix/NixOSベースのクロスプラットフォーム開発環境。macOS、Linux、WSL、Androidで統一された開発体験を提供します。
 
+## 📚 ドキュメント
+
+詳細なドキュメントは [`docs/`](docs/) ディレクトリを参照してください。
+
+- [📚 ドキュメント構造](docs/README.md) - 全体概要
+- [🚀 セットアップガイド](docs/guides/setup.md) - 基本インストール
+- [🛠️ 開発環境ガイド](docs/guides/development-environment.md) - 開発ツール設定
+- [🔧 Nix設定リファレンス](docs/reference/nix-configuration.md) - 詳細設定
+- [🌐 プラットフォーム対応](docs/reference/platform-support.md) - マルチプラットフォーム情報
+- [🔧 トラブルシューティング](docs/reference/troubleshooting.md) - 問題解決
+
 ## ✨ 特徴
 
 - **宣言的設定管理** - Nixによる再現可能な環境構築
@@ -13,19 +24,31 @@ Nix/NixOSベースのクロスプラットフォーム開発環境。macOS、Lin
 
 ```
 dotfiles/
+├── flake.nix                      # メインFlake設定（プロジェクトルート）
+├── flake.lock                     # Nix依存関係ロック
+├── justfile                       # タスクランナー設定
 ├── nix/                           # Nix設定ファイル
-│   ├── flake.nix                  # メインFlake設定
 │   ├── common/                    # 共通モジュール
-│   ├── darwin/                    # macOS設定
-│   ├── linux/                     # Linux設定  
+│   │   ├── platform-detection.nix # プラットフォーム検出
+│   │   ├── packages/              # パッケージ管理
+│   │   └── themes/                # テーマ設定
+│   ├── darwin/                    # macOS設定（nix-darwin）
+│   ├── linux/                     # Linux設定（home-manager）
 │   ├── wsl/                       # WSL設定
-│   └── android/                   # Android設定
+│   ├── android/                   # Android設定（nix-on-droid）
+│   └── security/                  # SOPS暗号化設定
 ├── configs/                       # アプリケーション設定
 │   ├── editors/nvim/              # Neovim設定
 │   ├── terminal/                  # ターミナル設定
 │   └── wm/                        # ウィンドウマネージャー設定
 ├── docs/                          # ドキュメント
-└── scripts/                       # ユーティリティスクリプト
+├── scripts/                       # ユーティリティスクリプト
+├── docs/                          # ドキュメント
+│   ├── guides/                    # セットアップガイド
+│   ├── reference/                 # APIリファレンス
+│   └── tutorials/                 # チュートリアル
+└── .github/                       # CI/CD設定
+    └── workflows/                 # GitHub Actions
 ```
 
 ## 🎯 サポートプラットフォーム
@@ -35,16 +58,29 @@ dotfiles/
 - **WSL** - Windows Subsystem for Linux
 - **Android** - Termux + nix-on-droid
 
-## 🚀 セットアップ
+## 🚀 クイックスタート
 
-### 前提条件
+> 詳細なセットアップ手順は [セットアップガイド](docs/guides/setup.md) を参照してください。
+
+### 自動インストール（推奨）
 
 ```bash
-# Nixインストール
+# Nixをインストール
 curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
+
+# dotfilesをクローン
+git clone https://github.com/gapul/dotfiles.git ~/.config/dotfiles
+cd ~/.config/dotfiles
+
+# プラットフォーム別セットアップ
+# macOS
+sudo nix run nix-darwin -- switch --flake .#default
+
+# Linux/WSL
+home-manager switch --flake .#$USER@$(uname | tr '[:upper:]' '[:lower:]')
 ```
 
-### インストール
+### メインインストール
 
 ```bash
 # リポジトリクローン
