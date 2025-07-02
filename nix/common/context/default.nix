@@ -6,6 +6,7 @@ with lib;
   imports = [
     ./detection/project.nix
     ./detection/environment.nix
+    ./detection/resources.nix
   ];
   
   options = {
@@ -24,6 +25,7 @@ with lib;
     # Enable context detection modules based on profile
     dotfiles.context.projectDetection.enable = mkDefault true;
     dotfiles.context.environmentDetection.enable = mkDefault (config.dotfiles.context.profile != "minimal");
+    dotfiles.context.resourceMonitoring.enable = mkDefault true;
     
     # Configure environment detection based on profile
     dotfiles.context.environmentDetection.timePatterns.enable = mkDefault true;
@@ -31,5 +33,13 @@ with lib;
     dotfiles.context.environmentDetection.situationDetection.enable = mkDefault (config.dotfiles.context.profile == "full");
     dotfiles.context.environmentDetection.activityTracking.enable = mkDefault (config.dotfiles.context.profile == "full");
     dotfiles.context.environmentDetection.activityTracking.privacyMode = mkDefault true;
+    
+    # Configure resource monitoring based on profile
+    dotfiles.context.resourceMonitoring.batteryMonitoring.enable = mkDefault true;
+    dotfiles.context.resourceMonitoring.cpuMonitoring.enable = mkDefault true;
+    dotfiles.context.resourceMonitoring.memoryMonitoring.enable = mkDefault true;
+    dotfiles.context.resourceMonitoring.networkMonitoring.enable = mkDefault (config.dotfiles.context.profile != "minimal");
+    dotfiles.context.resourceMonitoring.storageMonitoring.enable = mkDefault true;
+    dotfiles.context.resourceMonitoring.alerting.enable = mkDefault (config.dotfiles.context.profile == "full");
   };
 }
