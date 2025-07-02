@@ -15,14 +15,20 @@
     autosuggestion.enable = true;
     syntaxHighlighting.enable = true;
     
-    # Platform-agnostic aliases
+    # Platform-agnostic aliases with modern tools
     shellAliases = {
-      # Basic aliases (no platformInfo dependency for compatibility)
-      ls = "ls --color=auto";
-      ll = "ls -la";
-      cat = "cat";
-      find = "find";
-      grep = "grep";
+      # Core modern replacements (if available, otherwise fallback)
+      ls = "eza --icons || ls --color=auto";
+      ll = "eza -la --icons --git || ls -la";
+      la = "eza -la --icons --git || ls -la";
+      tree = "eza --tree --icons || tree";
+      cat = "bat || cat";
+      grep = "rg || grep";
+      find = "fd || find";
+      ps = "procs || ps";
+      top = "btm || top";
+      du = "dust || du";
+      df = "duf || df";
       
       # Git shortcuts
       g = "git";
@@ -31,6 +37,13 @@
       gc = "git commit";
       gp = "git push";
       gl = "git pull";
+      lg = "lazygit || git log --oneline --graph";
+      
+      # System info
+      neofetch = "fastfetch || neofetch";
+      
+      # File management
+      fm = "yazi || ranger || mc";
       
       # Directory navigation
       ".." = "cd ..";
@@ -45,13 +58,17 @@
       # Platform defaults (macOS assumed for now)
       nrs = "nix run nix-darwin -- switch --flake .";
       hms = "home-manager switch --flake .";
+      
+      # System specific (macOS)
+      brew = "/opt/homebrew/bin/brew";
     };
     
     # Environment variables (basic setup) 
     sessionVariables = lib.mkMerge [
       {
-        EDITOR = "vim";
-        PAGER = "less";
+        EDITOR = "nvim";
+        PAGER = "bat";
+        PATH = "$HOME/.local/bin:/opt/homebrew/bin:$PATH";
         DOTFILES = "${config.home.homeDirectory}/dotfiles";
         
         # Python Nix integration
@@ -97,6 +114,22 @@
     
     # Platform-specific initialization
     initContent = ''
+      # Atuin shell history (if available)
+      if command -v atuin &> /dev/null; then
+        eval "$(atuin init zsh)"
+      fi
+      
+      # Zoxide initialization (if available)
+      if command -v zoxide &> /dev/null; then
+        eval "$(zoxide init zsh)"
+      fi
+      
+      # fzf configuration (if available)
+      if command -v fzf &> /dev/null; then
+        export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git || find . -type f'
+        export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+        export FZF_ALT_C_COMMAND="fd --type d --hidden --follow --exclude .git || find . -type d"
+      fi
       
       # Universal shell functions
       function mkcd() {
@@ -230,15 +263,40 @@
   #   enableZshIntegration = true;
   # };
 
-  # FZF (fuzzy finder) - disabled for compatibility
-  # programs.fzf = {
-  #   enable = true;
-  #   enableZshIntegration = true;
-  #   defaultOptions = [
-  #     "--height 40%"
-  #     "--layout=reverse"
-  #     "--border"
-  #     "--inline-info"
-  #   ];
-  # };
+  # FZF (fuzzy finder) with enhanced configuration
+  programs.fzf = {
+    enable = true;
+    enableZshIntegration = true;
+    defaultCommand = "fd --type f --hidden --follow --exclude .git || find . -type f";
+    defaultOptions = [
+      "--height=40%"
+      "--layout=reverse"
+      "--border"
+      "--preview='bat --style=numbers --color=always --line-range :500 {} 2>/dev/null || cat {}'"
+    ];
+    historyWidgetOptions = [
+      "--sort"
+      "--exact"
+    ];
+  };
+
+  # Atuin (shell history) configuration
+  programs.atuin = {
+    enable = true;
+    enableZshIntegration = true;
+    settings = {
+      auto_sync = true;
+      sync_frequency = "5m";
+      search_mode = "fuzzy";
+      filter_mode = "global";
+      workspaces = true;
+      secrets_filter = true;
+      style = "compact";
+      show_preview = true;
+      max_preview_height = 4;
+      sync = {
+        records = true;
+      };
+    };
+  };
 }

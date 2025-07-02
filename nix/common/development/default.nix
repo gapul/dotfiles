@@ -249,10 +249,14 @@ with lib;
       '';
     };
 
-    # Git configuration enhancements
-    home-manager.users.yuki.programs.git = {
-      enable = true;
-      extraConfig = {
+    # Git configuration enhancements (only in development context)
+    home-manager.users.yuki.programs.git = lib.mkMerge [
+      {
+        userName = lib.mkDefault "gapul";
+        userEmail = lib.mkDefault "yuk8337@gmail.com";
+      }
+      {
+        extraConfig = {
         init.defaultBranch = "main";
         pull.rebase = true;
         push.autoSetupRemote = true;
@@ -299,8 +303,8 @@ with lib;
           # File operations
           ignore = "!gi() { curl -sL https://www.toptal.com/developers/gitignore/api/$@ ;}; gi";
         };
-      };
-    };
+      }
+    ];
 
     # VS Code configuration for development
     home-manager.users.yuki.home.file.".vscode/global-settings.json" = mkIf config.dotfiles.development.lsp.vscodeIntegration {

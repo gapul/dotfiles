@@ -130,8 +130,9 @@
               backupFileExtension = "backup";
               # Minimal user configuration to test basic functionality
               users.${username} = { config, lib, pkgs, ... }: {
-                # Import automation modules in home-manager context
+                # Import core home-manager modules
                 imports = [
+                  ./nix/common/home/shell.nix
                   ./nix/common/automation/default.nix
                 ];
                 
@@ -141,135 +142,17 @@
                 dotfiles.automation.multiEnvironment = true;
                 
                 # Basic home manager configuration
-                home.username = lib.mkForce "yuki";  # Force actual macOS username to resolve conflicts
-                home.homeDirectory = lib.mkForce "/Users/yuki";
+                home.username = lib.mkDefault "yuki";  # Use mkDefault instead of mkForce
+                home.homeDirectory = lib.mkDefault "/Users/yuki";
                 home.stateVersion = "23.11";
-                
-                # Enhanced shell configuration with modern tools
-                programs.zsh = {
-                  enable = true;
-                  autosuggestion.enable = true;
-                  syntaxHighlighting.enable = true;
-                  
-                  shellAliases = {
-                    # Core modern replacements
-                    ls = "eza --icons";
-                    ll = "eza -la --icons --git";
-                    la = "eza -la --icons --git";
-                    tree = "eza --tree --icons";
-                    cat = "bat";
-                    grep = "rg";
-                    find = "fd";
-                    ps = "procs";
-                    top = "btm";
-                    du = "dust";
-                    df = "duf";
-                    
-                    # Git shortcuts
-                    lg = "lazygit";
-                    
-                    # System info
-                    neofetch = "fastfetch";
-                    
-                    # File management
-                    fm = "yazi";
-                    
-                    # System specific
-                    brew = "/opt/homebrew/bin/brew";
-                  };
-                  
-                  sessionVariables = {
-                    EDITOR = "nvim";
-                    PAGER = "bat";
-                    PATH = "$HOME/.local/bin:/opt/homebrew/bin:$PATH";
-                  };
-                  
-                  initContent = ''
-                    # Atuin shell history
-                    if command -v atuin &> /dev/null; then
-                      eval "$(atuin init zsh)"
-                    fi
-                    
-                    # Zoxide initialization
-                    if command -v zoxide &> /dev/null; then
-                      eval "$(zoxide init zsh)"
-                    fi
-                    
-                    # fzf configuration
-                    if command -v fzf &> /dev/null; then
-                      export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git'
-                      export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
-                      export FZF_ALT_C_COMMAND="fd --type d --hidden --follow --exclude .git"
-                    fi
-                  '';
-                };
-                
-                # Starship prompt configuration
-                programs.starship = {
-                  enable = true;
-                  enableZshIntegration = true;
-                };
-                
-                # Atuin configuration (shell history)
-                programs.atuin = {
-                  enable = true;
-                  enableZshIntegration = true;
-                  settings = {
-                    auto_sync = true;
-                    sync_frequency = "5m";
-                    search_mode = "fuzzy";
-                    filter_mode = "global";
-                    workspaces = true;
-                    secrets_filter = true;
-                    style = "compact";
-                    show_preview = true;
-                    max_preview_height = 4;
-                    sync = {
-                      records = true;
-                    };
-                  };
-                };
-                
-                # Enhanced fzf configuration
-                programs.fzf = {
-                  enable = true;
-                  enableZshIntegration = true;
-                  defaultCommand = "fd --type f --hidden --follow --exclude .git";
-                  defaultOptions = [
-                    "--height=40%"
-                    "--layout=reverse"
-                    "--border"
-                    "--preview='bat --style=numbers --color=always --line-range :500 {}'"
-                  ];
-                  historyWidgetOptions = [
-                    "--sort"
-                    "--exact"
-                  ];
-                };
                 
                 # Import core packages for user environment
                 home.packages = let
-                  corePackages = import ./nix/common/packages/core.nix { inherit lib pkgs; platformInfo = (import ./nix/common/platform-detection.nix { inherit lib pkgs; }); };
-                in corePackages.packages;
-                
-                # Git configuration
-                programs.git = {
-                  enable = true;
-                  userName = lib.mkDefault "gapul";
-                  userEmail = lib.mkDefault "yuk8337@gmail.com";
-                  extraConfig = {
-                    init.defaultBranch = "main";
-                    pull.rebase = true;
-                    push.autoSetupRemote = true;
+                  corePackages = import ./nix/common/packages/core.nix { 
+                    inherit lib pkgs; 
+                    platformInfo = (import ./nix/common/platform-detection.nix { inherit lib pkgs; }); 
                   };
-                };
-                
-                # Direnv for development environments
-                programs.direnv = {
-                  enable = true;
-                  enableZshIntegration = true;
-                  nix-direnv.enable = true;
-                };
+                in corePackages.packages;
                 
                 # AeroSpace configuration
                 home.file.".config/aerospace/aerospace.toml".source = ./configs/wm/aerospace/aerospace.toml;
