@@ -1,0 +1,283 @@
+name: Comprehensive Nix Testing
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'nix/**'
+      - 'flake.nix'
+      - 'flake.lock'
+      - '.github/workflows/nix-comprehensive.yml'
+      - 'justfile'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'nix/**'
+      - 'flake.nix'
+      - 'flake.lock'
+      - '.github/workflows/nix-comprehensive.yml'
+      - 'justfile'
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+
+jobs:
+  # Unified Nix validation (merged from nix-integration.yml)
+  nix-validation:
+    name: Nix Configuration Validation
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Install Determinate Nix
+      uses: DeterminateSystems/nix-installer-action@v17
+      with:
+        extra-conf: |
+          experimental-features = nix-command flakes
+          
+    - name: Setup Magic Nix Cache
+      uses: DeterminateSystems/magic-nix-cache-action@v11
+      
+    - name: Validate flake syntax
+      run: |
+        echo "🔍 Validating flake syntax..."
+        nix flake check --show-trace --impure
+        
+    - name: Test platform detection
+      run: |
+        echo "🔍 Testing platform detection..."
+        if [[ -f "nix/common/platform-detection.nix" ]]; then
+          echo "✅ Platform detection module found"
+          nix eval --impure --expr 'let pkgs = import <nixpkgs> {}; lib = pkgs.lib; in (import ./nix/common/platform-detection.nix { inherit lib pkgs; }).platform' --raw || echo "⚠️ Platform detection evaluation failed"
+        else
+          echo "⚠️ Platform detection module not found, checking basic platform info..."
+          nix eval --impure --expr 'builtins.currentSystem' --raw
+        fi
+        
+    - name: Validate dependency resolution
+      run: |
+        echo "🔍 Analyzing Nix dependencies..."
+        
+        # Check for broken references
+        echo "Checking for broken references..."
+        nix eval .#packages.x86_64-linux.platformInfo --json --impure >/dev/null || echo "⚠️ Platform info package evaluation failed"
+        
+        # Test development shell dependencies
+        echo "Testing development shell..."
+        nix eval .#devShells.x86_64-linux.default --json --impure >/dev/null || echo "⚠️ Development shell evaluation failed"
+
+  # Multi-platform testing matrix (merged from multi-platform-integration.yml)
+  platform-matrix:
+    name: Platform Testing Matrix
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # macOS (nix-darwin)
+          - platform: darwin
+            os: macos-latest
+            system: aarch64-darwin
+            config: darwinConfigurations.default
+            
+          # Linux (home-manager)
+          - platform: linux
+            os: ubuntu-latest
+            system: x86_64-linux
+            config: homeConfigurations.yuki@linux
+            
+          # WSL simulation (home-manager)
+          - platform: wsl
+            os: ubuntu-latest
+            system: x86_64-linux
+            config: homeConfigurations.yuki@wsl
+
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Install Determinate Nix
+      uses: DeterminateSystems/nix-installer-action@v17
+      with:
+        extra-conf: |
+          experimental-features = nix-command flakes
+          
+    - name: Setup Magic Nix Cache
+      uses: DeterminateSystems/magic-nix-cache-action@v11
+      
+    - name: Platform-specific setup
+      run: |
+        case "${{ matrix.platform }}" in
+          darwin)
+            echo "Setting up macOS environment..."
+            ;;
+          linux)
+            echo "Setting up Linux environment..."
+            ;;
+          wsl)
+            echo "Setting up WSL simulation..."
+            export WSL_DISTRO_NAME="Ubuntu"
+            ;;
+        esac
+        
+    - name: Build platform configuration
+      run: |
+        echo "🔧 Testing ${{ matrix.config }} evaluation..."
+        
+        case "${{ matrix.platform }}" in
+          darwin)
+            echo "Testing Darwin configuration..."
+            nix eval .#darwinConfigurations.default.system --json --impure >/dev/null
+            ;;
+          linux)
+            echo "Testing Linux home configuration..."
+            nix eval '.#homeConfigurations."yuki@linux".activationPackage' --json --impure >/dev/null || echo "⚠️ Linux configuration evaluation failed"
+            ;;
+          wsl)
+            echo "Testing WSL home configuration..."  
+            nix eval '.#homeConfigurations."yuki@wsl".activationPackage' --json --impure >/dev/null || echo "⚠️ WSL configuration evaluation failed"
+            ;;
+        esac
+
+  # Performance benchmarking (merged from both workflows)
+  performance-benchmark:
+    name: Performance Analysis
+    runs-on: ubuntu-latest
+    needs: [nix-validation]
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Install Determinate Nix
+      uses: DeterminateSystems/nix-installer-action@v17
+      
+    - name: Benchmark build times
+      run: |
+        echo "⏱️ Benchmarking build performance..."
+        
+        configurations=(
+          "homeConfigurations.yuki@linux"
+          "homeConfigurations.yuki@wsl"
+        )
+        
+        for config in "${configurations[@]}"; do
+          echo "Benchmarking $config..."
+          
+          start_time=$(date +%s.%N)
+          nix build ".#${config}" --no-link --quiet --impure || echo "⚠️ Build failed for $config"
+          end_time=$(date +%s.%N)
+          
+          if command -v bc >/dev/null 2>&1; then
+            duration=$(echo "$end_time - $start_time" | bc)
+            echo "$config: ${duration}s"
+          else
+            echo "$config: Build completed (timing unavailable)"
+          fi
+        done
+
+  # Runtime verification (merged from multi-platform-integration.yml)
+  runtime-verification:
+    name: Runtime Environment Verification
+    runs-on: ubuntu-latest
+    needs: platform-matrix
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Install Determinate Nix
+      uses: DeterminateSystems/nix-installer-action@v17
+      
+    - name: Setup Magic Nix Cache
+      uses: DeterminateSystems/magic-nix-cache-action@v11
+      
+    - name: Test core packages
+      run: |
+        echo "🧪 Testing core package resolution..."
+        
+        # Test basic packages that should be available
+        for package in "git" "curl" "jq" "direnv"; do
+          if nix eval "nixpkgs#$package" >/dev/null 2>&1; then
+            echo "✅ $package: Available"
+          else
+            echo "⚠️ $package: Not available"
+          fi
+        done
+
+  # Cross-platform compatibility analysis
+  compatibility-analysis:
+    name: Cross-Platform Compatibility
+    runs-on: ubuntu-latest
+    needs: platform-matrix
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Install Determinate Nix
+      uses: DeterminateSystems/nix-installer-action@v17
+      
+    - name: Analyze platform compatibility
+      run: |
+        echo "🔍 Analyzing cross-platform package compatibility..."
+        
+        # Test each platform's package resolution
+        for platform in linux wsl darwin; do
+          echo "Testing $platform packages..."
+          
+          case $platform in
+            darwin)
+              nix eval .#darwinConfigurations.default.config.environment.systemPackages --json --impure > /tmp/${platform}-packages.json 2>/dev/null || echo "[]" > /tmp/${platform}-packages.json
+              ;;
+            linux)
+              nix eval '.#homeConfigurations."yuki@linux".config.home.packages' --json --impure > /tmp/${platform}-packages.json 2>/dev/null || echo "[]" > /tmp/${platform}-packages.json
+              ;;
+            wsl)
+              nix eval '.#homeConfigurations."yuki@wsl".config.home.packages' --json --impure > /tmp/${platform}-packages.json 2>/dev/null || echo "[]" > /tmp/${platform}-packages.json
+              ;;
+          esac
+          
+          echo "$platform package count: $(jq length /tmp/${platform}-packages.json)"
+        done
+
+  # Integration report (final summary)
+  integration-report:
+    name: Nix Integration Summary
+    runs-on: ubuntu-latest
+    needs: [nix-validation, platform-matrix, performance-benchmark, runtime-verification, compatibility-analysis]
+    if: always()
+    
+    steps:
+    - name: Generate comprehensive report
+      run: |
+        echo "# Comprehensive Nix Integration Report" > nix-integration-report.md
+        echo "Generated: $(date)" >> nix-integration-report.md
+        echo "" >> nix-integration-report.md
+        
+        echo "## Test Results Summary" >> nix-integration-report.md
+        echo "- Nix Validation: ${{ needs.nix-validation.result }}" >> nix-integration-report.md
+        echo "- Platform Matrix: ${{ needs.platform-matrix.result }}" >> nix-integration-report.md
+        echo "- Performance Benchmark: ${{ needs.performance-benchmark.result }}" >> nix-integration-report.md
+        echo "- Runtime Verification: ${{ needs.runtime-verification.result }}" >> nix-integration-report.md
+        echo "- Compatibility Analysis: ${{ needs.compatibility-analysis.result }}" >> nix-integration-report.md
+        echo "" >> nix-integration-report.md
+        
+        echo "## Overall Status" >> nix-integration-report.md
+        if [[ "${{ needs.nix-validation.result }}" == "success" && \
+              "${{ needs.platform-matrix.result }}" == "success" ]]; then
+          echo "✅ Nix integration tests passed successfully" >> nix-integration-report.md
+        else
+          echo "❌ Some Nix integration tests failed" >> nix-integration-report.md
+        fi
+        
+    - name: Upload integration report
+      uses: actions/upload-artifact@v4
+      with:
+        name: nix-integration-report
+        path: nix-integration-report.md

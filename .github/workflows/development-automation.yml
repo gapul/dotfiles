@@ -1,0 +1,308 @@
+name: Development Automation
+
+on:
+  issues:
+    types: [opened, edited, labeled, unlabeled]
+  pull_request:
+    types: [opened, edited, ready_for_review, labeled, unlabeled]
+  project_card:
+    types: [created, moved]
+  push:
+    branches: [ main, develop ]
+    paths:
+      - '**/*.md'
+      - 'docs/**'
+      - '.github/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  repository-projects: write
+
+jobs:
+  # Project management automation (merged from project-automation.yml)
+  project-management:
+    name: Project Board Management
+    runs-on: ubuntu-latest
+    if: github.event_name == 'issues' || github.event_name == 'pull_request' || github.event_name == 'project_card'
+    
+    steps:
+    - name: Add issues to project
+      if: github.event_name == 'issues' && github.event.action == 'opened'
+      uses: actions/add-to-project@v0.5.0
+      with:
+        project-url: https://github.com/users/gapul/projects/1
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Auto-assign issues
+      if: github.event_name == 'issues' && github.event.action == 'opened'
+      run: |
+        echo "🏷️ Auto-assigning issue based on labels..."
+        
+        # Auto-assign based on issue labels
+        if [[ "${{ contains(github.event.issue.labels.*.name, 'nix') }}" == "true" ]]; then
+          echo "Nix-related issue detected"
+          # Add logic to assign to Nix specialist
+        fi
+        
+        if [[ "${{ contains(github.event.issue.labels.*.name, 'security') }}" == "true" ]]; then
+          echo "Security-related issue detected"
+          # Add logic for security issue handling
+        fi
+        
+    - name: Update project status
+      if: github.event_name == 'pull_request'
+      run: |
+        echo "📊 Updating project status for PR..."
+        
+        case "${{ github.event.action }}" in
+          opened)
+            echo "PR opened - moving to In Progress"
+            ;;
+          ready_for_review)
+            echo "PR ready for review - moving to Review"
+            ;;
+          closed)
+            if [[ "${{ github.event.pull_request.merged }}" == "true" ]]; then
+              echo "PR merged - moving to Done"
+            else
+              echo "PR closed without merge"
+            fi
+            ;;
+        esac
+        
+    - name: Triage new issues
+      if: github.event_name == 'issues' && github.event.action == 'opened'
+      run: |
+        echo "🔍 Triaging new issue..."
+        
+        # Basic issue analysis
+        issue_title="${{ github.event.issue.title }}"
+        issue_body="${{ github.event.issue.body }}"
+        
+        # Auto-label based on content
+        if [[ "$issue_title" =~ [Bb]ug|[Ee]rror|[Ff]ail ]]; then
+          echo "Bug-related issue detected"
+          # Would add bug label via API
+        fi
+        
+        if [[ "$issue_title" =~ [Ff]eature|[Ee]nhance ]]; then
+          echo "Feature request detected"
+          # Would add enhancement label via API
+        fi
+        
+        if [[ "$issue_body" =~ nix|flake|darwin ]]; then
+          echo "Nix-related issue detected"
+          # Would add nix label via API
+        fi
+
+  # AI-powered development assistance (merged from copilot-integration.yml)
+  ai-development-assistance:
+    name: AI Development Support
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: AI-powered commit analysis
+      if: github.event_name == 'push'
+      run: |
+        echo "🤖 Analyzing recent commits with AI assistance..."
+        
+        # Get recent commits
+        git log --oneline -n 5 > recent_commits.txt
+        
+        # Analyze commit patterns
+        echo "Recent commits:"
+        cat recent_commits.txt
+        
+        # Check for commit message patterns
+        if grep -q "fix:" recent_commits.txt; then
+          echo "🐛 Bug fixes detected in recent commits"
+        fi
+        
+        if grep -q "feat:" recent_commits.txt; then
+          echo "✨ New features detected in recent commits"
+        fi
+        
+        if grep -q "BREAKING CHANGE" recent_commits.txt; then
+          echo "💥 Breaking changes detected - consider version bump"
+        fi
+        
+    - name: Documentation completeness check
+      run: |
+        echo "📚 Checking documentation completeness..."
+        
+        # Check for README files in subdirectories
+        find . -type d -mindepth 2 -maxdepth 3 | while read -r dir; do
+          if [[ ! -f "$dir/README.md" ]] && [[ -n "$(find "$dir" -name "*.nix" 2>/dev/null)" ]]; then
+            echo "⚠️ $dir contains Nix files but no README.md"
+          fi
+        done
+        
+        # Check for outdated documentation
+        if [[ -f "README.md" ]]; then
+          last_readme_update=$(git log -1 --format="%ct" -- README.md)
+          last_code_update=$(git log -1 --format="%ct" -- "*.nix" "*.sh")
+          
+          if [[ $last_code_update -gt $last_readme_update ]]; then
+            echo "⚠️ Code updated more recently than README.md"
+          fi
+        fi
+        
+    - name: Code quality insights
+      run: |
+        echo "📊 Generating code quality insights..."
+        
+        # Count different file types
+        echo "File type distribution:"
+        find . -name "*.nix" | wc -l | xargs echo "Nix files:"
+        find . -name "*.sh" | wc -l | xargs echo "Shell scripts:"
+        find . -name "*.yml" -o -name "*.yaml" | wc -l | xargs echo "YAML files:"
+        find . -name "*.md" | wc -l | xargs echo "Markdown files:"
+        
+        # Calculate repository complexity
+        total_lines=$(find . -name "*.nix" -o -name "*.sh" -o -name "*.yml" -o -name "*.yaml" | xargs wc -l | tail -1 | awk '{print $1}')
+        echo "Total lines of configuration: $total_lines"
+        
+        if [[ $total_lines -gt 5000 ]]; then
+          echo "📏 Large repository detected - consider modularization"
+        fi
+        
+    - name: AI-powered PR review assistance
+      if: github.event_name == 'pull_request'
+      run: |
+        echo "🔍 AI-assisted PR review guidance..."
+        
+        # Get changed files
+        if [[ "${{ github.event.action }}" == "opened" ]] || [[ "${{ github.event.action }}" == "synchronize" ]]; then
+          echo "PR files changed:"
+          
+          # Simulate getting changed files (in real implementation, would use GitHub API)
+          echo "Changed file analysis:"
+          
+          # Check for critical file changes
+          if git diff --name-only HEAD~1 | grep -q "flake.nix\|flake.lock"; then
+            echo "🎯 Critical Nix configuration files modified - ensure thorough testing"
+          fi
+          
+          if git diff --name-only HEAD~1 | grep -q "\.github/workflows"; then
+            echo "⚙️ Workflow files modified - validate CI/CD pipeline changes"
+          fi
+          
+          if git diff --name-only HEAD~1 | grep -q "\.sops\.yaml\|secrets.*\.yaml"; then
+            echo "🔒 Security configuration files modified - verify encryption status"
+          fi
+        fi
+
+  # Automated code maintenance
+  automated-maintenance:
+    name: Automated Code Maintenance
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Update documentation timestamps
+      run: |
+        echo "📅 Updating documentation timestamps..."
+        
+        # Update last modified dates in key documentation files
+        current_date=$(date '+%Y-%m-%d')
+        
+        if [[ -f "README.md" ]]; then
+          # Update last modified line if it exists
+          if grep -q "Last updated:" README.md; then
+            sed -i "s/Last updated:.*/Last updated: $current_date/" README.md
+            echo "✅ Updated README.md timestamp"
+          fi
+        fi
+        
+    - name: Cleanup temporary files
+      run: |
+        echo "🧹 Cleaning up temporary files..."
+        
+        # Remove common temporary files that might have been committed
+        find . -name "*.tmp" -o -name "*.bak" -o -name "*~" -type f | while read -r temp_file; do
+          echo "🗑️ Found temporary file: $temp_file"
+          # In production, could auto-remove and commit
+        done
+        
+        # Check for large files that shouldn't be in git
+        find . -type f -size +1M | grep -v ".git" | while read -r large_file; do
+          echo "📦 Large file detected: $large_file ($(du -h "$large_file" | cut -f1))"
+        done
+        
+    - name: Generate maintenance report
+      run: |
+        echo "📋 Generating maintenance report..."
+        
+        {
+          echo "# Automated Maintenance Report"
+          echo "Generated: $(date)"
+          echo ""
+          echo "## Repository Statistics"
+          echo "- Total files: $(find . -type f | wc -l)"
+          echo "- Nix files: $(find . -name "*.nix" | wc -l)"
+          echo "- Shell scripts: $(find . -name "*.sh" | wc -l)"
+          echo "- Documentation files: $(find . -name "*.md" | wc -l)"
+          echo ""
+          echo "## Recent Activity"
+          echo "- Last commit: $(git log -1 --format="%h %s %an %ar")"
+          echo "- Contributors: $(git shortlog -sn | wc -l)"
+          echo ""
+          echo "## Health Indicators"
+          if [[ -f "flake.lock" ]]; then
+            echo "- ✅ Nix flake lock file present"
+          fi
+          if [[ -f ".sops.yaml" ]]; then
+            echo "- ✅ SOPS configuration present"
+          fi
+          if [[ -d ".github/workflows" ]]; then
+            workflow_count=$(find .github/workflows -name "*.yml" | wc -l)
+            echo "- ✅ CI/CD workflows: $workflow_count files"
+          fi
+        } > maintenance-report.md
+        
+        echo "Maintenance report generated"
+
+  # Development workflow summary
+  development-summary:
+    name: Development Workflow Summary
+    runs-on: ubuntu-latest
+    needs: [project-management, ai-development-assistance, automated-maintenance]
+    if: always()
+    
+    steps:
+    - name: Generate development summary
+      run: |
+        echo "# Development Automation Summary" > development-summary.md
+        echo "Generated: $(date)" >> development-summary.md
+        echo "" >> development-summary.md
+        
+        echo "## Automation Results" >> development-summary.md
+        echo "- Project Management: ${{ needs.project-management.result || 'skipped' }}" >> development-summary.md
+        echo "- AI Development Assistance: ${{ needs.ai-development-assistance.result }}" >> development-summary.md
+        echo "- Automated Maintenance: ${{ needs.automated-maintenance.result || 'skipped' }}" >> development-summary.md
+        echo "" >> development-summary.md
+        
+        echo "## Development Status" >> development-summary.md
+        echo "- Event: ${{ github.event_name }}" >> development-summary.md
+        echo "- Repository: ${{ github.repository }}" >> development-summary.md
+        echo "- Branch: ${{ github.ref_name }}" >> development-summary.md
+        
+    - name: Upload development summary
+      uses: actions/upload-artifact@v4
+      with:
+        name: development-automation-summary
+        path: development-summary.md

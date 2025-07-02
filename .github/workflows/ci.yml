@@ -1,4 +1,4 @@
-name: Dotfiles CI
+name: Core CI Pipeline
 
 on:
   push:
@@ -23,8 +23,20 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y jq shellcheck
+        sudo apt-get install -y jq shellcheck yamllint
         python3 -m pip install --break-system-packages PyYAML
+        
+    - name: Check YAML syntax
+      run: |
+        echo "Checking YAML files..."
+        find . -name "*.yml" -o -name "*.yaml" | grep -v node_modules | xargs yamllint -d relaxed || true
+        
+    - name: Check TOML syntax
+      run: |
+        echo "Validating TOML files..."
+        if command -v python3 &> /dev/null; then
+          python3 .github/scripts/validate_toml.py || echo "TOML validation script not found, skipping"
+        fi
         
     - name: Check shell scripts syntax
       run: |

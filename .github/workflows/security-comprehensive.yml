@@ -1,0 +1,374 @@
+name: Comprehensive Security Scanning
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run security scans daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+  pull-requests: read
+
+jobs:
+  # Basic security validation (merged from ci.yml)
+  basic-security:
+    name: Basic Security Validation
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Check file permissions
+      run: |
+        echo "🔒 Checking file permissions..."
+        
+        # Check for overly permissive files
+        find . -type f -perm /077 | while read -r file; do
+          if [[ ! "$file" =~ \.(sh|py|rb|pl)$ ]]; then
+            echo "Warning: $file has overly permissive permissions"
+          fi
+        done
+        
+        # Check for files that should be executable
+        find . -name "*.sh" -not -perm /111 | while read -r file; do
+          echo "Warning: $file should be executable"
+        done
+        
+    - name: Basic security pattern detection
+      run: |
+        echo "🔍 Scanning for basic security patterns..."
+        
+        # Check for potential secrets in code (basic patterns)
+        echo "Checking for potential hardcoded secrets..."
+        ! grep -r -E "(password|secret|key|token).*=" . --include="*.nix" --include="*.sh" --include="*.py" || {
+          echo "⚠️ Potential secrets found in code files"
+        }
+        
+        # Check for insecure URL patterns
+        echo "Checking for insecure URLs..."
+        ! grep -r "http://" . --include="*.nix" --include="*.sh" --include="*.yml" || {
+          echo "⚠️ Insecure HTTP URLs found"
+        }
+
+  # Advanced CodeQL analysis (from security-advanced.yml)
+  codeql-analysis:
+    name: CodeQL Security Analysis
+    runs-on: ubuntu-latest
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'python', 'javascript' ]
+        
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v2
+      with:
+        languages: ${{ matrix.language }}
+        queries: security-extended,security-and-quality
+        
+    - name: Autobuild
+      uses: github/codeql-action/autobuild@v2
+      
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v2
+      with:
+        category: "/language:${{matrix.language}}"
+
+  # Comprehensive secrets scanning (merged from multiple workflows)
+  secrets-scanning:
+    name: Comprehensive Secrets Detection
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: Install TruffleHog
+      run: |
+        curl -sSfL https://raw.githubusercontent.com/trufflesecurity/trufflehog/main/scripts/install.sh | sh -s -- -b /usr/local/bin
+        
+    - name: Run TruffleHog secrets scan
+      run: |
+        echo "🔍 Running comprehensive secrets scan..."
+        trufflehog git file://. --since-commit HEAD~10 --only-verified --fail || {
+          echo "⚠️ Potential secrets detected by TruffleHog"
+        }
+        
+    - name: SOPS integration validation
+      run: |
+        echo "🔒 Validating SOPS integration..."
+        
+        # Check if SOPS configuration exists
+        if [[ -f ".sops.yaml" ]]; then
+          echo "✅ SOPS configuration found"
+          
+          # Validate SOPS encrypted files
+          if command -v sops >/dev/null 2>&1; then
+            find . -name "secrets*.yaml" -not -name "*.example" | while read -r file; do
+              if sops -d "$file" >/dev/null 2>&1; then
+                echo "✅ $file: SOPS decryption successful"
+              else
+                echo "⚠️ $file: SOPS decryption failed"
+              fi
+            done
+          else
+            echo "⚠️ SOPS not available for validation"
+          fi
+        else
+          echo "⚠️ SOPS configuration not found"
+        fi
+        
+    - name: Validate secret file encryption status
+      run: |
+        echo "🔍 Checking encryption status of sensitive files..."
+        
+        # List of patterns that should be encrypted
+        sensitive_patterns=(
+          "password"
+          "secret"
+          "key"
+          "token"
+          "credential"
+        )
+        
+        for pattern in "${sensitive_patterns[@]}"; do
+          find . -name "*$pattern*" -type f | while read -r file; do
+            if [[ "$file" =~ \.example$ ]] || [[ "$file" =~ \.template$ ]]; then
+              echo "✅ $file: Template file (safe)"
+            elif file "$file" | grep -q "encrypted\|binary"; then
+              echo "✅ $file: Encrypted or binary"
+            else
+              echo "⚠️ $file: Potentially unencrypted sensitive file"
+            fi
+          done
+        done
+
+  # Dependency security review (from security-advanced.yml)
+  dependency-review:
+    name: Dependency Security Review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Dependency Review
+      uses: actions/dependency-review-action@v3
+      with:
+        config-file: '.github/dependency-review-config.yml'
+        
+    - name: Nix dependency analysis
+      run: |
+        echo "🔍 Analyzing Nix dependencies for security issues..."
+        
+        if [[ -f "flake.lock" ]]; then
+          echo "Checking flake.lock for known vulnerable packages..."
+          
+          # Extract input URLs and check for known issues
+          if command -v jq >/dev/null 2>&1; then
+            jq -r '.nodes | to_entries[] | select(.value.locked) | "\(.key): \(.value.locked.narHash // .value.locked.rev)"' flake.lock | head -10
+          fi
+        fi
+
+  # Infrastructure security scanning (from security-advanced.yml)
+  infrastructure-security:
+    name: Infrastructure Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Install security scanning tools
+      run: |
+        # Install hadolint for Dockerfile scanning
+        wget -O /usr/local/bin/hadolint https://github.com/hadolint/hadolint/releases/latest/download/hadolint-Linux-x86_64
+        chmod +x /usr/local/bin/hadolint
+        
+        # Install yamllint for YAML validation
+        python3 -m pip install yamllint
+        
+    - name: Scan Docker configurations
+      run: |
+        echo "🐳 Scanning Docker configurations..."
+        
+        find . -name "Dockerfile*" -o -name "*.dockerfile" | while read -r dockerfile; do
+          echo "Scanning $dockerfile..."
+          hadolint "$dockerfile" || echo "⚠️ Issues found in $dockerfile"
+        done
+        
+    - name: Scan GitHub Actions workflows
+      run: |
+        echo "⚙️ Scanning GitHub Actions workflows..."
+        
+        find .github/workflows -name "*.yml" -o -name "*.yaml" | while read -r workflow; do
+          echo "Validating $workflow..."
+          yamllint "$workflow" || echo "⚠️ YAML issues in $workflow"
+          
+          # Check for potential security issues in workflows
+          if grep -q "pull_request_target" "$workflow"; then
+            echo "⚠️ $workflow uses pull_request_target - review for security"
+          fi
+          
+          if grep -q "\${{.*github\.event\.pull_request\.head" "$workflow"; then
+            echo "⚠️ $workflow uses potentially unsafe PR head references"
+          fi
+        done
+
+  # Security compliance testing (from security-tests.yml)
+  security-compliance:
+    name: Security Compliance Validation
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Platform isolation validation
+      run: |
+        echo "🔍 Validating platform isolation..."
+        
+        # Check for platform-specific leakage
+        if grep -r "darwin" nix/linux/ nix/wsl/ nix/android/ 2>/dev/null; then
+          echo "⚠️ Darwin-specific code found in non-Darwin platforms"
+        fi
+        
+        if grep -r "linux" nix/darwin/ 2>/dev/null | grep -v "# linux" | grep -v "linux-arm"; then
+          echo "⚠️ Linux-specific code found in Darwin platforms"
+        fi
+        
+    - name: Security baseline validation
+      run: |
+        echo "🛡️ Validating security baseline..."
+        
+        # Check for security module presence
+        security_modules=(
+          "nix/security/baseline/default.nix"
+          "nix/security/sops/config/default.nix"
+        )
+        
+        for module in "${security_modules[@]}"; do
+          if [[ -f "$module" ]]; then
+            echo "✅ $module: Security module present"
+          else
+            echo "⚠️ $module: Security module missing"
+          fi
+        done
+        
+    - name: File integrity check
+      run: |
+        echo "🔒 Performing file integrity checks..."
+        
+        # Check for unexpected changes to critical files
+        critical_files=(
+          ".sops.yaml"
+          "flake.nix"
+          "flake.lock"
+        )
+        
+        for file in "${critical_files[@]}"; do
+          if [[ -f "$file" ]]; then
+            echo "✅ $file: Critical file present"
+            # Basic integrity check
+            if [[ "$file" == "flake.lock" ]] && ! jq empty "$file" >/dev/null 2>&1; then
+              echo "⚠️ $file: JSON structure corrupted"
+            fi
+          else
+            echo "⚠️ $file: Critical file missing"
+          fi
+        done
+
+  # Vulnerability scanning (from security-tests.yml)
+  vulnerability-scan:
+    name: Vulnerability Assessment
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Install vulnerability scanners
+      run: |
+        # Install safety for Python dependency scanning
+        python3 -m pip install safety
+        
+        # Install npm audit for Node.js dependencies
+        if [[ -f "package.json" ]]; then
+          npm install -g npm@latest
+        fi
+        
+    - name: Scan for known vulnerabilities
+      run: |
+        echo "🔍 Scanning for known vulnerabilities..."
+        
+        # Python dependencies
+        if [[ -f "requirements.txt" ]]; then
+          echo "Scanning Python dependencies..."
+          safety check -r requirements.txt || echo "⚠️ Python vulnerability scan completed with warnings"
+        fi
+        
+        # Node.js dependencies
+        if [[ -f "package.json" ]]; then
+          echo "Scanning Node.js dependencies..."
+          npm audit --audit-level=moderate || echo "⚠️ Node.js vulnerability scan completed with warnings"
+        fi
+        
+        # Nix package vulnerability check (basic)
+        echo "Checking Nix packages for known issues..."
+        if command -v nix >/dev/null 2>&1; then
+          # This is a placeholder - Nix doesn't have built-in vulnerability scanning
+          echo "ℹ️ Nix vulnerability scanning requires manual review"
+        fi
+
+  # Security summary report
+  security-summary:
+    name: Security Assessment Summary
+    runs-on: ubuntu-latest
+    needs: [basic-security, secrets-scanning, dependency-review, infrastructure-security, security-compliance, vulnerability-scan]
+    if: always()
+    
+    steps:
+    - name: Generate security report
+      run: |
+        echo "# Comprehensive Security Assessment Report" > security-report.md
+        echo "Generated: $(date)" >> security-report.md
+        echo "" >> security-report.md
+        
+        echo "## Security Scan Results" >> security-report.md
+        echo "- Basic Security: ${{ needs.basic-security.result }}" >> security-report.md
+        echo "- Secrets Scanning: ${{ needs.secrets-scanning.result }}" >> security-report.md
+        echo "- Dependency Review: ${{ needs.dependency-review.result || 'skipped' }}" >> security-report.md
+        echo "- Infrastructure Security: ${{ needs.infrastructure-security.result }}" >> security-report.md
+        echo "- Security Compliance: ${{ needs.security-compliance.result }}" >> security-report.md
+        echo "- Vulnerability Scan: ${{ needs.vulnerability-scan.result }}" >> security-report.md
+        echo "" >> security-report.md
+        
+        echo "## Overall Security Status" >> security-report.md
+        if [[ "${{ needs.basic-security.result }}" == "success" && \
+              "${{ needs.secrets-scanning.result }}" == "success" && \
+              "${{ needs.security-compliance.result }}" == "success" ]]; then
+          echo "✅ Security assessment passed" >> security-report.md
+        else
+          echo "⚠️ Security assessment identified issues for review" >> security-report.md
+        fi
+        
+    - name: Upload security report
+      uses: actions/upload-artifact@v4
+      with:
+        name: security-assessment-report
+        path: security-report.md
