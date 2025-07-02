@@ -1,0 +1,8 @@
+keys:
+  - &age_key age1crkk4dtd824qu3h5q24vnm4pmrjymzkelt60qnyzwcje74gncudqjr693n
+
+creation_rules:
+  - path_regex: nix/security/sops/secrets.*\.yaml$
+    age: *age_key
+  - path_regex: secrets.*\.yaml$
+    age: *age_key

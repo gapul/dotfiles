@@ -12,8 +12,8 @@
         key_groups = [
           {
             age = [
-              # Personal development key
-              "age1hl8rkwqkp6l7f5zxc9hjn8m5v3k9p4q7x6z2r8t4w5u6y7i8o9p0q1r2s3t4u5v6"
+              # Personal development key (actual generated key)
+              "age1crkk4dtd824qu3h5q24vnm4pmrjymzkelt60qnyzwcje74gncudqjr693n"
               # CI/CD key (to be generated)
               "age1ci0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
             ];
