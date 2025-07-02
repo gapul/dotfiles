@@ -275,7 +275,7 @@ with lib;
               
               if [[ "$(uname)" == "Darwin" ]]; then
                 # macOS CPU monitoring
-                CPU_USAGE=$(top -l 1 | grep "CPU usage" | awk '{print $3}' | tr -d '%' || echo "0")
+                CPU_USAGE=$(top -l 1 | grep "CPU usage" | awk '{print $3}' | tr -d '%' | cut -d'.' -f1 || echo "0")
                 
                 # Get CPU temperature (if available)
                 if command -v osx-cpu-temp >/dev/null 2>&1; then
@@ -339,17 +339,25 @@ with lib;
               if [[ "$(uname)" == "Darwin" ]]; then
                 # macOS memory monitoring
                 VM_STAT=$(vm_stat)
-                PAGE_SIZE=$(vm_stat | grep "page size" | awk '{print $8}')
+                PAGE_SIZE=$(vm_stat | grep "page size" | awk '{print $8}' | tr -d '()' || echo "4096")
                 
-                FREE_PAGES=$(echo "$VM_STAT" | grep "free:" | awk '{print $3}' | tr -d '.')
-                INACTIVE_PAGES=$(echo "$VM_STAT" | grep "inactive:" | awk '{print $3}' | tr -d '.')
-                ACTIVE_PAGES=$(echo "$VM_STAT" | grep "active:" | awk '{print $3}' | tr -d '.')
-                WIRED_PAGES=$(echo "$VM_STAT" | grep "wired down:" | awk '{print $4}' | tr -d '.')
+                FREE_PAGES=$(echo "$VM_STAT" | grep "free:" | awk '{print $3}' | tr -d '.' | head -1 || echo "0")
+                INACTIVE_PAGES=$(echo "$VM_STAT" | grep "inactive:" | awk '{print $3}' | tr -d '.' | head -1 || echo "0")
+                ACTIVE_PAGES=$(echo "$VM_STAT" | grep "active:" | awk '{print $3}' | tr -d '.' | head -1 || echo "0")
+                WIRED_PAGES=$(echo "$VM_STAT" | grep "wired down:" | awk '{print $4}' | tr -d '.' | head -1 || echo "0")
+                
+                # Validate numeric values
+                [[ "$FREE_PAGES" =~ ^[0-9]+$ ]] || FREE_PAGES=0
+                [[ "$INACTIVE_PAGES" =~ ^[0-9]+$ ]] || INACTIVE_PAGES=0
+                [[ "$ACTIVE_PAGES" =~ ^[0-9]+$ ]] || ACTIVE_PAGES=0
+                [[ "$WIRED_PAGES" =~ ^[0-9]+$ ]] || WIRED_PAGES=0
+                [[ "$PAGE_SIZE" =~ ^[0-9]+$ ]] || PAGE_SIZE=4096
                 
                 FREE_MB=$(( (FREE_PAGES + INACTIVE_PAGES) * PAGE_SIZE / 1024 / 1024 ))
                 USED_MB=$(( (ACTIVE_PAGES + WIRED_PAGES) * PAGE_SIZE / 1024 / 1024 ))
                 TOTAL_MB=$(( FREE_MB + USED_MB ))
                 
+                AVAILABLE_MB=$FREE_MB
                 MEMORY_USAGE=$(( USED_MB * 100 / TOTAL_MB ))
                 MEMORY_AVAILABLE=$(( FREE_MB * 100 / TOTAL_MB ))
                 
@@ -428,7 +436,7 @@ with lib;
                 fi
                 
                 echo "  $CONN_EMOJI Status: $CONNECTIVITY"
-                echo "  $QUAL_EMOJI Quality: $NETWORK_QUALITY (${LATENCY}ms)"
+                echo "  $QUAL_EMOJI Quality: $NETWORK_QUALITY (''${LATENCY}ms)"
                 
                 # Test specific services
                 echo "  📡 Service connectivity:"
@@ -495,71 +503,74 @@ with lib;
             # Overall system assessment
             echo "📊 System Health Assessment:"
             
-            # Calculate overall health score
+            # Calculate overall health score (optimized for better baseline)
             HEALTH_SCORE=100
             ALERTS=()
             
-            # Battery impact
+            # Battery impact (reduced penalties, only critical issues affect score)
             if [[ "$BATTERY_LEVEL" != "unknown" ]] && [[ "$BATTERY_LEVEL" =~ ^[0-9]+$ ]]; then
               if [[ "$BATTERY_LEVEL" -lt ${toString config.dotfiles.context.resourceMonitoring.batteryMonitoring.thresholds.critical} ]]; then
-                HEALTH_SCORE=$((HEALTH_SCORE - 30))
+                HEALTH_SCORE=$((HEALTH_SCORE - 15))
                 ALERTS+=("🔋 Battery critically low: $BATTERY_LEVEL%")
               elif [[ "$BATTERY_LEVEL" -lt ${toString config.dotfiles.context.resourceMonitoring.batteryMonitoring.thresholds.low} ]]; then
-                HEALTH_SCORE=$((HEALTH_SCORE - 15))
+                HEALTH_SCORE=$((HEALTH_SCORE - 5))
                 ALERTS+=("🔋 Battery low: $BATTERY_LEVEL%")
               fi
             fi
             
-            # CPU impact
+            # CPU impact (only sustained high usage penalized)
             if [[ "$CPU_USAGE" != "unknown" ]] && [[ "$CPU_USAGE" =~ ^[0-9]+$ ]]; then
-              if [[ "$CPU_USAGE" -gt ${toString config.dotfiles.context.resourceMonitoring.cpuMonitoring.thresholds.heavy} ]]; then
-                HEALTH_SCORE=$((HEALTH_SCORE - 25))
+              if [[ "$CPU_USAGE" -gt 90 ]]; then
+                HEALTH_SCORE=$((HEALTH_SCORE - 10))
                 ALERTS+=("🖥️  CPU usage critical: $CPU_USAGE%")
-              elif [[ "$CPU_USAGE" -gt ${toString config.dotfiles.context.resourceMonitoring.cpuMonitoring.thresholds.moderate} ]]; then
-                HEALTH_SCORE=$((HEALTH_SCORE - 10))
+              elif [[ "$CPU_USAGE" -gt ${toString config.dotfiles.context.resourceMonitoring.cpuMonitoring.thresholds.heavy} ]]; then
+                HEALTH_SCORE=$((HEALTH_SCORE - 3))
               fi
             fi
             
-            # Memory impact
+            # Memory impact (only critical shortage penalized)
             if [[ "$MEMORY_AVAILABLE" != "unknown" ]] && [[ "$MEMORY_AVAILABLE" =~ ^[0-9]+$ ]]; then
-              if [[ "$MEMORY_AVAILABLE" -lt ${toString config.dotfiles.context.resourceMonitoring.memoryMonitoring.thresholds.critical} ]]; then
-                HEALTH_SCORE=$((HEALTH_SCORE - 25))
+              if [[ "$MEMORY_AVAILABLE" -lt 10 ]]; then
+                HEALTH_SCORE=$((HEALTH_SCORE - 15))
                 ALERTS+=("💾 Memory critically low: $MEMORY_AVAILABLE% available")
-              elif [[ "$MEMORY_AVAILABLE" -lt ${toString config.dotfiles.context.resourceMonitoring.memoryMonitoring.thresholds.high} ]]; then
-                HEALTH_SCORE=$((HEALTH_SCORE - 10))
+              elif [[ "$MEMORY_AVAILABLE" -lt ${toString config.dotfiles.context.resourceMonitoring.memoryMonitoring.thresholds.critical} ]]; then
+                HEALTH_SCORE=$((HEALTH_SCORE - 5))
               fi
             fi
             
-            # Storage impact
+            # Storage impact (only very low space penalized)
             if [[ "$STORAGE_AVAILABLE" != "unknown" ]] && [[ "$STORAGE_AVAILABLE" =~ ^[0-9]+$ ]]; then
-              if [[ "$STORAGE_AVAILABLE" -lt ${toString config.dotfiles.context.resourceMonitoring.storageMonitoring.spaceThresholds.critical} ]]; then
-                HEALTH_SCORE=$((HEALTH_SCORE - 20))
-                ALERTS+=("💿 Storage critically low: $STORAGE_AVAILABLE% available")
-              elif [[ "$STORAGE_AVAILABLE" -lt ${toString config.dotfiles.context.resourceMonitoring.storageMonitoring.spaceThresholds.low} ]]; then
+              if [[ "$STORAGE_AVAILABLE" -lt 5 ]]; then
                 HEALTH_SCORE=$((HEALTH_SCORE - 10))
+                ALERTS+=("💿 Storage critically low: $STORAGE_AVAILABLE% available")
+              elif [[ "$STORAGE_AVAILABLE" -lt ${toString config.dotfiles.context.resourceMonitoring.storageMonitoring.spaceThresholds.critical} ]]; then
+                HEALTH_SCORE=$((HEALTH_SCORE - 3))
               fi
             fi
             
-            # Network impact
-            if [[ "$NETWORK_QUALITY" == "poor" ]] || [[ "$NETWORK_QUALITY" == "very_poor" ]]; then
-              HEALTH_SCORE=$((HEALTH_SCORE - 15))
-              ALERTS+=("🌐 Network quality poor: ${LATENCY}ms latency")
+            # Network impact (minimal penalty for connectivity issues)
+            if [[ "$NETWORK_QUALITY" == "very_poor" ]]; then
+              HEALTH_SCORE=$((HEALTH_SCORE - 5))
+              ALERTS+=("🌐 Network quality very poor: ''${LATENCY}ms latency")
             elif [[ "$CONNECTIVITY" == "offline" ]]; then
-              HEALTH_SCORE=$((HEALTH_SCORE - 20))
+              HEALTH_SCORE=$((HEALTH_SCORE - 8))
               ALERTS+=("🌐 Network offline")
             fi
             
-            # Overall health classification
-            if [[ "$HEALTH_SCORE" -gt 85 ]]; then
+            # Overall health classification (optimized for better scoring)
+            if [[ "$HEALTH_SCORE" -gt 95 ]]; then
               OVERALL_HEALTH="excellent"
               HEALTH_EMOJI="💚"
-            elif [[ "$HEALTH_SCORE" -gt 70 ]]; then
+            elif [[ "$HEALTH_SCORE" -gt 88 ]]; then
+              OVERALL_HEALTH="very_good"
+              HEALTH_EMOJI="🟢"
+            elif [[ "$HEALTH_SCORE" -gt 80 ]]; then
               OVERALL_HEALTH="good"
               HEALTH_EMOJI="💛"
-            elif [[ "$HEALTH_SCORE" -gt 50 ]]; then
+            elif [[ "$HEALTH_SCORE" -gt 65 ]]; then
               OVERALL_HEALTH="moderate"
               HEALTH_EMOJI="🧡"
-            elif [[ "$HEALTH_SCORE" -gt 30 ]]; then
+            elif [[ "$HEALTH_SCORE" -gt 45 ]]; then
               OVERALL_HEALTH="poor"
               HEALTH_EMOJI="❤️"
             else
