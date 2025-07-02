@@ -77,6 +77,7 @@
           # ./common/home/shell.nix  # Moved to home-manager.users configuration below
           # ./common/themes/default.nix  # Temporarily disabled due to home-manager context issues  
           ./common/development/default.nix  # Re-enabled successfully
+          ./common/context/default.nix  # Phase 3: Context Recognition System
           ./common/performance/default.nix  # Phase 5: Performance optimization system
           ./common/security/enterprise.nix  # Phase 5: Enterprise security system
           ./common/security/policies.nix    # Phase 5: Security policies and compliance
@@ -87,6 +88,10 @@
             # Enable AI-powered development profile for Phase 5
             dotfiles.development.enable = lib.mkForce true;
             dotfiles.development.profile = lib.mkForce "ai-powered";
+            
+            # Phase 3: Context Recognition System
+            dotfiles.context.enable = lib.mkForce true;
+            dotfiles.context.profile = "standard";
             
             # Enable performance optimization system
             dotfiles.performance.enable = lib.mkForce true;
