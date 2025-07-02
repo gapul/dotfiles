@@ -63,7 +63,7 @@
         let
           lib = nixpkgs.lib;
           pkgs = nixpkgs.legacyPackages.${system};
-          platformInfo = import ./common/platform-detection.nix { inherit lib pkgs; };
+          platformInfo = import ./nix/common/platform-detection.nix { inherit lib pkgs; };
         in {
           inherit pkgs platformInfo lib;
           specialArgs = { inherit username homeDirectory dotfilesDirectory platformInfo; };
@@ -76,13 +76,13 @@
         modules = [
           # ./common/home/shell.nix  # Moved to home-manager.users configuration below
           # ./common/themes/default.nix  # Temporarily disabled due to home-manager context issues  
-          ./common/development/default.nix  # Re-enabled successfully
-          ./common/performance/default.nix  # Phase 5: Performance optimization system
-          ./common/security/enterprise.nix  # Phase 5: Enterprise security system
-          ./common/security/policies.nix    # Phase 5: Security policies and compliance
-          ./common/universal/platform-integration.nix  # Phase 5: Universal platform integration
-          ./common/testing/phase5-integration.nix  # Phase 5: Integrated testing and documentation
-          ./common/system/darwin-fixes.nix  # Fix nix-darwin warnings
+          ./nix/common/development/default.nix  # Re-enabled successfully
+          ./nix/common/performance/default.nix  # Phase 5: Performance optimization system
+          ./nix/common/security/enterprise.nix  # Phase 5: Enterprise security system
+          ./nix/common/security/policies.nix    # Phase 5: Security policies and compliance
+          ./nix/common/universal/platform-integration.nix  # Phase 5: Universal platform integration
+          ./nix/common/testing/phase5-integration.nix  # Phase 5: Integrated testing and documentation
+          ./nix/common/system/darwin-fixes.nix  # Fix nix-darwin warnings
           ({ lib, ... }: { 
             # Enable AI-powered development profile for Phase 5
             dotfiles.development.enable = lib.mkForce true;
@@ -119,7 +119,7 @@
             dotfiles.testing.phase5.reportGeneration = true;
           })
           # ./common/automation/default.nix  # Move to home-manager context below
-          ./darwin/system/default.nix
+          ./nix/darwin/system/default.nix
           sops-nix.darwinModules.sops
           { nixpkgs.config.allowUnfree = true; }
           home-manager.darwinModules.home-manager
@@ -132,7 +132,7 @@
               users.${username} = { config, lib, pkgs, ... }: {
                 # Import automation modules in home-manager context
                 imports = [
-                  ./common/automation/default.nix
+                  ./nix/common/automation/default.nix
                 ];
                 
                 # Enable automation modules
@@ -249,7 +249,7 @@
                 
                 # Import core packages for user environment
                 home.packages = let
-                  corePackages = import ./common/packages/core.nix { inherit lib pkgs; platformInfo = (import ./common/platform-detection.nix { inherit lib pkgs; }); };
+                  corePackages = import ./nix/common/packages/core.nix { inherit lib pkgs; platformInfo = (import ./nix/common/platform-detection.nix { inherit lib pkgs; }); };
                 in corePackages.packages;
                 
                 # Git configuration
@@ -272,7 +272,7 @@
                 };
                 
                 # AeroSpace configuration
-                home.file.".config/aerospace/aerospace.toml".source = ../configs/wm/aerospace/aerospace.toml;
+                home.file.".config/aerospace/aerospace.toml".source = ./configs/wm/aerospace/aerospace.toml;
                 
                 # Enable home-manager management
                 programs.home-manager.enable = true;
@@ -290,14 +290,14 @@
         specialArgs = (mkPlatformConfig system).specialArgs;
         modules = [
           { nixpkgs.config.allowUnfree = true; }
-          ./linux/nixos/system.nix
+          ./nix/linux/nixos/system.nix
           sops-nix.nixosModules.sops
           home-manager.nixosModules.home-manager
           {
             home-manager = {
               useGlobalPkgs = true;
               useUserPackages = true;
-              users.${username} = import ./linux/nixos/home.nix;
+              users.${username} = import ./nix/linux/nixos/home.nix;
               extraSpecialArgs = (mkPlatformConfig system).specialArgs;
             };
           }
@@ -329,18 +329,18 @@
       # Standalone home-manager configurations (for non-NixOS Linux, WSL)
       homeConfigurations = let
         commonModules = [
-          ./common/home/shell.nix
+          ./nix/common/home/shell.nix
           # ./common/themes/default.nix  # Temporarily disabled due to home-manager context issues
           # ./common/development/default.nix  # Temporarily disabled due to home-manager context issues
           # ./common/automation/default.nix  # Temporarily disabled due to home-manager context issues
         ];
       in {
-        "${username}@linux" = mkHomeConfiguration "x86_64-linux" (commonModules ++ [ ./linux/desktop/default.nix ]);
-        "${username}@wsl" = mkHomeConfiguration "x86_64-linux" (commonModules ++ [ ./wsl/integration/default.nix ]);
-        "${username}@linux-arm" = mkHomeConfiguration "aarch64-linux" (commonModules ++ [ ./linux/desktop/default.nix ]);
+        "${username}@linux" = mkHomeConfiguration "x86_64-linux" (commonModules ++ [ ./nix/linux/desktop/default.nix ]);
+        "${username}@wsl" = mkHomeConfiguration "x86_64-linux" (commonModules ++ [ ./nix/wsl/integration/default.nix ]);
+        "${username}@linux-arm" = mkHomeConfiguration "aarch64-linux" (commonModules ++ [ ./nix/linux/desktop/default.nix ]);
         "${username}@darwin" = mkHomeConfiguration "aarch64-darwin" commonModules;
         # GitHub Codespaces configuration
-        "codespaces" = mkHomeConfiguration "x86_64-linux" (commonModules ++ [ ./codespaces/default.nix ]);
+        "codespaces" = mkHomeConfiguration "x86_64-linux" (commonModules ++ [ ./nix/codespaces/default.nix ]);
       };
 
       # Android configurations (nix-on-droid)
@@ -348,7 +348,7 @@
         "android" = nix-on-droid.lib.nixOnDroidConfiguration {
           pkgs = import nixpkgs { system = "aarch64-linux"; config.allowUnfree = true; };
           extraSpecialArgs = (mkPlatformConfig "aarch64-linux").specialArgs;
-          modules = [ ./android/termux/default.nix ];
+          modules = [ ./nix/android/termux/default.nix ];
         };
       };
 
@@ -407,7 +407,7 @@
         let
           lib = nixpkgs.lib;
           pkgs = nixpkgs.legacyPackages.${system};
-          platformInfo = import ./common/platform-detection.nix { inherit lib pkgs; };
+          platformInfo = import ./nix/common/platform-detection.nix { inherit lib pkgs; };
         in {
           # Platform information package
           platformInfo = pkgs.writeText "platform-info.json" (builtins.toJSON platformInfo);
