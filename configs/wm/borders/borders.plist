@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Poimandres Color Scheme for JankyBorders -->
+    <!-- Active window border: Teal accent -->
+    <key>active_color</key>
+    <string>0xff5de4c7</string>
+    
+    <!-- Inactive window border: Muted purple -->
+    <key>inactive_color</key>
+    <string>0xff505168</string>
+    
+    <!-- Border width -->
+    <key>width</key>
+    <real>3.0</real>
+    
+    <!-- Corner radius for smooth appearance -->
+    <key>radius</key>
+    <real>8.0</real>
+    
+    <!-- Enable background blur for better visibility -->
+    <key>blur_radius</key>
+    <real>20.0</real>
+    
+    <!-- Exclude specific applications -->
+    <key>blacklist</key>
+    <array>
+        <string>Finder</string>
+        <string>System Preferences</string>
+        <string>Activity Monitor</string>
+        <string>Calculator</string>
+        <string>CleanMyMac</string>
+        <string>CleanMaster- Remove Junk Files</string>
+        <string>System Information</string>
+    </array>
+    
+    <!-- Animation settings -->
+    <key>animate</key>
+    <true/>
+    
+    <key>animation_duration</key>
+    <real>0.15</real>
+    
+    <!-- Enable hidpi support -->
+    <key>hidpi</key>
+    <true/>
+    
+    <!-- Auto-inject borders -->
+    <key>auto_inject</key>
+    <true/>
+</dict>
+</plist>
