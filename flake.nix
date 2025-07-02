@@ -81,6 +81,8 @@
           ./nix/common/performance
           # AI Development Assistant System (Phase 2)
           ./nix/common/ai
+          # Dynamic Environment Adaptation System (Phase 3)
+          ./nix/common/context
           # Basic development module configuration
           {
             dotfiles.development.enable = true;
@@ -98,6 +100,11 @@
             dotfiles.ai.enable = true;
             dotfiles.ai.profile = "minimal"; # minimal, standard, comprehensive, enterprise
             dotfiles.ai.assistants.enable = true;
+            
+            # Phase 3: Dynamic Environment Adaptation System
+            dotfiles.context.enable = true;
+            dotfiles.context.profile = "standard";
+            dotfiles.context.projectDetection.enable = true;
           }
           # ./common/automation/default.nix  # Move to home-manager context below
           ./nix/darwin/system/default.nix

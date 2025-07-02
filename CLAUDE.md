@@ -72,6 +72,31 @@ nix search nixpkgs <package>    # パッケージ検索
 - [SECURITY.md](SECURITY.md) - セキュリティ関連設定
 - [docs/](docs/) - 詳細ガイド
 
+## 🔄 開発ワークフロー
+
+### Phase実装手順
+Phase実装時は以下の順序で進行：
+
+1. **ブランチ作成** - `git checkout -b feature/phaseX-taskY`
+2. **仕様書確認** - `docs/PHASEX_TASK_Y_SPECIFICATION.md`の詳細レビュー  
+3. **現在のdotfiles確認** - 既存構造・設定・依存関係の把握
+4. **実装** - Nixモジュール・スクリプト・設定ファイルの作成/更新
+5. **テスト** - 機能テスト・統合テスト・パフォーマンステスト実施
+6. **修正** - テスト結果に基づく不具合修正・最適化
+7. **完成** - 最終動作確認・ドキュメント更新
+8. **プルリクエスト** - `gh pr create`でレビュー・マージ
+
+### コマンド例
+```bash
+# Phase 3.1 開始例
+git checkout -b feature/phase3-task1-project-detection
+cd /Users/yuki/dotfiles
+just test && just health  # 現状確認
+# 実装...
+just rebuild && just test  # テスト
+gh pr create --title "feat: Phase 3.1 - プロジェクト種別検出システム" --body "詳細説明..."
+```
+
 ---
 
-*最終更新: 2025年6月21日*
+*最終更新: 2025年7月2日*
