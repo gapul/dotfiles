@@ -26,6 +26,12 @@ in
       default = true;
       description = "Enable Claude Code support";
     };
+
+    geminiSupport = mkOption {
+      type = types.bool;
+      default = true;
+      description = "Enable Gemini CLI support";
+    };
     
     claudeNotifications = mkOption {
       type = types.bool;
@@ -69,6 +75,8 @@ in
       github-cli  # For Copilot CLI
       
       # AI-powered development tools
+    ] ++ optionals cfg.geminiSupport [
+      gemini-cli
     ] ++ optionals cfg.mcpSupport [
       # MCP-related tools
       nodejs

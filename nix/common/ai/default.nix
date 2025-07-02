@@ -7,11 +7,11 @@ with lib;
 {
   imports = [
     ./assistants
-    ./automation
-    ./context-management
-    ./workflows
-    ./analysis
-    ./context-aware
+    # ./automation
+    # ./context-management  
+    # ./workflows
+    # ./analysis
+    # ./context-aware
   ];
 
   options.dotfiles.ai = {
@@ -51,55 +51,9 @@ with lib;
       };
     };
     
-    automation = {
-      enable = mkEnableOption "AI automation features";
-      
-      commitMessageGeneration = mkOption {
-        type = types.bool;
-        default = true;
-        description = "Generate intelligent commit messages";
-      };
-      
-      testGeneration = mkOption {
-        type = types.bool;
-        default = true;
-        description = "Automatic test case generation";
-      };
-      
-      refactoringAssistance = mkOption {
-        type = types.bool;
-        default = false;
-        description = "AI-powered refactoring suggestions";
-      };
-      
-      bugDetection = mkOption {
-        type = types.bool;
-        default = true;
-        description = "Intelligent bug detection and suggestions";
-      };
-    };
+    # Automation options are defined in ./automation/default.nix
     
-    contextManagement = {
-      enable = mkEnableOption "AI context management";
-      
-      projectAnalysis = mkOption {
-        type = types.bool;
-        default = true;
-        description = "Analyze project structure for better AI context";
-      };
-      
-      codebaseIndexing = mkOption {
-        type = types.bool;
-        default = true;
-        description = "Index codebase for intelligent assistance";
-      };
-      
-      dependencyTracking = mkOption {
-        type = types.bool;
-        default = true;
-        description = "Track dependencies for better suggestions";
-      };
-    };
+    # Context management options are defined in ./context-management/default.nix
     
     privacy = {
       localProcessing = mkOption {
@@ -143,25 +97,7 @@ with lib;
   };
 
   config = mkIf config.dotfiles.ai.enable {
-    # Enable components based on profile
-    dotfiles.ai = {
-      codeAssistant.enable = mkDefault true;
-      automation.enable = mkDefault (
-        elem config.dotfiles.ai.profile [ "standard" "comprehensive" "enterprise" ]
-      );
-      contextManagement.enable = mkDefault (
-        elem config.dotfiles.ai.profile [ "comprehensive" "enterprise" ]
-      );
-      workflows.enable = mkDefault (
-        elem config.dotfiles.ai.profile [ "comprehensive" "enterprise" ]
-      );
-      analysis.enable = mkDefault (
-        elem config.dotfiles.ai.profile [ "comprehensive" "enterprise" ]
-      );
-      contextAware.enable = mkDefault (
-        elem config.dotfiles.ai.profile [ "comprehensive" "enterprise" ]
-      );
-    };
+    # Components are enabled individually in their respective modules
 
     # Core AI development tools
     environment.systemPackages = with pkgs; [
@@ -222,11 +158,7 @@ with lib;
             echo "Provider: ${config.dotfiles.ai.codeAssistant.provider}"
             echo "Code completion: ${if config.dotfiles.ai.codeAssistant.enhancedCompletion then "enabled" else "disabled"}"
             echo "Documentation: ${if config.dotfiles.ai.codeAssistant.documentationGeneration then "enabled" else "disabled"}"
-            echo "Automation: ${if config.dotfiles.ai.automation.enable then "enabled" else "disabled"}"
-            echo "Context management: ${if config.dotfiles.ai.contextManagement.enable then "enabled" else "disabled"}"
-            echo "Workflows: ${if config.dotfiles.ai.workflows.enable then "enabled" else "disabled"}"
-            echo "Analysis: ${if config.dotfiles.ai.analysis.enable then "enabled" else "disabled"}"
-            echo "Context-aware: ${if config.dotfiles.ai.contextAware.enable then "enabled" else "disabled"}"
+            echo "Components: Check individual modules for detailed status"
             echo ""
             
             # Check provider availability

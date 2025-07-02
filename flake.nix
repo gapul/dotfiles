@@ -97,6 +97,7 @@
             # AI Development Assistant integration (minimal configuration for testing)
             dotfiles.ai.enable = true;
             dotfiles.ai.profile = "minimal"; # minimal, standard, comprehensive, enterprise
+            dotfiles.ai.assistants.enable = true;
           }
           # ./common/automation/default.nix  # Move to home-manager context below
           ./nix/darwin/system/default.nix
