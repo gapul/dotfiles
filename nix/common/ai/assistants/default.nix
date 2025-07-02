@@ -153,7 +153,7 @@ with lib;
         set -euo pipefail
         
         FILE="$1"
-        OUTPUT_FILE="''${2:-$(dirname "$FILE")/$(basename "$FILE" | sed 's/\.[^.]*$//').md"
+        OUTPUT_FILE="''${2:-$(dirname "$FILE")/$(basename "$FILE" | sed 's/\.[^.]*$//').md}"
         
         if [ ! -f "$FILE" ]; then
           echo "File not found: $FILE"

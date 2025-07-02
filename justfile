@@ -373,15 +373,15 @@ performance:
 # Performance monitoring commands
 perf-status:
     @echo "📊 Current System Performance"
-    @dotfiles-view-metrics /var/lib/dotfiles-performance/metrics/performance.db 1
+    @dotfiles-view-metrics ~/.local/share/dotfiles-performance/metrics/performance.db 1
 
 perf-metrics:
     @echo "📈 Performance Metrics (Last 24 hours)"
-    @dotfiles-view-metrics /var/lib/dotfiles-performance/metrics/performance.db 24
+    @dotfiles-view-metrics ~/.local/share/dotfiles-performance/metrics/performance.db 24
 
 perf-builds:
     @echo "🔨 Build Performance Analysis"
-    @dotfiles-build-analysis /var/lib/dotfiles-performance/metrics/performance.db 7
+    @dotfiles-build-analysis ~/.local/share/dotfiles-performance/metrics/performance.db 7
 
 perf-init:
     @echo "🚀 Initializing Performance Monitoring Database"
