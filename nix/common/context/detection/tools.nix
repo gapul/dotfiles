@@ -369,6 +369,35 @@ with lib;
             esac
             
             echo "  🎯 Recommended profile: $OPTIMAL_PROFILE"
+            
+            # Set profile-specific configuration variables
+            case "$OPTIMAL_PROFILE" in
+              "senior_developer")
+                OPTIMAL_PROFILE_KEYBINDINGS="vim"
+                OPTIMAL_PROFILE_COMPLEXITY="advanced"
+                ;;
+              "full_stack_web")
+                OPTIMAL_PROFILE_KEYBINDINGS="vscode"
+                OPTIMAL_PROFILE_COMPLEXITY="standard"
+                ;;
+              "mobile_developer")
+                OPTIMAL_PROFILE_KEYBINDINGS="xcode"
+                OPTIMAL_PROFILE_COMPLEXITY="standard"
+                ;;
+              "devops_engineer")
+                OPTIMAL_PROFILE_KEYBINDINGS="vim"
+                OPTIMAL_PROFILE_COMPLEXITY="advanced"
+                ;;
+              "data_scientist")
+                OPTIMAL_PROFILE_KEYBINDINGS="jupyter"
+                OPTIMAL_PROFILE_COMPLEXITY="standard"
+                ;;
+              *)
+                OPTIMAL_PROFILE_KEYBINDINGS="vim"
+                OPTIMAL_PROFILE_COMPLEXITY="standard"
+                ;;
+            esac
+            
             echo ""
           }
         ''}
@@ -408,10 +437,10 @@ M.settings = {
   theme = "auto",
   
   -- Key bindings
-  keybindings = "${config.dotfiles.context.toolConfiguration.developerProfiles.profiles.$OPTIMAL_PROFILE.keyBindings or "vim"}",
+  keybindings = "\${OPTIMAL_PROFILE_KEYBINDINGS:-vim}",
   
-  -- Complexity level
-  complexity = "${config.dotfiles.context.toolConfiguration.developerProfiles.profiles.$OPTIMAL_PROFILE.complexity or "standard"}"
+  -- Complexity level  
+  complexity = "\${OPTIMAL_PROFILE_COMPLEXITY:-standard}"
 }
 
 -- Language-specific LSP servers
