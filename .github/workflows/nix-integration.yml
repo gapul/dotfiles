@@ -28,7 +28,7 @@ jobs:
     - uses: actions/checkout@v4
     
     - name: Install Determinate Nix
-      uses: DeterminateSystems/nix-installer-action@v17
+      uses: DeterminateSystems/nix-installer-action@v18
       
     - name: Setup Magic Nix Cache
       uses: DeterminateSystems/magic-nix-cache-action@v11
@@ -105,7 +105,7 @@ jobs:
     - uses: actions/checkout@v4
     
     - name: Install Determinate Nix
-      uses: DeterminateSystems/nix-installer-action@v17
+      uses: DeterminateSystems/nix-installer-action@v18
       
     - name: Analyze Package Dependencies
       run: |
@@ -212,7 +212,7 @@ jobs:
     - uses: actions/checkout@v4
     
     - name: Install Determinate Nix
-      uses: DeterminateSystems/nix-installer-action@v17
+      uses: DeterminateSystems/nix-installer-action@v18
       
     - name: Benchmark Nix Operations
       run: |
