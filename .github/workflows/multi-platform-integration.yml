@@ -61,7 +61,7 @@ jobs:
           experimental-features = nix-command flakes
           
     - name: Setup Magic Nix Cache
-      uses: DeterminateSystems/magic-nix-cache-action@v11
+      uses: DeterminateSystems/magic-nix-cache-action@v12
       
     - name: Platform-specific setup
       run: |
@@ -177,7 +177,7 @@ jobs:
       uses: DeterminateSystems/nix-installer-action@v17
       
     - name: Setup Magic Nix Cache
-      uses: DeterminateSystems/magic-nix-cache-action@v11
+      uses: DeterminateSystems/magic-nix-cache-action@v12
       
     - name: Build test container
       run: |
