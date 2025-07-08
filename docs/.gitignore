@@ -1,0 +1,29 @@
+# ドキュメント用 .gitignore
+# 自動生成・一時ファイルを除外
+
+# 自動生成バックアップファイル
+*.backup
+*.bak
+*~
+
+# 一時ファイル
+*.tmp
+*.temp
+
+# システム生成ファイル
+.DS_Store
+Thumbs.db
+
+# エディター一時ファイル
+*.swp
+*.swo
+.vscode/
+.idea/
+
+# ドキュメント生成キャッシュ
+.docusaurus/
+node_modules/
+
+# 統合・変換中の一時ファイル
+*_consolidating.md
+*_merging.md

@@ -130,7 +130,7 @@ alt-shift-minus = 'resize smart -50'
 alt-shift-equal = 'resize smart +50'
 
 # See: https://nikitabobko.github.io/AeroSpace/commands#workspace
-# Extended workspace support (1-10)
+# Workspace support (1-8)
 alt-1 = 'workspace 1'
 alt-2 = 'workspace 2'
 alt-3 = 'workspace 3'
@@ -139,11 +139,9 @@ alt-5 = 'workspace 5'
 alt-6 = 'workspace 6'
 alt-7 = 'workspace 7'
 alt-8 = 'workspace 8'
-alt-9 = 'workspace 9'
-alt-0 = 'workspace 10'
 
 # See: https://nikitabobko.github.io/AeroSpace/commands#move-node-to-workspace
-# Extended workspace support (1-10)
+# Workspace support (1-8)
 alt-shift-1 = 'move-node-to-workspace 1'
 alt-shift-2 = 'move-node-to-workspace 2'
 alt-shift-3 = 'move-node-to-workspace 3'
@@ -152,8 +150,6 @@ alt-shift-5 = 'move-node-to-workspace 5'
 alt-shift-6 = 'move-node-to-workspace 6'
 alt-shift-7 = 'move-node-to-workspace 7'
 alt-shift-8 = 'move-node-to-workspace 8'
-alt-shift-9 = 'move-node-to-workspace 9'
-alt-shift-0 = 'move-node-to-workspace 10'
 
 # See: https://nikitabobko.github.io/AeroSpace/commands#workspace-back-and-forth
 alt-tab = 'workspace-back-and-forth'
@@ -200,8 +196,6 @@ v = ['layout v_tiles', 'mode main']
 6 = ['move-node-to-workspace 6', 'workspace 6', 'mode main']
 7 = ['move-node-to-workspace 7', 'workspace 7', 'mode main']
 8 = ['move-node-to-workspace 8', 'workspace 8', 'mode main']
-9 = ['move-node-to-workspace 9', 'workspace 9', 'mode main']
-0 = ['move-node-to-workspace 10', 'workspace 10', 'mode main']
 
 # Monitor management
 m = ['move-workspace-to-monitor --wrap-around next', 'mode main']
@@ -309,6 +303,4 @@ run = 'move-node-to-workspace 8'
 6 = 'main'    # Media apps on main monitor
 7 = 'main'    # Design tools on main monitor
 8 = 'secondary'  # System tools on secondary monitor
-9 = 'main'    # Extra workspace on main monitor
-10 = 'secondary' # Extra workspace on secondary monitor
 

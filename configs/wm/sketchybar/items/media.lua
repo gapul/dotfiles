@@ -107,7 +107,8 @@ local function animate_detail(detail)
         return
     end
 
-    sbar.animate("tanh", 30, function()
+    -- Reduced animation duration to prevent hanging
+    sbar.animate("tanh", 15, function()
         media_artist:set({
             label = {
                 width = detail and "dynamic" or 0
@@ -139,7 +140,8 @@ media_cover:subscribe("media_change", function(env)
         if drawing then
             animate_detail(true)
             interrupt = interrupt + 1
-            sbar.delay(5, animate_detail)
+            -- Reduced delay to prevent blocking
+            sbar.delay(3, animate_detail)
         else
             media_cover:set({
                 popup = {

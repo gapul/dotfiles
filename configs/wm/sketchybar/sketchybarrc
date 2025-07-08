@@ -1,12 +1,71 @@
 #!/usr/bin/env lua
 
--- Determine the configuration directory
+-- SketchyBar Configuration Entry Point
+-- Based on falleco/dotfiles with enhanced error handling and robustness
+
+-- Utility functions for error handling
+local function log_error(message)
+    io.stderr:write("[ERROR] SketchyBar: " .. message .. "\n")
+end
+
+local function log_info(message)
+    io.stdout:write("[INFO] SketchyBar: " .. message .. "\n")
+end
+
+-- Determine and validate the configuration directory
 local config_dir = os.getenv("CONFIG_DIR") or "/Users/yuki/dotfiles/configs/wm/sketchybar"
 
--- Prepend the configuration directory to the module search paths
+-- Validate configuration directory exists
+local function directory_exists(path)
+    local f = io.open(path .. "/init.lua", "r")
+    if f then
+        f:close()
+        return true
+    end
+    return false
+end
+
+if not directory_exists(config_dir) then
+    log_error("Configuration directory not found: " .. config_dir)
+    log_error("Please ensure CONFIG_DIR points to a valid SketchyBar configuration")
+    os.exit(1)
+end
+
+log_info("Using configuration directory: " .. config_dir)
+
+-- Setup module search paths
 package.path = config_dir .. "/?.lua;" .. config_dir .. "/?/init.lua;" .. package.path
 package.cpath = config_dir .. "/?.so;" .. package.cpath
 
--- Now require the modules
-require("helpers")
-require("init")
+-- Safely require modules with error handling
+local function safe_require(module_name)
+    local success, result = pcall(require, module_name)
+    if not success then
+        log_error("Failed to load module '" .. module_name .. "': " .. tostring(result))
+        return false
+    end
+    log_info("Successfully loaded module: " .. module_name)
+    return true
+end
+
+-- Initialize configuration
+log_info("Starting SketchyBar configuration...")
+
+-- Load helper modules first
+if not safe_require("helpers.init") then
+    log_error("Critical: Failed to load helpers, attempting to build...")
+    -- Try to build helpers if they don't exist
+    os.execute("cd '" .. config_dir .. "/helpers' && make 2>/dev/null")
+    if not safe_require("helpers.init") then
+        log_error("Fatal: Could not load helpers even after rebuild")
+        os.exit(1)
+    end
+end
+
+-- Load main configuration
+if not safe_require("init") then
+    log_error("Fatal: Failed to load main configuration")
+    os.exit(1)
+end
+
+log_info("SketchyBar configuration loaded successfully")

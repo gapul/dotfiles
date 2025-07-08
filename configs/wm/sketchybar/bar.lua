@@ -2,7 +2,7 @@ local settings = require("settings")
 
 -- Equivalent to the --bar domain
 sbar.bar({
-    topmost = "window",
+    topmost = true,
     height = settings.bar.height,
     color = settings.bar.background,
     padding_right = settings.bar.padding.x,
@@ -11,5 +11,6 @@ sbar.bar({
     -- padding_bottom = settings.bar.padding.y,
     sticky = true,
     position = "top",
-    shadow = false
+    shadow = false,
+    drawing = true
 })
