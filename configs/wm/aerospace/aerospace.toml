@@ -1,18 +1,33 @@
-# AeroSpace Configuration with SketchyBar Integration
-# Based on forteleaf/sketkchybar-with-aerospace
+# AeroSpace Configuration with Advanced SketchyBar Integration
+# Based on falleco/dotfiles with enhanced features
 # Documentation: https://github.com/nikitabobko/AeroSpace
 
-# Commands to run after AeroSpace startup
+# You can use it to add commands that run after login to macOS user session.
+# 'start-at-login' needs to be 'true' for 'after-login-command' to work
+# Available commands: https://nikitabobko.github.io/AeroSpace/commands
+after-login-command = []
+
+# You can use it to add commands that run after AeroSpace startup.
+# 'after-startup-command' is run after 'after-login-command'
+# Available commands : https://nikitabobko.github.io/AeroSpace/commands
 after-startup-command = [
-    # Start SketchyBar automatically with AeroSpace
-    'exec-and-forget /opt/homebrew/opt/sketchybar/bin/sketchybar',
+  'exec-and-forget sketchybar >> $HOME/.sketchybar/service.log 2>&1',
+  # JankyBorders has a built-in detection of already running process,
+  # so it won't be run twice on AeroSpace restart
+  'exec-and-forget borders active_color=0xffe1e3e4 inactive_color=0xff494d64 width=5.0',
 ]
 
-# Execute commands when workspace changes (for SketchyBar integration)
+# Notify Sketchybar about workspace change
 exec-on-workspace-change = [
-    '/bin/bash',
-    '-c',
-    '/opt/homebrew/opt/sketchybar/bin/sketchybar --trigger aerospace_workspace_change AEROSPACE_FOCUSED_WORKSPACE=$AEROSPACE_FOCUSED_WORKSPACE AEROSPACE_PREV_WORKSPACE=$AEROSPACE_PREV_WORKSPACE',
+  '/bin/bash',
+  '-c',
+  'sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=$AEROSPACE_FOCUSED_WORKSPACE FOCUSED_DISPLAY=$(aerospace list-monitors --focused | awk "{print $1}")',
+]
+
+# Notify Sketchybar about focus change
+# See https://nikitabobko.github.io/AeroSpace/guide#on-focus-changed-callbacks
+on-focus-changed = [
+  'exec-and-forget sketchybar --trigger aerospace_focus_change FOCUSED_WORKSPACE=$AEROSPACE_FOCUSED_WORKSPACE',
 ]
 
 # Start AeroSpace at login
@@ -53,12 +68,12 @@ on-focused-monitor-changed = ['move-mouse monitor-lazy-center']
 #                 Monitor pattern is the same as for 'workspace-to-monitor-force-assignment'.
 #                 See: https://nikitabobko.github.io/AeroSpace/guide#assign-workspaces-to-monitors
 [gaps]
-inner.horizontal = 10
-inner.vertical =   10
-outer.left =       10
-outer.bottom =     10
-outer.top =        10
-outer.right =      10
+inner.horizontal = 12
+inner.vertical =   12
+outer.left =       [{ monitor.main = 8 }, { monitor."secondary" = 12 }, 10]
+outer.bottom =     [{ monitor.main = 8 }, { monitor."secondary" = 12 }, 10]
+outer.top =        [{ monitor.main = 48 }, { monitor."secondary" = 52 }, 50]
+outer.right =      [{ monitor.main = 8 }, { monitor."secondary" = 12 }, 10]
 
 # 'main' binding mode declaration
 # See: https://nikitabobko.github.io/AeroSpace/guide#binding-modes
@@ -85,23 +100,37 @@ alt-slash = 'layout tiles horizontal vertical'
 alt-comma = 'layout accordion horizontal vertical'
 
 # See: https://nikitabobko.github.io/AeroSpace/commands#focus
+# Vi-style navigation
 alt-h = 'focus left'
 alt-j = 'focus down'
 alt-k = 'focus up'
 alt-l = 'focus right'
 
+# Arrow key navigation
+alt-left = 'focus left'
+alt-down = 'focus down'
+alt-up = 'focus up'
+alt-right = 'focus right'
+
 # See: https://nikitabobko.github.io/AeroSpace/commands#move
+# Vi-style movement
 alt-shift-h = 'move left'
 alt-shift-j = 'move down'
 alt-shift-k = 'move up'
 alt-shift-l = 'move right'
+
+# Arrow key movement
+alt-shift-left = 'move left'
+alt-shift-down = 'move down'
+alt-shift-up = 'move up'
+alt-shift-right = 'move right'
 
 # See: https://nikitabobko.github.io/AeroSpace/commands#resize
 alt-shift-minus = 'resize smart -50'
 alt-shift-equal = 'resize smart +50'
 
 # See: https://nikitabobko.github.io/AeroSpace/commands#workspace
-# Using only workspaces 1-8 for simplicity
+# Extended workspace support (1-10)
 alt-1 = 'workspace 1'
 alt-2 = 'workspace 2'
 alt-3 = 'workspace 3'
@@ -110,9 +139,11 @@ alt-5 = 'workspace 5'
 alt-6 = 'workspace 6'
 alt-7 = 'workspace 7'
 alt-8 = 'workspace 8'
+alt-9 = 'workspace 9'
+alt-0 = 'workspace 10'
 
 # See: https://nikitabobko.github.io/AeroSpace/commands#move-node-to-workspace
-# Using only workspaces 1-8 for simplicity
+# Extended workspace support (1-10)
 alt-shift-1 = 'move-node-to-workspace 1'
 alt-shift-2 = 'move-node-to-workspace 2'
 alt-shift-3 = 'move-node-to-workspace 3'
@@ -121,6 +152,8 @@ alt-shift-5 = 'move-node-to-workspace 5'
 alt-shift-6 = 'move-node-to-workspace 6'
 alt-shift-7 = 'move-node-to-workspace 7'
 alt-shift-8 = 'move-node-to-workspace 8'
+alt-shift-9 = 'move-node-to-workspace 9'
+alt-shift-0 = 'move-node-to-workspace 10'
 
 # See: https://nikitabobko.github.io/AeroSpace/commands#workspace-back-and-forth
 alt-tab = 'workspace-back-and-forth'
@@ -139,8 +172,143 @@ r = ['flatten-workspace-tree', 'mode main'] # reset layout
 f = ['layout floating tiling', 'mode main'] # Toggle between floating and tiling layout
 backspace = ['close-all-windows-but-current', 'mode main']
 
+# Enhanced service mode bindings
+# Join windows with vi-style keys
 alt-shift-h = ['join-with left', 'mode main']
 alt-shift-j = ['join-with down', 'mode main']
 alt-shift-k = ['join-with up', 'mode main']
 alt-shift-l = ['join-with right', 'mode main']
+
+# Join windows with arrow keys
+alt-shift-left = ['join-with left', 'mode main']
+alt-shift-down = ['join-with down', 'mode main']
+alt-shift-up = ['join-with up', 'mode main']
+alt-shift-right = ['join-with right', 'mode main']
+
+# Additional service mode features
+t = ['layout tiles', 'mode main']
+a = ['layout accordion', 'mode main']
+h = ['layout h_tiles', 'mode main']
+v = ['layout v_tiles', 'mode main']
+
+# Workspace management in service mode
+1 = ['move-node-to-workspace 1', 'workspace 1', 'mode main']
+2 = ['move-node-to-workspace 2', 'workspace 2', 'mode main']
+3 = ['move-node-to-workspace 3', 'workspace 3', 'mode main']
+4 = ['move-node-to-workspace 4', 'workspace 4', 'mode main']
+5 = ['move-node-to-workspace 5', 'workspace 5', 'mode main']
+6 = ['move-node-to-workspace 6', 'workspace 6', 'mode main']
+7 = ['move-node-to-workspace 7', 'workspace 7', 'mode main']
+8 = ['move-node-to-workspace 8', 'workspace 8', 'mode main']
+9 = ['move-node-to-workspace 9', 'workspace 9', 'mode main']
+0 = ['move-node-to-workspace 10', 'workspace 10', 'mode main']
+
+# Monitor management
+m = ['move-workspace-to-monitor --wrap-around next', 'mode main']
+shift-m = ['move-node-to-monitor --wrap-around next', 'mode main']
+
+# Window resizing in service mode
+minus = ['resize smart -50', 'mode main']
+equal = ['resize smart +50', 'mode main']
+shift-minus = ['resize width -100', 'mode main']
+shift-equal = ['resize width +100', 'mode main']
+
+# Application-specific workspace assignments
+[[on-window-detected]]
+if.app-id = 'com.apple.Safari'
+run = 'move-node-to-workspace 1'
+
+[[on-window-detected]]
+if.app-id = 'com.google.Chrome'
+run = 'move-node-to-workspace 1'
+
+[[on-window-detected]]
+if.app-id = 'org.mozilla.firefox'
+run = 'move-node-to-workspace 1'
+
+[[on-window-detected]]
+if.app-id = 'com.microsoft.VSCode'
+run = 'move-node-to-workspace 2'
+
+[[on-window-detected]]
+if.app-id = 'com.jetbrains.intellij'
+run = 'move-node-to-workspace 2'
+
+[[on-window-detected]]
+if.app-id = 'com.apple.Terminal'
+run = 'move-node-to-workspace 3'
+
+[[on-window-detected]]
+if.app-id = 'com.github.wez.wezterm'
+run = 'move-node-to-workspace 3'
+
+[[on-window-detected]]
+if.app-id = 'net.kovidgoyal.kitty'
+run = 'move-node-to-workspace 3'
+
+[[on-window-detected]]
+if.app-id = 'io.alacritty'
+run = 'move-node-to-workspace 3'
+
+[[on-window-detected]]
+if.app-id = 'com.apple.finder'
+run = 'move-node-to-workspace 4'
+
+[[on-window-detected]]
+if.app-id = 'com.apple.mail'
+run = 'move-node-to-workspace 5'
+
+[[on-window-detected]]
+if.app-id = 'com.tinyspeck.slackmacgap'
+run = 'move-node-to-workspace 5'
+
+[[on-window-detected]]
+if.app-id = 'com.microsoft.teams2'
+run = 'move-node-to-workspace 5'
+
+[[on-window-detected]]
+if.app-id = 'com.discord.Discord'
+run = 'move-node-to-workspace 5'
+
+[[on-window-detected]]
+if.app-id = 'com.spotify.client'
+run = 'move-node-to-workspace 6'
+
+[[on-window-detected]]
+if.app-id = 'com.apple.music'
+run = 'move-node-to-workspace 6'
+
+[[on-window-detected]]
+if.app-id = 'com.figma.Desktop'
+run = 'move-node-to-workspace 7'
+
+[[on-window-detected]]
+if.app-id = 'com.adobe.CreativeCloud'
+run = 'move-node-to-workspace 7'
+
+[[on-window-detected]]
+if.app-id = 'com.1password.1password-macos'
+run = 'move-node-to-workspace 8'
+
+[[on-window-detected]]
+if.app-id = 'com.apple.systempreferences'
+run = 'move-node-to-workspace 8'
+
+[[on-window-detected]]
+if.app-id = 'com.apple.ActivityMonitor'
+run = 'move-node-to-workspace 8'
+
+# Workspace-to-monitor assignments for multi-monitor setups
+# Adjust these patterns based on your monitor setup
+[workspace-to-monitor-force-assignment]
+1 = 'main'    # Web browsers on main monitor
+2 = 'main'    # Code editors on main monitor
+3 = 'secondary'  # Terminals on secondary monitor
+4 = 'secondary'  # File managers on secondary monitor
+5 = 'secondary'  # Communication apps on secondary monitor
+6 = 'main'    # Media apps on main monitor
+7 = 'main'    # Design tools on main monitor
+8 = 'secondary'  # System tools on secondary monitor
+9 = 'main'    # Extra workspace on main monitor
+10 = 'secondary' # Extra workspace on secondary monitor
 
