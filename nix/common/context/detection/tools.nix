@@ -437,10 +437,10 @@ with lib;
           theme = "auto",
   
           -- Key bindings
-          keybindings = "\${OPTIMAL_PROFILE_KEYBINDINGS:-vim}",
+          keybindings = "''${OPTIMAL_PROFILE_KEYBINDINGS:-vim}",
   
           -- Complexity level  
-          complexity = "\${OPTIMAL_PROFILE_COMPLEXITY:-standard}"
+          complexity = "''${OPTIMAL_PROFILE_COMPLEXITY:-standard}"
         }
 
         -- Language-specific LSP servers
