@@ -186,8 +186,15 @@
                   sessionVariables = {
                     EDITOR = "nvim";
                     PAGER = "bat";
-                    PATH = "$HOME/.local/bin:/opt/homebrew/bin:$PATH";
                   };
+                  
+                  # Ensure Nix paths have priority over Homebrew
+                  sessionPath = [
+                    "$HOME/.nix-profile/bin"
+                    "/etc/profiles/per-user/yuki/bin"
+                    "/run/current-system/sw/bin"
+                    "$HOME/.local/bin"
+                  ];
                   
                   initContent = ''
                     # Atuin shell history

@@ -244,7 +244,7 @@
     enable = true;
     onActivation = {
       autoUpdate = false;
-      cleanup = "zap";
+      cleanup = "uninstall";
       upgrade = false;
     };
     
