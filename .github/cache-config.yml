@@ -1,0 +1,46 @@
+# 共通キャッシュ設定
+# 各ワークフローで参照可能
+
+cache_strategies:
+  nix:
+    path: |
+      ~/.cache/nix
+      /nix/store
+    key_pattern: "${{ runner.os }}-nix-${{ hashFiles('**/flake.lock') }}"
+    restore_keys: |
+      ${{ runner.os }}-nix-
+  
+  node:
+    path: |
+      ~/.npm
+      node_modules
+    key_pattern: "${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}"
+    restore_keys: |
+      ${{ runner.os }}-node-
+  
+  rust:
+    path: |
+      ~/.cargo/registry
+      ~/.cargo/git
+      target
+    key_pattern: "${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}"
+    restore_keys: |
+      ${{ runner.os }}-cargo-
+  
+  python:
+    path: |
+      ~/.cache/pip
+      .venv
+    key_pattern: "${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}"
+    restore_keys: |
+      ${{ runner.os }}-pip-
+
+optimization_flags:
+  # キャッシュ効率最大化
+  cache_compression: true
+  cache_parallel_restore: true
+  cache_cleanup_threshold: "5GB"
+  
+  # セキュリティ
+  cache_encryption: true
+  cache_access_control: "repository"
