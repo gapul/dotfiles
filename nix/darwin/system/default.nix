@@ -83,8 +83,9 @@
       mas  # Mac App Store CLI
       
       # Development utilities (macOS optimized)
-      docker
-      docker-compose
+      # Note: Docker managed via Podman Desktop (Homebrew cask)
+      # docker
+      # docker-compose
       
       # Secret management tools
       sops
