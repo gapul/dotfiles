@@ -483,7 +483,7 @@ with lib;
           "// Generated": "$(date)",
           "// Project Type": "$PROJECT_TYPE",
   
-          "editor.formatOnSave": ${config.dotfiles.context.toolConfiguration.editorIntegration.formatOnSave},
+          "editor.formatOnSave": ${lib.boolToString config.dotfiles.context.toolConfiguration.editorIntegration.formatOnSave},
           "editor.codeActionsOnSave": {
             "source.fixAll": true,
             "source.organizeImports": true

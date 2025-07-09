@@ -55,7 +55,7 @@ with lib;
     dotfiles.context.themeAdaptation.systemIntegration.enable = mkDefault true;
     
     # Configure tool configuration based on profile
-    dotfiles.context.toolConfiguration.enable = mkDefault false;
+    dotfiles.context.toolConfiguration.enable = mkDefault (config.dotfiles.context.profile != "minimal");
     dotfiles.context.toolConfiguration.developerProfiles.enable = mkDefault true;
     dotfiles.context.toolConfiguration.contextualSettings.enable = mkDefault true;
     dotfiles.context.toolConfiguration.editorIntegration.enable = mkDefault true;
