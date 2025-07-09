@@ -83,9 +83,8 @@
       mas  # Mac App Store CLI
       
       # Development utilities (macOS optimized)
-      # Note: Docker managed via Podman Desktop (Homebrew cask)
-      # docker
-      # docker-compose
+      docker
+      docker-compose
       
       # Secret management tools
       sops
@@ -280,7 +279,7 @@
       "material-maker"
       "virtualbox"    # VirtualBox (Apple Silicon limitations)
       "godot"         # Godot (Apple Silicon limitations)
-      "podman-desktop" # Container management
+      # Container management now handled by Nix docker/docker-compose
       "freecad"       # CAD software  
       "kicad"         # PCB design
       "goxel"         # Voxel editor
