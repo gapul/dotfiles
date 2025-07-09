@@ -150,6 +150,14 @@
                 home.homeDirectory = lib.mkForce "/Users/yuki";
                 home.stateVersion = "23.11";
                 
+                # Ensure Nix paths have priority over Homebrew
+                home.sessionPath = [
+                  "$HOME/.nix-profile/bin"
+                  "/etc/profiles/per-user/yuki/bin"
+                  "/run/current-system/sw/bin"
+                  "$HOME/.local/bin"
+                ];
+                
                 # Enhanced shell configuration with modern tools
                 programs.zsh = {
                   enable = true;
@@ -187,14 +195,6 @@
                     EDITOR = "nvim";
                     PAGER = "bat";
                   };
-                  
-                  # Ensure Nix paths have priority over Homebrew
-                  sessionPath = [
-                    "$HOME/.nix-profile/bin"
-                    "/etc/profiles/per-user/yuki/bin"
-                    "/run/current-system/sw/bin"
-                    "$HOME/.local/bin"
-                  ];
                   
                   initContent = ''
                     # Atuin shell history
