@@ -400,7 +400,7 @@ with lib;
                   return
                 fi
               fi
-            '') (attrNames config.dotfiles.context.themeAdaptation.timeBasedThemes.schedules))}\
+            '') config.dotfiles.context.themeAdaptation.timeBasedThemes.schedules)}\
             
             # Default fallback
             TIME_THEME="balanced"
