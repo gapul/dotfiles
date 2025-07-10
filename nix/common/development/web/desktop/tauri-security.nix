@@ -202,7 +202,7 @@ in
           # Window permissions
           (lib.mkIf (cfg.allowlist.window != []) {
             window = lib.mkMerge [
-              { all = elem "all" cfg.allowlist.window; }
+              { all = lib.elem "all" cfg.allowlist.window; }
               (lib.genAttrs (lib.filter (x: x != "all") cfg.allowlist.window) (_: true))
             ];
           })

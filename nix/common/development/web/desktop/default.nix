@@ -67,11 +67,11 @@ with lib;
     );
     
     web.desktop.tauri.features.autoUpdater = mkDefault (
-      elem config.web.desktop.profile [ "standard" "advanced" "production" ]
+      lib.elem config.web.desktop.profile [ "standard" "advanced" "production" ]
     );
     
     web.desktop.tauri.features.systemTray = mkDefault (
-      elem config.web.desktop.profile [ "standard" "advanced" "production" ]
+      lib.elem config.web.desktop.profile [ "standard" "advanced" "production" ]
     );
     
     web.desktop.tauri.development.debugMode = mkDefault (
@@ -114,11 +114,11 @@ with lib;
     );
     
     web.desktop.tauri.security.allowlist.notification = mkDefault (
-      elem config.web.desktop.profile [ "standard" "advanced" "production" ]
+      lib.elem config.web.desktop.profile [ "standard" "advanced" "production" ]
     );
     
     web.desktop.tauri.security.allowlist.clipboard = mkDefault (
-      elem config.web.desktop.profile [ "standard" "advanced" ]
+      lib.elem config.web.desktop.profile [ "standard" "advanced" ]
     );
     
     web.desktop.tauri.security.allowlist.globalShortcut = mkDefault (
