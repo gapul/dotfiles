@@ -34,67 +34,44 @@ with lib;
     web.packageManagers.enable = mkDefault true;
     web.buildTools.enable = mkDefault true;
     
-    # Profile-specific configurations
-    web.runtime = mkMerge [
-      (mkIf (config.web.core.profile == "minimal") {
-        bun = mkDefault false;
-        deno = mkDefault false;
-        workerd = mkDefault false;
-      })
-      (mkIf (config.web.core.profile == "standard") {
-        bun = mkDefault true;
-        deno = mkDefault true;
-        workerd = mkDefault false;
-      })
-      (mkIf (elem config.web.core.profile [ "full" "performance" ]) {
-        bun = mkDefault true;
-        deno = mkDefault true;
-        workerd = mkDefault true;
-      })
+    # Profile-specific runtime configurations
+    web.runtime.bun = mkDefault (
+      elem config.web.core.profile [ "standard" "full" "performance" ]
+    );
+    web.runtime.deno = mkDefault (
+      elem config.web.core.profile [ "standard" "full" "performance" ]
+    );
+    web.runtime.workerd = mkDefault (
+      elem config.web.core.profile [ "full" "performance" ]
+    );
+    
+    # Profile-specific package manager configurations
+    web.packageManagers.primary = mkDefault (
+      if config.web.core.profile == "minimal" then "npm"
+      else "bun"
+    );
+    web.packageManagers.fallback = mkDefault (
+      if config.web.core.profile == "minimal" then [ "pnpm" ]
+      else if config.web.core.profile == "standard" then [ "pnpm" "npm" ]
+      else [ "pnpm" "npm" "yarn" ]
     ];
     
-    web.packageManagers = mkMerge [
-      (mkIf (config.web.core.profile == "minimal") {
-        primary = mkDefault "npm";
-        fallback = mkDefault [ "pnpm" ];
-      })
-      (mkIf (config.web.core.profile == "standard") {
-        primary = mkDefault "bun";
-        fallback = mkDefault [ "pnpm" "npm" ];
-      })
-      (mkIf (elem config.web.core.profile [ "full" "performance" ]) {
-        primary = mkDefault "bun";
-        fallback = mkDefault [ "pnpm" "npm" "yarn" ];
-      })
-    ];
-    
-    web.buildTools = mkMerge [
-      (mkIf (config.web.core.profile == "minimal") {
-        turbopack.enable = mkDefault false;
-        swc.optimization = mkDefault "none";
-        vite.optimization = mkDefault "development";
-        farm.enable = mkDefault false;
-      })
-      (mkIf (config.web.core.profile == "standard") {
-        turbopack.enable = mkDefault true;
-        swc.optimization = mkDefault "basic";
-        vite.optimization = mkDefault "production";
-        farm.enable = mkDefault false;
-      })
-      (mkIf (config.web.core.profile == "full") {
-        turbopack.enable = mkDefault true;
-        swc.optimization = mkDefault "aggressive";
-        vite.optimization = mkDefault "production";
-        farm.enable = mkDefault true;
-      })
-      (mkIf (config.web.core.profile == "performance") {
-        turbopack.enable = mkDefault true;
-        swc.optimization = mkDefault "aggressive";
-        vite.optimization = mkDefault "production";
-        farm.enable = mkDefault true;
-        farm.performance = mkDefault "maximum";
-      })
-    ];
+    # Profile-specific build tool configurations
+    web.buildTools.turbopack.enable = mkDefault (
+      elem config.web.core.profile [ "standard" "full" "performance" ]
+    );
+    web.buildTools.swc.optimization = mkDefault (
+      if config.web.core.profile == "minimal" then "none"
+      else if config.web.core.profile == "standard" then "basic"
+      else "aggressive"
+    );
+    web.buildTools.vite.optimization = mkDefault (
+      if config.web.core.profile == "minimal" then "development"
+      else "production"
+    );
+    web.buildTools.farm.enable = mkDefault (
+      elem config.web.core.profile [ "full" "performance" ]
+    );
     
     # Enhanced shell configuration for web development
     home.shellAliases = {
