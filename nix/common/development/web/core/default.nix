@@ -54,7 +54,7 @@ with lib;
       if config.web.core.profile == "minimal" then [ "pnpm" ]
       else if config.web.core.profile == "standard" then [ "pnpm" "npm" ]
       else [ "pnpm" "npm" "yarn" ]
-    ];
+    );
     
     # Profile-specific build tool configurations
     web.buildTools.turbopack.enable = mkDefault (

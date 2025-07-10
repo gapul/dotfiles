@@ -33,64 +33,50 @@ with lib;
     web.desktop.tauri.security.enable = mkDefault true;
     
     # Profile-specific configurations
-    web.desktop.tauri = mkMerge [
-      (mkIf (config.web.desktop.profile == "basic") {
-        rustToolchain.components = mkDefault [ "rust-src" "rustfmt" ];
-        rustToolchain.targets = mkDefault [ 
-          "x86_64-unknown-linux-gnu" 
-          "x86_64-apple-darwin" 
-        ];
-        features.bundleFormats = mkDefault [ "appimage" "dmg" ];
-        features.autoUpdater = mkDefault false;
-        features.systemTray = mkDefault false;
-        development.debugMode = mkDefault true;
-      })
-      (mkIf (config.web.desktop.profile == "standard") {
-        rustToolchain.components = mkDefault [ "rust-src" "rustfmt" "clippy" "rust-analyzer" ];
-        rustToolchain.targets = mkDefault [
-          "x86_64-unknown-linux-gnu"
-          "aarch64-unknown-linux-gnu"
-          "x86_64-apple-darwin"
-          "aarch64-apple-darwin"
-        ];
-        features.bundleFormats = mkDefault [ "deb" "appimage" "dmg" "app" ];
-        features.autoUpdater = mkDefault true;
-        features.systemTray = mkDefault true;
-        features.notifications = mkDefault true;
-        development.debugMode = mkDefault true;
-      })
-      (mkIf (config.web.desktop.profile == "advanced") {
-        rustToolchain.components = mkDefault [ "rust-src" "rustfmt" "clippy" "rust-analyzer" ];
-        rustToolchain.targets = mkDefault [
-          "x86_64-unknown-linux-gnu"
-          "aarch64-unknown-linux-gnu"
-          "x86_64-pc-windows-gnu"
-          "x86_64-apple-darwin"
-          "aarch64-apple-darwin"
-        ];
-        features.bundleFormats = mkDefault [ "deb" "rpm" "appimage" "nsis" "msi" "dmg" "app" ];
-        features.autoUpdater = mkDefault true;
-        features.systemTray = mkDefault true;
-        features.notifications = mkDefault true;
-        development.debugMode = mkDefault true;
-      })
-      (mkIf (config.web.desktop.profile == "production") {
-        rustToolchain.components = mkDefault [ "rust-src" "rustfmt" "clippy" "rust-analyzer" ];
-        rustToolchain.targets = mkDefault [
-          "x86_64-unknown-linux-gnu"
-          "aarch64-unknown-linux-gnu"
-          "x86_64-pc-windows-gnu"
-          "x86_64-apple-darwin"
-          "aarch64-apple-darwin"
-        ];
-        features.bundleFormats = mkDefault [ "deb" "rpm" "appimage" "nsis" "msi" "dmg" "app" ];
-        features.autoUpdater = mkDefault true;
-        features.systemTray = mkDefault true;
-        features.notifications = mkDefault true;
-        development.debugMode = mkDefault false;
-        development.sourceMaps = mkDefault false;
-      })
-    ];
+    web.desktop.tauri.rustToolchain.components = mkDefault (
+      if config.web.desktop.profile == "basic" then [ "rust-src" "rustfmt" ]
+      else if config.web.desktop.profile == "standard" then [ "rust-src" "rustfmt" "clippy" "rust-analyzer" ]
+      else [ "rust-src" "rustfmt" "clippy" "rust-analyzer" "miri" ]
+    );
+    
+    web.desktop.tauri.rustToolchain.targets = mkDefault (
+      if config.web.desktop.profile == "basic" then [
+        "x86_64-unknown-linux-gnu" 
+        "x86_64-apple-darwin"
+      ]
+      else if config.web.desktop.profile == "standard" then [
+        "x86_64-unknown-linux-gnu"
+        "x86_64-apple-darwin"
+        "aarch64-apple-darwin"
+        "x86_64-pc-windows-gnu"
+      ]
+      else [
+        "x86_64-unknown-linux-gnu"
+        "aarch64-unknown-linux-gnu"
+        "x86_64-apple-darwin"
+        "aarch64-apple-darwin"
+        "x86_64-pc-windows-gnu"
+        "aarch64-pc-windows-msvc"
+      ]
+    );
+    
+    web.desktop.tauri.features.bundleFormats = mkDefault (
+      if config.web.desktop.profile == "basic" then [ "appimage" "dmg" ]
+      else if config.web.desktop.profile == "standard" then [ "appimage" "dmg" "deb" "msi" ]
+      else [ "appimage" "dmg" "deb" "msi" "rpm" "nsis" ]
+    );
+    
+    web.desktop.tauri.features.autoUpdater = mkDefault (
+      elem config.web.desktop.profile [ "standard" "advanced" "production" ]
+    );
+    
+    web.desktop.tauri.features.systemTray = mkDefault (
+      elem config.web.desktop.profile [ "standard" "advanced" "production" ]
+    );
+    
+    web.desktop.tauri.development.debugMode = mkDefault (
+      config.web.desktop.profile != "production"
+    );
     
     web.desktop.tauri.security = mkMerge [
       (mkIf (config.web.desktop.profile == "basic") {
