@@ -327,8 +327,7 @@ in
               "icons/icon.icns"
               "icons/icon.ico"
             ];
-            
-            ${lib.optionalString cfg.features.autoUpdater ''
+          } // lib.optionalAttrs cfg.features.autoUpdater {
             updater = {
               active = true;
               endpoints = [
@@ -337,9 +336,7 @@ in
               dialog = true;
               pubkey = "";
             };
-            ''}
-            
-            ${lib.optionalString pkgs.stdenv.isLinux ''
+          } // lib.optionalAttrs pkgs.stdenv.isLinux {
             appimage = {
               bundleMediaFramework = true;
             };
@@ -350,9 +347,7 @@ in
                 "libayatana-appindicator3-1"
               ];
             };
-            ''}
-            
-            ${lib.optionalString pkgs.stdenv.isDarwin ''
+          } // lib.optionalAttrs pkgs.stdenv.isDarwin {
             macOS = {
               frameworks = [
                 "Security"
@@ -366,7 +361,6 @@ in
               signingIdentity = null;
               entitlements = null;
             };
-            ''}
           };
           
           security = {
@@ -374,7 +368,7 @@ in
           };
           
           windows = [
-            {
+            ({
               fullscreen = false;
               resizable = true;
               title = "My Tauri App";
@@ -383,19 +377,16 @@ in
               minWidth = 400;
               minHeight = 300;
               center = true;
-              ${lib.optionalString cfg.webview.devtools ''
+            } // lib.optionalAttrs cfg.webview.devtools {
               additionalBrowserArgs = "--enable-features=VaapiVideoDecoder --disable-features=VizDisplayCompositor";
-              ''}
-            }
+            })
           ];
-          
-          ${lib.optionalString cfg.features.systemTray ''
+        } // lib.optionalAttrs cfg.features.systemTray {
           systemTray = {
             iconPath = "icons/icon.png";
             iconAsTemplate = true;
             menuOnLeftClick = false;
           };
-          ''}
         };
       };
     };
