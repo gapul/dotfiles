@@ -80,11 +80,11 @@
     ];
     darwinSpecific = [
       # macOS specific tools
-      mas  # Mac App Store CLI
+      # mas - moved to Homebrew for better App Store integration
       
       # Development utilities (macOS optimized)
-      docker
-      docker-compose
+      # docker - moved to Homebrew for Docker Desktop integration
+      # docker-compose - moved to Homebrew for Docker Desktop integration
       
       # Secret management tools
       sops
@@ -92,7 +92,7 @@
       
       # Network tools
       nss         # Network Security Services
-      tcpdump     # Network packet analyzer
+      # tcpdump - moved to Homebrew for better macOS network privileges
       bandwhich   # Network bandwidth monitor
       
       # Archive tools
@@ -256,6 +256,13 @@
     brews = [
       # Window management (requires Homebrew for proper macOS integration)
       "sketchybar"
+      
+      # macOS system integration tools (moved from Nix)
+      "mas"                # Mac App Store CLI - better App Store integration
+      "docker"             # Docker CLI - Docker Desktop integration
+      "docker-compose"     # Docker Compose - Docker Desktop integration
+      "tcpdump"            # Network packet analyzer - macOS network privileges
+      "terminal-notifier"  # macOS notifications - better notification center integration
       
       # Note: VoiceVox and Battery now managed as Homebrew casks below
       # Note: coreutils, gmp, lua, luarocks migrated to Nix for better reproducibility
