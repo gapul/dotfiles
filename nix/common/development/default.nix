@@ -10,6 +10,7 @@ with lib;
     ./ai-platform  # Phase 5: Advanced AI integration
     ./project-env
     ./test-integration.nix
+    ./web  # Web development environment
   ];
 
   options.dotfiles.development = {
@@ -43,6 +44,24 @@ with lib;
     # Project-env module
     dotfiles.development.project-env.enable = mkDefault (
       elem config.dotfiles.development.profile [ "standard" "full" "ai-powered" ]
+    );
+    
+    # Web development environment
+    web.enable = mkDefault (
+      elem config.dotfiles.development.profile [ "standard" "full" "ai-powered" ]
+    );
+    
+    # Web development profile mapping
+    web.profile = mkDefault (
+      if config.dotfiles.development.profile == "minimal" then "minimal"
+      else if config.dotfiles.development.profile == "standard" then "standard"
+      else if config.dotfiles.development.profile == "full" then "full"
+      else "full"  # ai-powered maps to full
+    );
+    
+    # Enable desktop development for full profiles
+    web.features.desktop = mkDefault (
+      elem config.dotfiles.development.profile [ "full" "ai-powered" ]
     );
 
     # Profile-specific configurations
@@ -454,6 +473,16 @@ with lib;
           fi
         '' else ''
           echo "⚪ Universal Platform Integration: Disabled"
+        ''}
+        
+        # Check Web Development Environment
+        ${if config.web.enable or false then ''
+          echo "✅ Web Development Environment: Enabled"
+          if command -v web-env-health &> /dev/null; then
+            web-env-health
+          fi
+        '' else ''
+          echo "⚪ Web Development Environment: Disabled"
         ''}
         
         # Project Environment temporarily disabled

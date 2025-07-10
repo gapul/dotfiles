@@ -71,28 +71,6 @@ with lib;
       else "production"
     );
     
-    # Framework configuration based on profile
-    web.frameworks = mkMerge [
-      (mkIf (config.web.profile == "minimal") {
-        enabled = mkDefault [ "react" ];
-        primary = mkDefault "react";
-        typescript = mkDefault false;
-        bundler = mkDefault "vite";
-      })
-      (mkIf (config.web.profile == "standard") {
-        enabled = mkDefault [ "react" ];
-        primary = mkDefault "react";
-        typescript = mkDefault true;
-        bundler = mkDefault "vite";
-      })
-      (mkIf (elem config.web.profile [ "full" "performance" ]) {
-        enabled = mkDefault [ "react" "vue" "svelte" ];
-        primary = mkDefault "react";
-        typescript = mkDefault true;
-        bundler = mkDefault "turbopack";
-      })
-    ];
-    
     # Core configuration based on profile
     web.core = mkMerge [
       (mkIf (config.web.profile == "minimal") {
