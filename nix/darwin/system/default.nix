@@ -286,8 +286,7 @@
       "unity-hub"
       "material-maker"
       "android-studio" # Android development IDE
-      "android-commandlinetools" # Android command line tools (replaces deprecated android-sdk)
-      "android-platform-tools"   # ADB and Fastboot tools
+      # Note: android-commandlinetools and android-platform-tools excluded temporarily
       "virtualbox"    # VirtualBox (Apple Silicon limitations)
       "godot"         # Godot (Apple Silicon limitations)
       # Container management now handled by Nix docker/docker-compose
