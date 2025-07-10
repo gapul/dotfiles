@@ -222,6 +222,69 @@
                   enableZshIntegration = true;
                 };
                 
+                # Fastfetch configuration (system info)
+                programs.fastfetch = {
+                  enable = true;
+                  settings = {
+                    logo = {
+                      source = "macos";
+                      padding = {
+                        top = 1;
+                        left = 2;
+                      };
+                    };
+                    display = {
+                      separator = " -> ";
+                      color = {
+                        keys = "blue";
+                        title = "blue";
+                      };
+                    };
+                    modules = [
+                      {
+                        type = "title";
+                        color = {
+                          user = "blue";
+                          at = "white";
+                          host = "blue";
+                        };
+                      }
+                      "separator"
+                      "os"
+                      "host"
+                      "kernel"
+                      "uptime"
+                      {
+                        type = "packages";
+                        format = "{} packages";
+                      }
+                      "shell"
+                      "display"
+                      "de"
+                      "wm"
+                      "terminal"
+                      "cpu"
+                      "gpu"
+                      "memory"
+                      {
+                        type = "disk";
+                        folders = {
+                          "/" = "Root";
+                          "/Users" = "Users";
+                        };
+                      }
+                      {
+                        type = "localip";
+                        format = "{} ({})";
+                      }
+                      "battery"
+                      "locale"
+                      "break"
+                      "colors"
+                    ];
+                  };
+                };
+                
                 # Atuin configuration (shell history)
                 programs.atuin = {
                   enable = true;
