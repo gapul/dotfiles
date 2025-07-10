@@ -251,6 +251,7 @@
     taps = [
       "nikitabobko/tap"       # AeroSpace
       "felixkratz/formulae"   # sketchybar
+      "grishka/grishka"       # NearDrop
     ];
     
     brews = [
@@ -284,6 +285,7 @@
       "cursor"
       "unity-hub"
       "material-maker"
+      "android-studio" # Android development IDE
       "virtualbox"    # VirtualBox (Apple Silicon limitations)
       "godot"         # Godot (Apple Silicon limitations)
       # Container management now handled by Nix docker/docker-compose
@@ -307,6 +309,8 @@
       "musescore"
       "mixxx" 
       "surge-xt"
+      "audacity"      # Audio editing
+      "vlc"           # Media player
       
       # Gaming & Emulation
       "steam"
@@ -326,6 +330,8 @@
       # Utilities & System
       "rustdesk"
       "wireshark-app" # Network protocol analyzer
+      "gyazo"         # Screenshot sharing
+      "grishka/grishka/neardrop" # AirDrop alternative
       "shortcat"
       "middleclick"
       "jordanbaird-ice"
@@ -377,6 +383,9 @@
       "font-sf-mono"
       "font-sf-pro"
       "sf-symbols"
+      
+      # Professional Design & Typography
+      "morisawa-desktop-manager" # Morisawa fonts management
     ];
     
     masApps = {
