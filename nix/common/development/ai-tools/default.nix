@@ -75,7 +75,7 @@ in
       nodePackages.npm
     ] ++ optionals cfg.claudeNotifications [
       # Claude Code notifications
-      terminal-notifier
+      # terminal-notifier - moved to Homebrew for better macOS integration
       jq
     ];
 

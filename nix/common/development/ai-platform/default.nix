@@ -93,12 +93,13 @@ in
         
         echo "🤖 Setting up Ollama for local LLM inference"
         
-        # Install Ollama if not present
+        # Check if Ollama is available (managed by Homebrew)
         if ! command -v ollama &> /dev/null; then
-          echo "📥 Installing Ollama..."
-          curl -fsSL https://ollama.ai/install.sh | sh
+          echo "❌ Ollama not found. Install via Homebrew: brew install --cask ollama"
+          echo "   Or use the system configuration to manage Homebrew casks"
+          exit 1
         else
-          echo "✅ Ollama already installed"
+          echo "✅ Ollama is available"
         fi
         
         # Start Ollama service
