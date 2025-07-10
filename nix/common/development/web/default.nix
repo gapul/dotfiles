@@ -71,21 +71,6 @@ with lib;
       else "production"
     );
     
-    # Core configuration based on profile
-    web.core = mkMerge [
-      (mkIf (config.web.profile == "minimal") {
-        profile = mkDefault "minimal";
-      })
-      (mkIf (config.web.profile == "standard") {
-        profile = mkDefault "standard";
-      })
-      (mkIf (config.web.profile == "full") {
-        profile = mkDefault "full";
-      })
-      (mkIf (config.web.profile == "performance") {
-        profile = mkDefault "performance";
-      })
-    ];
     
     # Global web development packages
     home.packages = with pkgs; [
