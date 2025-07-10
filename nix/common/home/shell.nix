@@ -45,6 +45,24 @@
       # Platform defaults (macOS assumed for now)
       nrs = "nix run nix-darwin -- switch --flake .";
       hms = "home-manager switch --flake .";
+      
+      # Web development shortcuts
+      "web-init" = "web-workflow init";
+      "web-dev" = "web-workflow dev";
+      "web-build" = "web-workflow build";
+      "web-test" = "web-workflow test";
+      "web-health" = "web-env-health";
+      
+      # Framework shortcuts
+      "react-new" = "react-init";
+      "next-new" = "nextjs-init";
+      "tauri-new" = "tauri-init";
+      
+      # Development shortcuts
+      "dev" = "npm run dev";
+      "build" = "npm run build";
+      "test" = "npm test";
+      "lint" = "npm run lint";
     };
     
     # Environment variables (basic setup) 
