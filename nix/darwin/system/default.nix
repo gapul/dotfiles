@@ -80,11 +80,11 @@
     ];
     darwinSpecific = [
       # macOS specific tools
-      mas  # Mac App Store CLI
+      # mas - moved to Homebrew for better App Store integration
       
       # Development utilities (macOS optimized)
-      docker
-      docker-compose
+      # docker - moved to Homebrew for Docker Desktop integration
+      # docker-compose - moved to Homebrew for Docker Desktop integration
       
       # Secret management tools
       sops
@@ -92,7 +92,7 @@
       
       # Network tools
       nss         # Network Security Services
-      tcpdump     # Network packet analyzer
+      # tcpdump - moved to Homebrew for better macOS network privileges
       bandwhich   # Network bandwidth monitor
       
       # Archive tools
@@ -244,18 +244,26 @@
     enable = true;
     onActivation = {
       autoUpdate = false;
-      cleanup = "zap";
+      cleanup = "uninstall";
       upgrade = false;
     };
     
     taps = [
       "nikitabobko/tap"       # AeroSpace
       "felixkratz/formulae"   # sketchybar
+      "grishka/grishka"       # NearDrop
     ];
     
     brews = [
       # Window management (requires Homebrew for proper macOS integration)
       "sketchybar"
+      
+      # macOS system integration tools (moved from Nix)
+      "mas"                # Mac App Store CLI - better App Store integration
+      "docker"             # Docker CLI - Docker Desktop integration
+      "docker-compose"     # Docker Compose - Docker Desktop integration
+      "tcpdump"            # Network packet analyzer - macOS network privileges
+      "terminal-notifier"  # macOS notifications - better notification center integration
       
       # Note: VoiceVox and Battery now managed as Homebrew casks below
       # Note: coreutils, gmp, lua, luarocks migrated to Nix for better reproducibility
@@ -277,9 +285,11 @@
       "cursor"
       "unity-hub"
       "material-maker"
+      "android-studio" # Android development IDE
+      # Note: android-commandlinetools and android-platform-tools excluded temporarily
       "virtualbox"    # VirtualBox (Apple Silicon limitations)
       "godot"         # Godot (Apple Silicon limitations)
-      "podman-desktop" # Container management
+      # Container management now handled by Nix docker/docker-compose
       "freecad"       # CAD software  
       "kicad"         # PCB design
       "goxel"         # Voxel editor
@@ -290,7 +300,7 @@
       "krita"
       "blender"
       "scribus"
-      "fontforge"
+      "fontforge-app" # Font editor
       "natron"
       "opentoonz"
       "darktable"     # Professional photo workflow
@@ -300,6 +310,9 @@
       "musescore"
       "mixxx" 
       "surge-xt"
+      "audacity"      # Audio editing
+      "vlc"           # Media player
+      "obs"           # Streaming and recording
       
       # Gaming & Emulation
       "steam"
@@ -307,6 +320,7 @@
       "prismlauncher"
       "epic-games"
       "minecraft"
+      "gog-galaxy"
       
       # Office & Productivity (macOS-specific versions only)
       "libreoffice"   # Open source office suite
@@ -316,15 +330,16 @@
       "microsoft-powerpoint"
       
       # Utilities & System
-      "spacedrive"
       "rustdesk"
-      "wireshark"
+      "wireshark-app" # Network protocol analyzer
+      "gyazo"         # Screenshot sharing
+      "grishka/grishka/neardrop" # AirDrop alternative
       "shortcat"
       "middleclick"
       "jordanbaird-ice"
       "cloudflare-warp"
       "vmware-fusion"
-      "syncthing"
+      "syncthing-app" # File synchronization
       "espanso"
       
       # Cloud Storage & Sync
@@ -338,15 +353,16 @@
       "zen"
       "google-chrome@dev"
       "vivaldi"
-      "floorp"
+      "firefox@developer-edition"
       "tor-browser"
       # Note: Firefox and Thunderbird not managed by dotfiles
       
       # Communication & Social (native macOS apps only)
+      "beeper"        # Unified messaging app
       # Note: discord, slack moved to Nix for better integration
       
       # AI & Assistant tools (native apps)
-      "ollama"
+      "ollama-app"    # Local LLM server
       
       # Development Tools & Editors (macOS-specific versions only)
       "visual-studio-code"  # Microsoft Visual Studio Code
@@ -356,6 +372,7 @@
       # Research & Knowledge Management
       "obsidian"
       "zotero"
+      "anki"
       
       # Media & Security
       
@@ -368,6 +385,9 @@
       "font-sf-mono"
       "font-sf-pro"
       "sf-symbols"
+      
+      # Professional Design & Typography
+      "morisawa-desktop-manager" # Morisawa fonts management
     ];
     
     masApps = {
