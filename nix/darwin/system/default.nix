@@ -314,6 +314,7 @@
       "prismlauncher"
       "epic-games"
       "minecraft"
+      "gog-galaxy"
       
       # Office & Productivity (macOS-specific versions only)
       "libreoffice"   # Open source office suite
@@ -323,7 +324,6 @@
       "microsoft-powerpoint"
       
       # Utilities & System
-      "spacedrive"
       "rustdesk"
       "wireshark-app" # Network protocol analyzer
       "shortcat"
@@ -345,7 +345,7 @@
       "zen"
       "google-chrome@dev"
       "vivaldi"
-      "floorp"
+      "firefox@developer-edition"
       "tor-browser"
       # Note: Firefox and Thunderbird not managed by dotfiles
       
@@ -363,6 +363,7 @@
       # Research & Knowledge Management
       "obsidian"
       "zotero"
+      "anki"
       
       # Media & Security
       
