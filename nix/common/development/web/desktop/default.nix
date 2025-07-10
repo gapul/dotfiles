@@ -78,46 +78,60 @@ with lib;
       config.web.desktop.profile != "production"
     );
     
-    web.desktop.tauri.security = mkMerge [
-      (mkIf (config.web.desktop.profile == "basic") {
-        securityLevel = mkDefault "minimal";
-        allowlist.fs = mkDefault [ "read" "readDir" "exists" "write" "createDir" ];
-        allowlist.shell = mkDefault [ "open" ];
-        allowlist.window = mkDefault [ "close" "hide" "show" "maximize" "minimize" ];
-        csp.strict = mkDefault false;
-      })
-      (mkIf (config.web.desktop.profile == "standard") {
-        securityLevel = mkDefault "standard";
-        allowlist.fs = mkDefault [ "read" "readDir" "exists" "write" "createDir" "copyFile" ];
-        allowlist.shell = mkDefault [ "open" ];
-        allowlist.window = mkDefault [ "close" "hide" "show" "maximize" "minimize" "startDragging" "unmaximize" "unminimize" ];
-        allowlist.notification = mkDefault true;
-        allowlist.clipboard = mkDefault true;
-        csp.strict = mkDefault false;
-      })
-      (mkIf (config.web.desktop.profile == "advanced") {
-        securityLevel = mkDefault "standard";
-        allowlist.fs = mkDefault [ "read" "readDir" "exists" "write" "createDir" "copyFile" "removeFile" "renameFile" ];
-        allowlist.shell = mkDefault [ "open" "sidecar" ];
-        allowlist.window = mkDefault [ "all" ];
-        allowlist.notification = mkDefault true;
-        allowlist.clipboard = mkDefault true;
-        allowlist.globalShortcut = mkDefault true;
-        allowlist.http = mkDefault true;
-        csp.strict = mkDefault false;
-      })
-      (mkIf (config.web.desktop.profile == "production") {
-        securityLevel = mkDefault "strict";
-        allowlist.fs = mkDefault [ "read" "readDir" "exists" ];
-        allowlist.shell = mkDefault [ "open" ];
-        allowlist.window = mkDefault [ "close" "hide" "show" "maximize" "minimize" ];
-        allowlist.notification = mkDefault true;
-        allowlist.clipboard = mkDefault false;
-        allowlist.globalShortcut = mkDefault false;
-        allowlist.http = mkDefault false;
-        csp.strict = mkDefault true;
-      })
-    ];
+    # Security configuration based on profile
+    web.desktop.tauri.security.securityLevel = mkDefault (
+      if config.web.desktop.profile == "basic" then "minimal"
+      else if config.web.desktop.profile == "standard" then "standard"
+      else if config.web.desktop.profile == "advanced" then "standard"
+      else "strict"
+    );
+    
+    web.desktop.tauri.security.allowlist.fs = mkDefault (
+      if config.web.desktop.profile == "basic" then 
+        [ "read" "readDir" "exists" "write" "createDir" ]
+      else if config.web.desktop.profile == "standard" then 
+        [ "read" "readDir" "exists" "write" "createDir" "copyFile" ]
+      else if config.web.desktop.profile == "advanced" then 
+        [ "read" "readDir" "exists" "write" "createDir" "copyFile" "removeFile" "renameFile" ]
+      else 
+        [ "read" "readDir" "exists" ]
+    );
+    
+    web.desktop.tauri.security.allowlist.shell = mkDefault (
+      if config.web.desktop.profile == "advanced" then [ "open" "sidecar" ]
+      else [ "open" ]
+    );
+    
+    web.desktop.tauri.security.allowlist.window = mkDefault (
+      if config.web.desktop.profile == "basic" then 
+        [ "close" "hide" "show" "maximize" "minimize" ]
+      else if config.web.desktop.profile == "standard" then 
+        [ "close" "hide" "show" "maximize" "minimize" "startDragging" "unmaximize" "unminimize" ]
+      else if config.web.desktop.profile == "advanced" then 
+        [ "all" ]
+      else 
+        [ "close" "hide" "show" "maximize" "minimize" ]
+    );
+    
+    web.desktop.tauri.security.allowlist.notification = mkDefault (
+      elem config.web.desktop.profile [ "standard" "advanced" "production" ]
+    );
+    
+    web.desktop.tauri.security.allowlist.clipboard = mkDefault (
+      elem config.web.desktop.profile [ "standard" "advanced" ]
+    );
+    
+    web.desktop.tauri.security.allowlist.globalShortcut = mkDefault (
+      config.web.desktop.profile == "advanced"
+    );
+    
+    web.desktop.tauri.security.allowlist.http = mkDefault (
+      config.web.desktop.profile == "advanced"
+    );
+    
+    web.desktop.tauri.security.csp.strict = mkDefault (
+      config.web.desktop.profile == "production"
+    );
     
     # Desktop development utilities
     home.packages = with pkgs; [
