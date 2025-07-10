@@ -286,6 +286,7 @@
       "unity-hub"
       "material-maker"
       "android-studio" # Android development IDE
+      "android-sdk"    # Android SDK tools
       "virtualbox"    # VirtualBox (Apple Silicon limitations)
       "godot"         # Godot (Apple Silicon limitations)
       # Container management now handled by Nix docker/docker-compose
