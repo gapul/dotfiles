@@ -559,7 +559,17 @@ in
           preset=$(jq ".$LEVEL" "$PRESET_FILE")
           
           # Update tauri.conf.json with security settings
-          jq --argjson preset "$preset" '.tauri.allowlist = $preset.allowlist | .tauri.security.csp = (if $preset.csp.enable then (if $preset.csp.strict then "default-src '\''self'\''; script-src '\''self'\''; style-src '\''self'\''; img-src '\''self'\'' data:; font-src '\''self'\''" else "default-src '\''self'\''; script-src '\''self'\'' '\''unsafe-inline'\''; style-src '\''self'\'' '\''unsafe-inline'\'' data:; img-src '\''self'\'' data: blob:; font-src '\''self'\'' data:") else null end) | .tauri.security.freezePrototype = $preset.freezePrototype | .tauri.security.pattern.use = (if $preset.isolation then "isolation" else "brownfield" end)' "$CONFIG_FILE" > "$CONFIG_FILE.tmp" && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
+          jq --argjson preset "$preset" \
+            '.tauri.allowlist = $preset.allowlist | 
+             .tauri.security.csp = (if $preset.csp.enable then 
+               (if $preset.csp.strict then 
+                 "default-src '"'"'self'"'"'; script-src '"'"'self'"'"'; style-src '"'"'self'"'"'; img-src '"'"'self'"'"' data:; font-src '"'"'self'"'"'" 
+               else 
+                 "default-src '"'"'self'"'"'; script-src '"'"'self'"'"' '"'"'unsafe-inline'"'"'; style-src '"'"'self'"'"' '"'"'unsafe-inline'"'"' data:; img-src '"'"'self'"'"' data: blob:; font-src '"'"'self'"'"' data:") 
+               else null end) | 
+             .tauri.security.freezePrototype = $preset.freezePrototype | 
+             .tauri.security.pattern.use = (if $preset.isolation then "isolation" else "brownfield" end)' \
+            "$CONFIG_FILE" > "$CONFIG_FILE.tmp" && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
           
           echo "✅ Security configuration applied successfully!"
           echo ""
