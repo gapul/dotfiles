@@ -81,21 +81,13 @@ in
   };
 
   config = mkIf cfg.enable {
-    # Docker support (NixOS only - macOS uses Docker Desktop via Homebrew)
-    # programs.docker = mkIf (cfg.dockerSupport && pkgs.stdenv.isLinux) {
-    #   enable = true;
-    #   enableOnBoot = true;
-    #   autoPrune = {
-    #     enable = true;
-    #     dates = "weekly";
-    #     flags = [ "--all" ];
-    #   };
-    # };
+    # Docker prioritized for container development
+    # Note: On macOS, Docker daemon is managed via Docker Desktop (Homebrew cask)
+    # The docker and docker-compose binaries are provided by Nix
 
     # Development tools
     home-manager.users.yuki.home.packages = with pkgs; [
-      # Container tools
-      docker-compose
+      # Container tools - Docker prioritized
       docker-buildx
       
       # Development container CLI
@@ -105,7 +97,11 @@ in
       nixpkgs-fmt
       nil
       
-      # VS Code extensions via nix-vscode-extensions
+      # Container security and optimization
+      trivy        # Container security scanner
+      dive         # Docker image explorer
+      ctop         # Container metrics viewer
+      
     ] ++ optionals cfg.podmanSupport [
       podman
       podman-compose
