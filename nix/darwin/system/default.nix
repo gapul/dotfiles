@@ -297,7 +297,7 @@
       "krita"
       "blender"
       "scribus"
-      "fontforge"     # Font editor
+      "fontforge-app" # Font editor
       "natron"
       "opentoonz"
       "darktable"     # Professional photo workflow
@@ -325,13 +325,13 @@
       # Utilities & System
       "spacedrive"
       "rustdesk"
-      "wireshark"     # Network protocol analyzer
+      "wireshark-app" # Network protocol analyzer
       "shortcat"
       "middleclick"
       "jordanbaird-ice"
       "cloudflare-warp"
       "vmware-fusion"
-      "syncthing"     # File synchronization
+      "syncthing-app" # File synchronization
       "espanso"
       
       # Cloud Storage & Sync
@@ -353,7 +353,7 @@
       # Note: discord, slack moved to Nix for better integration
       
       # AI & Assistant tools (native apps)
-      "ollama"        # Local LLM server
+      "ollama-app"    # Local LLM server
       
       # Development Tools & Editors (macOS-specific versions only)
       "visual-studio-code"  # Microsoft Visual Studio Code
