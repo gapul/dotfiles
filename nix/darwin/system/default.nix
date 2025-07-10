@@ -350,6 +350,7 @@
       # Note: Firefox and Thunderbird not managed by dotfiles
       
       # Communication & Social (native macOS apps only)
+      "beeper"        # Unified messaging app
       # Note: discord, slack moved to Nix for better integration
       
       # AI & Assistant tools (native apps)
