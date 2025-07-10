@@ -94,6 +94,7 @@
       nss         # Network Security Services
       tcpdump     # Network packet analyzer
       bandwhich   # Network bandwidth monitor
+      wireshark   # Network protocol analyzer
       
       # Archive tools
       p7zip       # 7-Zip archive tool
@@ -102,6 +103,15 @@
       # Text processing
       yq          # YAML processor
       pandoc      # Document converter
+      
+      # Creative tools
+      fontforge   # Font editor
+      
+      # File sync
+      syncthing   # Decentralized file synchronization
+      
+      # AI and LLM tools  
+      ollama      # Local LLM server
       
       # Modern CLI replacements
       sd          # Modern sed replacement
@@ -290,7 +300,6 @@
       "krita"
       "blender"
       "scribus"
-      "fontforge"
       "natron"
       "opentoonz"
       "darktable"     # Professional photo workflow
@@ -318,13 +327,11 @@
       # Utilities & System
       "spacedrive"
       "rustdesk"
-      "wireshark"
       "shortcat"
       "middleclick"
       "jordanbaird-ice"
       "cloudflare-warp"
       "vmware-fusion"
-      "syncthing"
       "espanso"
       
       # Cloud Storage & Sync
@@ -346,7 +353,7 @@
       # Note: discord, slack moved to Nix for better integration
       
       # AI & Assistant tools (native apps)
-      "ollama"
+      # Note: ollama managed via Nix for better CLI integration
       
       # Development Tools & Editors (macOS-specific versions only)
       "visual-studio-code"  # Microsoft Visual Studio Code
