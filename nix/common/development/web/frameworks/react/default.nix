@@ -57,7 +57,7 @@ with lib;
     web.frameworks.react.nextjs.enable = mkDefault (elem "nextjs" config.web.frameworks.react.frameworks);
     
     # React development packages
-    home.packages = with pkgs; [
+    home-manager.users.yuki.home.packages = with pkgs; [
       nodejs_22
       nodePackages.npm
       nodePackages.pnpm
@@ -74,7 +74,7 @@ with lib;
     ];
     
     # Default React + Vite template
-    home.file.".react-templates/vite-react.template.json" = {
+    home-manager.users.yuki.home.file.".react-templates/vite-react.template.json" = {
       text = builtins.toJSON {
         name = "react-vite-app";
         version = "0.1.0";
@@ -129,7 +129,7 @@ with lib;
     };
     
     # Vite configuration for React
-    home.file.".react-templates/vite.config.template.ts" = {
+    home-manager.users.yuki.home.file.".react-templates/vite.config.template.ts" = {
       text = ''
         import { defineConfig } from 'vite'
         import react from '@vitejs/plugin-react-swc'
@@ -184,7 +184,7 @@ with lib;
     };
     
     # Shell aliases for React development
-    home.shellAliases = {
+    home-manager.users.yuki.home.shellAliases = {
       # React project creation
       "react-init" = "npm create vite@latest";
       "react-vite" = "npm create vite@latest";
@@ -202,7 +202,7 @@ with lib;
     };
     
     # React project initialization script
-    home.file."bin/react-init" = {
+    home-manager.users.yuki.home.file."bin/react-init" = {
       executable = true;
       text = ''
         #!/usr/bin/env bash
@@ -361,7 +361,7 @@ with lib;
     };
     
     # React health check
-    home.file."bin/react-health" = {
+    home-manager.users.yuki.home.file."bin/react-health" = {
       executable = true;
       text = ''
         #!/usr/bin/env bash

@@ -124,7 +124,7 @@ in
 
   config = lib.mkIf cfg.enable {
     # VS Code AI extensions configuration
-    home.file.".vscode/ai-extensions-settings.json" = lib.mkIf cfg.vscode.enable {
+    home-manager.users.yuki.home.file.".vscode/ai-extensions-settings.json" = lib.mkIf cfg.vscode.enable {
       text = builtins.toJSON (lib.mkMerge [
         # Base AI settings
         {
@@ -202,7 +202,7 @@ in
     };
     
     # NeoVim AI configuration
-    home.file.".config/nvim/lua/ai-config.lua" = lib.mkIf cfg.neovim.enable {
+    home-manager.users.yuki.home.file.".config/nvim/lua/ai-config.lua" = lib.mkIf cfg.neovim.enable {
       text = ''
         -- AI integrations for NeoVim
         
@@ -476,7 +476,7 @@ in
     };
     
     # Environment variables for AI services
-    home.sessionVariables = {
+    home-manager.users.yuki.home.sessionVariables = {
       # API keys (should be set separately for security)
       # OPENAI_API_KEY = ""; # Set in secrets
       # ANTHROPIC_API_KEY = ""; # Set in secrets
@@ -488,7 +488,7 @@ in
     };
     
     # AI health check script
-    home.file."bin/ai-health" = {
+    home-manager.users.yuki.home.file."bin/ai-health" = {
       executable = true;
       text = ''
         #!/usr/bin/env bash

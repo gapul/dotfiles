@@ -135,7 +135,7 @@ with lib;
     ];
     
     # Privacy-focused configurations
-    home.sessionVariables = mkMerge [
+    home-manager.users.yuki.home.sessionVariables = mkMerge [
       {
         AI_TELEMETRY_ENABLED = if config.web.ai.privacy.enableTelemetry then "1" else "0";
         AI_LOCAL_MODELS = if config.web.ai.privacy.localModels then "1" else "0";
@@ -151,7 +151,7 @@ with lib;
     ];
     
     # AI cache directory
-    home.file.".ai-cache/.gitignore" = mkIf config.web.ai.performance.enableCaching {
+    home-manager.users.yuki.home.file.".ai-cache/.gitignore" = mkIf config.web.ai.performance.enableCaching {
       text = ''
         # AI cache directory
         *
@@ -160,7 +160,7 @@ with lib;
     };
     
     # Global AI configuration
-    home.file.".config/ai-config.json" = {
+    home-manager.users.yuki.home.file.".config/ai-config.json" = {
       text = builtins.toJSON {
         profile = config.web.ai.profile;
         
@@ -193,7 +193,7 @@ with lib;
     };
     
     # AI workflow scripts
-    home.file."bin/ai-workflow" = {
+    home-manager.users.yuki.home.file."bin/ai-workflow" = {
       executable = true;
       text = ''
         #!/usr/bin/env bash
@@ -383,7 +383,7 @@ with lib;
     };
     
     # AI development shortcuts
-    home.shellAliases = {
+    home-manager.users.yuki.home.shellAliases = {
       # AI workflow shortcuts
       "ai-setup" = "ai-workflow setup";
       "ai-gen" = "ai-workflow generate --interactive";
@@ -400,7 +400,7 @@ with lib;
     };
     
     # Combined AI health check
-    home.file."bin/ai-tools-health" = {
+    home-manager.users.yuki.home.file."bin/ai-tools-health" = {
       executable = true;
       text = ''
         #!/usr/bin/env bash

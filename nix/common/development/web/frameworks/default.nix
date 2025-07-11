@@ -49,7 +49,7 @@ with lib;
     web.frameworks.react.enable = mkDefault (elem "react" config.web.frameworks.enabled);
     
     # Framework development packages
-    home.packages = with pkgs; [
+    home-manager.users.yuki.home.packages = with pkgs; [
       nodejs_22
       nodePackages.npm
       nodePackages.pnpm
@@ -63,7 +63,7 @@ with lib;
     ];
     
     # Shell aliases for framework development
-    home.shellAliases = {
+    home-manager.users.yuki.home.shellAliases = {
       # Framework shortcuts based on primary
       "fw-init" = 
         if config.web.frameworks.primary == "react" then "react-init"
@@ -85,7 +85,7 @@ with lib;
     };
     
     # Framework health check
-    home.file."bin/frameworks-health" = {
+    home-manager.users.yuki.home.file."bin/frameworks-health" = {
       executable = true;
       text = ''
         #!/usr/bin/env bash

@@ -106,12 +106,12 @@ in
 
   config = lib.mkIf cfg.enable {
     # Install GitHub Copilot CLI
-    home.packages = with pkgs; lib.optionals cfg.cli.enable [
+    home-manager.users.yuki.home.packages = with pkgs; lib.optionals cfg.cli.enable [
       github-copilot-cli
     ];
     
     # VS Code configuration
-    home.file.".vscode/copilot-settings.json" = lib.mkIf cfg.vscode.enable {
+    home-manager.users.yuki.home.file.".vscode/copilot-settings.json" = lib.mkIf cfg.vscode.enable {
       text = builtins.toJSON {
         # Core Copilot settings
         "github.copilot.enable" = {
@@ -173,7 +173,7 @@ in
     };
     
     # NeoVim Copilot configuration
-    home.file.".config/nvim/lua/copilot-config.lua" = lib.mkIf cfg.neovim.enable {
+    home-manager.users.yuki.home.file.".config/nvim/lua/copilot-config.lua" = lib.mkIf cfg.neovim.enable {
       text = ''
         -- GitHub Copilot configuration for NeoVim
         
@@ -333,7 +333,7 @@ in
     };
     
     # Shell aliases for Copilot CLI
-    home.shellAliases = lib.mkIf (cfg.cli.enable && cfg.cli.aliases) {
+    home-manager.users.yuki.home.shellAliases = lib.mkIf (cfg.cli.enable && cfg.cli.aliases) {
       # GitHub Copilot CLI shortcuts
       "copilot" = "gh copilot";
       "ai" = "gh copilot suggest";
@@ -350,7 +350,7 @@ in
     };
     
     # GitHub CLI configuration for Copilot
-    home.file.".config/gh/config.yml" = {
+    home-manager.users.yuki.home.file.".config/gh/config.yml" = {
       text = lib.generators.toYAML {} {
         version = 1;
         
@@ -376,7 +376,7 @@ in
     };
     
     # Copilot health check script
-    home.file."bin/copilot-health" = {
+    home-manager.users.yuki.home.file."bin/copilot-health" = {
       executable = true;
       text = ''
         #!/usr/bin/env bash

@@ -135,7 +135,7 @@ in
 
   config = lib.mkIf cfg.enable {
     # Next.js project dependencies
-    home.packages = with pkgs; [
+    home-manager.users.yuki.home.packages = with pkgs; [
       nodejs_22
       nodePackages.npm
       nodePackages.pnpm
@@ -156,7 +156,7 @@ in
     ];
     
     # Default Next.js configuration template
-    home.file.".nextjs-templates/next.config.template.js" = {
+    home-manager.users.yuki.home.file.".nextjs-templates/next.config.template.js" = {
       text = ''
         /** @type {import('next').NextConfig} */
         const nextConfig = {
@@ -304,7 +304,7 @@ in
     };
     
     # TypeScript configuration for Next.js
-    home.file.".nextjs-templates/tsconfig.template.json" = lib.mkIf cfg.features.typescript {
+    home-manager.users.yuki.home.file.".nextjs-templates/tsconfig.template.json" = lib.mkIf cfg.features.typescript {
       text = builtins.toJSON {
         compilerOptions = {
           target = "es5";
@@ -339,7 +339,7 @@ in
     };
     
     # Tailwind CSS configuration
-    home.file.".nextjs-templates/tailwind.config.template.js" = lib.mkIf cfg.features.tailwindcss {
+    home-manager.users.yuki.home.file.".nextjs-templates/tailwind.config.template.js" = lib.mkIf cfg.features.tailwindcss {
       text = ''
         /** @type {import('tailwindcss').Config} */
         module.exports = {
@@ -398,7 +398,7 @@ in
     };
     
     # ESLint configuration for Next.js
-    home.file.".nextjs-templates/.eslintrc.template.json" = lib.mkIf cfg.features.eslint {
+    home-manager.users.yuki.home.file.".nextjs-templates/.eslintrc.template.json" = lib.mkIf cfg.features.eslint {
       text = builtins.toJSON {
         extends = [
           "next/core-web-vitals"
@@ -421,7 +421,7 @@ in
     };
     
     # Package.json template for Next.js projects
-    home.file.".nextjs-templates/package.template.json" = {
+    home-manager.users.yuki.home.file.".nextjs-templates/package.template.json" = {
       text = builtins.toJSON {
         name = "nextjs-app";
         version = "0.1.0";
@@ -477,7 +477,7 @@ in
     };
     
     # Shell aliases for Next.js development
-    home.shellAliases = {
+    home-manager.users.yuki.home.shellAliases = {
       # Next.js project management
       "next-init" = "npx create-next-app@latest";
       "next-dev" = if cfg.turbopack.development then "npm run dev -- --turbo" else "npm run dev";
@@ -498,7 +498,7 @@ in
     };
     
     # Next.js project initialization script
-    home.file."bin/nextjs-init" = {
+    home-manager.users.yuki.home.file."bin/nextjs-init" = {
       executable = true;
       text = ''
         #!/usr/bin/env bash
@@ -533,11 +533,11 @@ in
         fi
         
         # Parse options
-        USE_TYPESCRIPT=${cfg.features.typescript}
-        USE_TAILWIND=${cfg.features.tailwindcss}
-        USE_APP_ROUTER=${cfg.features.appRouter}
-        USE_TURBO=${cfg.turbopack.enable}
-        USE_PWA=${cfg.features.pwa}
+        USE_TYPESCRIPT=${toString cfg.features.typescript}
+        USE_TAILWIND=${toString cfg.features.tailwindcss}
+        USE_APP_ROUTER=${toString cfg.features.appRouter}
+        USE_TURBO=${toString cfg.turbopack.enable}
+        USE_PWA=${toString cfg.features.pwa}
         TARGET_DIR="."
         
         while [[ $# -gt 0 ]]; do
@@ -806,7 +806,7 @@ in
     };
     
     # Next.js health check
-    home.file."bin/nextjs-health" = {
+    home-manager.users.yuki.home.file."bin/nextjs-health" = {
       executable = true;
       text = ''
         #!/usr/bin/env bash

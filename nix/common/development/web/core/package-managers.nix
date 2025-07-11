@@ -44,7 +44,7 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    home.packages = with pkgs; [
+    home-manager.users.yuki.home.packages = with pkgs; [
       # Core package managers
       nodejs_22.pkgs.npm
       nodejs_22.pkgs.pnpm
@@ -57,7 +57,7 @@ in
     ];
     
     # Environment variables for package managers
-    home.sessionVariables = {
+    home-manager.users.yuki.home.sessionVariables = {
       # npm configuration
       NPM_CONFIG_FUND = "false";
       NPM_CONFIG_AUDIT = "false";
@@ -74,13 +74,13 @@ in
     };
     
     # Ensure pnpm and bun paths are added
-    home.sessionPath = [
+    home-manager.users.yuki.home.sessionPath = [
       "${config.xdg.dataHome}/pnpm"
       "${config.xdg.dataHome}/bun/bin"
     ];
     
     # Shell aliases for package management
-    home.shellAliases = {
+    home-manager.users.yuki.home.shellAliases = {
       # Smart package manager aliases
       "install" = lib.mkIf cfg.autoDetect ''
         if [[ -f "bun.lockb" ]]; then
@@ -150,7 +150,7 @@ in
     };
     
     # Package manager configuration files
-    home.file.".npmrc" = {
+    home-manager.users.yuki.home.file.".npmrc" = {
       text = ''
         fund=false
         audit=false
@@ -168,7 +168,7 @@ in
       '';
     };
     
-    home.file.".pnpmrc" = {
+    home-manager.users.yuki.home.file.".pnpmrc" = {
       text = ''
         store-dir=${config.xdg.dataHome}/pnpm/store
         cache-dir=${config.xdg.cacheHome}/pnpm
@@ -189,7 +189,7 @@ in
       '';
     };
     
-    home.file.".yarnrc.yml" = {
+    home-manager.users.yuki.home.file.".yarnrc.yml" = {
       text = ''
         compressionLevel: mixed
         enableGlobalCache: true
@@ -215,7 +215,7 @@ in
     };
     
     # Bun configuration
-    home.file.".bunfig.toml" = {
+    home-manager.users.yuki.home.file.".bunfig.toml" = {
       text = ''
         [install]
         cache = "${config.xdg.cacheHome}/bun/install"
@@ -246,7 +246,7 @@ in
     };
     
     # Package manager detection script
-    home.file."bin/detect-pm" = {
+    home-manager.users.yuki.home.file."bin/detect-pm" = {
       executable = true;
       text = ''
         #!/usr/bin/env bash
@@ -268,7 +268,7 @@ in
     };
     
     # Package manager wrapper script
-    home.file."bin/pm" = {
+    home-manager.users.yuki.home.file."bin/pm" = {
       executable = true;
       text = ''
         #!/usr/bin/env bash
