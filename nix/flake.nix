@@ -166,17 +166,17 @@
                   
                   shellAliases = {
                     # Core modern replacements
-                    ls = "eza --icons";
-                    ll = "eza -la --icons --git";
-                    la = "eza -la --icons --git";
-                    tree = "eza --tree --icons";
+                    # ls エイリアスはmodern-cli.nixで管理
+                    # ll エイリアスはmodern-cli.nixで管理
+                    # la エイリアスはmodern-cli.nixで管理
+                    # tree エイリアスはmodern-cli.nixで管理
                     # cat エイリアスはmodern-cli.nixで管理
-                    grep = "rg";
-                    find = "fd";
+                    # grep エイリアスはmodern-cli.nixで管理
+                    # find エイリアスはmodern-cli.nixで管理
                     ps = "procs";
-                    top = "btm";
-                    du = "dust";
-                    df = "duf";
+                    # top エイリアスはmodern-cli.nixで管理
+                    # du エイリアスはmodern-cli.nixで管理
+                    # df エイリアスはmodern-cli.nixで管理
                     
                     # Git shortcuts
                     lg = "lazygit";
