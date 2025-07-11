@@ -170,7 +170,7 @@
                     ll = "eza -la --icons --git";
                     la = "eza -la --icons --git";
                     tree = "eza --tree --icons";
-                    cat = "bat";
+                    # cat エイリアスはmodern-cli.nixで管理
                     grep = "rg";
                     find = "fd";
                     ps = "procs";

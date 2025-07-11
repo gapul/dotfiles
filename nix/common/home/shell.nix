@@ -20,7 +20,7 @@
       # Basic aliases (no platformInfo dependency for compatibility)
       ls = "ls --color=auto";
       ll = "ls -la";
-      cat = "cat";
+      # cat エイリアスはmodern-cli.nixで管理
       find = "find";
       grep = "grep";
       
