@@ -112,7 +112,7 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    home.packages = with pkgs; [
+    home-manager.users.yuki.home.packages = with pkgs; [
       # Core build tools
       nodejs_22
       
@@ -142,7 +142,7 @@ in
     ];
     
     # Environment variables for build tools
-    home.sessionVariables = {
+    home-manager.users.yuki.home.sessionVariables = {
       # Vite optimizations
       VITE_CJS_TRACE = "true";
       VITE_CJS_IGNORE_WARNING = "true";
@@ -162,7 +162,7 @@ in
     };
     
     # Shell aliases for build tools
-    home.shellAliases = {
+    home-manager.users.yuki.home.shellAliases = {
       # Vite shortcuts
       "vite-dev" = "vite";
       "vite-build" = "vite build";
@@ -186,7 +186,7 @@ in
     };
     
     # Default Vite configuration
-    home.file."vite.config.template.js" = {
+    home-manager.users.yuki.home.file."vite.config.template.js" = {
       text = ''
         import { defineConfig } from 'vite'
         ${lib.optionalString (lib.elem "react" cfg.vite.plugins) "import react from '@vitejs/plugin-react-swc'"}
@@ -241,7 +241,7 @@ in
     };
     
     # SWC configuration
-    home.file.".swcrc" = {
+    home-manager.users.yuki.home.file.".swcrc" = {
       text = builtins.toJSON {
         jsc = {
           target = "es2022";
@@ -294,7 +294,7 @@ in
     };
     
     # Build optimization script
-    home.file."bin/build-optimize" = {
+    home-manager.users.yuki.home.file."bin/build-optimize" = {
       executable = true;
       text = ''
         #!/usr/bin/env bash
@@ -384,7 +384,7 @@ in
     };
     
     # Development server wrapper
-    home.file."bin/dev-start" = {
+    home-manager.users.yuki.home.file."bin/dev-start" = {
       executable = true;
       text = ''
         #!/usr/bin/env bash

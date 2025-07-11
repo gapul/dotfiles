@@ -134,7 +134,7 @@ with lib;
     );
     
     # Desktop development utilities
-    home.packages = with pkgs; [
+    home-manager.users.yuki.home.packages = with pkgs; [
       # Icon generation tools
       imagemagick
       librsvg
@@ -161,7 +161,7 @@ with lib;
     ];
     
     # Enhanced shell aliases
-    home.shellAliases = {
+    home-manager.users.yuki.home.shellAliases = {
       # Tauri development shortcuts
       "tauri-new" = "tauri-init";
       "tauri-start" = "tauri-dev";
@@ -184,7 +184,7 @@ with lib;
     };
     
     # Desktop app development workflow script
-    home.file."bin/tauri-workflow" = {
+    home-manager.users.yuki.home.file."bin/tauri-workflow" = {
       executable = true;
       text = ''
         #!/usr/bin/env bash
@@ -480,7 +480,7 @@ with lib;
     };
     
     # Desktop health check
-    home.file."bin/desktop-health" = {
+    home-manager.users.yuki.home.file."bin/desktop-health" = {
       executable = true;
       text = ''
         #!/usr/bin/env bash

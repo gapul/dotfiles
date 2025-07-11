@@ -145,7 +145,7 @@ in
 
   config = lib.mkIf cfg.enable {
     # Security-focused Tauri configuration template
-    home.file.".tauri-templates/tauri-security.conf.json" = {
+    home-manager.users.yuki.home.file.".tauri-templates/tauri-security.conf.json" = {
       text = builtins.toJSON {
         security = {
           csp = if cfg.csp.enable then 
@@ -256,7 +256,7 @@ in
     };
     
     # Security level presets
-    home.file.".tauri-templates/security-presets.json" = {
+    home-manager.users.yuki.home.file.".tauri-templates/security-presets.json" = {
       text = builtins.toJSON {
         minimal = {
           allowlist = {
@@ -345,7 +345,7 @@ in
     };
     
     # Security audit script
-    home.file."bin/tauri-security-audit" = {
+    home-manager.users.yuki.home.file."bin/tauri-security-audit" = {
       executable = true;
       text = ''
         #!/usr/bin/env bash
@@ -503,7 +503,7 @@ in
     };
     
     # Security configuration helper
-    home.file."bin/tauri-security-config" = {
+    home-manager.users.yuki.home.file."bin/tauri-security-config" = {
       executable = true;
       text = ''
         #!/usr/bin/env bash
@@ -589,7 +589,7 @@ in
     };
     
     # Shell aliases for security
-    home.shellAliases = {
+    home-manager.users.yuki.home.shellAliases = {
       "tauri-security" = "tauri-security-audit";
       "tauri-sec-config" = "tauri-security-config";
       "tauri-audit" = "tauri-security-audit";

@@ -36,7 +36,7 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    home.packages = with pkgs; [
+    home-manager.users.yuki.home.packages = with pkgs; [
       # Node.js ecosystem
       nodejs_22
       corepack  # Built-in package manager manager
@@ -66,7 +66,7 @@ in
     ];
     
     # Environment variables
-    home.sessionVariables = {
+    home-manager.users.yuki.home.sessionVariables = {
       # Node.js optimizations
       NODE_OPTIONS = "--max-old-space-size=4096";
       
@@ -78,7 +78,7 @@ in
     };
     
     # Shell aliases for quick development
-    home.shellAliases = {
+    home-manager.users.yuki.home.shellAliases = {
       # Runtime selection
       "dev-node" = "node";
       "dev-bun" = "bun";
@@ -98,7 +98,7 @@ in
     };
     
     # Git ignore patterns for web development
-    home.file.".gitignore_web" = {
+    home-manager.users.yuki.home.file.".gitignore_web" = {
       text = ''
         # Dependencies
         node_modules/
