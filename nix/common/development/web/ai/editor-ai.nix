@@ -212,26 +212,31 @@ in
         vim.g.ai_code_generation = ${if cfg.features.codeGeneration then "true" else "false"}
         
         ${lib.optionalString (lib.elem "neural" cfg.neovim.plugins) ''
-        -- Neural plugin configuration
-        require('neural').setup({
-          source = {
-            openai = {
-              api_key = os.getenv('OPENAI_API_KEY'),
+        -- Neural plugin configuration with safe loading
+        local neural_ok, neural = pcall(require, 'neural')
+        if neural_ok then
+          neural.setup({
+            source = {
+              openai = {
+                api_key = os.getenv('OPENAI_API_KEY'),
+              },
+              anthropic = {
+                api_key = os.getenv('ANTHROPIC_API_KEY'),
+              },
             },
-            anthropic = {
-              api_key = os.getenv('ANTHROPIC_API_KEY'),
+            ui = {
+              use_prompt = true,
+              prompt_border = 'rounded',
             },
-          },
-          ui = {
-            use_prompt = true,
-            prompt_border = 'rounded',
-          },
-        })
+          })
+        end
         ''}
         
         ${lib.optionalString (lib.elem "chatgpt" cfg.neovim.plugins) ''
-        -- ChatGPT plugin configuration
-        require('chatgpt').setup({
+        -- ChatGPT plugin configuration with safe loading
+        local chatgpt_ok, chatgpt = pcall(require, 'chatgpt')
+        if chatgpt_ok then
+          chatgpt.setup({
           api_key_cmd = 'echo $OPENAI_API_KEY',
           yank_register = '+',
           edit_with_instructions = {
@@ -368,6 +373,7 @@ in
           show_quickfixes_cmd = 'Trouble quickfix',
           predefined_chat_gpt_prompts = 'https://raw.githubusercontent.com/f/awesome-chatgpt-prompts/main/prompts.csv',
         })
+        end
         ''}
         
         ${lib.optionalString (lib.elem "codeium" cfg.neovim.plugins) ''
@@ -383,11 +389,12 @@ in
         ''}
         
         ${lib.optionalString (lib.elem "cmp-ai" cfg.neovim.plugins) ''
-        -- AI completion source for nvim-cmp
-        local cmp = require('cmp')
-        local cmp_ai = require('cmp_ai.config')
+        -- AI completion source for nvim-cmp with safe loading
+        local cmp_ok, cmp = pcall(require, 'cmp')
+        local cmp_ai_ok, cmp_ai = pcall(require, 'cmp_ai.config')
         
-        cmp_ai:setup({
+        if cmp_ok and cmp_ai_ok then
+          cmp_ai:setup({
           max_lines = 1000,
           provider = 'OpenAI',
           provider_options = {
@@ -404,6 +411,7 @@ in
             -- markdown = true,
           },
         })
+        end
         ''}
         
         -- AI utility functions
@@ -418,7 +426,10 @@ in
           local code = table.concat(lines, '\n')
           
           local prompt = "Explain the following code in detail:\n\n" .. code
-          require('chatgpt').run_edit_with_instructions(prompt)
+          local chatgpt_ok, chatgpt = pcall(require, 'chatgpt')
+          if chatgpt_ok then
+            chatgpt.run_edit_with_instructions(prompt)
+          end
         end
         ''}
         
@@ -431,7 +442,10 @@ in
           local code = table.concat(lines, '\n')
           
           local prompt = "Refactor the following code to improve readability, performance, and maintainability:\n\n" .. code
-          require('chatgpt').run_edit_with_instructions(prompt)
+          local chatgpt_ok, chatgpt = pcall(require, 'chatgpt')
+          if chatgpt_ok then
+            chatgpt.run_edit_with_instructions(prompt)
+          end
         end
         ''}
         
@@ -444,7 +458,10 @@ in
           local code = table.concat(lines, '\n')
           
           local prompt = "Generate comprehensive unit tests for the following code:\n\n" .. code
-          require('chatgpt').run_edit_with_instructions(prompt)
+          local chatgpt_ok, chatgpt = pcall(require, 'chatgpt')
+          if chatgpt_ok then
+            chatgpt.run_edit_with_instructions(prompt)
+          end
         end
         ''}
         
@@ -457,7 +474,10 @@ in
           local code = table.concat(lines, '\n')
           
           local prompt = "Generate comprehensive documentation for the following code including JSDoc comments:\n\n" .. code
-          require('chatgpt').run_edit_with_instructions(prompt)
+          local chatgpt_ok, chatgpt = pcall(require, 'chatgpt')
+          if chatgpt_ok then
+            chatgpt.run_edit_with_instructions(prompt)
+          end
         end
         ''}
         

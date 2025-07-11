@@ -96,69 +96,78 @@ in
       ];
       
       extraLuaConfig = mkIf cfg.copilotSupport ''
-        -- GitHub Copilot configuration
-        require('copilot').setup({
-          suggestion = {
-            enabled = true,
-            auto_trigger = true,
-            debounce = 75,
-            keymap = {
-              accept = "<M-l>",
-              accept_word = false,
-              accept_line = false,
-              next = "<M-]>",
-              prev = "<M-[>",
-              dismiss = "<C-]>",
+        -- GitHub Copilot configuration with safe loading
+        local copilot_ok, copilot = pcall(require, 'copilot')
+        if copilot_ok then
+          copilot.setup({
+            suggestion = {
+              enabled = true,
+              auto_trigger = true,
+              debounce = 75,
+              keymap = {
+                accept = "<M-l>",
+                accept_word = false,
+                accept_line = false,
+                next = "<M-]>",
+                prev = "<M-[>",
+                dismiss = "<C-]>",
+              },
             },
-          },
-          filetypes = {
-            yaml = false,
-            markdown = false,
-            help = false,
-            gitcommit = false,
-            gitrebase = false,
-            hgcommit = false,
-            svn = false,
-            cvs = false,
-            ["."] = false,
-          },
-          copilot_node_command = '${pkgs.nodejs}/bin/node',
-        })
-        
-        -- Copilot CMP integration
-        require('copilot_cmp').setup()
-        
-        -- ChatGPT configuration
-        require("chatgpt").setup({
-          api_key_cmd = "echo $OPENAI_API_KEY",
-          yank_register = "+",
-          edit_with_instructions = {
-            diff = false,
-            keymaps = {
-              close = "<C-c>",
-              accept = "<C-y>",
-              toggle_diff = "<C-d>",
-              toggle_settings = "<C-o>",
-              cycle_windows = "<Tab>",
-              use_output_as_input = "<C-i>",
+            filetypes = {
+              yaml = false,
+              markdown = false,
+              help = false,
+              gitcommit = false,
+              gitrebase = false,
+              hgcommit = false,
+              svn = false,
+              cvs = false,
+              ["."] = false,
             },
-          },
-          chat = {
-            welcome_message = "Welcome to ChatGPT",
-            loading_text = "Loading, please wait ...",
-            question_sign = "",
-            answer_sign = "ﮧ",
-            max_line_length = 120,
-            sessions_window = {
-              border = {
-                style = "rounded",
-                text = {
-                  top = " Sessions ",
+            copilot_node_command = '${pkgs.nodejs}/bin/node',
+          })
+        end
+        
+        -- Copilot CMP integration with safe loading
+        local copilot_cmp_ok, copilot_cmp = pcall(require, 'copilot_cmp')
+        if copilot_cmp_ok then
+          copilot_cmp.setup()
+        end
+        
+        -- ChatGPT configuration with safe loading
+        local chatgpt_ok, chatgpt = pcall(require, "chatgpt")
+        if chatgpt_ok then
+          chatgpt.setup({
+            api_key_cmd = "echo $OPENAI_API_KEY",
+            yank_register = "+",
+            edit_with_instructions = {
+              diff = false,
+              keymaps = {
+                close = "<C-c>",
+                accept = "<C-y>",
+                toggle_diff = "<C-d>",
+                toggle_settings = "<C-o>",
+                cycle_windows = "<Tab>",
+                use_output_as_input = "<C-i>",
+              },
+            },
+            chat = {
+              welcome_message = "Welcome to ChatGPT",
+              loading_text = "Loading, please wait ...",
+              question_sign = "",
+              answer_sign = "ﮧ",
+              max_line_length = 120,
+              sessions_window = {
+                border = {
+                  style = "rounded",
+                  text = {
+                    top = " Sessions ",
+                  },
                 },
               },
             },
-          },
-        })
+          })
+        end
       '';
     };
 
