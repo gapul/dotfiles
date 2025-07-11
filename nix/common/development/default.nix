@@ -46,10 +46,8 @@ with lib;
       elem config.dotfiles.development.profile [ "standard" "full" "ai-powered" ]
     );
     
-    # Web development environment
-    web.enable = mkDefault (
-      elem config.dotfiles.development.profile [ "standard" "full" "ai-powered" ]
-    );
+    # Web development environment (temporarily disabled)
+    web.enable = mkDefault false;
     
     # Web development profile mapping
     web.profile = mkDefault (
