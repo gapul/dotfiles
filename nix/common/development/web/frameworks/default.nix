@@ -59,7 +59,6 @@ with lib;
       nodePackages.typescript
       nodePackages.eslint
       nodePackages.prettier
-      nodePackages.vitest
     ];
     
     # Shell aliases for framework development
