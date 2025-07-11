@@ -117,7 +117,7 @@ in
 
   config = lib.mkIf cfg.enable {
     # Core packages for Tauri development
-    home.packages = with pkgs; [
+    home-manager.users.yuki.home.packages = with pkgs; [
       # Node.js for Tauri CLI
       nodejs_22
       
@@ -186,7 +186,7 @@ in
     ];
     
     # Environment variables for Tauri development
-    home.sessionVariables = {
+    home-manager.users.yuki.home.sessionVariables = {
       # Rust environment
       RUST_BACKTRACE = if cfg.development.debugMode then "1" else "0";
       RUST_LOG = if cfg.development.debugMode then "debug" else "info";
@@ -202,9 +202,9 @@ in
       TAURI_BUNDLE_FORMAT = lib.concatStringsSep "," cfg.features.bundleFormats;
       
       # Development optimizations
-      CARGO_TARGET_DIR = "${config.xdg.cacheHome}/cargo/target";
-      RUSTUP_HOME = "${config.xdg.dataHome}/rustup";
-      CARGO_HOME = "${config.xdg.dataHome}/cargo";
+      CARGO_TARGET_DIR = "$HOME/.cache/cargo/target";
+      RUSTUP_HOME = "$HOME/.local/share/rustup";
+      CARGO_HOME = "$HOME/.local/share/cargo";
     };
     
     # Rust toolchain configuration
@@ -256,7 +256,7 @@ in
     };
     
     # Default Tauri configuration template
-    home.file.".tauri-templates/tauri.conf.template.json" = {
+    home-manager.users.yuki.home.file.".tauri-templates/tauri.conf.template.json" = {
       text = builtins.toJSON {
         "$schema" = "../node_modules/@tauri-apps/cli/schema.json";
         build = {
@@ -392,7 +392,7 @@ in
     };
     
     # Shell aliases for Tauri development
-    home.shellAliases = {
+    home-manager.users.yuki.home.shellAliases = {
       # Tauri CLI shortcuts
       "tauri" = "npx @tauri-apps/cli";
       "tauri-dev" = "npx @tauri-apps/cli dev";
@@ -416,7 +416,7 @@ in
     };
     
     # Tauri project initialization script
-    home.file."bin/tauri-init" = {
+    home-manager.users.yuki.home.file."bin/tauri-init" = {
       executable = true;
       text = ''
         #!/usr/bin/env bash
@@ -555,7 +555,7 @@ in
     };
     
     # Tauri health check
-    home.file."bin/tauri-health" = {
+    home-manager.users.yuki.home.file."bin/tauri-health" = {
       executable = true;
       text = ''
         #!/usr/bin/env bash
