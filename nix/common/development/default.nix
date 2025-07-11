@@ -11,6 +11,7 @@ with lib;
     ./project-env
     ./test-integration.nix
     ./web  # Web development environment
+    ../tools/modern-cli.nix  # Phase 5: Modern CLI tools integration
   ];
 
   options.dotfiles.development = {
@@ -24,6 +25,14 @@ with lib;
   };
 
   config = mkIf config.dotfiles.development.enable {
+    # Enable modern CLI tools integration (Phase 5)
+    modern-cli.enable = mkDefault true;
+    modern-cli.profile = mkDefault (
+      if config.dotfiles.development.profile == "minimal" then "minimal"
+      else if config.dotfiles.development.profile == "standard" then "standard" 
+      else "full"  # full and ai-powered profiles
+    );
+    
     # Enable components based on profile
     dotfiles.development.containers.enable = mkDefault (
       elem config.dotfiles.development.profile [ "standard" "full" "ai-powered" ]
@@ -82,18 +91,15 @@ with lib;
     #     [ "nodejs" "python" "rust" "go" "php" "ruby" "java" "react" "nextjs" "vue" "angular" "docker" "terraform" ]
     # );
 
-    # Common development tools for all profiles  
+    # Common development tools for all profiles (modern CLI tools moved to modern-cli module)
     home-manager.users.yuki.home.packages = with pkgs; [
-      # Version control
+      # Version control (core Git tools only, TUI moved to modern-cli)
       git
       git-lfs
-      gitui
-      lazygit
+      gitui  # Keep as alternative to lazygit
       
-      # Text processing
-      ripgrep
-      fd
-      fzf
+      # Text processing (core tools only, modern alternatives in modern-cli)
+      fzf  # Fuzzy finder - still widely used directly
       jq
       yq-go  # YAML processor (Go version, consistent with automation modules)
       
@@ -102,15 +108,12 @@ with lib;
       wget
       httpie
       
-      # File management
-      tree
-      eza  # formerly exa
-      bat
+      # File management (legacy tools for compatibility)
+      tree  # Keep for simple tree display
       
-      # Process management
-      htop
-      btop
-      procs
+      # Process management (legacy htop kept for compatibility)
+      htop  # Keep as fallback
+      procs  # Modern ps replacement
       
       # Development utilities
       just
@@ -154,11 +157,8 @@ with lib;
         gl = "git log --oneline";
         gd = "git diff";
         
-        # Development shortcuts  
-        ll = mkDefault "eza -la";  # Updated from exa to eza
-        lt = mkDefault "eza --tree";
-        cat = "bat";
-        ps = "procs";
+        # Development shortcuts (modern CLI replacements handled by modern-cli module)  
+        ps = "procs";  # Keep procs alias here as it's development-specific
         
         # Nix shortcuts
         nix-build = "nix build";
@@ -471,6 +471,39 @@ with lib;
           fi
         '' else ''
           echo "⚪ Universal Platform Integration: Disabled"
+        ''}
+        
+        # Check Modern CLI Tools (Phase 5)
+        ${if config.modern-cli.enable or false then ''
+          echo "✅ Modern CLI Tools: Enabled (${config.modern-cli.profile})"
+          echo "  🔧 Core replacements:"
+          for tool in eza bat ripgrep fd; do
+            if command -v "$tool" &> /dev/null; then
+              echo "    ✅ $tool"
+            else
+              echo "    ❌ $tool"
+            fi
+          done
+          
+          echo "  🧭 Navigation & Git:"
+          for tool in zoxide lazygit yazi; do
+            if command -v "$tool" &> /dev/null; then
+              echo "    ✅ $tool"
+            else
+              echo "    ❌ $tool"
+            fi
+          done
+          
+          echo "  📊 Monitoring:"
+          for tool in bottom; do
+            if command -v "$tool" &> /dev/null; then
+              echo "    ✅ $tool"
+            else
+              echo "    ❌ $tool"  
+            fi
+          done
+        '' else ''
+          echo "⚪ Modern CLI Tools: Disabled"
         ''}
         
         # Check Web Development Environment
