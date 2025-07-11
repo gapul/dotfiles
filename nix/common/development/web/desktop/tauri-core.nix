@@ -208,10 +208,10 @@ in
     };
     
     # Rust toolchain configuration
-    home.file.".cargo/config.toml" = {
+    home-manager.users.yuki.home.file.".cargo/config.toml" = {
       text = ''
         [build]
-        target-dir = "${config.xdg.cacheHome}/cargo/target"
+        target-dir = "$HOME/.cache/cargo/target"
         
         [env]
         ${lib.optionalString cfg.development.debugMode ''
