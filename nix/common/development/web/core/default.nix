@@ -74,7 +74,7 @@ with lib;
     );
     
     # Enhanced shell configuration for web development
-    home.shellAliases = {
+    home-manager.users.yuki.home.shellAliases = {
       # Quick project commands
       "web-init" = "npx create-vite@latest";
       "react-init" = "npx create-react-app";
@@ -100,7 +100,7 @@ with lib;
     };
     
     # Web development utilities
-    home.packages = with pkgs; [
+    home-manager.users.yuki.home.packages = with pkgs; [
       # Modern CLI tools for web development
       tree-sitter
       
@@ -126,7 +126,7 @@ with lib;
     ];
     
     # Project templates directory
-    home.file.".web-templates" = {
+    home-manager.users.yuki.home.file.".web-templates" = {
       source = pkgs.writeTextDir "README.md" ''
         # Web Development Templates
         
@@ -154,7 +154,7 @@ with lib;
     };
     
     # Global gitignore for web projects
-    home.file.".gitignore_global_web" = {
+    home-manager.users.yuki.home.file.".gitignore_global_web" = {
       text = ''
         # Dependencies
         node_modules/
@@ -222,7 +222,7 @@ with lib;
     };
     
     # Web development health check
-    home.file."bin/web-health" = {
+    home-manager.users.yuki.home.file."bin/web-health" = {
       executable = true;
       text = ''
         #!/usr/bin/env bash

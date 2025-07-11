@@ -73,7 +73,7 @@ with lib;
     
     
     # Global web development packages
-    home.packages = with pkgs; [
+    home-manager.users.yuki.home.packages = with pkgs; [
       # Modern CLI tools
       tree-sitter
       ripgrep
@@ -105,7 +105,7 @@ with lib;
     ];
     
     # Global environment variables
-    home.sessionVariables = {
+    home-manager.users.yuki.home.sessionVariables = {
       # Web development preferences
       WEB_PROFILE = config.web.profile;
       WEB_PRIMARY_FRAMEWORK = config.web.frameworks.primary;
@@ -119,7 +119,7 @@ with lib;
     };
     
     # Global shell aliases
-    home.shellAliases = {
+    home-manager.users.yuki.home.shellAliases = {
       # Quick project commands
       "web-init" = "fw-init";
       "web-dev" = "dev-start";
@@ -142,7 +142,7 @@ with lib;
     };
     
     # Web development workflow script
-    home.file."bin/web-workflow" = {
+    home-manager.users.yuki.home.file."bin/web-workflow" = {
       executable = true;
       text = ''
         #!/usr/bin/env bash
@@ -394,7 +394,7 @@ with lib;
     };
     
     # Comprehensive health check
-    home.file."bin/web-env-health" = {
+    home-manager.users.yuki.home.file."bin/web-env-health" = {
       executable = true;
       text = ''
         #!/usr/bin/env bash

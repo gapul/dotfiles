@@ -55,7 +55,7 @@ in
 
   config = lib.mkIf cfg.enable {
     # Development tooling packages
-    home.packages = with pkgs; [
+    home-manager.users.yuki.home.packages = with pkgs; [
       # Linting and formatting
       nodePackages.eslint
       nodePackages.prettier
@@ -70,7 +70,7 @@ in
     ];
     
     # Default ESLint configuration
-    home.file.".web-templates/.eslintrc.template.json" = lib.mkIf cfg.linting.eslint {
+    home-manager.users.yuki.home.file.".web-templates/.eslintrc.template.json" = lib.mkIf cfg.linting.eslint {
       text = builtins.toJSON {
         env = {
           browser = true;
@@ -114,7 +114,7 @@ in
     };
     
     # Default Prettier configuration
-    home.file.".web-templates/.prettierrc.template.json" = lib.mkIf cfg.linting.prettier {
+    home-manager.users.yuki.home.file.".web-templates/.prettierrc.template.json" = lib.mkIf cfg.linting.prettier {
       text = builtins.toJSON {
         semi = true;
         trailingComma = "es5";
@@ -133,7 +133,7 @@ in
     };
     
     # Prettier ignore file
-    home.file.".web-templates/.prettierignore.template" = lib.mkIf cfg.linting.prettier {
+    home-manager.users.yuki.home.file.".web-templates/.prettierignore.template" = lib.mkIf cfg.linting.prettier {
       text = ''
         # Dependencies
         node_modules/
@@ -172,7 +172,7 @@ in
     };
     
     # Shell aliases for tooling
-    home.shellAliases = {
+    home-manager.users.yuki.home.shellAliases = {
       # Linting shortcuts
       "lint-fix" = "npm run lint:fix";
       "format" = "prettier --write .";
@@ -189,7 +189,7 @@ in
     };
     
     # Tooling health check
-    home.file."bin/web-tooling-health" = {
+    home-manager.users.yuki.home.file."bin/web-tooling-health" = {
       executable = true;
       text = ''
         #!/usr/bin/env bash
