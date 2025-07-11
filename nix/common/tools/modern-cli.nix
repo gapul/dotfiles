@@ -59,7 +59,7 @@ in
         gdu                                       # du replacement  
         fastfetch                                 # system info
         # Development tools
-        (mkIf (cfg.git-ui && isDarwin) git-delta) # Better git diff
+        (mkIf (cfg.git-ui && isDarwin) delta) # Better git diff
       ]);
 
     # Shell integration and aliases
