@@ -86,7 +86,7 @@ in
       };
       
       # Zoxide integration (smart cd)
-      initExtra = mkIf cfg.navigation ''
+      initContent = mkIf cfg.navigation ''
         # Zoxide integration
         eval "$(zoxide init zsh)"
         alias cd="z"
