@@ -177,8 +177,10 @@ in
       text = ''
         -- GitHub Copilot configuration for NeoVim
         
-        -- Copilot.lua setup
-        require('copilot').setup({
+        -- Copilot.lua setup with safe loading
+        local copilot_ok, copilot = pcall(require, 'copilot')
+        if copilot_ok then
+          copilot.setup({
           panel = {
             enabled = true,
             auto_refresh = true,
@@ -229,10 +231,13 @@ in
             }
           },
         })
+        end
         
         ${lib.optionalString cfg.neovim.chatIntegration ''
-        -- Copilot Chat setup
-        require('CopilotChat').setup({
+        -- Copilot Chat setup with safe loading
+        local copilot_chat_ok, copilot_chat = pcall(require, 'CopilotChat')
+        if copilot_chat_ok then
+          copilot_chat.setup({
           debug = false,
           model = 'gpt-4',
           temperature = 0.1,
@@ -286,6 +291,7 @@ in
             },
           },
         })
+        end
         ''}
         
         -- Key mappings
