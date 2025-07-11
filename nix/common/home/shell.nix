@@ -18,11 +18,11 @@
     # Platform-agnostic aliases
     shellAliases = {
       # Basic aliases (no platformInfo dependency for compatibility)
-      ls = "ls --color=auto";
-      ll = "ls -la";
+      # ls エイリアスはmodern-cli.nixで管理
+      # ll エイリアスはmodern-cli.nixで管理
       # cat エイリアスはmodern-cli.nixで管理
-      find = "find";
-      grep = "grep";
+      # find エイリアスはmodern-cli.nixで管理
+      # grep エイリアスはmodern-cli.nixで管理
       
       # Git shortcuts
       g = "git";

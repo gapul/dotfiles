@@ -68,6 +68,7 @@ in
         # Core command replacements
         ls = mkIf cfg.core-replacements "eza --color=auto --icons --group-directories-first";
         ll = mkIf cfg.core-replacements "eza -la --color=auto --icons --group-directories-first --git";
+        la = mkIf cfg.core-replacements "eza -la --color=auto --icons --group-directories-first --git";
         lt = mkIf cfg.core-replacements "eza --tree --level=2 --color=auto --icons";
         cat = mkIf cfg.core-replacements "bat --style=auto";
         grep = mkIf cfg.search-tools "rg";
