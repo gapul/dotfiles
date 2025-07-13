@@ -270,27 +270,37 @@ in
         # Modern CLI helper functions
         
         # Enhanced ls with tree view
-        llt() {
-          ${if cfg.navigation then "eza --tree --level=\\${1:-2}" else "ls -la"}
-        }
+        ${if cfg.navigation then ''
+          llt() {
+            eza --tree --level=''${1:-2}
+          }
+        '' else ''
+          llt() {
+            ls -la
+          }
+        ''}
         
         # Smart find and grep combination
-        findgrep() {
-          ${if cfg.navigation && cfg.content then ''
-            fd "\\$1" | xargs rg "\\$2"
-          '' else ''
-            find . -name "\\$1" -exec grep -l "\\$2" {} \\;
-          ''}
-        }
+        ${if cfg.navigation && cfg.content then ''
+          findgrep() {
+            fd "$1" | xargs rg "$2"
+          }
+        '' else ''
+          findgrep() {
+            find . -name "$1" -exec grep -l "$2" {} \;
+          }
+        ''}
         
         # Quick file preview
-        preview() {
-          ${if cfg.content then ''
-            bat --style=header,grid --color=always "\\$1"
-          '' else ''
-            cat "\\$1"
-          ''}
-        }
+        ${if cfg.content then ''
+          preview() {
+            bat --style=header,grid --color=always "$1"
+          }
+        '' else ''
+          preview() {
+            cat "$1"
+          }
+        ''}
       ''
     ];
 
