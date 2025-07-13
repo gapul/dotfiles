@@ -156,22 +156,47 @@ return {
       "williamboman/mason-lspconfig.nvim",
     },
     config = function()
-      require("mason-tool-installer").setup({
-        ensure_installed = {
-          -- Formatters
-          "prettier",
-          "stylua",
-          "black",
-          "rustfmt",
-          "gofmt",
-          -- Linters
-          "eslint_d",
-          "flake8",
-          "shellcheck",
-        },
-        auto_update = false,
-        run_on_start = true,
-      })
+      -- Conditional setup to avoid package errors
+      local ok, mason_tool_installer = pcall(require, "mason-tool-installer")
+      if ok then
+        mason_tool_installer.setup({
+          ensure_installed = {
+            -- LSP servers (handled by mason-lspconfig)
+            
+            -- Formatters (for conform.nvim)
+            "stylua",      -- Lua formatter
+            "black",       -- Python formatter  
+            "isort",       -- Python import sorter
+            "prettier",    -- JS/TS/JSON/YAML/MD formatter
+            "prettierd",   -- Faster prettier daemon
+            "shfmt",       -- Shell script formatter
+            "rustfmt",     -- Rust formatter
+            "gofmt",       -- Go formatter
+            "goimports",   -- Go import formatter
+            "nixpkgs-fmt", -- Nix formatter
+            "taplo",       -- TOML formatter
+            
+            -- Linters (for nvim-lint)
+            "shellcheck",     -- Shell script linter
+            "eslint_d",       -- Fast ESLint daemon
+            "luacheck",       -- Lua linter
+            "ruff",           -- Fast Python linter/formatter
+            "mypy",           -- Python type checker
+            "hadolint",       -- Dockerfile linter
+            "yamllint",       -- YAML linter
+            "jsonlint",       -- JSON linter
+            "markdownlint",   -- Markdown linter
+            "golangci-lint",  -- Go linter
+            "sqlfluff",       -- SQL linter
+          },
+          auto_update = false,
+          run_on_start = false, -- Manual installation to avoid errors
+        })
+        
+        vim.notify("Mason tool installer configured", vim.log.levels.INFO)
+      else
+        vim.notify("Mason tool installer not available", vim.log.levels.WARN)
+      end
     end,
   },
 }

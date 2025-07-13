@@ -6,13 +6,18 @@ let
   cfg = config.dotfiles.development.ai-platform;
 in
 {
+  imports = [
+    ./ollama.nix
+    ./cli-integration.nix
+  ];
   options.dotfiles.development.ai-platform = {
     enable = mkEnableOption "Advanced AI Development Platform";
     
-    localLlmSupport = mkOption {
-      type = types.bool;
-      default = true;
-      description = "Enable local LLM support (Ollama)";
+    # Ollama integration (moved to dedicated module)
+    ollama = mkOption {
+      type = types.submodule {};
+      default = {};
+      description = "Ollama local LLM configuration (see ollama.nix)";
     };
     
     aiCodeReview = mkOption {
@@ -47,14 +52,24 @@ in
   };
 
   config = mkIf cfg.enable {
+    # Enable Ollama by default when AI platform is enabled
+    dotfiles.development.ai-platform.ollama.enable = mkDefault true;
+    dotfiles.development.ai-platform.ollama.autoStart = mkDefault true;
+    dotfiles.development.ai-platform.ollama.cliIntegration = mkDefault true;
+    dotfiles.development.ai-platform.ollama.neovimIntegration = mkDefault true;
+    
+    # Enable CLI integration tools
+    dotfiles.development.ai-platform.cli.enable = mkDefault true;
+    dotfiles.development.ai-platform.cli.shellGpt = mkDefault true;
+    dotfiles.development.ai-platform.cli.mods = mkDefault true;
+    dotfiles.development.ai-platform.cli.aiCommit = mkDefault true;
+    dotfiles.development.ai-platform.cli.explainShell = mkDefault true;
+    
     # Advanced AI platform packages
     home-manager.users.yuki.home.packages = with pkgs; [
-      # Local LLM support
-    ] ++ optionals cfg.localLlmSupport [
-      # Ollama for local LLM inference
-      # Note: Ollama package may need to be built from source or fetched via other means
-      curl  # For Ollama API calls
-      jq    # For JSON processing
+      # Core AI development tools
+      curl  # For API calls
+      jq    # JSON processing
       
     ] ++ optionals cfg.aiCodeReview [
       # Code review automation
@@ -83,58 +98,8 @@ in
       nodejs  # For various doc tools
     ];
 
-    # Local LLM (Ollama) integration
-    home-manager.users.yuki.home.file."bin/ollama-setup" = mkIf cfg.localLlmSupport {
-      executable = true;
-      text = ''
-        #!/usr/bin/env bash
-        # Ollama Local LLM Setup
-        set -euo pipefail
-        
-        echo "🤖 Setting up Ollama for local LLM inference"
-        
-        # Check if Ollama is available (managed by Homebrew)
-        if ! command -v ollama &> /dev/null; then
-          echo "❌ Ollama not found. Install via Homebrew: brew install --cask ollama"
-          echo "   Or use the system configuration to manage Homebrew casks"
-          exit 1
-        else
-          echo "✅ Ollama is available"
-        fi
-        
-        # Start Ollama service
-        echo "🚀 Starting Ollama service..."
-        if ! pgrep -f ollama &> /dev/null; then
-          ollama serve &
-          sleep 5
-        fi
-        
-        # Pull useful models
-        echo "📦 Pulling recommended models..."
-        
-        models=(
-          "codellama:7b"      # Code generation
-          "llama2:7b"         # General purpose
-          "mistral:7b"        # Fast and efficient
-          "phi:2.7b"          # Microsoft model
-        )
-        
-        for model in "''${models[@]}"; do
-          echo "  Pulling $model..."
-          if ollama pull "$model"; then
-            echo "  ✅ $model installed"
-          else
-            echo "  ⚠️  Failed to pull $model"
-          fi
-        done
-        
-        echo "🎉 Ollama setup complete!"
-        echo "🔧 Available commands:"
-        echo "  ollama-chat <model>  - Interactive chat"
-        echo "  ollama-code <prompt> - Code generation"
-        echo "  ollama-review        - Code review"
-      '';
-    };
+    # Legacy Ollama setup (deprecated - use ollama-manager instead)
+    # Removed in favor of the dedicated ollama.nix module
 
     # AI-powered code review system
     home-manager.users.yuki.home.file."bin/ai-code-review" = mkIf cfg.aiCodeReview {
@@ -176,8 +141,11 @@ in
         Code diff:
         $DIFF"
             
-            # Use available AI tools for review
-            if command -v ollama &> /dev/null && ollama list | grep -q codellama; then
+            # Use available AI tools for review (prioritize local Ollama)
+            if command -v ollama-manager &> /dev/null; then
+              echo "🤖 Using local Ollama via ollama-manager for review..."
+              echo "$PROMPT" | ollama-manager code "Code review request"
+            elif command -v ollama &> /dev/null && ollama list | grep -q codellama; then
               echo "🤖 Using local Ollama CodeLlama for review..."
               echo "$PROMPT" | ollama run codellama
             elif command -v aichat &> /dev/null; then
@@ -188,7 +156,8 @@ in
               echo "$PROMPT" | gh copilot suggest
             else
               echo "❌ No AI tools available for code review"
-              echo "💡 Install: ollama, aichat, or github-cli with copilot"
+              echo "💡 Setup local LLM: ollama-manager setup"
+              echo "💡 Or install: aichat, github-cli with copilot"
               exit 1
             fi
             ;;
@@ -735,24 +704,22 @@ in
         
         ISSUES=0
         
-        # Local LLM check
-        ${if cfg.localLlmSupport then ''
-          echo "🦙 Local LLM (Ollama):"
-          if command -v ollama &> /dev/null; then
-            if ollama list &> /dev/null; then
-              MODELS=$(ollama list | tail -n +2 | wc -l | tr -d ' ')
-              echo "  ✅ Ollama: $MODELS models available"
-            else
-              echo "  ⚠️  Ollama: Service not running"
-              ((ISSUES++))
-            fi
+        # Local LLM check (delegated to Ollama module)
+        echo "🦙 Local LLM (Ollama):"
+        if command -v ollama-manager &> /dev/null; then
+          echo "  ✅ Ollama Manager: Available"
+          # Run ollama-manager health check
+          if ollama-manager status | grep -q "Service: Running"; then
+            echo "  ✅ Ollama Service: Running"
           else
-            echo "  ❌ Ollama: Not installed"
+            echo "  ⚠️  Ollama Service: Not running"
             ((ISSUES++))
           fi
-        '' else ''
-          echo "🦙 Local LLM: Disabled"
-        ''}
+        else
+          echo "  ❌ Ollama Manager: Not available"
+          echo "  💡 Run: ollama-manager setup"
+          ((ISSUES++))
+        fi
         
         # Code review system
         ${if cfg.aiCodeReview then ''
@@ -847,22 +814,36 @@ in
         
         echo ""
         echo "🚀 Available Commands:"
-        echo "  ai-code-review     - AI-powered code review"
-        echo "  ai-deployment      - Intelligent deployment"
-        echo "  ai-docs           - Documentation generation"
-        echo "  ollama-setup      - Local LLM setup"
-        echo "  ai-platform-health - This health check"
+        echo "  🔍 Code & Review:"
+        echo "    ai-code-review     - AI-powered code review"
+        echo "    ai-commit          - Generate commit messages"
+        echo "  🚀 Deployment:"
+        echo "    ai-deployment      - Intelligent deployment"
+        echo "  📚 Documentation:"
+        echo "    ai-docs           - Documentation generation"
+        echo "  🤖 Local LLM:"
+        echo "    ollama-manager     - Comprehensive Ollama management"
+        echo "  💬 CLI Assistance:"
+        echo "    ask <query>        - Ask AI anything"
+        echo "    explain <command>  - Explain shell commands"
+        echo "    fix <error>        - Fix command errors"
+        echo "    suggest <task>     - Get command suggestions"
+        echo "  🏥 Monitoring:"
+        echo "    ai-platform-health - This health check"
       '';
     };
 
     # Shell aliases for AI platform
     home-manager.users.yuki.programs.zsh.shellAliases = {
+      # AI platform commands
       ai-review = "ai-code-review";
       ai-deploy = "ai-deployment";
       ai-doc = "ai-docs";
       ai-health = "ai-platform-health";
-      ollama-chat = "ollama run codellama";
-      local-llm = "ollama list";
+      
+      # Legacy Ollama commands (prefer ollama-manager)
+      local-llm = "ollama-manager models";
+      ollama-setup-legacy = "ollama-manager setup";  # Renamed to avoid conflicts
     };
 
     # AI platform environment variables

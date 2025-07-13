@@ -108,7 +108,7 @@ with lib;
     home-manager.users.yuki.home.sessionVariables = {
       # Web development preferences
       WEB_PROFILE = config.web.profile;
-      WEB_PRIMARY_FRAMEWORK = config.web.frameworks.primary;
+      WEB_PRIMARY_FRAMEWORK = "react";
       
       # Node.js optimizations
       NODE_OPTIONS = "--max-old-space-size=4096";
@@ -177,8 +177,8 @@ with lib;
         
         init_project() {
           local name="$1"
-          local framework="''${2:-${config.web.frameworks.primary}}"
-          local use_typescript="''${3:-${toString config.web.frameworks.typescript}}"
+          local framework="''${2:-react}"
+          local use_typescript="''${3:-true}"
           local use_desktop="''${4:-false}"
           local target_dir="''${5:-.}"
           
@@ -309,8 +309,8 @@ with lib;
         
         # Parse arguments
         COMMAND=""
-        FRAMEWORK="${config.web.frameworks.primary}"
-        USE_TYPESCRIPT="${toString config.web.frameworks.typescript}"
+        FRAMEWORK="react"
+        USE_TYPESCRIPT="true"
         USE_DESKTOP="false"
         TARGET_DIR="."
         
@@ -426,7 +426,7 @@ with lib;
         # Overall configuration
         echo "📊 Overall Configuration:"
         echo "Profile: ${config.web.profile}"
-        echo "Primary framework: ${config.web.frameworks.primary}"
+        echo "Primary framework: react"
         echo "Features enabled:"
         echo "  Core: ${if config.web.features.core then "✅" else "❌"}"
         echo "  Frameworks: ${if config.web.features.frameworks then "✅" else "❌"}"
