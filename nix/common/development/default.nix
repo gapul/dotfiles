@@ -11,7 +11,7 @@ with lib;
     ./project-env
     ./test-integration.nix
     ./web  # Web development environment
-    ./modern-cli.nix  # Phase 5: Modern CLI tools integration
+    ./modern-cli-simple.nix  # Phase 5: Modern CLI tools integration (simplified)
     ./nix-qol.nix  # Phase 6: Nix Quality of Life tools
   ];
 
