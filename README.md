@@ -149,6 +149,7 @@ export DOTFILES_PROFILE="standard"  # minimal, standard, full
 - [CLAUDE.md](CLAUDE.md) - プロジェクト詳細情報
 - [SECURITY.md](SECURITY.md) - セキュリティ設定
 - [docs/](docs/) - 詳細ガイド
+- [docs/todo/](docs/todo/) - 今後の実装予定タスク
 
 ## 🤝 コントリビューション
 
