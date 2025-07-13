@@ -226,7 +226,7 @@ in
         command -v zoxide >/dev/null && echo "✅ zoxide" || echo "❌ zoxide"
         
         echo ""
-        echo "Profile: ${cfg.profile}"
+        echo "Profile: full"
         echo "All checks completed!"
       '';
     };
