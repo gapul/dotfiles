@@ -4,6 +4,8 @@
   imports = [
     # ../../common/system/optimization.nix  # Temporarily disabled due to SpotlightServer config issues
     # ../../common/system/maintenance.nix  # Temporarily disabled due to dependency on optimization
+    ../sketchybar  # SketchyBar NG (FelixKratz version)
+    ../keyboard    # QMK/VIA Custom Keyboard Integration
   ];
   
   # System optimization temporarily disabled
@@ -33,6 +35,81 @@
   dotfiles.development = {
     enable = true;
     profile = "full";
+  };
+
+  # SketchyBar NG Configuration
+  dotfiles.sketchybar = {
+    enable = true;
+    theme = "catppuccin-mocha";
+    position = "top";
+    height = 28;
+    aiIntegration = true;
+    animations = true;
+    notchSupport = true;
+    
+    modules = {
+      system = true;
+      media = true;
+      weather = false;  # Disabled by default
+      crypto = false;   # Disabled by default
+      network = true;
+      git = true;
+      docker = true;
+      bluetooth = true;
+      wifi = true;
+      vpn = true;
+      spaces = true;
+    };
+    
+    aiFeatures = {
+      smartNotifications = true;
+      contextualInfo = true;
+      intelligentHiding = true;
+      voiceControl = false;  # Disabled by default
+    };
+  };
+
+  # QMK/VIA Custom Keyboard Integration
+  dotfiles.keyboard = {
+    enable = true;
+    
+    qmk = {
+      enable = true;
+      keyboards = [ "planck" "corne" "lily58" ];  # Common keyboards
+      customFirmware = false;  # Disabled by default for safety
+      autoFlash = false;       # Manual flashing for safety
+    };
+    
+    via = {
+      enable = true;
+      autoDetect = true;
+      layouts = [];
+    };
+    
+    keymaps = {
+      enable = true;
+      profile = "developer";   # Optimized for development
+      layers = 4;
+      macros = true;
+      tapDance = true;
+      combos = true;
+    };
+    
+    features = {
+      rgbLighting = true;
+      audio = false;           # Disabled by default
+      oled = true;
+      rotaryEncoder = true;
+      hapticFeedback = false;  # Disabled by default
+      aiIntegration = true;    # Enable AI optimization
+    };
+    
+    development = {
+      enable = false;          # Disabled by default
+      compiler = "avr-gcc";
+      debugger = false;
+      simulator = false;
+    };
   };
   # SOPS secrets management configuration
   sops = {

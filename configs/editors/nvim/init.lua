@@ -1,1 +1,15 @@
-/nix/store/py8184i5vc3l95g2vjrxfpvqg3ghhnmm-home-manager-files/.config/nvim/init.lua
+-- Main Neovim Configuration
+-- Initialize core configuration and plugins
+
+-- Set leader key early
+vim.g.mapleader = " "
+vim.g.maplocalleader = " "
+
+-- Load configuration modules
+require("config")
+
+-- Load modern CLI integration
+require("modern-cli-integration")
+
+-- Final setup notification
+vim.notify("Neovim configuration loaded successfully", vim.log.levels.INFO)

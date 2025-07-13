@@ -202,10 +202,10 @@ function M.setup()
   -- Create Which-Key group for modern CLI tools
   local wk_ok, wk = pcall(require, 'which-key')
   if wk_ok then
-    wk.register({
-      ['<leader>g'] = { name = 'Git' },
-      ['<leader>f'] = { name = 'Find/Files' },
-      ['<leader>t'] = { name = 'Terminal/Tools' },
+    wk.add({
+      { '<leader>g', group = 'Git' },
+      { '<leader>f', group = 'Find/Files' },
+      { '<leader>t', group = 'Terminal/Tools' },
     })
   end
 

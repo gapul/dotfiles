@@ -11,7 +11,7 @@ with lib;
     ./project-env
     ./test-integration.nix
     ./web  # Web development environment
-    ../tools/modern-cli.nix  # Phase 5: Modern CLI tools integration
+    ./modern-cli.nix  # Phase 5: Modern CLI tools integration
   ];
 
   options.dotfiles.development = {
@@ -26,12 +26,21 @@ with lib;
 
   config = mkIf config.dotfiles.development.enable {
     # Enable modern CLI tools integration (Phase 5)
-    modern-cli.enable = mkDefault true;
-    modern-cli.profile = mkDefault (
-      if config.dotfiles.development.profile == "minimal" then "minimal"
-      else if config.dotfiles.development.profile == "standard" then "standard" 
-      else "full"  # full and ai-powered profiles
-    );
+    dotfiles.development.modernCli.enable = mkDefault true;
+    dotfiles.development.modernCli.profile = mkDefault "standard";
+    dotfiles.development.modernCli.atuin = mkDefault true;
+    dotfiles.development.modernCli.zoxide = mkDefault true;
+    dotfiles.development.modernCli.starship = mkDefault true;
+    dotfiles.development.modernCli.modernReplacements = mkDefault true;
+    
+    # Individual tool controls (Phase 5.1)
+    dotfiles.development.modernCli.core-replacements = mkDefault true;
+    dotfiles.development.modernCli.search-tools = mkDefault true;
+    dotfiles.development.modernCli.navigation = mkDefault true;
+    dotfiles.development.modernCli.git-ui = mkDefault true;
+    dotfiles.development.modernCli.file-management = mkDefault true;
+    dotfiles.development.modernCli.system-monitoring = mkDefault true;
+    dotfiles.development.modernCli.history = mkDefault true;
     
     # Enable components based on profile
     dotfiles.development.containers.enable = mkDefault (
@@ -45,10 +54,24 @@ with lib;
       elem config.dotfiles.development.profile [ "full" "ai-powered" ]
     );
     
-    # AI Platform module (Phase 5)
+    # AI Platform module (Phase 5.1 + Phase 6)
     dotfiles.development.ai-platform.enable = mkDefault (
-      config.dotfiles.development.profile == "ai-powered"
+      elem config.dotfiles.development.profile [ "full" "ai-powered" ]
     );
+    
+    # Advanced Ollama configuration (Phase 6)
+    dotfiles.development.ai-platform.ollama.enable = mkDefault (
+      config.dotfiles.development.ai-platform.enable
+    );
+    dotfiles.development.ai-platform.ollama.models = mkDefault [
+      "codellama:7b"
+      "llama2:7b" 
+      "mistral:7b"
+      "phi:2.7b"
+    ];
+    dotfiles.development.ai-platform.ollama.autoStart = mkDefault true;
+    dotfiles.development.ai-platform.ollama.cliIntegration = mkDefault true;
+    dotfiles.development.ai-platform.ollama.neovimIntegration = mkDefault true;
     
     # Project-env module
     dotfiles.development.project-env.enable = mkDefault (
@@ -474,34 +497,38 @@ with lib;
         ''}
         
         # Check Modern CLI Tools (Phase 5)
-        ${if config.modern-cli.enable or false then ''
-          echo "✅ Modern CLI Tools: Enabled (${config.modern-cli.profile})"
-          echo "  🔧 Core replacements:"
-          for tool in eza bat ripgrep fd; do
-            if command -v "$tool" &> /dev/null; then
-              echo "    ✅ $tool"
-            else
-              echo "    ❌ $tool"
-            fi
-          done
-          
-          echo "  🧭 Navigation & Git:"
-          for tool in zoxide lazygit yazi; do
-            if command -v "$tool" &> /dev/null; then
-              echo "    ✅ $tool"
-            else
-              echo "    ❌ $tool"
-            fi
-          done
-          
-          echo "  📊 Monitoring:"
-          for tool in bottom; do
-            if command -v "$tool" &> /dev/null; then
-              echo "    ✅ $tool"
-            else
-              echo "    ❌ $tool"  
-            fi
-          done
+        ${if config.dotfiles.development.modernCli.enable or false then ''
+          echo "✅ Modern CLI Tools: Enabled (${config.dotfiles.development.modernCli.profile})"
+          if command -v modern-cli-health &> /dev/null; then
+            modern-cli-health
+          else
+            echo "  🔧 Core replacements:"
+            for tool in eza bat ripgrep fd; do
+              if command -v "$tool" &> /dev/null; then
+                echo "    ✅ $tool"
+              else
+                echo "    ❌ $tool"
+              fi
+            done
+            
+            echo "  🧭 Navigation & Git:"
+            for tool in zoxide lazygit yazi; do
+              if command -v "$tool" &> /dev/null; then
+                echo "    ✅ $tool"
+              else
+                echo "    ❌ $tool"
+              fi
+            done
+            
+            echo "  📊 Monitoring:"
+            for tool in bottom; do
+              if command -v "$tool" &> /dev/null; then
+                echo "    ✅ $tool"
+              else
+                echo "    ❌ $tool"  
+              fi
+            done
+          fi
         '' else ''
           echo "⚪ Modern CLI Tools: Disabled"
         ''}

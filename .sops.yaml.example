@@ -1,0 +1,30 @@
+# SOPS Configuration Example
+# This file shows how to configure sops-nix for secret management
+# 
+# To use this:
+# 1. Generate an age key: age-keygen -o ~/.config/sops/age/keys.txt
+# 2. Copy the public key from the generated file
+# 3. Replace YOUR_AGE_PUBLIC_KEY_HERE with your actual public key
+# 4. Rename this file to .sops.yaml
+# 5. Create encrypted secrets with: sops nix/secrets/secrets.yaml
+
+creation_rules:
+  # Rule for Nix secrets
+  - path_regex: nix/secrets/.*\.yaml$
+    encrypted_regex: ^(data|stringData)$
+    age: YOUR_AGE_PUBLIC_KEY_HERE  # Replace with your age public key
+    
+  # Rule for development secrets
+  - path_regex: nix/secrets/development/.*\.yaml$
+    encrypted_regex: ^(api_key|password|token|secret)$
+    age: YOUR_AGE_PUBLIC_KEY_HERE  # Replace with your age public key
+    
+  # Rule for system secrets
+  - path_regex: nix/secrets/system/.*\.yaml$
+    encrypted_regex: ^(ssh_key|cert|private_key)$
+    age: YOUR_AGE_PUBLIC_KEY_HERE  # Replace with your age public key
+
+# Optional: Global settings
+key_groups:
+  - age:
+      - YOUR_AGE_PUBLIC_KEY_HERE  # Replace with your age public key

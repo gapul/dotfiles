@@ -1,0 +1,191 @@
+{
+  "version": "1.3.1",
+  "settings": {
+    "showDesignTab": true,
+    "showTestTab": true,
+    "showSettingsTab": true,
+    "showMacroTab": true,
+    "enableGlobalHotKeys": true,
+    "showKeycodesInTooltips": true,
+    "darkMode": true,
+    "allowBeta": false,
+    "themeMode": "dark",
+    "themeName": "Catppuccin Mocha"
+  },
+  "keyboardSettings": {
+    "autoDetect": true,
+    "enablePolling": true,
+    "pollingInterval": 100,
+    "maxLayers": 4,
+    "enableMacros": true,
+    "enableTapDance": true,
+    "enableCombos": true,
+    "enableRgb": true,
+    "enableRotaryEncoder": true,
+    "enableOled": true,
+    "enableAudio": true
+  },
+  "macros": [],
+  "customKeycodes": [],
+  "layouts": {
+    "developer": {
+      "name": "Developer Layout",
+      "description": "Optimized for programming with easy access to symbols and navigation",
+      "layers": [
+        {
+          "name": "Base",
+          "description": "Main typing layer with programming optimizations"
+        },
+        {
+          "name": "Symbols",
+          "description": "Programming symbols and numbers"
+        },
+        {
+          "name": "Navigation",
+          "description": "Arrow keys, function keys, and navigation"
+        },
+        {
+          "name": "System",
+          "description": "Media keys, RGB controls, and system functions"
+        }
+      ]
+    },
+    "writer": {
+      "name": "Writer Layout",
+      "description": "Optimized for text editing and writing",
+      "layers": [
+        {
+          "name": "Base",
+          "description": "Standard QWERTY with writing shortcuts"
+        },
+        {
+          "name": "Editing",
+          "description": "Text editing and formatting shortcuts"
+        },
+        {
+          "name": "Navigation",
+          "description": "Document navigation and selection"
+        },
+        {
+          "name": "Tools",
+          "description": "Writing tools and system functions"
+        }
+      ]
+    },
+    "gamer": {
+      "name": "Gaming Layout",
+      "description": "Optimized for gaming with macro support",
+      "layers": [
+        {
+          "name": "Gaming",
+          "description": "WASD gaming layout with easy macro access"
+        },
+        {
+          "name": "Macros",
+          "description": "Gaming macros and shortcuts"
+        },
+        {
+          "name": "RGB",
+          "description": "RGB lighting controls and effects"
+        },
+        {
+          "name": "System",
+          "description": "System controls and communication"
+        }
+      ]
+    }
+  },
+  "themes": {
+    "catppuccin-mocha": {
+      "name": "Catppuccin Mocha",
+      "colors": {
+        "background": "#1e1e2e",
+        "surface": "#313244",
+        "primary": "#f38ba8",
+        "secondary": "#89b4fa",
+        "accent": "#a6e3a1",
+        "text": "#cdd6f4",
+        "textSecondary": "#bac2de",
+        "border": "#585b70",
+        "key": "#45475a",
+        "keyPressed": "#f38ba8",
+        "keyModifier": "#89b4fa",
+        "keyFunction": "#a6e3a1"
+      }
+    },
+    "catppuccin-latte": {
+      "name": "Catppuccin Latte",
+      "colors": {
+        "background": "#eff1f5",
+        "surface": "#e6e9ef",
+        "primary": "#d20f39",
+        "secondary": "#1e66f5",
+        "accent": "#40a02b",
+        "text": "#4c4f69",
+        "textSecondary": "#6c6f85",
+        "border": "#9ca0b0",
+        "key": "#dce0e8",
+        "keyPressed": "#d20f39",
+        "keyModifier": "#1e66f5",
+        "keyFunction": "#40a02b"
+      }
+    }
+  },
+  "keyboardProfiles": {
+    "planck": {
+      "name": "Planck",
+      "layout": "ortholinear_4x12",
+      "features": ["audio", "rgb_matrix", "rotary_encoder"],
+      "defaultLayout": "developer"
+    },
+    "corne": {
+      "name": "Corne (CRKBD)",
+      "layout": "split_3x6_3",
+      "features": ["split", "oled", "rgb_matrix"],
+      "defaultLayout": "developer"
+    },
+    "lily58": {
+      "name": "Lily58",
+      "layout": "split_4x6_4",
+      "features": ["split", "oled", "rotary_encoder"],
+      "defaultLayout": "writer"
+    },
+    "ergodox_ez": {
+      "name": "ErgoDox EZ",
+      "layout": "ergodox",
+      "features": ["rgb_matrix", "oryx"],
+      "defaultLayout": "developer"
+    },
+    "moonlander": {
+      "name": "Moonlander",
+      "layout": "moonlander",
+      "features": ["rgb_matrix", "oryx", "rotary_encoder"],
+      "defaultLayout": "developer"
+    }
+  },
+  "shortcuts": {
+    "global": {
+      "toggleVia": "Cmd+Shift+V",
+      "quickFlash": "Cmd+Shift+F",
+      "toggleLayer": "Cmd+Shift+L",
+      "emergencyReset": "Cmd+Shift+R"
+    },
+    "application": {
+      "saveLayout": "Cmd+S",
+      "loadLayout": "Cmd+O",
+      "exportLayout": "Cmd+E",
+      "importLayout": "Cmd+I",
+      "testMode": "Cmd+T",
+      "designMode": "Cmd+D"
+    }
+  },
+  "advanced": {
+    "enableLogging": true,
+    "logLevel": "info",
+    "backupOnSave": true,
+    "autoSave": true,
+    "autoSaveInterval": 300,
+    "maxBackups": 10,
+    "enableTelemetry": false
+  }
+}

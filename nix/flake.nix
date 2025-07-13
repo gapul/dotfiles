@@ -41,9 +41,25 @@
     
     # Additional utilities
     flake-utils.url = "github:numtide/flake-utils";
+    
+    # Phase 6 NIX_LIBRARY inputs
+    nix-direnv = {
+      url = "github:nix-community/nix-direnv";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    
+    crane = {
+      url = "github:ipetkov/crane";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    
+    rust-overlay = {
+      url = "github:oxalica/rust-overlay";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, nixpkgs, nix-darwin, home-manager, nixos-hardware, nix-on-droid, sops-nix, flake-utils }:
+  outputs = { self, nixpkgs, nix-darwin, home-manager, nixos-hardware, nix-on-droid, sops-nix, flake-utils, nix-direnv, crane, rust-overlay }@inputs:
     let
       # Supported systems
       supportedSystems = [
@@ -59,10 +75,17 @@
       dotfilesDirectory = "${homeDirectory}/dotfiles";
       
       # Platform detection and configuration
-      mkPlatformConfig = system: 
+      mkPlatformConfig = system: inputs:
         let
           lib = nixpkgs.lib;
-          pkgs = nixpkgs.legacyPackages.${system};
+          # Apply overlays for enhanced Rust support
+          overlays = [
+            (import ./common/overlays/rust.nix { inherit inputs; })
+          ];
+          pkgs = import nixpkgs {
+            inherit system overlays;
+            config.allowUnfree = true;
+          };
           platformInfo = import ./common/platform-detection.nix { inherit lib pkgs; };
         in {
           inherit pkgs platformInfo lib;
@@ -70,9 +93,9 @@
         };
       
       # Helper functions for configuration generation
-      mkDarwinSystem = system: nix-darwin.lib.darwinSystem {
+      mkDarwinSystem = system: inputs: nix-darwin.lib.darwinSystem {
         inherit system;
-        specialArgs = (mkPlatformConfig system).specialArgs;
+        specialArgs = (mkPlatformConfig system inputs).specialArgs;
         modules = [
           # ./common/home/shell.nix  # Moved to home-manager.users configuration below
           # ./common/themes/default.nix  # Temporarily disabled due to home-manager context issues  
@@ -355,10 +378,16 @@
                   recursive = true;
                 };
                 
+                # Neovim configuration
+                home.file.".config/nvim" = {
+                  source = ../configs/editors/nvim;
+                  recursive = true;
+                };
+                
                 # Enable home-manager management
                 programs.home-manager.enable = true;
               };
-              extraSpecialArgs = (mkPlatformConfig system).specialArgs;
+              extraSpecialArgs = (mkPlatformConfig system inputs).specialArgs;
             };
           }
           
@@ -366,9 +395,9 @@
         ];
       };
 
-      mkNixosSystem = system: nixpkgs.lib.nixosSystem {
+      mkNixosSystem = system: inputs: nixpkgs.lib.nixosSystem {
         inherit system;
-        specialArgs = (mkPlatformConfig system).specialArgs;
+        specialArgs = (mkPlatformConfig system inputs).specialArgs;
         modules = [
           { nixpkgs.config.allowUnfree = true; }
           ./linux/nixos/system.nix
@@ -379,15 +408,15 @@
               useGlobalPkgs = true;
               useUserPackages = true;
               users.${username} = import ./linux/nixos/home.nix;
-              extraSpecialArgs = (mkPlatformConfig system).specialArgs;
+              extraSpecialArgs = (mkPlatformConfig system inputs).specialArgs;
             };
           }
         ];
       };
 
-      mkHomeConfiguration = system: modules: home-manager.lib.homeManagerConfiguration {
+      mkHomeConfiguration = system: inputs: modules: home-manager.lib.homeManagerConfiguration {
         pkgs = import nixpkgs { inherit system; config.allowUnfree = true; };
-        extraSpecialArgs = (mkPlatformConfig system).specialArgs;
+        extraSpecialArgs = (mkPlatformConfig system inputs).specialArgs;
         inherit modules;
       };
 
@@ -395,16 +424,16 @@
     {
       # macOS configurations (nix-darwin)
       darwinConfigurations = {
-        "Yukis-Laptop" = mkDarwinSystem "aarch64-darwin";
-        "Intel-Mac" = mkDarwinSystem "x86_64-darwin";
+        "Yukis-Laptop" = mkDarwinSystem "aarch64-darwin" inputs;
+        "Intel-Mac" = mkDarwinSystem "x86_64-darwin" inputs;
         # Default to Apple Silicon (most common setup)
-        default = mkDarwinSystem "aarch64-darwin";
+        default = mkDarwinSystem "aarch64-darwin" inputs;
       };
 
       # NixOS configurations (for Linux)
       nixosConfigurations = {
-        "linux-desktop" = mkNixosSystem "x86_64-linux";
-        "linux-arm" = mkNixosSystem "aarch64-linux";
+        "linux-desktop" = mkNixosSystem "x86_64-linux" inputs;
+        "linux-arm" = mkNixosSystem "aarch64-linux" inputs;
       };
 
       # Standalone home-manager configurations (for non-NixOS Linux, WSL)
@@ -416,19 +445,19 @@
           # ./common/automation/default.nix  # Temporarily disabled due to home-manager context issues
         ];
       in {
-        "${username}@linux" = mkHomeConfiguration "x86_64-linux" (commonModules ++ [ ./linux/desktop/default.nix ]);
-        "${username}@wsl" = mkHomeConfiguration "x86_64-linux" (commonModules ++ [ ./wsl/integration/default.nix ]);
-        "${username}@linux-arm" = mkHomeConfiguration "aarch64-linux" (commonModules ++ [ ./linux/desktop/default.nix ]);
-        "${username}@darwin" = mkHomeConfiguration "aarch64-darwin" commonModules;
+        "${username}@linux" = mkHomeConfiguration "x86_64-linux" inputs (commonModules ++ [ ./linux/desktop/default.nix ]);
+        "${username}@wsl" = mkHomeConfiguration "x86_64-linux" inputs (commonModules ++ [ ./wsl/integration/default.nix ]);
+        "${username}@linux-arm" = mkHomeConfiguration "aarch64-linux" inputs (commonModules ++ [ ./linux/desktop/default.nix ]);
+        "${username}@darwin" = mkHomeConfiguration "aarch64-darwin" inputs commonModules;
         # GitHub Codespaces configuration
-        "codespaces" = mkHomeConfiguration "x86_64-linux" (commonModules ++ [ ./codespaces/default.nix ]);
+        "codespaces" = mkHomeConfiguration "x86_64-linux" inputs (commonModules ++ [ ./codespaces/default.nix ]);
       };
 
       # Android configurations (nix-on-droid)
       nixOnDroidConfigurations = {
         "android" = nix-on-droid.lib.nixOnDroidConfiguration {
           pkgs = import nixpkgs { system = "aarch64-linux"; config.allowUnfree = true; };
-          extraSpecialArgs = (mkPlatformConfig "aarch64-linux").specialArgs;
+          extraSpecialArgs = (mkPlatformConfig "aarch64-linux" inputs).specialArgs;
           modules = [ ./android/termux/default.nix ];
         };
       };
@@ -436,8 +465,12 @@
       # Development shells for each platform
       devShells = flake-utils.lib.eachDefaultSystemMap (system:
         let
-          pkgs = nixpkgs.legacyPackages.${system};
-          platformConfig = mkPlatformConfig system;
+          platformConfig = mkPlatformConfig system inputs;
+          pkgs = platformConfig.pkgs;
+          rustShell = import ./devshells/rust.nix { 
+            inherit (platformConfig) lib pkgs; 
+            inherit inputs; 
+          };
         in {
           # Default development shell
           default = pkgs.mkShell {
@@ -461,6 +494,9 @@
               echo "  just --list     - Show all available tasks"
             '';
           };
+
+          # Rust development shell with crane optimization
+          rust = rustShell.default;
 
           # Platform testing shell
           test = pkgs.mkShell {
