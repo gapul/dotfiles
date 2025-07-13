@@ -185,7 +185,7 @@ in
       # Atuin
       (mkIf cfg.atuin {
         history = "atuin search";
-        h = "atuin search";
+        hist = "atuin search";
       })
     ]);
 
