@@ -11,7 +11,7 @@ with lib;
     ./project-env
     ./test-integration.nix
     ./web  # Web development environment
-    # ./modern-cli.nix  # Phase 5: Modern CLI tools integration - temporarily disabled for syntax fix
+    ./modern-cli.nix  # Phase 5: Modern CLI tools integration
     ./nix-qol.nix  # Phase 6: Nix Quality of Life tools
   ];
 
@@ -26,22 +26,17 @@ with lib;
   };
 
   config = mkIf config.dotfiles.development.enable {
-    # Modern CLI tools integration (Phase 5) - temporarily disabled
-    # dotfiles.development.modernCli.enable = mkDefault true;
-    # dotfiles.development.modernCli.profile = mkDefault "standard";
-    # dotfiles.development.modernCli.atuin = mkDefault true;
-    # dotfiles.development.modernCli.zoxide = mkDefault true;
-    # dotfiles.development.modernCli.starship = mkDefault true;
-    # dotfiles.development.modernCli.modernReplacements = mkDefault true;
+    # Modern CLI tools integration (Phase 5)
+    dotfiles.development.modern-cli.enable = mkDefault true;
+    dotfiles.development.modern-cli.profile = mkDefault "standard";
+    dotfiles.development.modern-cli.atuin = mkDefault true;
+    dotfiles.development.modern-cli.zoxide = mkDefault true;
+    dotfiles.development.modern-cli.starship = mkDefault true;
     
-    # Individual tool controls (Phase 5.1) - temporarily disabled  
-    # dotfiles.development.modernCli.core-replacements = mkDefault true;
-    # dotfiles.development.modernCli.search-tools = mkDefault true;
-    # dotfiles.development.modernCli.navigation = mkDefault true;
-    # dotfiles.development.modernCli.git-ui = mkDefault true;
-    # dotfiles.development.modernCli.file-management = mkDefault true;
-    # dotfiles.development.modernCli.system-monitoring = mkDefault true;
-    # dotfiles.development.modernCli.history = mkDefault true;
+    # Individual tool controls (Phase 5)
+    dotfiles.development.modern-cli.navigation = mkDefault true;
+    dotfiles.development.modern-cli.content = mkDefault true;
+    dotfiles.development.modern-cli.git = mkDefault true;
     
     # Enable components based on profile
     dotfiles.development.containers.enable = mkDefault (
