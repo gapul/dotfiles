@@ -439,11 +439,11 @@ $diff_content"
               duration=$((end_time - start_time))
               
               if [[ $duration -lt 10 ]]; then
-                log_success "Model response time: ${duration}s (Good)"
+                log_success "Model response time: ''${duration}s (Good)"
               elif [[ $duration -lt 30 ]]; then
-                log_warning "Model response time: ${duration}s (Acceptable)"
+                log_warning "Model response time: ''${duration}s (Acceptable)"
               else
-                log_error "Model response time: ${duration}s (Slow)"
+                log_error "Model response time: ''${duration}s (Slow)"
               fi
             fi
             ;;
@@ -611,7 +611,7 @@ $diff_content"
       ollama-health = "ollama-manager health";
       
       # AI interactions
-      ai-chat = "ollama-manager chat";
+      ai-chat = lib.mkForce "ollama-manager chat";
       ai-code = "ollama-manager code";
       ai-local-review = "ollama-manager review";
       
@@ -642,7 +642,7 @@ $diff_content"
     };
 
     # Automatic service management
-    home-manager.users.yuki.programs.zsh.initExtra = mkIf cfg.autoStart ''
+    home-manager.users.yuki.programs.zsh.initContent = mkIf cfg.autoStart ''
       # Auto-start Ollama service if not running
       if command -v ollama &> /dev/null && ! pgrep -f "ollama serve" &> /dev/null; then
         echo "🤖 Starting Ollama service..."

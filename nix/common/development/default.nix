@@ -6,12 +6,13 @@ with lib;
   imports = [
     ./containers
     ./lsp/module.nix
-    ./ai-tools
-    ./ai-platform  # Phase 5: Advanced AI integration
+    # ./ai-tools  # Merged into ai-platform module
+    ./ai-platform  # Phase 5: Advanced AI integration (includes legacy ai-tools functionality)
     ./project-env
     ./test-integration.nix
     ./web  # Web development environment
-    ./modern-cli.nix  # Phase 5: Modern CLI tools integration
+    # ./modern-cli.nix  # Phase 5: Modern CLI tools integration - temporarily disabled for syntax fix
+    ./nix-qol.nix  # Phase 6: Nix Quality of Life tools
   ];
 
   options.dotfiles.development = {
@@ -25,22 +26,22 @@ with lib;
   };
 
   config = mkIf config.dotfiles.development.enable {
-    # Enable modern CLI tools integration (Phase 5)
-    dotfiles.development.modernCli.enable = mkDefault true;
-    dotfiles.development.modernCli.profile = mkDefault "standard";
-    dotfiles.development.modernCli.atuin = mkDefault true;
-    dotfiles.development.modernCli.zoxide = mkDefault true;
-    dotfiles.development.modernCli.starship = mkDefault true;
-    dotfiles.development.modernCli.modernReplacements = mkDefault true;
+    # Modern CLI tools integration (Phase 5) - temporarily disabled
+    # dotfiles.development.modernCli.enable = mkDefault true;
+    # dotfiles.development.modernCli.profile = mkDefault "standard";
+    # dotfiles.development.modernCli.atuin = mkDefault true;
+    # dotfiles.development.modernCli.zoxide = mkDefault true;
+    # dotfiles.development.modernCli.starship = mkDefault true;
+    # dotfiles.development.modernCli.modernReplacements = mkDefault true;
     
-    # Individual tool controls (Phase 5.1)
-    dotfiles.development.modernCli.core-replacements = mkDefault true;
-    dotfiles.development.modernCli.search-tools = mkDefault true;
-    dotfiles.development.modernCli.navigation = mkDefault true;
-    dotfiles.development.modernCli.git-ui = mkDefault true;
-    dotfiles.development.modernCli.file-management = mkDefault true;
-    dotfiles.development.modernCli.system-monitoring = mkDefault true;
-    dotfiles.development.modernCli.history = mkDefault true;
+    # Individual tool controls (Phase 5.1) - temporarily disabled  
+    # dotfiles.development.modernCli.core-replacements = mkDefault true;
+    # dotfiles.development.modernCli.search-tools = mkDefault true;
+    # dotfiles.development.modernCli.navigation = mkDefault true;
+    # dotfiles.development.modernCli.git-ui = mkDefault true;
+    # dotfiles.development.modernCli.file-management = mkDefault true;
+    # dotfiles.development.modernCli.system-monitoring = mkDefault true;
+    # dotfiles.development.modernCli.history = mkDefault true;
     
     # Enable components based on profile
     dotfiles.development.containers.enable = mkDefault (
@@ -49,10 +50,10 @@ with lib;
     
     dotfiles.development.lsp.enable = mkDefault true;
     
-    # AI Tools module
-    dotfiles.development.ai-tools.enable = mkDefault (
-      elem config.dotfiles.development.profile [ "full" "ai-powered" ]
-    );
+    # AI Tools module (merged into ai-platform)
+    # dotfiles.development.ai-tools.enable = mkDefault (
+    #   elem config.dotfiles.development.profile [ "full" "ai-powered" ]
+    # );
     
     # AI Platform module (Phase 5.1 + Phase 6)
     dotfiles.development.ai-platform.enable = mkDefault (
@@ -446,14 +447,14 @@ with lib;
           echo "⚪ Containers: Disabled"
         ''}
         
-        # Check AI Tools
-        ${if config.dotfiles.development.ai-tools.enable then ''
-          echo "✅ AI Tools: Enabled"
-          if command -v ai-tools-health &> /dev/null; then
-            ai-tools-health
+        # Check AI Platform (includes legacy AI Tools functionality)
+        ${if config.dotfiles.development.ai-platform.enable then ''
+          echo "✅ AI Platform: Enabled"
+          if command -v ai-platform-health &> /dev/null; then
+            ai-platform-health
           fi
         '' else ''
-          echo "⚪ AI Tools: Disabled"
+          echo "⚪ AI Platform: Disabled"
         ''}
         
         # Check AI Platform (Phase 5)
@@ -496,9 +497,9 @@ with lib;
           echo "⚪ Universal Platform Integration: Disabled"
         ''}
         
-        # Check Modern CLI Tools (Phase 5)
-        ${if config.dotfiles.development.modernCli.enable or false then ''
-          echo "✅ Modern CLI Tools: Enabled (${config.dotfiles.development.modernCli.profile})"
+        # Check Modern CLI Tools (Phase 5) - temporarily disabled
+        ${if false then ''
+          echo "✅ Modern CLI Tools: Enabled"
           if command -v modern-cli-health &> /dev/null; then
             modern-cli-health
           else

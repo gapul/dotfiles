@@ -134,7 +134,7 @@
   };
 
   # Server-specific shell configuration
-  programs.zsh.initExtra = lib.mkAfter ''
+  programs.zsh.initContent = lib.mkAfter ''
     # Server-specific shell setup
     
     # Enhanced command history for server management

@@ -1,15 +1,1 @@
--- Plugin Index
--- This file serves as an index for all plugin configurations
--- Individual plugin configurations are loaded from their respective files
-
-return {
-  -- Import all plugin configurations
-  { import = "plugins.colorscheme" },
-  { import = "plugins.lsp" },
-  { import = "plugins.completion" },
-  { import = "plugins.telescope" },
-  { import = "plugins.nvim-tree" },
-  { import = "plugins.treesitter" },
-  { import = "plugins.git" },
-  { import = "plugins.ui" },
-}
+/nix/store/b16mfyh5himn7xvwb7gk9zb0gn7hl33j-home-manager-files/.config/nvim/lua/plugins/init.lua

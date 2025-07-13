@@ -256,7 +256,7 @@
     };
     
     # Codespaces-specific shell functions and initialization
-    initExtra = ''
+    initContent = ''
       # Working directory management
       function cdrepo() {
         cd /workspaces/dotfiles
