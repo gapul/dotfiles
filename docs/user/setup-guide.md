@@ -101,8 +101,8 @@ sops --version
 # 1. 開発環境確認
 dev-health
 
-# 2. AI ツール設定
-ai-tools-health
+# 2. AI プラットフォーム設定
+ai-platform-health
 
 # 3. LSP 確認
 lsp-health

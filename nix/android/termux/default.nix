@@ -43,7 +43,7 @@
   ];
 
   # Android-specific shell configuration
-  programs.zsh.initExtra = lib.mkAfter ''
+  programs.zsh.initContent = lib.mkAfter ''
     # Android/Termux specific environment setup
     
     # Termux environment

@@ -97,11 +97,11 @@ in
         log_header "3. AI Development Tools Integration"
         echo "---------------------------------"
         
-        ${if cfg.ai-tools.enable then ''
-          run_test "AI Tools Configuration" "[[ -f ~/.config/ai-tools/config.json ]]"
-          run_test "AI Models Manager" "command -v ai-models"
-          run_test "Claude Dev Helper" "command -v claude-dev"
-          run_test "AI Health Check" "command -v ai-tools-health"
+        ${if cfg.ai-platform.enable then ''
+          run_test "AI Platform Configuration" "[[ -f ~/.config/claude/claude_desktop_config.json ]]"
+          run_test "AI Platform Health" "command -v ai-platform-health"
+          run_test "Claude Notifications" "command -v claude-notifications"
+          run_test "AI Health Check" "command -v ai-platform-health"
           run_test "GitHub CLI Available" "command -v gh"
           
           # Test Claude Code CLI
@@ -205,7 +205,7 @@ in
         # Test help commands
         run_test "Development Health Check" "command -v dev-health"
         run_test "LSP Health Available" "command -v lsp-health"
-        run_test "AI Health Available" "command -v ai-tools-health"
+        run_test "AI Health Available" "command -v ai-platform-health"
         run_test "Project Health Available" "command -v project-env-health"
         
         echo ""
@@ -247,7 +247,7 @@ in
         echo "  Development Profile: ${cfg.profile}"
         echo "  Containers: ${if cfg.containers.enable then "Enabled" else "Disabled"}"
         echo "  LSP: ${if cfg.lsp.enable then "Enabled" else "Disabled"}"
-        echo "  AI Tools: ${if cfg.ai-tools.enable then "Enabled" else "Disabled"}"
+        echo "  AI Platform: ${if cfg.ai-platform.enable then "Enabled" else "Disabled"}"
         echo "  Project Env: ${if cfg.project-env.enable then "Enabled" else "Disabled"}"
         echo ""
         
@@ -264,7 +264,7 @@ in
         echo "  - Run individual health checks for detailed status:"
         echo "    • dev-health - Overall development environment"
         echo "    • lsp-health - Language server status"
-        echo "    • ai-tools-health - AI tools status"
+        echo "    • ai-platform-health - AI platform status"
         echo "    • project-env-health - Project environment status"
         
         echo ""
@@ -448,8 +448,8 @@ in
         
         #### Commands
         ```bash
-        # Check AI tools status
-        ai-tools-health
+        # Check AI platform status
+        ai-platform-health
         
         # Manage local AI models
         ai-models install
@@ -492,7 +492,7 @@ in
         # Individual component checks
         dev-health
         lsp-health
-        ai-tools-health
+        ai-platform-health
         project-env-health
         ```
         
@@ -522,7 +522,7 @@ in
         Components:
         - Containers: ${if cfg.containers.enable then "✅ Enabled" else "❌ Disabled"}
         - LSP: ${if cfg.lsp.enable then "✅ Enabled" else "❌ Disabled"}
-        - AI Tools: ${if cfg.ai-tools.enable then "✅ Enabled" else "❌ Disabled"}
+        - AI Platform: ${if cfg.ai-platform.enable then "✅ Enabled" else "❌ Disabled"}
         - Project Env: ${if cfg.project-env.enable then "✅ Enabled" else "❌ Disabled"}
         
         ## Troubleshooting
@@ -537,7 +537,7 @@ in
         
         2. **AI models not working**
            ```bash
-           ai-tools-health
+           ai-platform-health
            ai-models install
            ```
         

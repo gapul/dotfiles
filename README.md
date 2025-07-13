@@ -138,9 +138,9 @@ export DOTFILES_PROFILE="standard"  # minimal, standard, full
 - **yazi** - モダンファイルマネージャー
 - **bottom** - top代替（システムモニター）
 
-### 開発ツール
+### 開発ツール・AIプラットフォーム
 - **Git** - バージョン管理
-- **GitHub Copilot** - AI支援コーディング
+- **AI Platform** - Claude、GitHub Copilot統合開発支援
 - **Docker** - コンテナ化
 - **direnv** - 環境変数管理
 

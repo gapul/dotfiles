@@ -48,7 +48,7 @@
   ];
 
   # WSL-specific shell configuration
-  programs.zsh.initExtra = lib.mkAfter ''
+  programs.zsh.initContent = lib.mkAfter ''
     # WSL-specific environment setup
     
     # Windows path integration

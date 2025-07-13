@@ -373,7 +373,7 @@ in
     ];
 
     # Zsh integration for enhanced AI assistance
-    home-manager.users.yuki.programs.zsh.initExtra = ''
+    home-manager.users.yuki.programs.zsh.initContent = ''
       # AI CLI Integration
       
       # Function to get AI help for failed commands

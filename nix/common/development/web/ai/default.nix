@@ -400,7 +400,7 @@ with lib;
     };
     
     # Combined AI health check
-    home-manager.users.yuki.home.file."bin/ai-tools-health" = {
+    home-manager.users.yuki.home.file."bin/ai-platform-health" = {
       executable = true;
       text = ''
         #!/usr/bin/env bash

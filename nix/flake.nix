@@ -50,7 +50,6 @@
     
     crane = {
       url = "github:ipetkov/crane";
-      inputs.nixpkgs.follows = "nixpkgs";
     };
     
     rust-overlay = {
@@ -107,10 +106,23 @@
           ./common/universal/platform-integration.nix  # Phase 5: Universal platform integration
           ./common/testing/phase5-integration.nix  # Phase 5: Integrated testing and documentation
           ./common/system/darwin-fixes.nix  # Fix nix-darwin warnings
+          # Phase 6: sops-nix for secret management
+          sops-nix.darwinModules.sops
           ({ lib, ... }: { 
             # Enable AI-powered development profile for Phase 5
             dotfiles.development.enable = lib.mkForce true;
             dotfiles.development.profile = lib.mkForce "ai-powered";
+            
+            # Phase 6: Modern CLI Integration (temporarily disabled)
+            # dotfiles.development.modern-cli.enable = lib.mkForce true;
+            # dotfiles.development.modern-cli.profile = "full";
+            
+            # Phase 6: Nix Quality of Life Tools
+            dotfiles.development.nix-qol.enable = lib.mkForce true;
+            dotfiles.development.nix-qol.nom.enable = lib.mkForce true;
+            dotfiles.development.nix-qol.tree.enable = lib.mkForce true;
+            dotfiles.development.nix-qol.fastfetch.enable = lib.mkForce true;
+            dotfiles.development.nix-qol.aliases.enable = lib.mkForce true;
             
             # Phase 3: Context Recognition System
             dotfiles.context.enable = lib.mkForce true;
@@ -161,6 +173,8 @@
                 # Import automation modules in home-manager context
                 imports = [
                   ./common/automation/default.nix
+                  # Phase 6: sops-nix for user-specific secrets
+                  sops-nix.homeManagerModules.sops
                 ];
                 
                 # Enable automation modules
@@ -245,9 +259,9 @@
                   enableZshIntegration = true;
                 };
                 
-                # Fastfetch configuration (system info)
+                # Fastfetch configuration (system info) - disabled to avoid conflict with nix-qol
                 programs.fastfetch = {
-                  enable = true;
+                  enable = false;
                   settings = {
                     logo = {
                       source = "macos";
@@ -373,7 +387,7 @@
                 home.file.".config/aerospace/aerospace.toml".source = ../configs/wm/aerospace/aerospace.toml;
                 
                 # SketchyBar configuration
-                home.file.".config/sketchybar" = {
+                home.file.".config/sketchybar" = lib.mkForce {
                   source = ../configs/wm/sketchybar;
                   recursive = true;
                 };
@@ -625,7 +639,7 @@
                 log_success "✅ System setup completed successfully!"
                 echo ""
                 log_info "🎯 Phase 4 Features Available:"
-                echo "  • AI Development Environment (dev-health, ai-tools-health)"
+                echo "  • AI Development Environment (dev-health, ai-platform-health)"
                 echo "  • Enterprise Automation (auto-health, deploy-manager)"
                 echo "  • Multi-platform Support (4 platforms)"
                 echo "  • Advanced Security (SOPS-nix, Git-crypt)"

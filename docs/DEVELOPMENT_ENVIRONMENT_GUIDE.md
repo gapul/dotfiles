@@ -35,7 +35,7 @@ dev-health
 
 # 各コンポーネント個別確認
 lsp-health          # Language Server状況
-ai-tools-health     # AI開発ツール状況
+ai-platform-health  # AIプラットフォーム状況
 containers-health   # コンテナ環境状況
 ```
 

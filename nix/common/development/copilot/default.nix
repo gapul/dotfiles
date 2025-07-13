@@ -104,7 +104,7 @@ in
       "copilot-review" = "gh copilot review";
     };
 
-    home-manager.users.yuki.programs.zsh.initExtra = mkIf cfg.cli.enable ''
+    home-manager.users.yuki.programs.zsh.initContent = mkIf cfg.cli.enable ''
       # GitHub Copilot CLI integration functions
       
       # Smart command suggestions

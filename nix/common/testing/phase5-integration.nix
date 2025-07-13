@@ -206,11 +206,11 @@ in
               log_test_result "AI Platform Health" "SKIP" "AI platform not configured"
             fi
             
-            # Test AI tools integration
-            if command -v ai-tools-health &> /dev/null; then
-              log_test_result "AI Tools Integration" "PASS" "AI tools health check available"
+            # Test AI platform integration
+            if command -v ai-platform-health &> /dev/null; then
+              log_test_result "AI Platform Integration" "PASS" "AI platform health check available"
             else
-              log_test_result "AI Tools Integration" "SKIP" "AI tools not configured"
+              log_test_result "AI Platform Integration" "SKIP" "AI platform not configured"
             fi
           '' else ''
             echo "🤖 AI Integration Tests: Disabled"
@@ -841,7 +841,7 @@ dev-health
 dev
 
 # Check AI tools status
-ai-tools-health
+ai-platform-health
 
 # Initialize new project
 project-init myapp nodejs
@@ -1571,7 +1571,7 @@ dotfiles.testing.phase5 = {
 #### System Health
 ```bash
 dev-health                    # Development environment health check
-ai-tools-health               # AI tools health check
+ai-platform-health               # AI tools health check
 ai-platform-health            # AI platform health check
 lsp-health                    # Language Server Protocol health
 containers-health             # Container environment health
