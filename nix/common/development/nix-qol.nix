@@ -129,8 +129,7 @@ in
     home-manager.users.yuki.programs.zsh.shellAliases = mkIf cfg.aliases.enable (mkMerge [
       # Basic Nix commands with nom
       (mkIf cfg.nom.enable {
-        "nix-build" = "nom build";
-        "nb" = "nom build";
+        "nb" = "nom build";  # nix-build with progress (nom)
         "nix-shell" = "nom develop"; 
         "ns" = "nom develop";
       })
@@ -196,9 +195,9 @@ in
       }
       
       # Build and explore dependencies  
-      nix-build-explore() {
+      nb-explore() {
         if [[ -z "$1" ]]; then
-          echo "Usage: nix-build-explore <derivation>"
+          echo "Usage: nb-explore <derivation>"
           return 1
         fi
         
@@ -305,7 +304,7 @@ in
         echo ""
         echo "🛠️  Available functions:"
         echo "   • nix-package-info <package>  - Package information with tree"
-        echo "   • nix-build-explore <drv>     - Build and explore dependencies"
+        echo "   • nb-explore <drv>            - Build and explore dependencies"
         echo "   • nix-cleanup                 - System cleanup with progress"
         echo "   • nix-dev [path]              - Enter development environment"
         
