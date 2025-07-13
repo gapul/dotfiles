@@ -28,6 +28,6 @@ return {
         if alpha > 1.0 or alpha < 0.0 then
             return color
         end
-        return (color & 0x00ffffff) | (math.floor(alpha * 255.0) << 24)
+        return bit32.bor(bit32.band(color, 0x00ffffff), bit32.lshift(math.floor(alpha * 255.0), 24))
     end
 }
