@@ -85,10 +85,7 @@ with lib;
       else "full"  # ai-powered maps to full
     );
     
-    # Enable desktop development for full profiles
-    web.features.desktop = mkDefault (
-      elem config.dotfiles.development.profile [ "full" "ai-powered" ]
-    );
+    # Note: web.features.desktop option has been removed in template-based web environment
 
     # Profile-specific configurations
     dotfiles.development.lsp.enabledLanguages = mkDefault (
