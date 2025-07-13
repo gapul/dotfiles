@@ -99,6 +99,9 @@
           # ./common/home/shell.nix  # Moved to home-manager.users configuration below
           # ./common/themes/default.nix  # Temporarily disabled due to home-manager context issues  
           ./common/development/default.nix  # Re-enabled successfully
+          ./common/desktop/default.nix     # Desktop environment (AeroSpace, etc.)
+          ./common/terminals/default.nix   # Terminal applications (WezTerm, etc.)
+          ./common/statusbar/default.nix   # Status bar (SketchyBar, etc.)
           ./common/context/default.nix  # Phase 3: Context Recognition System
           ./common/performance/default.nix  # Phase 5: Performance optimization system
           ./common/security/enterprise.nix  # Phase 5: Enterprise security system
@@ -146,6 +149,19 @@
             # Enable universal platform integration
             dotfiles.universal.platform.enable = lib.mkForce true;
             dotfiles.universal.platform.supportedPlatforms = [ "darwin" "linux" "wsl" "android" "freebsd" "windows" "raspberrypi" "cloud" ];
+            
+            # Enable desktop environment
+            dotfiles.desktop.enable = lib.mkForce true;
+            dotfiles.desktop.profile = "standard";
+            
+            # Enable terminal applications
+            dotfiles.terminals.enable = lib.mkForce true;
+            dotfiles.terminals.profile = "standard";
+            dotfiles.terminals.defaultTerminal = "wezterm";
+            
+            # Enable status bar
+            dotfiles.statusbar.enable = lib.mkForce true;
+            dotfiles.statusbar.provider = "sketchybar";
             
             # Enable Phase 5 integrated testing and documentation system
             dotfiles.testing.phase5.enable = lib.mkForce true;
