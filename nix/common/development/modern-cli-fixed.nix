@@ -1,4 +1,4 @@
-# Modern CLI Tools Integration (Simplified Version)
+# Modern CLI Tools Integration (Working Version)
 # Phase 5: Enhanced CLI experience with modern alternatives
 
 { config, lib, pkgs, ... }:
@@ -194,40 +194,28 @@ in
       text = ''
         # VisiData configuration
         options.regex_flags = 're.IGNORECASE'
-        options.clipboard_copy_cmd = 'pbcopy'  # macOS
-        options.motd_url = ''  # Disable message of the day
+        options.clipboard_copy_cmd = 'pbcopy'
       '';
     };
 
-
-    # Enhanced health check script
+    # Health check script
     home-manager.users.yuki.home.file."bin/modern-cli-health" = mkIf cfg.enable {
       executable = true;
       text = ''
         #!/usr/bin/env bash
-        echo "🚀 Modern CLI Tools Health Check"
-        echo "================================="
-        echo ""
-        
-        # Check all tools individually
-        command -v eza >/dev/null && echo "✅ eza" || echo "❌ eza"
-        command -v fd >/dev/null && echo "✅ fd" || echo "❌ fd"
-        command -v bat >/dev/null && echo "✅ bat" || echo "❌ bat"
-        command -v rg >/dev/null && echo "✅ rg" || echo "❌ rg"
-        command -v bottom >/dev/null && echo "✅ bottom" || echo "❌ bottom"
-        command -v procs >/dev/null && echo "✅ procs" || echo "❌ procs"
-        command -v lazygit >/dev/null && echo "✅ lazygit" || echo "❌ lazygit"
-        command -v delta >/dev/null && echo "✅ delta" || echo "❌ delta"
-        command -v yazi >/dev/null && echo "✅ yazi" || echo "❌ yazi"
-        command -v fastfetch >/dev/null && echo "✅ fastfetch" || echo "❌ fastfetch"
-        command -v visidata >/dev/null && echo "✅ visidata" || echo "❌ visidata"
-        command -v atuin >/dev/null && echo "✅ atuin" || echo "❌ atuin"
-        command -v starship >/dev/null && echo "✅ starship" || echo "❌ starship"
-        command -v zoxide >/dev/null && echo "✅ zoxide" || echo "❌ zoxide"
-        
-        echo ""
-        echo "Profile: full"
-        echo "All checks completed!"
+        echo "Modern CLI Tools Status"
+        command -v eza >/dev/null && echo "eza: OK" || echo "eza: MISSING"
+        command -v bat >/dev/null && echo "bat: OK" || echo "bat: MISSING"
+        command -v rg >/dev/null && echo "rg: OK" || echo "rg: MISSING"
+        command -v fd >/dev/null && echo "fd: OK" || echo "fd: MISSING"
+        command -v lazygit >/dev/null && echo "lazygit: OK" || echo "lazygit: MISSING"
+        command -v bottom >/dev/null && echo "bottom: OK" || echo "bottom: MISSING"
+        command -v yazi >/dev/null && echo "yazi: OK" || echo "yazi: MISSING"
+        command -v fastfetch >/dev/null && echo "fastfetch: OK" || echo "fastfetch: MISSING"
+        command -v visidata >/dev/null && echo "visidata: OK" || echo "visidata: MISSING"
+        command -v atuin >/dev/null && echo "atuin: OK" || echo "atuin: MISSING"
+        command -v starship >/dev/null && echo "starship: OK" || echo "starship: MISSING"
+        command -v zoxide >/dev/null && echo "zoxide: OK" || echo "zoxide: MISSING"
       '';
     };
   };
