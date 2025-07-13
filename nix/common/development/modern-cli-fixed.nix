@@ -151,8 +151,8 @@ in
       
       # Process aliases
       (mkIf cfg.process {
-        top = "bottom";
-        htop = "bottom";
+        top = "btm";
+        htop = "btm";
         ps = "procs";
       })
       
@@ -209,7 +209,7 @@ in
         command -v rg >/dev/null && echo "rg: OK" || echo "rg: MISSING"
         command -v fd >/dev/null && echo "fd: OK" || echo "fd: MISSING"
         command -v lazygit >/dev/null && echo "lazygit: OK" || echo "lazygit: MISSING"
-        command -v bottom >/dev/null && echo "bottom: OK" || echo "bottom: MISSING"
+        command -v btm >/dev/null && echo "btm (bottom): OK" || echo "btm (bottom): MISSING"
         command -v yazi >/dev/null && echo "yazi: OK" || echo "yazi: MISSING"
         command -v fastfetch >/dev/null && echo "fastfetch: OK" || echo "fastfetch: MISSING"
         command -v visidata >/dev/null && echo "visidata: OK" || echo "visidata: MISSING"
