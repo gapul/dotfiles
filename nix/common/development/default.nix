@@ -11,7 +11,7 @@ with lib;
     ./project-env
     ./test-integration.nix
     ./web  # Web development environment
-    ./modern-cli-fixed.nix  # Phase 5: Modern CLI tools integration (working)
+    ./cli-tools.nix  # Enhanced CLI tools integration
     ./nix-qol.nix  # Phase 6: Nix Quality of Life tools
   ];
 
@@ -26,17 +26,17 @@ with lib;
   };
 
   config = mkIf config.dotfiles.development.enable {
-    # Modern CLI tools integration (Phase 5)
-    dotfiles.development.modern-cli.enable = mkDefault true;
-    dotfiles.development.modern-cli.profile = mkDefault "standard";
-    dotfiles.development.modern-cli.atuin = mkDefault true;
-    dotfiles.development.modern-cli.zoxide = mkDefault true;
-    dotfiles.development.modern-cli.starship = mkDefault true;
+    # Enhanced CLI tools integration 
+    dotfiles.development.cli-tools.enable = mkDefault true;
+    dotfiles.development.cli-tools.profile = mkDefault "standard";
+    dotfiles.development.cli-tools.atuin = mkDefault true;
+    dotfiles.development.cli-tools.zoxide = mkDefault true;
+    dotfiles.development.cli-tools.starship = mkDefault true;
     
-    # Individual tool controls (Phase 5)
-    dotfiles.development.modern-cli.navigation = mkDefault true;
-    dotfiles.development.modern-cli.content = mkDefault true;
-    dotfiles.development.modern-cli.git = mkDefault true;
+    # Individual tool controls
+    dotfiles.development.cli-tools.navigation = mkDefault true;
+    dotfiles.development.cli-tools.content = mkDefault true;
+    dotfiles.development.cli-tools.git = mkDefault true;
     
     # Enable components based on profile
     dotfiles.development.containers.enable = mkDefault (
