@@ -70,8 +70,8 @@ let
     # File management
     yazi     # modern file manager
     
-    # Terminal multiplexer
-    tmux
+    # Terminal multiplexer (modern replacement)
+    zellij
     
     # Shell enhancement
     starship # prompt

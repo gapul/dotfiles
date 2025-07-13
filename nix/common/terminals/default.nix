@@ -7,6 +7,7 @@ with lib;
 {
   imports = [
     ./wezterm.nix
+    ./zellij.nix
   ];
 
   options.dotfiles.terminals = {
@@ -31,11 +32,12 @@ with lib;
       config.dotfiles.terminals.defaultTerminal == "wezterm"
     );
     
+    # Enable Zellij as modern terminal multiplexer
+    dotfiles.terminals.zellij.enable = mkDefault true;
+    
     # Terminal applications via Homebrew for better macOS integration
     homebrew.casks = mkIf (config.dotfiles.terminals.profile != "minimal") [
       "wezterm"
-      "kitty"
-      "alacritty"
     ];
   };
 }
