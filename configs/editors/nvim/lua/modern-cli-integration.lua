@@ -1,1 +1,1 @@
-/nix/store/qnjhx7yppj373dhfx24syyqmc84q9lnn-home-manager-files/.config/nvim/lua/modern-cli-integration.lua
+/nix/store/cd9sz9biaqhvf05pc07map8infvy76sb-home-manager-files/.config/nvim/lua/modern-cli-integration.lua

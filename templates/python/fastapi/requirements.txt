@@ -1,0 +1,25 @@
+# FastAPI and ASGI server
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+
+# Data validation
+pydantic==2.5.0
+
+# File upload support
+python-multipart==0.0.6
+
+# Authentication (JWT)
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+
+# HTTP client for testing
+httpx==0.25.2
+
+# Environment variables
+python-dotenv==1.0.0
+
+# Database (optional - uncomment if needed)
+# sqlalchemy==2.0.23
+# alembic==1.13.0
+# psycopg2-binary==2.9.9  # PostgreSQL
+# asyncpg==0.29.0         # Async PostgreSQL
