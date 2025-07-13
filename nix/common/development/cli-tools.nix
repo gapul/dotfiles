@@ -1,21 +1,21 @@
-# Modern CLI Tools Integration (Working Version)
-# Phase 5: Enhanced CLI experience with modern alternatives
+# CLI Tools Integration
+# Enhanced command-line tools for improved productivity
 
 { config, lib, pkgs, ... }:
 
 with lib;
 
 let
-  cfg = config.dotfiles.development.modern-cli;
+  cfg = config.dotfiles.development.cli-tools;
 in
 {
-  options.dotfiles.development.modern-cli = {
-    enable = mkEnableOption "Modern CLI tools integration";
+  options.dotfiles.development.cli-tools = {
+    enable = mkEnableOption "Enhanced CLI tools integration";
     
     profile = mkOption {
       type = types.enum [ "minimal" "standard" "full" ];
       default = "standard";
-      description = "Modern CLI profile level";
+      description = "CLI tools profile level";
     };
     
     # Individual tool toggles
@@ -33,7 +33,7 @@ in
 
   config = mkIf cfg.enable {
     # Auto-enable features based on profile
-    dotfiles.development.modern-cli = {
+    dotfiles.development.cli-tools = {
       navigation = mkDefault (cfg.profile == "standard" || cfg.profile == "full");
       content = mkDefault (cfg.profile == "standard" || cfg.profile == "full");
       process = mkDefault (cfg.profile == "full");
@@ -199,11 +199,11 @@ in
     };
 
     # Health check script
-    home-manager.users.yuki.home.file."bin/modern-cli-health" = mkIf cfg.enable {
+    home-manager.users.yuki.home.file."bin/cli-tools-health" = mkIf cfg.enable {
       executable = true;
       text = ''
         #!/usr/bin/env bash
-        echo "Modern CLI Tools Status"
+        echo "CLI Tools Status"
         command -v eza >/dev/null && echo "eza: OK" || echo "eza: MISSING"
         command -v bat >/dev/null && echo "bat: OK" || echo "bat: MISSING"
         command -v rg >/dev/null && echo "rg: OK" || echo "rg: MISSING"

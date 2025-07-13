@@ -1,1 +1,1 @@
-/nix/store/mq7cp9yjhd3hqg9ss3pxxaic9yzih2ih-home-manager-files/.config/nvim/lua/plugins/telescope.lua
+/nix/store/j40p9sldicd8zxh1vxh9lqy43c083ml2-home-manager-files/.config/nvim/lua/plugins/telescope.lua
