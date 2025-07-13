@@ -14,8 +14,8 @@
 #### Phase 5: Modern CLI Integration (完了)
 - [Modern CLI 完全ガイド](PHASE5_MODERN_CLI_COMPLETE_GUIDE.md) - Modern CLIツール統合の包括的ガイド
 
-#### Phase 6: Advanced Integration & Automation (完了)
-- [Phase 6 高度統合計画](PHASE6_ADVANCED_INTEGRATION_PLAN.md) - AI統合とワークフロー自動化
+#### Phase 6: Advanced Integration & Automation (進行中)
+- [Phase 6 Nix Library 完了計画](todo/phase6-nix-library-completion.md) - 残りのNixライブラリ統合
 - [Script Nix統合レポート](../PHASE6_SCRIPT_NIX_INTEGRATION_COMPLETE.md) - スクリプトNix統合の完了報告
 
 ### 🔧 開発ガイド
@@ -24,7 +24,7 @@
 - [Web開発環境ガイド](guides/web-development.md) - モダンWeb開発環境
 - [Neovim設定](guides/neovim.md) - Neovim設定の詳細
 - [WezTerm設定](guides/wezterm.md) - WezTerm設定の詳細
-- [QMK/VIA統合ガイド](QMK_VIA_INTEGRATION_GUIDE.md) - カスタムキーボード統合
+- [QMK/VIA統合ガイド](todo/qmk-via-keyboard-integration.md) - カスタムキーボード統合
 
 ### 📊 実装レポート
 - [システム実装レポート](reports/) - 各フェーズの実装詳細
@@ -32,6 +32,9 @@
   - [ファイル整理レポート](reports/DOTFILES_CLEANUP_REPORT.md)
   - [CI/CD最適化レポート](reports/ci-cd-optimization-report.md)
   - [セキュリティ設定レポート](reports/security-baseline-setup-report.md)
+
+### 📋 今後の実装予定
+- [TODOタスク一覧](todo/) - 今後の実装予定タスクの詳細
 
 ## 🎯 現在のシステム状態
 
@@ -134,10 +137,10 @@ ci-analyze                # CI/CD状態
 ### 💻 **開発者**
 1. [Web開発環境ガイド](guides/web-development.md) - Web開発環境
 2. [Neovim設定](guides/neovim.md) - エディター設定
-3. [QMK/VIA統合ガイド](QMK_VIA_INTEGRATION_GUIDE.md) - カスタムキーボード
+3. [QMK/VIA統合ガイド](todo/qmk-via-keyboard-integration.md) - カスタムキーボード
 
 ### 🏗️ **システム管理者**
-1. [Phase 6 高度統合計画](PHASE6_ADVANCED_INTEGRATION_PLAN.md) - システム設計
+1. [Phase 6 Nix Library完了計画](todo/phase6-nix-library-completion.md) - システム設計
 2. [自動化システムガイド](guides/automation.md) - Infrastructure as Code
 3. [実装レポート](reports/) - 詳細な技術情報
 
