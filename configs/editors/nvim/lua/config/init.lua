@@ -1,8 +1,1 @@
--- Configuration Module Index
-require("config.options")
-require("config.keymaps")
-require("config.autocmds")
-require("config.lazy_bootstrap")
-
--- Initialize Lazy.nvim with plugins
-require("lazy").setup("plugins")
+/nix/store/b16mfyh5himn7xvwb7gk9zb0gn7hl33j-home-manager-files/.config/nvim/lua/config/init.lua

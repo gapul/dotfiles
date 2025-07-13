@@ -61,15 +61,20 @@ venv/
 # --------------------------------
 
 # Encrypted files SHOULD be in repository
+!nix/secrets/secrets.yaml
+!nix/secrets/*.yaml
 !nix/security/sops/secrets-unified.yaml
 !nix/security/sops/secrets-*.yaml
 
-# Exclude unencrypted secrets (emergency fallback only)
+# Exclude unencrypted secrets and keys
 *.env.local
 **/api_key_unencrypted*
 **/token_unencrypted*
 *.key.unencrypted
 *.pem.unencrypted
+# Age keys should not be in repository
+nix/secrets/keys/
+.config/sops/age/keys.txt
 
 # Allow example and template files
 !*.example

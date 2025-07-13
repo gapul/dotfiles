@@ -20,6 +20,55 @@ in
       description = "Ollama local LLM configuration (see ollama.nix)";
     };
     
+    # AI tools integration (merged from ai-tools module)
+    copilotSupport = mkOption {
+      type = types.bool;
+      default = true;
+      description = "Enable GitHub Copilot support";
+    };
+    
+    codeiumSupport = mkOption {
+      type = types.bool;
+      default = false;
+      description = "Enable Codeium support";
+    };
+    
+    claudeSupport = mkOption {
+      type = types.bool;
+      default = true;
+      description = "Enable Claude Code support";
+    };
+    
+    claudeNotifications = mkOption {
+      type = types.bool;
+      default = true;
+      description = "Enable Claude Code notifications";
+    };
+    
+    cursorSupport = mkOption {
+      type = types.bool;
+      default = false;
+      description = "Enable Cursor editor support";
+    };
+    
+    mcpSupport = mkOption {
+      type = types.bool;
+      default = true;
+      description = "Enable Model Context Protocol support";
+    };
+    
+    nvimAiIntegration = mkOption {
+      type = types.bool;
+      default = true;
+      description = "Enable AI tools integration in Neovim";
+    };
+    
+    vscodeAiIntegration = mkOption {
+      type = types.bool;
+      default = true;
+      description = "Enable AI tools integration in VS Code";
+    };
+    
     aiCodeReview = mkOption {
       type = types.bool;
       default = true;
@@ -71,6 +120,18 @@ in
       curl  # For API calls
       jq    # JSON processing
       
+      # AI CLI tools (from ai-tools module)
+      aichat
+      chatgpt-cli
+      github-cli  # For Copilot CLI
+      
+    ] ++ optionals cfg.mcpSupport [
+      # MCP-related tools
+      nodejs
+      nodePackages.npm
+    ] ++ optionals cfg.claudeNotifications [
+      # Claude Code notifications dependencies
+      jq  # Already included above
     ] ++ optionals cfg.aiCodeReview [
       # Code review automation
       git
@@ -841,9 +902,246 @@ in
       ai-doc = "ai-docs";
       ai-health = "ai-platform-health";
       
+      # AI tools aliases (merged from ai-tools module)
+      ai-chat = "aichat";
+      copilot = "gh copilot";
+      ai-commit = "gh copilot suggest -t shell 'git commit with AI-generated message'";
+      ai-explain = "gh copilot explain";
+      install-mcp = "~/.config/mcp/install-packages.sh";
+      
+      # Claude notifications aliases (migrated from configs/apps/claude)
+      claude-notify = "claude-notifications";
+      claude-test = "claude-notifications test";
+      
       # Legacy Ollama commands (prefer ollama-manager)
       local-llm = "ollama-manager models";
       ollama-setup-legacy = "ollama-manager setup";  # Renamed to avoid conflicts
+    };
+
+    # Note: Neovim AI integration is managed by file-based config in configs/editors/nvim/
+    # to avoid plugin conflicts. Only CLI tools and shell functions are managed here.
+    # Neovim AI integration (disabled - managed by file-based config)
+    # home-manager.users.yuki.programs.neovim = mkIf cfg.nvimAiIntegration {
+    #       plugins = with pkgs.vimPlugins; [
+    #         # GitHub Copilot
+    #         copilot-vim
+    #         copilot-lua
+    #         copilot-cmp
+    #         
+    #         # ChatGPT/AI integration
+    #         ChatGPT-nvim
+    #         
+    #         # Code assistance
+    #         nvim-cmp
+    #         cmp-ai
+    #       ];
+    #       
+    #       extraLuaConfig = mkIf cfg.copilotSupport ''
+    #         -- GitHub Copilot configuration with safe loading
+    #         local copilot_ok, copilot = pcall(require, 'copilot')
+    #         if copilot_ok then
+    #           copilot.setup({
+    #             suggestion = {
+    #               enabled = true,
+    #               auto_trigger = true,
+    #               debounce = 75,
+    #               keymap = {
+    #                 accept = "<M-l>",
+    #                 accept_word = false,
+    #                 accept_line = false,
+    #                 next = "<M-]>",
+    #                 prev = "<M-[>",
+    #                 dismiss = "<C-]>",
+    #               },
+    #             },
+    #             filetypes = {
+    #               yaml = false,
+    #               markdown = false,
+    #               help = false,
+    #               gitcommit = false,
+    #               gitrebase = false,
+    #               hgcommit = false,
+    #               svn = false,
+    #               cvs = false,
+    #               ["."] = false,
+    #             },
+    #             copilot_node_command = '${pkgs.nodejs}/bin/node',
+    #           })
+    #         end
+    #         
+    #         -- Copilot CMP integration with safe loading
+    #         local copilot_cmp_ok, copilot_cmp = pcall(require, 'copilot_cmp')
+    #         if copilot_cmp_ok then
+    #           copilot_cmp.setup()
+    #         end
+    #         
+    #         -- ChatGPT configuration with safe loading
+    #         local chatgpt_ok, chatgpt = pcall(require, "chatgpt")
+    #         if chatgpt_ok then
+    #           chatgpt.setup({
+    #             api_key_cmd = "echo $OPENAI_API_KEY",
+    #             yank_register = "+",
+    #             edit_with_instructions = {
+    #               diff = false,
+    #               keymaps = {
+    #                 close = "<C-c>",
+    #                 accept = "<C-y>",
+    #                 toggle_diff = "<C-d>",
+    #                 toggle_settings = "<C-o>",
+    #                 cycle_windows = "<Tab>",
+    #                 use_output_as_input = "<C-i>",
+    #               },
+    #             },
+    #             chat = {
+    #               welcome_message = "Welcome to ChatGPT",
+    #               loading_text = "Loading, please wait ...",
+    #               question_sign = "",
+    #               answer_sign = "ﮧ",
+    #               max_line_length = 120,
+    #               sessions_window = {
+    #                 border = {
+    #                   style = "rounded",
+    #                   text = {
+    #                     top = " Sessions ",
+    #                   },
+    #                 },
+    #               },
+    #             },
+    #           })
+    #         end
+    #       '';
+    #     };
+
+    # VS Code AI extensions configuration (merged from ai-tools module)
+    home-manager.users.yuki.home.file.".vscode/ai-settings.json" = mkIf cfg.vscodeAiIntegration {
+      text = builtins.toJSON {
+        # GitHub Copilot settings
+        "github.copilot.enable" = cfg.copilotSupport;
+        "github.copilot.inlineSuggest.enable" = cfg.copilotSupport;
+        "github.copilot.editor.enableAutoCompletions" = cfg.copilotSupport;
+        
+        # Codeium settings
+        "codeium.enableCodeLens" = cfg.codeiumSupport;
+        "codeium.enableConfig" = cfg.codeiumSupport;
+        
+        # Claude Code settings
+        "claude.enabled" = cfg.claudeSupport;
+        "claude.autoSave" = true;
+        
+        # General AI settings
+        "editor.inlineSuggest.enabled" = true;
+        "editor.suggestSelection" = "first";
+        "editor.acceptSuggestionOnCommitCharacter" = false;
+        "editor.acceptSuggestionOnEnter" = "on";
+      };
+    };
+
+    # MCP server configuration for Claude (merged from ai-tools module)
+    home-manager.users.yuki.home.file.".config/mcp/install-packages.sh" = mkIf cfg.mcpSupport {
+      executable = true;
+      text = ''
+        #!/usr/bin/env bash
+        # MCP global packages installation script
+        set -euo pipefail
+        
+        echo "📦 Installing MCP global packages..."
+        npm install -g \
+          "@modelcontextprotocol/server-filesystem" \
+          "@modelcontextprotocol/server-postgres" \
+          "@modelcontextprotocol/server-github" \
+          "@modelcontextprotocol/server-brave-search" \
+          "@modelcontextprotocol/server-puppeteer" \
+          "@executeautomation/playwright-mcp-server"
+        
+        echo "✅ MCP packages installed successfully!"
+      '';
+    };
+
+    # Claude Desktop configuration (migrated from configs/apps/claude)
+    home-manager.users.yuki.home.file.".config/claude/claude_desktop_config.json" = mkIf cfg.claudeSupport {
+      text = builtins.toJSON {
+        telemetryEnabled = false;
+        theme = "dark";
+        keybindings = {
+          send = "cmd+enter";
+        };
+        fontSize = 14;
+        preferences = {
+          showLineNumbers = true;
+          wordWrap = true;
+        };
+      };
+    };
+
+    # Claude notifications configuration (migrated from configs/apps/claude)
+    home-manager.users.yuki.home.file.".config/claude/notification-config.json" = mkIf cfg.claudeNotifications {
+      text = builtins.toJSON {
+        enabled = true;
+        title = "Claude Code";
+        message = "ユーザーからの指示をお待ちしています";
+        sound = "default";
+        monitor_interval = 5;
+        idle_threshold = 30;
+        notification_cooldown = 60;
+        custom_messages = {
+          waiting_for_input = "入力をお待ちしています";
+          long_idle = "しばらく操作がありません";
+          session_start = "セッションが開始されました";
+          session_end = "セッションが終了しました";
+        };
+      };
+    };
+
+    # Claude notifications script (migrated from configs/apps/claude)
+    home-manager.users.yuki.home.file."bin/claude-notifications" = mkIf cfg.claudeNotifications {
+      executable = true;
+      text = ''
+        #!/usr/bin/env bash
+        # Claude Code Notifications
+        set -euo pipefail
+        
+        CONFIG_FILE="$HOME/.config/claude/notification-config.json"
+        DEFAULT_TITLE="Claude Code"
+        DEFAULT_MESSAGE="ユーザーからの指示をお待ちしています"
+        DEFAULT_SOUND="default"
+        
+        load_config() {
+            if [[ -f "$CONFIG_FILE" ]] && command -v jq >/dev/null 2>&1; then
+                TITLE=$(jq -r --arg default "$DEFAULT_TITLE" '.title // $default' "$CONFIG_FILE")
+                MESSAGE=$(jq -r --arg default "$DEFAULT_MESSAGE" '.message // $default' "$CONFIG_FILE")
+                SOUND=$(jq -r --arg default "$DEFAULT_SOUND" '.sound // $default' "$CONFIG_FILE")
+                ENABLED=$(jq -r '.enabled // true' "$CONFIG_FILE")
+            else
+                TITLE="$DEFAULT_TITLE"
+                MESSAGE="$DEFAULT_MESSAGE"
+                SOUND="$DEFAULT_SOUND"
+                ENABLED=true
+            fi
+        }
+        
+        send_notification() {
+            local custom_title="''${1:-}"
+            local custom_message="''${2:-}"
+            
+            load_config
+            [[ "$ENABLED" != "true" ]] && return 0
+            
+            local final_title="''${custom_title:-$TITLE}"
+            local final_message="''${custom_message:-$MESSAGE}"
+            
+            if command -v terminal-notifier >/dev/null 2>&1; then
+                terminal-notifier -title "$final_title" -message "$final_message" -sound default
+            else
+                osascript -e "display notification \"$final_message\" with title \"$final_title\" sound name \"$SOUND\""
+            fi
+        }
+        
+        case "''${1:-}" in
+            "send") send_notification "''${2:-}" "''${3:-}" ;;
+            "test") send_notification "Claude Code テスト" "通知システムが正常に動作しています" ;;
+            *) send_notification ;;
+        esac
+      '';
     };
 
     # AI platform environment variables
@@ -851,6 +1149,9 @@ in
       AI_PLATFORM_ENABLED = "true";
       OLLAMA_HOST = "127.0.0.1:11434";
       MCP_CONFIG_PATH = "$HOME/.config/mcp/servers.json";
+      
+      # GitHub Copilot (merged from ai-tools module)
+      GITHUB_COPILOT_CLI_EDITOR = "nvim";
     };
   };
 }

@@ -1,0 +1,1 @@
+/nix/store/b16mfyh5himn7xvwb7gk9zb0gn7hl33j-home-manager-files/.config/nvim/lua/plugins/ollama-local.lua

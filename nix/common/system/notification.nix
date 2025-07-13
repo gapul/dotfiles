@@ -303,7 +303,7 @@ in {
       };
 
       # Zsh統合用のヘルパー関数
-      initExtra = ''
+      initContent = ''
         # Dotfiles通知システム統合
         notify_cmd() {
           if [[ $# -eq 0 ]]; then

@@ -710,7 +710,7 @@ in
     });
     
     # Zsh completion and integration
-    home-manager.users.yuki.programs.zsh.initExtra = mkIf cfg.qmk.enable ''
+    home-manager.users.yuki.programs.zsh.initContent = mkIf cfg.qmk.enable ''
       # QMK completion
       if command -v qmk &> /dev/null; then
         eval "$(qmk generate-completion zsh)"

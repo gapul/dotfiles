@@ -457,17 +457,17 @@ in
       source = ./plugins;
     };
     
-    # Items directory
-    home-manager.users.yuki.home.file.".config/sketchybar/items" = {
-      recursive = true;
-      source = ./items;
-    };
+    # Items directory - directory doesn't exist yet
+    # home-manager.users.yuki.home.file.".config/sketchybar/items" = {
+    #   recursive = true;
+    #   source = ./items;
+    # };
     
-    # Helper scripts
-    home-manager.users.yuki.home.file.".config/sketchybar/helpers" = {
-      recursive = true;
-      source = ./helpers;
-    };
+    # Helper scripts - directory doesn't exist yet
+    # home-manager.users.yuki.home.file.".config/sketchybar/helpers" = {
+    #   recursive = true;
+    #   source = ./helpers;
+    # };
     
     # SketchyBar AI integration setup script
     home-manager.users.yuki.home.file."bin/sketchybar-ai-setup" = mkIf cfg.aiIntegration {
