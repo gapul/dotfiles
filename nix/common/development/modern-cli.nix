@@ -344,8 +344,8 @@ in
       '';
     };
 
-    # Modern CLI health check script (simplified)
-    home-manager.users.yuki.home.file."bin/modern-cli-health" = {
+    # Modern CLI health check script
+    home-manager.users.yuki.home.file."bin/modern-cli-health" = mkIf cfg.enable {
       executable = true;
       text = ''
         #!/usr/bin/env bash
@@ -356,84 +356,27 @@ in
         echo "================================="
         echo ""
         
-        echo "📁 Navigation Tools:"
-      '' + (if cfg.navigation then ''
-        command -v eza >/dev/null && echo "✅ eza: Modern ls replacement" || echo "❌ eza: Not found"
-        command -v fd >/dev/null && echo "✅ fd: Modern find replacement" || echo "❌ fd: Not found"
-      '' else ''
-        echo "⚪ Navigation tools: Disabled"
-      '') + ''
+        echo "📋 Checking modern CLI tools..."
         
-        echo ""
-        echo "📄 Content Tools:"
-      '' + (if cfg.content then ''
-        command -v bat >/dev/null && echo "✅ bat: Modern cat replacement" || echo "❌ bat: Not found"
-        command -v rg >/dev/null && echo "✅ rg: Modern grep replacement" || echo "❌ rg: Not found"
-      '' else ''
-        echo "⚪ Content tools: Disabled"
-      '') + ''
+        # Navigation tools
+        command -v eza >/dev/null && echo "✅ eza: Modern ls" || echo "❌ eza: Not found"
+        command -v fd >/dev/null && echo "✅ fd: Modern find" || echo "❌ fd: Not found"
         
-        echo ""
-        echo "⚡ Process Tools:"
-      '' + (if cfg.process then ''
-        command -v bottom >/dev/null && echo "✅ bottom: Modern top replacement" || echo "❌ bottom: Not found"
-        command -v procs >/dev/null && echo "✅ procs: Modern ps replacement" || echo "❌ procs: Not found"
-      '' else ''
-        echo "⚪ Process tools: Disabled"
-      '') + ''
+        # Content tools
+        command -v bat >/dev/null && echo "✅ bat: Modern cat" || echo "❌ bat: Not found"  
+        command -v rg >/dev/null && echo "✅ rg: Modern grep" || echo "❌ rg: Not found"
         
-        echo ""
-        echo "🌳 Git Tools:"
-      '' + (if cfg.git then ''
-        command -v lazygit >/dev/null && echo "✅ lazygit: Terminal UI for git" || echo "❌ lazygit: Not found"
-        command -v delta >/dev/null && echo "✅ delta: Better git diff" || echo "❌ delta: Not found"
-      '' else ''
-        echo "⚪ Git tools: Disabled"
-      '') + ''
+        # Git tools
+        command -v lazygit >/dev/null && echo "✅ lazygit: Git TUI" || echo "❌ lazygit: Not found"
         
-        echo ""
-        echo "📁 File Manager:"
-      '' + (if cfg.file-manager then ''
-        command -v yazi >/dev/null && echo "✅ yazi: Terminal file manager" || echo "❌ yazi: Not found"
-      '' else ''
-        echo "⚪ File manager: Disabled"
-      '') + ''
-        
-        echo ""
-        echo "💻 System Info:"
-      '' + (if cfg.system-info then ''
-        command -v fastfetch >/dev/null && echo "✅ fastfetch: System information display" || echo "❌ fastfetch: Not found"
-      '' else ''
-        echo "⚪ System info: Disabled"
-      '') + ''
-        
-        echo ""
-        echo "📊 Data Analysis:"
-      '' + (if cfg.data-analysis then ''
-        command -v visidata >/dev/null && echo "✅ visidata: Terminal data analysis" || echo "❌ visidata: Not found"
-      '' else ''
-        echo "⚪ Data analysis: Disabled"
-      '') + ''
-        
-        echo ""
-        echo "🔍 Shell Enhancement:"
-      '' + (if cfg.atuin then ''
-        command -v atuin >/dev/null && echo "✅ atuin: Enhanced shell history" || echo "❌ atuin: Not found"
-      '' else ''
-        echo "⚪ Atuin: Disabled"
-      '') + (if cfg.starship then ''
-        command -v starship >/dev/null && echo "✅ starship: Cross-shell prompt" || echo "❌ starship: Not found"
-      '' else ''
-        echo "⚪ Starship: Disabled"
-      '') + (if cfg.zoxide then ''
-        command -v zoxide >/dev/null && echo "✅ zoxide: Smart directory jumper" || echo "❌ zoxide: Not found"
-      '' else ''
-        echo "⚪ Zoxide: Disabled"
-      '') + ''
+        # Shell enhancement
+        command -v atuin >/dev/null && echo "✅ atuin: Shell history" || echo "❌ atuin: Not found"
+        command -v starship >/dev/null && echo "✅ starship: Prompt" || echo "❌ starship: Not found"
+        command -v zoxide >/dev/null && echo "✅ zoxide: Smart cd" || echo "❌ zoxide: Not found"
         
         echo ""
         echo "Profile: ${cfg.profile}"
-        echo "All checks completed!"
+        echo "Status: Modern CLI environment ready!"
       '';
     };
   };
