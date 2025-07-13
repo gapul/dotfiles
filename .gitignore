@@ -1,4 +1,10 @@
-# macOS
+# =============================================================================
+# Dotfiles System .gitignore
+# =============================================================================
+
+# --------------------------------
+# System Files (macOS/Windows/Linux)
+# --------------------------------
 .DS_Store
 .DS_Store?
 ._*
@@ -6,18 +12,31 @@
 .Trashes
 ehthumbs.db
 Thumbs.db
+*.orig
 
-# Backup files
-backups/
-
-# Temporary files
+# --------------------------------
+# Temporary & Backup Files
+# --------------------------------
 *.tmp
 *.temp
 *.swp
 *.swo
 *~
+*.log
+*.backup
+*.bak
+*.old
 
-# Node.js (npm/yarn dependencies should be managed by Nix)
+# Backup directories
+backups/
+temp/
+tmp/
+
+# --------------------------------
+# Development Environment
+# --------------------------------
+
+# Node.js (dependencies managed by Nix)
 node_modules/
 package.json
 package-lock.json
@@ -25,44 +44,95 @@ yarn.lock
 .npm/
 .yarn/
 
-# IDE
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# IDE & Editor
 .vscode/
 .idea/
+*.code-workspace
 
-# Logs
-*.log
+# --------------------------------
+# SOPS Security Management
+# --------------------------------
 
-# System files
-*.orig
-
-# SOPS Unified Encryption Strategy
-# All secrets now managed through SOPS - most .gitignore patterns no longer needed
-
-# Legacy sensitive configuration files (gradually migrating to SOPS)
-configs/git/.gitconfig
-configs/ssh/config
-configs/apps/claude/claude.json
-
-# SOPS encrypted files (these SHOULD be in repository)
+# Encrypted files SHOULD be in repository
 !nix/security/sops/secrets-unified.yaml
+!nix/security/sops/secrets-*.yaml
 
-# Only exclude unencrypted secrets (emergency fallback)
+# Exclude unencrypted secrets (emergency fallback only)
 *.env.local
 **/api_key_unencrypted*
 **/token_unencrypted*
+*.key.unencrypted
+*.pem.unencrypted
 
 # Allow example and template files
 !*.example
 !*.template
 !*.sample
 
-# Legacy patterns (most secrets now in SOPS)
-# *.key -> now in SOPS secrets.ssh.private_key
-# *.pem -> now in SOPS secrets.ssl.certificate
-# secrets.* -> now encrypted in secrets-unified.yaml
-# .env -> now in SOPS secrets.development.env_vars
+# --------------------------------
+# Legacy Sensitive Files (migrating to SOPS)
+# --------------------------------
+configs/git/.gitconfig
+configs/ssh/config
+configs/apps/claude/claude.json
 
-# User-specific data that shouldn't be shared
+# --------------------------------
+# User-Specific & Runtime Data
+# --------------------------------
 configs/**/user_data/
 configs/**/cache/
 configs/**/sessions/
+system-metrics.json
+
+# Runtime generated files
+result/
+result-*/
+
+# --------------------------------
+# Platform-Specific
+# --------------------------------
+
+# Nix
+.direnv/
+flake.lock.backup
+
+# macOS
+.localized
+
+# Linux
+.fuse_hidden*
+
+# --------------------------------
+# Archive & Documentation Build
+# --------------------------------
+docs/archive/slides/node_modules/
+docs/archive/slides/package-lock.json
+docs/archive/slides/*.pdf
+docs/archive/slides/dist/
+
+# --------------------------------
+# Testing & Development Artifacts
+# --------------------------------
+test-output/
+coverage/
+.coverage
+.pytest_cache/
+.tox/
+
+# QMK/VIA temporary files
+*.hex
+*.bin
+*.uf2
+
+# AI generated temporary files
+/tmp/sketchybar_*
+/tmp/battery_*
+/tmp/memory_*
+/tmp/cpu_*

@@ -63,6 +63,10 @@ let
     duf      # df replacement (disk usage)
     gdu      # enhanced du with TUI
     
+    # Nix-specific tools (Phase 6 QoL)
+    nix-output-monitor # nom - TUI for nix build output
+    nix-tree          # Nix package dependency tree viewer
+    
     # File management
     yazi     # modern file manager
     

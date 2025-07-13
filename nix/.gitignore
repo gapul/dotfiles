@@ -1,0 +1,16 @@
+# Build artifacts
+result
+result-*
+
+# Direnv cache
+.direnv/
+
+# macOS specific
+**/.DS_Store
+.DS_Store
+
+# Temporary files
+*.tmp
+*.swp
+*.swo
+*~

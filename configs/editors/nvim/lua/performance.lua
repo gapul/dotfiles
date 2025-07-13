@@ -1,1 +1,0 @@
-/nix/store/py8184i5vc3l95g2vjrxfpvqg3ghhnmm-home-manager-files/.config/nvim/lua/performance.lua

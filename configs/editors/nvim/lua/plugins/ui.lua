@@ -214,6 +214,7 @@ return {
       },
     },
     opts = {
+      background_colour = "#1e1e2e", -- Catppuccin mocha background
       timeout = 3000,
       max_height = function()
         return math.floor(vim.o.lines * 0.75)
@@ -224,6 +225,8 @@ return {
       on_open = function(win)
         vim.api.nvim_win_set_config(win, { zindex = 100 })
       end,
+      render = "default",
+      stages = "fade_in_slide_out",
     },
     init = function()
       vim.notify = require("notify")
@@ -287,30 +290,34 @@ return {
       vim.o.timeoutlen = 300
     end,
     opts = {
+      preset = "modern",
       plugins = { spelling = true },
-      defaults = {
+      spec = {
         mode = { "n", "v" },
-        ["g"] = { name = "+goto" },
-        ["gs"] = { name = "+surround" },
-        ["]"] = { name = "+next" },
-        ["["] = { name = "+prev" },
-        ["<leader><tab>"] = { name = "+tabs" },
-        ["<leader>b"] = { name = "+buffer" },
-        ["<leader>c"] = { name = "+code" },
-        ["<leader>f"] = { name = "+file/find" },
-        ["<leader>g"] = { name = "+git" },
-        ["<leader>gh"] = { name = "+hunks" },
-        ["<leader>q"] = { name = "+quit/session" },
-        ["<leader>s"] = { name = "+search" },
-        ["<leader>u"] = { name = "+ui" },
-        ["<leader>w"] = { name = "+windows" },
-        ["<leader>x"] = { name = "+diagnostics/quickfix" },
+        { "g", group = "+goto" },
+        { "gs", group = "+surround" },
+        { "]", group = "+next" },
+        { "[", group = "+prev" },
+        { "<leader><tab>", group = "+tabs" },
+        { "<leader>b", group = "+buffer" },
+        { "<leader>c", group = "+code" },
+        { "<leader>cf", desc = "Format buffer" },
+        { "<leader>cl", desc = "Lint current file" },
+        { "<leader>f", group = "+file/find" },
+        { "<leader>g", group = "+git" },
+        { "<leader>gh", group = "+hunks" },
+        { "<leader>q", group = "+quit/session" },
+        { "<leader>s", group = "+search" },
+        { "<leader>u", group = "+ui" },
+        { "<leader>w", group = "+windows" },
+        { "<leader>x", group = "+diagnostics/quickfix" },
+        { "<leader>t", group = "+terminal/tools" },
+        { "<leader>z", group = "+zoxide" },
       },
     },
     config = function(_, opts)
       local wk = require("which-key")
       wk.setup(opts)
-      wk.register(opts.defaults)
     end,
   },
 }
