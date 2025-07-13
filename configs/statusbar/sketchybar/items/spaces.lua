@@ -68,30 +68,8 @@ for i, workspace in ipairs(workspaces) do
             icon_line = icon_line .. " " .. icon
         end
 
-        local selected = is_workspace_selected(workspace)
-        
         if no_app then
             icon_line = " —"
-            -- Hide empty workspace unless it's the current workspace
-            local should_show = selected
-            space:set({
-                drawing = should_show,
-                label = icon_line
-            })
-            -- Also hide/show the padding
-            sbar.set("item." .. i .. "padding", {
-                drawing = should_show
-            })
-        else
-            -- Show workspace with apps
-            space:set({
-                drawing = true,
-                label = icon_line
-            })
-            -- Also show the padding
-            sbar.set("item." .. i .. "padding", {
-                drawing = true
-            })
         end
 
         sbar.animate("tanh", 10, function()
@@ -135,33 +113,6 @@ for i, workspace in ipairs(workspaces) do
             }
         })
 
-        -- Update visibility when workspace changes
-        sbar.exec("aerospace list-windows --workspace " .. i .. " --format '%{app-name}' --json ", function(apps)
-            local no_app = true
-            for j, app in ipairs(apps) do
-                no_app = false
-                break
-            end
-            
-            if no_app then
-                -- Hide empty workspace unless it's the current workspace
-                local should_show = selected
-                space:set({
-                    drawing = should_show
-                })
-                sbar.set("item." .. i .. "padding", {
-                    drawing = should_show
-                })
-            else
-                -- Show workspace with apps
-                space:set({
-                    drawing = true
-                })
-                sbar.set("item." .. i .. "padding", {
-                    drawing = true
-                })
-            end
-        end)
     end)
 
     space:subscribe("mouse.clicked", function(env)
@@ -233,30 +184,8 @@ space_window_observer:subscribe("space_windows_change", function(env)
                 icon_line = icon_line .. " " .. icon
             end
 
-            local selected = is_workspace_selected(workspace)
-            
             if no_app then
                 icon_line = " —"
-                -- Hide empty workspace unless it's the current workspace
-                local should_show = selected
-                spaces[i]:set({
-                    drawing = should_show,
-                    label = icon_line
-                })
-                -- Also hide/show the padding
-                sbar.set("item." .. i .. "padding", {
-                    drawing = should_show
-                })
-            else
-                -- Show workspace with apps
-                spaces[i]:set({
-                    drawing = true,
-                    label = icon_line
-                })
-                -- Also show the padding
-                sbar.set("item." .. i .. "padding", {
-                    drawing = true
-                })
             end
 
             sbar.animate("tanh", 10, function()
@@ -281,30 +210,8 @@ space_window_observer:subscribe("aerospace_focus_change", function(env)
                 icon_line = icon_line .. " " .. icon
             end
 
-            local selected = is_workspace_selected(workspace)
-            
             if no_app then
                 icon_line = " —"
-                -- Hide empty workspace unless it's the current workspace
-                local should_show = selected
-                spaces[i]:set({
-                    drawing = should_show,
-                    label = icon_line
-                })
-                -- Also hide/show the padding
-                sbar.set("item." .. i .. "padding", {
-                    drawing = should_show
-                })
-            else
-                -- Show workspace with apps
-                spaces[i]:set({
-                    drawing = true,
-                    label = icon_line
-                })
-                -- Also show the padding
-                sbar.set("item." .. i .. "padding", {
-                    drawing = true
-                })
             end
 
             sbar.animate("tanh", 10, function()
