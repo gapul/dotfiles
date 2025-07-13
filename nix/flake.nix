@@ -116,6 +116,7 @@
             # Phase 5: Modern CLI Integration
             dotfiles.development.modern-cli.enable = lib.mkForce true;
             dotfiles.development.modern-cli.profile = "full";
+            dotfiles.development.modern-cli.process = lib.mkForce true;
             
             # Phase 6: Nix Quality of Life Tools
             dotfiles.development.nix-qol.enable = lib.mkForce true;
