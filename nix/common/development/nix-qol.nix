@@ -130,7 +130,7 @@ in
       # Basic Nix commands with nom
       (mkIf cfg.nom.enable {
         "nb" = "nom build";  # nix-build with progress (nom)
-        "nix-shell" = "nom develop"; 
+        "nd" = "nom develop";  # nix develop with progress (nom)
         "ns" = "nom develop";
       })
       
@@ -153,7 +153,6 @@ in
         "nix-gc" = "nix store gc --verbose";
         "nix-clean" = "nix-collect-garbage -d && nix store optimise";
         "nix-generations" = "nix profile history";
-        "nix-search" = "nix search nixpkgs";
         "nix-info" = "nix-shell -p nix-info --run nix-info";
         "flake-update" = "nix flake update";
         "flake-check" = "nix flake check";
