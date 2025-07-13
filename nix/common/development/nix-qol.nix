@@ -57,8 +57,8 @@ in
       fastfetch          # Fast system information display
     ];
 
-    # Fastfetch configuration
-    home-manager.users.yuki.home.file.".config/fastfetch/config.jsonc" = mkIf cfg.fastfetch.enable {
+    # Fastfetch configuration (only if modern-cli is disabled)
+    home-manager.users.yuki.home.file.".config/fastfetch/config.jsonc" = mkIf (cfg.fastfetch.enable && !(config.dotfiles.development.modern-cli.enable or false)) {
       text = builtins.toJSON {
         "$schema" = "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json";
         logo = {
