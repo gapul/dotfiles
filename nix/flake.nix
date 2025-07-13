@@ -113,9 +113,9 @@
             dotfiles.development.enable = lib.mkForce true;
             dotfiles.development.profile = lib.mkForce "ai-powered";
             
-            # Phase 6: Modern CLI Integration (temporarily disabled)
-            # dotfiles.development.modern-cli.enable = lib.mkForce true;
-            # dotfiles.development.modern-cli.profile = "full";
+            # Phase 5: Modern CLI Integration
+            dotfiles.development.modern-cli.enable = lib.mkForce true;
+            dotfiles.development.modern-cli.profile = "full";
             
             # Phase 6: Nix Quality of Life Tools
             dotfiles.development.nix-qol.enable = lib.mkForce true;
