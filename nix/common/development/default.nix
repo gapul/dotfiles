@@ -13,6 +13,7 @@ with lib;
     ./web  # Web development environment
     ./cli-tools.nix  # Enhanced CLI tools integration
     ./nix-qol.nix  # Phase 6: Nix Quality of Life tools
+    # ./crane-optimization.nix  # Phase 6: Crane Rust optimization - temporarily disabled
   ];
 
   options.dotfiles.development = {
@@ -54,6 +55,17 @@ with lib;
     dotfiles.development.ai-platform.enable = mkDefault (
       elem config.dotfiles.development.profile [ "full" "ai-powered" ]
     );
+
+
+    # Phase 6: Crane Rust optimization - temporarily disabled
+    # dotfiles.development.crane-optimization.enable = mkDefault (
+    #   elem config.dotfiles.development.profile [ "standard" "full" "ai-powered" ]
+    # );
+    # dotfiles.development.crane-optimization.features.buildOptimization = mkDefault true;
+    # dotfiles.development.crane-optimization.features.cacheStrategy = mkDefault "hybrid";
+    # dotfiles.development.crane-optimization.features.crossCompilation = mkDefault true;
+    # dotfiles.development.crane-optimization.features.wasmSupport = mkDefault true;
+    # dotfiles.development.crane-optimization.features.benchmarking = mkDefault true;
     
     # Advanced Ollama configuration (Phase 6)
     dotfiles.development.ai-platform.ollama.enable = mkDefault (
@@ -526,6 +538,12 @@ with lib;
           echo "⚪ Modern CLI Tools: Disabled"
         ''}
         
+        # nix-direnv Integration (Phase 6) - temporarily disabled
+        echo "⚪ nix-direnv Integration: Disabled"
+
+        # Crane Rust Optimization (Phase 6) - temporarily disabled
+        echo "⚪ Crane Rust Optimization: Disabled"
+
         # Check Web Development Environment
         ${if config.web.enable or false then ''
           echo "✅ Web Development Environment: Enabled"

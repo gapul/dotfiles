@@ -1,0 +1,332 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  role          UserRole  @default(USER)
+  bio           String?
+  website       String?
+  location      String?
+  
+  // Timestamps
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastLoginAt   DateTime?
+  deletedAt     DateTime?
+
+  // Relations
+  accounts      Account[]
+  sessions      Session[]
+  posts         Post[]
+  comments      Comment[]
+  likes         Like[]
+  subscriptions Subscription[]
+
+  @@map("users")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+model Post {
+  id          String   @id @default(cuid())
+  title       String
+  content     String?  @db.Text
+  excerpt     String?
+  published   Boolean  @default(false)
+  featured    Boolean  @default(false)
+  slug        String   @unique
+  
+  // SEO
+  metaTitle       String?
+  metaDescription String?
+  
+  // Publishing
+  publishedAt DateTime?
+  
+  // Author
+  authorId    String
+  author      User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  
+  // Media
+  coverImage  String?
+  
+  // Timestamps
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+  
+  // Relations
+  comments    Comment[]
+  likes       Like[]
+  tags        PostTag[]
+
+  @@map("posts")
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String   @db.Text
+  
+  // Relations
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  
+  // Self-referencing for nested comments
+  parentId  String?
+  parent    Comment? @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[] @relation("CommentReplies")
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  @@map("comments")
+}
+
+model Like {
+  id     String @id @default(cuid())
+  
+  // Relations
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  postId String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+
+  @@unique([userId, postId])
+  @@map("likes")
+}
+
+model Tag {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  slug        String    @unique
+  description String?
+  color       String?   // Hex color code
+  
+  // Timestamps
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  // Relations
+  posts       PostTag[]
+
+  @@map("tags")
+}
+
+model PostTag {
+  id     String @id @default(cuid())
+  
+  // Relations
+  postId String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  
+  tagId  String
+  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+
+  @@unique([postId, tagId])
+  @@map("post_tags")
+}
+
+// Subscription and billing models
+enum SubscriptionStatus {
+  INCOMPLETE
+  INCOMPLETE_EXPIRED
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  UNPAID
+}
+
+model Subscription {
+  id                   String             @id @default(cuid())
+  
+  // Stripe data
+  stripeSubscriptionId String             @unique
+  stripeCustomerId     String
+  stripePriceId        String
+  stripeCurrentPeriodEnd DateTime
+  
+  // Status
+  status               SubscriptionStatus
+  
+  // Relations
+  userId               String
+  user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Timestamps
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  @@map("subscriptions")
+}
+
+model File {
+  id           String   @id @default(cuid())
+  key          String   @unique // UploadThing key
+  name         String
+  url          String
+  size         Int
+  type         String
+  
+  // Metadata
+  width        Int?
+  height       Int?
+  alt          String?
+  
+  // Timestamps
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("files")
+}
+
+// Analytics and tracking
+model PageView {
+  id        String   @id @default(cuid())
+  path      String
+  userAgent String?
+  ip        String?
+  country   String?
+  referrer  String?
+  
+  // User tracking (optional, for authenticated users)
+  userId    String?
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+
+  @@map("page_views")
+}
+
+model ContactSubmission {
+  id      String @id @default(cuid())
+  name    String
+  email   String
+  subject String
+  message String @db.Text
+  
+  // Status
+  status  String @default("new") // new, read, replied, archived
+  
+  // Response
+  response String? @db.Text
+  respondedAt DateTime?
+  respondedBy String?
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("contact_submissions")
+}
+
+// System settings and configuration
+model Setting {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String   @db.Text
+  description String?
+  type        String   @default("string") // string, number, boolean, json
+  isPublic    Boolean  @default(false)
+  
+  // Timestamps
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("settings")
+}
+
+// Audit log for tracking changes
+model AuditLog {
+  id          String   @id @default(cuid())
+  
+  // User who performed the action
+  userId      String?
+  userEmail   String?
+  
+  // Action details
+  action      String   // CREATE, UPDATE, DELETE, etc.
+  entity      String   // User, Post, Comment, etc.
+  entityId    String
+  
+  // Change details
+  oldValues   Json?
+  newValues   Json?
+  
+  // Request details
+  ipAddress   String?
+  userAgent   String?
+  
+  // Timestamps
+  createdAt   DateTime @default(now())
+
+  @@map("audit_logs")
+}

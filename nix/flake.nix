@@ -459,6 +459,8 @@
         "Intel-Mac" = mkDarwinSystem "x86_64-darwin" inputs;
         # Default to Apple Silicon (most common setup)
         default = mkDarwinSystem "aarch64-darwin" inputs;
+        # User-specific configuration
+        yuki = mkDarwinSystem "aarch64-darwin" inputs;
       };
 
       # NixOS configurations (for Linux)
@@ -497,7 +499,10 @@
       devShells = flake-utils.lib.eachDefaultSystemMap (system:
         let
           platformConfig = mkPlatformConfig system inputs;
+          lib = platformConfig.lib;
           pkgs = platformConfig.pkgs;
+          # Import templates system
+          templatesSystem = import ../templates/index.nix { inherit lib pkgs; };
           rustShell = import ./devshells/rust.nix { 
             inherit (platformConfig) lib pkgs; 
             inherit inputs; 
@@ -512,17 +517,21 @@
               tmux
               starship
               just  # Task runner
+              templatesSystem.templateCli
+              (import ../templates/_shared/component.nix { inherit lib pkgs; }).registry
             ];
             shellHook = ''
               echo "🚀 Multi-platform dotfiles development environment"
               echo "Platform: ${system}"
-              echo "Available tools: git, gh, neovim, tmux, starship, just"
+              echo "Available tools: git, gh, neovim, tmux, starship, just, template, component"
               echo ""
               echo "Common commands:"
-              echo "  just rebuild    - Rebuild current platform configuration"
-              echo "  just switch     - Switch to new configuration"
-              echo "  just test       - Test configuration"
-              echo "  just --list     - Show all available tasks"
+              echo "  just rebuild     - Rebuild current platform configuration"
+              echo "  just switch      - Switch to new configuration"
+              echo "  just test        - Test configuration"
+              echo "  template list    - List available templates"
+              echo "  component list   - List available components"
+              echo "  just --list      - Show all available tasks"
             '';
           };
 
@@ -556,9 +565,20 @@
           lib = nixpkgs.lib;
           pkgs = nixpkgs.legacyPackages.${system};
           platformInfo = import ./common/platform-detection.nix { inherit lib pkgs; };
+          # Import templates system
+          templatesSystem = import ../templates/index.nix { inherit lib pkgs; };
         in {
           # Platform information package
           platformInfo = pkgs.writeText "platform-info.json" (builtins.toJSON platformInfo);
+          
+          # Template management CLI
+          template = templatesSystem.templateCli;
+          
+          # Component management CLI
+          component = (import ../templates/_shared/component.nix { inherit lib pkgs; }).registry;
+          
+          # Basic packages for testing and examples
+          hello = pkgs.hello;
         }
       );
       

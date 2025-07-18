@@ -50,25 +50,22 @@ in
     home-manager.users.yuki.home.packages = with pkgs; [
       # Always include core modern CLI tools
     ] ++ optionals cfg.navigation [
-      eza         # Modern ls replacement
-      fd          # Modern find replacement
+      # Note: eza, fd managed in core.nix
     ] ++ optionals cfg.content [
-      bat         # Modern cat replacement
-      ripgrep     # Modern grep replacement
+      # Note: bat, ripgrep managed in core.nix
     ] ++ optionals cfg.process [
       bottom      # Modern top replacement
       procs       # Modern ps replacement
     ] ++ optionals cfg.git [
-      lazygit     # Terminal UI for git
-      delta       # Better git diff
+      # Note: lazygit, delta managed in core.nix
     ] ++ optionals cfg.file-manager [
       yazi        # Terminal file manager
     ] ++ optionals cfg.system-info [
-      fastfetch   # System info display
+      # Note: fastfetch managed in core.nix
     ] ++ optionals cfg.data-analysis [
       visidata    # Terminal data analysis
     ] ++ optionals cfg.atuin [
-      atuin       # Shell history
+      # Note: atuin managed in core.nix
     ];
 
     # Zoxide configuration

@@ -9,6 +9,8 @@ with lib;
   imports = [
     ./core
     ./tooling
+    ./deployment.nix
+    ./performance-monitoring.nix
   ];
 
   options.web = {
@@ -32,6 +34,19 @@ with lib;
         default = true;
         description = "Enable additional development tools";
       };
+      
+      
+      deployment = mkOption {
+        type = types.bool;
+        default = true;
+        description = "Enable deployment automation";
+      };
+      
+      performanceMonitoring = mkOption {
+        type = types.bool;
+        default = true;
+        description = "Enable performance monitoring and analysis";
+      };
     };
     
     autoSetup = mkOption {
@@ -46,8 +61,14 @@ with lib;
     web.core.enable = mkDefault config.web.features.core;
     web.tooling.enable = mkDefault config.web.features.tooling;
     
+    # Enable deployment features
+    dotfiles.development.web.deployment.enable = mkDefault config.web.features.deployment;
+    dotfiles.development.web.performance-monitoring.enable = mkDefault config.web.features.performanceMonitoring;
+    
     # Profile-specific configurations
     web.core.profile = mkDefault config.web.profile;
+    dotfiles.development.web.deployment.profile = mkDefault config.web.profile;
+    dotfiles.development.web.performance-monitoring.profile = mkDefault config.web.profile;
     
     
     # Global web development packages
@@ -92,7 +113,7 @@ with lib;
       NODE_OPTIONS = "--max-old-space-size=4096";
       
       # Development preferences
-      EDITOR = "nvim";
+      # Note: EDITOR managed in main flake.nix
       BROWSER = "default";
     };
     
@@ -401,6 +422,9 @@ with lib;
         echo "📋 Available commands:"
         echo "  web-create <name>     - Create new project"
         echo "  template-manager.sh   - Manage templates"
+        echo "  perf-monitor          - Performance monitoring"
+        echo "  deploy                - Deployment automation"
+        echo "  rollback              - Deployment rollback"
         
         echo ""
         echo "✅ Web development environment health check completed!"

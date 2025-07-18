@@ -9,8 +9,6 @@
 | タスク | 優先度 | 推定時間 | ステータス |
 |--------|--------|----------|------------|
 | [Dynamic Island Integration](./dynamic-island-integration.md) | 中 | 4-6時間 | 保留中 |
-| [System Health Check Enhancement](./system-health-check-enhancement.md) | 高 | 2-3時間 | 未着手 |
-| [Phase 6 Nix Library Completion](./phase6-nix-library-completion.md) | 中 | 3-4時間 | 未着手 |
 
 ### 🔐 セキュリティ
 
@@ -23,7 +21,6 @@
 
 | タスク | 優先度 | 推定時間 | ステータス |
 |--------|--------|----------|------------|
-| [Web Development CI/CD Optimization](./web-development-cicd-optimization.md) | 中 | 3-4時間 | 未着手 |
 | [Ollama Code Fix](./ollama-code-fix.md) | 低 | 1-2時間 | 未着手 |
 
 ### ⌨️ ハードウェア統合
@@ -84,5 +81,5 @@ TODOタスクは以下のタイミングでレビュー・更新：
 
 ---
 
-**最終更新**: 2025年7月13日  
+**最終更新**: 2025年7月15日  
 **管理者**: Claude Code Assistant
