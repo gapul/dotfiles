@@ -133,6 +133,9 @@ let
     # AI Development Tools
     claude-code  # Anthropic Claude Code CLI (migrated from nodebrew)
     
+    # Media tools
+    mpv          # Media player (from Homebrew to Nix)
+    
     # Language servers (for editors)
     nil              # Nix LSP
     nodePackages.typescript-language-server

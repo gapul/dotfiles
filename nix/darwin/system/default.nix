@@ -391,7 +391,6 @@
       "surge-xt"
       "audacity"      # Audio editing
       "vlc"           # Media player
-      "mpv"           # Media player
       "obs"           # Streaming and recording
       
       # Gaming & Emulation
