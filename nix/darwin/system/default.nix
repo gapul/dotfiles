@@ -38,6 +38,11 @@
     profile = "full";
   };
 
+  # Enable core module categories
+  dotfiles.statusbar.enable = true;
+  dotfiles.terminals.enable = true;  
+  dotfiles.desktop.enable = true;
+
   # SketchyBar NG Configuration
   dotfiles.sketchybar = {
     enable = true;
