@@ -15,7 +15,6 @@ let
     mobile = "Mobile Development"; 
     data = "Data Science & Analytics";
     systems = "Systems Programming";
-    experimental = "Experimental & Specialized";
   };
 
   # Template registry with component information
