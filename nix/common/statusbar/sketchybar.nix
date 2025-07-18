@@ -13,7 +13,7 @@ in
     
     configDir = mkOption {
       type = types.path;
-      default = ../../../configs/statusbar/sketchybar;
+      default = ../../../configs/wm/sketchybar;
       description = "Path to SketchyBar configuration directory";
     };
   };

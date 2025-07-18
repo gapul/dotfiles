@@ -400,14 +400,10 @@
                   nix-direnv.enable = true;
                 };
                 
-                # AeroSpace configuration
-                home.file.".config/aerospace/aerospace.toml".source = ../configs/wm/aerospace/aerospace.toml;
-                
-                # SketchyBar configuration
-                home.file.".config/sketchybar" = lib.mkForce {
-                  source = ../configs/wm/sketchybar;
-                  recursive = true;
-                };
+                # Configuration files are now managed by their respective modules
+                # AeroSpace: nix/common/desktop/aerospace.nix
+                # SketchyBar: nix/common/statusbar/sketchybar.nix
+                # WezTerm: nix/common/terminals/wezterm.nix
                 
                 # Neovim configuration
                 home.file.".config/nvim" = {

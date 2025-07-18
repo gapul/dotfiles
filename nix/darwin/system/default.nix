@@ -4,7 +4,7 @@
   imports = [
     # ../../common/system/optimization.nix  # Temporarily disabled due to SpotlightServer config issues
     # ../../common/system/maintenance.nix  # Temporarily disabled due to dependency on optimization
-    ../sketchybar  # SketchyBar NG (FelixKratz version)
+    # ../sketchybar  # Removed: SketchyBar NG now managed by common/statusbar/sketchybar.nix
     ../keyboard    # QMK/VIA Custom Keyboard Integration
     ../file-associations.nix  # File associations management with duti
   ];
@@ -43,37 +43,7 @@
   dotfiles.terminals.enable = true;  
   dotfiles.desktop.enable = true;
 
-  # SketchyBar NG Configuration
-  dotfiles.sketchybar = {
-    enable = true;
-    theme = "catppuccin-mocha";
-    position = "top";
-    height = 28;
-    aiIntegration = true;
-    animations = true;
-    notchSupport = true;
-    
-    modules = {
-      system = true;
-      media = true;
-      weather = false;  # Disabled by default
-      crypto = false;   # Disabled by default
-      network = true;
-      git = true;
-      docker = true;
-      bluetooth = true;
-      wifi = true;
-      vpn = true;
-      spaces = true;
-    };
-    
-    aiFeatures = {
-      smartNotifications = true;
-      contextualInfo = true;
-      intelligentHiding = true;
-      voiceControl = false;  # Disabled by default
-    };
-  };
+  # SketchyBar NG Configuration now managed by common/statusbar/sketchybar.nix
 
   # QMK/VIA Custom Keyboard Integration
   dotfiles.keyboard = {
