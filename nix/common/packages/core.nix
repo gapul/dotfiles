@@ -136,6 +136,12 @@ let
     # Media tools
     mpv          # Media player (from Homebrew to Nix)
     
+    # Document processing tools
+    qpdf              # PDF manipulation
+    pdftk             # PDF toolkit  
+    ghostscript       # PostScript/PDF processing
+    poppler_utils     # PDF utilities (pdfinfo, pdftotext, etc.)
+    
     # Language servers (for editors)
     nil              # Nix LSP
     nodePackages.typescript-language-server

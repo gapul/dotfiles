@@ -13,6 +13,7 @@ with lib;
     ./web  # Web development environment
     ./cli-tools.nix  # Enhanced CLI tools integration
     ./nix-qol.nix  # Phase 6: Nix Quality of Life tools
+    ./tex  # TeX development environment
     # ./crane-optimization.nix  # Phase 6: Crane Rust optimization - temporarily disabled
   ];
 
@@ -85,6 +86,9 @@ with lib;
     dotfiles.development.project-env.enable = mkDefault (
       elem config.dotfiles.development.profile [ "standard" "full" "ai-powered" ]
     );
+    
+    # TeX development environment
+    dotfiles.development.tex.enable = mkDefault false;  # Opt-in by default
     
     # Web development environment (temporarily disabled)
     web.enable = mkDefault false;
@@ -544,6 +548,22 @@ with lib;
         # Crane Rust Optimization (Phase 6) - temporarily disabled
         echo "⚪ Crane Rust Optimization: Disabled"
 
+        # Check TeX Development Environment
+        ${if config.dotfiles.development.tex.enable or false then ''
+          echo "✅ TeX Development Environment: Enabled"
+          if command -v latex &> /dev/null; then
+            echo "  📝 LaTeX: $(latex --version | head -n1)"
+          fi
+          if command -v texlab &> /dev/null; then
+            echo "  🔧 TeXLab LSP: Available"
+          fi
+          if command -v qpdf &> /dev/null; then
+            echo "  📄 PDF Tools: Available"
+          fi
+        '' else ''
+          echo "⚪ TeX Development Environment: Disabled"
+        ''}
+        
         # Check Web Development Environment
         ${if config.web.enable or false then ''
           echo "✅ Web Development Environment: Enabled"

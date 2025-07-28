@@ -121,6 +121,11 @@
             dotfiles.development.cli-tools.profile = "full";
             dotfiles.development.cli-tools.process = lib.mkForce true;
             
+            # TeX Development Environment
+            dotfiles.development.tex.enable = lib.mkForce true;
+            dotfiles.development.tex.profile = "standard";
+            dotfiles.development.tex.texlive.scheme = "medium";
+            
             # Phase 6: Nix Quality of Life Tools
             dotfiles.development.nix-qol.enable = lib.mkForce true;
             dotfiles.development.nix-qol.nom.enable = lib.mkForce true;
@@ -405,11 +410,11 @@
                 # SketchyBar: nix/common/statusbar/sketchybar.nix
                 # WezTerm: nix/common/terminals/wezterm.nix
                 
-                # Neovim configuration
-                home.file.".config/nvim" = {
-                  source = ../configs/editors/nvim;
-                  recursive = true;
-                };
+                # Neovim configuration (temporarily disabled - nvim config not present)
+                # home.file.".config/nvim" = {
+                #   source = ../configs/editors/nvim;
+                #   recursive = true;
+                # };
                 
                 # Enable home-manager management
                 programs.home-manager.enable = true;
