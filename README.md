@@ -11,6 +11,7 @@ Nix/NixOSベースのクロスプラットフォーム開発環境。macOS、Lin
 - **開発ツール統合** - エディター、シェル、ターミナルの統一設定
 - **プロジェクト環境自動化** - nix-direnvによる10-100倍高速環境切り替え
 - **Rust最適化ビルド** - craneによる依存関係キャッシュとクロスコンパイル
+- **Modern Academic Writing** - LuaLaTeX + BibLaTeX + SyncTeX統合TeX環境
 
 ## 📁 プロジェクト構造
 
@@ -96,6 +97,12 @@ crane-create myapp binary         # 最適化済みRustプロジェクト作成
 crane-build release              # 高速ビルド（依存関係キャッシュ）
 crane-benchmark                  # パフォーマンス測定
 
+# TeX/LaTeX環境 (有効化が必要)
+# nix/flake.nix で dotfiles.development.tex.enable = true;
+tex-health                       # TeX環境チェック
+md2tex paper.md                 # Markdown→LaTeX変換
+latex-build                      # LaTeX連続ビルド
+
 # 開発環境管理
 direnv-setup auto                # プロジェクト自動検出・設定
 nix-direnv-health               # 環境診断
@@ -106,6 +113,24 @@ nix-direnv-health               # 環境診断
 # 新機能をすぐに体験
 exec zsh && ./POST_INSTALLATION_CHECK.sh
 ls -la && cat README.md && rg "nix" && z dotfiles
+```
+
+### PDF処理
+```bash
+# PDF情報取得・基本操作
+pdfinfo document.pdf                    # PDF情報表示
+pdftotext document.pdf output.txt       # テキスト抽出
+
+# パスワード保護解除
+qpdf --decrypt --password=PASSWORD input.pdf output.pdf
+
+# PDF結合・分割
+pdftk file1.pdf file2.pdf cat output merged.pdf
+pdftk input.pdf cat 1-3 output pages1-3.pdf
+
+# PDF圧縮 (Ghostscript)
+gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dPDFSETTINGS=/ebook \
+   -dNOPAUSE -dQUIET -dBATCH -sOutputFile=compressed.pdf input.pdf
 ```
 
 ## ⚙️ 設定カスタマイズ
@@ -140,6 +165,47 @@ export DOTFILES_PROFILE="standard"  # minimal, standard, full
 - **lazygit** - Git TUIクライアント
 - **yazi** - モダンファイルマネージャー
 - **bottom** - top代替（システムモニター）
+
+### 📄 PDF処理ツール
+- **QPDF** - PDF処理・操作・暗号化解除
+- **Poppler Utils** - PDF情報取得・変換（pdfinfo, pdftotext, pdfimages等）
+- **Ghostscript** - PostScript/PDF処理エンジン・圧縮
+- **PDFtk** - PDFマージ・分割・操作ツール
+
+### 📝 TeX/LaTeX環境 (Modern Academic Writing)
+- **TeXLive Medium** - 包括的なLaTeX distribution
+- **LuaLaTeX** - Unicode対応、日本語フォント統合
+- **BibLaTeX + Biber** - モダンな文献管理システム
+- **VS Code + LaTeX Workshop** - GUI統合開発環境
+- **Neovim + Vimtex** - ターミナル内LaTeX編集
+- **Pandoc** - Markdown↔LaTeX変換
+- **Zathura** - SyncTeX対応PDFビューアー
+- **texlab LSP** - 言語サーバー統合
+- **Noto CJK Fonts** - 日本語フォント自動設定
+
+#### TeX推奨ワークフロー
+```bash
+# 1. 環境ヘルスチェック
+tex-health
+
+# 2. Markdown執筆 (Obsidian)
+# paper.md を作成
+
+# 3. LaTeX変換
+md2tex paper.md                    # 基本変換
+md2tex -b refs.bib -j paper.md     # 文献+日本語対応
+
+# 4. VS Code編集
+code paper.tex                     # Ctrl+Alt+B でビルド
+
+# 5. または Neovim編集
+nvim paper.tex                     # <leader>ll でコンパイル
+
+# LaTeX utilities
+latex-build      # latexmk -pdf -pvc (連続ビルド)
+latex-clean      # latexmk -c (中間ファイル削除)
+latex-cleanall   # latexmk -C (全削除)
+```
 
 ### 開発ツール・AIプラットフォーム
 - **Git** - バージョン管理
