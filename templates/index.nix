@@ -15,6 +15,7 @@ let
     mobile = "Mobile Development"; 
     data = "Data Science & Analytics";
     systems = "Systems Programming";
+    academic = "Academic & Research";
   };
 
   # Template registry with component information
@@ -129,6 +130,25 @@ let
       maturity = "stable";
       platforms = [ "darwin" "linux" ];
       dependencies = [ "go" ];
+    };
+
+    # Academic & Research Templates
+    "academic/latex-paper" = {
+      name = "LaTeX Academic Paper";
+      description = "Modern LaTeX environment for academic paper writing with comprehensive toolchain";
+      category = "academic";
+      tags = [ "latex" "academic" "paper" "research" "bibtex" "lualatex" "japanese" ];
+      maturity = "stable";
+      platforms = [ "darwin" "linux" ];
+      dependencies = [ "texlive" "biber" "pandoc" "git" ];
+      
+      # Component interface
+      provides = [ "latex-document" "academic-paper" "bibliography-system" ];
+      requires = [ ];
+      ports = { };
+      
+      # Academic workflow integration
+      components = [ "lualatex-engine" "biber-bibliography" "synctex-preview" ];
     };
   };
 
