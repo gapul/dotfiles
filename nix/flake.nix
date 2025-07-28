@@ -539,6 +539,9 @@
           # Rust development shell with crane optimization
           rust = rustShell.default;
 
+          # Academic LaTeX paper template shell
+          latex-paper = templatesSystem.loadTemplate "academic/latex-paper";
+
           # Platform testing shell
           test = pkgs.mkShell {
             buildInputs = with pkgs; [
