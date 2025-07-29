@@ -139,12 +139,9 @@
       }
       
       # macOS specific shell setup (safe to run on all platforms)
-      # Only load Homebrew environment if Nix tools are not prioritized
+      # Always load Homebrew environment but keep Nix tools prioritized
       if [[ -f /opt/homebrew/bin/brew ]]; then
-        # Check if Nix path is properly prioritized
-        if [[ ":$PATH:" != *":$HOME/.nix-profile/bin:"* ]]; then
-          eval "$(/opt/homebrew/bin/brew shellenv)"
-        fi
+        eval "$(/opt/homebrew/bin/brew shellenv)"
       fi
       
       

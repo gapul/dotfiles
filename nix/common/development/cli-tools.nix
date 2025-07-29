@@ -26,6 +26,8 @@ in
     file-manager = mkEnableOption "File manager (yazi)";
     system-info = mkEnableOption "System info (fastfetch)";
     data-analysis = mkEnableOption "Data analysis (visidata)";
+    media = mkEnableOption "Media tools (ffmpeg)";
+    pdf-tools = mkEnableOption "PDF processing tools (qpdf, poppler, ghostscript, pdftk)";
     atuin = mkEnableOption "Shell history (atuin)";
     starship = mkEnableOption "Shell prompt (starship)";
     zoxide = mkEnableOption "Smart cd (zoxide)";
@@ -41,6 +43,8 @@ in
       file-manager = mkDefault (cfg.profile == "full");
       system-info = mkDefault (cfg.profile == "standard" || cfg.profile == "full");
       data-analysis = mkDefault (cfg.profile == "full");
+      media = mkDefault (cfg.profile == "standard" || cfg.profile == "full");
+      pdf-tools = mkDefault (cfg.profile == "standard" || cfg.profile == "full");
       atuin = mkDefault (cfg.profile == "standard" || cfg.profile == "full");
       starship = mkDefault (cfg.profile == "standard" || cfg.profile == "full");
       zoxide = mkDefault (cfg.profile == "standard" || cfg.profile == "full");
@@ -50,25 +54,29 @@ in
     home-manager.users.yuki.home.packages = with pkgs; [
       # Always include core modern CLI tools
     ] ++ optionals cfg.navigation [
-      eza         # Modern ls replacement
-      fd          # Modern find replacement
+      # Note: eza, fd managed in core.nix
     ] ++ optionals cfg.content [
-      bat         # Modern cat replacement
-      ripgrep     # Modern grep replacement
+      # Note: bat, ripgrep managed in core.nix
     ] ++ optionals cfg.process [
       bottom      # Modern top replacement
       procs       # Modern ps replacement
     ] ++ optionals cfg.git [
-      lazygit     # Terminal UI for git
-      delta       # Better git diff
+      # Note: lazygit, delta managed in core.nix
     ] ++ optionals cfg.file-manager [
       yazi        # Terminal file manager
     ] ++ optionals cfg.system-info [
-      fastfetch   # System info display
+      # Note: fastfetch managed in core.nix
     ] ++ optionals cfg.data-analysis [
       visidata    # Terminal data analysis
+    ] ++ optionals cfg.media [
+      ffmpeg      # Audio/video processing
+    ] ++ optionals cfg.pdf-tools [
+      qpdf        # PDF processing and manipulation
+      poppler_utils # PDF utilities (pdfinfo, pdftotext, pdftoppm, etc.)
+      ghostscript # PostScript and PDF processing
+      pdftk       # PDF toolkit for merging, splitting, etc.
     ] ++ optionals cfg.atuin [
-      atuin       # Shell history
+      # Note: atuin managed in core.nix
     ];
 
     # Zoxide configuration
@@ -182,6 +190,21 @@ in
         vd = "visidata";
       })
       
+      # Media tools
+      (mkIf cfg.media {
+        record = "$HOME/.local/bin/record";
+      })
+      
+      # PDF tools
+      (mkIf cfg.pdf-tools {
+        pdf-info = "pdfinfo";
+        pdf-text = "pdftotext";
+        pdf-images = "pdfimages";
+        pdf-merge = "pdftk";
+        pdf-split = "pdftk";
+        pdf-compress = "gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dPDFSETTINGS=/ebook -dNOPAUSE -dQUIET -dBATCH";
+      })
+      
       # Atuin
       (mkIf cfg.atuin {
         history = "atuin search";
@@ -213,6 +236,12 @@ in
         command -v yazi >/dev/null && echo "yazi: OK" || echo "yazi: MISSING"
         command -v fastfetch >/dev/null && echo "fastfetch: OK" || echo "fastfetch: MISSING"
         command -v visidata >/dev/null && echo "visidata: OK" || echo "visidata: MISSING"
+        command -v ffmpeg >/dev/null && echo "ffmpeg: OK" || echo "ffmpeg: MISSING"
+        command -v qpdf >/dev/null && echo "qpdf: OK" || echo "qpdf: MISSING"
+        command -v pdfinfo >/dev/null && echo "poppler-utils: OK" || echo "poppler-utils: MISSING"
+        command -v gs >/dev/null && echo "ghostscript: OK" || echo "ghostscript: MISSING"
+        command -v pdftk >/dev/null && echo "pdftk: OK" || echo "pdftk: MISSING"
+        command -v record >/dev/null && echo "record: OK" || echo "record: MISSING"
         command -v atuin >/dev/null && echo "atuin: OK" || echo "atuin: MISSING"
         command -v starship >/dev/null && echo "starship: OK" || echo "starship: MISSING"
         command -v zoxide >/dev/null && echo "zoxide: OK" || echo "zoxide: MISSING"

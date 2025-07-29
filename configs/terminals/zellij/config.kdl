@@ -1,0 +1,201 @@
+// Zellij Configuration
+// Modern terminal multiplexer with Rust performance
+
+// UI Configuration
+ui {
+    pane_frames {
+        rounded_corners true
+        hide_session_name false
+    }
+}
+
+// Theme Configuration
+theme "poimandres"
+
+themes {
+    poimandres {
+        fg "#a6accd"
+        bg "#1b1e28"
+        black "#1b1e28"
+        red "#d0679d"
+        green "#5de4c7"
+        yellow "#fffac2"
+        blue "#89ddff"
+        magenta "#fcc5e9"
+        cyan "#add7ff"
+        white "#a6accd"
+        orange "#f78c6c"
+    }
+}
+
+// Session Configuration
+session_serialization false
+pane_frames true
+simplified_ui false
+default_shell "zsh"
+
+// Mouse Support
+mouse_mode true
+scroll_buffer_size 10000
+
+// Copy Mode
+copy_command "pbcopy"      // macOS clipboard integration
+copy_clipboard "primary"
+
+// Keybindings
+keybinds clear-defaults=true {
+    // Session Management
+    normal {
+        // Pane management
+        bind "Ctrl a" { SwitchToMode "Tmux"; }
+        
+        // Quick actions
+        bind "Alt t" { NewTab; }
+        bind "Alt w" { CloseTab; }
+        bind "Alt h" { MoveFocus "Left"; }
+        bind "Alt j" { MoveFocus "Down"; }
+        bind "Alt k" { MoveFocus "Up"; }
+        bind "Alt l" { MoveFocus "Right"; }
+        
+        // Tab navigation
+        bind "Alt 1" { GoToTab 1; }
+        bind "Alt 2" { GoToTab 2; }
+        bind "Alt 3" { GoToTab 3; }
+        bind "Alt 4" { GoToTab 4; }
+        bind "Alt 5" { GoToTab 5; }
+        bind "Alt 6" { GoToTab 6; }
+        bind "Alt 7" { GoToTab 7; }
+        bind "Alt 8" { GoToTab 8; }
+        bind "Alt 9" { GoToTab 9; }
+        
+        // Session management
+        bind "Alt s" { LaunchOrFocusPlugin "session-manager" {
+            floating true
+            move_to_focused_tab true
+        }; }
+    }
+    
+    // Tmux-like mode for familiar workflows
+    tmux {
+        bind "[" { SwitchToMode "Scroll"; }
+        bind "Ctrl c" { NewTab; }
+        bind "x" { CloseTab; }
+        bind "z" { TogglePaneFrames; }
+        bind "\"" { NewPane "Down"; }
+        bind "%" { NewPane "Right"; }
+        bind "h" { MoveFocus "Left"; }
+        bind "j" { MoveFocus "Down"; }
+        bind "k" { MoveFocus "Up"; }
+        bind "l" { MoveFocus "Right"; }
+        bind "d" { Detach; }
+        bind "s" { LaunchOrFocusPlugin "session-manager" {
+            floating true
+            move_to_focused_tab true
+        }; }
+        bind "Escape" { SwitchToMode "Normal"; }
+    }
+    
+    // Resize mode
+    resize {
+        bind "Ctrl c" { SwitchToMode "Normal"; }
+        bind "h" "Left" { Resize "Increase Left"; }
+        bind "j" "Down" { Resize "Increase Down"; }
+        bind "k" "Up" { Resize "Increase Up"; }
+        bind "l" "Right" { Resize "Increase Right"; }
+        bind "H" { Resize "Decrease Left"; }
+        bind "J" { Resize "Decrease Down"; }
+        bind "K" { Resize "Decrease Up"; }
+        bind "L" { Resize "Decrease Right"; }
+        bind "=" "+" { Resize "Increase"; }
+        bind "-" { Resize "Decrease"; }
+    }
+    
+    // Scroll mode
+    scroll {
+        bind "Ctrl c" { SwitchToMode "Normal"; }
+        bind "j" "Down" { ScrollDown; }
+        bind "k" "Up" { ScrollUp; }
+        bind "Ctrl f" "PageDown" { PageScrollDown; }
+        bind "Ctrl b" "PageUp" { PageScrollUp; }
+        bind "d" { HalfPageScrollDown; }
+        bind "u" { HalfPageScrollUp; }
+        bind "/" { SwitchToMode "EnterSearch"; SearchInput 0; }
+        bind "v" { SwitchToMode "Select"; }
+    }
+    
+    // Search mode  
+    search {
+        bind "Ctrl c" "Escape" { SwitchToMode "Scroll"; }
+        bind "j" "Down" { ScrollDown; }
+        bind "k" "Up" { ScrollUp; }
+        bind "PageDown" "Right" "l" { PageScrollDown; }
+        bind "PageUp" "Left" "h" { PageScrollUp; }
+        bind "d" { HalfPageScrollDown; }
+        bind "u" { HalfPageScrollUp; }
+        bind "n" { Search "down"; }
+        bind "p" { Search "up"; }
+        bind "c" { SearchToggleOption "CaseSensitivity"; }
+        bind "w" { SearchToggleOption "Wrap"; }
+        bind "o" { SearchToggleOption "WholeWord"; }
+    }
+}
+
+// Plugins
+plugins {
+    tab-bar { path "tab-bar"; }
+    status-bar { path "status-bar"; }
+    strider { path "strider"; }
+    compact-bar { path "compact-bar"; }
+    session-manager { path "session-manager"; }
+}
+
+// Layout Templates
+layouts {
+    // Development layout
+    dev {
+        tab name="main" focus=true {
+            pane
+        }
+        tab name="server" {
+            pane command="npm" {
+                args "run" "dev"
+            }
+        }
+        tab name="git" {
+            pane command="lazygit"
+        }
+    }
+    
+    // Web development layout
+    web {
+        tab name="editor" focus=true {
+            pane
+        }
+        tab name="server" {
+            pane size=1 borderless=true {
+                plugin location="zellij:status-bar"
+            }
+            pane command="npm" {
+                args "run" "dev"
+            }
+        }
+        tab name="terminal" {
+            pane
+        }
+        tab name="git" {
+            pane command="lazygit"
+        }
+    }
+}
+
+// Auto-layout settings
+auto_layout true
+default_layout "dev"
+
+// Session behavior
+attach_to_session true
+session_name "main"
+
+// Scrollback and performance
+scroll_buffer_size 10000
+copy_on_select false

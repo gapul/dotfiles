@@ -8,9 +8,9 @@ with lib;
 {
   imports = [
     ./core
-    ./frameworks
-    ./desktop
     ./tooling
+    ./deployment.nix
+    ./performance-monitoring.nix
   ];
 
   options.web = {
@@ -29,22 +29,23 @@ with lib;
         description = "Enable core web development tools";
       };
       
-      frameworks = mkOption {
-        type = types.bool;
-        default = true;
-        description = "Enable web frameworks";
-      };
-      
-      desktop = mkOption {
-        type = types.bool;
-        default = false;
-        description = "Enable desktop app development (Tauri)";
-      };
-      
       tooling = mkOption {
         type = types.bool;
         default = true;
         description = "Enable additional development tools";
+      };
+      
+      
+      deployment = mkOption {
+        type = types.bool;
+        default = true;
+        description = "Enable deployment automation";
+      };
+      
+      performanceMonitoring = mkOption {
+        type = types.bool;
+        default = true;
+        description = "Enable performance monitoring and analysis";
       };
     };
     
@@ -58,18 +59,16 @@ with lib;
   config = mkIf config.web.enable {
     # Enable components based on features and profile
     web.core.enable = mkDefault config.web.features.core;
-    web.frameworks.enable = mkDefault config.web.features.frameworks;
-    web.desktop.enable = mkDefault config.web.features.desktop;
     web.tooling.enable = mkDefault config.web.features.tooling;
+    
+    # Enable deployment features
+    dotfiles.development.web.deployment.enable = mkDefault config.web.features.deployment;
+    dotfiles.development.web.performance-monitoring.enable = mkDefault config.web.features.performanceMonitoring;
     
     # Profile-specific configurations
     web.core.profile = mkDefault config.web.profile;
-    web.desktop.profile = mkDefault (
-      if config.web.profile == "minimal" then "basic"
-      else if config.web.profile == "standard" then "standard"
-      else if config.web.profile == "full" then "advanced"
-      else "production"
-    );
+    dotfiles.development.web.deployment.profile = mkDefault config.web.profile;
+    dotfiles.development.web.performance-monitoring.profile = mkDefault config.web.profile;
     
     
     # Global web development packages
@@ -114,18 +113,16 @@ with lib;
       NODE_OPTIONS = "--max-old-space-size=4096";
       
       # Development preferences
-      EDITOR = "nvim";
+      # Note: EDITOR managed in main flake.nix
       BROWSER = "default";
     };
     
     # Global shell aliases
     home-manager.users.yuki.home.shellAliases = {
-      # Quick project commands
-      "web-init" = "fw-init";
-      "web-dev" = "dev-start";
-      "web-build" = "build-app";
-      "web-test" = "test-app";
-      "web-lint" = "lint-app";
+      # Template-based project commands
+      "web-init" = "web-create";
+      "web-new" = "web-create";
+      "web-create-project" = "web-create";
       
       # Environment management
       "web-health" = "web-env-health";
@@ -137,8 +134,6 @@ with lib;
       "build" = "npm run build";
       "test" = "npm test";
       "lint" = "npm run lint";
-      "install" = "pm install";
-      "add" = "pm add";
     };
     
     # Web development workflow script
@@ -409,29 +404,27 @@ with lib;
           echo ""
         fi
         
-        # Framework checks
-        if command -v frameworks-health &> /dev/null; then
-          frameworks-health
+        # Template system check
+        if command -v template-manager.sh &> /dev/null; then
+          echo "📦 Template System:"
+          template-manager.sh health
           echo ""
         fi
-        
-        # Desktop development check
-        ${optionalString config.web.features.desktop ''
-        if command -v desktop-health &> /dev/null; then
-          desktop-health
-          echo ""
-        fi
-        ''}
         
         # Overall configuration
         echo "📊 Overall Configuration:"
         echo "Profile: ${config.web.profile}"
-        echo "Primary framework: react"
+        echo "Template-based development: ✅"
         echo "Features enabled:"
         echo "  Core: ${if config.web.features.core then "✅" else "❌"}"
-        echo "  Frameworks: ${if config.web.features.frameworks then "✅" else "❌"}"
-        echo "  Desktop: ${if config.web.features.desktop then "✅" else "❌"}"
         echo "  Tooling: ${if config.web.features.tooling then "✅" else "❌"}"
+        echo ""
+        echo "📋 Available commands:"
+        echo "  web-create <name>     - Create new project"
+        echo "  template-manager.sh   - Manage templates"
+        echo "  perf-monitor          - Performance monitoring"
+        echo "  deploy                - Deployment automation"
+        echo "  rollback              - Deployment rollback"
         
         echo ""
         echo "✅ Web development environment health check completed!"

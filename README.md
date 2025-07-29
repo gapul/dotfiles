@@ -9,7 +9,9 @@ Nix/NixOSベースのクロスプラットフォーム開発環境。macOS、Lin
 - **Modern CLI統合** - 3-10倍高速なファイル・テキスト検索
 - **AI支援開発** - GitHub Copilotとエディター統合
 - **開発ツール統合** - エディター、シェル、ターミナルの統一設定
-- **プロジェクト環境自動化** - direnvとNixによる自動環境切り替え
+- **プロジェクト環境自動化** - nix-direnvによる10-100倍高速環境切り替え
+- **Rust最適化ビルド** - craneによる依存関係キャッシュとクロスコンパイル
+- **Modern Academic Writing** - LuaLaTeX + BibLaTeX + SyncTeX統合TeX環境
 
 ## 📁 プロジェクト構造
 
@@ -87,15 +89,23 @@ nix store gc
 
 ### 開発環境
 ```bash
-# プロジェクト初期化
-cd project-dir
-direnv allow  # 環境変数自動設定
+# 高速環境自動切り替え (nix-direnv)
+cd project-dir && direnv allow    # 自動環境検出・設定
 
-# 開発シェル起動
-nix develop
+# Rust最適化開発 (crane)
+crane-create myapp binary         # 最適化済みRustプロジェクト作成
+crane-build release              # 高速ビルド（依存関係キャッシュ）
+crane-benchmark                  # パフォーマンス測定
 
-# プロジェクトテンプレート作成
-nix run .#project-init
+# TeX/LaTeX環境 (有効化が必要)
+# nix/flake.nix で dotfiles.development.tex.enable = true;
+tex-health                       # TeX環境チェック
+md2tex paper.md                 # Markdown→LaTeX変換
+latex-build                      # LaTeX連続ビルド
+
+# 開発環境管理
+direnv-setup auto                # プロジェクト自動検出・設定
+nix-direnv-health               # 環境診断
 ```
 
 ### Modern CLI体験
@@ -103,6 +113,24 @@ nix run .#project-init
 # 新機能をすぐに体験
 exec zsh && ./POST_INSTALLATION_CHECK.sh
 ls -la && cat README.md && rg "nix" && z dotfiles
+```
+
+### PDF処理
+```bash
+# PDF情報取得・基本操作
+pdfinfo document.pdf                    # PDF情報表示
+pdftotext document.pdf output.txt       # テキスト抽出
+
+# パスワード保護解除
+qpdf --decrypt --password=PASSWORD input.pdf output.pdf
+
+# PDF結合・分割
+pdftk file1.pdf file2.pdf cat output merged.pdf
+pdftk input.pdf cat 1-3 output pages1-3.pdf
+
+# PDF圧縮 (Ghostscript)
+gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dPDFSETTINGS=/ebook \
+   -dNOPAUSE -dQUIET -dBATCH -sOutputFile=compressed.pdf input.pdf
 ```
 
 ## ⚙️ 設定カスタマイズ
@@ -138,17 +166,60 @@ export DOTFILES_PROFILE="standard"  # minimal, standard, full
 - **yazi** - モダンファイルマネージャー
 - **bottom** - top代替（システムモニター）
 
+### 📄 PDF処理ツール
+- **QPDF** - PDF処理・操作・暗号化解除
+- **Poppler Utils** - PDF情報取得・変換（pdfinfo, pdftotext, pdfimages等）
+- **Ghostscript** - PostScript/PDF処理エンジン・圧縮
+- **PDFtk** - PDFマージ・分割・操作ツール
+
+### 📝 TeX/LaTeX環境 (Modern Academic Writing)
+- **TeXLive Medium** - 包括的なLaTeX distribution
+- **LuaLaTeX** - Unicode対応、日本語フォント統合
+- **BibLaTeX + Biber** - モダンな文献管理システム
+- **VS Code + LaTeX Workshop** - GUI統合開発環境
+- **Neovim + Vimtex** - ターミナル内LaTeX編集
+- **Pandoc** - Markdown↔LaTeX変換
+- **Zathura** - SyncTeX対応PDFビューアー
+- **texlab LSP** - 言語サーバー統合
+- **Noto CJK Fonts** - 日本語フォント自動設定
+
+#### TeX推奨ワークフロー
+```bash
+# 1. 環境ヘルスチェック
+tex-health
+
+# 2. Markdown執筆 (Obsidian)
+# paper.md を作成
+
+# 3. LaTeX変換
+md2tex paper.md                    # 基本変換
+md2tex -b refs.bib -j paper.md     # 文献+日本語対応
+
+# 4. VS Code編集
+code paper.tex                     # Ctrl+Alt+B でビルド
+
+# 5. または Neovim編集
+nvim paper.tex                     # <leader>ll でコンパイル
+
+# LaTeX utilities
+latex-build      # latexmk -pdf -pvc (連続ビルド)
+latex-clean      # latexmk -c (中間ファイル削除)
+latex-cleanall   # latexmk -C (全削除)
+```
+
 ### 開発ツール・AIプラットフォーム
 - **Git** - バージョン管理
 - **AI Platform** - Claude、GitHub Copilot統合開発支援
 - **Docker** - コンテナ化
-- **direnv** - 環境変数管理
+- **nix-direnv** - 10-100倍高速環境切り替え（Phase 6 完了）
+- **crane** - Rust最適化ビルドシステム（Phase 6 完了）
 
 ## 📚 ドキュメント
 
 - [CLAUDE.md](CLAUDE.md) - プロジェクト詳細情報
 - [SECURITY.md](SECURITY.md) - セキュリティ設定
 - [docs/](docs/) - 詳細ガイド
+- [docs/todo/](docs/todo/) - 今後の実装予定タスク
 
 ## 🤝 コントリビューション
 
@@ -178,23 +249,32 @@ nix search nixpkgs <package>    # パッケージ検索
 
 ## 📈 最新の成果
 
-### 2025年7月12日 - Phase 5.1 統合完了・Phase 6 計画策定 ✅
+### 2025年7月15日 - Phase 6 実装完了 ✅
 
-**Phase 5.1 完了項目:**
-- ✅ **ファイルクリーンアップ**: 重複ファイル・古いバックアップ削除完了
-- ✅ **Web開発環境**: 参照エラー修正・本格運用準備完了
-- ✅ **AI開発プラットフォーム**: ローカルLLM・AI支援ツール基盤完了
-- ✅ **atuin履歴管理**: 高度なシェル履歴・複数マシン同期実装完了
-- ✅ **Neovim現代化**: conform.nvim・nvim-lint・fidget.nvim実装完了
+**Phase 6 完了項目 (100% 完了):**
+- ✅ **nix-direnv統合**: 10-100倍高速開発環境切り替え
+  - プロジェクト自動検出（Node.js, React, Vue, Rust, Go, Python）
+  - パフォーマンス最適化とベンチマーク機能
+  - テンプレート統合とヘルスチェック
+- ✅ **crane Rust最適化**: 高速ビルドとクロスコンパイル
+  - 依存関係分離キャッシュで大幅な高速化
+  - x86_64, aarch64, WebAssembly対応
+  - プロジェクト作成テンプレートとベンチマーク
+- ✅ **統合開発環境**: Modern CLI + AI + 高速化の完全統合
 
-**Phase 6 Advanced Integration 開始:**
-- 🎯 **SketchyBar NG**: FelixKratz版高度システム統合
-- 🎯 **ローカルLLM**: Ollama + AI CLI完全統合  
-- 🎯 **ハードウェア統合**: QMK/VIAカスタムキーボード統合
-- 🎯 **ワークフロー自動化**: AI駆動型開発支援システム
+**Phase 7 Advanced Features 計画中:**
+- 🎯 **sops-nix**: 宣言的シークレット管理
+- 🎯 **deploy-rs**: リモートマシン管理
+- 🎯 **エンタープライズ機能**: チーム環境標準化
 
 **利用可能なコマンド:**
 ```bash
+# Phase 6 新機能体験
+direnv-setup auto                 # プロジェクト自動環境設定
+crane-create myapp binary         # 最適化Rustプロジェクト
+crane-benchmark                   # ビルド性能測定
+nix-direnv-health                # 環境統合診断
+
 # Modern CLI体験
 ll && bat README.md && rg "Phase" && h "build"
 

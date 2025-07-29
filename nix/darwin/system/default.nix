@@ -4,8 +4,9 @@
   imports = [
     # ../../common/system/optimization.nix  # Temporarily disabled due to SpotlightServer config issues
     # ../../common/system/maintenance.nix  # Temporarily disabled due to dependency on optimization
-    ../sketchybar  # SketchyBar NG (FelixKratz version)
+    # ../sketchybar  # Removed: SketchyBar NG now managed by common/statusbar/sketchybar.nix
     ../keyboard    # QMK/VIA Custom Keyboard Integration
+    ../file-associations.nix  # File associations management with duti
   ];
   
   # System optimization temporarily disabled
@@ -37,37 +38,12 @@
     profile = "full";
   };
 
-  # SketchyBar NG Configuration
-  dotfiles.sketchybar = {
-    enable = true;
-    theme = "catppuccin-mocha";
-    position = "top";
-    height = 28;
-    aiIntegration = true;
-    animations = true;
-    notchSupport = true;
-    
-    modules = {
-      system = true;
-      media = true;
-      weather = false;  # Disabled by default
-      crypto = false;   # Disabled by default
-      network = true;
-      git = true;
-      docker = true;
-      bluetooth = true;
-      wifi = true;
-      vpn = true;
-      spaces = true;
-    };
-    
-    aiFeatures = {
-      smartNotifications = true;
-      contextualInfo = true;
-      intelligentHiding = true;
-      voiceControl = false;  # Disabled by default
-    };
-  };
+  # Enable core module categories
+  dotfiles.statusbar.enable = true;
+  dotfiles.terminals.enable = true;  
+  dotfiles.desktop.enable = true;
+
+  # SketchyBar NG Configuration now managed by common/statusbar/sketchybar.nix
 
   # QMK/VIA Custom Keyboard Integration
   dotfiles.keyboard = {
@@ -341,6 +317,7 @@
       "docker-compose"     # Docker Compose - Docker Desktop integration
       "tcpdump"            # Network packet analyzer - macOS network privileges
       "terminal-notifier"  # macOS notifications - better notification center integration
+      "duti"               # Command-line tool for file associations
       
       # Note: VoiceVox and Battery now managed as Homebrew casks below
       # Note: coreutils, gmp, lua, luarocks migrated to Nix for better reproducibility
@@ -364,7 +341,6 @@
       "material-maker"
       "android-studio" # Android development IDE
       # Note: android-commandlinetools and android-platform-tools excluded temporarily
-      "virtualbox"    # VirtualBox (Apple Silicon limitations)
       "godot"         # Godot (Apple Silicon limitations)
       # Container management now handled by Nix docker/docker-compose
       "freecad"       # CAD software  
@@ -373,6 +349,7 @@
       
       # Creative & Design (macOS-specific versions only)
       "figma"         # Design and prototyping tool
+      "figma-agent"   # Figma AI agent for design automation
       "gimp"          # GNU Image Manipulation Program
       "krita"
       "blender"
@@ -443,7 +420,7 @@
       
       # Development Tools & Editors (macOS-specific versions only)
       "visual-studio-code"  # Microsoft Visual Studio Code
-      "zed"
+      "kiro"
       "wezterm"
       
       # Research & Knowledge Management
@@ -458,7 +435,7 @@
       "font-udev-gothic-nf"
       "font-plemol-jp-nf"
       "font-cica"
-      "font-hack-nerd-font"
+      # "font-hack-nerd-font" - managed by Nix (nerd-fonts.hack)
       "font-sf-mono"
       "font-sf-pro"
       "sf-symbols"

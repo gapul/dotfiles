@@ -70,8 +70,8 @@ let
     # File management
     yazi     # modern file manager
     
-    # Terminal multiplexer
-    tmux
+    # Terminal multiplexer (modern replacement)
+    zellij
     
     # Shell enhancement
     starship # prompt
@@ -132,6 +132,22 @@ let
     
     # AI Development Tools
     claude-code  # Anthropic Claude Code CLI (migrated from nodebrew)
+    
+    # Media tools
+    mpv          # Media player (from Homebrew to Nix)
+    
+    # Document processing tools
+    qpdf              # PDF manipulation
+    pdftk             # PDF toolkit  
+    ghostscript       # PostScript/PDF processing
+    poppler_utils     # PDF utilities (pdfinfo, pdftotext, etc.)
+    pandoc            # Universal document converter
+    
+    # Modern text editors
+    vscode            # VS Code editor
+    
+    # PDF viewers with SyncTeX support
+    zathura           # Minimal PDF viewer with SyncTeX
     
     # Language servers (for editors)
     nil              # Nix LSP
