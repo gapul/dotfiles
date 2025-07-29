@@ -407,7 +407,7 @@ $diff_content"
             ;;
             
           "code")
-            if [< -n "''${2:-}" ]]; then
+            if [[ -n "''${2:-}" ]]; then
               code_generation "$2" "''${3:-auto}"
             else
               log_error "Usage: ollama-manager code '<prompt>' [language]"

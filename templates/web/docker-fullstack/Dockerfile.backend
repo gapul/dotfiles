@@ -1,0 +1,38 @@
+# Backend Dockerfile (Node.js/Python/Go)
+# Multi-stage build for different backend types
+
+# Node.js backend
+FROM node:18-alpine AS nodejs-base
+WORKDIR /app
+COPY backend/package*.json ./
+RUN npm ci --only=production && npm cache clean --force
+COPY backend/ .
+EXPOSE 8000
+CMD ["npm", "start"]
+
+# Python backend
+FROM python:3.11-slim AS python-base
+WORKDIR /app
+COPY backend/requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+COPY backend/ .
+EXPOSE 8000
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+# Go backend
+FROM golang:1.21-alpine AS go-builder
+WORKDIR /app
+COPY backend/go.mod backend/go.sum ./
+RUN go mod download
+COPY backend/ .
+RUN go build -o main .
+
+FROM alpine:latest AS go-base
+RUN apk --no-cache add ca-certificates
+WORKDIR /root/
+COPY --from=go-builder /app/main .
+EXPOSE 8000
+CMD ["./main"]
+
+# Default to Node.js (can be overridden with --target flag)
+FROM nodejs-base AS default

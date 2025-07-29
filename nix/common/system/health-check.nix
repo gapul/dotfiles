@@ -253,6 +253,31 @@ let
     ${healthCheckScript} quick
   '';
 
+  # 統合システムヘルスチェックスクリプト
+  systemHealthMasterScript = pkgs.writeShellScript "system-health-master" ''
+    exec ${../../../scripts/system-health-master.sh} "$@"
+  '';
+
+  # 自動修復スクリプト
+  systemAutoFixScript = pkgs.writeShellScript "system-auto-fix" ''
+    exec ${../../../scripts/system-auto-fix.sh} "$@"
+  '';
+
+  # システムメンテナンススクリプト
+  systemMaintenanceScript = pkgs.writeShellScript "system-maintenance" ''
+    exec ${../../../scripts/system-maintenance.sh} "$@"
+  '';
+
+  # パフォーマンス監視スクリプト
+  performanceMonitorScript = pkgs.writeShellScript "performance-monitor" ''
+    exec ${../../../scripts/performance-monitor.sh} "$@"
+  '';
+
+  # ダッシュボード生成スクリプト
+  healthDashboardScript = pkgs.writeShellScript "health-dashboard" ''
+    exec ${../../../scripts/generate-health-dashboard.sh} "$@"
+  '';
+
 in {
   options.dotfiles.system.health-check = {
     enable = mkEnableOption "Unified Health Check System";
@@ -274,6 +299,36 @@ in {
       default = true;
       description = "Enable quick check command";
     };
+
+    enableMasterSystem = mkOption {
+      type = types.bool;
+      default = true;
+      description = "Enable comprehensive health check master system";
+    };
+
+    enableAutoFix = mkOption {
+      type = types.bool;
+      default = true;
+      description = "Enable automatic repair system";
+    };
+
+    enableMaintenance = mkOption {
+      type = types.bool;
+      default = true;
+      description = "Enable preventive maintenance system";
+    };
+
+    enablePerformanceMonitor = mkOption {
+      type = types.bool;
+      default = true;
+      description = "Enable performance monitoring";
+    };
+
+    enableDashboard = mkOption {
+      type = types.bool;
+      default = true;
+      description = "Enable HTML dashboard generation";
+    };
   };
 
   config = mkIf cfg.enable {
@@ -282,19 +337,57 @@ in {
       healthCheckScript
     ] ++ optionals cfg.enableQuickCheck [
       quickCheckScript
+    ] ++ optionals cfg.enableMasterSystem [
+      systemHealthMasterScript
+    ] ++ optionals cfg.enableAutoFix [
+      systemAutoFixScript
+    ] ++ optionals cfg.enableMaintenance [
+      systemMaintenanceScript
+    ] ++ optionals cfg.enablePerformanceMonitor [
+      performanceMonitorScript
+    ] ++ optionals cfg.enableDashboard [
+      healthDashboardScript
     ];
 
     # シェルエイリアス追加
-    programs.zsh.shellAliases = mkIf cfg.enable {
+    programs.zsh.shellAliases = mkIf cfg.enable ({
       "health" = "dotfiles-health-check";
       "health-quick" = "dotfiles-health-check quick";
       "quick-check" = "dotfiles-quick-check";
-    };
+    } // optionalAttrs cfg.enableMasterSystem {
+      "health-master" = "system-health-master";
+      "system-health" = "system-health-master";
+    } // optionalAttrs cfg.enableAutoFix {
+      "auto-fix" = "system-auto-fix";
+      "fix" = "system-auto-fix";
+    } // optionalAttrs cfg.enableMaintenance {
+      "maintenance" = "system-maintenance";
+      "maintain" = "system-maintenance";
+    } // optionalAttrs cfg.enablePerformanceMonitor {
+      "perf" = "performance-monitor";
+      "monitor" = "performance-monitor";
+    } // optionalAttrs cfg.enableDashboard {
+      "dashboard" = "health-dashboard";
+    });
 
-    programs.bash.shellAliases = mkIf cfg.enable {
+    programs.bash.shellAliases = mkIf cfg.enable ({
       "health" = "dotfiles-health-check";
       "health-quick" = "dotfiles-health-check quick";
       "quick-check" = "dotfiles-quick-check";
-    };
+    } // optionalAttrs cfg.enableMasterSystem {
+      "health-master" = "system-health-master";
+      "system-health" = "system-health-master";
+    } // optionalAttrs cfg.enableAutoFix {
+      "auto-fix" = "system-auto-fix";
+      "fix" = "system-auto-fix";
+    } // optionalAttrs cfg.enableMaintenance {
+      "maintenance" = "system-maintenance";
+      "maintain" = "system-maintenance";
+    } // optionalAttrs cfg.enablePerformanceMonitor {
+      "perf" = "performance-monitor";
+      "monitor" = "performance-monitor";
+    } // optionalAttrs cfg.enableDashboard {
+      "dashboard" = "health-dashboard";
+    });
   };
 }

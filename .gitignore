@@ -27,10 +27,14 @@ Thumbs.db
 *.bak
 *.old
 
-# Backup directories
+# Backup directories  
 backups/
+backup-*/
 temp/
 tmp/
+test-*/
+test-project/
+*-test/
 
 # --------------------------------
 # Development Environment
@@ -97,8 +101,9 @@ configs/**/sessions/
 system-metrics.json
 
 # Runtime generated files
-result/
+result
 result-*/
+nix-result/
 
 # --------------------------------
 # Platform-Specific

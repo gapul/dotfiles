@@ -99,12 +99,15 @@
           # ./common/home/shell.nix  # Moved to home-manager.users configuration below
           # ./common/themes/default.nix  # Temporarily disabled due to home-manager context issues  
           ./common/development/default.nix  # Re-enabled successfully
+          ./common/desktop/default.nix     # Desktop environment (AeroSpace, etc.)
+          ./common/terminals/default.nix   # Terminal applications (WezTerm, etc.)
+          ./common/statusbar/default.nix   # Status bar (SketchyBar, etc.)
           ./common/context/default.nix  # Phase 3: Context Recognition System
           ./common/performance/default.nix  # Phase 5: Performance optimization system
           ./common/security/enterprise.nix  # Phase 5: Enterprise security system
           ./common/security/policies.nix    # Phase 5: Security policies and compliance
           ./common/universal/platform-integration.nix  # Phase 5: Universal platform integration
-          ./common/testing/phase5-integration.nix  # Phase 5: Integrated testing and documentation
+          # ./common/testing/phase5-integration.nix  # Phase 5: Integrated testing and documentation (disabled - missing file)
           ./common/system/darwin-fixes.nix  # Fix nix-darwin warnings
           # Phase 6: sops-nix for secret management
           sops-nix.darwinModules.sops
@@ -117,6 +120,11 @@
             dotfiles.development.cli-tools.enable = lib.mkForce true;
             dotfiles.development.cli-tools.profile = "full";
             dotfiles.development.cli-tools.process = lib.mkForce true;
+            
+            # TeX Development Environment
+            dotfiles.development.tex.enable = lib.mkForce true;
+            dotfiles.development.tex.profile = "standard";
+            dotfiles.development.tex.texlive.scheme = "medium";
             
             # Phase 6: Nix Quality of Life Tools
             dotfiles.development.nix-qol.enable = lib.mkForce true;
@@ -147,17 +155,30 @@
             dotfiles.universal.platform.enable = lib.mkForce true;
             dotfiles.universal.platform.supportedPlatforms = [ "darwin" "linux" "wsl" "android" "freebsd" "windows" "raspberrypi" "cloud" ];
             
+            # Enable desktop environment
+            dotfiles.desktop.enable = lib.mkForce true;
+            dotfiles.desktop.profile = "standard";
+            
+            # Enable terminal applications
+            dotfiles.terminals.enable = lib.mkForce true;
+            dotfiles.terminals.profile = "standard";
+            dotfiles.terminals.defaultTerminal = "wezterm";
+            
+            # Enable status bar
+            dotfiles.statusbar.enable = lib.mkForce true;
+            dotfiles.statusbar.provider = "sketchybar";
+            
             # Enable Phase 5 integrated testing and documentation system
-            dotfiles.testing.phase5.enable = lib.mkForce true;
-            dotfiles.testing.phase5.testingFramework = "comprehensive";
-            dotfiles.testing.phase5.documentationLevel = "full";
-            dotfiles.testing.phase5.performanceBenchmarks = true;
-            dotfiles.testing.phase5.securityValidation = true;
-            dotfiles.testing.phase5.aiIntegrationTests = true;
-            dotfiles.testing.phase5.universalPlatformTests = true;
-            dotfiles.testing.phase5.automatedQualityAssurance = true;
-            dotfiles.testing.phase5.regressionTesting = true;
-            dotfiles.testing.phase5.reportGeneration = true;
+            # dotfiles.testing.phase5.enable = lib.mkForce true;
+            # dotfiles.testing.phase5.testingFramework = "comprehensive";
+            # dotfiles.testing.phase5.documentationLevel = "full";
+            # dotfiles.testing.phase5.performanceBenchmarks = true;
+            # dotfiles.testing.phase5.securityValidation = true;
+            # dotfiles.testing.phase5.aiIntegrationTests = true;
+            # dotfiles.testing.phase5.universalPlatformTests = true;
+            # dotfiles.testing.phase5.automatedQualityAssurance = true;
+            # dotfiles.testing.phase5.regressionTesting = true;
+            # dotfiles.testing.phase5.reportGeneration = true;
           })
           # ./common/automation/default.nix  # Move to home-manager context below
           ./darwin/system/default.nix
@@ -384,20 +405,16 @@
                   nix-direnv.enable = true;
                 };
                 
-                # AeroSpace configuration
-                home.file.".config/aerospace/aerospace.toml".source = ../configs/wm/aerospace/aerospace.toml;
+                # Configuration files are now managed by their respective modules
+                # AeroSpace: nix/common/desktop/aerospace.nix
+                # SketchyBar: nix/common/statusbar/sketchybar.nix
+                # WezTerm: nix/common/terminals/wezterm.nix
                 
-                # SketchyBar configuration
-                home.file.".config/sketchybar" = lib.mkForce {
-                  source = ../configs/wm/sketchybar;
-                  recursive = true;
-                };
-                
-                # Neovim configuration
-                home.file.".config/nvim" = {
-                  source = ../configs/editors/nvim;
-                  recursive = true;
-                };
+                # Neovim configuration (temporarily disabled - nvim config not present)
+                # home.file.".config/nvim" = {
+                #   source = ../configs/editors/nvim;
+                #   recursive = true;
+                # };
                 
                 # Enable home-manager management
                 programs.home-manager.enable = true;
@@ -443,6 +460,8 @@
         "Intel-Mac" = mkDarwinSystem "x86_64-darwin" inputs;
         # Default to Apple Silicon (most common setup)
         default = mkDarwinSystem "aarch64-darwin" inputs;
+        # User-specific configuration
+        yuki = mkDarwinSystem "aarch64-darwin" inputs;
       };
 
       # NixOS configurations (for Linux)
@@ -481,7 +500,10 @@
       devShells = flake-utils.lib.eachDefaultSystemMap (system:
         let
           platformConfig = mkPlatformConfig system inputs;
+          lib = platformConfig.lib;
           pkgs = platformConfig.pkgs;
+          # Import templates system
+          templatesSystem = import ../templates/index.nix { inherit lib pkgs; };
           rustShell = import ./devshells/rust.nix { 
             inherit (platformConfig) lib pkgs; 
             inherit inputs; 
@@ -496,22 +518,29 @@
               tmux
               starship
               just  # Task runner
+              templatesSystem.templateCli
+              (import ../templates/_shared/component.nix { inherit lib pkgs; }).registry
             ];
             shellHook = ''
               echo "🚀 Multi-platform dotfiles development environment"
               echo "Platform: ${system}"
-              echo "Available tools: git, gh, neovim, tmux, starship, just"
+              echo "Available tools: git, gh, neovim, tmux, starship, just, template, component"
               echo ""
               echo "Common commands:"
-              echo "  just rebuild    - Rebuild current platform configuration"
-              echo "  just switch     - Switch to new configuration"
-              echo "  just test       - Test configuration"
-              echo "  just --list     - Show all available tasks"
+              echo "  just rebuild     - Rebuild current platform configuration"
+              echo "  just switch      - Switch to new configuration"
+              echo "  just test        - Test configuration"
+              echo "  template list    - List available templates"
+              echo "  component list   - List available components"
+              echo "  just --list      - Show all available tasks"
             '';
           };
 
           # Rust development shell with crane optimization
           rust = rustShell.default;
+
+          # Academic LaTeX paper template shell
+          latex-paper = templatesSystem.loadTemplate "academic/latex-paper";
 
           # Platform testing shell
           test = pkgs.mkShell {
@@ -540,9 +569,20 @@
           lib = nixpkgs.lib;
           pkgs = nixpkgs.legacyPackages.${system};
           platformInfo = import ./common/platform-detection.nix { inherit lib pkgs; };
+          # Import templates system
+          templatesSystem = import ../templates/index.nix { inherit lib pkgs; };
         in {
           # Platform information package
           platformInfo = pkgs.writeText "platform-info.json" (builtins.toJSON platformInfo);
+          
+          # Template management CLI
+          template = templatesSystem.templateCli;
+          
+          # Component management CLI
+          component = (import ../templates/_shared/component.nix { inherit lib pkgs; }).registry;
+          
+          # Basic packages for testing and examples
+          hello = pkgs.hello;
         }
       );
       

@@ -13,6 +13,8 @@ with lib;
     ./web  # Web development environment
     ./cli-tools.nix  # Enhanced CLI tools integration
     ./nix-qol.nix  # Phase 6: Nix Quality of Life tools
+    ./tex  # TeX development environment
+    # ./crane-optimization.nix  # Phase 6: Crane Rust optimization - temporarily disabled
   ];
 
   options.dotfiles.development = {
@@ -54,6 +56,17 @@ with lib;
     dotfiles.development.ai-platform.enable = mkDefault (
       elem config.dotfiles.development.profile [ "full" "ai-powered" ]
     );
+
+
+    # Phase 6: Crane Rust optimization - temporarily disabled
+    # dotfiles.development.crane-optimization.enable = mkDefault (
+    #   elem config.dotfiles.development.profile [ "standard" "full" "ai-powered" ]
+    # );
+    # dotfiles.development.crane-optimization.features.buildOptimization = mkDefault true;
+    # dotfiles.development.crane-optimization.features.cacheStrategy = mkDefault "hybrid";
+    # dotfiles.development.crane-optimization.features.crossCompilation = mkDefault true;
+    # dotfiles.development.crane-optimization.features.wasmSupport = mkDefault true;
+    # dotfiles.development.crane-optimization.features.benchmarking = mkDefault true;
     
     # Advanced Ollama configuration (Phase 6)
     dotfiles.development.ai-platform.ollama.enable = mkDefault (
@@ -74,6 +87,9 @@ with lib;
       elem config.dotfiles.development.profile [ "standard" "full" "ai-powered" ]
     );
     
+    # TeX development environment
+    dotfiles.development.tex.enable = mkDefault false;  # Opt-in by default
+    
     # Web development environment (temporarily disabled)
     web.enable = mkDefault false;
     
@@ -85,10 +101,7 @@ with lib;
       else "full"  # ai-powered maps to full
     );
     
-    # Enable desktop development for full profiles
-    web.features.desktop = mkDefault (
-      elem config.dotfiles.development.profile [ "full" "ai-powered" ]
-    );
+    # Note: web.features.desktop option has been removed in template-based web environment
 
     # Profile-specific configurations
     dotfiles.development.lsp.enabledLanguages = mkDefault (
@@ -527,6 +540,28 @@ with lib;
           fi
         '' else ''
           echo "⚪ Modern CLI Tools: Disabled"
+        ''}
+        
+        # nix-direnv Integration (Phase 6) - temporarily disabled
+        echo "⚪ nix-direnv Integration: Disabled"
+
+        # Crane Rust Optimization (Phase 6) - temporarily disabled
+        echo "⚪ Crane Rust Optimization: Disabled"
+
+        # Check TeX Development Environment
+        ${if config.dotfiles.development.tex.enable or false then ''
+          echo "✅ TeX Development Environment: Enabled"
+          if command -v latex &> /dev/null; then
+            echo "  📝 LaTeX: $(latex --version | head -n1)"
+          fi
+          if command -v texlab &> /dev/null; then
+            echo "  🔧 TeXLab LSP: Available"
+          fi
+          if command -v qpdf &> /dev/null; then
+            echo "  📄 PDF Tools: Available"
+          fi
+        '' else ''
+          echo "⚪ TeX Development Environment: Disabled"
         ''}
         
         # Check Web Development Environment
