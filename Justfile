@@ -12,7 +12,7 @@ default:
 
 # システム + ユーザー 両方再構築 (普段使い)
 rebuild:
-    nh os switch
+    nh darwin switch
     nh home switch
 
 # flake input 更新 → rebuild
@@ -42,7 +42,7 @@ gc:
 
 # このマシンの差分 (current vs. flake) を表示
 diff:
-    nh os build
+    nh darwin build
 
 # remote-env を別ホストで使う
 ssh host:

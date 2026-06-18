@@ -11,8 +11,10 @@
     HOMEBREW_NO_ANALYTICS = "1";
     PNPM_HOME = "${config.home.homeDirectory}/Library/pnpm";
     SOPS_AGE_KEY_FILE = "${config.home.homeDirectory}/.config/sops/age/keys.txt";
-    # nh 4.x が読む env 群 (programs.nh.flake は古い FLAKE 変数しか設定しないため明示)
-    NH_FLAKE = "${config.home.homeDirectory}/dotfiles/nix";
+    # nh 4.x: programs.nh.flake は古い FLAKE 変数しか set しないので明示する。
+    # #yuki まで含めて、hostname (MacBook-Mini) と attr 名 (yuki) の不一致を解消。
+    NH_DARWIN_FLAKE = "${config.home.homeDirectory}/dotfiles/nix#yuki";
+    NH_HOME_FLAKE   = "${config.home.homeDirectory}/dotfiles/nix#yuki";
   };
 
   home.sessionPath = [
