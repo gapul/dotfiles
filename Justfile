@@ -21,9 +21,10 @@ update:
     just rebuild
 
 # 全レイヤーアップグレード (Nix + brew + cask + mas + Determinate Nix runtime)
+# --greedy で自前 auto-update する cask (VS Code 等) も brew 経由で揃える
 upgrade:
     brew upgrade
-    brew upgrade --cask
+    brew upgrade --cask --greedy
     mas upgrade
     just update
     @echo "Determinate Nix 本体は手動で: sudo /usr/local/bin/determinate-nixd upgrade"
