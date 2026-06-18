@@ -1,0 +1,87 @@
+# This is the configuration file for Ghostty.
+#
+# This template file has been automatically created at the following
+# path since Ghostty couldn't find any existing config files on your system:
+#
+#   /Users/yuki/Library/Application Support/com.mitchellh.ghostty/config
+#
+# The template does not set any default options, since Ghostty ships
+# with sensible defaults for all options. Users should only need to set
+# options that they want to change from the default.
+#
+# Run `ghostty +show-config --default --docs` to view a list of
+# all available config options and their default values.
+#
+# Additionally, each config option is also explained in detail
+# on Ghostty's website, at https://ghostty.org/docs/config.
+
+# Config syntax crash course
+# ==========================
+# # The config file consists of simple key-value pairs,
+# # separated by equals signs.
+font-family = "HackGen Console NF"
+clipboard-read = allow
+clipboard-write = allow
+
+# Catppuccin Mocha固定 (ダークのみ)
+# 注: ライト/ダーク自動切替は、プロンプト等のhardcoded colorで読みにくくなる
+#     ため一旦無効化。将来 Starship等プロンプト側を直したら再開検討
+theme = Catppuccin Mocha
+
+# ウィンドウ/タブを閉じるときの確認ダイアログを無効化
+confirm-close-surface = false
+
+# window-padding-x = 2
+#
+# # Spacing around the equals sign does not matter.
+# # All of these are identical:
+# key=value
+# key= value
+# key =value
+# key = value
+#
+# # Any line beginning with a # is a comment. It's not possible to put
+# # a comment after a config option, since it would be interpreted as a
+# # part of the value. For example, this will have a value of "#123abc":
+# background = #123abc
+#
+# # Empty values are used to reset config keys to default.
+# key =
+#
+# # Some config options have unique syntaxes for their value,
+# # which is explained in the docs for that config option.
+# # Just for example:
+# resize-overlay-duration = 4s 200ms
+macos-titlebar-style = hidden
+background-opacity = 0.88
+background-blur-radius = 30
+
+# 起動時にウィンドウを開かない（バックグラウンドでホットキー待機）
+initial-window = false
+
+# 最後のウィンドウを閉じても Ghostty を終了させない
+# Quick Terminal のホットキーが常に効くようにバックグラウンド常駐
+quit-after-last-window-closed = false
+
+# グローバルホットキーの割り当て（Spotlight代替: cmd+space）
+keybind = global:super+space=toggle_quick_terminal
+# Karabiner経由でlauncherリセット込みのcmd+spaceから呼ばれる隠しトグル
+# (Karabinerがcmd+spaceを奪う前提なので↑のsuper+spaceは到達しなくなる)
+keybind = global:f18=toggle_quick_terminal
+
+# Ghostty標準の cmd+enter (toggle_fullscreen) を無効化
+# AeroSpaceのタイリングと競合するため
+keybind = cmd+enter=unbind
+
+# zellij等のTUI内で Cmd+C が 'c' としてパススルーされる問題対策。
+# デフォルトの performable:copy_to_clipboard は選択無しだとTUIにキーを流すため、
+# performableを外して常にキーを消費させる。
+keybind = cmd+c=copy_to_clipboard
+
+# ドロップダウンの出現位置やアニメーション設定（Spotlight風）
+quick-terminal-position = center
+quick-terminal-size = 38%,480px
+quick-terminal-autohide = true
+quick-terminal-screen = mouse
+quick-terminal-animation-duration = 0.12
+

@@ -98,26 +98,6 @@
         esac
       }
 
-      if [[ "$TERM_PROGRAM" == "WezTerm" ]]; then
-        autoload -Uz add-zsh-hook
-        function __wezterm_preexec() {
-          __wezterm_command_start_time=$SECONDS
-          __wezterm_command_name="$1"
-        }
-        function __wezterm_precmd() {
-          if [[ -n "$__wezterm_command_start_time" ]]; then
-            local elapsed=$((SECONDS - __wezterm_command_start_time))
-            if [[ $elapsed -gt 3 ]]; then
-              printf '\a'
-              printf '\e]9;%s\e\\' "Command completed in ''${elapsed}s"
-            fi
-            unset __wezterm_command_start_time __wezterm_command_name
-          fi
-        }
-        add-zsh-hook preexec __wezterm_preexec
-        add-zsh-hook precmd __wezterm_precmd
-      fi
-
       function vpn() {
         local profile="''${2:-wgcf-profile}"
         local conf="$HOME/vpn-conf/''${profile}.conf"
@@ -185,8 +165,8 @@
 
   # dotfiles/configs/* を symlink
   # 静的設定 (yuki が編集 → dotfiles 経由): /nix/store 経由でOK
-  home.file.".config/wezterm" = {
-    source = ../configs/terminals/wezterm;
+  home.file.".config/ghostty" = {
+    source = ../configs/terminals/ghostty;
     recursive = true;
   };
   home.file.".config/zellij" = {
