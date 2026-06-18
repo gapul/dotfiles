@@ -37,6 +37,15 @@
     let
       system = "aarch64-darwin";
       pkgs = nixpkgs.legacyPackages.${system};
+
+      # SSH 接続先で rootless Nix (nix-portable) から実行する
+      # ツール一式。Linux x86_64 / aarch64 両対応。
+      remoteTools = pkgs': with pkgs'; [
+        neovim yazi zellij
+        git ripgrep fd fzf bat eza zoxide
+        curl wget
+      ];
+      remoteSystems = [ "aarch64-linux" "x86_64-linux" ];
     in
     {
       # システム設定: sudo darwin-rebuild switch --flake .#yuki
@@ -51,5 +60,13 @@
         inherit pkgs;
         modules = [ ./home.nix ];
       };
+
+      # Remote (Linux) bundle: nssh から `nix-portable nix shell .#remote-env` で使う
+      packages = nixpkgs.lib.genAttrs remoteSystems (sys: {
+        remote-env = nixpkgs.legacyPackages.${sys}.buildEnv {
+          name = "remote-env";
+          paths = remoteTools nixpkgs.legacyPackages.${sys};
+        };
+      });
     };
 }
