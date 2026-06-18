@@ -188,6 +188,11 @@
     recursive = true;
   };
   home.file.".ssh/config".source = ../configs/ssh/config;
+  home.file.".config/mpv" = {
+    source = ../configs/media/mpv;
+    recursive = true;
+  };
+  home.file.".config/launcher/config.toml".source = ../configs/launcher/config.toml;
   home.file."bin/apply-file-associations" = {
     source = ../configs/bin/apply-file-associations;
     executable = true;

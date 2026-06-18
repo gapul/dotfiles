@@ -1,0 +1,102 @@
+# Launcher configuration
+
+[search]
+# Minimum query length to trigger file search
+min_query_for_files = 3
+# Maximum file results to show
+max_file_results = 15
+# Maximum recent files to show (empty query)
+max_recent_results = 10
+# File search excludes: patterns matched against the full path
+exclude_patterns = ["/Library/", "node_modules", "/."]
+# Directories pruned during recursive file search
+# prune_dirs = [".git", "node_modules", "target", ".cursor", ".venv", "venv", "__pycache__", ".npm", "Library"]
+# Web search provider (used for the WEB action)
+# web_search_url  = "https://duckduckgo.com/?q="
+# web_search_name = "DuckDuckGo"
+# Frecency entries older than this are pruned on write
+# frecency_max_age_days = 90
+# How many days back to look for recently used files (empty query)
+# recent_days = 7
+# App list cache lifetime in seconds
+# apps_cache_ttl = 300
+# Recent files cache lifetime in seconds
+# recent_cache_ttl = 60
+# Max processes shown in kill list
+# max_process_results = 20
+# Min query length before process list is searched
+# min_query_for_processes = 2
+
+[appearance]
+# fzf color theme — hex colors (Catppuccin Macchiato defaults)
+# bg         = "#1e1e2e"
+# bg_selected = "#313244"
+# border     = "#6e6a86"
+# fg         = "#cad3f5"
+# gutter     = "#1e1e2e"
+# hl         = "#8aadf4"
+# prompt     = "#c6a0f6"
+# pointer    = "#ed8796"
+# label      = "#c6a0f6"
+
+[bookmarks]
+# Path to XBEL bookmarks file (Floccus browser extension sync)
+# Clone gapul/floccus-bookmarks and set the path:
+xbel_path = "~/.config/floccus-bookmarks/mvrx/bookmarks.xbel"
+
+[clipboard]
+# Maximum number of clipboard history entries to keep
+max_entries = 50
+
+[launcher]
+# fzf UI customization — uncomment and edit to override defaults
+# prompt         = "  "
+# pointer        = "❯"
+# border_label   = " 󰀻  Launcher "
+# preview_window = "right:40%:wrap"
+
+[preview]
+# Preview pane behavior — uncomment and edit to override defaults
+# image_timeout       = 3    # seconds before image/chafa preview is killed
+# cmd_timeout         = 5    # seconds before CMD output preview is killed
+# max_archive_entries = 40   # lines shown in archive listing
+# max_text_lines      = 100  # lines shown for text/code/CMD output
+# max_pdf_lines       = 80   # lines shown for PDF text extraction
+
+[icons]
+# Override the Nerd Font icons used for result-type badges.
+# Defaults use Nerd Fonts v3 glyphs — change only if your font differs.
+# ssh      = ""   # nf-md-console_network
+# bookmark = ""   # nf-md-bookmark_outline
+# clip     = ""   # nf-md-clipboard_text_outline
+# kill     = ""   # nf-md-skull_outline
+# claude   = "󱙺"   # nf-md-alpha_c_circle
+# color    = "󰃣"   # nf-md-palette
+# calc     = "󰃬"   # nf-md-calculator
+# cmd      = "󰆍"   # nf-md-console
+# web      = "󰖟"   # nf-md-web
+
+[app_icons]
+# Override or add app name → Nerd Font icon mappings.
+# Keys must exactly match the app name (without .app suffix).
+# Defaults are in launcher-search/data/app_icons.toml.
+# "My App" = "󰀻"
+
+[file_icons]
+# Override file extension → Nerd Font icon mappings.
+# Special keys: _directory (folders), _unknown (unrecognized extension).
+# Defaults are in launcher-search/data/file_icons.toml.
+# toml = "󰅩"
+
+[aliases]
+# App aliases: alias = "Exact App Name"
+vscode = "Visual Studio Code"
+code = "Visual Studio Code"
+"vs code" = "Visual Studio Code"
+chrome = "Google Chrome"
+brave = "Brave Browser"
+firefox = "Firefox Developer Edition"
+ff = "Firefox Developer Edition"
+studio = "Android Studio"
+"android studio" = "Android Studio"
+finder = "Finder"
