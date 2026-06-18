@@ -183,7 +183,6 @@
       "sops"           # secrets management
       "gitleaks"       # pre-commit hook で機密 leak 検査
       "pre-commit"     # hook framework
-      "nh"             # nix rebuild ラッパー (nh os switch / nh home switch)
 
       # ─── Documents / Fonts / Media ───
       "pandoc"
