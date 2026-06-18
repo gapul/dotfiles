@@ -15,8 +15,10 @@
     # hostname (MacBook-Mini) ≠ attr (yuki) なので明示する必要あり。
     # nh は attr の後ろに .config.system.build.toplevel / .activationPackage を append
     # するので、ここでは darwinConfigurations.yuki / homeConfigurations.yuki まで指定。
+    # darwin は .config.system.build.toplevel を nh 側で append、
+    # home は activationPackage まで明示しないと「set だ」エラーになる。
     NH_DARWIN_FLAKE = "${config.home.homeDirectory}/dotfiles/nix#darwinConfigurations.yuki";
-    NH_HOME_FLAKE   = "${config.home.homeDirectory}/dotfiles/nix#homeConfigurations.yuki";
+    NH_HOME_FLAKE   = "${config.home.homeDirectory}/dotfiles/nix#homeConfigurations.yuki.activationPackage";
   };
 
   home.sessionPath = [
