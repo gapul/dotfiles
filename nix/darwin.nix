@@ -28,7 +28,7 @@
     enable = true;
     onActivation = {
       autoUpdate = false;
-      cleanup = "none";
+      cleanup = "uninstall";  # 宣言外の brew は自動uninstall(zap は data 消すので avoid)
       upgrade = false;
     };
 
