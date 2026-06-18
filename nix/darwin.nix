@@ -181,6 +181,8 @@
       "radare2"        # reverse engineering
       "age"            # SOPS encryption backend
       "sops"           # secrets management
+      "gitleaks"       # pre-commit hook で機密 leak 検査
+      "pre-commit"     # hook framework
 
       # ─── Documents / Fonts / Media ───
       "pandoc"

@@ -1,0 +1,15 @@
+# gitleaks config: dotfiles 用カスタマイズ。
+# 検出対象から除外:
+#   - SOPS で暗号化済の secrets/*.yaml は中身が encrypt されてるので無害
+#   - uosc プラグインソース (third-party Lua、open_subtitles の placeholder)
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "SOPS encrypted files and third-party plugin sources"
+paths = [
+  '''secrets/.*\.yaml$''',
+  '''\.sops\.yaml$''',
+  '''configs/media/mpv/scripts/uosc/.*''',
+]

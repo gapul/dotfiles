@@ -177,12 +177,13 @@
     age.keyFile = "${config.home.homeDirectory}/.config/sops/age/keys.txt";
     defaultSopsFile = ../secrets/secrets.yaml;
     secrets = {
-      "vpn/proton" = {
-        path = "${config.home.homeDirectory}/vpn-conf/proton.conf";
-      };
-      "vpn/wgcf" = {
-        path = "${config.home.homeDirectory}/vpn-conf/wgcf-profile.conf";
-      };
+      "vpn/proton".path     = "${config.home.homeDirectory}/vpn-conf/proton.conf";
+      "vpn/wgcf".path       = "${config.home.homeDirectory}/vpn-conf/wgcf-profile.conf";
+      "figma_token".path    = "${config.home.homeDirectory}/.figma_token";
+      "claude_env".path     = "${config.home.homeDirectory}/.claude_env";
+      "vault_token".path    = "${config.home.homeDirectory}/.vault-token";
+      "rclone_conf".path    = "${config.home.homeDirectory}/.config/rclone/rclone.conf";
+      "mcp_config".path     = "${config.home.homeDirectory}/.config/mcp/config.json";
     };
   };
 
