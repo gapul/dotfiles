@@ -11,6 +11,8 @@
     HOMEBREW_NO_ANALYTICS = "1";
     PNPM_HOME = "${config.home.homeDirectory}/Library/pnpm";
     SOPS_AGE_KEY_FILE = "${config.home.homeDirectory}/.config/sops/age/keys.txt";
+    # nh 4.x が読む env 群 (programs.nh.flake は古い FLAKE 変数しか設定しないため明示)
+    NH_FLAKE = "${config.home.homeDirectory}/dotfiles/nix";
   };
 
   home.sessionPath = [
