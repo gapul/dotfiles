@@ -53,5 +53,6 @@ ln -sfn ~/dotfiles/configs/terminals/zellij ~/.config/zellij
 BOOTSTRAP
 
 # 4. インタラクティブ接続 ($HOME はリモート側で展開される)
+#    path:~/dotfiles/nix を flake source に (private repo を GitHub API なしで使う)
 exec ssh -At "$host" "$@" \
-  '"$HOME"/.local/bin/nix-portable nix shell github:gapul/dotfiles#remote-env -c zellij'
+  '"$HOME"/.local/bin/nix-portable nix shell "path:$HOME/dotfiles/nix#remote-env" -c zellij'
