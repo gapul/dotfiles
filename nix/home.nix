@@ -182,4 +182,23 @@
     enableZshIntegration = true;
     nix-direnv.enable = true;
   };
+
+  # dotfiles/configs/* を ~/.config/* に symlink
+  # (実機 ~/.config が真実、編集時は dotfiles 側を直接弄る)
+  home.file.".config/wezterm" = {
+    source = ../configs/terminals/wezterm;
+    recursive = true;
+  };
+  home.file.".config/zellij" = {
+    source = ../configs/terminals/zellij;
+    recursive = true;
+  };
+  home.file.".config/aerospace" = {
+    source = ../configs/wm/aerospace;
+    recursive = true;
+  };
+  home.file.".config/sketchybar" = {
+    source = ../configs/wm/sketchybar;
+    recursive = true;
+  };
 }
