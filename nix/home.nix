@@ -11,7 +11,6 @@
     HOMEBREW_NO_ANALYTICS = "1";
     PNPM_HOME = "${config.home.homeDirectory}/Library/pnpm";
     SOPS_AGE_KEY_FILE = "${config.home.homeDirectory}/.config/sops/age/keys.txt";
-    FLAKE = "${config.home.homeDirectory}/dotfiles/nix";  # nh のデフォルト flake
   };
 
   home.sessionPath = [
@@ -171,6 +170,12 @@
     enable = true;
     enableZshIntegration = true;
     nix-direnv.enable = true;
+  };
+
+  # nh: darwin-rebuild / home-manager の便利ラッパー
+  programs.nh = {
+    enable = true;
+    flake = "${config.home.homeDirectory}/dotfiles/nix";
   };
 
   # SOPS: 暗号化された secrets を home-manager switch 時に decrypt
