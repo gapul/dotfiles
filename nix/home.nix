@@ -16,6 +16,7 @@
     "${config.home.homeDirectory}/Library/pnpm"
     "${config.home.homeDirectory}/Library/pnpm/bin"
     "${config.home.homeDirectory}/.local/bin"  # uv tool 経由のバイナリ
+    "${config.home.homeDirectory}/bin"          # home.file."bin/*" 経由のスクリプト
   ];
 
   # /nix が壊れてもシェルが起動できるようガード付き .zshenv を内製
@@ -90,39 +91,6 @@
 
       # opam (PATH + 補完)
       [ -r ~/.opam/opam-init/init.zsh ] && source ~/.opam/opam-init/init.zsh > /dev/null 2>&1
-
-      # nssh: SSH 接続先で rootless Nix + 自分の dotfiles 設定で nvim/yazi/zellij
-      function nssh() {
-        local host="$1"
-        if [[ -z "$host" ]]; then
-          echo "Usage: nssh <user@host>"; return 1
-        fi
-        ssh "$host" bash -s <<'BOOTSTRAP'
-set -e
-mkdir -p ~/.local/bin ~/.config
-arch=$(uname -m)
-# 1. nix-portable (1 binary、rootless)
-if [ ! -x ~/.local/bin/nix-portable ]; then
-  echo "Installing nix-portable for $arch..."
-  curl -fsSL "https://github.com/DavHau/nix-portable/releases/latest/download/nix-portable-''${arch}" \
-    -o ~/.local/bin/nix-portable
-  chmod +x ~/.local/bin/nix-portable
-fi
-# 2. dotfiles (clone or pull)
-if [ ! -d ~/dotfiles ]; then
-  git clone https://github.com/gapul/dotfiles.git ~/dotfiles
-else
-  git -C ~/dotfiles pull --quiet --rebase
-fi
-# 3. config symlinks
-ln -sfn ~/dotfiles/configs/editors/nvim     ~/.config/nvim
-ln -sfn ~/dotfiles/configs/cli/yazi         ~/.config/yazi
-ln -sfn ~/dotfiles/configs/terminals/zellij ~/.config/zellij
-BOOTSTRAP
-        # 4. インタラクティブ接続(remote-env で zellij 起動)
-        ssh -t "$host" \
-          "~/.local/bin/nix-portable nix shell github:gapul/dotfiles#remote-env -c zellij"
-      }
 
       function mkcd() { mkdir -p "$1" && cd "$1"; }
 
@@ -233,6 +201,10 @@ BOOTSTRAP
     recursive = true;
   };
   home.file.".config/launcher/config.toml".source = ../configs/launcher/config.toml;
+  home.file."bin/nssh" = {
+    source = ../configs/bin/nssh;
+    executable = true;
+  };
   home.file.".config/yazi" = {
     source = ../configs/cli/yazi;
     recursive = true;

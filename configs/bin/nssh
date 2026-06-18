@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+#
+# SSH 接続先で rootless Nix (nix-portable) を立ち上げて、
+# 自分の dotfiles 設定で nvim / yazi / zellij を使う。
+#
+# 流れ:
+#   1. nix-portable バイナリを ~/.local/bin に展開(初回のみ)
+#   2. dotfiles を git clone (初回) または git pull
+#   3. ~/.config/{nvim,yazi,zellij} を dotfiles に symlink
+#   4. nix-portable nix shell .#remote-env -c zellij でセッション開始
+
+set -euo pipefail
+
+if [[ $# -lt 1 ]]; then
+  echo "Usage: nssh <user@host> [extra ssh args...]" >&2
+  exit 1
+fi
+
+host="$1"
+shift
+
+ssh "$host" "$@" bash -s <<'BOOTSTRAP'
+set -euo pipefail
+mkdir -p ~/.local/bin ~/.config
+arch=$(uname -m)
+
+# 1. nix-portable
+if [ ! -x ~/.local/bin/nix-portable ]; then
+  echo "[nssh] Installing nix-portable for ${arch}..."
+  curl -fsSL "https://github.com/DavHau/nix-portable/releases/latest/download/nix-portable-${arch}" \
+    -o ~/.local/bin/nix-portable
+  chmod +x ~/.local/bin/nix-portable
+fi
+
+# 2. dotfiles
+if [ ! -d ~/dotfiles/.git ]; then
+  echo "[nssh] Cloning dotfiles..."
+  git clone https://github.com/gapul/dotfiles.git ~/dotfiles
+else
+  git -C ~/dotfiles pull --quiet --rebase || true
+fi
+
+# 3. config symlinks
+ln -sfn ~/dotfiles/configs/editors/nvim     ~/.config/nvim
+ln -sfn ~/dotfiles/configs/cli/yazi         ~/.config/yazi
+ln -sfn ~/dotfiles/configs/terminals/zellij ~/.config/zellij
+BOOTSTRAP
+
+# 4. インタラクティブ接続
+exec ssh -t "$host" "$@" \
+  '~/.local/bin/nix-portable nix shell github:gapul/dotfiles#remote-env -c zellij'
