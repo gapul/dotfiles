@@ -1,4 +1,4 @@
-{ pkgs, ... }: {
+{ config, pkgs, ... }: {
   home.username = "yuki";
   home.homeDirectory = "/Users/yuki";
   home.stateVersion = "23.11";
@@ -183,8 +183,8 @@
     nix-direnv.enable = true;
   };
 
-  # dotfiles/configs/* を ~/.config/* に symlink
-  # (実機 ~/.config が真実、編集時は dotfiles 側を直接弄る)
+  # dotfiles/configs/* を symlink
+  # 静的設定 (yuki が編集 → dotfiles 経由): /nix/store 経由でOK
   home.file.".config/wezterm" = {
     source = ../configs/terminals/wezterm;
     recursive = true;
@@ -201,4 +201,26 @@
     source = ../configs/wm/sketchybar;
     recursive = true;
   };
+  home.file.".config/starship.toml".source = ../configs/shell/starship.toml;
+  home.file.".config/gh/config.yml".source = ../configs/cli/gh/config.yml;
+  home.file.".config/textlint" = {
+    source = ../configs/textlint;
+    recursive = true;
+  };
+  home.file.".ssh/config".source = ../configs/ssh/config;
+  home.file."bin/apply-file-associations" = {
+    source = ../configs/bin/apply-file-associations;
+    executable = true;
+  };
+  home.file."bin/sketchybar-refresh" = {
+    source = ../configs/bin/sketchybar-refresh;
+    executable = true;
+  };
+
+  # 動的設定 (アプリ自身が書き戻す可能性):
+  # mkOutOfStoreSymlink で dotfiles の実体に直接 link → 書き込み可能
+  home.file.".config/nvim".source =
+    config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/dotfiles/configs/editors/nvim";
+  home.file.".config/karabiner".source =
+    config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/dotfiles/configs/keyboard/karabiner";
 }

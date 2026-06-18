@@ -1,0 +1,72 @@
+# 全体タイムアウト：重い計測は即座に諦める
+command_timeout = 200
+add_newline = false
+scan_timeout = 10
+
+format = """
+$directory\
+$git_branch\
+$git_status\
+$cmd_duration\
+$character"""
+
+[directory]
+truncation_length = 3
+truncate_to_repo = false
+style = "cyan"
+
+[character]
+success_symbol = "[\\$](bold green)"
+error_symbol   = "[\\$](bold red)"
+
+[cmd_duration]
+min_time = 2000          # 2秒以上のコマンドだけ表示
+format  = " [$duration]($style)"
+style   = "yellow"
+
+[git_branch]
+symbol = " "
+style  = "purple"
+format = " [$symbol$branch]($style)"
+
+# 軽量版 git_status：ahead/behind と dirty 判定のみ
+[git_status]
+ahead     = "⇡${count}"
+behind    = "⇣${count}"
+diverged  = "⇕"
+conflicted = "✘"
+modified  = "*"
+staged    = "+"
+untracked = ""           # untracked は無効化（モノレポで重い元凶）
+stashed   = ""
+deleted   = ""
+renamed   = ""
+style     = "red"
+format    = " [$all_status$ahead_behind]($style)"
+
+# 言語バージョン検出は全部 OFF（必要なら個別に true 化）
+[nodejs]
+disabled = true
+[python]
+disabled = true
+[rust]
+disabled = true
+[ruby]
+disabled = true
+[golang]
+disabled = true
+[java]
+disabled = true
+[package]
+disabled = true
+[docker_context]
+disabled = true
+[aws]
+disabled = true
+[gcloud]
+disabled = true
+[kubernetes]
+disabled = true
+
+[nix_shell]
+format = " [($name)](blue)"

@@ -22,3 +22,6 @@ result-*
 *.log
 *.tmp
 tmp/
+
+# karabiner 自動バックアップ (アプリ生成)
+configs/keyboard/karabiner/automatic_backups/
