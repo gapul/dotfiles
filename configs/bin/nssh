@@ -5,7 +5,8 @@
 #
 # 流れ:
 #   1. nix-portable バイナリを ~/.local/bin に展開(初回のみ)
-#   2. dotfiles を git clone (初回) または git pull
+#   2. dotfiles を SSH 経由で git clone (初回) または git pull
+#      → SSH Agent Forward (-A) でローカルの鍵を使う、リモートに鍵不要
 #   3. ~/.config/{nvim,yazi,zellij} を dotfiles に symlink
 #   4. nix-portable nix shell .#remote-env -c zellij でセッション開始
 
@@ -19,7 +20,8 @@ fi
 host="$1"
 shift
 
-ssh "$host" "$@" bash -s <<'BOOTSTRAP'
+# Agent Forwarding を必ず付ける (-A) と StrictHostKey で github の自動信頼
+ssh -A "$host" "$@" bash -s <<'BOOTSTRAP'
 set -euo pipefail
 mkdir -p ~/.local/bin ~/.config
 arch=$(uname -m)
@@ -32,10 +34,14 @@ if [ ! -x ~/.local/bin/nix-portable ]; then
   chmod +x ~/.local/bin/nix-portable
 fi
 
-# 2. dotfiles
+# 2. dotfiles (SSH URL を使い、Agent Forward で local 鍵を流用)
+#    初回のみ github.com の host key を known_hosts に自動追加
+if ! grep -q "^github.com " ~/.ssh/known_hosts 2>/dev/null; then
+  ssh-keyscan -t ed25519,rsa github.com >> ~/.ssh/known_hosts 2>/dev/null || true
+fi
 if [ ! -d ~/dotfiles/.git ]; then
-  echo "[nssh] Cloning dotfiles..."
-  git clone https://github.com/gapul/dotfiles.git ~/dotfiles
+  echo "[nssh] Cloning dotfiles via SSH..."
+  git clone git@github.com:gapul/dotfiles.git ~/dotfiles
 else
   git -C ~/dotfiles pull --quiet --rebase || true
 fi
@@ -47,5 +53,5 @@ ln -sfn ~/dotfiles/configs/terminals/zellij ~/.config/zellij
 BOOTSTRAP
 
 # 4. インタラクティブ接続 ($HOME はリモート側で展開される)
-exec ssh -t "$host" "$@" \
+exec ssh -At "$host" "$@" \
   '"$HOME"/.local/bin/nix-portable nix shell github:gapul/dotfiles#remote-env -c zellij'
