@@ -61,7 +61,7 @@
       "gopeed" "gstreamer" "guile" "homebrew-zathura/zathura/zathura-pdf-mupdf"
       "imagemagick" "isync" "jq" "just" "lazygit" "lazyjj" "libsixel" "lynx"
       "mas" "media-control" "meson" "mpv" "ncdu" "neovim" "nextdns" "ollama"
-      "opam" "opencode" "pandoc" "pipx" "pnpm" "podman" "poppler" "radare2"
+      "opam" "opencode" "pandoc" "pnpm" "podman" "poppler" "radare2"
       "rbw" "rclone" "rust" "sc-im" "scrcpy" "sphinx-doc" "syft"
       "tailscale" "tcpdump" "terminal-notifier" "tmux" "tor" "tree"
       "tree-sitter-cli" "typst" "uv" "visidata" "w3m" "wgcf" "wifitui"

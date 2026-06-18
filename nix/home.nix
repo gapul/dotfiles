@@ -9,7 +9,14 @@
     EDITOR = "nvim";
     PAGER = "bat";
     HOMEBREW_NO_ANALYTICS = "1";
+    PNPM_HOME = "${config.home.homeDirectory}/Library/pnpm";
   };
+
+  home.sessionPath = [
+    "${config.home.homeDirectory}/Library/pnpm"
+    "${config.home.homeDirectory}/Library/pnpm/bin"
+    "${config.home.homeDirectory}/.local/bin"  # uv tool 経由のバイナリ
+  ];
 
   # /nix が壊れてもシェルが起動できるようガード付き .zshenv を内製
   home.file.".zshenv" = {
