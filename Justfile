@@ -15,10 +15,18 @@ rebuild:
     nh darwin switch
     nh home switch
 
-# flake input 更新 → rebuild
+# flake input 更新 → rebuild (Nix管理ぶんだけ)
 update:
     nix flake update --flake {{flake}}
     just rebuild
+
+# 全レイヤーアップグレード (Nix + brew + cask + mas + Determinate Nix runtime)
+upgrade:
+    brew upgrade
+    brew upgrade --cask
+    mas upgrade
+    just update
+    @echo "Determinate Nix 本体は手動で: sudo /usr/local/bin/determinate-nixd upgrade"
 
 # 構文/型チェック (ビルドはしない)
 check:
