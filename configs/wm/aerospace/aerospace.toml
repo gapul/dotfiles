@@ -1,37 +1,20 @@
-# AeroSpace Configuration with Advanced SketchyBar Integration
-# Based on falleco/dotfiles with enhanced features
-# Documentation: https://github.com/nikitabobko/AeroSpace
-
-# You can use it to add commands that run after login to macOS user session.
-# 'start-at-login' needs to be 'true' for 'after-login-command' to work
-# Available commands: https://nikitabobko.github.io/AeroSpace/commands
-after-login-command = []
+# Place a copy of this config to ~/.aerospace.toml
+# After that, you can edit ~/.aerospace.toml to your liking
 
 # You can use it to add commands that run after AeroSpace startup.
-# 'after-startup-command' is run after 'after-login-command'
 # Available commands : https://nikitabobko.github.io/AeroSpace/commands
 after-startup-command = [
-  'exec-and-forget sketchybar >> $HOME/.sketchybar/service.log 2>&1',
-  # JankyBorders has a built-in detection of already running process,
-  # so it won't be run twice on AeroSpace restart
-  'exec-and-forget borders active_color=0xffe1e3e4 inactive_color=0xff494d64 width=5.0',
-]
-
-# Notify Sketchybar about workspace change
-exec-on-workspace-change = [
-  '/bin/bash',
-  '-c',
-  'sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=$AEROSPACE_FOCUSED_WORKSPACE FOCUSED_DISPLAY=$(aerospace list-monitors --focused | awk "{print $1}")',
-]
-
-# Notify Sketchybar about focus change
-# See https://nikitabobko.github.io/AeroSpace/guide#on-focus-changed-callbacks
-on-focus-changed = [
-  'exec-and-forget sketchybar --trigger aerospace_focus_change FOCUSED_WORKSPACE=$AEROSPACE_FOCUSED_WORKSPACE',
+    'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=$AEROSPACE_FOCUSED_WORKSPACE',
+    # Hyprland風のアクティブウィンドウ枠（要: brew install FelixKratz/formulae/borders）
+    'exec-and-forget borders active_color=0xffe1e3e4 inactive_color=0xff494d64 width=4.0',
 ]
 
 # Start AeroSpace at login
 start-at-login = true
+
+# workspace切替時に壁紙パレット用stateファイルを更新 (Aurora wallpaper連動)
+# フラッシュなし: HTMLがstate.jsをポーリングするので Plash URL自体は触らない
+exec-on-workspace-change = ['/bin/bash', '-c', 'printf "window.__ws=%s;" "\"$AEROSPACE_FOCUSED_WORKSPACE\"" > /Users/yuki/wallpapers/state.js']
 
 # Normalizations. See: https://nikitabobko.github.io/AeroSpace/guide#normalization
 enable-normalization-flatten-containers = true
@@ -50,168 +33,224 @@ default-root-container-layout = 'tiles'
 #               tall monitor (anything higher than wide) gets vertical orientation
 default-root-container-orientation = 'auto'
 
-# Possible values: (qwerty|dvorak)
-# See https://nikitabobko.github.io/AeroSpace/guide#key-mapping
-key-mapping.preset = 'qwerty'
-
 # Mouse follows focus when focused monitor changes
 # Drop it from your config, if you don't like this behavior
 # See https://nikitabobko.github.io/AeroSpace/guide#on-focus-changed-callbacks
 # See https://nikitabobko.github.io/AeroSpace/commands#move-mouse
+# Fallback value (if you omit the key): on-focused-monitor-changed = []
 on-focused-monitor-changed = ['move-mouse monitor-lazy-center']
+# キーボードでフォーカス切替時もマウスを追従させる (AutoRaiseと双方向化)
+on-focus-changed = ['move-mouse window-lazy-center']
 
-# Gaps between windows (inner-*) and between monitor edges and windows (outer-*)
+# You can effectively turn off macOS "Hide application" (cmd-h) feature by toggling this flag
+# Useful if you don't use this macOS feature, but accidentally hit cmd-h or cmd-alt-h key
+# Also see: https://nikitabobko.github.io/AeroSpace/goodies#disable-hide-app
+automatically-unhide-macos-hidden-apps = false
+
+# Possible values: (qwerty|dvorak|colemak)
+# See https://nikitabobko.github.io/AeroSpace/guide#key-mapping
+# 外部ディスプレイがあれば workspace 9 をそこに固定。
+# 3画面以上のときは 'main' / 'secondary' しか区別できないので、
+# 残り (7, 8) は手動で move-workspace-to-monitor で動かす運用にする。
+[workspace-to-monitor-force-assignment]
+    9 = 'secondary'
+
+[key-mapping]
+    preset = 'qwerty'
+
+# Gaps between windows (inner-*) and between monitor edges (outer-*).
 # Possible values:
 # - Constant:     gaps.outer.top = 8
 # - Per monitor:  gaps.outer.top = [{ monitor.main = 16 }, { monitor."some-pattern" = 32 }, 24]
 #                 In this example, 24 is a default value when there is no match.
 #                 Monitor pattern is the same as for 'workspace-to-monitor-force-assignment'.
-#                 See: https://nikitabobko.github.io/AeroSpace/guide#assign-workspaces-to-monitors
+#                 See:
+#                 https://nikitabobko.github.io/AeroSpace/guide#assign-workspaces-to-monitors
 [gaps]
-inner.horizontal = 12
-inner.vertical =   12
-outer.left =       [{ monitor.main = 8 }, { monitor."secondary" = 12 }, 10]
-outer.bottom =     [{ monitor.main = 8 }, { monitor."secondary" = 12 }, 10]
-outer.top =        [{ monitor.main = 8 }, { monitor."secondary" = 12 }, 10]
-outer.right =      [{ monitor.main = 8 }, { monitor."secondary" = 12 }, 10]
+    inner.horizontal = 8
+    inner.vertical =   8
+    outer.left =       6
+    outer.bottom =     6
+    outer.top = [{ monitor.main = 6 }, 40]
+    outer.right =      6
+
+# Hyprland-style window rules: 設定系・ダイアログはフロート扱い
+# フローティング例外は撤廃。すべてタイリングで扱う。
+# 個別に floating したいウィンドウは cmd-ctrl-alt-v でトグル可能。
 
 # 'main' binding mode declaration
 # See: https://nikitabobko.github.io/AeroSpace/guide#binding-modes
 # 'main' binding mode must be always presented
+# Fallback value (if you omit the key): mode.main.binding = {}
 [mode.main.binding]
 
-# All possible keys:
-# - Letters.        a, b, c, ..., z
-# - Numbers.        0, 1, 2, ..., 9
-# - Keypad numbers. keypad0, keypad1, keypad2, ..., keypad9
-# - F-keys.         f1, f2, ..., f20
-# - Special keys.   minus, equal, period, comma, slash, backslash, quote, semicolon, backtick,
-#                   leftSquareBracket, rightSquareBracket, space, enter, esc, backspace, tab
-# - Keypad special. keypadClear, keypadDecimalMark, keypadDivide, keypadEnter, keypadEqual,
-#                   keypadMinus, keypadMultiply, keypadPlus
-# - Arrows.         left, down, up, right
+    # All possible keys:
+    # - Letters.        a, b, c, ..., z
+    # - Numbers.        0, 1, 2, ..., 9
+    # - Keypad numbers. keypad0, keypad1, keypad2, ..., keypad9
+    # - F-keys.         f1, f2, ..., f20
+    # - Special keys.   minus, equal, period, comma, slash, backslash, quote, semicolon,
+    #                   backtick, leftSquareBracket, rightSquareBracket, space, enter, esc,
+    #                   backspace, tab, pageUp, pageDown, home, end, forwardDelete,
+    #                   sectionSign (ISO keyboards only, european keyboards only)
+    # - Keypad special. keypadClear, keypadDecimalMark, keypadDivide, keypadEnter, keypadEqual,
+    #                   keypadMinus, keypadMultiply, keypadPlus
+    # - Arrows.         left, down, up, right
 
-# All possible modifiers: cmd, alt, ctrl, shift
+    # All possible modifiers: cmd, alt, ctrl, shift
 
-# All possible commands: https://nikitabobko.github.io/AeroSpace/commands
+    # All possible commands: https://nikitabobko.github.io/AeroSpace/commands
 
-# See: https://nikitabobko.github.io/AeroSpace/commands#layout
-alt-comma = 'layout accordion horizontal vertical'
+    # See: https://nikitabobko.github.io/AeroSpace/commands#exec-and-forget
+    # You can uncomment the following lines to open up terminal with alt + enter shortcut
+    # (like in i3)
+    # alt-enter = '''exec-and-forget osascript -e '
+    # tell application "Terminal"
+    #     do script
+    #     activate
+    # end tell'
+    # '''
 
-# See: https://nikitabobko.github.io/AeroSpace/commands#focus
-# Vi-style navigation
-alt-h = 'focus left'
-alt-j = 'focus down'
-alt-k = 'focus up'
-alt-l = 'focus right'
+    # See: https://nikitabobko.github.io/AeroSpace/commands#close
+    # Hyprland: SUPER+Q = killactive
+    cmd-ctrl-alt-q = 'close'
+    # ShiftでHyprlandの「killactive --force」相当（最後のウィンドウならアプリも終了）
+    cmd-ctrl-alt-shift-q = 'close --quit-if-last-window'
 
-# Arrow key navigation
-alt-left = 'focus left'
-alt-down = 'focus down'
-alt-up = 'focus up'
-alt-right = 'focus right'
+    # See: https://nikitabobko.github.io/AeroSpace/commands#layout
+    cmd-ctrl-alt-slash = 'layout tiles horizontal vertical'
+    cmd-ctrl-alt-comma = 'layout accordion horizontal vertical'
 
-# See: https://nikitabobko.github.io/AeroSpace/commands#move
-# Vi-style movement
-alt-shift-h = 'move left'
-alt-shift-j = 'move down'
-alt-shift-k = 'move up'
-alt-shift-l = 'move right'
+    # See: https://nikitabobko.github.io/AeroSpace/commands#focus
+    cmd-ctrl-alt-h = 'focus left'
+    cmd-ctrl-alt-j = 'focus down'
+    cmd-ctrl-alt-k = 'focus up'
+    cmd-ctrl-alt-l = 'focus right'
 
-# Arrow key movement
-alt-shift-left = 'move left'
-alt-shift-down = 'move down'
-alt-shift-up = 'move up'
-alt-shift-right = 'move right'
+    # See: https://nikitabobko.github.io/AeroSpace/commands#move
+    cmd-ctrl-alt-shift-h = 'move left'
+    cmd-ctrl-alt-shift-j = 'move down'
+    cmd-ctrl-alt-shift-k = 'move up'
+    cmd-ctrl-alt-shift-l = 'move right'
 
-# See: https://nikitabobko.github.io/AeroSpace/commands#resize
-alt-shift-minus = 'resize smart -50'
-alt-shift-equal = 'resize smart +50'
+    # See: https://nikitabobko.github.io/AeroSpace/commands#resize
+    cmd-ctrl-alt-minus = 'resize smart -50'
+    cmd-ctrl-alt-equal = 'resize smart +50'
 
-# See: https://nikitabobko.github.io/AeroSpace/commands#workspace
-# Workspace support (1-8)
-alt-1 = 'workspace 1'
-alt-2 = 'workspace 2'
-alt-3 = 'workspace 3'
-alt-4 = 'workspace 4'
-alt-5 = 'workspace 5'
-alt-6 = 'workspace 6'
-alt-7 = 'workspace 7'
-alt-8 = 'workspace 8'
+    # ── Hyprland-style application launchers / toggles ──
+    # Hyprland: SUPER+Return = exec terminal
+    # 既存Ghosttyプロセスを再利用してメニュー経由で新窓を開く
+    # (open -na だと新プロセスが立つ、open -a だと窓が開かないため)
+    cmd-ctrl-alt-enter = '''exec-and-forget osascript -e 'tell application "Ghostty" to activate' -e 'tell application "System Events" to tell process "Ghostty" to click menu item "New Window" of menu 1 of menu bar item "File" of menu bar 1' '''
+    # Hyprland: SUPER+R = exec menu (Raycastを呼び出す。cmd+spaceの併用も可能)
+    cmd-ctrl-alt-r = 'exec-and-forget open -a Raycast'
+    # Hyprland: SUPER+V = togglefloating
+    cmd-ctrl-alt-v = 'layout floating tiling'
+    # Hyprland: SUPER+F = fullscreen
+    cmd-ctrl-alt-f = 'fullscreen'
+    # Hyprland: SUPER+J = togglesplit (親コンテナの向きを横/縦トグル)
+    cmd-ctrl-alt-backslash = 'layout horizontal vertical'
+    # bspwm相当: balance_tree (フラット化→tilesでサイズ均等化)
+    cmd-ctrl-alt-shift-equal = ['flatten-workspace-tree', 'layout tiles']
 
-# See: https://nikitabobko.github.io/AeroSpace/commands#move-node-to-workspace
-# Workspace support (1-8)
-alt-shift-1 = 'move-node-to-workspace 1'
-alt-shift-2 = 'move-node-to-workspace 2'
-alt-shift-3 = 'move-node-to-workspace 3'
-alt-shift-4 = 'move-node-to-workspace 4'
-alt-shift-5 = 'move-node-to-workspace 5'
-alt-shift-6 = 'move-node-to-workspace 6'
-alt-shift-7 = 'move-node-to-workspace 7'
-alt-shift-8 = 'move-node-to-workspace 8'
+    # ── macOSネイティブ操作の無効化（AeroSpaceで奪う） ──
+    # Cmd+M (minimize): ウィンドウをDockに送る → AeroSpaceが見失うので殺す
+    cmd-m = 'mode main'
+    # Cmd+H (hide app): 隠してDockに送る → 殺す
+    cmd-h = 'mode main'
+    # Cmd+Opt+H (hide others): タイリング崩壊するので殺す
+    cmd-alt-h = 'mode main'
+    # Ctrl+Cmd+F (native fullscreen) はそのまま残す（必要時に新Space化フルスクリーン使う）
 
-# See: https://nikitabobko.github.io/AeroSpace/commands#workspace-back-and-forth
-alt-tab = 'workspace-back-and-forth'
-# See: https://nikitabobko.github.io/AeroSpace/commands#move-workspace-to-monitor
-alt-shift-tab = 'move-workspace-to-monitor --wrap-around next'
+    # See: https://nikitabobko.github.io/AeroSpace/commands#workspace
+    # See: https://nikitabobko.github.io/AeroSpace/commands#workspace
+    cmd-ctrl-alt-1 = ['workspace 1', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=1 AEROSPACE_FOCUSED_WORKSPACE=1']
+    cmd-ctrl-alt-2 = ['workspace 2', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=2 AEROSPACE_FOCUSED_WORKSPACE=2']
+    cmd-ctrl-alt-3 = ['workspace 3', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=3 AEROSPACE_FOCUSED_WORKSPACE=3']
+    cmd-ctrl-alt-4 = ['workspace 4', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=4 AEROSPACE_FOCUSED_WORKSPACE=4']
+    cmd-ctrl-alt-5 = ['workspace 5', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=5 AEROSPACE_FOCUSED_WORKSPACE=5']
+    cmd-ctrl-alt-6 = ['workspace 6', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=6 AEROSPACE_FOCUSED_WORKSPACE=6']
+    cmd-ctrl-alt-7 = ['workspace 7', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=7 AEROSPACE_FOCUSED_WORKSPACE=7']
+    cmd-ctrl-alt-8 = ['workspace 8', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=8 AEROSPACE_FOCUSED_WORKSPACE=8']
+    cmd-ctrl-alt-9 = ['workspace 9', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=9 AEROSPACE_FOCUSED_WORKSPACE=9']
+    cmd-ctrl-alt-0 = ['workspace 0', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=0 AEROSPACE_FOCUSED_WORKSPACE=0']
 
-# See: https://nikitabobko.github.io/AeroSpace/commands#mode
-alt-shift-semicolon = 'mode service'
+    # See: https://nikitabobko.github.io/AeroSpace/commands#move-node-to-workspace
+    cmd-ctrl-alt-shift-1 = ['move-node-to-workspace 1', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=1 AEROSPACE_FOCUSED_WORKSPACE=1']
+    cmd-ctrl-alt-shift-2 = ['move-node-to-workspace 2', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=2 AEROSPACE_FOCUSED_WORKSPACE=2']
+    cmd-ctrl-alt-shift-3 = ['move-node-to-workspace 3', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=3 AEROSPACE_FOCUSED_WORKSPACE=3']
+    cmd-ctrl-alt-shift-4 = ['move-node-to-workspace 4', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=4 AEROSPACE_FOCUSED_WORKSPACE=4']
+    cmd-ctrl-alt-shift-5 = ['move-node-to-workspace 5', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=5 AEROSPACE_FOCUSED_WORKSPACE=5']
+    cmd-ctrl-alt-shift-6 = ['move-node-to-workspace 6', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=6 AEROSPACE_FOCUSED_WORKSPACE=6']
+    cmd-ctrl-alt-shift-7 = ['move-node-to-workspace 7', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=7 AEROSPACE_FOCUSED_WORKSPACE=7']
+    cmd-ctrl-alt-shift-8 = ['move-node-to-workspace 8', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=8 AEROSPACE_FOCUSED_WORKSPACE=8']
+    cmd-ctrl-alt-shift-9 = ['move-node-to-workspace 9', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=9 AEROSPACE_FOCUSED_WORKSPACE=9']
+    cmd-ctrl-alt-shift-0 = ['move-node-to-workspace 0', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=0 AEROSPACE_FOCUSED_WORKSPACE=0']
+
+    # Hyprland: SUPER+S = togglespecialworkspace (scratchpad)
+    cmd-ctrl-alt-s = ['workspace S', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=S AEROSPACE_FOCUSED_WORKSPACE=S']
+    # Hyprland: SUPER+Shift+S = movetoworkspace special
+    cmd-ctrl-alt-shift-s = ['move-node-to-workspace S', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=S AEROSPACE_FOCUSED_WORKSPACE=S']
+
+    # See: https://nikitabobko.github.io/AeroSpace/commands#workspace-back-and-forth
+    cmd-ctrl-alt-tab = ['workspace-back-and-forth', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=$(aerospace list-workspaces --focused) AEROSPACE_FOCUSED_WORKSPACE=$(aerospace list-workspaces --focused)']
+    # See: https://nikitabobko.github.io/AeroSpace/commands#move-workspace-to-monitor
+    # move-workspace-to-monitor は aerospace_workspace_change を発火しないので
+    # 配列で move 後に sketchybar へ手動で通知を送る
+    cmd-ctrl-alt-shift-tab = ['move-workspace-to-monitor --wrap-around next', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=$(aerospace list-workspaces --focused) AEROSPACE_FOCUSED_WORKSPACE=$(aerospace list-workspaces --focused)']
+
+    # See: https://nikitabobko.github.io/AeroSpace/commands#mode
+    cmd-ctrl-alt-shift-semicolon = 'mode service'
+    # Hyprland: bind = SUPER, R, submap, resize
+    cmd-ctrl-alt-shift-r = 'mode resize'
+
+    # See: https://nikitabobko.github.io/AeroSpace/commands#focus-monitor
+    cmd-ctrl-alt-n = 'focus-monitor --wrap-around left'
+    cmd-ctrl-alt-m = 'focus-monitor --wrap-around right'
+
+    # See: https://nikitabobko.github.io/AeroSpace/commands#move-workspace-to-monitor
+    # move 後に sketchybar へ通知して display を再計算させる
+    cmd-ctrl-alt-shift-n = ['move-workspace-to-monitor --wrap-around prev', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=$(aerospace list-workspaces --focused) AEROSPACE_FOCUSED_WORKSPACE=$(aerospace list-workspaces --focused)']
+    cmd-ctrl-alt-shift-m = ['move-workspace-to-monitor --wrap-around next', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=$(aerospace list-workspaces --focused) AEROSPACE_FOCUSED_WORKSPACE=$(aerospace list-workspaces --focused)']
 
 # 'service' binding mode declaration.
 # See: https://nikitabobko.github.io/AeroSpace/guide#binding-modes
 [mode.service.binding]
-esc = ['reload-config', 'mode main']
-r = ['flatten-workspace-tree', 'mode main'] # reset layout
-#s = ['layout sticky tiling', 'mode main'] # sticky is not yet supported https://github.com/nikitabobko/AeroSpace/issues/2
-f = ['layout floating tiling', 'mode main'] # Toggle between floating and tiling layout
-backspace = ['close-all-windows-but-current', 'mode main']
+    esc = ['reload-config', 'mode main']
+    r = ['flatten-workspace-tree', 'mode main'] # reset layout
+    f = ['layout floating tiling', 'mode main'] # Toggle between floating and tiling layout
+    backspace = ['close-all-windows-but-current', 'mode main']
 
-# Enhanced service mode bindings
-# Join windows with vi-style keys
-alt-shift-h = ['join-with left', 'mode main']
-alt-shift-j = ['join-with down', 'mode main']
-alt-shift-k = ['join-with up', 'mode main']
-alt-shift-l = ['join-with right', 'mode main']
+    # sticky is not yet supported https://github.com/nikitabobko/AeroSpace/issues/2
+    #s = ['layout sticky tiling', 'mode main']
 
-# Join windows with arrow keys
-alt-shift-left = ['join-with left', 'mode main']
-alt-shift-down = ['join-with down', 'mode main']
-alt-shift-up = ['join-with up', 'mode main']
-alt-shift-right = ['join-with right', 'mode main']
+    # service mode内ではモディファイア不要。Shift+方向で囲む
+    shift-h = ['join-with left', 'mode main']
+    shift-j = ['join-with down', 'mode main']
+    shift-k = ['join-with up', 'mode main']
+    shift-l = ['join-with right', 'mode main']
+    # 旧バインドも残す（マッスルメモリ保護）
+    cmd-ctrl-alt-shift-h = ['join-with left', 'mode main']
+    cmd-ctrl-alt-shift-j = ['join-with down', 'mode main']
+    cmd-ctrl-alt-shift-k = ['join-with up', 'mode main']
+    cmd-ctrl-alt-shift-l = ['join-with right', 'mode main']
 
-# Additional service mode features
-t = ['layout tiles', 'mode main']
-a = ['layout accordion', 'mode main']
-h = ['layout h_tiles', 'mode main']
-v = ['layout v_tiles', 'mode main']
+    down = 'volume down'
+    up = 'volume up'
+    shift-down = ['volume set 0', 'mode main']
 
-# Workspace management in service mode
-1 = ['move-node-to-workspace 1', 'workspace 1', 'mode main']
-2 = ['move-node-to-workspace 2', 'workspace 2', 'mode main']
-3 = ['move-node-to-workspace 3', 'workspace 3', 'mode main']
-4 = ['move-node-to-workspace 4', 'workspace 4', 'mode main']
-5 = ['move-node-to-workspace 5', 'workspace 5', 'mode main']
-6 = ['move-node-to-workspace 6', 'workspace 6', 'mode main']
-7 = ['move-node-to-workspace 7', 'workspace 7', 'mode main']
-8 = ['move-node-to-workspace 8', 'workspace 8', 'mode main']
-
-# Monitor management
-m = ['move-workspace-to-monitor --wrap-around next', 'mode main']
-shift-m = ['move-node-to-monitor --wrap-around next', 'mode main']
-
-# Window resizing in service mode
-minus = ['resize smart -50', 'mode main']
-equal = ['resize smart +50', 'mode main']
-shift-minus = ['resize width -100', 'mode main']
-shift-equal = ['resize width +100', 'mode main']
-
-# Application-specific workspace assignments disabled
-# Applications will open in the current workspace by default
-
-# Workspace-to-monitor assignments for multi-monitor setups
-# Adjust these patterns based on your monitor setup
-# Workspace-to-monitor assignments disabled
-# Workspaces can be used freely across monitors
-# [workspace-to-monitor-force-assignment]
-
+# Hyprland-style resize submap (vim-key directional resize)
+[mode.resize.binding]
+    h = 'resize width -50'
+    j = 'resize height +50'
+    k = 'resize height -50'
+    l = 'resize width +50'
+    shift-h = 'resize width -100'
+    shift-j = 'resize height +100'
+    shift-k = 'resize height -100'
+    shift-l = 'resize width +100'
+    minus = 'resize smart -50'
+    equal = 'resize smart +50'
+    esc = 'mode main'
+    enter = 'mode main'
+    
