@@ -16,6 +16,45 @@
   programs.zsh.enable = true;
   environment.shells = [ pkgs.zsh ];
 
+  # macOS 設定 (実機の defaults read で確認した値のみ宣言)
+  system.defaults = {
+    dock = {
+      autohide = true;
+      show-recents = false;
+      static-only = true;
+      tilesize = 52;
+      launchanim = false;
+      minimize-to-application = true;
+    };
+    finder = {
+      AppleShowAllExtensions = true;
+      AppleShowAllFiles = true;
+      ShowPathbar = true;
+      ShowStatusBar = false;
+      FXPreferredViewStyle = "Nlsv";
+      FXDefaultSearchScope = "SCcf";
+      CreateDesktop = false;
+    };
+    NSGlobalDomain = {
+      ApplePressAndHoldEnabled = false;
+      InitialKeyRepeat = 15;
+      KeyRepeat = 2;
+      NSAutomaticCapitalizationEnabled = false;
+      NSAutomaticDashSubstitutionEnabled = false;
+      NSAutomaticPeriodSubstitutionEnabled = false;
+      NSAutomaticQuoteSubstitutionEnabled = false;
+      NSAutomaticSpellingCorrectionEnabled = false;
+      AppleShowScrollBars = "WhenScrolling";
+      # Note: Caps→Esc は Karabiner で処理しているため宣言しない
+      # Note: AppleInterfaceStyle (Dark mode) は明示設定されてないので除外
+    };
+    trackpad = {
+      Clicking = false;
+      TrackpadRightClick = true;
+      TrackpadThreeFingerDrag = true;
+    };
+  };
+
   # cask に該当 Nerd Font が無いものだけ Nix で確保
   # (font-hackgen-nerd は HackGen で Hack とは別物)
   # (font-jetbrains-mono-nerd-font は cask 側で管理)
@@ -140,6 +179,8 @@
       "rbw"
       "syft"           # SBOM
       "radare2"        # reverse engineering
+      "age"            # SOPS encryption backend
+      "sops"           # secrets management
 
       # ─── Documents / Fonts / Media ───
       "pandoc"

@@ -31,9 +31,12 @@
 
     home-manager.url = "github:nix-community/home-manager/release-25.05";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
+
+    sops-nix.url = "github:Mic92/sops-nix";
+    sops-nix.inputs.nixpkgs.follows = "nixpkgs";
   };
 
-  outputs = { nixpkgs, nix-darwin, home-manager, ... }:
+  outputs = { nixpkgs, nix-darwin, home-manager, sops-nix, ... }:
     let
       system = "aarch64-darwin";
       pkgs = nixpkgs.legacyPackages.${system};
@@ -58,7 +61,10 @@
       # (nix-darwin と分離して USER check の bug を回避)
       homeConfigurations.yuki = home-manager.lib.homeManagerConfiguration {
         inherit pkgs;
-        modules = [ ./home.nix ];
+        modules = [
+          ./home.nix
+          sops-nix.homeManagerModules.sops
+        ];
       };
 
       # Remote (Linux) bundle: nssh から `nix-portable nix shell .#remote-env` で使う

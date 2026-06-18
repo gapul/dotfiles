@@ -10,6 +10,7 @@
     PAGER = "bat";
     HOMEBREW_NO_ANALYTICS = "1";
     PNPM_HOME = "${config.home.homeDirectory}/Library/pnpm";
+    SOPS_AGE_KEY_FILE = "${config.home.homeDirectory}/.config/sops/age/keys.txt";
   };
 
   home.sessionPath = [
@@ -169,6 +170,20 @@
     enable = true;
     enableZshIntegration = true;
     nix-direnv.enable = true;
+  };
+
+  # SOPS: 暗号化された secrets を home-manager switch 時に decrypt
+  sops = {
+    age.keyFile = "${config.home.homeDirectory}/.config/sops/age/keys.txt";
+    defaultSopsFile = ../secrets/secrets.yaml;
+    secrets = {
+      "vpn/proton" = {
+        path = "${config.home.homeDirectory}/vpn-conf/proton.conf";
+      };
+      "vpn/wgcf" = {
+        path = "${config.home.homeDirectory}/vpn-conf/wgcf-profile.conf";
+      };
+    };
   };
 
   # dotfiles/configs/* を symlink
