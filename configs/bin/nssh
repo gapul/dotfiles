@@ -46,6 +46,6 @@ ln -sfn ~/dotfiles/configs/cli/yazi         ~/.config/yazi
 ln -sfn ~/dotfiles/configs/terminals/zellij ~/.config/zellij
 BOOTSTRAP
 
-# 4. インタラクティブ接続
+# 4. インタラクティブ接続 ($HOME はリモート側で展開される)
 exec ssh -t "$host" "$@" \
-  '~/.local/bin/nix-portable nix shell github:gapul/dotfiles#remote-env -c zellij'
+  '"$HOME"/.local/bin/nix-portable nix shell github:gapul/dotfiles#remote-env -c zellij'
