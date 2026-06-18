@@ -11,6 +11,7 @@
     HOMEBREW_NO_ANALYTICS = "1";
     PNPM_HOME = "${config.home.homeDirectory}/Library/pnpm";
     SOPS_AGE_KEY_FILE = "${config.home.homeDirectory}/.config/sops/age/keys.txt";
+    FLAKE = "${config.home.homeDirectory}/dotfiles/nix";  # nh のデフォルト flake
   };
 
   home.sessionPath = [
