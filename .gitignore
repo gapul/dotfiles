@@ -1,148 +1,24 @@
-# =============================================================================
-# Dotfiles System .gitignore
-# =============================================================================
-
-# --------------------------------
-# System Files (macOS/Windows/Linux)
-# --------------------------------
+# macOS
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-*.orig
 
-# --------------------------------
-# Temporary & Backup Files
-# --------------------------------
-*.tmp
-*.temp
+# Editor/IDE
+.vscode/
+.idea/
 *.swp
 *.swo
 *~
-*.log
-*.backup
-*.bak
-*.old
-
-# Backup directories  
-backups/
-backup-*/
-temp/
-tmp/
-test-*/
-test-project/
-*-test/
-
-# --------------------------------
-# Development Environment
-# --------------------------------
-
-# Node.js (dependencies managed by Nix)
-node_modules/
-package.json
-package-lock.json
-yarn.lock
-.npm/
-.yarn/
-
-# Python
-__pycache__/
-*.pyc
-*.pyo
-.venv/
-venv/
-
-# IDE & Editor
-.vscode/
-.idea/
-*.code-workspace
-
-# --------------------------------
-# SOPS Security Management
-# --------------------------------
-
-# Encrypted files SHOULD be in repository
-!nix/secrets/secrets.yaml
-!nix/secrets/*.yaml
-!nix/security/sops/secrets-unified.yaml
-!nix/security/sops/secrets-*.yaml
-
-# Exclude unencrypted secrets and keys
-*.env.local
-**/api_key_unencrypted*
-**/token_unencrypted*
-*.key.unencrypted
-*.pem.unencrypted
-# Age keys should not be in repository
-nix/secrets/keys/
-.config/sops/age/keys.txt
-
-# Allow example and template files
-!*.example
-!*.template
-!*.sample
-
-# --------------------------------
-# Legacy Sensitive Files (migrating to SOPS)
-# --------------------------------
-configs/git/.gitconfig
-configs/ssh/config
-configs/apps/claude/claude.json
-
-# --------------------------------
-# User-Specific & Runtime Data
-# --------------------------------
-configs/**/user_data/
-configs/**/cache/
-configs/**/sessions/
-system-metrics.json
-
-# Runtime generated files
-result
-result-*/
-nix-result/
-
-# --------------------------------
-# Platform-Specific
-# --------------------------------
 
 # Nix
+result
+result-*
 .direnv/
-flake.lock.backup
 
-# macOS
-.localized
+# home-manager backups
+*.backup
+*.before-nix
+*.before-nix-darwin
 
-# Linux
-.fuse_hidden*
-
-# --------------------------------
-# Archive & Documentation Build
-# --------------------------------
-docs/archive/slides/node_modules/
-docs/archive/slides/package-lock.json
-docs/archive/slides/*.pdf
-docs/archive/slides/dist/
-
-# --------------------------------
-# Testing & Development Artifacts
-# --------------------------------
-test-output/
-coverage/
-.coverage
-.pytest_cache/
-.tox/
-
-# QMK/VIA temporary files
-*.hex
-*.bin
-*.uf2
-
-# AI generated temporary files
-/tmp/sketchybar_*
-/tmp/battery_*
-/tmp/memory_*
-/tmp/cpu_*
+# Logs / tmp
+*.log
+*.tmp
+tmp/
