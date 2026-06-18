@@ -193,14 +193,6 @@
     recursive = true;
   };
   home.file.".config/launcher/config.toml".source = ../configs/launcher/config.toml;
-  home.file."bin/apply-file-associations" = {
-    source = ../configs/bin/apply-file-associations;
-    executable = true;
-  };
-  home.file."bin/sketchybar-refresh" = {
-    source = ../configs/bin/sketchybar-refresh;
-    executable = true;
-  };
 
   # 動的設定 (アプリ自身が書き戻す可能性):
   # mkOutOfStoreSymlink で dotfiles の実体に直接 link → 書き込み可能
