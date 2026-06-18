@@ -200,6 +200,15 @@
     recursive = true;
   };
   home.file.".config/launcher/config.toml".source = ../configs/launcher/config.toml;
+  home.file.".config/yazi" = {
+    source = ../configs/cli/yazi;
+    recursive = true;
+  };
+  home.file.".config/zathura/zathurarc".source = ../configs/cli/zathura/zathurarc;
+  home.file.".config/calcurse" = {
+    source = ../configs/cli/calcurse;
+    recursive = true;
+  };
 
   # 動的設定 (アプリ自身が書き戻す可能性):
   # mkOutOfStoreSymlink で dotfiles の実体に直接 link → 書き込み可能
