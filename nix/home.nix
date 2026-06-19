@@ -22,6 +22,8 @@
   };
 
   home.sessionPath = [
+    "/opt/homebrew/bin"                         # brew 本体 (Apple Silicon)
+    "/opt/homebrew/sbin"
     "${config.home.homeDirectory}/Library/pnpm"
     "${config.home.homeDirectory}/Library/pnpm/bin"
     "${config.home.homeDirectory}/.local/bin"  # uv tool 経由のバイナリ
