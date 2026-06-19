@@ -1,4 +1,4 @@
-{ config, pkgs, ... }: {
+{ config, pkgs, lib, ... }: {
   home.username = "yuki";
   home.homeDirectory = "/Users/yuki";
   home.stateVersion = "23.11";
@@ -251,4 +251,19 @@
     config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/dotfiles/configs/editors/nvim";
   home.file.".config/karabiner".source =
     config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/dotfiles/configs/keyboard/karabiner";
+
+  # ログイン項目: ヘッドレス起動しない GUI 常駐アプリを auto-launch
+  # (sketchybar/Karabiner は launchd plist で自動起動するので含めない)
+  home.activation.macosLoginItems = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    LOGIN_APPS=(
+      "/Applications/AeroSpace.app"
+      "/Applications/Ghostty.app"
+    )
+    for app in "''${LOGIN_APPS[@]}"; do
+      name=$(basename "$app" .app)
+      if ! /usr/bin/osascript -e "tell application \"System Events\" to (name of login items) contains \"$name\"" 2>/dev/null | grep -q true; then
+        /usr/bin/osascript -e "tell application \"System Events\" to make login item at end with properties {path:\"$app\", hidden:false}" >/dev/null 2>&1 || true
+      fi
+    done
+  '';
 }
