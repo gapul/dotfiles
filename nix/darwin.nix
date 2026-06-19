@@ -202,6 +202,17 @@
       "media-control"    # media keys
       "terminal-notifier"
       "duti"             # file associations
+      "jakehilborn/jakehilborn/displayplacer"  # sketchybar マルチディスプレイ
+
+      # ─── Status bar / Window decoration (felixkratz tap) ───
+      "felixkratz/formulae/sketchybar"
+      "felixkratz/formulae/borders"     # aerospace から exec-and-forget で起動
+
+      # ─── Transcription / other 3rd-party tap brews ───
+      "finnvoor/tools/yap"             # 日本語 transcription
+      "infisical/get-cli/infisical"    # secret CLI
+      "pomdtr/tap/sunbeam"             # launcher
+      "supabase/tap/supabase"          # Supabase CLI
 
       # ─── Other shells ───
       "fish"
