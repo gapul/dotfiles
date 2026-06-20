@@ -74,9 +74,10 @@ while IFS= read -r gitdir; do
     continue
   fi
 
-  # un-pushed commit 検知
-  if git -C "$repodir" log --branches --not --remotes --oneline 2>/dev/null | grep -q .; then
-    skipped_dirty+=("$repodir (un-pushed commits)")
+  # un-pushed commit 検知 (count で明示判定、pipe の subshell 経由を回避)
+  unpushed_count=$(git -C "$repodir" log --branches --not --remotes --oneline 2>/dev/null | wc -l | tr -d ' ')
+  if [[ "$unpushed_count" -gt 0 ]]; then
+    skipped_dirty+=("$repodir (un-pushed commits: $unpushed_count)")
     continue
   fi
 
