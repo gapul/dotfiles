@@ -7,30 +7,6 @@
             "complex_modifications": {
                 "rules": [
                     {
-                        "description": "Cmd+Space を f18 に変換 (Ghostty quick terminal トグル)",
-                        "manipulators": [
-                            {
-                                "from": {
-                                    "key_code": "spacebar",
-                                    "modifiers": {
-                                        "mandatory": [
-                                            "command"
-                                        ],
-                                        "optional": [
-                                            "caps_lock"
-                                        ]
-                                    }
-                                },
-                                "to": [
-                                    {
-                                        "key_code": "f18"
-                                    }
-                                ],
-                                "type": "basic"
-                            }
-                        ]
-                    },
-                    {
                         "description": "スペースキーを単押しでスペース、長押しでCmd+Ctrl+Optにする (Minecraftでは無効)",
                         "manipulators": [
                             {

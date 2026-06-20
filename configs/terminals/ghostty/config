@@ -65,9 +65,6 @@ quit-after-last-window-closed = false
 
 # グローバルホットキーの割り当て（Spotlight代替: cmd+space）
 keybind = global:super+space=toggle_quick_terminal
-# Karabiner経由でlauncherリセット込みのcmd+spaceから呼ばれる隠しトグル
-# (Karabinerがcmd+spaceを奪う前提なので↑のsuper+spaceは到達しなくなる)
-keybind = global:f18=toggle_quick_terminal
 
 # Ghostty標準の cmd+enter (toggle_fullscreen) を無効化
 # AeroSpaceのタイリングと競合するため
@@ -82,6 +79,5 @@ keybind = cmd+c=copy_to_clipboard
 quick-terminal-position = center
 quick-terminal-size = 38%,480px
 quick-terminal-autohide = true
-quick-terminal-screen = mouse
 quick-terminal-animation-duration = 0.12
 
