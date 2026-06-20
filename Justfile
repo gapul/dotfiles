@@ -53,6 +53,30 @@ gc:
 diff:
     nh darwin build
 
+# 環境ヘルスチェック (Determinate upgrade 後などに走らせる)
+doctor:
+    #!/usr/bin/env bash
+    set -u
+    pass=0; fail=0
+    check() { if eval "$2"; then echo "  ✅ $1"; pass=$((pass+1)); else echo "  ❌ $1"; fail=$((fail+1)); fi; }
+    echo "== /nix マウント =="
+    check "/nix がマウントされてる" 'mount | grep -q " on /nix "'
+    check "/etc/fstab に noauto が無い (Login Items 対策)" '! grep "/nix" /etc/fstab | grep -q noauto'
+    check "/nix が復号化済 (FileVault: No)" '! diskutil apfs list 2>/dev/null | grep -A 6 "Nix Store" | grep -q "FileVault: *Yes"'
+    echo "== Login Items =="
+    check "AeroSpace 登録済" 'osascript -e "tell application \"System Events\" to get name of login items" | grep -q AeroSpace'
+    check "Ghostty 登録済" 'osascript -e "tell application \"System Events\" to get name of login items" | grep -q Ghostty'
+    echo "== 主要アプリ実行中 =="
+    check "sketchybar" 'pgrep -fq "/opt/homebrew/opt/sketchybar/bin/sketchybar"'
+    check "AeroSpace" 'pgrep -fq AeroSpace.app'
+    check "Karabiner Core-Service" 'pgrep -fq Karabiner-Core-Service'
+    echo "== dotfiles =="
+    check "未 commit 変更なし" '[[ -z "$(git -C {{justfile_directory()}} status --short)" ]]'
+    check "age 秘密鍵存在" '[[ -f ~/.config/sops/age/keys.txt ]]'
+    echo
+    echo "Result: $pass passed, $fail failed"
+    exit $fail
+
 # remote-env を別ホストで使う
 ssh host:
     nssh {{host}}
