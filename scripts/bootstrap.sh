@@ -131,5 +131,15 @@ nix run home-manager/release-25.05 -- switch --flake "$DOTFILES_DIR/nix#yuki" -b
 log "Cleaning duplicates installed by both brew and Nix..."
 brew uninstall starship fzf atuin 2>/dev/null || true
 
+# 9. uv tool で入れる CLI (brew/nix に無いもの)
+log "Installing uv tools (gita, etc.)..."
+uv tool install gita 2>&1 | tail -3 || true
+
+# 10. ghq 配下の全 repo を gita に登録 (空でも安全)
+if command -v gita >/dev/null && command -v ghq >/dev/null; then
+  log "Registering ghq repos with gita..."
+  ghq list -p 2>/dev/null | xargs -I {} gita add {} 2>&1 | tail -3 || true
+fi
+
 log "完了! 新しいシェルを開いてください:"
 log "  exec zsh"
