@@ -83,9 +83,19 @@
       zstyle ':fzf-tab:complete:kill:argument-rest' fzf-preview 'ps -p $word -o pid,ppid,user,%cpu,%mem,command 2>/dev/null'
       zstyle ':fzf-tab:*' fzf-flags --height=40% --reverse
 
-      # nh / nix build を nom (nix-output-monitor) でラップ
+      # nix build / nix-build を nom (nix-output-monitor) で見やすく
+      # 注: nh は自前 TUI 持ってるので alias 不要。nom は直接 nix build 用
       if command -v nom >/dev/null 2>&1; then
-        alias nh='nh 2>&1 | nom --json'
+        alias nix-build='nix-build 2>&1 | nom'
+        # nix build (CLI flake コマンド) は引数判定が必要なので関数化
+        function nix() {
+          if [[ "$1" == "build" ]]; then
+            shift
+            command nix build --log-format internal-json -v "$@" 2>&1 | nom --json
+          else
+            command nix "$@"
+          fi
+        }
       fi
 
       # vi モード + Ctrl+X Ctrl+E で外部エディタ(nvim)起動
