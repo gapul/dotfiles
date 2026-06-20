@@ -103,6 +103,21 @@
       # opam (PATH + 補完)
       [ -r ~/.opam/opam-init/init.zsh ] && source ~/.opam/opam-init/init.zsh > /dev/null 2>&1
 
+      # ghq + fzf: Ctrl+G で repo 横断 fuzzy 移動
+      function ghq-fzf() {
+        local selected
+        selected=$(ghq list 2>/dev/null | fzf --height=40% --reverse \
+          --preview "ls -la $(ghq root)/{} 2>/dev/null | head -20" \
+          --preview-window=right:40%)
+        if [[ -n "$selected" ]]; then
+          BUFFER="cd $(ghq root)/$selected"
+          zle accept-line
+        fi
+        zle reset-prompt
+      }
+      zle -N ghq-fzf
+      bindkey '^g' ghq-fzf
+
       function mkcd() { mkdir -p "$1" && cd "$1"; }
 
       function extract() {
@@ -148,6 +163,7 @@
       init.defaultBranch = "main";
       pull.rebase = true;
       push.autoSetupRemote = true;
+      ghq.root = "${config.home.homeDirectory}/ghq";
     };
   };
 
