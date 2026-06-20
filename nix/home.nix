@@ -118,6 +118,16 @@
       zle -N ghq-fzf
       bindkey '^g' ghq-fzf
 
+      # gita: ghq 配下の全 repo を再登録 (新 repo を clone した後に呼ぶ)
+      function gita-sync() {
+        if ! command -v gita >/dev/null || ! command -v ghq >/dev/null; then
+          echo "gita / ghq が無い"
+          return 1
+        fi
+        ghq list -p | xargs -I {} gita add {} 2>&1 | tail -3
+        echo "登録済 repo: $(gita ls | wc -w | tr -d ' ')"
+      }
+
       function mkcd() { mkdir -p "$1" && cd "$1"; }
 
       function extract() {
