@@ -68,6 +68,7 @@ curl -fsSL https://raw.githubusercontent.com/gapul/dotfiles/main/scripts/bootstr
 
 | コマンド | 説明 |
 |---|---|
+| `just doctor` | 環境ヘルスチェック(/nix マウント・Login Items・fstab 状態) |
 | `sudo /usr/local/bin/determinate-nixd init` | macOS update 後 `/nix` が見えない時 |
 | `sudo /usr/local/bin/determinate-nixd upgrade` | Determinate Nix runtime 本体を更新(数ヶ月に1回) |
 | `nh darwin switch` | システムだけ rebuild(`just rebuild` の半分) |
@@ -83,12 +84,39 @@ curl -fsSL https://raw.githubusercontent.com/gapul/dotfiles/main/scripts/bootstr
 - **secrets は SOPS-nix で復号**: `~/.config/sops/age/keys.txt` が必要。Bitwarden に backup 推奨
 - **direnv**: `templates/<stack>/` をプロジェクトにコピーして `direnv allow` で言語別 dev shell
 
+## 設計判断: `/nix` を復号化 + `fstab` から `noauto` 削除
+
+Determinate Nix のデフォルト構成は:
+1. `/nix` ボリュームを FileVault 暗号化
+2. `/etc/fstab` に `noauto` を付与
+3. launchd デーモン `org.nixos.darwin-store` で遅延マウント
+
+この設計は **launchd daemon ベースの起動**(`nix-darwin` の PR #1052 で `wait4path` 自動付与)を前提にしているが、**Login Items / GUI 自動復元 / restoring Terminal は wait4path 範囲外**。Ghostty・AeroSpace・sketchybar を Login Items で常駐させてる構成では、boot 直後に /nix がまだマウントされず config 読み込み失敗する。
+
+[deep-research](https://github.com/LnL7/nix-darwin/issues/774) によると、これはコミュニティで何年も解決してない有名な問題。 `lilyball` は login shell を C wrapper で包んでる、`astratagem` は「Nix で yabai 入れるのやめた」と発言してる。
+
+**対処** (現状の構成):
+- `/nix` ボリュームを `diskutil apfs decryptVolume "Nix Store"` で復号化
+- `/etc/fstab` から `noauto` を削除 → macOS の `automountd` が起動序盤にマウント
+- Login Items が起動するときには /nix は既にマウント済 → config 読める
+
+**トレードオフ**:
+- ✅ Login Items 問題が完全解決
+- ✅ `wait4path` 経路で漏れる GUI / 復元 Terminal も解決
+- ⚠️ Determinate 公式サポート外設定(upgrade で fstab 書き戻される可能性 → bootstrap.sh で自動修正)
+- ⚠️ ボリューム暗号化が外れる
+  - 実害は無い(/nix の中身は nixpkgs 公開バイナリ、Mac 本体は FileVault でカバー済)
+
+**自動修復**: `bootstrap.sh` が新規 install 時に自動で復号化 + `noauto` 削除する。`just doctor` で日常チェック可能。Determinate upgrade 後はとくに `just doctor` 推奨。
+
 ## トラブルシューティング
 
 | 症状 | 対処 |
 |---|---|
-| `/nix` が見えない / shell でエラー | `sudo determinate-nixd init` |
+| 再起動後に sketchybar / Ghostty / launcher が config 読まない | `just doctor` で /nix マウント状態確認、`fstab` に `noauto` 戻ってたら `sudo sed -i '' 's/,noauto//' /etc/fstab` |
+| `/nix` が見えない / shell でエラー | `sudo determinate-nixd init` または `sudo diskutil mount "Nix Store"` |
 | `nh: more values required` | 新ターミナル開き直す(`__HM_SESS_VARS_SOURCED` の継承で env が古い) |
 | `git push` できない | dotfiles の remote が SSH 化済 → `~/.ssh/config` 確認 |
 | pre-commit hook で commit blocked | leak は redact 表示、嘘陽性なら `.gitleaks.toml` の allowlist 追記 |
 | `darwin-rebuild switch` で USER エラー | nix-darwin#1462 の bug。`just rebuild`(nh)で回避 |
+| Ghostty config の一部設定が無視される(`quick-terminal-position` 等が default のまま) | Ghostty 1.3.1 は invalid な行(例: `quick-terminal-screen = mouse`、`global:f18=...`)で**parse 中断**。+show-config で適用状態確認、config の上から 1 行ずつ消して原因特定 |
