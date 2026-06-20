@@ -47,6 +47,15 @@
     autosuggestion.enable = true;
     syntaxHighlighting.enable = true;
 
+    plugins = [
+      {
+        # zsh の TAB 補完を fzf 化
+        name = "fzf-tab";
+        src = pkgs.zsh-fzf-tab;
+        file = "share/fzf-tab/fzf-tab.plugin.zsh";
+      }
+    ];
+
     shellAliases = {
       ".." = "cd ..";
       "..." = "cd ../..";
@@ -56,7 +65,7 @@
       gl = "git pull";
       gp = "git push";
       gs = "git status";
-      ls = "ls -G";
+      # ls エイリアスは programs.eza.enableZshIntegration で自動定義される
       tl = "textlint --config ~/.config/textlint/.textlintrc.json";
       tlf = "textlint --config ~/.config/textlint/.textlintrc.json --fix";
     };
@@ -64,6 +73,19 @@
     initContent = ''
       if [[ -f /opt/homebrew/bin/brew ]]; then
         eval "$(/opt/homebrew/bin/brew shellenv)"
+      fi
+
+      # fzf-tab: TAB 補完の preview をスマートに
+      zstyle ':completion:*' menu no
+      zstyle ':fzf-tab:complete:cd:*' fzf-preview 'eza -1 --color=always --icons=auto $realpath 2>/dev/null'
+      zstyle ':fzf-tab:complete:(\\\\|*/|)git-(add|diff|restore|reset):*' fzf-preview 'git diff --color=always -- $word | delta 2>/dev/null'
+      zstyle ':fzf-tab:complete:(\\\\|*/|)git-(checkout|switch):*' fzf-preview 'git log --color=always --oneline -20 $word 2>/dev/null'
+      zstyle ':fzf-tab:complete:kill:argument-rest' fzf-preview 'ps -p $word -o pid,ppid,user,%cpu,%mem,command 2>/dev/null'
+      zstyle ':fzf-tab:*' fzf-flags --height=40% --reverse
+
+      # nh / nix build を nom (nix-output-monitor) でラップ
+      if command -v nom >/dev/null 2>&1; then
+        alias nh='nh 2>&1 | nom --json'
       fi
 
       # vi モード + Ctrl+X Ctrl+E で外部エディタ(nvim)起動
@@ -165,16 +187,55 @@
     '';
   };
 
+  # 単発で使う CLI ツール群 (programs.* の対象外)
+  home.packages = with pkgs; [
+    comma                 # `, pkg args` で install せず nix package を実行
+    nix-output-monitor    # nh / nix build を見やすくする (`nom`)
+    nix-tree              # nix store 依存関係 TUI
+    nix-init              # flake.nix 雛形生成
+    devenv                # Nix ベース dev shell (direnv と組み合わせ)
+  ];
+
   programs.git = {
     enable = true;
     userName = "gapul";
     userEmail = "92638132+gapul@users.noreply.github.com";
+    delta = {
+      enable = true;
+      options = {
+        navigate = true;
+        line-numbers = true;
+        side-by-side = true;
+      };
+    };
     extraConfig = {
       init.defaultBranch = "main";
       pull.rebase = true;
       push.autoSetupRemote = true;
       ghq.root = "${config.home.homeDirectory}/ghq";
+      merge.conflictstyle = "diff3";
+      diff.colorMoved = "default";
     };
+  };
+
+  programs.bat = {
+    enable = true;
+    config = {
+      style = "numbers,changes,header";
+    };
+  };
+
+  programs.eza = {
+    enable = true;
+    enableZshIntegration = true;  # ls/ll/la/lt alias 自動定義
+    git = true;
+    icons = "auto";
+    extraOptions = [ "--group-directories-first" ];
+  };
+
+  programs.tealdeer = {
+    enable = true;
+    settings.updates.auto_update = true;
   };
 
   programs.starship = {
