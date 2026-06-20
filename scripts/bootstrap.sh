@@ -50,6 +50,43 @@ if ! command -v nix >/dev/null; then
   export PATH="/nix/var/nix/profiles/default/bin:$PATH"
 fi
 
+# 2.5. /nix ボリュームを起動序盤に確実にマウントさせる (Login Items 対策)
+#
+# Determinate のデフォルト構成:
+#   - /nix ボリュームを FileVault 暗号化
+#   - /etc/fstab に noauto を付与
+#   - launchd デーモン org.nixos.darwin-store が遅延マウント
+# 結果: Login Items の Ghostty / AeroSpace 等が起動した時点で /nix がまだマウントされず、
+#       symlink 先 (/nix/store/...) が読めず config 読み込み失敗
+#
+# 対策: ボリューム復号化 + fstab から noauto 削除 → macOS automountd が起動序盤にマウント
+# トレードオフ: Determinate 公式サポート外設定。セキュリティ的には FileVault でカバー済
+#               (/nix の中身は公開バイナリなので二重暗号化に実害価値なし)
+#
+# 暗号化チェック
+if diskutil apfs list 2>/dev/null | grep -A 6 "Nix Store" | grep -q "FileVault: *Yes"; then
+  log "/nix ボリュームが暗号化されてます。Login Items 競合を避けるため復号化します..."
+  # ボリュームパスワードを System keychain から取得
+  NIX_VOL_PW=$(sudo security find-generic-password -s "Nix Store" -a "Nix Store" -w \
+                /Library/Keychains/System.keychain 2>/dev/null || true)
+  if [ -z "$NIX_VOL_PW" ]; then
+    err "  System keychain に Nix Store のパスワードが見つかりません"
+    err "  Keychain Access で 'Nix Store' エントリを開いて password を取り出してから手動で:"
+    err "    sudo diskutil apfs decryptVolume \"Nix Store\""
+    exit 1
+  fi
+  printf '%s' "$NIX_VOL_PW" | sudo diskutil apfs decryptVolume "Nix Store" -stdinpassphrase
+  log "復号化完了 (AES ハードウェアアクセラレーションで一瞬で終わるはず)"
+fi
+
+# fstab の noauto を削除
+if grep -q "noauto" /etc/fstab 2>/dev/null; then
+  log "/etc/fstab から noauto を削除して起動時自動マウントを有効化..."
+  sudo cp /etc/fstab "/etc/fstab.bak.$(date +%Y%m%d_%H%M%S)"
+  sudo sed -i '' 's/,noauto//' /etc/fstab
+  log "  修正後: $(grep '/nix' /etc/fstab)"
+fi
+
 # 3. dotfiles clone
 if [ ! -d "$DOTFILES_DIR/.git" ]; then
   log "Cloning dotfiles..."
