@@ -2,6 +2,8 @@
 
 yuki の macOS 環境を宣言的に管理する Nix flake。
 
+📖 **日常コマンドは [docs/CHEATSHEET.md](docs/CHEATSHEET.md) を参照**
+
 ## 構成
 
 ```
