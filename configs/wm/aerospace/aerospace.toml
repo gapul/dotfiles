@@ -14,7 +14,7 @@ start-at-login = true
 
 # workspace切替時に壁紙パレット用stateファイルを更新 (Aurora wallpaper連動)
 # フラッシュなし: HTMLがstate.jsをポーリングするので Plash URL自体は触らない
-exec-on-workspace-change = ['/bin/bash', '-c', 'printf "window.__ws=%s;" "\"$AEROSPACE_FOCUSED_WORKSPACE\"" > /Users/yuki/dotfiles/configs/wallpaper/state.js']
+exec-on-workspace-change = ['/bin/bash', '-c', 'printf "window.__ws=%s;" "\"$AEROSPACE_FOCUSED_WORKSPACE\"" > "$HOME/dotfiles/configs/wallpaper/state.js"']
 
 # Normalizations. See: https://nikitabobko.github.io/AeroSpace/guide#normalization
 enable-normalization-flatten-containers = true
