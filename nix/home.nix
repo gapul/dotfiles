@@ -176,7 +176,7 @@
 
       function vpn() {
         local profile="''${2:-wgcf-profile}"
-        local conf="$HOME/vpn-conf/''${profile}.conf"
+        local conf="$HOME/.config/wireguard/''${profile}.conf"
         if [[ ! -f "$conf" ]]; then
           echo "vpn: config not found: $conf" >&2
           return 1
@@ -204,6 +204,7 @@
     nix-tree              # nix store 依存関係 TUI
     nix-init              # flake.nix 雛形生成
     devenv                # Nix ベース dev shell (direnv と組み合わせ)
+    tealdeer              # tldr CLI (programs.tealdeer は archive_source 非対応のため手動)
   ];
 
   programs.git = {
@@ -243,10 +244,14 @@
     extraOptions = [ "--group-directories-first" ];
   };
 
-  programs.tealdeer = {
-    enable = true;
-    settings.updates.auto_update = true;
-  };
+  # tealdeer: programs.tealdeer module は archive_source を知らないので、
+  # package を直で入れて config.toml を手書きする
+  home.file."Library/Application Support/tealdeer/config.toml".text = ''
+    [updates]
+    auto_update = true
+    auto_update_interval_hours = 720
+    archive_source = "https://github.com/tldr-pages/tldr/releases/latest/download/tldr.zip"
+  '';
 
   programs.starship = {
     enable = true;
@@ -290,8 +295,8 @@
     age.keyFile = "${config.home.homeDirectory}/.config/sops/age/keys.txt";
     defaultSopsFile = ../secrets/secrets.yaml;
     secrets = {
-      "vpn/proton".path     = "${config.home.homeDirectory}/vpn-conf/proton.conf";
-      "vpn/wgcf".path       = "${config.home.homeDirectory}/vpn-conf/wgcf-profile.conf";
+      "vpn/proton".path     = "${config.home.homeDirectory}/.config/wireguard/proton.conf";
+      "vpn/wgcf".path       = "${config.home.homeDirectory}/.config/wireguard/wgcf-profile.conf";
       "figma_token".path    = "${config.home.homeDirectory}/.figma_token";
       "claude_env".path     = "${config.home.homeDirectory}/.claude_env";
       "vault_token".path    = "${config.home.homeDirectory}/.vault-token";
