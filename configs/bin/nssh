@@ -20,8 +20,12 @@ fi
 host="$1"
 shift
 
+# ローカルの dotfiles から remote URL を取得(fork した人もそのまま使える)
+DOTFILES_URL=$(git -C "$HOME/dotfiles" remote get-url origin 2>/dev/null || \
+                echo "git@github.com:gapul/dotfiles.git")
+
 # Agent Forwarding を必ず付ける (-A) と StrictHostKey で github の自動信頼
-ssh -A "$host" "$@" bash -s <<'BOOTSTRAP'
+ssh -A "$host" "$@" "DOTFILES_URL='$DOTFILES_URL' bash -s" <<'BOOTSTRAP'
 set -euo pipefail
 mkdir -p ~/.local/bin ~/.config
 arch=$(uname -m)
@@ -40,8 +44,8 @@ if ! grep -q "^github.com " ~/.ssh/known_hosts 2>/dev/null; then
   ssh-keyscan -t ed25519,rsa github.com >> ~/.ssh/known_hosts 2>/dev/null || true
 fi
 if [ ! -d ~/dotfiles/.git ]; then
-  echo "[nssh] Cloning dotfiles via SSH..."
-  git clone git@github.com:gapul/dotfiles.git ~/dotfiles
+  echo "[nssh] Cloning dotfiles ($DOTFILES_URL)..."
+  git clone "$DOTFILES_URL" ~/dotfiles
 else
   git -C ~/dotfiles pull --quiet --rebase || true
 fi
