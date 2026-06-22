@@ -324,6 +324,7 @@
       "espanso_match.yml".path  = "${config.home.homeDirectory}/Library/Application Support/espanso/match/base.yml";
       "calcurse_caldav_config".path = "${config.home.homeDirectory}/.config/calcurse/caldav/config";
       "ssh_config".path = "${config.home.homeDirectory}/.ssh/config";
+      "aerc_accounts_conf".path = "${config.home.homeDirectory}/.config/aerc/accounts.conf";
     };
   };
 
