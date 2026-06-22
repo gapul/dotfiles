@@ -1,5 +1,5 @@
 {
-  description = "yuki's macOS dotfiles";
+  description = "macOS dotfiles managed with Nix flakes (nix-darwin + home-manager + sops-nix)";
 
   # Determinate環境でも vanilla 移行後でも同じキャッシュが効くよう、flake自身に宣言
   nixConfig = {

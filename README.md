@@ -1,8 +1,50 @@
 # dotfiles
 
-yuki の macOS 環境を宣言的に管理する Nix flake。
+macOS 環境を Nix flake で declarative に管理(nix-darwin + home-manager + sops-nix)。
 
 📖 **日常コマンドは [docs/CHEATSHEET.md](docs/CHEATSHEET.md) を参照**
+
+---
+
+## Fork して使う場合
+
+```bash
+# 1. Fork ボタン → 自分の repo 名で clone
+git clone git@github.com:<yourname>/dotfiles.git ~/dotfiles
+cd ~/dotfiles
+
+# 2. nix/user.nix を編集(これだけで全 nix モジュールに反映)
+$EDITOR nix/user.nix
+# {
+#   username     = "<your-macos-username>";
+#   gitUser      = "<your-github-username>";
+#   gitEmail     = "<your-email>";
+#   dotfilesRepo = "https://github.com/<yourname>/dotfiles.git";
+# }
+
+# 3. age 鍵を生成して .sops.yaml の public key を差し替え
+mkdir -p ~/.config/sops/age
+age-keygen -o ~/.config/sops/age/keys.txt
+# 出力された "# public key: age1..." の行を .sops.yaml の age1... に貼り換え
+$EDITOR .sops.yaml
+
+# 4. yuki の secrets は復号できないので削除して空から始める
+rm secrets/secrets.yaml
+# 必要な secret を追加していく(例)
+sops secrets/secrets.yaml
+# (sops が新しいエディタ画面を開く → 自分の secret を YAML で記述 → 保存)
+
+# 5. 個人 brew tap を整理(任意)
+$EDITOR nix/darwin.nix
+# - "gapul/openutau", "gapul/zrythm" は yuki 個人の fork → 削除可
+# - 不要な GUI cask も削っていい(brave-browser, gimp, blender 等)
+
+# 6. bootstrap 実行
+bash scripts/bootstrap.sh
+```
+
+クローン後にエディタで `user.nix`, `.sops.yaml`, `darwin.nix` を編集すれば、他は触らずに動く設計。
+
 
 ## 構成
 
