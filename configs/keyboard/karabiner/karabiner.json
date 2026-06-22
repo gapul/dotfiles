@@ -409,7 +409,7 @@
                                 },
                                 "to": [
                                     {
-                                        "shell_command": "/Users/yuki/.config/launcher/core/add-log-standalone.sh"
+                                        "shell_command": "$HOME/.config/launcher/core/add-log-standalone.sh"
                                     }
                                 ],
                                 "type": "basic"

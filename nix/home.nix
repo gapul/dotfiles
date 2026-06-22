@@ -324,7 +324,9 @@
       "vault_token".path    = "${config.home.homeDirectory}/.vault-token";
       "rclone_conf".path    = "${config.home.homeDirectory}/.config/rclone/rclone.conf";
       "mcp_config".path     = "${config.home.homeDirectory}/.config/mcp/config.json";
-      "espanso_match".path  = "${config.home.homeDirectory}/Library/Application Support/espanso/match/base.yml";
+      "espanso_match.yml".path  = "${config.home.homeDirectory}/Library/Application Support/espanso/match/base.yml";
+      "calcurse_caldav_config".path = "${config.home.homeDirectory}/.config/calcurse/caldav/config";
+      "ssh_config".path = "${config.home.homeDirectory}/.ssh/config";
     };
   };
 
@@ -352,7 +354,6 @@
     source = ../configs/textlint;
     recursive = true;
   };
-  home.file.".ssh/config".source = ../configs/ssh/config;
   home.file.".config/mpv" = {
     source = ../configs/media/mpv;
     recursive = true;
