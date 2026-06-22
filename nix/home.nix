@@ -54,6 +54,12 @@
         src = pkgs.zsh-fzf-tab;
         file = "share/fzf-tab/fzf-tab.plugin.zsh";
       }
+      {
+        # fish 風: Up/Down で先頭一致の履歴検索
+        name = "zsh-history-substring-search";
+        src = pkgs.zsh-history-substring-search;
+        file = "share/zsh-history-substring-search/zsh-history-substring-search.zsh";
+      }
     ];
 
     shellAliases = {
@@ -73,6 +79,22 @@
     initContent = ''
       if [[ -f /opt/homebrew/bin/brew ]]; then
         eval "$(/opt/homebrew/bin/brew shellenv)"
+      fi
+
+      # fish 風 setopt (移行時に失った機能の再現)
+      setopt AUTO_CD              # ディレクトリ名タイプで cd 不要
+      setopt AUTO_PUSHD           # cd 時に PUSHD (dirs スタックに積む)
+      setopt PUSHD_IGNORE_DUPS    # 重複 push 除外
+      setopt EXTENDED_HISTORY     # 履歴に timestamp 付与
+      setopt GLOB_STAR_SHORT      # **/foo を **/foo に展開
+      setopt INTERACTIVE_COMMENTS # 対話 shell で # コメント許可
+
+      # history-substring-search: Up/Down で先頭一致(fish 風)
+      if [[ -o zle ]]; then
+        bindkey '^[[A' history-substring-search-up
+        bindkey '^[[B' history-substring-search-down
+        bindkey -M vicmd 'k' history-substring-search-up
+        bindkey -M vicmd 'j' history-substring-search-down
       fi
 
       # fzf-tab: TAB 補完の preview をスマートに
