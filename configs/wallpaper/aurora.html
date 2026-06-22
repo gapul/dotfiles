@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Flow Field Wallpaper</title>
+<style>
+  * { margin: 0; padding: 0; }
+  html, body { width: 100vw; height: 100vh; overflow: hidden; background: #000; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+
+  /* 右下の控えめなマーカー */
+  .marker {
+    position: fixed;
+    bottom: 28px;
+    right: 32px;
+    color: rgba(255,255,255,0.25);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    z-index: 10;
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="marker">FLOW · WS <span id="wsnum">1</span></div>
+<script>
+'use strict';
+
+// ─────────── workspace別パレット ───────────
+const PALETTES = {
+  '1': { bg: '10,10,20',   hueBase: 270, hueRange: 60 },  // 紫×青
+  '2': { bg: '6,18,14',    hueBase: 140, hueRange: 50 },  // 緑×ティール
+  '3': { bg: '20,12,6',    hueBase: 30,  hueRange: 30 },  // オレンジ×アンバー
+  '4': { bg: '22,8,14',    hueBase: 340, hueRange: 40 },  // 紅×マゼンタ
+  '5': { bg: '6,12,24',    hueBase: 210, hueRange: 40 },  // 青×シアン
+  '6': { bg: '14,8,28',    hueBase: 250, hueRange: 50 },  // ラベンダー
+  '7': { bg: '6,18,12',    hueBase: 160, hueRange: 40 },  // フォレスト
+  '8': { bg: '20,10,8',    hueBase: 350, hueRange: 30 },  // ローズ
+  '9': { bg: '16,6,22',    hueBase: 290, hueRange: 50 },  // ピンク×紫
+  '0': { bg: '6,6,10',     hueBase: 0,   hueRange: 0   }, // モノクロ
+  'S': { bg: '10,10,16',   hueBase: 220, hueRange: 20 },  // ダル青
+};
+
+let currentPalette = PALETTES['1'];
+
+// ワークスペース切替後 ANIMATION_MS だけ canvas アニメーションを動かして、
+// それ以降は静止画にしてバッテリーを節約する
+const ANIMATION_MS = 2500;
+let animationDeadline = 0;
+let isAnimating = false;
+
+function applyWorkspace(ws) {
+  ws = ws || '1';
+  if (currentPalette === PALETTES[ws]) return;  // 変更なし
+  currentPalette = PALETTES[ws] || PALETTES['1'];
+  document.getElementById('wsnum').textContent = ws;
+  startAnimation();
+}
+
+function startAnimation() {
+  animationDeadline = performance.now() + ANIMATION_MS;
+  if (!isAnimating) {
+    isAnimating = true;
+    requestAnimationFrame(tick);
+  }
+}
+
+// 同階層の state.js を <script>タグで定期ロード (cache buster付き)
+// state.js の内容: window.__ws = "3";
+function pollWorkspace() {
+  const s = document.createElement('script');
+  s.src = 'state.js?_=' + Date.now();
+  s.onload = () => { applyWorkspace(window.__ws); s.remove(); };
+  s.onerror = () => { s.remove(); };
+  document.head.appendChild(s);
+}
+setInterval(pollWorkspace, 300);
+applyWorkspace('1');  // 初期色
+
+// ─────────── canvasセットアップ ───────────
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H;
+
+function resize() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  W = canvas.width = window.innerWidth * dpr;
+  H = canvas.height = window.innerHeight * dpr;
+  canvas.style.width = window.innerWidth + 'px';
+  canvas.style.height = window.innerHeight + 'px';
+  ctx.scale(dpr, dpr);
+  ctx.fillStyle = `rgba(${currentPalette.bg}, 1)`;
+  ctx.fillRect(0, 0, W, H);
+}
+resize();
+window.addEventListener('resize', resize);
+
+// ─────────── Perlinノイズ (簡易版) ───────────
+const perm = new Uint8Array(512);
+{
+  const p = [];
+  for (let i = 0; i < 256; i++) p.push(i);
+  for (let i = 255; i > 0; i--) {
+    const j = (Math.random() * (i + 1)) | 0;
+    [p[i], p[j]] = [p[j], p[i]];
+  }
+  for (let i = 0; i < 512; i++) perm[i] = p[i & 255];
+}
+const fade = t => t * t * t * (t * (t * 6 - 15) + 10);
+const lerp = (a, b, t) => a + t * (b - a);
+const grad = (h, x, y) => {
+  const u = (h & 1) ? -x : x;
+  const v = (h & 2) ? -y : y;
+  return u + v;
+};
+function noise2D(x, y) {
+  const X = Math.floor(x) & 255;
+  const Y = Math.floor(y) & 255;
+  x -= Math.floor(x); y -= Math.floor(y);
+  const u = fade(x), v = fade(y);
+  const A = perm[X] + Y, B = perm[X + 1] + Y;
+  return lerp(
+    lerp(grad(perm[A],     x,     y),     grad(perm[B],     x - 1, y),     u),
+    lerp(grad(perm[A + 1], x,     y - 1), grad(perm[B + 1], x - 1, y - 1), u),
+    v
+  );
+}
+
+// ─────────── パーティクル ───────────
+// 元: N=550。切替時のみ動かす運用ではこの数でも描画は短時間で済む。
+// 多すぎると切替直後の数秒が重くなるので減らす (550 → 200)。
+const N = 200;
+const particles = [];
+const w = window.innerWidth;
+const h = window.innerHeight;
+for (let i = 0; i < N; i++) {
+  particles.push({
+    x: Math.random() * w,
+    y: Math.random() * h,
+    life: Math.random() * 200,
+  });
+}
+
+// 時刻に応じた色温度・明るさシフト (毎フレーム連続計算)
+//   - 夜間 (0-6): 寒色寄り、暗め
+//   - 朝焼け (6-9): 暖色 (golden hour)
+//   - 日中 (9-15): 中性、明るめ
+//   - 夕焼け (15-19): 暖色 (sunset)
+//   - 夜 (19-24): 寒色寄り、暗め
+// 秒・ミリ秒も考慮して連続変化させる (1分毎の離散更新を回避)
+function computeTimeShift() {
+  const now = new Date();
+  const h = now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600 + now.getMilliseconds() / 3600000;
+  const sunness    = 0.5 * (1 + Math.cos((h - 12) * Math.PI / 12));    // 0..1 正午=1, 真夜中=0
+  const goldenHour = Math.sin(Math.abs(h - 12) * Math.PI / 12);        // 0..1 朝夕=1
+  return {
+    warmShift:  25 * goldenHour,
+    lightMult:  0.65 + 0.05 * sunness,    // 夜0.65 → 昼0.70 (60% × → 42% lightness, さらに濃く)
+    satMult:    1.0  + 0.6  * sunness,    // 夜1.00 → 昼1.60 (65% × → 100% saturation 飽和)
+    bgWhiten:   0.9  * sunness,           // 昼背景: 90%白ブレンド
+    bgDarkness: 0.55 + 0.45 * sunness,    // 夜0.55 → 昼1.00
+  };
+}
+
+let frame = 0;
+function tick() {
+  // 毎フレーム時刻シフト計算 (連続変化)
+  const timeShift = computeTimeShift();
+
+  // 背景フェード: 元色を時刻で暗化 → さらに昼は白寄りにブレンド (target=240で限りなく白)
+  const bgRGB = currentPalette.bg.split(',').map(v => {
+    const base = parseInt(v) * timeShift.bgDarkness;
+    return Math.round(base * (1 - timeShift.bgWhiten) + 240 * timeShift.bgWhiten);
+  });
+  ctx.fillStyle = `rgba(${bgRGB.join(',')}, 0.08)`;
+  ctx.fillRect(0, 0, w, h);
+
+  ctx.lineWidth = 0.7;
+  ctx.lineCap = 'round';
+
+  for (const p of particles) {
+    // ノイズ場から角度算出
+    const n = noise2D(p.x * 0.0018, p.y * 0.0018 + frame * 0.0008);
+    const angle = n * Math.PI * 3;
+    const speed = 1.4;
+    const vx = Math.cos(angle) * speed;
+    const vy = Math.sin(angle) * speed;
+
+    // 色: パレット + 時刻シフト
+    const hue = currentPalette.hueBase + timeShift.warmShift + n * currentPalette.hueRange;
+    const baseSat = currentPalette.hueRange === 0 ? 0 : 65;
+    const sat = Math.min(100, baseSat * timeShift.satMult);
+    const lit = Math.min(95, (60 + n * 10) * timeShift.lightMult);
+    ctx.strokeStyle = `hsla(${hue}, ${sat}%, ${lit}%, 0.75)`;
+
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+    p.x += vx;
+    p.y += vy;
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+
+    // 寿命管理: 一定時間で再生成 (新鮮さを保つ)
+    p.life--;
+    if (p.life < 0 || p.x < 0 || p.x > w || p.y < 0 || p.y > h) {
+      p.x = Math.random() * w;
+      p.y = Math.random() * h;
+      p.life = 150 + Math.random() * 200;
+    }
+  }
+
+  frame++;
+  // 期限を過ぎたら停止 (静止画として残す)
+  if (performance.now() < animationDeadline) {
+    requestAnimationFrame(tick);
+  } else {
+    isAnimating = false;
+  }
+}
+
+// 初回ロード時に一度だけアニメーションを走らせて、最初のフレームを描く
+startAnimation();
+</script>
+</body>
+</html>

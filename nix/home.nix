@@ -356,6 +356,11 @@
   home.file.".config/karabiner".source =
     config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/dotfiles/configs/keyboard/karabiner";
 
+  # AeroSpace が state.js を書き換える + Plash が HTML 読む
+  # mkOutOfStoreSymlink で dotfiles に直 link (state.js は .gitignore)
+  home.file."wallpapers".source =
+    config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/dotfiles/configs/wallpaper";
+
   # ログイン項目: ヘッドレス起動しない GUI 常駐アプリを auto-launch
   # (sketchybar/Karabiner は launchd plist で自動起動するので含めない)
   home.activation.macosLoginItems = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
