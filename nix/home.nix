@@ -1,6 +1,6 @@
-{ config, pkgs, lib, ... }: {
-  home.username = "yuki";
-  home.homeDirectory = "/Users/yuki";
+{ config, pkgs, lib, user, ... }: {
+  home.username = user.username;
+  home.homeDirectory = "/Users/${user.username}";
   home.stateVersion = "23.11";
 
   programs.home-manager.enable = true;
@@ -11,14 +11,11 @@
     HOMEBREW_NO_ANALYTICS = "1";
     PNPM_HOME = "${config.home.homeDirectory}/Library/pnpm";
     SOPS_AGE_KEY_FILE = "${config.home.homeDirectory}/.config/sops/age/keys.txt";
-    # nh 4.x: programs.nh.flake は古い FLAKE 変数しか set しない上、
-    # hostname (MacBook-Mini) ≠ attr (yuki) なので明示する必要あり。
-    # nh は attr の後ろに .config.system.build.toplevel / .activationPackage を append
-    # するので、ここでは darwinConfigurations.yuki / homeConfigurations.yuki まで指定。
-    # darwin は .config.system.build.toplevel を nh 側で append、
+    # nh 4.x: programs.nh.flake は古い FLAKE 変数しか set しないので、
+    # darwinConfigurations.<user> / homeConfigurations.<user> まで明示。
     # home は activationPackage まで明示しないと「set だ」エラーになる。
-    NH_DARWIN_FLAKE = "${config.home.homeDirectory}/dotfiles/nix#darwinConfigurations.yuki";
-    NH_HOME_FLAKE   = "${config.home.homeDirectory}/dotfiles/nix#homeConfigurations.yuki.activationPackage";
+    NH_DARWIN_FLAKE = "${config.home.homeDirectory}/dotfiles/nix#darwinConfigurations.${user.username}";
+    NH_HOME_FLAKE   = "${config.home.homeDirectory}/dotfiles/nix#homeConfigurations.${user.username}.activationPackage";
   };
 
   home.sessionPath = [
@@ -231,8 +228,8 @@
 
   programs.git = {
     enable = true;
-    userName = "gapul";
-    userEmail = "92638132+gapul@users.noreply.github.com";
+    userName = user.gitUser;
+    userEmail = user.gitEmail;
     delta = {
       enable = true;
       options = {

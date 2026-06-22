@@ -40,6 +40,7 @@
     let
       system = "aarch64-darwin";
       pkgs = nixpkgs.legacyPackages.${system};
+      user = import ./user.nix;
 
       # SSH 接続先で rootless Nix (nix-portable) から実行する
       # ツール一式。Linux x86_64 / aarch64 両対応。
@@ -51,16 +52,18 @@
       remoteSystems = [ "aarch64-linux" "x86_64-linux" ];
     in
     {
-      # システム設定: sudo darwin-rebuild switch --flake .#yuki
-      darwinConfigurations.yuki = nix-darwin.lib.darwinSystem {
+      # システム設定: sudo darwin-rebuild switch --flake .#<username>
+      darwinConfigurations.${user.username} = nix-darwin.lib.darwinSystem {
         inherit system;
+        specialArgs = { inherit user; };
         modules = [ ./darwin.nix ];
       };
 
-      # ユーザー設定: home-manager switch --flake .#yuki
+      # ユーザー設定: home-manager switch --flake .#<username>
       # (nix-darwin と分離して USER check の bug を回避)
-      homeConfigurations.yuki = home-manager.lib.homeManagerConfiguration {
+      homeConfigurations.${user.username} = home-manager.lib.homeManagerConfiguration {
         inherit pkgs;
+        extraSpecialArgs = { inherit user; };
         modules = [
           ./home.nix
           sops-nix.homeManagerModules.sops
