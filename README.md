@@ -1,5 +1,7 @@
 # dotfiles
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 macOS 環境を Nix flake で declarative に管理(nix-darwin + home-manager + sops-nix)。
 
 📖 **日常コマンドは [docs/CHEATSHEET.md](docs/CHEATSHEET.md) を参照**
