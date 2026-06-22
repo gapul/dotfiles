@@ -269,7 +269,6 @@
       # ─── Dev IDEs / Editors / SDK ───
       "claude-code"
       "ghostty"
-      "zed"
       "android-studio"
       "flutter"
       "unity-hub"
