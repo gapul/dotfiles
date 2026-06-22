@@ -1,0 +1,77 @@
+name: Nix flake check
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'nix/**'
+      - 'configs/**'
+      - 'secrets/**'
+      - 'scripts/**'
+      - 'Justfile'
+      - '.github/workflows/check.yml'
+  pull_request:
+    paths:
+      - 'nix/**'
+      - 'configs/**'
+      - 'secrets/**'
+      - 'scripts/**'
+      - 'Justfile'
+  schedule:
+    # 月曜 09:00 JST = 00:00 UTC — flake.lock が古くなってないか確認
+    - cron: '0 0 * * 1'
+  workflow_dispatch: # 手動 trigger 用
+
+# 同じ branch の連続 push で前の run を cancel
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  flake-check:
+    name: nix flake check
+    runs-on: macos-14 # Apple Silicon
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+
+      - name: Enable Magic Nix Cache
+        uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - name: nix flake check (syntax/eval)
+        run: nix flake check ./nix --no-build --show-trace
+
+  build-darwin:
+    name: build darwinConfigurations (dry)
+    runs-on: macos-14
+    timeout-minutes: 30
+    needs: flake-check
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - name: Build darwinConfigurations.${{ vars.NIX_USER || 'yuki' }} (no activation)
+        run: |
+          USER_NAME=$(nix eval --raw -f ./nix/user.nix username)
+          echo "Building for username: $USER_NAME"
+          nix build "./nix#darwinConfigurations.$USER_NAME.system" --dry-run --show-trace
+
+  build-home:
+    name: build homeConfigurations (dry)
+    runs-on: macos-14
+    timeout-minutes: 30
+    needs: flake-check
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - name: Build homeConfigurations.${{ vars.NIX_USER || 'yuki' }} (no activation)
+        run: |
+          USER_NAME=$(nix eval --raw -f ./nix/user.nix username)
+          echo "Building for username: $USER_NAME"
+          nix build "./nix#homeConfigurations.$USER_NAME.activationPackage" --dry-run --show-trace
