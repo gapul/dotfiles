@@ -20,7 +20,8 @@ set -euo pipefail
 log() { printf '\033[1;34m[bootstrap]\033[0m %s\n' "$*"; }
 err() { printf '\033[1;31m[bootstrap]\033[0m %s\n' "$*" >&2; }
 
-DOTFILES_REPO="https://github.com/gapul/dotfiles.git"
+# Fork した時はこの URL を自分の repo に変える(or nix/user.nix の dotfilesRepo を参照)
+DOTFILES_REPO="${DOTFILES_REPO:-https://github.com/gapul/dotfiles.git}"
 DOTFILES_DIR="$HOME/dotfiles"
 SOPS_KEY="$HOME/.config/sops/age/keys.txt"
 
@@ -101,7 +102,7 @@ if [ ! -f "$SOPS_KEY" ]; then
   mkdir -p "$(dirname "$SOPS_KEY")"
   chmod 700 "$(dirname "$SOPS_KEY")"
   err "age 秘密鍵が見つかりません:"
-  err "  Bitwarden の 'SOPS age key (yuki@laptop)' Secure Note を開き、"
+  err "  Bitwarden 等で保管している自分の age 秘密鍵を、"
   err "  Notes の中身を $SOPS_KEY に貼り付けて save してください。"
   err "  終わったら本スクリプトを再実行 (それ以降から resume)."
   exit 1

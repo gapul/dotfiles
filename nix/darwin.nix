@@ -75,8 +75,6 @@
       "deskflow/tap"
       "felixkratz/formulae"
       "finnvoor/tools"
-      "gapul/openutau"
-      "gapul/zrythm"
       "gerlero/openfoam"
       "homebrew-zathura/zathura"
       "imshuhao/kdeconnect"
@@ -89,6 +87,10 @@
       "riscv-software-src/riscv"
       "supabase/tap"
       "theboredteam/boring-notch"
+
+      # ─── 個人 fork (gapul) — fork した人は不要なら削除 ───
+      "gapul/openutau"
+      "gapul/zrythm"
     ];
 
     # brew leaves
