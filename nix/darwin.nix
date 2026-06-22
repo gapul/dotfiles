@@ -1,15 +1,15 @@
-{ pkgs, ... }: {
+{ pkgs, user, ... }: {
   nixpkgs.config.allowUnfree = true;
 
   # Determinate Nix が daemon/nix.conf を管理しているので nix-darwin は触らない
   nix.enable = false;
 
   system.stateVersion = 5;
-  system.primaryUser = "yuki";
+  system.primaryUser = user.username;
 
-  users.users.yuki = {
-    name = "yuki";
-    home = "/Users/yuki";
+  users.users.${user.username} = {
+    name = user.username;
+    home = "/Users/${user.username}";
     shell = pkgs.zsh;
   };
 
