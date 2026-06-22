@@ -324,6 +324,7 @@
       "vault_token".path    = "${config.home.homeDirectory}/.vault-token";
       "rclone_conf".path    = "${config.home.homeDirectory}/.config/rclone/rclone.conf";
       "mcp_config".path     = "${config.home.homeDirectory}/.config/mcp/config.json";
+      "espanso_match".path  = "${config.home.homeDirectory}/Library/Application Support/espanso/match/base.yml";
     };
   };
 
