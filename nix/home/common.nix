@@ -35,17 +35,6 @@
     autosuggestion.enable = true;
     syntaxHighlighting.enable = true;
 
-    # history defaults を改善
-    # 価値: atuin の source data 品質向上 + tab 間で履歴共有 + 重複で枠を食わない
-    history = {
-      size = 100000;
-      save = 100000;
-      ignoreDups = true;              # 連続重複を 1 件に
-      ignoreSpace = true;              # 先頭スペースで履歴除外 (秘密 command 用)
-      share = true;                    # 複数 zsh window で履歴共有
-      expireDuplicatesFirst = true;    # 上限超は dup から先に削除
-    };
-
     plugins = [
       {
         name = "fzf-tab";
