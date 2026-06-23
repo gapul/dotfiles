@@ -1666,6 +1666,7 @@ function __icon_map() {
 }
 ### END-OF-ICON-MAP
 # 呼び出し規約は従来どおり (front_app.sh / space_windows.sh が単一引数で呼ぶ)。
-# v2.0.62 で Ghostty=:ghostty: / Zen=:zen_browser: が本体に入ったため、代用 override は不要。
 __icon_map "$1"
+# アプリ実名が公式マップのキーと異なるものをローカル補正 (別ファイル。再生成でも維持)
+[ -r "${BASH_SOURCE%/*}/icon_map_local.sh" ] && source "${BASH_SOURCE%/*}/icon_map_local.sh"
 echo "$icon_result"
