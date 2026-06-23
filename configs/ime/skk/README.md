@@ -49,23 +49,27 @@ bash ~/dotfiles/scripts/install-skk-dicts-macskk.sh
 GUI で macSKK / skkserv の設定を変えたら、dotfiles に反映するには:
 
 ```bash
-# macSKK plist 抽出
+# macSKK plist 抽出 → XML 化 (git diff が読めるように)
 cp ~/Library/Containers/net.mtgto.inputmethod.macSKK/Data/Library/Preferences/net.mtgto.inputmethod.macSKK.plist \
    ~/dotfiles/configs/ime/skk/macSKK.plist
+plutil -convert xml1 ~/dotfiles/configs/ime/skk/macSKK.plist
 
-# azooKey skkserv plist 抽出 (UI state 除外)
+# azooKey skkserv plist 抽出 → UI state 除外 → XML 化
 cp ~/Library/Containers/io.github.gitusp.azoo-key-skkserv/Data/Library/Preferences/io.github.gitusp.azoo-key-skkserv.plist \
    ~/dotfiles/configs/ime/skk/azoo-key-skkserv.plist
-# UI state (NSWindow Frame) を除外
 python3 -c "
 import plistlib
 p = '$HOME/dotfiles/configs/ime/skk/azoo-key-skkserv.plist'
 with open(p, 'rb') as f: d = plistlib.load(f)
-for k in list(d): 
+for k in list(d):
     if k.startswith('NSWindow Frame'): del d[k]
 with open(p, 'wb') as f: plistlib.dump(d, f)
 "
+plutil -convert xml1 ~/dotfiles/configs/ime/skk/azoo-key-skkserv.plist
 ```
+
+注: `defaults import` は XML/binary 両対応なので、dotfiles 側は XML 固定で OK。
+macSKK が GUI 操作で binary に書き戻しても、capture 時に再度 XML 化すれば履歴は綺麗。
 
 ## 共有していないもの
 
