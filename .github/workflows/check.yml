@@ -31,15 +31,25 @@ jobs:
   flake-check:
     name: nix flake check
     runs-on: macos-14 # Apple Silicon
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@main
 
-      - name: Enable Magic Nix Cache
-        uses: DeterminateSystems/magic-nix-cache-action@main
+      # nix store cache: 同じ flake.lock の間は再 download 不要
+      - name: Cache nix store
+        uses: nix-community/cache-nix-action@v6
+        with:
+          primary-key: nix-${{ runner.os }}-${{ hashFiles('nix/flake.lock') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-
+          gc-max-store-size-macos: 5G
+          purge: true
+          purge-prefixes: nix-${{ runner.os }}-
+          purge-created: 0
+          purge-last-accessed: 0
+          purge-primary-key: never
 
       - name: nix flake check (syntax/eval)
         run: nix flake check ./nix --no-build --show-trace
@@ -52,9 +62,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: DeterminateSystems/nix-installer-action@main
-      - uses: DeterminateSystems/magic-nix-cache-action@main
+      - uses: nix-community/cache-nix-action@v6
+        with:
+          primary-key: nix-${{ runner.os }}-${{ hashFiles('nix/flake.lock') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-
 
-      - name: Build darwinConfigurations.${{ vars.NIX_USER || 'yuki' }} (no activation)
+      - name: Build darwinConfigurations.<user> (no activation)
         run: |
           USER_NAME=$(nix eval --raw -f ./nix/user.nix username)
           echo "Building for username: $USER_NAME"
@@ -68,9 +81,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: DeterminateSystems/nix-installer-action@main
-      - uses: DeterminateSystems/magic-nix-cache-action@main
+      - uses: nix-community/cache-nix-action@v6
+        with:
+          primary-key: nix-${{ runner.os }}-${{ hashFiles('nix/flake.lock') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-
 
-      - name: Build homeConfigurations.${{ vars.NIX_USER || 'yuki' }} (no activation)
+      - name: Build homeConfigurations.<user> (no activation)
         run: |
           USER_NAME=$(nix eval --raw -f ./nix/user.nix username)
           echo "Building for username: $USER_NAME"
