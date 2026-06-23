@@ -270,6 +270,8 @@
       merge.conflictstyle = "diff3";
       diff.colorMoved = "default";
       gpg.format = "ssh";
+      # ローカルで `git log --show-signature` を verify できるように
+      "gpg \"ssh\"".allowedSignersFile = "${config.home.homeDirectory}/.ssh/allowed_signers";
     };
   };
 
