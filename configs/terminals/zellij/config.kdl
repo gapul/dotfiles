@@ -311,8 +311,9 @@ web_client {
  
 // Choose the base input mode of zellij.
 // Default: normal
-// 
-// default_mode "locked"
+// 起動直後から locked: zellij がキー横取りせず TUI (nvim 等) が完璧に動く。
+// pane/tab 操作したいときは Ctrl+G で normal mode に切替
+default_mode "locked"
  
 // Choose the path to the default shell that zellij will use for opening new panes
 // Default: $SHELL
