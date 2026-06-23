@@ -98,7 +98,11 @@ eza / bat が ls / cat を置き換え済(home-manager が auto-alias)。
 | コマンド | 何 |
 |---|---|
 | `<TAB>` | fzf-tab 起動(git/cd/kill/checkout 等は preview 付き) |
-| **Ctrl+R** | atuin 履歴 fuzzy 検索 |
+| **Ctrl+R** | atuin 履歴 fuzzy 検索(複数端末同期、global がデフォルト) |
+| **Ctrl+R(検索中もう一度)** | filter mode 切替: global → host → session → directory → workspace |
+| **Ctrl+S(検索中)** | search mode 切替: fuzzy → prefix → fulltext |
+| **Tab(検索中)** | 候補を確定して shell に挿入(編集モード、誤爆防止) |
+| **Enter(検索中)** | 候補を即実行 |
 | `fd <pattern>` | 高速ファイル名検索 |
 | `rg <pattern>` | 高速 grep(ripgrep) |
 | `fzf` | 標準入力から fuzzy 選択 |
