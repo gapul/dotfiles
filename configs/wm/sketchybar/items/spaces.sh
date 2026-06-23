@@ -33,17 +33,35 @@ build_display_map() {
 
 build_display_map
 
+# 起動時点の focused ワークスペース。空でも focused は表示する。
+FOCUSED_WS=$(aerospace list-workspaces --focused)
+
 for m in $(aerospace list-monitors | awk '{print $1}'); do
   sb_display=${AERO_TO_SB[$m]:-$m}
+
+  # この monitor の非空ワークスペース集合 (空ワークスペース判定用)
+  declare -A NONEMPTY=()
+  for ne in $(aerospace list-workspaces --monitor $m --empty no); do
+    NONEMPTY[$ne]=1
+  done
+
   for i in $(aerospace list-workspaces --monitor $m); do
     sid=$i
+
+    # 空 & 非focused & 通常ワークスペースは初期から display=0 で隠す
+    # (space_windows.sh の実行時ロジックと同じ規約。最初の切替を待たずに反映)
+    sb_disp=$sb_display
+    if [ "$sid" != "0" ] && [ -z "${NONEMPTY[$sid]:-}" ] && [ "$sid" != "$FOCUSED_WS" ]; then
+      sb_disp=0
+    fi
+
     space=(
       space="$sid"
       icon="$sid"
       icon.highlight_color=$RED
       icon.padding_left=10
       icon.padding_right=10
-      display=$sb_display
+      display=$sb_disp
       padding_left=2
       padding_right=2
       label.padding_right=20
