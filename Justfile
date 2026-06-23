@@ -49,8 +49,9 @@ sketchybar-font:
     # .ttf と icon_map.sh を同一リリースから取得 (版ズレ防止)
     gh release download "$tag" --repo "$repo" --pattern sketchybar-app-font.ttf --output "$ttf"  --clobber
     gh release download "$tag" --repo "$repo" --pattern icon_map.sh           --output "$map"  --clobber
-    # 呼び出し規約を従来式に統一 (front_app.sh / space_windows.sh が単一引数で呼ぶ)
-    awk '/^### END-OF-ICON-MAP/{print; print "__icon_map \"$1\""; print "echo \"$icon_result\""; exit} {print}' "$map" > "$map.tmp" && mv "$map.tmp" "$map"
+    # 呼び出し規約を従来式に統一 + ローカル補正(icon_map_local.sh)を source する末尾を再注入
+    # (front_app.sh / space_windows.sh が単一引数で呼ぶ。OBS Studio 等の実名ズレ補正を維持)
+    awk '/^### END-OF-ICON-MAP/{print; print "__icon_map \"$1\""; print "[ -r \"${BASH_SOURCE%/*}/icon_map_local.sh\" ] && source \"${BASH_SOURCE%/*}/icon_map_local.sh\""; print "echo \"$icon_result\""; exit} {print}' "$map" > "$map.tmp" && mv "$map.tmp" "$map"
     # darwin.nix の version を追従 (pname 行の直後だけを置換。他の version= は触らない)
     sed -i "" -E '/pname = "sketchybar-app-font"/{n;s/version = "[0-9.]+"/version = "'"${tag#v}"'"/;}' "$dir/nix/darwin.nix"
     # flake が見えるよう git に追跡させる (commit は手動)
