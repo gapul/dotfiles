@@ -142,12 +142,22 @@ eza / bat が ls / cat を置き換え済(home-manager が auto-alias)。
 
 ## 🛰 リモート
 
-| コマンド | 何 |
-|---|---|
-| `nssh user@host` | rootless Nix(`nix-portable`)で nvim/yazi/zellij(自分の設定) |
-| `just ssh <host>` | nssh のショート |
+remote の種類別に 4 つの戦略を使い分け:
+
+| シチュエーション | コマンド | 何 |
+|---|---|---|
+| **計算ノード**(non-root、ephemeral) | `nssh user@host` | rootless Nix(`nix-portable`)で nvim/yazi/zellij、起動毎に展開 |
+| **長期 Linux サーバー**(root、persistent) | リモートで `bash <(curl -sL ...bootstrap-linux.sh)` | full Nix install + dotfiles clone + home-manager(`.#<user>-linux`) |
+| **WSL2 環境**(Windows + WSL) | WSL 内で `bash <(curl ...bootstrap-wsl.sh)` | Linux 共通 + WSL interop(clipboard, /mnt/c/) |
+| **制限環境**(Nix 不可、append 程度) | local から `sync-configs-rsync.sh user@host [--full]` | nvim + zsh.local + git config を rsync、何も install しない |
 
 ssh agent forwarding で private repo 取得対応済。
+
+### 該当 home-manager attr
+- `.#<user>` … macOS (= 現在 mac)
+- `.#<user>-wsl` … WSL2
+- `.#<user>-linux` … 純 Linux x86_64
+- `.#<user>-linux-aarch64` … 純 Linux ARM (Raspberry Pi 等)
 
 ---
 
