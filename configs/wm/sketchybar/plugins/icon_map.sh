@@ -634,4 +634,13 @@ function __icon_map() {
 }
 ### END-OF-ICON-MAP
 __icon_map "$1"
+
+# --- custom overrides ---------------------------------------------------
+# 生成ブロック(START/END-OF-ICON-MAP)の外側。icon_map を再生成しても保持される。
+# 現行フォントに専用グリフが無いアプリを、存在する既存グリフで代用する。
+case "$1" in
+    "Ghostty")             icon_result=":alacritty:" ;;  # 端末アイコンで代用
+    "Zen" | "Zen Browser") icon_result=":firefox:"   ;;  # Zen は Firefox 系
+esac
+
 echo "$icon_result"
