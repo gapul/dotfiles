@@ -170,10 +170,37 @@ fi
 log "Installing SKK public dictionaries..."
 bash "$DOTFILES_DIR/scripts/install-skk-dicts.sh" || true
 
-# 12. gh auth (ブラウザ認証、未済なら起動)
-if command -v gh >/dev/null && ! gh auth status >/dev/null 2>&1; then
-  log "gh auth login (ブラウザが開きます。SSH 鍵で認証推奨)..."
-  gh auth login -h github.com -p https -w || true
+# 12. gh auth (ブラウザ認証、未済なら起動)。SSH 鍵管理用 scope も要求
+GH_SCOPES="admin:public_key,admin:ssh_signing_key"
+if command -v gh >/dev/null; then
+  if ! gh auth status >/dev/null 2>&1; then
+    log "gh auth login (ブラウザが開きます。SSH 鍵で認証推奨)..."
+    gh auth login -h github.com -p https -w -s "$GH_SCOPES" || true
+  else
+    # 既に auth 済でも、SSH 鍵 scope が無ければ refresh
+    if ! gh auth status 2>&1 | grep -q "admin:ssh_signing_key"; then
+      log "gh の SSH 鍵管理用 scope を追加..."
+      gh auth refresh -h github.com -s "$GH_SCOPES" || true
+    fi
+  fi
+fi
+
+# 12.5. GitHub に SSH 鍵を auth + signing 両方として登録 (べき等、既存ならスキップ)
+if command -v gh >/dev/null && gh auth status >/dev/null 2>&1 && [ -f "$SSH_PUB" ]; then
+  KEY_BODY=$(awk '{print $1, $2}' "$SSH_PUB")
+  HOST_LABEL="$(hostname -s)"
+  # auth key 重複チェック
+  if ! gh ssh-key list --json key --jq '.[].key' 2>/dev/null | grep -qF "$KEY_BODY"; then
+    log "GitHub に SSH 鍵を Authentication として登録: $HOST_LABEL"
+    gh ssh-key add "$SSH_PUB" --title "$HOST_LABEL" || true
+  fi
+  # signing key 重複チェック
+  if ! gh api /user/ssh_signing_keys --jq '.[].key' 2>/dev/null | grep -qF "$KEY_BODY"; then
+    log "GitHub に SSH 鍵を Signing として登録: $HOST_LABEL (signing)"
+    gh api -X POST /user/ssh_signing_keys \
+      -f "title=$HOST_LABEL (signing)" \
+      -f "key=$(cat "$SSH_PUB")" >/dev/null || true
+  fi
 fi
 
 # 13. 残った手動 GUI ステップを ~/POST-BOOTSTRAP.md に書き出す
@@ -184,6 +211,19 @@ cat > "$POST_FILE" <<'EOF'
 bootstrap.sh 完了後、以下を順に GUI で実行してください。
 
 ## 1. App 権限付与 (System Settings → Privacy & Security)
+
+下のコマンドで該当 pane を直接開けます:
+
+```bash
+# アクセシビリティ
+open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
+# 画面収録
+open "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture"
+# 入力監視
+open "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent"
+# フルディスクアクセス
+open "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles"
+```
 
 ### アクセシビリティ
 - [ ] AeroSpace
@@ -205,7 +245,10 @@ bootstrap.sh 完了後、以下を順に GUI で実行してください。
 - [ ] iTerm/Ghostty (任意、~/Library 直下を grep したい時)
 
 ## 2. macSKK Input Source 登録
-- System Settings → Keyboard → Input Sources → Edit → `+` → Japanese → macSKK
+```bash
+open "x-apple.systempreferences:com.apple.preference.keyboard?InputSources"
+```
+- Edit → `+` → Japanese → macSKK
 - メニューバーの IME アイコン → macSKK を選んで切替
 
 ## 3. macSKK 辞書登録
@@ -223,9 +266,14 @@ bash ~/dotfiles/scripts/install-skk-dicts-macskk.sh
 - 初回起動時に macOS から「アクセシビリティ要求」が出る → 許可
 
 ## 6. Karabiner-Elements 起動許可
-- 初回起動時に System Extension の許可 (System Settings → General → Login Items & Extensions → Driver Extensions)
+- 初回起動時に System Extension の許可
+```bash
+open "x-apple.systempreferences:com.apple.LoginItems-Settings.extension"
+```
 
-## 7. GitHub の SSH 鍵登録 (任意、新鍵で push したい場合)
+## 7. GitHub SSH 鍵登録 — **bootstrap.sh で自動済み**
+(Step 12.5 で auth + signing 両方を登録)
+未登録の場合のみ手動で:
 ```bash
 gh ssh-key add ~/.ssh/id_ed25519.pub --title "$(hostname -s)"
 gh api -X POST /user/ssh_signing_keys \
