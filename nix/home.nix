@@ -239,6 +239,29 @@
         side-by-side = true;
       };
     };
+    # グローバル excludesfile: 任意 repo で漏れがちなファイルを除外
+    ignores = [
+      ".DS_Store"
+      ".AppleDouble"
+      ".LSOverride"
+      "Thumbs.db"
+      ".idea/"
+      ".vscode/"
+      "*.swp"
+      "*.swo"
+      ".direnv/"
+      "result"          # nix build の output symlink
+      "result-*"
+      ".envrc.local"
+      ".claude/settings.local.json"  # Claude Code のローカル overrides
+    ];
+    # SSH 公開鍵で commit/tag 署名 (GPG 不要、1Password 不要、シンプル)
+    # GitHub に同じ鍵を "Signing key" として登録すると Verified バッジが付く
+    # (home-manager 25.05 だと signing.format が無いので extraConfig に逃がす)
+    signing = {
+      key = "${config.home.homeDirectory}/.ssh/id_ed25519.pub";
+      signByDefault = true;
+    };
     extraConfig = {
       init.defaultBranch = "main";
       pull.rebase = true;
@@ -246,6 +269,7 @@
       ghq.root = "${config.home.homeDirectory}/ghq";
       merge.conflictstyle = "diff3";
       diff.colorMoved = "default";
+      gpg.format = "ssh";
     };
   };
 
@@ -469,6 +493,15 @@
         ${../configs/ime/skk/azoo-key-skkserv.plist}
     fi
     /usr/bin/killall cfprefsd 2>/dev/null || true
+  '';
+
+  # Maccy (clipboard manager) 設定 — clipboard 履歴は SQLite で別ファイル、触らない
+  home.activation.maccyPlistImport = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    if [ -d "$HOME/Library/Containers/org.p0deje.Maccy" ]; then
+      /usr/bin/defaults import org.p0deje.Maccy \
+        ${../configs/clipboard/maccy/Maccy.plist}
+      /usr/bin/killall cfprefsd 2>/dev/null || true
+    fi
   '';
 
 

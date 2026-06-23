@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>KeyboardShortcuts_delete</key>
+	<false/>
+	<key>KeyboardShortcuts_pin</key>
+	<false/>
+	<key>KeyboardShortcuts_popup</key>
+	<string>{"carbonModifiers":6400,"carbonKeyCode":8}</string>
+	<key>SUEnableAutomaticChecks</key>
+	<false/>
+	<key>SUHasLaunchedBefore</key>
+	<true/>
+	<key>clearOnQuit</key>
+	<true/>
+	<key>clearSystemClipboard</key>
+	<true/>
+	<key>enabledPasteboardTypes</key>
+	<array>
+		<string>public.utf8-plain-text</string>
+		<string>public.png</string>
+		<string>public.tiff</string>
+		<string>public.rtf</string>
+		<string>public.file-url</string>
+		<string>public.html</string>
+	</array>
+	<key>migrations</key>
+	<dict>
+		<key>2024-07-01-version-2</key>
+		<true/>
+	</dict>
+	<key>pasteByDefault</key>
+	<true/>
+	<key>removeFormattingByDefault</key>
+	<false/>
+	<key>searchMode</key>
+	<string>mixed</string>
+	<key>showFooter</key>
+	<true/>
+	<key>showInStatusBar</key>
+	<false/>
+	<key>showSearch</key>
+	<true/>
+	<key>showTitle</key>
+	<true/>
+	<key>windowSize</key>
+	<string>[450,800]</string>
+</dict>
+</plist>

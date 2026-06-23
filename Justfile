@@ -26,8 +26,36 @@ upgrade:
     brew upgrade
     brew upgrade --cask --greedy
     mas upgrade
+    just sketchybar-font
     just update
     @echo "Determinate Nix 本体は手動で: sudo /usr/local/bin/determinate-nixd upgrade"
+
+# sketchybar-app-font を最新リリースへ更新 (.ttf と icon_map.sh を同一版で揃える)
+# upgrade から自動で呼ばれる。単体で走らせて just rebuild してもよい。
+sketchybar-font:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    repo="kvndrsslr/sketchybar-app-font"
+    dir="{{justfile_directory()}}"
+    ttf="$dir/configs/fonts/sketchybar-app-font.ttf"
+    map="$dir/configs/wm/sketchybar/plugins/icon_map.sh"
+    tag=$(gh release view --repo "$repo" --json tagName -q .tagName)
+    cur=$(awk '/pname = "sketchybar-app-font"/{getline; if (match($0,/[0-9][0-9.]*/)) print substr($0,RSTART,RLENGTH); exit}' "$dir/nix/darwin.nix")
+    if [ "$tag" = "v$cur" ]; then
+      echo "sketchybar-app-font: 既に最新 ($tag)。skip"
+      exit 0
+    fi
+    echo "sketchybar-app-font: $cur → $tag へ更新"
+    # .ttf と icon_map.sh を同一リリースから取得 (版ズレ防止)
+    gh release download "$tag" --repo "$repo" --pattern sketchybar-app-font.ttf --output "$ttf"  --clobber
+    gh release download "$tag" --repo "$repo" --pattern icon_map.sh           --output "$map"  --clobber
+    # 呼び出し規約を従来式に統一 (front_app.sh / space_windows.sh が単一引数で呼ぶ)
+    awk '/^### END-OF-ICON-MAP/{print; print "__icon_map \"$1\""; print "echo \"$icon_result\""; exit} {print}' "$map" > "$map.tmp" && mv "$map.tmp" "$map"
+    # darwin.nix の version を追従 (pname 行の直後だけを置換。他の version= は触らない)
+    sed -i "" -E '/pname = "sketchybar-app-font"/{n;s/version = "[0-9.]+"/version = "'"${tag#v}"'"/;}' "$dir/nix/darwin.nix"
+    # flake が見えるよう git に追跡させる (commit は手動)
+    git -C "$dir" add "$ttf" "$map" "$dir/nix/darwin.nix"
+    echo "✅ 更新完了 ($tag)。反映は just rebuild (upgrade 経由なら自動)"
 
 # 構文/型チェック (ビルドはしない)
 check:
