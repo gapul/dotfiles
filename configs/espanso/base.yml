@@ -1,0 +1,40 @@
+# espanso matches (公開) — managed via dotfiles/configs/espanso/base.yml
+# 個人情報は match/personal.yml (SOPS 管理) に分離している
+# docs: https://espanso.org/docs/
+
+global_vars:
+  - name: today
+    type: date
+    params:
+      format: "%Y-%m-%d"        # ISO / JST
+  - name: now
+    type: date
+    params:
+      format: "%Y-%m-%d %H:%M"
+
+matches:
+  # --- 日付・時刻 (JST) ---
+  - trigger: ":date"
+    label: "今日 (ISO)"
+    replace: "{{today}}"
+  - trigger: ":now"
+    label: "現在日時"
+    replace: "{{now}}"
+  - trigger: ":time"
+    label: "現在時刻"
+    replace: "{{ts}}"
+    vars:
+      - name: ts
+        type: date
+        params:
+          format: "%H:%M"
+
+  # --- 開発系 ---
+  - trigger: ":uuid"
+    label: "UUID v4"
+    replace: "{{out}}"
+    vars:
+      - name: out
+        type: shell
+        params:
+          cmd: "uuidgen | tr 'A-Z' 'a-z' | tr -d '\\n'"
