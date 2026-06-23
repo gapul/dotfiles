@@ -59,9 +59,7 @@
         modules = [ ./hosts/darwin.nix ];
       };
 
-      # ユーザー設定: home-manager switch --flake .#<username>
-      # 共通 module + macOS 専用 module を合成
-      # (将来 WSL/Linux を追加するときは ${user}-wsl / ${user}-linux 等を別途定義)
+      # macOS ユーザー設定: home-manager switch --flake .#<username>
       homeConfigurations.${user.username} = home-manager.lib.homeManagerConfiguration {
         inherit pkgs;
         extraSpecialArgs = { inherit user; };
@@ -71,6 +69,24 @@
           sops-nix.homeManagerModules.sops
         ];
       };
+
+      # WSL2 ユーザー設定: home-manager switch --flake .#<username>-wsl
+      # Lab PC 等の Windows + WSL2 環境で使う
+      homeConfigurations."${user.username}-wsl" =
+        let
+          wslSystem = "x86_64-linux";
+          wslPkgs = nixpkgs.legacyPackages.${wslSystem};
+        in
+        home-manager.lib.homeManagerConfiguration {
+          pkgs = wslPkgs;
+          extraSpecialArgs = { inherit user; };
+          modules = [
+            ./home/common.nix
+            ./home/linux.nix
+            ./home/wsl.nix
+            sops-nix.homeManagerModules.sops
+          ];
+        };
 
       # Remote (Linux) bundle: nssh から `nix-portable nix shell .#remote-env` で使う
       packages = nixpkgs.lib.genAttrs remoteSystems (sys: {
