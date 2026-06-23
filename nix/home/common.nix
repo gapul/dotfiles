@@ -274,9 +274,22 @@
   programs.atuin = {
     enable = true;
     enableZshIntegration = true;
+    # Up は history-substring-search に明け渡す。atuin は Ctrl+R のみで起動
+    flags = [ "--disable-up-arrow" ];
     settings = {
-      auto_sync = false;
+      # 公式 SaaS で複数端末 (Mac / WSL / Linux server) の history を同期。
+      # 利用前に各端末で 1 度だけ `atuin login -u gapul` (or register) が必要。
+      # E2E 暗号化キーは ~/.local/share/atuin/key、Bitwarden に backup 推奨。
+      auto_sync = true;
+      sync_address = "https://api.atuin.sh";
+      sync_frequency = "5m";
+      update_check = false;
       search_mode = "fuzzy";
+      filter_mode = "global";    # 全 host 横断検索
+      style = "compact";
+      inline_height = 20;
+      enter_accept = false;      # Enter で実行せず編集に
+      show_preview = true;
     };
   };
 
