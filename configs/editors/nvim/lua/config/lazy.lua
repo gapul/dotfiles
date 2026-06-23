@@ -32,6 +32,8 @@ require("lazy").setup({
     version = false, -- always use the latest git commit
     -- version = "*", -- try installing the latest stable version for plugins that support semver
   },
+  -- luarocks 不使用なので rocks サポートを無効化（checkhealth の luarocks ERROR 解消）
+  rocks = { enabled = false },
   install = { colorscheme = { "tokyonight", "habamax" } },
   checker = {
     enabled = true, -- check for plugin updates periodically
