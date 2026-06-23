@@ -506,6 +506,24 @@
     fi
   '';
 
+  # GUI ユーティリティ系 (AltTab / Mos / Plash / Shortcat) の plist 一括 import
+  # 各 plist は scripts/capture-app-plist.py で個人情報・UI 状態・テレメトリを除外済
+  # Plash の website 設定は security-scoped bookmark が無いと動かないので含めず、
+  # 各 Mac で GUI から手動再追加(README 参照)
+  home.activation.guiAppsPlistImport = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    /usr/bin/defaults import com.lwouis.alt-tab-macos \
+      ${../configs/apps/com.lwouis.alt-tab-macos.plist}
+    /usr/bin/defaults import com.caldis.Mos \
+      ${../configs/apps/com.caldis.Mos.plist}
+    /usr/bin/defaults import com.sproutcube.Shortcat \
+      ${../configs/apps/com.sproutcube.Shortcat.plist}
+    if [ -d "$HOME/Library/Containers/com.sindresorhus.Plash" ]; then
+      /usr/bin/defaults import com.sindresorhus.Plash \
+        ${../configs/apps/com.sindresorhus.Plash.plist}
+    fi
+    /usr/bin/killall cfprefsd 2>/dev/null || true
+  '';
+
 
   # ログイン項目: ヘッドレス起動しない GUI 常駐アプリを auto-launch
   # (sketchybar/Karabiner は launchd plist で自動起動するので含めない)
