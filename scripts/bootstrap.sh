@@ -110,6 +110,30 @@ fi
 chmod 600 "$SOPS_KEY"
 log "SOPS age key OK"
 
+# 4.5. SSH 秘密鍵 (clone は HTTPS で済むが、commit 署名 / 将来の SSH push に必要)
+SSH_PRIV="$HOME/.ssh/id_ed25519"
+SSH_PUB="$HOME/.ssh/id_ed25519.pub"
+SSH_ALLOWED="$HOME/.ssh/allowed_signers"
+if [ ! -f "$SSH_PRIV" ]; then
+  mkdir -p "$HOME/.ssh"
+  chmod 700 "$HOME/.ssh"
+  err "SSH 秘密鍵 ($SSH_PRIV) が見つかりません:"
+  err "  Bitwarden 等で保管している自分の ed25519 秘密鍵を貼り付けて save、"
+  err "  終わったら 'chmod 600 $SSH_PRIV' してから本スクリプトを再実行."
+  exit 1
+fi
+chmod 600 "$SSH_PRIV"
+# .pub を秘密鍵から再生成 (古い不整合 .pub 残骸対策)
+ssh-keygen -y -f "$SSH_PRIV" > "$SSH_PUB"
+chmod 644 "$SSH_PUB"
+# allowed_signers (git の SSH 署名検証用)
+if [ ! -f "$SSH_ALLOWED" ]; then
+  EMAIL=$(nix eval --raw -f "$DOTFILES_DIR/nix/user.nix" gitEmail 2>/dev/null || echo "92638132+gapul@users.noreply.github.com")
+  echo "$EMAIL $(awk '{print $1, $2}' "$SSH_PUB")" > "$SSH_ALLOWED"
+  chmod 600 "$SSH_ALLOWED"
+fi
+log "SSH key + allowed_signers OK"
+
 # 5. system 設定 (sudo パスワード要)
 log "darwin-rebuild switch (sudo パスワード入力あり)..."
 sudo nix run nix-darwin/nix-darwin-25.05 -- switch --flake "$DOTFILES_DIR/nix#$(whoami)"
@@ -146,9 +170,79 @@ fi
 log "Installing SKK public dictionaries..."
 bash "$DOTFILES_DIR/scripts/install-skk-dicts.sh" || true
 
+# 12. gh auth (ブラウザ認証、未済なら起動)
+if command -v gh >/dev/null && ! gh auth status >/dev/null 2>&1; then
+  log "gh auth login (ブラウザが開きます。SSH 鍵で認証推奨)..."
+  gh auth login -h github.com -p https -w || true
+fi
+
+# 13. 残った手動 GUI ステップを ~/POST-BOOTSTRAP.md に書き出す
+POST_FILE="$HOME/POST-BOOTSTRAP.md"
+cat > "$POST_FILE" <<'EOF'
+# 新 Mac セットアップ — 手動 GUI ステップ
+
+bootstrap.sh 完了後、以下を順に GUI で実行してください。
+
+## 1. App 権限付与 (System Settings → Privacy & Security)
+
+### アクセシビリティ
+- [ ] AeroSpace
+- [ ] AltTab
+- [ ] Karabiner-Elements (Karabiner-VirtualHIDDevice-Daemon も)
+- [ ] Mos
+- [ ] Shortcat
+- [ ] sketchybar (felixkratz)
+
+### 画面収録
+- [ ] AltTab
+- [ ] AeroSpace (Workspace 切替時の preview に必要)
+
+### 入力監視
+- [ ] Karabiner-Elements
+- [ ] Mos
+
+### フルディスク
+- [ ] iTerm/Ghostty (任意、~/Library 直下を grep したい時)
+
+## 2. macSKK Input Source 登録
+- System Settings → Keyboard → Input Sources → Edit → `+` → Japanese → macSKK
+- メニューバーの IME アイコン → macSKK を選んで切替
+
+## 3. macSKK 辞書登録
+```bash
+bash ~/dotfiles/scripts/install-skk-dicts-macskk.sh
+```
+その後 macSKK 設定 → Dictionaries → 5 辞書全部の Toggle を ON。
+
+## 4. Plash website 再追加
+1. Plash menubar → Settings → Display → "+"
+2. Browse... ボタンで `~/dotfiles/configs/wallpaper/aurora.html` を選択
+   (security-scoped bookmark を取るため、Browse 経由が必須。直接 URL 貼付は NG)
+
+## 5. AeroSpace 起動許可
+- 初回起動時に macOS から「アクセシビリティ要求」が出る → 許可
+
+## 6. Karabiner-Elements 起動許可
+- 初回起動時に System Extension の許可 (System Settings → General → Login Items & Extensions → Driver Extensions)
+
+## 7. GitHub の SSH 鍵登録 (任意、新鍵で push したい場合)
+```bash
+gh ssh-key add ~/.ssh/id_ed25519.pub --title "$(hostname -s)"
+gh api -X POST /user/ssh_signing_keys \
+  -f title="$(hostname -s) (signing)" \
+  -f key="$(cat ~/.ssh/id_ed25519.pub)"
+```
+
+## 8. macOS Login Items 確認
+- home-manager activation で AeroSpace と Ghostty が登録済のはず
+- System Settings → General → Login Items で確認
+
+---
+
+完了したら本ファイルを削除してください: `rm ~/POST-BOOTSTRAP.md`
+EOF
+
 log "完了! 新しいシェルを開いてください:"
 log "  exec zsh"
 log ""
-log "macSKK 側に辞書を入れるには、macSKK を 1 度起動してから:"
-log "  bash $DOTFILES_DIR/scripts/install-skk-dicts-macskk.sh"
-log "詳細: $DOTFILES_DIR/configs/ime/skk/README.md"
+log "★ 残りの手動 GUI ステップは $POST_FILE を参照"
