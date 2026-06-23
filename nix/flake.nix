@@ -88,6 +88,37 @@
           ];
         };
 
+      # Linux サーバー / 自宅 NUC / VPS 用: .#<username>-linux
+      # 純 Linux (WSL interop なし)。aarch64 / x86_64 両対応
+      homeConfigurations."${user.username}-linux" =
+        let
+          linuxSystem = "x86_64-linux";
+          linuxPkgs = nixpkgs.legacyPackages.${linuxSystem};
+        in
+        home-manager.lib.homeManagerConfiguration {
+          pkgs = linuxPkgs;
+          extraSpecialArgs = { inherit user; };
+          modules = [
+            ./home/common.nix
+            ./home/linux.nix
+            sops-nix.homeManagerModules.sops
+          ];
+        };
+      homeConfigurations."${user.username}-linux-aarch64" =
+        let
+          linuxSystem = "aarch64-linux";
+          linuxPkgs = nixpkgs.legacyPackages.${linuxSystem};
+        in
+        home-manager.lib.homeManagerConfiguration {
+          pkgs = linuxPkgs;
+          extraSpecialArgs = { inherit user; };
+          modules = [
+            ./home/common.nix
+            ./home/linux.nix
+            sops-nix.homeManagerModules.sops
+          ];
+        };
+
       # Remote (Linux) bundle: nssh から `nix-portable nix shell .#remote-env` で使う
       packages = nixpkgs.lib.genAttrs remoteSystems (sys: {
         remote-env = nixpkgs.legacyPackages.${sys}.buildEnv {
