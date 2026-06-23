@@ -45,9 +45,37 @@ secrets-rekey:
 pre-commit-install:
     pre-commit install
 
-# 30 日より古い世代を削除 + nix store gc
+# 全レイヤー一括 GC (nix store + brew + pnpm + uv + npm + ~/.Trash 等)
 gc:
-    nh clean all --keep 5 --keep-since 7d
+    #!/usr/bin/env bash
+    set -u
+    echo "━━━ Nix store (古い世代削除) ━━━"
+    nh clean all --keep 5 --keep-since 7d || true
+    echo ""
+    echo "━━━ Homebrew (downloads + 古い version) ━━━"
+    brew cleanup --prune=all 2>&1 | tail -3 || true
+    echo ""
+    echo "━━━ pnpm store ━━━"
+    command -v pnpm >/dev/null && pnpm store prune 2>&1 | tail -2 || true
+    echo ""
+    echo "━━━ uv cache ━━━"
+    command -v uv >/dev/null && uv cache prune 2>&1 | tail -2 || true
+    echo ""
+    echo "━━━ npm cache ━━━"
+    command -v npm >/dev/null && npm cache verify 2>&1 | tail -2 || true
+    echo ""
+    echo "━━━ cargo (大物 build artifacts のみ、registry 維持) ━━━"
+    command -v cargo-cache >/dev/null && cargo cache --autoclean 2>&1 | tail -2 || echo "  (cargo-cache 未 install、skip)"
+    echo ""
+    echo "━━━ macOS ゴミ箱 ━━━"
+    sz=$(du -sh ~/.Trash 2>/dev/null | cut -f1); echo "  ~/.Trash size: $sz"
+    rm -rf ~/.Trash/* 2>/dev/null || true
+    echo ""
+    echo "━━━ ~/.cache 内 (uv は完了済、他大物の状況) ━━━"
+    du -sh ~/.cache/*/ 2>/dev/null | sort -hr | head -5
+    echo ""
+    echo "━━━ 完了 ━━━"
+    df -h / 2>&1 | head -2 | tail -1
 
 # このマシンの差分 (current vs. flake) を表示
 diff:
