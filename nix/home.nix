@@ -273,6 +273,9 @@
     archive_source = "https://github.com/tldr-pages/tldr/releases/latest/download/tldr.zip"
   '';
 
+  # espanso: 汎用スニペット (公開可)。個人情報は sops の personal.yml 側
+  home.file."Library/Application Support/espanso/match/base.yml".source = ../configs/espanso/base.yml;
+
   programs.starship = {
     enable = true;
     enableZshIntegration = true;
@@ -322,7 +325,8 @@
       "vault_token".path    = "${config.home.homeDirectory}/.vault-token";
       "rclone_conf".path    = "${config.home.homeDirectory}/.config/rclone/rclone.conf";
       "mcp_config".path     = "${config.home.homeDirectory}/.config/mcp/config.json";
-      "espanso_match.yml".path  = "${config.home.homeDirectory}/Library/Application Support/espanso/match/base.yml";
+      # 個人情報 (メール・署名) のみ SOPS 管理。汎用スニペットは home.file の base.yml 側
+      "espanso_personal.yml".path  = "${config.home.homeDirectory}/Library/Application Support/espanso/match/personal.yml";
       "calcurse_caldav_config".path = "${config.home.homeDirectory}/.config/calcurse/caldav/config";
       "ssh_config".path = "${config.home.homeDirectory}/.ssh/config";
       "aerc_accounts_conf".path = "${config.home.homeDirectory}/.config/aerc/accounts.conf";
