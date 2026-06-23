@@ -154,12 +154,12 @@
       # opam (PATH + 補完)
       [ -r ~/.opam/opam-init/init.zsh ] && source ~/.opam/opam-init/init.zsh > /dev/null 2>&1
 
-      # ghq + fzf: Ctrl+G で repo 横断 fuzzy 移動
+      # ghq + fzf: Ctrl+] で repo 横断 fuzzy 移動
       function ghq-fzf() {
         local selected
         selected=$(ghq list 2>/dev/null | fzf --height=40% --reverse \
-          --preview "ls -la $(ghq root)/{} 2>/dev/null | head -20" \
-          --preview-window=right:40%)
+          --preview "fzf-preview-repo $(ghq root)/{}" \
+          --preview-window=right:60%)
         if [[ -n "$selected" ]]; then
           BUFFER="cd $(ghq root)/$selected"
           zle accept-line
@@ -167,7 +167,7 @@
         zle reset-prompt
       }
       zle -N ghq-fzf
-      bindkey '^g' ghq-fzf
+      bindkey '^]' ghq-fzf
 
       # gita: ghq 配下の全 repo を再登録 (新 repo を clone した後に呼ぶ)
       function gita-sync() {
@@ -224,6 +224,7 @@
     nix-init              # flake.nix 雛形生成
     devenv                # Nix ベース dev shell (direnv と組み合わせ)
     tealdeer              # tldr CLI (programs.tealdeer は archive_source 非対応のため手動)
+    pngpaste              # obsidian.nvim / img-clip の macOS 画像貼付に必要
   ];
 
   programs.git = {
@@ -361,6 +362,10 @@
     source = ../configs/bin/nssh;
     executable = true;
   };
+  home.file."bin/fzf-preview-repo" = {
+    source = ../configs/bin/fzf-preview-repo;
+    executable = true;
+  };
   home.file.".config/yazi" = {
     source = ../configs/cli/yazi;
     recursive = true;
@@ -377,6 +382,23 @@
     config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/dotfiles/configs/editors/nvim";
   home.file.".config/karabiner".source =
     config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/dotfiles/configs/keyboard/karabiner";
+
+  # macSKK / azooKey skkserv: sandboxed app の preferences
+  # symlink 不可 (cfprefsd が nix store 経由の symlink chain を follow せず、
+  # macSKK 側の plist write が dotfiles に届かない)。
+  # → 起動毎に dotfiles から `defaults import` で適用する。
+  # 設定 GUI で変更したら `just skk-export` で dotfiles に capture(後段で定義)。
+  # 注: macSKK の Dictionary file 一覧は plist の dictionaries[] に persist されない
+  #     ので、各 Mac で初回のみ手動で rm + ditto + toggle ON が必要(README 参照)。
+  home.activation.skkPlistImport = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    /usr/bin/defaults import net.mtgto.inputmethod.macSKK \
+      ${../configs/ime/skk/macSKK.plist}
+    if [ -f /Applications/azooKey\ skkserv.app/Contents/MacOS/azooKey\ skkserv ]; then
+      /usr/bin/defaults import io.github.gitusp.azoo-key-skkserv \
+        ${../configs/ime/skk/azoo-key-skkserv.plist}
+    fi
+    /usr/bin/killall cfprefsd 2>/dev/null || true
+  '';
 
 
   # ログイン項目: ヘッドレス起動しない GUI 常駐アプリを auto-launch

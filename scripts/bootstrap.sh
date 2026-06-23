@@ -142,5 +142,13 @@ if command -v gita >/dev/null && command -v ghq >/dev/null; then
   ghq list -p 2>/dev/null | xargs -I {} gita add {} 2>&1 | tail -3 || true
 fi
 
+# 11. SKK 公開辞書を ~/.skk/ に install (skkeleton 用)
+log "Installing SKK public dictionaries..."
+bash "$DOTFILES_DIR/scripts/install-skk-dicts.sh" || true
+
 log "完了! 新しいシェルを開いてください:"
 log "  exec zsh"
+log ""
+log "macSKK 側に辞書を入れるには、macSKK を 1 度起動してから:"
+log "  bash $DOTFILES_DIR/scripts/install-skk-dicts-macskk.sh"
+log "詳細: $DOTFILES_DIR/configs/ime/skk/README.md"
