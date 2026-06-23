@@ -209,6 +209,7 @@
       "fonttools"
       "mpv"
       "homebrew-zathura/zathura/zathura-pdf-mupdf"
+      "girara"           # zathura の UI ライブラリ。zathura が dlopen するので必須
 
       # ─── macOS specific CLI ───
       "mas"              # App Store
