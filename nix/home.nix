@@ -325,11 +325,78 @@
       "vault_token".path    = "${config.home.homeDirectory}/.vault-token";
       "rclone_conf".path    = "${config.home.homeDirectory}/.config/rclone/rclone.conf";
       "mcp_config".path     = "${config.home.homeDirectory}/.config/mcp/config.json";
-      # 個人情報 (メール・署名) のみ SOPS 管理。汎用スニペットは home.file の base.yml 側
-      "espanso_personal.yml".path  = "${config.home.homeDirectory}/Library/Application Support/espanso/match/personal.yml";
-      "calcurse_caldav_config".path = "${config.home.homeDirectory}/.config/calcurse/caldav/config";
       "ssh_config".path = "${config.home.homeDirectory}/.ssh/config";
-      "aerc_accounts_conf".path = "${config.home.homeDirectory}/.config/aerc/accounts.conf";
+
+      # PII 単一ソース: メール・名前・各種パスワードを 1 箇所に集約し、
+      # 下の sops.templates から espanso / aerc / calcurse へ注入する
+      "pii/name" = {};
+      "pii/email_personal" = {};
+      "pii/email_school" = {};
+      "pii/email_work" = {};
+      "pii/gmail_app_password_mail" = {};
+      "pii/gmail_app_password_caldav" = {};
+    };
+
+    # PII を参照して各 config を生成 (構造は公開・値だけ activation 時に復号注入)
+    templates = {
+      # espanso の個人スニペット (汎用は home.file の base.yml 側)
+      "espanso-personal.yml" = {
+        path = "${config.home.homeDirectory}/Library/Application Support/espanso/match/personal.yml";
+        content = ''
+          # espanso matches (PRIVATE) — sops.templates 生成。PII は secrets.yaml の pii: に集約
+          matches:
+            - trigger: ":gmail"
+              label: "個人 Gmail"
+              replace: "${config.sops.placeholder."pii/email_personal"}"
+            - trigger: ":umail"
+              label: "東大メール"
+              replace: "${config.sops.placeholder."pii/email_school"}"
+            - trigger: ":wmail"
+              label: "業務メール"
+              replace: "${config.sops.placeholder."pii/email_work"}"
+            - trigger: ":sig"
+              label: "署名"
+              replace: |
+                ----
+                ${config.sops.placeholder."pii/name"}
+                ${config.sops.placeholder."pii/email_work"}
+        '';
+      };
+
+      # aerc (Gmail)
+      "aerc-accounts.conf" = {
+        path = "${config.home.homeDirectory}/.config/aerc/accounts.conf";
+        content = ''
+          [Gmail]
+          source = imaps://${config.sops.placeholder."pii/email_personal"}@imap.gmail.com:993
+          source-cred-cmd = echo "${config.sops.placeholder."pii/gmail_app_password_mail"}"
+          outgoing = smtps+plain://${config.sops.placeholder."pii/email_personal"}@smtp.gmail.com:465
+          outgoing-cred-cmd = echo "${config.sops.placeholder."pii/gmail_app_password_mail"}"
+          from = ${config.sops.placeholder."pii/name"} <${config.sops.placeholder."pii/email_personal"}>
+          copy-to = Sent
+        '';
+      };
+
+      # calcurse CalDAV (Google)
+      "calcurse-caldav-config" = {
+        path = "${config.home.homeDirectory}/.config/calcurse/caldav/config";
+        content = ''
+          [General]
+          SyncDir = ~/.local/share/calcurse/
+          SpawnEditor = vi
+
+          [CalDAV]
+          ServerAddress = www.google.com
+          ServerPort = 443
+          ServerPath = /calendar/dav/${config.sops.placeholder."pii/email_personal"}/events/
+          InsecureSSL = No
+          Verbose = Yes
+
+          [Auth]
+          Username = ${config.sops.placeholder."pii/email_personal"}
+          Password = ${config.sops.placeholder."pii/gmail_app_password_caldav"}
+        '';
+      };
     };
   };
 
