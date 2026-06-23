@@ -61,6 +61,17 @@
   fonts.packages = with pkgs; [
     nerd-fonts.hack
     nerd-fonts.fira-code
+    # sketchybar アプリアイコンフォント。Ghostty/Zen 対応の v2.0.62 を vendor。
+    # plugins/icon_map.sh と版を厳密一致させるため nixpkgs 版でなく同梱 ttf を使う。
+    (stdenvNoCC.mkDerivation {
+      pname = "sketchybar-app-font";
+      version = "2.0.62";
+      src = ../configs/fonts/sketchybar-app-font.ttf;
+      dontUnpack = true;
+      installPhase = ''
+        install -Dm444 $src $out/share/fonts/truetype/sketchybar-app-font.ttf
+      '';
+    })
   ];
 
   homebrew = {
