@@ -56,16 +56,18 @@
       darwinConfigurations.${user.username} = nix-darwin.lib.darwinSystem {
         inherit system;
         specialArgs = { inherit user; };
-        modules = [ ./darwin.nix ];
+        modules = [ ./hosts/darwin.nix ];
       };
 
       # ユーザー設定: home-manager switch --flake .#<username>
-      # (nix-darwin と分離して USER check の bug を回避)
+      # 共通 module + macOS 専用 module を合成
+      # (将来 WSL/Linux を追加するときは ${user}-wsl / ${user}-linux 等を別途定義)
       homeConfigurations.${user.username} = home-manager.lib.homeManagerConfiguration {
         inherit pkgs;
         extraSpecialArgs = { inherit user; };
         modules = [
-          ./home.nix
+          ./home/common.nix
+          ./home/darwin.nix
           sops-nix.homeManagerModules.sops
         ];
       };

@@ -1,6 +1,8 @@
 { config, pkgs, lib, user, ... }: {
+  # OS 非依存の home-manager 設定
+  # OS 固有の部分は home/darwin.nix / home/linux.nix / home/wsl.nix 等に分離
+
   home.username = user.username;
-  home.homeDirectory = "/Users/${user.username}";
   home.stateVersion = "23.11";
 
   programs.home-manager.enable = true;
@@ -8,21 +10,10 @@
   home.sessionVariables = {
     EDITOR = "nvim";
     PAGER = "bat";
-    HOMEBREW_NO_ANALYTICS = "1";
-    PNPM_HOME = "${config.home.homeDirectory}/Library/pnpm";
     SOPS_AGE_KEY_FILE = "${config.home.homeDirectory}/.config/sops/age/keys.txt";
-    # nh 4.x: programs.nh.flake は古い FLAKE 変数しか set しないので、
-    # darwinConfigurations.<user> / homeConfigurations.<user> まで明示。
-    # home は activationPackage まで明示しないと「set だ」エラーになる。
-    NH_DARWIN_FLAKE = "${config.home.homeDirectory}/dotfiles/nix#darwinConfigurations.${user.username}";
-    NH_HOME_FLAKE   = "${config.home.homeDirectory}/dotfiles/nix#homeConfigurations.${user.username}.activationPackage";
   };
 
   home.sessionPath = [
-    "/opt/homebrew/bin"                         # brew 本体 (Apple Silicon)
-    "/opt/homebrew/sbin"
-    "${config.home.homeDirectory}/Library/pnpm"
-    "${config.home.homeDirectory}/Library/pnpm/bin"
     "${config.home.homeDirectory}/.local/bin"  # uv tool 経由のバイナリ
     "${config.home.homeDirectory}/bin"          # home.file."bin/*" 経由のスクリプト
   ];
@@ -46,13 +37,11 @@
 
     plugins = [
       {
-        # zsh の TAB 補完を fzf 化
         name = "fzf-tab";
         src = pkgs.zsh-fzf-tab;
         file = "share/fzf-tab/fzf-tab.plugin.zsh";
       }
       {
-        # fish 風: Up/Down で先頭一致の履歴検索
         name = "zsh-history-substring-search";
         src = pkgs.zsh-history-substring-search;
         file = "share/zsh-history-substring-search/zsh-history-substring-search.zsh";
@@ -68,23 +57,18 @@
       gl = "git pull";
       gp = "git push";
       gs = "git status";
-      # ls エイリアスは programs.eza.enableZshIntegration で自動定義される
       tl = "textlint --config ~/.config/textlint/.textlintrc.json";
       tlf = "textlint --config ~/.config/textlint/.textlintrc.json --fix";
     };
 
     initContent = ''
-      if [[ -f /opt/homebrew/bin/brew ]]; then
-        eval "$(/opt/homebrew/bin/brew shellenv)"
-      fi
-
       # fish 風 setopt (移行時に失った機能の再現)
-      setopt AUTO_CD              # ディレクトリ名タイプで cd 不要
-      setopt AUTO_PUSHD           # cd 時に PUSHD (dirs スタックに積む)
-      setopt PUSHD_IGNORE_DUPS    # 重複 push 除外
-      setopt EXTENDED_HISTORY     # 履歴に timestamp 付与
-      setopt GLOB_STAR_SHORT      # **/foo を **/foo に展開
-      setopt INTERACTIVE_COMMENTS # 対話 shell で # コメント許可
+      setopt AUTO_CD
+      setopt AUTO_PUSHD
+      setopt PUSHD_IGNORE_DUPS
+      setopt EXTENDED_HISTORY
+      setopt GLOB_STAR_SHORT
+      setopt INTERACTIVE_COMMENTS
 
       # history-substring-search: Up/Down で先頭一致(fish 風)
       if [[ -o zle ]]; then
@@ -103,10 +87,8 @@
       zstyle ':fzf-tab:*' fzf-flags --height=40% --reverse
 
       # nix build / nix-build を nom (nix-output-monitor) で見やすく
-      # 注: nh は自前 TUI 持ってるので alias 不要。nom は直接 nix build 用
       if command -v nom >/dev/null 2>&1; then
         alias nix-build='nix-build 2>&1 | nom'
-        # nix build (CLI flake コマンド) は引数判定が必要なので関数化
         function nix() {
           if [[ "$1" == "build" ]]; then
             shift
@@ -127,16 +109,8 @@
         bindkey -M vicmd '^X^E' edit-command-line
       fi
 
-      # CocoaPods (nix ruby と衝突回避: ~/.config/fish/setup/install-pod-wrapper.fish を初回実行)
-      unset GEM_HOME GEM_PATH
-
       # Launcher (関数定義 + Ghostty Quick Terminal 常駐ループ)
       [ -f ~/.config/launcher/shells/zsh.sh ] && source ~/.config/launcher/shells/zsh.sh
-
-      # sketchybar 再構成ラッパー (ディスプレイ抜き差し後に呼ぶ)
-      function sketchybar-refresh() {
-        bash ~/.config/sketchybar/helpers/refresh-displays.sh "$@"
-      }
 
       # Claude Code: 名前付きセッション launcher (作成 or 再開)
       function cl() {
@@ -169,7 +143,6 @@
       zle -N ghq-fzf
       bindkey '^]' ghq-fzf
 
-      # gita: ghq 配下の全 repo を再登録 (新 repo を clone した後に呼ぶ)
       function gita-sync() {
         if ! command -v gita >/dev/null || ! command -v ghq >/dev/null; then
           echo "gita / ghq が無い"
@@ -216,7 +189,7 @@
     '';
   };
 
-  # 単発で使う CLI ツール群 (programs.* の対象外)
+  # 単発で使う CLI ツール群 (programs.* の対象外、OS 非依存)
   home.packages = with pkgs; [
     comma                 # `, pkg args` で install せず nix package を実行
     nix-output-monitor    # nh / nix build を見やすくする (`nom`)
@@ -224,7 +197,6 @@
     nix-init              # flake.nix 雛形生成
     devenv                # Nix ベース dev shell (direnv と組み合わせ)
     tealdeer              # tldr CLI (programs.tealdeer は archive_source 非対応のため手動)
-    pngpaste              # obsidian.nvim / img-clip の macOS 画像貼付に必要
   ];
 
   programs.git = {
@@ -239,7 +211,6 @@
         side-by-side = true;
       };
     };
-    # グローバル excludesfile: 任意 repo で漏れがちなファイルを除外
     ignores = [
       ".DS_Store"
       ".AppleDouble"
@@ -250,14 +221,11 @@
       "*.swp"
       "*.swo"
       ".direnv/"
-      "result"          # nix build の output symlink
+      "result"
       "result-*"
       ".envrc.local"
-      ".claude/settings.local.json"  # Claude Code のローカル overrides
+      ".claude/settings.local.json"
     ];
-    # SSH 公開鍵で commit/tag 署名 (GPG 不要、1Password 不要、シンプル)
-    # GitHub に同じ鍵を "Signing key" として登録すると Verified バッジが付く
-    # (home-manager 25.05 だと signing.format が無いので extraConfig に逃がす)
     signing = {
       key = "${config.home.homeDirectory}/.ssh/id_ed25519.pub";
       signByDefault = true;
@@ -270,37 +238,22 @@
       merge.conflictstyle = "diff3";
       diff.colorMoved = "default";
       gpg.format = "ssh";
-      # ローカルで `git log --show-signature` を verify できるように
       "gpg \"ssh\"".allowedSignersFile = "${config.home.homeDirectory}/.ssh/allowed_signers";
     };
   };
 
   programs.bat = {
     enable = true;
-    config = {
-      style = "numbers,changes,header";
-    };
+    config = { style = "numbers,changes,header"; };
   };
 
   programs.eza = {
     enable = true;
-    enableZshIntegration = true;  # ls/ll/la/lt alias 自動定義
+    enableZshIntegration = true;
     git = true;
     icons = "auto";
     extraOptions = [ "--group-directories-first" ];
   };
-
-  # tealdeer: programs.tealdeer module は archive_source を知らないので、
-  # package を直で入れて config.toml を手書きする
-  home.file."Library/Application Support/tealdeer/config.toml".text = ''
-    [updates]
-    auto_update = true
-    auto_update_interval_hours = 720
-    archive_source = "https://github.com/tldr-pages/tldr/releases/latest/download/tldr.zip"
-  '';
-
-  # espanso: 汎用スニペット (公開可)。個人情報は sops の personal.yml 側
-  home.file."Library/Application Support/espanso/match/base.yml".source = ../configs/espanso/base.yml;
 
   programs.starship = {
     enable = true;
@@ -322,7 +275,7 @@
     enable = true;
     enableZshIntegration = true;
     settings = {
-      auto_sync = false;  # sync server 未ログインのため
+      auto_sync = false;
       search_mode = "fuzzy";
     };
   };
@@ -333,16 +286,17 @@
     nix-direnv.enable = true;
   };
 
-  # nh: darwin-rebuild / home-manager の便利ラッパー
+  # nh: nh darwin / nh home の便利ラッパー
   programs.nh = {
     enable = true;
     flake = "${config.home.homeDirectory}/dotfiles/nix";
   };
 
   # SOPS: 暗号化された secrets を home-manager switch 時に decrypt
+  # (path に ~/Library が無いものは OS 非依存)
   sops = {
     age.keyFile = "${config.home.homeDirectory}/.config/sops/age/keys.txt";
-    defaultSopsFile = ../secrets/secrets.yaml;
+    defaultSopsFile = ../../secrets/secrets.yaml;
     secrets = {
       "vpn/proton".path     = "${config.home.homeDirectory}/.config/wireguard/proton.conf";
       "vpn/wgcf".path       = "${config.home.homeDirectory}/.config/wireguard/wgcf-profile.conf";
@@ -351,10 +305,9 @@
       "vault_token".path    = "${config.home.homeDirectory}/.vault-token";
       "rclone_conf".path    = "${config.home.homeDirectory}/.config/rclone/rclone.conf";
       "mcp_config".path     = "${config.home.homeDirectory}/.config/mcp/config.json";
-      "ssh_config".path = "${config.home.homeDirectory}/.ssh/config";
+      "ssh_config".path     = "${config.home.homeDirectory}/.ssh/config";
 
-      # PII 単一ソース: メール・名前・各種パスワードを 1 箇所に集約し、
-      # 下の sops.templates から espanso / aerc / calcurse へ注入する
+      # PII 単一ソース
       "pii/name" = {};
       "pii/email_personal" = {};
       "pii/email_school" = {};
@@ -363,33 +316,8 @@
       "pii/gmail_app_password_caldav" = {};
     };
 
-    # PII を参照して各 config を生成 (構造は公開・値だけ activation 時に復号注入)
+    # aerc / calcurse の template は OS 非依存(`~/.config/...`)
     templates = {
-      # espanso の個人スニペット (汎用は home.file の base.yml 側)
-      "espanso-personal.yml" = {
-        path = "${config.home.homeDirectory}/Library/Application Support/espanso/match/personal.yml";
-        content = ''
-          # espanso matches (PRIVATE) — sops.templates 生成。PII は secrets.yaml の pii: に集約
-          matches:
-            - trigger: ":gmail"
-              label: "個人 Gmail"
-              replace: "${config.sops.placeholder."pii/email_personal"}"
-            - trigger: ":umail"
-              label: "東大メール"
-              replace: "${config.sops.placeholder."pii/email_school"}"
-            - trigger: ":wmail"
-              label: "業務メール"
-              replace: "${config.sops.placeholder."pii/email_work"}"
-            - trigger: ":sig"
-              label: "署名"
-              replace: |
-                ----
-                ${config.sops.placeholder."pii/name"}
-                ${config.sops.placeholder."pii/email_work"}
-        '';
-      };
-
-      # aerc (Gmail)
       "aerc-accounts.conf" = {
         path = "${config.home.homeDirectory}/.config/aerc/accounts.conf";
         content = ''
@@ -403,7 +331,6 @@
         '';
       };
 
-      # calcurse CalDAV (Google)
       "calcurse-caldav-config" = {
         path = "${config.home.homeDirectory}/.config/calcurse/caldav/config";
         content = ''
@@ -426,117 +353,41 @@
     };
   };
 
-  # dotfiles/configs/* を symlink
-  # 静的設定 (yuki が編集 → dotfiles 経由): /nix/store 経由でOK
-  home.file.".config/ghostty" = {
-    source = ../configs/terminals/ghostty;
-    recursive = true;
-  };
+  # dotfiles/configs/* を symlink (OS 非依存なものだけ。Mac 専用 = aerospace/sketchybar/karabiner は home/darwin.nix へ)
   home.file.".config/zellij" = {
-    source = ../configs/terminals/zellij;
+    source = ../../configs/terminals/zellij;
     recursive = true;
   };
-  home.file.".config/aerospace" = {
-    source = ../configs/wm/aerospace;
-    recursive = true;
-  };
-  home.file.".config/sketchybar" = {
-    source = ../configs/wm/sketchybar;
-    recursive = true;
-  };
-  home.file.".config/starship.toml".source = ../configs/shell/starship.toml;
-  home.file.".config/gh/config.yml".source = ../configs/cli/gh/config.yml;
+  home.file.".config/starship.toml".source = ../../configs/shell/starship.toml;
+  home.file.".config/gh/config.yml".source = ../../configs/cli/gh/config.yml;
   home.file.".config/textlint" = {
-    source = ../configs/textlint;
+    source = ../../configs/textlint;
     recursive = true;
   };
   home.file.".config/mpv" = {
-    source = ../configs/media/mpv;
+    source = ../../configs/media/mpv;
     recursive = true;
   };
-  home.file.".config/launcher/config.toml".source = ../configs/launcher/config.toml;
+  home.file.".config/launcher/config.toml".source = ../../configs/launcher/config.toml;
   home.file."bin/nssh" = {
-    source = ../configs/bin/nssh;
+    source = ../../configs/bin/nssh;
     executable = true;
   };
   home.file."bin/fzf-preview-repo" = {
-    source = ../configs/bin/fzf-preview-repo;
+    source = ../../configs/bin/fzf-preview-repo;
     executable = true;
   };
   home.file.".config/yazi" = {
-    source = ../configs/cli/yazi;
+    source = ../../configs/cli/yazi;
     recursive = true;
   };
-  home.file.".config/zathura/zathurarc".source = ../configs/cli/zathura/zathurarc;
+  home.file.".config/zathura/zathurarc".source = ../../configs/cli/zathura/zathurarc;
   home.file.".config/calcurse" = {
-    source = ../configs/cli/calcurse;
+    source = ../../configs/cli/calcurse;
     recursive = true;
   };
 
-  # 動的設定 (アプリ自身が書き戻す可能性):
-  # mkOutOfStoreSymlink で dotfiles の実体に直接 link → 書き込み可能
+  # nvim は dotfiles に直接書き戻したいので mkOutOfStoreSymlink
   home.file.".config/nvim".source =
     config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/dotfiles/configs/editors/nvim";
-  home.file.".config/karabiner".source =
-    config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/dotfiles/configs/keyboard/karabiner";
-
-  # macSKK / azooKey skkserv: sandboxed app の preferences
-  # symlink 不可 (cfprefsd が nix store 経由の symlink chain を follow せず、
-  # macSKK 側の plist write が dotfiles に届かない)。
-  # → 起動毎に dotfiles から `defaults import` で適用する。
-  # 設定 GUI で変更したら `just skk-export` で dotfiles に capture(後段で定義)。
-  # 注: macSKK の Dictionary file 一覧は plist の dictionaries[] に persist されない
-  #     ので、各 Mac で初回のみ手動で rm + ditto + toggle ON が必要(README 参照)。
-  home.activation.skkPlistImport = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    /usr/bin/defaults import net.mtgto.inputmethod.macSKK \
-      ${../configs/ime/skk/macSKK.plist}
-    if [ -f /Applications/azooKey\ skkserv.app/Contents/MacOS/azooKey\ skkserv ]; then
-      /usr/bin/defaults import io.github.gitusp.azoo-key-skkserv \
-        ${../configs/ime/skk/azoo-key-skkserv.plist}
-    fi
-    /usr/bin/killall cfprefsd 2>/dev/null || true
-  '';
-
-  # Maccy (clipboard manager) 設定 — clipboard 履歴は SQLite で別ファイル、触らない
-  home.activation.maccyPlistImport = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    if [ -d "$HOME/Library/Containers/org.p0deje.Maccy" ]; then
-      /usr/bin/defaults import org.p0deje.Maccy \
-        ${../configs/clipboard/maccy/Maccy.plist}
-      /usr/bin/killall cfprefsd 2>/dev/null || true
-    fi
-  '';
-
-  # GUI ユーティリティ系 (AltTab / Mos / Plash / Shortcat) の plist 一括 import
-  # 各 plist は scripts/capture-app-plist.py で個人情報・UI 状態・テレメトリを除外済
-  # Plash の website 設定は security-scoped bookmark が無いと動かないので含めず、
-  # 各 Mac で GUI から手動再追加(README 参照)
-  home.activation.guiAppsPlistImport = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    /usr/bin/defaults import com.lwouis.alt-tab-macos \
-      ${../configs/apps/com.lwouis.alt-tab-macos.plist}
-    /usr/bin/defaults import com.caldis.Mos \
-      ${../configs/apps/com.caldis.Mos.plist}
-    /usr/bin/defaults import com.sproutcube.Shortcat \
-      ${../configs/apps/com.sproutcube.Shortcat.plist}
-    if [ -d "$HOME/Library/Containers/com.sindresorhus.Plash" ]; then
-      /usr/bin/defaults import com.sindresorhus.Plash \
-        ${../configs/apps/com.sindresorhus.Plash.plist}
-    fi
-    /usr/bin/killall cfprefsd 2>/dev/null || true
-  '';
-
-
-  # ログイン項目: ヘッドレス起動しない GUI 常駐アプリを auto-launch
-  # (sketchybar/Karabiner は launchd plist で自動起動するので含めない)
-  home.activation.macosLoginItems = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    LOGIN_APPS=(
-      "/Applications/AeroSpace.app"
-      "/Applications/Ghostty.app"
-    )
-    for app in "''${LOGIN_APPS[@]}"; do
-      name=$(basename "$app" .app)
-      if ! /usr/bin/osascript -e "tell application \"System Events\" to (name of login items) contains \"$name\"" 2>/dev/null | grep -q true; then
-        /usr/bin/osascript -e "tell application \"System Events\" to make login item at end with properties {path:\"$app\", hidden:false}" >/dev/null 2>&1 || true
-      fi
-    done
-  '';
 }

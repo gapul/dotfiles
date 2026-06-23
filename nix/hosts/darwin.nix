@@ -66,7 +66,7 @@
     (stdenvNoCC.mkDerivation {
       pname = "sketchybar-app-font";
       version = "2.0.62";
-      src = ../configs/fonts/sketchybar-app-font.ttf;
+      src = ../../configs/fonts/sketchybar-app-font.ttf;
       dontUnpack = true;
       installPhase = ''
         install -Dm444 $src $out/share/fonts/truetype/sketchybar-app-font.ttf
