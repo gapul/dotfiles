@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>allowlist</key>
+	<false/>
+	<key>applications</key>
+	<data>
+	W10=
+	</data>
+	<key>block</key>
+	<data>
+	eyJ0eXBlIjoia2V5Ym9hcmQiLCJjb2RlIjo1OH0=
+	</data>
+	<key>buttonBindings</key>
+	<data>
+	W10=
+	</data>
+	<key>deadZone</key>
+	<real>1</real>
+	<key>duration</key>
+	<real>4.3499999999999996</real>
+	<key>hideStatusItem</key>
+	<true/>
+	<key>optionsExist</key>
+	<string>optionsExist</string>
+	<key>precision</key>
+	<real>1</real>
+	<key>reverse</key>
+	<false/>
+	<key>reverseHorizontal</key>
+	<true/>
+	<key>reverseVertical</key>
+	<true/>
+	<key>smooth</key>
+	<true/>
+	<key>smoothHorizontal</key>
+	<true/>
+	<key>smoothSimTrackpad</key>
+	<false/>
+	<key>smoothVertical</key>
+	<true/>
+	<key>speed</key>
+	<real>2.7000000000000002</real>
+	<key>step</key>
+	<real>0.01</real>
+	<key>toggle</key>
+	<data>
+	eyJjb2RlIjo1NiwidHlwZSI6ImtleWJvYXJkIn0=
+	</data>
+	<key>updateCheckOnAppStart</key>
+	<false/>
+	<key>updateIncludingBetaVersion</key>
+	<false/>
+</dict>
+</plist>
