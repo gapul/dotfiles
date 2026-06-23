@@ -275,6 +275,14 @@ plugins {
 // eg. "https://example.com/my-plugin.wasm"
 load_plugins {
     zellij:link
+    // 自動 lock/unlock: triggers の TUI が pane で foreground のとき locked、
+    // shell に戻ると normal mode。default_mode "locked" との合わせ技で
+    // 「TUI 中は zellij が邪魔しない、shell では pane 操作できる」が両立。
+    // 初回起動時に zellij が wasm を download (~/.cache/zellij/plugins/)
+    "https://github.com/fresh2dev/zellij-autolock/releases/latest/download/zellij-autolock.wasm" {
+        triggers "nvim|vim|fzf|yazi|btm|lazygit"
+        watch_interval "1.0"
+    }
 }
 web_client {
     font "monospace"
