@@ -227,9 +227,6 @@
       "infisical/get-cli/infisical"    # secret CLI
       "pomdtr/tap/sunbeam"             # launcher
       "supabase/tap/supabase"          # Supabase CLI
-
-      # ─── Other shells ───
-      "fish"
     ];
 
     # GUI applications (~100個)
