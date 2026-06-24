@@ -123,7 +123,6 @@
       "rust"
       "uv"
       "pnpm"
-      "opam"
       "gauche"
       "guile"
       "swi-prolog"     # Prolog (関数・論理型プログラミング実験 第10-12回)

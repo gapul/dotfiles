@@ -125,9 +125,6 @@
           || claude --session-id "$id" -n "$name" "''${@:2}"
       }
 
-      # opam (PATH + 補完)
-      [ -r ~/.opam/opam-init/init.zsh ] && source ~/.opam/opam-init/init.zsh > /dev/null 2>&1
-
       # ghq + fzf: Ctrl+] で repo 横断 fuzzy 移動
       function ghq-fzf() {
         local selected
