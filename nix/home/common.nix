@@ -314,7 +314,6 @@
       "claude_env".path     = "${config.home.homeDirectory}/.claude_env";
       "vault_token".path    = "${config.home.homeDirectory}/.vault-token";
       "rclone_conf".path    = "${config.home.homeDirectory}/.config/rclone/rclone.conf";
-      "mcp_config".path     = "${config.home.homeDirectory}/.config/mcp/config.json";
       "ssh_config".path     = "${config.home.homeDirectory}/.ssh/config";
 
       # PII 単一ソース
