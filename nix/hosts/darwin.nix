@@ -135,7 +135,6 @@
       "pear-devs/pear"
       "pomdtr/tap"
       "riscv-software-src/riscv"
-      "supabase/tap"
       "theboredteam/boring-notch"
 
       # ─── 個人 fork (gapul) — fork した人は不要なら削除 ───
@@ -271,7 +270,6 @@
       "finnvoor/tools/yap"             # 日本語 transcription
       "infisical/get-cli/infisical"    # secret CLI
       "pomdtr/tap/sunbeam"             # launcher
-      "supabase/tap/supabase"          # Supabase CLI
     ];
 
     # GUI applications (~100個)
