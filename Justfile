@@ -183,6 +183,8 @@ doctor:
     set -u
     pass=0; fail=0
     check() { if eval "$2"; then echo "  ✅ $1"; pass=$((pass+1)); else echo "  ❌ $1"; fail=$((fail+1)); fi; }
+    # warn: 満たさなくても fail にしない情報系チェック ($3 = 未達時メッセージ)
+    warn() { if eval "$2"; then echo "  ✅ $1"; else echo "  ⚠️  $3"; fi; }
     echo "== /nix マウント =="
     check "/nix がマウントされてる" 'mount | grep -q " on /nix "'
     check "/etc/fstab に noauto が無い (Login Items 対策)" '! grep "/nix" /etc/fstab | grep -q noauto'
@@ -195,7 +197,7 @@ doctor:
     check "AeroSpace" 'pgrep -fq AeroSpace.app'
     check "Karabiner Core-Service" 'pgrep -fq Karabiner-Core-Service'
     echo "== dotfiles =="
-    check "未 commit 変更なし" '[[ -z "$(git -C {{justfile_directory()}} status --short)" ]]'
+    warn "作業ツリー clean (未 commit 無し)" '[[ -z "$(git -C {{justfile_directory()}} status --short)" ]]' "未 commit 変更あり → commit/push 推奨"
     check "age 秘密鍵存在" '[[ -f ~/.config/sops/age/keys.txt ]]'
     echo
     echo "Result: $pass passed, $fail failed"
