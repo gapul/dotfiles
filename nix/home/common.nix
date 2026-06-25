@@ -426,6 +426,12 @@
     source = ../../configs/terminals/zellij;
     recursive = true;
   };
+  # supermaven: sm-agent は $HOME/.supermaven をハードコード参照 (XDG 非対応)。
+  # 実体は ~/.local/share/supermaven に置き、$HOME はそこへの symlink にして両立。
+  # (丸ごと移動すると agent が config を見失い認証ロストするため symlink が必須)
+  home.file.".supermaven".source =
+    config.lib.file.mkOutOfStoreSymlink "${config.xdg.dataHome}/supermaven";
+
   home.file.".config/starship.toml".source = ../../configs/shell/starship.toml;
   home.file.".config/gh/config.yml".source = ../../configs/cli/gh/config.yml;
   home.file.".config/textlint" = {
