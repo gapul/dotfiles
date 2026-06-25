@@ -237,7 +237,9 @@
           down|off|stop) sudo wg-quick down "$conf" ;;
           status|st)     sudo wg show ;;
           toggle|"")
-            if sudo wg show 2>/dev/null | grep -q "interface: $profile"; then
+            # macOS は interface 名が utunN になるため wg show では profile 名で判定不可。
+            # wg-quick が up 中だけ作る /var/run/wireguard/<profile>.name の有無で判定する。
+            if sudo test -f "/var/run/wireguard/''${profile}.name"; then
               sudo wg-quick down "$conf"
             else
               sudo wg-quick up "$conf"
