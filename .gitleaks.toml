@@ -17,6 +17,6 @@ paths = [
   '''templates/.*''',
   '''docs/.*''',
 ]
-regexes = [
-  '''(BEGIN|END) (OPENSSH |RSA |PGP |)?PRIVATE KEY( BLOCK)?-----''',
-]
+# NOTE: ここに PRIVATE KEY の regex を入れると「秘密鍵らしき文字列を検出しても
+# 無視する」= gitleaks の最重要保護を無効化してしまうため絶対に追加しない。
+# placeholder の除外は上の paths 側 (templates/ docs/ *.example) で行う。

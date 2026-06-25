@@ -1,0 +1,31 @@
+name: Update flake.lock
+
+# flake.lock を週次で更新する PR を自動作成。
+# 古い lock のまま既知脆弱性パッケージが残るのを防ぐ。
+on:
+  schedule:
+    # 月曜 09:00 JST = 00:00 UTC
+    - cron: '0 0 * * 1'
+  workflow_dispatch: # 手動 trigger 用
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-lock:
+    name: nix flake update -> PR
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+      - name: Update flake.lock and open PR
+        uses: DeterminateSystems/update-flake-lock@main
+        with:
+          path-to-flake-dir: nix
+          pr-title: 'chore(nix): update flake.lock'
+          pr-labels: |
+            dependencies
+            automated
+          commit-msg: 'chore(nix): update flake.lock'
