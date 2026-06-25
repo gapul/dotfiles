@@ -6,6 +6,9 @@
 
   home.sessionVariables = {
     HOMEBREW_NO_ANALYTICS = "1";
+    # trust.json を ~/.homebrew → XDG_CONFIG へ (既定は $HOME/.homebrew, trust.rb:27)。
+    # 影響は対話 brew のみ。nh の system activation は HOME=~root で brew を回すため不変。
+    HOMEBREW_USER_CONFIG_HOME = "${config.xdg.configHome}/homebrew";
     PNPM_HOME = "${config.home.homeDirectory}/Library/pnpm";
     # nh 4.x: programs.nh.flake は古い FLAKE 変数しか set しないので、
     # darwinConfigurations.<user> / homeConfigurations.<user> まで明示
