@@ -310,8 +310,6 @@
     secrets = {
       "vpn/proton".path     = "${config.home.homeDirectory}/.config/wireguard/proton.conf";
       "vpn/wgcf".path       = "${config.home.homeDirectory}/.config/wireguard/wgcf-profile.conf";
-      "figma_token".path    = "${config.home.homeDirectory}/.figma_token";
-      "claude_env".path     = "${config.home.homeDirectory}/.claude_env";
       "vault_token".path    = "${config.home.homeDirectory}/.vault-token";
       "rclone_conf".path    = "${config.home.homeDirectory}/.config/rclone/rclone.conf";
       "ssh_config".path     = "${config.home.homeDirectory}/.ssh/config";
