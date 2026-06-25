@@ -23,6 +23,14 @@ result-*
 *.tmp
 tmp/
 
+# バックアップ残骸 (clean-junk 対象。コミットしない)
+*.bak
+*.bak.*
+*.orig
+
+# ビルド成果物: sketchybar helper は helper.c + makefile から make で生成する
+configs/wm/sketchybar/helper/helper
+
 # karabiner 自動バックアップ (アプリ生成)
 configs/keyboard/karabiner/automatic_backups/
 configs/wallpaper/state.js
