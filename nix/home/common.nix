@@ -322,6 +322,8 @@
     python3Packages.fonttools # フォント操作 lib/CLI
     ollama # ローカル LLM (nix 版も Metal GPU 有効 — runner が Metal.framework をリンク。検証済)
     neovim # エディタ本体 (設定は configs/editors/nvim を mkOutOfStoreSymlink)
+    aerc # メール TUI
+    isync # IMAP 同期 (mbsync)
   ];
 
   programs.git = {

@@ -176,7 +176,6 @@
       "winetricks" # wine prefix への DLL/コンポーネント導入ヘルパ
 
       # ─── TUI utilities ───
-      "aerc" # mail (要・残置判断)
       "wifitui" # wifi (nixpkgs は Linux 専用のため brew 維持)
 
       # ─── Network / Download / VPN ───
@@ -187,9 +186,6 @@
       "nextdns"
       "scrcpy" # Android mirror
       "tcpdump"
-
-      # ─── Mail ───
-      "isync"
 
       # ─── Documents / Fonts / Media ───
       "gstreamer"
