@@ -18,7 +18,7 @@ fi
 
 HOST="$1"
 MODE="${2:-minimal}"
-SRC="$HOME/dotfiles/configs"
+SRC="$HOME/.dotfiles/configs"
 EMAIL="${GIT_EMAIL:-92638132+gapul@users.noreply.github.com}"
 NAME="${GIT_NAME:-gapul}"
 

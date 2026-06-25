@@ -16,7 +16,7 @@
 set -euo pipefail
 
 DOTFILES_REPO="${DOTFILES_REPO:-https://github.com/gapul/dotfiles.git}"
-DOTFILES_DIR="$HOME/dotfiles"
+DOTFILES_DIR="$HOME/.dotfiles"
 SOPS_KEY="$HOME/.config/sops/age/keys.txt"
 SSH_PRIV="$HOME/.ssh/id_ed25519"
 SSH_PUB="$HOME/.ssh/id_ed25519.pub"

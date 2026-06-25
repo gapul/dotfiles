@@ -6,7 +6,7 @@
 # 流れ:
 #   1. Xcode Command Line Tools (git/curl/etc. のため)
 #   2. Determinate Nix install
-#   3. ~/dotfiles を git clone
+#   3. ~/.dotfiles を git clone
 #   4. age 秘密鍵を ~/.config/sops/age/keys.txt に配置 (手動 paste 待ち)
 #   5. nix run nix-darwin -- switch
 #   6. 各 third-party brew tap を trust
@@ -22,7 +22,7 @@ err() { printf '\033[1;31m[bootstrap]\033[0m %s\n' "$*" >&2; }
 
 # Fork した時はこの URL を自分の repo に変える(or nix/user.nix の dotfilesRepo を参照)
 DOTFILES_REPO="${DOTFILES_REPO:-https://github.com/gapul/dotfiles.git}"
-DOTFILES_DIR="$HOME/dotfiles"
+DOTFILES_DIR="$HOME/.dotfiles"
 SOPS_KEY="$HOME/.config/sops/age/keys.txt"
 
 # 1. Xcode CLT
@@ -253,13 +253,13 @@ open "x-apple.systempreferences:com.apple.preference.keyboard?InputSources"
 
 ## 3. macSKK 辞書登録
 ```bash
-bash ~/dotfiles/scripts/install-skk-dicts-macskk.sh
+bash ~/.dotfiles/scripts/install-skk-dicts-macskk.sh
 ```
 その後 macSKK 設定 → Dictionaries → 5 辞書全部の Toggle を ON。
 
 ## 4. Plash website 再追加
 1. Plash menubar → Settings → Display → "+"
-2. Browse... ボタンで `~/dotfiles/configs/wallpaper/aurora.html` を選択
+2. Browse... ボタンで `~/.dotfiles/configs/wallpaper/aurora.html` を選択
    (security-scoped bookmark を取るため、Browse 経由が必須。直接 URL 貼付は NG)
 
 ## 5. AeroSpace 起動許可
