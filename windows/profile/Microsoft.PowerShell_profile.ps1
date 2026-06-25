@@ -28,6 +28,14 @@ function gc { git commit $args }
 function gl { git pull $args }
 function gp { git push $args }
 
+# === エディタ (nvim があれば vi/vim/v を nvim に) ===
+if (Get-Command nvim -ErrorAction SilentlyContinue) {
+    function v   { nvim $args }
+    function vi  { nvim $args }
+    function vim { nvim $args }
+    $env:EDITOR = 'nvim'
+}
+
 # === ディレクトリ移動の便利 ===
 function .. { Set-Location .. }
 function ... { Set-Location ../.. }
@@ -39,7 +47,11 @@ function wsl-here {
 }
 
 # === starship があれば使う (winget で入れる想定) ===
+# macOS/WSL と同じ prompt にするため共有 configs/shell/starship.toml を参照。
+# (Windows ネイティブの clone 先は %USERPROFILE%\dotfiles)
 if (Get-Command starship -ErrorAction SilentlyContinue) {
+    $sharedStarship = Join-Path $env:USERPROFILE 'dotfiles\configs\shell\starship.toml'
+    if (Test-Path $sharedStarship) { $env:STARSHIP_CONFIG = $sharedStarship }
     Invoke-Expression (& starship init powershell)
 }
 
