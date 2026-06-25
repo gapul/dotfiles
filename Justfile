@@ -18,6 +18,9 @@ default:
 # システム + ユーザー 両方再構築 (普段使い)
 [group('構築')]
 rebuild:
+    # 新 brew は HOMEBREW_REQUIRE_TAP_TRUST 既定ON + brew bundle が cask trust を毎回消すため、
+    # custom tap の cask を darwin switch 前に毎回再 trust する (formula は Brewfile宣言で auto-trust)。
+    -brew list --cask --full-name 2>/dev/null | grep '/' | HOMEBREW_USER_CONFIG_HOME="$HOME/.homebrew" xargs -I% brew trust --cask %
     nh darwin switch
     nh home switch
 
