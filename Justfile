@@ -108,6 +108,38 @@ gc:
     echo "━━━ 完了 ━━━"
     df -h / 2>&1 | head -2 | tail -1
 
+# ゴミファイル一括削除 (.DS_Store / AppleDouble / vim swap / Thumbs.db 等)
+# dotfiles 配下を再帰削除。.git は除外。dry-run は `just clean-junk dry`
+clean-junk dry="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    dir="{{justfile_directory()}}"
+    # 削除対象パターン (macOS / editor / OS が撒くゴミ)
+    names=(
+      ".DS_Store" ".AppleDouble" ".LSOverride" "._*"
+      ".Spotlight-V100" ".Trashes" ".fseventsd" ".DocumentRevisions-V100"
+      ".TemporaryItems" ".apdisk" ".localized"
+      "Thumbs.db" "Thumbs.db:encryptable" "ehthumbs.db" "ehthumbs_vista.db" "desktop.ini"
+      "*.swp" "*.swo" "*~" "*.bak" "*.orig"
+    )
+    # find 用の -name OR 条件を組み立て
+    expr=()
+    for n in "${names[@]}"; do expr+=( -name "$n" -o ); done
+    unset 'expr[${#expr[@]}-1]'  # 末尾の -o を除去
+    mapfile -d '' hits < <(find "$dir" -path "$dir/.git" -prune -o -type f \( "${expr[@]}" \) -print0)
+    if [ "${#hits[@]}" -eq 0 ]; then
+      echo "✨ ゴミファイルなし"
+      exit 0
+    fi
+    printf '%s\n' "${hits[@]}" | sed "s|^$dir/||"
+    echo "── 計 ${#hits[@]} 件"
+    if [ "{{dry}}" = "dry" ]; then
+      echo "(dry-run: 削除はしていません。実削除は引数なしで)"
+      exit 0
+    fi
+    printf '%s\0' "${hits[@]}" | xargs -0 rm -f
+    echo "🗑️  ${#hits[@]} 件削除しました"
+
 # このマシンの差分 (current vs. flake) を表示
 diff:
     nh darwin build
