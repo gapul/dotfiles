@@ -34,9 +34,25 @@
 
     sops-nix.url = "github:Mic92/sops-nix";
     sops-nix.inputs.nixpkgs.follows = "nixpkgs";
+
+    # コード品質: pre-commit フック宣言 + treefmt (nix fmt)
+    git-hooks.url = "github:cachix/git-hooks.nix";
+    git-hooks.inputs.nixpkgs.follows = "nixpkgs";
+
+    treefmt-nix.url = "github:numtide/treefmt-nix";
+    treefmt-nix.inputs.nixpkgs.follows = "nixpkgs";
   };
 
-  outputs = { nixpkgs, nix-darwin, home-manager, sops-nix, ... }:
+  outputs =
+    {
+      nixpkgs,
+      nix-darwin,
+      home-manager,
+      sops-nix,
+      git-hooks,
+      treefmt-nix,
+      ...
+    }:
     let
       system = "aarch64-darwin";
       pkgs = nixpkgs.legacyPackages.${system};
@@ -44,12 +60,62 @@
 
       # SSH 接続先で rootless Nix (nix-portable) から実行する
       # ツール一式。Linux x86_64 / aarch64 両対応。
-      remoteTools = pkgs': with pkgs'; [
-        neovim yazi zellij
-        git ripgrep fd fzf bat eza zoxide
-        curl wget
+      remoteTools =
+        pkgs': with pkgs'; [
+          neovim
+          yazi
+          zellij
+          git
+          ripgrep
+          fd
+          fzf
+          bat
+          eza
+          zoxide
+          curl
+          wget
+        ];
+      remoteSystems = [
+        "aarch64-linux"
+        "x86_64-linux"
       ];
-      remoteSystems = [ "aarch64-linux" "x86_64-linux" ];
+
+      # nix fmt: nixfmt(nix) + shfmt(shell) を束ねる
+      treefmtEval = treefmt-nix.lib.evalModule pkgs {
+        projectRootFile = "flake.nix";
+        programs.nixfmt.enable = true;
+        programs.shfmt.enable = true;
+        settings.formatter.shfmt.options = [
+          "-i"
+          "2"
+        ]; # 2-space (CLAUDE.md 準拠)
+      };
+
+      # pre-commit フックを nix で宣言。src は nix/ (flake サブツリー)。
+      # scripts/ 等リポ全体は `pre-commit run --all-files` を git ルートで回してカバー。
+      preCommit = git-hooks.lib.${system}.run {
+        src = ./.;
+        hooks = {
+          treefmt = {
+            enable = true;
+            package = treefmtEval.config.build.wrapper;
+          };
+          # statix は repeated_keys 等が module 記述と相性悪く、--config パスが
+          # flake/git-root で一意にできないため enforced から除外。
+          # 手動チェックは `nix run nixpkgs#statix -- check nix` で可能。
+          deadnix = {
+            enable = true; # nix 未使用コード
+            settings.noLambdaPatternNames = true; # { lib, ... } 等の未使用引数は許容
+          };
+          shellcheck.enable = true; # シェルのバグ検出
+          gitleaks = {
+            enable = true;
+            name = "gitleaks";
+            entry = "${pkgs.gitleaks}/bin/gitleaks protect --staged --no-banner --redact";
+            pass_filenames = false;
+          };
+        };
+      };
     in
     {
       # システム設定: sudo darwin-rebuild switch --flake .#<username>
@@ -126,5 +192,17 @@
           paths = remoteTools nixpkgs.legacyPackages.${sys};
         };
       });
+
+      # nix fmt
+      formatter.${system} = treefmtEval.config.build.wrapper;
+
+      # nix flake check で nix/ の整形・lint・secret を検査
+      checks.${system}.pre-commit = preCommit;
+
+      # nix develop: 入室で .git/hooks に pre-commit を導入
+      devShells.${system}.default = pkgs.mkShell {
+        inherit (preCommit) shellHook;
+        buildInputs = preCommit.enabledPackages;
+      };
     };
 }

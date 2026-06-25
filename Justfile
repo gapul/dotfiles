@@ -255,16 +255,52 @@ gc:
     m=$(find ~/.config -maxdepth 3 \( -name '*.bak' -o -name '*.bak.[0-9]*' \) -type f -print -delete 2>/dev/null | wc -l | tr -d ' ')
     echo "  🗑️  $m 件削除"
     echo ""
-    echo "━━━ $HOME 全体の .DS_Store (Finder が常時再生成するので一時的) ━━━"
-    # .Trash は別途処理済なので除外。それ以外は $HOME 全域を sweep
-    d=$(find "$HOME" -name .Trash -prune -o -name .DS_Store -type f -print -delete 2>/dev/null | grep -c '\.DS_Store$' || true)
+    echo "━━━ $HOME 全体の OS ゴミ (.DS_Store/._*/swap/orig 等。.Trash除外) ━━━"
+    d=$(find "$HOME" -name .Trash -prune -o -type f \( -name '.DS_Store' -o -name '._*' -o -name '*.swp' -o -name '*.swo' -o -name '*.orig' -o -name '*.rej' -o -name '*~' \) -print -delete 2>/dev/null | wc -l | tr -d ' ')
     echo "  🗑️  $d 件削除"
+    echo ""
+    echo "━━━ 開発キャッシュ (__pycache__/*.pyc/.pytest_cache 等。Library除外・再生成される) ━━━"
+    tmp=$(mktemp)
+    find "$HOME" \( -path "$HOME/Library" -o -name .Trash \) -prune -o -type d \( -name '__pycache__' -o -name '.pytest_cache' -o -name '.mypy_cache' -o -name '.ruff_cache' -o -name '.ipynb_checkpoints' \) -prune -print 2>/dev/null > "$tmp"
+    pc=$(wc -l < "$tmp" | tr -d ' ')
+    xargs -I{} rm -rf "{}" < "$tmp" 2>/dev/null; rm -f "$tmp"
+    py=$(find "$HOME" \( -path "$HOME/Library" -o -name .Trash \) -prune -o -type f -name '*.pyc' -print -delete 2>/dev/null | wc -l | tr -d ' ')
+    echo "  🗑️  cache dir $pc 件 + *.pyc $py 件削除"
     echo ""
     echo "━━━ ~/.cache 内 (uv は完了済、他大物の状況) ━━━"
     du -sh ~/.cache/*/ 2>/dev/null | sort -hr | head -5
     echo ""
     echo "━━━ 完了 ━━━"
     df -h / 2>&1 | head -2 | tail -1
+
+# 重い再生成可能ディレクトリを削除 (30日以上更新の無い node_modules / rust target のみ。要再 install)
+[group('掃除')]
+gc-deep:
+    #!/usr/bin/env bash
+    set -u
+    echo "━━━ 30日以上更新の無い node_modules / rust target を探索 ━━━"
+    tmp=$(mktemp)
+    # ~/Library は tool 内部 (typescript/pnpm 等のキャッシュ) なので除外。プロジェクトのみ対象。
+    prune=( \( -path "$HOME/Library" -o -path "$HOME/.cache" -o -name .Trash \) -prune )
+    # node_modules: ネストは prune で1階層のみ。30日触っていないもの限定
+    find "$HOME" "${prune[@]}" -o -type d -name node_modules -prune -mtime +30 -print 2>/dev/null >> "$tmp"
+    # rust target: 同名の汎用ディレクトリ誤爆を避け、隣に Cargo.toml がある場合のみ
+    find "$HOME" "${prune[@]}" -o -type d -name target -prune -mtime +30 -print 2>/dev/null | \
+      while read -r d; do [ -f "$(dirname "$d")/Cargo.toml" ] && echo "$d"; done >> "$tmp"
+    cnt=$(wc -l < "$tmp" | tr -d ' ')
+    if [ "$cnt" -eq 0 ]; then echo "  対象なし (全て30日以内に更新)"; rm -f "$tmp"; exit 0; fi
+    total=$(xargs -I{} du -sk "{}" < "$tmp" 2>/dev/null | awk '{s+=$1}END{printf "%.1fG", s/1024/1024}')
+    sed "s|$HOME|~|" "$tmp" | head -40
+    [ "$cnt" -gt 40 ] && echo "  … 他 $((cnt-40)) 件"
+    echo "  合計: $total / $cnt 個 (削除後は各プロジェクトで再 install が必要)"
+    read -rp "削除しますか? [y/N] " ans
+    if [[ "$ans" == [yY] ]]; then
+      xargs -I{} rm -rf "{}" < "$tmp" 2>/dev/null
+      echo "  🗑️  $cnt 個削除 (回収: $total)"
+    else
+      echo "  中止しました"
+    fi
+    rm -f "$tmp"
 
 
 # ─────────────────────────────────────────────
