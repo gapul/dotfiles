@@ -21,7 +21,7 @@ host="$1"
 shift
 
 # ローカルの dotfiles から remote URL を取得(fork した人もそのまま使える)
-DOTFILES_URL=$(git -C "$HOME/dotfiles" remote get-url origin 2>/dev/null || \
+DOTFILES_URL=$(git -C "$HOME/.dotfiles" remote get-url origin 2>/dev/null || \
                 echo "git@github.com:gapul/dotfiles.git")
 
 # Agent Forwarding を必ず付ける (-A) と StrictHostKey で github の自動信頼
@@ -43,20 +43,20 @@ fi
 if ! grep -q "^github.com " ~/.ssh/known_hosts 2>/dev/null; then
   ssh-keyscan -t ed25519,rsa github.com >> ~/.ssh/known_hosts 2>/dev/null || true
 fi
-if [ ! -d ~/dotfiles/.git ]; then
+if [ ! -d ~/.dotfiles/.git ]; then
   echo "[nssh] Cloning dotfiles ($DOTFILES_URL)..."
-  git clone "$DOTFILES_URL" ~/dotfiles
+  git clone "$DOTFILES_URL" ~/.dotfiles
 else
-  git -C ~/dotfiles pull --quiet --rebase || true
+  git -C ~/.dotfiles pull --quiet --rebase || true
 fi
 
 # 3. config symlinks
-ln -sfn ~/dotfiles/configs/editors/nvim     ~/.config/nvim
-ln -sfn ~/dotfiles/configs/cli/yazi         ~/.config/yazi
-ln -sfn ~/dotfiles/configs/terminals/zellij ~/.config/zellij
+ln -sfn ~/.dotfiles/configs/editors/nvim     ~/.config/nvim
+ln -sfn ~/.dotfiles/configs/cli/yazi         ~/.config/yazi
+ln -sfn ~/.dotfiles/configs/terminals/zellij ~/.config/zellij
 BOOTSTRAP
 
 # 4. インタラクティブ接続 ($HOME はリモート側で展開される)
-#    path:~/dotfiles/nix を flake source に (private repo を GitHub API なしで使う)
+#    path:~/.dotfiles/nix を flake source に (private repo を GitHub API なしで使う)
 exec ssh -At "$host" "$@" \
-  '"$HOME"/.local/bin/nix-portable nix shell "path:$HOME/dotfiles/nix#remote-env" -c zellij'
+  '"$HOME"/.local/bin/nix-portable nix shell "path:$HOME/.dotfiles/nix#remote-env" -c zellij'

@@ -12,8 +12,8 @@
     PNPM_HOME = "${config.home.homeDirectory}/Library/pnpm";
     # nh 4.x: programs.nh.flake は古い FLAKE 変数しか set しないので、
     # darwinConfigurations.<user> / homeConfigurations.<user> まで明示
-    NH_DARWIN_FLAKE = "${config.home.homeDirectory}/dotfiles/nix#darwinConfigurations.${user.username}";
-    NH_HOME_FLAKE   = "${config.home.homeDirectory}/dotfiles/nix#homeConfigurations.${user.username}.activationPackage";
+    NH_DARWIN_FLAKE = "${config.home.homeDirectory}/.dotfiles/nix#darwinConfigurations.${user.username}";
+    NH_HOME_FLAKE   = "${config.home.homeDirectory}/.dotfiles/nix#homeConfigurations.${user.username}.activationPackage";
   };
 
   home.sessionPath = [
@@ -96,7 +96,7 @@
   # karabiner は dotfiles 直接書き戻し (mkOutOfStoreSymlink)
   home.file.".config/karabiner".source =
     config.lib.file.mkOutOfStoreSymlink
-      "${config.home.homeDirectory}/dotfiles/configs/keyboard/karabiner";
+      "${config.home.homeDirectory}/.dotfiles/configs/keyboard/karabiner";
 
   # macSKK / azooKey skkserv: sandboxed app の preferences を defaults import
   home.activation.skkPlistImport = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
