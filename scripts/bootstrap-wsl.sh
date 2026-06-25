@@ -83,7 +83,7 @@ log "SSH key + allowed_signers OK"
 
 # 6. home-manager switch (WSL attr)
 log "home-manager switch (.#$(whoami)-wsl)..."
-nix run home-manager/release-25.05 -- switch \
+nix run home-manager/release-26.05 -- switch \
   --flake "$DOTFILES_DIR/nix#$(whoami)-wsl" -b backup
 
 log ""

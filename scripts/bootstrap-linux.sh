@@ -98,7 +98,7 @@ case "$arch" in
 esac
 
 log "home-manager switch (.#$ATTR)..."
-nix run home-manager/release-25.05 -- switch \
+nix run home-manager/release-26.05 -- switch \
   --flake "$DOTFILES_DIR/nix#$ATTR" -b backup
 
 log ""
