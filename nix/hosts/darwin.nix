@@ -161,6 +161,9 @@
       "rust"
       "uv"
       "pnpm"
+      # deno: nvim skkeleton(denops) の runtime + yt-dlp の JS チャレンジ解読に使用。
+      # 現状は mpv/yt-dlp の依存だが、それらを消すと孤立して skkeleton が壊れるため明示宣言。
+      "deno"
       "gauche"
       "guile"
       "swi-prolog"     # Prolog (関数・論理型プログラミング実験 第10-12回)
