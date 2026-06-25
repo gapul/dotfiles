@@ -432,6 +432,12 @@
   home.file.".supermaven".source =
     config.lib.file.mkOutOfStoreSymlink "${config.xdg.dataHome}/supermaven";
 
+  # bday: 自作 birthday-tui のランチャ。ghq(~/Developer) の checkout を PATH に通す。
+  # nvim 側は lazy dev で同 checkout を読む (configs/editors/nvim/lua/config/lazy.lua)。
+  home.file.".local/bin/bday".source =
+    config.lib.file.mkOutOfStoreSymlink
+      "${config.home.homeDirectory}/Developer/github.com/gapul/birthday-tui/bday";
+
   home.file.".config/starship.toml".source = ../../configs/shell/starship.toml;
   home.file.".config/gh/config.yml".source = ../../configs/cli/gh/config.yml;
   home.file.".config/textlint" = {

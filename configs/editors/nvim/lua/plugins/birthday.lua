@@ -1,9 +1,9 @@
 -- birthday.nvim — 誕生日のその日、初回 nvim 起動でお祝いを表示する
--- リポジトリ: ~/Developer/github.com/gapul/birthday-tui （`bday` を PATH に通済み）
+-- 自作 repo gapul/birthday-tui。lazy の dev 設定(config/lazy.lua)で ~/Developer の
+-- ローカル checkout から読まれる(`bday` も同 checkout を PATH 経由で使用)。
 return {
   {
-    dir = vim.fn.expand('~/Developer/github.com/gapul/birthday-tui'),
-    name = 'birthday-tui',
+    "gapul/birthday-tui",
     lazy = false, -- 起動時にロードして VimEnter チェックを登録
     config = function()
       require('birthday').setup({
