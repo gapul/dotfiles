@@ -11,6 +11,13 @@
 #
 # 何度走らせても安全 (idempotent)。
 # 管理者 PowerShell で実行推奨 (symlink 作成に SeCreateSymbolicLinkPrivilege が必要)
+#
+# WSL の distro/ユーザー名は -WslDistro / -WslUser で上書き可:
+#   & bootstrap.ps1 -WslUser alice -WslDistro Debian
+param(
+    [string]$WslUser   = 'yuki',      # WSL 側ユーザー名 (Terminal の startingDirectory に注入)
+    [string]$WslDistro = 'Ubuntu'     # WSL ディストリ名
+)
 
 $ErrorActionPreference = 'Stop'
 $DotfilesDir = Join-Path $env:USERPROFILE 'dotfiles'
@@ -60,33 +67,46 @@ if (Test-Path $ProfileSrc) {
     }
 }
 
-# 4. Windows Terminal settings.json を symlink
+# 4. Windows Terminal settings.json を生成 (symlink でなく render)
+#    startingDirectory の __WSL_USER__ / __WSL_DISTRO__ を実値へ置換するため、
+#    symlink でなく「コピー + 置換」で配置する。settings を編集したら再実行で反映。
 $WTSrc = Join-Path $WindowsDir 'terminal\settings.json'
 $WTDst = Join-Path $env:LOCALAPPDATA 'Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json'
 if ((Test-Path $WTSrc) -and (Test-Path (Split-Path $WTDst -Parent))) {
-    if (Test-Path $WTDst) {
-        $existing = Get-Item $WTDst
-        if ($existing.LinkType -ne 'SymbolicLink' -or $existing.Target -ne $WTSrc) {
-            $backup = "$WTDst.bak-$(Get-Date -Format yyyyMMddHHmmss)"
-            Move-Item $WTDst $backup
-            Log "既存 WT settings → $backup に退避"
-        }
+    $rendered = (Get-Content $WTSrc -Raw) `
+        -replace '__WSL_USER__',   $WslUser `
+        -replace '__WSL_DISTRO__', $WslDistro
+    # 既存が手書き設定 (symlink でない & placeholder 由来でない) なら backup 退避
+    if ((Test-Path $WTDst) -and ((Get-Content $WTDst -Raw) -ne $rendered)) {
+        $backup = "$WTDst.bak-$(Get-Date -Format yyyyMMddHHmmss)"
+        Copy-Item $WTDst $backup
+        Log "既存 WT settings → $backup に退避"
     }
-    if (-not (Test-Path $WTDst)) {
-        New-Item -ItemType SymbolicLink -Path $WTDst -Target $WTSrc | Out-Null
-        Log "WT settings.json → $WTSrc"
-    }
+    Set-Content -Path $WTDst -Value $rendered -Encoding UTF8 -NoNewline
+    Log "WT settings.json を生成 (WslUser=$WslUser / WslDistro=$WslDistro)"
 }
 
-# 5. age / SSH 鍵 (任意、未配置なら警告のみ)
+# 5. age / SSH 鍵 (任意)。存在すれば ACL を本人のみに絞る。
+#    Windows には chmod が無く、OpenSSH は「他ユーザーが読める秘密鍵」を拒否するため
+#    icacls で継承を切り、現在のユーザーだけにアクセス許可を付け直す。
+function Protect-KeyFile($path) {
+    if (-not (Test-Path $path)) { return }
+    icacls $path /inheritance:r              | Out-Null  # 継承された ACL を全削除
+    icacls $path /grant:r "${env:USERNAME}:F" | Out-Null  # 本人のみフルコントロール
+    # 既定で付く緩いグループを念のため除去 (無くてもエラーにしない)
+    foreach ($p in @('BUILTIN\Users', 'BUILTIN\Administrators', 'NT AUTHORITY\Authenticated Users')) {
+        icacls $path /remove:g "$p" 2>$null | Out-Null
+    }
+    Log "鍵 ACL を本人のみに制限: $path"
+}
+
 $AgeKey = Join-Path $env:USERPROFILE '.config\sops\age\keys.txt'
-if (-not (Test-Path $AgeKey)) {
-    Err "age 秘密鍵 ($AgeKey) が未配置 — Bitwarden 等から手動で配置してください"
-}
+if (Test-Path $AgeKey) { Protect-KeyFile $AgeKey }
+else { Err "age 秘密鍵 ($AgeKey) が未配置 — Bitwarden 等から手動で配置してください" }
+
 $SshPriv = Join-Path $env:USERPROFILE '.ssh\id_ed25519'
-if (-not (Test-Path $SshPriv)) {
-    Err "SSH 秘密鍵 ($SshPriv) が未配置 — Bitwarden 等から配置 + chmod 600"
-}
+if (Test-Path $SshPriv) { Protect-KeyFile $SshPriv }
+else { Err "SSH 秘密鍵 ($SshPriv) が未配置 — Bitwarden 等から配置後に本スクリプト再実行で ACL 設定" }
 
 # 6. git global config (gh/git は winget で別途 install されてる前提)
 if (Get-Command git -ErrorAction SilentlyContinue) {
