@@ -293,7 +293,7 @@
       init.defaultBranch = "main";
       pull.rebase = true;
       push.autoSetupRemote = true;
-      ghq.root = "${config.home.homeDirectory}/ghq";
+      ghq.root = "${config.home.homeDirectory}/Developer";
       merge.conflictstyle = "diff3";
       diff.colorMoved = "default";
       gpg.format = "ssh";
