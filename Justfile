@@ -23,8 +23,10 @@ update:
 # 全レイヤーアップグレード (Nix + brew + cask + mas + Determinate Nix runtime)
 # --greedy で自前 auto-update する cask (VS Code 等) も brew 経由で揃える
 upgrade:
-    brew upgrade
-    brew upgrade --cask --greedy
+    brew upgrade --formula
+    # cask は --greedy で自己更新型も揃える。installer manual / 自己更新 cask
+    # (figma-agent 等) は brew が上げられず exit 1 にするので許容する。
+    brew upgrade --cask --greedy || true
     mas upgrade
     just sketchybar-font
     just update
