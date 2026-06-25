@@ -64,6 +64,17 @@
       TrackpadRightClick = true;
       TrackpadThreeFingerDrag = true;
     };
+    # ブラウザのテレメトリ無効化 (enterprise policy を defaults 経由で宣言)
+    CustomUserPreferences = {
+      "com.google.Chrome" = {
+        MetricsReportingEnabled = false;
+      };
+      "com.brave.Browser" = {
+        MetricsReportingEnabled = false;
+        BraveStatsPingEnabled = false;
+        BraveP3AEnabled = false;
+      };
+    };
   };
 
   # cask に該当 Nerd Font が無いものだけ Nix で確保
