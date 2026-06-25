@@ -4,6 +4,17 @@
   # Determinate Nix が daemon/nix.conf を管理しているので nix-darwin は触らない
   nix.enable = false;
 
+  # Determinate の nix.conf は `!include nix.custom.conf` するので、そこへ
+  # use-xdg-base-directories を冪等に書き込む。これで nix-env / nix-instantiate
+  # (home-manager / nix-darwin が profile 操作で内部使用) が ~/.nix-defexpr /
+  # ~/.nix-channels を $HOME に再生成せず、~/.local/state/nix/ 配下へ寄せる。
+  system.activationScripts.nixXdgBaseDirs.text = ''
+    conf=/etc/nix/nix.custom.conf
+    if [ -f "$conf" ] && ! /usr/bin/grep -q '^use-xdg-base-directories' "$conf"; then
+      printf '\n# XDG Base Directory 準拠 (~/.nix-defexpr 等を ~/.local/state/nix へ)\nuse-xdg-base-directories = true\n' >> "$conf"
+    fi
+  '';
+
   system.stateVersion = 5;
   system.primaryUser = user.username;
 
