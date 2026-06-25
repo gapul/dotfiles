@@ -18,9 +18,13 @@ default:
 # システム + ユーザー 両方再構築 (普段使い)
 [group('構築')]
 rebuild:
-    # 新 brew は HOMEBREW_REQUIRE_TAP_TRUST 既定ON + brew bundle が cask trust を毎回消すため、
-    # custom tap の cask を darwin switch 前に毎回再 trust する (formula は Brewfile宣言で auto-trust)。
-    -brew list --cask --full-name 2>/dev/null | grep '/' | HOMEBREW_USER_CONFIG_HOME="$HOME/.homebrew" xargs -I% brew trust --cask %
+    # 新 brew は HOMEBREW_REQUIRE_TAP_TRUST 既定ON + cask の `trusted: true`(Brewfile) を無視するため、
+    # custom tap の cask を darwin switch 前に毎回再 trust する (formula は Brewfile宣言で auto-trust される)。
+    # activation の brew bundle は `sudo --preserve-env=PATH` で XDG_CONFIG_HOME を剥がし HOME=~ で
+    # 必ず ~/.homebrew/trust.json を読む。一方 brew は XDG_CONFIG_HOME が HOMEBREW_USER_CONFIG_HOME に
+    # 優先するため、対話シェル(XDG設定済)の素の trust は ~/.config/homebrew に逸れる。
+    # → `env -u XDG_CONFIG_HOME` で XDG を外し、activation と同じ ~/.homebrew へ書く ([[project_homebrew_trust_sudo]])。
+    -brew list --cask --full-name 2>/dev/null | grep '/' | xargs -I% env -u XDG_CONFIG_HOME brew trust --cask %
     nh darwin switch
     nh home switch
 

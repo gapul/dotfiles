@@ -6,10 +6,11 @@
 
   home.sessionVariables = {
     HOMEBREW_NO_ANALYTICS = "1";
-    # NOTE: HOMEBREW_USER_CONFIG_HOME で trust.json を XDG 化するのは不可。nh darwin switch の
-    # brew bundle は sudo 越え/HOME=~root で env を引き継がず ~/.homebrew/trust.json を探すため、
-    # 移すと custom tap が "Refusing to load" で switch が壊れる ([[project_homebrew_trust_sudo]])。
-    # → trust.json は ~/.homebrew のまま据え置く。
+    # NOTE: brew の trust.json は XDG 化不可。activation の brew bundle は
+    # `sudo --preserve-env=PATH --set-home` で XDG_CONFIG_HOME を剥がし必ず ~/.homebrew を読む。
+    # かつ brew は XDG_CONFIG_HOME を HOMEBREW_USER_CONFIG_HOME より優先するため、対話シェルの
+    # 素の trust は ~/.config/homebrew に逸れる。Justfile rebuild が `env -u XDG_CONFIG_HOME` で
+    # ~/.homebrew に揃えて書くことで一致させる ([[project_homebrew_trust_sudo]])。
     PNPM_HOME = "${config.home.homeDirectory}/Library/pnpm";
     # nh: darwin は darwinConfigurations.<user> 形式で可。home は nh 4.3.2 だと
     # #名前/#...activationPackage どちらも不可 → flake のみ(#なし)にして user 名で
