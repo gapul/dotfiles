@@ -16,8 +16,10 @@
 
 - `macSKK.plist` — macSKK の workarounds (Ghostty/VSCode/Brave) + UI 設定 + skkserv 接続情報
 - `azoo-key-skkserv.plist` — host/incomingCharset/startServerAtLaunch
+- `kana-rule.conf` — ローマ字変換ルール (現状: `！ ？ （）` のみ全角化、`#!use-default` で既定継承)
 
-両方とも home.nix の `home.activation.skkPlistImport` で `defaults import` され、`killall cfprefsd` で flush される。
+plist 2つは home.nix の `home.activation.skkPlistImport` で `defaults import` され、`killall cfprefsd` で flush される。
+`kana-rule.conf` は plist ではなく Container 内 Documents のファイルなので、`home.activation.skkKanaRule` で `install` 実コピーして配置する (symlink 不可は辞書と同様)。
 
 ## sandbox の制限事項
 
@@ -70,6 +72,13 @@ plutil -convert xml1 ~/.dotfiles/configs/ime/skk/azoo-key-skkserv.plist
 
 注: `defaults import` は XML/binary 両対応なので、dotfiles 側は XML 固定で OK。
 macSKK が GUI 操作で binary に書き戻しても、capture 時に再度 XML 化すれば履歴は綺麗。
+
+kana-rule を変えたら (実ファイルなので単純コピー):
+
+```bash
+cp ~/Library/Containers/net.mtgto.inputmethod.macSKK/Data/Documents/Settings/kana-rule.conf \
+   ~/.dotfiles/configs/ime/skk/kana-rule.conf
+```
 
 ## 共有していないもの
 
