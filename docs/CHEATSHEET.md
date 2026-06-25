@@ -275,4 +275,4 @@ just upgrade              # システム全体 update
 - **nom 統合**: `nix build` の wrapper 関数で `--log-format internal-json -v |& nom --json` を挟む
 - **nh**: 自前 TUI 持ってるので nom ラップしない(rev. `5d8bdac` で alias 撤回)
 
-設定変更したい場合は `~/dotfiles/nix/home.nix` を編集して `just rebuild`。
+設定変更したい場合は `~/.dotfiles/nix/home/common.nix` を編集して `just rebuild`。
