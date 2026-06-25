@@ -11,6 +11,7 @@
     EDITOR = "nvim";
     PAGER = "bat";
     SOPS_AGE_KEY_FILE = "${config.home.homeDirectory}/.config/sops/age/keys.txt";
+    CLAUDE_CONFIG_DIR = "${config.home.homeDirectory}/.config/claude";  # Claude Code を XDG 配下へ
   };
 
   home.sessionPath = [
@@ -32,6 +33,14 @@
 
   programs.zsh = {
     enable = true;
+
+    # XDG 化: history → ~/.local/state/zsh/, 補完dump → ~/.cache/zsh/
+    history.path = "${config.xdg.stateHome}/zsh/history";
+    completionInit = ''
+      autoload -U compinit
+      compinit -d "${config.xdg.cacheHome}/zsh/zcompdump"
+    '';
+
     autosuggestion.enable = true;
     syntaxHighlighting.enable = true;
 
@@ -62,6 +71,9 @@
     };
 
     initContent = ''
+      # XDG: history / 補完dump 用ディレクトリを確保
+      mkdir -p "${config.xdg.stateHome}/zsh" "${config.xdg.cacheHome}/zsh"
+
       # fish 風 setopt (移行時に失った機能の再現)
       setopt AUTO_CD
       setopt AUTO_PUSHD
@@ -310,7 +322,6 @@
     secrets = {
       "vpn/proton".path     = "${config.home.homeDirectory}/.config/wireguard/proton.conf";
       "vpn/wgcf".path       = "${config.home.homeDirectory}/.config/wireguard/wgcf-profile.conf";
-      "vault_token".path    = "${config.home.homeDirectory}/.vault-token";
       "rclone_conf".path    = "${config.home.homeDirectory}/.config/rclone/rclone.conf";
       "ssh_config".path     = "${config.home.homeDirectory}/.ssh/config";
 
