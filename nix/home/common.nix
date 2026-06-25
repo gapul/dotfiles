@@ -23,6 +23,7 @@
   home.file.".zshenv" = {
     force = true;
     text = ''
+      export ZDOTDIR="$HOME/.config/zsh"
       if [ -e /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]; then
         . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
       fi
@@ -33,6 +34,7 @@
 
   programs.zsh = {
     enable = true;
+    dotDir = ".config/zsh";  # XDG: zsh設定一式を ~/.config/zsh/ へ (ZDOTDIR)
 
     # XDG 化: history → ~/.local/state/zsh/, 補完dump → ~/.cache/zsh/
     history.path = "${config.xdg.stateHome}/zsh/history";
