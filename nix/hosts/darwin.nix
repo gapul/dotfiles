@@ -166,15 +166,11 @@
       "neovim"
 
       # ─── Languages / Package managers ───
-      "rust"
       # deno: nvim skkeleton(denops) の runtime + yt-dlp の JS チャレンジ解読に使用。
       # 現状は mpv/yt-dlp の依存だが、それらを消すと孤立して skkeleton が壊れるため明示宣言。
       "deno"
       "swi-prolog"     # Prolog (関数・論理型プログラミング実験 第10-12回)
 
-      # ─── Containers ───
-      "docker-compose"
-      "podman"
 
       # ─── Misc CLI ───
       "curl"
@@ -200,8 +196,6 @@
 
       # ─── Documents / Fonts / Media ───
       "gstreamer"
-      "fontforge"
-      "fonttools"
       "mpv"
       "homebrew-zathura/zathura/zathura-pdf-mupdf"
       # zathura-pdf-mupdf の tap内依存。新 brew は HOMEBREW_REQUIRE_TAP_TRUST 既定ONで

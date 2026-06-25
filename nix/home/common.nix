@@ -41,7 +41,7 @@
     XDG_STATE_HOME  = config.xdg.stateHome;
     XDG_CACHE_HOME  = config.xdg.cacheHome;
 
-    # cargo (Homebrew 製 rustc/cargo): ~/.cargo → XDG_DATA。bin は sessionPath に追加
+    # cargo (nixpkgs 製 rustc/cargo): ~/.cargo → XDG_DATA。bin は sessionPath に追加
     CARGO_HOME = "${config.xdg.dataHome}/cargo";
 
     # npm (Homebrew 製): cache/userconfig を XDG へ移し ~/.npm の自動生成を抑止
@@ -304,6 +304,15 @@
     youtube-tui           # YouTube TUI
     gita                  # マルチリポ git 管理 (~/.config/gita)
     compiledb             # compile_commands.json 生成
+
+    # ─── Homebrew から移行した CLI (段階3) ───
+    # rust: rustup でなく rustc+cargo (固定版・宣言的)。nightly/toolchain切替が要る場合は rustup へ
+    rustc                 # Rust コンパイラ
+    cargo                 # Rust ビルド/パッケージ管理
+    docker-compose        # コンテナ compose (podman socket を向ける)
+    podman                # コンテナ (machine VM は別管理で維持)
+    fontforge             # フォント編集 CLI (GUI は fontforge-app cask)
+    python3Packages.fonttools  # フォント操作 lib/CLI
   ];
 
   programs.git = {
