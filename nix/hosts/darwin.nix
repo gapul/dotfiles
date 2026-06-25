@@ -22,6 +22,14 @@
     fw=/usr/libexec/ApplicationFirewall/socketfilterfw
     "$fw" --setglobalstate on >/dev/null 2>&1 || true
     "$fw" --setstealthmode on >/dev/null 2>&1 || true
+    # 自動セキュリティ更新 (system レベル defaults。nix-darwin に型付きオプションが無いので
+    # root の postActivation で直接書く)。放置でも XProtect/MRT・セキュリティ応答が最新。
+    su=/Library/Preferences/com.apple.SoftwareUpdate
+    /usr/bin/defaults write "$su" AutomaticCheckEnabled -bool true   >/dev/null 2>&1 || true
+    /usr/bin/defaults write "$su" AutomaticDownload     -bool true   >/dev/null 2>&1 || true
+    /usr/bin/defaults write "$su" CriticalUpdateInstall -bool true   >/dev/null 2>&1 || true  # セキュリティ応答/XProtect
+    /usr/bin/defaults write "$su" ConfigDataInstall     -bool true   >/dev/null 2>&1 || true  # XProtect/MRT 定義
+    /usr/bin/defaults write /Library/Preferences/com.apple.commerce AutoUpdate -bool true >/dev/null 2>&1 || true
   '';
 
   system.stateVersion = 5;
@@ -68,6 +76,7 @@
       NSAutomaticQuoteSubstitutionEnabled = false;
       NSAutomaticSpellingCorrectionEnabled = false;
       AppleShowScrollBars = "WhenScrolling";
+      NSDocumentSaveNewDocumentsToCloud = false;  # 新規書類を既定で iCloud に上げない
       # Note: Caps→Esc は Karabiner で処理しているため宣言しない
       # Note: AppleInterfaceStyle (Dark mode) は明示設定されてないので除外
     };
@@ -81,8 +90,17 @@
       askForPassword = true;
       askForPasswordDelay = 0;
     };
+    # (自動セキュリティ更新は system レベルのため postActivation で defaults write)
+    # ログイン画面ハードニング
+    loginwindow = {
+      GuestEnabled = false;          # ゲストアカウント無効
+      SHOWFULLNAME = true;           # ユーザー一覧を出さず 名前+PW 入力 (アカウント列挙対策)
+      DisableConsoleAccess = true;   # ">console" コンソールログイン禁止
+    };
     # ブラウザのテレメトリ無効化 (enterprise policy を defaults 経由で宣言)
     CustomUserPreferences = {
+      # Apple の個人化広告 (ターゲティング) を無効化
+      "com.apple.AdLib".allowApplePersonalizedAdvertising = false;
       "com.google.Chrome" = {
         MetricsReportingEnabled = false;
       };
@@ -133,7 +151,6 @@
       "jpmhouston/bananameterlabs"
       "nikitabobko/tap"
       "pear-devs/pear"
-      "pomdtr/tap"
       "riscv-software-src/riscv"
       "theboredteam/boring-notch"
 
@@ -154,7 +171,6 @@
 
       # ─── Editor / Terminal multiplexer ───
       "neovim"
-      "tmux"
       "zellij"
 
       # ─── Languages / Package managers ───
@@ -164,20 +180,14 @@
       # deno: nvim skkeleton(denops) の runtime + yt-dlp の JS チャレンジ解読に使用。
       # 現状は mpv/yt-dlp の依存だが、それらを消すと孤立して skkeleton が壊れるため明示宣言。
       "deno"
-      "gauche"
-      "guile"
       "swi-prolog"     # Prolog (関数・論理型プログラミング実験 第10-12回)
-      "cocoapods"
-      "xcodegen"
 
       # ─── Build tools ───
       "cmake"
       "meson"
       "tree-sitter-cli"
-      "sphinx-doc"
 
       # ─── Containers ───
-      "docker"
       "docker-compose"
       "podman"
 
@@ -185,9 +195,7 @@
       "fd"
       "bottom"
       "dust"
-      "gdu"
       "ncdu"
-      "tree"
       "yazi"
       "jq"
       "just"
@@ -196,25 +204,17 @@
       # ─── TUI utilities ───
       "aerc"          # mail
       "calcurse"      # calendar
-      "sc-im"         # spreadsheet
-      "visidata"      # data viewer
-      "cmatrix"       # screensaver
-      "lynx"          # text browser
       "w3m"           # text browser
       "glow"          # markdown viewer
       "chafa"         # image-to-terminal
       "wifitui"       # wifi
-      "diskonaut"     # disk usage
 
       # ─── Network / Download / VPN ───
       "aria2"
-      "gopeed"
       "rclone"
       "tailscale"
       "tor"
-      "wireguard-tools"
-      "wgcf"           # Cloudflare WARP
-      "boringtun"      # WireGuard userspace
+      "wireguard-tools"   # wg-quick + wireguard-go(依存で自動) が VPN エンジン
       "cloudflared"    # Cloudflare tunnel
       "nextdns"
       "scrcpy"         # Android mirror
@@ -229,7 +229,6 @@
 
       # ─── Security / Auth ───
       "bitwarden-cli"
-      "rbw"
       "syft"           # SBOM
       "radare2"        # reverse engineering
       "age"            # SOPS encryption backend
@@ -248,6 +247,11 @@
       "fonttools"
       "mpv"
       "homebrew-zathura/zathura/zathura-pdf-mupdf"
+      # zathura-pdf-mupdf の tap内依存。新 brew は HOMEBREW_REQUIRE_TAP_TRUST 既定ONで
+      # brew bundle が trust.json を Brewfile 基準に再生成するため、明示しないと依存が
+      # untrusted で "Refusing to load" になる → Brewfile に書いて auto-trust させる。
+      "homebrew-zathura/zathura/zathura"
+      "homebrew-zathura/zathura/synctex"
       "girara"           # zathura の UI ライブラリ。zathura が dlopen するので必須
       # zathura が runtime で dlopen する GTK 統合。Homebrew 側が依存宣言してないため
       # 明示しないと cleanup="uninstall" で孤立判定→削除され zathura が dyld エラーになる。
@@ -269,7 +273,6 @@
       # ─── Transcription / other 3rd-party tap brews ───
       "finnvoor/tools/yap"             # 日本語 transcription
       "infisical/get-cli/infisical"    # secret CLI
-      "pomdtr/tap/sunbeam"             # launcher
     ];
 
     # GUI applications (~100個)
