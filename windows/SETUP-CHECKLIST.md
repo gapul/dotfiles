@@ -46,7 +46,7 @@ winget search Git.Git
 ## 3. bootstrap 実行 (管理者 PowerShell 推奨)
 
 ```powershell
-# 既定 (WSL=Ubuntu / ユーザー=yuki)
+# 既定 (WSL=Ubuntu / ユーザー=Windows の $env:USERNAME)
 & $env:USERPROFILE\dotfiles\windows\bootstrap.ps1
 # 別ユーザー/distro の場合
 & $env:USERPROFILE\dotfiles\windows\bootstrap.ps1 -WslUser alice -WslDistro Debian

@@ -15,7 +15,7 @@
 # WSL の distro/ユーザー名は -WslDistro / -WslUser で上書き可:
 #   & bootstrap.ps1 -WslUser alice -WslDistro Debian
 param(
-    [string]$WslUser   = 'yuki',      # WSL 側ユーザー名 (Terminal の startingDirectory に注入)
+    [string]$WslUser   = $env:USERNAME,  # WSL 側ユーザー名 (Terminal の startingDirectory に注入)。WSL のユーザー名が違えば -WslUser で上書き
     [string]$WslDistro = 'Ubuntu',    # WSL ディストリ名
     # git author (macOS/WSL は nix/user.nix が正。Windows は nix eval 不可のため引数で渡す)
     [string]$GitUser   = 'gapul',
