@@ -32,7 +32,7 @@
 
 ### Plash
 1. 設定 → Display を選択
-2. Website を追加 → `file:///Users/yuki/dotfiles/configs/wallpaper/aurora.html` を指定
+2. Website を追加 → `file:///Users/<ユーザー名>/.dotfiles/configs/wallpaper/aurora.html` を指定
    (Browse ボタンから選択しないと security-scoped bookmark が取れない)
 
 ### AltTab
@@ -51,27 +51,27 @@ GUI で設定を変えたら dotfiles に反映するには:
 
 ```bash
 # AltTab (Container 外)
-~/dotfiles/scripts/capture-app-plist.py \
+~/.dotfiles/scripts/capture-app-plist.py \
   ~/Library/Preferences/com.lwouis.alt-tab-macos.plist \
-  ~/dotfiles/configs/apps/com.lwouis.alt-tab-macos.plist \
+  ~/.dotfiles/configs/apps/com.lwouis.alt-tab-macos.plist \
   "MS*" "NSWindow Frame*" "SU*" "settingsWindowShownOnFirstLaunch"
 
 # Mos
-~/dotfiles/scripts/capture-app-plist.py \
+~/.dotfiles/scripts/capture-app-plist.py \
   ~/Library/Preferences/com.caldis.Mos.plist \
-  ~/dotfiles/configs/apps/com.caldis.Mos.plist \
+  ~/.dotfiles/configs/apps/com.caldis.Mos.plist \
   "NSStatusItem*"
 
 # Plash (sandboxed, Container 内)
-~/dotfiles/scripts/capture-app-plist.py \
+~/.dotfiles/scripts/capture-app-plist.py \
   ~/Library/Containers/com.sindresorhus.Plash/Data/Library/Preferences/com.sindresorhus.Plash.plist \
-  ~/dotfiles/configs/apps/com.sindresorhus.Plash.plist \
+  ~/.dotfiles/configs/apps/com.sindresorhus.Plash.plist \
   "__securityScopedBookmarks__" "display" "NSWindow*" "NSNavPanel*" "NSOSPLast*" \
   "SecurityScopedBookmarkManager*" "SS_*" "com_apple_SwiftUI*" "websites"
 
 # Shortcat
-~/dotfiles/scripts/capture-app-plist.py \
+~/.dotfiles/scripts/capture-app-plist.py \
   ~/Library/Preferences/com.sproutcube.Shortcat.plist \
-  ~/dotfiles/configs/apps/com.sproutcube.Shortcat.plist \
+  ~/.dotfiles/configs/apps/com.sproutcube.Shortcat.plist \
   "telemetryIdentifier" "NSStatusItem*" "NSWindow*" "SU*" "welcomeDisplayed"
 ```

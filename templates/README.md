@@ -5,7 +5,7 @@
 ## 使い方
 
 ```bash
-cp -r ~/dotfiles/templates/node/{.envrc,flake.nix} ~/Dev/my-project/
+cp -r ~/.dotfiles/templates/node/{.envrc,flake.nix} ~/Dev/my-project/
 cd ~/Dev/my-project
 direnv allow                     # 初回のみ承認
 ```
