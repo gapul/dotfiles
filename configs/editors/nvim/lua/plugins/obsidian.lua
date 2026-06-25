@@ -10,7 +10,7 @@ return {
     legacy_commands = false, -- v4.0 で挙動変更。新コマンド体系を使う
 
     workspaces = {
-      { name = "main", path = "~/obsidian-vault" },
+      { name = "main", path = "~/Documents/notes" },
     },
 
     -- 補完: blink.cmp を使用 ([[ でリンク, # でタグ)
