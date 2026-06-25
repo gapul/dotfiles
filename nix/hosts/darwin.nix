@@ -193,7 +193,6 @@
       # ─── AI / LLM ───
       "ollama"
       "opencode"
-      "gemini-cli"
 
       # ─── Mail ───
       "isync"
