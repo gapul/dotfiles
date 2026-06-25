@@ -5,14 +5,15 @@ return {
     event = 'VeryLazy',
     config = function()
       vim.fn['skkeleton#config'] {
+        -- XDG: 辞書は ~/.local/share/skk/ 配下 (XDG_DATA_HOME)
         globalDictionaries = {
-          '~/.skk/SKK-JISYO.L',
-          '~/.skk/SKK-JISYO.jinmei',
-          '~/.skk/SKK-JISYO.geo',
-          '~/.skk/SKK-JISYO.station',
-          '~/.skk/SKK-JISYO.propernoun',
+          '~/.local/share/skk/SKK-JISYO.L',
+          '~/.local/share/skk/SKK-JISYO.jinmei',
+          '~/.local/share/skk/SKK-JISYO.geo',
+          '~/.local/share/skk/SKK-JISYO.station',
+          '~/.local/share/skk/SKK-JISYO.propernoun',
         },
-        userDictionary = '~/.skk/skkeleton-user-dict',
+        userDictionary = '~/.local/share/skk/skkeleton-user-dict',
         eggLikeNewline = true,
         sources = { 'skk_dictionary', 'skk_server' },
         skkServerHost = '127.0.0.1',

@@ -12,18 +12,42 @@
     PAGER = "bat";
     SOPS_AGE_KEY_FILE = "${config.home.homeDirectory}/.config/sops/age/keys.txt";
     CLAUDE_CONFIG_DIR = "${config.home.homeDirectory}/.config/claude";  # Claude Code を XDG 配下へ
+
+    # XDG Base Directory: 実行時に $XDG_* を参照する CLI 向けに明示 export
+    # (home-manager はビルド時に config.xdg.* を展開するだけで env には出さないため)
+    XDG_CONFIG_HOME = config.xdg.configHome;
+    XDG_DATA_HOME   = config.xdg.dataHome;
+    XDG_STATE_HOME  = config.xdg.stateHome;
+    XDG_CACHE_HOME  = config.xdg.cacheHome;
+
+    # cargo (Homebrew 製 rustc/cargo): ~/.cargo → XDG_DATA。bin は sessionPath に追加
+    CARGO_HOME = "${config.xdg.dataHome}/cargo";
+
+    # npm (Homebrew 製): cache/userconfig を XDG へ移し ~/.npm の自動生成を抑止
+    NPM_CONFIG_CACHE      = "${config.xdg.cacheHome}/npm";
+    NPM_CONFIG_USERCONFIG = "${config.xdg.configHome}/npm/npmrc";
   };
 
   home.sessionPath = [
     "${config.home.homeDirectory}/.local/bin"  # uv tool 経由のバイナリ
     "${config.home.homeDirectory}/bin"          # home.file."bin/*" 経由のスクリプト
+    "${config.xdg.dataHome}/cargo/bin"          # cargo install のバイナリ (CARGO_HOME/bin)
   ];
+
+  # npm (Homebrew) 用 XDG npmrc。NPM_CONFIG_USERCONFIG の指す実体
+  xdg.configFile."npm/npmrc".text = ''
+    cache=${config.xdg.cacheHome}/npm
+  '';
 
   # /nix が壊れてもシェルが起動できるようガード付き .zshenv を内製
   home.file.".zshenv" = {
     force = true;
     text = ''
       export ZDOTDIR="$HOME/.config/zsh"
+      # CLAUDE_CONFIG_DIR は home.sessionVariables にもあるが、hm-session-vars.sh の
+      # __HM_SESS_VARS_SOURCED ガードで再 source されず空になる事故 (古いシェル / GUI 起動)
+      # を避けるため、ガード無しの .zshenv でも明示 export しておく。
+      export CLAUDE_CONFIG_DIR="$HOME/.config/claude"
       if [ -e /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]; then
         . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
       fi
