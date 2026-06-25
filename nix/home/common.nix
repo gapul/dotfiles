@@ -12,10 +12,27 @@
     PAGER = "bat";
     SOPS_AGE_KEY_FILE = "${config.home.homeDirectory}/.config/sops/age/keys.txt";
     CLAUDE_CONFIG_DIR = "${config.home.homeDirectory}/.config/claude";  # Claude Code を XDG 配下へ
-    # テレメトリ無効化。isTelemetryEnabled() が false になり logEvent が短絡するので、
-    # 送信スプール ~/.claude/telemetry (CLAUDE_CONFIG_DIR を見ずハードコード) 自体が作られない。
-    # フル無効化(エラー報告/feedback/autoupdater も)は CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1。
-    DISABLE_TELEMETRY = "1";
+    # Claude Code: 非必須トラフィックをフル無効化 (telemetry + error reporting + feedback +
+    # 自前 autoupdater)。telemetry off で isTelemetryEnabled()=false → logEvent 短絡 →
+    # 送信スプール ~/.claude/telemetry (ハードコード) も作られない。
+    # autoupdater off は claude-code が Homebrew cask 管理なのでむしろ好都合。
+    CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = "1";
+
+    # ── 各種ツールのテレメトリ無効化 (privacy) ──
+    # DO_NOT_TRACK は業界標準規約 (consoledonottrack.com)。supabase/opencode 等多数が尊重。
+    DO_NOT_TRACK = "1";
+    # Web フレームワーク (npx/ローカル実行時に効く。React/Next スタック向け)
+    NEXT_TELEMETRY_DISABLED      = "1";   # Next.js
+    NUXT_TELEMETRY_DISABLED      = "1";   # Nuxt
+    ASTRO_TELEMETRY_DISABLED     = "1";   # Astro
+    GATSBY_TELEMETRY_DISABLED    = "1";   # Gatsby
+    STORYBOOK_DISABLE_TELEMETRY  = "1";   # Storybook
+    NG_CLI_ANALYTICS             = "false";  # Angular CLI
+    # 個別 CLI
+    VERCEL_TELEMETRY_DISABLED    = "1";   # Vercel CLI
+    FLUTTER_SUPPRESS_ANALYTICS   = "true";  # flutter + dart
+    DOTNET_CLI_TELEMETRY_OPTOUT  = "1";   # .NET CLI
+    # (HOMEBREW_NO_ANALYTICS は darwin.nix、Claude は上の DISABLE_TELEMETRY)
 
     # XDG Base Directory: 実行時に $XDG_* を参照する CLI 向けに明示 export
     # (home-manager はビルド時に config.xdg.* を展開するだけで env には出さないため)
