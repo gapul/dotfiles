@@ -8,11 +8,20 @@
   # use-xdg-base-directories を冪等に書き込む。これで nix-env / nix-instantiate
   # (home-manager / nix-darwin が profile 操作で内部使用) が ~/.nix-defexpr /
   # ~/.nix-channels を $HOME に再生成せず、~/.local/state/nix/ 配下へ寄せる。
-  system.activationScripts.nixXdgBaseDirs.text = ''
+  # nix-darwin は任意名の system.activationScripts.<name> を実行しない。root で activation
+  # 末尾に走る postActivation に集約する。
+  system.activationScripts.postActivation.text = ''
+    # use-xdg-base-directories を nix.custom.conf へ冪等追記 (nix-env が ~/.nix-defexpr /
+    # ~/.nix-channels を $HOME に再生成せず ~/.local/state/nix/ 配下へ寄せる)。
     conf=/etc/nix/nix.custom.conf
     if [ -f "$conf" ] && ! /usr/bin/grep -q '^use-xdg-base-directories' "$conf"; then
       printf '\n# XDG Base Directory 準拠 (~/.nix-defexpr 等を ~/.local/state/nix へ)\nuse-xdg-base-directories = true\n' >> "$conf"
     fi
+    # Application Firewall: 有効化 + ステルスモード (ping/ポートスキャンに無応答)。
+    # alf defaults は最新 macOS で効きづらいので公式 socketfilterfw を冪等に叩く。
+    fw=/usr/libexec/ApplicationFirewall/socketfilterfw
+    "$fw" --setglobalstate on >/dev/null 2>&1 || true
+    "$fw" --setstealthmode on >/dev/null 2>&1 || true
   '';
 
   system.stateVersion = 5;
@@ -20,14 +29,6 @@
 
   # sudo を Touch ID で認証 (sudo_local は macOS 更新でも残る公式の仕組み)
   security.pam.services.sudo_local.touchIdAuth = true;
-
-  # Application Firewall: 有効化 + ステルスモード (ping/ポートスキャンに無応答)。
-  # alf defaults は最新 macOS で効きづらいので公式 socketfilterfw を冪等に叩く。
-  system.activationScripts.firewallStealth.text = ''
-    fw=/usr/libexec/ApplicationFirewall/socketfilterfw
-    "$fw" --setglobalstate on >/dev/null 2>&1 || true
-    "$fw" --setstealthmode on >/dev/null 2>&1 || true
-  '';
 
   users.users.${user.username} = {
     name = user.username;
