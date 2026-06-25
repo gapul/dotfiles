@@ -42,7 +42,7 @@ sketchybar-font:
     ttf="$dir/configs/fonts/sketchybar-app-font.ttf"
     map="$dir/configs/wm/sketchybar/plugins/icon_map.sh"
     tag=$(gh release view --repo "$repo" --json tagName -q .tagName)
-    cur=$(awk '/pname = "sketchybar-app-font"/{getline; if (match($0,/[0-9][0-9.]*/)) print substr($0,RSTART,RLENGTH); exit}' "$dir/nix/darwin.nix")
+    cur=$(awk '/pname = "sketchybar-app-font"/{getline; if (match($0,/[0-9][0-9.]*/)) print substr($0,RSTART,RLENGTH); exit}' "$dir/nix/hosts/darwin.nix")
     if [ "$tag" = "v$cur" ]; then
       echo "sketchybar-app-font: 既に最新 ($tag)。skip"
       exit 0
@@ -55,9 +55,9 @@ sketchybar-font:
     # (front_app.sh / space_windows.sh が単一引数で呼ぶ。OBS Studio 等の実名ズレ補正を維持)
     awk '/^### END-OF-ICON-MAP/{print; print "__icon_map \"$1\""; print "[ -r \"${BASH_SOURCE%/*}/icon_map_local.sh\" ] && source \"${BASH_SOURCE%/*}/icon_map_local.sh\""; print "echo \"$icon_result\""; exit} {print}' "$map" > "$map.tmp" && mv "$map.tmp" "$map"
     # darwin.nix の version を追従 (pname 行の直後だけを置換。他の version= は触らない)
-    sed -i "" -E '/pname = "sketchybar-app-font"/{n;s/version = "[0-9.]+"/version = "'"${tag#v}"'"/;}' "$dir/nix/darwin.nix"
+    sed -i "" -E '/pname = "sketchybar-app-font"/{n;s/version = "[0-9.]+"/version = "'"${tag#v}"'"/;}' "$dir/nix/hosts/darwin.nix"
     # flake が見えるよう git に追跡させる (commit は手動)
-    git -C "$dir" add "$ttf" "$map" "$dir/nix/darwin.nix"
+    git -C "$dir" add "$ttf" "$map" "$dir/nix/hosts/darwin.nix"
     echo "✅ 更新完了 ($tag)。反映は just rebuild (upgrade 経由なら自動)"
 
 # 構文/型チェック (ビルドはしない)
