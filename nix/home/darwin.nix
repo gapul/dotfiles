@@ -1,4 +1,11 @@
-{ config, pkgs, lib, user, ... }: {
+{
+  config,
+  pkgs,
+  lib,
+  user,
+  ...
+}:
+{
   # macOS 専用の home-manager 設定
   # 共通部分は home/common.nix に分離
 
@@ -16,7 +23,7 @@
     # #名前/#...activationPackage どちらも不可 → flake のみ(#なし)にして user 名で
     # homeConfigurations.<user> を自動判別させるのが唯一通る形。
     NH_DARWIN_FLAKE = "${config.home.homeDirectory}/.dotfiles/nix#darwinConfigurations.${user.username}";
-    NH_HOME_FLAKE   = "${config.home.homeDirectory}/.dotfiles/nix";
+    NH_HOME_FLAKE = "${config.home.homeDirectory}/.dotfiles/nix";
   };
 
   home.sessionPath = [
@@ -43,7 +50,7 @@
 
   # mac 専用パッケージ
   home.packages = with pkgs; [
-    pngpaste              # obsidian.nvim / img-clip の macOS 画像貼付に必要
+    pngpaste # obsidian.nvim / img-clip の macOS 画像貼付に必要
   ];
 
   # tealdeer: ~/Library/Application Support 配下 (Mac 規約)
@@ -98,8 +105,7 @@
 
   # karabiner は dotfiles 直接書き戻し (mkOutOfStoreSymlink)
   home.file.".config/karabiner".source =
-    config.lib.file.mkOutOfStoreSymlink
-      "${config.home.homeDirectory}/.dotfiles/configs/keyboard/karabiner";
+    config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.dotfiles/configs/keyboard/karabiner";
 
   # macSKK / azooKey skkserv: sandboxed app の preferences を defaults import
   home.activation.skkPlistImport = lib.hm.dag.entryAfter [ "writeBoundary" ] ''

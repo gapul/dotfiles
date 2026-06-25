@@ -76,7 +76,7 @@
       NSAutomaticQuoteSubstitutionEnabled = false;
       NSAutomaticSpellingCorrectionEnabled = false;
       AppleShowScrollBars = "WhenScrolling";
-      NSDocumentSaveNewDocumentsToCloud = false;  # 新規書類を既定で iCloud に上げない
+      NSDocumentSaveNewDocumentsToCloud = false; # 新規書類を既定で iCloud に上げない
       # Note: Caps→Esc は Karabiner で処理しているため宣言しない
       # Note: AppleInterfaceStyle (Dark mode) は明示設定されてないので除外
     };
@@ -93,9 +93,9 @@
     # (自動セキュリティ更新は system レベルのため postActivation で defaults write)
     # ログイン画面ハードニング
     loginwindow = {
-      GuestEnabled = false;          # ゲストアカウント無効
-      SHOWFULLNAME = true;           # ユーザー一覧を出さず 名前+PW 入力 (アカウント列挙対策)
-      DisableConsoleAccess = true;   # ">console" コンソールログイン禁止
+      GuestEnabled = false; # ゲストアカウント無効
+      SHOWFULLNAME = true; # ユーザー一覧を出さず 名前+PW 入力 (アカウント列挙対策)
+      DisableConsoleAccess = true; # ">console" コンソールログイン禁止
     };
     # ブラウザのテレメトリ無効化 (enterprise policy を defaults 経由で宣言)
     CustomUserPreferences = {
@@ -140,7 +140,7 @@
     enable = true;
     onActivation = {
       autoUpdate = false;
-      cleanup = "uninstall";  # 宣言外の brew は自動uninstall(zap は data 消すので avoid)
+      cleanup = "uninstall"; # 宣言外の brew は自動uninstall(zap は data 消すので avoid)
       upgrade = false;
     };
 
@@ -150,8 +150,7 @@
       "finnvoor/tools"
       "gerlero/openfoam"
       "homebrew-zathura/zathura"
-      "gapul/kdeconnect"  # imshuhao/kdeconnect の fork。depends_on macos deprecated を修正済
-      "infisical/get-cli"
+      "gapul/kdeconnect" # imshuhao/kdeconnect の fork。depends_on macos deprecated を修正済
       "jakehilborn/jakehilborn"
       "jpmhouston/bananameterlabs"
       "nikitabobko/tap"
@@ -167,34 +166,27 @@
     # brew leaves
     # (starship / fzf / atuin / pipx は home-manager / uv 管理に移行のため除外)
     brews = [
-      # ─── Editor ───
-      "neovim"
-
       # ─── Languages / Package managers ───
       # deno: nvim skkeleton(denops) の runtime + yt-dlp の JS チャレンジ解読に使用。
       # 現状は mpv/yt-dlp の依存だが、それらを消すと孤立して skkeleton が壊れるため明示宣言。
       "deno"
-      "swi-prolog"     # Prolog (関数・論理型プログラミング実験 第10-12回)
+      "swi-prolog" # Prolog (関数・論理型プログラミング実験 第10-12回)
 
-
-      # ─── Misc CLI ───
-      "curl"
+      # ─── wine 補助 ───
+      "winetricks" # wine prefix への DLL/コンポーネント導入ヘルパ
 
       # ─── TUI utilities ───
-      "aerc"          # mail (要・残置判断)
-      "wifitui"       # wifi (nixpkgs は Linux 専用のため brew 維持)
+      "aerc" # mail (要・残置判断)
+      "wifitui" # wifi (nixpkgs は Linux 専用のため brew 維持)
 
       # ─── Network / Download / VPN ───
       "tailscale"
       "tor"
-      "wireguard-tools"   # wg-quick + wireguard-go(依存で自動) が VPN エンジン
-      "cloudflared"    # Cloudflare tunnel
+      "wireguard-tools" # wg-quick + wireguard-go(依存で自動) が VPN エンジン
+      "cloudflared" # Cloudflare tunnel
       "nextdns"
-      "scrcpy"         # Android mirror
+      "scrcpy" # Android mirror
       "tcpdump"
-
-      # ─── AI / LLM ───
-      "ollama"
 
       # ─── Mail ───
       "isync"
@@ -208,27 +200,26 @@
       # untrusted で "Refusing to load" になる → Brewfile に書いて auto-trust させる。
       "homebrew-zathura/zathura/zathura"
       "homebrew-zathura/zathura/synctex"
-      "girara"           # zathura の UI ライブラリ。zathura が dlopen するので必須
+      "girara" # zathura の UI ライブラリ。zathura が dlopen するので必須
       # zathura が runtime で dlopen する GTK 統合。Homebrew 側が依存宣言してないため
       # 明示しないと cleanup="uninstall" で孤立判定→削除され zathura が dyld エラーになる。
       "gtk-mac-integration"
-      "adwaita-icon-theme"  # GTK アイコンテーマ (zathura/girara UI)
+      "adwaita-icon-theme" # GTK アイコンテーマ (zathura/girara UI)
 
       # ─── macOS specific CLI ───
-      "mas"              # App Store
-      "blueutil"         # Bluetooth
-      "media-control"    # media keys
+      "mas" # App Store
+      "blueutil" # Bluetooth
+      "media-control" # media keys
       "terminal-notifier"
-      "duti"             # file associations
-      "jakehilborn/jakehilborn/displayplacer"  # sketchybar マルチディスプレイ
+      "duti" # file associations
+      "jakehilborn/jakehilborn/displayplacer" # sketchybar マルチディスプレイ
 
       # ─── Status bar / Window decoration (felixkratz tap) ───
       "felixkratz/formulae/sketchybar"
-      "felixkratz/formulae/borders"     # aerospace から exec-and-forget で起動
+      "felixkratz/formulae/borders" # aerospace から exec-and-forget で起動
 
       # ─── Transcription / other 3rd-party tap brews ───
-      "finnvoor/tools/yap"             # 日本語 transcription
-      "infisical/get-cli/infisical"    # secret CLI
+      "finnvoor/tools/yap" # 日本語 transcription
     ];
 
     # GUI applications (~100個)
@@ -343,6 +334,7 @@
       "orcaslicer"
 
       # ─── Games / Emulation ───
+      "wine-stable" # WineHQ 安定版。Windows アプリ実行 (winetricks と併用)
       "epic-games"
       "heroic"
       "mythic"

@@ -1,9 +1,0 @@
-repos:
-  - repo: local
-    hooks:
-      - id: gitleaks
-        name: gitleaks
-        description: Detect hardcoded secrets in staged changes.
-        language: system
-        entry: gitleaks protect --staged --no-banner --redact -c .gitleaks.toml
-        pass_filenames: false

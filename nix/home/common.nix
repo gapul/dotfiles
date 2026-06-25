@@ -1,4 +1,11 @@
-{ config, pkgs, lib, user, ... }: {
+{
+  config,
+  pkgs,
+  lib,
+  user,
+  ...
+}:
+{
   # OS 非依存の home-manager 設定
   # OS 固有の部分は home/darwin.nix / home/linux.nix / home/wsl.nix 等に分離
 
@@ -11,7 +18,7 @@
     EDITOR = "nvim";
     PAGER = "bat";
     SOPS_AGE_KEY_FILE = "${config.home.homeDirectory}/.config/sops/age/keys.txt";
-    CLAUDE_CONFIG_DIR = "${config.home.homeDirectory}/.config/claude";  # Claude Code を XDG 配下へ
+    CLAUDE_CONFIG_DIR = "${config.home.homeDirectory}/.config/claude"; # Claude Code を XDG 配下へ
     # Claude Code: 非必須トラフィックをフル無効化 (telemetry + error reporting + feedback +
     # 自前 autoupdater)。telemetry off で isTelemetryEnabled()=false → logEvent 短絡 →
     # 送信スプール ~/.claude/telemetry (ハードコード) も作られない。
@@ -22,37 +29,37 @@
     # DO_NOT_TRACK は業界標準規約 (consoledonottrack.com)。supabase/opencode 等多数が尊重。
     DO_NOT_TRACK = "1";
     # Web フレームワーク (npx/ローカル実行時に効く。React/Next スタック向け)
-    NEXT_TELEMETRY_DISABLED      = "1";   # Next.js
-    NUXT_TELEMETRY_DISABLED      = "1";   # Nuxt
-    ASTRO_TELEMETRY_DISABLED     = "1";   # Astro
-    GATSBY_TELEMETRY_DISABLED    = "1";   # Gatsby
-    STORYBOOK_DISABLE_TELEMETRY  = "1";   # Storybook
-    NG_CLI_ANALYTICS             = "false";  # Angular CLI
+    NEXT_TELEMETRY_DISABLED = "1"; # Next.js
+    NUXT_TELEMETRY_DISABLED = "1"; # Nuxt
+    ASTRO_TELEMETRY_DISABLED = "1"; # Astro
+    GATSBY_TELEMETRY_DISABLED = "1"; # Gatsby
+    STORYBOOK_DISABLE_TELEMETRY = "1"; # Storybook
+    NG_CLI_ANALYTICS = "false"; # Angular CLI
     # 個別 CLI
-    VERCEL_TELEMETRY_DISABLED    = "1";   # Vercel CLI
-    FLUTTER_SUPPRESS_ANALYTICS   = "true";  # flutter + dart
-    DOTNET_CLI_TELEMETRY_OPTOUT  = "1";   # .NET CLI
+    VERCEL_TELEMETRY_DISABLED = "1"; # Vercel CLI
+    FLUTTER_SUPPRESS_ANALYTICS = "true"; # flutter + dart
+    DOTNET_CLI_TELEMETRY_OPTOUT = "1"; # .NET CLI
     # (HOMEBREW_NO_ANALYTICS は darwin.nix、Claude は上の DISABLE_TELEMETRY)
 
     # XDG Base Directory: 実行時に $XDG_* を参照する CLI 向けに明示 export
     # (home-manager はビルド時に config.xdg.* を展開するだけで env には出さないため)
     XDG_CONFIG_HOME = config.xdg.configHome;
-    XDG_DATA_HOME   = config.xdg.dataHome;
-    XDG_STATE_HOME  = config.xdg.stateHome;
-    XDG_CACHE_HOME  = config.xdg.cacheHome;
+    XDG_DATA_HOME = config.xdg.dataHome;
+    XDG_STATE_HOME = config.xdg.stateHome;
+    XDG_CACHE_HOME = config.xdg.cacheHome;
 
     # cargo (nixpkgs 製 rustc/cargo): ~/.cargo → XDG_DATA。bin は sessionPath に追加
     CARGO_HOME = "${config.xdg.dataHome}/cargo";
 
     # npm (Homebrew 製): cache/userconfig を XDG へ移し ~/.npm の自動生成を抑止
-    NPM_CONFIG_CACHE      = "${config.xdg.cacheHome}/npm";
+    NPM_CONFIG_CACHE = "${config.xdg.cacheHome}/npm";
     NPM_CONFIG_USERCONFIG = "${config.xdg.configHome}/npm/npmrc";
   };
 
   home.sessionPath = [
-    "${config.home.homeDirectory}/.local/bin"  # uv tool 経由のバイナリ
-    "${config.home.homeDirectory}/bin"          # home.file."bin/*" 経由のスクリプト
-    "${config.xdg.dataHome}/cargo/bin"          # cargo install のバイナリ (CARGO_HOME/bin)
+    "${config.home.homeDirectory}/.local/bin" # uv tool 経由のバイナリ
+    "${config.home.homeDirectory}/bin" # home.file."bin/*" 経由のスクリプト
+    "${config.xdg.dataHome}/cargo/bin" # cargo install のバイナリ (CARGO_HOME/bin)
   ];
 
   # npm (Homebrew) 用 XDG npmrc。NPM_CONFIG_USERCONFIG の指す実体
@@ -82,7 +89,7 @@
 
   programs.zsh = {
     enable = true;
-    dotDir = "${config.xdg.configHome}/zsh";  # XDG: zsh設定一式を ~/.config/zsh/ へ (ZDOTDIR)。HM 26.05 は絶対パス必須
+    dotDir = "${config.xdg.configHome}/zsh"; # XDG: zsh設定一式を ~/.config/zsh/ へ (ZDOTDIR)。HM 26.05 は絶対パス必須
 
     # XDG 化: history → ~/.local/state/zsh/, 補完dump → ~/.cache/zsh/
     history.path = "${config.xdg.stateHome}/zsh/history";
@@ -252,67 +259,69 @@
 
   # 単発で使う CLI ツール群 (programs.* の対象外、OS 非依存)
   home.packages = with pkgs; [
-    comma                 # `, pkg args` で install せず nix package を実行
-    nix-output-monitor    # nh / nix build を見やすくする (`nom`)
-    nix-tree              # nix store 依存関係 TUI
-    nix-init              # flake.nix 雛形生成
-    devenv                # Nix ベース dev shell (direnv と組み合わせ)
-    tealdeer              # tldr CLI (programs.tealdeer は archive_source 非対応のため手動)
+    comma # `, pkg args` で install せず nix package を実行
+    nix-output-monitor # nh / nix build を見やすくする (`nom`)
+    nix-tree # nix store 依存関係 TUI
+    nix-init # flake.nix 雛形生成
+    devenv # Nix ベース dev shell (direnv と組み合わせ)
+    tealdeer # tldr CLI (programs.tealdeer は archive_source 非対応のため手動)
 
     # ─── Homebrew から移行した CLI (段階1: git周辺 + 基本) ───
-    gh                    # GitHub CLI
-    ghq                   # repo クローン管理
-    lazygit               # git TUI
-    lazyjj                # jujutsu TUI
-    jq                    # JSON プロセッサ
-    fd                    # find 代替 (fzf defaultCommand でも使用)
-    just                  # コマンドランナー (この Justfile を実行)
-    bottom                # システムモニタ (btm)
-    dust                  # ディスク使用量 (旧 du-dust)
-    ncdu                  # ディスク使用量 TUI
-    yazi                  # ファイルマネージャ TUI
-    zellij                # ターミナルマルチプレクサ
+    gh # GitHub CLI
+    ghq # repo クローン管理
+    lazygit # git TUI
+    lazyjj # jujutsu TUI
+    jq # JSON プロセッサ
+    fd # find 代替 (fzf defaultCommand でも使用)
+    just # コマンドランナー (この Justfile を実行)
+    bottom # システムモニタ (btm)
+    dust # ディスク使用量 (旧 du-dust)
+    ncdu # ディスク使用量 TUI
+    yazi # ファイルマネージャ TUI
+    zellij # ターミナルマルチプレクサ
 
     # ─── Homebrew から移行した CLI (段階2: build/言語/文書/security/network) ───
-    cmake                 # ビルドシステム
-    meson                 # ビルドシステム
-    tree-sitter           # 旧 tree-sitter-cli
-    uv                    # Python パッケージ管理
-    pnpm                  # Node パッケージ管理
-    pandoc                # ドキュメント変換
-    typst                 # 組版
-    poppler-utils         # PDF CLI (pdftotext 等。旧 brew poppler)
-    imagemagick           # 画像変換 (magick)
-    libsixel              # sixel (img2sixel)
-    bitwarden-cli         # Bitwarden (bw)
-    syft                  # SBOM
-    radare2               # リバースエンジニアリング (r2)
-    age                   # SOPS 暗号化バックエンド
-    sops                  # secrets 管理
-    gitleaks              # pre-commit の機密 leak 検査
-    pre-commit            # hook framework
-    aria2                 # ダウンローダ (aria2c)
-    rclone                # クラウドストレージ同期
-    opencode              # AI コーディング CLI
-    glow                  # markdown ビューア
-    chafa                 # 画像→ターミナル
-    w3m                   # テキストブラウザ
-    calcurse              # カレンダー TUI
+    cmake # ビルドシステム
+    meson # ビルドシステム
+    tree-sitter # 旧 tree-sitter-cli
+    uv # Python パッケージ管理
+    pnpm # Node パッケージ管理
+    pandoc # ドキュメント変換
+    typst # 組版
+    poppler-utils # PDF CLI (pdftotext 等。旧 brew poppler)
+    imagemagick # 画像変換 (magick)
+    libsixel # sixel (img2sixel)
+    bitwarden-cli # Bitwarden (bw)
+    syft # SBOM
+    radare2 # リバースエンジニアリング (r2)
+    age # SOPS 暗号化バックエンド
+    sops # secrets 管理
+    gitleaks # pre-commit の機密 leak 検査
+    pre-commit # hook framework
+    aria2 # ダウンローダ (aria2c)
+    rclone # クラウドストレージ同期
+    opencode # AI コーディング CLI
+    glow # markdown ビューア
+    chafa # 画像→ターミナル
+    w3m # テキストブラウザ
+    calcurse # カレンダー TUI
 
     # ─── cargo/uv からローカル install していたものを nix 宣言化 (再現性確保) ───
-    cargo-cache           # cargo build artifacts 掃除 (just gc が依存)
-    youtube-tui           # YouTube TUI
-    gita                  # マルチリポ git 管理 (~/.config/gita)
-    compiledb             # compile_commands.json 生成
+    cargo-cache # cargo build artifacts 掃除 (just gc が依存)
+    youtube-tui # YouTube TUI
+    gita # マルチリポ git 管理 (~/.config/gita)
+    compiledb # compile_commands.json 生成
 
     # ─── Homebrew から移行した CLI (段階3) ───
     # rust: rustup でなく rustc+cargo (固定版・宣言的)。nightly/toolchain切替が要る場合は rustup へ
-    rustc                 # Rust コンパイラ
-    cargo                 # Rust ビルド/パッケージ管理
-    docker-compose        # コンテナ compose (podman socket を向ける)
-    podman                # コンテナ (machine VM は別管理で維持)
-    fontforge             # フォント編集 CLI (GUI は fontforge-app cask)
-    python3Packages.fonttools  # フォント操作 lib/CLI
+    rustc # Rust コンパイラ
+    cargo # Rust ビルド/パッケージ管理
+    docker-compose # コンテナ compose (podman socket を向ける)
+    podman # コンテナ (machine VM は別管理で維持)
+    fontforge # フォント編集 CLI (GUI は fontforge-app cask)
+    python3Packages.fonttools # フォント操作 lib/CLI
+    ollama # ローカル LLM (nix 版も Metal GPU 有効 — runner が Metal.framework をリンク。検証済)
+    neovim # エディタ本体 (設定は configs/editors/nvim を mkOutOfStoreSymlink)
   ];
 
   programs.git = {
@@ -364,7 +373,9 @@
 
   programs.bat = {
     enable = true;
-    config = { style = "numbers,changes,header"; };
+    config = {
+      style = "numbers,changes,header";
+    };
   };
 
   programs.eza = {
@@ -405,10 +416,10 @@
       sync_frequency = "5m";
       update_check = false;
       search_mode = "fuzzy";
-      filter_mode = "global";    # 全 host 横断検索
+      filter_mode = "global"; # 全 host 横断検索
       style = "compact";
       inline_height = 20;
-      enter_accept = false;      # Enter で実行せず編集に
+      enter_accept = false; # Enter で実行せず編集に
       show_preview = true;
     };
   };
@@ -431,18 +442,18 @@
     age.keyFile = "${config.home.homeDirectory}/.config/sops/age/keys.txt";
     defaultSopsFile = ../../secrets/secrets.yaml;
     secrets = {
-      "vpn/proton".path     = "${config.home.homeDirectory}/.config/wireguard/proton.conf";
-      "vpn/wgcf".path       = "${config.home.homeDirectory}/.config/wireguard/wgcf-profile.conf";
-      "rclone_conf".path    = "${config.home.homeDirectory}/.config/rclone/rclone.conf";
-      "ssh_config".path     = "${config.home.homeDirectory}/.ssh/config";
+      "vpn/proton".path = "${config.home.homeDirectory}/.config/wireguard/proton.conf";
+      "vpn/wgcf".path = "${config.home.homeDirectory}/.config/wireguard/wgcf-profile.conf";
+      "rclone_conf".path = "${config.home.homeDirectory}/.config/rclone/rclone.conf";
+      "ssh_config".path = "${config.home.homeDirectory}/.ssh/config";
 
       # PII 単一ソース
-      "pii/name" = {};
-      "pii/email_personal" = {};
-      "pii/email_school" = {};
-      "pii/email_work" = {};
-      "pii/gmail_app_password_mail" = {};
-      "pii/gmail_app_password_caldav" = {};
+      "pii/name" = { };
+      "pii/email_personal" = { };
+      "pii/email_school" = { };
+      "pii/email_work" = { };
+      "pii/gmail_app_password_mail" = { };
+      "pii/gmail_app_password_caldav" = { };
     };
 
     # aerc / calcurse の template は OS 非依存(`~/.config/...`)
@@ -496,8 +507,7 @@
   # bday: 自作 birthday-tui のランチャ。ghq(~/Developer) の checkout を PATH に通す。
   # nvim 側は lazy dev で同 checkout を読む (configs/editors/nvim/lua/config/lazy.lua)。
   home.file.".local/bin/bday".source =
-    config.lib.file.mkOutOfStoreSymlink
-      "${config.home.homeDirectory}/Developer/github.com/gapul/birthday-tui/bday";
+    config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/Developer/github.com/gapul/birthday-tui/bday";
 
   home.file.".config/starship.toml".source = ../../configs/shell/starship.toml;
   home.file.".config/gh/config.yml".source = ../../configs/cli/gh/config.yml;

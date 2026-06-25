@@ -106,3 +106,19 @@ jobs:
         uses: gitleaks/gitleaks-action@v2
         env:
           GITLEAKS_CONFIG: ${{ github.workspace }}/.gitleaks.toml
+
+  # pre-commit フック (git-hooks.nix 宣言) をリポ全体に実行。
+  # nixfmt-rfc-style / deadnix / gitleaks を nix/ + templates 含め検査。
+  pre-commit:
+    name: pre-commit (nixfmt / deadnix)
+    runs-on: macos-14
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@v22
+      - uses: nix-community/cache-nix-action@v6
+        with:
+          primary-key: nix-${{ runner.os }}-${{ hashFiles('nix/flake.lock') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-
+      - name: pre-commit run --all-files
+        run: nix develop ./nix --command pre-commit run --all-files --show-diff-on-failure

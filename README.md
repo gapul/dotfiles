@@ -104,11 +104,33 @@ curl -fsSL https://raw.githubusercontent.com/gapul/dotfiles/main/scripts/bootstr
 | `nssh user@host` | rootless Nix(`nix-portable`)で nvim/yazi/zellij(自分の設定) |
 | `just ssh <host>` | `nssh` のショート |
 
-### 🟥 pre-commit
+### 🟥 コード品質 (git-hooks.nix + treefmt)
+
+pre-commit フック・フォーマッタは `nix/flake.nix` で **宣言的に管理**(git-hooks.nix / treefmt-nix)。
 
 | コマンド | 説明 |
 |---|---|
-| `just pre-commit-install` | gitleaks hook を `.git/hooks/pre-commit` に |
+| `nix fmt` | nix(nixfmt) + shell(shfmt) を整形。`nix/` 配下で実行 |
+| `nix develop ./nix` | devShell 入室。`.pre-commit-config.yaml` を生成し `.git/hooks` に導入 |
+| `nix flake check ./nix` | `checks.pre-commit` で nix/ を検査(CI と同じ) |
+| `nix develop ./nix -c pre-commit run --all-files` | リポ全体にフックを実行 |
+| `nix develop ./nix -c shellcheck scripts/*.sh` | シェルの手動チェック(任意) |
+| `nix run nixpkgs#statix -- check nix` | nix lint(手動。enforced 外) |
+
+**commit 時に自動実行されるフック**(`.git/hooks/pre-commit`):
+
+| フック | 対象 | 内容 |
+|---|---|---|
+| `nixfmt-rfc-style` | `*.nix` | 整形チェック(未整形なら fail) |
+| `deadnix` | `*.nix` | 未使用コード検出(モジュール引数 `{ lib, ... }` は許容) |
+| `gitleaks` | 全 staged | 機密 leak 検出 |
+
+メモ:
+- フックを編集するには `nix/flake.nix` の `preCommit.hooks` を変更 → `nix develop` で再生成
+- `.pre-commit-config.yaml` は **生成物**(store パス依存)。`.gitignore` 済・非追跡。fork 後は `nix develop ./nix` で生成
+- **flake は `nix/` サブディレクトリ**にあるため、`treefmt` フックは git ルートから root 検出に失敗する。整形フックは per-file の `nixfmt-rfc-style` を使い、`treefmt` は `nix fmt` 専用
+- `shellcheck` は既存スクリプトに warning が多く gate にすると commit を阻むため enforced 外(devShell で手動利用可)
+- CI(`.github/workflows/check.yml`)の `pre-commit` ジョブがリポ全体で同じフックを実行
 
 ### 🟨 復旧 / メンテ (生コマンド)
 

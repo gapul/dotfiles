@@ -1,4 +1,11 @@
-{ config, pkgs, lib, user, ... }: {
+{
+  config,
+  pkgs,
+  lib,
+  user,
+  ...
+}:
+{
   # Linux 共通 (NixOS desktop / server / WSL すべてに適用される)
   # WSL 専用 interop は home/wsl.nix に分離
 
