@@ -12,6 +12,10 @@
     PAGER = "bat";
     SOPS_AGE_KEY_FILE = "${config.home.homeDirectory}/.config/sops/age/keys.txt";
     CLAUDE_CONFIG_DIR = "${config.home.homeDirectory}/.config/claude";  # Claude Code を XDG 配下へ
+    # テレメトリ無効化。isTelemetryEnabled() が false になり logEvent が短絡するので、
+    # 送信スプール ~/.claude/telemetry (CLAUDE_CONFIG_DIR を見ずハードコード) 自体が作られない。
+    # フル無効化(エラー報告/feedback/autoupdater も)は CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1。
+    DISABLE_TELEMETRY = "1";
 
     # XDG Base Directory: 実行時に $XDG_* を参照する CLI 向けに明示 export
     # (home-manager はビルド時に config.xdg.* を展開するだけで env には出さないため)
