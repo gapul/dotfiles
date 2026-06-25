@@ -272,6 +272,38 @@
     ncdu                  # ディスク使用量 TUI
     yazi                  # ファイルマネージャ TUI
     zellij                # ターミナルマルチプレクサ
+
+    # ─── Homebrew から移行した CLI (段階2: build/言語/文書/security/network) ───
+    cmake                 # ビルドシステム
+    meson                 # ビルドシステム
+    tree-sitter           # 旧 tree-sitter-cli
+    uv                    # Python パッケージ管理
+    pnpm                  # Node パッケージ管理
+    pandoc                # ドキュメント変換
+    typst                 # 組版
+    poppler-utils         # PDF CLI (pdftotext 等。旧 brew poppler)
+    imagemagick           # 画像変換 (magick)
+    libsixel              # sixel (img2sixel)
+    bitwarden-cli         # Bitwarden (bw)
+    syft                  # SBOM
+    radare2               # リバースエンジニアリング (r2)
+    age                   # SOPS 暗号化バックエンド
+    sops                  # secrets 管理
+    gitleaks              # pre-commit の機密 leak 検査
+    pre-commit            # hook framework
+    aria2                 # ダウンローダ (aria2c)
+    rclone                # クラウドストレージ同期
+    opencode              # AI コーディング CLI
+    glow                  # markdown ビューア
+    chafa                 # 画像→ターミナル
+    w3m                   # テキストブラウザ
+    calcurse              # カレンダー TUI
+
+    # ─── cargo/uv からローカル install していたものを nix 宣言化 (再現性確保) ───
+    cargo-cache           # cargo build artifacts 掃除 (just gc が依存)
+    youtube-tui           # YouTube TUI
+    gita                  # マルチリポ git 管理 (~/.config/gita)
+    compiledb             # compile_commands.json 生成
   ];
 
   programs.git = {
@@ -490,4 +522,9 @@
   # nvim は dotfiles に直接書き戻したいので mkOutOfStoreSymlink
   home.file.".config/nvim".source =
     config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.dotfiles/configs/editors/nvim";
+
+  # Zed: settings.json のみ管理 (UI 編集が repo に直書きされるよう mkOutOfStoreSymlink)。
+  # 他の ~/.config/zed/* は会話履歴等の state なので触らない。
+  home.file.".config/zed/settings.json".source =
+    config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.dotfiles/configs/editors/zed/settings.json";
 }

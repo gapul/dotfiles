@@ -167,17 +167,10 @@
 
       # ─── Languages / Package managers ───
       "rust"
-      "uv"
-      "pnpm"
       # deno: nvim skkeleton(denops) の runtime + yt-dlp の JS チャレンジ解読に使用。
       # 現状は mpv/yt-dlp の依存だが、それらを消すと孤立して skkeleton が壊れるため明示宣言。
       "deno"
       "swi-prolog"     # Prolog (関数・論理型プログラミング実験 第10-12回)
-
-      # ─── Build tools ───
-      "cmake"
-      "meson"
-      "tree-sitter-cli"
 
       # ─── Containers ───
       "docker-compose"
@@ -187,16 +180,10 @@
       "curl"
 
       # ─── TUI utilities ───
-      "aerc"          # mail
-      "calcurse"      # calendar
-      "w3m"           # text browser
-      "glow"          # markdown viewer
-      "chafa"         # image-to-terminal
-      "wifitui"       # wifi
+      "aerc"          # mail (要・残置判断)
+      "wifitui"       # wifi (nixpkgs は Linux 専用のため brew 維持)
 
       # ─── Network / Download / VPN ───
-      "aria2"
-      "rclone"
       "tailscale"
       "tor"
       "wireguard-tools"   # wg-quick + wireguard-go(依存で自動) が VPN エンジン
@@ -207,27 +194,12 @@
 
       # ─── AI / LLM ───
       "ollama"
-      "opencode"
 
       # ─── Mail ───
       "isync"
 
-      # ─── Security / Auth ───
-      "bitwarden-cli"
-      "syft"           # SBOM
-      "radare2"        # reverse engineering
-      "age"            # SOPS encryption backend
-      "sops"           # secrets management
-      "gitleaks"       # pre-commit hook で機密 leak 検査
-      "pre-commit"     # hook framework
-
       # ─── Documents / Fonts / Media ───
-      "pandoc"
-      "typst"
-      "poppler"
-      "imagemagick"
       "gstreamer"
-      "libsixel"
       "fontforge"
       "fonttools"
       "mpv"
