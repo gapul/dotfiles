@@ -8,7 +8,7 @@
   # git commit の author 情報
   # メールはパブリックリポへの個人アドレス露出を避けるため GitHub noreply を使用。
   # (実アドレスは secrets.yaml の pii: に暗号化集約)
-  gitUser  = "gapul";
+  gitUser = "gapul";
   gitEmail = "92638132+gapul@users.noreply.github.com";
 
   # dotfiles 自身の GitHub URL(bootstrap.sh / nssh が clone する時に使う)

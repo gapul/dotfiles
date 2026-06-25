@@ -330,6 +330,7 @@ ssh host:
     nssh {{host}}
 
 # git pre-commit hook をインストール (新Macで一度だけ。内部レシピ)
+# git-hooks.nix の devShell 入室で .pre-commit-config.yaml 生成 + install される
 [private]
 pre-commit-install:
-    pre-commit install
+    nix develop {{justfile_directory()}}/nix --command true

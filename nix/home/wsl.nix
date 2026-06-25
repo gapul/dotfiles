@@ -1,4 +1,11 @@
-{ config, pkgs, lib, user, ... }: {
+{
+  config,
+  pkgs,
+  lib,
+  user,
+  ...
+}:
+{
   # WSL2 専用の home-manager 設定
   # 前提: home/common.nix と home/linux.nix が先に評価されている
   # (flake.nix の modules = [ common linux wsl ] 順で合成)

@@ -1,0 +1,5 @@
+# shellcheck 設定 (リポ全体に適用。shellcheck が file から上方探索する)
+# 既存スクリプトが多いので gate は error 級のみ。warning/info は手動 review 用に出すが block しない。
+severity=error
+# 動的パスの source は追えず誤検出になるため無効 (sketchybar の colors.sh/icons.sh 等)
+disable=SC1091
