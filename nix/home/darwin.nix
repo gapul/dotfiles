@@ -11,10 +11,10 @@
     # 移すと custom tap が "Refusing to load" で switch が壊れる ([[project_homebrew_trust_sudo]])。
     # → trust.json は ~/.homebrew のまま据え置く。
     PNPM_HOME = "${config.home.homeDirectory}/Library/pnpm";
-    # nh 4.x: programs.nh.flake は古い FLAKE 変数しか set しないので、
-    # darwinConfigurations.<user> / homeConfigurations.<user> まで明示
+    # nh: darwin は darwinConfigurations.<user> で可。home は nh 5.x(26.05) で
+    # 「設定名のみ」必須になったため #<user> に変更 (#...activationPackage は too specific 拒否)。
     NH_DARWIN_FLAKE = "${config.home.homeDirectory}/.dotfiles/nix#darwinConfigurations.${user.username}";
-    NH_HOME_FLAKE   = "${config.home.homeDirectory}/.dotfiles/nix#homeConfigurations.${user.username}.activationPackage";
+    NH_HOME_FLAKE   = "${config.home.homeDirectory}/.dotfiles/nix#${user.username}";
   };
 
   home.sessionPath = [
