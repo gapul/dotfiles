@@ -5,7 +5,7 @@
 
   home.sessionVariables = {
     # nh が WSL 用 homeConfiguration を見るよう attr 名を明示
-    NH_HOME_FLAKE = "${config.home.homeDirectory}/dotfiles/nix#homeConfigurations.${user.username}-wsl.activationPackage";
+    NH_HOME_FLAKE = "${config.home.homeDirectory}/.dotfiles/nix#homeConfigurations.${user.username}-wsl.activationPackage";
     # ブラウザ起動は Windows 側に投げる (wslu の wslview)
     BROWSER = "wslview";
   };

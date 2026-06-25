@@ -361,7 +361,7 @@
   # nh: nh darwin / nh home の便利ラッパー
   programs.nh = {
     enable = true;
-    flake = "${config.home.homeDirectory}/dotfiles/nix";
+    flake = "${config.home.homeDirectory}/.dotfiles/nix";
   };
 
   # SOPS: 暗号化された secrets を home-manager switch 時に decrypt
@@ -469,5 +469,5 @@
 
   # nvim は dotfiles に直接書き戻したいので mkOutOfStoreSymlink
   home.file.".config/nvim".source =
-    config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/dotfiles/configs/editors/nvim";
+    config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.dotfiles/configs/editors/nvim";
 }
