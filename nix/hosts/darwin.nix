@@ -18,6 +18,17 @@
   system.stateVersion = 5;
   system.primaryUser = user.username;
 
+  # sudo を Touch ID で認証 (sudo_local は macOS 更新でも残る公式の仕組み)
+  security.pam.services.sudo_local.touchIdAuth = true;
+
+  # Application Firewall: 有効化 + ステルスモード (ping/ポートスキャンに無応答)。
+  # alf defaults は最新 macOS で効きづらいので公式 socketfilterfw を冪等に叩く。
+  system.activationScripts.firewallStealth.text = ''
+    fw=/usr/libexec/ApplicationFirewall/socketfilterfw
+    "$fw" --setglobalstate on >/dev/null 2>&1 || true
+    "$fw" --setstealthmode on >/dev/null 2>&1 || true
+  '';
+
   users.users.${user.username} = {
     name = user.username;
     home = "/Users/${user.username}";
@@ -63,6 +74,11 @@
       Clicking = false;
       TrackpadRightClick = true;
       TrackpadThreeFingerDrag = true;
+    };
+    # スリープ/スクリーンセーバ後すぐにパスワード要求 (離席時の覗き見対策。従来300秒)
+    screensaver = {
+      askForPassword = true;
+      askForPasswordDelay = 0;
     };
     # ブラウザのテレメトリ無効化 (enterprise policy を defaults 経由で宣言)
     CustomUserPreferences = {
