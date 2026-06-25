@@ -127,7 +127,7 @@
       "finnvoor/tools"
       "gerlero/openfoam"
       "homebrew-zathura/zathura"
-      "imshuhao/kdeconnect"
+      "gapul/kdeconnect"  # imshuhao/kdeconnect の fork。depends_on macos deprecated を修正済
       "infisical/get-cli"
       "jakehilborn/jakehilborn"
       "jpmhouston/bananameterlabs"
