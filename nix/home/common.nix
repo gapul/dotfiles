@@ -82,7 +82,7 @@
 
   programs.zsh = {
     enable = true;
-    dotDir = ".config/zsh";  # XDG: zsh設定一式を ~/.config/zsh/ へ (ZDOTDIR)
+    dotDir = "${config.xdg.configHome}/zsh";  # XDG: zsh設定一式を ~/.config/zsh/ へ (ZDOTDIR)。HM 26.05 は絶対パス必須
 
     # XDG 化: history → ~/.local/state/zsh/, 補完dump → ~/.cache/zsh/
     history.path = "${config.xdg.stateHome}/zsh/history";
@@ -260,16 +260,6 @@
 
   programs.git = {
     enable = true;
-    userName = user.gitUser;
-    userEmail = user.gitEmail;
-    delta = {
-      enable = true;
-      options = {
-        navigate = true;
-        line-numbers = true;
-        side-by-side = true;
-      };
-    };
     ignores = [
       ".DS_Store"
       ".AppleDouble"
@@ -289,7 +279,10 @@
       key = "${config.home.homeDirectory}/.ssh/id_ed25519.pub";
       signByDefault = true;
     };
-    extraConfig = {
+    # HM 26.05: userName/userEmail/extraConfig は settings.* に統合
+    settings = {
+      user.name = user.gitUser;
+      user.email = user.gitEmail;
       init.defaultBranch = "main";
       pull.rebase = true;
       push.autoSetupRemote = true;
@@ -298,6 +291,17 @@
       diff.colorMoved = "default";
       gpg.format = "ssh";
       "gpg \"ssh\"".allowedSignersFile = "${config.home.homeDirectory}/.ssh/allowed_signers";
+    };
+  };
+
+  # HM 26.05: programs.git.delta → 独立した programs.delta へ移行
+  programs.delta = {
+    enable = true;
+    enableGitIntegration = true;
+    options = {
+      navigate = true;
+      line-numbers = true;
+      side-by-side = true;
     };
   };
 
