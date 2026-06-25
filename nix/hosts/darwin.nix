@@ -162,16 +162,8 @@
     # brew leaves
     # (starship / fzf / atuin / pipx は home-manager / uv 管理に移行のため除外)
     brews = [
-      # ─── Git / VCS ───
-      "git"
-      "gh"
-      "ghq"
-      "lazygit"
-      "lazyjj"
-
-      # ─── Editor / Terminal multiplexer ───
+      # ─── Editor ───
       "neovim"
-      "zellij"
 
       # ─── Languages / Package managers ───
       "rust"
@@ -191,14 +183,7 @@
       "docker-compose"
       "podman"
 
-      # ─── Modern CLI replacements ───
-      "fd"
-      "bottom"
-      "dust"
-      "ncdu"
-      "yazi"
-      "jq"
-      "just"
+      # ─── Misc CLI ───
       "curl"
 
       # ─── TUI utilities ───

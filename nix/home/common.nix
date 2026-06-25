@@ -258,6 +258,20 @@
     nix-init              # flake.nix 雛形生成
     devenv                # Nix ベース dev shell (direnv と組み合わせ)
     tealdeer              # tldr CLI (programs.tealdeer は archive_source 非対応のため手動)
+
+    # ─── Homebrew から移行した CLI (段階1: git周辺 + 基本) ───
+    gh                    # GitHub CLI
+    ghq                   # repo クローン管理
+    lazygit               # git TUI
+    lazyjj                # jujutsu TUI
+    jq                    # JSON プロセッサ
+    fd                    # find 代替 (fzf defaultCommand でも使用)
+    just                  # コマンドランナー (この Justfile を実行)
+    bottom                # システムモニタ (btm)
+    dust                  # ディスク使用量 (旧 du-dust)
+    ncdu                  # ディスク使用量 TUI
+    yazi                  # ファイルマネージャ TUI
+    zellij                # ターミナルマルチプレクサ
   ];
 
   programs.git = {
