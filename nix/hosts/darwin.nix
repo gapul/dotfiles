@@ -101,6 +101,11 @@
     CustomUserPreferences = {
       # Apple の個人化広告 (ターゲティング) を無効化
       "com.apple.AdLib".allowApplePersonalizedAdvertising = false;
+      # ネットワーク共有 / USB に .DS_Store を書かない (ローカルは Finder 仕様で抑止不可)
+      "com.apple.desktopservices" = {
+        DSDontWriteNetworkStores = true;
+        DSDontWriteUSBStores = true;
+      };
       "com.google.Chrome" = {
         MetricsReportingEnabled = false;
       };
