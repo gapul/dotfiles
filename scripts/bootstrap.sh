@@ -136,7 +136,7 @@ log "SSH key + allowed_signers OK"
 
 # 5. system 設定 (sudo パスワード要)
 log "darwin-rebuild switch (sudo パスワード入力あり)..."
-sudo nix run nix-darwin/nix-darwin-25.05 -- switch --flake "$DOTFILES_DIR/nix#$(whoami)"
+sudo nix run nix-darwin/nix-darwin-26.05 -- switch --flake "$DOTFILES_DIR/nix#$(whoami)"
 
 # 6. 第三者 tap の cask 信頼
 log "Trusting third-party brew taps..."
@@ -150,7 +150,7 @@ done
 
 # 7. home-manager switch (yuki 権限で実行、sudo 禁止)
 log "home-manager switch..."
-nix run home-manager/release-25.05 -- switch --flake "$DOTFILES_DIR/nix#$(whoami)" -b backup
+nix run home-manager/release-26.05 -- switch --flake "$DOTFILES_DIR/nix#$(whoami)" -b backup
 
 # 8. brew 重複の uninstall (Nix 管理に移行済のもの)
 log "Cleaning duplicates installed by both brew and Nix..."
