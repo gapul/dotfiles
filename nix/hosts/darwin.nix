@@ -219,6 +219,10 @@
       "mpv"
       "homebrew-zathura/zathura/zathura-pdf-mupdf"
       "girara"           # zathura の UI ライブラリ。zathura が dlopen するので必須
+      # zathura が runtime で dlopen する GTK 統合。Homebrew 側が依存宣言してないため
+      # 明示しないと cleanup="uninstall" で孤立判定→削除され zathura が dyld エラーになる。
+      "gtk-mac-integration"
+      "adwaita-icon-theme"  # GTK アイコンテーマ (zathura/girara UI)
 
       # ─── macOS specific CLI ───
       "mas"              # App Store
