@@ -48,6 +48,9 @@
       # __HM_SESS_VARS_SOURCED ガードで再 source されず空になる事故 (古いシェル / GUI 起動)
       # を避けるため、ガード無しの .zshenv でも明示 export しておく。
       export CLAUDE_CONFIG_DIR="$HOME/.config/claude"
+      # HISTFILE も .zshrc を読まない古い/GUI 起動シェルが ~/.zsh_history へ
+      # 漏らさないよう、ガード無しの .zshenv で XDG パスを先に固定しておく。
+      export HISTFILE="$HOME/.local/state/zsh/history"
       if [ -e /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]; then
         . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
       fi
