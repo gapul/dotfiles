@@ -75,8 +75,8 @@
       if [ -e /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]; then
         . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
       fi
-      [ -f "$HOME/.nix-profile/etc/profile.d/hm-session-vars.sh" ] && \
-        . "$HOME/.nix-profile/etc/profile.d/hm-session-vars.sh"
+      [ -f "$HOME/.local/state/nix/profile/etc/profile.d/hm-session-vars.sh" ] && \
+        . "$HOME/.local/state/nix/profile/etc/profile.d/hm-session-vars.sh"
     '';
   };
 
