@@ -91,3 +91,18 @@ jobs:
           USER_NAME=$(nix eval --raw -f ./nix/user.nix username)
           echo "Building for username: $USER_NAME"
           nix build "./nix#homeConfigurations.$USER_NAME.activationPackage" --dry-run --show-trace
+
+  # pre-commit (gitleaks protect --staged) は --no-verify で飛ばせるため、
+  # CI 側で全履歴を gitleaks detect して二重化する。
+  gitleaks:
+    name: gitleaks (full history scan)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # 全コミット履歴を取得 (detect は履歴を走査するため必須)
+      - name: gitleaks detect
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITLEAKS_CONFIG: ${{ github.workspace }}/.gitleaks.toml
