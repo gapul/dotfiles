@@ -112,6 +112,17 @@
     /usr/bin/killall cfprefsd 2>/dev/null || true
   '';
 
+  # macSKK kana-rule (ローマ字変換ルール) を配置
+  # plist ではなく sandbox Container 内の Documents ファイルなので実コピーで反映
+  home.activation.skkKanaRule = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    skk_settings="${config.home.homeDirectory}/Library/Containers/net.mtgto.inputmethod.macSKK/Data/Documents/Settings"
+    if [ -d "$skk_settings" ]; then
+      /usr/bin/install -m 644 \
+        ${../../configs/ime/skk/kana-rule.conf} \
+        "$skk_settings/kana-rule.conf"
+    fi
+  '';
+
   # Maccy (clipboard manager) 設定 — clipboard 履歴は SQLite で別ファイル、触らない
   home.activation.maccyPlistImport = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     if [ -d "$HOME/Library/Containers/org.p0deje.Maccy" ]; then
