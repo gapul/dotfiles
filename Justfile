@@ -251,9 +251,14 @@ gc:
     n=$(find "$dir" -path "$dir/.git" -prune -o -type f \( "${fexpr[@]}" \) -print -delete | wc -l | tr -d ' ')
     echo "  🗑️  $n 件削除"
     echo ""
-    echo "━━━ ~/.config 内の自動バックアップ/ゴミ (zellij *.bak / .DS_Store 等) ━━━"
-    m=$(find ~/.config -maxdepth 3 \( -name '*.bak' -o -name '*.bak.[0-9]*' -o -name '.DS_Store' \) -type f -print -delete 2>/dev/null | wc -l | tr -d ' ')
+    echo "━━━ ~/.config 内の自動バックアップ (zellij *.bak 等) ━━━"
+    m=$(find ~/.config -maxdepth 3 \( -name '*.bak' -o -name '*.bak.[0-9]*' \) -type f -print -delete 2>/dev/null | wc -l | tr -d ' ')
     echo "  🗑️  $m 件削除"
+    echo ""
+    echo "━━━ $HOME 全体の .DS_Store (Finder が常時再生成するので一時的) ━━━"
+    # .Trash は別途処理済なので除外。それ以外は $HOME 全域を sweep
+    d=$(find "$HOME" -name .Trash -prune -o -name .DS_Store -type f -print -delete 2>/dev/null | grep -c '\.DS_Store$' || true)
+    echo "  🗑️  $d 件削除"
     echo ""
     echo "━━━ ~/.cache 内 (uv は完了済、他大物の状況) ━━━"
     du -sh ~/.cache/*/ 2>/dev/null | sort -hr | head -5
