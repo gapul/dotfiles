@@ -15,16 +15,15 @@ default:
 # 構築 (build / 普段使い)
 # ─────────────────────────────────────────────
 
+# NOTE(rebuild の brew trust 行): activation の brew bundle は sudo で XDG_CONFIG_HOME を剥がし
+#   ~/.homebrew/trust.json を読むが、対話シェルは XDG 優先で ~/.config/homebrew に逸れる。
+#   そこで env -u XDG_CONFIG_HOME で ~/.homebrew に揃える。cask は新 brew が Brewfile の
+#   trusted:true を無視するため毎回再 trust が必要。詳細: memory project_homebrew_trust_sudo
+
 # システム + ユーザー 両方再構築 (普段使い)
 [group('構築')]
 rebuild:
-    # 新 brew は HOMEBREW_REQUIRE_TAP_TRUST 既定ON + cask の `trusted: true`(Brewfile) を無視するため、
-    # custom tap の cask を darwin switch 前に毎回再 trust する (formula は Brewfile宣言で auto-trust される)。
-    # activation の brew bundle は `sudo --preserve-env=PATH` で XDG_CONFIG_HOME を剥がし HOME=~ で
-    # 必ず ~/.homebrew/trust.json を読む。一方 brew は XDG_CONFIG_HOME が HOMEBREW_USER_CONFIG_HOME に
-    # 優先するため、対話シェル(XDG設定済)の素の trust は ~/.config/homebrew に逸れる。
-    # → `env -u XDG_CONFIG_HOME` で XDG を外し、activation と同じ ~/.homebrew へ書く ([[project_homebrew_trust_sudo]])。
-    -brew list --cask --full-name 2>/dev/null | grep '/' | xargs -I% env -u XDG_CONFIG_HOME brew trust --cask %
+    @-brew list --cask --full-name 2>/dev/null | grep '/' | xargs -I% env -u XDG_CONFIG_HOME brew trust --cask %
     nh darwin switch
     nh home switch
 
@@ -71,13 +70,13 @@ update *inputs:
     nix flake update {{inputs}} --flake {{flake}}
     just rebuild
 
+# NOTE(upgrade): cask --greedy は自己更新型(VS Code 等)も brew 経由で揃える。installer manual /
+#   自己更新 cask(figma-agent 等)は brew が上げられず exit 1 にするので `|| true` で許容する。
+
 # 全レイヤーアップグレード (Nix + brew + cask + mas + Determinate Nix runtime)
-# --greedy で自前 auto-update する cask (VS Code 等) も brew 経由で揃える
 [group('構築')]
 upgrade:
     brew upgrade --formula
-    # cask は --greedy で自己更新型も揃える。installer manual / 自己更新 cask
-    # (figma-agent 等) は brew が上げられず exit 1 にするので許容する。
     brew upgrade --cask --greedy || true
     mas upgrade
     just sketchybar-font
