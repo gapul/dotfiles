@@ -30,7 +30,7 @@ age-keygen -o ~/.config/sops/age/keys.txt
 # 出力された "# public key: age1..." の行を .sops.yaml の age1... に貼り換え
 $EDITOR .sops.yaml
 
-# 4. yuki の secrets は復号できないので削除して空から始める
+# 4. 元の所有者の secrets は復号できないので削除して空から始める
 rm secrets/secrets.yaml
 # 必要な secret を追加していく(例)
 sops secrets/secrets.yaml
@@ -38,7 +38,7 @@ sops secrets/secrets.yaml
 
 # 5. 個人 brew tap を整理(任意)
 $EDITOR nix/darwin.nix
-# - "gapul/openutau", "gapul/zrythm" は yuki 個人の fork → 削除可
+# - "gapul/openutau", "gapul/zrythm" は 作者個人の fork → 削除可
 # - 不要な GUI cask も削っていい(brave-browser, gimp, blender 等)
 
 # 6. bootstrap 実行

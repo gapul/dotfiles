@@ -148,7 +148,7 @@ for tap in nikitabobko/tap theboredteam/boring-notch pear-devs/pear gapul/openut
   brew trust "$tap" 2>/dev/null || true
 done
 
-# 7. home-manager switch (yuki 権限で実行、sudo 禁止)
+# 7. home-manager switch (ユーザー権限で実行、sudo 禁止)
 log "home-manager switch..."
 nix run home-manager/release-26.05 -- switch --flake "$DOTFILES_DIR/nix#$(whoami)" -b backup
 
