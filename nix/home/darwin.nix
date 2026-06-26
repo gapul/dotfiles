@@ -5,6 +5,9 @@
   user,
   ...
 }:
+let
+  c = import ../lib/rose-pine.nix; # 全ツール共通パレット (単一ソース)
+in
 {
   # macOS 専用の home-manager 設定
   # 共通部分は home/common.nix に分離
@@ -102,6 +105,42 @@
     source = ../../configs/wm/sketchybar;
     recursive = true;
   };
+  # sketchybar の色は nix/lib/rose-pine.nix から生成 (静的 colors.sh は廃止)。
+  # 他の sketchybar スクリプトは従来どおり $WHITE 等でこれを source する。
+  home.file.".config/sketchybar/colors.sh".text = ''
+    #!/bin/bash
+    # Rosé Pine — generated from nix/lib/rose-pine.nix (単一ソース)
+    export BLACK=0xff${c.base}
+    export WHITE=0xff${c.text}
+    export RED=0xff${c.love}
+    export GREEN=0xff${c.foam}
+    export BLUE=0xff${c.pine}
+    export YELLOW=0xff${c.gold}
+    export ORANGE=0xff${c.rose}
+    export MAGENTA=0xff${c.iris}
+    export GREY=0xff${c.muted}
+    export TRANSPARENT=0x00000000
+    export BG0=0xff${c.surface}
+    export BG1=0x60${c.overlay}
+    export BG2=0x60${c.hlMed}
+
+    export BATTERY_1=0xff${c.foam}
+    export BATTERY_2=0xff${c.gold}
+    export BATTERY_3=0xff${c.rose}
+    export BATTERY_4=0xff${c.love}
+    export BATTERY_5=0xff${c.love}
+
+    # General bar colors
+    export BAR_COLOR=$BG0
+    export BAR_BORDER_COLOR=$BG2
+    export BACKGROUND_1=$BG1
+    export BACKGROUND_2=$BG2
+    export ICON_COLOR=$WHITE
+    export LABEL_COLOR=$WHITE
+    export POPUP_BACKGROUND_COLOR=$BAR_COLOR
+    export POPUP_BORDER_COLOR=$WHITE
+    export SHADOW_COLOR=$BLACK
+  '';
   # borders は AeroSpace から引数なし `borders` で起動され bordersrc を実行する。
   # executable=true でないと borders が実行できない (設定の単一ソース)。
   home.file.".config/borders/bordersrc" = {
