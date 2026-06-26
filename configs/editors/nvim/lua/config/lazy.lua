@@ -35,10 +35,12 @@ require("lazy").setup({
   -- 自作プラグインは ghq(~/Developer) のローカル checkout から読む。
   -- gapul/* は自動でローカル参照になるので、プラグイン spec は普通の "gapul/<repo>" で書ける
   -- (パス直書き不要 → ghq を動かしても spec 側は無修正)。
+  -- Windows では ghq の root を ~/Developer に揃えていない環境が多いため
+  -- fallback=true で git clone へ自動退避させる (macOS は今までどおり明示エラー)。
   dev = {
     path = "~/Developer/github.com/gapul",
     patterns = { "gapul" },
-    fallback = false, -- ローカルに無ければエラー(=ghq get 忘れに気づける)
+    fallback = vim.fn.has("mac") ~= 1,
   },
   -- luarocks 不使用なので rocks サポートを無効化（checkhealth の luarocks ERROR 解消）
   rocks = { enabled = false },

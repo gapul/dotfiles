@@ -33,7 +33,15 @@ return {
 
     -- リンクに飛ぶ際 vault 内なら obsidian.nvim で開く
     follow_url_func = function(url)
-      vim.fn.jobstart({ "open", url }) -- macOS
+      if vim.fn.has("mac") == 1 then
+        vim.fn.jobstart({ "open", url })
+      elseif vim.fn.has("win32") == 1 then
+        vim.fn.jobstart({ "cmd.exe", "/c", "start", "", url }, { detach = true })
+      elseif vim.fn.has("wsl") == 1 then
+        vim.fn.jobstart({ "wslview", url })
+      else
+        vim.fn.jobstart({ "xdg-open", url })
+      end
     end,
   },
 }
