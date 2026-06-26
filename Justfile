@@ -39,7 +39,7 @@ gen action="" a="" b="":
         for l in $p/system-*-link; do
           n=$(echo "$l" | sed -E 's#.*/system-([0-9]+)-link#\1#')
           d=$(stat -f '%Sm' -t '%Y-%m-%d %H:%M' "$l")
-          mark=""; [ "$n" = "$cur" ] && mark="  ← current"
+          mark=""; [ "$n" = "$cur" ] && mark="  <- current"
           printf '%4s  %s%s\n' "$n" "$d" "$mark"
         done | sort -n
         ;;
@@ -109,7 +109,7 @@ sketchybar-font:
     sed -i "" -E '/pname = "sketchybar-app-font"/{n;s/version = "[0-9.]+"/version = "'"${tag#v}"'"/;}' "$dir/nix/hosts/darwin.nix"
     # flake が見えるよう git に追跡させる (commit は手動)
     git -C "$dir" add "$ttf" "$map" "$dir/nix/hosts/darwin.nix"
-    echo "✅ Updated ($tag). Apply with: just rebuild (automatic when run via upgrade)"
+    echo "Updated ($tag). Apply with: just rebuild (automatic when run via upgrade)"
 
 
 # ─────────────────────────────────────────────
@@ -181,9 +181,9 @@ doctor:
     #!/usr/bin/env bash
     set -u
     pass=0; fail=0
-    check() { if eval "$2"; then echo "  ✅ $1"; pass=$((pass+1)); else echo "  ❌ $1"; fail=$((fail+1)); fi; }
+    check() { if eval "$2"; then echo "  [ok] $1"; pass=$((pass+1)); else echo "  [FAIL] $1"; fail=$((fail+1)); fi; }
     # warn: 満たさなくても fail にしない情報系チェック ($3 = 未達時メッセージ)
-    warn() { if eval "$2"; then echo "  ✅ $1"; else echo "  ⚠️  $3"; fi; }
+    warn() { if eval "$2"; then echo "  [ok] $1"; else echo "  [warn] $3"; fi; }
     echo "== /nix mount =="
     check "/nix is mounted" 'mount | grep -q " on /nix "'
     check "/etc/fstab has no noauto (Login Items fix)" '! grep "/nix" /etc/fstab | grep -q noauto'
@@ -205,7 +205,7 @@ doctor:
     pgrep -fq AeroSpace.app || down+=(aerospace)
     pgrep -xq borders || down+=(borders)
     if [ ${#down[@]} -gt 0 ]; then
-      echo "⚠️  Down: ${down[*]} -> recover: just restart (individual: just restart <name>)"
+      echo "[warn] Down: ${down[*]} -> recover: just restart (individual: just restart <name>)"
       echo
     fi
     echo "Result: $pass passed, $fail failed"
@@ -264,15 +264,15 @@ gc:
     for n in "${names[@]}"; do fexpr+=( -name "$n" -o ); done
     unset 'fexpr[${#fexpr[@]}-1]'  # 末尾の -o を除去
     n=$(find "$dir" -path "$dir/.git" -prune -o -type f \( "${fexpr[@]}" \) -print -delete | wc -l | tr -d ' ')
-    echo "  🗑️  $n removed"
+    echo "  $n removed"
     echo ""
     echo "━━━ Auto-backups in ~/.config (zellij *.bak etc.) ━━━"
     m=$(find ~/.config -maxdepth 3 \( -name '*.bak' -o -name '*.bak.[0-9]*' \) -type f -print -delete 2>/dev/null | wc -l | tr -d ' ')
-    echo "  🗑️  $m removed"
+    echo "  $m removed"
     echo ""
     echo "━━━ OS junk across $HOME (.DS_Store/._*/swap/orig etc., excl .Trash) ━━━"
     d=$(find "$HOME" -name .Trash -prune -o -type f \( -name '.DS_Store' -o -name '._*' -o -name '*.swp' -o -name '*.swo' -o -name '*.orig' -o -name '*.rej' -o -name '*~' \) -print -delete 2>/dev/null | wc -l | tr -d ' ')
-    echo "  🗑️  $d removed"
+    echo "  $d removed"
     echo ""
     echo "━━━ Dev caches (__pycache__/*.pyc/.pytest_cache etc., excl Library, regenerated) ━━━"
     tmp=$(mktemp)
@@ -280,7 +280,7 @@ gc:
     pc=$(wc -l < "$tmp" | tr -d ' ')
     xargs -I{} rm -rf "{}" < "$tmp" 2>/dev/null; rm -f "$tmp"
     py=$(find "$HOME" \( -path "$HOME/Library" -o -name .Trash \) -prune -o -type f -name '*.pyc' -print -delete 2>/dev/null | wc -l | tr -d ' ')
-    echo "  🗑️  cache dirs: $pc, *.pyc: $py removed"
+    echo "  cache dirs: $pc, *.pyc: $py removed"
     echo ""
     echo "━━━ ~/.cache (uv done, status of other large items) ━━━"
     du -sh ~/.cache/*/ 2>/dev/null | sort -hr | head -5
@@ -311,7 +311,7 @@ gc-deep:
     read -rp "Delete? [y/N] " ans
     if [[ "$ans" == [yY] ]]; then
       xargs -I{} rm -rf "{}" < "$tmp" 2>/dev/null
-      echo "  🗑️  $cnt removed (reclaimed: $total)"
+      echo "  $cnt removed (reclaimed: $total)"
     else
       echo "  Aborted"
     fi
@@ -350,7 +350,7 @@ restart what="bar":
       all)            sb; bd; as ;;
       *) echo "usage: just restart [bar|sketchybar|borders|aerospace|all]" >&2; exit 2 ;;
     esac
-    echo "✅ Done"
+    echo "Done"
 
 
 # ─────────────────────────────────────────────
