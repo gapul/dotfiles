@@ -14,6 +14,12 @@
 
   programs.home-manager.enable = true;
 
+  # HM オプション docs (man home-configuration.nix / options.json) を生成しない。
+  # switch 毎の 'options.json ... without proper context' warning を解消 + 微速化。
+  # オプションは home-manager 公式 docs (オンライン) で参照する。
+  manual.manpages.enable = false;
+  manual.json.enable = false;
+
   home.sessionVariables = {
     EDITOR = "nvim";
     PAGER = "bat";
