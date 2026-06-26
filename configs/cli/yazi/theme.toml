@@ -1,20 +1,6 @@
-# 公式 flavor (yazi-rs/flavors) を使用 + dir アイコン拡張。
-# read-only store のため ya pkg でなく configs/cli/yazi/flavors/ に vendor し HM で配置。
+# 公式 flavor (yazi-rs/flavors) を使用。read-only store のため ya pkg でなく
+# configs/cli/yazi/flavors/ に vendor し home-manager で配置。
 # 更新: yazi-rs/flavors を再 clone して flavors/ に再コピー。
+# アイコンは flavor / yazi 既定のものをそのまま使う (カスタム [icon] は付けない)。
 [flavor]
 dark = "catppuccin-mocha"
-
-# Developer は公式 flavor の "Development" グリフ/色を流用 (フォルダ改名せず名前マッピング)。
-# bin/Applications 等は公式に無いため Catppuccin 配色で自作追加。[icon] は flavor にマージ・優先。
-[icon]
-dirs = [
-  { name = "Developer", text = "", fg = "#94e2d5" },
-  { name = "bin", text = "", fg = "#a6e3a1" },
-  { name = "Applications", text = "", fg = "#89b4fa" },
-  { name = ".ssh", text = "", fg = "#f9e2af" },
-  { name = ".cache", text = "", fg = "#fab387" },
-  { name = ".dotfiles", text = "", fg = "#f5c2e7" },
-  { name = ".homebrew", text = "", fg = "#fab387" },
-  { name = ".local", text = "", fg = "#9399b2" },
-  { name = ".Trash", text = "", fg = "#f38ba8" },
-]
