@@ -55,7 +55,6 @@ to_migrate=()
 
 while IFS= read -r gitdir; do
   repodir=$(dirname "$gitdir")
-  name=$(basename "$repodir")
 
   # 既に ghq 配下なら skip
   case "$repodir" in

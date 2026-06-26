@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 front_app=(
   label.font="$FONT:Black:12.0"
