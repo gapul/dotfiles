@@ -96,8 +96,7 @@ sketchybar-font:
     tag=$(gh release view --repo "$repo" --json tagName -q .tagName)
     cur=$(awk '/pname = "sketchybar-app-font"/{getline; if (match($0,/[0-9][0-9.]*/)) print substr($0,RSTART,RLENGTH); exit}' "$dir/nix/hosts/darwin.nix")
     if [ "$tag" = "v$cur" ]; then
-      echo "sketchybar-app-font: 既に最新 ($tag)。skip"
-      exit 0
+      exit 0 # 既に最新。何も出力しない (upgrade のノイズ削減)
     fi
     echo "sketchybar-app-font: $cur → $tag へ更新"
     # .ttf と icon_map.sh を同一リリースから取得 (版ズレ防止)
