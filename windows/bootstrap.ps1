@@ -160,11 +160,13 @@ if ((Test-Path $WTSrc) -and (Test-Path (Split-Path $WTDst -Parent))) {
 #     starship は $env:STARSHIP_CONFIG で profile.ps1 から直接参照するため symlink 不要。
 #     yazi は config dir として "config" サブディレクトリを期待するため階層注意。
 $ConfigLinks = @(
-    @{ Label = 'gh';   Src = (Join-Path $DotfilesDir 'configs\cli\gh');           Dst = (Join-Path $env:APPDATA      'GitHub CLI') },
-    @{ Label = 'bat';  Src = (Join-Path $DotfilesDir 'configs\cli\bat');          Dst = (Join-Path $env:APPDATA      'bat') },
-    @{ Label = 'yazi'; Src = (Join-Path $DotfilesDir 'configs\cli\yazi');         Dst = (Join-Path $env:APPDATA      'yazi\config') },
-    @{ Label = 'nvim'; Src = (Join-Path $DotfilesDir 'configs\editors\nvim');     Dst = (Join-Path $env:LOCALAPPDATA 'nvim') },
-    @{ Label = 'zed';  Src = (Join-Path $DotfilesDir 'configs\editors\zed');      Dst = (Join-Path $env:APPDATA      'Zed') }
+    @{ Label = 'gh';      Src = (Join-Path $DotfilesDir 'configs\cli\gh');           Dst = (Join-Path $env:APPDATA      'GitHub CLI') },
+    @{ Label = 'bat';     Src = (Join-Path $DotfilesDir 'configs\cli\bat');          Dst = (Join-Path $env:APPDATA      'bat') },
+    @{ Label = 'yazi';    Src = (Join-Path $DotfilesDir 'configs\cli\yazi');         Dst = (Join-Path $env:APPDATA      'yazi\config') },
+    @{ Label = 'nvim';    Src = (Join-Path $DotfilesDir 'configs\editors\nvim');     Dst = (Join-Path $env:LOCALAPPDATA 'nvim') },
+    @{ Label = 'zed';     Src = (Join-Path $DotfilesDir 'configs\editors\zed');      Dst = (Join-Path $env:APPDATA      'Zed') },
+    # espanso: match/base.yml をファイル単独で symlink。macOS と同じ matches を再利用。
+    @{ Label = 'espanso'; Src = (Join-Path $DotfilesDir 'configs\espanso\base.yml'); Dst = (Join-Path $env:APPDATA      'espanso\match\base.yml') }
 )
 foreach ($link in $ConfigLinks) {
     New-DotfilesLink -Source $link.Src -Destination $link.Dst -Label $link.Label

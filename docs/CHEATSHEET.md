@@ -265,6 +265,38 @@ just upgrade              # システム全体 update
 
 ---
 
+## 🪟 Windows (ハイブリッド: ネイティブ pwsh + WSL)
+
+詳細ロードマップは [windows-roadmap.md](./windows-roadmap.md)。
+日常コマンドの macOS 等価:
+
+| macOS | Windows ネイティブ |
+|---|---|
+| `bash scripts/bootstrap.sh` | `pwsh -File windows/bootstrap.ps1` (= `just win-bootstrap`) |
+| `just rebuild` | `git pull` で済む (Nix 不使用、configs symlink は bootstrap 再実行で更新) |
+| `just upgrade` | `winget upgrade --all` |
+| `just secrets edit` | `sops $env:USERPROFILE\dotfiles\secrets\secrets.yaml` |
+| `just check` | `just win-verify` (apps.json ID 実在検証) + `just win-fmt` (PSScriptAnalyzer) |
+| `pbcopy < file` (WSL) | `Get-Content file \| Set-Clipboard` |
+| `xdg-open file` (WSL) | `start file` (pwsh) / `explorer file` |
+
+ネイティブ pwsh 専用関数 (profile.ps1 で定義):
+
+| 関数 | 用途 |
+|---|---|
+| `Find-DotfilesToolOverlap` | scoop ↔ winget の重複ツールを可視化 |
+| `Get-DotfilesSecret <key>` | secrets.yaml から SOPS 復号して値を取り出す |
+| `Copy-DotfilesSecret <key>` | 同上 → クリップボードへ |
+| `Add-SshKey [path]` | Windows ssh-agent に鍵登録 (WSL とも共有) |
+| `wsl-here` | 現在ディレクトリで WSL に入る |
+
+SKK (日本語 IME) は macOS と Windows で実装が別物:
+- macOS: macSKK + azoo-key-skkserv (`configs/ime/skk/`)
+- Windows: CorvusSKK (`nathancorvussolis.corvusskk` を apps.json で auto install)
+  設定の同期は未対応(辞書だけ macOS から同期可)
+
+---
+
 ## 🧬 内部実装メモ(future-self 向け)
 
 - **eza/bat/delta/tealdeer**: `home-manager` の `programs.*` で declarative 管理
