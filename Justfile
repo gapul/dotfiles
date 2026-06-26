@@ -417,6 +417,12 @@ win-status *flags:
 win-upgrade:
     pwsh.exe -NoProfile -Command "winget upgrade --all --silent --accept-package-agreements --accept-source-agreements"
 
+# テレメトリ/標準機能の declarative 適用 (Win11Debloat + WinUtil)
+# `*flags` で `-DryRun` `-SkipWinUtil` `-SkipWin11Debloat` を渡せる
+[group('Windows')]
+win-privacy *flags:
+    pwsh.exe -NoProfile -ExecutionPolicy Bypass -File windows/privacy/apply.ps1 {{flags}}
+
 # Windows 関連 .ps1 を PSScriptAnalyzer で lint (Warning 以上で exit 1)
 [group('Windows')]
 win-fmt:

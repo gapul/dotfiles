@@ -118,7 +118,17 @@ macOS / WSL を主軸にしてきた本 dotfiles を **Windows ネイティブ +
 |---|---|---|
 | P7-28 | Ghostty は macOS/Linux 専用のため Windows native では起動不可。クロスプラットフォーム動作する WezTerm を ghostty 代替として採用。`configs/terminals/wezterm/wezterm.lua` を新規追加 — Ghostty config (`HackGen Console NF` / `Rose Pine` / opacity 0.88 / blur 30 / 閉じる確認なし / Ctrl+C は SIGINT) を Lua に翻訳、OS 分岐で Mac は `macos_window_background_blur`、Windows は `win32_system_backdrop = 'Acrylic'` | ✅ (this commit) |
 | P7-29 | `apps.json` に `wez.wezterm` 追加、`bootstrap.ps1` の ConfigLinks に wezterm を追加(`%USERPROFILE%\.wezterm.lua` へファイル単独 symlink)、`Test-DotfilesSetup` の symlink チェックにも追加(7 件目) | ✅ 1b4314e |
-| P7-30 | `status.ps1 -ShowExtra` で実機の EXTRA 30 個を確認 → 意図的 install 16 個を apps.json に追加(WSL/Terminal/WM/Launcher/Browser/Sync/Util/Game 系)、システム依存・OEM・バージョン断片は宣言外として除外。INSTALLED 42/45 → 58/61、EXTRA 30 → 14 | ✅ (this commit) |
+| P7-30 | `status.ps1 -ShowExtra` で実機の EXTRA 30 個を確認 → 意図的 install 16 個を apps.json に追加(WSL/Terminal/WM/Launcher/Browser/Sync/Util/Game 系)、システム依存・OEM・バージョン断片は宣言外として除外。INSTALLED 42/45 → 58/61、EXTRA 30 → 14 | ✅ ac85464 |
+
+### ⚪ P8(テレメトリ/標準機能 declarative 化)
+
+Mac の `nix/hosts/darwin.nix` の `system.defaults` 相当を Windows で再現。
+
+| # | 内容 | 状態 |
+|---|---|---|
+| P8-31 | `windows/privacy/` 新設 — `win11debloat-args.txt`(`Raphire/Win11Debloat` の CLI 引数 13 個: Silent / RemoveApps / DisableTelemetry / DisableBing / DisableCopilot / DisableRecall / DisableLockscreenTips / DisableSuggestions / DisableSticky / ShowHiddenFolders(`AppleShowAllFiles` 相当) / ShowKnownFileExt(`AppleShowAllExtensions` 相当) / HideHome / HideGallery)、`winutil-config.json`(`ChrisTitusTech/winutil` の export 形式、13 tweaks: Telemetry/AH/Loc/BingSearch/Wifi/RemoveCopilot/RemoveHomeGallery/EndTaskOnTaskbar/RightClickMenu/RP/Services/Storage/DisableLMS1) | ✅ (this commit) |
+| P8-32 | `windows/privacy/apply.ps1` orchestrator: `Win11Debloat` は CLI 自動、`WinUtil` は GUI 起動 + Config 自動 import。`-DryRun` / `-SkipWinUtil` / `-SkipWin11Debloat` 対応。PowerShell 5.1 の `Get-Content` ANSI 既定対策で `-Encoding UTF8` を明示 | ✅ (this commit) |
+| P8-33 | `Justfile` に `win-privacy *flags` 追加。`bootstrap.ps1` Step 7 として自動実行(`-SkipPrivacy` で省略可)。`apply.ps1` 側でも `-SkipWinUtil` / `-SkipWin11Debloat` で個別 skip 可能 — 細粒度の選択性を担保 | ✅ (this commit) |
 
 ---
 
