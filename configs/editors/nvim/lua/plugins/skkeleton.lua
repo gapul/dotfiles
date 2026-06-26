@@ -4,16 +4,17 @@ return {
     dependencies = { "vim-denops/denops.vim" },
     event = "VeryLazy",
     config = function()
+      -- 辞書は macOS/Linux: ~/.local/share/skk/, Windows: ~/AppData/Local/skk/
+      local skk_dir = vim.fn.has("win32") == 1 and "~/AppData/Local/skk" or "~/.local/share/skk"
       vim.fn["skkeleton#config"]({
-        -- XDG: 辞書は ~/.local/share/skk/ 配下 (XDG_DATA_HOME)
         globalDictionaries = {
-          "~/.local/share/skk/SKK-JISYO.L",
-          "~/.local/share/skk/SKK-JISYO.jinmei",
-          "~/.local/share/skk/SKK-JISYO.geo",
-          "~/.local/share/skk/SKK-JISYO.station",
-          "~/.local/share/skk/SKK-JISYO.propernoun",
+          skk_dir .. "/SKK-JISYO.L",
+          skk_dir .. "/SKK-JISYO.jinmei",
+          skk_dir .. "/SKK-JISYO.geo",
+          skk_dir .. "/SKK-JISYO.station",
+          skk_dir .. "/SKK-JISYO.propernoun",
         },
-        userDictionary = "~/.local/share/skk/skkeleton-user-dict",
+        userDictionary = skk_dir .. "/skkeleton-user-dict",
         eggLikeNewline = true,
         sources = { "skk_dictionary", "skk_server" },
         skkServerHost = "127.0.0.1",
