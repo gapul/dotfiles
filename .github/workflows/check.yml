@@ -8,6 +8,7 @@ on:
       - 'configs/**'
       - 'secrets/**'
       - 'scripts/**'
+      - 'windows/**'
       - 'Justfile'
       - '.statix.toml'
       - '.github/workflows/check.yml'
@@ -17,6 +18,7 @@ on:
       - 'configs/**'
       - 'secrets/**'
       - 'scripts/**'
+      - 'windows/**'
       - 'Justfile'
       - '.statix.toml'
   schedule:
@@ -158,3 +160,39 @@ jobs:
         run: nix develop ./nix --command bash -c 'for f; do jq empty "$f"; done' _ $(git ls-files '*.json')
       - name: YAML 構文 (yq)
         run: nix develop ./nix --command bash -c 'for f; do yq -e "." "$f" >/dev/null; done' _ $(git ls-files '*.yml' '*.yaml')
+
+  # Windows native (PowerShell 7) — bootstrap の DryRun セルフテスト + 静的解析。
+  # 実 install を走らせず、構文 / 解析 / 計画ログだけで Windows side の壊れを検知する。
+  windows-check:
+    name: windows (parse / bootstrap -DryRun / PSScriptAnalyzer)
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: PowerShell parse (全 .ps1)
+        shell: pwsh
+        run: |
+          $fail = $false
+          Get-ChildItem windows -Recurse -Filter '*.ps1' | ForEach-Object {
+              $e = $null
+              $null = [System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$null, [ref]$e)
+              if ($e) {
+                  Write-Host "::error file=$($_.FullName)::parse failed"
+                  $e | Format-List | Out-String | Write-Host
+                  $fail = $true
+              } else {
+                  Write-Host "OK $($_.FullName)"
+              }
+          }
+          if ($fail) { exit 1 }
+
+      - name: bootstrap.ps1 -DryRun (副作用なし全 step 確認)
+        shell: pwsh
+        run: ./windows/bootstrap.ps1 -DryRun
+
+      - name: PSScriptAnalyzer (Severity Warning 以上で fail)
+        shell: pwsh
+        run: |
+          Install-Module PSScriptAnalyzer -Force -Scope CurrentUser -SkipPublisherCheck
+          Invoke-ScriptAnalyzer -Path windows -Recurse -Severity Warning -EnableExit -Settings windows/PSScriptAnalyzerSettings.psd1
