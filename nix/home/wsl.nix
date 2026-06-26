@@ -61,9 +61,17 @@ in
 
     # Windows OpenSSH Authentication Agent を WSL から共有 (P2-11)。
     # 前提: Windows 側で bootstrap.ps1 が ssh-agent を Auto+Running にし、
-    #       npiperelay.exe が PATH (winget albertony.npiperelay) に居る。
+    #       albertony.npiperelay (winget) が install 済み。
     # socat で WSL の UNIX domain socket → npiperelay → Named pipe
     # //./pipe/openssh-ssh-agent をリレーする。ターミナル毎に冪等。
+    #
+    # winget は npiperelay の exe を Links/ に expose しないため (yazi 等と違い
+    # package 自体に shortcut hint が無い)、Packages/ 配下を PATH に追加する。
+    if [[ -n "''${WIN_USER:-}" ]]; then
+      npr_root="/mnt/c/Users/$WIN_USER/AppData/Local/Microsoft/WinGet/Packages"
+      npr_dir=$(ls -d "$npr_root"/albertony.npiperelay_* 2>/dev/null | head -1)
+      [[ -n "$npr_dir" ]] && export PATH="$PATH:$npr_dir"
+    fi
     if command -v npiperelay.exe >/dev/null 2>&1 && command -v socat >/dev/null 2>&1; then
       export SSH_AUTH_SOCK="$HOME/.ssh/agent.sock"
       if ! ss -lnx 2>/dev/null | grep -q "$SSH_AUTH_SOCK"; then
