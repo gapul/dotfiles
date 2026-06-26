@@ -1,4 +1,4 @@
-# PowerShell 7+ プロファイル (dotfiles 管理)
+﻿# PowerShell 7+ プロファイル (dotfiles 管理)
 # 配置先: $PROFILE → ~/Documents/PowerShell/Microsoft.PowerShell_profile.ps1
 # bootstrap.ps1 で symlink される
 #
@@ -39,6 +39,36 @@ if (Get-Command nvim -ErrorAction SilentlyContinue) {
 # === ディレクトリ移動の便利 ===
 function .. { Set-Location .. }
 function ... { Set-Location ../.. }
+
+# === scoop と winget の重複ツールを診断 ===
+# 方針: winget が一次パッケージマネージャ。scoop は winget に無いものだけ補助で使う。
+# 同名ツールが両方から入った時は PATH 順で勝った方になるが、意図と違うことがあるので
+# `Find-DotfilesToolOverlap` を呼んで重複を可視化。重複が見つかったら winget 残し /
+# scoop 側 `scoop uninstall <name>` で揃える。
+function Find-DotfilesToolOverlap {
+    $scoopRoot = Join-Path $env:USERPROFILE 'scoop\shims'
+    if (-not (Test-Path $scoopRoot)) { Write-Host 'scoop が未導入のため重複なし。'; return }
+    $tools = 'starship','zoxide','gh','nvim','yazi','bat','fzf','rg','fd','jq','lazygit','sops','age','oh-my-posh','git'
+    $overlap = @()
+    foreach ($t in $tools) {
+        $cmds = @(Get-Command $t -All -ErrorAction SilentlyContinue | Where-Object CommandType -eq 'Application')
+        if ($cmds.Count -lt 2) { continue }
+        $sources = $cmds | ForEach-Object { $_.Source }
+        $hasScoop  = $sources | Where-Object { $_ -like "$scoopRoot*" }
+        $hasOther  = $sources | Where-Object { $_ -notlike "$scoopRoot*" }
+        if ($hasScoop -and $hasOther) {
+            $overlap += [pscustomobject]@{ Tool=$t; Active=$cmds[0].Source; Sources=$sources }
+        }
+    }
+    if (-not $overlap) { Write-Host 'scoop/winget 重複なし。'; return }
+    Write-Host '重複検出 (PATH 先頭 = Active):' -ForegroundColor Yellow
+    $overlap | ForEach-Object {
+        Write-Host ("  {0}" -f $_.Tool) -ForegroundColor Cyan
+        Write-Host ("    -> {0}  (active)" -f $_.Active)
+        $_.Sources | Where-Object { $_ -ne $_.Active } | ForEach-Object { Write-Host ("       {0}" -f $_) }
+    }
+    Write-Host '対処: winget を残す方針なら `scoop uninstall <tool>`。逆も可。'
+}
 
 # === Windows ↔ WSL の橋渡し ===
 function wsl-here {
