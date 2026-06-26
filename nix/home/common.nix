@@ -168,6 +168,14 @@
         }
       fi
 
+      # dotf: dotfiles の just レシピをどこからでも実行 (cd 不要)。
+      #   例: dotf rebuild / dotf update / dotf (引数なしで一覧)
+      #   nh は NH_*_FLAKE で flake を env 指定済みなので cwd 非依存。
+      #   --working-directory で justfile_directory() 依存レシピ (sketchybar-font 等) も正しく動く。
+      function dotf() {
+        just --justfile "$HOME/.dotfiles/Justfile" --working-directory "$HOME/.dotfiles" "$@"
+      }
+
       # vi モード + Ctrl+X Ctrl+E で外部エディタ(nvim)起動
       if [[ -o zle ]]; then
         bindkey -v
