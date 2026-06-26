@@ -298,7 +298,25 @@ web_client {
 // Default: default
 // 
 // theme "dracula"
- 
+theme "rose-pine"
+
+// 全ツール統一テーマ Rosé Pine (main)。zellij 組み込みに無いので定義。
+themes {
+    rose-pine {
+        fg "#e0def4"
+        bg "#191724"
+        black "#26233a"
+        red "#eb6f92"
+        green "#9ccfd8"
+        yellow "#f6c177"
+        blue "#31748f"
+        magenta "#c4a7e7"
+        cyan "#9ccfd8"
+        white "#e0def4"
+        orange "#ebbcba"
+    }
+}
+
 // Theme to use when the host terminal reports a dark color palette.
 // Requires `theme_light` to also be set; otherwise `theme` is used.
 // 
