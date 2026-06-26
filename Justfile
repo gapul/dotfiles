@@ -23,7 +23,7 @@ default:
 # システム + ユーザー 両方再構築 (普段使い)
 [group('構築')]
 rebuild:
-    @-brew list --cask --full-name 2>/dev/null | grep '/' | xargs -I% env -u XDG_CONFIG_HOME brew trust --cask % >/dev/null 2>&1
+    @-brew list --cask --full-name 2>/dev/null | grep '/' | xargs -I% env -u XDG_CONFIG_HOME brew trust --cask % >/dev/null
     nh darwin switch
     nh home switch
 
