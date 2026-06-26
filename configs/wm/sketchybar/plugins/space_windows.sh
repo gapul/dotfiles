@@ -38,6 +38,7 @@ reload_workspace_icon() {
     icon_strip=" —"
   fi
 
+  # shellcheck disable=SC2068,SC2145  # space.$@ は単一 workspace 名の展開で意図通り (動作実績あり)
   sketchybar --set space.$@ label="$icon_strip"
 }
 
