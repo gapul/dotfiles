@@ -1,4 +1,4 @@
-# Windows native 0→1 セットアップ (PowerShell 7+ 想定)
+﻿# Windows native 0→1 セットアップ (PowerShell 7+ 想定)
 # 想定: Windows 11 fresh install + WSL2 未導入 (or 別途)
 #
 # 流れ:
@@ -36,6 +36,23 @@ if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
     exit 1
 }
 Log 'winget OK'
+
+# 1.5 PowerShell 7 (pwsh) を先に確保。
+# Windows 同梱は 5.1 (PSReadLine 2.0 系)。本 dotfiles の profile は
+# `Set-PSReadLineOption -PredictionSource HistoryAndPlugin` (PSReadLine 2.2+) を使うため
+# 5.1 では parameter validation で失敗する。後段の winget import より先に必ず入れる。
+# なお既に pwsh が在れば再 install しない (winget 自身が冪等)。
+if (-not (Get-Command pwsh -ErrorAction SilentlyContinue)) {
+    Log 'PowerShell 7 (pwsh) が未導入 -> winget で install...'
+    winget install --id Microsoft.PowerShell --exact `
+        --accept-package-agreements --accept-source-agreements `
+        --silent --disable-interactivity
+    # 当プロセスの PATH はインストーラが更新しないので、以降のステップで pwsh を
+    # 直接呼ぶ必要があるなら絶対パスを使うこと。新しい PowerShell を開き直せば PATH に乗る。
+    Log 'PowerShell 7 install 完了。今後は pwsh.exe で本スクリプトを再実行推奨。'
+} else {
+    Log "pwsh OK ($($PSVersionTable.PSVersion))"
+}
 
 # 2. winget/apps.json import
 $AppsJson = Join-Path $WindowsDir 'winget\apps.json'
