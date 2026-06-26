@@ -6,35 +6,48 @@ sort_dir_first = true # ディレクトリを先頭に
 scrolloff      = 5 # カーソル上下に5行の余白
 
 [opener]
+# Windows の run は yazi が cmd.exe /C で実行する。`start "" "$@"` で
+# 既定アプリ起動、`tar -xf` は Windows 10+ 同梱の bsdtar.exe (zip/tar/gz/bz2 対応)。
+# nvim は Windows native ビルドが入っていれば PATH 解決で動く。
 video = [
   { run = 'mpv "$@"', desc = "Open in mpv", orphan = true, for = "macos" },
   { run = 'open -a "IINA" "$@"', desc = "Open in IINA", orphan = true, for = "macos" },
+  { run = 'mpv "$@"', desc = "Open in mpv", orphan = true, for = "windows" },
+  { run = 'start "" "$@"', desc = "Open with default", orphan = true, for = "windows" },
 ]
 audio = [
   { run = 'mpv "$@"', desc = "Play in mpv", orphan = true, for = "macos" },
   { run = 'open -a "IINA" "$@"', desc = "Play in IINA", orphan = true, for = "macos" },
+  { run = 'mpv "$@"', desc = "Play in mpv", orphan = true, for = "windows" },
+  { run = 'start "" "$@"', desc = "Play with default", orphan = true, for = "windows" },
 ]
 image = [
   { run = 'open -a "Preview" "$@"', desc = "Open in Preview", orphan = true, for = "macos" },
   { run = 'qlmanage -p "$@"', desc = "Quick Look", orphan = true, for = "macos" },
+  { run = 'start "" "$@"', desc = "Open with default", orphan = true, for = "windows" },
 ]
 office = [
   { run = 'open -a "LibreOffice" "$@"', desc = "Open in LibreOffice", orphan = true, for = "macos" },
+  { run = 'start "" "$@"', desc = "Open with default (Word/Excel/PPT)", orphan = true, for = "windows" },
 ]
 pdf = [
   { run = 'zathura "$@"', desc = "Open in Zathura", orphan = true, for = "unix" },
   { run = 'open -a "Preview" "$@"', desc = "Open in Preview", orphan = true, for = "macos" },
+  { run = 'start "" "$@"', desc = "Open with default", orphan = true, for = "windows" },
 ]
 edit = [
   { run = 'nvim "$@"', desc = "Edit in Neovim", block = true, for = "unix" },
+  { run = 'nvim "$@"', desc = "Edit in Neovim", block = true, for = "windows" },
 ]
 extract = [
   { run = 'unzip -o "$1" -d "$(dirname "$1")"', desc = "Extract zip here", for = "unix" },
   { run = 'tar -xvf "$1" -C "$(dirname "$1")"', desc = "Extract tar here", for = "unix" },
   { run = 'open "$@"', desc = "Open with Archive Utility", orphan = true, for = "macos" },
+  { run = 'tar -xf "$1"', desc = "Extract here (bsdtar)", for = "windows" },
 ]
 fallback = [
   { run = 'open "$@"', desc = "Open with macOS default", orphan = true, for = "macos" },
+  { run = 'start "" "$@"', desc = "Open with Windows default", orphan = true, for = "windows" },
 ]
 
 [open]
