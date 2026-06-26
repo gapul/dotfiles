@@ -99,7 +99,16 @@ macOS / WSL を主軸にしてきた本 dotfiles を **Windows ネイティブ +
 | # | 内容 | 状態 |
 |---|---|---|
 | P5-20 | `Test-DotfilesSetup` を profile.ps1 に追加 (macOS `just doctor` 相当)。configs symlink / 環境変数 / 主要ツール / 鍵 ACL / ssh-agent サービスを 5 セクションで集計 | ✅ (this commit) |
-| P5-21 | `STARSHIP_CONFIG` の設定を `Get-Command starship` 条件から外し、ツール未導入でも env だけは先に設定 | ✅ (this commit) |
+| P5-21 | `STARSHIP_CONFIG` の設定を `Get-Command starship` 条件から外し、ツール未導入でも env だけは先に設定 | ✅ 01449f3 |
+
+### 🟫 P6(実機本番セットアップ)
+
+| # | 内容 | 状態 |
+|---|---|---|
+| P6-22 | 実機で `bootstrap.ps1` 本番実行(管理者 UAC 経由)。20:30:57 開始 → 21:12:08 完了(41 分)。winget import 36 アプリ install / 全 6 symlink 作成 / ssh-agent サービス Auto+Running / git config 上書き | ✅ 完了 |
+| P6-23 | `Test-DotfilesSetup` で **17/17 passed**(symlink 6 + env 3 + tools 5 + key 1 + service 1 + STARSHIP_CONFIG/SOPS/GHQ ack 2)。starship/zoxide/sops/age は現プロセス PATH 未更新で "未導入" 表示だが winget list には存在(新ターミナルで解決) | ✅ 完了 |
+| P6-24 | 実行中に発覚した不要 GUI を整理: `Microsoft.VisualStudioCode` と `Brave.Brave` を apps.json から削除 + 実機 winget uninstall。代わりに `Anthropic.ClaudeCode` (既導入) と `KeePassXCTeam.KeePassXC` を最低限の追加 | ✅ (this commit) |
+| P6-25 | KeePassXC は単独 install を試みたが MSI 1618 (`別のインストールが進行中`) で失敗 — bootstrap 中に動いた msiexec が管理者権限保持のままセッション残存していた。apps.json には残してあるので次回 bootstrap か再起動後の `winget install KeePassXCTeam.KeePassXC --exact` で導入 | ⏳ pending(再起動後) |
 
 ---
 

@@ -39,3 +39,6 @@ configs/ssh/config
 
 # git-hooks.nix が生成 (nix develop で再生成・store パス依存のため非追跡)
 .pre-commit-config.yaml
+
+# Claude Code が生成 (ScheduleWakeup のロック等)
+.claude/
