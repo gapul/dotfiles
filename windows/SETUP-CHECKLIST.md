@@ -24,24 +24,25 @@ git clone https://github.com/gapul/dotfiles.git $env:USERPROFILE\dotfiles
 
 ## 2. winget パッケージ ID の実在確認 ★最重要
 
-`windows/winget/apps.json` の ID は macOS から書いた**下書き**。import 前に実在を確認:
+`windows/winget/apps.json` の ID は実機で実在検証済 (2026-06-26)。
+編集後は **必ず `verify.ps1`** を回す:
 
 ```powershell
-# 1件ずつ確認する例
-winget search Git.Git
-# まとめて確認したい場合 (存在しない ID は "見つかりません" になる)
-(Get-Content $env:USERPROFILE\dotfiles\windows\winget\apps.json | ConvertFrom-Json).Sources[0].Packages.PackageIdentifier |
-  ForEach-Object { "{0,-32} {1}" -f $_, (winget show $_ 2>&1 | Select-String -Quiet 'Found') }
+pwsh -NoProfile -File $env:USERPROFILE\dotfiles\windows\winget\verify.ps1
+# CI 用 (MISS で exit 1)
+pwsh -NoProfile -File $env:USERPROFILE\dotfiles\windows\winget\verify.ps1 -Strict
 ```
 
-- [ ] 存在しない ID は apps.json から削除 or 正しい ID に修正
-- 要確認(macOS から ID 不確実)の候補と、apps.json に**未収録**で必要なら手で足すもの:
-  - `sops` (getsops) … winget ID 要確認。無ければ scoop / 手動
-  - `gitleaks`, `typst`, `bottom`(btm), `mpv` … ID 要確認
-  - **Nerd Font** (JetBrainsMono NF) … winget に確実な公式が無い。
-    [ryanoasis/nerd-fonts] の手動 install か scoop `nerd-fonts` bucket を使う。
-    Terminal の `fontFace` がこのフォント前提なので、入れないと豆腐になる
-  - Tor Browser / Zen / Beeper / Affinity 等 GUI は実機で要否を判断して追加
+- [ ] `verify.ps1` で MISS / ERR が 0 件
+- 解消済みの実在 ID(SETUP-CHECKLIST 旧版で「不確実」と書かれていたもの):
+  - sops → `SecretsOPerationS.SOPS` (Mozilla.SOPS は旧版)
+  - gitleaks → `Gitleaks.Gitleaks`
+  - typst → `Typst.Typst`
+  - bottom → `Clement.bottom`
+  - mpv → `shinchiro.mpv`
+  - **JetBrainsMono Nerd Font** → `DEVCOM.JetBrainsMonoNerdFont`
+    Terminal の `fontFace` 前提なので apps.json で自動 install される
+- Tor Browser / Zen / Beeper / Affinity 等 GUI は実機で要否を判断して追加
 
 ## 3. bootstrap 実行 (管理者 PowerShell 推奨)
 
@@ -106,8 +107,6 @@ git clone https://github.com/gapul/dotfiles.git ~/.dotfiles
 - **SOPS 復号のネイティブ導線が無い**: Windows ネイティブ側は age 鍵を置くだけで、
   secrets を復号して使う仕組みは未定義。当面は **WSL 側(sops-nix)で復号**して使う想定。
   ネイティブで必要になったら `sops -d` を叩くラッパーを profile に足す
-- **フォント自動化**: Nerd Font の winget 公式が無いため手動 or scoop。自動化したいなら
-  bootstrap に scoop + nerd-fonts bucket 導入を足す
 - **winget の宣言的運用の限界**: import は入れるだけで「宣言外を消す」機能が無い
   (Nix の `cleanup="uninstall"` 相当が無い)。不要 app は手動 uninstall
 - **profile の高度化** (oh-my-posh / PSFzf / Terminal-Icons) は実機で描画確認しながら
