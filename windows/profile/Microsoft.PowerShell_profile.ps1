@@ -107,18 +107,93 @@ function ConvertFrom-WslPath {
     process { (wsl wslpath -w "$Path").Trim() }
 }
 
+# === 健全性チェック (macOS の `just doctor` 相当) ===
+# 起動後 `Test-DotfilesSetup` を呼ぶと、symlink / 環境変数 / 主要ツール / 鍵 /
+# ssh-agent を一気に診断。bootstrap 後の検証や、別マシン移植時に使う。
+function Test-DotfilesSetup {
+    [CmdletBinding()]
+    param()
+    $dotfiles = Join-Path $env:USERPROFILE 'dotfiles'
+    $pass = 0; $fail = 0
+    function _row($label, [bool]$ok, $extra = '') {
+        $tag = if ($ok) { '[ok]  ' } else { '[FAIL]' }
+        $color = if ($ok) { 'Green' } else { 'Red' }
+        $line = if ($extra) { "$tag $label   ($extra)" } else { "$tag $label" }
+        Write-Host $line -ForegroundColor $color
+        if ($ok) { Set-Variable -Name pass -Value (++$script:pass) -Scope 1 -ErrorAction SilentlyContinue }
+    }
+
+    Write-Host '== configs symlink ==' -ForegroundColor Cyan
+    $links = @(
+        @{ Label = 'gh';      Path = "$env:APPDATA\GitHub CLI";              Target = "$dotfiles\configs\cli\gh" }
+        @{ Label = 'bat';     Path = "$env:APPDATA\bat";                     Target = "$dotfiles\configs\cli\bat" }
+        @{ Label = 'yazi';    Path = "$env:APPDATA\yazi\config";             Target = "$dotfiles\configs\cli\yazi" }
+        @{ Label = 'nvim';    Path = "$env:LOCALAPPDATA\nvim";               Target = "$dotfiles\configs\editors\nvim" }
+        @{ Label = 'zed';     Path = "$env:APPDATA\Zed";                     Target = "$dotfiles\configs\editors\zed" }
+        @{ Label = 'espanso'; Path = "$env:APPDATA\espanso\match\base.yml";  Target = "$dotfiles\configs\espanso\base.yml" }
+    )
+    foreach ($l in $links) {
+        $item = Get-Item -LiteralPath $l.Path -Force -ErrorAction SilentlyContinue
+        $ok = $item -and $item.LinkType -eq 'SymbolicLink' -and $item.Target -eq $l.Target
+        if ($ok) { Write-Host "  [ok]   $($l.Label)" -ForegroundColor Green; $pass++ }
+        else     { Write-Host "  [FAIL] $($l.Label) — bootstrap 未実行 or 別 target" -ForegroundColor Red; $fail++ }
+    }
+
+    Write-Host '== 環境変数 ==' -ForegroundColor Cyan
+    foreach ($v in 'STARSHIP_CONFIG','SOPS_AGE_KEY_FILE','GHQ_ROOT') {
+        $val = [Environment]::GetEnvironmentVariable($v, 'Process')
+        if ($val) { Write-Host "  [ok]   $v = $val" -ForegroundColor Green; $pass++ }
+        else      { Write-Host "  [FAIL] $v 未設定 (profile が読まれてない?)" -ForegroundColor Red; $fail++ }
+    }
+
+    Write-Host '== 主要ツール ==' -ForegroundColor Cyan
+    foreach ($t in 'pwsh','git','gh','nvim','yazi','starship','zoxide','sops','age','ssh-add') {
+        if (Get-Command $t -ErrorAction SilentlyContinue) { Write-Host "  [ok]   $t" -ForegroundColor Green; $pass++ }
+        else                                              { Write-Host "  [warn] $t 未導入 (winget import で入る)" -ForegroundColor Yellow }
+    }
+
+    Write-Host '== 鍵 ==' -ForegroundColor Cyan
+    foreach ($k in @(
+        @{ Label = 'age'; Path = (Join-Path $env:USERPROFILE '.config\sops\age\keys.txt') },
+        @{ Label = 'ssh'; Path = (Join-Path $env:USERPROFILE '.ssh\id_ed25519') }
+    )) {
+        if (Test-Path $k.Path) {
+            # icacls 制限済 = 自分以外の許可エントリが無い (簡易判定)
+            $acl = (icacls $k.Path 2>$null) -join ' '
+            $restricted = $acl -notmatch 'BUILTIN\\Users' -and $acl -notmatch 'Authenticated Users'
+            if ($restricted) { Write-Host "  [ok]   $($k.Label): $($k.Path) (ACL 本人のみ)" -ForegroundColor Green; $pass++ }
+            else             { Write-Host "  [warn] $($k.Label): ACL 制限が緩い — pwsh -File bootstrap.ps1 で再制限" -ForegroundColor Yellow }
+        } else {
+            Write-Host "  [warn] $($k.Label) 未配置 ($($k.Path))" -ForegroundColor Yellow
+        }
+    }
+
+    Write-Host '== ssh-agent サービス ==' -ForegroundColor Cyan
+    $svc = Get-Service ssh-agent -ErrorAction SilentlyContinue
+    if ($svc) {
+        $ok = $svc.Status -eq 'Running' -and $svc.StartType -eq 'Automatic'
+        if ($ok) { Write-Host "  [ok]   ssh-agent: Running / Automatic" -ForegroundColor Green; $pass++ }
+        else     { Write-Host "  [FAIL] ssh-agent: $($svc.Status) / $($svc.StartType) — 管理者で Set-Service ssh-agent -StartupType Automatic; Start-Service ssh-agent" -ForegroundColor Red; $fail++ }
+    } else {
+        Write-Host "  [warn] OpenSSH Authentication Agent 未導入" -ForegroundColor Yellow
+    }
+
+    Write-Host ''
+    Write-Host "Result: $pass passed, $fail failed" -ForegroundColor ($(if ($fail -eq 0) { 'Green' } else { 'Yellow' }))
+}
+
 # === ghq root (nvim lazy.lua の dev.path と整合) ===
 # macOS の nix/home/common.nix で `programs.git.extraConfig.ghq.root` を ~/Developer
 # に固定している。Windows ネイティブでも同じレイアウトにして lazy.lua の
 # ~/Developer/github.com/gapul/* がローカル参照で動くようにする。
 $env:GHQ_ROOT = Join-Path $env:USERPROFILE 'Developer'
 
-# === starship があれば使う (winget で入れる想定) ===
+# === starship 設定パス (winget で入れる想定) ===
 # macOS/WSL と同じ prompt にするため共有 configs/shell/starship.toml を参照。
-# (Windows ネイティブの clone 先は %USERPROFILE%\dotfiles)
+# starship 未導入でも env だけは先に設定 (Test-DotfilesSetup の判定容易化)。
+$sharedStarship = Join-Path $env:USERPROFILE 'dotfiles\configs\shell\starship.toml'
+if (Test-Path $sharedStarship) { $env:STARSHIP_CONFIG = $sharedStarship }
 if (Get-Command starship -ErrorAction SilentlyContinue) {
-    $sharedStarship = Join-Path $env:USERPROFILE 'dotfiles\configs\shell\starship.toml'
-    if (Test-Path $sharedStarship) { $env:STARSHIP_CONFIG = $sharedStarship }
     Invoke-Expression (& starship init powershell)
 }
 
