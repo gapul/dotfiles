@@ -109,6 +109,8 @@ macOS / WSL を主軸にしてきた本 dotfiles を **Windows ネイティブ +
 | P6-23 | `Test-DotfilesSetup` で **17/17 passed**(symlink 6 + env 3 + tools 5 + key 1 + service 1 + STARSHIP_CONFIG/SOPS/GHQ ack 2)。starship/zoxide/sops/age は現プロセス PATH 未更新で "未導入" 表示だが winget list には存在(新ターミナルで解決) | ✅ 完了 |
 | P6-24 | 実行中に発覚した不要 GUI を整理: `Microsoft.VisualStudioCode` と `Brave.Brave` を apps.json から削除 + 実機 winget uninstall。代わりに `Anthropic.ClaudeCode` (既導入) と `KeePassXCTeam.KeePassXC` を最低限の追加 | ✅ (this commit) |
 | P6-25 | KeePassXC は単独 install を試みたが MSI 1618 (`別のインストールが進行中`) で失敗 — bootstrap 中に動いた msiexec が管理者権限保持のままセッション残存していた。apps.json には残してあるので次回 bootstrap か再起動後の `winget install KeePassXCTeam.KeePassXC --exact` で導入 | ⏳ pending(再起動後) |
+| P6-26 | WSL Ubuntu-24.04 で `~/.dotfiles` clone + `bootstrap-wsl.sh` 実行。Step 1 (apt: 既存)/ Step 2 (Nix 2.34.7 確認) スキップ、Step 4 で age 鍵不在停止。`nix shell nixpkgs#socat` 経由で SSH agent 共有を一時実証: socat → npiperelay → `//./pipe/openssh-ssh-agent`、`ssh-add -L` が "The agent has no identities" を返す = **通信成功**(鍵未登録のためエラー) | ✅ (this commit) |
+| P6-27 | wsl.nix の zsh init で WIN_USER から WinGet Packages 経由 npiperelay PATH を組み立てるロジック追加 + 実機検証(`WIN_USER=ispc_5CG54406V7`、`npr_dir=...albertony.npiperelay_...`、`npiperelay.exe exists` 全 ok) | ✅ fb0b11e |
 
 ---
 
