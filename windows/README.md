@@ -49,6 +49,14 @@ git clone https://github.com/gapul/dotfiles.git $env:USERPROFILE\dotfiles
   - PowerShell: `wsl --install -d Ubuntu`
   - WSL 側で `~/.dotfiles/scripts/bootstrap-wsl.sh` を走らせる
 
+## パッケージマネージャの使い分け
+
+- **winget が一次**。CLI / GUI とも基本は `apps.json` に追記して宣言的に管理
+- **scoop は補助**。`winget` リポジトリに無いもの限定 (legacy / portable 配布のみのツール)
+- 同名ツールが両方から入ると PATH 順で先勝ちになるので、`Find-DotfilesToolOverlap`
+  関数 (profile.ps1 で定義) を起動後 `Find-DotfilesToolOverlap` と叩いて重複を可視化。
+  重複があれば原則 scoop 側を `scoop uninstall <tool>` で外し winget に揃える
+
 ## 設定変更後の反映
 
 PowerShell プロファイル: ファイル編集後 `. $PROFILE` で再読込
