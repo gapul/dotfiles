@@ -63,6 +63,12 @@ in
     # npm (Homebrew 製): cache/userconfig を XDG へ移し ~/.npm の自動生成を抑止
     NPM_CONFIG_CACHE = "${config.xdg.cacheHome}/npm";
     NPM_CONFIG_USERCONFIG = "${config.xdg.configHome}/npm/npmrc";
+
+    # Ruby Bundler: ~/.bundle (gem index キャッシュ等) を XDG 配下へ。
+    # BUNDLE_USER_* は bundler 1.15+ 対応 (system ruby 1.17.2 で動作確認済)。
+    BUNDLE_USER_CONFIG = "${config.xdg.configHome}/bundle/config";
+    BUNDLE_USER_CACHE = "${config.xdg.cacheHome}/bundle";
+    BUNDLE_USER_PLUGIN = "${config.xdg.dataHome}/bundle/plugin";
   };
 
   home.sessionPath = [
@@ -478,6 +484,9 @@ in
       inline_height = 20;
       enter_accept = false; # Enter で実行せず編集に
       show_preview = true;
+      # TUI デバッグログ(~/.atuin/logs)を抑止し home 直下を汚さない。
+      # config/data は既に XDG (~/.config/atuin, ~/.local/share/atuin)。
+      logs.enabled = false;
     };
   };
 
