@@ -200,8 +200,24 @@ doctor:
     warn "作業ツリー clean (未 commit 無し)" '[[ -z "$(git -C {{justfile_directory()}} status --short)" ]]' "未 commit 変更あり → commit/push 推奨"
     check "age 秘密鍵存在" '[[ -f ~/.config/sops/age/keys.txt ]]'
     echo
+    # バー/WM 系が落ちていれば復旧導線を出す (restart レシピへ)
+    down=()
+    pgrep -fq "/opt/homebrew/opt/sketchybar/bin/sketchybar" || down+=(sketchybar)
+    pgrep -fq AeroSpace.app || down+=(aerospace)
+    pgrep -xq borders || down+=(borders)
+    if [ ${#down[@]} -gt 0 ]; then
+      echo "⚠️  停止中: ${down[*]} → 復旧: just restart (個別: just restart <名前>)"
+      echo
+    fi
     echo "Result: $pass passed, $fail failed"
     exit $fail
+
+# NOTE: nix fmt (treefmt 一括) は flake が nix/ にあり tree-root の flake.nix 検出に失敗するため
+#       使えない (flake.nix の treefmt コメント参照)。per-file フックを束ねた pre-commit 経由で走らせる。
+# コード整形 + lint を全追跡ファイルに実行 (pre-commit: nixfmt + shfmt + shellcheck 等)
+[group('確認')]
+fmt:
+    nix develop {{flake}} --command pre-commit run --all-files
 
 
 # ─────────────────────────────────────────────
@@ -304,6 +320,38 @@ gc-deep:
 
 
 # ─────────────────────────────────────────────
+# サービス (restart / メニューバー・WM 系の再起動)
+# ─────────────────────────────────────────────
+
+# NOTE: aerospace はフル再起動 = ワークスペース配置がリセットされるので明示指定 (aerospace/all) 時のみ。
+#       borders は bordersrc を持たず aerospace.toml の after-startup-command 起動なので、
+#       単体再起動時の引数はそちら (configs/wm/aerospace/aerospace.toml) と揃える (版ズレ防止)。
+# メニューバー/WM 系を再起動 (`just restart`=バー周り / 個別: sketchybar|borders|aerospace / all=全部)
+[group('サービス')]
+restart what="bar":
+    #!/usr/bin/env bash
+    set -u
+    uid=$(id -u)
+    # 配列で持つ (borders へ key=value を別々の引数として渡すため。文字列だと word splitting に頼る hack になる)
+    borders_args=(active_color=0xffe1e3e4 inactive_color=0xff494d64 width=4.0)
+
+    sb() { echo "→ sketchybar";  launchctl kickstart -k "gui/$uid/homebrew.mxcl.sketchybar"; }
+    bd() { echo "→ borders";     pkill -x borders 2>/dev/null; sleep 0.3; (borders "${borders_args[@]}" >/dev/null 2>&1 &); }
+    as() { echo "→ AeroSpace (フル再起動 → borders/sketchybar trigger も復活)";
+           osascript -e 'quit app "AeroSpace"' 2>/dev/null; sleep 1; open -a AeroSpace; }
+
+    case "{{what}}" in
+      bar)            sb; bd ;;
+      sketchybar|sb)  sb ;;
+      borders|bd)     bd ;;
+      aerospace|as)   as ;;
+      all)            sb; bd; as ;;
+      *) echo "usage: just restart [bar|sketchybar|borders|aerospace|all]" >&2; exit 2 ;;
+    esac
+    echo "✅ 完了"
+
+
+# ─────────────────────────────────────────────
 # secrets (sops 暗号化)
 # ─────────────────────────────────────────────
 
@@ -324,13 +372,20 @@ secrets cmd="edit":
 # セットアップ / その他
 # ─────────────────────────────────────────────
 
+# 入室時の shellHook で pre-commit を .git/hooks に導入 (.pre-commit-config.yaml 生成 + install)。
+# install は新 Mac 初回に一度だけ走らせれば良い (旧 pre-commit-install を統合)。
+# devShell (`just dev`=入室[shellcheck/statix 使用可] / `just dev install`=hook導入のみ[非対話])
+[group('セットアップ')]
+dev what="":
+    #!/usr/bin/env bash
+    set -eu
+    case "{{what}}" in
+      "")      exec nix develop {{flake}} ;;            # 対話シェルに入る
+      install) nix develop {{flake}} --command true ;;  # 入室=hook導入のみで即終了
+      *)       echo "usage: just dev [install]" >&2; exit 2 ;;
+    esac
+
 # remote-env を別ホストで使う
 [group('セットアップ')]
 ssh host:
     nssh {{host}}
-
-# git pre-commit hook をインストール (新Macで一度だけ。内部レシピ)
-# git-hooks.nix の devShell 入室で .pre-commit-config.yaml 生成 + install される
-[private]
-pre-commit-install:
-    nix develop {{justfile_directory()}}/nix --command true
