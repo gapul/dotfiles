@@ -5,6 +5,9 @@
   user,
   ...
 }:
+let
+  c = import ../lib/rose-pine.nix; # 全ツール共通パレット (単一ソース)
+in
 {
   # OS 非依存の home-manager 設定
   # OS 固有の部分は home/darwin.nix / home/linux.nix / home/wsl.nix 等に分離
@@ -428,13 +431,13 @@
     enable = true;
     enableZshIntegration = true;
     defaultCommand = "fd --type f --hidden --follow --exclude .git";
-    # Rosé Pine (main) — 全ツール統一テーマ
+    # Rosé Pine — パレットから生成 (nix/lib/rose-pine.nix)
     defaultOptions = [
-      "--color=fg:#908caa,bg:#191724,hl:#ebbcba"
-      "--color=fg+:#e0def4,bg+:#26233a,hl+:#ebbcba"
-      "--color=border:#403d52,header:#31748f,gutter:#191724"
-      "--color=spinner:#f6c177,info:#9ccfd8,pointer:#c4a7e7"
-      "--color=marker:#eb6f92,prompt:#908caa,selected-bg:#403d52"
+      "--color=fg:#${c.subtle},bg:#${c.base},hl:#${c.rose}"
+      "--color=fg+:#${c.text},bg+:#${c.overlay},hl+:#${c.rose}"
+      "--color=border:#${c.hlMed},header:#${c.pine},gutter:#${c.base}"
+      "--color=spinner:#${c.gold},info:#${c.foam},pointer:#${c.iris}"
+      "--color=marker:#${c.love},prompt:#${c.subtle},selected-bg:#${c.hlMed}"
     ];
   };
 
@@ -534,6 +537,24 @@
     source = ../../configs/terminals/zellij;
     recursive = true;
   };
+  # zellij テーマは nix/lib/rose-pine.nix から生成 (config.kdl は theme "rose-pine" で参照)
+  home.file.".config/zellij/themes/rose-pine.kdl".text = ''
+    themes {
+        rose-pine {
+            fg "#${c.text}"
+            bg "#${c.base}"
+            black "#${c.overlay}"
+            red "#${c.love}"
+            green "#${c.foam}"
+            yellow "#${c.gold}"
+            blue "#${c.pine}"
+            magenta "#${c.iris}"
+            cyan "#${c.foam}"
+            white "#${c.text}"
+            orange "#${c.rose}"
+        }
+    }
+  '';
   # supermaven: sm-agent は $HOME/.supermaven をハードコード参照 (XDG 非対応)。
   # 実体は ~/.local/share/supermaven に置き、$HOME はそこへの symlink にして両立。
   # (丸ごと移動すると agent が config を見失い認証ロストするため symlink が必須)
@@ -568,7 +589,51 @@
     source = ../../configs/cli/yazi;
     recursive = true;
   };
-  home.file.".config/zathura/zathurarc".source = ../../configs/cli/zathura/zathurarc;
+  # zathura: 色は nix/lib/rose-pine.nix から生成 (マジックナンバー排除)
+  home.file.".config/zathura/zathurarc".text = ''
+    # Rosé Pine — colors generated from nix/lib/rose-pine.nix
+    set default-fg                "#${c.text}"
+    set default-bg                "#${c.base}"
+
+    set completion-bg             "#${c.overlay}"
+    set completion-fg             "#${c.text}"
+    set completion-highlight-bg   "#${c.hlMed}"
+    set completion-highlight-fg   "#${c.text}"
+    set completion-group-bg       "#${c.overlay}"
+    set completion-group-fg       "#${c.pine}"
+
+    set statusbar-fg              "#${c.text}"
+    set statusbar-bg              "#${c.surface}"
+
+    set notification-bg           "#${c.surface}"
+    set notification-fg           "#${c.text}"
+    set notification-error-bg     "#${c.surface}"
+    set notification-error-fg     "#${c.love}"
+    set notification-warning-bg   "#${c.surface}"
+    set notification-warning-fg   "#${c.gold}"
+
+    set inputbar-fg               "#${c.text}"
+    set inputbar-bg               "#${c.surface}"
+
+    set recolor-lightcolor        "#${c.base}"
+    set recolor-darkcolor         "#${c.text}"
+
+    set index-fg                  "#${c.text}"
+    set index-bg                  "#${c.base}"
+    set index-active-fg           "#${c.text}"
+    set index-active-bg           "#${c.overlay}"
+
+    set render-loading-bg         "#${c.base}"
+    set render-loading-fg         "#${c.text}"
+
+    set highlight-color           "#${c.gold}"
+    set highlight-active-color    "#${c.iris}"
+
+    set recolor                   false
+
+    set window-title-basename     true
+    set guioptions                ""
+  '';
   home.file.".config/calcurse" = {
     source = ../../configs/cli/calcurse;
     recursive = true;
