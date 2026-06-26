@@ -20,6 +20,8 @@
         { "PackageIdentifier": "JesseDuffield.lazygit" },
         { "PackageIdentifier": "Casey.Just" },
         { "PackageIdentifier": "albertony.npiperelay" },
+        { "PackageIdentifier": "Espanso.Espanso" },
+        { "PackageIdentifier": "nathancorvussolis.corvusskk" },
         { "PackageIdentifier": "Clement.bottom" },
         { "PackageIdentifier": "astral-sh.uv" },
         { "PackageIdentifier": "pnpm.pnpm" },

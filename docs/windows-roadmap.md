@@ -70,20 +70,20 @@ macOS / WSL を主軸にしてきた本 dotfiles を **Windows ネイティブ +
 
 ### 🟡 P2(運用品質)
 
-| # | 内容 |
-|---|---|
-| P2-9 | `Justfile` に `win-bootstrap` / `win-verify` / `win-fmt`(PSScriptAnalyzer)を追加 |
-| P2-10 | `.github/workflows/check.yml` に `runs-on: windows-latest` ジョブ追加。`pwsh -NoProfile -File windows/bootstrap.ps1 -DryRun` と PSScriptAnalyzer |
-| P2-11 | WSL ↔ Windows SSH 鍵共有 — `npiperelay + socat` or `OpenSSH Authentication Agent` サービス |
-| P2-12 | scoop と winget の使い分けルールを `windows/README.md` に明文化 |
+| # | 内容 | 状態 |
+|---|---|---|
+| P2-9 | `Justfile` に `win-bootstrap` / `win-verify` / `win-fmt`(PSScriptAnalyzer)を追加 + `Casey.Just` を apps.json に追加 | ✅ d7156c1 |
+| P2-10 | `check.yml` に windows-latest ジョブ追加(parse / `-DryRun` / PSScriptAnalyzer) + `.gitattributes` で BOM 維持 | ✅ 34640ca (実 CI で SUCCESS) |
+| P2-11 | Windows ssh-agent サービスを bootstrap で auto-start、WSL から `npiperelay + socat` で共有 | ✅ 15de024 |
+| P2-12 | scoop ↔ winget 運用方針を README に明文化(P0-2 と統合) | ✅ 4cdc178 |
 
 ### 🔵 P3(ハイブリッド体験の磨き込み)
 
-| # | 内容 |
-|---|---|
-| P3-13 | `Windows Terminal` プロファイルに pwsh7 / pwsh5 / WSL-Ubuntu / WSL-Ubuntu-24.04 を全部用意。defaultProfile を pwsh7 に |
-| P3-14 | `configs/espanso/` / `configs/ime/` の Windows 移植可否調査 |
-| P3-15 | `docs/CHEATSHEET.md` に Windows セクション(macOS `just rebuild` の Windows 等価) |
+| # | 内容 | 状態 |
+|---|---|---|
+| P3-13 | WT `settings.json`: defaultProfile を pwsh7 に、Windows PowerShell 5.1 を出す、Ubuntu (WSL) は維持 | ✅ (this commit) |
+| P3-14 | espanso は `Espanso.Espanso` を apps.json + match/base.yml symlink で共有。SKK は Windows 専用 `nathancorvussolis.corvusskk` を apps.json に追加(macOS plist は移植不可) | ✅ (this commit) |
+| P3-15 | `docs/CHEATSHEET.md` に Windows セクション追加(macOS コマンドとの対応表、ネイティブ pwsh 関数一覧、SKK の OS 別実装メモ) | ✅ (this commit) |
 
 ---
 
