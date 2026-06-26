@@ -260,7 +260,6 @@
       "maccy"
       "monitorcontrol"
       "mos"
-      "mechvibes"
       "qlmarkdown"
       "corelocationcli"
 
@@ -285,7 +284,6 @@
       "android-studio"
       "flutter"
       "unity-hub"
-      "figma-agent"
       "imhex"
       "trex"
       "deskflow"
