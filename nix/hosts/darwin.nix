@@ -173,6 +173,7 @@
       # ─── 個人 fork (gapul) — fork した人は不要なら削除 ───
       "gapul/openutau"
       "gapul/zrythm"
+      "gapul/azoo-key-skkserv"
     ];
 
     # brew leaves
@@ -253,6 +254,7 @@
       "boring-notch"
       "karabiner-elements"
       "macskk"
+      "gapul/azoo-key-skkserv/azoo-key-skkserv" # azooKey 変換エンジンの skkserv (gapul 自作 tap)
       "shortcat"
 
       # ─── macOS utilities ───
