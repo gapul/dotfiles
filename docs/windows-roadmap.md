@@ -41,12 +41,12 @@ macOS / WSL を主軸にしてきた本 dotfiles を **Windows ネイティブ +
 
 ### 🔴 P0(動かすため必須)
 
-| # | 内容 | 触るファイル |
+| # | 内容 | 状態 |
 |---|---|---|
-| P0-1 | `bootstrap.ps1` の冒頭で `Microsoft.PowerShell`(=7) を winget でインストール。PSReadLine の新機能(`PredictionSource = HistoryAndPlugin`)は 5.1 同梱版だと失敗するため | `windows/bootstrap.ps1` |
-| P0-2 | bootstrap 冪等性: scoop 既導入と winget の衝突回避方針(profile の `Get-Command` 優先順位を決める) | `windows/bootstrap.ps1`, `windows/profile/Microsoft.PowerShell_profile.ps1` |
-| P0-3 | `apps.json` の全 ID 実在を機械的に検証する `verify.ps1` を追加(`winget show --id $id --exact` でループ) | `windows/winget/verify.ps1`(新規) |
-| P0-4 | Nerd Font 自動化 — `DEVCOM.JetBrainsMonoNerdFont` を `apps.json` に追加。SETUP-CHECKLIST の "winget に確実な公式が無い" 注記を解消 | `windows/winget/apps.json`, `windows/SETUP-CHECKLIST.md` |
+| P0-1 | `bootstrap.ps1` の冒頭で `Microsoft.PowerShell`(=7) を winget でインストール。PSReadLine `PredictionSource` は 5.1 同梱版で失敗する。profile も能力検出で 5.1/7 両対応に | ✅ 38efee9, (PSReadLine 検出は P1-8 と同コミット) |
+| P0-2 | scoop ↔ winget 重複の診断ヘルパー `Find-DotfilesToolOverlap` を profile.ps1 に追加 + 「winget 一次 / scoop 補助」運用方針を README に明文化 | ✅ 4cdc178 |
+| P0-3 | `apps.json` の全 ID 実在を機械的に検証する `verify.ps1` を追加 | ✅ 38efee9 |
+| P0-4 | Nerd Font 自動化 — `DEVCOM.JetBrainsMonoNerdFont` を `apps.json` に追加 | ✅ 38efee9 |
 
 実機検証で確定した不確実 ID の正しい名前:
 
@@ -61,12 +61,12 @@ macOS / WSL を主軸にしてきた本 dotfiles を **Windows ネイティブ +
 
 ### 🟠 P1(ネイティブ体験の完成)
 
-| # | 内容 |
-|---|---|
-| P1-5 | `bootstrap.ps1` に `New-DotfilesLink` 関数を追加し、`gh` / `bat` / `yazi` / `nvim` の各設定を `%APPDATA%` / `%LOCALAPPDATA%` 配下に symlink |
-| P1-6 | `configs/cli/yazi/yazi.toml` に `[opener]` の `for = "windows"` セクション追加(`explorer.exe`, `start`, `pwsh -c`) |
-| P1-7 | `configs/editors/nvim/` の 3 か所を `vim.uv.os_uname().sysname == "Windows_NT"` で分岐。SKK 辞書パスは `vim.fn.stdpath("data")` 利用へ |
-| P1-8 | SOPS ネイティブ復号導線 — `$PROFILE` に `sops -d` ラッパー関数 + `$env:SOPS_AGE_KEY_FILE` 設定 |
+| # | 内容 | 状態 |
+|---|---|---|
+| P1-5 | `bootstrap.ps1` に `New-DotfilesLink` 関数追加 + `gh`/`bat`/`yazi`/`nvim`/`zed` symlink + `$PROFILE` を pwsh7/5.1 両方へ + `-DryRun` 対応 | ✅ 5d1f218 |
+| P1-6 | `configs/cli/yazi/yazi.toml` に `[opener]` の `for = "windows"` セクション追加(`start "" "$@"`, `tar -xf`, `nvim`, `mpv`) | ✅ d9485d4 |
+| P1-7 | nvim 3 か所を `vim.fn.has("win32")` 分岐: obsidian.lua follow_url、skkeleton.lua 辞書パス、lazy.lua dev.fallback | ✅ 26e0aa7 |
+| P1-8 | SOPS ネイティブ復号導線 — `$env:SOPS_AGE_KEY_FILE` 設定 + `Get-DotfilesSecret` / `Copy-DotfilesSecret` 関数 | ✅ (this commit) |
 
 ### 🟡 P2(運用品質)
 

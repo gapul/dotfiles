@@ -7,9 +7,14 @@
 # 当面は最低限のエイリアスと PSReadLine 推奨設定のみ。
 
 # === PSReadLine: 履歴検索を強化 ===
+# 5.1 同梱は PSReadLine 2.0 で -PredictionSource を持たないため能力検出。
+# pwsh 7 ($PROFILE) と 5.1 (Documents\WindowsPowerShell\$PROFILE) の両方から
+# 同じファイルが symlink で読まれるので、片方でエラーが出ないようにする。
 if (Get-Module -ListAvailable PSReadLine) {
     Import-Module PSReadLine
-    Set-PSReadLineOption -PredictionSource HistoryAndPlugin
+    if ((Get-Command Set-PSReadLineOption).Parameters.ContainsKey('PredictionSource')) {
+        Set-PSReadLineOption -PredictionSource HistoryAndPlugin
+    }
     Set-PSReadLineOption -EditMode Emacs
     Set-PSReadLineKeyHandler -Key UpArrow -Function HistorySearchBackward
     Set-PSReadLineKeyHandler -Key DownArrow -Function HistorySearchForward
@@ -88,4 +93,42 @@ if (Get-Command starship -ErrorAction SilentlyContinue) {
 # === zoxide があれば使う ===
 if (Get-Command zoxide -ErrorAction SilentlyContinue) {
     Invoke-Expression (& { (zoxide init powershell | Out-String) })
+}
+
+# === SOPS (age 復号) ===
+# 秘密鍵パスを env で固定。sops は SOPS_AGE_KEY_FILE があれば --age オプション不要。
+$env:SOPS_AGE_KEY_FILE = Join-Path $env:USERPROFILE '.config\sops\age\keys.txt'
+
+# `Get-DotfilesSecret 'github.token'` で secrets.yaml から該当値を復号取得。
+# - dotfiles 配下の secrets/secrets.yaml をデフォルト参照、-File で上書き可
+# - sops / 秘密鍵 / ファイル不在は明示的にエラー (UI で何が足りないか分かるように)
+# - 復号結果は単純に文字列で返す (Set-Clipboard などへパイプ前提)
+function Get-DotfilesSecret {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory, Position = 0)][string]$Key,
+        [string]$File = (Join-Path $env:USERPROFILE 'dotfiles\secrets\secrets.yaml')
+    )
+    if (-not (Get-Command sops -ErrorAction SilentlyContinue)) {
+        throw 'sops が PATH に無い。winget install --id SecretsOPerationS.SOPS で導入'
+    }
+    if (-not (Test-Path $env:SOPS_AGE_KEY_FILE)) {
+        throw "age 秘密鍵が無い: $env:SOPS_AGE_KEY_FILE (Bitwarden 等から配置)"
+    }
+    if (-not (Test-Path $File)) {
+        throw "secrets ファイルが無い: $File"
+    }
+    # YAML キー指定は ['a']['b'] 形式。ドット区切りで分解して構築する。
+    $extract = ($Key -split '\.') | ForEach-Object { "['$_']" }
+    sops --decrypt --extract ($extract -join '') $File
+}
+
+# クリップボードに直接 (`Copy-DotfilesSecret github.token` 風)。
+function Copy-DotfilesSecret {
+    [CmdletBinding()]
+    param([Parameter(Mandatory, Position = 0)][string]$Key, [string]$File)
+    $splat = @{ Key = $Key }
+    if ($File) { $splat['File'] = $File }
+    (Get-DotfilesSecret @splat) | Set-Clipboard
+    Write-Host "secret '$Key' をクリップボードへコピーしました。" -ForegroundColor Green
 }
