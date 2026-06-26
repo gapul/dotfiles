@@ -5,7 +5,7 @@
   user,
   ...
 }:
-# restic による暗号化バックアップを launchd で日次実行する (macOS 専用)。
+# restic による暗号化バックアップ + 整合性検証 + 実行監視を launchd で定期実行 (macOS 専用)。
 # バックエンドは既存の rclone google-drive リモート ([[project_xdg_migration]] の rclone_conf)。
 #
 # 役割分担:
@@ -25,6 +25,22 @@ let
   rcloneConf = "${home}/.config/rclone/rclone.conf";
   passwordFile = config.sops.secrets."restic_password".path;
   logFile = "${home}/Library/Logs/restic-backup.log";
+
+  # restic 環境 + macOS 通知シェル関数 (launchd の GUI セッションで osascript が使える)
+  resticEnv = ''
+    export PATH=${
+      lib.makeBinPath [
+        pkgs.restic
+        pkgs.rclone
+        pkgs.coreutils
+        pkgs.jq
+      ]
+    }:$PATH
+    export RESTIC_REPOSITORY="${repository}"
+    export RESTIC_PASSWORD_FILE="${passwordFile}"
+    export RCLONE_CONFIG="${rcloneConf}"
+    notify() { /usr/bin/osascript -e "display notification \"$2\" with title \"$1\"" 2>/dev/null || true; }
+  '';
 
   # バックアップ対象 (再現不可能なユーザーデータのみ)
   backupPaths = [
@@ -50,28 +66,16 @@ let
 
   backupScript = pkgs.writeShellScript "restic-backup" ''
     set -uo pipefail
-    export PATH=${
-      lib.makeBinPath [
-        pkgs.restic
-        pkgs.rclone
-        pkgs.coreutils
-      ]
-    }:$PATH
-    export RESTIC_REPOSITORY="${repository}"
-    export RESTIC_PASSWORD_FILE="${passwordFile}"
-    export RCLONE_CONFIG="${rcloneConf}"
-
+    ${resticEnv}
     mkdir -p "$(dirname ${logFile})"
     exec >>"${logFile}" 2>&1
-    echo "==================== $(date '+%Y-%m-%d %H:%M:%S') start ===================="
+    echo "==================== $(date '+%Y-%m-%d %H:%M:%S') backup start ===================="
 
-    # リモート未到達 (token 未再認証など) なら荒らさず skip
     if ! rclone about google-drive: >/dev/null 2>&1; then
       echo "SKIP: google-drive リモートに到達できません (rclone authorize 未了の可能性)"
       exit 0
     fi
 
-    # 初回はリポジトリを自動 init
     if ! restic snapshots >/dev/null 2>&1; then
       echo "リポジトリが無いので init します"
       restic init || { echo "ERROR: restic init 失敗"; exit 1; }
@@ -83,13 +87,65 @@ let
       ${lib.concatStringsSep " " (map (p: "\"${p}\"") backupPaths)}
     rc=$?
 
-    # 保持世代の整理
     restic forget --prune \
       --keep-daily 7 --keep-weekly 4 --keep-monthly 6 || true
 
-    echo "==================== $(date '+%Y-%m-%d %H:%M:%S') done (rc=$rc) ===================="
+    echo "==================== $(date '+%Y-%m-%d %H:%M:%S') backup done (rc=$rc) ===================="
     exit $rc
   '';
+
+  # 整合性検証 (週次)。破損を検知したら通知
+  checkScript = pkgs.writeShellScript "restic-check" ''
+    set -uo pipefail
+    ${resticEnv}
+    exec >>"${logFile}" 2>&1
+    echo "-------------------- $(date '+%Y-%m-%d %H:%M:%S') check start --------------------"
+    if ! rclone about google-drive: >/dev/null 2>&1; then
+      echo "SKIP: リモート未到達"; exit 0
+    fi
+    if restic check; then
+      echo "check OK"
+    else
+      echo "check FAILED"
+      notify "restic ⚠️ リポジトリ破損の疑い" "restic check 失敗。ログを確認してください"
+    fi
+  '';
+
+  # 実行監視 (日次)。最後の成功スナップショットが古い/無いなら通知
+  monitorScript = pkgs.writeShellScript "restic-monitor" ''
+    set -uo pipefail
+    ${resticEnv}
+    max_age_days=2
+
+    if ! rclone about google-drive: >/dev/null 2>&1; then
+      notify "restic ⚠️ バックアップ未稼働" "google-drive 未認証。rclone authorize drive を実行してください"
+      exit 0
+    fi
+    latest=$(restic snapshots --latest 1 --json 2>/dev/null | jq -r '.[0].time // empty')
+    if [ -z "$latest" ]; then
+      notify "restic ⚠️ スナップショット無し" "まだ一度もバックアップされていません"
+      exit 0
+    fi
+    last_epoch=$(date -j -f "%Y-%m-%dT%H:%M:%S" "$(echo "$latest" | cut -d. -f1)" +%s 2>/dev/null || echo 0)
+    now=$(date +%s)
+    age_days=$(( (now - last_epoch) / 86400 ))
+    if [ "$age_days" -ge "$max_age_days" ]; then
+      notify "restic ⚠️ バックアップが古い" "最後のバックアップは $age_days 日前です"
+    fi
+  '';
+
+  # launchd agent 生成ヘルパ
+  agent = program: schedule: {
+    enable = true;
+    config = {
+      ProgramArguments = [ program ];
+      StartCalendarInterval = schedule;
+      RunAtLoad = false;
+      ProcessType = "Background";
+      LowPriorityIO = true;
+      Nice = 5;
+    };
+  };
 in
 {
   home.packages = [ pkgs.restic ];
@@ -97,23 +153,28 @@ in
   # restic パスフレーズ (sops の defaultSopsFile = secrets/secrets.yaml に格納済み)
   sops.secrets."restic_password".path = "${home}/.config/restic/password";
 
-  # 日次 13:00 (JST) に実行。スリープ中に時刻を跨いだら起床後に実行される。
-  launchd.agents.restic-backup = {
-    enable = true;
-    config = {
-      ProgramArguments = [ "${backupScript}" ];
-      StartCalendarInterval = [
-        {
-          Hour = 13;
-          Minute = 0;
-        }
-      ];
-      RunAtLoad = false;
-      ProcessType = "Background";
-      LowPriorityIO = true;
-      Nice = 5;
-      StandardOutPath = "${home}/Library/Logs/restic-backup.launchd.out.log";
-      StandardErrorPath = "${home}/Library/Logs/restic-backup.launchd.err.log";
-    };
+  launchd.agents = {
+    # 日次 13:00 バックアップ
+    restic-backup = agent "${backupScript}" [
+      {
+        Hour = 13;
+        Minute = 0;
+      }
+    ];
+    # 週次 (日) 14:00 整合性検証
+    restic-check = agent "${checkScript}" [
+      {
+        Weekday = 0;
+        Hour = 14;
+        Minute = 0;
+      }
+    ];
+    # 日次 19:00 実行監視
+    restic-monitor = agent "${monitorScript}" [
+      {
+        Hour = 19;
+        Minute = 0;
+      }
+    ];
   };
 }
