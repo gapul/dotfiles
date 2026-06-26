@@ -123,6 +123,20 @@ function Get-DotfilesSecret {
     sops --decrypt --extract ($extract -join '') $File
 }
 
+# Windows ssh-agent サービスに鍵を登録 (passphrase 入力あり)。
+# WSL は npiperelay 経由でこの agent を共有 (wsl.nix)。鍵を登録すれば WSL 側 ssh
+# でも自動認証が効く (P2-11)。
+function Add-SshKey {
+    [CmdletBinding()]
+    param([string]$KeyPath = (Join-Path $env:USERPROFILE '.ssh\id_ed25519'))
+    if (-not (Test-Path $KeyPath))                              { throw "鍵不在: $KeyPath" }
+    if (-not (Get-Command ssh-add -ErrorAction SilentlyContinue)) { throw 'ssh-add 不在 (OpenSSH Client が無効)' }
+    if ((Get-Service ssh-agent -ErrorAction SilentlyContinue).Status -ne 'Running') {
+        throw 'ssh-agent サービスが停止中 — 管理者で Start-Service ssh-agent'
+    }
+    ssh-add $KeyPath
+}
+
 # クリップボードに直接 (`Copy-DotfilesSecret github.token` 風)。
 function Copy-DotfilesSecret {
     [CmdletBinding()]

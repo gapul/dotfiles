@@ -29,6 +29,7 @@ in
   # WSL 専用 packages
   home.packages = [
     wslview # 旧 wslu の代替 (URL を Windows 既定ブラウザで開く)
+    pkgs.socat # Windows ssh-agent サービスを WSL から共有するための UNIX↔Named Pipe 橋渡し
   ];
 
   # WSL interop の zsh エイリアス・関数 (common の initContent の後に append)
@@ -56,6 +57,21 @@ in
     # code.exe (VS Code on Windows) を WSL 経由で呼ぶラッパー (既に PATH に居れば不要)
     if ! command -v code >/dev/null 2>&1 && [ -x "/mnt/c/Program Files/Microsoft VS Code/bin/code" ]; then
       alias code='/mnt/c/Program\ Files/Microsoft\ VS\ Code/bin/code'
+    fi
+
+    # Windows OpenSSH Authentication Agent を WSL から共有 (P2-11)。
+    # 前提: Windows 側で bootstrap.ps1 が ssh-agent を Auto+Running にし、
+    #       npiperelay.exe が PATH (winget albertony.npiperelay) に居る。
+    # socat で WSL の UNIX domain socket → npiperelay → Named pipe
+    # //./pipe/openssh-ssh-agent をリレーする。ターミナル毎に冪等。
+    if command -v npiperelay.exe >/dev/null 2>&1 && command -v socat >/dev/null 2>&1; then
+      export SSH_AUTH_SOCK="$HOME/.ssh/agent.sock"
+      if ! ss -lnx 2>/dev/null | grep -q "$SSH_AUTH_SOCK"; then
+        rm -f "$SSH_AUTH_SOCK"
+        (setsid socat UNIX-LISTEN:"$SSH_AUTH_SOCK,fork" \
+           EXEC:"npiperelay.exe -ei -s //./pipe/openssh-ssh-agent",nofork \
+           >/dev/null 2>&1 &) >/dev/null 2>&1
+      fi
     fi
   '';
 }

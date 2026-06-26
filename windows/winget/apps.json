@@ -19,6 +19,7 @@
         { "PackageIdentifier": "jqlang.jq" },
         { "PackageIdentifier": "JesseDuffield.lazygit" },
         { "PackageIdentifier": "Casey.Just" },
+        { "PackageIdentifier": "albertony.npiperelay" },
         { "PackageIdentifier": "Clement.bottom" },
         { "PackageIdentifier": "astral-sh.uv" },
         { "PackageIdentifier": "pnpm.pnpm" },
