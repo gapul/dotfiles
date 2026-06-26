@@ -92,7 +92,14 @@ macOS / WSL を主軸にしてきた本 dotfiles を **Windows ネイティブ +
 | P4-16 | profile.ps1 に `Open-Wsl` / `ConvertTo-WslPath` / `ConvertFrom-WslPath` 追加 | ✅ (this commit) |
 | P4-17 | `$env:GHQ_ROOT` を `%USERPROFILE%\Developer` に設定し nvim lazy.lua の dev.path と整合。apps.json に `x-motemen.ghq` 追加 | ✅ (this commit) |
 | P4-18 | Justfile に `win-upgrade` / `win-status`、`status.ps1` で宣言 ↔ 実 install の差分検出 | ✅ (this commit) |
-| P4-19 | verify.ps1 / status.ps1 の `$PSScriptRoot` を param デフォルト式から本体へ移動 (5.1 で空になる挙動の回避) | ✅ (this commit) |
+| P4-19 | verify.ps1 / status.ps1 の `$PSScriptRoot` を param デフォルト式から本体へ移動 (5.1 で空になる挙動の回避) | ✅ 5b00bf7 |
+
+### 🟤 P5(セルフ診断)
+
+| # | 内容 | 状態 |
+|---|---|---|
+| P5-20 | `Test-DotfilesSetup` を profile.ps1 に追加 (macOS `just doctor` 相当)。configs symlink / 環境変数 / 主要ツール / 鍵 ACL / ssh-agent サービスを 5 セクションで集計 | ✅ (this commit) |
+| P5-21 | `STARSHIP_CONFIG` の設定を `Get-Command starship` 条件から外し、ツール未導入でも env だけは先に設定 | ✅ (this commit) |
 
 ---
 
