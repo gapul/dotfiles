@@ -38,5 +38,7 @@ use = "yazi-rs/plugins:toggle-pane"
 rev = "39aaf6d"
 hash = "15e5b67a241172cbb86b8fbf9e63692"
 
-[flavor]
-deps = []
+[[flavor.deps]]
+use = "Mintass/rose-pine"
+rev = "d91f8f2"
+hash = "87da3630653b6d272e43658418599188"

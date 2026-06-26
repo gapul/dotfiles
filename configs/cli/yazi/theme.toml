@@ -1,0 +1,4 @@
+# 全ツール統一テーマ Rosé Pine。flavor は read-only store のため vendor。
+# 更新: Mintass/rose-pine.yazi を再取得して flavors/ に再コピー。
+[flavor]
+dark = "rose-pine"
