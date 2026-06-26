@@ -131,6 +131,7 @@ function Test-DotfilesSetup {
         @{ Label = 'nvim';    Path = "$env:LOCALAPPDATA\nvim";               Target = "$dotfiles\configs\editors\nvim" }
         @{ Label = 'zed';     Path = "$env:APPDATA\Zed";                     Target = "$dotfiles\configs\editors\zed" }
         @{ Label = 'espanso'; Path = "$env:APPDATA\espanso\match\base.yml";  Target = "$dotfiles\configs\espanso\base.yml" }
+        @{ Label = 'wezterm'; Path = "$env:USERPROFILE\.wezterm.lua";        Target = "$dotfiles\configs\terminals\wezterm\wezterm.lua" }
     )
     foreach ($l in $links) {
         $item = Get-Item -LiteralPath $l.Path -Force -ErrorAction SilentlyContinue

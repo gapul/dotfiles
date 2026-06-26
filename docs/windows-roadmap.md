@@ -112,6 +112,13 @@ macOS / WSL を主軸にしてきた本 dotfiles を **Windows ネイティブ +
 | P6-26 | WSL Ubuntu-24.04 で `~/.dotfiles` clone + `bootstrap-wsl.sh` 実行。Step 1 (apt: 既存)/ Step 2 (Nix 2.34.7 確認) スキップ、Step 4 で age 鍵不在停止。`nix shell nixpkgs#socat` 経由で SSH agent 共有を一時実証: socat → npiperelay → `//./pipe/openssh-ssh-agent`、`ssh-add -L` が "The agent has no identities" を返す = **通信成功**(鍵未登録のためエラー) | ✅ (this commit) |
 | P6-27 | wsl.nix の zsh init で WIN_USER から WinGet Packages 経由 npiperelay PATH を組み立てるロジック追加 + 実機検証(`WIN_USER=ispc_5CG54406V7`、`npr_dir=...albertony.npiperelay_...`、`npiperelay.exe exists` 全 ok) | ✅ fb0b11e |
 
+### ⚫ P7(Ghostty 代替: WezTerm 採用)
+
+| # | 内容 | 状態 |
+|---|---|---|
+| P7-28 | Ghostty は macOS/Linux 専用のため Windows native では起動不可。クロスプラットフォーム動作する WezTerm を ghostty 代替として採用。`configs/terminals/wezterm/wezterm.lua` を新規追加 — Ghostty config (`HackGen Console NF` / `Rose Pine` / opacity 0.88 / blur 30 / 閉じる確認なし / Ctrl+C は SIGINT) を Lua に翻訳、OS 分岐で Mac は `macos_window_background_blur`、Windows は `win32_system_backdrop = 'Acrylic'` | ✅ (this commit) |
+| P7-29 | `apps.json` に `wez.wezterm` 追加、`bootstrap.ps1` の ConfigLinks に wezterm を追加(`%USERPROFILE%\.wezterm.lua` へファイル単独 symlink)、`Test-DotfilesSetup` の symlink チェックにも追加(7 件目) | ✅ (this commit) |
+
 ---
 
 ## 実装順
