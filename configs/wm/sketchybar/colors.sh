@@ -15,26 +15,26 @@
 # export BG1=0xff363944
 # export BG2=0xff414550
 
-### Catppuccin
-export BLACK=0xff181926
-export WHITE=0xffcad3f5
-export RED=0xffed8796
-export GREEN=0xffa6da95
-export BLUE=0xff8aadf4
-export YELLOW=0xffeed49f
-export ORANGE=0xfff5a97f
-export MAGENTA=0xffc6a0f6
-export GREY=0xff939ab7
+### Rosé Pine (main) — 全ツール統一テーマ
+export BLACK=0xff191724       # base
+export WHITE=0xffe0def4       # text
+export RED=0xffeb6f92         # love
+export GREEN=0xff9ccfd8       # foam (Rosé Pine に緑が無いので cool 系を緑相当に)
+export BLUE=0xff31748f        # pine
+export YELLOW=0xfff6c177      # gold
+export ORANGE=0xffebbcba      # rose
+export MAGENTA=0xffc4a7e7     # iris
+export GREY=0xff6e6a86        # muted
 export TRANSPARENT=0x00000000
-export BG0=0xff1e1e2e
-export BG1=0x603c3e4f
-export BG2=0x60494d64
+export BG0=0xff1f1d2e         # surface (bar bg)
+export BG1=0x6026233a         # overlay (alpha 60)
+export BG2=0x60403d52         # highlight med (alpha 60)
 
-export BATTERY_1=0xffa6da95
-export BATTERY_2=0xffeed49f
-export BATTERY_3=0xfff5a97f
-export BATTERY_4=0xffee99a0
-export BATTERY_5=0xffed8796
+export BATTERY_1=0xff9ccfd8   # foam
+export BATTERY_2=0xfff6c177   # gold
+export BATTERY_3=0xffebbcba   # rose
+export BATTERY_4=0xffeb6f92   # love
+export BATTERY_5=0xffeb6f92   # love (critical)
 
 # General bar colors
 export BAR_COLOR=$BG0
