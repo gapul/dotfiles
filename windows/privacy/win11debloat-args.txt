@@ -1,0 +1,45 @@
+# Raphire/Win11Debloat の CLI 引数 (1 行 1 引数、空行 / `#` コメント可)
+# 利用可能な引数: https://github.com/Raphire/Win11Debloat#options
+#
+# 設計方針:
+#   - プライバシー優先 (テレメトリ / Bing / Recall / Copilot 無効)
+#   - UI tweak は macOS Finder 設定と整合 (拡張子表示 / 隠しフォルダ表示)
+#   - UWP プリインアプリ削除 (ゲーム / Solitaire / Phone Link 等)
+#   - LockScreen / SuggestedContent も静粛化
+
+# 必須: 確認プロンプト無効化
+-Silent
+
+# UWP プリインアプリ削除 (Raphire/Win11Debloat 標準セット)
+-RemoveApps
+
+# テレメトリ無効
+-DisableTelemetry
+
+# Bing 検索 / Web 検索をタスクバー検索から無効化
+-DisableBing
+
+# Copilot 削除 (UWP プリインアプリ + 起動キー無効)
+-DisableCopilot
+
+# Recall 無効化 (Windows 11 24H2 以降の AI 機能)
+-DisableRecall
+
+# ロック画面のヒント / おすすめ無効
+-DisableLockscreenTips
+
+# スタートメニュー / 設定アプリの推奨 / おすすめ無効
+-DisableSuggestions
+
+# Sticky keys のプロンプト無効 (Shift x5 で出るあれ)
+-DisableSticky
+
+# エクスプローラー: 隠しフォルダ表示 (macOS の AppleShowAllFiles と整合)
+-ShowHiddenFolders
+
+# エクスプローラー: 拡張子表示 (macOS の AppleShowAllExtensions と整合)
+-ShowKnownFileExt
+
+# エクスプローラー: ホーム / ギャラリー非表示 (シンプル化)
+-HideHome
+-HideGallery

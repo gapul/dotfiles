@@ -9,7 +9,9 @@
 #   4. Windows Terminal settings.json を生成 (WSL user/distro 注入)
 #   4.5 configs/ の各ツール config を %APPDATA% / %LOCALAPPDATA% へ symlink
 #   5. (任意) age / SSH 鍵 paste 待ち
+#   5.5 ssh-agent サービスを Auto+Running に
 #   6. git の global config
+#   7. プライバシー / 標準機能の declarative 適用 (-SkipPrivacy で省略可)
 #
 # -DryRun で symlink 作成等の副作用を出さず計画だけ表示。
 #
@@ -25,7 +27,9 @@ param(
     [string]$GitUser   = 'gapul',
     [string]$GitEmail  = '92638132+gapul@users.noreply.github.com',
     # 実害なしでステップを表示するだけ (configs symlink 検証等)
-    [switch]$DryRun
+    [switch]$DryRun,
+    # プライバシー適用 (Win11Debloat + WinUtil) を skip
+    [switch]$SkipPrivacy
 )
 
 $ErrorActionPreference = 'Stop'
@@ -228,6 +232,26 @@ if (Get-Command git -ErrorAction SilentlyContinue) {
         git config --global push.autoSetupRemote true
         Log 'git global config 設定済'
     }
+}
+
+# 7. プライバシー / 標準機能の declarative 適用 (Win11Debloat + WinUtil)
+#    - Win11Debloat: CLI 完結 (引数は windows/privacy/win11debloat-args.txt)
+#    - WinUtil: GUI 起動 (設定は windows/privacy/winutil-config.json を Import)
+#    -SkipPrivacy で個別実行 (just win-privacy) に振替可能。
+if (-not $SkipPrivacy) {
+    $applyPs1 = Join-Path $WindowsDir 'privacy\apply.ps1'
+    if (Test-Path $applyPs1) {
+        if ($DryRun) {
+            & $applyPs1 -DryRun
+        } else {
+            Log 'プライバシー適用 (Win11Debloat + WinUtil) — skip するには -SkipPrivacy'
+            & $applyPs1
+        }
+    } else {
+        Err "$applyPs1 が無い (skip)"
+    }
+} else {
+    Log 'SkipPrivacy 指定: just win-privacy で後から適用可'
 }
 
 Log ''

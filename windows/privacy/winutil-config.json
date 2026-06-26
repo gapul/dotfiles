@@ -1,0 +1,20 @@
+{
+  "_comment": "ChrisTitusTech/winutil の Settings → Export Config で出力される形式。実機で GUI 起動して選択 → export → このファイルを置き換えてコミット。tweaks: 適用する Tweak ID、feature: 有効化する Feature、install: winget install (apps.json と重複するため空)。",
+  "tweaks": [
+    "WPFTweaksTele",
+    "WPFTweaksAH",
+    "WPFTweaksLoc",
+    "WPFTweaksBingSearch",
+    "WPFTweaksWifi",
+    "WPFTweaksRemoveCopilot",
+    "WPFTweaksRemoveHomeGallery",
+    "WPFTweaksEndTaskOnTaskbar",
+    "WPFTweaksRightClickMenu",
+    "WPFTweaksRP",
+    "WPFTweaksServices",
+    "WPFTweaksStorage",
+    "WPFTweaksDisableLMS1"
+  ],
+  "feature": [],
+  "install": []
+}
