@@ -238,6 +238,7 @@
       "tor-browser"
       "zen"
       "pear-desktop"
+      "safari-technology-preview"
 
       # ─── Communication & Sync ───
       "beeper"
@@ -288,6 +289,7 @@
       "trex"
       "deskflow"
       "deskreen"
+      "ollama-app" # ローカル LLM ランタイム GUI (CLI 同梱)
 
       # ─── Creative — Design / 2D ───
       "affinity"
@@ -302,6 +304,7 @@
       "fontgoggles"
       "pika"
       "adobe-creative-cloud"
+      "sf-symbols" # Apple SF Symbols カタログ
 
       # ─── Creative — Audio / Music ───
       "audacity"
@@ -315,6 +318,8 @@
       "openutau"
       "pd"
       "reaper"
+      "surge-xt" # シンセ standalone/プラグイン (.pkg cask)
+      "gapul/zrythm/zrythm" # DAW (gapul 自作 tap)
       "vcv-rack"
       "voicevox"
 
@@ -324,6 +329,8 @@
       "obs"
       "gyroflow"
       "touchdesigner"
+      "cavalry" # 2D モーショングラフィックス
+      "opentoonz" # 2D アニメーション (.pkg cask)
 
       # ─── 3D / CAD ───
       "blender"
