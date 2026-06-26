@@ -117,6 +117,7 @@
         modules = [
           ./home/common.nix
           ./home/darwin.nix
+          ./home/restic-backup.nix
           sops-nix.homeManagerModules.sops
         ];
       };
