@@ -9,6 +9,7 @@
         { "PackageIdentifier": "Anthropic.ClaudeCode" },
         { "PackageIdentifier": "Microsoft.PowerShell" },
         { "PackageIdentifier": "Microsoft.WindowsTerminal" },
+        { "PackageIdentifier": "wez.wezterm" },
         { "PackageIdentifier": "Neovim.Neovim" },
         { "PackageIdentifier": "Starship.Starship" },
         { "PackageIdentifier": "ajeetdsouza.zoxide" },

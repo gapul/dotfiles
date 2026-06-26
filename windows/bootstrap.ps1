@@ -166,7 +166,9 @@ $ConfigLinks = @(
     @{ Label = 'nvim';    Src = (Join-Path $DotfilesDir 'configs\editors\nvim');     Dst = (Join-Path $env:LOCALAPPDATA 'nvim') },
     @{ Label = 'zed';     Src = (Join-Path $DotfilesDir 'configs\editors\zed');      Dst = (Join-Path $env:APPDATA      'Zed') },
     # espanso: match/base.yml をファイル単独で symlink。macOS と同じ matches を再利用。
-    @{ Label = 'espanso'; Src = (Join-Path $DotfilesDir 'configs\espanso\base.yml'); Dst = (Join-Path $env:APPDATA      'espanso\match\base.yml') }
+    @{ Label = 'espanso'; Src = (Join-Path $DotfilesDir 'configs\espanso\base.yml'); Dst = (Join-Path $env:APPDATA      'espanso\match\base.yml') },
+    # wezterm: ~/.wezterm.lua を symlink (WezTerm は ~/.config/wezterm/ より優先)。
+    @{ Label = 'wezterm'; Src = (Join-Path $DotfilesDir 'configs\terminals\wezterm\wezterm.lua'); Dst = (Join-Path $env:USERPROFILE '.wezterm.lua') }
 )
 foreach ($link in $ConfigLinks) {
     New-DotfilesLink -Source $link.Src -Destination $link.Dst -Label $link.Label
