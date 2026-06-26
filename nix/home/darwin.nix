@@ -102,6 +102,12 @@
     source = ../../configs/wm/sketchybar;
     recursive = true;
   };
+  # borders は AeroSpace から引数なし `borders` で起動され bordersrc を実行する。
+  # executable=true でないと borders が実行できない (設定の単一ソース)。
+  home.file.".config/borders/bordersrc" = {
+    source = ../../configs/wm/borders/bordersrc;
+    executable = true;
+  };
 
   # karabiner は dotfiles 直接書き戻し (mkOutOfStoreSymlink)
   home.file.".config/karabiner".source =

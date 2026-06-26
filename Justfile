@@ -324,21 +324,24 @@ gc-deep:
 # ─────────────────────────────────────────────
 
 # NOTE: aerospace はフル再起動 = ワークスペース配置がリセットされるので明示指定 (aerospace/all) 時のみ。
-#       borders は bordersrc を持たず aerospace.toml の after-startup-command 起動なので、
-#       単体再起動時の引数はそちら (configs/wm/aerospace/aerospace.toml) と揃える (版ズレ防止)。
+#       borders の設定は ~/.config/borders/bordersrc に集約済 (configs/wm/borders/bordersrc が単一ソース)
+#       なので引数なし `borders` で起動すれば bordersrc が読まれる。
 # メニューバー/WM 系を再起動 (`just restart`=バー周り / 個別: sketchybar|borders|aerospace / all=全部)
 [group('サービス')]
 restart what="bar":
     #!/usr/bin/env bash
     set -u
     uid=$(id -u)
-    # 配列で持つ (borders へ key=value を別々の引数として渡すため。文字列だと word splitting に頼る hack になる)
-    borders_args=(active_color=0xffe1e3e4 inactive_color=0xff494d64 width=4.0)
 
     sb() { echo "→ sketchybar";  launchctl kickstart -k "gui/$uid/homebrew.mxcl.sketchybar"; }
-    bd() { echo "→ borders";     pkill -x borders 2>/dev/null; sleep 0.3; (borders "${borders_args[@]}" >/dev/null 2>&1 &); }
-    as() { echo "→ AeroSpace (フル再起動 → borders/sketchybar trigger も復活)";
-           osascript -e 'quit app "AeroSpace"' 2>/dev/null; sleep 1; open -a AeroSpace; }
+    bd() { echo "→ borders";     pkill -x borders 2>/dev/null; sleep 0.3; (borders >/dev/null 2>&1 &); }
+    as() {
+      echo "→ AeroSpace (フル再起動 → borders/sketchybar trigger も復活)"
+      osascript -e 'quit app "AeroSpace"' 2>/dev/null
+      # quit 完了を最大 4s ポーリングで待つ (sleep 固定だと終了が遅いと open が空振りする)
+      for _ in $(seq 1 20); do pgrep -fq AeroSpace.app || break; sleep 0.2; done
+      open -a AeroSpace
+    }
 
     case "{{what}}" in
       bar)            sb; bd ;;

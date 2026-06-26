@@ -6,7 +6,8 @@
 after-startup-command = [
     'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=$AEROSPACE_FOCUSED_WORKSPACE',
     # Hyprland風のアクティブウィンドウ枠（要: brew install FelixKratz/formulae/borders）
-    'exec-and-forget borders active_color=0xffe1e3e4 inactive_color=0xff494d64 width=4.0',
+    # 引数は ~/.config/borders/bordersrc に集約 (configs/wm/borders/bordersrc が単一ソース)
+    'exec-and-forget borders',
 ]
 
 # Start AeroSpace at login
