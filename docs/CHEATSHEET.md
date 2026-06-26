@@ -118,7 +118,8 @@ eza / bat が ls / cat を置き換え済(home-manager が auto-alias)。
 | `ga` `gc` `gp` `gl` | add/commit/push/pull のエイリアス |
 | `lazygit` | git TUI |
 | `lazyjj` | jj(jujutsu) TUI |
-| `just pre-commit-install` | gitleaks hook を `.git/hooks/pre-commit` に |
+| `just dev install` | pre-commit hook を `.git/hooks/pre-commit` に (新 Mac 初回) |
+| `just dev` | devShell に入る (shellcheck/statix 使用可) |
 
 ---
 
