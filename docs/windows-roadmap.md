@@ -117,7 +117,8 @@ macOS / WSL を主軸にしてきた本 dotfiles を **Windows ネイティブ +
 | # | 内容 | 状態 |
 |---|---|---|
 | P7-28 | Ghostty は macOS/Linux 専用のため Windows native では起動不可。クロスプラットフォーム動作する WezTerm を ghostty 代替として採用。`configs/terminals/wezterm/wezterm.lua` を新規追加 — Ghostty config (`HackGen Console NF` / `Rose Pine` / opacity 0.88 / blur 30 / 閉じる確認なし / Ctrl+C は SIGINT) を Lua に翻訳、OS 分岐で Mac は `macos_window_background_blur`、Windows は `win32_system_backdrop = 'Acrylic'` | ✅ (this commit) |
-| P7-29 | `apps.json` に `wez.wezterm` 追加、`bootstrap.ps1` の ConfigLinks に wezterm を追加(`%USERPROFILE%\.wezterm.lua` へファイル単独 symlink)、`Test-DotfilesSetup` の symlink チェックにも追加(7 件目) | ✅ (this commit) |
+| P7-29 | `apps.json` に `wez.wezterm` 追加、`bootstrap.ps1` の ConfigLinks に wezterm を追加(`%USERPROFILE%\.wezterm.lua` へファイル単独 symlink)、`Test-DotfilesSetup` の symlink チェックにも追加(7 件目) | ✅ 1b4314e |
+| P7-30 | `status.ps1 -ShowExtra` で実機の EXTRA 30 個を確認 → 意図的 install 16 個を apps.json に追加(WSL/Terminal/WM/Launcher/Browser/Sync/Util/Game 系)、システム依存・OEM・バージョン断片は宣言外として除外。INSTALLED 42/45 → 58/61、EXTRA 30 → 14 | ✅ (this commit) |
 
 ---
 
