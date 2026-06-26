@@ -193,6 +193,25 @@ $SshPriv = Join-Path $env:USERPROFILE '.ssh\id_ed25519'
 if (Test-Path $SshPriv) { Protect-KeyFile $SshPriv }
 else { Err "SSH 秘密鍵 ($SshPriv) が未配置 — Bitwarden 等から配置後に本スクリプト再実行で ACL 設定" }
 
+# 5.5 Windows OpenSSH Authentication Agent を auto start。
+#     WSL 側 (nix/home/wsl.nix) で npiperelay 経由 socat フォワードして Windows
+#     ssh-agent を共有する仕組みの前提。Set-Service は管理者要なので非管理時は
+#     warn 留め (鍵単発利用なら省略可)。
+$sshAgent = Get-Service ssh-agent -ErrorAction SilentlyContinue
+if ($sshAgent) {
+    if ($DryRun) {
+        Dry "Set-Service ssh-agent -StartupType Automatic; Start-Service ssh-agent"
+    } else {
+        try {
+            if ($sshAgent.StartType -ne 'Automatic') { Set-Service ssh-agent -StartupType Automatic }
+            if ($sshAgent.Status   -ne 'Running')   { Start-Service ssh-agent }
+            Log "ssh-agent: $((Get-Service ssh-agent).Status) / $((Get-Service ssh-agent).StartType)"
+        } catch {
+            Err "ssh-agent サービス起動失敗 (管理者で再実行): $($_.Exception.Message)"
+        }
+    }
+}
+
 # 6. git global config (gh/git は winget で別途 install されてる前提)
 if (Get-Command git -ErrorAction SilentlyContinue) {
     if ($DryRun) {
