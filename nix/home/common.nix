@@ -286,7 +286,6 @@ in
     # ─── Homebrew から移行した CLI (段階1: git周辺 + 基本) ───
     gh # GitHub CLI
     ghq # repo クローン管理
-    lazygit # git TUI
     lazyjj # jujutsu TUI
     jq # JSON プロセッサ
     fd # find 代替 (fzf defaultCommand でも使用)
@@ -406,6 +405,24 @@ in
     themes."rose-pine" = {
       src = ../../configs/cli/bat/themes;
       file = "rose-pine.tmTheme";
+    };
+  };
+
+  # lazygit: バイナリ + Rosé Pine テーマ (色は nix/lib/rose-pine.nix から)
+  programs.lazygit = {
+    enable = true;
+    settings.gui.theme = {
+      activeBorderColor = [
+        "#${c.iris}"
+        "bold"
+      ];
+      inactiveBorderColor = [ "#${c.muted}" ];
+      optionsTextColor = [ "#${c.foam}" ];
+      selectedLineBgColor = [ "#${c.overlay}" ];
+      cherryPickedCommitBgColor = [ "#${c.hlMed}" ];
+      cherryPickedCommitFgColor = [ "#${c.iris}" ];
+      unstagedChangesColor = [ "#${c.love}" ];
+      defaultFgColor = [ "#${c.text}" ];
     };
   };
 
