@@ -118,6 +118,7 @@
           ./home/common.nix
           ./home/darwin.nix
           ./home/restic-backup.nix
+          ./home/maintenance.nix
           sops-nix.homeManagerModules.sops
         ];
       };
