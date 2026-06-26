@@ -83,7 +83,16 @@ macOS / WSL を主軸にしてきた本 dotfiles を **Windows ネイティブ +
 |---|---|---|
 | P3-13 | WT `settings.json`: defaultProfile を pwsh7 に、Windows PowerShell 5.1 を出す、Ubuntu (WSL) は維持 | ✅ (this commit) |
 | P3-14 | espanso は `Espanso.Espanso` を apps.json + match/base.yml symlink で共有。SKK は Windows 専用 `nathancorvussolis.corvusskk` を apps.json に追加(macOS plist は移植不可) | ✅ (this commit) |
-| P3-15 | `docs/CHEATSHEET.md` に Windows セクション追加(macOS コマンドとの対応表、ネイティブ pwsh 関数一覧、SKK の OS 別実装メモ) | ✅ (this commit) |
+| P3-15 | `docs/CHEATSHEET.md` に Windows セクション追加(macOS コマンドとの対応表、ネイティブ pwsh 関数一覧、SKK の OS 別実装メモ) | ✅ 0c3197b |
+
+### 🟣 P4(磨き込みの続き)
+
+| # | 内容 | 状態 |
+|---|---|---|
+| P4-16 | profile.ps1 に `Open-Wsl` / `ConvertTo-WslPath` / `ConvertFrom-WslPath` 追加 | ✅ (this commit) |
+| P4-17 | `$env:GHQ_ROOT` を `%USERPROFILE%\Developer` に設定し nvim lazy.lua の dev.path と整合。apps.json に `x-motemen.ghq` 追加 | ✅ (this commit) |
+| P4-18 | Justfile に `win-upgrade` / `win-status`、`status.ps1` で宣言 ↔ 実 install の差分検出 | ✅ (this commit) |
+| P4-19 | verify.ps1 / status.ps1 の `$PSScriptRoot` を param デフォルト式から本体へ移動 (5.1 で空になる挙動の回避) | ✅ (this commit) |
 
 ---
 

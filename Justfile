@@ -407,6 +407,16 @@ win-bootstrap *flags:
 win-verify *flags:
     pwsh.exe -NoProfile -ExecutionPolicy Bypass -File windows/winget/verify.ps1 {{flags}}
 
+# apps.json (宣言) と winget list (実 install) の差分。MISSING があれば exit 1
+[group('Windows')]
+win-status *flags:
+    pwsh.exe -NoProfile -ExecutionPolicy Bypass -File windows/winget/status.ps1 {{flags}}
+
+# winget 経由で入れた全 app をアップグレード (--silent --accept-*)
+[group('Windows')]
+win-upgrade:
+    pwsh.exe -NoProfile -Command "winget upgrade --all --silent --accept-package-agreements --accept-source-agreements"
+
 # Windows 関連 .ps1 を PSScriptAnalyzer で lint (Warning 以上で exit 1)
 [group('Windows')]
 win-fmt:
