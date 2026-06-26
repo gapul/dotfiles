@@ -1,6 +1,0 @@
-# 公式 flavor (yazi-rs/flavors) を使用。read-only store のため ya pkg でなく
-# configs/cli/yazi/flavors/ に vendor し home-manager で配置。
-# 更新: yazi-rs/flavors を再 clone して flavors/ に再コピー。
-# アイコンは flavor / yazi 既定のものをそのまま使う (カスタム [icon] は付けない)。
-[flavor]
-dark = "catppuccin-mocha"

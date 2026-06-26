@@ -28,7 +28,5 @@ use = "yazi-rs/plugins:smart-paste"
 rev = "39aaf6d"
 hash = "3f8d49413bc8691b4c652eb417a20178"
 
-[[flavor.deps]]
-use = "yazi-rs/flavors:catppuccin-mocha"
-rev = "0f9204b"
-hash = "7dfe41c9c3d9be76da8a844263d0bbed"
+[flavor]
+deps = []
