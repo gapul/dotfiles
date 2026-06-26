@@ -45,7 +45,7 @@ gen action="" a="" b="":
         ;;
       diff)  # 世代間のパッケージ差分 (デフォルト: 直前 → 現在)
         a="{{a}}"; b="{{b}}"; a="${a:-$((cur-1))}"; b="${b:-$cur}"
-        echo "世代 $a → $b のパッケージ差分:"
+        echo "Package diff: generation $a -> $b"
         nix store diff-closures "$p/system-$a-link" "$p/system-$b-link"
         ;;
       *) echo "usage: just gen [diff [a] [b]]" >&2; exit 2 ;;
@@ -57,10 +57,10 @@ rollback gen="":
     #!/usr/bin/env bash
     set -euo pipefail
     if [ -n "{{gen}}" ]; then
-      echo "→ 世代 {{gen}} へ切替"
+      echo "-> Switching to generation {{gen}}"
       sudo darwin-rebuild --switch-generation {{gen}}
     else
-      echo "→ 直前の世代へロールバック"
+      echo "-> Rolling back to previous generation"
       sudo darwin-rebuild --rollback
     fi
 
@@ -81,7 +81,7 @@ upgrade:
     mas upgrade
     just sketchybar-font
     just update
-    @echo "Determinate Nix 本体は手動で: sudo /usr/local/bin/determinate-nixd upgrade"
+    @echo "Determinate Nix runtime: upgrade manually -> sudo /usr/local/bin/determinate-nixd upgrade"
 
 # sketchybar-app-font を最新リリースへ更新 (.ttf と icon_map.sh を同一版で揃える)
 # upgrade から自動で呼ばれる内部レシピ (`just sketchybar-font` 単体実行も可)
@@ -98,7 +98,7 @@ sketchybar-font:
     if [ "$tag" = "v$cur" ]; then
       exit 0 # 既に最新。何も出力しない (upgrade のノイズ削減)
     fi
-    echo "sketchybar-app-font: $cur → $tag へ更新"
+    echo "sketchybar-app-font: updating $cur -> $tag"
     # .ttf と icon_map.sh を同一リリースから取得 (版ズレ防止)
     gh release download "$tag" --repo "$repo" --pattern sketchybar-app-font.ttf --output "$ttf"  --clobber
     gh release download "$tag" --repo "$repo" --pattern icon_map.sh           --output "$map"  --clobber
@@ -109,7 +109,7 @@ sketchybar-font:
     sed -i "" -E '/pname = "sketchybar-app-font"/{n;s/version = "[0-9.]+"/version = "'"${tag#v}"'"/;}' "$dir/nix/hosts/darwin.nix"
     # flake が見えるよう git に追跡させる (commit は手動)
     git -C "$dir" add "$ttf" "$map" "$dir/nix/hosts/darwin.nix"
-    echo "✅ 更新完了 ($tag)。反映は just rebuild (upgrade 経由なら自動)"
+    echo "✅ Updated ($tag). Apply with: just rebuild (automatic when run via upgrade)"
 
 
 # ─────────────────────────────────────────────
@@ -133,23 +133,23 @@ check what="":
 search query scope="":
     #!/usr/bin/env bash
     set -u
-    if [ -z "{{query}}" ]; then echo "usage: just search <名前> [all]" >&2; exit 2; fi
-    case "{{scope}}" in ""|all) ;; *) echo "usage: just search <名前> [all]" >&2; exit 2 ;; esac
+    if [ -z "{{query}}" ]; then echo "usage: just search <name> [all]" >&2; exit 2; fi
+    case "{{scope}}" in ""|all) ;; *) echo "usage: just search <name> [all]" >&2; exit 2 ;; esac
     echo "━━━ Homebrew (formula + cask) ━━━"
     brew search {{query}} 2>&1 || true
     echo ""
-    echo "━━━ nixpkgs (ローカル評価) ━━━"
+    echo "━━━ nixpkgs (local eval) ━━━"
     # nh search は search.nixos.org API 依存で不安定なため nix search を使用
     # (eval キャッシュが効くので 2 回目以降は数秒。警告は抑制)
-    nix search nixpkgs {{query}} 2>/dev/null || echo "  (該当なし)"
+    nix search nixpkgs {{query}} 2>/dev/null || echo "  (none)"
     # all のときだけ ecosystem 限定 (cargo / npm) も横断
     if [ "{{scope}}" = "all" ]; then
       echo ""
       echo "━━━ crates.io (cargo) ━━━"
-      cargo search {{query}} 2>&1 | head -10 || echo "  (該当なし)"
+      cargo search {{query}} 2>&1 | head -10 || echo "  (none)"
       echo ""
       echo "━━━ npm registry ━━━"
-      npm search {{query}} 2>&1 | head -10 || echo "  (該当なし)"
+      npm search {{query}} 2>&1 | head -10 || echo "  (none)"
     fi
 
 # 更新可能なものを一覧 (upgrade 前のプレビュー。brew + mas + flake inputs。非破壊)
@@ -158,22 +158,22 @@ outdated:
     #!/usr/bin/env bash
     set -u
     echo "━━━ Homebrew (formula + cask, --greedy) ━━━"
-    o=$(brew outdated --greedy 2>/dev/null); [ -n "$o" ] && echo "$o" || echo "  (最新)"
+    o=$(brew outdated --greedy 2>/dev/null); [ -n "$o" ] && echo "$o" || echo "  (up to date)"
     echo ""
     echo "━━━ Mac App Store ━━━"
-    o=$(mas outdated 2>/dev/null); [ -n "$o" ] && echo "$o" || echo "  (最新)"
+    o=$(mas outdated 2>/dev/null); [ -n "$o" ] && echo "$o" || echo "  (up to date)"
     echo ""
-    echo "━━━ flake inputs (lock の最終更新日) ━━━"
+    echo "━━━ flake inputs (lock last-modified) ━━━"
     if command -v jq >/dev/null; then
       nix flake metadata {{flake}} --json 2>/dev/null \
         | jq -r '.locks.nodes | to_entries[] | select(.value.locked.lastModified) | "\(.key)\t\(.value.locked.lastModified)"' \
         | while IFS=$'\t' read -r name ts; do printf '  %-22s %s\n' "$name" "$(date -r "$ts" '+%Y-%m-%d')"; done \
         | sort -k2
     else
-      echo "  (jq 未 install、skip)"
+      echo "  (jq not installed, skip)"
     fi
     echo ""
-    echo "→ 更新: just upgrade (全部) / just update <input> (個別)"
+    echo "-> Update: just upgrade (all) / just update <input> (individual)"
 
 # 環境ヘルスチェック (Determinate upgrade 後などに走らせる)
 [group('確認')]
@@ -184,20 +184,20 @@ doctor:
     check() { if eval "$2"; then echo "  ✅ $1"; pass=$((pass+1)); else echo "  ❌ $1"; fail=$((fail+1)); fi; }
     # warn: 満たさなくても fail にしない情報系チェック ($3 = 未達時メッセージ)
     warn() { if eval "$2"; then echo "  ✅ $1"; else echo "  ⚠️  $3"; fi; }
-    echo "== /nix マウント =="
-    check "/nix がマウントされてる" 'mount | grep -q " on /nix "'
-    check "/etc/fstab に noauto が無い (Login Items 対策)" '! grep "/nix" /etc/fstab | grep -q noauto'
-    check "/nix が復号化済 (FileVault: No)" '! diskutil apfs list 2>/dev/null | grep -A 6 "Nix Store" | grep -q "FileVault: *Yes"'
+    echo "== /nix mount =="
+    check "/nix is mounted" 'mount | grep -q " on /nix "'
+    check "/etc/fstab has no noauto (Login Items fix)" '! grep "/nix" /etc/fstab | grep -q noauto'
+    check "/nix decrypted (FileVault: No)" '! diskutil apfs list 2>/dev/null | grep -A 6 "Nix Store" | grep -q "FileVault: *Yes"'
     echo "== Login Items =="
-    check "AeroSpace 登録済" 'osascript -e "tell application \"System Events\" to get name of login items" | grep -q AeroSpace'
-    check "Ghostty 登録済" 'osascript -e "tell application \"System Events\" to get name of login items" | grep -q Ghostty'
-    echo "== 主要アプリ実行中 =="
+    check "AeroSpace registered" 'osascript -e "tell application \"System Events\" to get name of login items" | grep -q AeroSpace'
+    check "Ghostty registered" 'osascript -e "tell application \"System Events\" to get name of login items" | grep -q Ghostty'
+    echo "== Key apps running =="
     check "sketchybar" 'pgrep -fq "/opt/homebrew/opt/sketchybar/bin/sketchybar"'
     check "AeroSpace" 'pgrep -fq AeroSpace.app'
     check "Karabiner Core-Service" 'pgrep -fq Karabiner-Core-Service'
     echo "== dotfiles =="
-    warn "作業ツリー clean (未 commit 無し)" '[[ -z "$(git -C {{justfile_directory()}} status --short)" ]]' "未 commit 変更あり → commit/push 推奨"
-    check "age 秘密鍵存在" '[[ -f ~/.config/sops/age/keys.txt ]]'
+    warn "Working tree clean (no uncommitted)" '[[ -z "$(git -C {{justfile_directory()}} status --short)" ]]' "Uncommitted changes -> commit/push recommended"
+    check "age private key present" '[[ -f ~/.config/sops/age/keys.txt ]]'
     echo
     # バー/WM 系が落ちていれば復旧導線を出す (restart レシピへ)
     down=()
@@ -205,7 +205,7 @@ doctor:
     pgrep -fq AeroSpace.app || down+=(aerospace)
     pgrep -xq borders || down+=(borders)
     if [ ${#down[@]} -gt 0 ]; then
-      echo "⚠️  停止中: ${down[*]} → 復旧: just restart (個別: just restart <名前>)"
+      echo "⚠️  Down: ${down[*]} -> recover: just restart (individual: just restart <name>)"
       echo
     fi
     echo "Result: $pass passed, $fail failed"
@@ -228,10 +228,10 @@ fmt:
 gc:
     #!/usr/bin/env bash
     set -u
-    echo "━━━ Nix store (古い世代削除) ━━━"
+    echo "━━━ Nix store (remove old generations) ━━━"
     nh clean all --keep 5 --keep-since 7d || true
     echo ""
-    echo "━━━ Homebrew (downloads + 古い version) ━━━"
+    echo "━━━ Homebrew (downloads + old versions) ━━━"
     brew cleanup --prune=all 2>&1 | tail -3 || true
     echo ""
     echo "━━━ pnpm store ━━━"
@@ -243,14 +243,14 @@ gc:
     echo "━━━ npm cache ━━━"
     command -v npm >/dev/null && npm cache verify 2>&1 | tail -2 || true
     echo ""
-    echo "━━━ cargo (大物 build artifacts のみ、registry 維持) ━━━"
-    command -v cargo-cache >/dev/null && cargo cache --autoclean 2>&1 | tail -2 || echo "  (cargo-cache 未 install、skip)"
+    echo "━━━ cargo (large build artifacts only, keep registry) ━━━"
+    command -v cargo-cache >/dev/null && cargo cache --autoclean 2>&1 | tail -2 || echo "  (cargo-cache not installed, skip)"
     echo ""
-    echo "━━━ macOS ゴミ箱 ━━━"
+    echo "━━━ macOS Trash ━━━"
     sz=$(du -sh ~/.Trash 2>/dev/null | cut -f1); echo "  ~/.Trash size: $sz"
     rm -rf ~/.Trash/* 2>/dev/null || true
     echo ""
-    echo "━━━ リポジトリ内ゴミファイル (.DS_Store / AppleDouble / vim swap 等) ━━━"
+    echo "━━━ Repo junk files (.DS_Store / AppleDouble / vim swap etc.) ━━━"
     dir="{{justfile_directory()}}"
     # macOS / editor / OS が撒くゴミの名前パターン (.git は除外)
     names=(
@@ -264,28 +264,28 @@ gc:
     for n in "${names[@]}"; do fexpr+=( -name "$n" -o ); done
     unset 'fexpr[${#fexpr[@]}-1]'  # 末尾の -o を除去
     n=$(find "$dir" -path "$dir/.git" -prune -o -type f \( "${fexpr[@]}" \) -print -delete | wc -l | tr -d ' ')
-    echo "  🗑️  $n 件削除"
+    echo "  🗑️  $n removed"
     echo ""
-    echo "━━━ ~/.config 内の自動バックアップ (zellij *.bak 等) ━━━"
+    echo "━━━ Auto-backups in ~/.config (zellij *.bak etc.) ━━━"
     m=$(find ~/.config -maxdepth 3 \( -name '*.bak' -o -name '*.bak.[0-9]*' \) -type f -print -delete 2>/dev/null | wc -l | tr -d ' ')
-    echo "  🗑️  $m 件削除"
+    echo "  🗑️  $m removed"
     echo ""
-    echo "━━━ $HOME 全体の OS ゴミ (.DS_Store/._*/swap/orig 等。.Trash除外) ━━━"
+    echo "━━━ OS junk across $HOME (.DS_Store/._*/swap/orig etc., excl .Trash) ━━━"
     d=$(find "$HOME" -name .Trash -prune -o -type f \( -name '.DS_Store' -o -name '._*' -o -name '*.swp' -o -name '*.swo' -o -name '*.orig' -o -name '*.rej' -o -name '*~' \) -print -delete 2>/dev/null | wc -l | tr -d ' ')
-    echo "  🗑️  $d 件削除"
+    echo "  🗑️  $d removed"
     echo ""
-    echo "━━━ 開発キャッシュ (__pycache__/*.pyc/.pytest_cache 等。Library除外・再生成される) ━━━"
+    echo "━━━ Dev caches (__pycache__/*.pyc/.pytest_cache etc., excl Library, regenerated) ━━━"
     tmp=$(mktemp)
     find "$HOME" \( -path "$HOME/Library" -o -name .Trash \) -prune -o -type d \( -name '__pycache__' -o -name '.pytest_cache' -o -name '.mypy_cache' -o -name '.ruff_cache' -o -name '.ipynb_checkpoints' \) -prune -print 2>/dev/null > "$tmp"
     pc=$(wc -l < "$tmp" | tr -d ' ')
     xargs -I{} rm -rf "{}" < "$tmp" 2>/dev/null; rm -f "$tmp"
     py=$(find "$HOME" \( -path "$HOME/Library" -o -name .Trash \) -prune -o -type f -name '*.pyc' -print -delete 2>/dev/null | wc -l | tr -d ' ')
-    echo "  🗑️  cache dir $pc 件 + *.pyc $py 件削除"
+    echo "  🗑️  cache dirs: $pc, *.pyc: $py removed"
     echo ""
-    echo "━━━ ~/.cache 内 (uv は完了済、他大物の状況) ━━━"
+    echo "━━━ ~/.cache (uv done, status of other large items) ━━━"
     du -sh ~/.cache/*/ 2>/dev/null | sort -hr | head -5
     echo ""
-    echo "━━━ 完了 ━━━"
+    echo "━━━ Done ━━━"
     df -h / 2>&1 | head -2 | tail -1
 
 # 重い再生成可能ディレクトリを削除 (30日以上更新の無い node_modules / rust target のみ。要再 install)
@@ -293,7 +293,7 @@ gc:
 gc-deep:
     #!/usr/bin/env bash
     set -u
-    echo "━━━ 30日以上更新の無い node_modules / rust target を探索 ━━━"
+    echo "━━━ Scanning node_modules / rust target untouched >30 days ━━━"
     tmp=$(mktemp)
     # ~/Library は tool 内部 (typescript/pnpm 等のキャッシュ) なので除外。プロジェクトのみ対象。
     prune=( \( -path "$HOME/Library" -o -path "$HOME/.cache" -o -name .Trash \) -prune )
@@ -303,17 +303,17 @@ gc-deep:
     find "$HOME" "${prune[@]}" -o -type d -name target -prune -mtime +30 -print 2>/dev/null | \
       while read -r d; do [ -f "$(dirname "$d")/Cargo.toml" ] && echo "$d"; done >> "$tmp"
     cnt=$(wc -l < "$tmp" | tr -d ' ')
-    if [ "$cnt" -eq 0 ]; then echo "  対象なし (全て30日以内に更新)"; rm -f "$tmp"; exit 0; fi
+    if [ "$cnt" -eq 0 ]; then echo "  None (all updated within 30 days)"; rm -f "$tmp"; exit 0; fi
     total=$(xargs -I{} du -sk "{}" < "$tmp" 2>/dev/null | awk '{s+=$1}END{printf "%.1fG", s/1024/1024}')
     sed "s|$HOME|~|" "$tmp" | head -40
-    [ "$cnt" -gt 40 ] && echo "  … 他 $((cnt-40)) 件"
-    echo "  合計: $total / $cnt 個 (削除後は各プロジェクトで再 install が必要)"
-    read -rp "削除しますか? [y/N] " ans
+    [ "$cnt" -gt 40 ] && echo "  … $((cnt-40)) more"
+    echo "  Total: $total / $cnt items (each project needs reinstall after deletion)"
+    read -rp "Delete? [y/N] " ans
     if [[ "$ans" == [yY] ]]; then
       xargs -I{} rm -rf "{}" < "$tmp" 2>/dev/null
-      echo "  🗑️  $cnt 個削除 (回収: $total)"
+      echo "  🗑️  $cnt removed (reclaimed: $total)"
     else
-      echo "  中止しました"
+      echo "  Aborted"
     fi
     rm -f "$tmp"
 
@@ -332,10 +332,10 @@ restart what="bar":
     set -u
     uid=$(id -u)
 
-    sb() { echo "→ sketchybar";  launchctl kickstart -k "gui/$uid/homebrew.mxcl.sketchybar"; }
-    bd() { echo "→ borders";     pkill -x borders 2>/dev/null; sleep 0.3; (borders >/dev/null 2>&1 &); }
+    sb() { echo "-> sketchybar";  launchctl kickstart -k "gui/$uid/homebrew.mxcl.sketchybar"; }
+    bd() { echo "-> borders";     pkill -x borders 2>/dev/null; sleep 0.3; (borders >/dev/null 2>&1 &); }
     as() {
-      echo "→ AeroSpace (フル再起動 → borders/sketchybar trigger も復活)"
+      echo "-> AeroSpace (full restart -> revives borders/sketchybar triggers)"
       osascript -e 'quit app "AeroSpace"' 2>/dev/null
       # quit 完了を最大 4s ポーリングで待つ (sleep 固定だと終了が遅いと open が空振りする)
       for _ in $(seq 1 20); do pgrep -fq AeroSpace.app || break; sleep 0.2; done
@@ -350,7 +350,7 @@ restart what="bar":
       all)            sb; bd; as ;;
       *) echo "usage: just restart [bar|sketchybar|borders|aerospace|all]" >&2; exit 2 ;;
     esac
-    echo "✅ 完了"
+    echo "✅ Done"
 
 
 # ─────────────────────────────────────────────
