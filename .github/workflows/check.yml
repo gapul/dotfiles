@@ -126,12 +126,13 @@ jobs:
         run: nix develop ./nix --command pre-commit run --all-files --show-diff-on-failure
 
   # pre-commit に含めない enforced 外リンタを CI で gate する。
-  # - just --fmt --check: Justfile の整形ズレ
+  # - just --summary: Justfile が壊れていないか (パース検証)。整形 (--fmt) は just の
+  #   バージョンで規約が変わり CI/ローカルで揺れるため gate にしない
   # - statix: Nix アンチパターン (repeated_keys は誤検出のため .statix.toml で除外)
   # - shellcheck: scripts/ の管理スクリプトを error 重大度のみ gate
   #   (sketchybar plugins は既存 error が多く別タスク。warning/info も既存資産が多いため除外)
   lint:
-    name: lint (just-fmt / statix / shellcheck)
+    name: lint (just-parse / statix / shellcheck)
     runs-on: macos-14
     timeout-minutes: 15
     steps:
@@ -141,8 +142,8 @@ jobs:
         with:
           primary-key: nix-${{ runner.os }}-${{ hashFiles('nix/flake.lock') }}
           restore-prefixes-first-match: nix-${{ runner.os }}-
-      - name: just --fmt --check (Justfile 整形)
-        run: nix run nixpkgs#just -- --fmt --check --unstable
+      - name: just --summary (Justfile パース検証)
+        run: nix run nixpkgs#just -- --summary
       - name: statix check (Nix アンチパターン)
         run: nix develop ./nix --command statix check -c .statix.toml nix
       - name: shellcheck (scripts/ の error gate)
