@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 wifi=(
   icon=$WIFI_DISCONNECTED
