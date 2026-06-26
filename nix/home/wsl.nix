@@ -5,6 +5,15 @@
   user,
   ...
 }:
+let
+  # wslu は nixpkgs から削除 (project discontinued / archived, 2026-04-08)。
+  # 依存していたのは wslview(URL を Windows 既定ブラウザで開く) のみ。
+  # wslpath は WSL 本体提供、WIN_USER 検出は cmd.exe 直叩きなので wslu 全体は不要。
+  # → wslview を最小ラッパーで自作して置換する (cmd.exe /c start で既定ブラウザ起動)。
+  wslview = pkgs.writeShellScriptBin "wslview" ''
+    exec /mnt/c/Windows/System32/cmd.exe /c start "" "$@"
+  '';
+in
 {
   # WSL2 専用の home-manager 設定
   # 前提: home/common.nix と home/linux.nix が先に評価されている
@@ -13,14 +22,13 @@
   home.sessionVariables = {
     # nh が WSL 用 homeConfiguration を見るよう attr 名を明示
     NH_HOME_FLAKE = "${config.home.homeDirectory}/.dotfiles/nix#homeConfigurations.${user.username}-wsl.activationPackage";
-    # ブラウザ起動は Windows 側に投げる (wslu の wslview)
+    # ブラウザ起動は Windows 側に投げる (自作 wslview ラッパー)
     BROWSER = "wslview";
   };
 
   # WSL 専用 packages
-  # wslu = wsl-open / wslview / wslvar 等 Windows ↔ Linux ブリッジ群
-  home.packages = with pkgs; [
-    wslu
+  home.packages = [
+    wslview # 旧 wslu の代替 (URL を Windows 既定ブラウザで開く)
   ];
 
   # WSL interop の zsh エイリアス・関数 (common の initContent の後に append)
