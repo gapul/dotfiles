@@ -42,7 +42,7 @@ require("lazy").setup({
   },
   -- luarocks 不使用なので rocks サポートを無効化（checkhealth の luarocks ERROR 解消）
   rocks = { enabled = false },
-  install = { colorscheme = { "tokyonight", "habamax" } },
+  install = { colorscheme = { "rose-pine", "habamax" } },
   checker = {
     enabled = true, -- check for plugin updates periodically
     notify = false, -- notify on update
