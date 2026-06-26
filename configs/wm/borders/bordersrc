@@ -1,0 +1,11 @@
+#!/bin/bash
+# JankyBorders (FelixKratz/borders) 設定 = アクティブウィンドウ枠の単一ソース。
+# AeroSpace の after-startup-command から引数なし `borders` で起動されると
+# このファイルが実行される。以前は aerospace.toml と Justfile に同じ引数を
+# 二重で直書きしていたが、ここへ集約して一元管理する。
+options=(
+  active_color=0xffe1e3e4
+  inactive_color=0xff494d64
+  width=4.0
+)
+borders "${options[@]}"

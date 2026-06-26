@@ -1,0 +1,7 @@
+# statix (Nix アンチパターン linter) 設定。
+# CI の lint job (`statix check -c .statix.toml nix`) と手動チェックで使う。
+#
+# repeated_keys: home-manager / nix-darwin では同じトップレベルキー (home.*, system.*)
+#   を複数箇所で設定するのが正常なイディオムだが statix は重複と誤検出する。
+#   そのため除外。詳細は nix/flake.nix の statix コメント参照。
+disabled = ["repeated_keys"]
