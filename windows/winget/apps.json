@@ -18,6 +18,7 @@
         { "PackageIdentifier": "sharkdp.bat" },
         { "PackageIdentifier": "jqlang.jq" },
         { "PackageIdentifier": "JesseDuffield.lazygit" },
+        { "PackageIdentifier": "Casey.Just" },
         { "PackageIdentifier": "Clement.bottom" },
         { "PackageIdentifier": "astral-sh.uv" },
         { "PackageIdentifier": "pnpm.pnpm" },

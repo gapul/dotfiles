@@ -391,3 +391,23 @@ dev what="":
 [group('セットアップ')]
 ssh host:
     nssh {{host}}
+
+
+# ─────────────────────────────────────────────
+# Windows (native pwsh)
+# ─────────────────────────────────────────────
+
+# Windows ネイティブの bootstrap を実行 (`just win-bootstrap` / `just win-bootstrap -DryRun`)
+[group('Windows')]
+win-bootstrap *flags:
+    pwsh.exe -NoProfile -ExecutionPolicy Bypass -File windows/bootstrap.ps1 {{flags}}
+
+# winget/apps.json の全 PackageIdentifier 実在検証 (`just win-verify` / `just win-verify -Strict`)
+[group('Windows')]
+win-verify *flags:
+    pwsh.exe -NoProfile -ExecutionPolicy Bypass -File windows/winget/verify.ps1 {{flags}}
+
+# Windows 関連 .ps1 を PSScriptAnalyzer で lint (Warning 以上で exit 1)
+[group('Windows')]
+win-fmt:
+    pwsh.exe -NoProfile -Command "if (-not (Get-Module -ListAvailable PSScriptAnalyzer)) { Install-Module PSScriptAnalyzer -Force -Scope CurrentUser }; Invoke-ScriptAnalyzer -Path windows -Recurse -Severity Warning -EnableExit"
