@@ -41,6 +41,21 @@
 
     treefmt-nix.url = "github:numtide/treefmt-nix";
     treefmt-nix.inputs.nixpkgs.follows = "nixpkgs";
+
+    # Homebrew 本体 + core/cask を flake で pin (再現性)。独自 tap は当面 mutable のまま。
+    nix-homebrew.url = "github:zhaofengli/nix-homebrew";
+    homebrew-core = {
+      url = "github:Homebrew/homebrew-core";
+      flake = false;
+    };
+    homebrew-cask = {
+      url = "github:Homebrew/homebrew-cask";
+      flake = false;
+    };
+    homebrew-bundle = {
+      url = "github:Homebrew/homebrew-bundle";
+      flake = false;
+    };
   };
 
   outputs =
@@ -51,6 +66,10 @@
       sops-nix,
       git-hooks,
       treefmt-nix,
+      nix-homebrew,
+      homebrew-core,
+      homebrew-cask,
+      homebrew-bundle,
       ...
     }:
     let
@@ -123,7 +142,25 @@
       darwinConfigurations.${user.username} = nix-darwin.lib.darwinSystem {
         inherit system;
         specialArgs = { inherit user; };
-        modules = [ ./hosts/darwin.nix ];
+        modules = [
+          ./hosts/darwin.nix
+          nix-homebrew.darwinModules.nix-homebrew
+          {
+            nix-homebrew = {
+              enable = true;
+              enableRosetta = false; # Apple Silicon。x86 formula が要るなら true
+              user = user.username;
+              # Homebrew 本体 + core/cask/bundle を pin。独自 tap は mutableTaps で許可。
+              taps = {
+                "homebrew/homebrew-core" = homebrew-core;
+                "homebrew/homebrew-cask" = homebrew-cask;
+                "homebrew/homebrew-bundle" = homebrew-bundle;
+              };
+              mutableTaps = true; # felixkratz/gapul 等の独自 tap は従来どおり tap 可
+              autoMigrate = true; # 既存 /opt/homebrew を引き継ぐ (パッケージ保持)
+            };
+          }
+        ];
       };
 
       # macOS ユーザー設定: home-manager switch --flake .#<username>
