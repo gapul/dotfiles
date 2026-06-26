@@ -42,7 +42,7 @@ function Dry($msg) { Write-Host "[bootstrap-win][dry] $msg" -ForegroundColor Dar
 # - 既存が別物 (実ファイル / ディレクトリ / 別 target の symlink) なら .bak-<日時> に退避
 # - -DryRun では何もせず計画だけ出す
 function New-DotfilesLink {
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'Low')]
     param(
         [Parameter(Mandatory)][string]$Source,
         [Parameter(Mandatory)][string]$Destination,

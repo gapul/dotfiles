@@ -1,1 +1,10 @@
 configs/ime/skk/*.plist diff text
+
+# PowerShell 5.1 は BOM 無し UTF-8 を ANSI として読み、日本語コメントで parser
+# エラーになる (L129 等)。repo 上で BOM 付きバイト列を保持し、改行も CRLF に固定
+# して 5.1/7 両方の pwsh で動くようにする。
+# (working-tree-encoding は使わない: 既存ファイルが BOM 付きで commit 済みなので
+#  renormalize が必要になり、運用が複雑化するため避ける)
+*.ps1   text eol=crlf
+*.psm1  text eol=crlf
+*.psd1  text eol=crlf
