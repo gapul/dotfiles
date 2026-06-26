@@ -92,17 +92,17 @@ group = "git"
 # ─── プレビュー強化 (piper 経由。各ツールは home.packages で導入) ───
 # Markdown を glow でレンダリング表示
 [[plugin.prepend_previewers]]
-name = "*.md"
+url = "*.md"
 run  = 'piper -- CLICOLOR_FORCE=1 glow -w=$w "$1"'
 
 # JSON を jq で整形 + 色付け
 [[plugin.prepend_previewers]]
-name = "*.{json,jsonc}"
+url = "*.{json,jsonc}"
 run  = 'piper -- CLICOLOR_FORCE=1 jq -C . "$1"'
 
 # CSV/TSV を rich でテーブル表示
 [[plugin.prepend_previewers]]
-name = "*.{csv,tsv}"
+url = "*.{csv,tsv}"
 run  = 'piper -- rich "$1" --csv --force-terminal --width=$w'
 
 # 書庫の中身一覧を ouch で表示
