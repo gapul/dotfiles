@@ -20,3 +20,14 @@ desc = "Smart filter"
 on   = "p"
 run  = "plugin smart-paste"
 desc = "Paste into the hovered directory, or cwd"
+
+# toggle-pane: プレビューを最大化/戻す (T) / 表示・非表示 (<A-p>)
+[[mgr.prepend_keymap]]
+on   = "T"
+run  = "plugin toggle-pane max-preview"
+desc = "Maximize or restore the preview pane"
+
+[[mgr.prepend_keymap]]
+on   = "<A-p>"
+run  = "plugin toggle-pane toggle-preview"
+desc = "Show or hide the preview pane"
