@@ -16,6 +16,7 @@ update() {
 }
 
 set_space_label() {
+  # shellcheck disable=SC2145  # 単一アイコン文字列を渡す用途で意図通り (動作実績あり)
   sketchybar --set $NAME icon="$@"
 }
 

@@ -38,8 +38,7 @@ return {
             col = col,
             end_lnum = lnum,
             end_col = col + 1,
-            severity = msg.severity == 2 and vim.diagnostic.severity.ERROR
-              or vim.diagnostic.severity.WARN,
+            severity = msg.severity == 2 and vim.diagnostic.severity.ERROR or vim.diagnostic.severity.WARN,
             source = "textlint",
             code = msg.ruleId,
             message = msg.message,

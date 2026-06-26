@@ -203,10 +203,17 @@
       # nix develop: 入室で .git/hooks に pre-commit を導入
       devShells.${system}.default = pkgs.mkShell {
         inherit (preCommit) shellHook;
-        # enforced フック + 手動チェック用 (shellcheck/statix)
+        # enforced フック + 手動/CI 用 lint ツール一式。
+        # CI (check.yml の lint job) も `nix develop ./nix -c <tool>` で同じバージョンを使い、
+        # ローカルと CI のバージョン差 (just --fmt の {{x}} vs {{ x }} 等) を防ぐ。
         buildInputs = preCommit.enabledPackages ++ [
-          pkgs.shellcheck
-          pkgs.statix
+          pkgs.shellcheck # shell lint
+          pkgs.statix # nix アンチパターン
+          pkgs.stylua # lua 整形 (nvim 設定)
+          pkgs.taplo # toml 構文/整形
+          pkgs.yq-go # yaml 構文検証
+          pkgs.jq # json 構文検証
+          pkgs.just # Justfile (ローカル/CI でバージョン統一)
         ];
       };
     };

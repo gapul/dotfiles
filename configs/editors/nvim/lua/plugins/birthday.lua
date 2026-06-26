@@ -6,10 +6,10 @@ return {
     "gapul/birthday-tui",
     lazy = false, -- 起動時にロードして VimEnter チェックを登録
     config = function()
-      require('birthday').setup({
-        name = 'Yuki',
-        birthday = '2004-06-22', -- 毎年 6/22 にお祝い（年齢も自動表示）
-        palette = 'dusty',
+      require("birthday").setup({
+        name = "Yuki",
+        birthday = "2004-06-22", -- 毎年 6/22 にお祝い（年齢も自動表示）
+        palette = "dusty",
       })
     end,
   },

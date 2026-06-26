@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 sketchybar --set $NAME \
   label="Loading..." \
   icon.color=0xff5edaff

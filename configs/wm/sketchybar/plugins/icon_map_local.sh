@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # icon_map ローカル補正
 # アプリの実名 (aerospace / front_app が返す名前) が sketchybar-app-font の
 # 公式マップのキーと異なるものを、ここで上書きする。
