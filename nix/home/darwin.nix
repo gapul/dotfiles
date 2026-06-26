@@ -143,9 +143,19 @@ in
   '';
   # borders は AeroSpace から引数なし `borders` で起動され bordersrc を実行する。
   # executable=true でないと borders が実行できない (設定の単一ソース)。
+  # borders の色は nix/lib/rose-pine.nix から生成 (active=iris / inactive=muted)
   home.file.".config/borders/bordersrc" = {
-    source = ../../configs/wm/borders/bordersrc;
     executable = true;
+    text = ''
+      #!/bin/bash
+      # JankyBorders 設定 = アクティブウィンドウ枠の単一ソース。色は Rosé Pine palette 由来。
+      options=(
+        active_color=0xff${c.iris}
+        inactive_color=0xff${c.muted}
+        width=4.0
+      )
+      borders "''${options[@]}"
+    '';
   };
 
   # karabiner は dotfiles 直接書き戻し (mkOutOfStoreSymlink)
