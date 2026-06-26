@@ -17,6 +17,13 @@
     if [ -f "$conf" ] && ! /usr/bin/grep -q '^use-xdg-base-directories' "$conf"; then
       printf '\n# XDG Base Directory 準拠 (~/.nix-defexpr 等を ~/.local/state/nix へ)\nuse-xdg-base-directories = true\n' >> "$conf"
     fi
+    # nix-community キャッシュを system 全体で信頼。
+    # セキュリティ最小権限: yuki を trusted-user(実質 root 相当)にはせず、特定 substituter +
+    # その公開鍵だけを root 権限の nix.custom.conf に追記する。これで flake nixConfig の
+    # 'ignoring untrusted substituter' 警告が消え、ユーザーに広い権限を与えない。
+    if [ -f "$conf" ] && ! /usr/bin/grep -q 'nix-community.cachix.org' "$conf"; then
+      printf '\n# nix-community バイナリキャッシュ (trusted-user 付与でなく substituter 限定の最小権限)\nextra-substituters = https://nix-community.cachix.org\nextra-trusted-public-keys = nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs=\n' >> "$conf"
+    fi
     # Application Firewall: 有効化 + ステルスモード (ping/ポートスキャンに無応答)。
     # alf defaults は最新 macOS で効きづらいので公式 socketfilterfw を冪等に叩く。
     fw=/usr/libexec/ApplicationFirewall/socketfilterfw
