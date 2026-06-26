@@ -389,6 +389,7 @@
       navigate = true;
       line-numbers = true;
       side-by-side = true;
+      syntax-theme = "rose-pine"; # bat の rose-pine テーマを使用 (テーマ統一)
     };
   };
 
@@ -396,6 +397,12 @@
     enable = true;
     config = {
       style = "numbers,changes,header";
+      theme = "rose-pine"; # テーマ統一
+    };
+    # Rosé Pine tmTheme を vendor (bat cache に登録される)
+    themes."rose-pine" = {
+      src = ../../configs/cli/bat/themes;
+      file = "rose-pine.tmTheme";
     };
   };
 
