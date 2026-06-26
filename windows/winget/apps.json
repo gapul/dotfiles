@@ -19,6 +19,7 @@
         { "PackageIdentifier": "jqlang.jq" },
         { "PackageIdentifier": "JesseDuffield.lazygit" },
         { "PackageIdentifier": "Casey.Just" },
+        { "PackageIdentifier": "x-motemen.ghq" },
         { "PackageIdentifier": "albertony.npiperelay" },
         { "PackageIdentifier": "Espanso.Espanso" },
         { "PackageIdentifier": "nathancorvussolis.corvusskk" },

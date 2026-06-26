@@ -8,11 +8,17 @@
 # CI からは `--Strict` で MISS=fail、ローカル探索時はそのままで MISS=警告のみにする。
 [CmdletBinding()]
 param(
-    [string]$AppsJson = (Join-Path $PSScriptRoot 'apps.json'),
+    [string]$AppsJson,
     [switch]$Strict   # MISS があれば exit 1 (CI 用)
 )
 
 $ErrorActionPreference = 'Stop'
+if (-not $AppsJson) {
+    # 5.1 では param デフォルト式の $PSScriptRoot が空になることがあるため
+    # 関数本体に入ってから解決する。
+    $scriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
+    $AppsJson  = Join-Path $scriptDir 'apps.json'
+}
 
 if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
     Write-Error 'winget が見つかりません。bootstrap.ps1 の手順で App Installer を導入してください。'

@@ -81,6 +81,38 @@ function wsl-here {
     wsl --cd (Get-Location).Path
 }
 
+# 任意 dir / 任意 distro で WSL に入る (`Open-Wsl C:\src -Distro Ubuntu-24.04`)
+function Open-Wsl {
+    [CmdletBinding()]
+    param(
+        [string]$Directory = (Get-Location).Path,
+        [string]$Distro
+    )
+    $wargs = @('--cd', $Directory)
+    if ($Distro) { $wargs = @('-d', $Distro) + $wargs }
+    wsl @wargs
+}
+
+# Windows path → WSL path (パイプ可: `Get-Location | ConvertTo-WslPath`)
+function ConvertTo-WslPath {
+    [CmdletBinding()]
+    param([Parameter(Mandatory, ValueFromPipeline)][string]$Path)
+    process { (wsl wslpath -u "$Path").Trim() }
+}
+
+# WSL path → Windows path
+function ConvertFrom-WslPath {
+    [CmdletBinding()]
+    param([Parameter(Mandatory, ValueFromPipeline)][string]$Path)
+    process { (wsl wslpath -w "$Path").Trim() }
+}
+
+# === ghq root (nvim lazy.lua の dev.path と整合) ===
+# macOS の nix/home/common.nix で `programs.git.extraConfig.ghq.root` を ~/Developer
+# に固定している。Windows ネイティブでも同じレイアウトにして lazy.lua の
+# ~/Developer/github.com/gapul/* がローカル参照で動くようにする。
+$env:GHQ_ROOT = Join-Path $env:USERPROFILE 'Developer'
+
 # === starship があれば使う (winget で入れる想定) ===
 # macOS/WSL と同じ prompt にするため共有 configs/shell/starship.toml を参照。
 # (Windows ネイティブの clone 先は %USERPROFILE%\dotfiles)
