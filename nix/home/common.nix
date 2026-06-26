@@ -338,6 +338,11 @@
     neovim # エディタ本体 (設定は configs/editors/nvim を mkOutOfStoreSymlink)
     aerc # メール TUI
     isync # IMAP 同期 (mbsync)
+
+    # ─── yazi プレビュー用 (piper 経由 or 内蔵 previewer が利用) ───
+    ffmpegthumbnailer # 動画サムネイル (yazi 内蔵 video previewer が使用)
+    ouch # 書庫(zip/tar/7z 等)の中身一覧/展開
+    rich-cli # csv/json/md 等のリッチ整形 (piper previewer から呼ぶ)
   ];
 
   programs.git = {
