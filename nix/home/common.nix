@@ -387,10 +387,21 @@ in
   programs.git = {
     enable = true;
     ignores = [
+      # macOS が各フォルダに撒くメタデータ (ノイズ。リポジトリに不要)
       ".DS_Store"
+      ".DS_Store?"
+      "._*" # AppleDouble (リソースフォーク)
       ".AppleDouble"
       ".LSOverride"
-      "Thumbs.db"
+      ".Spotlight-V100"
+      ".Trashes"
+      ".fseventsd"
+      ".DocumentRevisions-V100"
+      ".TemporaryItems"
+      ".VolumeIcon.icns"
+      ".com.apple.timemachine.donotpresent"
+      ".apdisk"
+      "Thumbs.db" # Windows
       ".idea/"
       ".vscode/"
       "*.swp"
