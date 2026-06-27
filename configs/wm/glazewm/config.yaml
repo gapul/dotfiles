@@ -111,11 +111,11 @@ keybindings:
   # ━━━ Layout ━━━
   # AeroSpace: cmd-ctrl-alt-slash = tiles 向き toggle
   - commands: ['toggle-tiling-direction']
-    bindings: ['LWin+LCtrl+LAlt+Oem_2']  # / key (Slash)
+    bindings: ['LWin+LCtrl+LAlt+oem_question']  # / key (oem_question)
 
   # AeroSpace: cmd-ctrl-alt-backslash = horizontal/vertical toggle (Hyprland togglesplit)
   - commands: ['toggle-tiling-direction']
-    bindings: ['LWin+LCtrl+LAlt+Oem_5']  # \\ key (Backslash)
+    bindings: ['LWin+LCtrl+LAlt+oem_pipe']  # \\ key (oem_pipe)
 
   # ━━━ Focus (hjkl = vim) ━━━
   - commands: ['focus --direction left']
@@ -140,9 +140,9 @@ keybindings:
   # ━━━ Resize (即時 / mode 入る) ━━━
   # AeroSpace: cmd-ctrl-alt-minus = -50, cmd-ctrl-alt-equal = +50
   - commands: ['resize --width -50px']
-    bindings: ['LWin+LCtrl+LAlt+Oem_Minus']
+    bindings: ['LWin+LCtrl+LAlt+oem_minus']
   - commands: ['resize --width +50px']
-    bindings: ['LWin+LCtrl+LAlt+Oem_Plus']
+    bindings: ['LWin+LCtrl+LAlt+oem_plus']
 
   # AeroSpace: cmd-ctrl-alt-shift-r = mode resize
   - commands: ['wm-enable-binding-mode --name resize']
@@ -197,14 +197,17 @@ keybindings:
   - commands: ['focus --workspace recent']
     bindings: ['LWin+LCtrl+LAlt+Tab']
 
-  # ━━━ Monitor 切替 (AeroSpace: n=left, m=right) ━━━
-  - commands: ['focus --monitor previous']
+  # ━━━ Monitor 切替 ━━━
+  # GlazeWM v3 は `focus --monitor` を持たない。focus --direction が複数モニタ
+  # 境界を跨ぐので、N/M で同じ操作にしておく (Shift で workspace ごと移動)。
+  # AeroSpace の n/m=monitor focus 移動と機能的に近い。
+  - commands: ['focus --direction left']
     bindings: ['LWin+LCtrl+LAlt+N']
-  - commands: ['focus --monitor next']
+  - commands: ['focus --direction right']
     bindings: ['LWin+LCtrl+LAlt+M']
-  - commands: ['move-workspace --direction previous']
+  - commands: ['move-workspace --direction left']
     bindings: ['LWin+LCtrl+LAlt+Shift+N']
-  - commands: ['move-workspace --direction next']
+  - commands: ['move-workspace --direction right']
     bindings: ['LWin+LCtrl+LAlt+Shift+M']
 
   # ━━━ Launcher / Terminal ━━━
@@ -217,9 +220,9 @@ keybindings:
     bindings: ['LWin+LCtrl+LAlt+R']
 
   # ━━━ Config reload (AeroSpace mode service の esc 相当) ━━━
-  - commands: ['reload-config']
-    bindings: ['LWin+LCtrl+LAlt+Shift+Oem_1']  # ;
+  - commands: ['wm-reload-config']
+    bindings: ['LWin+LCtrl+LAlt+Shift+oem_semicolon']  # ;
 
   # ━━━ Exit GlazeWM ━━━
-  - commands: ['exit-wm']
+  - commands: ['wm-exit']
     bindings: ['LWin+LCtrl+LAlt+Shift+Q']
