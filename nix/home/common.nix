@@ -424,6 +424,11 @@ in
       push.autoSetupRemote = true;
       ghq.root = "${config.home.homeDirectory}/Developer";
       merge.conflictstyle = "diff3";
+      # flake.lock 自動解決 driver (.gitattributes の `nix/flake.lock merge=flakelock`)。
+      # Mac/Lab PC 両機の nix flake update 競合を、片側採用(常に valid な lock)で無人解決。
+      # 入力差を厳密に揃えたい時は解決後 `nix flake update` を一度回す。
+      merge.flakelock.name = "flake.lock auto-resolve";
+      merge.flakelock.driver = "cp -f %B %A";
       diff.colorMoved = "default";
       gpg.format = "ssh";
       "gpg \"ssh\"".allowedSignersFile = "${config.home.homeDirectory}/.ssh/allowed_signers";

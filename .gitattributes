@@ -8,3 +8,7 @@ configs/ime/skk/*.plist diff text
 *.ps1   text eol=crlf
 *.psm1  text eol=crlf
 *.psd1  text eol=crlf
+
+# Mac / Windows(Lab PC) 両機で nix flake update がぶつかると flake.lock が競合する。
+# merge driver "flakelock" (nix git settings 参照) で自動解決し、手動マージを不要にする。
+nix/flake.lock merge=flakelock
