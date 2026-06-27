@@ -65,8 +65,8 @@ let
     --nav-item-background-active:   #${p.overlay};'';
   # 半透明: translucency ON (.is-translucent) 時のみ背景へ alpha を載せ macOS vibrancy を透かす。
   # alpha は #RRGGBBAA の AA(16進): cc≒80% / b3≒70% / 99≒60% / 80≒50%。小さいほど透ける。
-  translucentAlpha = "cc"; # 本文・サイドバー (控えめに透ける)
-  chromeAlpha = "66"; # 外周(タイトルバー/タブ/リボン)を強めに透かし壁紙を見せる
+  translucentAlpha = "b3"; # 本文・サイドバー (vibrancy と相性の良いフロスト半透明 ≒70%)
+  chromeAlpha = "99"; # 外周(タイトルバー/タブ/リボン)を少し強めに透かす(≒60%)
   obsidianTranslucent = p: ''
     --background-primary:          #${p.base}${translucentAlpha};
     --background-primary-alt:      #${p.surface}${translucentAlpha};
