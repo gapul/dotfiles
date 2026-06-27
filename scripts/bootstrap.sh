@@ -140,11 +140,10 @@ sudo nix run nix-darwin/nix-darwin-26.05 -- switch --flake "$DOTFILES_DIR/nix#$(
 
 # 6. 第三者 tap の cask 信頼
 log "Trusting third-party brew taps..."
-for tap in nikitabobko/tap theboredteam/boring-notch pear-devs/pear gapul/openutau \
-           deskflow/tap gerlero/openfoam imshuhao/kdeconnect felixkratz/formulae \
-           finnvoor/tools gapul/zrythm infisical/get-cli \
-           jakehilborn/jakehilborn jpmhouston/bananameterlabs pomdtr/tap \
-           riscv-software-src/riscv supabase/tap; do
+# NOTE: この一覧は nix/hosts/darwin.nix の homebrew.taps と一致させること
+for tap in deskflow/tap felixkratz/formulae finnvoor/tools gerlero/openfoam \
+           gapul/kdeconnect nikitabobko/tap pear-devs/pear voicevox/voicevox \
+           gapul/openutau gapul/zrythm gapul/azoo-key-skkserv; do
   brew trust "$tap" 2>/dev/null || true
 done
 

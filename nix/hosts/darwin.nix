@@ -164,7 +164,6 @@
       "gapul/kdeconnect" # imshuhao/kdeconnect の fork。depends_on macos deprecated を修正済
       "nikitabobko/tap"
       "pear-devs/pear"
-      "theboredteam/boring-notch"
       "voicevox/voicevox" # VOICEVOX 公式 tap (homebrew/cask 未収録のため必須)
 
       # ─── 個人 fork (gapul) — fork した人は不要なら削除 ───
@@ -196,11 +195,13 @@
       "nextdns"
       "scrcpy" # Android mirror
       "tcpdump"
+      "gnupg" # GPG (git コミット署名 / 暗号メール。sops は age だが GPG は別)
 
       # ─── Documents / Fonts / Media ───
       "gstreamer"
       "mpv"
       "sox" # 音声処理 (rec / play / sox / soxi)
+      "exiftool" # 画像/PDF のメタデータ (GPS/端末情報) を共有前に除去
 
       # ─── macOS specific CLI ───
       "mas" # App Store
@@ -254,12 +255,12 @@
       "kdeconnect"
       "localsend"
       "simplex"
+      "signal" # E2E メッセンジャー (一般連絡先用。SimpleX は最強匿名用)
       "syncthing-app"
 
       # ─── Window / Keyboard / Input ───
       "aerospace"
       "alt-tab"
-      "boring-notch"
       "karabiner-elements"
       "macskk"
       "gapul/azoo-key-skkserv/azoo-key-skkserv" # azooKey 変換エンジンの skkserv (gapul 自作 tap)
@@ -275,9 +276,19 @@
       "corelocationcli"
 
       # ─── Privacy / Security ───
-      "blockblock"
-      "knockknock"
-      "lulu"
+      # Objective-See (Patrick Wardle) スイート — 全て無料・notarize 済み
+      "blockblock" # 永続化 (persistence) 監視
+      "knockknock" # 永続化スキャナ
+      "lulu" # 送信ファイアウォール
+      "oversight" # マイク/カメラの不正アクセス検知・通知
+      "reikey" # キーロガー (キーボード event tap) 検知
+      "netiquette" # ライブ通信モニタ (どのプロセスがどこへ)
+      "taskexplorer" # プロセス検査 (署名 / VirusTotal 照合)
+      "whatsyoursign" # Finder 右クリックでコード署名表示
+      "kextviewr" # kernel extension ビューア
+      "ransomwhere" # ランサムウェア (不審な暗号化挙動) 検知
+      # VPN / 鍵
+      "mullvad-vpn" # ノーログ匿名 VPN (self-host の WireGuard/Tailscale とは別レイヤ)
       "ente-auth"
       "keepassxc"
       "keyguard"
