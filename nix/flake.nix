@@ -141,19 +141,20 @@
           ];
         };
 
-      # Lab PC (Mac の username yuki と違う OS username を持つ WSL2 環境) 用:
-      # 公開 repo に個人情報を残さないため、override は ./user.local.nix
-      # (gitignore) から読む。ローカルに無ければ home-manager の actual user
-      # チェックで弾かれるので fail-fast。
+      # Lab PC (Mac の username と違う OS username を持つ WSL2 環境) 用:
+      # 公開 repo に個人情報を残さないため、username は実行時の $USER から取る。
+      # .gitignore したファイルは flake source に含まれないので user.local.nix
+      # パターンは機能せず、builtins.getEnv "USER" + --impure フラグで対応。
+      #
       # 使い方:
-      #   1. nix/user.local.nix を作る (template: nix/user.local.nix.example)
-      #   2. home-manager switch --flake .#labpc-wsl
+      #   nix run --impure github:nix-community/home-manager -- \
+      #     switch --flake ~/.dotfiles/nix#labpc-wsl
       homeConfigurations."labpc-wsl" =
         let
           wslSystem = "x86_64-linux";
           wslPkgs = nixpkgs.legacyPackages.${wslSystem};
-          localOverride = if builtins.pathExists ./user.local.nix then import ./user.local.nix else { };
-          labUser = user // localOverride;
+          osUser = builtins.getEnv "USER";
+          labUser = user // (if osUser != "" then { username = osUser; } else { });
         in
         home-manager.lib.homeManagerConfiguration {
           pkgs = wslPkgs;
