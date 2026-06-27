@@ -44,6 +44,18 @@ if (-not $DryRun) {
     }
 }
 
+# ─── 0.5 Appx モジュールを Windows PowerShell 5.1 互換モードで load (PS 7 必須) ───
+# PS 7 の Appx モジュールは部分対応で、Get-AppxProvisionedPackage が
+# 「クラスが登録されていません」(Class not registered) で死ぬ。
+# -UseWindowsPowerShell で WinPS 5.1 経由でモジュールを取得して proxy 経由で使う。
+if (-not $DryRun -and $PSVersionTable.PSVersion.Major -ge 7) {
+    try {
+        Import-Module Appx -UseWindowsPowerShell -WarningAction SilentlyContinue -ErrorAction Stop
+    } catch {
+        Err "Appx モジュール load 失敗 (Provisioned 削除が動かない可能性): $($_.Exception.Message)"
+    }
+}
+
 # ─── 1. Win11Debloat ───
 if (-not $SkipWin11Debloat) {
     $argsFile = Join-Path $PrivacyDir 'win11debloat-args.txt'

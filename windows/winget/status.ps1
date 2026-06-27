@@ -27,20 +27,21 @@ $declared = (Get-Content $AppsJson -Raw | ConvertFrom-Json).Sources[0].Packages.
 if (-not $declared) { Write-Error 'apps.json に Packages が無い'; exit 2 }
 $declaredSet = [System.Collections.Generic.HashSet[string]]::new([string[]]$declared, [System.StringComparer]::OrdinalIgnoreCase)
 
-# 2. 実 install (winget source=winget 由来のみ。MS Store 由来等は除外)
-#    --source winget で winget リポジトリ由来のみに絞る。
-Write-Host 'winget list を取得中...' -ForegroundColor DarkGray
-$raw = winget list --source winget --disable-interactivity --accept-source-agreements 2>&1 | Out-String
-# 出力は表形式 (列: 名前 / ID / バージョン)。ID 列を正規表現で拾う。
-$ids = @()
-foreach ($line in ($raw -split "`r?`n")) {
-    if ($line -match '^\s*\S.*?\s{2,}([A-Za-z0-9_.\-]+)\s{2,}\S') {
-        $candidate = $matches[1]
-        # ヘッダ行 ("Id"/"ID") を除外
-        if ($candidate -notmatch '^(Id|ID|名前|Name)$' -and $candidate.Length -gt 2) {
-            $ids += $candidate
-        }
-    }
+# 2. 実 install (winget export で JSON dump → ID を取り出す)。
+#    旧実装は `winget list` の表を正規表現で parse していたが、以下の理由で外した:
+#    ・winget の auto-fit column 幅で Name と ID の境界 spacing が 1 文字になることがあり
+#      `\s{2,}` で区切れない (例: wez.wezterm の "WezTerm version <ver>" Name)
+#    ・ID に `+` や `@` 等の特殊文字が来ると charset から漏れる (例: Henry++.simplewall)
+#    winget export は公式機能で確実に全 installed ID を JSON で吐く。
+Write-Host 'winget export を取得中...' -ForegroundColor DarkGray
+$tmpExport = Join-Path $env:TEMP "winget-export-$(Get-Random).json"
+try {
+    winget export --include-versions --source winget --accept-source-agreements --output $tmpExport 2>&1 | Out-Null
+    if (-not (Test-Path $tmpExport)) { Write-Error 'winget export が失敗 (file not created)'; exit 2 }
+    $exported = Get-Content $tmpExport -Raw | ConvertFrom-Json
+    $ids = @($exported.Sources | ForEach-Object { $_.Packages.PackageIdentifier })
+} finally {
+    Remove-Item $tmpExport -ErrorAction SilentlyContinue
 }
 $installedSet = [System.Collections.Generic.HashSet[string]]::new([string[]]$ids, [System.StringComparer]::OrdinalIgnoreCase)
 
