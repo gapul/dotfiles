@@ -37,6 +37,13 @@ config.color_scheme = 'rose-pine'
 -- ─── 閉じる確認なし (Ghostty: confirm-close-surface = false) ───
 config.window_close_confirmation = 'NeverPrompt'
 
+-- ─── Default shell (Windows: pwsh 7、macOS/Linux は OS デフォルト) ───
+-- Windows 既定の cmd.exe / Windows PowerShell 5.1 を pwsh 7 に切替。
+-- pwsh.exe が PATH に在ることが前提 (apps.json で Microsoft.PowerShell install 済)。
+if is_windows then
+  config.default_prog = { 'pwsh.exe', '-NoLogo' }
+end
+
 -- ─── 背景 (Ghostty: background-opacity = 0.88 / background-blur-radius = 30) ───
 config.window_background_opacity = 0.88
 if is_macos then
