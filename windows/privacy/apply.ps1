@@ -59,18 +59,23 @@ if (-not $SkipWin11Debloat) {
         if ($DryRun) {
             Dry "irm https://win11debloat.raphi.re/ | iex (引数 -> $($debloatArgs -join ' '))"
         } else {
-            # 取得 → UTF-8 BOM 付き一時 .ps1 → **別 pwsh プロセスで** `-File` 呼び出し。
-            # 同一プロセスで `& $file @args` だと、`[CmdletBinding(SupportsShouldProcess)]` の
-            # 共通パラメータ (WhatIf/Confirm) と switch 引数の解析が衝突して
-            # 「A positional parameter cannot be found that accepts argument '-Disable*'」で死ぬ。
-            # 別プロセスなら parameter binder が完全に独立するので確実。
-            # 公式 README の `powershell -File .\Win11Debloat.ps1 -Silent -RemoveApps` と同形。
-            Log "Win11Debloat 実行 (raw GitHub → UTF-8 BOM temp file → pwsh -File)..."
-            $debloatUrl = 'https://raw.githubusercontent.com/Raphire/Win11Debloat/master/Win11Debloat.ps1'
-            $debloatContent = (Invoke-WebRequest -Uri $debloatUrl -UseBasicParsing).Content
-            $tmpDebloat = Join-Path $env:TEMP "Win11Debloat-$(Get-Random).ps1"
+            # Win11Debloat は multi-file プロジェクト (Lib/Modules/Resources が必要)。
+            # 公式の入口は GitHub Release の `Get.ps1` (launcher)。
+            # Get.ps1 が内部でフル repo を取得して Win11Debloat.ps1 を呼ぶ。
+            #
+            # 設計判断:
+            # ・URL は GitHub Release の Get.ps1 を直叩き
+            #   (Win11Debloat.ps1 を単体取得すると "unable to find required files" で死ぬ)
+            # ・取得は `Invoke-WebRequest -OutFile` で binary 直書き
+            #   (.Content は PS 7 で byte[] を返すので、WriteAllText で string 化すると
+            #    "112 97 114 97 109" のように byte 値の数字列になり parse 不能)
+            # ・実行は別 pwsh プロセスで `-File` 呼び出し
+            #   (同一プロセスの splatting だと CmdletBinding と switch 引数の bind 衝突)
+            Log "Win11Debloat 実行 (Get.ps1 launcher 経由)..."
+            $debloatUrl = 'https://github.com/Raphire/Win11Debloat/releases/latest/download/Get.ps1'
+            $tmpDebloat = Join-Path $env:TEMP "Win11Debloat-Get-$(Get-Random).ps1"
             try {
-                [System.IO.File]::WriteAllText($tmpDebloat, $debloatContent, [System.Text.UTF8Encoding]::new($true))
+                Invoke-WebRequest -Uri $debloatUrl -OutFile $tmpDebloat -UseBasicParsing
                 $psArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $tmpDebloat) + $debloatArgs
                 & pwsh @psArgs
                 if ($LASTEXITCODE -ne 0) { Err "Win11Debloat exit code: $LASTEXITCODE" }
