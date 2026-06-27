@@ -141,10 +141,21 @@ if (Test-Path $AppsJson) {
     $content = Get-Content $AppsJson -Raw
     if ($content -match '"PackageIdentifier"') {
         if ($DryRun) {
-            Dry "winget import --import-file $AppsJson"
+            Dry "winget import --import-file $AppsJson --no-upgrade"
         } else {
             Log "Installing apps from $AppsJson ..."
-            winget import --import-file $AppsJson --accept-package-agreements --accept-source-agreements
+            # --no-upgrade: 既存 install は触らない (Claude Code 等の自己プロセス lock 回避、
+            #   アップグレードは `just win-upgrade` で別途実行する分離設計)
+            # try-catch: 1 個失敗しても残り step (symlink / privacy / keymap) は続行する
+            try {
+                winget import --import-file $AppsJson --no-upgrade `
+                    --accept-package-agreements --accept-source-agreements
+                if ($LASTEXITCODE -ne 0) {
+                    Log "winget import で 1 件以上失敗 (LASTEXITCODE=$LASTEXITCODE) — 続行"
+                }
+            } catch {
+                Err "winget import 例外 (続行): $($_.Exception.Message)"
+            }
         }
     } else {
         Log 'apps.json は空 (winget import スキップ)'
