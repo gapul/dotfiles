@@ -39,6 +39,26 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+
+# ─── 0. 管理者チェック (DryRun は除外) ───
+# symlink 作成 (SeCreateSymbolicLinkPrivilege) / ssh-agent サービス変更 /
+# プライバシー & SharpKeys の各 apply.ps1 が全部管理者要なので、
+# 非管理者で起動された場合は UAC 起こして elevate した子プロセスに引き継ぐ。
+if (-not $DryRun) {
+    $principal = New-Object Security.Principal.WindowsPrincipal(
+        [Security.Principal.WindowsIdentity]::GetCurrent())
+    if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+        Write-Host '[bootstrap-win] 管理者権限が必要です。UAC promptで再起動します...' -ForegroundColor Blue
+        $childArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$PSCommandPath`"")
+        $childArgs += @('-WslUser', $WslUser, '-WslDistro', $WslDistro, '-GitUser', $GitUser, '-GitEmail', $GitEmail)
+        if ($SkipPrivacy) { $childArgs += '-SkipPrivacy' }
+        if ($SkipScoop)   { $childArgs += '-SkipScoop' }
+        if ($SkipKeymap)  { $childArgs += '-SkipKeymap' }
+        Start-Process pwsh -Verb RunAs -ArgumentList $childArgs
+        exit
+    }
+}
+
 $DotfilesDir = Join-Path $env:USERPROFILE 'dotfiles'
 $WindowsDir = Join-Path $DotfilesDir 'windows'
 
