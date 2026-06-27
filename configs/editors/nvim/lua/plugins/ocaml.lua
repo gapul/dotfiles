@@ -35,7 +35,7 @@ return {
   -- (2) mason 経由で ocaml-lsp を入れさせない
   -- opam と二重インストールになると古い方が優先されることがある
   {
-    "williamboman/mason-lspconfig.nvim",
+    "mason-org/mason-lspconfig.nvim",
     opts = function(_, opts)
       opts.ensure_installed = opts.ensure_installed or {}
       -- ocamllsp は除外
