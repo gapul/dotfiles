@@ -1,0 +1,15 @@
+{
+  "name": "textlint-ja",
+  "version": "1.0.0",
+  "description": "日本語校閲用 textlint バンドル (nix buildNpmPackage で再現的に構築)",
+  "private": true,
+  "dependencies": {
+    "textlint": "15.7.1",
+    "textlint-filter-rule-allowlist": "4.0.0",
+    "textlint-filter-rule-comments": "1.3.0",
+    "textlint-rule-preset-ja-spacing": "3.0.0",
+    "textlint-rule-preset-ja-technical-writing": "12.0.2",
+    "textlint-rule-preset-jtf-style": "3.0.3",
+    "textlint-rule-prh": "6.1.0"
+  }
+}

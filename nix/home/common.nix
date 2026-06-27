@@ -146,6 +146,7 @@ in
       gs = "git status";
       tl = "textlint --config ~/.config/textlint/.textlintrc.json";
       tlf = "textlint --config ~/.config/textlint/.textlintrc.json --fix";
+      cfw = "~/Developer/github.com/gapul/personal-tools/cloudflare/bin/cf-wrangler";
     };
 
     initContent = ''
@@ -357,6 +358,17 @@ in
     ffmpegthumbnailer # 動画サムネイル (yazi 内蔵 video previewer が使用)
     ouch # 書庫(zip/tar/7z 等)の中身一覧/展開
     rich-cli # csv/json/md 等のリッチ整形 (piper previewer から呼ぶ)
+
+    # ─── lint/format 一元管理 (CLI・Neovim・CI で同一バイナリ/同一版に統一) ───
+    # Neovim(conform/nvim-lint)は PATH 上のこれらを参照する。Mason 側では
+    # ensure_installed から除外し二重管理を排除 (configs/editors/nvim/lua/plugins/tooling.lua)。
+    stylua # Lua 整形
+    shfmt # Shell 整形
+    prettier # js/ts/json/yaml/css/md 整形
+    ruff # Python lint + format
+    markdownlint-cli2 # Markdown lint
+    # 日本語校閲 textlint (ルール一式を buildNpmPackage で固定。pnpm global を廃止)
+    (callPackage ../pkgs/textlint-ja.nix { })
   ];
 
   programs.git = {
@@ -386,6 +398,20 @@ in
       "result-*"
       ".envrc.local"
       ".claude/settings.local.json"
+      # LaTeX ビルド中間生成物 (latexmk / lualatex)
+      "*.aux"
+      "*.fdb_latexmk"
+      "*.fls"
+      "*.log"
+      "*.out"
+      "*.toc"
+      "*.synctex.gz"
+      "*.bbl"
+      "*.bcf"
+      "*.run.xml"
+      "*.nav"
+      "*.snm"
+      "*.vrb"
     ];
     signing = {
       key = "${config.home.homeDirectory}/.ssh/id_ed25519.pub";

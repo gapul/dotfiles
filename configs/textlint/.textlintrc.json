@@ -1,0 +1,36 @@
+{
+  "filters": {
+    "comments": true,
+    "allowlist": {
+      "allow": ["/\\$\\$[\\s\\S]*?\\$\\$/m", "/`[^`]*`/"]
+    }
+  },
+  "rules": {
+    "preset-ja-technical-writing": {
+      "sentence-length": { "max": 120 },
+      "max-comma": { "max": 4 },
+      "max-ten": { "max": 3 },
+      "max-kanji-continuous-len": { "max": 6 },
+      "no-mix-dearu-desumasu": {
+        "preferInHeader": "",
+        "preferInBody": "ですます",
+        "preferInList": "である",
+        "strict": false
+      },
+      "ja-no-mixed-period": { "periodMark": "。" },
+      "no-exclamation-question-mark": false,
+      "no-doubled-joshi": { "min_interval": 1 },
+      "no-double-negative-ja": true
+    },
+    "preset-ja-spacing": {
+      "ja-space-between-half-and-full-width": {
+        "space": ["alphabets", "numbers"]
+      },
+      "ja-space-around-code": { "before": true, "after": true },
+      "ja-space-around-link": false
+    },
+    "prh": {
+      "rulePaths": ["prh/web-db-press.yml"]
+    }
+  }
+}
