@@ -1,0 +1,163 @@
+/* Zebar styles - Rose Pine theme (Mac SketchyBar と統一)
+ * 配置先: %USERPROFILE%\.glzr\zebar\styles.css (bootstrap.ps1 で symlink)
+ *
+ * 元: Zebar starter pack の Tokyo Night
+ * 変更: Rose Pine palette + SketchyBar 風の widget pill レイアウト
+ *       (バー本体は半透明、個別 widget が背景 pill を持つ)
+ */
+@import 'https://www.nerdfonts.com/assets/css/webfont.css';
+
+:root {
+  /* Rose Pine palette */
+  --rp-base:    #191724;
+  --rp-surface: #1f1d2e;
+  --rp-overlay: #26233a;
+  --rp-muted:   #6e6a86;
+  --rp-subtle:  #908caa;
+  --rp-text:    #e0def4;
+  --rp-love:    #eb6f92;
+  --rp-gold:    #f6c177;
+  --rp-rose:    #ebbcba;
+  --rp-pine:    #31748f;
+  --rp-foam:    #9ccfd8;
+  --rp-iris:    #c4a7e7;
+
+  /* UI alias (SketchyBar 寄せ: bar 透過、widget pill に背景) */
+  --bg:         rgba(25 23 36 / 88%);
+  --bg-widget:  rgba(38 35 58 / 75%);
+  --text:       var(--rp-text);
+  --text-dim:   var(--rp-subtle);
+  --accent:     var(--rp-iris);
+  --border:     rgba(196 167 231 / 12%);
+  --ws-active:  rgba(196 167 231 / 25%);
+  --ws-focus:   rgba(196 167 231 / 55%);
+  --font-size:  12px;
+}
+
+body {
+  /* テキストは可読性優先 (HackGen 系 → M+Code Nerd → SF Pro)。
+     Nerd Symbols は `i` 要素で別フォント指定するので body は通常テキスト系で OK。 */
+  font-family: 'HackGen Console NF', 'M+CodeLat50NerdFont',
+               'JetBrainsMono Nerd Font', 'SF Pro Display',
+               'Yu Gothic UI', ui-monospace, sans-serif;
+  font-size: var(--font-size);
+  color: var(--text);
+  overflow: hidden;
+}
+
+div, span, p {
+  cursor: default;
+  user-select: none;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+#root {
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  /* SketchyBar 風の薄いシャドウ */
+  box-shadow: 0 2px 8px rgba(0 0 0 / 30%);
+}
+
+i {
+  /* HackGen Console NF は日本語フォントで Nerd Font glyph を持たないため、
+     icon だけ Nerd patched フォントに強制切替 (実機 install 済の M+Code を
+     1st、JetBrainsMono / Symbols Nerd Font に fallback)。
+     さらに大きめ + 縦中央寄せで視認性確保。 */
+  font-family: 'M+CodeLat50NerdFont', 'M+CodeLat60NerdFont',
+               'JetBrainsMono Nerd Font', 'Symbols Nerd Font Mono',
+               'Symbols Nerd Font', monospace;
+  font-style: normal;
+  margin-right: 6px;
+  font-size: calc(var(--font-size) * 1.15);
+  line-height: 1;
+  color: var(--accent);
+  vertical-align: middle;
+  display: inline-flex;
+  align-items: center;
+}
+
+.app {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  align-items: center;
+  height: 100%;
+  padding: 4px 1.5vw;
+}
+
+.left, .center, .right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.center { justify-self: center; }
+.right  { justify-self: end; }
+
+.logo {
+  color: var(--accent);
+  margin-right: 4px;
+}
+
+.workspaces {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.workspace {
+  background: var(--bg-widget);
+  padding: 2px 10px;
+  color: var(--text-dim);
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: var(--font-size);
+  font-family: inherit;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+
+  &.displayed {
+    background: var(--ws-active);
+    color: var(--text);
+  }
+
+  &.focused, &:hover {
+    background: var(--ws-focus);
+    color: var(--rp-base);
+    border-color: var(--accent);
+  }
+}
+
+.binding-mode, .tiling-direction, .paused-button {
+  background: var(--bg-widget);
+  color: var(--text);
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  padding: 2px 8px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: var(--font-size);
+}
+
+.network, .memory, .cpu, .battery, .weather {
+  display: flex;
+  align-items: center;
+}
+
+.cpu .high-usage {
+  color: var(--rp-love);   /* 高負荷時は Love (red 系) */
+}
+
+.battery {
+  position: relative;
+}
+
+.battery .charging-icon {
+  position: absolute;
+  font-size: 7px;
+  left: -8px;
+  top: 3px;
+  color: var(--rp-foam);   /* 充電中は Foam (cyan 系) */
+}

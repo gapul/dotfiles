@@ -234,7 +234,10 @@ $ConfigLinks = @(
     # wezterm: ~/.wezterm.lua を symlink (WezTerm は ~/.config/wezterm/ より優先)。
     @{ Label = 'wezterm'; Src = (Join-Path $DotfilesDir 'configs\terminals\wezterm\wezterm.lua'); Dst = (Join-Path $env:USERPROFILE '.wezterm.lua') },
     # glazewm: ~/.glzr/glazewm/config.yaml を symlink (AeroSpace 設定移植版)
-    @{ Label = 'glazewm'; Src = (Join-Path $DotfilesDir 'configs\wm\glazewm\config.yaml'); Dst = (Join-Path $env:USERPROFILE '.glzr\glazewm\config.yaml') }
+    @{ Label = 'glazewm'; Src = (Join-Path $DotfilesDir 'configs\wm\glazewm\config.yaml'); Dst = (Join-Path $env:USERPROFILE '.glzr\glazewm\config.yaml') },
+    # zebar: ~/.glzr/zebar/{styles.css,settings.json} を symlink (SketchyBar 寄せ Rose Pine)
+    @{ Label = 'zebar-css';      Src = (Join-Path $DotfilesDir 'configs\wm\zebar\styles.css');    Dst = (Join-Path $env:USERPROFILE '.glzr\zebar\styles.css') },
+    @{ Label = 'zebar-settings'; Src = (Join-Path $DotfilesDir 'configs\wm\zebar\settings.json'); Dst = (Join-Path $env:USERPROFILE '.glzr\zebar\settings.json') }
 )
 foreach ($link in $ConfigLinks) {
     New-DotfilesLink -Source $link.Src -Destination $link.Dst -Label $link.Label
