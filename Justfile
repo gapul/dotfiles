@@ -429,6 +429,12 @@ win-privacy *flags:
 win-scoop *flags:
     pwsh.exe -NoProfile -ExecutionPolicy Bypass -File windows/scoop/apply.ps1 {{flags}}
 
+# ロケール / 言語を declarative に適用 (en-US UI / UTF-8 / SKK のみ / US Region)
+# `*flags` で `-DryRun` `-SkipLanguageList` `-SkipSystemLocale` `-SkipHomeLocation` を渡せる
+[group('Windows')]
+win-locale *flags:
+    pwsh.exe -NoProfile -ExecutionPolicy Bypass -File windows/locale/apply.ps1 {{flags}}
+
 # キーマップ適用 (SharpKeys = Scancode Map 直書き + AHK スクリプト reload)
 # `*flags` で `-DryRun` `-Clear` (Scancode Map 削除して standard に戻す) を渡せる
 [group('Windows')]
