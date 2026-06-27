@@ -130,6 +130,45 @@ Mac の `nix/hosts/darwin.nix` の `system.defaults` 相当を Windows で再現
 | P8-32 | `windows/privacy/apply.ps1` orchestrator: `Win11Debloat` は CLI 自動、`WinUtil` は GUI 起動 + Config 自動 import。`-DryRun` / `-SkipWinUtil` / `-SkipWin11Debloat` 対応。PowerShell 5.1 の `Get-Content` ANSI 既定対策で `-Encoding UTF8` を明示 | ✅ (this commit) |
 | P8-33 | `Justfile` に `win-privacy *flags` 追加。`bootstrap.ps1` Step 7 として自動実行(`-SkipPrivacy` で省略可)。`apply.ps1` 側でも `-SkipWinUtil` / `-SkipWin11Debloat` で個別 skip 可能 — 細粒度の選択性を担保 | ✅ (this commit) |
 
+### ⬜ P9(Microsoft 純正からの代替拡張 + scoop 統合)
+
+純正アプリ(File Explorer / OneDrive / Mail / Defender / Photos / ペイント / 録音 等)を Mac 環境(`brew cask`)と整合する形で代替。
+
+| # | 内容 | 状態 |
+|---|---|---|
+| P9-34 | `apps.json` に GUI app 12 個追加 — `Syncthing.Syncthing`(OneDrive 代替) / `Mozilla.Thunderbird`(Mail) / `WinSCP.WinSCP`(Cyberduck 相当) / `ente-io.auth-desktop`(2FA) / `WiresharkFoundation.Wireshark` / `KDE.Krita`(Paint) / `Ditto.Ditto`(Maccy 相当のクリップボード履歴) / `Captura.Captura`(動画録画) / `Bitdefender.Bitdefender`(Defender 代替 AV) / `Henry++.simplewall`(LuLu 相当の Outbound Firewall) / `Microsoft.Sysinternals.Autoruns`(BlockBlock/KnockKnock 相当の永続化監視) / `Malwarebytes.Malwarebytes`(セカンドオピニオン スキャナ) | ✅ (this commit) |
+| P9-35 | scoop 統合 — MS Store 専用 app(Files 等)の sideload 用に `windows/scoop/` 新設。`scoop.json`(buckets + apps の declarative)+ `apply.ps1` orchestrator(scoop 自動 install、bucket 追加、app install、`-DryRun` / `-SkipBuckets` / `-SkipApps` 対応)。`bootstrap.ps1` Step 2.5 として自動実行(`-SkipScoop` で省略可)、`Justfile` に `win-scoop *flags` 追加。File Explorer 代替は `nonportable/files-np` で sideload(Store 経由を回避) | ✅ (this commit) |
+| P9-36 | `win11debloat-args.txt` に 6 引数追加 — `-RemoveCommApps`(Mail/Calendar/People、Thunderbird 代替前提)/ `-RemoveDevApps`(3D Builder / MR Portal)/ `-RemoveW11Outlook`(新 Outlook 強制プッシュ削除)/ `-RemoveGamingApps`(Xbox 全部、Steam 使用)/ `-DisableOnedrive`(Syncthing 代替)/ `-DisableWidgets`(タスクバー お天気/ニュース) | ✅ (this commit) |
+| P9-37 | 録音 / フォトプレビュー — 用途未定のため**保留**。録音は会議録音用途で適切な OSS 探索中、フォトプレビューも候補絞り込み中 | ⏳ pending |
+
+#### 「Microsoft 純正からの代替」現状マッピング
+
+| 分類 | Microsoft 純正 | 代替 |
+|---|---|---|
+| Terminal | Windows Terminal | WezTerm |
+| Shell | PowerShell 5.1 | PowerShell 7 |
+| Editor | Notepad | Neovim |
+| Browser | Edge | Chrome / Zen-Browser |
+| Launcher | Start 検索 | Flow Launcher + Everything |
+| Snipping | Snipping Tool | ShareX |
+| WindowManager | Snap | GlazeWM |
+| Keymap | (なし) | SharpKeys + AutoHotkey + PowerToys |
+| Phone Link | Phone Link | KDE Connect + LocalSend |
+| Photo Viewer | フォト | (保留) |
+| Mail / Calendar | Mail / Outlook | Thunderbird |
+| Sticky Notes | Sticky Notes | Obsidian |
+| OneDrive | OneDrive | Syncthing |
+| クリップボード履歴 | Win+V(揮発) | Ditto(SQLite 永続化) |
+| ペイント | Paint | Krita |
+| 動画録画 | Game Bar | Captura(+ OBS / ShareX) |
+| 2FA | (なし) | Ente Auth |
+| AV / リアルタイム保護 | Defender | Bitdefender Free(Defender は待機モード自動切替) |
+| Outbound Firewall | Defender Firewall | simplewall(LuLu 相当) |
+| 永続化監視 | (なし) | Sysinternals Autoruns(BlockBlock / KnockKnock 相当) |
+| セカンド AV | (なし) | Malwarebytes Free |
+| File Explorer | エクスプローラー | Files(scoop nonportable bucket、Store 回避) |
+| プライバシー / Telemetry | (標準有効) | Win11Debloat + WinUtil で declarative 無効化 |
+
 ---
 
 ## 実装順

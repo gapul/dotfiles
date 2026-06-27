@@ -5,6 +5,7 @@
 #   1. winget 確認
 #   1.5 PowerShell 7 を先に確保
 #   2. winget/apps.json から一括 install (空ファイルなら skip)
+#   2.5 scoop bucket + app の declarative 適用 (MS Store 回避用)
 #   3. PowerShell $PROFILE を dotfiles 内ファイルへ symlink
 #   4. Windows Terminal settings.json を生成 (WSL user/distro 注入)
 #   4.5 configs/ の各ツール config を %APPDATA% / %LOCALAPPDATA% へ symlink
@@ -29,7 +30,9 @@ param(
     # 実害なしでステップを表示するだけ (configs symlink 検証等)
     [switch]$DryRun,
     # プライバシー適用 (Win11Debloat + WinUtil) を skip
-    [switch]$SkipPrivacy
+    [switch]$SkipPrivacy,
+    # Scoop (windows/scoop/scoop.json) の bucket / app 適用を skip
+    [switch]$SkipScoop
 )
 
 $ErrorActionPreference = 'Stop'
@@ -125,6 +128,25 @@ if (Test-Path $AppsJson) {
     }
 } else {
     Log "$AppsJson が無いので winget import スキップ"
+}
+
+# 2.5 Scoop bucket / app の declarative 適用。
+#     winget で取れない MS Store 専用 app (Files 等) を sideload するための補助。
+#     詳細は windows/scoop/README.md。
+if (-not $SkipScoop) {
+    $scoopApply = Join-Path $WindowsDir 'scoop\apply.ps1'
+    if (Test-Path $scoopApply) {
+        if ($DryRun) {
+            & $scoopApply -DryRun
+        } else {
+            Log 'Scoop 適用 (bucket + app) — skip するには -SkipScoop'
+            & $scoopApply
+        }
+    } else {
+        Log "$scoopApply が無い (skip)"
+    }
+} else {
+    Log 'SkipScoop 指定: just win-scoop で後から適用可'
 }
 
 # 3. PowerShell $PROFILE を symlink。
