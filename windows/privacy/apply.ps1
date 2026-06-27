@@ -59,15 +59,23 @@ if (-not $SkipWin11Debloat) {
         if ($DryRun) {
             Dry "irm https://win11debloat.raphi.re/ | iex (引数 -> $($debloatArgs -join ' '))"
         } else {
-            # 公式推奨パターン: Web から取得 → [scriptblock]::Create() で実行。
-            # 短縮 URL (win11debloat.raphi.re) は 301 で HTML ページにリダイレクトされる
-            # 事例があり HTML の CSS が PS パーサに食わされて死ぬので、raw GitHub URL を直接叩く。
-            Log "Win11Debloat 実行 (script block, raw GitHub)..."
+            # 取得 → 一時ファイル (UTF-8 BOM 付き) → `& $file @args` で実行。
+            # ・短縮 URL (win11debloat.raphi.re) は 301 で HTML に逃げるので raw GitHub URL 固定。
+            # ・[scriptblock]::Create() + splatting は AdvancedFunction の [CmdletBinding]
+            #   属性が無視されて switch 引数が positional になり詰む。ファイル経由なら正常。
+            # ・`-OutFile` 直書きは PS 5.1 で ASCII 保存になり非 ASCII が壊れるため
+            #   WriteAllText で UTF-8 BOM 明示。
+            Log "Win11Debloat 実行 (raw GitHub → UTF-8 BOM temp file)..."
             $debloatUrl = 'https://raw.githubusercontent.com/Raphire/Win11Debloat/master/Win11Debloat.ps1'
             $debloatContent = (Invoke-WebRequest -Uri $debloatUrl -UseBasicParsing).Content
-            $debloatBlock = [scriptblock]::Create($debloatContent)
-            & $debloatBlock @debloatArgs
-            Log "Win11Debloat 完了"
+            $tmpDebloat = Join-Path $env:TEMP "Win11Debloat-$(Get-Random).ps1"
+            try {
+                [System.IO.File]::WriteAllText($tmpDebloat, $debloatContent, [System.Text.UTF8Encoding]::new($true))
+                & $tmpDebloat @debloatArgs
+                Log "Win11Debloat 完了"
+            } finally {
+                Remove-Item $tmpDebloat -ErrorAction SilentlyContinue
+            }
         }
     }
 } else {
@@ -183,16 +191,20 @@ if (-not $SkipWinUtil) {
             Dry "irm https://christitus.com/win | iex -Args '-Config $configFile'"
             Dry "(GUI 起動 → Settings → Import Config で $configFile を選択 → Apply)"
         } else {
-            # GitHub Release asset を直接叩く (christitus.com/win は 301 redirect で
-            # 取得自体は redirect 追従で動くが、確実性のため raw URL を明示)。
-            Log "WinUtil 実行 (script block, GitHub Releases, GUI 起動)..."
+            # Win11Debloat と同じパターン: GitHub Release → UTF-8 BOM temp file → `& $file -Config`
+            Log "WinUtil 実行 (GitHub Releases → UTF-8 BOM temp file, GUI 起動)..."
             $winutilUrl = 'https://github.com/ChrisTitusTech/winutil/releases/latest/download/winutil.ps1'
             $winutilContent = (Invoke-WebRequest -Uri $winutilUrl -UseBasicParsing).Content
-            $winutilBlock = [scriptblock]::Create($winutilContent)
-            # WinUtil は -Config 引数で起動時 import に対応。version 差で動かない時は
-            # GUI で手動 Import → Apply してください。
-            & $winutilBlock -Config $configFile
-            Log "WinUtil 終了"
+            $tmpWinUtil = Join-Path $env:TEMP "winutil-$(Get-Random).ps1"
+            try {
+                [System.IO.File]::WriteAllText($tmpWinUtil, $winutilContent, [System.Text.UTF8Encoding]::new($true))
+                # WinUtil は -Config 引数で起動時 import に対応。version 差で動かない時は
+                # GUI で手動 Import → Apply してください。
+                & $tmpWinUtil -Config $configFile
+                Log "WinUtil 終了"
+            } finally {
+                Remove-Item $tmpWinUtil -ErrorAction SilentlyContinue
+            }
         }
     }
 } else {
