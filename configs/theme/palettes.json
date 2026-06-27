@@ -19,7 +19,8 @@
       "hlMed": "403d52",
       "ghosttyTheme": "Rose Pine",
       "batTheme": "rose-pine",
-      "yaziFlavor": "rose-pine"
+      "yaziFlavor": "rose-pine",
+      "weztermScheme": "rose-pine"
     },
     "rose-pine-dawn": {
       "variant": "light",
@@ -38,7 +39,8 @@
       "hlMed": "dfdad9",
       "ghosttyTheme": "Rose Pine Dawn",
       "batTheme": "rose-pine-dawn",
-      "yaziFlavor": "rose-pine-dawn"
+      "yaziFlavor": "rose-pine-dawn",
+      "weztermScheme": "rose-pine-dawn"
     }
   }
 }

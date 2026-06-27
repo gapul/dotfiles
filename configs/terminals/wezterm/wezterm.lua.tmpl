@@ -32,7 +32,7 @@ config.font_size = 13.0
 config.warn_about_missing_glyphs = false
 
 -- ─── Theme (palettes.json の weztermScheme から render) ───
-config.color_scheme = 'rose-pine'
+config.color_scheme = '{{ palette.weztermScheme:raw }}'
 
 -- ─── 閉じる確認なし (Ghostty: confirm-close-surface = false) ───
 config.window_close_confirmation = 'NeverPrompt'
