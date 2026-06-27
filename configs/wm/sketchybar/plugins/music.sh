@@ -9,7 +9,7 @@ source "$CONFIG_DIR/icons.sh"
 
 # 必要なフィールドだけ抽出 (artworkData は無視)
 RESULT=$(/opt/homebrew/bin/media-control get 2>/dev/null \
-  | /opt/homebrew/bin/jq -r '
+  | "$HOME/.nix-profile/bin/jq" -r '
       if . == null or (. | type) != "object" then
         "none\t\t"
       else

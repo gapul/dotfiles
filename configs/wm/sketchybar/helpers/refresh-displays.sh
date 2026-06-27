@@ -18,7 +18,7 @@ set -e
 
 MAP_FILE=/tmp/sketchybar-aero-display.map
 SB=/opt/homebrew/bin/sketchybar
-JQ=/opt/homebrew/bin/jq
+JQ="$HOME/.nix-profile/bin/jq" # jq は nix 管理 (homebrew には無い)
 AS=/opt/homebrew/bin/aerospace
 
 # reload直後の query は空を返すことがあるのでリトライ
