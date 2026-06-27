@@ -14,6 +14,7 @@
 #   6. git の global config
 #   7. プライバシー / 標準機能の declarative 適用 (-SkipPrivacy で省略可)
 #   8. キーマップ — SharpKeys (Scancode Map) + AHK (Startup 登録) (-SkipKeymap で省略可)
+#   9. ロケール / 言語 — User Language List / System Locale / Home Location (-SkipLocale で省略可)
 #
 # -DryRun で symlink 作成等の副作用を出さず計画だけ表示。
 #
@@ -35,7 +36,9 @@ param(
     # Scoop (windows/scoop/scoop.json) の bucket / app 適用を skip
     [switch]$SkipScoop,
     # キーマップ (SharpKeys + AHK Startup) を skip
-    [switch]$SkipKeymap
+    [switch]$SkipKeymap,
+    # ロケール / 言語 (User Language List / System Locale / Home Location) を skip
+    [switch]$SkipLocale
 )
 
 $ErrorActionPreference = 'Stop'
@@ -54,6 +57,7 @@ if (-not $DryRun) {
         if ($SkipPrivacy) { $childArgs += '-SkipPrivacy' }
         if ($SkipScoop)   { $childArgs += '-SkipScoop' }
         if ($SkipKeymap)  { $childArgs += '-SkipKeymap' }
+        if ($SkipLocale)  { $childArgs += '-SkipLocale' }
         Start-Process pwsh -Verb RunAs -ArgumentList $childArgs
         exit
     }
@@ -337,6 +341,24 @@ if (-not $SkipKeymap) {
     }
 } else {
     Log 'SkipKeymap 指定: just win-keymap で後から適用可'
+}
+
+# 9. ロケール / 言語 — User Language List / System Locale / Home Location
+if (-not $SkipLocale) {
+    $localeApply = Join-Path $WindowsDir 'locale\apply.ps1'
+    if (Test-Path $localeApply) {
+        if ($DryRun) {
+            & $localeApply -DryRun
+        } else {
+            Log 'Locale 適用 (en-US UI / UTF-8 / SKK のみ / 再起動で完全反映) — skip するには -SkipLocale'
+            try { & $localeApply }
+            catch { Err "Locale 適用失敗: $($_.Exception.Message)" }
+        }
+    } else {
+        Log "$localeApply が無い (skip)"
+    }
+} else {
+    Log 'SkipLocale 指定: just win-locale で後から適用可'
 }
 
 Log ''
