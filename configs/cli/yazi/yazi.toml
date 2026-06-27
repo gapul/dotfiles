@@ -23,8 +23,9 @@ audio = [
   { run = 'start "" "$@"', desc = "Play with default", orphan = true, for = "windows" },
 ]
 image = [
-  { run = 'open -a "Preview" "$@"', desc = "Open in Preview", orphan = true, for = "macos" },
+  { run = 'open -a qView "$@"', desc = "Open in qView", orphan = true, for = "macos" },
   { run = 'qlmanage -p "$@"', desc = "Quick Look", orphan = true, for = "macos" },
+  { run = 'open -a "Preview" "$@"', desc = "Open in Preview", orphan = true, for = "macos" },
   { run = 'xdg-open "$@"', desc = "Open (xdg)", orphan = true, for = "linux" },
   { run = 'start "" "$@"', desc = "Open with default", orphan = true, for = "windows" },
 ]

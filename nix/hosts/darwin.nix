@@ -202,6 +202,7 @@
       # ─── Documents / Fonts / Media ───
       "gstreamer"
       "mpv"
+      "sox" # 音声処理 (rec / play / sox / soxi)
 
       # ─── macOS specific CLI ───
       "mas" # App Store
@@ -239,6 +240,17 @@
         };
       } # vim キーバインドの軽量 PDF ビューア (zathura 代替・常用)
       "skim" # ネイティブ SyncTeX ビューア。TeX 執筆用の保険 (連携は後日)
+
+      # ─── Image viewers ───
+      # qView は ad-hoc 署名のみ (未 notarize)。quarantine 付きだと Gatekeeper に
+      # rejected され起動不能になるため no_quarantine 必須 (sioyek と同様)。
+      {
+        name = "qview";
+        args = {
+          no_quarantine = true;
+        };
+      } # 軽量画像ビューア (yazi の image opener に使用)
+      "picview" # 画像ビューア (notarized・picview.org)
 
       # ─── Communication & Sync ───
       "beeper"
