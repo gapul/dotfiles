@@ -38,7 +38,9 @@ param(
     # キーマップ (SharpKeys + AHK Startup) を skip
     [switch]$SkipKeymap,
     # ロケール / 言語 (User Language List / System Locale / Home Location) を skip
-    [switch]$SkipLocale
+    [switch]$SkipLocale,
+    # configs/fonts/ の .ttf/.otf user-scope install を skip
+    [switch]$SkipFonts
 )
 
 $ErrorActionPreference = 'Stop'
@@ -58,6 +60,7 @@ if (-not $DryRun) {
         if ($SkipScoop)   { $childArgs += '-SkipScoop' }
         if ($SkipKeymap)  { $childArgs += '-SkipKeymap' }
         if ($SkipLocale)  { $childArgs += '-SkipLocale' }
+        if ($SkipFonts)   { $childArgs += '-SkipFonts' }
         Start-Process pwsh -Verb RunAs -ArgumentList $childArgs
         exit
     }
@@ -346,6 +349,24 @@ if (-not $SkipKeymap) {
     }
 } else {
     Log 'SkipKeymap 指定: just win-keymap で後から適用可'
+}
+
+# 8.5 configs/fonts/ を user-scope install (sketchybar-app-font 等)
+if (-not $SkipFonts) {
+    $fontsApply = Join-Path $WindowsDir 'fonts\apply.ps1'
+    if (Test-Path $fontsApply) {
+        if ($DryRun) {
+            & $fontsApply -DryRun
+        } else {
+            Log 'Fonts 適用 (configs/fonts/*.ttf を %LOCALAPPDATA%\Microsoft\Windows\Fonts へ)'
+            try { & $fontsApply }
+            catch { Err "Fonts 適用失敗: $($_.Exception.Message)" }
+        }
+    } else {
+        Log "$fontsApply が無い (skip)"
+    }
+} else {
+    Log 'SkipFonts 指定: just win-fonts で後から適用可'
 }
 
 # 9. ロケール / 言語 — User Language List / System Locale / Home Location

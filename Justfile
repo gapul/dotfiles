@@ -435,6 +435,12 @@ win-scoop *flags:
 win-locale *flags:
     pwsh.exe -NoProfile -ExecutionPolicy Bypass -File windows/locale/apply.ps1 {{flags}}
 
+# configs/fonts/ の .ttf / .otf を user-scope install (HKCU 登録、管理者不要)
+# `*flags` で `-DryRun` `-Force` (既存も上書き) を渡せる
+[group('Windows')]
+win-fonts *flags:
+    pwsh.exe -NoProfile -ExecutionPolicy Bypass -File windows/fonts/apply.ps1 {{flags}}
+
 # キーマップ適用 (SharpKeys = Scancode Map 直書き + AHK スクリプト reload)
 # `*flags` で `-DryRun` `-Clear` (Scancode Map 削除して standard に戻す) を渡せる
 [group('Windows')]
