@@ -183,9 +183,39 @@ Karabiner と同じ表現力を達成する。
 
 | # | 内容 | 状態 |
 |---|---|---|
-| P10-42 | `windows/sharpkeys/` 新設 — `keymap.skl`(人間可読の SharpKeys 形式)+ `apply.ps1`(SharpKeys GUI に依存しない PowerShell 実装、`HKLM\SYSTEM\CurrentControlSet\Control\Keyboard Layout\Scancode Map` をバイナリ直書き)+ README。CapsLock(0x3A) → Left Ctrl(0x1D)を declarative に管理。`-DryRun` / `-Clear`(全削除して standard に戻す)対応 | ✅ (this commit) |
-| P10-43 | `windows/autohotkey/` 新設 — `keymap.ahk`(AHK v2)で 2 機能を実装。(a) Copilot キー → 右 Ctrl(SharpKeys で scancode 単独 remap 不可な OEM 機種向け保険、`F23` / `+#F23` / `vk89` / `sc15D` の候補をコメント残し、実機 KeyHistory で確認)、(b) Emacs ショートカット復活(`Ctrl+A→Home` / `Ctrl+E→End` / `Ctrl+B→Left` / `Ctrl+F→Right` / `Ctrl+P→Up` / `Ctrl+N→Down` / `Ctrl+H→Backspace` / `Ctrl+D→Delete` / `Ctrl+K→Shift+End,Del`)。ターミナル(`ConsoleWindowClass` / `CASCADIA_HOSTING_WINDOW_CLASS` / WezTerm / mintty)とエディタ(Vim / VS Code / Cursor / nvim)は `#HotIf !IsEmacsExcluded()` で除外 | ✅ (this commit) |
-| P10-44 | `bootstrap.ps1` に Step 8 追加 — SharpKeys apply.ps1 呼び出し + AHK を `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\dotfiles-keymap.ahk` へ symlink(ログイン時自動起動)。`-SkipKeymap` で省略可能。`Justfile` に `win-keymap *flags`(SharpKeys 適用 + AHK reload)追加 | ✅ (this commit) |
+| P10-42 | `windows/sharpkeys/` 新設 — `keymap.skl`(人間可読の SharpKeys 形式)+ `apply.ps1`(SharpKeys GUI に依存しない PowerShell 実装、`HKLM\SYSTEM\CurrentControlSet\Control\Keyboard Layout\Scancode Map` をバイナリ直書き)+ README。CapsLock(0x3A) → Left Ctrl(0x1D)を declarative に管理。`-DryRun` / `-Clear`(全削除して standard に戻す)対応 | ✅ |
+| P10-43 | `windows/autohotkey/` 新設 — `keymap.ahk`(AHK v2)で 2 機能を実装。(a) Copilot キー → 右 Ctrl(SharpKeys で scancode 単独 remap 不可な OEM 機種向け保険、`F23` / `+#F23` / `vk89` / `sc15D` の候補をコメント残し、実機 KeyHistory で確認)、(b) Emacs ショートカット復活(`Ctrl+A→Home` / `Ctrl+E→End` / `Ctrl+B→Left` / `Ctrl+F→Right` / `Ctrl+P→Up` / `Ctrl+N→Down` / `Ctrl+H→Backspace` / `Ctrl+D→Delete` / `Ctrl+K→Shift+End,Del`)。ターミナル(`ConsoleWindowClass` / `CASCADIA_HOSTING_WINDOW_CLASS` / WezTerm / mintty)とエディタ(Vim / VS Code / Cursor / nvim)は `#HotIf !IsEmacsExcluded()` で除外 | ✅ |
+| P10-44 | `bootstrap.ps1` に Step 8 追加 — SharpKeys apply.ps1 呼び出し + AHK を `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\dotfiles-keymap.ahk` へ symlink(ログイン時自動起動)。`-SkipKeymap` で省略可能。`Justfile` に `win-keymap *flags`(SharpKeys 適用 + AHK reload)追加 | ✅ |
+
+### ⬛ P11(ロケール宣言化 — SKK 専有 / UTF-8 / US Region)
+
+英語 UI で運用しつつ SJIS 由来 mojibake (`\` → `¥`) と冗長な IME を解消。
+
+| # | 内容 | 状態 |
+|---|---|---|
+| P11-45 | `windows/locale/apply.ps1` — 3 段階の declarative 適用。(A) User Language List = `ja-JP` 1 個 + `InputMethodTips` を CorvusSKK の固定 CLSID (`{EAEA0E29-AA1E-48EF-B2DF-46F4E24C6265}{956F14B3-5310-4CEF-9651-26710EB72F3A}`) 1 つに、`Set-WinUILanguageOverride en-US` で UI 英語固定 — 英語キーボードレイアウト (`0409:00000409`) と MS-IME が消え Win+Space 切替も無くなる、(B) `Set-WinSystemLocale en-US` + `HKLM\...\Nls\CodePage` の `ACP`/`OEMCP`/`MACCP` を 932 → 65001 化(Beta UTF-8 機能、`\` → `¥` の根本解消)、(C) `Set-WinHomeLocation -GeoId 244`(US)。自動 UAC elevation 付き、`-DryRun` / `-Skip{LanguageList,SystemLocale,HomeLocation}` で部分適用 | ✅ |
+| P11-46 | `bootstrap.ps1` Step 9 として統合(`-SkipLocale` で省略可)、`Justfile` に `win-locale *flags` 追加 | ✅ |
+
+### ⬛ P12(WM 宣言化 — AeroSpace → GlazeWM + Karabiner → AHK 補強)
+
+Mac の AeroSpace タイリング WM と Karabiner の app shortcut を Windows に移植。
+
+| # | 内容 | 状態 |
+|---|---|---|
+| P12-47 | `configs/wm/glazewm/config.yaml` — AeroSpace の Hyper key (`cmd+ctrl+alt`) を Win+Ctrl+Alt に 1:1 翻訳。focus/move/resize/workspace 切替(1-9,0)/move-to-workspace/floating/fullscreen/binding mode (resize)/monitor 切替/workspace back-and-forth/launcher(Flow Launcher)/terminal(WezTerm)を網羅。同じ筋肉記憶で Mac/Win 両方の WM を操作可能 | ✅ |
+| P12-48 | `windows/autohotkey/keymap.ahk` に Karabiner の `cmd-ctrl-alt-o → Obsidian` を `#^!o::Run "obsidian://"` で移植 + 保険として `#^!Enter::Run "wezterm-gui.exe"` | ✅ |
+| P12-49 | `configs/wm/zebar/{styles.css, settings.json}` — Mac SketchyBar との見た目統一を狙う。Tokyo Night palette → Rose Pine palette(`atuin`/`bat`/`man`/`wezterm`/`sketchybar` 等と同色)、SketchyBar 風 widget pill レイアウト、`box-shadow` で薄影、workspace focus invert、cpu 高負荷 = Love、充電中 = Foam。`<i>` icon は HackGen Console NF 1st(Nerd 版で glyph 含む)+ M+Code/JetBrainsMono Nerd Font の fallback chain | ✅ |
+| P12-50 | `bootstrap.ps1` ConfigLinks に `glazewm` / `zebar-css` / `zebar-settings` 追加 → `~/.glzr/glazewm/config.yaml` / `~/.glzr/zebar/{styles.css,settings.json}` へ symlink | ✅ |
+| P12-51 | Zebar `bar.html` の fork + `sketchybar-app-font` + `icon_map.sh` JSON 化 で focused app icon を SketchyBar 並み精密化 | ⏳ pending |
+
+### ⬛ P13(フォント宣言化 — sketchybar-app-font 等 user-scope install)
+
+Mac の home-manager で `font-*` cask を入れるのと同じ精神で declarative 化。
+
+| # | 内容 | 状態 |
+|---|---|---|
+| P13-52 | `windows/fonts/apply.ps1` — `configs/fonts/*.ttf|.otf` を `%LOCALAPPDATA%\Microsoft\Windows\Fonts\` に copy + `HKCU\Software\Microsoft\Windows NT\CurrentVersion\Fonts` にレジストリ登録。Win10 1809 以降の user-scope font install を活用(管理者不要)。冪等(既存 + reg 同値で skip)、`-DryRun` / `-Force` 対応 | ✅ |
+| P13-53 | `bootstrap.ps1` Step 8.5 として統合(`-SkipFonts` で省略可)、`Justfile` に `win-fonts *flags` 追加 | ✅ |
 
 ---
 
