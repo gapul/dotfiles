@@ -68,3 +68,16 @@ IsEmacsExcluded() {
 ^d::Send "{Delete}"         ; 1 文字削除 (後)
 ^k::Send "+{End}{Delete}"   ; 行末まで kill
 #HotIf
+
+; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+; Karabiner Mac 設定 → Windows 移植
+; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+; Hyper + O → Obsidian 起動 (Mac: cmd-ctrl-alt-O で Obsidian Add Log)
+; Add Log の URL は vault 名に依存するため、ここでは Obsidian を起動するだけ。
+; vault が複数あれば Obsidian は最後に開いた vault を立ち上げる。
+#^!o::Run "obsidian://"
+
+; Hyper + Enter → WezTerm 起動 (GlazeWM 経由でも動くが AHK 経由が確実)
+; GlazeWM の bindings と被るが先勝ち。GlazeWM 未起動でも開ける保険。
+#^!Enter::Run "wezterm-gui.exe"
