@@ -141,6 +141,27 @@
           ];
         };
 
+      # Lab PC (Windows username に揃える必要がある WSL2 環境) 用:
+      # Mac の username `yuki` と OS の actual user 名が違うため、
+      # `user.username` だけ override してそのまま home-manager に渡す。
+      # 使い方: home-manager switch --flake .#ispc_5cg54406v7-wsl
+      homeConfigurations."ispc_5cg54406v7-wsl" =
+        let
+          wslSystem = "x86_64-linux";
+          wslPkgs = nixpkgs.legacyPackages.${wslSystem};
+          labUser = user // { username = "ispc_5cg54406v7"; };
+        in
+        home-manager.lib.homeManagerConfiguration {
+          pkgs = wslPkgs;
+          extraSpecialArgs = { user = labUser; };
+          modules = [
+            ./home/common.nix
+            ./home/linux.nix
+            ./home/wsl.nix
+            sops-nix.homeManagerModules.sops
+          ];
+        };
+
       # Linux サーバー / 自宅 NUC / VPS 用: .#<username>-linux
       # 純 Linux (WSL interop なし)。aarch64 / x86_64 両対応
       homeConfigurations."${user.username}-linux" =
