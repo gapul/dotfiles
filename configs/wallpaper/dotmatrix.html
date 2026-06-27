@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Dot-Matrix Ripple Wallpaper</title>
+<style>
+  * { margin: 0; padding: 0; }
+  html, body { width: 100vw; height: 100vh; overflow: hidden; background: #191724; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+
+  /* 右下の控えめなマーカー */
+  .marker {
+    position: fixed;
+    bottom: 28px;
+    right: 32px;
+    color: rgba(224,222,244,0.22);  /* rose-pine text を薄く */
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    z-index: 10;
+    pointer-events: none;
+  }
+  .marker .dot { color: rgba(196,167,231,0.55); }  /* iris */
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="marker">MATRIX <span class="dot">&middot;</span> WS <span id="wsnum">1</span></div>
+<script>
+'use strict';
+
+// ─────────── Rosé Pine (main / dark) パレット ───────────
+// rose-pine.html からそのまま流用。
+const RP = {
+  base:    '25,23,36',    // #191724 背景 (一番暗い)
+  surface: '31,29,46',    // #1f1d2e
+  overlay: '38,35,58',    // #26233a
+  muted:   '110,106,134', // #6e6a86
+  subtle:  '144,140,170', // #908caa
+  text:    '224,222,244', // #e0def4
+  love:    '235,111,146', // #eb6f92 赤/ピンク
+  gold:    '246,193,119', // #f6c177 黄
+  rose:    '235,188,186', // #ebbcba ローズ
+  pine:    '49,116,143',  // #31748f 青
+  foam:    '156,207,216', // #9ccfd8 シアン
+  iris:    '196,167,231', // #c4a7e7 紫
+};
+const rgb = s => s.split(',').map(Number);
+
+// ─────────── workspace別アクセント + 波パラメータ ───────────
+// 各 workspace = 色ペア(a→b grad) + 波の出方
+//   spacing=格子間隔(小さいほど密) / sources=波源の数
+//   speed=波源の移動速度 / freq=波の空間周波数 / waveSpeed=波の時間速度
+const PALETTES = {
+  '1': { a: RP.iris, b: RP.pine,    spacing: 26, sources: 2, speed: 0.4, freq: 0.018, waveSpeed: 2.4 }, // 紫→青 大きくゆったり
+  '2': { a: RP.foam, b: RP.pine,    spacing: 22, sources: 3, speed: 0.7, freq: 0.030, waveSpeed: 3.2 }, // シアン→青 細かく速い
+  '3': { a: RP.gold, b: RP.rose,    spacing: 28, sources: 2, speed: 0.35, freq: 0.016, waveSpeed: 2.0 }, // 金→ローズ なだらか
+  '4': { a: RP.love, b: RP.iris,    spacing: 23, sources: 3, speed: 0.8, freq: 0.026, waveSpeed: 3.6 }, // 紅→紫 乱れた波
+  '5': { a: RP.pine, b: RP.foam,    spacing: 25, sources: 2, speed: 0.5, freq: 0.020, waveSpeed: 2.6 }, // 青→シアン
+  '6': { a: RP.iris, b: RP.love,    spacing: 24, sources: 3, speed: 0.6, freq: 0.024, waveSpeed: 3.0 }, // 紫→紅
+  '7': { a: RP.foam, b: RP.iris,    spacing: 28, sources: 2, speed: 0.3, freq: 0.014, waveSpeed: 1.8 }, // シアン→紫 極ゆったり
+  '8': { a: RP.rose, b: RP.love,    spacing: 22, sources: 3, speed: 0.7, freq: 0.028, waveSpeed: 3.3 }, // ローズ→紅
+  '9': { a: RP.iris, b: RP.foam,    spacing: 25, sources: 2, speed: 0.5, freq: 0.022, waveSpeed: 2.8 }, // 紫→シアン
+  '0': { a: RP.muted, b: RP.subtle, spacing: 26, sources: 2, speed: 0.3, freq: 0.018, waveSpeed: 1.6 }, // 灰 静かなモノクロ
+  'S': { a: RP.pine, b: RP.iris,    spacing: 24, sources: 2, speed: 0.5, freq: 0.020, waveSpeed: 2.5 }, // 青→紫
+};
+
+// ASCII/端末風の文字ランプ (暗→明)
+const RAMP = ' .∙○●◉';
+
+let currentPalette = PALETTES['1'];
+let started = false;
+
+function applyWorkspace(ws) {
+  ws = ws || '1';
+  const next = PALETTES[ws] || PALETTES['1'];
+  if (currentPalette === next) return;  // 変更なし
+  currentPalette = next;
+  buildSources(next);
+  document.getElementById('wsnum').textContent = ws;
+}
+
+function startAnimation() {
+  if (started) return;
+  started = true;
+  requestAnimationFrame(tick);
+}
+
+// 同階層の state.js を <script>タグで定期ロード (cache buster付き)
+// state.js の内容: window.__ws = "3";
+function pollWorkspace() {
+  const s = document.createElement('script');
+  s.src = 'state.js?_=' + Date.now();
+  s.onload = () => { applyWorkspace(window.__ws); s.remove(); };
+  s.onerror = () => { s.remove(); };
+  document.head.appendChild(s);
+}
+setInterval(pollWorkspace, 300);
+
+// ─────────── canvasセットアップ ───────────
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H;          // CSS px (描画はこの座標系)
+
+// 背景色を時間帯でティント (rose-pine.html の tintBg をそのまま流用)
+function tintBg(c, t) {
+  const top = rgb(RP.surface);
+  const gold = rgb(RP.gold);
+  const lift = t.bgLift * 0.22;
+  const warm = t.warmth * 0.10;
+  return c.map((v, i) => {
+    let x = v + (top[i] - v) * lift;
+    x = x + (gold[i] - x) * warm;
+    return Math.round(x);
+  });
+}
+
+function resize() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  W = window.innerWidth;
+  H = window.innerHeight;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+resize();
+window.addEventListener('resize', resize);
+
+// ─────────── 波源 ───────────
+// 各波源は画面内を直線運動し、端で反射する。workspace で個数/速度が変わる。
+let sources = [];
+function buildSources(P) {
+  sources = [];
+  for (let i = 0; i < P.sources; i++) {
+    const ang = Math.random() * Math.PI * 2;
+    sources.push({
+      x: Math.random(), y: Math.random(),               // 0..1 正規化座標
+      vx: Math.cos(ang) * P.speed, vy: Math.sin(ang) * P.speed,
+      phase: Math.random() * Math.PI * 2,
+    });
+  }
+}
+buildSources(currentPalette);
+
+function moveSources(dt, P) {
+  // dt は秒。正規化座標 0..1 を往復させる。
+  for (const s of sources) {
+    s.x += s.vx * dt * 0.05;
+    s.y += s.vy * dt * 0.05;
+    if (s.x < 0) { s.x = 0; s.vx = Math.abs(s.vx); }
+    if (s.x > 1) { s.x = 1; s.vx = -Math.abs(s.vx); }
+    if (s.y < 0) { s.y = 0; s.vy = Math.abs(s.vy); }
+    if (s.y > 1) { s.y = 1; s.vy = -Math.abs(s.vy); }
+  }
+}
+
+// 時刻に応じた色シフト (rose-pine.html の computeTimeShift をそのまま)
+function computeTimeShift() {
+  const now = new Date();
+  const hr = now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600 + now.getMilliseconds() / 3600000;
+  const sunness = 0.5 * (1 + Math.cos((hr - 12) * Math.PI / 12));  // 0..1 正午=1, 真夜中=0
+  const golden = Math.sin(Math.abs(hr - 12) * Math.PI / 12);       // 0..1 朝夕=1, 正午/深夜=0
+  const warmth = golden * Math.min(1, sunness * 1.6);
+  return {
+    brightness: 0.78 + 0.27 * sunness,   // 夜0.78 → 昼1.05
+    warmth,                              // 0..1 朝夕で最大
+    bgLift: sunness,                     // 昼に背景を surface 寄りへ
+    trailAlpha: 0.06 + 0.03 * sunness,
+  };
+}
+
+// 高さ場 v(x,y,t): 移動する波源からの放射状サイン波の和。約 0..1 に正規化。
+function field(px, py, P, time) {
+  let sum = 0;
+  for (const s of sources) {
+    const sx = s.x * W, sy = s.y * H;
+    const dx = px - sx, dy = py - sy;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    // 距離で減衰させた放射状の波。手前ほど強い。
+    const atten = 1 / (1 + dist * 0.0016);
+    sum += Math.sin(dist * P.freq - time * P.waveSpeed + s.phase) * atten;
+  }
+  // sum は概ね -sources..sources → 0..1 へ
+  return 0.5 + 0.5 * (sum / sources.length);
+}
+
+let lastT = 0;
+let lastFrame = 0;
+const FRAME_MS = 33;  // ~30fps に間引き (CPU対策)
+
+function tick(ms) {
+  requestAnimationFrame(tick);  // 停止せず回し続ける
+  if (!lastT) lastT = ms;
+  const dt = Math.min(0.1, (ms - lastT) / 1000);
+  lastT = ms;
+  if (ms - lastFrame < FRAME_MS) return;
+  lastFrame = ms;
+
+  const t = computeTimeShift();      // 毎フレーム時刻シフト
+  const P = currentPalette;
+  const time = ms / 1000;
+  moveSources(dt, P);
+
+  // 背景: tint済み base で毎フレームクリア
+  const [bgR, bgG, bgB] = tintBg(rgb(RP.base), t);
+  ctx.fillStyle = `rgb(${bgR},${bgG},${bgB})`;
+  ctx.fillRect(0, 0, W, H);
+
+  const [aR, aG, aB] = rgb(P.a);
+  const [bR2, bG2, bB2] = rgb(P.b);
+  const [gR, gG, gB] = rgb(RP.gold);
+  const warm = t.warmth * 0.35;
+  const br = t.brightness;
+
+  // グリッド: 行数/列数を自動計算 (端に半マージン)。点数を抑えてCPU軽減。
+  const sp = P.spacing;
+  const cols = Math.ceil(W / sp);
+  const rows = Math.ceil(H / sp);
+  const ox = (W - (cols - 1) * sp) / 2;
+  const oy = (H - (rows - 1) * sp) / 2;
+  const maxR = sp * 0.46;            // ドット最大半径
+
+  ctx.font = '14px "JetBrains Mono", monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  for (let r = 0; r < rows; r++) {
+    const py = oy + r * sp;
+    for (let cI = 0; cI < cols; cI++) {
+      const px = ox + cI * sp;
+      const v = field(px, py, P, time);     // 0..1 高さ場
+      if (v < 0.12) continue;               // 谷は描かず情報の濃淡を出す
+
+      // 色: a→b を v で補間 → 朝夕 gold 寄せ → 時刻明度を乗算
+      let mr = aR + (bR2 - aR) * v;
+      let mg = aG + (bG2 - aG) * v;
+      let mb = aB + (bB2 - aB) * v;
+      mr += (gR - mr) * warm;
+      mg += (gG - mg) * warm;
+      mb += (gB - mb) * warm;
+      const cr = Math.min(255, mr * br) | 0;
+      const cg = Math.min(255, mg * br) | 0;
+      const cb = Math.min(255, mb * br) | 0;
+      const alpha = 0.12 + 0.85 * v;
+
+      // 端末風: 文字ランプ + ドット円を重ねて情報量を増やす
+      const ch = RAMP[Math.min(RAMP.length - 1, (v * RAMP.length) | 0)];
+      ctx.fillStyle = `rgba(${cr},${cg},${cb},${alpha})`;
+      ctx.beginPath();
+      ctx.arc(px, py, maxR * v, 0, Math.PI * 2);
+      ctx.fill();
+      if (v > 0.55 && ch !== ' ') {
+        ctx.fillStyle = `rgba(${cr},${cg},${cb},${Math.min(0.9, alpha + 0.15)})`;
+        ctx.fillText(ch, px, py + 0.5);
+      }
+    }
+  }
+}
+
+// 初期化
+applyWorkspace('1');
+startAnimation();
+</script>
+</body>
+</html>

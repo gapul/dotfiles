@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Aurora Gradient Wallpaper</title>
+<style>
+  * { margin: 0; padding: 0; }
+  html, body { width: 100vw; height: 100vh; overflow: hidden; background: #191724; }
+  /* blob を物理的にぼかして「色塊が滲むグラデ」にする。線は一切描かない。 */
+  canvas { display: block; width: 100vw; height: 100vh; filter: blur(64px); }
+
+  /* 右下の控えめなマーカー */
+  .marker {
+    position: fixed;
+    bottom: 28px;
+    right: 32px;
+    color: rgba(224,222,244,0.22);  /* rose-pine text を薄く */
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    z-index: 10;
+    pointer-events: none;
+  }
+  .marker .dot { color: rgba(196,167,231,0.55); }  /* iris */
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="marker">AURORA <span class="dot">&middot;</span> WS <span id="wsnum">1</span></div>
+<script>
+'use strict';
+
+// ─────────── Rosé Pine (main / dark) パレット ───────────
+// rose-pine.html と共通。hex をそのまま RGB 文字列化したもの。
+const RP = {
+  base:    '25,23,36',    // #191724 背景 (一番暗い)
+  surface: '31,29,46',    // #1f1d2e
+  overlay: '38,35,58',    // #26233a
+  muted:   '110,106,134', // #6e6a86
+  subtle:  '144,140,170', // #908caa
+  text:    '224,222,244', // #e0def4
+  love:    '235,111,146', // #eb6f92 赤/ピンク
+  gold:    '246,193,119', // #f6c177 黄
+  rose:    '235,188,186', // #ebbcba ローズ
+  pine:    '49,116,143',  // #31748f 青
+  foam:    '156,207,216', // #9ccfd8 シアン
+  iris:    '196,167,231', // #c4a7e7 紫
+};
+const rgb = s => s.split(',').map(Number);
+
+// ─────────── workspace別アクセント (Rosé Pine内で完結) ───────────
+// 各 workspace に 2〜3 色のアクセント組を割り当て、blob 群がその色セットを
+// 巡回する。切替時は applyWorkspace で target を差し替え、毎フレーム lerp で
+// 現在色 → 目標色へ 1〜2 秒かけてクロスフェードする。
+const PALETTES = {
+  '1': [RP.iris, RP.pine, RP.foam],   // 紫×青×シアン 王道オーロラ
+  '2': [RP.foam, RP.pine],            // シアン×青 冷たい海
+  '3': [RP.gold, RP.rose, RP.love],   // 金×ローズ×紅 夕焼け
+  '4': [RP.love, RP.iris],            // 紅×紫 マゼンタ
+  '5': [RP.pine, RP.foam, RP.iris],   // 青×シアン×紫
+  '6': [RP.iris, RP.love, RP.rose],   // 紫×紅×ローズ
+  '7': [RP.foam, RP.iris, RP.pine],   // シアン×紫×青
+  '8': [RP.rose, RP.love, RP.gold],   // ローズ×紅×金 暖色
+  '9': [RP.iris, RP.foam, RP.love],   // 紫×シアン×紅
+  '0': [RP.muted, RP.subtle],         // 灰 静かなモノクロ
+  'S': [RP.pine, RP.iris, RP.foam],   // 青×紫×シアン
+};
+
+// ─────────── canvasセットアップ ───────────
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H;       // CSS px (描画は CSS px 基準、dpr は ctx.scale で吸収)
+
+function resize() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  W = window.innerWidth;
+  H = window.innerHeight;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+resize();
+window.addEventListener('resize', resize);
+
+// ─────────── 時刻シフト (rose-pine.html と同一ロジック) ───────────
+//   深夜  : 最も沈む。warmth=0
+//   朝夕  : gold が乗る (golden hour)。warmth≈1
+//   正午  : 最も明るくクリーン。brightness≈1.05, bgLift≈1, warmth=0
+function computeTimeShift() {
+  const now = new Date();
+  const hr = now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600 + now.getMilliseconds() / 3600000;
+  const sunness = 0.5 * (1 + Math.cos((hr - 12) * Math.PI / 12));  // 0..1 正午=1, 真夜中=0
+  const golden = Math.sin(Math.abs(hr - 12) * Math.PI / 12);       // 0..1 朝夕=1, 正午/深夜=0
+  const warmth = golden * Math.min(1, sunness * 1.6);
+  return {
+    brightness: 0.78 + 0.27 * sunness,   // 夜0.78 → 昼1.05
+    warmth,                              // 0..1 朝夕で最大
+    bgLift: sunness,                     // 昼に背景を surface 寄りへ
+    sunness,
+  };
+}
+
+// 背景ティント (rose-pine.html と同思想): 昼は surface 寄り、朝夕は gold 寄り。
+function tintBg(c, t) {
+  const top = rgb(RP.surface);
+  const gold = rgb(RP.gold);
+  const lift = t.bgLift * 0.18;
+  const warm = t.warmth * 0.08;
+  return c.map((v, i) => {
+    let x = v + (top[i] - v) * lift;
+    x = x + (gold[i] - x) * warm;
+    return Math.round(x);
+  });
+}
+
+// ─────────── blob 群 ───────────
+// 各 blob: 楕円軌道を sin/cos で漂い、半径を sin でゆっくり呼吸させる。
+// cur = 現在の表示色 [r,g,b] / tgt = 目標色。毎フレーム cur→tgt へ lerp。
+const NB = 6;
+const blobs = [];
+function rand(a, b) { return a + Math.random() * (b - a); }
+for (let i = 0; i < NB; i++) {
+  blobs.push({
+    // 軌道中心 (画面比率) と振幅
+    cx: rand(0.2, 0.8), cy: rand(0.2, 0.8),
+    ax: rand(0.12, 0.30), ay: rand(0.12, 0.30),
+    // 位相 & 周期 (秒)。数十秒スケールでゆっくり
+    px: rand(0, Math.PI * 2), py: rand(0, Math.PI * 2),
+    tx: rand(22, 46), ty: rand(26, 52),
+    // 半径 (画面短辺比) と呼吸
+    r0: rand(0.34, 0.52), rBreath: rand(0.06, 0.12),
+    pr: rand(0, Math.PI * 2), tr: rand(14, 30),
+    cur: [0, 0, 0], tgt: [0, 0, 0],
+  });
+}
+
+// workspace の色セットを各 blob の目標色へ割り当てる (色数 < blob数 は循環)。
+function applyWorkspace(ws) {
+  ws = ws || '1';
+  const set = PALETTES[ws] || PALETTES['1'];
+  for (let i = 0; i < NB; i++) blobs[i].tgt = rgb(set[i % set.length]);
+  document.getElementById('wsnum').textContent = ws;
+}
+
+// 初期色は即座に確定させ、最初のフレームから正しい色で出す。
+applyWorkspace('1');
+for (const b of blobs) b.cur = b.tgt.slice();
+
+// 同階層の state.js を <script> で定期ロード (cache buster付き)。
+// state.js の内容: window.__ws = "3";
+function pollWorkspace() {
+  const s = document.createElement('script');
+  s.src = 'state.js?_=' + Date.now();
+  s.onload = () => { applyWorkspace(window.__ws); s.remove(); };
+  s.onerror = () => { s.remove(); };
+  document.head.appendChild(s);
+}
+setInterval(pollWorkspace, 300);
+
+// ─────────── 描画ループ (~30fps に間引き) ───────────
+const FPS = 30;
+const FRAME_MS = 1000 / FPS;
+const FADE_PER_SEC = 0.8;   // 色クロスフェード速度 (≈1.25秒で到達)
+let last = 0;
+
+function draw(now) {
+  requestAnimationFrame(draw);
+  if (now - last < FRAME_MS) return;     // 30fps へ間引き (CPU軽減)
+  const dt = Math.min(0.1, (now - last) / 1000 || 0.033);
+  last = now;
+
+  const t = computeTimeShift();
+  const sec = Date.now() / 1000;
+  const minSide = Math.min(W, H);
+
+  // 背景: 時刻ティント済み base を全面塗り (毎フレーム塗り直し → 加算 blob の土台)
+  const bg = tintBg(rgb(RP.base), t);
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.fillStyle = `rgb(${bg[0]},${bg[1]},${bg[2]})`;
+  ctx.fillRect(0, 0, W, H);
+
+  // blob は加算合成でオーロラ的に発色させる
+  ctx.globalCompositeOperation = 'lighter';
+  const gold = rgb(RP.gold);
+  const warm = t.warmth * 0.30;          // 朝夕で gold 寄せ
+  const br = t.brightness;
+
+  for (const b of blobs) {
+    // 色: cur → tgt へ lerp (1〜2秒クロスフェード)
+    const k = Math.min(1, FADE_PER_SEC * dt);
+    b.cur[0] += (b.tgt[0] - b.cur[0]) * k;
+    b.cur[1] += (b.tgt[1] - b.cur[1]) * k;
+    b.cur[2] += (b.tgt[2] - b.cur[2]) * k;
+
+    // 時刻補正: 朝夕 gold 寄せ → 明度乗算
+    let cr = b.cur[0] + (gold[0] - b.cur[0]) * warm;
+    let cg = b.cur[1] + (gold[1] - b.cur[1]) * warm;
+    let cb = b.cur[2] + (gold[2] - b.cur[2]) * warm;
+    cr = Math.min(255, cr * br);
+    cg = Math.min(255, cg * br);
+    cb = Math.min(255, cb * br);
+
+    // 位置: 楕円軌道をゆっくり漂う
+    const x = (b.cx + b.ax * Math.cos(sec * (2 * Math.PI / b.tx) + b.px)) * W;
+    const y = (b.cy + b.ay * Math.sin(sec * (2 * Math.PI / b.ty) + b.py)) * H;
+    // 半径: sin でゆっくり呼吸
+    const r = (b.r0 + b.rBreath * Math.sin(sec * (2 * Math.PI / b.tr) + b.pr)) * minSide;
+
+    // 中心濃く外周透明な放射グラデ。alpha は時刻明度で控えめに上下。
+    const a0 = (0.22 + 0.14 * t.sunness);
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0,   `rgba(${cr | 0},${cg | 0},${cb | 0},${a0.toFixed(3)})`);
+    g.addColorStop(0.5, `rgba(${cr | 0},${cg | 0},${cb | 0},${(a0 * 0.45).toFixed(3)})`);
+    g.addColorStop(1,   `rgba(${cr | 0},${cg | 0},${cb | 0},0)`);
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.globalCompositeOperation = 'source-over';
+}
+
+requestAnimationFrame(draw);
+</script>
+</body>
+</html>

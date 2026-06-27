@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Rosé Pine Constellation Wallpaper</title>
+<style>
+  * { margin: 0; padding: 0; }
+  html, body { width: 100vw; height: 100vh; overflow: hidden; background: #191724; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+
+  /* 右下の控えめなマーカー */
+  .marker {
+    position: fixed;
+    bottom: 28px;
+    right: 32px;
+    color: rgba(224,222,244,0.22);  /* rose-pine text を薄く */
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    z-index: 10;
+    pointer-events: none;
+  }
+  .marker .dot { color: rgba(196,167,231,0.55); }  /* iris */
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="marker">CONST <span class="dot">&middot;</span> WS <span id="wsnum">1</span></div>
+<script>
+'use strict';
+
+// ─────────── Rosé Pine (main / dark) パレット ───────────
+// rose-pine.html からそのまま流用。
+const RP = {
+  base:    '25,23,36',    // #191724 背景 (一番暗い)
+  surface: '31,29,46',    // #1f1d2e
+  overlay: '38,35,58',    // #26233a
+  muted:   '110,106,134', // #6e6a86
+  subtle:  '144,140,170', // #908caa
+  text:    '224,222,244', // #e0def4
+  love:    '235,111,146', // #eb6f92 赤/ピンク
+  gold:    '246,193,119', // #f6c177 黄
+  rose:    '235,188,186', // #ebbcba ローズ
+  pine:    '49,116,143',  // #31748f 青
+  foam:    '156,207,216', // #9ccfd8 シアン
+  iris:    '196,167,231', // #c4a7e7 紫
+};
+const rgb = s => s.split(',').map(Number);
+
+// ─────────── workspace別パラメータ (Constellation) ───────────
+// 各 workspace = ノード色2色 (a→b でグラデ) + ノード数 + 接続閾値(密度)。
+//   count = ノード数 / dist = 接続閾値(px, 大きいほど密) / speed = ドリフト速度
+const PALETTES = {
+  '1': { a: RP.iris, b: RP.pine,    count: 72, dist: 140, speed: 0.30 }, // 紫→青 標準
+  '2': { a: RP.foam, b: RP.pine,    count: 88, dist: 120, speed: 0.42 }, // シアン→青 高密・素早い
+  '3': { a: RP.gold, b: RP.rose,    count: 60, dist: 150, speed: 0.24 }, // 金→ローズ 疎・ゆったり
+  '4': { a: RP.love, b: RP.iris,    count: 84, dist: 130, speed: 0.46 }, // 紅→紫 活発
+  '5': { a: RP.pine, b: RP.foam,    count: 70, dist: 138, speed: 0.32 }, // 青→シアン
+  '6': { a: RP.iris, b: RP.love,    count: 78, dist: 132, speed: 0.36 }, // 紫→紅
+  '7': { a: RP.foam, b: RP.iris,    count: 62, dist: 158, speed: 0.22 }, // シアン→紫 疎・大網
+  '8': { a: RP.rose, b: RP.love,    count: 82, dist: 126, speed: 0.40 }, // ローズ→紅 密
+  '9': { a: RP.iris, b: RP.foam,    count: 74, dist: 136, speed: 0.34 }, // 紫→シアン
+  '0': { a: RP.muted, b: RP.subtle, count: 64, dist: 144, speed: 0.18 }, // 灰 静かなモノクロ
+  'S': { a: RP.pine, b: RP.iris,    count: 76, dist: 140, speed: 0.30 }, // 青→紫
+};
+
+let currentPalette = PALETTES['1'];
+// 色は滑らかに lerp するため、表示中の実効パラメータを別に保持する。
+let liveA = rgb(currentPalette.a).slice();
+let liveB = rgb(currentPalette.b).slice();
+let liveDist = currentPalette.dist;
+
+let started = false;
+
+function applyWorkspace(ws) {
+  ws = ws || '1';
+  const next = PALETTES[ws] || PALETTES['1'];
+  if (currentPalette === next) return;  // 変更なし
+  currentPalette = next;
+  document.getElementById('wsnum').textContent = ws;
+  // ノード数は即時に合わせる (背景は毎フレームクリアするので自然)。
+  syncNodeCount(next.count);
+  // 色・閾値は tick() 内で lerp して滑らかに切り替える。
+}
+
+function startAnimation() {
+  if (started) return;
+  started = true;
+  requestAnimationFrame(tick);
+}
+
+// 同階層の state.js を <script>タグで定期ロード (cache buster付き)
+// state.js の内容: window.__ws = "3";
+function pollWorkspace() {
+  const s = document.createElement('script');
+  s.src = 'state.js?_=' + Date.now();
+  s.onload = () => { applyWorkspace(window.__ws); s.remove(); };
+  s.onerror = () => { s.remove(); };
+  document.head.appendChild(s);
+}
+setInterval(pollWorkspace, 300);
+
+// ─────────── canvasセットアップ ───────────
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H;          // CSSピクセルでの描画領域 (dpr scale 後の論理座標)
+
+function resize() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = window.innerWidth * dpr;
+  canvas.height = window.innerHeight * dpr;
+  canvas.style.width = window.innerWidth + 'px';
+  canvas.style.height = window.innerHeight + 'px';
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.scale(dpr, dpr);
+  W = window.innerWidth;
+  H = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// 時刻に応じた色シフト (rose-pine.html からそのまま流用)。
+function computeTimeShift() {
+  const now = new Date();
+  const hr = now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600 + now.getMilliseconds() / 3600000;
+  const sunness = 0.5 * (1 + Math.cos((hr - 12) * Math.PI / 12));  // 0..1 正午=1, 真夜中=0
+  const golden = Math.sin(Math.abs(hr - 12) * Math.PI / 12);       // 0..1 朝夕=1, 正午/深夜=0
+  const warmth = golden * Math.min(1, sunness * 1.6);
+  return {
+    brightness: 0.78 + 0.27 * sunness,   // 夜0.78 → 昼1.05
+    warmth,                              // 0..1 朝夕で最大
+    bgLift: sunness,                     // 昼に背景を surface 寄りへ
+    trailAlpha: 0.06 + 0.03 * sunness,   // (constellation では未使用)
+  };
+}
+
+// 背景色を時間帯でティント (rose-pine.html の tintBg を流用)。
+function tintBg(c, t) {
+  const top = rgb(RP.surface);
+  const gold = rgb(RP.gold);
+  const lift = t.bgLift * 0.22;
+  const warm = t.warmth * 0.10;
+  return c.map((v, i) => {
+    let x = v + (top[i] - v) * lift;
+    x = x + (gold[i] - x) * warm;
+    return Math.round(x);
+  });
+}
+
+// ─────────── ノード ───────────
+const MAX_N = 90;
+const nodes = [];
+let activeN = currentPalette.count;
+function makeNode() {
+  return {
+    x: Math.random() * W,
+    y: Math.random() * H,
+    vx: (Math.random() * 2 - 1),
+    vy: (Math.random() * 2 - 1),
+    r: 1.5 + Math.random() * 1.0,
+  };
+}
+for (let i = 0; i < MAX_N; i++) nodes.push(makeNode());
+
+function syncNodeCount(n) {
+  activeN = Math.max(10, Math.min(MAX_N, n | 0));
+}
+syncNodeCount(currentPalette.count);
+
+const lerp1 = (a, b, t) => a + (b - a) * t;
+
+function tick() {
+  const t = computeTimeShift();
+  const br = t.brightness;
+  const warm = t.warmth * 0.30;            // 朝夕で最大30% gold 寄せ
+  const [gR, gG, gB] = rgb(RP.gold);
+
+  // 色・接続閾値を目標値へ滑らかに追従 (約1秒で収束)。
+  const tgtA = rgb(currentPalette.a);
+  const tgtB = rgb(currentPalette.b);
+  for (let i = 0; i < 3; i++) {
+    liveA[i] = lerp1(liveA[i], tgtA[i], 0.06);
+    liveB[i] = lerp1(liveB[i], tgtB[i], 0.06);
+  }
+  liveDist = lerp1(liveDist, currentPalette.dist, 0.06);
+
+  // 背景: 毎フレーム塗りつぶし (軌跡は残さない)。時刻ティント込みの縦グラデ。
+  const base = tintBg(rgb(RP.base), t);
+  const top = tintBg(rgb(RP.surface), t);
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, `rgb(${top.join(',')})`);
+  g.addColorStop(0.5, `rgb(${base.join(',')})`);
+  g.addColorStop(1, `rgb(${base.join(',')})`);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+
+  const speed = currentPalette.speed;
+  const dist = liveDist;
+  const dist2 = dist * dist;
+
+  // ノード位置更新 (端で反射)。アクティブ分のみ。
+  for (let i = 0; i < activeN; i++) {
+    const p = nodes[i];
+    p.x += p.vx * speed;
+    p.y += p.vy * speed;
+    if (p.x < 0)  { p.x = 0;  p.vx = Math.abs(p.vx); }
+    if (p.x > W)  { p.x = W;  p.vx = -Math.abs(p.vx); }
+    if (p.y < 0)  { p.y = 0;  p.vy = Math.abs(p.vy); }
+    if (p.y > H)  { p.y = H;  p.vy = -Math.abs(p.vy); }
+  }
+
+  // 色ヘルパ: t(0..1) で a→b 補間 → gold 寄せ → 時刻明度を乗算。
+  const colAt = (k) => {
+    let mr = liveA[0] + (liveB[0] - liveA[0]) * k;
+    let mg = liveA[1] + (liveB[1] - liveA[1]) * k;
+    let mb = liveA[2] + (liveB[2] - liveA[2]) * k;
+    mr += (gR - mr) * warm;
+    mg += (gG - mg) * warm;
+    mb += (gB - mb) * warm;
+    return [
+      Math.min(255, mr * br) | 0,
+      Math.min(255, mg * br) | 0,
+      Math.min(255, mb * br) | 0,
+    ];
+  };
+
+  // ─────────── 接続線 (O(n^2) だが n<=90 なので軽い) ───────────
+  ctx.lineWidth = 0.8;
+  for (let i = 0; i < activeN; i++) {
+    const a = nodes[i];
+    for (let j = i + 1; j < activeN; j++) {
+      const b = nodes[j];
+      const dx = a.x - b.x;
+      const dy = a.y - b.y;
+      const d2 = dx * dx + dy * dy;
+      if (d2 >= dist2) continue;
+      const d = Math.sqrt(d2);
+      const closeness = 1 - d / dist;          // 1=至近, 0=閾値
+      const alpha = closeness * 0.45;          // 近いほど濃く
+      // 線色は両端ノードの中点位置 (x方向) でグラデ。
+      const [cr, cg, cb] = colAt(((a.x + b.x) * 0.5) / W);
+      ctx.strokeStyle = `rgba(${cr},${cg},${cb},${alpha.toFixed(3)})`;
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+    }
+  }
+
+  // ─────────── ノード (小さな塗り円) ───────────
+  for (let i = 0; i < activeN; i++) {
+    const p = nodes[i];
+    const [cr, cg, cb] = colAt(p.x / W);
+    ctx.fillStyle = `rgba(${cr},${cg},${cb},0.85)`;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  requestAnimationFrame(tick);  // 停止せず回し続ける
+}
+
+// 初期化
+applyWorkspace('1');
+startAnimation();
+</script>
+</body>
+</html>
