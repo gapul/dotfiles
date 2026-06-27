@@ -141,15 +141,22 @@
           ];
         };
 
-      # Lab PC (Windows username に揃える必要がある WSL2 環境) 用:
-      # Mac の username `yuki` と OS の actual user 名が違うため、
-      # `user.username` だけ override してそのまま home-manager に渡す。
-      # 使い方: home-manager switch --flake .#ispc_5cg54406v7-wsl
-      homeConfigurations."ispc_5cg54406v7-wsl" =
+      # Lab PC (Mac の username yuki と違う OS username を持つ WSL2 環境) 用:
+      # 公開 repo に個人情報を残さないため、override は ./user.local.nix
+      # (gitignore) から読む。ローカルに無ければ home-manager の actual user
+      # チェックで弾かれるので fail-fast。
+      # 使い方:
+      #   1. nix/user.local.nix を作る (template: nix/user.local.nix.example)
+      #   2. home-manager switch --flake .#labpc-wsl
+      homeConfigurations."labpc-wsl" =
         let
           wslSystem = "x86_64-linux";
           wslPkgs = nixpkgs.legacyPackages.${wslSystem};
-          labUser = user // { username = "ispc_5cg54406v7"; };
+          localOverride =
+            if builtins.pathExists ./user.local.nix
+            then import ./user.local.nix
+            else { };
+          labUser = user // localOverride;
         in
         home-manager.lib.homeManagerConfiguration {
           pkgs = wslPkgs;

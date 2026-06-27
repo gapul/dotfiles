@@ -42,3 +42,6 @@ configs/ssh/config
 
 # Claude Code が生成 (ScheduleWakeup のロック等)
 .claude/
+
+# Lab PC 用の OS-username override (個人情報、commit 禁止)
+nix/user.local.nix
