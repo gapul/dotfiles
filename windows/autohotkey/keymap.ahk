@@ -73,6 +73,32 @@ IsEmacsExcluded() {
 ; Karabiner Mac 設定 → Windows 移植
 ; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+; Space dual-role: 単押し=Space / 長押し=Hyper (LWin+LCtrl+LAlt)
+; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+; Karabiner の rule "スペースキーを単押しでスペース、長押しで Cmd+Ctrl+Opt"
+; を Windows で再現。GlazeWM の Hyper bindings (Win+Ctrl+Alt+H 等) を
+; 親指の Space 長押しだけで担う = 3 キー同時押しの腱鞘炎回避。
+;
+; 動作:
+;   - Space を tap (200ms 未満で release) → " " を送る
+;   - Space を hold (200ms 以上) → LWin+LCtrl+LAlt として動作、release で解除
+;   - Space hold 中に他キーを押す → 即 Hyper 確定 (短押し検知から除外)
+*Space::{
+    static held := false
+    held := false
+    if !KeyWait("Space", "T0.2") {
+        ; 200ms 経過しても Space hold 中 = Hyper モードに入る
+        held := true
+        Send "{Blind}{LWin Down}{LCtrl Down}{LAlt Down}"
+        KeyWait("Space")
+        Send "{Blind}{LWin Up}{LCtrl Up}{LAlt Up}"
+    } else {
+        ; 短押し: 通常の Space
+        Send "{Space}"
+    }
+}
+
 ; Hyper + O → Obsidian 起動 (Mac: cmd-ctrl-alt-O で Obsidian Add Log)
 ; Add Log の URL は vault 名に依存するため、ここでは Obsidian を起動するだけ。
 ; vault が複数あれば Obsidian は最後に開いた vault を立ち上げる。

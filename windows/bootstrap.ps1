@@ -82,7 +82,8 @@ function Dry($msg) { Write-Host "[bootstrap-win][dry] $msg" -ForegroundColor Dar
 function New-StartupShortcut {
     param(
         [Parameter(Mandatory)][string]$Name,        # 'GlazeWM'
-        [Parameter(Mandatory)][string]$TargetPath   # 絶対 path of .exe
+        [Parameter(Mandatory)][string]$TargetPath,  # 絶対 path of .exe
+        [string]$Arguments = ''                     # exe 引数 (Zebar の 'startup' 等)
     )
     $startup = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\Startup'
     $lnk = Join-Path $startup "$Name.lnk"
@@ -93,7 +94,7 @@ function New-StartupShortcut {
     if (Test-Path -LiteralPath $lnk) {
         $shell = New-Object -ComObject WScript.Shell
         $existing = $shell.CreateShortcut($lnk)
-        if ($existing.TargetPath -eq $TargetPath) {
+        if ($existing.TargetPath -eq $TargetPath -and $existing.Arguments -eq $Arguments) {
             Log "$Name : Startup shortcut 既に正しい"
             return
         }
@@ -104,12 +105,13 @@ function New-StartupShortcut {
             Log "$Name : 既存 shortcut を $backup に退避"
         }
     }
-    if ($DryRun) { Dry "create shortcut $lnk -> $TargetPath"; return }
+    if ($DryRun) { Dry "create shortcut $lnk -> $TargetPath $Arguments"; return }
     $shell = New-Object -ComObject WScript.Shell
     $sc = $shell.CreateShortcut($lnk)
     $sc.TargetPath = $TargetPath
+    if ($Arguments) { $sc.Arguments = $Arguments }
     $sc.Save()
-    Log "$Name : Startup shortcut -> $TargetPath"
+    Log "$Name : Startup shortcut -> $TargetPath $Arguments"
 }
 
 # 任意の (src, dest) を symlink する共通関数。
@@ -406,14 +408,15 @@ if (-not $SkipKeymap) {
 
     # GlazeWM / Zebar: Startup に .lnk shortcut を配置 (ログイン時自動起動)
     # AeroSpace / SketchyBar を Mac の launchd で自動起動するのと同じ精神。
+    # Zebar は `zebar.exe startup` で settings.json の widgets を起動
     foreach ($wm in @(
-        @{ Name = 'GlazeWM'; Pattern = 'glazewm.exe' },
-        @{ Name = 'Zebar';   Pattern = 'zebar.exe' }
+        @{ Name = 'GlazeWM'; Pattern = 'glazewm.exe'; Arguments = '' },
+        @{ Name = 'Zebar';   Pattern = 'zebar.exe';   Arguments = 'startup' }
     )) {
         $exe = Get-ChildItem 'C:\Program Files', $env:LOCALAPPDATA -Recurse -Filter $wm.Pattern `
                 -ErrorAction SilentlyContinue 2>$null | Select-Object -First 1
         if ($exe) {
-            New-StartupShortcut -Name $wm.Name -TargetPath $exe.FullName
+            New-StartupShortcut -Name $wm.Name -TargetPath $exe.FullName -Arguments $wm.Arguments
         } else {
             Log "$($wm.Name) : $($wm.Pattern) が見つからない (skip)"
         }
