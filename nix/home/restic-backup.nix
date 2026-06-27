@@ -2,7 +2,6 @@
   config,
   pkgs,
   lib,
-  user,
   ...
 }:
 # restic による暗号化バックアップ + 整合性検証 + 実行監視を launchd で定期実行 (macOS 専用)。

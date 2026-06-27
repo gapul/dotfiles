@@ -2,7 +2,6 @@
   config,
   pkgs,
   lib,
-  user,
   ...
 }:
 # 定期メンテナンス系の launchd agent (macOS 専用)。
