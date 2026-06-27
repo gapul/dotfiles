@@ -60,10 +60,11 @@ if (-not $SkipWin11Debloat) {
             Dry "irm https://win11debloat.raphi.re/ | iex (引数 -> $($debloatArgs -join ' '))"
         } else {
             # 公式推奨パターン: Web から取得 → [scriptblock]::Create() で実行。
-            # `Invoke-WebRequest -OutFile` + `& $file @args` は Win11Debloat のスクリプト内部
-            # 引数解析で「Missing expression after unary operator '--'」になる事例があるため避ける。
-            Log "Win11Debloat 実行 (script block)..."
-            $debloatContent = (Invoke-WebRequest -Uri 'https://win11debloat.raphi.re/' -UseBasicParsing).Content
+            # 短縮 URL (win11debloat.raphi.re) は 301 で HTML ページにリダイレクトされる
+            # 事例があり HTML の CSS が PS パーサに食わされて死ぬので、raw GitHub URL を直接叩く。
+            Log "Win11Debloat 実行 (script block, raw GitHub)..."
+            $debloatUrl = 'https://raw.githubusercontent.com/Raphire/Win11Debloat/master/Win11Debloat.ps1'
+            $debloatContent = (Invoke-WebRequest -Uri $debloatUrl -UseBasicParsing).Content
             $debloatBlock = [scriptblock]::Create($debloatContent)
             & $debloatBlock @debloatArgs
             Log "Win11Debloat 完了"
@@ -182,9 +183,11 @@ if (-not $SkipWinUtil) {
             Dry "irm https://christitus.com/win | iex -Args '-Config $configFile'"
             Dry "(GUI 起動 → Settings → Import Config で $configFile を選択 → Apply)"
         } else {
-            # Win11Debloat と同じ公式パターン: Web → scriptblock。
-            Log "WinUtil 実行 (script block, GUI 起動)..."
-            $winutilContent = (Invoke-WebRequest -Uri 'https://christitus.com/win' -UseBasicParsing).Content
+            # GitHub Release asset を直接叩く (christitus.com/win は 301 redirect で
+            # 取得自体は redirect 追従で動くが、確実性のため raw URL を明示)。
+            Log "WinUtil 実行 (script block, GitHub Releases, GUI 起動)..."
+            $winutilUrl = 'https://github.com/ChrisTitusTech/winutil/releases/latest/download/winutil.ps1'
+            $winutilContent = (Invoke-WebRequest -Uri $winutilUrl -UseBasicParsing).Content
             $winutilBlock = [scriptblock]::Create($winutilContent)
             # WinUtil は -Config 引数で起動時 import に対応。version 差で動かない時は
             # GUI で手動 Import → Apply してください。
