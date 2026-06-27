@@ -14,7 +14,7 @@
 # 色そのものは configs/theme/palettes.json で palettes."<name>" として保管。
 let
   data = builtins.fromJSON (builtins.readFile ../../configs/theme/palettes.json);
-  active = data.active;
+  inherit (data) active;
   dark = data.palettes."rose-pine";
   light = data.palettes."rose-pine-dawn";
   palettes = {
