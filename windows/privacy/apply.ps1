@@ -59,19 +59,21 @@ if (-not $SkipWin11Debloat) {
         if ($DryRun) {
             Dry "irm https://win11debloat.raphi.re/ | iex (引数 -> $($debloatArgs -join ' '))"
         } else {
-            # 取得 → 一時ファイル (UTF-8 BOM 付き) → `& $file @args` で実行。
-            # ・短縮 URL (win11debloat.raphi.re) は 301 で HTML に逃げるので raw GitHub URL 固定。
-            # ・[scriptblock]::Create() + splatting は AdvancedFunction の [CmdletBinding]
-            #   属性が無視されて switch 引数が positional になり詰む。ファイル経由なら正常。
-            # ・`-OutFile` 直書きは PS 5.1 で ASCII 保存になり非 ASCII が壊れるため
-            #   WriteAllText で UTF-8 BOM 明示。
-            Log "Win11Debloat 実行 (raw GitHub → UTF-8 BOM temp file)..."
+            # 取得 → UTF-8 BOM 付き一時 .ps1 → **別 pwsh プロセスで** `-File` 呼び出し。
+            # 同一プロセスで `& $file @args` だと、`[CmdletBinding(SupportsShouldProcess)]` の
+            # 共通パラメータ (WhatIf/Confirm) と switch 引数の解析が衝突して
+            # 「A positional parameter cannot be found that accepts argument '-Disable*'」で死ぬ。
+            # 別プロセスなら parameter binder が完全に独立するので確実。
+            # 公式 README の `powershell -File .\Win11Debloat.ps1 -Silent -RemoveApps` と同形。
+            Log "Win11Debloat 実行 (raw GitHub → UTF-8 BOM temp file → pwsh -File)..."
             $debloatUrl = 'https://raw.githubusercontent.com/Raphire/Win11Debloat/master/Win11Debloat.ps1'
             $debloatContent = (Invoke-WebRequest -Uri $debloatUrl -UseBasicParsing).Content
             $tmpDebloat = Join-Path $env:TEMP "Win11Debloat-$(Get-Random).ps1"
             try {
                 [System.IO.File]::WriteAllText($tmpDebloat, $debloatContent, [System.Text.UTF8Encoding]::new($true))
-                & $tmpDebloat @debloatArgs
+                $psArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $tmpDebloat) + $debloatArgs
+                & pwsh @psArgs
+                if ($LASTEXITCODE -ne 0) { Err "Win11Debloat exit code: $LASTEXITCODE" }
                 Log "Win11Debloat 完了"
             } finally {
                 Remove-Item $tmpDebloat -ErrorAction SilentlyContinue
