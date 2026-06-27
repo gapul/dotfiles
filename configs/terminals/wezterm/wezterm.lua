@@ -15,8 +15,20 @@ local is_windows = wezterm.target_triple:find('windows') ~= nil
 local is_macos = wezterm.target_triple:find('darwin') ~= nil
 
 -- ─── Font (Ghostty: font-family = "HackGen Console NF") ───
-config.font = wezterm.font 'HackGen Console NF'
+-- font_with_fallback で「あれば使う、なければ次の候補」を declarative に。
+-- HackGen Console NF は Mac の cask `font-hackgen-nerd` で入る。Windows は
+-- yuru7/HackGen の GitHub Release から手動 install (winget/scoop 未収録)。
+-- Windows 既定でも JetBrainsMono Nerd Font (apps.json で install 済) に fallback
+-- して警告なしに動く。
+config.font = wezterm.font_with_fallback {
+  'HackGen Console NF',
+  'JetBrainsMono Nerd Font',  -- DEVCOM.JetBrainsMonoNerdFont で入る確実な fallback
+  'Cascadia Code',            -- Windows 11 標準
+  'Menlo',                    -- macOS 標準
+}
 config.font_size = 13.0
+-- 不在フォント警告を抑制 (fallback で代用されるので intentional)
+config.warn_about_missing_glyphs = false
 
 -- ─── Theme (Ghostty: theme = Rose Pine) ───
 config.color_scheme = 'rose-pine'
