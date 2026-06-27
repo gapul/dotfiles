@@ -33,7 +33,6 @@
         { "PackageIdentifier": "sxyazi.yazi" },
         { "PackageIdentifier": "Microsoft.WSL" },
         { "PackageIdentifier": "TeraTermProject.teraterm5" },
-        { "PackageIdentifier": "Bitwarden.CLI" },
         { "PackageIdentifier": "KeePassXCTeam.KeePassXC" },
         { "PackageIdentifier": "FiloSottile.age" },
         { "PackageIdentifier": "SecretsOPerationS.SOPS" },
