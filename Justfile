@@ -20,12 +20,31 @@ default:
 #   そこで env -u XDG_CONFIG_HOME で ~/.homebrew に揃える。cask は新 brew が Brewfile の
 #   trusted:true を無視するため毎回再 trust が必要。詳細: memory project_homebrew_trust_sudo
 
-# システム + ユーザー 両方再構築 (普段使い)
+# システム + ユーザー再構築 (Mac/WSL/Win 自動判別、普段使い)
+#   - macos: brew trust → nh darwin switch → nh home switch
+#   - linux (WSL): nh home switch (labpc-wsl entry)
+#   - windows: pwsh で bootstrap.ps1 を回す
 [group('構築')]
 rebuild:
+    @just _rebuild-{{os()}}
+
+[private]
+_rebuild-macos:
     @-brew list --cask --full-name 2>/dev/null | grep '/' | xargs -I% env -u XDG_CONFIG_HOME brew trust --cask % >/dev/null
     nh darwin switch
     nh home switch
+
+[private]
+_rebuild-linux:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    # WSL / Linux: home-manager のみ。Lab PC は labpc-wsl (--impure 必須)。
+    # nh の絶対 flake は WSL の場合 NH_HOME_FLAKE で labpc-wsl を指す前提。
+    nh home switch
+
+[private]
+_rebuild-windows:
+    pwsh.exe -NoProfile -ExecutionPolicy Bypass -File windows/bootstrap.ps1
 
 # システム世代の一覧/差分  (`just gen` = 一覧, `just gen diff [a] [b]` = 世代間パッケージ差分。sudo 不要)
 [group('構築')]
@@ -73,15 +92,28 @@ update *inputs:
 # NOTE(upgrade): cask --greedy は自己更新型(VS Code 等)も brew 経由で揃える。installer manual /
 #   自己更新 cask(figma-agent 等)は brew が上げられず exit 1 にするので `|| true` で許容する。
 
-# 全レイヤーアップグレード (Nix + brew + cask + mas + Determinate Nix runtime)
+# 全レイヤーアップグレード (Mac/WSL/Win 自動判別)
 [group('構築')]
 upgrade:
+    @just _upgrade-{{os()}}
+
+[private]
+_upgrade-macos:
     brew upgrade --formula
     brew upgrade --cask --greedy || true
     mas upgrade
     just sketchybar-font
     just update
     @echo "Determinate Nix runtime: upgrade manually -> sudo /usr/local/bin/determinate-nixd upgrade"
+
+[private]
+_upgrade-linux:
+    nix flake update --flake ~/.dotfiles/nix
+    just rebuild
+
+[private]
+_upgrade-windows:
+    pwsh.exe -NoProfile -Command "winget upgrade --all --silent --accept-package-agreements --accept-source-agreements"
 
 # sketchybar-app-font を最新リリースへ更新 (.ttf と icon_map.sh を同一版で揃える)
 # upgrade から自動で呼ばれる内部レシピ (`just sketchybar-font` 単体実行も可)
@@ -477,6 +509,41 @@ win-fonts *flags:
 [group('Windows')]
 win-theme *flags:
     pwsh.exe -NoProfile -ExecutionPolicy Bypass -File windows/theme/apply.ps1 {{flags}}
+
+
+# ─────────────────────────────────────────────
+# テーマ (OS 横断、palettes.json を SSO とした統一切替)
+# ─────────────────────────────────────────────
+
+# 全環境を palettes.json の現 active で render (引数で active 切替も可)
+#   `just theme`                   = 現在 active で全環境を再 apply
+#   `just theme rose-pine-dawn`    = light に切替えて全環境を render + rebuild
+[group('テーマ')]
+theme name="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ -n "{{name}}" ]; then
+      # palettes.json の active field を書き換え
+      sed -i.bak 's/"active": *"[^"]*"/"active": "{{name}}"/' configs/theme/palettes.json
+      rm -f configs/theme/palettes.json.bak
+      echo "→ palettes.json active = {{name}}"
+    fi
+    just _theme-{{os()}}
+
+[private]
+_theme-macos:
+    # Mac は nh home switch で nvim/zellij/sketchybar/bat/atuin 等が全部追従
+    nh home switch
+
+[private]
+_theme-linux:
+    # WSL も同じく home-manager 経由
+    nh home switch
+
+[private]
+_theme-windows:
+    # zebar / glazewm / WT / wezterm を一括 render
+    just win-theme
 
 # キーマップ適用 (SharpKeys = Scancode Map 直書き + AHK スクリプト reload)
 # `*flags` で `-DryRun` `-Clear` (Scancode Map 削除して standard に戻す) を渡せる
