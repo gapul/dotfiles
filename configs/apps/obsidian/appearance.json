@@ -1,0 +1,13 @@
+{
+  "theme": "system",
+  "interfaceFontFamily": "BIZ UDGothic",
+  "textFontFamily": "BIZ UDMincho,UDDigiKyokasho ProN,Shippori Antique OTF,BIZ UDPMincho,Times New Roman,Noto Sans CJK JP,BIZ UDPGothic",
+  "monospaceFontFamily": "M PLUS 1 Code",
+  "showViewHeader": false,
+  "cssTheme": "Minimal",
+  "accentColor": "#0050d1",
+  "baseFontSizeAction": true,
+  "baseFontSize": 22,
+  "translucency": true,
+  "showRibbon": true
+}
