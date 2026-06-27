@@ -168,6 +168,7 @@ in
   # mac 専用パッケージ
   home.packages = with pkgs; [
     pngpaste # obsidian.nvim / img-clip の macOS 画像貼付に必要
+    xcodegen # project.yml → .xcodeproj 生成 (Mac 専用、Linux nixpkgs では meta.platforms = darwin のため)
   ];
 
   # tealdeer: ~/Library/Application Support 配下 (Mac 規約)
