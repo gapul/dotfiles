@@ -45,7 +45,10 @@ let
   # バックアップ対象 (再現不可能なユーザーデータのみ)
   backupPaths = [
     "${home}/Documents"
-    "${home}/Pictures/Design"
+    "${home}/Pictures"
+    "${home}/Downloads"
+    "${home}/Movies"
+    "${home}/Music"
   ];
 
   # 除外: 再生成可能 / 巨大 / DL一時物
@@ -62,6 +65,7 @@ let
     **/*.photoslibrary
     **/from-downloads
     **/.git/objects
+    **/ae-mcp-commands
   '';
 
   backupScript = pkgs.writeShellScript "restic-backup" ''
