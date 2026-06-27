@@ -232,7 +232,9 @@ $ConfigLinks = @(
     # espanso: match/base.yml をファイル単独で symlink。macOS と同じ matches を再利用。
     @{ Label = 'espanso'; Src = (Join-Path $DotfilesDir 'configs\espanso\base.yml'); Dst = (Join-Path $env:APPDATA      'espanso\match\base.yml') },
     # wezterm: ~/.wezterm.lua を symlink (WezTerm は ~/.config/wezterm/ より優先)。
-    @{ Label = 'wezterm'; Src = (Join-Path $DotfilesDir 'configs\terminals\wezterm\wezterm.lua'); Dst = (Join-Path $env:USERPROFILE '.wezterm.lua') }
+    @{ Label = 'wezterm'; Src = (Join-Path $DotfilesDir 'configs\terminals\wezterm\wezterm.lua'); Dst = (Join-Path $env:USERPROFILE '.wezterm.lua') },
+    # glazewm: ~/.glzr/glazewm/config.yaml を symlink (AeroSpace 設定移植版)
+    @{ Label = 'glazewm'; Src = (Join-Path $DotfilesDir 'configs\wm\glazewm\config.yaml'); Dst = (Join-Path $env:USERPROFILE '.glzr\glazewm\config.yaml') }
 )
 foreach ($link in $ConfigLinks) {
     New-DotfilesLink -Source $link.Src -Destination $link.Dst -Label $link.Label
