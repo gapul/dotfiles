@@ -1,19 +1,22 @@
-# ★★★ 統一テーマ切替はこのファイルの active を変えるだけ ★★★
+# ★★★ 統一テーマ切替は configs/theme/palettes.json の "active" を変えるだけ ★★★
 #
 #   候補:
 #     "rose-pine"      … dark  (main)
 #     "rose-pine-dawn" … light (dawn)
 #
-#   変えたら `just rebuild` で全ツール (zellij/sketchybar/borders/lazygit/fzf/
-#   sioyek/atuin/bat/delta/ghostty/nvim …) が一斉に追従する。
+#   変えたら:
+#     - Mac/Linux: `just rebuild` で全 nix 管理ツール (zellij/sketchybar/borders/
+#       lazygit/fzf/sioyek/atuin/bat/delta/ghostty/nvim …) が一斉に追従
+#     - Windows : `just win-theme` で zebar/glazewm/WT/wezterm が一斉に追従
+#   palettes.json を SSO とすることで Mac/Linux/WSL/Windows で同じ active が
+#   共有される (旧来は theme.nix と palettes.json に active が二重定義だった)。
 #
-# このファイルは「どのパレットを使うか」を選ぶだけ。色そのものは
-# ./rose-pine.nix (dark) / ./rose-pine-dawn.nix (light) 側で定義する。
+# 色そのものは configs/theme/palettes.json で palettes."<name>" として保管。
 let
-  active = "rose-pine"; # ← 非自動環境(Linux)/フォールバックの既定パレット
-
-  dark = import ./rose-pine.nix;
-  light = import ./rose-pine-dawn.nix;
+  data = builtins.fromJSON (builtins.readFile ../../configs/theme/palettes.json);
+  active = data.active;
+  dark = data.palettes."rose-pine";
+  light = data.palettes."rose-pine-dawn";
   palettes = {
     "rose-pine" = dark;
     "rose-pine-dawn" = light;
