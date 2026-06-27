@@ -429,6 +429,13 @@ win-privacy *flags:
 win-scoop *flags:
     pwsh.exe -NoProfile -ExecutionPolicy Bypass -File windows/scoop/apply.ps1 {{flags}}
 
+# キーマップ適用 (SharpKeys = Scancode Map 直書き + AHK スクリプト reload)
+# `*flags` で `-DryRun` `-Clear` (Scancode Map 削除して standard に戻す) を渡せる
+[group('Windows')]
+win-keymap *flags:
+    pwsh.exe -NoProfile -ExecutionPolicy Bypass -File windows/sharpkeys/apply.ps1 {{flags}}
+    pwsh.exe -NoProfile -Command "Get-Process AutoHotkey* -ErrorAction SilentlyContinue | Stop-Process -Force; Start-Process 'windows/autohotkey/keymap.ahk' -ErrorAction SilentlyContinue"
+
 # Windows 関連 .ps1 を PSScriptAnalyzer で lint (Warning 以上で exit 1)
 [group('Windows')]
 win-fmt:
