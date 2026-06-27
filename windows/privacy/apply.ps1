@@ -26,6 +26,24 @@ function Log($msg) { Write-Host "[privacy] $msg"      -ForegroundColor Blue }
 function Dry($msg) { Write-Host "[privacy][dry] $msg" -ForegroundColor DarkYellow }
 function Err($msg) { Write-Host "[privacy] $msg"      -ForegroundColor Red }
 
+# ─── 0. 管理者チェック (DryRun は除外) ───
+# レジストリ HKLM 書込 / UWP Provisioned 削除 / OneDrive uninstall は全部管理者要。
+# 非管理者で起動された場合は UAC 起こして elevate した子プロセスに引き継ぐ。
+if (-not $DryRun) {
+    $principal = New-Object Security.Principal.WindowsPrincipal(
+        [Security.Principal.WindowsIdentity]::GetCurrent())
+    if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+        Log '管理者権限が必要です。UAC promptで再起動します...'
+        # 元の switch を再構成して子プロセスに渡す
+        $childArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$PSCommandPath`"")
+        if ($SkipWinUtil)      { $childArgs += '-SkipWinUtil' }
+        if ($SkipWin11Debloat) { $childArgs += '-SkipWin11Debloat' }
+        if ($SkipCustomApps)   { $childArgs += '-SkipCustomApps' }
+        Start-Process pwsh -Verb RunAs -ArgumentList $childArgs
+        exit
+    }
+}
+
 # ─── 1. Win11Debloat ───
 if (-not $SkipWin11Debloat) {
     $argsFile = Join-Path $PrivacyDir 'win11debloat-args.txt'
