@@ -1,0 +1,32 @@
+﻿# Win11Debloat 標準セットに含まれない UWP の追加削除リスト。
+# apply.ps1 が Get-AppxPackage | Remove-AppxPackage で 1 行 1 PackageName 削除する。
+# 空行と `#` コメント可。
+#
+# 安全性レビュー基準:
+#   ⚪ ノーリスク: 機能消失のみ、system に影響なし
+#   🟠 中リスク : 検索 / 通知 / Start メニュー全体に波及する報告あり → ここには載せない
+#                (機能 OFF だけで足りるので Win11Debloat の -DisableBing / -DisableSuggestions で対応)
+
+# Win + F1 のヘルプ (使わない)
+Microsoft.GetHelp
+
+# Dev Home dashboard (CLI/Vim 派には不要)
+Microsoft.Windows.DevHome
+
+# Phone Link 残骸 (KDE Connect で代替済)
+Microsoft.YourPhone
+
+# Office 通知 (Office 未使用)
+Microsoft.OfficePushNotificationUtility
+
+# MS 製 Command Palette (Flow Launcher で代替済)
+Microsoft.CommandPalette
+
+# Intel グラフィックス・コマンド・センター (ゲーム特化 UI、ドライバ本体は別)
+AppUp.IntelGraphicsExperience
+
+# Local AI Manager for Microsoft 365 (Recall 無効化と整合、M365 未使用)
+aimgr
+
+# Sticky Notes (付箋、Obsidian で代替済)
+Microsoft.MicrosoftStickyNotes

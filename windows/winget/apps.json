@@ -38,7 +38,6 @@
         { "PackageIdentifier": "FiloSottile.age" },
         { "PackageIdentifier": "SecretsOPerationS.SOPS" },
         { "PackageIdentifier": "Gitleaks.Gitleaks" },
-        { "PackageIdentifier": "Typst.Typst" },
         { "PackageIdentifier": "Rclone.Rclone" },
         { "PackageIdentifier": "tailscale.tailscale" },
         { "PackageIdentifier": "WireGuard.WireGuard" },

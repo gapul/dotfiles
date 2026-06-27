@@ -53,6 +53,74 @@ if (-not $SkipWin11Debloat) {
     Log 'SkipWin11Debloat: Win11Debloat を skip'
 }
 
+# ─── 1.5 カスタム UWP 削除 (Win11Debloat 標準セット外、安全側追加) ───
+if (-not $SkipCustomApps) {
+    $customAppsFile = Join-Path $PrivacyDir 'win11debloat-customapps.txt'
+    if (-not (Test-Path $customAppsFile)) {
+        Log 'win11debloat-customapps.txt が無いので skip'
+    } else {
+        $customApps = Get-Content $customAppsFile -Encoding UTF8 |
+            ForEach-Object { $_.Trim() } |
+            Where-Object { $_ -and -not $_.StartsWith('#') }
+        Log "カスタム UWP 削除対象 ($($customApps.Count) 個): $($customApps -join ', ')"
+        foreach ($app in $customApps) {
+            if ($DryRun) {
+                Dry "Get-AppxPackage -Name '$app' | Remove-AppxPackage"
+                Dry "Get-AppxProvisionedPackage -Online | Where DisplayName -eq '$app' | Remove-AppxProvisionedPackage"
+                continue
+            }
+            # 現ユーザーから削除
+            $pkg = Get-AppxPackage -Name $app -ErrorAction SilentlyContinue
+            if ($pkg) {
+                try {
+                    $pkg | Remove-AppxPackage -ErrorAction Stop
+                    Log "Removed (user): $app"
+                } catch {
+                    Err "Remove 失敗 (user): $app - $($_.Exception.Message)"
+                }
+            } else {
+                Log "Skip (user): $app (未 install)"
+            }
+            # Provisioned (system プリイン) も削除 → 新規アカウントに戻らない (管理者要)
+            try {
+                $prov = Get-AppxProvisionedPackage -Online -ErrorAction Stop |
+                    Where-Object { $_.DisplayName -eq $app } |
+                    Select-Object -First 1
+                if ($prov) {
+                    Remove-AppxProvisionedPackage -Online -PackageName $prov.PackageName -ErrorAction Stop | Out-Null
+                    Log "Removed (provisioned): $app"
+                }
+            } catch {
+                # Get-AppxProvisionedPackage は管理者要。非管理者なら静かに skip
+                if ($_.Exception.Message -match 'elevation') {
+                    Log "Skip (provisioned): $app (管理者要)"
+                } else {
+                    Err "Provisioned 削除失敗: $app - $($_.Exception.Message)"
+                }
+            }
+        }
+    }
+} else {
+    Log 'SkipCustomApps: カスタム UWP 削除を skip'
+}
+
+# ─── 1.7 追加レジストリ tweak (Win11Debloat / WinUtil でカバーされない宣言的 OFF) ───
+# Windows Backup (UWP 本体は CBS で削除不可、機能のみ無効化)
+if (-not $SkipWin11Debloat) {
+    $regPath = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsBackup'
+    if ($DryRun) {
+        Dry "Set $regPath\DisableWindowsBackupUI = 1 (Windows Backup UI を無効化)"
+    } else {
+        try {
+            if (-not (Test-Path $regPath)) { New-Item -Path $regPath -Force | Out-Null }
+            Set-ItemProperty -Path $regPath -Name 'DisableWindowsBackupUI' -Value 1 -Type DWord -Force
+            Log "Windows Backup UI 無効化 (registry: $regPath)"
+        } catch {
+            Err "Windows Backup registry 設定失敗 (管理者要): $($_.Exception.Message)"
+        }
+    }
+}
+
 # ─── 2. WinUtil ───
 if (-not $SkipWinUtil) {
     $configFile = Join-Path $PrivacyDir 'winutil-config.json'
