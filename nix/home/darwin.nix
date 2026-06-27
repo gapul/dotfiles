@@ -253,6 +253,13 @@ in
   home.file.".config/karabiner".source =
     config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.dotfiles/configs/keyboard/karabiner";
 
+  # mpv ランチャー (AppleScript droplet)。mpv 本体は brew formula (darwin.nix の
+  # homebrew.brews) で、CLI バイナリのみ・.app を吐かないため、Finder の関連付け /
+  # ドラッグ&ドロップ再生用にこの droplet を被せている。中身は
+  # `on open` → /opt/homebrew/bin/mpv <files> & を呼ぶだけ。
+  # recursive は付けない: バンドル丸ごとを 1 symlink にして adhoc 署名の seal を保つ。
+  home.file."Applications/mpv.app".source = ../../configs/media/mpv-app/mpv.app;
+
   # macSKK / azooKey skkserv: sandboxed app の preferences を defaults import
   home.activation.skkPlistImport = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     /usr/bin/defaults import net.mtgto.inputmethod.macSKK \

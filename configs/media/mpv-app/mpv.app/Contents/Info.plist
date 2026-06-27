@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleAllowMixedLocalizations</key>
+	<true/>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleIdentifier</key>
+	<string>io.mpv.mpv</string>
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Video</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>mp4</string>
+				<string>mkv</string>
+				<string>avi</string>
+				<string>mov</string>
+				<string>wmv</string>
+				<string>flv</string>
+				<string>webm</string>
+				<string>m4v</string>
+				<string>mpg</string>
+				<string>mpeg</string>
+				<string>ts</string>
+				<string>3gp</string>
+				<string>ogv</string>
+				<string>vob</string>
+			</array>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Audio</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>mp3</string>
+				<string>flac</string>
+				<string>wav</string>
+				<string>m4a</string>
+				<string>aac</string>
+				<string>ogg</string>
+				<string>opus</string>
+				<string>wma</string>
+				<string>aiff</string>
+				<string>aif</string>
+				<string>alac</string>
+				<string>ape</string>
+				<string>wv</string>
+			</array>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+		</dict>
+	</array>
+	<key>CFBundleExecutable</key>
+	<string>droplet</string>
+	<key>CFBundleIconFile</key>
+	<string>droplet</string>
+	<key>CFBundleIconName</key>
+	<string>droplet</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>mpv</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleSignature</key>
+	<string>dplt</string>
+	<key>LSMinimumSystemVersionByArchitecture</key>
+	<dict>
+		<key>x86_64</key>
+		<string>10.6</string>
+	</dict>
+	<key>LSRequiresCarbon</key>
+	<true/>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>This script needs to control other applications to run.</string>
+	<key>NSAppleMusicUsageDescription</key>
+	<string>This script needs access to your music to run.</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>This script needs access to your calendars to run.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>This script needs access to your camera to run.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>This script needs access to your contacts to run.</string>
+	<key>NSHomeKitUsageDescription</key>
+	<string>This script needs access to your HomeKit Home to run.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>This script needs access to your microphone to run.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This script needs access to your photos to run.</string>
+	<key>NSRemindersUsageDescription</key>
+	<string>This script needs access to your reminders to run.</string>
+	<key>NSSiriUsageDescription</key>
+	<string>This script needs access to Siri to run.</string>
+	<key>NSSystemAdministrationUsageDescription</key>
+	<string>This script needs access to administer this system to run.</string>
+	<key>OSAAppletShowStartupScreen</key>
+	<false/>
+</dict>
+</plist>
