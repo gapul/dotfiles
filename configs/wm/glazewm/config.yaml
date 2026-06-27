@@ -64,6 +64,8 @@ workspaces:
   - name: '8'
   - name: '9'
   - name: '0'
+  # AeroSpace の "workspace S" (scratchpad 相当) と統一。Hyprland SUPER+S 由来。
+  - name: 'S'
 
 window_rules:
   # ランチャー / オーバーレイ系は WM 管理から除外 (Aero/Mac の floating 扱い)
@@ -110,6 +112,13 @@ keybindings:
   - commands: ['close']
     bindings: ['LWin+LCtrl+LAlt+Q']
 
+  # AeroSpace: cmd-ctrl-alt-shift-q = close --quit-if-last-window
+  # GlazeWM に quit-if-last-window option は無いが、close は WM_CLOSE を送るので
+  # 最後の窓ならアプリ側で終了するのは Mac と同等。wm-exit ではないので
+  # 押し間違えても WM 自体は落ちない。
+  - commands: ['close']
+    bindings: ['LWin+LCtrl+LAlt+Shift+Q']
+
   # AeroSpace: cmd-ctrl-alt-v = floating toggle
   - commands: ['toggle-floating --centered']
     bindings: ['LWin+LCtrl+LAlt+V']
@@ -126,6 +135,10 @@ keybindings:
   # AeroSpace: cmd-ctrl-alt-backslash = horizontal/vertical toggle (Hyprland togglesplit)
   - commands: ['toggle-tiling-direction']
     bindings: ['LWin+LCtrl+LAlt+oem_pipe']  # \\ key (oem_pipe)
+
+  # AeroSpace の以下 2 つは GlazeWM v3 に対応コマンドが存在しないため skip:
+  #   - cmd-ctrl-alt-comma  = layout accordion  (GlazeWM v3 は tiling のみで accordion 無し)
+  #   - cmd-ctrl-alt-shift-equal = flatten-workspace-tree + tiles (相当コマンド無し)
 
   # ━━━ Focus (hjkl = vim) ━━━
   - commands: ['focus --direction left']
@@ -202,10 +215,21 @@ keybindings:
   - commands: ['move --workspace 0']
     bindings: ['LWin+LCtrl+LAlt+Shift+D0']
 
+  # ━━━ Scratchpad workspace 'S' (AeroSpace 統一) ━━━
+  # AeroSpace: cmd-ctrl-alt-s / cmd-ctrl-alt-shift-s で workspace 'S' に focus / move
+  - commands: ['focus --workspace S']
+    bindings: ['LWin+LCtrl+LAlt+S']
+  - commands: ['move --workspace S']
+    bindings: ['LWin+LCtrl+LAlt+Shift+S']
+
   # ━━━ Workspace back-and-forth ━━━
   # AeroSpace: cmd-ctrl-alt-tab = workspace-back-and-forth
   - commands: ['focus --workspace recent']
     bindings: ['LWin+LCtrl+LAlt+Tab']
+
+  # AeroSpace: cmd-ctrl-alt-shift-tab = move-workspace-to-monitor --wrap-around next
+  - commands: ['move-workspace --direction right']
+    bindings: ['LWin+LCtrl+LAlt+Shift+Tab']
 
   # ━━━ Monitor 切替 ━━━
   # GlazeWM v3 は `focus --monitor` を持たない。focus --direction が複数モニタ
@@ -234,5 +258,5 @@ keybindings:
     bindings: ['LWin+LCtrl+LAlt+Shift+oem_semicolon']  # ;
 
   # ━━━ Exit GlazeWM ━━━
-  - commands: ['wm-exit']
-    bindings: ['LWin+LCtrl+LAlt+Shift+Q']
+  # hyper+Shift+Q は close window (hyper+Q) と隣接していて誤爆しやすいため
+  # キー bind は持たない。終了したい時はタスクトレイの GlazeWM アイコン → Exit。
