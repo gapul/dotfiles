@@ -62,7 +62,7 @@ $Mappings = @(
 )
 
 # scancode hex (e.g. '3A' or 'E05C') を 2 バイト little-endian に変換
-function ConvertTo-ScancodeBytes([string]$hex) {
+function ConvertTo-ScancodeByte([string]$hex) {
     $hex = $hex.PadLeft(4, '0')   # '3A' -> '003A', 'E05C' -> 'E05C'
     $hi = [Convert]::ToByte($hex.Substring(0, 2), 16)
     $lo = [Convert]::ToByte($hex.Substring(2, 2), 16)
@@ -79,8 +79,8 @@ $bytes.Add((($count -shr 8)  -band 0xFF))
 $bytes.Add((($count -shr 16) -band 0xFF))
 $bytes.Add((($count -shr 24) -band 0xFF))
 foreach ($m in $Mappings) {
-    (ConvertTo-ScancodeBytes $m.Dest)   | ForEach-Object { $bytes.Add($_) }
-    (ConvertTo-ScancodeBytes $m.Source) | ForEach-Object { $bytes.Add($_) }
+    (ConvertTo-ScancodeByte $m.Dest)   | ForEach-Object { $bytes.Add($_) }
+    (ConvertTo-ScancodeByte $m.Source) | ForEach-Object { $bytes.Add($_) }
     Log "Mapping: $($m.Comment) (src=$($m.Source) -> dst=$($m.Dest))"
 }
 1..4  | ForEach-Object { $bytes.Add(0) }              # Terminator: 4 bytes
