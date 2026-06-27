@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Rosé Pine Flow Wallpaper</title>
+<style>
+  * { margin: 0; padding: 0; }
+  html, body { width: 100vw; height: 100vh; overflow: hidden; background: #191724; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+
+  /* 右下の控えめなマーカー */
+  .marker {
+    position: fixed;
+    bottom: 28px;
+    right: 32px;
+    color: rgba(224,222,244,0.22);  /* rose-pine text を薄く */
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    z-index: 10;
+    pointer-events: none;
+  }
+  .marker .dot { color: rgba(196,167,231,0.55); }  /* iris */
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="marker">ROS&Eacute; PINE <span class="dot">&middot;</span> WS <span id="wsnum">1</span></div>
+<script>
+'use strict';
+
+// ─────────── Rosé Pine (main / dark) パレット ───────────
+// nix/lib/rose-pine.nix の hex をそのまま RGB 文字列化したもの。
+// テーマ切替 (theme.nix の active) に追従させたい場合はここを差し替える。
+const RP = {
+  base:    '25,23,36',    // #191724 背景 (一番暗い)
+  surface: '31,29,46',    // #1f1d2e
+  overlay: '38,35,58',    // #26233a
+  muted:   '110,106,134', // #6e6a86
+  subtle:  '144,140,170', // #908caa
+  text:    '224,222,244', // #e0def4
+  love:    '235,111,146', // #eb6f92 赤/ピンク
+  gold:    '246,193,119', // #f6c177 黄
+  rose:    '235,188,186', // #ebbcba ローズ
+  pine:    '49,116,143',  // #31748f 青
+  foam:    '156,207,216', // #9ccfd8 シアン
+  iris:    '196,167,231', // #c4a7e7 紫
+};
+const rgb = s => s.split(',').map(Number);
+
+// ─────────── workspace別アクセント (Rosé Pine内で完結) ───────────
+// 各ワークスペースに 2 色のアクセントを割り当て、フロー場の noise で
+// 2 色間を RGB 補間する。背景は常に rose-pine base。
+const PALETTES = {
+  '1': { a: RP.iris, b: RP.pine },   // 紫 → 青
+  '2': { a: RP.foam, b: RP.pine },   // シアン → 青
+  '3': { a: RP.gold, b: RP.rose },   // 金 → ローズ
+  '4': { a: RP.love, b: RP.iris },   // 紅 → 紫
+  '5': { a: RP.pine, b: RP.foam },   // 青 → シアン
+  '6': { a: RP.iris, b: RP.love },   // 紫 → 紅
+  '7': { a: RP.foam, b: RP.iris },   // シアン → 紫
+  '8': { a: RP.rose, b: RP.love },   // ローズ → 紅
+  '9': { a: RP.iris, b: RP.foam },   // 紫 → シアン
+  '0': { a: RP.muted, b: RP.subtle },// モノクロ寄り (灰)
+  'S': { a: RP.pine, b: RP.iris },   // 青 → 紫
+};
+
+let currentPalette = PALETTES['1'];
+
+// ワークスペース切替後 ANIMATION_MS だけ canvas アニメーションを動かして、
+// それ以降は静止画にしてバッテリーを節約する (aurora.html と同方針)。
+const ANIMATION_MS = 2500;
+let animationDeadline = 0;
+let isAnimating = false;
+
+function applyWorkspace(ws) {
+  ws = ws || '1';
+  const next = PALETTES[ws] || PALETTES['1'];
+  if (currentPalette === next) return;  // 変更なし
+  currentPalette = next;
+  document.getElementById('wsnum').textContent = ws;
+  startAnimation();
+}
+
+function startAnimation() {
+  animationDeadline = performance.now() + ANIMATION_MS;
+  if (!isAnimating) {
+    isAnimating = true;
+    requestAnimationFrame(tick);
+  }
+}
+
+// 同階層の state.js を <script>タグで定期ロード (cache buster付き)
+// state.js の内容: window.__ws = "3";
+function pollWorkspace() {
+  const s = document.createElement('script');
+  s.src = 'state.js?_=' + Date.now();
+  s.onload = () => { applyWorkspace(window.__ws); s.remove(); };
+  s.onerror = () => { s.remove(); };
+  document.head.appendChild(s);
+}
+setInterval(pollWorkspace, 300);
+
+// ─────────── canvasセットアップ ───────────
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H;
+
+function paintBase() {
+  // rose-pine base を全面塗り → 微妙な縦グラデで奥行き (surface を上にうっすら)
+  const g = ctx.createLinearGradient(0, 0, 0, window.innerHeight);
+  g.addColorStop(0, `rgb(${RP.surface})`);
+  g.addColorStop(0.5, `rgb(${RP.base})`);
+  g.addColorStop(1, `rgb(${RP.base})`);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+}
+
+function resize() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  W = canvas.width = window.innerWidth * dpr;
+  H = canvas.height = window.innerHeight * dpr;
+  canvas.style.width = window.innerWidth + 'px';
+  canvas.style.height = window.innerHeight + 'px';
+  ctx.scale(dpr, dpr);
+  paintBase();
+}
+resize();
+window.addEventListener('resize', resize);
+
+// ─────────── Perlinノイズ (簡易版) ───────────
+const perm = new Uint8Array(512);
+{
+  const p = [];
+  for (let i = 0; i < 256; i++) p.push(i);
+  for (let i = 255; i > 0; i--) {
+    const j = (Math.random() * (i + 1)) | 0;
+    [p[i], p[j]] = [p[j], p[i]];
+  }
+  for (let i = 0; i < 512; i++) perm[i] = p[i & 255];
+}
+const fade = t => t * t * t * (t * (t * 6 - 15) + 10);
+const lerp = (a, b, t) => a + t * (b - a);
+const grad = (h, x, y) => {
+  const u = (h & 1) ? -x : x;
+  const v = (h & 2) ? -y : y;
+  return u + v;
+};
+function noise2D(x, y) {
+  const X = Math.floor(x) & 255;
+  const Y = Math.floor(y) & 255;
+  x -= Math.floor(x); y -= Math.floor(y);
+  const u = fade(x), v = fade(y);
+  const A = perm[X] + Y, B = perm[X + 1] + Y;
+  return lerp(
+    lerp(grad(perm[A],     x,     y),     grad(perm[B],     x - 1, y),     u),
+    lerp(grad(perm[A + 1], x,     y - 1), grad(perm[B + 1], x - 1, y - 1), u),
+    v
+  );
+}
+
+// ─────────── パーティクル ───────────
+const N = 200;
+const particles = [];
+const w = window.innerWidth;
+const h = window.innerHeight;
+for (let i = 0; i < N; i++) {
+  particles.push({
+    x: Math.random() * w,
+    y: Math.random() * h,
+    life: Math.random() * 200,
+  });
+}
+
+// 時刻に応じた明度シフト。Rosé Pine は dark テーマなので白飛びさせず、
+// 夜はより沈め、昼はわずかに持ち上げる程度に留める。
+//   夜 (深夜)  : brightness ≈ 0.78
+//   昼 (正午)  : brightness ≈ 1.05
+function computeTimeShift() {
+  const now = new Date();
+  const hr = now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600 + now.getMilliseconds() / 3600000;
+  const sunness = 0.5 * (1 + Math.cos((hr - 12) * Math.PI / 12));  // 0..1 正午=1, 真夜中=0
+  return {
+    brightness: 0.78 + 0.27 * sunness,   // 夜0.78 → 昼1.05
+    trailAlpha: 0.06 + 0.03 * sunness,   // 昼は少し速くフェード (くっきり)
+  };
+}
+
+let frame = 0;
+function tick() {
+  const t = computeTimeShift();
+  const [aR, aG, aB] = rgb(currentPalette.a);
+  const [bR, bG, bB] = rgb(currentPalette.b);
+
+  // 背景トレイルフェード: rose-pine base をうっすら重ねて軌跡を残す
+  ctx.fillStyle = `rgba(${RP.base}, ${t.trailAlpha})`;
+  ctx.fillRect(0, 0, w, h);
+
+  ctx.lineWidth = 0.8;
+  ctx.lineCap = 'round';
+
+  for (const p of particles) {
+    // ノイズ場から角度算出
+    const n = noise2D(p.x * 0.0018, p.y * 0.0018 + frame * 0.0008);
+    const angle = n * Math.PI * 3;
+    const speed = 1.4;
+    const vx = Math.cos(angle) * speed;
+    const vy = Math.sin(angle) * speed;
+
+    // 色: アクセント2色を noise で RGB 補間 → 時刻明度を乗算
+    const mix = (n + 1) * 0.5;                 // 0..1
+    const br = t.brightness;
+    const cr = Math.min(255, (aR + (bR - aR) * mix) * br) | 0;
+    const cg = Math.min(255, (aG + (bG - aG) * mix) * br) | 0;
+    const cb = Math.min(255, (aB + (bB - aB) * mix) * br) | 0;
+    ctx.strokeStyle = `rgba(${cr},${cg},${cb},0.7)`;
+
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+    p.x += vx;
+    p.y += vy;
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+
+    // 寿命管理: 一定時間で再生成
+    p.life--;
+    if (p.life < 0 || p.x < 0 || p.x > w || p.y < 0 || p.y > h) {
+      p.x = Math.random() * w;
+      p.y = Math.random() * h;
+      p.life = 150 + Math.random() * 200;
+    }
+  }
+
+  frame++;
+  if (performance.now() < animationDeadline) {
+    requestAnimationFrame(tick);
+  } else {
+    isAnimating = false;
+  }
+}
+
+// 初期描画: base を塗ってから初回アニメーションを一度走らせる
+paintBase();
+applyWorkspace('1');
+startAnimation();
+</script>
+</body>
+</html>
