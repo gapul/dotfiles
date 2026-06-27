@@ -40,7 +40,9 @@ param(
     # ロケール / 言語 (User Language List / System Locale / Home Location) を skip
     [switch]$SkipLocale,
     # configs/fonts/ の .ttf/.otf user-scope install を skip
-    [switch]$SkipFonts
+    [switch]$SkipFonts,
+    # Bitwarden Desktop の SSH Agent を使う (Windows ssh-agent サービスは Stop + Disable)
+    [switch]$UseBitwardenSSH
 )
 
 $ErrorActionPreference = 'Stop'
@@ -61,6 +63,7 @@ if (-not $DryRun) {
         if ($SkipKeymap)  { $childArgs += '-SkipKeymap' }
         if ($SkipLocale)  { $childArgs += '-SkipLocale' }
         if ($SkipFonts)   { $childArgs += '-SkipFonts' }
+        if ($UseBitwardenSSH) { $childArgs += '-UseBitwardenSSH' }
         Start-Process pwsh -Verb RunAs -ArgumentList $childArgs
         exit
     }
@@ -269,21 +272,38 @@ $SshPriv = Join-Path $env:USERPROFILE '.ssh\id_ed25519'
 if (Test-Path $SshPriv) { Protect-KeyFile $SshPriv }
 else { Err "SSH 秘密鍵 ($SshPriv) が未配置 — Bitwarden 等から配置後に本スクリプト再実行で ACL 設定" }
 
-# 5.5 Windows OpenSSH Authentication Agent を auto start。
-#     WSL 側 (nix/home/wsl.nix) で npiperelay 経由 socat フォワードして Windows
-#     ssh-agent を共有する仕組みの前提。Set-Service は管理者要なので非管理時は
-#     warn 留め (鍵単発利用なら省略可)。
+# 5.5 ssh-agent 戦略 (2 通り):
+#     ・通常: Windows OpenSSH ssh-agent を Auto+Running にして WSL は
+#              nix/home/wsl.nix の npiperelay 経由 socat でフォワード
+#     ・-UseBitwardenSSH: Bitwarden Desktop の SSH Agent 機能を使う場合は
+#              名前付きパイプ `\\.\pipe\openssh-ssh-agent` で競合するため
+#              Windows ssh-agent を Stop + Disabled にする。WSL からも
+#              同じパイプを通って Bitwarden の鍵が ssh-add -l に出る。
 $sshAgent = Get-Service ssh-agent -ErrorAction SilentlyContinue
 if ($sshAgent) {
-    if ($DryRun) {
-        Dry "Set-Service ssh-agent -StartupType Automatic; Start-Service ssh-agent"
+    if ($UseBitwardenSSH) {
+        if ($DryRun) {
+            Dry "Stop-Service ssh-agent; Set-Service ssh-agent -StartupType Disabled (Bitwarden SSH Agent 用)"
+        } else {
+            try {
+                if ($sshAgent.Status -eq 'Running')      { Stop-Service ssh-agent -Force }
+                if ($sshAgent.StartType -ne 'Disabled') { Set-Service ssh-agent -StartupType Disabled }
+                Log "ssh-agent: Stopped + Disabled (Bitwarden Desktop に委譲)"
+            } catch {
+                Err "ssh-agent disable 失敗 (管理者で再実行): $($_.Exception.Message)"
+            }
+        }
     } else {
-        try {
-            if ($sshAgent.StartType -ne 'Automatic') { Set-Service ssh-agent -StartupType Automatic }
-            if ($sshAgent.Status   -ne 'Running')   { Start-Service ssh-agent }
-            Log "ssh-agent: $((Get-Service ssh-agent).Status) / $((Get-Service ssh-agent).StartType)"
-        } catch {
-            Err "ssh-agent サービス起動失敗 (管理者で再実行): $($_.Exception.Message)"
+        if ($DryRun) {
+            Dry "Set-Service ssh-agent -StartupType Automatic; Start-Service ssh-agent"
+        } else {
+            try {
+                if ($sshAgent.StartType -ne 'Automatic') { Set-Service ssh-agent -StartupType Automatic }
+                if ($sshAgent.Status   -ne 'Running')   { Start-Service ssh-agent }
+                Log "ssh-agent: $((Get-Service ssh-agent).Status) / $((Get-Service ssh-agent).StartType)"
+            } catch {
+                Err "ssh-agent サービス起動失敗 (管理者で再実行): $($_.Exception.Message)"
+            }
         }
     }
 }
