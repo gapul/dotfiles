@@ -15,11 +15,13 @@ scrolloff      = 5 # カーソル上下に5行の余白
 video = [
   { run = 'mpv "$@"', desc = "Open in mpv", orphan = true, for = "unix" },
   { run = 'open -a "IINA" "$@"', desc = "Open in IINA", orphan = true, for = "macos" },
+  { run = 'mpv "$@"', desc = "Open in mpv", orphan = true, for = "windows" },
   { run = 'start "" "$@"', desc = "Open with default", orphan = true, for = "windows" },
 ]
 audio = [
   { run = 'mpv "$@"', desc = "Play in mpv", orphan = true, for = "unix" },
   { run = 'open -a "IINA" "$@"', desc = "Play in IINA", orphan = true, for = "macos" },
+  { run = 'mpv "$@"', desc = "Play in mpv", orphan = true, for = "windows" },
   { run = 'start "" "$@"', desc = "Play with default", orphan = true, for = "windows" },
 ]
 image = [

@@ -84,7 +84,9 @@ $Targets = @(
     @{ Tmpl = Join-Path $DotfilesDir 'configs\wm\glazewm\config.yaml.tmpl';
        Out  = Join-Path $DotfilesDir 'configs\wm\glazewm\config.yaml' },
     @{ Tmpl = Join-Path $DotfilesDir 'windows\terminal\settings.json.tmpl';
-       Out  = Join-Path $DotfilesDir 'windows\terminal\settings.json' }
+       Out  = Join-Path $DotfilesDir 'windows\terminal\settings.json' },
+    @{ Tmpl = Join-Path $DotfilesDir 'configs\terminals\wezterm\wezterm.lua.tmpl';
+       Out  = Join-Path $DotfilesDir 'configs\terminals\wezterm\wezterm.lua' }
 )
 foreach ($t in $Targets) {
     Render-Template -TemplatePath $t.Tmpl -OutputPath $t.Out

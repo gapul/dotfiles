@@ -31,7 +31,7 @@ config.font_size = 13.0
 -- 不在フォント警告を抑制 (fallback で代用されるので intentional)
 config.warn_about_missing_glyphs = false
 
--- ─── Theme (Ghostty: theme = Rose Pine) ───
+-- ─── Theme (palettes.json の weztermScheme から render) ───
 config.color_scheme = 'rose-pine'
 
 -- ─── 閉じる確認なし (Ghostty: confirm-close-surface = false) ───
