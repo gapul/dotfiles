@@ -20,26 +20,28 @@ general:
 
 gaps:
   scale_with_dpi: true
-  inner_gap: '8px'
+  inner_gap: '0px'
   outer_gap:
     # top は Zebar バー高さ (≒ 36px) + 余白 ≒ 44px。Mac の AeroSpace で
     # sketchybar 高さを outer.top に確保してるのと同じ思想。
     top: '44px'
-    right: '6px'
-    bottom: '6px'
-    left: '6px'
+    right: '0px'
+    bottom: '0px'
+    left: '0px'
 
 window_effects:
   focused_window:
     border:
       enabled: true
-      color: '#9333ea'  # AeroSpace borders 色 (purple) に寄せる
+      color: '#c4a7e7'  # Rose Pine Iris (Zebar accent と統一)
     hide_title_bar:
-      enabled: false
+      enabled: true
   other_windows:
     border:
       enabled: true
-      color: '#21222c'
+      color: '#26233a'  # Rose Pine Overlay
+    hide_title_bar:
+      enabled: true
 
 window_behavior:
   initial_state: tiling
