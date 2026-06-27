@@ -16,15 +16,16 @@ local is_macos = wezterm.target_triple:find('darwin') ~= nil
 
 -- ─── Font (Ghostty: font-family = "HackGen Console NF") ───
 -- font_with_fallback で「あれば使う、なければ次の候補」を declarative に。
--- HackGen Console NF は Mac の cask `font-hackgen-nerd` で入る。Windows は
--- yuru7/HackGen の GitHub Release から手動 install (winget/scoop 未収録)。
--- Windows 既定でも JetBrainsMono Nerd Font (apps.json で install 済) に fallback
--- して警告なしに動く。
+-- HackGen は Mac の cask `font-hackgen-nerd`、Windows は windows/fonts/apply.ps1
+-- が yuru7/HackGen から自動 DL して user-scope install する。
+-- Font family 名は yuru7/HackGen NF 版で "HackGenConsole NF" (スペースなし版) と
+-- "HackGen Console NF" (スペース版) のどちらかが現れる版があるので両方記載。
 config.font = wezterm.font_with_fallback {
-  'HackGen Console NF',
-  'JetBrainsMono Nerd Font',  -- DEVCOM.JetBrainsMonoNerdFont で入る確実な fallback
-  'Cascadia Code',            -- Windows 11 標準
-  'Menlo',                    -- macOS 標準
+  'HackGen Console NF',        -- yuru7 NF 公式 family 名 (ファイル名は HackGenConsoleNF だが family はスペース付)
+  'M+CodeLat50NerdFont',       -- 実機 install 済の M+Code Nerd
+  'JetBrainsMono Nerd Font',   -- DEVCOM.JetBrainsMonoNerdFont
+  'Cascadia Code',             -- Win11 標準
+  'Menlo',                     -- macOS 標準
 }
 config.font_size = 13.0
 -- 不在フォント警告を抑制 (fallback で代用されるので intentional)
