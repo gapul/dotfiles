@@ -152,15 +152,14 @@
         let
           wslSystem = "x86_64-linux";
           wslPkgs = nixpkgs.legacyPackages.${wslSystem};
-          localOverride =
-            if builtins.pathExists ./user.local.nix
-            then import ./user.local.nix
-            else { };
+          localOverride = if builtins.pathExists ./user.local.nix then import ./user.local.nix else { };
           labUser = user // localOverride;
         in
         home-manager.lib.homeManagerConfiguration {
           pkgs = wslPkgs;
-          extraSpecialArgs = { user = labUser; };
+          extraSpecialArgs = {
+            user = labUser;
+          };
           modules = [
             ./home/common.nix
             ./home/linux.nix
