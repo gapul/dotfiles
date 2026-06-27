@@ -425,6 +425,20 @@ if (-not $SkipKeymap) {
     Log 'SkipKeymap 指定: just win-keymap で後から適用可'
 }
 
+# 8.4 テーマ palette を各 config に render (zebar/glazewm/WT)
+#     palettes.json から hex を読んで template を実 config に置換。
+#     symlink 対象ファイル (configs/wm/zebar/styles.css 等) を上書きするので、
+#     symlink 配置より前に走らせる必要なし (symlink は同じ inode で reload)。
+$themeApply = Join-Path $WindowsDir 'theme\apply.ps1'
+if (Test-Path $themeApply) {
+    if ($DryRun) { & $themeApply -DryRun }
+    else {
+        Log 'テーマ palette render (palettes.json → zebar/glazewm/WT)'
+        try { & $themeApply }
+        catch { Err "theme apply 失敗: $($_.Exception.Message)" }
+    }
+}
+
 # 8.5 configs/fonts/ を user-scope install (sketchybar-app-font 等)
 if (-not $SkipFonts) {
     $fontsApply = Join-Path $WindowsDir 'fonts\apply.ps1'

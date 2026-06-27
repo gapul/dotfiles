@@ -9,18 +9,18 @@
 
 :root {
   /* Palette は configs/theme/palettes.json から render される (SSO)。 */
-  --rp-base:    #191724;
-  --rp-surface: #1f1d2e;
-  --rp-overlay: #26233a;
-  --rp-muted:   #6e6a86;
-  --rp-subtle:  #908caa;
-  --rp-text:    #e0def4;
-  --rp-love:    #eb6f92;
-  --rp-gold:    #f6c177;
-  --rp-rose:    #ebbcba;
-  --rp-pine:    #31748f;
-  --rp-foam:    #9ccfd8;
-  --rp-iris:    #c4a7e7;
+  --rp-base:    {{ palette.base }};
+  --rp-surface: {{ palette.surface }};
+  --rp-overlay: {{ palette.overlay }};
+  --rp-muted:   {{ palette.muted }};
+  --rp-subtle:  {{ palette.subtle }};
+  --rp-text:    {{ palette.text }};
+  --rp-love:    {{ palette.love }};
+  --rp-gold:    {{ palette.gold }};
+  --rp-rose:    {{ palette.rose }};
+  --rp-pine:    {{ palette.pine }};
+  --rp-foam:    {{ palette.foam }};
+  --rp-iris:    {{ palette.iris }};
 
   /* UI alias (color-mix で alpha 合成 → palette 変更で自動追従) */
   --bg:         color-mix(in srgb, var(--rp-base) 88%, transparent);
