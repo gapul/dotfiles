@@ -54,13 +54,20 @@ elif [ -n "${AGE_KEY_TEXT:-}" ]; then
     # 環境変数で渡された場合
     place_key "$AGE_KEY_TEXT"
 else
-    # 対話で paste
+    # 対話で paste。stty -echo で端末 echo OFF + EXIT trap で必ず restore。
+    # これで貼り付けた秘密鍵が画面に表示されない → 画面録画 / コピペ漏洩を防ぐ。
     echo ""
     echo "─────────────────────────────────────────────────"
-    echo " age 鍵を貼り付けてください (Mac で `cat ~/.config/sops/age/keys.txt`)"
-    echo " 入力終了は Ctrl+D"
+    echo " age 鍵を貼り付けてください (Mac で: cat ~/.config/sops/age/keys.txt)"
+    echo " 入力は **画面に表示されません**。確定は Ctrl+D"
     echo "─────────────────────────────────────────────────"
+    stty -echo 2>/dev/null || true
+    # スクリプト中断時にも echo を復帰させる
+    trap 'stty echo 2>/dev/null || true' EXIT INT TERM
     KEY_INPUT=$(cat)
+    stty echo 2>/dev/null || true
+    trap - EXIT INT TERM
+    echo ""
     if ! echo "$KEY_INPUT" | grep -q '^AGE-SECRET-KEY'; then
         echo "ERROR: AGE-SECRET-KEY... の文字列が含まれていません" >&2
         exit 1
