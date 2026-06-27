@@ -33,6 +33,14 @@ function gc { git commit $args }
 function gl { git pull $args }
 function gp { git push $args }
 
+# === jd (just-dotfiles): dotfiles の Justfile レシピをどこからでも実行 ===
+# Mac/Linux の zsh `jd` (nix/home/common.nix) と同等。Win は ~/dotfiles。
+# 例: jd rebuild / jd theme rose-pine-dawn / jd (引数なしで一覧)
+function jd {
+    $dotfiles = Join-Path $env:USERPROFILE 'dotfiles'
+    & just --justfile (Join-Path $dotfiles 'Justfile') --working-directory $dotfiles @args
+}
+
 # === エディタ (nvim があれば vi/vim/v を nvim に) ===
 if (Get-Command nvim -ErrorAction SilentlyContinue) {
     function v   { nvim $args }
