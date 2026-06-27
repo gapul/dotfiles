@@ -22,6 +22,21 @@ function Log($msg) { Write-Host "[sharpkeys] $msg"      -ForegroundColor Blue }
 function Dry($msg) { Write-Host "[sharpkeys][dry] $msg" -ForegroundColor DarkYellow }
 function Err($msg) { Write-Host "[sharpkeys] $msg"      -ForegroundColor Red }
 
+# ─── 管理者チェック (DryRun は除外) ───
+# HKLM\SYSTEM\CurrentControlSet 書込みは管理者要。非管理者で起動された場合は
+# UAC 起こして elevate した子プロセスに引き継ぐ。
+if (-not $DryRun) {
+    $principal = New-Object Security.Principal.WindowsPrincipal(
+        [Security.Principal.WindowsIdentity]::GetCurrent())
+    if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+        Log '管理者権限が必要です。UAC promptで再起動します...'
+        $childArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$PSCommandPath`"")
+        if ($Clear) { $childArgs += '-Clear' }
+        Start-Process pwsh -Verb RunAs -ArgumentList $childArgs
+        exit
+    }
+}
+
 # Clear モード: remap を全削除
 if ($Clear) {
     if ($DryRun) {
