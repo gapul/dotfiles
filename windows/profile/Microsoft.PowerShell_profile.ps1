@@ -53,6 +53,13 @@ if (Get-Command nvim -ErrorAction SilentlyContinue) {
 function .. { Set-Location .. }
 function ... { Set-Location ../.. }
 
+# === textlint alias (Mac の shellAliases tl/tlf と同一) ===
+if (Get-Command textlint -ErrorAction SilentlyContinue) {
+    $tlConfig = Join-Path $env:XDG_CONFIG_HOME 'textlint\.textlintrc.json'
+    function tl  { textlint --config $tlConfig @args }
+    function tlf { textlint --config $tlConfig --fix @args }
+}
+
 # === scoop と winget の重複ツールを診断 ===
 # 方針: winget が一次パッケージマネージャ。scoop は winget に無いものだけ補助で使う。
 # 同名ツールが両方から入った時は PATH 順で勝った方になるが、意図と違うことがあるので
@@ -232,6 +239,53 @@ function Test-DotfilesSetup {
     Write-Host ''
     Write-Host "Result: $pass passed, $fail failed" -ForegroundColor ($(if ($fail -eq 0) { 'Green' } else { 'Yellow' }))
 }
+
+# === Mac の home.sessionVariables と揃える ===
+# nix/home/common.nix の home.sessionVariables を 1:1 移植。
+# 同じ env vars を WSL/Win 両方で見えるようにして、ツール挙動も同じに。
+
+# EDITOR / PAGER 系
+if (Get-Command nvim -ErrorAction SilentlyContinue) { $env:EDITOR = 'nvim' }
+if (Get-Command bat -ErrorAction SilentlyContinue) {
+    $env:PAGER = 'bat'
+    # man ページを bat 経由で表示 (Rosé Pine シンタックス、外観追従)
+    $env:MANPAGER = "sh -c 'col -bx | bat -l man -p'"
+    $env:MANROFFOPT = '-c'
+}
+
+# Claude Code: 非必須トラフィック無効化 (Mac と一貫)
+$env:CLAUDE_CONFIG_DIR = Join-Path $env:USERPROFILE '.config\claude'
+$env:CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = '1'
+
+# 各種 telemetry 無効化 (privacy、Mac と一貫)
+$env:DO_NOT_TRACK = '1'                  # 業界標準 (consoledonottrack.com)
+$env:NEXT_TELEMETRY_DISABLED = '1'       # Next.js
+$env:NUXT_TELEMETRY_DISABLED = '1'       # Nuxt
+$env:ASTRO_TELEMETRY_DISABLED = '1'      # Astro
+$env:GATSBY_TELEMETRY_DISABLED = '1'     # Gatsby
+$env:STORYBOOK_DISABLE_TELEMETRY = '1'   # Storybook
+$env:NG_CLI_ANALYTICS = 'false'          # Angular CLI
+$env:VERCEL_TELEMETRY_DISABLED = '1'     # Vercel CLI
+$env:FLUTTER_SUPPRESS_ANALYTICS = 'true' # Flutter / Dart
+$env:DOTNET_CLI_TELEMETRY_OPTOUT = '1'   # .NET CLI
+
+# XDG Base Directory: Windows でも XDG 尊重ツール (zellij/atuin/yazi 等) を
+# ~/.config/, ~/.local/share/ 等で揃える。
+$env:XDG_CONFIG_HOME = Join-Path $env:USERPROFILE '.config'
+$env:XDG_DATA_HOME   = Join-Path $env:USERPROFILE '.local\share'
+$env:XDG_STATE_HOME  = Join-Path $env:USERPROFILE '.local\state'
+$env:XDG_CACHE_HOME  = Join-Path $env:USERPROFILE '.cache'
+
+# cargo / npm / bundler を XDG 配下に (Mac と同一)
+$env:CARGO_HOME           = Join-Path $env:XDG_DATA_HOME 'cargo'
+$env:NPM_CONFIG_CACHE     = Join-Path $env:XDG_CACHE_HOME 'npm'
+$env:NPM_CONFIG_USERCONFIG = Join-Path $env:XDG_CONFIG_HOME 'npm\npmrc'
+$env:BUNDLE_USER_CONFIG   = Join-Path $env:XDG_CONFIG_HOME 'bundle\config'
+$env:BUNDLE_USER_CACHE    = Join-Path $env:XDG_CACHE_HOME 'bundle'
+$env:BUNDLE_USER_PLUGIN   = Join-Path $env:XDG_DATA_HOME 'bundle\plugin'
+
+# SOPS 復号鍵 (Mac と同パス、共通 secrets.yaml を復号できるように)
+$env:SOPS_AGE_KEY_FILE = Join-Path $env:USERPROFILE '.config\sops\age\keys.txt'
 
 # === ghq root (nvim lazy.lua の dev.path と整合) ===
 # macOS の nix/home/common.nix で `programs.git.extraConfig.ghq.root` を ~/Developer
