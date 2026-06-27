@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Topographic Wallpaper</title>
+<style>
+  * { margin: 0; padding: 0; }
+  html, body { width: 100vw; height: 100vh; overflow: hidden; background: #191724; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+
+  /* 右下の控えめなマーカー */
+  .marker {
+    position: fixed;
+    bottom: 28px;
+    right: 32px;
+    color: rgba(224,222,244,0.22);  /* rose-pine text を薄く */
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    z-index: 10;
+    pointer-events: none;
+  }
+  .marker .dot { color: rgba(196,167,231,0.55); }  /* iris */
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="marker">TOPO <span class="dot">&middot;</span> WS <span id="wsnum">1</span></div>
+<script>
+'use strict';
+
+// ─────────── Rosé Pine (main / dark) パレット ───────────
+// rose-pine.html と同一定義をそのまま流用。
+const RP = {
+  base:    '25,23,36',    // #191724 背景 (一番暗い)
+  surface: '31,29,46',    // #1f1d2e
+  overlay: '38,35,58',    // #26233a
+  muted:   '110,106,134', // #6e6a86
+  subtle:  '144,140,170', // #908caa
+  text:    '224,222,244', // #e0def4
+  love:    '235,111,146', // #eb6f92 赤/ピンク
+  gold:    '246,193,119', // #f6c177 黄
+  rose:    '235,188,186', // #ebbcba ローズ
+  pine:    '49,116,143',  // #31748f 青
+  foam:    '156,207,216', // #9ccfd8 シアン
+  iris:    '196,167,231', // #c4a7e7 紫
+};
+const rgb = s => s.split(',').map(Number);
+
+// ─────────── workspace別パラメータ (Topographic) ───────────
+// 各 workspace = 色ペア(低標高a→高標高b) + contour本数 + noise scale。
+//   lo/hi  : 等高線色。標高(level)で lo→hi を lerp し高度感を出す
+//   levels : 等高線の本数(密度)
+//   scale  : ノイズの粗さ(大きいほど細かい地形)
+const PALETTES = {
+  '1': { lo: RP.pine, hi: RP.iris,    levels: 7,  scale: 0.0022 }, // 青→紫 標準
+  '2': { lo: RP.pine, hi: RP.foam,    levels: 10, scale: 0.0034 }, // 青→シアン 細かい
+  '3': { lo: RP.rose, hi: RP.gold,    levels: 6,  scale: 0.0018 }, // ローズ→金 なだらか
+  '4': { lo: RP.iris, hi: RP.love,    levels: 9,  scale: 0.0030 }, // 紫→紅 密
+  '5': { lo: RP.foam, hi: RP.pine,    levels: 7,  scale: 0.0024 }, // シアン→青
+  '6': { lo: RP.love, hi: RP.iris,    levels: 8,  scale: 0.0027 }, // 紅→紫
+  '7': { lo: RP.foam, hi: RP.iris,    levels: 6,  scale: 0.0016 }, // シアン→紫 極なだらか
+  '8': { lo: RP.gold, hi: RP.love,    levels: 9,  scale: 0.0031 }, // 金→紅
+  '9': { lo: RP.iris, hi: RP.foam,    levels: 7,  scale: 0.0025 }, // 紫→シアン
+  '0': { lo: RP.muted, hi: RP.subtle, levels: 6,  scale: 0.0020 }, // 灰 静かなモノクロ
+  'S': { lo: RP.pine, hi: RP.rose,    levels: 8,  scale: 0.0023 }, // 青→ローズ
+};
+
+let currentPalette = PALETTES['1'];
+let started = false;
+
+function applyWorkspace(ws) {
+  ws = ws || '1';
+  const next = PALETTES[ws] || PALETTES['1'];
+  if (currentPalette === next) return;  // 変更なし
+  currentPalette = next;
+  document.getElementById('wsnum').textContent = ws;
+  // 毎フレーム base でクリアするので、次フレームから新パラメータで描けば自然に切替わる。
+}
+
+function startAnimation() {
+  if (started) return;
+  started = true;
+  requestAnimationFrame(tick);
+}
+
+// 同階層の state.js を <script>タグで定期ロード (cache buster付き)
+// state.js の内容: window.__ws = "3";
+function pollWorkspace() {
+  const s = document.createElement('script');
+  s.src = 'state.js?_=' + Date.now();
+  s.onload = () => { applyWorkspace(window.__ws); s.remove(); };
+  s.onerror = () => { s.remove(); };
+  document.head.appendChild(s);
+}
+setInterval(pollWorkspace, 300);
+
+// ─────────── canvasセットアップ ───────────
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+
+// 背景色を時間帯でティント (rose-pine.html と同方針)。
+function tintBg(c, t) {
+  const top = rgb(RP.surface);
+  const gold = rgb(RP.gold);
+  const lift = t.bgLift * 0.22;   // 昼: surface へ最大22%
+  const warm = t.warmth * 0.10;   // 朝夕: gold へ最大10%
+  return c.map((v, i) => {
+    let x = v + (top[i] - v) * lift;
+    x = x + (gold[i] - x) * warm;
+    return Math.round(x);
+  });
+}
+
+function paintBase() {
+  // 時刻ティント済みの base で全面クリア → 縦グラデで奥行き(軌跡は残さない)
+  const t = computeTimeShift();
+  const base = tintBg(rgb(RP.base), t);
+  const top = tintBg(rgb(RP.surface), t);
+  const g = ctx.createLinearGradient(0, 0, 0, window.innerHeight);
+  g.addColorStop(0, `rgb(${top.join(',')})`);
+  g.addColorStop(0.5, `rgb(${base.join(',')})`);
+  g.addColorStop(1, `rgb(${base.join(',')})`);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+}
+
+function resize() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = window.innerWidth * dpr;
+  canvas.height = window.innerHeight * dpr;
+  canvas.style.width = window.innerWidth + 'px';
+  canvas.style.height = window.innerHeight + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  paintBase();
+}
+resize();
+window.addEventListener('resize', resize);
+
+// ─────────── Perlinノイズ (rose-pine.html と同一) ───────────
+const perm = new Uint8Array(512);
+{
+  const p = [];
+  for (let i = 0; i < 256; i++) p.push(i);
+  for (let i = 255; i > 0; i--) {
+    const j = (Math.random() * (i + 1)) | 0;
+    [p[i], p[j]] = [p[j], p[i]];
+  }
+  for (let i = 0; i < 512; i++) perm[i] = p[i & 255];
+}
+const fade = t => t * t * t * (t * (t * 6 - 15) + 10);
+const lerp = (a, b, t) => a + t * (b - a);
+const grad = (h, x, y) => {
+  const u = (h & 1) ? -x : x;
+  const v = (h & 2) ? -y : y;
+  return u + v;
+};
+function noise2D(x, y) {
+  const X = Math.floor(x) & 255;
+  const Y = Math.floor(y) & 255;
+  x -= Math.floor(x); y -= Math.floor(y);
+  const u = fade(x), v = fade(y);
+  const A = perm[X] + Y, B = perm[X + 1] + Y;
+  return lerp(
+    lerp(grad(perm[A],     x,     y),     grad(perm[B],     x - 1, y),     u),
+    lerp(grad(perm[A + 1], x,     y - 1), grad(perm[B + 1], x - 1, y - 1), u),
+    v
+  );
+}
+// 2オクターブ fbm (rose-pine.html と同一)
+function fbm(x, y) {
+  return noise2D(x, y) * 0.65 + noise2D(x * 2.13 + 19.1, y * 2.13 + 7.3) * 0.35;
+}
+
+// 時刻に応じた色シフト (rose-pine.html と同一)。
+function computeTimeShift() {
+  const now = new Date();
+  const hr = now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600 + now.getMilliseconds() / 3600000;
+  const sunness = 0.5 * (1 + Math.cos((hr - 12) * Math.PI / 12));  // 0..1 正午=1, 真夜中=0
+  const golden = Math.sin(Math.abs(hr - 12) * Math.PI / 12);       // 0..1 朝夕=1, 正午/深夜=0
+  const warmth = golden * Math.min(1, sunness * 1.6);
+  return {
+    brightness: 0.78 + 0.27 * sunness,   // 夜0.78 → 昼1.05
+    warmth,                              // 0..1 朝夕で最大
+    bgLift: sunness,                     // 昼に背景を surface 寄りへ
+    trailAlpha: 0.06 + 0.03 * sunness,   // (本テーマでは未使用だが互換のため保持)
+  };
+}
+
+// ─────────── Marching Squares 等高線 ───────────
+// 粗いグリッドの各セル4隅で fbm を閾値(level)と比較し、交差辺を線分で結ぶ。
+// セル境界の補間でなめらかな閉曲線になる。
+const CELL = 12;                 // セルサイズ(px) — 粗いほど軽い
+let undulation = 0;              // 時間で進める undulation 量
+
+// 1セル内で marching squares を実行し、level に対応する線分を描画。
+// v0=左上 v1=右上 v2=右下 v3=左下 (各隅の f 値), x0/y0=セル左上座標
+function marchCell(v0, v1, v2, v3, level, x0, y0) {
+  let idx = 0;
+  if (v0 > level) idx |= 8;
+  if (v1 > level) idx |= 4;
+  if (v2 > level) idx |= 2;
+  if (v3 > level) idx |= 1;
+  if (idx === 0 || idx === 15) return;
+  const x1 = x0 + CELL, y1 = y0 + CELL;
+  // 各辺の交点を線形補間で求める
+  const ip = (a, b, ca, cb) => {
+    const d = b - a;
+    const tt = d === 0 ? 0.5 : (level - a) / d;
+    return [ca[0] + (cb[0] - ca[0]) * tt, ca[1] + (cb[1] - ca[1]) * tt];
+  };
+  const TL = [x0, y0], TR = [x1, y0], BR = [x1, y1], BL = [x0, y1];
+  // 4辺: top(v0-v1) right(v1-v2) bottom(v3-v2) left(v0-v3)
+  const eTop    = () => ip(v0, v1, TL, TR);
+  const eRight  = () => ip(v1, v2, TR, BR);
+  const eBottom = () => ip(v3, v2, BL, BR);
+  const eLeft   = () => ip(v0, v3, TL, BL);
+  let segs = null;
+  switch (idx) {
+    case 1: case 14: segs = [eLeft(), eBottom()]; break;
+    case 2: case 13: segs = [eBottom(), eRight()]; break;
+    case 3: case 12: segs = [eLeft(), eRight()]; break;
+    case 4: case 11: segs = [eTop(), eRight()]; break;
+    case 6: case 9:  segs = [eTop(), eBottom()]; break;
+    case 7: case 8:  segs = [eLeft(), eTop()]; break;
+    case 5:  segs = [eLeft(), eTop(), eBottom(), eRight()]; break; // 鞍部
+    case 10: segs = [eLeft(), eBottom(), eTop(), eRight()]; break; // 鞍部
+  }
+  if (!segs) return;
+  for (let i = 0; i < segs.length; i += 2) {
+    ctx.moveTo(segs[i][0], segs[i][1]);
+    ctx.lineTo(segs[i + 1][0], segs[i + 1][1]);
+  }
+}
+
+let lastDraw = 0;
+const FRAME_MS = 33;  // ~30fps に間引いて CPU を抑える
+
+function tick(ts) {
+  requestAnimationFrame(tick);  // 停止せず回し続ける
+  if (ts - lastDraw < FRAME_MS) return;
+  lastDraw = ts;
+
+  const t = computeTimeShift();
+  const P = currentPalette;
+  const W = window.innerWidth;
+  const H = window.innerHeight;
+
+  paintBase();  // 毎フレーム base クリア(軌跡は残さない)
+
+  undulation += 0.0008;  // ゆっくり地形がうねる
+
+  // スカラー場をグリッド頂点で一括サンプル(セル間で共有 → 計算半減)
+  const cols = Math.ceil(W / CELL) + 1;
+  const rows = Math.ceil(H / CELL) + 1;
+  const sc = P.scale;
+  const field = new Float32Array(cols * rows);
+  for (let j = 0; j < rows; j++) {
+    const yy = j * CELL;
+    for (let i = 0; i < cols; i++) {
+      field[j * cols + i] = fbm(i * CELL * sc, yy * sc + undulation);
+    }
+  }
+
+  // fbm は概ね -1..1。等高線を等間隔に配置。
+  const lo = rgb(P.lo);
+  const hi = rgb(P.hi);
+  const gold = rgb(RP.gold);
+  const levels = P.levels;
+  const span = 1.4;                  // -span..span に等高線を配置
+  const br = t.brightness;
+  const warm = t.warmth * 0.30;      // 朝夕で gold 寄せ
+
+  for (let li = 0; li < levels; li++) {
+    const frac = li / (levels - 1);            // 0..1 標高
+    const level = -span + frac * (2 * span);
+    // 標高で lo→hi を lerp → gold 寄せ → 時刻明度を乗算
+    let cr = lo[0] + (hi[0] - lo[0]) * frac;
+    let cg = lo[1] + (hi[1] - lo[1]) * frac;
+    let cb = lo[2] + (hi[2] - lo[2]) * frac;
+    cr += (gold[0] - cr) * warm;
+    cg += (gold[1] - cg) * warm;
+    cb += (gold[2] - cb) * warm;
+    cr = Math.min(255, cr * br) | 0;
+    cg = Math.min(255, cg * br) | 0;
+    cb = Math.min(255, cb * br) | 0;
+    // 高い標高(輪の内側)ほど少し濃く見せる
+    const alpha = 0.32 + 0.30 * frac;
+    ctx.strokeStyle = `rgba(${cr},${cg},${cb},${alpha})`;
+    ctx.lineWidth = 0.8 + 0.4 * frac;  // 0.8..1.2px
+    ctx.lineCap = 'round';
+
+    // 1パス1色で全セルを描く(setStroke 回数を最小化)
+    ctx.beginPath();
+    for (let j = 0; j < rows - 1; j++) {
+      const r0 = j * cols, r1 = (j + 1) * cols;
+      const y0 = j * CELL;
+      for (let i = 0; i < cols - 1; i++) {
+        marchCell(
+          field[r0 + i], field[r0 + i + 1],
+          field[r1 + i + 1], field[r1 + i],
+          level, i * CELL, y0
+        );
+      }
+    }
+    ctx.stroke();
+  }
+}
+
+// 初期描画
+applyWorkspace('1');
+paintBase();
+startAnimation();
+</script>
+</body>
+</html>
