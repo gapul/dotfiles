@@ -48,7 +48,13 @@
   system.primaryUser = user.username;
 
   # sudo を Touch ID で認証 (sudo_local は macOS 更新でも残る公式の仕組み)
-  security.pam.services.sudo_local.touchIdAuth = true;
+  # reattach: zellij/tmux/screen 等のマルチプレクサ内ではセッションが GUI から
+  # 分離され pam_tid が Touch ID ダイアログを出せない。pam_reattach (nixpkgs) を
+  # auth optional で前置し、ユーザの bootstrap session へ再接続させて解決する。
+  security.pam.services.sudo_local = {
+    reattach = true;
+    touchIdAuth = true;
+  };
 
   users.users.${user.username} = {
     name = user.username;
