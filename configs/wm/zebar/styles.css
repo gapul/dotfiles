@@ -62,13 +62,12 @@ html, body, #root {
 }
 
 i {
-  /* HackGen Console NF は日本語フォントで Nerd Font glyph を持たないため、
-     icon だけ Nerd patched フォントに強制切替 (実機 install 済の M+Code を
-     1st、JetBrainsMono / Symbols Nerd Font に fallback)。
-     さらに大きめ + 縦中央寄せで視認性確保。 */
-  font-family: 'M+CodeLat50NerdFont', 'M+CodeLat60NerdFont',
-               'JetBrainsMono Nerd Font', 'Symbols Nerd Font Mono',
-               'Symbols Nerd Font', monospace;
+  /* HackGen Console NF は Nerd Font 版で icon glyph 含むので 1st で OK。
+     M+Code / JetBrainsMono Nerd / Symbols Nerd Font に fallback。
+     大きめ + 縦中央寄せで視認性確保。 */
+  font-family: 'HackGen Console NF', 'M+CodeLat50NerdFont',
+               'M+CodeLat60NerdFont', 'JetBrainsMono Nerd Font',
+               'Symbols Nerd Font Mono', monospace;
   font-style: normal;
   margin-right: 6px;
   font-size: calc(var(--font-size) * 1.15);
