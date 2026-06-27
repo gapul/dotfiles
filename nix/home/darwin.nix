@@ -426,6 +426,17 @@ in
     /usr/bin/killall cfprefsd 2>/dev/null || true
   '';
 
+  # Skim: VimTeX 連携。逆方向検索 (PDF クリック→Neovim 該当行) と保存時の自動リロード。
+  # 他の Skim 設定を壊さないよう、対象キーのみ surgical に書き込む。
+  home.activation.skimSync = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    /usr/bin/defaults write net.sourceforge.skim-app.skim SKTeXEditorPreset -string Custom
+    /usr/bin/defaults write net.sourceforge.skim-app.skim SKTeXEditorCommand -string ${pkgs.neovim}/bin/nvim
+    /usr/bin/defaults write net.sourceforge.skim-app.skim SKTeXEditorArguments -string "--headless -c \"VimtexInverseSearch %line '%file'\""
+    /usr/bin/defaults write net.sourceforge.skim-app.skim SKAutoReloadFileUpdate -bool true
+    /usr/bin/defaults write net.sourceforge.skim-app.skim SKAutoCheckFileUpdate -bool true
+    /usr/bin/killall cfprefsd 2>/dev/null || true
+  '';
+
   # ログイン項目: ヘッドレス起動しない GUI 常駐アプリを auto-launch
   home.activation.macosLoginItems = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     LOGIN_APPS=(

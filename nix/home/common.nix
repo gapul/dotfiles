@@ -636,6 +636,12 @@ in
     source = ../../configs/textlint;
     recursive = true;
   };
+  # LaTeX: latexmk 既定設定 (LuaLaTeX) と日本語テンプレート
+  home.file.".latexmkrc".source = ../../configs/tex/latexmkrc;
+  home.file.".config/tex/templates" = {
+    source = ../../configs/tex/templates;
+    recursive = true;
+  };
   home.file.".config/mpv" = {
     source = ../../configs/media/mpv;
     recursive = true;

@@ -1,0 +1,15 @@
+# ~/.latexmkrc — 既定エンジン: LuaLaTeX
+# CLI の `latexmk` と Neovim(VimTeX) で共通利用される設定。
+
+$pdf_mode = 4;    # 4 = LuaLaTeX で直接 PDF を生成
+
+$lualatex = 'lualatex -synctex=1 -halt-on-error -file-line-error -interaction=nonstopmode %O %S';
+
+# 相互参照・目次などの再実行回数上限
+$max_repeat = 5;
+
+# latexmk -pvc 単体実行時のプレビューア（VimTeX 使用時は VimTeX 側が制御）
+$pdf_previewer = 'open -a Skim';
+
+# `latexmk -c` で消す中間ファイル
+$clean_ext = 'synctex.gz aux fdb_latexmk fls log out toc nav snm vrb bbl run.xml bcf';
