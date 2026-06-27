@@ -51,6 +51,8 @@ extract = [
   { run = 'unzip -o "$1" -d "$(dirname "$1")"', desc = "Extract zip here", for = "unix" },
   { run = 'tar -xvf "$1" -C "$(dirname "$1")"', desc = "Extract tar here", for = "unix" },
   { run = 'open "$@"', desc = "Open with Archive Utility", orphan = true, for = "macos" },
+  # Windows: 7zip 優先 (rar/7z/zip 全部対応)、fallback で bsdtar (Win 10+ 標準)
+  { run = '7z x "$1" -o"$(dirname "$1")" -y', desc = "Extract here (7-Zip)", for = "windows" },
   { run = 'tar -xf "$1"', desc = "Extract here (bsdtar)", for = "windows" },
 ]
 fallback = [
