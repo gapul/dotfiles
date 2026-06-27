@@ -47,8 +47,9 @@ in
   # と共有)。動的 path (HOME / XDG 依存) は下で個別に追加する。
   # $comment field は home.sessionVariables に渡せないので除外。
   home.sessionVariables =
-    (lib.filterAttrs (n: _: n != "$comment")
-      (builtins.fromJSON (builtins.readFile ../../configs/shell/env-vars.json)))
+    (lib.filterAttrs (n: _: n != "$comment") (
+      builtins.fromJSON (builtins.readFile ../../configs/shell/env-vars.json)
+    ))
     // {
       # ── 動的 path (HOME / XDG 依存、JSON 化不可) ──
       SOPS_AGE_KEY_FILE = "${config.home.homeDirectory}/.config/sops/age/keys.txt";
