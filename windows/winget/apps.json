@@ -59,7 +59,6 @@
         { "PackageIdentifier": "Microsoft.PowerToys" },
         { "PackageIdentifier": "Flow-Launcher.Flow-Launcher" },
         { "PackageIdentifier": "voidtools.Everything" },
-        { "PackageIdentifier": "MacType.MacType" },
         { "PackageIdentifier": "ShareX.ShareX" },
         { "PackageIdentifier": "KDE.KDEConnect" },
         { "PackageIdentifier": "LocalSend.LocalSend" },
