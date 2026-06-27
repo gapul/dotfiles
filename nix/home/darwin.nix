@@ -305,6 +305,25 @@ in
     };
   };
 
+  # sketchybar の display map (aerospace monitor -> sketchybar display index) を
+  # ディスプレイ構成変化時に再計算し /tmp/sketchybar-aero-display.map へ書き出す常駐 watcher。
+  # これが無いと再起動で map が消え space.* が壊れる (手動 sketchybar-refresh が必要になる)。
+  # 旧来は手動 plist だったが /Users/<旧名> ハードコードで壊れていたため nix 宣言へ移行。
+  launchd.agents.sketchybar-displaywatch = {
+    enable = true;
+    config = {
+      ProgramArguments = [
+        "${config.home.homeDirectory}/.config/sketchybar/helpers/display_watch.sh"
+      ];
+      RunAtLoad = true;
+      KeepAlive = true;
+      ProcessType = "Background";
+      ThrottleInterval = 10;
+      StandardErrorPath = "/tmp/sketchybar-displaywatch.err";
+      StandardOutPath = "/tmp/sketchybar-displaywatch.log";
+    };
+  };
+
   # sioyek: 色は nix/lib/rose-pine.nix から生成 (hex→0-1 float は lib/hex-rgb.nix)。
   # macOS の sioyek は ~/Library/Application Support/sioyek/ を config dir に使う
   # (XDG 非対応)。prefs_user.config がユーザ上書き設定。sioyek 自身は auto.config/
