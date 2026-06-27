@@ -6,7 +6,27 @@
   ...
 }:
 let
-  c = import ../lib/rose-pine.nix; # 全ツール共通パレット (単一ソース)
+  c = import ../lib/theme.nix; # アクティブテーマのパレット (切替は nix/lib/theme.nix の active)
+
+  # zellij テーマ kdl を palette p から生成。dark/light 両方を吐き、config.kdl 側の
+  # theme_dark / theme_light で端末パレット (= ghostty の macOS 追従) に連動させる。
+  mkZellijTheme = name: p: ''
+    themes {
+        ${name} {
+            fg "#${p.text}"
+            bg "#${p.base}"
+            black "#${p.overlay}"
+            red "#${p.love}"
+            green "#${p.foam}"
+            yellow "#${p.gold}"
+            blue "#${p.pine}"
+            magenta "#${p.iris}"
+            cyan "#${p.foam}"
+            white "#${p.text}"
+            orange "#${p.rose}"
+        }
+    }
+  '';
 in
 {
   # OS 非依存の home-manager 設定
@@ -399,6 +419,7 @@ in
       line-numbers = true;
       side-by-side = true;
       syntax-theme = "rose-pine"; # bat の rose-pine テーマを使用 (テーマ統一)
+      detect-dark-light = "auto"; # 端末の明暗を検出し diff 配色を macOS 外観に追従
     };
   };
 
@@ -406,30 +427,38 @@ in
     enable = true;
     config = {
       style = "numbers,changes,header";
-      theme = "rose-pine"; # テーマ統一
+      # macOS 外観に自動追従。dark=rose-pine / light=rose-pine-dawn。
+      theme = "auto:system";
+      theme-dark = "rose-pine";
+      theme-light = "rose-pine-dawn";
     };
-    # Rosé Pine tmTheme を vendor (bat cache に登録される)
+    # Rosé Pine tmTheme を vendor (bat cache に登録される)。dawn は dark を hex 置換で生成。
     themes."rose-pine" = {
       src = ../../configs/cli/bat/themes;
       file = "rose-pine.tmTheme";
     };
+    themes."rose-pine-dawn" = {
+      src = ../../configs/cli/bat/themes;
+      file = "rose-pine-dawn.tmTheme";
+    };
   };
 
-  # lazygit: バイナリ + Rosé Pine テーマ (色は nix/lib/rose-pine.nix から)
+  # lazygit: ANSI 名前色で端末パレットに乗せ、ghostty の macOS 外観追従に連動させる。
+  # (固定 hex をやめたぶん色精度は端末の 16 色に丸まるが dark/light 自動切替になる)
   programs.lazygit = {
     enable = true;
     settings.gui.theme = {
       activeBorderColor = [
-        "#${c.iris}"
+        "magenta" # iris 相当
         "bold"
       ];
-      inactiveBorderColor = [ "#${c.muted}" ];
-      optionsTextColor = [ "#${c.foam}" ];
-      selectedLineBgColor = [ "#${c.overlay}" ];
-      cherryPickedCommitBgColor = [ "#${c.hlMed}" ];
-      cherryPickedCommitFgColor = [ "#${c.iris}" ];
-      unstagedChangesColor = [ "#${c.love}" ];
-      defaultFgColor = [ "#${c.text}" ];
+      inactiveBorderColor = [ "blue" ]; # pine 相当
+      optionsTextColor = [ "cyan" ]; # foam 相当
+      selectedLineBgColor = [ "blue" ];
+      cherryPickedCommitBgColor = [ "magenta" ];
+      cherryPickedCommitFgColor = [ "blue" ];
+      unstagedChangesColor = [ "red" ]; # love 相当
+      defaultFgColor = [ "default" ];
     };
   };
 
@@ -455,14 +484,9 @@ in
     enable = true;
     enableZshIntegration = true;
     defaultCommand = "fd --type f --hidden --follow --exclude .git";
-    # Rosé Pine — パレットから生成 (nix/lib/rose-pine.nix)
-    defaultOptions = [
-      "--color=fg:#${c.subtle},bg:#${c.base},hl:#${c.rose}"
-      "--color=fg+:#${c.text},bg+:#${c.overlay},hl+:#${c.rose}"
-      "--color=border:#${c.hlMed},header:#${c.pine},gutter:#${c.base}"
-      "--color=spinner:#${c.gold},info:#${c.foam},pointer:#${c.iris}"
-      "--color=marker:#${c.love},prompt:#${c.subtle},selected-bg:#${c.hlMed}"
-    ];
+    # 端末の 16 色 ANSI を継承 → ghostty の Rose Pine / Rose Pine Dawn (macOS 外観追従)
+    # に自動で乗る。固定 hex をやめることで dark/light 自動切替に対応。
+    defaultOptions = [ "--color=16" ];
   };
 
   programs.atuin = {
@@ -487,6 +511,7 @@ in
       # TUI デバッグログ(~/.atuin/logs)を抑止し home 直下を汚さない。
       # config/data は既に XDG (~/.config/atuin, ~/.local/share/atuin)。
       logs.enabled = false;
+      # 明示テーマは付けず端末のデフォルト配色を使う → ghostty の macOS 外観追従に連動。
     };
   };
 
@@ -565,23 +590,8 @@ in
     recursive = true;
   };
   # zellij テーマは nix/lib/rose-pine.nix から生成 (config.kdl は theme "rose-pine" で参照)
-  home.file.".config/zellij/themes/rose-pine.kdl".text = ''
-    themes {
-        rose-pine {
-            fg "#${c.text}"
-            bg "#${c.base}"
-            black "#${c.overlay}"
-            red "#${c.love}"
-            green "#${c.foam}"
-            yellow "#${c.gold}"
-            blue "#${c.pine}"
-            magenta "#${c.iris}"
-            cyan "#${c.foam}"
-            white "#${c.text}"
-            orange "#${c.rose}"
-        }
-    }
-  '';
+  home.file.".config/zellij/themes/rose-pine.kdl".text = mkZellijTheme "rose-pine" c.dark;
+  home.file.".config/zellij/themes/rose-pine-dawn.kdl".text = mkZellijTheme "rose-pine-dawn" c.light;
   # supermaven: sm-agent は $HOME/.supermaven をハードコード参照 (XDG 非対応)。
   # 実体は ~/.local/share/supermaven に置き、$HOME はそこへの symlink にして両立。
   # (丸ごと移動すると agent が config を見失い認証ロストするため symlink が必須)
@@ -616,51 +626,6 @@ in
     source = ../../configs/cli/yazi;
     recursive = true;
   };
-  # zathura: 色は nix/lib/rose-pine.nix から生成 (マジックナンバー排除)
-  home.file.".config/zathura/zathurarc".text = ''
-    # Rosé Pine — colors generated from nix/lib/rose-pine.nix
-    set default-fg                "#${c.text}"
-    set default-bg                "#${c.base}"
-
-    set completion-bg             "#${c.overlay}"
-    set completion-fg             "#${c.text}"
-    set completion-highlight-bg   "#${c.hlMed}"
-    set completion-highlight-fg   "#${c.text}"
-    set completion-group-bg       "#${c.overlay}"
-    set completion-group-fg       "#${c.pine}"
-
-    set statusbar-fg              "#${c.text}"
-    set statusbar-bg              "#${c.surface}"
-
-    set notification-bg           "#${c.surface}"
-    set notification-fg           "#${c.text}"
-    set notification-error-bg     "#${c.surface}"
-    set notification-error-fg     "#${c.love}"
-    set notification-warning-bg   "#${c.surface}"
-    set notification-warning-fg   "#${c.gold}"
-
-    set inputbar-fg               "#${c.text}"
-    set inputbar-bg               "#${c.surface}"
-
-    set recolor-lightcolor        "#${c.base}"
-    set recolor-darkcolor         "#${c.text}"
-
-    set index-fg                  "#${c.text}"
-    set index-bg                  "#${c.base}"
-    set index-active-fg           "#${c.text}"
-    set index-active-bg           "#${c.overlay}"
-
-    set render-loading-bg         "#${c.base}"
-    set render-loading-fg         "#${c.text}"
-
-    set highlight-color           "#${c.gold}"
-    set highlight-active-color    "#${c.iris}"
-
-    set recolor                   false
-
-    set window-title-basename     true
-    set guioptions                ""
-  '';
   home.file.".config/calcurse" = {
     source = ../../configs/cli/calcurse;
     recursive = true;

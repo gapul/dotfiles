@@ -142,7 +142,7 @@ sudo nix run nix-darwin/nix-darwin-26.05 -- switch --flake "$DOTFILES_DIR/nix#$(
 log "Trusting third-party brew taps..."
 for tap in nikitabobko/tap theboredteam/boring-notch pear-devs/pear gapul/openutau \
            deskflow/tap gerlero/openfoam imshuhao/kdeconnect felixkratz/formulae \
-           finnvoor/tools gapul/zrythm homebrew-zathura/zathura infisical/get-cli \
+           finnvoor/tools gapul/zrythm infisical/get-cli \
            jakehilborn/jakehilborn jpmhouston/bananameterlabs pomdtr/tap \
            riscv-software-src/riscv supabase/tap; do
   brew trust "$tap" 2>/dev/null || true

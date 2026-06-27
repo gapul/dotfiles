@@ -6,7 +6,7 @@
 # 使い方:
 #   sync-configs-rsync.sh user@host [--full]
 #
-# --full なら configs/* 全部送る (容量注意、git/yazi/zathura/calcurse 等含む)
+# --full なら configs/* 全部送る (容量注意、git/yazi/calcurse 等含む)
 # 既定は nvim + zsh + git のみ (~5MB)
 
 set -euo pipefail
@@ -63,8 +63,8 @@ ssh "$HOST" "
 
 # 4. --full なら他の configs も
 if [[ "$MODE" == "--full" ]]; then
-  log "Full mode: yazi / zellij / calcurse / zathura も rsync"
-  for d in cli/yazi terminals/zellij cli/calcurse cli/zathura; do
+  log "Full mode: yazi / zellij / calcurse も rsync"
+  for d in cli/yazi terminals/zellij cli/calcurse; do
     rsync -avz --delete "$SRC/$d/" "$HOST:.config/$(basename "$d")/" 2>/dev/null || true
   done
 fi

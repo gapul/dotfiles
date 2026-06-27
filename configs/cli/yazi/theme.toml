@@ -1,4 +1,7 @@
 # 全ツール統一テーマ Rosé Pine。flavor は read-only store のため vendor。
 # 更新: Mintass/rose-pine.yazi を再取得して flavors/ に再コピー。
+# dawn flavor は rose-pine.yazi を dark→dawn の hex 置換で生成 (theme.nix の 2 端点に対応)。
+# yazi はターミナルの外観に応じて dark/light flavor を自動選択 → macOS 外観に追従。
 [flavor]
 dark = "rose-pine"
+light = "rose-pine-dawn"

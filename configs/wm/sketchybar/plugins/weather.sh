@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
+source "$CONFIG_DIR/colors.sh" # 統一テーマ ($BLUE 等)
 sketchybar --set $NAME \
   label="Loading..." \
-  icon.color=0xff5edaff
+  icon.color=$BLUE
 
 # fetch weather data
 LOCATION="Tokyo"

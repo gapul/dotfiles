@@ -14,10 +14,10 @@ font-family = "HackGen Console NF"
 clipboard-read = allow
 clipboard-write = allow
 
-# Catppuccin Mocha固定 (ダークのみ)
-# 注: ライト/ダーク自動切替は、プロンプト等のhardcoded colorで読みにくくなる
-#     ため一旦無効化。将来 Starship等プロンプト側を直したら再開検討
-theme = Rose Pine
+# macOS の外観 (ライト/ダーク) に自動追従。
+# テーマ名は nix/lib/theme.nix の ghosttyTheme と対応 (dark=Rose Pine / light=Rose Pine Dawn)。
+# Starship は ANSI 名前色で端末パレットに追従するため、ライトでも可読性は保たれる。
+theme = light:Rose Pine Dawn,dark:Rose Pine
 
 # ウィンドウ/タブを閉じるときの確認ダイアログを無効化
 confirm-close-surface = false

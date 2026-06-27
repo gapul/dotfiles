@@ -23,7 +23,7 @@ return {
       accept_word = "<M-j>",
     },
     color = {
-      suggestion_color = "#808080",
+      suggestion_color = "#6e6a86", -- Rosé Pine muted (ghost text)
       cterm = 244,
     },
     log_level = "info",
