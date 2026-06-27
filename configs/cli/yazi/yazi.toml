@@ -30,17 +30,25 @@ image = [
   { run = 'qlmanage -p "$@"', desc = "Quick Look", orphan = true, for = "macos" },
   { run = 'open -a "Preview" "$@"', desc = "Open in Preview", orphan = true, for = "macos" },
   { run = 'xdg-open "$@"', desc = "Open (xdg)", orphan = true, for = "linux" },
+  # Windows: qView (Mac と共通)、PicView、ImageGlass、最後に関連付け fallback
+  { run = 'qview "$@"', desc = "Open in qView", orphan = true, for = "windows" },
+  { run = 'PicView "$@"', desc = "Open in PicView", orphan = true, for = "windows" },
+  { run = 'ImageGlass "$@"', desc = "Open in ImageGlass", orphan = true, for = "windows" },
   { run = 'start "" "$@"', desc = "Open with default", orphan = true, for = "windows" },
 ]
 office = [
   { run = 'open -a "LibreOffice" "$@"', desc = "Open in LibreOffice", orphan = true, for = "macos" },
   { run = 'libreoffice "$@"', desc = "Open in LibreOffice", orphan = true, for = "linux" },
+  # Windows: LibreOffice (soffice) → MS Office 関連付け fallback
+  { run = 'soffice "$@"', desc = "Open in LibreOffice", orphan = true, for = "windows" },
   { run = 'start "" "$@"', desc = "Open with default (Word/Excel/PPT)", orphan = true, for = "windows" },
 ]
 pdf = [
   { run = 'open -a sioyek "$@"', desc = "Open in Sioyek", orphan = true, for = "macos" },
   { run = 'open -a "Preview" "$@"', desc = "Open in Preview", orphan = true, for = "macos" },
   { run = 'zathura "$@"', desc = "Open in Zathura", orphan = true, for = "linux" },
+  # Windows: Sioyek (vim 風 keybind、Mac と共通) → 関連付け fallback
+  { run = 'sioyek "$@"', desc = "Open in Sioyek (vim keybind)", orphan = true, for = "windows" },
   { run = 'start "" "$@"', desc = "Open with default", orphan = true, for = "windows" },
 ]
 edit = [

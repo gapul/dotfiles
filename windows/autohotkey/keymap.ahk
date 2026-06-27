@@ -84,7 +84,15 @@ IsEmacsExcluded() {
 ;   - Space を tap (200ms 未満で release) → " " を送る
 ;   - Space を hold (200ms 以上) → LWin+LCtrl+LAlt として動作、release で解除
 ;   - Space hold 中に他キーを押す → 即 Hyper 確定 (短押し検知から除外)
-*Space::{
+;   - Alt 押下中の Space は素通り (Alt+Space = Flow Launcher 等の OS hotkey 用)
+;     $ prefix で Send が hook を re-trigger しないように防御。
+$*Space::{
+    ; Alt+Space は Flow Launcher (ランチャ) を呼ぶため素通り。
+    ; {Blind} で Alt 修飾を維持したまま Space を送り Alt+Space を成立させる。
+    if GetKeyState("LAlt", "P") || GetKeyState("RAlt", "P") {
+        Send "{Blind}{Space}"
+        return
+    }
     static held := false
     held := false
     if !KeyWait("Space", "T0.2") {
