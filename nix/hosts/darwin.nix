@@ -162,12 +162,10 @@
       "finnvoor/tools"
       "gerlero/openfoam"
       "gapul/kdeconnect" # imshuhao/kdeconnect の fork。depends_on macos deprecated を修正済
-      "jakehilborn/jakehilborn"
-      "jpmhouston/bananameterlabs"
       "nikitabobko/tap"
       "pear-devs/pear"
-      "riscv-software-src/riscv"
       "theboredteam/boring-notch"
+      "voicevox/voicevox" # VOICEVOX 公式 tap (homebrew/cask 未収録のため必須)
 
       # ─── 個人 fork (gapul) — fork した人は不要なら削除 ───
       "gapul/openutau"
@@ -210,7 +208,7 @@
       "media-control" # media keys
       "terminal-notifier"
       "duti" # file associations
-      "jakehilborn/jakehilborn/displayplacer" # sketchybar マルチディスプレイ
+      "displayplacer" # sketchybar マルチディスプレイ (homebrew/core 昇格済・同v1.4.0)
 
       # ─── Status bar / Window decoration (felixkratz tap) ───
       "felixkratz/formulae/sketchybar"
@@ -228,7 +226,6 @@
       "tor-browser"
       "zen"
       "pear-desktop"
-      "safari-technology-preview"
 
       # ─── PDF viewers ───
       # sioyek は未署名の x86_64 cask (Rosetta 動作)。brew 既定の quarantine が付くと
@@ -312,6 +309,7 @@
       "scribus"
       "darktable"
       "rawtherapee"
+      "digikam" # 写真管理 (RAW現像・タグ管理)
       "upscayl"
       "fontforge-app"
       "fontgoggles"
@@ -334,7 +332,7 @@
       "surge-xt" # シンセ standalone/プラグイン (.pkg cask)
       "gapul/zrythm/zrythm" # DAW (gapul 自作 tap)
       "vcv-rack"
-      "voicevox"
+      "voicevox/voicevox/voicevox" # 公式 tap 専用 (homebrew/cask 未収録)。tap宣言必須
 
       # ─── Creative — Video / Animation / Stream ───
       "iina"
