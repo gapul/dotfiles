@@ -13,6 +13,16 @@
 # UWP プリインアプリ削除 (Raphire/Win11Debloat 標準セット)
 -RemoveApps
 
+# 不要アプリ追加削除
+# - Mail / Calendar / People (Thunderbird 代替)
+-RemoveCommApps
+# - 3D Builder / Mixed Reality Portal (使わない)
+-RemoveDevApps
+# - 新 Outlook 強制プッシュ (Thunderbird 代替)
+-RemoveW11Outlook
+# - Xbox 全部 (Steam / Playnite 使用)
+-RemoveGamingApps
+
 # テレメトリ無効
 -DisableTelemetry
 
@@ -43,3 +53,9 @@
 # エクスプローラー: ホーム / ギャラリー非表示 (シンプル化)
 -HideHome
 -HideGallery
+
+# OneDrive 自動起動無効 + 削除 (Syncthing 代替)
+-DisableOnedrive
+
+# タスクバーのウィジェット (お天気 / ニュース) を無効
+-DisableWidgets

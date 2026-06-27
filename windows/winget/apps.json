@@ -64,7 +64,19 @@
         { "PackageIdentifier": "KDE.KDEConnect" },
         { "PackageIdentifier": "LocalSend.LocalSend" },
         { "PackageIdentifier": "Deskflow.Deskflow" },
-        { "PackageIdentifier": "Playnite.Playnite" }
+        { "PackageIdentifier": "Playnite.Playnite" },
+        { "PackageIdentifier": "Syncthing.Syncthing" },
+        { "PackageIdentifier": "Mozilla.Thunderbird" },
+        { "PackageIdentifier": "WinSCP.WinSCP" },
+        { "PackageIdentifier": "ente-io.auth-desktop" },
+        { "PackageIdentifier": "WiresharkFoundation.Wireshark" },
+        { "PackageIdentifier": "KDE.Krita" },
+        { "PackageIdentifier": "Ditto.Ditto" },
+        { "PackageIdentifier": "Captura.Captura" },
+        { "PackageIdentifier": "Bitdefender.Bitdefender" },
+        { "PackageIdentifier": "Henry++.simplewall" },
+        { "PackageIdentifier": "Microsoft.Sysinternals.Autoruns" },
+        { "PackageIdentifier": "Malwarebytes.Malwarebytes" }
       ],
       "SourceDetails": {
         "Argument": "https://cdn.winget.microsoft.com/cache",
