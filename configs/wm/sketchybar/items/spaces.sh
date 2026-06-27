@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # AeroSpace ワークスペース表示を、各ディスプレイ正しく振り分ける。
 #
