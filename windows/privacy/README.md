@@ -9,9 +9,10 @@ Mac の `nix/hosts/darwin.nix` の `system.defaults` 相当を Windows でも宣
 ```
 windows/privacy/
 ├── README.md
-├── winutil-config.json     # ChrisTitusTech/winutil の export 設定
-├── win11debloat-args.txt   # Raphire/Win11Debloat の CLI 引数(空行/`#` コメント可)
-└── apply.ps1               # 両者を順に呼ぶ orchestrator
+├── winutil-config.json          # ChrisTitusTech/winutil の export 設定
+├── win11debloat-args.txt        # Raphire/Win11Debloat の CLI 引数(空行/`#` コメント可)
+├── win11debloat-customapps.txt  # Win11Debloat 標準セット外で追加削除する UWP
+└── apply.ps1                    # 上 3 つを順に呼ぶ orchestrator + 追加 registry tweak
 ```
 
 ## 実行
@@ -72,7 +73,21 @@ just win-privacy           # 本番
 just win-privacy -DryRun   # 副作用確認
 ```
 
-`apply.ps1` は `-SkipWinUtil` / `-SkipWin11Debloat` で片方だけ実行も可能。
+`apply.ps1` は `-SkipWinUtil` / `-SkipWin11Debloat` / `-SkipCustomApps` で部分実行も可能。
+
+### カスタム UWP 削除 (win11debloat-customapps.txt)
+
+Win11Debloat 標準セットに含まれない UWP を `Get-AppxPackage | Remove-AppxPackage` で直接削除する。
+Provisioned package も同時に削除して新規ユーザー作成時に戻らないようにする(管理者要)。
+
+1 行 1 PackageName、空行 / `#` コメント可。
+
+### 追加 registry tweak
+
+`apply.ps1` に直書きされている declarative な registry 設定:
+
+- `HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsBackup\DisableWindowsBackupUI = 1`
+  Windows 11 24H2 の Windows Backup UI を無効化(UWP 本体は CBS で削除不可なため機能 OFF のみ)
 
 ## 補完できないもの
 
