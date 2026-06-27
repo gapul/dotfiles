@@ -33,6 +33,87 @@ let
     export BATTERY_3=0xff${p.rose}
     export BATTERY_4=0xff${p.love}
     export BATTERY_5=0xff${p.love}'';
+
+  # Obsidian: theme.nix のパレットを CSS 変数へ。Obsidian の外観 = "system" (OS 追従) に
+  # 合わせ .theme-dark / .theme-light 双方を生成 (sketchybar の dark/light 二重埋めと同思想)。
+  obsidianVars = p: ''
+    --background-primary:         #${p.base};
+    --background-primary-alt:     #${p.surface};
+    --background-secondary:       #${p.surface};
+    --background-secondary-alt:   #${p.overlay};
+    --text-normal:                #${p.text};
+    --text-muted:                 #${p.subtle};
+    --text-faint:                 #${p.muted};
+    --text-accent:                #${p.iris};
+    --text-accent-hover:          #${p.rose};
+    --interactive-accent:         #${p.iris};
+    --interactive-accent-hover:   #${p.rose};
+    --background-modifier-border: #${p.hlMed};
+    /* UI クロム (タイトルバー/リボン/タブ/ステータスバー/ナビ/スクロールバー) */
+    --titlebar-background:         #${p.overlay};
+    --titlebar-background-focused: #${p.overlay};
+    --titlebar-text-color:         #${p.text};
+    --ribbon-background:           #${p.overlay};
+    --tab-container-background:     #${p.overlay};
+    --tab-background-active:        #${p.hlMed};
+    --tab-text-color-focused-active-current: #${p.text};
+    --status-bar-background:        #${p.surface};
+    --status-bar-text-color:        #${p.subtle};
+    --divider-color:                #${p.hlMed};
+    --scrollbar-thumb-bg:           #${p.hlMed};
+    --scrollbar-active-thumb-bg:    #${p.muted};
+    --nav-item-background-active:   #${p.overlay};'';
+  # 半透明: translucency ON (.is-translucent) 時のみ背景へ alpha を載せ macOS vibrancy を透かす。
+  # alpha は #RRGGBBAA の AA(16進): cc≒80% / b3≒70% / 99≒60% / 80≒50%。小さいほど透ける。
+  translucentAlpha = "cc"; # 本文・サイドバー (控えめに透ける)
+  chromeAlpha = "66"; # 外周(タイトルバー/タブ/リボン)を強めに透かし壁紙を見せる
+  obsidianTranslucent = p: ''
+    --background-primary:          #${p.base}${translucentAlpha};
+    --background-primary-alt:      #${p.surface}${translucentAlpha};
+    --background-secondary:        #${p.surface}${translucentAlpha};
+    --background-secondary-alt:    #${p.overlay}${translucentAlpha};
+    --titlebar-background:         #${p.overlay}${chromeAlpha};
+    --titlebar-background-focused: #${p.overlay}${chromeAlpha};
+    --ribbon-background:           #${p.overlay}${chromeAlpha};
+    --tab-container-background:    #${p.overlay}${chromeAlpha};
+    --status-bar-background:       #${p.surface}${translucentAlpha};'';
+  # スニペットは Obsidian が「読むだけ」なので Nix 所有 (生成物) でも編集・同期と衝突しない。
+  obsidianThemeCss = pkgs.writeText "nix-theme.css" ''
+    /* ============================================================
+       AUTO-GENERATED from nix/lib/theme.nix — 手で編集しない。
+       テーマ変更は nix/lib/theme.nix の active を変えて `just rebuild`。
+       ============================================================ */
+    .theme-dark {
+    ${obsidianVars c.dark}
+    }
+    .theme-light {
+    ${obsidianVars c.light}
+    }
+    /* 半透明 (設定→外観→半透明 ON 時のみ適用) */
+    .theme-dark.is-translucent {
+    ${obsidianTranslucent c.dark}
+    }
+    .theme-light.is-translucent {
+    ${obsidianTranslucent c.light}
+    }
+    /* タブ/タイトルバー帯を確実にテーマ追従 (Minimal の黒上書き対策・変数で勝てない時用) */
+    .workspace-tab-header-container,
+    .workspace-tabs .workspace-tab-header-container-inner,
+    .titlebar,
+    .workspace-ribbon.mod-left {
+      background-color: var(--titlebar-background) !important;
+    }
+    /* タイポグラフィ: フォント自体は据え置き、行間・余白・スムージングを微調整 */
+    body { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+    .markdown-preview-view,
+    .markdown-source-view.mod-cm6 .cm-content {
+      --line-height-normal: 1.75;
+      --p-spacing: 0.85em;
+    }
+    .markdown-rendered h1,
+    .markdown-rendered h2,
+    .markdown-rendered h3 { line-height: 1.3; }
+  '';
 in
 {
   # macOS 専用の home-manager 設定
@@ -66,6 +147,13 @@ in
   programs.zsh.initContent = lib.mkAfter ''
     if [[ -f /opt/homebrew/bin/brew ]]; then
       eval "$(/opt/homebrew/bin/brew shellenv)"
+    fi
+
+    # Bitwarden SSH agent: Desktop(直接DL版)が有効化時に作る socket があれば優先。
+    # 鍵は Bitwarden Vault に保管し、接続毎に Desktop が承認(Touch ID)する。
+    # Bitwarden 未起動/未有効でも壊れないよう、socket 不在時は launchd 既定へフォールバック。
+    if [[ -S "$HOME/.bitwarden-ssh-agent.sock" ]]; then
+      export SSH_AUTH_SOCK="$HOME/.bitwarden-ssh-agent.sock"
     fi
 
     # CocoaPods (nix ruby と衝突回避)
@@ -279,6 +367,18 @@ in
       /usr/bin/install -m 644 \
         ${../../configs/ime/skk/kana-rule.conf} \
         "$skk_settings/kana-rule.conf"
+    fi
+  '';
+
+  # Obsidian: theme.nix 由来のカラースニペットを vault に配置 (テーマ切替で追従)。
+  # ・vault が設定の本体。ここは生成スニペット 1 枚だけ Nix 所有 (他の .obsidian は触らない)。
+  # ・symlink でなく実コピー → LiveSync/git でスマホへも伝播。毎回上書きで変更を反映。
+  # ・初回のみ Obsidian で「設定→外観→CSS スニペット→nix-theme」を ON にする (以降は同期で維持)。
+  home.activation.obsidianTheme = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    obsidian_dir="${config.home.homeDirectory}/Documents/notes/.obsidian"
+    if [ -d "$obsidian_dir" ]; then
+      /bin/mkdir -p "$obsidian_dir/snippets"
+      /usr/bin/install -m 644 ${obsidianThemeCss} "$obsidian_dir/snippets/nix-theme.css"
     fi
   '';
 

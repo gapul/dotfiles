@@ -392,6 +392,37 @@ dev what="":
 ssh host:
     nssh {{host}}
 
+# Obsidian 設定を public dotfiles へ片方向スナップショット (追跡専用・vault→dotfiles)
+# ・ホワイトリストの安全な json のみコピー。本体は vault 側 (ここは読み取り用ミラー)。
+# ・plugins/*/data.json (LiveSync の CouchDB 認証・各種 API キー等)・workspace・キャッシュは
+#   原理的に含めない。万一の非空な秘密値を検出したら中止し public へ出さない。
+# ・commit 前に `gitleaks` を必ず通すこと。秘密ごと残したい設定は sops 暗号化 (`just secrets`)。
+[group('セットアップ')]
+obsidian-snapshot:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    src="$HOME/Documents/notes/.obsidian"
+    dst="{{justfile_directory()}}/configs/apps/obsidian"
+    [ -d "$src" ] || { echo "vault not found: $src" >&2; exit 1; }
+    tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
+
+    # ★ホワイトリスト: 安全と確認した設定のみ (危険な物を除くのではなく安全な物だけ入れる)
+    for f in app.json appearance.json hotkeys.json \
+             community-plugins.json core-plugins.json \
+             graph.json daily-notes.json types.json canvas.json; do
+      [ -f "$src/$f" ] && cp -f "$src/$f" "$tmp/$f"
+    done
+
+    # ★秘密ガード: 非空の秘密値 ("key": "value") を検出したら公開リポジトリへ出さず中止
+    if grep -rEil '"(api[_-]?key|secret|token|password|passphrase|access[_-]?key|couchdb_[a-z]+)"[[:space:]]*:[[:space:]]*"[^"]+"' "$tmp"; then
+      echo "🛑 秘密らしき値を検出。スナップショット中止 (public 保護)" >&2; exit 1
+    fi
+
+    mkdir -p "$dst"
+    rsync -a --delete --exclude='README.md' "$tmp/" "$dst/"
+    echo "✅ snapshot -> $dst"
+    echo "   git add 後、commit 前に gitleaks を通してください。"
+
 
 # ─────────────────────────────────────────────
 # Windows (native pwsh)

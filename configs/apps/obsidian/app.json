@@ -1,0 +1,19 @@
+{
+  "alwaysUpdateLinks": true,
+  "newFileLocation": "folder",
+  "newFileFolderPath": "02_notes",
+  "attachmentFolderPath": "03_assets",
+  "promptDelete": false,
+  "pdfExportSettings": {
+    "includeName": true,
+    "pageSize": "A4",
+    "landscape": false,
+    "margin": "0",
+    "downscalePercent": 70
+  },
+  "vimMode": true,
+  "foldHeading": true,
+  "showIndentGuide": true,
+  "showInlineTitle": true,
+  "openBehavior": "daily"
+}
