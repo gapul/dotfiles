@@ -22,7 +22,9 @@ gaps:
   scale_with_dpi: true
   inner_gap: '8px'
   outer_gap:
-    top: '6px'
+    # top は Zebar バー高さ (≒ 36px) + 余白 ≒ 44px。Mac の AeroSpace で
+    # sketchybar 高さを outer.top に確保してるのと同じ思想。
+    top: '44px'
     right: '6px'
     bottom: '6px'
     left: '6px'
