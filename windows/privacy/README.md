@@ -41,14 +41,24 @@ WinUtil の CLI 自動 apply は version によって挙動が変わるため、
 `win11debloat-args.txt` を編集。1 行 1 引数(空行と `#` コメント可)。
 利用可能な引数は <https://github.com/Raphire/Win11Debloat#options> を参照。
 
-現状の引数(19 個):
+現状の引数(15 個):
 
 - 必須: `-Silent`
-- UWP 削除: `-RemoveApps` / `-RemoveCommApps`(Mail/Calendar/People)/ `-RemoveDevApps`(3D Builder/MR)/ `-RemoveW11Outlook`(新 Outlook)/ `-RemoveGamingApps`(Xbox 一式)
+- UWP 削除: `-RemoveApps` / `-RemoveGamingApps`
 - テレメトリ/AI: `-DisableTelemetry` / `-DisableBing` / `-DisableCopilot` / `-DisableRecall`
-- 通知/誘導: `-DisableLockscreenTips` / `-DisableSuggestions` / `-DisableSticky` / `-DisableWidgets`
-- ストレージ: `-DisableOnedrive`(Syncthing 代替前提)
+- 通知/誘導: `-DisableLockscreenTips` / `-DisableSuggestions` / `-DisableStickyKeys` / `-DisableWidgets`
 - エクスプローラ: `-ShowHiddenFolders` / `-ShowKnownFileExt` / `-HideHome` / `-HideGallery`
+
+### Win11Debloat に存在しない引数の代替
+
+以下は Win11Debloat の公式 wiki に**存在しない引数**だったため、別経路で実装:
+
+| 元 | 代替 |
+|---|---|
+| `-RemoveCommApps` | `win11debloat-customapps.txt` に `microsoft.windowscommunicationsapps` |
+| `-RemoveDevApps` | `win11debloat-customapps.txt` に `Microsoft.Microsoft3DViewer` / `Microsoft.MixedReality.Portal` |
+| `-RemoveW11Outlook` | `win11debloat-customapps.txt` に `Microsoft.OutlookForWindows` |
+| `-DisableOnedrive`(Win10 only) | `apply.ps1` の OneDrive uninstall step(`OneDriveSetup.exe /uninstall`) |
 
 ### WinUtil
 1. 実機で WinUtil を起動: `irm https://christitus.com/win | iex`

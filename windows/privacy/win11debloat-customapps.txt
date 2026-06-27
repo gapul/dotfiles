@@ -30,3 +30,15 @@ aimgr
 
 # Sticky Notes (付箋、Obsidian で代替済)
 Microsoft.MicrosoftStickyNotes
+
+# Mail & Calendar (Thunderbird 代替) — Win11Debloat の -RemoveCommApps 廃止の代替
+microsoft.windowscommunicationsapps
+
+# 新 Outlook (Thunderbird 代替) — Win11Debloat の -RemoveW11Outlook 廃止の代替
+Microsoft.OutlookForWindows
+
+# 3D Viewer (使わない) — Win11Debloat の -RemoveDevApps 廃止の代替
+Microsoft.Microsoft3DViewer
+
+# Mixed Reality Portal (使わない)
+Microsoft.MixedReality.Portal

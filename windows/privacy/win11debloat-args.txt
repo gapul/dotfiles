@@ -13,15 +13,11 @@
 # UWP プリインアプリ削除 (Raphire/Win11Debloat 標準セット)
 -RemoveApps
 
-# 不要アプリ追加削除
-# - Mail / Calendar / People (Thunderbird 代替)
--RemoveCommApps
-# - 3D Builder / Mixed Reality Portal (使わない)
--RemoveDevApps
-# - 新 Outlook 強制プッシュ (Thunderbird 代替)
--RemoveW11Outlook
-# - Xbox 全部 (Steam / Playnite 使用)
+# Xbox 全部 (Steam / Playnite 使用)
 -RemoveGamingApps
+# NOTE: -RemoveCommApps / -RemoveDevApps / -RemoveW11Outlook / -DisableOnedrive は
+#       Win11Debloat に**存在しない引数**(Win10 only or 廃止)。
+#       同等の削除は win11debloat-customapps.txt / apply.ps1 の OneDrive uninstall step で対応。
 
 # テレメトリ無効
 -DisableTelemetry
@@ -42,7 +38,7 @@
 -DisableSuggestions
 
 # Sticky keys のプロンプト無効 (Shift x5 で出るあれ)
--DisableSticky
+-DisableStickyKeys
 
 # エクスプローラー: 隠しフォルダ表示 (macOS の AppleShowAllFiles と整合)
 -ShowHiddenFolders
@@ -54,8 +50,6 @@
 -HideHome
 -HideGallery
 
-# OneDrive 自動起動無効 + 削除 (Syncthing 代替)
--DisableOnedrive
-
 # タスクバーのウィジェット (お天気 / ニュース) を無効
 -DisableWidgets
+# NOTE: OneDrive は apply.ps1 の uninstall step で削除 (Win11Debloat 引数では非対応)

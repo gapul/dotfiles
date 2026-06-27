@@ -1,16 +1,19 @@
 ﻿# Windows プライバシー / 標準機能を declarative に適用する orchestrator。
-# - Win11Debloat: win11debloat-args.txt の引数で自動実行 (CLI 完結)
-# - WinUtil:      winutil-config.json を引数で渡して GUI 起動 (ユーザーが Apply)
+# - Win11Debloat:   win11debloat-args.txt の引数で自動実行 (CLI 完結)
+# - CustomApps:     win11debloat-customapps.txt 列挙の UWP を Remove-AppxPackage 直接実行
+# - ExtraRegistry:  Windows Backup UI など、宣言的な追加レジストリ tweak
+# - WinUtil:        winutil-config.json を引数で渡して GUI 起動 (ユーザーが Apply)
 #
-# 管理者 PowerShell で実行推奨 (両ツールともレジストリ HKLM / Set-Service / 等)。
+# 管理者 PowerShell で実行推奨 (UWP 削除 / レジストリ HKLM / Set-Service / 等)。
 # -DryRun で副作用なしの計画表示。
 #
 # 関連: windows/privacy/README.md
 [CmdletBinding()]
 param(
     [switch]$DryRun,
-    [switch]$SkipWinUtil,       # WinUtil GUI 起動を skip
-    [switch]$SkipWin11Debloat   # Win11Debloat 実行を skip
+    [switch]$SkipWinUtil,        # WinUtil GUI 起動を skip
+    [switch]$SkipWin11Debloat,   # Win11Debloat 実行 + ExtraRegistry を skip
+    [switch]$SkipCustomApps      # カスタム UWP 削除 (customapps.txt) を skip
 )
 
 $ErrorActionPreference = 'Stop'
@@ -30,23 +33,22 @@ if (-not $SkipWin11Debloat) {
         Err "win11debloat-args.txt が無い: $argsFile"
     } else {
         # 空行と `#` コメントを除外 (5.1 の Get-Content default は ANSI のため -Encoding UTF8 明示)
+        # BOM 由来の空要素や CR 残りを完全除外するため $_ -notmatch '^\s*$' でガード
         $debloatArgs = Get-Content $argsFile -Encoding UTF8 |
             ForEach-Object { $_.Trim() } |
-            Where-Object { $_ -and -not $_.StartsWith('#') }
+            Where-Object { $_ -and -not $_.StartsWith('#') -and $_ -notmatch '^\s*$' }
         Log "Win11Debloat 引数 ($($debloatArgs.Count) 個): $($debloatArgs -join ' ')"
         if ($DryRun) {
             Dry "irm https://win11debloat.raphi.re/ | iex (引数 -> $($debloatArgs -join ' '))"
         } else {
-            $tmpDebloat = Join-Path $env:TEMP "Win11Debloat-$(Get-Random).ps1"
-            try {
-                Log "Win11Debloat を取得 → $tmpDebloat"
-                Invoke-WebRequest -Uri 'https://win11debloat.raphi.re/' -OutFile $tmpDebloat -UseBasicParsing
-                Log "Win11Debloat 実行..."
-                & $tmpDebloat @debloatArgs
-                Log "Win11Debloat 完了"
-            } finally {
-                Remove-Item $tmpDebloat -ErrorAction SilentlyContinue
-            }
+            # 公式推奨パターン: Web から取得 → [scriptblock]::Create() で実行。
+            # `Invoke-WebRequest -OutFile` + `& $file @args` は Win11Debloat のスクリプト内部
+            # 引数解析で「Missing expression after unary operator '--'」になる事例があるため避ける。
+            Log "Win11Debloat 実行 (script block)..."
+            $debloatContent = (Invoke-WebRequest -Uri 'https://win11debloat.raphi.re/' -UseBasicParsing).Content
+            $debloatBlock = [scriptblock]::Create($debloatContent)
+            & $debloatBlock @debloatArgs
+            Log "Win11Debloat 完了"
         }
     }
 } else {
@@ -104,6 +106,31 @@ if (-not $SkipCustomApps) {
     Log 'SkipCustomApps: カスタム UWP 削除を skip'
 }
 
+# ─── 1.6 OneDrive uninstall (Win11Debloat の -DisableOnedrive は Win10 only のため代替) ───
+if (-not $SkipWin11Debloat) {
+    $oneDriveSetup = @(
+        "$env:SystemRoot\System32\OneDriveSetup.exe",
+        "$env:SystemRoot\SysWOW64\OneDriveSetup.exe"
+    ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+    if ($oneDriveSetup) {
+        if ($DryRun) {
+            Dry "Start-Process $oneDriveSetup /uninstall"
+        } else {
+            Log "OneDrive uninstall (Syncthing 代替前提) — $oneDriveSetup /uninstall"
+            try {
+                # 起動中の OneDrive を停止 → 公式 uninstaller 実行
+                Get-Process OneDrive -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+                Start-Process $oneDriveSetup -ArgumentList '/uninstall' -Wait
+                Log 'OneDrive uninstall 完了'
+            } catch {
+                Err "OneDrive uninstall 失敗 (管理者要 / 既に削除済の可能性): $($_.Exception.Message)"
+            }
+        }
+    } else {
+        Log 'OneDrive: 既に削除済 or 未 install (skip)'
+    }
+}
+
 # ─── 1.7 追加レジストリ tweak (Win11Debloat / WinUtil でカバーされない宣言的 OFF) ───
 # Windows Backup (UWP 本体は CBS で削除不可、機能のみ無効化)
 if (-not $SkipWin11Debloat) {
@@ -137,18 +164,14 @@ if (-not $SkipWinUtil) {
             Dry "irm https://christitus.com/win | iex -Args '-Config $configFile'"
             Dry "(GUI 起動 → Settings → Import Config で $configFile を選択 → Apply)"
         } else {
-            $tmpWinUtil = Join-Path $env:TEMP "winutil-$(Get-Random).ps1"
-            try {
-                Log "WinUtil を取得 → $tmpWinUtil"
-                Invoke-WebRequest -Uri 'https://christitus.com/win' -OutFile $tmpWinUtil -UseBasicParsing
-                Log "WinUtil GUI 起動 (Settings → Import Config で $configFile を選択 → Apply)"
-                # WinUtil は -Config 引数で起動時 import に対応。version 差で動かない時は
-                # GUI で手動 Import → Apply してください。
-                & $tmpWinUtil -Config $configFile
-                Log "WinUtil 終了"
-            } finally {
-                Remove-Item $tmpWinUtil -ErrorAction SilentlyContinue
-            }
+            # Win11Debloat と同じ公式パターン: Web → scriptblock。
+            Log "WinUtil 実行 (script block, GUI 起動)..."
+            $winutilContent = (Invoke-WebRequest -Uri 'https://christitus.com/win' -UseBasicParsing).Content
+            $winutilBlock = [scriptblock]::Create($winutilContent)
+            # WinUtil は -Config 引数で起動時 import に対応。version 差で動かない時は
+            # GUI で手動 Import → Apply してください。
+            & $winutilBlock -Config $configFile
+            Log "WinUtil 終了"
         }
     }
 } else {
