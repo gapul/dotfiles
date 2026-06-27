@@ -49,6 +49,7 @@ let
     "${home}/Downloads"
     "${home}/Movies"
     "${home}/Music"
+    "${home}/Library/Application Support/minecraft/saves" # Minecraft ワールド(再現不可)
   ];
 
   # 除外: 再生成可能 / 巨大 / DL一時物
