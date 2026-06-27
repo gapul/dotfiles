@@ -3,7 +3,7 @@
 # username に揃える (`just rebuild` / `nh` がそのまま動く)。
 {
   # macOS のユーザー名(/Users/<username> に対応)
-  username = "yuki";
+  username = "gapul";
 
   # git commit の author 情報
   # メールはパブリックリポへの個人アドレス露出を避けるため GitHub noreply を使用。
