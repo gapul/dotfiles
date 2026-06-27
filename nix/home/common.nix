@@ -46,6 +46,10 @@ in
   home.sessionVariables = {
     EDITOR = "nvim";
     PAGER = "bat";
+    # man ページを bat 経由で表示 → Rosé Pine シンタックス (bat は theme-light/dark で
+    # macOS 外観に追従)。col -bx で制御文字を除去してから bat に渡す。
+    MANPAGER = "sh -c 'col -bx | bat -l man -p'";
+    MANROFFOPT = "-c"; # groff の overstrike を無効化し文字化けを防ぐ
     SOPS_AGE_KEY_FILE = "${config.home.homeDirectory}/.config/sops/age/keys.txt";
     CLAUDE_CONFIG_DIR = "${config.home.homeDirectory}/.config/claude"; # Claude Code を XDG 配下へ
     # Claude Code: 非必須トラフィックをフル無効化 (telemetry + error reporting + feedback +
