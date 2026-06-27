@@ -240,37 +240,17 @@ function Test-DotfilesSetup {
     Write-Host "Result: $pass passed, $fail failed" -ForegroundColor ($(if ($fail -eq 0) { 'Green' } else { 'Yellow' }))
 }
 
-# === Mac の home.sessionVariables と揃える ===
-# nix/home/common.nix の home.sessionVariables を 1:1 移植。
-# 同じ env vars を WSL/Win 両方で見えるようにして、ツール挙動も同じに。
-
-# EDITOR / PAGER 系
-if (Get-Command nvim -ErrorAction SilentlyContinue) { $env:EDITOR = 'nvim' }
-if (Get-Command bat -ErrorAction SilentlyContinue) {
-    $env:PAGER = 'bat'
-    # man ページを bat 経由で表示 (Rosé Pine シンタックス、外観追従)
-    $env:MANPAGER = "sh -c 'col -bx | bat -l man -p'"
-    $env:MANROFFOPT = '-c'
+# === 静的 env vars は configs/shell/env-vars.json から読込 (SSO) ===
+# Mac の nix/home/common.nix と共通。`$comment` field は skip。
+$envJson = Join-Path $env:USERPROFILE 'dotfiles\configs\shell\env-vars.json'
+if (Test-Path $envJson) {
+    $envData = Get-Content $envJson -Raw -Encoding UTF8 | ConvertFrom-Json
+    $envData.PSObject.Properties | Where-Object Name -ne '$comment' |
+        ForEach-Object { Set-Item "env:$($_.Name)" $_.Value }
 }
 
-# Claude Code: 非必須トラフィック無効化 (Mac と一貫)
-$env:CLAUDE_CONFIG_DIR = Join-Path $env:USERPROFILE '.config\claude'
-$env:CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = '1'
-
-# 各種 telemetry 無効化 (privacy、Mac と一貫)
-$env:DO_NOT_TRACK = '1'                  # 業界標準 (consoledonottrack.com)
-$env:NEXT_TELEMETRY_DISABLED = '1'       # Next.js
-$env:NUXT_TELEMETRY_DISABLED = '1'       # Nuxt
-$env:ASTRO_TELEMETRY_DISABLED = '1'      # Astro
-$env:GATSBY_TELEMETRY_DISABLED = '1'     # Gatsby
-$env:STORYBOOK_DISABLE_TELEMETRY = '1'   # Storybook
-$env:NG_CLI_ANALYTICS = 'false'          # Angular CLI
-$env:VERCEL_TELEMETRY_DISABLED = '1'     # Vercel CLI
-$env:FLUTTER_SUPPRESS_ANALYTICS = 'true' # Flutter / Dart
-$env:DOTNET_CLI_TELEMETRY_OPTOUT = '1'   # .NET CLI
-
-# XDG Base Directory: Windows でも XDG 尊重ツール (zellij/atuin/yazi 等) を
-# ~/.config/, ~/.local/share/ 等で揃える。
+# === 動的 path (HOME 依存、Win 固有展開) ===
+# XDG Base Directory: Win でも XDG 尊重ツール (zellij/atuin/yazi) を ~/.config 等に
 $env:XDG_CONFIG_HOME = Join-Path $env:USERPROFILE '.config'
 $env:XDG_DATA_HOME   = Join-Path $env:USERPROFILE '.local\share'
 $env:XDG_STATE_HOME  = Join-Path $env:USERPROFILE '.local\state'
@@ -284,8 +264,9 @@ $env:BUNDLE_USER_CONFIG   = Join-Path $env:XDG_CONFIG_HOME 'bundle\config'
 $env:BUNDLE_USER_CACHE    = Join-Path $env:XDG_CACHE_HOME 'bundle'
 $env:BUNDLE_USER_PLUGIN   = Join-Path $env:XDG_DATA_HOME 'bundle\plugin'
 
-# SOPS 復号鍵 (Mac と同パス、共通 secrets.yaml を復号できるように)
+# SOPS 復号鍵 / Claude config (Mac と同パス、~/.config 統一)
 $env:SOPS_AGE_KEY_FILE = Join-Path $env:USERPROFILE '.config\sops\age\keys.txt'
+$env:CLAUDE_CONFIG_DIR = Join-Path $env:USERPROFILE '.config\claude'
 
 # === ghq root (nvim lazy.lua の dev.path と整合) ===
 # macOS の nix/home/common.nix で `programs.git.extraConfig.ghq.root` を ~/Developer
