@@ -1,0 +1,20 @@
+{
+  "$comment": "OS 横断の静的 env vars (SSO)。Mac の nix/home/common.nix と Win の windows/profile/Microsoft.PowerShell_profile.ps1 が両方このファイルを読む。動的 path (XDG/SOPS_AGE_KEY_FILE 等、ホームディレクトリ依存) はここに入れず、各 OS 側で生成する。",
+  "EDITOR": "nvim",
+  "PAGER": "bat",
+  "MANPAGER": "sh -c 'col -bx | bat -l man -p'",
+  "MANROFFOPT": "-c",
+
+  "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
+
+  "DO_NOT_TRACK": "1",
+  "NEXT_TELEMETRY_DISABLED": "1",
+  "NUXT_TELEMETRY_DISABLED": "1",
+  "ASTRO_TELEMETRY_DISABLED": "1",
+  "GATSBY_TELEMETRY_DISABLED": "1",
+  "STORYBOOK_DISABLE_TELEMETRY": "1",
+  "NG_CLI_ANALYTICS": "false",
+  "VERCEL_TELEMETRY_DISABLED": "1",
+  "FLUTTER_SUPPRESS_ANALYTICS": "true",
+  "DOTNET_CLI_TELEMETRY_OPTOUT": "1"
+}

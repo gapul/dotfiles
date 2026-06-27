@@ -43,57 +43,32 @@ in
   manual.manpages.enable = false;
   manual.json.enable = false;
 
-  home.sessionVariables = {
-    EDITOR = "nvim";
-    PAGER = "bat";
-    # man ページを bat 経由で表示 → Rosé Pine シンタックス (bat は theme-light/dark で
-    # macOS 外観に追従)。col -bx で制御文字を除去してから bat に渡す。
-    MANPAGER = "sh -c 'col -bx | bat -l man -p'";
-    MANROFFOPT = "-c"; # groff の overstrike を無効化し文字化けを防ぐ
-    SOPS_AGE_KEY_FILE = "${config.home.homeDirectory}/.config/sops/age/keys.txt";
-    CLAUDE_CONFIG_DIR = "${config.home.homeDirectory}/.config/claude"; # Claude Code を XDG 配下へ
-    # Claude Code: 非必須トラフィックをフル無効化 (telemetry + error reporting + feedback +
-    # 自前 autoupdater)。telemetry off で isTelemetryEnabled()=false → logEvent 短絡 →
-    # 送信スプール ~/.claude/telemetry (ハードコード) も作られない。
-    # autoupdater off は claude-code が Homebrew cask 管理なのでむしろ好都合。
-    CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = "1";
+  # 静的 env vars は configs/shell/env-vars.json から読む (SSO、Win profile.ps1
+  # と共有)。動的 path (HOME / XDG 依存) は下で個別に追加する。
+  # $comment field は home.sessionVariables に渡せないので除外。
+  home.sessionVariables =
+    (lib.filterAttrs (n: _: n != "$comment")
+      (builtins.fromJSON (builtins.readFile ../../configs/shell/env-vars.json)))
+    // {
+      # ── 動的 path (HOME / XDG 依存、JSON 化不可) ──
+      SOPS_AGE_KEY_FILE = "${config.home.homeDirectory}/.config/sops/age/keys.txt";
+      CLAUDE_CONFIG_DIR = "${config.home.homeDirectory}/.config/claude";
 
-    # ── 各種ツールのテレメトリ無効化 (privacy) ──
-    # DO_NOT_TRACK は業界標準規約 (consoledonottrack.com)。supabase/opencode 等多数が尊重。
-    DO_NOT_TRACK = "1";
-    # Web フレームワーク (npx/ローカル実行時に効く。React/Next スタック向け)
-    NEXT_TELEMETRY_DISABLED = "1"; # Next.js
-    NUXT_TELEMETRY_DISABLED = "1"; # Nuxt
-    ASTRO_TELEMETRY_DISABLED = "1"; # Astro
-    GATSBY_TELEMETRY_DISABLED = "1"; # Gatsby
-    STORYBOOK_DISABLE_TELEMETRY = "1"; # Storybook
-    NG_CLI_ANALYTICS = "false"; # Angular CLI
-    # 個別 CLI
-    VERCEL_TELEMETRY_DISABLED = "1"; # Vercel CLI
-    FLUTTER_SUPPRESS_ANALYTICS = "true"; # flutter + dart
-    DOTNET_CLI_TELEMETRY_OPTOUT = "1"; # .NET CLI
-    # (HOMEBREW_NO_ANALYTICS は darwin.nix、Claude は上の DISABLE_TELEMETRY)
+      # XDG Base Directory: 実行時に $XDG_* を参照する CLI 向けに明示 export
+      # (home-manager はビルド時に config.xdg.* を展開するだけで env には出さないため)
+      XDG_CONFIG_HOME = config.xdg.configHome;
+      XDG_DATA_HOME = config.xdg.dataHome;
+      XDG_STATE_HOME = config.xdg.stateHome;
+      XDG_CACHE_HOME = config.xdg.cacheHome;
 
-    # XDG Base Directory: 実行時に $XDG_* を参照する CLI 向けに明示 export
-    # (home-manager はビルド時に config.xdg.* を展開するだけで env には出さないため)
-    XDG_CONFIG_HOME = config.xdg.configHome;
-    XDG_DATA_HOME = config.xdg.dataHome;
-    XDG_STATE_HOME = config.xdg.stateHome;
-    XDG_CACHE_HOME = config.xdg.cacheHome;
-
-    # cargo (nixpkgs 製 rustc/cargo): ~/.cargo → XDG_DATA。bin は sessionPath に追加
-    CARGO_HOME = "${config.xdg.dataHome}/cargo";
-
-    # npm (Homebrew 製): cache/userconfig を XDG へ移し ~/.npm の自動生成を抑止
-    NPM_CONFIG_CACHE = "${config.xdg.cacheHome}/npm";
-    NPM_CONFIG_USERCONFIG = "${config.xdg.configHome}/npm/npmrc";
-
-    # Ruby Bundler: ~/.bundle (gem index キャッシュ等) を XDG 配下へ。
-    # BUNDLE_USER_* は bundler 1.15+ 対応 (system ruby 1.17.2 で動作確認済)。
-    BUNDLE_USER_CONFIG = "${config.xdg.configHome}/bundle/config";
-    BUNDLE_USER_CACHE = "${config.xdg.cacheHome}/bundle";
-    BUNDLE_USER_PLUGIN = "${config.xdg.dataHome}/bundle/plugin";
-  };
+      # cargo / npm / bundler を XDG 配下に
+      CARGO_HOME = "${config.xdg.dataHome}/cargo";
+      NPM_CONFIG_CACHE = "${config.xdg.cacheHome}/npm";
+      NPM_CONFIG_USERCONFIG = "${config.xdg.configHome}/npm/npmrc";
+      BUNDLE_USER_CONFIG = "${config.xdg.configHome}/bundle/config";
+      BUNDLE_USER_CACHE = "${config.xdg.cacheHome}/bundle";
+      BUNDLE_USER_PLUGIN = "${config.xdg.dataHome}/bundle/plugin";
+    };
 
   home.sessionPath = [
     "${config.home.homeDirectory}/.local/bin" # uv tool 経由のバイナリ
