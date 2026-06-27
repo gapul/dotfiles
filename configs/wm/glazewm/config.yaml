@@ -74,6 +74,12 @@ window_rules:
       - window_process: { equals: 'PowerToys' }
       - window_process: { equals: 'PowerToys.PowerLauncher' }
       - window_process: { equals: 'Ditto' }
+      # Bitdefender 系 (GUI が GlazeWM の tiling に対応していない)
+      - window_process: { equals: 'seccenter' }      # Bitdefender Security Center 本体
+      - window_process: { equals: 'odscanui' }       # フルスキャン UI
+      - window_process: { equals: 'bdagent' }        # トレイエージェント
+      - window_process: { equals: 'bdvpnapp' }       # VPN UI
+      - window_process: { regex: '(?i)^bd.*$' }      # 他の Bitdefender 系も網羅
 
 binding_modes:
   # AeroSpace mode.resize 相当 - hjkl で width/height 調整
