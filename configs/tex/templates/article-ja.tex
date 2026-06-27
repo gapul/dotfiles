@@ -1,0 +1,56 @@
+% LuaLaTeX 日本語論文テンプレート（ltjsarticle + LuaTeX-ja）
+% コンパイル: latexmk article-ja.tex   （~/.latexmkrc により lualatex が使われる）
+%
+% フォントは TeX Live 同梱の「原ノ味（HaranoAji）」を既定にしている（環境非依存）。
+% ヒラギノを使いたい場合は luatexja-preset の行を次のように差し替える:
+%   \usepackage[hiragino-pron]{luatexja-preset}
+% Noto を使いたい場合（要 Noto CJK インストール）:
+%   \usepackage[noto-otf]{luatexja-preset}
+
+\documentclass[11pt,a4paper]{ltjsarticle}
+
+\usepackage[haranoaji]{luatexja-preset}
+
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{geometry}
+\geometry{margin=22mm}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage[hidelinks]{hyperref}
+
+\definecolor{accent}{RGB}{30,70,130}
+
+\titleformat{\section}
+  {\normalfont\large\bfseries\sffamily\color{accent}}
+  {\thesection}{0.8em}{}
+\titleformat{\subsection}
+  {\normalfont\normalsize\bfseries\sffamily}
+  {\thesubsection}{0.7em}{}
+
+\theoremstyle{definition}
+\newtheorem{theorem}{定理}
+\newtheorem{definition}{定義}
+\newtheorem{lemma}{補題}
+\newtheorem{example}{例}
+
+\title{タイトル}
+\author{川嶋結己}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{はじめに}
+日本語と数式 $E = mc^2$ が混在しても自動で組まれる。
+\[
+  \int_{-\infty}^{\infty} e^{-x^2}\,dx = \sqrt{\pi}
+\]
+
+\begin{theorem}
+ここに定理を書く。
+\end{theorem}
+
+\end{document}
