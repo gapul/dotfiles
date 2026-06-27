@@ -1,10 +1,14 @@
 {
-  "_comment": "Scoop で入れる app の declarative 定義。winget で取れないものを scoop に流す。",
+  "_comment": "Scoop で入れる app の declarative 定義。winget で取れないものを scoop に流す。main bucket は scoop install 直後から default で active なので明示不要。",
   "_docs": "https://github.com/files-community/Files — MS Store 経由を避ける目的で nonportable bucket 経由",
   "buckets": [
     "nonportable"
   ],
   "apps": [
-    "files-np"
+    "files-np",
+    "glow",
+    "ouch",
+    "ffmpegthumbnailer",
+    "ffmpeg"
   ]
 }
