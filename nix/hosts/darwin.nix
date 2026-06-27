@@ -292,6 +292,7 @@
       "ente-auth"
       "keepassxc"
       "keyguard"
+      "bitwarden" # Bitwarden 公式デスクトップアプリ
 
       # ─── Network / Remote ───
       "tailscale-app"
