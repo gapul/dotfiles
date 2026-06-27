@@ -119,12 +119,18 @@ in
       # 漏らさないよう、ガード無しの .zshenv で XDG パスを先に固定しておく。
       export HISTFILE="$HOME/.local/state/zsh/history"
       if [ -e /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]; then
-        . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+        # nix-daemon.sh は ~/.nix-profile と新 profile が両方あると
+        # "safely delete either" 警告を stderr に出す。両 symlink は意図的に
+        # 残すので、警告だけ握りつぶす (export は source なので全て残る)。
+        . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh 2>/dev/null
       fi
       [ -f "$HOME/.local/state/nix/profile/etc/profile.d/hm-session-vars.sh" ] && \
         . "$HOME/.local/state/nix/profile/etc/profile.d/hm-session-vars.sh"
     '';
   };
+
+  # login(1) の "Last login: ..." 行を抑止 (macOS 標準挙動・非破壊)。
+  home.file.".hushlogin".text = "";
 
   programs.zsh = {
     enable = true;
