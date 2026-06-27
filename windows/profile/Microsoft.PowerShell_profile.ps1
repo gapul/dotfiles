@@ -172,12 +172,54 @@ function Test-DotfilesSetup {
     Write-Host '== ssh-agent サービス ==' -ForegroundColor Cyan
     $svc = Get-Service ssh-agent -ErrorAction SilentlyContinue
     if ($svc) {
-        $ok = $svc.Status -eq 'Running' -and $svc.StartType -eq 'Automatic'
-        if ($ok) { Write-Host "  [ok]   ssh-agent: Running / Automatic" -ForegroundColor Green; $pass++ }
-        else     { Write-Host "  [FAIL] ssh-agent: $($svc.Status) / $($svc.StartType) — 管理者で Set-Service ssh-agent -StartupType Automatic; Start-Service ssh-agent" -ForegroundColor Red; $fail++ }
+        # 2 つの正常パターン:
+        #   (a) Bitwarden Desktop に委譲: Stopped + Disabled
+        #   (b) Windows 標準を使う: Running + Automatic
+        $bitwarden = $svc.Status -eq 'Stopped' -and $svc.StartType -eq 'Disabled'
+        $standard  = $svc.Status -eq 'Running' -and $svc.StartType -eq 'Automatic'
+        if ($bitwarden) { Write-Host "  [ok]   ssh-agent: Stopped/Disabled (Bitwarden Desktop に委譲)" -ForegroundColor Green; $pass++ }
+        elseif ($standard) { Write-Host "  [ok]   ssh-agent: Running/Automatic" -ForegroundColor Green; $pass++ }
+        else { Write-Host "  [FAIL] ssh-agent: $($svc.Status) / $($svc.StartType) — 中間状態" -ForegroundColor Red; $fail++ }
     } else {
         Write-Host "  [warn] OpenSSH Authentication Agent 未導入" -ForegroundColor Yellow
     }
+
+    Write-Host '== Bitwarden SSH Agent パイプ ==' -ForegroundColor Cyan
+    # Bitwarden Desktop が SSH Agent を listen している前提のときだけ評価。
+    # app.log の存在を見て判定 (ssh-agent サービスが Disabled = Bitwarden 期待されている)
+    if ($svc -and $svc.StartType -eq 'Disabled') {
+        $bdLog = Join-Path $env:APPDATA 'Bitwarden\app.log'
+        if (Test-Path $bdLog) {
+            $recent = Get-Content $bdLog -Tail 200 -ErrorAction SilentlyContinue
+            $started = $recent | Where-Object { $_ -match 'SSH agent started|Creating named pipe server on .*openssh-ssh-agent' } | Select-Object -Last 1
+            if ($started) { Write-Host "  [ok]   Bitwarden SSH Agent listen 中" -ForegroundColor Green; $pass++ }
+            else { Write-Host "  [warn] Bitwarden app.log に SSH agent 起動 log が無い — Settings → SSH Agent を ON + 再起動" -ForegroundColor Yellow }
+        } else {
+            Write-Host "  [warn] Bitwarden Desktop が未起動 or app.log なし" -ForegroundColor Yellow
+        }
+    }
+
+    Write-Host '== AHK keymap (Startup symlink + プロセス) ==' -ForegroundColor Cyan
+    $ahkLink = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\Startup\dotfiles-keymap.ahk'
+    $ahkTarget = "$dotfiles\windows\autohotkey\keymap.ahk"
+    $item = Get-Item -LiteralPath $ahkLink -Force -ErrorAction SilentlyContinue
+    if ($item -and $item.LinkType -eq 'SymbolicLink' -and $item.Target -eq $ahkTarget) {
+        Write-Host "  [ok]   Startup symlink" -ForegroundColor Green; $pass++
+    } else { Write-Host "  [warn] Startup symlink 未設定 — bootstrap.ps1 を管理者で実行" -ForegroundColor Yellow }
+    if (Get-Process AutoHotkey* -ErrorAction SilentlyContinue) {
+        Write-Host "  [ok]   AutoHotkey プロセス稼働中" -ForegroundColor Green; $pass++
+    } else { Write-Host "  [warn] AutoHotkey プロセス未起動 — just win-keymap で起動" -ForegroundColor Yellow }
+
+    Write-Host '== SharpKeys (Scancode Map) ==' -ForegroundColor Cyan
+    $sm = Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\Keyboard Layout' -Name 'Scancode Map' -ErrorAction SilentlyContinue
+    if ($sm) { Write-Host "  [ok]   Scancode Map 書込済 ($($sm.'Scancode Map'.Length) bytes、再起動で反映)" -ForegroundColor Green; $pass++ }
+    else { Write-Host "  [warn] Scancode Map 未設定 — just win-keymap" -ForegroundColor Yellow }
+
+    Write-Host '== Bitdefender (Defender 代替 AV) ==' -ForegroundColor Cyan
+    $bdsvc = Get-Service BDAppSrv -ErrorAction SilentlyContinue
+    if ($bdsvc -and $bdsvc.Status -eq 'Running') {
+        Write-Host "  [ok]   Bitdefender 稼働中 (Defender は自動待機モード)" -ForegroundColor Green; $pass++
+    } else { Write-Host "  [warn] Bitdefender 未稼働 — winget install Bitdefender.Bitdefender" -ForegroundColor Yellow }
 
     Write-Host ''
     Write-Host "Result: $pass passed, $fail failed" -ForegroundColor ($(if ($fail -eq 0) { 'Green' } else { 'Yellow' }))

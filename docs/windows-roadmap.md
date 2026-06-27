@@ -217,6 +217,31 @@ Mac の home-manager で `font-*` cask を入れるのと同じ精神で declara
 | P13-52 | `windows/fonts/apply.ps1` — `configs/fonts/*.ttf|.otf` を `%LOCALAPPDATA%\Microsoft\Windows\Fonts\` に copy + `HKCU\Software\Microsoft\Windows NT\CurrentVersion\Fonts` にレジストリ登録。Win10 1809 以降の user-scope font install を活用(管理者不要)。冪等(既存 + reg 同値で skip)、`-DryRun` / `-Force` 対応 | ✅ |
 | P13-53 | `bootstrap.ps1` Step 8.5 として統合(`-SkipFonts` で省略可)、`Justfile` に `win-fonts *flags` 追加 | ✅ |
 
+### ⬛ P14(Bitwarden Desktop SSH Agent + WSL forward 統合)
+
+Bitwarden Desktop 2025.1.2+ の SSH Agent 機能を Lab PC で使う。Windows OpenSSH
+ssh-agent サービスを Disable して Bitwarden が `\\.\pipe\openssh-ssh-agent` を
+独占、WSL は socat + npiperelay で透過 forward。
+
+| # | 内容 | 状態 |
+|---|---|---|
+| P14-54 | `apps.json` に `Bitwarden.Bitwarden`(Desktop GUI)を追加(Bitwarden.CLI は既存)。SSH Key item type で private/public を vault に保管、Settings → SSH Agent で Enable + Bitwarden 再起動 | ✅ |
+| P14-55 | `bootstrap.ps1` に `-UseBitwardenSSH` フラグ追加 — 指定時 `Stop-Service ssh-agent` + `Set-Service ssh-agent -StartupType Disabled`(Windows OpenSSH と Bitwarden が同じパイプ名で競合するため)。未指定時は従来通り Auto + Running | ✅ |
+| P14-56 | WSL 側は `nix/home/wsl.nix` の既存 socat+npiperelay forward が Bitwarden 起動パイプにそのまま接続(socket 名同じ `\\.\pipe\openssh-ssh-agent`)。`ssh-add -l` で Bitwarden の鍵が見える | ✅(実機検証 OK) |
+| P14-57 | 初回 SSH 認証時の Bitwarden Approval prompt — Settings → SSH Agent → Auto-approve / Whitelist に `npiperelay.exe` を入れると以後 prompt なし | ⏳ user が GUI で設定 |
+
+### ⬛ P15(Lab PC username 非対称 — flake 拡張 + 個人情報の gitignore)
+
+Mac は `yuki`、Lab PC は `ispc_5cg54406v7`(社用、変更不可)。
+公開 repo に個人情報を残さず、Mac の `yuki` も壊さない form で対応。
+
+| # | 内容 | 状態 |
+|---|---|---|
+| P15-58 | `nix/flake.nix` に generic 名の `homeConfigurations.labpc-wsl` 追加。`./user.local.nix` が存在すれば `user // import ./user.local.nix` で override、無ければ `user` のまま fallback | ✅ |
+| P15-59 | `nix/user.local.nix.example` を template として commit。`.gitignore` に `nix/user.local.nix` 追加(個人情報を local に閉じる) | ✅ |
+| P15-60 | `nix/home/common.nix` の `xcodegen` を `nix/home/darwin.nix` へ移動 — Linux/WSL の home-manager apply で `Refusing to evaluate package 'xcodegen' ... meta.platforms = [ darwin ]` 回避 | ✅ |
+| P15-61 | WSL home-manager apply: `nix run github:nix-community/home-manager -- switch --flake ~/.dotfiles/nix#labpc-wsl`。`nix flake update --flake ./nix`(bare 名は registry 衝突)| ⏳ 実機で進行中 |
+
 ---
 
 ## 実装順
