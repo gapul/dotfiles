@@ -13,6 +13,7 @@
 #   5.5 ssh-agent サービスを Auto+Running に
 #   6. git の global config
 #   7. プライバシー / 標準機能の declarative 適用 (-SkipPrivacy で省略可)
+#   8. キーマップ — SharpKeys (Scancode Map) + AHK (Startup 登録) (-SkipKeymap で省略可)
 #
 # -DryRun で symlink 作成等の副作用を出さず計画だけ表示。
 #
@@ -32,7 +33,9 @@ param(
     # プライバシー適用 (Win11Debloat + WinUtil) を skip
     [switch]$SkipPrivacy,
     # Scoop (windows/scoop/scoop.json) の bucket / app 適用を skip
-    [switch]$SkipScoop
+    [switch]$SkipScoop,
+    # キーマップ (SharpKeys + AHK Startup) を skip
+    [switch]$SkipKeymap
 )
 
 $ErrorActionPreference = 'Stop'
@@ -274,6 +277,35 @@ if (-not $SkipPrivacy) {
     }
 } else {
     Log 'SkipPrivacy 指定: just win-privacy で後から適用可'
+}
+
+# 8. キーマップ — SharpKeys (Scancode Map) + AHK Startup
+#    SharpKeys は管理者必須 + 反映に再起動が要る。AHK は Startup フォルダに symlink すれば
+#    次回ログインから自動起動。今走らせるなら手動で .ahk を実行。
+if (-not $SkipKeymap) {
+    # SharpKeys: 物理キー remap (CapsLock → Ctrl)
+    $skApply = Join-Path $WindowsDir 'sharpkeys\apply.ps1'
+    if (Test-Path $skApply) {
+        if ($DryRun) {
+            & $skApply -DryRun
+        } else {
+            Log 'SharpKeys 適用 (再起動で反映) — skip するには -SkipKeymap'
+            try { & $skApply }
+            catch { Err "SharpKeys 適用失敗 (管理者要): $($_.Exception.Message)" }
+        }
+    } else {
+        Log "$skApply が無い (skip)"
+    }
+    # AHK: Startup フォルダに symlink (組合せ remap = Emacs ショートカット + Copilot 保険)
+    $ahkSrc = Join-Path $WindowsDir 'autohotkey\keymap.ahk'
+    $ahkDst = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\Startup\dotfiles-keymap.ahk'
+    if (Test-Path $ahkSrc) {
+        New-DotfilesLink -Source $ahkSrc -Destination $ahkDst -Label 'AHK keymap (Startup)'
+    } else {
+        Log "$ahkSrc が無い (skip)"
+    }
+} else {
+    Log 'SkipKeymap 指定: just win-keymap で後から適用可'
 }
 
 Log ''

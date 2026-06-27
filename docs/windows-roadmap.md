@@ -173,6 +173,18 @@ Mac の `nix/hosts/darwin.nix` の `system.defaults` 相当を Windows で再現
 | File Explorer | エクスプローラー | Files(scoop nonportable bucket、Store 回避) |
 | プライバシー / Telemetry | (標準有効) | Win11Debloat + WinUtil で declarative 無効化 |
 
+### ⬛ P10(キーマップ宣言化 — Karabiner 相当)
+
+Mac の Karabiner-Elements に相当するキー remap を Windows で再現。
+**物理キー単体は SharpKeys 機構(Scancode Map レジストリ)、組合せは AutoHotkey** の 2 層構成で
+Karabiner と同じ表現力を達成する。
+
+| # | 内容 | 状態 |
+|---|---|---|
+| P10-42 | `windows/sharpkeys/` 新設 — `keymap.skl`(人間可読の SharpKeys 形式)+ `apply.ps1`(SharpKeys GUI に依存しない PowerShell 実装、`HKLM\SYSTEM\CurrentControlSet\Control\Keyboard Layout\Scancode Map` をバイナリ直書き)+ README。CapsLock(0x3A) → Left Ctrl(0x1D)を declarative に管理。`-DryRun` / `-Clear`(全削除して standard に戻す)対応 | ✅ (this commit) |
+| P10-43 | `windows/autohotkey/` 新設 — `keymap.ahk`(AHK v2)で 2 機能を実装。(a) Copilot キー → 右 Ctrl(SharpKeys で scancode 単独 remap 不可な OEM 機種向け保険、`F23` / `+#F23` / `vk89` / `sc15D` の候補をコメント残し、実機 KeyHistory で確認)、(b) Emacs ショートカット復活(`Ctrl+A→Home` / `Ctrl+E→End` / `Ctrl+B→Left` / `Ctrl+F→Right` / `Ctrl+P→Up` / `Ctrl+N→Down` / `Ctrl+H→Backspace` / `Ctrl+D→Delete` / `Ctrl+K→Shift+End,Del`)。ターミナル(`ConsoleWindowClass` / `CASCADIA_HOSTING_WINDOW_CLASS` / WezTerm / mintty)とエディタ(Vim / VS Code / Cursor / nvim)は `#HotIf !IsEmacsExcluded()` で除外 | ✅ (this commit) |
+| P10-44 | `bootstrap.ps1` に Step 8 追加 — SharpKeys apply.ps1 呼び出し + AHK を `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\dotfiles-keymap.ahk` へ symlink(ログイン時自動起動)。`-SkipKeymap` で省略可能。`Justfile` に `win-keymap *flags`(SharpKeys 適用 + AHK reload)追加 | ✅ (this commit) |
+
 ---
 
 ## 実装順
