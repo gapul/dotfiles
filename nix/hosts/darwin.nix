@@ -340,6 +340,7 @@
       "iina"
       "vlc"
       "obs"
+      "kap" # オープンソース画面レコーダー (getkap.co)
       "gyroflow"
       "touchdesigner"
       "cavalry" # 2D モーショングラフィックス
