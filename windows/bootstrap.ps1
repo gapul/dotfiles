@@ -76,6 +76,42 @@ function Log($msg) { Write-Host "[bootstrap-win] $msg" -ForegroundColor Blue }
 function Err($msg) { Write-Host "[bootstrap-win] $msg" -ForegroundColor Red }
 function Dry($msg) { Write-Host "[bootstrap-win][dry] $msg" -ForegroundColor DarkYellow }
 
+# Startup フォルダに `.lnk` shortcut を冪等に配置。
+# - .exe を直接 Startup に置いても Windows は実行してくれないので .lnk を作る
+# - 既に同 target を指す .lnk があれば no-op、別 target なら .bak に退避
+function New-StartupShortcut {
+    param(
+        [Parameter(Mandatory)][string]$Name,        # 'GlazeWM'
+        [Parameter(Mandatory)][string]$TargetPath   # 絶対 path of .exe
+    )
+    $startup = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\Startup'
+    $lnk = Join-Path $startup "$Name.lnk"
+    if (-not (Test-Path -LiteralPath $startup)) {
+        if ($DryRun) { Dry "mkdir $startup" }
+        else { New-Item -ItemType Directory -Path $startup -Force | Out-Null }
+    }
+    if (Test-Path -LiteralPath $lnk) {
+        $shell = New-Object -ComObject WScript.Shell
+        $existing = $shell.CreateShortcut($lnk)
+        if ($existing.TargetPath -eq $TargetPath) {
+            Log "$Name : Startup shortcut 既に正しい"
+            return
+        }
+        $backup = "$lnk.bak-$(Get-Date -Format yyyyMMddHHmmss)"
+        if ($DryRun) { Dry "move $lnk -> $backup" }
+        else {
+            Move-Item -LiteralPath $lnk -Destination $backup -Force
+            Log "$Name : 既存 shortcut を $backup に退避"
+        }
+    }
+    if ($DryRun) { Dry "create shortcut $lnk -> $TargetPath"; return }
+    $shell = New-Object -ComObject WScript.Shell
+    $sc = $shell.CreateShortcut($lnk)
+    $sc.TargetPath = $TargetPath
+    $sc.Save()
+    Log "$Name : Startup shortcut -> $TargetPath"
+}
+
 # 任意の (src, dest) を symlink する共通関数。
 # - dest 親ディレクトリが無ければ作る
 # - 既存が同一 target の symlink なら no-op (冪等)
@@ -366,6 +402,21 @@ if (-not $SkipKeymap) {
         New-DotfilesLink -Source $ahkSrc -Destination $ahkDst -Label 'AHK keymap (Startup)'
     } else {
         Log "$ahkSrc が無い (skip)"
+    }
+
+    # GlazeWM / Zebar: Startup に .lnk shortcut を配置 (ログイン時自動起動)
+    # AeroSpace / SketchyBar を Mac の launchd で自動起動するのと同じ精神。
+    foreach ($wm in @(
+        @{ Name = 'GlazeWM'; Pattern = 'glazewm.exe' },
+        @{ Name = 'Zebar';   Pattern = 'zebar.exe' }
+    )) {
+        $exe = Get-ChildItem 'C:\Program Files', $env:LOCALAPPDATA -Recurse -Filter $wm.Pattern `
+                -ErrorAction SilentlyContinue 2>$null | Select-Object -First 1
+        if ($exe) {
+            New-StartupShortcut -Name $wm.Name -TargetPath $exe.FullName
+        } else {
+            Log "$($wm.Name) : $($wm.Pattern) が見つからない (skip)"
+        }
     }
 } else {
     Log 'SkipKeymap 指定: just win-keymap で後から適用可'
