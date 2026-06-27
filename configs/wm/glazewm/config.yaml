@@ -33,13 +33,13 @@ window_effects:
   focused_window:
     border:
       enabled: true
-      color: '#c4a7e7'  # Rose Pine Iris (Zebar accent と統一)
+      color: '#c4a7e7'      # focused = palette accent (iris)
     hide_title_bar:
       enabled: true
   other_windows:
     border:
       enabled: true
-      color: '#26233a'  # Rose Pine Overlay
+      color: '#26233a'   # other = palette overlay
     hide_title_bar:
       enabled: true
 

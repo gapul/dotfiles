@@ -472,6 +472,12 @@ win-locale *flags:
 win-fonts *flags:
     pwsh.exe -NoProfile -ExecutionPolicy Bypass -File windows/fonts/apply.ps1 {{flags}}
 
+# テーマ (palette) を palettes.json から各 config に render
+# `*flags` で `-DryRun` `-ActivePalette rose-pine-dawn` 等を渡せる
+[group('Windows')]
+win-theme *flags:
+    pwsh.exe -NoProfile -ExecutionPolicy Bypass -File windows/theme/apply.ps1 {{flags}}
+
 # キーマップ適用 (SharpKeys = Scancode Map 直書き + AHK スクリプト reload)
 # `*flags` で `-DryRun` `-Clear` (Scancode Map 削除して standard に戻す) を渡せる
 [group('Windows')]

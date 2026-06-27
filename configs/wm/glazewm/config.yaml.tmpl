@@ -1,0 +1,238 @@
+# GlazeWM 設定 (AeroSpace 移植 / Hyper key = LWin+LCtrl+LAlt)
+# 配置先: %USERPROFILE%\.glzr\glazewm\config.yaml (bootstrap.ps1 で symlink)
+# 元: configs/wm/aerospace/aerospace.toml
+#
+# Hyper key 設計: Mac の cmd+ctrl+alt = Windows の Win+Ctrl+Alt として 1:1 移植。
+# 同じ筋肉記憶で Mac/Win 両方の WM を操作可能。
+# Karabiner 側で Space 長押し→Hyper 相当を AHK で再現するのは別途検討。
+
+general:
+  startup_commands: []
+  shutdown_commands: []
+  config_reload_commands: []
+  focus_follows_cursor: true
+  toggle_workspace_on_refocus: true
+  cursor_jump:
+    enabled: false
+    trigger: monitor_focus
+  hide_method: cloak
+  show_all_in_taskbar: false
+
+gaps:
+  scale_with_dpi: true
+  inner_gap: '0px'
+  outer_gap:
+    # top は Zebar バー高さ (≒ 36px) + 余白 ≒ 44px。Mac の AeroSpace で
+    # sketchybar 高さを outer.top に確保してるのと同じ思想。
+    top: '44px'
+    right: '0px'
+    bottom: '0px'
+    left: '0px'
+
+window_effects:
+  focused_window:
+    border:
+      enabled: true
+      color: '{{ palette.iris }}'      # focused = palette accent (iris)
+    hide_title_bar:
+      enabled: true
+  other_windows:
+    border:
+      enabled: true
+      color: '{{ palette.overlay }}'   # other = palette overlay
+    hide_title_bar:
+      enabled: true
+
+window_behavior:
+  initial_state: tiling
+  state_defaults:
+    floating:
+      centered: true
+      shown_on_top: false
+    fullscreen:
+      maximized: true
+      shown_on_top: false
+
+workspaces:
+  - name: '1'
+  - name: '2'
+  - name: '3'
+  - name: '4'
+  - name: '5'
+  - name: '6'
+  - name: '7'
+  - name: '8'
+  - name: '9'
+  - name: '0'
+
+window_rules:
+  # ランチャー / オーバーレイ系は WM 管理から除外 (Aero/Mac の floating 扱い)
+  - commands: ['ignore']
+    match:
+      - window_process: { equals: 'zebar' }
+      - window_process: { equals: 'Flow.Launcher' }
+      - window_process: { equals: 'PowerToys' }
+      - window_process: { equals: 'PowerToys.PowerLauncher' }
+      - window_process: { equals: 'Ditto' }
+      # Bitdefender 系 (GUI が GlazeWM の tiling に対応していない)
+      - window_process: { equals: 'seccenter' }      # Bitdefender Security Center 本体
+      - window_process: { equals: 'odscanui' }       # フルスキャン UI
+      - window_process: { equals: 'bdagent' }        # トレイエージェント
+      - window_process: { equals: 'bdvpnapp' }       # VPN UI
+      - window_process: { regex: '(?i)^bd.*$' }      # 他の Bitdefender 系も網羅
+
+binding_modes:
+  # AeroSpace mode.resize 相当 - hjkl で width/height 調整
+  - name: 'resize'
+    keybindings:
+      - commands: ['resize --width -50px']
+        bindings: ['H']
+      - commands: ['resize --height +50px']
+        bindings: ['J']
+      - commands: ['resize --height -50px']
+        bindings: ['K']
+      - commands: ['resize --width +50px']
+        bindings: ['L']
+      - commands: ['resize --width -100px']
+        bindings: ['Shift+H']
+      - commands: ['resize --height +100px']
+        bindings: ['Shift+J']
+      - commands: ['resize --height -100px']
+        bindings: ['Shift+K']
+      - commands: ['resize --width +100px']
+        bindings: ['Shift+L']
+      - commands: ['wm-disable-binding-mode --name resize']
+        bindings: ['Escape', 'Enter']
+
+keybindings:
+  # ━━━ Window 管理 ━━━
+  # AeroSpace: cmd-ctrl-alt-q = close
+  - commands: ['close']
+    bindings: ['LWin+LCtrl+LAlt+Q']
+
+  # AeroSpace: cmd-ctrl-alt-v = floating toggle
+  - commands: ['toggle-floating --centered']
+    bindings: ['LWin+LCtrl+LAlt+V']
+
+  # AeroSpace: cmd-ctrl-alt-f = fullscreen
+  - commands: ['toggle-fullscreen']
+    bindings: ['LWin+LCtrl+LAlt+F']
+
+  # ━━━ Layout ━━━
+  # AeroSpace: cmd-ctrl-alt-slash = tiles 向き toggle
+  - commands: ['toggle-tiling-direction']
+    bindings: ['LWin+LCtrl+LAlt+oem_question']  # / key (oem_question)
+
+  # AeroSpace: cmd-ctrl-alt-backslash = horizontal/vertical toggle (Hyprland togglesplit)
+  - commands: ['toggle-tiling-direction']
+    bindings: ['LWin+LCtrl+LAlt+oem_pipe']  # \\ key (oem_pipe)
+
+  # ━━━ Focus (hjkl = vim) ━━━
+  - commands: ['focus --direction left']
+    bindings: ['LWin+LCtrl+LAlt+H']
+  - commands: ['focus --direction down']
+    bindings: ['LWin+LCtrl+LAlt+J']
+  - commands: ['focus --direction up']
+    bindings: ['LWin+LCtrl+LAlt+K']
+  - commands: ['focus --direction right']
+    bindings: ['LWin+LCtrl+LAlt+L']
+
+  # ━━━ Move ━━━
+  - commands: ['move --direction left']
+    bindings: ['LWin+LCtrl+LAlt+Shift+H']
+  - commands: ['move --direction down']
+    bindings: ['LWin+LCtrl+LAlt+Shift+J']
+  - commands: ['move --direction up']
+    bindings: ['LWin+LCtrl+LAlt+Shift+K']
+  - commands: ['move --direction right']
+    bindings: ['LWin+LCtrl+LAlt+Shift+L']
+
+  # ━━━ Resize (即時 / mode 入る) ━━━
+  # AeroSpace: cmd-ctrl-alt-minus = -50, cmd-ctrl-alt-equal = +50
+  - commands: ['resize --width -50px']
+    bindings: ['LWin+LCtrl+LAlt+oem_minus']
+  - commands: ['resize --width +50px']
+    bindings: ['LWin+LCtrl+LAlt+oem_plus']
+
+  # AeroSpace: cmd-ctrl-alt-shift-r = mode resize
+  - commands: ['wm-enable-binding-mode --name resize']
+    bindings: ['LWin+LCtrl+LAlt+Shift+R']
+
+  # ━━━ Workspace 切替 (1-9, 0) ━━━
+  - commands: ['focus --workspace 1']
+    bindings: ['LWin+LCtrl+LAlt+D1']
+  - commands: ['focus --workspace 2']
+    bindings: ['LWin+LCtrl+LAlt+D2']
+  - commands: ['focus --workspace 3']
+    bindings: ['LWin+LCtrl+LAlt+D3']
+  - commands: ['focus --workspace 4']
+    bindings: ['LWin+LCtrl+LAlt+D4']
+  - commands: ['focus --workspace 5']
+    bindings: ['LWin+LCtrl+LAlt+D5']
+  - commands: ['focus --workspace 6']
+    bindings: ['LWin+LCtrl+LAlt+D6']
+  - commands: ['focus --workspace 7']
+    bindings: ['LWin+LCtrl+LAlt+D7']
+  - commands: ['focus --workspace 8']
+    bindings: ['LWin+LCtrl+LAlt+D8']
+  - commands: ['focus --workspace 9']
+    bindings: ['LWin+LCtrl+LAlt+D9']
+  - commands: ['focus --workspace 0']
+    bindings: ['LWin+LCtrl+LAlt+D0']
+
+  # ━━━ Move-to-workspace (Shift+1-9,0) ━━━
+  - commands: ['move --workspace 1']
+    bindings: ['LWin+LCtrl+LAlt+Shift+D1']
+  - commands: ['move --workspace 2']
+    bindings: ['LWin+LCtrl+LAlt+Shift+D2']
+  - commands: ['move --workspace 3']
+    bindings: ['LWin+LCtrl+LAlt+Shift+D3']
+  - commands: ['move --workspace 4']
+    bindings: ['LWin+LCtrl+LAlt+Shift+D4']
+  - commands: ['move --workspace 5']
+    bindings: ['LWin+LCtrl+LAlt+Shift+D5']
+  - commands: ['move --workspace 6']
+    bindings: ['LWin+LCtrl+LAlt+Shift+D6']
+  - commands: ['move --workspace 7']
+    bindings: ['LWin+LCtrl+LAlt+Shift+D7']
+  - commands: ['move --workspace 8']
+    bindings: ['LWin+LCtrl+LAlt+Shift+D8']
+  - commands: ['move --workspace 9']
+    bindings: ['LWin+LCtrl+LAlt+Shift+D9']
+  - commands: ['move --workspace 0']
+    bindings: ['LWin+LCtrl+LAlt+Shift+D0']
+
+  # ━━━ Workspace back-and-forth ━━━
+  # AeroSpace: cmd-ctrl-alt-tab = workspace-back-and-forth
+  - commands: ['focus --workspace recent']
+    bindings: ['LWin+LCtrl+LAlt+Tab']
+
+  # ━━━ Monitor 切替 ━━━
+  # GlazeWM v3 は `focus --monitor` を持たない。focus --direction が複数モニタ
+  # 境界を跨ぐので、N/M で同じ操作にしておく (Shift で workspace ごと移動)。
+  # AeroSpace の n/m=monitor focus 移動と機能的に近い。
+  - commands: ['focus --direction left']
+    bindings: ['LWin+LCtrl+LAlt+N']
+  - commands: ['focus --direction right']
+    bindings: ['LWin+LCtrl+LAlt+M']
+  - commands: ['move-workspace --direction left']
+    bindings: ['LWin+LCtrl+LAlt+Shift+N']
+  - commands: ['move-workspace --direction right']
+    bindings: ['LWin+LCtrl+LAlt+Shift+M']
+
+  # ━━━ Launcher / Terminal ━━━
+  # AeroSpace: cmd-ctrl-alt-enter = terminal (Ghostty)
+  - commands: ['shell-exec wezterm-gui']
+    bindings: ['LWin+LCtrl+LAlt+Enter']
+
+  # AeroSpace: cmd-ctrl-alt-r = Raycast → Flow Launcher
+  - commands: ['shell-exec %LocalAppData%\Programs\Flow.Launcher\Flow.Launcher.exe']
+    bindings: ['LWin+LCtrl+LAlt+R']
+
+  # ━━━ Config reload (AeroSpace mode service の esc 相当) ━━━
+  - commands: ['wm-reload-config']
+    bindings: ['LWin+LCtrl+LAlt+Shift+oem_semicolon']  # ;
+
+  # ━━━ Exit GlazeWM ━━━
+  - commands: ['wm-exit']
+    bindings: ['LWin+LCtrl+LAlt+Shift+Q']

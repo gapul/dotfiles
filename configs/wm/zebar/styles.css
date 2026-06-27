@@ -8,7 +8,7 @@
 @import 'https://www.nerdfonts.com/assets/css/webfont.css';
 
 :root {
-  /* Rose Pine palette */
+  /* Palette は configs/theme/palettes.json から render される (SSO)。 */
   --rp-base:    #191724;
   --rp-surface: #1f1d2e;
   --rp-overlay: #26233a;
@@ -22,15 +22,15 @@
   --rp-foam:    #9ccfd8;
   --rp-iris:    #c4a7e7;
 
-  /* UI alias (SketchyBar 寄せ: bar 透過、widget pill に背景) */
-  --bg:         rgba(25 23 36 / 88%);
-  --bg-widget:  rgba(38 35 58 / 75%);
+  /* UI alias (color-mix で alpha 合成 → palette 変更で自動追従) */
+  --bg:         color-mix(in srgb, var(--rp-base) 88%, transparent);
+  --bg-widget:  color-mix(in srgb, var(--rp-overlay) 75%, transparent);
   --text:       var(--rp-text);
   --text-dim:   var(--rp-subtle);
   --accent:     var(--rp-iris);
-  --border:     rgba(196 167 231 / 12%);
-  --ws-active:  rgba(196 167 231 / 25%);
-  --ws-focus:   rgba(196 167 231 / 55%);
+  --border:     color-mix(in srgb, var(--rp-iris) 12%, transparent);
+  --ws-active:  color-mix(in srgb, var(--rp-iris) 25%, transparent);
+  --ws-focus:   color-mix(in srgb, var(--rp-iris) 55%, transparent);
   --font-size:  12px;
 }
 
