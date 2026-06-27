@@ -63,7 +63,6 @@ let
     **/.expo
     **/.DS_Store
     **/*.photoslibrary
-    **/from-downloads
     **/.git/objects
     **/ae-mcp-commands
   '';
