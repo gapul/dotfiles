@@ -336,7 +336,6 @@ in
     cmake # ビルドシステム
     meson # ビルドシステム
     tree-sitter # 旧 tree-sitter-cli
-    xcodegen # project.yml → .xcodeproj 生成 (HandTrackpad / desktop-cat の Xcode プロジェクト)
     uv # Python パッケージ管理
     pnpm # Node パッケージ管理
     pandoc # ドキュメント変換
