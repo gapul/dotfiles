@@ -54,7 +54,7 @@ defaults=(
   label.padding_right=$PADDINGS
   label.shadow.drawing=on
   label.shadow.distance=2
-  label.shadow.color=0xff000000
+  label.shadow.color=$SHADOW_COLOR
   padding_right=$PADDINGS
   padding_left=$PADDINGS
   background.height=26
@@ -102,20 +102,20 @@ source "$ITEM_DIR/cpu.sh"
 # ─────────── 左右ブラケット背景 (ノッチを挟んで2分割) ───────────
 sketchybar --add bracket left_bracket '/space\..*/' front_app \
            --set   left_bracket \
-                   background.color=0xcc11111b \
+                   background.color=$BACKGROUND_1 \
                    background.corner_radius=10 \
                    background.border_width=1 \
-                   background.border_color=0x60cad3f5 \
+                   background.border_color=$BAR_BORDER_COLOR \
                    background.height=30 \
                    background.padding_left=4 \
                    background.padding_right=4
 
 sketchybar --add bracket right_bracket calendar battery bluetooth wifi music volume_icon memory cpu.percent \
            --set   right_bracket \
-                   background.color=0xcc11111b \
+                   background.color=$BACKGROUND_1 \
                    background.corner_radius=10 \
                    background.border_width=1 \
-                   background.border_color=0x60cad3f5 \
+                   background.border_color=$BAR_BORDER_COLOR \
                    background.height=30 \
                    background.padding_left=4 \
                    background.padding_right=4

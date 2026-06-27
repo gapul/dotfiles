@@ -6,7 +6,33 @@
   ...
 }:
 let
-  c = import ../lib/rose-pine.nix; # 全ツール共通パレット (単一ソース)
+  c = import ../lib/theme.nix; # アクティブテーマのパレット (切替は nix/lib/theme.nix の active)
+  rgb = import ../lib/hex-rgb.nix { inherit lib; }; # hex → "r g b" 0-1 float (sioyek 用)
+
+  # sketchybar colors.sh の「パレット依存 export 群」を palette p から生成。
+  # dark/light 双方を colors.sh に埋め、AppleInterfaceStyle で分岐させて OS 追従させる。
+  sbHex = p: ''
+    # rose-pine の役割色を sketchybar の意味付けへ忠実マッピング。
+    # (rose-pine は純粋な緑/橙を持たないため、success=foam / warm=rose を採用)
+    export BLACK=0xff${p.base}    # 背景 (最暗/最明)
+    export WHITE=0xff${p.text}    # 前景・テキスト
+    export RED=0xff${p.love}      # error / critical
+    export GREEN=0xff${p.foam}    # success / active (rose-pine の positive)
+    export BLUE=0xff${p.pine}     # info
+    export YELLOW=0xff${p.gold}   # warning
+    export ORANGE=0xff${p.rose}   # warm accent
+    export MAGENTA=0xff${p.iris}  # primary accent (rose-pine signature)
+    export GREY=0xff${p.muted}    # inactive / subtle
+    export ACCENT=0xff${p.iris}   # アクティブ要素のアクセント
+    # 背景 pill: surface=不透明 / overlay・hlMed は 0xcc に上げて light でも視認
+    export BG0=0xff${p.surface}
+    export BG1=0xcc${p.overlay}
+    export BG2=0xcc${p.hlMed}
+    export BATTERY_1=0xff${p.foam}
+    export BATTERY_2=0xff${p.gold}
+    export BATTERY_3=0xff${p.rose}
+    export BATTERY_4=0xff${p.love}
+    export BATTERY_5=0xff${p.love}'';
 in
 {
   # macOS 専用の home-manager 設定
@@ -109,28 +135,17 @@ in
   # 他の sketchybar スクリプトは従来どおり $WHITE 等でこれを source する。
   home.file.".config/sketchybar/colors.sh".text = ''
     #!/bin/bash
-    # Rosé Pine — generated from nix/lib/rose-pine.nix (単一ソース)
-    export BLACK=0xff${c.base}
-    export WHITE=0xff${c.text}
-    export RED=0xff${c.love}
-    export GREEN=0xff${c.foam}
-    export BLUE=0xff${c.pine}
-    export YELLOW=0xff${c.gold}
-    export ORANGE=0xff${c.rose}
-    export MAGENTA=0xff${c.iris}
-    export GREY=0xff${c.muted}
+    # Rosé Pine — dark/light を macOS 外観 (AppleInterfaceStyle) で自動選択。
+    # 色は nix/lib/theme.nix の dark/light パレット由来 (単一ソース)。
+    # 外観変化時は theme-watch agent が `sketchybar --reload` し、ここが再評価される。
+    if [ "$(defaults read -g AppleInterfaceStyle 2>/dev/null)" = "Dark" ]; then
+    ${sbHex c.dark}
+    else
+    ${sbHex c.light}
+    fi
     export TRANSPARENT=0x00000000
-    export BG0=0xff${c.surface}
-    export BG1=0x60${c.overlay}
-    export BG2=0x60${c.hlMed}
 
-    export BATTERY_1=0xff${c.foam}
-    export BATTERY_2=0xff${c.gold}
-    export BATTERY_3=0xff${c.rose}
-    export BATTERY_4=0xff${c.love}
-    export BATTERY_5=0xff${c.love}
-
-    # General bar colors
+    # General bar colors (パレット非依存・上の export から導出)
     export BAR_COLOR=$BG0
     export BAR_BORDER_COLOR=$BG2
     export BACKGROUND_1=$BG1
@@ -143,20 +158,96 @@ in
   '';
   # borders は AeroSpace から引数なし `borders` で起動され bordersrc を実行する。
   # executable=true でないと borders が実行できない (設定の単一ソース)。
-  # borders の色は nix/lib/rose-pine.nix から生成 (active=iris / inactive=muted)
+  # 色は theme.nix の dark/light 由来。macOS 外観で active/inactive を分岐し OS 追従。
+  # 外観変化時は theme-watch agent が bordersrc を再実行し、走行中の borders daemon に反映。
   home.file.".config/borders/bordersrc" = {
     executable = true;
     text = ''
       #!/bin/bash
       # JankyBorders 設定 = アクティブウィンドウ枠の単一ソース。色は Rosé Pine palette 由来。
+      if [ "$(defaults read -g AppleInterfaceStyle 2>/dev/null)" = "Dark" ]; then
+        active=0xff${c.dark.iris}
+        inactive=0xff${c.dark.muted}
+      else
+        active=0xff${c.light.iris}
+        inactive=0xff${c.light.muted}
+      fi
       options=(
-        active_color=0xff${c.iris}
-        inactive_color=0xff${c.muted}
+        active_color=$active
+        inactive_color=$inactive
         width=4.0
       )
       borders "''${options[@]}"
     '';
   };
+
+  # theme-watch: macOS 外観 (ライト/ダーク) の変化を監視し、shell 系 chrome を再適用する。
+  # sketchybar/borders は colors.sh/bordersrc 内で AppleInterfaceStyle を見て分岐するので、
+  # 変化時に reload/再実行するだけで OS 追従できる。外部バイナリ不要のポーリング方式。
+  home.file.".config/theme/theme-watch.sh" = {
+    executable = true;
+    text = ''
+      #!/bin/bash
+      # macOS 外観変化を監視 → sketchybar reload + borders 再適用 (theme.nix カテゴリB の追従)
+      export PATH="/opt/homebrew/bin:$PATH"
+      last=""
+      while true; do
+        cur="$(defaults read -g AppleInterfaceStyle 2>/dev/null || echo Light)"
+        if [ "$cur" != "$last" ]; then
+          last="$cur"
+          [ -x "$HOME/.config/borders/bordersrc" ] && "$HOME/.config/borders/bordersrc" >/dev/null 2>&1 &
+          sketchybar --reload >/dev/null 2>&1
+        fi
+        sleep 2
+      done
+    '';
+  };
+
+  # 上記 watcher を常駐 launchd agent として起動 (ログイン時+死活監視)。
+  launchd.agents.theme-watch = {
+    enable = true;
+    config = {
+      ProgramArguments = [ "${config.home.homeDirectory}/.config/theme/theme-watch.sh" ];
+      RunAtLoad = true;
+      KeepAlive = true;
+      ProcessType = "Background";
+      StandardErrorPath = "/tmp/theme-watch.err";
+      StandardOutPath = "/tmp/theme-watch.out";
+    };
+  };
+
+  # sioyek: 色は nix/lib/rose-pine.nix から生成 (hex→0-1 float は lib/hex-rgb.nix)。
+  # macOS の sioyek は ~/Library/Application Support/sioyek/ を config dir に使う
+  # (XDG 非対応)。prefs_user.config がユーザ上書き設定。sioyek 自身は auto.config/
+  # db を同 dir に書くが prefs_user.config は読むだけなので store symlink で問題なし。
+  home.file."Library/Application Support/sioyek/prefs_user.config".text = ''
+    # Rosé Pine — generated from nix/lib/rose-pine.nix
+    # UI chrome
+    background_color ${rgb c.base}
+    status_bar_color ${rgb c.surface}
+    status_bar_text_color ${rgb c.text}
+    # ページ境界をガター(base)に馴染ませる
+    page_separator_width 2
+    page_separator_color ${rgb c.hlMed}
+    # highlights
+    text_highlight_color ${rgb c.gold}
+    search_highlight_color ${rgb c.love}
+    link_highlight_color ${rgb c.foam}
+    synctex_highlight_color ${rgb c.pine}
+    visual_mark_color ${rgb c.iris} 0.3
+    # custom color mode (ダーク読書時のページ色) / dark mode
+    custom_background_color ${rgb c.base}
+    custom_text_color ${rgb c.text}
+    dark_mode_background_color ${rgb c.base}
+    dark_mode_contrast 0.85
+  '';
+
+  # sioyek キーバインド上書き: custom color mode (rose-pine 地で読む) を F7 に割当。
+  # F8=標準のダーク反転 と使い分け (デフォルトは toggle_custom_color 未割当)。
+  home.file."Library/Application Support/sioyek/keys_user.config".text = ''
+    # Rosé Pine custom color mode を F7 でトグル
+    toggle_custom_color <f7>
+  '';
 
   # karabiner は dotfiles 直接書き戻し (mkOutOfStoreSymlink)
   home.file.".config/karabiner".source =

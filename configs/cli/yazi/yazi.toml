@@ -31,6 +31,7 @@ office = [
   { run = 'start "" "$@"', desc = "Open with default (Word/Excel/PPT)", orphan = true, for = "windows" },
 ]
 pdf = [
+  { run = 'open -a sioyek "$@"', desc = "Open in Sioyek", orphan = true, for = "macos" },
   { run = 'zathura "$@"', desc = "Open in Zathura", orphan = true, for = "unix" },
   { run = 'open -a "Preview" "$@"', desc = "Open in Preview", orphan = true, for = "macos" },
   { run = 'start "" "$@"', desc = "Open with default", orphan = true, for = "windows" },

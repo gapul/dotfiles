@@ -28,16 +28,16 @@ exclude_patterns = ["/Library/", "node_modules", "/."]
 # min_query_for_processes = 2
 
 [appearance]
-# fzf color theme — hex colors (Catppuccin Macchiato defaults)
-# bg         = "#1e1e2e"
-# bg_selected = "#313244"
-# border     = "#6e6a86"
-# fg         = "#cad3f5"
-# gutter     = "#1e1e2e"
-# hl         = "#8aadf4"
-# prompt     = "#c6a0f6"
-# pointer    = "#ed8796"
-# label      = "#c6a0f6"
+# fzf color theme — Rosé Pine (統一テーマ。色は nix/lib/rose-pine.nix と対応)
+bg          = "#191724"  # base
+bg_selected = "#26233a"  # overlay
+border      = "#6e6a86"  # muted
+fg          = "#e0def4"  # text
+gutter      = "#191724"  # base
+hl          = "#ebbcba"  # rose
+prompt      = "#c4a7e7"  # iris
+pointer     = "#eb6f92"  # love
+label       = "#c4a7e7"  # iris
 
 [bookmarks]
 # Path to XBEL bookmarks file (Floccus browser extension sync)

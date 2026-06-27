@@ -161,7 +161,6 @@
       "felixkratz/formulae"
       "finnvoor/tools"
       "gerlero/openfoam"
-      "homebrew-zathura/zathura"
       "gapul/kdeconnect" # imshuhao/kdeconnect の fork。depends_on macos deprecated を修正済
       "jakehilborn/jakehilborn"
       "jpmhouston/bananameterlabs"
@@ -203,17 +202,6 @@
       # ─── Documents / Fonts / Media ───
       "gstreamer"
       "mpv"
-      "homebrew-zathura/zathura/zathura-pdf-mupdf"
-      # zathura-pdf-mupdf の tap内依存。新 brew は HOMEBREW_REQUIRE_TAP_TRUST 既定ONで
-      # brew bundle が trust.json を Brewfile 基準に再生成するため、明示しないと依存が
-      # untrusted で "Refusing to load" になる → Brewfile に書いて auto-trust させる。
-      "homebrew-zathura/zathura/zathura"
-      "homebrew-zathura/zathura/synctex"
-      "girara" # zathura の UI ライブラリ。zathura が dlopen するので必須
-      # zathura が runtime で dlopen する GTK 統合。Homebrew 側が依存宣言してないため
-      # 明示しないと cleanup="uninstall" で孤立判定→削除され zathura が dyld エラーになる。
-      "gtk-mac-integration"
-      "adwaita-icon-theme" # GTK アイコンテーマ (zathura/girara UI)
 
       # ─── macOS specific CLI ───
       "mas" # App Store
@@ -240,6 +228,17 @@
       "zen"
       "pear-desktop"
       "safari-technology-preview"
+
+      # ─── PDF viewers ───
+      # sioyek は未署名の x86_64 cask (Rosetta 動作)。brew 既定の quarantine が付くと
+      # Gatekeeper に「壊れている/マルウェア」判定され起動不能になるため no_quarantine 必須。
+      {
+        name = "sioyek";
+        args = {
+          no_quarantine = true;
+        };
+      } # vim キーバインドの軽量 PDF ビューア (zathura 代替・常用)
+      "skim" # ネイティブ SyncTeX ビューア。TeX 執筆用の保険 (連携は後日)
 
       # ─── Communication & Sync ───
       "beeper"
