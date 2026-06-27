@@ -6,34 +6,37 @@ sort_dir_first = true # ディレクトリを先頭に
 scrolloff      = 5 # カーソル上下に5行の余白
 
 [opener]
-# Windows の run は yazi が cmd.exe /C で実行する。`start "" "$@"` で
-# 既定アプリ起動、`tar -xf` は Windows 10+ 同梱の bsdtar.exe (zip/tar/gz/bz2 対応)。
-# nvim は Windows native ビルドが入っていれば PATH 解決で動く。
+# プラットフォーム指定の方針:
+#   - 両 Unix で同じコマンドなら for = "unix" (mac + linux 兼用)
+#   - mac/linux でコマンドが違うものは for = "macos" / "linux" を個別指定
+#     (yazi は "linux" 限定値に対応。"unix" は mac も含むので linux 専用に使えない)
+#   - Windows の run は cmd.exe /C 実行。`start "" "$@"` で既定アプリ起動、
+#     `tar -xf` は Windows 10+ 同梱の bsdtar.exe (zip/tar/gz/bz2 対応)。
 video = [
-  { run = 'mpv "$@"', desc = "Open in mpv", orphan = true, for = "macos" },
+  { run = 'mpv "$@"', desc = "Open in mpv", orphan = true, for = "unix" },
   { run = 'open -a "IINA" "$@"', desc = "Open in IINA", orphan = true, for = "macos" },
-  { run = 'mpv "$@"', desc = "Open in mpv", orphan = true, for = "windows" },
   { run = 'start "" "$@"', desc = "Open with default", orphan = true, for = "windows" },
 ]
 audio = [
-  { run = 'mpv "$@"', desc = "Play in mpv", orphan = true, for = "macos" },
+  { run = 'mpv "$@"', desc = "Play in mpv", orphan = true, for = "unix" },
   { run = 'open -a "IINA" "$@"', desc = "Play in IINA", orphan = true, for = "macos" },
-  { run = 'mpv "$@"', desc = "Play in mpv", orphan = true, for = "windows" },
   { run = 'start "" "$@"', desc = "Play with default", orphan = true, for = "windows" },
 ]
 image = [
   { run = 'open -a "Preview" "$@"', desc = "Open in Preview", orphan = true, for = "macos" },
   { run = 'qlmanage -p "$@"', desc = "Quick Look", orphan = true, for = "macos" },
+  { run = 'xdg-open "$@"', desc = "Open (xdg)", orphan = true, for = "linux" },
   { run = 'start "" "$@"', desc = "Open with default", orphan = true, for = "windows" },
 ]
 office = [
   { run = 'open -a "LibreOffice" "$@"', desc = "Open in LibreOffice", orphan = true, for = "macos" },
+  { run = 'libreoffice "$@"', desc = "Open in LibreOffice", orphan = true, for = "linux" },
   { run = 'start "" "$@"', desc = "Open with default (Word/Excel/PPT)", orphan = true, for = "windows" },
 ]
 pdf = [
   { run = 'open -a sioyek "$@"', desc = "Open in Sioyek", orphan = true, for = "macos" },
-  { run = 'zathura "$@"', desc = "Open in Zathura", orphan = true, for = "unix" },
   { run = 'open -a "Preview" "$@"', desc = "Open in Preview", orphan = true, for = "macos" },
+  { run = 'zathura "$@"', desc = "Open in Zathura", orphan = true, for = "linux" },
   { run = 'start "" "$@"', desc = "Open with default", orphan = true, for = "windows" },
 ]
 edit = [
@@ -48,6 +51,7 @@ extract = [
 ]
 fallback = [
   { run = 'open "$@"', desc = "Open with macOS default", orphan = true, for = "macos" },
+  { run = 'xdg-open "$@"', desc = "Open with Linux default", orphan = true, for = "linux" },
   { run = 'start "" "$@"', desc = "Open with Windows default", orphan = true, for = "windows" },
 ]
 
