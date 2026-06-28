@@ -1,0 +1,29 @@
+# restic REST server — 独立した 2 つ目の restic リポジトリ (B)。
+# Mac は A=google-drive と B=ここ へ別々にバックアップし、相関破損を避ける。
+#
+# append-only: クライアント(Mac)は追加のみ可能・削除/上書き不可。
+#   → Mac が乗っ取られても・ransomware でも・誤 forget でも過去分は破壊されない。
+#   その代わり保持管理(prune)は Mac からは不可。サーバ側 cron で別途回す (README 参照)。
+#
+# Dockge 流儀: CT101(.65) の /opt/stacks/restic-rest/compose.yaml に配置。
+#   認証: ./data/.htpasswd (bcrypt)。Caddy が restic.gapul.net (Tailscale限定) で公開。
+services:
+  rest-server:
+    image: restic/rest-server:latest # wud で更新追跡 → 安定したら tag 固定推奨
+    container_name: restic-rest
+    restart: unless-stopped
+    environment:
+      - DATA_DIRECTORY=/data
+      - PASSWORD_FILE=/data/.htpasswd
+      - OPTIONS=--append-only --prometheus-no-auth
+    ports:
+      - "8000:8000"
+    volumes:
+      # ./data は Dockge ホスト(.65)上。可能なら ZFS/別ディスク上の専用パスへ移すと
+      # pve 障害からの独立性が上がる (3-2-1 の "別メディア" を満たしやすい)。
+      - ./data:/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8000/"]
+      interval: 1m
+      timeout: 10s
+      retries: 3

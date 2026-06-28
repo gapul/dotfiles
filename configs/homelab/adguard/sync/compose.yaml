@@ -1,0 +1,24 @@
+# adguardhome-sync: 主系(Pi) → 副系(.65) を定期同期
+# .65 上で常時稼働。主系で編集したフィルタ/設定/書換ルールを副系へ複製する。
+# 主系が停止中は同期がスキップされるだけで害はない(復帰後に再同期)。
+#
+# 認証情報はリポジトリに直書きせず secrets(sops) から .env 経由で渡すこと:
+#   USERNAME / ORIGIN_PASSWORD / REPLICA_PASSWORD
+services:
+  adguardhome-sync:
+    image: ghcr.io/bakito/adguardhome-sync:latest
+    container_name: adguardhome-sync
+    restart: unless-stopped
+    command: run
+    env_file: .env
+    environment:
+      ORIGIN_URL: "http://192.168.116.53:3000"   # 主系 (Pi)
+      ORIGIN_USERNAME: "${USERNAME}"
+      ORIGIN_PASSWORD: "${ORIGIN_PASSWORD}"
+      REPLICA_URL: "http://192.168.116.65:3080"  # 副系 (.65)
+      REPLICA_USERNAME: "${USERNAME}"
+      REPLICA_PASSWORD: "${REPLICA_PASSWORD}"
+      REPLICA_AUTO_SETUP: "true"                  # 未初期化の副系を自動セットアップ(手動ウィザード不要)
+      CRON: "*/10 * * * *"                         # 10分毎
+      RUN_ON_START: "true"
+      FEATURES_DHCP_SERVER_CONFIG: "false"        # DHCPは同期しない (主系/副系で個別運用)

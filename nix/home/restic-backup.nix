@@ -23,7 +23,12 @@ let
   repository = "rclone:google-drive:restic-backup";
   rcloneConf = "${home}/.config/rclone/rclone.conf";
   passwordFile = config.sops.secrets."restic_password".path;
+  # 独立リポジトリ B (自宅 rest-server)。中身は rest:https://user:pass@restic.gapul.net/
+  restRepoFile = config.sops.secrets."restic_rest_url".path;
   logFile = "${home}/Library/Logs/restic-backup.log";
+
+  # バックアップ対象を bash の引数列に展開した文字列 (A/B 共用)
+  pathsArg = lib.concatStringsSep " " (map (p: "\"${p}\"") backupPaths);
 
   # restic 環境 + macOS 通知シェル関数 (launchd の GUI セッションで osascript が使える)
   resticEnv = ''
@@ -87,11 +92,32 @@ let
     restic backup \
       --verbose=1 \
       --exclude-file=${excludeFile} \
-      ${lib.concatStringsSep " " (map (p: "\"${p}\"") backupPaths)}
+      ${pathsArg}
     rc=$?
 
+    # --keep-tag archive: cold アーカイブ (just archive で --tag archive 付与) を
+    #   keep ポリシーから除外し永久保持。warm (無タグ) のみ間引く。
+    #   (restic は各グループ最後の snapshot 削除も拒否するため二重保護)
     restic forget --prune \
+      --keep-tag archive \
       --keep-daily 7 --keep-weekly 4 --keep-monthly 6 || true
+
+    # ── 独立リポジトリ B (自宅 rest-server・append-only) へも別途バックアップ ──
+    #   A とは独立に source から書くので相関破損しない。同じ restic_password を共用。
+    #   homelab 停止中は skip して本体 (A) の成否は変えない。B は forget しない (append-only)。
+    if [ -f "${restRepoFile}" ]; then
+      REST_REPO="$(cat "${restRepoFile}")"
+      echo "-------------------- $(date '+%Y-%m-%d %H:%M:%S') rest backup (B) --------------------"
+      if ! restic -r "$REST_REPO" snapshots >/dev/null 2>&1; then
+        restic -r "$REST_REPO" init >/dev/null 2>&1 || true # 未init なら作る (append でも init 可)
+      fi
+      if restic -r "$REST_REPO" snapshots >/dev/null 2>&1; then
+        restic -r "$REST_REPO" backup --verbose=1 --exclude-file=${excludeFile} ${pathsArg} \
+          || echo "WARN: B backup 失敗"
+      else
+        echo "SKIP B: rest-server 未到達 (homelab 停止中?)"
+      fi
+    fi
 
     echo "==================== $(date '+%Y-%m-%d %H:%M:%S') backup done (rc=$rc) ===================="
     exit $rc
@@ -155,6 +181,8 @@ in
 
   # restic パスフレーズ (sops の defaultSopsFile = secrets/secrets.yaml に格納済み)
   sops.secrets."restic_password".path = "${home}/.config/restic/password";
+  # 独立リポジトリ B の URL (htpasswd 認証込み rest:https://...)
+  sops.secrets."restic_rest_url".path = "${home}/.config/restic/rest-url";
 
   launchd.agents = {
     # 日次 13:00 バックアップ
