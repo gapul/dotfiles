@@ -3,7 +3,9 @@ home.gapul.net {
 	tls {
 		dns cloudflare {env.CF_API_TOKEN}
 	}
-	reverse_proxy 192.168.116.88:8123
+	reverse_proxy 192.168.116.88:8123 {
+		header_up -X-Forwarded-For
+	}
 }
 
 dockge.gapul.net {
@@ -43,4 +45,47 @@ wud.gapul.net {
 		dns cloudflare {env.CF_API_TOKEN}
 	}
 	reverse_proxy 192.168.116.65:3002
+}
+
+
+vault.gapul.net {
+	tls {
+		dns cloudflare {env.CF_API_TOKEN}
+	}
+	reverse_proxy 192.168.116.65:8080
+}
+
+rss.gapul.net {
+	tls {
+		dns cloudflare {env.CF_API_TOKEN}
+	}
+	reverse_proxy 192.168.116.65:8081
+}
+
+obsidian.gapul.net {
+	tls {
+		dns cloudflare {env.CF_API_TOKEN}
+	}
+	reverse_proxy 192.168.116.65:5984
+}
+
+dav.gapul.net {
+	tls {
+		dns cloudflare {env.CF_API_TOKEN}
+	}
+	reverse_proxy 192.168.116.65:5232
+}
+
+pdf.gapul.net {
+	tls {
+		dns cloudflare {env.CF_API_TOKEN}
+	}
+	reverse_proxy 192.168.116.65:8095
+}
+
+paperless.gapul.net {
+	tls {
+		dns cloudflare {env.CF_API_TOKEN}
+	}
+	reverse_proxy 192.168.116.65:8097
 }
