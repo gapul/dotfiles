@@ -104,6 +104,41 @@ let
     brew cleanup --prune=all 2>&1 | tail -20 || true
   '';
 
+  # ⑤ Obsidian vault を日次 git push (履歴 + GitHub バックアップ)。
+  #   live な端末間同期は LiveSync(CouchDB) が担うので git は日次で十分。
+  #   obsidian-git の自動コミットは OFF にして本 agent に所有権を集約する想定。
+  vaultGitPushScript = pkgs.writeShellScript "obsidian-vault-push" ''
+    ${prelude "obsidian-vault.log"}
+    vault=${home}/Documents/notes
+    branch=main
+
+    [ -d "$vault/.git" ] || { echo "SKIP: $vault は git リポジトリではない"; exit 0; }
+    [ -n "$(git -C "$vault" remote 2>/dev/null)" ] || { echo "SKIP: remote 未設定"; exit 0; }
+
+    # Bitwarden SSH agent を明示 (launchd 無人セッションでも鍵に到達させる)。
+    # Bitwarden Desktop が起動・アンロックされている必要がある。
+    [ -S "${home}/.bitwarden-ssh-agent.sock" ] && export SSH_AUTH_SOCK="${home}/.bitwarden-ssh-agent.sock"
+    export GIT_SSH_COMMAND="ssh -o BatchMode=yes -o ConnectTimeout=15"
+
+    git -C "$vault" add -A
+    if git -C "$vault" diff --cached --quiet; then
+      echo "変更なし (commit スキップ)"
+    else
+      git -C "$vault" commit -m "vault backup: $(date '+%Y-%m-%d %H:%M:%S')" && echo "commit 作成"
+    fi
+
+    # 他マシンの変更を取り込んでから push (衝突時は rebase。flake.lock 等は対象外)
+    git -C "$vault" pull --rebase --autostash origin "$branch" || echo "WARN: pull --rebase 失敗 (続行)"
+
+    if git -C "$vault" push origin "$branch"; then
+      echo "push 成功"
+    else
+      echo "ERROR: push 失敗 (Bitwarden ロック / 認証不可の可能性)"
+      notify "📝 vault git push 失敗" "Bitwarden ロック中か認証不可。ログ確認"
+      exit 1
+    fi
+  '';
+
   agent = program: schedule: {
     enable = true;
     config = {
@@ -148,6 +183,13 @@ in
         Day = 1;
         Hour = 12;
         Minute = 45;
+      }
+    ];
+    # 日次 13:30 Obsidian vault を git push (restic 13:00 の後)
+    obsidian-vault-push = agent "${vaultGitPushScript}" [
+      {
+        Hour = 13;
+        Minute = 30;
       }
     ];
   };
