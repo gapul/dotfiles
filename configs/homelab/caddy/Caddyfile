@@ -1,0 +1,46 @@
+# gapul.net リバースプロキシ (Tailscale限定・LE証明書はCloudflare DNS-01)
+home.gapul.net {
+	tls {
+		dns cloudflare {env.CF_API_TOKEN}
+	}
+	reverse_proxy 192.168.116.88:8123
+}
+
+dockge.gapul.net {
+	tls {
+		dns cloudflare {env.CF_API_TOKEN}
+	}
+	reverse_proxy 192.168.116.65:5001
+}
+
+pve.gapul.net {
+	tls {
+		dns cloudflare {env.CF_API_TOKEN}
+	}
+	reverse_proxy https://192.168.116.100:8006 {
+		transport http {
+			tls_insecure_skip_verify
+		}
+	}
+}
+
+dash.gapul.net {
+	tls {
+		dns cloudflare {env.CF_API_TOKEN}
+	}
+	reverse_proxy 192.168.116.65:3000
+}
+
+status.gapul.net {
+	tls {
+		dns cloudflare {env.CF_API_TOKEN}
+	}
+	reverse_proxy 192.168.116.65:3001
+}
+
+wud.gapul.net {
+	tls {
+		dns cloudflare {env.CF_API_TOKEN}
+	}
+	reverse_proxy 192.168.116.65:3002
+}
