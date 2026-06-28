@@ -1,0 +1,15 @@
+# AdGuard Home 副系 (Docker母艦 .65)
+# 常時稼働。主系(Pi)が止まっている間、クライアントのフェイルオーバー先になる。
+# .65 では :3000-3002 が既に使用中のため、管理UIは host:3080 にマップする。
+services:
+  adguardhome-secondary:
+    image: adguard/adguardhome:latest
+    container_name: adguardhome-secondary
+    restart: unless-stopped
+    ports:
+      - "53:53/tcp"     # DNS
+      - "53:53/udp"     # DNS
+      - "3080:3000/tcp" # 管理UI (.65の既存ポートとの衝突回避)
+    volumes:
+      - ./work:/opt/adguardhome/work
+      - ./conf:/opt/adguardhome/conf

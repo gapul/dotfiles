@@ -1,0 +1,16 @@
+# AdGuard Home 主系 (Raspberry Pi 4 / 192.168.116.53)
+# 制作用途で気軽に停止できるノード。停止しても副系(.65)が名前解決を継続する。
+#   停止:  docker compose down
+#   復帰:  docker compose up -d
+services:
+  adguardhome:
+    image: adguard/adguardhome:latest
+    container_name: adguardhome
+    restart: unless-stopped
+    ports:
+      - "53:53/tcp"     # DNS
+      - "53:53/udp"     # DNS
+      - "3000:3000/tcp" # 管理UI (初期セットアップ & 常用ポートを3000で固定)
+    volumes:
+      - ./work:/opt/adguardhome/work   # クエリログ・統計 (揮発OK)
+      - ./conf:/opt/adguardhome/conf   # 設定本体 (Git管理対象外 / sync元)

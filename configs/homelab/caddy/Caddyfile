@@ -89,3 +89,27 @@ paperless.gapul.net {
 	}
 	reverse_proxy 192.168.116.65:8097
 }
+
+# restic REST server (独立リポジトリ B・append-only)。Mac の 2 つ目のバックアップ先。
+restic.gapul.net {
+	tls {
+		dns cloudflare {env.CF_API_TOKEN}
+	}
+	reverse_proxy 192.168.116.65:8000
+}
+
+# AdGuard Home 主系 (Raspberry Pi 4 / 制作用途で停止可)
+dns.gapul.net {
+	tls {
+		dns cloudflare {env.CF_API_TOKEN}
+	}
+	reverse_proxy 192.168.116.53:3000
+}
+
+# AdGuard Home 副系 (.65 / 常時稼働フェイルオーバー先)
+dns2.gapul.net {
+	tls {
+		dns cloudflare {env.CF_API_TOKEN}
+	}
+	reverse_proxy 192.168.116.65:3080
+}
