@@ -33,6 +33,7 @@
 | Home Assistant SSH | `ssh hassio@192.168.116.88`（add-on / ed25519 鍵） |
 | HA Web | `https://home.gapul.net` |
 | Dockge | `https://dockge.gapul.net`（= `.65:5001`） |
+| Git (Forgejo) | `https://git.gapul.net`（= `.65:3003`）。GitHub のセルフホスト・ミラー |
 | AdGuard 主系/副系 | `https://dns.gapul.net` / `https://dns2.gapul.net` |
 | 監視 | `https://status.gapul.net`（Uptime Kuma） |
 
@@ -54,6 +55,7 @@
 | AdGuard 主系・副系 | `gapul` | パスワード → Bitwarden（同期 `adguardhome-sync` も同一資格を使用。実体は CT101 `/opt/stacks/adguardhome-sync/compose.yaml` の env にのみ存在） |
 | Dockge (`.65:5001`) | （要確認） | パスワード → Bitwarden。忘失時は CT101 で `docker exec -it dockge npm run reset-password` |
 | Uptime Kuma (`status.gapul.net`) | （初回設定で作成） | パスワード → Bitwarden |
+| Forgejo (`git.gapul.net`) | `gapul` | admin。パスワード + API token → Bitwarden |
 | Cloudflare API (Caddy DNS-01) | — | トークンは CT103 `/etc/caddy/cf.env`（git 管理外） |
 
 - 秘密情報を dotfiles に入れる場合は **SOPS**（`.sops.yaml`）で暗号化し、平文でコミットしない。`work/ conf/ .env` は `.gitignore` 済み。
@@ -197,14 +199,37 @@ ssh pi@192.168.116.53 'docker ps'   # 復帰確認
 
 ---
 
-## 9. バックアップ（TODO）
+## 9. Git ホスト（Forgejo / git.gapul.net）
+
+GitHub 以外の git リモート。GitHub 障害・アカウント凍結時にもコードが自宅に残る冗長化。
+
+- CT101 の Docker スタック（`/opt/stacks/forgejo/`、dotfiles: `configs/homelab/forgejo/`）。`.65:3003` → `git.gapul.net`。
+- git は **HTTPS のみ**（`DISABLE_SSH=true`）。push/pull は token 認証。admin = `gapul`。SQLite。
+- `INSTALL_LOCK=true`（compose env）で Web インストーラを飛ばし、admin は CLI で作成
+  （`docker exec -u git forgejo forgejo admin user create --admin ...`）。
+
+**運用は Pull Mirror 方式**: Forgejo が GitHub から定期 pull（15分毎）。Mac の git 操作は変えず、
+push 先は GitHub のまま自宅へ複製され続ける。**外向き pull なので Caddy 無しでも冗長化は機能**
+（Caddy は Web UI / clone / push 用）。
+
+**状態**:
+- ✅ `dotfiles`（public）を Pull Mirror 登録済・稼働中。
+- ⏳ `obsidian-vault`（private）は GitHub の read token が必要 → Forgejo UI の Migration で token を貼って追加。
+- ⏳ Caddy 公開: Caddyfile に `git.gapul.net → .65:3003` 追加済。§5 の手順で Cloudflare A レコード追加 +
+  `pct exec 103 -- systemctl reload caddy` が必要（未実施でもミラーは動く）。
+
+**ミラー追加手順**（UI）: ＋ → New Migration → GitHub → repo URL → **「This repository will be a mirror」** に
+チェック → Migrate（private repo は GitHub token を入力）。
+
+---
+
+## 10. バックアップ（TODO）
 
 - HA 自動バックアップ: スケジュール/保持/暗号化パスワード/保存先（ローカル or restic オフサイト）を要決定。
-- restic-rest（`configs/homelab/restic-rest/`）/ forgejo（`configs/homelab/forgejo/`）は別途整備中。
 
 ---
 
 ## 関連
-- 各サービス設定: `configs/homelab/{adguard,caddy,forgejo,raspberrypi,restic-rest}/`
+- 各サービス設定: `configs/homelab/{adguard,caddy,forgejo,raspberrypi}/`
 - ラズパイ初期化: `configs/homelab/raspberrypi/bootstrap.sh`
 - 汎用チートシート: `docs/CHEATSHEET.md`
