@@ -324,6 +324,32 @@ in
     };
   };
 
+  # シェル非依存の env 配布: GUI アプリ / launchd 配下プロセスは zsh の .zshenv を
+  # 経由しないため GNUPGHOME を取り逃し、gpg が空の ~/.gnupg を再生成してしまう。
+  # ログイン時に launchctl setenv で session 全体へ流し込み、zsh への依存を下げる。
+  # 設定値は home.sessionVariables と一致させてある (XDG 基底は既定値と同じ＝挙動非変更、
+  # env を参照する GUI ツールに XDG を honor させ、gnupg 再生成だけを確実に塞ぐ)。
+  launchd.agents.session-env = {
+    enable = true;
+    config = {
+      ProgramArguments = [
+        "/bin/sh"
+        "-c"
+        (lib.concatStringsSep " " [
+          "launchctl setenv GNUPGHOME ${config.xdg.dataHome}/gnupg;"
+          "launchctl setenv XDG_CONFIG_HOME ${config.xdg.configHome};"
+          "launchctl setenv XDG_DATA_HOME ${config.xdg.dataHome};"
+          "launchctl setenv XDG_STATE_HOME ${config.xdg.stateHome};"
+          "launchctl setenv XDG_CACHE_HOME ${config.xdg.cacheHome}"
+        ])
+      ];
+      RunAtLoad = true;
+      ProcessType = "Background";
+      StandardErrorPath = "/tmp/session-env.err";
+      StandardOutPath = "/tmp/session-env.out";
+    };
+  };
+
   # sioyek: 色は nix/lib/rose-pine.nix から生成 (hex→0-1 float は lib/hex-rgb.nix)。
   # macOS の sioyek は ~/Library/Application Support/sioyek/ を config dir に使う
   # (XDG 非対応)。prefs_user.config がユーザ上書き設定。sioyek 自身は auto.config/

@@ -62,6 +62,10 @@ in
       XDG_STATE_HOME = config.xdg.stateHome;
       XDG_CACHE_HOME = config.xdg.cacheHome;
 
+      # GnuPG: 既定の ~/.gnupg を $XDG_DATA_HOME/gnupg へ。上流は XDG 非対応のため
+      # GNUPGHOME で明示。dir perms は 700 必須 (移設時に chmod 済み)。
+      GNUPGHOME = "${config.xdg.dataHome}/gnupg";
+
       # cargo / npm / bundler を XDG 配下に
       CARGO_HOME = "${config.xdg.dataHome}/cargo";
       NPM_CONFIG_CACHE = "${config.xdg.cacheHome}/npm";
@@ -94,6 +98,9 @@ in
       # HISTFILE も .zshrc を読まない古い/GUI 起動シェルが ~/.zsh_history へ
       # 漏らさないよう、ガード無しの .zshenv で XDG パスを先に固定しておく。
       export HISTFILE="$HOME/.local/state/zsh/history"
+      # GNUPGHOME も同様。未設定の zsh から gpg を叩くと空の ~/.gnupg を
+      # 再生成してしまうため、ガード無しの .zshenv で先に固定しておく。
+      export GNUPGHOME="$HOME/.local/share/gnupg"
       if [ -e /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]; then
         # nix-daemon.sh は ~/.nix-profile と新 profile が両方あると
         # "safely delete either" 警告を stderr に出す。両 symlink は意図的に
@@ -150,8 +157,8 @@ in
     };
 
     initContent = ''
-      # XDG: history / 補完dump 用ディレクトリを確保
-      mkdir -p "${config.xdg.stateHome}/zsh" "${config.xdg.cacheHome}/zsh"
+      # XDG: history / 補完dump / vim state 用ディレクトリを確保
+      mkdir -p "${config.xdg.stateHome}/zsh" "${config.xdg.cacheHome}/zsh" "${config.xdg.stateHome}/vim"
 
       # fish 風 setopt (移行時に失った機能の再現)
       setopt AUTO_CD
@@ -637,7 +644,10 @@ in
     recursive = true;
   };
   # LaTeX: latexmk 既定設定 (LuaLaTeX) と日本語テンプレート
-  home.file.".latexmkrc".source = ../../configs/tex/latexmkrc;
+  # latexmk 4.77+ は $XDG_CONFIG_HOME/latexmk/latexmkrc を公式サポートするため XDG 準拠の配置にする
+  home.file.".config/latexmk/latexmkrc".source = ../../configs/tex/latexmkrc;
+  # 素の Vim: native XDG で読まれる vimrc。.viminfo を $XDG_STATE_HOME へ追い出す目的
+  home.file.".config/vim/vimrc".source = ../../configs/editors/vim/vimrc;
   home.file.".config/tex/templates" = {
     source = ../../configs/tex/templates;
     recursive = true;
