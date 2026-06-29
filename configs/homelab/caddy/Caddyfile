@@ -90,12 +90,12 @@ paperless.gapul.net {
 	reverse_proxy 192.168.116.65:8097
 }
 
-# restic REST server (独立リポジトリ B・append-only)。Mac の 2 つ目のバックアップ先。
-restic.gapul.net {
+# Forgejo (GitHub 以外の自宅 git ホスト)。HTTPS git のみ。
+git.gapul.net {
 	tls {
 		dns cloudflare {env.CF_API_TOKEN}
 	}
-	reverse_proxy 192.168.116.65:8000
+	reverse_proxy 192.168.116.65:3003
 }
 
 # AdGuard Home 主系 (Raspberry Pi 4 / 制作用途で停止可)

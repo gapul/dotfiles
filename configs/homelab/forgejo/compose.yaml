@@ -1,0 +1,31 @@
+# Forgejo — GitHub 以外の自宅 git ホスト (2 つ目のリモート)。
+# GitHub 障害/凍結時にもコード(dotfiles/notes 等)が自宅に残るようにする。
+#
+# 公開: https://git.gapul.net/ (Caddy・Tailscale限定・Cloudflare DNS-01 TLS)。
+# git は HTTPS のみ (SSH 無効)。push/pull は token 認証で行う。
+#
+# Dockge 流儀: CT101(.65) の /opt/stacks/forgejo/compose.yaml に配置。
+services:
+  forgejo:
+    image: codeberg.org/forgejo/forgejo:11 # wud で更新追跡。安定したら patch まで固定推奨
+    container_name: forgejo
+    restart: unless-stopped
+    environment:
+      - USER_UID=1000
+      - USER_GID=1000
+      - FORGEJO__server__DOMAIN=git.gapul.net
+      - FORGEJO__server__ROOT_URL=https://git.gapul.net/
+      - FORGEJO__server__DISABLE_SSH=true # HTTPS git のみ (Caddy 経由)。SSH ポートは開けない
+      - FORGEJO__security__INSTALL_LOCK=true # Webインストーラを飛ばし、起動時にDB初期化 (admin はCLIで作る)
+      - FORGEJO__service__DISABLE_REGISTRATION=true # 自分専用。初回 admin だけ作る
+      - FORGEJO__migrations__ALLOW_LOCALNETWORKS=false # mirror 元(GitHub)は外部なので不要
+    volumes:
+      - ./data:/data
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      - "3003:3000" # .65:3003 → Caddy git.gapul.net
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/healthz"]
+      interval: 1m
+      timeout: 10s
+      retries: 3
