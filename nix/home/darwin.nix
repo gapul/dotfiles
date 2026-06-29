@@ -324,24 +324,28 @@ in
     };
   };
 
-  # シェル非依存の env 配布: GUI アプリ / launchd 配下プロセスは zsh の .zshenv を
-  # 経由しないため GNUPGHOME を取り逃し、gpg が空の ~/.gnupg を再生成してしまう。
-  # ログイン時に launchctl setenv で session 全体へ流し込み、zsh への依存を下げる。
-  # 設定値は home.sessionVariables と一致させてある (XDG 基底は既定値と同じ＝挙動非変更、
-  # env を参照する GUI ツールに XDG を honor させ、gnupg 再生成だけを確実に塞ぐ)。
+  # シェル非依存の env 配布: GUI アプリ / launchd 配下プロセスは zsh の .zshenv
+  # (hm-session-vars.sh の読み手は実質 zsh のみ) を経由しないため、home.sessionVariables
+  # の env を一切受け取れない。最も顕著なのは GNUPGHOME 未設定で gpg が空の ~/.gnupg を
+  # 再生成する事故だが、EDITOR/PAGER/各種 telemetry opt-out/XDG 基底/CARGO_HOME 等も
+  # GUI 側で取り逃す。ログイン時に launchctl setenv で session 全体へ流し込み zsh 依存を断つ。
+  #
+  # ハードコードせず home.sessionVariables から自動生成 (単一ソース・ドリフト防止)。
+  # 値は escapeShellArg で安全化 (MANPAGER 等の空白/引用符を含む値に対応)。
+  # 値に "$" を含む変数 (例: home-manager が注入する TERMINFO_DIRS の
+  # "...:$TERMINFO_DIRS${TERMINFO_DIRS:+:}...") は export 時のシェル展開前提であり、
+  # 展開しない launchctl setenv では壊れる (リテラル $ が入る) ため除外し zsh に委ねる。
   launchd.agents.session-env = {
     enable = true;
     config = {
       ProgramArguments = [
         "/bin/sh"
         "-c"
-        (lib.concatStringsSep " " [
-          "launchctl setenv GNUPGHOME ${config.xdg.dataHome}/gnupg;"
-          "launchctl setenv XDG_CONFIG_HOME ${config.xdg.configHome};"
-          "launchctl setenv XDG_DATA_HOME ${config.xdg.dataHome};"
-          "launchctl setenv XDG_STATE_HOME ${config.xdg.stateHome};"
-          "launchctl setenv XDG_CACHE_HOME ${config.xdg.cacheHome}"
-        ])
+        (lib.concatStringsSep "\n" (
+          lib.mapAttrsToList (
+            name: value: "launchctl setenv ${name} ${lib.escapeShellArg (toString value)}"
+          ) (lib.filterAttrs (_: value: !lib.hasInfix "$" (toString value)) config.home.sessionVariables)
+        ))
       ];
       RunAtLoad = true;
       ProcessType = "Background";
