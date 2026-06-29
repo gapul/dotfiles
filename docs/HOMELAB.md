@@ -248,6 +248,24 @@ VM100 全体は上記 vzdump で取得済み。HA 内蔵の自動バックアッ
 
 ---
 
+## 11. Proxmox 運用改善（2026-06-29）
+
+**実施済み**
+- CT102 `onboot=1`（再起動後も subnet router 復帰）
+- `swappiness=10`、`fail2ban`（sshd jail 有効）
+- **SSH 鍵のみ化**（pve: `PasswordAuthentication no` / `PermitRootLogin prohibit-password`、`/etc/ssh/sshd_config.d/99-hardening.conf`）
+- バックアップ（§10）、CT101 rootfs 96%→51%（未使用イメージ prune + `pct resize 101 rootfs +8G`）
+- `apt dist-upgrade` 157件適用（subscription nag も自動除去）
+
+**未実施 TODO（要・判断/枠/秘密）**
+1. **カーネル再起動**: `7.0.12-1-pve` 導入済だが稼働中は `6.17.4`。`ssh root@192.168.116.100 reboot` で反映（全ゲスト数分停止／DNS主系は Pi のため継続）。
+2. **PVE ファイアウォール**: リモート有効化は見送り。理由＝CT102 が `firewall=1`（要調整）/ pve 自身が Tailscale ノード（UDP 41641 等の許可が要）/ LAN 経由だと tailnet 到達性を検証できずロックアウト時はコンソール復旧のみ。pve は外部非公開＋SSH鍵のみ+fail2ban で実用十分。やるなら **コンソール attended** で。
+3. **root@pam の 2FA**: 未設定（Web UI で TOTP 登録）。
+4. **バックアップ/障害の Discord 通知**: 現状 `mail-to-root`（届かない）。PVE 通知ターゲットに Discord webhook を登録。
+5. **メモリ微オーバーコミット**: 割当 15872MB > 物理 15360MB。CT104(4G→2G)/CT101(6G→4G) で解消可（任意・緊急でない）。
+
+---
+
 ## 関連
 - 各サービス設定: `configs/homelab/{adguard,caddy,forgejo,raspberrypi}/`
 - ラズパイ初期化: `configs/homelab/raspberrypi/bootstrap.sh`
