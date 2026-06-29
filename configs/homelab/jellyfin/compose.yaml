@@ -1,0 +1,12 @@
+services:
+  jellyfin:
+    image: lscr.io/linuxserver/jellyfin:latest
+    container_name: jellyfin
+    environment: [PUID=0, PGID=0, TZ=Asia/Tokyo]
+    volumes:
+      - ./config:/config
+      - ./cache:/cache
+      - /mnt/jellyfin-media:/media
+    devices: ["/dev/dri:/dev/dri"]   # Intel iGPU HWトランスコード(UIでVAAPI有効化)
+    ports: ["8096:8096"]
+    restart: unless-stopped

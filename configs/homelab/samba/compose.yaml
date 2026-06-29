@@ -1,0 +1,10 @@
+# パスワードは git に入れない。実体は CT101 /opt/stacks/samba/.smb-pass (chmod600)
+services:
+  samba:
+    image: mirror.gcr.io/dperson/samba
+    container_name: samba
+    command: -u "gapul;__SMB_PASS__" -s "media;/media;yes;no;no;gapul"
+    environment: [TZ=Asia/Tokyo]
+    volumes: ["/mnt/jellyfin-media:/media"]
+    ports: ["139:139", "445:445"]
+    restart: unless-stopped
