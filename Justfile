@@ -556,3 +556,104 @@ win-keymap *flags:
 [group('Windows')]
 win-fmt:
     pwsh.exe -NoProfile -Command "if (-not (Get-Module -ListAvailable PSScriptAnalyzer)) { Install-Module PSScriptAnalyzer -Force -Scope CurrentUser }; Invoke-ScriptAnalyzer -Path windows -Recurse -Severity Warning -EnableExit -Settings windows/PSScriptAnalyzerSettings.psd1"
+
+# ─────────────────────────────────────────────
+# バックアップ / アーカイブ (restic 1 リポジトリ: google-drive:restic-backup・暗号化)
+#   warm = 無タグ・日次自動 (restic-backup.nix) / cold = --tag archive・手動・永久保持。
+#   重複排除・整合性検証・鍵を共有。共有用 ~/GoogleDrive マウント操作もここに集約。
+# ─────────────────────────────────────────────
+
+# restic 環境 (warm/cold 共通)。$HOME は実行時に bash が展開する
+restic_env := 'export RESTIC_REPOSITORY="rclone:google-drive:restic-backup" RESTIC_PASSWORD_FILE="$HOME/.config/restic/password" RCLONE_CONFIG="$HOME/.config/rclone/rclone.conf"'
+
+# ── warm: 現役ファイル (日次自動。以下は手動操作) ──
+
+# warm バックアップを今すぐ実行 (launchd を kickstart) → ログ追尾 (Ctrl-C で追尾終了・backupは継続)
+[group('バックアップ')]
+backup:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "→ restic warm backup を起動 (launchd kickstart)..."
+    launchctl kickstart -k "gui/$(id -u)/org.nix-community.home.restic-backup"
+    echo "起動済。ログ追尾 (Ctrl-C で終了・バックアップは継続):"
+    exec tail -f "$HOME/Library/Logs/restic-backup.log"
+
+# 全スナップショット一覧 (Tags 列で warm / archive を区別)
+[group('バックアップ')]
+backup-ls:
+    @{{restic_env}}; restic snapshots
+
+# リポジトリ整合性検証 (restic check)
+[group('バックアップ')]
+backup-check:
+    @{{restic_env}}; restic check
+
+# ── cold: アーカイブ (使わなくなったファイルを退避・永久保持) ──
+
+# 使わなくなったファイル/フォルダを restic へ退避しローカルを解放 (--tag archive・永久保持)。
+# 例: `just archive ~/Downloads/old-project`
+[group('バックアップ')]
+archive path:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    {{restic_env}}
+    src="{{path}}"
+    [ -e "$src" ] || { echo "存在しない: $src" >&2; exit 1; }
+    src="$(cd "$(dirname "$src")" && pwd)/$(basename "$src")"   # 絶対パス化
+    sz="$(du -sh "$src" 2>/dev/null | cut -f1)"
+    echo "アーカイブ対象: $src ($sz)"
+    read -rp "restic へ退避後ローカルを削除します。続行? (y/N) " a
+    [[ "$a" == [yY] ]] || { echo "中止"; exit 0; }
+    if restic backup --tag archive "$src"; then
+      echo "✓ 退避完了 (--tag archive・永久保持)。ローカルを削除します。"
+      rm -rf "$src"
+      echo "✓ ローカル削除: $src"
+      echo "  一覧: just archive-ls  /  復元: just restore <snapshotID>"
+    else
+      echo "✗ restic backup 失敗。ローカルは削除していません。" >&2
+      exit 1
+    fi
+
+# アーカイブ (--tag archive) の snapshot 一覧 (ID / 日付 / 元パス)
+[group('バックアップ')]
+archive-ls:
+    @{{restic_env}}; restic snapshots --tag archive
+
+# アーカイブの総容量・ファイル数
+[group('バックアップ')]
+archive-stats:
+    @{{restic_env}}; restic stats --tag archive
+
+# アーカイブ内をファイル名で検索 (restic find・FUSE不要)。どの snapshot に在るか分かる。
+# 例: `just archive-find "*.psd"` / `just archive-find old-project`
+[group('バックアップ')]
+archive-find pattern:
+    @{{restic_env}}; restic find --tag archive "{{pattern}}"
+
+# ── 共通: 復元 / 共有マウント ──
+
+# snapshot から復元 (warm/cold 共通)。既定は元の絶対パスへ。`unarchive` も同義。
+# 例: `just restore a81c9de1`            元の場所へ
+#     `just restore a81c9de1 ~/Restore`  指定先へ (構造を保って展開)
+[group('バックアップ')]
+restore snapshot dest="/":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    {{restic_env}}
+    restic restore "{{snapshot}}" --target "{{dest}}"
+    echo "✓ 復元: snapshot {{snapshot}} → {{dest}}"
+
+alias unarchive := restore
+
+# 共有用 ~/GoogleDrive マウント操作。`just gdrive`=状態 / `remount`=再マウント / `open`=Finderで開く
+[group('バックアップ')]
+gdrive cmd="status":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    mp="$HOME/GoogleDrive"
+    case "{{cmd}}" in
+      status)  mount | grep -q " $mp " && echo "✓ マウント中: $mp" || echo "✗ 未マウント: $mp" ;;
+      remount) launchctl kickstart -k "gui/$(id -u)/org.nix-community.home.rclone-gdrive" && echo "→ 再マウント要求 (数秒後 just gdrive で確認)" ;;
+      open)    open "$mp" ;;
+      *)       echo "usage: just gdrive [status|remount|open]" >&2; exit 2 ;;
+    esac

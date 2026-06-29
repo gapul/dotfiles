@@ -145,6 +145,47 @@ eza / bat が ls / cat を置き換え済(home-manager が auto-alias)。
 
 ---
 
+## 💾 バックアップ / アーカイブ / クラウド (Justfile)
+
+4 層のストレージ階層。実装は `nix/home/restic-backup.nix` / `rclone-mount.nix` のコメント参照。
+
+| 層 | 用途 | 実体 |
+|---|---|---|
+| GitHub + Forgejo | コード(再現可能) | git。GitHub 原本 + 自宅 Forgejo ミラー([HOMELAB.md](./HOMELAB.md)) |
+| restic warm | 現役ファイル(自動・日次) | `google-drive:restic-backup`(暗号化) |
+| restic cold | 使わなくなったファイル(永久保持) | 同リポジトリ `--tag archive` |
+| rclone mount | 他者と共有する平文クラウド | `~/GoogleDrive`(fuse-t・KEXT 不要) |
+
+### warm（現役ファイル・日次自動 + 手動）
+
+| コマンド | 何 |
+|---|---|
+| `just backup` | warm を今すぐ実行(launchd kickstart → ログ追尾) |
+| `just backup-ls` | 全スナップショット一覧(Tags 列で warm/archive 区別) |
+| `just backup-check` | リポジトリ整合性検証(restic check) |
+
+### cold（アーカイブ・使わなくなった物をローカルから退避し永久保持）
+
+| コマンド | 何 |
+|---|---|
+| `just archive <path>` | restic へ退避 → 確認 → ローカル削除(`--tag archive`) |
+| `just archive-ls` | アーカイブした snapshot 一覧(ID/日付/元パス) |
+| `just archive-stats` | アーカイブ総容量・ファイル数 |
+| `just archive-find <pat>` | アーカイブ内をファイル名検索(restic find・FUSE 不要) |
+
+### 復元 / 共有マウント
+
+| コマンド | 何 |
+|---|---|
+| `just restore <id> [dest]` | snapshot から復元(既定は元の絶対パス。alias: `unarchive`) |
+| `just gdrive` | `~/GoogleDrive` のマウント状態確認 |
+| `just gdrive remount` / `open` | 再マウント / Finder で開く |
+
+- cold は append でなく restic の `--keep-tag archive` で永久保持(`forget` で間引かれない)。
+- 共有マウントは **fuse-t(NFS)** なので macFUSE の KEXT/リカバリー不要。`restic`/`google-drive:restic-backup` フォルダはマウントから除外済(誤削除防止)。
+
+---
+
 ## 🛰 リモート
 
 remote の種類別に 4 つの戦略を使い分け:

@@ -168,6 +168,7 @@
       "finnvoor/tools"
       "gerlero/openfoam"
       "gapul/kdeconnect" # imshuhao/kdeconnect の fork。depends_on macos deprecated を修正済
+      "macos-fuse-t/cask" # fuse-t (KEXT-less FUSE。rclone mount 用)
       "nikitabobko/tap"
       "pear-devs/pear"
       "voicevox/voicevox" # VOICEVOX 公式 tap (homebrew/cask 未収録のため必須)
@@ -280,6 +281,7 @@
       "mos"
       "qlmarkdown"
       "corelocationcli"
+      "fuse-t" # KEXT-less FUSE (NFS バックエンド)。rclone mount ~/GoogleDrive 用。KEXT/リカバリー不要
 
       # ─── Privacy / Security ───
       # Objective-See (Patrick Wardle) スイート — 全て無料・notarize 済み
