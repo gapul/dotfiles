@@ -1,0 +1,7 @@
+" ~/.config/vim/vimrc — 素の Vim 用 最小設定 (主エディタは Neovim)
+"
+" Vim 9.1 (>= 9.1.0327) の native XDG 対応により、~/.vimrc と ~/.vim が
+" 存在しない場合このファイル ($XDG_CONFIG_HOME/vim/vimrc) が自動で読まれる。
+" 目的は唯一、$HOME 直下に作られる .viminfo を $XDG_STATE_HOME へ追い出すこと。
+" ディレクトリ $XDG_STATE_HOME/vim は zsh initContent の mkdir で確保済み。
+set viminfofile=$XDG_STATE_HOME/vim/viminfo
