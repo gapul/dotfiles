@@ -10,6 +10,10 @@
     # 26.05 系で揃える (nix-darwin#1462 'USER is root' regression 回避)
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-26.05-darwin";
 
+    # NixOS 実機 (Windows デュアルブートの HP ノート, x86_64) 用。
+    # darwin 系チャンネルと分けて nixos キャッシュにきれいに当てる。
+    nixpkgs-nixos.url = "github:NixOS/nixpkgs/nixos-26.05";
+
     nix-darwin.url = "github:nix-darwin/nix-darwin/nix-darwin-26.05";
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
 
@@ -18,6 +22,10 @@
 
     sops-nix.url = "github:Mic92/sops-nix";
     sops-nix.inputs.nixpkgs.follows = "nixpkgs";
+
+    # NixOS の Secure Boot 対応 (署名付き UKI)。nixos-laptop でのみ使用。
+    lanzaboote.url = "github:nix-community/lanzaboote/v0.4.2";
+    lanzaboote.inputs.nixpkgs.follows = "nixpkgs-nixos";
 
     # コード品質: pre-commit フック宣言 + treefmt (nix fmt)
     git-hooks.url = "github:cachix/git-hooks.nix";
@@ -30,9 +38,11 @@
   outputs =
     {
       nixpkgs,
+      nixpkgs-nixos,
       nix-darwin,
       home-manager,
       sops-nix,
+      lanzaboote,
       git-hooks,
       treefmt-nix,
       ...
@@ -109,6 +119,42 @@
         specialArgs = { inherit user; };
         modules = [ ./hosts/darwin.nix ];
       };
+
+      # NixOS 実機 (Windows デュアルブート): sudo nixos-rebuild switch --flake .#nixos-laptop
+      # home-manager を NixOS モジュールとして組み込み、macOS / WSL と同じ
+      # home/common.nix + home/linux.nix をユーザー設定として共有する。
+      #
+      # hosts/nixos-laptop-hardware.nix は実機で `nixos-generate-config` が吐く
+      # マシン固有ファイル。それが存在するまでは出力ごと生やさず、Mac 上の
+      # `nix flake check` / pre-commit が import 失敗で落ちないようにする。
+      nixosConfigurations =
+        nixpkgs-nixos.lib.optionalAttrs (builtins.pathExists ./hosts/nixos-laptop-hardware.nix)
+          {
+            "nixos-laptop" = nixpkgs-nixos.lib.nixosSystem {
+              system = "x86_64-linux";
+              specialArgs = { inherit user; };
+              modules = [
+                ./hosts/nixos-laptop.nix
+                lanzaboote.nixosModules.lanzaboote
+                home-manager.nixosModules.home-manager
+                {
+                  home-manager.useGlobalPkgs = true;
+                  home-manager.useUserPackages = true;
+                  home-manager.extraSpecialArgs = { inherit user; };
+                  home-manager.users.${user.username} = {
+                    imports = [
+                      ./home/common.nix
+                      ./home/linux.nix
+                      ./home/hyprland.nix # Hyprland リック (nixos-laptop 専用)
+                      ./home/dev.nix # direnv 等の開発環境
+                      ./home/restic-backup-linux.nix # restic (systemd user timer)
+                      sops-nix.homeManagerModules.sops
+                    ];
+                  };
+                }
+              ];
+            };
+          };
 
       # macOS ユーザー設定: home-manager switch --flake .#<username>
       homeConfigurations.${user.username} = home-manager.lib.homeManagerConfiguration {
