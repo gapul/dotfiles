@@ -270,3 +270,34 @@ VM100 全体は上記 vzdump で取得済み。HA 内蔵の自動バックアッ
 - 各サービス設定: `configs/homelab/{adguard,caddy,forgejo,raspberrypi}/`
 - ラズパイ初期化: `configs/homelab/raspberrypi/bootstrap.sh`
 - 汎用チートシート: `docs/CHEATSHEET.md`
+
+---
+
+## 12. メディアサーバー (Jellyfin / Navidrome / Samba)
+
+CT101(dockge) に Docker スタックで配置。メディアは Proxmox `local-lvm` から切り出した専用ボリューム。
+
+### ストレージ
+- CT101 `mp0`: `local-lvm:vm-101-disk-1` (200G) → `/mnt/jellyfin-media`（`pct set 101 -mp0 local-lvm:200,mp=/mnt/jellyfin-media`、稼働中ホットプラグ可）
+- 構成: `/mnt/jellyfin-media/{movies,tv,music}` / リサイズ: `pct resize 101 mp0 +NNG`
+
+### サービス
+| サービス | URL | ポート | スタック |
+|---|---|---|---|
+| Jellyfin(動画) | https://jellyfin.gapul.net | 8096 | `/opt/stacks/jellyfin/` |
+| Navidrome(音楽) | https://navidrome.gapul.net | 4533 | `/opt/stacks/navidrome/` |
+| Samba(共有) | `smb://192.168.116.65/media` | 445 | `/opt/stacks/samba/` |
+
+- Caddy(CT103) で各 `*.gapul.net` → `192.168.116.65:<port>`、Cloudflare A → `100.64.125.107`。
+- Samba: user `gapul` / パスワードは CT101 `/opt/stacks/samba/.smb-pass`(git管理外)。Mac は Finder `⌘K` → `smb://192.168.116.65/media`（tailnetからはCT102 subnet router経由）。
+
+### HWトランスコード (Intel iGPU / Alder Lake-N)
+- `pct set 101 -dev0 /dev/dri/renderD128,gid=993 -dev1 /dev/dri/card1,gid=44`（ホットプラグ可）
+- Jellyfin compose に `devices: [/dev/dri:/dev/dri]`。UI: Dashboard→Playback→Hardware acceleration→**VAAPI**(`/dev/dri/renderD128`)を有効化。
+
+### dash(Homepage) / 監視
+- Homepage `services.yaml` に Media グループ(Jellyfin/Navidrome)追加済み。
+- Uptime Kuma に HTTP モニター追加推奨(各URL)。
+
+### メモ
+- Docker Hub 制限回避: Jellyfin=lscr.io / Navidrome・Samba=mirror.gcr.io。
