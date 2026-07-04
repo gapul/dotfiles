@@ -245,6 +245,7 @@
         };
       } # vim キーバインドの軽量 PDF ビューア (zathura 代替・常用)
       "skim" # ネイティブ SyncTeX ビューア。TeX 執筆用の保険 (連携は後日)
+      "stirling-pdf" # PDF 変換・結合・OCR 等ツール (旧自宅セルフホスト版の代替。完全ローカル処理)
 
       # ─── Image viewers ───
       # qView は ad-hoc 署名のみ (未 notarize)。quarantine 付きだと Gatekeeper に
