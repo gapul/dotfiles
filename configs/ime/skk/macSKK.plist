@@ -163,7 +163,7 @@
 		<key>enableCompletion</key>
 		<true/>
 		<key>enabled</key>
-		<false/>
+		<true/>
 		<key>encoding</key>
 		<integer>4</integer>
 		<key>port</key>
