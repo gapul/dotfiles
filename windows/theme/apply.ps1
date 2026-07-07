@@ -18,6 +18,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+$IsDryRun = [bool]$DryRun
 $DotfilesDir = Join-Path $env:USERPROFILE 'dotfiles'
 $PalettesJson = Join-Path $DotfilesDir 'configs\theme\palettes.json'
 
@@ -64,7 +65,7 @@ function Render-Template {
         $content = [regex]::Replace($content, $placeholder, $prop.Value)
     }
 
-    if ($DryRun) {
+    if ($IsDryRun) {
         Dry "render $TemplatePath -> $OutputPath ($($content.Length) bytes)"
         return
     }

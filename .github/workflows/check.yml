@@ -21,6 +21,7 @@ on:
       - 'windows/**'
       - 'Justfile'
       - '.statix.toml'
+      - '.github/workflows/check.yml'
   schedule:
     # 月曜 09:00 JST = 00:00 UTC — flake.lock が古くなってないか確認
     - cron: '0 0 * * 1'
@@ -110,6 +111,7 @@ jobs:
         uses: gitleaks/gitleaks-action@v2
         env:
           GITLEAKS_CONFIG: ${{ github.workspace }}/.gitleaks.toml
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # pre-commit フック (git-hooks.nix 宣言) をリポ全体に実行。
   # nixfmt-rfc-style / deadnix / gitleaks を nix/ + templates 含め検査。

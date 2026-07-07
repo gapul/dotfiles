@@ -1,4 +1,4 @@
-{ ... }:
+_:
 # 開発環境 (nixos-laptop でのみ import)。
 # podman 等のシステム機能は hosts/nixos-laptop.nix 側、ユーザー寄りはここ。
 {
