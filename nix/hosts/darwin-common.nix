@@ -29,10 +29,11 @@
     if [ -f "$conf" ] && ! /usr/bin/grep -q 'nix-community.cachix.org' "$conf"; then
       printf '\n# nix-community バイナリキャッシュ (trusted-user 付与でなく substituter 限定の最小権限)\nextra-substituters = https://nix-community.cachix.org\nextra-trusted-public-keys = nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs=\n' >> "$conf"
     fi
-    # flakehub を active substituter に。鍵は Determinate が /etc/nix/nix.conf に登録済み。
-    # flake nixConfig を廃して "Using saved setting" ノイズを消す代わりに system 側で宣言。
-    if [ -f "$conf" ] && ! /usr/bin/grep -q 'cache.flakehub.com' "$conf"; then
-      printf '\nextra-substituters = https://cache.flakehub.com\n' >> "$conf"
+    # Determinate Nix already trusts FlakeHub as a substituter, but using it as an
+    # active substituter without the matching credentials produces 401 warnings.
+    if [ -f "$conf" ] && /usr/bin/grep -q 'cache.flakehub.com' "$conf"; then
+      /usr/bin/sed -i.bak '/cache\.flakehub\.com/d' "$conf"
+      /bin/rm -f "$conf.bak"
     fi
     # Application Firewall: 有効化 + ステルスモード (ping/ポートスキャンに無応答)。
     # alf defaults は最新 macOS で効きづらいので公式 socketfilterfw を冪等に叩く。

@@ -30,6 +30,7 @@ rebuild:
 
 [private]
 _rebuild-macos:
+    @-env -u XDG_CONFIG_HOME brew trust --cask gerlero/openfoam/openfoam@2606 >/dev/null
     @-brew list --cask --full-name 2>/dev/null | grep '/' | xargs -I% env -u XDG_CONFIG_HOME brew trust --cask % >/dev/null
     nh darwin switch
     nh home switch
