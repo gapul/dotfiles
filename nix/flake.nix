@@ -120,6 +120,16 @@
         modules = [ ./hosts/darwin.nix ];
       };
 
+      # ヘッドレス LLM ワーカー (M4 Mac mini / 24GB):
+      #   sudo darwin-rebuild switch --flake .#macmini
+      # darwin.nix と darwin-common.nix を共有しつつ、GUI cask を積まず
+      # Ollama を launchd で常駐させる最小構成 (hosts/macmini.nix)。
+      darwinConfigurations.macmini = nix-darwin.lib.darwinSystem {
+        inherit system; # aarch64-darwin 共通
+        specialArgs = { inherit user; };
+        modules = [ ./hosts/macmini.nix ];
+      };
+
       # NixOS 実機 (Windows デュアルブート): sudo nixos-rebuild switch --flake .#nixos-laptop
       # home-manager を NixOS モジュールとして組み込み、macOS / WSL と同じ
       # home/common.nix + home/linux.nix をユーザー設定として共有する。

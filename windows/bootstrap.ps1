@@ -80,6 +80,7 @@ function Dry($msg) { Write-Host "[bootstrap-win][dry] $msg" -ForegroundColor Dar
 # - .exe を直接 Startup に置いても Windows は実行してくれないので .lnk を作る
 # - 既に同 target を指す .lnk があれば no-op、別 target なら .bak に退避
 function New-StartupShortcut {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '', Justification = 'Bootstrap helper uses the script-level -DryRun mode instead of ShouldProcess.')]
     param(
         [Parameter(Mandatory)][string]$Name,        # 'GlazeWM'
         [Parameter(Mandatory)][string]$TargetPath,  # 絶対 path of .exe

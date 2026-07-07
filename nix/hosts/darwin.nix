@@ -1,71 +1,9 @@
-{ pkgs, user, ... }: {
-  nixpkgs.config.allowUnfree = true;
+{ pkgs, ... }: {
+  # host 非依存のベース (nix cache / firewall / security / login hardening 等) は
+  # darwin-common.nix に集約。ここは常用ワークステーション固有の設定のみ置く。
+  imports = [ ./darwin-common.nix ];
 
-  # Determinate Nix が daemon/nix.conf を管理しているので nix-darwin は触らない
-  nix.enable = false;
-
-  # Determinate の nix.conf は `!include nix.custom.conf` するので、そこへ
-  # use-xdg-base-directories を冪等に書き込む。これで nix-env / nix-instantiate
-  # (home-manager / nix-darwin が profile 操作で内部使用) が ~/.nix-defexpr /
-  # ~/.nix-channels を $HOME に再生成せず、~/.local/state/nix/ 配下へ寄せる。
-  # nix-darwin は任意名の system.activationScripts.<name> を実行しない。root で activation
-  # 末尾に走る postActivation に集約する。
-  system.activationScripts.postActivation.text = ''
-    # use-xdg-base-directories を nix.custom.conf へ冪等追記 (nix-env が ~/.nix-defexpr /
-    # ~/.nix-channels を $HOME に再生成せず ~/.local/state/nix/ 配下へ寄せる)。
-    conf=/etc/nix/nix.custom.conf
-    if [ -f "$conf" ] && ! /usr/bin/grep -q '^use-xdg-base-directories' "$conf"; then
-      printf '\n# XDG Base Directory 準拠 (~/.nix-defexpr 等を ~/.local/state/nix へ)\nuse-xdg-base-directories = true\n' >> "$conf"
-    fi
-    # nix-community キャッシュを system 全体で信頼。
-    # セキュリティ最小権限: yuki を trusted-user(実質 root 相当)にはせず、特定 substituter +
-    # その公開鍵だけを root 権限の nix.custom.conf に追記する。これで flake nixConfig の
-    # 'ignoring untrusted substituter' 警告が消え、ユーザーに広い権限を与えない。
-    if [ -f "$conf" ] && ! /usr/bin/grep -q 'nix-community.cachix.org' "$conf"; then
-      printf '\n# nix-community バイナリキャッシュ (trusted-user 付与でなく substituter 限定の最小権限)\nextra-substituters = https://nix-community.cachix.org\nextra-trusted-public-keys = nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs=\n' >> "$conf"
-    fi
-    # flakehub を active substituter に。鍵は Determinate が /etc/nix/nix.conf に登録済み。
-    # flake nixConfig を廃して "Using saved setting" ノイズを消す代わりに system 側で宣言。
-    if [ -f "$conf" ] && ! /usr/bin/grep -q 'cache.flakehub.com' "$conf"; then
-      printf '\nextra-substituters = https://cache.flakehub.com\n' >> "$conf"
-    fi
-    # Application Firewall: 有効化 + ステルスモード (ping/ポートスキャンに無応答)。
-    # alf defaults は最新 macOS で効きづらいので公式 socketfilterfw を冪等に叩く。
-    fw=/usr/libexec/ApplicationFirewall/socketfilterfw
-    "$fw" --setglobalstate on >/dev/null 2>&1 || true
-    "$fw" --setstealthmode on >/dev/null 2>&1 || true
-    # 自動セキュリティ更新 (system レベル defaults。nix-darwin に型付きオプションが無いので
-    # root の postActivation で直接書く)。放置でも XProtect/MRT・セキュリティ応答が最新。
-    su=/Library/Preferences/com.apple.SoftwareUpdate
-    /usr/bin/defaults write "$su" AutomaticCheckEnabled -bool true   >/dev/null 2>&1 || true
-    /usr/bin/defaults write "$su" AutomaticDownload     -bool true   >/dev/null 2>&1 || true
-    /usr/bin/defaults write "$su" CriticalUpdateInstall -bool true   >/dev/null 2>&1 || true  # セキュリティ応答/XProtect
-    /usr/bin/defaults write "$su" ConfigDataInstall     -bool true   >/dev/null 2>&1 || true  # XProtect/MRT 定義
-    /usr/bin/defaults write /Library/Preferences/com.apple.commerce AutoUpdate -bool true >/dev/null 2>&1 || true
-  '';
-
-  system.stateVersion = 5;
-  system.primaryUser = user.username;
-
-  # sudo を Touch ID で認証 (sudo_local は macOS 更新でも残る公式の仕組み)
-  # reattach: zellij/tmux/screen 等のマルチプレクサ内ではセッションが GUI から
-  # 分離され pam_tid が Touch ID ダイアログを出せない。pam_reattach (nixpkgs) を
-  # auth optional で前置し、ユーザの bootstrap session へ再接続させて解決する。
-  security.pam.services.sudo_local = {
-    reattach = true;
-    touchIdAuth = true;
-  };
-
-  users.users.${user.username} = {
-    name = user.username;
-    home = "/Users/${user.username}";
-    shell = pkgs.zsh;
-  };
-
-  programs.zsh.enable = true;
-  environment.shells = [ pkgs.zsh ];
-
-  # macOS 設定 (実機の defaults read で確認した値のみ宣言)
+  # macOS 設定 (GUI/周辺機器寄り。実機の defaults read で確認した値のみ宣言)
   system.defaults = {
     dock = {
       autohide = true;
@@ -84,54 +22,10 @@
       FXDefaultSearchScope = "SCcf";
       CreateDesktop = false;
     };
-    NSGlobalDomain = {
-      ApplePressAndHoldEnabled = false;
-      InitialKeyRepeat = 15;
-      KeyRepeat = 2;
-      NSAutomaticCapitalizationEnabled = false;
-      NSAutomaticDashSubstitutionEnabled = false;
-      NSAutomaticPeriodSubstitutionEnabled = false;
-      NSAutomaticQuoteSubstitutionEnabled = false;
-      NSAutomaticSpellingCorrectionEnabled = false;
-      AppleShowScrollBars = "WhenScrolling";
-      NSDocumentSaveNewDocumentsToCloud = false; # 新規書類を既定で iCloud に上げない
-      # Note: Caps→Esc は Karabiner で処理しているため宣言しない
-      # Note: AppleInterfaceStyle (Dark mode) は明示設定されてないので除外
-    };
     trackpad = {
       Clicking = false;
       TrackpadRightClick = true;
       TrackpadThreeFingerDrag = true;
-    };
-    # スリープ/スクリーンセーバ後すぐにパスワード要求 (離席時の覗き見対策。従来300秒)
-    screensaver = {
-      askForPassword = true;
-      askForPasswordDelay = 0;
-    };
-    # (自動セキュリティ更新は system レベルのため postActivation で defaults write)
-    # ログイン画面ハードニング
-    loginwindow = {
-      GuestEnabled = false; # ゲストアカウント無効
-      SHOWFULLNAME = true; # ユーザー一覧を出さず 名前+PW 入力 (アカウント列挙対策)
-      DisableConsoleAccess = true; # ">console" コンソールログイン禁止
-    };
-    # ブラウザのテレメトリ無効化 (enterprise policy を defaults 経由で宣言)
-    CustomUserPreferences = {
-      # Apple の個人化広告 (ターゲティング) を無効化
-      "com.apple.AdLib".allowApplePersonalizedAdvertising = false;
-      # ネットワーク共有 / USB に .DS_Store を書かない (ローカルは Finder 仕様で抑止不可)
-      "com.apple.desktopservices" = {
-        DSDontWriteNetworkStores = true;
-        DSDontWriteUSBStores = true;
-      };
-      "com.google.Chrome" = {
-        MetricsReportingEnabled = false;
-      };
-      "com.brave.Browser" = {
-        MetricsReportingEnabled = false;
-        BraveStatsPingEnabled = false;
-        BraveP3AEnabled = false;
-      };
     };
   };
 
@@ -170,7 +64,10 @@
       "gapul/kdeconnect" # imshuhao/kdeconnect の fork。depends_on macos deprecated を修正済
       "macos-fuse-t/cask" # fuse-t (KEXT-less FUSE。rclone mount 用)
       "nikitabobko/tap"
+      "osx-cross/arm" # QMK toolchain dependency tap
+      "osx-cross/avr" # QMK / Keyball AVR toolchain tap
       "pear-devs/pear"
+      "qmk/qmk" # QMK CLI
       "voicevox/voicevox" # VOICEVOX 公式 tap (homebrew/cask 未収録のため必須)
 
       # ─── 個人 fork (gapul) — fork した人は不要なら削除 ───
@@ -187,6 +84,10 @@
       # 現状は mpv/yt-dlp の依存だが、それらを消すと孤立して skkeleton が壊れるため明示宣言。
       "deno"
       "swi-prolog" # Prolog (関数・論理型プログラミング実験 第10-12回)
+
+      # ─── Keyboard firmware ───
+      "qmk/qmk/qmk" # QMK CLI (Keyball firmware build/flash)
+      "osx-cross/avr/avr-gcc@12" # Keyball 用 AVR toolchain (keg-only)
 
       # ─── wine 補助 ───
       "winetricks" # wine prefix への DLL/コンポーネント導入ヘルパ
@@ -282,7 +183,7 @@
       "mos"
       "qlmarkdown"
       "corelocationcli"
-      "fuse-t" # KEXT-less FUSE (NFS バックエンド)。rclone mount ~/GoogleDrive 用。KEXT/リカバリー不要
+      "fuse-t" # KEXT-less FUSE (NFS バックエンド)。rclone mount ~/Cloud/GoogleDrive 用。KEXT/リカバリー不要
 
       # ─── Privacy / Security ───
       # Objective-See (Patrick Wardle) スイート — 全て無料・notarize 済み
@@ -350,10 +251,12 @@
       "openutau"
       "pd"
       "reaper"
+      "supercollider"
       "surge-xt" # シンセ standalone/プラグイン (.pkg cask)
       "gapul/zrythm/zrythm" # DAW (gapul 自作 tap)
       "vcv-rack"
       "voicevox/voicevox/voicevox" # 公式 tap 専用 (homebrew/cask 未収録)。tap宣言必須
+      "blackhole-2ch" # OBS / DAW へシステム音声を回す仮想オーディオデバイス
 
       # ─── Creative — Video / Animation / Stream ───
       "iina"
