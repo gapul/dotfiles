@@ -11,8 +11,10 @@ GPU は Intel 内蔵のみ前提。**両 OS とも暗号化 + 署名ブート**�
 
 - `nix/hosts/nixos-laptop.nix` … システム設定 (lanzaboote / LUKS+TPM2 / zram / Intel GPU / Hyprland /
   fcitx5-mozc / tlp / fprintd / podman / tailscale / fwupd)
-- `nix/flake.nix` の `nixosConfigurations."nixos-laptop"` … lanzaboote + home-manager を接続
+- `nix/flake.nix` の `nixosConfigurations."nixos-laptop"` … lanzaboote + disko + home-manager を接続
   (`home/common.nix` + `home/linux.nix` + `home/hyprland.nix` リック + `home/dev.nix` + `home/restic-backup-linux.nix`)
+- `nix/hosts/nixos-laptop-disk.nix` … disko 宣言的レイアウト (LUKS root のみ。`diskoConfigurations` でも公開)
+- `scripts/install-nixos-laptop.sh` … ガード付きインストール補助 (disko を使わない手続き型の選択肢)
 - `nix/hosts/nixos-laptop-hardware.nix` … **実機で生成して後から追加**するマシン固有ファイル (LUKS デバイス UUID もここに入る)
 
 > ⚠️ Windows を消さないこと。ESP (EFI システムパーティション) は**フォーマットせず流用**する。
@@ -85,6 +87,30 @@ USB を挿して PC を起動 → 起動メニュー (`F12` / `F8` / `Esc` / `F1
 minimal はテキストのログイン画面。`sudo -i` で root になり、`nmtui` 等で有線/Wi-Fi を接続しておく。
 
 ## Phase 4. パーティション作成 + LUKS 暗号化
+
+> ⚠️ **前提**: 本リポジトリの NixOS 関連ファイルを **commit & push 済み**にしておくこと
+> (インストーラは github から clone する)。未 push のローカル変更は実機に届かない。
+>
+> **やり方は 3 通り**。いずれも先に「空き領域に `cfdisk` で Linux パーティションを 1 つ作る」まで同じ。
+>
+> **(a) disko (宣言的・推奨)** — ディスクレイアウトをリポジトリで管理。LUKS root **1 パーティションのみ**
+> 管理し GPT/Windows/ESP には触れない (安全)。
+> ```sh
+> nix-shell -p git --run 'git clone https://github.com/gapul/dotfiles.git /tmp/df'
+> # nix/hosts/nixos-laptop-disk.nix の device を実機の Linux パーティションに置換
+> #   (lsblk -o NAME,SIZE,FSTYPE,PATH で確認。絶対にディスク全体/Windows/ESP にしない)
+> sudo disko --mode destroy,format,mount --flake /tmp/df/nix#nixos-laptop  # LUKS+ext4 を /mnt に
+> mount /dev/nvme0n1p1 /mnt/boot          # ESP は disko 管理外。手動マウント (フォーマット禁止)
+> ```
+> 以降は Phase 6 (`nixos-generate-config --root /mnt` …) へ。
+>
+> **(b) 補助スクリプト (ガード付き手続き)** — disko を使わず、デバイス取り違え/NTFS・ESP 誤消去を
+> 機械的に拒否しつつ Phase 4-6 を自動化:
+> ```sh
+> bash /tmp/df/scripts/install-nixos-laptop.sh /dev/nvme0n1p5 /dev/nvme0n1p1
+> ```
+>
+> **(c) 手動** — 下記の詳細手順を 1 つずつ (中身を理解したい場合)。
 
 ```sh
 sudo -i

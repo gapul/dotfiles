@@ -28,6 +28,7 @@ in
         "hyprpaper"
         "mako"
         "wl-paste --watch cliphist store" # クリップボード履歴を蓄積
+        "wl-gammarelay-rs" # ナイトライト用 dbus デーモン
       ];
 
       input = {
@@ -69,8 +70,14 @@ in
         "$mod, F, fullscreen"
         "$mod, L, exec, hyprlock" # 手動ロック
         "$mod, C, exec, cliphist list | wofi --dmenu | cliphist decode | wl-copy" # 履歴貼付
-        # 範囲スクショ → クリップボード
-        ''$mod, P, exec, grim -g "$(slurp)" - | wl-copy''
+        "$mod, Escape, exec, wlogout" # 電源メニュー
+        # スクショ (hyprshot)・カラーピッカー
+        "$mod, P, exec, hyprshot -m region --clipboard-only" # 範囲 → クリップボード
+        "$mod SHIFT, P, exec, hyprshot -m window" # ウィンドウ → 保存
+        "$mod SHIFT, C, exec, hyprpicker -a" # 色を拾ってコピー
+        # ナイトライト (色温度 4000K / 6500K に切替)
+        "$mod SHIFT, N, exec, busctl --user set-property rs.wl-gammarelay / rs.wl.gammarelay Temperature q 4000"
+        "$mod SHIFT, D, exec, busctl --user set-property rs.wl-gammarelay / rs.wl.gammarelay Temperature q 6500"
         # フォーカス移動
         "$mod, left, movefocus, l"
         "$mod, right, movefocus, r"

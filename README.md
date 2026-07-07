@@ -12,8 +12,8 @@ macOS 環境を Nix flake で declarative に管理(nix-darwin + home-manager + 
 
 ```bash
 # 1. Fork ボタン → 自分の repo 名で clone
-git clone git@github.com:<yourname>/dotfiles.git ~/dotfiles
-cd ~/dotfiles
+git clone git@github.com:<yourname>/dotfiles.git ~/.dotfiles
+cd ~/.dotfiles
 
 # 2. nix/user.nix を編集(これだけで全 nix モジュールに反映)
 $EDITOR nix/user.nix

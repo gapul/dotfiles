@@ -1,7 +1,7 @@
 # QoL 設定 (見た目は既定のまま、情報量と操作性だけ向上)
 [mgr]
 linemode       = "size" # 各行にファイルサイズを表示
-show_hidden    = true # dotfiles を常に表示 (毎回 . トグル不要)
+show_hidden    = false # dotfiles を常に表示 (毎回 . トグル不要)
 sort_dir_first = true # ディレクトリを先頭に
 scrolloff      = 5 # カーソル上下に5行の余白
 

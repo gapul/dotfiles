@@ -27,6 +27,10 @@
     lanzaboote.url = "github:nix-community/lanzaboote/v0.4.2";
     lanzaboote.inputs.nixpkgs.follows = "nixpkgs-nixos";
 
+    # disko: 宣言的ディスクレイアウト。nixos-laptop の LUKS root のみ管理 (dual-boot 安全のため)。
+    disko.url = "github:nix-community/disko";
+    disko.inputs.nixpkgs.follows = "nixpkgs-nixos";
+
     # コード品質: pre-commit フック宣言 + treefmt (nix fmt)
     git-hooks.url = "github:cachix/git-hooks.nix";
     git-hooks.inputs.nixpkgs.follows = "nixpkgs";
@@ -43,6 +47,7 @@
       home-manager,
       sops-nix,
       lanzaboote,
+      disko,
       git-hooks,
       treefmt-nix,
       ...
@@ -146,6 +151,11 @@
               modules = [
                 ./hosts/nixos-laptop.nix
                 lanzaboote.nixosModules.lanzaboote
+                disko.nixosModules.disko
+                ./hosts/nixos-laptop-disk.nix
+                # 実行時の fileSystems/luks は生成 hardware-configuration.nix に任せ、
+                # disko は「インストール時のフォーマット/マウントツール」としてのみ使う。
+                { disko.enableConfig = false; }
                 home-manager.nixosModules.home-manager
                 {
                   home-manager.useGlobalPkgs = true;
@@ -165,6 +175,11 @@
               ];
             };
           };
+
+      # disko CLI 用 (ハード設定ファイル不要・guard 外)。インストール時に
+      #   sudo disko --mode destroy,format,mount --flake <repo>/nix#nixos-laptop
+      # で LUKS root パーティションだけを宣言的にフォーマット/マウントする。
+      diskoConfigurations.nixos-laptop = import ./hosts/nixos-laptop-disk.nix;
 
       # macOS ユーザー設定: home-manager switch --flake .#<username>
       homeConfigurations.${user.username} = home-manager.lib.homeManagerConfiguration {

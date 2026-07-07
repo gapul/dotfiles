@@ -208,6 +208,17 @@ in
   };
 
   # macOS 専用 GUI app の config (dotfiles/configs/* → ~/.config に symlink)
+  home.file.".config/qmk/qmk.ini".text = ''
+    [config]
+
+    [user]
+    qmk_home = ${config.home.homeDirectory}/repos/qmk
+
+    [console]
+
+    [general]
+  '';
+
   home.file.".config/ghostty" = {
     source = ../../configs/terminals/ghostty;
     recursive = true;
@@ -467,6 +478,13 @@ in
     /usr/bin/killall cfprefsd 2>/dev/null || true
   '';
 
+  # GUI/IDE 経由で起動する Codex は shell startup file を読まないため、
+  # launchd user session にも XDG 寄せした Codex home を配る。
+  home.activation.codexLaunchdEnv = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    /bin/launchctl setenv CODEX_HOME "${config.xdg.dataHome}/codex"
+    /bin/launchctl setenv CODEX_SQLITE_HOME "${config.xdg.stateHome}/codex/sqlite"
+  '';
+
   # ログイン項目: ヘッドレス起動しない GUI 常駐アプリを auto-launch
   home.activation.macosLoginItems = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     LOGIN_APPS=(
@@ -480,4 +498,15 @@ in
       fi
     done
   '';
+
+  # lazygit: この Mac は XDG_CONFIG_HOME=~/.config を設定しているため、lazygit は
+  # ~/.config/lazygit/config.yml を優先して読む。一方 programs.lazygit は Darwin では
+  # ~/Library/Application Support/lazygit/ に書き出すため、common.nix の theme 設定が
+  # 実際には適用されない (~/.config 側の空ファイルが優先されてしまう)。
+  # そこで programs.lazygit.settings を XDG パスにも生成し、確実に効かせる。
+  # (この定義は Darwin 限定。Linux では HM の lazygit module 自身が同じパスを
+  #  定義するため、common.nix に置くと衝突する)
+  xdg.configFile."lazygit/config.yml".source =
+    (pkgs.formats.yaml { }).generate "lazygit-config.yml"
+      config.programs.lazygit.settings;
 }

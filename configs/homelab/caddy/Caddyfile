@@ -37,7 +37,7 @@ status.gapul.net {
 	tls {
 		dns cloudflare {env.CF_API_TOKEN}
 	}
-	reverse_proxy 192.168.116.65:3001
+	reverse_proxy 192.168.116.53:3001
 }
 
 wud.gapul.net {
@@ -112,4 +112,30 @@ dns2.gapul.net {
 		dns cloudflare {env.CF_API_TOKEN}
 	}
 	reverse_proxy 192.168.116.65:3080
+}
+
+# Syncthing Web GUI (header_up Host は Syncthing の host チェック回避用)
+sync.gapul.net {
+	tls {
+		dns cloudflare {env.CF_API_TOKEN}
+	}
+	reverse_proxy 192.168.116.65:8384 {
+		header_up Host {upstream_hostport}
+	}
+}
+
+# ntfy (プッシュ通知。iOS即時通知のため server.yml に upstream-base-url=ntfy.sh 設定済)
+ntfy.gapul.net {
+	tls {
+		dns cloudflare {env.CF_API_TOKEN}
+	}
+	reverse_proxy 192.168.116.65:8082
+}
+
+# ArchiveBox (Webアーカイブ。非公開・Tailscale内のみ。CSRF_TRUSTED_ORIGINS設定済)
+archive.gapul.net {
+	tls {
+		dns cloudflare {env.CF_API_TOKEN}
+	}
+	reverse_proxy 192.168.116.65:8000
 }

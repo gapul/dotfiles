@@ -84,6 +84,15 @@
     flake = "/home/${user.username}/.dotfiles/nix";
   };
 
+  # nix-ld: NixOS で「普通の Linux バイナリ」(langserver / VSCode 拡張 / prebuilt CLI) を
+  # そのまま動かせるようにする。NixOS の dev 体験で一番効く小細工。
+  programs.nix-ld.enable = true;
+  # nix-index: `,` (comma) で未インストールのコマンドを一時実行、command-not-found も提供。
+  programs.nix-index.enable = true;
+
+  # メモリ枯渇でフリーズする前に重いプロセスを落とす (ノートの低 RAM 保険)。
+  services.earlyoom.enable = true;
+
   # ファーム更新を Linux 側から意図したタイミングで行う。BIOS の不意更新で
   # Secure Boot 鍵 / TPM 測定値が変わって回復キーを要求される事故を減らせる。
   services.fwupd.enable = true;
@@ -243,6 +252,20 @@
     slurp # 範囲選択 (grim と併用)
     brightnessctl # 画面輝度
     playerctl # メディアキー
+
+    # ギーク向け CLI
+    comma # `, <cmd>` で未インストールのコマンドを実行 (nix-index と連携)
+    distrobox # 他ディストロの userland を podman 上で (Arch/Ubuntu ツール混在)
+    lazydocker # podman/docker の TUI
+    btop # システムモニタ
+    fastfetch # システム情報表示
+    nvtopPackages.intel # GPU モニタ (Intel)
+
+    # Hyprland QoL
+    hyprpicker # カラーピッカー
+    hyprshot # スクショ (ウィンドウ/範囲/画面)
+    wlogout # 電源メニュー
+    wl-gammarelay-rs # 色温度 (ナイトライト) を dbus で制御
   ];
 
   # NTFS の Windows パーティションを読み書きするなら有効化 (任意)
