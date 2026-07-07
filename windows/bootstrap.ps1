@@ -79,6 +79,7 @@ function Dry($msg) { Write-Host "[bootstrap-win][dry] $msg" -ForegroundColor Dar
 # Startup フォルダに `.lnk` shortcut を冪等に配置。
 # - .exe を直接 Startup に置いても Windows は実行してくれないので .lnk を作る
 # - 既に同 target を指す .lnk があれば no-op、別 target なら .bak に退避
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '', Justification = 'Bootstrap helper uses the script-level -DryRun mode instead of ShouldProcess.')]
 function New-StartupShortcut {
     param(
         [Parameter(Mandatory)][string]$Name,        # 'GlazeWM'
