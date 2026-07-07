@@ -95,9 +95,9 @@
       preCommit = git-hooks.lib.${system}.run {
         src = ./.;
         hooks = {
-          # 整形は per-file の nixfmt-rfc-style を使う (flake が nix/ にあるため
+          # 整形は per-file の nixfmt を使う (flake が nix/ にあるため
           # treefmt フックは git ルートから root 検出に失敗する。treefmt は nix fmt 専用)。
-          nixfmt-rfc-style.enable = true;
+          nixfmt.enable = true;
           # statix は repeated_keys 等が module 記述と相性悪く、--config パスが
           # flake/git-root で一意にできないため enforced から除外。
           # 手動チェックは `nix run nixpkgs#statix -- check nix` で可能。
