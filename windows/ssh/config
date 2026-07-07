@@ -1,0 +1,7 @@
+Host macbook-mini
+  HostName 100.67.200.89
+  User gapul
+  IdentityFile ~/.ssh/id_ed25519
+  IdentitiesOnly yes
+  ServerAliveInterval 30
+  ServerAliveCountMax 3

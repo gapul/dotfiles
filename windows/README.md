@@ -9,6 +9,8 @@ WSL2 側の Linux 環境は `~/.dotfiles/nix/home/wsl.nix` で別管理。
 windows/
 ├── README.md
 ├── bootstrap.ps1                              # 0→1 セットアップ
+├── ssh/
+│   └── config                                 # Windows OpenSSH 接続先
 ├── profile/
 │   └── Microsoft.PowerShell_profile.ps1       # $PROFILE
 ├── winget/
@@ -39,8 +41,9 @@ git clone https://github.com/gapul/dotfiles.git $env:USERPROFILE\dotfiles
 3. PowerShell `$PROFILE` を symlink (`profile/Microsoft.PowerShell_profile.ps1`)
 4. Windows Terminal の `settings.json` を生成 (`__WSL_USER__`/`__WSL_DISTRO__` を実値へ置換。
    既定は `-WslUser $env:USERNAME -WslDistro Ubuntu`、別ユーザー/distro は引数で上書き)
-5. age 鍵 / SSH 鍵が在れば ACL を本人のみに制限 (icacls)。無ければ警告
-6. git の global config 設定
+5. Windows OpenSSHのconfigを `%USERPROFILE%\.ssh\config` へsymlink
+6. age 鍵 / SSH 鍵が在れば ACL を本人のみに制限 (icacls)。無ければ警告
+7. git の global config 設定
 
 ## 何が含まれない
 

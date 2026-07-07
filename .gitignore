@@ -22,6 +22,7 @@ result-*
 *.log
 *.tmp
 tmp/
+node_modules/
 
 # バックアップ残骸 (clean-junk 対象。コミットしない)
 *.bak

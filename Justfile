@@ -19,6 +19,9 @@ default:
 #   ~/.homebrew/trust.json を読むが、対話シェルは XDG 優先で ~/.config/homebrew に逸れる。
 #   そこで env -u XDG_CONFIG_HOME で ~/.homebrew に揃える。cask は新 brew が Brewfile の
 #   trusted:true を無視するため毎回再 trust が必要。詳細: memory project_homebrew_trust_sudo
+#   tap も同様: brew bundle は成功時に trust.json を書き戻して trustedtaps を毎回消すため、
+#   非公式 tap (qmk/qmk, osx-cross/avr 等) を activation 前に毎回再 trust する。直接指定の
+#   formula は残るが、その依存 (avr-binutils, hid_bootloader_cli 等) が tap 信頼を要求する。
 
 # システム + ユーザー再構築 (Mac/WSL/Win 自動判別、普段使い)
 #   - macos: brew trust → nh darwin switch → nh home switch
@@ -30,6 +33,7 @@ rebuild:
 
 [private]
 _rebuild-macos:
+    @-brew tap 2>/dev/null | grep -v '^homebrew/' | xargs -I% env -u XDG_CONFIG_HOME brew trust % >/dev/null
     @-env -u XDG_CONFIG_HOME brew trust --cask gerlero/openfoam/openfoam@2606 >/dev/null
     @-brew list --cask --full-name 2>/dev/null | grep '/' | xargs -I% env -u XDG_CONFIG_HOME brew trust --cask % >/dev/null
     nh darwin switch
@@ -160,8 +164,8 @@ check what="":
       *)    echo "usage: just check [diff]" >&2; exit 2 ;;
     esac
 
-# パッケージ検索  (`just search <q>` = brew+nixpkgs, `just search <q> all` = + cargo + npm)
-# all は nix/brew に無い ecosystem 限定ツール (slidev 等) の発見用。既定はノイズ少なめ。
+# パッケージ検索  (`just search <q>` = brew+nixpkgs, `just search <q> all` = + cargo)
+# all は nix/brew に無い ecosystem 限定ツールの発見用。既定はノイズ少なめ。
 [group('確認')]
 search query scope="":
     #!/usr/bin/env bash
@@ -175,14 +179,11 @@ search query scope="":
     # nh search は search.nixos.org API 依存で不安定なため nix search を使用
     # (eval キャッシュが効くので 2 回目以降は数秒。警告は抑制)
     nix search nixpkgs {{query}} 2>/dev/null || echo "  (none)"
-    # all のときだけ ecosystem 限定 (cargo / npm) も横断
+    # all のときだけ ecosystem 限定 (cargo) も横断
     if [ "{{scope}}" = "all" ]; then
       echo ""
       echo "━━━ crates.io (cargo) ━━━"
       cargo search {{query}} 2>&1 | head -10 || echo "  (none)"
-      echo ""
-      echo "━━━ npm registry ━━━"
-      npm search {{query}} 2>&1 | head -10 || echo "  (none)"
     fi
 
 # 更新可能なものを一覧 (upgrade 前のプレビュー。brew + mas + flake inputs。非破壊)
@@ -256,7 +257,7 @@ fmt:
 # 掃除 (clean / GC・ゴミファイル)
 # ─────────────────────────────────────────────
 
-# 全レイヤー一括 GC (nix store + brew + pnpm + uv + npm + ~/.Trash 等)
+# 全レイヤー一括 GC (nix store + brew + pnpm + uv + ~/.Trash 等)
 [group('掃除')]
 gc:
     #!/usr/bin/env bash
@@ -272,9 +273,6 @@ gc:
     echo ""
     echo "━━━ uv cache ━━━"
     command -v uv >/dev/null && uv cache prune 2>&1 | tail -2 || true
-    echo ""
-    echo "━━━ npm cache ━━━"
-    command -v npm >/dev/null && npm cache verify 2>&1 | tail -2 || true
     echo ""
     echo "━━━ cargo (large build artifacts only, keep registry) ━━━"
     command -v cargo-cache >/dev/null && cargo cache --autoclean 2>&1 | tail -2 || echo "  (cargo-cache not installed, skip)"
@@ -561,7 +559,7 @@ win-fmt:
 # ─────────────────────────────────────────────
 # バックアップ / アーカイブ (restic 1 リポジトリ: google-drive:restic-backup・暗号化)
 #   warm = 無タグ・日次自動 (restic-backup.nix) / cold = --tag archive・手動・永久保持。
-#   重複排除・整合性検証・鍵を共有。共有用 ~/GoogleDrive マウント操作もここに集約。
+#   重複排除・整合性検証・鍵を共有。共有用 ~/Cloud/GoogleDrive マウント操作もここに集約。
 # ─────────────────────────────────────────────
 
 # restic 環境 (warm/cold 共通)。$HOME は実行時に bash が展開する
@@ -646,12 +644,12 @@ restore snapshot dest="/":
 
 alias unarchive := restore
 
-# 共有用 ~/GoogleDrive マウント操作。`just gdrive`=状態 / `remount`=再マウント / `open`=Finderで開く
+# 共有用 ~/Cloud/GoogleDrive マウント操作。`just gdrive`=状態 / `remount`=再マウント / `open`=Finderで開く
 [group('バックアップ')]
 gdrive cmd="status":
     #!/usr/bin/env bash
     set -euo pipefail
-    mp="$HOME/GoogleDrive"
+    mp="$HOME/Cloud/GoogleDrive"
     case "{{cmd}}" in
       status)  mount | grep -q " $mp " && echo "✓ マウント中: $mp" || echo "✗ 未マウント: $mp" ;;
       remount) launchctl kickstart -k "gui/$(id -u)/org.nix-community.home.rclone-gdrive" && echo "→ 再マウント要求 (数秒後 just gdrive で確認)" ;;

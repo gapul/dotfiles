@@ -54,6 +54,8 @@ in
       # ── 動的 path (HOME / XDG 依存、JSON 化不可) ──
       SOPS_AGE_KEY_FILE = "${config.home.homeDirectory}/.config/sops/age/keys.txt";
       CLAUDE_CONFIG_DIR = "${config.home.homeDirectory}/.config/claude";
+      CODEX_HOME = "${config.xdg.dataHome}/codex";
+      CODEX_SQLITE_HOME = "${config.xdg.stateHome}/codex/sqlite";
 
       # XDG Base Directory: 実行時に $XDG_* を参照する CLI 向けに明示 export
       # (home-manager はビルド時に config.xdg.* を展開するだけで env には出さないため)
@@ -66,24 +68,30 @@ in
       # GNUPGHOME で明示。dir perms は 700 必須 (移設時に chmod 済み)。
       GNUPGHOME = "${config.xdg.dataHome}/gnupg";
 
-      # cargo / npm / bundler を XDG 配下に
+      # cargo / bundler を XDG 配下に
       CARGO_HOME = "${config.xdg.dataHome}/cargo";
-      NPM_CONFIG_CACHE = "${config.xdg.cacheHome}/npm";
-      NPM_CONFIG_USERCONFIG = "${config.xdg.configHome}/npm/npmrc";
       BUNDLE_USER_CONFIG = "${config.xdg.configHome}/bundle/config";
       BUNDLE_USER_CACHE = "${config.xdg.cacheHome}/bundle";
       BUNDLE_USER_PLUGIN = "${config.xdg.dataHome}/bundle/plugin";
+
+      # npm: 上流既定の ~/.npmrc / ~/.npm / ~/.npm-global 相当を XDG 配下へ寄せる。
+      NPM_CONFIG_USERCONFIG = "${config.xdg.configHome}/npm/npmrc";
+      NPM_CONFIG_CACHE = "${config.xdg.cacheHome}/npm";
+      NPM_CONFIG_PREFIX = "${config.xdg.dataHome}/npm";
     };
 
   home.sessionPath = [
     "${config.home.homeDirectory}/.local/bin" # uv tool 経由のバイナリ
     "${config.home.homeDirectory}/bin" # home.file."bin/*" 経由のスクリプト
     "${config.xdg.dataHome}/cargo/bin" # cargo install のバイナリ (CARGO_HOME/bin)
+    "${config.xdg.dataHome}/npm/bin" # npm install -g のバイナリ (NPM_CONFIG_PREFIX/bin)
   ];
 
-  # npm (Homebrew) 用 XDG npmrc。NPM_CONFIG_USERCONFIG の指す実体
-  xdg.configFile."npm/npmrc".text = ''
-    cache=${config.xdg.cacheHome}/npm
+  # pnpm グローバル設定 (pnpm 11+ は YAML)。NPM_CONFIG_USERCONFIG とは別系統。
+  # サプライチェーン対策: 公開14日(20160分)未満のバージョンは取得しない。
+  # 緊急時のみ: pnpm install --config.minimumReleaseAge=0
+  xdg.configFile."pnpm/config.yaml".text = ''
+    minimumReleaseAge: 20160
   '';
 
   # /nix が壊れてもシェルが起動できるようガード付き .zshenv を内製
@@ -95,12 +103,20 @@ in
       # __HM_SESS_VARS_SOURCED ガードで再 source されず空になる事故 (古いシェル / GUI 起動)
       # を避けるため、ガード無しの .zshenv でも明示 export しておく。
       export CLAUDE_CONFIG_DIR="$HOME/.config/claude"
+      # Codex は XDG を直接分割参照しないため、公式の CODEX_HOME で
+      # ~/.codex から XDG data/state 配下へ寄せる。
+      export CODEX_HOME="$HOME/.local/share/codex"
+      export CODEX_SQLITE_HOME="$HOME/.local/state/codex/sqlite"
       # HISTFILE も .zshrc を読まない古い/GUI 起動シェルが ~/.zsh_history へ
       # 漏らさないよう、ガード無しの .zshenv で XDG パスを先に固定しておく。
       export HISTFILE="$HOME/.local/state/zsh/history"
       # GNUPGHOME も同様。未設定の zsh から gpg を叩くと空の ~/.gnupg を
       # 再生成してしまうため、ガード無しの .zshenv で先に固定しておく。
       export GNUPGHOME="$HOME/.local/share/gnupg"
+      # npm も XDG 非対応の既定 (~/.npmrc / ~/.npm) を環境変数で固定する。
+      export NPM_CONFIG_USERCONFIG="$HOME/.config/npm/npmrc"
+      export NPM_CONFIG_CACHE="$HOME/.cache/npm"
+      export NPM_CONFIG_PREFIX="$HOME/.local/share/npm"
       if [ -e /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]; then
         # nix-daemon.sh は ~/.nix-profile と新 profile が両方あると
         # "safely delete either" 警告を stderr に出す。両 symlink は意図的に
@@ -115,9 +131,33 @@ in
   # login(1) の "Last login: ..." 行を抑止 (macOS 標準挙動・非破壊)。
   home.file.".hushlogin".text = "";
 
+  # ユーザーが直接扱う同期/クラウドデータの置き場。
+  # XDG は app config/cache/state 向けなので、Google Drive mount や Syncthing
+  # 共有フォルダのような user data は HOME 直下のカテゴリにまとめる。
+  home.activation.userDataDirs = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    /bin/mkdir -p \
+      "${config.home.homeDirectory}/Cloud" \
+      "${config.home.homeDirectory}/Sync" \
+      "${config.xdg.dataHome}/codex" \
+      "${config.xdg.stateHome}/codex/sqlite" \
+      "${config.xdg.configHome}/npm" \
+      "${config.xdg.cacheHome}/npm" \
+      "${config.xdg.dataHome}/npm"
+  '';
+
   programs.zsh = {
     enable = true;
     dotDir = "${config.xdg.configHome}/zsh"; # XDG: zsh設定一式を ~/.config/zsh/ へ (ZDOTDIR)。HM 26.05 は絶対パス必須
+
+    envExtra = ''
+      # ZDOTDIR が既に環境にある zsh は ~/.zshenv ではなく
+      # $ZDOTDIR/.zshenv を読むため、XDG 寄せはここにも置く。
+      export CODEX_HOME="$HOME/.local/share/codex"
+      export CODEX_SQLITE_HOME="$HOME/.local/state/codex/sqlite"
+      export NPM_CONFIG_USERCONFIG="$HOME/.config/npm/npmrc"
+      export NPM_CONFIG_CACHE="$HOME/.cache/npm"
+      export NPM_CONFIG_PREFIX="$HOME/.local/share/npm"
+    '';
 
     # XDG 化: history → ~/.local/state/zsh/, 補完dump → ~/.cache/zsh/
     history.path = "${config.xdg.stateHome}/zsh/history";
@@ -441,6 +481,7 @@ in
       diff.colorMoved = "default";
       gpg.format = "ssh";
       "gpg \"ssh\"".allowedSignersFile = "${config.home.homeDirectory}/.ssh/allowed_signers";
+      "gpg \"ssh\"".program = "${config.home.homeDirectory}/.dotfiles/scripts/git-ssh-keygen-bitwarden";
     };
   };
 
@@ -571,6 +612,7 @@ in
       "vpn/wgcf".path = "${config.home.homeDirectory}/.config/wireguard/wgcf-profile.conf";
       "rclone_conf".path = "${config.home.homeDirectory}/.config/rclone/rclone.conf";
       "ssh_config".path = "${config.home.homeDirectory}/.ssh/config";
+      "ssh_authorized_keys".path = "${config.home.homeDirectory}/.ssh/authorized_keys";
 
       # PII 単一ソース
       "pii/name" = { };
@@ -639,6 +681,11 @@ in
 
   home.file.".config/starship.toml".source = ../../configs/shell/starship.toml;
   home.file.".config/gh/config.yml".source = ../../configs/cli/gh/config.yml;
+  # Codex: 上流は ~/.codex 既定だが、CODEX_HOME で XDG data 配下へ移す。
+  # auth/history/skills/plugins は CODEX_HOME、SQLite は CODEX_SQLITE_HOME に分離。
+  # TUI から設定が更新されても repo に反映されるよう out-of-store symlink にする。
+  xdg.dataFile."codex/config.toml".source =
+    config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.dotfiles/configs/cli/codex/config.toml";
   home.file.".config/textlint" = {
     source = ../../configs/textlint;
     recursive = true;

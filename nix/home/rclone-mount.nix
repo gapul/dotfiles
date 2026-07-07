@@ -4,7 +4,7 @@
   lib,
   ...
 }:
-# rclone で Google Drive (My Drive) を平文のまま ~/GoogleDrive にマウント (macOS 専用)。
+# rclone で Google Drive (My Drive) を平文のまま ~/Cloud/GoogleDrive にマウント (macOS 専用)。
 # 用途は cold アーカイブではなく「他者との共有・連携」。暗号化しないのは Web UI や
 # 共有相手から普通に見えてほしいため。
 #
@@ -32,7 +32,7 @@ let
   home = config.home.homeDirectory;
 
   remote = "google-drive:"; # My Drive ルート (平文)
-  mountPoint = "${home}/GoogleDrive";
+  mountPoint = "${home}/Cloud/GoogleDrive";
   rcloneConf = "${home}/.config/rclone/rclone.conf";
   cacheDir = "${home}/.cache/rclone";
   logFile = "${home}/Library/Logs/rclone-gdrive.log";
@@ -80,7 +80,7 @@ let
     set -uo pipefail
     ${notify}
     if ! mount | grep -q " ${mountPoint} "; then
-      notify "☁️ GoogleDrive 未マウント" "~/GoogleDrive が外れています。ログ: ${logFile}"
+      notify "☁️ GoogleDrive 未マウント" "~/Cloud/GoogleDrive が外れています。ログ: ${logFile}"
       exit 0
     fi
     # マウントはされているが読めない (stale) ケースも検知
@@ -93,9 +93,12 @@ in
   home.packages = [ pkgs.rclone ];
 
   launchd.agents = {
-    # 常時マウント (落ちたら再マウント)
+    # 旧 ~/Cloud/GoogleDrive マウントは廃止。
+    # 現在は手動管理の LaunchAgent で personal/school を別々にマウントする:
+    #   ~/Cloud/GoogleDrive-personal -> google-drive-personal:
+    #   ~/Cloud/GoogleDrive-school   -> google-drive-school:
     rclone-gdrive = {
-      enable = true;
+      enable = false;
       config = {
         ProgramArguments = [ "${mountScript}" ];
         RunAtLoad = true;
@@ -106,9 +109,9 @@ in
         StandardErrorPath = "${logFile}";
       };
     };
-    # 日次 19:30 死活監視 (restic-monitor 19:00 の後)
+    # 旧 ~/Cloud/GoogleDrive の死活監視も廃止。
     rclone-gdrive-monitor = {
-      enable = true;
+      enable = false;
       config = {
         ProgramArguments = [ "${monitorScript}" ];
         StartCalendarInterval = [
