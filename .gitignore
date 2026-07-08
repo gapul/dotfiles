@@ -39,6 +39,9 @@ configs/wallpaper/state.js
 configs/cli/calcurse/caldav/config
 configs/ssh/config
 
+# gh CLI が oauth_token を自動書き込みするため非追跡 (中身は secret)
+configs/cli/gh/hosts.yml
+
 # git-hooks.nix が生成 (nix develop で再生成・store パス依存のため非追跡)
 .pre-commit-config.yaml
 
