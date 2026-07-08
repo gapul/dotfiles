@@ -14,13 +14,9 @@
 # 色そのものは configs/theme/palettes.json で palettes."<name>" として保管。
 let
   data = builtins.fromJSON (builtins.readFile ../../configs/theme/palettes.json);
-  inherit (data) active;
-  dark = data.palettes."rose-pine";
-  light = data.palettes."rose-pine-dawn";
-  palettes = {
-    "rose-pine" = dark;
-    "rose-pine-dawn" = light;
-  };
+  inherit (data) active palettes;
+  dark = palettes."rose-pine";
+  light = palettes."rose-pine-dawn";
 in
 # active パレットを top-level に展開しつつ (既存の c.base 等を維持)、
 # dark/light 両方も c.dark / c.light で参照可能にする (macOS 外観追従の生成に使う)。

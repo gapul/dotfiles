@@ -354,7 +354,7 @@ gc-deep:
 # ─────────────────────────────────────────────
 
 # NOTE: aerospace はフル再起動 = ワークスペース配置がリセットされるので明示指定 (aerospace/all) 時のみ。
-#       borders の設定は ~/.config/borders/bordersrc に集約済 (configs/wm/borders/bordersrc が単一ソース)
+#       borders の設定は ~/.config/borders/bordersrc に集約済 (nix/home/darwin.nix の home.file が単一ソース)
 #       なので引数なし `borders` で起動すれば bordersrc が読まれる。
 # メニューバー/WM 系を再起動 (`just restart`=バー周り / 個別: sketchybar|borders|aerospace / all=全部)
 [group('サービス')]

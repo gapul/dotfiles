@@ -48,15 +48,16 @@ def find_cwd(d):
     # dir 内(再帰)の jsonl から最初に見つかる cwd
     for f in sorted(glob.glob(os.path.join(d, "**", "*.jsonl"), recursive=True)):
         try:
-            for line in open(f, errors="ignore"):
-                if '"cwd"' not in line:
-                    continue
-                try:
-                    o = json.loads(line)
-                except Exception:
-                    continue
-                if o.get("cwd"):
-                    return o["cwd"]
+            with open(f, errors="ignore") as fh:
+                for line in fh:
+                    if '"cwd"' not in line:
+                        continue
+                    try:
+                        o = json.loads(line)
+                    except Exception:
+                        continue
+                    if o.get("cwd"):
+                        return o["cwd"]
         except Exception:
             pass
     return None

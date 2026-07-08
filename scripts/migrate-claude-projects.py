@@ -16,7 +16,8 @@ import json, os, glob, shutil, sys
 F = os.path.expanduser("~/.config/claude/.claude.json")
 ROOT = os.path.expanduser("~/Developer/github.com")
 
-data = json.load(open(F))
+with open(F) as fh:
+    data = json.load(fh)
 proj = data.get("projects", {})
 
 # basename(lower) -> set(paths)
@@ -88,7 +89,8 @@ for tgt, srcs in groups.items():
 tmp = F + ".tmp"
 with open(tmp, "w") as fh:
     json.dump(data, fh, ensure_ascii=False, indent=2)
-json.load(open(tmp))  # 妥当性確認
+with open(tmp) as fh:
+    json.load(fh)  # 妥当性確認
 os.replace(tmp, F)
 
 print(f"backup: {bak}")
