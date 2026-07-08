@@ -230,11 +230,33 @@ function Test-DotfilesSetup {
     if ($sm) { Write-Host "  [ok]   Scancode Map 書込済 ($($sm.'Scancode Map'.Length) bytes、再起動で反映)" -ForegroundColor Green; $pass++ }
     else { Write-Host "  [warn] Scancode Map 未設定 — just win-keymap" -ForegroundColor Yellow }
 
-    Write-Host '== Bitdefender (Defender 代替 AV) ==' -ForegroundColor Cyan
+    Write-Host '== セキュリティ (AV / Firewall) ==' -ForegroundColor Cyan
+    # Bitdefender (一次 AV)
     $bdsvc = Get-Service BDAppSrv -ErrorAction SilentlyContinue
     if ($bdsvc -and $bdsvc.Status -eq 'Running') {
-        Write-Host "  [ok]   Bitdefender 稼働中 (Defender は自動待機モード)" -ForegroundColor Green; $pass++
+        Write-Host "  [ok]   Bitdefender (BDAppSrv) 稼働中" -ForegroundColor Green; $pass++
     } else { Write-Host "  [warn] Bitdefender 未稼働 — winget install Bitdefender.Bitdefender" -ForegroundColor Yellow }
+
+    # Defender 状態 (Bitdefender が AV Provider 登録 → Passive 期待)
+    $mp = Get-MpComputerStatus -ErrorAction SilentlyContinue
+    if ($mp) {
+        switch ($mp.AMRunningMode) {
+            'Passive' { Write-Host "  [ok]   Defender: Passive (Bitdefender に主導権)" -ForegroundColor Green; $pass++ }
+            'Normal'  { Write-Host "  [warn] Defender: Normal — Bitdefender が AV Provider 登録できていない" -ForegroundColor Yellow }
+            default   { Write-Host "  [warn] Defender: $($mp.AMRunningMode) — 期待は Passive (Bitdefender uninstall 時に自動復帰しない可能性)" -ForegroundColor Yellow }
+        }
+    } else { Write-Host "  [warn] Get-MpComputerStatus 取得不可 (Defender モジュール無効)" -ForegroundColor Yellow }
+
+    # simplewall (outbound firewall - GUI activate 必要)
+    if (Get-Process simplewall -ErrorAction SilentlyContinue) {
+        Write-Host "  [ok]   simplewall 稼働中 (filter mode active)" -ForegroundColor Green; $pass++
+    } else { Write-Host "  [warn] simplewall 未起動 — Start-Process 'C:\Program Files\simplewall\simplewall.exe' → Filter mode activate" -ForegroundColor Yellow }
+
+    # Malwarebytes (セカンド AV)
+    $mb = Get-Service MBAMService -ErrorAction SilentlyContinue
+    if ($mb -and $mb.Status -eq 'Running') {
+        Write-Host "  [ok]   Malwarebytes (MBAMService) 稼働中" -ForegroundColor Green; $pass++
+    } else { Write-Host "  [warn] Malwarebytes 未稼働 — winget install Malwarebytes.Malwarebytes" -ForegroundColor Yellow }
 
     Write-Host ''
     Write-Host "Result: $pass passed, $fail failed" -ForegroundColor ($(if ($fail -eq 0) { 'Green' } else { 'Yellow' }))
