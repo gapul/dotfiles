@@ -53,9 +53,10 @@ elseif is_windows then
 end
 
 -- ─── タイトルバー (Ghostty: macos-titlebar-style = hidden) ───
-if is_macos then
-  config.window_decorations = 'RESIZE'
-end
+-- Mac/Win 両方でタイトルバーを消す。
+-- 注意: 'NONE' は WS_POPUP 相当になり GlazeWM が tiling 対象外と判定 (最大 or 元サイズの 2 択に)。
+-- 'RESIZE' なら title 無し + resize 枠ありで GlazeWM の tiling に正しく乗る。
+config.window_decorations = 'RESIZE'
 
 -- ─── タブバー: 1 タブ時は非表示 ───
 config.hide_tab_bar_if_only_one_tab = true
