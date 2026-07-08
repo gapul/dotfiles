@@ -10,7 +10,7 @@ general:
   startup_commands: []
   shutdown_commands: []
   config_reload_commands: []
-  focus_follows_cursor: true
+  focus_follows_cursor: false
   toggle_workspace_on_refocus: true
   cursor_jump:
     enabled: false
