@@ -28,6 +28,7 @@ default:
 #   - linux (WSL): nh home switch (labpc-wsl entry)
 #   - windows: pwsh で bootstrap.ps1 を回す
 [group('構築')]
+[doc('システム + ユーザー再構築 (Mac/WSL/Win 自動判別、普段使い)')]
 rebuild:
     @just _rebuild-{{os()}}
 
@@ -167,6 +168,7 @@ check what="":
 # パッケージ検索  (`just search <q>` = brew+nixpkgs, `just search <q> all` = + cargo)
 # all は nix/brew に無い ecosystem 限定ツールの発見用。既定はノイズ少なめ。
 [group('確認')]
+[doc('パッケージ検索 (`just search <q>` = brew+nixpkgs, `just search <q> all` = + cargo)')]
 search query scope="":
     #!/usr/bin/env bash
     set -u
@@ -423,12 +425,36 @@ dev what="":
 ssh host:
     nssh {{host}}
 
+# README のコマンド一覧は手書きだと Justfile と乖離するので `just --list` を単一ソースとし、
+# マーカー <!-- BEGIN/END just-list --> の間へ流し込む。レシピを追加/変更したらこれを再実行。
+# CI 等での乖離検知は `just docs && git diff --exit-code README.md`。
+# README の自動生成部を `just --list` から再生成
+[group('セットアップ')]
+docs:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{justfile_directory()}}"
+    just --list --list-heading '' | python3 -c '
+    import pathlib, sys
+    readme = pathlib.Path("README.md")
+    text = readme.read_text()
+    begin, end = "<!-- BEGIN just-list -->", "<!-- END just-list -->"
+    if begin not in text or end not in text:
+        sys.exit("README.md にマーカーが無い")
+    pre, rest = text.split(begin, 1)
+    _, post = rest.split(end, 1)
+    body = sys.stdin.read().strip("\n")
+    readme.write_text(pre + begin + "\n```text\n" + body + "\n```\n" + end + post)
+    '
+    echo "README.md のコマンド一覧を再生成した (git diff で確認)"
+
 # Obsidian 設定を public dotfiles へ片方向スナップショット (追跡専用・vault→dotfiles)
 # ・ホワイトリストの安全な json のみコピー。本体は vault 側 (ここは読み取り用ミラー)。
 # ・plugins/*/data.json (LiveSync の CouchDB 認証・各種 API キー等)・workspace・キャッシュは
 #   原理的に含めない。万一の非空な秘密値を検出したら中止し public へ出さない。
 # ・commit 前に `gitleaks` を必ず通すこと。秘密ごと残したい設定は sops 暗号化 (`just secrets`)。
 [group('セットアップ')]
+[doc('Obsidian 設定を public dotfiles へ片方向スナップショット (追跡専用・vault→dotfiles)')]
 obsidian-snapshot:
     #!/usr/bin/env bash
     set -euo pipefail
