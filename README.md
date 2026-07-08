@@ -110,7 +110,7 @@ curl -fsSL https://raw.githubusercontent.com/gapul/dotfiles/main/scripts/bootstr
     ssh host                    # remote-env を別ホストで使う
 
     [テーマ]
-    theme name=""               # `just theme rose-pine-dawn`    = light に切替えて全環境を render + rebuild
+    theme name=""               # 全環境を palettes.json の現 active で render (`just theme rose-pine-dawn` で active 切替も可)
 
     [バックアップ]
     archive path                # 例: `just archive ~/Downloads/old-project`

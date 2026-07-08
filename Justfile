@@ -3,6 +3,9 @@
 # https://just.systems
 
 set shell := ["bash", "-cu"]
+# Windows ネイティブ just 用。bash (WSL) 経由だと nested `just` は `just.exe` 表記が
+# 必要になり、shebang レシピは cygpath を要求して動かない。powershell 直で WSL 非依存に。
+set windows-shell := ["powershell.exe", "-NoProfile", "-Command"]
 
 flake := justfile_directory() + "/nix"
 
@@ -560,8 +563,22 @@ win-theme *flags:
 # 全環境を palettes.json の現 active で render (引数で active 切替も可)
 #   `just theme`                   = 現在 active で全環境を再 apply
 #   `just theme rose-pine-dawn`    = light に切替えて全環境を render + rebuild
+# NOTE: shebang レシピは Windows の just が cygpath を要求して動かないため、
+#       OS 横断のこのレシピは即ディスパッチし、bash 処理は _theme-unix に置く。
 [group('テーマ')]
+[doc('全環境を palettes.json の現 active で render (`just theme rose-pine-dawn` で active 切替も可)')]
 theme name="":
+    @just _theme-{{os()}} "{{name}}"
+
+[private]
+_theme-macos name="": (_theme-unix name)
+
+[private]
+_theme-linux name="": (_theme-unix name)
+
+# Mac/WSL とも nh home switch で nvim/zellij/sketchybar/bat/atuin 等が全部追従
+[private]
+_theme-unix name="":
     #!/usr/bin/env bash
     set -euo pipefail
     if [ -n "{{name}}" ]; then
@@ -570,22 +587,14 @@ theme name="":
       rm -f configs/theme/palettes.json.bak
       echo "→ palettes.json active = {{name}}"
     fi
-    just _theme-{{os()}}
-
-[private]
-_theme-macos:
-    # Mac は nh home switch で nvim/zellij/sketchybar/bat/atuin 等が全部追従
     nh home switch
 
+# active の書き戻しは apply.ps1 ではなくここで行う (unix 側の sed と対に。BOM 無し UTF-8)。
+# render 実体は win-theme (zebar / glazewm / WT / wezterm を一括 render)
 [private]
-_theme-linux:
-    # WSL も同じく home-manager 経由
-    nh home switch
-
-[private]
-_theme-windows:
-    # zebar / glazewm / WT / wezterm を一括 render
-    just win-theme
+_theme-windows name="":
+    @if ('{{name}}' -ne '') { $p = Resolve-Path 'configs/theme/palettes.json'; $c = (Get-Content $p -Raw -Encoding UTF8) -replace '"active":\s*"[^"]*"', '"active": "{{name}}"'; [System.IO.File]::WriteAllText($p, $c, [System.Text.UTF8Encoding]::new($false)); Write-Host ('-> palettes.json active = {{name}}') }
+    @just win-theme
 
 # キーマップ適用 (SharpKeys = Scancode Map 直書き + AHK スクリプト reload)
 # `*flags` で `-DryRun` `-Clear` (Scancode Map 削除して standard に戻す) を渡せる
