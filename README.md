@@ -137,7 +137,7 @@ curl -fsSL https://raw.githubusercontent.com/gapul/dotfiles/main/scripts/bootstr
     [確認]
     check what=""               # 型チェック / 差分表示  (`just check` = 構文型チェック, `just check diff` = 差分ビルド)
     doctor                      # 環境ヘルスチェック (Determinate upgrade 後などに走らせる)
-    fmt                         # コード整形 + lint を全追跡ファイルに実行 (pre-commit: nixfmt + shfmt + shellcheck 等)
+    fmt                         # コード整形 + lint を全追跡ファイルに実行 (OS 自動判別: Mac/Linux=pre-commit, Win=PSScriptAnalyzer)
     outdated                    # 更新可能なものを一覧 (upgrade 前のプレビュー。brew + mas + flake inputs。非破壊)
     search query scope=""       # パッケージ検索 (`just search <q>` = brew+nixpkgs, `just search <q> all` = + cargo)
 ```
