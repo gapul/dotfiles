@@ -115,6 +115,11 @@ function New-StartupShortcut {
     Log "$Name : Startup shortcut -> $TargetPath $Arguments"
 }
 
+# GlazeWM のような requireAdministrator manifest の app は Startup folder の .lnk からは
+# UAC ブロックで自動起動できない。Task Scheduler + LogonType Password で UAC bypass する
+# 仕組みを別途用意 (パスワード入力が必要なため bootstrap からは呼べない)。
+# 実行: just win-autostart-glazewm  (= windows/tasks/setup-glazewm-autostart.ps1)
+
 # 任意の (src, dest) を symlink する共通関数。
 # - dest 親ディレクトリが無ければ作る
 # - 既存が同一 target の symlink なら no-op (冪等)
@@ -408,20 +413,23 @@ if (-not $SkipKeymap) {
         Log "$ahkSrc が無い (skip)"
     }
 
-    # GlazeWM / Zebar: Startup に .lnk shortcut を配置 (ログイン時自動起動)
-    # AeroSpace / SketchyBar を Mac の launchd で自動起動するのと同じ精神。
-    # Zebar は `zebar.exe startup` で settings.json の widgets を起動
-    foreach ($wm in @(
-        @{ Name = 'GlazeWM'; Pattern = 'glazewm.exe'; Arguments = '' },
-        @{ Name = 'Zebar';   Pattern = 'zebar.exe';   Arguments = 'startup' }
-    )) {
-        $exe = Get-ChildItem 'C:\Program Files', $env:LOCALAPPDATA -Recurse -Filter $wm.Pattern `
-                -ErrorAction SilentlyContinue 2>$null | Select-Object -First 1
-        if ($exe) {
-            New-StartupShortcut -Name $wm.Name -TargetPath $exe.FullName -Arguments $wm.Arguments
-        } else {
-            Log "$($wm.Name) : $($wm.Pattern) が見つからない (skip)"
-        }
+    # Zebar: ログイン時自動起動 (管理者不要、Startup folder の .lnk で OK)
+    # AeroSpace + SketchyBar を Mac の launchd で起動するのと同じ精神。
+    $zebarExe = Get-ChildItem 'C:\Program Files', $env:LOCALAPPDATA -Recurse -Filter 'zebar.exe' `
+            -ErrorAction SilentlyContinue 2>$null | Select-Object -First 1
+    if ($zebarExe) {
+        New-StartupShortcut -Name 'Zebar' -TargetPath $zebarExe.FullName -Arguments 'startup'
+    } else {
+        Log 'Zebar : zebar.exe が見つからない (skip)'
+    }
+
+    # GlazeWM: main exe が manifest で requireAdministrator 指定のため Startup .lnk からは
+    # UAC ブロックで起動失敗。Task Scheduler + LogonType Password で UAC bypass する。
+    # → 別スクリプトで対話的に password 入力が必要。
+    if (Get-ScheduledTask -TaskName 'dotfiles-glazewm' -ErrorAction SilentlyContinue) {
+        Log "GlazeWM : Task Scheduler 登録済 (dotfiles-glazewm)"
+    } else {
+        Log "GlazeWM : 自動起動には 'just win-autostart-glazewm' を 1 回実行してください (password 入力)"
     }
 } else {
     Log 'SkipKeymap 指定: just win-keymap で後から適用可'
