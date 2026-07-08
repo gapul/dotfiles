@@ -105,9 +105,16 @@
             enable = true; # nix 未使用コード
             settings.noLambdaPatternNames = true; # { lib, ... } 等の未使用引数は許容
           };
-          # shellcheck は既存スクリプトに warning が多く、gate にすると commit を阻む。
-          # enforced からは外し、devShell に shellcheck を入れて手動利用可とする
-          # (`nix develop ./nix -c shellcheck scripts/*.sh`)。スクリプト整備後に有効化検討。
+          shellcheck = {
+            enable = true; # shell スクリプト lint (.shellcheckrc に従う)
+            excludes = [
+              # sketchybar 設定群は流儀として意図的な word splitting が多く別扱い
+              # (手動チェック: nix develop ./nix -c shellcheck configs/wm/sketchybar/...)
+              "configs/wm/sketchybar/.*"
+              # direnv ファイルは shebang なし・direnv stdlib 前提
+              "\\.envrc$"
+            ];
+          };
           gitleaks = {
             enable = true;
             name = "gitleaks";

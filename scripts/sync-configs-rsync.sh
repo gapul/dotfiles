@@ -53,6 +53,7 @@ ssh "$HOST" "grep -q '\.zshrc\.local' ~/.zshrc 2>/dev/null || echo '[ -f ~/.zshr
 
 # 3. git global config
 log "Setting git user/email + sane defaults on remote"
+# shellcheck disable=SC2029 # $NAME/$EMAIL はクライアント側展開が意図
 ssh "$HOST" "
   git config --global user.name '$NAME'
   git config --global user.email '$EMAIL'
