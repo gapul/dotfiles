@@ -37,7 +37,7 @@ sops secrets/secrets.yaml
 # (sops が新しいエディタ画面を開く → 自分の secret を YAML で記述 → 保存)
 
 # 5. 個人 brew tap を整理(任意)
-$EDITOR nix/darwin.nix
+$EDITOR nix/hosts/darwin.nix
 # - "gapul/openutau", "gapul/zrythm" は 作者個人の fork → 削除可
 # - 不要な GUI cask も削っていい(brave-browser, gimp, blender 等)
 
@@ -45,20 +45,24 @@ $EDITOR nix/darwin.nix
 bash scripts/bootstrap.sh
 ```
 
-クローン後にエディタで `user.nix`, `.sops.yaml`, `darwin.nix` を編集すれば、他は触らずに動く設計。
+クローン後にエディタで `nix/user.nix`, `.sops.yaml`, `nix/hosts/darwin.nix` を編集すれば、他は触らずに動く設計。
 
 
 ## 構成
 
 ```
-nix/                 # 3ファイルだけ
-├── flake.nix        # entry point
-├── darwin.nix       # macOS (system, fonts, homebrew)
-└── home.nix         # user (zsh, git, programs, configs/symlinks)
+nix/
+├── flake.nix        # entry point (darwin/nixos/home-manager 各構成 + devShell)
+├── user.nix         # ユーザー名・メール等 (最初に書き換える)
+├── hosts/           # マシン別: darwin.nix (メイン Mac) / macmini.nix / nixos-laptop.nix
+├── home/            # home-manager: common.nix + OS 別 (darwin/linux/wsl/hyprland) + backup 系
+├── lib/             # テーマ (palettes.json を SSO とする rose-pine dark/light)
+└── pkgs/            # 自前パッケージ
 configs/             # 各アプリの実 config (ghostty/zellij/aerospace/sketchybar/nvim/karabiner/yazi/...)
 secrets/secrets.yaml # SOPS で age 暗号化
 .sops.yaml           # 受信者 (age pubkey)
-scripts/bootstrap.sh # 新 Mac 用 0 → 1 セットアップ
+scripts/bootstrap.sh # 新 Mac 用 0 → 1 セットアップ (Linux/WSL 版もあり)
+windows/             # Windows 側セットアップ (winget/scoop/AutoHotkey/...)
 templates/           # direnv 用 dev shell テンプレ (node/python/rust)
 Justfile             # 普段使うコマンド集
 ```
