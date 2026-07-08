@@ -7,7 +7,7 @@
 #
 # 使い方: bash dissolve-from-downloads.sh        # ドライラン
 #         bash dissolve-from-downloads.sh --apply # 実行
-set -uo pipefail
+set -euo pipefail
 APPLY=0; [ "${1:-}" = "--apply" ] && APPLY=1
 
 DOCS="$HOME/Documents"
