@@ -76,24 +76,72 @@ curl -fsSL https://raw.githubusercontent.com/gapul/dotfiles/main/scripts/bootstr
 
 ## コマンド一覧
 
-### 🟢 設定 / ビルド (Justfile)
+### 🟢 Justfile レシピ
 
-| コマンド | 説明 |
-|---|---|
-| `just` | レシピ一覧 |
-| `just rebuild` | システム + ユーザー両方再構築(普段使い) |
-| `just update` | flake input 更新 → rebuild(Nix管理ぶんだけ最新化) |
-| `just upgrade` | brew/cask/mas/Nix 全レイヤー最新化(--greedy で cask 全部更新) |
-| `just check` | 構文/型チェック(ビルドはしない) |
-| `just diff` | 現在のシステムと flake の差分 |
-| `just gc` | 古い世代削除 + nix store gc(`--keep 5 --keep-since 7d`) |
+以下は `just --list` から自動生成(レシピを変えたら `just docs` で再生成)。
 
-### 🟦 機密 (SOPS)
+<!-- BEGIN just-list -->
+```text
+    default                     # デフォルト: タスク一覧 (定義順で表示)
 
-| コマンド | 説明 |
-|---|---|
-| `just secrets-edit` | sops で `secrets/secrets.yaml` を透過的に編集 |
-| `just secrets-rekey` | `.sops.yaml` を変更後の再暗号化 |
+    [Windows]
+    win-bootstrap *flags        # Windows ネイティブの bootstrap を実行 (`just win-bootstrap` / `just win-bootstrap -DryRun`)
+    win-fmt                     # Windows 関連 .ps1 を PSScriptAnalyzer で lint (Warning 以上で exit 1)
+    win-fonts *flags            # `*flags` で `-DryRun` `-Force` (既存も上書き) を渡せる
+    win-keymap *flags           # `*flags` で `-DryRun` `-Clear` (Scancode Map 削除して standard に戻す) を渡せる
+    win-locale *flags           # `*flags` で `-DryRun` `-SkipLanguageList` `-SkipSystemLocale` `-SkipHomeLocation` を渡せる
+    win-privacy *flags          # `*flags` で `-DryRun` `-SkipWinUtil` `-SkipWin11Debloat` を渡せる
+    win-scoop *flags            # `*flags` で `-DryRun` `-SkipBuckets` `-SkipApps` を渡せる
+    win-status *flags           # apps.json (宣言) と winget list (実 install) の差分。MISSING があれば exit 1
+    win-theme *flags            # `*flags` で `-DryRun` `-ActivePalette rose-pine-dawn` 等を渡せる
+    win-upgrade                 # winget 経由で入れた全 app をアップグレード (--silent --accept-*)
+    win-verify *flags           # winget/apps.json の全 PackageIdentifier 実在検証 (`just win-verify` / `just win-verify -Strict`)
+
+    [secrets]
+    secrets cmd="edit"          # sops 暗号化 secrets  (`just secrets` = 編集, `just secrets rekey` = 全 recipient 再暗号化)
+
+    [サービス]
+    restart what="bar"          # メニューバー/WM 系を再起動 (`just restart`=バー周り / 個別: sketchybar|borders|aerospace / all=全部)
+
+    [セットアップ]
+    dev what=""                 # devShell (`just dev`=入室[shellcheck/statix 使用可] / `just dev install`=hook導入のみ[非対話])
+    docs                        # README の自動生成部を `just --list` から再生成
+    obsidian-snapshot           # Obsidian 設定を public dotfiles へ片方向スナップショット (追跡専用・vault→dotfiles)
+    ssh host                    # remote-env を別ホストで使う
+
+    [テーマ]
+    theme name=""               # `just theme rose-pine-dawn`    = light に切替えて全環境を render + rebuild
+
+    [バックアップ]
+    archive path                # 例: `just archive ~/Downloads/old-project`
+    archive-find pattern        # 例: `just archive-find "*.psd"` / `just archive-find old-project`
+    archive-ls                  # アーカイブ (--tag archive) の snapshot 一覧 (ID / 日付 / 元パス)
+    archive-stats               # アーカイブの総容量・ファイル数
+    backup                      # warm バックアップを今すぐ実行 (launchd を kickstart) → ログ追尾 (Ctrl-C で追尾終了・backupは継続)
+    backup-check                # リポジトリ整合性検証 (restic check)
+    backup-ls                   # 全スナップショット一覧 (Tags 列で warm / archive を区別)
+    gdrive cmd="status"         # 共有用 ~/Cloud/GoogleDrive マウント操作。`just gdrive`=状態 / `remount`=再マウント / `open`=Finderで開く
+    restore snapshot dest="/"   # `just restore a81c9de1 ~/Restore`  指定先へ (構造を保って展開) [alias: unarchive]
+
+    [掃除]
+    gc                          # 全レイヤー一括 GC (nix store + brew + pnpm + uv + ~/.Trash 等)
+    gc-deep                     # 重い再生成可能ディレクトリを削除 (30日以上更新の無い node_modules / rust target のみ。要再 install)
+
+    [構築]
+    gen action="" a="" b=""     # システム世代の一覧/差分  (`just gen` = 一覧, `just gen diff [a] [b]` = 世代間パッケージ差分。sudo 不要)
+    rebuild                     # システム + ユーザー再構築 (Mac/WSL/Win 自動判別、普段使い)
+    rollback gen=""             # 世代をロールバック (引数なし=直前へ, `just rollback 8` で世代番号指定。sudo)
+    update *inputs              # flake input 更新 → rebuild  (引数なし=全 input, `just update nixpkgs` で個別更新)
+    upgrade                     # 全レイヤーアップグレード (Mac/WSL/Win 自動判別)
+
+    [確認]
+    check what=""               # 型チェック / 差分表示  (`just check` = 構文型チェック, `just check diff` = 差分ビルド)
+    doctor                      # 環境ヘルスチェック (Determinate upgrade 後などに走らせる)
+    fmt                         # コード整形 + lint を全追跡ファイルに実行 (pre-commit: nixfmt + shfmt + shellcheck 等)
+    outdated                    # 更新可能なものを一覧 (upgrade 前のプレビュー。brew + mas + flake inputs。非破壊)
+    search query scope=""       # パッケージ検索 (`just search <q>` = brew+nixpkgs, `just search <q> all` = + cargo)
+```
+<!-- END just-list -->
 
 ### 🟪 検索
 
@@ -127,13 +175,14 @@ pre-commit フック・フォーマッタは `nix/flake.nix` で **宣言的に�
 |---|---|---|
 | `nixfmt-rfc-style` | `*.nix` | 整形チェック(未整形なら fail) |
 | `deadnix` | `*.nix` | 未使用コード検出(モジュール引数 `{ lib, ... }` は許容) |
+| `shellcheck` | shell 全般 | lint(sketchybar 設定群と `.envrc` は除外) |
 | `gitleaks` | 全 staged | 機密 leak 検出 |
 
 メモ:
 - フックを編集するには `nix/flake.nix` の `preCommit.hooks` を変更 → `nix develop` で再生成
 - `.pre-commit-config.yaml` は **生成物**(store パス依存)。`.gitignore` 済・非追跡。fork 後は `nix develop ./nix` で生成
 - **flake は `nix/` サブディレクトリ**にあるため、`treefmt` フックは git ルートから root 検出に失敗する。整形フックは per-file の `nixfmt-rfc-style` を使い、`treefmt` は `nix fmt` 専用
-- `shellcheck` は既存スクリプトに warning が多く gate にすると commit を阻むため enforced 外(devShell で手動利用可)
+- `shellcheck` は enforced 済。除外中の sketchybar 設定群は `nix develop ./nix -c shellcheck configs/wm/sketchybar/...` で手動チェック可
 - CI(`.github/workflows/check.yml`)の `pre-commit` ジョブがリポ全体で同じフックを実行
 
 ### 🟨 復旧 / メンテ (生コマンド)
