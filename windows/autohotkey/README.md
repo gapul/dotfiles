@@ -77,3 +77,18 @@ AHK で emulate する。
 ```ahk
 EmacsExcludeProcesses := "i)^(WezTerm|wt|alacritty|Code|MyApp)\.exe$"
 ```
+
+## Bitdefender 除外設定
+
+AHK は低レベルキーフック (`SetWindowsHookEx WH_KEYBOARD_LL`) を使うため、Bitdefender の
+Advanced Threat Defense でキーロガー扱いされてブロックされる場合がある (起動 → 数秒で消える、
+タスクトレイにアイコンが出ない等)。
+**Bitdefender Security Center → Protection → Antivirus → Settings → Manage Exceptions** で:
+
+```
+C:\Users\<user>\dotfiles\windows\autohotkey\
+C:\Program Files\AutoHotkey\
+```
+
+の両方を Add。Advanced Threat Defense でも別途 Application Exception 追加が必要なことがある
+(Protection → Advanced Threat Defense → Settings → Manage Exceptions → AutoHotkey64.exe)。

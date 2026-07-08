@@ -66,3 +66,17 @@ scancode が `E0 5C` のようなら `apply.ps1` の `$Mappings` に有効化:
 
 SharpKeys / Scancode Map は **キー単体の 1 対 1 remap** のみ。
 Emacs ショートカット(Ctrl+A → Home 等)は `windows/autohotkey/keymap.ahk` で実装。
+
+## Bitdefender 除外設定
+
+`apply.ps1` は `HKLM\SYSTEM\CurrentControlSet\Control\Keyboard Layout\Scancode Map` を
+直書きするため、Bitdefender のヒューリスティック検知で隔離される場合がある。
+**Bitdefender Security Center → Protection → Antivirus → Settings → Manage Exceptions**
+で以下を Add:
+
+```
+C:\Users\<user>\dotfiles\windows\sharpkeys\
+```
+
+隔離された後は Bitdefender → Notifications → Quarantine から Restore して上記除外を追加。
+`just win-keymap` を再実行すれば再適用される。
