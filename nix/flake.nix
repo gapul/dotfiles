@@ -24,7 +24,7 @@
     sops-nix.inputs.nixpkgs.follows = "nixpkgs";
 
     # NixOS の Secure Boot 対応 (署名付き UKI)。nixos-laptop でのみ使用。
-    lanzaboote.url = "github:nix-community/lanzaboote/v0.4.2";
+    lanzaboote.url = "github:nix-community/lanzaboote/v1.1.0";
     lanzaboote.inputs.nixpkgs.follows = "nixpkgs-nixos";
 
     # disko: 宣言的ディスクレイアウト。nixos-laptop の LUKS root のみ管理 (dual-boot 安全のため)。
