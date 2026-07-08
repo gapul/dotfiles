@@ -5,8 +5,6 @@
   "MANPAGER": "sh -c 'col -bx | bat -l man -p'",
   "MANROFFOPT": "-c",
 
-  "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
-
   "DO_NOT_TRACK": "1",
   "NEXT_TELEMETRY_DISABLED": "1",
   "NUXT_TELEMETRY_DISABLED": "1",
