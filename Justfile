@@ -551,6 +551,12 @@ win-keymap *flags:
     pwsh.exe -NoProfile -ExecutionPolicy Bypass -File windows/sharpkeys/apply.ps1 {{flags}}
     pwsh.exe -NoProfile -Command "Get-Process AutoHotkey* -ErrorAction SilentlyContinue | Stop-Process -Force; Start-Process 'windows/autohotkey/keymap.ahk' -ErrorAction SilentlyContinue"
 
+# GlazeWM のログイン時自動起動を Task Scheduler に登録 (1 回 password 入力)
+# `*flags` で `-Unregister` (タスク削除) を渡せる
+[group('Windows')]
+win-autostart-glazewm *flags:
+    pwsh.exe -NoProfile -ExecutionPolicy Bypass -File windows/tasks/setup-glazewm-autostart.ps1 {{flags}}
+
 # Windows 関連 .ps1 を PSScriptAnalyzer で lint (Warning 以上で exit 1)
 [group('Windows')]
 win-fmt:
