@@ -48,9 +48,10 @@ _rebuild-linux:
     # nh の絶対 flake は WSL の場合 NH_HOME_FLAKE で labpc-wsl を指す前提。
     nh home switch
 
+# 実体は win-bootstrap (コマンドの単一ソース。_theme-windows と同じ委譲パターン)
 [private]
 _rebuild-windows:
-    pwsh.exe -NoProfile -ExecutionPolicy Bypass -File windows/bootstrap.ps1
+    @just win-bootstrap
 
 # システム世代の一覧/差分  (`just gen` = 一覧, `just gen diff [a] [b]` = 世代間パッケージ差分。sudo 不要)
 [group('構築')]
@@ -117,9 +118,10 @@ _upgrade-linux:
     nix flake update --flake ~/.dotfiles/nix
     just rebuild
 
+# 実体は win-upgrade (コマンドの単一ソース)
 [private]
 _upgrade-windows:
-    pwsh.exe -NoProfile -Command "winget upgrade --all --silent --accept-package-agreements --accept-source-agreements"
+    @just win-upgrade
 
 # sketchybar-app-font を最新リリースへ更新 (.ttf と icon_map.sh を同一版で揃える)
 # upgrade から自動で呼ばれる内部レシピ (`just sketchybar-font` 単体実行も可)
@@ -249,10 +251,25 @@ doctor:
 
 # NOTE: nix fmt (treefmt 一括) は flake が nix/ にあり tree-root の flake.nix 検出に失敗するため
 #       使えない (flake.nix の treefmt コメント参照)。per-file フックを束ねた pre-commit 経由で走らせる。
-# コード整形 + lint を全追跡ファイルに実行 (pre-commit: nixfmt + shfmt + shellcheck 等)
+# コード整形 + lint を全追跡ファイルに実行 (OS 自動判別: Mac/Linux=pre-commit, Win=PSScriptAnalyzer)
 [group('確認')]
 fmt:
+    @just _fmt-{{os()}}
+
+[private]
+_fmt-macos: _fmt-unix
+
+[private]
+_fmt-linux: _fmt-unix
+
+[private]
+_fmt-unix:
     nix develop {{flake}} --command pre-commit run --all-files
+
+# 実体は win-fmt (コマンドの単一ソース)
+[private]
+_fmt-windows:
+    @just win-fmt
 
 
 # ─────────────────────────────────────────────
