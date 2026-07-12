@@ -54,8 +54,18 @@
       autoUpdate = false;
       cleanup = "uninstall"; # 宣言外の brew は自動uninstall(zap は data 消すので avoid)
       upgrade = false;
+      # Homebrew 6.0 で既定 true 化した REQUIRE_TAP_TRUST を activation 時のみ無効化。
+      # 非公式 tap の依存 formula (qmk/hid_bootloader_cli 等) が拒否され bundle が止まるのを防ぐ。
+      # 全 tap は上で宣言・バージョン管理済みなので runtime の信頼チェックは冗長。
+      extraEnv = {
+        HOMEBREW_NO_REQUIRE_TAP_TRUST = "1";
+      };
     };
 
+    # tap の信頼は onActivation.extraEnv の HOMEBREW_NO_REQUIRE_TAP_TRUST=1 で一括対応。
+    # (Homebrew 6.0 で REQUIRE_TAP_TRUST が既定 true 化。tap 行の trusted: true は依存 formula
+    #  の読み込みには効かず、手動 brew trust は bundle が毎回上書きするため使えない。
+    #  全 tap は下記で宣言・バージョン管理済みなので activation 時のチェックを切る。)
     taps = [
       "deskflow/tap"
       "felixkratz/formulae"
@@ -74,6 +84,7 @@
       "gapul/openutau"
       "gapul/zrythm"
       "gapul/azoo-key-skkserv"
+      "gapul/keystats" # 自作の打鍵アナリティクス(cask)
     ];
 
     # brew leaves
@@ -211,6 +222,7 @@
       "cyberduck"
 
       # ─── Dev IDEs / Editors / SDK ───
+      "claude" # Claude デスクトップアプリ (Anthropic 公式)
       "claude-code"
       "ghostty"
       "zed"
@@ -222,6 +234,7 @@
       "deskflow"
       "deskreen"
       "ollama-app" # ローカル LLM ランタイム GUI (CLI 同梱)
+      "codexbar" # AI コーディング各社の使用量/上限をメニューバー表示 (codexbar CLI 同梱・/opt/homebrew/bin に自動 link)
 
       # ─── Creative — Design / 2D ───
       "affinity"
@@ -256,6 +269,14 @@
       "gapul/zrythm/zrythm" # DAW (gapul 自作 tap)
       "vcv-rack"
       "voicevox/voicevox/voicevox" # 公式 tap 専用 (homebrew/cask 未収録)。tap宣言必須
+      # 自作の打鍵アナリティクス。Apple Development 署名(公証なし)なので隔離付きだと
+      # Gatekeeper が起動を弾く → no_quarantine で隔離を付けずに入れる。
+      {
+        name = "gapul/keystats/keystats";
+        args = {
+          no_quarantine = true;
+        };
+      }
       "blackhole-2ch" # OBS / DAW へシステム音声を回す仮想オーディオデバイス
 
       # ─── Creative — Video / Animation / Stream ───
