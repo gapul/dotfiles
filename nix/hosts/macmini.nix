@@ -22,6 +22,14 @@
     };
     brews = [
       "tailscale" # tailnet 参加 (認証は初回のみ `sudo tailscale up`)
+      # --- ローカル AI スタック (2026-07 追加。cleanup=uninstall で消えるのを防ぐ) ---
+      "ffmpeg" # 音声/動画変換 (transcribe/tts/voice-clone/audio-separation の前処理)
+      "uv" # Python 環境管理 (mlx_whisper / venv 各種: diarize/sbv2/gsv/sep/rag)
+      "aria2" # 大物モデルの self-healing 多重接続 DL (macmini 直 hf-mirror/GitHub)
+      "socat" # apple container のホストポート公開バグ回避 (host->containerIP 転送)
+      "container" # Apple 純正コンテナランタイム (Open WebUI/AnythingLLM/Minecraft)。
+      # 初回のみ runtime 起動+カーネル設定が必要: `container system start` /
+      # `container system kernel set --recommended` (宣言不可・手動 or ai-stack.sh)。
     ];
     casks = [
       # ヘッドレス保守用のリモート GUI。SSH で足りない GUI 作業 (権限承認ダイアログ・

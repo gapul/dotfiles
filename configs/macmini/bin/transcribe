@@ -1,0 +1,28 @@
+#!/bin/zsh
+# Whisper (MLX) 文字起こし — 速度/精度を選択可
+# 使い方: transcribe <ファイル> [言語 ja/en/auto] [形式 txt/srt/vtt/json/all] [モデル fast|accurate]
+#   fast     = large-v3-turbo (速い・日本語も上位精度) ※既定
+#   accurate = large-v3        (最高精度・やや遅い)
+eval "$(/opt/homebrew/bin/brew shellenv)"
+export PATH="$HOME/.local/bin:$PATH"
+
+file="$1"; lang="${2:-ja}"; fmt="${3:-txt}"; model="${4:-fast}"
+
+if [[ -z "$file" ]]; then
+  echo "使い方: transcribe <ファイル> [ja/en/auto] [txt/srt/vtt/json/all] [fast|accurate]"
+  exit 1
+fi
+
+case "$model" in
+  fast|turbo)            mpath="$HOME/models/whisper-large-v3-turbo-mlx" ;;
+  accurate|large|large-v3) mpath="$HOME/models/whisper-large-v3-mlx" ;;
+  *) echo "モデルは fast か accurate を指定"; exit 1 ;;
+esac
+if [[ ! -f "$mpath/config.json" ]]; then echo "モデル未導入: $mpath"; exit 1; fi
+
+outdir="$(dirname "$file")"
+langopt=(--language "$lang"); [[ "$lang" == "auto" ]] && langopt=()
+
+echo "[model=$model  lang=$lang  fmt=$fmt]"
+mlx_whisper "$file" --model "$mpath" "${langopt[@]}" --output-dir "$outdir" --output-format "$fmt"
+echo "→ 出力先: $outdir"

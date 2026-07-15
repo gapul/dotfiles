@@ -1,0 +1,10 @@
+#!/bin/zsh
+# 日本語TTS (Style-Bert-VITS2 / jvnv-F1-jp)
+# 使い方: tts "喋らせたい文章" [出力.wav] [スタイル Neutral/Happy/Sad/Angry/...]
+eval "$(/opt/homebrew/bin/brew shellenv)"
+export PYTORCH_ENABLE_MPS_FALLBACK=1
+[[ -f ~/.zshrc ]] && source ~/.zshrc 2>/dev/null
+text="$1"; out="${2:-/tmp/tts_out.wav}"; style="${3:-Neutral}"
+if [[ -z "$text" ]]; then echo "使い方: tts \"文章\" [出力.wav] [Neutral/Happy/Sad/Angry]"; exit 1; fi
+~/sbv2-venv/bin/python ~/sbv2_tts.py "$text" "$out" "$style"
+echo "→ $out"
