@@ -1,0 +1,32 @@
+#!/bin/zsh
+# 話者分離つき文字起こし: mlx_whisper(タイムスタンプ) + pyannote(話者区間) をマージ
+# 使い方: transcribe-diarize <ファイル> [言語 ja/en/auto] [モデル fast|accurate]
+eval "$(/opt/homebrew/bin/brew shellenv)"
+export PATH="$HOME/.local/bin:$PATH"
+export PYTORCH_ENABLE_MPS_FALLBACK=1
+[[ -f ~/.zshrc ]] && source ~/.zshrc 2>/dev/null
+
+file="$1"; lang="${2:-ja}"; model="${3:-fast}"
+if [[ -z "$file" ]]; then echo "使い方: transcribe-diarize <ファイル> [ja/en/auto] [fast|accurate]"; exit 1; fi
+if [[ -z "$HF_TOKEN" ]]; then echo "HF_TOKEN が未設定です"; exit 1; fi
+
+case "$model" in
+  fast|turbo) mpath="$HOME/models/whisper-large-v3-turbo-mlx" ;;
+  accurate|large-v3) mpath="$HOME/models/whisper-large-v3-mlx" ;;
+  *) echo "モデルは fast か accurate"; exit 1 ;;
+esac
+
+work="/tmp/diarize_$$"; mkdir -p "$work"
+wav="$work/audio.wav"
+echo "[1/3] 音声を16kHz mono wavに変換..."
+ffmpeg -y -i "$file" -ar 16000 -ac 1 "$wav" >/dev/null 2>&1
+echo "[2/3] 文字起こし(model=$model)..."
+langopt=(--language "$lang"); [[ "$lang" == "auto" ]] && langopt=()
+mlx_whisper "$wav" --model "$mpath" "${langopt[@]}" --output-dir "$work" --output-format json >/dev/null 2>&1
+echo "[3/3] 話者分離＋マージ..."
+~/diarize-venv/bin/python ~/diarize_merge.py "$wav" "$work/audio.json"
+
+# 結果を入力と同じ場所へ
+outbase="${file%.*}.diarized.txt"
+cp "$work/audio.diarized.txt" "$outbase" 2>/dev/null && echo "→ 保存: $outbase"
+rm -rf "$work"

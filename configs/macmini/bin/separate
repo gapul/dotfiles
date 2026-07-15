@@ -1,0 +1,9 @@
+#!/bin/zsh
+# 音声分離(MelBand RoFormer): 曲/音声をボーカルとBGMに分ける
+# 使い方: separate <音声/曲ファイル> [出力ディレクトリ]
+eval "$(/opt/homebrew/bin/brew shellenv)"
+export PYTORCH_ENABLE_MPS_FALLBACK=1
+f="$1"; outdir="${2:-$(dirname "$f")}"
+if [[ -z "$f" || ! -f "$f" ]]; then echo "使い方: separate <ファイル> [出力先]"; exit 1; fi
+~/sep-venv/bin/mlx-audio-separator "$f" -m vocals_mel_band_roformer.ckpt \
+  --model_file_dir ~/sep-models --output_dir "$outdir" 2>&1 | grep -iE "complete|output|error" | tail -3

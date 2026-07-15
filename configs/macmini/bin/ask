@@ -1,0 +1,20 @@
+#!/bin/zsh
+# ローカルLLMに質問。 ask "質問文" [jp|coder|unc]
+#   jp(既定)= gemma4:12b-it-qat(日本語最強) / coder = qwen2.5-coder:14b / unc = 無検閲
+eval "$(/opt/homebrew/bin/brew shellenv)"
+export PATH="/run/current-system/sw/bin:$HOME/.local/bin:$PATH"
+export OLLAMA_HOST=127.0.0.1:11434
+prompt="$1"; which="${2:-jp}"
+if [[ -z "$prompt" ]]; then echo "使い方: ask \"質問\" [jp|coder|unc]"; exit 1; fi
+case "$which" in
+  jp|gemma|default) model="gemma4:12b-it-qat" ;;
+  coder|code)       model="qwen2.5-coder:14b" ;;
+  unc|uncensored)   model="jaahas/qwen3.5-uncensored:latest" ;;
+  *) model="$which" ;;  # 直接モデル名指定も可
+esac
+# ollama serve が落ちてたら起こす
+if ! curl -s --max-time 3 http://127.0.0.1:11434/api/version >/dev/null 2>&1; then
+  nohup ollama serve >/tmp/ollama.log 2>&1 &
+  for i in $(seq 1 20); do sleep 1; curl -s --max-time 2 http://127.0.0.1:11434/api/version >/dev/null 2>&1 && break; done
+fi
+python3 ~/llm_ask.py "$model" "$prompt"

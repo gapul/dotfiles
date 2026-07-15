@@ -1,0 +1,39 @@
+#!/bin/zsh
+# 声クローン: 参照音声の声で任意の日本語を喋らせる(GPT-SoVITS v2)
+# voice-clone <参照音声> <喋らせる文章> [出力.wav] [参照文字起こし(省略時Whisper自動)]
+eval "$(/opt/homebrew/bin/brew shellenv)"
+export PATH="$HOME/.local/bin:$PATH"
+export PYTORCH_ENABLE_MPS_FALLBACK=1
+ref="$1"; target="$2"; out="${3:-/tmp/cloned.wav}"; reftext="$4"
+if [[ -z "$ref" || -z "$target" ]]; then
+  echo "使い方: voice-clone <参照音声> <文章> [出力.wav] [参照文字起こし]"; exit 1
+fi
+[[ ! -f "$ref" ]] && { echo "参照音声が無い: $ref"; exit 1; }
+
+refwav="/tmp/vc_ref_$$.wav"
+ffmpeg -y -i "$ref" -ar 32000 -ac 1 "$refwav" >/dev/null 2>&1
+
+if [[ -z "$reftext" ]]; then
+  echo "[参照音声を自動文字起こし中...]" >&2
+  mlx_whisper "$refwav" --model "$HOME/models/whisper-large-v3-turbo-mlx" --language ja --output-dir /tmp --output-format txt >/dev/null 2>&1
+  reftext="$(cat /tmp/vc_ref_$$.txt 2>/dev/null | tr -d "\n")"
+fi
+echo "[参照文: $reftext]" >&2
+
+if ! curl -s -o /dev/null --max-time 3 http://127.0.0.1:9880/ 2>/dev/null; then
+  echo "[GPT-SoVITS APIを起動中...(初回ロード30-60秒)]" >&2
+  (cd ~/GPT-SoVITS && nohup ~/gsv-venv/bin/python api_v2.py -a 127.0.0.1 -p 9880 -c GPT_SoVITS/configs/tts_infer.yaml > /tmp/gsv_api.log 2>&1 &)
+  for i in $(seq 1 40); do sleep 3; grep -q "Application startup complete" /tmp/gsv_api.log 2>/dev/null && break; done
+fi
+
+python3 - "$target" "$refwav" "$reftext" "$out" << "PYEOF"
+import sys, json, urllib.request
+target, refwav, reftext, out = sys.argv[1:5]
+body=json.dumps({"text":target,"text_lang":"ja","ref_audio_path":refwav,"prompt_text":reftext,"prompt_lang":"ja","media_type":"wav","streaming_mode":False}).encode()
+req=urllib.request.Request("http://127.0.0.1:9880/tts",data=body,headers={"Content-Type":"application/json"})
+data=urllib.request.urlopen(req,timeout=300).read()
+open(out,"wb").write(data)
+print(f"[wrote {out} ({len(data)} bytes)]", file=sys.stderr)
+PYEOF
+rm -f "$refwav" /tmp/vc_ref_$$.txt
+echo "→ $out"
