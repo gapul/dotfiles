@@ -29,7 +29,19 @@ while true; do
   ensure_container open-webui start_owui
   ensure_container anythingllm start_allm
   ensure_container mc-server start_mc
-  # socat転送(host:3000/3001が死んでたら張り直し)
-  { up http://127.0.0.1:3001/ && up http://127.0.0.1:3000/; } || $H/container_proxy.sh >/dev/null 2>&1
+  # socat転送 + vmnet劣化の自動復旧
+  if ! { up http://127.0.0.1:3001/ && up http://127.0.0.1:3000/; }; then
+    $H/container_proxy.sh >/dev/null 2>&1; sleep 3
+    if ! { up http://127.0.0.1:3001/ && up http://127.0.0.1:3000/; }; then
+      # まだ空応答=apple container vmnet劣化。system stop/startで作り直し(5分クールダウン)
+      now=$(date +%s); last=$(cat /tmp/vmnet_recover_ts 2>/dev/null || echo 0)
+      if [ $((now - last)) -gt 300 ]; then
+        echo "$now" > /tmp/vmnet_recover_ts
+        echo "[$(date +%H:%M:%S)] vmnet劣化検知→system stop/start"
+        container system stop >/dev/null 2>&1; sleep 3; container system start >/dev/null 2>&1; sleep 5
+        $H/container_proxy.sh >/dev/null 2>&1
+      fi
+    fi
+  fi
   sleep 30
 done
