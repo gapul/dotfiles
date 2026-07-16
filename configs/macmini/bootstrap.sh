@@ -10,8 +10,8 @@ H="$HOME"
 UV=/opt/homebrew/bin/uv
 say(){ echo -e "\n=== $* ==="; }
 
-do_all=1; for a in "$@"; do do_all=0; done
-want(){ [ "$do_all" = 1 ] && return 0; for a in "$@"; do :; done; case " $* " in *" $1 "*) return 0;; esac; return 1; }
+do_all=1; [ "$#" -gt 0 ] && do_all=0
+want(){ [ "$do_all" = 1 ] && return 0; case " $* " in *" $1 "*) return 0;; esac; return 1; }
 has(){ printf '%s ' "$@" | grep -q " $FLAG "; }
 
 # ---------- scripts: dotfiles -> 実配置(out-of-store symlink) ----------
