@@ -113,6 +113,8 @@
               "configs/wm/sketchybar/.*"
               # direnv ファイルは shebang なし・direnv stdlib 前提
               "\\.envrc$"
+              # macmini AI コマンド群は zsh (shellcheck は zsh 非対応 SC1071)
+              "configs/macmini/bin/.*"
             ];
           };
           gitleaks = {

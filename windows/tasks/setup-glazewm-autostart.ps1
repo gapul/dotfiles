@@ -1,4 +1,4 @@
-# GlazeWM のログイン時自動起動を Task Scheduler に登録する (1 回実行)。
+﻿# GlazeWM のログイン時自動起動を Task Scheduler に登録する (1 回実行)。
 #
 # 背景:
 # - glazewm.exe (main) は manifest で requireAdministrator 指定のため、
