@@ -209,7 +209,10 @@
       homeConfigurations."${user.username}-wsl" =
         let
           wslSystem = "x86_64-linux";
-          wslPkgs = nixpkgs.legacyPackages.${wslSystem};
+          wslPkgs = import nixpkgs {
+            system = wslSystem;
+            config.allowUnfree = true; # claude-code (unfree) 用
+          };
         in
         home-manager.lib.homeManagerConfiguration {
           pkgs = wslPkgs;
@@ -233,7 +236,10 @@
       homeConfigurations."labpc-wsl" =
         let
           wslSystem = "x86_64-linux";
-          wslPkgs = nixpkgs.legacyPackages.${wslSystem};
+          wslPkgs = import nixpkgs {
+            system = wslSystem;
+            config.allowUnfree = true; # claude-code (unfree) 用
+          };
           osUser = builtins.getEnv "USER";
           labUser = user // (if osUser != "" then { username = osUser; } else { });
         in

@@ -30,6 +30,8 @@ in
   home.packages = [
     wslview # 旧 wslu の代替 (URL を Windows 既定ブラウザで開く)
     pkgs.socat # Windows ssh-agent サービスを WSL から共有するための UNIX↔Named Pipe 橋渡し
+    pkgs.claude-code # Claude Code CLI (Mac は brew cask 管理のため WSL のみ nix 宣言)
+    pkgs.codex # OpenAI Codex CLI
   ];
 
   # WSL interop の zsh エイリアス・関数 (common の initContent の後に append)
