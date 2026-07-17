@@ -32,6 +32,7 @@ in
     pkgs.socat # Windows ssh-agent サービスを WSL から共有するための UNIX↔Named Pipe 橋渡し
     pkgs.claude-code # Claude Code CLI (Mac は brew cask 管理のため WSL のみ nix 宣言)
     pkgs.codex # OpenAI Codex CLI
+    pkgs.nodejs_22 # control-plane (Next.js) のビルド/テスト用 (engines: node>=20.11)
   ];
 
   # WSL interop の zsh エイリアス・関数 (common の initContent の後に append)
