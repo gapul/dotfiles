@@ -141,7 +141,19 @@
       darwinConfigurations.macmini = nix-darwin.lib.darwinSystem {
         inherit system; # aarch64-darwin 共通
         specialArgs = { inherit user; };
-        modules = [ ./hosts/macmini.nix ];
+        modules = [
+          ./hosts/macmini.nix
+          # ヘッドレスでも SSH 作業用の 4 ツール (zellij/neovim/lazygit/yazi) と設定を
+          # workstation と同じ dotfiles から継承する最小 home。sops は持ち込まない。
+          home-manager.darwinModules.home-manager
+          {
+            home-manager.useGlobalPkgs = true;
+            home-manager.useUserPackages = true;
+            home-manager.backupFileExtension = "hm-bak";
+            home-manager.extraSpecialArgs = { inherit user; };
+            home-manager.users.${user.username} = import ./home/macmini.nix;
+          }
+        ];
       };
 
       # NixOS 実機 (Windows デュアルブート): sudo nixos-rebuild switch --flake .#nixos-laptop
