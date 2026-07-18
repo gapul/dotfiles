@@ -15,14 +15,14 @@ ffmpeg -y -i "$ref" -ar 32000 -ac 1 "$refwav" >/dev/null 2>&1
 
 if [[ -z "$reftext" ]]; then
   echo "[参照音声を自動文字起こし中...]" >&2
-  mlx_whisper "$refwav" --model "$HOME/models/whisper-large-v3-turbo-mlx" --language ja --output-dir /tmp --output-format txt >/dev/null 2>&1
+  mlx_whisper "$refwav" --model "$HOME/ai/models/mlx/whisper-large-v3-turbo-mlx" --language ja --output-dir /tmp --output-format txt >/dev/null 2>&1
   reftext="$(cat /tmp/vc_ref_$$.txt 2>/dev/null | tr -d "\n")"
 fi
 echo "[参照文: $reftext]" >&2
 
 if ! curl -s -o /dev/null --max-time 3 http://127.0.0.1:9880/ 2>/dev/null; then
   echo "[GPT-SoVITS APIを起動中...(初回ロード30-60秒)]" >&2
-  (cd ~/GPT-SoVITS && nohup ~/gsv-venv/bin/python api_v2.py -a 127.0.0.1 -p 9880 -c GPT_SoVITS/configs/tts_infer.yaml > /tmp/gsv_api.log 2>&1 &)
+  (cd ~/ai/apps/GPT-SoVITS && nohup ~/ai/venvs/gsv-venv/bin/python api_v2.py -a 127.0.0.1 -p 9880 -c GPT_SoVITS/configs/tts_infer.yaml > /tmp/gsv_api.log 2>&1 &)
   for i in $(seq 1 40); do sleep 3; grep -q "Application startup complete" /tmp/gsv_api.log 2>/dev/null && break; done
 fi
 

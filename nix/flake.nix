@@ -143,15 +143,20 @@
         specialArgs = { inherit user; };
         modules = [
           ./hosts/macmini.nix
-          # ヘッドレスでも SSH 作業用の 4 ツール (zellij/neovim/lazygit/yazi) と設定を
-          # workstation と同じ dotfiles から継承する最小 home。sops は持ち込まない。
+          # workstation と同じ common.nix (フル CLI/zsh/XDG) + macmini.nix (ccm/AI
+          # スタック配線)。sops は積まない (age 鍵を macmini に持ち込まない方針)。
           home-manager.darwinModules.home-manager
           {
             home-manager.useGlobalPkgs = true;
             home-manager.useUserPackages = true;
             home-manager.backupFileExtension = "hm-bak";
             home-manager.extraSpecialArgs = { inherit user; };
-            home-manager.users.${user.username} = import ./home/macmini.nix;
+            home-manager.users.${user.username} = {
+              imports = [
+                ./home/common.nix
+                ./home/macmini.nix
+              ];
+            };
           }
         ];
       };
@@ -190,6 +195,7 @@
                       ./home/dev.nix # direnv 等の開発環境
                       ./home/restic-backup-linux.nix # restic (systemd user timer)
                       sops-nix.homeManagerModules.sops
+                      ./home/secrets.nix
                     ];
                   };
                 }
@@ -213,6 +219,7 @@
           ./home/rclone-mount.nix
           ./home/maintenance.nix
           sops-nix.homeManagerModules.sops
+          ./home/secrets.nix
         ];
       };
 
@@ -234,6 +241,7 @@
             ./home/linux.nix
             ./home/wsl.nix
             sops-nix.homeManagerModules.sops
+            ./home/secrets.nix
           ];
         };
 
@@ -265,6 +273,7 @@
             ./home/linux.nix
             ./home/wsl.nix
             sops-nix.homeManagerModules.sops
+            ./home/secrets.nix
           ];
         };
 
@@ -282,6 +291,7 @@
             ./home/common.nix
             ./home/linux.nix
             sops-nix.homeManagerModules.sops
+            ./home/secrets.nix
           ];
         };
       homeConfigurations."${user.username}-linux-aarch64" =
@@ -296,6 +306,7 @@
             ./home/common.nix
             ./home/linux.nix
             sops-nix.homeManagerModules.sops
+            ./home/secrets.nix
           ];
         };
 
