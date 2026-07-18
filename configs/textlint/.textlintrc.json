@@ -13,7 +13,7 @@
       "max-kanji-continuous-len": { "max": 6 },
       "no-mix-dearu-desumasu": {
         "preferInHeader": "",
-        "preferInBody": "ですます",
+        "preferInBody": "である",
         "preferInList": "である",
         "strict": false
       },
