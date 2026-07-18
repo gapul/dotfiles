@@ -260,6 +260,10 @@ in
         zle -N edit-command-line
         bindkey -M viins '^X^E' edit-command-line
         bindkey -M vicmd '^X^E' edit-command-line
+        # forward delete (^[[3~) は zsh 既定で未定義 → vi モードでは ESC 誤爆で
+        # ノーマルモードに落ち文字化けする。明示 bind して素直に1文字削除させる。
+        bindkey -M viins '^[[3~' delete-char
+        bindkey -M vicmd '^[[3~' delete-char
       fi
 
       # Launcher (関数定義 + Ghostty Quick Terminal 常駐ループ)

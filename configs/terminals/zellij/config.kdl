@@ -467,7 +467,9 @@ theme_light "rose-pine-dawn"
 // (Requires restart)
 // Default: true (if the host terminal supports it)
 // 
-// support_kitty_keyboard_protocol false
+// zellij 0.44 + Wezterm で Kitty protocol が delete/backspace を壊す(半角空白化)ため無効化 (2026-07-18)
+support_kitty_keyboard_protocol false
+
 // Whether to make sure a local web server is running when a new Zellij session starts.
 // This web server will allow creating new sessions and attaching to existing ones that have
 // opted in to being shared in the browser.
