@@ -3,6 +3,8 @@
 eval "$(/opt/homebrew/bin/brew shellenv)"
 export PATH="/opt/homebrew/bin:/run/current-system/sw/bin:$HOME/.local/bin:$PATH"
 export HF_HUB_OFFLINE=1 PYTORCH_ENABLE_MPS_FALLBACK=1 PYTHONPYCACHEPREFIX=$HOME/.cache/pycache
+# launchd 配下は .zshenv を読まないため XDG 系はここでも明示 (matplotlib が ~/.matplotlib を再生成する対策)
+export MPLCONFIGDIR=$HOME/.config/matplotlib
 H=/Users/gapul
 up(){ curl -s --max-time 3 -o /dev/null "$1"; }
 
