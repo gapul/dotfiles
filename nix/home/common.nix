@@ -78,6 +78,13 @@ in
       NPM_CONFIG_USERCONFIG = "${config.xdg.configHome}/npm/npmrc";
       NPM_CONFIG_CACHE = "${config.xdg.cacheHome}/npm";
       NPM_CONFIG_PREFIX = "${config.xdg.dataHome}/npm";
+
+      # PlatformIO: 既定の ~/.platformio (toolchain 等で GB 級) を XDG data へ。
+      PLATFORMIO_CORE_DIR = "${config.xdg.dataHome}/platformio";
+      # Dart/Flutter: pub パッケージキャッシュ ~/.pub-cache を XDG cache へ (再取得可能)。
+      PUB_CACHE = "${config.xdg.cacheHome}/pub";
+      # matplotlib: macOS では XDG 非対応のため MPLCONFIGDIR で明示。
+      MPLCONFIGDIR = "${config.xdg.configHome}/matplotlib";
     };
 
   home.sessionPath = [
@@ -681,6 +688,10 @@ in
 
   home.file.".config/starship.toml".source = ../../configs/shell/starship.toml;
   home.file.".config/gh/config.yml".source = ../../configs/cli/gh/config.yml;
+  # markdownlint-cli2: 親方向探索でホーム以下全 Markdown の既定になるため、
+  # XDG 非対応だがホーム直下がツールの仕様上正しい置き場所。
+  home.file.".markdownlint-cli2.jsonc".source =
+    ../../configs/cli/markdownlint/markdownlint-cli2.jsonc;
   # Codex: 上流は ~/.codex 既定だが、CODEX_HOME で XDG data 配下へ移す。
   # auth/history/skills/plugins は CODEX_HOME、SQLite は CODEX_SQLITE_HOME に分離。
   # TUI から設定が更新されても repo に反映されるよう out-of-store symlink にする。
