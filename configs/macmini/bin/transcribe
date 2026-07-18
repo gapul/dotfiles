@@ -14,8 +14,8 @@ if [[ -z "$file" ]]; then
 fi
 
 case "$model" in
-  fast|turbo)            mpath="$HOME/models/whisper-large-v3-turbo-mlx" ;;
-  accurate|large|large-v3) mpath="$HOME/models/whisper-large-v3-mlx" ;;
+  fast|turbo)            mpath="$HOME/ai/models/mlx/whisper-large-v3-turbo-mlx" ;;
+  accurate|large|large-v3) mpath="$HOME/ai/models/mlx/whisper-large-v3-mlx" ;;
   *) echo "モデルは fast か accurate を指定"; exit 1 ;;
 esac
 if [[ ! -f "$mpath/config.json" ]]; then echo "モデル未導入: $mpath"; exit 1; fi

@@ -3,7 +3,7 @@ eval "$(/opt/homebrew/bin/brew shellenv)"
 export PATH="$HOME/.local/bin:$PATH"
 img="$1"
 if [[ -z "$img" || ! -f "$img" ]]; then echo "使い方: ocr <画像>"; exit 1; fi
-mlx_vlm.generate --model "$HOME/models/internvl3-8b-4bit" --image "$img" \
+mlx_vlm.generate --model "$HOME/ai/models/mlx/internvl3-8b-4bit" --image "$img" \
   --prompt "この画像内の文字を原文のまま全て書き出してください。説明・注釈は書かず本文テキストだけを返してください。" \
   --max-tokens 2048 --temperature 0.0 --repetition-penalty 1.05 2>/dev/null \
   | awk "/^==========\$/{c++; next} c==1" | sed -e "/^Files:/d" -e "/^Prompt:/,/^Assistant:/d"

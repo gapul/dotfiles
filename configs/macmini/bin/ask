@@ -17,4 +17,4 @@ if ! curl -s --max-time 3 http://127.0.0.1:11434/api/version >/dev/null 2>&1; th
   nohup ollama serve >/tmp/ollama.log 2>&1 &
   for i in $(seq 1 20); do sleep 1; curl -s --max-time 2 http://127.0.0.1:11434/api/version >/dev/null 2>&1 && break; done
 fi
-python3 ~/llm_ask.py "$model" "$prompt"
+python3 ~/ai/bin/llm_ask.py "$model" "$prompt"

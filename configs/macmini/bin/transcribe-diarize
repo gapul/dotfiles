@@ -11,8 +11,8 @@ if [[ -z "$file" ]]; then echo "使い方: transcribe-diarize <ファイル> [ja
 if [[ -z "$HF_TOKEN" ]]; then echo "HF_TOKEN が未設定です"; exit 1; fi
 
 case "$model" in
-  fast|turbo) mpath="$HOME/models/whisper-large-v3-turbo-mlx" ;;
-  accurate|large-v3) mpath="$HOME/models/whisper-large-v3-mlx" ;;
+  fast|turbo) mpath="$HOME/ai/models/mlx/whisper-large-v3-turbo-mlx" ;;
+  accurate|large-v3) mpath="$HOME/ai/models/mlx/whisper-large-v3-mlx" ;;
   *) echo "モデルは fast か accurate"; exit 1 ;;
 esac
 
@@ -24,7 +24,7 @@ echo "[2/3] 文字起こし(model=$model)..."
 langopt=(--language "$lang"); [[ "$lang" == "auto" ]] && langopt=()
 mlx_whisper "$wav" --model "$mpath" "${langopt[@]}" --output-dir "$work" --output-format json >/dev/null 2>&1
 echo "[3/3] 話者分離＋マージ..."
-~/diarize-venv/bin/python ~/diarize_merge.py "$wav" "$work/audio.json"
+~/ai/venvs/diarize-venv/bin/python ~/ai/bin/diarize_merge.py "$wav" "$work/audio.json"
 
 # 結果を入力と同じ場所へ
 outbase="${file%.*}.diarized.txt"
