@@ -92,4 +92,20 @@ in
   # nvim は dotfiles に直接書き戻せるよう out-of-store symlink (workstation と同じ機構)。
   home.file.".config/nvim".source =
     config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.dotfiles/configs/editors/nvim";
+
+  # XDG Base Directory: SSH セッション/ccm から起動される CLI 向けに、ガード無しの
+  # .zshenv で常に export (workstation common.nix と同じ方針の最小版)。
+  # claude は native install (~/.local/bin/claude) のため CLAUDE_CONFIG_DIR で
+  # ~/.claude を XDG config 配下へ寄せる (auth .credentials.json も同居して移設済み)。
+  home.file.".zshenv" = {
+    force = true;
+    text = ''
+      export XDG_CONFIG_HOME="$HOME/.config"
+      export XDG_DATA_HOME="$HOME/.local/share"
+      export XDG_STATE_HOME="$HOME/.local/state"
+      export XDG_CACHE_HOME="$HOME/.cache"
+      export CLAUDE_CONFIG_DIR="$HOME/.config/claude"
+      export MPLCONFIGDIR="$HOME/.config/matplotlib"
+    '';
+  };
 }
