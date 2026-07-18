@@ -114,144 +114,144 @@ automatically-unhide-macos-hidden-apps = false
 
     # See: https://nikitabobko.github.io/AeroSpace/commands#close
     # Hyprland: SUPER+Q = killactive
-    cmd-ctrl-alt-q = 'close'
+    cmd-ctrl-alt-q = ['close', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-q']
     # ShiftでHyprlandの「killactive --force」相当（最後のウィンドウならアプリも終了）
-    cmd-ctrl-alt-shift-q = 'close --quit-if-last-window'
+    cmd-ctrl-alt-shift-q = ['close --quit-if-last-window', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-shift-q']
 
     # See: https://nikitabobko.github.io/AeroSpace/commands#layout
-    cmd-ctrl-alt-slash = 'layout tiles horizontal vertical'
-    cmd-ctrl-alt-comma = 'layout accordion horizontal vertical'
+    cmd-ctrl-alt-slash = ['layout tiles horizontal vertical', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-slash']
+    cmd-ctrl-alt-comma = ['layout accordion horizontal vertical', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-comma']
 
     # See: https://nikitabobko.github.io/AeroSpace/commands#focus
-    cmd-ctrl-alt-h = 'focus left'
-    cmd-ctrl-alt-j = 'focus down'
-    cmd-ctrl-alt-k = 'focus up'
-    cmd-ctrl-alt-l = 'focus right'
+    cmd-ctrl-alt-h = ['focus left', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-h']
+    cmd-ctrl-alt-j = ['focus down', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-j']
+    cmd-ctrl-alt-k = ['focus up', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-k']
+    cmd-ctrl-alt-l = ['focus right', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-l']
 
     # See: https://nikitabobko.github.io/AeroSpace/commands#move
-    cmd-ctrl-alt-shift-h = 'move left'
-    cmd-ctrl-alt-shift-j = 'move down'
-    cmd-ctrl-alt-shift-k = 'move up'
-    cmd-ctrl-alt-shift-l = 'move right'
+    cmd-ctrl-alt-shift-h = ['move left', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-shift-h']
+    cmd-ctrl-alt-shift-j = ['move down', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-shift-j']
+    cmd-ctrl-alt-shift-k = ['move up', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-shift-k']
+    cmd-ctrl-alt-shift-l = ['move right', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-shift-l']
 
     # See: https://nikitabobko.github.io/AeroSpace/commands#resize
-    cmd-ctrl-alt-minus = 'resize smart -50'
-    cmd-ctrl-alt-equal = 'resize smart +50'
+    cmd-ctrl-alt-minus = ['resize smart -50', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-minus']
+    cmd-ctrl-alt-equal = ['resize smart +50', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-equal']
 
     # ── Hyprland-style application launchers / toggles ──
     # Hyprland: SUPER+Return = exec terminal
     # 既存Ghosttyプロセスを再利用してメニュー経由で新窓を開く
     # (open -na だと新プロセスが立つ、open -a だと窓が開かないため)
-    cmd-ctrl-alt-enter = '''exec-and-forget osascript -e 'tell application "Ghostty" to activate' -e 'tell application "System Events" to tell process "Ghostty" to click menu item "New Window" of menu 1 of menu bar item "File" of menu bar 1' '''
+    cmd-ctrl-alt-enter = ['''exec-and-forget osascript -e 'tell application "Ghostty" to activate' -e 'tell application "System Events" to tell process "Ghostty" to click menu item "New Window" of menu 1 of menu bar item "File" of menu bar 1' ''', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-enter']
     # Hyprland: SUPER+R = exec menu (Raycastを呼び出す。cmd+spaceの併用も可能)
-    cmd-ctrl-alt-r = 'exec-and-forget open -a Raycast'
+    cmd-ctrl-alt-r = ['exec-and-forget open -a Raycast', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-r']
     # Hyprland: SUPER+V = togglefloating
-    cmd-ctrl-alt-v = 'layout floating tiling'
+    cmd-ctrl-alt-v = ['layout floating tiling', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-v']
     # Hyprland: SUPER+F = fullscreen
-    cmd-ctrl-alt-f = 'fullscreen'
+    cmd-ctrl-alt-f = ['fullscreen', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-f']
     # Hyprland: SUPER+J = togglesplit (親コンテナの向きを横/縦トグル)
-    cmd-ctrl-alt-backslash = 'layout horizontal vertical'
+    cmd-ctrl-alt-backslash = ['layout horizontal vertical', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-backslash']
     # bspwm相当: balance_tree (フラット化→tilesでサイズ均等化)
-    cmd-ctrl-alt-shift-equal = ['flatten-workspace-tree', 'layout tiles']
+    cmd-ctrl-alt-shift-equal = ['flatten-workspace-tree', 'layout tiles', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-shift-equal']
 
     # ── macOSネイティブ操作の無効化（AeroSpaceで奪う） ──
     # Cmd+M (minimize): ウィンドウをDockに送る → AeroSpaceが見失うので殺す
-    cmd-m = 'mode main'
+    cmd-m = ['mode main', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-m']
     # Cmd+H (hide app): 隠してDockに送る → 殺す
-    cmd-h = 'mode main'
+    cmd-h = ['mode main', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-h']
     # Cmd+Opt+H (hide others): タイリング崩壊するので殺す
-    cmd-alt-h = 'mode main'
+    cmd-alt-h = ['mode main', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-alt-h']
     # Ctrl+Cmd+F (native fullscreen) はそのまま残す（必要時に新Space化フルスクリーン使う）
 
     # See: https://nikitabobko.github.io/AeroSpace/commands#workspace
     # See: https://nikitabobko.github.io/AeroSpace/commands#workspace
-    cmd-ctrl-alt-1 = ['workspace 1', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=1 AEROSPACE_FOCUSED_WORKSPACE=1']
-    cmd-ctrl-alt-2 = ['workspace 2', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=2 AEROSPACE_FOCUSED_WORKSPACE=2']
-    cmd-ctrl-alt-3 = ['workspace 3', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=3 AEROSPACE_FOCUSED_WORKSPACE=3']
-    cmd-ctrl-alt-4 = ['workspace 4', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=4 AEROSPACE_FOCUSED_WORKSPACE=4']
-    cmd-ctrl-alt-5 = ['workspace 5', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=5 AEROSPACE_FOCUSED_WORKSPACE=5']
-    cmd-ctrl-alt-6 = ['workspace 6', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=6 AEROSPACE_FOCUSED_WORKSPACE=6']
-    cmd-ctrl-alt-7 = ['workspace 7', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=7 AEROSPACE_FOCUSED_WORKSPACE=7']
-    cmd-ctrl-alt-8 = ['workspace 8', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=8 AEROSPACE_FOCUSED_WORKSPACE=8']
-    cmd-ctrl-alt-9 = ['workspace 9', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=9 AEROSPACE_FOCUSED_WORKSPACE=9']
-    cmd-ctrl-alt-0 = ['workspace 0', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=0 AEROSPACE_FOCUSED_WORKSPACE=0']
+    cmd-ctrl-alt-1 = ['workspace 1', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=1 AEROSPACE_FOCUSED_WORKSPACE=1', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-1']
+    cmd-ctrl-alt-2 = ['workspace 2', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=2 AEROSPACE_FOCUSED_WORKSPACE=2', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-2']
+    cmd-ctrl-alt-3 = ['workspace 3', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=3 AEROSPACE_FOCUSED_WORKSPACE=3', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-3']
+    cmd-ctrl-alt-4 = ['workspace 4', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=4 AEROSPACE_FOCUSED_WORKSPACE=4', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-4']
+    cmd-ctrl-alt-5 = ['workspace 5', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=5 AEROSPACE_FOCUSED_WORKSPACE=5', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-5']
+    cmd-ctrl-alt-6 = ['workspace 6', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=6 AEROSPACE_FOCUSED_WORKSPACE=6', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-6']
+    cmd-ctrl-alt-7 = ['workspace 7', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=7 AEROSPACE_FOCUSED_WORKSPACE=7', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-7']
+    cmd-ctrl-alt-8 = ['workspace 8', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=8 AEROSPACE_FOCUSED_WORKSPACE=8', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-8']
+    cmd-ctrl-alt-9 = ['workspace 9', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=9 AEROSPACE_FOCUSED_WORKSPACE=9', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-9']
+    cmd-ctrl-alt-0 = ['workspace 0', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=0 AEROSPACE_FOCUSED_WORKSPACE=0', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-0']
 
     # See: https://nikitabobko.github.io/AeroSpace/commands#move-node-to-workspace
-    cmd-ctrl-alt-shift-1 = ['move-node-to-workspace 1', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=1 AEROSPACE_FOCUSED_WORKSPACE=1']
-    cmd-ctrl-alt-shift-2 = ['move-node-to-workspace 2', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=2 AEROSPACE_FOCUSED_WORKSPACE=2']
-    cmd-ctrl-alt-shift-3 = ['move-node-to-workspace 3', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=3 AEROSPACE_FOCUSED_WORKSPACE=3']
-    cmd-ctrl-alt-shift-4 = ['move-node-to-workspace 4', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=4 AEROSPACE_FOCUSED_WORKSPACE=4']
-    cmd-ctrl-alt-shift-5 = ['move-node-to-workspace 5', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=5 AEROSPACE_FOCUSED_WORKSPACE=5']
-    cmd-ctrl-alt-shift-6 = ['move-node-to-workspace 6', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=6 AEROSPACE_FOCUSED_WORKSPACE=6']
-    cmd-ctrl-alt-shift-7 = ['move-node-to-workspace 7', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=7 AEROSPACE_FOCUSED_WORKSPACE=7']
-    cmd-ctrl-alt-shift-8 = ['move-node-to-workspace 8', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=8 AEROSPACE_FOCUSED_WORKSPACE=8']
-    cmd-ctrl-alt-shift-9 = ['move-node-to-workspace 9', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=9 AEROSPACE_FOCUSED_WORKSPACE=9']
-    cmd-ctrl-alt-shift-0 = ['move-node-to-workspace 0', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=0 AEROSPACE_FOCUSED_WORKSPACE=0']
+    cmd-ctrl-alt-shift-1 = ['move-node-to-workspace 1', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=1 AEROSPACE_FOCUSED_WORKSPACE=1', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-shift-1']
+    cmd-ctrl-alt-shift-2 = ['move-node-to-workspace 2', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=2 AEROSPACE_FOCUSED_WORKSPACE=2', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-shift-2']
+    cmd-ctrl-alt-shift-3 = ['move-node-to-workspace 3', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=3 AEROSPACE_FOCUSED_WORKSPACE=3', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-shift-3']
+    cmd-ctrl-alt-shift-4 = ['move-node-to-workspace 4', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=4 AEROSPACE_FOCUSED_WORKSPACE=4', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-shift-4']
+    cmd-ctrl-alt-shift-5 = ['move-node-to-workspace 5', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=5 AEROSPACE_FOCUSED_WORKSPACE=5', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-shift-5']
+    cmd-ctrl-alt-shift-6 = ['move-node-to-workspace 6', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=6 AEROSPACE_FOCUSED_WORKSPACE=6', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-shift-6']
+    cmd-ctrl-alt-shift-7 = ['move-node-to-workspace 7', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=7 AEROSPACE_FOCUSED_WORKSPACE=7', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-shift-7']
+    cmd-ctrl-alt-shift-8 = ['move-node-to-workspace 8', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=8 AEROSPACE_FOCUSED_WORKSPACE=8', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-shift-8']
+    cmd-ctrl-alt-shift-9 = ['move-node-to-workspace 9', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=9 AEROSPACE_FOCUSED_WORKSPACE=9', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-shift-9']
+    cmd-ctrl-alt-shift-0 = ['move-node-to-workspace 0', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=0 AEROSPACE_FOCUSED_WORKSPACE=0', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-shift-0']
 
     # Hyprland: SUPER+S = togglespecialworkspace (scratchpad)
-    cmd-ctrl-alt-s = ['workspace S', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=S AEROSPACE_FOCUSED_WORKSPACE=S']
+    cmd-ctrl-alt-s = ['workspace S', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=S AEROSPACE_FOCUSED_WORKSPACE=S', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-s']
     # Hyprland: SUPER+Shift+S = movetoworkspace special
-    cmd-ctrl-alt-shift-s = ['move-node-to-workspace S', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=S AEROSPACE_FOCUSED_WORKSPACE=S']
+    cmd-ctrl-alt-shift-s = ['move-node-to-workspace S', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=S AEROSPACE_FOCUSED_WORKSPACE=S', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-shift-s']
 
     # See: https://nikitabobko.github.io/AeroSpace/commands#workspace-back-and-forth
-    cmd-ctrl-alt-tab = ['workspace-back-and-forth', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=$(aerospace list-workspaces --focused) AEROSPACE_FOCUSED_WORKSPACE=$(aerospace list-workspaces --focused)']
+    cmd-ctrl-alt-tab = ['workspace-back-and-forth', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=$(aerospace list-workspaces --focused) AEROSPACE_FOCUSED_WORKSPACE=$(aerospace list-workspaces --focused)', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-tab']
     # See: https://nikitabobko.github.io/AeroSpace/commands#move-workspace-to-monitor
     # move-workspace-to-monitor は aerospace_workspace_change を発火しないので
     # 配列で move 後に sketchybar へ手動で通知を送る
-    cmd-ctrl-alt-shift-tab = ['move-workspace-to-monitor --wrap-around next', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=$(aerospace list-workspaces --focused) AEROSPACE_FOCUSED_WORKSPACE=$(aerospace list-workspaces --focused)']
+    cmd-ctrl-alt-shift-tab = ['move-workspace-to-monitor --wrap-around next', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=$(aerospace list-workspaces --focused) AEROSPACE_FOCUSED_WORKSPACE=$(aerospace list-workspaces --focused)', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-shift-tab']
 
     # See: https://nikitabobko.github.io/AeroSpace/commands#mode
-    cmd-ctrl-alt-shift-semicolon = 'mode service'
+    cmd-ctrl-alt-shift-semicolon = ['mode service', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-shift-semicolon']
     # Hyprland: bind = SUPER, R, submap, resize
-    cmd-ctrl-alt-shift-r = 'mode resize'
+    cmd-ctrl-alt-shift-r = ['mode resize', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-shift-r']
 
     # See: https://nikitabobko.github.io/AeroSpace/commands#focus-monitor
-    cmd-ctrl-alt-n = 'focus-monitor --wrap-around left'
-    cmd-ctrl-alt-m = 'focus-monitor --wrap-around right'
+    cmd-ctrl-alt-n = ['focus-monitor --wrap-around left', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-n']
+    cmd-ctrl-alt-m = ['focus-monitor --wrap-around right', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-m']
 
     # See: https://nikitabobko.github.io/AeroSpace/commands#move-workspace-to-monitor
     # move 後に sketchybar へ通知して display を再計算させる
-    cmd-ctrl-alt-shift-n = ['move-workspace-to-monitor --wrap-around prev', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=$(aerospace list-workspaces --focused) AEROSPACE_FOCUSED_WORKSPACE=$(aerospace list-workspaces --focused)']
-    cmd-ctrl-alt-shift-m = ['move-workspace-to-monitor --wrap-around next', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=$(aerospace list-workspaces --focused) AEROSPACE_FOCUSED_WORKSPACE=$(aerospace list-workspaces --focused)']
+    cmd-ctrl-alt-shift-n = ['move-workspace-to-monitor --wrap-around prev', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=$(aerospace list-workspaces --focused) AEROSPACE_FOCUSED_WORKSPACE=$(aerospace list-workspaces --focused)', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-shift-n']
+    cmd-ctrl-alt-shift-m = ['move-workspace-to-monitor --wrap-around next', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=$(aerospace list-workspaces --focused) AEROSPACE_FOCUSED_WORKSPACE=$(aerospace list-workspaces --focused)', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-shift-m']
 
 # 'service' binding mode declaration.
 # See: https://nikitabobko.github.io/AeroSpace/guide#binding-modes
 [mode.service.binding]
-    esc = ['reload-config', 'mode main']
-    r = ['flatten-workspace-tree', 'mode main'] # reset layout
-    f = ['layout floating tiling', 'mode main'] # Toggle between floating and tiling layout
-    backspace = ['close-all-windows-but-current', 'mode main']
+    esc = ['reload-config', 'mode main', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh service/esc']
+    r = ['flatten-workspace-tree', 'mode main', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh service/r'] # reset layout
+    f = ['layout floating tiling', 'mode main', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh service/f'] # Toggle between floating and tiling layout
+    backspace = ['close-all-windows-but-current', 'mode main', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh service/backspace']
 
     # sticky is not yet supported https://github.com/nikitabobko/AeroSpace/issues/2
     #s = ['layout sticky tiling', 'mode main']
 
     # service mode内ではモディファイア不要。Shift+方向で囲む
-    shift-h = ['join-with left', 'mode main']
-    shift-j = ['join-with down', 'mode main']
-    shift-k = ['join-with up', 'mode main']
-    shift-l = ['join-with right', 'mode main']
+    shift-h = ['join-with left', 'mode main', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh service/shift-h']
+    shift-j = ['join-with down', 'mode main', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh service/shift-j']
+    shift-k = ['join-with up', 'mode main', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh service/shift-k']
+    shift-l = ['join-with right', 'mode main', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh service/shift-l']
     # 旧バインドも残す（マッスルメモリ保護）
-    cmd-ctrl-alt-shift-h = ['join-with left', 'mode main']
-    cmd-ctrl-alt-shift-j = ['join-with down', 'mode main']
-    cmd-ctrl-alt-shift-k = ['join-with up', 'mode main']
-    cmd-ctrl-alt-shift-l = ['join-with right', 'mode main']
+    cmd-ctrl-alt-shift-h = ['join-with left', 'mode main', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh service/cmd-ctrl-alt-shift-h']
+    cmd-ctrl-alt-shift-j = ['join-with down', 'mode main', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh service/cmd-ctrl-alt-shift-j']
+    cmd-ctrl-alt-shift-k = ['join-with up', 'mode main', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh service/cmd-ctrl-alt-shift-k']
+    cmd-ctrl-alt-shift-l = ['join-with right', 'mode main', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh service/cmd-ctrl-alt-shift-l']
 
-    down = 'volume down'
-    up = 'volume up'
-    shift-down = ['volume set 0', 'mode main']
+    down = ['volume down', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh service/down']
+    up = ['volume up', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh service/up']
+    shift-down = ['volume set 0', 'mode main', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh service/shift-down']
 
 # Hyprland-style resize submap (vim-key directional resize)
 [mode.resize.binding]
-    h = 'resize width -50'
-    j = 'resize height +50'
-    k = 'resize height -50'
-    l = 'resize width +50'
-    shift-h = 'resize width -100'
-    shift-j = 'resize height +100'
-    shift-k = 'resize height -100'
-    shift-l = 'resize width +100'
-    minus = 'resize smart -50'
-    equal = 'resize smart +50'
-    esc = 'mode main'
-    enter = 'mode main'
+    h = ['resize width -50', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh resize/h']
+    j = ['resize height +50', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh resize/j']
+    k = ['resize height -50', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh resize/k']
+    l = ['resize width +50', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh resize/l']
+    shift-h = ['resize width -100', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh resize/shift-h']
+    shift-j = ['resize height +100', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh resize/shift-j']
+    shift-k = ['resize height -100', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh resize/shift-k']
+    shift-l = ['resize width +100', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh resize/shift-l']
+    minus = ['resize smart -50', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh resize/minus']
+    equal = ['resize smart +50', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh resize/equal']
+    esc = ['mode main', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh resize/esc']
+    enter = ['mode main', 'exec-and-forget /Users/gapul/.dotfiles/configs/wm/aerospace/bin/aerolog.sh resize/enter']
     
