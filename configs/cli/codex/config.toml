@@ -12,3 +12,6 @@ theme = "catppuccin-mocha"
 
 [tui.model_availability_nux]
 "gpt-5.5" = 4
+
+# ターン完了時に notify.sh を呼び、macOS バナー + zellij タブ点滅で通知する。
+notify = ["/Users/gapul/.local/share/codex/notify.sh"]
