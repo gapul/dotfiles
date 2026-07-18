@@ -269,14 +269,9 @@
       "gapul/zrythm/zrythm" # DAW (gapul 自作 tap)
       "vcv-rack"
       "voicevox/voicevox/voicevox" # 公式 tap 専用 (homebrew/cask 未収録)。tap宣言必須
-      # 自作の打鍵アナリティクス。Apple Development 署名(公証なし)なので隔離付きだと
-      # Gatekeeper が起動を弾く → no_quarantine で隔離を付けずに入れる。
-      {
-        name = "gapul/keystats/keystats";
-        args = {
-          no_quarantine = true;
-        };
-      }
+      # 自作の打鍵アナリティクス。Developer ID 署名 + 公証済みなので隔離付きでも
+      # Gatekeeper を通過する(no_quarantine 不要)。
+      "gapul/keystats/keystats"
       "blackhole-2ch" # OBS / DAW へシステム音声を回す仮想オーディオデバイス
 
       # ─── Creative — Video / Animation / Stream ───
