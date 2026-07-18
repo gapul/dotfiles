@@ -3,8 +3,8 @@
 bluetooth=(
   icon=$BLUETOOTH_OFF
   icon.color=$GREY
-  icon.font="JetBrainsMono Nerd Font:Bold:16.0"
-  label.font="$FONT:Semibold:13.0"
+  icon.font="JetBrainsMono Nerd Font:Bold:$(scf 16.0)"
+  label.font="$FONT:Semibold:$(scf 13.0)"
   label.color=$LABEL_COLOR
   script="$PLUGIN_DIR/bluetooth.sh"
   update_freq=60

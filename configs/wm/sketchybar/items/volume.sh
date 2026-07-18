@@ -8,7 +8,7 @@ volume_slider=(
   padding_left=0
   padding_right=0
   slider.highlight_color=$BLUE
-  slider.background.height=5
+  slider.background.height=$(sc 5)
   slider.background.corner_radius=3
   slider.background.color=$BACKGROUND_2
   slider.knob=􀀁
@@ -21,7 +21,7 @@ volume_icon=(
   update_freq=5
   icon=$VOLUME_100
   icon.color=$GREY
-  icon.font="$FONT:Bold:14.0"
+  icon.font="$FONT:Bold:$(scf 14.0)"
   label.drawing=off
 )
 

@@ -15,8 +15,8 @@ fi
 music=(
   icon=$MUSIC_PLAYING
   icon.color=$GREEN
-  icon.font="$FONT:Bold:14.0"
-  label.font="$FONT:Semibold:13.0"
+  icon.font="$FONT:Bold:$(scf 14.0)"
+  label.font="$FONT:Semibold:$(scf 13.0)"
   label.color=$LABEL_COLOR
   label.max_chars=12
   label.shadow.drawing=off
