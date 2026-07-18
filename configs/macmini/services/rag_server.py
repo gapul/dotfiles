@@ -7,8 +7,8 @@ from pydantic import BaseModel
 from sentence_transformers import SentenceTransformer, CrossEncoder
 
 DEV = "mps" if torch.backends.mps.is_available() else "cpu"
-RURI = os.path.expanduser("~/rag-models/ruri-v3-310m")
-RERANK = os.path.expanduser("~/rag-models/japanese-reranker-base-v2")
+RURI = os.path.expanduser("~/ai/models/rag/ruri-v3-310m")
+RERANK = os.path.expanduser("~/ai/models/rag/japanese-reranker-base-v2")
 print("loading models on", DEV, flush=True)
 emb = SentenceTransformer(RURI, device=DEV)
 rer = CrossEncoder(RERANK, device=DEV)
