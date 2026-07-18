@@ -7,7 +7,6 @@ ITEM_DIR="$CONFIG_DIR/items" # Directory where the items are configured
 PLUGIN_DIR="$CONFIG_DIR/plugins" # Directory where all the plugin scripts are stored
 
 FONT="SF Pro" # Needs to have Regular, Bold, Semibold, Heavy and Black variants
-PADDINGS=5 # All paddings use this value (icon, label, background)
 
 # aerospace setting
 AEROSPACE_FOCUSED_MONITOR_NO=$(aerospace list-workspaces --focused)
@@ -22,20 +21,63 @@ $CONFIG_DIR/helper/helper $HELPER > /dev/null 2>&1 &
 # Unload the macOS on screen indicator overlay for volume change
 launchctl unload -F /System/Library/LaunchAgents/com.apple.OSDUIHelper.plist > /dev/null 2>&1 &
 
+# ─────────── 解像度スケーリング ───────────
+# 基準 1710x1112 (縦1112pt) に対し、論理"縦"解像度へ全サイズを比例スケール。
+# バーは水平ストリップなので太さ/フォント/アイテム高はすべて「縦方向の量」= 縦解像度比でスケールする。
+# (幅は width=max のデフォルトで自動的にディスプレイ幅いっぱいに伸びるためスケール不要)
+#
+# 複数ディスプレイ対応: sketchybar はバー高さをディスプレイ別に持てず全画面で1つの高さになる。
+# ここは「メインディスプレイ(内蔵)基準」を採用 = 内蔵にちょうど合わせる方針。
+# その結果、内蔵より論理解像度が低い外部モニタではバーが相対的に大きめに映るのは許容する。
+REF_H=1112
+# メインディスプレイの論理縦(ポイント)を取得。swift(CoreGraphics)が最も確実、無ければsystem_profilerで代替。
+CUR_H=$(swift - <<'SWIFT' 2>/dev/null
+import CoreGraphics
+print(Int(CGDisplayBounds(CGMainDisplayID()).height))
+SWIFT
+)
+if ! [ "${CUR_H:-0}" -gt 0 ] 2>/dev/null; then
+  CUR_H=$(system_profiler SPDisplaysDataType 2>/dev/null | awk '
+    /:$/ && /^ +[A-Za-z]/ { ll=""; res="" }
+    /UI Looks like/ { ll=$0 }
+    /Resolution:/   { res=$0 }
+    /Main Display: Yes/ {
+      line = (ll!="" ? ll : res)
+      sub(/^.*:[ ]*/, "", line); sub(/ @.*/, "", line); sub(/ Retina.*/, "", line)
+      gsub(/[^0-9x]/, "", line); split(line, a, "x"); print a[2]; exit
+    }')
+fi
+[ "${CUR_H:-0}" -gt 0 ] 2>/dev/null || CUR_H=$REF_H
+# フォント/アイコンだけの追加係数 (1.0=解像度スケールのまま, <1で小さく)
+FONT_SCALE=0.9
+# 整数へ丸めるスケール(寸法用) / 小数1桁のスケール(フォント用, FONT_SCALEを乗算)
+sc()  { awk -v c="$CUR_H" -v r="$REF_H" -v b="$1" 'BEGIN{printf "%.0f", b*c/r}'; }
+scf() { awk -v c="$CUR_H" -v r="$REF_H" -v b="$1" -v f="$FONT_SCALE" 'BEGIN{printf "%.1f", b*c/r*f}'; }
+
+BAR_HEIGHT=$(sc 36)
+Y_OFFSET=$(sc 4)
+MARGIN=$(sc 8)
+BAR_PAD=$(sc 10)
+PADDINGS=$(sc 5)            # All paddings use this value (icon, label, background)
+ICON_FONT_SIZE=$(scf 14)
+LABEL_FONT_SIZE=$(scf 13)
+BG_HEIGHT=$(sc 26)
+BRACKET_BG_HEIGHT=$(sc 30)
+
 # Setting up the general bar appearance of the bar
 # バー全体は透明、各アイテムが個別にガラス風背景を持つ
 bar=(
-  height=36
+  height=$BAR_HEIGHT
   color=0x00000000               # バー本体は完全透明
   border_width=0
   border_color=0x00000000
   shadow=off
   position=top
   sticky=on
-  padding_right=10
-  padding_left=10
-  y_offset=4
-  margin=8
+  padding_right=$BAR_PAD
+  padding_left=$BAR_PAD
+  y_offset=$Y_OFFSET
+  margin=$MARGIN
   topmost=window
 )
 
@@ -44,11 +86,11 @@ sketchybar --bar "${bar[@]}"
 # Setting up default values
 defaults=(
   updates=when_shown
-  icon.font="$FONT:Regular:14.0"
+  icon.font="$FONT:Regular:$ICON_FONT_SIZE"
   icon.color=$ICON_COLOR
   icon.padding_left=$PADDINGS
   icon.padding_right=$PADDINGS
-  label.font="$FONT:Semibold:13.0"
+  label.font="$FONT:Semibold:$LABEL_FONT_SIZE"
   label.color=$LABEL_COLOR
   label.padding_left=$PADDINGS
   label.padding_right=$PADDINGS
@@ -57,7 +99,7 @@ defaults=(
   label.shadow.color=$SHADOW_COLOR
   padding_right=$PADDINGS
   padding_left=$PADDINGS
-  background.height=26
+  background.height=$BG_HEIGHT
   background.corner_radius=9
   background.border_width=2
   background.color=0x00000000              # 個別pillは無効化(bracketで一括背景)
@@ -98,7 +140,7 @@ sketchybar --add bracket left_bracket '/space\..*/' front_app \
                    background.corner_radius=10 \
                    background.border_width=1 \
                    background.border_color=$BAR_BORDER_COLOR \
-                   background.height=30 \
+                   background.height=$BRACKET_BG_HEIGHT \
                    background.padding_left=4 \
                    background.padding_right=4
 
@@ -108,7 +150,7 @@ sketchybar --add bracket right_bracket calendar battery bluetooth wifi music vol
                    background.corner_radius=10 \
                    background.border_width=1 \
                    background.border_color=$BAR_BORDER_COLOR \
-                   background.height=30 \
+                   background.height=$BRACKET_BG_HEIGHT \
                    background.padding_left=4 \
                    background.padding_right=4
 

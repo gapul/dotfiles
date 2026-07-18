@@ -49,7 +49,7 @@ for m in $(aerospace list-monitors | awk '{print $1}'); do
       label.padding_right=20
       label.color=$GREY
       label.highlight_color=$WHITE
-      label.font="sketchybar-app-font:Regular:16.0"
+      label.font="sketchybar-app-font:Regular:$(scf 14.0)"
       label.y_offset=-1
       background.color=$BACKGROUND_1
       background.border_color=$BACKGROUND_2
@@ -88,7 +88,7 @@ done
 
 space_creator=(
   icon=􀆊
-  icon.font="$FONT:Heavy:16.0"
+  icon.font="$FONT:Heavy:$(scf 16.0)"
   padding_left=10
   padding_right=8
   label.drawing=off

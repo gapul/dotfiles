@@ -223,10 +223,20 @@ in
     source = ../../configs/terminals/ghostty;
     recursive = true;
   };
-  home.file.".config/aerospace" = {
-    source = ../../configs/wm/aerospace;
-    recursive = true;
-  };
+  # Ghostty: 解像度可変フォントサイズ。メインディスプレイの論理縦解像度から font-size を
+  # 算出し ~/.config/ghostty.local/font-size.conf に書き出す (config が ? 付きで include)。
+  # nh home switch のたびに再計算。解像度を変えたら再度 switch するか、
+  # scripts/ghostty-fontsize.sh を手で実行 → Ghostty で config reload すれば反映される。
+  home.activation.ghosttyFontSize = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    run ${pkgs.bash}/bin/bash ${../../scripts/ghostty-fontsize.sh}
+  '';
+  # aerospace: 解像度可変 gaps/padding。config include 非対応 + nix symlink は read-only なので、
+  # symlink ではなく activation で ~/.config/aerospace/aerospace.toml を生成する。
+  # メインディスプレイ解像度から gaps/accordion-padding をスケール → dry-run 検証 → reload-config。
+  # (bin/aerolog.sh は toml 内で絶対 dotfiles パス参照のため ~/.config へ置く必要なし)
+  home.activation.aerospaceConfig = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    run ${pkgs.bash}/bin/bash ${../../scripts/aerospace-config.sh} ${../../configs/wm/aerospace/aerospace.toml}
+  '';
   home.file.".config/sketchybar" = {
     source = ../../configs/wm/sketchybar;
     recursive = true;

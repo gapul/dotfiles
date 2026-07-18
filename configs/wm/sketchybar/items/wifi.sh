@@ -3,8 +3,8 @@
 wifi=(
   icon=$WIFI_DISCONNECTED
   icon.color=$GREY
-  icon.font="$FONT:Bold:14.0"
-  label.font="$FONT:Semibold:13.0"
+  icon.font="$FONT:Bold:$(scf 14.0)"
+  label.font="$FONT:Semibold:$(scf 13.0)"
   label.color=$LABEL_COLOR
   label.max_chars=20
   script="$PLUGIN_DIR/wifi.sh"

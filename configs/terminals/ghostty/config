@@ -77,3 +77,10 @@ quick-terminal-size = 38%,480px
 quick-terminal-autohide = true
 quick-terminal-animation-duration = 0.12
 
+# ─── 解像度可変フォントサイズ ───
+# nh home switch 時に home.activation (ghosttyFontSize) が現在のメインディスプレイ
+# 解像度から font-size を算出し下記フラグメントへ書き出す (scripts/ghostty-fontsize.sh)。
+# config-file は後勝ちなので、ここより後に置くことで font-size を上書きする。
+# 先頭 ? は「未生成でもエラーにしない」optional include。~ は Ghostty が展開する。
+config-file = ?~/.config/ghostty.local/font-size.conf
+

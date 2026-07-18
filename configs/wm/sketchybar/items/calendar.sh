@@ -2,7 +2,7 @@
 
 calendar=(
   icon=􀐫
-  icon.font="$FONT:Black:12.0"
+  icon.font="$FONT:Black:$(scf 12.0)"
   icon.padding_right=0
   label.align=right
   padding_left=15
