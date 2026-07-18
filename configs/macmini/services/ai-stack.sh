@@ -2,7 +2,7 @@
 # macmini AIスタック 冪等スーパーバイザ(launchd RunAtLoad+KeepAlive)
 eval "$(/opt/homebrew/bin/brew shellenv)"
 export PATH="/opt/homebrew/bin:/run/current-system/sw/bin:$HOME/.local/bin:$PATH"
-export HF_HUB_OFFLINE=1 PYTORCH_ENABLE_MPS_FALLBACK=1
+export HF_HUB_OFFLINE=1 PYTORCH_ENABLE_MPS_FALLBACK=1 PYTHONPYCACHEPREFIX=$HOME/.cache/pycache
 H=/Users/gapul
 up(){ curl -s --max-time 3 -o /dev/null "$1"; }
 
@@ -22,25 +22,34 @@ ensure_container(){ # name start_func
 while true; do
   # Python系サービス
   pgrep -f "ollama serve" >/dev/null || (export OLLAMA_HOST=0.0.0.0:11434 OLLAMA_KEEP_ALIVE=30m; nohup ollama serve >/tmp/ollama.log 2>&1 &)
-  up http://127.0.0.1:8900/health || (nohup $H/rag-venv/bin/python -m uvicorn rag_server:app --host 0.0.0.0 --port 8900 --app-dir $H >/tmp/rag_server.log 2>&1 &)
-  up http://127.0.0.1:8901/ || (nohup $H/rag-venv/bin/python -m uvicorn ai_panel:app --host 0.0.0.0 --port 8901 --app-dir $H >/tmp/ai_panel.log 2>&1 &)
+  up http://127.0.0.1:8900/health || (nohup $H/rag-venv/bin/python -m uvicorn rag_server:app --host 0.0.0.0 --port 8900 --app-dir $H/ai/bin >/tmp/rag_server.log 2>&1 &)
+  up http://127.0.0.1:8901/ || (nohup $H/rag-venv/bin/python -m uvicorn ai_panel:app --host 0.0.0.0 --port 8901 --app-dir $H/ai/bin >/tmp/ai_panel.log 2>&1 &)
   # コンテナランタイム+各コンテナ
   container system status 2>/dev/null | grep -q running || container system start >/dev/null 2>&1
   ensure_container open-webui start_owui
   ensure_container anythingllm start_allm
   ensure_container mc-server start_mc
-  # socat転送 + vmnet劣化の自動復旧
+  # socat 転送 (container 1.1.0 の -p は listener だけ立って転送しない罠があるため socat 継続)
   if ! { up http://127.0.0.1:3001/ && up http://127.0.0.1:3000/; }; then
-    $H/container_proxy.sh >/dev/null 2>&1; sleep 3
-    if ! { up http://127.0.0.1:3001/ && up http://127.0.0.1:3000/; }; then
-      # まだ空応答=apple container vmnet劣化。system stop/startで作り直し(5分クールダウン)
-      now=$(date +%s); last=$(cat /tmp/vmnet_recover_ts 2>/dev/null || echo 0)
-      if [ $((now - last)) -gt 300 ]; then
-        echo "$now" > /tmp/vmnet_recover_ts
-        echo "[$(date +%H:%M:%S)] vmnet劣化検知→system stop/start"
-        container system stop >/dev/null 2>&1; sleep 3; container system start >/dev/null 2>&1; sleep 5
-        $H/container_proxy.sh >/dev/null 2>&1
-      fi
+    $H/ai/bin/container_proxy.sh >/dev/null 2>&1
+  fi
+  # vmnet 劣化検知は container IP への ping で行う。HTTP 判定はアプリ起動中も
+  # 落ちる=起動待ちと劣化を区別できず、5分毎の再起動ループを起こした (2026-07-18)
+  dead=""
+  for nm in open-webui anythingllm; do
+    cip=$(container list 2>/dev/null | awk -v n="$nm" "\$1==n{print \$6}" | cut -d/ -f1)
+    [ -n "$cip" ] && ! ping -c1 -t2 "$cip" >/dev/null 2>&1 && dead="$dead $nm($cip)"
+  done
+  if [ -n "$dead" ]; then
+    now=$(date +%s); last=$(cat /tmp/vmnet_recover_ts 2>/dev/null || echo 0)
+    if [ $((now - last)) -gt 600 ]; then
+      echo "$now" > /tmp/vmnet_recover_ts
+      echo "[$(date +%H:%M:%S)] vmnet劣化検知($dead)→system stop/start"
+      # stop だけでは vmnet NAT デーモンの腐りが残る (2026-07-18 実証) ので明示 kill
+      container system stop >/dev/null 2>&1; sleep 3
+      pkill -f "com.apple.container" 2>/dev/null; sleep 3
+      container system start >/dev/null 2>&1; sleep 5
+      $H/ai/bin/container_proxy.sh >/dev/null 2>&1
     fi
   fi
   sleep 30
