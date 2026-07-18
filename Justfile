@@ -279,7 +279,7 @@ _fmt-windows:
 # 掃除 (clean / GC・ゴミファイル)
 # ─────────────────────────────────────────────
 
-# 全レイヤー一括 GC (nix store + brew + pnpm + uv + ~/.Trash 等)
+# 全レイヤー一括 GC (nix store + brew + pnpm + uv + simulator + podman + ~/.Trash 等)
 [group('掃除')]
 gc:
     #!/usr/bin/env bash
@@ -293,15 +293,36 @@ gc:
     echo "━━━ pnpm store ━━━"
     command -v pnpm >/dev/null && pnpm store prune 2>&1 | tail -2 || true
     echo ""
+    echo "━━━ npm cache ━━━"
+    command -v npm >/dev/null && npm cache clean --force 2>/dev/null && echo "  cleaned" || true
+    echo ""
     echo "━━━ uv cache ━━━"
     command -v uv >/dev/null && uv cache prune 2>&1 | tail -2 || true
     echo ""
     echo "━━━ cargo (large build artifacts only, keep registry) ━━━"
     command -v cargo-cache >/dev/null && cargo cache --autoclean 2>&1 | tail -2 || echo "  (cargo-cache not installed, skip)"
     echo ""
+    echo "━━━ iOS Simulator (unavailable devices) ━━━"
+    command -v xcrun >/dev/null && xcrun simctl delete unavailable 2>&1 | tail -1 || true
+    du -sh ~/Library/Developer/CoreSimulator 2>/dev/null | sed 's|^|  |' || true
+    echo ""
+    echo "━━━ podman (stopped containers + dangling images) ━━━"
+    # machine 停止中は接続エラーになるので黙ってスキップ
+    if command -v podman >/dev/null && podman info >/dev/null 2>&1; then
+      podman system prune -f 2>&1 | tail -2 || true
+    else
+      echo "  (podman not available / machine stopped, skip)"
+    fi
+    echo ""
     echo "━━━ macOS Trash ━━━"
     sz=$(du -sh ~/.Trash 2>/dev/null | cut -f1); echo "  ~/.Trash size: $sz"
     rm -rf ~/.Trash/* 2>/dev/null || true
+    echo ""
+    echo "━━━ Electron updater leftovers (~/Library/Caches/*.ShipIt) ━━━"
+    # Squirrel.framework が残すダウンロード済みアップデートの残骸。次回アップデート時に再取得される
+    sz=$(du -shc ~/Library/Caches/*.ShipIt 2>/dev/null | tail -1 | cut -f1)
+    echo "  total: ${sz:-0}"
+    rm -rf ~/Library/Caches/*.ShipIt/* 2>/dev/null || true
     echo ""
     echo "━━━ Repo junk files (.DS_Store / AppleDouble / vim swap etc.) ━━━"
     dir="{{justfile_directory()}}"
@@ -341,11 +362,40 @@ gc:
     echo "━━━ Done ━━━"
     df -h / 2>&1 | head -2 | tail -1
 
-# 重い再生成可能ディレクトリを削除 (30日以上更新の無い node_modules / rust target のみ。要再 install)
+# 重い再生成可能データを対話削除 (CoreSimulator dyld cache / podman 未使用イメージ / 30日以上更新の無い node_modules・rust target)
 [group('掃除')]
 gc-deep:
     #!/usr/bin/env bash
     set -u
+    echo "━━━ CoreSimulator dyld cache (/Library/Developer/CoreSimulator/Caches) ━━━"
+    # iOS シミュレータ実行時に再生成されるキャッシュ。放置すると 10GB 超えになる
+    sim_cache="/Library/Developer/CoreSimulator/Caches"
+    if [ -d "$sim_cache" ]; then
+      sz=$(du -sh "$sim_cache" 2>/dev/null | cut -f1)
+      echo "  size: ${sz:-?} (使用時に再生成される)"
+      read -rp "  Delete? (要 sudo) [y/N] " ans
+      if [[ "$ans" == [yY] ]]; then
+        sudo rm -rf "$sim_cache" && echo "  removed ($sz)"
+      else
+        echo "  skipped"
+      fi
+    else
+      echo "  (not found)"
+    fi
+    echo ""
+    echo "━━━ podman full prune (未使用イメージ全削除, 次回使用時に要再 pull) ━━━"
+    if command -v podman >/dev/null && podman info >/dev/null 2>&1; then
+      podman system df 2>/dev/null | sed 's|^|  |'
+      read -rp "  Prune all unused images? [y/N] " ans
+      if [[ "$ans" == [yY] ]]; then
+        podman system prune -af 2>&1 | tail -3
+      else
+        echo "  skipped"
+      fi
+    else
+      echo "  (podman not available / machine stopped, skip)"
+    fi
+    echo ""
     echo "━━━ Scanning node_modules / rust target untouched >30 days ━━━"
     tmp=$(mktemp)
     # ~/Library は tool 内部 (typescript/pnpm 等のキャッシュ) なので除外。プロジェクトのみ対象。
