@@ -10,6 +10,13 @@ after-startup-command = [
     'exec-and-forget borders',
 ]
 
+# config-version 2 へ移行 (v1 は非推奨警告が出る)。
+# v2 の唯一の破壊的変更: persistent-workspaces がバインドから自動推論されなくなり、
+# 明示指定が必須になった。下で 1-9 / 0 / S(scratchpad) を宣言。
+# See: https://nikitabobko.github.io/AeroSpace/guide#config-version
+config-version = 2
+persistent-workspaces = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'S']
+
 # Start AeroSpace at login
 start-at-login = true
 
