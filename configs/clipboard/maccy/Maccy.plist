@@ -8,6 +8,10 @@
 	<false/>
 	<key>KeyboardShortcuts_popup</key>
 	<string>{"carbonModifiers":6400,"carbonKeyCode":8}</string>
+	<key>NSStatusItem VisibleCC Item-0</key>
+	<false/>
+	<key>NSStatusItem VisibleCC Item-1</key>
+	<false/>
 	<key>SUEnableAutomaticChecks</key>
 	<false/>
 	<key>SUHasLaunchedBefore</key>
