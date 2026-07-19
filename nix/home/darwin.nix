@@ -462,7 +462,9 @@ in
     fi
   '';
 
-  # GUI ユーティリティ系 (AltTab / Mos / Plash / Shortcat) の plist 一括 import
+  # GUI ユーティリティ系 (AltTab / Mos / Shortcat) の plist 一括 import。
+  # Plash は websites(壁紙定義)と security-scoped bookmark をライブ側に持つため、
+  # 全置換 import すると壁紙一式が消える。enforce したい 3 キーだけ surgical に書く。
   home.activation.guiAppsPlistImport = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     /usr/bin/defaults import com.lwouis.alt-tab-macos \
       ${../../configs/apps/com.lwouis.alt-tab-macos.plist}
@@ -471,8 +473,9 @@ in
     /usr/bin/defaults import com.sproutcube.Shortcat \
       ${../../configs/apps/com.sproutcube.Shortcat.plist}
     if [ -d "$HOME/Library/Containers/com.sindresorhus.Plash" ]; then
-      /usr/bin/defaults import com.sindresorhus.Plash \
-        ${../../configs/apps/com.sindresorhus.Plash.plist}
+      /usr/bin/defaults write com.sindresorhus.Plash deactivateOnBattery    -bool true
+      /usr/bin/defaults write com.sindresorhus.Plash extendPlashBelowMenuBar -bool true
+      /usr/bin/defaults write com.sindresorhus.Plash showOnAllSpaces         -bool true
     fi
     /usr/bin/killall cfprefsd 2>/dev/null || true
   '';

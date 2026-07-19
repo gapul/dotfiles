@@ -12,6 +12,8 @@
 	<string>{"carbonKeyCode":115,"carbonModifiers":256}</string>
 	<key>KeyboardShortcuts_toggleShortcat</key>
 	<string>{"carbonKeyCode":49,"carbonModifiers":768}</string>
+	<key>NSStatusItem VisibleCC Item-0</key>
+	<false/>
 	<key>continuousMode</key>
 	<true/>
 	<key>downKeycode</key>

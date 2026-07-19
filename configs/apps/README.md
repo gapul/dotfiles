@@ -1,15 +1,23 @@
 # GUI アプリ plist 管理
 
-主に menubar / 入力系ユーティリティの設定を `defaults import` で復元する。
+menubar / 入力系ユーティリティの設定を home-manager activation で復元する。
+AltTab / Mos / Shortcat は `defaults import`(ドメイン全置換)、Plash は websites(壁紙)と
+security-scoped bookmark を壊さないよう enforce したいキーのみ `defaults write`(surgical)。
 
 ## 管理対象
 
-| App | plist | 説明 |
+| App | 方式 | 説明 |
 |---|---|---|
-| **AltTab** | `com.lwouis.alt-tab-macos.plist` | Cmd+Tab 代替の Window switcher。外見系設定のみ管理(キーバインドは secureData blob で含まれる) |
-| **Mos** | `com.caldis.Mos.plist` | スクロール挙動 (smooth/reverse/speed)、menubar 非表示 |
-| **Plash** | `com.sindresorhus.Plash.plist` | 動的壁紙。**website 設定は含まれない**(security-scoped bookmark が必須で各 Mac で再追加要)、behavior 系のみ管理 |
-| **Shortcat** | `com.sproutcube.Shortcat.plist` | キーボードでマウス操作。keybindings + continuousMode |
+| **AltTab** | import `com.lwouis.alt-tab-macos.plist` | Cmd+Tab 代替の Window switcher。外見系設定のみ(キーバインドは secureData blob) |
+| **Mos** | import `com.caldis.Mos.plist` | スクロール挙動 (smooth/reverse/speed)、menubar アイコン非表示 |
+| **Shortcat** | import `com.sproutcube.Shortcat.plist` | キーボードでマウス操作。keybindings + continuousMode、menubar アイコン非表示 |
+| **Plash** | surgical write (`nix/home/darwin.nix`) | 動的壁紙。websites/bookmark はライブ保持し全置換しない。behavior 3 キー(deactivateOnBattery / extendPlashBelowMenuBar / showOnAllSpaces)のみ enforce |
+
+## menubar アイコンの表示/非表示
+
+`NSStatusItem VisibleCC Item-*` = false で「アイコンを隠す」状態を管理対象に含める
+(Maccy/Mos/Shortcat)。rebuild の import で隠し状態が表示に戻らないよう明示保持する。
+位置キー `NSStatusItem Preferred Position*` は端末固有なので除外する。
 
 ## 除外したもの(個人情報 / 端末固有 / UI 状態 / テレメトリ)
 
@@ -17,37 +25,31 @@
 |---|---|
 | `MS*` | Microsoft AppCenter テレメトリ (AltTab) |
 | `SU*` | Sparkle 自動更新の state |
-| `NSWindow Frame*`, `NSStatusItem*` | UI 位置 (端末固有) |
+| `NSWindow Frame*`, `NSStatusItem Preferred Position*` | UI 位置 (端末固有) |
 | `NSNavPanel*`, `NSOSPLast*` | Open ダイアログの最後の path |
-| `SecurityScopedBookmarkManager*`, `__securityScopedBookmarks__` | Plash の Bookmark blob (端末固有・file:// path 込) |
-| `display` | Plash の Display UUID (Mac 固有) |
 | `SS_*`, `com_apple_SwiftUI*`, `welcomeDisplayed` | Sindre 系の launch count / 初回フラグ |
 | `telemetryIdentifier` | Shortcat の telemetry ID |
-| `websites` (Plash) | bookmark なしでは無意味なので除外 |
 
 ## 新 Mac での復元
 
-`just rebuild`(home-manager activation)で 4 つの plist が `defaults import` される。
-ただし以下は **GUI で手動再設定** が必要:
+`just rebuild`(home-manager activation)で AltTab/Mos/Shortcat が `defaults import`、
+Plash は behavior 3 キーが `defaults write` される。以下は GUI で手動:
 
 ### Plash
-1. 設定 → Display を選択
-2. Website を追加 → `file:///Users/<ユーザー名>/.dotfiles/configs/wallpaper/aurora.html` を指定
-   (Browse ボタンから選択しないと security-scoped bookmark が取れない)
+- 壁紙 website(`file:///Users/<ユーザー名>/.dotfiles/configs/wallpaper/*.html`)は端末固有の
+  security-scoped bookmark が要るため、初回のみ Browse から追加する。
+  以降の rebuild は surgical write なので websites/bookmark を壊さない(再追加不要)。
 
-### AltTab
-- キーバインドは plist の secureData blob に含まれてるので import で復元される
-- ただし system 設定で「アクセシビリティ権限」「画面収録権限」付与は手動
-
-### Shortcat
-- アクセシビリティ権限付与は手動
-
-### Mos
-- アクセシビリティ権限 + 入力監視権限付与は手動
+### 権限(手動・SIP 保護のため CLI 不可)
+- AltTab: アクセシビリティ + 画面収録
+- Shortcat: アクセシビリティ
+- Mos: アクセシビリティ + 入力監視
+- ※ cask 更新で cdhash がずれると権限が stale 化して黙って効かなくなることがある。
+  その場合は System Settings > Privacy & Security で対象アプリをオフ→オンし直す。
 
 ## 設定変更後の capture
 
-GUI で設定を変えたら dotfiles に反映するには:
+GUI で設定を変えたら dotfiles に反映:
 
 ```bash
 # AltTab (Container 外)
@@ -56,22 +58,18 @@ GUI で設定を変えたら dotfiles に反映するには:
   ~/.dotfiles/configs/apps/com.lwouis.alt-tab-macos.plist \
   "MS*" "NSWindow Frame*" "SU*" "settingsWindowShownOnFirstLaunch"
 
-# Mos
+# Mos (menubar 非表示 VisibleCC は残す。位置のみ除外)
 ~/.dotfiles/scripts/capture-app-plist.py \
   ~/Library/Preferences/com.caldis.Mos.plist \
   ~/.dotfiles/configs/apps/com.caldis.Mos.plist \
-  "NSStatusItem*"
+  "NSStatusItem Preferred Position*"
 
-# Plash (sandboxed, Container 内)
-~/.dotfiles/scripts/capture-app-plist.py \
-  ~/Library/Containers/com.sindresorhus.Plash/Data/Library/Preferences/com.sindresorhus.Plash.plist \
-  ~/.dotfiles/configs/apps/com.sindresorhus.Plash.plist \
-  "__securityScopedBookmarks__" "display" "NSWindow*" "NSNavPanel*" "NSOSPLast*" \
-  "SecurityScopedBookmarkManager*" "SS_*" "com_apple_SwiftUI*" "websites"
-
-# Shortcat
+# Shortcat (同上)
 ~/.dotfiles/scripts/capture-app-plist.py \
   ~/Library/Preferences/com.sproutcube.Shortcat.plist \
   ~/.dotfiles/configs/apps/com.sproutcube.Shortcat.plist \
-  "telemetryIdentifier" "NSStatusItem*" "NSWindow*" "SU*" "welcomeDisplayed"
+  "telemetryIdentifier" "NSStatusItem Preferred Position*" "NSWindow*" "SU*" "welcomeDisplayed"
+
+# Plash は plist を持たない(surgical write)。behavior を変えたら
+# nix/home/darwin.nix の guiAppsPlistImport 内 defaults write を直接編集する。
 ```
