@@ -115,6 +115,8 @@
               "\\.envrc$"
               # macmini AI コマンド群は zsh (shellcheck は zsh 非対応 SC1071)
               "configs/macmini/bin/.*"
+              # macmini 構築時の一発スクリプトのアーカイブ (歴史的資料、style 改修しない)
+              "configs/macmini/setup-scripts/.*"
             ];
           };
           gitleaks = {

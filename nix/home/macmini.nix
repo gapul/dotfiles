@@ -9,7 +9,7 @@ let
   # AI スタックの実行資産は dotfiles を単一ソースに out-of-store symlink で配置。
   # mini 上での直編集がそのまま repo に反映される (nvim と同じ機構)。
   aiService = name: {
-    "ai/bin/${name}".source =
+    ".local/share/ai-stack/${name}".source =
       config.lib.file.mkOutOfStoreSymlink "${dotfiles}/configs/macmini/services/${name}";
   };
   aiWrapper = name: {
@@ -20,8 +20,13 @@ in
 {
   # macmini 固有レイヤー。ベースの CLI/zsh/XDG 一式は home/common.nix を
   # flake 側で合成して継承する (sops/age 鍵は持ち込まない)。
-  # venv / モデル / データ (~/ai/{venvs,models,data,apps}) は再現不可能資産のため
-  # imperative 管理 (再構築手順は configs/macmini/bootstrap.sh と README)。
+  # 配置は XDG/ghq 準拠 (専用 ~/ai は廃止 2026-07-19):
+  #   サービス実体 → ~/.local/share/ai-stack/ (HM symlink)
+  #   venv → ~/.local/share/venvs/、モデル → ~/.local/share/models/
+  #   アプリデータ → ~/.local/share/{anythingllm,open-webui,minecraft}/
+  #   ComfyUI / GPT-SoVITS → ~/Developer/github.com/<owner>/<repo> (ghq 流儀)
+  # venv/モデル/データは再現不可能資産のため imperative 管理
+  # (再構築手順は configs/macmini/bootstrap.sh と README)。
 
   home.packages = [
     # ccm: mac mini での Claude Code 既定起動形。
@@ -76,7 +81,7 @@ in
     config = {
       ProgramArguments = [
         "/bin/bash"
-        "${config.home.homeDirectory}/ai/bin/ai-stack.sh"
+        "${config.home.homeDirectory}/.local/share/ai-stack/ai-stack.sh"
       ];
       RunAtLoad = true;
       KeepAlive = true;
@@ -89,9 +94,9 @@ in
     config = {
       ProgramArguments = [
         "/bin/bash"
-        "${config.home.homeDirectory}/ai/apps/ComfyUI/run-comfy.sh"
+        "${config.home.homeDirectory}/Developer/github.com/comfyanonymous/ComfyUI/run-comfy.sh"
       ];
-      WorkingDirectory = "${config.home.homeDirectory}/ai/apps/ComfyUI";
+      WorkingDirectory = "${config.home.homeDirectory}/Developer/github.com/comfyanonymous/ComfyUI";
       RunAtLoad = true;
       KeepAlive = true;
       ProcessType = "Interactive";

@@ -3,6 +3,6 @@ eval "$(/opt/homebrew/bin/brew shellenv)"
 export PATH="$HOME/.local/bin:$PATH"
 img="$1"; prompt="${2:-この画像を日本語で詳しく説明してください。}"
 if [[ -z "$img" || ! -f "$img" ]]; then echo "使い方: describe <画像> [プロンプト]"; exit 1; fi
-mlx_vlm.generate --model "$HOME/ai/models/mlx/internvl3-8b-4bit" --image "$img" \
+mlx_vlm.generate --model "$HOME/.local/share/models/mlx/internvl3-8b-4bit" --image "$img" \
   --prompt "$prompt" --max-tokens 1024 --temperature 0.3 --repetition-penalty 1.05 2>/dev/null \
   | awk "/^==========\$/{c++; next} c==1" | sed -e "/^Files:/d" -e "/^Prompt:/,/^Assistant:/d"
