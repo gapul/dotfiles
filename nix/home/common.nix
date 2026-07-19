@@ -616,6 +616,14 @@ in
   # SOPS 定義は home/secrets.nix へ分離 (age 鍵を持たない macmini が
   # common.nix を共有できるようにするため。2026-07-19)
 
+  # Ghostty の terminfo を全ホストへ配布。ssh 先で TERM=xterm-ghostty が未知だと
+  # ZLE が端末能力を誤解して入力が壊れる (macmini で実害あり 2026-07-19)。
+  # pkgs.ghostty は darwin unsupported のため infocmp ダンプを vendoring して
+  # activation 時に tic でコンパイルする。
+  home.activation.ghosttyTerminfo = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    run ${pkgs.ncurses}/bin/tic -x -o "$HOME/.terminfo" ${../../configs/terminals/ghostty/xterm-ghostty.terminfo}
+  '';
+
   # dotfiles/configs/* を symlink (OS 非依存なものだけ。Mac 専用 = aerospace/sketchybar/karabiner は home/darwin.nix へ)
   home.file.".config/zellij" = {
     source = ../../configs/terminals/zellij;
