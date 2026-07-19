@@ -42,6 +42,12 @@ _rebuild-macos:
     @-brew list --cask --full-name 2>/dev/null | grep '/' | xargs -I% env -u XDG_CONFIG_HOME brew trust --cask % >/dev/null
     nh darwin switch
     nh home switch
+    # Ghostty は cask 更新で終了させられると quick-terminal のグローバルホットキー(cmd+space)
+    # 常駐が失われるため、rebuild 後にバックグラウンド常駐を起こし直す (initial-window=false)。
+    # ※ アプリ更新で cdhash が変わると Accessibility 権限が stale 化して非フォーカス時に
+    #    ホットキーが効かなくなることがある。その場合は System Settings > Privacy & Security >
+    #    Accessibility で Ghostty をオフ→オンし直す (SIP 保護のため CLI 不可)。
+    @-open -a Ghostty >/dev/null 2>&1 || true
 
 [private]
 _rebuild-linux:
