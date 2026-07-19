@@ -45,6 +45,13 @@
       "${config.home.homeDirectory}/Sync"
   '';
 
+  # codex / claude: env (CODEX_HOME / CLAUDE_CONFIG_DIR) を読まない起動経路
+  # (CodexBar 等の GUI アプリ、popo の env 無し spawn) が ~/.codex ~/.claude を
+  # 再生成して分裂するため、XDG 実体への symlink にしてどの経路でも同じ場所に
+  # 収束させる (.supermaven と同じ手法)。
+  home.file.".codex".source = config.lib.file.mkOutOfStoreSymlink "${config.xdg.dataHome}/codex";
+  home.file.".claude".source = config.lib.file.mkOutOfStoreSymlink "${config.xdg.configHome}/claude";
+
   # supermaven: sm-agent は $HOME/.supermaven をハードコード参照 (XDG 非対応)。
   # 実体は ~/.local/share/supermaven に置き、$HOME はそこへの symlink にして両立。
   # (丸ごと移動すると agent が config を見失い認証ロストするため symlink が必須)
