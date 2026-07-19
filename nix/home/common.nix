@@ -143,8 +143,6 @@ in
   # 共有フォルダのような user data は HOME 直下のカテゴリにまとめる。
   home.activation.userDataDirs = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     /bin/mkdir -p \
-      "${config.home.homeDirectory}/Cloud" \
-      "${config.home.homeDirectory}/Sync" \
       "${config.xdg.dataHome}/codex" \
       "${config.xdg.stateHome}/codex/sqlite" \
       "${config.xdg.configHome}/npm" \
@@ -368,49 +366,24 @@ in
     zellij # ターミナルマルチプレクサ
 
     # ─── Homebrew から移行した CLI (段階2: build/言語/文書/security/network) ───
-    cmake # ビルドシステム
-    meson # ビルドシステム
-    tree-sitter # 旧 tree-sitter-cli
     uv # Python パッケージ管理
     pnpm # Node パッケージ管理
-    pandoc # ドキュメント変換
-    typst # 組版
-    poppler-utils # PDF CLI (pdftotext 等。旧 brew poppler)
     imagemagick # 画像変換 (magick)
     libsixel # sixel (img2sixel)
-    bitwarden-cli # Bitwarden (bw)
-    syft # SBOM
-    radare2 # リバースエンジニアリング (r2)
     age # SOPS 暗号化バックエンド
     sops # secrets 管理
     gitleaks # pre-commit の機密 leak 検査
     pre-commit # hook framework
-    aria2 # ダウンローダ (aria2c)
-    rclone # クラウドストレージ同期
     opencode # AI コーディング CLI
     glow # markdown ビューア
     chafa # 画像→ターミナル
     w3m # テキストブラウザ
-    calcurse # カレンダー TUI
 
     # ─── cargo/uv からローカル install していたものを nix 宣言化 (再現性確保) ───
-    cargo-cache # cargo build artifacts 掃除 (just gc が依存)
-    youtube-tui # YouTube TUI
-    gita # マルチリポ git 管理 (~/.config/gita)
-    compiledb # compile_commands.json 生成
 
     # ─── Homebrew から移行した CLI (段階3) ───
-    # rust: rustup でなく rustc+cargo (固定版・宣言的)。nightly/toolchain切替が要る場合は rustup へ
-    rustc # Rust コンパイラ
-    cargo # Rust ビルド/パッケージ管理
-    docker-compose # コンテナ compose (podman socket を向ける)
-    podman # コンテナ (machine VM は別管理で維持)
-    fontforge # フォント編集 CLI (GUI は fontforge-app cask)
-    python3Packages.fonttools # フォント操作 lib/CLI
     ollama # ローカル LLM (nix 版も Metal GPU 有効 — runner が Metal.framework をリンク。検証済)
     neovim # エディタ本体 (設定は configs/editors/nvim を mkOutOfStoreSymlink)
-    aerc # メール TUI
-    isync # IMAP 同期 (mbsync)
 
     # ─── yazi プレビュー用 (piper 経由 or 内蔵 previewer が利用) ───
     ffmpegthumbnailer # 動画サムネイル (yazi 内蔵 video previewer が使用)
@@ -425,8 +398,6 @@ in
     prettier # js/ts/json/yaml/css/md 整形
     ruff # Python lint + format
     markdownlint-cli2 # Markdown lint
-    # 日本語校閲 textlint (ルール一式を buildNpmPackage で固定。pnpm global を廃止)
-    (callPackage ../pkgs/textlint-ja.nix { })
   ];
 
   programs.git = {
@@ -632,17 +603,6 @@ in
   # zellij テーマは nix/lib/rose-pine.nix から生成 (config.kdl は theme "rose-pine" で参照)
   home.file.".config/zellij/themes/rose-pine.kdl".text = mkZellijTheme "rose-pine" c.dark;
   home.file.".config/zellij/themes/rose-pine-dawn.kdl".text = mkZellijTheme "rose-pine-dawn" c.light;
-  # supermaven: sm-agent は $HOME/.supermaven をハードコード参照 (XDG 非対応)。
-  # 実体は ~/.local/share/supermaven に置き、$HOME はそこへの symlink にして両立。
-  # (丸ごと移動すると agent が config を見失い認証ロストするため symlink が必須)
-  home.file.".supermaven".source =
-    config.lib.file.mkOutOfStoreSymlink "${config.xdg.dataHome}/supermaven";
-
-  # bday: 自作 birthday-tui のランチャ。ghq(~/Developer) の checkout を PATH に通す。
-  # nvim 側は lazy dev で同 checkout を読む (configs/editors/nvim/lua/config/lazy.lua)。
-  home.file.".local/bin/bday".source =
-    config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/Developer/github.com/gapul/birthday-tui/bday";
-
   home.file.".config/starship.toml".source = ../../configs/shell/starship.toml;
   home.file.".config/gh/config.yml".source = ../../configs/cli/gh/config.yml;
   # markdownlint-cli2: 親方向探索でホーム以下全 Markdown の既定になるため、
@@ -654,24 +614,8 @@ in
   # TUI から設定が更新されても repo に反映されるよう out-of-store symlink にする。
   xdg.dataFile."codex/config.toml".source =
     config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.dotfiles/configs/cli/codex/config.toml";
-  home.file.".config/textlint" = {
-    source = ../../configs/textlint;
-    recursive = true;
-  };
-  # LaTeX: latexmk 既定設定 (LuaLaTeX) と日本語テンプレート
-  # latexmk 4.77+ は $XDG_CONFIG_HOME/latexmk/latexmkrc を公式サポートするため XDG 準拠の配置にする
-  home.file.".config/latexmk/latexmkrc".source = ../../configs/tex/latexmkrc;
   # 素の Vim: native XDG で読まれる vimrc。.viminfo を $XDG_STATE_HOME へ追い出す目的
   home.file.".config/vim/vimrc".source = ../../configs/editors/vim/vimrc;
-  home.file.".config/tex/templates" = {
-    source = ../../configs/tex/templates;
-    recursive = true;
-  };
-  home.file.".config/mpv" = {
-    source = ../../configs/media/mpv;
-    recursive = true;
-  };
-  home.file.".config/launcher/config.toml".source = ../../configs/launcher/config.toml;
   home.file."bin/nssh" = {
     source = ../../configs/bin/nssh;
     executable = true;
@@ -684,17 +628,8 @@ in
     source = ../../configs/cli/yazi;
     recursive = true;
   };
-  home.file.".config/calcurse" = {
-    source = ../../configs/cli/calcurse;
-    recursive = true;
-  };
-
   # nvim は dotfiles に直接書き戻したいので mkOutOfStoreSymlink
   home.file.".config/nvim".source =
     config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.dotfiles/configs/editors/nvim";
 
-  # Zed: settings.json のみ管理 (UI 編集が repo に直書きされるよう mkOutOfStoreSymlink)。
-  # 他の ~/.config/zed/* は会話履歴等の state なので触らない。
-  home.file.".config/zed/settings.json".source =
-    config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.dotfiles/configs/editors/zed/settings.json";
 }

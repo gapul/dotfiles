@@ -198,6 +198,7 @@
                       ./home/restic-backup-linux.nix # restic (systemd user timer)
                       sops-nix.homeManagerModules.sops
                       ./home/secrets.nix
+                      ./home/workstation.nix
                     ];
                   };
                 }
@@ -222,6 +223,7 @@
           ./home/maintenance.nix
           sops-nix.homeManagerModules.sops
           ./home/secrets.nix
+          ./home/workstation.nix
         ];
       };
 
@@ -244,6 +246,7 @@
             ./home/wsl.nix
             sops-nix.homeManagerModules.sops
             ./home/secrets.nix
+            ./home/workstation.nix
           ];
         };
 
@@ -276,6 +279,7 @@
             ./home/wsl.nix
             sops-nix.homeManagerModules.sops
             ./home/secrets.nix
+            ./home/workstation.nix
           ];
         };
 
@@ -294,6 +298,7 @@
             ./home/linux.nix
             sops-nix.homeManagerModules.sops
             ./home/secrets.nix
+            ./home/workstation.nix
           ];
         };
       homeConfigurations."${user.username}-linux-aarch64" =
@@ -309,6 +314,7 @@
             ./home/linux.nix
             sops-nix.homeManagerModules.sops
             ./home/secrets.nix
+            ./home/workstation.nix
           ];
         };
 
