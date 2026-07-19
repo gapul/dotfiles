@@ -168,6 +168,10 @@
 		<integer>4</integer>
 		<key>port</key>
 		<integer>1178</integer>
+		<key>requestEncoding</key>
+		<integer>3</integer>
+		<key>responseEncoding</key>
+		<integer>4</integer>
 		<key>saveToUserDict</key>
 		<false/>
 	</dict>
