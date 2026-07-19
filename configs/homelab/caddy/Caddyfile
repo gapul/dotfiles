@@ -147,3 +147,12 @@ backrest.gapul.net {
 	}
 	reverse_proxy 192.168.116.65:9898
 }
+
+# restic バックアップの中身を read-only でプレビュー (Filebrowser)。
+# upstream は pve ホスト上の restic mount + Filebrowser (systemd)。詳細: configs/homelab/restic/README.md
+files.gapul.net {
+	tls {
+		dns cloudflare {env.CF_API_TOKEN}
+	}
+	reverse_proxy 192.168.116.100:8082
+}

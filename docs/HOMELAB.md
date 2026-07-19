@@ -241,7 +241,15 @@ push 先は GitHub のまま自宅へ複製され続ける。**外向き pull �
 - **手動実行**: `systemctl start restic-pve-offsite.service`
 - **確認**: `RCLONE_CONFIG=/root/.config/rclone/rclone.conf RESTIC_REPOSITORY=rclone:google-drive:restic-backup RESTIC_PASSWORD_FILE=/root/.restic.pw restic snapshots --host pve`
 - **リストア**: `restic restore <ID> --target /tmp/r` で取り出し → PVE UI / `pct restore` / `qmrestore` で復元。
-- ⚠️ 通知未整備: PVE バックアップ通知先が `mail-to-root`（実質届かない）。失敗検知のため **Discord 通知**に向けるのが次の改善。
+- ⚠️ 通知未整備: PVE バックアップ通知先が `mail-to-root`（実質届かない）。失敗検知のため **Discord 通知**に向けるのが次の改善。restic 層は母艦/macmini/rpi4 と同じ ntfy 通知に寄せてもよい。
+
+### 共有 restic リポジトリの全体像 / 母艦・macmini・rpi4 も相乗り（2026-07-20）
+pve だけでなく **母艦Mac / macmini / rpi4** も同一 restic リポジトリ `rclone:google-drive:restic-backup` を共有する（host 名で相乗り・重複排除）。各ホストの対象・スケジュール・デプロイ手順・秘密の場所・**復元テスト手順**は → [`configs/homelab/restic/README.md`](../configs/homelab/restic/README.md)。成果物（スクリプト/systemd/launchd）も同ディレクトリに収録。
+- 共有リポジトリのため `restic forget` は必ず `--host` スコープ、**prune は母艦の日次のみ**（排他ロック競合回避）。
+- Google OAuth は Production 公開済でトークン失効しない（旧: Testing で約7日ごとに失効し全ホスト同時停止の罠）。失敗時は ntfy 通知（母艦/macmini/rpi4）。
+- **スマホから中身プレビュー**: `files.gapul.net` = pve 上の restic mount(read-only FUSE, `--no-lock`) + Filebrowser を Caddy 公開（tailnet 限定・認証なし）。CF は `files.gapul.net` の個別 A レコード（→ caddy tailnet IP）が必要。
+- 復元テスト（2026-07-20）: 母艦/pve/macmini/rpi4 全ホストで、復元ファイルの SHA256 がライブと一致することを確認済み。
+- dash(Homepage) の Backup セクションに Backrest（閲覧/リストア）と Filebrowser（中身プレビュー）を登録済み。
 
 ### HA 自動バックアップ（TODO）
 VM100 全体は上記 vzdump で取得済み。HA 内蔵の自動バックアップ（設定単位の復元用・暗号化パスワード要設定）は未設定。
