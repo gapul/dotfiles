@@ -25,6 +25,11 @@ let
   passwordFile = config.sops.secrets."restic_password".path;
   logFile = "${home}/Library/Logs/restic-backup.log";
 
+  # ntfy 失敗通知 (homelab の ntfy.gapul.net)。URL(トピック込み)とトークンは sops 管理。
+  #   これらが未展開/未読なら notify は osascript のみで静かにフォールバックする。
+  ntfyUrlFile = config.sops.secrets."unified_calendar/ntfy_url".path;
+  ntfyTokenFile = config.sops.secrets."unified_calendar/ntfy_token".path;
+
   # restic 環境 + macOS 通知シェル関数 (launchd の GUI セッションで osascript が使える)
   resticEnv = ''
     export PATH=${
@@ -38,7 +43,19 @@ let
     export RESTIC_REPOSITORY="${repository}"
     export RESTIC_PASSWORD_FILE="${passwordFile}"
     export RCLONE_CONFIG="${rcloneConf}"
-    notify() { /usr/bin/osascript -e "display notification \"$2\" with title \"$1\"" 2>/dev/null || true; }
+    # macOS 通知 (GUI セッション) + ntfy プッシュ (スマホ即時気付き)。どちらも失敗しても本処理は続行。
+    notify() {
+      /usr/bin/osascript -e "display notification \"$2\" with title \"$1\"" 2>/dev/null || true
+      if [ -r "${ntfyUrlFile}" ] && [ -r "${ntfyTokenFile}" ]; then
+        /usr/bin/curl -fsS --max-time 15 \
+          -H "Authorization: Bearer $(cat "${ntfyTokenFile}")" \
+          -H "Title: restic (mac)" \
+          -H "Priority: high" \
+          -H "Tags: warning" \
+          -d "$1: $2" \
+          "$(cat "${ntfyUrlFile}")" >/dev/null 2>&1 || true
+      fi
+    }
   '';
 
   # バックアップ対象 (再現不可能なユーザーデータのみ)
@@ -98,6 +115,9 @@ let
       --keep-daily 7 --keep-weekly 4 --keep-monthly 6 || true
 
     echo "==================== $(date '+%Y-%m-%d %H:%M:%S') backup done (rc=$rc) ===================="
+    if [ "$rc" -ne 0 ]; then
+      notify "restic ⚠️ バックアップ失敗" "restic backup が rc=$rc で失敗しました。ログを確認してください: ${logFile}"
+    fi
     exit $rc
   '';
 
@@ -159,6 +179,11 @@ in
 
   # restic パスフレーズ (sops の defaultSopsFile = secrets/secrets.yaml に格納済み)
   sops.secrets."restic_password".path = "${home}/.config/restic/password";
+
+  # ntfy 失敗通知用 (URL はトピックまで含む publish エンドポイント, token は Bearer tk_...)。
+  #   これらが未設定でも notify は osascript のみで動くため無害。
+  sops.secrets."unified_calendar/ntfy_url".path = "${home}/.config/ntfy/url";
+  sops.secrets."unified_calendar/ntfy_token".path = "${home}/.config/ntfy/token";
 
   launchd.agents = {
     # 日次 13:00 バックアップ

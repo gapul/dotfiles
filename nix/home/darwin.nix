@@ -449,7 +449,12 @@ in
     obsidian_dir="${config.home.homeDirectory}/Documents/notes/.obsidian"
     if [ -d "$obsidian_dir" ]; then
       /bin/mkdir -p "$obsidian_dir/snippets"
-      /usr/bin/install -m 644 ${obsidianThemeCss} "$obsidian_dir/snippets/nix-theme.css"
+      # Obsidian が開いたファイルには com.apple.macl (TCC) が付与され、FDA 無しの
+      #   activation からは install の rename が EPERM になる。スニペットは vault が本体
+      #   (LiveSync で伝播) なので、更新できない場合は警告に留めて switch 全体は止めない。
+      if ! /usr/bin/install -m 644 ${obsidianThemeCss} "$obsidian_dir/snippets/nix-theme.css" 2>/dev/null; then
+        echo "warning: obsidianTheme: nix-theme.css を更新できませんでした (Obsidian の TCC ロックの可能性)。vault 側が本体のためスキップ。" >&2
+      fi
     fi
   '';
 
