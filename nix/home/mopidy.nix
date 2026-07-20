@@ -17,10 +17,12 @@ let
   # mopidy-ytmusic:
   #  - ytdlp-patch : pytube のシグネチャ解読が YouTube の対策で壊れるため yt-dlp へ委譲
   #  - search-patch: parseSearch が album=None の曲で例外→any検索が0件になるのを是正
+  #  - home-patch  : ブラウズに ytmusic:home (YouTube Music ホームのおすすめ) を追加
   ytmusicPatched = pkgs.mopidy-ytmusic.overrideAttrs (old: {
     postPatch = (old.postPatch or "") + ''
       ${py.interpreter} ${../../configs/media/mopidy/ytdlp-patch.py}
       ${py.interpreter} ${../../configs/media/mopidy/search-patch.py}
+      ${py.interpreter} ${../../configs/media/mopidy/home-patch.py}
     '';
   });
 
@@ -32,10 +34,13 @@ let
     '';
   });
 
-  # mopidy-mpd: rmpc 等が接続時に送る binarylimit を未実装で弾く。no-op 登録で受ける。
+  # mopidy-mpd:
+  #  - mpd-patch      : binarylimit を受ける + albumart/readpicture(アルバムアート)を実装
+  #  - mpdsearch-patch: rmpc 等が送る新 MPD フィルタ式 `(Tag contains "x")` を解釈
   mpdPatched = pkgs.mopidy-mpd.overrideAttrs (old: {
     postPatch = (old.postPatch or "") + ''
       ${py.interpreter} ${../../configs/media/mopidy/mpd-patch.py}
+      ${py.interpreter} ${../../configs/media/mopidy/mpdsearch-patch.py}
     '';
   });
 
