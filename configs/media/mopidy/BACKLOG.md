@@ -319,7 +319,28 @@ macmini の自走エージェントがここを1回1項目ずつ実装する。�
   `lsinfo "YouTube Music/Home/お気に入り音楽"` (Mix系プレイリスト一覧) 等いずれも
   例外なく正しい種別 (Ref.track/Ref.playlist) でブラウズ可能なことを確認。旧来の
   `search any "yoasobi"`/`list album`/`tagtypes`/`status` の回帰なし・Traceback 0 を確認。
-- [ ] アルバム/プレイリストのブラウズ時にトラックのアート(get_images)を確実に載せる
+- [x] アルバム/プレイリストのブラウズ時にトラックのアート(get_images)を確実に載せる
+  verified: ytimages-patch.py。原因調査の結果、albumToTracks() は末尾で addThumbnails(bId, album)
+  を呼び album の thumbnails を各トラックの videoId にも複製して self.IMAGES に積んでいるため
+  アルバム経由のトラックは既に get_images() でヒットしていたが、playlistToTracks()
+  (ytmusic:playlist:* のブラウズ、Liked Songs、Recently Played、Similar to last played が共有)
+  は ytmusicapi の各トラック dict に既に含まれている "thumbnails" (parse_playlist_item が
+  per-track で積んでいる) を一切見ておらず self.IMAGES に何も登録しないため、get_images() は
+  track.album が無いと空、album があっても毎回 get_album() を追加で叩く非効率な経路にしか
+  ならないと判明。オフライン単体テストで実証: 合成トラック(album=None、thumbnails=2件)を
+  修正前/修正後の両 library.py に対し playlistToTracks() へ直接投入し比較 —
+  修正前は self.IMAGES にキー登録されず(get_images相当が空になる不具合を再現)、修正後は
+  ["https://.../large.jpg"(500x500), ".../small.jpg"(60x60)] の順(addThumbnailsと同じ大きい順)
+  で正しく登録されることを確認。対策: playlistToTracks で各トラックを初めて登録する際に
+  track["thumbnails"] を追加API呼び出し無しで self.IMAGES[videoId] へキャッシュ。
+  パッチ済み env の dev mopidy(6601, ytmusic 実アカウント) を実際に起動し MPD で確認 —
+  `lsinfo "YouTube Music/Liked Songs"` の全95曲(album無しの曲を含む)に対し
+  `albumart URI 0` を実行し 95/95 で実JPEGデータ取得(修正前は album 無しの曲で空になっていた
+  不具合をオフラインテストで実証済み)、`lsinfo "YouTube Music/Recently Played"` の先頭15曲も
+  15/15 albumart 取得、album付きトラック(`readpicture`/`albumart` 双方)・`search any "yoasobi"`
+  の検索結果1件目、いずれも正常にJPEGバイト列を返す。旧来の `list album`(get_distinct 経由の
+  albumToTracksパス)・`lsinfo "YouTube Music/Home"`(12件、深いページ含む継続取得)・`status`
+  の回帰なし・mopidy.log に Traceback/ERROR 0件を確認。
 
 ## DONE (初期実装・母艦で検証済み)
 - [x] ストリーム解決を pytube→yt-dlp へ委譲 (ytdlp-patch) — verified: 再生 state=playing
