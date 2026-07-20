@@ -36,6 +36,7 @@ let
     (patchDir + "/mpdreadcomments-patch.py") # readcomments を有効化 (comment を返却、無ければ空)
     (patchDir + "/mpdprio-patch.py") # prio/prioid を実装 (優先度を保存し playlistinfo の Prio へ反映)
     (patchDir + "/mpdaddid-patch.py") # addid の POSITION に相対指定 (+N/-N) を追加
+    (patchDir + "/mpdgetvol-patch.py") # getvol (音量問い合わせ) を追加
   ];
 
   listenbrainzPatched = mkPatched pkgs.mopidy-listenbrainz [

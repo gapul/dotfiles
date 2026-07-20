@@ -185,7 +185,22 @@ macmini の自走エージェントがここを1回1項目ずつ実装する。�
   有効値→該当位置に挿入)は文言・挙動とも無変更で回帰なし、POSITION省略時の末尾追加・
   `addid ""`→`No such song` も回帰なし。旧来の `list album`/`count any`/`tagtypes`
   も Traceback 0 で回帰なしを確認。
-- [ ] `getvol` / `volume` (相対) 対応確認
+- [x] `getvol` / `volume` (相対) 対応確認
+  verified: mpdgetvol-patch.py。`setvol`/相対 `volume {CHANGE}` は mopidy-mpd 3.3.0 に
+  既に実装済みと判明 (パッチ不要)。`getvol` (MPD 0.23+ で追加された音量単独問い合わせ、
+  musicpd.org protocol "Playback options") 自体が protocol.commands に未登録で
+  `ACK unknown command` になる状態だったため追加。実 MPD (src/command/PlayerCommands.cxx
+  handle_getvol) と同じく `volume: N` を1行返し、ミキサー無し (get_volume()がNone) なら
+  空応答で OK のみとする実装 (status コマンドの `volume: -1` フォールバックとは異なる仕様、
+  musicpd.org 公式ドキュメントで "If there is no mixer, MPD will emit an empty response"
+  と明記されていることを WebFetch で確認済み)。dev mopidy(6601, ytmusic 実アカウント)
+  を実際に起動し MPD で確認 — `getvol`(初期)→`volume: 100`、`setvol 40`→OK、以後
+  `getvol`→`volume: 40`、`volume 10`(相対+10、非推奨コマンド)→OK・`getvol`→`volume: 50`、
+  `volume -100`(0へクランプ)→`getvol`→`volume: 0`、`setvol 999`(100へクランプ、既存の
+  mopidy-mpd実装通りエラーにならない)→`getvol`→`volume: 100`、`setvol abc`(非数値)→
+  `ACK incorrect arguments`(既存の引数検証のまま回帰なし)、`status`のvolumeフィールドも
+  同じ値を返し回帰なし。旧来の `tagtypes`/`list album`/`search any`/`count any` も
+  Traceback 0 で回帰なしを確認。
 
 ### mopidy-ytmusic (YTM 認証要・macmini でも browser.json で可)
 - [ ] `get_distinct` の実装拡充: mopidy-ytmusic は artist/albumartist (ライブラリ登録分) しか返さず
