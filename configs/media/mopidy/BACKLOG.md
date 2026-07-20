@@ -220,7 +220,23 @@ macmini の自走エージェントがここを1回1項目ずつ実装する。�
   — mopidy.log に "YTMusic failed getting albums from library" 等のエラーが一切出ていないことで
   確認)。旧来の `search any`/`tagtypes`/`count any`/`list artist`/`listplaylists` の回帰なし・
   Traceback 0 を確認。
-- [ ] `ytmusic:home` のセクション item マッピング改善 (song/album/artist/playlist を取りこぼさない)
+- [x] `ytmusic:home` のセクション item マッピング改善 (song/album/artist/playlist を取りこぼさない)
+  verified: home-patch.py (既存パッチを改良)。dev mopidy(6601, ytmusic 実アカウント) を実際に
+  起動し `-vvvv` で ytmusic:home:N の各アイテムのキー集合を実データでダンプして分類ミスを特定 —
+  「Shows for you」セクションの全27件が `{browseId, channel, podcastId, thumbnails, title}`
+  (ytmusicapi parse_podcast 相当、videoId/playlistId 無し) を持つポッドキャスト番組にも関わらず、
+  従来コードは browseId の有無だけで album 判定していたため誤って `Ref.album` にマッピングされ、
+  実際に `lsinfo "YouTube Music/Home/Shows for you/<番組名>"` で開くと mopidy_ytmusic に
+  podcast の browse/lookup 実装が存在しないため常に空フォルダになる不具合を確認 (修正前ログで
+  実証済み)。修正: `podcastId` キー or `channel` キーを持つ項目は素通しせず除外するよう分岐を追加、
+  かつ artist 判定を browseId の "UC" prefix 頼みから `subscribers` キーの有無も見るよう堅牢化
+  (ytmusicapi parse_related_artist は browseId+subscribers を返す)。修正後に同アカウントで再検証 —
+  `lsinfo "YouTube Music/Home/Shows for you"` → 空で正常応答 (誤ったalbumフォルダが消滅)、
+  「Listen again」等の他セクションでは従来通り曲は `Ref.track`、レコメンドされた関連アーティスト
+  (`tosho_aTe` 等、subscribersキー保持) や関連プレイリスト (`Trending 20 Japan` 等、
+  playlistId+description保持) は実際に `lsinfo` で中身が取れる正しい `Ref.artist`/`Ref.playlist`
+  ディレクトリとして残ることを確認 (取りこぼしなし)。旧来の `search any`/`status`/`list album`/
+  `tagtypes` の回帰なし・Traceback 0 を確認。
 - [ ] Liked Songs: ytmusicapi 1.12.1 が get_liked_songs で失敗する件を、別エンドポイント/パースで回避
 - [ ] Recently Played (history): get_history 失敗を回避して Recently Played を出す
 - [ ] 検索結果のアーティスト表記が "Song" 等になる件の是正 (parseSearch の filter=None 品質)
