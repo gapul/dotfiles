@@ -14,11 +14,13 @@ let
   py = pkgs.python3;
   toM = py.pkgs.toPythonModule;
 
-  # mopidy-ytmusic: pytube のシグネチャ解読は YouTube の対策で頻繁に壊れる。
-  # 保守が活発な yt-dlp にストリーム URL 解決を委譲するパッチを焼き込む。
+  # mopidy-ytmusic:
+  #  - ytdlp-patch : pytube のシグネチャ解読が YouTube の対策で壊れるため yt-dlp へ委譲
+  #  - search-patch: parseSearch が album=None の曲で例外→any検索が0件になるのを是正
   ytmusicPatched = pkgs.mopidy-ytmusic.overrideAttrs (old: {
     postPatch = (old.postPatch or "") + ''
       ${py.interpreter} ${../../configs/media/mopidy/ytdlp-patch.py}
+      ${py.interpreter} ${../../configs/media/mopidy/search-patch.py}
     '';
   });
 
