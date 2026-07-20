@@ -169,7 +169,22 @@ macmini の自走エージェントがここを1回1項目ずつ実装する。�
   `swapid 1 3`(入れ替え) も Pos が期待通りに変化することを確認。`list`/`count`/
   `search`(sort+window併用)/`sticker`/`readcomments`/`tagtypes` の回帰なし・
   Traceback 0 を確認。
-- [ ] `addid` の position 指定 (`addid URI POS`) 対応
+- [x] `addid` の position 指定 (`addid URI POS`) 対応
+  verified: mpdaddid-patch.py。既存実装は絶対位置 (protocol.UINT) のみ対応済みで、
+  実 MPD 0.23+ の相対位置指定 (`+N`/`-N`、現在再生中の曲を基準にしたオフセット、
+  musicpd.org protocol / MPD 本家 src/command/PositionArg.cxx ParseInsertPosition()
+  相当) が未対応だったため実装。dev mopidy(6601, ytmusic 実アカウント) を実際に起動し
+  実データ(YOASOBI検索結果のtrack URI)で MPD プロトコルを直接叩いて確認 —
+  キューが空(現在曲なし)で相対指定 `addid URI "+0"` →
+  `ACK [55@0] {addid} No current song`、3曲キュー+`play 1`(pos1を再生中)の状態で
+  `addid URI "+0"`→現在曲の直後(pos2)に挿入、`addid URI "-0"`→現在曲の直前に挿入され
+  現在曲が1つ後ろにシフト(status の song: が+1)、境界値 `+N`(N=length-current-1)/
+  `-N`(N=current)は成功しキューの先頭/末尾に正しく挿入、範囲超過
+  `+N+1`/`-N-1`→`ACK [2@0] {addid} Number too large`、非数値 `+a`→
+  `ACK incorrect arguments`、絶対位置指定の既存動作(範囲外→`Bad song index`、
+  有効値→該当位置に挿入)は文言・挙動とも無変更で回帰なし、POSITION省略時の末尾追加・
+  `addid ""`→`No such song` も回帰なし。旧来の `list album`/`count any`/`tagtypes`
+  も Traceback 0 で回帰なしを確認。
 - [ ] `getvol` / `volume` (相対) 対応確認
 
 ### mopidy-ytmusic (YTM 認証要・macmini でも browser.json で可)
