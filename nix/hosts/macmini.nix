@@ -36,11 +36,20 @@
       # 初回の自動ログイン設定等) のときだけ使う。無人アクセスの有効化と Screen Recording
       # 権限付与 (TCC) は宣言できないので初回のみ GUI で実施する。
       "rustdesk"
+      # Claude ブラウザ自動化 (Playwright MCP + claude-login-broker) 用。
+      # ヘッドレス運用なので --headless=new で GUI 無しに起動する (chrome-launch.sh)。
+      "google-chrome"
     ];
   };
 
   # Ollama 本体 (nix パッケージ)。GUI の ollama-app cask は使わない。
-  environment.systemPackages = [ pkgs.ollama ];
+  # nodejs: Playwright MCP (pnpm dlx) と claude-login-broker(inject-creds.js) の runtime。
+  # bitwarden-cli: broker が承認後に bw get で資格情報を取り出す。BW_SESSION は手動 unlock。
+  environment.systemPackages = [
+    pkgs.ollama
+    pkgs.nodejs_22
+    pkgs.bitwarden-cli
+  ];
 
   # Ollama を LaunchAgent で常駐させる。
   # daemon (root) でなく agent (ログインユーザ) にするのは、Apple Silicon の Metal GPU を
