@@ -11,52 +11,9 @@
 #   2. lb-patch.py        : 空 release_name を送って 400 になる不具合を修正
 let
   home = config.home.homeDirectory;
-  py = pkgs.python3;
-  toM = py.pkgs.toPythonModule;
 
-  # mopidy-ytmusic:
-  #  - ytdlp-patch : pytube のシグネチャ解読が YouTube の対策で壊れるため yt-dlp へ委譲
-  #  - search-patch: parseSearch が album=None の曲で例外→any検索が0件になるのを是正
-  #  - home-patch  : ブラウズに ytmusic:home (YouTube Music ホームのおすすめ) を追加
-  ytmusicPatched = pkgs.mopidy-ytmusic.overrideAttrs (old: {
-    postPatch = (old.postPatch or "") + ''
-      ${py.interpreter} ${../../configs/media/mopidy/ytdlp-patch.py}
-      ${py.interpreter} ${../../configs/media/mopidy/search-patch.py}
-      ${py.interpreter} ${../../configs/media/mopidy/home-patch.py}
-    '';
-  });
-
-  # mopidy-listenbrainz: album 不明トラックで release_name="" を送信し LB に 400 で弾かれる。
-  # 空のときはキーごと送らないよう修正するパッチを焼き込む。
-  listenbrainzPatched = pkgs.mopidy-listenbrainz.overrideAttrs (old: {
-    postPatch = (old.postPatch or "") + ''
-      ${py.interpreter} ${../../configs/media/mopidy/lb-patch.py}
-    '';
-  });
-
-  # mopidy-mpd:
-  #  - mpd-patch      : binarylimit を受ける + albumart/readpicture(アルバムアート)を実装
-  #  - mpdsearch-patch: rmpc 等が送る新 MPD フィルタ式 `(Tag contains "x")` を解釈
-  mpdPatched = pkgs.mopidy-mpd.overrideAttrs (old: {
-    postPatch = (old.postPatch or "") + ''
-      ${py.interpreter} ${../../configs/media/mopidy/mpd-patch.py}
-      ${py.interpreter} ${../../configs/media/mopidy/mpdsearch-patch.py}
-    '';
-  });
-
-  # mopidy 本体 + 拡張 + yt-dlp を単一 site-packages に束ねる。
-  # (これらは python3Packages 配下でも .pythonModule も無いトップレベル attr なので、
-  #  buildEnv + PYTHONPATH prefix だと mopidy 本体が壊れる。withPackages + toPythonModule が正)。
-  mopidyEnv = py.withPackages (
-    ps:
-    (map toM [
-      pkgs.mopidy
-      ytmusicPatched
-      mpdPatched
-      listenbrainzPatched
-    ])
-    ++ [ ps.yt-dlp ]
-  );
+  # 本体+拡張+パッチを束ねた実行環境は nix/lib/mopidy-env.nix に集約 (テスト鏡と共有)。
+  mopidyEnv = import ../lib/mopidy-env.nix { inherit pkgs; };
 
   confPath = "${home}/.config/mopidy/mopidy.conf";
   authPath = "${home}/.config/mopidy/browser.json";
