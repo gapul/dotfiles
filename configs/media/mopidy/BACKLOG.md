@@ -125,7 +125,24 @@ macmini の自走エージェントがここを1回1項目ずつ実装する。�
   空、`tagtypes all`→全復元、未知サブコマンド`tagtypes reset ...`→
   `ACK Unknown sub command`(実MPD仕様通り、reset自体が存在しないサブコマンドのため正しい
   拒否)を確認。回帰なし・Traceback 0。
-- [ ] `readcomments`: 対応 (無ければ空 OK)
+- [x] `readcomments`: 対応 (無ければ空 OK)
+  verified: mpdreadcomments-patch.py。mopidy-mpd 3.3.0 の music_db.py は
+  `# @protocol.commands.add('readcomments')` がコメントアウトされ本体も `pass` のスタブの
+  ままだったため、有効化した上で `context.core.library.lookup(uris=[uri])` から取得した
+  Track の `comment` フィールド (改行区切り) を `comment: LINE` として返す実装に置き換え
+  (該当 uri がライブラリに無ければ `No such song`、track はあるが comment が空なら空リストで
+  OK のみ)。検証用スタブ backend (LibraryProvider.lookup が comment 付き/無しの2トラックを
+  返す、pkg_resources entry_points で /tmp に dist-info 生成、別ポート6602) で実際に確認 —
+  `readcomments "rcstub:withcomment"` → `comment: line one` / `comment: line two`、
+  `readcomments "rcstub:nocomment"` → 空でOK、`readcomments "rcstub:doesnotexist"` →
+  `ACK No such song`、引数無し `readcomments` → `ACK wrong number of arguments`(既存の
+  引数検証がそのまま機能)。dev mopidy(6601, ytmusic 実アカウント) でも実データの
+  track uri で `readcomments` → 空でOK(ytmusic の Track は comment 未設定のため既知の
+  挙動)、存在しない ytmusic uri → `ACK No such song`(mopidy_ytmusic 側の getTrack が
+  KeyError: 'videoDetails' を投げるが core.library.lookup が握り潰して空リストにする
+  既存の動作 — `listplaylistinfo` 等他コマンドで同じ nonexistent uri を使っても同一の
+  Traceback が出ることを確認済みで、今回の patch による新規リグレッションではない)。
+  旧来の `list`/`search`/`count`/`sticker`/`tagtypes` の回帰なし。
 - [ ] `moveid` `swapid` `prio` `prioid`: キュー操作の網羅
 - [ ] `addid` の position 指定 (`addid URI POS`) 対応
 - [ ] `getvol` / `volume` (相対) 対応確認
