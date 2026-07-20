@@ -70,7 +70,26 @@ macmini の自走エージェントがここを1回1項目ずつ実装する。�
   `playlistmove`→無害にOK、を確認。dev mopidy(6601, ytmusic)でもクリーン起動・`status`/
   `listplaylists`応答・Traceback 0 を確認 (実アカウントを変更する破壊的操作はスコープ外のため
   ytmusic 側では読み取り専用コマンドのみで確認)。
-- [ ] `listplaylistinfo` / `listplaylist` がフルのトラック情報を返すか確認・補完
+- [x] `listplaylistinfo` / `listplaylist` がフルのトラック情報を返すか確認・補完
+  verified: パッチ不要 — mopidy-mpd 3.3.0 の stored_playlists.py は既に `listplaylistinfo` で
+  `core.core.playlists.lookup()` 後に別途 `core.library.lookup(uris=...)` を呼んで
+  track を再解決・enrichし、`translator.playlist_to_mpd_format` でフル情報 (Time/Artist/
+  Album/Title/Date/Track/MUSICBRAINZ_*/AlbumArtist/Composer/Performer/Genre/Disc/
+  Last-Modified/X-AlbumUri) を返す実装済み。`listplaylist` は仕様通り `file:` のみ。
+  検証用スタブ backend (PlaylistsProvider が bare Track(uri のみ) を返し、LibraryProvider.lookup
+  が別途フルメタデータで enrich する構成、かつ1曲は library.lookup 側に存在しない「消えたリンク」
+  を模擬、pkg_resources entry_points で /tmp に dist-info 生成、別ポート6602) で実際に確認 —
+  `listplaylist "StubList"` → 3曲とも `file:` のみ(消えたリンク含む)、`listplaylistinfo "StubList"`
+  → 存在する2曲はフルタグ(MUSICBRAINZ_ALBUMID/AlbumArtist/MUSICBRAINZ_ARTISTID/Composer/
+  Performer/Genre/Disc/Last-Modified/MUSICBRAINZ_TRACKID/X-AlbumUri 等)を返し、値が無い
+  フィールドは省略(translatorのtagtypeフィルタ通り)、library.lookup で解決不能な「消えたリンク」
+  はクラッシュせず黙って結果から落ちる(core.library.lookupが常に空リストで初期化するため
+  KeyErrorしない)ことを確認。存在しないプレイリスト名→`ACK No such playlist`。
+  mopidy_ytmusic側もplaylist.lookup()がplaylistToTracks()でLibraryProvider.TRACKSキャッシュに
+  フルメタデータを先に積むため、後続のcore.library.lookupはキャッシュヒットしフル情報を維持する
+  ことをソース確認(mopidy_ytmusic/playlist.py, library.py)。dev mopidy(6601, ytmusic 実アカウント)
+  でもクリーン起動・`status`/`listplaylists`(実アカウントにプレイリスト無し)/検索の回帰なし・
+  Traceback 0 を確認。
 - [ ] `sticker` コマンド群 (get/set/delete/list/find): rmpc の一部機能が使う。sqlite で永続化
 - [ ] `tagtypes` 応答の網羅性: rmpc が期待するタグが揃っているか確認・追加
 - [ ] `readcomments`: 対応 (無ければ空 OK)
