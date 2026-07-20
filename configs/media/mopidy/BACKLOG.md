@@ -237,7 +237,26 @@ macmini の自走エージェントがここを1回1項目ずつ実装する。�
   playlistId+description保持) は実際に `lsinfo` で中身が取れる正しい `Ref.artist`/`Ref.playlist`
   ディレクトリとして残ることを確認 (取りこぼしなし)。旧来の `search any`/`status`/`list album`/
   `tagtypes` の回帰なし・Traceback 0 を確認。
-- [ ] Liked Songs: ytmusicapi 1.12.1 が get_liked_songs で失敗する件を、別エンドポイント/パースで回避
+- [x] Liked Songs: ytmusicapi 1.12.1 が get_liked_songs で失敗する件を、別エンドポイント/パースで回避
+  verified: ytliked-patch.py。実データで再現・ログのトレースバックで根本原因を特定 —
+  get_liked_songs() (=get_playlist("LM")) 自体は成功しているが、Liked Songs プレイリスト内に
+  ポッドキャストのエピソード等の非音楽アイテムが含まれていると ytmusicapi の
+  parse_playlist_items (ytmusicapi/parsers/playlists.py、"Non music videos, for example:
+  podcast episodes" 分岐) が artist_index を解決できず `"artists"` キーは存在するが値が
+  None のまま返る。mopidy_ytmusic.library.playlistToTracks() 側は `if "artists" in track:`
+  とキー存在しか見ておらず、値が None のまま `for a in track["artists"]:` に突入し
+  `TypeError: 'NoneType' object is not iterable` でクラッシュ、`lsinfo` が丸ごと空応答になる
+  不具合を確認 (修正前ログで実証済み)。修正: キー存在チェックを `track.get("artists")` の
+  真偽値チェックに変更し、値が None/空でも同関数内の既存フォールバック経路
+  (elif "byline" / else: artists=None、他の分岐で既に使われている安全な経路) に自然に
+  流れるようにした。dev mopidy(6601, ytmusic 実アカウント) を実際に起動し MPD で確認 —
+  `lsinfo "YouTube Music/Liked Songs"` → 約90曲全曲が例外なく返り、Artist情報が無い
+  アイテム(東京事変のアップロード曲、ポッドキャスト由来と見られる非音楽アイテム含む)も
+  Title のみで正常に列挙されクラッシュしない、mopidy.log に Traceback 0件を確認
+  (修正前は同じ操作で TypeError の Traceback が出ていた)。旧来の `search any`/`list album`/
+  `tagtypes`/`lsinfo "YouTube Music/Recently Played"` の回帰なし・Traceback 0 を確認
+  (history 取得も同じ playlistToTracks を共有するため同種の非音楽アイテムに対して
+  同様に頑健になっている)。
 - [ ] Recently Played (history): get_history 失敗を回避して Recently Played を出す
 - [ ] 検索結果のアーティスト表記が "Song" 等になる件の是正 (parseSearch の filter=None 品質)
 - [ ] `ytmusic:home` を深いページまで (get_home の continuation) 取得
