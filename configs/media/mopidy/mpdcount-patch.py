@@ -37,7 +37,7 @@ def _mpd_count_grouped(context, query, groups):
     rows = []
     for gvalue in sorted(v for v in gvalues if v):
         subquery = dict(query or {})
-        subquery[gfield] = [gvalue]
+        subquery[gfield] = [str(gvalue)]  # 数値タグ(disc/track)のint値でmopidy validationが落ちるのを回避
         sub = _mpd_count_grouped(context, subquery, groups[1:])
         if dict(sub).get("songs"):
             rows.append((gname, gvalue))

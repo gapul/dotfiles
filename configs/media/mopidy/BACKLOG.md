@@ -350,3 +350,6 @@ macmini の自走エージェントがここを1回1項目ずつ実装する。�
 - [x] binarylimit 受け (mpd-patch) — verified: rmpc 接続可
 - [x] ytmusic:home (get_home) ブラウズ (home-patch) — verified: セクション→playlist
 - [x] listenbrainz 空 release_name の 400 修正 (lb-patch) — verified: 400消滅
+
+## 既知の軽微な残課題(レビュー由来・優先度低)
+- [ ] `prio`/`prioid` の TOCTOU レース: get_length()とget_tl_tracks()が別呼び出し＋index参照で、同時2クライアントが間にtracklistを縮めるとIndexError→接続切断。tracklist.slice()に置換して解消(delete()/move()と同流儀)。rmpcはprioを送らず実害は極小。

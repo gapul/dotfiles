@@ -48,7 +48,7 @@ def _mpd_list_grouped(context, field, name, query, groups):
     rows = []
     for gvalue in sorted(v for v in gvalues if v):
         subquery = dict(query or {})
-        subquery[gfield] = [gvalue]
+        subquery[gfield] = [str(gvalue)]  # 数値タグ(disc/track)のint値でmopidy validationが落ちるのを回避
         sub = _mpd_list_grouped(context, field, name, subquery, groups[1:])
         if sub:
             rows.append((gname, gvalue))
