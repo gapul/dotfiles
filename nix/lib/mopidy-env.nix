@@ -19,11 +19,16 @@ let
       postPatch = (old.postPatch or "") + lib.concatMapStrings (s: "${py.interpreter} ${s}\n") scripts;
     });
 
-  ytmusicPatched = mkPatched pkgs.mopidy-ytmusic [
-    (patchDir + "/ytdlp-patch.py") # ストリーム解決を pytube→yt-dlp へ委譲
-    (patchDir + "/search-patch.py") # any 検索が album=None で 0 件になるのを是正
-    (patchDir + "/home-patch.py") # ブラウズに ytmusic:home (get_home) を追加
-  ];
+  ytmusicPatched = pkgs.mopidy-ytmusic.overrideAttrs (old: {
+    postPatch =
+      (old.postPatch or "")
+      + "${py.interpreter} ${patchDir + "/ytdlp-patch.py"}\n" # ストリーム解決を pytube→yt-dlp へ
+      + "${py.interpreter} ${patchDir + "/search-patch.py"}\n" # any 検索が album=None で0件を是正
+      + "${py.interpreter} ${patchDir + "/home-patch.py"}\n" # ブラウズに ytmusic:home (get_home)
+      # macOS Now Playing フロントエンドを同梱・登録 (mopidy本体が音源として名乗る)
+      + "cp ${patchDir + "/nowplaying_fe.py"} mopidy_ytmusic/nowplaying_fe.py\n"
+      + "${py.interpreter} ${patchDir + "/nowplaying-patch.py"}\n";
+  });
 
   mpdPatched = mkPatched pkgs.mopidy-mpd [
     (patchDir + "/mpd-patch.py") # binarylimit + albumart/readpicture
@@ -42,5 +47,9 @@ py.withPackages (
     mpdPatched
     listenbrainzPatched
   ])
-  ++ [ ps.yt-dlp ]
+  ++ [
+    ps.yt-dlp
+    ps.pyobjc-core # nowplaying_fe が MediaPlayer.framework を叩くため
+    ps.pyobjc-framework-Cocoa
+  ]
 )
