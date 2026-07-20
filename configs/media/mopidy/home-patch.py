@@ -22,7 +22,7 @@ if "ytmusic:home" not in s:
     home_branches = r'''        if uri == "ytmusic:home":
             refs = []
             try:
-                for _i, _sec in enumerate(self.backend.api.get_home(limit=5)):
+                for _i, _sec in enumerate(self.backend.api.get_home(limit=100)):
                     _t = _sec.get("title") or ("Section %d" % _i)
                     refs.append(Ref.directory(uri="ytmusic:home:%d" % _i, name=_t))
             except Exception:
@@ -32,7 +32,7 @@ if "ytmusic:home" not in s:
             refs = []
             try:
                 _idx = int(uri.split(":")[2])
-                _home = self.backend.api.get_home(limit=5)
+                _home = self.backend.api.get_home(limit=100)
                 if 0 <= _idx < len(_home):
                     for _it in (_home[_idx].get("contents") or []):
                         if not isinstance(_it, dict):
@@ -42,9 +42,14 @@ if "ytmusic:home" not in s:
                             refs.append(Ref.track(uri="ytmusic:track:%s" % _it["videoId"], name=_n))
                         elif _it.get("playlistId"):
                             refs.append(Ref.playlist(uri="ytmusic:playlist:%s" % _it["playlistId"], name=_n))
+                        elif _it.get("podcastId") or "channel" in _it:
+                            # ポッドキャスト番組 (browseId+podcastId+channel):
+                            # mopidy_ytmusic に podcast browse/lookup が無く、album 扱いにすると
+                            # 開いても常に空の「アルバム」フォルダになるため、素通しせず除外する。
+                            continue
                         elif _it.get("browseId"):
                             _b = str(_it["browseId"])
-                            if _b.startswith("UC"):
+                            if "subscribers" in _it or _b.startswith("UC"):
                                 refs.append(Ref.artist(uri="ytmusic:artist:%s" % _b, name=_n))
                             else:
                                 refs.append(Ref.album(uri="ytmusic:album:%s" % _b, name=_n))
