@@ -31,6 +31,7 @@ let
     (patchDir + "/mpdlist-patch.py") # list の group 修飾 (list Album group AlbumArtist)
     (patchDir + "/mpdsort-patch.py") # search/find の sort 修飾 (sort -Track 等)
     (patchDir + "/mpdwindow-patch.py") # search/find の window 修飾 (ページング)
+    (patchDir + "/mpdcount-patch.py") # count の group 修飾 (count group artist 等)
   ];
 
   listenbrainzPatched = mkPatched pkgs.mopidy-listenbrainz [

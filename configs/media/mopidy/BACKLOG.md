@@ -41,7 +41,19 @@ macmini の自走エージェントがここを1回1項目ずつ実装する。�
   `find`/`search`(sort/window無し)、タグ/値ペア形式の回帰なし。dev mopidy(6601, ytmusic)
   でも `search any "yoasobi" window "0:2"`→2件、`sort -Date window "0:2"`併用、
   不正window→ACK、を実データで確認・Traceback 0。
-- [ ] `count` / `count ... group TAG`: 件数・総時間を返す
+- [x] `count` / `count ... group TAG`: 件数・総時間を返す
+  verified: mpdcount-patch.py。mpdlist-patch が定義する `_mpd_extract_group_params` を再利用し
+  group 修飾を追加。パッチ済み env の mopidy を、7トラック(artist/album/genre違い)を返す
+  検証用スタブ backend (pkg_resources entry_points で /tmp に dist-info 生成、別ポート6602) で
+  起動し MPD で実際に確認 — `count group artist`(フィルタ省略)→Artist1: 3曲530s /
+  Artist2: 3曲620s / Artist3: 1曲160s、`count artist "Artist2" group genre`→Jazz 2曲410s /
+  Rock 1曲210s、`count genre "Rock"`(group無し)→3曲590s、`count group album group artist`
+  (多段group)→album毎に正しくネスト、フィルタ式 `count "(Genre == \"Pop\")"` 単体/group併用も
+  正しい件数、`count group Bogus`→`ACK Unknown tag type: Bogus`、フィルタ・group共に無い
+  `count`→songs:0/playtime:0 (旧来どおり)。旧来の `find`/`search`(sort/window)/`list`(group)の
+  回帰なし。dev mopidy(6601, ytmusic)でも `count any "yoasobi"`→実データで songs:2/playtime:451、
+  `count any "yoasobi" group album`(ytmusicのget_distinctがalbum未実装のため空でOK応答、既知の
+  別項目の制約)、`list album`/`list artist`含め Traceback 0 を確認。
 - [ ] プレイリスト編集系: `playlistadd` `playlistdelete` `playlistmove` `playlistclear` `rename` `rm` `save`
 - [ ] `listplaylistinfo` / `listplaylist` がフルのトラック情報を返すか確認・補完
 - [ ] `sticker` コマンド群 (get/set/delete/list/find): rmpc の一部機能が使う。sqlite で永続化
