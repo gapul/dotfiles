@@ -10,7 +10,13 @@ macmini の自走エージェントがここを1回1項目ずつ実装する。�
 ## TODO (上から順に)
 
 ### mopidy-mpd プロトコル (認証不要でテストしやすい・優先)
-- [ ] `list` のグループ化: `list Album group AlbumArtist` 等 group 修飾に対応 (rmpc の Albums/Album Artists タブが使う)
+- [x] `list` のグループ化: `list Album group AlbumArtist` 等 group 修飾に対応 (rmpc の Albums/Album Artists タブが使う)
+  verified: mpdlist-patch.py。パッチ済み env の mopidy を検証用スタブ backend (get_distinct 実装、
+  /tmp に dist-info 付きで生成) 付きで別ポート起動し MPD で実際に確認 —
+  `list Album group AlbumArtist` → `AlbumArtist: AA1 / Album: Alpha / Album: Beta / AlbumArtist: AA2 / Album: Gamma`、
+  多段 group (`list Title group Album group AlbumArtist`)、group + フィルタ式併用、
+  `list Album group Bogus` → `ACK Unknown tag type`、旧来の `list Album ARTIST` / `list Title artist X album Y` の回帰なし。
+  dev mopidy(6601, ytmusic) でも search フィルタ式の回帰なし・Traceback 0 を確認。
 - [ ] `search`/`find` の `sort` 修飾に対応 (フィルタ式の後ろの `sort -Track` 等を解釈・無視でなく反映)
 - [ ] `search`/`find` の `window START:END` 修飾に対応 (ページング)
 - [ ] `count` / `count ... group TAG`: 件数・総時間を返す
@@ -24,6 +30,8 @@ macmini の自走エージェントがここを1回1項目ずつ実装する。�
 - [ ] `getvol` / `volume` (相対) 対応確認
 
 ### mopidy-ytmusic (YTM 認証要・macmini でも browser.json で可)
+- [ ] `get_distinct` の実装拡充: mopidy-ytmusic は artist/albumartist (ライブラリ登録分) しか返さず
+      album/genre 等は未実装なので、`list` 系が実データで空になる。ライブラリのアルバム取得を有効化する
 - [ ] `ytmusic:home` のセクション item マッピング改善 (song/album/artist/playlist を取りこぼさない)
 - [ ] Liked Songs: ytmusicapi 1.12.1 が get_liked_songs で失敗する件を、別エンドポイント/パースで回避
 - [ ] Recently Played (history): get_history 失敗を回避して Recently Played を出す

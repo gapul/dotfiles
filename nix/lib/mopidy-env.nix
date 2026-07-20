@@ -28,6 +28,7 @@ let
   mpdPatched = mkPatched pkgs.mopidy-mpd [
     (patchDir + "/mpd-patch.py") # binarylimit + albumart/readpicture
     (patchDir + "/mpdsearch-patch.py") # 新 MPD フィルタ式 (Tag contains "x") を解釈
+    (patchDir + "/mpdlist-patch.py") # list の group 修飾 (list Album group AlbumArtist)
   ];
 
   listenbrainzPatched = mkPatched pkgs.mopidy-listenbrainz [
