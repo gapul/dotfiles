@@ -54,7 +54,22 @@ macmini の自走エージェントがここを1回1項目ずつ実装する。�
   回帰なし。dev mopidy(6601, ytmusic)でも `count any "yoasobi"`→実データで songs:2/playtime:451、
   `count any "yoasobi" group album`(ytmusicのget_distinctがalbum未実装のため空でOK応答、既知の
   別項目の制約)、`list album`/`list artist`含め Traceback 0 を確認。
-- [ ] プレイリスト編集系: `playlistadd` `playlistdelete` `playlistmove` `playlistclear` `rename` `rm` `save`
+- [x] プレイリスト編集系: `playlistadd` `playlistdelete` `playlistmove` `playlistclear` `rename` `rm` `save`
+  verified: パッチ不要 — mopidy-mpd 3.3.0 の site-packages 内 mopidy_mpd/protocol/stored_playlists.py に
+  7コマンド全て既に実装済みで、mopidy.backend.PlaylistsProvider (create/save/delete/lookup/as_list/
+  get_items) と core.library.lookup さえ backend 側が備えていれば動く。検証用スタブ backend
+  (mopidy.backend.PlaylistsProvider + LibraryProvider をメモリ実装、pkg_resources entry_points で
+  /tmp に dist-info 生成、別ポート6602) で実際に確認 —
+  `playlistadd "MyList" URI`(新規作成/既存への追加どちらも)→OK、`listplaylistinfo`で
+  Title/Time等フル情報、`playlistmove "MyList" 0 1`→順序入れ替え確認、
+  `playlistdelete "MyList" 0`→該当曲削除、`rename "MyList" "MyList2"`→`listplaylists`で
+  新名のみ表示、`add`でカレントキューに積んでから`save "SavedList"`→そのトラック列でプレイリスト
+  作成、`playlistclear`→空リストになりOK、`rm`→`listplaylists`から消える。エラー系:
+  `playlistdelete`の範囲外songpos→`ACK Bad song index`、`rm`/`rename`の存在しない名前→
+  `ACK No such playlist`、スラッシュ入り名前→`ACK playlist name is invalid`、from==toの
+  `playlistmove`→無害にOK、を確認。dev mopidy(6601, ytmusic)でもクリーン起動・`status`/
+  `listplaylists`応答・Traceback 0 を確認 (実アカウントを変更する破壊的操作はスコープ外のため
+  ytmusic 側では読み取り専用コマンドのみで確認)。
 - [ ] `listplaylistinfo` / `listplaylist` がフルのトラック情報を返すか確認・補完
 - [ ] `sticker` コマンド群 (get/set/delete/list/find): rmpc の一部機能が使う。sqlite で永続化
 - [ ] `tagtypes` 応答の網羅性: rmpc が期待するタグが揃っているか確認・追加
