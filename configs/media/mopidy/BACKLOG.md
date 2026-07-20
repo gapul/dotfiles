@@ -104,7 +104,27 @@ macmini の自走エージェントがここを1回1項目ずつ実装する。�
   不明action→`ACK Unknown sticker action`。sqlite ファイル
   (`~/ai/mopidy-dev/data/mpd/sticker.db`) に実際に永続化されたことを直接クエリで確認。
   旧来の `search`/`list`/`count`/`listplaylists` の回帰なし・Traceback 0 を確認。
-- [ ] `tagtypes` 応答の網羅性: rmpc が期待するタグが揃っているか確認・追加
+- [x] `tagtypes` 応答の網羅性: rmpc が期待するタグが揃っているか確認・追加
+  verified: パッチ不要 — 調査の結果、mopidy-mpd 3.3.0 の `tagtype_list.TAGTYPE_LIST`
+  (Artist/ArtistSort/Album/AlbumArtist/AlbumArtistSort/Title/Track/Name/Genre/Date/
+  Composer/Performer/Comment/Disc/MUSICBRAINZ_ARTISTID/MUSICBRAINZ_ALBUMID/
+  MUSICBRAINZ_ALBUMARTISTID/MUSICBRAINZ_TRACKID/X-AlbumUri) は
+  `mopidy_mpd/translator.py` の `track_to_mpd_format` が実際に生成しうる全タグ
+  (Artist/Album/Title/Name/Date/Track/MUSICBRAINZ_ALBUMID/AlbumArtist/
+  MUSICBRAINZ_ALBUMARTISTID/MUSICBRAINZ_ARTISTID/Composer/Performer/Genre/Disc/
+  MUSICBRAINZ_TRACKID/X-AlbumUri) を既に完全網羅しており(file/Time/Pos/Id/
+  Last-Modified は実 MPD 同様タグではなく別枠のため対象外で正しい)、追加すべき
+  空きタグは存在しない。さらに rmpc 本体 (github.com/mierak/rmpc, rmpc-mpd crate) の
+  ソースを実際に確認したところ `tagtypes` コマンドは一切送信しておらず、曲メタデータは
+  固定タグ enum ではなく MPD の生応答をそのまま動的 HashMap (`metadata: HashMap<String,
+  MetadataTag>`) として保持する実装のため、tagtypes の網羅性自体が rmpc の動作に影響しない
+  ことも確認。dev mopidy(6601, ytmusic 実アカウント) を実際に起動し MPD で確認 —
+  `tagtypes`(規定値)→上記18種を返す、`search any "yoasobi"` の実応答タグ(Artist/Album/
+  Title/Date/AlbumArtist/X-AlbumUri等)が全て tagtypes の宣言内に収まっている、
+  `tagtypes disable Genre Composer`→以後の`tagtypes`から2つ消える、`tagtypes clear`→
+  空、`tagtypes all`→全復元、未知サブコマンド`tagtypes reset ...`→
+  `ACK Unknown sub command`(実MPD仕様通り、reset自体が存在しないサブコマンドのため正しい
+  拒否)を確認。回帰なし・Traceback 0。
 - [ ] `readcomments`: 対応 (無ければ空 OK)
 - [ ] `moveid` `swapid` `prio` `prioid`: キュー操作の網羅
 - [ ] `addid` の position 指定 (`addid URI POS`) 対応
