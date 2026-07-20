@@ -30,6 +30,7 @@ let
     (patchDir + "/mpdsearch-patch.py") # 新 MPD フィルタ式 (Tag contains "x") を解釈
     (patchDir + "/mpdlist-patch.py") # list の group 修飾 (list Album group AlbumArtist)
     (patchDir + "/mpdsort-patch.py") # search/find の sort 修飾 (sort -Track 等)
+    (patchDir + "/mpdwindow-patch.py") # search/find の window 修飾 (ページング)
   ];
 
   listenbrainzPatched = mkPatched pkgs.mopidy-listenbrainz [

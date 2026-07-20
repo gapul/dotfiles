@@ -28,7 +28,19 @@ macmini の自走エージェントがここを1回1項目ずつ実装する。�
   (検索語がたまたま"sort") が誤爆しないことも確認。dev mopidy(6601, ytmusic) でも
   `search any "yoasobi" sort -Date` で回帰なし・Traceback 0 を確認 (旧来の
   `list`/`search`/フィルタ式の回帰なし)。
-- [ ] `search`/`find` の `window START:END` 修飾に対応 (ページング)
+- [x] `search`/`find` の `window START:END` 修飾に対応 (ページング)
+  verified: mpdwindow-patch.py。パッチ済み env の mopidy を、search()が固定7トラックを返す
+  検証用スタブ backend (pkg_resources entry_points で /tmp に dist-info 生成、別ポート6602) で
+  起動し MPD で実際に確認 — `find any "Song" window "0:3"`→Song1-3、`window "3:6"`→Song4-6、
+  `window "5:"`(open-ended)→Song6-7、`sort Track window "0:2"`/`sort -Track window "0:2"`→
+  ソート後にスライス、`search any "Song" window "2:4"`→Song3-4。エラー系: コロン無し
+  (`window "5"`)・非数値(`window "a:b"`)・end<start(`window "5:2"`)→
+  `ACK Invalid window: ...`。範囲外(`window "100:200"`)・start==end(`window "3:3"`)は
+  エラーにせず空リストで正常応答 (Python スライス相当、MPD仕様どおり)。エッジケース
+  `find any "window"`(検索語がたまたま"window")が誤爆しないことも確認。旧来の
+  `find`/`search`(sort/window無し)、タグ/値ペア形式の回帰なし。dev mopidy(6601, ytmusic)
+  でも `search any "yoasobi" window "0:2"`→2件、`sort -Date window "0:2"`併用、
+  不正window→ACK、を実データで確認・Traceback 0。
 - [ ] `count` / `count ... group TAG`: 件数・総時間を返す
 - [ ] プレイリスト編集系: `playlistadd` `playlistdelete` `playlistmove` `playlistclear` `rename` `rm` `save`
 - [ ] `listplaylistinfo` / `listplaylist` がフルのトラック情報を返すか確認・補完
