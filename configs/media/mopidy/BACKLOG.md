@@ -299,7 +299,26 @@ macmini の自走エージェントがここを1回1項目ずつ実装する。�
   同様に誤った Artist 行が消え、Kenshi Yonezu の正当な行は維持。`search artist "YOASOBI"`
   (アーティスト自体の検索・関連アルバム一覧、YOASOBI/Ayase/Lilas 等)、`tagtypes`、
   `count any "yoasobi"`、`list album` の回帰なし・Traceback 0 を確認。
-- [ ] `ytmusic:home` を深いページまで (get_home の continuation) 取得
+- [x] `ytmusic:home` を深いページまで (get_home の continuation) 取得
+  verified: home-patch.py (既存パッチを改良)。ytmusicapi 1.12.1 の `get_home(limit=N)` の実装を
+  ソース確認 (`get_continuations`) — continuation は「初回ページの取得件数が既に limit 以上」
+  だと `limit - len(home)` が非正になり、while 条件 `len(items) < limit` が最初から偽になるため
+  1回も継続取得が起きずに終わる仕組みと判明。従来の home-patch.py は `get_home(limit=5)` を
+  呼んでいたが、実アカウントの初回ページは6セクションあり limit(5)を初回だけで超えるため
+  continuation が一切発火せず、常に最初のネイティブページしか見えていなかった (「深いページ」が
+  存在するのに取得されない不具合)。修正: limit を 100 に上げ、初回ページ超過後も
+  `limit - len(home)` が十分大きな正の値になるようにして continuation ループを実際に走らせるように
+  した (limit=None ではなく暴走防止のため実用上十分大きい有限値に留めた)。dev mopidy(6601,
+  ytmusic 実アカウント) を実際に起動し MPD で確認 — 修正前 `lsinfo "YouTube Music/Home"` は
+  6件 (Listen again/Music videos for you/Shows for you/Forgotten favorites/Quick picks/
+  Trending songs for you) だったのが、修正後は12件 (上記6件に加え Your shows/Mixed for you/
+  Fresh finds, old favorites/お気に入り音楽/Vocaloid/From the community が新規出現、
+  continuation で取得した深いページ由来)。新規に出現したセクションも
+  `lsinfo "YouTube Music/Home/Mixed for you"` (楽曲一覧)・
+  `lsinfo "YouTube Music/Home/Fresh finds, old favorites"` (プレイリスト一覧)・
+  `lsinfo "YouTube Music/Home/お気に入り音楽"` (Mix系プレイリスト一覧) 等いずれも
+  例外なく正しい種別 (Ref.track/Ref.playlist) でブラウズ可能なことを確認。旧来の
+  `search any "yoasobi"`/`list album`/`tagtypes`/`status` の回帰なし・Traceback 0 を確認。
 - [ ] アルバム/プレイリストのブラウズ時にトラックのアート(get_images)を確実に載せる
 
 ## DONE (初期実装・母艦で検証済み)
