@@ -17,7 +17,17 @@ macmini の自走エージェントがここを1回1項目ずつ実装する。�
   多段 group (`list Title group Album group AlbumArtist`)、group + フィルタ式併用、
   `list Album group Bogus` → `ACK Unknown tag type`、旧来の `list Album ARTIST` / `list Title artist X album Y` の回帰なし。
   dev mopidy(6601, ytmusic) でも search フィルタ式の回帰なし・Traceback 0 を確認。
-- [ ] `search`/`find` の `sort` 修飾に対応 (フィルタ式の後ろの `sort -Track` 等を解釈・無視でなく反映)
+- [x] `search`/`find` の `sort` 修飾に対応 (フィルタ式の後ろの `sort -Track` 等を解釈・無視でなく反映)
+  verified: mpdsort-patch.py。パッチ済み env の mopidy を、search()が固定3トラックを返す
+  検証用スタブ backend (pkg_resources entry_points で /tmp に dist-info 生成、別ポート6602) で
+  起動し MPD で実際に確認 — `find any "Song" sort Title`→昇順(Alpha/Beta/Gamma)、
+  `sort -Title`→降順、`sort Track`/`sort -Track`→track_no昇順/降順、`sort Artist`→artist名昇順、
+  `sort Date`→date文字列昇順、`sort ArtistSort`→artist へフォールバック、
+  `sort Bogus`→`ACK Unknown sort type`。フィルタ式構文 (`search "(any contains ...)"`) +
+  sort 併用、sort+window併用(windowは無視)も確認。エッジケース `find any "sort"`
+  (検索語がたまたま"sort") が誤爆しないことも確認。dev mopidy(6601, ytmusic) でも
+  `search any "yoasobi" sort -Date` で回帰なし・Traceback 0 を確認 (旧来の
+  `list`/`search`/フィルタ式の回帰なし)。
 - [ ] `search`/`find` の `window START:END` 修飾に対応 (ページング)
 - [ ] `count` / `count ... group TAG`: 件数・総時間を返す
 - [ ] プレイリスト編集系: `playlistadd` `playlistdelete` `playlistmove` `playlistclear` `rename` `rm` `save`
