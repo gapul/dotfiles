@@ -22,7 +22,7 @@ if "ytmusic:home" not in s:
     home_branches = r'''        if uri == "ytmusic:home":
             refs = []
             try:
-                for _i, _sec in enumerate(self.backend.api.get_home(limit=5)):
+                for _i, _sec in enumerate(self.backend.api.get_home(limit=100)):
                     _t = _sec.get("title") or ("Section %d" % _i)
                     refs.append(Ref.directory(uri="ytmusic:home:%d" % _i, name=_t))
             except Exception:
@@ -32,7 +32,7 @@ if "ytmusic:home" not in s:
             refs = []
             try:
                 _idx = int(uri.split(":")[2])
-                _home = self.backend.api.get_home(limit=5)
+                _home = self.backend.api.get_home(limit=100)
                 if 0 <= _idx < len(_home):
                     for _it in (_home[_idx].get("contents") or []):
                         if not isinstance(_it, dict):
