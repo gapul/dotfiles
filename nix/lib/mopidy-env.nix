@@ -26,6 +26,7 @@ let
     (patchDir + "/ytdistinct-patch.py") # get_distinct("album") をライブラリ登録アルバムで有効化
     (patchDir + "/ytliked-patch.py") # Liked Songs 中の非音楽アイテム(artists=None)でのクラッシュを修正
     (patchDir + "/ytartist-patch.py") # 検索結果の誤爆アーティスト表記(Song/Album等)を除外
+    (patchDir + "/ytimages-patch.py") # playlistToTracks に track thumbnails を積み、プレイリスト/Liked Songs等のトラックart(get_images)を確実化
   ];
 
   mpdPatched = mkPatched pkgs.mopidy-mpd [
