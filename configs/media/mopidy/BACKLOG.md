@@ -90,7 +90,20 @@ macmini の自走エージェントがここを1回1項目ずつ実装する。�
   ことをソース確認(mopidy_ytmusic/playlist.py, library.py)。dev mopidy(6601, ytmusic 実アカウント)
   でもクリーン起動・`status`/`listplaylists`(実アカウントにプレイリスト無し)/検索の回帰なし・
   Traceback 0 を確認。
-- [ ] `sticker` コマンド群 (get/set/delete/list/find): rmpc の一部機能が使う。sqlite で永続化
+- [x] `sticker` コマンド群 (get/set/delete/list/find): rmpc の一部機能が使う。sqlite で永続化
+  verified: mpdsticker-patch.py。mopidy-mpd 3.3.0 の stickers.py は `raise MpdNotImplemented` の
+  スタブのままだったため、core.data_dir 配下 (`<data_dir>/mpd/sticker.db`) の sqlite に
+  (type, uri, name)->value を保存する実装に置き換え。TYPE は実際の MPD 同様 "song" のみ許可
+  (それ以外は `ACK Unknown sticker domain`)。dev mopidy(6601, ytmusic) を実際に起動し MPD で確認 —
+  `sticker get` (未設定)→`ACK no such sticker`、`sticker set`→OK、再度 `get`→値取得、
+  上書き `set`→新値に更新、`sticker list`(複数)→`sticker: name=value`列挙、
+  `sticker find song "test:uri" "rating"`→prefix一致する複数曲を`file:`+`sticker:`ペアで列挙、
+  `sticker delete NAME`→OK・以後`get`/再`delete`は`ACK no such sticker`、
+  `sticker delete`(NAME省略、残り全削除)→OK・`list`は空でOK(エラーにならない)、
+  `sticker get playlist ...`(未対応domain)→`ACK Unknown sticker domain`、
+  不明action→`ACK Unknown sticker action`。sqlite ファイル
+  (`~/ai/mopidy-dev/data/mpd/sticker.db`) に実際に永続化されたことを直接クエリで確認。
+  旧来の `search`/`list`/`count`/`listplaylists` の回帰なし・Traceback 0 を確認。
 - [ ] `tagtypes` 応答の網羅性: rmpc が期待するタグが揃っているか確認・追加
 - [ ] `readcomments`: 対応 (無ければ空 OK)
 - [ ] `moveid` `swapid` `prio` `prioid`: キュー操作の網羅
