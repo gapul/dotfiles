@@ -257,7 +257,25 @@ macmini の自走エージェントがここを1回1項目ずつ実装する。�
   `tagtypes`/`lsinfo "YouTube Music/Recently Played"` の回帰なし・Traceback 0 を確認
   (history 取得も同じ playlistToTracks を共有するため同種の非音楽アイテムに対して
   同様に頑健になっている)。
-- [ ] Recently Played (history): get_history 失敗を回避して Recently Played を出す
+- [x] Recently Played (history): get_history 失敗を回避して Recently Played を出す
+  verified: パッチ不要 — 調査の結果、`ytmusic:history` は現行の mopidy_ytmusic (nixpkgs
+  mopidy-ytmusic 0.3.9 + 既存パッチ) で既に正常動作していると確認。ytmusicapi 側の
+  `get_history()` (mixins/library.py) は履歴ページの各セクションが `musicShelfRenderer` を
+  持たない場合に `musicNotifierShelfRenderer` のメッセージで `YTMusicServerError` を送出する
+  実装だが、`_send_request("browse", {"browseId": "FEmusic_history"})` を直接叩いて生応答を
+  検証したところ実アカウントの履歴は3セクション(47/41/111件)とも全て `musicShelfRenderer`
+  を持ち例外は発生しない。またこの backlog 項目は Liked Songs の
+  `TypeError: 'NoneType' object is not iterable` (artists=None で playlistToTracks が
+  クラッシュ) と同種の懸念で先回りして追加されていたが、history も同じ
+  `playlistToTracks()` を共有するため既存の ytliked-patch (`track.get("artists")` 化) で
+  既に同様に頑健化済みと判明。dev mopidy (6601, ytmusic 実アカウント、mopidy-dev.conf に
+  `enable_history = true` を追加して起動) を実際に起動し MPD で確認 —
+  `lsinfo "YouTube Music/Recently Played"` → 199件 (47+41+111と一致) 全曲が例外なく
+  `file:`/Time/Artist/Title 等を伴って返り `OK` で正常終了、mopidy.log に ERROR/Traceback
+  0件。一部アイテムで `Artist: 2.6M views` のような誤ったアーティスト表記が見えるが、これは
+  history 固有の不具合ではなく既存の別 backlog 項目「検索結果のアーティスト表記が
+  "Song" 等になる件の是正」と同根の ytmusicapi パース品質の問題で対象外。旧来の
+  `search any`/`tagtypes`/`status` の回帰なし・Traceback 0 を確認。
 - [ ] 検索結果のアーティスト表記が "Song" 等になる件の是正 (parseSearch の filter=None 品質)
 - [ ] `ytmusic:home` を深いページまで (get_home の continuation) 取得
 - [ ] アルバム/プレイリストのブラウズ時にトラックのアート(get_images)を確実に載せる
