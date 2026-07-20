@@ -203,8 +203,23 @@ macmini の自走エージェントがここを1回1項目ずつ実装する。�
   Traceback 0 で回帰なしを確認。
 
 ### mopidy-ytmusic (YTM 認証要・macmini でも browser.json で可)
-- [ ] `get_distinct` の実装拡充: mopidy-ytmusic は artist/albumartist (ライブラリ登録分) しか返さず
+- [x] `get_distinct` の実装拡充: mopidy-ytmusic は artist/albumartist (ライブラリ登録分) しか返さず
       album/genre 等は未実装なので、`list` 系が実データで空になる。ライブラリのアルバム取得を有効化する
+  verified: ytdistinct-patch.py。library.py の `get_distinct()` は field=="album" の分岐が
+  丸ごとコメントアウトされたスタブのままだったため、artist/albumartist分岐 (get_library_artists)
+  と同じ流儀で `ytmusicapi.get_library_albums()` を使い有効化 (アップロード分
+  get_library_upload_albums は artist分岐でも常時コメントアウトのままな慣例に合わせ見送り)。
+  パッチ済み env の mopidy_ytmusic.library.YTMusicLibraryProvider を実際にimportし、
+  backend.api.get_library_albums を MagicMock で差し替えて直接メソッド呼び出しで確認 —
+  title付き2件+title欠落1件のモック応答 → `{"Album A", "Album B"}` (title欠落は無視) を正しく
+  返す、get_library_albums が例外送出 → 握りつぶして空集合(クラッシュしない)、artist分岐
+  (get_library_artists) は無改変で従来通り動作、を確認。dev mopidy(6601, ytmusic 実アカウント)
+  でも実際に起動しMPDで確認 — `list album`/`list Album group AlbumArtist`/`count group album`は
+  実行時例外なく応答(このアカウントはアーティストをフォローしているのみでアルバムを
+  ライブラリ保存していないため実データは空、既知のアカウント状態でありパッチの不具合ではない
+  — mopidy.log に "YTMusic failed getting albums from library" 等のエラーが一切出ていないことで
+  確認)。旧来の `search any`/`tagtypes`/`count any`/`list artist`/`listplaylists` の回帰なし・
+  Traceback 0 を確認。
 - [ ] `ytmusic:home` のセクション item マッピング改善 (song/album/artist/playlist を取りこぼさない)
 - [ ] Liked Songs: ytmusicapi 1.12.1 が get_liked_songs で失敗する件を、別エンドポイント/パースで回避
 - [ ] Recently Played (history): get_history 失敗を回避して Recently Played を出す
