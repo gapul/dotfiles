@@ -276,7 +276,29 @@ macmini の自走エージェントがここを1回1項目ずつ実装する。�
   history 固有の不具合ではなく既存の別 backlog 項目「検索結果のアーティスト表記が
   "Song" 等になる件の是正」と同根の ytmusicapi パース品質の問題で対象外。旧来の
   `search any`/`tagtypes`/`status` の回帰なし・Traceback 0 を確認。
-- [ ] 検索結果のアーティスト表記が "Song" 等になる件の是正 (parseSearch の filter=None 品質)
+- [x] 検索結果のアーティスト表記が "Song" 等になる件の是正 (parseSearch の filter=None 品質)
+  verified: ytartist-patch.py。原因調査のため一時的にparseSearchの生resultをログ出力して
+  実データ(米津/YOASOBI検索)で再現・特定 — ytmusicapi の
+  `parse_song_runs(runs, skip_type_spec=True)` は "Song • ..." 等の resultType 表記を
+  スキップする際「表記の直後(index 2)が本物のアーティスト run である」ことを要求するが、
+  無リンクの曲で subtitle が "Song • 3:23" のように duration が resultType 表記の直後へ
+  すぐ続くケース(実データで確認: "UNDEAD"/"セブンティーン"等の単曲、"THE BOOK for,"の
+  アルバム)ではこの条件が成立せず、表記そのもの(`{"name": "Song", "id": None}` /
+  `{"name": "Album", "id": None}`)が唯一のアーティストとして誤って返る。mopidy_ytmusic の
+  parseSearch はこれをそのまま Artist 化していたため、rmpc の検索結果で
+  `Artist: Song` / `AlbumArtist: Song` / `Artist: Album` のような誤表記になっていた。
+  対策: song/album 両分岐の `for a in result["artists"]:` で、id が None かつ名前が
+  既知の resultType 表記 (song/video/album/single/ep/episode/podcast/station/playlist/
+  profile、小文字比較) と一致する要素を除外 (残った本物のアーティストは従来通り反映、
+  全滅した場合はアーティスト無しとして空 — 誤った名前を出すよりは正しい)。
+  パッチ済み env の dev mopidy(6601, ytmusic 実アカウント) を実際に起動し MPD で確認 —
+  修正前は `search any "yoasobi"` で "THE BOOK for," アルバムに `Artist: Song` /
+  `AlbumArtist: Song`、単曲 "UNDEAD"/"セブンティーン" に `Artist: Song` が付いていたのが、
+  修正後は該当行が正しく消え(Artist行なしでその他のTitle/Time等は維持)、実アーティストが
+  取れているもの(YOASOBI等)は従来通り正しく表示されることを確認。`search any "米津"` でも
+  同様に誤った Artist 行が消え、Kenshi Yonezu の正当な行は維持。`search artist "YOASOBI"`
+  (アーティスト自体の検索・関連アルバム一覧、YOASOBI/Ayase/Lilas 等)、`tagtypes`、
+  `count any "yoasobi"`、`list album` の回帰なし・Traceback 0 を確認。
 - [ ] `ytmusic:home` を深いページまで (get_home の continuation) 取得
 - [ ] アルバム/プレイリストのブラウズ時にトラックのアート(get_images)を確実に載せる
 

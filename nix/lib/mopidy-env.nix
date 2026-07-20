@@ -25,6 +25,7 @@ let
     (patchDir + "/home-patch.py") # ブラウズに ytmusic:home (get_home) を追加
     (patchDir + "/ytdistinct-patch.py") # get_distinct("album") をライブラリ登録アルバムで有効化
     (patchDir + "/ytliked-patch.py") # Liked Songs 中の非音楽アイテム(artists=None)でのクラッシュを修正
+    (patchDir + "/ytartist-patch.py") # 検索結果の誤爆アーティスト表記(Song/Album等)を除外
   ];
 
   mpdPatched = mkPatched pkgs.mopidy-mpd [
