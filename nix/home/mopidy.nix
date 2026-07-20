@@ -37,6 +37,20 @@ in
     pkgs.rmpc # MPD TUI クライアント (既定で 127.0.0.1:6600 に接続)
   ];
 
+  # rmpc 設定: 歌詞を lyrics_dir(~/.cache/rmpc/lyrics) の .lrc から表示する。
+  # 曲が変わるたび on_song_change で歌詞取得スクリプトを走らせ (lrclib同期→YTM非同期の順)、
+  # hot-reload で即反映。スクリプトは ytmusicapi を使うため mopidy env の python で実行。
+  xdg.configFile."rmpc/config.ron".text = ''
+    #![enable(implicit_some)]
+    (
+        address: "127.0.0.1:6600",
+        cache_dir: "~/.cache/rmpc",
+        lyrics_dir: "~/.cache/rmpc/lyrics",
+        enable_lyrics_hot_reload: true,
+        on_song_change: ["${mopidyEnv}/bin/python", "${../../configs/media/rmpc/lyrics-fetch.py}"],
+    )
+  '';
+
   # YouTube 認証 (ytmusicapi browser 形式 = ヘッダ + Cookie の JSON)。
   # Google セッション Cookie を含むため sops 管理。復号ファイルを mopidy が auth_json で読む。
   # NOTE: Cookie は期限切れになる。切れたら Zen の cookie から再生成して sops を更新する。
