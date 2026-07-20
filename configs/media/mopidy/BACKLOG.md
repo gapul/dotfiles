@@ -143,7 +143,32 @@ macmini の自走エージェントがここを1回1項目ずつ実装する。�
   既存の動作 — `listplaylistinfo` 等他コマンドで同じ nonexistent uri を使っても同一の
   Traceback が出ることを確認済みで、今回の patch による新規リグレッションではない)。
   旧来の `list`/`search`/`count`/`sticker`/`tagtypes` の回帰なし。
-- [ ] `moveid` `swapid` `prio` `prioid`: キュー操作の網羅
+- [x] `moveid` `swapid` `prio` `prioid`: キュー操作の網羅
+  verified: mpdprio-patch.py。`moveid`/`swapid` は mopidy-mpd 3.3.0 の
+  current_playlist.py に既に完全実装済みと判明 (パッチ不要)。`prio`/`prioid` は
+  `raise MpdNotImplemented` のスタブだったため実装: 優先度 (0-255) を tlid に
+  紐付けて保存し (translator.py にモジュールレベルの揮発性ストアを追加、実 MPD も
+  プロセス再起動で消える値なので妥当)、`playlistid`/`playlistinfo` 等の出力に
+  non-zero のときだけ `Prio: N` を反映 (`Pos`/`Id` と同様 tagtypes 対象外の別枠
+  フィールドとして常に出る)。gh search code で rmpc 本体 (mierak/rmpc,
+  rmpc-mpd/src/mpd_client.rs) を確認したところ `moveid`/`swapid` は実際に送信するが
+  `prio`/`prioid` は一切送信しないと判明。既知の制約: mopidy core の
+  Tracklist.set_random()/next_track() (mopidy/core/tracklist.py) は優先度の概念を
+  持たない単純な random.shuffle のみで、mopidy core 自体はパッチ対象外のため、
+  `prio` が実際の random 再生順に影響することはない (プロトコル応答と
+  playlistinfo の Prio フィールド反映のみ、rmpc は使わないため実害なし)。
+  dev mopidy(6601, ytmusic 実アカウント) を実際に起動し、実データ(YOASOBIの
+  アルバム+検索結果、Id 1-14)をキューに積んで MPD で確認 —
+  `prio 50 0:2` → Id1/Id2 に `Prio: 50` が反映、`prioid 100 4 5` → Id4/Id5 に
+  `Prio: 100`、`prioid 0 1` (0でリセット) → Id1 から Prio 消滅、多段レンジ
+  `prio 30 6:8 10` → Id7/Id8/Id11 に正しく反映、`prio 999 0` →
+  `ACK Invalid priority`、`prio 10 999`(範囲外songpos) → `ACK Bad song index`、
+  `prioid 10 99999`(存在しないid) → `ACK No such song`、引数不足
+  `prio 10`/`prioid 10` → `ACK wrong number of arguments`、非数値
+  `prio abc 0` → `ACK incorrect arguments`。`moveid 14 0`(先頭へ移動)・
+  `swapid 1 3`(入れ替え) も Pos が期待通りに変化することを確認。`list`/`count`/
+  `search`(sort+window併用)/`sticker`/`readcomments`/`tagtypes` の回帰なし・
+  Traceback 0 を確認。
 - [ ] `addid` の position 指定 (`addid URI POS`) 対応
 - [ ] `getvol` / `volume` (相対) 対応確認
 

@@ -34,6 +34,7 @@ let
     (patchDir + "/mpdcount-patch.py") # count の group 修飾 (count group artist 等)
     (patchDir + "/mpdsticker-patch.py") # sticker get/set/delete/list/find (sqlite永続化)
     (patchDir + "/mpdreadcomments-patch.py") # readcomments を有効化 (comment を返却、無ければ空)
+    (patchDir + "/mpdprio-patch.py") # prio/prioid を実装 (優先度を保存し playlistinfo の Prio へ反映)
   ];
 
   listenbrainzPatched = mkPatched pkgs.mopidy-listenbrainz [
