@@ -223,6 +223,7 @@
           ./home/maintenance.nix
           sops-nix.homeManagerModules.sops
           ./home/secrets.nix
+          ./home/mopidy.nix
           ./home/workstation.nix
         ];
       };
