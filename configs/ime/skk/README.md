@@ -14,7 +14,7 @@
 
 ## 管理対象 (dotfiles)
 
-- `macSKK.plist` — macSKK の workarounds (Ghostty/VSCode/Brave) + UI 設定 + skkserv 接続情報
+- `macSKK.plist` — macSKK の workarounds (Ghostty/VSCode) + UI 設定 + skkserv 接続情報
 - `azoo-key-skkserv.plist` — host/incomingCharset/startServerAtLaunch
 - `kana-rule.conf` — ローマ字変換ルール (現状: `！ ？ （）` のみ全角化、`#!use-default` で既定継承)
 

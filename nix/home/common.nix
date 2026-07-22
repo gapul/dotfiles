@@ -354,6 +354,7 @@ in
 
     # ─── Homebrew から移行した CLI (段階1: git周辺 + 基本) ───
     gh # GitHub CLI
+    gh-dash # GitHub PR / Issue ダッシュボード TUI
     ghq # repo クローン管理
     lazyjj # jujutsu TUI
     jq # JSON プロセッサ
@@ -364,6 +365,11 @@ in
     ncdu # ディスク使用量 TUI
     yazi # ファイルマネージャ TUI
     zellij # ターミナルマルチプレクサ
+    podman-tui # Podman コンテナ / イメージ / Pod 管理 TUI
+    iamb # Matrix TUI (Vim キーバインド、E2EE 対応)
+    newsboat # RSS/Atom フィードリーダー TUI
+    presenterm # Markdown プレゼンテーション TUI
+    termshark # tshark/Wireshark のパケット解析 TUI
 
     # ─── Homebrew から移行した CLI (段階2: build/言語/文書/security/network) ───
     uv # Python パッケージ管理
@@ -375,8 +381,10 @@ in
     gitleaks # pre-commit の機密 leak 検査
     pre-commit # hook framework
     opencode # AI コーディング CLI
+    (callPackage ../pkgs/unity-cli.nix { }) # Unity Editor / module / project 管理 CLI
     glow # markdown ビューア
     chafa # 画像→ターミナル
+    ddgr # DuckDuckGo 対話型ターミナル検索
     w3m # テキストブラウザ
 
     # ─── cargo/uv からローカル install していたものを nix 宣言化 (再現性確保) ───

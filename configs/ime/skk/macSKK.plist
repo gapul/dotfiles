@@ -197,16 +197,6 @@
 			<key>treatFirstCharacterAsMarkedText</key>
 			<true/>
 		</dict>
-		<dict>
-			<key>bundleIdentifier</key>
-			<string>com.brave.Browser</string>
-			<key>insertBlankString</key>
-			<false/>
-			<key>showMarkerWhenEmpty</key>
-			<false/>
-			<key>treatFirstCharacterAsMarkedText</key>
-			<false/>
-		</dict>
 	</array>
 </dict>
 </plist>

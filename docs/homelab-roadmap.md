@@ -9,7 +9,6 @@ pve(Proxmox)+ CT101(dockge/Docker)を中心とした自宅ホームラボの、�
 
 ## 0. この記録の背景(2026-07-05 に実施済み)
 
-- **Stirling-PDF**: セルフホスト撤去 → Mac のデスクトップ版(nix/homebrew cask)へ移行。
 - **Matrix を頂点ドメインで公開**: server_name を `matrix.gapul.net` → `gapul.net` に作り直し、Conduit を federation 有効化。
   既存 CF Tunnel "homelab-pi" を再利用して `matrix.gapul.net` を公開、`gapul.net` の well-known 委任は Caddy が配信。
   federationtester = OK。アカウント `@gapul:gapul.net` 作成・登録ロック済み。**これが自宅初のインターネット公開 ingress。**

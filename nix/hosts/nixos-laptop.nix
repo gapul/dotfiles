@@ -2,6 +2,7 @@
   pkgs,
   lib,
   user,
+  hardwareConfig ? ./nixos-laptop-hardware.nix,
   ...
 }:
 {
@@ -9,7 +10,7 @@
   # 実機で `nixos-generate-config` が吐いた hardware-configuration.nix を
   # 同じ hosts/ に置いて下の import を有効化する (リポジトリには未コミットでよい)。
   imports = [
-    ./nixos-laptop-hardware.nix
+    hardwareConfig
   ];
 
   # --- ブートローダ: lanzaboote (Secure Boot 対応) ---

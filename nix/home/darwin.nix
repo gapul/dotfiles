@@ -163,13 +163,65 @@ in
     function sketchybar-refresh() {
       bash ~/.config/sketchybar/helpers/refresh-displays.sh "$@"
     }
+
+    # クラムシェルスリープの一時無効化トグル。
+    # フタを閉じても裏で処理を動かし続けたいときに使う。
+    # 再起動でリセットされる一時設定。off で通常に戻す。
+    function nosleep() {
+      case "$1" in
+        off)
+          sudo pmset -a disablesleep 0 && echo "スリープ無効を解除しました (通常のスリープに戻ります)"
+          ;;
+        status|"")
+          if pmset -g | grep -q "SleepDisabled.*1"; then
+            echo "現在: スリープ無効 (フタを閉じても動作継続)"
+          else
+            echo "現在: 通常 (フタを閉じるとスリープ)"
+          fi
+          ;;
+        on)
+          sudo pmset -a disablesleep 1 && echo "スリープを無効化しました (フタを閉じても動作継続 / 電源接続を推奨)"
+          ;;
+        *)
+          echo "使い方: nosleep [on|off|status]"
+          ;;
+      esac
+    }
   '';
 
   # mac 専用パッケージ
   home.packages = with pkgs; [
     pngpaste # obsidian.nvim / img-clip の macOS 画像貼付に必要
+    syncthing # Syncthing CLI (常駐は services.syncthing の LaunchAgent)
     xcodegen # project.yml → .xcodeproj 生成 (Mac 専用、Linux nixpkgs では meta.platforms = darwin のため)
+    (callPackage ../pkgs/slk.nix { }) # Slack TUI (公式 GitHub Release を固定)
   ];
+
+  # Syncthing.app を使わず、Home Manager の LaunchAgent として常駐させる。
+  # 既存の ~/Library/Application Support/Syncthing の設定・デバイスIDをそのまま使う。
+  services.syncthing.enable = true;
+
+  # Ollama.app のメニューバー常駐を、Nix版 ollama の LaunchAgent に置き換える。
+  launchd.agents.ollama = {
+    enable = true;
+    config = {
+      ProgramArguments = [
+        "${pkgs.ollama}/bin/ollama"
+        "serve"
+      ];
+      RunAtLoad = true;
+      KeepAlive = true;
+      ProcessType = "Background";
+      StandardOutPath = "${config.home.homeDirectory}/Library/Logs/Ollama/ollama.log";
+      StandardErrorPath = "${config.home.homeDirectory}/Library/Logs/Ollama/ollama.log";
+    };
+  };
+
+  home.activation.cliServiceLogDirs = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    /bin/mkdir -p \
+      "${config.home.homeDirectory}/Library/Logs/Ollama" \
+      "${config.home.homeDirectory}/Library/Logs/Syncthing"
+  '';
 
   # tealdeer: ~/Library/Application Support 配下 (Mac 規約)
   home.file."Library/Application Support/tealdeer/config.toml".text = ''

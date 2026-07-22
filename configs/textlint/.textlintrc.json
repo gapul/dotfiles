@@ -24,7 +24,7 @@
     },
     "preset-ja-spacing": {
       "ja-space-between-half-and-full-width": {
-        "space": ["alphabets", "numbers"]
+        "space": ["alphabets"]
       },
       "ja-space-around-code": { "before": true, "after": true },
       "ja-space-around-link": false
