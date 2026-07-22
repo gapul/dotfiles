@@ -147,7 +147,7 @@ _upgrade-packages-macos:
     brew upgrade --cask --greedy || true
     mas upgrade
     just sketchybar-font
-    @remaining=$$(brew outdated --cask --greedy 2>/dev/null | grep -v '^figma-agent$$' || true); if [ -n "$$remaining" ]; then echo "ERROR: cask upgrade incomplete:" >&2; echo "$$remaining" >&2; exit 1; fi
+    @remaining=$(brew outdated --cask --greedy 2>/dev/null | grep -v '^figma-agent$' || true); if [ -n "$remaining" ]; then echo "ERROR: cask upgrade incomplete:" >&2; echo "$remaining" >&2; exit 1; fi
 
 [private]
 _upgrade-linux:
@@ -167,9 +167,9 @@ maintain:
 
 [private]
 _maintain-macos:
+    #!/usr/bin/env bash
     # lock 更新から最終 rebuild までを一単位にし、失敗時は旧 lock に戻す。
     # Brew/MAS はロールバック不能だが、Nix 宣言だけが未検証状態で残ることを防ぐ。
-    #!/usr/bin/env bash
     set -euo pipefail
     maintenance_lock="$HOME/.local/state/dotfiles-maintenance.lock"
     mkdir -p "$HOME/.local/state"
@@ -194,6 +194,7 @@ _maintain-macos:
 [private]
 _maintain-linux:
     #!/usr/bin/env bash
+    # lock 更新から最終 rebuild までを一単位にし、失敗時は旧 lock に戻す。
     set -euo pipefail
     maintenance_lock="$HOME/.local/state/dotfiles-maintenance.lock"
     mkdir -p "$HOME/.local/state"
