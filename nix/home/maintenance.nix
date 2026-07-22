@@ -33,6 +33,13 @@ let
         pkgs.coreutils
       ]
     }:$PATH
+    lock=${home}/.local/state/dotfiles-maintenance.lock
+    mkdir -p ${home}/.local/state
+    if ! mkdir "$lock" 2>/dev/null; then
+      echo "SKIP: another dotfiles maintenance task is running"
+      exit 0
+    fi
+    trap 'rmdir "$lock" 2>/dev/null || true' EXIT
     notify() { /usr/bin/osascript -e "display notification \"$2\" with title \"$1\"" 2>/dev/null || true; }
     mkdir -p ${logDir}
     exec >>"${logDir}/${log}" 2>&1
@@ -46,6 +53,7 @@ let
 
     # flake inputs: 一時コピーで update し lock 差分を見る (実リポは触らない)
     tmp=$(mktemp -d)
+    trap 'rm -rf "$tmp"; rmdir "$lock" 2>/dev/null || true' EXIT
     cp ${flakeDir}/flake.nix ${flakeDir}/flake.lock "$tmp"/ 2>/dev/null || true
     ( cd "$tmp" && git init -q && git add -A && nix flake update >/dev/null 2>&1 ) || true
     changed=$(jq -r --slurpfile new "$tmp/flake.lock" '
@@ -53,6 +61,7 @@ let
       | [ $n | keys[] | select($old[.].locked.rev != $n[.].locked.rev) ] | join(", ")
     ' ${flakeDir}/flake.lock 2>/dev/null)
     rm -rf "$tmp"
+    trap 'rmdir "$lock" 2>/dev/null || true' EXIT
     [ -n "$changed" ] && { echo "flake 更新可能: $changed"; msgs="flake: $changed"; }
 
     # brew / mas

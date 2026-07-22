@@ -39,7 +39,7 @@ sops secrets/secrets.yaml
 # 5. 個人 brew tap を整理(任意)
 $EDITOR nix/hosts/darwin.nix
 # - "gapul/openutau", "gapul/zrythm" は 作者個人の fork → 削除可
-# - 不要な GUI cask も削っていい(brave-browser, gimp, blender 等)
+# - 不要な GUI cask も削っていい(gimp, blender 等)
 
 # 6. bootstrap 実行
 bash scripts/bootstrap.sh
@@ -125,11 +125,12 @@ curl -fsSL https://raw.githubusercontent.com/gapul/dotfiles/main/scripts/bootstr
     restore snapshot dest="/"    # `just restore a81c9de1 ~/Restore`  指定先へ (構造を保って展開) [alias: unarchive]
 
     [掃除]
-    gc                           # 全レイヤー一括 GC (nix store + brew + pnpm + uv + ~/.Trash 等)
-    gc-deep                      # 重い再生成可能ディレクトリを削除 (30日以上更新の無い node_modules / rust target のみ。要再 install)
+    gc                           # 全レイヤー一括 GC (再生成可能なcacheのみ。Trashやホーム全体の削除は gc-deep)
+    gc-deep                      # 重い再生成可能データを対話削除 (廃止caskのzap / CoreSimulator cache / podman / 古いbuild成果物)
 
     [構築]
     gen action="" a="" b=""      # システム世代の一覧/差分  (`just gen` = 一覧, `just gen diff [a] [b]` = 世代間パッケージ差分。sudo 不要)
+    maintain                     # update → upgrade → gc を一括実行
     rebuild                      # システム + ユーザー再構築 (Mac/WSL/Win 自動判別、普段使い)
     rollback gen=""              # 世代をロールバック (引数なし=直前へ, `just rollback 8` で世代番号指定。sudo)
     update *inputs               # flake input 更新 → rebuild  (引数なし=全 input, `just update nixpkgs` で個別更新)
@@ -137,7 +138,7 @@ curl -fsSL https://raw.githubusercontent.com/gapul/dotfiles/main/scripts/bootstr
 
     [確認]
     check what=""                # 型チェック / 差分表示  (`just check` = 構文型チェック, `just check diff` = 差分ビルド)
-    doctor                       # 環境ヘルスチェック (Determinate upgrade 後などに走らせる)
+    doctor format=""             # 環境ヘルスチェック (Determinate upgrade 後などに走らせる)
     fmt                          # コード整形 + lint を全追跡ファイルに実行 (OS 自動判別: Mac/Linux=pre-commit, Win=PSScriptAnalyzer)
     outdated                     # 更新可能なものを一覧 (upgrade 前のプレビュー。brew + mas + flake inputs。非破壊)
     search query scope=""        # パッケージ検索 (`just search <q>` = brew+nixpkgs, `just search <q> all` = + cargo)

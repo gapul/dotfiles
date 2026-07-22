@@ -39,8 +39,16 @@ log "Xcode CLT OK"
 # 2. Determinate Nix
 if ! command -v nix >/dev/null && [ ! -x /nix/var/nix/profiles/default/bin/nix ]; then
   log "Installing Determinate Nix..."
-  curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | \
-    sh -s -- install --no-confirm
+  installer=$(mktemp)
+  trap 'rm -f "$installer"' EXIT
+  # immutable version URL + audited SHA-256。配布スクリプト自身がNixバイナリも検証する。
+  installer_url=https://install.determinate.systems/nix/tag/v3.21.8
+  installer_sha=efda20b2cc3a012ea750d670e74670c155da3c291bc1021c5951a2310cbf2647
+  curl --proto '=https' --tlsv1.2 -fsSL "$installer_url" -o "$installer"
+  printf '%s  %s\n' "$installer_sha" "$installer" | shasum -a 256 -c -
+  sh "$installer" install --no-confirm
+  rm -f "$installer"
+  trap - EXIT
   . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
 else
   log "Determinate Nix already installed"

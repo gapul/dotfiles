@@ -113,11 +113,6 @@
       "com.google.Chrome" = {
         MetricsReportingEnabled = false;
       };
-      "com.brave.Browser" = {
-        MetricsReportingEnabled = false;
-        BraveStatsPingEnabled = false;
-        BraveP3AEnabled = false;
-      };
     };
   };
 }

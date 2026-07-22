@@ -54,7 +54,26 @@
     }:
     let
       system = "aarch64-darwin";
-      pkgs = nixpkgs.legacyPackages.${system};
+      # standalone Home Managerで使う公式プロプライエタリCLIだけを限定許可。
+      # nix-darwin側のpkgs設定とは別インスタンスなので、ここにも必要。
+      mkPkgs =
+        targetSystem:
+        import nixpkgs {
+          system = targetSystem;
+          config.allowUnfreePredicate = pkg: nixpkgs.lib.getName pkg == "unity-cli";
+        };
+      mkWslPkgs =
+        targetSystem:
+        import nixpkgs {
+          system = targetSystem;
+          config.allowUnfreePredicate =
+            pkg:
+            builtins.elem (nixpkgs.lib.getName pkg) [
+              "claude-code"
+              "unity-cli"
+            ];
+        };
+      pkgs = mkPkgs system;
       user = import ./user.nix;
 
       # SSH 接続先で rootless Nix (nix-portable) から実行する
@@ -171,40 +190,67 @@
       # マシン固有ファイル。それが存在するまでは出力ごと生やさず、Mac 上の
       # `nix flake check` / pre-commit が import 失敗で落ちないようにする。
       nixosConfigurations =
-        nixpkgs-nixos.lib.optionalAttrs (builtins.pathExists ./hosts/nixos-laptop-hardware.nix)
-          {
-            "nixos-laptop" = nixpkgs-nixos.lib.nixosSystem {
-              system = "x86_64-linux";
-              specialArgs = { inherit user; };
-              modules = [
-                ./hosts/nixos-laptop.nix
-                lanzaboote.nixosModules.lanzaboote
-                disko.nixosModules.disko
-                ./hosts/nixos-laptop-disk.nix
-                # 実行時の fileSystems/luks は生成 hardware-configuration.nix に任せ、
-                # disko は「インストール時のフォーマット/マウントツール」としてのみ使う。
-                { disko.enableConfig = false; }
-                home-manager.nixosModules.home-manager
-                {
-                  home-manager.useGlobalPkgs = true;
-                  home-manager.useUserPackages = true;
-                  home-manager.extraSpecialArgs = { inherit user; };
-                  home-manager.users.${user.username} = {
-                    imports = [
-                      ./home/common.nix
-                      ./home/linux.nix
-                      ./home/hyprland.nix # Hyprland リック (nixos-laptop 専用)
-                      ./home/dev.nix # direnv 等の開発環境
-                      ./home/restic-backup-linux.nix # restic (systemd user timer)
-                      sops-nix.homeManagerModules.sops
-                      ./home/secrets.nix
-                      ./home/workstation.nix
-                    ];
-                  };
-                }
-              ];
-            };
+        nixpkgs-nixos.lib.optionalAttrs (builtins.pathExists ./hosts/nixos-laptop-hardware.nix) {
+          "nixos-laptop" = nixpkgs-nixos.lib.nixosSystem {
+            system = "x86_64-linux";
+            specialArgs = { inherit user; };
+            modules = [
+              ./hosts/nixos-laptop.nix
+              lanzaboote.nixosModules.lanzaboote
+              disko.nixosModules.disko
+              ./hosts/nixos-laptop-disk.nix
+              # 実行時の fileSystems/luks は生成 hardware-configuration.nix に任せ、
+              # disko は「インストール時のフォーマット/マウントツール」としてのみ使う。
+              { disko.enableConfig = false; }
+              home-manager.nixosModules.home-manager
+              {
+                home-manager.useGlobalPkgs = true;
+                home-manager.useUserPackages = true;
+                home-manager.extraSpecialArgs = { inherit user; };
+                home-manager.users.${user.username} = {
+                  imports = [
+                    ./home/common.nix
+                    ./home/linux.nix
+                    ./home/hyprland.nix # Hyprland リック (nixos-laptop 専用)
+                    ./home/dev.nix # direnv 等の開発環境
+                    ./home/restic-backup-linux.nix # restic (systemd user timer)
+                    sops-nix.homeManagerModules.sops
+                    ./home/secrets.nix
+                    ./home/workstation.nix
+                  ];
+                };
+              }
+            ];
           };
+        }
+        // {
+
+          # 実機固有hardware-configurationを公開せず、共通NixOS設定をCI評価する構成。
+          "nixos-laptop-ci" = nixpkgs-nixos.lib.nixosSystem {
+            system = "x86_64-linux";
+            specialArgs = {
+              inherit user;
+              hardwareConfig = ./hosts/nixos-laptop-hardware-ci.nix;
+            };
+            modules = [
+              ./hosts/nixos-laptop.nix
+              lanzaboote.nixosModules.lanzaboote
+              home-manager.nixosModules.home-manager
+              {
+                home-manager.useGlobalPkgs = true;
+                home-manager.useUserPackages = true;
+                home-manager.extraSpecialArgs = { inherit user; };
+                home-manager.users.${user.username}.imports = [
+                  ./home/common.nix
+                  ./home/linux.nix
+                  ./home/hyprland.nix
+                  ./home/dev.nix
+                  ./home/workstation.nix
+                ];
+              }
+            ];
+          };
+        };
 
       # disko CLI 用 (ハード設定ファイル不要・guard 外)。インストール時に
       #   sudo disko --mode destroy,format,mount --flake <repo>/nix#nixos-laptop
@@ -233,10 +279,7 @@
       homeConfigurations."${user.username}-wsl" =
         let
           wslSystem = "x86_64-linux";
-          wslPkgs = import nixpkgs {
-            system = wslSystem;
-            config.allowUnfree = true; # claude-code (unfree) 用
-          };
+          wslPkgs = mkWslPkgs wslSystem;
         in
         home-manager.lib.homeManagerConfiguration {
           pkgs = wslPkgs;
@@ -262,10 +305,7 @@
       homeConfigurations."labpc-wsl" =
         let
           wslSystem = "x86_64-linux";
-          wslPkgs = import nixpkgs {
-            system = wslSystem;
-            config.allowUnfree = true; # claude-code (unfree) 用
-          };
+          wslPkgs = mkWslPkgs wslSystem;
           osUser = builtins.getEnv "USER";
           labUser = user // (if osUser != "" then { username = osUser; } else { });
         in
@@ -289,7 +329,7 @@
       homeConfigurations."${user.username}-linux" =
         let
           linuxSystem = "x86_64-linux";
-          linuxPkgs = nixpkgs.legacyPackages.${linuxSystem};
+          linuxPkgs = mkPkgs linuxSystem;
         in
         home-manager.lib.homeManagerConfiguration {
           pkgs = linuxPkgs;
@@ -305,7 +345,7 @@
       homeConfigurations."${user.username}-linux-aarch64" =
         let
           linuxSystem = "aarch64-linux";
-          linuxPkgs = nixpkgs.legacyPackages.${linuxSystem};
+          linuxPkgs = mkPkgs linuxSystem;
         in
         home-manager.lib.homeManagerConfiguration {
           pkgs = linuxPkgs;
@@ -320,12 +360,20 @@
         };
 
       # Remote (Linux) bundle: nssh から `nix-portable nix shell .#remote-env` で使う
-      packages = nixpkgs.lib.genAttrs remoteSystems (sys: {
-        remote-env = nixpkgs.legacyPackages.${sys}.buildEnv {
-          name = "remote-env";
-          paths = remoteTools nixpkgs.legacyPackages.${sys};
+      packages =
+        nixpkgs.lib.genAttrs remoteSystems (sys: {
+          remote-env = nixpkgs.legacyPackages.${sys}.buildEnv {
+            name = "remote-env";
+            paths = remoteTools nixpkgs.legacyPackages.${sys};
+          };
+          unity-cli = nixpkgs.legacyPackages.${sys}.callPackage ./pkgs/unity-cli.nix { };
+        })
+        // {
+          ${system} = {
+            slk = pkgs.callPackage ./pkgs/slk.nix { };
+            unity-cli = pkgs.callPackage ./pkgs/unity-cli.nix { };
+          };
         };
-      });
 
       # nix fmt
       formatter.${system} = treefmtEval.config.build.wrapper;

@@ -38,14 +38,14 @@ jobs:
     runs-on: macos-14 # Apple Silicon
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@v22
+        uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
 
       # nix store cache: 同じ flake.lock の間は再 download 不要
       - name: Cache nix store
-        uses: nix-community/cache-nix-action@v6
+        uses: nix-community/cache-nix-action@d8cff2f74b9341e0d90fbf3c0c0212a161ceaef6 # v6
         with:
           primary-key: nix-${{ runner.os }}-${{ hashFiles('nix/flake.lock') }}
           restore-prefixes-first-match: nix-${{ runner.os }}-
@@ -57,17 +57,44 @@ jobs:
           purge-primary-key: never
 
       - name: nix flake check (syntax/eval)
-        run: nix flake check ./nix --no-build --show-trace
+        run: nix flake check ./nix --no-build --all-systems --show-trace
+
+  eval-linux-configurations:
+    name: eval ${{ matrix.configuration }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        configuration:
+          - gapul-wsl
+          - gapul-linux
+          - gapul-linux-aarch64
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+      - name: Evaluate Home Manager activation package
+        run: nix eval "./nix#homeConfigurations.${{ matrix.configuration }}.activationPackage.drvPath" --raw --show-trace
+
+  eval-nixos:
+    name: eval NixOS laptop
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+      - name: Evaluate NixOS system with CI hardware fixture
+        run: nix eval ./nix#nixosConfigurations.nixos-laptop-ci.config.system.build.toplevel.drvPath --raw --show-trace
 
   build-darwin:
-    name: build darwinConfigurations (dry)
+    name: build darwinConfigurations
     runs-on: macos-14
     timeout-minutes: 30
     needs: flake-check
     steps:
-      - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@v22
-      - uses: nix-community/cache-nix-action@v6
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+      - uses: nix-community/cache-nix-action@d8cff2f74b9341e0d90fbf3c0c0212a161ceaef6 # v6
         with:
           primary-key: nix-${{ runner.os }}-${{ hashFiles('nix/flake.lock') }}
           restore-prefixes-first-match: nix-${{ runner.os }}-
@@ -76,17 +103,17 @@ jobs:
         run: |
           USER_NAME=$(nix eval --raw -f ./nix/user.nix username)
           echo "Building for username: $USER_NAME"
-          nix build "./nix#darwinConfigurations.$USER_NAME.system" --dry-run --show-trace
+          nix build "./nix#darwinConfigurations.$USER_NAME.system" --show-trace
 
   build-home:
-    name: build homeConfigurations (dry)
+    name: build homeConfigurations
     runs-on: macos-14
     timeout-minutes: 30
     needs: flake-check
     steps:
-      - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@v22
-      - uses: nix-community/cache-nix-action@v6
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+      - uses: nix-community/cache-nix-action@d8cff2f74b9341e0d90fbf3c0c0212a161ceaef6 # v6
         with:
           primary-key: nix-${{ runner.os }}-${{ hashFiles('nix/flake.lock') }}
           restore-prefixes-first-match: nix-${{ runner.os }}-
@@ -95,7 +122,19 @@ jobs:
         run: |
           USER_NAME=$(nix eval --raw -f ./nix/user.nix username)
           echo "Building for username: $USER_NAME"
-          nix build "./nix#homeConfigurations.$USER_NAME.activationPackage" --dry-run --show-trace
+          nix build "./nix#homeConfigurations.$USER_NAME.activationPackage" --show-trace
+          nix build ./nix#slk ./nix#unity-cli --show-trace
+
+  build-linux-custom-packages:
+    name: build custom packages (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: flake-check
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+      - name: Build unity-cli artifact
+        run: nix build ./nix#unity-cli --show-trace
 
   # pre-commit (gitleaks protect --staged) は --no-verify で飛ばせるため、
   # CI 側で全履歴を gitleaks detect して二重化する。
@@ -104,11 +143,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0 # 全コミット履歴を取得 (detect は履歴を走査するため必須)
       - name: gitleaks detect
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@dcedce43c6f43de0b836d1fe38946645c9c638dc # v2
         env:
           GITLEAKS_CONFIG: ${{ github.workspace }}/.gitleaks.toml
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -120,9 +159,9 @@ jobs:
     runs-on: macos-14
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@v22
-      - uses: nix-community/cache-nix-action@v6
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+      - uses: nix-community/cache-nix-action@d8cff2f74b9341e0d90fbf3c0c0212a161ceaef6 # v6
         with:
           primary-key: nix-${{ runner.os }}-${{ hashFiles('nix/flake.lock') }}
           restore-prefixes-first-match: nix-${{ runner.os }}-
@@ -142,9 +181,9 @@ jobs:
     runs-on: macos-14
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@v22
-      - uses: nix-community/cache-nix-action@v6
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+      - uses: nix-community/cache-nix-action@d8cff2f74b9341e0d90fbf3c0c0212a161ceaef6 # v6
         with:
           primary-key: nix-${{ runner.os }}-${{ hashFiles('nix/flake.lock') }}
           restore-prefixes-first-match: nix-${{ runner.os }}-
@@ -170,7 +209,7 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: PowerShell parse (全 .ps1)
         shell: pwsh

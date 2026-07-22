@@ -102,8 +102,22 @@ rollback gen="":
 # flake input 更新 → rebuild  (引数なし=全 input, `just update nixpkgs` で個別更新)
 [group('構築')]
 update *inputs:
-    nix flake update {{inputs}} --flake {{flake}}
+    #!/usr/bin/env bash
+    set -euo pipefail
+    lock="{{flake}}/flake.lock"
+    old_lock=$(mktemp)
+    cp "$lock" "$old_lock"
+    trap 'rc=$?; if [ $rc -ne 0 ]; then cp "$old_lock" "$lock"; echo "Restored flake.lock after failed update" >&2; fi; rm -f "$old_lock"; exit $rc' EXIT
+    just _update-lock {{inputs}}
     just rebuild
+    trap - EXIT
+    rm -f "$old_lock"
+
+# flake.lock だけを更新する内部処理。後続処理が失敗した場合は呼び出し側が復元できるよう、
+# update recipe 自体では rebuild 成功まで旧 lock を保持する。
+[private]
+_update-lock *inputs:
+    nix flake update {{inputs}} --flake {{flake}}
 
 # NOTE(upgrade): cask --greedy は自己更新型(VS Code 等)も brew 経由で揃える。installer manual /
 #   自己更新 cask(figma-agent 等)は brew が上げられず exit 1 にするので `|| true` で許容する。
@@ -115,12 +129,25 @@ upgrade:
 
 [private]
 _upgrade-macos:
+    just _upgrade-nix-runtime-macos
+    just _upgrade-packages-macos
+    just update
+
+[private]
+_upgrade-nix-runtime-macos:
+    # Determinate Nix runtime は nix-darwin 管理外。対話実行時だけ sudo で先に更新し、
+    # 後続の flake update / rebuild を新しい runtime で行う。
+    @if command -v determinate-nixd >/dev/null; then sudo determinate-nixd upgrade; else echo "Determinate Nixd not found; skip runtime upgrade"; fi
+
+[private]
+_upgrade-packages-macos:
+    # 一部の自己更新caskは Homebrew 上で常に outdated になりうるため最後の検査から除外。
+    # それ以外（今回の OpenFOAM のような失敗）は継続表示後に非0で返す。
     brew upgrade --formula
     brew upgrade --cask --greedy || true
     mas upgrade
     just sketchybar-font
-    just update
-    @echo "Determinate Nix runtime: upgrade manually -> sudo /usr/local/bin/determinate-nixd upgrade"
+    @remaining=$$(brew outdated --cask --greedy 2>/dev/null | grep -v '^figma-agent$$' || true); if [ -n "$$remaining" ]; then echo "ERROR: cask upgrade incomplete:" >&2; echo "$$remaining" >&2; exit 1; fi
 
 [private]
 _upgrade-linux:
@@ -131,6 +158,71 @@ _upgrade-linux:
 [private]
 _upgrade-windows:
     @just win-upgrade
+
+# flake更新・全パッケージ更新・再構築・GCを一括実行 (Mac/Linux/Win 自動判別)
+[group('構築')]
+[doc('update → upgrade → gc を一括実行')]
+maintain:
+    @just _maintain-{{os()}}
+
+[private]
+_maintain-macos:
+    # lock 更新から最終 rebuild までを一単位にし、失敗時は旧 lock に戻す。
+    # Brew/MAS はロールバック不能だが、Nix 宣言だけが未検証状態で残ることを防ぐ。
+    #!/usr/bin/env bash
+    set -euo pipefail
+    maintenance_lock="$HOME/.local/state/dotfiles-maintenance.lock"
+    mkdir -p "$HOME/.local/state"
+    mkdir "$maintenance_lock" 2>/dev/null || { echo "another dotfiles maintenance task is running" >&2; exit 1; }
+    just outdated
+    lock="{{flake}}/flake.lock"
+    old_lock=$(mktemp)
+    cp "$lock" "$old_lock"
+    trap 'rc=$?; if [ $rc -ne 0 ]; then cp "$old_lock" "$lock"; echo "Restored flake.lock after failed maintain" >&2; fi; rm -f "$old_lock"; rmdir "$maintenance_lock" 2>/dev/null || true; exit $rc' EXIT
+    just _upgrade-nix-runtime-macos
+    just _update-lock
+    just _upgrade-packages-macos
+    just rebuild
+    just gc
+    brew services cleanup || true
+    just _maintain-user-tools
+    just doctor || true
+    trap - EXIT
+    rm -f "$old_lock"
+    rmdir "$maintenance_lock"
+
+[private]
+_maintain-linux:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    maintenance_lock="$HOME/.local/state/dotfiles-maintenance.lock"
+    mkdir -p "$HOME/.local/state"
+    mkdir "$maintenance_lock" 2>/dev/null || { echo "another dotfiles maintenance task is running" >&2; exit 1; }
+    just outdated
+    lock="{{flake}}/flake.lock"
+    old_lock=$(mktemp)
+    cp "$lock" "$old_lock"
+    trap 'rc=$?; if [ $rc -ne 0 ]; then cp "$old_lock" "$lock"; echo "Restored flake.lock after failed maintain" >&2; fi; rm -f "$old_lock"; rmdir "$maintenance_lock" 2>/dev/null || true; exit $rc' EXIT
+    just _update-lock
+    just rebuild
+    just gc
+    just _maintain-user-tools
+    just doctor || true
+    trap - EXIT
+    rm -f "$old_lock"
+    rmdir "$maintenance_lock"
+
+[private]
+_maintain-user-tools:
+    # 宣言パッケージ外のユーザーデータ／拡張だけ更新する。未導入・未認証ならskip。
+    @if command -v tldr >/dev/null; then echo "━━━ tldr cache ━━━"; tldr --update || true; fi
+    @if command -v gh >/dev/null && gh extension list 2>/dev/null | grep -q .; then echo "━━━ GitHub CLI extensions ━━━"; gh extension upgrade --all || true; fi
+
+[private]
+_maintain-windows:
+    just win-bootstrap
+    just win-upgrade
+    @echo "Windows: gc recipe is not defined; package update completed."
 
 # sketchybar-app-font を最新リリースへ更新 (.ttf と icon_map.sh を同一版で揃える)
 # upgrade から自動で呼ばれる内部レシピ (`just sketchybar-font` 単体実行も可)
@@ -224,9 +316,28 @@ outdated:
 
 # 環境ヘルスチェック (Determinate upgrade 後などに走らせる)
 [group('確認')]
-doctor:
+doctor format="":
     #!/usr/bin/env bash
     set -u
+    if [[ "{{format}}" == "json" || "{{format}}" == "--json" ]]; then
+      brew_json=$({ "{{justfile_directory()}}/scripts/check-brew-drift.sh" --json; } 2>/dev/null || true)
+      [[ -n $brew_json ]] || brew_json='{"ok":false,"error":"brew drift check failed"}'
+      result=$(jq -n \
+        --argjson nixMounted "$([[ $(mount | grep -c ' on /nix ') -gt 0 ]] && echo true || echo false)" \
+        --argjson fstabOk "$(! grep '/nix' /etc/fstab 2>/dev/null | grep -q noauto && echo true || echo false)" \
+        --argjson nixDecrypted "$(! diskutil apfs list 2>/dev/null | grep -A 6 'Nix Store' | grep -q 'FileVault: *Yes' && echo true || echo false)" \
+        --argjson sketchybar "$(pgrep -fq '/opt/homebrew/opt/sketchybar/bin/sketchybar' && echo true || echo false)" \
+        --argjson aerospace "$(pgrep -fq AeroSpace.app && echo true || echo false)" \
+        --argjson karabiner "$(pgrep -fq Karabiner-Core-Service && echo true || echo false)" \
+        --argjson ageKey "$([[ -f $HOME/.config/sops/age/keys.txt ]] && echo true || echo false)" \
+        --argjson clean "$([[ -z $(git -C {{justfile_directory()}} status --short) ]] && echo true || echo false)" \
+        --argjson brew "$brew_json" \
+        '{ok: ($nixMounted and $fstabOk and $nixDecrypted and $sketchybar and $aerospace and $karabiner and $ageKey and $brew.ok), checks: {nixMounted: $nixMounted, fstab: $fstabOk, nixDecrypted: $nixDecrypted, sketchybar: $sketchybar, aerospace: $aerospace, karabiner: $karabiner, ageKey: $ageKey, workingTreeClean: $clean}, brew: $brew}')
+      printf '%s\n' "$result"
+      jq -e '.ok' <<<"$result" >/dev/null
+      exit $?
+    fi
+    if [[ -n "{{format}}" ]]; then echo "usage: just doctor [--json|json]" >&2; exit 2; fi
     pass=0; fail=0
     check() { if eval "$2"; then echo "  [ok] $1"; pass=$((pass+1)); else echo "  [FAIL] $1"; fail=$((fail+1)); fi; }
     # warn: 満たさなくても fail にしない情報系チェック ($3 = 未達時メッセージ)
@@ -245,6 +356,12 @@ doctor:
     echo "== dotfiles =="
     warn "Working tree clean (no uncommitted)" '[[ -z "$(git -C {{justfile_directory()}} status --short)" ]]' "Uncommitted changes -> commit/push recommended"
     check "age private key present" '[[ -f ~/.config/sops/age/keys.txt ]]'
+    echo "== Homebrew declaration drift =="
+    if "{{justfile_directory()}}/scripts/check-brew-drift.sh"; then
+      echo "  [ok] Homebrew matches declaration"; pass=$((pass+1))
+    else
+      echo "  [FAIL] Homebrew drift detected -> apply: just rebuild"; fail=$((fail+1))
+    fi
     echo
     # バー/WM 系が落ちていれば復旧導線を出す (restart レシピへ)
     down=()
@@ -285,7 +402,7 @@ _fmt-windows:
 # 掃除 (clean / GC・ゴミファイル)
 # ─────────────────────────────────────────────
 
-# 全レイヤー一括 GC (nix store + brew + pnpm + uv + simulator + podman + ~/.Trash 等)
+# 全レイヤー一括 GC (再生成可能なcacheのみ。Trashやホーム全体の削除は gc-deep)
 [group('掃除')]
 gc:
     #!/usr/bin/env bash
@@ -294,6 +411,7 @@ gc:
     nh clean all --keep 5 --keep-since 7d || true
     echo ""
     echo "━━━ Homebrew (downloads + old versions) ━━━"
+    brew autoremove 2>&1 | tail -3 || true
     brew cleanup --prune=all 2>&1 | tail -3 || true
     echo ""
     echo "━━━ pnpm store ━━━"
@@ -319,10 +437,6 @@ gc:
     else
       echo "  (podman not available / machine stopped, skip)"
     fi
-    echo ""
-    echo "━━━ macOS Trash ━━━"
-    sz=$(du -sh ~/.Trash 2>/dev/null | cut -f1); echo "  ~/.Trash size: $sz"
-    rm -rf ~/.Trash/* 2>/dev/null || true
     echo ""
     echo "━━━ Electron updater leftovers (~/Library/Caches/*.ShipIt) ━━━"
     # Squirrel.framework が残すダウンロード済みアップデートの残骸。次回アップデート時に再取得される
@@ -350,10 +464,6 @@ gc:
     m=$(find ~/.config -maxdepth 3 \( -name '*.bak' -o -name '*.bak.[0-9]*' \) -type f -print -delete 2>/dev/null | wc -l | tr -d ' ')
     echo "  $m removed"
     echo ""
-    echo "━━━ OS junk across $HOME (.DS_Store/._*/swap/orig etc., excl .Trash) ━━━"
-    d=$(find "$HOME" -name .Trash -prune -o -type f \( -name '.DS_Store' -o -name '._*' -o -name '*.swp' -o -name '*.swo' -o -name '*.orig' -o -name '*.rej' -o -name '*~' \) -print -delete 2>/dev/null | wc -l | tr -d ' ')
-    echo "  $d removed"
-    echo ""
     echo "━━━ Dev caches (__pycache__/*.pyc/.pytest_cache etc., excl Library, regenerated) ━━━"
     tmp=$(mktemp)
     find "$HOME" \( -path "$HOME/Library" -o -name .Trash \) -prune -o -type d \( -name '__pycache__' -o -name '.pytest_cache' -o -name '.mypy_cache' -o -name '.ruff_cache' -o -name '.ipynb_checkpoints' \) -prune -print 2>/dev/null > "$tmp"
@@ -368,11 +478,45 @@ gc:
     echo "━━━ Done ━━━"
     df -h / 2>&1 | head -2 | tail -1
 
-# 重い再生成可能データを対話削除 (CoreSimulator dyld cache / podman 未使用イメージ / 30日以上更新の無い node_modules・rust target)
+# 重い再生成可能データを対話削除 (廃止caskのzap / CoreSimulator cache / podman / 古いbuild成果物)
 [group('掃除')]
 gc-deep:
     #!/usr/bin/env bash
     set -u
+    echo "━━━ macOS Trash (復旧不能になるため確認付き) ━━━"
+    sz=$(du -sh "$HOME/.Trash" 2>/dev/null | cut -f1); echo "  size: ${sz:-0}"
+    read -rp "  Empty Trash? [y/N] " ans
+    if [[ "$ans" == [yY] ]]; then
+      find "$HOME/.Trash" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} + 2>/dev/null || true
+      echo "  emptied"
+    else
+      echo "  skipped"
+    fi
+    echo ""
+    echo "━━━ OS/editor junk across HOME (確認付き) ━━━"
+    read -rp "  Delete .DS_Store/AppleDouble/swap/orig/rej/backup files? [y/N] " ans
+    if [[ "$ans" == [yY] ]]; then
+      d=$(find "$HOME" \( -path "$HOME/.Trash" -o -path "$HOME/Library" \) -prune -o -type f \( -name '.DS_Store' -o -name '._*' -o -name '*.swp' -o -name '*.swo' -o -name '*.orig' -o -name '*.rej' -o -name '*~' \) -print -delete 2>/dev/null | wc -l | tr -d ' ')
+      echo "  $d removed"
+    else
+      echo "  skipped"
+    fi
+    echo ""
+    echo "━━━ Retired GUI cask data (Homebrew zap) ━━━"
+    # CLI/TUIへ移行して宣言から外したcaskだけを固定指定。--force により通常uninstall後も
+    # zap stanza (設定・cache等)を実行できる。ollama-appは ~/.ollama のモデルを消すため、
+    # unity-hubはUnity CLIと設定を共有しうるため、意図的に対象外。
+    zap_candidates=(cyberduck wireshark-app syncthing-app picview iina vlc)
+    printf '  %s\n' "${zap_candidates[@]}"
+    echo "  Removes app settings/caches; Cyberduck bookmarks and Wireshark profiles are included."
+    echo "  Preserved: ~/.ollama models, Syncthing core config, Unity Hub/CLI metadata."
+    read -rp "  Zap all listed cask data? [y/N] " ans
+    if [[ "$ans" == [yY] ]]; then
+      brew uninstall --cask --zap --force "${zap_candidates[@]}" || true
+    else
+      echo "  skipped"
+    fi
+    echo ""
     echo "━━━ CoreSimulator dyld cache (/Library/Developer/CoreSimulator/Caches) ━━━"
     # iOS シミュレータ実行時に再生成されるキャッシュ。放置すると 10GB 超えになる
     sim_cache="/Library/Developer/CoreSimulator/Caches"

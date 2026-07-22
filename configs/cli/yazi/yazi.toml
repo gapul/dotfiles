@@ -14,19 +14,16 @@ scrolloff      = 5 # カーソル上下に5行の余白
 #     `tar -xf` は Windows 10+ 同梱の bsdtar.exe (zip/tar/gz/bz2 対応)。
 video = [
   { run = 'mpv "$@"', desc = "Open in mpv", orphan = true, for = "unix" },
-  { run = 'open -a "IINA" "$@"', desc = "Open in IINA", orphan = true, for = "macos" },
   { run = 'mpv "$@"', desc = "Open in mpv", orphan = true, for = "windows" },
   { run = 'start "" "$@"', desc = "Open with default", orphan = true, for = "windows" },
 ]
 audio = [
   { run = 'mpv "$@"', desc = "Play in mpv", orphan = true, for = "unix" },
-  { run = 'open -a "IINA" "$@"', desc = "Play in IINA", orphan = true, for = "macos" },
   { run = 'mpv "$@"', desc = "Play in mpv", orphan = true, for = "windows" },
   { run = 'start "" "$@"', desc = "Play with default", orphan = true, for = "windows" },
 ]
 image = [
   { run = 'open -a qView "$@"', desc = "Open in qView", orphan = true, for = "macos" },
-  { run = 'open -a PicView "$@"', desc = "Open in PicView", orphan = true, for = "macos" },
   { run = 'qlmanage -p "$@"', desc = "Quick Look", orphan = true, for = "macos" },
   { run = 'open -a "Preview" "$@"', desc = "Open in Preview", orphan = true, for = "macos" },
   { run = 'xdg-open "$@"', desc = "Open (xdg)", orphan = true, for = "linux" },

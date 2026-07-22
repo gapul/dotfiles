@@ -67,6 +67,7 @@
     #  の読み込みには効かず、手動 brew trust は bundle が毎回上書きするため使えない。
     #  全 tap は下記で宣言・バージョン管理済みなので activation 時のチェックを切る。)
     taps = [
+      "chojs23/tap" # Concord (Discord TUI)
       "deskflow/tap"
       "felixkratz/formulae"
       "finnvoor/tools"
@@ -104,6 +105,8 @@
       "winetricks" # wine prefix への DLL/コンポーネント導入ヘルパ
 
       # ─── TUI utilities ───
+      "chojs23/tap/concord" # Discord TUI (画像・スレッド・音声対応)
+      "herdr" # AI coding agent multiplexer
       "wifitui" # wifi (nixpkgs は Linux 専用のため brew 維持)
 
       # ─── Network / Download / VPN ───
@@ -141,7 +144,6 @@
     # GUI applications (~100個)
     casks = [
       # ─── Browsers ───
-      "brave-browser"
       "google-chrome"
       "tor-browser"
       "zen"
@@ -157,7 +159,6 @@
         };
       } # vim キーバインドの軽量 PDF ビューア (zathura 代替・常用)
       "skim" # ネイティブ SyncTeX ビューア。TeX 執筆用の保険 (連携は後日)
-      "stirling-pdf" # PDF 変換・結合・OCR 等ツール (旧自宅セルフホスト版の代替。完全ローカル処理)
 
       # ─── Image viewers ───
       # qView は ad-hoc 署名のみ (未 notarize)。quarantine 付きだと Gatekeeper に
@@ -168,15 +169,12 @@
           no_quarantine = true;
         };
       } # 軽量画像ビューア (yazi の image opener に使用)
-      "picview" # 画像ビューア (notarized・picview.org)
 
       # ─── Communication & Sync ───
       "beeper"
       "kdeconnect"
       "localsend"
       "simplex"
-      "signal" # E2E メッセンジャー (一般連絡先用。SimpleX は最強匿名用)
-      "syncthing-app"
 
       # ─── Window / Keyboard / Input ───
       "aerospace"
@@ -217,9 +215,7 @@
 
       # ─── Network / Remote ───
       "tailscale-app"
-      "wireshark-app"
       "rustdesk"
-      "cyberduck"
 
       # ─── Dev IDEs / Editors / SDK ───
       "claude" # Claude デスクトップアプリ (Anthropic 公式)
@@ -228,12 +224,10 @@
       "zed"
       "android-studio"
       "flutter"
-      "unity-hub"
       "imhex"
       "trex"
       "deskflow"
       "deskreen"
-      "ollama-app" # ローカル LLM ランタイム GUI (CLI 同梱)
       "codexbar" # AI コーディング各社の使用量/上限をメニューバー表示 (codexbar CLI 同梱・/opt/homebrew/bin に自動 link)
 
       # ─── Creative — Design / 2D ───
@@ -275,8 +269,6 @@
       "blackhole-2ch" # OBS / DAW へシステム音声を回す仮想オーディオデバイス
 
       # ─── Creative — Video / Animation / Stream ───
-      "iina"
-      "vlc"
       "obs"
       "kap" # オープンソース画面レコーダー (getkap.co)
       "gyroflow"
