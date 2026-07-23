@@ -6,7 +6,7 @@
 - ディレクトリ名 = re.sub(r'[^A-Za-z0-9]', '-', 絶対パス)
 - 旧パスは「中の jsonl の cwd フィールド」から取得(dir 名は不可逆なため)
   取れない場合のみ、dir 名末尾セグメントの basename 一意一致で補完
-- 写像規則: /Users/yuki->/Users/gapul, ghq/github.com->Developer/github.com,
+- 写像規則: 旧 macOS home -> 現在の home、ghq/github.com -> Developer/github.com、
   それでも無ければ basename が ~/Developer/github.com 配下で一意一致するもの
 - 複数の旧 dir が同一新 dir に集まる場合はファイル(UUID名)を移動してマージ
 - 曖昧・不明は温存(履歴は消さない)。内部 jsonl の中身は履歴記録として変更しない。
@@ -17,8 +17,9 @@
 import json, os, glob, re, sys, tarfile, shutil
 
 APPLY = "--apply" in sys.argv
-P = os.path.expanduser("~/.config/claude/projects")
-ROOT = os.path.expanduser("~/Developer/github.com")
+HOME = os.path.expanduser("~")
+P = os.path.join(HOME, ".config/claude/projects")
+ROOT = os.path.join(HOME, "Developer/github.com")
 
 index = {}
 for depth in ("*", "*/*", "*/*/*"):
@@ -32,10 +33,10 @@ def enc(path):
 
 
 def map_path(cwd):
-    if not cwd or not cwd.startswith("/Users/yuki"):
+    if not cwd or not re.match(r"^/Users/[^/]+(?:/|$)", cwd):
         return None
-    n = cwd.replace("/Users/yuki", "/Users/gapul")
-    n = n.replace("/Users/gapul/ghq/github.com", "/Users/gapul/Developer/github.com")
+    n = re.sub(r"^/Users/[^/]+", HOME, cwd)
+    n = re.sub(r"^" + re.escape(HOME) + r"/ghq/github\.com", ROOT, n)
     if os.path.isdir(n):
         return n
     c = index.get(os.path.basename(n).lower())

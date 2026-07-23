@@ -29,15 +29,13 @@ in
   # (再構築手順は configs/macmini/bootstrap.sh と README)。
 
   home.packages = [
-    # ccm: mac mini での Claude Code 既定起動形。
-    # Remote Control(名前 dotfiles) + 直前会話の継続 + 全許可スキップ(YOLO) +
-    # ~/.dotfiles へのアクセス許可。claude 本体は上書きしない (auth/update/agents を壊さない)。
-    # 注意: --dangerously-skip-permissions は NOPASSWD sudo と併用で root まで無 gate。
+    # ccm: mac mini での Claude Code 既定起動形。権限確認は維持する。
+    # 非対話環境でも --dangerously-skip-permissions を既定化しない。外部コンテンツ由来の
+    # prompt injection がそのまま任意コマンド実行権限になるため。
     (pkgs.writeShellScriptBin "ccm" ''
       exec "$HOME/.local/bin/claude" \
         --remote-control dotfiles \
         --continue \
-        --dangerously-skip-permissions \
         --add-dir "$HOME/.dotfiles" \
         "$@"
     '')

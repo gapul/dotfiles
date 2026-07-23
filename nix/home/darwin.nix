@@ -285,7 +285,7 @@ in
   # aerospace: 解像度可変 gaps/padding。config include 非対応 + nix symlink は read-only なので、
   # symlink ではなく activation で ~/.config/aerospace/aerospace.toml を生成する。
   # メインディスプレイ解像度から gaps/accordion-padding をスケール → dry-run 検証 → reload-config。
-  # (bin/aerolog.sh は toml 内で絶対 dotfiles パス参照のため ~/.config へ置く必要なし)
+  # source 内の @DOTFILES@ は生成時に現在の $HOME/.dotfiles へ展開する。
   home.activation.aerospaceConfig = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     run ${pkgs.bash}/bin/bash ${../../scripts/aerospace-config.sh} ${../../configs/wm/aerospace/aerospace.toml}
   '';
@@ -463,6 +463,11 @@ in
   # karabiner は dotfiles 直接書き戻し (mkOutOfStoreSymlink)
   home.file.".config/karabiner".source =
     config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.dotfiles/configs/keyboard/karabiner";
+
+  # Hammerspoon: Space-Hyper+AeroSpace と競合しないモーダルなキーボードマウス。
+  # init.lua が hs.autoLaunch(true) を設定するため、一度起動すればログイン時も常駐する。
+  home.file.".hammerspoon".source =
+    config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.dotfiles/configs/keyboard/hammerspoon";
 
   # mpv ランチャー (AppleScript droplet)。mpv 本体は brew formula (darwin.nix の
   # homebrew.brews) で、CLI バイナリのみ・.app を吐かないため、Finder の関連付け /

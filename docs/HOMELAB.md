@@ -71,7 +71,7 @@
 
 **登録に使う公開鍵（ed25519）**:
 ```
-ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBLeOb9XOJPsmuTRf708qYoNckWk+/fhuWkpTWtTSu41 yuk8337@gmail.com
+公開鍵は `secrets/secrets.yaml` の `ssh_authorized_keys` をSOPS経由で配布する。
 ```
 
 **この公開鍵の登録先**:
@@ -86,7 +86,7 @@ ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBLeOb9XOJPsmuTRf708qYoNckWk+/fhuWkpTWtTSu41
 - CT101(dockge) / CT103(caddy) / CT104(hermes) には **この鍵は未登録** → pve から `pct enter/exec` でアクセスする。
 - 新ホストに登録する1行:
   ```bash
-  mkdir -p ~/.ssh && echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBLeOb9XOJPsmuTRf708qYoNckWk+/fhuWkpTWtTSu41 yuk8337@gmail.com" >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys
+  mkdir -p ~/.ssh && install -m 600 /path/to/decrypted/authorized_keys ~/.ssh/authorized_keys
   ```
 
 **参考: 各ホストのサーバ公開鍵（known_hosts 検証用）**

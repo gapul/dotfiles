@@ -11,4 +11,4 @@ while true; do
   sleep 5
 done
 echo "=== INTERNVL MODEL DOWNLOADED $(date +%H:%M:%S) ==="
-du -sh /Users/gapul/models/internvl3-8b-4bit
+du -sh "$HOME/models/internvl3-8b-4bit"

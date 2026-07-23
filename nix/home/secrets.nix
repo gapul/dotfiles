@@ -21,6 +21,7 @@
       "pii/email_personal" = { };
       "pii/email_school" = { };
       "pii/email_work" = { };
+      "pii/birthday" = { };
       "pii/gmail_app_password_mail" = { };
       "pii/gmail_app_password_caldav" = { };
     };
@@ -57,6 +58,17 @@
           [Auth]
           Username = ${config.sops.placeholder."pii/email_personal"}
           Password = ${config.sops.placeholder."pii/gmail_app_password_caldav"}
+        '';
+      };
+      "nvim-birthday.lua" = {
+        path = "${config.home.homeDirectory}/.config/nvim-private/birthday.lua";
+        mode = "0400";
+        content = ''
+          return {
+            name = ${builtins.toJSON config.sops.placeholder."pii/name"},
+            birthday = ${builtins.toJSON config.sops.placeholder."pii/birthday"},
+            palette = "dusty",
+          }
         '';
       };
     };

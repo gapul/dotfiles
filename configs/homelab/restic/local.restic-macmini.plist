@@ -4,7 +4,11 @@
 <dict>
   <key>Label</key><string>local.restic-macmini</string>
   <key>ProgramArguments</key>
-  <array><string>/Users/gapul/.local/bin/restic-macmini-offsite.sh</string></array>
+  <array>
+    <string>/bin/sh</string>
+    <string>-c</string>
+    <string>exec "$HOME/.local/bin/restic-macmini-offsite.sh"</string>
+  </array>
   <key>StartCalendarInterval</key>
   <dict><key>Hour</key><integer>5</integer><key>Minute</key><integer>0</integer></dict>
   <key>RunAtLoad</key><false/>

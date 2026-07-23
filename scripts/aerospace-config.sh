@@ -60,13 +60,16 @@ ACCORDION=$(r "$B_ACCORDION" "$MAIN_H")
 # なるため、先に除去して通常ファイルとして書き出す。$OUT は nix 管理外なので削除して安全。
 /bin/rm -f "$OUT"
 
-# 1) accordion-padding をスカラーで main 係数スケール
-# 2) [gaps] ブロックの inner.*/outer.* を per-monitor 配列に差し替え
+# 1) @DOTFILES@ を現在のホーム配下の checkout に展開
+# 2) accordion-padding をスカラーで main 係数スケール
+# 3) [gaps] ブロックの inner.*/outer.* を per-monitor 配列に差し替え
 /usr/bin/awk \
+  -v dotfiles="$HOME/.dotfiles" \
   -v accordion="$ACCORDION" \
   -v im="$INNER_M" -v ie="$INNER_E" \
   -v sm="$SIDE_M" -v se="$SIDE_E" \
   -v tm="$TOP_M" -v te="$TOP_E" '
+  { gsub(/@DOTFILES@/, dotfiles) }
   # accordion-padding (スカラー)
   /^[[:space:]]*accordion-padding[[:space:]]*=/ { print "accordion-padding = " accordion; next }
   # [gaps] セクション: ヘッダの直後に生成ブロックを注入し、元の inner./outer. 行は捨てる

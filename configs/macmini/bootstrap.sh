@@ -5,7 +5,6 @@
 #         引数なし = 全部
 set -u
 eval "$(/opt/homebrew/bin/brew shellenv)"
-DOT="$(cd "$(dirname "$0")" && pwd)"          # configs/macmini の絶対パス
 H="$HOME"
 UV=/opt/homebrew/bin/uv
 say(){ echo -e "\n=== $* ==="; }
@@ -14,15 +13,14 @@ do_all=1; [ "$#" -gt 0 ] && do_all=0
 want(){ [ "$do_all" = 1 ] && return 0; case " $* " in *" $1 "*) return 0;; esac; return 1; }
 has(){ printf '%s ' "$@" | grep -q " $FLAG "; }
 
-# ---------- scripts: dotfiles -> 実配置(out-of-store symlink) ----------
+# ---------- scripts: Home Manager 管理の配置を確認 ----------
 if [ $do_all = 1 ] || printf '%s' "$*" | grep -q scripts; then
   say "スクリプト配置"
-  mkdir -p "$H/.local/bin"
-  for f in "$DOT"/bin/*; do ln -sf "$f" "$H/.local/bin/$(basename "$f")"; done
-  for f in "$DOT"/services/*; do ln -sf "$f" "$H/$(basename "$f")"; done
-  mkdir -p "$H/Library/LaunchAgents"
-  cp "$DOT/launchd/net.gapul.ai-stack.plist" "$H/Library/LaunchAgents/"
-  echo "  bin/ -> ~/.local/bin, services/ -> ~/, plist設置"
+  [ -x "$H/.local/share/ai-stack/ai-stack.sh" ] || {
+    echo "Home Manager未適用: 先に darwin-rebuild switch を実行してください" >&2
+    exit 1
+  }
+  echo "  Home Manager管理のbin/servicesを確認"
 fi
 
 # ---------- venvs: uv で再構築(ML依存のピン留めは実戦の教訓) ----------
@@ -53,7 +51,7 @@ fi
 if [ $do_all = 1 ] || printf '%s' "$*" | grep -q models; then
   say "モデル取得(母艦経由せず macmini直)"
   # ollama系(登録速い)
-  export OLLAMA_HOST=0.0.0.0:11434
+  export OLLAMA_HOST=127.0.0.1:11434
   ollama pull gemma4:12b-it-qat &
   ollama pull qwen2.5-coder:14b &
   ollama pull jaahas/qwen3.5-uncensored:latest &
@@ -68,8 +66,11 @@ if [ $do_all = 1 ] || printf '%s' "$*" | grep -q services; then
   say "コンテナランタイム + launchd"
   container system status 2>/dev/null | grep -q running || container system start
   container system kernel set --recommended 2>/dev/null || true   # 初回のみ
-  launchctl bootout gui/501/net.gapul.ai-stack 2>/dev/null || true
-  launchctl bootstrap gui/501 "$H/Library/LaunchAgents/net.gapul.ai-stack.plist"
+  # loopback待受のホストサービスをコンテナから参照するためのApple Container公式機構。
+  # macOS再起動でpf ruleが消えるため、bootstrap再実行または運用自動化が必要。
+  sudo container system dns delete host.container.internal 2>/dev/null || true
+  sudo container system dns create host.container.internal --localhost 203.0.113.113
+  launchctl kickstart -k "gui/$(id -u)/org.nix-community.home.ai-stack"
   echo "  ai-stack supervisor 起動(ollama/埋め込み/パネル/コンテナ/socat を冪等維持)"
 fi
 

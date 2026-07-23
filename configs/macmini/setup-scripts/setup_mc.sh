@@ -13,7 +13,7 @@ echo "=== MC IMAGE READY $(date +%H:%M:%S) ==="
 container stop mc-server 2>/dev/null; container rm mc-server 2>/dev/null
 container run -d --name mc-server \
   -e EULA=TRUE -e TYPE=PAPER -e VERSION=LATEST -e MEMORY=4G -e ONLINE_MODE=TRUE \
-  -p 25565:25565 -v /Users/gapul/mc-data:/data \
+  -p 25565:25565 -v "$HOME/mc-data:/data" \
   "$IMG"
 echo "=== MC SERVER STARTED $(date +%H:%M:%S) ==="
 sleep 5

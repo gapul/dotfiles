@@ -11,7 +11,7 @@ projects キー(旧レイアウト)を実在する ~/Developer/github.com/... �
 衝突(複数の旧キー -> 同一実ディレクトリ)は history をマージ。
 Claude Code 終了状態での実行を推奨(稼働中は保存で上書きされ得る)。
 """
-import json, os, glob, shutil, sys
+import json, os, glob, re, shutil, sys
 
 F = os.path.expanduser("~/.config/claude/.claude.json")
 ROOT = os.path.expanduser("~/Developer/github.com")
@@ -31,7 +31,7 @@ for depth in ("*", "*/*", "*/*/*"):
 def target_for(k):
     if os.path.isdir(k):
         return k  # 既に実在
-    n = k.replace("/Users/gapul/ghq/github.com", "/Users/gapul/Developer/github.com")
+    n = re.sub(r"^/Users/[^/]+/ghq/github\.com", ROOT, k)
     if os.path.isdir(n):
         return n
     cands = index.get(os.path.basename(k).lower())
