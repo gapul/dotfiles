@@ -2,7 +2,10 @@ services:
   jellyfin:
     image: lscr.io/linuxserver/jellyfin:latest
     container_name: jellyfin
-    environment: [PUID=0, PGID=0, TZ=Asia/Tokyo]
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - TZ=${TZ:-Asia/Tokyo}
     volumes:
       - ./config:/config
       - ./cache:/cache

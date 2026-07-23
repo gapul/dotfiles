@@ -26,7 +26,7 @@
 ~/rag-models/ruri-v3-310m                 hfmirror  cl-nagoya/ruri-v3-310m                日本語埋め込みSOTA (onnx除外)
 ~/rag-models/japanese-reranker-base-v2    hfmirror  hotchpotch/japanese-reranker-base-v2  日本語リランカー(Apple Silicon軽快)
 
-# --- LLM (ollama pull, OLLAMA_HOST=0.0.0.0) ---
+# --- LLM (ollama pull, OLLAMA_HOST=127.0.0.1) ---
 ollama  ollama  gemma4:12b-it-qat                  日本語主力(QAT=4bitでも日本語堅牢)
 ollama  ollama  qwen2.5-coder:14b                  コーディング
 ollama  ollama  jaahas/qwen3.5-uncensored:latest   無検閲(gemma3-abliteratedは壊れてたので不採用)

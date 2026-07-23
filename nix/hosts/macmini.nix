@@ -65,9 +65,9 @@
       StandardOutPath = "/Users/${user.username}/Library/Logs/ollama.log";
       StandardErrorPath = "/Users/${user.username}/Library/Logs/ollama.log";
       EnvironmentVariables = {
-        # LAN + tailnet から叩けるよう全 IF で listen。外部公開はしない前提。
-        # tailnet 限定に絞りたくなったら 127.0.0.1 に戻して `tailscale serve 11434` で出す。
-        OLLAMA_HOST = "0.0.0.0:11434";
+        # APIをLANへ直接露出しない。外部利用は認証・ACLを持つreverse proxyまたは
+        # Tailscale Serveを明示的に構成する。
+        OLLAMA_HOST = "127.0.0.1:11434";
         # アイドル 30 分でモデルをアンロード (24GB を空ける)。常駐させたければ "-1"。
         OLLAMA_KEEP_ALIVE = "30m";
       };

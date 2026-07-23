@@ -2,7 +2,7 @@
 # 除外:
 #   - SOPS 暗号化済 secrets/*.yaml (中身は暗号化なので無害)
 #   - uosc プラグインソース (third-party Lua、open_subtitles の placeholder)
-#   - *.example / templates / docs (placeholder のみ)
+#   - *.example (明示的なplaceholderのみ)
 
 [extend]
 useDefault = true
@@ -14,9 +14,14 @@ paths = [
   '''\.sops\.yaml$''',
   '''configs/media/mpv/scripts/uosc/.*''',
   '''.*\.example$''',
-  '''templates/.*''',
-  '''docs/.*''',
+]
+# 削除済みの教材ファイルにあった明示的placeholderだけを値で除外する。
+# docs/templates全体は除外せず、実値が混入した場合は引き続き検出する。
+regexes = [
+  '''YOUR_TOKEN''',
+  '''your-api-key-here''',
+  '''ENC\[AES256_GCM,data:-----BEGIN OPENSSH PRIVATE KEY-----''',
 ]
 # NOTE: ここに PRIVATE KEY の regex を入れると「秘密鍵らしき文字列を検出しても
 # 無視する」= gitleaks の最重要保護を無効化してしまうため絶対に追加しない。
-# placeholder の除外は上の paths 側 (templates/ docs/ *.example) で行う。
+# docs/templates も実値が混入し得るため検査対象から外さない。

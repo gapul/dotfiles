@@ -5,8 +5,8 @@ import torch
 from sentence_transformers import SentenceTransformer, CrossEncoder
 dev = "mps" if torch.backends.mps.is_available() else "cpu"
 print("device:", dev)
-RURI="/Users/gapul/rag-models/ruri-v3-310m"
-RERANK="/Users/gapul/rag-models/japanese-reranker-base-v2"
+RURI=os.path.expanduser("~/rag-models/ruri-v3-310m")
+RERANK=os.path.expanduser("~/rag-models/japanese-reranker-base-v2")
 docs = ["東京の天気は今日は晴れです。", "次回の定例会議は金曜日の午後に行います。", "猫はとても可愛い動物です。"]
 query = "会議はいつ開催されますか"
 print("[Ruri v3 埋め込み]", flush=True)

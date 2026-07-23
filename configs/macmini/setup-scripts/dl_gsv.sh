@@ -2,16 +2,16 @@
 set -u
 export PATH="/opt/homebrew/bin:$PATH"
 BASE="https://huggingface.co/XXXXRT/GPT-SoVITS-Pretrained/resolve/main"
-mkdir -p /Users/gapul/gsv-dl
+mkdir -p "$HOME/gsv-dl"
 cat > /tmp/gsv_urls.txt <<EOF
 $BASE/pretrained_models.zip
-  dir=/Users/gapul/gsv-dl
+  dir="$HOME/gsv-dl"
   out=pretrained_models.zip
 $BASE/nltk_data.zip
-  dir=/Users/gapul/gsv-dl
+  dir="$HOME/gsv-dl"
   out=nltk_data.zip
 $BASE/open_jtalk_dic_utf_8-1.11.tar.gz
-  dir=/Users/gapul/gsv-dl
+  dir="$HOME/gsv-dl"
   out=open_jtalk_dic.tar.gz
 EOF
 n=0
@@ -25,5 +25,5 @@ while true; do
   sleep 5
 done
 echo "=== extracting pretrained -> GPT_SoVITS/ ==="
-unzip -q -o /Users/gapul/gsv-dl/pretrained_models.zip -d /Users/gapul/GPT-SoVITS/GPT_SoVITS
+unzip -q -o "$HOME/gsv-dl/pretrained_models.zip" -d "$HOME/GPT-SoVITS/GPT_SoVITS"
 echo "=== GSV MODELS DOWNLOADED $(date +%H:%M:%S) ==="

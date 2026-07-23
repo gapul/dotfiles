@@ -46,9 +46,11 @@ launchctl load ~/Library/LaunchAgents/local.restic-macmini.plist
 # pve ホスト:
 install -m755 <filebrowser binary> /usr/local/bin/filebrowser   # github releases
 install -m644 restic-view-mount.service restic-view-fb.service /etc/systemd/system/
-# Filebrowser DB 初期化 (noauth / read-only / root=/mnt/restic-view / :8082):
+# Filebrowser DB 初期化 (認証あり / read-only / root=/mnt/restic-view / :8082):
 filebrowser config init -d /etc/restic-view/filebrowser.db
-filebrowser config set  -d /etc/restic-view/filebrowser.db --auth.method=noauth --root /mnt/restic-view --address 0.0.0.0 --port 8082 --perm.create=false --perm.rename=false --perm.modify=false --perm.delete=false --perm.share=false
+filebrowser config set -d /etc/restic-view/filebrowser.db --auth.method=json --root /mnt/restic-view --address 0.0.0.0 --port 8082 --perm.create=false --perm.rename=false --perm.modify=false --perm.delete=false --perm.share=false
+# 初回だけ強いパスワードを対話入力して管理ユーザーを作成:
+filebrowser users add admin -d /etc/restic-view/filebrowser.db
 filebrowser users add viewer <12文字以上pw> -d /etc/restic-view/filebrowser.db --perm.admin=false --perm.create=false --perm.rename=false --perm.modify=false --perm.delete=false --perm.share=false
 systemctl daemon-reload && systemctl enable --now restic-view-mount.service restic-view-fb.service
 ```

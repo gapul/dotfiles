@@ -1,0 +1,4 @@
+# Historical, deleted instructional placeholders. Keep the suppression scoped to the
+# exact commit, path, rule, and line so docs/templates remain fully scanned.
+747b8abe5511d0167b721f6c8b3884404bff873a:templates/web/node-api/README.md:curl-auth-header:155
+5c002b9a5681cc48114a1cb945a701f5517c241c:slides/docs/BEST_PRACTICES.md:generic-api-key:533
