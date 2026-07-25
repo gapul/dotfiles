@@ -3,32 +3,34 @@
 # 取得は bootstrap.sh が担当。母艦を経由せず macmini 直で落とす(hf-mirror/GitHub/ollama registry)。
 
 # --- 文字起こし (mlx_whisper: uv tool install mlx-whisper) ---
-~/models/whisper-large-v3-mlx        hfmirror  mlx-community/whisper-large-v3-mlx        精度用 large-v3 (weights.npz)
-~/models/whisper-large-v3-turbo-mlx  hfmirror  mlx-community/whisper-large-v3-turbo      速度用 turbo (weights.safetensors, 既定fast)
+~/.local/share/models/mlx/whisper-large-v3-mlx        hfmirror  mlx-community/whisper-large-v3-mlx        精度用 large-v3 (weights.npz)
+~/.local/share/models/mlx/whisper-large-v3-turbo-mlx  hfmirror  mlx-community/whisper-large-v3-turbo      速度用 turbo (weights.safetensors, 既定fast)
 
 # --- 話者分離 (pyannote 4.x, HFゲート: speaker-diarization-3.1 + segmentation-3.0 + community-1 に規約同意+HF_TOKEN) ---
 # (pyannoteはHF_TOKENでオンライン取得。~/diarize-venv)
 
 # --- TTS 日本語 (Style-Bert-VITS2, ~/sbv2-venv, numpy==1.26.4 / setuptools<81 必須) ---
-~/sbv2-models/deberta-v2-large-japanese-char-wwm  hfmirror  ku-nlp/deberta-v2-large-japanese-char-wwm  日本語BERT 1.3GB
-~/sbv2-models/jvnv-F1-jp                          hfmirror  litagin/style_bert_vits2_jvnv (jvnv-F1-jp/*)  感情つき女性声
+~/.local/share/models/sbv2/deberta-v2-large-japanese-char-wwm  hfmirror  ku-nlp/deberta-v2-large-japanese-char-wwm  日本語BERT 1.3GB
+~/.local/share/models/sbv2/jvnv-F1-jp                          hfmirror  litagin/style_bert_vits2_jvnv (jvnv-F1-jp/*)  感情つき女性声
 
 # --- 声クローン (GPT-SoVITS, ~/gsv-venv + ~/GPT-SoVITS, torchcodec必須, tts_infer.yaml custom=cpu/fp32/v2) ---
-~/GPT-SoVITS/GPT_SoVITS/pretrained_models  hfmirror  XXXXRT/GPT-SoVITS-Pretrained (pretrained_models.zip 展開)  4.6GB
+~/Developer/github.com/RVC-Boss/GPT-SoVITS/GPT_SoVITS/pretrained_models  hfmirror  XXXXRT/GPT-SoVITS-Pretrained (pretrained_models.zip 展開)  4.6GB
 
 # --- 画像理解/OCR (mlx-vlm: uv tool install mlx-vlm) ---
-~/models/internvl3-8b-4bit  hfmirror  mlx-community/InternVL3-8B-MLX-4bit  日本語OCR最強クラス 4.6GB (Qwen3-VL-4bitは日本語生成壊れるので不採用)
+~/.local/share/models/mlx/internvl3-8b-4bit  hfmirror  mlx-community/InternVL3-8B-MLX-4bit  日本語OCR最強クラス 4.6GB (Qwen3-VL-4bitは日本語生成壊れるので不採用)
 
 # --- 音声分離 (mlx-audio-separator + torch, ~/sep-venv) ---
-~/sep-models/vocals_mel_band_roformer.ckpt  hfmirror  KimberleyJSN/melbandroformer/MelBandRoformer.ckpt  913MB (要 .yaml も, mlx-audio-separator --download_model_only)
+~/.local/share/models/sep/vocals_mel_band_roformer.ckpt  hfmirror  KimberleyJSN/melbandroformer/MelBandRoformer.ckpt  913MB (要 .yaml も, mlx-audio-separator --download_model_only)
 
 # --- RAG (Ruri埋め込み + reranker, ~/rag-venv, HF_HUB_OFFLINE=1 でローカルパス読込) ---
-~/rag-models/ruri-v3-310m                 hfmirror  cl-nagoya/ruri-v3-310m                日本語埋め込みSOTA (onnx除外)
-~/rag-models/japanese-reranker-base-v2    hfmirror  hotchpotch/japanese-reranker-base-v2  日本語リランカー(Apple Silicon軽快)
+~/.local/share/models/rag/ruri-v3-310m                 hfmirror  cl-nagoya/ruri-v3-310m                日本語埋め込みSOTA (onnx除外)
+~/.local/share/models/rag/japanese-reranker-base-v2    hfmirror  hotchpotch/japanese-reranker-base-v2  日本語リランカー(Apple Silicon軽快)
 
 # --- LLM (ollama pull, OLLAMA_HOST=127.0.0.1) ---
 ollama  ollama  gemma4:12b-it-qat                  日本語主力(QAT=4bitでも日本語堅牢)
-ollama  ollama  qwen2.5-coder:14b                  コーディング
+ollama  ollama  qwen3.6:27b                        コーディング主力(17GB Q4_K_M、vision/tools/thinking)
 ollama  ollama  jaahas/qwen3.5-uncensored:latest   無検閲(gemma3-abliteratedは壊れてたので不採用)
+ollama  ollama  agents-a1-uncensored:latest        長時間調査・ツール利用(35B-A3B APEX I-Compact)
 
 # --- 画像生成 (ComfyUI, 別途 ~/ComfyUI。klein 4B + Pony/RealVisXL等。別セッションで構築) ---
+# Chroma1-HD は保持。Qwen Image Edit は 2509 から 2511 Q4_K_M + 4-step Lightning LoRA へ更新。

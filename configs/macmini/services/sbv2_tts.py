@@ -9,7 +9,7 @@ text = sys.argv[1]
 out  = sys.argv[2] if len(sys.argv) > 2 else "out.wav"
 style = sys.argv[3] if len(sys.argv) > 3 else "Neutral"
 
-M = os.path.expanduser("~/.local/share/models/mlx/sbv2")
+M = os.path.expanduser("~/.local/share/models/sbv2")
 DB = os.path.join(M, "deberta-v2-large-japanese-char-wwm")
 JV = os.path.join(M, "jvnv-F1-jp")
 
