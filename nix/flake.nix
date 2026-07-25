@@ -20,6 +20,10 @@
     home-manager.url = "github:nix-community/home-manager/release-26.05";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
 
+    # Pre-built nix-index database shared by macOS, NixOS, WSL, and Linux HM.
+    nix-index-database.url = "github:nix-community/nix-index-database";
+    nix-index-database.inputs.nixpkgs.follows = "nixpkgs";
+
     sops-nix.url = "github:Mic92/sops-nix";
     sops-nix.inputs.nixpkgs.follows = "nixpkgs";
 
@@ -45,6 +49,7 @@
       nixpkgs-nixos,
       nix-darwin,
       home-manager,
+      nix-index-database,
       sops-nix,
       lanzaboote,
       disko,
@@ -75,6 +80,10 @@
         };
       pkgs = mkPkgs system;
       user = import ./user.nix;
+      commonSpecialArgs = {
+        inherit user;
+        nixIndexDatabase = nix-index-database;
+      };
 
       # SSH 接続先で rootless Nix (nix-portable) から実行する
       # ツール一式。Linux x86_64 / aarch64 両対応。
@@ -171,7 +180,7 @@
             home-manager.useGlobalPkgs = true;
             home-manager.useUserPackages = true;
             home-manager.backupFileExtension = "hm-bak";
-            home-manager.extraSpecialArgs = { inherit user; };
+            home-manager.extraSpecialArgs = commonSpecialArgs;
             home-manager.users.${user.username} = {
               imports = [
                 ./home/common.nix
@@ -206,7 +215,7 @@
               {
                 home-manager.useGlobalPkgs = true;
                 home-manager.useUserPackages = true;
-                home-manager.extraSpecialArgs = { inherit user; };
+                home-manager.extraSpecialArgs = commonSpecialArgs;
                 home-manager.users.${user.username} = {
                   imports = [
                     ./home/common.nix
@@ -239,7 +248,7 @@
               {
                 home-manager.useGlobalPkgs = true;
                 home-manager.useUserPackages = true;
-                home-manager.extraSpecialArgs = { inherit user; };
+                home-manager.extraSpecialArgs = commonSpecialArgs;
                 home-manager.users.${user.username}.imports = [
                   ./home/common.nix
                   ./home/linux.nix
@@ -260,7 +269,7 @@
       # macOS ユーザー設定: home-manager switch --flake .#<username>
       homeConfigurations.${user.username} = home-manager.lib.homeManagerConfiguration {
         inherit pkgs;
-        extraSpecialArgs = { inherit user; };
+        extraSpecialArgs = commonSpecialArgs;
         modules = [
           ./home/common.nix
           ./home/darwin.nix
@@ -283,7 +292,7 @@
         in
         home-manager.lib.homeManagerConfiguration {
           pkgs = wslPkgs;
-          extraSpecialArgs = { inherit user; };
+          extraSpecialArgs = commonSpecialArgs;
           modules = [
             ./home/common.nix
             ./home/linux.nix
@@ -313,6 +322,7 @@
           pkgs = wslPkgs;
           extraSpecialArgs = {
             user = labUser;
+            nixIndexDatabase = nix-index-database;
           };
           modules = [
             ./home/common.nix
@@ -333,7 +343,7 @@
         in
         home-manager.lib.homeManagerConfiguration {
           pkgs = linuxPkgs;
-          extraSpecialArgs = { inherit user; };
+          extraSpecialArgs = commonSpecialArgs;
           modules = [
             ./home/common.nix
             ./home/linux.nix
@@ -349,7 +359,7 @@
         in
         home-manager.lib.homeManagerConfiguration {
           pkgs = linuxPkgs;
-          extraSpecialArgs = { inherit user; };
+          extraSpecialArgs = commonSpecialArgs;
           modules = [
             ./home/common.nix
             ./home/linux.nix
