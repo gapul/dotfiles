@@ -19,7 +19,7 @@ mkbtn music.toggle   "$SPOTIFY_PLAY_PAUSE"  toggle
 mkbtn music.prev     "$SPOTIFY_BACK"        prev
 
 music=(
-  icon=􀋪
+  icon=􀑪
   icon.color=$GREEN
   icon.font="$FONT:Bold:$(scf 14.0)"
   label.font="$FONT:Semibold:$(scf 13.0)"
