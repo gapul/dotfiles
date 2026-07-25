@@ -1,0 +1,38 @@
+name: Cold reproducibility build
+
+on:
+  schedule:
+    # Every Saturday at 03:00 JST. No restored GitHub/Cachix cache is used.
+    - cron: '0 18 * * 5'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cold-build:
+    name: Cold build (${{ matrix.output }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-14
+            output: darwin
+            command: nix build "./nix#darwinConfigurations.$(nix eval --raw -f ./nix/user.nix username).system" --no-link --show-trace
+          - runner: ubuntu-24.04
+            output: nixos
+            command: nix build ./nix#nixosConfigurations.nixos-laptop-ci.config.system.build.toplevel --no-link --show-trace
+          - runner: ubuntu-24.04
+            output: recovery-iso
+            command: nix build ./nix#recovery-iso --no-link --show-trace
+          - runner: ubuntu-24.04-arm
+            output: linux-aarch64-home
+            command: nix build ./nix#homeConfigurations.gapul-linux-aarch64.activationPackage --no-link --show-trace
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: ./.github/actions/setup-nix
+        with:
+          use-github-cache: 'false'
+      - run: ${{ matrix.command }}

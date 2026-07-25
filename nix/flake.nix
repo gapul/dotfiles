@@ -38,6 +38,10 @@
     disko.url = "github:nix-community/disko";
     disko.inputs.nixpkgs.follows = "nixpkgs-nixos";
 
+    # 永続化対象を明示する NixOS module。まず VM smoke test のみで試し、
+    # 実機へはデータ移行手順が固まるまで適用しない。
+    preservation.url = "github:nix-community/preservation";
+
     # コード品質: pre-commit フック宣言 + treefmt (nix fmt)
     git-hooks.url = "github:cachix/git-hooks.nix";
     git-hooks.inputs.nixpkgs.follows = "nixpkgs";
@@ -71,6 +75,7 @@
       sops-nix,
       lanzaboote,
       disko,
+      preservation,
       git-hooks,
       treefmt-nix,
       flake-parts,
@@ -190,7 +195,10 @@
           }:
           let
             isDarwinWorkstation = system == "aarch64-darwin";
-            systemPkgs = if isDarwinWorkstation then pkgs else nixpkgs.legacyPackages.${system};
+            # packages/checks/apps の評価でも standalone HM と同じ限定的な
+            # unfree policy を使う。nix-fast-build は全systemを列挙するため、
+            # legacyPackagesを直接使うとLinuxのunity-cliだけ評価に失敗する。
+            systemPkgs = if isDarwinWorkstation then pkgs else mkPkgs system;
           in
           {
             formatter = if isDarwinWorkstation then treefmtEval.config.build.wrapper else systemPkgs.nixfmt;
@@ -217,6 +225,53 @@
               remote-env = systemPkgs.buildEnv {
                 name = "remote-env";
                 paths = remoteTools systemPkgs;
+              };
+            }
+            // lib.optionalAttrs (system == "x86_64-linux") {
+              recovery-iso = inputs.self.nixosConfigurations."recovery-iso".config.system.build.isoImage;
+            };
+            apps = {
+              check-all = {
+                type = "app";
+                meta.description = "Evaluate and build every check for the current system";
+                program = lib.getExe (
+                  systemPkgs.writeShellApplication {
+                    name = "dotfiles-check-all";
+                    runtimeInputs = [ systemPkgs.nix-fast-build ];
+                    text = ''
+                      flake_ref="''${DOTFILES_FLAKE:-./nix}"
+                      if [[ -f flake.nix ]]; then
+                        flake_ref=.
+                      fi
+                      exec nix-fast-build \
+                        --flake "$flake_ref#checks" \
+                        --systems ${system} \
+                        --no-link \
+                        "$@"
+                    '';
+                  }
+                );
+              };
+              build-all = {
+                type = "app";
+                meta.description = "Build every package for the current system";
+                program = lib.getExe (
+                  systemPkgs.writeShellApplication {
+                    name = "dotfiles-build-all";
+                    runtimeInputs = [ systemPkgs.nix-fast-build ];
+                    text = ''
+                      flake_ref="''${DOTFILES_FLAKE:-./nix}"
+                      if [[ -f flake.nix ]]; then
+                        flake_ref=.
+                      fi
+                      exec nix-fast-build \
+                        --flake "$flake_ref#packages" \
+                        --systems ${system} \
+                        --no-link \
+                        "$@"
+                    '';
+                  }
+                );
               };
             };
           }
@@ -246,10 +301,28 @@
                 systemPkgs.check-jsonschema
               ];
             };
+          }
+          // lib.optionalAttrs (system == "x86_64-linux") {
+            checks = {
+              nixos-smoke = import ./tests/nixos-smoke.nix {
+                inherit
+                  home-manager
+                  lanzaboote
+                  user
+                  ;
+                pkgs = systemPkgs;
+                commonSpecialArgs = commonSpecialArgs;
+              };
+              preservation-smoke = import ./tests/preservation-smoke.nix {
+                inherit preservation user;
+                pkgs = systemPkgs;
+              };
+            };
           };
       };
     in
-    {
+    perSystemOutputs
+    // {
       # システム設定: sudo darwin-rebuild switch --flake .#<username>
       darwinConfigurations.${user.username} = nix-darwin.lib.darwinSystem {
         inherit system;
@@ -353,6 +426,17 @@
                   ./home/workstation.nix
                 ];
               }
+            ];
+          };
+
+          # 起動不能・SSD交換時に、この repo を取得して disko / nixos-install を
+          # 実行するための最小復旧 ISO。実機の Windows/ESP には自動で触れない。
+          recovery-iso = nixpkgs-nixos.lib.nixosSystem {
+            system = "x86_64-linux";
+            specialArgs = { inherit user; };
+            modules = [
+              "${nixpkgs-nixos}/nixos/modules/installer/cd-dvd/installation-cd-minimal.nix"
+              ./hosts/recovery-iso.nix
             ];
           };
         };
@@ -465,7 +549,5 @@
             ./home/workstation.nix
           ];
         };
-
-    }
-    // perSystemOutputs;
+    };
 }
