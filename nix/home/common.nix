@@ -50,6 +50,7 @@ let
   lazyNixPlugins =
     pkgs.linkFarm "lazy-nix-plugins"
       (import ../../configs/editors/nvim/lazy2nix { inherit pkgs lib; }).plugins;
+  git-wtpr = pkgs.callPackage ../pkgs/git-wtpr.nix { };
 in
 {
   imports = [
@@ -279,6 +280,30 @@ in
         just --justfile "$HOME/.dotfiles/Justfile" --working-directory "$HOME/.dotfiles" "$@"
       }
 
+      # git worktreeを兄弟ディレクトリに作り、`git wt <branch>` で移動する。
+      # git-wtのwrapperを保持してから、`git wtpr <PR>` のPR checkoutだけ拡張する。
+      eval "$(git wt --init zsh)"
+      functions[git-wt-shell]=$functions[git]
+      function git() {
+        if [[ "$1" == "wtpr" ]]; then
+          shift
+          local target
+          target="$(command git-wtpr "$@")" || return
+          if [[ -d "$target" ]]; then
+            cd "$target"
+          else
+            print -r -- "$target"
+            return 1
+          fi
+        else
+          git-wt-shell "$@"
+        fi
+      }
+
+      # 危険なURL、pipe-to-shell、難読化payloadを実行前に検査する。
+      # 既定policyはhigh-riskをblock、medium-riskをwarn。常時strictにはしない。
+      eval "$(tirith init --shell zsh)"
+
       # Codex TUI は system theme を持たないため、起動時のOS外観に合わせて
       # Rosé Pine / Dawn のカスタム tmTheme を選ぶ。
       function codex() {
@@ -401,6 +426,10 @@ in
     # ─── Homebrew から移行した CLI (段階1: git周辺 + 基本) ───
     gh # GitHub CLI
     gh-dash # GitHub PR / Issue ダッシュボード TUI
+    git-wt # worktree作成・切替・安全削除を`git wt`へ統一
+    git-wtpr # `git wtpr <PR番号|URL>`でPR専用worktreeへ移動
+    trash-cli # git-wtの削除をゴミ箱経由にする
+    tirith # shell/AI agent向けcommand・URL・Skill防御
     ghq # repo クローン管理
     lazyjj # jujutsu TUI
     jq # JSON プロセッサ
@@ -508,6 +537,8 @@ in
       pull.rebase = true;
       push.autoSetupRemote = true;
       ghq.root = "${config.home.homeDirectory}/Developer";
+      wt.basedir = "../{gitroot}-worktrees";
+      wt.remover = lib.getExe pkgs.trash-cli;
       merge.conflictstyle = "zdiff3";
       commit.verbose = true;
       diff.algorithm = "histogram";

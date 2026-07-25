@@ -1,7 +1,10 @@
-{ pkgs, ... }: {
+{ pkgs, brewNix, ... }: {
   # host 非依存のベース (nix cache / firewall / security / login hardening 等) は
   # darwin-common.nix に集約。ここは常用ワークステーション固有の設定のみ置く。
   imports = [ ./darwin-common.nix ];
+
+  # brew-nix試験対象をnix-darwin内蔵Home Managerのglobal pkgsにも公開する。
+  nixpkgs.overlays = [ brewNix.overlays.default ];
 
   # macOS 設定 (GUI/周辺機器寄り。実機の defaults read で確認した値のみ宣言)
   system.defaults = {
@@ -163,12 +166,6 @@
       # ─── Image viewers ───
       # qView は ad-hoc 署名のみ (未 notarize)。quarantine 付きだと Gatekeeper に
       # rejected され起動不能になるため no_quarantine 必須 (sioyek と同様)。
-      {
-        name = "qview";
-        args = {
-          no_quarantine = true;
-        };
-      } # 軽量画像ビューア (yazi の image opener に使用)
 
       # ─── Communication & Sync ───
       "beeper"

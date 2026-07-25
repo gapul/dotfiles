@@ -44,10 +44,24 @@
 
     treefmt-nix.url = "github:numtide/treefmt-nix";
     treefmt-nix.inputs.nixpkgs.follows = "nixpkgs";
+
+    # Flake出力を段階的にモジュール化。まずper-system出力から移行する。
+    flake-parts.url = "github:hercules-ci/flake-parts";
+    flake-parts.inputs.nixpkgs-lib.follows = "nixpkgs";
+
+    # Homebrew caskをNix derivationとして扱う試験導入。brew-apiは鮮度を分離更新する。
+    brew-api = {
+      url = "github:BatteredBunny/brew-api";
+      flake = false;
+    };
+    brew-nix.url = "github:BatteredBunny/brew-nix";
+    brew-nix.inputs.brew-api.follows = "brew-api";
+    brew-nix.inputs.nixpkgs.follows = "nixpkgs";
+    brew-nix.inputs.nix-darwin.follows = "nix-darwin";
   };
 
   outputs =
-    {
+    inputs@{
       nixpkgs,
       nixpkgs-nixos,
       nix-darwin,
@@ -59,6 +73,8 @@
       disko,
       git-hooks,
       treefmt-nix,
+      flake-parts,
+      brew-nix,
       ...
     }:
     let
@@ -70,6 +86,9 @@
         import nixpkgs {
           system = targetSystem;
           config.allowUnfreePredicate = pkg: nixpkgs.lib.getName pkg == "unity-cli";
+          overlays = nixpkgs.lib.optionals (targetSystem == "aarch64-darwin") [
+            brew-nix.overlays.default
+          ];
         };
       mkWslPkgs =
         targetSystem:
@@ -107,11 +126,6 @@
           curl
           wget
         ];
-      remoteSystems = [
-        "aarch64-linux"
-        "x86_64-linux"
-      ];
-
       # nix fmt: nixfmt(nix) + shfmt(shell) を束ねる
       treefmtEval = treefmt-nix.lib.evalModule pkgs {
         projectRootFile = "flake.nix";
@@ -160,12 +174,78 @@
           };
         };
       };
+
+      perSystemOutputs = flake-parts.lib.mkFlake { inherit inputs; } {
+        systems = [
+          system
+          "aarch64-linux"
+          "x86_64-linux"
+        ];
+
+        perSystem =
+          {
+            system,
+            lib,
+            ...
+          }:
+          let
+            isDarwinWorkstation = system == "aarch64-darwin";
+            systemPkgs = if isDarwinWorkstation then pkgs else nixpkgs.legacyPackages.${system};
+          in
+          {
+            formatter = if isDarwinWorkstation then treefmtEval.config.build.wrapper else systemPkgs.nixfmt;
+            packages = {
+              unity-cli = systemPkgs.callPackage ./pkgs/unity-cli.nix { };
+            }
+            // lib.optionalAttrs isDarwinWorkstation {
+              lazy2nix = systemPkgs.writeShellApplication {
+                name = "lazy2nix";
+                runtimeInputs = [
+                  systemPkgs.bun
+                  systemPkgs.git
+                  systemPkgs.neovim
+                  systemPkgs.nix
+                ];
+                text = ''
+                  repo="$(${systemPkgs.git}/bin/git rev-parse --show-toplevel)"
+                  exec ${systemPkgs.bun}/bin/bun "$repo/configs/editors/nvim/lazy2nix/generate.ts"
+                '';
+              };
+              slk = systemPkgs.callPackage ./pkgs/slk.nix { };
+            }
+            // lib.optionalAttrs (!isDarwinWorkstation) {
+              remote-env = systemPkgs.buildEnv {
+                name = "remote-env";
+                paths = remoteTools systemPkgs;
+              };
+            };
+          }
+          // lib.optionalAttrs isDarwinWorkstation {
+            checks.pre-commit = preCommit;
+            devShells.default = systemPkgs.mkShell {
+              inherit (preCommit) shellHook;
+              buildInputs = preCommit.enabledPackages ++ [
+                systemPkgs.shellcheck
+                systemPkgs.statix
+                systemPkgs.stylua
+                systemPkgs.taplo
+                systemPkgs.yq-go
+                systemPkgs.jq
+                systemPkgs.just
+                systemPkgs.bun
+              ];
+            };
+          };
+      };
     in
     {
       # システム設定: sudo darwin-rebuild switch --flake .#<username>
       darwinConfigurations.${user.username} = nix-darwin.lib.darwinSystem {
         inherit system;
-        specialArgs = { inherit user; };
+        specialArgs = {
+          inherit user;
+          brewNix = brew-nix;
+        };
         modules = [ ./hosts/darwin.nix ];
       };
 
@@ -375,56 +455,6 @@
           ];
         };
 
-      # Remote (Linux) bundle: nssh から `nix-portable nix shell .#remote-env` で使う
-      packages =
-        nixpkgs.lib.genAttrs remoteSystems (sys: {
-          remote-env = nixpkgs.legacyPackages.${sys}.buildEnv {
-            name = "remote-env";
-            paths = remoteTools nixpkgs.legacyPackages.${sys};
-          };
-          unity-cli = nixpkgs.legacyPackages.${sys}.callPackage ./pkgs/unity-cli.nix { };
-        })
-        // {
-          ${system} = {
-            lazy2nix = pkgs.writeShellApplication {
-              name = "lazy2nix";
-              runtimeInputs = [
-                pkgs.bun
-                pkgs.git
-                pkgs.neovim
-                pkgs.nix
-              ];
-              text = ''
-                repo="$(${pkgs.git}/bin/git rev-parse --show-toplevel)"
-                exec ${pkgs.bun}/bin/bun "$repo/configs/editors/nvim/lazy2nix/generate.ts"
-              '';
-            };
-            slk = pkgs.callPackage ./pkgs/slk.nix { };
-            unity-cli = pkgs.callPackage ./pkgs/unity-cli.nix { };
-          };
-        };
-
-      # nix fmt
-      formatter.${system} = treefmtEval.config.build.wrapper;
-
-      # nix flake check で nix/ の整形・lint・secret を検査
-      checks.${system}.pre-commit = preCommit;
-
-      # nix develop: 入室で .git/hooks に pre-commit を導入
-      devShells.${system}.default = pkgs.mkShell {
-        inherit (preCommit) shellHook;
-        # enforced フック + 手動/CI 用 lint ツール一式。
-        # CI (check.yml の lint job) も `nix develop ./nix -c <tool>` で同じバージョンを使い、
-        # ローカルと CI のバージョン差 (just --fmt の {{x}} vs {{ x }} 等) を防ぐ。
-        buildInputs = preCommit.enabledPackages ++ [
-          pkgs.shellcheck # shell lint
-          pkgs.statix # nix アンチパターン
-          pkgs.stylua # lua 整形 (nvim 設定)
-          pkgs.taplo # toml 構文/整形
-          pkgs.yq-go # yaml 構文検証
-          pkgs.jq # json 構文検証
-          pkgs.just # Justfile (ローカル/CI でバージョン統一)
-        ];
-      };
-    };
+    }
+    // perSystemOutputs;
 }
