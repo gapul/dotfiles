@@ -299,6 +299,7 @@
                 systemPkgs.just
                 systemPkgs.bun
                 systemPkgs.check-jsonschema
+                systemPkgs.actionlint
               ];
             };
           }

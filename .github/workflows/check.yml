@@ -227,6 +227,8 @@ jobs:
         run: git ls-files -z '*.json' | xargs -0 nix develop ./nix --command jq empty
       - name: YAML 構文 (yq)
         run: git ls-files -z '*.yml' '*.yaml' | xargs -0 nix develop ./nix --command yq -e '.'
+      - name: actionlint (GitHub Actions workflow の文法/式チェック)
+        run: nix develop ./nix --command actionlint -color
 
   # Windows native (PowerShell 7) — bootstrap の DryRun セルフテスト + 静的解析。
   # 実 install を走らせず、構文 / 解析 / 計画ログだけで Windows side の壊れを検知する。

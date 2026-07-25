@@ -155,8 +155,8 @@ jobs:
         # 書き込み可能な iso-out/ に取り出してから SHA256SUMS を生成する。
         run: |
           mkdir -p iso-out
-          cp --no-preserve=mode result/iso/*.iso iso-out/
-          ( cd iso-out && sha256sum *.iso | tee SHA256SUMS )
+          cp --no-preserve=mode ./result/iso/*.iso iso-out/
+          ( cd iso-out && sha256sum ./*.iso | tee SHA256SUMS )
       - name: Upload recovery image
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
