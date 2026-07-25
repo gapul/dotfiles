@@ -3,6 +3,7 @@
   pkgs,
   lib,
   user,
+  nixIndexDatabase,
   ...
 }:
 let
@@ -29,6 +30,8 @@ let
   '';
 in
 {
+  imports = [ nixIndexDatabase.homeModules.default ];
+
   # OS 非依存の home-manager 設定
   # OS 固有の部分は home/darwin.nix / home/linux.nix / home/wsl.nix 等に分離
 
@@ -359,10 +362,12 @@ in
 
   # 単発で使う CLI ツール群 (programs.* の対象外、OS 非依存)
   home.packages = with pkgs; [
-    comma # `, pkg args` で install せず nix package を実行
+    nixd # Nix LSP (Neovim から利用)
     nix-output-monitor # nh / nix build を見やすくする (`nom`)
     nix-tree # nix store 依存関係 TUI
     nix-init # flake.nix 雛形生成
+    nvd # Nix / Home Manager generation のパッケージ差分
+    optnix # NixOS / Home Manager / nix-darwin option 検索 TUI
     devenv # Nix ベース dev shell (direnv と組み合わせ)
     tealdeer # tldr CLI (programs.tealdeer は archive_source 非対応のため手動)
 
@@ -598,6 +603,14 @@ in
     enableZshIntegration = true;
     nix-direnv.enable = true;
   };
+
+  # Weekly generated database: nix-locate / command-not-found / comma を
+  # ローカルDB構築なしで全OS共通利用する。
+  programs.nix-index = {
+    enable = true;
+    enableZshIntegration = true;
+  };
+  programs.nix-index-database.comma.enable = true;
 
   # nh: nh darwin / nh home の便利ラッパー
   programs.nh = {
