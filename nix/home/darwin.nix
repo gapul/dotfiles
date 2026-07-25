@@ -192,6 +192,7 @@ in
   # mac 専用パッケージ
   home.packages = with pkgs; [
     bun # karabiner.ts 設定の生成・型検査
+    brewCasks.qview # brew-nix試験対象: 単純な.app配布の軽量画像ビューア
     pngpaste # obsidian.nvim / img-clip の macOS 画像貼付に必要
     syncthing # Syncthing CLI (常駐は services.syncthing の LaunchAgent)
     xcodegen # project.yml → .xcodeproj 生成 (Mac 専用、Linux nixpkgs では meta.platforms = darwin のため)

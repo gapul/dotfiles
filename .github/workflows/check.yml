@@ -60,21 +60,47 @@ jobs:
         run: nix flake check ./nix --no-build --all-systems --show-trace
 
   eval-linux-configurations:
-    name: eval ${{ matrix.configuration }}
+    name: ${{ matrix.mode }} ${{ matrix.configuration }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        configuration:
-          - gapul-wsl
-          - gapul-linux
-          - gapul-linux-aarch64
+        include:
+          - configuration: gapul-wsl
+            mode: build
+          - configuration: gapul-linux
+            mode: build
+          - configuration: gapul-linux-aarch64
+            mode: eval
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
-      - name: Evaluate Home Manager activation package
+      - uses: nix-community/cache-nix-action@d8cff2f74b9341e0d90fbf3c0c0212a161ceaef6 # v6
+        if: matrix.mode == 'build'
+        with:
+          primary-key: nix-${{ runner.os }}-${{ hashFiles('nix/flake.lock') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-
+      - name: Build Home Manager activation package
+        if: matrix.mode == 'build'
+        run: nix build "./nix#homeConfigurations.${{ matrix.configuration }}.activationPackage" --show-trace
+      - name: Evaluate cross-architecture Home Manager activation package
+        if: matrix.mode == 'eval'
         run: nix eval "./nix#homeConfigurations.${{ matrix.configuration }}.activationPackage.drvPath" --raw --show-trace
+
+  generated-configs:
+    name: generated configs (Karabiner / Skill / lazy2nix)
+    runs-on: macos-14
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+      - uses: nix-community/cache-nix-action@d8cff2f74b9341e0d90fbf3c0c0212a161ceaef6 # v6
+        with:
+          primary-key: nix-${{ runner.os }}-${{ hashFiles('nix/flake.lock') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-
+      - name: Check generated configuration drift
+        run: nix develop ./nix --command ./scripts/check-generated.sh
 
   eval-nixos:
     name: eval NixOS laptop
@@ -192,15 +218,15 @@ jobs:
       - name: statix check (Nix アンチパターン)
         run: nix develop ./nix --command statix check -c .statix.toml nix
       - name: shellcheck (全 .sh の error gate)
-        run: nix develop ./nix --command shellcheck -S error $(git ls-files '*.sh')
+        run: git ls-files -z '*.sh' | xargs -0 nix develop ./nix --command shellcheck -S error
       - name: stylua --check (nvim lua 整形)
         run: nix develop ./nix --command stylua --check configs/editors/nvim/
       - name: TOML 構文 (taplo)
-        run: nix develop ./nix --command taplo check $(git ls-files '*.toml')
+        run: git ls-files -z '*.toml' | xargs -0 nix develop ./nix --command taplo check
       - name: JSON 構文 (jq)
-        run: nix develop ./nix --command bash -c 'for f; do jq empty "$f"; done' _ $(git ls-files '*.json')
+        run: git ls-files -z '*.json' | xargs -0 nix develop ./nix --command jq empty
       - name: YAML 構文 (yq)
-        run: nix develop ./nix --command bash -c 'for f; do yq -e "." "$f" >/dev/null; done' _ $(git ls-files '*.yml' '*.yaml')
+        run: git ls-files -z '*.yml' '*.yaml' | xargs -0 nix develop ./nix --command yq -e '.'
 
   # Windows native (PowerShell 7) — bootstrap の DryRun セルフテスト + 静的解析。
   # 実 install を走らせず、構文 / 解析 / 計画ログだけで Windows side の壊れを検知する。
