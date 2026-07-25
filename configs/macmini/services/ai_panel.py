@@ -82,6 +82,13 @@ input,textarea,select,button{width:100%;box-sizing:border-box;padding:11px;margi
 button{background:#31748f;color:#fff;border:none;font-weight:600}
 .out{white-space:pre-wrap;background:#1f1d2e;padding:10px;border-radius:8px;margin-top:8px;font-size:14px}
 audio{width:100%;margin-top:8px}
+@media (prefers-color-scheme:light){
+body{background:#faf4ed;color:#575279}
+h1,input,textarea,select,.out{background:#fffaf3;color:#575279}
+.card{background:#f2e9e1}
+input,textarea,select,button{border-color:#dfdad9}
+button{background:#286983;color:#fffaf3}
+}
 </style></head><body><h1>macmini AI パネル</h1>
 
 <div class=card><h2>文字起こし</h2>

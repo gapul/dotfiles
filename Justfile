@@ -1,37 +1,22 @@
-# dotfiles 操作集
-# `just` で一覧、`just <task>` で実行
+# Dotfiles task runner. Use `just` to list tasks.
 # https://just.systems
 
 set shell := ["bash", "-cu"]
-# Windows ネイティブ just 用。bash (WSL) 経由だと nested `just` は `just.exe` 表記が
-# 必要になり、shebang レシピは cygpath を要求して動かない。powershell 直で WSL 非依存に。
+# Run native Windows recipes directly in PowerShell.
 set windows-shell := ["powershell.exe", "-NoProfile", "-Command"]
 
 flake := justfile_directory() + "/nix"
 
-# デフォルト: タスク一覧 (定義順で表示)
 default:
     @just --list --unsorted
 
 
 # ─────────────────────────────────────────────
-# 構築 (build / 普段使い)
+# Build
 # ─────────────────────────────────────────────
 
-# NOTE(rebuild の brew trust 行): activation の brew bundle は sudo で XDG_CONFIG_HOME を剥がし
-#   ~/.homebrew/trust.json を読むが、対話シェルは XDG 優先で ~/.config/homebrew に逸れる。
-#   そこで env -u XDG_CONFIG_HOME で ~/.homebrew に揃える。cask は新 brew が Brewfile の
-#   trusted:true を無視するため毎回再 trust が必要。詳細: memory project_homebrew_trust_sudo
-#   tap も同様: brew bundle は成功時に trust.json を書き戻して trustedtaps を毎回消すため、
-#   非公式 tap (qmk/qmk, osx-cross/avr 等) を activation 前に毎回再 trust する。直接指定の
-#   formula は残るが、その依存 (avr-binutils, hid_bootloader_cli 等) が tap 信頼を要求する。
-
-# システム + ユーザー再構築 (Mac/WSL/Win 自動判別、普段使い)
-#   - macos: brew trust → nh darwin switch → nh home switch
-#   - linux (WSL): nh home switch (labpc-wsl entry)
-#   - windows: pwsh で bootstrap.ps1 を回す
-[group('構築')]
-[doc('システム + ユーザー再構築 (Mac/WSL/Win 自動判別、普段使い)')]
+[group('Build')]
+[doc('Rebuild the system and user configuration')]
 rebuild:
     @just _rebuild-{{os()}}
 
@@ -40,37 +25,35 @@ _rebuild-macos:
     @-brew tap 2>/dev/null | grep -v '^homebrew/' | xargs -I% env -u XDG_CONFIG_HOME brew trust % >/dev/null
     @-env -u XDG_CONFIG_HOME brew trust --cask gerlero/openfoam/openfoam@2606 >/dev/null
     @-brew list --cask --full-name 2>/dev/null | grep '/' | xargs -I% env -u XDG_CONFIG_HOME brew trust --cask % >/dev/null
-    nh darwin switch
-    nh home switch
-    # Ghostty は cask 更新で終了させられると quick-terminal のグローバルホットキー(cmd+space)
-    # 常駐が失われるため、rebuild 後にバックグラウンド常駐を起こし直す (initial-window=false)。
-    # ※ アプリ更新で cdhash が変わると Accessibility 権限が stale 化して非フォーカス時に
-    #    ホットキーが効かなくなることがある。その場合は System Settings > Privacy & Security >
-    #    Accessibility で Ghostty をオフ→オンし直す (SIP 保護のため CLI 不可)。
+    @echo "━━━ nix-darwin"
+    @nh darwin switch -q -Q --diff never
+    @echo "✓ nix-darwin"
+    @echo "━━━ home-manager"
+    @nh home switch -q -Q --diff never
+    @echo "✓ home-manager"
     @-open -a Ghostty >/dev/null 2>&1 || true
 
 [private]
 _rebuild-linux:
     #!/usr/bin/env bash
     set -euo pipefail
-    # WSL / Linux: home-manager のみ。Lab PC は labpc-wsl (--impure 必須)。
-    # nh の絶対 flake は WSL の場合 NH_HOME_FLAKE で labpc-wsl を指す前提。
-    nh home switch
+    echo "━━━ home-manager"
+    nh home switch -q -Q --diff never
+    echo "✓ home-manager"
 
-# 実体は win-bootstrap (コマンドの単一ソース。_theme-windows と同じ委譲パターン)
 [private]
 _rebuild-windows:
     @just win-bootstrap
 
-# システム世代の一覧/差分  (`just gen` = 一覧, `just gen diff [a] [b]` = 世代間パッケージ差分。sudo 不要)
-[group('構築')]
+# List or compare system generations.
+[group('Build')]
 gen action="" a="" b="":
     #!/usr/bin/env bash
     set -euo pipefail
     p=/nix/var/nix/profiles
     cur=$(readlink $p/system | sed -E 's/system-([0-9]+)-link/\1/')
     case "{{action}}" in
-      "")  # 一覧 (現在世代に ← 印)
+      "")
         for l in $p/system-*-link; do
           n=$(echo "$l" | sed -E 's#.*/system-([0-9]+)-link#\1#')
           d=$(stat -f '%Sm' -t '%Y-%m-%d %H:%M' "$l")
@@ -78,7 +61,7 @@ gen action="" a="" b="":
           printf '%4s  %s%s\n' "$n" "$d" "$mark"
         done | sort -n
         ;;
-      diff)  # 世代間のパッケージ差分 (デフォルト: 直前 → 現在)
+      diff)
         a="{{a}}"; b="{{b}}"; a="${a:-$((cur-1))}"; b="${b:-$cur}"
         echo "Package diff: generation $a -> $b"
         nix store diff-closures "$p/system-$a-link" "$p/system-$b-link"
@@ -86,8 +69,8 @@ gen action="" a="" b="":
       *) echo "usage: just gen [diff [a] [b]]" >&2; exit 2 ;;
     esac
 
-# 世代をロールバック (引数なし=直前へ, `just rollback 8` で世代番号指定。sudo)
-[group('構築')]
+# Roll back to the previous or selected system generation.
+[group('Build')]
 rollback gen="":
     #!/usr/bin/env bash
     set -euo pipefail
@@ -99,77 +82,73 @@ rollback gen="":
       sudo darwin-rebuild --rollback
     fi
 
-# flake input 更新 → rebuild  (引数なし=全 input, `just update nixpkgs` で個別更新)
-[group('構築')]
+# Update flake inputs, then rebuild.
+[group('Build')]
 update *inputs:
     #!/usr/bin/env bash
     set -euo pipefail
+    echo "━━━ flake inputs"
     lock="{{flake}}/flake.lock"
     old_lock=$(mktemp)
     cp "$lock" "$old_lock"
     trap 'rc=$?; if [ $rc -ne 0 ]; then cp "$old_lock" "$lock"; echo "Restored flake.lock after failed update" >&2; fi; rm -f "$old_lock"; exit $rc' EXIT
     just _update-lock {{inputs}}
+    if cmp -s "$old_lock" "$lock"; then
+      echo "✓ already up to date"
+    else
+      echo "✓ flake.lock updated"
+    fi
     just rebuild
     trap - EXIT
     rm -f "$old_lock"
 
-# flake.lock だけを更新する内部処理。後続処理が失敗した場合は呼び出し側が復元できるよう、
-# update recipe 自体では rebuild 成功まで旧 lock を保持する。
 [private]
 _update-lock *inputs:
-    nix flake update {{inputs}} --flake {{flake}}
+    @nix flake update --quiet {{inputs}} --flake {{flake}}
 
-# NOTE(upgrade): cask --greedy は自己更新型(VS Code 等)も brew 経由で揃える。installer manual /
-#   自己更新 cask(figma-agent 等)は brew が上げられず exit 1 にするので `|| true` で許容する。
-
-# 全レイヤーアップグレード (Mac/WSL/Win 自動判別)
-[group('構築')]
+# Upgrade all package layers.
+[group('Build')]
 upgrade:
     @just _upgrade-{{os()}}
 
 [private]
 _upgrade-macos:
-    just _upgrade-nix-runtime-macos
-    just _upgrade-packages-macos
-    just update
+    @just _upgrade-nix-runtime-macos
+    @just _upgrade-packages-macos
+    @just update
 
 [private]
 _upgrade-nix-runtime-macos:
-    # Determinate Nix runtime は nix-darwin 管理外。対話実行時だけ sudo で先に更新し、
-    # 後続の flake update / rebuild を新しい runtime で行う。
-    @if command -v determinate-nixd >/dev/null; then sudo determinate-nixd upgrade; else echo "Determinate Nixd not found; skip runtime upgrade"; fi
+    @echo "━━━ Nix runtime"
+    @if command -v determinate-nixd >/dev/null; then sudo determinate-nixd upgrade; else echo "– Determinate Nixd not installed"; fi
 
 [private]
 _upgrade-packages-macos:
-    # 一部の自己更新caskは Homebrew 上で常に outdated になりうるため最後の検査から除外。
-    # それ以外（今回の OpenFOAM のような失敗）は継続表示後に非0で返す。
-    brew upgrade --formula
-    brew upgrade --cask --greedy || true
-    mas upgrade
-    just sketchybar-font
+    @echo "━━━ Homebrew formulae"
+    @brew upgrade --quiet --formula
+    @echo "━━━ Homebrew casks"
+    @brew upgrade --quiet --cask --greedy || true
+    @echo "━━━ App Store"
+    @mas upgrade
+    @just sketchybar-font
     @remaining=$(brew outdated --cask --greedy 2>/dev/null | grep -v '^figma-agent$' || true); if [ -n "$remaining" ]; then echo "ERROR: cask upgrade incomplete:" >&2; echo "$remaining" >&2; exit 1; fi
 
 [private]
 _upgrade-linux:
-    nix flake update --flake ~/.dotfiles/nix
-    just rebuild
+    @just update
 
-# 実体は win-upgrade (コマンドの単一ソース)
 [private]
 _upgrade-windows:
     @just win-upgrade
 
-# flake更新・全パッケージ更新・再構築・GCを一括実行 (Mac/Linux/Win 自動判別)
-[group('構築')]
-[doc('update → upgrade → gc を一括実行')]
+[group('Build')]
+[doc('Update, upgrade, rebuild, and garbage-collect')]
 maintain:
     @just _maintain-{{os()}}
 
 [private]
 _maintain-macos:
     #!/usr/bin/env bash
-    # lock 更新から最終 rebuild までを一単位にし、失敗時は旧 lock に戻す。
-    # Brew/MAS はロールバック不能だが、Nix 宣言だけが未検証状態で残ることを防ぐ。
     set -euo pipefail
     maintenance_lock="$HOME/.local/state/dotfiles-maintenance.lock"
     mkdir -p "$HOME/.local/state"
@@ -194,7 +173,6 @@ _maintain-macos:
 [private]
 _maintain-linux:
     #!/usr/bin/env bash
-    # lock 更新から最終 rebuild までを一単位にし、失敗時は旧 lock に戻す。
     set -euo pipefail
     maintenance_lock="$HOME/.local/state/dotfiles-maintenance.lock"
     mkdir -p "$HOME/.local/state"
@@ -215,7 +193,6 @@ _maintain-linux:
 
 [private]
 _maintain-user-tools:
-    # 宣言パッケージ外のユーザーデータ／拡張だけ更新する。未導入・未認証ならskip。
     @if command -v tldr >/dev/null; then echo "━━━ tldr cache ━━━"; tldr --update || true; fi
     @if command -v gh >/dev/null && gh extension list 2>/dev/null | grep -q .; then echo "━━━ GitHub CLI extensions ━━━"; gh extension upgrade --all || true; fi
 
@@ -225,8 +202,7 @@ _maintain-windows:
     just win-upgrade
     @echo "Windows: gc recipe is not defined; package update completed."
 
-# sketchybar-app-font を最新リリースへ更新 (.ttf と icon_map.sh を同一版で揃える)
-# upgrade から自動で呼ばれる内部レシピ (`just sketchybar-font` 単体実行も可)
+# Update sketchybar-app-font assets from the same release.
 [private]
 sketchybar-font:
     #!/usr/bin/env bash
@@ -238,18 +214,13 @@ sketchybar-font:
     tag=$(gh release view --repo "$repo" --json tagName -q .tagName)
     cur=$(awk '/pname = "sketchybar-app-font"/{getline; if (match($0,/[0-9][0-9.]*/)) print substr($0,RSTART,RLENGTH); exit}' "$dir/nix/hosts/darwin.nix")
     if [ "$tag" = "v$cur" ]; then
-      exit 0 # 既に最新。何も出力しない (upgrade のノイズ削減)
+      exit 0
     fi
     echo "sketchybar-app-font: updating $cur -> $tag"
-    # .ttf と icon_map.sh を同一リリースから取得 (版ズレ防止)
     gh release download "$tag" --repo "$repo" --pattern sketchybar-app-font.ttf --output "$ttf"  --clobber
     gh release download "$tag" --repo "$repo" --pattern icon_map.sh           --output "$map"  --clobber
-    # 呼び出し規約を従来式に統一 + ローカル補正(icon_map_local.sh)を source する末尾を再注入
-    # (front_app.sh / space_windows.sh が単一引数で呼ぶ。OBS Studio 等の実名ズレ補正を維持)
     awk '/^### END-OF-ICON-MAP/{print; print "__icon_map \"$1\""; print "[ -r \"${BASH_SOURCE%/*}/icon_map_local.sh\" ] && source \"${BASH_SOURCE%/*}/icon_map_local.sh\""; print "echo \"$icon_result\""; exit} {print}' "$map" > "$map.tmp" && mv "$map.tmp" "$map"
-    # darwin.nix の version を追従 (pname 行の直後だけを置換。他の version= は触らない)
     sed -i "" -E '/pname = "sketchybar-app-font"/{n;s/version = "[0-9.]+"/version = "'"${tag#v}"'"/;}' "$dir/nix/hosts/darwin.nix"
-    # flake が見えるよう git に追跡させる (commit は手動)
     git -C "$dir" add "$ttf" "$map" "$dir/nix/hosts/darwin.nix"
     echo "Updated ($tag). Apply with: just rebuild (automatic when run via upgrade)"
 

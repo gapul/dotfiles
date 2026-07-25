@@ -22,10 +22,6 @@ return {
       clear_suggestion = "<M-q>",
       accept_word = "<M-j>",
     },
-    color = {
-      suggestion_color = "#6e6a86", -- Rosé Pine muted (ghost text)
-      cterm = 244,
-    },
     log_level = "info",
     disable_inline_completion = false,
     disable_keymaps = false,
@@ -34,4 +30,19 @@ return {
       return vim.b.skkeleton_enabled == true
     end,
   },
+  config = function(_, opts)
+    require("supermaven-nvim").setup(opts)
+
+    local function update_suggestion_color()
+      local color = vim.o.background == "light" and "#9893a5" or "#6e6a86"
+      vim.api.nvim_set_hl(0, "SupermavenSuggestion", { fg = color, ctermfg = 244 })
+    end
+
+    update_suggestion_color()
+    vim.api.nvim_create_autocmd({ "ColorScheme", "OptionSet" }, {
+      pattern = { "*", "background" },
+      callback = update_suggestion_color,
+      desc = "Keep Supermaven ghost text in sync with the system appearance",
+    })
+  end,
 }
