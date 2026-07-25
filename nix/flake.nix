@@ -284,7 +284,7 @@
                   user
                   ;
                 pkgs = systemPkgs;
-                self = inputs.self;
+                inherit (inputs) self;
               };
             };
             devShells.default = systemPkgs.mkShell {
@@ -311,7 +311,7 @@
                   user
                   ;
                 pkgs = systemPkgs;
-                commonSpecialArgs = commonSpecialArgs;
+                inherit commonSpecialArgs;
               };
               preservation-smoke = import ./tests/preservation-smoke.nix {
                 inherit preservation user;

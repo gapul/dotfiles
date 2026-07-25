@@ -150,17 +150,22 @@ jobs:
           cachix-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
       - name: Build recovery image
         run: nix build ./nix#recovery-iso --out-link result --show-trace
-      - name: Record checksum
-        run: sha256sum result/iso/*.iso | tee result/iso/SHA256SUMS
+      - name: Stage image and record checksum
+        # result/ は読み取り専用の nix store symlink なのでそこには書けない。
+        # 書き込み可能な iso-out/ に取り出してから SHA256SUMS を生成する。
+        run: |
+          mkdir -p iso-out
+          cp --no-preserve=mode result/iso/*.iso iso-out/
+          ( cd iso-out && sha256sum *.iso | tee SHA256SUMS )
       - name: Upload recovery image
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: nixos-recovery-${{ github.sha }}
-          path: result/iso/
+          path: iso-out/
           retention-days: 90
           if-no-files-found: error
       - name: Attest recovery image
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661 # v3
         with:
-          subject-path: result/iso/*.iso
+          subject-path: iso-out/*.iso
