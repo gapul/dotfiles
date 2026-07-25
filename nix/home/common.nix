@@ -4,6 +4,7 @@
   lib,
   user,
   nixIndexDatabase,
+  agentSkills,
   ...
 }:
 let
@@ -28,9 +29,33 @@ let
         }
     }
   '';
+
+  gh-nix = pkgs.writeShellApplication {
+    name = "gh-nix";
+    runtimeInputs = [ pkgs.gh ];
+    text = ''
+      if [ "$#" -eq 0 ]; then
+        echo "usage: gh-nix <command> [args...]" >&2
+        exit 2
+      fi
+      if ! gh auth status >/dev/null 2>&1; then
+        echo "gh-nix: run 'gh auth login' first" >&2
+        exit 1
+      fi
+      token="$(gh auth token)"
+      exec env NIX_CONFIG="access-tokens = github.com=$token
+      ''${NIX_CONFIG:-}" "$@"
+    '';
+  };
+  lazyNixPlugins =
+    pkgs.linkFarm "lazy-nix-plugins"
+      (import ../../configs/editors/nvim/lazy2nix { inherit pkgs lib; }).plugins;
 in
 {
-  imports = [ nixIndexDatabase.homeModules.default ];
+  imports = [
+    nixIndexDatabase.homeModules.default
+    agentSkills.homeManagerModules.default
+  ];
 
   # OS 非依存の home-manager 設定
   # OS 固有の部分は home/darwin.nix / home/linux.nix / home/wsl.nix 等に分離
@@ -59,6 +84,7 @@ in
       CLAUDE_CONFIG_DIR = "${config.home.homeDirectory}/.config/claude";
       CODEX_HOME = "${config.xdg.dataHome}/codex";
       CODEX_SQLITE_HOME = "${config.xdg.stateHome}/codex/sqlite";
+      LAZY_NIX_PLUGINS = lazyNixPlugins;
 
       # XDG Base Directory: 実行時に $XDG_* を参照する CLI 向けに明示 export
       # (home-manager はビルド時に config.xdg.* を展開するだけで env には出さないため)
@@ -363,6 +389,7 @@ in
   # 単発で使う CLI ツール群 (programs.* の対象外、OS 非依存)
   home.packages = with pkgs; [
     nixd # Nix LSP (Neovim から利用)
+    gh-nix # gh の認証を一時的に Nix access-tokens へ橋渡し
     nix-output-monitor # nh / nix build を見やすくする (`nom`)
     nix-tree # nix store 依存関係 TUI
     nix-init # flake.nix 雛形生成
@@ -481,7 +508,16 @@ in
       pull.rebase = true;
       push.autoSetupRemote = true;
       ghq.root = "${config.home.homeDirectory}/Developer";
-      merge.conflictstyle = "diff3";
+      merge.conflictstyle = "zdiff3";
+      commit.verbose = true;
+      diff.algorithm = "histogram";
+      fetch.prune = true;
+      fetch.writeCommitGraph = true;
+      rebase.autoStash = true;
+      rebase.autoSquash = true;
+      rebase.updateRefs = true;
+      rerere.enabled = true;
+      rerere.autoupdate = true;
       # flake.lock 自動解決 driver (.gitattributes の `nix/flake.lock merge=flakelock`)。
       # Mac/Lab PC 両機の nix flake update 競合を、片側採用(常に valid な lock)で無人解決。
       # 入力差を厳密に揃えたい時は解決後 `nix flake update` を一度回す。
@@ -611,6 +647,16 @@ in
     enableZshIntegration = true;
   };
   programs.nix-index-database.comma.enable = true;
+
+  programs.agent-skills = {
+    enable = true;
+    sources.local = {
+      path = ../../configs/agents/skills;
+      filter.maxDepth = 1;
+    };
+    skills.enableAll = [ "local" ];
+    targets.agents.enable = true;
+  };
 
   # nh: nh darwin / nh home の便利ラッパー
   programs.nh = {

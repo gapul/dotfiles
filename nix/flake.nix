@@ -24,6 +24,9 @@
     nix-index-database.url = "github:nix-community/nix-index-database";
     nix-index-database.inputs.nixpkgs.follows = "nixpkgs";
 
+    agent-skills.url = "github:Kyure-A/agent-skills-nix";
+    agent-skills.inputs.nixpkgs.follows = "nixpkgs";
+
     sops-nix.url = "github:Mic92/sops-nix";
     sops-nix.inputs.nixpkgs.follows = "nixpkgs";
 
@@ -50,6 +53,7 @@
       nix-darwin,
       home-manager,
       nix-index-database,
+      agent-skills,
       sops-nix,
       lanzaboote,
       disko,
@@ -83,6 +87,7 @@
       commonSpecialArgs = {
         inherit user;
         nixIndexDatabase = nix-index-database;
+        agentSkills = agent-skills;
       };
 
       # SSH 接続先で rootless Nix (nix-portable) から実行する
@@ -323,6 +328,7 @@
           extraSpecialArgs = {
             user = labUser;
             nixIndexDatabase = nix-index-database;
+            agentSkills = agent-skills;
           };
           modules = [
             ./home/common.nix
@@ -380,6 +386,19 @@
         })
         // {
           ${system} = {
+            lazy2nix = pkgs.writeShellApplication {
+              name = "lazy2nix";
+              runtimeInputs = [
+                pkgs.bun
+                pkgs.git
+                pkgs.neovim
+                pkgs.nix
+              ];
+              text = ''
+                repo="$(${pkgs.git}/bin/git rev-parse --show-toplevel)"
+                exec ${pkgs.bun}/bin/bun "$repo/configs/editors/nvim/lazy2nix/generate.ts"
+              '';
+            };
             slk = pkgs.callPackage ./pkgs/slk.nix { };
             unity-cli = pkgs.callPackage ./pkgs/unity-cli.nix { };
           };
