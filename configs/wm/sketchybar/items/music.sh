@@ -33,7 +33,7 @@ music=(
   updates=on
   update_freq=5
   script="$PLUGIN_DIR/music.sh"
-  click_script="$PLUGIN_DIR/music_click.sh controls"
+  click_script="$PLUGIN_DIR/open_tui.sh music"
 )
 sketchybar --add item music right \
            --set music "${music[@]}"
