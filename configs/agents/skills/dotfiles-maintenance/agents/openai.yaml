@@ -1,0 +1,4 @@
+interface:
+  display_name: "Dotfiles Maintenance"
+  short_description: "Safely maintain and rebuild this Nix dotfiles repository"
+  default_prompt: "Use $dotfiles-maintenance to update and verify my dotfiles safely."

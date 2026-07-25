@@ -1,0 +1,15 @@
+{
+  "name": "gapul-karabiner-config",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "bun run karabiner.ts",
+    "check": "bunx tsc --noEmit"
+  },
+  "dependencies": {
+    "karabiner.ts": "1.36.0"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
+  }
+}

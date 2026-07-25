@@ -1,4 +1,5 @@
-local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
+local nix_plugins = vim.env.LAZY_NIX_PLUGINS
+local lazypath = nix_plugins and (nix_plugins .. "/lazy.nvim") or (vim.fn.stdpath("data") .. "/lazy/lazy.nvim")
 if not (vim.uv or vim.loop).fs_stat(lazypath) then
   local lazyrepo = "https://github.com/folke/lazy.nvim.git"
   local out = vim.fn.system({ "git", "clone", "--filter=blob:none", "--branch=stable", lazyrepo, lazypath })
@@ -38,9 +39,14 @@ require("lazy").setup({
   -- Windows では ghq の root を ~/Developer に揃えていない環境が多いため
   -- fallback=true で git clone へ自動退避させる (macOS は今までどおり明示エラー)。
   dev = {
-    path = "~/Developer/github.com/gapul",
-    patterns = { "gapul" },
-    fallback = vim.fn.has("mac") ~= 1,
+    path = function(plugin)
+      if plugin.url and plugin.url:match("github%.com/gapul/") then
+        return vim.fn.expand("~/Developer/github.com/gapul/" .. plugin.name)
+      end
+      return nix_plugins and (nix_plugins .. "/" .. plugin.name) or nil
+    end,
+    patterns = nix_plugins and vim.fn.readdir(nix_plugins) or { "gapul" },
+    fallback = nix_plugins ~= nil or vim.fn.has("mac") ~= 1,
   },
   -- luarocks 不使用なので rocks サポートを無効化（checkhealth の luarocks ERROR 解消）
   rocks = { enabled = false },
