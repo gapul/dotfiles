@@ -430,6 +430,7 @@ in
     git-wtpr # `git wtpr <PR番号|URL>`でPR専用worktreeへ移動
     trash-cli # git-wtの削除をゴミ箱経由にする
     tirith # shell/AI agent向けcommand・URL・Skill防御
+    (callPackage ../pkgs/tuicr.nix { }) # AI生成diffをPR風UIでレビュー
     ghq # repo クローン管理
     lazyjj # jujutsu TUI
     jq # JSON プロセッサ
@@ -597,18 +598,60 @@ in
   # (固定 hex をやめたぶん色精度は端末の 16 色に丸まるが dark/light 自動切替になる)
   programs.lazygit = {
     enable = true;
-    settings.gui.theme = {
-      activeBorderColor = [
-        "magenta" # iris 相当
-        "bold"
+    settings = {
+      gui = {
+        nerdFontsVersion = "3";
+        skipRewordInEditorWarning = true;
+        theme = {
+          activeBorderColor = [
+            "magenta" # iris 相当
+            "bold"
+          ];
+          inactiveBorderColor = [ "blue" ]; # pine 相当
+          optionsTextColor = [ "cyan" ]; # foam 相当
+          selectedLineBgColor = [ "blue" ];
+          cherryPickedCommitBgColor = [ "magenta" ];
+          cherryPickedCommitFgColor = [ "blue" ];
+          unstagedChangesColor = [ "red" ]; # love 相当
+          defaultFgColor = [ "default" ];
+        };
+      };
+      git.pagers = [
+        {
+          colorArg = "always";
+          pager = "${lib.getExe pkgs.delta} --color-only --paging=never";
+        }
       ];
-      inactiveBorderColor = [ "blue" ]; # pine 相当
-      optionsTextColor = [ "cyan" ]; # foam 相当
-      selectedLineBgColor = [ "blue" ];
-      cherryPickedCommitBgColor = [ "magenta" ];
-      cherryPickedCommitFgColor = [ "blue" ];
-      unstagedChangesColor = [ "red" ]; # love 相当
-      defaultFgColor = [ "default" ];
+      customCommands = [
+        {
+          key = "d";
+          context = "worktrees";
+          description = "Move worktree to Trash";
+          loadingText = "Moving worktree to Trash";
+          output = "log";
+          prompts = [
+            {
+              type = "confirm";
+              title = "Trash worktree";
+              body = ''
+                Move worktree to Trash?
+
+                Path:   {{.SelectedWorktree.Path}}
+                Branch: {{.SelectedWorktree.Branch}}
+              '';
+            }
+          ];
+          command = ''
+            {{- if .SelectedWorktree.IsMain -}}
+            echo "Cannot trash the main worktree" >&2; exit 1
+            {{- else if .SelectedWorktree.IsCurrent -}}
+            echo "Cannot trash the current worktree" >&2; exit 1
+            {{- else -}}
+            ${lib.getExe pkgs.trash-cli} -- {{.SelectedWorktree.Path | quote}} && git worktree prune
+            {{- end -}}
+          '';
+        }
+      ];
     };
   };
 

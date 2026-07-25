@@ -221,7 +221,17 @@
             };
           }
           // lib.optionalAttrs isDarwinWorkstation {
-            checks.pre-commit = preCommit;
+            checks = {
+              pre-commit = preCommit;
+              config-invariants = import ./tests/config-invariants.nix {
+                inherit
+                  lib
+                  user
+                  ;
+                pkgs = systemPkgs;
+                self = inputs.self;
+              };
+            };
             devShells.default = systemPkgs.mkShell {
               inherit (preCommit) shellHook;
               buildInputs = preCommit.enabledPackages ++ [
@@ -233,6 +243,7 @@
                 systemPkgs.jq
                 systemPkgs.just
                 systemPkgs.bun
+                systemPkgs.check-jsonschema
               ];
             };
           };

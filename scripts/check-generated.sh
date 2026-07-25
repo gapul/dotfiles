@@ -46,4 +46,14 @@ if comm -12 "$check_tmp/managed.txt" "$check_tmp/excluded.txt" | grep -q .; then
   exit 1
 fi
 
+echo "Checking generated lazygit configuration against the upstream schema..."
+lazygit_config_drv="$(
+  nix eval --raw "$repo_root/nix#homeConfigurations.gapul.config.xdg.configFile.\"lazygit/config.yml\".source.drvPath"
+)"
+lazygit_config="$(nix-store --realise "$lazygit_config_drv")"
+check-jsonschema \
+  --default-filetype yaml \
+  --schemafile "https://raw.githubusercontent.com/jesseduffield/lazygit/master/schema/config.json" \
+  "$lazygit_config"
+
 echo "Generated configuration checks passed."
