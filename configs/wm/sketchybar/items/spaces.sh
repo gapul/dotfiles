@@ -87,6 +87,7 @@ done
 
 
 space_creator=(
+  drawing=off
   icon=􀆊
   icon.font="$FONT:Heavy:$(scf 16.0)"
   padding_left=10

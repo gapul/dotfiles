@@ -120,13 +120,13 @@ sketchybar --default "${defaults[@]}"
 # Left
 #source "$ITEM_DIR/apple.sh"  # トグル: Apple ロゴ (有効化するなら uncomment。items/apple.sh 実在)
 source "$ITEM_DIR/spaces.sh"
-source "$ITEM_DIR/front_app.sh"
 
 # Right
 source "$ITEM_DIR/calendar.sh"
 source "$ITEM_DIR/battery.sh"
 source "$ITEM_DIR/bluetooth.sh"
 source "$ITEM_DIR/wifi.sh"
+source "$ITEM_DIR/input_source.sh"
 source "$ITEM_DIR/music.sh"
 source "$ITEM_DIR/volume.sh"
 
@@ -134,7 +134,7 @@ source "$ITEM_DIR/memory.sh"
 source "$ITEM_DIR/cpu.sh"
 
 # ─────────── 左右ブラケット背景 (ノッチを挟んで2分割) ───────────
-sketchybar --add bracket left_bracket '/space\..*/' front_app \
+sketchybar --add bracket left_bracket '/space\..*/' \
            --set   left_bracket \
                    background.color=$BACKGROUND_1 \
                    background.corner_radius=10 \
@@ -144,7 +144,7 @@ sketchybar --add bracket left_bracket '/space\..*/' front_app \
                    background.padding_left=4 \
                    background.padding_right=4
 
-sketchybar --add bracket right_bracket calendar battery bluetooth wifi music volume_icon memory cpu.percent \
+sketchybar --add bracket right_bracket calendar battery bluetooth wifi input_source music volume_icon memory cpu.percent \
            --set   right_bracket \
                    background.color=$BACKGROUND_1 \
                    background.corner_radius=10 \
