@@ -46,6 +46,8 @@ jobs:
           - runner: ubuntu-24.04
             configuration: gapul-wsl
           - runner: ubuntu-24.04
+            configuration: labpc-wsl
+          - runner: ubuntu-24.04
             configuration: gapul-linux
           - runner: ubuntu-24.04-arm
             configuration: gapul-linux-aarch64
