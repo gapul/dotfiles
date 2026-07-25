@@ -250,6 +250,20 @@ in
         just --justfile "$HOME/.dotfiles/Justfile" --working-directory "$HOME/.dotfiles" "$@"
       }
 
+      # Codex TUI は system theme を持たないため、起動時のOS外観に合わせて
+      # Rosé Pine / Dawn のカスタム tmTheme を選ぶ。
+      function codex() {
+        local codex_theme="rose-pine"
+        if command -v defaults >/dev/null 2>&1; then
+          if ! defaults read -g AppleInterfaceStyle >/dev/null 2>&1; then
+            codex_theme="rose-pine-dawn"
+          fi
+        elif [[ "''${COLORFGBG##*;}" == <8-15> ]]; then
+          codex_theme="rose-pine-dawn"
+        fi
+        command codex -c "tui.theme=\"$codex_theme\"" "$@"
+      }
+
       # vi モード + Ctrl+X Ctrl+E で外部エディタ(nvim)起動
       if [[ -o zle ]]; then
         bindkey -v
@@ -483,7 +497,6 @@ in
       navigate = true;
       line-numbers = true;
       side-by-side = true;
-      syntax-theme = "rose-pine"; # bat の rose-pine テーマを使用 (テーマ統一)
       detect-dark-light = "auto"; # 端末の明暗を検出し diff 配色を macOS 外観に追従
     };
   };
@@ -622,6 +635,10 @@ in
   # TUI から設定が更新されても repo に反映されるよう out-of-store symlink にする。
   xdg.dataFile."codex/config.toml".source =
     config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.dotfiles/configs/cli/codex/config.toml";
+  xdg.dataFile."codex/themes/rose-pine.tmTheme".source =
+    ../../configs/cli/bat/themes/rose-pine.tmTheme;
+  xdg.dataFile."codex/themes/rose-pine-dawn.tmTheme".source =
+    ../../configs/cli/bat/themes/rose-pine-dawn.tmTheme;
   # 素の Vim: native XDG で読まれる vimrc。.viminfo を $XDG_STATE_HOME へ追い出す目的
   home.file.".config/vim/vimrc".source = ../../configs/editors/vim/vimrc;
   home.file."bin/nssh" = {

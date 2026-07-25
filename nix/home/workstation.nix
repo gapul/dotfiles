@@ -11,6 +11,20 @@
   home.packages = with pkgs; [
     pandoc # ドキュメント変換
     typst # 組版
+    # 日本語の学術文書に必要な TeX Live コレクションを Nix で合成する。
+    # scheme-full は避けつつ、数式・図表・参考文献・一般的な追加パッケージを
+    # 個別追加なしで利用できる範囲を揃える。
+    (texlive.combine {
+      inherit (texlive)
+        scheme-medium
+        latexmk
+        collection-langjapanese
+        collection-latexextra
+        collection-mathscience
+        collection-bibtexextra
+        collection-fontsrecommended
+        ;
+    })
     poppler-utils # PDF CLI (pdftotext 等。旧 brew poppler)
     bitwarden-cli # Bitwarden (bw)
     syft # SBOM

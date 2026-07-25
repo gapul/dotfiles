@@ -26,6 +26,7 @@
 <body>
 <canvas id="c"></canvas>
 <div class="marker">TOPO <span class="dot">&middot;</span> WS <span id="wsnum">1</span></div>
+<script src="system-theme.js"></script>
 <script>
 'use strict';
 
@@ -45,6 +46,7 @@ const RP = {
   foam:    '156,207,216', // #9ccfd8 シアン
   iris:    '196,167,231', // #c4a7e7 紫
 };
+followSystemTheme(RP);
 const rgb = s => s.split(',').map(Number);
 
 // ─────────── workspace別パラメータ (Topographic) ───────────

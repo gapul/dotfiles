@@ -29,7 +29,7 @@
 'use strict';
 
 // ─────────── workspace別パレット ───────────
-const PALETTES = {
+const DARK_PALETTES = {
   '1': { bg: '10,10,20',   hueBase: 270, hueRange: 60 },  // 紫×青
   '2': { bg: '6,18,14',    hueBase: 140, hueRange: 50 },  // 緑×ティール
   '3': { bg: '20,12,6',    hueBase: 30,  hueRange: 30 },  // オレンジ×アンバー
@@ -42,6 +42,18 @@ const PALETTES = {
   '0': { bg: '6,6,10',     hueBase: 0,   hueRange: 0   }, // モノクロ
   'S': { bg: '10,10,16',   hueBase: 220, hueRange: 20 },  // ダル青
 };
+
+// Dawn backgrounds keep each workspace's hue identity while using a light base.
+const LIGHT_PALETTES = Object.fromEntries(
+  Object.entries(DARK_PALETTES).map(([key, value], index) => {
+    const tint = index % 3;
+    const backgrounds = ['250,244,237', '255,250,243', '242,233,225'];
+    return [key, { ...value, bg: backgrounds[tint] }];
+  }),
+);
+const appearance = matchMedia('(prefers-color-scheme: light)');
+const PALETTES = appearance.matches ? LIGHT_PALETTES : DARK_PALETTES;
+appearance.addEventListener('change', () => location.reload());
 
 let currentPalette = PALETTES['1'];
 
