@@ -1,4 +1,5 @@
 #!/bin/zsh
+set -e
 # 日本語TTS (Style-Bert-VITS2 / jvnv-F1-jp)
 # 使い方: tts "喋らせたい文章" [出力.wav] [スタイル Neutral/Happy/Sad/Angry/...]
 eval "$(/opt/homebrew/bin/brew shellenv)"
