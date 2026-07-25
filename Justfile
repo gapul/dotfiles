@@ -20,6 +20,22 @@ default:
 rebuild:
     @just _rebuild-{{os()}}
 
+[group('Build')]
+[doc('Build every flake check available on this architecture')]
+check-all *args:
+    @cd {{flake}} && nix run .#check-all -- {{args}}
+
+[group('Build')]
+[doc('Build every flake package available on this architecture')]
+build-all *args:
+    @cd {{flake}} && nix run .#build-all -- {{args}}
+
+[group('Build')]
+[doc('Build the non-destructive NixOS recovery ISO (Linux builder required)')]
+recovery-iso:
+    @nix build {{flake}}#recovery-iso --out-link result-recovery
+    @echo "ISO: {{justfile_directory()}}/result-recovery/iso/gapul-nixos-recovery.iso"
+
 [private]
 _rebuild-macos:
     @-brew tap 2>/dev/null | grep -v '^homebrew/' | xargs -I% env -u XDG_CONFIG_HOME brew trust % >/dev/null

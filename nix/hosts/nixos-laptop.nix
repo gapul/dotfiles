@@ -150,6 +150,15 @@
     };
   };
 
+  # Hyprland・GPU・greetd 周辺の変更で通常起動できない場合の復旧プロファイル。
+  # systemd-boot の "safe" specialisation からTTYへ入り、直前generationへの
+  # rollbackや設定修正を行う。通常構成には影響しない。
+  specialisation.safe.configuration = {
+    programs.hyprland.enable = lib.mkForce false;
+    services.greetd.enable = lib.mkForce false;
+    hardware.graphics.enable = lib.mkForce false;
+  };
+
   # GUI 権限昇格ダイアログ用の polkit エージェント (Hyprland は DE 同梱が無いため明示)。
   security.polkit.enable = true;
 

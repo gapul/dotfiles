@@ -1,0 +1,166 @@
+name: Build every dotfiles output
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'nix/**'
+      - 'configs/**'
+      - 'secrets/**'
+      - 'scripts/**'
+      - 'docs/NIXOS_*.md'
+      - 'Justfile'
+      - '.github/actions/setup-nix/**'
+      - '.github/workflows/build-all.yml'
+  pull_request:
+    paths:
+      - 'nix/**'
+      - 'configs/**'
+      - 'secrets/**'
+      - 'scripts/**'
+      - 'docs/NIXOS_*.md'
+      - 'Justfile'
+      - '.github/actions/setup-nix/**'
+      - '.github/workflows/build-all.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CACHIX_NAME: ${{ vars.CACHIX_CACHE_NAME }}
+
+jobs:
+  home-manager:
+    name: Home Manager (${{ matrix.configuration }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            configuration: gapul-wsl
+          - runner: ubuntu-24.04
+            configuration: gapul-linux
+          - runner: ubuntu-24.04-arm
+            configuration: gapul-linux-aarch64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: ./.github/actions/setup-nix
+        with:
+          cachix-name: ${{ env.CACHIX_NAME }}
+          cachix-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+      - run: nix build "./nix#homeConfigurations.${{ matrix.configuration }}.activationPackage" --no-link --show-trace
+
+  darwin:
+    name: Darwin (${{ matrix.output }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - output: workstation-system
+            command: nix build "./nix#darwinConfigurations.$(nix eval --raw -f ./nix/user.nix username).system" --no-link --show-trace
+          - output: workstation-home
+            command: nix build "./nix#homeConfigurations.$(nix eval --raw -f ./nix/user.nix username).activationPackage" --no-link --show-trace
+          - output: macmini-system
+            command: nix build ./nix#darwinConfigurations.macmini.system --no-link --show-trace
+    runs-on: macos-14
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: ./.github/actions/setup-nix
+        with:
+          cachix-name: ${{ env.CACHIX_NAME }}
+          cachix-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+      - run: ${{ matrix.command }}
+
+  nixos:
+    name: NixOS (${{ matrix.output }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - output: laptop-system
+            install-kvm: false
+            command: nix build ./nix#nixosConfigurations.nixos-laptop-ci.config.system.build.toplevel --no-link --show-trace
+          - output: vm-smoke
+            install-kvm: true
+            command: nix build ./nix#checks.x86_64-linux.nixos-smoke --no-link --show-trace
+          - output: preservation-smoke
+            install-kvm: true
+            command: nix build ./nix#checks.x86_64-linux.preservation-smoke --no-link --show-trace
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: ./.github/actions/setup-nix
+        with:
+          cachix-name: ${{ env.CACHIX_NAME }}
+          cachix-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+      - name: Enable KVM
+        if: matrix.install-kvm
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - run: ${{ matrix.command }}
+
+  packages-and-checks:
+    name: nix-fast-build (${{ matrix.runner }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-14
+            run-checks: true
+          - runner: ubuntu-24.04
+            run-checks: true
+          - runner: ubuntu-24.04-arm
+            run-checks: false
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: ./.github/actions/setup-nix
+        with:
+          cachix-name: ${{ env.CACHIX_NAME }}
+          cachix-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+      - name: Build packages for this architecture
+        run: nix run ./nix#build-all -- --skip-cached
+      - name: Build checks for this architecture
+        if: matrix.run-checks
+        run: nix run ./nix#check-all -- --skip-cached
+
+  recovery-iso:
+    name: Recovery ISO
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: ./.github/actions/setup-nix
+        with:
+          cachix-name: ${{ env.CACHIX_NAME }}
+          cachix-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+      - name: Build recovery image
+        run: nix build ./nix#recovery-iso --out-link result --show-trace
+      - name: Record checksum
+        run: sha256sum result/iso/*.iso | tee result/iso/SHA256SUMS
+      - name: Upload recovery image
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: nixos-recovery-${{ github.sha }}
+          path: result/iso/
+          retention-days: 90
+          if-no-files-found: error
+      - name: Attest recovery image
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661 # v3
+        with:
+          subject-path: result/iso/*.iso
