@@ -390,5 +390,31 @@ _G.configWatcher = hs.pathwatcher.new(hs.configdir, function(paths)
 end)
 _G.configWatcher:start()
 
+-- メニューバーの Hammerspoon アイコンは出さない。制御はホットキーで足りる。
+hs.menuIcon(false)
+
+-- 画面ミラーリングをホットキーで開く。SketchyBar に専用アイコンを置かずに済むよう、
+-- 公式の「画面ミラーリング」メニューバー項目 (com.apple.menuextra.screen-mirroring) を
+-- 直接クリックしてメニューを開く。Hyper+P。
+local function openScreenMirroring()
+	hs.osascript.applescript([[
+tell application "System Events"
+  tell process "ControlCenter"
+    set targetItem to missing value
+    repeat with candidate in menu bar items of menu bar 1
+      try
+        if (value of attribute "AXIdentifier" of candidate) as text is "com.apple.menuextra.screen-mirroring" then
+          set targetItem to candidate
+          exit repeat
+        end if
+      end try
+    end repeat
+    if targetItem is not missing value then click targetItem
+  end tell
+end tell
+]])
+end
+hs.hotkey.bind(hyper, "p", openScreenMirroring)
+
 -- Hammerspoon itself owns login startup after its first launch.
 hs.autoLaunch(true)
