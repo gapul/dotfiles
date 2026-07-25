@@ -7,6 +7,7 @@ cpu_percent=(
   label.drawing=off
   update_freq=4
   script="$PLUGIN_DIR/cpu.sh"
+  click_script="$PLUGIN_DIR/open_tui.sh system"
 )
 
 sketchybar --add item cpu.percent right \

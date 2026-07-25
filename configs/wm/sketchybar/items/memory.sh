@@ -7,6 +7,7 @@ memory=(
   label.drawing=off
   update_freq=4
   script="$PLUGIN_DIR/memory.sh"
+  click_script="$PLUGIN_DIR/open_tui.sh system"
 )
 
 sketchybar --add item memory right \
