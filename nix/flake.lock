@@ -262,11 +262,11 @@
     "mopidy-patches": {
       "flake": false,
       "locked": {
-        "lastModified": 1785041215,
-        "narHash": "sha256-/iZCa0YTOFBGkNvyVW7yO1RmQDx1yzIRI+Dec3nw7jo=",
+        "lastModified": 1785045843,
+        "narHash": "sha256-oVe/qz3DlZvvxWwAAeupmLpHGGfhgYCNWA8HK47/5t8=",
         "owner": "gapul",
         "repo": "mopidy-rmpc-patches",
-        "rev": "53b6b9665519e26dd046802663baa855cd500b8f",
+        "rev": "a7f38fcb27d419e52c4430db6630bd30589dae1c",
         "type": "github"
       },
       "original": {
