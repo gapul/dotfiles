@@ -101,6 +101,17 @@
     }:
     let
       system = "aarch64-darwin";
+
+      # 上流 nixpkgs の一時的な破損を吸収する overlay。
+      # pre-commit 4.5.1 の test_output_isatty が GitHub の macos-14 ランナーで
+      # 決定的に落ちる (sandbox の isatty 挙動依存)。ツールとして使うだけで
+      # テスト結果は不要なため checkPhase を無効化する (2026-07-26)。
+      overlayFixes = _final: prev: {
+        pre-commit = prev.pre-commit.overridePythonAttrs (_: {
+          doCheck = false;
+        });
+      };
+
       # standalone Home Managerで使う公式プロプライエタリCLIだけを限定許可。
       # nix-darwin側のpkgs設定とは別インスタンスなので、ここにも必要。
       mkPkgs =
@@ -108,7 +119,10 @@
         import nixpkgs {
           system = targetSystem;
           config.allowUnfreePredicate = pkg: nixpkgs.lib.getName pkg == "unity-cli";
-          overlays = nixpkgs.lib.optionals (targetSystem == "aarch64-darwin") [
+          overlays = [
+            overlayFixes
+          ]
+          ++ nixpkgs.lib.optionals (targetSystem == "aarch64-darwin") [
             brew-nix.overlays.default
           ];
         };
@@ -122,6 +136,7 @@
               "claude-code"
               "unity-cli"
             ];
+          overlays = [ overlayFixes ];
         };
       pkgs = mkPkgs system;
       user = import ./user.nix;
@@ -206,6 +221,9 @@
       # scripts/ 等リポ全体は `pre-commit run --all-files` を git ルートで回してカバー。
       preCommit = git-hooks.lib.${system}.run {
         src = ./.;
+        # git-hooks の内部 pkgs は overlay 非適用のため、pre-commit 本体は
+        # overlaid 版 (checkPhase 無効) を明示的に渡して CI の isatty テスト破損を回避。
+        package = pkgs.pre-commit;
         hooks = {
           # 整形は per-file の nixfmt を使う (flake が nix/ にあるため
           # treefmt フックは git ルートから root 検出に失敗する。treefmt は nix fmt 専用)。
