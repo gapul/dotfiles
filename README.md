@@ -192,7 +192,7 @@ pre-commit フック・フォーマッタは `nix/flake.nix` で **宣言的に�
 - `.pre-commit-config.yaml` は **生成物**(store パス依存)。`.gitignore` 済・非追跡。fork 後は `nix develop ./nix` で生成
 - **flake は `nix/` サブディレクトリ**にあるため、`treefmt` フックは git ルートから root 検出に失敗する。整形フックは per-file の `nixfmt-rfc-style` を使い、`treefmt` は `nix fmt` 専用
 - `shellcheck` は enforced 済。除外中の sketchybar 設定群は `nix develop ./nix -c shellcheck configs/wm/sketchybar/...` で手動チェック可
-- CI(`.github/workflows/check.yml`)の `pre-commit` ジョブがリポ全体で同じフックを実行
+- CI は `om ci`(omnix)で回す。`checks.pre-commit` 出力(git-hooks.nix)をビルドすることでリポ全体に同じフックが走る。設定は `om.yaml` + flake 出力が単一の真実で、`.github/workflows/ci.yml` は system→runner を割り当てて `om ci run` を呼ぶだけの薄いアダプタ
 
 ### 🟨 復旧 / メンテ (生コマンド)
 

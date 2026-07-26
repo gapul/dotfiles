@@ -1,0 +1,78 @@
+name: CI
+
+# gh 非依存な CI 本体。ビルド対象/チェックはすべて om.yaml + flake 出力に宣言し、
+# ここは「Nix を入れて om ci を回すだけ」の薄いプロバイダアダプタに留める。
+# 同じ `om ci run` は Forgejo / GitLab / ローカルでもそのまま使える。
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'nix/**'
+      - 'configs/**'
+      - 'secrets/**'
+      - 'scripts/**'
+      - 'docs/NIXOS_*.md'
+      - 'Justfile'
+      - '.statix.toml'
+      - '.gitleaks.toml'
+      - 'om.yaml'
+      - '.github/actions/setup-nix/**'
+      - '.github/workflows/ci.yml'
+  pull_request:
+    paths:
+      - 'nix/**'
+      - 'configs/**'
+      - 'secrets/**'
+      - 'scripts/**'
+      - 'docs/NIXOS_*.md'
+      - 'Justfile'
+      - '.statix.toml'
+      - '.gitleaks.toml'
+      - 'om.yaml'
+      - '.github/actions/setup-nix/**'
+      - '.github/workflows/ci.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CACHIX_NAME: ${{ vars.CACHIX_CACHE_NAME }}
+
+jobs:
+  om-ci:
+    name: om ci (${{ matrix.system }})
+    strategy:
+      fail-fast: false
+      # system -> runner の対応だけがプロバイダ固有。omnix が各 system の全出力
+      # (packages/checks/darwin+nixos configs/home activationPackage) と、
+      # om.yaml の custom step (lint/gitleaks/generated-drift/nix-on-droid) を回す。
+      matrix:
+        include:
+          - system: x86_64-linux
+            runner: ubuntu-24.04
+          - system: aarch64-linux
+            runner: ubuntu-24.04-arm
+          - system: aarch64-darwin
+            runner: macos-14
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0 # gitleaks detect が全履歴を走査するため必須
+
+      - uses: ./.github/actions/setup-nix
+        with:
+          cachix-name: ${{ env.CACHIX_NAME }}
+          cachix-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+      # omnix 本体は om.cachix.org から取得 (--accept-flake-config)。ソースビルドしない。
+      - name: om ci run
+        run: |
+          nix --accept-flake-config run github:juspay/omnix/v1.3.2 -- \
+            ci run \
+            --systems "${{ matrix.system }}" \
+            --extra-access-tokens ${{ secrets.GITHUB_TOKEN }} \
+            -- --accept-flake-config
