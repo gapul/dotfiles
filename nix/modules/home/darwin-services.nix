@@ -13,13 +13,8 @@
   # Ollama.app のメニューバー常駐を、Nix版 ollama の LaunchAgent に置き換える。
   launchd.agents.ollama = {
     enable = true;
-    config = {
-      ProgramArguments = [
-        "${pkgs.ollama}/bin/ollama"
-        "serve"
-      ];
-      RunAtLoad = true;
-      KeepAlive = true;
+    # 起動仕様は nix/lib/ollama-agent.nix が SSO (macmini と共有)。差分だけ付ける。
+    config = (import ../../lib/ollama-agent.nix { inherit pkgs; }) // {
       ProcessType = "Background";
       StandardOutPath = "${config.home.homeDirectory}/Library/Logs/Ollama/ollama.log";
       StandardErrorPath = "${config.home.homeDirectory}/Library/Logs/Ollama/ollama.log";
