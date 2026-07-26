@@ -13,8 +13,11 @@
 let
   home = config.home.homeDirectory;
 
-  repository = "rclone:google-drive:restic-backup";
-  rcloneConf = "${home}/.config/rclone/rclone.conf";
+  # SSO: darwin 版 (restic-backup.nix) と共有。nix/lib/restic-common.nix が唯一の定義点。
+  common = import ../lib/restic-common.nix { inherit home; };
+
+  repository = common.repository;
+  rcloneConf = common.rcloneConf;
   passwordFile = config.sops.secrets."restic_password".path;
   logFile = "${home}/.local/state/restic/restic-backup.log";
 
@@ -78,9 +81,7 @@ let
       ${lib.concatStringsSep " " (map (p: "\"${p}\"") backupPaths)}
     rc=$?
 
-    restic forget --prune \
-      --keep-tag archive \
-      --keep-daily 7 --keep-weekly 4 --keep-monthly 6 || true
+    ${common.forgetInvocation}
 
     echo "==================== $(date '+%Y-%m-%d %H:%M:%S') backup done (rc=$rc) ===================="
     exit $rc
@@ -148,7 +149,10 @@ in
   home.packages = [ pkgs.restic ];
 
   # restic パスフレーズ (sops の defaultSopsFile = secrets/secrets.yaml に格納済み)
-  sops.secrets."restic_password".path = "${home}/.config/restic/password";
+  sops.secrets."restic_password".path = common.passwordFile;
+
+  # Justfile / 対話シェルが source する env (repo/password/rclone/archiveTag の SSO)。
+  home.file.".config/restic/env".text = common.envFileText;
 
   systemd.user.services = {
     restic-backup = mkService "restic 暗号化バックアップ" backupScript;
