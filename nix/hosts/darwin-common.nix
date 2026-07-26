@@ -42,8 +42,13 @@
     # 自前 attic バイナリキャッシュ (cache.gapul.net, homelab CT101)。tailnet 限定公開で
     # pull は public=無認証。cachix 代替(自前ホスト)。到達不可時は普通に cache.nixos.org に
     # フォールバックするだけなので tailnet 圏外でも実害なし。
-    if [ -f "$conf" ] && ! /usr/bin/grep -q 'cache.gapul.net' "$conf"; then
-      printf '\n# 自前 attic キャッシュ (homelab, tailnet 限定・pull 無認証)\nextra-substituters = https://cache.gapul.net/dotfiles\nextra-trusted-public-keys = dotfiles:NT1wKtaeu+7eOjVdIJlT3nqtXkT/dP27/DDsHuLaM5A=\n' >> "$conf"
+    # 公開鍵が変わりうる (Postgres 移行等で cache 再作成→鍵ローテーション) ため、
+    # 「最新鍵が無ければ旧 attic 行を除去してから追記」する冪等かつローテーション対応の形。
+    attic_key='dotfiles:SoCMyf1gy/bVdmkGJg/PtzwaArs3tbTIUWuWvsMuUl0='
+    if [ -f "$conf" ] && ! /usr/bin/grep -qF "$attic_key" "$conf"; then
+      /usr/bin/sed -i.bak '/# 自前 attic/d;/cache\.gapul\.net\/dotfiles/d;/extra-trusted-public-keys = dotfiles:/d' "$conf"
+      /bin/rm -f "$conf.bak"
+      printf '\n# 自前 attic キャッシュ (homelab, tailnet 限定・pull 無認証)\nextra-substituters = https://cache.gapul.net/dotfiles\nextra-trusted-public-keys = %s\n' "$attic_key" >> "$conf"
     fi
     # Determinate Nix already trusts FlakeHub as a substituter, but using it as an
     # active substituter without the matching credentials produces 401 warnings.

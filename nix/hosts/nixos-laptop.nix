@@ -77,7 +77,7 @@
     trusted-public-keys = [
       "hyprland.cachix.org-1:a7pgxzMz7+chwVL3/pzj6jIBMioiJM7ypFP8PwtkuGc="
       "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="
-      "dotfiles:NT1wKtaeu+7eOjVdIJlT3nqtXkT/dP27/DDsHuLaM5A="
+      "dotfiles:SoCMyf1gy/bVdmkGJg/PtzwaArs3tbTIUWuWvsMuUl0="
     ];
   };
 
