@@ -44,7 +44,7 @@ env:
   # GitHub Actions の nix store キャッシュのみで従来どおり回る (非破壊)。
   ATTIC_CACHE: ${{ vars.ATTIC_CACHE_NAME }}
   ATTIC_URL: ${{ vars.ATTIC_CACHE_URL }}
-  ATTIC_PUBLIC_KEY: dotfiles:NT1wKtaeu+7eOjVdIJlT3nqtXkT/dP27/DDsHuLaM5A=
+  ATTIC_PUBLIC_KEY: dotfiles:SoCMyf1gy/bVdmkGJg/PtzwaArs3tbTIUWuWvsMuUl0=
   # secret は step の if 条件で直接参照できないため env に写して gate に使う。
   TS_OAUTH_CLIENT_ID: ${{ secrets.TS_OAUTH_CLIENT_ID }}
   ATTIC_TOKEN: ${{ secrets.ATTIC_TOKEN }}
