@@ -29,6 +29,10 @@
     if [ -f "$conf" ] && ! /usr/bin/grep -q 'nix-community.cachix.org' "$conf"; then
       printf '\n# nix-community バイナリキャッシュ (trusted-user 付与でなく substituter 限定の最小権限)\nextra-substituters = https://nix-community.cachix.org\nextra-trusted-public-keys = nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs=\n' >> "$conf"
     fi
+    # nix-on-droid: proot-termux 等のプリビルドは公式 cachix からしか取得できない
+    if [ -f "$conf" ] && ! /usr/bin/grep -q 'nix-on-droid.cachix.org' "$conf"; then
+      printf '\n# nix-on-droid バイナリキャッシュ (droid 構成の eval/build 用)\nextra-substituters = https://nix-on-droid.cachix.org\nextra-trusted-public-keys = nix-on-droid.cachix.org-1:56snoMJTXmDRC1Ei24CmKoUqvHJ9XCp+nidK7qkMQrU=\n' >> "$conf"
+    fi
     # Determinate Nix already trusts FlakeHub as a substituter, but using it as an
     # active substituter without the matching credentials produces 401 warnings.
     if [ -f "$conf" ] && /usr/bin/grep -q 'cache.flakehub.com' "$conf"; then

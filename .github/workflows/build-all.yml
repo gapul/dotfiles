@@ -61,6 +61,27 @@ jobs:
           cachix-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
       - run: nix build "./nix#homeConfigurations.${{ matrix.configuration }}.activationPackage" --no-link --show-trace
 
+  nix-on-droid:
+    name: nix-on-droid (aarch64)
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: ./.github/actions/setup-nix
+        with:
+          cachix-name: ${{ env.CACHIX_NAME }}
+          cachix-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+      - name: Add nix-on-droid binary cache
+        # proot-termux 等のプリビルドは公式 cachix からしか取得できない
+        run: |
+          sudo tee -a /etc/nix/nix.conf >/dev/null <<'EOF'
+          extra-substituters = https://nix-on-droid.cachix.org
+          extra-trusted-public-keys = nix-on-droid.cachix.org-1:56snoMJTXmDRC1Ei24CmKoUqvHJ9XCp+nidK7qkMQrU=
+          EOF
+          sudo systemctl restart nix-daemon.service 2>/dev/null || true
+      # nix-on-droid は内部で builtins.storePath を使うため --impure が必要
+      - run: nix build --impure ./nix#nixOnDroidConfigurations.default.activationPackage --no-link --show-trace
+
   darwin:
     name: Darwin (${{ matrix.output }})
     strategy:
