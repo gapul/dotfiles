@@ -19,15 +19,15 @@
 #   read-write マウントから誤って削除されると致命的なので、マウントの可視範囲から
 #   除外 (--exclude) する。除外パスはマウント上に現れず、削除もできない。
 #
-# FUSE 実装は fuse-t (NFS バックエンド)。KEXT を使わないのでリカバリー/再起動不要。
-#   FSKit バックエンド (macFUSE 5.2 / fuse-t 1.2) は 2026 時点で書き込みに難 (空き容量 0
-#   報告で write 不可) があるため、read-write 共有には安定した NFS バックエンドを使う。
+# マウント方式は rclone nfsmount (rclone 内蔵 NFS サーバ + macOS 標準 NFS クライアント)。
+#   FUSE/KEXT/fuse-t を一切使わない完全 FOSS 方式。プロプライエタリな fuse-t 依存を排除。
+#   注意 (NFS 方式の癖): atime/mtime を個別に設定できず、Finder 閲覧で mtime が更新され
+#   rclone が丸ごと再アップロードすることがある。--read-only 時の書き込みは無警告で失敗。
 #   なお restic mount (アーカイブ閲覧) は bazil/fuse が macFUSE KEXT を直叩きするため
-#   fuse-t では不可。閲覧は just archive-ls / archive-find で代替する。
+#   この方式では不可。閲覧は just archive-ls / archive-find で代替する。
 #
 # 前提 (未了ならマウントはスキップされるだけで無害):
-#   1. fuse-t cask (tap: macos-fuse-t/cask)。KEXT 不要
-#   2. rclone google-drive: が有効 (token 失効時は再認証)
+#   1. rclone google-drive: が有効 (token 失効時は再認証)。追加ソフト/KEXT 不要
 let
   home = config.home.homeDirectory;
 
@@ -60,9 +60,10 @@ let
 
     echo "$(date '+%F %T') mount start" >>"${logFile}"
     # foreground 実行 (launchd が KeepAlive で管理)。restic リポジトリは除外して保護。
-    exec rclone mount "${remote}" "${mountPoint}" \
+    # rclone nfsmount: rclone 内蔵 NFS サーバ + macOS 標準 NFS クライアントでマウントし、
+    # FUSE/KEXT/fuse-t を一切使わない (完全 FOSS)。fuse-t 固有の -o/--volname は不要。
+    exec rclone nfsmount "${remote}" "${mountPoint}" \
       --config "${rcloneConf}" \
-      -o backend=nfs \
       --exclude "/restic-backup/**" \
       --exclude "/restic-archive/**" \
       --vfs-cache-mode full \
@@ -70,7 +71,6 @@ let
       --vfs-cache-max-age 168h \
       --dir-cache-time 72h \
       --poll-interval 1m \
-      --volname "GoogleDrive" \
       --log-file "${logFile}" \
       --log-level INFO
   '';

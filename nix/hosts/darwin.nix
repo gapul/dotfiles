@@ -76,7 +76,6 @@
       "finnvoor/tools"
       "gerlero/openfoam"
       "gapul/kdeconnect" # imshuhao/kdeconnect の fork。depends_on macos deprecated を修正済
-      "macos-fuse-t/cask" # fuse-t (KEXT-less FUSE。rclone mount 用)
       "lihaoyun6/tap" # QuickRecorder (画面レコーダー。homebrew/cask 未収録のため必須)
       "nikitabobko/tap"
       "osx-cross/arm" # QMK toolchain dependency tap
@@ -194,7 +193,6 @@
       "mos"
       "qlmarkdown"
       "corelocationcli"
-      "fuse-t" # KEXT-less FUSE (NFS バックエンド)。rclone mount ~/Cloud/GoogleDrive 用。KEXT/リカバリー不要
 
       # ─── Privacy / Security ───
       # Objective-See (Patrick Wardle) スイート — 全て無料・notarize 済み
