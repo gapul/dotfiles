@@ -4,21 +4,24 @@ name: Recovery ISO
 # ここは GitHub 固有の副作用 — artifact アップロードと provenance attestation —
 # だけを担うアダプタ。他プロバイダへ移す際はこのファイルごと差し替える。
 on:
+  # 復旧 ISO は自己完結 (installation-cd-minimal + hosts/recovery-iso.nix のみ、
+  # configs/scripts/共有モジュールに非依存)。ISO の中身に効くファイルだけに絞り、
+  # darwin/home/cask 等の変更では 6 分の ISO ビルドをスキップする。
   push:
     branches: [main]
     paths:
-      - 'nix/**'
-      - 'configs/**'
-      - 'secrets/**'
-      - 'scripts/**'
+      - 'nix/hosts/recovery-iso.nix'
+      - 'nix/flake.nix'
+      - 'nix/flake.lock'
+      - 'docs/NIXOS_RECOVERY.md'
       - '.github/actions/setup-nix/**'
       - '.github/workflows/recovery-iso.yml'
   pull_request:
     paths:
-      - 'nix/**'
-      - 'configs/**'
-      - 'secrets/**'
-      - 'scripts/**'
+      - 'nix/hosts/recovery-iso.nix'
+      - 'nix/flake.nix'
+      - 'nix/flake.lock'
+      - 'docs/NIXOS_RECOVERY.md'
       - '.github/actions/setup-nix/**'
       - '.github/workflows/recovery-iso.yml'
   workflow_dispatch:

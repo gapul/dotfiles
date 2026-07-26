@@ -53,7 +53,9 @@ jobs:
   om-ci:
     name: om ci (${{ matrix.system }})
     strategy:
-      fail-fast: false
+      # 1 system が落ちたら残りを即キャンセルして無駄な CI 時間/課金を抑える。
+      # 全 system の失敗を一度に見たいときは workflow_dispatch で cold-build を回す。
+      fail-fast: true
       # system -> runner の対応だけがプロバイダ固有。omnix が各 system の全出力
       # (packages/checks/darwin+nixos configs/home activationPackage) と、
       # om.yaml の custom step (lint/gitleaks/generated-drift/nix-on-droid) を回す。
