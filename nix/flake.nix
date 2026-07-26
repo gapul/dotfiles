@@ -174,6 +174,7 @@
             ./home/restic-backup.nix
             ./home/rclone-mount.nix
             ./home/maintenance.nix
+            ./home/git-hooks.nix # main 更新時に自動 rebuild する git hook (本体ツリーのみ)
           ]
           ++ secrets
           ++ [ ./home/mopidy.nix ]
