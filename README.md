@@ -132,7 +132,7 @@ curl -fsSL https://raw.githubusercontent.com/gapul/dotfiles/main/scripts/bootstr
     backup                       # warm バックアップを今すぐ実行 (launchd を kickstart) → ログ追尾 (Ctrl-C で追尾終了・backupは継続)
     backup-check                 # リポジトリ整合性検証 (restic check)
     backup-ls                    # 全スナップショット一覧 (Tags 列で warm / archive を区別)
-    gdrive cmd="status"          # 共有用 ~/Cloud/GoogleDrive マウント操作。`just gdrive`=状態 / `remount`=再マウント / `open`=Finderで開く
+    gdrive cmd="status"          # 旧 ~/Cloud/GoogleDrive 単一マウント (nix rclone-gdrive) は廃止済み。現行は手動 LaunchAgent 管理。
     restore snapshot dest="/"    # `just restore a81c9de1 ~/Restore`  指定先へ (構造を保って展開) [alias: unarchive]
 
     [掃除]
