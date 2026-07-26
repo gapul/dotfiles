@@ -77,6 +77,7 @@
       "gerlero/openfoam"
       "gapul/kdeconnect" # imshuhao/kdeconnect の fork。depends_on macos deprecated を修正済
       "macos-fuse-t/cask" # fuse-t (KEXT-less FUSE。rclone mount 用)
+      "lihaoyun6/tap" # QuickRecorder (画面レコーダー。homebrew/cask 未収録のため必須)
       "nikitabobko/tap"
       "osx-cross/arm" # QMK toolchain dependency tap
       "osx-cross/avr" # QMK / Keyball AVR toolchain tap
@@ -205,7 +206,6 @@
       "netiquette" # ライブ通信モニタ (どのプロセスがどこへ)
       "taskexplorer" # プロセス検査 (署名 / VirusTotal 照合)
       "whatsyoursign" # Finder 右クリックでコード署名表示
-      "kextviewr" # kernel extension ビューア
       "ransomwhere" # ランサムウェア (不審な暗号化挙動) 検知
       # VPN / 鍵
       "mullvad-vpn" # ノーログ匿名 VPN (self-host の WireGuard/Tailscale とは別レイヤ)
@@ -270,7 +270,7 @@
 
       # ─── Creative — Video / Animation / Stream ───
       "obs"
-      "kap" # オープンソース画面レコーダー (getkap.co)
+      "lihaoyun6/tap/quickrecorder" # 画面レコーダー (ScreenCaptureKit ネイティブ・Tahoe 対応)。旧 kap は Electron 製で約1.7年開発停滞のため乗り換え
       "gyroflow"
       "touchdesigner"
       "cavalry" # 2D モーショングラフィックス
