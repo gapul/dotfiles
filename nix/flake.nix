@@ -102,16 +102,10 @@
     let
       system = "aarch64-darwin";
 
-      # 上流 nixpkgs の一時的な破損を吸収する overlay。
-      # pre-commit 4.5.1 の test_output_isatty が GitHub の macos-14 ランナーで
-      # 決定的に落ちる (sandbox の isatty 挙動依存)。pytestCheckHook の
-      # disabledTests でその1テストだけ deselect する (他テストと build は温存。
-      # doCheck=false は pytestCheckPhase を止められず別環境で 127 を招くため不可)。
-      overlayFixes = _final: prev: {
-        pre-commit = prev.pre-commit.overridePythonAttrs (o: {
-          disabledTests = (o.disabledTests or [ ]) ++ [ "test_output_isatty" ];
-        });
-      };
+      # 上流 nixpkgs の一時的な破損を吸収する overlay (SSO: lib/overlays.nix)。
+      # nix-darwin システムの hosts/darwin-common.nix も同じものを import する
+      # (両方に当てないと darwin システム埋め込み home の pre-commit が素のまま)。
+      overlayFixes = import ./lib/overlays.nix;
 
       # standalone Home Managerで使う公式プロプライエタリCLIだけを限定許可。
       # nix-darwin側のpkgs設定とは別インスタンスなので、ここにも必要。
