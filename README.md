@@ -82,7 +82,18 @@ curl -fsSL https://raw.githubusercontent.com/gapul/dotfiles/main/scripts/bootstr
 
 <!-- BEGIN just-list -->
 ```text
-    default                      # デフォルト: タスク一覧 (定義順で表示)
+    default
+
+    [Build]
+    build-all *args              # Build every flake package available on this architecture
+    check-all *args              # Build every flake check available on this architecture
+    gen action="" a="" b=""      # List or compare system generations.
+    maintain                     # Update, upgrade, rebuild, and garbage-collect
+    rebuild                      # Rebuild the system and user configuration
+    recovery-iso                 # Build the non-destructive NixOS recovery ISO (Linux builder required)
+    rollback gen=""              # Roll back to the previous or selected system generation.
+    update *inputs               # Update flake inputs, then rebuild.
+    upgrade                      # Upgrade all package layers.
 
     [Windows]
     win-autostart-glazewm *flags # `*flags` で `-Unregister` (タスク削除) を渡せる
@@ -106,7 +117,7 @@ curl -fsSL https://raw.githubusercontent.com/gapul/dotfiles/main/scripts/bootstr
 
     [セットアップ]
     dev what=""                  # devShell (`just dev`=入室[shellcheck/statix 使用可] / `just dev install`=hook導入のみ[非対話])
-    docs                         # README の自動生成部を `just --list` から再生成
+    docs                         # レシピ/フック/alias を変えたらこれを実行。CI の乖離検知は check-generated.sh が担う。
     obsidian-snapshot            # Obsidian 設定を public dotfiles へ片方向スナップショット (追跡専用・vault→dotfiles)
     ssh host                     # remote-env を別ホストで使う
 
@@ -127,14 +138,6 @@ curl -fsSL https://raw.githubusercontent.com/gapul/dotfiles/main/scripts/bootstr
     [掃除]
     gc                           # 全レイヤー一括 GC (再生成可能なcacheのみ。Trashやホーム全体の削除は gc-deep)
     gc-deep                      # 重い再生成可能データを対話削除 (廃止caskのzap / CoreSimulator cache / podman / 古いbuild成果物)
-
-    [構築]
-    gen action="" a="" b=""      # システム世代の一覧/差分  (`just gen` = 一覧, `just gen diff [a] [b]` = 世代間パッケージ差分。sudo 不要)
-    maintain                     # update → upgrade → gc を一括実行
-    rebuild                      # システム + ユーザー再構築 (Mac/WSL/Win 自動判別、普段使い)
-    rollback gen=""              # 世代をロールバック (引数なし=直前へ, `just rollback 8` で世代番号指定。sudo)
-    update *inputs               # flake input 更新 → rebuild  (引数なし=全 input, `just update nixpkgs` で個別更新)
-    upgrade                      # 全レイヤーアップグレード (Mac/WSL/Win 自動判別)
 
     [確認]
     check what=""                # 型チェック / 差分表示  (`just check` = 構文型チェック, `just check diff` = 差分ビルド)
@@ -173,12 +176,16 @@ pre-commit フック・フォーマッタは `nix/flake.nix` で **宣言的に�
 
 **commit 時に自動実行されるフック**(`.git/hooks/pre-commit`):
 
-| フック | 対象 | 内容 |
-|---|---|---|
-| `nixfmt-rfc-style` | `*.nix` | 整形チェック(未整形なら fail) |
-| `deadnix` | `*.nix` | 未使用コード検出(モジュール引数 `{ lib, ... }` は許容) |
-| `shellcheck` | shell 全般 | lint(sketchybar 設定群と `.envrc` は除外) |
-| `gitleaks` | 全 staged | 機密 leak 検出 |
+以下は `nix/flake.nix` の `preCommit.hooks` から自動生成(フックを変えたら `just docs` で再生成)。
+
+<!-- BEGIN hooks -->
+| フック | 対象 | 除外 | 内容 |
+|---|---|---|---|
+| `deadnix` | `*.nix` | — | 未使用コード検出 (モジュール引数 `{ lib, ... }` は許容) |
+| `gitleaks` | 全 staged | — | 機密 leak 検出 |
+| `nixfmt` | `*.nix` | — | 整形チェック (未整形なら fail) |
+| `shellcheck` | 全 staged | `configs/wm/sketchybar/.*`、`\.envrc$`、`configs/macmini/bin/.*`、`configs/macmini/setup-scripts/.*` | shell lint (.shellcheckrc に従う) |
+<!-- END hooks -->
 
 メモ:
 - フックを編集するには `nix/flake.nix` の `preCommit.hooks` を変更 → `nix develop` で再生成

@@ -104,11 +104,12 @@
 
       # 上流 nixpkgs の一時的な破損を吸収する overlay。
       # pre-commit 4.5.1 の test_output_isatty が GitHub の macos-14 ランナーで
-      # 決定的に落ちる (sandbox の isatty 挙動依存)。ツールとして使うだけで
-      # テスト結果は不要なため checkPhase を無効化する (2026-07-26)。
+      # 決定的に落ちる (sandbox の isatty 挙動依存)。pytestCheckHook の
+      # disabledTests でその1テストだけ deselect する (他テストと build は温存。
+      # doCheck=false は pytestCheckPhase を止められず別環境で 127 を招くため不可)。
       overlayFixes = _final: prev: {
-        pre-commit = prev.pre-commit.overridePythonAttrs (_: {
-          doCheck = false;
+        pre-commit = prev.pre-commit.overridePythonAttrs (o: {
+          disabledTests = (o.disabledTests or [ ]) ++ [ "test_output_isatty" ];
         });
       };
 
@@ -375,6 +376,7 @@
                 systemPkgs.yq-go
                 systemPkgs.jq
                 systemPkgs.just
+                systemPkgs.python3 # scripts/gen-docs.py (doc 生成ブロック)
                 systemPkgs.bun
                 systemPkgs.check-jsonschema
                 systemPkgs.actionlint
