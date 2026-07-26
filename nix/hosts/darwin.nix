@@ -176,6 +176,7 @@
       # ─── Window / Keyboard / Input ───
       "aerospace"
       "alt-tab"
+      "jordanbaird-ice" # メニューバー管理 (手動DL版から cask 採用 2026-07-26)
       "karabiner-elements"
       "macskk"
       "gapul/azoo-key-skkserv/azoo-key-skkserv" # azooKey 変換エンジンの skkserv (gapul 自作 tap)
