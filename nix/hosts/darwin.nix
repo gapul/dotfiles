@@ -178,7 +178,7 @@
       # ─── Window / Keyboard / Input ───
       "aerospace"
       "alt-tab"
-      "jordanbaird-ice" # メニューバー管理 (手動DL版から cask 採用 2026-07-26)
+      "thaw" # メニューバー管理 (Ice の保守フォーク。本家 jordanbaird-ice は 0.11.12/2024-10 で開発停止し macOS Tahoe で起動不可 → Tahoe 対応の Thaw へ移行 2026-07-27。Ice 設定はインポート可)
       "karabiner-elements"
       "macskk"
       "gapul/azoo-key-skkserv/azoo-key-skkserv" # azooKey 変換エンジンの skkserv (gapul 自作 tap)
