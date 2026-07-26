@@ -1,24 +1,33 @@
 # gapul.net リバースプロキシ (Tailscale限定・LE証明書はCloudflare DNS-01)
-home.gapul.net {
+#
+# ── 共通スニペット (SSO) ──────────────────────────────────
+# 変更はここ1箇所で全サイトに反映される。デプロイ前に必ず `caddy validate` を通すこと。
+(tls_cf) {
 	tls {
 		dns cloudflare {env.CF_API_TOKEN}
 	}
+}
+
+# Docker 母艦 (192.168.116.65) への proxy。母艦 IP はこの1行が唯一の定義点。
+# 使い方: `import proxy65 <port>`  (IP が変わってもここだけ直せば全サービス追従)
+(proxy65) {
+	import tls_cf
+	reverse_proxy 192.168.116.65:{args[0]}
+}
+
+home.gapul.net {
+	import tls_cf
 	reverse_proxy 192.168.116.88:8123 {
 		header_up -X-Forwarded-For
 	}
 }
 
 dockge.gapul.net {
-	tls {
-		dns cloudflare {env.CF_API_TOKEN}
-	}
-	reverse_proxy 192.168.116.65:5001
+	import proxy65 5001
 }
 
 pve.gapul.net {
-	tls {
-		dns cloudflare {env.CF_API_TOKEN}
-	}
+	import tls_cf
 	reverse_proxy https://192.168.116.100:8006 {
 		transport http {
 			tls_insecure_skip_verify
@@ -27,98 +36,61 @@ pve.gapul.net {
 }
 
 dash.gapul.net {
-	tls {
-		dns cloudflare {env.CF_API_TOKEN}
-	}
-	reverse_proxy 192.168.116.65:3000
+	import proxy65 3000
 }
 
 status.gapul.net {
-	tls {
-		dns cloudflare {env.CF_API_TOKEN}
-	}
+	import tls_cf
 	reverse_proxy 192.168.116.53:3001
 }
 
 wud.gapul.net {
-	tls {
-		dns cloudflare {env.CF_API_TOKEN}
-	}
-	reverse_proxy 192.168.116.65:3002
+	import proxy65 3002
 }
 
-
 vault.gapul.net {
-	tls {
-		dns cloudflare {env.CF_API_TOKEN}
-	}
-	reverse_proxy 192.168.116.65:8080
+	import proxy65 8080
 }
 
 rss.gapul.net {
-	tls {
-		dns cloudflare {env.CF_API_TOKEN}
-	}
-	reverse_proxy 192.168.116.65:8081
+	import proxy65 8081
 }
 
 obsidian.gapul.net {
-	tls {
-		dns cloudflare {env.CF_API_TOKEN}
-	}
-	reverse_proxy 192.168.116.65:5984
+	import proxy65 5984
 }
 
 dav.gapul.net {
-	tls {
-		dns cloudflare {env.CF_API_TOKEN}
-	}
-	reverse_proxy 192.168.116.65:5232
+	import proxy65 5232
 }
 
 pdf.gapul.net {
-	tls {
-		dns cloudflare {env.CF_API_TOKEN}
-	}
-	reverse_proxy 192.168.116.65:8095
+	import proxy65 8095
 }
 
 paperless.gapul.net {
-	tls {
-		dns cloudflare {env.CF_API_TOKEN}
-	}
-	reverse_proxy 192.168.116.65:8097
+	import proxy65 8097
 }
 
 # Forgejo (GitHub 以外の自宅 git ホスト)。HTTPS git のみ。
 git.gapul.net {
-	tls {
-		dns cloudflare {env.CF_API_TOKEN}
-	}
-	reverse_proxy 192.168.116.65:3003
+	import proxy65 3003
 }
 
 # AdGuard Home 主系 (Raspberry Pi 4 / 制作用途で停止可)
 dns.gapul.net {
-	tls {
-		dns cloudflare {env.CF_API_TOKEN}
-	}
+	import tls_cf
 	reverse_proxy 192.168.116.53:3000
 }
 
 # AdGuard Home 副系 (.65 / 常時稼働フェイルオーバー先)
 dns2.gapul.net {
-	tls {
-		dns cloudflare {env.CF_API_TOKEN}
-	}
-	reverse_proxy 192.168.116.65:3080
+	import proxy65 3080
 }
 
 # Syncthing Web GUI (header_up Host は Syncthing の host チェック回避用)
 sync.gapul.net {
-	tls {
-		dns cloudflare {env.CF_API_TOKEN}
-	}
+	import tls_cf
 	reverse_proxy 192.168.116.65:8384 {
 		header_up Host {upstream_hostport}
 	}
@@ -126,33 +98,22 @@ sync.gapul.net {
 
 # ntfy (プッシュ通知。iOS即時通知のため server.yml に upstream-base-url=ntfy.sh 設定済)
 ntfy.gapul.net {
-	tls {
-		dns cloudflare {env.CF_API_TOKEN}
-	}
-	reverse_proxy 192.168.116.65:8082
+	import proxy65 8082
 }
 
 # ArchiveBox (Webアーカイブ。非公開・Tailscale内のみ。CSRF_TRUSTED_ORIGINS設定済)
 archive.gapul.net {
-	tls {
-		dns cloudflare {env.CF_API_TOKEN}
-	}
-	reverse_proxy 192.168.116.65:8000
+	import proxy65 8000
 }
 
 # Backrest (restic Web UI / スマホ閲覧用。Tailscale内のみ。Backrest自身も認証あり)
 backrest.gapul.net {
-	tls {
-		dns cloudflare {env.CF_API_TOKEN}
-	}
-	reverse_proxy 192.168.116.65:9898
+	import proxy65 9898
 }
 
 # restic バックアップの中身を read-only でプレビュー (Filebrowser)。
 # upstream は pve ホスト上の restic mount + Filebrowser (systemd)。詳細: configs/homelab/restic/README.md
 files.gapul.net {
-	tls {
-		dns cloudflare {env.CF_API_TOKEN}
-	}
+	import tls_cf
 	reverse_proxy 192.168.116.100:8082
 }
