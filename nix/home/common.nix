@@ -6,6 +6,10 @@
   agentSkills,
   ...
 }:
+let
+  # XDG 寄せ export の SSO (shell.nix の envExtra と共有)。
+  xdgEnv = import ../lib/shell-xdg-env.nix;
+in
 {
   imports = [
     nixIndexDatabase.homeModules.default
@@ -107,8 +111,7 @@
       export CLAUDE_CONFIG_DIR="$HOME/.config/claude"
       # Codex は XDG を直接分割参照しないため、公式の CODEX_HOME で
       # ~/.codex から XDG data/state 配下へ寄せる。
-      export CODEX_HOME="$HOME/.local/share/codex"
-      export CODEX_SQLITE_HOME="$HOME/.local/state/codex/sqlite"
+      ${xdgEnv.codex}
       # HISTFILE も .zshrc を読まない古い/GUI 起動シェルが ~/.zsh_history へ
       # 漏らさないよう、ガード無しの .zshenv で XDG パスを先に固定しておく。
       export HISTFILE="$HOME/.local/state/zsh/history"
@@ -116,9 +119,7 @@
       # 再生成してしまうため、ガード無しの .zshenv で先に固定しておく。
       export GNUPGHOME="$HOME/.local/share/gnupg"
       # npm も XDG 非対応の既定 (~/.npmrc / ~/.npm) を環境変数で固定する。
-      export NPM_CONFIG_USERCONFIG="$HOME/.config/npm/npmrc"
-      export NPM_CONFIG_CACHE="$HOME/.cache/npm"
-      export NPM_CONFIG_PREFIX="$HOME/.local/share/npm"
+      ${xdgEnv.npm}
       if [ -e /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]; then
         # nix-daemon.sh は ~/.nix-profile と新 profile が両方あると
         # "safely delete either" 警告を stderr に出す。両 symlink は意図的に

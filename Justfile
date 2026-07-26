@@ -818,8 +818,9 @@ win-fmt:
 #   重複排除・整合性検証・鍵を共有。共有用 ~/Cloud/GoogleDrive マウント操作もここに集約。
 # ─────────────────────────────────────────────
 
-# restic 環境 (warm/cold 共通)。$HOME は実行時に bash が展開する
-restic_env := 'export RESTIC_REPOSITORY="rclone:google-drive:restic-backup" RESTIC_PASSWORD_FILE="$HOME/.config/restic/password" RCLONE_CONFIG="$HOME/.config/rclone/rclone.conf"'
+# restic 環境 (warm/cold 共通)。値は nix が生成する ~/.config/restic/env が唯一のソース
+# (nix/lib/restic-common.nix)。RESTIC_ARCHIVE_TAG もここから来る。
+restic_env := 'source "$HOME/.config/restic/env"'
 
 # ── warm: 現役ファイル (日次自動。以下は手動操作) ──
 
@@ -859,7 +860,7 @@ archive path:
     echo "アーカイブ対象: $src ($sz)"
     read -rp "restic へ退避後ローカルを削除します。続行? (y/N) " a
     [[ "$a" == [yY] ]] || { echo "中止"; exit 0; }
-    if restic backup --tag archive "$src"; then
+    if restic backup --tag "$RESTIC_ARCHIVE_TAG" "$src"; then
       echo "✓ 退避完了 (--tag archive・永久保持)。ローカルを削除します。"
       rm -rf "$src"
       echo "✓ ローカル削除: $src"
@@ -872,18 +873,18 @@ archive path:
 # アーカイブ (--tag archive) の snapshot 一覧 (ID / 日付 / 元パス)
 [group('バックアップ')]
 archive-ls:
-    @{{restic_env}}; restic snapshots --tag archive
+    @{{restic_env}}; restic snapshots --tag "$RESTIC_ARCHIVE_TAG"
 
 # アーカイブの総容量・ファイル数
 [group('バックアップ')]
 archive-stats:
-    @{{restic_env}}; restic stats --tag archive
+    @{{restic_env}}; restic stats --tag "$RESTIC_ARCHIVE_TAG"
 
 # アーカイブ内をファイル名で検索 (restic find・FUSE不要)。どの snapshot に在るか分かる。
 # 例: `just archive-find "*.psd"` / `just archive-find old-project`
 [group('バックアップ')]
 archive-find pattern:
-    @{{restic_env}}; restic find --tag archive "{{pattern}}"
+    @{{restic_env}}; restic find --tag "$RESTIC_ARCHIVE_TAG" "{{pattern}}"
 
 # ── 共通: 復元 / 共有マウント ──
 
@@ -900,15 +901,24 @@ restore snapshot dest="/":
 
 alias unarchive := restore
 
-# 共有用 ~/Cloud/GoogleDrive マウント操作。`just gdrive`=状態 / `remount`=再マウント / `open`=Finderで開く
+# 共有用 GoogleDrive マウント操作 (personal/school 別マウント)。`just gdrive`=状態 / `open`=Finderで開く
+# 旧 ~/Cloud/GoogleDrive 単一マウント (nix rclone-gdrive) は廃止済み。現行は手動 LaunchAgent 管理。
 [group('バックアップ')]
 gdrive cmd="status":
     #!/usr/bin/env bash
     set -euo pipefail
-    mp="$HOME/Cloud/GoogleDrive"
+    mounts=("$HOME/Cloud/GoogleDrive-personal" "$HOME/Cloud/GoogleDrive-school")
     case "{{cmd}}" in
-      status)  mount | grep -q " $mp " && echo "✓ マウント中: $mp" || echo "✗ 未マウント: $mp" ;;
-      remount) launchctl kickstart -k "gui/$(id -u)/org.nix-community.home.rclone-gdrive" && echo "→ 再マウント要求 (数秒後 just gdrive で確認)" ;;
-      open)    open "$mp" ;;
-      *)       echo "usage: just gdrive [status|remount|open]" >&2; exit 2 ;;
+      status)
+        for mp in "${mounts[@]}"; do
+          mount | grep -q " $mp " && echo "✓ マウント中: $mp" || echo "✗ 未マウント: $mp"
+        done ;;
+      open)
+        for mp in "${mounts[@]}"; do [ -d "$mp" ] && open "$mp" || echo "✗ 未マウント: $mp" >&2; done ;;
+      remount)
+        echo "personal/school マウントは手動 LaunchAgent 管理 (nix 未宣言)。" >&2
+        echo "rclone remote (google-drive-personal/-school) 作成後に手動で再マウントしてください。" >&2
+        echo "参照: nix/home/rclone-mount.nix の廃止コメント。" >&2
+        exit 1 ;;
+      *)       echo "usage: just gdrive [status|open|remount]" >&2; exit 2 ;;
     esac

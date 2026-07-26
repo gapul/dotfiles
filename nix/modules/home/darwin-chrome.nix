@@ -127,7 +127,7 @@ in
     source = ../../../configs/wm/sketchybar;
     recursive = true;
   };
-  # sketchybar の色は nix/lib/rose-pine.nix から生成 (静的 colors.sh は廃止)。
+  # sketchybar の色は nix/lib/theme.nix から生成 (静的 colors.sh は廃止)。
   # 他の sketchybar スクリプトは従来どおり $WHITE 等でこれを source する。
   home.file.".config/sketchybar/colors.sh".text = ''
     #!/bin/bash
@@ -231,12 +231,12 @@ in
     };
   };
 
-  # sioyek: 色は nix/lib/rose-pine.nix から生成 (hex→0-1 float は lib/hex-rgb.nix)。
+  # sioyek: 色は nix/lib/theme.nix から生成 (hex→0-1 float は lib/hex-rgb.nix)。
   # macOS の sioyek は ~/Library/Application Support/sioyek/ を config dir に使う
   # (XDG 非対応)。prefs_user.config がユーザ上書き設定。sioyek 自身は auto.config/
   # db を同 dir に書くが prefs_user.config は読むだけなので store symlink で問題なし。
   home.file."Library/Application Support/sioyek/prefs_user.config".text = ''
-    # Rosé Pine — generated from nix/lib/rose-pine.nix
+    # Rosé Pine — generated from nix/lib/theme.nix
     # UI chrome
     background_color ${rgb c.base}
     status_bar_color ${rgb c.surface}

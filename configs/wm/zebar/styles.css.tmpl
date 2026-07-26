@@ -37,7 +37,7 @@
 body {
   /* テキストは可読性優先 (HackGen 系 → M+Code Nerd → SF Pro)。
      Nerd Symbols は `i` 要素で別フォント指定するので body は通常テキスト系で OK。 */
-  font-family: 'HackGen Console NF', 'M+CodeLat50NerdFont',
+  font-family: '{{ font.mono }}', 'M+CodeLat50NerdFont',
                'JetBrainsMono Nerd Font', 'SF Pro Display',
                'Yu Gothic UI', ui-monospace, sans-serif;
   font-size: var(--font-size);
@@ -65,7 +65,7 @@ i {
   /* HackGen Console NF は Nerd Font 版で icon glyph 含むので 1st で OK。
      M+Code / JetBrainsMono Nerd / Symbols Nerd Font に fallback。
      大きめ + 縦中央寄せで視認性確保。 */
-  font-family: 'HackGen Console NF', 'M+CodeLat50NerdFont',
+  font-family: '{{ font.mono }}', 'M+CodeLat50NerdFont',
                'M+CodeLat60NerdFont', 'JetBrainsMono Nerd Font',
                'Symbols Nerd Font Mono', monospace;
   font-style: normal;
