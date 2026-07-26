@@ -6,6 +6,12 @@
 
   nixpkgs.config.allowUnfree = true;
 
+  # 上流 nixpkgs の一時破損を吸収する overlay (SSO: flake.nix の mkPkgs と共有)。
+  # useGlobalPkgs で埋め込み home-manager もこの pkgs を使うため、これが無いと
+  # darwin システムの pre-commit が素のまま → om ci(aarch64-darwin) で isatty 破損再発。
+  # darwin.nix 側の brewNix overlay とはリスト連結でマージされる。
+  nixpkgs.overlays = [ (import ../lib/overlays.nix) ];
+
   # Determinate Nix が daemon/nix.conf を管理しているので nix-darwin は触らない
   nix.enable = false;
 
