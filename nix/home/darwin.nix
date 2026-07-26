@@ -39,6 +39,24 @@
   home.file.".config/homebrew".source =
     config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.homebrew";
 
+  # XDG 非対応ツールの実データを XDG 配下へ移し、既定パスは symlink で維持する
+  # (terminfo と同方式)。分類: 資格情報/長期データ=data、テレメトリ状態=state。
+  home.file.".appstoreconnect".source =
+    config.lib.file.mkOutOfStoreSymlink "${config.xdg.dataHome}/appstoreconnect";
+  home.file.".cloudflared".source =
+    config.lib.file.mkOutOfStoreSymlink "${config.xdg.dataHome}/cloudflared";
+  home.file.".ollama".source = config.lib.file.mkOutOfStoreSymlink "${config.xdg.dataHome}/ollama";
+  home.file.".dart-tool".source =
+    config.lib.file.mkOutOfStoreSymlink "${config.xdg.stateHome}/dart-tool";
+  # symlink 先が無いとツールの書き込みが ENOENT になるため実体を先に確保
+  home.activation.xdgSymlinkTargets = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    /bin/mkdir -p \
+      "${config.xdg.dataHome}/appstoreconnect" \
+      "${config.xdg.dataHome}/cloudflared" \
+      "${config.xdg.dataHome}/ollama" \
+      "${config.xdg.stateHome}/dart-tool"
+  '';
+
   home.sessionPath = [
     "/opt/homebrew/bin"
     "/opt/homebrew/sbin"
