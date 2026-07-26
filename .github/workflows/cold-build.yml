@@ -1,8 +1,10 @@
 name: Cold reproducibility build
 
+# GitHub/Cachix キャッシュを一切復元せず om ci を回し、全出力がソースから
+# 再現ビルドできるかを週次で確認する。対象リストは om.yaml + flake が単一の真実。
 on:
   schedule:
-    # Every Saturday at 03:00 JST. No restored GitHub/Cachix cache is used.
+    # 毎週土曜 03:00 JST = 前日 18:00 UTC
     - cron: '0 18 * * 5'
   workflow_dispatch:
 
@@ -11,28 +13,30 @@ permissions:
 
 jobs:
   cold-build:
-    name: Cold build (${{ matrix.output }})
+    name: Cold om ci (${{ matrix.system }})
     strategy:
       fail-fast: false
       matrix:
         include:
-          - runner: macos-14
-            output: darwin
-            command: nix build "./nix#darwinConfigurations.$(nix eval --raw -f ./nix/user.nix username).system" --no-link --show-trace
-          - runner: ubuntu-24.04
-            output: nixos
-            command: nix build ./nix#nixosConfigurations.nixos-laptop-ci.config.system.build.toplevel --no-link --show-trace
-          - runner: ubuntu-24.04
-            output: recovery-iso
-            command: nix build ./nix#recovery-iso --no-link --show-trace
-          - runner: ubuntu-24.04-arm
-            output: linux-aarch64-home
-            command: nix build ./nix#homeConfigurations.gapul-linux-aarch64.activationPackage --no-link --show-trace
+          - system: x86_64-linux
+            runner: ubuntu-24.04
+          - system: aarch64-linux
+            runner: ubuntu-24.04-arm
+          - system: aarch64-darwin
+            runner: macos-14
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0 # gitleaks detect が全履歴を走査するため必須
       - uses: ./.github/actions/setup-nix
         with:
-          use-github-cache: 'false'
-      - run: ${{ matrix.command }}
+          use-github-cache: 'false' # cachix / GitHub キャッシュを渡さず cold build
+      - name: om ci run (no restored cache)
+        run: |
+          nix --accept-flake-config run github:juspay/omnix/v1.3.2 -- \
+            ci run \
+            --systems "${{ matrix.system }}" \
+            --extra-access-tokens ${{ secrets.GITHUB_TOKEN }} \
+            -- --accept-flake-config

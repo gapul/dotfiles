@@ -17,13 +17,10 @@
 
 set -euo pipefail
 
-log() { printf '\033[1;34m[bootstrap]\033[0m %s\n' "$*"; }
-err() { printf '\033[1;31m[bootstrap]\033[0m %s\n' "$*" >&2; }
-
-# Fork した時はこの URL を自分の repo に変える(or nix/user.nix の dotfilesRepo を参照)
-DOTFILES_REPO="${DOTFILES_REPO:-https://github.com/gapul/dotfiles.git}"
-DOTFILES_DIR="$HOME/.dotfiles"
-SOPS_KEY="$HOME/.config/sops/age/keys.txt"
+# 定数 (DOTFILES_REPO/DIR, SOPS_KEY, SSH_*, Nix ref 等)・ログ関数・鍵受け取り・
+# Nix install は scripts/lib/common.sh に集約。Fork 時の repo URL 変更もそこ1箇所。
+# shellcheck source=lib/common.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/common.sh"
 
 # 1. Xcode CLT
 if ! xcode-select -p >/dev/null 2>&1; then
@@ -36,28 +33,8 @@ if ! xcode-select -p >/dev/null 2>&1; then
 fi
 log "Xcode CLT OK"
 
-# 2. Determinate Nix
-if ! command -v nix >/dev/null && [ ! -x /nix/var/nix/profiles/default/bin/nix ]; then
-  log "Installing Determinate Nix..."
-  installer=$(mktemp)
-  trap 'rm -f "$installer"' EXIT
-  # immutable version URL + audited SHA-256。配布スクリプト自身がNixバイナリも検証する。
-  installer_url=https://install.determinate.systems/nix/tag/v3.21.8
-  installer_sha=efda20b2cc3a012ea750d670e74670c155da3c291bc1021c5951a2310cbf2647
-  curl --proto '=https' --tlsv1.2 -fsSL "$installer_url" -o "$installer"
-  printf '%s  %s\n' "$installer_sha" "$installer" | shasum -a 256 -c -
-  sh "$installer" install --no-confirm
-  rm -f "$installer"
-  trap - EXIT
-  . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
-else
-  log "Determinate Nix already installed"
-fi
-
-# Ensure nix in PATH for the rest of this script
-if ! command -v nix >/dev/null; then
-  export PATH="/nix/var/nix/profiles/default/bin:$PATH"
-fi
+# 2. Determinate Nix (mac は plan 引数なし。install + PATH 確保まで common 側)
+install_nix
 
 # 2.5. /nix ボリュームを起動序盤に確実にマウントさせる (Login Items 対策)
 #
@@ -97,67 +74,29 @@ if grep -q "noauto" /etc/fstab 2>/dev/null; then
 fi
 
 # 3. dotfiles clone
-if [ ! -d "$DOTFILES_DIR/.git" ]; then
-  log "Cloning dotfiles..."
-  git clone "$DOTFILES_REPO" "$DOTFILES_DIR"
-else
-  log "dotfiles already present, pulling..."
-  git -C "$DOTFILES_DIR" pull --rebase
-fi
+ensure_dotfiles
 
 # 4. age 秘密鍵
-if [ ! -f "$SOPS_KEY" ]; then
-  mkdir -p "$(dirname "$SOPS_KEY")"
-  chmod 700 "$(dirname "$SOPS_KEY")"
-  err "age 秘密鍵が見つかりません:"
-  err "  Bitwarden 等で保管している自分の age 秘密鍵を、"
-  err "  Notes の中身を $SOPS_KEY に貼り付けて save してください。"
-  err "  終わったら本スクリプトを再実行 (それ以降から resume)."
-  exit 1
-fi
-chmod 600 "$SOPS_KEY"
-log "SOPS age key OK"
+require_age_key
 
 # 4.5. SSH 秘密鍵 (clone は HTTPS で済むが、commit 署名 / 将来の SSH push に必要)
-SSH_PRIV="$HOME/.ssh/id_ed25519"
-SSH_PUB="$HOME/.ssh/id_ed25519.pub"
-SSH_ALLOWED="$HOME/.ssh/allowed_signers"
-if [ ! -f "$SSH_PRIV" ]; then
-  mkdir -p "$HOME/.ssh"
-  chmod 700 "$HOME/.ssh"
-  err "SSH 秘密鍵 ($SSH_PRIV) が見つかりません:"
-  err "  Bitwarden 等で保管している自分の ed25519 秘密鍵を貼り付けて save、"
-  err "  終わったら 'chmod 600 $SSH_PRIV' してから本スクリプトを再実行."
-  exit 1
-fi
-chmod 600 "$SSH_PRIV"
-# .pub を秘密鍵から再生成 (古い不整合 .pub 残骸対策)
-ssh-keygen -y -f "$SSH_PRIV" > "$SSH_PUB"
-chmod 644 "$SSH_PUB"
-# allowed_signers (git の SSH 署名検証用)
-if [ ! -f "$SSH_ALLOWED" ]; then
-  EMAIL=$(nix eval --raw -f "$DOTFILES_DIR/nix/user.nix" gitEmail 2>/dev/null || echo "92638132+gapul@users.noreply.github.com")
-  echo "$EMAIL $(awk '{print $1, $2}' "$SSH_PUB")" > "$SSH_ALLOWED"
-  chmod 600 "$SSH_ALLOWED"
-fi
-log "SSH key + allowed_signers OK"
+require_ssh_key
 
 # 5. system 設定 (sudo パスワード要)
 log "darwin-rebuild switch (sudo パスワード入力あり)..."
-sudo nix run nix-darwin/nix-darwin-26.05 -- switch --flake "$DOTFILES_DIR/nix#$(whoami)"
+sudo nix run "$NIX_DARWIN_REF" -- switch --flake "$DOTFILES_DIR/nix#$(whoami)"
 
 # 6. 第三者 tap の cask 信頼
-log "Trusting third-party brew taps..."
-# NOTE: この一覧は nix/hosts/darwin.nix の homebrew.taps と一致させること
-for tap in deskflow/tap felixkratz/formulae finnvoor/tools gerlero/openfoam \
-           gapul/kdeconnect nikitabobko/tap pear-devs/pear voicevox/voicevox \
-           gapul/openutau gapul/zrythm gapul/azoo-key-skkserv; do
-  brew trust "$tap" 2>/dev/null || true
-done
+#    一覧は darwin.nix の homebrew.taps から nix eval で取得 → 宣言と常に一致
+#    (手書きコピーはドリフトするため廃止)。
+log "Trusting third-party brew taps (darwin.nix と自動同期)..."
+while IFS= read -r tap; do
+  [ -n "$tap" ] && { brew trust "$tap" 2>/dev/null || true; }
+done < <(darwin_taps; echo)
 
 # 7. home-manager switch (ユーザー権限で実行、sudo 禁止)
 log "home-manager switch..."
-nix run home-manager/release-26.05 -- switch --flake "$DOTFILES_DIR/nix#$(whoami)" -b backup
+nix run "$HOME_MANAGER_REF" -- switch --flake "$DOTFILES_DIR/nix#$(whoami)" -b backup
 
 # 8. brew 重複の uninstall (Nix 管理に移行済のもの)
 log "Cleaning duplicates installed by both brew and Nix..."
@@ -175,7 +114,7 @@ fi
 
 # 11. SKK 公開辞書を ~/.skk/ に install (skkeleton 用)
 log "Installing SKK public dictionaries..."
-bash "$DOTFILES_DIR/scripts/install-skk-dicts.sh" || true
+bash "$DOTFILES_DIR/scripts/install-skk-dicts-macskk.sh" || true
 
 # 12. gh auth (ブラウザ認証、未済なら起動)。SSH 鍵管理用 scope も要求
 GH_SCOPES="admin:public_key,admin:ssh_signing_key"

@@ -11,6 +11,12 @@
 
 set -euo pipefail
 
+# ログ / DEFAULT_GIT_EMAIL は共有ライブラリから。
+# shellcheck disable=SC2034  # source 後に common.sh が参照する
+COMMON_LOG_LABEL="sync-rsync"
+# shellcheck source=lib/common.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/common.sh"
+
 if [[ $# -lt 1 ]]; then
   echo "Usage: $0 <user@host> [--full]" >&2
   exit 1
@@ -18,11 +24,9 @@ fi
 
 HOST="$1"
 MODE="${2:-minimal}"
-SRC="$HOME/.dotfiles/configs"
-EMAIL="${GIT_EMAIL:-92638132+gapul@users.noreply.github.com}"
+SRC="$DOTFILES_DIR/configs"
+EMAIL="${GIT_EMAIL:-$DEFAULT_GIT_EMAIL}"
 NAME="${GIT_NAME:-gapul}"
-
-log() { printf '\033[1;34m[sync-rsync]\033[0m %s\n' "$*"; }
 
 # 1. nvim 設定 (必須)
 log "rsync nvim → $HOST:~/.config/nvim/"
