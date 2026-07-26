@@ -118,6 +118,9 @@
     syncthing # Syncthing CLI (常駐は services.syncthing の LaunchAgent)
     xcodegen # project.yml → .xcodeproj 生成 (Mac 専用、Linux nixpkgs では meta.platforms = darwin のため)
     (callPackage ../pkgs/slk.nix { }) # Slack TUI (公式 GitHub Release を固定)
+    # zrythm (DAW): nixpkgs では broken=isDarwin。carla 込みで darwin 向けに自前ビルド。
+    # 詳細は pkgs/zrythm-darwin/ 参照。GUI は前面 GUI セッションでの起動が必要。
+    (import ../pkgs/zrythm-darwin { inherit pkgs; })
   ];
 
   home.file.".config/ghostty" = {
