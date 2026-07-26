@@ -5,3 +5,14 @@
 [flavor]
 dark = "rose-pine"
 light = "rose-pine-dawn"
+
+# ── 半透明化 ──
+# flavor は overall 背景を不透明な base 色 (#191724 等) で塗るため ghostty の
+# background-opacity / blur が yazi 内で潰れる。theme.toml は flavor の上に
+# マージされるので、全体とステータスの背景だけ "reset" (端末デフォルト=透過) で
+# 上書きし、配色はそのまま端末の半透明を透かす。
+[app]
+overall = { bg = "reset" }
+
+[status]
+overall = { bg = "reset" }
