@@ -1,8 +1,6 @@
 # Packages component (ECS: profile)。単発 CLI ツール群 (programs.* 対象外、OS 非依存)。
 {
-  config,
   pkgs,
-  lib,
   ...
 }:
 let
