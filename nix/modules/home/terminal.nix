@@ -1,5 +1,6 @@
 # Terminal component (ECS: profile)。zellij + テーマ生成 + ghostty terminfo。
 {
+  config,
   pkgs,
   lib,
   ...
@@ -32,9 +33,14 @@ in
   # ZLE が端末能力を誤解して入力が壊れる (macmini で実害あり 2026-07-19)。
   # pkgs.ghostty は darwin unsupported のため infocmp ダンプを vendoring して
   # activation 時に tic でコンパイルする。
+  # 実データは XDG data 配下に置き、互換パス ~/.terminfo は symlink で維持する
+  # (ssh 先や GUI が TERMINFO_DIRS 無しでも読める最大互換を保ったまま XDG 化)。
   home.activation.ghosttyTerminfo = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    run ${pkgs.ncurses}/bin/tic -x -o "$HOME/.terminfo" ${../../../configs/terminals/ghostty/xterm-ghostty.terminfo}
+    run /bin/mkdir -p "${config.xdg.dataHome}/terminfo"
+    run ${pkgs.ncurses}/bin/tic -x -o "${config.xdg.dataHome}/terminfo" ${../../../configs/terminals/ghostty/xterm-ghostty.terminfo}
   '';
+  home.file.".terminfo".source =
+    config.lib.file.mkOutOfStoreSymlink "${config.xdg.dataHome}/terminfo";
 
   # dotfiles/configs/* を symlink (OS 非依存なものだけ。Mac 専用 = aerospace/sketchybar/karabiner は home/darwin.nix へ)
   home.file.".config/zellij" = {

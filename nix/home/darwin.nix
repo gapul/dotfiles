@@ -22,8 +22,9 @@
     # NOTE: brew の trust.json は XDG 化不可。activation の brew bundle は
     # `sudo --preserve-env=PATH --set-home` で XDG_CONFIG_HOME を剥がし必ず ~/.homebrew を読む。
     # かつ brew は XDG_CONFIG_HOME を HOMEBREW_USER_CONFIG_HOME より優先するため、対話シェルの
-    # 素の trust は ~/.config/homebrew に逸れる。Justfile rebuild が `env -u XDG_CONFIG_HOME` で
-    # ~/.homebrew に揃えて書くことで一致させる ([[project_homebrew_trust_sudo]])。
+    # 素の trust は ~/.config/homebrew に逸れて二重化していた。下の
+    # `.config/homebrew → ~/.homebrew` symlink で両経路が同一実体に収束する
+    # (Justfile rebuild の `env -u XDG_CONFIG_HOME` は無害なので温存)。
     PNPM_HOME = "${config.home.homeDirectory}/Library/pnpm";
     # nh: darwin は darwinConfigurations.<user> 形式で可。home は nh 4.3.2 だと
     # #名前/#...activationPackage どちらも不可 → flake のみ(#なし)にして user 名で
@@ -31,6 +32,12 @@
     NH_DARWIN_FLAKE = "${config.home.homeDirectory}/.dotfiles/nix#darwinConfigurations.${user.username}";
     NH_HOME_FLAKE = "${config.home.homeDirectory}/.dotfiles/nix";
   };
+
+  # brew trust.json の二重化解消: 対話シェル (XDG_CONFIG_HOME 優先で
+  # ~/.config/homebrew を読む) と sudo/rebuild 経路 (~/.homebrew) を
+  # symlink で同一実体に収束させる。正は ~/.homebrew (sudo 側は XDG を見ない)。
+  home.file.".config/homebrew".source =
+    config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.homebrew";
 
   home.sessionPath = [
     "/opt/homebrew/bin"
