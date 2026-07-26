@@ -1,16 +1,10 @@
 name: Set up Nix
-description: Install Nix and enable the shared GitHub/Cachix build caches
+description: Install Nix and enable the GitHub Actions build cache
 
 inputs:
   use-github-cache:
     description: Restore and save the GitHub Actions Nix store cache
     default: 'true'
-  cachix-name:
-    description: Optional Cachix cache name
-    default: ''
-  cachix-token:
-    description: Optional Cachix write token
-    default: ''
 
 runs:
   using: composite
@@ -30,10 +24,3 @@ runs:
         purge-created: 0
         purge-last-accessed: 0
         purge-primary-key: never
-
-    - name: Enable optional Cachix
-      if: inputs.cachix-name != ''
-      uses: cachix/cachix-action@97e5ff84d02b3b4f9936339f767e17f03c9252ed # v16
-      with:
-        name: ${{ inputs.cachix-name }}
-        authToken: ${{ inputs.cachix-token }}
