@@ -1,0 +1,4 @@
+{
+  "$comment": "Single source of truth for font families. palettes.json と同じく Mac の nix と Windows の theme/apply.ps1 の両方が読む。apply.ps1 は tmpl 内の {{ font.mono }} を値で置換する。fallback 連鎖はツール毎に正当に異なるため各 config が持つ (ここは主フォント名のみ)。フォント切替時はここ1箇所 + Mac 側 configs/terminals/ghostty/config を合わせる。",
+  "mono": "HackGen Console NF"
+}
