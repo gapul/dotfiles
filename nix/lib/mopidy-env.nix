@@ -5,12 +5,12 @@
 # nixpkgs 素の mopidy-ytmusic / mopidy-mpd / mopidy-listenbrainz は現行 YouTube/rmpc に
 # 対し不足があるため、configs/media/mopidy/*.py のビルド時パッチを焼き込む。
 # 新しいパッチを足したら、対象拡張の patch リストに追記するだけでよい。
-{ pkgs }:
+# patchDir は別リポジトリ gapul/mopidy-rmpc-patches (flake input mopidy-patches)。
+{ pkgs, patchDir }:
 let
   inherit (pkgs) lib;
   py = pkgs.python3;
   toM = py.pkgs.toPythonModule;
-  patchDir = ../../configs/media/mopidy;
 
   # 拡張に postPatch として python パッチ群を順に当てる
   mkPatched =
