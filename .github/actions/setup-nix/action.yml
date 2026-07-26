@@ -1,26 +1,14 @@
 name: Set up Nix
-description: Install Nix and enable the GitHub Actions build cache
+description: Install Nix (Determinate)
 
-inputs:
-  use-github-cache:
-    description: Restore and save the GitHub Actions Nix store cache
-    default: 'true'
+# 注記: 以前は nix-community/cache-nix-action で GitHub Actions の nix store を
+# キャッシュしていたが、Determinate nix-installer が /nix/store を先に書き込むため
+# tar 復元が "Cannot mkdir" で全滅し、実質ゼロ復元 + 840MB の無駄 DL になっていた。
+# ビルドキャッシュは自前 attic (cache.gapul.net) に一本化した (ci.yml で substituter
+# 追加 + watch-store push)。詳細は memory homelab-attic-cache 参照。
 
 runs:
   using: composite
   steps:
     - name: Install Nix
       uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
-
-    - name: Cache Nix store in GitHub Actions
-      if: inputs.use-github-cache == 'true'
-      uses: nix-community/cache-nix-action@d8cff2f74b9341e0d90fbf3c0c0212a161ceaef6 # v6
-      with:
-        primary-key: nix-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('nix/flake.lock') }}
-        restore-prefixes-first-match: nix-${{ runner.os }}-${{ runner.arch }}-
-        gc-max-store-size-macos: 6G
-        purge: true
-        purge-prefixes: nix-${{ runner.os }}-${{ runner.arch }}-
-        purge-created: 0
-        purge-last-accessed: 0
-        purge-primary-key: never
