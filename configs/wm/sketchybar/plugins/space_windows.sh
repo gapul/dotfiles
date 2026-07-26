@@ -89,31 +89,38 @@ if [ "$SENDER" = "aerospace_workspace_change" ]; then
   # if [ "$AEROSPACE_FOCUSED_WORKSPACE" -gt 3 ]; then
   #   sketchybar --animate sin 10 --set space.$AEROSPACE_FOCUSED_WORKSPACE display=1
   # fi
-  ## 全ワークスペースの "希望 display" を連想配列で組み立てる (後勝ち = focused 優先)
-  declare -A want
+  ## 全ワークスペースの "希望 display / drawing" を連想配列で組み立てる (後勝ち = focused 優先)
+  #   空のワークスペースは drawing=off で非表示にする (display=0 では消えない)。
+  declare -A want_disp
+  declare -A want_draw
   for m in $(aerospace list-monitors | awk '{print $1}'); do
     sb_d=$(aero_to_sb "$m")
     for i in $(aerospace list-workspaces --monitor $m --empty no); do
-      want[$i]=$sb_d
+      want_disp[$i]=$sb_d
+      want_draw[$i]=on
     done
     for i in $(aerospace list-workspaces --monitor $m --empty); do
-      want[$i]=0
+      want_disp[$i]=$sb_d
+      want_draw[$i]=off
     done
   done
   # focused workspace は空でも表示する (上書き)
-  want[$AEROSPACE_FOCUSED_WORKSPACE]=$SB_FOCUSED_DISPLAY
+  want_disp[$AEROSPACE_FOCUSED_WORKSPACE]=$SB_FOCUSED_DISPLAY
+  want_draw[$AEROSPACE_FOCUSED_WORKSPACE]=on
 
-  # workspace 昇順に展開
-  desired=$(for k in "${!want[@]}"; do echo "$k=${want[$k]}"; done | sort)
+  # workspace 昇順に展開 ("ws=display:drawing")
+  desired=$(for k in "${!want_disp[@]}"; do echo "$k=${want_disp[$k]}:${want_draw[$k]}"; done | sort)
 
   # 前回と同じなら何もしない (WindowServer 負荷削減)
   STATE_FILE=/tmp/sketchybar-space-display.state
   prev=$(cat "$STATE_FILE" 2>/dev/null)
   if [ "$desired" != "$prev" ]; then
     args=()
-    while IFS='=' read -r ws disp; do
+    while IFS='=' read -r ws val; do
       [ -z "$ws" ] && continue
-      args+=(--set space.$ws display=$disp)
+      disp=${val%%:*}
+      draw=${val##*:}
+      args+=(--set space.$ws display=$disp drawing=$draw)
     done <<< "$desired"
     if [ ${#args[@]} -gt 0 ]; then
       sketchybar "${args[@]}"

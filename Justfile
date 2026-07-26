@@ -168,12 +168,23 @@ _maintain-macos:
     set -euo pipefail
     maintenance_lock="$HOME/.local/state/dotfiles-maintenance.lock"
     mkdir -p "$HOME/.local/state"
-    mkdir "$maintenance_lock" 2>/dev/null || { echo "another dotfiles maintenance task is running" >&2; exit 1; }
+    if ! mkdir "$maintenance_lock" 2>/dev/null; then
+      # 保持者 PID が生きていれば本当に実行中。死んでいれば中断残骸なので奪う
+      # (mkdir だけのロックは SIGKILL / ビルド中断で必ず stale 化するため)。
+      holder=$(cat "$maintenance_lock/pid" 2>/dev/null || true)
+      if [ -n "$holder" ] && kill -0 "$holder" 2>/dev/null; then
+        echo "another dotfiles maintenance task is running (pid $holder)" >&2; exit 1
+      fi
+      echo "reclaiming stale maintenance lock (pid ${holder:-?} not running)" >&2
+      rm -rf "$maintenance_lock"
+      mkdir "$maintenance_lock" 2>/dev/null || { echo "failed to acquire maintenance lock" >&2; exit 1; }
+    fi
+    echo $$ > "$maintenance_lock/pid"
     just outdated
     lock="{{flake}}/flake.lock"
     old_lock=$(mktemp)
     cp "$lock" "$old_lock"
-    trap 'rc=$?; if [ $rc -ne 0 ]; then cp "$old_lock" "$lock"; echo "Restored flake.lock after failed maintain" >&2; fi; rm -f "$old_lock"; rmdir "$maintenance_lock" 2>/dev/null || true; exit $rc' EXIT
+    trap 'rc=$?; if [ $rc -ne 0 ]; then cp "$old_lock" "$lock"; echo "Restored flake.lock after failed maintain" >&2; fi; rm -f "$old_lock"; rm -rf "$maintenance_lock"; exit $rc' EXIT
     just _upgrade-nix-runtime-macos
     just _update-lock
     just _upgrade-packages-macos
@@ -184,7 +195,7 @@ _maintain-macos:
     just doctor || true
     trap - EXIT
     rm -f "$old_lock"
-    rmdir "$maintenance_lock"
+    rm -rf "$maintenance_lock"
 
 [private]
 _maintain-linux:
@@ -192,12 +203,23 @@ _maintain-linux:
     set -euo pipefail
     maintenance_lock="$HOME/.local/state/dotfiles-maintenance.lock"
     mkdir -p "$HOME/.local/state"
-    mkdir "$maintenance_lock" 2>/dev/null || { echo "another dotfiles maintenance task is running" >&2; exit 1; }
+    if ! mkdir "$maintenance_lock" 2>/dev/null; then
+      # 保持者 PID が生きていれば本当に実行中。死んでいれば中断残骸なので奪う
+      # (mkdir だけのロックは SIGKILL / ビルド中断で必ず stale 化するため)。
+      holder=$(cat "$maintenance_lock/pid" 2>/dev/null || true)
+      if [ -n "$holder" ] && kill -0 "$holder" 2>/dev/null; then
+        echo "another dotfiles maintenance task is running (pid $holder)" >&2; exit 1
+      fi
+      echo "reclaiming stale maintenance lock (pid ${holder:-?} not running)" >&2
+      rm -rf "$maintenance_lock"
+      mkdir "$maintenance_lock" 2>/dev/null || { echo "failed to acquire maintenance lock" >&2; exit 1; }
+    fi
+    echo $$ > "$maintenance_lock/pid"
     just outdated
     lock="{{flake}}/flake.lock"
     old_lock=$(mktemp)
     cp "$lock" "$old_lock"
-    trap 'rc=$?; if [ $rc -ne 0 ]; then cp "$old_lock" "$lock"; echo "Restored flake.lock after failed maintain" >&2; fi; rm -f "$old_lock"; rmdir "$maintenance_lock" 2>/dev/null || true; exit $rc' EXIT
+    trap 'rc=$?; if [ $rc -ne 0 ]; then cp "$old_lock" "$lock"; echo "Restored flake.lock after failed maintain" >&2; fi; rm -f "$old_lock"; rm -rf "$maintenance_lock"; exit $rc' EXIT
     just _update-lock
     just rebuild
     just gc
@@ -205,7 +227,7 @@ _maintain-linux:
     just doctor || true
     trap - EXIT
     rm -f "$old_lock"
-    rmdir "$maintenance_lock"
+    rm -rf "$maintenance_lock"
 
 [private]
 _maintain-user-tools:
