@@ -259,6 +259,22 @@
         "type": "github"
       }
     },
+    "mopidy-patches": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1785041215,
+        "narHash": "sha256-/iZCa0YTOFBGkNvyVW7yO1RmQDx1yzIRI+Dec3nw7jo=",
+        "owner": "gapul",
+        "repo": "mopidy-rmpc-patches",
+        "rev": "53b6b9665519e26dd046802663baa855cd500b8f",
+        "type": "github"
+      },
+      "original": {
+        "owner": "gapul",
+        "repo": "mopidy-rmpc-patches",
+        "type": "github"
+      }
+    },
     "nix-darwin": {
       "inputs": {
         "nixpkgs": [
@@ -380,6 +396,7 @@
         "git-hooks": "git-hooks",
         "home-manager": "home-manager_2",
         "lanzaboote": "lanzaboote",
+        "mopidy-patches": "mopidy-patches",
         "nix-darwin": "nix-darwin",
         "nix-index-database": "nix-index-database",
         "nixpkgs": "nixpkgs",

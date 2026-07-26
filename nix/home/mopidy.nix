@@ -1,4 +1,9 @@
-{ config, pkgs, ... }:
+{
+  config,
+  pkgs,
+  mopidyPatches,
+  ...
+}:
 # 端末で YouTube Music を低発熱再生する Mopidy 基盤。
 # ・ブラウザ再生 (映像デコード + WindowServer 合成で発熱) をやめ、音声のみを GStreamer で鳴らす。
 # ・アカウント連携 (ライブラリ/ミックス/ラジオ=新曲開拓) は mopidy-ytmusic + ytmusicapi。
@@ -13,7 +18,10 @@ let
   home = config.home.homeDirectory;
 
   # 本体+拡張+パッチを束ねた実行環境は nix/lib/mopidy-env.nix に集約 (テスト鏡と共有)。
-  mopidyEnv = import ../lib/mopidy-env.nix { inherit pkgs; };
+  mopidyEnv = import ../lib/mopidy-env.nix {
+    inherit pkgs;
+    patchDir = mopidyPatches;
+  };
 
   confPath = "${home}/.config/mopidy/mopidy.conf";
   authPath = "${home}/.config/mopidy/browser.json";

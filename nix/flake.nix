@@ -20,6 +20,13 @@
     home-manager.url = "github:nix-community/home-manager/release-26.05";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
 
+    # Mopidy ビルド時パッチ集は別リポジトリに分離 (dotfiles を 336 ファイル分軽量化)。
+    # flake=false のソースとして取り込み、nix/lib/mopidy-env.nix の patchDir に渡す。
+    mopidy-patches = {
+      url = "github:gapul/mopidy-rmpc-patches";
+      flake = false;
+    };
+
     # Pre-built nix-index database shared by macOS, NixOS, WSL, and Linux HM.
     nix-index-database.url = "github:nix-community/nix-index-database";
     nix-index-database.inputs.nixpkgs.follows = "nixpkgs";
@@ -70,6 +77,7 @@
       nixpkgs-nixos,
       nix-darwin,
       home-manager,
+      mopidy-patches,
       nix-index-database,
       agent-skills,
       sops-nix,
@@ -112,6 +120,7 @@
         inherit user;
         nixIndexDatabase = nix-index-database;
         agentSkills = agent-skills;
+        mopidyPatches = mopidy-patches;
       };
 
       # SSH 接続先で rootless Nix (nix-portable) から実行する
