@@ -352,7 +352,57 @@
                   }
                 );
               };
+            }
+            // lib.optionalAttrs (system == "aarch64-linux") {
+              # nix-on-droid は omnix の標準ビルド対象外かつ builtins.storePath で
+              # --impure を要するため、om ci の custom step から呼ぶ専用 app にする。
+              ci-nixondroid = {
+                type = "app";
+                meta.description = "Build the nix-on-droid activation package (impure)";
+                program = lib.getExe (
+                  systemPkgs.writeShellApplication {
+                    name = "ci-nixondroid";
+                    runtimeInputs = [
+                      systemPkgs.nix
+                      systemPkgs.git
+                    ];
+                    text = ''
+                      flake_ref="''${DOTFILES_FLAKE:-./nix}"
+                      if [[ -f flake.nix ]]; then
+                        flake_ref=.
+                      fi
+                      # proot-termux 等プリビルドは公式 cachix からのみ取得可能。
+                      # sudo で nix.conf を書き換えず、信頼ユーザー前提で CLI フラグ渡し。
+                      exec nix build --impure \
+                        --extra-substituters https://nix-on-droid.cachix.org \
+                        --extra-trusted-public-keys nix-on-droid.cachix.org-1:56snoMJTXmDRC1Ei24CmKoUqvHJ9XCp+nidK7qkMQrU= \
+                        "$flake_ref#nixOnDroidConfigurations.default.activationPackage" \
+                        --no-link --show-trace "$@"
+                    '';
+                  }
+                );
+              };
             };
+
+            # omnix (om ci) が standalone home-manager 構成を拾えるよう、
+            # トップレベル homeConfigurations を legacyPackages に別名公開する。
+            # omnix は legacyPackages.<system>.homeConfigurations.* の activationPackage
+            # を検出してビルドする (トップレベル homeConfigurations は対象外のため)。
+            legacyPackages =
+              lib.optionalAttrs (system == "x86_64-linux") {
+                homeConfigurations = {
+                  "${user.username}-wsl" = inputs.self.homeConfigurations."${user.username}-wsl";
+                  "labpc-wsl" = inputs.self.homeConfigurations."labpc-wsl";
+                  "${user.username}-linux" = inputs.self.homeConfigurations."${user.username}-linux";
+                };
+              }
+              // lib.optionalAttrs (system == "aarch64-linux") {
+                homeConfigurations."${user.username}-linux-aarch64" =
+                  inputs.self.homeConfigurations."${user.username}-linux-aarch64";
+              }
+              // lib.optionalAttrs isDarwinWorkstation {
+                homeConfigurations."${user.username}" = inputs.self.homeConfigurations."${user.username}";
+              };
           }
           // lib.optionalAttrs isDarwinWorkstation {
             checks = {
@@ -380,6 +430,8 @@
                 systemPkgs.bun
                 systemPkgs.check-jsonschema
                 systemPkgs.actionlint
+                systemPkgs.gitleaks # om ci の gitleaks custom step (全履歴 detect)
+                systemPkgs.git # ci-lint / ci-gitleaks が git ls-files / rev-parse を使う
               ];
             };
           }
