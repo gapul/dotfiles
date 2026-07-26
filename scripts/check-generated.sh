@@ -56,4 +56,7 @@ check-jsonschema \
   --schemafile "https://raw.githubusercontent.com/jesseduffield/lazygit/master/schema/config.json" \
   "$lazygit_config"
 
+echo "Checking generated documentation blocks (README / CHEATSHEET)..."
+python3 "$repo_root/scripts/gen-docs.py" --check
+
 echo "Generated configuration checks passed."

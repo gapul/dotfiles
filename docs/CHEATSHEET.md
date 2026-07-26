@@ -50,6 +50,35 @@ eza / bat が ls / cat を置き換え済(home-manager が auto-alias)。
 | `gdu` / `dust` / `diskonaut` | ディスク使用量可視化 |
 | `yazi` | ファイラ TUI |
 
+上の表は覚える用の抜粋。実際に定義されている全 alias は下の自動生成表を参照。
+
+### 🔤 全 alias 一覧(自動生成)
+
+`nix/modules/home/shell.nix` の `shellAliases` から生成(alias を変えたら `just docs` で再生成)。
+
+<!-- BEGIN aliases -->
+| alias | 展開先 |
+|---|---|
+| `..` | `cd ..` |
+| `...` | `cd ../..` |
+| `cfw` | `~/Developer/github.com/gapul/personal-tools/cloudflare/bin/cf-wrangler` |
+| `eza` | `eza --icons auto --git --group-directories-first` |
+| `g` | `git` |
+| `ga` | `git add` |
+| `gc` | `git commit` |
+| `gl` | `git pull` |
+| `gp` | `git push` |
+| `gs` | `git status` |
+| `keystats` | `~/.local/bin/keystats` |
+| `la` | `eza -a` |
+| `ll` | `eza -l` |
+| `lla` | `eza -la` |
+| `ls` | `eza` |
+| `lt` | `eza --tree` |
+| `tl` | `textlint --config ~/.config/textlint/.textlintrc.json` |
+| `tlf` | `textlint --config ~/.config/textlint/.textlintrc.json --fix` |
+<!-- END aliases -->
+
 ---
 
 ## 🚀 移動

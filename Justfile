@@ -634,27 +634,15 @@ ssh host:
     nssh {{host}}
 
 # README のコマンド一覧は手書きだと Justfile と乖離するので `just --list` を単一ソースとし、
-# マーカー <!-- BEGIN/END just-list --> の間へ流し込む。レシピを追加/変更したらこれを再実行。
-# CI 等での乖離検知は `just docs && git diff --exit-code README.md`。
-# README の自動生成部を `just --list` から再生成
+# README / CHEATSHEET の <!-- BEGIN/END <name> --> ブロックを設定 (SSOT) から再生成。
+# 対象: just レシピ一覧・pre-commit フック表・shell alias 表 (scripts/gen-docs.py 参照)。
+# レシピ/フック/alias を変えたらこれを実行。CI の乖離検知は check-generated.sh が担う。
 [group('セットアップ')]
 docs:
     #!/usr/bin/env bash
     set -euo pipefail
     cd "{{justfile_directory()}}"
-    just --list --list-heading '' | python3 -c '
-    import pathlib, sys
-    readme = pathlib.Path("README.md")
-    text = readme.read_text()
-    begin, end = "<!-- BEGIN just-list -->", "<!-- END just-list -->"
-    if begin not in text or end not in text:
-        sys.exit("README.md にマーカーが無い")
-    pre, rest = text.split(begin, 1)
-    _, post = rest.split(end, 1)
-    body = sys.stdin.read().strip("\n")
-    readme.write_text(pre + begin + "\n```text\n" + body + "\n```\n" + end + post)
-    '
-    echo "README.md のコマンド一覧を再生成した (git diff で確認)"
+    python3 scripts/gen-docs.py
 
 # Obsidian 設定を public dotfiles へ片方向スナップショット (追跡専用・vault→dotfiles)
 # ・ホワイトリストの安全な json のみコピー。本体は vault 側 (ここは読み取り用ミラー)。
