@@ -73,6 +73,13 @@
       PUB_CACHE = "${config.xdg.cacheHome}/pub";
       # matplotlib: macOS では XDG 非対応のため MPLCONFIGDIR で明示。
       MPLCONFIGDIR = "${config.xdg.configHome}/matplotlib";
+
+      # TeX Live: 既定の ~/.texlive<year> (texmf-var/config キャッシュ) を XDG へ。
+      # var/config は再生成されるキャッシュのため移設安全。ユーザー texmf ツリーも
+      # TEXMFHOME で data 配下に集約する。
+      TEXMFHOME = "${config.xdg.dataHome}/texmf";
+      TEXMFVAR = "${config.xdg.cacheHome}/texlive/texmf-var";
+      TEXMFCONFIG = "${config.xdg.configHome}/texlive/texmf-config";
     };
 
   home.sessionPath = [
