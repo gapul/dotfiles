@@ -217,7 +217,6 @@
       "rustdesk"
 
       # ─── Dev IDEs / Editors / SDK ───
-      "claude" # Claude デスクトップアプリ (Anthropic 公式)
       "claude-code"
       "ghostty"
       "zed"
@@ -320,7 +319,6 @@
     ];
 
     masApps = {
-      "Apple Configurator 2" = 1037126344;
       "DaVinci Resolve" = 571213070;
       "Plash" = 1494023538;
       "Xcode" = 497799835;
