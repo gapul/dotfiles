@@ -39,6 +39,12 @@
     if [ -f "$conf" ] && ! /usr/bin/grep -q 'nix-on-droid.cachix.org' "$conf"; then
       printf '\n# nix-on-droid バイナリキャッシュ (droid 構成の eval/build 用)\nextra-substituters = https://nix-on-droid.cachix.org\nextra-trusted-public-keys = nix-on-droid.cachix.org-1:56snoMJTXmDRC1Ei24CmKoUqvHJ9XCp+nidK7qkMQrU=\n' >> "$conf"
     fi
+    # 自前 attic バイナリキャッシュ (cache.gapul.net, homelab CT101)。tailnet 限定公開で
+    # pull は public=無認証。cachix 代替(自前ホスト)。到達不可時は普通に cache.nixos.org に
+    # フォールバックするだけなので tailnet 圏外でも実害なし。
+    if [ -f "$conf" ] && ! /usr/bin/grep -q 'cache.gapul.net' "$conf"; then
+      printf '\n# 自前 attic キャッシュ (homelab, tailnet 限定・pull 無認証)\nextra-substituters = https://cache.gapul.net/dotfiles\nextra-trusted-public-keys = dotfiles:NT1wKtaeu+7eOjVdIJlT3nqtXkT/dP27/DDsHuLaM5A=\n' >> "$conf"
+    fi
     # Determinate Nix already trusts FlakeHub as a substituter, but using it as an
     # active substituter without the matching credentials produces 401 warnings.
     if [ -f "$conf" ] && /usr/bin/grep -q 'cache.flakehub.com' "$conf"; then
