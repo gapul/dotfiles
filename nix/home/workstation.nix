@@ -4,11 +4,16 @@
   lib,
   ...
 }:
+let
+  # ghostty ランチャーの検索バイナリ。store 化して gc-deep の target 掃除から守る。
+  launcher-search = pkgs.callPackage ../pkgs/launcher-search.nix { };
+in
 {
   # workstation 層: 母艦 (laptop) / WSL / linux 用の開発・生活ツール。
   # macmini (ヘッドレス AI ノード) はこれを積まない (common.nix から分離 2026-07-19)。
 
   home.packages = with pkgs; [
+    launcher-search # ghostty ランチャー検索バックエンド (core/launcher-search の代替)
     pandoc # ドキュメント変換
     typst # 組版
     # 日本語の学術文書に必要な TeX Live コレクションを Nix で合成する。
@@ -96,6 +101,8 @@
   # 第三者バイナリを repo に抱えない構造にする (ziggy 依存の DL 機能は未使用)。
   home.file.".config/mpv/scripts/uosc".source = "${pkgs.mpvScripts.uosc}/share/mpv/scripts/uosc";
   home.file.".config/launcher/config.toml".source = ../../configs/launcher/config.toml;
+  # core/launcher.sh はこの env があればローカルビルドより優先して store のバイナリを使う。
+  home.sessionVariables.LAUNCHER_SEARCH_BIN = lib.getExe launcher-search;
   home.file.".config/calcurse" = {
     source = ../../configs/cli/calcurse;
     recursive = true;

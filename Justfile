@@ -556,14 +556,18 @@ gc-deep:
       echo "  (podman not available / machine stopped, skip)"
     fi
     echo ""
-    echo "━━━ Scanning node_modules / rust target untouched >30 days ━━━"
+    echo "━━━ Scanning node_modules / rust target untouched >30 days (in ~/Developer) ━━━"
     tmp=$(mktemp)
-    # ~/Library は tool 内部 (typescript/pnpm 等のキャッシュ) なので除外。プロジェクトのみ対象。
-    prune=( \( -path "$HOME/Library" -o -path "$HOME/.cache" -o -name .Trash \) -prune )
+    # 走査は開発リポ置き場 (~/Developer = ghq root) に限定する。
+    # $HOME 全体を対象にすると ~/.config 等に in-place ビルドする常用ツール
+    # (例: ghostty ランチャーの launcher-search/target) まで掃除候補になり、
+    # 実行ファイルが消えてツールが起動不能になる事故が起きた (2026-07)。
+    scan_root="$HOME/Developer"
+    if [ ! -d "$scan_root" ]; then echo "  ($scan_root not found, skip)"; rm -f "$tmp"; exit 0; fi
     # node_modules: ネストは prune で1階層のみ。30日触っていないもの限定
-    find "$HOME" "${prune[@]}" -o -type d -name node_modules -prune -mtime +30 -print 2>/dev/null >> "$tmp"
+    find "$scan_root" -type d -name node_modules -prune -mtime +30 -print 2>/dev/null >> "$tmp"
     # rust target: 同名の汎用ディレクトリ誤爆を避け、隣に Cargo.toml がある場合のみ
-    find "$HOME" "${prune[@]}" -o -type d -name target -prune -mtime +30 -print 2>/dev/null | \
+    find "$scan_root" -type d -name target -prune -mtime +30 -print 2>/dev/null | \
       while read -r d; do [ -f "$(dirname "$d")/Cargo.toml" ] && echo "$d"; done >> "$tmp"
     cnt=$(wc -l < "$tmp" | tr -d ' ')
     if [ "$cnt" -eq 0 ]; then echo "  None (all updated within 30 days)"; rm -f "$tmp"; exit 0; fi
