@@ -21,6 +21,7 @@ $ErrorActionPreference = 'Stop'
 $IsDryRun = [bool]$DryRun
 $DotfilesDir = Join-Path $env:USERPROFILE 'dotfiles'
 $PalettesJson = Join-Path $DotfilesDir 'configs\theme\palettes.json'
+$FontsJson = Join-Path $DotfilesDir 'configs\theme\fonts.json'
 
 function Log($msg) { Write-Host "[theme] $msg"      -ForegroundColor Blue }
 function Dry($msg) { Write-Host "[theme][dry] $msg" -ForegroundColor DarkYellow }
@@ -40,6 +41,15 @@ if (-not $palette) {
     exit 1
 }
 Log "active palette: $ActivePalette (variant: $($palette.variant))"
+
+# フォント SSO (configs/theme/fonts.json)。{{ font.X }} を値で置換する。無ければ font 置換のみ skip。
+$fonts = $null
+if (Test-Path $FontsJson) {
+    $fonts = Get-Content $FontsJson -Raw -Encoding UTF8 | ConvertFrom-Json
+    Log "fonts: mono = $($fonts.mono)"
+} else {
+    Err "fonts.json が無い (font 置換 skip): $FontsJson"
+}
 
 # ─── template 置換 helper ───
 # template ファイルを読んで {{ palette.X }} を palette の hex (# prefix 付き) で置換、出力先に書く。
@@ -63,6 +73,14 @@ function Render-Template {
     foreach ($prop in $palette.PSObject.Properties) {
         $placeholder = '\{\{\s*palette\.' + [regex]::Escape($prop.Name) + ':raw\s*\}\}'
         $content = [regex]::Replace($content, $placeholder, $prop.Value)
+    }
+    # フォント名 {{ font.X }} を fonts.json の値 (bare) で置換。quote は template 側が持つ。
+    if ($fonts) {
+        foreach ($prop in $fonts.PSObject.Properties) {
+            if ($prop.Name -eq '$comment') { continue }
+            $placeholder = '\{\{\s*font\.' + [regex]::Escape($prop.Name) + '\s*\}\}'
+            $content = [regex]::Replace($content, $placeholder, $prop.Value)
+        }
     }
 
     if ($IsDryRun) {

@@ -21,7 +21,7 @@ local is_macos = wezterm.target_triple:find('darwin') ~= nil
 -- Font family 名は yuru7/HackGen NF 版で "HackGenConsole NF" (スペースなし版) と
 -- "HackGen Console NF" (スペース版) のどちらかが現れる版があるので両方記載。
 config.font = wezterm.font_with_fallback {
-  'HackGen Console NF',        -- yuru7 NF 公式 family 名 (ファイル名は HackGenConsoleNF だが family はスペース付)
+  '{{ font.mono }}',        -- yuru7 NF 公式 family 名 (ファイル名は HackGenConsoleNF だが family はスペース付)
   'M+CodeLat50NerdFont',       -- 実機 install 済の M+Code Nerd
   'JetBrainsMono Nerd Font',   -- DEVCOM.JetBrainsMonoNerdFont
   'Cascadia Code',             -- Win11 標準
