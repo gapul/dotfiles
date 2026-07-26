@@ -181,8 +181,7 @@
       "karabiner-elements"
       "macskk"
       "gapul/azoo-key-skkserv/azoo-key-skkserv" # azooKey 変換エンジンの skkserv (gapul 自作 tap)
-      "shortcat"
-      "y3owk1n/tap/neru" # マウス無しで全画面ナビ (grid/hints/scroll。Vimium のシステム全体版)
+      "y3owk1n/tap/neru" # マウス無しで全画面ナビ (grid/hints/scroll。Vimium のシステム全体版。shortcat 上位互換)
 
       # ─── macOS utilities ───
       "hammerspoon"
