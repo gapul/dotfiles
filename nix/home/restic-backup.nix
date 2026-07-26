@@ -20,8 +20,12 @@
 let
   home = config.home.homeDirectory;
 
-  repository = "rclone:google-drive:restic-backup";
-  rcloneConf = "${home}/.config/rclone/rclone.conf";
+  # SSO: repository / 保持ポリシー / archive タグ / rclone conf は nix/lib/restic-common.nix。
+  #   linux 版 (restic-backup-linux.nix) と Justfile も同じ値を引く。共有リポを壊さないため。
+  common = import ../lib/restic-common.nix { inherit home; };
+
+  inherit (common) repository;
+  inherit (common) rcloneConf;
   passwordFile = config.sops.secrets."restic_password".path;
   logFile = "${home}/Library/Logs/restic-backup.log";
 
@@ -111,9 +115,7 @@ let
     # --keep-tag archive: cold アーカイブ (just archive で --tag archive 付与) を
     #   keep ポリシーから除外し永久保持。warm (無タグ) のみ間引く。
     #   (restic は各グループ最後の snapshot 削除も拒否するため二重保護)
-    restic forget --prune \
-      --keep-tag archive \
-      --keep-daily 7 --keep-weekly 4 --keep-monthly 6 || true
+    ${common.forgetInvocation}
 
     echo "==================== $(date '+%Y-%m-%d %H:%M:%S') backup done (rc=$rc) ===================="
     if [ "$rc" -ne 0 ]; then
@@ -179,7 +181,10 @@ in
   home.packages = [ pkgs.restic ];
 
   # restic パスフレーズ (sops の defaultSopsFile = secrets/secrets.yaml に格納済み)
-  sops.secrets."restic_password".path = "${home}/.config/restic/password";
+  sops.secrets."restic_password".path = common.passwordFile;
+
+  # Justfile / 対話シェルが source する env (repo/password/rclone/archiveTag の SSO)。
+  home.file.".config/restic/env".text = common.envFileText;
 
   # ntfy 失敗通知用 (URL はトピックまで含む publish エンドポイント, token は Bearer tk_...)。
   #   これらが未設定でも notify は osascript のみで動くため無害。

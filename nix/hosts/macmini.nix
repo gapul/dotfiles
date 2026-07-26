@@ -55,13 +55,8 @@
   # daemon (root) でなく agent (ログインユーザ) にするのは、Apple Silicon の Metal GPU を
   # 確実に掴ませるため。GUI セッション上で走るので、自動ログインの有効化が前提になる。
   launchd.agents.ollama = {
-    serviceConfig = {
-      ProgramArguments = [
-        "${pkgs.ollama}/bin/ollama"
-        "serve"
-      ];
-      RunAtLoad = true;
-      KeepAlive = true;
+    # 起動仕様は nix/lib/ollama-agent.nix が SSO (workstation と共有)。差分だけ付ける。
+    serviceConfig = (import ../lib/ollama-agent.nix { inherit pkgs; }) // {
       StandardOutPath = "/Users/${user.username}/Library/Logs/ollama.log";
       StandardErrorPath = "/Users/${user.username}/Library/Logs/ollama.log";
       EnvironmentVariables = {

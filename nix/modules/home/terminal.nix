@@ -47,7 +47,7 @@ in
     source = ../../../configs/terminals/zellij;
     recursive = true;
   };
-  # zellij テーマは nix/lib/rose-pine.nix から生成 (config.kdl は theme "rose-pine" で参照)
+  # zellij テーマは nix/lib/theme.nix から生成 (config.kdl は theme "rose-pine" で参照)
   home.file.".config/zellij/themes/rose-pine.kdl".text = mkZellijTheme "rose-pine" c.dark;
   home.file.".config/zellij/themes/rose-pine-dawn.kdl".text = mkZellijTheme "rose-pine-dawn" c.light;
 }

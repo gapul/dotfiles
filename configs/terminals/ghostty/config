@@ -10,12 +10,15 @@
 # ==========================
 # # The config file consists of simple key-value pairs,
 # # separated by equals signs.
+# フォント名の SSO は configs/theme/fonts.json (mono)。ghostty は静的 config で JSON を
+# 読めないため値を直書きするが、nix/tests/config-invariants.nix が fonts.json との一致を強制する。
 font-family = "HackGen Console NF"
 clipboard-read = allow
 clipboard-write = allow
 
 # macOS の外観 (ライト/ダーク) に自動追従。
-# テーマ名は nix/lib/theme.nix の ghosttyTheme と対応 (dark=Rose Pine / light=Rose Pine Dawn)。
+# ghostty のテーマ名はこの静的 config が持つ (dark=Rose Pine / light=Rose Pine Dawn)。
+# 色そのものは configs/theme/palettes.json が SSO。名前は upstream ghostty のテーマ名に固定。
 # Starship は ANSI 名前色で端末パレットに追従するため、ライトでも可読性は保たれる。
 theme = light:Rose Pine Dawn,dark:Rose Pine
 
