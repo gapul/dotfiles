@@ -117,3 +117,9 @@ files.gapul.net {
 	import tls_cf
 	reverse_proxy 192.168.116.100:8082
 }
+
+# 自前 Nix バイナリキャッシュ attic (CT101 dockge stack, host port 8083)。cachix 代替。
+# pull は public=無認証、push は attic JWT トークン必須。詳細: memory homelab-attic-cache
+cache.gapul.net {
+	import proxy65 8083
+}
