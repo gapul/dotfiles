@@ -7,33 +7,6 @@
   agentSkills,
   ...
 }:
-let
-  c = import ../lib/theme.nix; # アクティブテーマのパレット (切替は nix/lib/theme.nix の active)
-
-  # zellij テーマ kdl を palette p から生成。dark/light 両方を吐き、config.kdl 側の
-  # theme_dark / theme_light で端末パレット (= ghostty の macOS 追従) に連動させる。
-  mkZellijTheme = name: p: ''
-    themes {
-        ${name} {
-            fg "#${p.text}"
-            bg "#${p.base}"
-            black "#${p.overlay}"
-            red "#${p.love}"
-            green "#${p.foam}"
-            yellow "#${p.gold}"
-            blue "#${p.pine}"
-            magenta "#${p.iris}"
-            cyan "#${p.foam}"
-            white "#${p.text}"
-            orange "#${p.rose}"
-        }
-    }
-  '';
-
-  lazyNixPlugins =
-    pkgs.linkFarm "lazy-nix-plugins"
-      (import ../../configs/editors/nvim/lazy2nix { inherit pkgs lib; }).plugins;
-in
 {
   imports = [
     nixIndexDatabase.homeModules.default
@@ -43,6 +16,9 @@ in
     ../modules/home/nix-tools.nix
     ../modules/home/shell.nix
     ../modules/home/packages.nix
+    ../modules/home/terminal.nix
+    ../modules/home/editor.nix
+    ../modules/home/agents.nix
   ];
 
   # OS 非依存の home-manager 設定
@@ -69,10 +45,6 @@ in
     // {
       # ── 動的 path (HOME / XDG 依存、JSON 化不可) ──
       SOPS_AGE_KEY_FILE = "${config.home.homeDirectory}/.config/sops/age/keys.txt";
-      CLAUDE_CONFIG_DIR = "${config.home.homeDirectory}/.config/claude";
-      CODEX_HOME = "${config.xdg.dataHome}/codex";
-      CODEX_SQLITE_HOME = "${config.xdg.stateHome}/codex/sqlite";
-      LAZY_NIX_PLUGINS = lazyNixPlugins;
 
       # XDG Base Directory: 実行時に $XDG_* を参照する CLI 向けに明示 export
       # (home-manager はビルド時に config.xdg.* を展開するだけで env には出さないため)
@@ -171,65 +143,5 @@ in
 
   # SOPS 定義は home/secrets.nix へ分離 (age 鍵を持たない macmini が
   # common.nix を共有できるようにするため。2026-07-19)
-
-  # Ghostty の terminfo を全ホストへ配布。ssh 先で TERM=xterm-ghostty が未知だと
-  # ZLE が端末能力を誤解して入力が壊れる (macmini で実害あり 2026-07-19)。
-  # pkgs.ghostty は darwin unsupported のため infocmp ダンプを vendoring して
-  # activation 時に tic でコンパイルする。
-  home.activation.ghosttyTerminfo = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    run ${pkgs.ncurses}/bin/tic -x -o "$HOME/.terminfo" ${../../configs/terminals/ghostty/xterm-ghostty.terminfo}
-  '';
-
-  # dotfiles/configs/* を symlink (OS 非依存なものだけ。Mac 専用 = aerospace/sketchybar/karabiner は home/darwin.nix へ)
-  home.file.".config/zellij" = {
-    source = ../../configs/terminals/zellij;
-    recursive = true;
-  };
-  # zellij テーマは nix/lib/rose-pine.nix から生成 (config.kdl は theme "rose-pine" で参照)
-  home.file.".config/zellij/themes/rose-pine.kdl".text = mkZellijTheme "rose-pine" c.dark;
-  home.file.".config/zellij/themes/rose-pine-dawn.kdl".text = mkZellijTheme "rose-pine-dawn" c.light;
-  home.file.".config/starship.toml".source = ../../configs/shell/starship.toml;
-  home.file.".config/gh/config.yml".source = ../../configs/cli/gh/config.yml;
-  # markdownlint-cli2: 親方向探索でホーム以下全 Markdown の既定になるため、
-  # XDG 非対応だがホーム直下がツールの仕様上正しい置き場所。
-  home.file.".markdownlint-cli2.jsonc".source =
-    ../../configs/cli/markdownlint/markdownlint-cli2.jsonc;
-  # Codex: 上流は ~/.codex 既定だが、CODEX_HOME で XDG data 配下へ移す。
-  # auth/history/skills/plugins は CODEX_HOME、SQLite は CODEX_SQLITE_HOME に分離。
-  # TUI から設定が更新されても repo に反映されるよう out-of-store symlink にする。
-  xdg.dataFile."codex/config.toml".source =
-    config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.dotfiles/configs/cli/codex/config.toml";
-  xdg.dataFile."codex/themes/rose-pine.tmTheme".source =
-    ../../configs/cli/bat/themes/rose-pine.tmTheme;
-  xdg.dataFile."codex/themes/rose-pine-dawn.tmTheme".source =
-    ../../configs/cli/bat/themes/rose-pine-dawn.tmTheme;
-  # 素の Vim: native XDG で読まれる vimrc。.viminfo を $XDG_STATE_HOME へ追い出す目的
-  home.file.".config/vim/vimrc".source = ../../configs/editors/vim/vimrc;
-  home.file."bin/nssh" = {
-    source = ../../configs/bin/nssh;
-    executable = true;
-  };
-  home.file."bin/fzf-preview-repo" = {
-    source = ../../configs/bin/fzf-preview-repo;
-    executable = true;
-  };
-  home.file.".config/yazi" = {
-    source = ../../configs/cli/yazi;
-    recursive = true;
-  };
-  # nvim は dotfiles に直接書き戻したいので mkOutOfStoreSymlink
-  home.file.".config/nvim".source =
-    config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.dotfiles/configs/editors/nvim";
-
-  # Native Messaging manifest は仕様上 launcher の絶対パスを要求し、Firenvim の
-  # launcher 自体も install 時の HOME/XDG/PATH を埋め込む。ユーザー名や home を
-  # 移行しても古いパスを保持しないよう、HM 適用時に現在の環境から再生成する。
-  home.activation.firenvimNativeMessaging = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
-    if [ -d "${config.xdg.dataHome}/nvim/lazy/firenvim" ]; then
-      run ${pkgs.neovim}/bin/nvim --headless \
-        "+call firenvim#install(0)" \
-        "+qa"
-    fi
-  '';
 
 }

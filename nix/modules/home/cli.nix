@@ -145,4 +145,23 @@
     enableZshIntegration = true;
     nix-direnv.enable = true;
   };
+  # dotfiles/configs/* を symlink (OS 非依存なものだけ。Mac 専用 = aerospace/sketchybar/karabiner は home/darwin.nix へ)
+  home.file.".config/starship.toml".source = ../../../configs/shell/starship.toml;
+  home.file.".config/gh/config.yml".source = ../../../configs/cli/gh/config.yml;
+  # markdownlint-cli2: 親方向探索でホーム以下全 Markdown の既定になるため、
+  # XDG 非対応だがホーム直下がツールの仕様上正しい置き場所。
+  home.file.".markdownlint-cli2.jsonc".source =
+    ../../../configs/cli/markdownlint/markdownlint-cli2.jsonc;
+  home.file."bin/nssh" = {
+    source = ../../../configs/bin/nssh;
+    executable = true;
+  };
+  home.file."bin/fzf-preview-repo" = {
+    source = ../../../configs/bin/fzf-preview-repo;
+    executable = true;
+  };
+  home.file.".config/yazi" = {
+    source = ../../../configs/cli/yazi;
+    recursive = true;
+  };
 }
