@@ -123,6 +123,48 @@
         mopidyPatches = mopidy-patches;
       };
 
+      # ECS の「System」= ホスト合成器 (darwin / home の定型を一本化)
+      mkHost = import ./lib/mk-host.nix {
+        inherit
+          nixpkgs
+          nix-darwin
+          home-manager
+          user
+          system
+          commonSpecialArgs
+          mkPkgs
+          mkWslPkgs
+          ;
+      };
+
+      # ECS の「role」= component (home/*.nix) の束。ホストは roles を組み合わせるだけ。
+      # 並び順は home.packages 等のリスト連結順に影響するため既存構成と同一に保つ。
+      roles = rec {
+        base = [ ./home/common.nix ];
+        secrets = [
+          sops-nix.homeManagerModules.sops
+          ./home/secrets.nix
+        ];
+        station = [ ./home/workstation.nix ];
+        linuxBase = base ++ [ ./home/linux.nix ];
+        # mac ワークステーション (フル装備: バックアップ/マウント/メンテ/音楽)
+        macWorkstation =
+          base
+          ++ [
+            ./home/darwin.nix
+            ./home/restic-backup.nix
+            ./home/rclone-mount.nix
+            ./home/maintenance.nix
+          ]
+          ++ secrets
+          ++ [ ./home/mopidy.nix ]
+          ++ station;
+        # ヘッドレス AI ワーカー (sops なし)
+        macminiHeadless = base ++ [ ./home/macmini.nix ];
+        wsl = linuxBase ++ [ ./home/wsl.nix ] ++ secrets ++ station;
+        linuxServer = linuxBase ++ secrets ++ station;
+      };
+
       # SSH 接続先で rootless Nix (nix-portable) から実行する
       # ツール一式。Linux x86_64 / aarch64 両対応。
       remoteTools =
@@ -334,40 +376,21 @@
     perSystemOutputs
     // {
       # システム設定: sudo darwin-rebuild switch --flake .#<username>
-      darwinConfigurations.${user.username} = nix-darwin.lib.darwinSystem {
-        inherit system;
+      darwinConfigurations.${user.username} = mkHost.darwin {
+        host = ./hosts/darwin.nix;
         specialArgs = {
           inherit user;
           brewNix = brew-nix;
         };
-        modules = [ ./hosts/darwin.nix ];
       };
 
       # ヘッドレス LLM ワーカー (M4 Mac mini / 24GB):
       #   sudo darwin-rebuild switch --flake .#macmini
-      # darwin.nix と darwin-common.nix を共有しつつ、GUI cask を積まず
-      # Ollama を launchd で常駐させる最小構成 (hosts/macmini.nix)。
-      darwinConfigurations.macmini = nix-darwin.lib.darwinSystem {
-        inherit system; # aarch64-darwin 共通
-        specialArgs = { inherit user; };
-        modules = [
-          ./hosts/macmini.nix
-          # workstation と同じ common.nix (フル CLI/zsh/XDG) + macmini.nix (ccm/AI
-          # スタック配線)。sops は積まない (age 鍵を macmini に持ち込まない方針)。
-          home-manager.darwinModules.home-manager
-          {
-            home-manager.useGlobalPkgs = true;
-            home-manager.useUserPackages = true;
-            home-manager.backupFileExtension = "hm-bak";
-            home-manager.extraSpecialArgs = commonSpecialArgs;
-            home-manager.users.${user.username} = {
-              imports = [
-                ./home/common.nix
-                ./home/macmini.nix
-              ];
-            };
-          }
-        ];
+      # workstation と同じ common.nix を共有しつつ GUI cask を積まない最小構成。
+      # sops は積まない (age 鍵を macmini に持ち込まない方針)。
+      darwinConfigurations.macmini = mkHost.darwin {
+        host = ./hosts/macmini.nix;
+        homeModules = roles.macminiHeadless;
       };
 
       # NixOS 実機 (Windows デュアルブート): sudo nixos-rebuild switch --flake .#nixos-laptop
@@ -457,41 +480,15 @@
       diskoConfigurations.nixos-laptop = import ./hosts/nixos-laptop-disk.nix;
 
       # macOS ユーザー設定: home-manager switch --flake .#<username>
-      homeConfigurations.${user.username} = home-manager.lib.homeManagerConfiguration {
-        inherit pkgs;
-        extraSpecialArgs = commonSpecialArgs;
-        modules = [
-          ./home/common.nix
-          ./home/darwin.nix
-          ./home/restic-backup.nix
-          ./home/rclone-mount.nix
-          ./home/maintenance.nix
-          sops-nix.homeManagerModules.sops
-          ./home/secrets.nix
-          ./home/mopidy.nix
-          ./home/workstation.nix
-        ];
-      };
+      homeConfigurations.${user.username} = mkHost.home { modules = roles.macWorkstation; };
 
       # WSL2 ユーザー設定: home-manager switch --flake .#<username>-wsl
       # Lab PC 等の Windows + WSL2 環境で使う
-      homeConfigurations."${user.username}-wsl" =
-        let
-          wslSystem = "x86_64-linux";
-          wslPkgs = mkWslPkgs wslSystem;
-        in
-        home-manager.lib.homeManagerConfiguration {
-          pkgs = wslPkgs;
-          extraSpecialArgs = commonSpecialArgs;
-          modules = [
-            ./home/common.nix
-            ./home/linux.nix
-            ./home/wsl.nix
-            sops-nix.homeManagerModules.sops
-            ./home/secrets.nix
-            ./home/workstation.nix
-          ];
-        };
+      homeConfigurations."${user.username}-wsl" = mkHost.home {
+        targetSystem = "x86_64-linux";
+        wsl = true;
+        modules = roles.wsl;
+      };
 
       # Lab PC (Mac の username と違う OS username を持つ WSL2 環境) 用:
       # 公開 repo に個人情報を残さないため、username は実行時の $USER から取る。
@@ -503,61 +500,29 @@
       #     switch --flake ~/.dotfiles/nix#labpc-wsl
       homeConfigurations."labpc-wsl" =
         let
-          wslSystem = "x86_64-linux";
-          wslPkgs = mkWslPkgs wslSystem;
           osUser = builtins.getEnv "USER";
           labUser = user // (if osUser != "" then { username = osUser; } else { });
         in
-        home-manager.lib.homeManagerConfiguration {
-          pkgs = wslPkgs;
-          extraSpecialArgs = {
+        mkHost.home {
+          targetSystem = "x86_64-linux";
+          wsl = true;
+          modules = roles.wsl;
+          specialArgs = {
             user = labUser;
             nixIndexDatabase = nix-index-database;
             agentSkills = agent-skills;
           };
-          modules = [
-            ./home/common.nix
-            ./home/linux.nix
-            ./home/wsl.nix
-            sops-nix.homeManagerModules.sops
-            ./home/secrets.nix
-            ./home/workstation.nix
-          ];
         };
 
       # Linux サーバー / 自宅 NUC / VPS 用: .#<username>-linux
       # 純 Linux (WSL interop なし)。aarch64 / x86_64 両対応
-      homeConfigurations."${user.username}-linux" =
-        let
-          linuxSystem = "x86_64-linux";
-          linuxPkgs = mkPkgs linuxSystem;
-        in
-        home-manager.lib.homeManagerConfiguration {
-          pkgs = linuxPkgs;
-          extraSpecialArgs = commonSpecialArgs;
-          modules = [
-            ./home/common.nix
-            ./home/linux.nix
-            sops-nix.homeManagerModules.sops
-            ./home/secrets.nix
-            ./home/workstation.nix
-          ];
-        };
-      homeConfigurations."${user.username}-linux-aarch64" =
-        let
-          linuxSystem = "aarch64-linux";
-          linuxPkgs = mkPkgs linuxSystem;
-        in
-        home-manager.lib.homeManagerConfiguration {
-          pkgs = linuxPkgs;
-          extraSpecialArgs = commonSpecialArgs;
-          modules = [
-            ./home/common.nix
-            ./home/linux.nix
-            sops-nix.homeManagerModules.sops
-            ./home/secrets.nix
-            ./home/workstation.nix
-          ];
-        };
+      homeConfigurations."${user.username}-linux" = mkHost.home {
+        targetSystem = "x86_64-linux";
+        modules = roles.linuxServer;
+      };
+      homeConfigurations."${user.username}-linux-aarch64" = mkHost.home {
+        targetSystem = "aarch64-linux";
+        modules = roles.linuxServer;
+      };
     };
 }
