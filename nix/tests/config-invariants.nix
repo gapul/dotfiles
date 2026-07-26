@@ -38,7 +38,7 @@ assert lib.assertMsg (
 ) "qView must be managed only by brew-nix, not duplicated in Homebrew";
 assert lib.assertMsg (
   let
-    mono = (builtins.fromJSON (builtins.readFile ../../configs/theme/fonts.json)).mono;
+    inherit ((builtins.fromJSON (builtins.readFile ../../configs/theme/fonts.json))) mono;
     ghosttyCfg = builtins.readFile ../../configs/terminals/ghostty/config;
   in
   lib.hasInfix ''font-family = "${mono}"'' ghosttyCfg

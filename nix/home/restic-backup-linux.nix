@@ -16,8 +16,8 @@ let
   # SSO: darwin 版 (restic-backup.nix) と共有。nix/lib/restic-common.nix が唯一の定義点。
   common = import ../lib/restic-common.nix { inherit home; };
 
-  repository = common.repository;
-  rcloneConf = common.rcloneConf;
+  inherit (common) repository;
+  inherit (common) rcloneConf;
   passwordFile = config.sops.secrets."restic_password".path;
   logFile = "${home}/.local/state/restic/restic-backup.log";
 
