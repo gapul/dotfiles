@@ -92,6 +92,9 @@
     source = ../../configs/media/mpv;
     recursive = true;
   };
+  # uosc は vendored (ziggy バイナリ 18MB 同梱) をやめ nixpkgs から供給。
+  # 第三者バイナリを repo に抱えない構造にする (ziggy 依存の DL 機能は未使用)。
+  home.file.".config/mpv/scripts/uosc".source = "${pkgs.mpvScripts.uosc}/share/mpv/scripts/uosc";
   home.file.".config/launcher/config.toml".source = ../../configs/launcher/config.toml;
   home.file.".config/calcurse" = {
     source = ../../configs/cli/calcurse;
