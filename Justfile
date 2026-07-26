@@ -41,11 +41,16 @@ _rebuild-macos:
     @-brew tap 2>/dev/null | grep -v '^homebrew/' | xargs -I% env -u XDG_CONFIG_HOME brew trust % >/dev/null
     @-env -u XDG_CONFIG_HOME brew trust --cask gerlero/openfoam/openfoam@2606 >/dev/null
     @-brew list --cask --full-name 2>/dev/null | grep '/' | xargs -I% env -u XDG_CONFIG_HOME brew trust --cask % >/dev/null
+    # taskpolicy -b でビルドを background QoS に落とす。ビルドで CPU が張り付くと
+    # Ghostty のイベント処理が締め切りに間に合わず global keybind の CGEventTap が
+    # kCGEventTapDisabledByTimeout で無効化され、以後フォーカス外の cmd+space が
+    # 効かなくなる (Ghostty は tap を自力再有効化しない: ghostty#11883)。優先度を
+    # 下げて Ghostty を枯渇させないことで tap 無効化を予防する。
     @echo "━━━ nix-darwin"
-    @nh darwin switch -q -Q --diff never
+    @taskpolicy -b nh darwin switch -q -Q --diff never
     @echo "✓ nix-darwin"
     @echo "━━━ home-manager"
-    @nh home switch -q -Q --diff never
+    @taskpolicy -b nh home switch -q -Q --diff never
     @echo "✓ home-manager"
     @-open -a Ghostty >/dev/null 2>&1 || true
 
