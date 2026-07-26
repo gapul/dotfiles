@@ -33,6 +33,9 @@ build_display_map() {
 
 build_display_map
 
+# 空のワークスペースを初期表示から隠すため、現在フォーカス中のワークスペースを控える
+focused_ws=$(aerospace list-workspaces --focused)
+
 for m in $(aerospace list-monitors | awk '{print $1}'); do
   sb_display=${AERO_TO_SB[$m]:-$m}
   for i in $(aerospace list-workspaces --monitor $m); do
@@ -81,6 +84,12 @@ for m in $(aerospace list-monitors | awk '{print $1}'); do
     fi
 
     sketchybar --set space.$sid label="$icon_strip"
+
+    # 空 (アプリなし) かつ非フォーカスのワークスペースは非表示にする。
+    # space_windows.sh がワークスペース切替時に drawing を再計算して戻す。
+    if [ "$sid" != "0" ] && [ "${apps}" = "" ] && [ "$sid" != "$focused_ws" ]; then
+      sketchybar --set space.$sid drawing=off
+    fi
   done
 
 done
