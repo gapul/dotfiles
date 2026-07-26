@@ -83,6 +83,7 @@
       "pear-devs/pear"
       "qmk/qmk" # QMK CLI
       "voicevox/voicevox" # VOICEVOX 公式 tap (homebrew/cask 未収録のため必須)
+      "y3owk1n/tap" # neru (キーボード全画面ナビ) の cask 配布元
 
       # ─── 個人 fork (gapul) — fork した人は不要なら削除 ───
       "gapul/openutau"
@@ -180,7 +181,7 @@
       "karabiner-elements"
       "macskk"
       "gapul/azoo-key-skkserv/azoo-key-skkserv" # azooKey 変換エンジンの skkserv (gapul 自作 tap)
-      "shortcat"
+      "y3owk1n/tap/neru" # マウス無しで全画面ナビ (grid/hints/scroll。Vimium のシステム全体版。shortcat 上位互換)
 
       # ─── macOS utilities ───
       "hammerspoon"
@@ -216,7 +217,6 @@
       "rustdesk"
 
       # ─── Dev IDEs / Editors / SDK ───
-      "claude" # Claude デスクトップアプリ (Anthropic 公式)
       "claude-code"
       "ghostty"
       "zed"
@@ -319,7 +319,6 @@
     ];
 
     masApps = {
-      "Apple Configurator 2" = 1037126344;
       "DaVinci Resolve" = 571213070;
       "Plash" = 1494023538;
       "Xcode" = 497799835;
