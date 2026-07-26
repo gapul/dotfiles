@@ -1,6 +1,5 @@
 # CLI tools component (ECS: profile)。bat/lazygit/eza/starship/zoxide/fzf/atuin/direnv。
 {
-  config,
   pkgs,
   lib,
   ...

@@ -1,9 +1,6 @@
 # Nix ツール component (ECS: profile)。nix-index/comma/agent-skills/nh。
 {
   config,
-  pkgs,
-  lib,
-  agentSkills ? null,
   ...
 }:
 {
