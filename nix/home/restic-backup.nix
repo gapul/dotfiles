@@ -65,6 +65,7 @@ let
     "${home}/Downloads"
     "${home}/Movies"
     "${home}/Music"
+    "${home}/Sync" # Syncthing SyncHub (ローカルが本体の複製データ。~/Cloud はリモート本体のマウントなので対象外)
     "${home}/Library/Application Support/minecraft/saves" # Minecraft ワールド(再現不可)
   ];
 
