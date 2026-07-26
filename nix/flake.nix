@@ -20,6 +20,14 @@
     home-manager.url = "github:nix-community/home-manager/release-26.05";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
 
+    # Android (Termux) 上の Nix 環境。release ブランチは 24.05 で止まっているため
+    # master を nixpkgs follows で使う (nix-on-droid の常套)。aarch64-linux。
+    nix-on-droid = {
+      url = "github:nix-community/nix-on-droid/master";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.home-manager.follows = "home-manager";
+    };
+
     # Mopidy ビルド時パッチ集は別リポジトリに分離 (dotfiles を 336 ファイル分軽量化)。
     # flake=false のソースとして取り込み、nix/lib/mopidy-env.nix の patchDir に渡す。
     mopidy-patches = {
@@ -77,6 +85,7 @@
       nixpkgs-nixos,
       nix-darwin,
       home-manager,
+      nix-on-droid,
       mopidy-patches,
       nix-index-database,
       agent-skills,
@@ -391,6 +400,13 @@
       darwinConfigurations.macmini = mkHost.darwin {
         host = ./hosts/macmini.nix;
         homeModules = roles.macminiHeadless;
+      };
+
+      # Android (Termux): nix-on-droid switch --flake .#default
+      # 端末系 component (git/cli/shell/terminal) だけを積む軽量構成 (hosts/droid.nix)。
+      nixOnDroidConfigurations.default = nix-on-droid.lib.nixOnDroidConfiguration {
+        pkgs = import nixpkgs { system = "aarch64-linux"; };
+        modules = [ ./hosts/droid.nix ];
       };
 
       # NixOS 実機 (Windows デュアルブート): sudo nixos-rebuild switch --flake .#nixos-laptop
