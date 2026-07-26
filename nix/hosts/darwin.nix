@@ -90,6 +90,7 @@
       "gapul/zrythm"
       "gapul/azoo-key-skkserv"
       "gapul/keystats" # 自作の打鍵アナリティクス(cask)
+      "gapul/puddle" # Puddle (Plash の MIT フォーク自作ビルド) の cask 配布 tap
     ];
 
     # brew leaves
@@ -184,6 +185,7 @@
       "y3owk1n/tap/neru" # マウス無しで全画面ナビ (grid/hints/scroll。Vimium のシステム全体版。shortcat 上位互換)
 
       # ─── macOS utilities ───
+      "gapul/puddle/puddle" # 任意のウェブページをデスクトップ壁紙に (Plash の MIT フォーク自作ビルド・Developer ID 署名+公証済)
       "hammerspoon"
       "espanso"
       "maccy"
