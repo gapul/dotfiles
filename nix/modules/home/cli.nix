@@ -94,6 +94,9 @@
     extraOptions = [ "--group-directories-first" ];
   };
 
+  # starship 設定の真のソースは configs/shell/starship.toml (下の home.file で symlink)。
+  # ここに programs.starship.settings を追加すると home-manager が同じ
+  # ~/.config/starship.toml を生成しようとし symlink と衝突するので、settings は書かない。
   programs.starship = {
     enable = true;
     enableZshIntegration = true;
