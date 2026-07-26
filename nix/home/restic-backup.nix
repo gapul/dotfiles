@@ -24,8 +24,8 @@ let
   #   linux 版 (restic-backup-linux.nix) と Justfile も同じ値を引く。共有リポを壊さないため。
   common = import ../lib/restic-common.nix { inherit home; };
 
-  repository = common.repository;
-  rcloneConf = common.rcloneConf;
+  inherit (common) repository;
+  inherit (common) rcloneConf;
   passwordFile = config.sops.secrets."restic_password".path;
   logFile = "${home}/Library/Logs/restic-backup.log";
 
