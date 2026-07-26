@@ -1,5 +1,5 @@
 # hex 文字列 "rrggbb" → "r g b" (0-1 float, スペース区切り) へ変換するヘルパー。
-# sioyek など「色を 0-1 float で持つ」ツールに rose-pine.nix の hex を
+# sioyek など「色を 0-1 float で持つ」ツールに theme.nix の hex を
 # 単一ソースのまま流すために使う (マジックナンバー排除の方針を維持)。
 #
 # 使い方:  rgb = import ./hex-rgb.nix { inherit lib; };  rgb "e0def4" => "0.878431 0.870588 0.956863"

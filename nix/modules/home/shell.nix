@@ -4,6 +4,10 @@
   pkgs,
   ...
 }:
+let
+  # XDG 寄せ export の SSO (common.nix の .zshenv と共有)。
+  xdgEnv = import ../../lib/shell-xdg-env.nix;
+in
 {
   programs.zsh = {
     enable = true;
@@ -12,11 +16,8 @@
     envExtra = ''
       # ZDOTDIR が既に環境にある zsh は ~/.zshenv ではなく
       # $ZDOTDIR/.zshenv を読むため、XDG 寄せはここにも置く。
-      export CODEX_HOME="$HOME/.local/share/codex"
-      export CODEX_SQLITE_HOME="$HOME/.local/state/codex/sqlite"
-      export NPM_CONFIG_USERCONFIG="$HOME/.config/npm/npmrc"
-      export NPM_CONFIG_CACHE="$HOME/.cache/npm"
-      export NPM_CONFIG_PREFIX="$HOME/.local/share/npm"
+      ${xdgEnv.codex}
+      ${xdgEnv.npm}
     '';
 
     # XDG 化: history → ~/.local/state/zsh/, 補完dump → ~/.cache/zsh/

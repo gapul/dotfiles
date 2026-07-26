@@ -1,5 +1,5 @@
 {
-  "$comment": "Single source of truth for theme palettes. 色 hex は prefix 無し。利用側で '#' or '0xff' を付ける。Mac の nix/lib/theme.nix と Windows の windows/theme/apply.ps1 が両方このファイルを読む。テーマ切替は active を変更。",
+  "$comment": "Single source of truth for theme palettes (色 hex のみ)。prefix 無し、利用側で '#' or '0xff' を付ける。Mac の nix/lib/theme.nix と Windows の windows/theme/apply.ps1 が両方このファイルを読む。テーマ切替は active を変更。weztermScheme は wezterm.lua.tmpl のレンダが消費する唯一のツール名フィールド。ghostty/bat/yazi のテーマ名は各自の config (ghostty config, nix cli.nix, yazi flavors) が持つ (静的/vendor 資産に結合しているため JSON では管理しない)。",
   "active": "rose-pine",
   "palettes": {
     "rose-pine": {
@@ -17,9 +17,6 @@
       "foam": "9ccfd8",
       "iris": "c4a7e7",
       "hlMed": "403d52",
-      "ghosttyTheme": "Rose Pine",
-      "batTheme": "rose-pine",
-      "yaziFlavor": "rose-pine",
       "weztermScheme": "rose-pine"
     },
     "rose-pine-dawn": {
@@ -37,9 +34,6 @@
       "foam": "56949f",
       "iris": "907aa9",
       "hlMed": "dfdad9",
-      "ghosttyTheme": "Rose Pine Dawn",
-      "batTheme": "rose-pine-dawn",
-      "yaziFlavor": "rose-pine-dawn",
       "weztermScheme": "rose-pine-dawn"
     }
   }
