@@ -37,6 +37,11 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# FlakeHub Cache の OIDC 認証に id-token: write が要る。
+permissions:
+  contents: read
+  id-token: write
+
 jobs:
   om-ci:
     name: om ci (${{ matrix.system }})
@@ -62,12 +67,15 @@ jobs:
         with:
           fetch-depth: 0 # gitleaks detect が全履歴を走査するため必須
 
-      # ビルドキャッシュは setup-nix の Magic Nix Cache (GitHub Actions backend)。
-      # 以前は attic (cache.gapul.net) を pull/push していたが、tailnet 越しの
-      # narinfo 問い合わせ (空キャッシュで全ミス) + watch-store push が om ci を
-      # ~4 分/run 遅くするだけで恩恵ゼロだったため CI からは撤去。attic は各実機
-      # (darwin/nixos) の substituter として dev 機共有専用に残す。
       - uses: ./.github/actions/setup-nix
+
+      # ビルドキャッシュ = FlakeHub Cache (hosted。GHA Cache backend の Magic Nix
+      # Cache は大きい closure で throttle され機能しなかったため置換)。全 system で
+      # run 間キャッシュ。continue-on-error なので FlakeHub 未連携/失敗でも CI は緑。
+      # (attic は各実機の substituter として dev 機共有専用に残す。)
+      - name: FlakeHub Cache
+        continue-on-error: true
+        uses: DeterminateSystems/flakehub-cache-action@77c6bddd7d747943530aaa578c57f233ee5d920e # v3
 
       # omnix 本体は om.cachix.org から取得 (--accept-flake-config)。ソースビルドしない。
       - name: om ci run
