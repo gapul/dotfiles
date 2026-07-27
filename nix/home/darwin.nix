@@ -123,7 +123,9 @@
     # 詳細は pkgs/zrythm-darwin/ 参照。GUI は前面 GUI セッションでの起動が必要。
     # 26.05-darwin では appstream/libadwaita が darwin でビルド不可なため、この1パッケージだけ
     # nixos-unstable の pkgs (nixpkgsUnstable, flake.nix の commonSpecialArgs 経由) を使う。
-    (import ../pkgs/zrythm-darwin { pkgs = nixpkgsUnstable.legacyPackages.${pkgs.stdenv.hostPlatform.system}; })
+    (import ../pkgs/zrythm-darwin {
+      pkgs = nixpkgsUnstable.legacyPackages.${pkgs.stdenv.hostPlatform.system};
+    })
   ];
 
   home.file.".config/ghostty" = {
