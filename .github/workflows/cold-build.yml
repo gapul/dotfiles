@@ -30,11 +30,9 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0 # gitleaks detect が全履歴を走査するため必須
-      # Magic Nix Cache を無効化し、attic substituter も足さないので、この job は
-      # 正真正銘キャッシュ無しのソース再現ビルドになる (週次で全出力の再現性を検証)。
+      # FlakeHub Cache も attic substituter も足さないので、この job は正真正銘
+      # キャッシュ無しのソース再現ビルドになる (週次で全出力の再現性を検証)。
       - uses: ./.github/actions/setup-nix
-        with:
-          use-magic-nix-cache: 'false'
       - name: om ci run (no restored cache)
         run: |
           nix --accept-flake-config run github:juspay/omnix/v1.3.2 -- \
