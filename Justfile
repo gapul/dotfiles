@@ -152,15 +152,28 @@ _upgrade-nix-runtime-macos:
 
 [private]
 _upgrade-packages-macos:
+    # 順序が肝: `brew update` は非公式 tap の trust をリセットするため、update を
+    # 先に済ませてから trust し、以降の upgrade は HOMEBREW_NO_AUTO_UPDATE=1 で
+    # 走らせて trust が再リセットされないようにする。これを守らないと update →
+    # (trust 消える) → upgrade で qmk/qmk (formula) や y3owk1n/tap/neru (cask) が
+    # untrusted 拒否され、cask は `|| true` で握り潰されて末尾チェックで落ちる。
+    @brew update --quiet || true
     @just _brew-trust-taps
     @echo "━━━ Homebrew formulae"
-    @brew upgrade --quiet --formula
+    @HOMEBREW_NO_AUTO_UPDATE=1 brew upgrade --quiet --formula
     @echo "━━━ Homebrew casks"
-    @brew upgrade --quiet --cask --greedy || true
+    @HOMEBREW_NO_AUTO_UPDATE=1 brew upgrade --quiet --cask --greedy || true
     @echo "━━━ App Store"
     @mas upgrade
     @just sketchybar-font
-    @remaining=$(brew outdated --cask --greedy 2>/dev/null | grep -v '^figma-agent$' || true); if [ -n "$remaining" ]; then echo "ERROR: cask upgrade incomplete:" >&2; echo "$remaining" >&2; exit 1; fi
+    # 上の --greedy upgrade は auto_updates/`version :latest` cask も対象にするが、
+    # それらは常に outdated 扱いのままで「完了」しえない (例: figma-agent,
+    # pear-desktop。後者は upstream cask が URL 欠落で upgrade 自体エラーだが
+    # `|| true` で握り潰す)。よって完了判定は --greedy を付けない outdated で行う。
+    # 非greedy は auto_updates/latest を出さないので、実バージョン更新の取りこぼし
+    # だけを検出でき、auto_updates cask が増えても壊れない (旧: figma-agent を
+    # grep 除外していたが列挙は破綻するため撤去)。
+    @remaining=$(HOMEBREW_NO_AUTO_UPDATE=1 brew outdated --cask 2>/dev/null || true); if [ -n "$remaining" ]; then echo "ERROR: cask upgrade incomplete:" >&2; echo "$remaining" >&2; exit 1; fi
 
 [private]
 _upgrade-linux:
