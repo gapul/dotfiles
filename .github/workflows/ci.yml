@@ -65,20 +65,13 @@ jobs:
         with:
           fetch-depth: 0 # gitleaks detect が全履歴を走査するため必須
 
+      # cachix (gapul-dotfiles) を pull+push。token があるジョブ (owner の push/main)
+      # は build 出力を push し、以降の run と各実機 dev で共有する。fork PR は
+      # secret 不可なので pull のみ。詳細は setup-nix/action.yml を参照。
       - uses: ./.github/actions/setup-nix
+        with:
+          cachix-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
-      # CI ビルドキャッシュは無し。GitHub ホスト runner + Determinate インストーラで
-      # 「タダで効く」自動キャッシュは存在しないことを一通り検証して確定した:
-      #   - cache-nix-action  : Determinate の tar と衝突し復元不能 (mkdir エラー)
-      #   - Magic Nix Cache   : macos-14 でハング / Linux では GHA Cache に throttle。
-      #                         Determinate 自身も非推奨化
-      #   - FlakeHub Cache    : 有料プラン専用。無料では "cache is not enabled" で
-      #                         何もアップロードしない (実ログで確認)
-      #   - 自前 attic を CI substituter : narinfo ミスで実測 +4分の純増
-      # よって毎回フルビルド (x86 ~22分 / darwin ~21分 / arm ~9分)。FOSS/dotfiles で
-      # 実害は小さく、コスト0・保守0 を優先する。attic は各実機の substituter として
-      # dev 機共有専用に残す (CI では使わない)。
-      #
       # omnix 本体は om.cachix.org から取得 (--accept-flake-config)。ソースビルドしない。
       - name: om ci run
         run: |
