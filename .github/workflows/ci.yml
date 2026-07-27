@@ -70,10 +70,17 @@ jobs:
       - uses: ./.github/actions/setup-nix
 
       # ビルドキャッシュ = FlakeHub Cache (hosted。GHA Cache backend の Magic Nix
-      # Cache は大きい closure で throttle され機能しなかったため置換)。全 system で
+      # Cache は大きい closure で throttle され機能しなかったため置換)。
       # run 間キャッシュ。continue-on-error なので FlakeHub 未連携/失敗でも CI は緑。
+      #
+      # macOS(macos-14) 限定除外: Determinate のキャッシュデーモン (magic-nix-cache /
+      # flakehub-cache 双方) は macos-14 ランナーで setup が返らずハングし、
+      # continue-on-error でも救えず 90分 timeout まで job が詰まる (実測 35分+)。
+      # よって Linux(x86/arm) のみで有効化。長時間側は x86 なので高速化目的は達成し、
+      # darwin はキャッシュ無し (~15分。もともと律速ではない) で据え置く。
       # (attic は各実機の substituter として dev 機共有専用に残す。)
       - name: FlakeHub Cache
+        if: runner.os == 'Linux'
         continue-on-error: true
         uses: DeterminateSystems/flakehub-cache-action@77c6bddd7d747943530aaa578c57f233ee5d920e # v3
 
