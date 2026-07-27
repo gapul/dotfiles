@@ -46,14 +46,17 @@ if comm -12 "$check_tmp/managed.txt" "$check_tmp/excluded.txt" | grep -q .; then
   exit 1
 fi
 
-echo "Checking generated lazygit configuration against the upstream schema..."
+echo "Checking generated lazygit configuration against the (vendored) schema..."
 lazygit_config_drv="$(
   nix eval --raw "$repo_root/nix#homeConfigurations.gapul.config.xdg.configFile.\"lazygit/config.yml\".source.drvPath"
 )"
 lazygit_config="$(nix-store --realise "$lazygit_config_drv")"
+# schema は同梱 (nix/tests/lazygit-config.schema.json)。毎回 raw.githubusercontent.com
+# から取ると CI がネットワークに依存して時々フレークするため vendor 化した。
+# 更新は flake.lock 更新時などに手動で curl し直す。
 check-jsonschema \
   --default-filetype yaml \
-  --schemafile "https://raw.githubusercontent.com/jesseduffield/lazygit/master/schema/config.json" \
+  --schemafile "$repo_root/nix/tests/lazygit-config.schema.json" \
   "$lazygit_config"
 
 echo "Checking generated documentation blocks (README / CHEATSHEET)..."
