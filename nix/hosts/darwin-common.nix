@@ -28,6 +28,14 @@
     if [ -f "$conf" ] && ! /usr/bin/grep -q '^use-xdg-base-directories' "$conf"; then
       printf '\n# XDG Base Directory 準拠 (~/.nix-defexpr 等を ~/.local/state/nix へ)\nuse-xdg-base-directories = true\n' >> "$conf"
     fi
+    # 到達不可な substituter でビルドを壊さない。自前 attic (cache.gapul.net) は
+    # tailnet 限定なうえ homelab を落とすと消えるため、narinfo 取得が既定 15s も
+    # 待って fallback=false だと source ビルドに逃げず致命エラーになる (実害発生済)。
+    # connect-timeout で早期に諦め、fallback=true で substitute 失敗時は source ビルド
+    # へ逃がす。到達可能時の pull 挙動は不変。
+    if [ -f "$conf" ] && ! /usr/bin/grep -q '^connect-timeout' "$conf"; then
+      printf '\n# 到達不可 substituter を非致命化 (attic を落としてもビルドは通す)\nconnect-timeout = 5\nfallback = true\n' >> "$conf"
+    fi
     # nix-community キャッシュを system 全体で信頼。
     # セキュリティ最小権限: yuki を trusted-user(実質 root 相当)にはせず、特定 substituter +
     # その公開鍵だけを root 権限の nix.custom.conf に追記する。これで flake nixConfig の

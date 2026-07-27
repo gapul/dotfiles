@@ -65,6 +65,11 @@
       "flakes"
     ];
     auto-optimise-store = true; # store の重複排除
+    # 到達不可な substituter (tailnet 限定の自前 attic 等) でビルドを壊さない:
+    # 早期に諦め (connect-timeout)、substitute 失敗時は source ビルドへ逃がす
+    # (fallback)。homelab を落としても local ビルドは通る。
+    connect-timeout = 5;
+    fallback = true;
     # Hyprland をソースビルドせず公式バイナリキャッシュから取得 (数十分の短縮)。
     # nix-community は darwin 側 (hosts/darwin.nix) と同じ最小権限ポリシーで追加。
     substituters = [

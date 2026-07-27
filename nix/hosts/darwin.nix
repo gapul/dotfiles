@@ -80,7 +80,6 @@
       "nikitabobko/tap"
       "osx-cross/arm" # QMK toolchain dependency tap
       "osx-cross/avr" # QMK / Keyball AVR toolchain tap
-      "pear-devs/pear"
       "qmk/qmk" # QMK CLI
       "voicevox/voicevox" # VOICEVOX 公式 tap (homebrew/cask 未収録のため必須)
       "y3owk1n/tap" # neru (キーボード全画面ナビ) の cask 配布元
@@ -160,7 +159,6 @@
       "google-chrome"
       "tor-browser"
       "zen"
-      "pear-desktop"
 
       # ─── PDF viewers ───
       # sioyek は未署名の x86_64 cask (Rosetta 動作)。brew 既定の quarantine が付くと
