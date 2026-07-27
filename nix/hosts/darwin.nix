@@ -87,7 +87,6 @@
 
       # ─── 個人 fork (gapul) — fork した人は不要なら削除 ───
       "gapul/openutau"
-      "gapul/zrythm"
       "gapul/azoo-key-skkserv"
       "gapul/keystats" # 自作の打鍵アナリティクス(cask)
       "gapul/puddle" # Puddle (Plash の MIT フォーク自作ビルド) の cask 配布 tap
@@ -260,7 +259,8 @@
       "reaper"
       "supercollider"
       "surge-xt" # シンセ standalone/プラグイン (.pkg cask)
-      "gapul/zrythm/zrythm" # DAW (gapul 自作 tap)
+      # zrythm は trial 版(x64/Rosetta/保存不可)だったため撤去。nix 自作フル版
+      # (pkgs/zrythm-darwin, arm64ネイティブ・-O2) に一本化。home.packages 経由で入る。
       "vcv-rack"
       "voicevox/voicevox/voicevox" # 公式 tap 専用 (homebrew/cask 未収録)。tap宣言必須
       # 自作の打鍵アナリティクス。Developer ID 署名 + 公証済みなので隔離付きでも
