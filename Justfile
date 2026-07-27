@@ -36,11 +36,18 @@ recovery-iso:
     @nix build {{flake}}#recovery-iso --out-link result-recovery
     @echo "ISO: {{justfile_directory()}}/result-recovery/iso/gapul-nixos-recovery.iso"
 
+# Homebrew の tap-trust 要件を満たす。nix-darwin が管理する非公式 tap の
+# formula/cask は trust しないと brew upgrade / install がロードを拒否して落ちる。
+# rebuild と upgrade(maintain) の両経路で必要なため共通化。
 [private]
-_rebuild-macos:
+_brew-trust-taps:
     @-brew tap 2>/dev/null | grep -v '^homebrew/' | xargs -I% env -u XDG_CONFIG_HOME brew trust % >/dev/null
     @-env -u XDG_CONFIG_HOME brew trust --cask gerlero/openfoam/openfoam@2606 >/dev/null
     @-brew list --cask --full-name 2>/dev/null | grep '/' | xargs -I% env -u XDG_CONFIG_HOME brew trust --cask % >/dev/null
+
+[private]
+_rebuild-macos:
+    @just _brew-trust-taps
     # taskpolicy -b でビルドを background QoS に落とす。ビルドで CPU が張り付くと
     # Ghostty のイベント処理が締め切りに間に合わず global keybind の CGEventTap が
     # kCGEventTapDisabledByTimeout で無効化され、以後フォーカス外の cmd+space が
@@ -145,6 +152,7 @@ _upgrade-nix-runtime-macos:
 
 [private]
 _upgrade-packages-macos:
+    @just _brew-trust-taps
     @echo "━━━ Homebrew formulae"
     @brew upgrade --quiet --formula
     @echo "━━━ Homebrew casks"
