@@ -37,10 +37,8 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# FlakeHub Cache の OIDC 認証に id-token: write が要る。
 permissions:
   contents: read
-  id-token: write
 
 jobs:
   om-ci:
@@ -67,22 +65,12 @@ jobs:
         with:
           fetch-depth: 0 # gitleaks detect が全履歴を走査するため必須
 
+      # cachix (gapul-dotfiles) を pull+push。token があるジョブ (owner の push/main)
+      # は build 出力を push し、以降の run と各実機 dev で共有する。fork PR は
+      # secret 不可なので pull のみ。詳細は setup-nix/action.yml を参照。
       - uses: ./.github/actions/setup-nix
-
-      # ビルドキャッシュ = FlakeHub Cache (hosted。GHA Cache backend の Magic Nix
-      # Cache は大きい closure で throttle され機能しなかったため置換)。
-      # run 間キャッシュ。continue-on-error なので FlakeHub 未連携/失敗でも CI は緑。
-      #
-      # macOS(macos-14) 限定除外: Determinate のキャッシュデーモン (magic-nix-cache /
-      # flakehub-cache 双方) は macos-14 ランナーで setup が返らずハングし、
-      # continue-on-error でも救えず 90分 timeout まで job が詰まる (実測 35分+)。
-      # よって Linux(x86/arm) のみで有効化。長時間側は x86 なので高速化目的は達成し、
-      # darwin はキャッシュ無し (~15分。もともと律速ではない) で据え置く。
-      # (attic は各実機の substituter として dev 機共有専用に残す。)
-      - name: FlakeHub Cache
-        if: runner.os == 'Linux'
-        continue-on-error: true
-        uses: DeterminateSystems/flakehub-cache-action@77c6bddd7d747943530aaa578c57f233ee5d920e # v3
+        with:
+          cachix-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
       # omnix 本体は om.cachix.org から取得 (--accept-flake-config)。ソースビルドしない。
       - name: om ci run

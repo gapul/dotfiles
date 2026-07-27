@@ -1,15 +1,37 @@
 name: Set up Nix
-description: Install Nix (Determinate)
+description: Install Nix (Determinate) と cachix 共有キャッシュを有効化
 
-# ビルドキャッシュ履歴:
-#  - nix-community/cache-nix-action: Determinate installer と tar 衝突で無効 (撤去)。
-#  - Magic Nix Cache: GitHub Actions Cache backend が大きい closure で throttle され
-#    ("GitHub Actions Cache throttled Magic Nix Cache") 実質機能せず (撤去)。
-# 現行はキャッシュを FlakeHub Cache (hosted, GHA throttle 非対象) に一本化し、
-# 各ワークフロー側 (ci.yml) で flakehub-cache-action を呼ぶ。cold-build は無キャッシュ。
+# ビルドキャッシュ = cachix (cachix.org, OSS は無料枠)。OSS Nix の定番手段。
+# ここに至るまでの不採用履歴:
+#  - cache-nix-action : Determinate の tar と衝突し復元不能 (mkdir エラー)。
+#  - Magic Nix Cache  : macos-14 でハング / Linux で GHA Cache に throttle・非推奨化。
+#  - FlakeHub Cache   : 有料プラン専用 (無料では "cache is not enabled" で何もしない)。
+#  - 自前 attic を CI substituter : narinfo ミスで実測 +4分の純増。
+# cachix は Determinate インストーラと共存でき、pull は token 不要 (fork PR も読める)、
+# push は CACHIX_AUTH_TOKEN がある時だけ走る (owner の push / main / cold-build)。
+# cache 名はハードコード (public 名は秘密でない)。以前 vars.CACHIX_CACHE_NAME を
+# 消して 403 で沈黙した罠を避けるため、あえて変数化しない。
+
+inputs:
+  cachix-token:
+    description: cachix write token。空なら pull (substituter) のみで push しない。
+    default: ''
+  cachix:
+    description: cachix を有効化するか。cold-build は 'false' で完全 cold ビルドにする。
+    default: 'true'
 
 runs:
   using: composite
   steps:
     - name: Install Nix
       uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+
+    # pull: 常時 (cachix use gapul-dotfiles を substituter に追加)。
+    # push: authToken がある時だけ (fork PR は secret が無いので自動的に pull のみ)。
+    # cachix: 'false' の時は pull も push もしない (cold-build 用)。
+    - name: Enable cachix (gapul-dotfiles)
+      if: inputs.cachix == 'true'
+      uses: cachix/cachix-action@97e5ff84d02b3b4f9936339f767e17f03c9252ed # v16
+      with:
+        name: gapul-dotfiles
+        authToken: ${{ inputs.cachix-token }}
