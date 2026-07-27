@@ -37,18 +37,6 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  # 自前 attic キャッシュ (cache.gapul.net, homelab)。cachix 代替。
-  # CI は tailnet 圏外なので、到達には Tailscale エフェメラル node 参加が要る。
-  # TS_OAUTH_* が未設定の間は attic 関連ステップは丸ごと skip され、CI は
-  # GitHub Actions の nix store キャッシュのみで従来どおり回る (非破壊)。
-  ATTIC_CACHE: ${{ vars.ATTIC_CACHE_NAME }}
-  ATTIC_URL: ${{ vars.ATTIC_CACHE_URL }}
-  ATTIC_PUBLIC_KEY: dotfiles:NT1wKtaeu+7eOjVdIJlT3nqtXkT/dP27/DDsHuLaM5A=
-  # secret は step の if 条件で直接参照できないため env に写して gate に使う。
-  TS_OAUTH_CLIENT_ID: ${{ secrets.TS_OAUTH_CLIENT_ID }}
-  ATTIC_TOKEN: ${{ secrets.ATTIC_TOKEN }}
-
 jobs:
   om-ci:
     name: om ci (${{ matrix.system }})
@@ -74,37 +62,12 @@ jobs:
         with:
           fetch-depth: 0 # gitleaks detect が全履歴を走査するため必須
 
-      # tailnet 限定公開の cache.gapul.net に到達するため、CI ランナーを
-      # エフェメラル node として tailnet に参加させる。OAuth 未設定なら skip。
-      - name: Connect to Tailscale
-        if: env.TS_OAUTH_CLIENT_ID != ''
-        uses: tailscale/github-action@6cae46e2d796f265265cfcf628b72a32b4d7cade # v3
-        with:
-          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
-          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
-          tags: tag:ci
-
+      # ビルドキャッシュは setup-nix の Magic Nix Cache (GitHub Actions backend)。
+      # 以前は attic (cache.gapul.net) を pull/push していたが、tailnet 越しの
+      # narinfo 問い合わせ (空キャッシュで全ミス) + watch-store push が om ci を
+      # ~4 分/run 遅くするだけで恩恵ゼロだったため CI からは撤去。attic は各実機
+      # (darwin/nixos) の substituter として dev 機共有専用に残す。
       - uses: ./.github/actions/setup-nix
-
-      # attic を pull substituter に追加 (+ token があれば watch-store で push)。
-      # tailnet 参加済みのときだけ。om ci の前に nix.conf を整える必要がある。
-      - name: Configure attic cache
-        if: env.TS_OAUTH_CLIENT_ID != ''
-        run: |
-          set -euo pipefail
-          # pull: substituter + 公開鍵を nix.conf へ追記 (Determinate はランナーを trusted-user 化済)。
-          sudo tee -a /etc/nix/nix.conf >/dev/null <<EOF
-          extra-substituters = ${ATTIC_URL}
-          extra-trusted-public-keys = ${ATTIC_PUBLIC_KEY}
-          EOF
-          # push: token があれば watch-store をバックグラウンド起動。以降 om ci が
-          # store に追加した path を随時 push する (ジョブ内で常駐継続)。
-          # attic は nix run で起動 (PATH/profile 非依存)。nohup で macOS/Linux 両対応。
-          if [ -n "${ATTIC_TOKEN}" ]; then
-            nix run nixpkgs#attic-client -- login homelab "https://cache.gapul.net" "${ATTIC_TOKEN}"
-            nohup nix run nixpkgs#attic-client -- watch-store "${ATTIC_CACHE}" >/tmp/attic-watch.log 2>&1 &
-            disown || true
-          fi
 
       # omnix 本体は om.cachix.org から取得 (--accept-flake-config)。ソースビルドしない。
       - name: om ci run

@@ -76,7 +76,7 @@
       "finnvoor/tools"
       "gerlero/openfoam"
       "gapul/kdeconnect" # imshuhao/kdeconnect の fork。depends_on macos deprecated を修正済
-      "macos-fuse-t/cask" # fuse-t (KEXT-less FUSE。rclone mount 用)
+      "lihaoyun6/tap" # QuickRecorder (画面レコーダー。homebrew/cask 未収録のため必須)
       "nikitabobko/tap"
       "osx-cross/arm" # QMK toolchain dependency tap
       "osx-cross/avr" # QMK / Keyball AVR toolchain tap
@@ -178,7 +178,7 @@
       # ─── Window / Keyboard / Input ───
       "aerospace"
       "alt-tab"
-      "jordanbaird-ice" # メニューバー管理 (手動DL版から cask 採用 2026-07-26)
+      "thaw" # メニューバー管理 (Ice の保守フォーク。本家 jordanbaird-ice は 0.11.12/2024-10 で開発停止し macOS Tahoe で起動不可 → Tahoe 対応の Thaw へ移行 2026-07-27。Ice 設定はインポート可)
       "karabiner-elements"
       "macskk"
       "gapul/azoo-key-skkserv/azoo-key-skkserv" # azooKey 変換エンジンの skkserv (gapul 自作 tap)
@@ -193,7 +193,6 @@
       "mos"
       "qlmarkdown"
       "corelocationcli"
-      "fuse-t" # KEXT-less FUSE (NFS バックエンド)。rclone mount ~/Cloud/GoogleDrive 用。KEXT/リカバリー不要
 
       # ─── Privacy / Security ───
       # Objective-See (Patrick Wardle) スイート — 全て無料・notarize 済み
@@ -205,7 +204,6 @@
       "netiquette" # ライブ通信モニタ (どのプロセスがどこへ)
       "taskexplorer" # プロセス検査 (署名 / VirusTotal 照合)
       "whatsyoursign" # Finder 右クリックでコード署名表示
-      "kextviewr" # kernel extension ビューア
       "ransomwhere" # ランサムウェア (不審な暗号化挙動) 検知
       # VPN / 鍵
       "mullvad-vpn" # ノーログ匿名 VPN (self-host の WireGuard/Tailscale とは別レイヤ)
@@ -270,7 +268,7 @@
 
       # ─── Creative — Video / Animation / Stream ───
       "obs"
-      "kap" # オープンソース画面レコーダー (getkap.co)
+      "lihaoyun6/tap/quickrecorder" # 画面レコーダー (ScreenCaptureKit ネイティブ・Tahoe 対応)。旧 kap は Electron 製で約1.7年開発停滞のため乗り換え
       "gyroflow"
       "touchdesigner"
       "cavalry" # 2D モーショングラフィックス
