@@ -1,0 +1,6 @@
+# neru が ~/.config/neru (= このディレクトリの symlink 先) に書く可能性のある
+# runtime 生成物を除外する。管理対象は config.toml のみ。
+*.log
+*.sock
+*.lock
+.plugins.lock

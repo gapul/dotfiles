@@ -63,6 +63,24 @@
   home.file.".hammerspoon".source =
     config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.dotfiles/configs/keyboard/hammerspoon";
 
+  # neru: マウス無しの全画面ナビ (grid/hints/scroll。Shortcat の後継)。
+  # config.toml を neru CLI / 手編集でライブ調整するため karabiner と同じ
+  # ディレクトリ mkOutOfStoreSymlink。runtime cruft は同梱の .gitignore で除外。
+  home.file.".config/neru".source =
+    config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.dotfiles/configs/keyboard/neru";
+
+  # neru の launchd 常駐 (ログイン時起動 + 死活監視) を純正サービス管理で登録。
+  # plist を手書き複製すると純正 label com.y3owk1n.neru と二重起動になるため、
+  # neru services install を冪等に呼ぶ。config.toml (上の symlink) が存在してから
+  # 起動するので「config より先に daemon が上がりホットキー未登録」の初回レースも防ぐ。
+  # Neru.app は brew cask のため、バイナリが入るまで (未 install 時) は skip。
+  home.activation.neruService = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    NERU=/opt/homebrew/bin/neru
+    if [ -x "$NERU" ] && ! "$NERU" services status 2>/dev/null | grep -qi loaded; then
+      "$NERU" services install || true
+    fi
+  '';
+
   # mpv ランチャー (AppleScript droplet)。mpv 本体は brew formula (darwin.nix の
   # homebrew.brews) で、CLI バイナリのみ・.app を吐かないため、Finder の関連付け /
   # ドラッグ&ドロップ再生用にこの droplet を被せている。中身は
