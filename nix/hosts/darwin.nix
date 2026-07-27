@@ -91,6 +91,7 @@
       "gapul/keystats" # 自作の打鍵アナリティクス(cask)
       "gapul/puddle" # Puddle (Plash の MIT フォーク自作ビルド) の cask 配布 tap
       "gapul/armorpaint" # ArmorPaint ソースビルド formula 配布 tap(公式は有料€16→自前ビルドで無料フル)
+      "gapul/inochi" # Inochi Creator (2D VTuber リギング) の cask 配布 tap(homebrew/cask 未収録)
     ];
 
     # brew leaves
@@ -200,6 +201,11 @@
       "mos"
       "qlmarkdown"
       "corelocationcli"
+
+      # ─── Creative / VTuber ───
+      # Inochi Creator: 2D VTuber パペットリギング(Live2D 代替・無料/OSS)。公式 mac 版を
+      # 自作 cask tap で配布(homebrew/cask 未収録・nixpkgs は darwin broken のため)。
+      "gapul/inochi/inochi-creator"
 
       # ─── Privacy / Security ───
       # Objective-See (Patrick Wardle) スイート — 全て無料・notarize 済み

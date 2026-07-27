@@ -6,6 +6,15 @@
   nixpkgsUnstable,
   ...
 }:
+let
+  # 有料バイナリだが nixpkgs のソースビルド=無料フルになる creative tools 用。
+  # 26.05-darwin では ardour/aseprite が未提供/broken なので nixos-unstable を使い、
+  # aseprite は unfree のため allowUnfree 付きで再インスタンス化する。
+  unstablePkgs = import nixpkgsUnstable.legacyPackages.${pkgs.stdenv.hostPlatform.system}.path {
+    inherit (pkgs.stdenv.hostPlatform) system;
+    config.allowUnfree = true;
+  };
+in
 {
   imports = [
     ../modules/home/darwin-chrome.nix
@@ -126,6 +135,11 @@
     (import ../pkgs/zrythm-darwin {
       pkgs = nixpkgsUnstable.legacyPackages.${pkgs.stdenv.hostPlatform.system};
     })
+    # ─── Creative: 公式は有料だが nixpkgs のソースビルドで無料フル版が入る ───
+    # 26.05-darwin では未提供/broken のため unstablePkgs(nixos-unstable, allowUnfree付)から。
+    unstablePkgs.fritzing # PCB/回路設計 CAD(公式DLは有料。ESP32 プロジェクト用)。cache済で即
+    unstablePkgs.ardour # DAW(公式バイナリは pay-what-you-want。ソースビルドで無料)。cache済で即
+    unstablePkgs.aseprite # ドット絵エディタ(公式$20。source-available/自前ビルドは無料フル)
   ];
 
   home.file.".config/ghostty" = {
