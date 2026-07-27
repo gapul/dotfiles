@@ -3,6 +3,7 @@
   pkgs,
   lib,
   user,
+  nixpkgsUnstable,
   ...
 }:
 {
@@ -118,6 +119,13 @@
     syncthing # Syncthing CLI (常駐は services.syncthing の LaunchAgent)
     xcodegen # project.yml → .xcodeproj 生成 (Mac 専用、Linux nixpkgs では meta.platforms = darwin のため)
     (callPackage ../pkgs/slk.nix { }) # Slack TUI (公式 GitHub Release を固定)
+    # zrythm (DAW): nixpkgs では broken=isDarwin。carla 込みで darwin 向けに自前ビルド。
+    # 詳細は pkgs/zrythm-darwin/ 参照。GUI は前面 GUI セッションでの起動が必要。
+    # 26.05-darwin では appstream/libadwaita が darwin でビルド不可なため、この1パッケージだけ
+    # nixos-unstable の pkgs (nixpkgsUnstable, flake.nix の commonSpecialArgs 経由) を使う。
+    (import ../pkgs/zrythm-darwin {
+      pkgs = nixpkgsUnstable.legacyPackages.${pkgs.stdenv.hostPlatform.system};
+    })
   ];
 
   home.file.".config/ghostty" = {
