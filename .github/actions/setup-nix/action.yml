@@ -1,14 +1,29 @@
 name: Set up Nix
-description: Install Nix (Determinate)
+description: Install Nix (Determinate) + Magic Nix Cache
 
-# 注記: 以前は nix-community/cache-nix-action で GitHub Actions の nix store を
-# キャッシュしていたが、Determinate nix-installer が /nix/store を先に書き込むため
-# tar 復元が "Cannot mkdir" で全滅し、実質ゼロ復元 + 840MB の無駄 DL になっていた。
-# ビルドキャッシュは自前 attic (cache.gapul.net) に一本化した (ci.yml で substituter
-# 追加 + watch-store push)。詳細は memory homelab-attic-cache 参照。
+# 注記: 以前の nix-community/cache-nix-action は Determinate nix-installer が
+# /nix/store を先に書くため tar 復元が "Cannot mkdir" で全滅し無効だった (撤去済)。
+# 代わりに Determinate 純正の Magic Nix Cache を使う。GitHub Actions cache を
+# バックエンドにする local daemon で、tar 衝突が無く Determinate と両立し、run 間で
+# store を復元/保存する (ephemeral ランナーでも実質差分ビルド)。
+# 横断共有 (Mac↔laptop↔CI) は別途 attic (cache.gapul.net, ci.yml で pull/push)。
+# 詳細は memory homelab-attic-cache 参照。
+
+inputs:
+  use-magic-nix-cache:
+    description: >-
+      Magic Nix Cache (GitHub Actions cache backend) で nix store を run 間キャッシュ。
+      cold reproducibility build ではソースから作る検証のため 'false' にする。
+    default: 'true'
 
 runs:
   using: composite
   steps:
     - name: Install Nix
       uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+
+    # macOS (macos-14) では Magic Nix Cache が setup で無限ハングするため除外。
+    # Linux (x86_64/aarch64) のみで有効化する (最長ジョブの x86 が主な受益者)。
+    - name: Magic Nix Cache
+      if: inputs.use-magic-nix-cache == 'true' && runner.os != 'macOS'
+      uses: DeterminateSystems/magic-nix-cache-action@908b263ff629f4cc17666315b7fd3ec127c6244d # v14
