@@ -39,6 +39,12 @@
     if [ -f "$conf" ] && ! /usr/bin/grep -q 'nix-on-droid.cachix.org' "$conf"; then
       printf '\n# nix-on-droid バイナリキャッシュ (droid 構成の eval/build 用)\nextra-substituters = https://nix-on-droid.cachix.org\nextra-trusted-public-keys = nix-on-droid.cachix.org-1:56snoMJTXmDRC1Ei24CmKoUqvHJ9XCp+nidK7qkMQrU=\n' >> "$conf"
     fi
+    # 自作 dotfiles のビルドキャッシュ (cachix gapul-dotfiles, OSS 無料枠)。CI が
+    # push した本構成の出力をここから pull し、ローカルの jd rebuild を高速化する。
+    # public cache なので pull は無認証。到達不可でも cache.nixos.org にフォールバック。
+    if [ -f "$conf" ] && ! /usr/bin/grep -q 'gapul-dotfiles.cachix.org' "$conf"; then
+      printf '\n# 自作 dotfiles ビルドキャッシュ (cachix, CI が充填・pull 無認証)\nextra-substituters = https://gapul-dotfiles.cachix.org\nextra-trusted-public-keys = gapul-dotfiles.cachix.org-1:tGNGJ7SGHrLAjsw5Iz673st0AepuNjQombMJOOVUq98=\n' >> "$conf"
+    fi
     # 自前 attic バイナリキャッシュ (cache.gapul.net, homelab CT101)。tailnet 限定公開で
     # pull は public=無認証。cachix 代替(自前ホスト)。到達不可時は普通に cache.nixos.org に
     # フォールバックするだけなので tailnet 圏外でも実害なし。
