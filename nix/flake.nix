@@ -10,6 +10,11 @@
     # 26.05 系で揃える (nix-darwin#1462 'USER is root' regression 回避)
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-26.05-darwin";
 
+    # zrythm-darwin (nix/pkgs/zrythm-darwin) 専用。26.05-darwin では appstream-1.1.2 が
+    # darwin でビルド不可(libadwaita の依存経由)なため、その1パッケージだけ unstable の
+    # pkgs でビルドする。follows は付けない(他 input を巻き込まない別系統として持つ)。
+    nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
+
     # NixOS 実機 (Windows デュアルブートの HP ノート, x86_64) 用。
     # darwin 系チャンネルと分けて nixos キャッシュにきれいに当てる。
     nixpkgs-nixos.url = "github:NixOS/nixpkgs/nixos-26.05";
@@ -83,6 +88,7 @@
     inputs@{
       nixpkgs,
       nixpkgs-nixos,
+      nixpkgs-unstable,
       nix-darwin,
       home-manager,
       nix-on-droid,
@@ -140,6 +146,7 @@
         nixIndexDatabase = nix-index-database;
         agentSkills = agent-skills;
         mopidyPatches = mopidy-patches;
+        nixpkgsUnstable = nixpkgs-unstable;
       };
 
       # ECS の「System」= ホスト合成器 (darwin / home の定型を一本化)
