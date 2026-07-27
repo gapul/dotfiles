@@ -90,6 +90,7 @@
       "gapul/azoo-key-skkserv"
       "gapul/keystats" # 自作の打鍵アナリティクス(cask)
       "gapul/puddle" # Puddle (Plash の MIT フォーク自作ビルド) の cask 配布 tap
+      "gapul/armorpaint" # ArmorPaint ソースビルド formula 配布 tap(公式は有料€16→自前ビルドで無料フル)
       "gapul/inochi" # Inochi Creator (2D VTuber リギング) の cask 配布 tap(homebrew/cask 未収録)
     ];
 
@@ -144,6 +145,13 @@
 
       # ─── Transcription / other 3rd-party tap brews ───
       "finnvoor/tools/yap" # 日本語 transcription
+
+      # ─── Creative / graphics (source-build formula) ───
+      # ArmorPaint(3D PBR テクスチャペイント / Substance Painter 代替)。公式バイナリは有料€16
+      # だが zlib ソースから自前ビルドで無料フル。現行 main は iron/Kore 自己完結ツールチェーン
+      # (V8/haxe/node 不要・Xcode のみ)。GUI アプリだが formula(source build)なので brews 側。
+      # .app は $(brew --prefix)/opt/armorpaint/ArmorPaint.app に入る(cask と違い /Applications では無い)。
+      "gapul/armorpaint/armorpaint"
     ];
 
     # GUI applications (~100個)
