@@ -10,6 +10,12 @@
 # doCheck=false は pytestCheckPhase を止められず別環境で exit 127 を招くため不可)。
 _final: prev: {
   pre-commit = prev.pre-commit.overridePythonAttrs (o: {
-    disabledTests = (o.disabledTests or [ ]) ++ [ "test_output_isatty" ];
+    disabledTests = (o.disabledTests or [ ]) ++ [
+      "test_output_isatty"
+      # git clone の pack ファイルコピーが nix sandbox で稀に race し
+      # "failed to copy file ... No such file or directory" で落ちる。
+      # macos-14 の om ci(darwin) を断続的に赤にするため deselect。
+      "test_pre_push_integration"
+    ];
   });
 }
