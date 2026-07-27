@@ -22,6 +22,8 @@ runs:
     - name: Install Nix
       uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
 
+    # macOS (macos-14) では Magic Nix Cache が setup で無限ハングするため除外。
+    # Linux (x86_64/aarch64) のみで有効化する (最長ジョブの x86 が主な受益者)。
     - name: Magic Nix Cache
-      if: inputs.use-magic-nix-cache == 'true'
+      if: inputs.use-magic-nix-cache == 'true' && runner.os != 'macOS'
       uses: DeterminateSystems/magic-nix-cache-action@908b263ff629f4cc17666315b7fd3ec127c6244d # v14
