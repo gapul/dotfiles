@@ -21,6 +21,11 @@ let
   patchedVampPluginSdk = fixDylibIds pkgs.vamp-plugin-sdk;
 in
 (pkgs.zrythm.override { carla = portedCarla; }).overrideAttrs (o: {
+  # nixpkgs 既定の --buildtype=plain(最適化なし=実質 -O0)を上書き。
+  # debugoptimized = -Ddebug=true -Doptimization=2 で、Zrythm 公式標準ビルドと等価。
+  # (-Doptimization=2 単体だと plain に上書きされ効かないため buildtype ごと変える)
+  mesonBuildType = "debugoptimized";
+
   # preFixup で codesign(ad-hoc 再署名)を使うため、sigtool を明示的に足す。
   nativeBuildInputs = (o.nativeBuildInputs or [ ]) ++ [ pkgs.darwin.sigtool ];
 
@@ -39,6 +44,10 @@ in
     "-Dpulse=disabled"
     "-Dx11=disabled"
     "-Dmanpage=false"
+    # nixpkgs は --buildtype=plain(最適化なし=実質 -O0)。公式は -Ddebug=true
+    # -Doptimization=2(標準)を使う。DAW の CPU/レイテンシ性能に効くので公式相当へ上げる。
+    # (extra_optimizations は既定 true で -ffast-math 等は有効)
+    "-Doptimization=2"
   ];
 
   postPatch = o.postPatch + ''
@@ -75,6 +84,11 @@ in
       --set-default GDK_BACKEND macos
       # フォント設定("Fontconfig error: Cannot load default config file")対策。
       --set-default FONTCONFIG_FILE ${pkgs.fontconfig.out}/etc/fonts/fonts.conf
+      # gsettings/dconf の書き込みが machine-id/dbus 不在で失敗し
+      # "Could not set 'first-run' to 'false'. ... problem with your GSettings backend"
+      # が出て設定が永続化されない(毎回 welcome が出る)。dconf を使わず keyfile
+      # バックエンドに切替えて ~/.config/glib-2.0/settings/keyfile に永続化する。
+      --set-default GSETTINGS_BACKEND keyfile
       # 上で生成した SVG 込み loaders.cache を指す。
       --set GDK_PIXBUF_MODULE_FILE "$out/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache"
     )
