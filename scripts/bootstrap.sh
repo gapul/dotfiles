@@ -176,7 +176,6 @@ open "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles"
 - [ ] AltTab
 - [ ] Karabiner-Elements (Karabiner-VirtualHIDDevice-Daemon も)
 - [ ] Mos
-- [ ] Shortcat
 - [ ] sketchybar (felixkratz)
 
 ### 画面収録

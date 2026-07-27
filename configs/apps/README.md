@@ -1,7 +1,7 @@
 # GUI アプリ plist 管理
 
 menubar / 入力系ユーティリティの設定を home-manager activation で復元する。
-AltTab / Mos / Shortcat は `defaults import`(ドメイン全置換)、Plash は websites(壁紙)と
+AltTab / Mos は `defaults import`(ドメイン全置換)、Plash は websites(壁紙)と
 security-scoped bookmark を壊さないよう enforce したいキーのみ `defaults write`(surgical)。
 
 ## 管理対象
@@ -10,13 +10,12 @@ security-scoped bookmark を壊さないよう enforce したいキーのみ `de
 |---|---|---|
 | **AltTab** | import `com.lwouis.alt-tab-macos.plist` | Cmd+Tab 代替の Window switcher。外見系設定のみ(キーバインドは secureData blob) |
 | **Mos** | import `com.caldis.Mos.plist` | スクロール挙動 (smooth/reverse/speed)、menubar アイコン非表示 |
-| **Shortcat** | import `com.sproutcube.Shortcat.plist` | キーボードでマウス操作。keybindings + continuousMode、menubar アイコン非表示 |
 | **Plash** | surgical write (`nix/home/darwin.nix`) | 動的壁紙。websites/bookmark はライブ保持し全置換しない。behavior 3 キー(deactivateOnBattery / extendPlashBelowMenuBar / showOnAllSpaces)のみ enforce |
 
 ## menubar アイコンの表示/非表示
 
 `NSStatusItem VisibleCC Item-*` = false で「アイコンを隠す」状態を管理対象に含める
-(Maccy/Mos/Shortcat)。rebuild の import で隠し状態が表示に戻らないよう明示保持する。
+(Maccy/Mos)。rebuild の import で隠し状態が表示に戻らないよう明示保持する。
 位置キー `NSStatusItem Preferred Position*` は端末固有なので除外する。
 
 ## 除外したもの(個人情報 / 端末固有 / UI 状態 / テレメトリ)
@@ -28,11 +27,10 @@ security-scoped bookmark を壊さないよう enforce したいキーのみ `de
 | `NSWindow Frame*`, `NSStatusItem Preferred Position*` | UI 位置 (端末固有) |
 | `NSNavPanel*`, `NSOSPLast*` | Open ダイアログの最後の path |
 | `SS_*`, `com_apple_SwiftUI*`, `welcomeDisplayed` | Sindre 系の launch count / 初回フラグ |
-| `telemetryIdentifier` | Shortcat の telemetry ID |
 
 ## 新 Mac での復元
 
-`just rebuild`(home-manager activation)で AltTab/Mos/Shortcat が `defaults import`、
+`just rebuild`(home-manager activation)で AltTab/Mos が `defaults import`、
 Plash は behavior 3 キーが `defaults write` される。以下は GUI で手動:
 
 ### Plash
@@ -42,7 +40,6 @@ Plash は behavior 3 キーが `defaults write` される。以下は GUI で手
 
 ### 権限(手動・SIP 保護のため CLI 不可)
 - AltTab: アクセシビリティ + 画面収録
-- Shortcat: アクセシビリティ
 - Mos: アクセシビリティ + 入力監視
 - ※ cask 更新で cdhash がずれると権限が stale 化して黙って効かなくなることがある。
   その場合は System Settings > Privacy & Security で対象アプリをオフ→オンし直す。
@@ -63,12 +60,6 @@ GUI で設定を変えたら dotfiles に反映:
   ~/Library/Preferences/com.caldis.Mos.plist \
   ~/.dotfiles/configs/apps/com.caldis.Mos.plist \
   "NSStatusItem Preferred Position*"
-
-# Shortcat (同上)
-~/.dotfiles/scripts/capture-app-plist.py \
-  ~/Library/Preferences/com.sproutcube.Shortcat.plist \
-  ~/.dotfiles/configs/apps/com.sproutcube.Shortcat.plist \
-  "telemetryIdentifier" "NSStatusItem Preferred Position*" "NSWindow*" "SU*" "welcomeDisplayed"
 
 # Plash は plist を持たない(surgical write)。behavior を変えたら
 # nix/home/darwin.nix の guiAppsPlistImport 内 defaults write を直接編集する。
