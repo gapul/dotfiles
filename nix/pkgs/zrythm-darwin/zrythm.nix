@@ -1,7 +1,7 @@
 # zrythm 1.0.0 を aarch64-darwin 向けに backend-only carla と結合してビルドする試み。
 { pkgs }:
 let
-  lib = pkgs.lib;
+  inherit (pkgs) lib;
   portedCarla = import ./carla.nix { inherit pkgs; };
   # Linux 専用の音声バックエンドを buildInputs から除去
   dropNames = [

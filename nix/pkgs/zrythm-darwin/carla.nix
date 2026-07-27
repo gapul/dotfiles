@@ -2,7 +2,7 @@
 # zrythm は carla-host-plugin(>=2.6) と carla-discovery-native を必要とする。
 { pkgs }:
 let
-  lib = pkgs.lib;
+  inherit (pkgs) lib;
   # Linux 専用の音声バックエンドを buildInputs から除去
   dropNames = [
     "alsa-lib"
