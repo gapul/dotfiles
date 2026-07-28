@@ -28,13 +28,12 @@
     if [ -f "$conf" ] && ! /usr/bin/grep -q '^use-xdg-base-directories' "$conf"; then
       printf '\n# XDG Base Directory 準拠 (~/.nix-defexpr 等を ~/.local/state/nix へ)\nuse-xdg-base-directories = true\n' >> "$conf"
     fi
-    # 到達不可な substituter でビルドを壊さない。自前 attic (cache.gapul.net) は
-    # tailnet 限定なうえ homelab を落とすと消えるため、narinfo 取得が既定 15s も
-    # 待って fallback=false だと source ビルドに逃げず致命エラーになる (実害発生済)。
-    # connect-timeout で早期に諦め、fallback=true で substitute 失敗時は source ビルド
-    # へ逃がす。到達可能時の pull 挙動は不変。
+    # 到達不可な substituter でビルドを壊さない一般的な保険。narinfo 取得が既定 15s
+    # 待って fallback=false だと substitute 失敗時に source ビルドへ逃げず致命エラーに
+    # なる (かつて tailnet 限定 attic を落として実害が出た)。connect-timeout で早期に
+    # 諦め、fallback=true で source ビルドへ逃がす。到達可能時の pull 挙動は不変。
     if [ -f "$conf" ] && ! /usr/bin/grep -q '^connect-timeout' "$conf"; then
-      printf '\n# 到達不可 substituter を非致命化 (attic を落としてもビルドは通す)\nconnect-timeout = 5\nfallback = true\n' >> "$conf"
+      printf '\n# 到達不可 substituter を非致命化 (キャッシュが落ちてもビルドは通す)\nconnect-timeout = 5\nfallback = true\n' >> "$conf"
     fi
     # nix-community キャッシュを system 全体で信頼。
     # セキュリティ最小権限: yuki を trusted-user(実質 root 相当)にはせず、特定 substituter +
@@ -53,16 +52,12 @@
     if [ -f "$conf" ] && ! /usr/bin/grep -q 'gapul-dotfiles.cachix.org' "$conf"; then
       printf '\n# 自作 dotfiles ビルドキャッシュ (cachix, CI が充填・pull 無認証)\nextra-substituters = https://gapul-dotfiles.cachix.org\nextra-trusted-public-keys = gapul-dotfiles.cachix.org-1:tGNGJ7SGHrLAjsw5Iz673st0AepuNjQombMJOOVUq98=\n' >> "$conf"
     fi
-    # 自前 attic バイナリキャッシュ (cache.gapul.net, homelab CT101)。tailnet 限定公開で
-    # pull は public=無認証。cachix 代替(自前ホスト)。到達不可時は普通に cache.nixos.org に
-    # フォールバックするだけなので tailnet 圏外でも実害なし。
-    # 公開鍵が変わりうる (Postgres 移行等で cache 再作成→鍵ローテーション) ため、
-    # 「最新鍵が無ければ旧 attic 行を除去してから追記」する冪等かつローテーション対応の形。
-    attic_key='dotfiles:SoCMyf1gy/bVdmkGJg/PtzwaArs3tbTIUWuWvsMuUl0='
-    if [ -f "$conf" ] && ! /usr/bin/grep -qF "$attic_key" "$conf"; then
+    # 自前 attic (cache.gapul.net) は撤去した (cachix gapul-dotfiles が代替済み。
+    # tailnet 限定で homelab 稼働に依存する分だけ失敗モードが増えるため)。既に
+    # nix.custom.conf へ追記済みのマシンからは、rebuild 時にその行を消して掃除する。
+    if [ -f "$conf" ] && /usr/bin/grep -q 'cache\.gapul\.net/dotfiles' "$conf"; then
       /usr/bin/sed -i.bak '/# 自前 attic/d;/cache\.gapul\.net\/dotfiles/d;/extra-trusted-public-keys = dotfiles:/d' "$conf"
       /bin/rm -f "$conf.bak"
-      printf '\n# 自前 attic キャッシュ (homelab, tailnet 限定・pull 無認証)\nextra-substituters = https://cache.gapul.net/dotfiles\nextra-trusted-public-keys = %s\n' "$attic_key" >> "$conf"
     fi
     # Determinate Nix already trusts FlakeHub as a substituter, but using it as an
     # active substituter without the matching credentials produces 401 warnings.
