@@ -206,6 +206,16 @@ _maintain-macos:
       mkdir "$maintenance_lock" 2>/dev/null || { echo "failed to acquire maintenance lock" >&2; exit 1; }
     fi
     echo $$ > "$maintenance_lock/pid"
+    export DOTFILES_MAINTAIN=1
+    # 古い設定のまま維持する事故を防ぐため、まず自分の dotfiles を最新化する。
+    # main ブランチのときだけ (feature ブランチや detached では pull しない)。git 操作は
+    # 常に本体ツリーを対象にする。pull は post-merge/post-rewrite hook を発火するが、
+    # 上で export した DOTFILES_MAINTAIN=1 で hook 側 rebuild はスキップされる
+    # (この後 just rebuild を自前で回すので二重 rebuild を避ける)。
+    if [ "$(git -C "$HOME/.dotfiles" branch --show-current 2>/dev/null)" = "main" ]; then
+      echo "━━━ git pull (--rebase --autostash)"
+      git -C "$HOME/.dotfiles" pull --rebase --autostash
+    fi
     just outdated
     lock="{{flake}}/flake.lock"
     old_lock=$(mktemp)
@@ -241,6 +251,16 @@ _maintain-linux:
       mkdir "$maintenance_lock" 2>/dev/null || { echo "failed to acquire maintenance lock" >&2; exit 1; }
     fi
     echo $$ > "$maintenance_lock/pid"
+    export DOTFILES_MAINTAIN=1
+    # 古い設定のまま維持する事故を防ぐため、まず自分の dotfiles を最新化する。
+    # main ブランチのときだけ (feature ブランチや detached では pull しない)。git 操作は
+    # 常に本体ツリーを対象にする。pull は post-merge/post-rewrite hook を発火するが、
+    # 上で export した DOTFILES_MAINTAIN=1 で hook 側 rebuild はスキップされる
+    # (この後 just rebuild を自前で回すので二重 rebuild を避ける)。
+    if [ "$(git -C "$HOME/.dotfiles" branch --show-current 2>/dev/null)" = "main" ]; then
+      echo "━━━ git pull (--rebase --autostash)"
+      git -C "$HOME/.dotfiles" pull --rebase --autostash
+    fi
     just outdated
     lock="{{flake}}/flake.lock"
     old_lock=$(mktemp)
