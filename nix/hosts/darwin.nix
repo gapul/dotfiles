@@ -222,6 +222,7 @@
       "keepassxc"
       "keyguard"
       "bitwarden" # Bitwarden 公式デスクトップアプリ
+      "secretive" # SSH 鍵を Secure Enclave に隔離し使用毎に Touch ID 承認 (MIT/OSS)。SSH エージェントを Bitwarden から移管
 
       # ─── Network / Remote ───
       "tailscale-app"
