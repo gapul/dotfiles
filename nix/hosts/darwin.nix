@@ -213,10 +213,10 @@
       # reikey は自前の event tap ツール (Karabiner/Espanso/keebmouse/Hammerspoon) で
       # 誤検知が濁るうえ標準の入力監視一覧で静的に確認でき、taskexplorer は
       # codesign / otool / vmmap / lsof で代替できるため撤去 (2026-07-28)。
+      # netiquette は lsof -nP -i / nettop で、whatsyoursign は codesign -dvv /
+      # spctl -a -vv で完全に代替できるため撤去 (2026-07-28)。
       "knockknock" # 永続化スキャナ
       "lulu" # 送信ファイアウォール
-      "netiquette" # ライブ通信モニタ (どのプロセスがどこへ)
-      "whatsyoursign" # Finder 右クリックでコード署名表示
       "ransomwhere" # ランサムウェア (不審な暗号化挙動) 検知
       # VPN / 鍵
       "mullvad-vpn" # ノーログ匿名 VPN (self-host の WireGuard/Tailscale とは別レイヤ)
