@@ -183,7 +183,6 @@
 
       # ─── Window / Keyboard / Input ───
       "aerospace"
-      "alt-tab"
       "thaw" # メニューバー管理 (Ice の保守フォーク。本家 jordanbaird-ice は 0.11.12/2024-10 で開発停止し macOS Tahoe で起動不可 → Tahoe 対応の Thaw へ移行 2026-07-27。Ice 設定はインポート可)
       "karabiner-elements"
       "macskk"
@@ -196,7 +195,6 @@
       "espanso"
       "maccy"
       "monitorcontrol"
-      "mos"
       "qlmarkdown"
       "corelocationcli"
 
