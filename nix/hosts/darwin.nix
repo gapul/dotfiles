@@ -205,14 +205,16 @@
 
       # ─── Privacy / Security ───
       # Objective-See (Patrick Wardle) スイート — 全て無料・notarize 済み
-      "blockblock" # 永続化 (persistence) 監視
+      # blockblock は macOS Ventura+ の Background Task Management 通知と、
+      # oversight は macOS のマイク/カメラ使用中インジケータ (メニューバーのドット +
+      # コントロールセンター) と機能が重複するため撤去 (2026-07-28)。
+      # reikey は自前の event tap ツール (Karabiner/Espanso/keebmouse/Hammerspoon) で
+      # 誤検知が濁るうえ標準の入力監視一覧で静的に確認でき、taskexplorer は
+      # codesign / otool / vmmap / lsof で代替できるため撤去 (2026-07-28)。
+      # netiquette は lsof -nP -i / nettop で、whatsyoursign は codesign -dvv /
+      # spctl -a -vv で完全に代替できるため撤去 (2026-07-28)。
       "knockknock" # 永続化スキャナ
       "lulu" # 送信ファイアウォール
-      "oversight" # マイク/カメラの不正アクセス検知・通知
-      "reikey" # キーロガー (キーボード event tap) 検知
-      "netiquette" # ライブ通信モニタ (どのプロセスがどこへ)
-      "taskexplorer" # プロセス検査 (署名 / VirusTotal 照合)
-      "whatsyoursign" # Finder 右クリックでコード署名表示
       "ransomwhere" # ランサムウェア (不審な暗号化挙動) 検知
       # VPN / 鍵
       "mullvad-vpn" # ノーログ匿名 VPN (self-host の WireGuard/Tailscale とは別レイヤ)
@@ -235,7 +237,6 @@
       "imhex"
       "trex"
       "deskflow"
-      "deskreen"
       "codexbar" # AI コーディング各社の使用量/上限をメニューバー表示 (codexbar CLI 同梱・/opt/homebrew/bin に自動 link)
 
       # ─── Creative — Design / 2D ───
