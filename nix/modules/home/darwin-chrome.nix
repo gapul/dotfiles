@@ -25,9 +25,11 @@ let
     export GREY=0xff${p.muted}    # inactive / subtle
     export ACCENT=0xff${p.iris}   # アクティブ要素のアクセント
     # 背景 pill: surface=不透明 / overlay・hlMed は 0xcc に上げて light でも視認
+    # 実際に見えるバー背景は bracket pill = BG1。bar 本体は sketchybarrc で完全透明。
+    # BG1/BG2 の alpha 0x99 (≒60%) で pill を半透明化し壁紙を透かす。
     export BG0=0xff${p.surface}
-    export BG1=0xcc${p.overlay}
-    export BG2=0xcc${p.hlMed}
+    export BG1=0x99${p.overlay}
+    export BG2=0x99${p.hlMed}
     export BATTERY_1=0xff${p.foam}
     export BATTERY_2=0xff${p.gold}
     export BATTERY_3=0xff${p.rose}
