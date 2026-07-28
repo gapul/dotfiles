@@ -65,9 +65,9 @@
       "flakes"
     ];
     auto-optimise-store = true; # store の重複排除
-    # 到達不可な substituter (tailnet 限定の自前 attic 等) でビルドを壊さない:
-    # 早期に諦め (connect-timeout)、substitute 失敗時は source ビルドへ逃がす
-    # (fallback)。homelab を落としても local ビルドは通る。
+    # 到達不可な substituter でビルドを壊さない一般的な保険: 早期に諦め
+    # (connect-timeout)、substitute 失敗時は source ビルドへ逃がす (fallback)。
+    # 何らかのキャッシュが落ちても local ビルドは通る。
     connect-timeout = 5;
     fallback = true;
     # Hyprland をソースビルドせず公式バイナリキャッシュから取得 (数十分の短縮)。
@@ -78,14 +78,11 @@
       "https://nix-community.cachix.org"
       # 自作 dotfiles ビルドキャッシュ (cachix, CI が充填・pull 無認証)。本構成の出力を pull。
       "https://gapul-dotfiles.cachix.org"
-      # 自前 attic キャッシュ (homelab, tailnet 限定・pull 無認証)。圏外なら黙ってフォールバック。
-      "https://cache.gapul.net/dotfiles"
     ];
     trusted-public-keys = [
       "hyprland.cachix.org-1:a7pgxzMz7+chwVL3/pzj6jIBMioiJM7ypFP8PwtkuGc="
       "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="
       "gapul-dotfiles.cachix.org-1:tGNGJ7SGHrLAjsw5Iz673st0AepuNjQombMJOOVUq98="
-      "dotfiles:SoCMyf1gy/bVdmkGJg/PtzwaArs3tbTIUWuWvsMuUl0="
     ];
   };
 
