@@ -76,15 +76,18 @@ if [ "$SENDER" = "aerospace_workspace_change" ]; then
 
   #sketchybar --animate sin 10 --set space.$space label="$icon_strip"
 
-  # current workspace space border color
-  sketchybar --set space.$AEROSPACE_FOCUSED_WORKSPACE icon.highlight=true \
-                         label.highlight=true \
-                         background.border_color=$GREY
-
-  # prev workspace space border color
-  sketchybar --set space.$AEROSPACE_PREV_WORKSPACE icon.highlight=false \
-                         label.highlight=false \
-                         background.border_color=$BACKGROUND_2
+  # ハイライトは focused だけ ON、それ以外は全て OFF に確定させる。
+  #   個別 space.sh も同じ結論を出すので、実行順に関係なく最終状態が一致する
+  #   (focused/prev だけ触っていた旧実装は取り残しが出てレースになっていた)。
+  hl_args=()
+  for ws in $(aerospace list-workspaces --all); do
+    if [ "$ws" = "$AEROSPACE_FOCUSED_WORKSPACE" ]; then
+      hl_args+=(--set space.$ws icon.highlight=true label.highlight=true background.border_color=$GREY)
+    else
+      hl_args+=(--set space.$ws icon.highlight=false label.highlight=false background.border_color=$BACKGROUND_2)
+    fi
+  done
+  [ ${#hl_args[@]} -gt 0 ] && sketchybar "${hl_args[@]}"
 
   # if [ "$AEROSPACE_FOCUSED_WORKSPACE" -gt 3 ]; then
   #   sketchybar --animate sin 10 --set space.$AEROSPACE_FOCUSED_WORKSPACE display=1

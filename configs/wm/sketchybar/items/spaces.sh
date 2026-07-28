@@ -97,6 +97,10 @@ done
 
 space_creator=(
   drawing=off
+  # drawing=off でも切替イベントで space_windows.sh を必ず走らせる。
+  # (when_shown 既定のままだと非表示アイテムはイベントを受け取らず、
+  #  空→フォーカス時に drawing を戻す再計算が動かない)
+  updates=on
   icon=􀆊
   icon.font="$FONT:Heavy:$(scf 16.0)"
   padding_left=10
