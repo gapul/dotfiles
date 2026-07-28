@@ -25,6 +25,13 @@ let
   guardAndRebuild = range: label: ''
     DOTFILES_DIR="${dotfilesDir}"
 
+    # `just maintain` が内部で叩く git pull からは回さない。maintain は pull の後に
+    # 自前で rebuild するため、ここで走ると二重 rebuild になる (maintain が
+    # DOTFILES_MAINTAIN=1 を export している)。
+    if [ -n "''${DOTFILES_MAINTAIN:-}" ]; then
+      exit 0
+    fi
+
     # worktree からは回さない (本体ツリーのみ)。共有 .git/hooks 経由で worktree でも
     # 発火しうるため、toplevel が本体と一致するときだけ続行する。
     if [ "$(${git} rev-parse --show-toplevel 2>/dev/null)" != "$DOTFILES_DIR" ]; then
