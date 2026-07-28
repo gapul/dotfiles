@@ -207,10 +207,11 @@
 
       # ─── Privacy / Security ───
       # Objective-See (Patrick Wardle) スイート — 全て無料・notarize 済み
-      "blockblock" # 永続化 (persistence) 監視
+      # blockblock は macOS Ventura+ の Background Task Management 通知と、
+      # oversight は macOS のマイク/カメラ使用中インジケータ (メニューバーのドット +
+      # コントロールセンター) と機能が重複するため撤去 (2026-07-28)。
       "knockknock" # 永続化スキャナ
       "lulu" # 送信ファイアウォール
-      "oversight" # マイク/カメラの不正アクセス検知・通知
       "reikey" # キーロガー (キーボード event tap) 検知
       "netiquette" # ライブ通信モニタ (どのプロセスがどこへ)
       "taskexplorer" # プロセス検査 (署名 / VirusTotal 照合)
