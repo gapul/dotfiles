@@ -496,6 +496,9 @@
             system = "x86_64-linux";
             specialArgs = { inherit user; };
             modules = [
+              # 上流 nixpkgs 破損吸収の SSO overlay (darwin/standalone home と共用)。
+              # tailscale の vendorHash 誤り等をここで上書きする。
+              { nixpkgs.overlays = [ overlayFixes ]; }
               ./hosts/nixos-laptop.nix
               lanzaboote.nixosModules.lanzaboote
               disko.nixosModules.disko
@@ -534,6 +537,9 @@
               hardwareConfig = ./hosts/nixos-laptop-hardware-ci.nix;
             };
             modules = [
+              # 上流 nixpkgs 破損吸収の SSO overlay (darwin/standalone home と共用)。
+              # tailscale の vendorHash 誤り等をここで上書きする。
+              { nixpkgs.overlays = [ overlayFixes ]; }
               ./hosts/nixos-laptop.nix
               lanzaboote.nixosModules.lanzaboote
               home-manager.nixosModules.home-manager
