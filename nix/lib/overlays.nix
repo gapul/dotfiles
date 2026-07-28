@@ -9,6 +9,15 @@
 # disabledTests でその1テストだけ deselect する (他テストと build は温存。
 # doCheck=false は pytestCheckPhase を止められず別環境で exit 127 を招くため不可)。
 _final: prev: {
+  # tailscale 1.98.9: 上流 nixpkgs (nixos-26.05) の vendorHash が誤っており
+  # go-modules FOD が hash mismatch でビルド不能:
+  #   specified sha256-mbxLXR2… / got sha256-Sd2iLJ7…
+  # 正しい値に上書き (go-modules は platform 非依存)。上流修正後は削除可。
+  # nixos-laptop でのみ tailscale を使う (macOS は Tailscale.app)。
+  tailscale = prev.tailscale.overrideAttrs (_: {
+    vendorHash = "sha256-Sd2iLJ7eDfDYdIRuW4xuiKgzhQWJWGAnz97FJWrVRlE=";
+  });
+
   pre-commit = prev.pre-commit.overridePythonAttrs (o: {
     disabledTests = (o.disabledTests or [ ]) ++ [
       "test_output_isatty"
