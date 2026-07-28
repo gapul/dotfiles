@@ -119,15 +119,12 @@
     fi
   '';
 
-  # GUI ユーティリティ系 (AltTab / Mos) の plist 一括 import。
-  # (Shortcat は neru に移行して撤去した)
+  # Plash (動的壁紙) の behavior を enforce する。
+  # (かつては AltTab / Mos / Shortcat の plist もここで一括 import していたが、
+  #  Shortcat は neru へ移行、AltTab / Mos はアンインストールし、Plash だけ残った)
   # Plash は websites(壁紙定義)と security-scoped bookmark をライブ側に持つため、
   # 全置換 import すると壁紙一式が消える。enforce したい 3 キーだけ surgical に書く。
-  home.activation.guiAppsPlistImport = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    /usr/bin/defaults import com.lwouis.alt-tab-macos \
-      ${../../../configs/apps/com.lwouis.alt-tab-macos.plist}
-    /usr/bin/defaults import com.caldis.Mos \
-      ${../../../configs/apps/com.caldis.Mos.plist}
+  home.activation.plashPrefs = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     if [ -d "$HOME/Library/Containers/com.sindresorhus.Plash" ]; then
       /usr/bin/defaults write com.sindresorhus.Plash deactivateOnBattery    -bool true
       /usr/bin/defaults write com.sindresorhus.Plash extendPlashBelowMenuBar -bool true
