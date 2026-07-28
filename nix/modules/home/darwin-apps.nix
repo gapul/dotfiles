@@ -119,11 +119,12 @@
     fi
   '';
 
-  # GUI ユーティリティ系の plist 管理。
-  # (Shortcat は neru に移行して撤去。Mos / AltTab はアンインストール済み)
+  # Plash (動的壁紙) の behavior を enforce する。
+  # (かつては AltTab / Mos / Shortcat の plist もここで一括 import していたが、
+  #  Shortcat は neru へ移行、AltTab / Mos はアンインストールし、Plash だけ残った)
   # Plash は websites(壁紙定義)と security-scoped bookmark をライブ側に持つため、
   # 全置換 import すると壁紙一式が消える。enforce したい 3 キーだけ surgical に書く。
-  home.activation.guiAppsPlistImport = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+  home.activation.plashPrefs = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     if [ -d "$HOME/Library/Containers/com.sindresorhus.Plash" ]; then
       /usr/bin/defaults write com.sindresorhus.Plash deactivateOnBattery    -bool true
       /usr/bin/defaults write com.sindresorhus.Plash extendPlashBelowMenuBar -bool true

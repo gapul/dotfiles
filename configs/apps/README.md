@@ -29,4 +29,4 @@ enforce したいキーのみ `defaults write`(surgical)。
 ## 設定変更後の capture
 
 Plash は plist を持たない(surgical write)。behavior を変えたら
-`nix/home/darwin.nix` の guiAppsPlistImport 内 `defaults write` を直接編集する。
+`nix/modules/home/darwin-apps.nix` の plashPrefs 内 `defaults write` を直接編集する。
