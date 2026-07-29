@@ -53,6 +53,7 @@ in
     ncdu # ディスク使用量 TUI
     yazi # ファイルマネージャ TUI
     zellij # ターミナルマルチプレクサ
+    tmux # ターミナルマルチプレクサ (zellij 代替。設定は modules/home/terminal.nix)
     podman-tui # Podman コンテナ / イメージ / Pod 管理 TUI
     iamb # Matrix TUI (Vim キーバインド、E2EE 対応)
     newsboat # RSS/Atom フィードリーダー TUI
