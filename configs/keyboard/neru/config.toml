@@ -36,10 +36,13 @@ text = "#E8EEFF"
 # See https://github.com/y3owk1n/neru/blob/main/docs/CONFIGURATION.md#hotkeys
 # See https://github.com/y3owk1n/neru/blob/main/docs/CLI.md
 [hotkeys]
+# hints(Cmd+Shift+Space)はアプリ/systemと未衝突なので据え置き。
+# grid/recursive/scroll は AeroSpace と同じ hyper 帯(Cmd+Ctrl+Alt)に統一。
+# G/C は AeroSpace 未使用で空き。S は workspace S を廃止して解放済み。
 "Primary+Shift+Space" = "hints"
-"Primary+Shift+G" = "grid"
-"Primary+Shift+C" = "recursive_grid"
-"Primary+Shift+S" = "scroll"
+"Cmd+Ctrl+Alt+G" = "grid"
+"Cmd+Ctrl+Alt+C" = "recursive_grid"
+"Cmd+Ctrl+Alt+S" = "scroll"
 
 # Hint mode
 # See https://github.com/y3owk1n/neru/blob/main/docs/CONFIGURATION.md#hints
