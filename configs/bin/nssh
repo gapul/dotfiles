@@ -1,24 +1,39 @@
 #!/usr/bin/env bash
 #
 # SSH 接続先で rootless Nix (nix-portable) を立ち上げて、
-# 自分の dotfiles 設定で nvim / yazi / zellij を使う。
+# 自分の dotfiles 設定で nvim / yazi / tmux(または zellij) を使う。
 #
 # 流れ:
 #   1. nix-portable バイナリを ~/.local/bin に展開(初回のみ)
 #   2. dotfiles を SSH 経由で git clone (初回) または git pull
 #      → SSH Agent Forward (-A) でローカルの鍵を使う、リモートに鍵不要
-#   3. ~/.config/{nvim,yazi,zellij} を dotfiles に symlink
-#   4. nix-portable nix shell .#remote-env -c zellij でセッション開始
+#   3. ~/.config/{nvim,yazi,tmux,zellij} を dotfiles に symlink
+#   4. nix-portable nix shell .#remote-env -c <mux> でセッション開始
+#
+# multiplexer は tmux が既定。NSSH_MUX=zellij で zellij に切替可。
+#   NSSH_MUX=zellij nssh user@host
+# リモートは home-manager 非経由のため、キーバインドは効くが
+# rose-pine テーマ / tmux プラグイン(resurrect等)は無効(config は -q で読み飛ばす)。
 
 set -euo pipefail
 
 if [[ $# -lt 1 ]]; then
-  echo "Usage: nssh <user@host> [extra ssh args...]" >&2
+  echo "Usage: [NSSH_MUX=tmux|zellij] nssh <user@host> [extra ssh args...]" >&2
   exit 1
 fi
 
 host="$1"
 shift
+
+# multiplexer 起動コマンドを選択 (既定 tmux)。tmux は new -A で attach-or-create。
+case "${NSSH_MUX:-tmux}" in
+  tmux) remote_mux='tmux new -A -s nssh' ;;
+  zellij) remote_mux='zellij' ;;
+  *)
+    echo "[nssh] NSSH_MUX は tmux か zellij (got: ${NSSH_MUX})" >&2
+    exit 1
+    ;;
+esac
 
 # ローカルの dotfiles から remote URL を取得(fork した人もそのまま使える)
 DOTFILES_URL=$(git -C "$HOME/.dotfiles" remote get-url origin 2>/dev/null || \
@@ -54,9 +69,10 @@ fi
 ln -sfn ~/.dotfiles/configs/editors/nvim     ~/.config/nvim
 ln -sfn ~/.dotfiles/configs/cli/yazi         ~/.config/yazi
 ln -sfn ~/.dotfiles/configs/terminals/zellij ~/.config/zellij
+ln -sfn ~/.dotfiles/configs/terminals/tmux   ~/.config/tmux
 BOOTSTRAP
 
 # 4. インタラクティブ接続 ($HOME はリモート側で展開される)
 #    path:~/.dotfiles/nix を flake source に (private repo を GitHub API なしで使う)
 exec ssh -At "$host" "$@" \
-  '"$HOME"/.local/bin/nix-portable nix shell "path:$HOME/.dotfiles/nix#remote-env" -c zellij'
+  '"$HOME"/.local/bin/nix-portable nix shell "path:$HOME/.dotfiles/nix#remote-env" -c '"$remote_mux"
