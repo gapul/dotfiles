@@ -15,7 +15,7 @@ after-startup-command = [
 # 明示指定が必須になった。下で 1-9 / 0 / S(scratchpad) を宣言。
 # See: https://nikitabobko.github.io/AeroSpace/guide#config-version
 config-version = 2
-persistent-workspaces = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'S']
+persistent-workspaces = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0']
 
 # Start AeroSpace at login
 start-at-login = true
@@ -195,10 +195,7 @@ automatically-unhide-macos-hidden-apps = false
     cmd-ctrl-alt-shift-9 = ['move-node-to-workspace 9', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=9 AEROSPACE_FOCUSED_WORKSPACE=9', 'exec-and-forget @DOTFILES@/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-shift-9']
     cmd-ctrl-alt-shift-0 = ['move-node-to-workspace 0', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=0 AEROSPACE_FOCUSED_WORKSPACE=0', 'exec-and-forget @DOTFILES@/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-shift-0']
 
-    # Hyprland: SUPER+S = togglespecialworkspace (scratchpad)
-    cmd-ctrl-alt-s = ['workspace S', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=S AEROSPACE_FOCUSED_WORKSPACE=S', 'exec-and-forget @DOTFILES@/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-s']
-    # Hyprland: SUPER+Shift+S = movetoworkspace special
-    cmd-ctrl-alt-shift-s = ['move-node-to-workspace S', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=S AEROSPACE_FOCUSED_WORKSPACE=S', 'exec-and-forget @DOTFILES@/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-shift-s']
+    # workspace S は Neru の scroll(Hyper+S)に譲るため削除。
 
     # See: https://nikitabobko.github.io/AeroSpace/commands#workspace-back-and-forth
     cmd-ctrl-alt-tab = ['workspace-back-and-forth', 'exec-and-forget sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=$(aerospace list-workspaces --focused) AEROSPACE_FOCUSED_WORKSPACE=$(aerospace list-workspaces --focused)', 'exec-and-forget @DOTFILES@/configs/wm/aerospace/bin/aerolog.sh main/cmd-ctrl-alt-tab']
