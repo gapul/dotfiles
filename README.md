@@ -158,7 +158,7 @@ curl -fsSL https://raw.githubusercontent.com/gapul/dotfiles/main/scripts/bootstr
 
 | コマンド | 説明 |
 |---|---|
-| `nssh user@host` | rootless Nix(`nix-portable`)で nvim/yazi/zellij(自分の設定) |
+| `nssh user@host` | rootless Nix(`nix-portable`)で nvim/yazi/tmux(自分の設定)。`NSSH_MUX=zellij` で zellij に切替 |
 | `just ssh <host>` | `nssh` のショート |
 
 ### 🟥 コード品質 (git-hooks.nix + treefmt)

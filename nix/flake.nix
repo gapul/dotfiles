@@ -199,6 +199,7 @@
           neovim
           yazi
           zellij
+          tmux
           git
           ripgrep
           fd
