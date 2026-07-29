@@ -27,6 +27,37 @@ let
         }
     }
   '';
+
+  # tmux の rose-pine ステータスバーを active パレット c から生成。
+  # active を palettes.json で切替 → just rebuild で zellij 同様に追従する。
+  mkTmuxTheme = p: ''
+    # rose-pine (generated from configs/theme/palettes.json — 手で編集しない)
+    set -g status-position top
+    set -g status-interval 5
+    set -g status-justify left
+
+    set -g status-style               "bg=#${p.base},fg=#${p.subtle}"
+    set -g status-left-length 40
+    set -g status-right-length 80
+    set -g status-left  "#[bg=#${p.pine},fg=#${p.base},bold] #S #[bg=#${p.base},fg=#${p.pine}]#[default] "
+    set -g status-right "#[fg=#${p.muted}]%Y-%m-%d #[fg=#${p.foam}]%H:%M "
+
+    # 非アクティブ / アクティブなウィンドウ(タブ)
+    set -g window-status-format         "#[fg=#${p.muted}] #I #W "
+    set -g window-status-current-format "#[bg=#${p.overlay},fg=#${p.iris},bold] #I #W "
+    set -g window-status-separator ""
+    set -g window-status-activity-style "fg=#${p.gold}"
+
+    # ペイン枠 / メッセージ / コピーモード
+    set -g pane-border-style        "fg=#${p.overlay}"
+    set -g pane-active-border-style "fg=#${p.pine}"
+    set -g message-style            "bg=#${p.overlay},fg=#${p.text}"
+    set -g message-command-style    "bg=#${p.overlay},fg=#${p.text}"
+    set -g mode-style               "bg=#${p.hlMed},fg=#${p.text}"
+    set -g display-panes-active-colour "#${p.iris}"
+    set -g display-panes-colour        "#${p.muted}"
+    set -g clock-mode-colour           "#${p.foam}"
+  '';
 in
 {
   # Ghostty の terminfo を全ホストへ配布。ssh 先で TERM=xterm-ghostty が未知だと
@@ -50,4 +81,26 @@ in
   # zellij テーマは nix/lib/theme.nix から生成 (config.kdl は theme "rose-pine" で参照)
   home.file.".config/zellij/themes/rose-pine.kdl".text = mkZellijTheme "rose-pine" c.dark;
   home.file.".config/zellij/themes/rose-pine-dawn.kdl".text = mkZellijTheme "rose-pine-dawn" c.light;
+
+  # tmux (zellij 代替)。tmux.conf を symlink し、rose-pine テーマを active パレットから生成。
+  # tmux は zellij のような端末追従の dark/light 切替を持たないため active パレット c を採用
+  # (palettes.json の active 切替 → just rebuild で追従、が SSOT)。
+  home.file.".config/tmux/tmux.conf".source = ../../../configs/terminals/tmux/tmux.conf;
+  home.file.".config/tmux/rose-pine.conf".text = mkTmuxTheme c;
+
+  # tmux プラグイン (zellij のセッション永続化相当)。TPM は使わず store パスを
+  # run-shell する plugins.conf を生成 (tmux.conf の末尾が source する)。
+  #   resurrect: prefix+Ctrl-s 保存 / prefix+Ctrl-r 復元 (ペイン内容 + nvim も復元)
+  #   continuum: 15 分毎に自動保存し、tmux サーバ起動時に自動復元
+  home.file.".config/tmux/plugins.conf".text = ''
+    set -g @resurrect-capture-pane-contents 'on'
+    set -g @resurrect-strategy-nvim 'session'
+    set -g @continuum-restore 'on'
+    set -g @continuum-save-interval '15'
+    run-shell ${pkgs.tmuxPlugins.resurrect}/share/tmux-plugins/resurrect/resurrect.tmux
+    run-shell ${pkgs.tmuxPlugins.continuum}/share/tmux-plugins/continuum/continuum.tmux
+  '';
+  # tmuxp のスターターレイアウト (zellij レイアウト相当)。`tmuxp load dev` で構築。
+  # ~/.config/tmuxp/ は実ディレクトリになるので、自作 YAML を隣に追加できる。
+  home.file.".config/tmuxp/dev.yaml".source = ../../../configs/terminals/tmux/tmuxp/dev.yaml;
 }
