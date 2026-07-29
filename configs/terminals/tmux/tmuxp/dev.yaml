@@ -1,0 +1,26 @@
+# tmuxp レイアウト例 (zellij レイアウト相当)。
+#   起動: tmuxp load dev
+#   既存セッション名なら attach、無ければ構築する。
+#   自分用のレイアウトはこの隣に <name>.yaml を足せば tmuxp load <name> で使える。
+#   参考: https://tmuxp.git-pull.com/configuration/
+session_name: dev
+start_directory: ~/
+windows:
+  # 1枚目: エディタ(左7割) + シェル(右3割)
+  - window_name: edit
+    layout: main-vertical
+    options:
+      main-pane-width: 70%
+    panes:
+      - nvim
+      - null   # 空シェル (コマンドを書けば起動時に実行される)
+
+  # 2枚目: git 作業
+  - window_name: git
+    panes:
+      - lazygit
+
+  # 3枚目: 雑用シェル
+  - window_name: shell
+    panes:
+      - null

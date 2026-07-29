@@ -87,4 +87,20 @@ in
   # (palettes.json の active 切替 → just rebuild で追従、が SSOT)。
   home.file.".config/tmux/tmux.conf".source = ../../../configs/terminals/tmux/tmux.conf;
   home.file.".config/tmux/rose-pine.conf".text = mkTmuxTheme c;
+
+  # tmux プラグイン (zellij のセッション永続化相当)。TPM は使わず store パスを
+  # run-shell する plugins.conf を生成 (tmux.conf の末尾が source する)。
+  #   resurrect: prefix+Ctrl-s 保存 / prefix+Ctrl-r 復元 (ペイン内容 + nvim も復元)
+  #   continuum: 15 分毎に自動保存し、tmux サーバ起動時に自動復元
+  home.file.".config/tmux/plugins.conf".text = ''
+    set -g @resurrect-capture-pane-contents 'on'
+    set -g @resurrect-strategy-nvim 'session'
+    set -g @continuum-restore 'on'
+    set -g @continuum-save-interval '15'
+    run-shell ${pkgs.tmuxPlugins.resurrect}/share/tmux-plugins/resurrect/resurrect.tmux
+    run-shell ${pkgs.tmuxPlugins.continuum}/share/tmux-plugins/continuum/continuum.tmux
+  '';
+  # tmuxp のスターターレイアウト (zellij レイアウト相当)。`tmuxp load dev` で構築。
+  # ~/.config/tmuxp/ は実ディレクトリになるので、自作 YAML を隣に追加できる。
+  home.file.".config/tmuxp/dev.yaml".source = ../../../configs/terminals/tmux/tmuxp/dev.yaml;
 }
