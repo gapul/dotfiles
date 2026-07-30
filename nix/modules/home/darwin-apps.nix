@@ -119,16 +119,16 @@
     fi
   '';
 
-  # Plash (動的壁紙) の behavior を enforce する。
-  # (かつては AltTab / Mos / Shortcat の plist もここで一括 import していたが、
-  #  Shortcat は neru へ移行、AltTab / Mos はアンインストールし、Plash だけ残った)
-  # Plash は websites(壁紙定義)と security-scoped bookmark をライブ側に持つため、
+  # Puddle (動的壁紙・Plash の MIT フォーク自作ビルド) の behavior を enforce する。
+  # (旧 Plash から 2026-07 に移行。本家 Plash は削除し Puddle へ一本化した)
+  # Puddle は websites(壁紙定義)と security-scoped bookmark をライブ側に持つため、
   # 全置換 import すると壁紙一式が消える。enforce したい 3 キーだけ surgical に書く。
-  home.activation.plashPrefs = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    if [ -d "$HOME/Library/Containers/com.sindresorhus.Plash" ]; then
-      /usr/bin/defaults write com.sindresorhus.Plash deactivateOnBattery    -bool true
-      /usr/bin/defaults write com.sindresorhus.Plash extendPlashBelowMenuBar -bool true
-      /usr/bin/defaults write com.sindresorhus.Plash showOnAllSpaces         -bool true
+  # (extendPlashBelowMenuBar は Puddle でも互換のためキー名を温存している)
+  home.activation.puddlePrefs = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    if [ -d "$HOME/Library/Containers/net.gapul.Puddle" ]; then
+      /usr/bin/defaults write net.gapul.Puddle deactivateOnBattery    -bool true
+      /usr/bin/defaults write net.gapul.Puddle extendPlashBelowMenuBar -bool true
+      /usr/bin/defaults write net.gapul.Puddle showOnAllSpaces         -bool true
     fi
     /usr/bin/killall cfprefsd 2>/dev/null || true
   '';
@@ -149,6 +149,7 @@
     LOGIN_APPS=(
       "/Applications/AeroSpace.app"
       "/Applications/Ghostty.app"
+      "/Applications/Puddle.app"
     )
     for app in "''${LOGIN_APPS[@]}"; do
       name=$(basename "$app" .app)

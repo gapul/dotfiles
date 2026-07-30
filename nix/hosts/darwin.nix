@@ -332,7 +332,6 @@
 
     masApps = {
       "DaVinci Resolve" = 571213070;
-      "Plash" = 1494023538;
       "Xcode" = 497799835;
     };
   };
