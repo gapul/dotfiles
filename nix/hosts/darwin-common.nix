@@ -52,13 +52,6 @@
     if [ -f "$conf" ] && ! /usr/bin/grep -q 'gapul-dotfiles.cachix.org' "$conf"; then
       printf '\n# self-made dotfiles build cache (cachix, filled by CI, unauthenticated pull)\nextra-substituters = https://gapul-dotfiles.cachix.org\nextra-trusted-public-keys = gapul-dotfiles.cachix.org-1:tGNGJ7SGHrLAjsw5Iz673st0AepuNjQombMJOOVUq98=\n' >> "$conf"
     fi
-    # The self-hosted attic (cache.gapul.net) was removed (cachix gapul-dotfiles replaces it;
-    # being tailnet-only and dependent on the homelab being up just adds failure modes). On machines
-    # that already appended it to nix.custom.conf, clean up by deleting those lines on rebuild.
-    if [ -f "$conf" ] && /usr/bin/grep -q 'cache\.gapul\.net/dotfiles' "$conf"; then
-      /usr/bin/sed -i.bak '/# 自前 attic/d;/cache\.gapul\.net\/dotfiles/d;/extra-trusted-public-keys = dotfiles:/d' "$conf"
-      /bin/rm -f "$conf.bak"
-    fi
     # Determinate Nix already trusts FlakeHub as a substituter, but using it as an
     # active substituter without the matching credentials produces 401 warnings.
     if [ -f "$conf" ] && /usr/bin/grep -q 'cache.flakehub.com' "$conf"; then
