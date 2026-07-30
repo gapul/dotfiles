@@ -6,8 +6,10 @@
 <style>
   * { margin: 0; padding: 0; }
   html, body { width: 100vw; height: 100vh; overflow: hidden; background: #191724; }
-  /* blob を物理的にぼかして「色塊が滲むグラデ」にする。線は一切描かない。 */
-  canvas { display: block; width: 100vw; height: 100vh; filter: blur(64px); }
+  /* 旧 Canvas2D 版は全面 2x キャンバスを毎フレーム filter: blur(64px) で
+     ぼかしており、それが最大の負荷源だった。WebGL2 版では各 blob に
+     シェーダ内でガウシアンの柔らかい減衰を与えるため CSS blur は不要。 */
+  canvas { display: block; width: 100vw; height: 100vh; }
 
   /* 右下の控えめなマーカー */
   .marker {
@@ -68,20 +70,90 @@ const PALETTES = {
   'S': [RP.pine, RP.iris, RP.foam],   // 青×紫×シアン
 };
 
-// ─────────── canvasセットアップ ───────────
+// ─────────── WebGL2 セットアップ ───────────
+// 旧 Canvas2D 版は 6 個の createRadialGradient を 'lighter' で加算描画したうえ、
+// キャンバス全体を filter: blur(64px) でぼかしていた。2x DPI キャンバスの
+// フルスクリーン blur が毎フレーム走るのが最大の負荷源。ここでは blob の
+// 位置・半径・色だけ CPU で計算し (たった 6 個なので軽い)、加算とガウシアン
+// 減衰はフラグメントシェーダに委ねて全画面 1 ドローコールで描く。
 const canvas = document.getElementById('c');
-const ctx = canvas.getContext('2d');
-let W, H;       // CSS px (描画は CSS px 基準、dpr は ctx.scale で吸収)
+const gl = canvas.getContext('webgl2', { antialias: false, alpha: true, premultipliedAlpha: false });
 
+const VERT = `#version 300 es
+in vec2 p;
+void main(){ gl_Position = vec4(p, 0.0, 1.0); }`;
+
+// blob 数。旧版と同じく 6 固定。
+const NB = 6;
+const FRAG = `#version 300 es
+precision highp float;
+out vec4 o;
+uniform vec2  uRes;          // device px (canvas.width/height)
+uniform float uDpr;
+uniform vec3  uBg;           // 時刻ティント済み背景色 0..255
+uniform float uA0;           // 中心 alpha (0.22 + 0.14*sunness)
+uniform vec2  uCenter[${NB}]; // blob 中心 (CSS px)
+uniform float uRadius[${NB}]; // blob 半径 (CSS px)
+uniform vec3  uColor[${NB}];  // blob 色 (時刻補正済み 0..255)
+
+void main(){
+  // gl_FragCoord は device px・左下原点。CSS px・左上原点へ変換。
+  vec2 cssPx = vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y) / uDpr;
+
+  // 背景の上に 6 blob を加算 ('lighter' 相当)。
+  vec3 sum = uBg;
+  for(int i=0;i<${NB};i++){
+    float d = length(cssPx - uCenter[i]);
+    float x = d / uRadius[i];              // 0=中心 1=旧グラデ外周
+    // ガウシアン減衰。exp(-3.2*x^2) は旧 alpha stop と一致:
+    //   x=0   -> 1.00 (中心 = a0)
+    //   x=0.5 -> exp(-0.8)=0.449 (旧 mid stop 0.45*a0)
+    //   x=1   -> exp(-3.2)=0.041 (旧 edge ≒0、柔らかく減衰し blur 不要)
+    float falloff = exp(-3.2 * x * x);
+    float intensity = uA0 * falloff;
+    sum += uColor[i] * intensity;
+  }
+  // 加算合成は 255 で飽和 ('lighter' と同じ)。最後に 0..1 へ正規化。
+  o = vec4(min(vec3(255.0), sum) / 255.0, 1.0);
+}`;
+
+function compile(type, src){
+  const sh = gl.createShader(type);
+  gl.shaderSource(sh, src); gl.compileShader(sh);
+  if(!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh));
+  return sh;
+}
+const prog = gl.createProgram();
+gl.attachShader(prog, compile(gl.VERTEX_SHADER, VERT));
+gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, FRAG));
+gl.linkProgram(prog);
+if(!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+gl.useProgram(prog);
+
+// 全画面トライアングル
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+const buf = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 3,-1, -1,3]), gl.STATIC_DRAW);
+const pLoc = gl.getAttribLocation(prog, 'p');
+gl.enableVertexAttribArray(pLoc);
+gl.vertexAttribPointer(pLoc, 2, gl.FLOAT, false, 0, 0);
+
+const U = {};
+['uRes','uDpr','uBg','uA0','uCenter','uRadius','uColor']
+  .forEach(n => U[n] = gl.getUniformLocation(prog, n));
+
+let W, H, DPR;       // CSS px と DPR
 function resize() {
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  DPR = Math.min(window.devicePixelRatio || 1, 1.5); // GPU 側なので 1.5 で十分綺麗・省電力
   W = window.innerWidth;
   H = window.innerHeight;
-  canvas.width = W * dpr;
-  canvas.height = H * dpr;
-  canvas.style.width = W + 'px';
+  canvas.width  = Math.round(W * DPR);
+  canvas.height = Math.round(H * DPR);
+  canvas.style.width  = W + 'px';
   canvas.style.height = H + 'px';
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  gl.viewport(0, 0, canvas.width, canvas.height);
 }
 resize();
 window.addEventListener('resize', resize);
@@ -113,14 +185,13 @@ function tintBg(c, t) {
   return c.map((v, i) => {
     let x = v + (top[i] - v) * lift;
     x = x + (gold[i] - x) * warm;
-    return Math.round(x);
+    return x;
   });
 }
 
 // ─────────── blob 群 ───────────
 // 各 blob: 楕円軌道を sin/cos で漂い、半径を sin でゆっくり呼吸させる。
 // cur = 現在の表示色 [r,g,b] / tgt = 目標色。毎フレーム cur→tgt へ lerp。
-const NB = 6;
 const blobs = [];
 function rand(a, b) { return a + Math.random() * (b - a); }
 for (let i = 0; i < NB; i++) {
@@ -167,6 +238,11 @@ const FRAME_MS = 1000 / FPS;
 const FADE_PER_SEC = 0.8;   // 色クロスフェード速度 (≈1.25秒で到達)
 let last = 0;
 
+// uniform 用バッファ (毎フレーム再確保しないよう使い回す)
+const centerBuf = new Float32Array(NB * 2);
+const radiusBuf = new Float32Array(NB);
+const colorBuf  = new Float32Array(NB * 3);
+
 function draw(now) {
   requestAnimationFrame(draw);
   if (now - last < FRAME_MS) return;     // 30fps へ間引き (CPU軽減)
@@ -177,19 +253,14 @@ function draw(now) {
   const sec = Date.now() / 1000;
   const minSide = Math.min(W, H);
 
-  // 背景: 時刻ティント済み base を全面塗り (毎フレーム塗り直し → 加算 blob の土台)
-  const bg = tintBg(rgb(RP.base), t);
-  ctx.globalCompositeOperation = 'source-over';
-  ctx.fillStyle = `rgb(${bg[0]},${bg[1]},${bg[2]})`;
-  ctx.fillRect(0, 0, W, H);
-
-  // blob は加算合成でオーロラ的に発色させる
-  ctx.globalCompositeOperation = 'lighter';
   const gold = rgb(RP.gold);
   const warm = t.warmth * 0.30;          // 朝夕で gold 寄せ
   const br = t.brightness;
 
-  for (const b of blobs) {
+  // blob ごとに 位置 / 半径 / 色 を CPU 計算して uniform 配列へ詰める。
+  for (let i = 0; i < NB; i++) {
+    const b = blobs[i];
+
     // 色: cur → tgt へ lerp (1〜2秒クロスフェード)
     const k = Math.min(1, FADE_PER_SEC * dt);
     b.cur[0] += (b.tgt[0] - b.cur[0]) * k;
@@ -204,25 +275,32 @@ function draw(now) {
     cg = Math.min(255, cg * br);
     cb = Math.min(255, cb * br);
 
-    // 位置: 楕円軌道をゆっくり漂う
+    // 位置: 楕円軌道をゆっくり漂う (CSS px)
     const x = (b.cx + b.ax * Math.cos(sec * (2 * Math.PI / b.tx) + b.px)) * W;
     const y = (b.cy + b.ay * Math.sin(sec * (2 * Math.PI / b.ty) + b.py)) * H;
-    // 半径: sin でゆっくり呼吸
+    // 半径: sin でゆっくり呼吸 (CSS px)
     const r = (b.r0 + b.rBreath * Math.sin(sec * (2 * Math.PI / b.tr) + b.pr)) * minSide;
 
-    // 中心濃く外周透明な放射グラデ。alpha は時刻明度で控えめに上下。
-    const a0 = (0.22 + 0.14 * t.sunness);
-    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
-    g.addColorStop(0,   `rgba(${cr | 0},${cg | 0},${cb | 0},${a0.toFixed(3)})`);
-    g.addColorStop(0.5, `rgba(${cr | 0},${cg | 0},${cb | 0},${(a0 * 0.45).toFixed(3)})`);
-    g.addColorStop(1,   `rgba(${cr | 0},${cg | 0},${cb | 0},0)`);
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.arc(x, y, r, 0, Math.PI * 2);
-    ctx.fill();
+    centerBuf[i * 2]     = x;
+    centerBuf[i * 2 + 1] = y;
+    radiusBuf[i]         = r;
+    colorBuf[i * 3]      = cr;
+    colorBuf[i * 3 + 1]  = cg;
+    colorBuf[i * 3 + 2]  = cb;
   }
 
-  ctx.globalCompositeOperation = 'source-over';
+  // 中心 alpha は旧版と同一式。ガウシアン減衰の高さになる。
+  const a0 = 0.22 + 0.14 * t.sunness;
+
+  gl.uniform2f(U.uRes, canvas.width, canvas.height);
+  gl.uniform1f(U.uDpr, DPR);
+  gl.uniform3fv(U.uBg, tintBg(rgb(RP.base), t));
+  gl.uniform1f(U.uA0, a0);
+  gl.uniform2fv(U.uCenter, centerBuf);
+  gl.uniform1fv(U.uRadius, radiusBuf);
+  gl.uniform3fv(U.uColor, colorBuf);
+
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
 }
 
 requestAnimationFrame(draw);
