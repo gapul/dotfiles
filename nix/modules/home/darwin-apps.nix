@@ -119,16 +119,16 @@
     fi
   '';
 
-  # Enforce Plash (dynamic wallpaper) behavior.
-  # (Previously AltTab / Mos / Shortcat plists were also bulk-imported here, but
-  #  Shortcat migrated to neru, AltTab / Mos were uninstalled, and only Plash remains)
-  # Plash keeps its websites (wallpaper definitions) and security-scoped bookmarks on the live side,
+  # Enforce Puddle (dynamic wallpaper; self-built MIT fork of Plash) behavior.
+  # (Migrated from the old Plash in 2026-07; upstream Plash was removed and consolidated into Puddle.)
+  # Puddle keeps its websites (wallpaper definitions) and security-scoped bookmarks on the live side,
   # so a full-replace import would wipe the whole wallpaper set. Surgically write only the 3 keys we want to enforce.
-  home.activation.plashPrefs = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    if [ -d "$HOME/Library/Containers/com.sindresorhus.Plash" ]; then
-      /usr/bin/defaults write com.sindresorhus.Plash deactivateOnBattery    -bool true
-      /usr/bin/defaults write com.sindresorhus.Plash extendPlashBelowMenuBar -bool true
-      /usr/bin/defaults write com.sindresorhus.Plash showOnAllSpaces         -bool true
+  # (extendPlashBelowMenuBar keeps its key name in Puddle for compatibility.)
+  home.activation.puddlePrefs = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    if [ -d "$HOME/Library/Containers/net.gapul.Puddle" ]; then
+      /usr/bin/defaults write net.gapul.Puddle deactivateOnBattery    -bool true
+      /usr/bin/defaults write net.gapul.Puddle extendPlashBelowMenuBar -bool true
+      /usr/bin/defaults write net.gapul.Puddle showOnAllSpaces         -bool true
     fi
     /usr/bin/killall cfprefsd 2>/dev/null || true
   '';
@@ -149,6 +149,7 @@
     LOGIN_APPS=(
       "/Applications/AeroSpace.app"
       "/Applications/Ghostty.app"
+      "/Applications/Puddle.app"
     )
     for app in "''${LOGIN_APPS[@]}"; do
       name=$(basename "$app" .app)

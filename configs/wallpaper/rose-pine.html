@@ -83,15 +83,13 @@ function applyWorkspace(ws) {
   if (currentPalette === next) return;  // 変更なし
   currentPalette = next;
   document.getElementById('wsnum').textContent = ws;
-  // 背景は塗り直さない。常時走っている tick() の trail フェードに任せれば、
-  // 古い軌跡が薄れつつ新色のラインが重なって自然にクロスフェードする。
-  // ここで paintBase() すると画が全消去され「最初から」に見えてしまう。
+  // 背景は塗り直さない。常時走っている tick() の trail フェード (feedback buffer)
+  // に任せれば、古い軌跡が薄れつつ新色のラインが重なって自然にクロスフェードする。
 }
 
 function startAnimation() {
   if (started) return;
   started = true;
-  paintBase();
   requestAnimationFrame(tick);
 }
 
@@ -106,10 +104,27 @@ function pollWorkspace() {
 }
 setInterval(pollWorkspace, 300);
 
-// ─────────── canvasセットアップ ───────────
-const canvas = document.getElementById('c');
-const ctx = canvas.getContext('2d');
-let W, H;
+// ─────────── 時刻シフト / 背景ティント (旧 Canvas2D 版と同一) ───────────
+// 時刻に応じた色シフト。Rosé Pine は dark テーマなので白飛びはさせず、
+// 「明度」「暖色度 (golden hour)」「昼の持ち上げ」で一日の表情を変える。
+//   深夜  : 最も沈み、寒色 (iris/pine)。warmth=0
+//   朝焼け: 暖色 (gold) が乗る。warmth≈1, bgLift 低
+//   正午  : 最も明るい。brightness≈1.05, bgLift≈1, warmth=0
+//   夕焼け: 暖色 (gold) が乗る。warmth≈1
+function computeTimeShift() {
+  const now = new Date();
+  const hr = now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600 + now.getMilliseconds() / 3600000;
+  const sunness = 0.5 * (1 + Math.cos((hr - 12) * Math.PI / 12));  // 0..1 正午=1, 真夜中=0
+  const golden = Math.sin(Math.abs(hr - 12) * Math.PI / 12);       // 0..1 朝夕=1, 正午/深夜=0
+  // 朝夕でも太陽が出ている時間帯 (sunness がある程度高い) のみ暖色を強める
+  const warmth = golden * Math.min(1, sunness * 1.6);
+  return {
+    brightness: 0.78 + 0.27 * sunness,   // 夜0.78 → 昼1.05
+    warmth,                              // 0..1 朝夕で最大
+    bgLift: sunness,                     // 昼に背景を surface 寄りへ
+    trailAlpha: 0.06 + 0.03 * sunness,   // 昼は少し速くフェード (くっきり)
+  };
+}
 
 // 背景色を時間帯でティントする (rose-pine 内で完結):
 //   昼   … surface 寄りに持ち上げ (わずかに明るく)
@@ -123,36 +138,13 @@ function tintBg(c, t) {
   return c.map((v, i) => {
     let x = v + (top[i] - v) * lift;
     x = x + (gold[i] - x) * warm;
-    return Math.round(x);
+    return x;
   });
 }
 
-function paintBase() {
-  // 現在時刻のティントを反映した base を全面塗り → 縦グラデで奥行き
-  const t = computeTimeShift();
-  const base = tintBg(rgb(RP.base), t);
-  const top = tintBg(rgb(RP.surface), t);
-  const g = ctx.createLinearGradient(0, 0, 0, window.innerHeight);
-  g.addColorStop(0, `rgb(${top.join(',')})`);
-  g.addColorStop(0.5, `rgb(${base.join(',')})`);
-  g.addColorStop(1, `rgb(${base.join(',')})`);
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
-}
-
-function resize() {
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  W = canvas.width = window.innerWidth * dpr;
-  H = canvas.height = window.innerHeight * dpr;
-  canvas.style.width = window.innerWidth + 'px';
-  canvas.style.height = window.innerHeight + 'px';
-  ctx.scale(dpr, dpr);
-  paintBase();
-}
-resize();
-window.addEventListener('resize', resize);
-
 // ─────────── Perlinノイズ (簡易版) ───────────
+// 粒子の進行角と色は CPU 側でこの fbm から決める (旧版と同じ乱数場)。
+// GPU では計算せず、粒子ごとの座標/色を軽量に uniform (instance 属性) で渡す。
 const perm = new Uint8Array(512);
 {
   const p = [];
@@ -182,16 +174,17 @@ function noise2D(x, y) {
     v
   );
 }
-
 // 2オクターブの fractal noise (fbm)。単一ノイズより模様に階層が出て richer に。
 function fbm(x, y) {
   return noise2D(x, y) * 0.65 + noise2D(x * 2.13 + 19.1, y * 2.13 + 7.3) * 0.35;
 }
 
-// ─────────── パーティクル ───────────
+// ─────────── パーティクル (CPU 側・軽量) ───────────
+// 旧版と同じく画面初期サイズ基準で 200 粒子。位置/寿命は CPU で更新し、
+// 各フレーム「線分 (prev→cur) + 色」を instance 属性として 1 ドローで GPU へ。
 const N = 200;
 const particles = [];
-const w = window.innerWidth;
+const w = window.innerWidth;   // 旧版同様、粒子場は初期ウィンドウサイズ基準
 const h = window.innerHeight;
 for (let i = 0; i < N; i++) {
   particles.push({
@@ -201,72 +194,273 @@ for (let i = 0; i < N; i++) {
   });
 }
 
-// 時刻に応じた色シフト。Rosé Pine は dark テーマなので白飛びはさせず、
-// 「明度」「暖色度 (golden hour)」「昼の持ち上げ」で一日の表情を変える。
-//   深夜  : 最も沈み、寒色 (iris/pine)。warmth=0
-//   朝焼け: 暖色 (gold) が乗る。warmth≈1, bgLift 低
-//   正午  : 最も明るい。brightness≈1.05, bgLift≈1, warmth=0
-//   夕焼け: 暖色 (gold) が乗る。warmth≈1
-function computeTimeShift() {
-  const now = new Date();
-  const hr = now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600 + now.getMilliseconds() / 3600000;
-  const sunness = 0.5 * (1 + Math.cos((hr - 12) * Math.PI / 12));  // 0..1 正午=1, 真夜中=0
-  const golden = Math.sin(Math.abs(hr - 12) * Math.PI / 12);       // 0..1 朝夕=1, 正午/深夜=0
-  // 朝夕でも太陽が出ている時間帯 (sunness がある程度高い) のみ暖色を強める
-  const warmth = golden * Math.min(1, sunness * 1.6);
-  return {
-    brightness: 0.78 + 0.27 * sunness,   // 夜0.78 → 昼1.05
-    warmth,                              // 0..1 朝夕で最大
-    bgLift: sunness,                     // 昼に背景を surface 寄りへ
-    trailAlpha: 0.06 + 0.03 * sunness,   // 昼は少し速くフェード (くっきり)
-  };
+// ─────────── WebGL2 セットアップ ───────────
+// 旧 Canvas2D 版は毎フレーム base の fillRect (trail フェード) と 200 本の
+// stroke を main thread で発行していた。ここでは軌跡の蓄積を ping-pong の
+// フィードバック FBO へ移し、
+//   1) fade パス   : 前フレームのテクスチャを base 方向へ薄く混ぜて軌跡を残す
+//                    (フラグメントシェーダで全画面 1 パス = 旧 fillRect 相当)
+//   2) streak パス : 各粒子の線分を拡張クアッドの instancing で 1 ドロー描画。
+//                    線分 SDF + smoothstep で丸キャップと柔らかい縁を per-pixel 生成
+//   3) blit        : 完成テクスチャを画面へコピー
+// のように GPU 側で完結させ、CPU 負荷とドローコールを大幅に削減する。
+const canvas = document.getElementById('c');
+const gl = canvas.getContext('webgl2', { antialias: false, alpha: false, premultipliedAlpha: false });
+if (!gl) throw new Error('WebGL2 not supported');
+
+// ── フルスクリーン三角形用 頂点シェーダ (fade / init 共用) ──
+const VERT_FS = `#version 300 es
+in vec2 p;
+void main(){ gl_Position = vec4(p, 0.0, 1.0); }`;
+
+// ── init: 縦グラデ (上=surface / 下=base) を種テクスチャに描く (旧 paintBase 相当) ──
+const FRAG_INIT = `#version 300 es
+precision highp float;
+uniform vec2 uRes;
+uniform vec3 uTop;    // tinted surface 0..255
+uniform vec3 uBase;   // tinted base    0..255
+out vec4 o;
+void main(){
+  float t = gl_FragCoord.y / uRes.y;          // 1 = 画面上端 (GL は左下原点)
+  float f = clamp((t - 0.5) / 0.5, 0.0, 1.0); // 上半分だけ surface へ寄せ, 下半分 base
+  vec3 c = mix(uBase / 255.0, uTop / 255.0, f);
+  o = vec4(c, 1.0);
+}`;
+
+// ── fade: 前フレームを base 方向へ trailAlpha 分だけ混ぜる (旧 fillRect(base,a) 相当) ──
+const FRAG_FADE = `#version 300 es
+precision highp float;
+uniform sampler2D uPrev;
+uniform vec2  uRes;
+uniform vec3  uBg;     // tinted base 0..255
+uniform float uTrail;  // trailAlpha
+out vec4 o;
+void main(){
+  vec2 uv = gl_FragCoord.xy / uRes;
+  vec3 prev = texture(uPrev, uv).rgb;
+  vec3 base = uBg / 255.0;
+  o = vec4(mix(prev, base, uTrail), 1.0);  // source-over: mix(dst, base, a)
+}`;
+
+// ── streak: 粒子の線分を拡張クアッドで受け, per-pixel に線分 SDF で丸ライン化 ──
+const VERT_STREAK = `#version 300 es
+in vec2 aCorner;  // テンプレ (x:0..1 進行方向, y:-1..1 側方)
+in vec2 aA;       // 線分始点 (device px, 左下原点)
+in vec2 aB;       // 線分終点
+in vec3 aColor;   // 線色 0..1 (時刻/warmth/brightness 反映済)
+uniform vec2  uRes;
+uniform float uRad;   // 線半径 (device px)
+uniform float uAA;    // アンチエイリアス幅
+flat out vec2 vA;
+flat out vec2 vB;
+flat out vec3 vColor;
+void main(){
+  vec2 dir = aB - aA;
+  float len = length(dir);
+  dir = len > 1e-4 ? dir / len : vec2(1.0, 0.0);
+  vec2 perp = vec2(-dir.y, dir.x);
+  float rad = uRad + uAA + 1.0;                       // 丸キャップ + AA 余白ぶん外へ拡張
+  vec2 base = mix(aA, aB, aCorner.x);
+  vec2 pos = base + dir * rad * (aCorner.x * 2.0 - 1.0) + perp * rad * aCorner.y;
+  vA = aA; vB = aB; vColor = aColor;
+  vec2 clip = pos / uRes * 2.0 - 1.0;                 // device px(左下原点) → clip
+  gl_Position = vec4(clip, 0.0, 1.0);
+}`;
+
+const FRAG_STREAK = `#version 300 es
+precision highp float;
+flat in vec2 vA;
+flat in vec2 vB;
+flat in vec3 vColor;
+uniform float uRad;
+uniform float uAA;
+out vec4 o;
+float segDist(vec2 p, vec2 a, vec2 b){
+  vec2 pa = p - a, ba = b - a;
+  float hh = clamp(dot(pa, ba) / max(dot(ba, ba), 1e-6), 0.0, 1.0);
+  return length(pa - ba * hh);
+}
+void main(){
+  float d = segDist(gl_FragCoord.xy, vA, vB);
+  float cov = 1.0 - smoothstep(uRad - uAA, uRad + uAA, d);  // 丸キャップの柔らかい縁
+  float a = 0.7 * cov;                                       // 旧 stroke alpha=0.7
+  if (a < 0.003) discard;
+  o = vec4(vColor, a);
+}`;
+
+// ── コンパイル / リンク (infolog を throw してガード) ──
+function compile(type, src) {
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src);
+  gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error('compile: ' + gl.getShaderInfoLog(s));
+  return s;
+}
+function makeProgram(vsrc, fsrc, binds) {
+  const p = gl.createProgram();
+  gl.attachShader(p, compile(gl.VERTEX_SHADER, vsrc));
+  gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fsrc));
+  for (const [name, loc] of binds) gl.bindAttribLocation(p, loc, name);  // VAO 共用のため場所を固定
+  gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error('link: ' + gl.getProgramInfoLog(p));
+  return p;
+}
+function uniforms(prog, names) {
+  const U = {};
+  names.forEach(n => U[n] = gl.getUniformLocation(prog, n));
+  return U;
 }
 
-let frame = 0;
-function tick() {
+const progInit   = makeProgram(VERT_FS, FRAG_INIT,   [['p', 0]]);
+const progFade   = makeProgram(VERT_FS, FRAG_FADE,   [['p', 0]]);
+const progStreak = makeProgram(VERT_STREAK, FRAG_STREAK,
+  [['aCorner', 0], ['aA', 1], ['aB', 2], ['aColor', 3]]);
+
+const uInit   = uniforms(progInit,   ['uRes', 'uTop', 'uBase']);
+const uFade   = uniforms(progFade,   ['uPrev', 'uRes', 'uBg', 'uTrail']);
+const uStreak = uniforms(progStreak, ['uRes', 'uRad', 'uAA']);
+
+// ── フルスクリーン三角形 VAO (init / fade 共用) ──
+const fsVAO = gl.createVertexArray();
+gl.bindVertexArray(fsVAO);
+const fsBuf = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, fsBuf);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+// ── streak VAO (corner: 非 instanced / 線分・色: instanced) ──
+const instData = new Float32Array(N * 7);          // 1粒子 = [Ax,Ay,Bx,By, Cr,Cg,Cb]
+const streakVAO = gl.createVertexArray();
+gl.bindVertexArray(streakVAO);
+const cornerBuf = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, cornerBuf);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+  0, -1,  1, -1,  1, 1,   // 2 三角形で線分を包む矩形
+  0, -1,  1,  1,  0, 1,
+]), gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+gl.vertexAttribDivisor(0, 0);
+const instBuf = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, instBuf);
+gl.bufferData(gl.ARRAY_BUFFER, instData.byteLength, gl.DYNAMIC_DRAW);
+gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 28, 0);  gl.vertexAttribDivisor(1, 1);
+gl.enableVertexAttribArray(2); gl.vertexAttribPointer(2, 2, gl.FLOAT, false, 28, 8);  gl.vertexAttribDivisor(2, 1);
+gl.enableVertexAttribArray(3); gl.vertexAttribPointer(3, 3, gl.FLOAT, false, 28, 16); gl.vertexAttribDivisor(3, 1);
+gl.bindVertexArray(null);
+
+// ─────────── ping-pong フィードバック FBO ───────────
+let DPR, W, H;
+let tex = [null, null];
+let fbo = [null, null];
+let read = 0;                       // 参照側 index (書き込みは 1-read)
+
+function makeTex(cw, ch) {
+  const t = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, t);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, cw, ch, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  return t;
+}
+function makeFbo(t) {
+  const f = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, f);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0);
+  return f;
+}
+
+// 種テクスチャに縦グラデ (旧 paintBase) を焼き込む
+function seedGradient(fboTarget) {
   const t = computeTimeShift();
-  const [aR, aG, aB] = rgb(currentPalette.a);
-  const [bR, bG, bB] = rgb(currentPalette.b);
+  const top  = tintBg(rgb(RP.surface), t);
+  const base = tintBg(rgb(RP.base), t);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fboTarget);
+  gl.viewport(0, 0, canvas.width, canvas.height);
+  gl.disable(gl.BLEND);
+  gl.useProgram(progInit);
+  gl.bindVertexArray(fsVAO);
+  gl.uniform2f(uInit.uRes, canvas.width, canvas.height);
+  gl.uniform3fv(uInit.uTop, top);
+  gl.uniform3fv(uInit.uBase, base);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+}
+
+function resize() {
+  DPR = Math.min(window.devicePixelRatio || 1, 1.5);  // GPU 側なので 1.5 で十分綺麗・省電力
+  W = window.innerWidth;
+  H = window.innerHeight;
+  canvas.width  = Math.round(W * DPR);
+  canvas.height = Math.round(H * DPR);
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+
+  // FBO 群を作り直す (旧 resize が paintBase で軌跡をリセットするのと同じ挙動)
+  for (const t of tex) if (t) gl.deleteTexture(t);
+  for (const f of fbo) if (f) gl.deleteFramebuffer(f);
+  tex = [makeTex(canvas.width, canvas.height), makeTex(canvas.width, canvas.height)];
+  fbo = [makeFbo(tex[0]), makeFbo(tex[1])];
+  read = 0;
+  seedGradient(fbo[0]);   // 参照側だけ種を焼けば十分 (書き込み側は毎フレ全面更新)
+  seedGradient(fbo[1]);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+}
+resize();
+window.addEventListener('resize', resize);
+
+// ─────────── 描画ループ (~30fps) ───────────
+let lastFrame = 0;
+let frame = 0;
+const FRAME_MS = 33;
+
+function tick(ms) {
+  requestAnimationFrame(tick);
+  if (ms - lastFrame < FRAME_MS) return;   // ~30fps に制限
+  lastFrame = ms;
+
+  const t = computeTimeShift();
+  const P = currentPalette;
+  const write = 1 - read;
+  const ch = canvas.height;
+
+  // ── 粒子更新 (CPU): 線分 (prev→cur) と色を instance 配列へ ──
+  const [aR, aG, aB] = rgb(P.a);
+  const [bR, bG, bB] = rgb(P.b);
   const [gR, gG, gB] = rgb(RP.gold);   // golden hour で寄せる暖色
-
-  // 背景トレイルフェード: 時刻ティント済みの base をうっすら重ねて軌跡を残す
-  const [tbR, tbG, tbB] = tintBg(rgb(RP.base), t);
-  ctx.fillStyle = `rgba(${tbR},${tbG},${tbB}, ${t.trailAlpha})`;
-  ctx.fillRect(0, 0, w, h);
-
-  const P = currentPalette;            // 現在 workspace の色 + 模様パラメータ
-  ctx.lineWidth = P.width;
-  ctx.lineCap = 'round';
-
-  for (const p of particles) {
+  const warm = t.warmth * 0.35;        // 朝夕で最大35% gold 寄せ
+  const br = t.brightness;
+  for (let i = 0; i < N; i++) {
+    const p = particles[i];
     // fractal ノイズ場から角度算出 (workspace毎に scale/twist/速度が異なる)
     const n = fbm(p.x * P.scale, p.y * P.scale + frame * P.drift);
     const angle = n * Math.PI * P.twist;
-    const speed = P.speed;
-    const vx = Math.cos(angle) * speed;
-    const vy = Math.sin(angle) * speed;
+    const vx = Math.cos(angle) * P.speed;
+    const vy = Math.sin(angle) * P.speed;
 
     // 色: アクセント2色を noise で RGB 補間 → 朝夕は gold へ寄せ → 時刻明度を乗算
-    const mix = (n + 1) * 0.5;                 // 0..1
-    const warm = t.warmth * 0.35;              // 朝夕で最大35% gold 寄せ
-    const br = t.brightness;
+    const mix = (n + 1) * 0.5;
     let mr = aR + (bR - aR) * mix;
     let mg = aG + (bG - aG) * mix;
     let mb = aB + (bB - aB) * mix;
     mr += (gR - mr) * warm;
     mg += (gG - mg) * warm;
     mb += (gB - mb) * warm;
-    const cr = Math.min(255, mr * br) | 0;
-    const cg = Math.min(255, mg * br) | 0;
-    const cb = Math.min(255, mb * br) | 0;
-    ctx.strokeStyle = `rgba(${cr},${cg},${cb},0.7)`;
 
-    ctx.beginPath();
-    ctx.moveTo(p.x, p.y);
+    const prevX = p.x, prevY = p.y;
     p.x += vx;
     p.y += vy;
-    ctx.lineTo(p.x, p.y);
-    ctx.stroke();
+
+    const o = i * 7;
+    instData[o]     = prevX * DPR;         // device px (左下原点へ y 反転)
+    instData[o + 1] = ch - prevY * DPR;
+    instData[o + 2] = p.x * DPR;
+    instData[o + 3] = ch - p.y * DPR;
+    instData[o + 4] = Math.min(255, mr * br) / 255;
+    instData[o + 5] = Math.min(255, mg * br) / 255;
+    instData[o + 6] = Math.min(255, mb * br) / 255;
 
     // 寿命管理: 一定時間で再生成
     p.life--;
@@ -277,11 +471,46 @@ function tick() {
     }
   }
 
+  // ── 1) fade パス: 前フレーム(read)を base 方向へ薄く混ぜて write へ ──
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fbo[write]);
+  gl.viewport(0, 0, canvas.width, canvas.height);
+  gl.disable(gl.BLEND);
+  gl.useProgram(progFade);
+  gl.bindVertexArray(fsVAO);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, tex[read]);
+  gl.uniform1i(uFade.uPrev, 0);
+  gl.uniform2f(uFade.uRes, canvas.width, canvas.height);
+  gl.uniform3fv(uFade.uBg, tintBg(rgb(RP.base), t));
+  gl.uniform1f(uFade.uTrail, t.trailAlpha);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+  // ── 2) streak パス: 粒子の線分を write へ alpha ブレンドで重ねる ──
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);   // 旧 stroke の source-over 相当
+  gl.useProgram(progStreak);
+  gl.bindVertexArray(streakVAO);
+  gl.bindBuffer(gl.ARRAY_BUFFER, instBuf);
+  gl.bufferSubData(gl.ARRAY_BUFFER, 0, instData);
+  const half = P.width * DPR * 0.5;                      // 線半径 (旧 lineWidth=P.width)
+  gl.uniform2f(uStreak.uRes, canvas.width, canvas.height);
+  gl.uniform1f(uStreak.uRad, half);
+  gl.uniform1f(uStreak.uAA, 1.0);
+  gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, N);
+  gl.disable(gl.BLEND);
+
+  // ── 3) blit: 完成した write テクスチャを画面へコピー ──
+  gl.bindFramebuffer(gl.READ_FRAMEBUFFER, fbo[write]);
+  gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
+  gl.blitFramebuffer(0, 0, canvas.width, canvas.height,
+                     0, 0, canvas.width, canvas.height,
+                     gl.COLOR_BUFFER_BIT, gl.NEAREST);
+
+  read = write;   // swap
   frame++;
-  requestAnimationFrame(tick);  // 停止せず回し続ける
 }
 
-// 初期描画: 初回アニメーションを一度走らせる (startAnimation 内で base も塗る)
+// 初期化: workspace を適用してループ開始
 applyWorkspace('1');
 startAnimation();
 </script>
