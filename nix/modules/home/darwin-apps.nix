@@ -1,4 +1,4 @@
-# Darwin apps component (ECS: profile)。GUI アプリ設定・入力系・plist import。
+# Darwin apps component (ECS: profile). GUI app settings, input methods, plist import.
 {
   config,
   pkgs,
@@ -6,7 +6,7 @@
   ...
 }:
 {
-  # tealdeer: ~/Library/Application Support 配下 (Mac 規約)
+  # tealdeer: under ~/Library/Application Support (Mac convention)
   home.file."Library/Application Support/tealdeer/config.toml".text = ''
     [updates]
     auto_update = true
@@ -14,11 +14,11 @@
     archive_source = "https://github.com/tldr-pages/tldr/releases/latest/download/tldr.zip"
   '';
 
-  # espanso: 汎用スニペット (公開) — Mac の Container 内パスへ
+  # espanso: general-purpose snippets (public) — to the Container path on Mac
   home.file."Library/Application Support/espanso/match/base.yml".source =
     ../../../configs/espanso/base.yml;
 
-  # macOS 専用 SOPS template (espanso の personal は Container パス)
+  # macOS-only SOPS template (espanso's personal is at the Container path)
   sops.templates."espanso-personal.yml" = {
     path = "${config.home.homeDirectory}/Library/Application Support/espanso/match/personal.yml";
     content = ''
@@ -42,7 +42,7 @@
     '';
   };
 
-  # macOS 専用 GUI app の config (dotfiles/configs/* → ~/.config に symlink)
+  # macOS-only GUI app config (dotfiles/configs/* → symlink into ~/.config)
   home.file.".config/qmk/qmk.ini".text = ''
     [config]
 
@@ -54,26 +54,26 @@
     [general]
   '';
 
-  # karabiner は dotfiles 直接書き戻し (mkOutOfStoreSymlink)
+  # karabiner writes back directly to dotfiles (mkOutOfStoreSymlink)
   home.file.".config/karabiner".source =
     config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.dotfiles/configs/keyboard/karabiner";
 
-  # Hammerspoon: Space-Hyper+AeroSpace と競合しないモーダルなキーボードマウス。
-  # init.lua が hs.autoLaunch(true) を設定するため、一度起動すればログイン時も常駐する。
+  # Hammerspoon: modal keyboard-mouse that doesn't conflict with Space-Hyper+AeroSpace.
+  # init.lua sets hs.autoLaunch(true), so once launched it stays resident at login too.
   home.file.".hammerspoon".source =
     config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.dotfiles/configs/keyboard/hammerspoon";
 
-  # neru: マウス無しの全画面ナビ (grid/hints/scroll。Shortcat の後継)。
-  # config.toml を neru CLI / 手編集でライブ調整するため karabiner と同じ
-  # ディレクトリ mkOutOfStoreSymlink。runtime cruft は同梱の .gitignore で除外。
+  # neru: mouse-free full-screen navigation (grid/hints/scroll. Successor to Shortcat).
+  # Live-tune config.toml via neru CLI / manual edits, so use the same directory
+  # mkOutOfStoreSymlink as karabiner. Runtime cruft is excluded by the bundled .gitignore.
   home.file.".config/neru".source =
     config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.dotfiles/configs/keyboard/neru";
 
-  # neru の launchd 常駐 (ログイン時起動 + 死活監視) を純正サービス管理で登録。
-  # plist を手書き複製すると純正 label com.y3owk1n.neru と二重起動になるため、
-  # neru services install を冪等に呼ぶ。config.toml (上の symlink) が存在してから
-  # 起動するので「config より先に daemon が上がりホットキー未登録」の初回レースも防ぐ。
-  # Neru.app は brew cask のため、バイナリが入るまで (未 install 時) は skip。
+  # Register neru's launchd residency (launch at login + liveness monitoring) via its native service management.
+  # Hand-copying a plist would double-launch alongside the native label com.y3owk1n.neru, so
+  # call `neru services install` idempotently. It launches only after config.toml (the symlink above)
+  # exists, which also prevents the first-run race of "daemon comes up before config, hotkeys unregistered".
+  # Neru.app is a brew cask, so skip until the binary is present (not yet installed).
   home.activation.neruService = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     NERU=/opt/homebrew/bin/neru
     if [ -x "$NERU" ] && ! "$NERU" services status 2>/dev/null | grep -qi loaded; then
@@ -81,14 +81,14 @@
     fi
   '';
 
-  # mpv ランチャー (AppleScript droplet)。mpv 本体は brew formula (darwin.nix の
-  # homebrew.brews) で、CLI バイナリのみ・.app を吐かないため、Finder の関連付け /
-  # ドラッグ&ドロップ再生用にこの droplet を被せている。中身は
-  # `on open` → /opt/homebrew/bin/mpv <files> & を呼ぶだけ。
-  # recursive は付けない: バンドル丸ごとを 1 symlink にして adhoc 署名の seal を保つ。
+  # mpv launcher (AppleScript droplet). The mpv binary itself is a brew formula (homebrew.brews
+  # in darwin.nix), CLI-only and emits no .app, so this droplet is layered on top for Finder
+  # associations / drag-and-drop playback. Its contents just call
+  # `on open` → /opt/homebrew/bin/mpv <files> &.
+  # Don't set recursive: keep the whole bundle as one symlink to preserve the adhoc signing seal.
   home.file."Applications/mpv.app".source = ../../../configs/media/mpv-app/mpv.app;
 
-  # macSKK / azooKey skkserv: sandboxed app の preferences を defaults import
+  # macSKK / azooKey skkserv: defaults import the sandboxed app's preferences
   home.activation.skkPlistImport = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     /usr/bin/defaults import net.mtgto.inputmethod.macSKK \
       ${../../../configs/ime/skk/macSKK.plist}
@@ -99,8 +99,8 @@
     /usr/bin/killall cfprefsd 2>/dev/null || true
   '';
 
-  # macSKK kana-rule (ローマ字変換ルール) を配置
-  # plist ではなく sandbox Container 内の Documents ファイルなので実コピーで反映
+  # place the macSKK kana-rule (romaji conversion rules)
+  # it's a Documents file inside the sandbox Container, not a plist, so apply via an actual copy
   home.activation.skkKanaRule = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     skk_settings="${config.home.homeDirectory}/Library/Containers/net.mtgto.inputmethod.macSKK/Data/Documents/Settings"
     if [ -d "$skk_settings" ]; then
@@ -110,7 +110,7 @@
     fi
   '';
 
-  # Maccy (clipboard manager) 設定 — clipboard 履歴は SQLite で別ファイル、触らない
+  # Maccy (clipboard manager) settings — clipboard history is a separate SQLite file, don't touch it
   home.activation.maccyPlistImport = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     if [ -d "$HOME/Library/Containers/org.p0deje.Maccy" ]; then
       /usr/bin/defaults import org.p0deje.Maccy \
@@ -119,11 +119,11 @@
     fi
   '';
 
-  # Plash (動的壁紙) の behavior を enforce する。
-  # (かつては AltTab / Mos / Shortcat の plist もここで一括 import していたが、
-  #  Shortcat は neru へ移行、AltTab / Mos はアンインストールし、Plash だけ残った)
-  # Plash は websites(壁紙定義)と security-scoped bookmark をライブ側に持つため、
-  # 全置換 import すると壁紙一式が消える。enforce したい 3 キーだけ surgical に書く。
+  # Enforce Plash (dynamic wallpaper) behavior.
+  # (Previously AltTab / Mos / Shortcat plists were also bulk-imported here, but
+  #  Shortcat migrated to neru, AltTab / Mos were uninstalled, and only Plash remains)
+  # Plash keeps its websites (wallpaper definitions) and security-scoped bookmarks on the live side,
+  # so a full-replace import would wipe the whole wallpaper set. Surgically write only the 3 keys we want to enforce.
   home.activation.plashPrefs = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     if [ -d "$HOME/Library/Containers/com.sindresorhus.Plash" ]; then
       /usr/bin/defaults write com.sindresorhus.Plash deactivateOnBattery    -bool true
@@ -133,8 +133,8 @@
     /usr/bin/killall cfprefsd 2>/dev/null || true
   '';
 
-  # Skim: VimTeX 連携。逆方向検索 (PDF クリック→Neovim 該当行) と保存時の自動リロード。
-  # 他の Skim 設定を壊さないよう、対象キーのみ surgical に書き込む。
+  # Skim: VimTeX integration. Inverse search (click PDF → jump to line in Neovim) and auto-reload on save.
+  # Surgically write only the target keys so other Skim settings aren't broken.
   home.activation.skimSync = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     /usr/bin/defaults write net.sourceforge.skim-app.skim SKTeXEditorPreset -string Custom
     /usr/bin/defaults write net.sourceforge.skim-app.skim SKTeXEditorCommand -string ${pkgs.neovim}/bin/nvim
@@ -144,7 +144,7 @@
     /usr/bin/killall cfprefsd 2>/dev/null || true
   '';
 
-  # ログイン項目: ヘッドレス起動しない GUI 常駐アプリを auto-launch
+  # Login items: auto-launch resident GUI apps that don't start headless
   home.activation.macosLoginItems = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     LOGIN_APPS=(
       "/Applications/AeroSpace.app"

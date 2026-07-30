@@ -7,9 +7,9 @@
   ...
 }:
 let
-  # 有料バイナリだが nixpkgs のソースビルド=無料フルになる creative tools 用。
-  # 26.05-darwin では ardour/aseprite が未提供/broken なので nixos-unstable を使い、
-  # aseprite は unfree のため allowUnfree 付きで再インスタンス化する。
+  # For creative tools whose official binaries are paid but nixpkgs source builds are free & full.
+  # On 26.05-darwin ardour/aseprite are unavailable/broken, so use nixos-unstable, and
+  # re-instantiate with allowUnfree since aseprite is unfree.
   unstablePkgs = import nixpkgsUnstable.legacyPackages.${pkgs.stdenv.hostPlatform.system}.path {
     inherit (pkgs.stdenv.hostPlatform) system;
     config.allowUnfree = true;
@@ -22,35 +22,35 @@ in
     ../modules/home/darwin-apps.nix
   ];
 
-  # macOS 専用の home-manager 設定
-  # 共通部分は home/common.nix に分離
+  # macOS-specific home-manager config
+  # Common parts are split into home/common.nix
 
   home.homeDirectory = "/Users/${user.username}";
 
   home.sessionVariables = {
     HOMEBREW_NO_ANALYTICS = "1";
-    # NOTE: brew の trust.json は XDG 化不可。activation の brew bundle は
-    # `sudo --preserve-env=PATH --set-home` で XDG_CONFIG_HOME を剥がし必ず ~/.homebrew を読む。
-    # かつ brew は XDG_CONFIG_HOME を HOMEBREW_USER_CONFIG_HOME より優先するため、対話シェルの
-    # 素の trust は ~/.config/homebrew に逸れて二重化していた。下の
-    # `.config/homebrew → ~/.homebrew` symlink で両経路が同一実体に収束する
-    # (Justfile rebuild の `env -u XDG_CONFIG_HOME` は無害なので温存)。
+    # NOTE: brew's trust.json can't be XDG-ified. The activation brew bundle
+    # strips XDG_CONFIG_HOME via `sudo --preserve-env=PATH --set-home` and always reads ~/.homebrew.
+    # Also, brew prefers XDG_CONFIG_HOME over HOMEBREW_USER_CONFIG_HOME, so the interactive shell's
+    # plain trust drifted to ~/.config/homebrew and got duplicated. The
+    # `.config/homebrew → ~/.homebrew` symlink below converges both paths onto the same entity
+    # (Justfile rebuild's `env -u XDG_CONFIG_HOME` is harmless, so kept).
     PNPM_HOME = "${config.home.homeDirectory}/Library/pnpm";
-    # nh: darwin は darwinConfigurations.<user> 形式で可。home は nh 4.3.2 だと
-    # #名前/#...activationPackage どちらも不可 → flake のみ(#なし)にして user 名で
-    # homeConfigurations.<user> を自動判別させるのが唯一通る形。
+    # nh: darwin works with the darwinConfigurations.<user> form. For home on nh 4.3.2,
+    # neither #name nor #...activationPackage works → flake only (no #) so it auto-detects
+    # homeConfigurations.<user> by user name is the only form that works.
     NH_DARWIN_FLAKE = "${config.home.homeDirectory}/.dotfiles/nix#darwinConfigurations.${user.username}";
     NH_HOME_FLAKE = "${config.home.homeDirectory}/.dotfiles/nix";
   };
 
-  # brew trust.json の二重化解消: 対話シェル (XDG_CONFIG_HOME 優先で
-  # ~/.config/homebrew を読む) と sudo/rebuild 経路 (~/.homebrew) を
-  # symlink で同一実体に収束させる。正は ~/.homebrew (sudo 側は XDG を見ない)。
+  # Resolve brew trust.json duplication: converge the interactive shell (reads
+  # ~/.config/homebrew via XDG_CONFIG_HOME priority) and the sudo/rebuild path (~/.homebrew)
+  # onto the same entity via symlink. Canonical is ~/.homebrew (the sudo side doesn't see XDG).
   home.file.".config/homebrew".source =
     config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.homebrew";
 
-  # XDG 非対応ツールの実データを XDG 配下へ移し、既定パスは symlink で維持する
-  # (terminfo と同方式)。分類: 資格情報/長期データ=data、テレメトリ状態=state。
+  # Move real data of non-XDG tools under XDG, keep default paths via symlink
+  # (same approach as terminfo). Classification: credentials/long-term data=data, telemetry state=state.
   home.file.".appstoreconnect".source =
     config.lib.file.mkOutOfStoreSymlink "${config.xdg.dataHome}/appstoreconnect";
   home.file.".cloudflared".source =
@@ -58,7 +58,7 @@ in
   home.file.".ollama".source = config.lib.file.mkOutOfStoreSymlink "${config.xdg.dataHome}/ollama";
   home.file.".dart-tool".source =
     config.lib.file.mkOutOfStoreSymlink "${config.xdg.stateHome}/dart-tool";
-  # symlink 先が無いとツールの書き込みが ENOENT になるため実体を先に確保
+  # Ensure the entity exists first, else tool writes fail with ENOENT when the symlink target is missing
   home.activation.xdgSymlinkTargets = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     /bin/mkdir -p \
       "${config.xdg.dataHome}/appstoreconnect" \
@@ -74,30 +74,30 @@ in
     "${config.home.homeDirectory}/Library/pnpm/bin"
   ];
 
-  # zsh の Mac 専用 init を append (common の initContent の後ろに追加)
+  # Append Mac-specific zsh init (added after common's initContent)
   programs.zsh.initContent = lib.mkAfter ''
     if [[ -f /opt/homebrew/bin/brew ]]; then
       eval "$(/opt/homebrew/bin/brew shellenv)"
     fi
 
-    # Bitwarden SSH agent: Desktop(直接DL版)が有効化時に作る socket があれば優先。
-    # 鍵は Bitwarden Vault に保管し、接続毎に Desktop が承認(Touch ID)する。
-    # Bitwarden 未起動/未有効でも壊れないよう、socket 不在時は launchd 既定へフォールバック。
+    # Bitwarden SSH agent: prefer the socket Desktop (direct-DL build) creates when enabled.
+    # Keys are stored in the Bitwarden Vault; Desktop approves each connection (Touch ID).
+    # To avoid breaking when Bitwarden isn't running/enabled, fall back to launchd default when the socket is absent.
     if [[ -S "$HOME/.bitwarden-ssh-agent.sock" ]]; then
       export SSH_AUTH_SOCK="$HOME/.bitwarden-ssh-agent.sock"
     fi
 
-    # CocoaPods (nix ruby と衝突回避)
+    # CocoaPods (avoid conflict with nix ruby)
     unset GEM_HOME GEM_PATH
 
-    # sketchybar 再構成ラッパー (ディスプレイ抜き差し後に呼ぶ)
+    # sketchybar reconfigure wrapper (call after plugging/unplugging displays)
     function sketchybar-refresh() {
       bash ~/.config/sketchybar/helpers/refresh-displays.sh "$@"
     }
 
-    # クラムシェルスリープの一時無効化トグル。
-    # フタを閉じても裏で処理を動かし続けたいときに使う。
-    # 再起動でリセットされる一時設定。off で通常に戻す。
+    # Toggle to temporarily disable clamshell sleep.
+    # Use when you want processing to keep running with the lid closed.
+    # Temporary setting reset on reboot. Use off to return to normal.
     function nosleep() {
       case "$1" in
         off)
@@ -120,47 +120,47 @@ in
     }
   '';
 
-  # mac 専用パッケージ
+  # mac-specific packages
   home.packages = with pkgs; [
-    bun # karabiner.ts 設定の生成・型検査
-    brewCasks.qview # brew-nix試験対象: 単純な.app配布の軽量画像ビューア
-    pngpaste # obsidian.nvim / img-clip の macOS 画像貼付に必要
-    syncthing # Syncthing CLI (常駐は services.syncthing の LaunchAgent)
-    xcodegen # project.yml → .xcodeproj 生成 (Mac 専用、Linux nixpkgs では meta.platforms = darwin のため)
-    (callPackage ../pkgs/slk.nix { }) # Slack TUI (公式 GitHub Release を固定)
-    # zrythm (DAW): nixpkgs では broken=isDarwin。carla 込みで darwin 向けに自前ビルド。
-    # 詳細は pkgs/zrythm-darwin/ 参照。GUI は前面 GUI セッションでの起動が必要。
-    # 26.05-darwin では appstream/libadwaita が darwin でビルド不可なため、この1パッケージだけ
-    # nixos-unstable の pkgs (nixpkgsUnstable, flake.nix の commonSpecialArgs 経由) を使う。
+    bun # generate/type-check karabiner.ts config
+    brewCasks.qview # brew-nix test target: lightweight image viewer distributed as a simple .app
+    pngpaste # needed for macOS image paste in obsidian.nvim / img-clip
+    syncthing # Syncthing CLI (the resident is the LaunchAgent in services.syncthing)
+    xcodegen # generate .xcodeproj from project.yml (Mac-only, since meta.platforms = darwin in Linux nixpkgs)
+    (callPackage ../pkgs/slk.nix { }) # Slack TUI (pinned to the official GitHub Release)
+    # zrythm (DAW): broken=isDarwin in nixpkgs. Self-built for darwin with carla included.
+    # See pkgs/zrythm-darwin/ for details. GUI must be launched in a foreground GUI session.
+    # On 26.05-darwin appstream/libadwaita can't build on darwin, so this one package alone
+    # uses nixos-unstable pkgs (nixpkgsUnstable, via commonSpecialArgs in flake.nix).
     (import ../pkgs/zrythm-darwin {
       pkgs = nixpkgsUnstable.legacyPackages.${pkgs.stdenv.hostPlatform.system};
     })
-    # ─── Creative: 公式は有料だが nixpkgs のソースビルドで無料フル版が入る ───
-    # 26.05-darwin では未提供/broken のため unstablePkgs(nixos-unstable, allowUnfree付)から。
-    unstablePkgs.fritzing # PCB/回路設計 CAD(公式DLは有料。ESP32 プロジェクト用)。cache済で即
-    unstablePkgs.ardour # DAW(公式バイナリは pay-what-you-want。ソースビルドで無料)。cache済で即
-    unstablePkgs.aseprite # ドット絵エディタ(公式$20。source-available/自前ビルドは無料フル)
+    # ─── Creative: official is paid but nixpkgs source builds give a free full version ───
+    # Unavailable/broken on 26.05-darwin, so from unstablePkgs (nixos-unstable, with allowUnfree).
+    unstablePkgs.fritzing # PCB/circuit design CAD (official DL is paid. for the ESP32 project). cached, so instant
+    unstablePkgs.ardour # DAW (official binary is pay-what-you-want. free via source build). cached, so instant
+    unstablePkgs.aseprite # pixel-art editor (official $20. source-available/self-built is free full)
   ];
 
   home.file.".config/ghostty" = {
     source = ../../configs/terminals/ghostty;
     recursive = true;
   };
-  # Ghostty: 解像度可変フォントサイズ。メインディスプレイの論理縦解像度から font-size を
-  # 算出し ~/.config/ghostty.local/font-size.conf に書き出す (config が ? 付きで include)。
-  # nh home switch のたびに再計算。解像度を変えたら再度 switch するか、
-  # scripts/ghostty-fontsize.sh を手で実行 → Ghostty で config reload すれば反映される。
+  # Ghostty: resolution-variable font size. Computes font-size from the main display's logical
+  # vertical resolution and writes it to ~/.config/ghostty.local/font-size.conf (config includes it with ?).
+  # Recomputed on every nh home switch. If you change resolution, switch again, or
+  # run scripts/ghostty-fontsize.sh by hand → config reload in Ghostty to apply.
   home.activation.ghosttyFontSize = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     run ${pkgs.bash}/bin/bash ${../../scripts/ghostty-fontsize.sh}
   '';
 
-  # lazygit: この Mac は XDG_CONFIG_HOME=~/.config を設定しているため、lazygit は
-  # ~/.config/lazygit/config.yml を優先して読む。一方 programs.lazygit は Darwin では
-  # ~/Library/Application Support/lazygit/ に書き出すため、common.nix の theme 設定が
-  # 実際には適用されない (~/.config 側の空ファイルが優先されてしまう)。
-  # そこで programs.lazygit.settings を XDG パスにも生成し、確実に効かせる。
-  # (この定義は Darwin 限定。Linux では HM の lazygit module 自身が同じパスを
-  #  定義するため、common.nix に置くと衝突する)
+  # lazygit: this Mac sets XDG_CONFIG_HOME=~/.config, so lazygit
+  # prefers reading ~/.config/lazygit/config.yml. Meanwhile programs.lazygit on Darwin
+  # writes to ~/Library/Application Support/lazygit/, so common.nix's theme settings
+  # aren't actually applied (the empty file on the ~/.config side takes precedence).
+  # So also generate programs.lazygit.settings at the XDG path to make it reliably effective.
+  # (This definition is Darwin-only. On Linux, HM's lazygit module itself defines the same path,
+  #  so putting it in common.nix would conflict.)
   xdg.configFile."lazygit/config.yml".source =
     (pkgs.formats.yaml { }).generate "lazygit-config.yml"
       config.programs.lazygit.settings;

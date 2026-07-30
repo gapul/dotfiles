@@ -1,17 +1,18 @@
-# 日本語校閲用 textlint バンドル (再現的に構築)
+# textlint bundle for Japanese proofreading (reproducibly built)
 #
-# textlint のルール群は nixpkgs に無いため、package.json/package-lock.json を
-# もとに buildNpmPackage で固定ビルドする。これにより CLI・Neovim(nvim-lint)が
-# pnpm global の命令的インストールに依存せず、nix 一元管理に統一される。
+# textlint's rule packages are not in nixpkgs, so we pin-build them with
+# buildNpmPackage from package.json/package-lock.json. This lets the CLI and
+# Neovim (nvim-lint) stop depending on imperative pnpm global installs and
+# unifies everything under nix management.
 #
-# ルール解決: textlint は config/cwd 隣接の node_modules しか探さないため、
-# global 風に使うには NODE_PATH の指定が要る (実機検証済み)。makeWrapper で
-# バンドルした node_modules を NODE_PATH に固定する。
+# Rule resolution: textlint only looks at node_modules adjacent to config/cwd,
+# so using it globally requires setting NODE_PATH (verified on real hardware).
+# makeWrapper pins the bundled node_modules into NODE_PATH.
 #
-# 依存更新時の手順:
-#   1) configs/textlint/package.json のバージョンを変更
+# Steps when updating dependencies:
+#   1) Change the version in configs/textlint/package.json
 #   2) cd configs/textlint && npm install --package-lock-only
-#   3) nix run nixpkgs#prefetch-npm-deps -- package-lock.json で得た値を npmDepsHash に反映
+#   3) Reflect the value from `nix run nixpkgs#prefetch-npm-deps -- package-lock.json` into npmDepsHash
 {
   buildNpmPackage,
   nodejs,
@@ -26,12 +27,12 @@ buildNpmPackage {
 
   npmDepsHash = "sha256-s1AsdfLBveAZOOR+BeNaAt71FwCF/4Bs5zBaaQcqV88=";
 
-  # ビルドスクリプトは無い (ルールを束ねるだけ)
+  # No build script (just bundling rules)
   dontNpmBuild = true;
 
   nativeBuildInputs = [ makeWrapper ];
 
-  # package.json に bin が無いので install を自前で行う
+  # package.json has no bin, so do the install ourselves
   installPhase = ''
     runHook preInstall
 

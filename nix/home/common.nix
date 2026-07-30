@@ -7,7 +7,7 @@
   ...
 }:
 let
-  # XDG 寄せ export の SSO (shell.nix の envExtra と共有)。
+  # SSO for XDG-relocation exports (shared with shell.nix envExtra).
   xdgEnv = import ../lib/shell-xdg-env.nix;
 in
 {
@@ -24,106 +24,106 @@ in
     ../modules/home/agents.nix
   ];
 
-  # OS 非依存の home-manager 設定
-  # OS 固有の部分は home/darwin.nix / home/linux.nix / home/wsl.nix 等に分離
+  # OS-independent home-manager settings
+  # OS-specific parts are split into home/darwin.nix / home/linux.nix / home/wsl.nix etc.
 
   home.username = user.username;
   home.stateVersion = "23.11";
 
   programs.home-manager.enable = true;
 
-  # HM オプション docs (man home-configuration.nix / options.json) を生成しない。
-  # switch 毎の 'options.json ... without proper context' warning を解消 + 微速化。
-  # オプションは home-manager 公式 docs (オンライン) で参照する。
+  # Don't generate HM option docs (man home-configuration.nix / options.json).
+  # Removes the per-switch 'options.json ... without proper context' warning + slight speedup.
+  # Refer to the home-manager official docs (online) for options.
   manual.manpages.enable = false;
   manual.json.enable = false;
 
-  # 静的 env vars は configs/shell/env-vars.json から読む (SSO、Win profile.ps1
-  # と共有)。動的 path (HOME / XDG 依存) は下で個別に追加する。
-  # $comment field は home.sessionVariables に渡せないので除外。
+  # Static env vars are read from configs/shell/env-vars.json (SSO, shared with
+  # Win profile.ps1). Dynamic paths (HOME / XDG dependent) are added individually below.
+  # The $comment field can't be passed to home.sessionVariables, so exclude it.
   home.sessionVariables =
     (lib.filterAttrs (n: _: n != "$comment") (
       builtins.fromJSON (builtins.readFile ../../configs/shell/env-vars.json)
     ))
     // {
-      # ── 動的 path (HOME / XDG 依存、JSON 化不可) ──
+      # ── Dynamic paths (HOME / XDG dependent, can't be in JSON) ──
       SOPS_AGE_KEY_FILE = "${config.home.homeDirectory}/.config/sops/age/keys.txt";
 
-      # XDG Base Directory: 実行時に $XDG_* を参照する CLI 向けに明示 export
-      # (home-manager はビルド時に config.xdg.* を展開するだけで env には出さないため)
+      # XDG Base Directory: explicit export for CLIs that reference $XDG_* at runtime
+      # (home-manager only expands config.xdg.* at build time and doesn't put it in env)
       XDG_CONFIG_HOME = config.xdg.configHome;
       XDG_DATA_HOME = config.xdg.dataHome;
       XDG_STATE_HOME = config.xdg.stateHome;
       XDG_CACHE_HOME = config.xdg.cacheHome;
 
-      # GnuPG: 既定の ~/.gnupg を $XDG_DATA_HOME/gnupg へ。上流は XDG 非対応のため
-      # GNUPGHOME で明示。dir perms は 700 必須 (移設時に chmod 済み)。
+      # GnuPG: move the default ~/.gnupg to $XDG_DATA_HOME/gnupg. Upstream isn't XDG-aware,
+      # so set it explicitly via GNUPGHOME. Dir perms must be 700 (chmod'd during migration).
       GNUPGHOME = "${config.xdg.dataHome}/gnupg";
 
-      # cargo / bundler を XDG 配下に
+      # Relocate cargo / bundler under XDG
       CARGO_HOME = "${config.xdg.dataHome}/cargo";
       BUNDLE_USER_CONFIG = "${config.xdg.configHome}/bundle/config";
       BUNDLE_USER_CACHE = "${config.xdg.cacheHome}/bundle";
       BUNDLE_USER_PLUGIN = "${config.xdg.dataHome}/bundle/plugin";
 
-      # npm: 上流既定の ~/.npmrc / ~/.npm / ~/.npm-global 相当を XDG 配下へ寄せる。
+      # npm: relocate the upstream defaults (~/.npmrc / ~/.npm / ~/.npm-global) under XDG.
       NPM_CONFIG_USERCONFIG = "${config.xdg.configHome}/npm/npmrc";
       NPM_CONFIG_CACHE = "${config.xdg.cacheHome}/npm";
       NPM_CONFIG_PREFIX = "${config.xdg.dataHome}/npm";
 
-      # PlatformIO: 既定の ~/.platformio (toolchain 等で GB 級) を XDG data へ。
+      # PlatformIO: move the default ~/.platformio (GBs from toolchains etc.) to XDG data.
       PLATFORMIO_CORE_DIR = "${config.xdg.dataHome}/platformio";
-      # Dart/Flutter: pub パッケージキャッシュ ~/.pub-cache を XDG cache へ (再取得可能)。
+      # Dart/Flutter: move the pub package cache ~/.pub-cache to XDG cache (re-fetchable).
       PUB_CACHE = "${config.xdg.cacheHome}/pub";
-      # matplotlib: macOS では XDG 非対応のため MPLCONFIGDIR で明示。
+      # matplotlib: not XDG-aware on macOS, so set it explicitly via MPLCONFIGDIR.
       MPLCONFIGDIR = "${config.xdg.configHome}/matplotlib";
 
-      # TeX Live: 既定の ~/.texlive<year> (texmf-var/config キャッシュ) を XDG へ。
-      # var/config は再生成されるキャッシュのため移設安全。ユーザー texmf ツリーも
-      # TEXMFHOME で data 配下に集約する。
+      # TeX Live: move the default ~/.texlive<year> (texmf-var/config cache) to XDG.
+      # var/config are regenerated caches, so relocation is safe. The user texmf tree is
+      # also consolidated under data via TEXMFHOME.
       TEXMFHOME = "${config.xdg.dataHome}/texmf";
       TEXMFVAR = "${config.xdg.cacheHome}/texlive/texmf-var";
       TEXMFCONFIG = "${config.xdg.configHome}/texlive/texmf-config";
     };
 
   home.sessionPath = [
-    "${config.home.homeDirectory}/.local/bin" # uv tool 経由のバイナリ
-    "${config.home.homeDirectory}/bin" # home.file."bin/*" 経由のスクリプト
-    "${config.xdg.dataHome}/cargo/bin" # cargo install のバイナリ (CARGO_HOME/bin)
-    "${config.xdg.dataHome}/npm/bin" # npm install -g のバイナリ (NPM_CONFIG_PREFIX/bin)
+    "${config.home.homeDirectory}/.local/bin" # binaries via uv tool
+    "${config.home.homeDirectory}/bin" # scripts via home.file."bin/*"
+    "${config.xdg.dataHome}/cargo/bin" # binaries from cargo install (CARGO_HOME/bin)
+    "${config.xdg.dataHome}/npm/bin" # binaries from npm install -g (NPM_CONFIG_PREFIX/bin)
   ];
 
-  # pnpm グローバル設定 (pnpm 11+ は YAML)。NPM_CONFIG_USERCONFIG とは別系統。
-  # サプライチェーン対策: 公開14日(20160分)未満のバージョンは取得しない。
-  # 緊急時のみ: pnpm install --config.minimumReleaseAge=0
+  # pnpm global config (pnpm 11+ uses YAML). Separate from NPM_CONFIG_USERCONFIG.
+  # Supply-chain hardening: don't fetch versions published less than 14 days (20160 min) ago.
+  # Emergencies only: pnpm install --config.minimumReleaseAge=0
   xdg.configFile."pnpm/config.yaml".text = ''
     minimumReleaseAge: 20160
   '';
 
-  # /nix が壊れてもシェルが起動できるようガード付き .zshenv を内製
+  # Hand-rolled guarded .zshenv so the shell can start even if /nix is broken
   home.file.".zshenv" = {
     force = true;
     text = ''
       export ZDOTDIR="$HOME/.config/zsh"
-      # CLAUDE_CONFIG_DIR は home.sessionVariables にもあるが、hm-session-vars.sh の
-      # __HM_SESS_VARS_SOURCED ガードで再 source されず空になる事故 (古いシェル / GUI 起動)
-      # を避けるため、ガード無しの .zshenv でも明示 export しておく。
+      # CLAUDE_CONFIG_DIR is also in home.sessionVariables, but hm-session-vars.sh's
+      # __HM_SESS_VARS_SOURCED guard can skip re-sourcing and leave it empty (old shells / GUI launch).
+      # To avoid that, also export it explicitly in the guard-less .zshenv.
       export CLAUDE_CONFIG_DIR="$HOME/.config/claude"
-      # Codex は XDG を直接分割参照しないため、公式の CODEX_HOME で
-      # ~/.codex から XDG data/state 配下へ寄せる。
+      # Codex doesn't reference the split XDG dirs directly, so use the official CODEX_HOME
+      # to relocate ~/.codex under XDG data/state.
       ${xdgEnv.codex}
-      # HISTFILE も .zshrc を読まない古い/GUI 起動シェルが ~/.zsh_history へ
-      # 漏らさないよう、ガード無しの .zshenv で XDG パスを先に固定しておく。
+      # For HISTFILE too, pin the XDG path early in the guard-less .zshenv so old/GUI-launched
+      # shells that don't read .zshrc don't leak into ~/.zsh_history.
       export HISTFILE="$HOME/.local/state/zsh/history"
-      # GNUPGHOME も同様。未設定の zsh から gpg を叩くと空の ~/.gnupg を
-      # 再生成してしまうため、ガード無しの .zshenv で先に固定しておく。
+      # Same for GNUPGHOME. Running gpg from a zsh where it's unset regenerates an empty
+      # ~/.gnupg, so pin it early in the guard-less .zshenv.
       export GNUPGHOME="$HOME/.local/share/gnupg"
-      # npm も XDG 非対応の既定 (~/.npmrc / ~/.npm) を環境変数で固定する。
+      # npm too: pin its non-XDG defaults (~/.npmrc / ~/.npm) via env vars.
       ${xdgEnv.npm}
       if [ -e /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]; then
-        # nix-daemon.sh は ~/.nix-profile と新 profile が両方あると
-        # "safely delete either" 警告を stderr に出す。両 symlink は意図的に
-        # 残すので、警告だけ握りつぶす (export は source なので全て残る)。
+        # nix-daemon.sh prints a "safely delete either" warning to stderr when both
+        # ~/.nix-profile and the new profile exist. Both symlinks are kept intentionally,
+        # so just swallow the warning (exports survive since it's sourced).
         . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh 2>/dev/null
       fi
       [ -f "$HOME/.local/state/nix/profile/etc/profile.d/hm-session-vars.sh" ] && \
@@ -131,12 +131,12 @@ in
     '';
   };
 
-  # login(1) の "Last login: ..." 行を抑止 (macOS 標準挙動・非破壊)。
+  # Suppress login(1)'s "Last login: ..." line (standard macOS behavior, non-destructive).
   home.file.".hushlogin".text = "";
 
-  # ユーザーが直接扱う同期/クラウドデータの置き場。
-  # XDG は app config/cache/state 向けなので、Google Drive mount や Syncthing
-  # 共有フォルダのような user data は HOME 直下のカテゴリにまとめる。
+  # Location for sync/cloud data the user handles directly.
+  # XDG is for app config/cache/state, so user data like Google Drive mounts or Syncthing
+  # shared folders is grouped into categories directly under HOME.
   home.activation.userDataDirs = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     /bin/mkdir -p \
       "${config.xdg.dataHome}/codex" \
@@ -146,9 +146,9 @@ in
       "${config.xdg.dataHome}/npm"
   '';
 
-  # 単発で使う CLI ツール群 (programs.* の対象外、OS 非依存)
+  # One-off CLI tools (not covered by programs.*, OS-independent)
 
-  # SOPS 定義は home/secrets.nix へ分離 (age 鍵を持たない macmini が
-  # common.nix を共有できるようにするため。2026-07-19)
+  # SOPS definitions are split into home/secrets.nix (so macmini, which has no age key,
+  # can share common.nix. 2026-07-19)
 
 }

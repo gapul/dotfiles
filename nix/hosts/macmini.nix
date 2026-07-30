@@ -1,8 +1,8 @@
 { pkgs, user, ... }:
 {
-  # ヘッドレス LLM ワーカー (M4 Mac mini / 24GB)。
-  # 常用ワークステーション (darwin.nix) と違い GUI cask は一切積まず、
-  # Ollama を launchd で常駐させて Tailscale / LAN 越しに推論 API を出すだけの構成。
+  # Headless LLM worker (M4 Mac mini / 24GB).
+  # Unlike the everyday workstation (darwin.nix), it loads no GUI casks at all;
+  # it just keeps Ollama resident via launchd to serve an inference API over Tailscale / LAN.
   imports = [ ./darwin-common.nix ];
 
   networking = {
@@ -11,71 +11,71 @@
     localHostName = "macmini";
   };
 
-  # ヘッドレス運用なので brew は最小限 (Tailscale の daemon のみ)。
-  # GUI cask を積まないことで rebuild が速く・攻撃面も小さい。
+  # Headless operation, so brew is minimal (only Tailscale's daemon).
+  # Not loading GUI casks keeps rebuilds fast and the attack surface small.
   homebrew = {
     enable = true;
     onActivation = {
       autoUpdate = false;
-      cleanup = "uninstall"; # 宣言外の brew は自動 uninstall
+      cleanup = "uninstall"; # undeclared brews are auto-uninstalled
       upgrade = false;
     };
     brews = [
-      "tailscale" # tailnet 参加 (認証は初回のみ `sudo tailscale up`)
-      # --- ローカル AI スタック (2026-07 追加。cleanup=uninstall で消えるのを防ぐ) ---
-      "ffmpeg" # 音声/動画変換 (transcribe/tts/voice-clone/audio-separation の前処理)
-      "uv" # Python 環境管理 (mlx_whisper / venv 各種: diarize/sbv2/gsv/sep/rag)
-      "aria2" # 大物モデルの self-healing 多重接続 DL (macmini 直 hf-mirror/GitHub)
-      "socat" # apple container のホストポート公開バグ回避 (host->containerIP 転送)
-      "container" # Apple 純正コンテナランタイム (Open WebUI/AnythingLLM/Minecraft)。
-      # 初回のみ runtime 起動+カーネル設定が必要: `container system start` /
-      # `container system kernel set --recommended` (宣言不可・手動 or ai-stack.sh)。
+      "tailscale" # join the tailnet (auth only on first run via `sudo tailscale up`)
+      # --- Local AI stack (added 2026-07. Kept from removal by cleanup=uninstall) ---
+      "ffmpeg" # audio/video conversion (preprocessing for transcribe/tts/voice-clone/audio-separation)
+      "uv" # Python environment management (mlx_whisper / various venvs: diarize/sbv2/gsv/sep/rag)
+      "aria2" # self-healing multi-connection DL for large models (macmini direct hf-mirror/GitHub)
+      "socat" # work around apple container's host-port publishing bug (host->containerIP forwarding)
+      "container" # Apple's first-party container runtime (Open WebUI/AnythingLLM/Minecraft).
+      # First run only needs runtime start + kernel setup: `container system start` /
+      # `container system kernel set --recommended` (can't be declared; manual or ai-stack.sh).
     ];
     casks = [
-      # ヘッドレス保守用のリモート GUI。SSH で足りない GUI 作業 (権限承認ダイアログ・
-      # 初回の自動ログイン設定等) のときだけ使う。無人アクセスの有効化と Screen Recording
-      # 権限付与 (TCC) は宣言できないので初回のみ GUI で実施する。
+      # Remote GUI for headless maintenance. Used only for GUI work SSH can't cover
+      # (permission-approval dialogs, first-time auto-login setup, etc.). Enabling unattended
+      # access and granting Screen Recording permission (TCC) can't be declared, so do them once via GUI.
       "rustdesk"
-      # Claude ブラウザ自動化 (Playwright MCP + claude-login-broker) 用。
-      # ヘッドレス運用なので --headless=new で GUI 無しに起動する (chrome-launch.sh)。
+      # For Claude browser automation (Playwright MCP + claude-login-broker).
+      # Headless operation, so launch without a GUI via --headless=new (chrome-launch.sh).
       "google-chrome"
     ];
   };
 
-  # Ollama 本体 (nix パッケージ)。GUI の ollama-app cask は使わない。
-  # nodejs: Playwright MCP (pnpm dlx) と claude-login-broker(inject-creds.js) の runtime。
-  # bitwarden-cli: broker が承認後に bw get で資格情報を取り出す。BW_SESSION は手動 unlock。
+  # Ollama itself (nix package). The GUI ollama-app cask is not used.
+  # nodejs: runtime for Playwright MCP (pnpm dlx) and claude-login-broker (inject-creds.js).
+  # bitwarden-cli: after approval the broker pulls credentials via bw get. BW_SESSION is unlocked manually.
   environment.systemPackages = [
     pkgs.ollama
     pkgs.nodejs_22
     pkgs.bitwarden-cli
   ];
 
-  # Ollama を LaunchAgent で常駐させる。
-  # daemon (root) でなく agent (ログインユーザ) にするのは、Apple Silicon の Metal GPU を
-  # 確実に掴ませるため。GUI セッション上で走るので、自動ログインの有効化が前提になる。
+  # Keep Ollama resident via a LaunchAgent.
+  # Using an agent (login user) rather than a daemon (root) is to reliably grab Apple Silicon's
+  # Metal GPU. It runs in a GUI session, so enabling auto-login is a prerequisite.
   launchd.agents.ollama = {
-    # 起動仕様は nix/lib/ollama-agent.nix が SSO (workstation と共有)。差分だけ付ける。
+    # The launch spec is SSO'd in nix/lib/ollama-agent.nix (shared with workstation). Add only the diff.
     serviceConfig = (import ../lib/ollama-agent.nix { inherit pkgs; }) // {
       StandardOutPath = "/Users/${user.username}/Library/Logs/ollama.log";
       StandardErrorPath = "/Users/${user.username}/Library/Logs/ollama.log";
       EnvironmentVariables = {
-        # APIをLANへ直接露出しない。外部利用は認証・ACLを持つreverse proxyまたは
-        # Tailscale Serveを明示的に構成する。
+        # Don't expose the API directly to the LAN. For external use, explicitly configure a
+        # reverse proxy with auth/ACLs or Tailscale Serve.
         OLLAMA_HOST = "127.0.0.1:11434";
-        # アイドル 30 分でモデルをアンロード (24GB を空ける)。常駐させたければ "-1"。
+        # Unload the model after 30 min idle (frees 24GB). Use "-1" to keep it resident.
         OLLAMA_KEEP_ALIVE = "30m";
       };
     };
   };
 
-  # ヘッドレス運用の下ごしらえ (nix-darwin に型付きオプションが無いので冪等スクリプト)。
-  # postActivation は darwin-common が使うので、こちらは preActivation に置いて衝突を避ける。
+  # Prep for headless operation (nix-darwin has no typed option, so an idempotent script).
+  # postActivation is used by darwin-common, so put this in preActivation to avoid a collision.
   system.activationScripts.preActivation.text = ''
-    # スリープ抑止: 無人でも推論を受けられるよう寝かせない。
+    # Prevent sleep: don't let it sleep so it can serve inference unattended.
     /usr/bin/pmset -a sleep 0          >/dev/null 2>&1 || true
     /usr/bin/pmset -a disablesleep 1   >/dev/null 2>&1 || true
-    # Remote Login (SSH) を有効化。鍵認証は既存の運用 (Bitwarden agent 等) をそのまま使う。
+    # Enable Remote Login (SSH). Key auth reuses the existing setup (Bitwarden agent etc.) as-is.
     /usr/sbin/systemsetup -setremotelogin on >/dev/null 2>&1 || true
   '';
 }

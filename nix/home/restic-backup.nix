@@ -4,24 +4,24 @@
   lib,
   ...
 }:
-# restic による暗号化バックアップ + 整合性検証 + 実行監視を launchd で定期実行 (macOS 専用)。
-# バックエンドは既存の rclone google-drive リモート ([[project_xdg_migration]] の rclone_conf)。
+# Encrypted backup + integrity check + run monitoring via restic, scheduled by launchd (macOS only).
+# Backend is the existing rclone google-drive remote (rclone_conf from [[project_xdg_migration]]).
 #
-# 役割分担:
-#   - system/app/config は nix+dotfiles で再現可能 (バックアップ不要)
-#   - ここで守るのは「再現不可能なユーザーデータ」のみ
+# Division of responsibility:
+#   - system/app/config are reproducible via nix+dotfiles (no backup needed)
+#   - what we protect here is only the "non-reproducible user data"
 #
-# 前提 (これが未了だと backup はスキップされるだけで無害):
-#   1. rclone google-drive: の再認証 (`rclone authorize "drive"` → token を sops の rclone_conf へ)
-#   2. リポジトリは初回成功時に自動 init される
+# Prerequisites (if unmet, backup just skips harmlessly):
+#   1. Re-auth rclone google-drive: (`rclone authorize "drive"` → put the token into sops's rclone_conf)
+#   2. The repository is auto-init'd on the first success
 #
-# 注意 (循環依存): restic パスフレーズ・age鍵・ssh鍵は「この repo 自体の鍵」なので
-#   restic では守らない。必ずパスワードマネージャ (Bitwarden/Ente) に別保管すること。
+# Note (circular dependency): the restic passphrase, age key, and ssh key are "the keys to this repo itself",
+#   so they're not protected by restic. Always store them separately in a password manager (Bitwarden/Ente).
 let
   home = config.home.homeDirectory;
 
-  # SSO: repository / 保持ポリシー / archive タグ / rclone conf は nix/lib/restic-common.nix。
-  #   linux 版 (restic-backup-linux.nix) と Justfile も同じ値を引く。共有リポを壊さないため。
+  # SSO: repository / retention policy / archive tag / rclone conf live in nix/lib/restic-common.nix.
+  #   The linux version (restic-backup-linux.nix) and the Justfile pull the same values. To avoid breaking the shared repo.
   common = import ../lib/restic-common.nix { inherit home; };
 
   inherit (common) repository;
@@ -29,12 +29,12 @@ let
   passwordFile = config.sops.secrets."restic_password".path;
   logFile = "${home}/Library/Logs/restic-backup.log";
 
-  # ntfy 失敗通知 (homelab の ntfy.gapul.net)。URL(トピック込み)とトークンは sops 管理。
-  #   これらが未展開/未読なら notify は osascript のみで静かにフォールバックする。
+  # ntfy failure notification (homelab's ntfy.gapul.net). The URL (topic included) and token are sops-managed.
+  #   If they're unexpanded/unreadable, notify quietly falls back to osascript only.
   ntfyUrlFile = config.sops.secrets."unified_calendar/ntfy_url".path;
   ntfyTokenFile = config.sops.secrets."unified_calendar/ntfy_token".path;
 
-  # restic 環境 + macOS 通知シェル関数 (launchd の GUI セッションで osascript が使える)
+  # restic env + macOS notification shell function (osascript works in launchd's GUI session)
   resticEnv = ''
     export PATH=${
       lib.makeBinPath [
@@ -47,7 +47,7 @@ let
     export RESTIC_REPOSITORY="${repository}"
     export RESTIC_PASSWORD_FILE="${passwordFile}"
     export RCLONE_CONFIG="${rcloneConf}"
-    # macOS 通知 (GUI セッション) + ntfy プッシュ (スマホ即時気付き)。どちらも失敗しても本処理は続行。
+    # macOS notification (GUI session) + ntfy push (immediate phone alert). The main process continues even if either fails.
     notify() {
       /usr/bin/osascript -e "display notification \"$2\" with title \"$1\"" 2>/dev/null || true
       if [ -r "${ntfyUrlFile}" ] && [ -r "${ntfyTokenFile}" ]; then
@@ -62,18 +62,18 @@ let
     }
   '';
 
-  # バックアップ対象 (再現不可能なユーザーデータのみ)
+  # Backup targets (non-reproducible user data only)
   backupPaths = [
     "${home}/Documents"
     "${home}/Pictures"
     "${home}/Downloads"
     "${home}/Movies"
     "${home}/Music"
-    "${home}/Sync" # Syncthing SyncHub (ローカルが本体の複製データ。~/Cloud はリモート本体のマウントなので対象外)
-    "${home}/Library/Application Support/minecraft/saves" # Minecraft ワールド(再現不可)
+    "${home}/Sync" # Syncthing SyncHub (local-primary replicated data. ~/Cloud is a mount of the remote primary, so it's excluded)
+    "${home}/Library/Application Support/minecraft/saves" # Minecraft worlds (non-reproducible)
   ];
 
-  # 除外: 再生成可能 / 巨大 / DL一時物
+  # Exclude: regenerable / huge / DL temp files
   excludeFile = pkgs.writeText "restic-excludes" ''
     **/node_modules
     **/.direnv
@@ -112,9 +112,9 @@ let
       ${lib.concatStringsSep " " (map (p: "\"${p}\"") backupPaths)}
     rc=$?
 
-    # --keep-tag archive: cold アーカイブ (just archive で --tag archive 付与) を
-    #   keep ポリシーから除外し永久保持。warm (無タグ) のみ間引く。
-    #   (restic は各グループ最後の snapshot 削除も拒否するため二重保護)
+    # --keep-tag archive: exclude cold archives (tagged via just archive with --tag archive) from
+    #   the keep policy and retain them forever. Prune only warm (untagged) ones.
+    #   (restic also refuses to delete the last snapshot in each group, so double protection)
     ${common.forgetInvocation}
 
     echo "==================== $(date '+%Y-%m-%d %H:%M:%S') backup done (rc=$rc) ===================="
@@ -124,7 +124,7 @@ let
     exit $rc
   '';
 
-  # 整合性検証 (週次)。破損を検知したら通知
+  # Integrity check (weekly). Notify if corruption is detected
   checkScript = pkgs.writeShellScript "restic-check" ''
     set -uo pipefail
     ${resticEnv}
@@ -141,7 +141,7 @@ let
     fi
   '';
 
-  # 実行監視 (日次)。最後の成功スナップショットが古い/無いなら通知
+  # Run monitoring (daily). Notify if the last successful snapshot is old/missing
   monitorScript = pkgs.writeShellScript "restic-monitor" ''
     set -uo pipefail
     ${resticEnv}
@@ -164,7 +164,7 @@ let
     fi
   '';
 
-  # launchd agent 生成ヘルパ
+  # launchd agent generation helper
   agent = program: schedule: {
     enable = true;
     config = {
@@ -180,26 +180,26 @@ in
 {
   home.packages = [ pkgs.restic ];
 
-  # restic パスフレーズ (sops の defaultSopsFile = secrets/secrets.yaml に格納済み)
+  # restic passphrase (stored in sops's defaultSopsFile = secrets/secrets.yaml)
   sops.secrets."restic_password".path = common.passwordFile;
 
-  # Justfile / 対話シェルが source する env (repo/password/rclone/archiveTag の SSO)。
+  # env sourced by the Justfile / interactive shell (SSO for repo/password/rclone/archiveTag).
   home.file.".config/restic/env".text = common.envFileText;
 
-  # ntfy 失敗通知用 (URL はトピックまで含む publish エンドポイント, token は Bearer tk_...)。
-  #   これらが未設定でも notify は osascript のみで動くため無害。
+  # For ntfy failure notifications (URL is a publish endpoint including the topic, token is a Bearer tk_...).
+  #   Even if unset, notify still works with osascript only, so it's harmless.
   sops.secrets."unified_calendar/ntfy_url".path = "${home}/.config/ntfy/url";
   sops.secrets."unified_calendar/ntfy_token".path = "${home}/.config/ntfy/token";
 
   launchd.agents = {
-    # 日次 13:00 バックアップ
+    # daily 13:00 backup
     restic-backup = agent "${backupScript}" [
       {
         Hour = 13;
         Minute = 0;
       }
     ];
-    # 週次 (日) 14:00 整合性検証
+    # weekly (Sun) 14:00 integrity check
     restic-check = agent "${checkScript}" [
       {
         Weekday = 0;
@@ -207,7 +207,7 @@ in
         Minute = 0;
       }
     ];
-    # 日次 19:00 実行監視
+    # daily 19:00 run monitoring
     restic-monitor = agent "${monitorScript}" [
       {
         Hour = 19;

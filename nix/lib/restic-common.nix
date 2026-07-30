@@ -1,34 +1,36 @@
-# restic バックアップの単一情報源 (SSO)。
+# Single source of truth (SSO) for restic backups.
 #
-# darwin 版 (home/restic-backup.nix, launchd) と linux 版 (home/restic-backup-linux.nix,
-# systemd) と Justfile のバックアップ系レシピが、ここから同じ値を引く。
+# The darwin version (home/restic-backup.nix, launchd), the linux version
+# (home/restic-backup-linux.nix, systemd) and the backup recipes in Justfile all
+# pull the same values from here.
 #
-# 重要: repository / forget 保持ポリシー / archive タグは「共有 restic リポジトリ」
-#   (Mac と pve が同一リポを共有 — restic shared repo) を壊さないため、必ず全ホストで
-#   一致させること。ここが唯一の定義点なので、変更すれば両ホスト + Justfile が追従する。
+# Important: repository / forget retention policy / archive tag must be kept
+#   identical across all hosts to avoid corrupting the "shared restic repository"
+#   (Mac and pve share the same repo — restic shared repo). This is the sole
+#   definition point, so a change here propagates to both hosts + Justfile.
 { home }:
 rec {
   repository = "rclone:google-drive:restic-backup";
   rcloneConf = "${home}/.config/rclone/rclone.conf";
   passwordFile = "${home}/.config/restic/password";
 
-  # cold アーカイブの目印タグ。just archive が --tag で付与し、forget が --keep-tag で保持する。
-  # 付与側 (Justfile) と保持側 (下の forgetInvocation) がずれると cold が warm 扱いで消える。
+  # Marker tag for cold archives. just archive adds it via --tag, forget retains it via --keep-tag.
+  # If the adding side (Justfile) and the retaining side (forgetInvocation below) drift apart, cold gets treated as warm and is pruned.
   archiveTag = "archive";
 
-  # forget 保持ポリシー呼び出し (両ホストの backupScript が共有)。
-  #   --keep-tag archive: cold アーカイブは永久保持。warm (無タグ) のみ間引く。
-  # 注意: この文字列のインデント/改行は生成スクリプトのバイト列に直接入る。
-  #   両 backupScript は 4 スペースインデントの位置でこれを展開する前提。
+  # forget retention policy invocation (shared by both hosts' backupScript).
+  #   --keep-tag archive: cold archives are kept forever. Only warm (untagged) snapshots are thinned out.
+  # Note: the indentation/newlines of this string go directly into the generated script's byte stream.
+  #   Both backupScripts expand this at a 4-space indent position.
   forgetInvocation = ''
     restic forget --prune \
       --keep-tag ${archiveTag} \
       --keep-daily 7 --keep-weekly 4 --keep-monthly 6 || true'';
 
-  # Justfile / 対話シェル用に同じ値を吐く env ファイルの中身。
-  #   home-manager が ~/.config/restic/env に配置し、Justfile の restic_env が source する。
+  # Contents of the env file that emits the same values for Justfile / interactive shells.
+  #   home-manager places it at ~/.config/restic/env and Justfile's restic_env sources it.
   envFileText = ''
-    # 自動生成 (nix/lib/restic-common.nix)。手で編集しない。
+    # Auto-generated (nix/lib/restic-common.nix). Do not edit by hand.
     export RESTIC_REPOSITORY="${repository}"
     export RESTIC_PASSWORD_FILE="${passwordFile}"
     export RCLONE_CONFIG="${rcloneConf}"

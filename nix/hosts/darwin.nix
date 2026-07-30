@@ -1,12 +1,13 @@
 { pkgs, brewNix, ... }: {
-  # host 非依存のベース (nix cache / firewall / security / login hardening 等) は
-  # darwin-common.nix に集約。ここは常用ワークステーション固有の設定のみ置く。
+  # host-independent base (nix cache / firewall / security / login hardening, etc.)
+  # is consolidated in darwin-common.nix. Only daily-driver workstation-specific
+  # settings live here.
   imports = [ ./darwin-common.nix ];
 
-  # brew-nix試験対象をnix-darwin内蔵Home Managerのglobal pkgsにも公開する。
+  # Expose brew-nix trial targets to nix-darwin's built-in Home Manager global pkgs too.
   nixpkgs.overlays = [ brewNix.overlays.default ];
 
-  # macOS 設定 (GUI/周辺機器寄り。実機の defaults read で確認した値のみ宣言)
+  # macOS settings (GUI/peripheral-oriented. Only values verified via `defaults read` on the machine are declared)
   system.defaults = {
     dock = {
       autohide = true;
@@ -32,14 +33,15 @@
     };
   };
 
-  # cask に該当 Nerd Font が無いものだけ Nix で確保
-  # (font-hackgen-nerd は HackGen で Hack とは別物)
-  # (font-jetbrains-mono-nerd-font は cask 側で管理)
+  # Only provide via Nix the Nerd Fonts that have no matching cask
+  # (font-hackgen-nerd is HackGen, a different thing from Hack)
+  # (font-jetbrains-mono-nerd-font is managed on the cask side)
   fonts.packages = with pkgs; [
     nerd-fonts.hack
     nerd-fonts.fira-code
-    # sketchybar アプリアイコンフォント。Ghostty/Zen 対応の v2.0.62 を vendor。
-    # plugins/icon_map.sh と版を厳密一致させるため nixpkgs 版でなく同梱 ttf を使う。
+    # sketchybar app icon font. Vendor v2.0.62 with Ghostty/Zen support.
+    # Use the bundled ttf rather than the nixpkgs version to keep the version
+    # in strict lockstep with plugins/icon_map.sh.
     (stdenvNoCC.mkDerivation {
       pname = "sketchybar-app-font";
       version = "2.0.62";
@@ -55,80 +57,82 @@
     enable = true;
     onActivation = {
       autoUpdate = false;
-      cleanup = "uninstall"; # 宣言外の brew は自動uninstall(zap は data 消すので avoid)
+      cleanup = "uninstall"; # auto-uninstall brews not declared (avoid zap since it deletes data)
       upgrade = false;
-      # Homebrew 6.0 で既定 true 化した REQUIRE_TAP_TRUST を activation 時のみ無効化。
-      # 非公式 tap の依存 formula (qmk/hid_bootloader_cli 等) が拒否され bundle が止まるのを防ぐ。
-      # 全 tap は上で宣言・バージョン管理済みなので runtime の信頼チェックは冗長。
+      # Disable REQUIRE_TAP_TRUST (defaulted to true in Homebrew 6.0) only during activation.
+      # Prevents dependency formulae of unofficial taps (qmk/hid_bootloader_cli, etc.) from being
+      # rejected and stalling the bundle.
+      # All taps are declared and version-managed above, so the runtime trust check is redundant.
       extraEnv = {
         HOMEBREW_NO_REQUIRE_TAP_TRUST = "1";
       };
     };
 
-    # tap の信頼は onActivation.extraEnv の HOMEBREW_NO_REQUIRE_TAP_TRUST=1 で一括対応。
-    # (Homebrew 6.0 で REQUIRE_TAP_TRUST が既定 true 化。tap 行の trusted: true は依存 formula
-    #  の読み込みには効かず、手動 brew trust は bundle が毎回上書きするため使えない。
-    #  全 tap は下記で宣言・バージョン管理済みなので activation 時のチェックを切る。)
+    # Tap trust is handled in bulk via onActivation.extraEnv's HOMEBREW_NO_REQUIRE_TAP_TRUST=1.
+    # (REQUIRE_TAP_TRUST defaulted to true in Homebrew 6.0. `trusted: true` on tap lines does not
+    #  affect loading of dependency formulae, and manual `brew trust` is unusable since the bundle
+    #  overwrites it every time. All taps are declared and version-managed below, so the activation-time
+    #  check is turned off.)
     taps = [
       "chojs23/tap" # Concord (Discord TUI)
       "deskflow/tap"
       "felixkratz/formulae"
       "finnvoor/tools"
       "gerlero/openfoam"
-      "gapul/kdeconnect" # imshuhao/kdeconnect の fork。depends_on macos deprecated を修正済
-      "lihaoyun6/tap" # QuickRecorder (画面レコーダー。homebrew/cask 未収録のため必須)
+      "gapul/kdeconnect" # fork of imshuhao/kdeconnect. Fixed the deprecated depends_on macos
+      "lihaoyun6/tap" # QuickRecorder (screen recorder. Required since not in homebrew/cask)
       "nikitabobko/tap"
       "osx-cross/arm" # QMK toolchain dependency tap
       "osx-cross/avr" # QMK / Keyball AVR toolchain tap
       "qmk/qmk" # QMK CLI
-      "voicevox/voicevox" # VOICEVOX 公式 tap (homebrew/cask 未収録のため必須)
-      "y3owk1n/tap" # neru (キーボード全画面ナビ) の cask 配布元
+      "voicevox/voicevox" # VOICEVOX official tap (required since not in homebrew/cask)
+      "y3owk1n/tap" # cask distribution source for neru (full-screen keyboard navigation)
 
-      # ─── 個人 fork (gapul) — fork した人は不要なら削除 ───
+      # ─── Personal forks (gapul) — delete if you forked and don't need them ───
       "gapul/openutau"
       "gapul/azoo-key-skkserv"
-      "gapul/keystats" # 自作の打鍵アナリティクス(cask)
-      "gapul/puddle" # Puddle (Plash の MIT フォーク自作ビルド) の cask 配布 tap
-      "gapul/armorpaint" # ArmorPaint ソースビルド formula 配布 tap(公式は有料€16→自前ビルドで無料フル)
-      "gapul/inochi" # Inochi Creator (2D VTuber リギング) の cask 配布 tap(homebrew/cask 未収録)
+      "gapul/keystats" # self-made keystroke analytics (cask)
+      "gapul/puddle" # cask distribution tap for Puddle (self-built MIT fork of Plash)
+      "gapul/armorpaint" # ArmorPaint source-build formula distribution tap (official is paid €16 → self-build for free full version)
+      "gapul/inochi" # cask distribution tap for Inochi Creator (2D VTuber rigging) (not in homebrew/cask)
     ];
 
     # brew leaves
-    # (starship / fzf / atuin / pipx は home-manager / uv 管理に移行のため除外)
+    # (starship / fzf / atuin / pipx excluded, migrated to home-manager / uv management)
     brews = [
       # ─── Languages / Package managers ───
-      # deno: nvim skkeleton(denops) の runtime + yt-dlp の JS チャレンジ解読に使用。
-      # 現状は mpv/yt-dlp の依存だが、それらを消すと孤立して skkeleton が壊れるため明示宣言。
+      # deno: used as the runtime for nvim skkeleton(denops) + for decoding yt-dlp's JS challenge.
+      # Currently a dependency of mpv/yt-dlp, but removing those would orphan and break skkeleton, so declare it explicitly.
       "deno"
-      "swi-prolog" # Prolog (関数・論理型プログラミング実験 第10-12回)
+      "swi-prolog" # Prolog (functional/logic programming lab, sessions 10-12)
 
       # ─── Keyboard firmware ───
       "qmk/qmk/qmk" # QMK CLI (Keyball firmware build/flash)
-      "osx-cross/avr/avr-gcc@12" # Keyball 用 AVR toolchain (keg-only)
+      "osx-cross/avr/avr-gcc@12" # AVR toolchain for Keyball (keg-only)
 
-      # ─── wine 補助 ───
-      "winetricks" # wine prefix への DLL/コンポーネント導入ヘルパ
+      # ─── wine helpers ───
+      "winetricks" # helper for installing DLLs/components into wine prefix
 
       # ─── TUI utilities ───
-      "chojs23/tap/concord" # Discord TUI (画像・スレッド・音声対応)
+      "chojs23/tap/concord" # Discord TUI (images/threads/voice support)
       "herdr" # AI coding agent multiplexer
-      "wifitui" # wifi (nixpkgs は Linux 専用のため brew 維持)
+      "wifitui" # wifi (kept on brew since nixpkgs is Linux-only)
 
       # ─── Network / Download / VPN ───
       "tailscale"
       "tor"
-      "wireguard-tools" # wg-quick + wireguard-go(依存で自動) が VPN エンジン
+      "wireguard-tools" # wg-quick + wireguard-go (pulled in automatically) are the VPN engine
       "cloudflared" # Cloudflare tunnel
       "nextdns"
       "scrcpy" # Android mirror
       "tcpdump"
-      "gnupg" # GPG (git コミット署名 / 暗号メール。sops は age だが GPG は別)
+      "gnupg" # GPG (git commit signing / encrypted mail. sops uses age but GPG is separate)
 
       # ─── Documents / Fonts / Media ───
       "gstreamer"
       "mpv"
-      "sox" # 音声処理 (rec / play / sox / soxi)
-      "exiftool" # 画像/PDF のメタデータ (GPS/端末情報) を共有前に除去
+      "sox" # audio processing (rec / play / sox / soxi)
+      "exiftool" # strip metadata (GPS/device info) from images/PDFs before sharing
 
       # ─── macOS specific CLI ───
       "mas" # App Store
@@ -136,24 +140,24 @@
       "media-control" # media keys
       "terminal-notifier"
       "duti" # file associations
-      "displayplacer" # sketchybar マルチディスプレイ (homebrew/core 昇格済・同v1.4.0)
+      "displayplacer" # sketchybar multi-display (promoted to homebrew/core, same v1.4.0)
 
       # ─── Status bar / Window decoration (felixkratz tap) ───
       "felixkratz/formulae/sketchybar"
-      "felixkratz/formulae/borders" # aerospace から exec-and-forget で起動
+      "felixkratz/formulae/borders" # launched from aerospace via exec-and-forget
 
       # ─── Transcription / other 3rd-party tap brews ───
-      "finnvoor/tools/yap" # 日本語 transcription
+      "finnvoor/tools/yap" # Japanese transcription
 
       # ─── Creative / graphics (source-build formula) ───
-      # ArmorPaint(3D PBR テクスチャペイント / Substance Painter 代替)。公式バイナリは有料€16
-      # だが zlib ソースから自前ビルドで無料フル。現行 main は iron/Kore 自己完結ツールチェーン
-      # (V8/haxe/node 不要・Xcode のみ)。GUI アプリだが formula(source build)なので brews 側。
-      # .app は $(brew --prefix)/opt/armorpaint/ArmorPaint.app に入る(cask と違い /Applications では無い)。
+      # ArmorPaint (3D PBR texture painting / Substance Painter alternative). Official binary is paid €16
+      # but self-build from zlib source for free full version. Current main is the iron/Kore self-contained
+      # toolchain (no V8/haxe/node, Xcode only). It's a GUI app but a formula (source build), so it's on the brews side.
+      # The .app lands in $(brew --prefix)/opt/armorpaint/ArmorPaint.app (not /Applications, unlike a cask).
       "gapul/armorpaint/armorpaint"
     ];
 
-    # GUI applications (~100個)
+    # GUI applications (~100)
     casks = [
       # ─── Browsers ───
       "google-chrome"
@@ -161,19 +165,19 @@
       "zen"
 
       # ─── PDF viewers ───
-      # sioyek は未署名の x86_64 cask (Rosetta 動作)。brew 既定の quarantine が付くと
-      # Gatekeeper に「壊れている/マルウェア」判定され起動不能になるため no_quarantine 必須。
+      # sioyek is an unsigned x86_64 cask (runs under Rosetta). If brew's default quarantine
+      # is applied, Gatekeeper flags it as "damaged/malware" and it won't launch, so no_quarantine is required.
       {
         name = "sioyek";
         args = {
           no_quarantine = true;
         };
-      } # vim キーバインドの軽量 PDF ビューア (zathura 代替・常用)
-      "skim" # ネイティブ SyncTeX ビューア。TeX 執筆用の保険 (連携は後日)
+      } # lightweight PDF viewer with vim keybindings (zathura alternative, daily driver)
+      "skim" # native SyncTeX viewer. Backup for TeX writing (integration later)
 
       # ─── Image viewers ───
-      # qView は ad-hoc 署名のみ (未 notarize)。quarantine 付きだと Gatekeeper に
-      # rejected され起動不能になるため no_quarantine 必須 (sioyek と同様)。
+      # qView is ad-hoc signed only (not notarized). With quarantine it gets rejected by
+      # Gatekeeper and won't launch, so no_quarantine is required (same as sioyek).
 
       # ─── Communication & Sync ───
       "beeper"
@@ -183,14 +187,14 @@
 
       # ─── Window / Keyboard / Input ───
       "aerospace"
-      "thaw" # メニューバー管理 (Ice の保守フォーク。本家 jordanbaird-ice は 0.11.12/2024-10 で開発停止し macOS Tahoe で起動不可 → Tahoe 対応の Thaw へ移行 2026-07-27。Ice 設定はインポート可)
+      "thaw" # menu bar management (maintenance fork of Ice. Upstream jordanbaird-ice stalled at 0.11.12/2024-10 and won't launch on macOS Tahoe → migrated to Tahoe-compatible Thaw on 2026-07-27. Ice settings are importable)
       "karabiner-elements"
       "macskk"
-      "gapul/azoo-key-skkserv/azoo-key-skkserv" # azooKey 変換エンジンの skkserv (gapul 自作 tap)
-      "y3owk1n/tap/neru" # マウス無しで全画面ナビ (grid/hints/scroll。Vimium のシステム全体版。shortcat 上位互換)
+      "gapul/azoo-key-skkserv/azoo-key-skkserv" # skkserv for the azooKey conversion engine (gapul self-made tap)
+      "y3owk1n/tap/neru" # mouse-free full-screen navigation (grid/hints/scroll. System-wide version of Vimium. shortcat superset)
 
       # ─── macOS utilities ───
-      "gapul/puddle/puddle" # 任意のウェブページをデスクトップ壁紙に (Plash の MIT フォーク自作ビルド・Developer ID 署名+公証済)
+      "gapul/puddle/puddle" # set any web page as desktop wallpaper (self-built MIT fork of Plash, Developer ID signed + notarized)
       "hammerspoon"
       "espanso"
       "maccy"
@@ -199,30 +203,30 @@
       "corelocationcli"
 
       # ─── Creative / VTuber ───
-      # Inochi Creator: 2D VTuber パペットリギング(Live2D 代替・無料/OSS)。公式 mac 版を
-      # 自作 cask tap で配布(homebrew/cask 未収録・nixpkgs は darwin broken のため)。
+      # Inochi Creator: 2D VTuber puppet rigging (Live2D alternative, free/OSS). Distribute the official
+      # mac build via a self-made cask tap (not in homebrew/cask, and nixpkgs is darwin-broken).
       "gapul/inochi/inochi-creator"
 
       # ─── Privacy / Security ───
-      # Objective-See (Patrick Wardle) スイート — 全て無料・notarize 済み
-      # blockblock は macOS Ventura+ の Background Task Management 通知と、
-      # oversight は macOS のマイク/カメラ使用中インジケータ (メニューバーのドット +
-      # コントロールセンター) と機能が重複するため撤去 (2026-07-28)。
-      # reikey は自前の event tap ツール (Karabiner/Espanso/keebmouse/Hammerspoon) で
-      # 誤検知が濁るうえ標準の入力監視一覧で静的に確認でき、taskexplorer は
-      # codesign / otool / vmmap / lsof で代替できるため撤去 (2026-07-28)。
-      # netiquette は lsof -nP -i / nettop で、whatsyoursign は codesign -dvv /
-      # spctl -a -vv で完全に代替できるため撤去 (2026-07-28)。
-      "knockknock" # 永続化スキャナ
-      "lulu" # 送信ファイアウォール
-      "ransomwhere" # ランサムウェア (不審な暗号化挙動) 検知
-      # VPN / 鍵
-      "mullvad-vpn" # ノーログ匿名 VPN (self-host の WireGuard/Tailscale とは別レイヤ)
+      # Objective-See (Patrick Wardle) suite — all free and notarized
+      # blockblock overlaps with macOS Ventura+'s Background Task Management notifications, and
+      # oversight overlaps with macOS's mic/camera-in-use indicators (menu bar dot +
+      # Control Center), so both were removed (2026-07-28).
+      # reikey gets muddied with false positives from our own event tap tools (Karabiner/Espanso/keebmouse/Hammerspoon)
+      # and can be checked statically in the standard input-monitoring list, and taskexplorer can be
+      # replaced with codesign / otool / vmmap / lsof, so both were removed (2026-07-28).
+      # netiquette can be fully replaced with lsof -nP -i / nettop, and whatsyoursign with codesign -dvv /
+      # spctl -a -vv, so both were removed (2026-07-28).
+      "knockknock" # persistence scanner
+      "lulu" # outbound firewall
+      "ransomwhere" # ransomware (suspicious encryption behavior) detection
+      # VPN / keys
+      "mullvad-vpn" # no-log anonymous VPN (a separate layer from self-hosted WireGuard/Tailscale)
       "ente-auth"
       "keepassxc"
       "keyguard"
-      "bitwarden" # Bitwarden 公式デスクトップアプリ
-      "secretive" # SSH 鍵を Secure Enclave に隔離し使用毎に Touch ID 承認 (MIT/OSS)。SSH エージェントを Bitwarden から移管
+      "bitwarden" # Bitwarden official desktop app
+      "secretive" # isolate SSH keys in the Secure Enclave with Touch ID approval per use (MIT/OSS). Moved the SSH agent off Bitwarden
 
       # ─── Network / Remote ───
       "tailscale-app"
@@ -237,7 +241,7 @@
       "imhex"
       "trex"
       "deskflow"
-      "codexbar" # AI コーディング各社の使用量/上限をメニューバー表示 (codexbar CLI 同梱・/opt/homebrew/bin に自動 link)
+      "codexbar" # show usage/limits of various AI coding vendors in the menu bar (bundles codexbar CLI, auto-linked into /opt/homebrew/bin)
 
       # ─── Creative — Design / 2D ───
       "affinity"
@@ -247,13 +251,13 @@
       "scribus"
       "darktable"
       "rawtherapee"
-      "digikam" # 写真管理 (RAW現像・タグ管理)
+      "digikam" # photo management (RAW development, tag management)
       "upscayl"
       "fontforge-app"
       "fontgoggles"
       "pika"
       "adobe-creative-cloud"
-      "sf-symbols" # Apple SF Symbols カタログ
+      "sf-symbols" # Apple SF Symbols catalog
 
       # ─── Creative — Audio / Music ───
       "audacity"
@@ -268,23 +272,23 @@
       "pd"
       "reaper"
       "supercollider"
-      "surge-xt" # シンセ standalone/プラグイン (.pkg cask)
-      # zrythm は trial 版(x64/Rosetta/保存不可)だったため撤去。nix 自作フル版
-      # (pkgs/zrythm-darwin, arm64ネイティブ・-O2) に一本化。home.packages 経由で入る。
+      "surge-xt" # synth standalone/plugin (.pkg cask)
+      # zrythm was removed since it was a trial version (x64/Rosetta/can't save). Consolidated onto the
+      # self-made full nix version (pkgs/zrythm-darwin, arm64-native, -O2). Installed via home.packages.
       "vcv-rack"
-      "voicevox/voicevox/voicevox" # 公式 tap 専用 (homebrew/cask 未収録)。tap宣言必須
-      # 自作の打鍵アナリティクス。Developer ID 署名 + 公証済みなので隔離付きでも
-      # Gatekeeper を通過する(no_quarantine 不要)。
+      "voicevox/voicevox/voicevox" # official tap only (not in homebrew/cask). Tap declaration required
+      # self-made keystroke analytics. Developer ID signed + notarized, so it passes
+      # Gatekeeper even with quarantine (no_quarantine not needed).
       "gapul/keystats/keystats"
-      "blackhole-2ch" # OBS / DAW へシステム音声を回す仮想オーディオデバイス
+      "blackhole-2ch" # virtual audio device to route system audio into OBS / DAW
 
       # ─── Creative — Video / Animation / Stream ───
       "obs"
-      "lihaoyun6/tap/quickrecorder" # 画面レコーダー (ScreenCaptureKit ネイティブ・Tahoe 対応)。旧 kap は Electron 製で約1.7年開発停滞のため乗り換え
+      "lihaoyun6/tap/quickrecorder" # screen recorder (native ScreenCaptureKit, Tahoe-compatible). Switched from the old kap, which is Electron-based and stalled for ~1.7 years
       "gyroflow"
       "touchdesigner"
-      "cavalry" # 2D モーショングラフィックス
-      "opentoonz" # 2D アニメーション (.pkg cask)
+      "cavalry" # 2D motion graphics
+      "opentoonz" # 2D animation (.pkg cask)
 
       # ─── 3D / CAD ───
       "blender"
@@ -301,7 +305,7 @@
       "orcaslicer"
 
       # ─── Games / Emulation ───
-      "wine-stable" # WineHQ 安定版。Windows アプリ実行 (winetricks と併用)
+      "wine-stable" # WineHQ stable. Run Windows apps (used with winetricks)
       "epic-games"
       "heroic"
       "mythic"

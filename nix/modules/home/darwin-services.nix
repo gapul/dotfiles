@@ -1,4 +1,4 @@
-# Darwin services component (ECS: profile)。常駐 LaunchAgent / env 配布。
+# Darwin services component (ECS: profile). Resident LaunchAgents / env distribution.
 {
   config,
   pkgs,
@@ -6,14 +6,14 @@
   ...
 }:
 {
-  # Syncthing.app を使わず、Home Manager の LaunchAgent として常駐させる。
-  # 既存の ~/Library/Application Support/Syncthing の設定・デバイスIDをそのまま使う。
+  # Run resident as a Home Manager LaunchAgent instead of using Syncthing.app.
+  # Reuse the existing ~/Library/Application Support/Syncthing config and device ID as-is.
   services.syncthing.enable = true;
 
-  # Ollama.app のメニューバー常駐を、Nix版 ollama の LaunchAgent に置き換える。
+  # Replace Ollama.app's menu-bar resident with a LaunchAgent for the Nix ollama.
   launchd.agents.ollama = {
     enable = true;
-    # 起動仕様は nix/lib/ollama-agent.nix が SSO (macmini と共有)。差分だけ付ける。
+    # The launch spec is the SSO in nix/lib/ollama-agent.nix (shared with macmini). Add only the diffs.
     config = (import ../../lib/ollama-agent.nix { inherit pkgs; }) // {
       ProcessType = "Background";
       StandardOutPath = "${config.home.homeDirectory}/Library/Logs/Ollama/ollama.log";
@@ -27,17 +27,17 @@
       "${config.home.homeDirectory}/Library/Logs/Syncthing"
   '';
 
-  # シェル非依存の env 配布: GUI アプリ / launchd 配下プロセスは zsh の .zshenv
-  # (hm-session-vars.sh の読み手は実質 zsh のみ) を経由しないため、home.sessionVariables
-  # の env を一切受け取れない。最も顕著なのは GNUPGHOME 未設定で gpg が空の ~/.gnupg を
-  # 再生成する事故だが、EDITOR/PAGER/各種 telemetry opt-out/XDG 基底/CARGO_HOME 等も
-  # GUI 側で取り逃す。ログイン時に launchctl setenv で session 全体へ流し込み zsh 依存を断つ。
+  # Shell-independent env distribution: GUI apps / processes under launchd don't go through
+  # zsh's .zshenv (hm-session-vars.sh is effectively only read by zsh), so they receive none of
+  # home.sessionVariables' env. The most notable case is the accident where an unset GNUPGHOME makes
+  # gpg regenerate an empty ~/.gnupg, but EDITOR/PAGER/various telemetry opt-outs/XDG bases/CARGO_HOME etc.
+  # are also missed on the GUI side. At login, push them into the whole session via launchctl setenv to cut the zsh dependency.
   #
-  # ハードコードせず home.sessionVariables から自動生成 (単一ソース・ドリフト防止)。
-  # 値は escapeShellArg で安全化 (MANPAGER 等の空白/引用符を含む値に対応)。
-  # 値に "$" を含む変数 (例: home-manager が注入する TERMINFO_DIRS の
-  # "...:$TERMINFO_DIRS${TERMINFO_DIRS:+:}...") は export 時のシェル展開前提であり、
-  # 展開しない launchctl setenv では壊れる (リテラル $ が入る) ため除外し zsh に委ねる。
+  # Auto-generated from home.sessionVariables rather than hardcoded (single source, drift prevention).
+  # Values are made safe with escapeShellArg (handles values with spaces/quotes like MANPAGER).
+  # Variables whose value contains "$" (e.g. the TERMINFO_DIRS that home-manager injects,
+  # "...:$TERMINFO_DIRS${TERMINFO_DIRS:+:}...") assume shell expansion at export time and
+  # break under the non-expanding launchctl setenv (a literal $ gets in), so they're excluded and left to zsh.
   launchd.agents.session-env = {
     enable = true;
     config = {
@@ -57,8 +57,8 @@
     };
   };
 
-  # GUI/IDE 経由で起動する Codex は shell startup file を読まないため、
-  # launchd user session にも XDG 寄せした Codex home を配る。
+  # Codex launched via GUI/IDE doesn't read shell startup files, so
+  # also distribute the XDG-aligned Codex home to the launchd user session.
   home.activation.codexLaunchdEnv = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     /bin/launchctl setenv CODEX_HOME "${config.xdg.dataHome}/codex"
     /bin/launchctl setenv CODEX_SQLITE_HOME "${config.xdg.stateHome}/codex/sqlite"

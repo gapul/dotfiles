@@ -1,9 +1,9 @@
-# carla (git master ≈2.6-dev) を aarch64-darwin 向けに backend のみビルドする試み。
-# zrythm は carla-host-plugin(>=2.6) と carla-discovery-native を必要とする。
+# Attempt to build only the backend of carla (git master ≈2.6-dev) for aarch64-darwin.
+# zrythm requires carla-host-plugin(>=2.6) and carla-discovery-native.
 { pkgs }:
 let
   inherit (pkgs) lib;
-  # Linux 専用の音声バックエンドを buildInputs から除去
+  # Remove Linux-only audio backends from buildInputs
   dropNames = [
     "alsa-lib"
     "libpulseaudio"
@@ -13,12 +13,12 @@ let
   keep = drv: !(lib.any (n: lib.hasInfix n (drv.pname or drv.name or "")) dropNames);
 in
 (pkgs.carla.override {
-  withFrontend = false; # Qt フロントエンド不要（zrythm は backend のみ利用）
+  withFrontend = false; # Qt frontend not needed (zrythm uses backend only)
   withQt = false;
   withGtk3 = false;
 }).overrideAttrs
   (o: {
-    # zrythm が要求する >=2.6.0 を満たす git master 版に差し替え（zrythm 側 pin と同一 rev）
+    # Swap in a git master build satisfying zrythm's >=2.6.0 requirement (same rev as zrythm's pin)
     version = "unstable-2024-04-26";
     src = pkgs.fetchFromGitHub {
       owner = "falkTX";
@@ -27,15 +27,15 @@ in
       hash = "sha256-uGAuKheoMfP9hZXsw29ec+58dJM8wMuowe95QutzKBY=";
     };
     buildInputs = builtins.filter keep o.buildInputs;
-    # nixpkgs の postFixup は withFrontend=true 前提（wrapPythonPrograms /
-    # carla_settings.py の patch / wrapQtApp)。backend-only ビルドではこれらの
-    # ファイルが一切生成されないため丸ごと無効化する。
-    # （patchShebangs/strip 等の標準 fixupPhase 処理は postFixup とは別に走るので維持される）
-    # 代わりに、carla の macOS Makefile は各 dylib の install name を
-    # "../../bin/foo.dylib" のような相対パス（本来の Carla.app 的な同居レイアウト前提）
-    # に固定してしまうため、nix store 内では解決できない。dylib 自身の
-    # install_name_tool -id をフルパスに上書きする（依存関係は他の buildInput の絶対パスの
-    # ままなので触らなくてよい）。
+    # nixpkgs' postFixup assumes withFrontend=true (wrapPythonPrograms /
+    # patching carla_settings.py / wrapQtApp). In a backend-only build none of
+    # those files are generated, so disable it entirely.
+    # (standard fixupPhase steps like patchShebangs/strip run separately from postFixup, so they are preserved)
+    # Instead, carla's macOS Makefile pins each dylib's install name to a
+    # relative path like "../../bin/foo.dylib" (assuming the original Carla.app-style
+    # co-located layout), which cannot be resolved inside the nix store. Override
+    # the dylib's own install_name_tool -id to the full path (dependencies stay as
+    # the other buildInputs' absolute paths, so they need no touching).
     postFixup = ''
       for f in $(find "$out" -name '*.dylib'); do
         install_name_tool -id "$f" "$f"

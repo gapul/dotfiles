@@ -1,5 +1,5 @@
-# Git component (ECS: profile)。git 本体 + delta(diff pager)。
-# common.nix から切り出した最初のコンポーネント。home 各構成はこれを import して合成する。
+# Git component (ECS: profile). git itself + delta (diff pager).
+# The first component split out from common.nix. Each home config imports and composes this.
 {
   config,
   pkgs,
@@ -11,10 +11,10 @@
   programs.git = {
     enable = true;
     ignores = [
-      # macOS が各フォルダに撒くメタデータ (ノイズ。リポジトリに不要)
+      # Metadata macOS scatters into every folder (noise; not needed in repos)
       ".DS_Store"
       ".DS_Store?"
-      "._*" # AppleDouble (リソースフォーク)
+      "._*" # AppleDouble (resource fork)
       ".AppleDouble"
       ".LSOverride"
       ".Spotlight-V100"
@@ -35,7 +35,7 @@
       "result-*"
       ".envrc.local"
       ".claude/settings.local.json"
-      # LaTeX ビルド中間生成物 (latexmk / lualatex)
+      # LaTeX build intermediates (latexmk / lualatex)
       "*.aux"
       "*.fdb_latexmk"
       "*.fls"
@@ -54,7 +54,7 @@
       key = "${config.home.homeDirectory}/.ssh/id_ed25519.pub";
       signByDefault = true;
     };
-    # HM 26.05: userName/userEmail/extraConfig は settings.* に統合
+    # HM 26.05: userName/userEmail/extraConfig merged into settings.*
     settings = {
       user.name = user.gitUser;
       user.email = user.gitEmail;
@@ -74,9 +74,9 @@
       rebase.updateRefs = true;
       rerere.enabled = true;
       rerere.autoupdate = true;
-      # flake.lock 自動解決 driver (.gitattributes の `nix/flake.lock merge=flakelock`)。
-      # Mac/Lab PC 両機の nix flake update 競合を、片側採用(常に valid な lock)で無人解決。
-      # 入力差を厳密に揃えたい時は解決後 `nix flake update` を一度回す。
+      # flake.lock auto-resolve driver (`nix/flake.lock merge=flakelock` in .gitattributes).
+      # Unattended resolution of nix flake update conflicts between Mac/Lab PC by taking one side (always a valid lock).
+      # When you want to align input diffs exactly, run `nix flake update` once after resolution.
       merge.flakelock.name = "flake.lock auto-resolve";
       merge.flakelock.driver = "cp -f %B %A";
       diff.colorMoved = "default";
@@ -86,7 +86,7 @@
     };
   };
 
-  # HM 26.05: programs.git.delta → 独立した programs.delta へ移行
+  # HM 26.05: programs.git.delta → migrated to standalone programs.delta
   programs.delta = {
     enable = true;
     enableGitIntegration = true;
@@ -94,7 +94,7 @@
       navigate = true;
       line-numbers = true;
       side-by-side = true;
-      detect-dark-light = "auto"; # 端末の明暗を検出し diff 配色を macOS 外観に追従
+      detect-dark-light = "auto"; # detect terminal light/dark and follow macOS appearance for diff colors
     };
   };
 }

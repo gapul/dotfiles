@@ -1,29 +1,29 @@
 _:
-# disko 宣言的ディスクレイアウト (nixos-laptop)。
+# disko declarative disk layout (nixos-laptop).
 #
-# ⚠️ dual-boot 安全方針: ここで管理するのは **空き領域に手動作成した単一の Linux パーティション
-#    (= LUKS root) だけ**。GPT 全体・Windows・ESP には一切触れない。
-#    `device` は必ずその単一パーティション (例 /dev/nvme0n1p5) を指すこと。
-#    ディスク全体 (/dev/nvme0n1) や Windows/ESP を指すと破壊する。
+# ⚠️ dual-boot safety policy: what is managed here is **only the single Linux partition
+#    manually created in free space (= LUKS root)**. The whole GPT, Windows and ESP are never touched.
+#    `device` must always point to that single partition (e.g. /dev/nvme0n1p5).
+#    Pointing it at the whole disk (/dev/nvme0n1) or at Windows/ESP is destructive.
 #
-# 使い方 (インストーラの live 環境):
-#   1. cfdisk で空き領域に「Linux filesystem」パーティションを 1 つ作る
-#   2. 下の device を実機の値に置換 (by-id 推奨。lsblk -o NAME,SIZE,FSTYPE,PATH で確認)
+# Usage (installer live environment):
+#   1. Create one "Linux filesystem" partition in free space with cfdisk
+#   2. Replace the device below with the real value (by-id recommended; check with lsblk -o NAME,SIZE,FSTYPE,PATH)
 #   3. sudo disko --mode destroy,format,mount --flake <repo>/nix#nixos-laptop
-#      → そのパーティションだけを LUKS 暗号化 + ext4 + /mnt にマウント
-#   4. ESP は disko 管理外。手動で `mount <ESP> /mnt/boot` する (フォーマット禁止)
+#      → LUKS-encrypts only that partition + ext4 + mounts to /mnt
+#   4. ESP is outside disko management. Mount it manually with `mount <ESP> /mnt/boot` (do not format)
 #
-# enableConfig=false は flake 側 (nixos モジュール文脈) で指定する。実行時の
-# fileSystems / luks.devices は生成 hardware-configuration.nix に任せ、二重定義を避ける。
+# enableConfig=false is specified on the flake side (nixos module context). Leave the runtime
+# fileSystems / luks.devices to the generated hardware-configuration.nix to avoid double definition.
 {
   disko.devices.disk.cryptroot = {
     type = "disk";
-    # ↓ 実機の単一 Linux パーティションに置換 (絶対にディスク全体/Windows/ESP にしない)
+    # ↓ Replace with the real machine's single Linux partition (never the whole disk/Windows/ESP)
     device = "/dev/disk/by-id/REPLACE_WITH_ROOT_PARTITION";
     content = {
       type = "luks";
-      name = "cryptroot"; # hosts/nixos-laptop.nix の crypttabExtraOpts と一致
-      settings.allowDiscards = true; # SSD の TRIM を許可
+      name = "cryptroot"; # matches crypttabExtraOpts in hosts/nixos-laptop.nix
+      settings.allowDiscards = true; # allow SSD TRIM
       content = {
         type = "filesystem";
         format = "ext4";

@@ -6,8 +6,8 @@
 }:
 let
   dotfiles = "${config.home.homeDirectory}/.dotfiles";
-  # AI スタックの実行資産は dotfiles を単一ソースに out-of-store symlink で配置。
-  # mini 上での直編集がそのまま repo に反映される (nvim と同じ機構)。
+  # Place the AI stack's runtime assets via out-of-store symlinks with dotfiles as the single source.
+  # Editing directly on the mini is reflected straight into the repo (same mechanism as nvim).
   aiService = name: {
     ".local/share/ai-stack/${name}".source =
       config.lib.file.mkOutOfStoreSymlink "${dotfiles}/configs/macmini/services/${name}";
@@ -18,20 +18,20 @@ let
   };
 in
 {
-  # macmini 固有レイヤー。ベースの CLI/zsh/XDG 一式は home/common.nix を
-  # flake 側で合成して継承する (sops/age 鍵は持ち込まない)。
-  # 配置は XDG/ghq 準拠 (専用 ~/ai は廃止 2026-07-19):
-  #   サービス実体 → ~/.local/share/ai-stack/ (HM symlink)
-  #   venv → ~/.local/share/venvs/、モデル → ~/.local/share/models/
-  #   アプリデータ → ~/.local/share/{anythingllm,open-webui,minecraft}/
-  #   ComfyUI / GPT-SoVITS → ~/Developer/github.com/<owner>/<repo> (ghq 流儀)
-  # venv/モデル/データは再現不可能資産のため imperative 管理
-  # (再構築手順は configs/macmini/bootstrap.sh と README)。
+  # macmini-specific layer. The base CLI/zsh/XDG set inherits home/common.nix
+  # composed on the flake side (no sops/age keys are brought in).
+  # Layout follows XDG/ghq (the dedicated ~/ai was retired 2026-07-19):
+  #   service bodies -> ~/.local/share/ai-stack/ (HM symlink)
+  #   venvs -> ~/.local/share/venvs/, models -> ~/.local/share/models/
+  #   app data -> ~/.local/share/{anythingllm,open-webui,minecraft}/
+  #   ComfyUI / GPT-SoVITS -> ~/Developer/github.com/<owner>/<repo> (ghq style)
+  # venvs/models/data are non-reproducible assets, so they're managed imperatively
+  # (rebuild steps in configs/macmini/bootstrap.sh and README).
 
   home.packages = [
-    # ccm: mac mini での Claude Code 既定起動形。権限確認は維持する。
-    # 非対話環境でも --dangerously-skip-permissions を既定化しない。外部コンテンツ由来の
-    # prompt injection がそのまま任意コマンド実行権限になるため。
+    # ccm: default Claude Code launch form on the mac mini. Permission prompts are kept.
+    # Don't default --dangerously-skip-permissions even in non-interactive environments, because
+    # prompt injection from external content would directly become arbitrary command execution rights.
     (pkgs.writeShellScriptBin "ccm" ''
       exec "$HOME/.local/bin/claude" \
         --remote-control dotfiles \
@@ -41,8 +41,8 @@ in
     '')
   ];
 
-  # brew shellenv (headless mini は home/darwin.nix を積まないためここで) +
-  # 機械ローカル秘密 (HF_TOKEN 等) は nix 管理外の local.zsh から読む。
+  # brew shellenv (here because the headless mini doesn't load home/darwin.nix) +
+  # machine-local secrets (HF_TOKEN etc.) are read from local.zsh outside nix management.
   programs.zsh.initContent = lib.mkAfter ''
     if [ -x /opt/homebrew/bin/brew ]; then
       eval "$(/opt/homebrew/bin/brew shellenv)"
@@ -50,7 +50,7 @@ in
     [ -f "$HOME/.config/zsh/local.zsh" ] && source "$HOME/.config/zsh/local.zsh"
   '';
 
-  # AI スタック実行資産 (実体は configs/macmini/{services,bin})
+  # AI stack runtime assets (bodies in configs/macmini/{services,bin})
   home.file = lib.mkMerge (
     map aiService [
       "ai-stack.sh"
@@ -73,7 +73,7 @@ in
     ]
   );
 
-  # AI スタック常駐 (旧 net.gapul.* の手書き plist を置換。2026-07-19)
+  # AI stack resident (replaces the old hand-written net.gapul.* plists. 2026-07-19)
   launchd.agents.ai-stack = {
     enable = true;
     config = {

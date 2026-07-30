@@ -1,9 +1,9 @@
-# ghostty-launcher の検索バックエンド (Rust)。
-# 従来はリポジトリ内で `cargo build --release` し core/launcher-search シンボリックリンク
-# 経由で参照していたが、生成物 target/ が `just gc-deep` の「30日触っていない rust target」
-# 掃除に巻き込まれて消え、ランチャーが起動不能になる事故があった。
-# nix store にビルドして LAUNCHER_SEARCH_BIN で指すことで、GC ルートに保護され
-# `nh home switch` のたびに再生成される (target/ 不要)。
+# Search backend for ghostty-launcher (Rust).
+# Previously it was `cargo build --release`d inside the repo and referenced via a
+# core/launcher-search symlink, but the output target/ got swept up by `just gc-deep`'s
+# "rust targets untouched for 30 days" cleanup and vanished, making the launcher unable to start.
+# Building into the nix store and pointing at it via LAUNCHER_SEARCH_BIN protects it as a GC root
+# and regenerates it on every `nh home switch` (no target/ needed).
 {
   lib,
   rustPlatform,
@@ -20,13 +20,13 @@ rustPlatform.buildRustPackage {
     hash = "sha256-myoYR0K+2ty+FQed/u9o+lNt6/DKFtHu4BAR1dZ21Ww=";
   };
 
-  # crate はリポジトリ直下ではなく launcher-search/ サブディレクトリにある。
+  # The crate is not at the repo root but in the launcher-search/ subdirectory.
   cargoRoot = "launcher-search";
   buildAndTestSubdir = "launcher-search";
 
   cargoHash = "sha256-g+m5GVJWoQ2q25MVbp/jiSTjb0/qyjN6FxOb7/y4SrU=";
 
-  # テストは無い。crates.io 由来の追加取得を避けるため check は無効化。
+  # No tests. Disable check to avoid extra crates.io fetches.
   doCheck = false;
 
   meta = {
