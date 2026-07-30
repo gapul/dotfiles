@@ -52,7 +52,6 @@ const rgb = s => s.split(',').map(Number);
 // ─────────── workspace別アクセント + 波パラメータ ───────────
 // 各 workspace = 色ペア(a→b grad) + 波の出方
 //   spacing=格子間隔(小さいほど密) / sources=波源の数
-//   speed=波源の移動速度 / freq=波の空間周波数 / waveSpeed=波の時間速度
 const PALETTES = {
   '1': { a: RP.iris, b: RP.pine,    spacing: 26, sources: 2, speed: 0.4, freq: 0.018, waveSpeed: 2.4 }, // 紫→青 大きくゆったり
   '2': { a: RP.foam, b: RP.pine,    spacing: 22, sources: 3, speed: 0.7, freq: 0.030, waveSpeed: 3.2 }, // シアン→青 細かく速い
@@ -66,9 +65,6 @@ const PALETTES = {
   '0': { a: RP.muted, b: RP.subtle, spacing: 26, sources: 2, speed: 0.3, freq: 0.018, waveSpeed: 1.6 }, // 灰 静かなモノクロ
   'S': { a: RP.pine, b: RP.iris,    spacing: 24, sources: 2, speed: 0.5, freq: 0.020, waveSpeed: 2.5 }, // 青→紫
 };
-
-// ASCII/端末風の文字ランプ (暗→明)
-const RAMP = ' .∙○●◉';
 
 let currentPalette = PALETTES['1'];
 let started = false;
@@ -99,38 +95,120 @@ function pollWorkspace() {
 }
 setInterval(pollWorkspace, 300);
 
-// ─────────── canvasセットアップ ───────────
+// ─────────── WebGL2 セットアップ ───────────
+// 旧 Canvas2D 版は 1 フレームで約 7,500 セル × (arc + fillText) を個別発行し、
+// GPU ドローコールが数千/フレームに達して重かった。ここでは波の場の計算と
+// ドット描画をフラグメントシェーダに移し、全画面 1 パス(1 ドローコール)で描く。
 const canvas = document.getElementById('c');
-const ctx = canvas.getContext('2d');
-let W, H;          // CSS px (描画はこの座標系)
+const gl = canvas.getContext('webgl2', { antialias: false, alpha: true, premultipliedAlpha: false });
 
-// 背景色を時間帯でティント (rose-pine.html の tintBg をそのまま流用)
-function tintBg(c, t) {
-  const top = rgb(RP.surface);
-  const gold = rgb(RP.gold);
-  const lift = t.bgLift * 0.22;
-  const warm = t.warmth * 0.10;
-  return c.map((v, i) => {
-    let x = v + (top[i] - v) * lift;
-    x = x + (gold[i] - x) * warm;
-    return Math.round(x);
-  });
+const VERT = `#version 300 es
+in vec2 p;
+void main(){ gl_Position = vec4(p, 0.0, 1.0); }`;
+
+// 最大波源数。PALETTES は最大 3。余裕をみて 4。
+const MAX_SRC = 4;
+const FRAG = `#version 300 es
+precision highp float;
+out vec4 o;
+uniform vec2  uRes;      // device px (canvas.width/height)
+uniform float uDpr;
+uniform vec2  uOrigin;   // グリッド原点 (CSS px)
+uniform float uSp;       // 格子間隔 (CSS px)
+uniform float uMaxR;     // ドット最大半径 (CSS px)
+uniform float uTime;
+uniform float uFreq;
+uniform float uWaveSpeed;
+uniform int   uN;
+uniform vec2  uSrc[${MAX_SRC}];   // 波源 (CSS px)
+uniform float uPhase[${MAX_SRC}];
+uniform vec3  uA, uB, uGold, uBg; // 0..255
+uniform float uBright, uWarm;
+
+float fieldAt(vec2 pt){
+  float sum = 0.0;
+  for(int i=0;i<${MAX_SRC};i++){
+    if(i>=uN) break;
+    vec2 d = pt - uSrc[i];
+    float dist = length(d);
+    float atten = 1.0/(1.0 + dist*0.0016);
+    sum += sin(dist*uFreq - uTime*uWaveSpeed + uPhase[i]) * atten;
+  }
+  return 0.5 + 0.5*(sum/float(uN));
 }
 
+void main(){
+  // gl_FragCoord は device px・左下原点。CSS px・左上原点へ変換。
+  vec2 cssPx = vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y) / uDpr;
+  vec2 cell   = floor((cssPx - uOrigin)/uSp + 0.5);
+  vec2 center = uOrigin + cell*uSp;
+  float v = fieldAt(center);
+
+  vec3 bg = uBg/255.0;
+  if(v < 0.12){ o = vec4(bg, 1.0); return; }
+
+  // 色: a→b を v で補間 → 朝夕 gold 寄せ → 時刻明度。旧 2D 版と同一式。
+  vec3 col = mix(uA, uB, v);
+  col = mix(col, uGold, uWarm);
+  col = min(vec3(255.0), col*uBright) / 255.0;
+
+  float dd = length(cssPx - center);
+  float radius = uMaxR * v;
+  float dot = 1.0 - smoothstep(radius-1.0, radius+1.0, dd);
+  float alpha = (0.12 + 0.85*v) * dot;
+  vec3 outc = mix(bg, col, alpha);
+
+  // 端末風アクセント: 明るいセルは内側にコアを重ねる (旧 fillText の代替)
+  if(v > 0.55){
+    float core = 1.0 - smoothstep(radius*0.5-1.0, radius*0.5+1.0, dd);
+    outc = mix(outc, col, core*0.25);
+  }
+  o = vec4(outc, 1.0);
+}`;
+
+function compile(type, src){
+  const sh = gl.createShader(type);
+  gl.shaderSource(sh, src); gl.compileShader(sh);
+  if(!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh));
+  return sh;
+}
+const prog = gl.createProgram();
+gl.attachShader(prog, compile(gl.VERTEX_SHADER, VERT));
+gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, FRAG));
+gl.linkProgram(prog);
+if(!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+gl.useProgram(prog);
+
+// 全画面トライアングル
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+const buf = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 3,-1, -1,3]), gl.STATIC_DRAW);
+const pLoc = gl.getAttribLocation(prog, 'p');
+gl.enableVertexAttribArray(pLoc);
+gl.vertexAttribPointer(pLoc, 2, gl.FLOAT, false, 0, 0);
+
+const U = {};
+['uRes','uDpr','uOrigin','uSp','uMaxR','uTime','uFreq','uWaveSpeed','uN',
+ 'uSrc','uPhase','uA','uB','uGold','uBg','uBright','uWarm']
+  .forEach(n => U[n] = gl.getUniformLocation(prog, n));
+
+let W, H, DPR;
 function resize() {
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  DPR = Math.min(window.devicePixelRatio || 1, 1.5); // GPU 側なので 1.5 で十分綺麗・省電力
   W = window.innerWidth;
   H = window.innerHeight;
-  canvas.width = W * dpr;
-  canvas.height = H * dpr;
-  canvas.style.width = W + 'px';
+  canvas.width  = Math.round(W * DPR);
+  canvas.height = Math.round(H * DPR);
+  canvas.style.width  = W + 'px';
   canvas.style.height = H + 'px';
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  gl.viewport(0, 0, canvas.width, canvas.height);
 }
 resize();
 window.addEventListener('resize', resize);
 
-// ─────────── 波源 ───────────
+// ─────────── 波源 (CPU 側・軽量) ───────────
 // 各波源は画面内を直線運動し、端で反射する。workspace で個数/速度が変わる。
 let sources = [];
 function buildSources(P) {
@@ -146,8 +224,7 @@ function buildSources(P) {
 }
 buildSources(currentPalette);
 
-function moveSources(dt, P) {
-  // dt は秒。正規化座標 0..1 を往復させる。
+function moveSources(dt) {
   for (const s of sources) {
     s.x += s.vx * dt * 0.05;
     s.y += s.vy * dt * 0.05;
@@ -169,96 +246,74 @@ function computeTimeShift() {
     brightness: 0.78 + 0.27 * sunness,   // 夜0.78 → 昼1.05
     warmth,                              // 0..1 朝夕で最大
     bgLift: sunness,                     // 昼に背景を surface 寄りへ
-    trailAlpha: 0.06 + 0.03 * sunness,
   };
 }
 
-// 高さ場 v(x,y,t): 移動する波源からの放射状サイン波の和。約 0..1 に正規化。
-function field(px, py, P, time) {
-  let sum = 0;
-  for (const s of sources) {
-    const sx = s.x * W, sy = s.y * H;
-    const dx = px - sx, dy = py - sy;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    // 距離で減衰させた放射状の波。手前ほど強い。
-    const atten = 1 / (1 + dist * 0.0016);
-    sum += Math.sin(dist * P.freq - time * P.waveSpeed + s.phase) * atten;
-  }
-  // sum は概ね -sources..sources → 0..1 へ
-  return 0.5 + 0.5 * (sum / sources.length);
+// 背景色を時間帯でティント (rose-pine.html の tintBg をそのまま流用)
+function tintBg(c, t) {
+  const top = rgb(RP.surface);
+  const gold = rgb(RP.gold);
+  const lift = t.bgLift * 0.22;
+  const warm = t.warmth * 0.10;
+  return c.map((v, i) => {
+    let x = v + (top[i] - v) * lift;
+    x = x + (gold[i] - x) * warm;
+    return x;
+  });
 }
 
-let lastT = 0;
-let lastFrame = 0;
-const FRAME_MS = 33;  // ~30fps に間引き (CPU対策)
+// ─────────── 描画ループ ───────────
+let lastT = 0, lastFrame = 0;
+const FRAME_MS = 33;  // ~30fps
+
+const srcBuf = new Float32Array(MAX_SRC * 2);
+const phaseBuf = new Float32Array(MAX_SRC);
 
 function tick(ms) {
-  requestAnimationFrame(tick);  // 停止せず回し続ける
+  requestAnimationFrame(tick);
   if (!lastT) lastT = ms;
   const dt = Math.min(0.1, (ms - lastT) / 1000);
   lastT = ms;
   if (ms - lastFrame < FRAME_MS) return;
   lastFrame = ms;
 
-  const t = computeTimeShift();      // 毎フレーム時刻シフト
+  const t = computeTimeShift();
   const P = currentPalette;
   const time = ms / 1000;
-  moveSources(dt, P);
+  moveSources(dt);
 
-  // 背景: tint済み base で毎フレームクリア
-  const [bgR, bgG, bgB] = tintBg(rgb(RP.base), t);
-  ctx.fillStyle = `rgb(${bgR},${bgG},${bgB})`;
-  ctx.fillRect(0, 0, W, H);
-
-  const [aR, aG, aB] = rgb(P.a);
-  const [bR2, bG2, bB2] = rgb(P.b);
-  const [gR, gG, gB] = rgb(RP.gold);
-  const warm = t.warmth * 0.35;
-  const br = t.brightness;
-
-  // グリッド: 行数/列数を自動計算 (端に半マージン)。点数を抑えてCPU軽減。
   const sp = P.spacing;
   const cols = Math.ceil(W / sp);
   const rows = Math.ceil(H / sp);
   const ox = (W - (cols - 1) * sp) / 2;
   const oy = (H - (rows - 1) * sp) / 2;
-  const maxR = sp * 0.46;            // ドット最大半径
 
-  ctx.font = '14px "JetBrains Mono", monospace';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-
-  for (let r = 0; r < rows; r++) {
-    const py = oy + r * sp;
-    for (let cI = 0; cI < cols; cI++) {
-      const px = ox + cI * sp;
-      const v = field(px, py, P, time);     // 0..1 高さ場
-      if (v < 0.12) continue;               // 谷は描かず情報の濃淡を出す
-
-      // 色: a→b を v で補間 → 朝夕 gold 寄せ → 時刻明度を乗算
-      let mr = aR + (bR2 - aR) * v;
-      let mg = aG + (bG2 - aG) * v;
-      let mb = aB + (bB2 - aB) * v;
-      mr += (gR - mr) * warm;
-      mg += (gG - mg) * warm;
-      mb += (gB - mb) * warm;
-      const cr = Math.min(255, mr * br) | 0;
-      const cg = Math.min(255, mg * br) | 0;
-      const cb = Math.min(255, mb * br) | 0;
-      const alpha = 0.12 + 0.85 * v;
-
-      // 端末風: 文字ランプ + ドット円を重ねて情報量を増やす
-      const ch = RAMP[Math.min(RAMP.length - 1, (v * RAMP.length) | 0)];
-      ctx.fillStyle = `rgba(${cr},${cg},${cb},${alpha})`;
-      ctx.beginPath();
-      ctx.arc(px, py, maxR * v, 0, Math.PI * 2);
-      ctx.fill();
-      if (v > 0.55 && ch !== ' ') {
-        ctx.fillStyle = `rgba(${cr},${cg},${cb},${Math.min(0.9, alpha + 0.15)})`;
-        ctx.fillText(ch, px, py + 0.5);
-      }
-    }
+  const n = sources.length;
+  for (let i = 0; i < n; i++) {
+    srcBuf[i*2]   = sources[i].x * W;
+    srcBuf[i*2+1] = sources[i].y * H;
+    phaseBuf[i]   = sources[i].phase;
   }
+
+  gl.uniform2f(U.uRes, canvas.width, canvas.height);
+  gl.uniform1f(U.uDpr, DPR);
+  gl.uniform2f(U.uOrigin, ox, oy);
+  gl.uniform1f(U.uSp, sp);
+  gl.uniform1f(U.uMaxR, sp * 0.46);
+  gl.uniform1f(U.uTime, time);
+  gl.uniform1f(U.uFreq, P.freq);
+  gl.uniform1f(U.uWaveSpeed, P.waveSpeed);
+  gl.uniform1i(U.uN, n);
+  gl.uniform2fv(U.uSrc, srcBuf);
+  gl.uniform1fv(U.uPhase, phaseBuf);
+  gl.uniform3fv(U.uA, rgb(P.a));
+  gl.uniform3fv(U.uB, rgb(P.b));
+  gl.uniform3fv(U.uGold, rgb(RP.gold));
+  gl.uniform3fv(U.uBg, tintBg(rgb(RP.base), t));
+  gl.uniform1f(U.uBright, t.brightness);
+  gl.uniform1f(U.uWarm, t.warmth * 0.35);
+
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
 }
 
 // 初期化

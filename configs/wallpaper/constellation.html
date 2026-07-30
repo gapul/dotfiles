@@ -31,7 +31,6 @@
 'use strict';
 
 // ─────────── Rosé Pine (main / dark) パレット ───────────
-// rose-pine.html からそのまま流用。
 const RP = {
   base:    '25,23,36',    // #191724 背景 (一番暗い)
   surface: '31,29,46',    // #1f1d2e
@@ -50,7 +49,6 @@ followSystemTheme(RP);
 const rgb = s => s.split(',').map(Number);
 
 // ─────────── workspace別パラメータ (Constellation) ───────────
-// 各 workspace = ノード色2色 (a→b でグラデ) + ノード数 + 接続閾値(密度)。
 //   count = ノード数 / dist = 接続閾値(px, 大きいほど密) / speed = ドリフト速度
 const PALETTES = {
   '1': { a: RP.iris, b: RP.pine,    count: 72, dist: 140, speed: 0.30 }, // 紫→青 標準
@@ -80,9 +78,7 @@ function applyWorkspace(ws) {
   if (currentPalette === next) return;  // 変更なし
   currentPalette = next;
   document.getElementById('wsnum').textContent = ws;
-  // ノード数は即時に合わせる (背景は毎フレームクリアするので自然)。
   syncNodeCount(next.count);
-  // 色・閾値は tick() 内で lerp して滑らかに切り替える。
 }
 
 function startAnimation() {
@@ -92,7 +88,6 @@ function startAnimation() {
 }
 
 // 同階層の state.js を <script>タグで定期ロード (cache buster付き)
-// state.js の内容: window.__ws = "3";
 function pollWorkspace() {
   const s = document.createElement('script');
   s.src = 'state.js?_=' + Date.now();
@@ -102,41 +97,117 @@ function pollWorkspace() {
 }
 setInterval(pollWorkspace, 300);
 
-// ─────────── canvasセットアップ ───────────
+// ─────────── WebGL2 セットアップ ───────────
+// 旧 Canvas2D 版は接続線を 1 本ずつ ctx.stroke() で発行し(最大 ~4000 本/フレーム)、
+// さらに 60fps 上限なしで回していた。ここでは全接続線を 1 本の頂点バッファに
+// まとめて gl.LINES で 1 ドローコール、ノードも gl.POINTS で 1 ドローコールにする。
 const canvas = document.getElementById('c');
-const ctx = canvas.getContext('2d');
-let W, H;          // CSSピクセルでの描画領域 (dpr scale 後の論理座標)
+const gl = canvas.getContext('webgl2', { antialias: true, alpha: true, premultipliedAlpha: false });
 
+function compile(type, src){
+  const sh = gl.createShader(type);
+  gl.shaderSource(sh, src); gl.compileShader(sh);
+  if(!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh));
+  return sh;
+}
+function link(vs, fs){
+  const p = gl.createProgram();
+  gl.attachShader(p, compile(gl.VERTEX_SHADER, vs));
+  gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fs));
+  gl.linkProgram(p);
+  if(!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+  return p;
+}
+
+// 背景: 上半分で surface→base の縦グラデ、下半分は base 一色 (旧 createLinearGradient と同じ)。
+const bgProg = link(
+  `#version 300 es
+   in vec2 p; void main(){ gl_Position = vec4(p,0.0,1.0); }`,
+  `#version 300 es
+   precision highp float; out vec4 o;
+   uniform vec2 uRes; uniform vec3 uTop, uBot;
+   void main(){
+     float yy = 1.0 - gl_FragCoord.y/uRes.y;   // 0=上 .. 1=下
+     float k = clamp(yy/0.5, 0.0, 1.0);         // 上半分だけ top→bot
+     o = vec4(mix(uTop, uBot, k)/255.0, 1.0);
+   }`);
+const bgU = { uRes: gl.getUniformLocation(bgProg,'uRes'), uTop: gl.getUniformLocation(bgProg,'uTop'), uBot: gl.getUniformLocation(bgProg,'uBot') };
+const bgVao = gl.createVertexArray();
+gl.bindVertexArray(bgVao);
+const bgBuf = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, bgBuf);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 3,-1, -1,3]), gl.STATIC_DRAW);
+{ const l = gl.getAttribLocation(bgProg,'p'); gl.enableVertexAttribArray(l); gl.vertexAttribPointer(l,2,gl.FLOAT,false,0,0); }
+
+// ジオメトリ (線・点共用): aPos=CSS px, aColor=rgba(0..1), aSize=点径(CSS px)。
+const geomProg = link(
+  `#version 300 es
+   in vec2 aPos; in vec4 aColor; in float aSize;
+   uniform vec2 uRes; uniform float uDpr;
+   out vec4 vColor;
+   void main(){
+     vec2 clip = vec2(aPos.x/uRes.x*2.0-1.0, 1.0 - aPos.y/uRes.y*2.0);
+     gl_Position = vec4(clip, 0.0, 1.0);
+     gl_PointSize = aSize * uDpr;
+     vColor = aColor;
+   }`,
+  `#version 300 es
+   precision highp float; in vec4 vColor; out vec4 o;
+   uniform int uMode;   // 0=線, 1=点(丸くマスク)
+   void main(){
+     float a = vColor.a;
+     if(uMode==1){
+       float r = length(gl_PointCoord - vec2(0.5));
+       a *= smoothstep(0.5, 0.4, r);
+     }
+     o = vec4(vColor.rgb, a);
+   }`);
+const geomU = {
+  uRes: gl.getUniformLocation(geomProg,'uRes'),
+  uDpr: gl.getUniformLocation(geomProg,'uDpr'),
+  uMode: gl.getUniformLocation(geomProg,'uMode'),
+};
+const STRIDE = 7 * 4; // x,y,r,g,b,a,size
+function makeGeomVao(buf){
+  const vao = gl.createVertexArray();
+  gl.bindVertexArray(vao);
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  const pl = gl.getAttribLocation(geomProg,'aPos');
+  const cl = gl.getAttribLocation(geomProg,'aColor');
+  const sl = gl.getAttribLocation(geomProg,'aSize');
+  gl.enableVertexAttribArray(pl); gl.vertexAttribPointer(pl,2,gl.FLOAT,false,STRIDE,0);
+  gl.enableVertexAttribArray(cl); gl.vertexAttribPointer(cl,4,gl.FLOAT,false,STRIDE,8);
+  gl.enableVertexAttribArray(sl); gl.vertexAttribPointer(sl,1,gl.FLOAT,false,STRIDE,24);
+  return vao;
+}
+const lineBuf = gl.createBuffer();
+const pointBuf = gl.createBuffer();
+const lineVao = makeGeomVao(lineBuf);
+const pointVao = makeGeomVao(pointBuf);
+
+let W, H, DPR;
 function resize() {
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  canvas.width = window.innerWidth * dpr;
-  canvas.height = window.innerHeight * dpr;
-  canvas.style.width = window.innerWidth + 'px';
-  canvas.style.height = window.innerHeight + 'px';
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.scale(dpr, dpr);
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
   W = window.innerWidth;
   H = window.innerHeight;
+  canvas.width  = Math.round(W * DPR);
+  canvas.height = Math.round(H * DPR);
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+  gl.viewport(0, 0, canvas.width, canvas.height);
 }
 resize();
 window.addEventListener('resize', resize);
 
-// 時刻に応じた色シフト (rose-pine.html からそのまま流用)。
+// 時刻に応じた色シフト
 function computeTimeShift() {
   const now = new Date();
   const hr = now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600 + now.getMilliseconds() / 3600000;
-  const sunness = 0.5 * (1 + Math.cos((hr - 12) * Math.PI / 12));  // 0..1 正午=1, 真夜中=0
-  const golden = Math.sin(Math.abs(hr - 12) * Math.PI / 12);       // 0..1 朝夕=1, 正午/深夜=0
+  const sunness = 0.5 * (1 + Math.cos((hr - 12) * Math.PI / 12));
+  const golden = Math.sin(Math.abs(hr - 12) * Math.PI / 12);
   const warmth = golden * Math.min(1, sunness * 1.6);
-  return {
-    brightness: 0.78 + 0.27 * sunness,   // 夜0.78 → 昼1.05
-    warmth,                              // 0..1 朝夕で最大
-    bgLift: sunness,                     // 昼に背景を surface 寄りへ
-    trailAlpha: 0.06 + 0.03 * sunness,   // (constellation では未使用)
-  };
+  return { brightness: 0.78 + 0.27 * sunness, warmth, bgLift: sunness };
 }
-
-// 背景色を時間帯でティント (rose-pine.html の tintBg を流用)。
 function tintBg(c, t) {
   const top = rgb(RP.surface);
   const gold = rgb(RP.gold);
@@ -145,39 +216,47 @@ function tintBg(c, t) {
   return c.map((v, i) => {
     let x = v + (top[i] - v) * lift;
     x = x + (gold[i] - x) * warm;
-    return Math.round(x);
+    return x;
   });
 }
 
-// ─────────── ノード ───────────
+// ─────────── ノード (CPU 側・軽量: 最大90) ───────────
 const MAX_N = 90;
 const nodes = [];
 let activeN = currentPalette.count;
 function makeNode() {
   return {
-    x: Math.random() * W,
-    y: Math.random() * H,
-    vx: (Math.random() * 2 - 1),
-    vy: (Math.random() * 2 - 1),
+    x: Math.random() * W, y: Math.random() * H,
+    vx: (Math.random() * 2 - 1), vy: (Math.random() * 2 - 1),
     r: 1.5 + Math.random() * 1.0,
   };
 }
 for (let i = 0; i < MAX_N; i++) nodes.push(makeNode());
-
-function syncNodeCount(n) {
-  activeN = Math.max(10, Math.min(MAX_N, n | 0));
-}
+function syncNodeCount(n) { activeN = Math.max(10, Math.min(MAX_N, n | 0)); }
 syncNodeCount(currentPalette.count);
 
 const lerp1 = (a, b, t) => a + (b - a) * t;
 
-function tick() {
+// 頂点バッファ (最大サイズを先に確保)。線: 最大 n*(n-1)/2 本 × 2頂点 × 7float。
+const MAX_LINE_VERT = (MAX_N * (MAX_N - 1) / 2) * 2;
+const lineData = new Float32Array(MAX_LINE_VERT * 7);
+const pointData = new Float32Array(MAX_N * 7);
+
+// ─────────── 描画ループ (~30fps) ───────────
+let lastFrame = 0;
+const FRAME_MS = 33;
+
+function tick(now) {
+  requestAnimationFrame(tick);
+  if (now - lastFrame < FRAME_MS) return;
+  lastFrame = now;
+
   const t = computeTimeShift();
   const br = t.brightness;
-  const warm = t.warmth * 0.30;            // 朝夕で最大30% gold 寄せ
+  const warm = t.warmth * 0.30;
   const [gR, gG, gB] = rgb(RP.gold);
 
-  // 色・接続閾値を目標値へ滑らかに追従 (約1秒で収束)。
+  // 色・閾値を目標へ滑らかに追従
   const tgtA = rgb(currentPalette.a);
   const tgtB = rgb(currentPalette.b);
   for (let i = 0; i < 3; i++) {
@@ -186,80 +265,84 @@ function tick() {
   }
   liveDist = lerp1(liveDist, currentPalette.dist, 0.06);
 
-  // 背景: 毎フレーム塗りつぶし (軌跡は残さない)。時刻ティント込みの縦グラデ。
-  const base = tintBg(rgb(RP.base), t);
-  const top = tintBg(rgb(RP.surface), t);
-  const g = ctx.createLinearGradient(0, 0, 0, H);
-  g.addColorStop(0, `rgb(${top.join(',')})`);
-  g.addColorStop(0.5, `rgb(${base.join(',')})`);
-  g.addColorStop(1, `rgb(${base.join(',')})`);
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, W, H);
-
   const speed = currentPalette.speed;
   const dist = liveDist;
   const dist2 = dist * dist;
 
-  // ノード位置更新 (端で反射)。アクティブ分のみ。
+  // ノード移動 (端で反射)
   for (let i = 0; i < activeN; i++) {
     const p = nodes[i];
-    p.x += p.vx * speed;
-    p.y += p.vy * speed;
-    if (p.x < 0)  { p.x = 0;  p.vx = Math.abs(p.vx); }
-    if (p.x > W)  { p.x = W;  p.vx = -Math.abs(p.vx); }
-    if (p.y < 0)  { p.y = 0;  p.vy = Math.abs(p.vy); }
-    if (p.y > H)  { p.y = H;  p.vy = -Math.abs(p.vy); }
+    p.x += p.vx * speed; p.y += p.vy * speed;
+    if (p.x < 0) { p.x = 0; p.vx = Math.abs(p.vx); }
+    if (p.x > W) { p.x = W; p.vx = -Math.abs(p.vx); }
+    if (p.y < 0) { p.y = 0; p.vy = Math.abs(p.vy); }
+    if (p.y > H) { p.y = H; p.vy = -Math.abs(p.vy); }
   }
 
-  // 色ヘルパ: t(0..1) で a→b 補間 → gold 寄せ → 時刻明度を乗算。
+  // 色ヘルパ: k(0..1) で a→b → gold寄せ → 明度。0..1 で返す。
   const colAt = (k) => {
     let mr = liveA[0] + (liveB[0] - liveA[0]) * k;
     let mg = liveA[1] + (liveB[1] - liveA[1]) * k;
     let mb = liveA[2] + (liveB[2] - liveA[2]) * k;
-    mr += (gR - mr) * warm;
-    mg += (gG - mg) * warm;
-    mb += (gB - mb) * warm;
-    return [
-      Math.min(255, mr * br) | 0,
-      Math.min(255, mg * br) | 0,
-      Math.min(255, mb * br) | 0,
-    ];
+    mr += (gR - mr) * warm; mg += (gG - mg) * warm; mb += (gB - mb) * warm;
+    return [Math.min(255, mr * br) / 255, Math.min(255, mg * br) / 255, Math.min(255, mb * br) / 255];
   };
 
-  // ─────────── 接続線 (O(n^2) だが n<=90 なので軽い) ───────────
-  ctx.lineWidth = 0.8;
+  // 接続線の頂点を構築 (O(n^2), n<=90)
+  let lv = 0;
   for (let i = 0; i < activeN; i++) {
     const a = nodes[i];
     for (let j = i + 1; j < activeN; j++) {
       const b = nodes[j];
-      const dx = a.x - b.x;
-      const dy = a.y - b.y;
+      const dx = a.x - b.x, dy = a.y - b.y;
       const d2 = dx * dx + dy * dy;
       if (d2 >= dist2) continue;
       const d = Math.sqrt(d2);
-      const closeness = 1 - d / dist;          // 1=至近, 0=閾値
-      const alpha = closeness * 0.45;          // 近いほど濃く
-      // 線色は両端ノードの中点位置 (x方向) でグラデ。
+      const alpha = (1 - d / dist) * 0.45;
       const [cr, cg, cb] = colAt(((a.x + b.x) * 0.5) / W);
-      ctx.strokeStyle = `rgba(${cr},${cg},${cb},${alpha.toFixed(3)})`;
-      ctx.beginPath();
-      ctx.moveTo(a.x, a.y);
-      ctx.lineTo(b.x, b.y);
-      ctx.stroke();
+      lineData[lv++] = a.x; lineData[lv++] = a.y; lineData[lv++] = cr; lineData[lv++] = cg; lineData[lv++] = cb; lineData[lv++] = alpha; lineData[lv++] = 0;
+      lineData[lv++] = b.x; lineData[lv++] = b.y; lineData[lv++] = cr; lineData[lv++] = cg; lineData[lv++] = cb; lineData[lv++] = alpha; lineData[lv++] = 0;
     }
   }
+  const lineVerts = lv / 7;
 
-  // ─────────── ノード (小さな塗り円) ───────────
+  // ノードの頂点を構築
+  let pv = 0;
   for (let i = 0; i < activeN; i++) {
     const p = nodes[i];
     const [cr, cg, cb] = colAt(p.x / W);
-    ctx.fillStyle = `rgba(${cr},${cg},${cb},0.85)`;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-    ctx.fill();
+    pointData[pv++] = p.x; pointData[pv++] = p.y; pointData[pv++] = cr; pointData[pv++] = cg; pointData[pv++] = cb; pointData[pv++] = 0.85; pointData[pv++] = p.r * 2;
   }
 
-  requestAnimationFrame(tick);  // 停止せず回し続ける
+  // 描画: 背景(不透明) → 線 → 点 (通常アルファ合成)
+  const bg = tintBg(rgb(RP.base), t);
+  const top = tintBg(rgb(RP.surface), t);
+  gl.disable(gl.BLEND);
+  gl.useProgram(bgProg);
+  gl.bindVertexArray(bgVao);
+  gl.uniform2f(bgU.uRes, canvas.width, canvas.height);
+  gl.uniform3f(bgU.uTop, top[0], top[1], top[2]);
+  gl.uniform3f(bgU.uBot, bg[0], bg[1], bg[2]);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+  gl.useProgram(geomProg);
+  gl.uniform2f(geomU.uRes, W, H);
+  gl.uniform1f(geomU.uDpr, DPR);
+
+  gl.uniform1i(geomU.uMode, 0);
+  gl.bindVertexArray(lineVao);
+  gl.bindBuffer(gl.ARRAY_BUFFER, lineBuf);
+  gl.bufferData(gl.ARRAY_BUFFER, lineData.subarray(0, lv), gl.DYNAMIC_DRAW);
+  gl.lineWidth(1);
+  gl.drawArrays(gl.LINES, 0, lineVerts);
+
+  gl.uniform1i(geomU.uMode, 1);
+  gl.bindVertexArray(pointVao);
+  gl.bindBuffer(gl.ARRAY_BUFFER, pointBuf);
+  gl.bufferData(gl.ARRAY_BUFFER, pointData.subarray(0, pv), gl.DYNAMIC_DRAW);
+  gl.drawArrays(gl.POINTS, 0, activeN);
 }
 
 // 初期化
