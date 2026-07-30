@@ -1,7 +1,7 @@
-# ECS の「System」= ホスト合成器。Entity(hosts/) に Component/role(home/, modules/) を
-# 組み付ける定型を一本化する。roles (component 束) は flake.nix の let 側で定義。
-#   darwin: nix-darwin システム構成 (+ 任意で home-manager 統合)
-#   home  : standalone home-manager 構成
+# The ECS "System" = host composer. Unifies the boilerplate for assembling
+# Components/roles (home/, modules/) onto an Entity (hosts/). roles (component bundles) are defined in flake.nix's let block.
+#   darwin: nix-darwin system config (+ optionally home-manager integration)
+#   home  : standalone home-manager config
 {
   nixpkgs,
   nix-darwin,

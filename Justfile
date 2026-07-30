@@ -4,6 +4,9 @@
 set shell := ["bash", "-cu"]
 # Run native Windows recipes directly in PowerShell.
 set windows-shell := ["powershell.exe", "-NoProfile", "-Command"]
+# Treat `#` lines in recipes as comments so they are not echoed during runs
+# (otherwise every comment inside e.g. `_rebuild-macos` prints on `just rebuild`).
+set ignore-comments := true
 
 flake := justfile_directory() + "/nix"
 
@@ -36,9 +39,9 @@ recovery-iso:
     @nix build {{flake}}#recovery-iso --out-link result-recovery
     @echo "ISO: {{justfile_directory()}}/result-recovery/iso/gapul-nixos-recovery.iso"
 
-# Homebrew の tap-trust 要件を満たす。nix-darwin が管理する非公式 tap の
-# formula/cask は trust しないと brew upgrade / install がロードを拒否して落ちる。
-# rebuild と upgrade(maintain) の両経路で必要なため共通化。
+# Satisfy Homebrew's tap-trust requirement. Formulae/casks from unofficial taps
+# managed by nix-darwin are refused on load by brew upgrade / install unless trusted.
+# Shared because both the rebuild and upgrade(maintain) paths need it.
 [private]
 _brew-trust-taps:
     @-brew tap 2>/dev/null | grep -v '^homebrew/' | xargs -I% env -u XDG_CONFIG_HOME brew trust % >/dev/null
@@ -48,11 +51,11 @@ _brew-trust-taps:
 [private]
 _rebuild-macos:
     @just _brew-trust-taps
-    # taskpolicy -b でビルドを background QoS に落とす。ビルドで CPU が張り付くと
-    # Ghostty のイベント処理が締め切りに間に合わず global keybind の CGEventTap が
-    # kCGEventTapDisabledByTimeout で無効化され、以後フォーカス外の cmd+space が
-    # 効かなくなる (Ghostty は tap を自力再有効化しない: ghostty#11883)。優先度を
-    # 下げて Ghostty を枯渇させないことで tap 無効化を予防する。
+    # taskpolicy -b drops the build to background QoS. If the build pins the CPU,
+    # Ghostty's event handling misses its deadline and the global keybind's CGEventTap
+    # gets disabled with kCGEventTapDisabledByTimeout, after which cmd+space stops
+    # working while unfocused (Ghostty does not re-enable the tap itself: ghostty#11883).
+    # Lowering the priority keeps Ghostty from starving, preventing the tap disable.
     @echo "━━━ nix-darwin"
     @taskpolicy -b nh darwin switch -q -Q --diff never
     @echo "✓ nix-darwin"
@@ -152,11 +155,11 @@ _upgrade-nix-runtime-macos:
 
 [private]
 _upgrade-packages-macos:
-    # 順序が肝: `brew update` は非公式 tap の trust をリセットするため、update を
-    # 先に済ませてから trust し、以降の upgrade は HOMEBREW_NO_AUTO_UPDATE=1 で
-    # 走らせて trust が再リセットされないようにする。これを守らないと update →
-    # (trust 消える) → upgrade で qmk/qmk (formula) や y3owk1n/tap/neru (cask) が
-    # untrusted 拒否され、cask は `|| true` で握り潰されて末尾チェックで落ちる。
+    # Order matters: `brew update` resets the trust of unofficial taps, so run update
+    # first, then trust, and run the subsequent upgrade with HOMEBREW_NO_AUTO_UPDATE=1
+    # so the trust is not reset again. Skip this and update ->
+    # (trust lost) -> upgrade makes qmk/qmk (formula) and y3owk1n/tap/neru (cask)
+    # get refused as untrusted; the cask is swallowed by `|| true` and the final check fails.
     @brew update --quiet || true
     @just _brew-trust-taps
     @echo "━━━ Homebrew formulae"
@@ -166,13 +169,13 @@ _upgrade-packages-macos:
     @echo "━━━ App Store"
     @mas upgrade
     @just sketchybar-font
-    # 上の --greedy upgrade は auto_updates/`version :latest` cask も対象にするが、
-    # それらは常に outdated 扱いのままで「完了」しえない (例: figma-agent,
-    # pear-desktop。後者は upstream cask が URL 欠落で upgrade 自体エラーだが
-    # `|| true` で握り潰す)。よって完了判定は --greedy を付けない outdated で行う。
-    # 非greedy は auto_updates/latest を出さないので、実バージョン更新の取りこぼし
-    # だけを検出でき、auto_updates cask が増えても壊れない (旧: figma-agent を
-    # grep 除外していたが列挙は破綻するため撤去)。
+    # The --greedy upgrade above also targets auto_updates/`version :latest` casks,
+    # but those stay "outdated" forever and can never "complete" (e.g. figma-agent,
+    # pear-desktop; for the latter the upstream cask errors on upgrade itself due to a
+    # missing URL, swallowed by `|| true`). So judge completion with outdated without --greedy.
+    # Non-greedy does not list auto_updates/latest, so it detects only missed real
+    # version updates and does not break as auto_updates casks grow (previously
+    # figma-agent was grep-excluded, but enumerating them breaks, so that was removed).
     @remaining=$(HOMEBREW_NO_AUTO_UPDATE=1 brew outdated --cask 2>/dev/null || true); if [ -n "$remaining" ]; then echo "ERROR: cask upgrade incomplete:" >&2; echo "$remaining" >&2; exit 1; fi
 
 [private]
@@ -195,8 +198,8 @@ _maintain-macos:
     maintenance_lock="$HOME/.local/state/dotfiles-maintenance.lock"
     mkdir -p "$HOME/.local/state"
     if ! mkdir "$maintenance_lock" 2>/dev/null; then
-      # 保持者 PID が生きていれば本当に実行中。死んでいれば中断残骸なので奪う
-      # (mkdir だけのロックは SIGKILL / ビルド中断で必ず stale 化するため)。
+      # If the holder PID is alive it is genuinely running. If dead it is a leftover from an interrupt, so reclaim it
+      # (a mkdir-only lock always goes stale on SIGKILL / an interrupted build).
       holder=$(cat "$maintenance_lock/pid" 2>/dev/null || true)
       if [ -n "$holder" ] && kill -0 "$holder" 2>/dev/null; then
         echo "another dotfiles maintenance task is running (pid $holder)" >&2; exit 1
@@ -207,11 +210,11 @@ _maintain-macos:
     fi
     echo $$ > "$maintenance_lock/pid"
     export DOTFILES_MAINTAIN=1
-    # 古い設定のまま維持する事故を防ぐため、まず自分の dotfiles を最新化する。
-    # main ブランチのときだけ (feature ブランチや detached では pull しない)。git 操作は
-    # 常に本体ツリーを対象にする。pull は post-merge/post-rewrite hook を発火するが、
-    # 上で export した DOTFILES_MAINTAIN=1 で hook 側 rebuild はスキップされる
-    # (この後 just rebuild を自前で回すので二重 rebuild を避ける)。
+    # To avoid accidentally maintaining with stale config, first bring our own dotfiles up to date.
+    # Only on the main branch (do not pull on a feature branch or when detached). Git operations
+    # always target the main tree. The pull fires the post-merge/post-rewrite hook, but the
+    # DOTFILES_MAINTAIN=1 exported above makes the hook-side rebuild skip
+    # (we run just rebuild ourselves afterward, avoiding a double rebuild).
     if [ "$(git -C "$HOME/.dotfiles" branch --show-current 2>/dev/null)" = "main" ]; then
       echo "━━━ git pull (--rebase --autostash)"
       git -C "$HOME/.dotfiles" pull --rebase --autostash
@@ -240,8 +243,8 @@ _maintain-linux:
     maintenance_lock="$HOME/.local/state/dotfiles-maintenance.lock"
     mkdir -p "$HOME/.local/state"
     if ! mkdir "$maintenance_lock" 2>/dev/null; then
-      # 保持者 PID が生きていれば本当に実行中。死んでいれば中断残骸なので奪う
-      # (mkdir だけのロックは SIGKILL / ビルド中断で必ず stale 化するため)。
+      # If the holder PID is alive it is genuinely running. If dead it is a leftover from an interrupt, so reclaim it
+      # (a mkdir-only lock always goes stale on SIGKILL / an interrupted build).
       holder=$(cat "$maintenance_lock/pid" 2>/dev/null || true)
       if [ -n "$holder" ] && kill -0 "$holder" 2>/dev/null; then
         echo "another dotfiles maintenance task is running (pid $holder)" >&2; exit 1
@@ -252,11 +255,11 @@ _maintain-linux:
     fi
     echo $$ > "$maintenance_lock/pid"
     export DOTFILES_MAINTAIN=1
-    # 古い設定のまま維持する事故を防ぐため、まず自分の dotfiles を最新化する。
-    # main ブランチのときだけ (feature ブランチや detached では pull しない)。git 操作は
-    # 常に本体ツリーを対象にする。pull は post-merge/post-rewrite hook を発火するが、
-    # 上で export した DOTFILES_MAINTAIN=1 で hook 側 rebuild はスキップされる
-    # (この後 just rebuild を自前で回すので二重 rebuild を避ける)。
+    # To avoid accidentally maintaining with stale config, first bring our own dotfiles up to date.
+    # Only on the main branch (do not pull on a feature branch or when detached). Git operations
+    # always target the main tree. The pull fires the post-merge/post-rewrite hook, but the
+    # DOTFILES_MAINTAIN=1 exported above makes the hook-side rebuild skip
+    # (we run just rebuild ourselves afterward, avoiding a double rebuild).
     if [ "$(git -C "$HOME/.dotfiles" branch --show-current 2>/dev/null)" = "main" ]; then
       echo "━━━ git pull (--rebase --autostash)"
       git -C "$HOME/.dotfiles" pull --rebase --autostash
@@ -310,24 +313,24 @@ sketchybar-font:
 
 
 # ─────────────────────────────────────────────
-# 確認 (inspect / 差分・型チェック・診断)
+# Inspect (diff / type-check / diagnostics)
 # ─────────────────────────────────────────────
 
-# 型チェック / 差分表示  (`just check` = 構文型チェック, `just check diff` = 差分ビルド)
-[group('確認')]
+# Type-check / show diff  (`just check` = syntax/type-check, `just check diff` = diff build)
+[group('Inspect')]
 check what="":
     #!/usr/bin/env bash
     set -euo pipefail
     case "{{what}}" in
-      "")   nix flake check --no-build {{flake}} ;;  # 構文/型チェック (ビルドしない)
-      diff) nh darwin build ;;                       # current vs. flake の差分
+      "")   nix flake check --no-build {{flake}} ;;  # syntax/type-check (no build)
+      diff) nh darwin build ;;                       # current vs. flake diff
       *)    echo "usage: just check [diff]" >&2; exit 2 ;;
     esac
 
-# パッケージ検索  (`just search <q>` = brew+nixpkgs, `just search <q> all` = + cargo)
-# all は nix/brew に無い ecosystem 限定ツールの発見用。既定はノイズ少なめ。
-[group('確認')]
-[doc('パッケージ検索 (`just search <q>` = brew+nixpkgs, `just search <q> all` = + cargo)')]
+# Package search  (`just search <q>` = brew+nixpkgs, `just search <q> all` = + cargo)
+# all is for discovering ecosystem-only tools not in nix/brew. The default is less noisy.
+[group('Inspect')]
+[doc('Package search (`just search <q>` = brew+nixpkgs, `just search <q> all` = + cargo)')]
 search query scope="":
     #!/usr/bin/env bash
     set -u
@@ -337,18 +340,18 @@ search query scope="":
     brew search {{query}} 2>&1 || true
     echo ""
     echo "━━━ nixpkgs (local eval) ━━━"
-    # nh search は search.nixos.org API 依存で不安定なため nix search を使用
-    # (eval キャッシュが効くので 2 回目以降は数秒。警告は抑制)
+    # nh search depends on the search.nixos.org API and is flaky, so use nix search
+    # (the eval cache kicks in, so subsequent runs take a few seconds; warnings suppressed)
     nix search nixpkgs {{query}} 2>/dev/null || echo "  (none)"
-    # all のときだけ ecosystem 限定 (cargo) も横断
+    # Only for all, also sweep the ecosystem-only source (cargo)
     if [ "{{scope}}" = "all" ]; then
       echo ""
       echo "━━━ crates.io (cargo) ━━━"
       cargo search {{query}} 2>&1 | head -10 || echo "  (none)"
     fi
 
-# 更新可能なものを一覧 (upgrade 前のプレビュー。brew + mas + flake inputs。非破壊)
-[group('確認')]
+# List what can be updated (preview before upgrade; brew + mas + flake inputs; non-destructive)
+[group('Inspect')]
 outdated:
     #!/usr/bin/env bash
     set -u
@@ -370,8 +373,8 @@ outdated:
     echo ""
     echo "-> Update: just upgrade (all) / just update <input> (individual)"
 
-# 環境ヘルスチェック (Determinate upgrade 後などに走らせる)
-[group('確認')]
+# Environment health check (run after e.g. a Determinate upgrade)
+[group('Inspect')]
 doctor format="":
     #!/usr/bin/env bash
     set -u
@@ -396,7 +399,7 @@ doctor format="":
     if [[ -n "{{format}}" ]]; then echo "usage: just doctor [--json|json]" >&2; exit 2; fi
     pass=0; fail=0
     check() { if eval "$2"; then echo "  [ok] $1"; pass=$((pass+1)); else echo "  [FAIL] $1"; fail=$((fail+1)); fi; }
-    # warn: 満たさなくても fail にしない情報系チェック ($3 = 未達時メッセージ)
+    # warn: informational check that does not fail even if unmet ($3 = message when unmet)
     warn() { if eval "$2"; then echo "  [ok] $1"; else echo "  [warn] $3"; fi; }
     echo "== /nix mount =="
     check "/nix is mounted" 'mount | grep -q " on /nix "'
@@ -419,7 +422,7 @@ doctor format="":
       echo "  [FAIL] Homebrew drift detected -> apply: just rebuild"; fail=$((fail+1))
     fi
     echo
-    # バー/WM 系が落ちていれば復旧導線を出す (restart レシピへ)
+    # If the bar/WM stack is down, surface a recovery path (to the restart recipe)
     down=()
     pgrep -fq "/opt/homebrew/opt/sketchybar/bin/sketchybar" || down+=(sketchybar)
     pgrep -fq AeroSpace.app || down+=(aerospace)
@@ -431,10 +434,10 @@ doctor format="":
     echo "Result: $pass passed, $fail failed"
     exit $fail
 
-# NOTE: nix fmt (treefmt 一括) は flake が nix/ にあり tree-root の flake.nix 検出に失敗するため
-#       使えない (flake.nix の treefmt コメント参照)。per-file フックを束ねた pre-commit 経由で走らせる。
-# コード整形 + lint を全追跡ファイルに実行 (OS 自動判別: Mac/Linux=pre-commit, Win=PSScriptAnalyzer)
-[group('確認')]
+# NOTE: nix fmt (treefmt in bulk) is unusable because the flake lives in nix/ and detection of the
+#       tree-root flake.nix fails (see the treefmt comment in flake.nix). Run it via pre-commit, which bundles per-file hooks.
+# Format code + lint across all tracked files (OS auto-detected: Mac/Linux=pre-commit, Win=PSScriptAnalyzer)
+[group('Inspect')]
 fmt:
     @just _fmt-{{os()}}
 
@@ -448,18 +451,18 @@ _fmt-linux: _fmt-unix
 _fmt-unix:
     nix develop {{flake}} --command pre-commit run --all-files
 
-# 実体は win-fmt (コマンドの単一ソース)
+# The actual work is win-fmt (single source of the command)
 [private]
 _fmt-windows:
     @just win-fmt
 
 
 # ─────────────────────────────────────────────
-# 掃除 (clean / GC・ゴミファイル)
+# Clean (clean / GC and junk files)
 # ─────────────────────────────────────────────
 
-# 全レイヤー一括 GC (再生成可能なcacheのみ。Trashやホーム全体の削除は gc-deep)
-[group('掃除')]
+# GC all layers at once (only regenerable caches; Trash and whole-home deletion are in gc-deep)
+[group('Clean')]
 gc:
     #!/usr/bin/env bash
     set -u
@@ -487,7 +490,7 @@ gc:
     du -sh ~/Library/Developer/CoreSimulator 2>/dev/null | sed 's|^|  |' || true
     echo ""
     echo "━━━ podman (stopped containers + dangling images) ━━━"
-    # machine 停止中は接続エラーになるので黙ってスキップ
+    # A stopped machine causes connection errors, so skip silently
     if command -v podman >/dev/null && podman info >/dev/null 2>&1; then
       podman system prune -f 2>&1 | tail -2 || true
     else
@@ -495,14 +498,14 @@ gc:
     fi
     echo ""
     echo "━━━ Electron updater leftovers (~/Library/Caches/*.ShipIt) ━━━"
-    # Squirrel.framework が残すダウンロード済みアップデートの残骸。次回アップデート時に再取得される
+    # Leftover downloaded updates from Squirrel.framework. Re-fetched on the next update
     sz=$(du -shc ~/Library/Caches/*.ShipIt 2>/dev/null | tail -1 | cut -f1)
     echo "  total: ${sz:-0}"
     rm -rf ~/Library/Caches/*.ShipIt/* 2>/dev/null || true
     echo ""
     echo "━━━ Repo junk files (.DS_Store / AppleDouble / vim swap etc.) ━━━"
     dir="{{justfile_directory()}}"
-    # macOS / editor / OS が撒くゴミの名前パターン (.git は除外)
+    # Name patterns of junk scattered by macOS / editors / the OS (.git excluded)
     names=(
       ".DS_Store" ".AppleDouble" ".LSOverride" "._*"
       ".Spotlight-V100" ".Trashes" ".fseventsd" ".DocumentRevisions-V100"
@@ -512,7 +515,7 @@ gc:
     )
     fexpr=()
     for n in "${names[@]}"; do fexpr+=( -name "$n" -o ); done
-    unset 'fexpr[${#fexpr[@]}-1]'  # 末尾の -o を除去
+    unset 'fexpr[${#fexpr[@]}-1]'  # remove the trailing -o
     n=$(find "$dir" -path "$dir/.git" -prune -o -type f \( "${fexpr[@]}" \) -print -delete | wc -l | tr -d ' ')
     echo "  $n removed"
     echo ""
@@ -534,12 +537,12 @@ gc:
     echo "━━━ Done ━━━"
     df -h / 2>&1 | head -2 | tail -1
 
-# 重い再生成可能データを対話削除 (廃止caskのzap / CoreSimulator cache / podman / 古いbuild成果物)
-[group('掃除')]
+# Interactively delete heavy regenerable data (zap of retired casks / CoreSimulator cache / podman / old build artifacts)
+[group('Clean')]
 gc-deep:
     #!/usr/bin/env bash
     set -u
-    echo "━━━ macOS Trash (復旧不能になるため確認付き) ━━━"
+    echo "━━━ macOS Trash (with confirmation; unrecoverable) ━━━"
     sz=$(du -sh "$HOME/.Trash" 2>/dev/null | cut -f1); echo "  size: ${sz:-0}"
     read -rp "  Empty Trash? [y/N] " ans
     if [[ "$ans" == [yY] ]]; then
@@ -549,7 +552,7 @@ gc-deep:
       echo "  skipped"
     fi
     echo ""
-    echo "━━━ OS/editor junk across HOME (確認付き) ━━━"
+    echo "━━━ OS/editor junk across HOME (with confirmation) ━━━"
     read -rp "  Delete .DS_Store/AppleDouble/swap/orig/rej/backup files? [y/N] " ans
     if [[ "$ans" == [yY] ]]; then
       d=$(find "$HOME" \( -path "$HOME/.Trash" -o -path "$HOME/Library" \) -prune -o -type f \( -name '.DS_Store' -o -name '._*' -o -name '*.swp' -o -name '*.swo' -o -name '*.orig' -o -name '*.rej' -o -name '*~' \) -print -delete 2>/dev/null | wc -l | tr -d ' ')
@@ -559,9 +562,9 @@ gc-deep:
     fi
     echo ""
     echo "━━━ Retired GUI cask data (Homebrew zap) ━━━"
-    # CLI/TUIへ移行して宣言から外したcaskだけを固定指定。--force により通常uninstall後も
-    # zap stanza (設定・cache等)を実行できる。ollama-appは ~/.ollama のモデルを消すため、
-    # unity-hubはUnity CLIと設定を共有しうるため、意図的に対象外。
+    # Only pin casks moved to CLI/TUI and dropped from the declaration. --force lets the zap stanza
+    # (settings, caches, etc.) run even after a normal uninstall. ollama-app is excluded because it deletes
+    # the models in ~/.ollama, and unity-hub because it may share settings with the Unity CLI.
     zap_candidates=(cyberduck wireshark-app syncthing-app picview iina vlc)
     printf '  %s\n' "${zap_candidates[@]}"
     echo "  Removes app settings/caches; Cyberduck bookmarks and Wireshark profiles are included."
@@ -574,12 +577,12 @@ gc-deep:
     fi
     echo ""
     echo "━━━ CoreSimulator dyld cache (/Library/Developer/CoreSimulator/Caches) ━━━"
-    # iOS シミュレータ実行時に再生成されるキャッシュ。放置すると 10GB 超えになる
+    # Cache regenerated when the iOS simulator runs. Left alone it grows past 10GB
     sim_cache="/Library/Developer/CoreSimulator/Caches"
     if [ -d "$sim_cache" ]; then
       sz=$(du -sh "$sim_cache" 2>/dev/null | cut -f1)
-      echo "  size: ${sz:-?} (使用時に再生成される)"
-      read -rp "  Delete? (要 sudo) [y/N] " ans
+      echo "  size: ${sz:-?} (regenerated on next use)"
+      read -rp "  Delete? (sudo required) [y/N] " ans
       if [[ "$ans" == [yY] ]]; then
         sudo rm -rf "$sim_cache" && echo "  removed ($sz)"
       else
@@ -589,7 +592,7 @@ gc-deep:
       echo "  (not found)"
     fi
     echo ""
-    echo "━━━ podman full prune (未使用イメージ全削除, 次回使用時に要再 pull) ━━━"
+    echo "━━━ podman full prune (removes all unused images; re-pull needed on next use) ━━━"
     if command -v podman >/dev/null && podman info >/dev/null 2>&1; then
       podman system df 2>/dev/null | sed 's|^|  |'
       read -rp "  Prune all unused images? [y/N] " ans
@@ -604,15 +607,15 @@ gc-deep:
     echo ""
     echo "━━━ Scanning node_modules / rust target untouched >30 days (in ~/Developer) ━━━"
     tmp=$(mktemp)
-    # 走査は開発リポ置き場 (~/Developer = ghq root) に限定する。
-    # $HOME 全体を対象にすると ~/.config 等に in-place ビルドする常用ツール
-    # (例: ghostty ランチャーの launcher-search/target) まで掃除候補になり、
-    # 実行ファイルが消えてツールが起動不能になる事故が起きた (2026-07)。
+    # Limit the scan to the dev-repo location (~/Developer = ghq root).
+    # Targeting all of $HOME would sweep up everyday tools that build in-place under ~/.config etc.
+    # (e.g. the ghostty launcher's launcher-search/target) as cleanup candidates,
+    # and an incident occurred where the binary was deleted and the tool could no longer start (2026-07).
     scan_root="$HOME/Developer"
     if [ ! -d "$scan_root" ]; then echo "  ($scan_root not found, skip)"; rm -f "$tmp"; exit 0; fi
-    # node_modules: ネストは prune で1階層のみ。30日触っていないもの限定
+    # node_modules: prune keeps only one level of nesting; limited to those untouched for 30 days
     find "$scan_root" -type d -name node_modules -prune -mtime +30 -print 2>/dev/null >> "$tmp"
-    # rust target: 同名の汎用ディレクトリ誤爆を避け、隣に Cargo.toml がある場合のみ
+    # rust target: avoid false hits on generic same-named dirs; only when a Cargo.toml sits alongside
     find "$scan_root" -type d -name target -prune -mtime +30 -print 2>/dev/null | \
       while read -r d; do [ -f "$(dirname "$d")/Cargo.toml" ] && echo "$d"; done >> "$tmp"
     cnt=$(wc -l < "$tmp" | tr -d ' ')
@@ -632,14 +635,14 @@ gc-deep:
 
 
 # ─────────────────────────────────────────────
-# サービス (restart / メニューバー・WM 系の再起動)
+# Service (restart / restarting the menu-bar and WM stack)
 # ─────────────────────────────────────────────
 
-# NOTE: aerospace はフル再起動 = ワークスペース配置がリセットされるので明示指定 (aerospace/all) 時のみ。
-#       borders の設定は ~/.config/borders/bordersrc に集約済 (nix/home/darwin.nix の home.file が単一ソース)
-#       なので引数なし `borders` で起動すれば bordersrc が読まれる。
-# メニューバー/WM 系を再起動 (`just restart`=バー周り / 個別: sketchybar|borders|aerospace / all=全部)
-[group('サービス')]
+# NOTE: aerospace full restart = the workspace layout is reset, so only on explicit request (aerospace/all).
+#       borders config is consolidated in ~/.config/borders/bordersrc (home.file in nix/home/darwin.nix is the single source),
+#       so starting `borders` with no args reads bordersrc.
+# Restart the menu-bar/WM stack (`just restart`=bar-related / individual: sketchybar|borders|aerospace / all=everything)
+[group('Service')]
 restart what="bar":
     #!/usr/bin/env bash
     set -u
@@ -650,7 +653,7 @@ restart what="bar":
     as() {
       echo "-> AeroSpace (full restart -> revives borders/sketchybar triggers)"
       osascript -e 'quit app "AeroSpace"' 2>/dev/null
-      # quit 完了を最大 4s ポーリングで待つ (sleep 固定だと終了が遅いと open が空振りする)
+      # Poll up to 4s for quit to finish (a fixed sleep would let open miss when quit is slow)
       for _ in $(seq 1 20); do pgrep -fq AeroSpace.app || break; sleep 0.2; done
       open -a AeroSpace
     }
@@ -667,62 +670,62 @@ restart what="bar":
 
 
 # ─────────────────────────────────────────────
-# secrets (sops 暗号化)
+# secrets (sops encryption)
 # ─────────────────────────────────────────────
 
-# sops 暗号化 secrets  (`just secrets` = 編集, `just secrets rekey` = 全 recipient 再暗号化)
+# sops-encrypted secrets  (`just secrets` = edit, `just secrets rekey` = re-encrypt for all recipients)
 [group('secrets')]
 secrets cmd="edit":
     #!/usr/bin/env bash
     set -euo pipefail
     f="{{justfile_directory()}}/secrets/secrets.yaml"
     case "{{cmd}}" in
-      edit)  sops "$f" ;;                # 編集 (デフォルト)
-      rekey) sops updatekeys "$f" ;;     # .sops.yaml 変更後に走らせる
+      edit)  sops "$f" ;;                # edit (default)
+      rekey) sops updatekeys "$f" ;;     # run after changing .sops.yaml
       *)     echo "usage: just secrets [edit|rekey]" >&2; exit 2 ;;
     esac
 
 
 # ─────────────────────────────────────────────
-# セットアップ / その他
+# Setup / misc
 # ─────────────────────────────────────────────
 
-# 入室時の shellHook で pre-commit を .git/hooks に導入 (.pre-commit-config.yaml 生成 + install)。
-# install は新 Mac 初回に一度だけ走らせれば良い (旧 pre-commit-install を統合)。
-# devShell (`just dev`=入室[shellcheck/statix 使用可] / `just dev install`=hook導入のみ[非対話])
-[group('セットアップ')]
+# The entry shellHook installs pre-commit into .git/hooks (.pre-commit-config.yaml generation + install).
+# install only needs to run once on a new Mac's first time (merged the old pre-commit-install).
+# devShell (`just dev`=enter [shellcheck/statix available] / `just dev install`=install hooks only [non-interactive])
+[group('Setup')]
 dev what="":
     #!/usr/bin/env bash
     set -eu
     case "{{what}}" in
-      "")      exec nix develop {{flake}} ;;            # 対話シェルに入る
-      install) nix develop {{flake}} --command true ;;  # 入室=hook導入のみで即終了
+      "")      exec nix develop {{flake}} ;;            # enter the interactive shell
+      install) nix develop {{flake}} --command true ;;  # enter = install hooks only, then exit immediately
       *)       echo "usage: just dev [install]" >&2; exit 2 ;;
     esac
 
-# remote-env を別ホストで使う
-[group('セットアップ')]
+# Use remote-env on another host
+[group('Setup')]
 ssh host:
     nssh {{host}}
 
-# README のコマンド一覧は手書きだと Justfile と乖離するので `just --list` を単一ソースとし、
-# README / CHEATSHEET の <!-- BEGIN/END <name> --> ブロックを設定 (SSOT) から再生成。
-# 対象: just レシピ一覧・pre-commit フック表・shell alias 表 (scripts/gen-docs.py 参照)。
-# レシピ/フック/alias を変えたらこれを実行。CI の乖離検知は check-generated.sh が担う。
-[group('セットアップ')]
+# A hand-written command list in the README drifts from the Justfile, so treat `just --list` as the single source and
+# regenerate the <!-- BEGIN/END <name> --> blocks in README / CHEATSHEET from config (SSOT).
+# Targets: the just recipe list, the pre-commit hook table, the shell alias table (see scripts/gen-docs.py).
+# Run this after changing a recipe/hook/alias. CI drift detection is handled by check-generated.sh.
+[group('Setup')]
 docs:
     #!/usr/bin/env bash
     set -euo pipefail
     cd "{{justfile_directory()}}"
     python3 scripts/gen-docs.py
 
-# Obsidian 設定を public dotfiles へ片方向スナップショット (追跡専用・vault→dotfiles)
-# ・ホワイトリストの安全な json のみコピー。本体は vault 側 (ここは読み取り用ミラー)。
-# ・plugins/*/data.json (LiveSync の CouchDB 認証・各種 API キー等)・workspace・キャッシュは
-#   原理的に含めない。万一の非空な秘密値を検出したら中止し public へ出さない。
-# ・commit 前に `gitleaks` を必ず通すこと。秘密ごと残したい設定は sops 暗号化 (`just secrets`)。
-[group('セットアップ')]
-[doc('Obsidian 設定を public dotfiles へ片方向スナップショット (追跡専用・vault→dotfiles)')]
+# One-way snapshot of Obsidian config into public dotfiles (tracking-only, vault->dotfiles)
+# - Copy only whitelisted safe json. The vault side is authoritative (this is a read-only mirror).
+# - plugins/*/data.json (LiveSync's CouchDB creds, various API keys, etc.), workspace, and caches are
+#   never included by design. If any non-empty secret value is detected, abort and do not push to public.
+# - Always run `gitleaks` before commit. For config you want to keep with its secrets, use sops encryption (`just secrets`).
+[group('Setup')]
+[doc('One-way snapshot of Obsidian config into public dotfiles (tracking-only, vault->dotfiles)')]
 obsidian-snapshot:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -731,90 +734,90 @@ obsidian-snapshot:
     [ -d "$src" ] || { echo "vault not found: $src" >&2; exit 1; }
     tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
 
-    # ★ホワイトリスト: 安全と確認した設定のみ (危険な物を除くのではなく安全な物だけ入れる)
+    # ★Whitelist: only settings confirmed safe (include only safe items rather than excluding dangerous ones)
     for f in app.json appearance.json hotkeys.json \
              community-plugins.json core-plugins.json \
              graph.json daily-notes.json types.json canvas.json; do
       [ -f "$src/$f" ] && cp -f "$src/$f" "$tmp/$f"
     done
 
-    # ★秘密ガード: 非空の秘密値 ("key": "value") を検出したら公開リポジトリへ出さず中止
+    # ★Secret guard: if a non-empty secret value ("key": "value") is detected, abort without pushing to the public repo
     if grep -rEil '"(api[_-]?key|secret|token|password|passphrase|access[_-]?key|couchdb_[a-z]+)"[[:space:]]*:[[:space:]]*"[^"]+"' "$tmp"; then
-      echo "🛑 秘密らしき値を検出。スナップショット中止 (public 保護)" >&2; exit 1
+      echo "🛑 Secret-like value detected. Aborting snapshot (protecting public)" >&2; exit 1
     fi
 
     mkdir -p "$dst"
     rsync -a --delete --exclude='README.md' "$tmp/" "$dst/"
     echo "✅ snapshot -> $dst"
-    echo "   git add 後、commit 前に gitleaks を通してください。"
+    echo "   After git add, run gitleaks before committing."
 
 
 # ─────────────────────────────────────────────
 # Windows (native pwsh)
 # ─────────────────────────────────────────────
 
-# Windows ネイティブの bootstrap を実行 (`just win-bootstrap` / `just win-bootstrap -DryRun`)
+# Run the native Windows bootstrap (`just win-bootstrap` / `just win-bootstrap -DryRun`)
 [group('Windows')]
 win-bootstrap *flags:
     pwsh.exe -NoProfile -ExecutionPolicy Bypass -File windows/bootstrap.ps1 {{flags}}
 
-# winget/apps.json の全 PackageIdentifier 実在検証 (`just win-verify` / `just win-verify -Strict`)
+# Verify every PackageIdentifier in winget/apps.json exists (`just win-verify` / `just win-verify -Strict`)
 [group('Windows')]
 win-verify *flags:
     pwsh.exe -NoProfile -ExecutionPolicy Bypass -File windows/winget/verify.ps1 {{flags}}
 
-# apps.json (宣言) と winget list (実 install) の差分。MISSING があれば exit 1
+# Diff between apps.json (declaration) and winget list (actual install). exit 1 if any MISSING
 [group('Windows')]
 win-status *flags:
     pwsh.exe -NoProfile -ExecutionPolicy Bypass -File windows/winget/status.ps1 {{flags}}
 
-# winget 経由で入れた全 app をアップグレード (--silent --accept-*)
+# Upgrade every app installed via winget (--silent --accept-*)
 [group('Windows')]
 win-upgrade:
     pwsh.exe -NoProfile -Command "winget upgrade --all --silent --accept-package-agreements --accept-source-agreements"
 
-# テレメトリ/標準機能の declarative 適用 (Win11Debloat + WinUtil)
-# `*flags` で `-DryRun` `-SkipWinUtil` `-SkipWin11Debloat` を渡せる
+# Declaratively apply telemetry/built-in feature settings (Win11Debloat + WinUtil)
+# Pass `-DryRun` `-SkipWinUtil` `-SkipWin11Debloat` via `*flags`
 [group('Windows')]
 win-privacy *flags:
     pwsh.exe -NoProfile -ExecutionPolicy Bypass -File windows/privacy/apply.ps1 {{flags}}
 
-# Scoop で bucket + app を declarative に適用 (MS Store 専用 app の sideload 用)
-# `*flags` で `-DryRun` `-SkipBuckets` `-SkipApps` を渡せる
+# Declaratively apply Scoop buckets + apps (for sideloading MS Store-only apps)
+# Pass `-DryRun` `-SkipBuckets` `-SkipApps` via `*flags`
 [group('Windows')]
 win-scoop *flags:
     pwsh.exe -NoProfile -ExecutionPolicy Bypass -File windows/scoop/apply.ps1 {{flags}}
 
-# ロケール / 言語を declarative に適用 (en-US UI / UTF-8 / SKK のみ / US Region)
-# `*flags` で `-DryRun` `-SkipLanguageList` `-SkipSystemLocale` `-SkipHomeLocation` を渡せる
+# Declaratively apply locale / language (en-US UI / UTF-8 / SKK only / US Region)
+# Pass `-DryRun` `-SkipLanguageList` `-SkipSystemLocale` `-SkipHomeLocation` via `*flags`
 [group('Windows')]
 win-locale *flags:
     pwsh.exe -NoProfile -ExecutionPolicy Bypass -File windows/locale/apply.ps1 {{flags}}
 
-# configs/fonts/ の .ttf / .otf を user-scope install (HKCU 登録、管理者不要)
-# `*flags` で `-DryRun` `-Force` (既存も上書き) を渡せる
+# User-scope install of .ttf / .otf from configs/fonts/ (HKCU registration, no admin required)
+# Pass `-DryRun` `-Force` (overwrite existing too) via `*flags`
 [group('Windows')]
 win-fonts *flags:
     pwsh.exe -NoProfile -ExecutionPolicy Bypass -File windows/fonts/apply.ps1 {{flags}}
 
-# テーマ (palette) を palettes.json から各 config に render
-# `*flags` で `-DryRun` `-ActivePalette rose-pine-dawn` 等を渡せる
+# Render the theme (palette) from palettes.json into each config
+# Pass `-DryRun` `-ActivePalette rose-pine-dawn` etc. via `*flags`
 [group('Windows')]
 win-theme *flags:
     pwsh.exe -NoProfile -ExecutionPolicy Bypass -File windows/theme/apply.ps1 {{flags}}
 
 
 # ─────────────────────────────────────────────
-# テーマ (OS 横断、palettes.json を SSO とした統一切替)
+# Theme (cross-OS, unified switching with palettes.json as SSO)
 # ─────────────────────────────────────────────
 
-# 全環境を palettes.json の現 active で render (引数で active 切替も可)
-#   `just theme`                   = 現在 active で全環境を再 apply
-#   `just theme rose-pine-dawn`    = light に切替えて全環境を render + rebuild
-# NOTE: shebang レシピは Windows の just が cygpath を要求して動かないため、
-#       OS 横断のこのレシピは即ディスパッチし、bash 処理は _theme-unix に置く。
-[group('テーマ')]
-[doc('全環境を palettes.json の現 active で render (`just theme rose-pine-dawn` で active 切替も可)')]
+# Render all environments with the current active in palettes.json (can also switch active via arg)
+#   `just theme`                   = re-apply all environments with the current active
+#   `just theme rose-pine-dawn`    = switch to light and render + rebuild all environments
+# NOTE: shebang recipes do not work because Windows' just requires cygpath, so
+#       this cross-OS recipe dispatches immediately and puts the bash logic in _theme-unix.
+[group('Theme')]
+[doc('Render all environments with the current active in palettes.json (`just theme rose-pine-dawn` also switches active)')]
 theme name="":
     @just _theme-{{os()}} "{{name}}"
 
@@ -824,136 +827,136 @@ _theme-macos name="": (_theme-unix name)
 [private]
 _theme-linux name="": (_theme-unix name)
 
-# Mac/WSL とも nh home switch で nvim/zellij/sketchybar/bat/atuin 等が全部追従
+# On both Mac/WSL, nh home switch makes nvim/zellij/sketchybar/bat/atuin etc. all follow
 [private]
 _theme-unix name="":
     #!/usr/bin/env bash
     set -euo pipefail
     if [ -n "{{name}}" ]; then
-      # palettes.json の active field を書き換え
+      # Rewrite the active field in palettes.json
       sed -i.bak 's/"active": *"[^"]*"/"active": "{{name}}"/' configs/theme/palettes.json
       rm -f configs/theme/palettes.json.bak
       echo "→ palettes.json active = {{name}}"
     fi
     nh home switch
 
-# active の書き戻しは apply.ps1 ではなくここで行う (unix 側の sed と対に。BOM 無し UTF-8)。
-# render 実体は win-theme (zebar / glazewm / WT / wezterm を一括 render)
+# Write the active back here rather than in apply.ps1 (paired with the unix-side sed; UTF-8 without BOM).
+# The actual render is win-theme (renders zebar / glazewm / WT / wezterm in one go)
 [private]
 _theme-windows name="":
     @if ('{{name}}' -ne '') { $p = Resolve-Path 'configs/theme/palettes.json'; $c = (Get-Content $p -Raw -Encoding UTF8) -replace '"active":\s*"[^"]*"', '"active": "{{name}}"'; [System.IO.File]::WriteAllText($p, $c, [System.Text.UTF8Encoding]::new($false)); Write-Host ('-> palettes.json active = {{name}}') }
     @just win-theme
 
-# キーマップ適用 (SharpKeys = Scancode Map 直書き + AHK スクリプト reload)
-# `*flags` で `-DryRun` `-Clear` (Scancode Map 削除して standard に戻す) を渡せる
+# Apply keymap (SharpKeys = write Scancode Map directly + reload AHK script)
+# Pass `-DryRun` `-Clear` (delete Scancode Map and return to standard) via `*flags`
 [group('Windows')]
 win-keymap *flags:
     pwsh.exe -NoProfile -ExecutionPolicy Bypass -File windows/sharpkeys/apply.ps1 {{flags}}
     pwsh.exe -NoProfile -Command "Get-Process AutoHotkey* -ErrorAction SilentlyContinue | Stop-Process -Force; Start-Process 'windows/autohotkey/keymap.ahk' -ErrorAction SilentlyContinue"
 
-# GlazeWM のログイン時自動起動を Task Scheduler に登録 (1 回 password 入力)
-# `*flags` で `-Unregister` (タスク削除) を渡せる
+# Register GlazeWM login auto-start in Task Scheduler (password entered once)
+# Pass `-Unregister` (delete the task) via `*flags`
 [group('Windows')]
 win-autostart-glazewm *flags:
     pwsh.exe -NoProfile -ExecutionPolicy Bypass -File windows/tasks/setup-glazewm-autostart.ps1 {{flags}}
 
-# Windows 関連 .ps1 を PSScriptAnalyzer で lint (Warning 以上で exit 1)
+# Lint Windows-related .ps1 with PSScriptAnalyzer (exit 1 on Warning or above)
 [group('Windows')]
 win-fmt:
     pwsh.exe -NoProfile -Command "if (-not (Get-Module -ListAvailable PSScriptAnalyzer)) { Install-Module PSScriptAnalyzer -Force -Scope CurrentUser }; Invoke-ScriptAnalyzer -Path windows -Recurse -Severity Warning -EnableExit -Settings windows/PSScriptAnalyzerSettings.psd1"
 
 # ─────────────────────────────────────────────
-# バックアップ / アーカイブ (restic 1 リポジトリ: google-drive:restic-backup・暗号化)
-#   warm = 無タグ・日次自動 (restic-backup.nix) / cold = --tag archive・手動・永久保持。
-#   重複排除・整合性検証・鍵を共有。共有用 ~/Cloud/GoogleDrive マウント操作もここに集約。
+# Backup / archive (a single restic repository: google-drive:restic-backup, encrypted)
+#   warm = untagged, daily automatic (restic-backup.nix) / cold = --tag archive, manual, kept forever.
+#   Dedup, integrity verification, and key are shared. The shared ~/Cloud/GoogleDrive mount ops are consolidated here too.
 # ─────────────────────────────────────────────
 
-# restic 環境 (warm/cold 共通)。値は nix が生成する ~/.config/restic/env が唯一のソース
-# (nix/lib/restic-common.nix)。RESTIC_ARCHIVE_TAG もここから来る。
+# restic environment (shared by warm/cold). The values' only source is ~/.config/restic/env generated by nix
+# (nix/lib/restic-common.nix). RESTIC_ARCHIVE_TAG also comes from here.
 restic_env := 'source "$HOME/.config/restic/env"'
 
-# ── warm: 現役ファイル (日次自動。以下は手動操作) ──
+# ── warm: active files (daily automatic; the below are manual ops) ──
 
-# warm バックアップを今すぐ実行 (launchd を kickstart) → ログ追尾 (Ctrl-C で追尾終了・backupは継続)
-[group('バックアップ')]
+# Run the warm backup now (kickstart launchd) -> follow the log (Ctrl-C ends following; backup continues)
+[group('Backup')]
 backup:
     #!/usr/bin/env bash
     set -euo pipefail
-    echo "→ restic warm backup を起動 (launchd kickstart)..."
+    echo "→ Starting restic warm backup (launchd kickstart)..."
     launchctl kickstart -k "gui/$(id -u)/org.nix-community.home.restic-backup"
-    echo "起動済。ログ追尾 (Ctrl-C で終了・バックアップは継続):"
+    echo "Started. Following log (Ctrl-C to stop following; backup continues):"
     exec tail -f "$HOME/Library/Logs/restic-backup.log"
 
-# 全スナップショット一覧 (Tags 列で warm / archive を区別)
-[group('バックアップ')]
+# List all snapshots (distinguish warm / archive by the Tags column)
+[group('Backup')]
 backup-ls:
     @{{restic_env}}; restic snapshots
 
-# リポジトリ整合性検証 (restic check)
-[group('バックアップ')]
+# Verify repository integrity (restic check)
+[group('Backup')]
 backup-check:
     @{{restic_env}}; restic check
 
-# ── cold: アーカイブ (使わなくなったファイルを退避・永久保持) ──
+# ── cold: archive (evacuate files no longer used, kept forever) ──
 
-# 使わなくなったファイル/フォルダを restic へ退避しローカルを解放 (--tag archive・永久保持)。
-# 例: `just archive ~/Downloads/old-project`
-[group('バックアップ')]
+# Evacuate files/folders no longer used into restic and free local space (--tag archive, kept forever).
+# Example: `just archive ~/Downloads/old-project`
+[group('Backup')]
 archive path:
     #!/usr/bin/env bash
     set -euo pipefail
     {{restic_env}}
     src="{{path}}"
-    [ -e "$src" ] || { echo "存在しない: $src" >&2; exit 1; }
-    src="$(cd "$(dirname "$src")" && pwd)/$(basename "$src")"   # 絶対パス化
+    [ -e "$src" ] || { echo "does not exist: $src" >&2; exit 1; }
+    src="$(cd "$(dirname "$src")" && pwd)/$(basename "$src")"   # make absolute path
     sz="$(du -sh "$src" 2>/dev/null | cut -f1)"
-    echo "アーカイブ対象: $src ($sz)"
-    read -rp "restic へ退避後ローカルを削除します。続行? (y/N) " a
-    [[ "$a" == [yY] ]] || { echo "中止"; exit 0; }
+    echo "Archive target: $src ($sz)"
+    read -rp "Local files will be deleted after evacuation to restic. Continue? (y/N) " a
+    [[ "$a" == [yY] ]] || { echo "aborted"; exit 0; }
     if restic backup --tag "$RESTIC_ARCHIVE_TAG" "$src"; then
-      echo "✓ 退避完了 (--tag archive・永久保持)。ローカルを削除します。"
+      echo "✓ Evacuation complete (--tag archive, kept forever). Deleting local files."
       rm -rf "$src"
-      echo "✓ ローカル削除: $src"
-      echo "  一覧: just archive-ls  /  復元: just restore <snapshotID>"
+      echo "✓ Local deleted: $src"
+      echo "  List: just archive-ls  /  Restore: just restore <snapshotID>"
     else
-      echo "✗ restic backup 失敗。ローカルは削除していません。" >&2
+      echo "✗ restic backup failed. Local files were not deleted." >&2
       exit 1
     fi
 
-# アーカイブ (--tag archive) の snapshot 一覧 (ID / 日付 / 元パス)
-[group('バックアップ')]
+# List archive (--tag archive) snapshots (ID / date / original path)
+[group('Backup')]
 archive-ls:
     @{{restic_env}}; restic snapshots --tag "$RESTIC_ARCHIVE_TAG"
 
-# アーカイブの総容量・ファイル数
-[group('バックアップ')]
+# Total size and file count of the archive
+[group('Backup')]
 archive-stats:
     @{{restic_env}}; restic stats --tag "$RESTIC_ARCHIVE_TAG"
 
-# アーカイブ内をファイル名で検索 (restic find・FUSE不要)。どの snapshot に在るか分かる。
-# 例: `just archive-find "*.psd"` / `just archive-find old-project`
-[group('バックアップ')]
+# Search the archive by filename (restic find, no FUSE needed). Shows which snapshot it is in.
+# Example: `just archive-find "*.psd"` / `just archive-find old-project`
+[group('Backup')]
 archive-find pattern:
     @{{restic_env}}; restic find --tag "$RESTIC_ARCHIVE_TAG" "{{pattern}}"
 
-# ── 共通: 復元 / 共有マウント ──
+# ── shared: restore / shared mount ──
 
-# snapshot から復元 (warm/cold 共通)。既定は元の絶対パスへ。`unarchive` も同義。
-# 例: `just restore a81c9de1`            元の場所へ
-#     `just restore a81c9de1 ~/Restore`  指定先へ (構造を保って展開)
-[group('バックアップ')]
+# Restore from a snapshot (shared by warm/cold). Defaults to the original absolute path. `unarchive` is a synonym.
+# Example: `just restore a81c9de1`            to the original location
+#          `just restore a81c9de1 ~/Restore`  to the specified target (expanded preserving structure)
+[group('Backup')]
 restore snapshot dest="/":
     #!/usr/bin/env bash
     set -euo pipefail
     {{restic_env}}
     restic restore "{{snapshot}}" --target "{{dest}}"
-    echo "✓ 復元: snapshot {{snapshot}} → {{dest}}"
+    echo "✓ Restored: snapshot {{snapshot}} → {{dest}}"
 
 alias unarchive := restore
 
-# 共有用 GoogleDrive マウント操作 (personal/school 別マウント)。`just gdrive`=状態 / `open`=Finderで開く
-# 旧 ~/Cloud/GoogleDrive 単一マウント (nix rclone-gdrive) は廃止済み。現行は手動 LaunchAgent 管理。
-[group('バックアップ')]
+# Shared GoogleDrive mount ops (separate personal/school mounts). `just gdrive`=status / `open`=open in Finder
+# The old single ~/Cloud/GoogleDrive mount (nix rclone-gdrive) is retired. Current is manual LaunchAgent management.
+[group('Backup')]
 gdrive cmd="status":
     #!/usr/bin/env bash
     set -euo pipefail
@@ -961,14 +964,14 @@ gdrive cmd="status":
     case "{{cmd}}" in
       status)
         for mp in "${mounts[@]}"; do
-          mount | grep -q " $mp " && echo "✓ マウント中: $mp" || echo "✗ 未マウント: $mp"
+          mount | grep -q " $mp " && echo "✓ Mounted: $mp" || echo "✗ Not mounted: $mp"
         done ;;
       open)
-        for mp in "${mounts[@]}"; do [ -d "$mp" ] && open "$mp" || echo "✗ 未マウント: $mp" >&2; done ;;
+        for mp in "${mounts[@]}"; do [ -d "$mp" ] && open "$mp" || echo "✗ Not mounted: $mp" >&2; done ;;
       remount)
-        echo "personal/school マウントは手動 LaunchAgent 管理 (nix 未宣言)。" >&2
-        echo "rclone remote (google-drive-personal/-school) 作成後に手動で再マウントしてください。" >&2
-        echo "参照: nix/home/rclone-mount.nix の廃止コメント。" >&2
+        echo "personal/school mounts are managed manually via LaunchAgent (not declared in nix)." >&2
+        echo "After creating the rclone remotes (google-drive-personal/-school), remount manually." >&2
+        echo "See: the retirement comment in nix/home/rclone-mount.nix." >&2
         exit 1 ;;
       *)       echo "usage: just gdrive [status|open|remount]" >&2; exit 2 ;;
     esac

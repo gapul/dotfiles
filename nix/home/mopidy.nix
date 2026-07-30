@@ -4,20 +4,20 @@
   mopidyPatches,
   ...
 }:
-# 端末で YouTube Music を低発熱再生する Mopidy 基盤。
-# ・ブラウザ再生 (映像デコード + WindowServer 合成で発熱) をやめ、音声のみを GStreamer で鳴らす。
-# ・アカウント連携 (ライブラリ/ミックス/ラジオ=新曲開拓) は mopidy-ytmusic + ytmusicapi。
-# ・再生履歴は mopidy-listenbrainz で ListenBrainz に記録 (従来運用の継続)。
-# ・操作は MPD クライアント rmpc (127.0.0.1:6600 が既定接続先) から。
+# Mopidy stack for low-heat YouTube Music playback in the terminal.
+# - Drop browser playback (video decoding + WindowServer compositing generate heat) and play audio only via GStreamer.
+# - Account integration (library/mixes/radio = discovering new tracks) via mopidy-ytmusic + ytmusicapi.
+# - Playback history is logged to ListenBrainz via mopidy-listenbrainz (continuing the previous setup).
+# - Control from the MPD client rmpc (127.0.0.1:6600 is the default connection target).
 #
-# nixpkgs 素の mopidy-ytmusic 0.3.9 / mopidy-listenbrainz 0.3.0 は現行 YouTube/LB に対し
-# そのままでは動かないため、ビルド時に 2 つのパッチを当てている (configs/media/mopidy/*.py):
-#   1. ytdlp-patch.py     : ストリーム解決を壊れた pytube cipher から yt-dlp へ差し替え
-#   2. lb-patch.py        : 空 release_name を送って 400 になる不具合を修正
+# Vanilla nixpkgs mopidy-ytmusic 0.3.9 / mopidy-listenbrainz 0.3.0 don't work as-is against current YouTube/LB,
+# so two patches are applied at build time (configs/media/mopidy/*.py):
+#   1. ytdlp-patch.py     : swap stream resolution from the broken pytube cipher to yt-dlp
+#   2. lb-patch.py        : fix the bug where sending an empty release_name causes a 400
 let
   home = config.home.homeDirectory;
 
-  # 本体+拡張+パッチを束ねた実行環境は nix/lib/mopidy-env.nix に集約 (テスト鏡と共有)。
+  # The runtime bundling core + extensions + patches is centralized in nix/lib/mopidy-env.nix (shared with the test mirror).
   mopidyEnv = import ../lib/mopidy-env.nix {
     inherit pkgs;
     patchDir = mopidyPatches;
@@ -26,8 +26,8 @@ let
   confPath = "${home}/.config/mopidy/mopidy.conf";
   authPath = "${home}/.config/mopidy/browser.json";
 
-  # ログイン時は sops-nix (設定/認証を生成) と mopidy 起動が並走しうる。
-  # config に token が載り、認証ファイルが読めるようになるまで待ってから起動する。
+  # At login, sops-nix (which generates config/auth) and mopidy startup may run concurrently.
+  # Wait until the token is present in the config and the auth file is readable before starting.
   startScript = pkgs.writeShellScript "mopidy-start" ''
     conf="${confPath}"
     for _ in $(seq 1 60); do
@@ -42,12 +42,12 @@ in
 {
   home.packages = [
     mopidyEnv
-    pkgs.rmpc # MPD TUI クライアント (既定で 127.0.0.1:6600 に接続)
+    pkgs.rmpc # MPD TUI client (connects to 127.0.0.1:6600 by default)
   ];
 
-  # rmpc 設定: 歌詞を lyrics_dir(~/.cache/rmpc/lyrics) の .lrc から表示する。
-  # 曲が変わるたび on_song_change で歌詞取得スクリプトを走らせ (lrclib同期→YTM非同期の順)、
-  # hot-reload で即反映。スクリプトは ytmusicapi を使うため mopidy env の python で実行。
+  # rmpc config: display lyrics from .lrc files in lyrics_dir (~/.cache/rmpc/lyrics).
+  # On every song change, on_song_change runs the lyrics-fetch script (lrclib sync -> YTM async, in that order),
+  # reflected immediately via hot-reload. The script uses ytmusicapi, so it runs with the mopidy env's python.
   xdg.configFile."rmpc/config.ron".text = ''
     #![enable(implicit_some)]
     (
@@ -59,18 +59,18 @@ in
     )
   '';
 
-  # YouTube 認証 (ytmusicapi browser 形式 = ヘッダ + Cookie の JSON)。
-  # Google セッション Cookie を含むため sops 管理。復号ファイルを mopidy が auth_json で読む。
-  # NOTE: Cookie は期限切れになる。切れたら Zen の cookie から再生成して sops を更新する。
+  # YouTube auth (ytmusicapi browser format = JSON of headers + cookies).
+  # Contains Google session cookies, so it's sops-managed. mopidy reads the decrypted file via auth_json.
+  # NOTE: cookies expire. When they do, regenerate from Zen's cookies and update sops.
   sops.secrets."ytmusic/browser_json" = {
     path = authPath;
     mode = "0400";
   };
 
-  # LB トークンは template 埋め込み用に宣言 (placeholder を使うため path は不要)。
+  # Declare the LB token for template embedding (no path needed since a placeholder is used).
   sops.secrets."listenbrainz/token" = { };
 
-  # mopidy.conf は LB トークンを含むため sops.templates で生成 (平文で置かない)。
+  # mopidy.conf contains the LB token, so it's generated via sops.templates (never stored in plaintext).
   sops.templates."mopidy.conf" = {
     path = confPath;
     content = ''
@@ -103,14 +103,14 @@ in
     '';
   };
 
-  # mopidy を常駐 (ログイン時起動 + 死活監視)。rmpc はこれに繋ぐだけ。
+  # Keep mopidy resident (launch at login + liveness monitoring). rmpc just connects to it.
   launchd.agents.mopidy = {
     enable = true;
     config = {
       ProgramArguments = [ "${startScript}" ];
       RunAtLoad = true;
       KeepAlive = true;
-      ProcessType = "Interactive"; # 音声再生のため優先度を落とさない
+      ProcessType = "Interactive"; # don't lower priority, for audio playback
       StandardOutPath = "/tmp/mopidy.out";
       StandardErrorPath = "/tmp/mopidy.err";
     };

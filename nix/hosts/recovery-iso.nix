@@ -34,8 +34,8 @@
     clone-dotfiles = "git clone https://github.com/${user.username}/dotfiles.git ~/.dotfiles";
   };
 
-  # インストーラーは公開成果物なので、秘密鍵・SOPS復号済みデータ・固定パスワードを
-  # 一切含めない。SSHログインは起動後に一時鍵を追加した場合だけ利用する。
+  # The installer is a public artifact, so it contains no private keys, SOPS-decrypted
+  # data, or fixed passwords at all. SSH login is only used if a temporary key is added after boot.
   users.users.nixos.openssh.authorizedKeys.keys = [ ];
 
   system.stateVersion = "26.05";

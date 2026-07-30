@@ -4,34 +4,34 @@
   lib,
   ...
 }:
-# rclone で Google Drive (My Drive) を平文のまま ~/Cloud/GoogleDrive にマウント (macOS 専用)。
-# 用途は cold アーカイブではなく「他者との共有・連携」。暗号化しないのは Web UI や
-# 共有相手から普通に見えてほしいため。
+# Mount Google Drive (My Drive) as plaintext at ~/Cloud/GoogleDrive via rclone (macOS only).
+# The purpose is "sharing/collaboration with others", not a cold archive. It is unencrypted
+# because it should be plainly visible from the Web UI and to those you share with.
 #
-# ストレージ階層での位置づけ:
-#   - GitHub                      : 再現可能なコード
-#   - restic (warm, 無タグ)        : 再現不可能な現役ファイル … restic-backup.nix
-#   - restic (cold, --tag archive) : 使わなくなったファイル (永久保持) … restic-backup.nix + just archive
-#   - rclone mount (このファイル)   : 他者と共有する平文クラウドフォルダ
+# Position in the storage hierarchy:
+#   - GitHub                      : reproducible code
+#   - restic (warm, untagged)      : irreproducible active files … restic-backup.nix
+#   - restic (cold, --tag archive) : files no longer in use (kept forever) … restic-backup.nix + just archive
+#   - rclone mount (this file)     : plaintext cloud folder shared with others
 #
-# 重要 (restic リポジトリの保護):
-#   My Drive 直下には restic-backup/ (warm+cold の暗号化リポジトリ) が同居する。
-#   read-write マウントから誤って削除されると致命的なので、マウントの可視範囲から
-#   除外 (--exclude) する。除外パスはマウント上に現れず、削除もできない。
+# Important (protecting the restic repository):
+#   Directly under My Drive lives restic-backup/ (the warm+cold encrypted repository).
+#   Accidental deletion from a read-write mount would be fatal, so exclude it (--exclude)
+#   from the mount's visible range. Excluded paths do not appear on the mount and cannot be deleted.
 #
-# マウント方式は rclone nfsmount (rclone 内蔵 NFS サーバ + macOS 標準 NFS クライアント)。
-#   FUSE/KEXT/fuse-t を一切使わない完全 FOSS 方式。プロプライエタリな fuse-t 依存を排除。
-#   注意 (NFS 方式の癖): atime/mtime を個別に設定できず、Finder 閲覧で mtime が更新され
-#   rclone が丸ごと再アップロードすることがある。--read-only 時の書き込みは無警告で失敗。
-#   なお restic mount (アーカイブ閲覧) は bazil/fuse が macFUSE KEXT を直叩きするため
-#   この方式では不可。閲覧は just archive-ls / archive-find で代替する。
+# The mount method is rclone nfsmount (rclone's built-in NFS server + macOS's standard NFS client).
+#   A fully FOSS method using no FUSE/KEXT/fuse-t at all. Removes the proprietary fuse-t dependency.
+#   Note (NFS method quirks): atime/mtime cannot be set individually, and browsing in Finder can
+#   update mtime, causing rclone to re-upload the whole thing. Writes under --read-only fail silently.
+#   Also, restic mount (browsing the archive) is not possible with this method because bazil/fuse
+#   hits the macFUSE KEXT directly. Browse via just archive-ls / archive-find instead.
 #
-# 前提 (未了ならマウントはスキップされるだけで無害):
-#   1. rclone google-drive: が有効 (token 失効時は再認証)。追加ソフト/KEXT 不要
+# Prerequisites (harmless if unmet — the mount is simply skipped):
+#   1. rclone google-drive: is enabled (re-authenticate when the token expires). No extra software/KEXT needed
 let
   home = config.home.homeDirectory;
 
-  remote = "google-drive:"; # My Drive ルート (平文)
+  remote = "google-drive:"; # My Drive root (plaintext)
   mountPoint = "${home}/Cloud/GoogleDrive";
   rcloneConf = "${home}/.config/rclone/rclone.conf";
   cacheDir = "${home}/.cache/rclone";
@@ -50,7 +50,7 @@ let
     mkdir -p "$(dirname ${logFile})" "${cacheDir}" "${mountPoint}"
 
     if [ ! -f "${rcloneConf}" ]; then
-      echo "$(date '+%F %T') SKIP: ${rcloneConf} が無い (sops 未 deploy)" >>"${logFile}"
+      echo "$(date '+%F %T') SKIP: ${rcloneConf} missing (sops not deployed)" >>"${logFile}"
       exit 0
     fi
     if mount | grep -q " ${mountPoint} "; then
@@ -59,9 +59,9 @@ let
     fi
 
     echo "$(date '+%F %T') mount start" >>"${logFile}"
-    # foreground 実行 (launchd が KeepAlive で管理)。restic リポジトリは除外して保護。
-    # rclone nfsmount: rclone 内蔵 NFS サーバ + macOS 標準 NFS クライアントでマウントし、
-    # FUSE/KEXT/fuse-t を一切使わない (完全 FOSS)。fuse-t 固有の -o/--volname は不要。
+    # foreground execution (managed by launchd via KeepAlive). Exclude the restic repository to protect it.
+    # rclone nfsmount: mount using rclone's built-in NFS server + macOS's standard NFS client,
+    # using no FUSE/KEXT/fuse-t at all (fully FOSS). fuse-t-specific -o/--volname is unnecessary.
     exec rclone nfsmount "${remote}" "${mountPoint}" \
       --config "${rcloneConf}" \
       --exclude "/restic-backup/**" \
@@ -75,17 +75,17 @@ let
       --log-level INFO
   '';
 
-  # マウント死活監視 (日次)。落ちていたら通知 (restic-monitor と同思想)
+  # mount health check (daily). Notify if it is down (same idea as restic-monitor)
   monitorScript = pkgs.writeShellScript "rclone-gdrive-monitor" ''
     set -uo pipefail
     ${notify}
     if ! mount | grep -q " ${mountPoint} "; then
-      notify "☁️ GoogleDrive 未マウント" "~/Cloud/GoogleDrive が外れています。ログ: ${logFile}"
+      notify "☁️ GoogleDrive not mounted" "~/Cloud/GoogleDrive is detached. Log: ${logFile}"
       exit 0
     fi
-    # マウントはされているが読めない (stale) ケースも検知
+    # also detect the case where it is mounted but unreadable (stale)
     if ! /bin/ls "${mountPoint}" >/dev/null 2>&1; then
-      notify "☁️ GoogleDrive 応答なし" "マウントは在るが読めません (stale の可能性)"
+      notify "☁️ GoogleDrive not responding" "Mount exists but is unreadable (possibly stale)"
     fi
   '';
 in
@@ -93,8 +93,8 @@ in
   home.packages = [ pkgs.rclone ];
 
   launchd.agents = {
-    # 旧 ~/Cloud/GoogleDrive マウントは廃止。
-    # 現在は手動管理の LaunchAgent で personal/school を別々にマウントする:
+    # The old ~/Cloud/GoogleDrive mount is retired.
+    # personal/school are now mounted separately via a manually managed LaunchAgent:
     #   ~/Cloud/GoogleDrive-personal -> google-drive-personal:
     #   ~/Cloud/GoogleDrive-school   -> google-drive-school:
     rclone-gdrive = {
@@ -109,7 +109,7 @@ in
         StandardErrorPath = "${logFile}";
       };
     };
-    # 旧 ~/Cloud/GoogleDrive の死活監視も廃止。
+    # The old ~/Cloud/GoogleDrive health check is also retired.
     rclone-gdrive-monitor = {
       enable = false;
       config = {

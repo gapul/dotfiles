@@ -1,4 +1,4 @@
-# Darwin chrome component (ECS: profile)。テーマ依存の WM/bar/borders/sioyek/Obsidian。
+# Darwin chrome component (ECS: profile). Theme-dependent WM/bar/borders/sioyek/Obsidian.
 {
   config,
   pkgs,
@@ -6,27 +6,27 @@
   ...
 }:
 let
-  c = import ../../lib/theme.nix; # アクティブテーマのパレット (切替は nix/lib/theme.nix の active)
-  rgb = import ../../lib/hex-rgb.nix { inherit lib; }; # hex → "r g b" 0-1 float (sioyek 用)
+  c = import ../../lib/theme.nix; # active theme palette (switch via active in nix/lib/theme.nix)
+  rgb = import ../../lib/hex-rgb.nix { inherit lib; }; # hex → "r g b" 0-1 float (for sioyek)
 
-  # sketchybar colors.sh の「パレット依存 export 群」を palette p から生成。
-  # dark/light 双方を colors.sh に埋め、AppleInterfaceStyle で分岐させて OS 追従させる。
+  # Generate sketchybar colors.sh "palette-dependent exports" from palette p.
+  # Embed both dark/light in colors.sh and branch on AppleInterfaceStyle to follow the OS.
   sbHex = p: ''
-    # rose-pine の役割色を sketchybar の意味付けへ忠実マッピング。
-    # (rose-pine は純粋な緑/橙を持たないため、success=foam / warm=rose を採用)
-    export BLACK=0xff${p.base}    # 背景 (最暗/最明)
-    export WHITE=0xff${p.text}    # 前景・テキスト
+    # Faithfully map rose-pine role colors to sketchybar semantics.
+    # (rose-pine has no pure green/orange, so success=foam / warm=rose)
+    export BLACK=0xff${p.base}    # background (darkest/lightest)
+    export WHITE=0xff${p.text}    # foreground / text
     export RED=0xff${p.love}      # error / critical
-    export GREEN=0xff${p.foam}    # success / active (rose-pine の positive)
+    export GREEN=0xff${p.foam}    # success / active (rose-pine positive)
     export BLUE=0xff${p.pine}     # info
     export YELLOW=0xff${p.gold}   # warning
     export ORANGE=0xff${p.rose}   # warm accent
     export MAGENTA=0xff${p.iris}  # primary accent (rose-pine signature)
     export GREY=0xff${p.muted}    # inactive / subtle
-    export ACCENT=0xff${p.iris}   # アクティブ要素のアクセント
-    # 背景 pill: surface=不透明 / overlay・hlMed は 0xcc に上げて light でも視認
-    # 実際に見えるバー背景は bracket pill = BG1。bar 本体は sketchybarrc で完全透明。
-    # BG1/BG2 の alpha 0x99 (≒60%) で pill を半透明化し壁紙を透かす。
+    export ACCENT=0xff${p.iris}   # accent for active elements
+    # background pill: surface=opaque / overlay,hlMed raised to 0xcc so it stays visible even in light
+    # The actually-visible bar background is the bracket pill = BG1. The bar itself is fully transparent in sketchybarrc.
+    # alpha 0x99 (≈60%) on BG1/BG2 makes the pill translucent so the wallpaper shows through.
     export BG0=0xff${p.surface}
     export BG1=0x99${p.overlay}
     export BG2=0x99${p.hlMed}
@@ -36,8 +36,8 @@ let
     export BATTERY_4=0xff${p.love}
     export BATTERY_5=0xff${p.love}'';
 
-  # Obsidian: theme.nix のパレットを CSS 変数へ。Obsidian の外観 = "system" (OS 追従) に
-  # 合わせ .theme-dark / .theme-light 双方を生成 (sketchybar の dark/light 二重埋めと同思想)。
+  # Obsidian: map the theme.nix palette to CSS variables. To match Obsidian appearance = "system" (follows OS),
+  # generate both .theme-dark / .theme-light (same idea as the sketchybar dark/light dual embed).
   obsidianVars = p: ''
     --background-primary:         #${p.base};
     --background-primary-alt:     #${p.surface};
@@ -51,7 +51,7 @@ let
     --interactive-accent:         #${p.iris};
     --interactive-accent-hover:   #${p.rose};
     --background-modifier-border: #${p.hlMed};
-    /* UI クロム (タイトルバー/リボン/タブ/ステータスバー/ナビ/スクロールバー) */
+    /* UI chrome (titlebar/ribbon/tab/status bar/nav/scrollbar) */
     --titlebar-background:         #${p.overlay};
     --titlebar-background-focused: #${p.overlay};
     --titlebar-text-color:         #${p.text};
@@ -65,10 +65,10 @@ let
     --scrollbar-thumb-bg:           #${p.hlMed};
     --scrollbar-active-thumb-bg:    #${p.muted};
     --nav-item-background-active:   #${p.overlay};'';
-  # 半透明: translucency ON (.is-translucent) 時のみ背景へ alpha を載せ macOS vibrancy を透かす。
-  # alpha は #RRGGBBAA の AA(16進): cc≒80% / b3≒70% / 99≒60% / 80≒50%。小さいほど透ける。
-  translucentAlpha = "b3"; # 本文・サイドバー (vibrancy と相性の良いフロスト半透明 ≒70%)
-  chromeAlpha = "99"; # 外周(タイトルバー/タブ/リボン)を少し強めに透かす(≒60%)
+  # translucency: only when ON (.is-translucent), add alpha to the background so macOS vibrancy shows through.
+  # alpha is the AA (hex) of #RRGGBBAA: cc≈80% / b3≈70% / 99≈60% / 80≈50%. Smaller = more transparent.
+  translucentAlpha = "b3"; # body / sidebar (frosted translucency ≈70% that pairs well with vibrancy)
+  chromeAlpha = "99"; # outer edges (titlebar/tab/ribbon) made a bit more transparent (≈60%)
   obsidianTranslucent = p: ''
     --background-primary:          #${p.base}${translucentAlpha};
     --background-primary-alt:      #${p.surface}${translucentAlpha};
@@ -79,11 +79,11 @@ let
     --ribbon-background:           #${p.overlay}${chromeAlpha};
     --tab-container-background:    #${p.overlay}${chromeAlpha};
     --status-bar-background:       #${p.surface}${translucentAlpha};'';
-  # スニペットは Obsidian が「読むだけ」なので Nix 所有 (生成物) でも編集・同期と衝突しない。
+  # Obsidian only "reads" the snippet, so Nix ownership (generated) doesn't conflict with editing/sync.
   obsidianThemeCss = pkgs.writeText "nix-theme.css" ''
     /* ============================================================
-       AUTO-GENERATED from nix/lib/theme.nix — 手で編集しない。
-       テーマ変更は nix/lib/theme.nix の active を変えて `just rebuild`。
+       AUTO-GENERATED from nix/lib/theme.nix — do not edit by hand.
+       To change theme, edit active in nix/lib/theme.nix and run `just rebuild`.
        ============================================================ */
     .theme-dark {
     ${obsidianVars c.dark}
@@ -91,21 +91,21 @@ let
     .theme-light {
     ${obsidianVars c.light}
     }
-    /* 半透明 (設定→外観→半透明 ON 時のみ適用) */
+    /* translucency (applies only when Settings→Appearance→Translucent is ON) */
     .theme-dark.is-translucent {
     ${obsidianTranslucent c.dark}
     }
     .theme-light.is-translucent {
     ${obsidianTranslucent c.light}
     }
-    /* タブ/タイトルバー帯を確実にテーマ追従 (Minimal の黒上書き対策・変数で勝てない時用) */
+    /* force tab/titlebar band to follow theme (guards against Minimal's black override, for when variables can't win) */
     .workspace-tab-header-container,
     .workspace-tabs .workspace-tab-header-container-inner,
     .titlebar,
     .workspace-ribbon.mod-left {
       background-color: var(--titlebar-background) !important;
     }
-    /* タイポグラフィ: フォント自体は据え置き、行間・余白・スムージングを微調整 */
+    /* typography: keep the font itself, fine-tune line height/margins/smoothing */
     body { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
     .markdown-preview-view,
     .markdown-source-view.mod-cm6 .cm-content {
@@ -118,10 +118,10 @@ let
   '';
 in
 {
-  # aerospace: 解像度可変 gaps/padding。config include 非対応 + nix symlink は read-only なので、
-  # symlink ではなく activation で ~/.config/aerospace/aerospace.toml を生成する。
-  # メインディスプレイ解像度から gaps/accordion-padding をスケール → dry-run 検証 → reload-config。
-  # source 内の @DOTFILES@ は生成時に現在の $HOME/.dotfiles へ展開する。
+  # aerospace: resolution-variable gaps/padding. config include is unsupported + nix symlink is read-only, so
+  # generate ~/.config/aerospace/aerospace.toml via activation instead of a symlink.
+  # scale gaps/accordion-padding from main display resolution → dry-run check → reload-config.
+  # @DOTFILES@ in source expands to the current $HOME/.dotfiles at generation time.
   home.activation.aerospaceConfig = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     run ${pkgs.bash}/bin/bash ${../../../scripts/aerospace-config.sh} ${../../../configs/wm/aerospace/aerospace.toml}
   '';
@@ -129,13 +129,13 @@ in
     source = ../../../configs/wm/sketchybar;
     recursive = true;
   };
-  # sketchybar の色は nix/lib/theme.nix から生成 (静的 colors.sh は廃止)。
-  # 他の sketchybar スクリプトは従来どおり $WHITE 等でこれを source する。
+  # sketchybar colors are generated from nix/lib/theme.nix (static colors.sh retired).
+  # Other sketchybar scripts source this via $WHITE etc. as before.
   home.file.".config/sketchybar/colors.sh".text = ''
     #!/bin/bash
-    # Rosé Pine — dark/light を macOS 外観 (AppleInterfaceStyle) で自動選択。
-    # 色は nix/lib/theme.nix の dark/light パレット由来 (単一ソース)。
-    # 外観変化時は theme-watch agent が `sketchybar --reload` し、ここが再評価される。
+    # Rosé Pine — auto-select dark/light by macOS appearance (AppleInterfaceStyle).
+    # Colors come from the dark/light palette in nix/lib/theme.nix (single source).
+    # On appearance change, the theme-watch agent runs `sketchybar --reload` and this is re-evaluated.
     if [ "$(defaults read -g AppleInterfaceStyle 2>/dev/null)" = "Dark" ]; then
     ${sbHex c.dark}
     else
@@ -143,7 +143,7 @@ in
     fi
     export TRANSPARENT=0x00000000
 
-    # General bar colors (パレット非依存・上の export から導出)
+    # General bar colors (palette-independent, derived from the exports above)
     export BAR_COLOR=$BG0
     export BAR_BORDER_COLOR=$BG2
     export BACKGROUND_1=$BG1
@@ -154,15 +154,15 @@ in
     export POPUP_BORDER_COLOR=$WHITE
     export SHADOW_COLOR=$BLACK
   '';
-  # borders は AeroSpace から引数なし `borders` で起動され bordersrc を実行する。
-  # executable=true でないと borders が実行できない (設定の単一ソース)。
-  # 色は theme.nix の dark/light 由来。macOS 外観で active/inactive を分岐し OS 追従。
-  # 外観変化時は theme-watch agent が bordersrc を再実行し、走行中の borders daemon に反映。
+  # borders is launched from AeroSpace via bare `borders` and runs bordersrc.
+  # Without executable=true, borders can't run (single source of config).
+  # Colors come from theme.nix dark/light. Branch active/inactive on macOS appearance to follow the OS.
+  # On appearance change, the theme-watch agent re-runs bordersrc and it reflects into the running borders daemon.
   home.file.".config/borders/bordersrc" = {
     executable = true;
     text = ''
       #!/bin/bash
-      # JankyBorders 設定 = アクティブウィンドウ枠の単一ソース。色は Rosé Pine palette 由来。
+      # JankyBorders config = single source for the active window border. Colors come from the Rosé Pine palette.
       if [ "$(defaults read -g AppleInterfaceStyle 2>/dev/null)" = "Dark" ]; then
         active=0xff${c.dark.iris}
         inactive=0xff${c.dark.muted}
@@ -179,14 +179,14 @@ in
     '';
   };
 
-  # theme-watch: macOS 外観 (ライト/ダーク) の変化を監視し、shell 系 chrome を再適用する。
-  # sketchybar/borders は colors.sh/bordersrc 内で AppleInterfaceStyle を見て分岐するので、
-  # 変化時に reload/再実行するだけで OS 追従できる。外部バイナリ不要のポーリング方式。
+  # theme-watch: watch for macOS appearance (light/dark) changes and re-apply shell-side chrome.
+  # sketchybar/borders branch on AppleInterfaceStyle inside colors.sh/bordersrc,
+  # so just reload/re-run on change to follow the OS. Polling approach, no external binary needed.
   home.file.".config/theme/theme-watch.sh" = {
     executable = true;
     text = ''
       #!/bin/bash
-      # macOS 外観変化を監視 → sketchybar reload + borders 再適用 (theme.nix カテゴリB の追従)
+      # watch macOS appearance changes → sketchybar reload + borders re-apply (follows theme.nix category B)
       export PATH="/opt/homebrew/bin:$PATH"
       last=""
       while true; do
@@ -201,7 +201,7 @@ in
     '';
   };
 
-  # 上記 watcher を常駐 launchd agent として起動 (ログイン時+死活監視)。
+  # Launch the watcher above as a resident launchd agent (at login + liveness monitoring).
   launchd.agents.theme-watch = {
     enable = true;
     config = {
@@ -214,10 +214,10 @@ in
     };
   };
 
-  # sketchybar の display map (aerospace monitor -> sketchybar display index) を
-  # ディスプレイ構成変化時に再計算し /tmp/sketchybar-aero-display.map へ書き出す常駐 watcher。
-  # これが無いと再起動で map が消え space.* が壊れる (手動 sketchybar-refresh が必要になる)。
-  # 旧来は手動 plist だったが /Users/<旧名> ハードコードで壊れていたため nix 宣言へ移行。
+  # Resident watcher that recomputes the sketchybar display map (aerospace monitor -> sketchybar display index)
+  # on display config changes and writes it to /tmp/sketchybar-aero-display.map.
+  # Without it, the map is lost on restart and space.* breaks (needs a manual sketchybar-refresh).
+  # Used to be a manual plist but broke due to hardcoded /Users/<old name>, so migrated to nix declaration.
   launchd.agents.sketchybar-displaywatch = {
     enable = true;
     config = {
@@ -233,17 +233,17 @@ in
     };
   };
 
-  # sioyek: 色は nix/lib/theme.nix から生成 (hex→0-1 float は lib/hex-rgb.nix)。
-  # macOS の sioyek は ~/Library/Application Support/sioyek/ を config dir に使う
-  # (XDG 非対応)。prefs_user.config がユーザ上書き設定。sioyek 自身は auto.config/
-  # db を同 dir に書くが prefs_user.config は読むだけなので store symlink で問題なし。
+  # sioyek: colors are generated from nix/lib/theme.nix (hex→0-1 float via lib/hex-rgb.nix).
+  # sioyek on macOS uses ~/Library/Application Support/sioyek/ as its config dir
+  # (no XDG). prefs_user.config is the user override. sioyek itself writes auto.config/
+  # db to the same dir, but prefs_user.config is read-only, so a store symlink is fine.
   home.file."Library/Application Support/sioyek/prefs_user.config".text = ''
     # Rosé Pine — generated from nix/lib/theme.nix
     # UI chrome
     background_color ${rgb c.base}
     status_bar_color ${rgb c.surface}
     status_bar_text_color ${rgb c.text}
-    # ページ境界をガター(base)に馴染ませる
+    # blend page boundaries into the gutter (base)
     page_separator_width 2
     page_separator_color ${rgb c.hlMed}
     # highlights
@@ -252,33 +252,33 @@ in
     link_highlight_color ${rgb c.foam}
     synctex_highlight_color ${rgb c.pine}
     visual_mark_color ${rgb c.iris} 0.3
-    # custom color mode (ダーク読書時のページ色) / dark mode
+    # custom color mode (page color for dark reading) / dark mode
     custom_background_color ${rgb c.base}
     custom_text_color ${rgb c.text}
     dark_mode_background_color ${rgb c.base}
     dark_mode_contrast 0.85
   '';
 
-  # sioyek キーバインド上書き: custom color mode (rose-pine 地で読む) を F7 に割当。
-  # F8=標準のダーク反転 と使い分け (デフォルトは toggle_custom_color 未割当)。
+  # sioyek keybind override: assign custom color mode (read on a rose-pine background) to F7.
+  # Distinct from F8=standard dark inversion (toggle_custom_color is unassigned by default).
   home.file."Library/Application Support/sioyek/keys_user.config".text = ''
-    # Rosé Pine custom color mode を F7 でトグル
+    # Toggle Rosé Pine custom color mode with F7
     toggle_custom_color <f7>
   '';
 
-  # Obsidian: theme.nix 由来のカラースニペットを vault に配置 (テーマ切替で追従)。
-  # ・vault が設定の本体。ここは生成スニペット 1 枚だけ Nix 所有 (他の .obsidian は触らない)。
-  # ・symlink でなく実コピー → LiveSync/git でスマホへも伝播。毎回上書きで変更を反映。
-  # ・初回のみ Obsidian で「設定→外観→CSS スニペット→nix-theme」を ON にする (以降は同期で維持)。
+  # Obsidian: place the theme.nix-derived color snippet in the vault (follows theme switches).
+  # - The vault is the source of truth. Only this one generated snippet is Nix-owned (other .obsidian is untouched).
+  # - Real copy, not symlink → propagates to phone via LiveSync/git. Overwritten each time to reflect changes.
+  # - First time only, enable "Settings→Appearance→CSS snippets→nix-theme" in Obsidian (kept via sync afterward).
   home.activation.obsidianTheme = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     obsidian_dir="${config.home.homeDirectory}/Documents/notes/.obsidian"
     if [ -d "$obsidian_dir" ]; then
       /bin/mkdir -p "$obsidian_dir/snippets"
-      # Obsidian が開いたファイルには com.apple.macl (TCC) が付与され、FDA 無しの
-      #   activation からは install の rename が EPERM になる。スニペットは vault が本体
-      #   (LiveSync で伝播) なので、更新できない場合は警告に留めて switch 全体は止めない。
+      # Files Obsidian has opened get com.apple.macl (TCC), so without FDA
+      #   install's rename fails with EPERM from activation. The vault is the source of truth for the snippet
+      #   (propagated via LiveSync), so if it can't update, just warn and don't stop the whole switch.
       if ! /usr/bin/install -m 644 ${obsidianThemeCss} "$obsidian_dir/snippets/nix-theme.css" 2>/dev/null; then
-        echo "warning: obsidianTheme: nix-theme.css を更新できませんでした (Obsidian の TCC ロックの可能性)。vault 側が本体のためスキップ。" >&2
+        echo "warning: obsidianTheme: failed to update nix-theme.css (possibly an Obsidian TCC lock). The vault is the source of truth, so skipping." >&2
       fi
     fi
   '';
