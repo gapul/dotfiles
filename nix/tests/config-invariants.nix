@@ -36,13 +36,15 @@ assert lib.assertMsg (
 assert lib.assertMsg (
   builtins.elem "qview" packageNames && !(builtins.elem "qview" caskNames)
 ) "qView must be managed only by brew-nix, not duplicated in Homebrew";
-assert lib.assertMsg (
-  let
-    inherit ((builtins.fromJSON (builtins.readFile ../../configs/theme/fonts.json))) mono;
-    ghosttyCfg = builtins.readFile ../../configs/terminals/ghostty/config;
-  in
-  lib.hasInfix ''font-family = "${mono}"'' ghosttyCfg
-) "ghostty font-family must match configs/theme/fonts.json (mono) — static-copy consistency of the font SSO";
+assert lib.assertMsg
+  (
+    let
+      inherit ((builtins.fromJSON (builtins.readFile ../../configs/theme/fonts.json))) mono;
+      ghosttyCfg = builtins.readFile ../../configs/terminals/ghostty/config;
+    in
+    lib.hasInfix ''font-family = "${mono}"'' ghosttyCfg
+  )
+  "ghostty font-family must match configs/theme/fonts.json (mono) — static-copy consistency of the font SSO";
 pkgs.runCommand "dotfiles-config-invariants" { } ''
   touch "$out"
 ''
