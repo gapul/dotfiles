@@ -542,7 +542,7 @@ gc:
 gc-deep:
     #!/usr/bin/env bash
     set -u
-    echo "━━━ macOS Trash (復旧不能になるため確認付き) ━━━"
+    echo "━━━ macOS Trash (with confirmation; unrecoverable) ━━━"
     sz=$(du -sh "$HOME/.Trash" 2>/dev/null | cut -f1); echo "  size: ${sz:-0}"
     read -rp "  Empty Trash? [y/N] " ans
     if [[ "$ans" == [yY] ]]; then
@@ -552,7 +552,7 @@ gc-deep:
       echo "  skipped"
     fi
     echo ""
-    echo "━━━ OS/editor junk across HOME (確認付き) ━━━"
+    echo "━━━ OS/editor junk across HOME (with confirmation) ━━━"
     read -rp "  Delete .DS_Store/AppleDouble/swap/orig/rej/backup files? [y/N] " ans
     if [[ "$ans" == [yY] ]]; then
       d=$(find "$HOME" \( -path "$HOME/.Trash" -o -path "$HOME/Library" \) -prune -o -type f \( -name '.DS_Store' -o -name '._*' -o -name '*.swp' -o -name '*.swo' -o -name '*.orig' -o -name '*.rej' -o -name '*~' \) -print -delete 2>/dev/null | wc -l | tr -d ' ')
@@ -581,8 +581,8 @@ gc-deep:
     sim_cache="/Library/Developer/CoreSimulator/Caches"
     if [ -d "$sim_cache" ]; then
       sz=$(du -sh "$sim_cache" 2>/dev/null | cut -f1)
-      echo "  size: ${sz:-?} (使用時に再生成される)"
-      read -rp "  Delete? (要 sudo) [y/N] " ans
+      echo "  size: ${sz:-?} (regenerated on next use)"
+      read -rp "  Delete? (sudo required) [y/N] " ans
       if [[ "$ans" == [yY] ]]; then
         sudo rm -rf "$sim_cache" && echo "  removed ($sz)"
       else
@@ -592,7 +592,7 @@ gc-deep:
       echo "  (not found)"
     fi
     echo ""
-    echo "━━━ podman full prune (未使用イメージ全削除, 次回使用時に要再 pull) ━━━"
+    echo "━━━ podman full prune (removes all unused images; re-pull needed on next use) ━━━"
     if command -v podman >/dev/null && podman info >/dev/null 2>&1; then
       podman system df 2>/dev/null | sed 's|^|  |'
       read -rp "  Prune all unused images? [y/N] " ans
@@ -743,13 +743,13 @@ obsidian-snapshot:
 
     # ★Secret guard: if a non-empty secret value ("key": "value") is detected, abort without pushing to the public repo
     if grep -rEil '"(api[_-]?key|secret|token|password|passphrase|access[_-]?key|couchdb_[a-z]+)"[[:space:]]*:[[:space:]]*"[^"]+"' "$tmp"; then
-      echo "🛑 秘密らしき値を検出。スナップショット中止 (public 保護)" >&2; exit 1
+      echo "🛑 Secret-like value detected. Aborting snapshot (protecting public)" >&2; exit 1
     fi
 
     mkdir -p "$dst"
     rsync -a --delete --exclude='README.md' "$tmp/" "$dst/"
     echo "✅ snapshot -> $dst"
-    echo "   git add 後、commit 前に gitleaks を通してください。"
+    echo "   After git add, run gitleaks before committing."
 
 
 # ─────────────────────────────────────────────
@@ -882,9 +882,9 @@ restic_env := 'source "$HOME/.config/restic/env"'
 backup:
     #!/usr/bin/env bash
     set -euo pipefail
-    echo "→ restic warm backup を起動 (launchd kickstart)..."
+    echo "→ Starting restic warm backup (launchd kickstart)..."
     launchctl kickstart -k "gui/$(id -u)/org.nix-community.home.restic-backup"
-    echo "起動済。ログ追尾 (Ctrl-C で終了・バックアップは継続):"
+    echo "Started. Following log (Ctrl-C to stop following; backup continues):"
     exec tail -f "$HOME/Library/Logs/restic-backup.log"
 
 # List all snapshots (distinguish warm / archive by the Tags column)
@@ -907,19 +907,19 @@ archive path:
     set -euo pipefail
     {{restic_env}}
     src="{{path}}"
-    [ -e "$src" ] || { echo "存在しない: $src" >&2; exit 1; }
+    [ -e "$src" ] || { echo "does not exist: $src" >&2; exit 1; }
     src="$(cd "$(dirname "$src")" && pwd)/$(basename "$src")"   # make absolute path
     sz="$(du -sh "$src" 2>/dev/null | cut -f1)"
-    echo "アーカイブ対象: $src ($sz)"
-    read -rp "restic へ退避後ローカルを削除します。続行? (y/N) " a
-    [[ "$a" == [yY] ]] || { echo "中止"; exit 0; }
+    echo "Archive target: $src ($sz)"
+    read -rp "Local files will be deleted after evacuation to restic. Continue? (y/N) " a
+    [[ "$a" == [yY] ]] || { echo "aborted"; exit 0; }
     if restic backup --tag "$RESTIC_ARCHIVE_TAG" "$src"; then
-      echo "✓ 退避完了 (--tag archive・永久保持)。ローカルを削除します。"
+      echo "✓ Evacuation complete (--tag archive, kept forever). Deleting local files."
       rm -rf "$src"
-      echo "✓ ローカル削除: $src"
-      echo "  一覧: just archive-ls  /  復元: just restore <snapshotID>"
+      echo "✓ Local deleted: $src"
+      echo "  List: just archive-ls  /  Restore: just restore <snapshotID>"
     else
-      echo "✗ restic backup 失敗。ローカルは削除していません。" >&2
+      echo "✗ restic backup failed. Local files were not deleted." >&2
       exit 1
     fi
 
@@ -950,7 +950,7 @@ restore snapshot dest="/":
     set -euo pipefail
     {{restic_env}}
     restic restore "{{snapshot}}" --target "{{dest}}"
-    echo "✓ 復元: snapshot {{snapshot}} → {{dest}}"
+    echo "✓ Restored: snapshot {{snapshot}} → {{dest}}"
 
 alias unarchive := restore
 
@@ -964,14 +964,14 @@ gdrive cmd="status":
     case "{{cmd}}" in
       status)
         for mp in "${mounts[@]}"; do
-          mount | grep -q " $mp " && echo "✓ マウント中: $mp" || echo "✗ 未マウント: $mp"
+          mount | grep -q " $mp " && echo "✓ Mounted: $mp" || echo "✗ Not mounted: $mp"
         done ;;
       open)
-        for mp in "${mounts[@]}"; do [ -d "$mp" ] && open "$mp" || echo "✗ 未マウント: $mp" >&2; done ;;
+        for mp in "${mounts[@]}"; do [ -d "$mp" ] && open "$mp" || echo "✗ Not mounted: $mp" >&2; done ;;
       remount)
-        echo "personal/school マウントは手動 LaunchAgent 管理 (nix 未宣言)。" >&2
-        echo "rclone remote (google-drive-personal/-school) 作成後に手動で再マウントしてください。" >&2
-        echo "参照: nix/home/rclone-mount.nix の廃止コメント。" >&2
+        echo "personal/school mounts are managed manually via LaunchAgent (not declared in nix)." >&2
+        echo "After creating the rclone remotes (google-drive-personal/-school), remount manually." >&2
+        echo "See: the retirement comment in nix/home/rclone-mount.nix." >&2
         exit 1 ;;
       *)       echo "usage: just gdrive [status|open|remount]" >&2; exit 2 ;;
     esac

@@ -26,31 +26,31 @@
     # ~/.nix-defexpr / ~/.nix-channels in $HOME, moving them under ~/.local/state/nix/ instead).
     conf=/etc/nix/nix.custom.conf
     if [ -f "$conf" ] && ! /usr/bin/grep -q '^use-xdg-base-directories' "$conf"; then
-      printf '\n# XDG Base Directory 準拠 (~/.nix-defexpr 等を ~/.local/state/nix へ)\nuse-xdg-base-directories = true\n' >> "$conf"
+      printf '\n# XDG Base Directory compliance (moves ~/.nix-defexpr etc. under ~/.local/state/nix)\nuse-xdg-base-directories = true\n' >> "$conf"
     fi
     # general safeguard so an unreachable substituter doesn't break builds. With the default 15s
     # narinfo-fetch wait and fallback=false, a substitute failure fails fatally instead of falling
     # back to a source build (a tailnet-only attic going down once caused real damage). connect-timeout
     # gives up early and fallback=true escapes to a source build. Pull behavior when reachable is unchanged.
     if [ -f "$conf" ] && ! /usr/bin/grep -q '^connect-timeout' "$conf"; then
-      printf '\n# 到達不可 substituter を非致命化 (キャッシュが落ちてもビルドは通す)\nconnect-timeout = 5\nfallback = true\n' >> "$conf"
+      printf '\n# make unreachable substituters non-fatal (builds still pass even if the cache is down)\nconnect-timeout = 5\nfallback = true\n' >> "$conf"
     fi
     # Trust the nix-community cache system-wide.
     # Security least-privilege: rather than making yuki a trusted-user (effectively root-equivalent), append
     # only the specific substituter + its public key to the root-owned nix.custom.conf. This silences the flake
     # nixConfig 'ignoring untrusted substituter' warning without granting the user broad privileges.
     if [ -f "$conf" ] && ! /usr/bin/grep -q 'nix-community.cachix.org' "$conf"; then
-      printf '\n# nix-community バイナリキャッシュ (trusted-user 付与でなく substituter 限定の最小権限)\nextra-substituters = https://nix-community.cachix.org\nextra-trusted-public-keys = nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs=\n' >> "$conf"
+      printf '\n# nix-community binary cache (least privilege: substituter-only, not a trusted-user grant)\nextra-substituters = https://nix-community.cachix.org\nextra-trusted-public-keys = nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs=\n' >> "$conf"
     fi
     # nix-on-droid: prebuilts like proot-termux can only be fetched from the official cachix
     if [ -f "$conf" ] && ! /usr/bin/grep -q 'nix-on-droid.cachix.org' "$conf"; then
-      printf '\n# nix-on-droid バイナリキャッシュ (droid 構成の eval/build 用)\nextra-substituters = https://nix-on-droid.cachix.org\nextra-trusted-public-keys = nix-on-droid.cachix.org-1:56snoMJTXmDRC1Ei24CmKoUqvHJ9XCp+nidK7qkMQrU=\n' >> "$conf"
+      printf '\n# nix-on-droid binary cache (for eval/build of the droid config)\nextra-substituters = https://nix-on-droid.cachix.org\nextra-trusted-public-keys = nix-on-droid.cachix.org-1:56snoMJTXmDRC1Ei24CmKoUqvHJ9XCp+nidK7qkMQrU=\n' >> "$conf"
     fi
     # self-made dotfiles build cache (cachix gapul-dotfiles, OSS free tier). Pull this config's
     # outputs, pushed by CI, from here to speed up local jd rebuild.
     # It's a public cache so pull is unauthenticated. Falls back to cache.nixos.org even if unreachable.
     if [ -f "$conf" ] && ! /usr/bin/grep -q 'gapul-dotfiles.cachix.org' "$conf"; then
-      printf '\n# 自作 dotfiles ビルドキャッシュ (cachix, CI が充填・pull 無認証)\nextra-substituters = https://gapul-dotfiles.cachix.org\nextra-trusted-public-keys = gapul-dotfiles.cachix.org-1:tGNGJ7SGHrLAjsw5Iz673st0AepuNjQombMJOOVUq98=\n' >> "$conf"
+      printf '\n# self-made dotfiles build cache (cachix, filled by CI, unauthenticated pull)\nextra-substituters = https://gapul-dotfiles.cachix.org\nextra-trusted-public-keys = gapul-dotfiles.cachix.org-1:tGNGJ7SGHrLAjsw5Iz673st0AepuNjQombMJOOVUq98=\n' >> "$conf"
     fi
     # The self-hosted attic (cache.gapul.net) was removed (cachix gapul-dotfiles replaces it;
     # being tailnet-only and dependent on the homelab being up just adds failure modes). On machines

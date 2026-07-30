@@ -97,13 +97,13 @@ let
     echo "==================== $(date '+%Y-%m-%d %H:%M:%S') backup start ===================="
 
     if ! rclone about google-drive: >/dev/null 2>&1; then
-      echo "SKIP: google-drive リモートに到達できません (rclone authorize 未了の可能性)"
+      echo "SKIP: cannot reach the google-drive remote (rclone authorize may be incomplete)"
       exit 0
     fi
 
     if ! restic snapshots >/dev/null 2>&1; then
-      echo "リポジトリが無いので init します"
-      restic init || { echo "ERROR: restic init 失敗"; exit 1; }
+      echo "repository not found, running init"
+      restic init || { echo "ERROR: restic init failed"; exit 1; }
     fi
 
     restic backup \
@@ -119,7 +119,7 @@ let
 
     echo "==================== $(date '+%Y-%m-%d %H:%M:%S') backup done (rc=$rc) ===================="
     if [ "$rc" -ne 0 ]; then
-      notify "restic ⚠️ バックアップ失敗" "restic backup が rc=$rc で失敗しました。ログを確認してください: ${logFile}"
+      notify "restic ⚠️ backup failed" "restic backup failed with rc=$rc. Please check the log: ${logFile}"
     fi
     exit $rc
   '';
@@ -131,13 +131,13 @@ let
     exec >>"${logFile}" 2>&1
     echo "-------------------- $(date '+%Y-%m-%d %H:%M:%S') check start --------------------"
     if ! rclone about google-drive: >/dev/null 2>&1; then
-      echo "SKIP: リモート未到達"; exit 0
+      echo "SKIP: remote unreachable"; exit 0
     fi
     if restic check; then
       echo "check OK"
     else
       echo "check FAILED"
-      notify "restic ⚠️ リポジトリ破損の疑い" "restic check 失敗。ログを確認してください"
+      notify "restic ⚠️ possible repository corruption" "restic check failed. Please check the log"
     fi
   '';
 
@@ -148,19 +148,19 @@ let
     max_age_days=2
 
     if ! rclone about google-drive: >/dev/null 2>&1; then
-      notify "restic ⚠️ バックアップ未稼働" "google-drive 未認証。rclone authorize drive を実行してください"
+      notify "restic ⚠️ backup not running" "google-drive not authenticated. Please run rclone authorize drive"
       exit 0
     fi
     latest=$(restic snapshots --latest 1 --json 2>/dev/null | jq -r '.[0].time // empty')
     if [ -z "$latest" ]; then
-      notify "restic ⚠️ スナップショット無し" "まだ一度もバックアップされていません"
+      notify "restic ⚠️ no snapshots" "no backup has been made yet"
       exit 0
     fi
     last_epoch=$(date -j -f "%Y-%m-%dT%H:%M:%S" "$(echo "$latest" | cut -d. -f1)" +%s 2>/dev/null || echo 0)
     now=$(date +%s)
     age_days=$(( (now - last_epoch) / 86400 ))
     if [ "$age_days" -ge "$max_age_days" ]; then
-      notify "restic ⚠️ バックアップが古い" "最後のバックアップは $age_days 日前です"
+      notify "restic ⚠️ backup is stale" "the last backup was $age_days days ago"
     fi
   '';
 

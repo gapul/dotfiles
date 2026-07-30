@@ -50,7 +50,7 @@ let
     mkdir -p "$(dirname ${logFile})" "${cacheDir}" "${mountPoint}"
 
     if [ ! -f "${rcloneConf}" ]; then
-      echo "$(date '+%F %T') SKIP: ${rcloneConf} が無い (sops 未 deploy)" >>"${logFile}"
+      echo "$(date '+%F %T') SKIP: ${rcloneConf} missing (sops not deployed)" >>"${logFile}"
       exit 0
     fi
     if mount | grep -q " ${mountPoint} "; then
@@ -80,12 +80,12 @@ let
     set -uo pipefail
     ${notify}
     if ! mount | grep -q " ${mountPoint} "; then
-      notify "☁️ GoogleDrive 未マウント" "~/Cloud/GoogleDrive が外れています。ログ: ${logFile}"
+      notify "☁️ GoogleDrive not mounted" "~/Cloud/GoogleDrive is detached. Log: ${logFile}"
       exit 0
     fi
     # also detect the case where it is mounted but unreadable (stale)
     if ! /bin/ls "${mountPoint}" >/dev/null 2>&1; then
-      notify "☁️ GoogleDrive 応答なし" "マウントは在るが読めません (stale の可能性)"
+      notify "☁️ GoogleDrive not responding" "Mount exists but is unreadable (possibly stale)"
     fi
   '';
 in

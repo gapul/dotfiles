@@ -40,7 +40,7 @@ let
 
     if ${git} diff ${range} --name-only 2>/dev/null \
        | grep -qE '^(flake\.nix|flake\.lock|nix/|configs/|Justfile)'; then
-      echo "▶ dotfiles: nix/config が変化 (${label}) → just rebuild を実行"
+      echo "▶ dotfiles: nix/config changed (${label}) → running just rebuild"
       # rebuild targets the main tree's current state (= merged main).
       # just / nh / nix resolve by inheriting the PATH of the interactive shell that ran the pull.
       cd "$DOTFILES_DIR" && just rebuild

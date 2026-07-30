@@ -278,7 +278,7 @@ in
       #   install's rename fails with EPERM from activation. The vault is the source of truth for the snippet
       #   (propagated via LiveSync), so if it can't update, just warn and don't stop the whole switch.
       if ! /usr/bin/install -m 644 ${obsidianThemeCss} "$obsidian_dir/snippets/nix-theme.css" 2>/dev/null; then
-        echo "warning: obsidianTheme: nix-theme.css を更新できませんでした (Obsidian の TCC ロックの可能性)。vault 側が本体のためスキップ。" >&2
+        echo "warning: obsidianTheme: failed to update nix-theme.css (possibly an Obsidian TCC lock). The vault is the source of truth, so skipping." >&2
       fi
     fi
   '';

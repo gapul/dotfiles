@@ -192,11 +192,11 @@ in
 
       function gita-sync() {
         if ! command -v gita >/dev/null || ! command -v ghq >/dev/null; then
-          echo "gita / ghq が無い"
+          echo "gita / ghq not found"
           return 1
         fi
         ghq list -p | xargs -I {} gita add {} 2>&1 | tail -3
-        echo "登録済 repo: $(gita ls | wc -w | tr -d ' ')"
+        echo "registered repos: $(gita ls | wc -w | tr -d ' ')"
       }
 
       function mkcd() { mkdir -p "$1" && cd "$1"; }

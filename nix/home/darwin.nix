@@ -101,20 +101,20 @@ in
     function nosleep() {
       case "$1" in
         off)
-          sudo pmset -a disablesleep 0 && echo "スリープ無効を解除しました (通常のスリープに戻ります)"
+          sudo pmset -a disablesleep 0 && echo "Sleep disable removed (back to normal sleep)"
           ;;
         status|"")
           if pmset -g | grep -q "SleepDisabled.*1"; then
-            echo "現在: スリープ無効 (フタを閉じても動作継続)"
+            echo "Current: sleep disabled (keeps running with the lid closed)"
           else
-            echo "現在: 通常 (フタを閉じるとスリープ)"
+            echo "Current: normal (sleeps when the lid is closed)"
           fi
           ;;
         on)
-          sudo pmset -a disablesleep 1 && echo "スリープを無効化しました (フタを閉じても動作継続 / 電源接続を推奨)"
+          sudo pmset -a disablesleep 1 && echo "Sleep disabled (keeps running with the lid closed / power connection recommended)"
           ;;
         *)
-          echo "使い方: nosleep [on|off|status]"
+          echo "Usage: nosleep [on|off|status]"
           ;;
       esac
     }

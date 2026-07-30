@@ -42,7 +42,7 @@ assert lib.assertMsg (
     ghosttyCfg = builtins.readFile ../../configs/terminals/ghostty/config;
   in
   lib.hasInfix ''font-family = "${mono}"'' ghosttyCfg
-) "ghostty font-family must match configs/theme/fonts.json (mono) — フォント SSO の静的コピー整合";
+) "ghostty font-family must match configs/theme/fonts.json (mono) — static-copy consistency of the font SSO";
 pkgs.runCommand "dotfiles-config-invariants" { } ''
   touch "$out"
 ''

@@ -62,7 +62,7 @@ let
     ' ${flakeDir}/flake.lock 2>/dev/null)
     rm -rf "$tmp"
     trap 'rmdir "$lock" 2>/dev/null || true' EXIT
-    [ -n "$changed" ] && { echo "flake 更新可能: $changed"; msgs="flake: $changed"; }
+    [ -n "$changed" ] && { echo "flake updates available: $changed"; msgs="flake: $changed"; }
 
     # brew / mas
     bo=$(brew outdated --greedy 2>/dev/null | wc -l | tr -d ' ')
@@ -72,9 +72,9 @@ let
     echo "brew outdated: $bo, mas outdated: $mo"
 
     if [ -n "$msgs" ]; then
-      notify "⬆️ 更新あり (just upgrade)" "$msgs"
+      notify "⬆️ Updates available (just upgrade)" "$msgs"
     else
-      echo "全て最新"
+      echo "all up to date"
     fi
   '';
 
@@ -103,8 +103,8 @@ let
         count=$((count+1))
       fi
     done < <(find "$root" -type d -name .git -maxdepth 6 2>/dev/null)
-    echo "要対応リポ数: $count"
-    [ "$count" != "0" ] && notify "📦 未push/未コミットのリポ" "$count 件。詳細はログ参照"
+    echo "repos needing action: $count"
+    [ "$count" != "0" ] && notify "📦 Unpushed/uncommitted repos" "$count found. See log for details"
   '';
 
   # (4) brew cleanup (monthly, safe auto-apply)
@@ -121,8 +121,8 @@ let
     vault=${home}/Documents/notes
     branch=main
 
-    [ -d "$vault/.git" ] || { echo "SKIP: $vault は git リポジトリではない"; exit 0; }
-    [ -n "$(git -C "$vault" remote 2>/dev/null)" ] || { echo "SKIP: remote 未設定"; exit 0; }
+    [ -d "$vault/.git" ] || { echo "SKIP: $vault is not a git repository"; exit 0; }
+    [ -n "$(git -C "$vault" remote 2>/dev/null)" ] || { echo "SKIP: remote not configured"; exit 0; }
 
     # Point explicitly at the Bitwarden SSH agent (so keys are reachable even in an unattended launchd session).
     # Requires Bitwarden Desktop to be running and unlocked.
@@ -131,19 +131,19 @@ let
 
     git -C "$vault" add -A
     if git -C "$vault" diff --cached --quiet; then
-      echo "変更なし (commit スキップ)"
+      echo "no changes (commit skipped)"
     else
-      git -C "$vault" commit -m "vault backup: $(date '+%Y-%m-%d %H:%M:%S')" && echo "commit 作成"
+      git -C "$vault" commit -m "vault backup: $(date '+%Y-%m-%d %H:%M:%S')" && echo "commit created"
     fi
 
     # Pull in changes from other machines before pushing (rebase on conflict; flake.lock etc. are out of scope)
-    git -C "$vault" pull --rebase --autostash origin "$branch" || echo "WARN: pull --rebase 失敗 (続行)"
+    git -C "$vault" pull --rebase --autostash origin "$branch" || echo "WARN: pull --rebase failed (continuing)"
 
     if git -C "$vault" push origin "$branch"; then
-      echo "push 成功"
+      echo "push succeeded"
     else
-      echo "ERROR: push 失敗 (Bitwarden ロック / 認証不可の可能性)"
-      notify "📝 vault git push 失敗" "Bitwarden ロック中か認証不可。ログ確認"
+      echo "ERROR: push failed (Bitwarden locked / auth may be unavailable)"
+      notify "📝 vault git push failed" "Bitwarden locked or auth unavailable. Check log"
       exit 1
     fi
   '';

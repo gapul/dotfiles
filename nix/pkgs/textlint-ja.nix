@@ -47,7 +47,7 @@ buildNpmPackage {
   '';
 
   meta = {
-    description = "日本語校閲用 textlint バンドル (ja-technical-writing / ja-spacing / jtf-style / prh)";
+    description = "textlint bundle for proofreading Japanese (ja-technical-writing / ja-spacing / jtf-style / prh)";
     mainProgram = "textlint";
   };
 }
