@@ -1,8 +1,8 @@
-# hex 文字列 "rrggbb" → "r g b" (0-1 float, スペース区切り) へ変換するヘルパー。
-# sioyek など「色を 0-1 float で持つ」ツールに theme.nix の hex を
-# 単一ソースのまま流すために使う (マジックナンバー排除の方針を維持)。
+# Helper to convert a hex string "rrggbb" → "r g b" (0-1 float, space-separated).
+# Used to feed theme.nix's hex, kept as a single source, into tools that "hold colors
+# as 0-1 floats" like sioyek (maintaining the no-magic-numbers policy).
 #
-# 使い方:  rgb = import ./hex-rgb.nix { inherit lib; };  rgb "e0def4" => "0.878431 0.870588 0.956863"
+# Usage:  rgb = import ./hex-rgb.nix { inherit lib; };  rgb "e0def4" => "0.878431 0.870588 0.956863"
 { lib }:
 let
   hexDigit =
@@ -26,9 +26,9 @@ let
       "f" = 15;
     }
     .${lib.toLower ch};
-  # 2 桁 hex ("e0") → 0-255 の整数
+  # 2-digit hex ("e0") → integer 0-255
   byte = pair: (hexDigit (builtins.substring 0 1 pair)) * 16 + hexDigit (builtins.substring 1 1 pair);
-  # 0-255 → 0-1 float の文字列 (255.0 が float なので結果も float)
+  # 0-255 → 0-1 float string (255.0 is a float so the result is float too)
   norm = n: builtins.toString (n / 255.0);
 in
 hex:

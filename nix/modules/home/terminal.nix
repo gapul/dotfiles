@@ -1,4 +1,4 @@
-# Terminal component (ECS: profile)。zellij + テーマ生成 + ghostty terminfo。
+# Terminal component (ECS: profile). zellij + theme generation + ghostty terminfo.
 {
   config,
   pkgs,
@@ -6,10 +6,10 @@
   ...
 }:
 let
-  c = import ../../lib/theme.nix; # アクティブテーマのパレット (切替は nix/lib/theme.nix の active)
+  c = import ../../lib/theme.nix; # active theme's palette (switch via active in nix/lib/theme.nix)
 
-  # zellij テーマ kdl を palette p から生成。dark/light 両方を吐き、config.kdl 側の
-  # theme_dark / theme_light で端末パレット (= ghostty の macOS 追従) に連動させる。
+  # Generate a zellij theme kdl from palette p. Emits both dark/light, tied on the config.kdl
+  # side via theme_dark / theme_light to the terminal palette (= ghostty's macOS following).
   mkZellijTheme = name: p: ''
     themes {
         ${name} {
@@ -28,10 +28,10 @@ let
     }
   '';
 
-  # tmux の rose-pine ステータスバーを active パレット c から生成。
-  # active を palettes.json で切替 → just rebuild で zellij 同様に追従する。
+  # Generate tmux's rose-pine status bar from the active palette c.
+  # Switch active in palettes.json -> just rebuild follows it, same as zellij.
   mkTmuxTheme = p: ''
-    # rose-pine (generated from configs/theme/palettes.json — 手で編集しない)
+    # rose-pine (generated from configs/theme/palettes.json — do not edit by hand)
     set -g status-position top
     set -g status-interval 5
     set -g status-justify left
@@ -42,13 +42,13 @@ let
     set -g status-left  "#[bg=#${p.pine},fg=#${p.base},bold] #S #[bg=#${p.base},fg=#${p.pine}]#[default] "
     set -g status-right "#[fg=#${p.muted}]%Y-%m-%d #[fg=#${p.foam}]%H:%M "
 
-    # 非アクティブ / アクティブなウィンドウ(タブ)
+    # inactive / active windows (tabs)
     set -g window-status-format         "#[fg=#${p.muted}] #I #W "
     set -g window-status-current-format "#[bg=#${p.overlay},fg=#${p.iris},bold] #I #W "
     set -g window-status-separator ""
     set -g window-status-activity-style "fg=#${p.gold}"
 
-    # ペイン枠 / メッセージ / コピーモード
+    # pane border / message / copy mode
     set -g pane-border-style        "fg=#${p.overlay}"
     set -g pane-active-border-style "fg=#${p.pine}"
     set -g message-style            "bg=#${p.overlay},fg=#${p.text}"
@@ -60,12 +60,12 @@ let
   '';
 in
 {
-  # Ghostty の terminfo を全ホストへ配布。ssh 先で TERM=xterm-ghostty が未知だと
-  # ZLE が端末能力を誤解して入力が壊れる (macmini で実害あり 2026-07-19)。
-  # pkgs.ghostty は darwin unsupported のため infocmp ダンプを vendoring して
-  # activation 時に tic でコンパイルする。
-  # 実データは XDG data 配下に置き、互換パス ~/.terminfo は symlink で維持する
-  # (ssh 先や GUI が TERMINFO_DIRS 無しでも読める最大互換を保ったまま XDG 化)。
+  # Distribute Ghostty's terminfo to all hosts. If TERM=xterm-ghostty is unknown on an
+  # ssh target, ZLE misreads terminal capabilities and input breaks (real damage on macmini 2026-07-19).
+  # pkgs.ghostty is darwin unsupported, so vendor an infocmp dump and compile it with tic
+  # at activation time.
+  # Keep the real data under XDG data and maintain the compat path ~/.terminfo as a symlink
+  # (XDG-ify while keeping max compat so ssh targets and GUIs can read it even without TERMINFO_DIRS).
   home.activation.ghosttyTerminfo = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     run /bin/mkdir -p "${config.xdg.dataHome}/terminfo"
     run ${pkgs.ncurses}/bin/tic -x -o "${config.xdg.dataHome}/terminfo" ${../../../configs/terminals/ghostty/xterm-ghostty.terminfo}
@@ -73,25 +73,25 @@ in
   home.file.".terminfo".source =
     config.lib.file.mkOutOfStoreSymlink "${config.xdg.dataHome}/terminfo";
 
-  # dotfiles/configs/* を symlink (OS 非依存なものだけ。Mac 専用 = aerospace/sketchybar/karabiner は home/darwin.nix へ)
+  # symlink dotfiles/configs/* (OS-independent ones only. Mac-only = aerospace/sketchybar/karabiner go to home/darwin.nix)
   home.file.".config/zellij" = {
     source = ../../../configs/terminals/zellij;
     recursive = true;
   };
-  # zellij テーマは nix/lib/theme.nix から生成 (config.kdl は theme "rose-pine" で参照)
+  # zellij themes generated from nix/lib/theme.nix (config.kdl references them via theme "rose-pine")
   home.file.".config/zellij/themes/rose-pine.kdl".text = mkZellijTheme "rose-pine" c.dark;
   home.file.".config/zellij/themes/rose-pine-dawn.kdl".text = mkZellijTheme "rose-pine-dawn" c.light;
 
-  # tmux (zellij 代替)。tmux.conf を symlink し、rose-pine テーマを active パレットから生成。
-  # tmux は zellij のような端末追従の dark/light 切替を持たないため active パレット c を採用
-  # (palettes.json の active 切替 → just rebuild で追従、が SSOT)。
+  # tmux (zellij alternative). symlink tmux.conf and generate the rose-pine theme from the active palette.
+  # tmux has no terminal-following dark/light switch like zellij, so use the active palette c
+  # (switching active in palettes.json -> just rebuild follows, is the SSOT).
   home.file.".config/tmux/tmux.conf".source = ../../../configs/terminals/tmux/tmux.conf;
   home.file.".config/tmux/rose-pine.conf".text = mkTmuxTheme c;
 
-  # tmux プラグイン (zellij のセッション永続化相当)。TPM は使わず store パスを
-  # run-shell する plugins.conf を生成 (tmux.conf の末尾が source する)。
-  #   resurrect: prefix+Ctrl-s 保存 / prefix+Ctrl-r 復元 (ペイン内容 + nvim も復元)
-  #   continuum: 15 分毎に自動保存し、tmux サーバ起動時に自動復元
+  # tmux plugins (equivalent to zellij's session persistence). Generate a plugins.conf that
+  # run-shells store paths without TPM (sourced at the end of tmux.conf).
+  #   resurrect: prefix+Ctrl-s save / prefix+Ctrl-r restore (restores pane contents + nvim too)
+  #   continuum: auto-save every 15 minutes, auto-restore when the tmux server starts
   home.file.".config/tmux/plugins.conf".text = ''
     set -g @resurrect-capture-pane-contents 'on'
     set -g @resurrect-strategy-nvim 'session'
@@ -100,7 +100,7 @@ in
     run-shell ${pkgs.tmuxPlugins.resurrect}/share/tmux-plugins/resurrect/resurrect.tmux
     run-shell ${pkgs.tmuxPlugins.continuum}/share/tmux-plugins/continuum/continuum.tmux
   '';
-  # tmuxp のスターターレイアウト (zellij レイアウト相当)。`tmuxp load dev` で構築。
-  # ~/.config/tmuxp/ は実ディレクトリになるので、自作 YAML を隣に追加できる。
+  # tmuxp starter layout (equivalent to a zellij layout). Build via `tmuxp load dev`.
+  # ~/.config/tmuxp/ becomes a real directory, so you can add your own YAML alongside it.
   home.file.".config/tmuxp/dev.yaml".source = ../../../configs/terminals/tmux/tmuxp/dev.yaml;
 }

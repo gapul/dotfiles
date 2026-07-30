@@ -1,11 +1,11 @@
 { config, ... }:
 {
-  # SOPS: 暗号化された secrets を home-manager switch 時に decrypt
-  # (path に ~/Library が無いものは OS 非依存)
+  # SOPS: decrypt encrypted secrets at home-manager switch time
+  # (paths without ~/Library are OS-independent)
   #
-  # common.nix から分離 (2026-07-19): age 鍵を持たないホスト (macmini) が
-  # common.nix を共有できるようにするため。sops-nix モジュールを積む
-  # homeConfiguration (laptop / WSL / linux) だけがこのファイルを import する。
+  # Split out from common.nix (2026-07-19): so hosts without an age key (macmini)
+  # can share common.nix. Only homeConfigurations that load the sops-nix module
+  # (laptop / WSL / linux) import this file.
   sops = {
     age.keyFile = "${config.home.homeDirectory}/.config/sops/age/keys.txt";
     defaultSopsFile = ../../secrets/secrets.yaml;
@@ -16,7 +16,7 @@
       "ssh_config".path = "${config.home.homeDirectory}/.ssh/config";
       "ssh_authorized_keys".path = "${config.home.homeDirectory}/.ssh/authorized_keys";
 
-      # PII 単一ソース
+      # PII single source
       "pii/name" = { };
       "pii/email_personal" = { };
       "pii/email_school" = { };
@@ -26,7 +26,7 @@
       "pii/gmail_app_password_caldav" = { };
     };
 
-    # aerc / calcurse の template は OS 非依存(`~/.config/...`)
+    # aerc / calcurse templates are OS-independent (`~/.config/...`)
     templates = {
       "aerc-accounts.conf" = {
         path = "${config.home.homeDirectory}/.config/aerc/accounts.conf";

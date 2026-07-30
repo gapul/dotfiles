@@ -1,19 +1,20 @@
-# zrythm 1.0.0 を aarch64-darwin 向けに backend-only carla と結合してビルドする試み。
+# Attempt to build zrythm 1.0.0 for aarch64-darwin linked against a backend-only carla.
 { pkgs }:
 let
   inherit (pkgs) lib;
   portedCarla = import ./carla.nix { inherit pkgs; };
-  # Linux 専用の音声バックエンドを buildInputs から除去
+  # Drop Linux-only audio backends from buildInputs
   dropNames = [
     "alsa-lib"
     "libpulseaudio"
     "libjack2"
   ];
   keep = drv: !(lib.any (n: lib.hasInfix n (drv.pname or drv.name or "")) dropNames);
-  # libcyaml/vamp-plugin-sdk は Makefile ビルドで darwin 向けの install_name 修正が
-  # 一切行われず、dylib の LC_ID_DYLIB がベア名("libcyaml.1.dylib" 等、.so 拡張子含む)の
-  # ままになる。dyld はベア名では LC_RPATH を辿らないため、リンクした zrythm 本体が
-  # 実行時に "Library not loaded" で落ちる。dylib 自身の ID をフルパスに固定して回避する。
+  # libcyaml/vamp-plugin-sdk do no darwin install_name fixups in their Makefile
+  # build, so their dylib LC_ID_DYLIB stays a bare name ("libcyaml.1.dylib" etc.,
+  # including the .so extension). dyld does not follow LC_RPATH for bare names, so
+  # the linked zrythm binary dies at runtime with "Library not loaded". Work around
+  # it by pinning each dylib's own ID to a full path.
   fixDylibIds =
     drv:
     drv.overrideAttrs (oa: {
@@ -27,12 +28,12 @@ let
   patchedVampPluginSdk = fixDylibIds pkgs.vamp-plugin-sdk;
 in
 (pkgs.zrythm.override { carla = portedCarla; }).overrideAttrs (o: {
-  # nixpkgs 既定の --buildtype=plain(最適化なし=実質 -O0)を上書き。
-  # debugoptimized = -Ddebug=true -Doptimization=2 で、Zrythm 公式標準ビルドと等価。
-  # (-Doptimization=2 単体だと plain に上書きされ効かないため buildtype ごと変える)
+  # Override the nixpkgs default --buildtype=plain (no optimization = effectively -O0).
+  # debugoptimized = -Ddebug=true -Doptimization=2, equivalent to Zrythm's official standard build.
+  # (-Doptimization=2 alone gets overridden back to plain, so change the whole buildtype)
   mesonBuildType = "debugoptimized";
 
-  # preFixup で codesign(ad-hoc 再署名)を使うため、sigtool を明示的に足す。
+  # preFixup uses codesign (ad-hoc re-signing), so add sigtool explicitly.
   nativeBuildInputs = (o.nativeBuildInputs or [ ]) ++ [ pkgs.darwin.sigtool ];
 
   buildInputs = builtins.map (
@@ -51,9 +52,10 @@ in
     "-Dpulse=disabled"
     "-Dx11=disabled"
     "-Dmanpage=false"
-    # nixpkgs は --buildtype=plain(最適化なし=実質 -O0)。公式は -Ddebug=true
-    # -Doptimization=2(標準)を使う。DAW の CPU/レイテンシ性能に効くので公式相当へ上げる。
-    # (extra_optimizations は既定 true で -ffast-math 等は有効)
+    # nixpkgs uses --buildtype=plain (no optimization = effectively -O0). The official
+    # build uses -Ddebug=true -Doptimization=2 (standard). This matters for DAW CPU/latency
+    # performance, so bump it up to match the official build.
+    # (extra_optimizations defaults to true, so -ffast-math etc. are enabled)
     "-Doptimization=2"
   ];
 
@@ -61,14 +63,14 @@ in
     substituteInPlace meson.build --replace-fail "  find_program (open_dir_cmd)" "  # patched out"
   '';
 
-  # darwin GUI ランタイム環境の補完。nixpkgs zrythm は darwin 想定でないため
-  # wrapGAppsHook4 がこれらを張れておらず、素のままだと exit 255 で落ちる。
+  # Fill in the darwin GUI runtime environment. nixpkgs zrythm is not meant for darwin,
+  # so wrapGAppsHook4 does not wire these up, and it dies with exit 255 as-is.
   preFixup = (o.preFixup or "") + ''
-    # librsvg(SVG)込みの gdk-pixbuf loaders.cache を生成。これが無いと zrythm は
-    # "SVG loader was not found" で起動を中止する(UI が SVG ベースの必須依存)。
-    # ただし librsvg の svg loader は @rpath/librsvg-2.2.dylib を参照するが対応する
-    # LC_RPATH が無く dlopen に失敗する。librsvg 本体(Rust・重い)は再ビルドせず、
-    # loader だけ $out にコピーして参照を絶対パスへ書き換える。
+    # Generate a gdk-pixbuf loaders.cache including librsvg (SVG). Without it zrythm
+    # aborts startup with "SVG loader was not found" (the UI has a required SVG-based dep).
+    # However, librsvg's svg loader references @rpath/librsvg-2.2.dylib but there is no
+    # matching LC_RPATH, so dlopen fails. Rather than rebuild librsvg itself (Rust, heavy),
+    # copy just the loader into $out and rewrite the reference to an absolute path.
     loaderdir="$out/lib/gdk-pixbuf-2.0/2.10.0/loaders"
     mkdir -p "$loaderdir"
     cp ${pkgs.librsvg}/lib/gdk-pixbuf-2.0/2.10.0/loaders/libpixbufloader_svg.dylib "$loaderdir/"
@@ -76,8 +78,8 @@ in
     install_name_tool -change @rpath/librsvg-2.2.dylib \
       ${pkgs.librsvg}/lib/librsvg-2.2.dylib \
       "$loaderdir/libpixbufloader_svg.dylib"
-    # Apple Silicon: install_name_tool 改変で ad-hoc 署名が無効化され dyld が
-    # "no such file" で拒否する。再署名して有効化する。
+    # Apple Silicon: the install_name_tool edit invalidates the ad-hoc signature and
+    # dyld rejects it with "no such file". Re-sign to make it valid again.
     codesign --force --sign - "$loaderdir/libpixbufloader_svg.dylib"
 
     ${pkgs.gdk-pixbuf.dev}/bin/gdk-pixbuf-query-loaders \
@@ -86,17 +88,17 @@ in
       > "$out/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache"
 
     gappsWrapperArgs+=(
-      # GTK4 のネイティブ表示バックエンドは "macos"(GTK3 の "quartz" から改名)。
-      # 既定だと "quartz" を要求して "No such backend" で即死するため既定注入。
+      # GTK4's native display backend is "macos" (renamed from GTK3's "quartz").
+      # By default it requests "quartz" and dies instantly with "No such backend", so inject the default.
       --set-default GDK_BACKEND macos
-      # フォント設定("Fontconfig error: Cannot load default config file")対策。
+      # Fix for font config ("Fontconfig error: Cannot load default config file").
       --set-default FONTCONFIG_FILE ${pkgs.fontconfig.out}/etc/fonts/fonts.conf
-      # gsettings/dconf の書き込みが machine-id/dbus 不在で失敗し
+      # gsettings/dconf writes fail without machine-id/dbus, producing
       # "Could not set 'first-run' to 'false'. ... problem with your GSettings backend"
-      # が出て設定が永続化されない(毎回 welcome が出る)。dconf を使わず keyfile
-      # バックエンドに切替えて ~/.config/glib-2.0/settings/keyfile に永続化する。
+      # so settings never persist (welcome shows every time). Switch off dconf to the keyfile
+      # backend and persist to ~/.config/glib-2.0/settings/keyfile.
       --set-default GSETTINGS_BACKEND keyfile
-      # 上で生成した SVG 込み loaders.cache を指す。
+      # Point at the loaders.cache (including SVG) generated above.
       --set GDK_PIXBUF_MODULE_FILE "$out/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache"
     )
   '';

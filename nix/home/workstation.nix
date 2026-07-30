@@ -5,20 +5,20 @@
   ...
 }:
 let
-  # ghostty ランチャーの検索バイナリ。store 化して gc-deep の target 掃除から守る。
+  # Search binary for the ghostty launcher. Store-ify it to protect it from gc-deep's target cleanup.
   launcher-search = pkgs.callPackage ../pkgs/launcher-search.nix { };
 in
 {
-  # workstation 層: 母艦 (laptop) / WSL / linux 用の開発・生活ツール。
-  # macmini (ヘッドレス AI ノード) はこれを積まない (common.nix から分離 2026-07-19)。
+  # workstation layer: dev/daily tools for the main machine (laptop) / WSL / linux.
+  # macmini (headless AI node) doesn't load this (split from common.nix 2026-07-19).
 
   home.packages = with pkgs; [
-    launcher-search # ghostty ランチャー検索バックエンド (core/launcher-search の代替)
-    pandoc # ドキュメント変換
-    typst # 組版
-    # 日本語の学術文書に必要な TeX Live コレクションを Nix で合成する。
-    # scheme-full は避けつつ、数式・図表・参考文献・一般的な追加パッケージを
-    # 個別追加なしで利用できる範囲を揃える。
+    launcher-search # ghostty launcher search backend (replaces core/launcher-search)
+    pandoc # document conversion
+    typst # typesetting
+    # Compose the TeX Live collections needed for Japanese academic documents via Nix.
+    # Avoid scheme-full while covering math, figures/tables, bibliographies, and common
+    # extra packages without adding them individually.
     (texlive.combine {
       inherit (texlive)
         scheme-medium
@@ -30,55 +30,55 @@ in
         collection-fontsrecommended
         ;
     })
-    poppler-utils # PDF CLI (pdftotext 等。旧 brew poppler)
+    poppler-utils # PDF CLI (pdftotext etc. formerly brew poppler)
     bitwarden-cli # Bitwarden (bw)
     syft # SBOM
-    radare2 # リバースエンジニアリング (r2)
-    aria2 # ダウンローダ (aria2c)
-    rclone # クラウドストレージ同期
-    calcurse # カレンダー TUI
-    cargo-cache # cargo build artifacts 掃除 (just gc が依存)
+    radare2 # reverse engineering (r2)
+    aria2 # downloader (aria2c)
+    rclone # cloud storage sync
+    calcurse # calendar TUI
+    cargo-cache # clean cargo build artifacts (just gc depends on it)
     youtube-tui # YouTube TUI
-    gita # マルチリポ git 管理 (~/.config/gita)
-    compiledb # compile_commands.json 生成
-    cmake # ビルドシステム
-    meson # ビルドシステム
-    tree-sitter # 旧 tree-sitter-cli
-    # rust: rustup でなく rustc+cargo (固定版・宣言的)。nightly/toolchain切替が要る場合は rustup へ
-    rustc # Rust コンパイラ
-    cargo # Rust ビルド/パッケージ管理
-    docker-compose # コンテナ compose (podman socket を向ける)
-    podman # コンテナ (machine VM は別管理で維持)
-    fontforge # フォント編集 CLI (GUI は fontforge-app cask)
-    python3Packages.fonttools # フォント操作 lib/CLI
-    aerc # メール TUI
-    isync # IMAP 同期 (mbsync)
-    # 日本語校閲 textlint (ルール一式を buildNpmPackage で固定。pnpm global を廃止)
+    gita # multi-repo git management (~/.config/gita)
+    compiledb # generate compile_commands.json
+    cmake # build system
+    meson # build system
+    tree-sitter # formerly tree-sitter-cli
+    # rust: rustc+cargo instead of rustup (pinned, declarative). Use rustup if you need nightly/toolchain switching
+    rustc # Rust compiler
+    cargo # Rust build/package management
+    docker-compose # container compose (points at the podman socket)
+    podman # containers (the machine VM is maintained separately)
+    fontforge # font editing CLI (GUI is the fontforge-app cask)
+    python3Packages.fonttools # font manipulation lib/CLI
+    aerc # mail TUI
+    isync # IMAP sync (mbsync)
+    # Japanese proofreading textlint (whole ruleset pinned via buildNpmPackage; pnpm global retired)
     (callPackage ../pkgs/textlint-ja.nix { })
   ];
 
-  # ユーザーデータ置き場 (Google Drive mount / Syncthing 共有)
+  # User data location (Google Drive mount / Syncthing share)
   home.activation.workstationDataDirs = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     /bin/mkdir -p \
       "${config.home.homeDirectory}/Cloud" \
       "${config.home.homeDirectory}/Sync"
   '';
 
-  # codex / claude: env (CODEX_HOME / CLAUDE_CONFIG_DIR) を読まない起動経路
-  # (CodexBar 等の GUI アプリ、popo の env 無し spawn) が ~/.codex ~/.claude を
-  # 再生成して分裂するため、XDG 実体への symlink にしてどの経路でも同じ場所に
-  # 収束させる (.supermaven と同じ手法)。
+  # codex / claude: launch paths that don't read the env (CODEX_HOME / CLAUDE_CONFIG_DIR)
+  # (GUI apps like CodexBar, popo's env-less spawn) regenerate ~/.codex ~/.claude and
+  # cause a split, so symlink them to the XDG entities so every path converges on the
+  # same location (same technique as .supermaven).
   home.file.".codex".source = config.lib.file.mkOutOfStoreSymlink "${config.xdg.dataHome}/codex";
   home.file.".claude".source = config.lib.file.mkOutOfStoreSymlink "${config.xdg.configHome}/claude";
 
-  # supermaven: sm-agent は $HOME/.supermaven をハードコード参照 (XDG 非対応)。
-  # 実体は ~/.local/share/supermaven に置き、$HOME はそこへの symlink にして両立。
-  # (丸ごと移動すると agent が config を見失い認証ロストするため symlink が必須)
+  # supermaven: sm-agent hardcodes $HOME/.supermaven (not XDG-aware).
+  # Keep the real dir at ~/.local/share/supermaven and make $HOME a symlink to it.
+  # (Moving it wholesale makes the agent lose its config and its auth, so the symlink is required)
   home.file.".supermaven".source =
     config.lib.file.mkOutOfStoreSymlink "${config.xdg.dataHome}/supermaven";
 
-  # bday: 自作 birthday-tui のランチャ。ghq(~/Developer) の checkout を PATH に通す。
-  # nvim 側は lazy dev で同 checkout を読む (configs/editors/nvim/lua/config/lazy.lua)。
+  # bday: launcher for the homemade birthday-tui. Puts the ghq (~/Developer) checkout on PATH.
+  # nvim reads the same checkout via lazy dev (configs/editors/nvim/lua/config/lazy.lua).
   home.file.".local/bin/bday".source =
     config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/Developer/github.com/gapul/birthday-tui/bday";
 
@@ -86,8 +86,8 @@ in
     source = ../../configs/textlint;
     recursive = true;
   };
-  # LaTeX: latexmk 既定設定 (LuaLaTeX) と日本語テンプレート
-  # latexmk 4.77+ は $XDG_CONFIG_HOME/latexmk/latexmkrc を公式サポートするため XDG 準拠の配置にする
+  # LaTeX: latexmk default config (LuaLaTeX) and Japanese templates
+  # latexmk 4.77+ officially supports $XDG_CONFIG_HOME/latexmk/latexmkrc, so use the XDG-compliant location
   home.file.".config/latexmk/latexmkrc".source = ../../configs/tex/latexmkrc;
   home.file.".config/tex/templates" = {
     source = ../../configs/tex/templates;
@@ -97,19 +97,19 @@ in
     source = ../../configs/media/mpv;
     recursive = true;
   };
-  # uosc は vendored (ziggy バイナリ 18MB 同梱) をやめ nixpkgs から供給。
-  # 第三者バイナリを repo に抱えない構造にする (ziggy 依存の DL 機能は未使用)。
+  # uosc: stop vendoring (an 18MB bundled ziggy binary) and supply it from nixpkgs.
+  # Keep third-party binaries out of the repo (the ziggy-dependent DL feature is unused).
   home.file.".config/mpv/scripts/uosc".source = "${pkgs.mpvScripts.uosc}/share/mpv/scripts/uosc";
   home.file.".config/launcher/config.toml".source = ../../configs/launcher/config.toml;
-  # core/launcher.sh はこの env があればローカルビルドより優先して store のバイナリを使う。
+  # core/launcher.sh uses the store binary over a local build when this env is set.
   home.sessionVariables.LAUNCHER_SEARCH_BIN = lib.getExe launcher-search;
   home.file.".config/calcurse" = {
     source = ../../configs/cli/calcurse;
     recursive = true;
   };
 
-  # Zed: settings.json のみ管理 (UI 編集が repo に直書きされるよう mkOutOfStoreSymlink)。
-  # 他の ~/.config/zed/* は会話履歴等の state なので触らない。
+  # Zed: manage only settings.json (mkOutOfStoreSymlink so UI edits write straight into the repo).
+  # Other ~/.config/zed/* are state like conversation history, so leave them alone.
   home.file.".config/zed/settings.json".source =
     config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.dotfiles/configs/editors/zed/settings.json";
 }

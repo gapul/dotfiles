@@ -1,11 +1,11 @@
-# Nix ツール component (ECS: profile)。nix-index/comma/agent-skills/nh。
+# Nix tools component (ECS: profile). nix-index/comma/agent-skills/nh.
 {
   config,
   ...
 }:
 {
-  # Weekly generated database: nix-locate / command-not-found / comma を
-  # ローカルDB構築なしで全OS共通利用する。
+  # Weekly generated database: use nix-locate / command-not-found / comma
+  # commonly across all OSes without building a local DB.
   programs.nix-index = {
     enable = true;
     enableZshIntegration = true;
@@ -22,7 +22,7 @@
     targets.agents.enable = true;
   };
 
-  # nh: nh darwin / nh home の便利ラッパー
+  # nh: convenient wrapper for nh darwin / nh home
   programs.nh = {
     enable = true;
     flake = "${config.home.homeDirectory}/.dotfiles/nix";

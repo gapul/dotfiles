@@ -1,9 +1,9 @@
-# ollama serve を LaunchAgent で常駐させる共通 launch 仕様の SSO。
+# SSO of the common launch spec for keeping ollama serve resident via LaunchAgent.
 #
-# workstation (home-manager: modules/home/darwin-services.nix の launchd.agents.ollama.config)
-# と macmini (nix-darwin: hosts/macmini.nix の launchd.agents.ollama.serviceConfig) が共有する。
-# 両者は module 系が違い、log パス・EnvironmentVariables・ProcessType が異なるので、
-# 差分は呼び出し側で `// { ... }` して付ける。ここでは起動コマンド本体だけを束ねる。
+# Shared by workstation (home-manager: launchd.agents.ollama.config in modules/home/darwin-services.nix)
+# and macmini (nix-darwin: launchd.agents.ollama.serviceConfig in hosts/macmini.nix).
+# The two use different module systems and differ in log path / EnvironmentVariables / ProcessType,
+# so the caller adds the differences via `// { ... }`. Here we only bundle the launch command itself.
 { pkgs }:
 {
   ProgramArguments = [

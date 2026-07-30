@@ -1,18 +1,18 @@
 { pkgs, ... }:
-# Hyprland のユーザー設定 (リック)。nixos-laptop でのみ import する。
-# システム側 (hosts/nixos-laptop.nix) が programs.hyprland / hyprlock の
-# PAM・session を用意し、こちらは見た目とキーバインドを管理する。
-# 色は configs/theme/palettes.json (rose-pine) を SSO として共有 ([[theme]])。
+# Hyprland user config (Rick). Imported only on nixos-laptop.
+# The system side (hosts/nixos-laptop.nix) provides PAM/session for
+# programs.hyprland / hyprlock; this side manages appearance and keybinds.
+# Colors are shared via configs/theme/palettes.json (rose-pine) as SSO ([[theme]]).
 let
-  c = import ../lib/theme.nix; # c.base / c.text / c.iris ... (# は付かない hex)
+  c = import ../lib/theme.nix; # c.base / c.text / c.iris ... (hex without leading #)
 in
 {
-  # package = null: システムの Hyprland を使い、HM は設定だけ管理する。
+  # package = null: use the system Hyprland, HM manages only the config.
   wayland.windowManager.hyprland = {
     enable = true;
     package = null;
     portalPackage = null;
-    # settings は hyprlang 形式で生成 (将来既定が lua に変わるため明示固定)。
+    # settings generated in hyprlang format (pinned explicitly since the default may switch to lua).
     configType = "hyprlang";
     settings = {
       "$mod" = "SUPER";
@@ -27,12 +27,12 @@ in
         "waybar"
         "hyprpaper"
         "mako"
-        "wl-paste --watch cliphist store" # クリップボード履歴を蓄積
-        "wl-gammarelay-rs" # ナイトライト用 dbus デーモン
+        "wl-paste --watch cliphist store" # accumulate clipboard history
+        "wl-gammarelay-rs" # dbus daemon for night light
       ];
 
       input = {
-        kb_layout = "us"; # JIS 配列なら "jp"
+        kb_layout = "us"; # use "jp" for a JIS layout
         follow_mouse = 1;
         touchpad = {
           natural_scroll = true;
@@ -63,22 +63,22 @@ in
       bind = [
         "$mod, Return, exec, $terminal"
         "$mod, Q, killactive"
-        "$mod SHIFT, M, exit" # Hyprland 終了
-        "$mod, E, exec, $terminal -e yazi" # ファイラ (yazi)
+        "$mod SHIFT, M, exit" # quit Hyprland
+        "$mod, E, exec, $terminal -e yazi" # file manager (yazi)
         "$mod, R, exec, $menu"
         "$mod, V, togglefloating"
         "$mod, F, fullscreen"
-        "$mod, L, exec, hyprlock" # 手動ロック
-        "$mod, C, exec, cliphist list | wofi --dmenu | cliphist decode | wl-copy" # 履歴貼付
-        "$mod, Escape, exec, wlogout" # 電源メニュー
-        # スクショ (hyprshot)・カラーピッカー
-        "$mod, P, exec, hyprshot -m region --clipboard-only" # 範囲 → クリップボード
-        "$mod SHIFT, P, exec, hyprshot -m window" # ウィンドウ → 保存
-        "$mod SHIFT, C, exec, hyprpicker -a" # 色を拾ってコピー
-        # ナイトライト (色温度 4000K / 6500K に切替)
+        "$mod, L, exec, hyprlock" # manual lock
+        "$mod, C, exec, cliphist list | wofi --dmenu | cliphist decode | wl-copy" # paste from history
+        "$mod, Escape, exec, wlogout" # power menu
+        # screenshot (hyprshot) / color picker
+        "$mod, P, exec, hyprshot -m region --clipboard-only" # region -> clipboard
+        "$mod SHIFT, P, exec, hyprshot -m window" # window -> save
+        "$mod SHIFT, C, exec, hyprpicker -a" # pick a color and copy
+        # night light (switch color temperature 4000K / 6500K)
         "$mod SHIFT, N, exec, busctl --user set-property rs.wl-gammarelay / rs.wl.gammarelay Temperature q 4000"
         "$mod SHIFT, D, exec, busctl --user set-property rs.wl-gammarelay / rs.wl.gammarelay Temperature q 6500"
-        # フォーカス移動
+        # move focus
         "$mod, left, movefocus, l"
         "$mod, right, movefocus, r"
         "$mod, up, movefocus, u"
@@ -89,7 +89,7 @@ in
           i:
           let
             n = toString (i + 1);
-            key = toString (if i + 1 == 10 then 0 else i + 1); # 10 番は 0 キー
+            key = toString (if i + 1 == 10 then 0 else i + 1); # workspace 10 maps to the 0 key
           in
           [
             "$mod, ${key}, workspace, ${n}"
@@ -103,7 +103,7 @@ in
         "$mod, mouse:273, resizewindow"
       ];
 
-      # 音量・輝度 (押しっぱなし対応)
+      # volume / brightness (supports key-repeat while held)
       bindel = [
         ",XF86AudioRaiseVolume, exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+"
         ",XF86AudioLowerVolume, exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"
@@ -119,7 +119,7 @@ in
     };
   };
 
-  # ロック画面の見た目
+  # lock screen appearance
   programs.hyprlock = {
     enable = true;
     settings = {
@@ -137,7 +137,7 @@ in
     };
   };
 
-  # アイドル制御 (HM のユーザーサービスとして起動。システム側 services.hypridle は無効化済み)
+  # idle control (started as an HM user service; the system-side services.hypridle is disabled)
   services.hypridle = {
     enable = true;
     settings = {
@@ -148,23 +148,23 @@ in
       };
       listener = [
         {
-          timeout = 300; # 5 分でロック
+          timeout = 300; # lock after 5 minutes
           on-timeout = "loginctl lock-session";
         }
         {
-          timeout = 360; # 6 分で画面オフ
+          timeout = 360; # turn off screen after 6 minutes
           on-timeout = "hyprctl dispatch dpms off";
           on-resume = "hyprctl dispatch dpms on";
         }
         {
-          timeout = 900; # 15 分でサスペンド (バッテリー保護)
+          timeout = 900; # suspend after 15 minutes (battery protection)
           on-timeout = "systemctl suspend";
         }
       ];
     };
   };
 
-  # 通知デーモン
+  # notification daemon
   services.mako = {
     enable = true;
     settings = {
@@ -176,7 +176,7 @@ in
     };
   };
 
-  # ステータスバー
+  # status bar
   programs.waybar = {
     enable = true;
     systemd.enable = true;
@@ -219,6 +219,6 @@ in
     '';
   };
 
-  # ghostty 設定を dotfiles から (darwin と同じ configs/terminals/ghostty を流用)。
+  # ghostty config from dotfiles (reuses the same configs/terminals/ghostty as darwin).
   home.file.".config/ghostty".source = ../../configs/terminals/ghostty;
 }

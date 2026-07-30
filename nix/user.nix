@@ -1,16 +1,16 @@
-# Fork した時はこの 1 ファイルを編集すれば全体に反映される。
-# darwinConfigurations / homeConfigurations の attribute 名も
-# username に揃える (`just rebuild` / `nh` がそのまま動く)。
+# When you fork, editing this one file propagates everywhere.
+# The attribute names of darwinConfigurations / homeConfigurations are also
+# aligned to username (`just rebuild` / `nh` work as-is).
 {
-  # macOS のユーザー名(/Users/<username> に対応)
+  # macOS username (corresponds to /Users/<username>)
   username = "gapul";
 
-  # git commit の author 情報
-  # メールはパブリックリポへの個人アドレス露出を避けるため GitHub noreply を使用。
-  # (実アドレスは secrets.yaml の pii: に暗号化集約)
+  # git commit author info
+  # The email uses GitHub noreply to avoid exposing a personal address on public repos.
+  # (the real address is encrypted and consolidated under pii: in secrets.yaml)
   gitUser = "gapul";
   gitEmail = "92638132+gapul@users.noreply.github.com";
 
-  # dotfiles 自身の GitHub URL(bootstrap.sh / nssh が clone する時に使う)
+  # The dotfiles' own GitHub URL (used by bootstrap.sh / nssh when cloning)
   dotfilesRepo = "https://github.com/gapul/dotfiles.git";
 }

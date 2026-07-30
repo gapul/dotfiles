@@ -1,4 +1,4 @@
-# CLI tools component (ECS: profile)。bat/lazygit/eza/starship/zoxide/fzf/atuin/direnv。
+# CLI tools component (ECS: profile). bat/lazygit/eza/starship/zoxide/fzf/atuin/direnv.
 {
   pkgs,
   lib,
@@ -9,12 +9,12 @@
     enable = true;
     config = {
       style = "numbers,changes,header";
-      # macOS 外観に自動追従。dark=rose-pine / light=rose-pine-dawn。
+      # Auto-follows the macOS appearance. dark=rose-pine / light=rose-pine-dawn.
       theme = "auto:system";
       theme-dark = "rose-pine";
       theme-light = "rose-pine-dawn";
     };
-    # Rosé Pine tmTheme を vendor (bat cache に登録される)。dawn は dark を hex 置換で生成。
+    # Vendor the Rosé Pine tmTheme (registered in the bat cache). dawn is generated from dark by hex substitution.
     themes."rose-pine" = {
       src = ../../../configs/cli/bat/themes;
       file = "rose-pine.tmTheme";
@@ -25,8 +25,8 @@
     };
   };
 
-  # lazygit: ANSI 名前色で端末パレットに乗せ、ghostty の macOS 外観追従に連動させる。
-  # (固定 hex をやめたぶん色精度は端末の 16 色に丸まるが dark/light 自動切替になる)
+  # lazygit: use ANSI color names to ride the terminal palette, tied to ghostty following the macOS appearance.
+  # (dropping fixed hex rounds color precision to the terminal's 16 colors, but gives automatic dark/light switching)
   programs.lazygit = {
     enable = true;
     settings = {
@@ -35,15 +35,15 @@
         skipRewordInEditorWarning = true;
         theme = {
           activeBorderColor = [
-            "magenta" # iris 相当
+            "magenta" # ~iris
             "bold"
           ];
-          inactiveBorderColor = [ "blue" ]; # pine 相当
-          optionsTextColor = [ "cyan" ]; # foam 相当
+          inactiveBorderColor = [ "blue" ]; # ~pine
+          optionsTextColor = [ "cyan" ]; # ~foam
           selectedLineBgColor = [ "blue" ];
           cherryPickedCommitBgColor = [ "magenta" ];
           cherryPickedCommitFgColor = [ "blue" ];
-          unstagedChangesColor = [ "red" ]; # love 相当
+          unstagedChangesColor = [ "red" ]; # ~love
           defaultFgColor = [ "default" ];
         };
       };
@@ -94,9 +94,9 @@
     extraOptions = [ "--group-directories-first" ];
   };
 
-  # starship 設定の真のソースは configs/shell/starship.toml (下の home.file で symlink)。
-  # ここに programs.starship.settings を追加すると home-manager が同じ
-  # ~/.config/starship.toml を生成しようとし symlink と衝突するので、settings は書かない。
+  # The true source of the starship config is configs/shell/starship.toml (symlinked via home.file below).
+  # Adding programs.starship.settings here would make home-manager generate the same
+  # ~/.config/starship.toml and collide with the symlink, so settings is left empty.
   programs.starship = {
     enable = true;
     enableZshIntegration = true;
@@ -111,34 +111,34 @@
     enable = true;
     enableZshIntegration = true;
     defaultCommand = "fd --type f --hidden --follow --exclude .git";
-    # 端末の 16 色 ANSI を継承 → ghostty の Rose Pine / Rose Pine Dawn (macOS 外観追従)
-    # に自動で乗る。固定 hex をやめることで dark/light 自動切替に対応。
+    # Inherit the terminal's 16-color ANSI -> automatically rides ghostty's Rose Pine / Rose Pine Dawn
+    # (following the macOS appearance). Dropping fixed hex enables automatic dark/light switching.
     defaultOptions = [ "--color=16" ];
   };
 
   programs.atuin = {
     enable = true;
     enableZshIntegration = true;
-    # Up は history-substring-search に明け渡す。atuin は Ctrl+R のみで起動
+    # Yield Up to history-substring-search. atuin launches only via Ctrl+R
     flags = [ "--disable-up-arrow" ];
     settings = {
-      # 公式 SaaS で複数端末 (Mac / WSL / Linux server) の history を同期。
-      # 利用前に各端末で 1 度だけ `atuin login -u gapul` (or register) が必要。
-      # E2E 暗号化キーは ~/.local/share/atuin/key、Bitwarden に backup 推奨。
+      # Sync history across multiple machines (Mac / WSL / Linux server) via the official SaaS.
+      # Requires `atuin login -u gapul` (or register) once per machine before use.
+      # The E2E encryption key is ~/.local/share/atuin/key; backing it up to Bitwarden is recommended.
       auto_sync = true;
       sync_address = "https://api.atuin.sh";
       sync_frequency = "5m";
       update_check = false;
       search_mode = "fuzzy";
-      filter_mode = "global"; # 全 host 横断検索
+      filter_mode = "global"; # search across all hosts
       style = "compact";
       inline_height = 20;
-      enter_accept = false; # Enter で実行せず編集に
+      enter_accept = false; # Enter edits instead of executing
       show_preview = true;
-      # TUI デバッグログ(~/.atuin/logs)を抑止し home 直下を汚さない。
-      # config/data は既に XDG (~/.config/atuin, ~/.local/share/atuin)。
+      # Suppress the TUI debug log (~/.atuin/logs) to avoid cluttering the home dir.
+      # config/data are already XDG (~/.config/atuin, ~/.local/share/atuin).
       logs.enabled = false;
-      # 明示テーマは付けず端末のデフォルト配色を使う → ghostty の macOS 外観追従に連動。
+      # Set no explicit theme and use the terminal's default colors -> tied to ghostty following the macOS appearance.
     };
   };
 
@@ -147,11 +147,11 @@
     enableZshIntegration = true;
     nix-direnv.enable = true;
   };
-  # dotfiles/configs/* を symlink (OS 非依存なものだけ。Mac 専用 = aerospace/sketchybar/karabiner は home/darwin.nix へ)
+  # Symlink dotfiles/configs/* (OS-independent ones only. Mac-only = aerospace/sketchybar/karabiner go to home/darwin.nix)
   home.file.".config/starship.toml".source = ../../../configs/shell/starship.toml;
   home.file.".config/gh/config.yml".source = ../../../configs/cli/gh/config.yml;
-  # markdownlint-cli2: 親方向探索でホーム以下全 Markdown の既定になるため、
-  # XDG 非対応だがホーム直下がツールの仕様上正しい置き場所。
+  # markdownlint-cli2: parent-directory lookup makes this the default for all Markdown under home,
+  # so despite not being XDG-compliant, the home dir root is the correct location per the tool's spec.
   home.file.".markdownlint-cli2.jsonc".source =
     ../../../configs/cli/markdownlint/markdownlint-cli2.jsonc;
   home.file."bin/nssh" = {

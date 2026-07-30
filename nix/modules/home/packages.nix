@@ -1,4 +1,4 @@
-# Packages component (ECS: profile)。単発 CLI ツール群 (programs.* 対象外、OS 非依存)。
+# Packages component (ECS: profile). One-off CLI tools (not covered by programs.*, OS-independent).
 {
   pkgs,
   ...
@@ -25,75 +25,75 @@ let
 in
 {
   home.packages = with pkgs; [
-    nixd # Nix LSP (Neovim から利用)
-    gh-nix # gh の認証を一時的に Nix access-tokens へ橋渡し
-    nix-output-monitor # nh / nix build を見やすくする (`nom`)
-    nix-tree # nix store 依存関係 TUI
-    nix-init # flake.nix 雛形生成
-    nvd # Nix / Home Manager generation のパッケージ差分
-    optnix # NixOS / Home Manager / nix-darwin option 検索 TUI
-    devenv # Nix ベース dev shell (direnv と組み合わせ)
-    tealdeer # tldr CLI (programs.tealdeer は archive_source 非対応のため手動)
+    nixd # Nix LSP (used from Neovim)
+    gh-nix # bridge gh auth temporarily into Nix access-tokens
+    nix-output-monitor # make nh / nix build output readable (`nom`)
+    nix-tree # nix store dependency TUI
+    nix-init # generate flake.nix scaffolding
+    nvd # package diff between Nix / Home Manager generations
+    optnix # NixOS / Home Manager / nix-darwin option search TUI
+    devenv # Nix-based dev shell (combined with direnv)
+    tealdeer # tldr CLI (manual because programs.tealdeer doesn't support archive_source)
 
-    # ─── Homebrew から移行した CLI (段階1: git周辺 + 基本) ───
+    # ─── CLI migrated from Homebrew (stage 1: git-related + basics) ───
     gh # GitHub CLI
-    gh-dash # GitHub PR / Issue ダッシュボード TUI
-    git-wt # worktree作成・切替・安全削除を`git wt`へ統一
-    git-wtpr # `git wtpr <PR番号|URL>`でPR専用worktreeへ移動
-    trash-cli # git-wtの削除をゴミ箱経由にする
-    tirith # shell/AI agent向けcommand・URL・Skill防御
-    (callPackage ../../pkgs/tuicr.nix { }) # AI生成diffをPR風UIでレビュー
-    ghq # repo クローン管理
+    gh-dash # GitHub PR / Issue dashboard TUI
+    git-wt # unify worktree create/switch/safe-delete under `git wt`
+    git-wtpr # `git wtpr <PR number|URL>` moves to a PR-dedicated worktree
+    trash-cli # route git-wt deletions through the trash
+    tirith # command/URL/Skill defense for shell/AI agents
+    (callPackage ../../pkgs/tuicr.nix { }) # review AI-generated diffs in a PR-style UI
+    ghq # repo clone management
     lazyjj # jujutsu TUI
-    jq # JSON プロセッサ
-    fd # find 代替 (fzf defaultCommand でも使用)
-    just # コマンドランナー (この Justfile を実行)
-    bottom # システムモニタ (btm)
-    dust # ディスク使用量 (旧 du-dust)
-    ncdu # ディスク使用量 TUI
-    yazi # ファイルマネージャ TUI
-    zellij # ターミナルマルチプレクサ
-    tmux # ターミナルマルチプレクサ (zellij 代替。設定は modules/home/terminal.nix)
-    tmuxp # tmux セッション/レイアウトを YAML 宣言 (zellij レイアウト相当。~/.config/tmuxp/)
-    podman-tui # Podman コンテナ / イメージ / Pod 管理 TUI
-    iamb # Matrix TUI (Vim キーバインド、E2EE 対応)
-    newsboat # RSS/Atom フィードリーダー TUI
-    presenterm # Markdown プレゼンテーション TUI
-    termshark # tshark/Wireshark のパケット解析 TUI
+    jq # JSON processor
+    fd # find alternative (also used in fzf defaultCommand)
+    just # command runner (runs this Justfile)
+    bottom # system monitor (btm)
+    dust # disk usage (formerly du-dust)
+    ncdu # disk usage TUI
+    yazi # file manager TUI
+    zellij # terminal multiplexer
+    tmux # terminal multiplexer (zellij alternative. config in modules/home/terminal.nix)
+    tmuxp # declare tmux sessions/layouts in YAML (equivalent to zellij layouts. ~/.config/tmuxp/)
+    podman-tui # Podman container / image / Pod management TUI
+    iamb # Matrix TUI (Vim keybindings, E2EE support)
+    newsboat # RSS/Atom feed reader TUI
+    presenterm # Markdown presentation TUI
+    termshark # tshark/Wireshark packet analysis TUI
 
-    # ─── Homebrew から移行した CLI (段階2: build/言語/文書/security/network) ───
-    uv # Python パッケージ管理
-    pnpm # Node パッケージ管理
-    imagemagick # 画像変換 (magick)
+    # ─── CLI migrated from Homebrew (stage 2: build/language/docs/security/network) ───
+    uv # Python package management
+    pnpm # Node package management
+    imagemagick # image conversion (magick)
     libsixel # sixel (img2sixel)
-    age # SOPS 暗号化バックエンド
-    sops # secrets 管理
-    gitleaks # pre-commit の機密 leak 検査
+    age # SOPS encryption backend
+    sops # secrets management
+    gitleaks # secret leak scanning for pre-commit
     pre-commit # hook framework
-    opencode # AI コーディング CLI
-    (callPackage ../../pkgs/unity-cli.nix { }) # Unity Editor / module / project 管理 CLI
-    glow # markdown ビューア
-    chafa # 画像→ターミナル
-    ddgr # DuckDuckGo 対話型ターミナル検索
-    w3m # テキストブラウザ
+    opencode # AI coding CLI
+    (callPackage ../../pkgs/unity-cli.nix { }) # Unity Editor / module / project management CLI
+    glow # markdown viewer
+    chafa # image → terminal
+    ddgr # DuckDuckGo interactive terminal search
+    w3m # text browser
 
-    # ─── cargo/uv からローカル install していたものを nix 宣言化 (再現性確保) ───
+    # ─── nix-declaring things previously installed locally via cargo/uv (for reproducibility) ───
 
-    # ─── Homebrew から移行した CLI (段階3) ───
-    ollama # ローカル LLM (nix 版も Metal GPU 有効 — runner が Metal.framework をリンク。検証済)
-    neovim # エディタ本体 (設定は configs/editors/nvim を mkOutOfStoreSymlink)
+    # ─── CLI migrated from Homebrew (stage 3) ───
+    ollama # local LLM (nix build has Metal GPU too — runner links Metal.framework. verified)
+    neovim # the editor itself (config via mkOutOfStoreSymlink of configs/editors/nvim)
 
-    # ─── yazi プレビュー用 (piper 経由 or 内蔵 previewer が利用) ───
-    ffmpegthumbnailer # 動画サムネイル (yazi 内蔵 video previewer が使用)
-    ouch # 書庫(zip/tar/7z 等)の中身一覧/展開
-    rich-cli # csv/json/md 等のリッチ整形 (piper previewer から呼ぶ)
+    # ─── for yazi preview (used via piper or the built-in previewer) ───
+    ffmpegthumbnailer # video thumbnails (used by yazi's built-in video previewer)
+    ouch # list/extract archive contents (zip/tar/7z etc.)
+    rich-cli # rich formatting for csv/json/md etc. (called from piper previewer)
 
-    # ─── lint/format 一元管理 (CLI・Neovim・CI で同一バイナリ/同一版に統一) ───
-    # Neovim(conform/nvim-lint)は PATH 上のこれらを参照する。Mason 側では
-    # ensure_installed から除外し二重管理を排除 (configs/editors/nvim/lua/plugins/tooling.lua)。
-    stylua # Lua 整形
-    shfmt # Shell 整形
-    prettier # js/ts/json/yaml/css/md 整形
+    # ─── centralized lint/format management (same binary/version across CLI, Neovim, CI) ───
+    # Neovim (conform/nvim-lint) references these on PATH. On the Mason side,
+    # excluded from ensure_installed to avoid double management (configs/editors/nvim/lua/plugins/tooling.lua).
+    stylua # Lua formatting
+    shfmt # Shell formatting
+    prettier # js/ts/json/yaml/css/md formatting
     ruff # Python lint + format
     markdownlint-cli2 # Markdown lint
   ];

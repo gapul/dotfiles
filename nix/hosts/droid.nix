@@ -1,9 +1,9 @@
-# Android (Termux) 上の nix-on-droid 環境。
-#   初回: https://f-droid.org/packages/com.termux.nix/ のアプリから
+# nix-on-droid environment on Android (Termux).
+#   First time: from the app at https://f-droid.org/packages/com.termux.nix/
 #     nix-on-droid switch --flake github:gapul/dotfiles?dir=nix#default
-# ECS: この Entity は modules/home の component (git/cli/shell/terminal) を
-# そのまま合成する。nix-index/agent-skills 等 flake input モジュール前提の
-# component と、GUI/ワークステーション系 role は積まない。
+# ECS: this Entity composes the modules/home components (git/cli/shell/terminal)
+# as-is. It does not load components that assume flake input modules like
+# nix-index/agent-skills, nor GUI/workstation roles.
 { pkgs, ... }:
 let
   user = import ../user.nix;
@@ -15,8 +15,8 @@ in
     rsync
   ];
 
-  # Termux 側のフォント/カラーは nix-on-droid の terminal オプションでも設定できるが、
-  # まずは最小構成。テーマは zellij (terminal component) 側が持つ。
+  # Termux-side fonts/colors can also be set via nix-on-droid's terminal options,
+  # but start minimal. The theme is held by zellij (terminal component).
   time.timeZone = "Asia/Tokyo";
 
   system.stateVersion = "24.05";

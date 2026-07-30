@@ -12,7 +12,7 @@ pkgs.testers.runNixOSTest {
     {
       imports = [ preservation.nixosModules.default ];
 
-      # preservation は systemd initrd を必須とする（module.nix の assertion）。
+      # preservation requires systemd initrd (assertion in module.nix).
       boot.initrd.systemd.enable = true;
 
       preservation.enable = true;
@@ -24,10 +24,10 @@ pkgs.testers.runNixOSTest {
           "/var/lib/sbctl"
           "/var/lib/tailscale"
         ];
-        # SSH ホスト鍵は「/etc/ssh ディレクトリごと bind mount」ではなく、
-        # 個々の鍵ファイルを symlink + configureParent で永続化する。
-        # /etc/ssh をまるごと空ボリュームで覆うと NixOS 生成の sshd_config 等が
-        # 隠れて sshd が起動できなくなるため（upstream 推奨の作法）。
+        # Persist SSH host keys as individual key files via symlink + configureParent,
+        # rather than "bind mounting the whole /etc/ssh directory".
+        # Covering all of /etc/ssh with an empty volume would hide the NixOS-generated
+        # sshd_config etc. and prevent sshd from starting (the upstream-recommended practice).
         files = [
           {
             file = "/etc/ssh/ssh_host_rsa_key";
@@ -54,13 +54,13 @@ pkgs.testers.runNixOSTest {
         createHome = true;
       };
 
-      # VMではmachine-id commitの永続ディスク検証を行わない。
+      # Don't do persistent-disk verification of the machine-id commit in the VM.
       systemd.suppressedSystemUnits = [ "systemd-machine-id-commit.service" ];
 
-      # 永続ストレージは実ブロックデバイス上の実ファイルシステムにする（upstream の
-      # tests/basic.nix と同じ方式）。tmpfs は揮発性で「永続」ボリュームの裏付けとして
-      # 不適切なうえ、neededForBoot + initrd systemd での mount 移送が不安定になりがち。
-      # 実 fs なら /persistent が確実に mountpoint になる。
+      # Make persistent storage a real filesystem on a real block device (same approach as
+      # upstream's tests/basic.nix). tmpfs is volatile and inappropriate as the backing for a
+      # "persistent" volume, and mount handoff under neededForBoot + initrd systemd tends to be unstable.
+      # With a real fs, /persistent reliably becomes a mountpoint.
       virtualisation = {
         memorySize = 2048;
         emptyDiskImages = [ 512 ];
@@ -77,21 +77,21 @@ pkgs.testers.runNixOSTest {
     machine.start()
     machine.wait_for_unit("multi-user.target")
 
-    # 永続ストレージがマウントされている。
+    # Persistent storage is mounted.
     machine.succeed("mountpoint /persistent")
 
-    # 永続対象のシステムディレクトリが実際に bind mount になっている。
+    # The system directory targeted for persistence is actually a bind mount.
     machine.succeed("mountpoint /var/lib/nixos")
 
-    # sshd が起動し、ホスト鍵が preservation 経由で永続ボリュームに載っている。
+    # sshd starts and the host key lives on the persistent volume via preservation.
     machine.wait_for_unit("sshd.service")
     machine.succeed("test -L /etc/ssh/ssh_host_ed25519_key")
     machine.succeed("test -s /persistent/etc/ssh/ssh_host_ed25519_key")
 
-    # ユーザー固有の永続ディレクトリが永続ボリューム上に作られている。
+    # The user-specific persistent directory is created on the persistent volume.
     machine.succeed("test -d /persistent/home/${user.username}/.config/sops/age")
 
-    # 永続対象ディレクトリへの書き込みが永続ボリュームに反映される。
+    # Writes to a persistence-targeted directory are reflected on the persistent volume.
     machine.succeed("touch /var/lib/nixos/preservation-smoke")
     machine.succeed("test -e /persistent/var/lib/nixos/preservation-smoke")
   '';

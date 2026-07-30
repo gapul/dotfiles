@@ -1,4 +1,4 @@
-# Editor component (ECS: profile)。nvim/vim/firenvim + lazy2nix プラグイン束。
+# Editor component (ECS: profile). nvim/vim/firenvim + lazy2nix plugin bundle.
 {
   config,
   pkgs,
@@ -13,15 +13,16 @@ in
 {
   home.sessionVariables.LAZY_NIX_PLUGINS = lazyNixPlugins;
 
-  # 素の Vim: native XDG で読まれる vimrc。.viminfo を $XDG_STATE_HOME へ追い出す目的
+  # Plain Vim: vimrc read via native XDG. Purpose is to push .viminfo out to $XDG_STATE_HOME
   home.file.".config/vim/vimrc".source = ../../../configs/editors/vim/vimrc;
-  # nvim は dotfiles に直接書き戻したいので mkOutOfStoreSymlink
+  # nvim uses mkOutOfStoreSymlink since we want to write back directly to dotfiles
   home.file.".config/nvim".source =
     config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.dotfiles/configs/editors/nvim";
 
-  # Native Messaging manifest は仕様上 launcher の絶対パスを要求し、Firenvim の
-  # launcher 自体も install 時の HOME/XDG/PATH を埋め込む。ユーザー名や home を
-  # 移行しても古いパスを保持しないよう、HM 適用時に現在の環境から再生成する。
+  # The Native Messaging manifest requires the launcher's absolute path by spec, and
+  # Firenvim's launcher itself embeds the HOME/XDG/PATH from install time. To avoid
+  # keeping stale paths after migrating username or home, regenerate from the current
+  # environment when HM applies.
   home.activation.firenvimNativeMessaging = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
     if [ -d "${config.xdg.dataHome}/nvim/lazy/firenvim" ]; then
       run ${pkgs.neovim}/bin/nvim --headless \

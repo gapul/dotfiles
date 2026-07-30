@@ -1,11 +1,12 @@
-# ZDOTDIR プリセット済み / GUI・古いシェル 用の XDG 寄せ export の SSO。
+# SSO for XDG-oriented exports for preset ZDOTDIR / GUI / older shells.
 #
-# 同じ export が .zshenv (nix/home/common.nix・ガード無し) と
-# programs.zsh.envExtra (nix/modules/home/shell.nix) に二重リテラルで書かれていたので集約。
-# ここを直せば両方が追従する。値は sessionVariables (common.nix) の config.xdg.* 由来と
-# 一致させること (絶対パス vs $HOME 形式の差はあれど同じ実パスを指す)。
+# The same exports were written as duplicate literals in .zshenv
+# (nix/home/common.nix, unguarded) and programs.zsh.envExtra (nix/modules/home/shell.nix),
+# so consolidate them. Fixing here makes both follow. Keep the values matching the
+# config.xdg.* origin of sessionVariables (common.nix) (they point to the same real path,
+# aside from absolute-path vs $HOME form differences).
 #
-# 末尾改行は付けない (呼び出し側が改行位置を制御し、生成テキストを不変に保つため)。
+# Do not append a trailing newline (the caller controls newline placement to keep the generated text invariant).
 {
   codex = ''
     export CODEX_HOME="$HOME/.local/share/codex"

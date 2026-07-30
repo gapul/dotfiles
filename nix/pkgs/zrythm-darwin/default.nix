@@ -1,18 +1,18 @@
-# zrythm 1.0.0 (DAW) を aarch64-darwin 向けに自前ビルドする。
+# Build zrythm 1.0.0 (DAW) ourselves for aarch64-darwin.
 #
-# nixpkgs は zrythm を `broken = isDarwin` としており、必須依存の carla も
-# `platforms = linux`。そのため素の pkgs では eval/build できない。ここでは
-# 同じ nixpkgs を allowUnsupportedSystem/allowBroken 付きで再インスタンス化し、
-# zrythm.nix / carla.nix の override 群(carla を backend-only で darwin 移植・
-# Linux 音声backend除去・install_name 修正・GDK_BACKEND=macos 既定注入 等)を
-# 適用して、起動可能な zrythm を得る。詳細は zrythm.nix / carla.nix のコメント参照。
+# nixpkgs marks zrythm as `broken = isDarwin`, and its required dependency carla
+# is also `platforms = linux`. So plain pkgs cannot eval/build it. Here we
+# re-instantiate the same nixpkgs with allowUnsupportedSystem/allowBroken and
+# apply the overrides in zrythm.nix / carla.nix (backend-only darwin port of carla,
+# removing Linux audio backends, install_name fixes, injecting GDK_BACKEND=macos default, etc.)
+# to obtain a launchable zrythm. See the comments in zrythm.nix / carla.nix for details.
 #
-# 使い方(home-manager, darwin): home.packages に
+# Usage (home-manager, darwin): add to home.packages
 #   (import ../pkgs/zrythm-darwin { inherit pkgs; })
 { pkgs }:
 let
-  # carla の transitive dep に darwin 非対応(meta.platforms が狭い)ものがあり、
-  # allowUnsupportedSystem 無しでは eval が落ちる。同一 nixpkgs を再構成して回避。
+  # Some of carla's transitive deps are not darwin-supported (narrow meta.platforms),
+  # so eval fails without allowUnsupportedSystem. Reconstruct the same nixpkgs to avoid it.
   pkgs' = import pkgs.path {
     inherit (pkgs.stdenv.hostPlatform) system;
     overlays = pkgs.overlays or [ ];

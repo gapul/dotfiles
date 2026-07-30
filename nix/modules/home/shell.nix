@@ -1,26 +1,26 @@
-# Shell component (ECS: profile)。zsh 一式。
+# Shell component (ECS: profile). Full zsh setup.
 {
   config,
   pkgs,
   ...
 }:
 let
-  # XDG 寄せ export の SSO (common.nix の .zshenv と共有)。
+  # SSO for XDG-oriented exports (shared with common.nix's .zshenv).
   xdgEnv = import ../../lib/shell-xdg-env.nix;
 in
 {
   programs.zsh = {
     enable = true;
-    dotDir = "${config.xdg.configHome}/zsh"; # XDG: zsh設定一式を ~/.config/zsh/ へ (ZDOTDIR)。HM 26.05 は絶対パス必須
+    dotDir = "${config.xdg.configHome}/zsh"; # XDG: move the whole zsh config to ~/.config/zsh/ (ZDOTDIR). HM 26.05 requires an absolute path
 
     envExtra = ''
-      # ZDOTDIR が既に環境にある zsh は ~/.zshenv ではなく
-      # $ZDOTDIR/.zshenv を読むため、XDG 寄せはここにも置く。
+      # When ZDOTDIR is already in the environment, zsh reads $ZDOTDIR/.zshenv
+      # instead of ~/.zshenv, so put the XDG-oriented exports here too.
       ${xdgEnv.codex}
       ${xdgEnv.npm}
     '';
 
-    # XDG 化: history → ~/.local/state/zsh/, 補完dump → ~/.cache/zsh/
+    # XDG-ify: history -> ~/.local/state/zsh/, completion dump -> ~/.cache/zsh/
     history.path = "${config.xdg.stateHome}/zsh/history";
     completionInit = ''
       autoload -U compinit
@@ -59,10 +59,10 @@ in
     };
 
     initContent = ''
-      # XDG: history / 補完dump / vim state 用ディレクトリを確保
+      # XDG: ensure directories for history / completion dump / vim state exist
       mkdir -p "${config.xdg.stateHome}/zsh" "${config.xdg.cacheHome}/zsh" "${config.xdg.stateHome}/vim"
 
-      # fish 風 setopt (移行時に失った機能の再現)
+      # fish-like setopt (reproducing features lost in the migration)
       setopt AUTO_CD
       setopt AUTO_PUSHD
       setopt PUSHD_IGNORE_DUPS
@@ -70,7 +70,7 @@ in
       setopt GLOB_STAR_SHORT
       setopt INTERACTIVE_COMMENTS
 
-      # history-substring-search: Up/Down で先頭一致(fish 風)
+      # history-substring-search: Up/Down for prefix match (fish-like)
       if [[ -o zle ]]; then
         bindkey '^[[A' history-substring-search-up
         bindkey '^[[B' history-substring-search-down
@@ -78,7 +78,7 @@ in
         bindkey -M vicmd 'j' history-substring-search-down
       fi
 
-      # fzf-tab: TAB 補完の preview をスマートに
+      # fzf-tab: smarter previews for TAB completion
       zstyle ':completion:*' menu no
       zstyle ':fzf-tab:complete:cd:*' fzf-preview 'eza -1 --color=always --icons=auto $realpath 2>/dev/null'
       zstyle ':fzf-tab:complete:(\\\\|*/|)git-(add|diff|restore|reset):*' fzf-preview 'git diff --color=always -- $word | delta 2>/dev/null'
@@ -86,7 +86,7 @@ in
       zstyle ':fzf-tab:complete:kill:argument-rest' fzf-preview 'ps -p $word -o pid,ppid,user,%cpu,%mem,command 2>/dev/null'
       zstyle ':fzf-tab:*' fzf-flags --height=40% --reverse
 
-      # nix build / nix-build を nom (nix-output-monitor) で見やすく
+      # make nix build / nix-build more readable via nom (nix-output-monitor)
       if command -v nom >/dev/null 2>&1; then
         alias nix-build='nix-build 2>&1 | nom'
         function nix() {
@@ -99,16 +99,16 @@ in
         }
       fi
 
-      # jd (just-dotfiles): dotfiles の just レシピをどこからでも実行 (cd 不要)。
-      #   例: jd rebuild / jd update / jd (引数なしで一覧)
-      #   nh は NH_*_FLAKE で flake を env 指定済みなので cwd 非依存。
-      #   --working-directory で justfile_directory() 依存レシピ (sketchybar-font 等) も正しく動く。
+      # jd (just-dotfiles): run the dotfiles just recipes from anywhere (no cd needed).
+      #   e.g.: jd rebuild / jd update / jd (no args lists them)
+      #   nh already specifies the flake via NH_*_FLAKE env, so it is cwd-independent.
+      #   --working-directory makes justfile_directory()-dependent recipes (sketchybar-font etc.) work correctly too.
       function jd() {
         just --justfile "$HOME/.dotfiles/Justfile" --working-directory "$HOME/.dotfiles" "$@"
       }
 
-      # git worktreeを兄弟ディレクトリに作り、`git wt <branch>` で移動する。
-      # git-wtのwrapperを保持してから、`git wtpr <PR>` のPR checkoutだけ拡張する。
+      # Create git worktrees in sibling directories and jump there via `git wt <branch>`.
+      # Keep git-wt's wrapper, then extend only the PR checkout of `git wtpr <PR>`.
       eval "$(git wt --init zsh)"
       functions[git-wt-shell]=$functions[git]
       function git() {
@@ -127,12 +127,12 @@ in
         fi
       }
 
-      # 危険なURL、pipe-to-shell、難読化payloadを実行前に検査する。
-      # 既定policyはhigh-riskをblock、medium-riskをwarn。常時strictにはしない。
+      # Inspect dangerous URLs, pipe-to-shell, and obfuscated payloads before running.
+      # Default policy blocks high-risk and warns on medium-risk; not always strict.
       eval "$(tirith init --shell zsh)"
 
-      # Codex TUI は system theme を持たないため、起動時のOS外観に合わせて
-      # Rosé Pine / Dawn のカスタム tmTheme を選ぶ。
+      # The Codex TUI has no system theme, so pick the custom Rosé Pine / Dawn tmTheme
+      # matching the OS appearance at startup.
       function codex() {
         local codex_theme="rose-pine"
         if command -v defaults >/dev/null 2>&1; then
@@ -145,7 +145,7 @@ in
         command codex -c "tui.theme=\"$codex_theme\"" "$@"
       }
 
-      # vi モード + Ctrl+X Ctrl+E で外部エディタ(nvim)起動
+      # vi mode + Ctrl+X Ctrl+E to launch an external editor (nvim)
       if [[ -o zle ]]; then
         bindkey -v
         KEYTIMEOUT=1
@@ -153,16 +153,16 @@ in
         zle -N edit-command-line
         bindkey -M viins '^X^E' edit-command-line
         bindkey -M vicmd '^X^E' edit-command-line
-        # forward delete (^[[3~) は zsh 既定で未定義 → vi モードでは ESC 誤爆で
-        # ノーマルモードに落ち文字化けする。明示 bind して素直に1文字削除させる。
+        # forward delete (^[[3~) is undefined by default in zsh -> in vi mode the ESC
+        # misfires, dropping to normal mode and garbling input. Bind it explicitly to just delete one char.
         bindkey -M viins '^[[3~' delete-char
         bindkey -M vicmd '^[[3~' delete-char
       fi
 
-      # Launcher (関数定義 + Ghostty Quick Terminal 常駐ループ)
+      # Launcher (function definitions + Ghostty Quick Terminal resident loop)
       [ -f ~/.config/launcher/shells/zsh.sh ] && source ~/.config/launcher/shells/zsh.sh
 
-      # Claude Code: 名前付きセッション launcher (作成 or 再開)
+      # Claude Code: named-session launcher (create or resume)
       function cl() {
         local name=$1
         if [[ -z "$name" ]]; then
@@ -175,7 +175,7 @@ in
           || claude --session-id "$id" -n "$name" "''${@:2}"
       }
 
-      # ghq + fzf: Ctrl+] で repo 横断 fuzzy 移動
+      # ghq + fzf: Ctrl+] for fuzzy jumping across repos
       function ghq-fzf() {
         local selected
         selected=$(ghq list 2>/dev/null | fzf --height=40% --reverse \
@@ -192,11 +192,11 @@ in
 
       function gita-sync() {
         if ! command -v gita >/dev/null || ! command -v ghq >/dev/null; then
-          echo "gita / ghq が無い"
+          echo "gita / ghq not found"
           return 1
         fi
         ghq list -p | xargs -I {} gita add {} 2>&1 | tail -3
-        echo "登録済 repo: $(gita ls | wc -w | tr -d ' ')"
+        echo "registered repos: $(gita ls | wc -w | tr -d ' ')"
       }
 
       function mkcd() { mkdir -p "$1" && cd "$1"; }
@@ -225,8 +225,8 @@ in
           down|off|stop) sudo wg-quick down "$conf" ;;
           status|st)     sudo wg show ;;
           toggle|"")
-            # macOS は interface 名が utunN になるため wg show では profile 名で判定不可。
-            # wg-quick が up 中だけ作る /var/run/wireguard/<profile>.name の有無で判定する。
+            # On macOS the interface name is utunN, so wg show cannot decide by profile name.
+            # Decide by the presence of /var/run/wireguard/<profile>.name, which wg-quick creates only while up.
             if sudo test -f "/var/run/wireguard/''${profile}.name"; then
               sudo wg-quick down "$conf"
             else

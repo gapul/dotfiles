@@ -4,16 +4,16 @@
   lib,
   ...
 }:
-# restic 暗号化バックアップ + 整合性検証 + 実行監視を systemd user timer で定期実行 (Linux 用)。
-# darwin 版 (home/restic-backup.nix, launchd) の Linux 移植。バックエンド・除外・保持方針は同一。
-# 通知は notify-send (mako)、日付は GNU date、対象は Linux の XDG ディレクトリ。
+# Periodically run restic encrypted backup + integrity check + run monitoring via systemd user timers (for Linux).
+# Linux port of the darwin version (home/restic-backup.nix, launchd). Backend, excludes and retention policy are identical.
+# Notifications via notify-send (mako), dates via GNU date, targets are Linux XDG directories.
 #
-# 注意 (循環依存): restic パスフレーズ・age鍵・ssh鍵は「この repo 自体の鍵」なので
-#   restic では守らない。必ずパスワードマネージャ (Bitwarden/Ente) に別保管すること。
+# Note (circular dependency): the restic passphrase, age key and ssh key are "keys of this repo itself",
+#   so they are not protected by restic. Always store them separately in a password manager (Bitwarden/Ente).
 let
   home = config.home.homeDirectory;
 
-  # SSO: darwin 版 (restic-backup.nix) と共有。nix/lib/restic-common.nix が唯一の定義点。
+  # SSO: shared with the darwin version (restic-backup.nix). nix/lib/restic-common.nix is the sole definition point.
   common = import ../lib/restic-common.nix { inherit home; };
 
   inherit (common) repository;
@@ -37,7 +37,7 @@ let
     notify() { notify-send "$1" "$2" 2>/dev/null || true; }
   '';
 
-  # バックアップ対象 (再現不可能なユーザーデータのみ)。Linux の XDG ディレクトリ。
+  # Backup targets (only non-reproducible user data). Linux XDG directories.
   backupPaths = [
     "${home}/Documents"
     "${home}/Pictures"
@@ -66,13 +66,13 @@ let
     echo "==================== $(date '+%Y-%m-%d %H:%M:%S') backup start ===================="
 
     if ! rclone about google-drive: >/dev/null 2>&1; then
-      echo "SKIP: google-drive リモートに到達できません (rclone authorize 未了の可能性)"
+      echo "SKIP: cannot reach the google-drive remote (rclone authorize may be incomplete)"
       exit 0
     fi
 
     if ! restic snapshots >/dev/null 2>&1; then
-      echo "リポジトリが無いので init します"
-      restic init || { echo "ERROR: restic init 失敗"; exit 1; }
+      echo "repository not found, running init"
+      restic init || { echo "ERROR: restic init failed"; exit 1; }
     fi
 
     restic backup \
@@ -93,13 +93,13 @@ let
     exec >>"${logFile}" 2>&1
     echo "-------------------- $(date '+%Y-%m-%d %H:%M:%S') check start --------------------"
     if ! rclone about google-drive: >/dev/null 2>&1; then
-      echo "SKIP: リモート未到達"; exit 0
+      echo "SKIP: remote unreachable"; exit 0
     fi
     if restic check; then
       echo "check OK"
     else
       echo "check FAILED"
-      notify "restic ⚠️ リポジトリ破損の疑い" "restic check 失敗。ログを確認してください"
+      notify "restic ⚠️ possible repository corruption" "restic check failed. Please check the log"
     fi
   '';
 
@@ -109,24 +109,24 @@ let
     max_age_days=2
 
     if ! rclone about google-drive: >/dev/null 2>&1; then
-      notify "restic ⚠️ バックアップ未稼働" "google-drive 未認証。rclone authorize drive を実行してください"
+      notify "restic ⚠️ backup not running" "google-drive not authenticated. Please run rclone authorize drive"
       exit 0
     fi
     latest=$(restic snapshots --latest 1 --json 2>/dev/null | jq -r '.[0].time // empty')
     if [ -z "$latest" ]; then
-      notify "restic ⚠️ スナップショット無し" "まだ一度もバックアップされていません"
+      notify "restic ⚠️ no snapshots" "no backup has been made yet"
       exit 0
     fi
-    # GNU date: ISO8601 をそのままパースできる
+    # GNU date: can parse ISO8601 directly
     last_epoch=$(date -d "$latest" +%s 2>/dev/null || echo 0)
     now=$(date +%s)
     age_days=$(( (now - last_epoch) / 86400 ))
     if [ "$age_days" -ge "$max_age_days" ]; then
-      notify "restic ⚠️ バックアップが古い" "最後のバックアップは $age_days 日前です"
+      notify "restic ⚠️ backup is stale" "the last backup was $age_days days ago"
     fi
   '';
 
-  # systemd user service + timer 生成ヘルパ
+  # helpers to generate systemd user service + timer
   mkService = desc: script: {
     Unit.Description = desc;
     Service = {
@@ -140,7 +140,7 @@ let
     Unit.Description = desc;
     Timer = {
       OnCalendar = onCalendar;
-      Persistent = true; # スリープ/電源OFFで逃した実行を起動後に補完
+      Persistent = true; # run missed executions (sleep/power-off) after boot
     };
     Install.WantedBy = [ "timers.target" ];
   };
@@ -148,20 +148,20 @@ in
 {
   home.packages = [ pkgs.restic ];
 
-  # restic パスフレーズ (sops の defaultSopsFile = secrets/secrets.yaml に格納済み)
+  # restic passphrase (stored in sops defaultSopsFile = secrets/secrets.yaml)
   sops.secrets."restic_password".path = common.passwordFile;
 
-  # Justfile / 対話シェルが source する env (repo/password/rclone/archiveTag の SSO)。
+  # env sourced by Justfile / interactive shells (SSO for repo/password/rclone/archiveTag).
   home.file.".config/restic/env".text = common.envFileText;
 
   systemd.user.services = {
-    restic-backup = mkService "restic 暗号化バックアップ" backupScript;
-    restic-check = mkService "restic 整合性検証" checkScript;
-    restic-monitor = mkService "restic 実行監視" monitorScript;
+    restic-backup = mkService "restic encrypted backup" backupScript;
+    restic-check = mkService "restic integrity check" checkScript;
+    restic-monitor = mkService "restic run monitoring" monitorScript;
   };
   systemd.user.timers = {
-    restic-backup = mkTimer "日次 restic バックアップ" "*-*-* 13:00:00";
-    restic-check = mkTimer "週次 restic 整合性検証" "Sun *-*-* 14:00:00";
-    restic-monitor = mkTimer "日次 restic 実行監視" "*-*-* 19:00:00";
+    restic-backup = mkTimer "daily restic backup" "*-*-* 13:00:00";
+    restic-check = mkTimer "weekly restic integrity check" "Sun *-*-* 14:00:00";
+    restic-monitor = mkTimer "daily restic run monitoring" "*-*-* 19:00:00";
   };
 }

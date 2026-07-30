@@ -1,63 +1,56 @@
 { pkgs, user, ... }:
 {
-  # ワークステーション (darwin.nix) と ヘッドレス LLM ワーカー (macmini.nix) が
-  # 共有する host 非依存のベース設定。ここを直すと両ホストに効く。
-  # GUI/周辺機器寄りの設定 (dock/finder/trackpad/fonts/homebrew) は各ホスト側に置く。
+  # Host-independent base settings shared by the workstation (darwin.nix) and the
+  # headless LLM worker (macmini.nix). Changes here affect both hosts.
+  # GUI/peripheral-oriented settings (dock/finder/trackpad/fonts/homebrew) live on each host side.
 
   nixpkgs.config.allowUnfree = true;
 
-  # 上流 nixpkgs の一時破損を吸収する overlay (SSO: flake.nix の mkPkgs と共有)。
-  # useGlobalPkgs で埋め込み home-manager もこの pkgs を使うため、これが無いと
-  # darwin システムの pre-commit が素のまま → om ci(aarch64-darwin) で isatty 破損再発。
-  # darwin.nix 側の brewNix overlay とはリスト連結でマージされる。
+  # overlay to absorb temporary breakage in upstream nixpkgs (SSO: shared with flake.nix's mkPkgs).
+  # Since useGlobalPkgs makes the embedded home-manager use this pkgs too, without this
+  # the darwin system's pre-commit stays vanilla → isatty breakage recurs under om ci (aarch64-darwin).
+  # Merges with the brewNix overlay on the darwin.nix side via list concatenation.
   nixpkgs.overlays = [ (import ../lib/overlays.nix) ];
 
-  # Determinate Nix が daemon/nix.conf を管理しているので nix-darwin は触らない
+  # Determinate Nix manages the daemon/nix.conf, so nix-darwin doesn't touch it
   nix.enable = false;
 
-  # Determinate の nix.conf は `!include nix.custom.conf` するので、そこへ
-  # use-xdg-base-directories を冪等に書き込む。これで nix-env / nix-instantiate
-  # (home-manager / nix-darwin が profile 操作で内部使用) が ~/.nix-defexpr /
-  # ~/.nix-channels を $HOME に再生成せず、~/.local/state/nix/ 配下へ寄せる。
-  # nix-darwin は任意名の system.activationScripts.<name> を実行しない。root で activation
-  # 末尾に走る postActivation に集約する。
+  # Determinate's nix.conf does `!include nix.custom.conf`, so idempotently write
+  # use-xdg-base-directories there. This keeps nix-env / nix-instantiate
+  # (used internally by home-manager / nix-darwin for profile operations) from regenerating
+  # ~/.nix-defexpr / ~/.nix-channels in $HOME, moving them under ~/.local/state/nix/ instead.
+  # nix-darwin does not run arbitrarily-named system.activationScripts.<name>. Consolidate into
+  # postActivation, which runs as root at the end of activation.
   system.activationScripts.postActivation.text = ''
-    # use-xdg-base-directories を nix.custom.conf へ冪等追記 (nix-env が ~/.nix-defexpr /
-    # ~/.nix-channels を $HOME に再生成せず ~/.local/state/nix/ 配下へ寄せる)。
+    # idempotently append use-xdg-base-directories to nix.custom.conf (keeps nix-env from regenerating
+    # ~/.nix-defexpr / ~/.nix-channels in $HOME, moving them under ~/.local/state/nix/ instead).
     conf=/etc/nix/nix.custom.conf
     if [ -f "$conf" ] && ! /usr/bin/grep -q '^use-xdg-base-directories' "$conf"; then
-      printf '\n# XDG Base Directory 準拠 (~/.nix-defexpr 等を ~/.local/state/nix へ)\nuse-xdg-base-directories = true\n' >> "$conf"
+      printf '\n# XDG Base Directory compliance (moves ~/.nix-defexpr etc. under ~/.local/state/nix)\nuse-xdg-base-directories = true\n' >> "$conf"
     fi
-    # 到達不可な substituter でビルドを壊さない一般的な保険。narinfo 取得が既定 15s
-    # 待って fallback=false だと substitute 失敗時に source ビルドへ逃げず致命エラーに
-    # なる (かつて tailnet 限定 attic を落として実害が出た)。connect-timeout で早期に
-    # 諦め、fallback=true で source ビルドへ逃がす。到達可能時の pull 挙動は不変。
+    # general safeguard so an unreachable substituter doesn't break builds. With the default 15s
+    # narinfo-fetch wait and fallback=false, a substitute failure fails fatally instead of falling
+    # back to a source build (a tailnet-only attic going down once caused real damage). connect-timeout
+    # gives up early and fallback=true escapes to a source build. Pull behavior when reachable is unchanged.
     if [ -f "$conf" ] && ! /usr/bin/grep -q '^connect-timeout' "$conf"; then
-      printf '\n# 到達不可 substituter を非致命化 (キャッシュが落ちてもビルドは通す)\nconnect-timeout = 5\nfallback = true\n' >> "$conf"
+      printf '\n# make unreachable substituters non-fatal (builds still pass even if the cache is down)\nconnect-timeout = 5\nfallback = true\n' >> "$conf"
     fi
-    # nix-community キャッシュを system 全体で信頼。
-    # セキュリティ最小権限: yuki を trusted-user(実質 root 相当)にはせず、特定 substituter +
-    # その公開鍵だけを root 権限の nix.custom.conf に追記する。これで flake nixConfig の
-    # 'ignoring untrusted substituter' 警告が消え、ユーザーに広い権限を与えない。
+    # Trust the nix-community cache system-wide.
+    # Security least-privilege: rather than making yuki a trusted-user (effectively root-equivalent), append
+    # only the specific substituter + its public key to the root-owned nix.custom.conf. This silences the flake
+    # nixConfig 'ignoring untrusted substituter' warning without granting the user broad privileges.
     if [ -f "$conf" ] && ! /usr/bin/grep -q 'nix-community.cachix.org' "$conf"; then
-      printf '\n# nix-community バイナリキャッシュ (trusted-user 付与でなく substituter 限定の最小権限)\nextra-substituters = https://nix-community.cachix.org\nextra-trusted-public-keys = nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs=\n' >> "$conf"
+      printf '\n# nix-community binary cache (least privilege: substituter-only, not a trusted-user grant)\nextra-substituters = https://nix-community.cachix.org\nextra-trusted-public-keys = nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs=\n' >> "$conf"
     fi
-    # nix-on-droid: proot-termux 等のプリビルドは公式 cachix からしか取得できない
+    # nix-on-droid: prebuilts like proot-termux can only be fetched from the official cachix
     if [ -f "$conf" ] && ! /usr/bin/grep -q 'nix-on-droid.cachix.org' "$conf"; then
-      printf '\n# nix-on-droid バイナリキャッシュ (droid 構成の eval/build 用)\nextra-substituters = https://nix-on-droid.cachix.org\nextra-trusted-public-keys = nix-on-droid.cachix.org-1:56snoMJTXmDRC1Ei24CmKoUqvHJ9XCp+nidK7qkMQrU=\n' >> "$conf"
+      printf '\n# nix-on-droid binary cache (for eval/build of the droid config)\nextra-substituters = https://nix-on-droid.cachix.org\nextra-trusted-public-keys = nix-on-droid.cachix.org-1:56snoMJTXmDRC1Ei24CmKoUqvHJ9XCp+nidK7qkMQrU=\n' >> "$conf"
     fi
-    # 自作 dotfiles のビルドキャッシュ (cachix gapul-dotfiles, OSS 無料枠)。CI が
-    # push した本構成の出力をここから pull し、ローカルの jd rebuild を高速化する。
-    # public cache なので pull は無認証。到達不可でも cache.nixos.org にフォールバック。
+    # self-made dotfiles build cache (cachix gapul-dotfiles, OSS free tier). Pull this config's
+    # outputs, pushed by CI, from here to speed up local jd rebuild.
+    # It's a public cache so pull is unauthenticated. Falls back to cache.nixos.org even if unreachable.
     if [ -f "$conf" ] && ! /usr/bin/grep -q 'gapul-dotfiles.cachix.org' "$conf"; then
-      printf '\n# 自作 dotfiles ビルドキャッシュ (cachix, CI が充填・pull 無認証)\nextra-substituters = https://gapul-dotfiles.cachix.org\nextra-trusted-public-keys = gapul-dotfiles.cachix.org-1:tGNGJ7SGHrLAjsw5Iz673st0AepuNjQombMJOOVUq98=\n' >> "$conf"
-    fi
-    # 自前 attic (cache.gapul.net) は撤去した (cachix gapul-dotfiles が代替済み。
-    # tailnet 限定で homelab 稼働に依存する分だけ失敗モードが増えるため)。既に
-    # nix.custom.conf へ追記済みのマシンからは、rebuild 時にその行を消して掃除する。
-    if [ -f "$conf" ] && /usr/bin/grep -q 'cache\.gapul\.net/dotfiles' "$conf"; then
-      /usr/bin/sed -i.bak '/# 自前 attic/d;/cache\.gapul\.net\/dotfiles/d;/extra-trusted-public-keys = dotfiles:/d' "$conf"
-      /bin/rm -f "$conf.bak"
+      printf '\n# self-made dotfiles build cache (cachix, filled by CI, unauthenticated pull)\nextra-substituters = https://gapul-dotfiles.cachix.org\nextra-trusted-public-keys = gapul-dotfiles.cachix.org-1:tGNGJ7SGHrLAjsw5Iz673st0AepuNjQombMJOOVUq98=\n' >> "$conf"
     fi
     # Determinate Nix already trusts FlakeHub as a substituter, but using it as an
     # active substituter without the matching credentials produces 401 warnings.
@@ -65,29 +58,29 @@
       /usr/bin/sed -i.bak '/cache\.flakehub\.com/d' "$conf"
       /bin/rm -f "$conf.bak"
     fi
-    # Application Firewall: 有効化 + ステルスモード (ping/ポートスキャンに無応答)。
-    # alf defaults は最新 macOS で効きづらいので公式 socketfilterfw を冪等に叩く。
+    # Application Firewall: enable + stealth mode (no response to ping/port scans).
+    # alf defaults barely works on recent macOS, so idempotently invoke the official socketfilterfw.
     fw=/usr/libexec/ApplicationFirewall/socketfilterfw
     "$fw" --setglobalstate on >/dev/null 2>&1 || true
     "$fw" --setstealthmode on >/dev/null 2>&1 || true
-    # 自動セキュリティ更新 (system レベル defaults。nix-darwin に型付きオプションが無いので
-    # root の postActivation で直接書く)。放置でも XProtect/MRT・セキュリティ応答が最新。
+    # automatic security updates (system-level defaults. nix-darwin has no typed option, so
+    # write directly in root's postActivation). Keeps XProtect/MRT and security responses current even if left alone.
     su=/Library/Preferences/com.apple.SoftwareUpdate
     /usr/bin/defaults write "$su" AutomaticCheckEnabled -bool true   >/dev/null 2>&1 || true
     /usr/bin/defaults write "$su" AutomaticDownload     -bool true   >/dev/null 2>&1 || true
-    /usr/bin/defaults write "$su" CriticalUpdateInstall -bool true   >/dev/null 2>&1 || true  # セキュリティ応答/XProtect
-    /usr/bin/defaults write "$su" ConfigDataInstall     -bool true   >/dev/null 2>&1 || true  # XProtect/MRT 定義
+    /usr/bin/defaults write "$su" CriticalUpdateInstall -bool true   >/dev/null 2>&1 || true  # security responses/XProtect
+    /usr/bin/defaults write "$su" ConfigDataInstall     -bool true   >/dev/null 2>&1 || true  # XProtect/MRT definitions
     /usr/bin/defaults write /Library/Preferences/com.apple.commerce AutoUpdate -bool true >/dev/null 2>&1 || true
   '';
 
   system.stateVersion = 5;
   system.primaryUser = user.username;
 
-  # sudo を Touch ID で認証 (sudo_local は macOS 更新でも残る公式の仕組み)
-  # reattach: zellij/tmux/screen 等のマルチプレクサ内ではセッションが GUI から
-  # 分離され pam_tid が Touch ID ダイアログを出せない。pam_reattach (nixpkgs) を
-  # auth optional で前置し、ユーザの bootstrap session へ再接続させて解決する。
-  # (Touch ID センサの無い Mac mini では単に password 認証にフォールバックするだけで無害)
+  # Authenticate sudo with Touch ID (sudo_local is the official mechanism that survives macOS updates)
+  # reattach: inside multiplexers like zellij/tmux/screen the session is detached from the GUI
+  # and pam_tid can't show the Touch ID dialog. Prepend pam_reattach (nixpkgs) as
+  # auth optional to reattach to the user's bootstrap session, which fixes it.
+  # (Harmless on a Mac mini with no Touch ID sensor: it just falls back to password auth)
   security.pam.services.sudo_local = {
     reattach = true;
     touchIdAuth = true;
@@ -102,8 +95,8 @@
   programs.zsh.enable = true;
   environment.shells = [ pkgs.zsh ];
 
-  # host 非依存の macOS 設定 (キーボード/ログイン/プライバシー)。
-  # dock/finder/trackpad 等の GUI/周辺機器寄りは各ホスト側で宣言する。
+  # host-independent macOS settings (keyboard/login/privacy).
+  # GUI/peripheral-oriented ones like dock/finder/trackpad are declared on each host side.
   system.defaults = {
     NSGlobalDomain = {
       ApplePressAndHoldEnabled = false;
@@ -115,27 +108,27 @@
       NSAutomaticQuoteSubstitutionEnabled = false;
       NSAutomaticSpellingCorrectionEnabled = false;
       AppleShowScrollBars = "WhenScrolling";
-      NSDocumentSaveNewDocumentsToCloud = false; # 新規書類を既定で iCloud に上げない
-      # Note: Caps→Esc は Karabiner で処理しているため宣言しない
-      # Note: AppleInterfaceStyle (Dark mode) は明示設定されてないので除外
+      NSDocumentSaveNewDocumentsToCloud = false; # don't upload new documents to iCloud by default
+      # Note: Caps→Esc is handled by Karabiner, so not declared here
+      # Note: AppleInterfaceStyle (Dark mode) is not explicitly set, so excluded
     };
-    # スリープ/スクリーンセーバ後すぐにパスワード要求 (離席時の覗き見対策。従来300秒)
+    # require password immediately after sleep/screensaver (anti-shoulder-surfing when away. was 300s)
     screensaver = {
       askForPassword = true;
       askForPasswordDelay = 0;
     };
-    # (自動セキュリティ更新は system レベルのため postActivation で defaults write)
-    # ログイン画面ハードニング
+    # (automatic security updates are system-level, so done via defaults write in postActivation)
+    # login screen hardening
     loginwindow = {
-      GuestEnabled = false; # ゲストアカウント無効
-      SHOWFULLNAME = true; # ユーザー一覧を出さず 名前+PW 入力 (アカウント列挙対策)
-      DisableConsoleAccess = true; # ">console" コンソールログイン禁止
+      GuestEnabled = false; # disable guest account
+      SHOWFULLNAME = true; # no user list, enter name+password (anti account enumeration)
+      DisableConsoleAccess = true; # forbid ">console" console login
     };
-    # ブラウザのテレメトリ無効化 (enterprise policy を defaults 経由で宣言)
+    # disable browser telemetry (declare enterprise policy via defaults)
     CustomUserPreferences = {
-      # Apple の個人化広告 (ターゲティング) を無効化
+      # disable Apple's personalized (targeted) ads
       "com.apple.AdLib".allowApplePersonalizedAdvertising = false;
-      # ネットワーク共有 / USB に .DS_Store を書かない (ローカルは Finder 仕様で抑止不可)
+      # don't write .DS_Store to network shares / USB (local can't be suppressed, Finder behavior)
       "com.apple.desktopservices" = {
         DSDontWriteNetworkStores = true;
         DSDontWriteUSBStores = true;

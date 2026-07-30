@@ -1,22 +1,22 @@
 {
   description = "macOS dotfiles managed with Nix flakes (nix-darwin + home-manager + sops-nix)";
 
-  # NOTE: キャッシュ (cache.nixos.org / nix-community / flakehub) は flake の nixConfig でなく
-  # system の /etc/nix/nix.custom.conf (hosts/darwin.nix の postActivation) で宣言している。
-  # flake nixConfig だと nh 実行毎に "Using saved setting..." が出る上、任意 flake 設定を
-  # 信頼する方向なので、最小権限で system 側に置く方針。
+  # NOTE: Caches (cache.nixos.org / nix-community / flakehub) are declared not in the flake's nixConfig
+  # but in the system's /etc/nix/nix.custom.conf (postActivation in hosts/darwin.nix).
+  # flake nixConfig prints "Using saved setting..." on every nh run and pushes toward trusting arbitrary
+  # flake settings, so the policy is to keep it on the system side with least privilege.
 
   inputs = {
-    # 26.05 系で揃える (nix-darwin#1462 'USER is root' regression 回避)
+    # Align on the 26.05 series (avoids the nix-darwin#1462 'USER is root' regression)
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-26.05-darwin";
 
-    # zrythm-darwin (nix/pkgs/zrythm-darwin) 専用。26.05-darwin では appstream-1.1.2 が
-    # darwin でビルド不可(libadwaita の依存経由)なため、その1パッケージだけ unstable の
-    # pkgs でビルドする。follows は付けない(他 input を巻き込まない別系統として持つ)。
+    # For zrythm-darwin (nix/pkgs/zrythm-darwin) only. On 26.05-darwin, appstream-1.1.2 can't
+    # build on darwin (via a libadwaita dependency), so build just that one package with unstable
+    # pkgs. Don't add follows (keep it as a separate lineage that doesn't drag in other inputs).
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
 
-    # NixOS 実機 (Windows デュアルブートの HP ノート, x86_64) 用。
-    # darwin 系チャンネルと分けて nixos キャッシュにきれいに当てる。
+    # For the real NixOS machine (Windows dual-boot HP laptop, x86_64).
+    # Separated from the darwin channels to hit the nixos cache cleanly.
     nixpkgs-nixos.url = "github:NixOS/nixpkgs/nixos-26.05";
 
     nix-darwin.url = "github:nix-darwin/nix-darwin/nix-darwin-26.05";
@@ -25,16 +25,16 @@
     home-manager.url = "github:nix-community/home-manager/release-26.05";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
 
-    # Android (Termux) 上の Nix 環境。release ブランチは 24.05 で止まっているため
-    # master を nixpkgs follows で使う (nix-on-droid の常套)。aarch64-linux。
+    # Nix environment on Android (Termux). The release branch is stuck at 24.05, so
+    # use master with nixpkgs follows (the usual nix-on-droid approach). aarch64-linux.
     nix-on-droid = {
       url = "github:nix-community/nix-on-droid/master";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.home-manager.follows = "home-manager";
     };
 
-    # Mopidy ビルド時パッチ集は別リポジトリに分離 (dotfiles を 336 ファイル分軽量化)。
-    # flake=false のソースとして取り込み、nix/lib/mopidy-env.nix の patchDir に渡す。
+    # The Mopidy build-time patch set is split into a separate repo (trims 336 files from dotfiles).
+    # Pulled in as a flake=false source and passed to patchDir in nix/lib/mopidy-env.nix.
     mopidy-patches = {
       url = "github:gapul/mopidy-rmpc-patches";
       flake = false;
@@ -50,30 +50,30 @@
     sops-nix.url = "github:Mic92/sops-nix";
     sops-nix.inputs.nixpkgs.follows = "nixpkgs";
 
-    # NixOS の Secure Boot 対応 (署名付き UKI)。nixos-laptop でのみ使用。
+    # NixOS Secure Boot support (signed UKI). Used only on nixos-laptop.
     lanzaboote.url = "github:nix-community/lanzaboote/v1.1.0";
     lanzaboote.inputs.nixpkgs.follows = "nixpkgs-nixos";
 
-    # disko: 宣言的ディスクレイアウト。nixos-laptop の LUKS root のみ管理 (dual-boot 安全のため)。
+    # disko: declarative disk layout. Manages only nixos-laptop's LUKS root (for dual-boot safety).
     disko.url = "github:nix-community/disko";
     disko.inputs.nixpkgs.follows = "nixpkgs-nixos";
 
-    # 永続化対象を明示する NixOS module。まず VM smoke test のみで試し、
-    # 実機へはデータ移行手順が固まるまで適用しない。
+    # NixOS module that makes persistence targets explicit. Try it in a VM smoke test only for now;
+    # don't apply it to the real machine until the data migration procedure is settled.
     preservation.url = "github:nix-community/preservation";
 
-    # コード品質: pre-commit フック宣言 + treefmt (nix fmt)
+    # Code quality: pre-commit hook declaration + treefmt (nix fmt)
     git-hooks.url = "github:cachix/git-hooks.nix";
     git-hooks.inputs.nixpkgs.follows = "nixpkgs";
 
     treefmt-nix.url = "github:numtide/treefmt-nix";
     treefmt-nix.inputs.nixpkgs.follows = "nixpkgs";
 
-    # Flake出力を段階的にモジュール化。まずper-system出力から移行する。
+    # Modularize flake outputs incrementally. Migrate the per-system outputs first.
     flake-parts.url = "github:hercules-ci/flake-parts";
     flake-parts.inputs.nixpkgs-lib.follows = "nixpkgs";
 
-    # Homebrew caskをNix derivationとして扱う試験導入。brew-apiは鮮度を分離更新する。
+    # Trial introduction of treating Homebrew casks as Nix derivations. brew-api updates its freshness separately.
     brew-api = {
       url = "github:BatteredBunny/brew-api";
       flake = false;
@@ -108,13 +108,13 @@
     let
       system = "aarch64-darwin";
 
-      # 上流 nixpkgs の一時的な破損を吸収する overlay (SSO: lib/overlays.nix)。
-      # nix-darwin システムの hosts/darwin-common.nix も同じものを import する
-      # (両方に当てないと darwin システム埋め込み home の pre-commit が素のまま)。
+      # Overlay that absorbs temporary breakage in upstream nixpkgs (SSO: lib/overlays.nix).
+      # The nix-darwin system's hosts/darwin-common.nix imports the same one
+      # (unless applied to both, the pre-commit of the home embedded in the darwin system stays vanilla).
       overlayFixes = import ./lib/overlays.nix;
 
-      # standalone Home Managerで使う公式プロプライエタリCLIだけを限定許可。
-      # nix-darwin側のpkgs設定とは別インスタンスなので、ここにも必要。
+      # Selectively allow only the official proprietary CLIs used by standalone Home Manager.
+      # This is a separate instance from the nix-darwin side's pkgs config, so it's needed here too.
       mkPkgs =
         targetSystem:
         import nixpkgs {
@@ -149,7 +149,7 @@
         nixpkgsUnstable = nixpkgs-unstable;
       };
 
-      # ECS の「System」= ホスト合成器 (darwin / home の定型を一本化)
+      # ECS "System" = host composer (unifies the darwin / home boilerplate)
       mkHost = import ./lib/mk-host.nix {
         inherit
           nixpkgs
@@ -163,8 +163,8 @@
           ;
       };
 
-      # ECS の「role」= component (home/*.nix) の束。ホストは roles を組み合わせるだけ。
-      # 並び順は home.packages 等のリスト連結順に影響するため既存構成と同一に保つ。
+      # ECS "role" = a bundle of components (home/*.nix). A host just combines roles.
+      # The ordering affects list concatenation order for home.packages etc., so keep it identical to the existing config.
       roles = rec {
         base = [ ./home/common.nix ];
         secrets = [
@@ -173,7 +173,7 @@
         ];
         station = [ ./home/workstation.nix ];
         linuxBase = base ++ [ ./home/linux.nix ];
-        # mac ワークステーション (フル装備: バックアップ/マウント/メンテ/音楽)
+        # mac workstation (fully equipped: backup/mount/maintenance/music)
         macWorkstation =
           base
           ++ [
@@ -181,19 +181,19 @@
             ./home/restic-backup.nix
             ./home/rclone-mount.nix
             ./home/maintenance.nix
-            ./home/git-hooks.nix # main 更新時に自動 rebuild する git hook (本体ツリーのみ)
+            ./home/git-hooks.nix # git hook that auto-rebuilds on main updates (main tree only)
           ]
           ++ secrets
           ++ [ ./home/mopidy.nix ]
           ++ station;
-        # ヘッドレス AI ワーカー (sops なし)
+        # headless AI worker (no sops)
         macminiHeadless = base ++ [ ./home/macmini.nix ];
         wsl = linuxBase ++ [ ./home/wsl.nix ] ++ secrets ++ station;
         linuxServer = linuxBase ++ secrets ++ station;
       };
 
-      # SSH 接続先で rootless Nix (nix-portable) から実行する
-      # ツール一式。Linux x86_64 / aarch64 両対応。
+      # Tool set to run from rootless Nix (nix-portable) on an SSH target.
+      # Supports both Linux x86_64 / aarch64.
       remoteTools =
         pkgs': with pkgs'; [
           neovim
@@ -210,7 +210,7 @@
           curl
           wget
         ];
-      # nix fmt: nixfmt(nix) + shfmt(shell) を束ねる
+      # nix fmt: bundles nixfmt(nix) + shfmt(shell)
       treefmtEval = treefmt-nix.lib.evalModule pkgs {
         projectRootFile = "flake.nix";
         programs.nixfmt.enable = true;
@@ -218,38 +218,38 @@
         settings.formatter.shfmt.options = [
           "-i"
           "2"
-        ]; # 2-space (CLAUDE.md 準拠)
+        ]; # 2-space (per CLAUDE.md)
       };
 
-      # pre-commit フックを nix で宣言。src は nix/ (flake サブツリー)。
-      # scripts/ 等リポ全体は `pre-commit run --all-files` を git ルートで回してカバー。
+      # Declare pre-commit hooks in nix. src is nix/ (flake subtree).
+      # The whole repo (scripts/ etc.) is covered by running `pre-commit run --all-files` at the git root.
       preCommit = git-hooks.lib.${system}.run {
         src = ./.;
-        # git-hooks の内部 pkgs は overlay 非適用のため、pre-commit 本体は
-        # overlaid 版 (checkPhase 無効) を明示的に渡して CI の isatty テスト破損を回避。
+        # git-hooks' internal pkgs is unoverlaid, so pass the overlaid pre-commit itself
+        # (checkPhase disabled) explicitly to avoid the CI isatty test breakage.
         package = pkgs.pre-commit;
         hooks = {
-          # 整形は per-file の nixfmt を使う (flake が nix/ にあるため
-          # treefmt フックは git ルートから root 検出に失敗する。treefmt は nix fmt 専用)。
+          # Formatting uses per-file nixfmt (since the flake is in nix/, the treefmt hook
+          # fails root detection from the git root. treefmt is dedicated to nix fmt).
           nixfmt.enable = true;
-          # statix は repeated_keys 等が module 記述と相性悪く、--config パスが
-          # flake/git-root で一意にできないため enforced から除外。
-          # 手動チェックは `nix run nixpkgs#statix -- check nix` で可能。
+          # statix is excluded from enforced hooks: repeated_keys etc. clash with module notation,
+          # and the --config path can't be made unique across flake/git-root.
+          # Manual checks are possible with `nix run nixpkgs#statix -- check nix`.
           deadnix = {
-            enable = true; # nix 未使用コード
-            settings.noLambdaPatternNames = true; # { lib, ... } 等の未使用引数は許容
+            enable = true; # unused nix code
+            settings.noLambdaPatternNames = true; # allow unused args like { lib, ... }
           };
           shellcheck = {
-            enable = true; # shell スクリプト lint (.shellcheckrc に従う)
+            enable = true; # shell script lint (follows .shellcheckrc)
             excludes = [
-              # sketchybar 設定群は流儀として意図的な word splitting が多く別扱い
-              # (手動チェック: nix develop ./nix -c shellcheck configs/wm/sketchybar/...)
+              # The sketchybar configs stylistically use a lot of intentional word splitting, handled separately
+              # (manual check: nix develop ./nix -c shellcheck configs/wm/sketchybar/...)
               "configs/wm/sketchybar/.*"
-              # direnv ファイルは shebang なし・direnv stdlib 前提
+              # direnv files have no shebang and assume the direnv stdlib
               "\\.envrc$"
-              # macmini AI コマンド群は zsh (shellcheck は zsh 非対応 SC1071)
+              # The macmini AI commands are zsh (shellcheck doesn't support zsh, SC1071)
               "configs/macmini/bin/.*"
-              # macmini 構築時の一発スクリプトのアーカイブ (歴史的資料、style 改修しない)
+              # Archive of one-shot scripts from macmini setup (historical artifacts, not style-refactored)
               "configs/macmini/setup-scripts/.*"
             ];
           };
@@ -277,9 +277,9 @@
           }:
           let
             isDarwinWorkstation = system == "aarch64-darwin";
-            # packages/checks/apps の評価でも standalone HM と同じ限定的な
-            # unfree policy を使う。nix-fast-build は全systemを列挙するため、
-            # legacyPackagesを直接使うとLinuxのunity-cliだけ評価に失敗する。
+            # Use the same limited unfree policy as standalone HM when evaluating
+            # packages/checks/apps too. nix-fast-build enumerates all systems, so using
+            # legacyPackages directly makes only Linux's unity-cli fail evaluation.
             systemPkgs = if isDarwinWorkstation then pkgs else mkPkgs system;
           in
           {
@@ -357,8 +357,8 @@
               };
             }
             // lib.optionalAttrs (system == "aarch64-linux") {
-              # nix-on-droid は omnix の標準ビルド対象外かつ builtins.storePath で
-              # --impure を要するため、om ci の custom step から呼ぶ専用 app にする。
+              # nix-on-droid is outside omnix's standard build targets and requires --impure
+              # via builtins.storePath, so make it a dedicated app called from om ci's custom step.
               ci-nixondroid = {
                 type = "app";
                 meta.description = "Build the nix-on-droid activation package (impure)";
@@ -374,8 +374,8 @@
                       if [[ -f flake.nix ]]; then
                         flake_ref=.
                       fi
-                      # proot-termux 等プリビルドは公式 cachix からのみ取得可能。
-                      # sudo で nix.conf を書き換えず、信頼ユーザー前提で CLI フラグ渡し。
+                      # Prebuilds like proot-termux are only available from the official cachix.
+                      # Don't rewrite nix.conf with sudo; assume a trusted user and pass CLI flags.
                       exec nix build --impure \
                         --extra-substituters https://nix-on-droid.cachix.org \
                         --extra-trusted-public-keys nix-on-droid.cachix.org-1:56snoMJTXmDRC1Ei24CmKoUqvHJ9XCp+nidK7qkMQrU= \
@@ -387,10 +387,10 @@
               };
             };
 
-            # omnix (om ci) が standalone home-manager 構成を拾えるよう、
-            # トップレベル homeConfigurations を legacyPackages に別名公開する。
-            # omnix は legacyPackages.<system>.homeConfigurations.* の activationPackage
-            # を検出してビルドする (トップレベル homeConfigurations は対象外のため)。
+            # So that omnix (om ci) can pick up standalone home-manager configs,
+            # expose the top-level homeConfigurations under legacyPackages as an alias.
+            # omnix detects and builds the activationPackage of legacyPackages.<system>.homeConfigurations.*
+            # (since top-level homeConfigurations are not targeted).
             legacyPackages =
               lib.optionalAttrs (system == "x86_64-linux") {
                 homeConfigurations = {
@@ -429,12 +429,12 @@
                 systemPkgs.yq-go
                 systemPkgs.jq
                 systemPkgs.just
-                systemPkgs.python3 # scripts/gen-docs.py (doc 生成ブロック)
+                systemPkgs.python3 # scripts/gen-docs.py (doc generation block)
                 systemPkgs.bun
                 systemPkgs.check-jsonschema
                 systemPkgs.actionlint
-                systemPkgs.gitleaks # om ci の gitleaks custom step (全履歴 detect)
-                systemPkgs.git # ci-lint / ci-gitleaks が git ls-files / rev-parse を使う
+                systemPkgs.gitleaks # om ci's gitleaks custom step (detect across full history)
+                systemPkgs.git # ci-lint / ci-gitleaks use git ls-files / rev-parse
               ];
             };
           }
@@ -459,7 +459,7 @@
     in
     perSystemOutputs
     // {
-      # システム設定: sudo darwin-rebuild switch --flake .#<username>
+      # System config: sudo darwin-rebuild switch --flake .#<username>
       darwinConfigurations.${user.username} = mkHost.darwin {
         host = ./hosts/darwin.nix;
         specialArgs = {
@@ -468,44 +468,44 @@
         };
       };
 
-      # ヘッドレス LLM ワーカー (M4 Mac mini / 24GB):
+      # Headless LLM worker (M4 Mac mini / 24GB):
       #   sudo darwin-rebuild switch --flake .#macmini
-      # workstation と同じ common.nix を共有しつつ GUI cask を積まない最小構成。
-      # sops は積まない (age 鍵を macmini に持ち込まない方針)。
+      # A minimal config that shares the same common.nix as the workstation but adds no GUI casks.
+      # No sops (policy of not bringing the age key onto the macmini).
       darwinConfigurations.macmini = mkHost.darwin {
         host = ./hosts/macmini.nix;
         homeModules = roles.macminiHeadless;
       };
 
       # Android (Termux): nix-on-droid switch --flake .#default
-      # 端末系 component (git/cli/shell/terminal) だけを積む軽量構成 (hosts/droid.nix)。
+      # A lightweight config loading only terminal-oriented components (git/cli/shell/terminal) (hosts/droid.nix).
       nixOnDroidConfigurations.default = nix-on-droid.lib.nixOnDroidConfiguration {
         pkgs = import nixpkgs { system = "aarch64-linux"; };
         modules = [ ./hosts/droid.nix ];
       };
 
-      # NixOS 実機 (Windows デュアルブート): sudo nixos-rebuild switch --flake .#nixos-laptop
-      # home-manager を NixOS モジュールとして組み込み、macOS / WSL と同じ
-      # home/common.nix + home/linux.nix をユーザー設定として共有する。
+      # Real NixOS machine (Windows dual-boot): sudo nixos-rebuild switch --flake .#nixos-laptop
+      # Integrate home-manager as a NixOS module and share the same
+      # home/common.nix + home/linux.nix as macOS / WSL for the user config.
       #
-      # hosts/nixos-laptop-hardware.nix は実機で `nixos-generate-config` が吐く
-      # マシン固有ファイル。それが存在するまでは出力ごと生やさず、Mac 上の
-      # `nix flake check` / pre-commit が import 失敗で落ちないようにする。
+      # hosts/nixos-laptop-hardware.nix is the machine-specific file emitted by `nixos-generate-config`
+      # on the real machine. Until it exists, don't grow the output at all, so that
+      # `nix flake check` / pre-commit on the Mac don't fail on an import error.
       nixosConfigurations =
         nixpkgs-nixos.lib.optionalAttrs (builtins.pathExists ./hosts/nixos-laptop-hardware.nix) {
           "nixos-laptop" = nixpkgs-nixos.lib.nixosSystem {
             system = "x86_64-linux";
             specialArgs = { inherit user; };
             modules = [
-              # 上流 nixpkgs 破損吸収の SSO overlay (darwin/standalone home と共用)。
-              # tailscale の vendorHash 誤り等をここで上書きする。
+              # SSO overlay absorbing upstream nixpkgs breakage (shared with darwin/standalone home).
+              # Override things like tailscale's wrong vendorHash here.
               { nixpkgs.overlays = [ overlayFixes ]; }
               ./hosts/nixos-laptop.nix
               lanzaboote.nixosModules.lanzaboote
               disko.nixosModules.disko
               ./hosts/nixos-laptop-disk.nix
-              # 実行時の fileSystems/luks は生成 hardware-configuration.nix に任せ、
-              # disko は「インストール時のフォーマット/マウントツール」としてのみ使う。
+              # Leave runtime fileSystems/luks to the generated hardware-configuration.nix, and
+              # use disko only as an "install-time format/mount tool".
               { disko.enableConfig = false; }
               home-manager.nixosModules.home-manager
               {
@@ -516,8 +516,8 @@
                   imports = [
                     ./home/common.nix
                     ./home/linux.nix
-                    ./home/hyprland.nix # Hyprland リック (nixos-laptop 専用)
-                    ./home/dev.nix # direnv 等の開発環境
+                    ./home/hyprland.nix # Hyprland rice (nixos-laptop only)
+                    ./home/dev.nix # dev environment such as direnv
                     ./home/restic-backup-linux.nix # restic (systemd user timer)
                     sops-nix.homeManagerModules.sops
                     ./home/secrets.nix
@@ -530,7 +530,7 @@
         }
         // {
 
-          # 実機固有hardware-configurationを公開せず、共通NixOS設定をCI評価する構成。
+          # Config for CI-evaluating the common NixOS settings without exposing the machine-specific hardware-configuration.
           "nixos-laptop-ci" = nixpkgs-nixos.lib.nixosSystem {
             system = "x86_64-linux";
             specialArgs = {
@@ -538,8 +538,8 @@
               hardwareConfig = ./hosts/nixos-laptop-hardware-ci.nix;
             };
             modules = [
-              # 上流 nixpkgs 破損吸収の SSO overlay (darwin/standalone home と共用)。
-              # tailscale の vendorHash 誤り等をここで上書きする。
+              # SSO overlay absorbing upstream nixpkgs breakage (shared with darwin/standalone home).
+              # Override things like tailscale's wrong vendorHash here.
               { nixpkgs.overlays = [ overlayFixes ]; }
               ./hosts/nixos-laptop.nix
               lanzaboote.nixosModules.lanzaboote
@@ -559,8 +559,8 @@
             ];
           };
 
-          # 起動不能・SSD交換時に、この repo を取得して disko / nixos-install を
-          # 実行するための最小復旧 ISO。実機の Windows/ESP には自動で触れない。
+          # Minimal recovery ISO for fetching this repo and running disko / nixos-install
+          # when unbootable or replacing the SSD. Does not automatically touch the machine's Windows/ESP.
           recovery-iso = nixpkgs-nixos.lib.nixosSystem {
             system = "x86_64-linux";
             specialArgs = { inherit user; };
@@ -571,28 +571,28 @@
           };
         };
 
-      # disko CLI 用 (ハード設定ファイル不要・guard 外)。インストール時に
+      # For the disko CLI (no hardware config file needed, outside the guard). At install time,
       #   sudo disko --mode destroy,format,mount --flake <repo>/nix#nixos-laptop
-      # で LUKS root パーティションだけを宣言的にフォーマット/マウントする。
+      # declaratively formats/mounts only the LUKS root partition.
       diskoConfigurations.nixos-laptop = import ./hosts/nixos-laptop-disk.nix;
 
-      # macOS ユーザー設定: home-manager switch --flake .#<username>
+      # macOS user config: home-manager switch --flake .#<username>
       homeConfigurations.${user.username} = mkHost.home { modules = roles.macWorkstation; };
 
-      # WSL2 ユーザー設定: home-manager switch --flake .#<username>-wsl
-      # Lab PC 等の Windows + WSL2 環境で使う
+      # WSL2 user config: home-manager switch --flake .#<username>-wsl
+      # Used on Windows + WSL2 environments such as the Lab PC
       homeConfigurations."${user.username}-wsl" = mkHost.home {
         targetSystem = "x86_64-linux";
         wsl = true;
         modules = roles.wsl;
       };
 
-      # Lab PC (Mac の username と違う OS username を持つ WSL2 環境) 用:
-      # 公開 repo に個人情報を残さないため、username は実行時の $USER から取る。
-      # .gitignore したファイルは flake source に含まれないので user.local.nix
-      # パターンは機能せず、builtins.getEnv "USER" + --impure フラグで対応。
+      # For the Lab PC (a WSL2 environment whose OS username differs from the Mac's username):
+      # to avoid leaving personal info in the public repo, take the username from $USER at runtime.
+      # .gitignore'd files aren't included in the flake source, so the user.local.nix pattern
+      # doesn't work; handle it with builtins.getEnv "USER" + the --impure flag.
       #
-      # 使い方:
+      # Usage:
       #   nix run --impure github:nix-community/home-manager -- \
       #     switch --flake ~/.dotfiles/nix#labpc-wsl
       homeConfigurations."labpc-wsl" =
@@ -611,8 +611,8 @@
           };
         };
 
-      # Linux サーバー / 自宅 NUC / VPS 用: .#<username>-linux
-      # 純 Linux (WSL interop なし)。aarch64 / x86_64 両対応
+      # For Linux servers / home NUC / VPS: .#<username>-linux
+      # Pure Linux (no WSL interop). Supports both aarch64 / x86_64
       homeConfigurations."${user.username}-linux" = mkHost.home {
         targetSystem = "x86_64-linux";
         modules = roles.linuxServer;

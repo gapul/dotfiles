@@ -1,23 +1,23 @@
-# ★★★ 統一テーマ切替は configs/theme/palettes.json の "active" を変えるだけ ★★★
+# ★★★ To switch the unified theme, just change "active" in configs/theme/palettes.json ★★★
 #
-#   候補:
+#   Candidates:
 #     "rose-pine"      … dark  (main)
 #     "rose-pine-dawn" … light (dawn)
 #
-#   変えたら:
-#     - Mac/Linux: `just rebuild` で全 nix 管理ツール (zellij/sketchybar/borders/
-#       lazygit/fzf/sioyek/atuin/bat/delta/ghostty/nvim …) が一斉に追従
-#     - Windows : `just win-theme` で zebar/glazewm/WT/wezterm が一斉に追従
-#   palettes.json を SSO とすることで Mac/Linux/WSL/Windows で同じ active が
-#   共有される (旧来は theme.nix と palettes.json に active が二重定義だった)。
+#   After changing it:
+#     - Mac/Linux: `just rebuild` makes all nix-managed tools (zellij/sketchybar/borders/
+#       lazygit/fzf/sioyek/atuin/bat/delta/ghostty/nvim …) follow at once
+#     - Windows : `just win-theme` makes zebar/glazewm/WT/wezterm follow at once
+#   Using palettes.json as the SSO means the same active is shared across
+#   Mac/Linux/WSL/Windows (previously active was double-defined in theme.nix and palettes.json).
 #
-# 色そのものは configs/theme/palettes.json で palettes."<name>" として保管。
+# The colors themselves are stored as palettes."<name>" in configs/theme/palettes.json.
 let
   data = builtins.fromJSON (builtins.readFile ../../configs/theme/palettes.json);
   inherit (data) active palettes;
   dark = palettes."rose-pine";
   light = palettes."rose-pine-dawn";
 in
-# active パレットを top-level に展開しつつ (既存の c.base 等を維持)、
-# dark/light 両方も c.dark / c.light で参照可能にする (macOS 外観追従の生成に使う)。
+# Expand the active palette at top-level (keeping existing c.base etc.), while also
+# making both dark/light referenceable via c.dark / c.light (used to generate macOS appearance following).
 palettes.${active} // { inherit dark light active; }

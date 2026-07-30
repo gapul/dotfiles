@@ -84,6 +84,17 @@ curl -fsSL https://raw.githubusercontent.com/gapul/dotfiles/main/scripts/bootstr
 ```text
     default
 
+    [Backup]
+    archive path                 # Example: `just archive ~/Downloads/old-project`
+    archive-find pattern         # Example: `just archive-find "*.psd"` / `just archive-find old-project`
+    archive-ls                   # List archive (--tag archive) snapshots (ID / date / original path)
+    archive-stats                # Total size and file count of the archive
+    backup                       # Run the warm backup now (kickstart launchd) -> follow the log (Ctrl-C ends following; backup continues)
+    backup-check                 # Verify repository integrity (restic check)
+    backup-ls                    # List all snapshots (distinguish warm / archive by the Tags column)
+    gdrive cmd="status"          # The old single ~/Cloud/GoogleDrive mount (nix rclone-gdrive) is retired. Current is manual LaunchAgent management.
+    restore snapshot dest="/"    # `just restore a81c9de1 ~/Restore`  to the specified target (expanded preserving structure) [alias: unarchive]
+
     [Build]
     build-all *args              # Build every flake package available on this architecture
     check-all *args              # Build every flake check available on this architecture
@@ -95,56 +106,45 @@ curl -fsSL https://raw.githubusercontent.com/gapul/dotfiles/main/scripts/bootstr
     update *inputs               # Update flake inputs, then rebuild.
     upgrade                      # Upgrade all package layers.
 
+    [Clean]
+    gc                           # GC all layers at once (only regenerable caches; Trash and whole-home deletion are in gc-deep)
+    gc-deep                      # Interactively delete heavy regenerable data (zap of retired casks / CoreSimulator cache / podman / old build artifacts)
+
+    [Inspect]
+    check what=""                # Type-check / show diff  (`just check` = syntax/type-check, `just check diff` = diff build)
+    doctor format=""             # Environment health check (run after e.g. a Determinate upgrade)
+    fmt                          # Format code + lint across all tracked files (OS auto-detected: Mac/Linux=pre-commit, Win=PSScriptAnalyzer)
+    outdated                     # List what can be updated (preview before upgrade; brew + mas + flake inputs; non-destructive)
+    search query scope=""        # Package search (`just search <q>` = brew+nixpkgs, `just search <q> all` = + cargo)
+
+    [Service]
+    restart what="bar"           # Restart the menu-bar/WM stack (`just restart`=bar-related / individual: sketchybar|borders|aerospace / all=everything)
+
+    [Setup]
+    dev what=""                  # devShell (`just dev`=enter [shellcheck/statix available] / `just dev install`=install hooks only [non-interactive])
+    docs                         # Run this after changing a recipe/hook/alias. CI drift detection is handled by check-generated.sh.
+    obsidian-snapshot            # One-way snapshot of Obsidian config into public dotfiles (tracking-only, vault->dotfiles)
+    ssh host                     # Use remote-env on another host
+
+    [Theme]
+    theme name=""                # Render all environments with the current active in palettes.json (`just theme rose-pine-dawn` also switches active)
+
     [Windows]
-    win-autostart-glazewm *flags # `*flags` で `-Unregister` (タスク削除) を渡せる
-    win-bootstrap *flags         # Windows ネイティブの bootstrap を実行 (`just win-bootstrap` / `just win-bootstrap -DryRun`)
-    win-fmt                      # Windows 関連 .ps1 を PSScriptAnalyzer で lint (Warning 以上で exit 1)
-    win-fonts *flags             # `*flags` で `-DryRun` `-Force` (既存も上書き) を渡せる
-    win-keymap *flags            # `*flags` で `-DryRun` `-Clear` (Scancode Map 削除して standard に戻す) を渡せる
-    win-locale *flags            # `*flags` で `-DryRun` `-SkipLanguageList` `-SkipSystemLocale` `-SkipHomeLocation` を渡せる
-    win-privacy *flags           # `*flags` で `-DryRun` `-SkipWinUtil` `-SkipWin11Debloat` を渡せる
-    win-scoop *flags             # `*flags` で `-DryRun` `-SkipBuckets` `-SkipApps` を渡せる
-    win-status *flags            # apps.json (宣言) と winget list (実 install) の差分。MISSING があれば exit 1
-    win-theme *flags             # `*flags` で `-DryRun` `-ActivePalette rose-pine-dawn` 等を渡せる
-    win-upgrade                  # winget 経由で入れた全 app をアップグレード (--silent --accept-*)
-    win-verify *flags            # winget/apps.json の全 PackageIdentifier 実在検証 (`just win-verify` / `just win-verify -Strict`)
+    win-autostart-glazewm *flags # Pass `-Unregister` (delete the task) via `*flags`
+    win-bootstrap *flags         # Run the native Windows bootstrap (`just win-bootstrap` / `just win-bootstrap -DryRun`)
+    win-fmt                      # Lint Windows-related .ps1 with PSScriptAnalyzer (exit 1 on Warning or above)
+    win-fonts *flags             # Pass `-DryRun` `-Force` (overwrite existing too) via `*flags`
+    win-keymap *flags            # Pass `-DryRun` `-Clear` (delete Scancode Map and return to standard) via `*flags`
+    win-locale *flags            # Pass `-DryRun` `-SkipLanguageList` `-SkipSystemLocale` `-SkipHomeLocation` via `*flags`
+    win-privacy *flags           # Pass `-DryRun` `-SkipWinUtil` `-SkipWin11Debloat` via `*flags`
+    win-scoop *flags             # Pass `-DryRun` `-SkipBuckets` `-SkipApps` via `*flags`
+    win-status *flags            # Diff between apps.json (declaration) and winget list (actual install). exit 1 if any MISSING
+    win-theme *flags             # Pass `-DryRun` `-ActivePalette rose-pine-dawn` etc. via `*flags`
+    win-upgrade                  # Upgrade every app installed via winget (--silent --accept-*)
+    win-verify *flags            # Verify every PackageIdentifier in winget/apps.json exists (`just win-verify` / `just win-verify -Strict`)
 
     [secrets]
-    secrets cmd="edit"           # sops 暗号化 secrets  (`just secrets` = 編集, `just secrets rekey` = 全 recipient 再暗号化)
-
-    [サービス]
-    restart what="bar"           # メニューバー/WM 系を再起動 (`just restart`=バー周り / 個別: sketchybar|borders|aerospace / all=全部)
-
-    [セットアップ]
-    dev what=""                  # devShell (`just dev`=入室[shellcheck/statix 使用可] / `just dev install`=hook導入のみ[非対話])
-    docs                         # レシピ/フック/alias を変えたらこれを実行。CI の乖離検知は check-generated.sh が担う。
-    obsidian-snapshot            # Obsidian 設定を public dotfiles へ片方向スナップショット (追跡専用・vault→dotfiles)
-    ssh host                     # remote-env を別ホストで使う
-
-    [テーマ]
-    theme name=""                # 全環境を palettes.json の現 active で render (`just theme rose-pine-dawn` で active 切替も可)
-
-    [バックアップ]
-    archive path                 # 例: `just archive ~/Downloads/old-project`
-    archive-find pattern         # 例: `just archive-find "*.psd"` / `just archive-find old-project`
-    archive-ls                   # アーカイブ (--tag archive) の snapshot 一覧 (ID / 日付 / 元パス)
-    archive-stats                # アーカイブの総容量・ファイル数
-    backup                       # warm バックアップを今すぐ実行 (launchd を kickstart) → ログ追尾 (Ctrl-C で追尾終了・backupは継続)
-    backup-check                 # リポジトリ整合性検証 (restic check)
-    backup-ls                    # 全スナップショット一覧 (Tags 列で warm / archive を区別)
-    gdrive cmd="status"          # 旧 ~/Cloud/GoogleDrive 単一マウント (nix rclone-gdrive) は廃止済み。現行は手動 LaunchAgent 管理。
-    restore snapshot dest="/"    # `just restore a81c9de1 ~/Restore`  指定先へ (構造を保って展開) [alias: unarchive]
-
-    [掃除]
-    gc                           # 全レイヤー一括 GC (再生成可能なcacheのみ。Trashやホーム全体の削除は gc-deep)
-    gc-deep                      # 重い再生成可能データを対話削除 (廃止caskのzap / CoreSimulator cache / podman / 古いbuild成果物)
-
-    [確認]
-    check what=""                # 型チェック / 差分表示  (`just check` = 構文型チェック, `just check diff` = 差分ビルド)
-    doctor format=""             # 環境ヘルスチェック (Determinate upgrade 後などに走らせる)
-    fmt                          # コード整形 + lint を全追跡ファイルに実行 (OS 自動判別: Mac/Linux=pre-commit, Win=PSScriptAnalyzer)
-    outdated                     # 更新可能なものを一覧 (upgrade 前のプレビュー。brew + mas + flake inputs。非破壊)
-    search query scope=""        # パッケージ検索 (`just search <q>` = brew+nixpkgs, `just search <q> all` = + cargo)
+    secrets cmd="edit"           # sops-encrypted secrets  (`just secrets` = edit, `just secrets rekey` = re-encrypt for all recipients)
 ```
 <!-- END just-list -->
 
