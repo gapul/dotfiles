@@ -14,6 +14,13 @@
     archive_source = "https://github.com/tldr-pages/tldr/releases/latest/download/tldr.zip"
   '';
 
+  # airdrop: CLI helper that pops the native AirDrop recipient window (macOS only).
+  # Wired into yazi's `O` (open with) menu via configs/cli/yazi/yazi.toml.
+  home.file."bin/airdrop" = {
+    source = ../../../configs/bin/airdrop;
+    executable = true;
+  };
+
   # espanso: general-purpose snippets (public) — to the Container path on Mac
   home.file."Library/Application Support/espanso/match/base.yml".source =
     ../../../configs/espanso/base.yml;

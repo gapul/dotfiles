@@ -1,0 +1,41 @@
+#!/usr/bin/env swift
+// Send files to AirDrop from the CLI (macOS only).
+// Wired into yazi's `O` (open with) menu; also usable standalone: `airdrop FILE...`.
+// Uses NSSharingService(.sendViaAirDrop) to pop the native AirDrop recipient window.
+
+import Cocoa
+
+let paths = Array(CommandLine.arguments.dropFirst())
+guard !paths.isEmpty else {
+    FileHandle.standardError.write("usage: airdrop FILE...\n".data(using: .utf8)!)
+    exit(2)
+}
+
+// Resolve to existing files only; bail if none exist.
+let urls = paths
+    .map { URL(fileURLWithPath: $0).standardizedFileURL }
+    .filter { FileManager.default.fileExists(atPath: $0.path) }
+guard !urls.isEmpty else {
+    FileHandle.standardError.write("airdrop: no existing files given\n".data(using: .utf8)!)
+    exit(1)
+}
+
+let app = NSApplication.shared
+app.setActivationPolicy(.accessory) // no Dock icon, but can show windows
+
+guard let service = NSSharingService(named: .sendViaAirDrop) else {
+    FileHandle.standardError.write("airdrop: AirDrop service unavailable\n".data(using: .utf8)!)
+    exit(1)
+}
+
+// Quit once the AirDrop sheet finishes (sent, cancelled, or failed).
+final class ShareDelegate: NSObject, NSSharingServiceDelegate {
+    func sharingService(_ s: NSSharingService, didShareItems items: [Any]) { exit(0) }
+    func sharingService(_ s: NSSharingService, didFailToShareItems items: [Any], error: Error) { exit(0) }
+}
+let delegate = ShareDelegate()
+service.delegate = delegate
+
+app.activate(ignoringOtherApps: true)
+service.perform(withItems: urls)
+app.run()
