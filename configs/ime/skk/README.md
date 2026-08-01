@@ -16,7 +16,7 @@
 
 - `macSKK.plist` — macSKK の workarounds (Ghostty/VSCode) + UI 設定 + skkserv 接続情報
 - `azoo-key-skkserv.plist` — host/incomingCharset/startServerAtLaunch
-- `kana-rule.conf` — ローマ字変換ルール (現状: `！ ？ （）` のみ全角化、`#!use-default` で既定継承)
+- `kana-rule.conf` — ローマ字変換ルール (skkeleton と役物対応を揃える: `！ ？ ：` を追加全角化、`（）` は半角維持、`#!use-default` で既定継承)
 
 plist 2つは home.nix の `home.activation.skkPlistImport` で `defaults import` され、`killall cfprefsd` で flush される。
 `kana-rule.conf` は plist ではなく Container 内 Documents のファイルなので、`home.activation.skkKanaRule` で `install` 実コピーして配置する (symlink 不可は辞書と同様)。
