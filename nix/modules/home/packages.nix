@@ -75,6 +75,7 @@ in
     glow # markdown viewer
     chafa # image → terminal
     ddgr # DuckDuckGo interactive terminal search
+    googler # Google interactive terminal search
     w3m # text browser
 
     # ─── nix-declaring things previously installed locally via cargo/uv (for reproducibility) ───
