@@ -201,6 +201,18 @@ in
 
       function mkcd() { mkdir -p "$1" && cd "$1"; }
 
+      # yazi wrapper: on quit, cd the shell to yazi's last directory.
+      # Use `y` instead of `yazi` to browse then land in the chosen dir.
+      function y() {
+        local tmp cwd
+        tmp="$(mktemp -t yazi-cwd.XXXXXX)"
+        yazi "$@" --cwd-file="$tmp"
+        if cwd="$(command cat -- "$tmp")" && [[ -n "$cwd" && "$cwd" != "$PWD" ]]; then
+          builtin cd -- "$cwd"
+        fi
+        rm -f -- "$tmp"
+      }
+
       function extract() {
         case $1 in
           *.tar.bz2) tar xjf $1 ;;  *.tar.gz)  tar xzf $1 ;;
