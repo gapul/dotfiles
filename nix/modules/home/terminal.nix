@@ -40,7 +40,10 @@ let
     set -g status-left-length 40
     set -g status-right-length 80
     set -g status-left  "#[bg=#${p.pine},fg=#${p.base},bold] #S #[bg=#${p.base},fg=#${p.pine}]#[default] "
-    set -g status-right "#[fg=#${p.muted}]%Y-%m-%d #[fg=#${p.foam}]%H:%M "
+    # status-right: while the prefix key was pressed (client_prefix), show a PREFIX badge so
+    # you can tell the prefix is armed and waiting for the next key. tmux redraws the status
+    # on client_prefix change, so it appears/disappears in real time (independent of status-interval).
+    set -g status-right "#{?client_prefix,#[bg=#${p.love}#,fg=#${p.base}#,bold] PREFIX #[default] ,}#[fg=#${p.muted}]%Y-%m-%d #[fg=#${p.foam}]%H:%M "
 
     # inactive / active windows (tabs)
     set -g window-status-format         "#[fg=#${p.muted}] #I #W "
@@ -82,11 +85,26 @@ in
   home.file.".config/zellij/themes/rose-pine.kdl".text = mkZellijTheme "rose-pine" c.dark;
   home.file.".config/zellij/themes/rose-pine-dawn.kdl".text = mkZellijTheme "rose-pine-dawn" c.light;
 
-  # tmux (zellij alternative). symlink tmux.conf and generate the rose-pine theme from the active palette.
-  # tmux has no terminal-following dark/light switch like zellij, so use the active palette c
-  # (switching active in palettes.json -> just rebuild follows, is the SSOT).
+  # tmux (zellij alternative). symlink tmux.conf and generate both rose-pine variants so tmux
+  # can follow the macOS appearance (light/dark) live, like ghostty/nvim/sketchybar do.
   home.file.".config/tmux/tmux.conf".source = ../../../configs/terminals/tmux/tmux.conf;
-  home.file.".config/tmux/rose-pine.conf".text = mkTmuxTheme c;
+  home.file.".config/tmux/rose-pine.conf".text = mkTmuxTheme c.dark;
+  home.file.".config/tmux/rose-pine-dawn.conf".text = mkTmuxTheme c.light;
+  # theme.conf is what tmux.conf sources. On macOS it branches on AppleInterfaceStyle at source
+  # time, so it picks the right variant at startup AND whenever the theme-watch agent (see
+  # darwin-chrome.nix) re-sources it on an appearance change. Elsewhere there is no OS appearance
+  # signal to follow, so it just loads the active palette (switch via active in palettes.json).
+  home.file.".config/tmux/theme.conf".text =
+    if pkgs.stdenv.isDarwin then
+      ''
+        if-shell '[ "$(/usr/bin/defaults read -g AppleInterfaceStyle 2>/dev/null)" = "Dark" ]' \
+          'source-file -q ~/.config/tmux/rose-pine.conf' \
+          'source-file -q ~/.config/tmux/rose-pine-dawn.conf'
+      ''
+    else
+      ''
+        source-file -q ~/.config/tmux/${c.active}.conf
+      '';
 
   # tmux plugins (equivalent to zellij's session persistence). Generate a plugins.conf that
   # run-shells store paths without TPM (sourced at the end of tmux.conf).

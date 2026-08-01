@@ -187,7 +187,8 @@ in
     text = ''
       #!/bin/bash
       # watch macOS appearance changes → sketchybar reload + borders re-apply (follows theme.nix category B)
-      export PATH="/opt/homebrew/bin:$PATH"
+      # tmux is on the nix profile PATH; include it so the tmux re-source below is found.
+      export PATH="/opt/homebrew/bin:$HOME/.local/state/nix/profile/bin:$PATH"
       last=""
       while true; do
         cur="$(defaults read -g AppleInterfaceStyle 2>/dev/null || echo Light)"
@@ -195,6 +196,9 @@ in
           last="$cur"
           [ -x "$HOME/.config/borders/bordersrc" ] && "$HOME/.config/borders/bordersrc" >/dev/null 2>&1 &
           sketchybar --reload >/dev/null 2>&1
+          # tmux: re-source theme.conf so the running server re-picks rose-pine / rose-pine-dawn
+          # by the new appearance. No-op if no tmux server is running.
+          command -v tmux >/dev/null 2>&1 && tmux source-file "$HOME/.config/tmux/theme.conf" >/dev/null 2>&1
         fi
         sleep 2
       done
