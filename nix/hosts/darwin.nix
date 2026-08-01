@@ -203,9 +203,12 @@
       "corelocationcli"
 
       # ─── Creative / VTuber ───
-      # Inochi Creator: 2D VTuber puppet rigging (Live2D alternative, free/OSS). Distribute the official
-      # mac build via a self-made cask tap (not in homebrew/cask, and nixpkgs is darwin-broken).
-      "gapul/inochi/inochi-creator"
+      # nijigenerate/nijiexpose: 2D VTuber puppet rigging + streaming runtime (Live2D alternative,
+      # free/OSS). Community successor forks of Inochi Creator/Session on the nijilive puppet format;
+      # active development moved here. Distribute the official mac builds via a self-made cask tap
+      # (not in homebrew/cask, and nixpkgs only has the older Inochi2D). Currently v1.0.0-beta2.
+      "gapul/inochi/nijigenerate" # rigging editor (Inochi Creator successor)
+      "gapul/inochi/nijiexpose" # streaming runtime (Inochi Session successor)
 
       # ─── Privacy / Security ───
       # Objective-See (Patrick Wardle) suite — all free and notarized
