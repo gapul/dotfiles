@@ -308,7 +308,6 @@
       "wine-stable" # WineHQ stable. Run Windows apps (used with winetricks)
       "epic-games"
       "heroic"
-      "mythic"
       "prismlauncher"
       "retroarch-metal"
       "steam"
