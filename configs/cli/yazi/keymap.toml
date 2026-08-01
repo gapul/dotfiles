@@ -31,3 +31,51 @@ desc = "Maximize or restore the preview pane"
 on   = "<A-p>"
 run  = "plugin toggle-pane toggle-preview"
 desc = "Show or hide the preview pane"
+
+# Quick Look: native macOS preview of the selection (i = inspect). Detached so
+# the panel floats while yazi stays interactive; press Space/Esc in it to close.
+[[mgr.prepend_keymap]]
+on   = "i"
+run  = "shell 'qlmanage -p \"$@\" >/dev/null 2>&1 || qlmanage -p \"$0\" >/dev/null 2>&1' --orphan"
+desc = "Quick Look the selection (macOS)"
+
+# ─── yamb bookmarks (u = leader). Jump/add/delete/rename frequent dirs. ───
+[[mgr.prepend_keymap]]
+on   = [ "u", "a" ]
+run  = "plugin yamb save"
+desc = "Bookmark: add current dir"
+
+[[mgr.prepend_keymap]]
+on   = [ "u", "g" ]
+run  = "plugin yamb jump_by_key"
+desc = "Bookmark: jump by key"
+
+[[mgr.prepend_keymap]]
+on   = [ "u", "G" ]
+run  = "plugin yamb jump_by_fzf"
+desc = "Bookmark: jump by fzf"
+
+[[mgr.prepend_keymap]]
+on   = [ "u", "d" ]
+run  = "plugin yamb delete_by_key"
+desc = "Bookmark: delete by key"
+
+[[mgr.prepend_keymap]]
+on   = [ "u", "D" ]
+run  = "plugin yamb delete_by_fzf"
+desc = "Bookmark: delete by fzf"
+
+[[mgr.prepend_keymap]]
+on   = [ "u", "A" ]
+run  = "plugin yamb delete_all"
+desc = "Bookmark: delete all"
+
+[[mgr.prepend_keymap]]
+on   = [ "u", "r" ]
+run  = "plugin yamb rename_by_key"
+desc = "Bookmark: rename by key"
+
+[[mgr.prepend_keymap]]
+on   = [ "u", "R" ]
+run  = "plugin yamb rename_by_fzf"
+desc = "Bookmark: rename by fzf"
