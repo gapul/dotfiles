@@ -34,6 +34,8 @@ image = [
   { run = 'start "" "$@"', desc = "Open with default", orphan = true, for = "windows" },
 ]
 office = [
+  # macOS: default to Quick Look (fast native preview); LibreOffice stays available via `O` (open interactively)
+  { run = 'qlmanage -p "$@" >/dev/null 2>&1', desc = "Quick Look (preview)", orphan = true, for = "macos" },
   { run = 'open -a "LibreOffice" "$@"', desc = "Open in LibreOffice", orphan = true, for = "macos" },
   { run = 'libreoffice "$@"', desc = "Open in LibreOffice", orphan = true, for = "linux" },
   # Windows: LibreOffice (soffice) → MS Office 関連付け fallback
