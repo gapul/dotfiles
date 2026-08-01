@@ -33,6 +33,20 @@ in
   # (-Doptimization=2 alone gets overridden back to plain, so change the whole buildtype)
   mesonBuildType = "debugoptimized";
 
+  # Silence the build log. Every warning here comes from zrythm's own upstream
+  # sources (deprecated GTK4 tree/list APIs, sprintf, sign-compare, macro
+  # redefines), not from our packaging, and there is nothing for us to fix.
+  # NIX_CFLAGS_COMPILE is appended last on the compiler command line, so a
+  # trailing -w wins over the -W flags meson and zrythm's meson.build add earlier.
+  env = (o.env or { }) // {
+    NIX_CFLAGS_COMPILE = lib.concatStringsSep " " (
+      lib.filter (s: s != "") [
+        (o.env.NIX_CFLAGS_COMPILE or "")
+        "-w"
+      ]
+    );
+  };
+
   # preFixup uses codesign (ad-hoc re-signing), so add sigtool explicitly.
   nativeBuildInputs = (o.nativeBuildInputs or [ ]) ++ [ pkgs.darwin.sigtool ];
 
