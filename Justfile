@@ -50,19 +50,30 @@ _brew-trust-taps:
 
 [private]
 _rebuild-macos:
-    @just _brew-trust-taps
+    #!/usr/bin/env bash
+    set -euo pipefail
+    just _brew-trust-taps
+    # Tee the whole run to a fixed log so a failure can be inspected after the fact
+    # without re-running — crucially the Homebrew bundle step, which runs during
+    # nix-darwin activation and so is absent from `nix log <drv>`. When stdout is not
+    # a TTY (git hooks, CI, an agent shell) drop nix-output-monitor's live TUI so the
+    # log stays greppable plain text instead of cursor-control escape soup.
+    mkdir -p "$HOME/tmp"
+    log="$HOME/tmp/nix-rebuild.log"
+    nom_flag=""; [ -t 1 ] || nom_flag="--no-nom"
+    : > "$log"
     # taskpolicy -b drops the build to background QoS. If the build pins the CPU,
     # Ghostty's event handling misses its deadline and the global keybind's CGEventTap
     # gets disabled with kCGEventTapDisabledByTimeout, after which cmd+space stops
     # working while unfocused (Ghostty does not re-enable the tap itself: ghostty#11883).
     # Lowering the priority keeps Ghostty from starving, preventing the tap disable.
-    @echo "━━━ nix-darwin"
-    @taskpolicy -b nh darwin switch -q -Q --diff never
-    @echo "✓ nix-darwin"
-    @echo "━━━ home-manager"
-    @taskpolicy -b nh home switch -q -Q --diff never
-    @echo "✓ home-manager"
-    @-open -a Ghostty >/dev/null 2>&1 || true
+    echo "━━━ nix-darwin" | tee -a "$log"
+    taskpolicy -b nh darwin switch -q -Q --diff never $nom_flag 2>&1 | tee -a "$log"
+    echo "✓ nix-darwin" | tee -a "$log"
+    echo "━━━ home-manager" | tee -a "$log"
+    taskpolicy -b nh home switch -q -Q --diff never $nom_flag 2>&1 | tee -a "$log"
+    echo "✓ home-manager" | tee -a "$log"
+    open -a Ghostty >/dev/null 2>&1 || true
 
 [private]
 _rebuild-linux:
