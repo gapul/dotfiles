@@ -73,6 +73,7 @@ in
     opencode # AI coding CLI
     (callPackage ../../pkgs/unity-cli.nix { }) # Unity Editor / module / project management CLI
     glow # markdown viewer
+    visidata # CSV/TSV table viewer + editor (TUI, `vd`)
     chafa # image → terminal
     ddgr # DuckDuckGo interactive terminal search
     w3m # text browser
