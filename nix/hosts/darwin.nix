@@ -337,7 +337,11 @@
     ];
 
     masApps = {
-      "DaVinci Resolve" = 571213070;
+      # DaVinci Resolve is intentionally NOT managed here.
+      # The Mac App Store build is sandboxed (no external scripting/Python,
+      # limited 3rd-party OpenFX/VST, no hardware control panels). Install it
+      # manually from the Blackmagic support page instead. See the note in the
+      # comments below for the download workflow.
       "Xcode" = 497799835;
     };
   };
