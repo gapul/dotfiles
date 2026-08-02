@@ -50,19 +50,30 @@ _brew-trust-taps:
 
 [private]
 _rebuild-macos:
-    @just _brew-trust-taps
+    #!/usr/bin/env bash
+    set -euo pipefail
+    just _brew-trust-taps
+    # Tee the whole run to a fixed log so a failure can be inspected after the fact
+    # without re-running — crucially the Homebrew bundle step, which runs during
+    # nix-darwin activation and so is absent from `nix log <drv>`. When stdout is not
+    # a TTY (git hooks, CI, an agent shell) drop nix-output-monitor's live TUI so the
+    # log stays greppable plain text instead of cursor-control escape soup.
+    mkdir -p "$HOME/tmp"
+    log="$HOME/tmp/nix-rebuild.log"
+    nom_flag=""; [ -t 1 ] || nom_flag="--no-nom"
+    : > "$log"
     # taskpolicy -b drops the build to background QoS. If the build pins the CPU,
     # Ghostty's event handling misses its deadline and the global keybind's CGEventTap
     # gets disabled with kCGEventTapDisabledByTimeout, after which cmd+space stops
     # working while unfocused (Ghostty does not re-enable the tap itself: ghostty#11883).
     # Lowering the priority keeps Ghostty from starving, preventing the tap disable.
-    @echo "━━━ nix-darwin"
-    @taskpolicy -b nh darwin switch -q -Q --diff never
-    @echo "✓ nix-darwin"
-    @echo "━━━ home-manager"
-    @taskpolicy -b nh home switch -q -Q --diff never
-    @echo "✓ home-manager"
-    @-open -a Ghostty >/dev/null 2>&1 || true
+    echo "━━━ nix-darwin" | tee -a "$log"
+    taskpolicy -b nh darwin switch -q -Q --diff never $nom_flag 2>&1 | tee -a "$log"
+    echo "✓ nix-darwin" | tee -a "$log"
+    echo "━━━ home-manager" | tee -a "$log"
+    taskpolicy -b nh home switch -q -Q --diff never $nom_flag 2>&1 | tee -a "$log"
+    echo "✓ home-manager" | tee -a "$log"
+    open -a Ghostty >/dev/null 2>&1 || true
 
 [private]
 _rebuild-linux:
@@ -168,6 +179,7 @@ _upgrade-packages-macos:
     @HOMEBREW_NO_AUTO_UPDATE=1 brew upgrade --quiet --cask --greedy || true
     @echo "━━━ App Store"
     @mas upgrade
+    @just _xcode-upgrade
     @just sketchybar-font
     # The --greedy upgrade above also targets auto_updates/`version :latest` casks,
     # but those stay "outdated" forever and can never "complete" (e.g. figma-agent,
@@ -177,6 +189,32 @@ _upgrade-packages-macos:
     # version updates and does not break as auto_updates casks grow (previously
     # figma-agent was grep-excluded, but enumerating them breaks, so that was removed).
     @remaining=$(HOMEBREW_NO_AUTO_UPDATE=1 brew outdated --cask 2>/dev/null || true); if [ -n "$remaining" ]; then echo "ERROR: cask upgrade incomplete:" >&2; echo "$remaining" >&2; exit 1; fi
+
+# Keep Xcode current via xcodes (replaces mas for Xcode). Reads Apple ID from the
+# sops-decrypted files so username/password auth is non-interactive; 2FA is prompted
+# only on first login / expired session. Never aborts the outer upgrade (|| true / echo)
+# so a skipped 2FA prompt doesn't fail `just upgrade`.
+[private]
+_xcode-upgrade:
+    #!/usr/bin/env bash
+    set -u
+    command -v xcodes >/dev/null || { echo "– xcodes not installed, skip"; exit 0; }
+    echo "━━━ Xcode (xcodes)"
+    aid="$HOME/.config/xcodes/apple_id"; pw="$HOME/.config/xcodes/password"
+    if [ -r "$aid" ] && [ -r "$pw" ]; then
+      export XCODES_USERNAME XCODES_PASSWORD
+      XCODES_USERNAME=$(cat "$aid"); XCODES_PASSWORD=$(cat "$pw")
+    else
+      echo "– Apple ID not set in sops (xcodes/apple_id, xcodes/password); will prompt if needed"
+    fi
+    # --latest installs the newest release (no-op if already current) and selects it. aria2 is
+    # auto-used for the parallel .xip download. On failure (e.g. skipped 2FA) don't break upgrade.
+    if xcodes install --latest; then
+      sudo xcodebuild -license accept 2>/dev/null || true
+      sudo xcodebuild -runFirstLaunch 2>/dev/null || true
+    else
+      echo "– xcodes install skipped/failed (2FA or auth?); re-run: xcodes install --latest"
+    fi
 
 [private]
 _upgrade-linux:
@@ -307,6 +345,11 @@ sketchybar-font:
     gh release download "$tag" --repo "$repo" --pattern sketchybar-app-font.ttf --output "$ttf"  --clobber
     gh release download "$tag" --repo "$repo" --pattern icon_map.sh           --output "$map"  --clobber
     awk '/^### END-OF-ICON-MAP/{print; print "__icon_map \"$1\""; print "[ -r \"${BASH_SOURCE%/*}/icon_map_local.sh\" ] && source \"${BASH_SOURCE%/*}/icon_map_local.sh\""; print "echo \"$icon_result\""; exit} {print}' "$map" > "$map.tmp" && mv "$map.tmp" "$map"
+    # gh release assets are non-executable, so restore +x; plugins run icon_map.sh
+    # directly ($(...)), and without +x it fails with "permission denied" -> the
+    # workspace app icons silently vanish. `chmod` before `git add` so the staged
+    # mode is recorded as 100755 too.
+    chmod +x "$map"
     sed -i "" -E '/pname = "sketchybar-app-font"/{n;s/version = "[0-9.]+"/version = "'"${tag#v}"'"/;}' "$dir/nix/hosts/darwin.nix"
     git -C "$dir" add "$ttf" "$map" "$dir/nix/hosts/darwin.nix"
     echo "Updated ($tag). Apply with: just rebuild (automatic when run via upgrade)"
@@ -360,6 +403,16 @@ outdated:
     echo ""
     echo "━━━ Mac App Store ━━━"
     o=$(mas outdated 2>/dev/null); [ -n "$o" ] && echo "$o" || echo "  (up to date)"
+    echo ""
+    echo "━━━ Xcode (xcodes) ━━━"
+    if command -v xcodes >/dev/null; then
+      # auth-free preview: show what's installed. `xcodes update` (Apple login + maybe 2FA)
+      # is intentionally left to `just upgrade` so this stays non-interactive.
+      inst=$(xcodes installed 2>/dev/null | tr -s ' ' | paste -sd', ' - || true)
+      echo "  installed: ${inst:-none}   (just upgrade -> xcodes install --latest)"
+    else
+      echo "  (xcodes not installed)"
+    fi
     echo ""
     echo "━━━ flake inputs (lock last-modified) ━━━"
     if command -v jq >/dev/null; then

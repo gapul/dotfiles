@@ -127,6 +127,27 @@ in
         fi
       }
 
+      # `gh pr create` in gapul/dotfiles also enables squash auto-merge so PRs land on
+      # their own once CI is green — matching the worktree+PR flow. Scoped to this repo
+      # only; every other repo and every other gh subcommand passes through untouched.
+      # Failures (repo without auto-merge, --web create, etc.) stay quiet.
+      # NOTE: no --delete-branch — in the worktree flow the just-created branch is still
+      # checked out by its worktree, so a local-branch delete always fails and would abort
+      # the merge enable. Remote branch cleanup is left to the repo's
+      # "Automatically delete head branches" setting.
+      function gh() {
+        if [[ "$1" == "pr" && "$2" == "create" ]]; then
+          command gh "$@" || return
+          if [[ "$(command gh repo view --json nameWithOwner --jq .nameWithOwner 2>/dev/null)" == "gapul/dotfiles" ]]; then
+            if command gh pr merge --auto --squash 2>/dev/null; then
+              print -r -- "gh: auto-merge (squash) enabled for this PR" >&2
+            fi
+          fi
+        else
+          command gh "$@"
+        fi
+      }
+
       # Inspect dangerous URLs, pipe-to-shell, and obfuscated payloads before running.
       # Default policy blocks high-risk and warns on medium-risk; not always strict.
       eval "$(tirith init --shell zsh)"
@@ -200,6 +221,18 @@ in
       }
 
       function mkcd() { mkdir -p "$1" && cd "$1"; }
+
+      # yazi wrapper: on quit, cd the shell to yazi's last directory.
+      # Use `y` instead of `yazi` to browse then land in the chosen dir.
+      function y() {
+        local tmp cwd
+        tmp="$(mktemp -t yazi-cwd.XXXXXX)"
+        yazi "$@" --cwd-file="$tmp"
+        if cwd="$(command cat -- "$tmp")" && [[ -n "$cwd" && "$cwd" != "$PWD" ]]; then
+          builtin cd -- "$cwd"
+        fi
+        rm -f -- "$tmp"
+      }
 
       function extract() {
         case $1 in

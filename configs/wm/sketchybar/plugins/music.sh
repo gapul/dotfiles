@@ -38,7 +38,7 @@ if [ -n "$MOPIDY" ]; then
   elif [ -n "$TITLE" ]; then LABEL="$TITLE"
   else LABEL="$ARTIST"; fi
   if [ "$MSTATE" = "pause" ]; then MCOL="$YELLOW"; else MCOL="$GREEN"; fi
-  MICON="􀋪"
+  MICON="􀑪"
   # トグルボタン: 再生中は一時停止アイコン、停止中は再生アイコン
   if [ "$MSTATE" = "play" ]; then sketchybar --set music.toggle icon="$MUSIC_PAUSED"; else sketchybar --set music.toggle icon="$MUSIC_PLAYING"; fi
   sketchybar --set "$NAME" icon="$MICON" icon.color="$MCOL" label="$LABEL" drawing=on
@@ -58,4 +58,4 @@ IFS=$'\t' read -r STATUS TITLE ARTIST <<< "$RESULT"
 if [ "$STATUS" != "playing" ]; then sketchybar --set "$NAME" drawing=off; exit 0; fi
 if [ -n "$TITLE" ] && [ -n "$ARTIST" ]; then LABEL="$TITLE — $ARTIST"
 elif [ -n "$TITLE" ]; then LABEL="$TITLE"; else LABEL="$ARTIST"; fi
-sketchybar --set "$NAME" icon="􀋪" icon.color="$GREEN" label="$LABEL" drawing=on
+sketchybar --set "$NAME" icon="􀑪" icon.color="$GREEN" label="$LABEL" drawing=on

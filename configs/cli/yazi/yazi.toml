@@ -34,6 +34,10 @@ image = [
   { run = 'start "" "$@"', desc = "Open with default", orphan = true, for = "windows" },
 ]
 office = [
+  # macOS: default to Quick Look (fast native preview). `O` (open interactively) also offers
+  # "Reveal in Finder" (hit Space there for the polished native Quick Look) and LibreOffice.
+  { run = 'qlmanage -p "$@" >/dev/null 2>&1', desc = "Quick Look (preview)", orphan = true, for = "macos" },
+  { run = 'open -R "$@"', desc = "Reveal in Finder", orphan = true, for = "macos" },
   { run = 'open -a "LibreOffice" "$@"', desc = "Open in LibreOffice", orphan = true, for = "macos" },
   { run = 'libreoffice "$@"', desc = "Open in LibreOffice", orphan = true, for = "linux" },
   # Windows: LibreOffice (soffice) → MS Office 関連付け fallback
@@ -64,6 +68,11 @@ fallback = [
   { run = 'open "$@"', desc = "Open with macOS default", orphan = true, for = "macos" },
   { run = 'xdg-open "$@"', desc = "Open with Linux default", orphan = true, for = "linux" },
   { run = 'start "" "$@"', desc = "Open with Windows default", orphan = true, for = "windows" },
+]
+# AirDrop the selected files (macOS only). Helper: configs/bin/airdrop (~/bin, on PATH).
+# Only ever surfaced via `O` (open --interactive), never as the Enter default.
+airdrop = [
+  { run = 'airdrop "$@"', desc = "AirDrop", orphan = true, for = "macos" },
 ]
 
 [open]
@@ -100,6 +109,9 @@ prepend_rules = [
 append_rules = [
   # Fallback (after defaults)
   { url = "*", use = "fallback" },
+  # AirDrop available on every file's `O` menu (merged in; not the Enter default).
+  # No-op off macOS: the airdrop opener has only a for="macos" entry.
+  { url = "*", use = "airdrop" },
 ]
 
 [preview]
