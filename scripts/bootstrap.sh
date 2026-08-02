@@ -230,6 +230,22 @@ gh api -X POST /user/ssh_signing_keys \
 - home-manager activation で AeroSpace と Ghostty が登録済のはず
 - System Settings → General → Login Items で確認
 
+## 9. 手動インストールするアプリ (nix / mas 管理外)
+
+### DaVinci Resolve
+App Store 版はサンドボックス制約 (外部スクリプト/Python 不可・3rd party OpenFX/VST 制限・
+ハードウェアコントロールパネル不可) があるため mas 管理をやめた。Blackmagic のサポート
+ページから手動でダウンロードして入れる:
+- https://www.blackmagicdesign.com/support/family/davinci-resolve-and-fusion
+
+### Xcode (xcodes 経由)
+Xcode は mas から xcodes 管理に移行済み (brew の xcodes/aria2 は宣言済)。実機での初回だけ手動:
+1. Apple ID を sops に投入: `sops ~/.dotfiles/secrets/secrets.yaml` の
+   `xcodes.apple_id` / `xcodes.password` を実値に (初期値は CHANGEME)
+2. `just rebuild` で `~/.config/xcodes/{apple_id,password}` に復号
+3. 初回のみ 2FA を対話で通す: `xcodes install --latest`
+   (以降は `just upgrade` に乗って最新へ自動更新。セッション失効時のみ再度 2FA)
+
 ---
 
 完了したら本ファイルを削除してください: `rm ~/POST-BOOTSTRAP.md`

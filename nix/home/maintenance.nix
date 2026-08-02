@@ -64,12 +64,10 @@ let
     trap 'rmdir "$lock" 2>/dev/null || true' EXIT
     [ -n "$changed" ] && { echo "flake updates available: $changed"; msgs="flake: $changed"; }
 
-    # brew / mas
+    # brew
     bo=$(brew outdated --greedy 2>/dev/null | wc -l | tr -d ' ')
-    mo=$(mas outdated 2>/dev/null | wc -l | tr -d ' ')
     [ "$bo" != "0" ] && msgs="$msgs / brew: $bo"
-    [ "$mo" != "0" ] && msgs="$msgs / mas: $mo"
-    echo "brew outdated: $bo, mas outdated: $mo"
+    echo "brew outdated: $bo"
 
     if [ -n "$msgs" ]; then
       notify "⬆️ Updates available (just upgrade)" "$msgs"
