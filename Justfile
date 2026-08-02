@@ -173,8 +173,7 @@ _upgrade-packages-macos:
     # get refused as untrusted; the cask is swallowed by `|| true` and the final check fails.
     @brew update --quiet || true
     @just _brew-trust-taps
-    @echo "━━━ Homebrew formulae"
-    @HOMEBREW_NO_AUTO_UPDATE=1 brew upgrade --quiet --formula
+    @just _brew-formula-upgrade
     @echo "━━━ Homebrew casks"
     @HOMEBREW_NO_AUTO_UPDATE=1 brew upgrade --quiet --cask --greedy || true
     @just _xcode-upgrade
@@ -187,6 +186,31 @@ _upgrade-packages-macos:
     # version updates and does not break as auto_updates casks grow (previously
     # figma-agent was grep-excluded, but enumerating them breaks, so that was removed).
     @remaining=$(HOMEBREW_NO_AUTO_UPDATE=1 brew outdated --cask 2>/dev/null || true); if [ -n "$remaining" ]; then echo "ERROR: cask upgrade incomplete:" >&2; echo "$remaining" >&2; exit 1; fi
+
+# Upgrade Homebrew formulae, resilient to a single broken formula (mirrors the cask handling).
+# `brew upgrade --formula` aborts the whole run if ANY formula fails — e.g. concord 2.5.0, whose
+# tap formula ungated `depends_on "alsa-lib"`/`"pipewire"` (Linux-only, no macOS bottle) so it
+# can't install on macOS. Previously that one failure aborted `just maintain` and rolled back the
+# flake update. Now individual failures are tolerated (|| true) and we fail only if a NON-pinned
+# formula is still outdated (a genuine unhandled failure). Pinned-but-outdated (intentionally held,
+# e.g. `brew pin concord` at 2.4.8) is fine. Names are normalized to basename because
+# `brew outdated` prints tap-qualified names (chojs23/tap/concord) while `brew list --pinned`
+# prints short names (concord).
+[private]
+_brew-formula-upgrade:
+    #!/usr/bin/env bash
+    set -u
+    echo "━━━ Homebrew formulae"
+    HOMEBREW_NO_AUTO_UPDATE=1 brew upgrade --quiet --formula || true
+    pinned=$(brew list --pinned 2>/dev/null | sed 's#.*/##')
+    bad=""
+    for f in $(HOMEBREW_NO_AUTO_UPDATE=1 brew outdated --formula --quiet 2>/dev/null | sed 's#.*/##'); do
+      printf '%s\n' "$pinned" | grep -qxF "$f" || bad="$bad $f"
+    done
+    if [ -n "$bad" ]; then
+      echo "ERROR: formula upgrade incomplete (non-pinned):$bad" >&2
+      exit 1
+    fi
 
 # Keep Xcode current via xcodes (replaces mas for Xcode). Reads Apple ID from the
 # sops-decrypted files so username/password auth is non-interactive; 2FA is prompted
