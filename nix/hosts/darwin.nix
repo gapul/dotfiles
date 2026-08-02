@@ -142,6 +142,17 @@
       "duti" # file associations
       "displayplacer" # sketchybar multi-display (promoted to homebrew/core, same v1.4.0)
 
+      # ─── Xcode toolchain ───
+      # Moved Xcode off masApps to xcodes (2026-08-02). mas's App Store delivery is a single
+      # connection and can't be parallelized; xcodes + aria2 downloads the .xip in up to 16
+      # parallel chunks (the .xip is a full ~7-10GB redownload every update, monthly-ish), and
+      # xcodes gives explicit version control if a pinned build is ever needed. Latest-only for
+      # now: `xcodes install --latest` from `just upgrade` keeps it current. Apple ID login is
+      # required to download; credentials come from sops (xcodes/apple_id, xcodes/password) and
+      # 2FA is prompted interactively on first auth / when the cached Apple session expires.
+      "xcodes" # Xcode version manager (download/select/switch, replaces mas for Xcode)
+      "aria2" # parallel (up to 16-connection) downloader; xcodes auto-uses it for the .xip
+
       # ─── Status bar / Window decoration (felixkratz tap) ───
       "felixkratz/formulae/sketchybar"
       "felixkratz/formulae/borders" # launched from aerospace via exec-and-forget
@@ -337,8 +348,10 @@
     ];
 
     masApps = {
+      # Xcode moved to xcodes (see the "Xcode toolchain" brews above). DaVinci Resolve stays on
+      # mas: it has no xcodes-like manager, its App Store build auto-updates, and the direct
+      # Blackmagic download needs a registration form, so mas is the least-friction path here.
       "DaVinci Resolve" = 571213070;
-      "Xcode" = 497799835;
     };
   };
 }
