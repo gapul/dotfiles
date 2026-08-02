@@ -56,6 +56,44 @@ edit = [
   { run = 'nvim "$@"', desc = "Edit in Neovim", block = true, for = "unix" },
   { run = 'nvim "$@"', desc = "Edit in Neovim", block = true, for = "windows" },
 ]
+# Dual-purpose text formats (view OR edit). Enter defaults to editing (nvim); `O` (open
+# interactively) also offers a rendered view. Same pattern as the office opener above.
+html = [
+  { run = 'nvim "$@"', desc = "Edit in Neovim", block = true, for = "unix" },
+  { run = 'open "$@"', desc = "View in browser", orphan = true, for = "macos" },
+  { run = 'xdg-open "$@"', desc = "View in browser", orphan = true, for = "linux" },
+  { run = 'nvim "$@"', desc = "Edit in Neovim", block = true, for = "windows" },
+  { run = 'start "" "$@"', desc = "View in browser", orphan = true, for = "windows" },
+]
+markdown = [
+  { run = 'nvim "$@"', desc = "Edit in Neovim", block = true, for = "unix" },
+  { run = 'glow -p "$@"', desc = "Render with glow", block = true, for = "unix" },
+  { run = 'qlmanage -p "$@" >/dev/null 2>&1', desc = "Quick Look (rendered)", orphan = true, for = "macos" },
+  { run = 'nvim "$@"', desc = "Edit in Neovim", block = true, for = "windows" },
+  { run = 'start "" "$@"', desc = "Open with default", orphan = true, for = "windows" },
+]
+# SVG is both a viewable image and editable XML. Enter keeps viewing (image viewer, as before);
+# `O` adds editing the source (nvim) and the vector (Inkscape).
+svg = [
+  { run = 'open -a qView "$@"', desc = "View in qView", orphan = true, for = "macos" },
+  { run = 'nvim "$@"', desc = "Edit source in Neovim", block = true, for = "unix" },
+  { run = 'open -a "Inkscape" "$@"', desc = "Edit in Inkscape", orphan = true, for = "macos" },
+  { run = 'xdg-open "$@"', desc = "View (xdg)", orphan = true, for = "linux" },
+  { run = 'inkscape "$@"', desc = "Edit in Inkscape", orphan = true, for = "linux" },
+  { run = 'start "" "$@"', desc = "View with default", orphan = true, for = "windows" },
+  { run = 'nvim "$@"', desc = "Edit source in Neovim", block = true, for = "windows" },
+]
+# CSV/TSV: tabular data. Enter opens VisiData (view AND edit as a table); `O` also offers
+# raw editing (nvim), a spreadsheet (LibreOffice), and Quick Look.
+csv = [
+  { run = 'vd "$@"', desc = "Table view/edit (VisiData)", block = true, for = "unix" },
+  { run = 'nvim "$@"', desc = "Edit raw in Neovim", block = true, for = "unix" },
+  { run = 'open -a "LibreOffice" "$@"', desc = "Open in LibreOffice", orphan = true, for = "macos" },
+  { run = 'qlmanage -p "$@" >/dev/null 2>&1', desc = "Quick Look", orphan = true, for = "macos" },
+  { run = 'libreoffice "$@"', desc = "Open in LibreOffice", orphan = true, for = "linux" },
+  { run = 'vd "$@"', desc = "Table view/edit (VisiData)", block = true, for = "windows" },
+  { run = 'nvim "$@"', desc = "Edit raw in Neovim", block = true, for = "windows" },
+]
 extract = [
   { run = 'unzip -o "$1" -d "$(dirname "$1")"', desc = "Extract zip here", for = "unix" },
   { run = 'tar -xvf "$1" -C "$(dirname "$1")"', desc = "Extract tar here", for = "unix" },
@@ -77,6 +115,14 @@ airdrop = [
 
 [open]
 prepend_rules = [
+  # Dual-purpose formats: dedicated openers so `O` (open interactively) offers a rendered
+  # view alongside editing. Must precede the generic text/* and glob rules below, which
+  # would otherwise force these straight to `edit`.
+  { url = "*.{html,htm,xhtml}", use = "html" },
+  { url = "*.{md,markdown,mdx}", use = "markdown" },
+  { url = "*.svg", use = "svg" },
+  { url = "*.{csv,tsv,tab}", use = "csv" },
+
   # Text / code (MIME)
   { mime = "text/*", use = "edit" },
   { mime = "application/{json,xml,javascript,x-yaml,x-toml,x-shellscript}", use = "edit" },
