@@ -127,6 +127,23 @@ in
         fi
       }
 
+      # `gh pr create` in gapul/dotfiles also enables squash auto-merge (+ remote branch
+      # cleanup) so PRs land on their own once CI is green — matching the worktree+PR flow.
+      # Scoped to this repo only; every other repo and every other gh subcommand passes
+      # through untouched. Failures (repo without auto-merge, --web create, etc.) stay quiet.
+      function gh() {
+        if [[ "$1" == "pr" && "$2" == "create" ]]; then
+          command gh "$@" || return
+          if [[ "$(command gh repo view --json nameWithOwner --jq .nameWithOwner 2>/dev/null)" == "gapul/dotfiles" ]]; then
+            if command gh pr merge --auto --squash --delete-branch 2>/dev/null; then
+              print -r -- "gh: auto-merge (squash) enabled for this PR" >&2
+            fi
+          fi
+        else
+          command gh "$@"
+        fi
+      }
+
       # Inspect dangerous URLs, pipe-to-shell, and obfuscated payloads before running.
       # Default policy blocks high-risk and warns on medium-risk; not always strict.
       eval "$(tirith init --shell zsh)"
