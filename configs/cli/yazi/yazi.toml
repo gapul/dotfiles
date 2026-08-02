@@ -26,7 +26,14 @@ image = [
   { run = 'open -a qView "$@"', desc = "Open in qView", orphan = true, for = "macos" },
   { run = 'qlmanage -p "$@"', desc = "Quick Look", orphan = true, for = "macos" },
   { run = 'open -a "Preview" "$@"', desc = "Open in Preview", orphan = true, for = "macos" },
+  # Edit paths (surfaced via `O`; Enter stays on the viewer above).
+  { run = 'open -b com.adobe.Photoshop "$@"', desc = "Edit in Photoshop", orphan = true, for = "macos" },
+  { run = 'open -a "GIMP" "$@"', desc = "Edit in GIMP", orphan = true, for = "macos" },
+  { run = 'open -a "krita" "$@"', desc = "Edit in Krita", orphan = true, for = "macos" },
+  { run = 'open -a "Affinity" "$@"', desc = "Edit in Affinity", orphan = true, for = "macos" },
   { run = 'xdg-open "$@"', desc = "Open (xdg)", orphan = true, for = "linux" },
+  { run = 'gimp "$@"', desc = "Edit in GIMP", orphan = true, for = "linux" },
+  { run = 'krita "$@"', desc = "Edit in Krita", orphan = true, for = "linux" },
   # Windows: qView (Mac と共通)、PicView、ImageGlass、最後に関連付け fallback
   { run = 'qview "$@"', desc = "Open in qView", orphan = true, for = "windows" },
   { run = 'PicView "$@"', desc = "Open in PicView", orphan = true, for = "windows" },
@@ -77,6 +84,7 @@ markdown = [
 svg = [
   { run = 'open -a qView "$@"', desc = "View in qView", orphan = true, for = "macos" },
   { run = 'nvim "$@"', desc = "Edit source in Neovim", block = true, for = "unix" },
+  { run = 'open -b com.adobe.illustrator "$@"', desc = "Edit in Illustrator", orphan = true, for = "macos" },
   { run = 'open -a "Inkscape" "$@"', desc = "Edit in Inkscape", orphan = true, for = "macos" },
   { run = 'xdg-open "$@"', desc = "View (xdg)", orphan = true, for = "linux" },
   { run = 'inkscape "$@"', desc = "Edit in Inkscape", orphan = true, for = "linux" },
@@ -93,6 +101,43 @@ csv = [
   { run = 'libreoffice "$@"', desc = "Open in LibreOffice", orphan = true, for = "linux" },
   { run = 'vd "$@"', desc = "Table view/edit (VisiData)", block = true, for = "windows" },
   { run = 'nvim "$@"', desc = "Edit raw in Neovim", block = true, for = "windows" },
+]
+# 3D models: Enter previews (macOS Quick Look renders STL/OBJ via SceneKit); `O` opens the
+# editors/slicers — Blender for modelling, OrcaSlicer/Bambu Studio for 3D printing.
+model3d = [
+  { run = 'qlmanage -p "$@" >/dev/null 2>&1', desc = "Quick Look (preview)", orphan = true, for = "macos" },
+  { run = 'open -a "Blender" "$@"', desc = "Edit in Blender", orphan = true, for = "macos" },
+  { run = 'open -a "OrcaSlicer" "$@"', desc = "Slice in OrcaSlicer", orphan = true, for = "macos" },
+  { run = 'open -a "BambuStudio" "$@"', desc = "Slice in Bambu Studio", orphan = true, for = "macos" },
+  { run = 'blender "$@"', desc = "Edit in Blender", orphan = true, for = "linux" },
+  { run = 'start "" "$@"', desc = "Open with default", orphan = true, for = "windows" },
+]
+# Fonts: Enter shows a specimen (FontGoggles); `O` adds Font Book and editing in FontForge.
+font = [
+  { run = 'open -a "FontGoggles" "$@"', desc = "View in FontGoggles", orphan = true, for = "macos" },
+  { run = 'open -a "Font Book" "$@"', desc = "View in Font Book", orphan = true, for = "macos" },
+  { run = 'open -a "FontForge" "$@"', desc = "Edit in FontForge", orphan = true, for = "macos" },
+  { run = 'fontforge "$@"', desc = "Edit in FontForge", orphan = true, for = "linux" },
+  { run = 'start "" "$@"', desc = "Open with default", orphan = true, for = "windows" },
+]
+# Adobe-native documents: Enter opens the native app; `O` adds a quick preview / alternatives.
+# open -b <bundle id> is used because the .app names carry a year (e.g. "Adobe Photoshop 2026").
+psd = [
+  { run = 'open -b com.adobe.Photoshop "$@"', desc = "Edit in Photoshop", orphan = true, for = "macos" },
+  { run = 'qlmanage -p "$@" >/dev/null 2>&1', desc = "Quick Look", orphan = true, for = "macos" },
+  { run = 'open -a "GIMP" "$@"', desc = "Edit in GIMP", orphan = true, for = "macos" },
+  { run = 'open -a "krita" "$@"', desc = "Edit in Krita", orphan = true, for = "macos" },
+  { run = 'gimp "$@"', desc = "Edit in GIMP", orphan = true, for = "linux" },
+]
+ai = [
+  { run = 'open -b com.adobe.illustrator "$@"', desc = "Edit in Illustrator", orphan = true, for = "macos" },
+  { run = 'qlmanage -p "$@" >/dev/null 2>&1', desc = "Quick Look", orphan = true, for = "macos" },
+  { run = 'open -a "Inkscape" "$@"', desc = "Edit in Inkscape", orphan = true, for = "macos" },
+  { run = 'inkscape "$@"', desc = "Edit in Inkscape", orphan = true, for = "linux" },
+]
+indd = [
+  { run = 'open -b com.adobe.InDesign "$@"', desc = "Edit in InDesign", orphan = true, for = "macos" },
+  { run = 'qlmanage -p "$@" >/dev/null 2>&1', desc = "Quick Look", orphan = true, for = "macos" },
 ]
 extract = [
   { run = 'unzip -o "$1" -d "$(dirname "$1")"', desc = "Extract zip here", for = "unix" },
@@ -122,6 +167,11 @@ prepend_rules = [
   { url = "*.{md,markdown,mdx}", use = "markdown" },
   { url = "*.svg", use = "svg" },
   { url = "*.{csv,tsv,tab}", use = "csv" },
+  { url = "*.{stl,obj,3mf,step,stp,ply,fbx,gltf,glb,dae}", use = "model3d" },
+  { url = "*.{ttf,otf,ttc,woff,woff2}", use = "font" },
+  { url = "*.psd", use = "psd" },
+  { url = "*.{ai,eps}", use = "ai" },
+  { url = "*.{indd,idml}", use = "indd" },
 
   # Text / code (MIME)
   { mime = "text/*", use = "edit" },
