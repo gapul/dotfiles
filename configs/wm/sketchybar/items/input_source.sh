@@ -1,11 +1,8 @@
 #!/bin/bash
 
 input_source=(
-  icon=􀇳
-  icon.font="$FONT:Bold:$(scf 13.0)"
-  icon.padding_right=0
+  icon.drawing=off
   label.font="$FONT:Semibold:$(scf 13.0)"
-  label.padding_left=0
   label.align=center
   script="$PLUGIN_DIR/input_source.sh"
   update_freq=1
