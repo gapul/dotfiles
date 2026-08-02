@@ -44,7 +44,7 @@
     # in strict lockstep with plugins/icon_map.sh.
     (stdenvNoCC.mkDerivation {
       pname = "sketchybar-app-font";
-      version = "2.0.62";
+      version = "2.0.68";
       src = ../../configs/fonts/sketchybar-app-font.ttf;
       dontUnpack = true;
       installPhase = ''
