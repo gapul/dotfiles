@@ -177,8 +177,6 @@ _upgrade-packages-macos:
     @HOMEBREW_NO_AUTO_UPDATE=1 brew upgrade --quiet --formula
     @echo "━━━ Homebrew casks"
     @HOMEBREW_NO_AUTO_UPDATE=1 brew upgrade --quiet --cask --greedy || true
-    @echo "━━━ App Store"
-    @mas upgrade
     @just _xcode-upgrade
     @just sketchybar-font
     # The --greedy upgrade above also targets auto_updates/`version :latest` casks,
@@ -400,9 +398,6 @@ outdated:
     set -u
     echo "━━━ Homebrew (formula + cask, --greedy) ━━━"
     o=$(brew outdated --greedy 2>/dev/null); [ -n "$o" ] && echo "$o" || echo "  (up to date)"
-    echo ""
-    echo "━━━ Mac App Store ━━━"
-    o=$(mas outdated 2>/dev/null); [ -n "$o" ] && echo "$o" || echo "  (up to date)"
     echo ""
     echo "━━━ Xcode (xcodes) ━━━"
     if command -v xcodes >/dev/null; then

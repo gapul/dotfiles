@@ -135,7 +135,6 @@
       "exiftool" # strip metadata (GPS/device info) from images/PDFs before sharing
 
       # ─── macOS specific CLI ───
-      "mas" # App Store
       "blueutil" # Bluetooth
       "media-control" # media keys
       "terminal-notifier"
