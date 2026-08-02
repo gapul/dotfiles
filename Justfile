@@ -179,6 +179,7 @@ _upgrade-packages-macos:
     @HOMEBREW_NO_AUTO_UPDATE=1 brew upgrade --quiet --cask --greedy || true
     @echo "━━━ App Store"
     @mas upgrade
+    @just _xcode-upgrade
     @just sketchybar-font
     # The --greedy upgrade above also targets auto_updates/`version :latest` casks,
     # but those stay "outdated" forever and can never "complete" (e.g. figma-agent,
@@ -188,6 +189,32 @@ _upgrade-packages-macos:
     # version updates and does not break as auto_updates casks grow (previously
     # figma-agent was grep-excluded, but enumerating them breaks, so that was removed).
     @remaining=$(HOMEBREW_NO_AUTO_UPDATE=1 brew outdated --cask 2>/dev/null || true); if [ -n "$remaining" ]; then echo "ERROR: cask upgrade incomplete:" >&2; echo "$remaining" >&2; exit 1; fi
+
+# Keep Xcode current via xcodes (replaces mas for Xcode). Reads Apple ID from the
+# sops-decrypted files so username/password auth is non-interactive; 2FA is prompted
+# only on first login / expired session. Never aborts the outer upgrade (|| true / echo)
+# so a skipped 2FA prompt doesn't fail `just upgrade`.
+[private]
+_xcode-upgrade:
+    #!/usr/bin/env bash
+    set -u
+    command -v xcodes >/dev/null || { echo "– xcodes not installed, skip"; exit 0; }
+    echo "━━━ Xcode (xcodes)"
+    aid="$HOME/.config/xcodes/apple_id"; pw="$HOME/.config/xcodes/password"
+    if [ -r "$aid" ] && [ -r "$pw" ]; then
+      export XCODES_USERNAME XCODES_PASSWORD
+      XCODES_USERNAME=$(cat "$aid"); XCODES_PASSWORD=$(cat "$pw")
+    else
+      echo "– Apple ID not set in sops (xcodes/apple_id, xcodes/password); will prompt if needed"
+    fi
+    # --latest installs the newest release (no-op if already current) and selects it. aria2 is
+    # auto-used for the parallel .xip download. On failure (e.g. skipped 2FA) don't break upgrade.
+    if xcodes install --latest; then
+      sudo xcodebuild -license accept 2>/dev/null || true
+      sudo xcodebuild -runFirstLaunch 2>/dev/null || true
+    else
+      echo "– xcodes install skipped/failed (2FA or auth?); re-run: xcodes install --latest"
+    fi
 
 [private]
 _upgrade-linux:
@@ -376,6 +403,16 @@ outdated:
     echo ""
     echo "━━━ Mac App Store ━━━"
     o=$(mas outdated 2>/dev/null); [ -n "$o" ] && echo "$o" || echo "  (up to date)"
+    echo ""
+    echo "━━━ Xcode (xcodes) ━━━"
+    if command -v xcodes >/dev/null; then
+      # auth-free preview: show what's installed. `xcodes update` (Apple login + maybe 2FA)
+      # is intentionally left to `just upgrade` so this stays non-interactive.
+      inst=$(xcodes installed 2>/dev/null | tr -s ' ' | paste -sd', ' - || true)
+      echo "  installed: ${inst:-none}   (just upgrade -> xcodes install --latest)"
+    else
+      echo "  (xcodes not installed)"
+    fi
     echo ""
     echo "━━━ flake inputs (lock last-modified) ━━━"
     if command -v jq >/dev/null; then

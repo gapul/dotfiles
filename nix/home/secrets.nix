@@ -16,6 +16,12 @@
       "ssh_config".path = "${config.home.homeDirectory}/.ssh/config";
       "ssh_authorized_keys".path = "${config.home.homeDirectory}/.ssh/authorized_keys";
 
+      # Apple ID for xcodes' Xcode downloads. `just upgrade` reads these files into
+      # XCODES_USERNAME / XCODES_PASSWORD so username+password auth is non-interactive;
+      # 2FA is still prompted the first time and when Apple's cached session expires.
+      "xcodes/apple_id".path = "${config.home.homeDirectory}/.config/xcodes/apple_id";
+      "xcodes/password".path = "${config.home.homeDirectory}/.config/xcodes/password";
+
       # PII single source
       "pii/name" = { };
       "pii/email_personal" = { };
