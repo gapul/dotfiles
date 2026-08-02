@@ -114,6 +114,14 @@
       "winetricks" # helper for installing DLLs/components into wine prefix
 
       # ─── TUI utilities ───
+      # TODO(concord): held at 2.4.8 via `brew pin chojs23/tap/concord`. 2.5.0+ can't install on
+      # macOS — the cargo-dist-generated formula requires alsa-lib/pipewire (Linux-only, no macOS
+      # bottle) unconditionally. Root cause is upstream `dist` not gating Homebrew run-deps per
+      # target (concord's dist config already restricts them to Linux, but dist ignores it in the
+      # formula; not fixed as of dist 0.32.0). The pin is imperative, so a fresh machine needs
+      # `brew pin chojs23/tap/concord` re-run. Retry `brew unpin ... && brew upgrade concord` after
+      # new releases; real fix is a bug report to axodotdev/cargo-dist. See PR #119 for the
+      # `just maintain` hardening that keeps this pin from aborting upgrades.
       "chojs23/tap/concord" # Discord TUI (images/threads/voice support)
       "herdr" # AI coding agent multiplexer
       "wifitui" # wifi (kept on brew since nixpkgs is Linux-only)
