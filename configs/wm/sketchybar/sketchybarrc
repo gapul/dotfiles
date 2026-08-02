@@ -118,7 +118,7 @@ sketchybar --default "${defaults[@]}"
 
 
 # Left
-#source "$ITEM_DIR/apple.sh"  # トグル: Apple ロゴ (有効化するなら uncomment。items/apple.sh 実在)
+source "$ITEM_DIR/apple.sh"  # Apple ロゴ (左端・単独アイコン。popup: Preferences/Activity/Lock。zen.sh の状態判定も参照)
 source "$ITEM_DIR/spaces.sh"
 
 # Right
