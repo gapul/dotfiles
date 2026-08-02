@@ -10,6 +10,6 @@ vim.g.loaded_node_provider = 0
 vim.g.loaded_python3_provider = 0
 
 -- フロート/補完ポップアップを軽く半透明にして ghostty のブラーに乗せる。
--- 背景そのものの透過は rose-pine の styles.transparent (plugins/colorscheme.lua) 側で行う。
+-- 背景そのものの透過は rose-pine の styles.transparency (plugins/colorscheme.lua) 側で行う。
 vim.opt.winblend = 10
 vim.opt.pumblend = 10
