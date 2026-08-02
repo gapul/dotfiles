@@ -83,6 +83,17 @@ svg = [
   { run = 'start "" "$@"', desc = "View with default", orphan = true, for = "windows" },
   { run = 'nvim "$@"', desc = "Edit source in Neovim", block = true, for = "windows" },
 ]
+# CSV/TSV: tabular data. Enter opens VisiData (view AND edit as a table); `O` also offers
+# raw editing (nvim), a spreadsheet (LibreOffice), and Quick Look.
+csv = [
+  { run = 'vd "$@"', desc = "Table view/edit (VisiData)", block = true, for = "unix" },
+  { run = 'nvim "$@"', desc = "Edit raw in Neovim", block = true, for = "unix" },
+  { run = 'open -a "LibreOffice" "$@"', desc = "Open in LibreOffice", orphan = true, for = "macos" },
+  { run = 'qlmanage -p "$@" >/dev/null 2>&1', desc = "Quick Look", orphan = true, for = "macos" },
+  { run = 'libreoffice "$@"', desc = "Open in LibreOffice", orphan = true, for = "linux" },
+  { run = 'vd "$@"', desc = "Table view/edit (VisiData)", block = true, for = "windows" },
+  { run = 'nvim "$@"', desc = "Edit raw in Neovim", block = true, for = "windows" },
+]
 extract = [
   { run = 'unzip -o "$1" -d "$(dirname "$1")"', desc = "Extract zip here", for = "unix" },
   { run = 'tar -xvf "$1" -C "$(dirname "$1")"', desc = "Extract tar here", for = "unix" },
@@ -110,6 +121,7 @@ prepend_rules = [
   { url = "*.{html,htm,xhtml}", use = "html" },
   { url = "*.{md,markdown,mdx}", use = "markdown" },
   { url = "*.svg", use = "svg" },
+  { url = "*.{csv,tsv,tab}", use = "csv" },
 
   # Text / code (MIME)
   { mime = "text/*", use = "edit" },
