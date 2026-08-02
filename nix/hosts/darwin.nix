@@ -135,7 +135,6 @@
       "exiftool" # strip metadata (GPS/device info) from images/PDFs before sharing
 
       # ─── macOS specific CLI ───
-      "mas" # App Store
       "blueutil" # Bluetooth
       "media-control" # media keys
       "terminal-notifier"
@@ -348,10 +347,11 @@
     ];
 
     masApps = {
-      # Xcode moved to xcodes (see the "Xcode toolchain" brews above). DaVinci Resolve stays on
-      # mas: it has no xcodes-like manager, its App Store build auto-updates, and the direct
-      # Blackmagic download needs a registration form, so mas is the least-friction path here.
-      "DaVinci Resolve" = 571213070;
+      # Nothing is managed via mas anymore.
+      # - Xcode moved to xcodes (see the "Xcode toolchain" brews above).
+      # - DaVinci Resolve is intentionally NOT managed here: the Mac App Store build is
+      #   sandboxed (no external scripting/Python, limited 3rd-party OpenFX/VST, no hardware
+      #   control panels). Install it manually from the Blackmagic support page instead.
     };
   };
 }
