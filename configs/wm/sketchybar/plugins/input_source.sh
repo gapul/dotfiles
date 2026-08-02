@@ -29,25 +29,26 @@ LAYOUT="$(printf '%s\n' "$SOURCES" | awk -F'= ' '
   END { print layout }
 ')"
 
-ICON="􀇳"
-ICON_COLOR_CURRENT="$ICON_COLOR"
+# No icon: the ▽ SKK marker is carried in the label instead (see items/input_source.sh,
+# which sets icon.drawing=off).
 LABEL_COLOR_CURRENT="$LABEL_COLOR"
 if [[ "$BUNDLE" == net.mtgto.inputmethod.macSKK* ]]; then
-  ICON="▽"
   case "$MODE" in
-    *.ascii) LABEL="A" ;;
-    *.hiragana) LABEL="あ" ;;
-    *.katakana) LABEL="ア" ;;
-    *.hankaku) LABEL="ｱ" ;;
-    *.eisu) LABEL="Ａ" ;;
-    *) LABEL="?" ;;
+    *.ascii) MODE_LABEL="A" ;;
+    *.hiragana) MODE_LABEL="あ" ;;
+    *.katakana) MODE_LABEL="ア" ;;
+    *.hankaku) MODE_LABEL="ｱ" ;;
+    *.eisu) MODE_LABEL="Ａ" ;;
+    *) MODE_LABEL="?" ;;
   esac
 
+  # ▽ prefix (SKK marker) as part of the label. Private mode adds the lock and turns red.
+  PREFIX="▽"
   if [ "$(defaults read net.mtgto.inputmethod.macSKK privateMode 2>/dev/null)" = "1" ]; then
-    ICON="▽$LOCK"
-    ICON_COLOR_CURRENT="$RED"
+    PREFIX="▽$LOCK"
     LABEL_COLOR_CURRENT="$RED"
   fi
+  LABEL="$PREFIX$MODE_LABEL"
 elif [ -n "$LAYOUT" ]; then
   LABEL="$LAYOUT"
 else
@@ -61,5 +62,4 @@ else
   esac
 fi
 
-sketchybar --set "$NAME" icon="$ICON" icon.color="$ICON_COLOR_CURRENT" \
-                             label="$LABEL" label.color="$LABEL_COLOR_CURRENT"
+sketchybar --set "$NAME" label="$LABEL" label.color="$LABEL_COLOR_CURRENT"
