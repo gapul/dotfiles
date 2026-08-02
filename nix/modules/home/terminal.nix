@@ -40,10 +40,14 @@ let
     set -g status-left-length 40
     set -g status-right-length 80
     set -g status-left  "#[bg=#${p.pine},fg=#${p.base},bold] #S #[bg=#${p.base},fg=#${p.pine}]#[default] "
-    # status-right: while the prefix key was pressed (client_prefix), show a PREFIX badge so
-    # you can tell the prefix is armed and waiting for the next key. tmux redraws the status
-    # on client_prefix change, so it appears/disappears in real time (independent of status-interval).
-    set -g status-right "#{?client_prefix,#[bg=#${p.love}#,fg=#${p.base}#,bold] PREFIX #[default] ,}#[fg=#${p.muted}]%Y-%m-%d #[fg=#${p.foam}]%H:%M "
+    # status-right, left to right:
+    #   - PREFIX badge while the prefix key is armed (client_prefix). tmux redraws the status
+    #     on client_prefix change, so it appears/disappears in real time (independent of interval).
+    #   - 💾 HH:MM = last tmux-resurrect save time, so you can always see it saved without
+    #     pressing anything. Read via a script because tmux would strftime-expand %-tokens in
+    #     an inline #(); the script keeps the % inside itself. (continuum here has no
+    #     #{continuum_status}, so this is the reliable way to surface the last save.)
+    set -g status-right "#{?client_prefix,#[bg=#${p.love}#,fg=#${p.base}#,bold] PREFIX #[default] ,}#[fg=#${p.muted}]#(${config.home.homeDirectory}/.config/tmux/resurrect-status.sh) #[fg=#${p.muted}]%Y-%m-%d #[fg=#${p.foam}]%H:%M "
 
     # inactive / active windows (tabs)
     set -g window-status-format         "#[fg=#${p.muted}] #I #W "
@@ -105,6 +109,19 @@ in
       ''
         source-file -q ~/.config/tmux/${c.active}.conf
       '';
+
+  # Last tmux-resurrect save time for the status bar (see status-right in mkTmuxTheme).
+  # Portable stat: BSD (macOS) first, GNU (Linux) fallback. No output if nothing saved yet.
+  home.file.".config/tmux/resurrect-status.sh" = {
+    executable = true;
+    text = ''
+      #!/bin/sh
+      f="$HOME/.tmux/resurrect/last"
+      [ -e "$f" ] || exit 0
+      t=$(stat -L -f '%Sm' -t '%H:%M' "$f" 2>/dev/null || stat -L -c '%y' "$f" 2>/dev/null | cut -c12-16)
+      [ -n "$t" ] && printf '💾 %s' "$t"
+    '';
+  };
 
   # tmux plugins (equivalent to zellij's session persistence). Generate a plugins.conf that
   # run-shells store paths without TPM (sourced at the end of tmux.conf).
