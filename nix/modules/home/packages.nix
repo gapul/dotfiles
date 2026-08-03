@@ -33,6 +33,8 @@ in
     nvd # package diff between Nix / Home Manager generations
     optnix # NixOS / Home Manager / nix-darwin option search TUI
     devenv # Nix-based dev shell (combined with direnv)
+    nix-fast-build # parallel + remote nix build (speeds up self-built pkgs / flake checks)
+    nixpkgs-review # build & review a nixpkgs PR / bump before applying it
     tealdeer # tldr CLI (manual because programs.tealdeer doesn't support archive_source)
 
     # ─── CLI migrated from Homebrew (stage 1: git-related + basics) ───
