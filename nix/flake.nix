@@ -82,6 +82,12 @@
     brew-nix.inputs.brew-api.follows = "brew-api";
     brew-nix.inputs.nixpkgs.follows = "nixpkgs";
     brew-nix.inputs.nix-darwin.follows = "nix-darwin";
+
+    # Trampoline Home Manager .app symlinks into real bundles so Spotlight/Launchpad/Dock
+    # index them. Standalone HM only symlinks GUI apps into ~/Applications, which macOS
+    # skips because they point into /nix/store. Wired into the macWorkstation role's HM modules.
+    mac-app-util.url = "github:hraban/mac-app-util";
+    mac-app-util.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs =
@@ -103,6 +109,7 @@
       treefmt-nix,
       flake-parts,
       brew-nix,
+      mac-app-util,
       ...
     }:
     let
@@ -177,6 +184,7 @@
         macWorkstation =
           base
           ++ [
+            mac-app-util.homeManagerModules.default # trampoline HM .app bundles for Spotlight/Launchpad
             ./home/darwin.nix
             ./home/restic-backup.nix
             ./home/rclone-mount.nix
