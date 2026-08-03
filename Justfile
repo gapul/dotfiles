@@ -740,6 +740,30 @@ restart what="bar":
     esac
     echo "Done"
 
+# NOTE: OmniWM trial (2026-08). borders is aerospace-driven (after-startup-command), so it is
+#       killed when switching to omniwm and revived by aerospace's own startup when switching back.
+#       sketchybar stays up either way; its aerospace workspace widget just goes stale under omniwm.
+# Switch the active window manager (`just wm omniwm` / `just wm aerospace` / `just wm` = status)
+[group('Service')]
+wm which="status":
+    #!/usr/bin/env bash
+    set -u
+    quit_poll() { osascript -e "quit app \"$1\"" 2>/dev/null; for _ in $(seq 1 20); do pgrep -fq "$1.app" || break; sleep 0.2; done; }
+    case "{{which}}" in
+      omniwm|om)
+        echo "-> AeroSpace stop"; quit_poll AeroSpace
+        pkill -x borders 2>/dev/null
+        echo "-> OmniWM start"; open -a OmniWM ;;
+      aerospace|as)
+        echo "-> OmniWM stop"; quit_poll OmniWM
+        echo "-> AeroSpace start (borders revives via after-startup-command)"; open -a AeroSpace ;;
+      status)
+        for app in AeroSpace OmniWM; do
+          pgrep -fq "$app.app" && echo "$app: running" || echo "$app: stopped"
+        done ;;
+      *) echo "usage: just wm [omniwm|aerospace|status]" >&2; exit 2 ;;
+    esac
+
 
 # ─────────────────────────────────────────────
 # secrets (sops encryption)
