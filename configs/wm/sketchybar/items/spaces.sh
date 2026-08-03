@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 #
-# AeroSpace ワークスペース表示を、各ディスプレイ正しく振り分ける。
+# ワークスペース表示 (aerospace / omniwm 両対応) を、各ディスプレイ正しく振り分ける。
+# WM への照会は helpers/wm.sh が稼働中のバックエンドに振り分ける。
 #
 # 仕組み:
 #   sketchybar --reload 中の sketchybarrc 文脈からは `sketchybar --query` が
@@ -20,6 +21,8 @@
 
 sketchybar --add event aerospace_workspace_change
 
+source "$CONFIG_DIR/helpers/wm.sh"
+
 declare -A AERO_TO_SB
 MAP_FILE=/tmp/sketchybar-aero-display.map
 
@@ -34,11 +37,11 @@ build_display_map() {
 build_display_map
 
 # 空のワークスペースを初期表示から隠すため、現在フォーカス中のワークスペースを控える
-focused_ws=$(aerospace list-workspaces --focused)
+focused_ws=$(wm_focused_workspace)
 
-for m in $(aerospace list-monitors | awk '{print $1}'); do
+for m in $(wm_list_monitors); do
   sb_display=${AERO_TO_SB[$m]:-$m}
-  for i in $(aerospace list-workspaces --monitor $m); do
+  for i in $(wm_list_workspaces "$m" all); do
     sid=$i
     space=(
       space="$sid"
@@ -71,7 +74,7 @@ for m in $(aerospace list-monitors | awk '{print $1}'); do
                  --subscribe space.$sid mouse.clicked aerospace_workspace_change
     fi
 
-    apps=$(aerospace list-windows --workspace $sid | awk -F'|' '{gsub(/^ *| *$/, "", $2); print $2}')
+    apps=$(wm_workspace_apps "$sid")
 
     icon_strip=" "
     if [ "${apps}" != "" ]; then

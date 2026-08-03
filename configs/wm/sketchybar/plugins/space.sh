@@ -37,7 +37,8 @@ mouse_clicked() {
     else
       #yabai -m space --focus $SID 2>/dev/null
       #echo space.sh BUTTON: $BUTTON, $'SELECTED': $SELECTED, MODIFIER: $MODIFIER, NAME: $NAME, SENDER: $SENDER, INFO: $INFO, TEST: ${NAME#*.}, ${NAME:6} >> ~/aaaa
-      aerospace workspace ${NAME#*.}
+      source "$CONFIG_DIR/helpers/wm.sh"
+      wm_focus_workspace "${NAME#*.}"
     fi
   fi
 }

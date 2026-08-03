@@ -27,9 +27,15 @@ write_map() {
   done
   [ -z "$sorted" ] && return 1
 
-  # aerospace のモニター ID 列 (左→右順)
+  # WM のモニター ID 列 (左→右順)。omniwm 稼働中は omniwmctl から取る
+  # ("display:N" → N)。frame.x 昇順で sketchybar 側と同じ並び順にする。
   local aero_ids
-  aero_ids=$("$AS" list-monitors | awk '{print $1}')
+  if pgrep -xq OmniWM; then
+    aero_ids=$(/opt/homebrew/bin/omniwmctl query displays --fields id,frame --format json 2>/dev/null |
+      "$JQ" -r '.result.payload.displays | sort_by(.frame.x) | .[].id | sub("^display:"; "")')
+  else
+    aero_ids=$("$AS" list-monitors | awk '{print $1}')
+  fi
 
   # 個数が一致しないなら書き換えない（一時的な不整合の可能性）
   local n_sorted n_aero

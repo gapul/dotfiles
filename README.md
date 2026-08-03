@@ -118,7 +118,7 @@ curl -fsSL https://raw.githubusercontent.com/gapul/dotfiles/main/scripts/bootstr
     search query scope=""        # Package search (`just search <q>` = brew+nixpkgs, `just search <q> all` = + cargo)
 
     [Service]
-    restart what="bar"           # Restart the menu-bar/WM stack (`just restart`=bar-related / individual: sketchybar|borders|aerospace / all=everything)
+    restart what="bar"           # Restart the menu-bar/WM stack (`just restart`=bar-related / individual: sketchybar|borders|omniwm / all=everything)
 
     [Setup]
     dev what=""                  # devShell (`just dev`=enter [shellcheck/statix available] / `just dev install`=install hooks only [non-interactive])

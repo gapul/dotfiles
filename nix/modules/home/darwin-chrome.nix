@@ -118,13 +118,6 @@ let
   '';
 in
 {
-  # aerospace: resolution-variable gaps/padding. config include is unsupported + nix symlink is read-only, so
-  # generate ~/.config/aerospace/aerospace.toml via activation instead of a symlink.
-  # scale gaps/accordion-padding from main display resolution → dry-run check → reload-config.
-  # @DOTFILES@ in source expands to the current $HOME/.dotfiles at generation time.
-  home.activation.aerospaceConfig = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    run ${pkgs.bash}/bin/bash ${../../../scripts/aerospace-config.sh} ${../../../configs/wm/aerospace/aerospace.toml}
-  '';
   home.file.".config/sketchybar" = {
     source = ../../../configs/wm/sketchybar;
     recursive = true;
@@ -154,15 +147,18 @@ in
     export POPUP_BORDER_COLOR=$WHITE
     export SHADOW_COLOR=$BLACK
   '';
-  # borders is launched from AeroSpace via bare `borders` and runs bordersrc.
-  # Without executable=true, borders can't run (single source of config).
+  # borders runs as the launchd agent below, which execs bordersrc (single source of config).
+  # Without executable=true, borders can't run.
   # Colors come from theme.nix dark/light. Branch active/inactive on macOS appearance to follow the OS.
-  # On appearance change, the theme-watch agent re-runs bordersrc and it reflects into the running borders daemon.
+  # On appearance change, the theme-watch agent re-runs bordersrc; a second invocation while the
+  # daemon is up acts as a client and restyles the running instance, so the agent stays the daemon.
   home.file.".config/borders/bordersrc" = {
     executable = true;
     text = ''
       #!/bin/bash
       # JankyBorders config = single source for the active window border. Colors come from the Rosé Pine palette.
+      # launchd starts with a bare PATH, so resolve the brew-installed borders explicitly.
+      export PATH="/opt/homebrew/bin:$PATH"
       if [ "$(defaults read -g AppleInterfaceStyle 2>/dev/null)" = "Dark" ]; then
         active=0xff${c.dark.iris}
         inactive=0xff${c.dark.muted}
@@ -218,7 +214,7 @@ in
     };
   };
 
-  # Resident watcher that recomputes the sketchybar display map (aerospace monitor -> sketchybar display index)
+  # Resident watcher that recomputes the sketchybar display map (WM monitor -> sketchybar display index)
   # on display config changes and writes it to /tmp/sketchybar-aero-display.map.
   # Without it, the map is lost on restart and space.* breaks (needs a manual sketchybar-refresh).
   # Used to be a manual plist but broke due to hardcoded /Users/<old name>, so migrated to nix declaration.
@@ -234,6 +230,54 @@ in
       ThrottleInterval = 10;
       StandardErrorPath = "/tmp/sketchybar-displaywatch.err";
       StandardOutPath = "/tmp/sketchybar-displaywatch.log";
+    };
+  };
+
+  # borders (JankyBorders) resident agent. Used to be launched from aerospace's
+  # after-startup-command; OmniWM has no exec action, so launchd owns the daemon now.
+  # A hand-written com.felixkratz.borders plist (hardcoded colors) predates this —
+  # it is booted out and removed by the activation below to avoid a double daemon.
+  launchd.agents.borders = {
+    enable = true;
+    config = {
+      ProgramArguments = [
+        "${config.home.homeDirectory}/.config/borders/bordersrc"
+      ];
+      RunAtLoad = true;
+      KeepAlive = true;
+      ProcessType = "Interactive";
+      StandardErrorPath = "/tmp/borders.err";
+      StandardOutPath = "/tmp/borders.log";
+    };
+  };
+
+  # One-shot migration: retire the legacy hand-written borders plist so it doesn't
+  # fight the nix-declared agent above (running `borders` twice = client mode, but
+  # two KeepAlive daemons would race at login).
+  home.activation.bordersLegacyAgent = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    legacy_plist="$HOME/Library/LaunchAgents/com.felixkratz.borders.plist"
+    if [ -f "$legacy_plist" ]; then
+      run /bin/launchctl bootout "gui/$(id -u)/com.felixkratz.borders" 2>/dev/null || true
+      run rm -f "$legacy_plist"
+    fi
+  '';
+
+  # Bridge OmniWM IPC events to the sketchybar workspace-change event.
+  # aerospace used to fire aerospace_workspace_change itself via exec-and-forget, but omniwm
+  # has no exec action, so this resident agent converts `omniwmctl watch` events into
+  # the same event + env vars (the sketchybar event name is kept for compatibility).
+  launchd.agents.omniwm-bridge = {
+    enable = true;
+    config = {
+      ProgramArguments = [
+        "${config.home.homeDirectory}/.config/sketchybar/helpers/omniwm-bridge.sh"
+      ];
+      RunAtLoad = true;
+      KeepAlive = true;
+      ProcessType = "Background";
+      ThrottleInterval = 10;
+      StandardErrorPath = "/tmp/omniwm-bridge.err";
+      StandardOutPath = "/tmp/omniwm-bridge.log";
     };
   };
 
