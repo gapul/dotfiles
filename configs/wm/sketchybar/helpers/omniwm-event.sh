@@ -1,0 +1,28 @@
+#!/bin/bash
+#
+# omniwmctl watch --exec から 1 イベントごとに起動されるハンドラ。
+# stdin にイベント JSON が渡るが、ペイロード形はチャンネルごとに違うので
+# ここでは読み捨てて「現在のフォーカス」を query で取り直す (レース回避にもなる)。
+#
+# prev は /tmp の状態ファイルで自前管理し、aerospace 互換の環境変数名で
+# aerospace_workspace_change を発火する (理由は omniwm-bridge.sh 冒頭コメント)。
+
+SB=/opt/homebrew/bin/sketchybar
+STATE=/tmp/sketchybar-omniwm-ws.state
+
+cat >/dev/null # stdin を消費 (書かないと watch 側の write が詰まりうる)
+
+export WM_BACKEND=omniwm
+source "$HOME/.config/sketchybar/helpers/wm.sh"
+
+focused=$(wm_focused_workspace)
+[ -z "$focused" ] && exit 0
+
+prev=$(cat "$STATE" 2>/dev/null)
+printf '%s\n' "$focused" > "$STATE"
+
+# 同一 workspace のままのイベント (windows-changed) でも発火する:
+# space_windows.sh が prev/focused のアイコン列を引き直すことで増減が反映される。
+"$SB" --trigger aerospace_workspace_change \
+  AEROSPACE_FOCUSED_WORKSPACE="$focused" \
+  AEROSPACE_PREV_WORKSPACE="$prev"

@@ -65,7 +65,7 @@
   home.file.".config/karabiner".source =
     config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.dotfiles/configs/keyboard/karabiner";
 
-  # Hammerspoon: modal keyboard-mouse that doesn't conflict with Space-Hyper+AeroSpace.
+  # Hammerspoon: modal keyboard-mouse that doesn't conflict with the Space-Hyper WM band (OmniWM).
   # init.lua sets hs.autoLaunch(true), so once launched it stays resident at login too.
   home.file.".hammerspoon".source =
     config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.dotfiles/configs/keyboard/hammerspoon";
@@ -154,7 +154,7 @@
   # Login items: auto-launch resident GUI apps that don't start headless
   home.activation.macosLoginItems = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     LOGIN_APPS=(
-      "/Applications/AeroSpace.app"
+      "/Applications/OmniWM.app"
       "/Applications/Ghostty.app"
       "/Applications/Puddle.app"
     )
@@ -162,6 +162,12 @@
       name=$(basename "$app" .app)
       if ! /usr/bin/osascript -e "tell application \"System Events\" to (name of login items) contains \"$name\"" 2>/dev/null | grep -q true; then
         /usr/bin/osascript -e "tell application \"System Events\" to make login item at end with properties {path:\"$app\", hidden:false}" >/dev/null 2>&1 || true
+      fi
+    done
+    # Retired login items (apps removed from the declaration): drop stale entries
+    for name in AeroSpace; do
+      if /usr/bin/osascript -e "tell application \"System Events\" to (name of login items) contains \"$name\"" 2>/dev/null | grep -q true; then
+        /usr/bin/osascript -e "tell application \"System Events\" to delete login item \"$name\"" >/dev/null 2>&1 || true
       fi
     done
   '';

@@ -42,7 +42,7 @@ install_nix
 #   - /nix ボリュームを FileVault 暗号化
 #   - /etc/fstab に noauto を付与
 #   - launchd デーモン org.nixos.darwin-store が遅延マウント
-# 結果: Login Items の Ghostty / AeroSpace 等が起動した時点で /nix がまだマウントされず、
+# 結果: Login Items の Ghostty / OmniWM 等が起動した時点で /nix がまだマウントされず、
 #       symlink 先 (/nix/store/...) が読めず config 読み込み失敗
 #
 # 対策: ボリューム復号化 + fstab から noauto 削除 → macOS automountd が起動序盤にマウント
@@ -172,7 +172,7 @@ open "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles"
 ```
 
 ### アクセシビリティ
-- [ ] AeroSpace
+- [ ] OmniWM
 - [ ] AltTab
 - [ ] Karabiner-Elements (Karabiner-VirtualHIDDevice-Daemon も)
 - [ ] Mos
@@ -180,7 +180,7 @@ open "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles"
 
 ### 画面収録
 - [ ] AltTab
-- [ ] AeroSpace (Workspace 切替時の preview に必要)
+- [ ] OmniWM (Overview / ウィンドウプレビューに必要)
 
 ### 入力監視
 - [ ] Karabiner-Elements
@@ -207,7 +207,7 @@ bash ~/.dotfiles/scripts/install-skk-dicts-macskk.sh
 2. Browse... ボタンで `~/.dotfiles/configs/wallpaper/aurora.html` を選択
    (security-scoped bookmark を取るため、Browse 経由が必須。直接 URL 貼付は NG)
 
-## 5. AeroSpace 起動許可
+## 5. OmniWM 起動許可
 - 初回起動時に macOS から「アクセシビリティ要求」が出る → 許可
 
 ## 6. Karabiner-Elements 起動許可
@@ -227,7 +227,7 @@ gh api -X POST /user/ssh_signing_keys \
 ```
 
 ## 8. macOS Login Items 確認
-- home-manager activation で AeroSpace と Ghostty が登録済のはず
+- home-manager activation で OmniWM と Ghostty が登録済のはず
 - System Settings → General → Login Items で確認
 
 ## 9. 手動インストールするアプリ (nix / mas 管理外)

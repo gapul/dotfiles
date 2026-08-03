@@ -80,7 +80,7 @@ in
   home.file.".terminfo".source =
     config.lib.file.mkOutOfStoreSymlink "${config.xdg.dataHome}/terminfo";
 
-  # symlink dotfiles/configs/* (OS-independent ones only. Mac-only = aerospace/sketchybar/karabiner go to home/darwin.nix)
+  # symlink dotfiles/configs/* (OS-independent ones only. Mac-only = sketchybar/karabiner go to home/darwin.nix)
   home.file.".config/zellij" = {
     source = ../../../configs/terminals/zellij;
     recursive = true;
