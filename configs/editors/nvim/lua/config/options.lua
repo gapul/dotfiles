@@ -13,3 +13,9 @@ vim.g.loaded_python3_provider = 0
 -- 背景そのものの透過は rose-pine の styles.transparency (plugins/colorscheme.lua) 側で行う。
 vim.opt.winblend = 10
 vim.opt.pumblend = 10
+
+-- 行の折り返し表示（LazyVim デフォルトは wrap=false）
+-- linebreak: 英単語の途中で折り返さない / breakindent: 折り返し行もインデント維持
+vim.opt.wrap = true
+vim.opt.linebreak = true
+vim.opt.breakindent = true
