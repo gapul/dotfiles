@@ -147,7 +147,7 @@
     enableZshIntegration = true;
     nix-direnv.enable = true;
   };
-  # Symlink dotfiles/configs/* (OS-independent ones only. Mac-only = aerospace/sketchybar/karabiner go to home/darwin.nix)
+  # Symlink dotfiles/configs/* (OS-independent ones only. Mac-only = sketchybar/karabiner go to home/darwin.nix)
   home.file.".config/starship.toml".source = ../../../configs/shell/starship.toml;
   home.file.".config/gh/config.yml".source = ../../../configs/cli/gh/config.yml;
   # markdownlint-cli2: parent-directory lookup makes this the default for all Markdown under home,

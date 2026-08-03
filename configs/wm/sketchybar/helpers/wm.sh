@@ -4,7 +4,7 @@
 #
 # sketchybar の workspace ウィジェット群が必要とする照会だけを関数化し、
 # 稼働中の WM を pgrep で自動判別して omniwmctl / aerospace CLI に振り分ける。
-# `just wm` で WM を切り替えても sketchybar 側は無変更で追従する。
+# aerospace は撤去済みだが、フォールバック分岐は互換のため残している。
 #
 # 前提:
 #   - omniwm 側は IPC 有効 (settings.toml: ipcEnabled = true)

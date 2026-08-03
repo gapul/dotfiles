@@ -81,8 +81,7 @@
       "gerlero/openfoam"
       "gapul/kdeconnect" # fork of imshuhao/kdeconnect. Fixed the deprecated depends_on macos
       "lihaoyun6/tap" # QuickRecorder (screen recorder. Required since not in homebrew/cask)
-      "barutsrb/tap" # OmniWM (Niri/Hyprland-inspired tiling WM, trialing as aerospace replacement)
-      "nikitabobko/tap"
+      "barutsrb/tap" # OmniWM (Niri/Hyprland-inspired tiling WM, main WM since 2026-08)
       "osx-cross/arm" # QMK toolchain dependency tap
       "osx-cross/avr" # QMK / Keyball AVR toolchain tap
       "qmk/qmk" # QMK CLI
@@ -163,7 +162,7 @@
 
       # ─── Status bar / Window decoration (felixkratz tap) ───
       "felixkratz/formulae/sketchybar"
-      "felixkratz/formulae/borders" # launched from aerospace via exec-and-forget
+      "felixkratz/formulae/borders" # launched via launchd agent (home/darwin-chrome.nix); OmniWM has no exec action
 
       # ─── Transcription / other 3rd-party tap brews ───
       "finnvoor/tools/yap" # Japanese transcription
@@ -205,10 +204,9 @@
       "simplex"
 
       # ─── Window / Keyboard / Input ───
-      "aerospace"
-      # OmniWM: trialing as aerospace replacement (2026-08). Hotkeys are GUI-configured
-      # (settings.toml schema is undocumented), so ~/.config/omniwm is app-managed, not nix-generated.
-      # Keep aerospace installed until the trial concludes; swap at runtime via `just wm`.
+      # OmniWM: main tiling WM (replaced aerospace 2026-08, trial concluded). Hotkeys are
+      # GUI-configured (settings.toml schema is undocumented), so ~/.config/omniwm is
+      # app-managed, not nix-generated. Hotkeys mirror the old aerospace hyper band (Cmd+Ctrl+Alt).
       "omniwm"
       "thaw" # menu bar management (maintenance fork of Ice. Upstream jordanbaird-ice stalled at 0.11.12/2024-10 and won't launch on macOS Tahoe → migrated to Tahoe-compatible Thaw on 2026-07-27. Ice settings are importable)
       "karabiner-elements"

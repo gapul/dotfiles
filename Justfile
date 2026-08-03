@@ -458,12 +458,12 @@ doctor format="":
         --argjson fstabOk "$(! grep '/nix' /etc/fstab 2>/dev/null | grep -q noauto && echo true || echo false)" \
         --argjson nixDecrypted "$(! diskutil apfs list 2>/dev/null | grep -A 6 'Nix Store' | grep -q 'FileVault: *Yes' && echo true || echo false)" \
         --argjson sketchybar "$(pgrep -fq '/opt/homebrew/opt/sketchybar/bin/sketchybar' && echo true || echo false)" \
-        --argjson aerospace "$(pgrep -fq AeroSpace.app && echo true || echo false)" \
+        --argjson omniwm "$(pgrep -xq OmniWM && echo true || echo false)" \
         --argjson karabiner "$(pgrep -fq Karabiner-Core-Service && echo true || echo false)" \
         --argjson ageKey "$([[ -f $HOME/.config/sops/age/keys.txt ]] && echo true || echo false)" \
         --argjson clean "$([[ -z $(git -C {{justfile_directory()}} status --short) ]] && echo true || echo false)" \
         --argjson brew "$brew_json" \
-        '{ok: ($nixMounted and $fstabOk and $nixDecrypted and $sketchybar and $aerospace and $karabiner and $ageKey and $brew.ok), checks: {nixMounted: $nixMounted, fstab: $fstabOk, nixDecrypted: $nixDecrypted, sketchybar: $sketchybar, aerospace: $aerospace, karabiner: $karabiner, ageKey: $ageKey, workingTreeClean: $clean}, brew: $brew}')
+        '{ok: ($nixMounted and $fstabOk and $nixDecrypted and $sketchybar and $omniwm and $karabiner and $ageKey and $brew.ok), checks: {nixMounted: $nixMounted, fstab: $fstabOk, nixDecrypted: $nixDecrypted, sketchybar: $sketchybar, omniwm: $omniwm, karabiner: $karabiner, ageKey: $ageKey, workingTreeClean: $clean}, brew: $brew}')
       printf '%s\n' "$result"
       jq -e '.ok' <<<"$result" >/dev/null
       exit $?
@@ -478,11 +478,11 @@ doctor format="":
     check "/etc/fstab has no noauto (Login Items fix)" '! grep "/nix" /etc/fstab | grep -q noauto'
     check "/nix decrypted (FileVault: No)" '! diskutil apfs list 2>/dev/null | grep -A 6 "Nix Store" | grep -q "FileVault: *Yes"'
     echo "== Login Items =="
-    check "AeroSpace registered" 'osascript -e "tell application \"System Events\" to get name of login items" | grep -q AeroSpace'
+    check "OmniWM registered" 'osascript -e "tell application \"System Events\" to get name of login items" | grep -q OmniWM'
     check "Ghostty registered" 'osascript -e "tell application \"System Events\" to get name of login items" | grep -q Ghostty'
     echo "== Key apps running =="
     check "sketchybar" 'pgrep -fq "/opt/homebrew/opt/sketchybar/bin/sketchybar"'
-    check "AeroSpace" 'pgrep -fq AeroSpace.app'
+    check "OmniWM" 'pgrep -xq OmniWM'
     check "Karabiner Core-Service" 'pgrep -fq Karabiner-Core-Service'
     echo "== dotfiles =="
     warn "Working tree clean (no uncommitted)" '[[ -z "$(git -C {{justfile_directory()}} status --short)" ]]' "Uncommitted changes -> commit/push recommended"
@@ -497,7 +497,7 @@ doctor format="":
     # If the bar/WM stack is down, surface a recovery path (to the restart recipe)
     down=()
     pgrep -fq "/opt/homebrew/opt/sketchybar/bin/sketchybar" || down+=(sketchybar)
-    pgrep -fq AeroSpace.app || down+=(aerospace)
+    pgrep -xq OmniWM || down+=(omniwm)
     pgrep -xq borders || down+=(borders)
     if [ ${#down[@]} -gt 0 ]; then
       echo "[warn] Down: ${down[*]} -> recover: just restart (individual: just restart <name>)"
@@ -710,10 +710,10 @@ gc-deep:
 # Service (restart / restarting the menu-bar and WM stack)
 # ─────────────────────────────────────────────
 
-# NOTE: aerospace full restart = the workspace layout is reset, so only on explicit request (aerospace/all).
-#       borders config is consolidated in ~/.config/borders/bordersrc (home.file in nix/home/darwin.nix is the single source),
-#       so starting `borders` with no args reads bordersrc.
-# Restart the menu-bar/WM stack (`just restart`=bar-related / individual: sketchybar|borders|aerospace / all=everything)
+# NOTE: omniwm full restart = the workspace layout is reset, so only on explicit request (omniwm/all).
+#       borders config is consolidated in ~/.config/borders/bordersrc; the daemon itself is the
+#       nix-declared launchd agent (org.nix-community.home.borders), so restart = kickstart.
+# Restart the menu-bar/WM stack (`just restart`=bar-related / individual: sketchybar|borders|omniwm / all=everything)
 [group('Service')]
 restart what="bar":
     #!/usr/bin/env bash
@@ -721,48 +721,24 @@ restart what="bar":
     uid=$(id -u)
 
     sb() { echo "-> sketchybar";  launchctl kickstart -k "gui/$uid/homebrew.mxcl.sketchybar"; }
-    bd() { echo "-> borders";     pkill -x borders 2>/dev/null; sleep 0.3; (borders >/dev/null 2>&1 &); }
-    as() {
-      echo "-> AeroSpace (full restart -> revives borders/sketchybar triggers)"
-      osascript -e 'quit app "AeroSpace"' 2>/dev/null
+    bd() { echo "-> borders";     launchctl kickstart -k "gui/$uid/org.nix-community.home.borders"; }
+    om() {
+      echo "-> OmniWM (full restart)"
+      osascript -e 'quit app "OmniWM"' 2>/dev/null
       # Poll up to 4s for quit to finish (a fixed sleep would let open miss when quit is slow)
-      for _ in $(seq 1 20); do pgrep -fq AeroSpace.app || break; sleep 0.2; done
-      open -a AeroSpace
+      for _ in $(seq 1 20); do pgrep -xq OmniWM || break; sleep 0.2; done
+      open -a OmniWM
     }
 
     case "{{what}}" in
       bar)            sb; bd ;;
       sketchybar|sb)  sb ;;
       borders|bd)     bd ;;
-      aerospace|as)   as ;;
-      all)            sb; bd; as ;;
-      *) echo "usage: just restart [bar|sketchybar|borders|aerospace|all]" >&2; exit 2 ;;
+      omniwm|om|wm)   om ;;
+      all)            sb; bd; om ;;
+      *) echo "usage: just restart [bar|sketchybar|borders|omniwm|all]" >&2; exit 2 ;;
     esac
     echo "Done"
-
-# NOTE: OmniWM trial (2026-08). borders is aerospace-driven (after-startup-command), so it is
-#       killed when switching to omniwm and revived by aerospace's own startup when switching back.
-#       sketchybar stays up either way; its aerospace workspace widget just goes stale under omniwm.
-# Switch the active window manager (`just wm omniwm` / `just wm aerospace` / `just wm` = status)
-[group('Service')]
-wm which="status":
-    #!/usr/bin/env bash
-    set -u
-    quit_poll() { osascript -e "quit app \"$1\"" 2>/dev/null; for _ in $(seq 1 20); do pgrep -fq "$1.app" || break; sleep 0.2; done; }
-    case "{{which}}" in
-      omniwm|om)
-        echo "-> AeroSpace stop"; quit_poll AeroSpace
-        pkill -x borders 2>/dev/null
-        echo "-> OmniWM start"; open -a OmniWM ;;
-      aerospace|as)
-        echo "-> OmniWM stop"; quit_poll OmniWM
-        echo "-> AeroSpace start (borders revives via after-startup-command)"; open -a AeroSpace ;;
-      status)
-        for app in AeroSpace OmniWM; do
-          pgrep -fq "$app.app" && echo "$app: running" || echo "$app: stopped"
-        done ;;
-      *) echo "usage: just wm [omniwm|aerospace|status]" >&2; exit 2 ;;
-    esac
 
 
 # ─────────────────────────────────────────────
