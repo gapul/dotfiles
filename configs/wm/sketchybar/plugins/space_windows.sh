@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 
 source "$CONFIG_DIR/colors.sh"
+source "$CONFIG_DIR/helpers/wm.sh"
 
-AEROSPACE_FOCUSED_MONITOR=$(aerospace list-monitors --focused | awk '{print $1}')
-AEROSAPCE_WORKSPACE_FOCUSED_MONITOR=$(aerospace list-workspaces --monitor focused --empty no)
-AEROSPACE_EMPTY_WORKESPACE=$(aerospace list-workspaces --monitor focused --empty)
+AEROSPACE_FOCUSED_MONITOR=$(wm_focused_monitor)
 
 # aerospace monitor id -> sketchybar display index
 # (sketchybar-refresh が /tmp/sketchybar-aero-display.map に書き出しているマップ)
@@ -26,7 +25,7 @@ SB_FOCUSED_DISPLAY=$(aero_to_sb "$AEROSPACE_FOCUSED_MONITOR")
 
 reload_workspace_icon() {
   # echo reload_workspace_icon "$@" >> ~/aaaa
-  apps=$(aerospace list-windows --workspace "$@" | awk -F'|' '{gsub(/^ *| *$/, "", $2); print $2}')
+  apps=$(wm_workspace_apps "$1")
 
   icon_strip=" "
   if [ "${apps}" != "" ]; then
@@ -69,7 +68,7 @@ if [ "$SENDER" = "aerospace_workspace_change" ]; then
     reload_workspace_icon "$AEROSPACE_PREV_WORKSPACE"
     reload_workspace_icon "$AEROSPACE_FOCUSED_WORKSPACE"
   else
-    for ws in $(aerospace list-workspaces --all); do
+    for ws in $(wm_list_workspaces_all); do
       reload_workspace_icon "$ws"
     done
   fi
@@ -80,7 +79,7 @@ if [ "$SENDER" = "aerospace_workspace_change" ]; then
   #   個別 space.sh も同じ結論を出すので、実行順に関係なく最終状態が一致する
   #   (focused/prev だけ触っていた旧実装は取り残しが出てレースになっていた)。
   hl_args=()
-  for ws in $(aerospace list-workspaces --all); do
+  for ws in $(wm_list_workspaces_all); do
     if [ "$ws" = "$AEROSPACE_FOCUSED_WORKSPACE" ]; then
       hl_args+=(--set space.$ws icon.highlight=true label.highlight=true background.border_color=$GREY)
     else
@@ -96,13 +95,13 @@ if [ "$SENDER" = "aerospace_workspace_change" ]; then
   #   空のワークスペースは drawing=off で非表示にする (display=0 では消えない)。
   declare -A want_disp
   declare -A want_draw
-  for m in $(aerospace list-monitors | awk '{print $1}'); do
+  for m in $(wm_list_monitors); do
     sb_d=$(aero_to_sb "$m")
-    for i in $(aerospace list-workspaces --monitor $m --empty no); do
+    for i in $(wm_list_workspaces "$m" nonempty); do
       want_disp[$i]=$sb_d
       want_draw[$i]=on
     done
-    for i in $(aerospace list-workspaces --monitor $m --empty); do
+    for i in $(wm_list_workspaces "$m" empty); do
       want_disp[$i]=$sb_d
       want_draw[$i]=off
     done

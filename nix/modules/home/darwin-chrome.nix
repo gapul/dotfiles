@@ -237,6 +237,26 @@ in
     };
   };
 
+  # Bridge OmniWM IPC events to the sketchybar workspace-change event (omniwm trial).
+  # aerospace fires aerospace_workspace_change itself via exec-and-forget, but omniwm
+  # has no exec action, so this resident agent converts `omniwmctl watch` events into
+  # the same event + env vars. Idles (sleep loop) while OmniWM is not running, so it
+  # is harmless to keep alive when aerospace is the active WM.
+  launchd.agents.omniwm-bridge = {
+    enable = true;
+    config = {
+      ProgramArguments = [
+        "${config.home.homeDirectory}/.config/sketchybar/helpers/omniwm-bridge.sh"
+      ];
+      RunAtLoad = true;
+      KeepAlive = true;
+      ProcessType = "Background";
+      ThrottleInterval = 10;
+      StandardErrorPath = "/tmp/omniwm-bridge.err";
+      StandardOutPath = "/tmp/omniwm-bridge.log";
+    };
+  };
+
   # sioyek: colors are generated from nix/lib/theme.nix (hex→0-1 float via lib/hex-rgb.nix).
   # sioyek on macOS uses ~/Library/Application Support/sioyek/ as its config dir
   # (no XDG). prefs_user.config is the user override. sioyek itself writes auto.config/
