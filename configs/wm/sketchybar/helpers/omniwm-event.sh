@@ -31,6 +31,14 @@ if [ "$focused" != "$prev" ]; then
   ws_state="$HOME/.dotfiles/configs/wallpaper/state.js"
   ws_tmp="$ws_state.tmp.$$"
   printf 'window.__ws="%s";' "$focused" > "$ws_tmp" && mv -f "$ws_tmp" "$ws_state"
+
+  # Native (Puddle Metal) 壁紙用の入力ファイル。web の state.js と同じ内容を、
+  # Puddle が読める素の数値で渡す (Puddle wallpaper-source contract の inputs 書式:
+  # 1 行 1 float・位置順で user[] へ)。user[0] = focused workspace。
+  # covered(user[1]) 等は Puddle 側の品質ガバナーを実装する時に追記する。
+  ws_inputs="$HOME/.dotfiles/configs/wallpaper/inputs"
+  in_tmp="$ws_inputs.tmp.$$"
+  printf '%s\n' "$focused" > "$in_tmp" && mv -f "$in_tmp" "$ws_inputs"
 fi
 
 # 同一 workspace のままのイベント (windows-changed) でも発火する:
