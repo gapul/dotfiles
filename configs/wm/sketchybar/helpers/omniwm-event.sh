@@ -21,6 +21,18 @@ focused=$(wm_focused_workspace)
 prev=$(cat "$STATE" 2>/dev/null)
 printf '%s\n' "$focused" > "$STATE"
 
+# 壁紙 (configs/wallpaper/*.html) を現在ワークスペースに連動させる。
+# HTML は同階層の state.js を 300ms ごとにポーリングして window.__ws を読み、
+# applyWorkspace() で配色/模様を変える。壁紙自体は切り替えないのでフラッシュしない。
+# (旧 aerospace.toml の exec-on-workspace-change を omniwm へ移植したもの)。
+# Puddle が読むのは常にメインツリー側の HTML なのでパスは ~/.dotfiles 固定。
+# ワークスペースが実際に変わったときだけ atomic (temp+mv) に書く。
+if [ "$focused" != "$prev" ]; then
+  ws_state="$HOME/.dotfiles/configs/wallpaper/state.js"
+  ws_tmp="$ws_state.tmp.$$"
+  printf 'window.__ws="%s";' "$focused" > "$ws_tmp" && mv -f "$ws_tmp" "$ws_state"
+fi
+
 # 同一 workspace のままのイベント (windows-changed) でも発火する:
 # space_windows.sh が prev/focused のアイコン列を引き直すことで増減が反映される。
 "$SB" --trigger aerospace_workspace_change \
