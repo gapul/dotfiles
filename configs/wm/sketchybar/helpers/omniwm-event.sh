@@ -31,15 +31,20 @@ if [ "$focused" != "$prev" ]; then
   ws_state="$HOME/.dotfiles/configs/wallpaper/state.js"
   ws_tmp="$ws_state.tmp.$$"
   printf 'window.__ws="%s";' "$focused" > "$ws_tmp" && mv -f "$ws_tmp" "$ws_state"
-
-  # Native (Puddle Metal) 壁紙用の入力ファイル。web の state.js と同じ内容を、
-  # Puddle が読める素の数値で渡す (Puddle wallpaper-source contract の inputs 書式:
-  # 1 行 1 float・位置順で user[] へ)。user[0] = focused workspace。
-  # covered(user[1]) 等は Puddle 側の品質ガバナーを実装する時に追記する。
-  ws_inputs="$HOME/.dotfiles/configs/wallpaper/inputs"
-  in_tmp="$ws_inputs.tmp.$$"
-  printf '%s\n' "$focused" > "$in_tmp" && mv -f "$in_tmp" "$ws_inputs"
 fi
+
+# Native (Puddle Metal) 壁紙用の入力ファイル (Puddle wallpaper-source contract の
+# inputs 書式: 1 行 1 float・位置順で user[] へ)。
+#   user[0] = focused workspace / user[1] = covered (タイル窓が1つでもあれば 1)
+# covered は Puddle の品質ガバナー(reduced 段=低fps/低解像度)のヒント。
+# windows-changed イベントでもここは更新したいので workspace 変更ガードの外に置く。
+tiled=$("$OMNIWMCTL" query workspaces --focused --format json 2>/dev/null |
+  "$JQ" -r '.result.payload.workspaces[0].counts.tiled // 0' 2>/dev/null)
+covered=0
+[ "${tiled:-0}" -gt 0 ] 2>/dev/null && covered=1
+ws_inputs="$HOME/.dotfiles/configs/wallpaper/inputs"
+in_tmp="$ws_inputs.tmp.$$"
+printf '%s\n%s\n' "$focused" "$covered" > "$in_tmp" && mv -f "$in_tmp" "$ws_inputs"
 
 # 同一 workspace のままのイベント (windows-changed) でも発火する:
 # space_windows.sh が prev/focused のアイコン列を引き直すことで増減が反映される。
