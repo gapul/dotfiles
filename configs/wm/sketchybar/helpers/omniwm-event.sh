@@ -35,16 +35,30 @@ fi
 
 # Native (Puddle Metal) 壁紙用の入力ファイル (Puddle wallpaper-source contract の
 # inputs 書式: 1 行 1 float・位置順で user[] へ)。
-#   user[0] = focused workspace / user[1] = covered (タイル窓が1つでもあれば 1)
+#   user[0] = workspace / user[1] = covered (タイル窓が1つでもあれば 1)
 # covered は Puddle の品質ガバナー(reduced 段=低fps/低解像度)のヒント。
 # windows-changed イベントでもここは更新したいので workspace 変更ガードの外に置く。
-tiled=$("$OMNIWMCTL" query workspaces --focused --format json 2>/dev/null |
-  "$JQ" -r '.result.payload.workspaces[0].counts.tiled // 0' 2>/dev/null)
-covered=0
-[ "${tiled:-0}" -gt 0 ] 2>/dev/null && covered=1
-ws_inputs="$HOME/.dotfiles/configs/wallpaper/inputs"
-in_tmp="$ws_inputs.tmp.$$"
-printf '%s\n%s\n' "$focused" "$covered" > "$in_tmp" && mv -f "$in_tmp" "$ws_inputs"
+#
+# omniwm はワークスペースがモニタ単位なので、ディスプレイごとに「そのモニタで
+# 見えているワークスペース」を inputs.<ディスプレイ名スラグ> に書く
+# (例: inputs.built-in-display / inputs.dell-p3225qe)。Puddle 側は instance ごとに
+# 読むファイルを選ぶ (WallpaperInstance.inputs)。中身の並びは全ファイル共通
+# [ws, covered] なのでシェーダは無変更で済む。
+# 互換のため従来の inputs (グローバルフォーカスのワークスペース) も書き続ける。
+wp_dir="$HOME/.dotfiles/configs/wallpaper"
+"$OMNIWMCTL" query workspaces --visible --format json 2>/dev/null |
+  "$JQ" -r '.result.payload.workspaces[] |
+    [(.display.name // "unknown"), .rawName, (if (.counts.tiled // 0) > 0 then 1 else 0 end), (.isFocused // false)] | @tsv' 2>/dev/null |
+  while IFS=$(printf '\t') read -r dname ws cov focused_flag; do
+    slug=$(printf '%s' "$dname" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9' '-' | sed 's/-*$//;s/^-*//')
+    [ -n "$slug" ] || continue
+    tmp="$wp_dir/inputs.$slug.tmp.$$"
+    printf '%s\n%s\n' "$ws" "$cov" > "$tmp" && mv -f "$tmp" "$wp_dir/inputs.$slug"
+    if [ "$focused_flag" = "true" ]; then
+      tmp="$wp_dir/inputs.tmp.$$"
+      printf '%s\n%s\n' "$ws" "$cov" > "$tmp" && mv -f "$tmp" "$wp_dir/inputs"
+    fi
+  done
 
 # 同一 workspace のままのイベント (windows-changed) でも発火する:
 # space_windows.sh が prev/focused のアイコン列を引き直すことで増減が反映される。
