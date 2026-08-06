@@ -66,6 +66,33 @@ constant WSParams PAL[10] = {
   { RP_IRIS,  RP_FOAM,   74.0, 136.0, 0.34 }, // 9 紫→シアン
 };
 
+// Light appearance = Rosé Pine Dawn (system-theme.js `light`). followSystemTheme
+// swaps the RP object before PALETTES derive from it in the HTML.
+constant float3 RPL_BASE    = float3(250, 244, 237);
+constant float3 RPL_SURFACE = float3(255, 250, 243);
+constant float3 RPL_MUTED   = float3(152, 147, 165);
+constant float3 RPL_SUBTLE  = float3(121, 117, 147);
+constant float3 RPL_GOLD    = float3(234, 157, 52);
+constant float3 RPL_ROSE    = float3(215, 130, 126);
+constant float3 RPL_PINE    = float3(40, 105, 131);
+constant float3 RPL_FOAM    = float3(86, 148, 159);
+constant float3 RPL_IRIS    = float3(144, 122, 169);
+constant float3 RPL_LOVE    = float3(180, 99, 122);
+
+// Dawn a/b gradient endpoints, same row order as PAL (count/dist/speed unchanged).
+constant float3 PAL_LIGHT[10][2] = {
+  { RPL_MUTED, RPL_SUBTLE }, // 0
+  { RPL_IRIS,  RPL_PINE   }, // 1
+  { RPL_FOAM,  RPL_PINE   }, // 2
+  { RPL_GOLD,  RPL_ROSE   }, // 3
+  { RPL_LOVE,  RPL_IRIS   }, // 4
+  { RPL_PINE,  RPL_FOAM   }, // 5
+  { RPL_IRIS,  RPL_LOVE   }, // 6
+  { RPL_FOAM,  RPL_IRIS   }, // 7
+  { RPL_ROSE,  RPL_LOVE   }, // 8
+  { RPL_IRIS,  RPL_FOAM   }, // 9
+};
+
 // Deterministic per-node hash, stands in for Math.random() at load.
 static inline float h11(float i, float seed) {
   return fract(sin(i * 127.1 + seed * 311.7) * 43758.5453);
@@ -101,6 +128,13 @@ fragment float4 wallpaperMain(WallpaperVertexOut       in   [[stage_in]],
   if (ws < 0 || ws > 9) ws = 1;
   WSParams pal = PAL[ws];
 
+  // appearance (contract v2): 0 dark / 1 light
+  bool light = (u.version >= 2) && (u._reserved.x >= 0.5);
+  if (light) { pal.a = PAL_LIGHT[ws][0]; pal.b = PAL_LIGHT[ws][1]; }
+  float3 rpBase    = light ? RPL_BASE    : RP_BASE;
+  float3 rpSurface = light ? RPL_SURFACE : RP_SURFACE;
+  float3 rpGold    = light ? RPL_GOLD    : RP_GOLD;
+
   // time-of-day shift (HTML computeTimeShift); no wall clock -> user[2] else noon.
   float hr = (u.userCount > 2) ? user[2] : 12.0;
   float sunness    = 0.5 * (1.0 + cos((hr - 12.0) * M_PI_F / 12.0));
@@ -118,9 +152,9 @@ fragment float4 wallpaperMain(WallpaperVertexOut       in   [[stage_in]],
   // yy: 0 at top, 1 at bottom (fc.y is y-up).
   float yy = 1.0 - fc.y / W.y;
   float k  = clamp(yy / 0.5, 0.0, 1.0);
-  float3 top = RP_SURFACE + (RP_GOLD - RP_SURFACE) * warmBg;           // tintBg(surface): lift term = 0
-  float3 bot = RP_BASE + (RP_SURFACE - RP_BASE) * lift;
-  bot = bot + (RP_GOLD - bot) * warmBg;                                // tintBg(base)
+  float3 top = rpSurface + (rpGold - rpSurface) * warmBg;              // tintBg(surface): lift term = 0
+  float3 bot = rpBase + (rpSurface - rpBase) * lift;
+  bot = bot + (rpGold - bot) * warmBg;                                 // tintBg(base)
   float3 color = mix(top, bot, k) / 255.0;
 
   // Node positions (deterministic; span CSS space, reflect at walls).
@@ -155,7 +189,7 @@ fragment float4 wallpaperMain(WallpaperVertexOut       in   [[stage_in]],
       if (cov <= 0.0) continue;
       float kk = clamp(((a.x + b.x) * 0.5) / W.x, 0.0, 1.0);
       float3 c = mix(pal.a, pal.b, kk);
-      c = c + (RP_GOLD - c) * warmC;
+      c = c + (rpGold - c) * warmC;
       c = min(float3(255.0), c * brightness) / 255.0;
       color = mix(color, c, alpha * cov);
     }
@@ -173,7 +207,7 @@ fragment float4 wallpaperMain(WallpaperVertexOut       in   [[stage_in]],
     if (mask <= 0.0) continue;
     float kk = clamp(p.x / W.x, 0.0, 1.0);
     float3 c = mix(pal.a, pal.b, kk);
-    c = c + (RP_GOLD - c) * warmC;
+    c = c + (rpGold - c) * warmC;
     c = min(float3(255.0), c * brightness) / 255.0;
     color = mix(color, c, 0.85 * mask);
   }

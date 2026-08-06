@@ -51,6 +51,25 @@ constant float3 RP_BASE    = float3(25.0, 23.0, 36.0);   // background
 constant float3 RP_SURFACE = float3(31.0, 29.0, 46.0);   // day tint target
 constant float3 RP_GOLD    = float3(246.0, 193.0, 119.0);
 
+// Light appearance = Rosé Pine Dawn (system-theme.js `light`). The HTML swaps the
+// whole RP object before PALETTES derive from it, so every accent has a Dawn twin.
+// Same row order as WS_TABLE; only the colors change (spacing/wave params don't).
+constant float3 WS_LIGHT[10][2] = {
+    { float3(152,147,165), float3(121,117,147) }, // '0' muted -> subtle
+    { float3(144,122,169), float3( 40,105,131) }, // '1' iris -> pine
+    { float3( 86,148,159), float3( 40,105,131) }, // '2' foam -> pine
+    { float3(234,157, 52), float3(215,130,126) }, // '3' gold -> rose
+    { float3(180, 99,122), float3(144,122,169) }, // '4' love -> iris
+    { float3( 40,105,131), float3( 86,148,159) }, // '5' pine -> foam
+    { float3(144,122,169), float3(180, 99,122) }, // '6' iris -> love
+    { float3( 86,148,159), float3(144,122,169) }, // '7' foam -> iris
+    { float3(215,130,126), float3(180, 99,122) }, // '8' rose -> love
+    { float3(144,122,169), float3( 86,148,159) }, // '9' iris -> foam
+};
+constant float3 RP_BASE_L    = float3(250.0, 244.0, 237.0);
+constant float3 RP_SURFACE_L = float3(255.0, 250.0, 243.0);
+constant float3 RP_GOLD_L    = float3(234.0, 157.0,  52.0);
+
 static inline float hash11(float n) {
     return fract(sin(n) * 43758.5453123);
 }
@@ -74,6 +93,13 @@ fragment float4 wallpaperMain(WallpaperVertexOut       in   [[stage_in]],
     ws = clamp(ws, 0, 9);
     WSParam P = WS_TABLE[ws];
 
+    // ---- appearance (contract v2): 0 dark / 1 light ----
+    bool light = (u.version >= 2) && (u._reserved.x >= 0.5);
+    if (light) { P.a = WS_LIGHT[ws][0]; P.b = WS_LIGHT[ws][1]; }
+    float3 rpBase    = light ? RP_BASE_L    : RP_BASE;
+    float3 rpSurface = light ? RP_SURFACE_L : RP_SURFACE;
+    float3 rpGold    = light ? RP_GOLD_L    : RP_GOLD;
+
     // ---- time-of-day tint (computeTimeShift / tintBg) ----
     // Original read the wall clock; that isn't available in-shader, so accept an
     // optional fractional hour at user[2] (0..24), else default to noon.
@@ -88,8 +114,8 @@ fragment float4 wallpaperMain(WallpaperVertexOut       in   [[stage_in]],
     // tintBg(base): base + (surface-base)*lift, then toward gold by warm
     float lift = bgLift * 0.22;
     float warm = warmth * 0.10;
-    float3 bg255 = RP_BASE + (RP_SURFACE - RP_BASE) * lift;
-    bg255 = bg255 + (RP_GOLD - bg255) * warm;
+    float3 bg255 = rpBase + (rpSurface - rpBase) * lift;
+    bg255 = bg255 + (rpGold - bg255) * warm;
     float3 bg = bg255 / 255.0;
 
     // ---- grid geometry (uOrigin / uSp / uMaxR) ----
@@ -138,7 +164,7 @@ fragment float4 wallpaperMain(WallpaperVertexOut       in   [[stage_in]],
 
     // color: a->b by v, warm toward gold, then brightness
     float3 col = mix(P.a, P.b, v);
-    col = mix(col, RP_GOLD, warmMix);
+    col = mix(col, rpGold, warmMix);
     col = min(float3(255.0), col * bright) / 255.0;
 
     float dd = length(px - center);

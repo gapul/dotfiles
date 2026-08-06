@@ -40,9 +40,28 @@ constant float3 PAL_COLORS[11][3] = {
 };
 constant int PAL_COUNT[11] = { 2, 3, 2, 3, 2, 3, 3, 3, 3, 3, 3 };
 
+// Light appearance = Rosé Pine Dawn (system-theme.js `light`). followSystemTheme
+// swaps RP before PALETTES derive from it, so this is the same table Dawn-colored.
+constant float3 PAL_COLORS_LIGHT[11][3] = {
+  { float3(152,147,165), float3(121,117,147), float3(121,117,147) }, // 0 muted,subtle
+  { float3(144,122,169), float3(40,105,131),  float3(86,148,159)  }, // 1 iris,pine,foam
+  { float3(86,148,159),  float3(40,105,131),  float3(40,105,131)  }, // 2 foam,pine
+  { float3(234,157,52),  float3(215,130,126), float3(180,99,122)  }, // 3 gold,rose,love
+  { float3(180,99,122),  float3(144,122,169), float3(144,122,169) }, // 4 love,iris
+  { float3(40,105,131),  float3(86,148,159),  float3(144,122,169) }, // 5 pine,foam,iris
+  { float3(144,122,169), float3(180,99,122),  float3(215,130,126) }, // 6 iris,love,rose
+  { float3(86,148,159),  float3(144,122,169), float3(40,105,131)  }, // 7 foam,iris,pine
+  { float3(215,130,126), float3(180,99,122),  float3(234,157,52)  }, // 8 rose,love,gold
+  { float3(144,122,169), float3(86,148,159),  float3(180,99,122)  }, // 9 iris,foam,love
+  { float3(40,105,131),  float3(144,122,169), float3(86,148,159)  }, // 10 'S' pine,iris,foam
+};
+
 constant float3 RP_BASE    = float3(25, 23, 36);
 constant float3 RP_SURFACE = float3(31, 29, 46);
 constant float3 RP_GOLD    = float3(246, 193, 119);
+constant float3 RP_BASE_L    = float3(250, 244, 237);
+constant float3 RP_SURFACE_L = float3(255, 250, 243);
+constant float3 RP_GOLD_L    = float3(234, 157, 52);
 
 // Baked blob orbit params (HTML randomized these at startup within these ranges:
 // cx/cy[.2,.8] ax/ay[.12,.30] px/py[0,2pi] tx[22,46] ty[26,52]
@@ -78,6 +97,12 @@ fragment float4 wallpaperMain(WallpaperVertexOut       in   [[stage_in]],
   ws = clamp(ws, 0, 10);
   int count = PAL_COUNT[ws];
 
+  // appearance (contract v2): 0 dark / 1 light
+  bool light = (u.version >= 2) && (u._reserved.x >= 0.5);
+  float3 rpBase    = light ? RP_BASE_L    : RP_BASE;
+  float3 rpSurface = light ? RP_SURFACE_L : RP_SURFACE;
+  float3 rpGold    = light ? RP_GOLD_L    : RP_GOLD;
+
   // time-of-day shift (HTML computeTimeShift). No wall clock in-shader: read
   // optional user[2] hour, else noon.
   float hr = (u.userCount > 2) ? user[2] : 12.0;
@@ -90,8 +115,8 @@ fragment float4 wallpaperMain(WallpaperVertexOut       in   [[stage_in]],
   // tintBg(base): lift toward surface, then toward gold.
   float lift = bgLift * 0.18;
   float warmBg = warmth * 0.08;
-  float3 bg = RP_BASE + (RP_SURFACE - RP_BASE) * lift;
-  bg = bg + (RP_GOLD - bg) * warmBg;
+  float3 bg = rpBase + (rpSurface - rpBase) * lift;
+  bg = bg + (rpGold - bg) * warmBg;
 
   float a0 = 0.22 + 0.14 * sunness;
   float warmC = warmth * 0.30; // blob gold-shift (distinct from bg's 0.08)
@@ -101,8 +126,8 @@ fragment float4 wallpaperMain(WallpaperVertexOut       in   [[stage_in]],
     Blob b = BLOBS[i];
 
     // color: snap to target (single-pass; HTML's cur->tgt crossfade dropped).
-    float3 col = PAL_COLORS[ws][i % count];
-    col = col + (RP_GOLD - col) * warmC;      // gold shift at dawn/dusk
+    float3 col = light ? PAL_COLORS_LIGHT[ws][i % count] : PAL_COLORS[ws][i % count];
+    col = col + (rpGold - col) * warmC;       // gold shift at dawn/dusk
     col = min(float3(255.0), col * brightness); // brightness multiply
 
     float x = (b.cx + b.ax * cos(sec * (TWO_PI / b.tx) + b.px)) * W;

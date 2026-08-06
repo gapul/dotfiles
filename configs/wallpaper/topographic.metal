@@ -27,6 +27,10 @@ constant float UNDULATION_RATE = 0.024242;
 constant float3 RP_base    = float3(25, 23, 36);
 constant float3 RP_surface = float3(31, 29, 46);
 constant float3 RP_gold    = float3(246, 193, 119);
+// Light appearance = Rosé Pine Dawn (system-theme.js `light`).
+constant float3 RP_base_l    = float3(250, 244, 237);
+constant float3 RP_surface_l = float3(255, 250, 243);
+constant float3 RP_gold_l    = float3(234, 157, 52);
 
 // ── Fixed "midday" time-of-day state (no wall clock available) ──
 // Source computeTimeShift() at hr=12: sunness=1, golden=0.
@@ -68,6 +72,21 @@ constant WSParam WS[10] = {
   { float3(196,167,231), float3(156,207,216), 7.0,  0.0025 },
 };
 
+// Dawn lo/hi contour colors, same row order as WS (levels/scale unchanged).
+// followSystemTheme swaps RP before PALETTES derive from it in the HTML.
+constant float3 WS_LIGHT[10][2] = {
+  { float3(152,147,165), float3(121,117,147) }, // '0' muted -> subtle
+  { float3(40,105,131),  float3(144,122,169) }, // '1' pine -> iris
+  { float3(40,105,131),  float3(86,148,159)  }, // '2' pine -> foam
+  { float3(215,130,126), float3(234,157,52)  }, // '3' rose -> gold
+  { float3(144,122,169), float3(180,99,122)  }, // '4' iris -> love
+  { float3(86,148,159),  float3(40,105,131)  }, // '5' foam -> pine
+  { float3(180,99,122),  float3(144,122,169) }, // '6' love -> iris
+  { float3(86,148,159),  float3(144,122,169) }, // '7' foam -> iris
+  { float3(234,157,52),  float3(180,99,122)  }, // '8' gold -> love
+  { float3(144,122,169), float3(86,148,159)  }, // '9' iris -> foam
+};
+
 // ── Gradient (Perlin) noise — direct port of the GLSL helpers ──
 static float hash(float2 c) {
   float2 p = fract(c * float2(0.1031, 0.1030));
@@ -96,11 +115,12 @@ static float fbm(float2 p) {
 }
 
 // Background tint (port of tintBg): lift toward surface, then toward gold.
-static float3 tintBg(float3 c) {
+// surface/gold passed in so light appearance can retarget the tint.
+static float3 tintBg(float3 c, float3 surface, float3 gold) {
   float lift = BG_LIFT * 0.22;
   float warm = BG_WARM_T * 0.10;
-  float3 x = c + (RP_surface - c) * lift;
-  x = x + (RP_gold - x) * warm;
+  float3 x = c + (surface - c) * lift;
+  x = x + (gold - x) * warm;
   return x;
 }
 
@@ -118,6 +138,13 @@ fragment float4 wallpaperMain(WallpaperVertexOut       in   [[stage_in]],
   ws = clamp(ws, 0, 9);
   WSParam P = WS[ws];
 
+  // Appearance (contract v2): 0 dark / 1 light.
+  bool light = (u.version >= 2) && (u._reserved.x >= 0.5);
+  if (light) { P.lo = WS_LIGHT[ws][0]; P.hi = WS_LIGHT[ws][1]; }
+  float3 rpBase    = light ? RP_base_l    : RP_base;
+  float3 rpSurface = light ? RP_surface_l : RP_surface;
+  float3 rpGold    = light ? RP_gold_l    : RP_gold;
+
   float undulation = u.time * UNDULATION_RATE;
 
   // Height field h(x,y,t): x = px*scale, y = py*scale + undulation.
@@ -125,7 +152,7 @@ fragment float4 wallpaperMain(WallpaperVertexOut       in   [[stage_in]],
 
   // Background: surface (top) → base (from mid-height down).
   float gy = clamp(cssPx.y / (0.5 * uH), 0.0, 1.0);
-  float3 bg = mix(tintBg(RP_surface), tintBg(RP_base), gy) / 255.0;
+  float3 bg = mix(tintBg(rpSurface, rpSurface, rpGold), tintBg(rpBase, rpSurface, rpGold), gy) / 255.0;
   float3 outc = bg;
 
   // Contours: map height to 0..(levels-1); integers are contour lines.
@@ -142,7 +169,7 @@ fragment float4 wallpaperMain(WallpaperVertexOut       in   [[stage_in]],
     float cov = 1.0 - smoothstep(lw * 0.5 - 0.5, lw * 0.5 + 0.5, dpx);
 
     float3 col = mix(P.lo, P.hi, kfrac);
-    col = mix(col, RP_gold, U_WARM);
+    col = mix(col, rpGold, U_WARM);
     col = min(float3(255.0), col * U_BRIGHT) / 255.0;
 
     float alpha = (0.32 + 0.30 * kfrac) * cov;
