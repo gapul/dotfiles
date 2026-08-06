@@ -37,6 +37,7 @@ configs/wm/sketchybar/helper/helper
 configs/keyboard/karabiner/automatic_backups/
 configs/wallpaper/state.js
 configs/wallpaper/inputs
+configs/wallpaper/inputs.*
 configs/cli/calcurse/caldav/config
 configs/ssh/config
 
