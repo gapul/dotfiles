@@ -828,6 +828,53 @@ obsidian-snapshot:
     echo "✅ snapshot -> $dst"
     echo "   After git add, run gitleaks before committing."
 
+# Pull GUI-side preference changes back into the repo (live -> dotfiles).
+# darwin-apps.nix imports these plists wholesale on activation, so anything changed in an app's
+# own UI is silently reverted by the next rebuild unless it is captured here.
+# Only keys the repo file already tracks are updated: these apps also store volatile state
+# (window frames, status item positions, color panel geometry) that would add churn on every run.
+# To start tracking a new key, add it to the repo plist once (`plutil -insert`), then this picks it up.
+[group('Setup')]
+[doc('Sync GUI app preference changes back into dotfiles (live -> repo)')]
+plist-sync:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    dir="{{justfile_directory()}}"
+    # Same set darwin-apps.nix imports. Add a line here when an import is added there.
+    pairs=(
+      "org.p0deje.Maccy configs/clipboard/maccy/Maccy.plist"
+      "net.mtgto.inputmethod.macSKK configs/ime/skk/macSKK.plist"
+      "io.github.gitusp.azoo-key-skkserv configs/ime/skk/azoo-key-skkserv.plist"
+    )
+    changed=0
+    for pair in "${pairs[@]}"; do
+      set -- $pair; domain="$1"; rel="$2"; repo="$dir/$rel"
+      [ -f "$repo" ] || { echo "– $rel: not in repo, skipped"; continue; }
+      live=$(defaults export "$domain" - 2>/dev/null | plutil -convert json -o - - 2>/dev/null) || live=""
+      # An app that was never launched (or a sandbox not yet created) exports an empty dict.
+      # Overwriting from that would quietly wipe the tracked settings, so skip instead.
+      if [ -z "$live" ] || [ "$(jq 'keys|length' <<<"$live")" -eq 0 ]; then
+        echo "– $domain: no live prefs, skipped"; continue
+      fi
+      old=$(plutil -convert json -o - "$repo")
+      # read-loop, not `for`: some keys contain spaces ("NSStatusItem VisibleCC Item-0")
+      while IFS= read -r key; do
+        lv=$(jq -c --arg k "$key" '.[$k]' <<<"$live")
+        rv=$(jq -c --arg k "$key" '.[$k]' <<<"$old")
+        [ "$lv" = "null" ] && continue    # dropped on the live side: keep the tracked value
+        [ "$lv" = "$rv" ] && continue
+        plutil -replace "$key" -json "$lv" "$repo"
+        echo "  $rel  $key: $rv -> $lv"
+        changed=1
+      done < <(jq -r 'keys[]' <<<"$old")
+    done
+    if [ "$changed" -eq 0 ]; then
+      echo "✓ tracked plist keys already match the live prefs"
+    else
+      git -C "$dir" --no-pager diff --stat -- configs
+      echo "Review the diff, then commit on a branch as usual."
+    fi
+
 
 # ─────────────────────────────────────────────
 # Windows (native pwsh)
