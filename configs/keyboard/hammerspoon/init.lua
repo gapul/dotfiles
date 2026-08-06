@@ -376,6 +376,28 @@ end
 
 hs.hotkey.bind(hyperShift, "/", showKeyBindingHelp)
 
+-- AeroSpace 時代の cmd-ctrl-alt-q / -shift-q を移植。OmniWM にはウィンドウを閉じる
+-- アクションが無いので Hammerspoon の AX クローズで代替する。
+-- Hyper+Q: フォーカスウィンドウを閉じる (AeroSpace の close 相当)。
+hs.hotkey.bind(hyper, "q", function()
+	local w = hs.window.focusedWindow()
+	if w then
+		w:close()
+	end
+end)
+-- Hyper+Shift+Q: 閉じて、それがアプリ最後の 1 枚なら終了 (close --quit-if-last-window 相当)。
+hs.hotkey.bind(hyperShift, "q", function()
+	local w = hs.window.focusedWindow()
+	if not w then
+		return
+	end
+	local app = w:application()
+	w:close()
+	if app and #app:allWindows() == 0 then
+		app:kill()
+	end
+end)
+
 local reloadTimer = nil
 _G.configWatcher = hs.pathwatcher.new(hs.configdir, function(paths)
 	for _, path in ipairs(paths) do
