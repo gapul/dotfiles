@@ -36,6 +36,7 @@ configs/wm/sketchybar/helper/helper
 # karabiner 自動バックアップ (アプリ生成)
 configs/keyboard/karabiner/automatic_backups/
 configs/wallpaper/state.js
+configs/wallpaper/inputs
 configs/cli/calcurse/caldav/config
 configs/ssh/config
 
