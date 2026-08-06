@@ -34,7 +34,11 @@ _ow_workspaces() {
 # フォーカス中の workspace 名
 wm_focused_workspace() {
   if [ "$WM_BACKEND" = omniwm ]; then
-    _ow_workspaces | "$JQ" -r '.result.payload.workspaces[] | select(.isFocused) | .rawName'
+    # workspaces[].isFocused は「フォーカスされた窓」基準で、空ワークスペースに
+    # 切り替えると前のワークスペースを報告し続ける (壁紙連動が空WSで死ぬ原因)。
+    # active-workspace クエリは WM 自身の現在WS状態なので空WSでも正しい。
+    "$OMNIWMCTL" query active-workspace --format json 2>/dev/null |
+      "$JQ" -r '.result.payload.workspace.rawName // empty'
   else
     "$AEROSPACE" list-workspaces --focused
   fi
