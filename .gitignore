@@ -38,6 +38,7 @@ configs/keyboard/karabiner/automatic_backups/
 configs/wallpaper/state.js
 configs/wallpaper/inputs
 configs/wallpaper/inputs.*
+configs/wallpaper/.inputs.lock
 configs/cli/calcurse/caldav/config
 configs/ssh/config
 
