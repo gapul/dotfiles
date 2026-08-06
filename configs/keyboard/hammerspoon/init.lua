@@ -398,6 +398,17 @@ hs.hotkey.bind(hyperShift, "q", function()
 	end
 end)
 
+-- Hyper+Return: 新規 Ghostty ウィンドウを開く (AeroSpace の cmd-ctrl-alt-enter 相当)。
+-- Ghostty は initial-window=false で背面常駐なので、単なる activate ではウィンドウが
+-- 出ない。File > New Window を選んで確実に 1 枚開く。未起動なら先に起動する。
+hs.hotkey.bind(hyper, "return", function()
+	local app = hs.application.open("com.mitchellh.ghostty", 5, true)
+	if app then
+		app:activate()
+		app:selectMenuItem({ "File", "New Window" })
+	end
+end)
+
 local reloadTimer = nil
 _G.configWatcher = hs.pathwatcher.new(hs.configdir, function(paths)
 	for _, path in ipairs(paths) do
