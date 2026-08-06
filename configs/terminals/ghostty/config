@@ -58,6 +58,9 @@ background-blur-radius = 30
 # 起動時にウィンドウを開かない（バックグラウンドでホットキー待機）
 initial-window = false
 
+# restart/再起動時に前回のウィンドウを復元しない
+window-save-state = never
+
 # 最後のウィンドウを閉じても Ghostty を終了させない
 # Quick Terminal のホットキーが常に効くようにバックグラウンド常駐
 quit-after-last-window-closed = false
