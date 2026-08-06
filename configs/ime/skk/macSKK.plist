@@ -141,7 +141,7 @@
 		</dict>
 	</dict>
 	<key>kanaRule</key>
-	<string></string>
+	<string>kana-rule.conf</string>
 	<key>overridesAnnotationBackgroundColor</key>
 	<false/>
 	<key>overridesCandidatesBackgroundColor</key>
