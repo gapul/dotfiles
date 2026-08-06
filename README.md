@@ -124,6 +124,7 @@ curl -fsSL https://raw.githubusercontent.com/gapul/dotfiles/main/scripts/bootstr
     dev what=""                  # devShell (`just dev`=enter [shellcheck/statix available] / `just dev install`=install hooks only [non-interactive])
     docs                         # Run this after changing a recipe/hook/alias. CI drift detection is handled by check-generated.sh.
     obsidian-snapshot            # One-way snapshot of Obsidian config into public dotfiles (tracking-only, vault->dotfiles)
+    plist-sync                   # Sync GUI app preference changes back into dotfiles (live -> repo)
     ssh host                     # Use remote-env on another host
 
     [Theme]
