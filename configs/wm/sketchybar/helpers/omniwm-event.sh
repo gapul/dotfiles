@@ -33,6 +33,12 @@ if [ "$focused" != "$prev" ]; then
   printf 'window.__ws="%s";' "$focused" > "$ws_tmp" && mv -f "$ws_tmp" "$ws_state"
 fi
 
+# 同一 workspace のままのイベント (windows-changed) でも発火する:
+# space_windows.sh が prev/focused のアイコン列を引き直すことで増減が反映される。
+"$SB" --trigger aerospace_workspace_change \
+  AEROSPACE_FOCUSED_WORKSPACE="$focused" \
+  AEROSPACE_PREV_WORKSPACE="$prev"
+
 # Native (Puddle Metal) 壁紙用の入力ファイル (Puddle wallpaper-source contract の
 # inputs 書式: 1 行 1 float・位置順で user[] へ)。
 #   user[0] = workspace / user[1] = covered (タイル窓が1つでもあれば 1)
@@ -94,8 +100,3 @@ for d in displays:
         write(f"{wp_dir}/inputs", ws, covered)
 PY
 
-# 同一 workspace のままのイベント (windows-changed) でも発火する:
-# space_windows.sh が prev/focused のアイコン列を引き直すことで増減が反映される。
-"$SB" --trigger aerospace_workspace_change \
-  AEROSPACE_FOCUSED_WORKSPACE="$focused" \
-  AEROSPACE_PREV_WORKSPACE="$prev"
