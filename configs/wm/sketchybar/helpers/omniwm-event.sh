@@ -49,6 +49,20 @@ fi
 # isFocused/isVisible は「フォーカスされた窓」基準で、空ワークスペースに切り替えると
 # 前のWSを報告し続ける (空WSで壁紙が変わらない原因だった)。
 wp_dir="$HOME/.dotfiles/configs/wallpaper"
+
+# 連続切替ではイベント毎に本スクリプトが並走し、古い状態を読んだ遅いインスタンスが
+# 最後に書いて inputs が stale で固まることがある (query→write が非アトミック)。
+# mkdir ロックで直列化する: 後から始まった方が後にクエリして後に書く=最新で収束。
+# ロック待ちは最大 ~3秒、超えたら (前任者が死んでいるとみなして) 奪う。
+_wp_lock="$wp_dir/.inputs.lock"
+_wp_waited=0
+until mkdir "$_wp_lock" 2>/dev/null; do
+  _wp_waited=$((_wp_waited + 1))
+  if [ "$_wp_waited" -ge 30 ]; then rm -rf "$_wp_lock"; fi
+  sleep 0.1
+done
+trap 'rmdir "$_wp_lock" 2>/dev/null || true' EXIT
+
 DISPLAYS_JSON=$("$OMNIWMCTL" query displays --format json 2>/dev/null)
 WORKSPACES_JSON=$("$OMNIWMCTL" query workspaces --format json 2>/dev/null)
 export DISPLAYS_JSON WORKSPACES_JSON wp_dir
