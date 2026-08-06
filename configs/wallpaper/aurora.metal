@@ -26,7 +26,7 @@
 
 struct WSPal {
     float3 bgDark;   // DARK_PALETTES bg, 0..255
-    float3 bgLight;  // LIGHT_PALETTES bg (tint = index % 3 in the HTML)
+    float3 bgLight;  // LIGHT_PALETTES bg (tint = ws % 3: JS enumerates the integer-like keys '0'..'9' in ascending numeric order)
     float  hueBase;
     float  hueRange;
 };
@@ -34,15 +34,15 @@ struct WSPal {
 // Index = numeric workspace. 'S' is unreachable through numeric user[0].
 constant WSPal WS_TABLE[10] = {
     { float3( 6,  6, 10), float3(250, 244, 237),   0.0,  0.0 }, // '0' mono
-    { float3(10, 10, 20), float3(250, 244, 237), 270.0, 60.0 }, // '1' violet/blue
-    { float3( 6, 18, 14), float3(255, 250, 243), 140.0, 50.0 }, // '2' green/teal
-    { float3(20, 12,  6), float3(242, 233, 225),  30.0, 30.0 }, // '3' orange/amber
-    { float3(22,  8, 14), float3(250, 244, 237), 340.0, 40.0 }, // '4' crimson/magenta
-    { float3( 6, 12, 24), float3(255, 250, 243), 210.0, 40.0 }, // '5' blue/cyan
-    { float3(14,  8, 28), float3(242, 233, 225), 250.0, 50.0 }, // '6' lavender
-    { float3( 6, 18, 12), float3(250, 244, 237), 160.0, 40.0 }, // '7' forest
-    { float3(20, 10,  8), float3(255, 250, 243), 350.0, 30.0 }, // '8' rose
-    { float3(16,  6, 22), float3(242, 233, 225), 290.0, 50.0 }, // '9' pink/violet
+    { float3(10, 10, 20), float3(255, 250, 243), 270.0, 60.0 }, // '1' violet/blue
+    { float3( 6, 18, 14), float3(242, 233, 225), 140.0, 50.0 }, // '2' green/teal
+    { float3(20, 12,  6), float3(250, 244, 237),  30.0, 30.0 }, // '3' orange/amber
+    { float3(22,  8, 14), float3(255, 250, 243), 340.0, 40.0 }, // '4' crimson/magenta
+    { float3( 6, 12, 24), float3(242, 233, 225), 210.0, 40.0 }, // '5' blue/cyan
+    { float3(14,  8, 28), float3(250, 244, 237), 250.0, 50.0 }, // '6' lavender
+    { float3( 6, 18, 12), float3(255, 250, 243), 160.0, 40.0 }, // '7' forest
+    { float3(20, 10,  8), float3(242, 233, 225), 350.0, 30.0 }, // '8' rose
+    { float3(16,  6, 22), float3(250, 244, 237), 290.0, 50.0 }, // '9' pink/violet
 };
 
 // ---- tuning (HTML values, in drawable px; density matches 200 particles
