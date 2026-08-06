@@ -231,6 +231,9 @@ function __icon_map() {
    "BusyCal")
         icon_result=":busycal:"
         ;;
+   "Buzz")
+        icon_result=":buzz:"
+        ;;
    "Calculator" | "Calculette" | "Rechner" | "Калькулятор")
         icon_result=":calculator:"
         ;;
@@ -383,6 +386,9 @@ function __icon_map() {
         ;;
    "CleanMyMac X")
         icon_result=":desktop:"
+        ;;
+   "Devin")
+        icon_result=":devin:"
         ;;
    "DEVONthink 3" | "DEVONthink")
         icon_result=":devonthink3:"
@@ -579,7 +585,7 @@ function __icon_map() {
    "GIMP")
         icon_result=":gimp:"
         ;;
-   "GitHub Desktop")
+   "GitHub Desktop" | "GitHub Copilot")
         icon_result=":git_hub:"
         ;;
    "GitKraken")
@@ -701,6 +707,9 @@ function __icon_map() {
         ;;
    "Instapaper")
         icon_result=":instapaper:"
+        ;;
+   "Instruments")
+        icon_result=":instruments:"
         ;;
    "Invoice Ninja" | "InvoiceNinja" | "Invoice Ninja"* | "invoiceninja"*)
         icon_result=":invoice_ninja:"
@@ -942,6 +951,9 @@ function __icon_map() {
    "Miro")
         icon_result=":miro:"
         ;;
+   "Mole")
+        icon_result=":mole:"
+        ;;
    "MongoDB Compass"*)
         icon_result=":mongodb:"
         ;;
@@ -1089,6 +1101,9 @@ function __icon_map() {
    "OpenChamber")
         icon_result=":openchamber:"
         ;;
+   "OpenClaw")
+        icon_result=":openclaw:"
+        ;;
    "opencode" | "OpenCode")
         icon_result=":opencode:"
         ;;
@@ -1154,6 +1169,9 @@ function __icon_map() {
         ;;
    "Pearcleaner")
         icon_result=":pearcleaner:"
+        ;;
+   "Permute 3" | "Permute 4")
+        icon_result=":permute:"
         ;;
    "Perplexity" | "Perplexity AI")
         icon_result=":perplexity:"
@@ -1389,7 +1407,7 @@ function __icon_map() {
    "Setapp")
         icon_result=":setapp:"
         ;;
-   "SF Symbols" | "SF Symbole" | "SF-Symbole")
+   "SF Symbols" | "SF Symbole" | "SF-Symbole" |  "SF Symbols Beta")
         icon_result=":sf_symbols:"
         ;;
    "Shapr3D")
@@ -1659,6 +1677,9 @@ function __icon_map() {
    "Wave")
         icon_result=":waveterm:"
         ;;
+   "Waydir")
+        icon_result=":waydir:"
+        ;;
    "Weather" | "Wetter" | "Погода")
         icon_result=":weather:"
         ;;
@@ -1682,6 +1703,9 @@ function __icon_map() {
         ;;
    "WezTerm" | "wezterm-gui")
         icon_result=":wezterm:"
+        ;;
+   "WhatCable")
+        icon_result=":whatcable:"
         ;;
    "WhatsApp" | "‎WhatsApp")
         icon_result=":whats_app:"

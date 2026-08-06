@@ -83,7 +83,9 @@
   # Neru.app is a brew cask, so skip until the binary is present (not yet installed).
   home.activation.neruService = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     NERU=/opt/homebrew/bin/neru
-    if [ -x "$NERU" ] && ! "$NERU" services status 2>/dev/null | grep -qi loaded; then
+    # NOTE: match "not loaded" positively. The unloaded message is "Service not loaded",
+    # so a `! grep -qi loaded` test matches both states and never reinstalls.
+    if [ -x "$NERU" ] && "$NERU" services status 2>/dev/null | grep -qi "not loaded"; then
       "$NERU" services install || true
     fi
   '';

@@ -358,7 +358,12 @@ sketchybar-font:
     dir="{{justfile_directory()}}"
     ttf="$dir/configs/fonts/sketchybar-app-font.ttf"
     map="$dir/configs/wm/sketchybar/plugins/icon_map.sh"
-    tag=$(gh release view --repo "$repo" --json tagName -q .tagName)
+    # A transient network failure here used to abort `just maintain` entirely and roll back
+    # flake.lock. The font is a nice-to-have, so treat an unreachable API as "skip", like xcodes.
+    tag=$(gh release view --repo "$repo" --json tagName -q .tagName) || {
+      echo "– sketchybar-app-font: release lookup failed (offline?); skipped" >&2
+      exit 0
+    }
     cur=$(awk '/pname = "sketchybar-app-font"/{getline; if (match($0,/[0-9][0-9.]*/)) print substr($0,RSTART,RLENGTH); exit}' "$dir/nix/hosts/darwin.nix")
     if [ "$tag" = "v$cur" ]; then
       exit 0
