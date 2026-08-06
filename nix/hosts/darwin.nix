@@ -31,6 +31,10 @@
       TrackpadRightClick = true;
       TrackpadThreeFingerDrag = true;
     };
+    # "Displays have separate Spaces" ON (false = displays don't span). Gives the
+    # external display its own menu bar so OmniWM reserves the top strip and SketchyBar
+    # stops overlapping tiled windows there. Takes effect on next logout.
+    spaces.spans-displays = false;
   };
 
   # Only provide via Nix the Nerd Fonts that have no matching cask
