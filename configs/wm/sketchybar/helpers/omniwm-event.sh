@@ -45,20 +45,40 @@ fi
 # 読むファイルを選ぶ (WallpaperInstance.inputs)。中身の並びは全ファイル共通
 # [ws, covered] なのでシェーダは無変更で済む。
 # 互換のため従来の inputs (グローバルフォーカスのワークスペース) も書き続ける。
+# ディスプレイの現在WSは displays[].activeWorkspace で取る。workspaces --visible の
+# isFocused/isVisible は「フォーカスされた窓」基準で、空ワークスペースに切り替えると
+# 前のWSを報告し続ける (空WSで壁紙が変わらない原因だった)。
 wp_dir="$HOME/.dotfiles/configs/wallpaper"
-"$OMNIWMCTL" query workspaces --visible --format json 2>/dev/null |
-  "$JQ" -r '.result.payload.workspaces[] |
-    [(.display.name // "unknown"), .rawName, (if (.counts.tiled // 0) > 0 then 1 else 0 end), (.isFocused // false)] | @tsv' 2>/dev/null |
-  while IFS=$(printf '\t') read -r dname ws cov focused_flag; do
-    slug=$(printf '%s' "$dname" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9' '-' | sed 's/-*$//;s/^-*//')
-    [ -n "$slug" ] || continue
-    tmp="$wp_dir/inputs.$slug.tmp.$$"
-    printf '%s\n%s\n' "$ws" "$cov" > "$tmp" && mv -f "$tmp" "$wp_dir/inputs.$slug"
-    if [ "$focused_flag" = "true" ]; then
-      tmp="$wp_dir/inputs.tmp.$$"
-      printf '%s\n%s\n' "$ws" "$cov" > "$tmp" && mv -f "$tmp" "$wp_dir/inputs"
-    fi
-  done
+DISPLAYS_JSON=$("$OMNIWMCTL" query displays --format json 2>/dev/null)
+WORKSPACES_JSON=$("$OMNIWMCTL" query workspaces --format json 2>/dev/null)
+export DISPLAYS_JSON WORKSPACES_JSON wp_dir
+python3 - <<'PY' 2>/dev/null
+import json, os, re, tempfile
+try:
+    displays = json.loads(os.environ["DISPLAYS_JSON"])["result"]["payload"]["displays"]
+    workspaces = json.loads(os.environ["WORKSPACES_JSON"])["result"]["payload"]["workspaces"]
+except Exception:
+    raise SystemExit
+tiled = {w["rawName"]: (w.get("counts") or {}).get("tiled", 0) for w in workspaces}
+wp_dir = os.environ["wp_dir"]
+
+def write(path, ws, covered):
+    fd, tmp = tempfile.mkstemp(dir=wp_dir)
+    with os.fdopen(fd, "w") as f:
+        f.write(f"{ws}\n{covered}\n")
+    os.replace(tmp, path)
+
+for d in displays:
+    ws = (d.get("activeWorkspace") or {}).get("rawName")
+    if not ws:
+        continue
+    covered = 1 if tiled.get(ws, 0) > 0 else 0
+    slug = re.sub(r"^-+|-+$", "", re.sub(r"[^a-z0-9]+", "-", (d.get("name") or "unknown").lower()))
+    if slug:
+        write(f"{wp_dir}/inputs.{slug}", ws, covered)
+    if d.get("isCurrent"):
+        write(f"{wp_dir}/inputs", ws, covered)
+PY
 
 # 同一 workspace のままのイベント (windows-changed) でも発火する:
 # space_windows.sh が prev/focused のアイコン列を引き直すことで増減が反映される。

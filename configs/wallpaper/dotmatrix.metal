@@ -25,26 +25,30 @@ struct WSParam {
 // Index 0 = PALETTES['0'], indices 1..9 = PALETTES['1'..'9'].
 // PALETTES['S'] is unreachable through a numeric user[0] and is omitted.
 constant WSParam WS_TABLE[10] = {
+    // Hue re-spread (2026-08-06): the HTML pairs clustered 1/2/5/7/9 into the cool
+    // iris/pine/foam family, which reads as a single "blue" wallpaper. Each workspace
+    // now leads with a distinct dominant hue (1=purple 2=teal 3=orange 4=pink
+    // 5=deep-blue ...), spacing/wave params unchanged.
     // '0': muted -> subtle, quiet monochrome
     { float3(110,106,134), float3(144,140,170), 26.0, 2, 0.30, 0.018, 1.6 },
-    // '1': iris -> pine
-    { float3(196,167,231), float3( 49,116,143), 26.0, 2, 0.40, 0.018, 2.4 },
-    // '2': foam -> pine
+    // '1': iris -> love (purple)
+    { float3(196,167,231), float3(235,111,146), 26.0, 2, 0.40, 0.018, 2.4 },
+    // '2': foam -> pine (teal)
     { float3(156,207,216), float3( 49,116,143), 22.0, 3, 0.70, 0.030, 3.2 },
-    // '3': gold -> rose
+    // '3': gold -> rose (orange)
     { float3(246,193,119), float3(235,188,186), 28.0, 2, 0.35, 0.016, 2.0 },
-    // '4': love -> iris
-    { float3(235,111,146), float3(196,167,231), 23.0, 3, 0.80, 0.026, 3.6 },
-    // '5': pine -> foam
-    { float3( 49,116,143), float3(156,207,216), 25.0, 2, 0.50, 0.020, 2.6 },
-    // '6': iris -> love
-    { float3(196,167,231), float3(235,111,146), 24.0, 3, 0.60, 0.024, 3.0 },
-    // '7': foam -> iris
+    // '4': love -> gold (pink)
+    { float3(235,111,146), float3(246,193,119), 23.0, 3, 0.80, 0.026, 3.6 },
+    // '5': pine -> iris (deep blue)
+    { float3( 49,116,143), float3(196,167,231), 25.0, 2, 0.50, 0.020, 2.6 },
+    // '6': rose -> gold (salmon)
+    { float3(235,188,186), float3(246,193,119), 24.0, 3, 0.60, 0.024, 3.0 },
+    // '7': foam -> iris (teal-purple)
     { float3(156,207,216), float3(196,167,231), 28.0, 2, 0.30, 0.014, 1.8 },
-    // '8': rose -> love
-    { float3(235,188,186), float3(235,111,146), 22.0, 3, 0.70, 0.028, 3.3 },
-    // '9': iris -> foam
-    { float3(196,167,231), float3(156,207,216), 25.0, 2, 0.50, 0.022, 2.8 },
+    // '8': love -> rose (deep pink)
+    { float3(235,111,146), float3(235,188,186), 22.0, 3, 0.70, 0.028, 3.3 },
+    // '9': gold -> foam (orange-teal)
+    { float3(246,193,119), float3(156,207,216), 25.0, 2, 0.50, 0.022, 2.8 },
 };
 
 constant float3 RP_BASE    = float3(25.0, 23.0, 36.0);   // background
@@ -55,16 +59,17 @@ constant float3 RP_GOLD    = float3(246.0, 193.0, 119.0);
 // whole RP object before PALETTES derive from it, so every accent has a Dawn twin.
 // Same row order as WS_TABLE; only the colors change (spacing/wave params don't).
 constant float3 WS_LIGHT[10][2] = {
+    // Same hue re-spread as WS_TABLE, in Rosé Pine Dawn values.
     { float3(152,147,165), float3(121,117,147) }, // '0' muted -> subtle
-    { float3(144,122,169), float3( 40,105,131) }, // '1' iris -> pine
-    { float3( 86,148,159), float3( 40,105,131) }, // '2' foam -> pine
-    { float3(234,157, 52), float3(215,130,126) }, // '3' gold -> rose
-    { float3(180, 99,122), float3(144,122,169) }, // '4' love -> iris
-    { float3( 40,105,131), float3( 86,148,159) }, // '5' pine -> foam
-    { float3(144,122,169), float3(180, 99,122) }, // '6' iris -> love
-    { float3( 86,148,159), float3(144,122,169) }, // '7' foam -> iris
-    { float3(215,130,126), float3(180, 99,122) }, // '8' rose -> love
-    { float3(144,122,169), float3( 86,148,159) }, // '9' iris -> foam
+    { float3(144,122,169), float3(180, 99,122) }, // '1' iris -> love (purple)
+    { float3( 86,148,159), float3( 40,105,131) }, // '2' foam -> pine (teal)
+    { float3(234,157, 52), float3(215,130,126) }, // '3' gold -> rose (orange)
+    { float3(180, 99,122), float3(234,157, 52) }, // '4' love -> gold (pink)
+    { float3( 40,105,131), float3(144,122,169) }, // '5' pine -> iris (deep blue)
+    { float3(215,130,126), float3(234,157, 52) }, // '6' rose -> gold (salmon)
+    { float3( 86,148,159), float3(144,122,169) }, // '7' foam -> iris (teal-purple)
+    { float3(180, 99,122), float3(215,130,126) }, // '8' love -> rose (deep pink)
+    { float3(234,157, 52), float3( 86,148,159) }, // '9' gold -> foam (orange-teal)
 };
 constant float3 RP_BASE_L    = float3(250.0, 244.0, 237.0);
 constant float3 RP_SURFACE_L = float3(255.0, 250.0, 243.0);
@@ -121,7 +126,11 @@ fragment float4 wallpaperMain(WallpaperVertexOut       in   [[stage_in]],
     // ---- grid geometry (uOrigin / uSp / uMaxR) ----
     // No DPR in the contract; work directly in drawable pixels (DPR = 1).
     float2 res = u.resolution;
-    float  sp  = P.spacing;
+    // Contract v2: _reserved.y = pixels per point (quality tier × backing scale).
+    // Spacing is defined in points, so dot pitch stays visually constant when the
+    // reduced tier lowers the drawable resolution (and on Retina).
+    float  pxPerPt = (u.version >= 2 && u._reserved.y > 0.0) ? u._reserved.y : 1.0;
+    float  sp  = P.spacing * pxPerPt;
     float  maxR = sp * 0.46;
     float  cols = ceil(res.x / sp);
     float  rows = ceil(res.y / sp);
