@@ -1,11 +1,11 @@
-// worldmap — Metal fragment for Puddle's texture (shader) wallpaper renderer.
+// globe — Metal fragment for Puddle's texture (shader) wallpaper renderer.
 // Fragment-only: Puddle prepends the contract preamble (WallpaperUniforms /
 // WallpaperVertexOut / wallpaperVertex) per docs/wallpaper-source-contract.md.
 //
-// Coastline line art on an equirectangular world map, with lights running
-// along the outlines. Single pass, no feedback texture: the lights are a
-// closed form of the baked arc-length phase and the clock, so they neither
-// drift nor change length when the quality tier changes the frame rate.
+// The worldmap coastlines wrapped on a globe: same baked field, same lights
+// running along the outlines, projected onto a sphere that turns toward the
+// pointer. **Requires contract v3** (Puddle 2.19+) for `u.cursor`; on an older
+// Puddle the preamble has no such field and the shader will not compile.
 //
 // Inputs (gapul convention, configs/wallpaper/inputs):
 //   user[0] = focused workspace ('0'..'9') -> palette
@@ -8219,34 +8219,32 @@ constant uint PHASE_TABLE[32768] = {
 };
 
 
-// ---- geometry ------------------------------------------------------------
-
-// Latitude window of the drawn map. Antarctica (below -60) is cropped: in an
-// equirectangular projection it is a huge distorted blob that dominates the
-// frame, and cropping also gives a 2.5:1 map that sits well on 16:9 / 16:10.
-constant float LAT_TOP  =  84.0;
-constant float LAT_BOT  = -60.0;
-constant float MAP_FILL = 0.94;   // fraction of the screen the map may occupy
-
 // ---- tuning (sizes in points, scaled by pixels-per-point) ----------------
-constant float LINE_W   = 1.15;   // coastline stroke width
-constant float GLOW_R   = 11.0;   // coastline halo falloff (stay inside SDF_RANGE)
+constant float GLOBE_R  = 0.40;   // sphere radius as a fraction of min(width, height)
+constant float TILT     = 0.36;   // axial tilt toward the viewer, radians
+constant float SPIN_V   = 0.042;  // idle rotation, turns per second
+constant float LINE_W   = 0.32;   // coastline stroke half-width, in table cells
+constant float HALO_R   = 3.0;    // coastline halo falloff, in table cells
 constant float PULSE_V  = 0.28;   // travelling light speed, cycles per second
 constant float PULSE_V2 = 0.44;   // speed of the second, denser train
 constant float TAIL_K   = 12.0;   // tail falloff; larger = shorter comet
-constant float LIGHT_W  = 3.0;    // light half-width across the coast
+constant float LIGHT_W  = 0.9;    // light half-width across the coast, in cells
 constant float GRAT_LON = 30.0;   // graticule spacing, degrees
 constant float GRAT_LAT = 20.0;
+constant float REACH    = 1.35;   // cursor influence radius, in sphere radii
+constant float PULL     = 0.55;   // how far the cursor can turn the globe, turns
 
 // ---- palette -------------------------------------------------------------
 // Rosé Pine (dark) / Rosé Pine Dawn (light), same per-workspace hues as
 // dotmatrix.metal so a workspace keeps its identity across wallpapers.
 struct Pal {
-    float3 bg;      // ocean / page
+    float3 bg;      // space / page
+    float3 ocean;   // sphere face
     float3 land;    // land fill
     float3 line;    // coastline stroke
     float3 spark;   // travelling light
     float3 grat;    // graticule
+    float3 rim;     // limb glow
 };
 
 constant float3 WS_DARK[10] = {
@@ -8278,28 +8276,29 @@ static inline Pal palette(int ws, bool light) {
     Pal p;
     if (light) {
         float3 a = WS_LIGHT[ws] / 255.0;
-        p.bg    = float3(250, 244, 237) / 255.0;                       // Dawn base
-        p.land  = mix(float3(255, 250, 243) / 255.0, a, 0.10);
+        p.bg    = float3(250, 244, 237) / 255.0;                  // Dawn base
+        p.ocean = mix(float3(255, 250, 243) / 255.0, a, 0.07);
+        p.land  = float3(255, 250, 243) / 255.0;
         p.line  = mix(a, float3( 87,  82, 121) / 255.0, 0.25);
-        // On paper a pulse has to be a saturated, high-chroma hue: a darker
-        // version of the stroke colour just reads as a smudge.
-        p.spark = mix(a, a / max3(a.r, a.g, a.b), 0.75);
-        p.grat  = mix(p.bg, float3(152, 147, 165) / 255.0, 0.30);
+        p.spark = mix(a, a / max3(a.r, a.g, a.b), 0.75);          // high chroma: ink reads, mud doesn't
+        p.grat  = mix(p.ocean, float3(152, 147, 165) / 255.0, 0.35);
+        p.rim   = mix(p.bg, a, 0.30);
     } else {
         float3 a = WS_DARK[ws] / 255.0;
-        p.bg    = float3( 21,  19,  32) / 255.0;                       // Rosé Pine base
-        p.land  = mix(float3( 31,  29,  46) / 255.0, a, 0.05);
-        p.line  = mix(a, float3(224, 222, 244) / 255.0, 0.10);
+        p.bg    = float3( 16,  15,  25) / 255.0;
+        p.ocean = float3( 26,  24,  38) / 255.0;
+        p.land  = mix(float3( 32,  30,  47) / 255.0, a, 0.08);
+        p.line  = a * 0.85;
         p.spark = mix(a, float3(1.0), 0.35);
-        p.grat  = mix(p.bg, float3(110, 106, 134) / 255.0, 0.35);
+        p.grat  = mix(p.ocean, float3(110, 106, 134) / 255.0, 0.40);
+        p.rim   = a;
     }
     return p;
 }
 
 // ---- table lookups -------------------------------------------------------
 // Table cell (x, y): x = longitude, 0..SDF_W, wrapping; y = latitude, row 0 at
-// +90 deg. Cells are square in both axes, which is what lets the same distance
-// scale work horizontally and vertically.
+// +90 deg.
 static inline uint tableByte(constant uint *table, int x, int y) {
     x = ((x % int(SDF_W)) + int(SDF_W)) % int(SDF_W);
     y = clamp(y, 0, int(SDF_H) - 1);
@@ -8322,14 +8321,12 @@ static inline float sdfSample(float2 p) {
                mix(sdfTexel(x0, y0 + 1), sdfTexel(x0 + 1, y0 + 1), f.x), f.y);
 }
 
-// Cyclic arc length along the nearest coastline, in cycles.
 static inline float phaseTexel(int x, int y) {
     return float(tableByte(PHASE_TABLE, x, y)) * (1.0 / 256.0);
 }
 
-// The phase wraps at 1.0, so the four corners are unwrapped onto a common
-// branch before interpolating — otherwise every contour would carry a
-// permanent seam where 0.99 meets 0.01.
+// The phase wraps at 1.0, so the corners are unwrapped onto a common branch
+// before interpolating — otherwise every contour carries a permanent seam.
 static inline float phaseSample(float2 p) {
     float2 g = p - 0.5;
     float2 i = floor(g);
@@ -8342,7 +8339,6 @@ static inline float phaseSample(float2 p) {
     return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
 }
 
-
 fragment float4 wallpaperMain(WallpaperVertexOut          in   [[stage_in]],
                               constant WallpaperUniforms& u    [[buffer(0)]],
                               constant float*             user [[buffer(1)]])
@@ -8354,88 +8350,123 @@ fragment float4 wallpaperMain(WallpaperVertexOut          in   [[stage_in]],
     int    ws      = (u.userCount > 0) ? clamp(int(user[0]), 0, 9) : 1;
     Pal    P       = palette(ws, light);
 
-    // ---- screen -> map -> table ----
-    float latSpan = LAT_TOP - LAT_BOT;
-    float aspect  = 360.0 / latSpan;              // map width / height
-    float mapW = min(res.x, res.y * aspect) * MAP_FILL;
-    float mapH = mapW / aspect;
-    float2 mp = (px - (res - float2(mapW, mapH)) * 0.5) / float2(mapW, mapH);
-    float cellPx = mapW / float(SDF_W);
-    float2 tc = float2(mp.x * float(SDF_W),
-                       (90.0 - (LAT_TOP - mp.y * latSpan)) / 180.0 * float(SDF_H));
+    float R = min(res.x, res.y) * GLOBE_R;
+    float2 centre = res * 0.5;
+    float2 sp = (px - centre) / R;                // sphere units, y still down
+    float rr = dot(sp, sp);
 
-    float onMap = step(0.0, mp.x) * step(mp.x, 1.0) * step(0.0, mp.y) * step(mp.y, 1.0);
-    float d = sdfSample(tc) * cellPx;             // pixels, negative on land
-    float dAbs = abs(d);
+    // ---- the cursor turns the globe (contract v3; without it, it just spins) ----
+    // Closed form in (time, cursor): Puddle smooths the cursor itself, so the
+    // globe eases after the pointer instead of snapping to it.
+    float2 cur = (u.version >= 3) ? (u.cursor - centre) / R : float2(0.0);
+    float near = 1.0 - smoothstep(REACH * 0.4, REACH, length(cur));
+    float2 pull = clamp(cur, -1.5, 1.5) * near * PULL;
 
-    // ---- base map ----
+    float spin = (u.time * SPIN_V + pull.x) * 6.283185307;
+    float tilt = TILT + pull.y * 1.6;
+    tilt = clamp(tilt, -1.2, 1.2);
+
     float3 col = P.bg;
 
-    // graticule, under everything
-    float degPerPx = 360.0 / mapW;
-    float lon = mp.x * 360.0 - 180.0;
-    float lat = LAT_TOP - mp.y * latSpan;
-    float gw = 0.9 * pxPerPt;
-    float gLon = 1.0 - smoothstep(0.0, gw, abs(fract(lon / GRAT_LON + 0.5) - 0.5) * GRAT_LON / degPerPx);
-    float gLat = 1.0 - smoothstep(0.0, gw, abs(fract(lat / GRAT_LAT + 0.5) - 0.5) * GRAT_LAT / degPerPx);
-    col = mix(col, P.grat, max(gLon, gLat) * 0.5 * onMap);
+    // faint stars / paper grain outside the globe, and the limb glow
+    float limb = exp(-max(0.0, sqrt(max(rr, 0.0)) - 1.0) * 34.0);
+    col = mix(col, P.rim, limb * (light ? 0.14 : 0.30) * step(1.0, rr));
 
-    // land fill, coastline halo, coastline stroke
-    float landMask = (1.0 - smoothstep(-pxPerPt, pxPerPt, d)) * onMap;
-    col = mix(col, P.land, landMask);
-    float halo = exp(-dAbs / (GLOW_R * pxPerPt)) * onMap;
-    col = mix(col, P.line, halo * (light ? 0.10 : 0.16));
-    float lw = LINE_W * pxPerPt;
-    float line = (1.0 - smoothstep(lw, lw + 1.2 * pxPerPt, dAbs)) * onMap;
-    col = mix(col, P.line, line * (light ? 0.85 : 0.90));
+    if (rr < 1.0) {
+        // Point on the unit sphere facing the viewer, then rotated into the
+        // globe's frame: tilt about x, spin about y.
+        float3 v = float3(sp.x, -sp.y, sqrt(1.0 - rr));
+        float ct = cos(tilt), st = sin(tilt);
+        float3 q = float3(v.x, ct * v.y + st * v.z, -st * v.y + ct * v.z);
 
-    // ---- lights running along the outline ----
-    // The baked phase is arc length along the nearest coastline in cycles, so
-    // `fract(phase - speed * time)` is a light's position within its comet
-    // (1 = head, 0 = end of tail) and the whole train slides along the coast as
-    // time passes. Closed form: no feedback buffer, no drift, identical at any
-    // frame rate. The second train runs at twice the density and a different
-    // speed, so the two drift through each other instead of marching in step.
-    // Only integer multiples of the phase stay continuous around a contour.
-    float glow = 0.0;
-    if (dAbs < 6.0 * LIGHT_W * pxPerPt && onMap > 0.5) {
-        float ph = phaseSample(tc);
-        float a = exp(-(1.0 - fract(ph        - u.time * PULSE_V )) * TAIL_K);
-        float b = exp(-(1.0 - fract(ph * 2.0  - u.time * PULSE_V2)) * TAIL_K * 1.5);
-        // Curvature gate. The laplacian of a distance field is the reciprocal
-        // radius of curvature, so this fades the lights out on specks and
-        // shredded archipelagos (which would otherwise flicker like a starfield,
-        // one light per islet) and keeps them on coastlines worth following.
+        float lat = asin(clamp(q.y, -1.0, 1.0)) * 57.2957795;
+        float lon = atan2(q.x, q.z) * 57.2957795 + spin * 57.2957795;
+        float2 tc = float2(fract(lon / 360.0 + 0.5) * float(SDF_W),
+                           (90.0 - lat) / 180.0 * float(SDF_H));
+
+        // Pixels per table cell, from the derivative of the *surface point*
+        // rather than of the sampled field: the sphere position is smooth, so
+        // this scale has none of the quantisation noise the field carries, and
+        // it shrinks correctly as the surface tilts away toward the limb.
+        // One cell is 360/512 = 180/256 degrees, i.e. 0.01227 rad of arc.
+        float arcPerPx = max(length(dfdx(q)), length(dfdy(q)));
+        float cellPx = 0.0122718 / max(arcPerPx, 1e-6);
+
+        float sd = sdfSample(tc);
+        float dpx = sd * cellPx;                  // signed distance in pixels
+        float dAbs = abs(dpx);
+        // Below a couple of pixels per cell the coastline is past what the
+        // table can resolve, so soften the edges rather than let them alias.
+        float aa = max(1.0 * pxPerPt, 0.9 * cellPx);
+        // Curvature reads as shading on a dark globe; on paper the same ramp
+        // just turns the sphere grey, so it stays nearly flat there.
+        float shade = light ? (0.90 + 0.10 * v.z) : (0.35 + 0.65 * v.z);
+
+        col = mix(col, P.ocean * shade, 1.0);
+
+        // graticule. Degrees per pixel comes from the same arc scale, with the
+        // meridians converging as cos(lat).
+        float degPerPx = arcPerPx * 57.2957795;
+        float gw = 1.1 * pxPerPt * degPerPx;
+        float dLon = abs(fract(lon / GRAT_LON + 0.5) - 0.5) * GRAT_LON * max(cos(lat / 57.2957795), 0.05);
+        float dLat = abs(fract(lat / GRAT_LAT + 0.5) - 0.5) * GRAT_LAT;
+        float grat = max(1.0 - smoothstep(0.0, gw, dLon),
+                         1.0 - smoothstep(0.0, gw, dLat));
+        col = mix(col, P.grat * shade, grat * 0.55);
+
+        // Curvature gate: the laplacian of a distance field is the reciprocal
+        // radius of curvature, so this measures how tight a feature is. Specks
+        // smaller than the table can draw get faded out instead of turning into
+        // a field of identical dots, and the lights use the same gate.
         const float e = 2.0;
         float lap = (sdfSample(tc + float2(e, 0)) + sdfSample(tc - float2(e, 0))
                    + sdfSample(tc + float2(0, e)) + sdfSample(tc - float2(0, e))
                    - 4.0 * sdfSample(tc)) / (e * e);
-        float big = 1.0 - smoothstep(0.10, 0.30, abs(lap));
-        // Away from the coast the phase is the nearest coast point's, which
-        // fans into wedges where two stretches of coast meet. Fading the bloom
-        // out well before that distance keeps it a halo instead of star rays.
-        float across = exp(-dAbs / (LIGHT_W * pxPerPt))
-                     * (1.0 - smoothstep(2.5 * LIGHT_W * pxPerPt, 5.0 * LIGHT_W * pxPerPt, dAbs));
-        glow = (a + 0.35 * b) * big * across;
-    }
+        float big = 1.0 - smoothstep(0.06, 0.20, abs(lap));
 
-    float core = smoothstep(0.55, 1.0, glow);
-    if (light) {
-        // Additive light is invisible on paper: the pulse reads as ink instead,
-        // deepening and saturating the stroke as it passes.
-        // The bloom does no work on paper, so the tail needs lifting to stay
-        // as long as it looks in the dark palette.
-        float g = pow(clamp(glow, 0.0, 1.0), 0.65);
-        col = mix(col, P.spark, clamp(g * 1.15, 0.0, 1.0));
-        col = mix(col, mix(P.spark, float3(1.0), 0.55), core * 0.85);
-    } else {
-        col += P.spark * glow * 0.95;
-        col = mix(col, float3(1.0), core * 0.30);
-    }
+        // land, coastline halo, coastline stroke
+        float landMask = 1.0 - smoothstep(-aa, aa, dpx);
+        col = mix(col, P.land * shade, landMask);
+        col = mix(col, P.line, exp(-dAbs / (HALO_R * cellPx)) * big * (light ? 0.12 : 0.22) * shade);
+        float lw = max(0.5 * pxPerPt, LINE_W * cellPx);
+        float line = 1.0 - smoothstep(lw, lw + aa, dAbs);
+        col = mix(col, P.line * mix(0.55, 1.0, shade),
+                  line * mix(0.25, 1.0, big) * (light ? 0.90 : 0.80));
 
-    // vignette, so the centre of the map reads first
-    float2 q = (px / res - 0.5) * float2(res.x / res.y, 1.0);
-    col *= 1.0 - 0.18 * smoothstep(0.35, 0.95, length(q)) * (light ? 0.4 : 1.0);
+        // ---- lights running along the outline ----
+        float glow = 0.0;
+        if (dAbs < 6.0 * LIGHT_W * cellPx) {
+            float ph = phaseSample(tc);
+            float a = exp(-(1.0 - fract(ph       - u.time * PULSE_V )) * TAIL_K);
+            float b = exp(-(1.0 - fract(ph * 2.0 - u.time * PULSE_V2)) * TAIL_K * 1.5);
+            float lwPx = LIGHT_W * cellPx;
+            float across = exp(-dAbs / lwPx)
+                         * (1.0 - smoothstep(2.5 * lwPx, 5.0 * lwPx, dAbs));
+            // Fade the lights out at the limb, where a whole cycle collapses
+            // into a couple of pixels and would just strobe.
+            glow = (a + 0.35 * b) * big * across * smoothstep(0.10, 0.35, v.z);
+        }
+
+        float core = smoothstep(0.55, 1.0, glow);
+        if (light) {
+            float g = pow(clamp(glow, 0.0, 1.0), 0.65);
+            col = mix(col, P.spark, clamp(g * 1.15, 0.0, 1.0));
+            col = mix(col, mix(P.spark, float3(1.0), 0.55), core * 0.85);
+        } else {
+            col += P.spark * glow * 1.5;
+            col = mix(col, float3(1.0), core * 0.45);
+        }
+
+        // the cursor leaves a soft highlight on the surface it is turning
+        if (u.version >= 3) {
+            float touch = exp(-length(sp - cur) * 3.0) * near;
+            col = light ? mix(col, P.spark, touch * 0.12)
+                        : col + P.rim * touch * 0.10;
+        }
+
+        // terminator-ish darkening at the very edge of the disc
+        col *= 1.0 - (light ? 0.10 : 0.45) * smoothstep(0.86, 1.0, sqrt(rr));
+    }
 
     return float4(col, 1.0);
 }

@@ -13,7 +13,8 @@ packed 4 cells per uint32 (x-major, little end first).
     uv run --with numpy,scipy,pillow,scikit-image python bake_world_sdf.py \
         ne_50m_land.geojson tables.txt
 
-Then paste tables.txt above the shader body (see the header of worldmap.metal).
+Then splice tables.txt into the shader bodies: tools/assemble.sh replaces the
+`// __TABLES__` marker line with it.
 """
 import json
 import sys
