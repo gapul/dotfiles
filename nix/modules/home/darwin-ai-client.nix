@@ -10,9 +10,14 @@
 }:
 let
   dotfiles = "${config.home.homeDirectory}/.dotfiles";
+  # force: these paths already exist as plain files that predate this module, and a
+  # plain `nh home switch` aborts on "would be clobbered". The bodies moved into the repo unchanged,
+  # so overwriting them is exactly the intent.
   client = name: {
-    ".local/bin/${name}".source =
-      config.lib.file.mkOutOfStoreSymlink "${dotfiles}/configs/macmini/client/${name}";
+    ".local/bin/${name}" = {
+      force = true;
+      source = config.lib.file.mkOutOfStoreSymlink "${dotfiles}/configs/macmini/client/${name}";
+    };
   };
 in
 {
@@ -31,8 +36,10 @@ in
       # Generic agent notifier: Claude Code / Codex hooks call it by absolute path, so it is not
       # macmini-specific and keeps its ~/.local/bin location.
       {
-        ".local/bin/agent-notify".source =
-          config.lib.file.mkOutOfStoreSymlink "${dotfiles}/configs/cli/bin/agent-notify";
+        ".local/bin/agent-notify" = {
+          force = true;
+          source = config.lib.file.mkOutOfStoreSymlink "${dotfiles}/configs/cli/bin/agent-notify";
+        };
       }
     ]
   );
