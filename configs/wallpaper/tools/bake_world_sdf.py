@@ -118,7 +118,11 @@ def bake_sdf(land, cs):
     chord, _ = tree.query(grid_vectors(SW, SH), workers=-1)
     arc = 2.0 * np.arcsin(np.clip(chord / 2.0, 0.0, 1.0))     # radians
     cells = arc / (2.0 * np.pi / SW)
-    inside = land.reshape(SH, SS, SW, SS).mean(axis=(1, 3)) > 0.5
+    # The sign has to come from the raster at the cell centre, not from a block
+    # average: the magnitude is an exact distance to the coastline, so a sign
+    # boundary that sits half a cell away from it makes the reconstructed field
+    # jump by a whole cell there, which draws hard square patches along coasts.
+    inside = land[SS // 2::SS, SS // 2::SS]
     return np.where(inside, -1.0, 1.0) * cells.reshape(SH, SW)
 
 
