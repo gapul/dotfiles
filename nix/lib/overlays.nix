@@ -9,14 +9,9 @@
 # test via pytestCheckHook's disabledTests (other tests and the build are preserved.
 # doCheck=false can't stop pytestCheckPhase and causes exit 127 in other environments, so it's not viable).
 _final: prev: {
-  # tailscale 1.98.9: upstream nixpkgs (nixos-26.05) has a wrong vendorHash, so the
-  # go-modules FOD can't build due to a hash mismatch:
-  #   specified sha256-mbxLXR2… / got sha256-Sd2iLJ7…
-  # Override with the correct value (go-modules is platform-independent). Can be removed once upstream is fixed.
-  # tailscale is used only on nixos-laptop (macOS uses Tailscale.app).
-  tailscale = prev.tailscale.overrideAttrs (_: {
-    vendorHash = "sha256-Sd2iLJ7eDfDYdIRuW4xuiKgzhQWJWGAnz97FJWrVRlE=";
-  });
+  # (tailscale 1.98.9's vendorHash override was removed 2026-08-07: nixpkgs bumped
+  # tailscale to 1.98.10 with a corrected hash, and the stale override itself became
+  # the mismatch — "specified" in the CI error was our pinned value.)
 
   pre-commit = prev.pre-commit.overridePythonAttrs (o: {
     disabledTests = (o.disabledTests or [ ]) ++ [
