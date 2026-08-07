@@ -1,12 +1,14 @@
 #!/bin/bash
 # macmini ローカルAIスタック bootstrap(まっさら or 再構築用)
-# 前提: darwin-rebuild 済(brew: ffmpeg/uv/aria2/socat/container、Ollama、SSH/sleep設定)
+# 前提: darwin-rebuild 済(brew: ffmpeg/aria2/socat/container、nix: uv、Ollama、SSH/sleep設定)
 # 使い方: bash configs/macmini/bootstrap.sh [--models] [--venvs] [--scripts] [--services]
 #         引数なし = 全部
 set -u
 eval "$(/opt/homebrew/bin/brew shellenv)"
 H="$HOME"
-UV=/opt/homebrew/bin/uv
+# uv は nix (Home Manager profile) 管理。brew shellenv の後に置いて nix を優先させる。
+export PATH="$H/.local/state/nix/profile/bin:$PATH"
+UV=uv
 say(){ echo -e "\n=== $* ==="; }
 
 do_all=1; [ "$#" -gt 0 ] && do_all=0

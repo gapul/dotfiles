@@ -81,6 +81,21 @@ in
       eval "$(/opt/homebrew/bin/brew shellenv)"
     fi
 
+    # Package manager priority (nix > homebrew) applied to PATH itself: brew shellenv prepends
+    # /opt/homebrew/bin, which used to put brew ahead of the nix profile, so anything present on both
+    # sides silently resolved to brew. Re-prepend the nix profiles after it. typeset -U keeps the
+    # first occurrence and drops the later duplicates, so brew stays available, just behind nix.
+    # (Only zsh is covered. Non-shell contexts — launchd agents / GUI apps — still follow
+    #  home.sessionPath, where brew comes first. The invariant test in tests/config-invariants.nix
+    #  is what actually keeps duplicates from existing in the first place.)
+    typeset -U path PATH
+    path=(
+      "$HOME/.local/state/nix/profile/bin"
+      /run/current-system/sw/bin
+      /nix/var/nix/profiles/default/bin
+      $path
+    )
+
     # Bitwarden SSH agent: prefer the socket Desktop (direct-DL build) creates when enabled.
     # Keys are stored in the Bitwarden Vault; Desktop approves each connection (Touch ID).
     # To avoid breaking when Bitwarden isn't running/enabled, fall back to launchd default when the socket is absent.
