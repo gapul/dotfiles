@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# agent-notify — エージェント（Claude Code / Codex 等）の
+# タスク完了・入力待ちを通知する共通スクリプト。
+#
+# usage: agent-notify <title> <message>
+#   - zellij のタブ/ペインをハイライトさせるためベルを鳴らす
+#   - macOS バナー通知（osascript / display notification）
+#
+# 注: macOS 26 (Tahoe) では terminal-notifier(旧 NSUserNotification) が
+#     表示されないため osascript を使用する。
+set -euo pipefail
+
+title="${1:-Agent}"
+message="${2:-完了しました}"
+
+# ベル: hook はサブプロセスなので制御端末 /dev/tty に直接書き込む。
+# zellij はバックグラウンドペインのベルでタブをハイライトする。
+# 制御端末が無い環境（cron / テスト等）では静かに無視する。
+{ printf '\a' > /dev/tty; } 2>/dev/null || true
+
+# macOS バナー通知。title/message は argv 経由で AppleScript に渡し、
+# 引用符・バックスラッシュのエスケープ問題を回避する。
+osascript - "$title" "$message" >/dev/null 2>&1 <<'APPLESCRIPT' || true
+on run argv
+  display notification (item 2 of argv) with title (item 1 of argv)
+end run
+APPLESCRIPT

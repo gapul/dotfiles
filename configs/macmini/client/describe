@@ -1,0 +1,18 @@
+#!/bin/zsh
+# 母艦→macmini 透過・画像理解(Qwen3-VL)。ローカル画像を渡すだけで説明/質問。
+# 使い方: describe <画像> ["プロンプト"]
+emulate -L zsh
+img="$1"; prompt="$2"
+if [[ -z "$img" || ! -f "$img" ]]; then
+  echo "使い方: describe <画像> [\"プロンプト\"]"; exit 1
+fi
+ext="${img:e}"; tag="desc_$$"; rf="/tmp/${tag}.${ext}"
+retry() { local i; for i in 1 2 3; do "$@" && return 0; sleep 2; done; return 1; }
+retry scp -q "$img" "macmini:$rf" || { echo "scp失敗"; exit 1; }
+if [[ -n "$prompt" ]]; then
+  pb64="$(printf '%s' "$prompt" | base64)"
+  retry ssh macmini "p=\$(echo '$pb64' | base64 -d); ~/.local/bin/describe $rf \"\$p\""
+else
+  retry ssh macmini "~/.local/bin/describe $rf"
+fi
+ssh macmini "rm -f $rf" >/dev/null 2>&1

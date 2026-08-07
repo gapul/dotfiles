@@ -20,6 +20,7 @@ in
     ../modules/home/darwin-chrome.nix
     ../modules/home/darwin-services.nix
     ../modules/home/darwin-apps.nix
+    ../modules/home/darwin-ai-client.nix
   ];
 
   # macOS-specific home-manager config
@@ -140,6 +141,27 @@ in
     unstablePkgs.fritzing # PCB/circuit design CAD (official DL is paid. for the ESP32 project). cached, so instant
     unstablePkgs.ardour # DAW (official binary is pay-what-you-want. free via source build). cached, so instant
     unstablePkgs.aseprite # pixel-art editor (official $20. source-available/self-built is free full)
+
+    # ─── CLI migrated from Homebrew (stage 4: mac CLI that had no reason to stay on brew) ───
+    # All of these exist in nixpkgs for aarch64-darwin and substitute from the cache, and none of
+    # them needs a brew service / tap / keg. See hosts/darwin.nix's brews for what stays on brew and why.
+    sox # audio processing (rec / play / sox / soxi)
+    exiftool # strip metadata (GPS/device info) from images/PDFs before sharing
+    blueutil # Bluetooth CLI
+    duti # file associations
+    scrcpy # Android screen mirroring
+    swi-prolog # Prolog (functional/logic programming lab. nvim ftplugin expects swipl on PATH)
+    tcpdump # packet capture (live capture needs /dev/bpf perms, which is a permission thing, not a package thing)
+    # Moved Xcode off masApps to xcodes (2026-08-02). mas's App Store delivery is a single
+    # connection and can't be parallelized; xcodes + aria2 downloads the .xip in up to 16
+    # parallel chunks (the .xip is a full ~7-10GB redownload every update, monthly-ish), and
+    # xcodes gives explicit version control if a pinned build is ever needed. Latest-only for
+    # now: `xcodes install --latest` from `just upgrade` keeps it current. Apple ID login is
+    # required to download; credentials come from sops (xcodes/apple_id, xcodes/password) and
+    # 2FA is prompted interactively on first auth / when the cached Apple session expires.
+    # aria2 (which xcodes picks up from PATH) is declared in home/workstation.nix.
+    xcodes # Xcode version manager (download/select/switch, replaces mas for Xcode)
+    gnupg # GPG (git signing is SSH-based, so this is only for ad-hoc verify/decrypt)
   ];
 
   home.file.".config/ghostty" = {

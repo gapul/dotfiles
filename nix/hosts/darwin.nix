@@ -103,19 +103,29 @@
 
     # brew leaves
     # (starship / fzf / atuin / pipx excluded, migrated to home-manager / uv management)
+    #
+    # ─── Package manager priority: nix > homebrew > anything else ───
+    # Nix is the default. A formula only belongs here if it has one of these reasons, and the reason
+    # must be written on its line — an entry with no reason is a migration candidate, not a decision:
+    #   (a) not in nixpkgs at all, or nixpkgs marks it unsupported/broken on aarch64-darwin
+    #   (b) it needs a brew service / root launchd daemon, or a keg-only toolchain
+    #   (c) it's the pair of a cask (same version has to come from the same source)
+    # GUI apps stay in casks: nixpkgs darwin builds are mostly unbundled/unsigned and don't get
+    # Spotlight, TCC prompts or Launch Services registration.
+    # Caveat: /opt/homebrew/bin sits ahead of the nix profile in PATH (brew shellenv), so if the same
+    # binary exists on both sides brew wins. Don't leave duplicates around.
     brews = [
       # ─── Languages / Package managers ───
-      # deno: used as the runtime for nvim skkeleton(denops) + for decoding yt-dlp's JS challenge.
-      # Currently a dependency of mpv/yt-dlp, but removing those would orphan and break skkeleton, so declare it explicitly.
+      # (b) already pulled in as an mpv/yt-dlp dependency, so a nix deno would just be a second copy.
+      # Declared explicitly so removing mpv doesn't orphan it and break nvim skkeleton (denops runtime).
       "deno"
-      "swi-prolog" # Prolog (functional/logic programming lab, sessions 10-12)
 
       # ─── Keyboard firmware ───
-      "qmk/qmk/qmk" # QMK CLI (Keyball firmware build/flash)
-      "osx-cross/avr/avr-gcc@12" # AVR toolchain for Keyball (keg-only)
+      "qmk/qmk/qmk" # (b) has to match the keg-only avr toolchain below; nixpkgs qmk pulls its own
+      "osx-cross/avr/avr-gcc@12" # (b) keg-only AVR toolchain for Keyball
 
       # ─── wine helpers ───
-      "winetricks" # helper for installing DLLs/components into wine prefix
+      "winetricks" # (c) drives the wine-stable cask's prefix; nix winetricks would pull nix wine
 
       # ─── TUI utilities ───
       # TODO(concord): held at 2.4.8 via `brew pin chojs23/tap/concord`. 2.5.0+ can't install on
@@ -126,57 +136,43 @@
       # `brew pin chojs23/tap/concord` re-run. Retry `brew unpin ... && brew upgrade concord` after
       # new releases; real fix is a bug report to axodotdev/cargo-dist. See PR #119 for the
       # `just maintain` hardening that keeps this pin from aborting upgrades.
-      "chojs23/tap/concord" # Discord TUI (images/threads/voice support)
-      "herdr" # AI coding agent multiplexer
-      "wifitui" # wifi (kept on brew since nixpkgs is Linux-only)
+      "chojs23/tap/concord" # (a) Discord TUI. tap-only, not in nixpkgs
+      "herdr" # (a) AI coding agent multiplexer. not in nixpkgs
+      "wifitui" # (a) wifi TUI. nixpkgs marks it Linux-only
 
       # ─── Network / Download / VPN ───
-      "tailscale"
-      "tor"
-      "wireguard-tools" # wg-quick + wireguard-go (pulled in automatically) are the VPN engine
-      "cloudflared" # Cloudflare tunnel
-      "nextdns"
-      "scrcpy" # Android mirror
-      "tcpdump"
-      "gnupg" # GPG (git commit signing / encrypted mail. sops uses age but GPG is separate)
+      # These are all daemons: brew wires up the launchd plist (`brew services`) and the mac
+      # expects one system-wide instance, so a per-user nix copy would be the wrong shape.
+      "tailscale" # (b,c) tailnet daemon, paired with the tailscale-app cask
+      "tor" # (b) SOCKS daemon via brew services
+      "wireguard-tools" # (b) wg-quick + wireguard-go run as a root VPN engine
+      "cloudflared" # (b) Cloudflare tunnel daemon
+      "nextdns" # (b) DNS-over-HTTPS daemon (installs its own resolver config)
 
       # ─── Documents / Fonts / Media ───
-      "gstreamer"
-      "mpv"
-      "sox" # audio processing (rec / play / sox / soxi)
-      "exiftool" # strip metadata (GPS/device info) from images/PDFs before sharing
+      "gstreamer" # (a) nixpkgs gst_all_1 doesn't support aarch64-darwin
+      "mpv" # (a) nixpkgs mpv doesn't support aarch64-darwin
 
       # ─── macOS specific CLI ───
-      "blueutil" # Bluetooth
-      "media-control" # media keys
-      "terminal-notifier"
-      "duti" # file associations
-      "displayplacer" # sketchybar multi-display (promoted to homebrew/core, same v1.4.0)
+      "media-control" # (a) media keys. not in nixpkgs
+      "displayplacer" # (a) sketchybar multi-display. not in nixpkgs
 
-      # ─── Xcode toolchain ───
-      # Moved Xcode off masApps to xcodes (2026-08-02). mas's App Store delivery is a single
-      # connection and can't be parallelized; xcodes + aria2 downloads the .xip in up to 16
-      # parallel chunks (the .xip is a full ~7-10GB redownload every update, monthly-ish), and
-      # xcodes gives explicit version control if a pinned build is ever needed. Latest-only for
-      # now: `xcodes install --latest` from `just upgrade` keeps it current. Apple ID login is
-      # required to download; credentials come from sops (xcodes/apple_id, xcodes/password) and
-      # 2FA is prompted interactively on first auth / when the cached Apple session expires.
-      "xcodes" # Xcode version manager (download/select/switch, replaces mas for Xcode)
-      "aria2" # parallel (up to 16-connection) downloader; xcodes auto-uses it for the .xip
+      # (Xcode itself is managed by xcodes, which moved to nix — see home/darwin.nix. aria2, which
+      #  xcodes uses for the parallel .xip download, was already declared in home/workstation.nix.)
 
       # ─── Status bar / Window decoration (felixkratz tap) ───
-      "felixkratz/formulae/sketchybar"
-      "felixkratz/formulae/borders" # launched via launchd agent (home/darwin-chrome.nix); OmniWM has no exec action
+      "felixkratz/formulae/sketchybar" # (b) runs as a brew service (homebrew.mxcl.sketchybar)
+      "felixkratz/formulae/borders" # (a) tap-only. launched via launchd agent (home/darwin-chrome.nix); OmniWM has no exec action
 
       # ─── Transcription / other 3rd-party tap brews ───
-      "finnvoor/tools/yap" # Japanese transcription
+      "finnvoor/tools/yap" # (a) Japanese transcription. tap-only, not in nixpkgs
 
       # ─── Creative / graphics (source-build formula) ───
       # ArmorPaint (3D PBR texture painting / Substance Painter alternative). Official binary is paid €16
       # but self-build from zlib source for free full version. Current main is the iron/Kore self-contained
       # toolchain (no V8/haxe/node, Xcode only). It's a GUI app but a formula (source build), so it's on the brews side.
       # The .app lands in $(brew --prefix)/opt/armorpaint/ArmorPaint.app (not /Applications, unlike a cask).
-      "gapul/armorpaint/armorpaint"
+      "gapul/armorpaint/armorpaint" # (a) self-made tap, not in nixpkgs
     ];
 
     # GUI applications (~100)

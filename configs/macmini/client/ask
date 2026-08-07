@@ -1,0 +1,12 @@
+#!/bin/zsh
+# 母艦→macmini 透過・ローカルLLM質問。
+# 使い方: ask "質問文" [jp|coder|unc]
+#   jp(既定)=gemma4:12b-it-qat(日本語) / coder=qwen2.5-coder:14b / unc=無検閲
+# 標準入力からも可: echo "長文" | ask - coder
+emulate -L zsh
+prompt="$1"; which="${2:-jp}"
+if [[ "$prompt" == "-" || -z "$prompt" ]]; then prompt="$(cat)"; fi
+if [[ -z "$prompt" ]]; then echo "使い方: ask \"質問\" [jp|coder|unc]"; exit 1; fi
+retry() { local i; for i in 1 2 3; do "$@" && return 0; sleep 2; done; return 1; }
+b64="$(printf '%s' "$prompt" | base64)"
+retry ssh macmini "p=\$(echo '$b64' | base64 -d); ~/.local/bin/ask \"\$p\" $which"

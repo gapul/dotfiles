@@ -12,7 +12,13 @@ let
 
   packageNames = map lib.getName home.home.packages;
   caskNames = map (cask: if builtins.isString cask then cask else cask.name) darwin.homebrew.casks;
+  # "felixkratz/formulae/sketchybar" -> "sketchybar"
+  brewNames = map (
+    brew: lib.last (lib.splitString "/" (if builtins.isString brew then brew else brew.name))
+  ) darwin.homebrew.brews;
 in
+assert lib.assertMsg (lib.intersectLists brewNames packageNames == [ ])
+  "package manager priority is nix > homebrew: these are declared on both sides — ${lib.concatStringsSep ", " (lib.intersectLists brewNames packageNames)}";
 assert lib.assertMsg (
   home.programs.git.settings.wt.basedir == "../{gitroot}-worktrees"
 ) "git-wt worktrees must live outside the repository";
