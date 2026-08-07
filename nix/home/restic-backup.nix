@@ -69,7 +69,10 @@ let
     "${home}/Downloads"
     "${home}/Movies"
     "${home}/Music"
-    "${home}/Sync" # Syncthing SyncHub (local-primary replicated data. ~/Cloud is a mount of the remote primary, so it's excluded)
+    # Only the Syncthing share, never ~/Sync itself: its siblings are rclone mounts of Google Drive,
+    # and the restic repository lives on that same Drive, so backing up the mount would feed the
+    # repository into itself.
+    "${home}/Sync/syncthing" # Syncthing share (local-primary replicated data)
     "${home}/Library/Application Support/minecraft/saves" # Minecraft worlds (non-reproducible)
   ];
 

@@ -92,7 +92,7 @@ curl -fsSL https://raw.githubusercontent.com/gapul/dotfiles/main/scripts/bootstr
     backup                       # Run the warm backup now (kickstart launchd) -> follow the log (Ctrl-C ends following; backup continues)
     backup-check                 # Verify repository integrity (restic check)
     backup-ls                    # List all snapshots (distinguish warm / archive by the Tags column)
-    gdrive cmd="status"          # The old single ~/Cloud/GoogleDrive mount (nix rclone-gdrive) is retired. Current is manual LaunchAgent management.
+    gdrive cmd="status"          # ~/Sync/google-drive-{personal,school} mount status / open / remount (declared in nix/home/rclone-mount.nix)
     restore snapshot dest="/"    # `just restore a81c9de1 ~/Restore`  to the specified target (expanded preserving structure) [alias: unarchive]
 
     [Build]

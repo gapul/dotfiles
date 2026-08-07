@@ -57,11 +57,14 @@ in
     (callPackage ../pkgs/textlint-ja.nix { })
   ];
 
-  # User data location (Google Drive mount / Syncthing share)
+  # User data location: everything that also lives somewhere else sits under ~/Sync (2026-08).
+  # google-drive-* are rclone mounts (remote-primary, see home/rclone-mount.nix), syncthing holds
+  # real local files (local-primary, the only one restic backs up).
   home.activation.workstationDataDirs = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     /bin/mkdir -p \
-      "${config.home.homeDirectory}/Cloud" \
-      "${config.home.homeDirectory}/Sync"
+      "${config.home.homeDirectory}/Sync/google-drive-personal" \
+      "${config.home.homeDirectory}/Sync/google-drive-school" \
+      "${config.home.homeDirectory}/Sync/syncthing"
   '';
 
   # codex / claude: launch paths that don't read the env (CODEX_HOME / CLAUDE_CONFIG_DIR)
