@@ -8221,6 +8221,16 @@ constant uint PHASE_TABLE[32768] = {
 
 // ---- geometry ------------------------------------------------------------
 
+// 0 = equirectangular (plate carrée), 1 = Mollweide (equal area, elliptical).
+// Mollweide keeps Antarctica and every landmass at its true relative size, so
+// it needs no latitude crop; equirectangular has to drop the poles or the
+// distortion takes over the frame.
+#define PROJECTION 1
+
+// Central meridian. 0 puts the Atlantic in the middle (the European habit);
+// 150 puts the Pacific there, which is how a map is drawn in Japan.
+constant float CENTER_LON = 150.0;
+
 // Latitude window of the drawn map. Antarctica (below -60) is cropped: in an
 // equirectangular projection it is a huge distorted blob that dominates the
 // frame, and cropping also gives a 2.5:1 map that sits well on 16:9 / 16:10.
@@ -8355,16 +8365,44 @@ fragment float4 wallpaperMain(WallpaperVertexOut          in   [[stage_in]],
     Pal    P       = palette(ws, light);
 
     // ---- screen -> map -> table ----
+#if PROJECTION == 0
     float latSpan = LAT_TOP - LAT_BOT;
     float aspect  = 360.0 / latSpan;              // map width / height
+#else
+    float latSpan = 180.0;
+    float aspect  = 2.0;                          // the Mollweide ellipse is 2:1
+#endif
     float mapW = min(res.x, res.y * aspect) * MAP_FILL;
     float mapH = mapW / aspect;
     float2 mp = (px - (res - float2(mapW, mapH)) * 0.5) / float2(mapW, mapH);
-    float cellPx = mapW / float(SDF_W);
-    float2 tc = float2(mp.x * float(SDF_W),
-                       (90.0 - (LAT_TOP - mp.y * latSpan)) / 180.0 * float(SDF_H));
 
-    float onMap = step(0.0, mp.x) * step(mp.x, 1.0) * step(0.0, mp.y) * step(mp.y, 1.0);
+    float lat, lon, onMap;
+#if PROJECTION == 0
+    lat = LAT_TOP - mp.y * latSpan;
+    lon = mp.x * 360.0 - 180.0 + CENTER_LON;
+    onMap = step(0.0, mp.x) * step(mp.x, 1.0) * step(0.0, mp.y) * step(mp.y, 1.0);
+#else
+    // Mollweide inverse, closed form: v is the auxiliary angle's sine, and the
+    // parallels' spacing comes from 2θ + sin 2θ = π sin(lat).
+    float2 e = float2(mp.x * 2.0 - 1.0, 1.0 - mp.y * 2.0);   // ellipse coords, -1..1
+    float theta = asin(clamp(e.y, -1.0, 1.0));
+    lat = asin(clamp((2.0 * theta + sin(2.0 * theta)) / M_PI_F, -1.0, 1.0)) * 57.2957795;
+    float ct = max(cos(theta), 1e-4);
+    lon = 180.0 * e.x / ct;
+    onMap = step(dot(e, e), 1.0) * step(abs(lon), 180.0);
+    lon += CENTER_LON;
+#endif
+
+    float2 tc = float2(fract(lon / 360.0 + 0.5) * float(SDF_W),
+                       (90.0 - lat) / 180.0 * float(SDF_H));
+
+    // Pixels per table cell, from the derivative of the point on the sphere
+    // rather than of the sampled field: it is smooth under any projection, so
+    // the stroke keeps an even weight where the projection compresses.
+    float rlat = lat / 57.2957795, rlon = lon / 57.2957795;
+    float3 q = float3(cos(rlat) * cos(rlon), sin(rlat), cos(rlat) * sin(rlon));
+    float cellPx = 0.0122718 / max(max(length(dfdx(q)), length(dfdy(q))), 1e-6);
+
     float d = sdfSample(tc) * cellPx;             // pixels, negative on land
     float dAbs = abs(d);
 
@@ -8372,12 +8410,10 @@ fragment float4 wallpaperMain(WallpaperVertexOut          in   [[stage_in]],
     float3 col = P.bg;
 
     // graticule, under everything
-    float degPerPx = 360.0 / mapW;
-    float lon = mp.x * 360.0 - 180.0;
-    float lat = LAT_TOP - mp.y * latSpan;
-    float gw = 0.9 * pxPerPt;
-    float gLon = 1.0 - smoothstep(0.0, gw, abs(fract(lon / GRAT_LON + 0.5) - 0.5) * GRAT_LON / degPerPx);
-    float gLat = 1.0 - smoothstep(0.0, gw, abs(fract(lat / GRAT_LAT + 0.5) - 0.5) * GRAT_LAT / degPerPx);
+    float degPerPx = 0.703125 / cellPx;           // one cell is 360/512 degrees
+    float gw = 0.9 * pxPerPt * degPerPx;
+    float gLon = 1.0 - smoothstep(0.0, gw, abs(fract(lon / GRAT_LON + 0.5) - 0.5) * GRAT_LON * max(cos(rlat), 0.05));
+    float gLat = 1.0 - smoothstep(0.0, gw, abs(fract(lat / GRAT_LAT + 0.5) - 0.5) * GRAT_LAT);
     col = mix(col, P.grat, max(gLon, gLat) * 0.5 * onMap);
 
     // land fill, coastline halo, coastline stroke
@@ -8415,7 +8451,7 @@ fragment float4 wallpaperMain(WallpaperVertexOut          in   [[stage_in]],
         // fans into wedges where two stretches of coast meet. Fading the bloom
         // out well before that distance keeps it a halo instead of star rays.
         float across = exp(-dAbs / (LIGHT_W * pxPerPt))
-                     * (1.0 - smoothstep(2.5 * LIGHT_W * pxPerPt, 5.0 * LIGHT_W * pxPerPt, dAbs));
+                     * (1.0 - smoothstep(1.5 * LIGHT_W * pxPerPt, 3.0 * LIGHT_W * pxPerPt, dAbs));
         glow = (a + 0.35 * b) * big * across;
     }
 
@@ -8423,9 +8459,11 @@ fragment float4 wallpaperMain(WallpaperVertexOut          in   [[stage_in]],
     if (light) {
         // Additive light is invisible on paper: the pulse reads as ink instead,
         // deepening and saturating the stroke as it passes.
-        // The bloom does no work on paper, so the tail needs lifting to stay
-        // as long as it looks in the dark palette.
-        float g = pow(clamp(glow, 0.0, 1.0), 0.65);
+        // The bloom does no work on paper, so the tail needs lifting to stay as
+        // long as it looks in the dark palette — but lifting the whole field
+        // also inks every faint value, which beads the coastline and drags the
+        // phase field's wedges out into hairs. Lift the comet, floor the rest.
+        float g = smoothstep(0.08, 0.70, glow);
         col = mix(col, P.spark, clamp(g * 1.15, 0.0, 1.0));
         col = mix(col, mix(P.spark, float3(1.0), 0.55), core * 0.85);
     } else {
@@ -8434,8 +8472,8 @@ fragment float4 wallpaperMain(WallpaperVertexOut          in   [[stage_in]],
     }
 
     // vignette, so the centre of the map reads first
-    float2 q = (px / res - 0.5) * float2(res.x / res.y, 1.0);
-    col *= 1.0 - 0.18 * smoothstep(0.35, 0.95, length(q)) * (light ? 0.4 : 1.0);
+    float2 vig = (px / res - 0.5) * float2(res.x / res.y, 1.0);
+    col *= 1.0 - 0.18 * smoothstep(0.35, 0.95, length(vig)) * (light ? 0.4 : 1.0);
 
     return float4(col, 1.0);
 }

@@ -8441,7 +8441,7 @@ fragment float4 wallpaperMain(WallpaperVertexOut          in   [[stage_in]],
             float b = exp(-(1.0 - fract(ph * 2.0 - u.time * PULSE_V2)) * TAIL_K * 1.5);
             float lwPx = LIGHT_W * cellPx;
             float across = exp(-dAbs / lwPx)
-                         * (1.0 - smoothstep(2.5 * lwPx, 5.0 * lwPx, dAbs));
+                         * (1.0 - smoothstep(1.5 * lwPx, 3.0 * lwPx, dAbs));
             // Fade the lights out at the limb, where a whole cycle collapses
             // into a couple of pixels and would just strobe.
             glow = (a + 0.35 * b) * big * across * smoothstep(0.10, 0.35, v.z);
@@ -8449,7 +8449,12 @@ fragment float4 wallpaperMain(WallpaperVertexOut          in   [[stage_in]],
 
         float core = smoothstep(0.55, 1.0, glow);
         if (light) {
-            float g = pow(clamp(glow, 0.0, 1.0), 0.65);
+            // The bloom does no work on paper, so the tail needs lifting to
+            // stay as long as it looks in the dark palette — but lifting the
+            // whole field also inks every faint value, which beads the
+            // coastline and drags the phase field's wedges out into hairs.
+            // Lift the comet, floor the rest.
+            float g = smoothstep(0.08, 0.70, glow);
             col = mix(col, P.spark, clamp(g * 1.15, 0.0, 1.0));
             col = mix(col, mix(P.spark, float3(1.0), 0.55), core * 0.85);
         } else {
