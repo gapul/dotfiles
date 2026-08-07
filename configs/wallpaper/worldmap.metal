@@ -8218,6 +8218,7 @@ constant uint PHASE_TABLE[32768] = {
     0x38383838u, 0x3c3c3938u, 0x4e45453du, 0x4f4e4e4eu, 0x59585353u, 0x615c5c59u, 0x68646361u, 0x6d6d6b68u,
 };
 
+
 // ---- geometry ------------------------------------------------------------
 
 // Latitude window of the drawn map. Antarctica (below -60) is cropped: in an
