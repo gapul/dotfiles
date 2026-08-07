@@ -108,7 +108,9 @@ fragment float4 wallpaperMain(WallpaperVertexOut       in   [[stage_in]],
     // ---- time-of-day tint (computeTimeShift / tintBg) ----
     // Original read the wall clock; that isn't available in-shader, so accept an
     // optional fractional hour at user[2] (0..24), else default to noon.
-    float hr = (u.userCount > 2) ? user[2] : 12.0;
+    // v3: time of day comes from the header; user[2] kept as a legacy override, noon as last resort.
+    float hr = (u.version >= 3) ? u._reserved2.x
+             : (u.userCount > 2) ? user[2] : 12.0;
     float sunness = 0.5 * (1.0 + cos((hr - 12.0) * M_PI_F / 12.0)); // noon=1, midnight=0
     float golden  = sin(abs(hr - 12.0) * M_PI_F / 12.0);           // dawn/dusk=1
     float warmth  = golden * min(1.0, sunness * 1.6);
