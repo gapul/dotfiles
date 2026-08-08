@@ -10,6 +10,11 @@
   # macOS settings (GUI/peripheral-oriented. Only values verified via `defaults read` on the machine are declared)
   system.defaults = {
     dock = {
+      # Keep the Dock as close to empty as it gets: no pinned apps, no pinned folders/stacks.
+      # Combined with static-only below, only what is actually running shows up (Finder and Trash
+      # are permanent fixtures macOS does not let you remove).
+      persistent-apps = [ ];
+      persistent-others = [ ];
       autohide = true;
       show-recents = false;
       static-only = true;
@@ -265,7 +270,6 @@
       # ─── Dev IDEs / Editors / SDK ───
       "claude-code"
       "ghostty"
-      "zed"
       "android-studio"
       "flutter"
       "imhex"
