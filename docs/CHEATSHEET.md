@@ -69,7 +69,6 @@ eza / bat が ls / cat を置き換え済(home-manager が auto-alias)。
 | `gl` | `git pull` |
 | `gp` | `git push` |
 | `gs` | `git status` |
-| `keystats` | `~/.local/bin/keystats` |
 | `la` | `eza -a` |
 | `ll` | `eza -l` |
 | `lla` | `eza -la` |
