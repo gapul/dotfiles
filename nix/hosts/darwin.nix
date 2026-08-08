@@ -166,7 +166,7 @@
       #  xcodes uses for the parallel .xip download, was already declared in home/workstation.nix.)
 
       # ─── Status bar / Window decoration (felixkratz tap) ───
-      "felixkratz/formulae/sketchybar" # (b) runs as a brew service (homebrew.mxcl.sketchybar)
+      "felixkratz/formulae/sketchybar" # (a) tap-only. launched via launchd agent (home/darwin-chrome.nix)
       "felixkratz/formulae/borders" # (a) tap-only. launched via launchd agent (home/darwin-chrome.nix); OmniWM has no exec action
 
       # ─── Transcription / other 3rd-party tap brews ───
