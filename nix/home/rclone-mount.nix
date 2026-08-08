@@ -12,6 +12,7 @@
 #   ~/Sync/google-drive-personal  <- remote google-drive-personal:  (remote-primary, a mount)
 #   ~/Sync/google-drive-school    <- remote google-drive-school:    (remote-primary, a mount)
 #   ~/Sync/syncthing              <- Syncthing share                (local-primary, real files)
+#   ~/Sync/<ssh-host>             <- mutagen session                (peer-primary, home/mutagen-sync.nix)
 # The mount point name is the remote name, so the two never drift apart.
 #
 # Position in the storage hierarchy:
