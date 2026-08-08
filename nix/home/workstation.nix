@@ -111,8 +111,4 @@ in
     recursive = true;
   };
 
-  # Zed: manage only settings.json (mkOutOfStoreSymlink so UI edits write straight into the repo).
-  # Other ~/.config/zed/* are state like conversation history, so leave them alone.
-  home.file.".config/zed/settings.json".source =
-    config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.dotfiles/configs/editors/zed/settings.json";
 }
