@@ -307,6 +307,33 @@ in
     dark_mode_contrast 0.85
   '';
 
+  # keebmouse (self-made, gapul/keebmouse): keyboard-driven pointer, Hyper+Shift+G to toggle.
+  # The app itself is a local self-build (see docs/self-build-software.md) so it stays outside
+  # nix/brew for now, but its resident agent belongs here — it used to be a hand-written
+  # ~/Library/LaunchAgents/net.gapul.keebmouse.plist, i.e. a login-time daemon nothing declared.
+  # Same KeepAlive shape as that plist, so behaviour is unchanged.
+  launchd.agents.keebmouse = {
+    enable = true;
+    config = {
+      ProgramArguments = [ "/Applications/keebmouse.app/Contents/MacOS/keebmouse" ];
+      RunAtLoad = true;
+      KeepAlive = true;
+      ProcessType = "Interactive";
+      StandardErrorPath = "/tmp/keebmouse.err";
+      StandardOutPath = "/tmp/keebmouse.log";
+    };
+  };
+
+  # One-shot migration: drop the hand-written plist so it doesn't race the declared agent above
+  # (two KeepAlive daemons on the same event tap would fight over the Hyper+G toggle).
+  home.activation.keebmouseLegacyAgent = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    legacy_plist="$HOME/Library/LaunchAgents/net.gapul.keebmouse.plist"
+    if [ -f "$legacy_plist" ]; then
+      run /bin/launchctl bootout "gui/$(id -u)/net.gapul.keebmouse" 2>/dev/null || true
+      run rm -f "$legacy_plist"
+    fi
+  '';
+
   # sioyek keybind override: assign custom color mode (read on a rose-pine background) to F7.
   # Distinct from F8=standard dark inversion (toggle_custom_color is unassigned by default).
   home.file."Library/Application Support/sioyek/keys_user.config".text = ''
