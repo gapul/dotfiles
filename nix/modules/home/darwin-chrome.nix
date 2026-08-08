@@ -160,13 +160,24 @@ let
   '';
 in
 {
-  home.file.".config/sketchybar" = {
-    source = ../../../configs/wm/sketchybar;
-    recursive = true;
-  };
+  # The bar is tuned live, so the config directory is one out-of-store symlink into the checkout
+  # rather than a recursive copy — the same shape as nvim/karabiner/neru.
+  #
+  # It used to be `recursive = true`, which makes home-manager link every file individually. Four
+  # hand-made symlinks (helper/helpers/items/plugins -> back into the checkout) had been added on
+  # top for live editing, so those per-file links resolved *into the repository*. Nothing happened
+  # while home-manager had no backup extension and silently skipped existing files; the moment one
+  # was set, activation happily moved the repository's own files aside and replaced 52 of them with
+  # store symlinks. Owning the directory as a single symlink removes the whole class of problem:
+  # home-manager never writes anything inside it.
+  home.file.".config/sketchybar".source =
+    config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.dotfiles/configs/wm/sketchybar";
+
   # sketchybar colors are generated from nix/lib/theme.nix (static colors.sh retired).
-  # Other sketchybar scripts source this via $WHITE etc. as before.
-  home.file.".config/sketchybar/colors.sh".text = ''
+  # Deliberately NOT inside .config/sketchybar/: that directory is the checkout now, and a generated
+  # file written through the symlink would land in the repository. The scripts source this path
+  # directly (`source "$HOME/.config/sketchybar-colors.sh"`) instead of "$CONFIG_DIR/colors.sh".
+  home.file.".config/sketchybar-colors.sh".text = ''
     #!/bin/bash
     # Rosé Pine — auto-select dark/light by macOS appearance (AppleInterfaceStyle).
     # Colors come from the dark/light palette in nix/lib/theme.nix (single source).

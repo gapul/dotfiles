@@ -5,7 +5,7 @@
 # クリックでポップアップを開くと全アプリの稼働状況を一覧表示し (items/app_guard.sh)、
 # 落ちている行のクリックでそれだけ再起動する (relaunch サブコマンド)。
 
-source "$CONFIG_DIR/colors.sh"
+source "$HOME/.config/sketchybar-colors.sh"
 
 ITEM="app_guard"
 CONF="$CONFIG_DIR/expected_apps.conf"

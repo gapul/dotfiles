@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source "$CONFIG_DIR/colors.sh"
+source "$HOME/.config/sketchybar-colors.sh"
 
 PAGE_SIZE=$(sysctl -n hw.pagesize)
 TOTAL_BYTES=$(sysctl -n hw.memsize)
