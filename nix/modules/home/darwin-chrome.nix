@@ -212,7 +212,7 @@ in
   };
 
   # Resident watcher that recomputes the sketchybar display map (WM monitor -> sketchybar display index)
-  # on display config changes and writes it to /tmp/sketchybar-aero-display.map.
+  # on display config changes and writes it to /tmp/sketchybar-omniwm-display.map.
   # Without it, the map is lost on restart and space.* breaks (needs a manual sketchybar-refresh).
   # Used to be a manual plist but broke due to hardcoded /Users/<old name>, so migrated to nix declaration.
   launchd.agents.sketchybar-displaywatch = {
@@ -237,9 +237,7 @@ in
   launchd.agents.borders = {
     enable = true;
     config = {
-      ProgramArguments = [
-        "${config.home.homeDirectory}/.config/borders/bordersrc"
-      ];
+      ProgramArguments = [ "${bordersrc}" ];
       RunAtLoad = true;
       KeepAlive = true;
       ProcessType = "Interactive";
@@ -247,6 +245,9 @@ in
       StandardOutPath = "/tmp/borders.log";
     };
   };
+
+  # (The brew service that used to start sketchybar is retired in darwin-apps.nix's
+  #  retiredLaunchAgents list, together with every other pre-nix plist.)
 
   # sketchybar itself. The formula was declared but its start was not: the bar only ran because
   # `brew services start sketchybar` had been typed once on this machine, so a fresh mac rebuilt
@@ -270,11 +271,19 @@ in
     };
   };
 
-  # (The brew service that used to start sketchybar is retired in darwin-apps.nix's
-  #  retiredLaunchAgents list, together with every other pre-nix plist.)
+  # One-shot migration: stop the brew service so it doesn't race the agent above at login.
+  # `brew services stop` unloads it and removes homebrew.mxcl.sketchybar.plist, so this is a no-op
+  # from the second rebuild on.
+  home.activation.sketchybarBrewService = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    legacy_plist="$HOME/Library/LaunchAgents/homebrew.mxcl.sketchybar.plist"
+    if [ -f "$legacy_plist" ]; then
+      run /opt/homebrew/bin/brew services stop sketchybar 2>/dev/null || true
+      run rm -f "$legacy_plist"
+    fi
+  '';
 
   # Bridge OmniWM IPC events to the sketchybar workspace-change event.
-  # aerospace used to fire aerospace_workspace_change itself via exec-and-forget, but omniwm
+  # aerospace used to fire omniwm_workspace_change itself via exec-and-forget, but omniwm
   # has no exec action, so this resident agent converts `omniwmctl watch` events into
   # the same event + env vars (the sketchybar event name is kept for compatibility).
   launchd.agents.omniwm-bridge = {
