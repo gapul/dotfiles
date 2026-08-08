@@ -74,6 +74,15 @@
           type = "zfs_fs";
           mountpoint = "/var/lib";
         };
+        # Bulk data: what the old host kept on its second 200GB LVM volume as
+        # /mnt/jellyfin-media (media, the attic cache, archive dumps). Snapshotting
+        # it would be expensive and pointless — it is either huge, re-downloadable,
+        # or already content-addressed.
+        srv = {
+          type = "zfs_fs";
+          mountpoint = "/srv";
+          options."com.sun:auto-snapshot" = "false";
+        };
         home = {
           type = "zfs_fs";
           mountpoint = "/home";

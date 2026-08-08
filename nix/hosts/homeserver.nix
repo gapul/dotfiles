@@ -6,14 +6,11 @@
   ...
 }:
 let
-  # Machines that still hold services while the Proxmox stack is dissolved.
-  # Every entry becomes 127.0.0.1 as its service lands here; once none of the
-  # first four are referenced any more, Proxmox has nothing left to run.
-  ct101 = "192.168.116.65"; # dockge host (37 containers, dissolves into this machine)
-  rpi = "192.168.116.53"; # Raspberry Pi (AdGuard primary, ntfy, uptime-kuma)
-  haos = "192.168.116.88"; # Home Assistant OS VM (becomes a podman container here)
-  pve = "192.168.116.100"; # Proxmox host itself (disappears at the metal swap)
-  macmini = "100.105.135.49"; # Mac mini AI node (stays where it is)
+  # Because Proxmox is replaced in one cut rather than drained service by service,
+  # everything that used to sit on CT101 or in the HAOS VM ends up on this host.
+  # Only two upstreams stay remote.
+  rpi = "192.168.116.53"; # Raspberry Pi: AdGuard primary, stays off this box on purpose
+  macmini = "100.105.135.49"; # Mac mini AI node, stays where it is
 
   gatusPort = 8084;
 
@@ -27,38 +24,32 @@ let
   # the Caddyfile in this repo that had already drifted out of sync with the live one.
   sites = {
     home = {
-      upstream = "${haos}:8123";
+      upstream = "127.0.0.1:8123"; # home assistant, container
       extra = "header_up -X-Forwarded-For";
     };
-    dash.upstream = "${ct101}:3000"; # homepage
-    vault.upstream = "${ct101}:8080"; # vaultwarden
-    rss.upstream = "${ct101}:8081"; # miniflux
-    obsidian.upstream = "${ct101}:5984"; # couchdb (LiveSync)
-    dav.upstream = "${ct101}:5232"; # radicale
-    paperless.upstream = "${ct101}:8097";
-    git.upstream = "${ct101}:3003"; # forgejo
-    archive.upstream = "${ct101}:8000"; # archivebox
-    ntfy.upstream = "${ct101}:8082";
-    cache.upstream = "${ct101}:8083"; # attic (own nix binary cache)
-    dns2.upstream = "${ct101}:3080"; # AdGuard secondary
+    dash.upstream = "127.0.0.1:3000"; # homepage
+    vault.upstream = "127.0.0.1:8080"; # vaultwarden
+    rss.upstream = "127.0.0.1:8081"; # miniflux
+    obsidian.upstream = "127.0.0.1:5984"; # couchdb (LiveSync)
+    dav.upstream = "127.0.0.1:5232"; # radicale
+    paperless.upstream = "127.0.0.1:8097";
+    git.upstream = "127.0.0.1:3003"; # forgejo
+    archive.upstream = "127.0.0.1:8000"; # archivebox
+    ntfy.upstream = "127.0.0.1:8082";
+    cache.upstream = "127.0.0.1:8083"; # attic (own nix binary cache)
+    dns2.upstream = "127.0.0.1:3080"; # AdGuard secondary, native module
     dns.upstream = "${rpi}:3000"; # AdGuard primary
     comfy.upstream = "${macmini}:8188";
     chat.upstream = "${macmini}:3000";
     docs.upstream = "${macmini}:3001";
     tools.upstream = "${macmini}:8901";
     sync = {
-      upstream = "${ct101}:8384"; # syncthing rejects requests whose Host it doesn't know
+      upstream = "127.0.0.1:8384"; # syncthing rejects requests whose Host it doesn't know
       extra = "header_up Host {upstream_hostport}";
     };
-    files = {
-      upstream = "${pve}:8082"; # filebrowser over a restic mount, on the pve host
-      monitor = false; # goes away with Proxmox, not worth a status entry
-    };
-    pve = {
-      upstream = "https://${pve}:8006";
-      extra = "transport http {\n      tls_insecure_skip_verify\n    }";
-      monitor = false; # same, and the upstream is https so the http probe below can't reach it
-    };
+    # pve.gapul.net and files.gapul.net are gone with Proxmox. files was a
+    # filebrowser over a restic mount running on the pve host; if that view is
+    # wanted again it has to be rebuilt here against the declared restic setup.
     # Replaces uptime-kuma, which lives on the Raspberry Pi (rpi:3001) and holds its
     # monitor list in a SQLite file no one can review. Its checks are the `sites`
     # table below now.
@@ -104,6 +95,7 @@ in
   #   - the L2TP/IPsec relay of VM105 (strongswan + xl2tpd, last because work depends on it)
   imports = [
     ./homeserver-hardware.nix
+    ../homelab # the Docker stacks that used to live on CT101 under dockge
   ];
 
   # --- Boot ---
