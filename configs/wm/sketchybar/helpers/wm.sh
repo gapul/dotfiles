@@ -13,9 +13,9 @@
 #   - ワークスペース名 = omniwm の rawName ("1".."9")
 #   - モニター ID: omniwm は "display:N" → N に正規化
 #
-# 注: イベント名 aerospace_workspace_change と AEROSPACE_* 環境変数、
-#     /tmp/sketchybar-aero-display.map は名前だけ据え置き。発火側 (omniwm-event.sh) と
-#     受け側で一貫していて、改名しても挙動は変わらず差分だけが広がるため。
+# イベント名 omniwm_workspace_change / OMNIWM_* 環境変数 / sketchybar-omniwm-display.map は
+# 発火側 (omniwm-event.sh) と受け側 (items/spaces.sh, plugins/*) で一貫させること。
+# 片側だけ変えるとイベントが誰にも届かず、バーが黙って更新されなくなる。
 
 OMNIWMCTL=/opt/homebrew/bin/omniwmctl
 JQ="$HOME/.local/state/nix/profile/bin/jq"

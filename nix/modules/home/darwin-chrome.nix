@@ -215,7 +215,7 @@ in
   };
 
   # Resident watcher that recomputes the sketchybar display map (WM monitor -> sketchybar display index)
-  # on display config changes and writes it to /tmp/sketchybar-aero-display.map.
+  # on display config changes and writes it to /tmp/sketchybar-omniwm-display.map.
   # Without it, the map is lost on restart and space.* breaks (needs a manual sketchybar-refresh).
   # Used to be a manual plist but broke due to hardcoded /Users/<old name>, so migrated to nix declaration.
   launchd.agents.sketchybar-displaywatch = {
@@ -296,7 +296,7 @@ in
   '';
 
   # Bridge OmniWM IPC events to the sketchybar workspace-change event.
-  # aerospace used to fire aerospace_workspace_change itself via exec-and-forget, but omniwm
+  # aerospace used to fire omniwm_workspace_change itself via exec-and-forget, but omniwm
   # has no exec action, so this resident agent converts `omniwmctl watch` events into
   # the same event + env vars (the sketchybar event name is kept for compatibility).
   launchd.agents.omniwm-bridge = {

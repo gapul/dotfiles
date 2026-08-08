@@ -10,15 +10,13 @@
 # 仕組み:
 #   1. sketchybar --query displays から arrangement-id と frame.x を取得
 #   2. frame.x 昇順にソート (= WM の左→右順と一致)
-#   3. /tmp/sketchybar-aero-display.map に "wmMonitorID:sbDisplay" で書き出し
-#      (ファイル名と後述のイベント名は aerospace 時代のまま。改名しても挙動は
-#       変わらず、読み書き両側を触る差分だけが増えるので据え置き)
+#   3. /tmp/sketchybar-omniwm-display.map に "wmMonitorID:sbDisplay" で書き出し
 #   4. sketchybar --reload で spaces.sh を再実行
 #      (spaces.sh は上記マップを読んで display= を設定)
 
 set -e
 
-MAP_FILE=/tmp/sketchybar-aero-display.map
+MAP_FILE=/tmp/sketchybar-omniwm-display.map
 SB=/opt/homebrew/bin/sketchybar
 JQ="$HOME/.nix-profile/bin/jq" # jq は nix 管理 (homebrew には無い)
 # shellcheck source=/dev/null
@@ -37,17 +35,17 @@ if [ -z "$sorted" ]; then
   exit 1
 fi
 
-aero_ids=$(wm_list_monitors_by_x)
+wm_ids=$(wm_list_monitors_by_x)
 
 n_sorted=$(echo "$sorted" | wc -l | tr -d ' ')
-n_aero=$(echo "$aero_ids" | wc -l | tr -d ' ')
-if [ "$n_sorted" != "$n_aero" ]; then
-  echo "sketchybar-refresh: ディスプレイ数の不一致 (sketchybar=$n_sorted WM=$n_aero)" >&2
+n_wm=$(echo "$wm_ids" | wc -l | tr -d ' ')
+if [ "$n_sorted" != "$n_wm" ]; then
+  echo "sketchybar-refresh: ディスプレイ数の不一致 (sketchybar=$n_sorted WM=$n_wm)" >&2
   echo "  sketchybar や OmniWM を再起動してから再試行してください。" >&2
   exit 1
 fi
 
-paste -d':' <(echo "$aero_ids") <(echo "$sorted") > "$MAP_FILE.tmp"
+paste -d':' <(echo "$wm_ids") <(echo "$sorted") > "$MAP_FILE.tmp"
 mv "$MAP_FILE.tmp" "$MAP_FILE"
 
 echo "sketchybar-refresh: マップを更新しました ($MAP_FILE)"

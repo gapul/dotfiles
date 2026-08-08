@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 #
-# ワークスペース表示 (aerospace / omniwm 両対応) を、各ディスプレイ正しく振り分ける。
+# ワークスペース表示 (omniwm) を、各ディスプレイ正しく振り分ける。
 # WM への照会は helpers/wm.sh が稼働中のバックエンドに振り分ける。
 #
 # 仕組み:
 #   sketchybar --reload 中の sketchybarrc 文脈からは `sketchybar --query` が
 #   空を返す（自分自身が応答できない）ため、マッピングは外部の
 #   ~/.config/sketchybar/helpers/display_watch.sh (launchd 常駐) が
-#   事前計算して /tmp/sketchybar-aero-display.map に書き出している。
+#   事前計算して /tmp/sketchybar-omniwm-display.map に書き出している。
 #   この spaces.sh はそのキャッシュを読むだけ。
 #
-#   キャッシュフォーマット (1行に "aerospace_id:sketchybar_display_index"):
+#   キャッシュフォーマット (1行に "wm_monitor_id:sketchybar_display_index"):
 #     1:2
 #     2:1
 #     3:3
@@ -19,12 +19,12 @@
 #   - bash (連想配列)
 #   - display_watch.sh が動いていること
 
-sketchybar --add event aerospace_workspace_change
+sketchybar --add event omniwm_workspace_change
 
 source "$CONFIG_DIR/helpers/wm.sh"
 
 declare -A AERO_TO_SB
-MAP_FILE=/tmp/sketchybar-aero-display.map
+MAP_FILE=/tmp/sketchybar-omniwm-display.map
 
 build_display_map() {
   if [ -r "$MAP_FILE" ]; then
@@ -67,11 +67,11 @@ for m in $(wm_list_monitors); do
       space_item=("${space[@]:1}")
       sketchybar --add item space.$sid left \
                  --set space.$sid "${space_item[@]}" \
-                 --subscribe space.$sid mouse.clicked aerospace_workspace_change
+                 --subscribe space.$sid mouse.clicked omniwm_workspace_change
     else
       sketchybar --add space space.$sid left \
                  --set space.$sid "${space[@]}" \
-                 --subscribe space.$sid mouse.clicked aerospace_workspace_change
+                 --subscribe space.$sid mouse.clicked omniwm_workspace_change
     fi
 
     apps=$(wm_workspace_apps "$sid")
@@ -112,10 +112,9 @@ space_creator=(
   display=active
   #click_script='yabai -m space --create'
   script="$PLUGIN_DIR/space_windows.sh"
-  #script="$PLUGIN_DIR/aerospace.sh"
   icon.color=$WHITE
 )
 
 sketchybar --add item space_creator left               \
            --set space_creator "${space_creator[@]}"   \
-           --subscribe space_creator aerospace_workspace_change
+           --subscribe space_creator omniwm_workspace_change
