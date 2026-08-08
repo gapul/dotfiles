@@ -291,12 +291,10 @@ $env:SOPS_AGE_KEY_FILE = Join-Path $env:USERPROFILE '.config\sops\age\keys.txt'
 $env:CLAUDE_CONFIG_DIR = Join-Path $env:USERPROFILE '.config\claude'
 
 # PATH 追加 (Mac の home.sessionPath と整合):
-#   - ~/.local/bin  : uv tool install のバイナリ (rich-cli 等)
-#   - ~/bin         : 手動配置スクリプト
+#   - ~/.local/bin  : uv tool install のバイナリ (rich-cli 等) と手動配置スクリプト
 #   - $CARGO_HOME/bin: cargo install のバイナリ
 $extraPath = @(
     (Join-Path $env:USERPROFILE '.local\bin'),
-    (Join-Path $env:USERPROFILE 'bin'),
     (Join-Path $env:CARGO_HOME 'bin')
 ) | Where-Object { Test-Path $_ }
 if ($extraPath) {

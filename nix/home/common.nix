@@ -87,8 +87,7 @@ in
     };
 
   home.sessionPath = [
-    "${config.home.homeDirectory}/.local/bin" # binaries via uv tool
-    "${config.home.homeDirectory}/bin" # scripts via home.file."bin/*"
+    "${config.home.homeDirectory}/.local/bin" # hand-written commands (home.file.".local/bin/*") + uv tool binaries
     "${config.xdg.dataHome}/cargo/bin" # binaries from cargo install (CARGO_HOME/bin)
     "${config.xdg.dataHome}/npm/bin" # binaries from npm install -g (NPM_CONFIG_PREFIX/bin)
   ];
