@@ -208,6 +208,21 @@
         linuxServer = linuxBase ++ secrets ++ station;
       };
 
+      # Home server (x86_64, replacing the single-node Proxmox box). The real machine
+      # and the CI stand-in differ only by which hardware file they get, so both come
+      # from here rather than duplicating the nixosSystem call.
+      mkHomeserver =
+        hardwareConfig:
+        nixpkgs-nixos.lib.nixosSystem {
+          system = "x86_64-linux";
+          specialArgs = { inherit user hardwareConfig; };
+          modules = [
+            # Same SSO overlay as the other hosts (carries e.g. tailscale's vendorHash fix).
+            { nixpkgs.overlays = [ overlayFixes ]; }
+            ./hosts/homeserver.nix
+          ];
+        };
+
       # Tool set to run from rootless Nix (nix-portable) on an SSH target.
       # Supports both Linux x86_64 / aarch64.
       remoteTools =
@@ -546,7 +561,15 @@
             ];
           };
         }
+        // nixpkgs-nixos.lib.optionalAttrs (builtins.pathExists ./hosts/homeserver-hardware.nix) {
+          # Real home server: sudo nixos-rebuild switch --flake .#homeserver
+          # Same guard as nixos-laptop: until the machine-specific hardware file is
+          # dropped in, don't grow the output (so flake check on the Mac still passes).
+          "homeserver" = mkHomeserver ./hosts/homeserver-hardware.nix;
+        }
         // {
+          # Home server config evaluated/built in CI against a stub hardware file.
+          "homeserver-ci" = mkHomeserver ./hosts/homeserver-hardware-ci.nix;
 
           # Config for CI-evaluating the common NixOS settings without exposing the machine-specific hardware-configuration.
           "nixos-laptop-ci" = nixpkgs-nixos.lib.nixosSystem {
