@@ -40,6 +40,29 @@
     # external display its own menu bar so OmniWM reserves the top strip and SketchyBar
     # stops overlapping tiled windows there. Takes effect on next logout.
     spaces.spans-displays = false;
+
+    # Third-party app preferences that used to be `defaults write` loops in home.activation.
+    # CustomUserPreferences is the same mechanism declared instead of scripted, and only the keys
+    # listed here are touched — the apps' other settings are left alone, which is what the old
+    # "surgically write only these keys" comments were asking for.
+    CustomUserPreferences = {
+      # Skim: VimTeX integration. Inverse search (click PDF -> jump to line in Neovim) + reload on save.
+      "net.sourceforge.skim-app.skim" = {
+        SKTeXEditorPreset = "Custom";
+        SKTeXEditorCommand = "${pkgs.neovim}/bin/nvim";
+        SKTeXEditorArguments = "--headless -c \"VimtexInverseSearch %line '%file'\"";
+        SKAutoReloadFileUpdate = true;
+        SKAutoCheckFileUpdate = true;
+      };
+      # Puddle (dynamic wallpaper; self-built MIT fork of Plash). Its websites and security-scoped
+      # bookmarks live on the app side, so only these three behavior keys are enforced.
+      # (extendPuddleBelowMenuBar keeps its key name in Puddle for compatibility.)
+      "net.gapul.Puddle" = {
+        deactivateOnBattery = true;
+        extendPuddleBelowMenuBar = true;
+        showOnAllSpaces = true;
+      };
+    };
   };
 
   # Only provide via Nix the Nerd Fonts that have no matching cask

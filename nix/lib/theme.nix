@@ -15,6 +15,12 @@
 let
   data = builtins.fromJSON (builtins.readFile ../../configs/theme/palettes.json);
   inherit (data) active palettes;
+  # The dark/light pair used for OS-appearance following. Pinned, not derived from active:
+  # palettes.json holds exactly one family, so there is nothing to derive from yet.
+  # ADDING A SECOND FAMILY: these two lines do not follow active. Setting active to, say,
+  # "catppuccin" would switch the flat colors while every appearance-following consumer
+  # (sketchybar colors.sh, bordersrc, Obsidian's nix-theme.css, ghostty) stayed on rose-pine.
+  # Give palettes.json a per-family dark/light map at that point and read it here.
   dark = palettes."rose-pine";
   light = palettes."rose-pine-dawn";
 in
