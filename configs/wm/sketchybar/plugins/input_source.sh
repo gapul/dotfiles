@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source "$CONFIG_DIR/colors.sh"
+source "$HOME/.config/sketchybar-colors.sh"
 source "$CONFIG_DIR/icons.sh"
 
 SOURCES="$(defaults read com.apple.HIToolbox AppleSelectedInputSources 2>/dev/null)"

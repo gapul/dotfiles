@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source "$CONFIG_DIR/colors.sh"
+source "$HOME/.config/sketchybar-colors.sh"
 source "$CONFIG_DIR/icons.sh"
 
 DATA="$(/usr/sbin/system_profiler SPBluetoothDataType 2>/dev/null)"
