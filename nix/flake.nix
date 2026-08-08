@@ -188,6 +188,7 @@
             ./home/darwin.nix
             ./home/restic-backup.nix
             ./home/rclone-mount.nix
+            ./home/mutagen-sync.nix
             ./home/maintenance.nix
             ./home/git-hooks.nix # git hook that auto-rebuilds on main updates (main tree only)
           ]
