@@ -25,6 +25,47 @@
   home.file."Library/Application Support/espanso/match/base.yml".source =
     ../../../configs/espanso/base.yml;
 
+  # espanso resident agent. `espanso service register` writes its own plist with a snapshot of
+  # whatever PATH the registering shell had (ours had stale ~/bin and .opam entries baked in),
+  # so declare the agent here instead and give it a small explicit PATH — espanso's shell
+  # extension resolves commands through it.
+  launchd.agents.espanso = {
+    enable = true;
+    config = {
+      ProgramArguments = [
+        "/opt/homebrew/bin/espanso"
+        "launcher"
+      ];
+      EnvironmentVariables.PATH = lib.concatStringsSep ":" [
+        "/opt/homebrew/bin"
+        "/opt/homebrew/sbin"
+        "${config.home.homeDirectory}/.local/state/nix/profile/bin"
+        "/run/current-system/sw/bin"
+        "/usr/bin"
+        "/bin"
+        "/usr/sbin"
+        "/sbin"
+      ];
+      RunAtLoad = true;
+      ProcessType = "Interactive";
+      StandardErrorPath = "/tmp/espanso.err";
+      StandardOutPath = "/tmp/espanso.out";
+    };
+  };
+
+  # One-shot migration: retire hand-written LaunchAgents that predate the declarations above.
+  #   com.federicoterzi.espanso — replaced by launchd.agents.espanso
+  #   com.user.mechvibes-hidden — Mechvibes itself is long gone, so this only failed at every login
+  home.activation.legacyLaunchAgents = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    for label in com.federicoterzi.espanso com.user.mechvibes-hidden; do
+      legacy_plist="$HOME/Library/LaunchAgents/$label.plist"
+      if [ -f "$legacy_plist" ]; then
+        run /bin/launchctl bootout "gui/$(id -u)/$label" 2>/dev/null || true
+        run rm -f "$legacy_plist"
+      fi
+    done
+  '';
+
   # macOS-only SOPS template (espanso's personal is at the Container path)
   sops.templates."espanso-personal.yml" = {
     path = "${config.home.homeDirectory}/Library/Application Support/espanso/match/personal.yml";
@@ -155,10 +196,23 @@
 
   # Login items: auto-launch resident GUI apps that don't start headless
   home.activation.macosLoginItems = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    # The list below is what the machine actually had; it used to be three entries while the
+    # other ten were registered by hand or by each app's own "launch at login" toggle, so a
+    # fresh machine came up missing them. Adding is idempotent (existing entries are skipped).
     LOGIN_APPS=(
       "/Applications/OmniWM.app"
       "/Applications/Ghostty.app"
       "/Applications/Puddle.app"
+      "/Applications/Thaw.app"                # menu bar management
+      "/Applications/azooKey skkserv.app"     # SKK conversion server for macSKK
+      "/Applications/Neru.app"                # keyboard-driven screen navigation
+      "/Applications/Maccy.app"               # clipboard history
+      "/Applications/Bitwarden.app"           # provides the SSH agent socket
+      "/Applications/LuLu.app"                # outbound firewall
+      "/Applications/KDE Connect.app"         # phone integration
+      "/Applications/ActivityWatch.app"       # time tracking
+      "/Applications/Obsidian.app"            # notes (LiveSync keeps running in the background)
+      "/Applications/Zen.app"                 # browser
     )
     for app in "''${LOGIN_APPS[@]}"; do
       name=$(basename "$app" .app)
