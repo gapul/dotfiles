@@ -858,6 +858,40 @@ obsidian-snapshot:
     echo "✅ snapshot -> $dst"
     echo "   After git add, run gitleaks before committing."
 
+# One-way snapshot of app-owned config files into the repo (live -> dotfiles).
+# These apps rewrite their own config, so home.file (a read-only store symlink) would break them —
+# the repo copy is a tracking mirror, same contract as obsidian-snapshot above.
+# Restore on a fresh machine is a manual `cp` (see the README next to each file).
+[group('Setup')]
+[doc('Snapshot app-owned config files into dotfiles (live -> repo)')]
+app-snapshot:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    dir="{{justfile_directory()}}"
+    changed=0
+    # OmniWM: plain copy. The file is WM layout/hotkeys only, nothing account-bound.
+    src="$HOME/.config/omniwm/settings.toml"; dst="$dir/configs/wm/omniwm/settings.toml"
+    if [ -f "$src" ]; then
+      cmp -s "$src" "$dst" || { cp -f "$src" "$dst"; echo "  updated configs/wm/omniwm/settings.toml"; changed=1; }
+    else
+      echo "– omniwm: no live config, skipped"
+    fi
+    # CodexBar: drop codexActiveSource (holds the Codex account UUID) before it reaches a public repo.
+    src="$HOME/.config/codexbar/config.json"; dst="$dir/configs/apps/codexbar/config.json"
+    if [ -f "$src" ]; then
+      tmp="$(mktemp)"; trap 'rm -f "$tmp"' EXIT
+      jq -S --indent 2 'del(.providers[].codexActiveSource)' "$src" > "$tmp"
+      cmp -s "$tmp" "$dst" || { cp -f "$tmp" "$dst"; echo "  updated configs/apps/codexbar/config.json"; changed=1; }
+    else
+      echo "– codexbar: no live config, skipped"
+    fi
+    if [ "$changed" -eq 0 ]; then
+      echo "✓ tracked app configs already match the live files"
+    else
+      git -C "$dir" --no-pager diff --stat -- configs
+      echo "Review the diff, then commit on a branch as usual."
+    fi
+
 # Pull GUI-side preference changes back into the repo (live -> dotfiles).
 # darwin-apps.nix imports these plists wholesale on activation, so anything changed in an app's
 # own UI is silently reverted by the next rebuild unless it is captured here.
