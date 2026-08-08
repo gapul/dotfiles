@@ -12,7 +12,9 @@ MAP_FILE=/tmp/sketchybar-aero-display.map
 DP=/opt/homebrew/bin/displayplacer
 SB=/opt/homebrew/bin/sketchybar
 JQ="$HOME/.nix-profile/bin/jq" # jq は nix 管理 (homebrew には無い)
-AS=/opt/homebrew/bin/aerospace
+# WM 照会は helpers/wm.sh に集約 (aerospace 撤去でフォールバック分岐は消えた)
+# shellcheck source=/dev/null
+. "${BASH_SOURCE%/*}/wm.sh"
 
 write_map() {
   # sketchybar が認識している全ディスプレイを frame.x 昇順ソートし
@@ -27,15 +29,9 @@ write_map() {
   done
   [ -z "$sorted" ] && return 1
 
-  # WM のモニター ID 列 (左→右順)。omniwm 稼働中は omniwmctl から取る
-  # ("display:N" → N)。frame.x 昇順で sketchybar 側と同じ並び順にする。
+  # WM のモニター ID 列 (左→右順)。frame.x 昇順で sketchybar 側と同じ並び順にする。
   local aero_ids
-  if pgrep -xq OmniWM; then
-    aero_ids=$(/opt/homebrew/bin/omniwmctl query displays --fields id,frame --format json 2>/dev/null |
-      "$JQ" -r '.result.payload.displays | sort_by(.frame.x) | .[].id | sub("^display:"; "")')
-  else
-    aero_ids=$("$AS" list-monitors | awk '{print $1}')
-  fi
+  aero_ids=$(wm_list_monitors_by_x)
 
   # 個数が一致しないなら書き換えない（一時的な不整合の可能性）
   local n_sorted n_aero
