@@ -1,4 +1,10 @@
-{ pkgs, brewNix, ... }: {
+{
+  pkgs,
+  brewNix,
+  user,
+  ...
+}:
+{
   # host-independent base (nix cache / firewall / security / login hardening, etc.)
   # is consolidated in darwin-common.nix. Only daily-driver workstation-specific
   # settings live here.
@@ -40,6 +46,95 @@
     # external display its own menu bar so OmniWM reserves the top strip and SketchyBar
     # stops overlapping tiled windows there. Takes effect on next logout.
     spaces.spans-displays = false;
+
+    # Screenshots land in ~/Downloads. The Desktop is the macOS default, but desktop icons are
+    # hidden here (finder.CreateDesktop = false), so shots would pile up somewhere invisible.
+    screencapture.location = "/Users/${user.username}/Downloads";
+
+    # Default keyboard shortcuts that are deliberately off. These were set by hand in System
+    # Settings and never declared, which mattered most for 64/65: Ghostty's Quick Terminal binds
+    # cmd+space, so Spotlight has to release it or the two fight and Ghostty loses.
+    # Writing a hotkey id replaces its whole entry, so the original parameters are reproduced
+    # verbatim — an entry with no parameters is disabled but also unrecoverable from the GUI.
+    CustomUserPreferences."com.apple.symbolichotkeys".AppleSymbolicHotKeys = {
+      # Spotlight search / Finder search window (cmd+space, cmd+alt+space)
+      "64" = {
+        enabled = false;
+        value = {
+          parameters = [
+            32
+            49
+            1048576
+          ];
+          type = "standard";
+        };
+      };
+      "65" = {
+        enabled = false;
+        value = {
+          parameters = [
+            32
+            49
+            1572864
+          ];
+          type = "standard";
+        };
+      };
+      # Mission Control / Application windows (ctrl+up, ctrl+down) — OmniWM owns this
+      "32" = {
+        enabled = false;
+        value = {
+          parameters = [
+            65535
+            126
+            8650752
+          ];
+          type = "standard";
+        };
+      };
+      "33" = {
+        enabled = false;
+        value = {
+          parameters = [
+            65535
+            125
+            8650752
+          ];
+          type = "standard";
+        };
+      };
+      # Switch to Desktop 1 / 2 (ctrl+1, ctrl+2) — OmniWM owns workspace switching
+      "118" = {
+        enabled = false;
+        value = {
+          parameters = [
+            49
+            18
+            524288
+          ];
+          type = "standard";
+        };
+      };
+      "119" = {
+        enabled = false;
+        value = {
+          parameters = [
+            50
+            19
+            524288
+          ];
+          type = "standard";
+        };
+      };
+    };
+  };
+
+  # Machine identity. macmini declares its own; this one had only whatever the migration left
+  # behind, so the current values are written down as-is rather than renamed.
+  networking = {
+    computerName = "MacBook Mini";
+    hostName = "MacBook-Mini";
+    localHostName = "MacBook-Mini";
   };
 
   # Only provide via Nix the Nerd Fonts that have no matching cask
