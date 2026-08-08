@@ -7,14 +7,14 @@
 
 source "$CONFIG_DIR/helpers/wm.sh"
 
-AEROSPACE_FOCUSED_MONITOR_NO=$(wm_focused_workspace)
-AEROSPACE_LIST_OF_WINDOWS_IN_FOCUSED_MONITOR=$(wm_workspace_apps "$AEROSPACE_FOCUSED_MONITOR_NO")
+OMNIWM_FOCUSED_MONITOR_NO=$(wm_focused_workspace)
+OMNIWM_LIST_OF_WINDOWS_IN_FOCUSED_MONITOR=$(wm_workspace_apps "$OMNIWM_FOCUSED_MONITOR_NO")
 
 if [ "$SENDER" = "front_app_switched" ]; then
   #echo name:$NAME INFO: $INFO SENDER: $SENDER, SID: $SID >> ~/aaaa
   sketchybar --set "$NAME" label="$INFO" icon.background.image="app.$INFO" icon.background.image.scale=0.8
 
-  apps=$AEROSPACE_LIST_OF_WINDOWS_IN_FOCUSED_MONITOR
+  apps=$OMNIWM_LIST_OF_WINDOWS_IN_FOCUSED_MONITOR
   icon_strip=" "
   if [ "${apps}" != "" ]; then
     while read -r app
@@ -24,5 +24,5 @@ if [ "$SENDER" = "front_app_switched" ]; then
   else
     icon_strip=" —"
   fi
-  sketchybar --set space.$AEROSPACE_FOCUSED_MONITOR_NO label="$icon_strip"
+  sketchybar --set space.$OMNIWM_FOCUSED_MONITOR_NO label="$icon_strip"
 fi

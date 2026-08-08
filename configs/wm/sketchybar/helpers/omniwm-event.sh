@@ -4,8 +4,8 @@
 # stdin にイベント JSON が渡るが、ペイロード形はチャンネルごとに違うので
 # ここでは読み捨てて「現在のフォーカス」を query で取り直す (レース回避にもなる)。
 #
-# prev は /tmp の状態ファイルで自前管理し、aerospace 互換の環境変数名で
-# aerospace_workspace_change を発火する (理由は omniwm-bridge.sh 冒頭コメント)。
+# prev は /tmp の状態ファイルで自前管理し、OMNIWM_* の環境変数名で
+# omniwm_workspace_change を発火する (理由は omniwm-bridge.sh 冒頭コメント)。
 
 SB=/opt/homebrew/bin/sketchybar
 STATE=/tmp/sketchybar-omniwm-ws.state
@@ -24,7 +24,7 @@ printf '%s\n' "$focused" > "$STATE"
 # 壁紙 (configs/wallpaper/*.html) を現在ワークスペースに連動させる。
 # HTML は同階層の state.js を 300ms ごとにポーリングして window.__ws を読み、
 # applyWorkspace() で配色/模様を変える。壁紙自体は切り替えないのでフラッシュしない。
-# (旧 aerospace.toml の exec-on-workspace-change を omniwm へ移植したもの)。
+# (旧 WM の exec-on-workspace-change を omniwm へ移植したもの)。
 # Puddle が読むのは常にメインツリー側の HTML なのでパスは ~/.dotfiles 固定。
 # ワークスペースが実際に変わったときだけ atomic (temp+mv) に書く。
 if [ "$focused" != "$prev" ]; then
@@ -35,9 +35,9 @@ fi
 
 # 同一 workspace のままのイベント (windows-changed) でも発火する:
 # space_windows.sh が prev/focused のアイコン列を引き直すことで増減が反映される。
-"$SB" --trigger aerospace_workspace_change \
-  AEROSPACE_FOCUSED_WORKSPACE="$focused" \
-  AEROSPACE_PREV_WORKSPACE="$prev"
+"$SB" --trigger omniwm_workspace_change \
+  OMNIWM_FOCUSED_WORKSPACE="$focused" \
+  OMNIWM_PREV_WORKSPACE="$prev"
 
 # Native (Puddle Metal) 壁紙用の入力ファイル (Puddle wallpaper-source contract の
 # inputs 書式: 1 行 1 float・位置順で user[] へ)。

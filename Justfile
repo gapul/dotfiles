@@ -762,7 +762,7 @@ restart what="bar":
     set -u
     uid=$(id -u)
 
-    sb() { echo "-> sketchybar";  launchctl kickstart -k "gui/$uid/homebrew.mxcl.sketchybar"; }
+    sb() { echo "-> sketchybar";  launchctl kickstart -k "gui/$uid/org.nix-community.home.sketchybar"; }
     bd() { echo "-> borders";     launchctl kickstart -k "gui/$uid/org.nix-community.home.borders"; }
     om() {
       echo "-> OmniWM (full restart)"
