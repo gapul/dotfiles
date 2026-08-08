@@ -16,7 +16,7 @@
 
   # airdrop: CLI helper that pops the native AirDrop recipient window (macOS only).
   # Wired into yazi's `O` (open with) menu via configs/cli/yazi/yazi.toml.
-  home.file."bin/airdrop" = {
+  home.file.".local/bin/airdrop" = {
     source = ../../../configs/bin/airdrop;
     executable = true;
   };

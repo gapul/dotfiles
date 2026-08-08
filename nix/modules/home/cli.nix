@@ -154,11 +154,13 @@
   # so despite not being XDG-compliant, the home dir root is the correct location per the tool's spec.
   home.file.".markdownlint-cli2.jsonc".source =
     ../../../configs/cli/markdownlint/markdownlint-cli2.jsonc;
-  home.file."bin/nssh" = {
+  # ~/.local/bin, not ~/bin: the XDG user-binary location, already on PATH and already home to the
+  # rest of the hand-written commands. ~/bin is retired.
+  home.file.".local/bin/nssh" = {
     source = ../../../configs/bin/nssh;
     executable = true;
   };
-  home.file."bin/fzf-preview-repo" = {
+  home.file.".local/bin/fzf-preview-repo" = {
     source = ../../../configs/bin/fzf-preview-repo;
     executable = true;
   };

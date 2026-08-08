@@ -152,7 +152,7 @@ fallback = [
   { run = 'xdg-open "$@"', desc = "Open with Linux default", orphan = true, for = "linux" },
   { run = 'start "" "$@"', desc = "Open with Windows default", orphan = true, for = "windows" },
 ]
-# AirDrop the selected files (macOS only). Helper: configs/bin/airdrop (~/bin, on PATH).
+# AirDrop the selected files (macOS only). Helper: configs/bin/airdrop (~/.local/bin, on PATH).
 # Only ever surfaced via `O` (open --interactive), never as the Enter default.
 airdrop = [
   { run = 'airdrop "$@"', desc = "AirDrop", orphan = true, for = "macos" },

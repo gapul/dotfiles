@@ -116,7 +116,7 @@ in
     executable = true;
     text = ''
       #!/bin/sh
-      f="$HOME/.tmux/resurrect/last"
+      f="''${XDG_STATE_HOME:-$HOME/.local/state}/tmux/resurrect/last"
       [ -e "$f" ] || exit 0
       t=$(stat -L -f '%Sm' -t '%H:%M' "$f" 2>/dev/null || stat -L -c '%y' "$f" 2>/dev/null | cut -c12-16)
       [ -n "$t" ] && printf '💾 %s' "$t"
@@ -128,6 +128,8 @@ in
   #   resurrect: prefix+Ctrl-s save / prefix+Ctrl-r restore (restores pane contents + nvim too)
   #   continuum: auto-save every 15 minutes, auto-restore when the tmux server starts
   home.file.".config/tmux/plugins.conf".text = ''
+    # resurrect writes its saves outside XDG (~/.tmux/resurrect) unless told otherwise.
+    set -g @resurrect-dir '${config.xdg.stateHome}/tmux/resurrect'
     set -g @resurrect-capture-pane-contents 'on'
     set -g @resurrect-strategy-nvim 'session'
     set -g @continuum-restore 'on'
