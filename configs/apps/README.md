@@ -22,7 +22,7 @@ enforce したいキーのみ `defaults write`(surgical)。
 `defaults write` される。以下は GUI で手動:
 
 ### Puddle
-- 壁紙 website(`file:///Users/<ユーザー名>/.dotfiles/configs/wallpaper/*.html`)は端末固有の
+- 壁紙(`~/.dotfiles/configs/wallpaper/*.metal`)は端末固有の
   security-scoped bookmark が要るため、初回のみ Browse から追加する。
   以降の rebuild は surgical write なので websites/bookmark を壊さない(再追加不要)。
 
