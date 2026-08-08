@@ -256,6 +256,12 @@
       "tailscale-app"
       "rustdesk"
 
+      # ─── iOS sideloading ───
+      # Pairs the iPhone for SideStore (self-hosted anisette; see the ios-selfbuild notes).
+      # Was a hand-installed /Applications/AltServer.app until 2026-08 — the cask ships the same
+      # version, so declaring it just puts it back under management.
+      "altserver"
+
       # ─── Dev IDEs / Editors / SDK ───
       "claude-code"
       "ghostty"
