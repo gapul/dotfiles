@@ -108,7 +108,7 @@ curl -fsSL https://raw.githubusercontent.com/gapul/dotfiles/main/scripts/bootstr
 
     [Clean]
     gc                           # GC all layers at once (only regenerable caches; Trash and whole-home deletion are in gc-deep)
-    gc-deep                      # Interactively delete heavy regenerable data (zap of retired casks / CoreSimulator cache / podman / old build artifacts)
+    gc-deep                      # Interactively delete heavy regenerable data (Trash / ~/tmp scratch / zap of retired casks / CoreSimulator cache / podman / old build artifacts)
 
     [Inspect]
     check what=""                # Type-check / show diff  (`just check` = syntax/type-check, `just check diff` = diff build)
