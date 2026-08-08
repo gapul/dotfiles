@@ -3,7 +3,6 @@
   lib,
   config,
   user,
-  hardwareConfig ? ./homeserver-hardware.nix,
   ...
 }:
 let
@@ -84,14 +83,18 @@ let
     };
 in
 {
-  # Home server, replacing the single-node Proxmox install (pve, 192.168.116.100).
-  # Target shape is bare metal with no hypervisor: the four LXC containers and the
-  # HAOS/VPN VMs all become services or podman containers on this host.
+  # Home server, replacing the single-node Proxmox install (pve, 192.168.116.100)
+  # outright: no hypervisor, so the four LXC containers and the HAOS/VPN VMs all
+  # become services or podman containers on this host.
   #
-  # It is brought up first as a VM *on* that Proxmox so services can be moved one at
-  # a time with a rollback per step, and the metal swap happens once pve is empty.
-  # Because everything here is declarative by then, the swap is nixos-install from
-  # this flake plus a restore of /var/lib.
+  # The swap is direct rather than staged through a NixOS VM on the old Proxmox,
+  # which means there is no per-service rollback: everything has to be declared and
+  # verified *before* pve is wiped. Consequences of that choice:
+  #   - verification happens in a NixOS VM test in CI, not on the live box
+  #   - the whole disk is declared (hosts/homeserver-disk.nix) since install day
+  #     needs it, and ZFS replaces vzdump's per-guest snapshots
+  #   - the 35GB of service data (CT101's 23GB, HAOS's 9.2GB, matter's 8MB) must be
+  #     copied off the box first; the 200GB mount is on the same NVMe and does not count
   #
   # Deliberately NOT in this first pass:
   #   - the 37 containers of CT101 (compose2nix over /opt/stacks, one service at a time)
@@ -100,22 +103,36 @@ in
   #     only forwarded traffic enters the tunnel; a netns of its own is the likely answer)
   #   - the L2TP/IPsec relay of VM105 (strongswan + xl2tpd, last because work depends on it)
   imports = [
-    hardwareConfig
+    ./homeserver-hardware.nix
   ];
 
   # --- Boot ---
-  # OVMF/q35 while this is a VM, plain UEFI once it is metal. Same config either way.
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
+  # Generations are the rollback that Proxmox never had. Keep a decent number of
+  # them; the ESP is 1GB and dedicated.
   boot.loader.systemd-boot.configurationLimit = 10;
 
   # No swap partition; compressed RAM instead. The box it replaces was swapping
   # (CT101 had used 511MB of its 512MB) purely because a 4GB VM sat next to it.
   zramSwap.enable = true;
 
-  # Guest agent so the Proxmox side can still see IPs / shut this down cleanly
-  # during the VM phase. A no-op once it runs on metal.
-  services.qemuGuest.enable = true;
+  # --- ZFS ---
+  # Required by the pool import; any stable 8 hex digits will do, it just has to
+  # differ between machines sharing a pool (nothing here does).
+  networking.hostId = "8f3a1c02";
+  # Don't import a pool that another system may still hold; on a single-disk box
+  # this only ever means "fail loudly instead of corrupting".
+  boot.zfs.forceImportRoot = false;
+  # ARC defaults to half of RAM, which would quietly eat the ~4.7GB this migration
+  # is meant to recover. 2GB is a starting point for a 15GB box running ~20
+  # containers; raise it if reads turn out to be the bottleneck.
+  boot.kernelParams = [ "zfs.zfs_arc_max=2147483648" ];
+  services.zfs.autoScrub.enable = true;
+  services.zfs.trim.enable = true;
+  # The actual replacement for vzdump's nightly per-guest snapshots. Dataset
+  # properties in hosts/homeserver-disk.nix decide what is included (/nix is not).
+  services.zfs.autoSnapshot.enable = true;
 
   networking.hostName = "homeserver";
   networking.useDHCP = lib.mkDefault true;
