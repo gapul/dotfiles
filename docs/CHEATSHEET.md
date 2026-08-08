@@ -183,7 +183,7 @@ eza / bat が ls / cat を置き換え済(home-manager が auto-alias)。
 | GitHub + Forgejo | コード(再現可能) | git。GitHub 原本 + 自宅 Forgejo ミラー([HOMELAB.md](./HOMELAB.md)) |
 | restic warm | 現役ファイル(自動・日次) | `google-drive:restic-backup`(暗号化) |
 | restic cold | 使わなくなったファイル(永久保持) | 同リポジトリ `--tag archive` |
-| rclone mount | 他者と共有する平文クラウド | `~/Cloud/GoogleDrive`(fuse-t・KEXT 不要) |
+| rclone mount | 他者と共有する平文クラウド | `~/Sync/google-drive-{personal,school}`(KEXT 不要) |
 
 ### warm（現役ファイル・日次自動 + 手動）
 
@@ -207,7 +207,7 @@ eza / bat が ls / cat を置き換え済(home-manager が auto-alias)。
 | コマンド | 何 |
 |---|---|
 | `just restore <id> [dest]` | snapshot から復元(既定は元の絶対パス。alias: `unarchive`) |
-| `just gdrive` | `~/Cloud/GoogleDrive` のマウント状態確認 |
+| `just gdrive` | `~/Sync/google-drive-*` のマウント状態確認 |
 | `just gdrive remount` / `open` | 再マウント / Finder で開く |
 
 - cold は append でなく restic の `--keep-tag archive` で永久保持(`forget` で間引かれない)。
