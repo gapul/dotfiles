@@ -114,7 +114,7 @@ sketchybar --default "${defaults[@]}"
 
 
 # Left
-source "$ITEM_DIR/apple.sh"  # Apple ロゴ (左端・単独アイコン。popup: Preferences/Activity/Lock。zen.sh の状態判定も参照)
+source "$ITEM_DIR/apple.sh"  # Apple ロゴ (左端。ワークスペースと同じ left_bracket の島に入る。popup: Preferences/Activity/Lock。zen.sh の状態判定も参照)
 source "$ITEM_DIR/spaces.sh"
 
 # Right
@@ -133,7 +133,7 @@ source "$ITEM_DIR/keystats.sh"
 source "$ITEM_DIR/app_guard.sh"
 
 # ─────────── 左右ブラケット背景 (ノッチを挟んで2分割) ───────────
-sketchybar --add bracket left_bracket '/space\..*/' \
+sketchybar --add bracket left_bracket apple.logo '/space\..*/' \
            --set   left_bracket \
                    background.color=$BACKGROUND_1 \
                    background.corner_radius=10 \
