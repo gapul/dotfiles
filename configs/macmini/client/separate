@@ -1,0 +1,16 @@
+#!/bin/zsh
+# 母艦→macmini 透過・音声分離(ボーカル/BGM)。ローカルの曲を渡すと分離stemを戻す。
+# 使い方: separate <音声/曲ファイル>
+emulate -L zsh
+f="$1"
+if [[ -z "$f" || ! -f "$f" ]]; then echo "使い方: separate <曲ファイル>"; exit 1; fi
+base="${f:t:r}"; ext="${f:e}"; tag="sep_$$"
+retry() { local i; for i in 1 2 3; do "$@" && return 0; sleep 2; done; return 1; }
+retry scp -q "$f" "macmini:/tmp/${tag}.${ext}" || { echo "scp失敗"; exit 1; }
+echo "[分離中...]"
+retry ssh macmini "~/.local/bin/separate /tmp/${tag}.${ext} /tmp/${tag}_out >/dev/null 2>&1"
+outdir="$(cd "$(dirname "$f")" && pwd)"
+retry scp -q "macmini:/tmp/${tag}_out/*" "$outdir/" 2>/dev/null
+echo "→ $outdir/ に vocals / other を保存"
+ls "$outdir/" | grep -iE "vocals|other" | sed 's/^/   /'
+ssh macmini "rm -rf /tmp/${tag}.* /tmp/${tag}_out" >/dev/null 2>&1

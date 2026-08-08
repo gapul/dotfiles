@@ -12,7 +12,27 @@ let
 
   packageNames = map lib.getName home.home.packages;
   caskNames = map (cask: if builtins.isString cask then cask else cask.name) darwin.homebrew.casks;
+
+  # Package manager priority (nix > homebrew): the same tool must not be declared on both sides.
+  # /opt/homebrew/bin sits ahead of the nix profile outside zsh, so a duplicate silently resolves
+  # to the brew copy and the nix declaration becomes a lie.
+  # "felixkratz/formulae/sketchybar" -> "sketchybar"
+  brewNames =
+    darwinCfg:
+    map (
+      brew: lib.last (lib.splitString "/" (if builtins.isString brew then brew else brew.name))
+    ) darwinCfg.homebrew.brews;
+  duplicated = darwinCfg: pkgNames: lib.intersectLists (brewNames darwinCfg) pkgNames;
+  # macmini has no standalone homeConfiguration: its home is embedded in the darwin config.
+  macminiDarwin = self.darwinConfigurations.macmini.config;
+  macminiPackageNames =
+    map lib.getName
+      macminiDarwin.home-manager.users.${user.username}.home.packages;
 in
+assert lib.assertMsg (duplicated darwin packageNames == [ ])
+  "nix > homebrew: declared on both sides for the workstation — ${lib.concatStringsSep ", " (duplicated darwin packageNames)}";
+assert lib.assertMsg (duplicated macminiDarwin macminiPackageNames == [ ])
+  "nix > homebrew: declared on both sides for macmini — ${lib.concatStringsSep ", " (duplicated macminiDarwin macminiPackageNames)}";
 assert lib.assertMsg (
   home.programs.git.settings.wt.basedir == "../{gitroot}-worktrees"
 ) "git-wt worktrees must live outside the repository";

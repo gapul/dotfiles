@@ -52,7 +52,8 @@ in
       gl = "git pull";
       gp = "git push";
       gs = "git status";
-      keystats = "${config.home.homeDirectory}/.local/bin/keystats";
+      # (keystats alias removed: the cask links the CLI into /opt/homebrew/bin, and the alias was
+      #  pinning an older hand-built copy in ~/.local/bin ahead of it.)
       tl = "textlint --config ~/.config/textlint/.textlintrc.json";
       tlf = "textlint --config ~/.config/textlint/.textlintrc.json --fix";
       cfw = "~/Developer/github.com/gapul/personal-tools/cloudflare/bin/cf-wrangler";

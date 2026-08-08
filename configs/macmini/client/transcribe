@@ -1,0 +1,27 @@
+#!/bin/zsh
+# 母艦→macmini 透過文字起こし。ローカルのファイルを渡すだけで、裏でmacminiに送って実行し結果を戻す。
+# 使い方: transcribe <ファイル> [ja/en/auto] [txt/srt/vtt/json/all] [fast|accurate]
+emulate -L zsh
+file="$1"; lang="${2:-ja}"; fmt="${3:-txt}"; model="${4:-fast}"
+if [[ -z "$file" || ! -f "$file" ]]; then
+  echo "使い方: transcribe <ファイル> [ja/en/auto] [txt/srt/vtt/json/all] [fast|accurate]"
+  exit 1
+fi
+base="${file:t:r}"; ext="${file:e}"
+tag="tr_$$"; rf="/tmp/${tag}.${ext}"
+retry() { local i; for i in 1 2 3; do "$@" && return 0; sleep 2; done; return 1; }
+
+echo "[send] $file → macmini"
+retry scp -q "$file" "macmini:$rf" || { echo "scp失敗(macmini/ts接続を確認)"; exit 1; }
+echo "[run ] transcribe (model=$model lang=$lang fmt=$fmt)"
+retry ssh macmini "~/.local/bin/transcribe $rf $lang $fmt $model >/dev/null 2>&1" || { echo "実行失敗"; exit 1; }
+
+outdir="$(cd "$(dirname "$file")" && pwd)"
+case "$fmt" in all) exts=(txt srt vtt json);; *) exts=($fmt);; esac
+for e in $exts; do
+  if retry scp -q "macmini:/tmp/${tag}.${e}" "$outdir/$base.$e" 2>/dev/null; then
+    echo "→ $outdir/$base.$e"
+  fi
+done
+ssh macmini "rm -f /tmp/${tag}.*" >/dev/null 2>&1
+if [[ -f "$outdir/$base.txt" ]]; then echo "---"; cat "$outdir/$base.txt"; fi
