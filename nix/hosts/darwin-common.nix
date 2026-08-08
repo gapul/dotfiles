@@ -15,6 +15,23 @@
   # Determinate Nix manages the daemon/nix.conf, so nix-darwin doesn't touch it
   nix.enable = false;
 
+  # Own the Homebrew installation, not just the package list. nix-darwin's homebrew module
+  # (the brews/casks lists on each host) assumes /opt/homebrew was put there by hand — which is
+  # the one step of this repo a fresh mac could not reproduce.
+  #
+  # autoMigrate: adopt the existing /opt/homebrew instead of demanding an empty prefix. The
+  #   installed formulae and casks stay where they are; only ownership of the prefix moves.
+  # mutableTaps: left on. Pinning taps as flake inputs would also freeze `brew update`, and
+  #   _upgrade-packages-macos in the Justfile runs exactly that before upgrading — the tap trust
+  #   dance there only makes sense against a mutable tap set. Revisit if tap drift ever bites.
+  nix-homebrew = {
+    enable = true;
+    user = user.username;
+    enableRosetta = false; # Apple Silicon only; no x86_64 prefix to manage
+    autoMigrate = true;
+    mutableTaps = true;
+  };
+
   # Determinate Nix owns /etc/nix/nix.conf and does `!include nix.custom.conf`, so nix-darwin's
   # typed `nix.settings` is unavailable (nix.enable = false above) and this file is where our
   # settings have to land. It used to be five append-if-grep-misses blocks, which could only ever
