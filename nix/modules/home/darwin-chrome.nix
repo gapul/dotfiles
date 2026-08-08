@@ -273,6 +273,39 @@ in
   # (The brew service that used to start sketchybar is retired in darwin-apps.nix's
   #  retiredLaunchAgents list, together with every other pre-nix plist.)
 
+  # sketchybar itself. The formula was declared but its start was not: the bar only ran because
+  # `brew services start sketchybar` had been typed once on this machine, so a fresh mac rebuilt
+  # from this repo came up with no bar. Own the daemon here like borders, and retire the brew
+  # service in the activation below.
+  # PATH mirrors what the brew plist exported — sketchybarrc and the plugins call brew-installed
+  # binaries (sketchybar, media-control, displayplacer, jq) and launchd starts with a bare PATH.
+  launchd.agents.sketchybar = {
+    enable = true;
+    config = {
+      ProgramArguments = [ "/opt/homebrew/bin/sketchybar" ];
+      RunAtLoad = true;
+      KeepAlive = true;
+      ProcessType = "Interactive";
+      EnvironmentVariables = {
+        PATH = "/opt/homebrew/bin:/opt/homebrew/sbin:/usr/bin:/bin:/usr/sbin:/sbin";
+        LANG = "en_US.UTF-8";
+      };
+      StandardErrorPath = "/tmp/sketchybar.err";
+      StandardOutPath = "/tmp/sketchybar.log";
+    };
+  };
+
+  # One-shot migration: stop the brew service so it doesn't race the agent above at login.
+  # `brew services stop` unloads it and removes homebrew.mxcl.sketchybar.plist, so this is a no-op
+  # from the second rebuild on.
+  home.activation.sketchybarBrewService = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    legacy_plist="$HOME/Library/LaunchAgents/homebrew.mxcl.sketchybar.plist"
+    if [ -f "$legacy_plist" ]; then
+      run /opt/homebrew/bin/brew services stop sketchybar 2>/dev/null || true
+      run rm -f "$legacy_plist"
+    fi
+  '';
+
   # Bridge OmniWM IPC events to the sketchybar workspace-change event.
   # aerospace used to fire aerospace_workspace_change itself via exec-and-forget, but omniwm
   # has no exec action, so this resident agent converts `omniwmctl watch` events into
