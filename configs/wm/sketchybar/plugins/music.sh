@@ -3,7 +3,7 @@
 # mopidy は macOS の Now Playing に名乗れない(macOS 26 制限)ので media-control では
 # 拾えないため、MPD を直接叩く。mopidy が止まっていれば従来どおり media-control
 # (他アプリの Now Playing) にフォールバックする。
-source "$CONFIG_DIR/colors.sh"
+source "$HOME/.config/sketchybar-colors.sh"
 source "$CONFIG_DIR/icons.sh"
 
 MOPIDY=$(python3 - <<'PY' 2>/dev/null

@@ -3,7 +3,7 @@
 #echo space.sh $'FOCUSED_WORKSPACE': $FOCUSED_WORKSPACE, $'SELECTED': $SELECTED, NAME: $NAME, SENDER: $SENDER  >> ~/aaaa
 
 update() {
-  source "$CONFIG_DIR/colors.sh"
+  source "$HOME/.config/sketchybar-colors.sh"
   if [ "space.$FOCUSED_WORKSPACE" = "$NAME" ]; then
     sketchybar --set $NAME icon.highlight=true \
                            label.highlight=true \

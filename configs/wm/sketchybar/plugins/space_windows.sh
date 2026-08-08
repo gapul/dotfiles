@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-source "$CONFIG_DIR/colors.sh"
+source "$HOME/.config/sketchybar-colors.sh"
 source "$CONFIG_DIR/helpers/wm.sh"
 
 OMNIWM_FOCUSED_MONITOR=$(wm_focused_monitor)

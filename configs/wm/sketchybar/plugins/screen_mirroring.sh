@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source "$CONFIG_DIR/colors.sh"
+source "$HOME/.config/sketchybar-colors.sh"
 
 if [ "$1" = "click" ]; then
   # Control Center パネルではなく、公式の「画面ミラーリング」メニューバー項目を
