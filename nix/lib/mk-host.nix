@@ -6,6 +6,7 @@
   nixpkgs,
   nix-darwin,
   home-manager,
+  nix-homebrew,
   user,
   system,
   commonSpecialArgs,
@@ -24,6 +25,9 @@
     nix-darwin.lib.darwinSystem {
       inherit system specialArgs;
       modules = [
+        # Every darwin host in this repo drives Homebrew, so the installation manager belongs
+        # here rather than in one host file (the asymmetry between hosts is what bites later).
+        nix-homebrew.darwinModules.nix-homebrew
         host
       ]
       ++ nixpkgs.lib.optionals (homeModules != [ ]) [

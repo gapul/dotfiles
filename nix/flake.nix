@@ -87,6 +87,11 @@
     # index them. Standalone HM only symlinks GUI apps into ~/Applications, which macOS
     # skips because they point into /nix/store. Wired into the macWorkstation role's HM modules.
     mac-app-util.url = "github:hraban/mac-app-util";
+
+    # Declaratively own the Homebrew installation itself (not just the package list).
+    # nix-darwin's homebrew module assumes brew is already installed by hand; this makes the
+    # prefix a nix-managed thing, so a fresh mac needs no curl-into-bash bootstrap step.
+    nix-homebrew.url = "github:zhaofengli/nix-homebrew";
     mac-app-util.inputs.nixpkgs.follows = "nixpkgs";
   };
 
@@ -109,6 +114,7 @@
       treefmt-nix,
       flake-parts,
       brew-nix,
+      nix-homebrew,
       mac-app-util,
       ...
     }:
@@ -162,6 +168,7 @@
           nixpkgs
           nix-darwin
           home-manager
+          nix-homebrew
           user
           system
           commonSpecialArgs
