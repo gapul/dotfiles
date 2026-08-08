@@ -257,6 +257,8 @@
               "\\.envrc$"
               # The macmini AI commands are zsh (shellcheck doesn't support zsh, SC1071)
               "configs/macmini/bin/.*"
+              # Same for their 母艦-side client wrappers
+              "configs/macmini/client/.*"
               # Archive of one-shot scripts from macmini setup (historical artifacts, not style-refactored)
               "configs/macmini/setup-scripts/.*"
             ];

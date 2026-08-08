@@ -102,21 +102,19 @@ nix run "$HOME_MANAGER_REF" -- switch --flake "$DOTFILES_DIR/nix#$(whoami)" -b b
 log "Cleaning duplicates installed by both brew and Nix..."
 brew uninstall starship fzf atuin 2>/dev/null || true
 
-# 9. uv tool で入れる CLI (brew/nix に無いもの)
-log "Installing uv tools (gita, etc.)..."
-uv tool install gita 2>&1 | tail -3 || true
-
-# 10. ghq 配下の全 repo を gita に登録 (空でも安全)
+# 9. ghq 配下の全 repo を gita に登録 (空でも安全)
+#    gita 本体は nix (home/workstation.nix) で入る。以前ここで uv tool install していたが、
+#    nix と二重管理になっていたので削除した。
 if command -v gita >/dev/null && command -v ghq >/dev/null; then
   log "Registering ghq repos with gita..."
   ghq list -p 2>/dev/null | xargs -I {} gita add {} 2>&1 | tail -3 || true
 fi
 
-# 11. SKK 公開辞書を ~/.skk/ に install (skkeleton 用)
+# 10. SKK 公開辞書を ~/.skk/ に install (skkeleton 用)
 log "Installing SKK public dictionaries..."
 bash "$DOTFILES_DIR/scripts/install-skk-dicts-macskk.sh" || true
 
-# 12. gh auth (ブラウザ認証、未済なら起動)。SSH 鍵管理用 scope も要求
+# 11. gh auth (ブラウザ認証、未済なら起動)。SSH 鍵管理用 scope も要求
 GH_SCOPES="admin:public_key,admin:ssh_signing_key"
 if command -v gh >/dev/null; then
   if ! gh auth status >/dev/null 2>&1; then
@@ -131,7 +129,7 @@ if command -v gh >/dev/null; then
   fi
 fi
 
-# 12.5. GitHub に SSH 鍵を auth + signing 両方として登録 (べき等、既存ならスキップ)
+# 11.5. GitHub に SSH 鍵を auth + signing 両方として登録 (べき等、既存ならスキップ)
 if command -v gh >/dev/null && gh auth status >/dev/null 2>&1 && [ -f "$SSH_PUB" ]; then
   KEY_BODY=$(awk '{print $1, $2}' "$SSH_PUB")
   HOST_LABEL="$(hostname -s)"
@@ -149,7 +147,7 @@ if command -v gh >/dev/null && gh auth status >/dev/null 2>&1 && [ -f "$SSH_PUB"
   fi
 fi
 
-# 13. 残った手動 GUI ステップを ~/POST-BOOTSTRAP.md に書き出す
+# 12. 残った手動 GUI ステップを ~/POST-BOOTSTRAP.md に書き出す
 POST_FILE="$HOME/POST-BOOTSTRAP.md"
 cat > "$POST_FILE" <<'EOF'
 # 新 Mac セットアップ — 手動 GUI ステップ
@@ -217,7 +215,7 @@ open "x-apple.systempreferences:com.apple.LoginItems-Settings.extension"
 ```
 
 ## 7. GitHub SSH 鍵登録 — **bootstrap.sh で自動済み**
-(Step 12.5 で auth + signing 両方を登録)
+(Step 11.5 で auth + signing 両方を登録)
 未登録の場合のみ手動で:
 ```bash
 gh ssh-key add ~/.ssh/id_ed25519.pub --title "$(hostname -s)"

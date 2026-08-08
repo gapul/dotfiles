@@ -185,7 +185,7 @@ pre-commit フック・フォーマッタは `nix/flake.nix` で **宣言的に�
 | `deadnix` | `*.nix` | — | 未使用コード検出 (モジュール引数 `{ lib, ... }` は許容) |
 | `gitleaks` | 全 staged | — | 機密 leak 検出 |
 | `nixfmt` | `*.nix` | — | 整形チェック (未整形なら fail) |
-| `shellcheck` | 全 staged | `configs/wm/sketchybar/.*`、`\.envrc$`、`configs/macmini/bin/.*`、`configs/macmini/setup-scripts/.*` | shell lint (.shellcheckrc に従う) |
+| `shellcheck` | 全 staged | `configs/wm/sketchybar/.*`、`\.envrc$`、`configs/macmini/bin/.*`、`configs/macmini/client/.*`、`configs/macmini/setup-scripts/.*` | shell lint (.shellcheckrc に従う) |
 <!-- END hooks -->
 
 メモ:

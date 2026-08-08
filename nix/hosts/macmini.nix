@@ -20,14 +20,19 @@
       cleanup = "uninstall"; # undeclared brews are auto-uninstalled
       upgrade = false;
     };
+    # Same priority rule as hosts/darwin.nix: nix > homebrew > everything else, and each formula
+    # states why brew owns it. (uv was dropped here — modules/home/packages.nix already installs it,
+    # and brew winning the PATH meant the duplicate was invisible.)
     brews = [
-      "tailscale" # join the tailnet (auth only on first run via `sudo tailscale up`)
+      "tailscale" # (b) tailnet daemon (auth only on first run via `sudo tailscale up`)
       # --- Local AI stack (added 2026-07. Kept from removal by cleanup=uninstall) ---
+      # ffmpeg / aria2 / socat are all in nixpkgs for aarch64-darwin, so by the rule above they are
+      # migration candidates. They stay on brew until someone can run a rebuild on the mini and
+      # confirm the AI stack still comes up — moving them blind would break a headless machine.
       "ffmpeg" # audio/video conversion (preprocessing for transcribe/tts/voice-clone/audio-separation)
-      "uv" # Python environment management (mlx_whisper / various venvs: diarize/sbv2/gsv/sep/rag)
       "aria2" # self-healing multi-connection DL for large models (macmini direct hf-mirror/GitHub)
       "socat" # work around apple container's host-port publishing bug (host->containerIP forwarding)
-      "container" # Apple's first-party container runtime (Open WebUI/AnythingLLM/Minecraft).
+      "container" # (a) Apple's first-party container runtime. not in nixpkgs (Open WebUI/AnythingLLM/Minecraft).
       # First run only needs runtime start + kernel setup: `container system start` /
       # `container system kernel set --recommended` (can't be declared; manual or ai-stack.sh).
     ];

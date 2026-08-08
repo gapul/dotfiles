@@ -1,0 +1,21 @@
+#!/bin/zsh
+# 母艦→macmini 透過・日本語音声合成(Style-Bert-VITS2)。生成後に母艦で自動再生。
+# 使い方: tts "喋らせたい文章" [出力.wav] [Neutral/Happy/Sad/Angry/Fear/Disgust/Surprise]
+# 環境変数 NOPLAY=1 で自動再生オフ
+emulate -L zsh
+text="$1"; out="${2:-./tts_out.wav}"; style="${3:-Neutral}"
+if [[ -z "$text" ]]; then
+  echo "使い方: tts \"文章\" [出力.wav] [Neutral/Happy/Sad/Angry/Fear/Disgust/Surprise]"
+  exit 1
+fi
+tag="tts_$$"; rf="/tmp/${tag}.wav"
+retry() { local i; for i in 1 2 3; do "$@" && return 0; sleep 2; done; return 1; }
+
+# テキストはbase64で安全に渡す(日本語・記号・空白対応)
+b64="$(printf '%s' "$text" | base64)"
+echo "[run ] 音声合成 (style=$style)"
+retry ssh macmini "t=\$(echo '$b64' | base64 -d); ~/.local/bin/tts \"\$t\" $rf $style >/dev/null 2>&1" || { echo "合成失敗"; exit 1; }
+retry scp -q "macmini:$rf" "$out" || { echo "取得失敗"; exit 1; }
+ssh macmini "rm -f $rf" >/dev/null 2>&1
+echo "→ $out"
+if [[ -z "$NOPLAY" ]] && command -v afplay >/dev/null; then afplay "$out"; fi

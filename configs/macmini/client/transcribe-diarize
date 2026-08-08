@@ -1,0 +1,25 @@
+#!/bin/zsh
+# 母艦→macmini 透過・話者分離つき文字起こし。
+# 使い方: transcribe-diarize <ファイル> [ja/en/auto] [fast|accurate]
+emulate -L zsh
+file="$1"; lang="${2:-ja}"; model="${3:-fast}"
+if [[ -z "$file" || ! -f "$file" ]]; then
+  echo "使い方: transcribe-diarize <ファイル> [ja/en/auto] [fast|accurate]"
+  exit 1
+fi
+base="${file:t:r}"; ext="${file:e}"
+tag="trd_$$"; rf="/tmp/${tag}.${ext}"
+retry() { local i; for i in 1 2 3; do "$@" && return 0; sleep 2; done; return 1; }
+
+echo "[send] $file → macmini"
+retry scp -q "$file" "macmini:$rf" || { echo "scp失敗"; exit 1; }
+echo "[run ] 話者分離つき文字起こし (model=$model lang=$lang)"
+retry ssh macmini "~/.local/bin/transcribe-diarize $rf $lang $model >/dev/null 2>&1" || { echo "実行失敗"; exit 1; }
+
+outdir="$(cd "$(dirname "$file")" && pwd)"
+if retry scp -q "macmini:/tmp/${tag}.diarized.txt" "$outdir/$base.diarized.txt" 2>/dev/null; then
+  echo "→ $outdir/$base.diarized.txt"; echo "---"; cat "$outdir/$base.diarized.txt"
+else
+  echo "結果の取得に失敗"
+fi
+ssh macmini "rm -f /tmp/${tag}.*" >/dev/null 2>&1
