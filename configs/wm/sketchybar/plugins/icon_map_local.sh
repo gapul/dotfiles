@@ -1,6 +1,6 @@
 # shellcheck shell=bash
 # icon_map ローカル補正
-# アプリの実名 (aerospace / front_app が返す名前) が sketchybar-app-font の
+# アプリの実名 (front_app が返す名前) が sketchybar-app-font の
 # 公式マップのキーと異なるものを、ここで上書きする。
 # icon_map.sh の末尾から source される。再生成 (just sketchybar-font) でも
 # この файл は触られないため、補正は維持される。
