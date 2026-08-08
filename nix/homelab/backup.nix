@@ -1,4 +1,4 @@
-{ ... }:
+_:
 let
   # Same repository and the same retention as the Mac and the laptop. That file
   # is the single definition point on purpose: three hosts writing to one restic
