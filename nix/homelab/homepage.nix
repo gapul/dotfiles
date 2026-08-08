@@ -19,7 +19,10 @@
     };
     volumes = [
       "/etc/os-release:/etc/os-release:ro"
-      "/run/podman/podman.sock:/run/podman/podman.sock:ro"
+      # podman's socket speaks the Docker API, but homepage's config/docker.yaml and
+      # glances both look for it at the conventional path, so keep the container
+      # side unchanged and only swap the host side.
+      "/run/podman/podman.sock:/var/run/docker.sock:ro"
     ];
     log-driver = "journald";
     extraOptions = [
@@ -44,7 +47,10 @@
     };
     volumes = [
       "/var/lib/homelab/homepage/config:/app/config:rw"
-      "/run/podman/podman.sock:/run/podman/podman.sock:ro"
+      # podman's socket speaks the Docker API, but homepage's config/docker.yaml and
+      # glances both look for it at the conventional path, so keep the container
+      # side unchanged and only swap the host side.
+      "/run/podman/podman.sock:/var/run/docker.sock:ro"
     ];
     ports = [
       "3000:3000/tcp"
