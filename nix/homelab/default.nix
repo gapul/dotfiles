@@ -13,14 +13,16 @@
   # dropped from `environment` and supplied by environmentFiles at runtime; see
   # README.md for what each /var/lib/secrets/<stack>.env has to define.
   #
-  # Still on the old host, deliberately: adguardhome and syncthing, which become
-  # native modules so their settings stop living in a web UI, and the containers
-  # being dropped outright (dockge, wud, backrest, uptime-kuma, adguardhome-sync,
-  # stirling-pdf).
+  # Not containers at all: adguardhome, syncthing and samba are native modules, so
+  # their settings stop living in a web UI or a command line, and backup.nix
+  # declares the restic schedule that backrest used to own. Dropped outright:
+  # dockge, wud, backrest, uptime-kuma, adguardhome-sync, stirling-pdf.
   imports = [
+    ./adguardhome.nix
     ./anisette.nix
     ./archivebox.nix
     ./attic.nix
+    ./backup.nix
     ./dawarich.nix
     ./forgejo.nix
     ./homepage.nix
@@ -34,6 +36,7 @@
     ./radicale.nix
     ./rsshub.nix
     ./samba.nix
+    ./syncthing.nix
     ./vaultwarden.nix
   ];
 }

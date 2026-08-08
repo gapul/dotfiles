@@ -77,5 +77,16 @@ pkgs.testers.runNixOSTest {
 
     # podman is what replaces the docker daemon the containers run under today.
     machine.succeed("podman --version")
+
+    # The services that stopped being containers. Each one is config that used to
+    # live in a web UI or a command line, so "it parses and starts" is the claim.
+    machine.wait_for_unit("adguardhome.service")
+    machine.wait_for_open_port(3080)
+    machine.succeed("ss -lntup | grep -q ':53 '")
+    machine.wait_for_unit("syncthing.service")
+    machine.succeed("systemctl is-enabled samba-smbd.service")
+
+    # backrest's replacement is a timer, so there is nothing to connect to.
+    machine.succeed("systemctl is-enabled restic-backups-homeserver.timer")
   '';
 }
