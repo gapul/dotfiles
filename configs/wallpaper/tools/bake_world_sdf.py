@@ -1,13 +1,19 @@
 #!/usr/bin/env python3
 """Bake the world coastline into two packed uint32 tables for the MSL wallpapers.
 
-  SDF_TABLE   signed distance to the coastline, u8, +/- SDF_RANGE table cells
-  PHASE_TABLE cyclic arc-length along the nearest coastline, u8, 1.0 = one pulse
-              cycle; continuous around each closed contour so a shader can run
-              lights along the outline with `fract(phase - speed * time)`.
+  SDF_TABLE   signed distance to the coastline, u8, +/- SDF_RANGE cells,
+              negative on land. The distance is measured *on the sphere*, in
+              units of one grid cell of arc (360/SW degrees), not in the
+              equirectangular image: an image-space distance means a different
+              thing at every latitude, which the shader cannot undo and which
+              shows up as smeared, hairy polar coastlines as soon as the field
+              is reprojected onto a globe or an equal-area map.
+  PHASE_TABLE cyclic arc length along the nearest coastline, u8, 1.0 = one
+              pulse cycle; continuous around each closed contour so a shader
+              can run lights along the outline with `fract(phase - speed*time)`.
 
-Both are equirectangular, 512x256, row 0 at +90 deg, x wrapping at +/-180 deg,
-packed 4 cells per uint32 (x-major, little end first).
+Both are equirectangular, row 0 at +90 deg, x wrapping at +/-180 deg, packed
+4 cells per uint32 (x-major, little end first).
 
     curl -LO https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_land.geojson
     uv run --with numpy,scipy,pillow,scikit-image python bake_world_sdf.py \
@@ -21,16 +27,21 @@ import sys
 
 import numpy as np
 from PIL import Image, ImageDraw
-from scipy import ndimage
 from scipy.spatial import cKDTree
 from skimage import measure
 
 SRC = sys.argv[1] if len(sys.argv) > 1 else "ne50_land.geojson"
 OUT = sys.argv[2] if len(sys.argv) > 2 else "tables.txt"
-TW, TH = 512, 256      # table grid
+SW, SH = 1024, 512     # distance field grid: this is what the coastline's
+                       # sharpness costs, and constant tables compile fast
+                       # (half a million entries adds under a second)
+PW, PH = 512, 256      # phase grid: arc length varies slowly, so it stays coarse
 SS = 8                 # supersample factor for the rasterisation
-RANGE = 12.0           # +/- clamp of the stored distance, in table cells
-SPACING = 140.0        # target arc length of one pulse cycle, in table cells
+RANGE = 20.0           # +/- clamp of the stored distance, in SDF cells. Wide
+                       # enough that the halo has faded to nothing before the
+                       # field flattens, or the clamp draws a ring round every
+                       # island; u8 still leaves the step at a third of a pixel.
+SPACING = 98.0         # target arc length of one pulse cycle, in degrees
 
 
 def rings(geom):
@@ -43,7 +54,7 @@ def rings(geom):
 
 def rasterize():
     feats = json.load(open(SRC))["features"]
-    W, H = TW * SS, TH * SS
+    W, H = SW * SS, SH * SS
     img = Image.new("L", (W, H), 0)
     d = ImageDraw.Draw(img)
     for f in feats:
@@ -56,51 +67,87 @@ def rasterize():
     return np.array(img) > 127
 
 
-def bake_sdf(land):
-    d_out = ndimage.distance_transform_edt(~land)
-    d_in = ndimage.distance_transform_edt(land)
-    sdf_hi = (d_out - d_in) / SS                       # table cells
-    return sdf_hi.reshape(TH, SS, TW, SS).mean(axis=(1, 3))
+def unit_vectors(lat_deg, lon_deg):
+    lat = np.radians(lat_deg)
+    lon = np.radians(lon_deg)
+    c = np.cos(lat)
+    return np.stack([c * np.cos(lon), np.sin(lat), c * np.sin(lon)], axis=-1)
 
 
-def bake_phase(land):
-    """Nearest-coastline cyclic arc length, in cycles."""
-    pts, phase = [], []
+def raster_to_lonlat(rows, cols, shape):
+    h, w = shape
+    return (90.0 - (rows + 0.5) / h * 180.0,
+            (cols + 0.5) / w * 360.0 - 180.0)
+
+
+def grid_vectors(w, h):
+    gy, gx = np.mgrid[0:h, 0:w]
+    lat = 90.0 - (gy.ravel() + 0.5) / h * 180.0
+    lon = (gx.ravel() + 0.5) / w * 360.0 - 180.0
+    return unit_vectors(lat, lon)
+
+
+def contours(land):
+    """Coastline polylines at raster resolution, all wound the same way."""
+    out = []
     for c in measure.find_contours(land.astype(float), 0.5):
-        c = c / SS                                     # -> table cells (row, col)
         if len(c) < 8:
             continue
-        closed = np.allclose(c[0], c[-1])
-        if closed:
+        if np.allclose(c[0], c[-1]):
             c = c[:-1]
         # Consistent handedness (positive shoelace area) so every landmass's
         # lights travel the same way round.
         y, x = c[:, 0], c[:, 1]
         if np.dot(x, np.roll(y, -1)) - np.dot(y, np.roll(x, -1)) < 0:
             c = c[::-1]
-            y, x = c[:, 0], c[:, 1]
-        seg = np.hypot(np.diff(x, append=x[0]), np.diff(y, append=y[0]))
-        s = np.concatenate([[0.0], np.cumsum(seg)[:-1]])
+        out.append(c)
+    return out
+
+
+def arc_degrees(v):
+    """Great-circle length of each segment of a closed polyline of unit vectors."""
+    chord = np.linalg.norm(np.roll(v, -1, axis=0) - v, axis=1)
+    return np.degrees(2.0 * np.arcsin(np.clip(chord / 2.0, 0.0, 1.0)))
+
+
+def bake_sdf(land, cs):
+    """Great-circle distance to the coastline, in SDF cells, signed by the mask."""
+    pts = np.concatenate(cs)
+    lat, lon = raster_to_lonlat(pts[:, 0], pts[:, 1], land.shape)
+    tree = cKDTree(unit_vectors(lat, lon))
+    chord, _ = tree.query(grid_vectors(SW, SH), workers=-1)
+    arc = 2.0 * np.arcsin(np.clip(chord / 2.0, 0.0, 1.0))     # radians
+    cells = arc / (2.0 * np.pi / SW)
+    # The sign has to come from the raster at the cell centre, not from a block
+    # average: the magnitude is an exact distance to the coastline, so a sign
+    # boundary that sits half a cell away from it makes the reconstructed field
+    # jump by a whole cell there, which draws hard square patches along coasts.
+    inside = land[SS // 2::SS, SS // 2::SS]
+    return np.where(inside, -1.0, 1.0) * cells.reshape(SH, SW)
+
+
+def bake_phase(land, cs):
+    """Nearest-coastline cyclic arc length, in cycles, on the phase grid."""
+    vecs, phase = [], []
+    for c in cs:
+        lat, lon = raster_to_lonlat(c[:, 0], c[:, 1], land.shape)
+        v = unit_vectors(lat, lon)
+        seg = arc_degrees(v)
         length = seg.sum()
-        if length < 1.0:
+        if length < 0.05:
             continue
+        s = np.concatenate([[0.0], np.cumsum(seg)[:-1]])
         # An integer number of cycles round the loop keeps the phase continuous
         # across the seam.
         k = max(1.0, round(length / SPACING))
-        pts.append(np.stack([x, y], axis=1))
+        vecs.append(v)
         phase.append(s / length * k)
-    pts = np.concatenate(pts)
+    vecs = np.concatenate(vecs)
     phase = np.concatenate(phase) % 1.0
-    print(f"contour points {len(pts)}")
+    print(f"contour points {len(vecs)}")
 
-    # Wrap in longitude by repeating the point set either side of the seam.
-    allp = np.concatenate([pts, pts + [TW, 0], pts - [TW, 0]])
-    allph = np.concatenate([phase, phase, phase])
-    tree = cKDTree(allp)
-    gy, gx = np.mgrid[0:TH, 0:TW]
-    q = np.stack([gx.ravel() + 0.5, gy.ravel() + 0.5], axis=1)
-    _, idx = tree.query(q, workers=-1)
-    return allph[idx].reshape(TH, TW)
+    _, idx = cKDTree(vecs).query(grid_vectors(PW, PH), workers=-1)
+    return phase[idx].reshape(PH, PW)
 
 
 def pack(u8):
@@ -118,18 +165,21 @@ def emit(fh, name, packed):
 def main():
     land = rasterize()
     print(f"raster {land.shape[1]}x{land.shape[0]}, land fraction {land.mean():.3f}")
+    cs = contours(land)
 
-    sdf = bake_sdf(land)
+    sdf = bake_sdf(land, cs)
     sdf_u8 = np.rint((np.clip(sdf / RANGE, -1, 1) * 0.5 + 0.5) * 255).astype(np.uint8)
 
-    ph = bake_phase(land)
+    ph = bake_phase(land, cs)
     ph_u8 = np.rint(ph * 256.0).astype(np.int32) % 256
 
     with open(OUT, "w") as fh:
-        fh.write(f"constant uint  SDF_W     = {TW}u;\n")
-        fh.write(f"constant uint  SDF_H     = {TH}u;\n")
-        fh.write(f"constant float SDF_RANGE = {RANGE};   // table cells\n")
-        fh.write(f"constant float SPACING   = {SPACING};   // table cells per pulse cycle\n\n")
+        fh.write(f"constant uint  SDF_W     = {SW}u;\n")
+        fh.write(f"constant uint  SDF_H     = {SH}u;\n")
+        fh.write(f"constant uint  PH_W      = {PW}u;\n")
+        fh.write(f"constant uint  PH_H      = {PH}u;\n")
+        fh.write(f"constant float SDF_RANGE = {RANGE};   // SDF cells of arc\n")
+        fh.write(f"constant float SPACING   = {SPACING};   // degrees of arc per pulse cycle\n\n")
         emit(fh, "SDF_TABLE", pack(sdf_u8))
         emit(fh, "PHASE_TABLE", pack(ph_u8))
     print(f"wrote {OUT}")
