@@ -237,36 +237,12 @@ in
   launchd.agents.borders = {
     enable = true;
     config = {
-      ProgramArguments = [
-        "${config.home.homeDirectory}/.config/borders/bordersrc"
-      ];
+      ProgramArguments = [ "${bordersrc}" ];
       RunAtLoad = true;
       KeepAlive = true;
       ProcessType = "Interactive";
       StandardErrorPath = "/tmp/borders.err";
       StandardOutPath = "/tmp/borders.log";
-    };
-  };
-
-  # sketchybar itself. The formula was declared but its start was not: the bar only ran because
-  # `brew services start sketchybar` had been typed once on this machine, so a fresh mac rebuilt
-  # from this repo came up with no bar. Own the daemon here like borders, and retire the brew
-  # service in the activation below.
-  # PATH mirrors what the brew plist exported — sketchybarrc and the plugins call brew-installed
-  # binaries (sketchybar, media-control, displayplacer, jq) and launchd starts with a bare PATH.
-  launchd.agents.sketchybar = {
-    enable = true;
-    config = {
-      ProgramArguments = [ "/opt/homebrew/bin/sketchybar" ];
-      RunAtLoad = true;
-      KeepAlive = true;
-      ProcessType = "Interactive";
-      EnvironmentVariables = {
-        PATH = "/opt/homebrew/bin:/opt/homebrew/sbin:/usr/bin:/bin:/usr/sbin:/sbin";
-        LANG = "en_US.UTF-8";
-      };
-      StandardErrorPath = "/tmp/sketchybar.err";
-      StandardOutPath = "/tmp/sketchybar.log";
     };
   };
 
