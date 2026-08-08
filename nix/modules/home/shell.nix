@@ -22,9 +22,19 @@ in
 
     # XDG-ify: history -> ~/.local/state/zsh/, completion dump -> ~/.cache/zsh/
     history.path = "${config.xdg.stateHome}/zsh/history";
+    # Full compinit (with its compaudit fpath scan) costs ~58ms of the ~350ms
+    # startup. Run it for real once a day, otherwise trust the dump (-C).
+    # New completions from a rebuild show up within 24h, or immediately after
+    # rm ~/.cache/zsh/zcompdump.
     completionInit = ''
-      autoload -U compinit
-      compinit -d "${config.xdg.cacheHome}/zsh/zcompdump"
+      autoload -Uz compinit
+      _zcompdump="${config.xdg.cacheHome}/zsh/zcompdump"
+      if [[ -n $_zcompdump(#qN.mh-24) ]]; then
+        compinit -C -d "$_zcompdump"
+      else
+        compinit -d "$_zcompdump"
+      fi
+      unset _zcompdump
     '';
 
     autosuggestion.enable = true;
