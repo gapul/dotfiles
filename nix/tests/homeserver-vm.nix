@@ -51,7 +51,13 @@ pkgs.testers.runNixOSTest {
 
   testScript = ''
     machine.start()
-    machine.wait_for_unit("multi-user.target")
+
+    # Deliberately not waiting on multi-user.target. The thirty container units
+    # are part of it and every one of them tries to pull an image, which cannot
+    # work in a sandboxed VM with no network, so the target never settles. What
+    # they can still prove is that their units were generated at all; the rest of
+    # this waits on the services that do not need a registry.
+    machine.succeed("systemctl cat podman-vaultwarden.service >/dev/null")
 
     # gatus parses its own YAML at startup; reaching this line means the settings
     # generated from the `sites` table are schema-valid.
