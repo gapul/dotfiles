@@ -489,6 +489,12 @@
                 inherit preservation user;
                 pkgs = systemPkgs;
               };
+              # The home server replaces Proxmox in one cut, so this booting is the
+              # only verification before the old install is gone.
+              homeserver-vm = import ./tests/homeserver-vm.nix {
+                inherit user;
+                pkgs = systemPkgs;
+              };
             };
           };
       };

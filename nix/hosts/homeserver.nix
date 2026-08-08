@@ -193,6 +193,15 @@ in
     ) sites;
   };
 
+  # Because the vhosts point `tls` at files on disk rather than using an
+  # integration that knows about ACME, nothing otherwise stops caddy from starting
+  # before those files exist. security.acme's preliminary self-signed cert covers
+  # the very first boot, but ordering is what keeps a restart from racing a renewal.
+  systemd.services.caddy = {
+    after = [ "acme-finished-gapul.net.target" ];
+    wants = [ "acme-finished-gapul.net.target" ];
+  };
+
   # --- Uptime ---
   # Probes the upstream directly rather than https://<name>.gapul.net, so the checks
   # are meaningful before DNS points at this host and do not depend on the cert.
