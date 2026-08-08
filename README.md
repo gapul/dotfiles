@@ -92,7 +92,7 @@ curl -fsSL https://raw.githubusercontent.com/gapul/dotfiles/main/scripts/bootstr
     backup                       # Run the warm backup now (kickstart launchd) -> follow the log (Ctrl-C ends following; backup continues)
     backup-check                 # Verify repository integrity (restic check)
     backup-ls                    # List all snapshots (distinguish warm / archive by the Tags column)
-    gdrive cmd="status"          # ~/Sync/google-drive-{personal,school} mount status / open / remount (declared in nix/home/rclone-mount.nix)
+    gdrive cmd="status"          # ~/Library/LaunchAgents/com.gapul.rclone.* plists are retired), so remount is just a kickstart.
     restore snapshot dest="/"    # `just restore a81c9de1 ~/Restore`  to the specified target (expanded preserving structure) [alias: unarchive]
 
     [Build]
