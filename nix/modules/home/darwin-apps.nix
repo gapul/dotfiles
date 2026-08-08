@@ -53,18 +53,32 @@
     };
   };
 
-  # One-shot migration: retire hand-written LaunchAgents that predate the declarations above.
-  #   com.federicoterzi.espanso — replaced by launchd.agents.espanso
-  #   com.user.mechvibes-hidden — Mechvibes itself is long gone, so this only failed at every login
-  home.activation.legacyLaunchAgents = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    for label in com.federicoterzi.espanso com.user.mechvibes-hidden; do
-      legacy_plist="$HOME/Library/LaunchAgents/$label.plist"
-      if [ -f "$legacy_plist" ]; then
-        run /bin/launchctl bootout "gui/$(id -u)/$label" 2>/dev/null || true
-        run rm -f "$legacy_plist"
-      fi
-    done
-  '';
+  # One-shot migrations: hand-written / tool-registered LaunchAgents that a declared agent replaced.
+  # Nix can only declare what it owns, and these plists predate that ownership, so removing them
+  # stays imperative — but it is one data-driven list instead of a block per app, and each line
+  # carries the date it was retired so the stale ones can be swept out later. Anything older than
+  # a year is safe to delete: no machine that far behind is going to be rebuilt from this repo.
+  home.activation.retiredLaunchAgents =
+    let
+      retired = [
+        "com.federicoterzi.espanso" # 2026-06, replaced by launchd.agents.espanso
+        "com.user.mechvibes-hidden" # 2026-06, Mechvibes is long gone; only failed at every login
+        "com.felixkratz.borders" # 2026-07, replaced by launchd.agents.borders (hardcoded colors)
+        "net.gapul.keebmouse" # 2026-07, replaced by launchd.agents.keebmouse
+        # 2026-08, replaced by launchd.agents.sketchybar. Removing the plist is enough for launchd;
+        # brew's own bookkeeping is swept by the `brew services cleanup` in `just maintain`.
+        "homebrew.mxcl.sketchybar"
+      ];
+    in
+    lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+      for label in ${lib.concatStringsSep " " retired}; do
+        legacy_plist="$HOME/Library/LaunchAgents/$label.plist"
+        if [ -f "$legacy_plist" ]; then
+          run /bin/launchctl bootout "gui/$(id -u)/$label" 2>/dev/null || true
+          run rm -f "$legacy_plist"
+        fi
+      done
+    '';
 
   # macOS-only SOPS template (espanso's personal is at the Container path)
   sops.templates."espanso-personal.yml" = {
@@ -169,30 +183,8 @@
     fi
   '';
 
-  # Enforce Puddle (dynamic wallpaper; self-built MIT fork of Plash) behavior.
-  # (Migrated from the old Plash in 2026-07; upstream Plash was removed and consolidated into Puddle.)
-  # Puddle keeps its websites (wallpaper definitions) and security-scoped bookmarks on the live side,
-  # so a full-replace import would wipe the whole wallpaper set. Surgically write only the 3 keys we want to enforce.
-  # (extendPuddleBelowMenuBar keeps its key name in Puddle for compatibility.)
-  home.activation.puddlePrefs = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    if [ -d "$HOME/Library/Containers/net.gapul.Puddle" ]; then
-      /usr/bin/defaults write net.gapul.Puddle deactivateOnBattery    -bool true
-      /usr/bin/defaults write net.gapul.Puddle extendPuddleBelowMenuBar -bool true
-      /usr/bin/defaults write net.gapul.Puddle showOnAllSpaces         -bool true
-    fi
-    /usr/bin/killall cfprefsd 2>/dev/null || true
-  '';
-
-  # Skim: VimTeX integration. Inverse search (click PDF → jump to line in Neovim) and auto-reload on save.
-  # Surgically write only the target keys so other Skim settings aren't broken.
-  home.activation.skimSync = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    /usr/bin/defaults write net.sourceforge.skim-app.skim SKTeXEditorPreset -string Custom
-    /usr/bin/defaults write net.sourceforge.skim-app.skim SKTeXEditorCommand -string ${pkgs.neovim}/bin/nvim
-    /usr/bin/defaults write net.sourceforge.skim-app.skim SKTeXEditorArguments -string "--headless -c \"VimtexInverseSearch %line '%file'\""
-    /usr/bin/defaults write net.sourceforge.skim-app.skim SKAutoReloadFileUpdate -bool true
-    /usr/bin/defaults write net.sourceforge.skim-app.skim SKAutoCheckFileUpdate -bool true
-    /usr/bin/killall cfprefsd 2>/dev/null || true
-  '';
+  # (Skim's VimTeX keys and Puddle's three behavior keys moved to
+  #  system.defaults.CustomUserPreferences in hosts/darwin.nix — same `defaults write`, declared.)
 
   # Login items: auto-launch resident GUI apps that don't start headless
   home.activation.macosLoginItems = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
@@ -214,12 +206,24 @@
       "/Applications/Obsidian.app"            # notes (LiveSync keeps running in the background)
       "/Applications/Zen.app"                 # browser
     )
+    # Registration goes through System Events, so it silently does nothing until this process has
+    # Automation permission. Report what failed instead of swallowing it — the old `|| true` made a
+    # denied TCC prompt look exactly like a successful run.
+    failed=""
     for app in "''${LOGIN_APPS[@]}"; do
       name=$(basename "$app" .app)
       if ! /usr/bin/osascript -e "tell application \"System Events\" to (name of login items) contains \"$name\"" 2>/dev/null | grep -q true; then
-        /usr/bin/osascript -e "tell application \"System Events\" to make login item at end with properties {path:\"$app\", hidden:false}" >/dev/null 2>&1 || true
+        if [ ! -d "$app" ]; then
+          continue # not installed on this machine yet; the cask will bring it, next rebuild registers it
+        fi
+        /usr/bin/osascript -e "tell application \"System Events\" to make login item at end with properties {path:\"$app\", hidden:false}" >/dev/null 2>&1 ||
+          failed="$failed $name"
       fi
     done
+    if [ -n "$failed" ]; then
+      warnEcho "login items could not be registered:$failed"
+      warnEcho "  (grant Automation → System Events, then re-run \`just rebuild\`)"
+    fi
     # Retired login items (apps removed from the declaration): drop stale entries
     for name in AeroSpace; do
       if /usr/bin/osascript -e "tell application \"System Events\" to (name of login items) contains \"$name\"" 2>/dev/null | grep -q true; then

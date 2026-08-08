@@ -16,115 +16,31 @@ let
   # SSO: shared with the darwin version (restic-backup.nix). nix/lib/restic-common.nix is the sole definition point.
   common = import ../lib/restic-common.nix { inherit home; };
 
-  inherit (common) repository;
-  inherit (common) rcloneConf;
   passwordFile = config.sops.secrets."restic_password".path;
   logFile = "${home}/.local/state/restic/restic-backup.log";
 
-  resticEnv = ''
-    export PATH=${
-      lib.makeBinPath [
-        pkgs.restic
-        pkgs.rclone
-        pkgs.coreutils
-        pkgs.jq
-        pkgs.libnotify
-      ]
-    }:$PATH
-    export RESTIC_REPOSITORY="${repository}"
-    export RESTIC_PASSWORD_FILE="${passwordFile}"
-    export RCLONE_CONFIG="${rcloneConf}"
-    notify() { notify-send "$1" "$2" 2>/dev/null || true; }
-  '';
-
-  # Backup targets (only non-reproducible user data). Linux XDG directories.
-  backupPaths = [
-    "${home}/Documents"
-    "${home}/Pictures"
-    "${home}/Downloads"
-    "${home}/Music"
-    "${home}/Videos"
-  ];
-
-  excludeFile = pkgs.writeText "restic-excludes" ''
-    **/node_modules
-    **/.direnv
-    **/.venv
-    **/target
-    **/dist
-    **/build
-    **/.next
-    **/.expo
-    **/.git/objects
-  '';
-
-  backupScript = pkgs.writeShellScript "restic-backup" ''
-    set -uo pipefail
-    ${resticEnv}
-    mkdir -p "$(dirname ${logFile})"
-    exec >>"${logFile}" 2>&1
-    echo "==================== $(date '+%Y-%m-%d %H:%M:%S') backup start ===================="
-
-    if ! rclone about google-drive: >/dev/null 2>&1; then
-      echo "SKIP: cannot reach the google-drive remote (rclone authorize may be incomplete)"
-      exit 0
-    fi
-
-    if ! restic snapshots >/dev/null 2>&1; then
-      echo "repository not found, running init"
-      restic init || { echo "ERROR: restic init failed"; exit 1; }
-    fi
-
-    restic backup \
-      --verbose=1 \
-      --exclude-file=${excludeFile} \
-      ${lib.concatStringsSep " " (map (p: "\"${p}\"") backupPaths)}
-    rc=$?
-
-    ${common.forgetInvocation}
-
-    echo "==================== $(date '+%Y-%m-%d %H:%M:%S') backup done (rc=$rc) ===================="
-    exit $rc
-  '';
-
-  checkScript = pkgs.writeShellScript "restic-check" ''
-    set -uo pipefail
-    ${resticEnv}
-    exec >>"${logFile}" 2>&1
-    echo "-------------------- $(date '+%Y-%m-%d %H:%M:%S') check start --------------------"
-    if ! rclone about google-drive: >/dev/null 2>&1; then
-      echo "SKIP: remote unreachable"; exit 0
-    fi
-    if restic check; then
-      echo "check OK"
-    else
-      echo "check FAILED"
-      notify "restic ⚠️ possible repository corruption" "restic check failed. Please check the log"
-    fi
-  '';
-
-  monitorScript = pkgs.writeShellScript "restic-monitor" ''
-    set -uo pipefail
-    ${resticEnv}
-    max_age_days=2
-
-    if ! rclone about google-drive: >/dev/null 2>&1; then
-      notify "restic ⚠️ backup not running" "google-drive not authenticated. Please run rclone authorize drive"
-      exit 0
-    fi
-    latest=$(restic snapshots --latest 1 --json 2>/dev/null | jq -r '.[0].time // empty')
-    if [ -z "$latest" ]; then
-      notify "restic ⚠️ no snapshots" "no backup has been made yet"
-      exit 0
-    fi
-    # GNU date: can parse ISO8601 directly
-    last_epoch=$(date -d "$latest" +%s 2>/dev/null || echo 0)
-    now=$(date +%s)
-    age_days=$(( (now - last_epoch) / 86400 ))
-    if [ "$age_days" -ge "$max_age_days" ]; then
-      notify "restic ⚠️ backup is stale" "the last backup was $age_days days ago"
-    fi
-  '';
+  # The three scripts live in lib/restic-common.nix (shared with the darwin version).
+  # Only the Linux-shaped bits are passed in here: notify goes through notify-send (mako),
+  # and GNU date parses restic's ISO8601 timestamp directly.
+  scripts = common.mkScripts {
+    inherit
+      pkgs
+      lib
+      passwordFile
+      logFile
+      ;
+    # Linux XDG directories
+    backupPaths = [
+      "${home}/Documents"
+      "${home}/Pictures"
+      "${home}/Downloads"
+      "${home}/Music"
+      "${home}/Videos"
+    ];
+    extraPathPkgs = [ pkgs.libnotify ];
+    notifyBody = ''notify-send "$1" "$2" 2>/dev/null || true'';
+    parseSnapshotTime = ''$(date -d "$latest" +%s 2>/dev/null || echo 0)'';
+  };
 
   # helpers to generate systemd user service + timer
   mkService = desc: script: {
@@ -155,9 +71,9 @@ in
   home.file.".config/restic/env".text = common.envFileText;
 
   systemd.user.services = {
-    restic-backup = mkService "restic encrypted backup" backupScript;
-    restic-check = mkService "restic integrity check" checkScript;
-    restic-monitor = mkService "restic run monitoring" monitorScript;
+    restic-backup = mkService "restic encrypted backup" scripts.backup;
+    restic-check = mkService "restic integrity check" scripts.check;
+    restic-monitor = mkService "restic run monitoring" scripts.monitor;
   };
   systemd.user.timers = {
     restic-backup = mkTimer "daily restic backup" "*-*-* 13:00:00";
