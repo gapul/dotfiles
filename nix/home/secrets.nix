@@ -22,6 +22,12 @@
       "xcodes/apple_id".path = "${config.home.homeDirectory}/.config/xcodes/apple_id";
       "xcodes/password".path = "${config.home.homeDirectory}/.config/xcodes/password";
 
+      # attic (self-hosted nix binary cache at cache.gapul.net): the whole client config, because
+      # the push token lives in it. Was a hand-written plaintext file until 2026-08.
+      "attic_config".path = "${config.home.homeDirectory}/.config/attic/config.toml";
+      # keystats: passphrase for signing its own release builds (self-made app, gapul/keystats)
+      "keystats_signing_pw".path = "${config.home.homeDirectory}/.config/keystats/signing.pw";
+
       # PII single source
       "pii/name" = { };
       "pii/email_personal" = { };

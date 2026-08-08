@@ -150,6 +150,11 @@
   # Symlink dotfiles/configs/* (OS-independent ones only. Mac-only = sketchybar/karabiner go to home/darwin.nix)
   home.file.".config/starship.toml".source = ../../../configs/shell/starship.toml;
   home.file.".config/gh/config.yml".source = ../../../configs/cli/gh/config.yml;
+  # gh-dash / slk: hand-written configs that lived only on the machine until 2026-08.
+  # gh-dash rewrites its config only when you edit it from the TUI, and slk's is a static
+  # workspace list, so a read-only store symlink is fine for both.
+  home.file.".config/gh-dash/config.yml".source = ../../../configs/cli/gh-dash/config.yml;
+  home.file.".config/slk/config.toml".source = ../../../configs/cli/slk/config.toml;
   # markdownlint-cli2: parent-directory lookup makes this the default for all Markdown under home,
   # so despite not being XDG-compliant, the home dir root is the correct location per the tool's spec.
   home.file.".markdownlint-cli2.jsonc".source =
