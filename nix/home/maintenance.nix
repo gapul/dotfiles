@@ -146,17 +146,7 @@ let
     fi
   '';
 
-  agent = program: schedule: {
-    enable = true;
-    config = {
-      ProgramArguments = [ program ];
-      StartCalendarInterval = schedule;
-      RunAtLoad = false;
-      ProcessType = "Background";
-      LowPriorityIO = true;
-      Nice = 10;
-    };
-  };
+  agent = program: schedule: import ../lib/launchd-agent.nix { inherit program schedule; };
 in
 {
   launchd.agents = {

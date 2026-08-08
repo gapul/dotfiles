@@ -116,6 +116,48 @@ let
     .markdown-rendered h2,
     .markdown-rendered h3 { line-height: 1.3; }
   '';
+
+  # JankyBorders config = single source for the active window border. Colors come from the Rosé Pine palette.
+  # Also the agent's Program: running it a second time while the daemon is up acts as a client and
+  # restyles the running instance, which is what theme-watch does on an appearance change.
+  # launchd starts with a bare PATH, so resolve the brew-installed borders explicitly.
+  bordersrc = pkgs.writeShellScript "bordersrc" ''
+    export PATH="/opt/homebrew/bin:$PATH"
+    if [ "$(defaults read -g AppleInterfaceStyle 2>/dev/null)" = "Dark" ]; then
+      active=0xff${c.dark.iris}
+      inactive=0xff${c.dark.muted}
+    else
+      active=0xff${c.light.iris}
+      inactive=0xff${c.light.muted}
+    fi
+    options=(
+      active_color=$active
+      inactive_color=$inactive
+      width=4.0
+    )
+    borders "''${options[@]}"
+  '';
+
+  # Watch macOS appearance (light/dark) changes and re-apply shell-side chrome. sketchybar/borders
+  # branch on AppleInterfaceStyle inside colors.sh/bordersrc, so re-running them is enough to follow
+  # the OS. Polling, so no extra binary is needed.
+  # tmux is on the nix profile PATH; include it so the tmux re-source below is found.
+  themeWatch = pkgs.writeShellScript "theme-watch" ''
+    export PATH="/opt/homebrew/bin:$HOME/.local/state/nix/profile/bin:$PATH"
+    last=""
+    while true; do
+      cur="$(defaults read -g AppleInterfaceStyle 2>/dev/null || echo Light)"
+      if [ "$cur" != "$last" ]; then
+        last="$cur"
+        ${bordersrc} >/dev/null 2>&1 &
+        sketchybar --reload >/dev/null 2>&1
+        # tmux: re-source theme.conf so the running server re-picks rose-pine / rose-pine-dawn
+        # by the new appearance. No-op if no tmux server is running.
+        command -v tmux >/dev/null 2>&1 && tmux source-file "$HOME/.config/tmux/theme.conf" >/dev/null 2>&1
+      fi
+      sleep 2
+    done
+  '';
 in
 {
   home.file.".config/sketchybar" = {
@@ -147,65 +189,20 @@ in
     export POPUP_BORDER_COLOR=$WHITE
     export SHADOW_COLOR=$BLACK
   '';
-  # borders runs as the launchd agent below, which execs bordersrc (single source of config).
-  # Without executable=true, borders can't run.
-  # Colors come from theme.nix dark/light. Branch active/inactive on macOS appearance to follow the OS.
-  # On appearance change, the theme-watch agent re-runs bordersrc; a second invocation while the
-  # daemon is up acts as a client and restyles the running instance, so the agent stays the daemon.
-  home.file.".config/borders/bordersrc" = {
-    executable = true;
-    text = ''
-      #!/bin/bash
-      # JankyBorders config = single source for the active window border. Colors come from the Rosé Pine palette.
-      # launchd starts with a bare PATH, so resolve the brew-installed borders explicitly.
-      export PATH="/opt/homebrew/bin:$PATH"
-      if [ "$(defaults read -g AppleInterfaceStyle 2>/dev/null)" = "Dark" ]; then
-        active=0xff${c.dark.iris}
-        inactive=0xff${c.dark.muted}
-      else
-        active=0xff${c.light.iris}
-        inactive=0xff${c.light.muted}
-      fi
-      options=(
-        active_color=$active
-        inactive_color=$inactive
-        width=4.0
-      )
-      borders "''${options[@]}"
-    '';
-  };
-
-  # theme-watch: watch for macOS appearance (light/dark) changes and re-apply shell-side chrome.
-  # sketchybar/borders branch on AppleInterfaceStyle inside colors.sh/bordersrc,
-  # so just reload/re-run on change to follow the OS. Polling approach, no external binary needed.
-  home.file.".config/theme/theme-watch.sh" = {
-    executable = true;
-    text = ''
-      #!/bin/bash
-      # watch macOS appearance changes → sketchybar reload + borders re-apply (follows theme.nix category B)
-      # tmux is on the nix profile PATH; include it so the tmux re-source below is found.
-      export PATH="/opt/homebrew/bin:$HOME/.local/state/nix/profile/bin:$PATH"
-      last=""
-      while true; do
-        cur="$(defaults read -g AppleInterfaceStyle 2>/dev/null || echo Light)"
-        if [ "$cur" != "$last" ]; then
-          last="$cur"
-          [ -x "$HOME/.config/borders/bordersrc" ] && "$HOME/.config/borders/bordersrc" >/dev/null 2>&1 &
-          sketchybar --reload >/dev/null 2>&1
-          # tmux: re-source theme.conf so the running server re-picks rose-pine / rose-pine-dawn
-          # by the new appearance. No-op if no tmux server is running.
-          command -v tmux >/dev/null 2>&1 && tmux source-file "$HOME/.config/tmux/theme.conf" >/dev/null 2>&1
-        fi
-        sleep 2
-      done
-    '';
-  };
+  # borders / theme-watch live in the store (bordersrc, themeWatch in the let block above) and the
+  # agents exec the store path, so the running daemon belongs to a generation: a rollback takes the
+  # watcher with it, and a half-saved edit can't take out the agent at the next login.
+  # The ~/.config copies stay for manual invocation — same derivation, so they can't drift.
+  # (The sketchybar helpers deliberately stay out of the store: the whole config dir is an
+  #  mkOutOfStoreSymlink into the checkout because the bar is tuned live.)
+  home.file.".config/borders/bordersrc".source = bordersrc;
+  home.file.".config/theme/theme-watch.sh".source = themeWatch;
 
   # Launch the watcher above as a resident launchd agent (at login + liveness monitoring).
   launchd.agents.theme-watch = {
     enable = true;
     config = {
-      ProgramArguments = [ "${config.home.homeDirectory}/.config/theme/theme-watch.sh" ];
+      ProgramArguments = [ "${themeWatch}" ];
       RunAtLoad = true;
       KeepAlive = true;
       ProcessType = "Background";
@@ -240,9 +237,7 @@ in
   launchd.agents.borders = {
     enable = true;
     config = {
-      ProgramArguments = [
-        "${config.home.homeDirectory}/.config/borders/bordersrc"
-      ];
+      ProgramArguments = [ "${bordersrc}" ];
       RunAtLoad = true;
       KeepAlive = true;
       ProcessType = "Interactive";
@@ -251,16 +246,8 @@ in
     };
   };
 
-  # One-shot migration: retire the legacy hand-written borders plist so it doesn't
-  # fight the nix-declared agent above (running `borders` twice = client mode, but
-  # two KeepAlive daemons would race at login).
-  home.activation.bordersLegacyAgent = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    legacy_plist="$HOME/Library/LaunchAgents/com.felixkratz.borders.plist"
-    if [ -f "$legacy_plist" ]; then
-      run /bin/launchctl bootout "gui/$(id -u)/com.felixkratz.borders" 2>/dev/null || true
-      run rm -f "$legacy_plist"
-    fi
-  '';
+  # (The brew service that used to start sketchybar is retired in darwin-apps.nix's
+  #  retiredLaunchAgents list, together with every other pre-nix plist.)
 
   # sketchybar itself. The formula was declared but its start was not: the bar only ran because
   # `brew services start sketchybar` had been typed once on this machine, so a fresh mac rebuilt
@@ -356,16 +343,6 @@ in
       StandardOutPath = "/tmp/keebmouse.log";
     };
   };
-
-  # One-shot migration: drop the hand-written plist so it doesn't race the declared agent above
-  # (two KeepAlive daemons on the same event tap would fight over the Hyper+G toggle).
-  home.activation.keebmouseLegacyAgent = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    legacy_plist="$HOME/Library/LaunchAgents/net.gapul.keebmouse.plist"
-    if [ -f "$legacy_plist" ]; then
-      run /bin/launchctl bootout "gui/$(id -u)/net.gapul.keebmouse" 2>/dev/null || true
-      run rm -f "$legacy_plist"
-    fi
-  '';
 
   # sioyek keybind override: assign custom color mode (read on a rose-pine background) to F7.
   # Distinct from F8=standard dark inversion (toggle_custom_color is unassigned by default).

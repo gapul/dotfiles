@@ -43,16 +43,13 @@ recovery-iso:
 # managed by nix-darwin are refused on load by brew upgrade / install unless trusted.
 # Shared because both the rebuild and upgrade(maintain) paths need it.
 [private]
-_brew-trust-taps:
-    @-brew tap 2>/dev/null | grep -v '^homebrew/' | xargs -I% env -u XDG_CONFIG_HOME brew trust % >/dev/null
-    @-env -u XDG_CONFIG_HOME brew trust --cask gerlero/openfoam/openfoam@2606 >/dev/null
-    @-brew list --cask --full-name 2>/dev/null | grep '/' | xargs -I% env -u XDG_CONFIG_HOME brew trust --cask % >/dev/null
-
-[private]
 _rebuild-macos:
     #!/usr/bin/env bash
     set -euo pipefail
-    just _brew-trust-taps
+    # (No brew trust pass here: nix/hosts/darwin.nix sets HOMEBREW_NO_REQUIRE_TAP_TRUST=1 for the
+    #  whole activation, and a manual `brew trust` gets overwritten by the bundle anyway. The
+    #  _brew-trust-taps recipe is still needed by _upgrade-packages-macos, where `brew upgrade`
+    #  runs outside the activation and does enforce trust.)
     # Tee the whole run to a fixed log so a failure can be inspected after the fact
     # without re-running — crucially the Homebrew bundle step, which runs during
     # nix-darwin activation and so is absent from `nix log <drv>`. When stdout is not
@@ -71,7 +68,11 @@ _rebuild-macos:
     taskpolicy -b nh darwin switch -q -Q --diff never $nom_flag 2>&1 | tee -a "$log"
     echo "✓ nix-darwin" | tee -a "$log"
     echo "━━━ home-manager" | tee -a "$log"
-    taskpolicy -b nh home switch -q -Q --diff never $nom_flag 2>&1 | tee -a "$log"
+    # -b hm-bak: standalone home-manager has no backupFileExtension option (that one only exists on
+    # the nix-darwin/NixOS module path), and without a backup extension a newly declared home.file
+    # whose target already exists is skipped — the declaration silently does nothing. That is how
+    # gh-dash/config.yml and slk/config.toml stayed plain files after #153 declared them.
+    taskpolicy -b nh home switch -q -Q --diff never -b hm-bak $nom_flag 2>&1 | tee -a "$log"
     echo "✓ home-manager" | tee -a "$log"
     open -a Ghostty >/dev/null 2>&1 || true
 
@@ -163,6 +164,12 @@ _upgrade-macos:
 _upgrade-nix-runtime-macos:
     @echo "━━━ Nix runtime"
     @if command -v determinate-nixd >/dev/null; then sudo determinate-nixd upgrade; else echo "– Determinate Nixd not installed"; fi
+
+[private]
+_brew-trust-taps:
+    @-brew tap 2>/dev/null | grep -v '^homebrew/' | xargs -I% env -u XDG_CONFIG_HOME brew trust % >/dev/null
+    @-env -u XDG_CONFIG_HOME brew trust --cask gerlero/openfoam/openfoam@2606 >/dev/null
+    @-brew list --cask --full-name 2>/dev/null | grep '/' | xargs -I% env -u XDG_CONFIG_HOME brew trust --cask % >/dev/null
 
 [private]
 _upgrade-packages-macos:

@@ -15,63 +15,76 @@
   # Determinate Nix manages the daemon/nix.conf, so nix-darwin doesn't touch it
   nix.enable = false;
 
-  # Determinate's nix.conf does `!include nix.custom.conf`, so idempotently write
-  # use-xdg-base-directories there. This keeps nix-env / nix-instantiate
-  # (used internally by home-manager / nix-darwin for profile operations) from regenerating
-  # ~/.nix-defexpr / ~/.nix-channels in $HOME, moving them under ~/.local/state/nix/ instead.
-  # nix-darwin does not run arbitrarily-named system.activationScripts.<name>. Consolidate into
-  # postActivation, which runs as root at the end of activation.
-  system.activationScripts.postActivation.text = ''
-    # idempotently append use-xdg-base-directories to nix.custom.conf (keeps nix-env from regenerating
-    # ~/.nix-defexpr / ~/.nix-channels in $HOME, moving them under ~/.local/state/nix/ instead).
-    conf=/etc/nix/nix.custom.conf
-    if [ -f "$conf" ] && ! /usr/bin/grep -q '^use-xdg-base-directories' "$conf"; then
-      printf '\n# XDG Base Directory compliance (moves ~/.nix-defexpr etc. under ~/.local/state/nix)\nuse-xdg-base-directories = true\n' >> "$conf"
-    fi
-    # general safeguard so an unreachable substituter doesn't break builds. With the default 15s
-    # narinfo-fetch wait and fallback=false, a substitute failure fails fatally instead of falling
-    # back to a source build (a tailnet-only attic going down once caused real damage). connect-timeout
-    # gives up early and fallback=true escapes to a source build. Pull behavior when reachable is unchanged.
-    if [ -f "$conf" ] && ! /usr/bin/grep -q '^connect-timeout' "$conf"; then
-      printf '\n# make unreachable substituters non-fatal (builds still pass even if the cache is down)\nconnect-timeout = 5\nfallback = true\n' >> "$conf"
-    fi
-    # Trust the nix-community cache system-wide.
-    # Security least-privilege: rather than making yuki a trusted-user (effectively root-equivalent), append
-    # only the specific substituter + its public key to the root-owned nix.custom.conf. This silences the flake
-    # nixConfig 'ignoring untrusted substituter' warning without granting the user broad privileges.
-    if [ -f "$conf" ] && ! /usr/bin/grep -q 'nix-community.cachix.org' "$conf"; then
-      printf '\n# nix-community binary cache (least privilege: substituter-only, not a trusted-user grant)\nextra-substituters = https://nix-community.cachix.org\nextra-trusted-public-keys = nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs=\n' >> "$conf"
-    fi
-    # nix-on-droid: prebuilts like proot-termux can only be fetched from the official cachix
-    if [ -f "$conf" ] && ! /usr/bin/grep -q 'nix-on-droid.cachix.org' "$conf"; then
-      printf '\n# nix-on-droid binary cache (for eval/build of the droid config)\nextra-substituters = https://nix-on-droid.cachix.org\nextra-trusted-public-keys = nix-on-droid.cachix.org-1:56snoMJTXmDRC1Ei24CmKoUqvHJ9XCp+nidK7qkMQrU=\n' >> "$conf"
-    fi
-    # self-made dotfiles build cache (cachix gapul-dotfiles, OSS free tier). Pull this config's
-    # outputs, pushed by CI, from here to speed up local jd rebuild.
-    # It's a public cache so pull is unauthenticated. Falls back to cache.nixos.org even if unreachable.
-    if [ -f "$conf" ] && ! /usr/bin/grep -q 'gapul-dotfiles.cachix.org' "$conf"; then
-      printf '\n# self-made dotfiles build cache (cachix, filled by CI, unauthenticated pull)\nextra-substituters = https://gapul-dotfiles.cachix.org\nextra-trusted-public-keys = gapul-dotfiles.cachix.org-1:tGNGJ7SGHrLAjsw5Iz673st0AepuNjQombMJOOVUq98=\n' >> "$conf"
-    fi
-    # Determinate Nix already trusts FlakeHub as a substituter, but using it as an
-    # active substituter without the matching credentials produces 401 warnings.
-    if [ -f "$conf" ] && /usr/bin/grep -q 'cache.flakehub.com' "$conf"; then
-      /usr/bin/sed -i.bak '/cache\.flakehub\.com/d' "$conf"
-      /bin/rm -f "$conf.bak"
-    fi
-    # Application Firewall: enable + stealth mode (no response to ping/port scans).
-    # alf defaults barely works on recent macOS, so idempotently invoke the official socketfilterfw.
-    fw=/usr/libexec/ApplicationFirewall/socketfilterfw
-    "$fw" --setglobalstate on >/dev/null 2>&1 || true
-    "$fw" --setstealthmode on >/dev/null 2>&1 || true
-    # automatic security updates (system-level defaults. nix-darwin has no typed option, so
-    # write directly in root's postActivation). Keeps XProtect/MRT and security responses current even if left alone.
-    su=/Library/Preferences/com.apple.SoftwareUpdate
-    /usr/bin/defaults write "$su" AutomaticCheckEnabled -bool true   >/dev/null 2>&1 || true
-    /usr/bin/defaults write "$su" AutomaticDownload     -bool true   >/dev/null 2>&1 || true
-    /usr/bin/defaults write "$su" CriticalUpdateInstall -bool true   >/dev/null 2>&1 || true  # security responses/XProtect
-    /usr/bin/defaults write "$su" ConfigDataInstall     -bool true   >/dev/null 2>&1 || true  # XProtect/MRT definitions
-    /usr/bin/defaults write /Library/Preferences/com.apple.commerce AutoUpdate -bool true >/dev/null 2>&1 || true
-  '';
+  # Determinate Nix owns /etc/nix/nix.conf and does `!include nix.custom.conf`, so nix-darwin's
+  # typed `nix.settings` is unavailable (nix.enable = false above) and this file is where our
+  # settings have to land. It used to be five append-if-grep-misses blocks, which could only ever
+  # add lines: rotating a cache key left the old line in place and the file grew every time.
+  # Now the whole block between the markers is regenerated each activation, so entries can change
+  # and disappear. Everything outside the markers (Determinate's own lines, e.g. FlakeHub) is left
+  # untouched.
+  system.activationScripts.postActivation.text =
+    let
+      # Public caches to pull from. Substituter-only on purpose: making the user a trusted-user
+      # would be root-equivalent, whereas a root-owned entry here grants exactly one cache.
+      caches = {
+        # nix-community: for the flake inputs that publish there
+        "https://nix-community.cachix.org" =
+          "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs=";
+        # nix-on-droid: prebuilts like proot-termux come only from the official cachix
+        "https://nix-on-droid.cachix.org" =
+          "nix-on-droid.cachix.org-1:56snoMJTXmDRC1Ei24CmKoUqvHJ9XCp+nidK7qkMQrU=";
+        # this config's own outputs, pushed by CI, so `just rebuild` doesn't rebuild them locally
+        "https://gapul-dotfiles.cachix.org" =
+          "gapul-dotfiles.cachix.org-1:tGNGJ7SGHrLAjsw5Iz673st0AepuNjQombMJOOVUq98=";
+      };
+      settings = {
+        # Keeps nix-env / nix-instantiate (used internally by home-manager and nix-darwin for
+        # profile operations) from regenerating ~/.nix-defexpr and ~/.nix-channels in $HOME.
+        use-xdg-base-directories = "true";
+        # With the default 15s narinfo wait and fallback=false, an unreachable substituter is fatal
+        # instead of falling back to a source build (a tailnet-only attic going down once caused
+        # real damage). Give up early and escape to building from source.
+        connect-timeout = "5";
+        fallback = "true";
+        extra-substituters = builtins.concatStringsSep " " (builtins.attrNames caches);
+        extra-trusted-public-keys = builtins.concatStringsSep " " (builtins.attrValues caches);
+      };
+      # Written as a store file and cat'd in: no heredoc quoting to get wrong.
+      block = pkgs.writeText "nix-custom-conf-block" (
+        ''
+          # >>> nix-darwin managed (hosts/darwin-common.nix) — do not edit between the markers
+        ''
+        + builtins.concatStringsSep "\n" (
+          builtins.attrValues (builtins.mapAttrs (k: v: "${k} = ${v}") settings)
+        )
+        + ''
+
+          # <<< nix-darwin managed
+        ''
+      );
+    in
+    ''
+        # Rewrite the managed block of nix.custom.conf (delimited by the markers in it).
+        conf=/etc/nix/nix.custom.conf
+        if [ -f "$conf" ]; then
+          /usr/bin/sed -i.bak '/# >>> nix-darwin managed/,/# <<< nix-darwin managed/d' "$conf"
+          /bin/rm -f "$conf.bak"
+          printf '\n' >> "$conf"
+          /bin/cat ${block} >> "$conf"
+        fi
+        # Determinate Nix already trusts FlakeHub as a substituter, but using it as an
+        # active substituter without the matching credentials produces 401 warnings.
+        if [ -f "$conf" ] && /usr/bin/grep -q 'cache.flakehub.com' "$conf"; then
+          /usr/bin/sed -i.bak '/cache\.flakehub\.com/d' "$conf"
+          /bin/rm -f "$conf.bak"
+        fi
+      # Application Firewall: enable + stealth mode (no response to ping/port scans).
+      # alf defaults barely works on recent macOS, so idempotently invoke the official socketfilterfw.
+      fw=/usr/libexec/ApplicationFirewall/socketfilterfw
+      "$fw" --setglobalstate on >/dev/null 2>&1 || true
+      "$fw" --setstealthmode on >/dev/null 2>&1 || true
+      # (automatic security updates moved to system.defaults.CustomSystemPreferences below)
+    '';
 
   system.stateVersion = 5;
   system.primaryUser = user.username;
@@ -98,6 +111,19 @@
   # host-independent macOS settings (keyboard/login/privacy).
   # GUI/peripheral-oriented ones like dock/finder/trackpad are declared on each host side.
   system.defaults = {
+    # Automatic security updates. These keys have no typed nix-darwin option, but
+    # CustomSystemPreferences is the declared form of the same /Library/Preferences write —
+    # it does not need a hand-rolled `defaults write` loop in postActivation.
+    # Keeps XProtect/MRT and security responses current even if the machine is left alone.
+    CustomSystemPreferences = {
+      "com.apple.SoftwareUpdate" = {
+        AutomaticCheckEnabled = true;
+        AutomaticDownload = true;
+        CriticalUpdateInstall = true; # security responses / XProtect
+        ConfigDataInstall = true; # XProtect / MRT definitions
+      };
+      "com.apple.commerce".AutoUpdate = true;
+    };
     NSGlobalDomain = {
       ApplePressAndHoldEnabled = false;
       InitialKeyRepeat = 15;
