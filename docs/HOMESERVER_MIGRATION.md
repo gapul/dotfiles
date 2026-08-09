@@ -42,13 +42,28 @@ Container 版には組み込みバックアップが無い。Supervisor が作�
 
 新しい値は移行後の `/var/lib/secrets/archivebox.env` と `smbpasswd` に入れる。
 
-### 1.3 Cloudflare に A レコードを2つ追加
+### 1.3 Cloudflare の A レコード
 
-`esphome.gapul.net` と `nodered.gapul.net`。この2つは HA のアドオン ingress 経由で
-開いていたもので、Supervisor が無くなると入口が消えるため独立した vhost にした。
-既存と同形(type A / content = Caddy の tailnet IP / proxied=false / ttl=60)。
+2種類ある。**追加**が2件と、**付け替え**が20件超。
 
-ワイルドカード証明書は取るが、DNS レコードは1件ずつ必要。
+追加は `esphome.gapul.net` と `nodered.gapul.net`。この2つは HA のアドオン ingress
+経由で開いていたもので、Supervisor が無くなると入口が消えるため独立した vhost にした。
+既存と同形(type A / proxied=false / ttl=60)。
+
+付け替えのほうが本体で、**移行後でないとできない**。`*.gapul.net` は全件 Caddy の
+tailnet IP(現在 `100.64.125.107` = CT103)を指しているが、Caddy が新ホストへ移ると
+tailnet IP が変わる。20件超を手で直すと必ず取りこぼし、「そのサービスだけ繋がらない」を
+後日踏む。専用スクリプトを用意した。
+
+```sh
+export CF_API_TOKEN=...   # Zone:DNS:Edit
+scripts/cf-repoint-records.sh --from 100.64.125.107 --to <新ホストの tailnet IP>
+# 一覧を確認してから
+scripts/cf-repoint-records.sh --from 100.64.125.107 --to <新ホストの tailnet IP> --apply
+```
+
+既定は dry-run。新ホストの tailnet IP は `tailscale ip -4` で分かる。
+ワイルドカード証明書は取るが、DNS レコードはワイルドカードではないので1件ずつ必要。
 
 ### 1.4 restic の疎通確認
 
@@ -254,7 +269,8 @@ cut -d: -f2 /tmp/p > /var/lib/secrets/mosquitto-ha.password
 一度きりの認証:
 
 ```sh
-sudo tailscale up --advertise-routes=192.168.116.0/24   # 管理画面でルート承認
+sudo tailscale up --advertise-routes=192.168.116.0/24,192.168.1.0/24   # 管理画面でルート承認
+tailscale ip -4     # この IP に 1.3 の DNS 付け替えを行う
 sudo smbpasswd -a gapul
 # AdGuard の管理者アカウントは https://dns2.gapul.net の初回画面で作る
 ```
