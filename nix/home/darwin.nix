@@ -14,6 +14,10 @@ let
     inherit (pkgs.stdenv.hostPlatform) system;
     config.allowUnfree = true;
   };
+
+  # Bound here rather than inline in home.packages because the LaunchAgent below
+  # needs the path too, and both must point at the same store path.
+  mechvibes-dx = pkgs.callPackage ../pkgs/mechvibes-dx.nix { };
 in
 {
   imports = [
@@ -148,7 +152,7 @@ in
     # keypress, so it is built here with the rdev fix. See pkgs/mechvibes-dx.nix.
     # Needs Accessibility permission, and because TCC keys on the executable's
     # path, that has to be re-granted whenever the store path changes.
-    (callPackage ../pkgs/mechvibes-dx.nix { })
+    mechvibes-dx
     # zrythm (DAW): broken=isDarwin in nixpkgs. Self-built for darwin with carla included.
     # See pkgs/zrythm-darwin/ for details. GUI must be launched in a foreground GUI session.
     # On 26.05-darwin appstream/libadwaita can't build on darwin, so this one package alone
@@ -206,4 +210,32 @@ in
   xdg.configFile."lazygit/config.yml".source =
     (pkgs.formats.yaml { }).generate "lazygit-config.yml"
       config.programs.lazygit.settings;
+
+  # MechvibesDX at login, in place of a System Settings login item. Lives here
+  # rather than in darwin-services.nix because it needs the package path from
+  # the let block above.
+  #
+  # Started through the bundle's executable, not $out/bin, so macOS still sees a
+  # real .app - the tray icon and the Accessibility entry both depend on that.
+  # --minimized keeps it in the tray at login: the config-driven start_minimized
+  # only applies when auto_start is set, which is the Windows registry path.
+  launchd.agents.mechvibes-dx = {
+    enable = true;
+    config = {
+      ProgramArguments = [
+        "${mechvibes-dx}/Applications/MechvibesDX.app/Contents/MacOS/mechvibes-dx"
+        "--minimized"
+      ];
+      RunAtLoad = true;
+      # No KeepAlive on purpose: quitting from the tray should stay quit, and a
+      # crash loop on an app this experimental would be worse than silence.
+      ProcessType = "Interactive"; # keystroke->sound latency, same as mopidy's agent
+      StandardOutPath = "${config.home.homeDirectory}/Library/Logs/MechvibesDX/mechvibes-dx.log";
+      StandardErrorPath = "${config.home.homeDirectory}/Library/Logs/MechvibesDX/mechvibes-dx.log";
+    };
+  };
+
+  home.activation.mechvibesLogDir = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    /bin/mkdir -p "${config.home.homeDirectory}/Library/Logs/MechvibesDX"
+  '';
 }
