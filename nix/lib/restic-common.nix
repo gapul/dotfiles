@@ -24,14 +24,26 @@ rec {
   # If the adding side (Justfile) and the retaining side (forgetInvocation below) drift apart, cold gets treated as warm and is pruned.
   archiveTag = "archive";
 
-  # forget retention policy invocation (shared by both hosts' backupScript).
+  # The retention policy as data. The homeserver backs up through NixOS'
+  # services.restic.backups, which takes a list of flags rather than a shell
+  # snippet, so keeping this as the one definition is what stops a third host
+  # from thinning the shared repository on a different schedule.
   #   --keep-tag archive: cold archives are kept forever. Only warm (untagged) snapshots are thinned out.
+  retentionArgs = [
+    "--keep-tag ${archiveTag}"
+    "--keep-daily 7"
+    "--keep-weekly 4"
+    "--keep-monthly 6"
+  ];
+
+  # forget retention policy invocation (shared by both hosts' backupScript).
   # Note: the indentation/newlines of this string go directly into the generated script's byte stream.
-  #   Both backupScripts expand this at a 4-space indent position.
+  #   Both backupScripts expand this at a 4-space indent position, so the layout
+  #   below is reproduced from retentionArgs rather than reflowed.
   forgetInvocation = ''
     restic forget --prune \
-      --keep-tag ${archiveTag} \
-      --keep-daily 7 --keep-weekly 4 --keep-monthly 6 || true'';
+      ${builtins.elemAt retentionArgs 0} \
+      ${builtins.concatStringsSep " " (builtins.tail retentionArgs)} || true'';
 
   # Contents of the env file that emits the same values for Justfile / interactive shells.
   #   home-manager places it at ~/.config/restic/env and Justfile's restic_env sources it.

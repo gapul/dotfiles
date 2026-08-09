@@ -208,6 +208,24 @@
         linuxServer = linuxBase ++ secrets ++ station;
       };
 
+      # Home server (x86_64, replacing the single-node Proxmox box outright).
+      # Unlike nixos-laptop there is no uncommitted hardware-configuration.nix to wait
+      # for: the box is dedicated, so disko owns the whole disk and generates
+      # fileSystems, and hosts/homeserver-hardware.nix holds the rest by hand. CI
+      # therefore builds exactly what gets installed, which is the only verification
+      # available when the swap has no per-service rollback.
+      homeserver = nixpkgs-nixos.lib.nixosSystem {
+        system = "x86_64-linux";
+        specialArgs = { inherit user; };
+        modules = [
+          # Same SSO overlay as the other hosts (carries e.g. tailscale's vendorHash fix).
+          { nixpkgs.overlays = [ overlayFixes ]; }
+          ./hosts/homeserver.nix
+          disko.nixosModules.disko
+          ./hosts/homeserver-disk.nix
+        ];
+      };
+
       # Tool set to run from rootless Nix (nix-portable) on an SSH target.
       # Supports both Linux x86_64 / aarch64.
       remoteTools =
@@ -471,6 +489,12 @@
                 inherit preservation user;
                 pkgs = systemPkgs;
               };
+              # The home server replaces Proxmox in one cut, so this booting is the
+              # only verification before the old install is gone.
+              homeserver-vm = import ./tests/homeserver-vm.nix {
+                inherit user;
+                pkgs = systemPkgs;
+              };
             };
           };
       };
@@ -547,6 +571,10 @@
           };
         }
         // {
+          # Home server: sudo nixos-rebuild switch --flake .#homeserver
+          # No pathExists guard, unlike nixos-laptop: nothing about this host is
+          # uncommitted, so it is always evaluable and CI always builds it.
+          inherit homeserver;
 
           # Config for CI-evaluating the common NixOS settings without exposing the machine-specific hardware-configuration.
           "nixos-laptop-ci" = nixpkgs-nixos.lib.nixosSystem {
@@ -593,6 +621,11 @@
       #   sudo disko --mode destroy,format,mount --flake <repo>/nix#nixos-laptop
       # declaratively formats/mounts only the LUKS root partition.
       diskoConfigurations.nixos-laptop = import ./hosts/nixos-laptop-disk.nix;
+
+      # Home server: disko owns the whole NVMe (no dual boot to protect), so this
+      # both formats at install time and provides the runtime fileSystems.
+      #   sudo disko --mode destroy,format,mount --flake <repo>/nix#homeserver
+      diskoConfigurations.homeserver = import ./hosts/homeserver-disk.nix;
 
       # macOS user config: home-manager switch --flake .#<username>
       homeConfigurations.${user.username} = mkHost.home { modules = roles.macWorkstation; };
