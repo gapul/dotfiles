@@ -50,10 +50,15 @@
   # Ollama itself (nix package). The GUI ollama-app cask is not used.
   # nodejs: runtime for Playwright MCP (pnpm dlx) and claude-login-broker (inject-creds.js).
   # bitwarden-cli: after approval the broker pulls credentials via bw get. BW_SESSION is unlocked manually.
+  # cloudflared: publishes the study agent's OpenAI-compatible API (127.0.0.1:8791) so the
+  # dashboard on Cloudflare Pages can reach it. Only the tunnel egresses; nothing is exposed
+  # on the LAN. The tunnel credentials can't be declared, so create them once with
+  # `cloudflared tunnel login && cloudflared tunnel create manabi` (see launchd.daemons below).
   environment.systemPackages = [
     pkgs.ollama
     pkgs.nodejs_22
     pkgs.bitwarden-cli
+    pkgs.cloudflared
   ];
 
   # Keep Ollama resident via a LaunchAgent.
@@ -71,6 +76,26 @@
         # Unload the model after 30 min idle (frees 24GB). Use "-1" to keep it resident.
         OLLAMA_KEEP_ALIVE = "30m";
       };
+    };
+  };
+
+  # Keep the tunnel up as a daemon (root) so it survives logout, unlike the Ollama agent which
+  # needs a GUI session for Metal. Reads /usr/local/etc/manabi-tunnel.env for TUNNEL_TOKEN, which
+  # is issued per-tunnel in the Cloudflare dashboard and can't live in the nix store.
+  launchd.daemons.manabi-tunnel = {
+    serviceConfig = {
+      ProgramArguments = [
+        "/bin/sh"
+        "-c"
+        ''
+          . /usr/local/etc/manabi-tunnel.env 2>/dev/null || exit 0
+          exec ${pkgs.cloudflared}/bin/cloudflared tunnel --no-autoupdate run --token "$TUNNEL_TOKEN"
+        ''
+      ];
+      RunAtLoad = true;
+      KeepAlive = true;
+      StandardOutPath = "/var/log/manabi-tunnel.log";
+      StandardErrorPath = "/var/log/manabi-tunnel.log";
     };
   };
 
