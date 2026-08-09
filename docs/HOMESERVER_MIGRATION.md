@@ -66,6 +66,36 @@ restic -r rclone:google-drive:restic-backup snapshots | tail -5
 退避先は Google Drive の restic リポジトリか母艦 Mac。**200GB のマウントは同じ NVMe の上
 なので退避先にならない。**
 
+### 2.0 先にサービスを止める
+
+稼働中の postgres / couchdb / SQLite のデータディレクトリをそのままコピーすると、
+書き込み途中の状態が取れて復元時に壊れている。ここが移行で一番静かに失敗する場所。
+
+```sh
+ssh pve 'pct exec 101 -- sh -c "cd /opt/stacks && for d in */; do (cd \$d && docker compose down); done"'
+ssh pve 'qm shutdown 100'    # HAOS
+```
+
+止めずに済ませたい場合は、少なくとも DB だけ論理ダンプを取る(`pg_dump`、CouchDB は
+レプリケーション)。ただし止められる状況なら止めるのが確実で速い。
+
+**この時点から家のサービスは落ちる。** DNS 主系は Pi なのでインターネットは生きる。
+
+### 2.0.1 先に確保しておくもの(止める前でもよい)
+
+失うと復元不可能で、かつ小さいもの。時間のかかる本番コピーとは別に、単独で先に取る。
+**2026-08-09 に取得済み**、母艦の `~/tmp/homeserver-migration/`:
+
+| ファイル | 中身 |
+|---|---|
+| `haos-backup-dc879ac6.tar`(28MB) | HAOS のフルバックアップ。HA config + Matter ファブリック + Node-RED のフロー |
+| `syncthing-identity.tar`(20KB) | Syncthing の cert.pem / key.pem / config.xml |
+| `CHECKSUMS.txt` | 上2つの sha256 |
+
+これらは移行日までに中身が変わりうる(HA の DB は動き続ける)ので、当日にもう一度取り直す。
+それでも先に取っておく価値があるのは、ファブリックと Syncthing の身元だけは
+「壊れていても古くても、無いよりはるかにマシ」だから。
+
 ### 2.1 バインドマウントとホスト側ディレクトリ
 
 ```sh
@@ -86,17 +116,43 @@ for v in dawarich_dawarich_db_data dawarich_dawarich_public dawarich_dawarich_sh
 done
 ```
 
-### 2.3 Home Assistant 一式
+### 2.3 Home Assistant 一式(フルバックアップ1本で済む)
+
+HAOS からは個別にディレクトリを吸い出すのではなく、Supervisor のフルバックアップを
+1本作るのが早い。config もアドオンのデータも全部その中に入る。
+
+**作成はシリアルコンソールから。** SSH アドオンは protection mode が有効で、中から
+`ha` を叩くと `unauthorized: missing or invalid API token` で拒否される。
+一方 SSH アドオンからは `/backup` が見えるので、作成はシリアル、取り出しは SSH と
+役割を分ける。
 
 ```sh
-ssh pve 'qm guest exec 100 ...'   # HAOS はシリアルコンソール経由が確実
-# /mnt/data/supervisor/homeassistant          69MB  → /var/lib/hass
-# /mnt/data/supervisor/apps/data/core_matter_server  8MB → /var/lib/matter-server
-# /mnt/data/supervisor/apps/data/a0d7b954_nodered    → /var/lib/node-red
+# 作成(pve から HAOS のシリアルコンソールへ。login: root でパスワード無し)
+ssh pve
+{ printf "\n"; sleep 3; printf "root\n"; sleep 6; \
+  printf "nohup ha backups new --name pre-nixos-migration > /tmp/bk.log 2>&1 &\n"; sleep 5; \
+  printf "exit\n"; sleep 2; } | timeout 35 socat - UNIX-CONNECT:/var/run/qemu-server/100.serial0
+
+# 取り出し(母艦から)
+ssh hassio@192.168.116.88 'ls -lh /backup/'
+ssh hassio@192.168.116.88 'cat /backup/<slug>.tar' > ~/tmp/homeserver-migration/haos-backup.tar
 ```
 
-Matter の8MBがファブリック。これを失うと全 Matter デバイスを工場出荷リセットして
-再ペアリングすることになる。バイト単位で確実に運ぶ。
+中身と復元先の対応:
+
+| バックアップ内の tar | 中身 | 復元先 |
+|---|---|---|
+| `homeassistant.tar.gz` の `data/` | config 一式(`configuration.yaml` / `.storage` / `custom_components`(HACS) / `home-assistant_v2.db` / `esphome/`) | `/var/lib/hass` |
+| `core_matter_server.tar.gz` の `data/` | **Matter ファブリック**(`certificates/`) | `/var/lib/matter-server` |
+| `a0d7b954_nodered.tar.gz` の `config/` | Node-RED のフロー | `/var/lib/node-red` |
+| `core_mosquitto.tar.gz` | mosquitto の永続データ | `/var/lib/mosquitto` |
+| `5c53de3b_esphome.tar.gz` | `addon.json` のみで**中身は無い** | 不要 |
+
+ESPHome の yaml はアドオンのデータではなく HA の config 側(`data/esphome/`)にある。
+アドオンの tar を探しても空なので注意。
+
+Matter のファブリックを失うと全 Matter デバイスを工場出荷リセットして再ペアリングする
+ことになる。取り出したら `tar -tzf` で `data/certificates/` が入っていることを必ず確認する。
 
 ### 2.4 Syncthing の身元
 
