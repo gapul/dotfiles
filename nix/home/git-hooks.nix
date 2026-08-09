@@ -38,8 +38,11 @@ let
       exit 0
     fi
 
+    # secrets/ belongs here too: sops-nix renders those files at activation, so a secrets-only
+    # merge changes nothing on disk until a rebuild runs. That failure is completely silent —
+    # the repo says one thing and ~/.ssh/config says another.
     if ${git} diff ${range} --name-only 2>/dev/null \
-       | grep -qE '^(flake\.nix|flake\.lock|nix/|configs/|Justfile)'; then
+       | grep -qE '^(flake\.nix|flake\.lock|nix/|configs/|secrets/|Justfile)'; then
       echo "▶ dotfiles: nix/config changed (${label}) → running just rebuild"
       # rebuild targets the main tree's current state (= merged main).
       # just / nh / nix resolve by inheriting the PATH of the interactive shell that ran the pull.
