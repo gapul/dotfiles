@@ -76,7 +76,10 @@ let
       echo "$(date '+%F %T') mount start" >>"${logFile}"
       # foreground execution (launchd keeps it alive). Exclude the restic repository to protect it:
       # excluded paths don't appear on the mount, so they can't be deleted from Finder either.
-      exec rclone mount "${name}:" "${mountPoint}" \
+      # nfsmount, not mount: `rclone mount` needs macFUSE, a kext that costs a reboot and a
+      # security approval. nfsmount serves the VFS over rclone's built-in NFS server and calls
+      # mount_nfs, which needs neither root nor a third-party filesystem.
+      exec rclone nfsmount "${name}:" "${mountPoint}" \
         --config "${rcloneConf}" \
         --exclude "/restic-backup/**" \
         --exclude "/restic-archive/**" \
