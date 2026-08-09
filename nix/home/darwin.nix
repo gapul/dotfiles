@@ -144,6 +144,11 @@ in
     syncthing # Syncthing CLI (the resident is the LaunchAgent in services.syncthing)
     xcodegen # generate .xcodeproj from project.yml (Mac-only, since meta.platforms = darwin in Linux nixpkgs)
     (callPackage ../pkgs/slk.nix { }) # Slack TUI (pinned to the official GitHub Release)
+    # MechvibesDX (keyboard sounds): upstream's macOS DMG SIGTRAPs on the first
+    # keypress, so it is built here with the rdev fix. See pkgs/mechvibes-dx.nix.
+    # Needs Accessibility permission, and because TCC keys on the executable's
+    # path, that has to be re-granted whenever the store path changes.
+    (callPackage ../pkgs/mechvibes-dx.nix { })
     # zrythm (DAW): broken=isDarwin in nixpkgs. Self-built for darwin with carla included.
     # See pkgs/zrythm-darwin/ for details. GUI must be launched in a foreground GUI session.
     # On 26.05-darwin appstream/libadwaita can't build on darwin, so this one package alone
