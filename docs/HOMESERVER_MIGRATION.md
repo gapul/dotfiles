@@ -169,11 +169,27 @@ Matter のファブリックを失うと全 Matter デバイスを工場出荷�
 
 ### 3.1 ISO
 
-このリポジトリの recovery ISO を使う(CI の Recovery ISO ジョブが毎回ビルドしている)。
+このリポジトリの recovery ISO を使う。母艦は aarch64-darwin なので手元ではビルドできない。
+CI の Recovery ISO ジョブが毎回ビルドして artifact に上げているので、それを落とす。
 
 ```sh
-nix build .#recovery-iso   # x86_64-linux が必要。CI の成果物を落としてもよい
+gh run download --name "nixos-recovery-<sha>" --dir ~/tmp/iso
+# 中の SHA256 と付属の checksum を照合してから書き込む
 ```
+
+**インストールする世代と同じコミットの ISO を使うこと。** zpool は作成時の ZFS が
+feature flag を有効にするので、ISO 側が新しすぎると、インストールした側が
+プールを import できない状態になりうる。同一コミットなら同じ nixpkgs なので一致する。
+
+この ISO には以下が入っている。
+
+- ZFS(`zpool` / `zfs`。これが無いと disko がプールを作れない)
+- disko、git、neovim、sops、age、cryptsetup
+- flakes 有効化済み。**これが無いと `disko --flake` も `nixos-install --flake` も
+  最初の一手で "experimental Nix feature 'nix-command' is disabled" で止まる**
+- 自前 cachix を substituter に登録済み。CI がホストのクロージャを push しているので、
+  インストールはビルドではなくダウンロードになる
+- この手順書そのもの。`homeserver-guide` で読める(tailscale 認証前でネットが無い状態でも読める)
 
 ### 3.2 ディスクを切る
 
