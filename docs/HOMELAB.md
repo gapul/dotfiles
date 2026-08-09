@@ -3,6 +3,11 @@
 自宅 Proxmox ベースのセルフホスト基盤の構成・運用手順をまとめたドキュメント。
 設定の実体は `configs/homelab/<service>/`、ホスト構成は本書を参照。
 
+> **この構成は解体中。** ハイパーバイザ無しの NixOS 1台への置き換えが進行中で、
+> 設定の実体は `nix/hosts/homeserver.nix` と `nix/homelab/` に移っている。
+> 当日の手順は [HOMESERVER_MIGRATION.md](HOMESERVER_MIGRATION.md)。
+> 以下は移行元の記録として読むこと。
+
 - LAN: `192.168.116.0/24` / ゲートウェイ: `192.168.116.254`
 - ハイパーバイザ: **Proxmox VE 9.1**（`pve` = `192.168.116.100`）
 - tailnet: `tail079f44.ts.net`（MagicDNS 有効）
