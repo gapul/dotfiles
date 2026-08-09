@@ -52,9 +52,10 @@ let
       upstream = "127.0.0.1:8384"; # syncthing rejects requests whose Host it doesn't know
       extra = "header_up Host {upstream_hostport}";
     };
-    # pve.gapul.net and files.gapul.net are gone with Proxmox. files was a
-    # filebrowser over a restic mount running on the pve host; if that view is
-    # wanted again it has to be rebuilt here against the declared restic setup.
+    # A read-only window onto the restic repository, rebuilt here from the two
+    # hand-written units that ran on the pve host (homelab/restic-view.nix).
+    files.upstream = "127.0.0.1:8082";
+    # pve.gapul.net has nothing left to point at.
     # Replaces uptime-kuma, which lives on the Raspberry Pi (rpi:3001) and holds its
     # monitor list in a SQLite file no one can review. Its checks are the `sites`
     # table below now.
@@ -134,6 +135,14 @@ in
 
   networking.hostName = "homeserver";
   networking.useDHCP = lib.mkDefault true;
+  # Already the default, stated because something depends on it: Matter requires
+  # IPv6 even for Wi-Fi devices, and turning this off would leave every Matter
+  # device unavailable while the server itself looks healthy.
+  networking.enableIPv6 = true;
+
+  # Carried over from the pve host, which had powertop's autotune enabled. Idle
+  # power on a box that runs 24/7 is worth the tuning.
+  powerManagement.powertop.enable = true;
 
   time.timeZone = "Asia/Tokyo";
   i18n.defaultLocale = "ja_JP.UTF-8";

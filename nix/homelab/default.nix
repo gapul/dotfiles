@@ -35,6 +35,7 @@
     ./obsidian-couchdb.nix
     ./paperless.nix
     ./radicale.nix
+    ./restic-view.nix
     ./rsshub.nix
     ./samba.nix
     ./syncthing.nix

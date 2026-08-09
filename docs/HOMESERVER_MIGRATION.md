@@ -297,6 +297,29 @@ http:
 
 ---
 
+### 5.1 アドレスが変わるので直すもの
+
+旧ホストの IP を直書きしている設定が何箇所かある。サービスは起動するので、
+気づくのは「使おうとしたとき」になる。
+
+| どこ | 何を |
+|---|---|
+| `/var/lib/hass/configuration.yaml` | `trusted_proxies` を `127.0.0.1` に(前述) |
+| `/var/lib/homelab/homepage/config/services.yaml` | 19箇所の IP 直書き。`192.168.116.100`(pve、消滅)、`.88`(HAOS→localhost)、`.65`(CT101→localhost)。`.53`(Pi)と `.91` はそのまま |
+| スマホの OwnTracks | Dawarich の宛先が旧 CT101 の `:3005`。新ホストのアドレスへ |
+| MQTT クライアント | mosquitto の認証が HA ユーザー依存から独自ユーザーに変わる |
+
+### 5.2 旧スナップショットの掃除(移行後でよい)
+
+pve は `--host pve --tag pve-vzdump` で Google Drive に vzdump を送っていた。
+その host はもう存在しないので、放っておくと永久に残る。
+
+```sh
+restic forget --host pve --tag pve-vzdump --keep-last 1 --prune
+```
+
+---
+
 ## 6. 検証
 
 ```sh
