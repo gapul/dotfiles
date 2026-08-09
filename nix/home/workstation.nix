@@ -51,6 +51,7 @@ in
     podman # containers (the machine VM is maintained separately)
     fontforge # font editing CLI (GUI is the fontforge-app cask)
     python3Packages.fonttools # font manipulation lib/CLI
+    stockfish # chess engine, spoken to over UCI (the Puddle chess wallpaper's opponent)
     aerc # mail TUI
     isync # IMAP sync (mbsync)
     # Japanese proofreading textlint (whole ruleset pinned via buildNpmPackage; pnpm global retired)
