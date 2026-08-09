@@ -1,5 +1,10 @@
 # configs/homelab
 
+> **注記(2026-08-09)**: この構成はハイパーバイザ無しの NixOS 1台へ置き換え中。
+> 設定の実体は `nix/hosts/homeserver.nix` と `nix/homelab/` に移っている。
+> 当日の手順は [HOMESERVER_MIGRATION.md](../../docs/HOMESERVER_MIGRATION.md)。
+> 以下は移行元の記録。
+
 自宅セルフホスト基盤の設定一式。
 
 📖 **運用手順・構成・トラブルシュートは [`docs/HOMELAB.md`](../../docs/HOMELAB.md) を参照。**

@@ -1,0 +1,45 @@
+{
+  # The Docker stacks that used to live on CT101 under dockge, converted to
+  # oci-containers with compose2nix. dockge itself does not come along: managing
+  # compose files through a web UI is the thing being replaced.
+  #
+  # These stay containers rather than being rewritten onto native NixOS modules.
+  # Several of them have one (services.forgejo, services.navidrome, ...), but
+  # switching means relocating data for no gain the definition in git does not
+  # already provide. samba is the exception, and only because its container took a
+  # password on the command line.
+  #
+  # Secrets are never in this tree. Anything a stack interpolated from its .env is
+  # dropped from `environment` and supplied by environmentFiles at runtime; see
+  # README.md for what each /var/lib/secrets/<stack>.env has to define.
+  #
+  # Not containers at all: adguardhome, syncthing and samba are native modules, so
+  # their settings stop living in a web UI or a command line, and backup.nix
+  # declares the restic schedule that backrest used to own. Dropped outright:
+  # dockge, wud, backrest, uptime-kuma, adguardhome-sync, stirling-pdf.
+  imports = [
+    ./adguardhome.nix
+    ./anisette.nix
+    ./archivebox.nix
+    ./attic.nix
+    ./backup.nix
+    ./dawarich.nix
+    ./forgejo.nix
+    ./homeassistant.nix
+    ./homepage.nix
+    ./jellyfin.nix
+    ./matrix.nix
+    ./miniflux.nix
+    ./navidrome.nix
+    ./ntfy.nix
+    ./obsidian-couchdb.nix
+    ./paperless.nix
+    ./radicale.nix
+    ./restic-view.nix
+    ./rsshub.nix
+    ./samba.nix
+    ./syncthing.nix
+    ./vaultwarden.nix
+    ./vpn-relay.nix
+  ];
+}
