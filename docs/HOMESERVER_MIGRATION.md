@@ -154,6 +154,19 @@ ESPHome の yaml はアドオンのデータではなく HA の config 側(`data
 Matter のファブリックを失うと全 Matter デバイスを工場出荷リセットして再ペアリングする
 ことになる。取り出したら `tar -tzf` で `data/certificates/` が入っていることを必ず確認する。
 
+### 2.3.1 VM105 のディスクイメージ(保険)
+
+会社の L2TP トンネルは `nix/homelab/vpn-relay.nix` に宣言してあるが、**CI では検証できない**
+(サンドボックスから会社の終端に繋げない)。ネイティブ版が初回で上がらなかった場合に
+仕事が止まるので、旧 VM のディスクを丸ごと持っておく。
+
+```sh
+ssh pve 'qm stop 105; dd if=/dev/pve/vm-105-disk-0 bs=4M status=progress | zstd -T0' > ~/migration/vm105.img.zst
+```
+
+10GB のうち実使用は少ないので圧縮すれば小さい。新ホストで `libvirt` に食わせれば
+数分で元の中継が復活する。トンネルが新環境で一度でも上がったら捨ててよい。
+
 ### 2.4 Syncthing の身元
 
 `/opt/stacks/syncthing/config/config/` にある cert.pem と key.pem。これが device ID の
@@ -295,6 +308,9 @@ journalctl -p err -b --no-pager | tail -40
 - Syncthing の device ID が `Y72TVZZ-...` のままか。変わっていたら 2.4 の復元に失敗している
 - Mac から `restic snapshots` に homeserver タグの新しいスナップショットが出るか
 - `dig @<新ホスト> example.com` が引けるか(53番は AdGuard が持つ)
+- 会社トンネル: `systemctl status mvrx-vpn` と `ip -4 addr show ppp0`、tailnet 越しに
+  `ssh mvrx-nolang-dev` が通るか。**ここだけは CI で検証できていない唯一の箇所**なので、
+  駄目なら 2.3.1 のディスクイメージを libvirt で起動して仕事を優先する
 - Jellyfin のハードウェアトランスコードが効くか(`/dev/dri` はメタルなら素直に見える)
 
 コンテナは初回だけイメージ取得で時間がかかる。docker.io は mirror.gcr.io 経由に
