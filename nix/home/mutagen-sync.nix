@@ -28,17 +28,27 @@
 # working tree, neither of which survives being copied file by file.
 #
 # Prerequisites (harmless if unmet — the agent logs and exits, and launchd retries hourly):
-#   the host resolves in ~/.ssh/config and accepts a key-based login. Check with
-#     ssh <host> true
+#   the sshHost entry resolves in ~/.ssh/config and accepts a key-based login. Check with
+#     ssh <sshHost> true
+# That entry is a sync-only alias, and it has to be, for two reasons that both made this module
+# fail silently for its first days:
+#   - launchd does not hand SSH_AUTH_SOCK down, so an agent-held key is invisible here unless the
+#     entry pins IdentityAgent itself.
+#   - an interactive entry that carries LocalForward plus ExitOnForwardFailure makes every later
+#     connection exit 255 while a normal session holds those ports. The alias clears forwardings.
+# Both live in the sops-managed ssh_config, not here.
 let
   home = config.home.homeDirectory;
   logDir = "${home}/Library/Logs/mutagen";
 
   # session name == directory name under ~/Sync == SSH host name.
   # remoteDir is relative to the far side's home directory.
+  # sshHost is the entry mutagen dials, which is deliberately not the interactive one: see the
+  # comment on the prerequisites above.
   peers = [
     {
       host = "mvrx-nolang-dev";
+      sshHost = "mvrx-nolang-dev-sync";
       remoteDir = "Sync/MacBook-Mini";
     }
   ];
@@ -54,6 +64,7 @@ let
   syncScript =
     {
       host,
+      sshHost,
       remoteDir,
     }:
     let
@@ -80,8 +91,8 @@ let
         --name="${host}" \
         --ignore-vcs \
         --ignore=.DS_Store \
-        "${localDir}" "${host}:${remoteDir}" >>"${logFile}" 2>&1; then
-        echo "$(date '+%F %T') SKIP: could not create session (check: ssh ${host} true)" >>"${logFile}"
+        "${localDir}" "${sshHost}:${remoteDir}" >>"${logFile}" 2>&1; then
+        echo "$(date '+%F %T') SKIP: could not create session (check: ssh ${sshHost} true)" >>"${logFile}"
       fi
       exit 0
     '';
