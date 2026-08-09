@@ -39,5 +39,6 @@
     ./samba.nix
     ./syncthing.nix
     ./vaultwarden.nix
+    ./vpn-relay.nix
   ];
 }

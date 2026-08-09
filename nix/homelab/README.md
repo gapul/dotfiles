@@ -36,6 +36,19 @@ name that matters now.
 | `gatus.env` | `NTFY_TOPIC`, `NTFY_TOKEN` (the `tk_...` bearer token; gatus substitutes them into its own config) |
 | `mosquitto-ha.password` | a `mosquitto_passwd` hash, the part after `ha:` — not a plaintext password |
 
+The office tunnel keeps its own directory, `/var/lib/secrets/mvrx/`, because none
+of it is a credential in the usual sense — it is a third party's infrastructure,
+and this repo is public.
+
+| file | contents |
+| --- | --- |
+| `conn.conf` | the `conn mvrx` block: peer address, IKEv1 transport mode, proposals |
+| `ipsec.secrets` | `: PSK <psk>` |
+| `xl2tpd.conf` | `[global]` plus the `[lac mvrx]` block naming the LNS |
+| `ppp-options` | pppd options including `name <account>`. Must not contain `defaultroute` — that is what keeps ppp0 from taking over the house's routing |
+| `chap-secrets` | the account's password (symlinked to /etc/ppp/chap-secrets; pppd's path is compiled in) |
+| `probe-host` | `host:port` on the far side for the watchdog, e.g. a machine's ssh port |
+
 `APPLICATION_HOSTS` is in dawarich's list not because it is secret but because the
 old value names the old machine's LAN address; it has to be set for whatever this
 host's address turns out to be.

@@ -92,12 +92,13 @@ in
   #   - the 35GB of service data (CT101's 23GB, HAOS's 9.2GB, matter's 8MB) must be
   #     copied off the box first; the 200GB mount is on the same NVMe and does not count
   #
-  # Deliberately NOT in this first pass:
-  #   - the 37 containers of CT101 (compose2nix over /opt/stacks, one service at a time)
-  #   - Home Assistant + matter-server (needs host IPv6 and the 8MB matter fabric copy)
-  #   - the Mullvad exit node of CT106 (co-locating it needs policy routing so that
-  #     only forwarded traffic enters the tunnel; a netns of its own is the likely answer)
-  #   - the L2TP/IPsec relay of VM105 (strongswan + xl2tpd, last because work depends on it)
+  # Everything the old box ran is declared: CT101's stacks, the HAOS VM, the four
+  # LXC containers and VM105's office tunnel. The one thing not carried over is
+  # CT106, and only because there was nothing in it — the mullvad and wg binaries
+  # are installed but /etc/wireguard is empty and its default route is the plain
+  # LAN one, so it has been a tailscale node doing nothing. If a Mullvad exit node
+  # is wanted, it is a fresh build, and it wants its own netns rather than this
+  # host's routing table.
   imports = [
     ./homeserver-hardware.nix
     ../homelab # the Docker stacks that used to live on CT101 under dockge
@@ -142,15 +143,16 @@ in
   # is safe (tailscale picks one as primary), so this can be enabled before CT102 is
   # switched off, and the old one is the fallback while cutting over.
   #
-  # The exit node of CT106 is intentionally not merged in here: its egress goes
-  # through a Mullvad wireguard tunnel, and putting that on the host that serves
-  # everything else needs policy routing to keep the host's own traffic out of it.
+  # The office subnet is reachable because of homelab/vpn-relay.nix; advertising it
+  # while the tunnel is down simply means those packets go nowhere, same as before.
   #
   # Authenticate once by hand with `sudo tailscale up`; no auth key in the repo.
   services.tailscale = {
     enable = true;
     useRoutingFeatures = "server";
-    extraUpFlags = [ "--advertise-routes=192.168.116.0/24" ];
+    # Two subnets: the house, and the office network reached over the L2TP tunnel
+    # in homelab/vpn-relay.nix. The second one used to be advertised by VM105.
+    extraUpFlags = [ "--advertise-routes=192.168.116.0/24,192.168.1.0/24" ];
   };
 
   # --- TLS ---
