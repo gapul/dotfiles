@@ -9,7 +9,7 @@
 # because it should be plainly visible from the Web UI and to those you share with.
 #
 # Layout: everything replicated somewhere else lives under ~/Sync (2026-08. ~/Cloud is retired).
-#   ~/Sync/google-drive-personal  <- remote google-drive-personal:  (remote-primary, a mount)
+#   ~/Sync/google-drive           <- remote google-drive:           (remote-primary, a mount, personal)
 #   ~/Sync/google-drive-school    <- remote google-drive-school:    (remote-primary, a mount)
 #   ~/Sync/syncthing              <- Syncthing share                (local-primary, real files)
 #   ~/Sync/<ssh-host>             <- mutagen session                (peer-primary, home/mutagen-sync.nix)
@@ -27,9 +27,10 @@
 #   from the mount's visible range. Excluded paths do not appear on the mount and cannot be deleted.
 #
 # Prerequisites (harmless if unmet — the agent logs and exits, and launchd does not respawn it):
-#   the remote exists in rclone.conf. Create it interactively with
-#     rclone config create google-drive-personal drive
-#   (re-run when the OAuth token expires).
+#   the remote exists in rclone.conf. Note that rclone.conf is a symlink into the sops-nix secret
+#   (home/secrets.nix, key rclone_conf), so `rclone config create` writes are thrown away at the
+#   next activation. Get a token with `rclone authorize drive` and put the section into
+#   secrets/secrets.yaml instead.
 let
   home = config.home.homeDirectory;
   rcloneConf = "${home}/.config/rclone/rclone.conf";
@@ -38,7 +39,10 @@ let
 
   # remote name == mount point name under ~/Sync
   remotes = [
-    "google-drive-personal"
+    # The personal account is the existing "google-drive" remote (also the restic backend).
+    # Do not duplicate it as google-drive-personal: two sections sharing one OAuth token means
+    # two writers racing to refresh it in a single rclone.conf.
+    "google-drive"
     "google-drive-school"
   ];
 
