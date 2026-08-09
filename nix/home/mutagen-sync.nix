@@ -20,9 +20,11 @@
 # far side. That is fine for machines we own (homelab, macmini) and not fine for an external
 # company server, so those go through mutagen over the SSH connection we already have.
 #
-# Which hosts get a session: whichever ones we actually ssh into. The zsh wrapper below pairs
-# a host the first time we reach it, so the list maintains itself instead of being curated here.
-# The peers list stays for the one host that needs a hand-written entry (see sshHost).
+# Which hosts get a session: whichever ones we actually ssh into, and only then. The zsh wrapper
+# below pairs a host the first time we reach it, so the list maintains itself instead of being
+# curated here, and ~/Sync never shows a directory for a machine we have not talked to.
+# There is deliberately no launchd agent: a background job would recreate directories on a
+# schedule, which is exactly the thing we do not want to see.
 #
 # Why not restic-backed up: the data exists on both sides by definition, so restic keeps
 # covering ~/Sync/syncthing only (see home/restic-backup.nix). Nothing here is the only copy
@@ -36,31 +38,19 @@
 # .git carries absolute paths (git worktrees) and an index that must stay consistent with the
 # working tree, neither of which survives being copied file by file.
 #
-# Prerequisites (harmless if unmet — the agent logs and exits, and launchd retries hourly):
-#   the sshHost entry resolves in ~/.ssh/config and accepts a key-based login. Check with
-#     ssh <sshHost> true
-# That entry is a sync-only alias, and it has to be, for two reasons that both made this module
-# fail silently for its first days:
-#   - launchd does not hand SSH_AUTH_SOCK down, so an agent-held key is invisible here unless the
-#     entry pins IdentityAgent itself.
-#   - an interactive entry that carries LocalForward plus ExitOnForwardFailure makes every later
-#     connection exit 255 while a normal session holds those ports. The alias clears forwardings.
-# Both live in the sops-managed ssh_config, not here.
+# Prerequisites (harmless if unmet — pairing is skipped and logged, and the next ssh retries):
+#   the host accepts an unattended key-based login. Check with
+#     ssh -o BatchMode=yes <host> true
+#
+# The "<host>-sync" convention: when ssh_config defines an entry of that name, it is dialled
+# instead of the interactive one. That exists because an interactive entry can carry LocalForward
+# plus ExitOnForwardFailure, and then every further connection exits 255 while a normal session
+# holds those ports — precisely when the machine is in use. The sync alias clears forwardings.
+# Agent access is not part of that convention any more: Host * pins IdentityAgent, which is what
+# the mutagen daemon needs, since nothing hands SSH_AUTH_SOCK to it.
 let
   home = config.home.homeDirectory;
   logDir = "${home}/Library/Logs/mutagen";
-
-  # session name == directory name under ~/Sync == SSH host name.
-  # remoteDir is relative to the far side's home directory.
-  # sshHost is the entry mutagen dials, which is deliberately not the interactive one: see the
-  # comment on the prerequisites above.
-  peers = [
-    {
-      host = "mvrx-nolang-dev";
-      sshHost = "mvrx-nolang-dev-sync";
-      remoteDir = "Sync/MacBook-Mini";
-    }
-  ];
 
   # No openssh here on purpose: mutagen shells out to `ssh`, and the one that is known to work
   # with this machine's config (Bitwarden agent socket, per-host IdentityFile) is /usr/bin/ssh,
@@ -69,46 +59,6 @@ let
     pkgs.mutagen
     pkgs.coreutils
   ];
-
-  syncScript =
-    {
-      host,
-      sshHost,
-      remoteDir,
-    }:
-    let
-      localDir = "${home}/Sync/${host}";
-      logFile = "${logDir}/${host}.log";
-    in
-    pkgs.writeShellScript "mutagen-sync-${host}" ''
-      set -uo pipefail
-      export PATH=${mutagenBin}:$PATH
-      mkdir -p "${logDir}" "${localDir}"
-
-      # Always exit 0. Paired with KeepAlive.SuccessfulExit=false below, launchd leaves a failed
-      # attempt alone instead of respawning it in a tight loop; StartInterval retries it hourly,
-      # which is what picks the session back up when the host was unreachable at login.
-      if mutagen sync list "${host}" >/dev/null 2>&1; then
-        exit 0
-      fi
-
-      echo "$(date '+%F %T') creating session ${host}" >>"${logFile}"
-      # mutagen creates the synchronization root but not the directories above it, and a missing
-      # parent only shows up afterwards as a transition problem on a session that otherwise looks
-      # healthy ("unable to walk to transition root parent"). Make the parent first.
-      /usr/bin/ssh -o BatchMode=yes "${sshHost}" "mkdir -p ${remoteDir}" >>"${logFile}" 2>&1 || true
-      # Creating a session contacts the far side to install the agent, so this is also where an
-      # unreachable or unconfigured host shows up. mutagen keeps reconnecting on its own once
-      # the session exists, so this only ever runs again after a terminate.
-      if ! mutagen sync create \
-        --name="${host}" \
-        --ignore-vcs \
-        --ignore=.DS_Store \
-        "${localDir}" "${sshHost}:${remoteDir}" >>"${logFile}" 2>&1; then
-        echo "$(date '+%F %T') SKIP: could not create session (check: ssh ${sshHost} true)" >>"${logFile}"
-      fi
-      exit 0
-    '';
 
   # Pair whatever host we just reached over ssh. Called by the zsh wrapper with the very argv
   # the user typed, so the destination has to be dug out of it the way ssh itself would.
@@ -134,7 +84,7 @@ let
     host="''${dest#*@}"
 
     # Only named entries pair. An address is a one-off, and it would name the sync directory
-    # after something that changes; *-sync is our own alias for a host the peers list owns.
+    # after something that changes; *-sync is the alias we dial, not a machine of its own.
     case "$host" in
       *.* | *:* | */*) exit 0 ;;
       *-sync) exit 0 ;;
@@ -159,9 +109,18 @@ let
     localDir="${home}/Sync/$host"
     remoteDir="Sync/$(scutil --get LocalHostName 2>/dev/null || hostname -s)"
 
+    # Dial the sync alias when ssh_config defines one: the interactive entry may carry port
+    # forwards that make a second connection fail exactly while the machine is in use.
+    dial="$host"
+    if awk -v want="$host-sync" '
+      tolower($1)=="host"{for(i=2;i<=NF;i++) if($i==want){found=1}}
+      END{exit !found}' "${home}/.ssh/config" 2>/dev/null; then
+      dial="$host-sync"
+    fi
+
     # Reachability and the parent directory in one round trip. BatchMode so a host that wants a
     # password fails here instead of waiting on a prompt that nobody can see.
-    if ! /usr/bin/ssh -o BatchMode=yes -o ConnectTimeout=10 "$host" "mkdir -p '$remoteDir'"; then
+    if ! /usr/bin/ssh -o BatchMode=yes -o ConnectTimeout=10 "$dial" "mkdir -p '$remoteDir'"; then
       echo "$(date '+%F %T') skip $host: no unattended login"
       exit 0
     fi
@@ -172,7 +131,7 @@ let
       --name="$host" \
       --ignore-vcs \
       --ignore=.DS_Store \
-      "$localDir" "$host:$remoteDir"; then
+      "$localDir" "$dial:$remoteDir"; then
       printf '%s' "$host" >"$marker"
     else
       # leave no empty ~/Sync/<host> behind to suggest a pairing that does not exist
@@ -199,25 +158,4 @@ in
     }
   '';
 
-  # One agent per peer. The agent only ensures the session exists; the synchronization itself is
-  # carried by mutagen's own daemon, which the CLI starts on demand and which stays resident.
-  # If that daemon ever dies unnoticed, replace this with a foreground `mutagen daemon run` agent.
-  launchd.agents = lib.listToAttrs (
-    map (peer: {
-      name = "mutagen-sync-${peer.host}";
-      value = {
-        enable = true;
-        config = {
-          ProgramArguments = [ "${syncScript peer}" ];
-          RunAtLoad = true;
-          StartInterval = 3600; # retry hourly: the host is often unreachable at login
-          KeepAlive.SuccessfulExit = false;
-          ProcessType = "Background";
-          LowPriorityIO = true;
-          Nice = 5;
-          StandardErrorPath = "${logDir}/${peer.host}.log";
-        };
-      };
-    }) peers
-  );
 }
