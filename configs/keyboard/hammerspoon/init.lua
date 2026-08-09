@@ -409,6 +409,24 @@ hs.hotkey.bind(hyper, "return", function()
 	end
 end)
 
+-- Hyper+Shift+Tab: 今のワークスペースを隣のモニタへ (AeroSpace の cmd-ctrl-alt-shift-tab 相当)。
+-- 同じ動作は OmniWM 側で Hyper+M/N にも割り当ててあるが、1 つの id には 1 バインドしか
+-- 持てないので Tab のマッスルメモリはこちらで足す。
+hs.hotkey.bind(hyperShift, "tab", function()
+	hs.task.new("/opt/homebrew/bin/omniwmctl", nil, { "command", "swap-workspace-with-monitor", "right" }):start()
+end)
+
+-- AeroSpace が奪っていた macOS ネイティブ操作を殺す (automatically-unhide-macos-hidden-apps=false
+-- + cmd-m/cmd-h/cmd-alt-h を mode main に潰していたのと同じ意図)。minimize と hide は
+-- ウィンドウを Dock に送ってタイル管理から消すので、押しても何も起きないようにする。
+for _, spec in ipairs({
+	{ { "cmd" }, "m" }, -- minimize
+	{ { "cmd" }, "h" }, -- hide app
+	{ { "cmd", "alt" }, "h" }, -- hide others
+}) do
+	hs.hotkey.bind(spec[1], spec[2], function() end)
+end
+
 local reloadTimer = nil
 _G.configWatcher = hs.pathwatcher.new(hs.configdir, function(paths)
 	for _, path in ipairs(paths) do
