@@ -84,6 +84,10 @@ let
       fi
 
       echo "$(date '+%F %T') creating session ${host}" >>"${logFile}"
+      # mutagen creates the synchronization root but not the directories above it, and a missing
+      # parent only shows up afterwards as a transition problem on a session that otherwise looks
+      # healthy ("unable to walk to transition root parent"). Make the parent first.
+      /usr/bin/ssh -o BatchMode=yes "${sshHost}" "mkdir -p ${remoteDir}" >>"${logFile}" 2>&1 || true
       # Creating a session contacts the far side to install the agent, so this is also where an
       # unreachable or unconfigured host shows up. mutagen keeps reconnecting on its own once
       # the session exists, so this only ever runs again after a terminate.
