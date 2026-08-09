@@ -25,6 +25,9 @@
 # curated here, and ~/Sync never shows a directory for a machine we have not talked to.
 # There is deliberately no launchd agent: a background job would recreate directories on a
 # schedule, which is exactly the thing we do not want to see.
+# The other half of that: a pairing that holds nothing on either side is retired on the next
+# ssh, so ~/Sync lists the hosts we are exchanging files with rather than every host we have
+# ever logged into. Emptiness is required on both sides, so retiring one cannot lose anything.
 #
 # Why not restic-backed up: the data exists on both sides by definition, so restic keeps
 # covering ~/Sync/syncthing only (see home/restic-backup.nix). Nothing here is the only copy
@@ -90,6 +93,24 @@ let
       *-sync) exit 0 ;;
     esac
     case " github localhost " in *" $host "*) exit 0 ;; esac
+
+    # Retire pairings that hold nothing. Without this every host we ever reached keeps a
+    # directory in ~/Sync forever, which is the clutter the pairing rule was meant to avoid.
+    # Only a pair that is empty on BOTH sides goes, so nothing can be lost by it, and only
+    # after an hour of stillness, so a directory never disappears while it is being used.
+    mutagen sync list --template \
+      '{{range .}}{{.Name}} {{.Alpha.EndpointState.Files}} {{.Alpha.EndpointState.Directories}} {{.Beta.EndpointState.Files}} {{.Beta.EndpointState.Directories}} {{.Alpha.Path}}{{"\n"}}{{end}}' \
+      2>/dev/null | while read -r name af ad bf bd path; do
+      [ "$name" = "$host" ] && continue
+      case "$path" in "${home}/Sync/"?*) ;; *) continue ;; esac
+      # Directories is 1 for the synchronization root itself, so 1 still means empty.
+      [ "$af" = 0 ] && [ "$bf" = 0 ] && [ "$ad" -le 1 ] && [ "$bd" -le 1 ] || continue
+      [ -n "$(find "$path" -maxdepth 0 -mmin +60 2>/dev/null)" ] || continue
+      echo "$(date '+%F %T') retiring empty pair $name"
+      mutagen sync terminate "$name" >/dev/null 2>&1 || continue
+      rmdir "$path" 2>/dev/null || true
+      grep -lFx "$name" "$stateDir"/* 2>/dev/null | while read -r stale; do rm -f "$stale"; done
+    done
 
     # Alias-proof identity: ssh -G resolves locally, so rpi4 / rpi / raspberrypi collapse into
     # one key and cannot end up as three sessions pointed at the same directory.
