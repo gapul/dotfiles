@@ -1,5 +1,10 @@
 # Homelab ロードマップ & サービス移行調査
 
+> **注記(2026-08-09)**: この構成はハイパーバイザ無しの NixOS 1台へ置き換え中。
+> 設定の実体は `nix/hosts/homeserver.nix` と `nix/homelab/` に移っている。
+> 当日の手順は [HOMESERVER_MIGRATION.md](HOMESERVER_MIGRATION.md)。
+> 以下は移行元の記録。
+
 最終更新: 2026-07-05
 
 pve(Proxmox)+ CT101(dockge/Docker)を中心とした自宅ホームラボの、残タスクとサービス移行の検討メモ。

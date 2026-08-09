@@ -325,6 +325,15 @@ http:
 | スマホの OwnTracks | Dawarich の宛先が旧 CT101 の `:3005`。新ホストのアドレスへ |
 | MQTT クライアント | mosquitto の認証が HA ユーザー依存から独自ユーザーに変わる |
 
+### 5.1.1 復元に必要なものはバックアップの中に入れない
+
+`/var/lib/secrets` は restic のバックアップ対象に入っている。つまり **restic の
+パスワードと rclone の設定だけは、バックアップの外**(Bitwarden)に無いと、
+バックアップを開けられない。移行前に手元にあることを確認しておく。
+
+母艦の `~/.ssh/config` は sops 管理で、`pve` などのエントリが入っている。
+`homeserver` のエントリ追加はそちら側の作業になる。
+
 ### 5.2 旧スナップショットの掃除(移行後でよい)
 
 pve は `--host pve --tag pve-vzdump` で Google Drive に vzdump を送っていた。
