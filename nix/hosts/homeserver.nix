@@ -39,6 +39,11 @@ let
     cache.upstream = "127.0.0.1:8083"; # attic (own nix binary cache)
     dns2.upstream = "127.0.0.1:3080"; # AdGuard secondary, native module
     dns.upstream = "${rpi}:3000"; # AdGuard primary
+    # These two used to be reached through Home Assistant's add-on ingress, which
+    # does not exist without Supervisor. Both need their own A record in
+    # Cloudflare pointing at this host's tailnet address, same as the others.
+    esphome.upstream = "127.0.0.1:6052";
+    nodered.upstream = "127.0.0.1:1880";
     comfy.upstream = "${macmini}:8188";
     chat.upstream = "${macmini}:3000";
     docs.upstream = "${macmini}:3001";
@@ -235,6 +240,20 @@ in
     defaultNetwork.settings.dns_enabled = true;
   };
   virtualisation.oci-containers.backend = "podman";
+
+  # Docker Hub rate-limits anonymous pulls per IP, and this house reaches that
+  # limit easily — the workaround on the old host was to pull through mirror.gcr.io
+  # by hand and retag. Install day pulls around thirty images at once into an empty
+  # store, which would hit it immediately, so make the mirror the default instead
+  # of a manual step.
+  environment.etc."containers/registries.conf.d/10-docker-mirror.conf".text = ''
+    [[registry]]
+    prefix = "docker.io"
+    location = "docker.io"
+
+    [[registry.mirror]]
+    location = "mirror.gcr.io"
+  '';
 
   # --- Nix ---
   nix.gc = {

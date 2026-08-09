@@ -94,5 +94,15 @@ pkgs.testers.runNixOSTest {
 
     # backrest's replacement is a timer, so there is nothing to connect to.
     machine.succeed("systemctl is-enabled restic-backups-homeserver.timer")
+
+    # Three of Home Assistant's five add-ons became native services. Home
+    # Assistant itself and the Matter server are containers and cannot start here.
+    machine.wait_for_unit("esphome.service")
+    machine.wait_for_open_port(6052)
+    machine.wait_for_unit("node-red.service")
+    machine.wait_for_open_port(1880)
+    # mosquitto needs its password file, which is placed by hand at install time,
+    # so assert the unit exists rather than that it came up.
+    machine.succeed("systemctl cat mosquitto.service >/dev/null")
   '';
 }

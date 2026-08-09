@@ -42,6 +42,38 @@ Two of these passwords existed in plaintext in the compose files on the old host
 archivebox's admin password, and samba's, which was in `command:` and therefore
 also visible in `ps`. They are worth rotating rather than carrying over.
 
+## Home Assistant
+
+Not an env file, but the same category of thing that fails quietly: Home
+Assistant's own `configuration.yaml` carries
+
+```yaml
+http:
+  use_x_forwarded_for: true
+  trusted_proxies: [192.168.116.119]
+```
+
+which is the old Caddy container's address. Caddy runs on the same host now, so
+that has to become `127.0.0.1` or Home Assistant rejects every proxied request
+with a 400 and the only clue is in its log.
+
+What to carry over, none of it regenerable:
+
+| from the old machine | to |
+| --- | --- |
+| `supervisor/homeassistant` (69MB, includes `esphome/`, `custom_components/`, `.storage`) | `/var/lib/hass` |
+| `supervisor/apps/data/core_matter_server` (8MB, the Matter fabric) | `/var/lib/matter-server` |
+| `supervisor/homeassistant/esphome/*.yaml` | `/var/lib/esphome` |
+| `supervisor/apps/data/a0d7b954_nodered` (flows) | `/var/lib/node-red` |
+
+`/var/lib/secrets/mosquitto-ha.password` holds a `mosquitto_passwd`-format hash,
+not a plaintext password. The add-on authenticated MQTT clients against Home
+Assistant's user accounts; nothing does that here, so every client needs the new
+credential.
+
+Take one `ha backups new` before the swap. Container installs have no backup
+button, so that is the last full snapshot the Supervisor will ever make.
+
 ## Data
 
 Bind mounts moved with the machine:
