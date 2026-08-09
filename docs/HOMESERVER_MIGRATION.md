@@ -236,7 +236,9 @@ reboot
 | `/var/lib/secrets/restic.password` | restic リポジトリのパスワード |
 | `/var/lib/secrets/rclone.conf` | rclone の設定(google-drive リモート) |
 | `/var/lib/secrets/mosquitto-ha.password` | mosquitto_passwd 形式のハッシュ部分のみ |
+| `/var/lib/secrets/gatus.env` | `NTFY_TOPIC` と `NTFY_TOKEN`(これが無いと gatus が起動しない) |
 | `/var/lib/secrets/<stack>.env` × 8 | キーの一覧は `nix/homelab/README.md` |
+| `/var/lib/secrets/mvrx/` 6ファイル | 会社トンネル一式。同じく `nix/homelab/README.md` |
 
 `<stack>.env` のキー名は旧 `.env` と一致しないものがある。paperless の `PAPERLESS_SECRET`
 はコンテナ側では `PAPERLESS_SECRET_KEY`、miniflux はパスワード単体ではなく `DATABASE_URL`
