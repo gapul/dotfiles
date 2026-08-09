@@ -205,6 +205,9 @@ in
   # Caddy's own health is still visible: status.gapul.net is served through it.
   services.gatus = {
     enable = true;
+    # The publish URL's topic and its bearer token, same pair restic already uses.
+    # gatus substitutes ${VAR} in its own config, so nothing secret is in nix.
+    environmentFile = "/var/lib/secrets/gatus.env";
     settings = {
       web.port = gatusPort;
       storage = {
@@ -219,15 +222,39 @@ in
         # Not `== 200`: several of these answer 3xx or 401 when perfectly healthy
         # (AdGuard redirects, vaultwarden and couchdb want auth).
         conditions = [ "[STATUS] < 400" ];
+        alerts = [
+          {
+            type = "ntfy";
+            # Three consecutive failures, so a container restarting during an
+            # image update does not page. At a 2m interval that is ~6 minutes.
+            failure-threshold = 3;
+            send-on-resolved = true;
+            enabled = true;
+          }
+        ];
       }) (lib.filterAttrs (_: site: site.monitor or true) sites);
-      # TODO: ntfy alerting. The publish URL and bearer token are sops-managed
-      # (see home/restic-backup.nix), so it waits for this host's age key.
+      alerting.ntfy = {
+        # ntfy runs on this host, so this notifies about everything except ntfy
+        # and the machine itself being down. The Pi is the second pair of eyes
+        # for that, the same way it is for DNS.
+        url = "http://127.0.0.1:8082";
+        topic = "\${NTFY_TOPIC}";
+        token = "\${NTFY_TOKEN}";
+        priority = 3;
+      };
     };
   };
 
   # --- Firewall ---
-  # Nothing is published on the LAN interface: every *.gapul.net name resolves to
-  # this machine's tailnet address, so 80/443 only ever arrive over tailscale0.
+  # Every *.gapul.net name resolves to this machine's tailnet address, so 80/443
+  # only ever arrive over tailscale0 and nothing needs publishing on the LAN.
+  #
+  # This is narrower than what it replaces, and deliberately so: docker on the old
+  # host published every container port on the LAN bridge, whether or not anything
+  # used it. Only DNS is opened back up (adguardhome.nix), because clients point at
+  # it directly. If some device that is not on the tailnet turns out to talk to
+  # Jellyfin (8096), SMB (139/445) or MQTT (1883), open that port here rather than
+  # widening the whole thing.
   networking.firewall.trustedInterfaces = [ "tailscale0" ];
 
   # --- Containers ---

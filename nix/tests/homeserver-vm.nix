@@ -22,7 +22,7 @@ pkgs.testers.runNixOSTest {
   node.pkgsReadOnly = false;
 
   nodes.machine =
-    { lib, ... }:
+    { lib, pkgs, ... }:
     {
       imports = [
         ../hosts/homeserver.nix
@@ -37,6 +37,16 @@ pkgs.testers.runNixOSTest {
 
       # No tailnet to join, and nothing under test needs it.
       services.tailscale.enable = lib.mkForce false;
+
+      # gatus reads the ntfy topic and token from a file placed by hand at install
+      # time. systemd refuses to start a unit whose EnvironmentFile is missing, so
+      # stand in for it — which also exercises the ${VAR} substitution.
+      systemd.services.gatus.serviceConfig.EnvironmentFile = lib.mkForce (
+        pkgs.writeText "gatus-test.env" ''
+          NTFY_TOPIC=test
+          NTFY_TOKEN=test
+        ''
+      );
 
       # lego cannot run (no Cloudflare token, no DNS), so acme-gapul.net fails and
       # its finished target never activates. The preliminary self-signed cert that

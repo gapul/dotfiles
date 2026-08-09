@@ -33,6 +33,8 @@ name that matters now.
 | `obsidian-couchdb.env` | `COUCHDB_USER`, `COUCHDB_PASSWORD` |
 | `paperless.env` | `PAPERLESS_SECRET_KEY`, `PAPERLESS_ADMIN_PASSWORD` |
 | `vaultwarden.env` | `ADMIN_TOKEN` |
+| `gatus.env` | `NTFY_TOPIC`, `NTFY_TOKEN` (the `tk_...` bearer token; gatus substitutes them into its own config) |
+| `mosquitto-ha.password` | a `mosquitto_passwd` hash, the part after `ha:` — not a plaintext password |
 
 `APPLICATION_HOSTS` is in dawarich's list not because it is secret but because the
 old value names the old machine's LAN address; it has to be set for whatever this
