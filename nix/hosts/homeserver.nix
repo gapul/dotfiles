@@ -54,7 +54,7 @@ let
     };
     # A read-only window onto the restic repository, rebuilt here from the two
     # hand-written units that ran on the pve host (homelab/restic-view.nix).
-    files.upstream = "127.0.0.1:8082";
+    files.upstream = "127.0.0.1:8085";
     # pve.gapul.net has nothing left to point at.
     # Replaces uptime-kuma, which lives on the Raspberry Pi (rpi:3001) and holds its
     # monitor list in a SQLite file no one can review. Its checks are the `sites`

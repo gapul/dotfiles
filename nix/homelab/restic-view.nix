@@ -44,7 +44,10 @@ in
     enable = true;
     settings = {
       address = "127.0.0.1";
-      port = 8082;
+      # Not 8082: that was this service's port when it ran on the pve host, but
+      # ntfy's container publishes 8082 here. Two machines' worth of services
+      # sharing one port space is the new failure mode in this migration.
+      port = 8085;
       root = mountPoint;
     };
   };
