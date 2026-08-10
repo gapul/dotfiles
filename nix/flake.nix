@@ -234,6 +234,7 @@
           yazi
           tmux
           git
+          lazygit
           ripgrep
           fd
           fzf

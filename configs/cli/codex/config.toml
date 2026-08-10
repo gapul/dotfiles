@@ -3,3 +3,7 @@
 
 [projects."/Users/gapul"]
 trust_level = "trusted"
+
+# nssh 先の Linux ホスト (home は /home/<user>)
+[projects."/home/gapul"]
+trust_level = "trusted"
