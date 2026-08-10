@@ -52,6 +52,9 @@
 
   systemd.services.mvrx-vpn = {
     description = "MVRX L2TP/IPsec tunnel (subnet router uplink)";
+    # Do not let a failing tunnel retry forever; the watchdog is what retries.
+    startLimitIntervalSec = 600;
+    startLimitBurst = 3;
     after = [
       "network-online.target"
       "strongswan.service"
@@ -115,8 +118,13 @@
   };
   systemd.timers.mvrx-vpn-watchdog = {
     timerConfig = {
-      OnBootSec = "3min";
-      OnUnitActiveSec = "120s";
+      OnBootSec = "5min";
+      # Was 120s, which turned a tunnel that could not come up into a machine
+      # that fell off the network every two minutes: each run does `ipsec
+      # restart`, and that is disruptive enough to drop ssh. Ten minutes still
+      # reconnects a dropped tunnel quickly enough to matter, and a persistent
+      # failure now costs a blip six times an hour instead of thirty.
+      OnUnitActiveSec = "10min";
     };
     wantedBy = [ "timers.target" ];
   };

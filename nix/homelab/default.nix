@@ -25,6 +25,7 @@
     ./backup.nix
     ./dawarich.nix
     ./forgejo.nix
+    ./free-games-claimer.nix
     ./homeassistant.nix
     ./homepage.nix
     ./jellyfin.nix
