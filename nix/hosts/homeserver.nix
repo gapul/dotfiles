@@ -120,9 +120,21 @@ in
   # Required by the pool import; any stable 8 hex digits will do, it just has to
   # differ between machines sharing a pool (nothing here does).
   networking.hostId = "8f3a1c02";
-  # Don't import a pool that another system may still hold; on a single-disk box
-  # this only ever means "fail loudly instead of corrupting".
+  # Don't import a pool another host may still hold. This is also where nixpkgs is
+  # heading — it becomes the default in 26.11 — so it stays.
+  #
+  # It did make the first install unbootable, but the setting was not the bug: the
+  # installer still had the pool imported when the machine rebooted, so the pool
+  # carried the installer's hostid and the new system correctly refused it. The
+  # fix is to export the pool before leaving the installer, which the runbook now
+  # says to do. Forcing the import would have papered over that.
   boot.zfs.forceImportRoot = false;
+
+  # What actually made it unrecoverable: the refusal drops to an initrd emergency
+  # shell, and that shell would not open because root has no password. No console
+  # access, no ssh, nothing — recovery needed a USB stick. A machine that can
+  # refuse to import must also let someone in to resolve it.
+  boot.initrd.systemd.emergencyAccess = true;
   # ARC defaults to half of RAM, which would quietly eat the ~4.7GB this migration
   # is meant to recover. 2GB is a starting point for a 15GB box running ~20
   # containers; raise it if reads turn out to be the bottleneck.

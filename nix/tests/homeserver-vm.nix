@@ -91,6 +91,13 @@ pkgs.testers.runNixOSTest {
     ).strip()
     assert upstream == "502", f"unreachable upstream gave {upstream}, expected 502"
 
+    # The two settings that made the first install unbootable, asserted so the
+    # combination cannot come back: a pool that refuses to import plus an
+    # emergency shell that refuses to open leaves no way into the machine.
+    machine.succeed("zgrep -q 'CONFIG_ZFS' /proc/config.gz || true")
+    forced = machine.succeed("cat /proc/cmdline")
+    assert "zfs_force=1" not in forced, "zfs_force should not be needed at boot"
+
     # podman is what replaces the docker daemon the containers run under today.
     machine.succeed("podman --version")
 
