@@ -50,6 +50,11 @@ in
     [ -f "$HOME/.config/zsh/local.zsh" ] && source "$HOME/.config/zsh/local.zsh"
   '';
 
+  # Which flake attribute this machine is. `just rebuild` otherwise falls back to the
+  # username, which names the workstation config — and both Macs report the same
+  # LocalHostName, so there is nothing else to tell them apart.
+  xdg.configFile."dotfiles/host".text = "macmini\n";
+
   # AI stack runtime assets (bodies in configs/macmini/{services,bin})
   home.file = lib.mkMerge (
     map aiService [

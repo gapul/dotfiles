@@ -57,12 +57,20 @@ _rebuild-macos force="":
     # itself it resolves the flake from the working directory's git root (a different tree when
     # this runs from a worktree, so check and switch would disagree forever) and picks the config
     # by hostname, which here is MacBook-Mini while the attribute is named after the user.
-    name="$(id -un)"
+    # The username is only the right answer on the workstation. Both Macs report the same
+    # LocalHostName, so a machine that is not the workstation has to say so out loud, in
+    # ~/.config/dotfiles/host (macmini declares that file in home/macmini.nix). Getting this
+    # wrong is not a no-op: on the mac mini it quietly activated the workstation config,
+    # dropping the manabi tunnel and the ollama agent and pulling in the GUI cask list.
+    name="$(cat "${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/host" 2>/dev/null || id -un)"
     sys_want=$(nix eval --raw "{{flake}}#darwinConfigurations.$name.config.system.build.toplevel.outPath")
-    home_want=$(nix eval --raw "{{flake}}#homeConfigurations.$name.activationPackage.outPath")
+    # Hosts whose home rides inside the darwin config (the mac mini) have no standalone
+    # homeConfigurations entry; there is nothing to activate separately.
+    home_want=$(nix eval --raw "{{flake}}#homeConfigurations.$name.activationPackage.outPath" 2>/dev/null || true)
     sys_have=$(readlink /run/current-system || true)
     home_have=$(readlink "$HOME/.local/state/home-manager/gcroots/current-home" || true)
     do_sys=1; do_home=1
+    [ -z "$home_want" ] && do_home=0
     if [ -z "{{force}}" ]; then
       [ "$sys_want" = "$sys_have" ] && do_sys=0
       [ "$home_want" = "$home_have" ] && do_home=0
@@ -97,6 +105,11 @@ _rebuild-macos force="":
       echo "✓ nix-darwin" | tee -a "$log"
     else
       echo "– nix-darwin unchanged" | tee -a "$log"
+    fi
+    if [ -z "$home_want" ]; then
+      echo "– home-manager: this host has no standalone config (it rides inside nix-darwin)" | tee -a "$log"
+      open -a Ghostty >/dev/null 2>&1 || true
+      exit 0
     fi
     echo "━━━ home-manager" | tee -a "$log"
     # -b hm-bak: standalone home-manager has no backupFileExtension option (that one only exists on
@@ -359,11 +372,15 @@ _maintain-macos:
     # parallel connections as on one, so overlapping is worth the plumbing.
     # Each lane's output is buffered and replayed in order; three live downloads on one
     # terminal is unreadable.
-    name="$(id -un)"
+    # Same host resolution as _rebuild-macos: the username is only right on the workstation.
+    name="$(cat "${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/host" 2>/dev/null || id -un)"
+    home_attr=""
+    nix eval --raw "{{flake}}#homeConfigurations.$name.activationPackage.outPath" >/dev/null 2>&1 \
+      && home_attr="{{flake}}#homeConfigurations.$name.activationPackage"
     nix_out=$(mktemp); brew_out=$(mktemp); tools_out=$(mktemp)
     nix build --no-link \
       "{{flake}}#darwinConfigurations.$name.config.system.build.toplevel" \
-      "{{flake}}#homeConfigurations.$name.activationPackage" >"$nix_out" 2>&1 &
+      $home_attr >"$nix_out" 2>&1 &
     nix_pid=$!
     just _upgrade-packages-macos >"$brew_out" 2>&1 &
     brew_pid=$!
