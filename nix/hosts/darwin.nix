@@ -328,6 +328,11 @@
       # OmniWM: main tiling WM (replaced aerospace 2026-08, trial concluded). Hotkeys are
       # GUI-configured (settings.toml schema is undocumented), so ~/.config/omniwm is
       # app-managed, not nix-generated. Hotkeys mirror the old aerospace hyper band (Cmd+Ctrl+Alt).
+      # PINNED BY HAND to v0.5.9 (2026-08-10): 0.5.10 regressed floating-panel focus, so OmniWM
+      # yanks focus off Ghostty's quick terminal and quick-terminal-autohide closes it within
+      # 100ms (upstream BarutSRB/OmniWM#559, fixed on main 08-09 but unreleased as of v0.6.0).
+      # onActivation.upgrade = false keeps it, but a manual `brew upgrade --cask` undoes it.
+      # Once v0.6.1 ships: `brew reinstall omniwm`, verify cmd+space, and drop this note.
       "omniwm"
       "thaw" # menu bar management (maintenance fork of Ice. Upstream jordanbaird-ice stalled at 0.11.12/2024-10 and won't launch on macOS Tahoe → migrated to Tahoe-compatible Thaw on 2026-07-27. Ice settings are importable)
       "karabiner-elements"
