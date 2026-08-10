@@ -63,6 +63,13 @@
         # real damage). Give up early and escape to building from source.
         connect-timeout = "5";
         fallback = "true";
+        # This machine has 8 logical cores (4 performance + 4 efficiency). The defaults are
+        # max-jobs = auto (= 8) and cores = 0 (= all cores per job), so up to eight derivations
+        # each try to use eight threads. Combined with the QoS clamp in `just rebuild`, that is
+        # 64 threads fighting over four efficiency cores, and the scheduling overhead costs more
+        # than the parallelism gains. 4 x 2 keeps the total at the core count.
+        max-jobs = "4";
+        cores = "2";
         extra-substituters = builtins.concatStringsSep " " (builtins.attrNames caches);
         extra-trusted-public-keys = builtins.concatStringsSep " " (builtins.attrValues caches);
       };
