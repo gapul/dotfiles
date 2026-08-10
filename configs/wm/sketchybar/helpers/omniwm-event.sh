@@ -7,7 +7,8 @@
 # prev は /tmp の状態ファイルで自前管理し、OMNIWM_* の環境変数名で
 # omniwm_workspace_change を発火する (理由は omniwm-bridge.sh 冒頭コメント)。
 
-SB=/opt/homebrew/bin/sketchybar
+# バーは 2 本 (内蔵用 / 外部モニタ用) 走っているので、イベントは両方に投げる。
+SB="$HOME/.config/sketchybar/helpers/sb-all.sh"
 STATE=/tmp/sketchybar-omniwm-ws.state
 
 cat >/dev/null # stdin を消費 (書かないと watch 側の write が詰まりうる)

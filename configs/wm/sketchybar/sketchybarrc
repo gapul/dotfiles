@@ -8,23 +8,38 @@ PLUGIN_DIR="$CONFIG_DIR/plugins" # Directory where all the plugin scripts are st
 
 FONT="SF Pro" # Needs to have Regular, Bold, Semibold, Heavy and Black variants
 
-# Setting up and starting the helper process
-HELPER=git.felix.helper
-killall helper
-(cd $CONFIG_DIR/helper && make)
-$CONFIG_DIR/helper/helper $HELPER > /dev/null 2>&1 &
+# ─────────── プロファイル (main = 内蔵 / ext = 外部モニタ) ───────────
+# 同じ config を 2 つの sketchybar インスタンスが読む。SB_PROFILE で寸法と描画先を切り替える。
+# 背景: sketchybar はバー高さをディスプレイ別に持てない (notch_display_height だけは例外だが
+# アイテム側の寸法には効かない)。内蔵はノッチ帯 56pt、外部のメニューバーは 24pt なので、
+# 1 本のバーでは必ずどちらかが合わない。そこで別名バイナリでもう 1 インスタンス走らせ、
+# バーごとに寸法を持たせる。items/plugins は bin-ext/sketchybar の PATH shim 経由で共用する。
+SB_PROFILE="${SB_PROFILE:-main}"
 
-# Unload the macOS on screen indicator overlay for volume change
-launchctl unload -F /System/Library/LaunchAgents/com.apple.OSDUIHelper.plist > /dev/null 2>&1 &
+# 外部インスタンスが描くディスプレイ番号 (display_watch.sh が事前計算してキャッシュする)。
+# reload 中の自分自身には --query が効かないため、ここでは読むだけ。
+EXT_DISPLAY_FILE=/tmp/sketchybar-ext-displays
+
+# Setting up and starting the helper process
+# helper は main インスタンスだけが持つ (mach port 名 git.felix.helper が固定で二重起動できず、
+# sketchybar.h のクライアント側も git.felix.sketchybar 直書きなので ext からは使えない)。
+if [ "$SB_PROFILE" = "main" ]; then
+  HELPER=git.felix.helper
+  killall helper
+  (cd $CONFIG_DIR/helper && make)
+  $CONFIG_DIR/helper/helper $HELPER > /dev/null 2>&1 &
+
+  # Unload the macOS on screen indicator overlay for volume change
+  launchctl unload -F /System/Library/LaunchAgents/com.apple.OSDUIHelper.plist > /dev/null 2>&1 &
+fi
 
 # ─────────── 解像度スケーリング ───────────
 # 基準 1710x1112 (縦1112pt) に対し、論理"縦"解像度へ全サイズを比例スケール。
 # バーは水平ストリップなので太さ/フォント/アイテム高はすべて「縦方向の量」= 縦解像度比でスケールする。
 # (幅は width=max のデフォルトで自動的にディスプレイ幅いっぱいに伸びるためスケール不要)
 #
-# 複数ディスプレイ対応: sketchybar はバー高さをディスプレイ別に持てず全画面で1つの高さになる。
-# ここは「メインディスプレイ(内蔵)基準」を採用 = 内蔵にちょうど合わせる方針。
-# その結果、内蔵より論理解像度が低い外部モニタではバーが相対的に大きめに映るのは許容する。
+# 複数ディスプレイ対応: main プロファイルはメインディスプレイ(内蔵)基準でスケールする。
+# 外部モニタぶんは ext プロファイルが別インスタンスとして受け持つ (上のコメント参照)。
 REF_H=1112
 # メインディスプレイの論理縦(ポイント)を取得。swift(CoreGraphics)が最も確実、無ければsystem_profilerで代替。
 CUR_H=$(swift - <<'SWIFT' 2>/dev/null
@@ -44,11 +59,22 @@ if ! [ "${CUR_H:-0}" -gt 0 ] 2>/dev/null; then
     }')
 fi
 [ "${CUR_H:-0}" -gt 0 ] 2>/dev/null || CUR_H=$REF_H
-# フォント/アイコンだけの追加係数 (1.0=解像度スケールのまま, <1で小さく)
-FONT_SCALE=0.9
+# 寸法スケール。基準デザインはバー高さ 36pt で、そこからの倍率を 1 個の SCALE に集約する。
+#   main: 縦解像度比。内蔵のノッチ帯 (56pt) にバーがちょうど収まる。
+#   ext : 外部モニタの macOS メニューバー (24pt) にバーを合わせる = 36 -> 24。
+# FONT_SCALE は寸法とは別のフォント専用係数。基準デザインの文字/バー比 (14/36) は
+# メニューバーの比 (13/24) より小さいので、ext では 1 より大きくして純正に寄せる。
+if [ "$SB_PROFILE" = "ext" ]; then
+  EXT_BAR_HEIGHT=24
+  SCALE=$(awk -v h="$EXT_BAR_HEIGHT" 'BEGIN{printf "%.4f", h/36}')
+  FONT_SCALE=1.25
+else
+  SCALE=$(awk -v c="$CUR_H" -v r="$REF_H" 'BEGIN{printf "%.4f", c/r}')
+  FONT_SCALE=0.9
+fi
 # 整数へ丸めるスケール(寸法用) / 小数1桁のスケール(フォント用, FONT_SCALEを乗算)
-sc()  { awk -v c="$CUR_H" -v r="$REF_H" -v b="$1" 'BEGIN{printf "%.0f", b*c/r}'; }
-scf() { awk -v c="$CUR_H" -v r="$REF_H" -v b="$1" -v f="$FONT_SCALE" 'BEGIN{printf "%.1f", b*c/r*f}'; }
+sc()  { awk -v s="$SCALE" -v b="$1" 'BEGIN{printf "%.0f", b*s}'; }
+scf() { awk -v s="$SCALE" -v b="$1" -v f="$FONT_SCALE" 'BEGIN{printf "%.1f", b*s*f}'; }
 
 BAR_HEIGHT=$(sc 36)
 Y_OFFSET=$(sc 4)
@@ -59,6 +85,23 @@ ICON_FONT_SIZE=$(scf 14)
 LABEL_FONT_SIZE=$(scf 13)
 BG_HEIGHT=$(sc 26)
 BRACKET_BG_HEIGHT=$(sc 30)
+
+# ─────────── 描画先ディスプレイ ───────────
+# main はメインディスプレイ (= メニューバーを持つ画面。この構成では内蔵) だけ。
+# ext はそれ以外の全ディスプレイ。番号は arrangement-id なので固定値では書けず、
+# display_watch.sh がディスプレイ構成変化のたびに再計算してキャッシュしている。
+if [ "$SB_PROFILE" = "ext" ]; then
+  Y_OFFSET=0                     # 外部はメニューバー帯 (上端 0..24pt) にぴったり重ねる
+  BAR_DISPLAY=$(cat "$EXT_DISPLAY_FILE" 2>/dev/null)
+  # 外部モニタが無い / キャッシュ未生成のときは描かない。
+  # (display 未指定の既定は all なので、これが無いと内蔵に小さいバーが二重に出る)
+  if [ -z "$BAR_DISPLAY" ]; then
+    BAR_DISPLAY=main
+    BAR_HIDDEN=on
+  fi
+else
+  BAR_DISPLAY=main
+fi
 
 # Setting up the general bar appearance of the bar
 # バー全体は透明、各アイテムが個別にガラス風背景を持つ
@@ -75,6 +118,8 @@ bar=(
   y_offset=$Y_OFFSET
   margin=$MARGIN
   topmost=window
+  display=$BAR_DISPLAY
+  hidden=${BAR_HIDDEN:-off}
 )
 
 sketchybar --bar "${bar[@]}"
