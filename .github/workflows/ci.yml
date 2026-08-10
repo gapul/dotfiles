@@ -41,8 +41,33 @@ permissions:
   contents: read
 
 jobs:
+  # Which systems this run has to build. Pushes to main always build every system; a pull
+  # request narrows it only when every path it touches names one side unambiguously
+  # (scripts/ci-plan-systems.sh, with its own --demo self-check). The default is everything,
+  # because almost anything under nix/modules or configs reaches every host.
+  plan:
+    runs-on: ubuntu-24.04
+    outputs:
+      systems: ${{ steps.plan.outputs.systems }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - id: plan
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            systems=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD" \
+              | ./scripts/ci-plan-systems.sh)
+          else
+            systems=$(./scripts/ci-plan-systems.sh </dev/null)
+          fi
+          echo "systems=$systems" >>"$GITHUB_OUTPUT"
+          echo "building for: $systems"
+
   om-ci:
     name: om ci (${{ matrix.system }})
+    needs: plan
     strategy:
       # 1 system が落ちたら残りを即キャンセルして無駄な CI 時間/課金を抑える。
       # 全 system の失敗を一度に見たいときは workflow_dispatch で cold-build を回す。
@@ -51,6 +76,7 @@ jobs:
       # (packages/checks/darwin+nixos configs/home activationPackage) を回し、PR では
       # 日常機だけの pr-gate を作る。system に依らないリンタ類は下の checks ジョブに分離。
       matrix:
+        system: ${{ fromJSON(needs.plan.outputs.systems) }}
         include:
           - system: x86_64-linux
             runner: ubuntu-24.04
