@@ -441,19 +441,10 @@
               // lib.optionalAttrs isDarwinWorkstation {
                 homeConfigurations."${user.username}" = inputs.self.homeConfigurations."${user.username}";
               };
-          }
-          // lib.optionalAttrs isDarwinWorkstation {
-            checks = {
-              pre-commit = preCommit;
-              config-invariants = import ./tests/config-invariants.nix {
-                inherit
-                  lib
-                  user
-                  ;
-                pkgs = systemPkgs;
-                inherit (inputs) self;
-              };
-            };
+
+            # The devShell belongs to every system, not just the workstation: om ci runs the lint,
+            # gitleaks and generated-drift steps inside it, and those belong on a job with slack
+            # rather than on the darwin one that already fetches the system closures.
             devShells.default = systemPkgs.mkShell {
               inherit (preCommit) shellHook;
               buildInputs = preCommit.enabledPackages ++ [
@@ -471,6 +462,19 @@
                 systemPkgs.gitleaks # om ci's gitleaks custom step (detect across full history)
                 systemPkgs.git # ci-lint / ci-gitleaks use git ls-files / rev-parse
               ];
+            };
+          }
+          // lib.optionalAttrs isDarwinWorkstation {
+            checks = {
+              pre-commit = preCommit;
+              config-invariants = import ./tests/config-invariants.nix {
+                inherit
+                  lib
+                  user
+                  ;
+                pkgs = systemPkgs;
+                inherit (inputs) self;
+              };
             };
           }
           // lib.optionalAttrs (system == "x86_64-linux") {
