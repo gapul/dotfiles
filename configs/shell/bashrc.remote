@@ -60,6 +60,86 @@ _dotfiles_fix_ssh_agent() {
 }
 _dotfiles_fix_ssh_agent
 
+# ── 履歴 ────────────────────────────────────────────────────────────────────
+# ディストロ既定の HISTSIZE=1000 では、少し前に打ったコマンドがすぐ消えて
+# 履歴検索が用を成さない。fzf の Ctrl-R を活かすには母数が要る。
+HISTSIZE=100000
+HISTFILESIZE=200000
+HISTCONTROL=ignoreboth:erasedups
+HISTTIMEFORMAT='%F %T '
+shopt -s histappend cmdhist
+# tmux で複数ペインを開くと、最後に閉じたシェルの履歴だけが残って他が消える。
+# 実行のたびに追記して取りこぼしを防ぐ。
+case "${PROMPT_COMMAND:-}" in
+  *'history -a'*) ;;
+  *) PROMPT_COMMAND="history -a${PROMPT_COMMAND:+; $PROMPT_COMMAND}" ;;
+esac
+
+# 以降は対話シェル専用 (bind は非対話だとエラーになる)
+if [[ $- == *i* ]]; then
+
+  # ── readline ──────────────────────────────────────────────────────────────
+  # ↑↓ を「打ちかけの文字列で前方一致検索」にする。zsh-autosuggestions のような
+  # ゴーストテキストは bash 単体では出せないので、素の bash で一番近いのがこれ。
+  # 例: `git com` まで打って ↑ → git com* で始まる履歴だけを遡る。
+  bind '"\e[A": history-search-backward'
+  bind '"\e[B": history-search-forward'
+  bind 'set completion-ignore-case on'
+  bind 'set completion-map-case on'   # - と _ を同一視
+  bind 'set show-all-if-ambiguous on' # 1 回目の Tab で候補を出す
+  bind 'set colored-stats on'
+  bind 'set menu-complete-display-prefix on'
+
+  # ── nix 側ツールの bash 補完 ──────────────────────────────────────────────
+  # remote-env は git / rg / fd / bat / eza / yazi / zoxide の補完を
+  # share/bash-completion/completions に同梱しているが、bash-completion は
+  # システムのディレクトリしか見ないので拾われない。PATH から辿って明示的に読む。
+  # 同じディレクトリを二度読まない (PATH には同じ prefix が重複して並ぶ)。
+  # また同梱物が壊れていることがある (nixpkgs の rg.bash は Debian パッケージング由来の
+  # パスを参照して失敗する) ので、1 つのしくじりで残りを巻き添えにしない。
+  _dotfiles_load_nix_completions() {
+    local dir comp file seen=":"
+    local IFS=:
+    for dir in $PATH; do
+      [ "${dir%/bin}" != "$dir" ] || continue
+      comp="${dir%/bin}/share/bash-completion/completions"
+      [ -d "$comp" ] || continue
+      case "$seen" in *":$comp:"*) continue ;; esac
+      seen="$seen$comp:"
+      for file in "$comp"/*; do
+        [ -r "$file" ] || continue
+        . "$file" 2>/dev/null || true
+      done
+    done
+  }
+  _dotfiles_load_nix_completions
+  unset -f _dotfiles_load_nix_completions
+
+  # ── fzf ───────────────────────────────────────────────────────────────────
+  # Ctrl-R 履歴のあいまい検索 / Ctrl-T ファイル選択 / Alt-C ディレクトリ移動。
+  # 母艦は programs.fzf の zsh 統合で入るが、リモートは bash なので自前で読む。
+  if command -v fzf-share >/dev/null 2>&1; then
+    _fzf_share="$(fzf-share)"
+    [ -r "$_fzf_share/key-bindings.bash" ] && . "$_fzf_share/key-bindings.bash"
+    [ -r "$_fzf_share/completion.bash" ] && . "$_fzf_share/completion.bash"
+    unset _fzf_share
+  fi
+  # 一覧は fd に任せる (.gitignore を尊重し、.git を覗かない)
+  if command -v fd >/dev/null 2>&1; then
+    export FZF_DEFAULT_COMMAND='fd --type f --hidden --exclude .git'
+    export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+    export FZF_ALT_C_COMMAND='fd --type d --hidden --exclude .git'
+  fi
+  export FZF_DEFAULT_OPTS='--height 40% --layout=reverse --border'
+
+  # ── zoxide ────────────────────────────────────────────────────────────────
+  # よく行くディレクトリへ z <部分文字列> で飛ぶ。母艦は zsh 統合で入っている。
+  if command -v zoxide >/dev/null 2>&1; then
+    eval "$(zoxide init bash)"
+  fi
+
+fi
+
 # ── 案件ごとの devkit ───────────────────────────────────────────────────────
 # 案件固有のコマンド (サービス名・ポート・ビルド戦略を含むもの) は当リポジトリが
 # public なため置けない。かといって案件の共有リポジトリに個人設定を持ち込むのも
