@@ -68,9 +68,23 @@ let
         echo "$(date '+%F %T') SKIP: remote ${name} not in ${rcloneConf} (run: rclone config create ${name} drive)" >>"${logFile}"
         exit 0
       fi
+      # An entry in `mount` does not mean the mount works. rclone is its own NFS server, so when it
+      # dies the entry lingers with nothing behind it, and everything that touches the path blocks
+      # in uninterruptible wait — including Spotlight's mds, which takes every mdfind on the machine
+      # down with it (2026-08-10: the school mount sat stale for 7h because this branch kept
+      # reporting "already mounted"). Treat it as live only while an rclone is still serving it.
       if mount | grep -q " ${mountPoint} "; then
-        echo "$(date '+%F %T') already mounted" >>"${logFile}"
-        exit 0
+        if pgrep -f "nfsmount ${name}: ${mountPoint}" >/dev/null; then
+          echo "$(date '+%F %T') already mounted" >>"${logFile}"
+          exit 0
+        fi
+        echo "$(date '+%F %T') stale mount left by a dead rclone, unmounting" >>"${logFile}"
+        umount -f "${mountPoint}" >>"${logFile}" 2>&1
+        # Give up rather than let launchd respawn against an occupied mount point every few seconds.
+        if mount | grep -q " ${mountPoint} "; then
+          echo "$(date '+%F %T') SKIP: could not unmount ${mountPoint} (try: sudo umount -f)" >>"${logFile}"
+          exit 0
+        fi
       fi
 
       echo "$(date '+%F %T') mount start" >>"${logFile}"
