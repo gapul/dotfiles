@@ -59,6 +59,9 @@ check-jsonschema \
   --schemafile "$repo_root/nix/tests/lazygit-config.schema.json" \
   "$lazygit_config"
 
+echo "Checking generated tmux theme for home-manager-less hosts..."
+python3 "$repo_root/scripts/gen-tmux-theme.py" --check
+
 echo "Checking generated documentation blocks (README / CHEATSHEET)..."
 python3 "$repo_root/scripts/gen-docs.py" --check
 
