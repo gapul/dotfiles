@@ -1,9 +1,13 @@
 # Packages component (ECS: profile). One-off CLI tools (not covered by programs.*, OS-independent).
 {
   pkgs,
+  nixpkgsUnstable,
   ...
 }:
 let
+  # nixos-unstable for what the 26.05 release branches don't carry yet (SSO: commonSpecialArgs).
+  # Same escape hatch as home/darwin.nix, minus the allowUnfree re-import (these are all free).
+  unstablePkgs = nixpkgsUnstable.legacyPackages.${pkgs.stdenv.hostPlatform.system};
   gh-nix = pkgs.writeShellApplication {
     name = "gh-nix";
     runtimeInputs = [ pkgs.gh ];
@@ -56,6 +60,10 @@ in
     yazi # file manager TUI
     tmux # terminal multiplexer (config in modules/home/terminal.nix)
     tmuxp # declare tmux sessions/layouts in YAML (~/.config/tmuxp/)
+    # AI agent multiplexer (config in modules/home/terminal.nix). Goes on every host so
+    # `herdr --remote` finds a version-matched binary on the far side instead of installing one
+    # into ~/.local/bin. Not in the 26.05 branches yet, so it comes from unstable.
+    unstablePkgs.herdr
     podman-tui # Podman container / image / Pod management TUI
     iamb # Matrix TUI (Vim keybindings, E2EE support)
     newsboat # RSS/Atom feed reader TUI
