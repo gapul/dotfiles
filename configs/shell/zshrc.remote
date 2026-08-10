@@ -1,0 +1,128 @@
+# shellcheck shell=bash
+# (shellcheck に zsh モードは無いので bash として最低限だけ見てもらう)
+#
+# nssh 先 (Linux リモートホスト) の zsh 設定。
+#
+# nssh が ~/.config/zsh/.zshrc をこのファイルへ symlink し、ZDOTDIR を渡して
+# tmux のシェルを zsh にする。母艦と違い home-manager を通らないので、
+# プラグインの読み込みや補完の初期化をここで自前で行う。
+#
+# 共通部分 (setopt / キーバインド / fzf-tab の zstyle / 可搬な alias と関数) は
+# configs/shell/zshrc.common にあり、母艦の shell.nix も同じファイルを読む。
+# 二重管理を避けるため、ここには「リモート固有の事情」だけを書く。
+#
+# ログインシェルは bash のままなので (共有マシンで chsh できない)、素の ssh で
+# 入った場合は configs/shell/bashrc.remote が使われる。両方が同じ環境変数を
+# 設定するのは意図的。
+
+# ── PATH ────────────────────────────────────────────────────────────────────
+case ":$PATH:" in
+  *":$HOME/.local/bin:"*) ;;
+  *) PATH="$HOME/.local/bin:$PATH" ;;
+esac
+export PATH
+
+# ── Rust / rootless docker / fnm ────────────────────────────────────────────
+[ -r "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"
+if [ -S "/run/user/$(id -u)/docker.sock" ]; then
+  export DOCKER_HOST="unix:///run/user/$(id -u)/docker.sock"
+fi
+if command -v fnm >/dev/null 2>&1; then
+  eval "$(fnm env --use-on-cd)"
+fi
+
+# ── ssh-agent ソケットの安定化 (ForwardAgent 用) ────────────────────────────
+# 詳細は configs/shell/bashrc.remote の同名関数のコメントを参照。
+# 再接続で /tmp/ssh-*/agent.PID が変わっても、長命プロセスが安定パスを
+# 覚えていれば symlink の貼り替えだけで生き延びる。
+_dotfiles_fix_ssh_agent() {
+  local stable="$HOME/.ssh/ssh_auth_sock" s
+  if [ -S "$SSH_AUTH_SOCK" ] && [ "$SSH_AUTH_SOCK" != "$stable" ] \
+      && SSH_AUTH_SOCK="$SSH_AUTH_SOCK" ssh-add -l >/dev/null 2>&1; then
+    ln -snf "$SSH_AUTH_SOCK" "$stable"
+  fi
+  if ! SSH_AUTH_SOCK="$stable" ssh-add -l >/dev/null 2>&1; then
+    for s in /tmp/ssh-*/agent.*(Nom); do
+      if SSH_AUTH_SOCK="$s" ssh-add -l >/dev/null 2>&1; then
+        ln -snf "$s" "$stable"; break
+      fi
+    done
+  fi
+  [ -S "$stable" ] && export SSH_AUTH_SOCK="$stable"
+}
+_dotfiles_fix_ssh_agent
+
+# ── 履歴 ────────────────────────────────────────────────────────────────────
+# XDG に寄せる (母艦の history.path と同じ考え方)。
+HISTFILE="${XDG_STATE_HOME:-$HOME/.local/state}/zsh/history"
+mkdir -p "${HISTFILE:h}" "${XDG_CACHE_HOME:-$HOME/.cache}/zsh"
+HISTSIZE=100000
+SAVEHIST=100000
+setopt SHARE_HISTORY HIST_IGNORE_ALL_DUPS HIST_REDUCE_BLANKS
+
+# ── プラグイン ──────────────────────────────────────────────────────────────
+# 母艦は programs.zsh の autosuggestion / syntaxHighlighting / plugins が入れるが、
+# リモートは home-manager を通らないので remote-env の store から直接読む。
+# PATH の各 <prefix>/bin から <prefix>/share を辿る (store パスを直書きしない)。
+# NOTE: zsh は bash と違い $PATH を単語分割しないので `IFS=: for dir in $PATH` は
+# 1 度も回らない。zsh が PATH に連動させている配列 $path を使う。
+_dotfiles_source_plugin() {
+  local rel="$1" dir prefix
+  for dir in $path; do
+    prefix="${dir%/bin}"
+    [[ "$prefix" != "$dir" ]] || continue
+    if [[ -r "$prefix/share/$rel" ]]; then
+      source "$prefix/share/$rel"
+      return 0
+    fi
+  done
+  return 1
+}
+
+# 補完系を先に (fzf-tab は compinit 済みを前提にする)
+autoload -Uz compinit
+compinit -C -d "${XDG_CACHE_HOME:-$HOME/.cache}/zsh/zcompdump"
+
+_dotfiles_source_plugin zsh-history-substring-search/zsh-history-substring-search.zsh
+_dotfiles_source_plugin fzf-tab/fzf-tab.plugin.zsh
+# autosuggestions は他の widget を包むので syntax-highlighting より前に読む
+_dotfiles_source_plugin zsh-autosuggestions/zsh-autosuggestions.zsh
+# syntax-highlighting は「必ず最後」と公式が明記しているが、共通設定の
+# キーバインドより前でよい (widget の再定義ではなく hook で動くため)
+_dotfiles_source_plugin zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+
+# ── fzf ─────────────────────────────────────────────────────────────────────
+if command -v fzf-share >/dev/null 2>&1; then
+  _fzf_share="$(fzf-share)"
+  [ -r "$_fzf_share/key-bindings.zsh" ] && source "$_fzf_share/key-bindings.zsh"
+  [ -r "$_fzf_share/completion.zsh" ] && source "$_fzf_share/completion.zsh"
+  unset _fzf_share
+fi
+if command -v fd >/dev/null 2>&1; then
+  export FZF_DEFAULT_COMMAND='fd --type f --hidden --exclude .git'
+  export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+  export FZF_ALT_C_COMMAND='fd --type d --hidden --exclude .git'
+fi
+export FZF_DEFAULT_OPTS='--height 40% --layout=reverse --border'
+
+# ── 共通設定 (母艦と同じファイル) ───────────────────────────────────────────
+# プラグインを読んだ後に置く。history-substring-search のキーバインドが
+# widget の存在を見て分岐するため。
+[ -r "$HOME/.dotfiles/configs/shell/zshrc.common" ] \
+  && source "$HOME/.dotfiles/configs/shell/zshrc.common"
+
+# ── zoxide / starship ───────────────────────────────────────────────────────
+command -v zoxide >/dev/null 2>&1 && eval "$(zoxide init zsh)"
+# プロンプトは configs/shell/starship.toml (リポジトリのファイル) を使うので
+# 母艦と同じ見た目になる。
+if command -v starship >/dev/null 2>&1; then
+  export STARSHIP_CONFIG="$HOME/.dotfiles/configs/shell/starship.toml"
+  eval "$(starship init zsh)"
+fi
+
+# ── 案件ごとの devkit ───────────────────────────────────────────────────────
+# 規約は「ルートに shellrc を置く」だけ。bashrc.remote と同じ扱い。
+for _dk in "$HOME"/.devkits/*/shellrc(N); do
+  [ -r "$_dk" ] && source "$_dk"
+done
+unset _dk

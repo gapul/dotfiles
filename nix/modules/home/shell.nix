@@ -54,16 +54,10 @@ in
     ];
 
     shellAliases = {
-      ".." = "cd ..";
-      "..." = "cd ../..";
-      g = "git";
-      ga = "git add";
-      gc = "git commit";
-      gl = "git pull";
-      gp = "git push";
-      gs = "git status";
       # (keystats alias removed: the cask links the CLI into /opt/homebrew/bin, and the alias was
       #  pinning an older hand-built copy in ~/.local/bin ahead of it.)
+      # Portable aliases (.. / g / gs etc.) live in configs/shell/zshrc.common so nssh
+      # hosts get them too. Only Mac-specific paths stay here.
       tl = "textlint --config ~/.config/textlint/.textlintrc.json";
       tlf = "textlint --config ~/.config/textlint/.textlintrc.json --fix";
       cfw = "~/Developer/github.com/gapul/personal-tools/cloudflare/bin/cf-wrangler";
@@ -73,42 +67,12 @@ in
       # XDG: ensure directories for history / completion dump / vim state exist
       mkdir -p "${config.xdg.stateHome}/zsh" "${config.xdg.cacheHome}/zsh" "${config.xdg.stateHome}/vim"
 
-      # fish-like setopt (reproducing features lost in the migration)
-      setopt AUTO_CD
-      setopt AUTO_PUSHD
-      setopt PUSHD_IGNORE_DUPS
-      setopt EXTENDED_HISTORY
-      setopt GLOB_STAR_SHORT
-      setopt INTERACTIVE_COMMENTS
-
-      # history-substring-search: Up/Down for prefix match (fish-like)
-      if [[ -o zle ]]; then
-        bindkey '^[[A' history-substring-search-up
-        bindkey '^[[B' history-substring-search-down
-        bindkey -M vicmd 'k' history-substring-search-up
-        bindkey -M vicmd 'j' history-substring-search-down
-      fi
-
-      # fzf-tab: smarter previews for TAB completion
-      zstyle ':completion:*' menu no
-      zstyle ':fzf-tab:complete:cd:*' fzf-preview 'eza -1 --color=always --icons=auto $realpath 2>/dev/null'
-      zstyle ':fzf-tab:complete:(\\\\|*/|)git-(add|diff|restore|reset):*' fzf-preview 'git diff --color=always -- $word | delta 2>/dev/null'
-      zstyle ':fzf-tab:complete:(\\\\|*/|)git-(checkout|switch):*' fzf-preview 'git log --color=always --oneline -20 $word 2>/dev/null'
-      zstyle ':fzf-tab:complete:kill:argument-rest' fzf-preview 'ps -p $word -o pid,ppid,user,%cpu,%mem,command 2>/dev/null'
-      zstyle ':fzf-tab:*' fzf-flags --height=40% --reverse
-
-      # make nix build / nix-build more readable via nom (nix-output-monitor)
-      if command -v nom >/dev/null 2>&1; then
-        alias nix-build='nix-build 2>&1 | nom'
-        function nix() {
-          if [[ "$1" == "build" ]]; then
-            shift
-            command nix build --log-format internal-json -v "$@" 2>&1 | nom --json
-          else
-            command nix "$@"
-          fi
-        }
-      fi
+      # Settings shared with nssh hosts: setopt / keybindings / fzf-tab zstyles /
+      # portable aliases and functions. nssh hosts read the very same file from
+      # configs/shell/zshrc.remote, so the two never drift.
+      # Host-specific things (ghq / tirith / git-wt / launcher / vpn / codex theme)
+      # stay below, because they depend on tools only this machine has.
+      source ${../../../configs/shell/zshrc.common}
 
       # jd (just-dotfiles): run the dotfiles just recipes from anywhere (no cd needed).
       #   e.g.: jd rebuild / jd update / jd (no args lists them)
@@ -138,27 +102,6 @@ in
         fi
       }
 
-      # `gh pr create` in gapul/dotfiles also enables squash auto-merge so PRs land on
-      # their own once CI is green — matching the worktree+PR flow. Scoped to this repo
-      # only; every other repo and every other gh subcommand passes through untouched.
-      # Failures (repo without auto-merge, --web create, etc.) stay quiet.
-      # NOTE: no --delete-branch — in the worktree flow the just-created branch is still
-      # checked out by its worktree, so a local-branch delete always fails and would abort
-      # the merge enable. Remote branch cleanup is left to the repo's
-      # "Automatically delete head branches" setting.
-      function gh() {
-        if [[ "$1" == "pr" && "$2" == "create" ]]; then
-          command gh "$@" || return
-          if [[ "$(command gh repo view --json nameWithOwner --jq .nameWithOwner 2>/dev/null)" == "gapul/dotfiles" ]]; then
-            if command gh pr merge --auto --squash 2>/dev/null; then
-              print -r -- "gh: auto-merge (squash) enabled for this PR" >&2
-            fi
-          fi
-        else
-          command gh "$@"
-        fi
-      }
-
       # Inspect dangerous URLs, pipe-to-shell, and obfuscated payloads before running.
       # Default policy blocks high-risk and warns on medium-risk; not always strict.
       eval "$(tirith init --shell zsh)"
@@ -176,20 +119,6 @@ in
         fi
         command codex -c "tui.theme=\"$codex_theme\"" "$@"
       }
-
-      # vi mode + Ctrl+X Ctrl+E to launch an external editor (nvim)
-      if [[ -o zle ]]; then
-        bindkey -v
-        KEYTIMEOUT=1
-        autoload -Uz edit-command-line
-        zle -N edit-command-line
-        bindkey -M viins '^X^E' edit-command-line
-        bindkey -M vicmd '^X^E' edit-command-line
-        # forward delete (^[[3~) is undefined by default in zsh -> in vi mode the ESC
-        # misfires, dropping to normal mode and garbling input. Bind it explicitly to just delete one char.
-        bindkey -M viins '^[[3~' delete-char
-        bindkey -M vicmd '^[[3~' delete-char
-      fi
 
       # Launcher (function definitions + Ghostty Quick Terminal resident loop)
       [ -f ~/.config/launcher/shells/zsh.sh ] && source ~/.config/launcher/shells/zsh.sh
@@ -229,32 +158,6 @@ in
         fi
         ghq list -p | xargs -I {} gita add {} 2>&1 | tail -3
         echo "registered repos: $(gita ls | wc -w | tr -d ' ')"
-      }
-
-      function mkcd() { mkdir -p "$1" && cd "$1"; }
-
-      # yazi wrapper: on quit, cd the shell to yazi's last directory.
-      # Use `y` instead of `yazi` to browse then land in the chosen dir.
-      function y() {
-        local tmp cwd
-        tmp="$(mktemp -t yazi-cwd.XXXXXX)"
-        yazi "$@" --cwd-file="$tmp"
-        if cwd="$(command cat -- "$tmp")" && [[ -n "$cwd" && "$cwd" != "$PWD" ]]; then
-          builtin cd -- "$cwd"
-        fi
-        rm -f -- "$tmp"
-      }
-
-      function extract() {
-        case $1 in
-          *.tar.bz2) tar xjf $1 ;;  *.tar.gz)  tar xzf $1 ;;
-          *.bz2)     bunzip2 $1 ;;  *.rar)     unrar x $1 ;;
-          *.gz)      gunzip $1 ;;   *.tar)     tar xf $1 ;;
-          *.tbz2)    tar xjf $1 ;;  *.tgz)     tar xzf $1 ;;
-          *.zip)     unzip $1 ;;    *.Z)       uncompress $1 ;;
-          *.7z)      7z x $1 ;;
-          *)         echo "'$1' cannot be extracted" ;;
-        esac
       }
 
       function vpn() {

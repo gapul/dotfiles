@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import difflib
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -105,11 +106,25 @@ def gen_hooks() -> str:
 
 
 def gen_aliases() -> str:
-    """全 shell alias 一覧 (home-manager の shellAliases から)。"""
+    """全 shell alias 一覧。
+
+    出どころが 2 つあるので両方を混ぜる:
+      - home-manager の shellAliases (母艦固有 + programs.eza 等が足すもの)
+      - configs/shell/zshrc.common (母艦と nssh 先が共有する可搬な alias)
+    後者は shell.nix から抜き出したもので、拾わないと一覧から消えてしまう。
+    """
     user = _username()
     aliases = _nix_eval_json(
         f"homeConfigurations.{user}.config.programs.zsh.shellAliases"
     )
+    # 共有ファイル側。条件付き (if の中) の alias は字下げしてあるので、
+    # 行頭の alias だけを拾えば「常に効くもの」だけが集まる。
+    shared = REPO_ROOT / "configs/shell/zshrc.common"
+    if shared.is_file():
+        for line in shared.read_text().splitlines():
+            m = re.match(r"^alias\s+([^=\s]+)='(.*)'\s*$", line)
+            if m:
+                aliases.setdefault(m.group(1), m.group(2))
     # ホームディレクトリの絶対パスは fork 先で変わるので伏せる。
     home = f"/Users/{user}"
     lines = ["| alias | 展開先 |", "|---|---|"]
