@@ -69,13 +69,13 @@ _rebuild-macos:
     echo "━━━ nix-darwin" | tee -a "$log"
     taskpolicy -c utility nh darwin switch -q -Q --diff never $nom_flag 2>&1 | tee -a "$log"
     echo "✓ nix-darwin" | tee -a "$log"
-    # No separate home-manager switch: home rides along as a darwin module (flake.nix), so the
-    # flake is evaluated once instead of twice. backupFileExtension = "hm-bak" is set there, which
-    # is what the old standalone run needed `-b hm-bak` for — without a backup extension a newly
-    # declared home.file whose target already exists is skipped and the declaration silently does
-    # nothing (that is how gh-dash/config.yml and slk/config.toml stayed plain files after #153).
-    # `nh home switch` still works against .#homeConfigurations.gapul if this path ever needs
-    # bypassing.
+    echo "━━━ home-manager" | tee -a "$log"
+    # -b hm-bak: standalone home-manager has no backupFileExtension option (that one only exists on
+    # the nix-darwin/NixOS module path), and without a backup extension a newly declared home.file
+    # whose target already exists is skipped — the declaration silently does nothing. That is how
+    # gh-dash/config.yml and slk/config.toml stayed plain files after #153 declared them.
+    taskpolicy -c utility nh home switch -q -Q --diff never -b hm-bak $nom_flag 2>&1 | tee -a "$log"
+    echo "✓ home-manager" | tee -a "$log"
     open -a Ghostty >/dev/null 2>&1 || true
 
 [private]
