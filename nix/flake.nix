@@ -230,6 +230,15 @@
       # Supports both Linux x86_64 / aarch64.
       remoteTools =
         pkgs': with pkgs'; [
+          # zsh 一式。母艦と同じ体験 (ゴーストテキスト補完 / 構文ハイライト /
+          # fzf-tab) をリモートでも出すため。設定は configs/shell/zshrc.remote が
+          # store から直接読む (home-manager はリモートで動かせないため)。
+          zsh
+          zsh-autosuggestions
+          zsh-syntax-highlighting
+          zsh-fzf-tab
+          zsh-history-substring-search
+          starship
           neovim
           yazi
           tmux
