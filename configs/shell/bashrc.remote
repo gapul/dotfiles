@@ -1,0 +1,60 @@
+# shellcheck shell=bash
+#
+# nssh 先 (Linux リモートホスト) 共通の bash 設定。
+#
+# 母艦 (macOS) は zsh + home-manager なのでこのファイルは読まれない。リモートは
+# home-manager を通さず素の ~/.bashrc が動くため、そこから source して使う。
+# source 行は configs/bin/nssh が初回接続時に追記する (marker 付き・冪等)。
+#
+# ここに置いてよいのは「どのリモートでも成り立つ汎用設定」だけ。
+# 案件固有のコマンドは各プロジェクトのリポジトリ側に置き、~/.bashrc から別途
+# source すること。このリポジトリは public なので、勤務先の内部構成
+# (サービス名・ポート・ビルド戦略など) を書いてはいけない。
+
+# ── PATH ────────────────────────────────────────────────────────────────────
+# XDG のユーザーバイナリ置き場。再 source しても重複しないようガードする
+case ":$PATH:" in
+  *":$HOME/.local/bin:"*) ;;
+  *) PATH="$HOME/.local/bin:$PATH" ;;
+esac
+export PATH
+
+# ── Rust ────────────────────────────────────────────────────────────────────
+[ -r "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"
+
+# ── rootless docker ─────────────────────────────────────────────────────────
+if [ -S "/run/user/$(id -u)/docker.sock" ]; then
+  export DOCKER_HOST="unix:///run/user/$(id -u)/docker.sock"
+fi
+
+# ── fnm (Node.js バージョン管理) ────────────────────────────────────────────
+if command -v fnm >/dev/null 2>&1; then
+  eval "$(fnm env --use-on-cd)"
+fi
+
+# ── ssh-agent ソケットの安定化 (ForwardAgent 用) ────────────────────────────
+# nssh は -A で agent を転送するが、再接続のたびに転送 socket
+# (/tmp/ssh-*/agent.PID) のパスが変わる。tmux のような長命プロセスは最初に掴んだ
+# SSH_AUTH_SOCK を持ち続けるので、再接続後は死んだ socket を参照して git push 等が落ちる。
+# そこで安定パス ~/.ssh/ssh_auth_sock に集約し、長命プロセスにはこちらを覚えさせる。
+# 再接続後は symlink を貼り替えるだけで生き続ける。
+_dotfiles_fix_ssh_agent() {
+    local stable="$HOME/.ssh/ssh_auth_sock" s
+    # いま掴んでいる SSH_AUTH_SOCK が実体 (非安定パス) で生きていれば安定パスへ反映
+    if [ -S "$SSH_AUTH_SOCK" ] && [ "$SSH_AUTH_SOCK" != "$stable" ] \
+        && SSH_AUTH_SOCK="$SSH_AUTH_SOCK" ssh-add -l >/dev/null 2>&1; then
+        ln -snf "$SSH_AUTH_SOCK" "$stable"
+    fi
+    # 安定パスが死んでいたら、生きている最新の転送 socket を探して貼り替える
+    # (socket 名に空白・改行は入らないため ls -t のまま扱える)
+    if ! SSH_AUTH_SOCK="$stable" ssh-add -l >/dev/null 2>&1; then
+        # shellcheck disable=SC2045
+        for s in $(ls -t /tmp/ssh-*/agent.* 2>/dev/null); do
+            if SSH_AUTH_SOCK="$s" ssh-add -l >/dev/null 2>&1; then
+                ln -snf "$s" "$stable"; break
+            fi
+        done
+    fi
+    [ -S "$stable" ] && export SSH_AUTH_SOCK="$stable"
+}
+_dotfiles_fix_ssh_agent
