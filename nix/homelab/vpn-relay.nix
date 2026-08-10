@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ pkgs, lib, ... }:
 {
   # What VM105 (mvrx-vpn-relay) did: dial the office over L2TP/IPsec and let the
   # tailnet reach the corporate subnet through it, so working from home needs no
@@ -21,50 +21,40 @@
   # booting that image under libvirt is the fallback that gets work unblocked in
   # minutes if this does not.
 
-  environment.systemPackages = with pkgs; [
-    strongswan
-    xl2tpd
-    ppp
-  ];
-
-  # Reproduced as literally as possible from the machine it replaces, rather than
-  # rewritten into swanctl syntax: an untestable business-critical tunnel is the
-  # wrong place to also change the configuration language.
-  environment.etc."ipsec.conf".text = ''
+  # strongswan via the NixOS module rather than a hand-written unit. The
+  # hand-rolled version failed two ways: nixpkgs' strongswan aborts with
+  # "integrity test of libstrongswan failed" unless its own strongswan.conf
+  # disables that check, and it never generated /etc/strongswan.conf at all
+  # ("no files found matching"). The module handles both.
+  #
+  # The connection itself still comes from /var/lib/secrets/mvrx/, because it
+  # names an employer's endpoint. setup/connections stay empty here and the
+  # conn block is pulled in by the include in ipsec.conf below.
+  services.strongswan = {
+    enable = true;
+    secrets = [ "/var/lib/secrets/mvrx/ipsec.secrets" ];
+  };
+  # The module writes ipsec.conf from `connections`; append the site-specific
+  # block that cannot live in this repo.
+  environment.etc."ipsec.conf".text = lib.mkForce ''
     config setup
         charondebug="ike 1, knl 1, cfg 0"
         uniqueids=no
 
     include /var/lib/secrets/mvrx/conn.conf
   '';
-  environment.etc."ipsec.secrets".text = ''
-    include /var/lib/secrets/mvrx/ipsec.secrets
-  '';
 
-  # pppd has no option for relocating chap-secrets; it is compiled to this path.
-  systemd.tmpfiles.rules = [
-    "d /var/lib/secrets/mvrx 0700 root root -"
-    "L+ /etc/ppp/chap-secrets - - - - /var/lib/secrets/mvrx/chap-secrets"
+  environment.systemPackages = with pkgs; [
+    strongswan
+    xl2tpd
+    ppp
   ];
-
-  systemd.services.strongswan-mvrx = {
-    description = "strongswan IKEv1 daemon for the office tunnel";
-    after = [ "network-online.target" ];
-    wants = [ "network-online.target" ];
-    serviceConfig = {
-      Type = "forking";
-      ExecStart = "${pkgs.strongswan}/bin/ipsec start";
-      ExecStop = "${pkgs.strongswan}/bin/ipsec stop";
-      Restart = "on-failure";
-    };
-    wantedBy = [ "multi-user.target" ];
-  };
 
   systemd.services.mvrx-vpn = {
     description = "MVRX L2TP/IPsec tunnel (subnet router uplink)";
     after = [
       "network-online.target"
-      "strongswan-mvrx.service"
+      "strongswan.service"
     ];
     wants = [ "network-online.target" ];
     path = with pkgs; [
