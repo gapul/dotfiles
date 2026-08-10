@@ -321,15 +321,31 @@ _maintain-macos:
       echo "━━━ git pull (--rebase --autostash)"
       git -C "$HOME/.dotfiles" pull --rebase --autostash
     fi
-    just outdated
     trap 'rc=$?; rm -rf "$maintenance_lock"; exit $rc' EXIT
+    # `just outdated` is a read-only survey that costs ~13s of Homebrew metadata scanning, and
+    # the Nix runtime upgrade waits on the network the whole time. Run them together and print
+    # the survey when it is done, so the report still comes before anything is upgraded.
+    outdated_out=$(mktemp)
+    just outdated >"$outdated_out" 2>&1 &
+    outdated_pid=$!
     just _upgrade-nix-runtime-macos
+    wait $outdated_pid || true
+    cat "$outdated_out"; rm -f "$outdated_out"
     # No `nix flake update` here on purpose. The weekly update-flake-lock workflow opens a PR for
     # it, and CI builds that lock and pushes the results to cachix, so rebuilding on a merged lock
     # is mostly downloads. Bumping the lock locally instead lands on a tree nothing has ever built
     # and turns every maintain into a from-source build of every custom package. `just update`
     # still exists for when the bump is actually wanted now.
+    # Fetch/build the new configuration while Homebrew is busy with its own downloads: the two
+    # phases share only bandwidth, and the rebuild that follows then has nothing left to fetch.
+    # Activation is deliberately not overlapped — nix-darwin's activation drives brew itself.
+    name="$(id -un)"
+    nix build --no-link \
+      "{{flake}}#darwinConfigurations.$name.config.system.build.toplevel" \
+      "{{flake}}#homeConfigurations.$name.activationPackage" >/dev/null 2>&1 &
+    prebuild_pid=$!
     just _upgrade-packages-macos
+    wait $prebuild_pid || true
     just rebuild force
     # gc (nix store + brew + pnpm) and the user tools (tldr / gh extensions) touch nothing in
     # common, so let them overlap. brew services cleanup stays with gc because both drive brew.
