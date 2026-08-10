@@ -159,8 +159,13 @@ in
     [ui]
     show_agent_labels_on_pane_borders = true
 
-    # 通知ポップアップは端末内ではなく OS の通知へ (macOS なら通知センター)
-    [ui.toast]
-    delivery = "system"
+    # [ui.toast] delivery = "system" は使わない。macOS でこれを付けると herdr は通知を
+    # 出す前に「今どの端末アプリの中か」を確かめようとして mdfind を叩き、それを
+    # クライアントの描画ループ上で同期実行する (platform::macos::show_desktop_notification
+    # → verified_terminal_bundle_identifier → Command::output)。Spotlight が詰まると
+    # mdfind は永久に返らず、タスクが完了するたびに TUI ごと固まる (2026-08-10 に遭遇。
+    # そのときは rclone の死んだ NFS マウントが残っていて mds が getattrlistbulk で
+    # 止まっていた)。OS 通知自体は Claude Code の Stop フック (agent-notify) が osascript で
+    # 出しているので、外しても手元に届く通知は変わらない。むしろ二重通知が一本になる。
   '';
 }
