@@ -188,6 +188,14 @@ in
     gnupg # GPG (git signing is SSH-based, so this is only for ad-hoc verify/decrypt)
   ];
 
+  # Puddle: catalogs it may browse, sources it may install from, and the wallpapers this
+  # machine should have. `puddle apply` reconciles the last of those.
+  xdg.configFile."puddle/install.toml".source = ../../configs/puddle/install.toml;
+
+  # The `puddle` CLI ships inside the app. Symlinked rather than copied so it follows updates.
+  home.file.".local/bin/puddle".source =
+    config.lib.file.mkOutOfStoreSymlink "/Applications/Puddle.app/Contents/Resources/puddle";
+
   home.file.".config/ghostty" = {
     source = ../../configs/terminals/ghostty;
     recursive = true;
