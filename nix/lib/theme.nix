@@ -5,7 +5,7 @@
 #     "rose-pine-dawn" … light (dawn)
 #
 #   After changing it:
-#     - Mac/Linux: `just rebuild` makes all nix-managed tools (zellij/sketchybar/borders/
+#     - Mac/Linux: `just rebuild` makes all nix-managed tools (tmux/sketchybar/borders/
 #       lazygit/fzf/sioyek/atuin/bat/delta/ghostty/nvim …) follow at once
 #     - Windows : `just win-theme` makes zebar/glazewm/WT/wezterm follow at once
 #   Using palettes.json as the SSO means the same active is shared across

@@ -232,7 +232,6 @@
         pkgs': with pkgs'; [
           neovim
           yazi
-          zellij
           tmux
           git
           ripgrep

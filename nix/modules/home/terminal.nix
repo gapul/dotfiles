@@ -1,4 +1,4 @@
-# Terminal component (ECS: profile). zellij + theme generation + ghostty terminfo.
+# Terminal component (ECS: profile). tmux + theme generation + ghostty terminfo.
 {
   config,
   pkgs,
@@ -8,28 +8,8 @@
 let
   c = import ../../lib/theme.nix; # active theme's palette (switch via active in nix/lib/theme.nix)
 
-  # Generate a zellij theme kdl from palette p. Emits both dark/light, tied on the config.kdl
-  # side via theme_dark / theme_light to the terminal palette (= ghostty's macOS following).
-  mkZellijTheme = name: p: ''
-    themes {
-        ${name} {
-            fg "#${p.text}"
-            bg "#${p.base}"
-            black "#${p.overlay}"
-            red "#${p.love}"
-            green "#${p.foam}"
-            yellow "#${p.gold}"
-            blue "#${p.pine}"
-            magenta "#${p.iris}"
-            cyan "#${p.foam}"
-            white "#${p.text}"
-            orange "#${p.rose}"
-        }
-    }
-  '';
-
   # Generate tmux's rose-pine status bar from the active palette c.
-  # Switch active in palettes.json -> just rebuild follows it, same as zellij.
+  # Switch active in palettes.json -> just rebuild follows it, same as the other themed tools.
   mkTmuxTheme = p: ''
     # rose-pine (generated from configs/theme/palettes.json — do not edit by hand)
     set -g status-position top
@@ -81,15 +61,7 @@ in
     config.lib.file.mkOutOfStoreSymlink "${config.xdg.dataHome}/terminfo";
 
   # symlink dotfiles/configs/* (OS-independent ones only. Mac-only = sketchybar/karabiner go to home/darwin.nix)
-  home.file.".config/zellij" = {
-    source = ../../../configs/terminals/zellij;
-    recursive = true;
-  };
-  # zellij themes generated from nix/lib/theme.nix (config.kdl references them via theme "rose-pine")
-  home.file.".config/zellij/themes/rose-pine.kdl".text = mkZellijTheme "rose-pine" c.dark;
-  home.file.".config/zellij/themes/rose-pine-dawn.kdl".text = mkZellijTheme "rose-pine-dawn" c.light;
-
-  # tmux (zellij alternative). symlink tmux.conf and generate both rose-pine variants so tmux
+  # tmux: symlink tmux.conf and generate both rose-pine variants so tmux
   # can follow the macOS appearance (light/dark) live, like ghostty/nvim/sketchybar do.
   home.file.".config/tmux/tmux.conf".source = ../../../configs/terminals/tmux/tmux.conf;
   home.file.".config/tmux/rose-pine.conf".text = mkTmuxTheme c.dark;
@@ -138,7 +110,7 @@ in
     '';
   };
 
-  # tmux plugins (equivalent to zellij's session persistence). Generate a plugins.conf that
+  # tmux plugins. Generate a plugins.conf that
   # run-shells store paths without TPM (sourced at the end of tmux.conf).
   #   resurrect: prefix+Ctrl-s save / prefix+Ctrl-r restore (restores pane contents + nvim too)
   #   continuum: auto-save every minute, auto-restore when the tmux server starts
@@ -154,7 +126,7 @@ in
     run-shell ${pkgs.tmuxPlugins.resurrect}/share/tmux-plugins/resurrect/resurrect.tmux
     run-shell ${pkgs.tmuxPlugins.continuum}/share/tmux-plugins/continuum/continuum.tmux
   '';
-  # tmuxp starter layout (equivalent to a zellij layout). Build via `tmuxp load dev`.
+  # tmuxp starter layout. Build via `tmuxp load dev`.
   # ~/.config/tmuxp/ becomes a real directory, so you can add your own YAML alongside it.
   home.file.".config/tmuxp/dev.yaml".source = ../../../configs/terminals/tmux/tmuxp/dev.yaml;
 }

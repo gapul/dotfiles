@@ -107,7 +107,7 @@
   system.primaryUser = user.username;
 
   # Authenticate sudo with Touch ID (sudo_local is the official mechanism that survives macOS updates)
-  # reattach: inside multiplexers like zellij/tmux/screen the session is detached from the GUI
+  # reattach: inside multiplexers like tmux/screen the session is detached from the GUI
   # and pam_tid can't show the Touch ID dialog. Prepend pam_reattach (nixpkgs) as
   # auth optional to reattach to the user's bootstrap session, which fixes it.
   # (Harmless on a Mac mini with no Touch ID sensor: it just falls back to password auth)

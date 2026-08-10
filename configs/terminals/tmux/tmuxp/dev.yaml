@@ -1,4 +1,4 @@
-# tmuxp レイアウト例 (zellij レイアウト相当)。
+# tmuxp レイアウト例。
 #   起動: tmuxp load dev
 #   既存セッション名なら attach、無ければ構築する。
 #   自分用のレイアウトはこの隣に <name>.yaml を足せば tmuxp load <name> で使える。
