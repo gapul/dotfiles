@@ -141,7 +141,9 @@ in
   home.file.".config/herdr/config.toml" = lib.mkIf pkgs.stdenv.isDarwin {
     text = ''
       # nix (modules/home/terminal.nix) が生成。手で編集しない。
-      # 変更後は `herdr server reload-config` で反映。
+      # 変更は次回 herdr 起動時に反映される (herdr はこのファイルを監視していない)。
+      # `herdr server reload-config` は使わない。サーバ側は成功するのに、繋いでいる
+      # クライアントだけ無反応になって開き直す羽目になる (2026-08-10 に 4 回再現)。
       onboarding = false
 
       [theme]
