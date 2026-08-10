@@ -350,24 +350,41 @@ _maintain-macos:
     # is mostly downloads. Bumping the lock locally instead lands on a tree nothing has ever built
     # and turns every maintain into a from-source build of every custom package. `just update`
     # still exists for when the bump is actually wanted now.
-    # Fetch/build the new configuration while Homebrew is busy with its own downloads: the two
-    # phases share only bandwidth, and the rebuild that follows then has nothing left to fetch.
-    # Activation is deliberately not overlapped — nix-darwin's activation drives brew itself.
+    # Three lanes instead of a waterfall. What forces the shape:
+    #   - Homebrew holds a lock, so everything brew does is one lane.
+    #   - nix-darwin's activation runs the Homebrew bundle, so the switch cannot overlap
+    #     the brew lane. Fetching/building the closure can, and does.
+    #   - The Nix runtime upgrade above replaces the daemon, so it stays before all of this.
+    # Everything else here is independent, and this link gives about twice the throughput on
+    # parallel connections as on one, so overlapping is worth the plumbing.
+    # Each lane's output is buffered and replayed in order; three live downloads on one
+    # terminal is unreadable.
     name="$(id -un)"
+    nix_out=$(mktemp); brew_out=$(mktemp); tools_out=$(mktemp)
     nix build --no-link \
       "{{flake}}#darwinConfigurations.$name.config.system.build.toplevel" \
-      "{{flake}}#homeConfigurations.$name.activationPackage" >/dev/null 2>&1 &
-    prebuild_pid=$!
-    just _upgrade-packages-macos
-    wait $prebuild_pid || true
-    just rebuild force
-    # gc (nix store + brew + pnpm) and the user tools (tldr / gh extensions) touch nothing in
-    # common, so let them overlap. brew services cleanup stays with gc because both drive brew.
-    { just gc; brew services cleanup || true; } &
-    gc_pid=$!
-    just _maintain-user-tools &
+      "{{flake}}#homeConfigurations.$name.activationPackage" >"$nix_out" 2>&1 &
+    nix_pid=$!
+    just _upgrade-packages-macos >"$brew_out" 2>&1 &
+    brew_pid=$!
+    just _maintain-user-tools >"$tools_out" 2>&1 &
     tools_pid=$!
-    wait $gc_pid $tools_pid
+    wait $nix_pid || true
+    brew_rc=0; wait $brew_pid || brew_rc=$?
+    cat "$brew_out"; rm -f "$brew_out"
+    tail -5 "$nix_out"; rm -f "$nix_out"
+    # A failed package upgrade used to abort maintain here, and still should — but only after
+    # the lanes have been collected, so their output is not lost with them.
+    if [ "$brew_rc" -ne 0 ]; then
+      wait $tools_pid || true; cat "$tools_out"; rm -f "$tools_out"
+      echo "maintain: package upgrade failed (rc=$brew_rc)" >&2
+      exit "$brew_rc"
+    fi
+    just rebuild force
+    wait $tools_pid || true; cat "$tools_out"; rm -f "$tools_out"
+    # Cleanup last: brew is free again only once the activation's bundle has run.
+    just gc
+    brew services cleanup || true
     just doctor || true
     trap - EXIT
     rm -rf "$maintenance_lock"
