@@ -123,17 +123,34 @@ in
     '';
   };
 
+  # Dump a pane's scrollback and open it in the editor (bound to prefix+e in tmux.conf).
+  # This is zellij's EditScrollback. It lives in a script because the quoting for a temp file
+  # plus a new-window command does not survive being written inline in tmux.conf.
+  home.file.".config/tmux/scrollback-edit.sh" = {
+    executable = true;
+    text = ''
+      #!/bin/sh
+      # $1: the pane id to capture (tmux passes #{pane_id})
+      set -eu
+      f=$(mktemp -t tmux-scrollback)
+      tmux capture-pane -p -S - -t "$1" >"$f"
+      tmux new-window -n scrollback "''${EDITOR:-nvim} '$f'; rm -f '$f'"
+    '';
+  };
+
   # tmux plugins (equivalent to zellij's session persistence). Generate a plugins.conf that
   # run-shells store paths without TPM (sourced at the end of tmux.conf).
   #   resurrect: prefix+Ctrl-s save / prefix+Ctrl-r restore (restores pane contents + nvim too)
-  #   continuum: auto-save every 15 minutes, auto-restore when the tmux server starts
+  #   continuum: auto-save every minute, auto-restore when the tmux server starts
   home.file.".config/tmux/plugins.conf".text = ''
     # resurrect writes its saves outside XDG (~/.tmux/resurrect) unless told otherwise.
     set -g @resurrect-dir '${config.xdg.stateHome}/tmux/resurrect'
     set -g @resurrect-capture-pane-contents 'on'
     set -g @resurrect-strategy-nvim 'session'
     set -g @continuum-restore 'on'
-    set -g @continuum-save-interval '15'
+    # 1 is continuum's minimum. zellij serializes every 60s by default, and 15 minutes of lost
+    # layout was the one place where this setup was genuinely behind it.
+    set -g @continuum-save-interval '1'
     run-shell ${pkgs.tmuxPlugins.resurrect}/share/tmux-plugins/resurrect/resurrect.tmux
     run-shell ${pkgs.tmuxPlugins.continuum}/share/tmux-plugins/continuum/continuum.tmux
   '';
