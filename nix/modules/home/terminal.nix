@@ -129,4 +129,37 @@ in
   # tmuxp starter layout. Build via `tmuxp load dev`.
   # ~/.config/tmuxp/ becomes a real directory, so you can add your own YAML alongside it.
   home.file.".config/tmuxp/dev.yaml".source = ../../../configs/terminals/tmux/tmuxp/dev.yaml;
+
+  # herdr: AI-agent multiplexer, installed via brew in hosts/darwin.nix (not in nixpkgs), so
+  # the config only lands on darwin. herdr keeps its own state (sockets, logs, session.json)
+  # next to this file, so symlink the single file and leave ~/.config/herdr a real directory.
+  # Only two things are pulled over from our setup — the tmux prefix and the rose-pine pair.
+  # Everything else stays on herdr's defaults, which already match tmux for
+  # prefix+c/x/z/e/hjkl/p/n, prefix+X (close tab) and prefix+R (reload).
+  # herdr ships rose-pine/rose-pine-dawn built in, so no palette generation is needed; the
+  # names are pinned for the same reason as dark/light in lib/theme.nix.
+  home.file.".config/herdr/config.toml" = lib.mkIf pkgs.stdenv.isDarwin {
+    text = ''
+      # nix (modules/home/terminal.nix) が生成。手で編集しない。
+      # 変更後は `herdr server reload-config` で反映。
+      onboarding = false
+
+      [theme]
+      # tmux と同じ rose-pine。macOS の外観に追従してライト/ダークを切り替える。
+      auto_switch = true
+      dark_name = "rose-pine"
+      light_name = "rose-pine-dawn"
+
+      [keys]
+      # tmux と同じ C-t。Emacs の C-b (backward-char) と衝突するため。
+      prefix = "ctrl+t"
+
+      [ui]
+      show_agent_labels_on_pane_borders = true
+
+      # 通知ポップアップは macOS の通知センターへ
+      [ui.toast]
+      delivery = "system"
+    '';
+  };
 }
