@@ -129,4 +129,41 @@ in
   # tmuxp starter layout. Build via `tmuxp load dev`.
   # ~/.config/tmuxp/ becomes a real directory, so you can add your own YAML alongside it.
   home.file.".config/tmuxp/dev.yaml".source = ../../../configs/terminals/tmux/tmuxp/dev.yaml;
+
+  # herdr: AI-agent multiplexer (package in modules/home/packages.nix). Config goes to every
+  # host, not just darwin, because `herdr --remote <host>` refuses to attach unless both ends
+  # run the same build: the client looks for a matching herdr on the remote PATH (nix profile
+  # paths included) and otherwise offers to drop its own copy into ~/.local/bin. Declaring the
+  # package on both sides keeps that fallback from ever firing — the flake pin is what holds
+  # the two versions together. herdr keeps its own state (sockets, logs, session.json) next to
+  # this file, so place the single file and leave ~/.config/herdr a real directory.
+  # Keys stay on herdr's own defaults — the prefix is the only thing pulled over from tmux,
+  # because it is the one key the fingers hit before herdr is even in the picture (and C-b
+  # collides with Emacs). Many of the rest already agree anyway (c, x, z, e, hjkl, p, n, ?, R).
+  # herdr ships rose-pine/rose-pine-dawn built in, so no palette generation is needed; the
+  # names are pinned for the same reason as dark/light in lib/theme.nix.
+  home.file.".config/herdr/config.toml".text = ''
+    # nix (modules/home/terminal.nix) が生成。手で編集しない。
+    # 変更は次回 herdr 起動時に反映される (herdr はこのファイルを監視していない)。
+    # `herdr server reload-config` は使わない。サーバ側は成功するのに、繋いでいる
+    # クライアントだけ無反応になって開き直す羽目になる (2026-08-10 に 4 回再現)。
+    onboarding = false
+
+    [theme]
+    # tmux と同じ rose-pine。auto_switch は macOS の外観に追従する (他 OS では dark 固定)。
+    auto_switch = true
+    dark_name = "rose-pine"
+    light_name = "rose-pine-dawn"
+
+    [keys]
+    # tmux と同じ C-t。Emacs の C-b (backward-char) と衝突するため。
+    prefix = "ctrl+t"
+
+    [ui]
+    show_agent_labels_on_pane_borders = true
+
+    # 通知ポップアップは端末内ではなく OS の通知へ (macOS なら通知センター)
+    [ui.toast]
+    delivery = "system"
+  '';
 }

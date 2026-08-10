@@ -258,7 +258,6 @@
       # new releases; real fix is a bug report to axodotdev/cargo-dist. See PR #119 for the
       # `just maintain` hardening that keeps this pin from aborting upgrades.
       "chojs23/tap/concord" # (a) Discord TUI. tap-only, not in nixpkgs
-      "herdr" # (a) AI coding agent multiplexer. not in nixpkgs
       "wifitui" # (a) wifi TUI. nixpkgs marks it Linux-only
 
       # ─── Network / Download / VPN ───
