@@ -8,7 +8,8 @@
 #   2. dotfiles を SSH 経由で git clone (初回) または git pull
 #      → SSH Agent Forward (-A) でローカルの鍵を使う、リモートに鍵不要
 #   3. ~/.config/{nvim,yazi,tmux} を dotfiles に symlink
-#   4. nix-portable nix shell .#remote-env -c tmux でセッション開始
+#   4. ~/.bashrc に configs/shell/bashrc.remote を source する行を追記 (冪等)
+#   5. nix-portable nix shell .#remote-env -c tmux でセッション開始
 #
 # tmux は new -A で attach-or-create するので、切断しても入り直せば同じセッションに戻る。
 # リモートは home-manager 非経由のため、キーバインドは効くが
@@ -63,9 +64,24 @@ fi
 ln -sfn ~/.dotfiles/configs/editors/nvim     ~/.config/nvim
 ln -sfn ~/.dotfiles/configs/cli/yazi         ~/.config/yazi
 ln -sfn ~/.dotfiles/configs/terminals/tmux   ~/.config/tmux
+
+# 4. shell rc: dotfiles 側の共通 bash 設定を ~/.bashrc から読ませる (marker 付き・冪等)
+#    リモートは home-manager を通らないので ~/.bashrc 本体は各ホストのものが動く。
+#    そこに source 行を 1 行だけ足しておけば、中身は dotfiles 側 (reset --hard で毎回最新)
+#    に寄せられる。ホスト固有の設定は marker の外にそのまま残る。
+marker='# >>> dotfiles bashrc.remote >>>'
+if [ -f ~/.bashrc ] && ! grep -qF "$marker" ~/.bashrc; then
+  {
+    echo ""
+    echo "$marker"
+    echo '[ -r "$HOME/.dotfiles/configs/shell/bashrc.remote" ] && . "$HOME/.dotfiles/configs/shell/bashrc.remote"'
+    echo '# <<< dotfiles bashrc.remote <<<'
+  } >> ~/.bashrc
+  echo "[nssh] ~/.bashrc に dotfiles の bash 設定を読む行を追記しました"
+fi
 BOOTSTRAP
 
-# 4. インタラクティブ接続 ($HOME はリモート側で展開される)
+# 5. インタラクティブ接続 ($HOME はリモート側で展開される)
 #    path:~/.dotfiles/nix を flake source に (private repo を GitHub API なしで使う)
 exec ssh -At "$host" "$@" \
   '"$HOME"/.local/bin/nix-portable nix shell "path:$HOME/.dotfiles/nix#remote-env" -c '"$remote_mux"
