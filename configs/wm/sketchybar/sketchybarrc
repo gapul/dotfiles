@@ -41,12 +41,19 @@ fi
 # 複数ディスプレイ対応: main プロファイルはメインディスプレイ(内蔵)基準でスケールする。
 # 外部モニタぶんは ext プロファイルが別インスタンスとして受け持つ (上のコメント参照)。
 REF_H=1112
-# メインディスプレイの論理縦(ポイント)を取得。swift(CoreGraphics)が最も確実、無ければsystem_profilerで代替。
-CUR_H=$(swift - <<'SWIFT' 2>/dev/null
-import CoreGraphics
-print(Int(CGDisplayBounds(CGMainDisplayID()).height))
+# メインディスプレイの論理縦(ポイント)と、メニューバー帯の高さを取得。
+# 帯の高さ = frame と visibleFrame の差。ノッチ機ならノッチの高さ (この Mac では 56pt)、
+# 通常のディスプレイなら 24pt。メニューバー自動非表示だと差が 0 になるので、その場合は既定の 24 に倒す。
+# swift(AppKit)が最も確実、無ければ system_profiler で縦解像度だけ代替する。
+read -r CUR_H MENU_H <<<"$(swift - <<'SWIFT' 2>/dev/null
+import AppKit
+// AppKit 座標では主ディスプレイの原点が (0,0)
+let s = NSScreen.screens.first { $0.frame.origin == .zero } ?? NSScreen.screens.first
+if let s {
+  print(Int(s.frame.height), Int(s.frame.maxY - s.visibleFrame.maxY))
+}
 SWIFT
-)
+)"
 if ! [ "${CUR_H:-0}" -gt 0 ] 2>/dev/null; then
   CUR_H=$(system_profiler SPDisplaysDataType 2>/dev/null | awk '
     /:$/ && /^ +[A-Za-z]/ { ll=""; res="" }
@@ -59,16 +66,18 @@ if ! [ "${CUR_H:-0}" -gt 0 ] 2>/dev/null; then
     }')
 fi
 [ "${CUR_H:-0}" -gt 0 ] 2>/dev/null || CUR_H=$REF_H
+[ "${MENU_H:-0}" -gt 0 ] 2>/dev/null || MENU_H=24
 # 寸法スケール。基準デザインはバー高さ 36pt で、そこからの倍率を 1 個の SCALE に集約する。
-#   main: 縦解像度比。内蔵のノッチ帯 (56pt) にバーがちょうど収まる。
+#   main: 縦解像度比。内蔵のノッチ帯にアイテムがちょうど収まる大きさになる。
 #   ext : 外部モニタの macOS メニューバー (24pt) にバーを合わせる = 36 -> 24。
 # FONT_SCALE は寸法とは別のフォント専用係数。基準デザインの文字/バー比 (14/36) は
 # メニューバーの比 (13/24) より小さいので、ext では 1 より大きくして純正に寄せる。
 if [ "$SB_PROFILE" = "ext" ]; then
-  EXT_BAR_HEIGHT=24
-  SCALE=$(awk -v h="$EXT_BAR_HEIGHT" 'BEGIN{printf "%.4f", h/36}')
+  BAR_BAND=24
+  SCALE=$(awk -v h="$BAR_BAND" 'BEGIN{printf "%.4f", h/36}')
   FONT_SCALE=1.25
 else
+  BAR_BAND=$MENU_H
   SCALE=$(awk -v c="$CUR_H" -v r="$REF_H" 'BEGIN{printf "%.4f", c/r}')
   FONT_SCALE=0.9
 fi
@@ -76,8 +85,11 @@ fi
 sc()  { awk -v s="$SCALE" -v b="$1" 'BEGIN{printf "%.0f", b*s}'; }
 scf() { awk -v s="$SCALE" -v b="$1" -v f="$FONT_SCALE" 'BEGIN{printf "%.1f", b*s*f}'; }
 
-BAR_HEIGHT=$(sc 36)
-Y_OFFSET=$(sc 4)
+# バーはメニューバー帯そのものに重ねる (高さ = 帯、オフセット 0)。
+# アイテムはバーの中で上下中央に置かれるので、これで pill の上下の余白が自動的に等しくなる。
+# y_offset で下げると「上だけ空いて下は詰まっている」見え方になるため 0 固定。
+BAR_HEIGHT=$BAR_BAND
+Y_OFFSET=0
 MARGIN=$(sc 8)
 BAR_PAD=$(sc 10)
 PADDINGS=$(sc 5)            # All paddings use this value (icon, label, background)
@@ -91,7 +103,6 @@ BRACKET_BG_HEIGHT=$(sc 30)
 # ext はそれ以外の全ディスプレイ。番号は arrangement-id なので固定値では書けず、
 # display_watch.sh がディスプレイ構成変化のたびに再計算してキャッシュしている。
 if [ "$SB_PROFILE" = "ext" ]; then
-  Y_OFFSET=0                     # 外部はメニューバー帯 (上端 0..24pt) にぴったり重ねる
   BAR_DISPLAY=$(cat "$EXT_DISPLAY_FILE" 2>/dev/null)
   # 外部モニタが無い / キャッシュ未生成のときは描かない。
   # (display 未指定の既定は all なので、これが無いと内蔵に小さいバーが二重に出る)
