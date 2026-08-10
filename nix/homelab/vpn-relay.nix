@@ -1,4 +1,9 @@
-{ pkgs, lib, ... }:
+{
+  pkgs,
+  lib,
+  config,
+  ...
+}:
 {
   # What VM105 (mvrx-vpn-relay) did: dial the office over L2TP/IPsec and let the
   # tailnet reach the corporate subnet through it, so working from home needs no
@@ -72,6 +77,12 @@
       Type = "oneshot";
       RemainAfterExit = true;
     };
+    # `ipsec` is a wrapper that re-reads the whole configuration, and nixpkgs
+    # keeps strongswan.conf in the store rather than /etc — so without this the
+    # command aborts with "no files found matching '/etc/strongswan.conf'" and
+    # then "integrity test of libstrongswan failed". Take the value the module
+    # computed rather than hardcoding a store path.
+    environment.STRONGSWAN_CONF = config.systemd.services.strongswan.environment.STRONGSWAN_CONF;
     # The sleeps are not decoration: each step has to be established before the
     # next is attempted, and this sequence is what is known to work against that
     # endpoint. xl2tpd is driven through its control socket, the same way the
