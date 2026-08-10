@@ -10,6 +10,7 @@
 #   3. ~/.config/{nvim,yazi,tmux} を dotfiles に symlink
 #   4. ~/.bashrc に configs/shell/bashrc.remote を source する行を追記 (冪等)
 #   5. nix-portable nix shell .#remote-env -c tmux でセッション開始
+#   6. 切断後に mutagen のペアリングを確認 (macOS のみ。zsh の ssh ラッパーと同じ役割)
 #
 # tmux は new -A で attach-or-create するので、切断しても入り直せば同じセッションに戻る。
 # リモートは home-manager 非経由のため、キーバインドは効くが
@@ -90,5 +91,23 @@ BOOTSTRAP
 
 # 5. インタラクティブ接続 ($HOME はリモート側で展開される)
 #    path:~/.dotfiles/nix を flake source に (private repo を GitHub API なしで使う)
-exec ssh -At "$host" "$@" \
-  '"$HOME"/.local/bin/nix-portable nix shell "path:$HOME/.dotfiles/nix#remote-env" -c '"$remote_mux"
+#    exec しないのは 6 を走らせるため。終了コードは ssh のものをそのまま返す。
+rc=0
+ssh -At "$host" "$@" \
+  '"$HOME"/.local/bin/nix-portable nix shell "path:$HOME/.dotfiles/nix#remote-env" -c '"$remote_mux" || rc=$?
+
+# 6. mutagen のペアリング確認 (macOS のみ。home/mutagen-sync.nix が入れるコマンド)
+#    zsh の ssh ラッパーと同じ扱いにする。あちらは `ssh` にしか掛からず、nssh は bash
+#    スクリプトなので中の ssh はバイナリに解決される。結果 nssh で入ったホストだけ
+#    ~/Sync のペアが作られず、ファイル授受のためだけに素の ssh を打ち直す必要があった。
+#
+#    必ずセッション終了後・バックグラウンドで、出力も終了コードも呼び出し元に影響させない。
+#    接続中にやると Bitwarden agent の承認が再度走り、ポートフォワードを持つホストでは
+#    2 本目の接続自体が失敗する (mutagen-sync.nix のコメント参照)。
+#    ensure 側は marker + `mutagen sync list` で冪等なので、多重に呼んでも害はない。
+#    空のペアを退役させる掃除も ensure 側が持っているため、ここでは何も判断しない。
+if command -v mutagen-sync-ensure >/dev/null 2>&1; then
+  (mutagen-sync-ensure "$host" &) >/dev/null 2>&1
+fi
+
+exit "$rc"
