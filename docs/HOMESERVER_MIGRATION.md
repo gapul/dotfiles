@@ -237,6 +237,29 @@ root / nix / var-lib / srv / home。srv だけスナップショット対象外�
 ```sh
 sudo nixos-install --flake github:gapul/dotfiles?dir=nix#homeserver
 sudo nixos-enter --root /mnt -c 'passwd gapul'
+
+# 鍵を置く (再起動後に入る唯一の手段。/home は独立データセットなので
+#  マウントされていることを findmnt で確認してから置く)
+findmnt /mnt/home
+sudo install -d -m 700 -o 1000 -g 100 /mnt/home/gapul/.ssh
+curl -sL https://github.com/gapul.keys | sudo tee /mnt/home/gapul/.ssh/authorized_keys
+sudo chown 1000:100 /mnt/home/gapul/.ssh/authorized_keys
+sudo chmod 600 /mnt/home/gapul/.ssh/authorized_keys
+
+# ★必須: プールを明け渡してから再起動する
+#   これを飛ばすとプールにインストーラの hostId が残り、新システムは
+#   forceImportRoot=false のため import を拒否して起動しない。
+sudo umount -R /mnt
+sudo zpool export rpool
+reboot
+```
+
+**`zpool export` を忘れた場合の復旧**: 起動が initrd の緊急シェルに落ちる。
+`emergencyAccess = true` にしてあるのでパスワード無しで入れるので、そこで
+
+```sh
+zpool import -f rpool
+zpool export rpool
 reboot
 ```
 
