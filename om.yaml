@@ -16,7 +16,8 @@ ci:
       steps:
         custom:
           # 非 nix-build なリンタ群 (just/statix/shellcheck/stylua/taplo/jq/yq/actionlint)。
-          # devShell の PATH でまとめて実行。macOS ランナー相当の 1 system だけで十分。
+          # devShell の PATH でまとめて実行。1 system だけで十分なので、いちばん余裕のある
+          # Linux ジョブに寄せる (darwin ジョブは system closure の取得で 7 分近く使うため)。
           lint:
             type: devshell
             command:
@@ -24,7 +25,7 @@ ci:
               - -c
               - cd "$(git rev-parse --show-toplevel)" && ./scripts/ci-lint.sh
             systems:
-              - aarch64-darwin
+              - x86_64-linux
 
           # 全コミット履歴の gitleaks detect (pre-commit の protect を二重化)。
           gitleaks:
@@ -34,7 +35,7 @@ ci:
               - -c
               - cd "$(git rev-parse --show-toplevel)" && ./scripts/ci-gitleaks.sh
             systems:
-              - aarch64-darwin
+              - x86_64-linux
 
           # 生成物ドリフト検査 (Karabiner / Skill / lazy2nix / lazygit schema)。
           generated-drift:
@@ -44,7 +45,7 @@ ci:
               - -c
               - cd "$(git rev-parse --show-toplevel)" && ./scripts/check-generated.sh
             systems:
-              - aarch64-darwin
+              - x86_64-linux
 
           # nix-on-droid は omnix 標準対象外 + --impure が要るため専用 app に逃がす。
           nix-on-droid:
