@@ -1,0 +1,22 @@
+# Puddle: what this machine may install, and what it should have.
+# Read by Puddle itself and by the `puddle` CLI.
+
+# Catalogs to browse. One JSON file each, listing installable wallpapers.
+indexes = [
+    "https://github.com/gapul/puddle-shaders/releases/latest/download/index.json",
+]
+
+# Sources that install without being asked about — prefix match on the whole URL.
+#
+# This is also the only way a plugin installs: a shader is compiled for the GPU and can do
+# nothing but draw, so a dialog is a fair defence, but a plugin is native code loaded into
+# Puddle and a dialog is not. That trust is declared here, in advance, or not at all.
+allow = [
+    "https://github.com/gapul/puddle-shaders/releases/",
+]
+
+# What this machine should have. `puddle apply` installs whatever is missing.
+wallpapers = [
+    "dotmatrix",
+    "worldmap",
+]
