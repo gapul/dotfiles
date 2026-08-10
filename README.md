@@ -100,7 +100,7 @@ curl -fsSL https://raw.githubusercontent.com/gapul/dotfiles/main/scripts/bootstr
     check-all *args              # Build every flake check available on this architecture
     gen action="" a="" b=""      # List or compare system generations.
     maintain                     # Update, upgrade, rebuild, and garbage-collect
-    rebuild                      # Rebuild the system and user configuration
+    rebuild force=""             # Rebuild the system and user configuration. `just rebuild force` activates even when nothing changed
     recovery-iso                 # Build the non-destructive NixOS recovery ISO (Linux builder required)
     rollback gen=""              # Roll back to the previous or selected system generation.
     update *inputs               # Update flake inputs, then rebuild.
