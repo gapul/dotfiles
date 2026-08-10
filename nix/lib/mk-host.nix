@@ -18,6 +18,12 @@
     {
       host,
       homeModules ? [ ],
+      # Where home.packages land. true puts them in /etc/profiles/per-user/<user>, which is the
+      # nix-darwin default and right for a host set up that way from the start. The workstation
+      # was standalone home-manager for years, so its ~/.local/state/nix/profile is what PATH
+      # points at and what 757 binaries live in; folding it in with true would silently move all
+      # of them somewhere PATH does not look. It keeps false and its existing profile.
+      useUserPackages ? true,
       specialArgs ? {
         inherit user;
       },
@@ -34,7 +40,7 @@
         home-manager.darwinModules.home-manager
         {
           home-manager.useGlobalPkgs = true;
-          home-manager.useUserPackages = true;
+          home-manager.useUserPackages = useUserPackages;
           home-manager.backupFileExtension = "hm-bak";
           home-manager.extraSpecialArgs = commonSpecialArgs;
           home-manager.users.${user.username} = {

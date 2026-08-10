@@ -501,8 +501,14 @@
     perSystemOutputs
     // {
       # System config: sudo darwin-rebuild switch --flake .#<username>
+      # home-manager rides along as a darwin module rather than being switched separately:
+      # `just rebuild` used to evaluate this flake twice, once per switch, for one machine.
+      # useUserPackages = false keeps home.packages in ~/.local/state/nix/profile, which is
+      # where this machine's PATH points after years of standalone home-manager.
       darwinConfigurations.${user.username} = mkHost.darwin {
         host = ./hosts/darwin.nix;
+        homeModules = roles.macWorkstation;
+        useUserPackages = false;
         specialArgs = {
           inherit user;
           brewNix = brew-nix;
