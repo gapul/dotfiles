@@ -30,7 +30,7 @@
     "https://gapul-dotfiles.cachix.org"
   ];
   nix.settings.trusted-public-keys = [
-    "gapul-dotfiles.cachix.org-1:tGNGJ7SGHrLAjsw5Iz673st0AepuNjQombMJOOVUq98="
+    "gapul-dotfiles.cachix.org-1:tGNGJ7SGHrLAjswSIz673st0AepuNjQombMJO0VUq98="
   ];
 
   environment.systemPackages = with pkgs; [

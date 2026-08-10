@@ -52,7 +52,7 @@
           "nix-on-droid.cachix.org-1:56snoMJTXmDRC1Ei24CmKoUqvHJ9XCp+nidK7qkMQrU=";
         # this config's own outputs, pushed by CI, so `just rebuild` doesn't rebuild them locally
         "https://gapul-dotfiles.cachix.org" =
-          "gapul-dotfiles.cachix.org-1:tGNGJ7SGHrLAjsw5Iz673st0AepuNjQombMJOOVUq98=";
+          "gapul-dotfiles.cachix.org-1:tGNGJ7SGHrLAjswSIz673st0AepuNjQombMJO0VUq98=";
       };
       settings = {
         # Keeps nix-env / nix-instantiate (used internally by home-manager and nix-darwin for
