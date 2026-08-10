@@ -70,6 +70,13 @@
       StandardOutPath = "/Users/${user.username}/Library/Logs/ollama.log";
       StandardErrorPath = "/Users/${user.username}/Library/Logs/ollama.log";
       EnvironmentVariables = {
+        # nix-darwin bootstraps this agent into the system domain, which has no HOME.
+        # Without it ollama aborts at startup with `panic: $HOME is not defined`, and
+        # KeepAlive turns that into a crash loop that quietly fills the log file
+        # (26 MB of panics before this was noticed). Unlike the workstation, where
+        # home-manager runs the same spec inside the user's GUI session, here it has
+        # to be spelled out.
+        HOME = "/Users/${user.username}";
         # Don't expose the API directly to the LAN. For external use, explicitly configure a
         # reverse proxy with auth/ACLs or Tailscale Serve.
         OLLAMA_HOST = "127.0.0.1:11434";
