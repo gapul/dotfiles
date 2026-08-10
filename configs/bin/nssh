@@ -53,7 +53,10 @@ if [ ! -d ~/.dotfiles/.git ]; then
   echo "[nssh] Cloning dotfiles ($DOTFILES_URL)..."
   git clone "$DOTFILES_URL" ~/.dotfiles
 else
-  git -C ~/.dotfiles pull --quiet --rebase || true
+  # リモートは使い捨て前提なので origin に強制で合わせる。
+  # pull --rebase だと lazy-lock.json 等の差分で黙って失敗し、古いまま使い続けることになる。
+  git -C ~/.dotfiles fetch --quiet origin && git -C ~/.dotfiles reset --hard --quiet '@{u}' \
+    || echo "[nssh] WARNING: dotfiles の更新に失敗。既存の clone のまま続行します。" >&2
 fi
 
 # 3. config symlinks
