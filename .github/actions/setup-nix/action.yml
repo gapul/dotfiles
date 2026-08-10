@@ -25,6 +25,14 @@ runs:
   steps:
     - name: Install Nix
       uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+      with:
+        # These jobs do not build much — they fetch. A measured darwin run pulled 5345 paths
+        # (4.5 GiB) from the caches, and both defaults throttle that: 16 concurrent
+        # substitutions and 25 HTTP connections. Many of those paths are small, so the cost is
+        # round trips rather than bandwidth.
+        extra-conf: |
+          max-substitution-jobs = 48
+          http-connections = 64
 
     # Flake inputs are fetched from GitHub into ~/.cache/nix on every cold runner, which in a
     # measured darwin run cost around two minutes spread over "into the Git cache..." pauses.
