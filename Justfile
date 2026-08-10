@@ -603,7 +603,7 @@ gc:
     n=$(find "$dir" -path "$dir/.git" -prune -o -type f \( "${fexpr[@]}" \) -print -delete | wc -l | tr -d ' ')
     echo "  $n removed"
     echo ""
-    echo "━━━ Auto-backups in ~/.config (zellij *.bak etc.) ━━━"
+    echo "━━━ Auto-backups in ~/.config (*.bak etc.) ━━━"
     m=$(find ~/.config -maxdepth 3 \( -name '*.bak' -o -name '*.bak.[0-9]*' \) -type f -print -delete 2>/dev/null | wc -l | tr -d ' ')
     echo "  $m removed"
     echo ""
@@ -1022,7 +1022,7 @@ _theme-macos name="": (_theme-unix name)
 [private]
 _theme-linux name="": (_theme-unix name)
 
-# On both Mac/WSL, nh home switch makes nvim/zellij/sketchybar/bat/atuin etc. all follow
+# On both Mac/WSL, nh home switch makes nvim/tmux/sketchybar/bat/atuin etc. all follow
 [private]
 _theme-unix name="":
     #!/usr/bin/env bash

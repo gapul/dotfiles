@@ -58,7 +58,7 @@ nix/
 ├── home/            # home-manager: common.nix + OS 別 (darwin/linux/wsl/hyprland) + backup 系
 ├── lib/             # テーマ (palettes.json を SSO とする rose-pine dark/light)
 └── pkgs/            # 自前パッケージ
-configs/             # 各アプリの実 config (ghostty/zellij/aerospace/sketchybar/nvim/karabiner/yazi/...)
+configs/             # 各アプリの実 config (ghostty/tmux/sketchybar/nvim/karabiner/yazi/...)
 secrets/secrets.yaml # SOPS で age 暗号化
 .sops.yaml           # 受信者 (age pubkey)
 scripts/bootstrap.sh # 新 Mac 用 0 → 1 セットアップ (Linux/WSL 版もあり)
@@ -160,7 +160,7 @@ curl -fsSL https://raw.githubusercontent.com/gapul/dotfiles/main/scripts/bootstr
 
 | コマンド | 説明 |
 |---|---|
-| `nssh user@host` | rootless Nix(`nix-portable`)で nvim/yazi/tmux(自分の設定)。`NSSH_MUX=zellij` で zellij に切替 |
+| `nssh user@host` | rootless Nix(`nix-portable`)で nvim/yazi/tmux(自分の設定)を使う |
 | `just ssh <host>` | `nssh` のショート |
 
 ### 🟥 コード品質 (git-hooks.nix + treefmt)

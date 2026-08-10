@@ -72,7 +72,7 @@ keybind = global:super+space=toggle_quick_terminal
 # AeroSpaceのタイリングと競合するため
 keybind = cmd+enter=unbind
 
-# zellij等のTUI内で Cmd+C が 'c' としてパススルーされる問題対策。
+# tmux 等の TUI 内で Cmd+C が 'c' としてパススルーされる問題対策。
 # デフォルトの performable:copy_to_clipboard は選択無しだとTUIにキーを流すため、
 # performableを外して常にキーを消費させる。
 keybind = cmd+c=copy_to_clipboard

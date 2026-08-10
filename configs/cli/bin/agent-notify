@@ -3,7 +3,7 @@
 # タスク完了・入力待ちを通知する共通スクリプト。
 #
 # usage: agent-notify <title> <message>
-#   - zellij のタブ/ペインをハイライトさせるためベルを鳴らす
+#   - 多重化ソフト(tmux 等)のタブ/ペインをハイライトさせるためベルを鳴らす
 #   - macOS バナー通知（osascript / display notification）
 #
 # 注: macOS 26 (Tahoe) では terminal-notifier(旧 NSUserNotification) が
@@ -14,7 +14,7 @@ title="${1:-Agent}"
 message="${2:-完了しました}"
 
 # ベル: hook はサブプロセスなので制御端末 /dev/tty に直接書き込む。
-# zellij はバックグラウンドペインのベルでタブをハイライトする。
+# tmux は monitor-bell (既定 on) でベルの出たウィンドウに印を付ける。
 # 制御端末が無い環境（cron / テスト等）では静かに無視する。
 { printf '\a' > /dev/tty; } 2>/dev/null || true
 

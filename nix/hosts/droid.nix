@@ -16,7 +16,7 @@ in
   ];
 
   # Termux-side fonts/colors can also be set via nix-on-droid's terminal options,
-  # but start minimal. The theme is held by zellij (terminal component).
+  # but start minimal. The theme is held by the terminal component.
   time.timeZone = "Asia/Tokyo";
 
   system.stateVersion = "24.05";
