@@ -178,6 +178,9 @@
       };
       "com.google.Chrome" = {
         MetricsReportingEnabled = false;
+        # 1 = never download the on-device foundational model (Gemini Nano).
+        # It sits unused in Application Support at ~4GB, so keep it off the disk.
+        GenAILocalFoundationalModelSettings = 1;
       };
     };
   };
