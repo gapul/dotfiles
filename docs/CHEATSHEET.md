@@ -54,7 +54,8 @@ eza / bat が ls / cat を置き換え済(home-manager が auto-alias)。
 
 ### 🔤 全 alias 一覧(自動生成)
 
-`nix/modules/home/shell.nix` の `shellAliases` から生成(alias を変えたら `just docs` で再生成)。
+`nix/modules/home/shell.nix` の `shellAliases` と `configs/shell/zshrc.common` から生成
+(alias を変えたら `just docs` で再生成)。後者は母艦と nssh 先が共有する可搬な alias。
 
 <!-- BEGIN aliases -->
 | alias | 展開先 |
