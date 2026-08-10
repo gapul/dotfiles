@@ -19,9 +19,9 @@ default:
 # ─────────────────────────────────────────────
 
 [group('Build')]
-[doc('Rebuild the system and user configuration')]
-rebuild:
-    @just _rebuild-{{os()}}
+[doc('Rebuild the system and user configuration. `just rebuild force` activates even when nothing changed')]
+rebuild force="":
+    @just _rebuild-{{os()}} {{force}}
 
 [group('Build')]
 [doc('Build every flake check available on this architecture')]
@@ -43,9 +43,34 @@ recovery-iso:
 # managed by nix-darwin are refused on load by brew upgrade / install unless trusted.
 # Shared because both the rebuild and upgrade(maintain) paths need it.
 [private]
-_rebuild-macos:
+_rebuild-macos force="":
     #!/usr/bin/env bash
     set -euo pipefail
+    # Activate only what actually changed. Evaluating both outPaths costs about ten seconds;
+    # a switch that has nothing to do costs a minute (darwin ~15s incl. the Homebrew bundle,
+    # home ~40s of relinking). Most rebuilds — every `git pull` of main via the post-merge hook —
+    # change one of the two at most, and plenty change neither.
+    # The catch: activation is also what repairs drift made outside nix (a hand-run `brew install`,
+    # a `defaults write`, a launchd agent someone unloaded). Skipping means not repairing. That is
+    # what `just rebuild force` is for, and what `just maintain` uses.
+    # nh is given the same flake path the check evaluates, plus the configuration name: left to
+    # itself it resolves the flake from the working directory's git root (a different tree when
+    # this runs from a worktree, so check and switch would disagree forever) and picks the config
+    # by hostname, which here is MacBook-Mini while the attribute is named after the user.
+    name="$(id -un)"
+    sys_want=$(nix eval --raw "{{flake}}#darwinConfigurations.$name.config.system.build.toplevel.outPath")
+    home_want=$(nix eval --raw "{{flake}}#homeConfigurations.$name.activationPackage.outPath")
+    sys_have=$(readlink /run/current-system || true)
+    home_have=$(readlink "$HOME/.local/state/home-manager/gcroots/current-home" || true)
+    do_sys=1; do_home=1
+    if [ -z "{{force}}" ]; then
+      [ "$sys_want" = "$sys_have" ] && do_sys=0
+      [ "$home_want" = "$home_have" ] && do_home=0
+    fi
+    if [ "$do_sys" = 0 ] && [ "$do_home" = 0 ]; then
+      echo "✓ already current (nothing to activate; use \`just rebuild force\` to activate anyway)"
+      exit 0
+    fi
     # (No brew trust pass here: nix/hosts/darwin.nix sets HOMEBREW_NO_REQUIRE_TAP_TRUST=1 for the
     #  whole activation, and a manual `brew trust` gets overwritten by the bundle anyway. The
     #  _brew-trust-taps recipe is still needed by _upgrade-packages-macos, where `brew upgrade`
@@ -66,16 +91,24 @@ _rebuild-macos:
     # `-c utility` rather than `-b`: background QoS parks the build on the efficiency cores,
     # which made every rebuild several times slower than it needed to be. utility still yields
     # to anything user-interactive, which is all the tap needs.
-    echo "━━━ nix-darwin" | tee -a "$log"
-    taskpolicy -c utility nh darwin switch -q -Q --diff never $nom_flag 2>&1 | tee -a "$log"
-    echo "✓ nix-darwin" | tee -a "$log"
+    if [ "$do_sys" = 1 ]; then
+      echo "━━━ nix-darwin" | tee -a "$log"
+      taskpolicy -c utility nh darwin switch {{flake}} -H "$name" -q -Q --diff never $nom_flag 2>&1 | tee -a "$log"
+      echo "✓ nix-darwin" | tee -a "$log"
+    else
+      echo "– nix-darwin unchanged" | tee -a "$log"
+    fi
     echo "━━━ home-manager" | tee -a "$log"
     # -b hm-bak: standalone home-manager has no backupFileExtension option (that one only exists on
     # the nix-darwin/NixOS module path), and without a backup extension a newly declared home.file
     # whose target already exists is skipped — the declaration silently does nothing. That is how
     # gh-dash/config.yml and slk/config.toml stayed plain files after #153 declared them.
-    taskpolicy -c utility nh home switch -q -Q --diff never -b hm-bak $nom_flag 2>&1 | tee -a "$log"
-    echo "✓ home-manager" | tee -a "$log"
+    if [ "$do_home" = 1 ]; then
+      taskpolicy -c utility nh home switch {{flake}} -c "$name" -q -Q --diff never -b hm-bak $nom_flag 2>&1 | tee -a "$log"
+      echo "✓ home-manager" | tee -a "$log"
+    else
+      echo "– home-manager unchanged" | tee -a "$log"
+    fi
     open -a Ghostty >/dev/null 2>&1 || true
 
 [private]
@@ -297,7 +330,7 @@ _maintain-macos:
     # and turns every maintain into a from-source build of every custom package. `just update`
     # still exists for when the bump is actually wanted now.
     just _upgrade-packages-macos
-    just rebuild
+    just rebuild force
     # gc (nix store + brew + pnpm) and the user tools (tldr / gh extensions) touch nothing in
     # common, so let them overlap. brew services cleanup stays with gc because both drive brew.
     { just gc; brew services cleanup || true; } &
