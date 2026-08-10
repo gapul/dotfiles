@@ -64,6 +64,13 @@ fi
 ln -sfn ~/.dotfiles/configs/editors/nvim     ~/.config/nvim
 ln -sfn ~/.dotfiles/configs/cli/yazi         ~/.config/yazi
 ln -sfn ~/.dotfiles/configs/terminals/tmux   ~/.config/tmux
+#    gh と codex は設定と同じディレクトリに認証情報 (hosts.yml / auth.json) を置くため、
+#    ディレクトリごとではなく設定ファイル単体を張る。認証情報はホスト側に残す。
+#    どちらもツール自身が設定を書き戻すことがあるが、その書き込みは dotfiles の
+#    working tree に落ちて次回接続の reset --hard で消える (nvim の lazy-lock.json と同じ扱い)。
+mkdir -p ~/.config/gh ~/.codex
+ln -sfn ~/.dotfiles/configs/cli/gh/config.yml     ~/.config/gh/config.yml
+ln -sfn ~/.dotfiles/configs/cli/codex/config.toml ~/.codex/config.toml
 
 # 4. shell rc: dotfiles 側の共通 bash 設定を ~/.bashrc から読ませる (marker 付き・冪等)
 #    リモートは home-manager を通らないので ~/.bashrc 本体は各ホストのものが動く。
