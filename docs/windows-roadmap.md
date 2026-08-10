@@ -25,7 +25,7 @@ macOS / WSL を主軸にしてきた本 dotfiles を **Windows ネイティブ +
 | `configs/editors/zed/` | ✅ | Zed Windows は preview だが telemetry 設定のみで無害 |
 | `configs/cli/yazi/yazi.toml` | ❌ | `[opener]` が `for="macos"/"unix"` のみ。Windows 用セクション要追加 |
 | `configs/editors/nvim/` | ❌ (3 か所修正) | `obsidian.lua:36` の `"open"`、`skkeleton.lua:10-16` の XDG パス直書き、`lazy.lua:39` の `~/Developer/...` |
-| `configs/terminals/zellij/` | N/A | Windows ネイティブ未対応 (WSL 内のみ) |
+| `configs/terminals/tmux/` | N/A | Windows ネイティブ未対応 (WSL 内のみ) |
 | `configs/terminals/ghostty/` | N/A | macOS/Linux 専用 |
 
 ## WSL ↔ Windows 橋渡しの穴

@@ -54,9 +54,8 @@ in
     dust # disk usage (formerly du-dust)
     ncdu # disk usage TUI
     yazi # file manager TUI
-    zellij # terminal multiplexer
-    tmux # terminal multiplexer (zellij alternative. config in modules/home/terminal.nix)
-    tmuxp # declare tmux sessions/layouts in YAML (equivalent to zellij layouts. ~/.config/tmuxp/)
+    tmux # terminal multiplexer (config in modules/home/terminal.nix)
+    tmuxp # declare tmux sessions/layouts in YAML (~/.config/tmuxp/)
     podman-tui # Podman container / image / Pod management TUI
     iamb # Matrix TUI (Vim keybindings, E2EE support)
     newsboat # RSS/Atom feed reader TUI
