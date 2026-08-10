@@ -118,14 +118,17 @@ source "$ITEM_DIR/apple.sh"  # Apple ロゴ (左端。ワークスペースと�
 source "$ITEM_DIR/spaces.sh"
 
 # Right
+# right は「先に source したものほど右端」に並ぶ。表示は下から上へ読むと左→右になる。
+# 右半分は macOS 純正メニューバーの並び (入力ソース → 画面ミラーリング → Bluetooth → Wi-Fi → 電池 → 時計) に合わせる。
 source "$ITEM_DIR/calendar.sh"
 source "$ITEM_DIR/battery.sh"
-source "$ITEM_DIR/bluetooth.sh"
 source "$ITEM_DIR/wifi.sh"
+source "$ITEM_DIR/bluetooth.sh"
 source "$ITEM_DIR/screen_mirroring.sh"
 source "$ITEM_DIR/input_source.sh"
-source "$ITEM_DIR/music.sh"
+# ここから左は自作アイテム
 source "$ITEM_DIR/volume.sh"
+source "$ITEM_DIR/music.sh"
 
 source "$ITEM_DIR/memory.sh"
 source "$ITEM_DIR/cpu.sh"
@@ -143,7 +146,7 @@ sketchybar --add bracket left_bracket apple.logo '/space\..*/' \
                    background.padding_left=4 \
                    background.padding_right=4
 
-sketchybar --add bracket right_bracket calendar battery bluetooth wifi screen_mirroring input_source music volume_icon memory cpu.percent keystats app_guard \
+sketchybar --add bracket right_bracket calendar battery wifi bluetooth screen_mirroring input_source volume_icon music memory cpu.percent keystats app_guard \
            --set   right_bracket \
                    background.color=$BACKGROUND_1 \
                    background.corner_radius=10 \
