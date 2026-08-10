@@ -48,8 +48,8 @@ jobs:
       # 全 system の失敗を一度に見たいときは workflow_dispatch で cold-build を回す。
       fail-fast: true
       # system -> runner の対応だけがプロバイダ固有。omnix が各 system の全出力
-      # (packages/checks/darwin+nixos configs/home activationPackage) と、
-      # om.yaml の custom step (lint/gitleaks/generated-drift/nix-on-droid) を回す。
+      # (packages/checks/darwin+nixos configs/home activationPackage) を回す。
+      # system に依らないリンタ類は下の checks ジョブに分離してある。
       matrix:
         include:
           - system: x86_64-linux
@@ -78,5 +78,30 @@ jobs:
           nix --accept-flake-config run github:juspay/omnix/v1.3.2 -- \
             ci run \
             --systems "${{ matrix.system }}" \
+            --extra-access-tokens ${{ secrets.GITHUB_TOKEN }} \
+            -- --accept-flake-config
+
+  # system に依らない検査 (lint / gitleaks / generated-drift)。om ci の build/flake-check は
+  # om.yaml の checks 構成側で無効にしてあるので、ここは custom step だけを回す。
+  # 独立ジョブにしているのは、どの system ジョブに相乗りさせても、そのジョブがそのまま
+  # CI 全体の長い棒になるため (実測: darwin へ載せると 7m、x86_64-linux へ載せると 6m)。
+  checks:
+    name: checks (lint / gitleaks / generated)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0 # gitleaks detect が全履歴を走査するため必須
+
+      - uses: ./.github/actions/setup-nix
+        with:
+          cachix-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+      - name: om ci run (checks)
+        run: |
+          nix --accept-flake-config run github:juspay/omnix/v1.3.2 -- \
+            ci run .#checks \
+            --systems x86_64-linux \
             --extra-access-tokens ${{ secrets.GITHUB_TOKEN }} \
             -- --accept-flake-config
