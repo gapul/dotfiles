@@ -10,13 +10,32 @@
 # 実行はどの CI でも共通:  om ci run --systems <system>
 # ローカルでも  `om ci`  で CI と同一のビルド/チェックを再現できる。
 ci:
+  # system 別ジョブ (.github/workflows/ci.yml の matrix)。flake 出力のビルドが主で、
+  # custom step は「その system でしか回せないもの」だけを置く。
   default:
     root:
       dir: nix
       steps:
         custom:
-          # 非 nix-build なリンタ群 (just/statix/shellcheck/stylua/taplo/jq/yq/actionlint)。
-          # devShell の PATH でまとめて実行。macOS ランナー相当の 1 system だけで十分。
+          nix-on-droid:
+            type: app
+            name: ci-nixondroid
+            systems:
+              - aarch64-linux
+
+  # リポジトリ全体のリンタ・秘密検出・生成物ドリフト。system に依らないので、どの
+  # ビルドジョブにも混ぜず専用ジョブ (ci.yml の checks) から `om ci run .#checks` で回す。
+  # 既存ジョブに相乗りさせると、そのジョブがそのまま CI 全体の長い棒になる。
+  # ビルドは default 側が済ませているのでここでは止める。
+  checks:
+    root:
+      dir: nix
+      steps:
+        build:
+          enable: false
+        flake-check:
+          enable: false
+        custom:
           lint:
             type: devshell
             command:
@@ -24,9 +43,8 @@ ci:
               - -c
               - cd "$(git rev-parse --show-toplevel)" && ./scripts/ci-lint.sh
             systems:
-              - aarch64-darwin
+              - x86_64-linux
 
-          # 全コミット履歴の gitleaks detect (pre-commit の protect を二重化)。
           gitleaks:
             type: devshell
             command:
@@ -34,9 +52,8 @@ ci:
               - -c
               - cd "$(git rev-parse --show-toplevel)" && ./scripts/ci-gitleaks.sh
             systems:
-              - aarch64-darwin
+              - x86_64-linux
 
-          # 生成物ドリフト検査 (Karabiner / Skill / lazy2nix / lazygit schema)。
           generated-drift:
             type: devshell
             command:
@@ -44,11 +61,4 @@ ci:
               - -c
               - cd "$(git rev-parse --show-toplevel)" && ./scripts/check-generated.sh
             systems:
-              - aarch64-darwin
-
-          # nix-on-droid は omnix 標準対象外 + --impure が要るため専用 app に逃がす。
-          nix-on-droid:
-            type: app
-            name: ci-nixondroid
-            systems:
-              - aarch64-linux
+              - x86_64-linux

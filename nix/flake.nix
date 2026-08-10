@@ -441,6 +441,35 @@
               // lib.optionalAttrs isDarwinWorkstation {
                 homeConfigurations."${user.username}" = inputs.self.homeConfigurations."${user.username}";
               };
+
+            # Available on every system, because om ci runs the lint / gitleaks / generated-drift
+            # steps inside it and those belong on a job with slack rather than on the darwin one
+            # that also fetches every system closure.
+            # preCommit is bound to `system` from the outer let (aarch64-darwin), so its packages
+            # are Mach-O binaries. Putting them in a Linux shell got them execve'd, xargs fell back
+            # to /bin/sh, and dash reported a syntax error inside the ELF. They stay darwin-only;
+            # the git hooks are a local-dev convenience and checks.pre-commit is darwin-only too.
+            devShells.default = systemPkgs.mkShell (
+              {
+                buildInputs = [
+                  systemPkgs.shellcheck
+                  systemPkgs.statix
+                  systemPkgs.stylua
+                  systemPkgs.taplo
+                  systemPkgs.yq-go
+                  systemPkgs.jq
+                  systemPkgs.just
+                  systemPkgs.python3 # scripts/gen-docs.py (doc generation block)
+                  systemPkgs.bun
+                  systemPkgs.check-jsonschema
+                  systemPkgs.actionlint
+                  systemPkgs.gitleaks # om ci's gitleaks custom step
+                  systemPkgs.git # ci-lint / ci-gitleaks use git ls-files / rev-parse
+                ]
+                ++ lib.optionals isDarwinWorkstation preCommit.enabledPackages;
+              }
+              // lib.optionalAttrs isDarwinWorkstation { inherit (preCommit) shellHook; }
+            );
           }
           // lib.optionalAttrs isDarwinWorkstation {
             checks = {
@@ -453,24 +482,6 @@
                 pkgs = systemPkgs;
                 inherit (inputs) self;
               };
-            };
-            devShells.default = systemPkgs.mkShell {
-              inherit (preCommit) shellHook;
-              buildInputs = preCommit.enabledPackages ++ [
-                systemPkgs.shellcheck
-                systemPkgs.statix
-                systemPkgs.stylua
-                systemPkgs.taplo
-                systemPkgs.yq-go
-                systemPkgs.jq
-                systemPkgs.just
-                systemPkgs.python3 # scripts/gen-docs.py (doc generation block)
-                systemPkgs.bun
-                systemPkgs.check-jsonschema
-                systemPkgs.actionlint
-                systemPkgs.gitleaks # om ci's gitleaks custom step (detect across full history)
-                systemPkgs.git # ci-lint / ci-gitleaks use git ls-files / rev-parse
-              ];
             };
           }
           // lib.optionalAttrs (system == "x86_64-linux") {
