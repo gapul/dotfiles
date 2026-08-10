@@ -208,18 +208,31 @@ _brew-trust-taps:
 
 [private]
 _upgrade-packages-macos:
+    #!/usr/bin/env bash
+    set -u
+    # Xcode and the SketchyBar font share nothing with Homebrew, and this link gives roughly
+    # twice the throughput over parallel connections as over one (measured: 20 MB/s single,
+    # 40 MB/s over four), so they download alongside the brew work instead of after it.
+    # Homebrew's own steps stay strictly serial: brew holds a lock, so a second brew process
+    # would only wait or fail. Output is buffered and replayed so three downloads do not
+    # interleave into unreadable soup.
+    xcode_out=$(mktemp); font_out=$(mktemp)
+    just _xcode-upgrade >"$xcode_out" 2>&1 &
+    xcode_pid=$!
+    just sketchybar-font >"$font_out" 2>&1 &
+    font_pid=$!
     # Order matters: `brew update` resets the trust of unofficial taps, so run update
     # first, then trust, and run the subsequent upgrade with HOMEBREW_NO_AUTO_UPDATE=1
     # so the trust is not reset again. Skip this and update ->
     # (trust lost) -> upgrade makes qmk/qmk (formula) and y3owk1n/tap/neru (cask)
     # get refused as untrusted; the cask is swallowed by `|| true` and the final check fails.
-    @brew update --quiet || true
-    @just _brew-trust-taps
-    @just _brew-formula-upgrade
-    @echo "━━━ Homebrew casks"
-    @HOMEBREW_NO_AUTO_UPDATE=1 brew upgrade --quiet --cask --greedy || true
-    @just _xcode-upgrade
-    @just sketchybar-font
+    brew update --quiet || true
+    just _brew-trust-taps
+    just _brew-formula-upgrade
+    echo "━━━ Homebrew casks"
+    HOMEBREW_NO_AUTO_UPDATE=1 brew upgrade --quiet --cask --greedy || true
+    wait $xcode_pid || true; cat "$xcode_out"; rm -f "$xcode_out"
+    wait $font_pid || true; cat "$font_out"; rm -f "$font_out"
     # The --greedy upgrade above also targets auto_updates/`version :latest` casks,
     # but those stay "outdated" forever and can never "complete" (e.g. figma-agent,
     # pear-desktop; for the latter the upstream cask errors on upgrade itself due to a
@@ -227,7 +240,8 @@ _upgrade-packages-macos:
     # Non-greedy does not list auto_updates/latest, so it detects only missed real
     # version updates and does not break as auto_updates casks grow (previously
     # figma-agent was grep-excluded, but enumerating them breaks, so that was removed).
-    @remaining=$(HOMEBREW_NO_AUTO_UPDATE=1 brew outdated --cask 2>/dev/null || true); if [ -n "$remaining" ]; then echo "ERROR: cask upgrade incomplete:" >&2; echo "$remaining" >&2; exit 1; fi
+    remaining=$(HOMEBREW_NO_AUTO_UPDATE=1 brew outdated --cask 2>/dev/null || true)
+    if [ -n "$remaining" ]; then echo "ERROR: cask upgrade incomplete:" >&2; echo "$remaining" >&2; exit 1; fi
 
 # Upgrade Homebrew formulae, resilient to a single broken formula (mirrors the cask handling).
 # `brew upgrade --formula` aborts the whole run if ANY formula fails — e.g. concord 2.5.0, whose
