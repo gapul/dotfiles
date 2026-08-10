@@ -47,9 +47,9 @@ jobs:
       # 1 system が落ちたら残りを即キャンセルして無駄な CI 時間/課金を抑える。
       # 全 system の失敗を一度に見たいときは workflow_dispatch で cold-build を回す。
       fail-fast: true
-      # system -> runner の対応だけがプロバイダ固有。omnix が各 system の全出力
-      # (packages/checks/darwin+nixos configs/home activationPackage) を回す。
-      # system に依らないリンタ類は下の checks ジョブに分離してある。
+      # system -> runner の対応だけがプロバイダ固有。main では omnix が各 system の全出力
+      # (packages/checks/darwin+nixos configs/home activationPackage) を回し、PR では
+      # 日常機だけの pr-gate を作る。system に依らないリンタ類は下の checks ジョブに分離。
       matrix:
         include:
           - system: x86_64-linux
@@ -72,8 +72,19 @@ jobs:
         with:
           cachix-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
+      # PR は日常機だけを検証する (packages.<system>.pr-gate)。omnix は subflake の全出力を
+      # 作る仕様で出力を選べないため、PR 用の部分集合は flake 側の集約パッケージで表現し、
+      # ここでは素の nix build で叩く。macmini closure / NixOS 群 / VM テストは下の main
+      # 側で作られ、cachix もそこで埋まる。
+      - name: nix build (pr-gate)
+        if: github.event_name == 'pull_request'
+        run: |
+          nix --accept-flake-config build ./nix#packages.${{ matrix.system }}.pr-gate \
+            --no-link --print-build-logs
+
       # omnix 本体は om.cachix.org から取得 (--accept-flake-config)。ソースビルドしない。
       - name: om ci run
+        if: github.event_name != 'pull_request'
         run: |
           nix --accept-flake-config run github:juspay/omnix/v1.3.2 -- \
             ci run \
