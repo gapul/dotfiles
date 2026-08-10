@@ -60,6 +60,7 @@
       "strongswan.service"
     ];
     wants = [ "network-online.target" ];
+    requires = [ "strongswan.service" ];
     path = with pkgs; [
       strongswan
       xl2tpd
@@ -75,9 +76,11 @@
     # next is attempted, and this sequence is what is known to work against that
     # endpoint. xl2tpd is driven through its control socket, the same way the
     # machine being replaced did it.
+    # `ipsec restart` は書かない。strongswan はモジュールが管理していて、
+    # そちらだけが STRONGSWAN_CONF を持っている。ここで restart すると設定を
+    # 見失った charon が起動に失敗し、モジュールが上げた charon まで道連れになる
+    # (integrity test failed / no files found matching '/etc/strongswan.conf')。
     script = ''
-      ipsec restart
-      sleep 3
       ipsec up mvrx
       sleep 2
       mkdir -p /run/xl2tpd
