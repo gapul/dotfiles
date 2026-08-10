@@ -49,6 +49,7 @@ plan() {
 
 if [ "${1:-}" = "--demo" ]; then
   check() {
+    # shellcheck disable=SC2086 # 意図的な word splitting: 引数のパス列を 1 行 1 パスに割る
     got=$(printf '%s\n' $2 | plan)
     [ "$got" = "$3" ] || { echo "FAIL: $1: got $got want $3" >&2; exit 1; }
     echo "ok: $1"
