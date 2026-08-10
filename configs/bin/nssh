@@ -13,8 +13,14 @@
 #   6. 切断後に mutagen のペアリングを確認 (macOS のみ。zsh の ssh ラッパーと同じ役割)
 #
 # tmux は new -A で attach-or-create するので、切断しても入り直せば同じセッションに戻る。
-# リモートは home-manager 非経由のため、キーバインドは効くが
-# rose-pine テーマ / tmux プラグイン(resurrect等)は無効(config は -q で読み飛ばす)。
+# リモートは home-manager 非経由なので、tmux 設定のうち nix の生成物に依存する部分は
+# リポジトリ側で肩代わりしている。届くもの / 届かないものは以下のとおり:
+#   - キーバインド・基本設定 : tmux.conf 本体がそのまま効く
+#   - rose-pine テーマ       : configs/terminals/tmux/theme-remote.conf (active パレット固定。
+#                              母艦のライト/ダーク自動追従だけは無い)
+#   - prefix+e (スクロールバック編集) : configs/terminals/tmux/scrollback-edit.sh
+#   - プラグイン (resurrect / continuum) : 無効。セッション永続化は使い捨てホストの
+#     前提 (reset --hard) と噛み合わないため、意図的に持ち込まない。
 
 set -euo pipefail
 

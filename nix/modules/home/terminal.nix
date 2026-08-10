@@ -98,16 +98,13 @@ in
   # Dump a pane's scrollback and open it in the editor (bound to prefix+e in tmux.conf).
   # This is zellij's EditScrollback. It lives in a script because the quoting for a temp file
   # plus a new-window command does not survive being written inline in tmux.conf.
+  #
+  # The body lives in configs/ rather than inline here, so that hosts reached with nssh get it
+  # too: there ~/.config/tmux is a symlink into the repo, and home-manager never runs. Keeping
+  # it inline meant prefix+e was bound but the script was absent on every remote.
   home.file.".config/tmux/scrollback-edit.sh" = {
     executable = true;
-    text = ''
-      #!/bin/sh
-      # $1: the pane id to capture (tmux passes #{pane_id})
-      set -eu
-      f=$(mktemp -t tmux-scrollback)
-      tmux capture-pane -p -S - -t "$1" >"$f"
-      tmux new-window -n scrollback "''${EDITOR:-nvim} '$f'; rm -f '$f'"
-    '';
+    source = ../../../configs/terminals/tmux/scrollback-edit.sh;
   };
 
   # tmux plugins. Generate a plugins.conf that
