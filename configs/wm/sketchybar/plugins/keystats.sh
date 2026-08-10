@@ -1,6 +1,10 @@
 #!/bin/bash
 
-KEYSTATS_BIN="$HOME/.local/bin/keystats"
+KEYSTATS_BIN="$(command -v keystats 2>/dev/null)"
+for c in /opt/homebrew/bin/keystats "$HOME/.local/bin/keystats"; do
+  [ -x "$KEYSTATS_BIN" ] && break
+  KEYSTATS_BIN="$c"
+done
 
 if [ "$1" = "click" ]; then
   open -a Keystats

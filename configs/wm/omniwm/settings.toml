@@ -49,7 +49,7 @@ right = 0.0
 top = 0.0
 
 [general]
-animationsEnabled = true
+animationsEnabled = false
 defaultLayoutType = "dwindle"
 hotkeysEnabled = true
 ipcEnabled = true
@@ -495,11 +495,11 @@ binding = "Control+Command+Grave"
 id = "focusMonitorLast"
 
 [[hotkeys]]
-binding = "Unassigned"
+binding = "Hyper+N"
 id = "moveWorkspaceToMonitor.left"
 
 [[hotkeys]]
-binding = "Unassigned"
+binding = "Hyper+M"
 id = "moveWorkspaceToMonitor.right"
 
 [[hotkeys]]
