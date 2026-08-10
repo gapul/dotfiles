@@ -322,6 +322,26 @@
             formatter = if isDarwinWorkstation then treefmtEval.config.build.wrapper else systemPkgs.nixfmt;
             packages = {
               unity-cli = systemPkgs.callPackage ./pkgs/unity-cli.nix { };
+
+              # What a pull request has to prove: the machines in daily use still evaluate and
+              # build. Everything else this flake produces — the macmini closure, the NixOS
+              # hosts, the VM tests — is built on main, which is also where cachix gets filled.
+              # omnix builds every output of a subflake and has no selector, so the subset has
+              # to be expressed as an output of its own and built directly.
+              pr-gate = systemPkgs.linkFarmFromDrvs "pr-gate" (
+                lib.optionals isDarwinWorkstation [
+                  inputs.self.darwinConfigurations.${user.username}.system
+                  inputs.self.homeConfigurations.${user.username}.activationPackage
+                ]
+                ++ lib.optionals (system == "x86_64-linux") [
+                  inputs.self.homeConfigurations."${user.username}-wsl".activationPackage
+                  inputs.self.homeConfigurations."labpc-wsl".activationPackage
+                  inputs.self.homeConfigurations."${user.username}-linux".activationPackage
+                ]
+                ++ lib.optionals (system == "aarch64-linux") [
+                  inputs.self.homeConfigurations."${user.username}-linux-aarch64".activationPackage
+                ]
+              );
             }
             // lib.optionalAttrs isDarwinWorkstation {
               lazy2nix = systemPkgs.writeShellApplication {
