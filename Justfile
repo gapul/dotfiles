@@ -59,20 +59,22 @@ _rebuild-macos:
     log="$HOME/tmp/nix-rebuild.log"
     nom_flag=""; [ -t 1 ] || nom_flag="--no-nom"
     : > "$log"
-    # taskpolicy -b drops the build to background QoS. If the build pins the CPU,
-    # Ghostty's event handling misses its deadline and the global keybind's CGEventTap
-    # gets disabled with kCGEventTapDisabledByTimeout, after which cmd+space stops
-    # working while unfocused (Ghostty does not re-enable the tap itself: ghostty#11883).
-    # Lowering the priority keeps Ghostty from starving, preventing the tap disable.
+    # The build runs under a QoS clamp so it cannot starve Ghostty: if the build pins the
+    # CPU, Ghostty's event handling misses its deadline and the global keybind's CGEventTap
+    # is disabled with kCGEventTapDisabledByTimeout, after which cmd+space stops working
+    # while unfocused (Ghostty does not re-enable the tap itself: ghostty#11883).
+    # `-c utility` rather than `-b`: background QoS parks the build on the efficiency cores,
+    # which made every rebuild several times slower than it needed to be. utility still yields
+    # to anything user-interactive, which is all the tap needs.
     echo "━━━ nix-darwin" | tee -a "$log"
-    taskpolicy -b nh darwin switch -q -Q --diff never $nom_flag 2>&1 | tee -a "$log"
+    taskpolicy -c utility nh darwin switch -q -Q --diff never $nom_flag 2>&1 | tee -a "$log"
     echo "✓ nix-darwin" | tee -a "$log"
     echo "━━━ home-manager" | tee -a "$log"
     # -b hm-bak: standalone home-manager has no backupFileExtension option (that one only exists on
     # the nix-darwin/NixOS module path), and without a backup extension a newly declared home.file
     # whose target already exists is skipped — the declaration silently does nothing. That is how
     # gh-dash/config.yml and slk/config.toml stayed plain files after #153 declared them.
-    taskpolicy -b nh home switch -q -Q --diff never -b hm-bak $nom_flag 2>&1 | tee -a "$log"
+    taskpolicy -c utility nh home switch -q -Q --diff never -b hm-bak $nom_flag 2>&1 | tee -a "$log"
     echo "✓ home-manager" | tee -a "$log"
     open -a Ghostty >/dev/null 2>&1 || true
 
@@ -287,20 +289,24 @@ _maintain-macos:
       git -C "$HOME/.dotfiles" pull --rebase --autostash
     fi
     just outdated
-    lock="{{flake}}/flake.lock"
-    old_lock=$(mktemp)
-    cp "$lock" "$old_lock"
-    trap 'rc=$?; if [ $rc -ne 0 ]; then cp "$old_lock" "$lock"; echo "Restored flake.lock after failed maintain" >&2; fi; rm -f "$old_lock"; rm -rf "$maintenance_lock"; exit $rc' EXIT
+    trap 'rc=$?; rm -rf "$maintenance_lock"; exit $rc' EXIT
     just _upgrade-nix-runtime-macos
-    just _update-lock
+    # No `nix flake update` here on purpose. The weekly update-flake-lock workflow opens a PR for
+    # it, and CI builds that lock and pushes the results to cachix, so rebuilding on a merged lock
+    # is mostly downloads. Bumping the lock locally instead lands on a tree nothing has ever built
+    # and turns every maintain into a from-source build of every custom package. `just update`
+    # still exists for when the bump is actually wanted now.
     just _upgrade-packages-macos
     just rebuild
-    just gc
-    brew services cleanup || true
-    just _maintain-user-tools
+    # gc (nix store + brew + pnpm) and the user tools (tldr / gh extensions) touch nothing in
+    # common, so let them overlap. brew services cleanup stays with gc because both drive brew.
+    { just gc; brew services cleanup || true; } &
+    gc_pid=$!
+    just _maintain-user-tools &
+    tools_pid=$!
+    wait $gc_pid $tools_pid
     just doctor || true
     trap - EXIT
-    rm -f "$old_lock"
     rm -rf "$maintenance_lock"
 
 [private]
