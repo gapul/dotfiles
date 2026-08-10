@@ -32,7 +32,11 @@ fi
 host="$1"
 shift
 
-remote_mux='tmux new -A -s nssh'
+# tmux のペインは $SHELL を起動する。リモートのログインシェルは bash なので、
+# nix shell の中で zsh を掴ませて母艦と同じ環境にする。ZDOTDIR を渡さないと
+# zsh は ~/.zshrc を読んでしまい、dotfiles の設定が効かない。
+# zsh が無い環境 (remote-env が古い等) では黙って既定のシェルに落ちる。
+remote_mux='SHELL="$(command -v zsh || echo "$SHELL")" ZDOTDIR="$HOME/.config/zsh" tmux new -A -s nssh'
 
 # ローカルの dotfiles から remote URL を取得(fork した人もそのまま使える)
 DOTFILES_URL=$(git -C "$HOME/.dotfiles" remote get-url origin 2>/dev/null || \
@@ -78,6 +82,11 @@ ln -sfn ~/.dotfiles/configs/terminals/tmux   ~/.config/tmux
 mkdir -p ~/.config/gh ~/.codex
 ln -sfn ~/.dotfiles/configs/cli/gh/config.yml     ~/.config/gh/config.yml
 ln -sfn ~/.dotfiles/configs/cli/codex/config.toml ~/.codex/config.toml
+#    zsh: ZDOTDIR を ~/.config/zsh に置き、.zshrc を dotfiles へ向ける。
+#    ログインシェルは bash のまま (共有マシンでは chsh できない) なので、
+#    素の ssh で入ったときは bashrc.remote が使われる。
+mkdir -p ~/.config/zsh
+ln -sfn ~/.dotfiles/configs/shell/zshrc.remote ~/.config/zsh/.zshrc
 
 # 4. shell rc: dotfiles 側の共通 bash 設定を ~/.bashrc から読ませる (marker 付き・冪等)
 #    リモートは home-manager を通らないので ~/.bashrc 本体は各ホストのものが動く。

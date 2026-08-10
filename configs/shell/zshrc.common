@@ -1,0 +1,125 @@
+# shellcheck shell=bash
+# (shellcheck に zsh モードは無いので bash として最低限だけ見てもらう)
+#
+# 母艦とリモートで共有する zsh 設定。
+#
+#   母艦  : nix/modules/home/shell.nix の initContent が source する
+#   リモート: configs/shell/zshrc.remote が source する (nssh 先。home-manager 非経由)
+#
+# ここに置いてよいのは「どのホストでも成り立つ設定」だけ。
+#   - 母艦固有 (ghq / tirith / git-wt / launcher / vpn / codex テーマ / textlint パス) は
+#     shell.nix 側に残す
+#   - 案件固有は ~/.devkits/<案件>/shellrc (private repo)
+#   - このリポジトリは public なので勤務先の内部構成を書かない
+#
+# プラグインを前提にする箇所は必ず存在チェックを挟む。リモートには
+# 母艦と同じものが全部あるとは限らないため。
+
+# ── fish 風の挙動 ───────────────────────────────────────────────────────────
+setopt AUTO_CD
+setopt AUTO_PUSHD
+setopt PUSHD_IGNORE_DUPS
+setopt EXTENDED_HISTORY
+setopt GLOB_STAR_SHORT
+setopt INTERACTIVE_COMMENTS
+
+# ── 履歴の前方一致検索 (↑↓) ────────────────────────────────────────────────
+# zsh-history-substring-search が読み込まれている時だけ束縛する。
+if [[ -o zle ]] && (( $+widgets[history-substring-search-up] )); then
+  bindkey '^[[A' history-substring-search-up
+  bindkey '^[[B' history-substring-search-down
+  bindkey -M vicmd 'k' history-substring-search-up
+  bindkey -M vicmd 'j' history-substring-search-down
+fi
+
+# ── fzf-tab: TAB 補完のプレビュー ───────────────────────────────────────────
+# zstyle は対象プラグインが無くても無害なので素で置く。
+zstyle ':completion:*' menu no
+zstyle ':fzf-tab:complete:cd:*' fzf-preview 'eza -1 --color=always --icons=auto $realpath 2>/dev/null'
+zstyle ':fzf-tab:complete:(\\\\|*/|)git-(add|diff|restore|reset):*' fzf-preview 'git diff --color=always -- $word | delta 2>/dev/null'
+zstyle ':fzf-tab:complete:(\\\\|*/|)git-(checkout|switch):*' fzf-preview 'git log --color=always --oneline -20 $word 2>/dev/null'
+zstyle ':fzf-tab:complete:kill:argument-rest' fzf-preview 'ps -p $word -o pid,ppid,user,%cpu,%mem,command 2>/dev/null'
+zstyle ':fzf-tab:*' fzf-flags --height=40% --reverse
+
+# ── vi mode + 外部エディタ ──────────────────────────────────────────────────
+if [[ -o zle ]]; then
+  bindkey -v
+  KEYTIMEOUT=1
+  autoload -Uz edit-command-line
+  zle -N edit-command-line
+  bindkey -M viins '^X^E' edit-command-line
+  bindkey -M vicmd '^X^E' edit-command-line
+  # forward delete (^[[3~) は zsh 既定で未定義。vi mode だと ESC が誤爆して
+  # normal mode に落ち入力が乱れるため、1 文字削除に明示的に束縛する。
+  bindkey -M viins '^[[3~' delete-char
+  bindkey -M vicmd '^[[3~' delete-char
+fi
+
+# ── alias ───────────────────────────────────────────────────────────────────
+alias ..='cd ..'
+alias ...='cd ../..'
+alias g='git'
+alias ga='git add'
+alias gc='git commit'
+alias gl='git pull'
+alias gp='git push'
+alias gs='git status'
+
+# ── 関数 ────────────────────────────────────────────────────────────────────
+# nix build / nix-build を nom (nix-output-monitor) で読みやすくする
+if command -v nom >/dev/null 2>&1; then
+  alias nix-build='nix-build 2>&1 | nom'
+  function nix() {
+    if [[ "$1" == "build" ]]; then
+      shift
+      command nix build --log-format internal-json -v "$@" 2>&1 | nom --json
+    else
+      command nix "$@"
+    fi
+  }
+fi
+
+# gapul/dotfiles での `gh pr create` は squash auto-merge も有効にして、CI が緑に
+# なれば勝手に着地させる (worktree+PR フローに合わせる)。このリポジトリ限定で、
+# 他のリポジトリ・他のサブコマンドは素通し。失敗しても黙って続ける。
+# NOTE: --delete-branch は付けない。worktree フローでは作ったばかりのブランチを
+# worktree が掴んでいるのでローカル削除が必ず失敗し、merge の有効化ごと中断する。
+# リモートブランチの掃除はリポジトリの "Automatically delete head branches" に任せる。
+function gh() {
+  if [[ "$1" == "pr" && "$2" == "create" ]]; then
+    command gh "$@" || return
+    if [[ "$(command gh repo view --json nameWithOwner --jq .nameWithOwner 2>/dev/null)" == "gapul/dotfiles" ]]; then
+      if command gh pr merge --auto --squash 2>/dev/null; then
+        print -r -- "gh: auto-merge (squash) enabled for this PR" >&2
+      fi
+    fi
+  else
+    command gh "$@"
+  fi
+}
+
+function mkcd() { mkdir -p "$1" && cd "$1"; }
+
+# yazi wrapper: 終了時にシェルの cwd を yazi の最終ディレクトリへ移す。
+# `yazi` ではなく `y` を使うと、見て回った先に降り立てる。
+function y() {
+  local tmp cwd
+  tmp="$(mktemp -t yazi-cwd.XXXXXX)"
+  yazi "$@" --cwd-file="$tmp"
+  if cwd="$(command cat -- "$tmp")" && [[ -n "$cwd" && "$cwd" != "$PWD" ]]; then
+    builtin cd -- "$cwd"
+  fi
+  rm -f -- "$tmp"
+}
+
+function extract() {
+  case $1 in
+    *.tar.bz2) tar xjf $1 ;;  *.tar.gz)  tar xzf $1 ;;
+    *.bz2)     bunzip2 $1 ;;  *.rar)     unrar x $1 ;;
+    *.gz)      gunzip $1 ;;   *.tar)     tar xf $1 ;;
+    *.tbz2)    tar xjf $1 ;;  *.tgz)     tar xzf $1 ;;
+    *.zip)     unzip $1 ;;    *.Z)       uncompress $1 ;;
+    *.7z)      7z x $1 ;;
+    *)         echo "'$1' cannot be extracted" ;;
+  esac
+}
