@@ -654,10 +654,11 @@
           targetSystem = "x86_64-linux";
           wsl = true;
           modules = roles.wsl;
-          specialArgs = {
+          # Only the username differs from every other home config, so start from
+          # commonSpecialArgs instead of re-listing its members (re-listing meant this host
+          # silently missed any arg added later, e.g. nixpkgsUnstable).
+          specialArgs = commonSpecialArgs // {
             user = labUser;
-            nixIndexDatabase = nix-index-database;
-            agentSkills = agent-skills;
           };
         };
 
