@@ -10,9 +10,28 @@
 {
   pkgs,
   lib,
+  config,
   ...
 }:
 
+let
+  # モジュールは settings に既定の `database.url = "sqlite://…"` を入れてくる。attic は
+  # 設定ファイルの値を環境変数より優先するので、ATTIC_SERVER_DATABASE_URL を渡しても
+  # 効かず、空の SQLite を作ってそちらを見にいく (実際にそうなった)。sqlite は元の
+  # 構成が CI の並列 push で接続プールを詰まらせて捨てた経緯があるので戻せない。
+  #
+  # かといって URL は接続情報そのもので、ストアは誰でも読める。宣言はそのままに、
+  # URL だけ起動時に環境変数から差し込む。vpn-relay.nix と同じ手。
+  serverToml = (pkgs.formats.toml { }).generate "atticd-server.toml" (
+    lib.recursiveUpdate config.services.atticd.settings { database.url = "@DB_URL@"; }
+  );
+  mkServerToml = pkgs.writeShellScript "atticd-server-toml" ''
+    set -eu
+    ${pkgs.gnused}/bin/sed "s#@DB_URL@#$ATTIC_SERVER_DATABASE_URL#" \
+      ${serverToml} > /run/atticd/server.toml
+    chmod 600 /run/atticd/server.toml
+  '';
+in
 {
   services.atticd = {
     enable = true;
@@ -50,9 +69,15 @@
   };
   users.groups.atticd = { };
   systemd.services.atticd = {
-    serviceConfig.DynamicUser = lib.mkForce false;
     after = [ "podman-attic-db.service" ];
     wants = [ "podman-attic-db.service" ];
+    serviceConfig = {
+      DynamicUser = lib.mkForce false;
+      RuntimeDirectory = "atticd";
+      RuntimeDirectoryMode = "0700";
+      ExecStartPre = [ "${mkServerToml}" ];
+      ExecStart = lib.mkForce "${lib.getExe config.services.atticd.package} -f /run/atticd/server.toml --mode ${config.services.atticd.mode}";
+    };
   };
 
   # Containers
