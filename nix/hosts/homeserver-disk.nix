@@ -46,7 +46,11 @@
       type = "zpool";
       options.ashift = "12";
       rootFsOptions = {
-        compression = "zstd";
+        # lz4, not zstd. Thirty-odd services write to this pool continuously and
+        # zstd costs several times the CPU per write for space this machine does
+        # not need — 18GB of 472GB is in use. Changed on the running pool too;
+        # compression is per-block, so what is already written stays zstd.
+        compression = "lz4";
         atime = "off";
         # Needed by systemd and by several services that store extended attributes.
         xattr = "sa";

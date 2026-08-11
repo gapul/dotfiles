@@ -12,6 +12,15 @@
 
 {
 
+  # The image's entrypoint decides which uid to run as by stat'ing this file, and
+  # only falls back to PUID if it exists. The restore brought the data dir over but
+  # not the log (it was empty), so archivebox ran as 911 against a tree owned by
+  # 1000, could not open its own error log, and died — every four seconds, 15,690
+  # times. Each death took a veth with it, which is what kept dhcpcd and udevd busy.
+  systemd.tmpfiles.rules = [
+    "f /srv/archivebox/logs/errors.log 0644 1000 1000 -"
+  ];
+
   # Containers
   virtualisation.oci-containers.containers."archivebox" = {
     image = "archivebox/archivebox:latest";
