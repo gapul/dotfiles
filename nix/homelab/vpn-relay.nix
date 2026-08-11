@@ -171,10 +171,14 @@ in
       bash
     ];
     serviceConfig.Type = "oneshot";
+    # probe-host is host:port. /dev/tcp wants host/port, so the probe could never
+    # open and the watchdog tore down a working tunnel every ten minutes — which
+    # also dropped ssh into this box on the same schedule. Split it rather than
+    # changing the file's format, since that is the form every other host uses.
     script = ''
       target="$(cat /var/lib/secrets/mvrx/probe-host)"
       if ! ip -4 addr show ppp0 >/dev/null 2>&1 \
-        || ! timeout 5 bash -c "echo > /dev/tcp/$target" 2>/dev/null; then
+        || ! timeout 5 bash -c "echo > /dev/tcp/''${target%:*}/''${target##*:}" 2>/dev/null; then
         echo "tunnel down -> reconnecting"
         systemctl restart mvrx-vpn.service
       fi
