@@ -25,11 +25,12 @@
     settings.global = {
       server_name = "gapul.net";
       # LAN に開ける必要がある。federation は Raspberry Pi の cloudflared が
-      # matrix.gapul.net -> 192.168.116.98:8008 で渡してくる (トンネルは homelab-pi)。
+      # matrix.gapul.net -> 192.168.116.98:6167 で渡してくる (トンネルは homelab-pi)。
       address = "0.0.0.0";
-      # コンテナ時代の公開ポートを踏襲。ここを変えると Cloudflare 側の ingress と
-      # ブリッジの homeserver.address を両方直す必要が出る。
-      port = 8008;
+      # Conduit 本来のポート。8008 はコンテナが publish していた側の番号で、中の
+      # Conduit は最初から 6167 だった。ブリッジの config も http://conduit:6167 を
+      # 見ているので、素の番号に揃えて Cloudflare の ingress をそちらへ向けた。
+      port = 6167;
       database_backend = "rocksdb";
       allow_registration = false;
       allow_federation = true;
@@ -47,8 +48,10 @@
     "mautrix-telegram"
   ];
 
-  # cloudflared (Pi) とコンテナから届く必要がある。コンテナ公開時と同じ露出。
-  networking.firewall.allowedTCPPorts = [ 8008 ];
+  # cloudflared (Pi) と podman ブリッジ側のコンテナから届く必要がある。閉じていると
+  # DROP なので接続拒否ではなくタイムアウトになり、ブリッジ側は「homeserver に繋がらない」
+  # としか言わない。コンテナが 8008 を publish していた頃と露出範囲は同じ。
+  networking.firewall.allowedTCPPorts = [ 6167 ];
 
   # Containers
   virtualisation.oci-containers.containers."mautrix-discord" = {
