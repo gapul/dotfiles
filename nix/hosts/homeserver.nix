@@ -37,7 +37,7 @@ let
     archive.upstream = "127.0.0.1:8000"; # archivebox
     ntfy.upstream = "127.0.0.1:8082";
     cache.upstream = "127.0.0.1:8083"; # attic (own nix binary cache)
-    dns2.upstream = "127.0.0.1:3080"; # AdGuard secondary, native module
+    dns2.upstream = "127.0.0.1:4000"; # blocky の API/metrics (UI は無い)
     dns.upstream = "${rpi}:3000"; # AdGuard primary
     # These two used to be reached through Home Assistant's add-on ingress, which
     # does not exist without Supervisor. Both need their own A record in
@@ -167,10 +167,14 @@ in
   # The office subnet is reachable because of homelab/vpn-relay.nix; advertising it
   # while the tunnel is down simply means those packets go nowhere, same as before.
   #
-  # Authenticate once by hand with `sudo tailscale up`; no auth key in the repo.
   services.tailscale = {
     enable = true;
     useRoutingFeatures = "server";
+    # Connects itself on first boot. The key is placed by hand like the other
+    # secrets — the point is that a reinstall does not need someone to remember
+    # to run `tailscale up`, which is exactly the step that leaves a headless
+    # box unreachable.
+    authKeyFile = "/var/lib/secrets/tailscale.key";
     # Two subnets: the house, and the office network reached over the L2TP tunnel
     # in homelab/vpn-relay.nix. The second one used to be advertised by VM105.
     extraUpFlags = [ "--advertise-routes=192.168.116.0/24,192.168.1.0/24,10.80.1.0/24" ];

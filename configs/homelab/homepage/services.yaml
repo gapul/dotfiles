@@ -1,0 +1,172 @@
+---
+# gapul.net homelab (Tailscale only) — live docker stats + siteMonitor
+- Home:
+    - Home Assistant:
+        href: https://home.gapul.net
+        description: Smart home
+        icon: home-assistant.png
+        siteMonitor: http://127.0.0.1:8123
+
+- Infrastructure:
+- Backup:
+    - ファイル閲覧 (restic):
+        href: https://files.gapul.net
+        description: バックアップの中身をプレビュー (read-only)
+        icon: filebrowser.png
+        siteMonitor: http://127.0.0.1:8082
+
+- Network:
+    - AdGuard Home (primary):
+        href: https://dns.gapul.net
+        description: DNS filter (primary)
+        icon: adguard-home.png
+        siteMonitor: http://192.168.116.53:3000
+    - AdGuard Home (secondary):
+        href: https://dns2.gapul.net
+        description: DNS filter (secondary)
+        icon: adguard-home.png
+        server: my-docker
+        container: adguardhome-secondary
+
+- Monitoring:
+    - ntfy:
+        href: https://ntfy.gapul.net
+        description: Push notifications
+        icon: ntfy.png
+        server: my-docker
+        container: ntfy
+
+- Apps:
+    - Vaultwarden:
+        href: https://vault.gapul.net
+        description: Password manager
+        icon: vaultwarden.png
+        server: my-docker
+        container: vaultwarden
+    - Miniflux:
+        href: https://rss.gapul.net
+        description: RSS reader
+        icon: miniflux.png
+        server: my-docker
+        container: miniflux
+    - Obsidian LiveSync:
+        href: https://obsidian.gapul.net
+        description: Note sync (CouchDB)
+        icon: obsidian.png
+        server: my-docker
+        container: obsidian-couchdb
+    - Radicale:
+        href: https://dav.gapul.net
+        description: CalDAV / CardDAV
+        icon: radicale.png
+        server: my-docker
+        container: radicale
+    - Forgejo:
+        href: https://git.gapul.net
+        description: Git hosting
+        icon: forgejo.png
+        server: my-docker
+        container: forgejo
+    - Syncthing:
+        href: https://sync.gapul.net
+        description: File sync
+        icon: syncthing.png
+        server: my-docker
+        container: syncthing
+
+- Tools:
+    - Paperless-ngx:
+        href: https://paperless.gapul.net
+        description: Document management / OCR
+        icon: paperless-ngx.png
+        server: my-docker
+        container: paperless
+    - ArchiveBox:
+        href: https://archive.gapul.net
+        description: Web archive
+        icon: archivebox.png
+        server: my-docker
+        container: archivebox
+
+- Media:
+    - Jellyfin:
+        href: https://jellyfin.gapul.net
+        description: Media server (video)
+        icon: jellyfin.png
+        server: my-docker
+        container: jellyfin
+    - Navidrome:
+        href: https://navidrome.gapul.net
+        description: Music streaming
+        icon: navidrome.png
+        server: my-docker
+        container: navidrome
+
+- AI (macmini):
+    - AIツール:
+        href: https://tools.gapul.net
+        description: 文字起こし/TTS/OCR/質問/声クローン/分離
+        icon: mdi-robot
+        siteMonitor: http://192.168.116.91:8901
+    - 資料RAG (AnythingLLM):
+        href: https://docs.gapul.net
+        description: ドキュメントRAG
+        icon: anythingllm
+        siteMonitor: http://192.168.116.91:3001
+    - チャット (Open WebUI):
+        href: https://chat.gapul.net
+        description: LLMチャット
+        icon: open-webui
+        siteMonitor: http://192.168.116.91:3000
+    - 画像生成 (ComfyUI):
+        href: https://comfy.gapul.net
+        description: 画像生成 (macmini M4)
+        icon: mdi-image
+        siteMonitor: http://192.168.116.91:8188
+
+- macmini (M4):
+    - システム:
+        icon: mdi-desktop-tower-monitor
+        href: http://192.168.116.91:61208
+        widget:
+          type: glances
+          url: http://192.168.116.91:61208
+          version: 4
+          metric: info
+    - CPU:
+        widget:
+          type: glances
+          url: http://192.168.116.91:61208
+          version: 4
+          metric: cpu
+          chart: false
+    - メモリ:
+        widget:
+          type: glances
+          url: http://192.168.116.91:61208
+          version: 4
+          metric: memory
+          chart: false
+    - ディスク:
+        widget:
+          type: glances
+          url: http://192.168.116.91:61208
+          version: 4
+          metric: fs:/
+          chart: false
+
+- Raspberry Pi (.53):
+    - システム:
+        icon: mdi-raspberry-pi
+        href: http://192.168.116.53:61208
+        widget:
+          type: glances
+          url: http://192.168.116.53:61208
+          version: 4
+          metric: info
+    - CPU:
+        widget: { type: glances, url: http://192.168.116.53:61208, version: 4, metric: cpu, chart: false }
+    - メモリ:
+        widget: { type: glances, url: http://192.168.116.53:61208, version: 4, metric: memory, chart: false }
+    - ディスク:
+        widget: { type: glances, url: http://192.168.116.53:61208, version: 4, metric: "fs:/", chart: false }

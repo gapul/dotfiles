@@ -18,7 +18,7 @@
   # declares the restic schedule that backrest used to own. Dropped outright:
   # dockge, wud, backrest, uptime-kuma, adguardhome-sync, stirling-pdf.
   imports = [
-    ./adguardhome.nix
+    ./blocky.nix
     ./anisette.nix
     ./archivebox.nix
     ./attic.nix

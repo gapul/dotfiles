@@ -1,0 +1,35 @@
+---
+# https://gethomepage.dev/configs/settings/
+title: gapul homelab
+startUrl: https://dash.gapul.net
+theme: dark
+color: slate
+headerStyle: boxed
+target: _blank
+language: en
+hideVersion: true
+useEqualHeights: true
+disableCollapse: false
+
+layout:
+  Home:
+    style: row
+    columns: 1
+  Infrastructure:
+    style: row
+    columns: 2
+  Network:
+    style: row
+    columns: 2
+  Monitoring:
+    style: row
+    columns: 3
+  Apps:
+    style: row
+    columns: 3
+  Tools:
+    style: row
+    columns: 2
+  Media:
+    style: row
+    columns: 2
