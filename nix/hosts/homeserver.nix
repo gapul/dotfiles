@@ -173,7 +173,7 @@ in
     useRoutingFeatures = "server";
     # Two subnets: the house, and the office network reached over the L2TP tunnel
     # in homelab/vpn-relay.nix. The second one used to be advertised by VM105.
-    extraUpFlags = [ "--advertise-routes=192.168.116.0/24,192.168.1.0/24" ];
+    extraUpFlags = [ "--advertise-routes=192.168.116.0/24,192.168.1.0/24,10.80.1.0/24" ];
   };
 
   # --- TLS ---

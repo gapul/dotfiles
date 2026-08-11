@@ -18,11 +18,18 @@ let
         authby=secret
         type=transport
         left=%defaultroute
-        leftprotoport=17/1701
+        # Not 17/1701. NAT-T rewrites the source port, so pinning it made the
+        # office end drop quick mode without a word — five retransmits and
+        # nothing back. With %any it answers.
+        leftprotoport=17/%any
         right=@MVRX_PEER@
         rightprotoport=17/1701
         ike=aes256-sha1-modp1024,aes128-sha1-modp1024,3des-sha1-modp1024,aes256-sha256-modp2048
-        esp=aes256-sha1,aes128-sha1,3des-sha1,aes256-sha256
+        # PFS variants first. The office requires a DH group in phase 2 — it
+        # picks AES_CBC_128/HMAC_SHA1_96/MODP_1024 — and the inherited proposal
+        # list offered none, which came back as NO_PROPOSAL_CHOSEN. The
+        # non-PFS entries stay as a fallback.
+        esp=aes256-sha1-modp1024,aes128-sha1-modp1024,3des-sha1-modp1024,aes256-sha1,aes128-sha1,3des-sha1,aes256-sha256,aes128-sha256
         keyingtries=%forever
         dpddelay=30
         dpdtimeout=120
@@ -138,7 +145,12 @@ in
       echo "c mvrx" > /run/xl2tpd/l2tp-control
       sleep 6
       ip -4 addr show ppp0 || echo "ppp0 not up"
-      ip route | grep 192.168.1 || echo "no corp route"
+      # pppd only gets a host route to the peer, so the office subnets have to be
+      # added here. Both are live: the L2TP pool is 192.168.1.0/24 and the dev
+      # machines answer on 10.80.1.0/24 as well.
+      ip route replace 192.168.1.0/24 dev ppp0 || true
+      ip route replace 10.80.1.0/24 dev ppp0 || true
+      ip route | grep ppp0 || echo "no corp route"
     '';
     preStop = ''
       echo "d mvrx" > /run/xl2tpd/l2tp-control 2>/dev/null || true
