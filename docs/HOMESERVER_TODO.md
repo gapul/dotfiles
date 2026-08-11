@@ -77,15 +77,38 @@ tailnet IP は `100.127.129.31`。
 - [x] **VM105 のディスクイメージ**: 会社トンネルが 2026-08-11 に新環境で確立したので
       保険としての役目は終わり。`google-drive:homeserver-migration/vm105.img.zst`(2GB)は
       削除して構わない
-- [ ] **母艦の `~/.ssh/config` に homeserver を追加**(sops 管理側の作業)
+- [x] **母艦の `~/.ssh/config` に homeserver を追加**(sops 管理側の作業)。
+      死んでいた `pve` / `caddy` のエントリも落とした
 
 ## 4.1 移行で新たに見つかった残り
 
-- [ ] **mautrix の meta と twitter** が起動しない。`homeserver.address` 未設定で、
-      これは移行前から未完だったもの(signal / slack / discord / telegram は稼働中)
-- [ ] **`probe-host` の見直し**。watchdog は `192.168.1.36:22` を見ているが、会社の
-      マニュアルは開発機を `10.80.1.36` と案内している。実測では両方到達するので
-      当面問題ないが、どちらが正なのか確認したい
+- [x] **Cloudflare トンネルの宛先が旧 CT を指していた**。`matrix.gapul.net` と
+      `push.gapul.net` が `192.168.116.65` のまま = 502 で、**Matrix の federation が
+      移行以降ずっと落ちていた**。トンネル本体(`homelab-pi`)は Raspberry Pi で健全に
+      動いていたので気づきにくかった。`.98` へ向けて復旧済み(federation テスターも OK)
+- [ ] **そのトンネルの ingress がどこにも宣言されていない**。Cloudflare 側に置かれた
+      リモート設定で、Pi の cloudflared がそれを引いている。ホスト移動のたびに手で直す形。
+      cloudflared を homeserver 側に持ってきて nix で宣言するのが素直だが、
+      `alert.gapul.net` は Pi の中で完結しているのでそこだけ切り分けが要る
+- [ ] **tailnet のサブネット経路が未承認**。homeserver は 3 本(`192.168.116.0/24` /
+      `192.168.1.0/24` / `10.80.1.0/24`)を広告しているが管理コンソールで承認されていない。
+      さらに**削除済みノードが primary を握ったまま**残っていて、母艦のルート表は
+      `192.168.1.0/24` → `mvrx-relay`(offline)、`192.168.116.0/24` → `tailscale-router`
+      (offline)を向いている。承認しても先に死んだノードへ吸われるので、
+      **古いノードを消してから 3 本を承認する**。会社の開発機へは ProxyJump で
+      迂回してあるので急がない
+- [x] **mautrix の meta と twitter** が起動しない → 4本とも宣言から落とした。
+      meta / twitter は `domain` が `matrix.gapul.net`(正しくは `gapul.net`)、
+      signal / slack は既定の `example.localhost` のままで、いずれも一度も繋がっていない
+- [ ] **ブリッジの部屋が旧 server_name のまま**。discord の portal は 18 室が
+      `!…:matrix.gapul.net` で、join が 404 になる。7月のドメイン変更
+      (`config.yaml.bak-domain` が残っている)の取りこぼしで、今回の移行とは無関係。
+      直すなら portal を作り直すことになるので判断が要る。telegram 側は
+      `No user logins found` でそもそもログインが無い
+- [x] **`probe-host` の見直し**。`host:port` を `/dev/tcp/$target` に渡していて
+      bash が開けず、判定が常に失敗して**10分ごとに正常なトンネルを落としていた**
+      (6時間で36回。ssh も同じ周期で切れる)。分割して解決。宛先は `192.168.1.36:22` /
+      `10.80.1.36:22` のどちらも到達する
 - [ ] **fgc の ntfy パスワードがログに平文で出る**。`apprise` の失敗時にコマンド全体を
       吐くため。気になるなら ntfy 側でトークン方式に変える
 - [ ] **`restic` と `rclone` が PATH に無い**。`services.restic.backups` はユニット内で
@@ -109,4 +132,7 @@ tailnet IP は `100.127.129.31`。
       ホストの routing table を汚さないよう独自 netns で
 - [ ] **deploy-rs か colmena**。ホストが増えてきたら
 - [ ] **コンテナのネイティブ化**。forgejo / navidrome / miniflux などはモジュールがある。
-      データ移行の手間に見合うと思ったものだけ
+      データ移行の手間に見合うと思ったものだけ。Conduit は 2026-08-11 に移行済み
+      (`services.matrix-conduit`)。ブリッジは見送った理由を `nix/homelab/matrix.nix` の
+      冒頭に書いてある
+- [ ] **attic を `services.atticd` へ**。postgres の移行が絡むので単独でやる
