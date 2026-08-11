@@ -3,14 +3,16 @@
 宣言と検証は済んでいる。ここに残っているのは、判断が要るものと、人の手が要るもの。
 当日の手順そのものは [HOMESERVER_MIGRATION.md](HOMESERVER_MIGRATION.md) を見る。
 
-状態: PR #169 で全ワークロードを宣言済み。CI の NixOS VM テストが起動を検証している。
-未検証は会社 VPN トンネルのみ(サンドボックスから会社の終端に繋げないため)。
+状態: **2026-08-11 に移行完了**。コンテナ31個とネイティブサービス一式が稼働、
+メモリは 9.7GB → 6.3GB。会社 VPN トンネルも実機で確立済み(宣言のみで再現する)。
+tailnet IP は `100.127.129.31`。
+
+移行中に判明した実地の知見は `HOMESERVER_MIGRATION.md` 側に反映済み。
 
 ---
 
-## 1. 決めること
+## 1. 決めること(移行時に解決済み)
 
-先に決めておかないと当日に止まるもの。
 
 - [ ] **退避先をどこにするか**。母艦 Mac(速い・検証しやすい)か Google Drive の
       restic(オフサイト・遅い)。35GB。両方でもよい
@@ -52,26 +54,43 @@
 
 サービスは起動するのに、使おうとして初めて壊れているとわかる類。
 
-- [ ] **DNS の付け替え**。`*.gapul.net` 20件超が旧 Caddy の tailnet IP を指している
+- [x] **DNS の付け替え**。`*.gapul.net` 20件超が旧 Caddy の tailnet IP を指している
       ```sh
       export CF_API_TOKEN=...
       scripts/cf-repoint-records.sh --from 100.64.125.107 --to "$(tailscale ip -4)"
       # 一覧を見てから --apply
       ```
-- [ ] **A レコードを2件追加**: `esphome.gapul.net`、`nodered.gapul.net`
-- [ ] **HA の `trusted_proxies` を `127.0.0.1` に**。直さないと全リクエストが 400
-- [ ] **homepage の `services.yaml`**。IP 直書きが19箇所ある
-- [ ] **スマホの OwnTracks**。Dawarich の宛先が旧 CT101 の `:3005`
-- [ ] **MQTT クライアント**。mosquitto の認証が HA ユーザー依存から独自ユーザーに変わる
-- [ ] **Matter デバイスがオンラインに戻るか確認**。戻らなければまずホストの IPv6 を疑う
-- [ ] **Syncthing の device ID が変わっていないこと**を確認。変わっていたら身元の復元に失敗
-- [ ] **旧スナップショットの掃除**
+- [x] **A レコードを2件追加**: `esphome.gapul.net`、`nodered.gapul.net`
+- [x] **HA の `trusted_proxies` を `127.0.0.1` に**。直さないと全リクエストが 400
+- [x] **homepage の `services.yaml`**。IP 直書きが19箇所ある
+- [ ] **スマホの OwnTracks**。Dawarich の宛先が旧 CT101 の `:3005` →
+      新ホストは `192.168.116.98:3005`(tailnet なら `100.127.129.31:3005`)
+- [ ] **MQTT クライアント**。mosquitto の認証が HA ユーザー依存から独自ユーザー `ha` に
+      変わった。平文は macmini の `~/homeserver-migration/secrets/mosquitto-ha.plaintext`。
+      HA の MQTT 統合に入れたらそのファイルは消す
+- [x] **Matter デバイスがオンラインに戻るか確認**。戻らなければまずホストの IPv6 を疑う
+- [x] **Syncthing の device ID が変わっていないこと**を確認。変わっていたら身元の復元に失敗
+- [x] **旧スナップショットの掃除**
       ```sh
       restic forget --host pve --tag pve-vzdump --keep-last 1 --prune
       ```
-- [ ] **VM105 のディスクイメージを捨てるか判断**。会社トンネルが新環境で一度でも
-      上がったら不要
+- [x] **VM105 のディスクイメージ**: 会社トンネルが 2026-08-11 に新環境で確立したので
+      保険としての役目は終わり。`google-drive:homeserver-migration/vm105.img.zst`(2GB)は
+      削除して構わない
 - [ ] **母艦の `~/.ssh/config` に homeserver を追加**(sops 管理側の作業)
+
+## 4.1 移行で新たに見つかった残り
+
+- [ ] **mautrix の meta と twitter** が起動しない。`homeserver.address` 未設定で、
+      これは移行前から未完だったもの(signal / slack / discord / telegram は稼働中)
+- [ ] **`probe-host` の見直し**。watchdog は `192.168.1.36:22` を見ているが、会社の
+      マニュアルは開発機を `10.80.1.36` と案内している。実測では両方到達するので
+      当面問題ないが、どちらが正なのか確認したい
+- [ ] **fgc の ntfy パスワードがログに平文で出る**。`apprise` の失敗時にコマンド全体を
+      吐くため。気になるなら ntfy 側でトークン方式に変える
+- [ ] **`restic` と `rclone` が PATH に無い**。`services.restic.backups` はユニット内で
+      しか使わないので、手で復元作業をするときに `nix shell` が必要だった。
+      `environment.systemPackages` に足すか判断
 
 ## 5. 落ち着いてからやること
 
