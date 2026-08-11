@@ -30,9 +30,12 @@
 
       blocking = {
         denylists.ads = [
-          # The one list AdGuard had enabled. AdAway was present but disabled,
-          # so it is not carried over.
-          "https://adguardteam.github.io/HostlistsRegistry/assets/filter_1.txt"
+          # hosts format. AdGuard's own list — which is what this host used
+          # before — is in AdGuard's `||domain^` syntax, and blocky parses it to
+          # zero entries: the download succeeds, blocking reports enabled, and
+          # nothing is blocked. That fails quietly, so it is worth being explicit
+          # that the format matters more than the source.
+          "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts"
         ];
         clientGroupsBlock.default = [ "ads" ];
         # NXDOMAIN rather than 0.0.0.0: clients stop retrying, and it does not
