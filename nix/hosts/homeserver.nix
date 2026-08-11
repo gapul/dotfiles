@@ -136,9 +136,11 @@ in
   # refuse to import must also let someone in to resolve it.
   boot.initrd.systemd.emergencyAccess = true;
   # ARC defaults to half of RAM, which would quietly eat the ~4.7GB this migration
-  # is meant to recover. 2GB is a starting point for a 15GB box running ~20
-  # containers; raise it if reads turn out to be the bottleneck.
-  boot.kernelParams = [ "zfs.zfs_arc_max=2147483648" ];
+  # is meant to recover. 2GB was the starting point; with everything moved in, the
+  # box sits at 6.1GB used with 9.3GB available and the ARC pegged at its ceiling,
+  # so it was reading from disk for want of 2GB it had to spare. 4GB still leaves
+  # ~5GB of headroom.
+  boot.kernelParams = [ "zfs.zfs_arc_max=4294967296" ];
   services.zfs.autoScrub.enable = true;
   services.zfs.trim.enable = true;
   # The actual replacement for vzdump's nightly per-guest snapshots. Dataset
@@ -147,6 +149,15 @@ in
 
   networking.hostName = "homeserver";
   networking.useDHCP = lib.mkDefault true;
+  # 192.168.116.98 is a reservation, so DHCP stays on — but not on the container
+  # side. podman makes a veth per container, dhcpcd solicits a lease on each one,
+  # and every container restart takes udevd and tailscaled around the loop with it.
+  # With ~24 veths that is a permanent background load for addresses nothing wants.
+  networking.dhcpcd.denyInterfaces = [
+    "veth*"
+    "podman*"
+    "br-*"
+  ];
   # Already the default, stated because something depends on it: Matter requires
   # IPv6 even for Wi-Fi devices, and turning this off would leave every Matter
   # device unavailable while the server itself looks healthy.
