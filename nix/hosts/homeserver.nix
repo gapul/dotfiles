@@ -149,6 +149,15 @@ in
 
   networking.hostName = "homeserver";
   networking.useDHCP = lib.mkDefault true;
+  # 192.168.116.98 is a reservation, so DHCP stays on — but not on the container
+  # side. podman makes a veth per container, dhcpcd solicits a lease on each one,
+  # and every container restart takes udevd and tailscaled around the loop with it.
+  # With ~24 veths that is a permanent background load for addresses nothing wants.
+  networking.dhcpcd.denyInterfaces = [
+    "veth*"
+    "podman*"
+    "br-*"
+  ];
   # Already the default, stated because something depends on it: Matter requires
   # IPv6 even for Wi-Fi devices, and turning this off would leave every Matter
   # device unavailable while the server itself looks healthy.
