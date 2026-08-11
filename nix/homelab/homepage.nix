@@ -46,7 +46,10 @@
       "HOMEPAGE_ALLOWED_HOSTS" = "*";
     };
     volumes = [
-      "/var/lib/homelab/homepage/config:/app/config:rw"
+      # 設定はリポジトリ(configs/homelab/homepage)から store 経由で配る。
+      # 以前は /var/lib 側の可変ファイルで、移行のたびに旧ホストの IP を手で
+      # 直す作業が発生していた。ro なのは homepage が書き戻す必要がないから。
+      "${../../configs/homelab/homepage}:/app/config:ro"
       # podman's socket speaks the Docker API, but homepage's config/docker.yaml and
       # glances both look for it at the conventional path, so keep the container
       # side unchanged and only swap the host side.

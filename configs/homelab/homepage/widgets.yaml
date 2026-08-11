@@ -1,0 +1,35 @@
+---
+# https://gethomepage.dev/configs/info-widgets/
+- greeting:
+    text_size: xl
+    text: gapul homelab
+
+- datetime:
+    text_size: xl
+    format:
+      dateStyle: long
+      timeStyle: short
+      hourCycle: h23
+      timeZone: Asia/Tokyo
+
+- glances:
+    url: http://192.168.116.65:61208
+    version: 4
+    cpu: true
+    mem: true
+    cputemp: true
+    uptime: true
+    expanded: true
+    label: CT101
+
+- openmeteo:
+    label: Tokyo
+    latitude: 35.6762
+    longitude: 139.6503
+    timezone: Asia/Tokyo
+    units: metric
+    cache: 5
+
+- search:
+    provider: duckduckgo
+    target: _blank
