@@ -1,0 +1,28 @@
+---
+# https://gethomepage.dev/configs/bookmarks/
+- Homelab:
+    - Cloudflare:
+        - abbr: CF
+          href: https://dash.cloudflare.com/
+    - Tailscale:
+        - abbr: TS
+          href: https://login.tailscale.com/admin
+    - Proxmox:
+        - abbr: PVE
+          href: https://pve.gapul.net
+
+- Dev:
+    - GitHub:
+        - abbr: GH
+          href: https://github.com/gapul
+    - Forgejo:
+        - abbr: FJ
+          href: https://git.gapul.net
+
+- Comms:
+    - Element:
+        - abbr: EL
+          href: https://app.element.io
+    - ntfy:
+        - abbr: NT
+          href: https://ntfy.gapul.net

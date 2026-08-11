@@ -35,6 +35,8 @@ name that matters now.
 | `vaultwarden.env` | `ADMIN_TOKEN` |
 | `gatus.env` | `NTFY_TOPIC`, `NTFY_TOKEN` (the `tk_...` bearer token; gatus substitutes them into its own config) |
 | `mosquitto-ha.password` | a `mosquitto_passwd` hash, the part after `ha:` — not a plaintext password |
+| `free-games-claimer.env` | `NOTIFY` (an ntfy publish URL, so it embeds a credential) and `PANEL_PASSWORD`, which is also the VNC password |
+| `tailscale.key` | a Tailscale auth key. `services.tailscale.authKeyFile` reads it so a reinstall connects itself; revoke and replace it after use |
 
 The office tunnel keeps its own directory, `/var/lib/secrets/mvrx/`, because none
 of it is a credential in the usual sense — it is a third party's infrastructure,
@@ -48,6 +50,7 @@ and this repo is public.
 | `ppp-options` | pppd options including `name <account>`. Must not contain `defaultroute` — that is what keeps ppp0 from taking over the house's routing |
 | `chap-secrets` | the account's password (symlinked to /etc/ppp/chap-secrets; pppd's path is compiled in) |
 | `probe-host` | `host:port` on the far side for the watchdog, e.g. a machine's ssh port |
+| `peer` | the office concentrator's address on its own line. Everything else about the connection is in `vpn-relay.nix`; only this identifies an employer |
 
 `APPLICATION_HOSTS` is in dawarich's list not because it is secret but because the
 old value names the old machine's LAN address; it has to be set for whatever this
