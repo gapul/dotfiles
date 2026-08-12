@@ -123,6 +123,13 @@
     touchIdAuth = true;
   };
 
+  # The sketchybar nosleep item toggles pmset on click, and sketchybar has no way to ask
+  # for a password. Allow exactly the two commands it runs, so the click is a plain toggle
+  # instead of an auth dialog every time. Nothing else gains privileges.
+  security.sudo.extraConfig = ''
+    ${user.username} ALL=(root) NOPASSWD: /usr/bin/pmset -a disablesleep 0, /usr/bin/pmset -a disablesleep 1
+  '';
+
   users.users.${user.username} = {
     name = user.username;
     home = "/Users/${user.username}";

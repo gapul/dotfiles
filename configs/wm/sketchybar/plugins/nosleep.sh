@@ -9,8 +9,10 @@ disabled() { pmset -g | grep -q "SleepDisabled.*1"; }
 
 if [ "$1" = "toggle" ]; then
   disabled && next=0 || next=1
-  # sketchybar からは sudo のパスワードを聞けないので、GUI の認証ダイアログ (Touch ID 可) 経由で切り替える。
-  osascript -e "do shell script \"pmset -a disablesleep $next\" with administrator privileges" >/dev/null 2>&1
+  # この 2 コマンドだけ sudoers で NOPASSWD にしてあるので無認証で切り替わる (nix/hosts/darwin-common.nix)。
+  # ルールが無いホストでは、sketchybar からパスワードを聞けないので GUI の認証ダイアログに落とす。
+  sudo -n /usr/bin/pmset -a disablesleep "$next" 2>/dev/null ||
+    osascript -e "do shell script \"pmset -a disablesleep $next\" with administrator privileges" >/dev/null 2>&1
 fi
 
 if disabled; then
