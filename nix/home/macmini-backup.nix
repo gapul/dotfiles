@@ -25,7 +25,7 @@ let
   common = import ../lib/restic-common.nix { inherit home; };
 
   # sops が無いので共通ライブラリの既定(手置き)をそのまま使う。
-  passwordFile = common.passwordFile;
+  inherit (common) passwordFile;
   logFile = "${home}/Library/Logs/restic-backup.log";
 
   ntfyUrlFile = "${home}/.config/ntfy/url";
