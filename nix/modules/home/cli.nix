@@ -97,12 +97,16 @@
 
   programs.zoxide = {
     enable = true;
-    enableZshIntegration = true;
+    # Same as atuin/direnv: the generated eval spawns a process per shell. Re-emitted
+    # through evalcache in the initContent block below.
+    enableZshIntegration = false;
   };
 
   programs.fzf = {
     enable = true;
-    enableZshIntegration = true;
+    # Same reason. Home-manager deliberately emits fzf before atuin so that atuin's Ctrl+R
+    # wins over fzf's unconditional binding; the block below keeps fzf ahead of atuin too.
+    enableZshIntegration = false;
     defaultCommand = "fd --type f --hidden --follow --exclude .git";
     # Inherit the terminal's 16-color ANSI -> automatically rides ghostty's Rose Pine / Rose Pine Dawn
     # (following the macOS appearance). Dropping fixed hex enables automatic dark/light switching.
@@ -144,17 +148,38 @@
     nix-direnv.enable = true;
   };
 
-  # Cached replacements for the two integrations disabled above. evalcache is defined in
+  # Cached replacements for the integrations disabled above. evalcache is defined in
   # configs/shell/zshrc.common, which shell.nix sources earlier in initContent.
   # The store paths are keyed into the cache file name, so a rebuild invalidates them.
   # mkOrder 1200 keeps them where home-manager used to emit them: after the main initContent
   # but before zsh-syntax-highlighting, which wants to be sourced once every widget exists.
-  programs.zsh.initContent = lib.mkOrder 1200 ''
-    evalcache ${lib.getExe config.programs.direnv.package} hook zsh
-    if [[ $options[zle] = on ]]; then
-      evalcache ${lib.getExe config.programs.atuin.package} init zsh --disable-up-arrow
-    fi
-  '';
+  programs.zsh.initContent = lib.mkMerge [
+    # zoxide and fzf keep the exact orders home-manager emitted them at. Moving them later
+    # is not cosmetic: fzf binds TAB, so after fzf-tab's plugin load it would win and TAB
+    # would fall back from fzf-tab-complete to fzf-completion.
+    (lib.mkOrder 851 ''
+      evalcache ${lib.getExe config.programs.zoxide.package} init zsh
+    '')
+    (lib.mkOrder 910 ''
+      if [[ $options[zle] = on ]]; then
+        evalcache ${lib.getExe config.programs.fzf.package} --zsh
+      fi
+    '')
+    (lib.mkOrder 1200 ''
+      evalcache ${lib.getExe config.programs.direnv.package} hook zsh
+      if [[ $options[zle] = on ]]; then
+        # atuin init forks `atuin uuid` unless the session id is already set, and it is the
+        # single most load-sensitive line left (7ms idle, 128ms on a busy machine). The id is
+        # just an opaque 32-digit hex, so zsh can make one without starting a process.
+        if [[ -z ''${ATUIN_SESSION-} || ''${ATUIN_SHLVL-} != $SHLVL ]]; then
+          printf -v ATUIN_SESSION '%04x%04x%04x%04x%04x%04x%04x%04x' \
+            $RANDOM $RANDOM $RANDOM $RANDOM $RANDOM $RANDOM $RANDOM $RANDOM
+          export ATUIN_SESSION ATUIN_SHLVL=$SHLVL
+        fi
+        evalcache ${lib.getExe config.programs.atuin.package} init zsh --disable-up-arrow
+      fi
+    '')
+  ];
 
   # Symlink dotfiles/configs/* (OS-independent ones only. Mac-only = sketchybar/karabiner go to home/darwin.nix)
   home.file.".config/gh/config.yml".source = ../../../configs/cli/gh/config.yml;
