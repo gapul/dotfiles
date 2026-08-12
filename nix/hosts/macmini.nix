@@ -31,10 +31,6 @@
       # confirm the AI stack still comes up — moving them blind would break a headless machine.
       "ffmpeg" # audio/video conversion (preprocessing for transcribe/tts/voice-clone/audio-separation)
       "aria2" # self-healing multi-connection DL for large models (macmini direct hf-mirror/GitHub)
-      "socat" # work around apple container's host-port publishing bug (host->containerIP forwarding)
-      "container" # (a) Apple's first-party container runtime. not in nixpkgs (Open WebUI/AnythingLLM/Minecraft).
-      # First run only needs runtime start + kernel setup: `container system start` /
-      # `container system kernel set --recommended` (can't be declared; manual or ai-stack.sh).
     ];
     casks = [
       # Remote GUI for headless maintenance. Used only for GUI work SSH can't cover
@@ -107,6 +103,55 @@
         HOME = "/Users/${user.username}";
         XDG_STATE_HOME = "/Users/${user.username}/.local/state";
       };
+    };
+  };
+
+  # Paper, run straight on macOS as its own user rather than in a container.
+  #
+  # It used to be an Apple container, which bought the itzg image's conveniences and cost far more:
+  # published ports never actually forwarded (the host side accepts then resets, TCP included, so
+  # nobody could ever join), ENABLE_AUTOPAUSE could not start knockd on the guest interface, and the
+  # guest kernel meant ~3.2G resident no matter how small the JVM heap was. Native, the same world
+  # sits at ~1.2G and binds the port itself. With this the mini has no containers left at all.
+  #
+  # The jar is pinned on purpose: a server that upgrades itself locks every player out until they
+  # all update their client. Bumping it means dropping the new jar in and editing this line.
+  launchd.daemons.minecraft = {
+    serviceConfig = {
+      ProgramArguments = [
+        "${pkgs.temurin-bin-25}/bin/java"
+        # Aikar's flags, minus -XX:+AlwaysPreTouch and with a small -Xms. Pre-touching commits the
+        # whole heap at boot, which is the right trade for a dedicated box and the wrong one here:
+        # this server is empty most of the time and shares 24G with the AI stack.
+        "-Xms512M"
+        "-Xmx2G"
+        "-XX:+UseG1GC"
+        "-XX:+ParallelRefProcEnabled"
+        "-XX:MaxGCPauseMillis=200"
+        "-XX:+UnlockExperimentalVMOptions"
+        "-XX:+DisableExplicitGC"
+        "-XX:G1NewSizePercent=30"
+        "-XX:G1MaxNewSizePercent=40"
+        "-XX:G1HeapRegionSize=8M"
+        "-XX:G1ReservePercent=20"
+        "-XX:G1HeapWastePercent=5"
+        "-XX:G1MixedGCCountTarget=4"
+        "-XX:InitiatingHeapOccupancyPercent=15"
+        "-XX:G1MixedGCLiveThresholdPercent=90"
+        "-XX:G1RSetUpdatingPauseTimePercent=5"
+        "-XX:SurvivorRatio=32"
+        "-XX:+PerfDisableSharedMem"
+        "-XX:MaxTenuringThreshold=1"
+        "-jar"
+        "paper-26.1.2-74.jar"
+        "--nogui"
+      ];
+      UserName = "mcsrv";
+      WorkingDirectory = "/Users/mcsrv/server";
+      RunAtLoad = true;
+      KeepAlive = true;
+      StandardOutPath = "/Users/mcsrv/server/logs/launchd.log";
+      StandardErrorPath = "/Users/mcsrv/server/logs/launchd.log";
     };
   };
 
