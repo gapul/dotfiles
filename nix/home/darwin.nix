@@ -81,9 +81,9 @@ in
 
   # Append Mac-specific zsh init (added after common's initContent)
   programs.zsh.initContent = lib.mkAfter ''
-    if [[ -f /opt/homebrew/bin/brew ]]; then
-      eval "$(/opt/homebrew/bin/brew shellenv)"
-    fi
+    # (No brew shellenv here: /etc/zshrc runs one before this file is read, and by then
+    #  /opt/homebrew/bin leads PATH, so a second call always returned an empty string.
+    #  It was one process spawn per shell for nothing.)
 
     # Package manager priority (nix > homebrew) applied to PATH itself: brew shellenv prepends
     # /opt/homebrew/bin, which used to put brew ahead of the nix profile, so anything present on both
