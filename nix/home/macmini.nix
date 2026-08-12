@@ -31,6 +31,10 @@ in
   # (rebuild steps in configs/macmini/bootstrap.sh and README).
 
   home.packages = [
+    # The study tutor renders plans and handouts with typst (show.py in the sandbox looks it
+    # up under /nix/store). Declared here so a garbage collection can't take it away.
+    pkgs.typst
+
     # ccm: default Claude Code launch form on the mac mini. Permission prompts are kept.
     # Don't default --dangerously-skip-permissions even in non-interactive environments, because
     # prompt injection from external content would directly become arbitrary command execution rights.
