@@ -82,11 +82,16 @@ write_ext_displays() {
   # 「メイン = メニューバーを持つ画面」なので、内蔵を主にしている限り内蔵が外れる。
   # (外部をメインにしている場合は大小が逆になる。そのときは System Settings 側の
   #  主ディスプレイを戻すか、内蔵/外部の寸法定義を入れ替えること)
-  local json ext
-  json=$("$SB" --query displays 2>/dev/null)
-  # ディスプレイスリープ中などは空配列が返る。前回値を残したいので触らない。
+  # ディスプレイスリープ中や抜き差しの直後は空配列が返る。前回値を消さずにリトライする
+  # (諦めて古い番号を残すと、その後は構成ハッシュが動かないので直る機会が来ない)。
+  local json ext i
+  for i in 1 2 3 4 5 6; do
+    json=$("$SB" --query displays 2>/dev/null)
+    [ -n "$json" ] && [ "$(echo "$json" | tr -d '[:space:]')" != "[]" ] && break
+    json=""
+    sleep 1
+  done
   [ -z "$json" ] && return 1
-  [ "$(echo "$json" | tr -d '[:space:]')" = "[]" ] && return 1
 
   ext=$(echo "$json" | "$JQ" -r '[.[] | select(.frame.x != 0 or .frame.y != 0) | ."arrangement-id"] | join(",")')
   printf '%s' "$ext" > "$EXT_FILE.tmp"

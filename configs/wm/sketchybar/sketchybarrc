@@ -44,13 +44,13 @@ fi
 REF_BAND=37.4
 
 # 主ディスプレイの帯は frame と visibleFrame の差で取れる (ノッチ機ならノッチの高さ)。
-MENU_H=$(swift - <<'SWIFT' 2>/dev/null
+read -r MENU_H DISPLAY_COUNT <<<"$(swift - <<'SWIFT' 2>/dev/null
 import AppKit
 // AppKit 座標では主ディスプレイの原点が (0,0)
 let s = NSScreen.screens.first { $0.frame.origin == .zero } ?? NSScreen.screens.first
-if let s { print(Int(s.frame.maxY - s.visibleFrame.maxY)) }
+if let s { print(Int(s.frame.maxY - s.visibleFrame.maxY), NSScreen.screens.count) }
 SWIFT
-)
+)"
 
 # 外部モニタの帯は取得できない: macOS は外部ディスプレイのメニューバー領域を visibleFrame に
 # 反映しない (自動非表示をオフにしても frame と一致したまま。実測済み)。
@@ -95,7 +95,14 @@ BRACKET_BG_HEIGHT=$(sc 30)
 # ext はそれ以外の全ディスプレイ。番号は arrangement-id なので固定値では書けず、
 # display_watch.sh がディスプレイ構成変化のたびに再計算してキャッシュしている。
 if [ "$SB_PROFILE" = "ext" ]; then
-  BAR_DISPLAY=$(cat "$EXT_DISPLAY_FILE" 2>/dev/null)
+  # キャッシュは「前回ディスプレイ構成が変わった時点」の番号なので、今この瞬間に
+  # 存在しない番号が残っていることがある (外したときに --query displays が一時的に
+  # 空を返すと display_watch は上書きを見送るため)。存在しない番号を渡すと
+  # sketchybar はバーを内蔵側に出してしまうので、実在するディスプレイ数で切り落とす。
+  BAR_DISPLAY=$(
+    cat "$EXT_DISPLAY_FILE" 2>/dev/null | tr ',' '\n' |
+      awk -v n="${DISPLAY_COUNT:-1}" 'NF && $1 + 0 >= 1 && $1 + 0 <= n' | paste -sd, -
+  )
   # 外部モニタが無い / キャッシュ未生成のときは描かない。
   # (display 未指定の既定は all なので、これが無いと内蔵に小さいバーが二重に出る)
   if [ -z "$BAR_DISPLAY" ]; then
