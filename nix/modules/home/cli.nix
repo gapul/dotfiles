@@ -100,7 +100,9 @@
   # ~/.config/starship.toml and collide with the symlink, so settings is left empty.
   programs.starship = {
     enable = true;
-    enableZshIntegration = true;
+    # Same reason as atuin/direnv below: the generated `eval "$(starship init zsh)"` is the
+    # single most expensive line left in the rc (~16ms). Emitted through evalcache instead.
+    enableZshIntegration = false;
   };
 
   programs.zoxide = {
@@ -161,6 +163,9 @@
     evalcache ${lib.getExe config.programs.direnv.package} hook zsh
     if [[ $options[zle] = on ]]; then
       evalcache ${lib.getExe config.programs.atuin.package} init zsh --disable-up-arrow
+    fi
+    if [[ $TERM != "dumb" ]]; then
+      evalcache ${lib.getExe config.programs.starship.package} init zsh
     fi
   '';
 

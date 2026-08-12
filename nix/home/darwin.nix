@@ -34,6 +34,16 @@ in
 
   home.sessionVariables = {
     HOMEBREW_NO_ANALYTICS = "1";
+    # What `brew shellenv` used to export, declared instead of spawning brew every shell.
+    # See the interactiveShellInit override in hosts/darwin.nix for why it is gone.
+    # Its PATH work was already redundant (home.sessionPath + /etc/zprofile's path_helper
+    # produce a byte-identical PATH), so only these are left.
+    # ponytail: pinned to the /opt/homebrew prefix this machine has. If brew ever moves or
+    #           starts exporting something new, `brew shellenv` is the thing to diff against.
+    HOMEBREW_PREFIX = "/opt/homebrew";
+    HOMEBREW_CELLAR = "/opt/homebrew/Cellar";
+    HOMEBREW_REPOSITORY = "/opt/homebrew/Library/.homebrew-is-managed-by-nix";
+    INFOPATH = "/opt/homebrew/share/info:";
     # NOTE: brew's trust.json can't be XDG-ified. The activation brew bundle
     # strips XDG_CONFIG_HOME via `sudo --preserve-env=PATH --set-home` and always reads ~/.homebrew.
     # Also, brew prefers XDG_CONFIG_HOME over HOMEBREW_USER_CONFIG_HOME, so the interactive shell's
@@ -78,6 +88,13 @@ in
     "${config.home.homeDirectory}/Library/pnpm"
     "${config.home.homeDirectory}/Library/pnpm/bin"
   ];
+
+  # The other half of what `brew shellenv` did: its zsh completions (_deno, _ghostty, _mpv,
+  # _tailscale, _yt-dlp …). mkBefore puts it ahead of the compinit in modules/home/shell.nix,
+  # which is the only ordering that matters here.
+  programs.zsh.completionInit = lib.mkBefore ''
+    fpath=(/opt/homebrew/share/zsh/site-functions $fpath)
+  '';
 
   # Append Mac-specific zsh init (added after common's initContent)
   programs.zsh.initContent = lib.mkAfter ''
