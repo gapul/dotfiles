@@ -84,7 +84,8 @@ in
 
       # Create git worktrees in sibling directories and jump there via `git wt <branch>`.
       # Keep git-wt's wrapper, then extend only the PR checkout of `git wtpr <PR>`.
-      eval "$(git wt --init zsh)"
+      # git wt と git-wt は同じ出力なので、キャッシュキーが git 本体に化けない後者を叩く。
+      evalcache git-wt --init zsh
       functions[git-wt-shell]=$functions[git]
       function git() {
         if [[ "$1" == "wtpr" ]]; then
@@ -104,7 +105,7 @@ in
 
       # Inspect dangerous URLs, pipe-to-shell, and obfuscated payloads before running.
       # Default policy blocks high-risk and warns on medium-risk; not always strict.
-      eval "$(tirith init --shell zsh)"
+      evalcache tirith init --shell zsh
 
       # The Codex TUI has no system theme, so pick the custom Rosé Pine / Dawn tmTheme
       # matching the OS appearance at startup.
