@@ -1,4 +1,4 @@
-# CLI tools component (ECS: profile). bat/lazygit/eza/starship/zoxide/fzf/atuin/direnv.
+# CLI tools component (ECS: profile). bat/lazygit/eza/zoxide/fzf/atuin/direnv.
 {
   config,
   pkgs,
@@ -95,16 +95,6 @@
     extraOptions = [ "--group-directories-first" ];
   };
 
-  # The true source of the starship config is configs/shell/starship.toml (symlinked via home.file below).
-  # Adding programs.starship.settings here would make home-manager generate the same
-  # ~/.config/starship.toml and collide with the symlink, so settings is left empty.
-  programs.starship = {
-    enable = true;
-    # Same reason as atuin/direnv below: the generated `eval "$(starship init zsh)"` is the
-    # single most expensive line left in the rc (~16ms). Emitted through evalcache instead.
-    enableZshIntegration = false;
-  };
-
   programs.zoxide = {
     enable = true;
     enableZshIntegration = true;
@@ -164,13 +154,9 @@
     if [[ $options[zle] = on ]]; then
       evalcache ${lib.getExe config.programs.atuin.package} init zsh --disable-up-arrow
     fi
-    if [[ $TERM != "dumb" ]]; then
-      evalcache ${lib.getExe config.programs.starship.package} init zsh
-    fi
   '';
 
   # Symlink dotfiles/configs/* (OS-independent ones only. Mac-only = sketchybar/karabiner go to home/darwin.nix)
-  home.file.".config/starship.toml".source = ../../../configs/shell/starship.toml;
   home.file.".config/gh/config.yml".source = ../../../configs/cli/gh/config.yml;
   # gh-dash / slk: hand-written configs that lived only on the machine until 2026-08.
   # gh-dash rewrites its config only when you edit it from the TUI, and slk's is a static
