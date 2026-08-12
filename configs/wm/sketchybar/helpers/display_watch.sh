@@ -50,6 +50,32 @@ write_map() {
   mv "$MAP_FILE.tmp" "$MAP_FILE"
 }
 
+# space アイテムの display 割り当てだけを貼り直す。
+# ワークスペースがモニタ間を移ったときは、バーを丸ごと読み直さなくてもこれで足りる。
+sync_space_displays() {
+  local args=()
+  local ws sb
+  while IFS=$'\t' read -r ws sb; do
+    [ -n "$ws" ] && [ -n "$sb" ] || continue
+    args+=(--set "space.$ws" "display=$sb")
+  done < <(
+    "$OMNIWMCTL" query workspaces --format json 2>/dev/null |
+      "$JQ" -r '.result.payload.workspaces[] | "\(.rawName)\t\(.display.id | sub("^display:"; ""))"' |
+      while IFS=$'\t' read -r name mon; do
+        # WM のモニタ ID -> sketchybar の display index (map が無ければ同じ番号とみなす)
+        sb=$(awk -F: -v m="$mon" '$1 == m { print $2; exit }' "$MAP_FILE" 2>/dev/null)
+        printf '%s\t%s\n' "$name" "${sb:-$mon}"
+      done
+  )
+  [ ${#args[@]} -gt 0 ] && "$SB_ALL" "${args[@]}"
+}
+
+# ワークスペースがどのモニタに属しているかの一覧。中身が変わったら貼り直す。
+wm_workspace_display_signature() {
+  "$OMNIWMCTL" query workspaces --fields raw-name,display --format tsv 2>/dev/null |
+    shasum | cut -d' ' -f1
+}
+
 write_ext_displays() {
   # 外部モニタ用インスタンス (sketchybar-ext) が描くディスプレイ番号。
   # CG 座標ではメインディスプレイの原点が必ず (0,0) なので、それ以外を外部とみなす。
@@ -73,18 +99,34 @@ write_ext_displays
 "$SB_ALL" --reload
 
 prev=""
+dp_prev=""
 while :; do
   if [ -x "$DP" ]; then
-    cur=$("$DP" list 2>/dev/null | grep -E "^(Persistent screen id|Origin|Resolution|Enabled):" | shasum | cut -d' ' -f1)
+    dp_cur=$("$DP" list 2>/dev/null | grep -E "^(Persistent screen id|Origin|Resolution|Enabled):" | shasum | cut -d' ' -f1)
   else
-    cur=""
+    dp_cur=""
   fi
+  cur="$dp_cur"
+  # ディスプレイ構成が同じでも、ワークスペースが別モニタへ移ることがある。
+  # 外部モニタがスリープすると OmniWM は secondary 付けのワークスペースを内蔵へ引き取り、
+  # 復帰しても displayplacer から見た構成は変わらないので、この監視だけでは reload が走らない。
+  # その間に bar を読み直すと space アイテムの display 割り当てが内蔵のまま焼き付き、
+  # 外部のバーからワークスペースが消えたままになる (実際に起きた)。マッピングも一緒に見る。
+  cur="$cur $(wm_workspace_display_signature)"
   if [ -n "$prev" ] && [ "$cur" != "$prev" ]; then
     # 構成変化: マッピングを更新してから reload
     write_map
     write_ext_displays
-    "$SB_ALL" --reload
+    if [ "$dp_cur" != "$dp_prev" ]; then
+      # ディスプレイ自体が増減した: バーの描画先も変わるので読み直す
+      "$SB_ALL" --reload
+    else
+      # ワークスペースがモニタ間を移っただけ: reload は swift 起動を挟んで数秒かかるので、
+      # space アイテムの display 割り当てだけ貼り直す
+      sync_space_displays
+    fi
   fi
   prev="$cur"
+  dp_prev="$dp_cur"
   sleep 3
 done
