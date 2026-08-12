@@ -3,7 +3,7 @@
 keystats=(
   icon=􀇳
   icon.font="$FONT:Bold:$(scf 13.0)"
-  icon.padding_right=2
+  icon.padding_right=$(sc 1.34)
   label.font="$FONT:Semibold:$(scf 13.0)"
   label.color=$LABEL_COLOR
   script="$PLUGIN_DIR/keystats.sh"
