@@ -10,7 +10,14 @@ H=$HOME
 AI_BIND_ADDR="${AI_BIND_ADDR:-127.0.0.1}"
 up(){ curl -s --max-time 3 -o /dev/null "$1"; }
 
-start_mc(){ container run -d --name mc-server --memory 5g --dns 1.1.1.1 -e EULA=TRUE -e TYPE=PAPER -e VERSION=LATEST -e MEMORY=4G -e ONLINE_MODE=TRUE -p 25565:25565 -v "$H/.local/share/minecraft:/data" docker.io/itzg/minecraft-server:latest >/dev/null 2>&1; }
+# マイクラ。VERSION は固定する。LATEST だと再起動のたびに本体が上がって、遊ぶ日に
+# 全員がクライアントを合わせるまで入れなくなる。ヒープ 2G / view 8 / sim 5 は7人想定。
+# ENABLE_AUTOPAUSE は使えない: knockd が eth0 に attach できず (CAP_NET_RAW と
+# CAP_NET_ADMIN を足しても不可)、無人でも凍らない。止めたいときは container stop。
+start_mc(){ container run -d --name mc-server --cpus 4 --memory 3g --dns 1.1.1.1 \
+  -e EULA=TRUE -e TYPE=PAPER -e VERSION=26.1.2 -e MEMORY=2G -e USE_AIKAR_FLAGS=TRUE \
+  -e ONLINE_MODE=TRUE -e VIEW_DISTANCE=8 -e SIMULATION_DISTANCE=5 -e MAX_PLAYERS=8 \
+  -p 25565:25565 -v "$H/.local/share/minecraft:/data" docker.io/itzg/minecraft-server:latest >/dev/null 2>&1; }
 
 ensure_container(){ # name start_func
   container list 2>/dev/null | awk -v n="$1" "\$1==n{print \$5}" | grep -q running && return
