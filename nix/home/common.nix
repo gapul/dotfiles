@@ -73,6 +73,7 @@ in
 
       # PlatformIO: move the default ~/.platformio (GBs from toolchains etc.) to XDG data.
       PLATFORMIO_CORE_DIR = "${config.xdg.dataHome}/platformio";
+
       # Dart/Flutter: move the pub package cache ~/.pub-cache to XDG cache (re-fetchable).
       PUB_CACHE = "${config.xdg.cacheHome}/pub";
       # matplotlib: not XDG-aware on macOS, so set it explicitly via MPLCONFIGDIR.

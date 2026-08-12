@@ -86,6 +86,30 @@
     };
   };
 
+  # auto-fix パイプライン (GitHub issue → macmini の Claude Code → PR → CI → 自動マージ) が
+  # 生きているかを1時間ごとに確かめる。監視対象と同じ GitHub Actions では回さない、という
+  # 判断はスクリプト側の冒頭に書いてある。
+  #
+  # 元は手書きの plist と $HOME/autofix-monitor のスクリプトだった。中身は変えずに store へ
+  # 移し、状態(ログと Claude の出力)だけ XDG の state 配下に分けている。
+  launchd.agents.autofix-monitor = {
+    serviceConfig = {
+      ProgramArguments = [
+        "${pkgs.bash}/bin/bash"
+        "${../../configs/macmini/autofix-monitor/monitor.sh}"
+      ];
+      RunAtLoad = true;
+      StartInterval = 3600;
+      StandardOutPath = "/Users/${user.username}/.local/state/autofix-monitor/stdout.log";
+      StandardErrorPath = "/Users/${user.username}/.local/state/autofix-monitor/stderr.log";
+      EnvironmentVariables = {
+        # launchd から起動されるとシェルの環境が入らないので、スクリプトが要る分だけ渡す。
+        HOME = "/Users/${user.username}";
+        XDG_STATE_HOME = "/Users/${user.username}/.local/state";
+      };
+    };
+  };
+
   # Keep the tunnel up as a daemon (root) so it survives logout, unlike the Ollama agent which
   # needs a GUI session for Metal. Reads /usr/local/etc/manabi-tunnel.env for TUNNEL_TOKEN, which
   # is issued per-tunnel in the Cloudflare dashboard and can't live in the nix store.
