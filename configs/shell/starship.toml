@@ -6,7 +6,6 @@ scan_timeout = 10
 format = """
 $directory\
 $git_branch\
-$git_status\
 $cmd_duration\
 $character"""
 
@@ -27,22 +26,13 @@ style   = "yellow"
 [git_branch]
 symbol = " "
 style  = "purple"
-format = " [$symbol$branch]($style)"
+# 末尾スペースは git_status を消した分の区切り（旧: git_status が " " を出していた）
+format = " [$symbol$branch]($style) "
 
-# 軽量版 git_status：ahead/behind と dirty 判定のみ
+# git_status はプロンプト描画時間の大半を占めるので無効化（実測 44ms / 全体 20ms 中の最大要因）。
+# dirty 状態や ahead/behind は git status / lazygit で見る。
 [git_status]
-ahead     = "⇡${count}"
-behind    = "⇣${count}"
-diverged  = "⇕"
-conflicted = "✘"
-modified  = "*"
-staged    = "+"
-untracked = ""           # untracked は無効化（モノレポで重い元凶）
-stashed   = ""
-deleted   = ""
-renamed   = ""
-style     = "red"
-format    = " [$all_status$ahead_behind]($style)"
+disabled = true
 
 # 言語バージョン検出は全部 OFF（必要なら個別に true 化）
 [nodejs]
