@@ -44,8 +44,9 @@ let
       # 書類も projects/ 配下へ集めてある(~/Documents は macOS の TCC が ssh と
       # launchd からの走査を拒むため、この機械では使わない)。
       "${home}/Developer"
-      # AI 資産の設定と台本。モデルの重みは下の exclude で外す。
-      "${home}/ai"
+      # ~/ai は 2026-08-12 に畳んだ。中身は宣言済みのレイアウトどおりに散らしてあり、
+      # manabi-dashboard は Developer/projects/ 配下(この行が拾う)、止まった mopidy-dev は
+      # ~/tmp へ退避した。パスとして残すと lstat が失敗して毎朝 ntfy が鳴る。
       # ここが今まで完全に無防備だった。Claude Code の履歴 (~/.config/claude) や
       # 各ツールの状態が入っている。store へのシンボリックリンクは中身を追わない。
       "${home}/.config"
@@ -58,6 +59,13 @@ let
       "**/*.safetensors"
       "**/*.bin"
       "**/models"
+      # models だけでは GPT-SoVITS の pretrained_models を拾えない。s2G488k.pth や
+      # s1v3.ckpt、bigvgan_generator.pt が素通りして、落とし直せる配布物 4.3GiB を
+      # 毎日 Google Drive へ運んでいた(2026-08-12 実測。これで 100MB 弱まで落ちる)。
+      "**/pretrained_models"
+      "**/*.pth"
+      "**/*.ckpt"
+      "**/*.pt"
       "**/node_modules"
       "**/.venv"
       "**/.direnv"
