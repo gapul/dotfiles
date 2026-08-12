@@ -190,6 +190,18 @@
     # once, which buys nothing and keeps the radio, its driver extension and wifianalyticsd busy.
     # If the cable ever dies this machine needs hands anyway — it is three metres away.
     /usr/sbin/networksetup -setairportpower en1 off >/dev/null 2>&1 || true
+    # Google's updater, removed. Chrome here is an automation target that gets upgraded by hand
+    # with the rest of the declaration, so a resident agent waking up to check for versions is
+    # noise. Chrome re-installs Keystone whenever it is launched, so this runs every activation
+    # rather than once; checkInterval 0 keeps it quiet in between.
+    guiuid=$(/usr/bin/id -u ${user.username})
+    /usr/bin/sudo -u ${user.username} /usr/bin/defaults write com.google.Keystone.Agent checkInterval 0 >/dev/null 2>&1 || true
+    for label in com.google.GoogleUpdater.wake com.google.keystone.agent com.google.keystone.xpcservice; do
+      /bin/launchctl bootout "gui/$guiuid/$label" >/dev/null 2>&1 || true
+      /bin/rm -f "/Users/${user.username}/Library/LaunchAgents/$label.plist" || true
+    done
+    /bin/rm -rf "/Users/${user.username}/Library/Google" \
+      "/Users/${user.username}/Library/Application Support/Google/GoogleUpdater" || true
     # No Spotlight on a machine nobody searches from. mds_stores alone held ~100M and the indexer
     # keeps walking the disk; the agents here search with grep/ripgrep, not mdfind.
     /usr/bin/mdutil -a -i off >/dev/null 2>&1 || true
