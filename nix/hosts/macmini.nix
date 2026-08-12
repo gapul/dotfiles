@@ -183,6 +183,13 @@
     /usr/bin/pmset -a disablesleep 1   >/dev/null 2>&1 || true
     # Enable Remote Login (SSH). Key auth reuses the existing setup (Bitwarden agent etc.) as-is.
     /usr/sbin/systemsetup -setremotelogin on >/dev/null 2>&1 || true
+    # No Spotlight on a machine nobody searches from. mds_stores alone held ~100M and the indexer
+    # keeps walking the disk; the agents here search with grep/ripgrep, not mdfind.
+    /usr/bin/mdutil -a -i off >/dev/null 2>&1 || true
+    # The desktop still needs a login session (Metal wants one), but not a moving picture in it:
+    # the default aerial wallpaper burned ~17% CPU between the extension, its video decoder and
+    # WindowServer, on a screen no one looks at. Nothing declarative sets this — it is done once
+    # with NSWorkspace.setDesktopImageURL as the logged-in user and persists.
     # The Hermes agent's inference adapter (see configs/macmini/hermes/README.md). It lives in
     # another user's home, which home-manager can't reach, and hermes never rewrites it — so the
     # declaration is the source of truth and gets laid down on every activation.
