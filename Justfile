@@ -597,6 +597,7 @@ doctor format="":
     check "Ghostty registered" 'osascript -e "tell application \"System Events\" to get name of login items" | grep -q Ghostty'
     echo "== Key apps running =="
     check "sketchybar" 'pgrep -fq "/opt/homebrew/opt/sketchybar/bin/sketchybar"'
+    check "sketchybar-ext (external monitor bar)" 'pgrep -fq "sketchybar-ext"'
     check "OmniWM" 'pgrep -xq OmniWM'
     check "Karabiner Core-Service" 'pgrep -fq Karabiner-Core-Service'
     echo "== dotfiles =="
@@ -612,6 +613,7 @@ doctor format="":
     # If the bar/WM stack is down, surface a recovery path (to the restart recipe)
     down=()
     pgrep -fq "/opt/homebrew/opt/sketchybar/bin/sketchybar" || down+=(sketchybar)
+    pgrep -fq "sketchybar-ext" || down+=(sketchybar-ext)
     pgrep -xq OmniWM || down+=(omniwm)
     pgrep -xq borders || down+=(borders)
     if [ ${#down[@]} -gt 0 ]; then
@@ -865,7 +867,12 @@ restart what="bar":
     set -u
     uid=$(id -u)
 
-    sb() { echo "-> sketchybar";  launchctl kickstart -k "gui/$uid/org.nix-community.home.sketchybar"; }
+    # 2 instances: the built-in bar and the external-monitor one (see darwin-chrome.nix)
+    sb() {
+      echo "-> sketchybar (main + ext)"
+      launchctl kickstart -k "gui/$uid/org.nix-community.home.sketchybar"
+      launchctl kickstart -k "gui/$uid/org.nix-community.home.sketchybar-ext"
+    }
     bd() { echo "-> borders";     launchctl kickstart -k "gui/$uid/org.nix-community.home.borders"; }
     om() {
       echo "-> OmniWM (full restart)"

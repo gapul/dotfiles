@@ -3,14 +3,18 @@
 # ディスプレイ構成の変化を監視し、
 #   1) omniwm monitor id -> sketchybar display index のマッピングを再計算
 #      → /tmp/sketchybar-omniwm-display.map に保存
-#   2) sketchybar --reload を発火
+#   2) 外部モニタ (メインディスプレイ以外) の display index 一覧を再計算
+#      → /tmp/sketchybar-ext-displays に保存 (ext インスタンスの描画先)
+#   3) sketchybar --reload を発火 (両インスタンス)
 #
 # sketchybar --reload 中の sketchybarrc 文脈からは sketchybar --query が
 # 空を返すため、マッピングは "reload 前" にここで計算してキャッシュする。
 
 MAP_FILE=/tmp/sketchybar-omniwm-display.map
+EXT_FILE=/tmp/sketchybar-ext-displays
 DP=/opt/homebrew/bin/displayplacer
 SB=/opt/homebrew/bin/sketchybar
+SB_ALL="${BASH_SOURCE%/*}/sb-all.sh"
 JQ="$HOME/.nix-profile/bin/jq" # jq は nix 管理 (homebrew には無い)
 # WM 照会は helpers/wm.sh に集約
 # shellcheck source=/dev/null
@@ -46,9 +50,27 @@ write_map() {
   mv "$MAP_FILE.tmp" "$MAP_FILE"
 }
 
+write_ext_displays() {
+  # 外部モニタ用インスタンス (sketchybar-ext) が描くディスプレイ番号。
+  # CG 座標ではメインディスプレイの原点が必ず (0,0) なので、それ以外を外部とみなす。
+  # 「メイン = メニューバーを持つ画面」なので、内蔵を主にしている限り内蔵が外れる。
+  # (外部をメインにしている場合は大小が逆になる。そのときは System Settings 側の
+  #  主ディスプレイを戻すか、内蔵/外部の寸法定義を入れ替えること)
+  local json ext
+  json=$("$SB" --query displays 2>/dev/null)
+  # ディスプレイスリープ中などは空配列が返る。前回値を残したいので触らない。
+  [ -z "$json" ] && return 1
+  [ "$(echo "$json" | tr -d '[:space:]')" = "[]" ] && return 1
+
+  ext=$(echo "$json" | "$JQ" -r '[.[] | select(.frame.x != 0 or .frame.y != 0) | ."arrangement-id"] | join(",")')
+  printf '%s' "$ext" > "$EXT_FILE.tmp"
+  mv "$EXT_FILE.tmp" "$EXT_FILE"
+}
+
 # 初回は必ず書き出す
 write_map
-"$SB" --reload >/dev/null 2>&1
+write_ext_displays
+"$SB_ALL" --reload
 
 prev=""
 while :; do
@@ -60,7 +82,8 @@ while :; do
   if [ -n "$prev" ] && [ "$cur" != "$prev" ]; then
     # 構成変化: マッピングを更新してから reload
     write_map
-    "$SB" --reload >/dev/null 2>&1
+    write_ext_displays
+    "$SB_ALL" --reload
   fi
   prev="$cur"
   sleep 3
