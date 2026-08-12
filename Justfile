@@ -374,8 +374,12 @@ _maintain-macos:
     # terminal is unreadable.
     # Same host resolution as _rebuild-macos: the username is only right on the workstation.
     name="$(cat "${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/host" 2>/dev/null || id -un)"
+    # Only asking whether the host has a standalone home config. Evaluating activationPackage to
+    # find out is the same full home-manager eval the build below does anyway — a minute idle here
+    # on a quiet machine, and it was still going after twelve on a loaded one (the source-to-store
+    # writer is one daemon round trip per file). `?` on the attrset never forces the value.
     home_attr=""
-    nix eval --raw "{{flake}}#homeConfigurations.$name.activationPackage.outPath" >/dev/null 2>&1 \
+    [ "$(nix eval "{{flake}}#homeConfigurations" --apply "a: a ? \"$name\"" 2>/dev/null)" = true ] \
       && home_attr="{{flake}}#homeConfigurations.$name.activationPackage"
     nix_out=$(mktemp); brew_out=$(mktemp); tools_out=$(mktemp)
     nix build --no-link \
