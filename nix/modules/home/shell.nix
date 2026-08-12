@@ -35,6 +35,9 @@ in
         compinit -d "$_zcompdump"
       fi
       unset _zcompdump
+      # bash-style completions (`complete` / `compgen`). /etc/zshrc used to set this up,
+      # but it only works once compinit has run, so it belongs here now.
+      autoload -Uz bashcompinit && bashcompinit
     '';
 
     autosuggestion.enable = true;
