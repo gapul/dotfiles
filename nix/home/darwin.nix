@@ -81,8 +81,11 @@ in
 
   # Append Mac-specific zsh init (added after common's initContent)
   programs.zsh.initContent = lib.mkAfter ''
-    if [[ -f /opt/homebrew/bin/brew ]]; then
-      eval "$(/opt/homebrew/bin/brew shellenv)"
+    # brew shellenv itself is idempotent (it bails out once its prefix leads PATH), but the
+    # cached copy has no such guard and would re-prepend FPATH in every nested shell.
+    # Skipping when HOMEBREW_PREFIX is already exported restores that "run once" behaviour.
+    if [[ -f /opt/homebrew/bin/brew && -z ''${HOMEBREW_PREFIX-} ]]; then
+      evalcache /opt/homebrew/bin/brew shellenv
     fi
 
     # Package manager priority (nix > homebrew) applied to PATH itself: brew shellenv prepends
