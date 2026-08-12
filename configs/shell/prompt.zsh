@@ -57,21 +57,43 @@ _prompt_update_dur() {
   fi
 }
 
-# 終了ステータスの色。プロンプト展開時の %(?..) だと precmd 自身の戻り値を拾ってしまう
+# プロンプト末尾の記号。色は直前のコマンドの終了ステータス、形は vi モード。
+#   $ = insert (通常)   ❮ = normal (vicmd)
+# 色をプロンプト展開時の %(?..) で出すと precmd 自身の戻り値を拾ってしまう
 # (ブランチが無いディレクトリで return した瞬間に赤くなる) ので、ここで先に確定させる。
+_prompt_status=0
+_prompt_keymap=main
 _prompt_char='%F{green}$%f'
+_prompt_set_char() {
+  local color symbol
+  (( _prompt_status )) && color=red || color=green
+  [[ $_prompt_keymap == vicmd ]] && symbol='❮' || symbol='$'
+  _prompt_char="%F{$color}${symbol}%f"
+}
+
 _prompt_precmd() {
-  local -i status_=$?
-  if (( status_ )); then
-    _prompt_char='%F{red}$%f'
-  else
-    _prompt_char='%F{green}$%f'
-  fi
+  _prompt_status=$?
+  # zsh は行ごとに main (viins) キーマップへ戻る。precmd はプロンプト描画より前なので
+  # ここで戻しておけば、行頭で reset-prompt を撃つ必要がない。
+  _prompt_keymap=main
+  _prompt_set_char
   _prompt_update_dur
   _prompt_update_git
 }
 add-zsh-hook preexec _prompt_preexec
 add-zsh-hook precmd _prompt_precmd
+
+# モードが変わった瞬間に描き直す。zle -N で zle-keymap-select を直接握ると他の
+# プラグインの同名ウィジェットを潰すので、連鎖する add-zle-hook-widget を使う。
+if [[ -o zle ]]; then
+  autoload -Uz add-zle-hook-widget
+  _prompt_keymap_select() {
+    _prompt_keymap=$KEYMAP
+    _prompt_set_char
+    zle reset-prompt
+  }
+  add-zle-hook-widget keymap-select _prompt_keymap_select
+fi
 
 # %3~ = 末尾 3 階層 (starship の truncation_length = 3 相当)
 PROMPT='%F{cyan}%3~%f${_prompt_git}${_prompt_dur} ${_prompt_char} '

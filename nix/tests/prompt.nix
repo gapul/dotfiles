@@ -56,6 +56,22 @@ pkgs.runCommand "prompt-test"
       true;  _prompt_precmd; [[ $_prompt_char == *green* ]] || { print -u2 "ok status not green"; exit 1 }
       false; _prompt_precmd; [[ $_prompt_char == *red* ]]   || { print -u2 "error status not red"; exit 1 }
 
+      # vi mode: the symbol tracks the keymap, the colour keeps tracking the exit status,
+      # and precmd puts it back to insert because zsh resets the keymap on every new line.
+      vimode() {  # vimode <keymap> <status> <expected symbol> <expected colour>
+        _prompt_keymap=$1 _prompt_status=$2
+        _prompt_set_char
+        [[ $_prompt_char == *"$3"* && $_prompt_char == *"$4"* ]] || {
+          print -u2 "keymap=$1 status=$2: expected [$3/$4], got [$_prompt_char]"; exit 1
+        }
+      }
+      vimode main  0 "\$" green
+      vimode main  1 "\$" red
+      vimode vicmd 0 "❮"  green
+      vimode vicmd 1 "❮"  red
+      _prompt_keymap=vicmd; true; _prompt_precmd
+      [[ $_prompt_char == *"\$"* ]] || { print -u2 "precmd did not return to insert: [$_prompt_char]"; exit 1 }
+
       # Duration only shows from 2s up, and rolls over into minutes.
       _prompt_preexec; SECONDS=$(( SECONDS + 1 ));   _prompt_precmd
       [[ -z $_prompt_dur ]] || { print -u2 "1s should be silent, got [$_prompt_dur]"; exit 1 }
