@@ -21,6 +21,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
       - name: Update flake.lock and open PR
+        id: lock
         uses: DeterminateSystems/update-flake-lock@834c491b2ece4de0bbd00d85214bb5e83b4da5c6 # v28
         with:
           path-to-flake-dir: nix
@@ -29,6 +30,13 @@ jobs:
             dependencies
             automated
           commit-msg: 'chore(nix): update flake.lock'
+      # 人が見て判断する余地の無い更新なので、CI が緑になった時点で入れる。
+      # main は3つの om ci を必須にしているので、auto-merge は実質「CI 緑まで待つ」の意味。
+      - name: Enable auto-merge
+        if: steps.lock.outputs.pull-request-number != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh pr merge --auto --squash "${{ steps.lock.outputs.pull-request-number }}"
 
   update-custom-packages:
     name: update custom packages -> PR
@@ -42,6 +50,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: ./scripts/update-custom-packages.sh
       - name: Open dependency PR
+        id: pkgs
         uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676 # v7
         with:
           branch: automation/custom-packages
@@ -52,3 +61,8 @@ jobs:
             dependencies
             automated
           body: 'Automated version and SHA-256 refresh for slk and Unity CLI.'
+      - name: Enable auto-merge
+        if: steps.pkgs.outputs.pull-request-number != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh pr merge --auto --squash "${{ steps.pkgs.outputs.pull-request-number }}"
