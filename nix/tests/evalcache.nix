@@ -4,7 +4,7 @@
 # gone, and empty output falls back instead of caching a useless file.
 { pkgs }:
 let
-  zshrcCommon = ../../configs/shell/zshrc.common;
+  evalcacheZsh = ../../configs/shell/evalcache.zsh;
 in
 pkgs.runCommand "evalcache-test"
   {
@@ -22,9 +22,8 @@ pkgs.runCommand "evalcache-test"
     : > "$TMPDIR/bin/silent"
     chmod +x "$TMPDIR/bin/greeter" "$TMPDIR/bin/silent"
 
-    # zshrc.common expects an interactive shell (bindkey/zle), so let those warn and move on.
     zsh -f -c '
-      source ${zshrcCommon}
+      source ${evalcacheZsh}
 
       evalcache '"$TMPDIR"'/bin/greeter init zsh
       [[ $EVALCACHE_PROBE == hit ]] || { print -u2 "miss: first call did not evaluate"; exit 1 }
