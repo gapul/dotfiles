@@ -33,10 +33,9 @@
       "aria2" # self-healing multi-connection DL for large models (macmini direct hf-mirror/GitHub)
     ];
     casks = [
-      # Remote GUI for headless maintenance. Used only for GUI work SSH can't cover
-      # (permission-approval dialogs, first-time auto-login setup, etc.). Enabling unattended
-      # access and granting Screen Recording permission (TCC) can't be declared, so do them once via GUI.
-      "rustdesk"
+      # (RustDesk was here for remote GUI. It never got its unattended access or its Screen
+      #  Recording grant, so it had never once been used, while macOS Screen Sharing on :5900
+      #  already covers the same job over the tailnet with nothing to install.)
       # For Claude browser automation (Playwright MCP + claude-login-broker). Driven through the
       # `chrome-automation` wrapper (home/macmini.nix): own profile, windowless, CDP on 9222, and
       # stopped when the job ends. The chrome-launch.sh this comment used to point at never existed.
@@ -184,6 +183,13 @@
     /usr/bin/pmset -a disablesleep 1   >/dev/null 2>&1 || true
     # Enable Remote Login (SSH). Key auth reuses the existing setup (Bitwarden agent etc.) as-is.
     /usr/sbin/systemsetup -setremotelogin on >/dev/null 2>&1 || true
+    # Power Nap wakes the machine for background work it does not need to do; this one never
+    # sleeps in the first place.
+    /usr/bin/pmset -a powernap 0 >/dev/null 2>&1 || true
+    # Wi-Fi off. The mini is wired (en0 is the default route) and was sitting on both networks at
+    # once, which buys nothing and keeps the radio, its driver extension and wifianalyticsd busy.
+    # If the cable ever dies this machine needs hands anyway — it is three metres away.
+    /usr/sbin/networksetup -setairportpower en1 off >/dev/null 2>&1 || true
     # No Spotlight on a machine nobody searches from. mds_stores alone held ~100M and the indexer
     # keeps walking the disk; the agents here search with grep/ripgrep, not mdfind.
     /usr/bin/mdutil -a -i off >/dev/null 2>&1 || true
