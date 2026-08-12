@@ -23,7 +23,7 @@ in
   # Layout follows XDG/ghq (the dedicated ~/ai was retired 2026-07-19):
   #   service bodies -> ~/.local/share/ai-stack/ (HM symlink)
   #   venvs -> ~/.local/share/venvs/, models -> ~/.local/share/models/
-  #   app data -> ~/.local/share/minecraft/ (the two web frontends moved to homeserver)
+  #   (no app data here anymore: the web frontends moved to homeserver, minecraft to its own user)
   #   ComfyUI / GPT-SoVITS -> ~/Developer/github.com/<owner>/<repo> (ghq style)
   #   own projects with no upstream -> ~/Developer/projects/<name>
   #     (~/ai grew two of these back after the retirement; moved out 2026-08-12)
