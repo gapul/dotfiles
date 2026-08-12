@@ -202,8 +202,13 @@
           ++ secrets
           ++ [ ./home/mopidy.nix ]
           ++ station;
-        # headless AI worker (no sops)
-        macminiHeadless = base ++ [ ./home/macmini.nix ];
+        # headless AI worker (no sops). The backup module is separate from the
+        # workstation's because it reads its password and ntfy credentials from
+        # hand-placed files rather than sops, and leaves pruning to the workstation.
+        macminiHeadless = base ++ [
+          ./home/macmini.nix
+          ./home/macmini-backup.nix
+        ];
         wsl = linuxBase ++ [ ./home/wsl.nix ] ++ secrets ++ station;
         linuxServer = linuxBase ++ secrets ++ station;
       };

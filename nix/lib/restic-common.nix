@@ -58,6 +58,15 @@ rec {
       ${builtins.elemAt retentionArgs 0} \
       ${builtins.concatStringsSep " " (builtins.tail retentionArgs)} || true'';
 
+  # Same policy, scoped to the host running it and without prune. For hosts that
+  # write to the shared repository but are not the one that repacks it: prune walks
+  # the whole repository over rclone and takes an exclusive lock, so having a second
+  # host do it buys nothing and collides with the first.
+  forgetOwnHostOnly = ''
+    restic forget --host "$(hostname -s)" \
+      ${builtins.elemAt retentionArgs 0} \
+      ${builtins.concatStringsSep " " (builtins.tail retentionArgs)} || true'';
+
   # Contents of the env file that emits the same values for Justfile / interactive shells.
   #   home-manager places it at ~/.config/restic/env and Justfile's restic_env sources it.
   envFileText = ''
@@ -85,6 +94,9 @@ rec {
       backupPaths,
       extraExcludes ? [ ],
       extraPathPkgs ? [ ],
+      # 間引きの一文。既定は repo 全体を prune する側で、共有リポジトリに書くだけの
+      # ホストは forgetOwnHostOnly を渡す。
+      forgetSnippet ? forgetInvocation,
       notifyBody,
       parseSnapshotTime,
     }:
@@ -156,7 +168,7 @@ rec {
         # --keep-tag archive: exclude cold archives (tagged via just archive with --tag archive) from
         #   the keep policy and retain them forever. Prune only warm (untagged) ones.
         #   (restic also refuses to delete the last snapshot in each group, so double protection)
-        ${forgetInvocation}
+        ${forgetSnippet}
 
         echo "==================== $(date '+%Y-%m-%d %H:%M:%S') backup done (rc=$rc) ===================="
         if [ "$rc" -ne 0 ]; then
