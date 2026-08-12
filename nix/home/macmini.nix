@@ -25,6 +25,8 @@ in
   #   venvs -> ~/.local/share/venvs/, models -> ~/.local/share/models/
   #   app data -> ~/.local/share/{anythingllm,open-webui,minecraft}/
   #   ComfyUI / GPT-SoVITS -> ~/Developer/github.com/<owner>/<repo> (ghq style)
+  #   own projects with no upstream -> ~/Developer/projects/<name>
+  #     (~/ai grew two of these back after the retirement; moved out 2026-08-12)
   # venvs/models/data are non-reproducible assets, so they're managed imperatively
   # (rebuild steps in configs/macmini/bootstrap.sh and README).
 
@@ -90,6 +92,24 @@ in
       KeepAlive = true;
       StandardOutPath = "/tmp/ai-stack.log";
       StandardErrorPath = "/tmp/ai-stack.log";
+    };
+  };
+  # Rebuilds the study dashboard and deploys it to Cloudflare Pages every 15 minutes.
+  # Replaces the last hand-written net.gapul.* plist (2026-08-12). The script stays out
+  # of the store on purpose: its own directory is the wrangler deploy root, so it writes
+  # the generated index.html and media/ next to its source.
+  launchd.agents.manabi-dashboard-refresh = {
+    enable = true;
+    config = {
+      ProgramArguments = [
+        "${config.home.homeDirectory}/Developer/projects/manabi-dashboard/update-dashboard.sh"
+      ];
+      StartInterval = 900;
+      # The deploy pulls from a sandbox user over ssh; letting it fire during login while
+      # the rest of the stack is still coming up just logs a failure.
+      RunAtLoad = false;
+      StandardOutPath = "${config.home.homeDirectory}/Developer/projects/manabi-dashboard/refresh.log";
+      StandardErrorPath = "${config.home.homeDirectory}/Developer/projects/manabi-dashboard/refresh.log";
     };
   };
   launchd.agents.comfyui = {
