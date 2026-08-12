@@ -77,6 +77,12 @@ in
       # stay below, because they depend on tools only this machine has.
       source ${../../../configs/shell/zshrc.common}
 
+      # Prompt. starship was dropped on 2026-08-12: the cwd is the only part that got read,
+      # and it cost a subprocess at every startup plus one at every redraw. Plain zsh covers it.
+      # nssh hosts and Windows still use starship (configs/shell/starship.toml), so that config stays.
+      # If the git branch is wanted back here, vcs_info is the zsh-native way to get it.
+      PROMPT='%F{cyan}%~%f %F{green}$%f '
+
       # jd (just-dotfiles): run the dotfiles just recipes from anywhere (no cd needed).
       #   e.g.: jd rebuild / jd update / jd (no args lists them)
       #   nh already specifies the flake via NH_*_FLAKE env, so it is cwd-independent.
