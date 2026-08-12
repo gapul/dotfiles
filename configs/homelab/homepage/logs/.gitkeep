@@ -1,0 +1,4 @@
+homepage creates /app/config/logs at startup, and the config directory is mounted
+read-only from the nix store, so it cannot. A writable directory is bind-mounted
+over this path instead — but crun cannot create the mountpoint inside a read-only
+mount, so the directory has to exist here. That is all this file is for.
