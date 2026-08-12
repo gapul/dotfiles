@@ -60,15 +60,19 @@ EXT_BAND=30
 
 if [ "$SB_PROFILE" = "ext" ]; then
   BAND=$EXT_BAND
+  # 外部は帯が内蔵の半分ほどなので、寸法どおりに縮めると文字とアイコンが細くなりすぎる。
+  # 余白や pill は相似のまま、文字だけこの係数で持ち上げる (ここが読みやすさの調整つまみ)。
+  FONT_SCALE=1.2
 else
   BAND=$MENU_H
+  FONT_SCALE=0.9
 fi
 # ノッチ無し + メニューバー自動非表示だと差が 0 になるので、通常のメニューバー高さに倒す
 [ "${BAND:-0}" -gt 0 ] 2>/dev/null || BAND=$EXT_BAND
 
 SCALE=$(awk -v b="$BAND" -v r="$REF_BAND" 'BEGIN{printf "%.4f", b/r}')
-# フォントだけの追加係数 (1.0 = 寸法と同じ比率, <1 で控えめに)
-FONT_SCALE=0.9
+# フォントだけの追加係数はプロファイルごと (上の分岐で設定)。
+# 1.0 = 寸法と同じ比率、<1 で控えめに、>1 で大きめに。
 # 整数へ丸めるスケール(寸法用) / 小数1桁のスケール(フォント用, FONT_SCALEを乗算)
 sc()  { awk -v s="$SCALE" -v b="$1" 'BEGIN{printf "%.0f", b*s}'; }
 scf() { awk -v s="$SCALE" -v b="$1" -v f="$FONT_SCALE" 'BEGIN{printf "%.1f", b*s*f}'; }
