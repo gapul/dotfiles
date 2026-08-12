@@ -4,6 +4,7 @@
 # Catalogs to browse. One JSON file each, listing installable wallpapers.
 indexes = [
     "https://github.com/gapul/puddle-shaders/releases/latest/download/index.json",
+    "https://github.com/gapul/puddle-chess/releases/latest/download/index.json",
 ]
 
 # Sources that install without being asked about — prefix match on the whole URL.
@@ -13,10 +14,13 @@ indexes = [
 # Puddle and a dialog is not. That trust is declared here, in advance, or not at all.
 allow = [
     "https://github.com/gapul/puddle-shaders/releases/",
+    # A plugin: native code, loaded into Puddle. Mine, and built from a repository I can read.
+    "https://github.com/gapul/puddle-chess/releases/",
 ]
 
 # What this machine should have. `puddle apply` installs whatever is missing.
 wallpapers = [
     "dotmatrix",
     "worldmap",
+    "puddle-chess",
 ]
