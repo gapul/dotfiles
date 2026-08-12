@@ -11,10 +11,19 @@
 
 {
 
-  # コンテナは root で走るので所有者は root で足りる。
-  systemd.tmpfiles.rules = [
-    "d /var/lib/homelab/homepage-logs 0755 root root -"
-  ];
+  # /app/config は書ける必要がある。homepage は起動時に logs/ を作り、置いていない
+  # 設定 (kubernetes.yaml など) は雛形を自分でコピーしてくるので、store を直接 ro で
+  # 当てると初期化に失敗して 500 を返す。宣言はリポジトリ側のままにして、起動ごとに
+  # 書ける場所へ配り直す。手で編集しても次の起動で戻る、が狙いどおりの挙動。
+  #
+  # yaml だけ消してから配るので、homepage が作った雛形も毎回作り直される。logs/ は
+  # ディレクトリなので残る。
+  systemd.services."podman-homepage".preStart = lib.mkAfter ''
+    install -d -m 755 /var/lib/homelab/homepage
+    find /var/lib/homelab/homepage -maxdepth 1 -type f -name "*.yaml" -delete
+    cp -L ${../../configs/homelab/homepage}/*.yaml /var/lib/homelab/homepage/
+    chmod u+w /var/lib/homelab/homepage/*.yaml
+  '';
 
   # Containers
   virtualisation.oci-containers.containers."glances" = {
@@ -51,14 +60,9 @@
       "HOMEPAGE_ALLOWED_HOSTS" = "*";
     };
     volumes = [
-      # 設定はリポジトリ(configs/homelab/homepage)から store 経由で配る。
-      # 以前は /var/lib 側の可変ファイルで、移行のたびに旧ホストの IP を手で
-      # 直す作業が発生していた。
-      "${../../configs/homelab/homepage}:/app/config:ro"
-      # homepage は起動時に /app/config/logs を自分で作る。store は読み取り専用なので
-      # mkdir が ENOENT で落ち、トップページが 500 を返していた(設定を store へ移した
-      # 時点からずっと)。設定は宣言のまま据え置いて、ログだけ書ける場所を重ねる。
-      "/var/lib/homelab/homepage-logs:/app/config/logs:rw"
+      # 中身は preStart がリポジトリ(configs/homelab/homepage)から配る。以前は
+      # /var/lib 側の手編集ファイルで、移行のたびに旧ホストの IP を直す作業が出ていた。
+      "/var/lib/homelab/homepage:/app/config:rw"
       # podman's socket speaks the Docker API, but homepage's config/docker.yaml and
       # glances both look for it at the conventional path, so keep the container
       # side unchanged and only swap the host side.
