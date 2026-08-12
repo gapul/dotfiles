@@ -1,5 +1,6 @@
 # CLI tools component (ECS: profile). bat/lazygit/eza/starship/zoxide/fzf/atuin/direnv.
 {
+  config,
   pkgs,
   lib,
   ...
@@ -118,7 +119,9 @@
 
   programs.atuin = {
     enable = true;
-    enableZshIntegration = true;
+    # The generated hook is a plain `eval "$(atuin init zsh)"`, which costs ~37ms per shell.
+    # Emit it ourselves through evalcache instead (see initContent below).
+    enableZshIntegration = false;
     # Yield Up to history-substring-search. atuin launches only via Ctrl+R
     flags = [ "--disable-up-arrow" ];
     settings = {
@@ -144,9 +147,23 @@
 
   programs.direnv = {
     enable = true;
-    enableZshIntegration = true;
+    # Same reason as atuin: the generated `eval "$(direnv hook zsh)"` costs ~37ms per shell.
+    enableZshIntegration = false;
     nix-direnv.enable = true;
   };
+
+  # Cached replacements for the two integrations disabled above. evalcache is defined in
+  # configs/shell/zshrc.common, which shell.nix sources earlier in initContent.
+  # The store paths are keyed into the cache file name, so a rebuild invalidates them.
+  # mkOrder 1200 keeps them where home-manager used to emit them: after the main initContent
+  # but before zsh-syntax-highlighting, which wants to be sourced once every widget exists.
+  programs.zsh.initContent = lib.mkOrder 1200 ''
+    evalcache ${lib.getExe config.programs.direnv.package} hook zsh
+    if [[ $options[zle] = on ]]; then
+      evalcache ${lib.getExe config.programs.atuin.package} init zsh --disable-up-arrow
+    fi
+  '';
+
   # Symlink dotfiles/configs/* (OS-independent ones only. Mac-only = sketchybar/karabiner go to home/darwin.nix)
   home.file.".config/starship.toml".source = ../../../configs/shell/starship.toml;
   home.file.".config/gh/config.yml".source = ../../../configs/cli/gh/config.yml;
