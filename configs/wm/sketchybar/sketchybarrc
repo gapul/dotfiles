@@ -166,6 +166,7 @@ source "$ITEM_DIR/spaces.sh"
 # 右半分は macOS 純正メニューバーの並び (入力ソース → 画面ミラーリング → Bluetooth → Wi-Fi → 電池 → 時計) に合わせる。
 source "$ITEM_DIR/calendar.sh"
 source "$ITEM_DIR/battery.sh"
+source "$ITEM_DIR/nosleep.sh"  # 電池の左。スリープ無効中だけ出る
 source "$ITEM_DIR/wifi.sh"
 source "$ITEM_DIR/bluetooth.sh"
 source "$ITEM_DIR/screen_mirroring.sh"
@@ -190,7 +191,7 @@ sketchybar --add bracket left_bracket apple.logo '/space\..*/' \
                    background.padding_left=$(sc 2.67) \
                    background.padding_right=$(sc 2.67)
 
-sketchybar --add bracket right_bracket calendar battery wifi bluetooth screen_mirroring input_source volume_icon music memory cpu.percent keystats app_guard \
+sketchybar --add bracket right_bracket calendar battery nosleep wifi bluetooth screen_mirroring input_source volume_icon music memory cpu.percent keystats app_guard \
            --set   right_bracket \
                    background.color=$BACKGROUND_1 \
                    background.corner_radius=$(sc 6.68) \
