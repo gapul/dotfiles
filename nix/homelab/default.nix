@@ -20,6 +20,7 @@
   imports = [
     ./blocky.nix
     ./anisette.nix
+    ./ai-frontends.nix
     ./archivebox.nix
     ./attic.nix
     ./backup.nix

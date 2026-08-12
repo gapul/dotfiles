@@ -48,8 +48,8 @@ let
     esphome.upstream = "127.0.0.1:6052";
     nodered.upstream = "127.0.0.1:1880";
     comfy.upstream = "${macmini}:8188";
-    chat.upstream = "${macmini}:3000";
-    docs.upstream = "${macmini}:3001";
+    chat.upstream = "127.0.0.1:3010"; # open-webui
+    docs.upstream = "127.0.0.1:3011"; # anythingllm
     tools.upstream = "${macmini}:8901";
     sync = {
       upstream = "127.0.0.1:8384"; # syncthing rejects requests whose Host it doesn't know

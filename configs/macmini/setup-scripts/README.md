@@ -9,6 +9,6 @@ macmini AIスタック構築時(2026-07)に使った一回きりのセットア�
 - popo-remaining-tasks.md : 構築時の残タスクメモ
 
 稼働中の実体はホーム直下に残してある:
-ai-stack.sh(launchd), container_proxy.sh, container_forward.sh,
+ai-stack.sh(launchd),
 rag_server.py, ai_panel.py, diarize_merge.py, sbv2_tts.py, llm_ask.py,
 各 *-venv / *-models / *-data ディレクトリ(venvは絶対パスのため移動不可)

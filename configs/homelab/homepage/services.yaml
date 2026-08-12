@@ -102,27 +102,27 @@
         server: my-docker
         container: navidrome
 
-- AI (macmini):
+- AI:
     - AIツール:
         href: https://tools.gapul.net
         description: 文字起こし/TTS/OCR/質問/声クローン/分離
         icon: mdi-robot
-        siteMonitor: http://192.168.116.91:8901
+        siteMonitor: http://100.105.135.49:8901
     - 資料RAG (AnythingLLM):
         href: https://docs.gapul.net
         description: ドキュメントRAG
         icon: anythingllm
-        siteMonitor: http://192.168.116.91:3001
+        siteMonitor: http://127.0.0.1:3011
     - チャット (Open WebUI):
         href: https://chat.gapul.net
         description: LLMチャット
         icon: open-webui
-        siteMonitor: http://192.168.116.91:3000
+        siteMonitor: http://127.0.0.1:3010
     - 画像生成 (ComfyUI):
         href: https://comfy.gapul.net
         description: 画像生成 (macmini M4)
         icon: mdi-image
-        siteMonitor: http://192.168.116.91:8188
+        siteMonitor: http://100.105.135.49:8188
 
 - macmini (M4):
     - システム:
