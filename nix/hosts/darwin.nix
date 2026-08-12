@@ -1,4 +1,5 @@
 {
+  lib,
   pkgs,
   brewNix,
   user,
@@ -9,6 +10,12 @@
   # is consolidated in darwin-common.nix. Only daily-driver workstation-specific
   # settings live here.
   imports = [ ./darwin-common.nix ];
+
+  # /etc/zshrc's last spawn. `brew shellenv` costs ~16ms per shell and everything it produced
+  # is declared in home/darwin.nix instead: the PATH half was already redundant (PATH comes out
+  # byte-identical in login and non-login shells without it), and the rest is sessionVariables
+  # plus one fpath entry. Scoped to this host — the mini keeps its own call in home/macmini.nix.
+  programs.zsh.interactiveShellInit = lib.mkForce "";
 
   # Expose brew-nix trial targets to nix-darwin's built-in Home Manager global pkgs too.
   nixpkgs.overlays = [ brewNix.overlays.default ];
