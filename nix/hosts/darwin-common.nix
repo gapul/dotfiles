@@ -129,7 +129,19 @@
     shell = pkgs.zsh;
   };
 
-  programs.zsh.enable = true;
+  programs.zsh = {
+    enable = true;
+    # /etc/zshrc runs before the home-manager .zshrc and was redoing work it does better:
+    #   - a full compinit (compaudit + a second dump under ~/.config/zsh) while
+    #     modules/home/shell.nix already runs a cached `compinit -C` against ~/.cache/zsh
+    #   - `prompt suse`, which starship overwrites two lines later
+    # Under load these cost hundreds of ms per shell, and neither leaves anything behind.
+    # bashcompinit moves with it: it needs a compinit to have run first, so it now sits
+    # right after the cached one in modules/home/shell.nix.
+    enableCompletion = false;
+    enableBashCompletion = false;
+    promptInit = "";
+  };
   environment.shells = [ pkgs.zsh ];
 
   # host-independent macOS settings (keyboard/login/privacy).
