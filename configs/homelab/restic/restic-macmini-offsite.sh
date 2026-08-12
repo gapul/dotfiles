@@ -40,6 +40,9 @@ if ! restic snapshots >/dev/null 2>&1; then
   exit 1
 fi
 
+# 配布物の重み: **/models だけでは GPT-SoVITS の pretrained_models を拾えず、.pth/.ckpt/.pt が
+# 素通りして 4.35GiB を毎日 Google Drive へ運んでいた (2026-08-12 判明)。HuggingFace から
+# 落とし直せるので対象外。残るのは projects/ の非git作業と、push 済みリポジトリの差分だけ。
 restic backup --verbose=1 \
   --exclude-caches \
   --exclude "**/node_modules" \
@@ -56,6 +59,10 @@ restic backup --verbose=1 \
   --exclude "**/*.bin" \
   --exclude "**/models" \
   --exclude "**/.DS_Store" \
+  --exclude "**/pretrained_models" \
+  --exclude "**/*.pth" \
+  --exclude "**/*.ckpt" \
+  --exclude "**/*.pt" \
   "$HOME/Developer"
 rc=$?
 
