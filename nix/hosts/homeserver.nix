@@ -30,7 +30,12 @@ let
     dash.upstream = "127.0.0.1:3000"; # homepage
     vault.upstream = "127.0.0.1:8080"; # vaultwarden
     rss.upstream = "127.0.0.1:8081"; # miniflux
-    obsidian.upstream = "127.0.0.1:5984"; # couchdb (LiveSync)
+    obsidian = {
+      upstream = "127.0.0.1:5984"; # couchdb (LiveSync)
+      # CouchDB は require_valid_user なので / は 401 を返す。これが健全な応答で、
+      # 既定の `< 400` では常に赤かった。401 が返ること自体を生存確認に使う。
+      expect = [ "[STATUS] == 401" ];
+    };
     dav.upstream = "127.0.0.1:5232"; # radicale
     paperless.upstream = "127.0.0.1:8097";
     git.upstream = "127.0.0.1:3003"; # forgejo
@@ -252,25 +257,71 @@ in
         type = "sqlite";
         path = "/var/lib/gatus/data.db";
       };
-      endpoints = lib.mapAttrsToList (name: site: {
-        inherit name;
-        group = "homelab";
-        url = "http://${site.upstream}";
-        interval = "2m";
-        # Not `== 200`: several of these answer 3xx or 401 when perfectly healthy
-        # (AdGuard redirects, vaultwarden and couchdb want auth).
-        conditions = [ "[STATUS] < 400" ];
-        alerts = [
-          {
+      endpoints =
+        let
+          ntfyAlert = {
             type = "ntfy";
             # Three consecutive failures, so a container restarting during an
             # image update does not page. At a 2m interval that is ~6 minutes.
             failure-threshold = 3;
             send-on-resolved = true;
             enabled = true;
+          };
+        in
+        lib.mapAttrsToList (name: site: {
+          inherit name;
+          group = "homelab";
+          url = "http://${site.upstream}";
+          interval = "2m";
+          # Not `== 200`: several of these answer 3xx when perfectly healthy.
+          # A service whose healthy answer is 4xx sets `expect` in the table above.
+          conditions = site.expect or [ "[STATUS] < 400" ];
+          alerts = [ ntfyAlert ];
+        }) (lib.filterAttrs (_: site: site.monitor or true) sites)
+        # Everything above is dialled on loopback, which says nothing about the
+        # path the outside world takes. These three do not come in through this
+        # host's Caddy at all — they arrive over a Cloudflare tunnel that runs on
+        # the Pi, whose ingress is configured on Cloudflare's side and therefore
+        # not in this repo. It kept pointing at the CT this machine replaced, so
+        # Matrix federation was down for a day and nothing here noticed.
+        #
+        # Resolved by real DNS on purpose: the point is to exercise the whole
+        # chain, not to confirm the local port is open.
+        ++ [
+          {
+            name = "matrix-federation";
+            group = "public";
+            url = "https://matrix.gapul.net/_matrix/federation/v1/version";
+            interval = "5m";
+            conditions = [
+              "[STATUS] == 200"
+              "[BODY].server.name == Conduit"
+            ];
+            alerts = [ ntfyAlert ];
+          }
+          {
+            name = "push-ntfy";
+            group = "public";
+            url = "https://push.gapul.net/";
+            interval = "5m";
+            conditions = [ "[STATUS] < 400" ];
+            alerts = [ ntfyAlert ];
+          }
+          {
+            name = "cache-attic";
+            group = "public";
+            url = "https://cache.gapul.net/dotfiles/nix-cache-info";
+            interval = "5m";
+            # The cache is public, so this needs no token. Checking the body as
+            # well because a 200 from Cloudflare's error page would pass on
+            # status alone.
+            conditions = [
+              "[STATUS] == 200"
+              "[BODY] == pat(*StoreDir*)"
+            ];
+            alerts = [ ntfyAlert ];
           }
         ];
-      }) (lib.filterAttrs (_: site: site.monitor or true) sites);
       alerting.ntfy = {
         # ntfy runs on this host, so this notifies about everything except ntfy
         # and the machine itself being down. The Pi is the second pair of eyes
