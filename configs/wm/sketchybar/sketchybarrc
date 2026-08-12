@@ -166,7 +166,7 @@ source "$ITEM_DIR/spaces.sh"
 # 右半分は macOS 純正メニューバーの並び (入力ソース → 画面ミラーリング → Bluetooth → Wi-Fi → 電池 → 時計) に合わせる。
 source "$ITEM_DIR/calendar.sh"
 source "$ITEM_DIR/battery.sh"
-source "$ITEM_DIR/nosleep.sh"  # 電池の左。スリープ無効中だけ出る
+source "$ITEM_DIR/nosleep.sh"  # 電池の左。クリックでスリープ無効を切り替え
 source "$ITEM_DIR/wifi.sh"
 source "$ITEM_DIR/bluetooth.sh"
 source "$ITEM_DIR/screen_mirroring.sh"
