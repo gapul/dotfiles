@@ -518,6 +518,7 @@
                 inherit (inputs) self;
               };
               evalcache = import ./tests/evalcache.nix { pkgs = systemPkgs; };
+              prompt = import ./tests/prompt.nix { pkgs = systemPkgs; };
             };
           }
           // lib.optionalAttrs (system == "x86_64-linux") {
