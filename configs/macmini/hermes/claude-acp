@@ -1,0 +1,738 @@
+#!/usr/bin/env python3
+"""claude-acp — a thin ACP (Agent Client Protocol) adapter for Hermes.
+
+Hermes' copilot-acp provider (agent/copilot_acp_client.py) spawns an external
+process and speaks newline-delimited JSON-RPC 2.0 over stdio. This adapter
+implements just enough of that protocol to act as an inference backend: it
+answers `initialize` / `session/new`, and on `session/prompt` it runs the
+subscription `claude -p` CLI with the prompt (which already contains Hermes'
+tool definitions and instructions to emit <tool_call>{...}</tool_call> blocks),
+then streams the whole reply back as one agent_message_chunk.
+
+The inner `claude` is deliberately run with its OWN tools disabled — tool
+execution is Hermes' job. Hermes parses the <tool_call> blocks out of the
+reply and runs them with its own tool layer.
+
+Session reuse (v2): Hermes spawns a fresh adapter process per agent iteration
+and re-sends the WHOLE formatted conversation each time, which made every
+turn a cold `claude -p` call (~15-30s). The conversation prompt is append-only
+apart from a fixed trailer sentence, so we persist {session_id, last_prompt}
+under STATE_DIR and, when the new prompt extends the previous one, resume the
+same inner claude session with ONLY the delta (`claude -p --resume`). Any
+mismatch (edited history, changed tool list, model change) falls back to a
+fresh full-prompt session — correctness never depends on the cache.
+
+Contract (see copilot_acp_client._run_prompt, the source of truth):
+  - stdout carries ONLY JSON-RPC messages; all debug goes to stderr.
+  - initialize            -> result {"protocolVersion": 1}
+  - session/new           -> result {"sessionId": "<uuid>"}
+  - session/prompt        -> notify session/update(agent_message_chunk),
+                             then result {"stopReason": "end_turn"}
+  - anything else with an id -> result {} (never send fs/* or
+    session/request_permission requests to the client).
+
+Stdlib only. argv is ignored (Hermes passes --stdio).
+"""
+
+from __future__ import annotations
+
+import base64
+import json
+import os
+import re
+import subprocess
+import sys
+import tempfile
+import time
+import uuid
+
+ENV_PATH = "/Users/hermes/.hermes/.env"
+CLAUDE_BIN = "/Users/gapul/.local/bin/claude"
+DEFAULT_MODEL = "sonnet"
+# Client default timeout is 900s; stay under it so we fail with a useful
+# message instead of the client timing out on us.
+CLAUDE_TIMEOUT_SECONDS = 850
+
+STATE_DIR = "/Users/hermes/.hermes/cache/claude-acp-sessions"
+STATE_MAX_AGE_SECONDS = 3 * 60 * 60   # GC: drop conversations idle > 3h
+LOCK_STALE_SECONDS = 15 * 60          # a lock this old means a crashed run
+
+# _format_messages_as_prompt() appends this fixed sentence AFTER the
+# transcript, so it must be stripped before prefix comparison and re-added
+# to the delta we send on resume.
+PROMPT_TRAILER = "\n\nContinue the conversation from the latest user request."
+
+# Hermes owns tool execution, so the inner claude must not run its own tools.
+DISALLOWED_TOOLS = (
+    "Bash,Edit,Write,Read,Glob,Grep,WebFetch,WebSearch,"
+    "NotebookEdit,Task,TodoWrite,BashOutput,KillShell,WebSearch"
+)
+SYSTEM_PROMPT = (
+    "You are the reply engine behind a chat assistant. The user message "
+    "contains framing instructions, optional tool definitions, and a "
+    "conversation transcript. Output ONLY the assistant's next chat message, "
+    "exactly as it will be shown to the end user in the chat app. "
+    "Hard rules: never include meta-commentary, analysis of the user's "
+    "message, translations or glosses of it, notes about your approach "
+    "(e.g. \"just a casual message, I'll reply naturally\"), or the user's "
+    "words quoted back — output the reply text itself and nothing else. "
+    "When a tool is needed, emit the <tool_call>{...}</tool_call> block "
+    "exactly as instructed in the user message. Never emit <invoke>, "
+    "<parameter>, or any other XML tool syntax of your own — the "
+    "<tool_call> block is the only accepted form. Images and PDFs the "
+    "user shared are attached to this message directly — look at them "
+    "yourself. Never start another claude process to read a file. "
+    "Only ever call tools that are defined in the user message. Your own "
+    "built-in tool names (ToolSearch, Task, Read, Bash, Glob, Grep, ...) "
+    "do not exist here; emitting one makes the whole turn fail."
+)
+
+DEBUG = os.environ.get("HERMES_ACP_DEBUG", "").strip() not in ("", "0", "false")
+
+
+def log(*parts: object) -> None:
+    """Debug logging — stderr only, never stdout."""
+    if DEBUG:
+        try:
+            sys.stderr.write("[claude-acp] " + " ".join(str(p) for p in parts) + "\n")
+            sys.stderr.flush()
+        except Exception:
+            pass
+
+
+def env_path() -> str:
+    """The .env of the gateway that spawned us.
+
+    Each gateway runs with its own HOME (the sister's instance lives under
+    /Users/hermes/imouto-home), so per-instance settings have to come from
+    there rather than from one hard-coded file.
+    """
+    home = os.environ.get("HOME") or ""
+    candidate = os.path.join(home, ".hermes", ".env")
+    return candidate if os.path.isfile(candidate) else ENV_PATH
+
+
+def read_env_value(key: str) -> str:
+    """Read one KEY=value out of the .env. Hermes does not export these."""
+    prefix = key + "="
+    try:
+        with open(env_path(), "r") as fh:
+            for line in fh:
+                line = line.strip()
+                if line.startswith(prefix):
+                    return line[len(prefix):].strip().strip('"').strip("'")
+    except Exception as exc:
+        log("could not read .env:", exc)
+    return ""
+
+
+def read_oauth_token() -> str:
+    """Read CLAUDE_CODE_OAUTH_TOKEN from Hermes' .env (plain KEY=value)."""
+    # Prefer an already-exported value if present.
+    return os.environ.get("CLAUDE_CODE_OAUTH_TOKEN", "").strip() \
+        or read_env_value("CLAUDE_CODE_OAUTH_TOKEN")
+
+
+def build_claude_env() -> dict:
+    """Clean environment for the inner claude.
+
+    Critically strips any Anthropic base-url / bridge overrides so the inner
+    claude talks to the real Anthropic API with the subscription OAuth token,
+    NOT the claude-bridge (which is the very path we are replacing).
+    """
+    env = dict(os.environ)
+    for key in (
+        "ANTHROPIC_BASE_URL",
+        "ANTHROPIC_API_KEY",
+        "ANTHROPIC_AUTH_TOKEN",
+        "CLAUDE_BRIDGE_URL",
+        "CLAUDE_CODE_USE_BEDROCK",
+        "CLAUDE_CODE_USE_VERTEX",
+        "CLAUDE_BYPASS_PERMISSIONS",
+    ):
+        env.pop(key, None)
+    env.setdefault("HOME", "/Users/hermes")
+    if not env.get("PATH"):
+        env["PATH"] = "/usr/bin:/bin:/usr/sbin:/sbin"
+    token = read_oauth_token()
+    if token:
+        env["CLAUDE_CODE_OAUTH_TOKEN"] = token
+    return env
+
+
+# ---------------------------------------------------------------------------
+# Session-reuse state
+# ---------------------------------------------------------------------------
+
+def _strip_trailer(prompt_text: str) -> str:
+    if prompt_text.endswith(PROMPT_TRAILER):
+        return prompt_text[: -len(PROMPT_TRAILER)]
+    return prompt_text
+
+
+def _state_path(session_id: str) -> str:
+    return os.path.join(STATE_DIR, session_id + ".json")
+
+
+def _lock_path(session_id: str) -> str:
+    return os.path.join(STATE_DIR, session_id + ".lock")
+
+
+def _gc_state_dir() -> None:
+    now = time.time()
+    try:
+        names = os.listdir(STATE_DIR)
+    except FileNotFoundError:
+        return
+    for name in names:
+        path = os.path.join(STATE_DIR, name)
+        try:
+            age = now - os.path.getmtime(path)
+        except OSError:
+            continue
+        if name.endswith(".json") and age > STATE_MAX_AGE_SECONDS:
+            _remove_quiet(path)
+        elif name.endswith(".lock") and age > LOCK_STALE_SECONDS:
+            _remove_quiet(path)
+
+
+def _remove_quiet(path: str) -> None:
+    try:
+        os.remove(path)
+    except OSError:
+        pass
+
+
+def _acquire_lock(session_id: str) -> bool:
+    try:
+        fd = os.open(_lock_path(session_id), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        os.write(fd, str(os.getpid()).encode())
+        os.close(fd)
+        return True
+    except FileExistsError:
+        return False
+    except OSError:
+        return False
+
+
+def _release_lock(session_id: str) -> None:
+    _remove_quiet(_lock_path(session_id))
+
+
+def _find_resumable_session(base_prompt: str, model: str):
+    """Return (session_id, last_prompt) whose last_prompt is a strict prefix
+    of base_prompt, preferring the longest match. None if nothing fits."""
+    try:
+        names = [n for n in os.listdir(STATE_DIR) if n.endswith(".json")]
+    except FileNotFoundError:
+        return None
+    best = None
+    for name in names:
+        try:
+            with open(os.path.join(STATE_DIR, name), "r") as fh:
+                entry = json.load(fh)
+        except Exception:
+            continue
+        last_prompt = entry.get("last_prompt")
+        if not isinstance(last_prompt, str) or entry.get("model") != model:
+            continue
+        if len(last_prompt) >= len(base_prompt):
+            continue
+        if not base_prompt.startswith(last_prompt):
+            continue
+        if best is None or len(last_prompt) > len(best[1]):
+            best = (name[: -len(".json")], last_prompt)
+    return best
+
+
+def _save_state(session_id: str, base_prompt: str, model: str) -> None:
+    try:
+        os.makedirs(STATE_DIR, exist_ok=True)
+        tmp = _state_path(session_id) + ".tmp"
+        with open(tmp, "w") as fh:
+            json.dump({"model": model, "last_prompt": base_prompt}, fh, ensure_ascii=False)
+        os.replace(tmp, _state_path(session_id))
+    except OSError as exc:
+        log("could not save state:", exc)
+
+
+# Hermes stores chat attachments under its cache and puts the path into the
+# prompt text. The inner claude is Claude, so instead of asking the agent to
+# shell out to a second claude for OCR we hand it the bytes directly and let
+# it look at the picture itself.
+_ATTACH_RE = re.compile(
+    r"/[^\s\"'<>|]*/\.hermes/cache/(?:documents|images|screenshots)/[^\s\"'<>|)\]]+")
+# Originals the agent filed away earlier. Same treatment as a fresh attachment:
+# if the path comes up in the conversation, put the picture in front of it.
+SANDBOX_HOME = "/Users/hsandbox"
+_ARCHIVE_RE = re.compile(r"(?:~|/Users/hsandbox)/study/[^\s\"'<>|)\]]+")
+_ATTACH_MEDIA = {
+    ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+    ".gif": "image/gif", ".webp": "image/webp", ".pdf": "application/pdf",
+    # Converted to PNG below — the API does not take these, but an iPhone
+    # photo arrives as .heic often enough that ignoring them means the
+    # student sends a picture and gets told nothing was attached.
+    ".heic": "image/png", ".heif": "image/png",
+    ".tif": "image/png", ".tiff": "image/png", ".bmp": "image/png",
+}
+_NEEDS_CONVERT = {".heic", ".heif", ".tif", ".tiff", ".bmp"}
+# One turn's worth of attachments; beyond this we skip the rest and log it.
+ATTACH_MAX_BYTES = 15 * 1024 * 1024
+# Enough for a multi-page assignment; older ones fall off.
+ATTACH_MAX_FILES = 4
+# Filed-away originals: only the newest mention rides along.
+ATTACH_MAX_ARCHIVE = 1
+
+
+# Voice notes arrive as attachments too, but the API has no audio block —
+# transcribe first and hand the model the text.
+_AUDIO_EXT = {".m4a", ".mp3", ".wav", ".aiff", ".aif", ".caf", ".aac",
+              ".ogg", ".oga", ".opus", ".flac", ".mp4", ".webm"}
+APPLE_TRANSCRIBE = "/Users/gapul/.local/bin/apple-transcribe"
+FFMPEG = "/opt/homebrew/bin/ffmpeg"
+# Only the newest couple of voice notes; older ones stay in the transcript
+# as text from the turn they arrived.
+ATTACH_MAX_AUDIO = 2
+TRANSCRIBE_TIMEOUT = 300
+
+
+def _transcribe(path: str):
+    """Return the spoken text, or None. Caches next to the file."""
+    cache = path + ".txt"
+    if os.path.isfile(cache):
+        try:
+            return open(cache, encoding="utf-8").read().strip() or None
+        except Exception:
+            pass
+
+    source = path
+    tmp_wav = None
+    # AVFoundation cannot open Ogg/Opus (what Discord voice messages use),
+    # so normalize everything ffmpeg can reach into plain wav first.
+    if os.path.isfile(FFMPEG):
+        tmp_wav = os.path.join(tempfile.gettempdir(),
+                               "acp-%s.wav" % os.path.basename(path))
+        conv = subprocess.run(
+            [FFMPEG, "-y", "-i", path, "-ac", "1", "-ar", "16000", tmp_wav],
+            capture_output=True, timeout=TRANSCRIBE_TIMEOUT)
+        if conv.returncode == 0 and os.path.exists(tmp_wav):
+            source = tmp_wav
+        else:
+            log("ffmpeg failed, using the original:", (conv.stderr or b"")[-160:])
+            _remove_quiet(tmp_wav)
+            tmp_wav = None
+
+    out_txt = os.path.join(tempfile.gettempdir(),
+                           "acp-%s.txt" % os.path.basename(path))
+    try:
+        proc = subprocess.run([APPLE_TRANSCRIBE, source, out_txt],
+                              capture_output=True, timeout=TRANSCRIBE_TIMEOUT)
+    except Exception as exc:
+        log("transcription failed:", path, exc)
+        _remove_quiet(tmp_wav)
+        return None
+    finally:
+        _remove_quiet(tmp_wav)
+
+    text = ""
+    if os.path.exists(out_txt):
+        try:
+            text = open(out_txt, encoding="utf-8").read().strip()
+        finally:
+            _remove_quiet(out_txt)
+    if not text:
+        log("transcription empty:", path, (proc.stderr or b"")[-160:])
+        return None
+    try:
+        open(cache, "w", encoding="utf-8").write(text)
+    except Exception as exc:
+        log("could not cache the transcript:", exc)
+    log("transcribed %s (%d chars)" % (path, len(text)))
+    return text
+
+
+def _read_as_supported(path: str):
+    """Return the file's bytes, converting formats the API will not take.
+
+    sips ships with macOS, so no extra dependency for HEIC and friends.
+    """
+    ext = os.path.splitext(path)[1].lower()
+    if ext not in _NEEDS_CONVERT:
+        return open(path, "rb").read()
+    out = os.path.join(tempfile.gettempdir(),
+                       "acp-%s.png" % os.path.basename(path).rsplit(".", 1)[0])
+    proc = subprocess.run(["sips", "-s", "format", "png", path, "--out", out],
+                          capture_output=True)
+    if proc.returncode != 0 or not os.path.exists(out):
+        log("could not convert", path, (proc.stderr or b"")[:120])
+        return None
+    try:
+        data = open(out, "rb").read()
+    finally:
+        _remove_quiet(out)
+    log("converted %s -> png (%d bytes)" % (path, len(data)))
+    return data
+
+
+def _content_blocks(text: str) -> list:
+    """Build the stream-json content array: attachments first, then the text."""
+    # Fresh attachments are what the turn is usually about; filed-away
+    # originals are often just incidental hits in a search result, so only
+    # the most recently mentioned one comes along.
+    archive = [p.replace("~", SANDBOX_HOME, 1) for p in _ARCHIVE_RE.findall(text)]
+    archive = [p for p in archive
+               if _ATTACH_MEDIA.get(os.path.splitext(p.rstrip(".,;:"))[1].lower())]
+    found = _ATTACH_RE.findall(text) + archive[-ATTACH_MAX_ARCHIVE:]
+
+    # 音声は content block にできないので、文字起こしをテキストとして渡す。
+    audio = [p.rstrip(".,;:") for p in _ATTACH_RE.findall(text)
+             if os.path.splitext(p.rstrip(".,;:"))[1].lower() in _AUDIO_EXT]
+    spoken = []
+    for path in audio[-ATTACH_MAX_AUDIO:]:
+        if not os.path.isfile(path):
+            continue
+        said = _transcribe(path)
+        if said:
+            spoken.append({"type": "text", "text": "【音声の文字起こし: %s】\n%s"
+                           % (os.path.basename(path), said)})
+
+    paths = []
+    seen = set()
+    for path in found:
+        path = path.rstrip(".,;:")
+        if path in seen:
+            continue
+        seen.add(path)
+        if _ATTACH_MEDIA.get(os.path.splitext(path)[1].lower()) and os.path.isfile(path):
+            paths.append(path)
+
+    # Newest last in the transcript, so fill the budget from the end — the
+    # photo just sent matters more than one from three days ago.
+    blocks = []
+    total = 0
+    for path in reversed(paths):
+        mime = _ATTACH_MEDIA[os.path.splitext(path)[1].lower()]
+        try:
+            raw = _read_as_supported(path)
+        except Exception as exc:
+            log("attachment unreadable:", path, exc)
+            continue
+        if raw is None:
+            continue
+        if len(blocks) >= ATTACH_MAX_FILES or total + len(raw) > ATTACH_MAX_BYTES:
+            log("attachment budget reached, dropping older:", path)
+            break
+        total += len(raw)
+        kind = "document" if mime == "application/pdf" else "image"
+        blocks.append({"type": kind, "source": {
+            "type": "base64", "media_type": mime,
+            "data": base64.b64encode(raw).decode()}})
+        log("attached %s %s (%d bytes)" % (kind, path, len(raw)))
+    blocks.reverse()
+    blocks.extend(spoken)
+    blocks.append({"type": "text", "text": text})
+    return blocks
+
+
+# ---------------------------------------------------------------------------
+# Inner claude invocation
+# ---------------------------------------------------------------------------
+
+def _invoke_claude(message_text: str, model: str, *, resume_id: str | None,
+                   new_session_id: str | None):
+    """Run one `claude -p` call. Returns (ok, reply_text, session_id)."""
+    # stream-json input is the only shape that carries image/PDF blocks, and
+    # the CLI insists on stream-json output to go with it.
+    cmd = [
+        CLAUDE_BIN,
+        "-p",
+        "--model", model,
+        "--input-format", "stream-json",
+        "--output-format", "stream-json",
+        "--verbose",
+        "--disallowedTools", DISALLOWED_TOOLS,
+        "--system-prompt", SYSTEM_PROMPT,
+    ]
+    if resume_id:
+        cmd += ["--resume", resume_id]
+    elif new_session_id:
+        cmd += ["--session-id", new_session_id]
+    started = time.time()
+    try:
+        proc = subprocess.run(
+            cmd,
+            input=json.dumps({"type": "user", "message": {
+                "role": "user",
+                "content": _content_blocks(message_text)}}) + "\n",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            env=build_claude_env(),
+            timeout=CLAUDE_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
+        log("claude timed out")
+        return (False,
+                f"[claude-acp error] inference timed out after {CLAUDE_TIMEOUT_SECONDS}s.",
+                None)
+    except FileNotFoundError:
+        return (False, f"[claude-acp error] claude binary not found at {CLAUDE_BIN}.", None)
+    except Exception as exc:  # pragma: no cover - defensive
+        return (False, f"[claude-acp error] failed to launch claude: {exc}", None)
+
+    elapsed = time.time() - started
+    raw = (proc.stdout or "").strip()
+    if proc.returncode != 0:
+        err_head = "\n".join((proc.stderr or "").splitlines()[:8]).strip()
+        log("claude exit=%s in %.1fs err=%s" % (proc.returncode, elapsed, err_head))
+        return (False,
+                f"[claude-acp error] claude exited {proc.returncode}: {err_head or raw or '(no output)'}",
+                None)
+
+    reply, session_id = _parse_result_json(raw)
+    log("claude ok in %.1fs resume=%s session=%s reply_len=%d"
+        % (elapsed, bool(resume_id), session_id, len(reply)))
+    if not reply.strip():
+        err_head = "\n".join((proc.stderr or "").splitlines()[:8]).strip()
+        return (False,
+                f"[claude-acp error] claude returned empty output. {err_head}".strip(),
+                session_id)
+    return (True, reply, session_id)
+
+
+# The inner claude sometimes mixes its own native tool-invocation XML into the
+# reply. The valid <tool_call>{...}</tool_call> block still parses on Hermes'
+# side, but the leftover tags survive as chat text and get posted to the user.
+# These tags are never legitimate chat content, so drop them.
+_NATIVE_TAG_RE = re.compile(
+    r"</?(?:antml:)?(?:invoke|parameter|function_calls|function_results)\b[^>]*>")
+_TOOL_CALL_PAIR_RE = re.compile(r"<tool_call>.*?</tool_call>", re.S)
+
+
+def _sanitize_reply(text: str) -> str:
+    """Remove tool-syntax leftovers, keeping well-formed <tool_call> blocks."""
+    if not text or "<" not in text:
+        return text
+    kept = []
+
+    def _stash(match):
+        kept.append(match.group(0))
+        return "\0%d\0" % (len(kept) - 1)
+
+    out = _TOOL_CALL_PAIR_RE.sub(_stash, text)
+    out = _NATIVE_TAG_RE.sub("", out)
+    # Unmatched halves left over from a mangled block.
+    out = out.replace("<tool_call>", "").replace("</tool_call>", "")
+    out = re.sub(r"\0(\d+)\0", lambda m: kept[int(m.group(1))], out)
+    return re.sub(r"\n{3,}", "\n\n", out).strip()
+
+
+def _selftest() -> int:
+    intact = '<tool_call>{"name": "read_file"}</tool_call>'
+    assert _sanitize_reply(intact) == intact
+    assert _sanitize_reply(intact + "\n<tool_call>\n</parameter>\n</invoke>") == intact
+    assert _sanitize_reply("<tool_call>\n</parameter>\n</invoke>") == ""
+    assert _sanitize_reply("3 < 5 です") == "3 < 5 です"
+    assert _sanitize_reply("読みました。" + intact) == "読みました。" + intact
+    assert _content_blocks("ふつうの文") == [{"type": "text", "text": "ふつうの文"}]
+    missing = "/Users/hermes/imouto-home/.hermes/cache/documents/nope.pdf"
+    assert _content_blocks(missing) == [{"type": "text", "text": missing}]
+    assert _ARCHIVE_RE.findall("~/study/exams/raw/a.pdf を見て") == ["~/study/exams/raw/a.pdf"]
+    many = " ".join("/Users/hsandbox/study/exams/raw/%d.pdf" % i for i in range(5))
+    assert _content_blocks(many) == [{"type": "text", "text": many}]  # 実在しないので0件
+    gone = "/Users/hsandbox/study/exams/raw/nope.pdf"
+    assert ".heic" in _ATTACH_MEDIA and ".heic" in _NEEDS_CONVERT
+    assert ".ogg" in _AUDIO_EXT and ".m4a" in _AUDIO_EXT
+    assert _content_blocks(gone) == [{"type": "text", "text": gone}]
+    notes = "~/study/assignments/数学B.md"
+    assert _content_blocks(notes) == [{"type": "text", "text": notes}]
+    stream = ('{"type":"system","session_id":"abc"}\n'
+              '{"type":"result","result":"done","session_id":"abc"}')
+    assert _parse_result_json(stream) == ("done", "abc")
+    legacy = '{"result": "old shape", "session_id": "xyz"}'
+    assert _parse_result_json(legacy) == ("old shape", "xyz")
+    print("selftest ok")
+    return 0
+
+
+def _parse_result_json(raw: str):
+    """Extract (result_text, session_id) from the CLI's stream-json output."""
+    text = ""
+    session_id = None
+    for line in raw.splitlines():
+        line = line.strip()
+        if not line.startswith("{"):
+            continue
+        try:
+            event = json.loads(line)
+        except Exception:
+            continue
+        if not isinstance(event, dict):
+            continue
+        sid = event.get("session_id")
+        if isinstance(sid, str) and sid.strip():
+            session_id = sid
+        if event.get("type") == "result":
+            result = event.get("result")
+            if isinstance(result, str):
+                text = result
+            if event.get("is_error") and text:
+                text = f"[claude-acp error] {text}"
+    if text:
+        return _sanitize_reply(text), session_id
+    # Fall back to the plain `--output-format json` shape, then to raw text,
+    # so a CLI change can never leave the conversation with nothing.
+    try:
+        data = json.loads(raw)
+    except Exception:
+        return _sanitize_reply(raw), session_id
+    if isinstance(data, dict):
+        result = data.get("result")
+        text = result if isinstance(result, str) else ""
+        sid = data.get("session_id")
+        if isinstance(sid, str) and sid.strip():
+            session_id = sid
+        if data.get("is_error") and text:
+            text = f"[claude-acp error] {text}"
+        return _sanitize_reply(text), session_id
+    return _sanitize_reply(raw), session_id
+
+
+def run_claude(prompt_text: str) -> str:
+    """Answer one Hermes turn, reusing an inner claude session when the new
+    prompt extends the previous one; otherwise start a fresh session."""
+    model = (os.environ.get("CLAUDE_ACP_MODEL", "").strip()
+             or read_env_value("CLAUDE_ACP_MODEL") or DEFAULT_MODEL)
+    _gc_state_dir()
+    base = _strip_trailer(prompt_text)
+
+    candidate = _find_resumable_session(base, model)
+    if candidate is not None:
+        old_id, last_prompt = candidate
+        if _acquire_lock(old_id):
+            try:
+                delta = base[len(last_prompt):] + PROMPT_TRAILER
+                log("resuming session=%s delta_len=%d (full=%d)"
+                    % (old_id, len(delta), len(prompt_text)))
+                ok, reply, new_id = _invoke_claude(
+                    delta, model, resume_id=old_id, new_session_id=None)
+                if ok:
+                    # Resume may keep the id or fork to a new one — trust the
+                    # id claude reports and retire the old entry if it moved.
+                    effective = new_id or old_id
+                    if effective != old_id:
+                        _remove_quiet(_state_path(old_id))
+                    _save_state(effective, base, model)
+                    return reply
+                # Broken session (deleted, corrupt, version change): drop it
+                # and fall through to a fresh full-prompt run.
+                log("resume failed, falling back to fresh session:", reply)
+                _remove_quiet(_state_path(old_id))
+            finally:
+                _release_lock(old_id)
+        else:
+            log("session busy, starting fresh:", old_id)
+
+    fresh_id = str(uuid.uuid4())
+    log("fresh session=%s prompt_len=%d" % (fresh_id, len(prompt_text)))
+    ok, reply, reported_id = _invoke_claude(
+        prompt_text, model, resume_id=None, new_session_id=fresh_id)
+    if ok:
+        _save_state(reported_id or fresh_id, base, model)
+    return reply
+
+
+def send(msg: dict) -> None:
+    """Write one JSON-RPC message to stdout."""
+    sys.stdout.write(json.dumps(msg, ensure_ascii=False) + "\n")
+    sys.stdout.flush()
+
+
+def handle_request(method: str, msg_id, params: dict) -> None:
+    if method == "initialize":
+        send({"jsonrpc": "2.0", "id": msg_id, "result": {"protocolVersion": 1}})
+        return
+
+    if method == "session/new":
+        session_id = str(uuid.uuid4())
+        send({"jsonrpc": "2.0", "id": msg_id, "result": {"sessionId": session_id}})
+        return
+
+    if method == "session/prompt":
+        session_id = params.get("sessionId")
+        prompt_items = params.get("prompt") or []
+        parts = []
+        if isinstance(prompt_items, list):
+            for item in prompt_items:
+                if isinstance(item, dict) and item.get("type") == "text":
+                    parts.append(str(item.get("text") or ""))
+                elif isinstance(item, str):
+                    parts.append(item)
+        prompt_text = "".join(parts)
+
+        reply = run_claude(prompt_text)
+
+        send({
+            "jsonrpc": "2.0",
+            "method": "session/update",
+            "params": {
+                "sessionId": session_id,
+                "update": {
+                    "sessionUpdate": "agent_message_chunk",
+                    "content": {"type": "text", "text": reply},
+                },
+            },
+        })
+        send({
+            "jsonrpc": "2.0",
+            "id": msg_id,
+            "result": {"stopReason": "end_turn"},
+        })
+        return
+
+    # Unknown request: acknowledge blandly so the client keeps going.
+    log("unknown method:", method)
+    send({"jsonrpc": "2.0", "id": msg_id, "result": {}})
+
+
+def main() -> int:
+    if "--selftest" in sys.argv[1:]:
+        return _selftest()
+    log("adapter started; argv=", sys.argv[1:])
+    for raw in sys.stdin:
+        line = raw.strip()
+        if not line:
+            continue
+        try:
+            msg = json.loads(line)
+        except Exception as exc:
+            log("bad json line:", exc)
+            continue
+        if not isinstance(msg, dict):
+            continue
+        method = msg.get("method")
+        msg_id = msg.get("id")
+        params = msg.get("params") or {}
+        if not isinstance(params, dict):
+            params = {}
+        # Notification (no id) or a response to us: nothing to reply to.
+        if method is None:
+            continue
+        if msg_id is None:
+            log("notification:", method)
+            continue
+        try:
+            handle_request(str(method), msg_id, params)
+        except Exception as exc:  # pragma: no cover - defensive
+            log("handler error:", exc)
+            send({
+                "jsonrpc": "2.0",
+                "id": msg_id,
+                "error": {"code": -32603, "message": f"internal error: {exc}"},
+            })
+    log("stdin closed; exiting")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

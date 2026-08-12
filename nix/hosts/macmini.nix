@@ -138,5 +138,13 @@
     /usr/bin/pmset -a disablesleep 1   >/dev/null 2>&1 || true
     # Enable Remote Login (SSH). Key auth reuses the existing setup (Bitwarden agent etc.) as-is.
     /usr/sbin/systemsetup -setremotelogin on >/dev/null 2>&1 || true
+    # The Hermes agent's inference adapter (see configs/macmini/hermes/README.md). It lives in
+    # another user's home, which home-manager can't reach, and hermes never rewrites it — so the
+    # declaration is the source of truth and gets laid down on every activation.
+    if [ -d /Users/hermes ]; then
+      /usr/bin/install -d -o hermes -g staff -m 755 /Users/hermes/.local/bin
+      /usr/bin/install -o hermes -g staff -m 755 \
+        ${../../configs/macmini/hermes/claude-acp} /Users/hermes/.local/bin/claude-acp
+    fi
   '';
 }
