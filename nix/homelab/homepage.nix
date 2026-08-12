@@ -11,6 +11,20 @@
 
 {
 
+  # /app/config は書ける必要がある。homepage は起動時に logs/ を作り、置いていない
+  # 設定 (kubernetes.yaml など) は雛形を自分でコピーしてくるので、store を直接 ro で
+  # 当てると初期化に失敗して 500 を返す。宣言はリポジトリ側のままにして、起動ごとに
+  # 書ける場所へ配り直す。手で編集しても次の起動で戻る、が狙いどおりの挙動。
+  #
+  # yaml だけ消してから配るので、homepage が作った雛形も毎回作り直される。logs/ は
+  # ディレクトリなので残る。
+  systemd.services."podman-homepage".preStart = lib.mkAfter ''
+    install -d -m 755 /var/lib/homelab/homepage
+    find /var/lib/homelab/homepage -maxdepth 1 -type f -name "*.yaml" -delete
+    cp -L ${../../configs/homelab/homepage}/*.yaml /var/lib/homelab/homepage/
+    chmod u+w /var/lib/homelab/homepage/*.yaml
+  '';
+
   # Containers
   virtualisation.oci-containers.containers."glances" = {
     image = "nicolargo/glances:latest-full";
@@ -46,10 +60,9 @@
       "HOMEPAGE_ALLOWED_HOSTS" = "*";
     };
     volumes = [
-      # 設定はリポジトリ(configs/homelab/homepage)から store 経由で配る。
-      # 以前は /var/lib 側の可変ファイルで、移行のたびに旧ホストの IP を手で
-      # 直す作業が発生していた。ro なのは homepage が書き戻す必要がないから。
-      "${../../configs/homelab/homepage}:/app/config:ro"
+      # 中身は preStart がリポジトリ(configs/homelab/homepage)から配る。以前は
+      # /var/lib 側の手編集ファイルで、移行のたびに旧ホストの IP を直す作業が出ていた。
+      "/var/lib/homelab/homepage:/app/config:rw"
       # podman's socket speaks the Docker API, but homepage's config/docker.yaml and
       # glances both look for it at the conventional path, so keep the container
       # side unchanged and only swap the host side.
