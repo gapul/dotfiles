@@ -1281,3 +1281,18 @@ gdrive cmd="status":
         done ;;
       *)       echo "usage: just gdrive [status|open|remount]" >&2; exit 2 ;;
     esac
+
+
+# ─────────────────────────────────────────────
+# Mobile (iOS / Android)
+# ─────────────────────────────────────────────
+
+# Apply the declared Android OS settings over adb (`just android` = diff + apply, `just android --dry-run`)
+[group('Mobile')]
+android *flags:
+    @nix shell nixpkgs#android-tools -c mobile/android/adb/apply.sh {{flags}}
+
+# Serve mobile/ios/profiles/*.mobileconfig on the LAN so an iPhone can install them from Safari
+[group('Mobile')]
+ios-profiles port="8000":
+    @mobile/ios/profiles/serve.sh {{port}}

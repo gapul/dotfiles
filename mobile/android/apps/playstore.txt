@@ -1,0 +1,9 @@
+# Obtainium (GitHub / F-Droid 直取り) で入らないアプリ。
+# Play ストアか Aurora Store から手で入れる。1 行 1 パッケージ ID。
+#
+# 一括インストールの手段は無い (Play にも adb にも API が無い)。
+# 機種変時にこのファイルを見ながら入れ直すためのリスト。
+# 実機に入っているものとの差分を取って埋める:
+#   adb shell pm list packages -3 | sed 's/^package://' | sort
+
+com.tailscale.ipn
