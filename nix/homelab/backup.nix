@@ -36,7 +36,14 @@ in
     # exception is /srv/syncthing, which is a copy of what the Mac holds and is
     # backed up from there. Change this if that stops being true.
 
-    pruneOpts = resticCommon.retentionArgs;
+    # --host: the repository is shared, and forget without it applies this policy to
+    # every host's snapshots, not just the ones written here. The policy is the same
+    # on every host so nothing gets thinned differently — but it does mean whoever
+    # runs first expires the snapshots of hosts that no longer write any (pve's
+    # vzdumps, the cold pass taken during the migration). Those are kept by the
+    # archive tag now; scoping forget is the other half of not deciding another
+    # host's retention from here.
+    pruneOpts = resticCommon.retentionArgs ++ [ "--host homeserver" ];
     extraBackupArgs = [ "--tag homeserver" ];
     timerConfig = {
       OnCalendar = "03:00";

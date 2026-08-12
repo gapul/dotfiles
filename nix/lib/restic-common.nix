@@ -36,6 +36,19 @@ rec {
     "--keep-monthly 6"
   ];
 
+  # Hosts expected to write to the shared repository every day. The monitor below
+  # is the only staleness alarm any of them has, and asking the repository for its
+  # single newest snapshot cannot answer "did *this* host stop" — one healthy host
+  # keeps the whole alarm quiet. Hence an explicit list: a decommissioned host must
+  # be removed from it (pve is gone, folded into homeserver), and a new host that is
+  # not added to it can stop backing up unnoticed.
+  monitoredHosts = [
+    "MacBook-Mini"
+    "homeserver"
+    "macmini"
+    "rpi4"
+  ];
+
   # forget retention policy invocation (shared by both hosts' backupScript).
   # Note: the indentation/newlines of this string go directly into the generated script's byte stream.
   #   Both backupScripts expand this at a 4-space indent position, so the layout
@@ -179,17 +192,27 @@ rec {
           notify "restic ⚠️ backup not running" "google-drive not authenticated. Please run rclone authorize drive"
           exit 0
         fi
-        latest=$(restic snapshots --latest 1 --json 2>/dev/null | jq -r '.[0].time // empty')
-        if [ -z "$latest" ]; then
-          notify "restic ⚠️ no snapshots" "no backup has been made yet"
+        snapshots=$(restic snapshots --json 2>/dev/null)
+        if [ -z "$snapshots" ]; then
+          notify "restic ⚠️ repository unreadable" "restic snapshots returned nothing. A stale exclusive lock will do this"
           exit 0
         fi
-        last_epoch=${parseSnapshotTime}
         now=$(date +%s)
-        age_days=$(( (now - last_epoch) / 86400 ))
-        if [ "$age_days" -ge "$max_age_days" ]; then
-          notify "restic ⚠️ backup is stale" "the last backup was $age_days days ago"
-        fi
+        # One listing, then per host, because the repository is shared: every host's
+        # snapshots live in it and the newest one overall says nothing about any
+        # particular host.
+        for host in ${lib.concatStringsSep " " monitoredHosts}; do
+          latest=$(printf '%s' "$snapshots" | jq -r --arg h "$host" 'map(select(.hostname == $h) | .time) | max // empty')
+          if [ -z "$latest" ]; then
+            notify "restic ⚠️ no snapshots ($host)" "$host has never backed up to the shared repository"
+            continue
+          fi
+          last_epoch=${parseSnapshotTime}
+          age_days=$(( (now - last_epoch) / 86400 ))
+          if [ "$age_days" -ge "$max_age_days" ]; then
+            notify "restic ⚠️ backup is stale ($host)" "the last backup of $host was $age_days days ago"
+          fi
+        done
       '';
     };
 }
