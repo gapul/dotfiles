@@ -30,7 +30,12 @@ let
     dash.upstream = "127.0.0.1:3000"; # homepage
     vault.upstream = "127.0.0.1:8080"; # vaultwarden
     rss.upstream = "127.0.0.1:8081"; # miniflux
-    obsidian.upstream = "127.0.0.1:5984"; # couchdb (LiveSync)
+    obsidian = {
+      upstream = "127.0.0.1:5984"; # couchdb (LiveSync)
+      # CouchDB は require_valid_user なので / は 401 を返す。これが健全な応答で、
+      # 既定の `< 400` では常に赤かった。401 が返ること自体を生存確認に使う。
+      expect = [ "[STATUS] == 401" ];
+    };
     dav.upstream = "127.0.0.1:5232"; # radicale
     paperless.upstream = "127.0.0.1:8097";
     git.upstream = "127.0.0.1:3003"; # forgejo
@@ -268,9 +273,9 @@ in
           group = "homelab";
           url = "http://${site.upstream}";
           interval = "2m";
-          # Not `== 200`: several of these answer 3xx or 401 when perfectly healthy
-          # (blocky's API and vaultwarden and couchdb want auth, some redirect).
-          conditions = [ "[STATUS] < 400" ];
+          # Not `== 200`: several of these answer 3xx when perfectly healthy.
+          # A service whose healthy answer is 4xx sets `expect` in the table above.
+          conditions = site.expect or [ "[STATUS] < 400" ];
           alerts = [ ntfyAlert ];
         }) (lib.filterAttrs (_: site: site.monitor or true) sites)
         # Everything above is dialled on loopback, which says nothing about the

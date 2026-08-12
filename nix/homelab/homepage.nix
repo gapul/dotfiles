@@ -11,6 +11,11 @@
 
 {
 
+  # コンテナは root で走るので所有者は root で足りる。
+  systemd.tmpfiles.rules = [
+    "d /var/lib/homelab/homepage-logs 0755 root root -"
+  ];
+
   # Containers
   virtualisation.oci-containers.containers."glances" = {
     image = "nicolargo/glances:latest-full";
@@ -48,8 +53,12 @@
     volumes = [
       # 設定はリポジトリ(configs/homelab/homepage)から store 経由で配る。
       # 以前は /var/lib 側の可変ファイルで、移行のたびに旧ホストの IP を手で
-      # 直す作業が発生していた。ro なのは homepage が書き戻す必要がないから。
+      # 直す作業が発生していた。
       "${../../configs/homelab/homepage}:/app/config:ro"
+      # homepage は起動時に /app/config/logs を自分で作る。store は読み取り専用なので
+      # mkdir が ENOENT で落ち、トップページが 500 を返していた(設定を store へ移した
+      # 時点からずっと)。設定は宣言のまま据え置いて、ログだけ書ける場所を重ねる。
+      "/var/lib/homelab/homepage-logs:/app/config/logs:rw"
       # podman's socket speaks the Docker API, but homepage's config/docker.yaml and
       # glances both look for it at the conventional path, so keep the container
       # side unchanged and only swap the host side.
