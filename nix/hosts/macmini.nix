@@ -37,8 +37,9 @@
       # (permission-approval dialogs, first-time auto-login setup, etc.). Enabling unattended
       # access and granting Screen Recording permission (TCC) can't be declared, so do them once via GUI.
       "rustdesk"
-      # For Claude browser automation (Playwright MCP + claude-login-broker).
-      # Headless operation, so launch without a GUI via --headless=new (chrome-launch.sh).
+      # For Claude browser automation (Playwright MCP + claude-login-broker). Driven through the
+      # `chrome-automation` wrapper (home/macmini.nix): own profile, windowless, CDP on 9222, and
+      # stopped when the job ends. The chrome-launch.sh this comment used to point at never existed.
       "google-chrome"
     ];
   };

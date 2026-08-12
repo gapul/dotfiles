@@ -41,6 +41,37 @@ in
         --add-dir "$HOME/.dotfiles" \
         "$@"
     '')
+    # chrome-automation: the same shape the workstation uses. Chrome here is only ever an
+    # automation target (Playwright MCP attaches over CDP on 9222, and claude-login-broker
+    # drives it), so it gets its own profile, comes up windowless in the background, and is
+    # expected to be shut down when the job is done rather than left resident.
+    #
+    # Not `--headless`: the workstation proved on 2026-08-10 that the extension's native host
+    # never starts in that mode. What was actually running on this machine were one-shot
+    # `--print-to-pdf` / `--screenshot` invocations that failed to exit — one had been stuck
+    # for three days holding 250M. `stop` matches on the profile path so it can only ever take
+    # down the automation instance.
+    (pkgs.writeShellScriptBin "chrome-automation" ''
+      profile="$HOME/Library/Application Support/Google/Chrome-automation"
+      case "''${1:-start}" in
+        start)
+          /usr/bin/open -gjn -a "Google Chrome" --args \
+            --user-data-dir="$profile" \
+            --no-startup-window \
+            --remote-debugging-port=9222
+          ;;
+        stop)
+          /usr/bin/pkill -f "Chrome-automation" || true
+          ;;
+        status)
+          /usr/bin/pgrep -fl "Chrome-automation" || echo "not running"
+          ;;
+        *)
+          echo "usage: chrome-automation [start|stop|status]" >&2
+          exit 2
+          ;;
+      esac
+    '')
   ];
 
   # brew shellenv (here because the headless mini doesn't load home/darwin.nix) +
