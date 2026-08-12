@@ -150,7 +150,8 @@ let
       if [ "$cur" != "$last" ]; then
         last="$cur"
         ${bordersrc} >/dev/null 2>&1 &
-        sketchybar --reload >/dev/null 2>&1
+        # バーは内蔵用と外部モニタ用の 2 インスタンスあるので両方 reload する
+        "$HOME/.config/sketchybar/helpers/sb-all.sh" --reload
         # tmux: re-source theme.conf so the running server re-picks rose-pine / rose-pine-dawn
         # by the new appearance. No-op if no tmux server is running.
         command -v tmux >/dev/null 2>&1 && tmux source-file "$HOME/.config/tmux/theme.conf" >/dev/null 2>&1
@@ -279,6 +280,39 @@ in
       };
       StandardErrorPath = "/tmp/sketchybar.err";
       StandardOutPath = "/tmp/sketchybar.log";
+    };
+  };
+
+  # Second sketchybar instance, for the external monitors only.
+  #
+  # sketchybar cannot size a bar per display: `height` is global and `notch_display_height` only
+  # overrides the bar strip, not the items inside it. The built-in screen hands the bar a 56pt notch
+  # band while an external monitor's menu bar is 24pt, so a single instance is always wrong on one
+  # of them — it used to spill ~36pt over the windows on the external.
+  #
+  # Two instances is what the daemon actually supports: the mach port and the lock file are derived
+  # from argv[0], so a differently named binary is a separate bar (BAR_NAME does NOT do this — the
+  # client resolves the port from its own name too). bin-ext/ holds that name plus a `sketchybar`
+  # shim, and putting it first on PATH is what lets the plugins — which all call plain `sketchybar`
+  # — reach this instance without a single edit. Sizes and the target displays come from SB_PROFILE.
+  launchd.agents.sketchybar-ext = {
+    enable = true;
+    config = {
+      ProgramArguments = [
+        "${config.home.homeDirectory}/.config/sketchybar/bin-ext/sketchybar-ext"
+        "--config"
+        "${config.home.homeDirectory}/.config/sketchybar/sketchybarrc"
+      ];
+      RunAtLoad = true;
+      KeepAlive = true;
+      ProcessType = "Interactive";
+      EnvironmentVariables = {
+        PATH = "${config.home.homeDirectory}/.config/sketchybar/bin-ext:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/bin:/bin:/usr/sbin:/sbin";
+        LANG = "en_US.UTF-8";
+        SB_PROFILE = "ext";
+      };
+      StandardErrorPath = "/tmp/sketchybar-ext.err";
+      StandardOutPath = "/tmp/sketchybar-ext.log";
     };
   };
 

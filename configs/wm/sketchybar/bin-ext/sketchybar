@@ -1,0 +1,10 @@
+#!/bin/sh
+#
+# 外部モニタ用インスタンス (sketchybar-ext) 宛ての shim。
+#
+# sketchybar の CLI は「どのバーに話しかけるか」を argv[0] のベース名で決めている
+# (mach port = git.felix.<name>)。BAR_NAME 環境変数では切り替わらない (実測)。
+# plugins/items は `sketchybar --set ...` と直書きで呼んでいるので、ext インスタンスの
+# PATH の先頭にこのディレクトリを置いておくと、子プロセスの呼び出しがそのまま
+# 2本目のバーへ届く。おかげで items/plugins は 1 行も書き換えずに両インスタンスで共用できる。
+exec "$(dirname "$0")/sketchybar-ext" "$@"
