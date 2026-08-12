@@ -74,6 +74,50 @@ in
     '')
   ];
 
+  # Nightly `git pull` on the checkout. The post-merge hook is what actually rebuilds; this only
+  # exists because nothing was ever pulling here, so a merged flake.lock sat in GitHub while the
+  # machine kept running last month's generation.
+  #
+  # It refuses to touch a dirty tree (this is the main tree, and work happens in worktrees) and
+  # notifies through the same ntfy files restic uses — there is no screen to put a dialog on.
+  launchd.agents.dotfiles-pull = import ../lib/launchd-agent.nix {
+    program = "${pkgs.writeShellScript "dotfiles-pull" ''
+      export PATH="${config.home.profileDirectory}/bin:/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+      repo="$HOME/.dotfiles"
+      notify() {
+        url="$HOME/.config/ntfy/url"
+        tok="$HOME/.config/ntfy/token"
+        [ -r "$url" ] && [ -r "$tok" ] || return 0
+        /usr/bin/curl -fsS --max-time 15 \
+          -H "Authorization: Bearer $(cat "$tok")" \
+          -H "Title: dotfiles (macmini)" \
+          -H "Priority: high" \
+          -H "Tags: warning" \
+          -d "$1" "$(cat "$url")" >/dev/null 2>&1 || true
+      }
+      cd "$repo" || exit 0
+      if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
+        notify "作業ツリーが汚れているので pull を見送った"
+        exit 0
+      fi
+      git fetch --quiet origin main || { notify "fetch に失敗"; exit 1; }
+      if git merge-base --is-ancestor origin/main HEAD; then
+        exit 0
+      fi
+      # pull の中で post-merge フックが just rebuild まで走る。
+      if ! git pull --ff-only --quiet; then
+        notify "pull / rebuild に失敗"
+        exit 1
+      fi
+    ''}";
+    schedule = [
+      {
+        Hour = 5;
+        Minute = 30;
+      }
+    ];
+  };
+
   # brew shellenv (here because the headless mini doesn't load home/darwin.nix) +
   # machine-local secrets (HF_TOKEN etc.) are read from local.zsh outside nix management.
   programs.zsh.initContent = lib.mkAfter ''

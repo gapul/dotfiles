@@ -42,6 +42,9 @@ in
       "3010:8080/tcp"
     ];
     log-driver = "journald";
+    # Opted into the nightly image pull: stateless frontend, and podman rolls it back if the
+    # new image fails to start.
+    labels."io.containers.autoupdate" = "registry";
   };
   systemd.services."podman-open-webui" = {
     serviceConfig = {
@@ -74,6 +77,7 @@ in
       "3011:3001/tcp"
     ];
     log-driver = "journald";
+    labels."io.containers.autoupdate" = "registry";
   };
   systemd.services."podman-anythingllm" = {
     serviceConfig = {

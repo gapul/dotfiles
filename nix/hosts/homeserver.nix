@@ -421,5 +421,42 @@ in
   # standalone home-manager config; folding it into the system config can wait
   # until the services are moved.
 
+  # Pull the merged declaration in every night. The weekly flake.lock PR auto-merges once CI is
+  # green, so without this the box would just sit on whatever generation was last switched by hand.
+  #
+  # `--refresh` is not optional: nix caches `github:` flake references, and a switch run right
+  # after a merge will happily rebuild the *previous* revision — that is how two containers got
+  # removed on 2026-08-12. A failed build leaves the running generation alone.
+  system.autoUpgrade = {
+    enable = true;
+    flake = "github:gapul/dotfiles?dir=nix#homeserver";
+    flags = [ "--refresh" ];
+    dates = "04:00";
+    randomizedDelaySec = "30min";
+    # No reboots: nothing here needs a new kernel badly enough to drop the tunnels at 4am.
+    allowReboot = false;
+  };
+
+  # Container images. Every stack pins `:latest` but nothing re-pulled it, so the tags had been
+  # frozen since the machine was built. `podman auto-update` only touches containers that opt in
+  # with io.containers.autoupdate=registry, and rolls a container back if the new image fails to
+  # come up, so the opt-in list is deliberately the stateless frontends (see homelab/*.nix).
+  systemd.services.homelab-image-update = {
+    description = "Pull newer images for containers labelled io.containers.autoupdate";
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = "${pkgs.podman}/bin/podman auto-update";
+    };
+  };
+  systemd.timers.homelab-image-update = {
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      # After the nightly switch, so a rebuild and an image pull never race.
+      OnCalendar = "Sun 05:30";
+      Persistent = true;
+      RandomizedDelaySec = "30min";
+    };
+  };
+
   system.stateVersion = "26.05";
 }
