@@ -186,6 +186,10 @@ in
       # The deploy pulls from a sandbox user over ssh; letting it fire during login while
       # the rest of the stack is still coming up just logs a failure.
       RunAtLoad = false;
+      # Batch: nobody is waiting on it, and it runs every 15 minutes.
+      ProcessType = "Background";
+      LowPriorityIO = true;
+      Nice = 10;
       StandardOutPath = "${config.home.homeDirectory}/Developer/projects/manabi-dashboard/refresh.log";
       StandardErrorPath = "${config.home.homeDirectory}/Developer/projects/manabi-dashboard/refresh.log";
     };
