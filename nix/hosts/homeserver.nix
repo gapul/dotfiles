@@ -9,7 +9,6 @@ let
   # Because Proxmox is replaced in one cut rather than drained service by service,
   # everything that used to sit on CT101 or in the HAOS VM ends up on this host.
   # Only two upstreams stay remote.
-  rpi = "192.168.116.53"; # Raspberry Pi: AdGuard primary, stays off this box on purpose
   macmini = "100.105.135.49"; # Mac mini AI node, stays where it is
 
   gatusPort = 8084;
@@ -43,7 +42,6 @@ let
     ntfy.upstream = "127.0.0.1:8082";
     cache.upstream = "127.0.0.1:8083"; # attic (own nix binary cache)
     dns2.upstream = "127.0.0.1:4000"; # blocky の API/metrics (UI は無い)
-    dns.upstream = "${rpi}:3000"; # AdGuard primary
     # These two used to be reached through Home Assistant's add-on ingress, which
     # does not exist without Supervisor. Both need their own A record in
     # Cloudflare pointing at this host's tailnet address, same as the others.
@@ -61,9 +59,10 @@ let
     # hand-written units that ran on the pve host (homelab/restic-view.nix).
     files.upstream = "127.0.0.1:8085";
     # pve.gapul.net has nothing left to point at.
-    # Replaces uptime-kuma, which lives on the Raspberry Pi (rpi:3001) and holds its
-    # monitor list in a SQLite file no one can review. Its checks are the `sites`
-    # table below now.
+    # Replaced uptime-kuma, which kept its monitor list in a SQLite file no one
+    # could review. It ran on the Raspberry Pi and was stopped on 2026-08-12 —
+    # every target in it still pointed at the CT this host replaced, so it had been
+    # red across the board and watching nothing. Its job is the `sites` table now.
     status = {
       upstream = "127.0.0.1:${toString gatusPort}";
       monitor = false; # monitoring the monitor from itself proves nothing

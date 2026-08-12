@@ -23,6 +23,7 @@
     ./archivebox.nix
     ./attic.nix
     ./backup.nix
+    ./cloudflared.nix
     ./dawarich.nix
     ./forgejo.nix
     ./free-games-claimer.nix
