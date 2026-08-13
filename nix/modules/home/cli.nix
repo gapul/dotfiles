@@ -13,6 +13,8 @@ let
   # packages eight of the nine plugins (listed one by one below), and the rest are the
   # revisions package.toml pinned.
 
+  rosePineTmThemes = import ../../lib/rose-pine-tm-theme.nix { inherit pkgs; };
+
   yamb = pkgs.fetchFromGitHub {
     owner = "h-hg";
     repo = "yamb.yazi";
@@ -61,14 +63,14 @@ in
       theme-dark = "rose-pine";
       theme-light = "rose-pine-dawn";
     };
-    # Vendor the Rosé Pine tmTheme (registered in the bat cache). dawn is generated from dark by hex substitution.
+    # Rosé Pine's own tmThemes, registered in the bat cache (see lib/rose-pine-tm-theme.nix).
     themes."rose-pine" = {
-      src = ../../../configs/cli/bat/themes;
-      file = "rose-pine.tmTheme";
+      src = rosePineTmThemes;
+      file = "dist/rose-pine.tmTheme";
     };
     themes."rose-pine-dawn" = {
-      src = ../../../configs/cli/bat/themes;
-      file = "rose-pine-dawn.tmTheme";
+      src = rosePineTmThemes;
+      file = "dist/rose-pine-dawn.tmTheme";
     };
   };
 
