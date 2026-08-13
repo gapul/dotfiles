@@ -657,7 +657,7 @@ doctor format="":
         --argjson nixMounted "$([[ $(mount | grep -c ' on /nix ') -gt 0 ]] && echo true || echo false)" \
         --argjson fstabOk "$(! grep '/nix' /etc/fstab 2>/dev/null | grep -q noauto && echo true || echo false)" \
         --argjson nixDecrypted "$(! diskutil apfs list 2>/dev/null | grep -A 6 'Nix Store' | grep -q 'FileVault: *Yes' && echo true || echo false)" \
-        --argjson sketchybar "$(pgrep -fq '/opt/homebrew/opt/sketchybar/bin/sketchybar' && echo true || echo false)" \
+        --argjson sketchybar "$(pgrep -xq sketchybar && echo true || echo false)" \
         --argjson omniwm "$(pgrep -xq OmniWM && echo true || echo false)" \
         --argjson karabiner "$(pgrep -fq Karabiner-Core-Service && echo true || echo false)" \
         --argjson ageKey "$([[ -f $HOME/.config/sops/age/keys.txt ]] && echo true || echo false)" \
@@ -681,7 +681,12 @@ doctor format="":
     check "OmniWM registered" 'osascript -e "tell application \"System Events\" to get name of login items" | grep -q OmniWM'
     check "Ghostty registered" 'osascript -e "tell application \"System Events\" to get name of login items" | grep -q Ghostty'
     echo "== Key apps running =="
-    check "sketchybar" 'pgrep -fq "/opt/homebrew/opt/sketchybar/bin/sketchybar"'
+    # Match the process name, not a path. This used to grep the full argv for
+    # /opt/homebrew/opt/sketchybar/bin/sketchybar — the spelling brew's own service plist uses —
+    # but the agent that actually starts it is home-manager's, which execs /opt/homebrew/bin/
+    # sketchybar. Same binary, different spelling, so the check reported [FAIL] on a bar that was
+    # running fine. -x is exact-name so it takes neither sketchybar-ext nor the plugin shells.
+    check "sketchybar" 'pgrep -xq sketchybar'
     check "sketchybar-ext (external monitor bar)" 'pgrep -fq "sketchybar-ext"'
     check "OmniWM" 'pgrep -xq OmniWM'
     check "Karabiner Core-Service" 'pgrep -fq Karabiner-Core-Service'
@@ -697,7 +702,7 @@ doctor format="":
     echo
     # If the bar/WM stack is down, surface a recovery path (to the restart recipe)
     down=()
-    pgrep -fq "/opt/homebrew/opt/sketchybar/bin/sketchybar" || down+=(sketchybar)
+    pgrep -xq sketchybar || down+=(sketchybar)
     pgrep -fq "sketchybar-ext" || down+=(sketchybar-ext)
     pgrep -xq OmniWM || down+=(omniwm)
     pgrep -xq borders || down+=(borders)
@@ -798,11 +803,23 @@ gc:
     echo "  $m removed"
     echo ""
     echo "━━━ Dev caches (__pycache__/*.pyc/.pytest_cache etc., excl Library, regenerated) ━━━"
-    tmp=$(mktemp)
-    find "$HOME" \( -path "$HOME/Library" -o -name .Trash \) -prune -o -type d \( -name '__pycache__' -o -name '.pytest_cache' -o -name '.mypy_cache' -o -name '.ruff_cache' -o -name '.ipynb_checkpoints' \) -prune -print 2>/dev/null > "$tmp"
-    pc=$(wc -l < "$tmp" | tr -d ' ')
-    xargs -I{} rm -rf "{}" < "$tmp" 2>/dev/null; rm -f "$tmp"
-    py=$(find "$HOME" \( -path "$HOME/Library" -o -name .Trash \) -prune -o -type f -name '*.pyc' -print -delete 2>/dev/null | wc -l | tr -d ' ')
+    # This was two `find $HOME` passes and it was the slowest thing in `just gc` by a wide margin.
+    # Two reasons, both fixed here:
+    #   - ~/Sync holds two rclone NFS mounts of Google Drive (780Ti and 816Gi as mounted), and
+    #     plain `find` happily descended into them, so the sweep went out over the network and
+    #     the API. Measured: it had not printed a single result after 35s. --one-file-system
+    #     keeps it on the local volume, which is the only place these caches can be anyway.
+    #   - fd walks in parallel where find is serial: 2.3s against 21s for the same sweep.
+    # One expression instead of two passes: --prune stops fd inside a matched cache dir (so the
+    # .pyc under one is not listed separately — it goes with the dir), and the \.pyc$ alternative
+    # still catches strays lying outside a cache dir.
+    pc=0; py=0
+    while IFS= read -r p; do
+      if [ -d "$p" ]; then rm -rf "$p" && pc=$((pc+1)); else rm -f "$p" && py=$((py+1)); fi
+    done < <(fd --hidden --no-ignore --one-file-system --prune \
+      --exclude Library --exclude .Trash \
+      '^(__pycache__|\.pytest_cache|\.mypy_cache|\.ruff_cache|\.ipynb_checkpoints)$|\.pyc$' \
+      "$HOME" 2>/dev/null)
     echo "  cache dirs: $pc, *.pyc: $py removed"
     echo ""
     echo "━━━ ~/.cache (uv done, status of other large items) ━━━"
@@ -829,7 +846,10 @@ gc-deep:
     echo "━━━ OS/editor junk across HOME (with confirmation) ━━━"
     read -rp "  Delete .DS_Store/AppleDouble/swap/orig/rej/backup files? [y/N] " ans
     if [[ "$ans" == [yY] ]]; then
-      d=$(find "$HOME" \( -path "$HOME/.Trash" -o -path "$HOME/Library" \) -prune -o -type f \( -name '.DS_Store' -o -name '._*' -o -name '*.swp' -o -name '*.swo' -o -name '*.orig' -o -name '*.rej' -o -name '*~' \) -print -delete 2>/dev/null | wc -l | tr -d ' ')
+      # -x for the same reason as the Dev caches sweep above: without it this walks the two
+      # rclone Google Drive mounts under ~/Sync, which is both endless and the last place we
+      # want to be deleting ._* and .DS_Store.
+      d=$(find -x "$HOME" \( -path "$HOME/.Trash" -o -path "$HOME/Library" \) -prune -o -type f \( -name '.DS_Store' -o -name '._*' -o -name '*.swp' -o -name '*.swo' -o -name '*.orig' -o -name '*.rej' -o -name '*~' \) -print -delete 2>/dev/null | wc -l | tr -d ' ')
       echo "  $d removed"
     else
       echo "  skipped"
