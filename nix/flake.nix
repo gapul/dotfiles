@@ -254,6 +254,12 @@
           neovim
           yazi
           tmux
+          # herdr は母艦と同じ unstable から取る (stable の 26.05 系ではなく)。
+          # `herdr --remote` は両端が同じビルドでないと attach を拒否し、版が合わないと
+          # クライアントが自前のコピーを ~/.local/bin に落とす。remote-env に入れて
+          # おけば flake の pin が両端を揃えるので、そのフォールバックが発火しない
+          # (modules/home/packages.nix の unstablePkgs.herdr と対になっている)。
+          nixpkgs-unstable.legacyPackages.${pkgs'.stdenv.hostPlatform.system}.herdr
           git
           lazygit
           ripgrep

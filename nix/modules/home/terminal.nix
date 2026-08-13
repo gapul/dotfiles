@@ -147,7 +147,14 @@ in
     onboarding = false
 
     [theme]
-    # tmux と同じ rose-pine。auto_switch は macOS の外観に追従する (他 OS では dark 固定)。
+    # tmux と同じ rose-pine。auto_switch が見るのは OS ではなく「端末」で、外側の端末へ
+    # OSC 11 (背景色) を問い合わせ、mode 2031 (テーマ更新通知) を購読して追従する。
+    # よって ssh 越しでも接続元 ghostty の切替がそのまま効き、サーバ側の OS は関係ない
+    # (2026-08 に Linux 上の herdr へ light の背景を返して dawn を選ぶことを実測)。
+    # 以前ここには「macOS の外観に追従 (他 OS では dark 固定)」と書いてあったが誤り。
+    #
+    # ペイン内のプログラム (nvim / Claude Code の theme=auto) への中継は herdr 0.8.0 から。
+    # 0.7.5 では起動時の OSC 11 応答だけが返り、途中の切替は中まで届かなかった (#714)。
     auto_switch = true
     dark_name = "rose-pine"
     light_name = "rose-pine-dawn"
