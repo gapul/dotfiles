@@ -92,11 +92,18 @@
     # nix-darwin's homebrew module assumes brew is already installed by hand; this makes the
     # prefix a nix-managed thing, so a fresh mac needs no curl-into-bash bootstrap step.
     nix-homebrew.url = "github:zhaofengli/nix-homebrew";
+
+    # The ACP adapter that lets Hermes run inference on the Claude subscription. It used to live in
+    # configs/macmini/, but it is a part of Hermes' plumbing rather than a machine setting, so it
+    # has its own repo now. This flake only says which machine installs it.
+    claude-acp.url = "github:gapul/claude-acp";
+    claude-acp.inputs.nixpkgs.follows = "nixpkgs";
     mac-app-util.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs =
     inputs@{
+      claude-acp,
       nixpkgs,
       nixpkgs-nixos,
       nixpkgs-unstable,
@@ -571,6 +578,10 @@
       darwinConfigurations.macmini = mkHost.darwin {
         host = ./hosts/macmini.nix;
         homeModules = roles.macminiHeadless;
+        specialArgs = {
+          inherit user;
+          claudeAcp = claude-acp.packages.${system}.default;
+        };
       };
 
       # Android (Termux): nix-on-droid switch --flake .#default
