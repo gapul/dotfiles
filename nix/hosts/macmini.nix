@@ -22,15 +22,12 @@
     };
     # Same priority rule as hosts/darwin.nix: nix > homebrew > everything else, and each formula
     # states why brew owns it. (uv was dropped here — modules/home/packages.nix already installs it,
-    # and brew winning the PATH meant the duplicate was invisible.)
+    # and brew winning the PATH meant the duplicate was invisible. ffmpeg and aria2 followed on
+    # 2026-08-13, which also sweeps the twenty dependency formulae they had dragged in.)
     brews = [
-      "tailscale" # (b) tailnet daemon (auth only on first run via `sudo tailscale up`)
-      # --- Local AI stack (added 2026-07. Kept from removal by cleanup=uninstall) ---
-      # ffmpeg / aria2 / socat are all in nixpkgs for aarch64-darwin, so by the rule above they are
-      # migration candidates. They stay on brew until someone can run a rebuild on the mini and
-      # confirm the AI stack still comes up — moving them blind would break a headless machine.
-      "ffmpeg" # audio/video conversion (preprocessing for transcribe/tts/voice-clone/audio-separation)
-      "aria2" # self-healing multi-connection DL for large models (macmini direct hf-mirror/GitHub)
+      # The tailnet daemon. Stays on brew: the running daemon holds this node's identity, and
+      # swapping the implementation under it buys nothing. Auth happened once via `sudo tailscale up`.
+      "tailscale"
     ];
     casks = [
       # (RustDesk was here for remote GUI. It never got its unattended access or its Screen
@@ -50,11 +47,17 @@
   # dashboard on Cloudflare Pages can reach it. Only the tunnel egresses; nothing is exposed
   # on the LAN. The tunnel credentials can't be declared, so create them once with
   # `cloudflared tunnel login && cloudflared tunnel create manabi` (see launchd.daemons below).
+  # ffmpeg / aria2 moved off homebrew (2026-08-13). They were kept there because nobody could
+  # verify the AI stack still came up on this headless machine after a swap; that check has now
+  # been done. systemPackages rather than home.packages on purpose: ai-stack.sh builds its own
+  # PATH from /opt/homebrew and /run/current-system/sw, and the per-user profile is not on it.
   environment.systemPackages = [
     pkgs.ollama
     pkgs.nodejs_22
     pkgs.bitwarden-cli
     pkgs.cloudflared
+    pkgs.ffmpeg
+    pkgs.aria2
   ];
 
   # Keep Ollama resident via a LaunchAgent.
