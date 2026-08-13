@@ -1351,6 +1351,30 @@ gdrive cmd="status":
 
 
 # ─────────────────────────────────────────────
+# Homelab (DNS / tailnet / デバイス)
+# ─────────────────────────────────────────────
+
+# Diff the repo's declarations against Cloudflare DNS: A records, tunnel CNAMEs, and mail (MX/SPF/DKIM)
+[group('Homelab')]
+dns *flags:
+    @scripts/check-dns-drift.sh {{flags}}
+
+# Fetch, diff, or apply the tailnet policy file (ACL / split DNS). Needs TS_API_KEY
+[group('Homelab')]
+tailnet cmd="diff":
+    @scripts/tailscale-policy.sh {{cmd}}
+
+# Fetch, diff, or apply the NextDNS profile. Needs NEXTDNS_API_KEY / NEXTDNS_PROFILE
+[group('Homelab')]
+nextdns cmd="diff":
+    @scripts/nextdns-profile.sh {{cmd}}
+
+# Validate the ESPHome device configs without hardware
+[group('Homelab')]
+esphome:
+    @nix shell nixpkgs#esphome -c ./esphome/validate.sh
+
+# ─────────────────────────────────────────────
 # Mobile (iOS / Android)
 # ─────────────────────────────────────────────
 
@@ -1378,6 +1402,11 @@ android-launcher-theme:
 [group('Mobile')]
 ios-apps cmd="status":
     @nix shell nixpkgs#ideviceinstaller -c mobile/ios/apps.sh {{cmd}}
+
+# Export iCloud-synced Shortcuts into the repo, or compile .cherri sources into signed shortcuts
+[group('Mobile')]
+ios-shortcuts cmd="status":
+    @mobile/ios/shortcuts.sh {{cmd}}
 
 # Build the declared .mobileconfig profiles and serve them on the LAN for an iPhone to install
 [group('Mobile')]

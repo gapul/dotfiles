@@ -52,3 +52,6 @@ configs/cli/gh/hosts.yml
 
 # Lab PC 用の OS-username override (個人情報、commit 禁止)
 nix/user.local.nix
+
+# ESPHome の実物の secrets (雛形は secrets.example.yaml)
+esphome/secrets.yaml

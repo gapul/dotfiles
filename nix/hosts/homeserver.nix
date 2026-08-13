@@ -36,6 +36,10 @@ let
       expect = [ "[STATUS] == 401" ];
     };
     dav.upstream = "127.0.0.1:5232"; # radicale
+    # DNS レコードもダッシュボードのリンクも前からあったのに vhost だけ無く、
+    # https で開くと繋がらない状態だった (直接ポートを叩けば見えるので気付きにくい)。
+    jellyfin.upstream = "127.0.0.1:8096";
+    navidrome.upstream = "127.0.0.1:4533";
     paperless.upstream = "127.0.0.1:8097";
     git.upstream = "127.0.0.1:3003"; # forgejo
     archive.upstream = "127.0.0.1:8000"; # archivebox

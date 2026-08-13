@@ -37,4 +37,22 @@ check "MISSING 数" "$((declared_count - 1))" "$(grep -c MISSING <<<"$out" || tr
 check "EXTRA 数" "1" "$(grep -c EXTRA <<<"$out" || true)"
 check "MISSING があれば exit 1" "1" "$rc"
 
+# ── 書き出したショートカットが plist として読めるか ──────────────────────
+# plutil は macOS にしか無いので plistlib で見る (CI は Linux で回る)。
+if compgen -G "shortcuts/*.plist" >/dev/null; then
+  broken=$(python3 -c '
+import glob, plistlib, sys
+bad = 0
+for f in sorted(glob.glob("shortcuts/*.plist")):
+    try:
+        actions = plistlib.load(open(f, "rb"))
+        if not isinstance(actions, list) or not actions:
+            bad += 1
+    except Exception:
+        bad += 1
+print(bad)
+')
+  check "書き出した plist が壊れていない" "0" "$broken"
+fi
+
 exit "$fail"

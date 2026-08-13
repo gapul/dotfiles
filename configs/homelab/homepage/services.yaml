@@ -17,7 +17,7 @@
 
 - Network:
     - AdGuard Home (primary):
-        href: https://dns.gapul.net
+        href: http://192.168.116.53:3000
         description: DNS filter (primary)
         icon: adguard-home.png
         siteMonitor: http://192.168.116.53:3000

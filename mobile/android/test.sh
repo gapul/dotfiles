@@ -44,6 +44,19 @@ case "\$*" in
 esac
 EOF
 chmod +x "$stub/adb"
+
+# adopt は配布元を引いて経路を判定する。テストはネットワークに依存させたくないので、
+# どちらの照会も「見つからない」を返させ、判定不能の枝に落とす。
+# 端末内モード用。Android の settings コマンドを真似る。
+cat >"$stub/settings" <<'SETTINGS'
+#!/usr/bin/env bash
+[[ $1 == get ]] && echo null
+SETTINGS
+chmod +x "$stub/settings"
+
+printf '#!/usr/bin/env bash\nexit 1\n' >"$stub/fdroidcl"
+printf '#!/usr/bin/env bash\nexit 1\n' >"$stub/curl"
+chmod +x "$stub/fdroidcl" "$stub/curl"
 export PATH="$stub:$PATH"
 
 check() {
@@ -89,5 +102,26 @@ else
   echo "FAIL: launcher-theme.py が Kvaesitso の形式を満たさない" >&2
   fail=1
 fi
+
+# ── apps.sh adopt: 宣言に無いものだけを tsv 行として出すか ────────────────
+# 偽 adb は宣言済み 1 件 + 未宣言 1 件を返す。出るのは後者だけであるべき。
+out=$(./apps.sh adopt 2>/dev/null || true)
+check "adopt の行数" "1" "$(grep -c '^com.example.undeclared' <<<"$out" || true)"
+
+# ── apps.sh aurora: play 行だけが Favourites になり、形式が Aurora の schema か ──
+aurora=$(./apps.sh aurora)
+check "aurora の favourites 数" \
+  "$(grep -cE $'\tplay\t' apps.tsv || true)" \
+  "$(python3 -c 'import json,sys; print(len(json.load(sys.stdin)["favourites"]))' <<<"$aurora")"
+check "aurora の JSON が壊れていない" "ok" \
+  "$(python3 -c 'import json,sys; d=json.load(sys.stdin); print("ok" if all({"packageName","displayName","iconURL","added","mode"} <= set(f) and f["mode"]=="IMPORT" for f in d["favourites"]) else "ng")' <<<"$aurora")"
+
+# ── os.sh 端末内モード: settings は当てて、権限の要る節は理由付きで飛ばすか ──
+out_local=$(MOBILE_ON_DEVICE=1 ./os.sh --dry-run </dev/null)
+check "端末内でも設定差分は出る" \
+  "$(grep -cvE '^[[:space:]]*(#|$)' os-settings.conf)" \
+  "$(grep -cE '^  (global|system|secure)\.' <<<"$out_local" || true)"
+check "権限の要る節は飛ばす" "2" "$(grep -c 'スキップ' <<<"$out_local" || true)"
+check "端末内では adb を呼ばない" "0" "$(grep -c '既定ランチャー' <<<"$out_local" || true)"
 
 exit "$fail"

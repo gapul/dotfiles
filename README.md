@@ -63,7 +63,10 @@ secrets/secrets.yaml # SOPS で age 暗号化
 .sops.yaml           # 受信者 (age pubkey)
 scripts/bootstrap.sh # 新 Mac 用 0 → 1 セットアップ (Linux/WSL 版もあり)
 windows/             # Windows 側セットアップ (winget/scoop/AutoHotkey/...)
-mobile/              # iOS / Android (アプリ目録・adb 設定・構成プロファイル)
+mobile/              # iOS / Android (アプリ宣言・adb 設定・構成プロファイル)
+esphome/             # ESP チップに載るデバイス設定 (水やり機)
+tailscale/           # tailnet のポリシー (ACL / split DNS)  ※fetch して作る
+nextdns/             # NextDNS のプロファイル設定           ※fetch して作る
 templates/           # direnv 用 dev shell テンプレ (node/python/rust)
 Justfile             # 普段使うコマンド集
 ```
@@ -111,6 +114,12 @@ curl -fsSL https://raw.githubusercontent.com/gapul/dotfiles/main/scripts/bootstr
     gc                           # GC all layers at once (only regenerable caches; Trash and whole-home deletion are in gc-deep)
     gc-deep                      # Interactively delete heavy regenerable data (Trash / ~/tmp scratch / zap of retired casks / CoreSimulator cache / podman / old build artifacts)
 
+    [Homelab]
+    dns *flags                   # Diff the repo's declarations against Cloudflare DNS: A records, tunnel CNAMEs, and mail (MX/SPF/DKIM)
+    esphome                      # Validate the ESPHome device configs without hardware
+    nextdns cmd="diff"           # Fetch, diff, or apply the NextDNS profile. Needs NEXTDNS_API_KEY / NEXTDNS_PROFILE
+    tailnet cmd="diff"           # Fetch, diff, or apply the tailnet policy file (ACL / split DNS). Needs TS_API_KEY
+
     [Inspect]
     check what=""                # Type-check / show diff  (`just check` = syntax/type-check, `just check diff` = diff build)
     doctor format=""             # Environment health check (run after e.g. a Determinate upgrade)
@@ -124,6 +133,7 @@ curl -fsSL https://raw.githubusercontent.com/gapul/dotfiles/main/scripts/bootstr
     android-os *flags            # Apply the declared Android OS settings over adb (`just android-os` = diff + apply, `just android-os --dry-run`)
     ios-apps cmd="status"        # Diff ios/apps.tsv against a USB-connected iPhone (`just ios-apps` / `just ios-apps verify`)
     ios-profiles port="8000"     # Build the declared .mobileconfig profiles and serve them on the LAN for an iPhone to install
+    ios-shortcuts cmd="status"   # Export iCloud-synced Shortcuts into the repo, or compile .cherri sources into signed shortcuts
     mobile-test                  # Self-check both platforms' scripts with stubbed adb / ideviceinstaller (no device needed)
 
     [Service]

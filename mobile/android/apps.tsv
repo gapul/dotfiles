@@ -6,7 +6,8 @@
 #   izzy    IzzyOnDroid (GitHub リリースを追う非公式 F-Droid リポジトリ)。同上
 #   github  どちらのリポジトリにも無く、GitHub Releases が配布元。ref は owner/repo。
 #           端末では Obtainium が追う (母艦からの一括インストールは不可)
-#   play    Play ストアにしか無い。端末では Aurora Store から入れる
+#   play    GitHub にも F-Droid にも無く、Play ストアだけ。端末では Aurora Store。
+#           Obtainium が追えない唯一の経路なので、GitHub 配布があるなら github に寄せる
 #
 # apps.sh verify は 4 経路すべて実在確認できる (F-Droid 索引 / GitHub API /
 # Play のストアページ)。綴り間違いはそこで落ちる。
@@ -39,7 +40,7 @@ im.vector.app	fdroid	-
 
 # ── その他 ──────────────────────────────────────────────────────────
 com.kunzisoft.keepass.libre	fdroid	-
-com.x8bit.bitwarden	play	-
+com.x8bit.bitwarden	github	bitwarden/android
 com.ichi2.anki	fdroid	-
 spam.blocker	fdroid	-
 org.schabi.newpipe	fdroid	-
