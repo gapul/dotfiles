@@ -55,6 +55,9 @@ pkgs.testers.runNixOSTest {
       systemd.services.caddy.after = lib.mkForce [ "network.target" ];
       systemd.services.caddy.wants = lib.mkForce [ ];
 
+      # For `blocky validate` below; the daemon has the package, the shell does not.
+      environment.systemPackages = [ pkgs.blocky ];
+
       virtualisation.graphics = false;
       virtualisation.memorySize = 2048;
     };
@@ -103,9 +106,19 @@ pkgs.testers.runNixOSTest {
 
     # The services that stopped being containers. Each one is config that used to
     # live in a web UI or a command line, so "it parses and starts" is the claim.
-    machine.wait_for_unit("adguardhome.service")
-    machine.wait_for_open_port(3080)
-    machine.succeed("ss -lntup | grep -q ':53 '")
+    # DNS is blocky now (AdGuard was replaced in #228; this line still named it, and
+    # waiting for a unit that no longer exists is what has been failing CI since).
+    # Blocky cannot come up in here at all: it resolves its upstreams and downloads a
+    # denylist at startup, and exits when it cannot. So assert the two things that do
+    # not need a network — the unit exists, and the config generated from `settings`
+    # parses. The latter is the same class of bug as gatus's YAML: a wrong key in a
+    # freeform attrset type-checks in nix and only fails when the program reads it.
+    machine.succeed("systemctl cat blocky.service >/dev/null")
+    blocky_config = machine.succeed(
+        "systemctl cat blocky.service | grep -o -- '--config [^ ]*' | head -1 | cut -d' ' -f2"
+    ).strip()
+    machine.succeed(f"blocky validate --config {blocky_config}")
+
     machine.wait_for_unit("syncthing.service")
     machine.succeed("systemctl is-enabled samba-smbd.service")
 
