@@ -18,8 +18,8 @@ let
   yamb = pkgs.fetchFromGitHub {
     owner = "h-hg";
     repo = "yamb.yazi";
-    rev = "5576bd7";
-    hash = "sha256-oq9zyVduKbOPuJVzFHiNIxe/JvNcqujS5edEjZJstpQ=";
+    rev = "971b85862a1a2c5b8133da88b0dd4569adff296e";
+    hash = "sha256-pbwKj4NuIiBMyuRVtbOYWBREZbyg1mKLoCWIAkxrygc=";
   };
 
   rosePine = pkgs.fetchFromGitHub {
