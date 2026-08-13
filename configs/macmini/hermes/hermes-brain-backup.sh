@@ -37,9 +37,13 @@ fi
 # 展開してから差し替えるのは、向こうで消えたファイルをこちらにも反映するため
 # (tar は上書きするだけなので、そのままだと消したものが残り続ける)。
 study_tmp=$(mktemp -d)
+# --exclude は操作対象より前に置く。後ろに書くと「has no effect」と言われて
+# 素通りする(この書き方だったせいで .dashboard_auth と .gcal_client.json が
+# 8/10 から repo に入っていた)。
 if ssh -o BatchMode=yes -i /Users/hermes/.ssh/sandbox_ed25519 hsandbox@localhost \
-  "tar cf - -C ~ study --exclude='.git' --exclude='*.png' --exclude='*.pdf' \
-   --exclude='.gcal_token.json' --exclude='.dashboard_auth' --exclude='.gcal_client.json'" \
+  "tar cf - --exclude='.git' --exclude='*.png' --exclude='*.pdf' \
+   --exclude='.gcal_token.json' --exclude='.dashboard_auth' --exclude='.gcal_client.json' \
+   -C ~ study" \
   2>/dev/null | tar xf - -C "$study_tmp" --strip-components=1; then
   rm -rf "$REPO/study"
   mv "$study_tmp" "$REPO/study"
