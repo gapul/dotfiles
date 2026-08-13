@@ -171,13 +171,16 @@
   fonts.packages = with pkgs; [
     nerd-fonts.hack
     nerd-fonts.fira-code
-    # sketchybar app icon font. Vendor v2.0.62 with Ghostty/Zen support.
-    # Use the bundled ttf rather than the nixpkgs version to keep the version
-    # in strict lockstep with plugins/icon_map.sh.
+    # sketchybar app icon font. Pinned to the release plugins/icon_map.sh came from — nixpkgs
+    # is on an older one, and a font and a map that disagree draw the wrong glyphs.
+    # Fetched rather than committed: the ttf is 280KB of someone else's build.
     (stdenvNoCC.mkDerivation {
       pname = "sketchybar-app-font";
       version = "2.0.71";
-      src = ../../configs/fonts/sketchybar-app-font.ttf;
+      src = fetchurl {
+        url = "https://github.com/kvndrsslr/sketchybar-app-font/releases/download/v2.0.71/sketchybar-app-font.ttf";
+        hash = "sha256-4BXED76V2FdjtjPq5U97jh3tg8/7wVr/QLi4+JcXoLE=";
+      };
       dontUnpack = true;
       installPhase = ''
         install -Dm444 $src $out/share/fonts/truetype/sketchybar-app-font.ttf

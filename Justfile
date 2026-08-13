@@ -470,7 +470,6 @@ sketchybar-font:
     set -euo pipefail
     repo="kvndrsslr/sketchybar-app-font"
     dir="{{justfile_directory()}}"
-    ttf="$dir/configs/fonts/sketchybar-app-font.ttf"
     map="$dir/configs/wm/sketchybar/plugins/icon_map.sh"
     # A transient network failure here used to abort `just maintain` entirely and roll back
     # flake.lock. The font is a nice-to-have, so treat an unreachable API as "skip", like xcodes.
@@ -483,16 +482,20 @@ sketchybar-font:
       exit 0
     fi
     echo "sketchybar-app-font: updating $cur -> $tag"
-    gh release download "$tag" --repo "$repo" --pattern sketchybar-app-font.ttf --output "$ttf"  --clobber
-    gh release download "$tag" --repo "$repo" --pattern icon_map.sh           --output "$map"  --clobber
+    gh release download "$tag" --repo "$repo" --pattern icon_map.sh --output "$map" --clobber
     awk '/^### END-OF-ICON-MAP/{print; print "__icon_map \"$1\""; print "[ -r \"${BASH_SOURCE%/*}/icon_map_local.sh\" ] && source \"${BASH_SOURCE%/*}/icon_map_local.sh\""; print "echo \"$icon_result\""; exit} {print}' "$map" > "$map.tmp" && mv "$map.tmp" "$map"
     # gh release assets are non-executable, so restore +x; plugins run icon_map.sh
     # directly ($(...)), and without +x it fails with "permission denied" -> the
     # workspace app icons silently vanish. `chmod` before `git add` so the staged
     # mode is recorded as 100755 too.
     chmod +x "$map"
+    # The font itself is fetched by nix, so what gets updated here is the pin: version, URL,
+    # and hash. Prefetching is what produces the hash — a wrong one fails the build, loudly.
+    hash=$(nix store prefetch-file --json "https://github.com/$repo/releases/download/$tag/sketchybar-app-font.ttf" | jq -r .hash)
     sed -i "" -E '/pname = "sketchybar-app-font"/{n;s/version = "[0-9.]+"/version = "'"${tag#v}"'"/;}' "$dir/nix/hosts/darwin.nix"
-    git -C "$dir" add "$ttf" "$map" "$dir/nix/hosts/darwin.nix"
+    sed -i "" -E 's|(sketchybar-app-font/releases/download/)v[0-9.]+|\1'"$tag"'|' "$dir/nix/hosts/darwin.nix"
+    sed -i "" -E '/sketchybar-app-font\/releases\/download/{n;s|hash = "[^"]*"|hash = "'"$hash"'"|;}' "$dir/nix/hosts/darwin.nix"
+    git -C "$dir" add "$map" "$dir/nix/hosts/darwin.nix"
     echo "Updated ($tag). Apply with: just rebuild (automatic when run via upgrade)"
 
 

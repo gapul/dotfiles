@@ -5,6 +5,52 @@
   lib,
   ...
 }:
+let
+  c = import ../../lib/theme.nix; # c.dark / c.light (hex without leading #)
+
+  # yazi's plugins and flavors used to be committed next to package.toml — which already said
+  # exactly where each one came from and at which revision. So fetch them instead: nixpkgs
+  # packages eight of the nine plugins (listed one by one below), and the rest are the
+  # revisions package.toml pinned.
+
+  yamb = pkgs.fetchFromGitHub {
+    owner = "h-hg";
+    repo = "yamb.yazi";
+    rev = "5576bd7";
+    hash = "sha256-oq9zyVduKbOPuJVzFHiNIxe/JvNcqujS5edEjZJstpQ=";
+  };
+
+  rosePine = pkgs.fetchFromGitHub {
+    owner = "Mintass";
+    repo = "rose-pine.yazi";
+    rev = "d91f8f2";
+    hash = "sha256-+7viMu6pCL49avTGUDufobpqg149PLkLiLvWAGJSgIM=";
+  };
+
+  # Upstream ships the dark flavor only; the dawn one is it with the palette swapped, which is
+  # how it was made by hand before. The two extra tones are Rosé Pine's highlight med/high,
+  # which palettes.json does not carry.
+  dawnSwaps =
+    (lib.filterAttrs (_: v: builtins.isString v && builtins.match "[0-9a-f]{6}" v != null) c.dark)
+    // {
+      highlightMed = "21202e";
+      highlightHigh = "524f67";
+    };
+  dawnColors = c.light // {
+    highlightMed = "f4ede8";
+    highlightHigh = "cecacd";
+  };
+
+  rosePineDawn = pkgs.runCommand "rose-pine-dawn.yazi" { } ''
+    cp -r ${rosePine} $out
+    chmod -R u+w $out
+    ${lib.concatStringsSep "\n" (
+      lib.mapAttrsToList (
+        name: hex: "sed -i 's/#${hex}/#${dawnColors.${name}}/g' $out/flavor.toml $out/tmtheme.xml"
+      ) dawnSwaps
+    )}
+  '';
+in
 {
   programs.bat = {
     enable = true;
@@ -206,4 +252,15 @@
     source = ../../../configs/cli/yazi;
     recursive = true;
   };
+  home.file.".config/yazi/plugins/full-border.yazi".source = pkgs.yaziPlugins.full-border;
+  home.file.".config/yazi/plugins/git.yazi".source = pkgs.yaziPlugins.git;
+  home.file.".config/yazi/plugins/jump-to-char.yazi".source = pkgs.yaziPlugins.jump-to-char;
+  home.file.".config/yazi/plugins/piper.yazi".source = pkgs.yaziPlugins.piper;
+  home.file.".config/yazi/plugins/smart-enter.yazi".source = pkgs.yaziPlugins.smart-enter;
+  home.file.".config/yazi/plugins/smart-filter.yazi".source = pkgs.yaziPlugins.smart-filter;
+  home.file.".config/yazi/plugins/smart-paste.yazi".source = pkgs.yaziPlugins.smart-paste;
+  home.file.".config/yazi/plugins/toggle-pane.yazi".source = pkgs.yaziPlugins.toggle-pane;
+  home.file.".config/yazi/plugins/yamb.yazi".source = yamb;
+  home.file.".config/yazi/flavors/rose-pine.yazi".source = rosePine;
+  home.file.".config/yazi/flavors/rose-pine-dawn.yazi".source = rosePineDawn;
 }

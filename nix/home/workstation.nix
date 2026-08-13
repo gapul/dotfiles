@@ -90,6 +90,12 @@ in
     source = ../../configs/textlint;
     recursive = true;
   };
+  # prh's WEB+DB PRESS rules: someone else's dictionary, fetched rather than copied in.
+  # `.textlintrc.json` names it by the relative path it lands at, so nothing there changes.
+  home.file.".config/textlint/prh/web-db-press.yml".source = pkgs.fetchurl {
+    url = "https://raw.githubusercontent.com/prh/rules/32b7f09a327928503c760a7db9f5eccd936d36fa/media/WEB%2BDB_PRESS.yml";
+    hash = "sha256-6RTk8Qs/ZVG71vp7kYhu81CCh3uJwsRYk6ER09DMQVw=";
+  };
   # LaTeX: latexmk default config (LuaLaTeX) and Japanese templates
   # latexmk 4.77+ officially supports $XDG_CONFIG_HOME/latexmk/latexmkrc, so use the XDG-compliant location
   home.file.".config/latexmk/latexmkrc".source = ../../configs/tex/latexmkrc;
@@ -104,6 +110,10 @@ in
   # uosc: stop vendoring (an 18MB bundled ziggy binary) and supply it from nixpkgs.
   # Keep third-party binaries out of the repo (the ziggy-dependent DL feature is unused).
   home.file.".config/mpv/scripts/uosc".source = "${pkgs.mpvScripts.uosc}/share/mpv/scripts/uosc";
+  # …and its two fonts, which ship in the same package. They were 430KB of committed binary
+  # that had to be kept in step with the script by hand.
+  home.file.".config/mpv/fonts/uosc_icons.otf".source = "${pkgs.mpvScripts.uosc}/share/fonts/uosc_icons.otf";
+  home.file.".config/mpv/fonts/uosc_textures.ttf".source = "${pkgs.mpvScripts.uosc}/share/fonts/uosc_textures.ttf";
   home.file.".config/launcher/config.toml".source = ../../configs/launcher/config.toml;
   # core/launcher.sh uses the store binary over a local build when this env is set.
   home.sessionVariables.LAUNCHER_SEARCH_BIN = lib.getExe launcher-search;
