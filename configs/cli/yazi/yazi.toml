@@ -252,3 +252,13 @@ mime = "application/{zip,gzip,x-tar,x-bzip2,x-xz,x-7z-compressed,x-rar,vnd.rar}"
 run  = 'piper -- ouch list "$1"'
 
 # 動画は ffmpegthumbnailer (yazi 内蔵 video previewer が自動使用。ルール不要)
+
+# 3D モデルを f3d でレンダリング (plugins/model.yazi)。previewer だけだとカーソルを
+# 合わせるまで走らないので preloader にも同じルールを入れる。
+[[plugin.prepend_previewers]]
+url = "*.{vrm,vrma,glb,gltf,obj,stl,ply,fbx,dae,3mf,off,usd,usda,usdc,usdz}"
+run  = "model"
+
+[[plugin.prepend_preloaders]]
+url = "*.{vrm,vrma,glb,gltf,obj,stl,ply,fbx,dae,3mf,off,usd,usda,usdc,usdz}"
+run  = "model"
