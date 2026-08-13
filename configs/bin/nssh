@@ -19,6 +19,8 @@
 #   - rose-pine テーマ       : configs/terminals/tmux/theme-remote.conf (active パレット固定。
 #                              母艦のライト/ダーク自動追従だけは無い)
 #   - prefix+e (スクロールバック編集) : configs/terminals/tmux/scrollback-edit.sh
+#   - Claude Code            : CLAUDE.md と自作 skill は symlink、settings.json は管理キーだけ
+#                              merge (theme=auto は端末を見るので母艦のライト/ダークに追従する)
 #   - プラグイン (resurrect / continuum) : 無効。セッション永続化は使い捨てホストの
 #     前提 (reset --hard) と噛み合わないため、意図的に持ち込まない。
 
@@ -87,6 +89,23 @@ ln -sfn ~/.dotfiles/configs/terminals/tmux   ~/.config/tmux
 mkdir -p ~/.config/gh ~/.codex
 ln -sfn ~/.dotfiles/configs/cli/gh/config.yml     ~/.config/gh/config.yml
 ln -sfn ~/.dotfiles/configs/cli/codex/config.toml ~/.codex/config.toml
+#    Claude Code: 書き換わらないもの (CLAUDE.md / 自作 skill) は symlink で張る。
+#    hooks / output-styles / bin は母艦のデスクトップ前提なので持ち込まない。
+mkdir -p ~/.claude/skills
+ln -sfn ~/.dotfiles/configs/cli/claude/CLAUDE.md ~/.claude/CLAUDE.md
+for s in english-vocab gapul-writing-voice step-by-step-tutor; do
+  ln -sfn ~/.dotfiles/configs/cli/claude/skills/"$s" ~/.claude/skills/"$s"
+done
+#    settings.json だけは symlink にしない。permissions がホストごとに育つファイルで、
+#    symlink にすると reset --hard で承認済みの許可が毎回消える。dotfiles 側の管理キーだけを
+#    既存ファイルへ merge する (下の bashrc と同じ考え方。一覧は configs/cli/claude/README.md)。
+#    python3 が無い環境では黙って諦める (Claude が無いホストでも困らない)。
+if command -v python3 >/dev/null 2>&1; then
+  python3 ~/.dotfiles/scripts/merge-claude-settings.py ~/.claude/settings.json \
+    || echo "[nssh] WARNING: Claude 設定の反映に失敗。ホスト側の設定のまま続行します。" >&2
+else
+  echo "[nssh] python3 が無いため Claude 設定の反映をスキップしました" >&2
+fi
 #    zsh: ZDOTDIR を ~/.config/zsh に置き、.zshrc を dotfiles へ向ける。
 #    ログインシェルは bash のまま (共有マシンでは chsh できない) なので、
 #    素の ssh で入ったときは bashrc.remote が使われる。

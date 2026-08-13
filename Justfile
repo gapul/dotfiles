@@ -1177,6 +1177,22 @@ win-theme *flags:
 theme name="":
     @just _theme-{{os()}} "{{name}}"
 
+# nssh 先へ配る Claude Code の設定は母艦を正とする。母艦で /config などを触ったらこれを走らせて
+# configs/cli/claude/settings.remote.json へ吸い上げ、次の nssh でリモートへ降ろす。
+# 吸い上げるのはそのファイルが既に持つ管理キーだけで、permissions はホスト所有のまま触らない
+# (理由は configs/cli/claude/README.md)。
+[group('Setup')]
+[doc("Adopt this machine's Claude Code settings into the remote-managed keys (client wins)")]
+claude-settings-adopt:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    src="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/settings.json"
+    if [ ! -f "$src" ]; then
+      echo "Claude の設定が見つかりません: $src" >&2
+      exit 1
+    fi
+    python3 scripts/merge-claude-settings.py "$src" --adopt
+
 [private]
 _theme-macos name="": (_theme-unix name)
 
