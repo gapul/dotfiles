@@ -112,8 +112,10 @@ in
   home.file.".config/mpv/scripts/uosc".source = "${pkgs.mpvScripts.uosc}/share/mpv/scripts/uosc";
   # …and its two fonts, which ship in the same package. They were 430KB of committed binary
   # that had to be kept in step with the script by hand.
-  home.file.".config/mpv/fonts/uosc_icons.otf".source = "${pkgs.mpvScripts.uosc}/share/fonts/uosc_icons.otf";
-  home.file.".config/mpv/fonts/uosc_textures.ttf".source = "${pkgs.mpvScripts.uosc}/share/fonts/uosc_textures.ttf";
+  home.file.".config/mpv/fonts/uosc_icons.otf".source =
+    "${pkgs.mpvScripts.uosc}/share/fonts/uosc_icons.otf";
+  home.file.".config/mpv/fonts/uosc_textures.ttf".source =
+    "${pkgs.mpvScripts.uosc}/share/fonts/uosc_textures.ttf";
   home.file.".config/launcher/config.toml".source = ../../configs/launcher/config.toml;
   # core/launcher.sh uses the store binary over a local build when this env is set.
   home.sessionVariables.LAUNCHER_SEARCH_BIN = lib.getExe launcher-search;
