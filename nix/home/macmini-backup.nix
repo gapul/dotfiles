@@ -44,9 +44,10 @@ let
       # 書類も projects/ 配下へ集めてある(~/Documents は macOS の TCC が ssh と
       # launchd からの走査を拒むため、この機械では使わない)。
       "${home}/Developer"
-      # ~/ai は 2026-08-12 に畳んだ。中身は宣言済みのレイアウトどおりに散らしてあり、
-      # manabi-dashboard は Developer/projects/ 配下(この行が拾う)、止まった mopidy-dev は
-      # ~/tmp へ退避した。パスとして残すと lstat が失敗して毎朝 ntfy が鳴る。
+      # ~/ai は 2026-08-12 に畳んだ。パスとして残すと lstat が失敗して毎朝 ntfy が鳴るので、
+      # 中身は宣言済みのレイアウトどおりに散らしてある。manabi-dashboard はさらに 2026-08-13 に
+      # サービスとして gapul/manabi へ切り出し、この機械では /Users/Shared/manabi の clone に
+      # なった——git にある以上ここで拾う必要はない。止まった mopidy-dev は ~/tmp へ退避した。
       # ここが今まで完全に無防備だった。Claude Code の履歴 (~/.config/claude) や
       # 各ツールの状態が入っている。store へのシンボリックリンクは中身を追わない。
       "${home}/.config"
