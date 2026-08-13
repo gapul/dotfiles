@@ -201,11 +201,13 @@ bash ~/.dotfiles/scripts/install-skk-dicts-macskk.sh
 その後 macSKK 設定 → Dictionaries → 5 辞書全部の Toggle を ON。
 
 ## 4. Puddle 壁紙の再登録
-1. Puddle menubar → Settings → Display → "+"
-2. Browse... ボタンで `~/.dotfiles/configs/wallpaper/` の .metal を選ぶ
-   (security-scoped bookmark を取るため Browse 経由が必須。直接 URL 貼付は NG)
-   ワークスペース連動は同ディレクトリの inputs ファイルを Puddle が読む形で、
-   シェーダ側の設定は要らない。
+```bash
+puddle apply
+```
+`~/.config/puddle/install.toml` の `wallpapers` に並べたものが
+gapul/puddle-shaders と gapul/puddle-chess から入る。ワークスペース連動は
+`~/.dotfiles/configs/wallpaper/inputs*`(sketchybar のフックが書く)を
+instance ごとに読ませる形なので、シェーダ側の設定は要らない。
 
 ## 5. OmniWM 起動許可
 - 初回起動時に macOS から「アクセシビリティ要求」が出る → 許可
