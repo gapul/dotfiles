@@ -31,7 +31,7 @@ image = [
   { run = 'open -a "GIMP" "$@"', desc = "Edit in GIMP", orphan = true, for = "macos" },
   { run = 'open -a "krita" "$@"', desc = "Edit in Krita", orphan = true, for = "macos" },
   { run = 'open -a "Affinity" "$@"', desc = "Edit in Affinity", orphan = true, for = "macos" },
-  { run = 'xdg-open "$@"', desc = "Open (xdg)", orphan = true, for = "linux" },
+  { run = 'open-on-mac "$@"', desc = "Open on Mac (xdg when local)", orphan = true, for = "linux" },
   { run = 'gimp "$@"', desc = "Edit in GIMP", orphan = true, for = "linux" },
   { run = 'krita "$@"', desc = "Edit in Krita", orphan = true, for = "linux" },
   # Windows: qView (Mac と共通)、PicView、ImageGlass、最後に関連付け fallback
@@ -68,7 +68,7 @@ edit = [
 html = [
   { run = 'nvim "$@"', desc = "Edit in Neovim", block = true, for = "unix" },
   { run = 'open "$@"', desc = "View in browser", orphan = true, for = "macos" },
-  { run = 'xdg-open "$@"', desc = "View in browser", orphan = true, for = "linux" },
+  { run = 'open-on-mac "$@"', desc = "Open on Mac (xdg when local)", orphan = true, for = "linux" },
   { run = 'nvim "$@"', desc = "Edit in Neovim", block = true, for = "windows" },
   { run = 'start "" "$@"', desc = "View in browser", orphan = true, for = "windows" },
 ]
@@ -86,7 +86,7 @@ svg = [
   { run = 'nvim "$@"', desc = "Edit source in Neovim", block = true, for = "unix" },
   { run = 'open -b com.adobe.illustrator "$@"', desc = "Edit in Illustrator", orphan = true, for = "macos" },
   { run = 'open -a "Inkscape" "$@"', desc = "Edit in Inkscape", orphan = true, for = "macos" },
-  { run = 'xdg-open "$@"', desc = "View (xdg)", orphan = true, for = "linux" },
+  { run = 'open-on-mac "$@"', desc = "Open on Mac (xdg when local)", orphan = true, for = "linux" },
   { run = 'inkscape "$@"', desc = "Edit in Inkscape", orphan = true, for = "linux" },
   { run = 'start "" "$@"', desc = "View with default", orphan = true, for = "windows" },
   { run = 'nvim "$@"', desc = "Edit source in Neovim", block = true, for = "windows" },
@@ -149,7 +149,7 @@ extract = [
 ]
 fallback = [
   { run = 'open "$@"', desc = "Open with macOS default", orphan = true, for = "macos" },
-  { run = 'xdg-open "$@"', desc = "Open with Linux default", orphan = true, for = "linux" },
+  { run = 'open-on-mac "$@"', desc = "Open on Mac (xdg when local)", orphan = true, for = "linux" },
   { run = 'start "" "$@"', desc = "Open with Windows default", orphan = true, for = "windows" },
 ]
 # AirDrop the selected files (macOS only). Helper: configs/bin/airdrop (~/.local/bin, on PATH).
