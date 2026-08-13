@@ -31,10 +31,21 @@ if [ -d "$IMOUTO" ]; then
 fi
 
 # 学習記録(試験結果/課題/進捗/勉強時間/暗記カード)はサンドボックス側にある
-mkdir -p "$REPO/study"
-ssh -o BatchMode=yes -i /Users/hermes/.ssh/sandbox_ed25519 hsandbox@localhost \
-  "tar cf - -C ~ study --exclude='.gcal_token.json' --exclude='.dashboard_auth' --exclude='.gcal_client.json'" \
-  2>/dev/null | tar xf - -C "$REPO/study" --strip-components=1 || true
+# 生成物(画像/PDF)と向こうの .git は持ってこない。前者は作り直せるし、後者は
+# 中身がそのままファイルとして積まれて履歴が膨らむ。学習記録の履歴は
+# サンドボックス側の git にある。
+# 展開してから差し替えるのは、向こうで消えたファイルをこちらにも反映するため
+# (tar は上書きするだけなので、そのままだと消したものが残り続ける)。
+study_tmp=$(mktemp -d)
+if ssh -o BatchMode=yes -i /Users/hermes/.ssh/sandbox_ed25519 hsandbox@localhost \
+  "tar cf - -C ~ study --exclude='.git' --exclude='*.png' --exclude='*.pdf' \
+   --exclude='.gcal_token.json' --exclude='.dashboard_auth' --exclude='.gcal_client.json'" \
+  2>/dev/null | tar xf - -C "$study_tmp" --strip-components=1; then
+  rm -rf "$REPO/study"
+  mv "$study_tmp" "$REPO/study"
+else
+  rm -rf "$study_tmp"
+fi
 
 # 秘密は平文では置かないが、飛んだときに手で入れ直すのも困る。
 # 公開鍵だけで暗号化できるので、暗号文だけ repo に入れておく。
