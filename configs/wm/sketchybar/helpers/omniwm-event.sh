@@ -46,7 +46,10 @@ printf '%s\n' "$focused" > "$STATE"
 # ディスプレイの現在WSは displays[].activeWorkspace で取る。workspaces --visible の
 # isFocused/isVisible は「フォーカスされた窓」基準で、空ワークスペースに切り替えると
 # 前のWSを報告し続ける (空WSで壁紙が変わらない原因だった)。
+# シェーダ本体は gapul/puddle-shaders にあり、ここに残るのは実行時状態(inputs)だけ。
+# 新しい機械では誰も作らないので、書く側が掘る。
 wp_dir="$HOME/.dotfiles/configs/wallpaper"
+mkdir -p "$wp_dir"
 
 # 連続切替ではイベント毎に本スクリプトが並走し、古い状態を読んだ遅いインスタンスが
 # 最後に書いて inputs が stale で固まることがある (query→write が非アトミック)。

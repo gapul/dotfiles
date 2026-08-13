@@ -22,5 +22,12 @@ allow = [
 wallpapers = [
     "dotmatrix",
     "worldmap",
+    "globe",
+    "constellation",
+    "topographic",
+    "aurora",
+    "aurora-gradient",
+    "rose-pine",
+    "audio-bars",
     "puddle-chess",
 ]
