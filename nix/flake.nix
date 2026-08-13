@@ -15,6 +15,13 @@
     # pkgs. Don't add follows (keep it as a separate lineage that doesn't drag in other inputs).
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
 
+    # herdr only. nixpkgs-unstable is held at a revision where the darwin creative apps still
+    # build (ardour / aseprite / fritzing), so it cannot be moved just to pick up a herdr
+    # release: as of 2026-08 aseprite 1.3.18.1 fails on aarch64-darwin with
+    # "no member named 'format' in namespace 'fmt'" (NixOS/nixpkgs#552132, still open).
+    # Give herdr its own lineage instead, the same way nixpkgs-nixos is separate.
+    nixpkgs-herdr.url = "github:NixOS/nixpkgs/nixos-unstable";
+
     # For the real NixOS machine (Windows dual-boot HP laptop, x86_64).
     # Separated from the darwin channels to hit the nixos cache cleanly.
     nixpkgs-nixos.url = "github:NixOS/nixpkgs/nixos-26.05";
@@ -107,6 +114,7 @@
       nixpkgs,
       nixpkgs-nixos,
       nixpkgs-unstable,
+      nixpkgs-herdr,
       nix-darwin,
       home-manager,
       nix-on-droid,
@@ -167,6 +175,7 @@
         agentSkills = agent-skills;
         mopidyPatches = mopidy-patches;
         nixpkgsUnstable = nixpkgs-unstable;
+        nixpkgsHerdr = nixpkgs-herdr;
       };
 
       # ECS "System" = host composer (unifies the darwin / home boilerplate)
@@ -254,12 +263,12 @@
           neovim
           yazi
           tmux
-          # herdr は母艦と同じ unstable から取る (stable の 26.05 系ではなく)。
-          # `herdr --remote` は両端が同じビルドでないと attach を拒否し、版が合わないと
-          # クライアントが自前のコピーを ~/.local/bin に落とす。remote-env に入れて
-          # おけば flake の pin が両端を揃えるので、そのフォールバックが発火しない
-          # (modules/home/packages.nix の unstablePkgs.herdr と対になっている)。
-          nixpkgs-unstable.legacyPackages.${pkgs'.stdenv.hostPlatform.system}.herdr
+          # herdr は母艦と同じ nixpkgs-herdr から取る (stable の 26.05 系でも
+          # nixpkgs-unstable でもなく)。`herdr --remote` は両端が同じビルドでないと
+          # attach を拒否し、版が合わないとクライアントが自前のコピーを ~/.local/bin に
+          # 落とす。remote-env に入れておけば flake の pin が両端を揃えるので、その
+          # フォールバックが発火しない (modules/home/packages.nix の herdrPkgs.herdr と対)。
+          nixpkgs-herdr.legacyPackages.${pkgs'.stdenv.hostPlatform.system}.herdr
           git
           lazygit
           ripgrep
