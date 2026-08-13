@@ -374,10 +374,10 @@ in
   '';
 
   # keebmouse (self-made, gapul/keebmouse): keyboard-driven pointer, Hyper+Shift+G to toggle.
-  # The app itself is a local self-build (see docs/self-build-software.md) so it stays outside
-  # nix/brew for now, but its resident agent belongs here — it used to be a hand-written
-  # ~/Library/LaunchAgents/net.gapul.keebmouse.plist, i.e. a login-time daemon nothing declared.
-  # Same KeepAlive shape as that plist, so behaviour is unchanged.
+  # The app is a cask now (gapul/tap/keebmouse, declared in hosts/darwin.nix); it used to be
+  # scripts/bundle.sh run by hand into /Applications. The agent has always belonged here — it
+  # was a hand-written ~/Library/LaunchAgents/net.gapul.keebmouse.plist before, i.e. a
+  # login-time daemon nothing declared. Same KeepAlive shape as that plist.
   launchd.agents.keebmouse = {
     enable = true;
     config = {

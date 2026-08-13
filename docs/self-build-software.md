@@ -178,11 +178,13 @@ end
 | Fritzing / Ardour / Aseprite | 型A 純nix | `nix/home/darwin.nix`(PR #77) |
 | Inochi Creator | 型D cask | tap `gapul/homebrew-inochi`(PR #77) |
 | Blink / KeePassium (iOS) | 型E Xcode + AltStore | `~/tmp/ios-selfbuild/`(作業中) |
-| keebmouse (自作) | ローカル self-build | `gapul/keebmouse` の `scripts/bundle.sh` → `/Applications` に手コピー |
+| keebmouse (自作) | 型D cask | tap `gapul/homebrew-tap`(ソース repo は private なので成果物だけ tap に置く) |
 
-keebmouse だけ tap 化していないのは、TCC(アクセシビリティ許可)が**コード署名に紐づく**ため。
-リリース zip を配る cask 型(keystats / Puddle と同じ)にするなら、ビルドを Developer ID で署名し続ける
-必要がある。常駐エージェントの方は `nix/modules/home/darwin-chrome.nix` で宣言済み。
+keebmouse は TCC(アクセシビリティ許可)が**パスとコード署名に紐づく**ので、nix store ではなく
+`/Applications` に置く形にしてある。`scripts/dist.sh` が HEAD から作業ツリー外でビルド →
+Developer ID 署名 → 公証 → tap の Release に zip → cask の version/sha256 を書き換えて push、
+までやる。署名 ID を変えなければ許可は取り直しにならない。常駐エージェントは
+`nix/modules/home/darwin-chrome.nix` で宣言済み。
 
 関連 memory: `zrythm-darwin-nix-port`, `armorpaint-selfbuild`, `macmini-headless-claude-auth`,
 `nix-darwin-homebrew-declarative`。

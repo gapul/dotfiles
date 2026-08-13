@@ -227,6 +227,7 @@
       "gapul/openutau"
       "gapul/azoo-key-skkserv"
       "gapul/keystats" # self-made keystroke analytics (cask)
+      "gapul/tap" # 雑多な自作物の cask 置き場 (いまは keebmouse。ソース repo は private なので成果物だけここ)
       "gapul/puddle" # cask distribution tap for Puddle (self-built MIT fork of Plash)
       "gapul/armorpaint" # ArmorPaint source-build formula distribution tap (official is paid €16 → self-build for free full version)
       "gapul/inochi" # cask distribution tap for Inochi Creator (2D VTuber rigging) (not in homebrew/cask)
@@ -444,6 +445,12 @@
       # self-made keystroke analytics. Developer ID signed + notarized, so it passes
       # Gatekeeper even with quarantine (no_quarantine not needed).
       "gapul/keystats/keystats"
+      # self-made keyboard-driven pointer (Hyper+Shift+G). Was a hand-run scripts/bundle.sh into
+      # /Applications — the last thing on this machine that was installed by hand. /Applications
+      # rather than the nix store on purpose: it needs Accessibility, and TCC keys the grant to
+      # the path and the signature, so a store path would mean re-approving it every rebuild.
+      # The resident agent stays in launchd.agents.keebmouse.
+      "gapul/tap/keebmouse"
       "blackhole-2ch" # virtual audio device to route system audio into OBS / DAW
 
       # ─── Creative — Video / Animation / Stream ───
