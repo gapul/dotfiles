@@ -70,6 +70,10 @@ in
     pkgs.cloudflared
     pkgs.ffmpeg
     pkgs.aria2
+    # marp: popo's setup wizard shells out to `npm install -g @marp-team/marp-cli` when it cannot
+    # find marp on PATH. Declaring it here means that step never runs — and npm stays what it is
+    # on this machine, a thing that comes along with node rather than a package manager anyone uses.
+    pkgs.marp-cli
   ];
 
   # Keep Ollama resident via a LaunchAgent.
