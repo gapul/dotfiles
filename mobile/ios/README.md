@@ -67,9 +67,35 @@ Tailscale の VPN プロファイルも本家が配っていて、そちらの�
 
 | 用途 | どこから |
 |---|---|
-| 自宅 Radicale の CalDAV/CardDAV | `nix/mobile/ios-profiles.nix` (配布元が無いので自前) |
+| 自宅 Radicale の CalDAV/CardDAV | `nix/mobile/ios-profiles.nix` (配布元が無いので自前)。宛先は `hosts/homeserver.nix` の `sites` 表が立てる `dav` の vhost |
 | DNS (NextDNS) | `https://apple.nextdns.io/<profile-id>` を Safari で開く |
 | 自宅 tailnet | Tailscale アプリ本体が VPN プロファイルを入れる |
+
+## ショートカット
+
+iCloud で iPhone と母艦を往復しているので、母艦の
+`~/Library/Shortcuts/Shortcuts.sqlite` を読めば端末を繋がずに中身が取れる
+(素の bplist で暗号化されていない)。
+
+```sh
+./shortcuts.sh export   # 母艦の Shortcuts から shortcuts/*.plist に書き出す
+./shortcuts.sh status   # 書き出し済みと母艦の一覧の差分
+./shortcuts.sh build    # shortcuts/*.cherri を署名済み .shortcut にする
+```
+
+書き出しは**バックアップとレビューのため**にやっている。ショートカットの実体は
+iCloud にしか無く、消えたら戻せない。XML plist に開いてあるので差分も読める。
+
+新規に書くときは [Cherri](https://github.com/electrikmilk/cherri) を使う。
+テキストから署名済みの `.shortcut` (AEA1 コンテナ) を直接吐く Go 製の
+コンパイラで、flake があるので `nix run` で足りる。
+
+**手で組んだ plist は `shortcuts sign` に通らない。** XML でも binary でも、
+最小構成でも現行の必須キーを揃えても弾かれた。だから mobileconfig のように
+nix で組み立てる形は取れず、Cherri に任せている。
+
+`build` が出した `.shortcut` は母艦の Shortcuts に `open` で入れれば
+iCloud が iPhone に運ぶ。端末を繋ぐ必要は無い。
 
 ## 端末内の CLI
 

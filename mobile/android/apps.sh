@@ -5,6 +5,7 @@
 #   ./apps.sh install     # F-Droid / IzzyOnDroid のものを fdroidcl 経由で adb install
 #   ./apps.sh verify      # 宣言した packageId が配布元に実在するか (4 経路すべて)
 #   ./apps.sh obtainium   # 端末の Obtainium に貼る URL リストを出す
+#   ./apps.sh adopt       # 端末に在って宣言に無いものを、経路を判定して tsv 行で出す
 #
 # 母艦から入れられるのは F-Droid 系だけ。GitHub 配布は端末の Obtainium が、
 # Play は Aurora Store が担う。ここが持つのは「何を入れるか」の宣言と差分の判定で、
@@ -182,13 +183,76 @@ cmd_obtainium() {
   done < <(declared)
 }
 
+# 端末に在って宣言に無いものを apps.tsv の行として出す。Aurora Store で入れたものを
+# 手で書き写すのは packageId を目で追う作業になるので、経路の判定ごと機械にやらせる。
+#
+#   ./apps.sh adopt >>apps.tsv   # 追記してから中身を見て整える
+cmd_adopt() {
+  local installed declared_ids extra
+  installed=$(installed_on_device)
+  declared_ids=$(declared | cut -f1 | sort)
+  extra=$(comm -13 <(printf '%s\n' "$declared_ids") <(printf '%s\n' "$installed"))
+
+  if [[ -z $extra ]]; then
+    echo "# 宣言に無いアプリは端末に無い" >&2
+    return 0
+  fi
+
+  ensure_repos
+  fdroidcl update >&2 || true
+
+  while read -r pkg; do
+    [[ -z $pkg ]] && continue
+    # F-Droid 系に在ればそちらが一次。無ければ Play を見る。どちらでも引けなければ
+    # play にしておく (Aurora Store で入れた覚えのあるもの) が、判定できていない
+    # ことは行末に残す。GitHub 配布があるなら github に寄せた方が Obtainium が追える。
+    if fdroidcl show "$pkg" >/dev/null 2>&1; then
+      printf '%s\tfdroid\t-\n' "$pkg"
+    elif curl -fsS -o /dev/null "https://play.google.com/store/apps/details?id=${pkg}&gl=us"; then
+      printf '%s\tplay\t-\n' "$pkg"
+    else
+      printf '%s\tplay\t-\t# 配布元を特定できず\n' "$pkg"
+    fi
+  done <<<"$extra"
+}
+
+# play 行を Aurora Store の Favourites に import できる JSON にする。
+# Aurora 4.6 以降は Favourites の import/export と一括インストールを持っているので、
+# Play しか配布元が無いものも「ファイルを渡して端末側で入れる」に寄せられる。
+# 形式は AuroraStore の data/room/favourite/{ImportExport,Favourite}.kt に合わせた。
+#
+#   ./apps.sh aurora >aurora-favourites.json
+#   adb push aurora-favourites.json /sdcard/Download/
+#   端末で Aurora Store → Favourites → Import → 一括インストール
+cmd_aurora() {
+  # displayName は packageId をそのまま置く。表示用のラベルでしかなく、
+  # 正しい名前を取るには Play を 1 件ずつ引く必要があって割に合わない。
+  # added は 0 固定 (実行のたびに変えるとファイルが毎回差分になる)。
+  declared | awk -F'\t' '$2 == "play" { print $1 }' | python3 -c '
+import json, sys
+favourites = [
+    {
+        "packageName": pkg,
+        "displayName": pkg,
+        "iconURL": "",
+        "added": 0,
+        "mode": "IMPORT",
+    }
+    for pkg in sys.stdin.read().split()
+]
+print(json.dumps({"favourites": favourites}, indent=2))
+'
+}
+
 case "${1:-status}" in
 status) cmd_status ;;
 install) cmd_install ;;
 verify) cmd_verify ;;
 obtainium) cmd_obtainium ;;
+adopt) cmd_adopt ;;
+aurora) cmd_aurora ;;
 *)
-  echo "usage: ./apps.sh [status|install|verify|obtainium]" >&2
+  echo "usage: ./apps.sh [status|install|verify|obtainium|adopt|aurora]" >&2
   exit 2
   ;;
 esac

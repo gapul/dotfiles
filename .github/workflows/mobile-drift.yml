@@ -1,0 +1,57 @@
+name: Declaration drift (mobile / devices)
+
+# mobile/ の宣言が外の世界とずれていないかを週次で見る。
+#
+# スマホ本体は CI から触れないので、ここで確かめるのは「宣言が腐っていないか」だけ:
+# packageId や bundleId が配布元から消えていないか、GitHub の repo が改名されて
+# いないか。実機との差分 (status) と適用 (os.sh) は端末を繋いだ人手の仕事のまま。
+#
+# 実機を触らないので、宣言の腐りは黙って進む。押した瞬間に気付けないものこそ
+# 定期実行の対象にする、という切り分け。
+on:
+  schedule:
+    # 毎週月曜 09:00 JST = 日曜 00:00 UTC
+    - cron: '0 0 * * 0'
+  pull_request:
+    paths:
+      - 'mobile/**'
+      - 'esphome/**'
+      - '.github/workflows/mobile-drift.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  drift:
+    name: verify declarations against upstream
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: ./.github/actions/setup-nix
+        with:
+          cachix-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+      # 実機不要のチェック。偽 adb / 偽 ideviceinstaller で status の判定と
+      # 終了コード、それに生成物の形式を見る。
+      - name: self-check (stubbed device)
+        run: |
+          mobile/android/test.sh
+          mobile/ios/test.sh
+
+      # 配布元への照会。gh の rate limit を避けるためトークンを渡す
+      # (未認証だと 60 回/時で、宣言が増えると落ちる)。
+      - name: android — declarations resolve upstream
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: nix shell nixpkgs#fdroidcl -c mobile/android/apps.sh verify
+
+      - name: ios — declarations resolve upstream
+        run: mobile/ios/apps.sh verify
+
+      # ESP チップに載る YAML の構文検証。実機も鍵も要らない (雛形の secrets を使う)。
+      # DNS / tailnet / NextDNS の差分は資格情報が要るので CI では見ない。
+      - name: esphome — device configs are valid
+        run: nix shell nixpkgs#esphome -c ./esphome/validate.sh

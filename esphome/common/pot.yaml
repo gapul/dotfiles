@@ -1,0 +1,70 @@
+# 鉢 1 つ分。GPIO と閾値だけ変えて 4 鉢に複製する (plant-watering.yaml の packages)。
+#
+# 使う変数:
+#   pot_id     識別子 (pot1 など)。ID の接頭辞になる
+#   pot_name   表示名
+#   adc_pin    土壌水分センサーの ADC ピン。必ず ADC1 系 (GPIO32-35)。
+#              ADC2 系は Wi-Fi 使用中に読めない
+#   pump_pin   ポンプ MOSFET の gate
+#   threshold  この値を下回ったら給水する (0-1 の湿り具合。実測で詰める)
+#   seconds    ポンプを回す秒数。水量 = 秒数 × 実測流量
+
+sensor:
+  - platform: adc
+    id: ${pot_id}_moisture
+    name: "${pot_name} 土壌水分"
+    pin: ${adc_pin}
+    attenuation: 12db
+    # 常時は測らない。センサーに通電しっぱなしだと電蝕で数か月で駄目になるので、
+    # 測るときだけ電源を入れて読む (下の script)。
+    update_interval: never
+    filters:
+      # 乾き 0 / 湿り 1 に均す。静電容量式は湿るほど電圧が下がる。
+      - calibrate_linear:
+          - 2.60 -> 0.0
+          - 1.20 -> 1.0
+      - clamp:
+          min_value: 0.0
+          max_value: 1.0
+    unit_of_measurement: ""
+    accuracy_decimals: 2
+
+switch:
+  - platform: gpio
+    id: ${pot_id}_pump
+    name: "${pot_name} ポンプ"
+    pin: ${pump_pin}
+    # 再起動でポンプが回り出すと水没する。復帰時は必ず OFF。
+    restore_mode: ALWAYS_OFF
+
+script:
+  # ポンプは必ずこれ経由で回す。直接 switch を on にすると止める人がいなくなる。
+  - id: ${pot_id}_water
+    mode: single # 走っている間は再入しない
+    then:
+      - switch.turn_on: ${pot_id}_pump
+      - delay: ${seconds}s
+      - switch.turn_off: ${pot_id}_pump
+      - logger.log: "${pot_name}: ${seconds}s 給水した"
+      - script.execute:
+          id: notify
+          title: "${pot_name} に給水"
+          message: "${seconds} 秒ぶん"
+
+  # 測って、乾いていて、タンクが空でなければ給水する。
+  - id: ${pot_id}_check
+    mode: single
+    then:
+      - switch.turn_on: sensor_power
+      - delay: 3s # 静電容量式は通電直後の値が暴れる
+      - component.update: ${pot_id}_moisture
+      - switch.turn_off: sensor_power
+      - if:
+          condition:
+            and:
+              - sensor.in_range:
+                  id: ${pot_id}_moisture
+                  below: ${threshold}
+              - binary_sensor.is_off: tank_empty
+          then:
+            - script.execute: ${pot_id}_water

@@ -1,0 +1,157 @@
+# 鉢植え 4 つの自動水やり機 (ESP32 DevKitC / WROOM-32)。
+#
+# 設計は gapul/esp32-plant-watering の docs/design.md。GPIO 割り当てと
+# 「センサーは給水するかしないかの判定にのみ使い、水量は秒数 × 実測流量の
+# 決め打ち」という方針もそちらに書いてある。
+#
+# 部品が届く前に書いてある。閾値と秒数は実測で詰める前提の仮置きで、
+# キャリブレーション後にここを直す。
+substitutions:
+  device_name: plant-watering
+  # 1 日 3 回見る。乾いていなければ何もしないので、回数を増やしても水は増えない。
+  check_interval: 8h
+
+esphome:
+  name: ${device_name}
+  friendly_name: 水やり機
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+logger:
+api:
+  encryption:
+    key: !secret api_encryption_key
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  # Wi-Fi が落ちても単体で水やりは続ける。AP に落ちるのは設定し直すときだけ。
+  ap:
+    ssid: "${device_name} setup"
+    password: !secret ap_password
+
+captive_portal:
+# Home Assistant を経由せず単体で見られる UI。設計方針どおり HA 連携は任意。
+web_server:
+  port: 80
+
+time:
+  - platform: sntp
+    id: sntp_time
+
+http_request:
+  verify_ssl: true
+
+# ── 4 鉢に共通のもの ────────────────────────────────────────────────
+switch:
+  - platform: gpio
+    id: sensor_power
+    # センサー 4 本まとめて給電する。測るときだけ ON にして電蝕を避ける。
+    pin: GPIO25
+    restore_mode: ALWAYS_OFF
+
+binary_sensor:
+  - platform: gpio
+    id: tank_empty
+    name: "タンク空"
+    pin:
+      number: GPIO26
+      mode:
+        input: true
+        pullup: true
+      # フロートスイッチは水位が下がると開く。プルアップなので開 = HIGH = 空。
+    filters:
+      - delayed_on: 5s # 水面の揺れで暴れないように
+      - delayed_off: 5s
+    on_press:
+      then:
+        - script.execute:
+            id: notify
+            title: "タンクが空"
+            message: "水を足すまで給水を止める"
+
+script:
+  - id: notify
+    mode: queued
+    parameters:
+      title: string
+      message: string
+    then:
+      - http_request.post:
+          # 自宅の ntfy。トピック名は secrets.yaml に置く (repo には入れない)。
+          url: !lambda 'return "https://push.gapul.net/" + std::string(id(ntfy_topic));'
+          request_headers:
+            Title: !lambda return title;
+          body: !lambda return message;
+
+globals:
+  - id: ntfy_topic
+    type: std::string
+    initial_value: '"__NTFY_TOPIC__"'
+
+# ── 鉢ごと ──────────────────────────────────────────────────────────
+# ADC は必ず ADC1 系 (GPIO32-35)。ポンプは strapping pin (0,2,12,15) を避ける。
+packages:
+  pot1: !include
+    file: common/pot.yaml
+    vars:
+      pot_id: pot1
+      pot_name: 鉢1
+      adc_pin: GPIO32
+      pump_pin: GPIO16
+      threshold: "0.35"
+      seconds: "10"
+  pot2: !include
+    file: common/pot.yaml
+    vars:
+      pot_id: pot2
+      pot_name: 鉢2
+      adc_pin: GPIO33
+      pump_pin: GPIO17
+      threshold: "0.35"
+      seconds: "10"
+  pot3: !include
+    file: common/pot.yaml
+    vars:
+      pot_id: pot3
+      pot_name: 鉢3
+      adc_pin: GPIO34
+      pump_pin: GPIO18
+      threshold: "0.35"
+      seconds: "10"
+  pot4: !include
+    file: common/pot.yaml
+    vars:
+      pot_id: pot4
+      pot_name: 鉢4
+      adc_pin: GPIO35
+      pump_pin: GPIO19
+      threshold: "0.35"
+      seconds: "10"
+
+interval:
+  - interval: ${check_interval}
+    then:
+      # 4 鉢を順番に。同時に回すとポンプ 4 台ぶんの突入電流で USB 5V 2A を超える。
+      - script.execute: pot1_check
+      - wait_until:
+          condition:
+            not:
+              script.is_running: pot1_check
+      - script.execute: pot2_check
+      - wait_until:
+          condition:
+            not:
+              script.is_running: pot2_check
+      - script.execute: pot3_check
+      - wait_until:
+          condition:
+            not:
+              script.is_running: pot3_check
+      - script.execute: pot4_check

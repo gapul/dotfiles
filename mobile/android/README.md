@@ -21,13 +21,22 @@ android/
 | `fdroid` | F-Droid 公式 | ○ `apps.sh install` | Obtainium / F-Droid |
 | `izzy` | IzzyOnDroid | ○ 同上 | Obtainium |
 | `github` | GitHub Releases | × | Obtainium |
-| `play` | Play ストア | × | Aurora Store |
+| `play` | Play ストア | × | Aurora Store (Favourites を import して一括インストール) |
 
 ```sh
 ./apps.sh status      # 宣言 vs 実機。MISSING があれば exit 1
 ./apps.sh install     # F-Droid 系を fdroidcl 経由で入れる。残りは経路を報告
 ./apps.sh verify      # 4 経路すべてに実在するか確かめる
 ./apps.sh obtainium   # 端末の Obtainium に貼る URL リストを出す
+./apps.sh adopt       # 端末に在って宣言に無いものを、経路を判定して tsv 行で出す
+./apps.sh aurora      # play 行を Aurora Store の Favourites に import できる JSON にする
+```
+
+Aurora Store で入れたものなど、端末側で先に増やしたアプリは `adopt` で回収する。
+packageId を目で追って書き写す作業になるので、経路の判定ごと機械にやらせる:
+
+```sh
+./apps.sh adopt >>apps.tsv   # 追記してから中身を見て整える
 ```
 
 APK を取って `adb install` する部分は [fdroidcl](https://github.com/mvdan/fdroidcl)
@@ -46,6 +55,24 @@ EXTRA (端末に在るが宣言に無い) では落とさない。試しに入�
 アプリ内の Import/Export → Import from URL List に貼る。URL は packageId / ref から
 機械的に決まるので、URL 一覧を別ファイルで持つことはしない。
 
+Play しか配布元が無いものは Aurora Store に渡す。4.6 以降は Favourites の
+import/export と一括インストールがあるので、こちらもファイルを渡す形で済む:
+
+```sh
+./apps.sh aurora >/tmp/aurora-favourites.json
+adb push /tmp/aurora-favourites.json /sdcard/Download/
+# 端末で Aurora Store → Favourites → Import → まとめて install
+```
+
+形式は AuroraStore の `data/room/favourite/{ImportExport,Favourite}.kt` に合わせてある。
+`displayName` は packageId をそのまま置く (表示用のラベルでしかなく、正しい名前を
+取るには Play を 1 件ずつ引く必要があって割に合わない)。
+
+いまは `play` 行がゼロなので、**宣言した全アプリが Obtainium への 1 回の import で端末側に載る**。
+母艦から `install` できない `github` 行も、Obtainium に入れば追跡と更新は同じように効く。
+Play にしか無いものが出てきたときだけ手が要るので、GitHub 配布があるなら
+`play` ではなく `github` に寄せる (Bitwarden は GitHub Releases に APK があったので移した)。
+
 ## OS 設定
 
 ```sh
@@ -53,7 +80,29 @@ EXTRA (端末に在るが宣言に無い) では落とさない。試しに入�
 ./os.sh             # 適用
 ```
 
-USB デバッグを有効にして 1 台だけ繋いだ状態で実行する。現在値と一致する行は
+母艦から adb 越しにも、**端末の中 (Termux) からも同じファイルで走る**。
+USB デバッグを有効にして 1 台だけ繋いだ状態で実行する。
+
+### ケーブル無しで settings を当てる
+
+Termux に `WRITE_SECURE_SETTINGS` を一度だけ与えておくと、以降は端末の中から
+`settings` を書けるようになる。母艦を出さずに済むので、ここだけは端末側で
+自動化できる (Termux:Boot や cron から呼ぶ)。
+
+```sh
+# 母艦から一度だけ (この 1 回はケーブルが要る)
+adb shell pm grant com.termux.nix android.permission.WRITE_SECURE_SETTINGS
+
+# 以降は端末の Termux で
+cd ~/.dotfiles/mobile/android && ./os.sh
+```
+
+`uname -o` が `Android` を返すことで端末内と判定し、`adb` を挟まずに実行する。
+
+**debloat とアプリ個別は端末内からは通らない。** `pm uninstall` は
+`DELETE_PACKAGES`、`pm grant` は `GRANT_RUNTIME_PERMISSIONS` で、どちらも
+署名レベル。adb の shell uid だから通るのであって、アプリの uid には与えられない。
+黙って飛ばさず理由を出すので、その 2 つだけ母艦から流す。現在値と一致する行は
 飛ばすので、何度流しても同じ結果になる。
 
 - `os-settings.conf` — `settings` テーブルに載っているグローバル設定。
