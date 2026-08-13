@@ -399,14 +399,30 @@ hs.hotkey.bind(hyperShift, "q", function()
 end)
 
 -- Hyper+Return: 新規 Ghostty ウィンドウを開く (AeroSpace の cmd-ctrl-alt-enter 相当)。
--- Ghostty は initial-window=false で背面常駐なので、単なる activate ではウィンドウが
--- 出ない。File > New Window を選んで確実に 1 枚開く。未起動なら先に起動する。
+-- Ghostty は initial-window=false で背面常駐なので、起動済みなら単なる activate では
+-- ウィンドウが出ない。File > New Window を選んで確実に 1 枚開く。
+-- 未起動のときは launch 自体がウィンドウを 1 枚開くので、そこで New Window も押すと
+-- 二重になる。起動を投げたあと実際に開いたかを見て、開かなかったときだけ押す。
 hs.hotkey.bind(hyper, "return", function()
-	local app = hs.application.open("com.mitchellh.ghostty", 5, true)
-	if app then
+	local bundleID = "com.mitchellh.ghostty"
+	local newWindow = function(app)
 		app:activate()
 		app:selectMenuItem({ "File", "New Window" })
 	end
+
+	local app = hs.application.get(bundleID)
+	if app then
+		newWindow(app)
+		return
+	end
+
+	hs.application.launchOrFocusByBundleID(bundleID)
+	hs.timer.doAfter(1.5, function()
+		local launched = hs.application.get(bundleID)
+		if launched and #launched:allWindows() == 0 then
+			newWindow(launched)
+		end
+	end)
 end)
 
 -- Hyper+Shift+Tab: 今のワークスペースを隣のモニタへ (AeroSpace の cmd-ctrl-alt-shift-tab 相当)。
