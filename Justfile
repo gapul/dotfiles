@@ -234,6 +234,9 @@ _upgrade-packages-macos:
     xcode_pid=$!
     just sketchybar-font >"$font_out" 2>&1 &
     font_pid=$!
+    pins_out=$(mktemp)
+    just github-pins >"$pins_out" 2>&1 &
+    pins_pid=$!
     # Order matters: `brew update` resets the trust of unofficial taps, so run update
     # first, then trust, and run the subsequent upgrade with HOMEBREW_NO_AUTO_UPDATE=1
     # so the trust is not reset again. Skip this and update ->
@@ -246,6 +249,7 @@ _upgrade-packages-macos:
     HOMEBREW_NO_AUTO_UPDATE=1 brew upgrade --quiet --cask --greedy || true
     wait $xcode_pid || true; cat "$xcode_out"; rm -f "$xcode_out"
     wait $font_pid || true; cat "$font_out"; rm -f "$font_out"
+    wait $pins_pid || true; cat "$pins_out"; rm -f "$pins_out"
     # The --greedy upgrade above also targets auto_updates/`version :latest` casks,
     # but those stay "outdated" forever and can never "complete" (e.g. figma-agent,
     # pear-desktop; for the latter the upstream cask errors on upgrade itself due to a
@@ -462,6 +466,80 @@ _maintain-windows:
     just win-bootstrap
     just win-upgrade
     @echo "Windows: gc recipe is not defined; package update completed."
+
+# Update the GitHub pins nothing else updates.
+#
+# flake.lock covers the flake inputs and nixpkgs covers what it packages, but a handful of
+# things are pinned by hand: two yazi packages that are not in nixpkgs, the Rosé Pine
+# tmThemes, and prh's dictionary. They used to be vendored files that `just maintain` never
+# touched either, so this is not a new chore — it is the same chore, now with a hash to check.
+#
+# Run from the macOS lane only (BSD `sed -i ""`), like sketchybar-font. The pins it edits are
+# committed, so whichever machine runs it updates them for all of them.
+[private]
+github-pins:
+    #!/usr/bin/env bash
+    set -uo pipefail
+    dir="{{justfile_directory()}}"
+    changed=()
+
+    # file | repo | the line rev/hash follow
+    tarballs='nix/modules/home/cli.nix|h-hg/yamb.yazi|repo = "yamb.yazi";
+    nix/modules/home/cli.nix|Mintass/rose-pine.yazi|repo = "rose-pine.yazi";
+    nix/lib/rose-pine-tm-theme.nix|rose-pine/tm-theme|repo = "tm-theme";'
+
+    while IFS='|' read -r file repo anchor; do
+      file="$dir/${file# }"; anchor="${anchor# }"
+      # An unreachable API is a skip, not a failure — same as the font above: this runs inside
+      # `just maintain`, and a pin being a week old is not worth aborting an upgrade over.
+      sha=$(gh api "repos/$repo/commits?per_page=1" --jq '.[0].sha' 2>/dev/null) || {
+        echo "– $repo: commit lookup failed (offline?); skipped" >&2; continue
+      }
+      cur=$(grep -A1 -F "$anchor" "$file" | sed -n 's/.*rev = "\([^"]*\)".*/\1/p')
+      # The pins were written short; a short rev is a prefix of the long one it names.
+      case "$sha" in "$cur"*) continue ;; esac
+      hash=$(nix store prefetch-file --json --unpack "https://github.com/$repo/archive/$sha.tar.gz" 2>/dev/null | jq -r .hash) || {
+        echo "– $repo: prefetch failed; skipped" >&2; continue
+      }
+      sed -i "" -E "/$(printf '%s' "$anchor" | sed 's/[\/&]/\\&/g')/{n;s|rev = \"[^\"]*\"|rev = \"$sha\"|;n;s|hash = \"[^\"]*\"|hash = \"$hash\"|;}" "$file"
+      # A rewritten rev with a stale hash is the quiet failure here: a fixed-output derivation is
+      # keyed by its hash, so nix would hand out the old contents and never fetch the new ones.
+      if ! grep -qF "$sha" "$file" || ! grep -qF "$hash" "$file"; then
+        echo "– $repo: rewrite did not take; leaving the pin alone" >&2
+        git -C "$dir" checkout -- "$file"
+        continue
+      fi
+      echo "$repo: ${cur:-?} -> ${sha:0:7}"
+      changed+=("$file")
+    done <<< "$tarballs"
+
+    # prh's dictionary is a single file, pinned by the commit in its URL.
+    file="$dir/nix/home/workstation.nix"
+    if sha=$(gh api "repos/prh/rules/commits?per_page=1" --jq '.[0].sha' 2>/dev/null); then
+      cur=$(sed -n 's|.*raw.githubusercontent.com/prh/rules/\([0-9a-f]*\)/.*|\1|p' "$file")
+      if [ "$sha" != "$cur" ]; then
+        url="https://raw.githubusercontent.com/prh/rules/$sha/media/WEB%2BDB_PRESS.yml"
+        if hash=$(nix store prefetch-file --json "$url" 2>/dev/null | jq -r .hash); then
+          sed -i "" -E "s|(raw.githubusercontent.com/prh/rules/)[0-9a-f]+|\\1$sha|" "$file"
+          sed -i "" -E "/raw.githubusercontent.com\/prh\/rules/{n;s|hash = \"[^\"]*\"|hash = \"$hash\"|;}" "$file"
+          if grep -qF "$sha" "$file" && grep -qF "$hash" "$file"; then
+            # Often only the commit moves: the dictionary is one file in a repository of them.
+            echo "prh/rules: ${cur:0:7} -> ${sha:0:7}"
+            changed+=("$file")
+          else
+            echo "– prh/rules: rewrite did not take; leaving the pin alone" >&2
+            git -C "$dir" checkout -- "$file"
+          fi
+        fi
+      fi
+    else
+      echo "– prh/rules: commit lookup failed (offline?); skipped" >&2
+    fi
+
+    if [ ${#changed[@]} -gt 0 ]; then
+      git -C "$dir" add "${changed[@]}"
+      echo "Updated pins. Apply with: just rebuild (automatic when run via upgrade)"
+    fi
 
 # Update sketchybar-app-font assets from the same release.
 [private]
