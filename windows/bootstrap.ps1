@@ -288,7 +288,11 @@ $ConfigLinks = @(
     @{ Label = 'glazewm'; Src = (Join-Path $DotfilesDir 'configs\wm\glazewm\config.yaml'); Dst = (Join-Path $env:USERPROFILE '.glzr\glazewm\config.yaml') },
     # zebar: ~/.glzr/zebar/{styles.css,settings.json} を symlink (SketchyBar 寄せ Rose Pine)
     @{ Label = 'zebar-css';      Src = (Join-Path $DotfilesDir 'configs\wm\zebar\styles.css');    Dst = (Join-Path $env:USERPROFILE '.glzr\zebar\styles.css') },
-    @{ Label = 'zebar-settings'; Src = (Join-Path $DotfilesDir 'configs\wm\zebar\settings.json'); Dst = (Join-Path $env:USERPROFILE '.glzr\zebar\settings.json') }
+    @{ Label = 'zebar-settings'; Src = (Join-Path $DotfilesDir 'configs\wm\zebar\settings.json'); Dst = (Join-Path $env:USERPROFILE '.glzr\zebar\settings.json') },
+    # open-on-mac: yazi の opener から呼ぶ。ssh 越しなら母艦へ渡し、手元なら既定アプリで開く。
+    # .cmd が %~dp0 で隣の .ps1 を呼ぶので 2 本セットで置くこと。
+    @{ Label = 'open-on-mac.cmd'; Src = (Join-Path $WindowsDir 'bin\open-on-mac.cmd'); Dst = (Join-Path $env:USERPROFILE '.local\bin\open-on-mac.cmd') },
+    @{ Label = 'open-on-mac.ps1'; Src = (Join-Path $WindowsDir 'bin\open-on-mac.ps1'); Dst = (Join-Path $env:USERPROFILE '.local\bin\open-on-mac.ps1') }
 )
 foreach ($link in $ConfigLinks) {
     New-DotfilesLink -Source $link.Src -Destination $link.Dst -Label $link.Label
