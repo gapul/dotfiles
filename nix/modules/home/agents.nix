@@ -20,5 +20,6 @@ in
   xdg.dataFile."codex/config.toml".source =
     config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.dotfiles/configs/cli/codex/config.toml";
   xdg.dataFile."codex/themes/rose-pine.tmTheme".source = "${rosePineTmThemes}/dist/rose-pine.tmTheme";
-  xdg.dataFile."codex/themes/rose-pine-dawn.tmTheme".source = "${rosePineTmThemes}/dist/rose-pine-dawn.tmTheme";
+  xdg.dataFile."codex/themes/rose-pine-dawn.tmTheme".source =
+    "${rosePineTmThemes}/dist/rose-pine-dawn.tmTheme";
 }

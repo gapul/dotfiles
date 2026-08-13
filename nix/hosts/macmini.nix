@@ -212,15 +212,20 @@ in
 
   # The second instance ("まなび"), which runs out of its own HOME so it can hold its own
   # api_server port. Same binary, different profile.
-  launchd.daemons.hermes-gateway-imouto = {
+  #
+  # It used to be called imouto everywhere on this side while the outside world — the Telegram
+  # bot, the dashboard, the other daemons — called it manabi. One name now, and the outward one
+  # won. Session keys are unaffected: this instance has its own HOME, so its keys are
+  # `agent:main:discord:...` and never carried the old name.
+  launchd.daemons.hermes-gateway-manabi = {
     serviceConfig = {
-      ProgramArguments = [ "${manabi}/bin/imouto-gateway-run.sh" ];
+      ProgramArguments = [ "${manabi}/bin/manabi-gateway-run.sh" ];
       UserName = "hermes";
       RunAtLoad = true;
       KeepAlive = true;
       ProcessType = "Background";
-      StandardOutPath = "/Users/hermes/imouto-home/gateway.log";
-      StandardErrorPath = "/Users/hermes/imouto-home/gateway.log";
+      StandardOutPath = "/Users/hermes/manabi-home/gateway.log";
+      StandardErrorPath = "/Users/hermes/manabi-home/gateway.log";
     };
   };
 
@@ -328,7 +333,8 @@ in
     # The hand-written plists the daemons above replace. nix-darwin names its units org.nixos.*,
     # so without this both copies would be loaded and Hermes would come up twice.
     for label in net.gapul.hermes-gateway net.gapul.hermes-gateway-imouto net.gapul.hermes-watchdog \
-                 net.gapul.hermes-logrotate net.gapul.hermes-brain-backup net.gapul.manabi-daily-review; do
+                 net.gapul.hermes-logrotate net.gapul.hermes-brain-backup net.gapul.manabi-daily-review \
+                 org.nixos.hermes-gateway-imouto; do
       if [ -f "/Library/LaunchDaemons/$label.plist" ]; then
         /bin/launchctl bootout "system/$label" >/dev/null 2>&1 || true
         /bin/rm -f "/Library/LaunchDaemons/$label.plist" || true

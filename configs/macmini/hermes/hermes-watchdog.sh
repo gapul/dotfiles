@@ -25,9 +25,9 @@ check_gateway() {
   kill -0 "$pid" 2>/dev/null
 }
 
-check_gateway_imouto() {
+check_gateway_manabi() {
   local pid
-  pid=$(/usr/bin/python3 -c 'import json;print(json.load(open("/Users/hermes/imouto-home/.hermes/gateway.pid"))["pid"])' 2>/dev/null) || return 1
+  pid=$(/usr/bin/python3 -c 'import json;print(json.load(open("/Users/hermes/manabi-home/.hermes/gateway.pid"))["pid"])' 2>/dev/null) || return 1
   kill -0 "$pid" 2>/dev/null
 }
 
@@ -36,8 +36,8 @@ restarted=""
 
 if ! check_gateway; then
   launchctl kickstart -k system/org.nixos.hermes-gateway 2>/dev/null
-  launchctl kickstart -k system/org.nixos.hermes-gateway-imouto 2>/dev/null
-  check_gateway_imouto || notify high "imouto gateway restarted"
+  launchctl kickstart -k system/org.nixos.hermes-gateway-manabi 2>/dev/null
+  check_gateway_manabi || notify high "まなびの gateway を再起動した"
   restarted="gateway"
   sleep 20
   check_gateway || failures="gateway"

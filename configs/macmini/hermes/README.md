@@ -19,7 +19,7 @@ Hermes が返答中の `<tool_call>` ブロックを自分のツール層で処�
 `/Users/hermes/.local/bin/claude-acp` へ敷く（別ユーザーのホームなので home-manager では
 届かない）。`.env` の `HERMES_COPILOT_ACP_COMMAND` がそのパスを指す。
 
-### まなび側だけの上乗せ（HOME が `imouto-home` のとき）
+### まなび側だけの上乗せ（HOME が `manabi-home` のとき）
 
 - **毎ターン先頭に日時を付ける**。内側の `claude` には日付しか渡らず、時刻を
   聞かれると推測で答える（実測で1時間半ずれた）。曜日も渡して数え違えを防ぐ。
@@ -41,7 +41,7 @@ private なので flake input にはできない（CI が fetch できない）�
 
 ## ここに無いもの
 
-- `config.yaml`（`/Users/hermes/.hermes/` と `/Users/hermes/imouto-home/.hermes/`）は
+- `config.yaml`（`/Users/hermes/.hermes/` と `/Users/hermes/manabi-home/.hermes/`）は
   Hermes 自身が実行中に書き換える。git に置くと常に差分が出るうえ、まなび側は
   Discord のチャンネル ID と本人の学習状況が入るので公開リポジトリには置かない。
 - `.env`（トークン類）も同じ理由で置かない。
