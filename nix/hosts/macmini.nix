@@ -4,6 +4,13 @@
   claudeAcp,
   ...
 }:
+let
+  # まなびはサービスなので、実体は gapul/manabi (private) にあり、この機械にはそのクローンが
+  # 置いてある。ここが持つのは「この機械がまなびを動かす」という宣言だけで、中身は向こうの
+  # 更新に追従する (dotfiles の rebuild は要らない)。private なので flake input にはできない
+  # ——CI が fetch できない——から、パスで参照する。
+  manabi = "/Users/Shared/manabi";
+in
 {
   # Headless LLM worker (M4 Mac mini / 24GB).
   # Unlike the everyday workstation (darwin.nix), it loads no GUI casks at all;
@@ -207,7 +214,7 @@
   # api_server port. Same binary, different profile.
   launchd.daemons.hermes-gateway-imouto = {
     serviceConfig = {
-      ProgramArguments = [ "${../../configs/macmini/hermes/imouto-gateway-run.sh}" ];
+      ProgramArguments = [ "${manabi}/bin/imouto-gateway-run.sh" ];
       UserName = "hermes";
       RunAtLoad = true;
       KeepAlive = true;
@@ -268,9 +275,7 @@
   # to say so. Declaring it is what surfaced that.
   launchd.daemons.manabi-daily-review = {
     serviceConfig = {
-      ProgramArguments = [
-        "/Users/${user.username}/Developer/projects/manabi-dashboard/daily_review.sh"
-      ];
+      ProgramArguments = [ "${manabi}/dashboard/daily_review.sh" ];
       UserName = user.username;
       StartCalendarInterval = [
         {

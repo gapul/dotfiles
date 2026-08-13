@@ -23,8 +23,8 @@ IMOUTO=/Users/hermes/imouto-home/.hermes
 if [ -d "$IMOUTO" ]; then
   mkdir -p "$REPO/imouto"
   rsync -a "$IMOUTO/SOUL.md" "$IMOUTO/config.yaml" "$REPO/imouto/" 2>/dev/null || true
-  # 継ぎ手(claude-acp)は自作で再作成できないので一緒に退避する。
-  rsync -a /Users/hermes/.local/bin/claude-acp "$REPO/imouto/" 2>/dev/null || true
+  # 継ぎ手(claude-acp)はここでは退避しない。gapul/claude-acp が正で、この機械には
+  # dotfiles の activation が store から敷いている。
   for d in memories skills cron; do
     [ -d "$IMOUTO/$d" ] && rsync -a --delete "$IMOUTO/$d/" "$REPO/imouto/$d/"
   done

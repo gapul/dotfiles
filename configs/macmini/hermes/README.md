@@ -31,6 +31,14 @@ Hermes が返答中の `<tool_call>` ブロックを自分のツール層で処�
 **壊れやすさ**: 実装が合わせているのは Hermes 内部の `agent/copilot_acp_client.py`
 の契約で、公開 API ではない。Hermes を上げたら会話が通ることを必ず確かめること。
 
+## まなび（別リポジトリへ移動）
+
+学習チューターの一式は **[gapul/manabi](https://github.com/gapul/manabi)**（private）に移した。
+gateway の起動シム、ダッシュボード、サンドボックスのスクリプト、SOUL とチャンネルプロンプト。
+この機械には `/Users/Shared/manabi` に clone してあり、launchd のユニットはそこを exec する。
+private なので flake input にはできない（CI が fetch できない）から、パス参照になっている。
+サービス側の更新は向こうで `git pull` すれば済み、dotfiles の rebuild は要らない。
+
 ## ここに無いもの
 
 - `config.yaml`（`/Users/hermes/.hermes/` と `/Users/hermes/imouto-home/.hermes/`）は
