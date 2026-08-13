@@ -3,7 +3,7 @@
 macmini の Hermes エージェント（専用ユーザー `hermes`、サンドボックスは `hsandbox`）のうち、
 **自分で書いたコードだけ**をここに置く。設定と秘密は置かない。
 
-## claude-acp
+## claude-acp（別リポジトリへ移動）
 
 Hermes の `copilot-acp` プロバイダは、外部プロセスを spawn して stdio 上で
 JSON-RPC 2.0 を話す。`claude-acp` はその相手役を最小限だけ実装したアダプタで、
@@ -13,10 +13,11 @@ JSON-RPC 2.0 を話す。`claude-acp` はその相手役を最小限だけ実装
 内側の `claude` はツールを無効にして走らせる。ツール実行は Hermes の仕事で、
 Hermes が返答中の `<tool_call>` ブロックを自分のツール層で処理する。
 
-`.env` の `HERMES_COPILOT_ACP_COMMAND` がこのファイルを指す。配置は
-`nix/hosts/macmini.nix` の activation が `/Users/hermes/.local/bin/claude-acp` へ
-敷く（別ユーザーのホームなので home-manager では届かない）。Hermes 側が書き換える
-ファイルではないので、宣言側を常に正として上書きする。
+実体は **[gapul/claude-acp](https://github.com/gapul/claude-acp)** に移した。マシンの設定では
+なく Hermes を動かすための部品なので、dotfiles が持つ理由が無い。ここは flake input として
+参照し、`nix/hosts/macmini.nix` の activation が store から
+`/Users/hermes/.local/bin/claude-acp` へ敷く（別ユーザーのホームなので home-manager では
+届かない）。`.env` の `HERMES_COPILOT_ACP_COMMAND` がそのパスを指す。
 
 ### まなび側だけの上乗せ（HOME が `imouto-home` のとき）
 

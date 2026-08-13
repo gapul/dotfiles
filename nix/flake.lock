@@ -124,6 +124,26 @@
         "type": "github"
       }
     },
+    "claude-acp": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1786592425,
+        "narHash": "sha256-6i338Ro9Xgx0HhpZ9f+0IFY1FGJhComoAvaVkljHN+Q=",
+        "owner": "gapul",
+        "repo": "claude-acp",
+        "rev": "64c274d7e81732fad8d699f98be91fa0aafe4b7d",
+        "type": "github"
+      },
+      "original": {
+        "owner": "gapul",
+        "repo": "claude-acp",
+        "type": "github"
+      }
+    },
     "crane": {
       "locked": {
         "lastModified": 1781825982,
@@ -753,6 +773,7 @@
         "agent-skills": "agent-skills",
         "brew-api": "brew-api",
         "brew-nix": "brew-nix",
+        "claude-acp": "claude-acp",
         "disko": "disko",
         "flake-parts": "flake-parts",
         "git-hooks": "git-hooks",
