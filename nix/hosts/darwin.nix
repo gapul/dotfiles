@@ -380,6 +380,12 @@
       # replaced with codesign / otool / vmmap / lsof, so both were removed (2026-07-28).
       # netiquette can be fully replaced with lsof -nP -i / nettop, and whatsyoursign with codesign -dvv /
       # spctl -a -vv, so both were removed (2026-07-28).
+      # blockblock was installed by hand before this list existed, so it was the one
+      # Objective-See tool sitting outside the declaration (found 2026-08-14 while auditing
+      # /Applications against brew and nix). The cask is on the same 2.5.0 that is already
+      # installed, and like ransomwhere it is an Installer-artifact cask, so brew just runs
+      # the same installer the manual install did.
+      "blockblock" # persistence attempt blocker (alerts when something installs itself to run at login)
       "knockknock" # persistence scanner
       "lulu" # outbound firewall
       "ransomwhere" # ransomware (suspicious encryption behavior) detection
