@@ -230,7 +230,11 @@ _upgrade-packages-macos:
     # would only wait or fail. Output is buffered and replayed so three downloads do not
     # interleave into unreadable soup.
     xcode_out=$(mktemp); font_out=$(mktemp)
-    just _xcode-upgrade >"$xcode_out" 2>&1 &
+    # </dev/null: xcodes asks for a 2FA code on stdin when the saved session has expired, and this
+    # lane's output is buffered, so the question is invisible and the whole maintain waits forever
+    # on an answer nobody was asked for. With no stdin it fails fast into the "re-run" message
+    # below instead. sudo is unaffected — it reads the tty directly, not stdin.
+    just _xcode-upgrade >"$xcode_out" 2>&1 </dev/null &
     xcode_pid=$!
     just sketchybar-font >"$font_out" 2>&1 &
     font_pid=$!
@@ -382,8 +386,12 @@ _maintain-macos:
     #   - The Nix runtime upgrade above replaces the daemon, so it stays before all of this.
     # Everything else here is independent, and this link gives about twice the throughput on
     # parallel connections as on one, so overlapping is worth the plumbing.
-    # Each lane's output is buffered and replayed in order; three live downloads on one
-    # terminal is unreadable.
+    # Only the brew lane prints live. Three live downloads on one terminal is unreadable, but
+    # buffering all three left the terminal completely silent from here until the slowest lane
+    # finished — several minutes of nothing, which reads as a hang, not as progress. brew is the
+    # long pole and the one whose output is worth watching; the nix lane is reduced to its last
+    # five lines anyway and the tools lane is a few lines replayed after the switch, so neither
+    # is a loss. Both are collected after the brew lane, so nothing interleaves into it.
     # Same host resolution as _rebuild-macos: the username is only right on the workstation.
     name="$(cat "${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/host" 2>/dev/null || id -un)"
     # Only asking whether the host has a standalone home config. Evaluating activationPackage to
@@ -393,18 +401,18 @@ _maintain-macos:
     home_attr=""
     [ "$(nix eval "{{flake}}#homeConfigurations" --apply "a: a ? \"$name\"" 2>/dev/null)" = true ] \
       && home_attr="{{flake}}#homeConfigurations.$name.activationPackage"
-    nix_out=$(mktemp); brew_out=$(mktemp); tools_out=$(mktemp)
+    nix_out=$(mktemp); tools_out=$(mktemp)
     nix build --no-link \
       "{{flake}}#darwinConfigurations.$name.config.system.build.toplevel" \
       $home_attr >"$nix_out" 2>&1 &
     nix_pid=$!
-    just _upgrade-packages-macos >"$brew_out" 2>&1 &
-    brew_pid=$!
     just _maintain-user-tools >"$tools_out" 2>&1 &
     tools_pid=$!
+    echo "━━━ parallel: nix build (quiet) + user tools (replayed later) + packages below"
+    just _upgrade-packages-macos &
+    brew_pid=$!
     wait $nix_pid || true
     brew_rc=0; wait $brew_pid || brew_rc=$?
-    cat "$brew_out"; rm -f "$brew_out"
     tail -5 "$nix_out"; rm -f "$nix_out"
     # A failed package upgrade used to abort maintain here, and still should — but only after
     # the lanes have been collected, so their output is not lost with them.
