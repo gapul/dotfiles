@@ -25,9 +25,10 @@ EXT_DISPLAY_FILE=/tmp/sketchybar-ext-displays
 # sketchybar.h のクライアント側も git.felix.sketchybar 直書きなので ext からは使えない)。
 if [ "$SB_PROFILE" = "main" ]; then
   HELPER=git.felix.helper
-  killall helper
-  (cd $CONFIG_DIR/helper && make)
-  $CONFIG_DIR/helper/helper $HELPER > /dev/null 2>&1 &
+  killall sketchybar-helper 2>/dev/null
+  # Built by nix (nix/pkgs/sketchybar-helper); the agent puts the profile first on PATH.
+  # This used to compile the helper from source on every bar start.
+  sketchybar-helper $HELPER > /dev/null 2>&1 &
 
   # Unload the macOS on screen indicator overlay for volume change
   launchctl unload -F /System/Library/LaunchAgents/com.apple.OSDUIHelper.plist > /dev/null 2>&1 &

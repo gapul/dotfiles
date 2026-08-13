@@ -68,6 +68,14 @@
         # 2026-08, replaced by launchd.agents.sketchybar. Removing the plist is enough for launchd;
         # brew's own bookkeeping is swept by the `brew services cleanup` in `just maintain`.
         "homebrew.mxcl.sketchybar"
+        # 2026-08, Google's updater. Chrome here is an automation target (the browser is Zen) and
+        # `brew upgrade --cask --greedy` in `just maintain` keeps it current, so a resident agent
+        # waking up to check versions buys nothing. Chrome re-installs Keystone whenever it is
+        # launched — the loop below runs every activation, which is what keeps this from coming
+        # back for good.
+        "com.google.GoogleUpdater.wake"
+        "com.google.keystone.agent"
+        "com.google.keystone.xpcservice"
       ];
     in
     lib.hm.dag.entryAfter [ "writeBoundary" ] ''
@@ -78,6 +86,8 @@
           run rm -f "$legacy_plist"
         fi
       done
+      # Keystone re-appears with the next Chrome launch; this keeps it quiet in the meantime.
+      run /usr/bin/defaults write com.google.Keystone.Agent checkInterval 0 2>/dev/null || true
     '';
 
   # macOS-only SOPS template (espanso's personal is at the Container path)

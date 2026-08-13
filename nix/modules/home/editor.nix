@@ -13,6 +13,21 @@ in
 {
   home.sessionVariables.LAZY_NIX_PLUGINS = lazyNixPlugins;
 
+  # SKK dictionaries, for skkeleton (and the source macSKK's container copy is made from).
+  # They were nine megabytes of files someone had put in ~/.local/share/skk by hand — nothing
+  # declared them, so a new machine came up with skkeleton unable to convert anything.
+  # `skkeleton-user-dict` deliberately stays out of this: it is written to.
+  xdg.dataFile = lib.mapAttrs' (
+    name: dict:
+    lib.nameValuePair "skk/SKK-JISYO.${name}" { source = "${dict}/share/skk/SKK-JISYO.${name}"; }
+  ) {
+    L = pkgs.skkDictionaries.l;
+    geo = pkgs.skkDictionaries.geo;
+    jinmei = pkgs.skkDictionaries.jinmei;
+    propernoun = pkgs.skkDictionaries.propernoun;
+    station = pkgs.skkDictionaries.station;
+  };
+
   # Plain Vim: vimrc read via native XDG. Purpose is to push .viminfo out to $XDG_STATE_HOME
   home.file.".config/vim/vimrc".source = ../../../configs/editors/vim/vimrc;
   # nvim uses mkOutOfStoreSymlink since we want to write back directly to dotfiles

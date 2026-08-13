@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
 # macSKK の sandbox Container に SKK 公開辞書を入れる。
-# sandbox の都合で symlink 不可 → real file コピー(`~/.skk/` と二重持ち、~9MB)。
+# 辞書そのものは nix が $XDG_DATA_HOME/skk に置く(modules/home/editor.nix、skkeleton と共用)。
+# sandbox の都合で symlink 不可 → real file コピー(~9MB の二重持ち)。
+# コピー先が他アプリの Container なので activation ではなくこの手動スクリプト:
+# macSKK が動いている最中に「削除 → 配置」しないと検出されない(下記)。
 #
 # macSKK は NSFilePresenter で「新規 file appear」イベントでしか検出しないので、
 # **macSKK が動作中**に「削除 → 配置」する必要がある(README 参照)。
 
 set -euo pipefail
 
-SRC="${HOME}/.skk"
+SRC="${XDG_DATA_HOME:-$HOME/.local/share}/skk"
 DST="${HOME}/Library/Containers/net.mtgto.inputmethod.macSKK/Data/Documents/Dictionaries"
 DICTS=(L geo jinmei propernoun station)
 
@@ -26,7 +29,7 @@ fi
 for d in "${DICTS[@]}"; do
   file="SKK-JISYO.$d"
   if [[ ! -f "$SRC/$file" ]]; then
-    echo "skip $file (ソース不在: $SRC/$file — 先に install-skk-dicts.sh)"
+    echo "skip $file (ソース不在: $SRC/$file — 辞書は nix が置くので先に just rebuild)"
     continue
   fi
   # 削除 → ditto = macSKK の NSFilePresenter が「新規 appear」として検出
