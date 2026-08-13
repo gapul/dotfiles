@@ -20,12 +20,12 @@ scrolloff      = 5 # カーソル上下に5行の余白
 #     `O` で選ぶだけの候補 (Photoshop や Inkscape など) は手元前提のまま素通し。
 video = [
   { run = 'open-on-mac mpv -- "$@"', desc = "Open in mpv", orphan = true, for = "unix" },
-  { run = 'mpv "$@"', desc = "Open in mpv", orphan = true, for = "windows" },
+  { run = 'set "OPEN_ON_MAC_LOCAL=mpv" && open-on-mac.cmd "$@"', desc = "Open in mpv", orphan = true, for = "windows" },
   { run = 'start "" "$@"', desc = "Open with default", orphan = true, for = "windows" },
 ]
 audio = [
   { run = 'open-on-mac mpv -- "$@"', desc = "Play in mpv", orphan = true, for = "unix" },
-  { run = 'mpv "$@"', desc = "Play in mpv", orphan = true, for = "windows" },
+  { run = 'set "OPEN_ON_MAC_LOCAL=mpv" && open-on-mac.cmd "$@"', desc = "Play in mpv", orphan = true, for = "windows" },
   { run = 'start "" "$@"', desc = "Play with default", orphan = true, for = "windows" },
 ]
 image = [
@@ -41,7 +41,7 @@ image = [
   { run = 'gimp "$@"', desc = "Edit in GIMP", orphan = true, for = "linux" },
   { run = 'krita "$@"', desc = "Edit in Krita", orphan = true, for = "linux" },
   # Windows: qView (Mac と共通)、PicView、ImageGlass、最後に関連付け fallback
-  { run = 'qview "$@"', desc = "Open in qView", orphan = true, for = "windows" },
+  { run = 'set "OPEN_ON_MAC_LOCAL=qview" && open-on-mac.cmd "$@"', desc = "Open in qView", orphan = true, for = "windows" },
   { run = 'PicView "$@"', desc = "Open in PicView", orphan = true, for = "windows" },
   { run = 'ImageGlass "$@"', desc = "Open in ImageGlass", orphan = true, for = "windows" },
   { run = 'start "" "$@"', desc = "Open with default", orphan = true, for = "windows" },
@@ -55,7 +55,7 @@ office = [
   { run = 'open -a "LibreOffice" "$@"', desc = "Open in LibreOffice", orphan = true, for = "macos" },
   { run = 'libreoffice "$@"', desc = "Open in LibreOffice", orphan = true, for = "linux" },
   # Windows: LibreOffice (soffice) → MS Office 関連付け fallback
-  { run = 'soffice "$@"', desc = "Open in LibreOffice", orphan = true, for = "windows" },
+  { run = 'set "OPEN_ON_MAC_LOCAL=soffice" && open-on-mac.cmd "$@"', desc = "Open in LibreOffice", orphan = true, for = "windows" },
   { run = 'start "" "$@"', desc = "Open with default (Word/Excel/PPT)", orphan = true, for = "windows" },
 ]
 pdf = [
@@ -64,7 +64,7 @@ pdf = [
   { run = 'open -a "Preview" "$@"', desc = "Open in Preview", orphan = true, for = "macos" },
   { run = 'zathura "$@"', desc = "Open in Zathura", orphan = true, for = "linux" },
   # Windows: Sioyek (vim 風 keybind、Mac と共通) → 関連付け fallback
-  { run = 'sioyek "$@"', desc = "Open in Sioyek (vim keybind)", orphan = true, for = "windows" },
+  { run = 'set "OPEN_ON_MAC_LOCAL=sioyek" && open-on-mac.cmd "$@"', desc = "Open in Sioyek (vim keybind)", orphan = true, for = "windows" },
   { run = 'start "" "$@"', desc = "Open with default", orphan = true, for = "windows" },
 ]
 edit = [
@@ -96,7 +96,7 @@ svg = [
   { run = 'open -a "Inkscape" "$@"', desc = "Edit in Inkscape", orphan = true, for = "macos" },
   { run = 'open-on-mac -- "$@"', desc = "Open on client", orphan = true, for = "linux" },
   { run = 'inkscape "$@"', desc = "Edit in Inkscape", orphan = true, for = "linux" },
-  { run = 'start "" "$@"', desc = "View with default", orphan = true, for = "windows" },
+  { run = 'open-on-mac.cmd "$@"', desc = "View with default", orphan = true, for = "windows" },
   { run = 'nvim "$@"', desc = "Edit source in Neovim", block = true, for = "windows" },
 ]
 # CSV/TSV: tabular data. Enter opens VisiData (view AND edit as a table); `O` also offers
@@ -119,7 +119,7 @@ model3d = [
   { run = 'open -a "OrcaSlicer" "$@"', desc = "Slice in OrcaSlicer", orphan = true, for = "macos" },
   { run = 'open -a "BambuStudio" "$@"', desc = "Slice in Bambu Studio", orphan = true, for = "macos" },
   { run = 'blender "$@"', desc = "Edit in Blender", orphan = true, for = "linux" },
-  { run = 'start "" "$@"', desc = "Open with default", orphan = true, for = "windows" },
+  { run = 'open-on-mac.cmd "$@"', desc = "Open with default", orphan = true, for = "windows" },
 ]
 # Fonts: Enter shows a specimen (FontGoggles); `O` adds Font Book and editing in FontForge.
 font = [
@@ -128,7 +128,7 @@ font = [
   { run = 'open -a "Font Book" "$@"', desc = "View in Font Book", orphan = true, for = "macos" },
   { run = 'open -a "FontForge" "$@"', desc = "Edit in FontForge", orphan = true, for = "macos" },
   { run = 'fontforge "$@"', desc = "Edit in FontForge", orphan = true, for = "linux" },
-  { run = 'start "" "$@"', desc = "Open with default", orphan = true, for = "windows" },
+  { run = 'open-on-mac.cmd "$@"', desc = "Open with default", orphan = true, for = "windows" },
 ]
 # Adobe-native documents: Enter opens the native app; `O` adds a quick preview / alternatives.
 # open -b <bundle id> is used because the .app names carry a year (e.g. "Adobe Photoshop 2026").
@@ -162,7 +162,7 @@ extract = [
 ]
 fallback = [
   { run = 'open-on-mac -- "$@"', desc = "Open with the client default", orphan = true, for = "unix" },
-  { run = 'start "" "$@"', desc = "Open with Windows default", orphan = true, for = "windows" },
+  { run = 'open-on-mac.cmd "$@"', desc = "Open with Windows default", orphan = true, for = "windows" },
 ]
 # AirDrop the selected files (macOS only). Helper: configs/bin/airdrop (~/.local/bin, on PATH).
 # Only ever surfaced via `O` (open --interactive), never as the Enter default.
