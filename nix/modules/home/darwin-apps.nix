@@ -149,8 +149,33 @@
   # in darwin.nix), CLI-only and emits no .app, so this droplet is layered on top for Finder
   # associations / drag-and-drop playback. Its contents just call
   # `on open` → /opt/homebrew/bin/mpv <files> &.
-  # Don't set recursive: keep the whole bundle as one symlink to preserve the adhoc signing seal.
-  home.file."Applications/mpv.app".source = ../../../configs/media/mpv-app/mpv.app;
+  #
+  # Compiled here rather than committed: the bundle was a Mach-O droplet, an Assets.car and a
+  # code-signature seal in the repository, all of which osacompile makes from twenty lines of
+  # AppleScript. Rebuilt only when the source or the plist additions change, because compiling
+  # it every activation would re-sign it every activation.
+  home.activation.mpvDroplet = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    app="$HOME/Applications/mpv.app"
+    script=${../../../configs/media/mpv-app/mpv.applescript}
+    additions=${../../../configs/media/mpv-app/Info-additions.plist}
+    stamp="$app/Contents/Resources/.built-from"
+    want="$script $additions"
+
+    if [ "$(cat "$stamp" 2>/dev/null)" != "$want" ]; then
+      $DRY_RUN_CMD rm -rf "$app"
+      $DRY_RUN_CMD /usr/bin/osacompile -o "$app" "$script"
+      # `Merge` adds keys and leaves the ones already there alone, so the droplet keeps its
+      # executable and its usage descriptions. The document types have to be deleted first for
+      # the same reason: osacompile writes an empty list, and a duplicate key is skipped, not
+      # replaced (it says so and carries on, which is how this silently shipped nothing).
+      $DRY_RUN_CMD /usr/libexec/PlistBuddy -c "Delete :CFBundleDocumentTypes" "$app/Contents/Info.plist" 2>/dev/null || true
+      $DRY_RUN_CMD /usr/libexec/PlistBuddy -c "Merge $additions" "$app/Contents/Info.plist"
+      $DRY_RUN_CMD sh -c "printf '%s' '$want' > '$stamp'"
+      # Finder caches document types per bundle; without this the associations appear at the
+      # next login instead of now.
+      $DRY_RUN_CMD /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$app"
+    fi
+  '';
 
   # macSKK / azooKey skkserv: defaults import the sandboxed app's preferences
   home.activation.skkPlistImport = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
