@@ -57,6 +57,19 @@ rustPlatform.buildRustPackage {
             return None;
         }
         let mut keyboard = TISCopyCurrentKeyboardInputSource();'
+
+    # Keep the Dock icon out: this is a tray app that runs from login to
+    # shutdown, so a permanent Dock tile buys nothing. LSUIElement alone does
+    # not work - tao calls setActivationPolicy(Regular) from
+    # applicationDidFinishLaunching and overrides the plist. Dioxus builds the
+    # event loop itself (app.rs: EventLoopBuilder::with_user_event().build())
+    # and never exposes the policy, and Config::with_event_loop cannot be used
+    # from outside the crate because UserWindowEvent is not re-exported, so the
+    # only seam is tao's own default.
+    substituteInPlace $cargoDepsCopy/source-registry-0/tao-0.34.5/src/platform_impl/macos/app_delegate.rs \
+      --replace-fail \
+        'activation_policy: ActivationPolicy::Regular,' \
+        'activation_policy: ActivationPolicy::Accessory,'
   '';
 
   # No tests in the tree, and buildRustPackage's default check would only rebuild
@@ -113,6 +126,10 @@ rustPlatform.buildRustPackage {
         <string>${version}</string>
         <key>LSMinimumSystemVersion</key>
         <string>11.0</string>
+        <!-- Suppresses the Dock icon before the event loop starts; the tao
+             patch above is what keeps it hidden afterwards. -->
+        <key>LSUIElement</key>
+        <true/>
         <key>NSHighResolutionCapable</key>
         <true/>
         <key>NSSupportsAutomaticGraphicsSwitching</key>
