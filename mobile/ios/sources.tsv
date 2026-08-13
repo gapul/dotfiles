@@ -1,0 +1,12 @@
+# AltStore 系の source。apps.sh verify がここを引いて bundleId の実在を確かめる。
+# 書式: <名前>	<kind>	<URL>     (タブ区切り)
+#
+# kind:
+#   classic   AltStore Classic (母艦で再署名して入れる)。自ビルドはこちら
+#   pal       AltStore PAL (代替マーケットプレイス)。配布されているアプリはこちら
+#
+# source は AltStore の JSON 形式なので、apps[].bundleIdentifier を見れば
+# 宣言した bundleId が本当にその source から入るものか機械で確かめられる。
+
+gapul-selfbuild	classic	https://raw.githubusercontent.com/gapul/altstore-source/main/source.json
+altstore	pal	https://apps.altstore.io/

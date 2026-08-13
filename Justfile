@@ -1285,3 +1285,43 @@ gdrive cmd="status":
         done ;;
       *)       echo "usage: just gdrive [status|open|remount]" >&2; exit 2 ;;
     esac
+
+
+# ─────────────────────────────────────────────
+# Mobile (iOS / Android)
+# ─────────────────────────────────────────────
+
+# Diff apps.tsv against the device, or converge it (`just android-apps` / `install` / `verify` / `obtainium`)
+[group('Mobile')]
+android-apps cmd="status":
+    @nix shell nixpkgs#android-tools nixpkgs#fdroidcl -c mobile/android/apps.sh {{cmd}}
+
+# Apply the declared Android OS settings over adb (`just android-os` = diff + apply, `just android-os --dry-run`)
+[group('Mobile')]
+android-os *flags:
+    @nix shell nixpkgs#android-tools -c mobile/android/os.sh {{flags}}
+
+# Generate the Kvaesitso launcher theme from palettes.json and push it to the device
+[group('Mobile')]
+android-launcher-theme:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    out="$(mktemp -d)/kvaesitso-theme.json"
+    mobile/android/launcher-theme.py >"$out"
+    nix shell nixpkgs#android-tools -c adb push "$out" /sdcard/Download/
+    echo "端末で Kvaesitso → 設定 → 外観 → テーマ → インポート から選ぶ"
+
+# Diff ios/apps.tsv against a USB-connected iPhone (`just ios-apps` / `just ios-apps verify`)
+[group('Mobile')]
+ios-apps cmd="status":
+    @nix shell nixpkgs#ideviceinstaller -c mobile/ios/apps.sh {{cmd}}
+
+# Build the declared .mobileconfig profiles and serve them on the LAN for an iPhone to install
+[group('Mobile')]
+ios-profiles port="8000":
+    @mobile/ios/profiles/serve.sh {{port}}
+
+# Self-check both platforms' scripts with stubbed adb / ideviceinstaller (no device needed)
+[group('Mobile')]
+mobile-test:
+    @mobile/android/test.sh && mobile/ios/test.sh

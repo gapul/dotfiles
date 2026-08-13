@@ -337,6 +337,13 @@
             packages = {
               unity-cli = systemPkgs.callPackage ./pkgs/unity-cli.nix { };
 
+              # iOS の構成プロファイル。中身は生成した XML だけなのでどの system でも建つ。
+              # 端末への配布は mobile/ios/profiles/serve.sh がこの出力を読む。
+              ios-profiles = import ./mobile/ios-profiles.nix {
+                inherit lib user;
+                pkgs = systemPkgs;
+              };
+
               # What a pull request has to prove: the machines in daily use still evaluate and
               # build. Everything else this flake produces — the macmini closure, the NixOS
               # hosts, the VM tests — is built on main, which is also where cachix gets filled.

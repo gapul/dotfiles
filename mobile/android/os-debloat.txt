@@ -1,0 +1,12 @@
+# 現在のユーザーから外すプリインアプリ。`apply.sh` が
+#   adb shell pm uninstall -k --user 0 <pkg>
+# を流す。システムパーティションは触らないので root は要らず、
+#   adb shell cmd package install-existing <pkg>
+# でいつでも戻せる。
+#
+# 中身が機種依存なので初期値は空。候補の探し方:
+#   adb shell pm list packages -s | sed 's/^package://' | sort   # プリイン一覧
+#   adb shell pm list packages -d                                # すでに無効なもの
+#
+# 消していいか怪しいものは消さない。ダイヤラ / IMS / carrier 系を外すと
+# 電話が着信しなくなる類の壊れ方をする。

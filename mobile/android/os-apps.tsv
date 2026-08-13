@@ -1,0 +1,28 @@
+# アプリ個別の OS 側設定。os.sh が adb で適用する。
+# 書式: <動作>	<packageId>	<引数>     (タブ区切り)
+#
+# 動作:
+#   home        既定ランチャーにする。引数は <pkg>/<activity>
+#   grant       権限を与える。引数は android.permission.XXX
+#   revoke      権限を剥がす。同上
+#   appops      AppOps を設定する。引数は "<op> <mode>" (mode: allow / deny / ignore)
+#   battery     電池最適化から除外する (常駐させたいものだけ)。引数は不要、- を置く
+#
+# os-settings.conf がグローバルな設定なのに対し、こちらはアプリ単位。
+# アプリ「内部」の設定 (アカウント、同期先 URL など) はどうやっても外から
+# 触れないので、それはアプリ自身の同期機能に任せる (mobile/README.md の表)。
+#
+# 現在値の見方:
+#   adb shell dumpsys package <pkg> | grep -A50 'runtime permissions'
+#   adb shell cmd appops get <pkg>
+#   adb shell dumpsys deviceidle whitelist
+
+home	de.mm20.launcher2.release	de.mm20.launcher2.ui.launcher.LauncherActivity
+
+# 常駐して初めて意味があるもの。電池最適化に入れると同期も通知も止まる。
+battery	com.github.catfriend1.syncthingandroid	-
+battery	io.heckel.ntfy	-
+battery	org.owntracks.android	-
+
+# 位置ログはバックグラウンドで取れないと意味が無い。
+grant	org.owntracks.android	android.permission.ACCESS_BACKGROUND_LOCATION
