@@ -43,6 +43,11 @@ if ! check_gateway; then
   check_gateway || failures="gateway"
 fi
 
+# 標準出力はそのままログファイルへ流れる。以前はここに何も書いておらず、7月から 0 バイトの
+# ままだった——おかげで watchdog 自身が壊れている(消したはずの claude-bridge を見張り続け、
+# 存在しないラベルを kickstart していた)ことに誰も気づけなかった。動いた証跡は残す。
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] checked${restarted:+ restarted:$restarted}${failures:+ FAILED:$failures}"
+
 prev=$(cat "$STATE" 2>/dev/null || echo ok)
 
 if [ -n "$failures" ]; then
