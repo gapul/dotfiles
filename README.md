@@ -115,7 +115,7 @@ curl -fsSL https://raw.githubusercontent.com/gapul/dotfiles/main/scripts/bootstr
     gc-deep                      # Interactively delete heavy regenerable data (Trash / ~/tmp scratch / zap of retired casks / CoreSimulator cache / podman / old build artifacts)
 
     [Homelab]
-    dns *flags                   # Diff Caddy's vhosts against Cloudflare's A records (`just dns` / `just dns --apply`)
+    dns *flags                   # Diff the repo's declarations against Cloudflare DNS: A records, tunnel CNAMEs, and mail (MX/SPF/DKIM)
     esphome                      # Validate the ESPHome device configs without hardware
     nextdns cmd="diff"           # Fetch, diff, or apply the NextDNS profile. Needs NEXTDNS_API_KEY / NEXTDNS_PROFILE
     tailnet cmd="diff"           # Fetch, diff, or apply the tailnet policy file (ACL / split DNS). Needs TS_API_KEY

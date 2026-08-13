@@ -1291,7 +1291,7 @@ gdrive cmd="status":
 # Homelab (DNS / tailnet / デバイス)
 # ─────────────────────────────────────────────
 
-# Diff Caddy's vhosts against Cloudflare's A records (`just dns` / `just dns --apply`)
+# Diff the repo's declarations against Cloudflare DNS: A records, tunnel CNAMEs, and mail (MX/SPF/DKIM)
 [group('Homelab')]
 dns *flags:
     @scripts/check-dns-drift.sh {{flags}}

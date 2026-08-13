@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Cloudflare の DNS を repo の宣言と突き合わせる。2 つの面を見る:
 #
-#   tailnet 内向け  Caddy の vhost   -> A レコード (tailnet の homeserver を指す)
+#   tailnet 内向け  Caddy の vhost         -> A レコード (tailnet の homeserver を指す)
 #   公開向け        cloudflared の ingress -> CNAME (トンネルを指す)
+#   メール          Email Routing が要求する MX / SPF / DKIM
 #
 #   scripts/check-dns-drift.sh          # 差分を出す。足りなければ exit 1
 #   scripts/check-dns-drift.sh --apply  # 足りないものを作り、宛先違いを直す
@@ -214,6 +215,46 @@ while IFS=$'\t' read -r name _ content; do
   echo "  管理外   $name -> ${content%%.*} (この repo に宣言が無い)"
 done <<<"$cnames"
 
+# ── メール: Email Routing が要求するレコード ────────────────────────
+# 宣言側は Cloudflare 自身が持っている。/email/routing/dns が「この zone で
+# メールを受けるのに必要なレコード」を返すので、それを期待値として使う。
+# ここが欠けるとメールが静かに止まる (配送されないだけで何も言われない)。
+echo
+echo "━━━ メール (Email Routing) ━━━"
+routing=$(cf "${api}/zones/${zone_id}/email/routing" | jq -r '"\(.result.enabled)/\(.result.status)"')
+echo "  Email Routing: ${routing}"
+
+# 比較の前に均す。3 つずれる要素がある:
+#   - 要求側は FQDN の末尾にドットが付き、実レコード側には無い
+#   - TXT は囲みの引用符の有無が食い違う
+#   - TXT は 1 文字列 255 バイト上限で分割されるので、実レコード側は
+#     "前半" "後半" の形になる。DKIM がこれで、連結分の 3 文字だけずれて
+#     「存在するのに MISSING」に見えていた
+norm() { sed -e 's/\.$//' -e 's/" "//g' -e 's/^"//' -e 's/"$//'; }
+
+mail_bad=0
+while IFS=$'\t' read -r rtype rname rpri rcontent; do
+  [[ -z ${rtype:-} ]] && continue
+  want=$(printf '%s' "$rcontent" | norm)
+  have=$(cf "${api}/zones/${zone_id}/dns_records?type=${rtype}&name=${rname}" |
+    jq -r --arg pri "$rpri" '.result[] | select($pri == "null" or (.priority|tostring) == $pri) | .content' |
+    norm | grep -Fx "$want" || true)
+  label="${rtype} ${rname}${rpri:+ (pri=${rpri})}"
+  if [[ -n $have ]]; then
+    echo "  ok       ${label}"
+  else
+    echo "  MISSING  ${label} -> ${want:0:50}"
+    mail_bad=$((mail_bad + 1))
+    if $apply; then
+      cf -X POST "${api}/zones/${zone_id}/dns_records" \
+        --data "$(jq -n --arg t "$rtype" --arg n "$rname" --arg c "$want" --arg p "$rpri" \
+          '{type:$t, name:$n, content:$c, ttl:1} + (if $p == "null" then {} else {priority: ($p|tonumber)} end)')" >/dev/null
+      echo "    作成した"
+    fi
+  fi
+done < <(cf "${api}/zones/${zone_id}/email/routing/dns" |
+  jq -r '.result[] | "\(.type)\t\(.name)\t\(.priority // "null")\t\(.content)"')
+
 # ── アカウントのトンネル一覧 ────────────────────────────────────────
 if [[ -n ${account_id:-} ]]; then
   echo
@@ -229,7 +270,7 @@ if [[ -n ${account_id:-} ]]; then
 fi
 
 # EXTRA では落とさない。apex や Pages 向けのレコードが正当に同居している。
-if ! $apply && { [[ ${#missing[@]} -gt 0 ]] || [[ ${#wrong[@]} -gt 0 ]] || [[ $cname_bad -gt 0 ]]; }; then
+if ! $apply && { [[ ${#missing[@]} -gt 0 ]] || [[ ${#wrong[@]} -gt 0 ]] || [[ $cname_bad -gt 0 ]] || [[ $mail_bad -gt 0 ]]; }; then
   echo "DNS が宣言に追いついていない。--apply で寄せる" >&2
   exit 1
 fi
