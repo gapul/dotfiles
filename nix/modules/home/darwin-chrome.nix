@@ -267,6 +267,7 @@ in
   # service in the activation below.
   # PATH mirrors what the brew plist exported — sketchybarrc and the plugins call brew-installed
   # binaries (sketchybar, media-control, displayplacer, jq) and launchd starts with a bare PATH.
+  # The profile comes first for `sketchybar-helper`, which nix builds (nix/pkgs/sketchybar-helper).
   launchd.agents.sketchybar = {
     enable = true;
     config = {
@@ -275,7 +276,7 @@ in
       KeepAlive = true;
       ProcessType = "Interactive";
       EnvironmentVariables = {
-        PATH = "/opt/homebrew/bin:/opt/homebrew/sbin:/usr/bin:/bin:/usr/sbin:/sbin";
+        PATH = "${config.home.profileDirectory}/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/bin:/bin:/usr/sbin:/sbin";
         LANG = "en_US.UTF-8";
       };
       StandardErrorPath = "/tmp/sketchybar.err";
@@ -307,7 +308,7 @@ in
       KeepAlive = true;
       ProcessType = "Interactive";
       EnvironmentVariables = {
-        PATH = "${config.home.homeDirectory}/.config/sketchybar/bin-ext:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/bin:/bin:/usr/sbin:/sbin";
+        PATH = "${config.home.homeDirectory}/.config/sketchybar/bin-ext:${config.home.profileDirectory}/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/bin:/bin:/usr/sbin:/sbin";
         LANG = "en_US.UTF-8";
         SB_PROFILE = "ext";
       };
