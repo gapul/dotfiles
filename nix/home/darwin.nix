@@ -189,6 +189,10 @@ in
     unstablePkgs.fritzing # PCB/circuit design CAD (official DL is paid. for the ESP32 project). cached, so instant
     unstablePkgs.ardour # DAW (official binary is pay-what-you-want. free via source build). cached, so instant
     unstablePkgs.aseprite # pixel-art editor (official $20. source-available/self-built is free full)
+    # VRoid Studio (VRM character modelling): no nixpkgs package and no cask, so the official
+    # macOS dmg is repackaged. See pkgs/vroid-studio.nix - the download URL carries a token
+    # that has to be re-read from vroid.com on every version bump.
+    (callPackage ../pkgs/vroid-studio.nix { })
 
     # ─── CLI migrated from Homebrew (stage 4: mac CLI that had no reason to stay on brew) ───
     # All of these exist in nixpkgs for aarch64-darwin and substitute from the cache, and none of

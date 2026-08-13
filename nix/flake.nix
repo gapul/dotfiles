@@ -147,7 +147,12 @@
         targetSystem:
         import nixpkgs {
           system = targetSystem;
-          config.allowUnfreePredicate = pkg: nixpkgs.lib.getName pkg == "unity-cli";
+          config.allowUnfreePredicate =
+            pkg:
+            builtins.elem (nixpkgs.lib.getName pkg) [
+              "unity-cli"
+              "vroid-studio" # free of charge but proprietary, see pkgs/vroid-studio.nix
+            ];
           overlays = [
             overlayFixes
           ]
