@@ -17,16 +17,16 @@ for d in memories skills hooks cron; do
 done
 
 
-# 妹用(まなび)。HOME を分けた2本目の gateway と、サンドボックス内の学習記録。
+# まなび。HOME を分けた2本目の gateway と、サンドボックス内の学習記録。
 # どちらも消えると作り直せないので同じ repo に入れる。
-IMOUTO=/Users/hermes/imouto-home/.hermes
-if [ -d "$IMOUTO" ]; then
-  mkdir -p "$REPO/imouto"
-  rsync -a "$IMOUTO/SOUL.md" "$IMOUTO/config.yaml" "$REPO/imouto/" 2>/dev/null || true
+MANABI=/Users/hermes/manabi-home/.hermes
+if [ -d "$MANABI" ]; then
+  mkdir -p "$REPO/manabi"
+  rsync -a "$MANABI/SOUL.md" "$MANABI/config.yaml" "$REPO/manabi/" 2>/dev/null || true
   # 継ぎ手(claude-acp)はここでは退避しない。gapul/claude-acp が正で、この機械には
   # dotfiles の activation が store から敷いている。
   for d in memories skills cron; do
-    [ -d "$IMOUTO/$d" ] && rsync -a --delete "$IMOUTO/$d/" "$REPO/imouto/$d/"
+    [ -d "$MANABI/$d" ] && rsync -a --delete "$MANABI/$d/" "$REPO/manabi/$d/"
   done
 fi
 
@@ -53,12 +53,12 @@ fi
 
 # 秘密は平文では置かないが、飛んだときに手で入れ直すのも困る。
 # 公開鍵だけで暗号化できるので、暗号文だけ repo に入れておく。
-# 復号は age の秘密鍵を持っている母艦側で:  sops -d secrets/imouto.env.enc
+# 復号は age の秘密鍵を持っている母艦側で:  sops -d secrets/manabi.env.enc
 SOPS=/etc/profiles/per-user/gapul/bin/sops
 AGE_RECIPIENTS=age1crkk4dtd824qu3h5q24vnm4pmrjymzkelt60qnyzwcje74gncudqjr693n,age1wkurr3ldjxslj4t3sa47lpslc9flpyznruxmgtqejar9ews59gqqvmkz55
 if [ -x "$SOPS" ]; then
   mkdir -p "$REPO/secrets"
-  for pair in "imouto:/Users/hermes/imouto-home/.hermes/.env" "main:/Users/hermes/.hermes/.env"; do
+  for pair in "manabi:/Users/hermes/manabi-home/.hermes/.env" "main:/Users/hermes/.hermes/.env"; do
     name=${pair%%:*}; file=${pair#*:}
     [ -f "$file" ] || continue
     # shellcheck disable=SC2015  # 失敗時は || 側で握り潰す意図どおり
