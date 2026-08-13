@@ -1,4 +1,9 @@
-{ pkgs, user, ... }:
+{
+  pkgs,
+  user,
+  claudeAcp,
+  ...
+}:
 {
   # Headless LLM worker (M4 Mac mini / 24GB).
   # Unlike the everyday workstation (darwin.nix), it loads no GUI casks at all;
@@ -356,7 +361,7 @@
     if [ -d /Users/hermes ]; then
       /usr/bin/install -d -o hermes -g staff -m 755 /Users/hermes/.local/bin
       /usr/bin/install -o hermes -g staff -m 755 \
-        ${../../configs/macmini/hermes/claude-acp} /Users/hermes/.local/bin/claude-acp
+        ${claudeAcp}/bin/claude-acp /Users/hermes/.local/bin/claude-acp
     fi
   '';
 }
