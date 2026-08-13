@@ -9,8 +9,7 @@ let
   launcher-search = pkgs.callPackage ../pkgs/launcher-search.nix { };
   claudeConfig =
     path:
-    config.lib.file.mkOutOfStoreSymlink
-      "${config.home.homeDirectory}/.dotfiles/configs/cli/claude/${path}";
+    config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.dotfiles/configs/cli/claude/${path}";
 in
 {
   # workstation layer: dev/daily tools for the main machine (laptop) / WSL / linux.
