@@ -59,20 +59,22 @@ let
       displayName = "Homelab CalDAV/CardDAV";
       description = "自宅 Radicale のカレンダーと連絡先。パスワードは初回に端末が訊く。";
       payloads = [
+        # 宛先は radicale の 5232 を直接ではなく hosts/homeserver.nix の sites 表が
+        # 立てている dav の vhost。Caddy が ACME 証明書で終端しているので、
+        # 資格情報が平文で流れない。A レコードは tailnet アドレスを指しているため、
+        # tailnet に入っていないと名前が引けても届かない。
         {
           PayloadType = "com.apple.caldav.account";
           CalDAVAccountDescription = "Homelab (Radicale)";
-          CalDAVHostName = "homeserver.gapul.net";
-          CalDAVPort = 5232;
-          CalDAVUseSSL = false; # tailnet 内のみで、前段に TLS を置いていない
+          CalDAVHostName = "dav.gapul.net";
+          CalDAVUseSSL = true;
           CalDAVUsername = user.username;
         }
         {
           PayloadType = "com.apple.carddav.account";
           CardDAVAccountDescription = "Homelab (Radicale)";
-          CardDAVHostName = "homeserver.gapul.net";
-          CardDAVPort = 5232;
-          CardDAVUseSSL = false;
+          CardDAVHostName = "dav.gapul.net";
+          CardDAVUseSSL = true;
           CardDAVUsername = user.username;
         }
       ];

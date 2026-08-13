@@ -67,7 +67,7 @@ Tailscale の VPN プロファイルも本家が配っていて、そちらの�
 
 | 用途 | どこから |
 |---|---|
-| 自宅 Radicale の CalDAV/CardDAV | `nix/mobile/ios-profiles.nix` (配布元が無いので自前) |
+| 自宅 Radicale の CalDAV/CardDAV | `nix/mobile/ios-profiles.nix` (配布元が無いので自前)。宛先は `hosts/homeserver.nix` の `sites` 表が立てる `dav` の vhost |
 | DNS (NextDNS) | `https://apple.nextdns.io/<profile-id>` を Safari で開く |
 | 自宅 tailnet | Tailscale アプリ本体が VPN プロファイルを入れる |
 
