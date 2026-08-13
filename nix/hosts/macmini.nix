@@ -324,6 +324,13 @@
         /bin/rm -f "/Library/LaunchDaemons/$label.plist" || true
       fi
     done
+    # /opt/ai/bin, the pre-XDG copies of the AI wrappers. Root-owned, dated 2026-07-16, and put on
+    # the system PATH by /etc/paths.d/ai — so they shadowed the declared ~/.local/bin ones in every
+    # interactive shell. They still pointed at ~/models and ~/sbv2-venv, paths the XDG move retired,
+    # which is why `transcribe` answered "モデル未導入" while the AI panel (which builds its own PATH)
+    # worked fine. The declaration was right; something older was winning.
+    /bin/rm -f /etc/paths.d/ai || true
+    /bin/rm -rf /opt/ai || true
     # Google's updater, removed. Chrome here is an automation target that gets upgraded by hand
     # with the rest of the declaration, so a resident agent waking up to check for versions is
     # noise. Chrome re-installs Keystone whenever it is launched, so this runs every activation
