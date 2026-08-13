@@ -60,6 +60,39 @@ _dotfiles_fix_ssh_agent() {
 }
 _dotfiles_fix_ssh_agent
 
+# 上の関数はシェル起動時にしか走らない。tmux / herdr のペインは再接続しても新しい
+# シェルを起動しないので、貼り替える者が誰もおらず、安定パスは死んだ socket を
+# 指したままになる (2026-08-13 に git push が Permission denied で落ちた)。
+# そこでプロンプトのたびに「より新しい転送 socket が来ていないか」だけを見る。
+# 判定は glob と test だけで外部コマンドを呼ばず、生存確認 (ssh-add = 母艦への
+# 往復) は実際に貼り替えるときにしか走らせない。
+_dotfiles_refresh_ssh_agent() {
+    # 直前のコマンドの終了ステータスを保存する。この関数は precmd / PROMPT_COMMAND から
+    # starship より先に呼ばれるので、握り潰すとプロンプトの成否表示が常に成功になる。
+    local __dotfiles_st=$?
+    local stable="$HOME/.ssh/ssh_auth_sock" newest="" s
+    for s in /tmp/ssh-*/agent.*; do
+        [ -S "$s" ] || continue
+        if [ -z "$newest" ] || [ "$s" -nt "$newest" ]; then newest="$s"; fi
+    done
+    # 実体が生きていて、それより新しい socket も無ければ何もしない (fork ゼロ)
+    if [ -S "$stable" ] && { [ -z "$newest" ] || [ ! "$newest" -nt "$stable" ]; }; then
+        return $__dotfiles_st
+    fi
+    if [ -n "$newest" ] && SSH_AUTH_SOCK="$newest" ssh-add -l >/dev/null 2>&1; then
+        ln -snf "$newest" "$stable"
+    else
+        # newest が死んでいる等の例外は既存の総当たりに任せる
+        _dotfiles_fix_ssh_agent
+    fi
+    [ -S "$stable" ] && export SSH_AUTH_SOCK="$stable"
+    return $__dotfiles_st
+}
+case "${PROMPT_COMMAND:-}" in
+    *_dotfiles_refresh_ssh_agent*) ;;
+    *) PROMPT_COMMAND="_dotfiles_refresh_ssh_agent${PROMPT_COMMAND:+; $PROMPT_COMMAND}" ;;
+esac
+
 # ── 履歴 ────────────────────────────────────────────────────────────────────
 # ディストロ既定の HISTSIZE=1000 では、少し前に打ったコマンドがすぐ消えて
 # 履歴検索が用を成さない。fzf の Ctrl-R を活かすには母数が要る。
