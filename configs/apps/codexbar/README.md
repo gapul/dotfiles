@@ -1,10 +1,8 @@
-# CodexBar 設定スナップショット (追跡専用ミラー)
+# CodexBar 設定
 
-`~/.config/codexbar/config.json` の**片方向スナップショット**です。
+`~/.config/codexbar/config.json` の実体です。out-of-store symlink で繋いであるので、
+CodexBar の UI 操作がそのままこのファイルに書き込まれる。[omniwm](../../wm/omniwm/README.md) と同じ扱い。
 
-- **本体はライブ側**。CodexBar が UI 操作のたびに書き戻すので、`home.file` では壊れる。
-  [omniwm](../../wm/omniwm/README.md) と同じ扱い。
-- 更新は `just app-snapshot` で **ライブ → dotfiles の一方通行**。
-- このリポジトリは public なので、`providers[].codexActiveSource`（Codex アカウントの UUID）は
-  スナップショット時に落としている。戻したあと CodexBar 側でアカウントを選び直せば再生成される。
-- 戻すときは手動で `cp configs/apps/codexbar/config.json ~/.config/codexbar/`（CodexBar 終了中に）。
+- 配線は `nix/home/darwin.nix`。新しい mac では rebuild すればリンクが張られる。
+- `providers[].codexActiveSource` に Codex アカウントの UUID が入る。このリポジトリは public だが、
+  識別子だけで資格情報ではないのでそのまま追跡している。

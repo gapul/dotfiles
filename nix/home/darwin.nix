@@ -224,6 +224,16 @@ in
     source = ../../configs/terminals/ghostty;
     recursive = true;
   };
+
+  # OmniWM / CodexBar: both apps write their own config back on every UI change, so a store
+  # symlink (read-only) breaks saving. Out-of-store symlinks instead — the app writes straight
+  # into the repo, which replaces the old `just app-snapshot` one-way mirror (removed 2026-08-13).
+  # CodexBar's config carries the Codex account UUID; this repo is public, but a bare account
+  # identifier is not a credential, so it is tracked as-is.
+  home.file.".config/omniwm/settings.toml".source =
+    config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.dotfiles/configs/wm/omniwm/settings.toml";
+  home.file.".config/codexbar/config.json".source =
+    config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.dotfiles/configs/apps/codexbar/config.json";
   # Ghostty: resolution-variable font size. Computes font-size from the main display's logical
   # vertical resolution and writes it to ~/.config/ghostty.local/font-size.conf (config includes it with ?).
   # Recomputed on every nh home switch. If you change resolution, switch again, or

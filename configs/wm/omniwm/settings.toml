@@ -26,7 +26,7 @@ maxTotalBytes = 67108864
 [dwindle]
 defaultSplitRatio = 1.0
 moveToRootStable = true
-singleWindowFit = "fill"
+singleWindowFit = "99999x99999"
 smartSplit = false
 splitWidthMultiplier = 1.0
 useGlobalGaps = true
@@ -46,10 +46,10 @@ size = 8.0
 bottom = 0.0
 left = 0.0
 right = 0.0
-top = 0.0
+top = 30.0
 
 [general]
-animationsEnabled = false
+animationsEnabled = true
 defaultLayoutType = "dwindle"
 hotkeysEnabled = true
 ipcEnabled = true
