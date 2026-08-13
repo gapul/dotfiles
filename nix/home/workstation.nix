@@ -7,6 +7,10 @@
 let
   # Search binary for the ghostty launcher. Store-ify it to protect it from gc-deep's target cleanup.
   launcher-search = pkgs.callPackage ../pkgs/launcher-search.nix { };
+  claudeConfig =
+    path:
+    config.lib.file.mkOutOfStoreSymlink
+      "${config.home.homeDirectory}/.dotfiles/configs/cli/claude/${path}";
 in
 {
   # workstation layer: dev/daily tools for the main machine (laptop) / WSL / linux.
@@ -74,6 +78,23 @@ in
   # same location (same technique as .supermaven).
   home.file.".codex".source = config.lib.file.mkOutOfStoreSymlink "${config.xdg.dataHome}/codex";
   home.file.".claude".source = config.lib.file.mkOutOfStoreSymlink "${config.xdg.configHome}/claude";
+
+  # Claude Code: CLAUDE_CONFIG_DIR mixes config with state (sessions/history/.claude.json hold
+  # credentials), so only the hand-written parts are linked in. Out-of-store symlinks, so edits
+  # made from the TUI (/config, skill authoring) land back in the repo.
+  # Vendored skills (cloudflare/*, wrangler, humanizer-ja, ...) stay unmanaged: they are
+  # re-installable from upstream. Workstation-only because the hooks are desktop-specific
+  # (osascript notifications, herdr) — move this to modules/home/agents.nix to share it.
+  xdg.configFile = {
+    "claude/settings.json".source = claudeConfig "settings.json";
+    "claude/CLAUDE.md".source = claudeConfig "CLAUDE.md";
+    "claude/hooks".source = claudeConfig "hooks";
+    "claude/output-styles".source = claudeConfig "output-styles";
+    "claude/bin".source = claudeConfig "bin";
+    "claude/skills/english-vocab".source = claudeConfig "skills/english-vocab";
+    "claude/skills/gapul-writing-voice".source = claudeConfig "skills/gapul-writing-voice";
+    "claude/skills/step-by-step-tutor".source = claudeConfig "skills/step-by-step-tutor";
+  };
 
   # supermaven: sm-agent hardcodes $HOME/.supermaven (not XDG-aware).
   # Keep the real dir at ~/.local/share/supermaven and make $HOME a symlink to it.
