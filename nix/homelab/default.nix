@@ -37,6 +37,7 @@
     ./ntfy.nix
     ./obsidian-couchdb.nix
     ./paperless.nix
+    ./playit.nix
     ./radicale.nix
     ./restic-view.nix
     ./rsshub.nix
