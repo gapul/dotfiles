@@ -352,7 +352,15 @@ _maintain-macos:
       echo "━━━ git pull (--rebase --autostash)"
       git -C "$HOME/.dotfiles" pull --rebase --autostash
     fi
-    trap 'rc=$?; rm -rf "$maintenance_lock"; exit $rc' EXIT
+    # Authenticate once for the whole run. Four things here need root — determinate-nixd,
+    # xcodebuild, nh darwin switch, nh clean — and they are spread across ten-plus minutes,
+    # well past sudo's five-minute timestamp, so each one raised its own Touch ID prompt
+    # (the last two land after the parallel lanes, i.e. long after you walked away).
+    # `sudo -v` takes the one prompt up front and the loop keeps the ticket warm until we exit.
+    sudo -v
+    while :; do sudo -n true 2>/dev/null; sleep 60; kill -0 "$$" 2>/dev/null || exit; done &
+    sudo_keepalive=$!
+    trap 'rc=$?; kill $sudo_keepalive 2>/dev/null || true; rm -rf "$maintenance_lock"; exit $rc' EXIT
     # `just outdated` is a read-only survey that costs ~13s of Homebrew metadata scanning, and
     # the Nix runtime upgrade waits on the network the whole time. Run them together and print
     # the survey when it is done, so the report still comes before anything is upgraded.
@@ -412,6 +420,7 @@ _maintain-macos:
     brew services cleanup || true
     just doctor || true
     trap - EXIT
+    kill $sudo_keepalive 2>/dev/null || true
     rm -rf "$maintenance_lock"
 
 [private]
