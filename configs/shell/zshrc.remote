@@ -52,6 +52,36 @@ _dotfiles_fix_ssh_agent() {
 }
 _dotfiles_fix_ssh_agent
 
+# 上はシェル起動時にしか走らない。tmux / herdr のペインは再接続しても新しいシェルを
+# 起動しないので、貼り替える者が誰もおらず安定パスが死んだ socket を指したままになる
+# (2026-08-13 に git push が Permission denied で落ちた)。プロンプトのたびに
+# 「より新しい転送 socket が来ていないか」だけを見る。判定は glob と test だけで
+# 外部コマンドを呼ばず、生存確認 (ssh-add = 母艦への往復) は貼り替えるときだけ。
+# 詳細は configs/shell/bashrc.remote の同名関数のコメントを参照。
+_dotfiles_refresh_ssh_agent() {
+  # 直前のコマンドの終了ステータスを保存する。この関数は precmd / PROMPT_COMMAND から
+  # starship より先に呼ばれるので、握り潰すとプロンプトの成否表示が常に成功になる。
+  local __dotfiles_st=$?
+  local stable="$HOME/.ssh/ssh_auth_sock" newest="" s
+  for s in /tmp/ssh-*/agent.*(N); do
+    [ -S "$s" ] || continue
+    if [ -z "$newest" ] || [ "$s" -nt "$newest" ]; then newest="$s"; fi
+  done
+  # 実体が生きていて、それより新しい socket も無ければ何もしない (fork ゼロ)
+  if [ -S "$stable" ] && { [ -z "$newest" ] || [ ! "$newest" -nt "$stable" ]; }; then
+    return $__dotfiles_st
+  fi
+  if [ -n "$newest" ] && SSH_AUTH_SOCK="$newest" ssh-add -l >/dev/null 2>&1; then
+    ln -snf "$newest" "$stable"
+  else
+    _dotfiles_fix_ssh_agent
+  fi
+  [ -S "$stable" ] && export SSH_AUTH_SOCK="$stable"
+  return $__dotfiles_st
+}
+autoload -Uz add-zsh-hook
+add-zsh-hook precmd _dotfiles_refresh_ssh_agent
+
 # ── 履歴 ────────────────────────────────────────────────────────────────────
 # XDG に寄せる (母艦の history.path と同じ考え方)。
 HISTFILE="${XDG_STATE_HOME:-$HOME/.local/state}/zsh/history"
