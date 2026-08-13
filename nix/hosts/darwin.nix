@@ -283,6 +283,9 @@
       # ─── Documents / Fonts / Media ───
       "gstreamer" # (a) nixpkgs gst_all_1 doesn't support aarch64-darwin
       "mpv" # (a) nixpkgs mpv doesn't support aarch64-darwin
+      # 3D model previews in yazi (configs/cli/yazi/plugins/model.yazi). nixpkgs f3d can't build on
+      # aarch64-darwin: its openusd dependency fails, taking f3d down with it.
+      "f3d" # (a) headless 3D renderer
 
       # ─── macOS specific CLI ───
       "media-control" # (a) media keys. not in nixpkgs
