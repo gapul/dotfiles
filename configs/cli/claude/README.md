@@ -29,8 +29,14 @@ vendored な skill (cloudflare/* など) も上流から取り直せるので管
 `scripts/merge-claude-settings.py` が上書き merge する。`~/.bashrc` に `bashrc.remote` を読む
 行だけ足すのと同じ考え方で、管理外のキーはホスト側にそのまま残す。
 
-- 管理対象: `theme` / `tui` / `effortLevel` / `inputNeededNotifEnabled` / `agentPushNotifEnabled`
+- 管理対象: `theme` / `effortLevel`
 - 管理外 (ホスト所有): `permissions` / `enabledPlugins` / `skipDangerousModePermissionPrompt`
+
+管理対象は**母艦の `settings.json` が実際に持っているキー**に限る。母艦が書いていない
+キーを配ると、母艦は既定値・リモートだけ明示値という食い違いが生まれ、下の「母艦が正」
+が成り立たなくなる。`tui` / `inputNeededNotifEnabled` / `agentPushNotifEnabled` は
+リモート側の値から起こしてしまったもので、母艦に無いので外した (2026-08-13)。
+既に配ってしまったホストの値は残るが、以後はホスト所有として扱う。
 
 `CLAUDE.md` と自作 skill は書き換わらないので、リモートでも普通に symlink する。
 `hooks/` `output-styles/` `bin/` は母艦のデスクトップ前提 (osascript 通知 / herdr /

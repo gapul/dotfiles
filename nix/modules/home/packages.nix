@@ -2,12 +2,15 @@
 {
   pkgs,
   nixpkgsUnstable,
+  nixpkgsHerdr,
   ...
 }:
 let
   # nixos-unstable for what the 26.05 release branches don't carry yet (SSO: commonSpecialArgs).
   # Same escape hatch as home/darwin.nix, minus the allowUnfree re-import (these are all free).
   unstablePkgs = nixpkgsUnstable.legacyPackages.${pkgs.stdenv.hostPlatform.system};
+  # herdr は別 lineage。理由は flake.nix の nixpkgs-herdr の項を参照。
+  herdrPkgs = nixpkgsHerdr.legacyPackages.${pkgs.stdenv.hostPlatform.system};
   gh-nix = pkgs.writeShellApplication {
     name = "gh-nix";
     runtimeInputs = [ pkgs.gh ];
@@ -62,8 +65,9 @@ in
     tmuxp # declare tmux sessions/layouts in YAML (~/.config/tmuxp/)
     # AI agent multiplexer (config in modules/home/terminal.nix). Goes on every host so
     # `herdr --remote` finds a version-matched binary on the far side instead of installing one
-    # into ~/.local/bin. Not in the 26.05 branches yet, so it comes from unstable.
-    unstablePkgs.herdr
+    # into ~/.local/bin. 26.05 の系列にはまだ無いので unstable 系から。ただし
+    # nixpkgs-unstable ではなく専用の nixpkgs-herdr (理由は flake.nix の同名 input の項)。
+    herdrPkgs.herdr
     podman-tui # Podman container / image / Pod management TUI
     iamb # Matrix TUI (Vim keybindings, E2EE support)
     newsboat # RSS/Atom feed reader TUI
