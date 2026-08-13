@@ -1,10 +1,12 @@
-# OmniWM 設定スナップショット (追跡専用ミラー)
+# OmniWM 設定
 
-`~/.config/omniwm/settings.toml` の**片方向スナップショット**です。
+`~/.config/omniwm/settings.toml` の実体です。out-of-store symlink で繋いであるので、
+OmniWM の GUI で設定を変えるとこのファイルが直接書き換わる。
 
-- **本体はライブ側**。OmniWM 自身がこのファイルを書き戻す（キーはソート済み、float はフル精度、
-  バージョンが上がるとキーが増減する）ので、`home.file` で store の読み取り専用シンボリックリンクに
-  すると設定を保存できなくなる。だから宣言ではなくミラーで追う。
-- 更新は `just app-snapshot` で **ライブ → dotfiles の一方通行**。
-- 新しい mac で戻すときだけ手動で `cp configs/wm/omniwm/settings.toml ~/.config/omniwm/`。
-  OmniWM が起動中に上書きすると、常駐側の状態で巻き戻されるので必ず終了してから。
+- 設定を nix で生成はしない。OmniWM 自身が書き戻す（キーはソート済み、float はフル精度、
+  バージョンが上がるとキーが増減する）ので、store の読み取り専用シンボリックリンクだと保存できない。
+  out-of-store symlink なら書き込みがそのままリポジトリに届く。
+- 配線は `nix/home/darwin.nix`。新しい mac では rebuild すればリンクが張られる。
+- 差分は GUI をいじったときに出るので、`git diff` に現れたら普通にコミットすればいい。
+- OmniWM が tmp+rename で書くと symlink が実ファイルに置き換わって追跡が切れる。
+  その場合は次の rebuild で `.hm-bak` が残るので気づける（変更は失われるがファイルは無事）。
