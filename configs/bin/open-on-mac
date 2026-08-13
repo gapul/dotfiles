@@ -6,8 +6,13 @@
 # ssh_config の RemoteForward で 127.0.0.1:$port が母艦の sshd に向いているので、そこへ
 # scp で置いてから open を叩く。認証は Agent Forward 済みの鍵なので、リモートに秘密鍵は残らない。
 #
-# トンネルが無い環境 (Linux デスクトップ機など) では xdg-open に委譲する。yazi の opener は
-# 1 つしか実行されず候補に落ちてくれないので、フォールバックはこちら側で持つ。
+# トンネルが無い環境 (Linux デスクトップ機など) ではその場で開く。yazi の opener は 1 つしか
+# 実行されず候補に落ちてくれないので、フォールバックはこちら側で持つ。
+#
+#   open-on-mac [ローカルで開くときのコマンド...] -- <file>...
+#
+# `--` の前に書いたコマンドが、母艦に届かなかったときの開き先になる (省略時は xdg-open)。
+# デスクトップ Linux で mpv や zathura を使っていたカテゴリは、それをそのまま渡すこと。
 
 # shellcheck disable=SC2029 # パスはこちら側で展開して母艦に渡すのが意図
 set -euo pipefail
@@ -19,17 +24,32 @@ host=127.0.0.1
 ssh_opts=(-p "$port" -o BatchMode=yes -o StrictHostKeyChecking=accept-new
   -o UserKnownHostsFile=~/.ssh/known_hosts_open_on_mac)
 
+# `--` までがローカルで開くときのコマンド。無ければ xdg-open。
+local_cmd=()
+while [ $# -gt 0 ] && [ "$1" != "--" ]; do
+  local_cmd+=("$1")
+  shift
+done
+if [ "${1-}" = "--" ]; then
+  shift
+else
+  # `--` が無いなら全部ファイル扱い (ローカルは xdg-open)
+  set -- "${local_cmd[@]}"
+  local_cmd=()
+fi
+[ ${#local_cmd[@]} -eq 0 ] && local_cmd=(xdg-open)
+
 if [ $# -eq 0 ]; then
-  echo "Usage: open-on-mac <file>..." >&2
+  echo "Usage: open-on-mac [local command...] -- <file>..." >&2
   exit 1
 fi
 
-# 母艦に届かなければローカルの既定アプリへ。ssh が握って止まらないよう短く切る。
+# 母艦に届かなければその場で開く。ssh が握って止まらないよう短く切る。
 if ! ssh "${ssh_opts[@]}" -o ConnectTimeout=3 "$user@$host" true 2>/dev/null; then
-  if command -v xdg-open >/dev/null 2>&1; then
-    exec xdg-open "$@"
+  if command -v "${local_cmd[0]}" >/dev/null 2>&1; then
+    exec "${local_cmd[@]}" "$@"
   fi
-  echo "母艦へのトンネルがありません (ssh_config の RemoteForward $port を確認)" >&2
+  echo "母艦へのトンネルが無く、${local_cmd[0]} も見つかりません" >&2
   exit 1
 fi
 
