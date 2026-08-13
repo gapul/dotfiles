@@ -37,6 +37,7 @@ Stdlib only. argv is ignored (Hermes passes --stdio).
 from __future__ import annotations
 
 import base64
+import datetime
 import json
 import os
 import re
@@ -374,6 +375,50 @@ def _read_as_supported(path: str):
     return data
 
 
+SANDBOX_KEY = "/Users/hermes/.ssh/sandbox_ed25519"
+_WEEKDAY_JA = "月火水木金土日"
+
+
+def _with_now(text: str) -> str:
+    """いまの日時を頭に付ける。
+
+    内側の claude に届くのは日付だけで時刻がない。聞かれると推測で答えて
+    しまい、実際に1時間半ずれた時刻を口にした。曜日も付けるのは、予定の話で
+    「今日は何曜日か」から数え違えるのを防ぐため。
+    """
+    now = datetime.datetime.now()
+    stamp = "%s(%s) %s JST" % (now.strftime("%Y-%m-%d"),
+                               _WEEKDAY_JA[now.weekday()],
+                               now.strftime("%H:%M"))
+    return "【いま %s】\n%s" % (stamp, text)
+
+
+def _after_turn() -> str:
+    """やり取りのあとの後始末をサンドボックスに任せ、MEDIA: 行があれば返す。
+
+    向こうでやっているのは (1) 学習記録の変更を git に残す (2) 計画が
+    変わったのに画像が無ければ作る、の二つ。履歴が git にあるので、記録は
+    追記で積まずに書き換えられる。画像のほうは「計画を直したら見せる」が
+    指示だけでは落ちるので、落ちたぶんをここで拾う。
+    妹用のインスタンスだけの振る舞いなので HOME で見分ける。
+    """
+    if os.path.basename(os.environ.get("HOME", "").rstrip("/")) != "imouto-home":
+        return ""
+    try:
+        proc = subprocess.run(
+            ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=5",
+             "-i", SANDBOX_KEY, "hsandbox@localhost",
+             "python3 ~/study/after_turn.py"],
+            capture_output=True, text=True, timeout=90)
+    except Exception as exc:
+        log("after-turn housekeeping failed: %s" % exc)
+        return ""
+    for line in (proc.stdout or "").splitlines():
+        if line.startswith("MEDIA:"):
+            return line.strip()
+    return ""
+
+
 def _content_blocks(text: str) -> list:
     """Build the stream-json content array: attachments first, then the text."""
     # Fresh attachments are what the turn is usually about; filed-away
@@ -463,7 +508,7 @@ def _invoke_claude(message_text: str, model: str, *, resume_id: str | None,
             cmd,
             input=json.dumps({"type": "user", "message": {
                 "role": "user",
-                "content": _content_blocks(message_text)}}) + "\n",
+                "content": _content_blocks(_with_now(message_text))}}) + "\n",
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
@@ -490,6 +535,12 @@ def _invoke_claude(message_text: str, model: str, *, resume_id: str | None,
                 None)
 
     reply, session_id = _parse_result_json(raw)
+    if reply.strip():
+        # コミットは毎回したいので、返信に画像があっても呼ぶ。貼るのは無いときだけ。
+        extra = _after_turn()
+        if extra and "MEDIA:" not in reply:
+            reply = reply.rstrip() + "\n" + extra
+            log("plan image attached automatically")
     log("claude ok in %.1fs resume=%s session=%s reply_len=%d"
         % (elapsed, bool(resume_id), session_id, len(reply)))
     if not reply.strip():
@@ -535,6 +586,8 @@ def _selftest() -> int:
     assert _sanitize_reply("3 < 5 です") == "3 < 5 です"
     assert _sanitize_reply("読みました。" + intact) == "読みました。" + intact
     assert _content_blocks("ふつうの文") == [{"type": "text", "text": "ふつうの文"}]
+    stamped = _with_now("やあ")
+    assert stamped.startswith("【いま 20") and stamped.endswith("JST】\nやあ")
     missing = "/Users/hermes/imouto-home/.hermes/cache/documents/nope.pdf"
     assert _content_blocks(missing) == [{"type": "text", "text": missing}]
     assert _ARCHIVE_RE.findall("~/study/exams/raw/a.pdf を見て") == ["~/study/exams/raw/a.pdf"]
