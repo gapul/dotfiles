@@ -18,6 +18,10 @@ let
   # Bound here rather than inline in home.packages because the LaunchAgent below
   # needs the path too, and both must point at the same store path.
   mechvibes-dx = pkgs.callPackage ../pkgs/mechvibes-dx.nix { };
+
+  # The bundle actually launched: a signed copy of the one in the store, see
+  # home.activation.mechvibesSign below.
+  mechvibesApp = "${config.home.homeDirectory}/Applications/MechvibesDX.app";
 in
 {
   imports = [
@@ -243,15 +247,16 @@ in
   # rather than in darwin-services.nix because it needs the package path from
   # the let block above.
   #
-  # Started through the bundle's executable, not $out/bin, so macOS still sees a
-  # real .app - the tray icon and the Accessibility entry both depend on that.
+  # Started through the signed copy's executable, not $out/bin, so macOS still
+  # sees a real .app - the tray icon and the Accessibility entry both depend on
+  # that.
   # --minimized keeps it in the tray at login: the config-driven start_minimized
   # only applies when auto_start is set, which is the Windows registry path.
   launchd.agents.mechvibes-dx = {
     enable = true;
     config = {
       ProgramArguments = [
-        "${mechvibes-dx}/Applications/MechvibesDX.app/Contents/MacOS/mechvibes-dx"
+        "${mechvibesApp}/Contents/MacOS/mechvibes-dx"
         "--minimized"
       ];
       RunAtLoad = true;
@@ -266,4 +271,37 @@ in
   home.activation.mechvibesLogDir = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     /bin/mkdir -p "${config.home.homeDirectory}/Library/Logs/MechvibesDX"
   '';
+
+  # TCC pins its rows to the code signature, and what nix builds is ad-hoc
+  # signed: the requirement is a bare cdhash, so every rebuild of the package
+  # silently revokes Accessibility and the app goes quiet (twice so far,
+  # 2026-08-09 and 2026-08-13). Signing with the Developer ID that keystats
+  # uses turns the requirement into a certificate check, which survives.
+  #
+  # codesign cannot write into the store, hence the copy. The store path stays
+  # a GC root through home.packages, which matters because the copied binary
+  # still links dylibs by absolute store path.
+  #
+  # Before setupLaunchAgents so the bundle exists when launchd is told to start
+  # it. Deliberately not fatal: an unsignable bundle should cost the keystroke
+  # sounds, not the whole activation.
+  home.activation.mechvibesSign =
+    lib.hm.dag.entryBetween [ "setupLaunchAgents" ] [ "writeBoundary" ]
+      ''
+        src=${mechvibes-dx}/Applications/MechvibesDX.app
+        stamp="${config.home.homeDirectory}/Applications/.mechvibes-dx-store-path"
+        if [ "$(cat "$stamp" 2>/dev/null)" != "$src" ] || ! /usr/bin/codesign -v "${mechvibesApp}" 2>/dev/null; then
+          $DRY_RUN_CMD /bin/mkdir -p "${config.home.homeDirectory}/Applications"
+          $DRY_RUN_CMD /bin/rm -rf "${mechvibesApp}" "$stamp"
+          $DRY_RUN_CMD /bin/cp -R "$src" "${mechvibesApp}"
+          $DRY_RUN_CMD /bin/chmod -R u+w "${mechvibesApp}"
+          # No --options runtime: the hardened runtime blocks the WebView's JIT.
+          if $DRY_RUN_CMD /usr/bin/codesign --force \
+            --sign "Developer ID Application: Yuki Kawashima (S3H296G6Q5)" "${mechvibesApp}"; then
+            $DRY_RUN_CMD echo "$src" > "$stamp"
+          else
+            echo "mechvibes-dx: codesign failed, Accessibility will need re-granting" >&2
+          fi
+        fi
+      '';
 }
