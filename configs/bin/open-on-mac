@@ -36,9 +36,10 @@ fi
 # 見るためだけのコピーなので /tmp に置く。母艦の再起動で勝手に消える。
 # 接続元ごとに分けて、同名ファイルを別ホストから開いても踏まないようにする。
 dest="/tmp/open-on-mac/$(hostname -s)"
-# 保険の掃除。open -W が空振りした分 (アプリに相乗りして畳まれなかった等) をここで拾う。
+# 保険の掃除。母艦で常駐しているアプリ (Preview 等) に相乗りすると open -W はそれを畳むまで
+# 返らないので、1 時間以上前のものはここで落とす。
 ssh "${ssh_opts[@]}" "$user@$host" \
-  "mkdir -p '$dest' && find '$dest' -type f -mtime +1 -delete 2>/dev/null || true"
+  "mkdir -p '$dest' && find '$dest' -type f -mmin +60 -delete 2>/dev/null || true"
 
 for f in "$@"; do
   base=$(basename -- "$f")
