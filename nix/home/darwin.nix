@@ -165,6 +165,9 @@ in
     syncthing # Syncthing CLI (the resident is the LaunchAgent in services.syncthing)
     xcodegen # generate .xcodeproj from project.yml (Mac-only, since meta.platforms = darwin in Linux nixpkgs)
     (callPackage ../pkgs/slk.nix { }) # Slack TUI (pinned to the official GitHub Release)
+    # sketchybar's event helper. `sketchybarrc` used to compile it on every bar start from
+    # sources kept in the config directory; the launchd agents put the profile first on PATH.
+    (callPackage ../pkgs/sketchybar-helper { })
     # MechvibesDX (keyboard sounds): upstream's macOS DMG SIGTRAPs on the first
     # keypress, so it is built here with the rdev fix. See pkgs/mechvibes-dx.nix.
     # Needs Accessibility permission, and because TCC keys on the executable's
