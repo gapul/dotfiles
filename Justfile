@@ -230,7 +230,11 @@ _upgrade-packages-macos:
     # would only wait or fail. Output is buffered and replayed so three downloads do not
     # interleave into unreadable soup.
     xcode_out=$(mktemp); font_out=$(mktemp)
-    just _xcode-upgrade >"$xcode_out" 2>&1 &
+    # </dev/null: xcodes asks for a 2FA code on stdin when the saved session has expired, and this
+    # lane's output is buffered, so the question is invisible and the whole maintain waits forever
+    # on an answer nobody was asked for. With no stdin it fails fast into the "re-run" message
+    # below instead. sudo is unaffected — it reads the tty directly, not stdin.
+    just _xcode-upgrade >"$xcode_out" 2>&1 </dev/null &
     xcode_pid=$!
     just sketchybar-font >"$font_out" 2>&1 &
     font_pid=$!
@@ -352,7 +356,15 @@ _maintain-macos:
       echo "━━━ git pull (--rebase --autostash)"
       git -C "$HOME/.dotfiles" pull --rebase --autostash
     fi
-    trap 'rc=$?; rm -rf "$maintenance_lock"; exit $rc' EXIT
+    # Authenticate once for the whole run. Four things here need root — determinate-nixd,
+    # xcodebuild, nh darwin switch, nh clean — and they are spread across ten-plus minutes,
+    # well past sudo's five-minute timestamp, so each one raised its own Touch ID prompt
+    # (the last two land after the parallel lanes, i.e. long after you walked away).
+    # `sudo -v` takes the one prompt up front and the loop keeps the ticket warm until we exit.
+    sudo -v
+    while :; do sudo -n true 2>/dev/null; sleep 60; kill -0 "$$" 2>/dev/null || exit; done &
+    sudo_keepalive=$!
+    trap 'rc=$?; kill $sudo_keepalive 2>/dev/null || true; rm -rf "$maintenance_lock"; exit $rc' EXIT
     # `just outdated` is a read-only survey that costs ~13s of Homebrew metadata scanning, and
     # the Nix runtime upgrade waits on the network the whole time. Run them together and print
     # the survey when it is done, so the report still comes before anything is upgraded.
@@ -374,8 +386,12 @@ _maintain-macos:
     #   - The Nix runtime upgrade above replaces the daemon, so it stays before all of this.
     # Everything else here is independent, and this link gives about twice the throughput on
     # parallel connections as on one, so overlapping is worth the plumbing.
-    # Each lane's output is buffered and replayed in order; three live downloads on one
-    # terminal is unreadable.
+    # Only the brew lane prints live. Three live downloads on one terminal is unreadable, but
+    # buffering all three left the terminal completely silent from here until the slowest lane
+    # finished — several minutes of nothing, which reads as a hang, not as progress. brew is the
+    # long pole and the one whose output is worth watching; the nix lane is reduced to its last
+    # five lines anyway and the tools lane is a few lines replayed after the switch, so neither
+    # is a loss. Both are collected after the brew lane, so nothing interleaves into it.
     # Same host resolution as _rebuild-macos: the username is only right on the workstation.
     name="$(cat "${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/host" 2>/dev/null || id -un)"
     # Only asking whether the host has a standalone home config. Evaluating activationPackage to
@@ -385,18 +401,18 @@ _maintain-macos:
     home_attr=""
     [ "$(nix eval "{{flake}}#homeConfigurations" --apply "a: a ? \"$name\"" 2>/dev/null)" = true ] \
       && home_attr="{{flake}}#homeConfigurations.$name.activationPackage"
-    nix_out=$(mktemp); brew_out=$(mktemp); tools_out=$(mktemp)
+    nix_out=$(mktemp); tools_out=$(mktemp)
     nix build --no-link \
       "{{flake}}#darwinConfigurations.$name.config.system.build.toplevel" \
       $home_attr >"$nix_out" 2>&1 &
     nix_pid=$!
-    just _upgrade-packages-macos >"$brew_out" 2>&1 &
-    brew_pid=$!
     just _maintain-user-tools >"$tools_out" 2>&1 &
     tools_pid=$!
+    echo "━━━ parallel: nix build (quiet) + user tools (replayed later) + packages below"
+    just _upgrade-packages-macos &
+    brew_pid=$!
     wait $nix_pid || true
     brew_rc=0; wait $brew_pid || brew_rc=$?
-    cat "$brew_out"; rm -f "$brew_out"
     tail -5 "$nix_out"; rm -f "$nix_out"
     # A failed package upgrade used to abort maintain here, and still should — but only after
     # the lanes have been collected, so their output is not lost with them.
@@ -412,6 +428,7 @@ _maintain-macos:
     brew services cleanup || true
     just doctor || true
     trap - EXIT
+    kill $sudo_keepalive 2>/dev/null || true
     rm -rf "$maintenance_lock"
 
 [private]
