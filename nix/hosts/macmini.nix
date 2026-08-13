@@ -176,11 +176,16 @@
   # the network, not on the CPU.
   #
   # The labels change (net.gapul.* -> org.nixos.*), so the old plists are booted out below.
+  #
+  # The runner scripts come from the store too (configs/macmini/hermes/). They used to sit loose in
+  # /Users/hermes/.hermes/bin and /usr/local/libexec, which is how the watchdog ended up still
+  # polling claude-bridge on :9180 four hours after that daemon was deleted — its state file said
+  # `down: bridge` and it had paged once. Reading it to move it is what found that.
 
   # Hermes proper — the Discord side. Talks to Claude through the claude-acp adapter.
   launchd.daemons.hermes-gateway = {
     serviceConfig = {
-      ProgramArguments = [ "/Users/hermes/.hermes/bin/hermes-gateway-run.sh" ];
+      ProgramArguments = [ "${../../configs/macmini/hermes/hermes-gateway-run.sh}" ];
       UserName = "hermes";
       RunAtLoad = true;
       KeepAlive = true;
@@ -194,7 +199,7 @@
   # api_server port. Same binary, different profile.
   launchd.daemons.hermes-gateway-imouto = {
     serviceConfig = {
-      ProgramArguments = [ "/Users/hermes/imouto-home/gateway-run.sh" ];
+      ProgramArguments = [ "${../../configs/macmini/hermes/imouto-gateway-run.sh}" ];
       UserName = "hermes";
       RunAtLoad = true;
       KeepAlive = true;
@@ -206,7 +211,7 @@
 
   launchd.daemons.hermes-watchdog = {
     serviceConfig = {
-      ProgramArguments = [ "/usr/local/libexec/hermes-watchdog.sh" ];
+      ProgramArguments = [ "${../../configs/macmini/hermes/hermes-watchdog.sh}" ];
       StartInterval = 300;
       ProcessType = "Background";
       LowPriorityIO = true;
@@ -217,7 +222,7 @@
 
   launchd.daemons.hermes-logrotate = {
     serviceConfig = {
-      ProgramArguments = [ "/usr/local/libexec/hermes-logrotate.sh" ];
+      ProgramArguments = [ "${../../configs/macmini/hermes/hermes-logrotate.sh}" ];
       StartCalendarInterval = [
         {
           Hour = 4;
@@ -234,7 +239,7 @@
 
   launchd.daemons.hermes-brain-backup = {
     serviceConfig = {
-      ProgramArguments = [ "/Users/hermes/.hermes/bin/hermes-brain-backup.sh" ];
+      ProgramArguments = [ "${../../configs/macmini/hermes/hermes-brain-backup.sh}" ];
       UserName = "hermes";
       StartCalendarInterval = [
         {

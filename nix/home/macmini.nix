@@ -78,6 +78,46 @@ in
     '')
   ];
 
+  # glances, the box's own metrics endpoint (the homelab dashboard scrapes it). Was a hand-written
+  # plist; same spec, just declared. Bound to 0.0.0.0 because the scrape comes from the homeserver,
+  # and the machine is only reachable over the tailnet anyway.
+  launchd.agents.glances = {
+    enable = true;
+    config = {
+      ProgramArguments = [
+        "${config.home.homeDirectory}/.local/bin/glances"
+        "-w"
+        "--bind"
+        "0.0.0.0"
+        "--port"
+        "61208"
+        "-t"
+        "5"
+        "--disable-webui"
+      ];
+      RunAtLoad = true;
+      KeepAlive = true;
+      # Tier: a metrics collector should never win against the things it measures.
+      ProcessType = "Background";
+      LowPriorityIO = true;
+      Nice = 10;
+      StandardOutPath = "/tmp/glances.log";
+      StandardErrorPath = "/tmp/glances.log";
+    };
+  };
+
+  # Hand-written agents the declarations above replace, plus one leftover that was already
+  # disabled. Same shape as the workstation's retiredLaunchAgents list.
+  home.activation.retiredMacminiAgents = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    for f in net.gapul.glances.plist com.gapul.mopidy-auto.plist.disabled; do
+      legacy="$HOME/Library/LaunchAgents/$f"
+      if [ -e "$legacy" ]; then
+        run /bin/launchctl bootout "gui/$(id -u)/''${f%.plist}" 2>/dev/null || true
+        run rm -f "$legacy"
+      fi
+    done
+  '';
+
   # Nightly `git pull` on the checkout. The post-merge hook is what actually rebuilds; this only
   # exists because nothing was ever pulling here, so a merged flake.lock sat in GitHub while the
   # machine kept running last month's generation.
