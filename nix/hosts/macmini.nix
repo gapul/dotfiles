@@ -290,8 +290,13 @@ in
       ];
       ProcessType = "Background";
       Nice = 10;
-      StandardOutPath = "/Users/${user.username}/Developer/projects/manabi-dashboard/daily_review.log";
-      StandardErrorPath = "/Users/${user.username}/Developer/projects/manabi-dashboard/daily_review.log";
+      # launchd creates the parent of these paths at every start, whether or not the program runs.
+      # That is what kept resurrecting ~/ai/manabi-dashboard (the old hand-written plist pointed
+      # there long after ~/ai was retired) and then ~/Developer/projects/manabi-dashboard, which
+      # this unit recreated the same night the service moved to /Users/Shared/manabi. Logs live in
+      # XDG state now, next to the dashboard refresh log, so nothing is resurrected anywhere.
+      StandardOutPath = "/Users/${user.username}/.local/state/manabi/daily_review.log";
+      StandardErrorPath = "/Users/${user.username}/.local/state/manabi/daily_review.log";
     };
   };
 
