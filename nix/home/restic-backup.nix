@@ -54,6 +54,12 @@ let
       # feed the repository into itself.
       "${home}/Sync/syncthing" # Syncthing share (local-primary replicated data)
       "${home}/Library/Application Support/minecraft/saves" # Minecraft worlds (non-reproducible)
+      "${home}/Desktop" # small, but the only home dir that was silently outside the set
+      # Voice Memos. iCloud sync for these is off (CloudRecordings_ckAssets is empty), so the
+      # group container is the only copy. CloudRecordings.db carries the titles, so take the
+      # whole container rather than just the .m4a files.
+      "${home}/Library/Group Containers/group.com.apple.VoiceMemos.shared"
+      "${home}/.local/share/keystats" # keystats time series (a re-run cannot recreate it)
     ];
     extraExcludes = [
       "**/.DS_Store"

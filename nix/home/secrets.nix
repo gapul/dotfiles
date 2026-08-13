@@ -27,6 +27,14 @@
       "attic_config".path = "${config.home.homeDirectory}/.config/attic/config.toml";
       # keystats: passphrase for signing its own release builds (self-made app, gapul/keystats)
       "keystats_signing_pw".path = "${config.home.homeDirectory}/.config/keystats/signing.pw";
+      # The signing identity itself (base64 PKCS#12, cert + private key, valid to 2036).
+      # codesign/setup-signing.sh mints a *new* self-signed cert when the keychain is missing, so a
+      # rebuild on fresh hardware would change the Designated Requirement: already-installed copies
+      # would lose their Input Monitoring grant and reject the update. Restore instead of re-mint:
+      #   base64 -d < ~/.config/keystats/signing.p12.b64 > /tmp/id.p12
+      #   security import /tmp/id.p12 -k ~/Library/Keychains/keystats-signing.keychain-db \
+      #     -P "$(cat ~/.config/keystats/signing.pw)" -T /usr/bin/codesign -A
+      "keystats_signing_p12".path = "${config.home.homeDirectory}/.config/keystats/signing.p12.b64";
 
       # PII single source
       "pii/name" = { };
