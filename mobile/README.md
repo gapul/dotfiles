@@ -7,11 +7,14 @@
 ```
 mobile/
 ├── android/
-│   ├── apps.tsv + apps.sh          # 宣言 vs 実機、fdroidcl 経由で install まで
-│   ├── os-settings.conf + os.sh    # adb で流す OS 設定
+│   ├── apps.tsv + apps.sh          # 宣言 vs 実機、F-Droid 系は install まで
+│   ├── os-settings.conf            # adb で流すグローバル設定
+│   ├── os-apps.tsv + os.sh         # アプリ単位の設定 (権限 / 電池 / 既定ランチャー)
+│   ├── launcher-theme.py           # Kvaesitso のテーマを palettes.json から生成
 │   └── test.sh                     # 偽 adb での自己チェック
 └── ios/
-    ├── apps.tsv + apps.sh          # 宣言 vs 実機 (ideviceinstaller)、install は不可
+    ├── apps.tsv + sources.tsv      # App Store / AltStore Classic / AltStore PAL
+    ├── apps.sh                     # 宣言 vs 実機 (ideviceinstaller)、install は不可
     ├── profiles/serve.sh           # nix が生成した .mobileconfig を配る
     └── test.sh
 nix/mobile/ios-profiles.nix         # .mobileconfig の中身 (pkgs.formats.plist)
@@ -23,10 +26,12 @@ nix/hosts/droid.nix                 # Termux の中の CLI 環境 (nix-on-droid)
 | 層 | Android | iOS |
 |---|---|---|
 | アプリ: 宣言 | `android/apps.tsv` | `ios/apps.tsv` |
-| アプリ: 実在確認 | `apps.sh verify` (F-Droid の索引) | `apps.sh verify` (iTunes Search API) |
+| アプリ: 実在確認 | `apps.sh verify` (F-Droid 索引 / GitHub API / Play) | `apps.sh verify` (iTunes API / AltStore source) |
 | アプリ: 実機との差分 | `apps.sh status` (adb) | `apps.sh status` (ideviceinstaller / USB) |
-| アプリ: インストール | `apps.sh install` (fdroidcl → adb install) | **不可**。署名済み ipa が要る |
-| OS 設定 | `os.sh` (adb settings put) | **不可**。`.mobileconfig` で届く範囲だけ |
+| アプリ: インストール | `apps.sh install` (F-Droid 系のみ。他は Obtainium / Aurora Store) | **不可**。署名済み ipa が要る |
+| OS 設定 (全体) | `os-settings.conf` → `os.sh` | **不可**。`.mobileconfig` で届く範囲だけ |
+| OS 設定 (アプリ単位) | `os-apps.tsv` → `os.sh` (権限 / 電池 / 既定ランチャー) | **不可** |
+| ランチャー | 既定の指定 + テーマ生成 (レイアウトは不可) | ホーム画面は一切触れない |
 | プロファイル生成 | — | `nix build .#ios-profiles` |
 | CLI 環境 | `nix/hosts/droid.nix` | 作らない。Blink から母艦へ ssh |
 
@@ -45,7 +50,7 @@ repo は**どのアプリが何の経路で同期されているか**だけを�
 | アプリ | 経路 | サーバ側の宣言 |
 |---|---|---|
 | Obsidian | Self-hosted LiveSync (CouchDB) | `nix/homelab/obsidian-couchdb.nix` |
-| KeePassium / KeePassDX | kdbx を Syncthing の SyncHub 経由 | `nix/homelab/syncthing.nix` |
+| KeePassium (自ビルド) / KeePassDX | kdbx を Syncthing の SyncHub 経由 | `nix/homelab/syncthing.nix` |
 | Bitwarden | Vaultwarden | `nix/homelab/vaultwarden.nix` |
 | ntfy | push.gapul.net の topic 購読 | `nix/homelab/ntfy.nix` |
 | OwnTracks | 位置ログを Dawarich へ POST | `nix/homelab/dawarich.nix` |
@@ -61,6 +66,8 @@ Web UI で承認するのではなく commit するのがこの repo の作法
 
 ## やらないこと
 
-- **ホーム画面 / ウィジェット配置** — どちらの OS もエクスポート手段が無い。
+- **ホーム画面 / ウィジェット配置** — iOS は手段が無く、Android の Kvaesitso は
+  バージョン間で互換の無いバイナリなので、repo に置いても差分が見えない。
+  ランチャーはテーマだけ宣言する (`android/launcher-theme.py`)。
 - **アプリ本体のバックアップ** — 端末のフルバックアップは iCloud / Seedvault の仕事。
 - **iOS の設定トグル** — 監視モードを掛けない限り触れない。手で設定する。

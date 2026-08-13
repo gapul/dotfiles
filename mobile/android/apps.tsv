@@ -1,29 +1,45 @@
 # 端末に入れるアプリの宣言。apps.sh がこれと実機を突き合わせる。
-# 書式: <packageId>	<repo>     (タブ区切り)
+# 書式: <packageId>	<source>	<ref>     (タブ区切り、ref が無い行は -)
 #
-# repo:
-#   fdroid  F-Droid 公式リポジトリ。apps.sh install で adb 経由で入る
-#   izzy    IzzyOnDroid (GitHub リリースを追う非公式リポジトリ)。同上
-#   play    Play ストアにしか無い。一括インストールの手段が無いので手で入れる
+# source は「どの経路で入れるか」。3 つのアプリを使い分けている:
+#   fdroid  F-Droid 公式リポジトリ。apps.sh install が adb 経由で入れる
+#   izzy    IzzyOnDroid (GitHub リリースを追う非公式 F-Droid リポジトリ)。同上
+#   github  どちらのリポジトリにも無く、GitHub Releases が配布元。ref は owner/repo。
+#           端末では Obtainium が追う (母艦からの一括インストールは不可)
+#   play    Play ストアにしか無い。端末では Aurora Store から入れる
 #
-# fdroid / izzy の行は `apps.sh verify` がリポジトリに実在するか確認する。
-# play の行は確認できない (Play に API が無い)。
+# apps.sh verify は 4 経路すべて実在確認できる (F-Droid 索引 / GitHub API /
+# Play のストアページ)。綴り間違いはそこで落ちる。
 
-org.fdroid.fdroid	fdroid
-dev.imranr.obtainium	izzy
-com.termux.nix	fdroid
-com.tailscale.ipn	fdroid
-com.kunzisoft.keepass.libre	fdroid
-io.heckel.ntfy	fdroid
-org.owntracks.android	fdroid
-io.homeassistant.companion.android.minimal	fdroid
-org.jellyfin.mobile	fdroid
-dev.jdtech.jellyfin	fdroid
-com.nononsenseapps.feeder	fdroid
-im.vector.app	fdroid
-com.ichi2.anki	fdroid
-de.astubenbord.paperless_mobile	fdroid
-at.bitfire.davdroid	fdroid
-spam.blocker	fdroid
-org.schabi.newpipe	fdroid
-com.x8bit.bitwarden	play
+# ── ストアそのもの (これだけは最初に手で入れる) ──────────────────────
+org.fdroid.fdroid	fdroid	-
+dev.imranr.obtainium	izzy	-
+com.aurora.store	fdroid	-
+
+# ── ランチャーと端末環境 ────────────────────────────────────────────
+de.mm20.launcher2.release	fdroid	-
+com.termux.nix	fdroid	-
+com.tailscale.ipn	fdroid	-
+
+# ── 自宅サーバのクライアント ────────────────────────────────────────
+# repo は researchxxl/ に改名済み (Catfriend1/ は 301)。v2 の APK 名は
+# syncthingfork だが Play に居るのは syncthingandroid のままなので、実機の
+# status で MISSING が出たら applicationId を確かめて直す。
+com.github.catfriend1.syncthingandroid	github	researchxxl/syncthing-android
+io.heckel.ntfy	fdroid	-
+org.owntracks.android	fdroid	-
+io.homeassistant.companion.android.minimal	fdroid	-
+org.jellyfin.mobile	fdroid	-
+dev.jdtech.jellyfin	fdroid	-
+com.cappielloantonio.tempo	github	CappielloAntonio/tempo
+com.nononsenseapps.feeder	fdroid	-
+de.astubenbord.paperless_mobile	fdroid	-
+at.bitfire.davdroid	fdroid	-
+im.vector.app	fdroid	-
+
+# ── その他 ──────────────────────────────────────────────────────────
+com.kunzisoft.keepass.libre	fdroid	-
+com.x8bit.bitwarden	play	-
+com.ichi2.anki	fdroid	-
+spam.blocker	fdroid	-
+org.schabi.newpipe	fdroid	-

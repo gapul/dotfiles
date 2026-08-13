@@ -7,6 +7,7 @@ iOS には adb に当たるものが無く、監視モード (Apple Configurator
 ```
 ios/
 ├── apps.tsv          # 入れるアプリの宣言 (bundleId + 入手経路 + 同期経路)
+├── sources.tsv       # AltStore 系 source の URL (Classic / PAL)
 ├── apps.sh           # status | verify
 ├── test.sh           # apps.sh の自己チェック (偽 ideviceinstaller、実機不要)
 └── profiles/serve.sh # nix が生成した .mobileconfig を LAN 配信
@@ -18,19 +19,30 @@ ios/
 
 ```sh
 ./apps.sh status   # USB 接続した iPhone と宣言の差分。MISSING があれば exit 1
-./apps.sh verify   # appstore 行の bundleId が実在するか (iTunes Search API)
+./apps.sh verify   # 宣言した bundleId が経路上に実在するか (3 経路すべて)
 ```
+
+3 つの経路を使い分けているので、`apps.tsv` の source 列でどれ担当かを宣言する。
+
+| source | 入手 | verify の照会先 |
+|---|---|---|
+| `appstore` | App Store | iTunes Search API |
+| `altstore-classic` | 母艦で再署名して入れる自ビルド | `sources.tsv` の classic な source の JSON |
+| `altstore-pal` | AltStore PAL (代替マーケットプレイス) | 同 pal |
 
 `status` は `ideviceinstaller` で実機を照会するので、USB 接続と端末側の
 「このコンピュータを信頼」が要る。ネットワーク越しには照会できない。
 
-インストールは自動化できない。App Store のアプリは署名済み ipa が要るので
-`ideviceinstaller` では入らず、App Store か SideStore から手で入れる。
-だから `status` は「入れ直しの残りを数える」道具として使う。
+インストールは自動化できない。App Store も PAL も署名済み ipa を要求するので、
+手で入れる。だから `status` は「入れ直しの残りを数える」道具として使う。
 
-自ビルドの署名配信は [gapul/altstore-source](https://github.com/gapul/altstore-source)。
-SideStore にこの source を登録しておくと更新が降ってくる。ビルド手順は
-`docs/self-build-software.md`。
+**自ビルドは再署名で bundleId が変わる。** App Store 版の `com.keepassium.ios` と
+自ビルドの `net.gapul.keepassium` は端末から見て別物なので、宣言する側も
+実機に入っている方を書く。`verify` が source の JSON と突き合わせるので、
+ここを取り違えると落ちる。
+
+自ビルドの署名配信は [gapul/altstore-source](https://github.com/gapul/altstore-source)
+(`sources.tsv` の `gapul-selfbuild`)。ビルド手順は `docs/self-build-software.md`。
 
 ## 構成プロファイル
 

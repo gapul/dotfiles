@@ -35,6 +35,11 @@ case "\$*" in
     echo "package:${kept}"
     echo "package:com.example.undeclared"
     ;;
+  "shell dumpsys deviceidle whitelist") cat >/dev/null ;;
+  "shell cmd package resolve-activity --brief -c android.intent.category.HOME")
+    cat >/dev/null
+    echo "com.example.otherlauncher/.Home"
+    ;;
   *) cat >/dev/null ;;
 esac
 EOF
@@ -54,10 +59,11 @@ check() {
 # ── os.sh: 宣言した設定がひとつ残らず差分として出るか ────────────────────
 # スクリプト自体の stdin は閉じる。ループの外の adb が端末の入力を待って
 # 止まらないようにするためで、ループの中の stdin (宣言ファイル) には影響しない。
-out=$(./os.sh --dry-run </dev/null)
+out_os=$(./os.sh --dry-run </dev/null)
+out=$out_os
 check "os.sh の設定差分" \
   "$(grep -cvE '^[[:space:]]*(#|$)' os-settings.conf)" \
-  "$(grep -c -- '->' <<<"$out" || true)"
+  "$(grep -cE '^  (global|system|secure)\.' <<<"$out" || true)"
 
 # ── apps.sh status: MISSING / EXTRA の判定と終了コード ───────────────────
 out=$(./apps.sh status </dev/null) && status_rc=0 || status_rc=$?
@@ -67,7 +73,21 @@ check "MISSING があれば exit 1" "1" "$status_rc"
 
 # ── apps.sh obtainium: play 以外の全行が URL になるか ────────────────────
 check "obtainium の URL 数" \
-  "$(grep -vE '^[[:space:]]*(#|$)' apps.tsv | grep -cv $'\tplay$')" \
+  "$(grep -vE '^[[:space:]]*(#|$)' apps.tsv | grep -cv $'\tplay\t')" \
   "$(./apps.sh obtainium 2>/dev/null | grep -c '^https://' || true)"
+
+# ── os.sh: アプリ個別の宣言が適用対象として出るか ────────────────────────
+check "既定ランチャーの差分" "1" "$(grep -c '既定ランチャー' <<<"$out_os" || true)"
+check "電池最適化の除外数" \
+  "$(grep -c $'^battery\t' os-apps.tsv || true)" \
+  "$(grep -c '電池最適化から除外' <<<"$out_os" || true)"
+
+# ── launcher-theme.py: Kvaesitso の形式を満たすか ────────────────────────
+if ./launcher-theme.py --check >/dev/null 2>&1; then
+  echo "ok: launcher-theme.py の形式"
+else
+  echo "FAIL: launcher-theme.py が Kvaesitso の形式を満たさない" >&2
+  fail=1
+fi
 
 exit "$fail"

@@ -1297,6 +1297,16 @@ android-apps cmd="status":
 android-os *flags:
     @nix shell nixpkgs#android-tools -c mobile/android/os.sh {{flags}}
 
+# Generate the Kvaesitso launcher theme from palettes.json and push it to the device
+[group('Mobile')]
+android-launcher-theme:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    out="$(mktemp -d)/kvaesitso-theme.json"
+    mobile/android/launcher-theme.py >"$out"
+    nix shell nixpkgs#android-tools -c adb push "$out" /sdcard/Download/
+    echo "端末で Kvaesitso → 設定 → 外観 → テーマ → インポート から選ぶ"
+
 # Diff ios/apps.tsv against a USB-connected iPhone (`just ios-apps` / `just ios-apps verify`)
 [group('Mobile')]
 ios-apps cmd="status":

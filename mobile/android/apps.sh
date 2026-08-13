@@ -2,13 +2,13 @@
 # apps.tsv に宣言したアプリと実機を突き合わせる。windows/winget/status.ps1 と同じ役割。
 #
 #   ./apps.sh status      # 宣言 vs 実機の差分。MISSING があれば exit 1 (既定)
-#   ./apps.sh install     # 足りないものを fdroidcl 経由で adb install
-#   ./apps.sh verify      # 宣言した packageId がリポジトリに実在するか
+#   ./apps.sh install     # F-Droid / IzzyOnDroid のものを fdroidcl 経由で adb install
+#   ./apps.sh verify      # 宣言した packageId が配布元に実在するか (4 経路すべて)
 #   ./apps.sh obtainium   # 端末の Obtainium に貼る URL リストを出す
 #
-# 入れる仕事は fdroidcl (github.com/mvdan/fdroidcl) に任せている。F-Droid の
-# インデックスを引いて APK を取り adb install するところまでやってくれるので、
-# ここが持つのは「何を入れるか」の宣言と差分の判定だけ。
+# 母艦から入れられるのは F-Droid 系だけ。GitHub 配布は端末の Obtainium が、
+# Play は Aurora Store が担う。ここが持つのは「何を入れるか」の宣言と差分の判定で、
+# 入れる仕事は経路ごとの道具に任せている。
 set -euo pipefail
 
 cd "$(dirname "$0")"
@@ -16,8 +16,13 @@ cd "$(dirname "$0")"
 # 宣言に無いリポジトリを見に行かせないため、fdroidcl の設定は母艦の ~/.config
 # ではなくこのスクリプト専用の場所に置く。母艦で fdroidcl を手で使っていても
 # 干渉しないし、この repo だけがリポジトリ構成の SSOT になる。
-export XDG_CONFIG_HOME="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles-mobile/fdroidcl"
-mkdir -p "$XDG_CONFIG_HOME"
+#
+# XDG_CONFIG_HOME はスクリプト全体に export しない。fdroidcl の設定を退けるつもりで
+# gh の認証情報 ($XDG_CONFIG_HOME/gh/hosts.yml) まで見失わせ、verify の GitHub 照会が
+# 黙って全部 UNKNOWN になる。差し替えるのは fdroidcl を呼ぶ瞬間だけにする。
+FDROIDCL_CONFIG="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles-mobile/fdroidcl"
+mkdir -p "$FDROIDCL_CONFIG"
+fdroidcl() { XDG_CONFIG_HOME="$FDROIDCL_CONFIG" command fdroidcl "$@"; }
 
 # F-Droid 公式は fdroidcl の既定で入っている。追加で見るリポジトリだけ宣言する。
 EXTRA_REPOS=(
@@ -30,11 +35,11 @@ need() {
   exit 1
 }
 
-# packageId と repo の 2 列。コメントと空行を落とす。
+# packageId / source / ref の 3 列。コメントと空行を落とす。
 declared() { grep -vE '^[[:space:]]*(#|$)' apps.tsv; }
 
-# fdroidcl で入れられるもの (= play 以外) の packageId
-installable() { declared | awk -F'\t' '$2 != "play" {print $1}'; }
+# fdroidcl で入れられるもの (= F-Droid 系) の packageId
+fdroid_ids() { declared | awk -F'\t' '$2 == "fdroid" || $2 == "izzy" {print $1}'; }
 
 ensure_repos() {
   for entry in "${EXTRA_REPOS[@]}"; do
@@ -53,9 +58,9 @@ cmd_status() {
   local installed missing=0 extra=0
   installed=$(installed_on_device)
   echo "━━━ 宣言したが端末に無い ━━━"
-  while IFS=$'\t' read -r pkg repo; do
+  while IFS=$'\t' read -r pkg source _; do
     if ! grep -qx "$pkg" <<<"$installed"; then
-      echo "  MISSING  $pkg ($repo)"
+      echo "  MISSING  $pkg ($source)"
       missing=$((missing + 1))
     fi
   done < <(declared)
@@ -75,7 +80,7 @@ cmd_status() {
   # EXTRA では落とさない。端末で試しに入れたものが必ず在るし、消すかどうかは
   # 人が決めること。宣言を満たしていないこと (MISSING) だけを失敗として扱う。
   if [[ $missing -gt 0 ]]; then
-    echo "宣言 ${missing} 件が未インストール。./apps.sh install で入れる" >&2
+    echo "宣言 ${missing} 件が未インストール。./apps.sh install で入る分を入れる" >&2
     return 1
   fi
 }
@@ -89,7 +94,7 @@ cmd_install() {
 
   while read -r pkg; do
     grep -qx "$pkg" <<<"$installed" || targets+=("$pkg")
-  done < <(installable)
+  done < <(fdroid_ids)
 
   if [[ ${#targets[@]} -gt 0 ]]; then
     fdroidcl install "${targets[@]}"
@@ -97,50 +102,93 @@ cmd_install() {
     echo "fdroidcl で入れるものは無い"
   fi
 
-  # Play にしか無いものは報告だけ。API が無いので自動化しようがない。
-  while IFS=$'\t' read -r pkg repo; do
-    [[ $repo == "play" ]] || continue
-    grep -qx "$pkg" <<<"$installed" || echo "手で入れる (Play): $pkg"
+  # 残りは端末側の道具の仕事。母艦から入れる手段が無いので報告だけする。
+  while IFS=$'\t' read -r pkg source _; do
+    grep -qx "$pkg" <<<"$installed" && continue
+    case "$source" in
+    github) echo "端末の Obtainium で入れる: $pkg" ;;
+    play) echo "端末の Aurora Store で入れる: $pkg" ;;
+    esac
   done < <(declared)
 }
 
 cmd_verify() {
-  need fdroidcl fdroidcl
-  ensure_repos
-  fdroidcl update
-  local unknown=0
-  while read -r pkg; do
-    if ! fdroidcl show "$pkg" >/dev/null 2>&1; then
-      echo "  UNKNOWN  $pkg — リポジトリに無い (packageId の綴りか repo 列が違う)"
+  local unknown=0 repos_updated=false
+  while IFS=$'\t' read -r pkg source ref; do
+    local ok=true
+    case "$source" in
+    fdroid | izzy)
+      need fdroidcl fdroidcl
+      # 索引の取得は 1 回だけ。行ごとに update すると毎回 13MB 引きに行く。
+      if ! $repos_updated; then
+        ensure_repos
+        fdroidcl update
+        repos_updated=true
+      fi
+      fdroidcl show "$pkg" >/dev/null 2>&1 || ok=false
+      ;;
+    github)
+      # リリースに APK が付いていなければ Obtainium が追えない。存在だけでなく
+      # 「取れる形で配られているか」まで見る。
+      #
+      # gh があればそちらを使う。未認証の GitHub API は 60 回/時で、宣言が
+      # 増えると verify が rate limit で落ちる (認証済みなら 5000 回/時)。
+      # curl 側に -L が要るのは、repo が改名されると API が 301 を返すため
+      # (実際 Catfriend1/syncthing-android は researchxxl/ に移っていた)。
+      #
+      # 一度変数に受けてから grep する。パイプで grep -q に渡すと、最初の一致で
+      # grep が閉じた先を書き続けた gh / curl が SIGPIPE で死に、pipefail が
+      # それを失敗として拾って全部 UNKNOWN になる。
+      local assets
+      if command -v gh >/dev/null; then
+        assets=$(gh api "repos/${ref}/releases/latest" --jq '[.assets[].name]' 2>/dev/null || true)
+      else
+        assets=$(curl -fsSL "https://api.github.com/repos/${ref}/releases/latest" || true)
+      fi
+      [[ $assets == *.apk* ]] || ok=false
+      ;;
+    play)
+      curl -fsS -o /dev/null "https://play.google.com/store/apps/details?id=${pkg}&gl=us" || ok=false
+      ;;
+    *)
+      echo "  BAD      $pkg — source 列が不正: $source"
+      unknown=$((unknown + 1))
+      continue
+      ;;
+    esac
+    if ! $ok; then
+      echo "  UNKNOWN  $pkg — $source に見つからない (packageId か ref が違う)"
       unknown=$((unknown + 1))
     fi
-  done < <(installable)
+  done < <(declared)
+
   if [[ $unknown -gt 0 ]]; then
-    echo "${unknown} 件の packageId が解決できない" >&2
+    echo "${unknown} 件が配布元に解決できない" >&2
     return 1
   fi
-  echo "宣言した packageId はすべてリポジトリに在る"
+  echo "宣言したアプリはすべて配布元に在る"
 }
 
 cmd_obtainium() {
-  # 端末側の自動更新は Obtainium に任せる。URL は packageId から機械的に決まるので
-  # ここで導出する (apps.tsv とは別に URL 一覧を持つと二重管理になる)。
-  while IFS=$'\t' read -r pkg repo; do
-    case "$repo" in
-      fdroid) echo "https://f-droid.org/packages/$pkg" ;;
-      izzy) echo "https://apt.izzysoft.de/fdroid/index/apk/$pkg" ;;
-      play) echo "Play のため Obtainium では追えない: $pkg" >&2 ;;
+  # 端末側の自動更新は Obtainium に任せる。URL は packageId / ref から機械的に
+  # 決まるので、ここで導出する (URL 一覧を別に持つと二重管理になる)。
+  while IFS=$'\t' read -r pkg source ref; do
+    case "$source" in
+    fdroid) echo "https://f-droid.org/packages/$pkg" ;;
+    izzy) echo "https://apt.izzysoft.de/fdroid/index/apk/$pkg" ;;
+    github) echo "https://github.com/$ref" ;;
+    play) echo "Aurora Store の担当なので Obtainium では追えない: $pkg" >&2 ;;
     esac
   done < <(declared)
 }
 
 case "${1:-status}" in
-  status) cmd_status ;;
-  install) cmd_install ;;
-  verify) cmd_verify ;;
-  obtainium) cmd_obtainium ;;
-  *)
-    echo "usage: ./apps.sh [status|install|verify|obtainium]" >&2
-    exit 2
-    ;;
+status) cmd_status ;;
+install) cmd_install ;;
+verify) cmd_verify ;;
+obtainium) cmd_obtainium ;;
+*)
+  echo "usage: ./apps.sh [status|install|verify|obtainium]" >&2
+  exit 2
+  ;;
 esac

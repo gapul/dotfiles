@@ -47,37 +47,62 @@ cmd_status() {
 
   # Android 側と同じ判断: 宣言を満たしていないことだけを失敗にする。
   if [[ $missing -gt 0 ]]; then
-    echo "宣言 ${missing} 件が未インストール。App Store / SideStore から手で入れる" >&2
+    echo "宣言 ${missing} 件が未インストール。App Store / AltStore から手で入れる" >&2
     return 1
   fi
 }
 
+# sources.tsv の該当 kind の source を全部引いて、bundleIdentifier を一覧にする。
+# source は AltStore の JSON 形式なので、ここを見れば「宣言した bundleId が
+# 本当にその経路から入るものか」を機械で確かめられる。
+source_bundles() {
+  local kind=$1
+  while IFS=$'\t' read -r _ src_kind url; do
+    [[ -z ${src_kind:-} || $_ == \#* || $src_kind != "$kind" ]] && continue
+    curl -fsSL "$url" |
+      python3 -c 'import json,sys; [print(a.get("bundleIdentifier","")) for a in json.load(sys.stdin).get("apps",[])]'
+  done < <(grep -vE '^[[:space:]]*(#|$)' sources.tsv)
+}
+
 cmd_verify() {
-  # App Store に在るかは公開 API で引ける。目録の綴り間違いはこれで落ちる。
-  # sideload 行は自ビルドなので照会先が無く、対象外。
-  local unknown=0
+  local unknown=0 classic pal
+  # source は行ごとに引かず 1 回だけ引く。宣言の数だけ HTTP を叩かない。
+  classic=$(source_bundles classic)
+  pal=$(source_bundles pal)
+
   while IFS=$'\t' read -r bundle source name _; do
-    [[ $source == "appstore" ]] || continue
-    local count
-    count=$(curl -fsS "https://itunes.apple.com/lookup?bundleId=${bundle}&country=jp" |
-      python3 -c 'import json,sys; print(json.load(sys.stdin)["resultCount"])')
-    if [[ $count -eq 0 ]]; then
-      echo "  UNKNOWN  $name — App Store に $bundle が無い"
+    local ok=true
+    case "$source" in
+    appstore)
+      [[ $(curl -fsS "https://itunes.apple.com/lookup?bundleId=${bundle}&country=jp" |
+        python3 -c 'import json,sys; print(json.load(sys.stdin)["resultCount"])') -gt 0 ]] || ok=false
+      ;;
+    altstore-classic) grep -qx "$bundle" <<<"$classic" || ok=false ;;
+    altstore-pal) grep -qx "$bundle" <<<"$pal" || ok=false ;;
+    *)
+      echo "  BAD      $name — source 列が不正: $source"
+      unknown=$((unknown + 1))
+      continue
+      ;;
+    esac
+    if ! $ok; then
+      echo "  UNKNOWN  $name — $source に $bundle が無い"
       unknown=$((unknown + 1))
     fi
   done < <(declared)
+
   if [[ $unknown -gt 0 ]]; then
     echo "${unknown} 件の bundleId が解決できない" >&2
     return 1
   fi
-  echo "appstore 行の bundleId はすべて実在する"
+  echo "宣言したアプリはすべて経路上に実在する"
 }
 
 case "${1:-status}" in
-  status) cmd_status ;;
-  verify) cmd_verify ;;
-  *)
-    echo "usage: ./apps.sh [status|verify]" >&2
-    exit 2
-    ;;
+status) cmd_status ;;
+verify) cmd_verify ;;
+*)
+  echo "usage: ./apps.sh [status|verify]" >&2
+  exit 2
+  ;;
 esac
