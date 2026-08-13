@@ -36,12 +36,19 @@ fi
 # 見るためだけのコピーなので /tmp に置く。母艦の再起動で勝手に消える。
 # 接続元ごとに分けて、同名ファイルを別ホストから開いても踏まないようにする。
 dest="/tmp/open-on-mac/$(hostname -s)"
-ssh "${ssh_opts[@]}" "$user@$host" "mkdir -p '$dest'"
+# 保険の掃除。母艦で常駐しているアプリ (Preview 等) に相乗りすると open -W はそれを畳むまで
+# 返らないので、1 時間以上前のものはここで落とす。
+ssh "${ssh_opts[@]}" "$user@$host" \
+  "mkdir -p '$dest' && find '$dest' -type f -mmin +60 -delete 2>/dev/null || true"
 
 for f in "$@"; do
   base=$(basename -- "$f")
   scp -q -P "$port" -o BatchMode=yes \
     -o UserKnownHostsFile=~/.ssh/known_hosts_open_on_mac \
     -- "$f" "$user@$host:$dest/$base"
-  ssh "${ssh_opts[@]}" "$user@$host" "open '$dest/$base'"
+  # ビューアを閉じたら消す。母艦側で完結させるので ssh はすぐ返る。
+  # open -W が待つのはウィンドウではなくアプリの終了なので、既に起動しているアプリに
+  # 相乗りした場合はそのアプリを畳むまで残る。次回の掃除で拾えるよう保険も置いてある。
+  ssh "${ssh_opts[@]}" "$user@$host" \
+    "nohup sh -c \"open -W '$dest/$base'; rm -f '$dest/$base'\" >/dev/null 2>&1 &"
 done
