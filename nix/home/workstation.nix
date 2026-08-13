@@ -93,7 +93,7 @@ in
   # prh's WEB+DB PRESS rules: someone else's dictionary, fetched rather than copied in.
   # `.textlintrc.json` names it by the relative path it lands at, so nothing there changes.
   home.file.".config/textlint/prh/web-db-press.yml".source = pkgs.fetchurl {
-    url = "https://raw.githubusercontent.com/prh/rules/32b7f09a327928503c760a7db9f5eccd936d36fa/media/WEB%2BDB_PRESS.yml";
+    url = "https://raw.githubusercontent.com/prh/rules/89a6f9dd057a34dce15698260ced88183e332362/media/WEB%2BDB_PRESS.yml";
     hash = "sha256-6RTk8Qs/ZVG71vp7kYhu81CCh3uJwsRYk6ER09DMQVw=";
   };
   # LaTeX: latexmk default config (LuaLaTeX) and Japanese templates
