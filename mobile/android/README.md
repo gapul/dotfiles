@@ -28,6 +28,14 @@ android/
 ./apps.sh install     # F-Droid 系を fdroidcl 経由で入れる。残りは経路を報告
 ./apps.sh verify      # 4 経路すべてに実在するか確かめる
 ./apps.sh obtainium   # 端末の Obtainium に貼る URL リストを出す
+./apps.sh adopt       # 端末に在って宣言に無いものを、経路を判定して tsv 行で出す
+```
+
+Aurora Store で入れたものなど、端末側で先に増やしたアプリは `adopt` で回収する。
+packageId を目で追って書き写す作業になるので、経路の判定ごと機械にやらせる:
+
+```sh
+./apps.sh adopt >>apps.tsv   # 追記してから中身を見て整える
 ```
 
 APK を取って `adb install` する部分は [fdroidcl](https://github.com/mvdan/fdroidcl)
@@ -52,6 +60,8 @@ Play にしか無いものが出てきたときだけ手が要るので、GitHub
 `play` ではなく `github` に寄せる (Bitwarden は GitHub Releases に APK があったので移した)。
 
 ## OS 設定
+
+**自動では適用されない。** 端末を繋いで明示的に流す。
 
 ```sh
 ./os.sh --dry-run   # 何が変わるか見る

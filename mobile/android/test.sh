@@ -44,6 +44,12 @@ case "\$*" in
 esac
 EOF
 chmod +x "$stub/adb"
+
+# adopt は配布元を引いて経路を判定する。テストはネットワークに依存させたくないので、
+# どちらの照会も「見つからない」を返させ、判定不能の枝に落とす。
+printf '#!/usr/bin/env bash\nexit 1\n' >"$stub/fdroidcl"
+printf '#!/usr/bin/env bash\nexit 1\n' >"$stub/curl"
+chmod +x "$stub/fdroidcl" "$stub/curl"
 export PATH="$stub:$PATH"
 
 check() {
@@ -89,5 +95,10 @@ else
   echo "FAIL: launcher-theme.py が Kvaesitso の形式を満たさない" >&2
   fail=1
 fi
+
+# ── apps.sh adopt: 宣言に無いものだけを tsv 行として出すか ────────────────
+# 偽 adb は宣言済み 1 件 + 未宣言 1 件を返す。出るのは後者だけであるべき。
+out=$(./apps.sh adopt 2>/dev/null || true)
+check "adopt の行数" "1" "$(grep -c '^com.example.undeclared' <<<"$out" || true)"
 
 exit "$fail"

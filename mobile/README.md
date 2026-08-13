@@ -41,6 +41,23 @@ nix/hosts/droid.nix                 # Termux の中の CLI 環境 (nix-on-droid)
 `status` はどちらも MISSING があれば exit 1 で、`windows/winget/status.ps1` と
 同じ扱い。EXTRA (実機に在るが宣言に無い) では落とさない。
 
+## 何が自動で、何が手動か
+
+| | いつ走るか |
+|---|---|
+| 宣言が配布元から消えていないか (`verify`) | **自動**。週次 CI (`.github/workflows/mobile-drift.yml`) |
+| スクリプト自身の健全性 (`test.sh`) | **自動**。同 CI + `just mobile-test` |
+| 実機との差分 (`status`) | 手動。端末を繋いだときだけ |
+| OS 設定の適用 (`os.sh`) | 手動。`just android-os` |
+| アプリのインストール | 手動。母艦から `install`、端末で Obtainium / Aurora Store |
+
+端末が常時繋がっていないので、実機に触る側は自動にしていない。無線デバッグを
+tailnet 越しに常設すれば定期適用もできるが、繋がっていない間に宣言だけ進んで
+「適用したつもり」になる状態を作りたくないので、そこは明示的に叩く形のままにしてある。
+
+自動にしたのは逆に**押した瞬間には気付けないもの**だけ。配布元の改名や削除は
+黙って進むので週次で見る (実際 `Catfriend1/syncthing-android` の改名はこれで見つかった)。
+
 ## アプリ設定の同期
 
 スマホ側の設定は「ファイルとして同期できるもの」だけ自宅サーバで同期し、
