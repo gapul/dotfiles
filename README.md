@@ -124,6 +124,7 @@ curl -fsSL https://raw.githubusercontent.com/gapul/dotfiles/main/scripts/bootstr
     android-os *flags            # Apply the declared Android OS settings over adb (`just android-os` = diff + apply, `just android-os --dry-run`)
     ios-apps cmd="status"        # Diff ios/apps.tsv against a USB-connected iPhone (`just ios-apps` / `just ios-apps verify`)
     ios-profiles port="8000"     # Build the declared .mobileconfig profiles and serve them on the LAN for an iPhone to install
+    ios-shortcuts cmd="status"   # Export iCloud-synced Shortcuts into the repo, or compile .cherri sources into signed shortcuts
     mobile-test                  # Self-check both platforms' scripts with stubbed adb / ideviceinstaller (no device needed)
 
     [Service]

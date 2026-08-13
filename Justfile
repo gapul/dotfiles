@@ -1316,6 +1316,11 @@ android-launcher-theme:
 ios-apps cmd="status":
     @nix shell nixpkgs#ideviceinstaller -c mobile/ios/apps.sh {{cmd}}
 
+# Export iCloud-synced Shortcuts into the repo, or compile .cherri sources into signed shortcuts
+[group('Mobile')]
+ios-shortcuts cmd="status":
+    @mobile/ios/shortcuts.sh {{cmd}}
+
 # Build the declared .mobileconfig profiles and serve them on the LAN for an iPhone to install
 [group('Mobile')]
 ios-profiles port="8000":
