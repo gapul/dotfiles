@@ -78,6 +78,12 @@ in
     '')
   ];
 
+  # launchd does not create the parent of StandardOutPath, and the dashboard agent's log moved out
+  # of the (now deleted) project directory into XDG state.
+  home.activation.manabiStateDir = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    run /bin/mkdir -p "${config.home.homeDirectory}/.local/state/manabi"
+  '';
+
   # glances, the box's own metrics endpoint (the homelab dashboard scrapes it). Was a hand-written
   # plist; same spec, just declared. Bound to 0.0.0.0 because the scrape comes from the homeserver,
   # and the machine is only reachable over the tailnet anyway.
@@ -220,7 +226,7 @@ in
     enable = true;
     config = {
       ProgramArguments = [
-        "${config.home.homeDirectory}/Developer/projects/manabi-dashboard/update-dashboard.sh"
+        "/Users/Shared/manabi/dashboard/update-dashboard.sh"
       ];
       StartInterval = 900;
       # The deploy pulls from a sandbox user over ssh; letting it fire during login while
@@ -230,8 +236,8 @@ in
       ProcessType = "Background";
       LowPriorityIO = true;
       Nice = 10;
-      StandardOutPath = "${config.home.homeDirectory}/Developer/projects/manabi-dashboard/refresh.log";
-      StandardErrorPath = "${config.home.homeDirectory}/Developer/projects/manabi-dashboard/refresh.log";
+      StandardOutPath = "${config.home.homeDirectory}/.local/state/manabi/refresh.log";
+      StandardErrorPath = "${config.home.homeDirectory}/.local/state/manabi/refresh.log";
     };
   };
   launchd.agents.comfyui = {
