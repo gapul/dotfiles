@@ -12,12 +12,18 @@ scrolloff      = 5 # カーソル上下に5行の余白
 #     (yazi は "linux" 限定値に対応。"unix" は mac も含むので linux 専用に使えない)
 #   - Windows の run は cmd.exe /C 実行。`start "" "$@"` で既定アプリ起動、
 #     `tar -xf` は Windows 10+ 同梱の bsdtar.exe (zip/tar/gz/bz2 対応)。
+#   - ssh 越しに使う linux 側には GUI が無い。見る系は for = "linux" の先頭に open-on-mac を
+#     置いて、ファイルごと母艦へ渡して母艦の既定アプリに開かせる (configs/bin/open-on-mac)。
+#     nvim / vd / unzip のように端末で完結するものは、その場で開くのが正しいので触らない。
+#     for = "unix" は mac も含むぶん linux でも先に当たるので、linux 行は必ず配列の先頭に置く。
 video = [
+  { run = 'open-on-mac "$@"', desc = "Open on client", orphan = true, for = "linux" },
   { run = 'mpv "$@"', desc = "Open in mpv", orphan = true, for = "unix" },
   { run = 'mpv "$@"', desc = "Open in mpv", orphan = true, for = "windows" },
   { run = 'start "" "$@"', desc = "Open with default", orphan = true, for = "windows" },
 ]
 audio = [
+  { run = 'open-on-mac "$@"', desc = "Open on client", orphan = true, for = "linux" },
   { run = 'mpv "$@"', desc = "Play in mpv", orphan = true, for = "unix" },
   { run = 'mpv "$@"', desc = "Play in mpv", orphan = true, for = "windows" },
   { run = 'start "" "$@"', desc = "Play with default", orphan = true, for = "windows" },
@@ -31,7 +37,7 @@ image = [
   { run = 'open -a "GIMP" "$@"', desc = "Edit in GIMP", orphan = true, for = "macos" },
   { run = 'open -a "krita" "$@"', desc = "Edit in Krita", orphan = true, for = "macos" },
   { run = 'open -a "Affinity" "$@"', desc = "Edit in Affinity", orphan = true, for = "macos" },
-  { run = 'open-on-mac "$@"', desc = "Open on Mac (xdg when local)", orphan = true, for = "linux" },
+  { run = 'open-on-mac "$@"', desc = "Open on client", orphan = true, for = "linux" },
   { run = 'gimp "$@"', desc = "Edit in GIMP", orphan = true, for = "linux" },
   { run = 'krita "$@"', desc = "Edit in Krita", orphan = true, for = "linux" },
   # Windows: qView (Mac と共通)、PicView、ImageGlass、最後に関連付け fallback
@@ -41,6 +47,7 @@ image = [
   { run = 'start "" "$@"', desc = "Open with default", orphan = true, for = "windows" },
 ]
 office = [
+  { run = 'open-on-mac "$@"', desc = "Open on client", orphan = true, for = "linux" },
   # macOS: default to Quick Look (fast native preview). `O` (open interactively) also offers
   # "Reveal in Finder" (hit Space there for the polished native Quick Look) and LibreOffice.
   { run = 'qlmanage -p "$@" >/dev/null 2>&1', desc = "Quick Look (preview)", orphan = true, for = "macos" },
@@ -52,6 +59,7 @@ office = [
   { run = 'start "" "$@"', desc = "Open with default (Word/Excel/PPT)", orphan = true, for = "windows" },
 ]
 pdf = [
+  { run = 'open-on-mac "$@"', desc = "Open on client", orphan = true, for = "linux" },
   { run = 'open -a sioyek "$@"', desc = "Open in Sioyek", orphan = true, for = "macos" },
   { run = 'open -a "Preview" "$@"', desc = "Open in Preview", orphan = true, for = "macos" },
   { run = 'zathura "$@"', desc = "Open in Zathura", orphan = true, for = "linux" },
@@ -68,7 +76,7 @@ edit = [
 html = [
   { run = 'nvim "$@"', desc = "Edit in Neovim", block = true, for = "unix" },
   { run = 'open "$@"', desc = "View in browser", orphan = true, for = "macos" },
-  { run = 'open-on-mac "$@"', desc = "Open on Mac (xdg when local)", orphan = true, for = "linux" },
+  { run = 'open-on-mac "$@"', desc = "Open on client", orphan = true, for = "linux" },
   { run = 'nvim "$@"', desc = "Edit in Neovim", block = true, for = "windows" },
   { run = 'start "" "$@"', desc = "View in browser", orphan = true, for = "windows" },
 ]
@@ -82,11 +90,11 @@ markdown = [
 # SVG is both a viewable image and editable XML. Enter keeps viewing (image viewer, as before);
 # `O` adds editing the source (nvim) and the vector (Inkscape).
 svg = [
+  { run = 'open-on-mac "$@"', desc = "Open on client", orphan = true, for = "linux" },
   { run = 'open -a qView "$@"', desc = "View in qView", orphan = true, for = "macos" },
   { run = 'nvim "$@"', desc = "Edit source in Neovim", block = true, for = "unix" },
   { run = 'open -b com.adobe.illustrator "$@"', desc = "Edit in Illustrator", orphan = true, for = "macos" },
   { run = 'open -a "Inkscape" "$@"', desc = "Edit in Inkscape", orphan = true, for = "macos" },
-  { run = 'open-on-mac "$@"', desc = "Open on Mac (xdg when local)", orphan = true, for = "linux" },
   { run = 'inkscape "$@"', desc = "Edit in Inkscape", orphan = true, for = "linux" },
   { run = 'start "" "$@"', desc = "View with default", orphan = true, for = "windows" },
   { run = 'nvim "$@"', desc = "Edit source in Neovim", block = true, for = "windows" },
@@ -105,6 +113,7 @@ csv = [
 # 3D models: Enter previews (macOS Quick Look renders STL/OBJ via SceneKit); `O` opens the
 # editors/slicers — Blender for modelling, OrcaSlicer/Bambu Studio for 3D printing.
 model3d = [
+  { run = 'open-on-mac "$@"', desc = "Open on client", orphan = true, for = "linux" },
   { run = 'qlmanage -p "$@" >/dev/null 2>&1', desc = "Quick Look (preview)", orphan = true, for = "macos" },
   { run = 'open -a "Blender" "$@"', desc = "Edit in Blender", orphan = true, for = "macos" },
   { run = 'open -a "OrcaSlicer" "$@"', desc = "Slice in OrcaSlicer", orphan = true, for = "macos" },
@@ -114,6 +123,7 @@ model3d = [
 ]
 # Fonts: Enter shows a specimen (FontGoggles); `O` adds Font Book and editing in FontForge.
 font = [
+  { run = 'open-on-mac "$@"', desc = "Open on client", orphan = true, for = "linux" },
   { run = 'open -a "FontGoggles" "$@"', desc = "View in FontGoggles", orphan = true, for = "macos" },
   { run = 'open -a "Font Book" "$@"', desc = "View in Font Book", orphan = true, for = "macos" },
   { run = 'open -a "FontForge" "$@"', desc = "Edit in FontForge", orphan = true, for = "macos" },
@@ -123,6 +133,7 @@ font = [
 # Adobe-native documents: Enter opens the native app; `O` adds a quick preview / alternatives.
 # open -b <bundle id> is used because the .app names carry a year (e.g. "Adobe Photoshop 2026").
 psd = [
+  { run = 'open-on-mac "$@"', desc = "Open on client", orphan = true, for = "linux" },
   { run = 'open -b com.adobe.Photoshop "$@"', desc = "Edit in Photoshop", orphan = true, for = "macos" },
   { run = 'qlmanage -p "$@" >/dev/null 2>&1', desc = "Quick Look", orphan = true, for = "macos" },
   { run = 'open -a "GIMP" "$@"', desc = "Edit in GIMP", orphan = true, for = "macos" },
@@ -130,12 +141,14 @@ psd = [
   { run = 'gimp "$@"', desc = "Edit in GIMP", orphan = true, for = "linux" },
 ]
 ai = [
+  { run = 'open-on-mac "$@"', desc = "Open on client", orphan = true, for = "linux" },
   { run = 'open -b com.adobe.illustrator "$@"', desc = "Edit in Illustrator", orphan = true, for = "macos" },
   { run = 'qlmanage -p "$@" >/dev/null 2>&1', desc = "Quick Look", orphan = true, for = "macos" },
   { run = 'open -a "Inkscape" "$@"', desc = "Edit in Inkscape", orphan = true, for = "macos" },
   { run = 'inkscape "$@"', desc = "Edit in Inkscape", orphan = true, for = "linux" },
 ]
 indd = [
+  { run = 'open-on-mac "$@"', desc = "Open on client", orphan = true, for = "linux" },
   { run = 'open -b com.adobe.InDesign "$@"', desc = "Edit in InDesign", orphan = true, for = "macos" },
   { run = 'qlmanage -p "$@" >/dev/null 2>&1', desc = "Quick Look", orphan = true, for = "macos" },
 ]
@@ -149,7 +162,7 @@ extract = [
 ]
 fallback = [
   { run = 'open "$@"', desc = "Open with macOS default", orphan = true, for = "macos" },
-  { run = 'open-on-mac "$@"', desc = "Open on Mac (xdg when local)", orphan = true, for = "linux" },
+  { run = 'open-on-mac "$@"', desc = "Open on client", orphan = true, for = "linux" },
   { run = 'start "" "$@"', desc = "Open with Windows default", orphan = true, for = "windows" },
 ]
 # AirDrop the selected files (macOS only). Helper: configs/bin/airdrop (~/.local/bin, on PATH).
