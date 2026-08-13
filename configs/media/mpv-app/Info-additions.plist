@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+	Merged into the Info.plist osacompile generates. Only what makes Finder hand media files
+	to the droplet — everything else (executable, usage descriptions, minimum system version)
+	is osacompile's own and is not repeated here.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleIdentifier</key>
+	<string>io.mpv.mpv</string>
+	<key>CFBundleName</key>
+	<string>mpv</string>
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Video</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>mp4</string>
+				<string>mkv</string>
+				<string>avi</string>
+				<string>mov</string>
+				<string>wmv</string>
+				<string>flv</string>
+				<string>webm</string>
+				<string>m4v</string>
+				<string>mpg</string>
+				<string>mpeg</string>
+				<string>ts</string>
+				<string>3gp</string>
+				<string>ogv</string>
+				<string>vob</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Audio</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>mp3</string>
+				<string>flac</string>
+				<string>wav</string>
+				<string>m4a</string>
+				<string>aac</string>
+				<string>ogg</string>
+				<string>opus</string>
+				<string>wma</string>
+				<string>aiff</string>
+				<string>aif</string>
+				<string>alac</string>
+				<string>ape</string>
+				<string>wv</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>
