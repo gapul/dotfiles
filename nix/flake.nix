@@ -375,6 +375,11 @@
                 lib.optionals isDarwinWorkstation [
                   inputs.self.darwinConfigurations.${user.username}.system
                   inputs.self.homeConfigurations.${user.username}.activationPackage
+                  # Formatting and the other hooks, on the PR rather than after the merge.
+                  # It is seconds of work and it is the only check that has ever gone red on
+                  # main while the pull request that caused it was green — nixfmt disagreeing
+                  # about how to fold an expression is not something to find out later.
+                  inputs.self.checks.${system}.pre-commit
                 ]
                 ++ lib.optionals (system == "x86_64-linux") [
                   inputs.self.homeConfigurations."${user.username}-wsl".activationPackage

@@ -1,14 +1,10 @@
 # Packages component (ECS: profile). One-off CLI tools (not covered by programs.*, OS-independent).
 {
   pkgs,
-  nixpkgsUnstable,
   nixpkgsHerdr,
   ...
 }:
 let
-  # nixos-unstable for what the 26.05 release branches don't carry yet (SSO: commonSpecialArgs).
-  # Same escape hatch as home/darwin.nix, minus the allowUnfree re-import (these are all free).
-  unstablePkgs = nixpkgsUnstable.legacyPackages.${pkgs.stdenv.hostPlatform.system};
   # herdr は別 lineage。理由は flake.nix の nixpkgs-herdr の項を参照。
   herdrPkgs = nixpkgsHerdr.legacyPackages.${pkgs.stdenv.hostPlatform.system};
   gh-nix = pkgs.writeShellApplication {
