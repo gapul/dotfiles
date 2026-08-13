@@ -36,7 +36,12 @@ shift
 # nix shell の中で zsh を掴ませて母艦と同じ環境にする。ZDOTDIR を渡さないと
 # zsh は ~/.zshrc を読んでしまい、dotfiles の設定が効かない。
 # zsh が無い環境 (remote-env が古い等) では黙って既定のシェルに落ちる。
-remote_mux='SHELL="$(command -v zsh || echo "$SHELL")" ZDOTDIR="$HOME/.config/zsh" tmux new -A -s nssh'
+#
+# nix shell -c は argv をそのまま exec するのでシェルを通らない。変数代入を前置しても
+# "SHELL=/bin/bash" という名前のコマンドを探しに行って落ちる。sh -c で包むこと。
+# zsh は remote-env の中にしか居ないので、command -v も内側で走らせる必要がある
+# (外側のログインシェルで展開すると必ず bash に落ちる)。
+remote_mux='sh -c '\''SHELL="$(command -v zsh || echo "$SHELL")" ZDOTDIR="$HOME/.config/zsh" exec tmux new -A -s nssh'\'''
 
 # ローカルの dotfiles から remote URL を取得(fork した人もそのまま使える)
 DOTFILES_URL=$(git -C "$HOME/.dotfiles" remote get-url origin 2>/dev/null || \
