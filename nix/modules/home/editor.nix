@@ -17,16 +17,14 @@ in
   # They were nine megabytes of files someone had put in ~/.local/share/skk by hand — nothing
   # declared them, so a new machine came up with skkeleton unable to convert anything.
   # `skkeleton-user-dict` deliberately stays out of this: it is written to.
-  xdg.dataFile = lib.mapAttrs' (
-    name: dict:
-    lib.nameValuePair "skk/SKK-JISYO.${name}" { source = "${dict}/share/skk/SKK-JISYO.${name}"; }
-  ) {
-    L = pkgs.skkDictionaries.l;
-    geo = pkgs.skkDictionaries.geo;
-    jinmei = pkgs.skkDictionaries.jinmei;
-    propernoun = pkgs.skkDictionaries.propernoun;
-    station = pkgs.skkDictionaries.station;
-  };
+  xdg.dataFile."skk/SKK-JISYO.L".source = "${pkgs.skkDictionaries.l}/share/skk/SKK-JISYO.L";
+  xdg.dataFile."skk/SKK-JISYO.geo".source = "${pkgs.skkDictionaries.geo}/share/skk/SKK-JISYO.geo";
+  xdg.dataFile."skk/SKK-JISYO.jinmei".source =
+    "${pkgs.skkDictionaries.jinmei}/share/skk/SKK-JISYO.jinmei";
+  xdg.dataFile."skk/SKK-JISYO.propernoun".source =
+    "${pkgs.skkDictionaries.propernoun}/share/skk/SKK-JISYO.propernoun";
+  xdg.dataFile."skk/SKK-JISYO.station".source =
+    "${pkgs.skkDictionaries.station}/share/skk/SKK-JISYO.station";
 
   # Plain Vim: vimrc read via native XDG. Purpose is to push .viminfo out to $XDG_STATE_HOME
   home.file.".config/vim/vimrc".source = ../../../configs/editors/vim/vimrc;
