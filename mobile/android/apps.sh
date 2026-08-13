@@ -216,14 +216,43 @@ cmd_adopt() {
   done <<<"$extra"
 }
 
+# play 行を Aurora Store の Favourites に import できる JSON にする。
+# Aurora 4.6 以降は Favourites の import/export と一括インストールを持っているので、
+# Play しか配布元が無いものも「ファイルを渡して端末側で入れる」に寄せられる。
+# 形式は AuroraStore の data/room/favourite/{ImportExport,Favourite}.kt に合わせた。
+#
+#   ./apps.sh aurora >aurora-favourites.json
+#   adb push aurora-favourites.json /sdcard/Download/
+#   端末で Aurora Store → Favourites → Import → 一括インストール
+cmd_aurora() {
+  # displayName は packageId をそのまま置く。表示用のラベルでしかなく、
+  # 正しい名前を取るには Play を 1 件ずつ引く必要があって割に合わない。
+  # added は 0 固定 (実行のたびに変えるとファイルが毎回差分になる)。
+  declared | awk -F'\t' '$2 == "play" { print $1 }' | python3 -c '
+import json, sys
+favourites = [
+    {
+        "packageName": pkg,
+        "displayName": pkg,
+        "iconURL": "",
+        "added": 0,
+        "mode": "IMPORT",
+    }
+    for pkg in sys.stdin.read().split()
+]
+print(json.dumps({"favourites": favourites}, indent=2))
+'
+}
+
 case "${1:-status}" in
 status) cmd_status ;;
 install) cmd_install ;;
 verify) cmd_verify ;;
 obtainium) cmd_obtainium ;;
 adopt) cmd_adopt ;;
+aurora) cmd_aurora ;;
 *)
-  echo "usage: ./apps.sh [status|install|verify|obtainium|adopt]" >&2
+  echo "usage: ./apps.sh [status|install|verify|obtainium|adopt|aurora]" >&2
   exit 2
   ;;
 esac

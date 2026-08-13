@@ -48,12 +48,17 @@ nix/hosts/droid.nix                 # Termux の中の CLI 環境 (nix-on-droid)
 | 宣言が配布元から消えていないか (`verify`) | **自動**。週次 CI (`.github/workflows/mobile-drift.yml`) |
 | スクリプト自身の健全性 (`test.sh`) | **自動**。同 CI + `just mobile-test` |
 | 実機との差分 (`status`) | 手動。端末を繋いだときだけ |
-| OS 設定の適用 (`os.sh`) | 手動。`just android-os` |
-| アプリのインストール | 手動。母艦から `install`、端末で Obtainium / Aurora Store |
+| OS 設定のうち `settings` | 端末内から当てられる。Termux に権限を一度与えれば cron 可 |
+| OS 設定のうち debloat / アプリ個別 | 手動。署名レベルの権限が要るので adb 経由のみ |
+| アプリのインストール | ファイルを渡して端末側で一括。Obtainium (URL リスト) / Aurora Store (Favourites) |
 
-端末が常時繋がっていないので、実機に触る側は自動にしていない。無線デバッグを
-tailnet 越しに常設すれば定期適用もできるが、繋がっていない間に宣言だけ進んで
-「適用したつもり」になる状態を作りたくないので、そこは明示的に叩く形のままにしてある。
+インストールと `settings` は、**ファイルを渡せば端末側が自分でやる**ところまで来ている
+(Obtainium の URL リスト / Aurora Store の Favourites / Termux から走る `os.sh`)。
+母艦とケーブルが要るのは、署名レベルの権限が要る debloat とアプリ個別、
+それに実機との差分を数える `status` だけ。
+
+無線デバッグを tailnet 越しに常設すれば残りも自動にできるが、繋がっていない間に
+宣言だけ進んで「適用したつもり」になる状態を作りたくないので、そこは明示的に叩く形のまま。
 
 自動にしたのは逆に**押した瞬間には気付けないもの**だけ。配布元の改名や削除は
 黙って進むので週次で見る (実際 `Catfriend1/syncthing-android` の改名はこれで見つかった)。
