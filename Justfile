@@ -1288,6 +1288,30 @@ gdrive cmd="status":
 
 
 # ─────────────────────────────────────────────
+# Homelab (DNS / tailnet / デバイス)
+# ─────────────────────────────────────────────
+
+# Diff Caddy's vhosts against Cloudflare's A records (`just dns` / `just dns --apply`)
+[group('Homelab')]
+dns *flags:
+    @scripts/check-dns-drift.sh {{flags}}
+
+# Fetch, diff, or apply the tailnet policy file (ACL / split DNS). Needs TS_API_KEY
+[group('Homelab')]
+tailnet cmd="diff":
+    @scripts/tailscale-policy.sh {{cmd}}
+
+# Fetch, diff, or apply the NextDNS profile. Needs NEXTDNS_API_KEY / NEXTDNS_PROFILE
+[group('Homelab')]
+nextdns cmd="diff":
+    @scripts/nextdns-profile.sh {{cmd}}
+
+# Validate the ESPHome device configs without hardware
+[group('Homelab')]
+esphome:
+    @nix shell nixpkgs#esphome -c ./esphome/validate.sh
+
+# ─────────────────────────────────────────────
 # Mobile (iOS / Android)
 # ─────────────────────────────────────────────
 

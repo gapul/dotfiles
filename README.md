@@ -63,7 +63,10 @@ secrets/secrets.yaml # SOPS で age 暗号化
 .sops.yaml           # 受信者 (age pubkey)
 scripts/bootstrap.sh # 新 Mac 用 0 → 1 セットアップ (Linux/WSL 版もあり)
 windows/             # Windows 側セットアップ (winget/scoop/AutoHotkey/...)
-mobile/              # iOS / Android (アプリ目録・adb 設定・構成プロファイル)
+mobile/              # iOS / Android (アプリ宣言・adb 設定・構成プロファイル)
+esphome/             # ESP チップに載るデバイス設定 (水やり機)
+tailscale/           # tailnet のポリシー (ACL / split DNS)  ※fetch して作る
+nextdns/             # NextDNS のプロファイル設定           ※fetch して作る
 templates/           # direnv 用 dev shell テンプレ (node/python/rust)
 Justfile             # 普段使うコマンド集
 ```
@@ -110,6 +113,12 @@ curl -fsSL https://raw.githubusercontent.com/gapul/dotfiles/main/scripts/bootstr
     [Clean]
     gc                           # GC all layers at once (only regenerable caches; Trash and whole-home deletion are in gc-deep)
     gc-deep                      # Interactively delete heavy regenerable data (Trash / ~/tmp scratch / zap of retired casks / CoreSimulator cache / podman / old build artifacts)
+
+    [Homelab]
+    dns *flags                   # Diff Caddy's vhosts against Cloudflare's A records (`just dns` / `just dns --apply`)
+    esphome                      # Validate the ESPHome device configs without hardware
+    nextdns cmd="diff"           # Fetch, diff, or apply the NextDNS profile. Needs NEXTDNS_API_KEY / NEXTDNS_PROFILE
+    tailnet cmd="diff"           # Fetch, diff, or apply the tailnet policy file (ACL / split DNS). Needs TS_API_KEY
 
     [Inspect]
     check what=""                # Type-check / show diff  (`just check` = syntax/type-check, `just check diff` = diff build)

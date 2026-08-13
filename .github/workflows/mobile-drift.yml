@@ -1,4 +1,4 @@
-name: Mobile declaration drift
+name: Declaration drift (mobile / devices)
 
 # mobile/ の宣言が外の世界とずれていないかを週次で見る。
 #
@@ -15,6 +15,7 @@ on:
   pull_request:
     paths:
       - 'mobile/**'
+      - 'esphome/**'
       - '.github/workflows/mobile-drift.yml'
   workflow_dispatch:
 
@@ -49,3 +50,8 @@ jobs:
 
       - name: ios — declarations resolve upstream
         run: mobile/ios/apps.sh verify
+
+      # ESP チップに載る YAML の構文検証。実機も鍵も要らない (雛形の secrets を使う)。
+      # DNS / tailnet / NextDNS の差分は資格情報が要るので CI では見ない。
+      - name: esphome — device configs are valid
+        run: nix shell nixpkgs#esphome -c ./esphome/validate.sh
