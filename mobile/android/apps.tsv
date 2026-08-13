@@ -1,0 +1,29 @@
+# 端末に入れるアプリの宣言。apps.sh がこれと実機を突き合わせる。
+# 書式: <packageId>	<repo>     (タブ区切り)
+#
+# repo:
+#   fdroid  F-Droid 公式リポジトリ。apps.sh install で adb 経由で入る
+#   izzy    IzzyOnDroid (GitHub リリースを追う非公式リポジトリ)。同上
+#   play    Play ストアにしか無い。一括インストールの手段が無いので手で入れる
+#
+# fdroid / izzy の行は `apps.sh verify` がリポジトリに実在するか確認する。
+# play の行は確認できない (Play に API が無い)。
+
+org.fdroid.fdroid	fdroid
+dev.imranr.obtainium	izzy
+com.termux.nix	fdroid
+com.tailscale.ipn	fdroid
+com.kunzisoft.keepass.libre	fdroid
+io.heckel.ntfy	fdroid
+org.owntracks.android	fdroid
+io.homeassistant.companion.android.minimal	fdroid
+org.jellyfin.mobile	fdroid
+dev.jdtech.jellyfin	fdroid
+com.nononsenseapps.feeder	fdroid
+im.vector.app	fdroid
+com.ichi2.anki	fdroid
+de.astubenbord.paperless_mobile	fdroid
+at.bitfire.davdroid	fdroid
+spam.blocker	fdroid
+org.schabi.newpipe	fdroid
+com.x8bit.bitwarden	play

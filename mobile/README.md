@@ -1,43 +1,52 @@
 # モバイル (iOS / Android)
 
 スマホは nix が動かない (Android の Termux だけ例外) ので、`windows/` と同じ方針で扱う。
-**宣言ファイルを repo に置き、適用は各プラットフォームの純正の仕組みに任せる。**
-MDM を建てるほどの規模ではないので、自動化するのは「機械が一括でやれる部分」だけにして、
-残りは手順書として書き下す。
+**宣言ファイルを repo に置き、実機との差分を機械に判定させる。**
+適用まで自動化できるかはプラットフォーム次第で、できない層は差分を出すところで止める。
 
 ```
 mobile/
 ├── android/
-│   ├── apps/obtainium-urls.txt   # Obtainium に URL リストで import するアプリ
-│   ├── apps/playstore.txt        # Play ストアにしか無いもの (手動)
-│   └── adb/apply.sh              # settings.conf / debloat.txt を adb で適用
+│   ├── apps.tsv + apps.sh          # 宣言 vs 実機、fdroidcl 経由で install まで
+│   ├── os-settings.conf + os.sh    # adb で流す OS 設定
+│   └── test.sh                     # 偽 adb での自己チェック
 └── ios/
-    ├── apps.md                   # 入れているアプリと入手経路
-    └── profiles/serve.sh         # .mobileconfig を LAN 配信して iPhone で開く
+    ├── apps.tsv + apps.sh          # 宣言 vs 実機 (ideviceinstaller)、install は不可
+    ├── profiles/serve.sh           # nix が生成した .mobileconfig を配る
+    └── test.sh
+nix/mobile/ios-profiles.nix         # .mobileconfig の中身 (pkgs.formats.plist)
+nix/hosts/droid.nix                 # Termux の中の CLI 環境 (nix-on-droid)
 ```
 
-Android の端末内 CLI (Termux + nix-on-droid) だけは repo の nix 側が持っている:
-`nix/hosts/droid.nix`。詳細は [android/README.md](android/README.md)。
-
-## 何をどこで管理するか
+## どこまで機械にやらせるか
 
 | 層 | Android | iOS |
 |---|---|---|
-| アプリ一覧 | `android/apps/obtainium-urls.txt` (+ Play 分は `playstore.txt`) | `ios/apps.md` (App Store / SideStore / 自ビルド) |
-| OS 設定 | `android/adb/settings.conf` を `adb/apply.sh` で流す | `.mobileconfig` (配布物は `ios/profiles/`、多くはベンダー配布のものを使う) |
-| CLI 環境 | `nix/hosts/droid.nix` (nix-on-droid) | 端末内には作らない。Blink から tailnet 越しに `ssh macmini` して母艦の環境を使う |
-| アプリ設定 | 下の同期表 | 下の同期表 |
+| アプリ: 宣言 | `android/apps.tsv` | `ios/apps.tsv` |
+| アプリ: 実在確認 | `apps.sh verify` (F-Droid の索引) | `apps.sh verify` (iTunes Search API) |
+| アプリ: 実機との差分 | `apps.sh status` (adb) | `apps.sh status` (ideviceinstaller / USB) |
+| アプリ: インストール | `apps.sh install` (fdroidcl → adb install) | **不可**。署名済み ipa が要る |
+| OS 設定 | `os.sh` (adb settings put) | **不可**。`.mobileconfig` で届く範囲だけ |
+| プロファイル生成 | — | `nix build .#ios-profiles` |
+| CLI 環境 | `nix/hosts/droid.nix` | 作らない。Blink から母艦へ ssh |
+
+「不可」と書いた欄は API が無い。MDM を建てれば iOS も押し込めるが、端末 2 台に
+サーバを建てて監視モードを掛ける値打ちは無いと判断した。
+
+`status` はどちらも MISSING があれば exit 1 で、`windows/winget/status.ps1` と
+同じ扱い。EXTRA (実機に在るが宣言に無い) では落とさない。
 
 ## アプリ設定の同期
 
-スマホ側の設定は「ファイルとして同期できるもの」だけ repo の外 (自宅サーバ) で同期し、
-repo は**どのアプリが何の経路で同期されているか**だけを持つ。鍵や DB そのものは入れない。
+スマホ側の設定は「ファイルとして同期できるもの」だけ自宅サーバで同期し、
+repo は**どのアプリが何の経路で同期されているか**だけを持つ (`apps.tsv` の
+同期列と下表)。鍵や DB そのものは入れない。
 
 | アプリ | 経路 | サーバ側の宣言 |
 |---|---|---|
 | Obsidian | Self-hosted LiveSync (CouchDB) | `nix/homelab/obsidian-couchdb.nix` |
-| KeePassium (iOS) / KeePassDX (Android) | kdbx を Syncthing の SyncHub 経由 | `nix/homelab/syncthing.nix` |
-| Bitwarden | Vaultwarden (自宅) | `nix/homelab/vaultwarden.nix` |
+| KeePassium / KeePassDX | kdbx を Syncthing の SyncHub 経由 | `nix/homelab/syncthing.nix` |
+| Bitwarden | Vaultwarden | `nix/homelab/vaultwarden.nix` |
 | ntfy | push.gapul.net の topic 購読 | `nix/homelab/ntfy.nix` |
 | OwnTracks | 位置ログを Dawarich へ POST | `nix/homelab/dawarich.nix` |
 | カレンダー / 連絡先 | CalDAV / CardDAV | `nix/homelab/radicale.nix` |
@@ -52,7 +61,6 @@ Web UI で承認するのではなく commit するのがこの repo の作法
 
 ## やらないこと
 
-- **iOS の設定トグルの宣言化** — 監視モード (Apple Configurator で supervise) を掛けない限り
-  `.mobileconfig` で触れる範囲は狭く、大半の設定は API が無い。手で設定する。
 - **ホーム画面 / ウィジェット配置** — どちらの OS もエクスポート手段が無い。
 - **アプリ本体のバックアップ** — 端末のフルバックアップは iCloud / Seedvault の仕事。
+- **iOS の設定トグル** — 監視モードを掛けない限り触れない。手で設定する。

@@ -119,8 +119,11 @@ curl -fsSL https://raw.githubusercontent.com/gapul/dotfiles/main/scripts/bootstr
     search query scope=""        # Package search (`just search <q>` = brew+nixpkgs, `just search <q> all` = + cargo)
 
     [Mobile]
-    android *flags               # Apply the declared Android OS settings over adb (`just android` = diff + apply, `just android --dry-run`)
-    ios-profiles port="8000"     # Serve mobile/ios/profiles/*.mobileconfig on the LAN so an iPhone can install them from Safari
+    android-apps cmd="status"    # Diff apps.tsv against the device, or converge it (`just android-apps` / `install` / `verify` / `obtainium`)
+    android-os *flags            # Apply the declared Android OS settings over adb (`just android-os` = diff + apply, `just android-os --dry-run`)
+    ios-apps cmd="status"        # Diff ios/apps.tsv against a USB-connected iPhone (`just ios-apps` / `just ios-apps verify`)
+    ios-profiles port="8000"     # Build the declared .mobileconfig profiles and serve them on the LAN for an iPhone to install
+    mobile-test                  # Self-check both platforms' scripts with stubbed adb / ideviceinstaller (no device needed)
 
     [Service]
     restart what="bar"           # Restart the menu-bar/WM stack (`just restart`=bar-related / individual: sketchybar|borders|omniwm / all=everything)

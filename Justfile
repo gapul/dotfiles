@@ -1287,12 +1287,27 @@ gdrive cmd="status":
 # Mobile (iOS / Android)
 # ─────────────────────────────────────────────
 
-# Apply the declared Android OS settings over adb (`just android` = diff + apply, `just android --dry-run`)
+# Diff apps.tsv against the device, or converge it (`just android-apps` / `install` / `verify` / `obtainium`)
 [group('Mobile')]
-android *flags:
-    @nix shell nixpkgs#android-tools -c mobile/android/adb/apply.sh {{flags}}
+android-apps cmd="status":
+    @nix shell nixpkgs#android-tools nixpkgs#fdroidcl -c mobile/android/apps.sh {{cmd}}
 
-# Serve mobile/ios/profiles/*.mobileconfig on the LAN so an iPhone can install them from Safari
+# Apply the declared Android OS settings over adb (`just android-os` = diff + apply, `just android-os --dry-run`)
+[group('Mobile')]
+android-os *flags:
+    @nix shell nixpkgs#android-tools -c mobile/android/os.sh {{flags}}
+
+# Diff ios/apps.tsv against a USB-connected iPhone (`just ios-apps` / `just ios-apps verify`)
+[group('Mobile')]
+ios-apps cmd="status":
+    @nix shell nixpkgs#ideviceinstaller -c mobile/ios/apps.sh {{cmd}}
+
+# Build the declared .mobileconfig profiles and serve them on the LAN for an iPhone to install
 [group('Mobile')]
 ios-profiles port="8000":
     @mobile/ios/profiles/serve.sh {{port}}
+
+# Self-check both platforms' scripts with stubbed adb / ideviceinstaller (no device needed)
+[group('Mobile')]
+mobile-test:
+    @mobile/android/test.sh && mobile/ios/test.sh

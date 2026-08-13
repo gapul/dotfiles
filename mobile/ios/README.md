@@ -1,49 +1,63 @@
 # iOS
 
 iOS には adb に当たるものが無く、監視モード (Apple Configurator で supervise) を
-掛けない限り外から触れるのは構成プロファイル (`.mobileconfig`) だけ。
-なので repo が持つのは**目録と、端末に物を届ける手段**に絞ってある。
+掛けない限り外から押し込めるものが何も無い。**入れる仕事は自動化できないが、
+入っているかの確認と、入れる物の生成はできる**ので、その 2 つを持っている。
 
 ```
 ios/
-├── apps.md              # 入れているアプリと入手経路
-└── profiles/
-    ├── serve.sh         # .mobileconfig を LAN 配信して iPhone の Safari で開く
-    └── *.mobileconfig   # ベンダーが配っていないプロファイルだけここに置く
+├── apps.tsv          # 入れるアプリの宣言 (bundleId + 入手経路 + 同期経路)
+├── apps.sh           # status | verify
+├── test.sh           # apps.sh の自己チェック (偽 ideviceinstaller、実機不要)
+└── profiles/serve.sh # nix が生成した .mobileconfig を LAN 配信
 ```
+
+プロファイルの中身は `nix/mobile/ios-profiles.nix`。
 
 ## アプリ
 
-[apps.md](apps.md) が目録。App Store / SideStore / TestFlight で入手経路が違い、
-どれにも一括インストールの手段が無いので、機種変時に上から入れ直すためのリストとして持つ。
+```sh
+./apps.sh status   # USB 接続した iPhone と宣言の差分。MISSING があれば exit 1
+./apps.sh verify   # appstore 行の bundleId が実在するか (iTunes Search API)
+```
 
-自ビルドの署名配信は [gapul/altstore-source](https://github.com/gapul/altstore-source)
-が持っている (SideStore にこの source URL を登録すると自作アプリが更新通知付きで並ぶ)。
-ビルド手順そのものは `docs/self-build-software.md`。
+`status` は `ideviceinstaller` で実機を照会するので、USB 接続と端末側の
+「このコンピュータを信頼」が要る。ネットワーク越しには照会できない。
+
+インストールは自動化できない。App Store のアプリは署名済み ipa が要るので
+`ideviceinstaller` では入らず、App Store か SideStore から手で入れる。
+だから `status` は「入れ直しの残りを数える」道具として使う。
+
+自ビルドの署名配信は [gapul/altstore-source](https://github.com/gapul/altstore-source)。
+SideStore にこの source を登録しておくと更新が降ってくる。ビルド手順は
+`docs/self-build-software.md`。
 
 ## 構成プロファイル
 
-必要なプロファイルの大半はベンダーが署名済みで配っているので、自分で書かない:
-
-| 用途 | 入手元 |
-|---|---|
-| DNS (NextDNS) | `https://apple.nextdns.io/<profile-id>` を Safari で開く |
-| 自宅 tailnet | Tailscale アプリ本体が VPN プロファイルを入れる |
-| 証明書 | gapul.net は Let's Encrypt / Cloudflare なので不要 |
-
-ベンダー配布が無いものだけ `profiles/` に `.mobileconfig` を置く。
-書くときは `PayloadUUID` を固定値で埋めること。UUID が毎回変わると
-再インストールのたびに別プロファイルとして積み上がる。
-
-置いたファイルを実機に入れるには、母艦で:
+`.mobileconfig` は XML plist でしかないので、payload を nix の attrset で書いて
+`pkgs.formats.plist` に流している (`nix/mobile/ios-profiles.nix`)。
 
 ```sh
-profiles/serve.sh
+nix build ./nix#ios-profiles   # 生成
+./profiles/serve.sh            # LAN に出す (中で nix build もする)
 ```
 
 同じ LAN の iPhone の Safari から表示された URL を開くと、ダウンロード後に
-設定アプリの「プロファイルがダウンロードされました」から入る。
-AirDrop でも同じことができるが、こちらは Mac 側が Finder を開かなくて済む。
+設定アプリの「プロファイルがダウンロードされました」から入る。Safari 以外の
+ブラウザではこの導線に乗らない。
+
+PayloadUUID は名前のハッシュから決定的に導いている。ここが毎回変わると、
+更新のたびに別物として端末にプロファイルが積み上がる。
+
+ベンダーが署名済みで配っているものは書かない — NextDNS の DNS プロファイルも
+Tailscale の VPN プロファイルも本家が配っていて、そちらの方が信頼済みとして入る。
+配布元が無いものだけを宣言する。
+
+| 用途 | どこから |
+|---|---|
+| 自宅 Radicale の CalDAV/CardDAV | `nix/mobile/ios-profiles.nix` (配布元が無いので自前) |
+| DNS (NextDNS) | `https://apple.nextdns.io/<profile-id>` を Safari で開く |
+| 自宅 tailnet | Tailscale アプリ本体が VPN プロファイルを入れる |
 
 ## 端末内の CLI
 

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# settings.conf / debloat.txt に宣言した Android の OS 設定を adb で適用する。
+# os-settings.conf / os-debloat.txt に宣言した Android の OS 設定を adb で適用する。
 #
-#   ./apply.sh            # 差分を出してから適用
-#   ./apply.sh --dry-run  # 差分を出すだけ
+#   ./os.sh            # 差分を出してから適用
+#   ./os.sh --dry-run  # 差分を出すだけ
 #
 # 現在値と一致している行は飛ばすので、何度流しても同じ結果になる。
 set -euo pipefail
@@ -39,7 +39,7 @@ while read -r ns key val; do
   echo "  $ns.$key: $current -> $val"
   changed=$((changed + 1))
   $dry_run || adb shell settings put "$ns" "$key" "$val" </dev/null
-done <settings.conf
+done <os-settings.conf
 
 echo "━━━ debloat ━━━"
 # インストール済みパッケージを 1 回だけ引いて、消す対象が残っているかを見る。
@@ -54,7 +54,7 @@ while read -r pkg _; do
   echo "  uninstall: $pkg"
   changed=$((changed + 1))
   $dry_run || adb shell pm uninstall -k --user 0 "$pkg" </dev/null || echo "    失敗 (システム必須の可能性): $pkg"
-done <debloat.txt
+done <os-debloat.txt
 
 if [[ $changed -eq 0 ]]; then
   echo "差分なし"

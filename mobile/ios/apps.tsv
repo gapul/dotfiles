@@ -1,0 +1,20 @@
+# 端末に入れるアプリの宣言。apps.sh が USB 接続した実機と突き合わせる。
+# 書式: <bundleId>	<source>	<名前>	<設定の同期経路>   (タブ区切り)
+#
+# source:
+#   appstore   App Store。`apps.sh verify` が iTunes Search API で実在を確認する
+#   sideload   自ビルドを SideStore 経由 (github.com/gapul/altstore-source)。確認不可
+#
+# インストールは自動化できない (App Store のアプリは署名済み ipa が要るので
+# ideviceinstaller では入らない)。自動でやるのは差分の検出だけ。
+
+io.tailscale.ipn.macos	appstore	Tailscale	-
+sh.blink.blinkshell	appstore	Blink Shell	-
+md.obsidian	appstore	Obsidian	Self-hosted LiveSync
+com.keepassium.ios	sideload	KeePassium	Syncthing (kdbx)
+com.8bit.bitwarden	appstore	Bitwarden	Vaultwarden
+io.heckel.ntfy	appstore	ntfy	push.gapul.net
+org.mqttitude.MQTTitude	appstore	OwnTracks	Dawarich
+im.vector.app	appstore	Element	Conduit
+io.robbie.HomeAssistant	appstore	Home Assistant	Home Assistant
+org.jellyfin.swiftfin	appstore	Swiftfin	Jellyfin

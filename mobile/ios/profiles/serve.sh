@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# このディレクトリの .mobileconfig を LAN に出して、iPhone の Safari から
-# 開けるようにする。AirDrop でもいいが、Finder を開かずに済むぶんこちらが速い。
+# nix/mobile/ios-profiles.nix から生成した .mobileconfig を LAN に出して、
+# iPhone の Safari から開けるようにする。AirDrop でもいいが、Finder を
+# 開かずに済むぶんこちらが速い。
 #
 #   ./serve.sh [port]
 #
@@ -8,27 +9,22 @@
 # されました」からインストール。Safari 以外のブラウザではこの導線に乗らない。
 set -euo pipefail
 
-cd "$(dirname "$0")"
+repo=$(git -C "$(dirname "$0")" rev-parse --show-toplevel)
 port=${1:-8000}
 
-# 自分の LAN アドレス。tailnet 経由 (100.x) だと iPhone 側も tailnet に
-# 入っている必要があるので、Wi-Fi のアドレスを優先して拾う。
+# 配るのは常に nix が生成したものだけ。手で置いたファイルを混ぜると、端末に
+# 入っているプロファイルの出所が宣言から追えなくなる。
+out=$(nix build "${repo}/nix#ios-profiles" --no-link --print-out-paths)
+
 ip=$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || echo localhost)
-
-shopt -s nullglob
-profiles=(*.mobileconfig)
-if [[ ${#profiles[@]} -eq 0 ]]; then
-  echo "配る .mobileconfig がここに無い (README を参照)" >&2
-  exit 1
-fi
-
-for f in "${profiles[@]}"; do
-  echo "  http://${ip}:${port}/${f}"
+for f in "$out"/*.mobileconfig; do
+  echo "  http://${ip}:${port}/$(basename "$f")"
 done
 echo "Ctrl-C で停止"
 
-# .mobileconfig を text/plain で返されると Safari が中身を表示してしまうので、
-# 拡張子に正しい MIME を割り当ててからサーブする。
+# .mobileconfig を text/plain で返すと Safari が中身を表示してしまい、
+# インストールの導線に乗らない。拡張子に正しい MIME を割り当ててから配る。
+cd "$out"
 python3 -c '
 import http.server, sys
 h = http.server.SimpleHTTPRequestHandler
