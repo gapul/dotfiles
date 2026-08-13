@@ -63,6 +63,7 @@ secrets/secrets.yaml # SOPS で age 暗号化
 .sops.yaml           # 受信者 (age pubkey)
 scripts/bootstrap.sh # 新 Mac 用 0 → 1 セットアップ (Linux/WSL 版もあり)
 windows/             # Windows 側セットアップ (winget/scoop/AutoHotkey/...)
+mobile/              # iOS / Android (アプリ目録・adb 設定・構成プロファイル)
 templates/           # direnv 用 dev shell テンプレ (node/python/rust)
 Justfile             # 普段使うコマンド集
 ```
@@ -116,6 +117,14 @@ curl -fsSL https://raw.githubusercontent.com/gapul/dotfiles/main/scripts/bootstr
     fmt                          # Format code + lint across all tracked files (OS auto-detected: Mac/Linux=pre-commit, Win=PSScriptAnalyzer)
     outdated                     # List what can be updated (preview before upgrade; brew + mas + flake inputs; non-destructive)
     search query scope=""        # Package search (`just search <q>` = brew+nixpkgs, `just search <q> all` = + cargo)
+
+    [Mobile]
+    android-apps cmd="status"    # Diff apps.tsv against the device, or converge it (`just android-apps` / `install` / `verify` / `obtainium`)
+    android-launcher-theme       # Generate the Kvaesitso launcher theme from palettes.json and push it to the device
+    android-os *flags            # Apply the declared Android OS settings over adb (`just android-os` = diff + apply, `just android-os --dry-run`)
+    ios-apps cmd="status"        # Diff ios/apps.tsv against a USB-connected iPhone (`just ios-apps` / `just ios-apps verify`)
+    ios-profiles port="8000"     # Build the declared .mobileconfig profiles and serve them on the LAN for an iPhone to install
+    mobile-test                  # Self-check both platforms' scripts with stubbed adb / ideviceinstaller (no device needed)
 
     [Service]
     restart what="bar"           # Restart the menu-bar/WM stack (`just restart`=bar-related / individual: sketchybar|borders|omniwm / all=everything)
