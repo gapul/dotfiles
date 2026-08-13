@@ -33,14 +33,15 @@ if ! ssh "${ssh_opts[@]}" -o ConnectTimeout=3 "$user@$host" true 2>/dev/null; th
   exit 1
 fi
 
-# 転送先は接続元ごとに分ける。同名ファイルを別ホストから開いても踏まない。
-dest="Downloads/from-$(hostname -s)"
-ssh "${ssh_opts[@]}" "$user@$host" "mkdir -p ~/'$dest'"
+# 見るためだけのコピーなので /tmp に置く。母艦の再起動で勝手に消える。
+# 接続元ごとに分けて、同名ファイルを別ホストから開いても踏まないようにする。
+dest="/tmp/open-on-mac/$(hostname -s)"
+ssh "${ssh_opts[@]}" "$user@$host" "mkdir -p '$dest'"
 
 for f in "$@"; do
   base=$(basename -- "$f")
   scp -q -P "$port" -o BatchMode=yes \
     -o UserKnownHostsFile=~/.ssh/known_hosts_open_on_mac \
     -- "$f" "$user@$host:$dest/$base"
-  ssh "${ssh_opts[@]}" "$user@$host" "open ~/'$dest'/'$base'"
+  ssh "${ssh_opts[@]}" "$user@$host" "open '$dest/$base'"
 done
