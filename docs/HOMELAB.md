@@ -158,8 +158,10 @@ ssh pi@192.168.116.53 'docker ps'   # 復帰確認
        reverse_proxy 192.168.116.65:PORT
    }
    ```
-2. Cloudflare に A レコード追加（`newsvc.gapul.net` → `100.64.125.107`、proxied=false, ttl=60）。
-   既存サブドメインと同形式。Caddy の CF トークンで API 追加も可。
+2. Cloudflare の A レコードは手で足さない。`just dns` が
+   Caddy の vhost 一覧と突き合わせて足りないものを出し、`just dns --apply` で作る
+   （proxied=false, ttl=60、宛先は tailnet の homeserver）。公開側（トンネル経由）の
+   CNAME も同じコマンドが `homelab/cloudflared.nix` の ingress と突き合わせる。
 3. `pct exec 103 -- systemctl reload caddy`
 
 ---

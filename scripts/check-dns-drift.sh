@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-# Caddy の vhost 一覧と Cloudflare の A レコードを突き合わせる。
+# Cloudflare の DNS を repo の宣言と突き合わせる。2 つの面を見る:
+#
+#   tailnet 内向け  Caddy の vhost   -> A レコード (tailnet の homeserver を指す)
+#   公開向け        cloudflared の ingress -> CNAME (トンネルを指す)
 #
 #   scripts/check-dns-drift.sh          # 差分を出す。足りなければ exit 1
 #   scripts/check-dns-drift.sh --apply  # 足りないものを作り、宛先違いを直す
@@ -10,8 +13,12 @@
 # 手順書に書き足す運用で、1 件取りこぼすと「そのサービスだけ繋がらない」を後日踏む。
 # vhost が在るなら A レコードも在るべき、という当たり前を機械に見せる。
 #
-# 宛先は tailnet の homeserver。*.gapul.net は全件そこを指し、proxied=false で
-# CF を通さない (tailnet の中でしか届かないアドレスなので、通しても意味が無い)。
+# tailnet 側の宛先は homeserver。proxied=false で CF を通さない (tailnet の中でしか
+# 届かないアドレスなので、通しても意味が無い)。
+#
+# 公開側を見るのは「homeserver は生きているのにトンネルだけ旧 IP を向いている」で
+# Matrix の federation を一日落とした前科があるため (homelab/cloudflared.nix)。
+# ingress は nix に宣言してあるので、CNAME がそれと食い違えば機械に言わせられる。
 set -euo pipefail
 
 repo=$(git -C "$(dirname "$0")" rev-parse --show-toplevel)
@@ -61,6 +68,8 @@ if [[ -z ${token:-} ]]; then
   echo "sops から cloudflare.api_token を取れない (age 鍵がある環境で実行する)" >&2
   exit 1
 fi
+
+account_id=$(nix develop "$flake" -c sops -d --extract '["cloudflare"]["account_id"]' "$repo/secrets/secrets.yaml" 2>/dev/null || true)
 
 cf() {
   # トークンは引数に出さない。ps から見えるし、set -x でも漏れる。
@@ -151,8 +160,76 @@ else
 fi
 
 echo "一致: ${#ok[@]} 件 / 宣言 ${#expected[@]} 件"
+
+# ── 公開面: cloudflared の ingress と CNAME ──────────────────────────
+echo
+echo "━━━ 公開ホスト名 (トンネル) ━━━"
+cnames=$(cf "${api}/zones/${zone_id}/dns_records?type=CNAME&per_page=500" |
+  jq -r '.result[] | "\(.name)\t\(.id)\t\(.content)"')
+
+# 宣言側: ingress のホスト名 -> トンネル ID
+mapfile -t ingress < <(
+  # ${h} / ${id} は nix の補間。shell に展開させないので単一引用のまま。
+  # shellcheck disable=SC2016
+  nix eval --json "$flake#nixosConfigurations.homeserver.config.services.cloudflared.tunnels" \
+    --apply 'ts: builtins.concatLists (map (id: map (h: "${h}\t${id}") (builtins.attrNames ts.${id}.ingress)) (builtins.attrNames ts))' |
+    jq -r '.[]' | sort
+)
+
+cname_bad=0
+declared_hosts=()
+for entry in "${ingress[@]}"; do
+  IFS=$'\t' read -r host tunnel <<<"$entry"
+  declared_hosts+=("$host")
+  want="${tunnel}.cfargotunnel.com"
+  have=$(awk -F'\t' -v h="$host" '$1 == h { print $3; exit }' <<<"$cnames")
+  if [[ -z $have ]]; then
+    echo "  MISSING  $host -> $want"
+    cname_bad=$((cname_bad + 1))
+    if $apply; then
+      cf -X POST "${api}/zones/${zone_id}/dns_records" \
+        --data "$(jq -n --arg n "$host" --arg c "$want" \
+          '{type:"CNAME", name:$n, content:$c, ttl:1, proxied:true}')" >/dev/null
+      echo "    作成した"
+    fi
+  elif [[ $have != "$want" ]]; then
+    echo "  WRONG    $host: $have -> $want"
+    cname_bad=$((cname_bad + 1))
+    if $apply; then
+      id=$(awk -F'\t' -v h="$host" '$1 == h { print $2; exit }' <<<"$cnames")
+      cf -X PATCH "${api}/zones/${zone_id}/dns_records/${id}" \
+        --data "$(jq -n --arg c "$want" '{content:$c}')" >/dev/null
+      echo "    直した"
+    fi
+  else
+    echo "  ok       $host"
+  fi
+done
+
+# この repo が宣言していないトンネルを向く CNAME。別プロジェクトが正当に
+# 使っていることがあるので落とさず、素性だけ出す。
+while IFS=$'\t' read -r name _ content; do
+  [[ $content == *.cfargotunnel.com ]] || continue
+  printf '%s\n' "${declared_hosts[@]}" | grep -qx "$name" && continue
+  echo "  管理外   $name -> ${content%%.*} (この repo に宣言が無い)"
+done <<<"$cnames"
+
+# ── アカウントのトンネル一覧 ────────────────────────────────────────
+if [[ -n ${account_id:-} ]]; then
+  echo
+  echo "━━━ トンネル ━━━"
+  cf "${api}/accounts/${account_id}/cfd_tunnel?is_deleted=false" |
+    jq -r '.result[] | "\(.id)\t\(.name)\t\(.status)\t\(.connections|length)"' |
+    while IFS=$'\t' read -r id name status conns; do
+      mark="  "
+      printf '%s\n' "${ingress[@]}" | grep -q "$id" || mark="? "
+      echo "  ${mark}${name} (${id:0:8}) status=${status} conns=${conns}"
+    done
+  echo "  ? = この repo に宣言が無いトンネル。使っていないなら消す"
+fi
+
 # EXTRA では落とさない。apex や Pages 向けのレコードが正当に同居している。
-if ! $apply && { [[ ${#missing[@]} -gt 0 ]] || [[ ${#wrong[@]} -gt 0 ]]; }; then
+if ! $apply && { [[ ${#missing[@]} -gt 0 ]] || [[ ${#wrong[@]} -gt 0 ]] || [[ $cname_bad -gt 0 ]]; }; then
   echo "DNS が宣言に追いついていない。--apply で寄せる" >&2
   exit 1
 fi
