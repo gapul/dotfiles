@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+#
+# ssh 先から、母艦 Mac のアプリでファイルを開く。
+#
+# ssh 越しの yazi はプレビューまでは端末に出せるが、Enter で開く先の GUI がリモートに無い。
+# ssh_config の RemoteForward で 127.0.0.1:$port が母艦の sshd に向いているので、そこへ
+# scp で置いてから open を叩く。認証は Agent Forward 済みの鍵なので、リモートに秘密鍵は残らない。
+#
+# トンネルが無い環境 (Linux デスクトップ機など) では xdg-open に委譲する。yazi の opener は
+# 1 つしか実行されず候補に落ちてくれないので、フォールバックはこちら側で持つ。
+
+# shellcheck disable=SC2029 # パスはこちら側で展開して母艦に渡すのが意図
+set -euo pipefail
+
+port="${OPEN_ON_MAC_PORT:-2222}"
+user="${OPEN_ON_MAC_USER:-gapul}"
+host=127.0.0.1
+
+ssh_opts=(-p "$port" -o BatchMode=yes -o StrictHostKeyChecking=accept-new
+  -o UserKnownHostsFile=~/.ssh/known_hosts_open_on_mac)
+
+if [ $# -eq 0 ]; then
+  echo "Usage: open-on-mac <file>..." >&2
+  exit 1
+fi
+
+# 母艦に届かなければローカルの既定アプリへ。ssh が握って止まらないよう短く切る。
+if ! ssh "${ssh_opts[@]}" -o ConnectTimeout=3 "$user@$host" true 2>/dev/null; then
+  if command -v xdg-open >/dev/null 2>&1; then
+    exec xdg-open "$@"
+  fi
+  echo "母艦へのトンネルがありません (ssh_config の RemoteForward $port を確認)" >&2
+  exit 1
+fi
+
+# 転送先は接続元ごとに分ける。同名ファイルを別ホストから開いても踏まない。
+dest="Downloads/from-$(hostname -s)"
+ssh "${ssh_opts[@]}" "$user@$host" "mkdir -p ~/'$dest'"
+
+for f in "$@"; do
+  base=$(basename -- "$f")
+  scp -q -P "$port" -o BatchMode=yes \
+    -o UserKnownHostsFile=~/.ssh/known_hosts_open_on_mac \
+    -- "$f" "$user@$host:$dest/$base"
+  ssh "${ssh_opts[@]}" "$user@$host" "open ~/'$dest'/'$base'"
+done
