@@ -46,6 +46,11 @@ EXTRA (端末に在るが宣言に無い) では落とさない。試しに入�
 アプリ内の Import/Export → Import from URL List に貼る。URL は packageId / ref から
 機械的に決まるので、URL 一覧を別ファイルで持つことはしない。
 
+いまは `play` 行がゼロなので、**宣言した全アプリがこの 1 回の import で端末側に載る**。
+母艦から `install` できない `github` 行も、Obtainium に入れば追跡と更新は同じように効く。
+Play にしか無いものが出てきたときだけ手が要るので、GitHub 配布があるなら
+`play` ではなく `github` に寄せる (Bitwarden は GitHub Releases に APK があったので移した)。
+
 ## OS 設定
 
 ```sh
