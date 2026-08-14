@@ -10,7 +10,10 @@ let
   linuxHome = self.homeConfigurations."${user.username}-linux".config;
   darwin = self.darwinConfigurations.${user.username}.config;
 
-  packageNames = map lib.getName home.home.packages;
+  # Both layers count as "the nix side": GUI apps sit in environment.systemPackages so their
+  # bundles land in /Applications, everything else in home.packages. A check that read only one
+  # of them would let a package dodge the nix-vs-homebrew duplication rule by moving layers.
+  packageNames = map lib.getName (home.home.packages ++ darwin.environment.systemPackages);
   caskNames = map (cask: if builtins.isString cask then cask else cask.name) darwin.homebrew.casks;
 
   # Package manager priority (nix > homebrew): the same tool must not be declared on both sides.
