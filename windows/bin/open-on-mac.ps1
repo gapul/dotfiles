@@ -59,11 +59,15 @@ $Dest = "/tmp/open-on-mac/$($env:COMPUTERNAME)"
 
 foreach ($f in $Files) {
     $base = Split-Path -Leaf $f
-    & scp -q -P $Port -o BatchMode=yes -o "UserKnownHostsFile=$KnownHosts" -- $f "${User}@${MacHost}:$Dest/$base"
+    & scp -q -P $Port -o BatchMode=yes -o "UserKnownHostsFile=$KnownHosts" '--' $f "${User}@${MacHost}:$Dest/$base"
     if ($LASTEXITCODE -ne 0) {
         Write-Host "転送に失敗: $f" -ForegroundColor Red
         continue
     }
     # ビューアを閉じたら消す。母艦側で完結させるので ssh はすぐ返る。
-    & ssh @SshOpts "$User@$MacHost" "nohup sh -c \"open -W '$Dest/$base'; rm -f '$Dest/$base'\" >/dev/null 2>&1 &"
+    # 母艦で走らせる sh の中身は先に組み立てて渡す。PowerShell のダブルクォート内で \" は
+    # エスケープにならず (エスケープ文字はバッククォート)、そこで文字列が閉じて以降が
+    # PowerShell のコードとして解析されてしまうため。
+    $inner = "open -W '$Dest/$base'; rm -f '$Dest/$base'"
+    & ssh @SshOpts "$User@$MacHost" ('nohup sh -c "{0}" >/dev/null 2>&1 &' -f $inner)
 }
