@@ -7,14 +7,6 @@
   ...
 }:
 let
-  # For creative tools whose official binaries are paid but nixpkgs source builds are free & full.
-  # On 26.05-darwin ardour/aseprite are unavailable/broken, so use nixos-unstable, and
-  # re-instantiate with allowUnfree since aseprite is unfree.
-  unstablePkgs = import nixpkgsUnstable.legacyPackages.${pkgs.stdenv.hostPlatform.system}.path {
-    inherit (pkgs.stdenv.hostPlatform) system;
-    config.allowUnfree = true;
-  };
-
   # Bound here rather than inline in home.packages because the LaunchAgent below
   # needs the path too, and both must point at the same store path.
   mechvibes-dx = pkgs.callPackage ../pkgs/mechvibes-dx.nix { };
@@ -164,7 +156,6 @@ in
   # mac-specific packages
   home.packages = with pkgs; [
     bun # generate/type-check karabiner.ts config
-    brewCasks.qview # brew-nix test target: lightweight image viewer distributed as a simple .app
     pngpaste # needed for macOS image paste in obsidian.nvim / img-clip
     syncthing # Syncthing CLI (the resident is the LaunchAgent in services.syncthing)
     xcodegen # generate .xcodeproj from project.yml (Mac-only, since meta.platforms = darwin in Linux nixpkgs)
@@ -184,15 +175,11 @@ in
     (import ../pkgs/zrythm-darwin {
       pkgs = nixpkgsUnstable.legacyPackages.${pkgs.stdenv.hostPlatform.system};
     })
-    # ─── Creative: official is paid but nixpkgs source builds give a free full version ───
-    # Unavailable/broken on 26.05-darwin, so from unstablePkgs (nixos-unstable, with allowUnfree).
-    unstablePkgs.fritzing # PCB/circuit design CAD (official DL is paid. for the ESP32 project). cached, so instant
-    unstablePkgs.ardour # DAW (official binary is pay-what-you-want. free via source build). cached, so instant
-    unstablePkgs.aseprite # pixel-art editor (official $20. source-available/self-built is free full)
-    # VRoid Studio (VRM character modelling): no nixpkgs package and no cask, so the official
-    # macOS dmg is repackaged. See pkgs/vroid-studio.nix - the download URL carries a token
-    # that has to be re-read from vroid.com on every version bump.
-    (callPackage ../pkgs/vroid-studio.nix { })
+    # ardour / aseprite / fritzing / qview / vroid-studio used to sit here. They ship .app
+    # bundles, and home-manager can only surface those under ~/Applications, so they moved to
+    # environment.systemPackages in hosts/darwin.nix where nix-darwin puts them in
+    # /Applications/Nix Apps. mechvibes-dx and zrythm stay: the former needs the per-user
+    # signed copy below, the latter ships no bundle.
 
     # ─── CLI migrated from Homebrew (stage 4: mac CLI that had no reason to stay on brew) ───
     # All of these exist in nixpkgs for aarch64-darwin and substitute from the cache, and none of
