@@ -2,9 +2,16 @@
   lib,
   pkgs,
   brewNix,
+  nixpkgsUnstable,
   user,
   ...
 }:
+let
+  unstablePkgs = import ../lib/unstable-pkgs.nix {
+    inherit nixpkgsUnstable;
+    inherit (pkgs.stdenv.hostPlatform) system;
+  };
+in
 {
   # host-independent base (nix cache / firewall / security / login hardening, etc.)
   # is consolidated in darwin-common.nix. Only daily-driver workstation-specific
@@ -19,6 +26,23 @@
 
   # Expose brew-nix trial targets to nix-darwin's built-in Home Manager global pkgs too.
   nixpkgs.overlays = [ brewNix.overlays.default ];
+
+  # GUI apps live here rather than in home.packages purely because of where the bundle lands:
+  # home-manager can only reach ~/Applications, nix-darwin links these into /Applications/Nix Apps,
+  # and mac-app-util (wired in lib/mk-host.nix) turns that into the real bundles Spotlight,
+  # Launchpad and the Dock will hold on to. Everything without an .app stays in home.packages.
+  environment.systemPackages = [
+    pkgs.brewCasks.qview # brew-nix test target: lightweight image viewer distributed as a simple .app
+    # ─── Creative: official is paid but nixpkgs source builds give a free full version ───
+    # Unavailable/broken on 26.05-darwin, so from unstablePkgs (nixos-unstable, with allowUnfree).
+    unstablePkgs.fritzing # PCB/circuit design CAD (official DL is paid. for the ESP32 project). cached, so instant
+    unstablePkgs.ardour # DAW (official binary is pay-what-you-want. free via source build). cached, so instant
+    unstablePkgs.aseprite # pixel-art editor (official $20. source-available/self-built is free full)
+    # VRoid Studio (VRM character modelling): no nixpkgs package and no cask, so the official
+    # macOS dmg is repackaged. See pkgs/vroid-studio.nix - the download URL carries a token
+    # that has to be re-read from vroid.com on every version bump.
+    (pkgs.callPackage ../pkgs/vroid-studio.nix { })
+  ];
 
   # macOS settings (GUI/peripheral-oriented. Only values verified via `defaults read` on the machine are declared)
   system.defaults = {

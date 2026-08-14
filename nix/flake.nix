@@ -593,6 +593,9 @@
         specialArgs = {
           inherit user;
           brewNix = brew-nix;
+          # hosts/darwin.nix declares the .app-shipping creative tools, which come from
+          # nixos-unstable (see lib/unstable-pkgs.nix).
+          nixpkgsUnstable = nixpkgs-unstable;
         };
       };
 
