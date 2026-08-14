@@ -1,12 +1,19 @@
-Host macbook-mini
-  HostName 100.67.200.89
+# 手元が Windows のときの ssh 先。どちらも向こうで yazi を動かすので、逆トンネル一式は共通。
+Host macbook-mini macmini
   User gapul
   IdentityFile ~/.ssh/id_ed25519
   IdentitiesOnly yes
   # 向こうの yazi から手元 (この PC) のアプリを開くための逆トンネル。
-  # 母艦側の open-on-mac が uname の有無で Windows を見分け、PowerShell 経由で開く。
+  # 向こうの open-on-mac が uname の有無で母艦が Windows だと見分け、PowerShell 経由で開く。
   ForwardAgent yes
   RemoteForward 127.0.0.1:2222 127.0.0.1:22
   ExitOnForwardFailure no
   ServerAliveInterval 30
   ServerAliveCountMax 3
+
+Host macbook-mini
+  HostName 100.67.200.89
+
+# ヘッドレスの Mac サーバー (tailnet)。画面が無いので見る系は手元に飛ばす。
+Host macmini
+  HostName 100.105.135.49
