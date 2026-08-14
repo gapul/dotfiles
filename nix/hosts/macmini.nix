@@ -304,6 +304,38 @@ in
     };
   };
 
+  # popo — the Slack agent for the company workspace, run as its own user.
+  #
+  # It reaches the control plane at api.popo.sh with a bootstrap key (config/.env, outside nix) and
+  # takes its Slack traffic from there, so no Slack token lives on this machine. The runtime is
+  # installed imperatively (`uv tool install` from a build of the repo's main branch, because the
+  # published release is months behind); what is declared here is only that this machine runs it.
+  #
+  # Tier: Background. Like hermes, it spends its time waiting on the network, and it must not
+  # compete with the game server's ticks or with inference somebody is watching.
+  launchd.daemons.popo = {
+    serviceConfig = {
+      ProgramArguments = [
+        "/Users/popo/.local/bin/popo"
+        "run"
+        "--home"
+        "/Users/popo/popo-home"
+      ];
+      UserName = "popo";
+      WorkingDirectory = "/Users/popo/popo-home";
+      EnvironmentVariables = {
+        POPO_HOME = "/Users/popo/popo-home";
+        PATH = "/Users/popo/.local/bin:/run/current-system/sw/bin:/usr/bin:/bin:/usr/sbin:/sbin";
+        HOME = "/Users/popo";
+      };
+      RunAtLoad = true;
+      KeepAlive = true;
+      ProcessType = "Background";
+      StandardOutPath = "/Users/popo/popo-home/logs/popo.stdout.log";
+      StandardErrorPath = "/Users/popo/popo-home/logs/popo.stderr.log";
+    };
+  };
+
   # Keep the tunnel up as a daemon (root) so it survives logout, unlike the Ollama agent which
   # needs a GUI session for Metal. Reads /usr/local/etc/manabi-tunnel.env for TUNNEL_TOKEN, which
   # is issued per-tunnel in the Cloudflare dashboard and can't live in the nix store.
