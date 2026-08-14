@@ -27,10 +27,9 @@ in
   # Expose brew-nix trial targets to nix-darwin's built-in Home Manager global pkgs too.
   nixpkgs.overlays = [ brewNix.overlays.default ];
 
-  # GUI apps live here rather than in home.packages purely because of where the bundle lands:
-  # home-manager can only reach ~/Applications, nix-darwin links these into /Applications/Nix Apps,
-  # and mac-app-util (wired in lib/mk-host.nix) turns that into the real bundles Spotlight,
-  # Launchpad and the Dock will hold on to. Everything without an .app stays in home.packages.
+  # Anything shipping an .app belongs here rather than in home.packages: home-manager can only
+  # reach ~/Applications, while nix-darwin copies these into /Applications/Nix Apps, where Finder
+  # lists them and Spotlight indexes them. Everything without a bundle stays in home.packages.
   environment.systemPackages = [
     pkgs.brewCasks.qview # brew-nix test target: lightweight image viewer distributed as a simple .app
     # ─── Creative: official is paid but nixpkgs source builds give a free full version ───

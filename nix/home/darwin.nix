@@ -13,7 +13,7 @@ let
 
   # The bundle actually launched: a signed copy of the one in the store, see
   # home.activation.mechvibesSign below.
-  mechvibesApp = "${config.home.homeDirectory}/Applications/MechvibesDX.app";
+  mechvibesApp = "/Applications/MechvibesDX.app";
 in
 {
   imports = [
@@ -22,6 +22,16 @@ in
     ../modules/home/darwin-apps.nix
     ../modules/home/darwin-ai-client.nix
   ];
+
+  # Nothing puts an .app under ~/Applications any more: bundles come from environment.systemPackages
+  # (hosts/darwin.nix) into /Applications/Nix Apps, and the two written by hand - MechvibesDX's
+  # signed copy and the mpv droplet - go straight to /Applications. Left enabled this would keep
+  # generating an empty "Home Manager Apps" alongside them. mac-app-util's trampolines went with it
+  # (the input is gone), since it existed only to make the ~/Applications symlinks indexable.
+  #
+  # The catch: a package added to home.packages that does ship an .app now lands nowhere visible,
+  # silently. Put GUI packages in environment.systemPackages.
+  targets.darwin.linkApps.enable = false;
 
   # macOS-specific home-manager config
   # Common parts are split into home/common.nix
@@ -163,11 +173,6 @@ in
     # sketchybar's event helper. `sketchybarrc` used to compile it on every bar start from
     # sources kept in the config directory; the launchd agents put the profile first on PATH.
     (callPackage ../pkgs/sketchybar-helper { })
-    # MechvibesDX (keyboard sounds): upstream's macOS DMG SIGTRAPs on the first
-    # keypress, so it is built here with the rdev fix. See pkgs/mechvibes-dx.nix.
-    # Needs Accessibility permission, and because TCC keys on the executable's
-    # path, that has to be re-granted whenever the store path changes.
-    mechvibes-dx
     # zrythm (DAW): broken=isDarwin in nixpkgs. Self-built for darwin with carla included.
     # See pkgs/zrythm-darwin/ for details. GUI must be launched in a foreground GUI session.
     # On 26.05-darwin appstream/libadwaita can't build on darwin, so this one package alone
@@ -279,9 +284,11 @@ in
   # 2026-08-09 and 2026-08-13). Signing with the Developer ID that keystats
   # uses turns the requirement into a certificate check, which survives.
   #
-  # codesign cannot write into the store, hence the copy. The store path stays
-  # a GC root through home.packages, which matters because the copied binary
-  # still links dylibs by absolute store path.
+  # codesign cannot write into the store, hence the copy. The copy still links its dylibs by
+  # absolute store path, so the source has to stay alive: interpolating ${mechvibes-dx} into this
+  # script puts it in the generation's references, which is what roots it. It is deliberately not
+  # in home.packages - that would also link the bundle into ~/Applications/Home Manager Apps and
+  # leave a second, unsigned MechvibesDX.app next to this one.
   #
   # Before setupLaunchAgents so the bundle exists when launchd is told to start
   # it. Deliberately not fatal: an unsignable bundle should cost the keystroke
@@ -290,9 +297,9 @@ in
     lib.hm.dag.entryBetween [ "setupLaunchAgents" ] [ "writeBoundary" ]
       ''
         src=${mechvibes-dx}/Applications/MechvibesDX.app
-        stamp="${config.home.homeDirectory}/Applications/.mechvibes-dx-store-path"
+        stamp="${config.xdg.stateHome}/mechvibes-dx-store-path"
         if [ "$(cat "$stamp" 2>/dev/null)" != "$src" ] || ! /usr/bin/codesign -v "${mechvibesApp}" 2>/dev/null; then
-          $DRY_RUN_CMD /bin/mkdir -p "${config.home.homeDirectory}/Applications"
+          $DRY_RUN_CMD /bin/mkdir -p "${config.xdg.stateHome}"
           $DRY_RUN_CMD /bin/rm -rf "${mechvibesApp}" "$stamp"
           $DRY_RUN_CMD /bin/cp -R "$src" "${mechvibesApp}"
           $DRY_RUN_CMD /bin/chmod -R u+w "${mechvibesApp}"

@@ -164,8 +164,11 @@
   # code-signature seal in the repository, all of which osacompile makes from twenty lines of
   # AppleScript. Rebuilt only when the source or the plist additions change, because compiling
   # it every activation would re-sign it every activation.
+  # Written to /Applications rather than ~/Applications so every bundle this repo produces sits
+  # in one place. home-manager runs as the user, but /Applications is drwxrwxr-x root:admin and
+  # the account is in admin, so the activation can write there without sudo.
   home.activation.mpvDroplet = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    app="$HOME/Applications/mpv.app"
+    app="/Applications/mpv.app"
     script=${../../../configs/media/mpv-app/mpv.applescript}
     additions=${../../../configs/media/mpv-app/Info-additions.plist}
     stamp="$app/Contents/Resources/.built-from"

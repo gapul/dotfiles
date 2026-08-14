@@ -1,4 +1,5 @@
 {
+  "disableDeepLinkRegistration": "disable",
   "permissions": {
     "defaultMode": "bypassPermissions",
     "allow": [
