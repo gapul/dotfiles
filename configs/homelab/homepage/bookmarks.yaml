@@ -7,9 +7,6 @@
     - Tailscale:
         - abbr: TS
           href: https://login.tailscale.com/admin
-    - Proxmox:
-        - abbr: PVE
-          href: https://pve.gapul.net
 
 - Dev:
     - GitHub:
