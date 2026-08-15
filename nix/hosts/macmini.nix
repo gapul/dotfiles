@@ -12,15 +12,58 @@ let
   # する——mod は本体の新バージョンに追いつくのが遅く、「最新を追う」と両立しないため。
   # autostart = false のものは launchd に載るが自動では上がらない(遊ぶときだけ起こす)。
   minecraftServers = {
+    # 友人と遊ぶ本館。
     vanilla = {
       dir = "/Users/mcsrv/server";
       jar = "${paperServer}";
       java = pkgs.temurin-bin-25;
       memory = "2G";
-      autostart = true;
       port = 25565;
     };
+    # 自分ひとり用。世界を分けたいだけなので設定は本館と同じ。無人のあいだ止まっている以上、
+    # 増やしても待機コストは無い。
+    solo = {
+      dir = "/Users/mcsrv/solo";
+      jar = "${paperServer}";
+      java = pkgs.temurin-bin-25;
+      memory = "2G";
+      port = 25566;
+    };
   };
+
+  # 無人のあいだサーバーを止めておくための前段。公開ポートは lazymc が持ち、本体は loopback の
+  # 別ポートで動く。誰も居なければ本体はプロセスごと落ちているので CPU もメモリもゼロ、接続が
+  # 来たら起こして繋ぐ(その間クライアントには「起動中」と見える)。playit の転送先も lazymc。
+  #
+  # コンテナ時代に試した ENABLE_AUTOPAUSE は knockd がゲストの eth0 に attach できず動かなかった。
+  # lazymc はホスト側で port を持つだけなので、その問題が無い。
+  lazymcConfig =
+    name: inst:
+    pkgs.writeText "lazymc-${name}.toml" ''
+      [public]
+      address = "0.0.0.0:${toString inst.port}"
+
+      [server]
+      address = "127.0.0.1:${toString (inst.port + 10)}"
+      directory = "${inst.dir}"
+      command = "${../../configs/macmini/minecraft/run.sh}"
+      # server.properties の server-port を lazymc が書き換える。手で合わせると必ずずれる。
+      wake_on_start = false
+      wake_on_crash = false
+
+      [time]
+      # 10分無人で停止。起動は4秒弱なので、待たされる感覚はほぼ無い。
+      sleep_after = 600
+      minimum_online_time = 60
+
+      [motd]
+      sleeping = "§7ねむっています §8(入れば起きます)"
+      starting = "§e起動中… §8数秒お待ちください"
+      stopping = "§c停止中…"
+
+      [advanced]
+      rewrite_server_properties = true
+    '';
   # まなびはサービスなので、実体は gapul/manabi (private) にあり、この機械にはそのクローンが
   # 置いてある。ここが持つのは「この機械がまなびを動かす」という宣言だけで、中身は向こうの
   # 更新に追従する (dotfiles の rebuild は要らない)。private なので flake input にはできない
@@ -41,7 +84,13 @@ in
         name: inst:
         lib.nameValuePair "minecraft-${name}" {
           serviceConfig = {
-            ProgramArguments = [ "${../../configs/macmini/minecraft/run.sh}" ];
+            # 常駐するのは lazymc。サーバー本体は接続が来たときに lazymc が起こす。
+            ProgramArguments = [
+              "${pkgs.lazymc}/bin/lazymc"
+              "-c"
+              "${lazymcConfig name inst}"
+              "start"
+            ];
             EnvironmentVariables = {
               SERVER_DIR = inst.dir;
               SERVER_JAR = inst.jar;
@@ -50,10 +99,10 @@ in
             };
             UserName = "mcsrv";
             WorkingDirectory = inst.dir;
-            # Tier 1: tick latency is the thing players feel. Idle most of the time anyway.
+            # Tier 1: tick latency is the thing players feel.
             ProcessType = "Interactive";
-            RunAtLoad = inst.autostart;
-            KeepAlive = inst.autostart;
+            RunAtLoad = true;
+            KeepAlive = true;
             StandardOutPath = "${inst.dir}/logs/launchd.log";
             StandardErrorPath = "${inst.dir}/logs/launchd.log";
           };
