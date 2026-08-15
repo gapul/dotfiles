@@ -32,6 +32,14 @@
     home-manager.url = "github:nix-community/home-manager/release-26.05";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
 
+    # NixOS inside Windows (WSL2). Shares roles.wsl with the Lab PC's standalone home,
+    # so the shell and CLI are identical whichever way the machine is booted.
+    # Tracks the nixos lineage, not the darwin one (this host is x86_64-linux).
+    nixos-wsl = {
+      url = "github:nix-community/NixOS-WSL/release-26.05";
+      inputs.nixpkgs.follows = "nixpkgs-nixos";
+    };
+
     # Nix environment on Android (Termux). The release branch is stuck at 24.05, so
     # use master with nixpkgs follows (the usual nix-on-droid approach). aarch64-linux.
     nix-on-droid = {
@@ -112,6 +120,7 @@
       nix-darwin,
       home-manager,
       nix-on-droid,
+      nixos-wsl,
       mopidy-patches,
       nix-index-database,
       agent-skills,
@@ -686,6 +695,28 @@
                   ./home/dev.nix
                   ./home/workstation.nix
                 ];
+              }
+            ];
+          };
+
+          # Windows の中の NixOS (WSL2)。tarball を作って wsl --import で入れる:
+          #   sudo nix run <flake>#nixosConfigurations.wsl.config.system.build.tarballBuilder
+          # 実機のデュアルブート NixOS とはインストールを共有しない (WSL2 は物理
+          # パーティションを起動できない)。共有するのは home の roles.wsl のほう。
+          "wsl" = nixpkgs-nixos.lib.nixosSystem {
+            system = "x86_64-linux";
+            specialArgs = { inherit user; };
+            modules = [
+              { nixpkgs.overlays = [ overlayFixes ]; }
+              nixos-wsl.nixosModules.default
+              ./hosts/wsl.nix
+              home-manager.nixosModules.home-manager
+              {
+                home-manager.useGlobalPkgs = true;
+                home-manager.useUserPackages = true;
+                home-manager.backupFileExtension = "hm-bak";
+                home-manager.extraSpecialArgs = commonSpecialArgs;
+                home-manager.users.${user.username}.imports = roles.wsl;
               }
             ];
           };
