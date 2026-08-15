@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+#
+# Android 実機の画面を撮って操作する。adb をそのまま叩くだけの薄い皮。
+#
+#   droid status         接続している端末
+#   droid shot [file]    スクリーンショット (既定 /tmp/droid.png)
+#   droid tap X Y        タップ
+#   droid swipe X1 Y1 X2 Y2 [ms]
+#   droid type "text"    フォーカス中の入力欄に打つ
+#   droid key <name|code>  back / home / enter / 数字のキーコード
+#   droid open <pkg>     アプリを起動
+#   droid url <url>      URL / ディープリンクを開く
+#   droid source         画面の要素ツリー (uiautomator)
+#   droid wifi           無線デバッグに切り替える (USB 接続中に一度)
+#
+# 座標は画面のピクセルそのまま。スクリーンショットから拾った値をそのまま渡せる
+# (iOS 側は論理ポイントなので割り算が要る。ここは要らない)。
+#
+# 端末が複数刺さっているときは ANDROID_SERIAL で選ぶ。
+# 無線は `droid wifi` が adb tcpip 5555 と connect をやる。再起動すると USB から
+# やり直しになる (Android 11+ のワイヤレスデバッグでペアリングしても良い)。
+set -u
+
+ADB="${ADB:-adb}"
+command -v "$ADB" > /dev/null || {
+  echo "droid: adb が無い" >&2
+  exit 1
+}
+
+# USB と無線の両方が生きていると adb が迷うので、明示的に一台へ寄せる。
+# ANDROID_SERIAL があればそれ、無ければ無線 (host:port) を優先する。
+_serial() {
+  [ -n "${ANDROID_SERIAL:-}" ] && {
+    echo "$ANDROID_SERIAL"
+    return
+  }
+  "$ADB" devices | awk '$2 == "device" { print $1 }' | sort -r | head -1
+}
+
+_adb() { "$ADB" -s "$(_serial)" "$@"; }
+_sh() { _adb shell "$@"; }
+
+case "${1:-}" in
+  status) "$ADB" devices -l; echo "-> $(_serial)" ;;
+  shot)
+    out="${2:-/tmp/droid.png}"
+    _adb exec-out screencap -p > "$out" && echo "$out"
+    ;;
+  tap) _sh input tap "$2" "$3" ;;
+  swipe) _sh input swipe "$2" "$3" "$4" "$5" "${6:-300}" ;;
+  type)
+    # input text はスペースを %s で表す。改行やタブは送れない。
+    _sh input text "$(printf '%s' "$2" | sed 's/ /%s/g')"
+    ;;
+  key)
+    case "$2" in
+      back) code=4 ;;
+      home) code=3 ;;
+      enter) code=66 ;;
+      *) code="$2" ;;
+    esac
+    _sh input keyevent "$code"
+    ;;
+  open) _sh monkey -p "$2" -c android.intent.category.LAUNCHER 1 > /dev/null ;;
+  url) _sh am start -a android.intent.action.VIEW -d "$2" > /dev/null ;;
+  source) _adb exec-out uiautomator dump /dev/tty ;;
+  home) _sh input keyevent 3 ;;
+  wifi)
+    ip=$(_sh ip -f inet addr show wlan0 | sed -n 's/.*inet \([0-9.]*\).*/\1/p')
+    [ -n "$ip" ] || {
+      echo "droid: Wi-Fi の IP が取れない" >&2
+      exit 1
+    }
+    _adb tcpip 5555 > /dev/null && sleep 2
+    "$ADB" connect "$ip:5555"
+    ;;
+  *) sed -n '3,15p' "$0" | sed 's/^# \{0,1\}//' ;;
+esac

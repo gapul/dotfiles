@@ -194,6 +194,7 @@ in
     blueutil # Bluetooth CLI
     duti # file associations
     scrcpy # Android screen mirroring
+    android-tools # adb (droid command, mobile/android scripts)
     swi-prolog # Prolog (functional/logic programming lab. nvim ftplugin expects swipl on PATH)
     tcpdump # packet capture (live capture needs /dev/bpf perms, which is a permission thing, not a package thing)
     # Moved Xcode off masApps to xcodes (2026-08-02). mas's App Store delivery is a single

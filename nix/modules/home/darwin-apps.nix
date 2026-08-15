@@ -29,6 +29,13 @@
     executable = true;
   };
 
+  # droid: the Android half of the same idea. adb does the whole job here, so this is
+  # a thin wrapper rather than a server to babysit.
+  home.file.".local/bin/droid" = {
+    source = ../../../configs/bin/droid;
+    executable = true;
+  };
+
   # espanso: general-purpose snippets (public) — to the Container path on Mac
   home.file."Library/Application Support/espanso/match/base.yml".source =
     ../../../configs/espanso/base.yml;
