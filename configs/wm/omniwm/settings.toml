@@ -311,6 +311,14 @@ binding = "Hyper+9"
 id = "moveToWorkspace.8"
 
 [[hotkeys]]
+binding = "Control+Option+Command+0"
+id = "switchWorkspace.9"
+
+[[hotkeys]]
+binding = "Hyper+0"
+id = "moveToWorkspace.9"
+
+[[hotkeys]]
 binding = "Control+Option+Command+Tab"
 id = "workspaceBackAndForth"
 
@@ -903,7 +911,6 @@ name = "5"
 type = "main"
 
 [[workspaces]]
-displayName = "❤️"
 id = "5953F2BF-A378-4266-91B2-287174C4FA4D"
 layoutType = "dwindle"
 name = "6"
@@ -912,7 +919,6 @@ name = "6"
 type = "secondary"
 
 [[workspaces]]
-displayName = "🚀"
 id = "A7D5E104-6985-4516-8ED5-07F144F2A33D"
 layoutType = "dwindle"
 name = "7"
@@ -932,6 +938,14 @@ type = "main"
 id = "978A6E17-E25E-4A1E-ABE0-666E392F5081"
 layoutType = "dwindle"
 name = "9"
+
+[workspaces.monitorAssignment]
+type = "main"
+
+[[workspaces]]
+id = "89253D58-01E9-49C6-8CEE-3DA58B13551B"
+layoutType = "dwindle"
+name = "0"
 
 [workspaces.monitorAssignment]
 type = "main"
