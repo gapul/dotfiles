@@ -467,10 +467,8 @@ in
     # Application Firewall は許可をバイナリごとに覚えるので、store path が変わる更新のたびに
     # 新しい lazymc は「未知のアプリ」になり、外からの接続が黙って落ちる (loopback は通るので
     # 気付きにくい)。java は前から登録済みだったが、公開ポートを持つのは lazymc に変わった。
-    for bin in ${pkgs.lazymc}/bin/lazymc; do
-      /usr/libexec/ApplicationFirewall/socketfilterfw --add "$bin" >/dev/null 2>&1 || true
-      /usr/libexec/ApplicationFirewall/socketfilterfw --unblockapp "$bin" >/dev/null 2>&1 || true
-    done
+    /usr/libexec/ApplicationFirewall/socketfilterfw --add ${pkgs.lazymc}/bin/lazymc >/dev/null 2>&1 || true
+    /usr/libexec/ApplicationFirewall/socketfilterfw --unblockapp ${pkgs.lazymc}/bin/lazymc >/dev/null 2>&1 || true
     # The hand-written plists the daemons above replace. nix-darwin names its units org.nixos.*,
     # so without this both copies would be loaded and Hermes would come up twice.
     for label in net.gapul.hermes-gateway net.gapul.hermes-gateway-imouto net.gapul.hermes-watchdog \
