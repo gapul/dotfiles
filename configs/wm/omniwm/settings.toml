@@ -919,3 +919,19 @@ name = "7"
 
 [workspaces.monitorAssignment]
 type = "secondary"
+
+[[workspaces]]
+id = "B307EF93-A1BF-4C81-A8D9-19D571373C95"
+layoutType = "dwindle"
+name = "8"
+
+[workspaces.monitorAssignment]
+type = "main"
+
+[[workspaces]]
+id = "978A6E17-E25E-4A1E-ABE0-666E392F5081"
+layoutType = "dwindle"
+name = "9"
+
+[workspaces.monitorAssignment]
+type = "main"
