@@ -13,14 +13,14 @@
       timeZone: Asia/Tokyo
 
 - glances:
-    url: http://192.168.116.65:61208
+    url: http://127.0.0.1:61208
     version: 4
     cpu: true
     mem: true
     cputemp: true
     uptime: true
     expanded: true
-    label: CT101
+    label: homeserver
 
 - openmeteo:
     label: Tokyo
