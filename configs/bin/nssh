@@ -22,6 +22,8 @@
 #   - prefix+e (スクロールバック編集) : configs/terminals/tmux/scrollback-edit.sh
 #   - Claude Code            : CLAUDE.md と自作 skill は symlink、settings.json は管理キーだけ
 #                              merge (theme=auto は端末を見るので母艦のライト/ダークに追従する)
+#   - herdr                  : configs/cli/herdr/config.toml を symlink。これが無いと
+#                              auto_switch の既定が false なのでテーマ追従が働かない
 #   - プラグイン (resurrect / continuum) : 無効。セッション永続化は使い捨てホストの
 #     前提 (reset --hard) と噛み合わないため、意図的に持ち込まない。
 

@@ -86,6 +86,14 @@ ln -sfn ~/.dotfiles/configs/bin/open-on-mac  ~/.local/bin/open-on-mac
 mkdir -p ~/.config/gh ~/.codex
 ln -sfn ~/.dotfiles/configs/cli/gh/config.yml     ~/.config/gh/config.yml
 ln -sfn ~/.dotfiles/configs/cli/codex/config.toml ~/.codex/config.toml
+#    herdr も同じ扱い。~/.config/herdr には herdr 自身の state (socket / log /
+#    session.json) が同居するのでディレクトリごとは張れず、ファイル単体を張る。
+#    これが無いと herdr のテーマ追従は働かない。auto_switch の既定が false なので、
+#    設定が届いていないホストでは 0.8.0 でも protocol が一致していても効かない
+#    (2026-08-15 に実害。リモートの config.toml は herdr 自身が書いた
+#    `onboarding = false` の 19 バイトだけだった)。prefix = ctrl+t も同様に届いていない。
+mkdir -p ~/.config/herdr
+ln -sfn ~/.dotfiles/configs/cli/herdr/config.toml ~/.config/herdr/config.toml
 #    Claude Code: 書き換わらないもの (CLAUDE.md / 自作 skill) は symlink で張る。
 #    hooks / output-styles / bin は母艦のデスクトップ前提なので持ち込まない。
 mkdir -p ~/.claude/skills

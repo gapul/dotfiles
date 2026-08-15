@@ -139,42 +139,11 @@ in
   # collides with Emacs). Many of the rest already agree anyway (c, x, z, e, hjkl, p, n, ?, R).
   # herdr ships rose-pine/rose-pine-dawn built in, so no palette generation is needed; the
   # names are pinned for the same reason as dark/light in lib/theme.nix.
-  home.file.".config/herdr/config.toml".text = ''
-    # nix (modules/home/terminal.nix) が生成。手で編集しない。
-    # 変更は次回 herdr 起動時に反映される (herdr はこのファイルを監視していない)。
-    # `herdr server reload-config` は使わない。サーバ側は成功するのに、繋いでいる
-    # クライアントだけ無反応になって開き直す羽目になる (2026-08-10 に 4 回再現)。
-    onboarding = false
-
-    [theme]
-    # tmux と同じ rose-pine。auto_switch が見るのは OS ではなく「端末」で、外側の端末へ
-    # OSC 11 (背景色) を問い合わせ、mode 2031 (テーマ更新通知) を購読して追従する。
-    # よって ssh 越しでも接続元 ghostty の切替がそのまま効き、サーバ側の OS は関係ない
-    # (2026-08 に Linux 上の herdr へ light の背景を返して dawn を選ぶことを実測)。
-    # 以前ここには「macOS の外観に追従 (他 OS では dark 固定)」と書いてあったが誤り。
-    #
-    # ペイン内のプログラム (nvim / Claude Code の theme=auto) への中継は herdr 0.8.0 から。
-    # 0.7.5 では起動時の OSC 11 応答だけが返り、途中の切替は中まで届かなかった (#714)。
-    auto_switch = true
-    dark_name = "rose-pine"
-    light_name = "rose-pine-dawn"
-
-    [keys]
-    # tmux と同じ C-t。Emacs の C-b (backward-char) と衝突するため。
-    prefix = "ctrl+t"
-
-    [ui]
-    show_agent_labels_on_pane_borders = true
-
-    # [ui.toast] delivery = "system" は使わない。macOS でこれを付けると herdr は通知を
-    # 出す前に「今どの端末アプリの中か」を確かめようとして mdfind を叩き、それを
-    # クライアントの描画ループ上で同期実行する (platform::macos::show_desktop_notification
-    # → verified_terminal_bundle_identifier → Command::output)。Spotlight が詰まると
-    # mdfind は永久に返らず、タスクが完了するたびに TUI ごと固まる (2026-08-10 に遭遇。
-    # そのときは rclone の死んだ NFS マウントが残っていて mds が getattrlistbulk で
-    # 止まっていた)。OS 通知自体は Claude Code の Stop フック (agent-notify) が osascript で
-    # 出しているので、外しても手元に届く通知は変わらない。むしろ二重通知が一本になる。
-  '';
+  # 中身は configs/cli/herdr/config.toml。母艦だけが home-manager を通るので、ここで
+  # .text に直書きしているとリモートには一生届かない (2026-08-15 に実害。auto_switch の
+  # 既定が false なので、リモートの herdr はテーマ追従が丸ごと効いていなかった)。
+  # ファイルに出して configs/bin/remote-bootstrap からも同じものを張れるようにする。
+  home.file.".config/herdr/config.toml".source = ../../../configs/cli/herdr/config.toml;
 
   # `herdr --remote <host>` の前にリモートの下準備を済ませる。
   #
