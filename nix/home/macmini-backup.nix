@@ -44,6 +44,9 @@ let
       # 書類も projects/ 配下へ集めてある(~/Documents は macOS の TCC が ssh と
       # launchd からの走査を拒むため、この機械では使わない)。
       "${home}/Developer"
+      # マイクラのワールド。実体は mcsrv のホーム(このエージェントからは読めない)なので、
+      # 4:40 の minecraft-backup が固めたものをここで拾う。offsite はこれが唯一の経路。
+      "/Users/Shared/minecraft-backups"
       # ~/ai は 2026-08-12 に畳んだ。パスとして残すと lstat が失敗して毎朝 ntfy が鳴るので、
       # 中身は宣言済みのレイアウトどおりに散らしてある。manabi-dashboard はさらに 2026-08-13 に
       # サービスとして gapul/manabi へ切り出し、この機械では /Users/Shared/manabi の clone に
