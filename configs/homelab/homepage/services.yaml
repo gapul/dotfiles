@@ -1,106 +1,122 @@
 ---
-# gapul.net homelab (Tailscale only) — live docker stats + siteMonitor
+# gapul.net homelab — 全部 homeserver (100.127.129.31) の中。
+# 生存確認は siteMonitor に統一してある。移行でネイティブ化したサービス
+# (conduit / syncthing / blocky / gatus など) には docker コンテナが無く、
+# server+container 方式だと片方だけ光らないため。
+
 - Home:
     - Home Assistant:
         href: https://home.gapul.net
-        description: Smart home
+        description: スマートホーム
         icon: home-assistant.png
         siteMonitor: http://127.0.0.1:8123
+    - ESPHome:
+        href: https://esphome.gapul.net
+        description: 自作デバイスのファーム管理
+        icon: esphome.png
+        siteMonitor: http://127.0.0.1:6052
+    - Node-RED:
+        href: https://nodered.gapul.net
+        description: 自動化フロー
+        icon: node-red.png
+        siteMonitor: http://127.0.0.1:1880
 
 - Infrastructure:
-- Backup:
+    - Gatus:
+        href: https://status.gapul.net
+        description: 稼働監視 (uptime-kuma の後継)
+        icon: gatus.png
+        siteMonitor: http://127.0.0.1:8084
+    - Attic:
+        href: https://cache.gapul.net
+        description: 自前の Nix バイナリキャッシュ
+        icon: nixos.png
+        siteMonitor: http://127.0.0.1:8083
+    - Blocky:
+        href: https://dns2.gapul.net
+        description: DNS フィルタ (API のみ、UI は無い)
+        icon: mdi-dns
+        siteMonitor: http://127.0.0.1:4000
+    - Syncthing:
+        href: https://sync.gapul.net
+        description: ファイル同期
+        icon: syncthing.png
+        siteMonitor: http://127.0.0.1:8384
     - ファイル閲覧 (restic):
         href: https://files.gapul.net
         description: バックアップの中身をプレビュー (read-only)
         icon: filebrowser.png
-        siteMonitor: http://127.0.0.1:8082
-
-- Network:
-    - AdGuard Home (primary):
-        href: http://192.168.116.53:3000
-        description: DNS filter (primary)
-        icon: adguard-home.png
-        siteMonitor: http://192.168.116.53:3000
-    - AdGuard Home (secondary):
-        href: https://dns2.gapul.net
-        description: DNS filter (secondary)
-        icon: adguard-home.png
-        server: my-docker
-        container: adguardhome-secondary
-
-- Monitoring:
+        siteMonitor: http://127.0.0.1:8085
     - ntfy:
         href: https://ntfy.gapul.net
-        description: Push notifications
+        description: プッシュ通知
         icon: ntfy.png
-        server: my-docker
-        container: ntfy
+        siteMonitor: http://127.0.0.1:8082
 
 - Apps:
     - Vaultwarden:
         href: https://vault.gapul.net
-        description: Password manager
+        description: パスワード管理
         icon: vaultwarden.png
-        server: my-docker
-        container: vaultwarden
+        siteMonitor: http://127.0.0.1:8080
     - Miniflux:
         href: https://rss.gapul.net
-        description: RSS reader
+        description: RSS リーダー
         icon: miniflux.png
-        server: my-docker
-        container: miniflux
+        siteMonitor: http://127.0.0.1:8081
     - Obsidian LiveSync:
         href: https://obsidian.gapul.net
-        description: Note sync (CouchDB)
+        description: ノート同期 (CouchDB)
         icon: obsidian.png
-        server: my-docker
-        container: obsidian-couchdb
     - Radicale:
         href: https://dav.gapul.net
         description: CalDAV / CardDAV
         icon: radicale.png
-        server: my-docker
-        container: radicale
+        siteMonitor: http://127.0.0.1:5232
     - Forgejo:
         href: https://git.gapul.net
-        description: Git hosting
+        description: Git ホスティング
         icon: forgejo.png
-        server: my-docker
-        container: forgejo
-    - Syncthing:
-        href: https://sync.gapul.net
-        description: File sync
-        icon: syncthing.png
-        server: my-docker
-        container: syncthing
+        siteMonitor: http://127.0.0.1:3003
+    - Dawarich:
+        href: http://100.127.129.31:3005
+        description: 位置ログ (Google Timeline 代替)
+        icon: mdi-map-marker-path
+        siteMonitor: http://127.0.0.1:3005
+    - Matrix (Conduit):
+        href: https://app.element.io
+        description: "@gapul:gapul.net"
+        icon: matrix-light.png
+        siteMonitor: http://127.0.0.1:6167/_matrix/client/versions
 
 - Tools:
     - Paperless-ngx:
         href: https://paperless.gapul.net
-        description: Document management / OCR
+        description: 書類管理 / OCR
         icon: paperless-ngx.png
-        server: my-docker
-        container: paperless
+        siteMonitor: http://127.0.0.1:8097
     - ArchiveBox:
         href: https://archive.gapul.net
-        description: Web archive
+        description: Web アーカイブ
         icon: archivebox.png
-        server: my-docker
-        container: archivebox
+        siteMonitor: http://127.0.0.1:8000
+    - RSSHub:
+        href: http://100.127.129.31:1200
+        description: 何でも RSS 化
+        icon: rsshub.png
+        siteMonitor: http://127.0.0.1:1200
 
 - Media:
     - Jellyfin:
         href: https://jellyfin.gapul.net
-        description: Media server (video)
+        description: 動画
         icon: jellyfin.png
-        server: my-docker
-        container: jellyfin
+        siteMonitor: http://127.0.0.1:8096
     - Navidrome:
         href: https://navidrome.gapul.net
-        description: Music streaming
+        description: 音楽
         icon: navidrome.png
-        server: my-docker
-        container: navidrome
+        siteMonitor: http://127.0.0.1:4533
 
 - AI:
     - AIツール:
@@ -110,12 +126,12 @@
         siteMonitor: http://100.105.135.49:8901
     - 資料RAG (AnythingLLM):
         href: https://docs.gapul.net
-        description: ドキュメントRAG
+        description: ドキュメント RAG
         icon: anythingllm
         siteMonitor: http://127.0.0.1:3011
     - チャット (Open WebUI):
         href: https://chat.gapul.net
-        description: LLMチャット
+        description: LLM チャット
         icon: open-webui
         siteMonitor: http://127.0.0.1:3010
     - 画像生成 (ComfyUI):
@@ -127,33 +143,18 @@
 - macmini (M4):
     - システム:
         icon: mdi-desktop-tower-monitor
-        href: http://192.168.116.91:61208
+        href: http://100.105.135.49:61208
         widget:
           type: glances
-          url: http://192.168.116.91:61208
+          url: http://100.105.135.49:61208
           version: 4
           metric: info
     - CPU:
-        widget:
-          type: glances
-          url: http://192.168.116.91:61208
-          version: 4
-          metric: cpu
-          chart: false
+        widget: { type: glances, url: http://100.105.135.49:61208, version: 4, metric: cpu, chart: false }
     - メモリ:
-        widget:
-          type: glances
-          url: http://192.168.116.91:61208
-          version: 4
-          metric: memory
-          chart: false
+        widget: { type: glances, url: http://100.105.135.49:61208, version: 4, metric: memory, chart: false }
     - ディスク:
-        widget:
-          type: glances
-          url: http://192.168.116.91:61208
-          version: 4
-          metric: fs:/
-          chart: false
+        widget: { type: glances, url: http://100.105.135.49:61208, version: 4, metric: "fs:/", chart: false }
 
 - Raspberry Pi (.53):
     - システム:
