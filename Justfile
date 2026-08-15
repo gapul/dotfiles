@@ -1401,6 +1401,23 @@ gdrive cmd="status":
 dns *flags:
     @scripts/check-dns-drift.sh {{flags}}
 
+# Build the NixOS-WSL rootfs tarball on homeserver and bring it back (mac can't build it)
+[group('Homelab')]
+wsl-tarball flake="github:gapul/dotfiles?dir=nix":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    # root と Linux が要るので homeserver で作る。母艦は Mach-O なので nix でも作れない。
+    ssh homeserver 'set -e; d=$(mktemp -d); cd "$d"; \
+      sudo nix run --extra-experimental-features "nix-command flakes" \
+        "{{flake}}#nixosConfigurations.wsl.config.system.build.tarballBuilder"; \
+      echo "$d/nixos.wsl"' | tail -1 | {
+      read -r remote
+      mkdir -p ~/tmp
+      scp "homeserver:$remote" ~/tmp/nixos.wsl
+      ssh homeserver "rm -rf $(dirname "$remote")"
+      echo "できた: ~/tmp/nixos.wsl  (Windows 側で wsl --import する。docs/NIXOS_WSL.md)"
+    }
+
 # Fetch, diff, or apply the tailnet policy file (ACL / split DNS). Needs TS_API_KEY
 [group('Homelab')]
 tailnet cmd="diff":
