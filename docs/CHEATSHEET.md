@@ -75,6 +75,7 @@ eza / bat が ls / cat を置き換え済(home-manager が auto-alias)。
 | `lla` | `eza -la` |
 | `ls` | `eza` |
 | `lt` | `eza --tree` |
+| `ssh2` | `ssh -o ClearAllForwardings=yes` |
 | `tl` | `textlint --config ~/.config/textlint/.textlintrc.json` |
 | `tlf` | `textlint --config ~/.config/textlint/.textlintrc.json --fix` |
 <!-- END aliases -->
