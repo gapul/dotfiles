@@ -276,7 +276,6 @@
     distrobox # run another distro's userland on podman (mix of Arch/Ubuntu tools)
     lazydocker # TUI for podman/docker
     btop # system monitor
-    fastfetch # system info display
     nvtopPackages.intel # GPU monitor (Intel)
 
     # Hyprland QoL
