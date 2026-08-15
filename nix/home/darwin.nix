@@ -190,6 +190,11 @@ in
     # All of these exist in nixpkgs for aarch64-darwin and substitute from the cache, and none of
     # them needs a brew service / tap / keg. See hosts/darwin.nix's brews for what stays on brew and why.
     sox # audio processing (rec / play / sox / soxi)
+    # Talk to the iPhone over USB without Finder. Voice Memos keeps its recordings inside the app
+    # sandbox, which AFC cannot reach, so the only way off the device is a device backup
+    # (idevicebackup2) and pulling the AppDomainGroup-group.com.apple.VoiceMemos.shared files out
+    # of its Manifest.db.
+    libimobiledevice
     exiftool # strip metadata (GPS/device info) from images/PDFs before sharing
     blueutil # Bluetooth CLI
     duti # file associations
