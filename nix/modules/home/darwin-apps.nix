@@ -21,6 +21,21 @@
     executable = true;
   };
 
+  # ios: drive the iPhone's UI from the Mac (screenshot / tap / type) by talking to
+  # WebDriverAgent over the network. The WDA project itself is fetched by `ios bootstrap`
+  # rather than vendored here, since it is Appium's tree and only needed on this host.
+  home.file.".local/bin/ios" = {
+    source = ../../../configs/bin/ios;
+    executable = true;
+  };
+
+  # droid: the Android half of the same idea. adb does the whole job here, so this is
+  # a thin wrapper rather than a server to babysit.
+  home.file.".local/bin/droid" = {
+    source = ../../../configs/bin/droid;
+    executable = true;
+  };
+
   # espanso: general-purpose snippets (public) — to the Container path on Mac
   home.file."Library/Application Support/espanso/match/base.yml".source =
     ../../../configs/espanso/base.yml;
