@@ -517,6 +517,8 @@ in
       "prismlauncher"
       "retroarch-metal"
       "steam"
+      # ispc の Sunshine につなぐクライアント (Windows 専用のものを母艦から触る)
+      "moonlight"
       "playcover-community"
 
       # ─── Productivity / Notes / Reading ───

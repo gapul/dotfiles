@@ -7,7 +7,6 @@
 #   - configs/wm/glazewm/config.yaml (border 色を palette で上書き)
 #   - configs/terminals/wezterm/wezterm.lua (color_scheme は内蔵で OK だが
 #     window/cursor 色を palette と整合させる)
-#   - windows/terminal/settings.json (schemes に Rose Pine を生成 + 適用)
 #
 # template マーカー: {{ palette.X }} を palette.json の値で置換。
 # X は base/surface/overlay/muted/subtle/text/love/gold/rose/pine/foam/iris/hlMed。
@@ -102,8 +101,6 @@ $Targets = @(
        Out  = Join-Path $DotfilesDir 'configs\wm\zebar\styles.css' },
     @{ Tmpl = Join-Path $DotfilesDir 'configs\wm\glazewm\config.yaml.tmpl';
        Out  = Join-Path $DotfilesDir 'configs\wm\glazewm\config.yaml' },
-    @{ Tmpl = Join-Path $DotfilesDir 'windows\terminal\settings.json.tmpl';
-       Out  = Join-Path $DotfilesDir 'windows\terminal\settings.json' },
     @{ Tmpl = Join-Path $DotfilesDir 'configs\terminals\wezterm\wezterm.lua.tmpl';
        Out  = Join-Path $DotfilesDir 'configs\terminals\wezterm\wezterm.lua' }
 )
@@ -112,4 +109,4 @@ foreach ($t in $Targets) {
 }
 
 Log ''
-Log '完了。app を再起動すると新色が反映されます (GlazeWM/Zebar/WezTerm/Windows Terminal)。'
+Log '完了。app を再起動すると新色が反映されます (GlazeWM/Zebar/WezTerm)。'

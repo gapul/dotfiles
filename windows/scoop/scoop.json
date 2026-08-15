@@ -5,10 +5,6 @@
     "nonportable"
   ],
   "apps": [
-    "files-np",
-    "glow",
-    "ouch",
-    "ffmpegthumbnailer",
-    "ffmpeg"
+    "files-np"
   ]
 }

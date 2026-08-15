@@ -1,6 +1,6 @@
 # Windows ネイティブ環境(WSL 外)
 
-Windows 上で動く部分(PowerShell, winget, Windows Terminal 等)の dotfiles。
+Windows 上で動く部分(PowerShell, winget, WezTerm 等)の dotfiles。
 WSL2 側の Linux 環境は `~/.dotfiles/nix/home/wsl.nix` で別管理。
 
 ## 構成
@@ -13,10 +13,8 @@ windows/
 │   └── config                                 # Windows OpenSSH 接続先
 ├── profile/
 │   └── Microsoft.PowerShell_profile.ps1       # $PROFILE
-├── winget/
-│   └── apps.json                              # winget 宣言的 import 形式
-└── terminal/
-    └── settings.json                          # Windows Terminal
+└── winget/
+    └── apps.json                              # winget 宣言的 import 形式
 ```
 
 ## 初回セットアップ
@@ -39,11 +37,9 @@ git clone https://github.com/gapul/dotfiles.git $env:USERPROFILE\dotfiles
 1. **winget** が無ければ Microsoft Store 経由で install を促す
 2. `winget/apps.json` を `winget import` で一括 install
 3. PowerShell `$PROFILE` を symlink (`profile/Microsoft.PowerShell_profile.ps1`)
-4. Windows Terminal の `settings.json` を生成 (`__WSL_USER__`/`__WSL_DISTRO__` を実値へ置換。
-   既定は `-WslUser $env:USERNAME -WslDistro Ubuntu`、別ユーザー/distro は引数で上書き)
-5. Windows OpenSSHのconfigを `%USERPROFILE%\.ssh\config` へsymlink
-6. age 鍵 / SSH 鍵が在れば ACL を本人のみに制限 (icacls)。無ければ警告
-7. git の global config 設定
+4. Windows OpenSSHのconfigを `%USERPROFILE%\.ssh\config` へsymlink
+5. age 鍵 / SSH 鍵が在れば ACL を本人のみに制限 (icacls)。無ければ警告
+6. git の global config 設定
 
 ## 何が含まれない
 
@@ -64,4 +60,4 @@ git clone https://github.com/gapul/dotfiles.git $env:USERPROFILE\dotfiles
 
 PowerShell プロファイル: ファイル編集後 `. $PROFILE` で再読込
 
-Windows Terminal: 設定ファイル変更後 Terminal を再起動
+WezTerm: 設定ファイル変更後 WezTerm を再起動

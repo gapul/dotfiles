@@ -73,8 +73,6 @@ window_rules:
     match:
       - window_process: { equals: 'zebar' }
       - window_process: { equals: 'Flow.Launcher' }
-      - window_process: { equals: 'PowerToys' }
-      - window_process: { equals: 'PowerToys.PowerLauncher' }
       - window_process: { equals: 'Ditto' }
       # Bitdefender 系 (GUI が GlazeWM の tiling に対応していない)
       - window_process: { equals: 'seccenter' }      # Bitdefender Security Center 本体
