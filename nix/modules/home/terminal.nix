@@ -139,40 +139,64 @@ in
   # collides with Emacs). Many of the rest already agree anyway (c, x, z, e, hjkl, p, n, ?, R).
   # herdr ships rose-pine/rose-pine-dawn built in, so no palette generation is needed; the
   # names are pinned for the same reason as dark/light in lib/theme.nix.
-  home.file.".config/herdr/config.toml".text = ''
-    # nix (modules/home/terminal.nix) が生成。手で編集しない。
-    # 変更は次回 herdr 起動時に反映される (herdr はこのファイルを監視していない)。
-    # `herdr server reload-config` は使わない。サーバ側は成功するのに、繋いでいる
-    # クライアントだけ無反応になって開き直す羽目になる (2026-08-10 に 4 回再現)。
-    onboarding = false
+  # 中身は configs/cli/herdr/config.toml。母艦だけが home-manager を通るので、ここで
+  # .text に直書きしているとリモートには一生届かない (2026-08-15 に実害。auto_switch の
+  # 既定が false なので、リモートの herdr はテーマ追従が丸ごと効いていなかった)。
+  # ファイルに出して configs/bin/remote-bootstrap からも同じものを張れるようにする。
+  home.file.".config/herdr/config.toml".source = ../../../configs/cli/herdr/config.toml;
 
-    [theme]
-    # tmux と同じ rose-pine。auto_switch が見るのは OS ではなく「端末」で、外側の端末へ
-    # OSC 11 (背景色) を問い合わせ、mode 2031 (テーマ更新通知) を購読して追従する。
-    # よって ssh 越しでも接続元 ghostty の切替がそのまま効き、サーバ側の OS は関係ない
-    # (2026-08 に Linux 上の herdr へ light の背景を返して dawn を選ぶことを実測)。
-    # 以前ここには「macOS の外観に追従 (他 OS では dark 固定)」と書いてあったが誤り。
-    #
-    # ペイン内のプログラム (nvim / Claude Code の theme=auto) への中継は herdr 0.8.0 から。
-    # 0.7.5 では起動時の OSC 11 応答だけが返り、途中の切替は中まで届かなかった (#714)。
-    auto_switch = true
-    dark_name = "rose-pine"
-    light_name = "rose-pine-dawn"
-
-    [keys]
-    # tmux と同じ C-t。Emacs の C-b (backward-char) と衝突するため。
-    prefix = "ctrl+t"
-
-    [ui]
-    show_agent_labels_on_pane_borders = true
-
-    # [ui.toast] delivery = "system" は使わない。macOS でこれを付けると herdr は通知を
-    # 出す前に「今どの端末アプリの中か」を確かめようとして mdfind を叩き、それを
-    # クライアントの描画ループ上で同期実行する (platform::macos::show_desktop_notification
-    # → verified_terminal_bundle_identifier → Command::output)。Spotlight が詰まると
-    # mdfind は永久に返らず、タスクが完了するたびに TUI ごと固まる (2026-08-10 に遭遇。
-    # そのときは rclone の死んだ NFS マウントが残っていて mds が getattrlistbulk で
-    # 止まっていた)。OS 通知自体は Claude Code の Stop フック (agent-notify) が osascript で
-    # 出しているので、外しても手元に届く通知は変わらない。むしろ二重通知が一本になる。
+  # `herdr --remote <host>` の前にリモートの下準備を済ませる。
+  #
+  # nssh は「ssh で下準備 → tmux を起動」の 2 段だが、herdr は --remote が自前で ssh を
+  # 張るのでその 1 段目が無い。結果 herdr で入ったホストだけ dotfiles が更新されず、
+  # nix-portable も symlink も Claude 設定も置かれないまま使うことになる
+  # (2026-08-15 に ~/.dotfiles が 15 コミット遅れているのを発見。#309〜#323 が未着だった)。
+  # 素の `herdr` を打つ習慣を変えずに塞ぎたいので、mutagen の ssh ラッパー
+  # (home/mutagen-sync.nix) と同じ形で関数を被せる。
+  #
+  # --remote が無いとき (ローカル起動) は素通り。判定は完全一致で行う。
+  # --remote-keybindings という別のフラグがあるので部分一致では誤爆する。
+  # 下準備が失敗しても接続は止めない (繋げないと直せないため)。
+  #
+  # HERDR_ENV では分岐しない。herdr セッションの中から `herdr --remote` を打っても
+  # nesting で撥ねられずそのまま繋がるので (2026-08-15 実測。remote platform detection
+  # まで進む)、中に居ることを理由に飛ばすと「母艦の herdr からリモートへ移る」という
+  # 一番ありそうな経路でだけ下準備が抜ける。
+  programs.zsh.initContent = lib.mkAfter ''
+    function herdr() {
+      local target="" arg bootstrap url
+      local -i i=0
+      for arg in "$@"; do
+        (( i++ ))
+        case "$arg" in
+          --remote)   target="''${@[i+1]}" ; break ;;
+          --remote=*) target="''${arg#--remote=}" ; break ;;
+        esac
+      done
+      # 値が無い / 次のトークンがフラグ、は --remote の指定漏れ。herdr 本体に叱らせる。
+      [[ "$target" == -* ]] && target=""
+      if [[ -n "$target" ]]; then
+        bootstrap="$HOME/.local/bin/remote-bootstrap"
+        [[ -r "$bootstrap" ]] || bootstrap="$HOME/.dotfiles/configs/bin/remote-bootstrap"
+        if [[ -r "$bootstrap" ]]; then
+          url=$(command git -C "$HOME/.dotfiles" remote get-url origin 2>/dev/null)
+          [[ -n "$url" ]] || url="git@github.com:gapul/dotfiles.git"
+          print -u2 "[herdr] $target の下準備 (dotfiles 同期) ..."
+          command ssh -A -o ConnectTimeout=10 "$target" \
+            "DOTFILES_URL='$url' bash -s" < "$bootstrap" \
+            || print -u2 "[herdr] WARNING: 下準備に失敗しました。そのまま接続します。"
+        else
+          print -u2 "[herdr] WARNING: remote-bootstrap が見つからないので下準備を飛ばします。"
+        fi
+      fi
+      command herdr "$@"
+      local rc=$?
+      # nssh の最後と同じ。herdr で入ったホストも ~/Sync のペアを作る。接続中にやると
+      # Bitwarden agent の承認が再び走るので、必ずセッション終了後・バックグラウンドで。
+      if [[ -n "$target" ]] && (( $+commands[mutagen-sync-ensure] )); then
+        (mutagen-sync-ensure "$target" &) >/dev/null 2>&1
+      fi
+      return $rc
+    }
   '';
 }

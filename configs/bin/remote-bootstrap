@@ -1,0 +1,133 @@
+#!/usr/bin/env bash
+#
+# リモートホスト側で走る側の nssh。ここに居るのは「接続の入口が 2 つになった」ため。
+#
+# 元は configs/bin/nssh の中のヒアドキュメントだった。nssh は最後に tmux を起動するが、
+# herdr は `herdr --remote <host>` が自前で ssh を張るので nssh を経由しない。結果、
+# herdr で入ったホストだけこの下準備が一切走らず、~/.dotfiles が origin から取り残される
+# (2026-08-15 に 15 コミット遅れているのを発見。#309〜#323 が丸ごと届いていなかった)。
+#
+# そこで中身を独立したスクリプトに出し、nssh と herdr ラッパー (nix/home/workstation.nix)
+# の両方が同じものを流し込む。呼び出し方はどちらも:
+#
+#   ssh -A <host> "DOTFILES_URL='...' bash -s" < configs/bin/remote-bootstrap
+#
+# 引数は取らず、環境変数 DOTFILES_URL だけを見る。冪等なので何度流しても良い。
+
+set -euo pipefail
+mkdir -p ~/.local/bin ~/.config
+arch=$(uname -m)
+
+# 1. nix-portable
+if [ ! -x ~/.local/bin/nix-portable ]; then
+  echo "[bootstrap] Installing nix-portable for ${arch}..."
+  curl -fsSL "https://github.com/DavHau/nix-portable/releases/latest/download/nix-portable-${arch}" \
+    -o ~/.local/bin/nix-portable
+  chmod +x ~/.local/bin/nix-portable
+fi
+
+# 1.5. f3d (yazi の 3D モデルプレビュー)
+#      nix-portable 経由の f3d は libglvnd が GL ドライバを見つけられず、EGL も GLX も
+#      初期化できない。公式のバンドル版はシステムの mesa を使うのでヘッドレスでも描ける。
+f3d_ver=3.5.0
+if [ ! -x ~/.local/bin/f3d ] && [ "$(uname -s)" = "Linux" ] && [ "$arch" = "x86_64" ]; then
+  echo "[bootstrap] Installing f3d ${f3d_ver}..."
+  mkdir -p ~/.local/opt
+  if curl -fsSL "https://github.com/f3d-app/f3d/releases/download/v${f3d_ver}/F3D-${f3d_ver}-Linux-x86_64.tar.xz" \
+    | tar xJ -C ~/.local/opt; then
+    ln -sfn ~/.local/opt/"F3D-${f3d_ver}-Linux-x86_64"/bin/f3d ~/.local/bin/f3d
+  else
+    echo "[bootstrap] WARNING: f3d の導入に失敗。3D モデルのプレビューだけ効きません。" >&2
+  fi
+fi
+
+# 2. dotfiles (SSH URL を使い、Agent Forward で local 鍵を流用)
+#    初回のみ github.com の host key を known_hosts に自動追加
+if ! grep -q "^github.com " ~/.ssh/known_hosts 2>/dev/null; then
+  ssh-keyscan -t ed25519,rsa github.com >> ~/.ssh/known_hosts 2>/dev/null || true
+fi
+if [ ! -d ~/.dotfiles/.git ]; then
+  echo "[bootstrap] Cloning dotfiles (${DOTFILES_URL:?})..."
+  git clone "$DOTFILES_URL" ~/.dotfiles
+else
+  # リモートは使い捨て前提なので origin に強制で合わせる。
+  # pull --rebase だと lazy-lock.json 等の差分で黙って失敗し、古いまま使い続けることになる。
+  #
+  # ただし手を入れた作業ツリーを黙って捨てさせない。この下準備は接続のたびに走るので、
+  # nssh だけだった頃より reset --hard を踏む回数がずっと多い (herdr は1日に何度も繋ぐ)。
+  # 消える前に stash へ退避し、場所を必ず出力する。lazy-lock.json だけが汚れている
+  # 通常状態では stash を作らない (毎回ゴミが積もるのを避ける)。
+  if [ -d ~/.dotfiles ]; then
+    dirty=$(git -C ~/.dotfiles status --porcelain --untracked-files=no 2>/dev/null \
+      | grep -v 'configs/editors/nvim/lazy-lock.json$' || true)
+    if [ -n "$dirty" ]; then
+      if git -C ~/.dotfiles stash push --quiet \
+        -m "remote-bootstrap: reset --hard 前の自動退避" 2>/dev/null; then
+        echo "[bootstrap] WARNING: ~/.dotfiles に未コミットの変更があったので stash に退避しました。" >&2
+        echo "[bootstrap]          復元: git -C ~/.dotfiles stash pop" >&2
+        echo "$dirty" | sed 's/^/[bootstrap]          /' >&2
+      fi
+    fi
+  fi
+  git -C ~/.dotfiles fetch --quiet origin && git -C ~/.dotfiles reset --hard --quiet '@{u}' \
+    || echo "[bootstrap] WARNING: dotfiles の更新に失敗。既存の clone のまま続行します。" >&2
+fi
+
+# 3. config symlinks
+ln -sfn ~/.dotfiles/configs/editors/nvim     ~/.config/nvim
+ln -sfn ~/.dotfiles/configs/cli/yazi         ~/.config/yazi
+ln -sfn ~/.dotfiles/configs/terminals/tmux   ~/.config/tmux
+#    yazi の opener が Enter で叩く。母艦へのトンネルが無ければ xdg-open に落ちる。
+ln -sfn ~/.dotfiles/configs/bin/open-on-mac  ~/.local/bin/open-on-mac
+#    gh と codex は設定と同じディレクトリに認証情報 (hosts.yml / auth.json) を置くため、
+#    ディレクトリごとではなく設定ファイル単体を張る。認証情報はホスト側に残す。
+#    どちらもツール自身が設定を書き戻すことがあるが、その書き込みは dotfiles の
+#    working tree に落ちて次回接続の reset --hard で消える (nvim の lazy-lock.json と同じ扱い)。
+mkdir -p ~/.config/gh ~/.codex
+ln -sfn ~/.dotfiles/configs/cli/gh/config.yml     ~/.config/gh/config.yml
+ln -sfn ~/.dotfiles/configs/cli/codex/config.toml ~/.codex/config.toml
+#    herdr も同じ扱い。~/.config/herdr には herdr 自身の state (socket / log /
+#    session.json) が同居するのでディレクトリごとは張れず、ファイル単体を張る。
+#    これが無いと herdr のテーマ追従は働かない。auto_switch の既定が false なので、
+#    設定が届いていないホストでは 0.8.0 でも protocol が一致していても効かない
+#    (2026-08-15 に実害。リモートの config.toml は herdr 自身が書いた
+#    `onboarding = false` の 19 バイトだけだった)。prefix = ctrl+t も同様に届いていない。
+mkdir -p ~/.config/herdr
+ln -sfn ~/.dotfiles/configs/cli/herdr/config.toml ~/.config/herdr/config.toml
+#    Claude Code: 書き換わらないもの (CLAUDE.md / 自作 skill) は symlink で張る。
+#    hooks / output-styles / bin は母艦のデスクトップ前提なので持ち込まない。
+mkdir -p ~/.claude/skills
+ln -sfn ~/.dotfiles/configs/cli/claude/CLAUDE.md ~/.claude/CLAUDE.md
+for s in english-vocab gapul-writing-voice step-by-step-tutor; do
+  ln -sfn ~/.dotfiles/configs/cli/claude/skills/"$s" ~/.claude/skills/"$s"
+done
+#    settings.json だけは symlink にしない。permissions がホストごとに育つファイルで、
+#    symlink にすると reset --hard で承認済みの許可が毎回消える。dotfiles 側の管理キーだけを
+#    既存ファイルへ merge する (下の bashrc と同じ考え方。一覧は configs/cli/claude/README.md)。
+#    python3 が無い環境では黙って諦める (Claude が無いホストでも困らない)。
+if command -v python3 >/dev/null 2>&1; then
+  python3 ~/.dotfiles/scripts/merge-claude-settings.py ~/.claude/settings.json \
+    || echo "[bootstrap] WARNING: Claude 設定の反映に失敗。ホスト側の設定のまま続行します。" >&2
+else
+  echo "[bootstrap] python3 が無いため Claude 設定の反映をスキップしました" >&2
+fi
+#    zsh: ZDOTDIR を ~/.config/zsh に置き、.zshrc を dotfiles へ向ける。
+#    ログインシェルは bash のまま (共有マシンでは chsh できない) なので、
+#    素の ssh で入ったときは bashrc.remote が使われる。
+mkdir -p ~/.config/zsh
+ln -sfn ~/.dotfiles/configs/shell/zshrc.remote ~/.config/zsh/.zshrc
+
+# 4. shell rc: dotfiles 側の共通 bash 設定を ~/.bashrc から読ませる (marker 付き・冪等)
+#    リモートは home-manager を通らないので ~/.bashrc 本体は各ホストのものが動く。
+#    そこに source 行を 1 行だけ足しておけば、中身は dotfiles 側 (reset --hard で毎回最新)
+#    に寄せられる。ホスト固有の設定は marker の外にそのまま残る。
+marker='# >>> dotfiles bashrc.remote >>>'
+if [ -f ~/.bashrc ] && ! grep -qF "$marker" ~/.bashrc; then
+  {
+    echo ""
+    echo "$marker"
+    echo '[ -r "$HOME/.dotfiles/configs/shell/bashrc.remote" ] && . "$HOME/.dotfiles/configs/shell/bashrc.remote"'
+    echo '# <<< dotfiles bashrc.remote <<<'
+  } >> ~/.bashrc
+  echo "[bootstrap] ~/.bashrc に dotfiles の bash 設定を読む行を追記しました"
+fi
