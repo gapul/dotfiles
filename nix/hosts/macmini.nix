@@ -141,6 +141,11 @@ in
   #
   # The jar is pinned on purpose: a server that upgrades itself locks every player out until they
   # all update their client. Bumping it means dropping the new jar in and editing this line.
+  #
+  # 26.1.2 -> 26.2 on 2026-08-15, before opening the server to friends: launchers start the newest
+  # release by default, so staying two versions behind would have made every guest hunt for an old
+  # profile. The pre-upgrade world is at /Users/mcsrv/server.bak-26.1.2-20260815 (the conversion to
+  # the new format is one-way).
   launchd.daemons.minecraft = {
     serviceConfig = {
       ProgramArguments = [
@@ -168,7 +173,7 @@ in
         "-XX:+PerfDisableSharedMem"
         "-XX:MaxTenuringThreshold=1"
         "-jar"
-        "paper-26.1.2-74.jar"
+        "paper-26.2-112.jar"
         "--nogui"
       ];
       UserName = "mcsrv";
