@@ -759,7 +759,6 @@ _fmt-windows:
 
 # Hide backstage apps (Adobe helpers, Karabiner's driver manager) from the Applications launcher
 [group('Clean')]
-[macos]
 tidy-apps:
     "{{ justfile_directory() }}/scripts/hide-backstage-apps.sh"
 
