@@ -181,6 +181,7 @@ curl -fsSL https://raw.githubusercontent.com/gapul/dotfiles/main/scripts/bootstr
 |---|---|
 | `nssh user@host` | rootless Nix(`nix-portable`)で nvim/yazi/tmux(自分の設定)を使う |
 | `just ssh <host>` | `nssh` のショート |
+| `herdr --remote user@host` | 同じ下準備を済ませてから herdr で繋ぐ(zsh 関数が `configs/bin/remote-bootstrap` を先に流す) |
 
 ### 🟥 コード品質 (git-hooks.nix + treefmt)
 
