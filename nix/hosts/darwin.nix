@@ -317,9 +317,10 @@ in
       # (Xcode itself is managed by xcodes, which moved to nix — see home/darwin.nix. aria2, which
       #  xcodes uses for the parallel .xip download, was already declared in home/workstation.nix.)
 
-      # ─── Status bar / Window decoration (felixkratz tap) ───
+      # ─── Status bar (felixkratz tap) ───
+      # (borders/JankyBorders was dropped 2026-08: OmniWM draws its own active-window border, so the
+      #  resident daemon was 174MB of duplicate decoration.)
       "felixkratz/formulae/sketchybar" # (a) tap-only. launched via launchd agent (home/darwin-chrome.nix)
-      "felixkratz/formulae/borders" # (a) tap-only. launched via launchd agent (home/darwin-chrome.nix); OmniWM has no exec action
 
       # ─── Transcription / other 3rd-party tap brews ───
       "finnvoor/tools/yap" # (a) Japanese transcription. tap-only, not in nixpkgs
