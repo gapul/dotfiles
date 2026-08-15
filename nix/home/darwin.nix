@@ -14,13 +14,6 @@ let
   # The bundle actually launched: a signed copy of the one in the store, see
   # home.activation.mechvibesSign below.
   mechvibesApp = "/Applications/MechvibesDX.app";
-
-  # Deliberately not in home.packages, see home.activation.registerOrcaUrlShim below.
-  orcaUrlShim = pkgs.callPackage ../pkgs/orca-url-shim { };
-
-  lsregister =
-    "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework"
-    + "/Support/lsregister";
 in
 {
   imports = [
@@ -283,32 +276,6 @@ in
 
   home.activation.mechvibesLogDir = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     /bin/mkdir -p "${config.home.homeDirectory}/Library/Logs/MechvibesDX"
-  '';
-
-  # MakerWorld's "Open in Bambu Studio" button opens a bambustudio:// URL, and nothing claims that
-  # scheme now that Bambu Studio is uninstalled. This handler claims it and forwards to Orca.
-  #
-  # Registered straight out of the store instead of going through home.packages: home-manager
-  # symlinks any Applications/ directory into ~/Applications/Home Manager Apps, and a Launchpad
-  # tile for a process that has no UI and lives for one second is just clutter. Interpolating the
-  # store path into this script is also what roots it against garbage collection.
-  #
-  # lsregister must run as the user - the LaunchServices database is per-user, so doing this from
-  # nix-darwin's root activation would register the handler for root and leave the scheme dead.
-  home.activation.registerOrcaUrlShim = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    app=${orcaUrlShim}/libexec/OrcaURLShim.app
-    stamp="${config.xdg.stateHome}/orca-url-shim-store-path"
-    if [ "$(cat "$stamp" 2>/dev/null)" != "$app" ]; then
-      $DRY_RUN_CMD /bin/mkdir -p "${config.xdg.stateHome}"
-      # Retire the previous generation's row first, or LaunchServices keeps resolving the scheme
-      # to a store path that garbage collection will eventually delete.
-      old="$(cat "$stamp" 2>/dev/null || true)"
-      if [ -n "$old" ]; then
-        $DRY_RUN_CMD ${lsregister} -u "$old" || true
-      fi
-      $DRY_RUN_CMD ${lsregister} -f "$app"
-      $DRY_RUN_CMD echo "$app" > "$stamp"
-    fi
   '';
 
   # TCC pins its rows to the code signature, and what nix builds is ad-hoc
