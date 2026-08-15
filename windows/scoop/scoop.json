@@ -5,8 +5,6 @@
     "nonportable"
   ],
   "apps": [
-    "files-np",
-    "ffmpegthumbnailer",
-    "ffmpeg"
+    "files-np"
   ]
 }

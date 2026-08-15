@@ -23,16 +23,10 @@
           "PackageIdentifier": "Captura.Captura"
         },
         {
-          "PackageIdentifier": "Deskflow.Deskflow"
-        },
-        {
           "PackageIdentifier": "DEVCOM.JetBrainsMonoNerdFont"
         },
         {
           "PackageIdentifier": "Ditto.Ditto"
-        },
-        {
-          "PackageIdentifier": "ente-io.auth-desktop"
         },
         {
           "PackageIdentifier": "Espanso.Espanso"
@@ -50,16 +44,10 @@
           "PackageIdentifier": "Henry++.simplewall"
         },
         {
-          "PackageIdentifier": "ImageMagick.Q16-HDRI"
-        },
-        {
           "PackageIdentifier": "jurplel.qView"
         },
         {
           "PackageIdentifier": "KDE.KDEConnect"
-        },
-        {
-          "PackageIdentifier": "KeePassXCTeam.KeePassXC"
         },
         {
           "PackageIdentifier": "LocalSend.LocalSend"
@@ -77,19 +65,7 @@
           "PackageIdentifier": "Microsoft.WSL"
         },
         {
-          "PackageIdentifier": "Mozilla.Thunderbird"
-        },
-        {
           "PackageIdentifier": "nathancorvussolis.corvusskk"
-        },
-        {
-          "PackageIdentifier": "Obsidian.Obsidian"
-        },
-        {
-          "PackageIdentifier": "Ollama.Ollama"
-        },
-        {
-          "PackageIdentifier": "oschwartz10612.Poppler"
         },
         {
           "PackageIdentifier": "Playnite.Playnite"
