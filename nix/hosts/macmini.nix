@@ -8,26 +8,70 @@
 let
   paperServer = pkgs.callPackage ../pkgs/paper-server.nix { };
 
+  # サーバーに入れる jar は全部ここで固定する。plugins/ と mods/ に置かれるのは store への
+  # symlink なので、宣言と中身がずれない。手で入れた実体の jar には触らない。
+  #
+  # Paper 本体と違って自動更新には載せていない。mod と plugin は本体の版に追いつく速度が
+  # まちまちで、勝手に上がると「昨日入れた世界が開かない」が起きるため。上げるときは人が決める。
+  multiverseCore = pkgs.fetchurl {
+    url = "https://cdn.modrinth.com/data/3wmN97b8/versions/bzFXz39N/multiverse-core-5.8.0.jar";
+    hash = "sha256-xSfZ4holpxyyRCrB8b/TqKHvt9ieDLDmqU9gAwT95sE=";
+  };
+  twilightForest = pkgs.fetchurl {
+    url = "https://mediafilez.forgecdn.net/files/7797/302/twilightforest-1.21.1-4.8.3345-universal.jar";
+    hash = "sha256-ST2hbRAhD59To8M7PY/LSumxQBbuQg11PIlFYr2aujU=";
+  };
+  neoforgeVersion = "21.1.248";
+  neoforgeInstaller = pkgs.fetchurl {
+    url = "https://maven.neoforged.net/releases/net/neoforged/neoforge/${neoforgeVersion}/neoforge-${neoforgeVersion}-installer.jar";
+    hash = "sha256-aO6rdwWbpT3xgS8a+lv1MKslZqPNzV+SSqbnG+QuQQw=";
+  };
+
   # 立てているマイクラのサーバー。本館はバニラ(Paper)で最新を追い、mod 用は別インスタンスに
   # する——mod は本体の新バージョンに追いつくのが遅く、「最新を追う」と両立しないため。
-  # autostart = false のものは launchd に載るが自動では上がらない(遊ぶときだけ起こす)。
+  # version/protocol は寝ている間の status 応答に使う(lazymcConfig を参照)。
   minecraftServers = {
-    # 友人と遊ぶ本館。
+    # 友人と遊ぶ本館。世界を増やせるように Multiverse を入れてある(`/mv create` で足す)。
     vanilla = {
       dir = "/Users/mcsrv/server";
-      jar = "${paperServer}";
       java = pkgs.temurin-bin-25;
       memory = "2G";
       port = 25565;
+      version = "26.2";
+      protocol = 776;
+      runner = ../../configs/macmini/minecraft/run.sh;
+      env = {
+        SERVER_JAR = "${paperServer}";
+        PLUGINS = "${multiverseCore}";
+      };
     };
     # 自分ひとり用。世界を分けたいだけなので設定は本館と同じ。無人のあいだ止まっている以上、
     # 増やしても待機コストは無い。
     solo = {
       dir = "/Users/mcsrv/solo";
-      jar = "${paperServer}";
       java = pkgs.temurin-bin-25;
       memory = "2G";
       port = 25566;
+      version = "26.2";
+      protocol = 776;
+      runner = ../../configs/macmini/minecraft/run.sh;
+      env.SERVER_JAR = "${paperServer}";
+    };
+    # mod 用。黄昏の森が追いついている最新が 1.21.1 なので、本館とは別の版で固定する。
+    # NeoForge 21.1 は Java 21 でしか動かない(25 では起動しない)。
+    modded = {
+      dir = "/Users/mcsrv/modded";
+      java = pkgs.temurin-bin-21;
+      memory = "3G";
+      port = 25567;
+      version = "1.21.1";
+      protocol = 767;
+      runner = ../../configs/macmini/minecraft/run-modded.sh;
+      env = {
+        NEOFORGE_INSTALLER = "${neoforgeInstaller}";
+        NEOFORGE_VERSION = neoforgeVersion;
+        MODS = "${twilightForest}";
+      };
     };
   };
 
@@ -43,14 +87,14 @@ let
       [public]
       address = "0.0.0.0:${toString inst.port}"
       # 寝ている間の status 応答に使う版。実際の互換性とは関係が無いが、ずれていると
-      # サーバー一覧に赤い×が出る。Paper を上げたらここも合わせる。
-      version = "26.2"
-      protocol = 776
+      # サーバー一覧に赤い×が出る。本体を上げたら表の version/protocol も合わせる。
+      version = "${inst.version}"
+      protocol = ${toString inst.protocol}
 
       [server]
       address = "127.0.0.1:${toString (inst.port + 10)}"
       directory = "${inst.dir}"
-      command = "${../../configs/macmini/minecraft/run.sh}"
+      command = "${inst.runner}"
       # server.properties の server-port を lazymc が書き換える。手で合わせると必ずずれる。
       wake_on_start = false
       wake_on_crash = false
@@ -97,10 +141,10 @@ in
             ];
             EnvironmentVariables = {
               SERVER_DIR = inst.dir;
-              SERVER_JAR = inst.jar;
               SERVER_MEM = inst.memory;
               JAVA_BIN = "${inst.java}/bin/java";
-            };
+            }
+            // inst.env;
             UserName = "mcsrv";
             WorkingDirectory = inst.dir;
             # Tier 1: tick latency is the thing players feel.

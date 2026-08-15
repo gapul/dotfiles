@@ -38,6 +38,16 @@ if [ -n "$jar_version" ] && [ -n "$running_version" ] && [ "$jar_version" != "$r
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] $running_version -> $jar_version: 変換前の世界を $snapshot へ退避した"
 fi
 
+# 宣言された plugin は store への symlink として置き直す。前回の分(= symlink)は毎回消すので、
+# 宣言から外した plugin は次の起動で居なくなる。手で入れた実体の jar には触らない。
+mkdir -p plugins
+find plugins -maxdepth 1 -type l -name '*.jar' -delete
+for p in ${PLUGINS:-}; do
+  name=$(basename "$p")
+  # store の名前は <hash>-<本来の名前>.jar。hash に - は入らないので先頭だけ落とせばいい。
+  ln -sfn "$p" "plugins/${name#*-}"
+done
+
 # Aikar's flags から AlwaysPreTouch を外し -Xms を小さくしてある。無人時間が長く、24GB を
 # AI スタックと分け合う機械では、起動時に全ヒープを commit するのは損なので。
 exec "$JAVA" \
