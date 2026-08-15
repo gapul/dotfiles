@@ -92,7 +92,9 @@ let
       protocol = ${toString inst.protocol}
 
       [server]
-      address = "127.0.0.1:${toString (inst.port + 10)}"
+      # +100 なのは、+10 だと本館の 25575 が rcon の既定ポートと重なるため。rcon を有効に
+      # した日に「bind できない」で悩むことになる。
+      address = "127.0.0.1:${toString (inst.port + 100)}"
       directory = "${inst.dir}"
       command = "${inst.runner}"
       # server.properties の server-port を lazymc が書き換える。手で合わせると必ずずれる。
