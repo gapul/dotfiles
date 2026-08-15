@@ -945,7 +945,7 @@ type = "main"
 [[workspaces]]
 id = "89253D58-01E9-49C6-8CEE-3DA58B13551B"
 layoutType = "dwindle"
-name = "0"
+name = "10"
 
 [workspaces.monitorAssignment]
 type = "secondary"
