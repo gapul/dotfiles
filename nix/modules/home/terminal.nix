@@ -175,4 +175,59 @@ in
     # 止まっていた)。OS 通知自体は Claude Code の Stop フック (agent-notify) が osascript で
     # 出しているので、外しても手元に届く通知は変わらない。むしろ二重通知が一本になる。
   '';
+
+  # `herdr --remote <host>` の前にリモートの下準備を済ませる。
+  #
+  # nssh は「ssh で下準備 → tmux を起動」の 2 段だが、herdr は --remote が自前で ssh を
+  # 張るのでその 1 段目が無い。結果 herdr で入ったホストだけ dotfiles が更新されず、
+  # nix-portable も symlink も Claude 設定も置かれないまま使うことになる
+  # (2026-08-15 に ~/.dotfiles が 15 コミット遅れているのを発見。#309〜#323 が未着だった)。
+  # 素の `herdr` を打つ習慣を変えずに塞ぎたいので、mutagen の ssh ラッパー
+  # (home/mutagen-sync.nix) と同じ形で関数を被せる。
+  #
+  # --remote が無いとき (ローカル起動) は素通り。判定は完全一致で行う。
+  # --remote-keybindings という別のフラグがあるので部分一致では誤爆する。
+  # 下準備が失敗しても接続は止めない (繋げないと直せないため)。
+  #
+  # HERDR_ENV では分岐しない。herdr セッションの中から `herdr --remote` を打っても
+  # nesting で撥ねられずそのまま繋がるので (2026-08-15 実測。remote platform detection
+  # まで進む)、中に居ることを理由に飛ばすと「母艦の herdr からリモートへ移る」という
+  # 一番ありそうな経路でだけ下準備が抜ける。
+  programs.zsh.initContent = lib.mkAfter ''
+    function herdr() {
+      local target="" arg bootstrap url
+      local -i i=0
+      for arg in "$@"; do
+        (( i++ ))
+        case "$arg" in
+          --remote)   target="''${@[i+1]}" ; break ;;
+          --remote=*) target="''${arg#--remote=}" ; break ;;
+        esac
+      done
+      # 値が無い / 次のトークンがフラグ、は --remote の指定漏れ。herdr 本体に叱らせる。
+      [[ "$target" == -* ]] && target=""
+      if [[ -n "$target" ]]; then
+        bootstrap="$HOME/.local/bin/remote-bootstrap"
+        [[ -r "$bootstrap" ]] || bootstrap="$HOME/.dotfiles/configs/bin/remote-bootstrap"
+        if [[ -r "$bootstrap" ]]; then
+          url=$(command git -C "$HOME/.dotfiles" remote get-url origin 2>/dev/null)
+          [[ -n "$url" ]] || url="git@github.com:gapul/dotfiles.git"
+          print -u2 "[herdr] $target の下準備 (dotfiles 同期) ..."
+          command ssh -A -o ConnectTimeout=10 "$target" \
+            "DOTFILES_URL='$url' bash -s" < "$bootstrap" \
+            || print -u2 "[herdr] WARNING: 下準備に失敗しました。そのまま接続します。"
+        else
+          print -u2 "[herdr] WARNING: remote-bootstrap が見つからないので下準備を飛ばします。"
+        fi
+      fi
+      command herdr "$@"
+      local rc=$?
+      # nssh の最後と同じ。herdr で入ったホストも ~/Sync のペアを作る。接続中にやると
+      # Bitwarden agent の承認が再び走るので、必ずセッション終了後・バックグラウンドで。
+      if [[ -n "$target" ]] && (( $+commands[mutagen-sync-ensure] )); then
+        (mutagen-sync-ensure "$target" &) >/dev/null 2>&1
+      fi
+      return $rc
+    }
+  '';
 }

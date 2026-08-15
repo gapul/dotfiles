@@ -4,11 +4,11 @@
 # 自分の dotfiles 設定で nvim / yazi / tmux を使う。
 #
 # 流れ:
-#   1. nix-portable バイナリを ~/.local/bin に展開(初回のみ)
-#   2. dotfiles を SSH 経由で git clone (初回) または git pull
-#      → SSH Agent Forward (-A) でローカルの鍵を使う、リモートに鍵不要
-#   3. ~/.config/{nvim,yazi,tmux} を dotfiles に symlink
-#   4. ~/.bashrc に configs/shell/bashrc.remote を source する行を追記 (冪等)
+#   1-4. configs/bin/remote-bootstrap をリモートへ流し込む (nix-portable / dotfiles の
+#        clone・更新 / config symlink / ~/.bashrc への source 行追記)。
+#        → SSH Agent Forward (-A) でローカルの鍵を使う、リモートに鍵不要
+#        中身を別ファイルに出してあるのは `herdr --remote` からも同じものを流すため
+#        (herdr は自前で ssh を張るので nssh を経由しない)。経緯はあちらの冒頭。
 #   5. nix-portable nix shell .#remote-env -c tmux でセッション開始
 #   6. 切断後に mutagen のペアリングを確認 (macOS のみ。zsh の ssh ラッパーと同じ役割)
 #
@@ -16,8 +16,9 @@
 # リモートは home-manager 非経由なので、tmux 設定のうち nix の生成物に依存する部分は
 # リポジトリ側で肩代わりしている。届くもの / 届かないものは以下のとおり:
 #   - キーバインド・基本設定 : tmux.conf 本体がそのまま効く
-#   - rose-pine テーマ       : configs/terminals/tmux/theme-remote.conf (active パレット固定。
-#                              母艦のライト/ダーク自動追従だけは無い)
+#   - rose-pine テーマ       : configs/terminals/tmux/theme-remote.conf (色を ANSI 番号で
+#                              置いてあるので、解決するのは接続元の端末。母艦の
+#                              ghostty のライト/ダーク切替にそのまま追従する)
 #   - prefix+e (スクロールバック編集) : configs/terminals/tmux/scrollback-edit.sh
 #   - Claude Code            : CLAUDE.md と自作 skill は symlink、settings.json は管理キーだけ
 #                              merge (theme=auto は端末を見るので母艦のライト/ダークに追従する)
@@ -50,101 +51,20 @@ remote_mux='sh -c '\''SHELL="$(command -v zsh || echo "$SHELL")" ZDOTDIR="$HOME/
 DOTFILES_URL=$(git -C "$HOME/.dotfiles" remote get-url origin 2>/dev/null || \
                 echo "git@github.com:gapul/dotfiles.git")
 
-# Agent Forwarding を必ず付ける (-A) と StrictHostKey で github の自動信頼
-ssh -A "$host" "$@" "DOTFILES_URL='$DOTFILES_URL' bash -s" <<'BOOTSTRAP'
-set -euo pipefail
-mkdir -p ~/.local/bin ~/.config
-arch=$(uname -m)
-
-# 1. nix-portable
-if [ ! -x ~/.local/bin/nix-portable ]; then
-  echo "[nssh] Installing nix-portable for ${arch}..."
-  curl -fsSL "https://github.com/DavHau/nix-portable/releases/latest/download/nix-portable-${arch}" \
-    -o ~/.local/bin/nix-portable
-  chmod +x ~/.local/bin/nix-portable
-fi
-
-# 1.5. f3d (yazi の 3D モデルプレビュー)
-#      nix-portable 経由の f3d は libglvnd が GL ドライバを見つけられず、EGL も GLX も
-#      初期化できない。公式のバンドル版はシステムの mesa を使うのでヘッドレスでも描ける。
-f3d_ver=3.5.0
-if [ ! -x ~/.local/bin/f3d ] && [ "$(uname -s)" = "Linux" ] && [ "$arch" = "x86_64" ]; then
-  echo "[nssh] Installing f3d ${f3d_ver}..."
-  mkdir -p ~/.local/opt
-  if curl -fsSL "https://github.com/f3d-app/f3d/releases/download/v${f3d_ver}/F3D-${f3d_ver}-Linux-x86_64.tar.xz" \
-    | tar xJ -C ~/.local/opt; then
-    ln -sfn ~/.local/opt/"F3D-${f3d_ver}-Linux-x86_64"/bin/f3d ~/.local/bin/f3d
-  else
-    echo "[nssh] WARNING: f3d の導入に失敗。3D モデルのプレビューだけ効きません。" >&2
-  fi
-fi
-
-# 2. dotfiles (SSH URL を使い、Agent Forward で local 鍵を流用)
-#    初回のみ github.com の host key を known_hosts に自動追加
-if ! grep -q "^github.com " ~/.ssh/known_hosts 2>/dev/null; then
-  ssh-keyscan -t ed25519,rsa github.com >> ~/.ssh/known_hosts 2>/dev/null || true
-fi
-if [ ! -d ~/.dotfiles/.git ]; then
-  echo "[nssh] Cloning dotfiles ($DOTFILES_URL)..."
-  git clone "$DOTFILES_URL" ~/.dotfiles
-else
-  # リモートは使い捨て前提なので origin に強制で合わせる。
-  # pull --rebase だと lazy-lock.json 等の差分で黙って失敗し、古いまま使い続けることになる。
-  git -C ~/.dotfiles fetch --quiet origin && git -C ~/.dotfiles reset --hard --quiet '@{u}' \
-    || echo "[nssh] WARNING: dotfiles の更新に失敗。既存の clone のまま続行します。" >&2
-fi
-
-# 3. config symlinks
-ln -sfn ~/.dotfiles/configs/editors/nvim     ~/.config/nvim
-ln -sfn ~/.dotfiles/configs/cli/yazi         ~/.config/yazi
-ln -sfn ~/.dotfiles/configs/terminals/tmux   ~/.config/tmux
-#    yazi の opener が Enter で叩く。母艦へのトンネルが無ければ xdg-open に落ちる。
-ln -sfn ~/.dotfiles/configs/bin/open-on-mac  ~/.local/bin/open-on-mac
-#    gh と codex は設定と同じディレクトリに認証情報 (hosts.yml / auth.json) を置くため、
-#    ディレクトリごとではなく設定ファイル単体を張る。認証情報はホスト側に残す。
-#    どちらもツール自身が設定を書き戻すことがあるが、その書き込みは dotfiles の
-#    working tree に落ちて次回接続の reset --hard で消える (nvim の lazy-lock.json と同じ扱い)。
-mkdir -p ~/.config/gh ~/.codex
-ln -sfn ~/.dotfiles/configs/cli/gh/config.yml     ~/.config/gh/config.yml
-ln -sfn ~/.dotfiles/configs/cli/codex/config.toml ~/.codex/config.toml
-#    Claude Code: 書き換わらないもの (CLAUDE.md / 自作 skill) は symlink で張る。
-#    hooks / output-styles / bin は母艦のデスクトップ前提なので持ち込まない。
-mkdir -p ~/.claude/skills
-ln -sfn ~/.dotfiles/configs/cli/claude/CLAUDE.md ~/.claude/CLAUDE.md
-for s in english-vocab gapul-writing-voice step-by-step-tutor; do
-  ln -sfn ~/.dotfiles/configs/cli/claude/skills/"$s" ~/.claude/skills/"$s"
+# 下準備の中身は configs/bin/remote-bootstrap に出してある (herdr ラッパーと共有するため。
+# 経緯はあちらの冒頭)。~/.local/bin に並べて置かれるので $0 の隣を見る。home-manager を
+# 通していない環境からも動くようリポジトリ内も探す。
+bootstrap=""
+for cand in "$(dirname "$0")/remote-bootstrap" "$HOME/.dotfiles/configs/bin/remote-bootstrap"; do
+  [ -r "$cand" ] && { bootstrap="$cand"; break; }
 done
-#    settings.json だけは symlink にしない。permissions がホストごとに育つファイルで、
-#    symlink にすると reset --hard で承認済みの許可が毎回消える。dotfiles 側の管理キーだけを
-#    既存ファイルへ merge する (下の bashrc と同じ考え方。一覧は configs/cli/claude/README.md)。
-#    python3 が無い環境では黙って諦める (Claude が無いホストでも困らない)。
-if command -v python3 >/dev/null 2>&1; then
-  python3 ~/.dotfiles/scripts/merge-claude-settings.py ~/.claude/settings.json \
-    || echo "[nssh] WARNING: Claude 設定の反映に失敗。ホスト側の設定のまま続行します。" >&2
-else
-  echo "[nssh] python3 が無いため Claude 設定の反映をスキップしました" >&2
+if [ -z "$bootstrap" ]; then
+  echo "nssh: remote-bootstrap が見つかりません" >&2
+  exit 1
 fi
-#    zsh: ZDOTDIR を ~/.config/zsh に置き、.zshrc を dotfiles へ向ける。
-#    ログインシェルは bash のまま (共有マシンでは chsh できない) なので、
-#    素の ssh で入ったときは bashrc.remote が使われる。
-mkdir -p ~/.config/zsh
-ln -sfn ~/.dotfiles/configs/shell/zshrc.remote ~/.config/zsh/.zshrc
 
-# 4. shell rc: dotfiles 側の共通 bash 設定を ~/.bashrc から読ませる (marker 付き・冪等)
-#    リモートは home-manager を通らないので ~/.bashrc 本体は各ホストのものが動く。
-#    そこに source 行を 1 行だけ足しておけば、中身は dotfiles 側 (reset --hard で毎回最新)
-#    に寄せられる。ホスト固有の設定は marker の外にそのまま残る。
-marker='# >>> dotfiles bashrc.remote >>>'
-if [ -f ~/.bashrc ] && ! grep -qF "$marker" ~/.bashrc; then
-  {
-    echo ""
-    echo "$marker"
-    echo '[ -r "$HOME/.dotfiles/configs/shell/bashrc.remote" ] && . "$HOME/.dotfiles/configs/shell/bashrc.remote"'
-    echo '# <<< dotfiles bashrc.remote <<<'
-  } >> ~/.bashrc
-  echo "[nssh] ~/.bashrc に dotfiles の bash 設定を読む行を追記しました"
-fi
-BOOTSTRAP
+# Agent Forwarding を必ず付ける (-A) と StrictHostKey で github の自動信頼
+ssh -A "$host" "$@" "DOTFILES_URL='$DOTFILES_URL' bash -s" < "$bootstrap"
 
 # 5. インタラクティブ接続 ($HOME はリモート側で展開される)
 #    path:~/.dotfiles/nix を flake source に (private repo を GitHub API なしで使う)

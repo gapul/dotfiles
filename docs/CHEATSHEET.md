@@ -222,6 +222,7 @@ remote の種類別に 4 つの戦略を使い分け:
 | シチュエーション | コマンド | 何 |
 |---|---|---|
 | **計算ノード**(non-root、ephemeral) | `nssh user@host` | rootless Nix(`nix-portable`)で nvim/yazi/tmux、起動毎に展開 |
+| **同上を herdr で** | `herdr --remote user@host` | zsh 関数が `configs/bin/remote-bootstrap` を先に流すので下準備は nssh と同じ。tmux の代わりに herdr |
 | **長期 Linux サーバー**(root、persistent) | リモートで `bash <(curl -sL ...bootstrap-linux.sh)` | full Nix install + dotfiles clone + home-manager(`.#<user>-linux`) |
 | **WSL2 環境**(Windows + WSL) | WSL 内で `bash <(curl ...bootstrap-wsl.sh)` | Linux 共通 + WSL interop(clipboard, /mnt/c/) |
 | **制限環境**(Nix 不可、append 程度) | local から `sync-configs-rsync.sh user@host [--full]` | nvim + zsh.local + git config を rsync、何も install しない |

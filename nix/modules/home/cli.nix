@@ -246,6 +246,13 @@ in
     source = ../../../configs/bin/nssh;
     executable = true;
   };
+  # nssh と herdr ラッパー (modules/home/terminal.nix) が共通で流し込む下準備。
+  # 普段は `ssh <host> bash -s` の stdin に食わせるが、リモートへ直接持って行って
+  # 単体で実行することもできるので executable のまま nssh の隣に置く。
+  home.file.".local/bin/remote-bootstrap" = {
+    source = ../../../configs/bin/remote-bootstrap;
+    executable = true;
+  };
   home.file.".local/bin/fzf-preview-repo" = {
     source = ../../../configs/bin/fzf-preview-repo;
     executable = true;
