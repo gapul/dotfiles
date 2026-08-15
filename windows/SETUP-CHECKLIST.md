@@ -8,6 +8,10 @@ macOS 上で前段階(設定ファイル整備)は済んでいる。実機では
 ## 0. 前提・準備
 
 - [ ] Windows 11 (PowerShell 7 = `pwsh` が使えること。無ければ後述の winget で入る)
+- [ ] **ローカルアカウント**で入る (Microsoft アカウントは使わない)。OOBE で
+      「インターネットに接続していません」経由か、既に MSA なら 設定 → アカウント →
+      「代わりにローカル アカウントでサインインする」で切り替える。宣言では表現
+      できないのでここに書く
 - [ ] BitLocker が有効か確認 (`manage-bde -status C:`)。秘密鍵を置くので**ディスク暗号化は必須**
 - [ ] Bitwarden 等に age 秘密鍵 / SSH 秘密鍵を準備しておく
 
@@ -15,6 +19,8 @@ macOS 上で前段階(設定ファイル整備)は済んでいる。実機では
 
 ```powershell
 Set-ExecutionPolicy -Scope CurrentUser RemoteSigned   # ローカルスクリプト許可
+# git は winget 宣言から外した (開発は WSL 側)。clone 用に一度だけ手で入れる:
+#   winget install --exact --id Git.Git
 git clone https://github.com/gapul/dotfiles.git $env:USERPROFILE\dotfiles
 ```
 
