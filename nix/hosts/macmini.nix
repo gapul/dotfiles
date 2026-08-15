@@ -5,6 +5,7 @@
   ...
 }:
 let
+  paperServer = pkgs.callPackage ../pkgs/paper-server.nix { };
   # まなびはサービスなので、実体は gapul/manabi (private) にあり、この機械にはそのクローンが
   # 置いてある。ここが持つのは「この機械がまなびを動かす」という宣言だけで、中身は向こうの
   # 更新に追従する (dotfiles の rebuild は要らない)。private なので flake input にはできない
@@ -139,8 +140,13 @@ in
   # guest kernel meant ~3.2G resident no matter how small the JVM heap was. Native, the same world
   # sits at ~1.2G and binds the port itself. With this the mini has no containers left at all.
   #
-  # The jar is pinned on purpose: a server that upgrades itself locks every player out until they
-  # all update their client. Bumping it means dropping the new jar in and editing this line.
+  # The jar comes from nix by content hash (pkgs/paper-server.nix), and the weekly
+  # update-custom-packages job moves that pin to the newest STABLE build. The client here is Prism,
+  # which starts the newest release, so the server follows it — but through a reviewed, revertible
+  # commit rather than by re-downloading LATEST behind our backs at some restart.
+  #
+  # Following costs one thing: a world conversion can arrive on its own schedule, and conversion is
+  # one-way. run.sh snapshots the world first whenever the jar's version differs from the last run.
   #
   # 26.1.2 -> 26.2 on 2026-08-15, before opening the server to friends: launchers start the newest
   # release by default, so staying two versions behind would have made every guest hunt for an old
@@ -148,34 +154,11 @@ in
   # the new format is one-way).
   launchd.daemons.minecraft = {
     serviceConfig = {
-      ProgramArguments = [
-        "${pkgs.temurin-bin-25}/bin/java"
-        # Aikar's flags, minus -XX:+AlwaysPreTouch and with a small -Xms. Pre-touching commits the
-        # whole heap at boot, which is the right trade for a dedicated box and the wrong one here:
-        # this server is empty most of the time and shares 24G with the AI stack.
-        "-Xms512M"
-        "-Xmx2G"
-        "-XX:+UseG1GC"
-        "-XX:+ParallelRefProcEnabled"
-        "-XX:MaxGCPauseMillis=200"
-        "-XX:+UnlockExperimentalVMOptions"
-        "-XX:+DisableExplicitGC"
-        "-XX:G1NewSizePercent=30"
-        "-XX:G1MaxNewSizePercent=40"
-        "-XX:G1HeapRegionSize=8M"
-        "-XX:G1ReservePercent=20"
-        "-XX:G1HeapWastePercent=5"
-        "-XX:G1MixedGCCountTarget=4"
-        "-XX:InitiatingHeapOccupancyPercent=15"
-        "-XX:G1MixedGCLiveThresholdPercent=90"
-        "-XX:G1RSetUpdatingPauseTimePercent=5"
-        "-XX:SurvivorRatio=32"
-        "-XX:+PerfDisableSharedMem"
-        "-XX:MaxTenuringThreshold=1"
-        "-jar"
-        "paper-26.2-112.jar"
-        "--nogui"
-      ];
+      ProgramArguments = [ "${../../configs/macmini/minecraft/run.sh}" ];
+      EnvironmentVariables = {
+        PAPER_JAR = "${paperServer}";
+        JAVA_BIN = "${pkgs.temurin-bin-25}/bin/java";
+      };
       UserName = "mcsrv";
       WorkingDirectory = "/Users/mcsrv/server";
       # Tier 1: tick latency is the thing players feel. Idle most of the time anyway.

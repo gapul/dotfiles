@@ -4,6 +4,7 @@ set -euo pipefail
 repo=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 slk_file="$repo/nix/pkgs/slk.nix"
 unity_file="$repo/nix/pkgs/unity-cli.nix"
+paper_file="$repo/nix/pkgs/paper-server.nix"
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
@@ -52,4 +53,40 @@ if [[ $pinned_unity != "$latest_unity" ]]; then
   ' "$unity_file" > "$tmp/unity-cli.nix"
   mv "$tmp/unity-cli.nix" "$unity_file"
   echo "unity-cli: $pinned_unity -> $latest_unity"
+fi
+
+# --- Paper (Minecraft server) ---------------------------------------------------------------
+# 追うのは「いちばん新しい MC バージョンの、いちばん新しい STABLE ビルド」。実験ビルドは拾わない。
+# 配布 URL に sha256 が埋まっている API なので、jar を落とさずにハッシュを確定できる。
+pinned_paper_version=$(sed -n 's/^[[:space:]]*version = "\([^"]*\)";/\1/p' "$paper_file" | head -1)
+pinned_paper_build=$(sed -n 's/^[[:space:]]*build = "\([^"]*\)";/\1/p' "$paper_file" | head -1)
+
+paper_latest=$(curl -fsS --max-time 30 https://fill.papermc.io/v3/projects/paper | python3 -c '
+import json, sys
+versions = json.load(sys.stdin)["versions"]
+newest_series = next(iter(versions))
+print(versions[newest_series][0])
+')
+
+paper_build=$(curl -fsS --max-time 30 "https://fill.papermc.io/v3/projects/paper/versions/${paper_latest}/builds" | python3 -c '
+import json, sys
+for b in json.load(sys.stdin):
+    if b.get("channel") == "STABLE":
+        print(b["id"], b["downloads"]["server:default"]["checksums"]["sha256"])
+        break
+')
+
+if [[ -n $paper_build ]]; then
+  latest_build=${paper_build%% *}
+  latest_sha=${paper_build##* }
+  if [[ $pinned_paper_version != "$paper_latest" || $pinned_paper_build != "$latest_build" ]]; then
+    awk -v version="$paper_latest" -v build="$latest_build" -v sha="$latest_sha" '
+      /^[[:space:]]*version = "/ && !v { sub(/"[^"]+"/, "\"" version "\""); v=1 }
+      /^[[:space:]]*build = "/ && !b { sub(/"[^"]+"/, "\"" build "\""); b=1 }
+      /^[[:space:]]*sha256 = "/ && !s { sub(/"[^"]+"/, "\"" sha "\""); s=1 }
+      { print }
+    ' "$paper_file" > "$tmp/paper.nix"
+    mv "$tmp/paper.nix" "$paper_file"
+    echo "paper: $pinned_paper_version-$pinned_paper_build -> $paper_latest-$latest_build"
+  fi
 fi
