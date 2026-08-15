@@ -36,8 +36,13 @@ for target in $TARGETS; do
 
   # 世界のフォルダ構成はバージョンで変わる(いまは world/ の中に dimensions/ がある)。
   # 決め打ちすると tar がこけてバックアップが丸ごと空振りするので、在るものだけ渡す。
+  #
+  # mods/ と plugins/ も拾う。宣言してある jar は store への symlink なので中身は入らない
+  # (復元は rebuild 側の仕事)が、試しに手で放り込んだ実体の jar はここにしか無い。
+  # config/ と defaultconfigs/ は mod ごとの設定で、これも生成物ではなく蓄積物。
   items=()
-  for f in world world_nether world_the_end server.properties whitelist.json ops.json banned-players.json; do
+  for f in world world_nether world_the_end mods plugins config defaultconfigs \
+    server.properties whitelist.json ops.json banned-players.json; do
     [ -e "$dir/$f" ] && items+=("$f")
   done
   if [ ${#items[@]} -eq 0 ]; then

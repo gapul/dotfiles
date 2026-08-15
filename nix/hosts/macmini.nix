@@ -40,6 +40,12 @@ let
     hash = "sha256-aO6rdwWbpT3xgS8a+lv1MKslZqPNzV+SSqbnG+QuQQw=";
   };
 
+  # 寝ている間の status 応答に使う版。Paper を追う2本(本館と個人用)がここを見る。
+  # jar を上げたらここもずれるので、scripts/update-custom-packages.sh が paper-server.nix と
+  # 一緒に書き換える。手で直す場所ではない。
+  paperMcVersion = "26.2";
+  paperProtocol = 776;
+
   # 立てているマイクラのサーバー。本館はバニラ(Paper)で最新を追い、mod 用は別インスタンスに
   # する——mod は本体の新バージョンに追いつくのが遅く、「最新を追う」と両立しないため。
   # version/protocol は寝ている間の status 応答に使う(lazymcConfig を参照)。
@@ -50,8 +56,8 @@ let
       java = pkgs.temurin-bin-25;
       memory = "2G";
       port = 25565;
-      version = "26.2";
-      protocol = 776;
+      version = paperMcVersion;
+      protocol = paperProtocol;
       runner = ../../configs/macmini/minecraft/run.sh;
       env = {
         SERVER_JAR = "${paperServer}";
@@ -65,8 +71,8 @@ let
       java = pkgs.temurin-bin-25;
       memory = "2G";
       port = 25566;
-      version = "26.2";
-      protocol = 776;
+      version = paperMcVersion;
+      protocol = paperProtocol;
       runner = ../../configs/macmini/minecraft/run.sh;
       env.SERVER_JAR = "${paperServer}";
     };

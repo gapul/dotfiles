@@ -5,6 +5,8 @@ repo=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 slk_file="$repo/nix/pkgs/slk.nix"
 unity_file="$repo/nix/pkgs/unity-cli.nix"
 paper_file="$repo/nix/pkgs/paper-server.nix"
+macmini_file="$repo/nix/hosts/macmini.nix"
+protocol_map_url="https://raw.githubusercontent.com/PrismarineJS/minecraft-data/master/data/pc/common/protocolVersions.json"
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
@@ -88,5 +90,26 @@ if [[ -n $paper_build ]]; then
     ' "$paper_file" > "$tmp/paper.nix"
     mv "$tmp/paper.nix" "$paper_file"
     echo "paper: $pinned_paper_version-$pinned_paper_build -> $paper_latest-$latest_build"
+
+    # サーバーが寝ている間の status は lazymc が代わりに返すので、そこに書く版も一緒に動かす。
+    # 置き去りにすると、更新した翌朝からサーバー一覧に「非対応」の×が出る(繋がりはするが、
+    # 友人からは入れない場所に見える)。protocol 番号は Paper の API に無いので外から引く。
+    paper_proto=$(curl -fsS --max-time 30 "$protocol_map_url" | python3 -c '
+import json, sys
+want = sys.argv[1]
+print(next((e["version"] for e in json.load(sys.stdin) if e["minecraftVersion"] == want), ""))
+' "$paper_latest")
+    if [[ -n $paper_proto ]]; then
+      awk -v version="$paper_latest" -v proto="$paper_proto" '
+        /^[[:space:]]*paperMcVersion = "/ { sub(/"[^"]+"/, "\"" version "\"") }
+        /^[[:space:]]*paperProtocol = / { sub(/= [0-9]+/, "= " proto) }
+        { print }
+      ' "$macmini_file" > "$tmp/macmini.nix"
+      mv "$tmp/macmini.nix" "$macmini_file"
+      echo "paper (lazymc の表示): $paper_latest / protocol $paper_proto"
+    else
+      # 出たばかりの版はまだ載っていないことがある。間違った番号を書くより据え置く。
+      echo "paper: $paper_latest の protocol 番号が引けなかったので lazymc の表示は据え置き" >&2
+    fi
   fi
 fi
