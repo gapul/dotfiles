@@ -1,4 +1,5 @@
 {
+  lib,
   pkgs,
   user,
   claudeAcp,
@@ -6,6 +7,20 @@
 }:
 let
   paperServer = pkgs.callPackage ../pkgs/paper-server.nix { };
+
+  # 立てているマイクラのサーバー。本館はバニラ(Paper)で最新を追い、mod 用は別インスタンスに
+  # する——mod は本体の新バージョンに追いつくのが遅く、「最新を追う」と両立しないため。
+  # autostart = false のものは launchd に載るが自動では上がらない(遊ぶときだけ起こす)。
+  minecraftServers = {
+    vanilla = {
+      dir = "/Users/mcsrv/server";
+      jar = "${paperServer}";
+      java = pkgs.temurin-bin-25;
+      memory = "2G";
+      autostart = true;
+      port = 25565;
+    };
+  };
   # まなびはサービスなので、実体は gapul/manabi (private) にあり、この機械にはそのクローンが
   # 置いてある。ここが持つのは「この機械がまなびを動かす」という宣言だけで、中身は向こうの
   # 更新に追従する (dotfiles の rebuild は要らない)。private なので flake input にはできない
@@ -16,7 +31,36 @@ in
   # Headless LLM worker (M4 Mac mini / 24GB).
   # Unlike the everyday workstation (darwin.nix), it loads no GUI casks at all;
   # it just keeps Ollama resident via launchd to serve an inference API over Tailscale / LAN.
-  imports = [ ./darwin-common.nix ];
+  imports = [
+    ./darwin-common.nix
+    # マイクラのサーバーは上の表から生やす。別モジュールにしてあるのは、nix が同じ attrset の
+    # 中で `launchd.daemons = {...}` と `launchd.daemons.foo = ...` を混ぜられないため。
+    # サーバーを増やすときに触るのは minecraftServers だけで、ここは触らなくていい。
+    {
+      launchd.daemons = lib.mapAttrs' (
+        name: inst:
+        lib.nameValuePair "minecraft-${name}" {
+          serviceConfig = {
+            ProgramArguments = [ "${../../configs/macmini/minecraft/run.sh}" ];
+            EnvironmentVariables = {
+              SERVER_DIR = inst.dir;
+              SERVER_JAR = inst.jar;
+              SERVER_MEM = inst.memory;
+              JAVA_BIN = "${inst.java}/bin/java";
+            };
+            UserName = "mcsrv";
+            WorkingDirectory = inst.dir;
+            # Tier 1: tick latency is the thing players feel. Idle most of the time anyway.
+            ProcessType = "Interactive";
+            RunAtLoad = inst.autostart;
+            KeepAlive = inst.autostart;
+            StandardOutPath = "${inst.dir}/logs/launchd.log";
+            StandardErrorPath = "${inst.dir}/logs/launchd.log";
+          };
+        }
+      ) minecraftServers;
+    }
+  ];
 
   networking = {
     hostName = "macmini";
@@ -152,23 +196,6 @@ in
   # release by default, so staying two versions behind would have made every guest hunt for an old
   # profile. The pre-upgrade world is at /Users/mcsrv/server.bak-26.1.2-20260815 (the conversion to
   # the new format is one-way).
-  launchd.daemons.minecraft = {
-    serviceConfig = {
-      ProgramArguments = [ "${../../configs/macmini/minecraft/run.sh}" ];
-      EnvironmentVariables = {
-        PAPER_JAR = "${paperServer}";
-        JAVA_BIN = "${pkgs.temurin-bin-25}/bin/java";
-      };
-      UserName = "mcsrv";
-      WorkingDirectory = "/Users/mcsrv/server";
-      # Tier 1: tick latency is the thing players feel. Idle most of the time anyway.
-      ProcessType = "Interactive";
-      RunAtLoad = true;
-      KeepAlive = true;
-      StandardOutPath = "/Users/mcsrv/server/logs/launchd.log";
-      StandardErrorPath = "/Users/mcsrv/server/logs/launchd.log";
-    };
-  };
 
   # --- Hermes, brought under nix -------------------------------------------------------------
   #
@@ -293,10 +320,16 @@ in
   };
 
   # ワールドの日次バックアップ。Realms から移ってくる以上、「壊しても戻せる」は要る。
+  # 対象は上の表から作るので、サーバーを増やせばバックアップも自動で増える。
   # restic(5:00)より前に走らせて、その晩のうちに Google Drive まで乗せる。
   launchd.daemons.minecraft-backup = {
     serviceConfig = {
       ProgramArguments = [ "${../../configs/macmini/minecraft/backup.sh}" ];
+      EnvironmentVariables = {
+        BACKUP_TARGETS = lib.concatStringsSep " " (
+          lib.mapAttrsToList (name: inst: "${name}:${inst.dir}") minecraftServers
+        );
+      };
       StartCalendarInterval = [
         {
           Hour = 4;
