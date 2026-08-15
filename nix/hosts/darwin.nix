@@ -504,7 +504,10 @@ in
       "openfoam"
 
       # ─── 3D Printing ───
-      "bambu-studio"
+      # Orca alone covers the Bambu A1 mini: it installs Bambu's network plugin
+      # itself, so send / camera / temps / jog / firmware update all live here.
+      # Reinstall bambu-studio temporarily if a cloud-side problem needs an
+      # "authorized software" reference point.
       "orcaslicer"
 
       # ─── Games / Emulation ───
