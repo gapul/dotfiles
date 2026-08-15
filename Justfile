@@ -757,6 +757,12 @@ _fmt-windows:
 # Clean (clean / GC and junk files)
 # ─────────────────────────────────────────────
 
+# Hide backstage apps (Adobe helpers, Karabiner's driver manager) from the Applications launcher
+[group('Clean')]
+[macos]
+tidy-apps:
+    "{{ justfile_directory() }}/scripts/hide-backstage-apps.sh"
+
 # GC all layers at once (only regenerable caches; Trash and whole-home deletion are in gc-deep)
 [group('Clean')]
 gc:
