@@ -1,4 +1,4 @@
-# Darwin chrome component (ECS: profile). Theme-dependent WM/bar/borders/sioyek/Obsidian.
+# Darwin chrome component (ECS: profile). Theme-dependent WM/bar/sioyek/Obsidian.
 {
   config,
   pkgs,
@@ -117,29 +117,8 @@ let
     .markdown-rendered h3 { line-height: 1.3; }
   '';
 
-  # JankyBorders config = single source for the active window border. Colors come from the Rosé Pine palette.
-  # Also the agent's Program: running it a second time while the daemon is up acts as a client and
-  # restyles the running instance, which is what theme-watch does on an appearance change.
-  # launchd starts with a bare PATH, so resolve the brew-installed borders explicitly.
-  bordersrc = pkgs.writeShellScript "bordersrc" ''
-    export PATH="/opt/homebrew/bin:$PATH"
-    if [ "$(defaults read -g AppleInterfaceStyle 2>/dev/null)" = "Dark" ]; then
-      active=0xff${c.dark.iris}
-      inactive=0xff${c.dark.muted}
-    else
-      active=0xff${c.light.iris}
-      inactive=0xff${c.light.muted}
-    fi
-    options=(
-      active_color=$active
-      inactive_color=$inactive
-      width=4.0
-    )
-    borders "''${options[@]}"
-  '';
-
-  # Watch macOS appearance (light/dark) changes and re-apply shell-side chrome. sketchybar/borders
-  # branch on AppleInterfaceStyle inside colors.sh/bordersrc, so re-running them is enough to follow
+  # Watch macOS appearance (light/dark) changes and re-apply shell-side chrome. sketchybar
+  # branches on AppleInterfaceStyle inside colors.sh, so re-running it is enough to follow
   # the OS. Polling, so no extra binary is needed.
   # tmux is on the nix profile PATH; include it so the tmux re-source below is found.
   themeWatch = pkgs.writeShellScript "theme-watch" ''
@@ -149,7 +128,6 @@ let
       cur="$(defaults read -g AppleInterfaceStyle 2>/dev/null || echo Light)"
       if [ "$cur" != "$last" ]; then
         last="$cur"
-        ${bordersrc} >/dev/null 2>&1 &
         # バーは内蔵用と外部モニタ用の 2 インスタンスあるので両方 reload する
         "$HOME/.config/sketchybar/helpers/sb-all.sh" --reload
         # tmux: re-source theme.conf so the running server re-picks rose-pine / rose-pine-dawn
@@ -201,13 +179,12 @@ in
     export POPUP_BORDER_COLOR=$WHITE
     export SHADOW_COLOR=$BLACK
   '';
-  # borders / theme-watch live in the store (bordersrc, themeWatch in the let block above) and the
-  # agents exec the store path, so the running daemon belongs to a generation: a rollback takes the
-  # watcher with it, and a half-saved edit can't take out the agent at the next login.
-  # The ~/.config copies stay for manual invocation — same derivation, so they can't drift.
+  # theme-watch lives in the store (themeWatch in the let block above) and the agent execs the
+  # store path, so the running daemon belongs to a generation: a rollback takes the watcher with
+  # it, and a half-saved edit can't take out the agent at the next login.
+  # The ~/.config copy stays for manual invocation — same derivation, so it can't drift.
   # (The sketchybar helpers deliberately stay out of the store: the whole config dir is an
   #  mkOutOfStoreSymlink into the checkout because the bar is tuned live.)
-  home.file.".config/borders/bordersrc".source = bordersrc;
   home.file.".config/theme/theme-watch.sh".source = themeWatch;
 
   # Launch the watcher above as a resident launchd agent (at login + liveness monitoring).
@@ -242,28 +219,12 @@ in
     };
   };
 
-  # borders (JankyBorders) resident agent. Used to be launched from aerospace's
-  # after-startup-command; OmniWM has no exec action, so launchd owns the daemon now.
-  # A hand-written com.felixkratz.borders plist (hardcoded colors) predates this —
-  # it is booted out and removed by the activation below to avoid a double daemon.
-  launchd.agents.borders = {
-    enable = true;
-    config = {
-      ProgramArguments = [ "${bordersrc}" ];
-      RunAtLoad = true;
-      KeepAlive = true;
-      ProcessType = "Interactive";
-      StandardErrorPath = "/tmp/borders.err";
-      StandardOutPath = "/tmp/borders.log";
-    };
-  };
-
   # (The brew service that used to start sketchybar is retired in darwin-apps.nix's
   #  retiredLaunchAgents list, together with every other pre-nix plist.)
 
   # sketchybar itself. The formula was declared but its start was not: the bar only ran because
   # `brew services start sketchybar` had been typed once on this machine, so a fresh mac rebuilt
-  # from this repo came up with no bar. Own the daemon here like borders, and retire the brew
+  # from this repo came up with no bar. Own the daemon here, and retire the brew
   # service in the activation below.
   # PATH mirrors what the brew plist exported — sketchybarrc and the plugins call brew-installed
   # binaries (sketchybar, media-control, displayplacer, jq) and launchd starts with a bare PATH.
