@@ -7,7 +7,6 @@
 #   2. winget/apps.json から一括 install (空ファイルなら skip)
 #   2.5 scoop bucket + app の declarative 適用 (MS Store 回避用)
 #   3. PowerShell $PROFILE を dotfiles 内ファイルへ symlink
-#   4. Windows Terminal settings.json を生成 (WSL user/distro 注入)
 #   4.5 configs/ の各ツール config を %APPDATA% / %LOCALAPPDATA% へ symlink
 #   5. (任意) age / SSH 鍵 paste 待ち
 #   5.5 ssh-agent サービスを Auto+Running に
@@ -24,7 +23,7 @@
 # WSL の distro/ユーザー名は -WslDistro / -WslUser で上書き可:
 #   & bootstrap.ps1 -WslUser alice -WslDistro Debian
 param(
-    [string]$WslUser   = $env:USERNAME,  # WSL 側ユーザー名 (Terminal の startingDirectory に注入)。WSL のユーザー名が違えば -WslUser で上書き
+    [string]$WslUser   = $env:USERNAME,  # WSL 側ユーザー名 (wezterm の起動先などに使う)。違えば -WslUser で上書き
     [string]$WslDistro = 'Ubuntu',    # WSL ディストリ名
     # git author (macOS/WSL は nix/user.nix が正。Windows は nix eval 不可のため引数で渡す)
     [string]$GitUser   = 'gapul',
@@ -247,30 +246,7 @@ foreach ($dst in @($ProfilePwsh7, $ProfilePwsh5)) {
     New-DotfilesLink -Source $ProfileSrc -Destination $dst -Label 'profile'
 }
 
-# 4. Windows Terminal settings.json を生成 (symlink でなく render)
-#    startingDirectory の __WSL_USER__ / __WSL_DISTRO__ を実値へ置換するため、
-#    symlink でなく「コピー + 置換」で配置する。settings を編集したら再実行で反映。
-$WTSrc = Join-Path $WindowsDir 'terminal\settings.json'
-$WTDst = Join-Path $env:LOCALAPPDATA 'Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json'
-if ((Test-Path $WTSrc) -and (Test-Path (Split-Path $WTDst -Parent))) {
-    $rendered = (Get-Content $WTSrc -Raw) `
-        -replace '__WSL_USER__',   $WslUser `
-        -replace '__WSL_DISTRO__', $WslDistro
-    if ($DryRun) {
-        Dry "render WT settings.json (WslUser=$WslUser / WslDistro=$WslDistro) -> $WTDst"
-    } else {
-        # 既存が手書き設定 (symlink でない & placeholder 由来でない) なら backup 退避
-        if ((Test-Path $WTDst) -and ((Get-Content $WTDst -Raw) -ne $rendered)) {
-            $backup = "$WTDst.bak-$(Get-Date -Format yyyyMMddHHmmss)"
-            Copy-Item $WTDst $backup
-            Log "既存 WT settings → $backup に退避"
-        }
-        Set-Content -Path $WTDst -Value $rendered -Encoding UTF8 -NoNewline
-        Log "WT settings.json を生成 (WslUser=$WslUser / WslDistro=$WslDistro)"
-    }
-}
-
-# 4.5 各ツールの config を %APPDATA% / %LOCALAPPDATA% へ symlink。
+# 4. 各ツールの config を %APPDATA% / %LOCALAPPDATA% へ symlink。
 #     starship は $env:STARSHIP_CONFIG で profile.ps1 から直接参照するため symlink 不要。
 #     yazi は config dir として "config" サブディレクトリを期待するため階層注意。
 $ConfigLinks = @(

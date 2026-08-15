@@ -6,8 +6,6 @@
   ],
   "apps": [
     "files-np",
-    "glow",
-    "ouch",
     "ffmpegthumbnailer",
     "ffmpeg"
   ]
