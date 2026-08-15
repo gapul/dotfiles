@@ -74,7 +74,12 @@ let
       version = paperMcVersion;
       protocol = paperProtocol;
       runner = ../../configs/macmini/minecraft/run.sh;
-      env.SERVER_JAR = "${paperServer}";
+      env = {
+        SERVER_JAR = "${paperServer}";
+        # 本館と同じ理由で入れてある。母艦に残っていたシングルの世界を2つとも持ってきたので、
+        # ひとり用でも世界の出し入れが要る。
+        PLUGINS = "${multiverseCore}";
+      };
     };
     # 最新で mod を遊ぶ側。Fabric は本体に追いつくのが速いので本館と同じ 26.2 に載る。
     # 逆に「Fabric に来ていない mod」が要るときだけ下の NeoForge 側を使う。
