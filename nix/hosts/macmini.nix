@@ -292,6 +292,25 @@ in
     };
   };
 
+  # ワールドの日次バックアップ。Realms から移ってくる以上、「壊しても戻せる」は要る。
+  # restic(5:00)より前に走らせて、その晩のうちに Google Drive まで乗せる。
+  launchd.daemons.minecraft-backup = {
+    serviceConfig = {
+      ProgramArguments = [ "${../../configs/macmini/minecraft/backup.sh}" ];
+      StartCalendarInterval = [
+        {
+          Hour = 4;
+          Minute = 40;
+        }
+      ];
+      ProcessType = "Background";
+      LowPriorityIO = true;
+      Nice = 10;
+      StandardOutPath = "/Users/Shared/minecraft-backups/backup.log";
+      StandardErrorPath = "/Users/Shared/minecraft-backups/backup.log";
+    };
+  };
+
   # popo — the Slack agent for the company workspace, run as its own user.
   #
   # It reaches the control plane at api.popo.sh with a bootstrap key (config/.env, outside nix) and
