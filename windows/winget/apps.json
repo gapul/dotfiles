@@ -83,9 +83,6 @@
           "PackageIdentifier": "wez.wezterm"
         },
         {
-          "PackageIdentifier": "WiresharkFoundation.Wireshark"
-        },
-        {
           "PackageIdentifier": "Zen-Team.Zen-Browser"
         }
       ],
