@@ -63,7 +63,7 @@
       retired = [
         "com.federicoterzi.espanso" # 2026-06, replaced by launchd.agents.espanso
         "com.user.mechvibes-hidden" # 2026-06, Mechvibes is long gone; only failed at every login
-        "com.felixkratz.borders" # 2026-07, replaced by launchd.agents.borders (hardcoded colors)
+        "com.felixkratz.borders" # 2026-07, hand-written plist; borders itself dropped 2026-08 (OmniWM draws it)
         "net.gapul.keebmouse" # 2026-07, replaced by launchd.agents.keebmouse
         # 2026-08, replaced by launchd.agents.sketchybar. Removing the plist is enough for launchd;
         # brew's own bookkeeping is swept by the `brew services cleanup` in `just maintain`.
