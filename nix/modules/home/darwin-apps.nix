@@ -164,6 +164,11 @@
   # code-signature seal in the repository, all of which osacompile makes from twenty lines of
   # AppleScript. Rebuilt only when the source or the plist additions change, because compiling
   # it every activation would re-sign it every activation.
+  #
+  # The icon is committed, unlike the rest of the bundle: it is a source asset, not something
+  # osacompile can produce. It is mpv's own logo, rendered from the SVG the brew formula
+  # installs (share/icons/hicolor/scalable/apps/mpv.svg). Without it the droplet shows
+  # osacompile's stock AppleScript-applet icon, which is what shipped until now.
   # Written to /Applications rather than ~/Applications so every bundle this repo produces sits
   # in one place. home-manager runs as the user, but /Applications is drwxrwxr-x root:admin and
   # the account is in admin, so the activation can write there without sudo.
@@ -171,8 +176,9 @@
     app="/Applications/mpv.app"
     script=${../../../configs/media/mpv-app/mpv.applescript}
     additions=${../../../configs/media/mpv-app/Info-additions.plist}
+    icon=${../../../configs/media/mpv-app/mpv.icns}
     stamp="$app/Contents/Resources/.built-from"
-    want="$script $additions"
+    want="$script $additions $icon"
 
     if [ "$(cat "$stamp" 2>/dev/null)" != "$want" ]; then
       $DRY_RUN_CMD rm -rf "$app"
@@ -183,6 +189,12 @@
       # replaced (it says so and carries on, which is how this silently shipped nothing).
       $DRY_RUN_CMD /usr/libexec/PlistBuddy -c "Delete :CFBundleDocumentTypes" "$app/Contents/Info.plist" 2>/dev/null || true
       $DRY_RUN_CMD /usr/libexec/PlistBuddy -c "Merge $additions" "$app/Contents/Info.plist"
+      # CFBundleIconName wins over CFBundleIconFile, and osacompile points it at the applet
+      # artwork in Assets.car, so the name has to go before the file is worth setting. Both keys
+      # already exist, hence Set rather than the Merge above.
+      $DRY_RUN_CMD install -m 644 "$icon" "$app/Contents/Resources/mpv.icns"
+      $DRY_RUN_CMD /usr/libexec/PlistBuddy -c "Delete :CFBundleIconName" "$app/Contents/Info.plist" 2>/dev/null || true
+      $DRY_RUN_CMD /usr/libexec/PlistBuddy -c "Set :CFBundleIconFile mpv" "$app/Contents/Info.plist"
       $DRY_RUN_CMD sh -c "printf '%s' '$want' > '$stamp'"
       # Finder caches document types per bundle; without this the associations appear at the
       # next login instead of now.
