@@ -59,15 +59,26 @@ if [ -n "$stale" ]; then
   kill -KILL $stale 2>/dev/null
 fi
 
-# 宣言された plugin は store への symlink として置き直す。前回の分(= symlink)は毎回消すので、
-# 宣言から外した plugin は次の起動で居なくなる。手で入れた実体の jar には触らない。
-mkdir -p plugins
-find plugins -maxdepth 1 -type l -name '*.jar' -delete
-for p in ${PLUGINS:-}; do
-  name=$(basename "$p")
-  # store の名前は <hash>-<本来の名前>.jar。hash に - は入らないので先頭だけ落とせばいい。
-  ln -sfn "$p" "plugins/${name#*-}"
-done
+# 宣言された jar は store への symlink として置き直す。前回の分(= symlink)は毎回消すので、
+# 宣言から外した jar は次の起動で居なくなる。手で入れた実体の jar には触らない。
+# Paper は plugins/、Fabric は mods/ を読む。どちらか片方しか使わないので、宣言も置き場所も
+# 無いなら作らない(Paper のディレクトリに空の mods/ を生やさないため)。
+link_jars() {
+  dir=$1
+  shift
+  [ -n "$*" ] || [ -d "$dir" ] || return 0
+  mkdir -p "$dir"
+  find "$dir" -maxdepth 1 -type l -name '*.jar' -delete
+  for jar in "$@"; do
+    name=$(basename "$jar")
+    # store の名前は <hash>-<本来の名前>.jar。hash に - は入らないので先頭だけ落とせばいい。
+    ln -sfn "$jar" "$dir/${name#*-}"
+  done
+}
+# shellcheck disable=SC2086  # 空白区切りの一覧をそのまま引数として渡したい
+link_jars plugins ${PLUGINS:-}
+# shellcheck disable=SC2086
+link_jars mods ${MODS:-}
 
 # Aikar's flags から AlwaysPreTouch を外し -Xms を小さくしてある。無人時間が長く、24GB を
 # AI スタックと分け合う機械では、起動時に全ヒープを commit するのは損なので。
