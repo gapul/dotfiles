@@ -29,6 +29,9 @@
           "PackageIdentifier": "Ditto.Ditto"
         },
         {
+          "PackageIdentifier": "EpicGames.EpicGamesLauncher"
+        },
+        {
           "PackageIdentifier": "Espanso.Espanso"
         },
         {
@@ -48,6 +51,9 @@
         },
         {
           "PackageIdentifier": "KDE.KDEConnect"
+        },
+        {
+          "PackageIdentifier": "LizardByte.Sunshine"
         },
         {
           "PackageIdentifier": "LocalSend.LocalSend"
@@ -75,6 +81,9 @@
         },
         {
           "PackageIdentifier": "tailscale.tailscale"
+        },
+        {
+          "PackageIdentifier": "Valve.Steam"
         },
         {
           "PackageIdentifier": "voidtools.Everything"
