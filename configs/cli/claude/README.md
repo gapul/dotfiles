@@ -22,21 +22,48 @@ vendored な skill (cloudflare/* など) も上流から取り直せるので管
 
 ## リモート (nssh 先) — 管理キーだけ merge
 
-リモートは事情が違う。`~/.claude/settings.json` は承認のたびに `permissions.allow` が育つ
-ホスト所有のファイルで、symlink にすると nssh の `reset --hard` で承認済みの許可が毎回消える。
-
-そこで `settings.remote.json` の**管理キーだけ**を、ホストの既存 JSON へ
+`settings.remote.json` の**管理キーだけ**を、ホストの既存 JSON へ
 `scripts/merge-claude-settings.py` が上書き merge する。`~/.bashrc` に `bashrc.remote` を読む
 行だけ足すのと同じ考え方で、管理外のキーはホスト側にそのまま残す。
 
-- 管理対象: `theme` / `effortLevel`
-- 管理外 (ホスト所有): `permissions` / `enabledPlugins` / `skipDangerousModePermissionPrompt`
+| | キー |
+| --- | --- |
+| 管理対象 | `permissions.defaultMode` / `theme` / `effortLevel` / `editorMode` / `verbose` / `preferredNotifChannel` / `skipDangerousModePermissionPrompt` / `skipWorkflowUsageWarning` / `environmentVariables` |
+| 管理外 (ホスト所有) | `permissions.allow` / `permissions.additionalDirectories` / `enabledPlugins` / `hooks` |
 
 管理対象は**母艦の `settings.json` が実際に持っているキー**に限る。母艦が書いていない
 キーを配ると、母艦は既定値・リモートだけ明示値という食い違いが生まれ、下の「母艦が正」
 が成り立たなくなる。`tui` / `inputNeededNotifEnabled` / `agentPushNotifEnabled` は
 リモート側の値から起こしてしまったもので、母艦に無いので外した (2026-08-13)。
 既に配ってしまったホストの値は残るが、以後はホスト所有として扱う。
+
+### なぜ母艦のように丸ごと symlink にしないのか
+
+`defaultMode: bypassPermissions` を配った時点で `permissions.allow` は育たなくなるので、
+「symlink にすると承認済みの許可が毎回消える」という元の理由は消えた (2026-08-15)。
+それでも merge のままなのは、母艦の `settings.json` に**リモートへ持って行くと壊れる／
+意味が無いキー**が混ざっているため。
+
+- `hooks` — `/Users/gapul/.config/claude/hooks/*.sh` という絶対パス。Linux では存在しない
+  ので毎回失敗する。リモートは自前のフック (herdr 連携) を持っている
+- `enabledPlugins` — 母艦は clangd / swift LSP。この箱に要るのは rust-analyzer で、
+  配ると入れ替わってしまう。ツールチェーンはホストごとに違うので触らない
+- `extraKnownMarketplaces` — 上の plugin とセットでしか意味が無いので外す
+- `disableDeepLinkRegistration` — macOS の `~/Applications` URL ハンドラの話で Linux には無い
+- `defaultModel` — 母艦は `claude-sonnet-4-20250514` を固定している。これを配ると
+  リモートの既定モデルまで巻き戻る。**意図的に外している**ので、揃えたくなったら
+  ここに書き足すのではなく先に母艦側の固定を見直すこと
+
+### 入れ子の扱い
+
+`permissions` は `defaultMode` だけを管理する。merge は両側が object のキーだけ再帰する
+ので、ホストが育てた `allow` / `additionalDirectories` は残る。配列は再帰しない
+(`allow` を要素ごとに混ぜたいわけではない)。`--check` と `--adopt` も同じ構造をなぞる。
+
+### bypassPermissions を配ることの意味
+
+リモートでも Claude Code が権限確認なしで動く。共有機に入れる場合は、その箱で
+Claude に許されることが自分のアカウントでできること全部になる、という前提で使う。
 
 `CLAUDE.md` と自作 skill は書き換わらないので、リモートでも普通に symlink する。
 `hooks/` `output-styles/` `bin/` は母艦のデスクトップ前提 (osascript 通知 / herdr /

@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 """Merge the dotfiles-managed Claude Code settings into a host's settings.json.
 
-nssh 先の ~/.claude/settings.json は permissions が承認のたびに育つホスト所有のファイル。
-gh / codex のように symlink で丸ごと差し替えると、nssh の `reset --hard` で承認済みの
-許可が毎回消える。そこでリポジトリが持つ管理キーだけを既存の JSON へ上書き merge する。
-~/.bashrc に bashrc.remote を読む行だけ足すのと同じ考え方で、管理外のキー
-(permissions / enabledPlugins / skipDangerousModePermissionPrompt) はホスト側に残す。
+nssh 先の ~/.claude/settings.json はホスト所有のファイル。gh / codex のように symlink で
+丸ごと差し替えると、nssh の `reset --hard` でホスト固有の値が毎回消える。そこで
+リポジトリが持つ管理キーだけを既存の JSON へ上書き merge する。~/.bashrc に
+bashrc.remote を読む行だけ足すのと同じ考え方で、管理外のキーはホスト側に残す。
+
+merge は入れ子まで潜る。permissions は defaultMode だけを配りたいので、丸ごと置き換えると
+ホストが育てた allow / additionalDirectories を巻き添えにするため (deep_merge 参照)。
+管理対象・管理外の一覧は configs/cli/claude/README.md にある。
 
 母艦は事情が違う。bypassPermissions なので permissions が育たず、settings.json をまるごと
 nix の out-of-store symlink で持てる (nix/home/workstation.nix)。このスクリプトを母艦の
@@ -47,17 +50,52 @@ def load_json(path: pathlib.Path) -> dict:
     return data
 
 
+def deep_merge(target: dict, managed: dict) -> dict:
+    """Overlay the managed keys onto the target, recursing into nested objects.
+
+    両側が object のキーだけ再帰する。これが要るのは permissions で、管理したいのは
+    defaultMode だけなのに、丸ごと置き換えるとホストが育てた allow /
+    additionalDirectories まで消えてしまうため。
+    配列は再帰しない (allow を要素ごとに混ぜたいわけではない)。
+    """
+    out = dict(target)
+    for key, value in managed.items():
+        current = out.get(key)
+        if isinstance(value, dict) and isinstance(current, dict):
+            out[key] = deep_merge(current, value)
+        else:
+            out[key] = value
+    return out
+
+
 def merged(target: dict, managed: dict) -> dict:
-    """Overlay the managed keys onto the target, keeping the target's key order.
+    """deep_merge に $schema の並べ替えを足したもの (トップレベル専用)。
 
     $schema は Claude Code が読む値ではなくエディタ補完用なので、既存ファイルが
     持っていなければ先頭に置く (手で開いたときに素性が分かるように)。
     """
-    out = dict(target)
-    for key, value in managed.items():
-        out[key] = value
+    out = deep_merge(target, managed)
     if "$schema" in out:
         out = {"$schema": out.pop("$schema"), **out}
+    return out
+
+
+def stale_paths(target: dict, managed: dict, prefix: str = "") -> list[str]:
+    """反映漏れしている管理キーを a.b.c 形式で並べる (--check の表示用)。
+
+    トップレベルの比較だけだと、permissions のように一部のサブキーだけ管理している
+    ものが「ホスト側に allow がある」というだけで毎回 stale に見えてしまう。
+    """
+    out: list[str] = []
+    for key, value in managed.items():
+        if key == "$schema":
+            continue
+        path = f"{prefix}{key}"
+        current = target.get(key) if isinstance(target, dict) else None
+        if isinstance(value, dict) and isinstance(current, dict):
+            out.extend(stale_paths(current, value, f"{path}."))
+        elif current != value:
+            out.append(path)
     return out
 
 
@@ -75,6 +113,37 @@ def write_atomic(path: pathlib.Path, data: dict) -> None:
         raise
 
 
+def adopt_tree(
+    managed: dict, current: dict, prefix: str = ""
+) -> tuple[dict, list[str], list[str]]:
+    """管理ファイルの構造をなぞって、ホスト側の現在値へ差し替えた木を返す。
+
+    管理キーの集合は増やさない。managed に無いキーは見に行かないので、
+    permissions.allow のようなホスト所有の値を巻き込むことがない。
+    戻り値は (更新後の木, 変わったパスの説明, ホスト側に無かったパス)。
+    """
+    updated = dict(managed)
+    changed: list[str] = []
+    missing: list[str] = []
+    for key, value in managed.items():
+        if key == "$schema":
+            continue
+        path = f"{prefix}{key}"
+        if not isinstance(current, dict) or key not in current:
+            missing.append(path)
+            continue
+        source_value = current[key]
+        if isinstance(value, dict) and isinstance(source_value, dict):
+            sub, sub_changed, sub_missing = adopt_tree(value, source_value, f"{path}.")
+            updated[key] = sub
+            changed.extend(sub_changed)
+            missing.extend(sub_missing)
+        elif source_value != value:
+            updated[key] = source_value
+            changed.append(f"{path}: {value!r} → {source_value!r}")
+    return updated, changed, missing
+
+
 def adopt(source: pathlib.Path, managed_path: pathlib.Path) -> int:
     """Pull the managed keys' current values out of a host's settings into the repo.
 
@@ -89,21 +158,12 @@ def adopt(source: pathlib.Path, managed_path: pathlib.Path) -> int:
         print(f"[claude-settings] 読めません: {exc}", file=sys.stderr)
         return 1
 
-    updated = dict(managed)
-    changed = []
-    missing = []
-    for key in managed:
-        if key == "$schema":
-            continue
-        if key not in current:
-            missing.append(key)
-            continue
-        if current[key] != managed[key]:
-            updated[key] = current[key]
-            changed.append(f"{key}: {managed[key]!r} → {current[key]!r}")
+    updated, changed, missing = adopt_tree(managed, current)
 
     for key in missing:
-        print(f"[claude-settings] {source} に {key} が無いので据え置き", file=sys.stderr)
+        print(
+            f"[claude-settings] {source} に {key} が無いので据え置き", file=sys.stderr
+        )
     if not changed:
         print(f"[claude-settings] {managed_path} は {source} と一致しています")
         return 0
@@ -165,7 +225,7 @@ def main() -> int:
         return 0
 
     if args.check:
-        stale = [k for k, v in managed.items() if target.get(k) != v]
+        stale = stale_paths(target, managed)
         print(
             f"[claude-settings] {args.target} が古いキーを持っています: {', '.join(stale)}",
             file=sys.stderr,
