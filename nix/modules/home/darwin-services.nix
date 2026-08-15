@@ -27,6 +27,42 @@
       "${config.home.homeDirectory}/Library/Logs/Syncthing"
   '';
 
+  # One shared Playwright MCP server instead of one per Claude session.
+  # The MCP entry in ~/.config/claude/.claude.json used to be `stdio`, which means every session
+  # spawns its own server process: measured 2026-08-15 at 15 sessions = 15 node processes, 176MB,
+  # and ~120MB each once a session actually drives the browser. All of them attach over CDP to the
+  # same Chrome on 9222 anyway, so the isolation bought nothing. Listening on 8931 and pointing
+  # every session at `http://localhost:8931/mcp` collapses that to one process (70MB idle).
+  #
+  # Sessions still share the browser, so a parallel run must give each session its own tab
+  # (`browser_tabs {action:"new"}` before navigating) — verified: without it two sessions grab the
+  # same page and the second navigation wins.
+  #
+  # localhost-bound by the server itself, and it rejects any request whose Host is not
+  # `localhost:8931` (127.0.0.1 in the URL gets a 4xx — write the URL with localhost).
+  # The connection to Chrome is lazy, so this stays cheap while Chrome is down, which is the
+  # normal state: Chrome is started only for a job (see CLAUDE.md) and killed after.
+  # Binary is the pnpm global install (1.62 alpha); nixpkgs' playwright-mcp is 0.0.76, far behind.
+  launchd.agents.playwright-mcp = {
+    enable = true;
+    config = {
+      ProgramArguments = [
+        "${config.home.homeDirectory}/Library/pnpm/bin/playwright-mcp"
+        "--cdp-endpoint"
+        "http://127.0.0.1:9222"
+        "--port"
+        "8931"
+        "--output-dir"
+        "${config.home.homeDirectory}/tmp/playwright-mcp"
+      ];
+      RunAtLoad = true;
+      KeepAlive = true;
+      ProcessType = "Background";
+      StandardErrorPath = "/tmp/playwright-mcp.err";
+      StandardOutPath = "/tmp/playwright-mcp.log";
+    };
+  };
+
   # Shell-independent env distribution: GUI apps / processes under launchd don't go through
   # zsh's .zshenv (hm-session-vars.sh is effectively only read by zsh), so they receive none of
   # home.sessionVariables' env. The most notable case is the accident where an unset GNUPGHOME makes
