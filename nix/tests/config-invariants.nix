@@ -31,6 +31,38 @@ let
   macminiPackageNames =
     map lib.getName
       macminiDarwin.home-manager.users.${user.username}.home.packages;
+
+  # Claude Code: リモートへ配る管理キーの値は、母艦の settings.json が実際に持っている値と
+  # 一致していなければならない (configs/cli/claude/README.md の「クライアント端末が正」)。
+  # 母艦に無いキーを配ると「母艦は既定値・リモートだけ明示値」という食い違いが生まれる。
+  # 2026-08-13 に tui / inputNeededNotifEnabled / agentPushNotifEnabled をリモート側の値から
+  # 起こして一度破っているので、目視ではなくここで縛る。
+  claudeWorkstation = builtins.fromJSON (builtins.readFile ../../configs/cli/claude/settings.json);
+  claudeManaged = builtins.fromJSON (builtins.readFile ../../configs/cli/claude/settings.remote.json);
+  # 管理ファイルの構造をなぞり、母艦と食い違う葉のパスを集める。両側が attrset の
+  # ときだけ潜るのは merge-claude-settings.py の deep_merge と同じ約束
+  # (permissions は defaultMode だけを管理し、allow は母艦にもリモートにも触らせない)。
+  claudeDrift =
+    managed: source: prefix:
+    lib.concatLists (
+      lib.mapAttrsToList (
+        name: value:
+        let
+          path = prefix + name;
+        in
+        if name == "$schema" then
+          [ ]
+        else if !(source ? ${name}) then
+          [ "${path} (母艦の settings.json に無い)" ]
+        else if builtins.isAttrs value && builtins.isAttrs source.${name} then
+          claudeDrift value source.${name} "${path}."
+        else if value != source.${name} then
+          [ path ]
+        else
+          [ ]
+      ) managed
+    );
+  claudeDrifted = claudeDrift claudeManaged claudeWorkstation "";
 in
 assert lib.assertMsg (duplicated darwin packageNames == [ ])
   "nix > homebrew: declared on both sides for the workstation — ${lib.concatStringsSep ", " (duplicated darwin packageNames)}";
@@ -68,6 +100,8 @@ assert lib.assertMsg
     lib.hasInfix ''font-family = "${mono}"'' ghosttyCfg
   )
   "ghostty font-family must match configs/theme/fonts.json (mono) — static-copy consistency of the font SSO";
+assert lib.assertMsg (claudeDrifted == [ ])
+  "claude: settings.remote.json の管理キーは母艦の settings.json と一致していること (README の「クライアント端末が正」) — ${lib.concatStringsSep ", " claudeDrifted}";
 pkgs.runCommand "dotfiles-config-invariants" { } ''
   touch "$out"
 ''
