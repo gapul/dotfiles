@@ -8,6 +8,7 @@
 #   droid swipe X1 Y1 X2 Y2 [ms]
 #   droid type "text"    フォーカス中の入力欄に打つ
 #   droid key <name|code>  back / home / enter / 数字のキーコード
+#   droid ime [id]       IME の一覧 / 切り替え (日本語 IME だと type がかなになる)
 #   droid open <pkg>     アプリを起動
 #   droid url <url>      URL / ディープリンクを開く
 #   droid source         画面の要素ツリー (uiautomator)
@@ -34,7 +35,15 @@ _serial() {
     echo "$ANDROID_SERIAL"
     return
   }
-  "$ADB" devices | awk '$2 == "device" { print $1 }' | sort -r | head -1
+  local list wireless
+  list=$("$ADB" devices | awk '$2 == "device" { print $1 }')
+  # 同じ端末が USB と無線の両方で見えることがある。無線 (host:port) を優先する。
+  wireless=$(printf '%s\n' "$list" | grep ':' | head -1)
+  [ -n "$wireless" ] && {
+    echo "$wireless"
+    return
+  }
+  printf '%s\n' "$list" | head -1
 }
 
 _adb() { "$ADB" -s "$(_serial)" "$@"; }
@@ -48,8 +57,19 @@ case "${1:-}" in
     ;;
   tap) _sh input tap "$2" "$3" ;;
   swipe) _sh input swipe "$2" "$3" "$4" "$5" "${6:-300}" ;;
+  ime)
+    # 日本語 IME が有効だと `type` のローマ字が勝手にかなへ変換される
+    # (wifi → うぃふぃ)。英字で入れたいときはここで一時的に切り替える。
+    if [ $# -lt 2 ]; then
+      _sh ime list -s
+      echo "-> $(_sh settings get secure default_input_method)"
+    else
+      _sh ime set "$2"
+    fi
+    ;;
   type)
     # input text はスペースを %s で表す。改行やタブは送れない。
+    # 変換は端末の IME 任せなので、英字を入れたいときは先に `droid ime` で切り替える。
     _sh input text "$(printf '%s' "$2" | sed 's/ /%s/g')"
     ;;
   key)
