@@ -42,6 +42,10 @@ let
     pkgs.writeText "lazymc-${name}.toml" ''
       [public]
       address = "0.0.0.0:${toString inst.port}"
+      # 寝ている間の status 応答に使う版。実際の互換性とは関係が無いが、ずれていると
+      # サーバー一覧に赤い×が出る。Paper を上げたらここも合わせる。
+      version = "26.2"
+      protocol = 776
 
       [server]
       address = "127.0.0.1:${toString (inst.port + 10)}"
@@ -460,6 +464,13 @@ in
     # once, which buys nothing and keeps the radio, its driver extension and wifianalyticsd busy.
     # If the cable ever dies this machine needs hands anyway — it is three metres away.
     /usr/sbin/networksetup -setairportpower en1 off >/dev/null 2>&1 || true
+    # Application Firewall は許可をバイナリごとに覚えるので、store path が変わる更新のたびに
+    # 新しい lazymc は「未知のアプリ」になり、外からの接続が黙って落ちる (loopback は通るので
+    # 気付きにくい)。java は前から登録済みだったが、公開ポートを持つのは lazymc に変わった。
+    for bin in ${pkgs.lazymc}/bin/lazymc; do
+      /usr/libexec/ApplicationFirewall/socketfilterfw --add "$bin" >/dev/null 2>&1 || true
+      /usr/libexec/ApplicationFirewall/socketfilterfw --unblockapp "$bin" >/dev/null 2>&1 || true
+    done
     # The hand-written plists the daemons above replace. nix-darwin names its units org.nixos.*,
     # so without this both copies would be loaded and Hermes would come up twice.
     for label in net.gapul.hermes-gateway net.gapul.hermes-gateway-imouto net.gapul.hermes-watchdog \
