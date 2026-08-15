@@ -21,6 +21,19 @@ let
     url = "https://mediafilez.forgecdn.net/files/7797/302/twilightforest-1.21.1-4.8.3345-universal.jar";
     hash = "sha256-ST2hbRAhD59To8M7PY/LSumxQBbuQg11PIlFYr2aujU=";
   };
+  # Fabric は本体の新版に当日〜数日で追いつくので、本館と同じ 26.2 に載る。サーバー用の
+  # 起動 jar は meta が組み立てて返すので、URL に版が全部入っている。
+  fabricServer = pkgs.fetchurl {
+    name = "fabric-server-26.2-loader-0.19.3.jar";
+    url = "https://meta.fabricmc.net/v2/versions/loader/26.2/0.19.3/1.1.2/server/jar";
+    hash = "sha256-MB+DqsNrI/K8ZMxYVg7fmFM8+qMOU68AK6lQx19BALQ=";
+  };
+  # 大半の mod が要求するので最初から入れておく。無いと「mod を入れたのに起動しない」を必ず踏む。
+  fabricApi = pkgs.fetchurl {
+    name = "fabric-api-0.157.0+26.2.jar";
+    url = "https://cdn.modrinth.com/data/P7dR8mSH/versions/vmQp7ixA/fabric-api-0.157.0%2B26.2.jar";
+    hash = "sha256-rLfckKBDBRnElUgHTT+/b9gdEwY/CPCvNEsqawikJiA=";
+  };
   neoforgeVersion = "21.1.248";
   neoforgeInstaller = pkgs.fetchurl {
     url = "https://maven.neoforged.net/releases/net/neoforged/neoforge/${neoforgeVersion}/neoforge-${neoforgeVersion}-installer.jar";
@@ -56,6 +69,21 @@ let
       protocol = 776;
       runner = ../../configs/macmini/minecraft/run.sh;
       env.SERVER_JAR = "${paperServer}";
+    };
+    # 最新で mod を遊ぶ側。Fabric は本体に追いつくのが速いので本館と同じ 26.2 に載る。
+    # 逆に「Fabric に来ていない mod」が要るときだけ下の NeoForge 側を使う。
+    fabric = {
+      dir = "/Users/mcsrv/fabric";
+      java = pkgs.temurin-bin-25;
+      memory = "2G";
+      port = 25568;
+      version = "26.2";
+      protocol = 776;
+      runner = ../../configs/macmini/minecraft/run.sh;
+      env = {
+        SERVER_JAR = "${fabricServer}";
+        MODS = "${fabricApi}";
+      };
     };
     # mod 用。黄昏の森が追いついている最新が 1.21.1 なので、本館とは別の版で固定する。
     # NeoForge 21.1 は Java 21 でしか動かない(25 では起動しない)。
