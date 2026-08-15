@@ -64,6 +64,13 @@ alias gc='git commit'
 alias gl='git pull'
 alias gp='git push'
 alias gs='git status'
+# 2 本目の ssh。ssh_config に LocalForward / RemoteForward を持つホストへ既に 1 本
+# 繋がっていると、2 本目は同じポートを取りに行って全部 "Address already in use" で
+# 落ち、"Could not request local forwarding." まで出る (herdr で常駐しているホストで
+# 頻発する)。1 本目が既に張っているので 2 本目にトンネルは要らない。
+# ssh() の mutagen ラッパー (nix/home/mutagen-sync.nix) は -o を値付きフラグとして
+# 読み飛ばすので、ペアリングは素の ssh と同じように働く。
+alias ssh2='ssh -o ClearAllForwardings=yes'
 
 # ── 関数 ────────────────────────────────────────────────────────────────────
 # nix build / nix-build を nom (nix-output-monitor) で読みやすくする
