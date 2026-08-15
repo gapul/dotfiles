@@ -916,7 +916,7 @@ layoutType = "dwindle"
 name = "6"
 
 [workspaces.monitorAssignment]
-type = "secondary"
+type = "main"
 
 [[workspaces]]
 id = "A7D5E104-6985-4516-8ED5-07F144F2A33D"
@@ -924,7 +924,7 @@ layoutType = "dwindle"
 name = "7"
 
 [workspaces.monitorAssignment]
-type = "secondary"
+type = "main"
 
 [[workspaces]]
 id = "B307EF93-A1BF-4C81-A8D9-19D571373C95"
@@ -948,4 +948,4 @@ layoutType = "dwindle"
 name = "0"
 
 [workspaces.monitorAssignment]
-type = "main"
+type = "secondary"
