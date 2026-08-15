@@ -5,13 +5,23 @@
 #   ./apps.sh status   # USB 接続した iPhone と宣言の差分。MISSING があれば exit 1 (既定)
 #   ./apps.sh verify   # appstore 行の bundleId が実在するか (iTunes Search API)
 #
+# AltStore は再署名のときに bundleId へ team id を足す (`net.gapul.blink` が
+# 実機では `net.gapul.blink.S3H296G6Q5`、AltStore 自体は `com.S3H296G6Q5.` 接頭辞)。
+# 宣言には配布元の id を書き、実機側を正規化して突き合わせる。
+#
 # status には USB 接続と、端末側で「このコンピュータを信頼」済みであることが要る。
 # ネットワーク越しには照会できない。
 set -euo pipefail
 
 cd "$(dirname "$0")"
 
+# 再署名で bundleId に差し込まれる team id。configs/bin/ios と同じ値。
+TEAM_ID=S3H296G6Q5
+
 declared() { grep -vE '^[[:space:]]*(#|$)' apps.tsv; }
+
+# 実機の id を配布元の id に戻す。接尾辞と接頭辞の 2 パターンがある。
+denormalize() { sed -E "s/\\.${TEAM_ID}\$//; s/^com\\.${TEAM_ID}\\.//"; }
 
 cmd_status() {
   if ! command -v ideviceinstaller >/dev/null; then
@@ -22,7 +32,7 @@ cmd_status() {
   # 出力は "bundleId, \"version\", \"name\"" の CSV で 1 行目がヘッダ。
   # bundleId だけ抜き、ヘッダ (CFBundleIdentifier) は落とす。
   local installed missing=0 extra=0
-  installed=$(ideviceinstaller list | cut -d, -f1 | grep -v '^CFBundleIdentifier$' | sed 's/[[:space:]]*$//' | sort)
+  installed=$(ideviceinstaller list | cut -d, -f1 | grep -v '^CFBundleIdentifier$' | sed 's/[[:space:]]*$//' | denormalize | sort)
 
   echo "━━━ 宣言したが端末に無い ━━━"
   while IFS=$'\t' read -r bundle source name _; do
@@ -79,6 +89,10 @@ cmd_verify() {
       ;;
     altstore-classic) grep -qx "$bundle" <<<"$classic" || ok=false ;;
     altstore-pal) grep -qx "$bundle" <<<"$pal" || ok=false ;;
+    # 配布元が AltStore 形式の JSON を出していないもの (PAL のマーケットプレイス
+    # アプリ本体、Epic Games、まだ source に載せていない自ビルドなど)。
+    # 経路は把握しているが機械では確かめられないので素通しする。
+    manual) ;;
     *)
       echo "  BAD      $name — source 列が不正: $source"
       unknown=$((unknown + 1))
