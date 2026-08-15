@@ -54,6 +54,7 @@ in
     fd # find alternative (also used in fzf defaultCommand)
     just # command runner (runs this Justfile)
     bottom # system monitor (btm)
+    fastfetch # system info display (neofetch successor)
     dust # disk usage (formerly du-dust)
     ncdu # disk usage TUI
     yazi # file manager TUI
