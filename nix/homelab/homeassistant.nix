@@ -18,7 +18,19 @@
       environment.TZ = "Asia/Tokyo";
       # Host networking is not optional: discovery of ESPHome nodes and Matter
       # devices is mDNS, which does not cross a bridge.
-      extraOptions = [ "--network=host" ];
+      #
+      # HAOS ran Home Assistant as root on the host, so two of default_config's
+      # discovery paths worked without anyone declaring anything. In a container
+      # they need the capabilities named explicitly: bluetooth talks to hci0
+      # through a raw HCI socket, and the dhcp integration sniffs DHCP with a
+      # packet socket. Without them the box has an adapter (hci0 is present and
+      # unblocked) that Home Assistant cannot manage, and both log an error every
+      # start.
+      extraOptions = [
+        "--network=host"
+        "--cap-add=NET_ADMIN"
+        "--cap-add=NET_RAW"
+      ];
       log-driver = "journald";
     };
 
