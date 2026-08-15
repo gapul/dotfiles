@@ -1,4 +1,4 @@
-_:
+{ pkgs, ... }:
 let
   # Same repository and the same retention as the Mac and the laptop. That file
   # is the single definition point on purpose: three hosts writing to one restic
@@ -53,6 +53,16 @@ in
       Persistent = true;
     };
   };
+
+  # services.restic.backups builds its own wrapper, so nothing puts restic or
+  # rclone on the interactive PATH. That is fine until the day the backup is
+  # needed, which is the worst moment to discover that looking inside it starts
+  # with `nix shell`. Restoring by hand also needs the same rclone the unit uses,
+  # not whatever version a shell happens to fetch.
+  environment.systemPackages = [
+    pkgs.restic
+    pkgs.rclone
+  ];
 
   # Known failure mode worth remembering: the rclone Google Drive token expires
   # after roughly a week of disuse and both hosts then fail silently. Until this

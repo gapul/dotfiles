@@ -1,133 +1,83 @@
-# homeserver 移行 TODO
+# homeserver 移行の残り
 
-宣言と検証は済んでいる。ここに残っているのは、判断が要るものと、人の手が要るもの。
-当日の手順そのものは [HOMESERVER_MIGRATION.md](HOMESERVER_MIGRATION.md) を見る。
+移行そのものは 2026-08-11 に完了した。コンテナ30個とネイティブサービス一式が稼働、
+メモリは 9.7GB → 6.3GB、tailnet IP は `100.127.129.31`。当日の手順と実地の知見は
+[HOMESERVER_MIGRATION.md](HOMESERVER_MIGRATION.md) にある。
 
-状態: **2026-08-11 に移行完了**。コンテナ31個とネイティブサービス一式が稼働、
-メモリは 9.7GB → 6.3GB。会社 VPN トンネルも実機で確立済み(宣言のみで再現する)。
-tailnet IP は `100.127.129.31`。
+ここに残すのは、移行後に「使おうとして初めて壊れているとわかった」もの。移行前の
+判断待ちと当日手順は役目を終えたので落とした。
 
-移行中に判明した実地の知見は `HOMESERVER_MIGRATION.md` 側に反映済み。
+2026-08-16 に実機を一通り当たり直した結果を反映してある。
 
 ---
 
-## 1. 決めること(移行時に解決済み)
+## 見つけて直したもの (2026-08-16)
 
+記録として残す。どれも「サービスは起動しているのに中身が死んでいる」形で、
+gatus からも podman からも健全に見えていた。
 
-- [ ] **退避先をどこにするか**。母艦 Mac(速い・検証しやすい)か Google Drive の
-      restic(オフサイト・遅い)。35GB。両方でもよい
-- [ ] **実施日**。数時間サービスが止まる。DNS 主系は Pi なので家のインターネットは生きる
-- [ ] **tailnet 外の機器が直接叩いているサービスはあるか**。新ホストは tailscale0 しか
-      信用しない。心当たりがあるのは Jellyfin(8096)、SMB(139/445)、MQTT(1883)。
-      テレビや古い端末から使っているなら、その分だけ firewall を開ける
-- [ ] **会社 VPN の接続先をリポジトリに入れてよいか**。いまは勤務先の情報として
-      `/var/lib/secrets/mvrx/` に分離してある。気にしないなら nix に取り込めて、
-      その分だけ手で置くファイルが減る
+- **Home Assistant が 8/11 の起動以降ずっと recovery mode だった**。移行後に
+  `trusted_proxies` を `127.0.0.1` へ直したとき、`[127.0.0.1, ::1]` と書いたのが原因。
+  YAML のフローシーケンスでは `::1` を引用符なしに置けない。5日間、Matter も自動化も
+  MQTT も動いていなかったのに、コンテナは `Up` でヘルスチェックも通っていた。
+- **MQTT が HAOS のアドオンを向いたままだった**。接続先が `core-mosquitto`、ユーザーが
+  `homeassistant`。mosquitto 側の `ha` は新規ユーザーなので、パスワードを作り直して
+  `/var/lib/secrets/mosquitto-ha.password` と Home Assistant の両方に入れ直した。
+- **Matter が `use_addon: true` のままだった**。接続先も `ws://core-matter-server:5580/ws`。
+  この設定だと Home Assistant が Supervisor のアドオン管理を呼びに行き、
+  `KeyError: 'hassio'` で統合ごと落ちる。ここから `backup` → `cloud` → `default_config` と
+  連鎖して default_config が丸ごと立たなくなっていた。`ws://127.0.0.1:5580/ws` に変更。
+  ファブリック (`/var/lib/matter-server`) は無事なので再ペアリングは不要だった。
+- **homepage が services.yaml を読めていなかった**。中身の無いグループが残っていて
+  `null.forEach` を踏み、ダッシュボードにブックマークしか出ていなかった。中身も
+  移行で嘘になっていた (削除済みの AdGuard、ネイティブ化して消えたコンテナ名、
+  旧 CT101 の IP を向いた glances) ので実機に合わせて書き直した。
 
-## 2. 前日までにやること
+Home Assistant の `.storage` と `/var/lib/hass` は可変状態なのでリポジトリには入らない。
+壊れたら `.storage/core.config_entries.bak-claude` と `configuration.yaml.bak-recovery` が
+同じディレクトリにある。
 
-- [ ] **平文パスワード2件をローテーション**。archivebox の管理者パスワードと、
-      samba の `gapul`。どちらも compose ファイルに平文で入っていた(samba は
-      `command:` なので `ps` にも出ていた)
-- [ ] **restic の疎通確認**。rclone の Google Drive トークンは1週間ほどで失効し、
-      黙って止まる。当日に気づくと退避先が無い
-      ```sh
-      restic -r rclone:google-drive:restic-backup snapshots | tail -5
-      ```
-- [ ] **Cloudflare のトークンを用意**(Zone:DNS:Edit)。DNS 付け替えに使う
-- [ ] **ISO を用意**。CI の Recovery ISO artifact を落として USB に書く。
-      **インストールする世代と同じコミットのもの**を使う
-- [ ] **BIOS で USB 起動を確認**。Secure Boot は無効と確認済なので、起動順だけ。
-      `ssh pve 'systemctl reboot --firmware-setup'` で直行できる
-- [ ] `ha backups new` を取り直す。2026-08-09 の分は母艦にあるが、HA の DB は
-      動き続けているので当日の分が要る
+## 残っているもの
 
-## 3. 当日
-
-[HOMESERVER_MIGRATION.md](HOMESERVER_MIGRATION.md) の順に。要約すると、
-サービス停止 → 退避 → disko → nixos-install → 秘密を置く → 復元 → 検証。
-
-引き返せなくなる線は `disko --mode destroy` の実行。その前に、退避物が箱の外に
-あることを必ずもう一度確認する(vzdump は消えるディスクの上にある)。
-
-## 4. 移行後にやること
-
-サービスは起動するのに、使おうとして初めて壊れているとわかる類。
-
-- [x] **DNS の付け替え**。`*.gapul.net` 20件超が旧 Caddy の tailnet IP を指している
-      ```sh
-      export CF_API_TOKEN=...
-      scripts/cf-repoint-records.sh --from 100.64.125.107 --to "$(tailscale ip -4)"
-      # 一覧を見てから --apply
-      ```
-- [x] **A レコードを2件追加**: `esphome.gapul.net`、`nodered.gapul.net`
-- [x] **HA の `trusted_proxies` を `127.0.0.1` に**。直さないと全リクエストが 400
-- [x] **homepage の `services.yaml`**。IP 直書きが19箇所ある
-- [ ] **スマホの OwnTracks**。Dawarich の宛先が旧 CT101 の `:3005` →
-      新ホストは `192.168.116.98:3005`(tailnet なら `100.127.129.31:3005`)
-- [ ] **MQTT クライアント**。mosquitto の認証が HA ユーザー依存から独自ユーザー `ha` に
-      変わった。平文は macmini の `~/homeserver-migration/secrets/mosquitto-ha.plaintext`。
-      HA の MQTT 統合に入れたらそのファイルは消す
-- [x] **Matter デバイスがオンラインに戻るか確認**。戻らなければまずホストの IPv6 を疑う
-- [x] **Syncthing の device ID が変わっていないこと**を確認。変わっていたら身元の復元に失敗
-- [x] **旧スナップショットの掃除**
-      ```sh
-      restic forget --host pve --tag pve-vzdump --keep-last 1 --prune
-      ```
-- [x] **VM105 のディスクイメージ**: 会社トンネルが 2026-08-11 に新環境で確立したので
-      保険としての役目は終わり。`google-drive:homeserver-migration/vm105.img.zst`(2GB)は
-      削除して構わない
-- [x] **母艦の `~/.ssh/config` に homeserver を追加**(sops 管理側の作業)。
-      死んでいた `pve` / `caddy` のエントリも落とした
-
-## 4.1 移行で新たに見つかった残り
-
-- [x] **Cloudflare トンネルの宛先が旧 CT を指していた**。`matrix.gapul.net` と
-      `push.gapul.net` が `192.168.116.65` のまま = 502 で、**Matrix の federation が
-      移行以降ずっと落ちていた**。トンネル本体(`homelab-pi`)は Raspberry Pi で健全に
-      動いていたので気づきにくかった。`.98` へ向けて復旧済み(federation テスターも OK)
-- [ ] **そのトンネルの ingress がどこにも宣言されていない**。Cloudflare 側に置かれた
-      リモート設定で、Pi の cloudflared がそれを引いている。ホスト移動のたびに手で直す形。
-      cloudflared を homeserver 側に持ってきて nix で宣言するのが素直だが、
-      `alert.gapul.net` は Pi の中で完結しているのでそこだけ切り分けが要る
-- [ ] **tailnet のサブネット経路が未承認**。homeserver は 3 本(`192.168.116.0/24` /
-      `192.168.1.0/24` / `10.80.1.0/24`)を広告しているが管理コンソールで承認されていない。
-      さらに**削除済みノードが primary を握ったまま**残っていて、母艦のルート表は
-      `192.168.1.0/24` → `mvrx-relay`(offline)、`192.168.116.0/24` → `tailscale-router`
-      (offline)を向いている。承認しても先に死んだノードへ吸われるので、
-      **古いノードを消してから 3 本を承認する**。会社の開発機へは ProxyJump で
-      迂回してあるので急がない
-- [x] **mautrix の meta と twitter** が起動しない → 4本とも宣言から落とした。
-      meta / twitter は `domain` が `matrix.gapul.net`(正しくは `gapul.net`)、
-      signal / slack は既定の `example.localhost` のままで、いずれも一度も繋がっていない
+- [ ] **tailnet のサブネット経路が未承認**。homeserver は 3 本 (`192.168.116.0/24` /
+      `192.168.1.0/24` / `10.80.1.0/24`) を広告しているが管理コンソールで承認されていない。
+      さらに**削除済みノードが primary を握ったまま**で、`192.168.1.0/24` → `mvrx-relay`
+      (offline)、`192.168.116.0/24` → `tailscale-router` (offline) を向いている。承認しても
+      先に死んだノードへ吸われるので、**古いノードを消してから 3 本を承認する**。
+      消す対象は `caddy` / `pve` / `tailscale-router` / `mvrx-relay` / `mullvad-exit` の5台
+      (どれも移行で物理的に無くなった CT / VM)。会社の開発機へは ProxyJump で迂回して
+      あるので急がない
+- [ ] **Dawarich がそもそも未セットアップ**。ユーザーが既定の `demo@dawarich.app` だけで
+      points は 0 件。移行前から記録が始まっていなかった。アカウント作成 → API キー →
+      スマホの OwnTracks の宛先を `100.127.129.31:3005` に、の順
+- [ ] **samba に `gapul` が居ない**。`pdbedit -L` が空で、`smbpasswd -a gapul` が
+      効いていない。共有 `media` は匿名で一覧できるが、認証して書ける状態ではない。
+      パスワードは nix の外 (samba 自身の tdb) なので手で入れる
 - [ ] **ブリッジの部屋が旧 server_name のまま**。discord の portal は 18 室が
-      `!…:matrix.gapul.net` で、join が 404 になる。7月のドメイン変更
-      (`config.yaml.bak-domain` が残っている)の取りこぼしで、今回の移行とは無関係。
-      直すなら portal を作り直すことになるので判断が要る。telegram 側は
+      `!…:matrix.gapul.net` で、join が 404 になる。7月のドメイン変更の取りこぼしで、
+      移行とは無関係。直すなら portal を作り直すことになるので判断が要る。telegram 側は
       `No user logins found` でそもそもログインが無い
-- [x] **`probe-host` の見直し**。`host:port` を `/dev/tcp/$target` に渡していて
-      bash が開けず、判定が常に失敗して**10分ごとに正常なトンネルを落としていた**
-      (6時間で36回。ssh も同じ周期で切れる)。分割して解決。宛先は `192.168.1.36:22` /
-      `10.80.1.36:22` のどちらも到達する
 - [ ] **fgc の ntfy パスワードがログに平文で出る**。`apprise` の失敗時にコマンド全体を
       吐くため。気になるなら ntfy 側でトークン方式に変える
-- [ ] **`restic` と `rclone` が PATH に無い**。`services.restic.backups` はユニット内で
-      しか使わないので、手で復元作業をするときに `nix shell` が必要だった。
-      `environment.systemPackages` に足すか判断
+- [ ] **HAOS 由来のゴミ**。`core.entity_registry` に `platform: hassio` のエンティティが
+      63 件残っていて、これは永久に unavailable のまま。`/var/lib/homelab` にも廃止した
+      スタックの残骸ディレクトリがある (backrest / adguardhome-sync / wud / uptime-kuma /
+      stirling-pdf.bak / adguard-secondary)
 
-## 5. 落ち着いてからやること
+## 落ち着いてからやること
 
 急がないが、やると効くもの。
 
-- [ ] **2本目の NVMe を足して ZFS ミラーに**。いまは単騎で冗長ゼロ。
+- [ ] **2本目の NVMe を足して ZFS ミラーに**。いまは単騎で冗長ゼロ (`rpool` 472G、使用 5%)。
       `zpool attach` で再インストール無しに変換できる。2台目のノードより先に効く
 - [ ] **秘密を sops に移す**。ホストの age 鍵ができたら、`/var/lib/secrets` の
-      手置きファイルを `secrets/secrets.yaml` へ
+      手置きファイルを `secrets/secrets.yaml` へ。restic の ntfy 通知もこれ待ち
 - [ ] **イメージをダイジェスト固定 + Renovate**。いまは `:latest` のままで、
       再現性としては中途半端
 - [ ] **Raspberry Pi も NixOS に**。AdGuard の主系と副系が1つの定義から生成できる
 - [ ] **gatus の死角を埋める**。ntfy とホスト自体が落ちたときは通知が飛ばない。
-      Pi から homeserver を見る監視を置くのが素直
+      Pi から homeserver を見る監視を置くのが素直。今回の recovery mode のように
+      「HTTP 200 は返るが中身が死んでいる」も抜けるので、そこも考える価値がある
 - [ ] **Mullvad exit node**(欲しければ)。CT106 は中身が無かったので新規構築。
       ホストの routing table を汚さないよう独自 netns で
 - [ ] **deploy-rs か colmena**。ホストが増えてきたら
