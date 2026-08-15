@@ -383,7 +383,6 @@ in
       "maccy"
       "monitorcontrol"
       "qlmarkdown"
-      "corelocationcli"
 
       # ─── Creative / VTuber ───
       # nijigenerate/nijiexpose: 2D VTuber puppet rigging + streaming runtime (Live2D alternative,
