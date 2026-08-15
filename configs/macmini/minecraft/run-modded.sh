@@ -22,6 +22,27 @@ if [ ! -f "$ARGS" ]; then
   "$JAVA" -jar "$INSTALLER" --installServer "$SERVER_DIR" || exit 1
 fi
 
+# 前段の lazymc が突然死ぬと、その下のサーバーが宙に浮いたまま残る。macOS では止まった状態
+# (ps の T) で残るので TERM を送っても処理されず、世界のロックを掴んだままになる。次に起こした
+# サーバーはそれで "already locked" で落ちる——遊ぼうとした側からは「起動しない」に見える。
+# 掴んでいるプロセスが居たら先に片付ける。誰も繋がっていないから落として困る人は居ない。
+stale=$(/usr/sbin/lsof -t "$SERVER_DIR/world/session.lock" 2>/dev/null)
+if [ -n "$stale" ]; then
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] 旧サーバー ($stale) が世界を掴んでいるので落とす"
+  # 止まっている相手には CONT を先に送る。そうしないと TERM が配送されるだけで処理されない。
+  # shellcheck disable=SC2086  # 複数 pid をそのまま渡したい
+  kill -CONT $stale 2>/dev/null
+  # shellcheck disable=SC2086
+  kill -TERM $stale 2>/dev/null
+  for _ in $(seq 1 30); do
+    # shellcheck disable=SC2086
+    kill -0 $stale 2>/dev/null || break
+    sleep 1
+  done
+  # shellcheck disable=SC2086
+  kill -KILL $stale 2>/dev/null
+fi
+
 # 宣言された mod は store への symlink として置き直す。前回の分(= symlink)は毎回消すので、
 # 宣言から外した mod は次の起動で居なくなる。手で入れた実体の jar には触らない。
 mkdir -p mods
