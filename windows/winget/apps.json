@@ -4,86 +4,87 @@
   "Sources": [
     {
       "Packages": [
-        { "PackageIdentifier": "Git.Git" },
-        { "PackageIdentifier": "GitHub.cli" },
-        { "PackageIdentifier": "Anthropic.ClaudeCode" },
-        { "PackageIdentifier": "Microsoft.PowerShell" },
-        { "PackageIdentifier": "Microsoft.WindowsTerminal" },
-        { "PackageIdentifier": "wez.wezterm" },
-        { "PackageIdentifier": "Neovim.Neovim" },
-        { "PackageIdentifier": "Starship.Starship" },
-        { "PackageIdentifier": "ajeetdsouza.zoxide" },
-        { "PackageIdentifier": "junegunn.fzf" },
-        { "PackageIdentifier": "BurntSushi.ripgrep.MSVC" },
-        { "PackageIdentifier": "sharkdp.fd" },
-        { "PackageIdentifier": "sharkdp.bat" },
-        { "PackageIdentifier": "jqlang.jq" },
-        { "PackageIdentifier": "JesseDuffield.lazygit" },
-        { "PackageIdentifier": "Casey.Just" },
-        { "PackageIdentifier": "x-motemen.ghq" },
-        { "PackageIdentifier": "albertony.npiperelay" },
-        { "PackageIdentifier": "Espanso.Espanso" },
-        { "PackageIdentifier": "nathancorvussolis.corvusskk" },
-        { "PackageIdentifier": "Clement.bottom" },
-        { "PackageIdentifier": "astral-sh.uv" },
-        { "PackageIdentifier": "pnpm.pnpm" },
-        { "PackageIdentifier": "Rustlang.Rustup" },
-        { "PackageIdentifier": "DenoLand.Deno" },
-        { "PackageIdentifier": "Ollama.Ollama" },
-        { "PackageIdentifier": "sxyazi.yazi" },
-        { "PackageIdentifier": "Microsoft.WSL" },
-        { "PackageIdentifier": "TeraTermProject.teraterm5" },
-        { "PackageIdentifier": "Bitwarden.Bitwarden" },
-        { "PackageIdentifier": "Bitwarden.CLI" },
-        { "PackageIdentifier": "KeePassXCTeam.KeePassXC" },
-        { "PackageIdentifier": "FiloSottile.age" },
-        { "PackageIdentifier": "SecretsOPerationS.SOPS" },
-        { "PackageIdentifier": "Gitleaks.Gitleaks" },
-        { "PackageIdentifier": "Rclone.Rclone" },
-        { "PackageIdentifier": "tailscale.tailscale" },
-        { "PackageIdentifier": "WireGuard.WireGuard" },
-        { "PackageIdentifier": "Cloudflare.cloudflared" },
-        { "PackageIdentifier": "JohnMacFarlane.Pandoc" },
-        { "PackageIdentifier": "ImageMagick.Q16-HDRI" },
-        { "PackageIdentifier": "hpjansson.Chafa" },
-        { "PackageIdentifier": "oschwartz10612.Poppler" },
-        { "PackageIdentifier": "jurplel.qView" },
-        { "PackageIdentifier": "Ruben2776.PicView" },
-        { "PackageIdentifier": "DuongDieuPhap.ImageGlass" },
-        { "PackageIdentifier": "ahrm.sioyek" },
-        { "PackageIdentifier": "TheDocumentFoundation.LibreOffice" },
-        { "PackageIdentifier": "7zip.7zip" },
-        { "PackageIdentifier": "DEVCOM.JetBrainsMonoNerdFont" },
-        { "PackageIdentifier": "Google.Chrome" },
-        { "PackageIdentifier": "Zen-Team.Zen-Browser" },
-        { "PackageIdentifier": "Obsidian.Obsidian" },
-        { "PackageIdentifier": "VideoLAN.VLC" },
-        { "PackageIdentifier": "shinchiro.mpv" },
-        { "PackageIdentifier": "OBSProject.OBSStudio" },
-        { "PackageIdentifier": "BlenderFoundation.Blender" },
-        { "PackageIdentifier": "glzr-io.glazewm" },
-        { "PackageIdentifier": "AutoHotkey.AutoHotkey" },
-        { "PackageIdentifier": "RandyRants.SharpKeys" },
-        { "PackageIdentifier": "Microsoft.PowerToys" },
-        { "PackageIdentifier": "Flow-Launcher.Flow-Launcher" },
-        { "PackageIdentifier": "voidtools.Everything" },
-        { "PackageIdentifier": "ShareX.ShareX" },
-        { "PackageIdentifier": "KDE.KDEConnect" },
-        { "PackageIdentifier": "LocalSend.LocalSend" },
-        { "PackageIdentifier": "Deskflow.Deskflow" },
-        { "PackageIdentifier": "Playnite.Playnite" },
-        { "PackageIdentifier": "Syncthing.Syncthing" },
-        { "PackageIdentifier": "Mozilla.Thunderbird" },
-        { "PackageIdentifier": "WinSCP.WinSCP" },
-        { "PackageIdentifier": "ente-io.auth-desktop" },
-        { "PackageIdentifier": "WiresharkFoundation.Wireshark" },
-        { "PackageIdentifier": "KDE.Krita" },
-        { "PackageIdentifier": "Ditto.Ditto" },
-        { "PackageIdentifier": "Captura.Captura" },
-        { "PackageIdentifier": "Bitdefender.Bitdefender" },
-        { "PackageIdentifier": "Henry++.simplewall" },
-        { "PackageIdentifier": "Microsoft.Sysinternals.Autoruns" },
-        { "PackageIdentifier": "Malwarebytes.Malwarebytes" }
+        {
+          "PackageIdentifier": "7zip.7zip"
+        },
+        {
+          "PackageIdentifier": "ahrm.sioyek"
+        },
+        {
+          "PackageIdentifier": "AutoHotkey.AutoHotkey"
+        },
+        {
+          "PackageIdentifier": "Bitdefender.Bitdefender"
+        },
+        {
+          "PackageIdentifier": "Bitwarden.Bitwarden"
+        },
+        {
+          "PackageIdentifier": "Captura.Captura"
+        },
+        {
+          "PackageIdentifier": "DEVCOM.JetBrainsMonoNerdFont"
+        },
+        {
+          "PackageIdentifier": "Ditto.Ditto"
+        },
+        {
+          "PackageIdentifier": "EpicGames.EpicGamesLauncher"
+        },
+        {
+          "PackageIdentifier": "Espanso.Espanso"
+        },
+        {
+          "PackageIdentifier": "Flow-Launcher.Flow-Launcher"
+        },
+        {
+          "PackageIdentifier": "glzr-io.glazewm"
+        },
+        {
+          "PackageIdentifier": "Google.Chrome"
+        },
+        {
+          "PackageIdentifier": "jurplel.qView"
+        },
+        {
+          "PackageIdentifier": "KDE.KDEConnect"
+        },
+        {
+          "PackageIdentifier": "LizardByte.Sunshine"
+        },
+        {
+          "PackageIdentifier": "LocalSend.LocalSend"
+        },
+        {
+          "PackageIdentifier": "Microsoft.PowerShell"
+        },
+        {
+          "PackageIdentifier": "Microsoft.WSL"
+        },
+        {
+          "PackageIdentifier": "nathancorvussolis.corvusskk"
+        },
+        {
+          "PackageIdentifier": "Playnite.Playnite"
+        },
+        {
+          "PackageIdentifier": "shinchiro.mpv"
+        },
+        {
+          "PackageIdentifier": "tailscale.tailscale"
+        },
+        {
+          "PackageIdentifier": "Valve.Steam"
+        },
+        {
+          "PackageIdentifier": "voidtools.Everything"
+        },
+        {
+          "PackageIdentifier": "wez.wezterm"
+        },
+        {
+          "PackageIdentifier": "Zen-Team.Zen-Browser"
+        }
       ],
       "SourceDetails": {
         "Argument": "https://cdn.winget.microsoft.com/cache",

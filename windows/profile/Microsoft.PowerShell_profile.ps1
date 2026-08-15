@@ -247,17 +247,6 @@ function Test-DotfilesSetup {
         }
     } else { Write-Host "  [warn] Get-MpComputerStatus 取得不可 (Defender モジュール無効)" -ForegroundColor Yellow }
 
-    # simplewall (outbound firewall - GUI activate 必要)
-    if (Get-Process simplewall -ErrorAction SilentlyContinue) {
-        Write-Host "  [ok]   simplewall 稼働中 (filter mode active)" -ForegroundColor Green; $pass++
-    } else { Write-Host "  [warn] simplewall 未起動 — Start-Process 'C:\Program Files\simplewall\simplewall.exe' → Filter mode activate" -ForegroundColor Yellow }
-
-    # Malwarebytes (セカンド AV)
-    $mb = Get-Service MBAMService -ErrorAction SilentlyContinue
-    if ($mb -and $mb.Status -eq 'Running') {
-        Write-Host "  [ok]   Malwarebytes (MBAMService) 稼働中" -ForegroundColor Green; $pass++
-    } else { Write-Host "  [warn] Malwarebytes 未稼働 — winget install Malwarebytes.Malwarebytes" -ForegroundColor Yellow }
-
     Write-Host ''
     Write-Host "Result: $pass passed, $fail failed" -ForegroundColor ($(if ($fail -eq 0) { 'Green' } else { 'Yellow' }))
 }
