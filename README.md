@@ -113,6 +113,7 @@ curl -fsSL https://raw.githubusercontent.com/gapul/dotfiles/main/scripts/bootstr
     [Clean]
     gc                           # GC all layers at once (only regenerable caches; Trash and whole-home deletion are in gc-deep)
     gc-deep                      # Interactively delete heavy regenerable data (Trash / ~/tmp scratch / zap of retired casks / CoreSimulator cache / podman / old build artifacts)
+    tidy-apps                    # Hide backstage apps (Adobe helpers, Karabiner's driver manager) from the Applications launcher
 
     [Homelab]
     dns *flags                   # Diff the repo's declarations against Cloudflare DNS: A records, tunnel CNAMEs, and mail (MX/SPF/DKIM)
