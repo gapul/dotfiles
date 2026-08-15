@@ -98,6 +98,11 @@ let
       # server.properties の server-port を lazymc が書き換える。手で合わせると必ずずれる。
       wake_on_start = false
       wake_on_crash = false
+      # 既定は「止める」ではなく「凍らせる」(SIGSTOP)。復帰は速いが 1.2GB を握ったままなので、
+      # 3本立てると待機だけで 3.6GB 持っていかれる——24GB を AI スタックと分け合う機械では損。
+      # 起動は実測 4〜5 秒なので、素直に落とす。凍ったまま lazymc が死ぬと世界のロックを
+      # 掴んだまま残る、という厄介な壊れ方も無くなる。
+      freeze_process = false
 
       [time]
       # 10分無人で停止。起動は4秒弱なので、待たされる感覚はほぼ無い。
