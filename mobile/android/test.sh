@@ -13,7 +13,8 @@ trap 'rm -rf "$stub"' EXIT
 fail=0
 
 # 端末に入っている体にするパッケージ: 宣言の 1 行目と、宣言に無いものを 1 つ。
-kept=$(grep -vE '^[[:space:]]*(#|$)' apps.tsv | head -1 | cut -f1)
+# head を挟むと宣言が増えたとき grep が SIGPIPE で落ちて pipefail に引っかかる
+kept=$(awk -F'\t' '$0 !~ /^[[:space:]]*(#|$)/ { print $1; exit }' apps.tsv)
 declared_count=$(grep -cvE '^[[:space:]]*(#|$)' apps.tsv)
 
 cat >"$stub/adb" <<EOF

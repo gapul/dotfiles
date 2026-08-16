@@ -10,3 +10,5 @@
 
 gapul-selfbuild	classic	https://raw.githubusercontent.com/gapul/altstore-source/main/source.json
 altstore	pal	https://apps.altstore.io/
+aidoku	classic	https://raw.githubusercontent.com/Aidoku/Aidoku/altstore/apps.json
+altstore-official	classic	https://cdn.altstore.io/file/altstore/apps.json

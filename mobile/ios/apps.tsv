@@ -6,24 +6,165 @@
 #   altstore-classic  母艦で再署名して入れる自ビルド。verify は sources.tsv の
 #                     classic な source の JSON に bundleId が在るかを見る
 #   altstore-pal      AltStore PAL (代替マーケットプレイス) 経由。同上 (pal)
+#   manual            配布元が AltStore 形式の JSON を出しておらず機械で確かめられない
+#                     もの。verify は素通しする
 #
-# 自ビルドは再署名で bundleId が変わる。App Store 版の com.keepassium.ios とは
-# 別物なので、実機に入っているのは net.gapul.* の方。
+# **bundleId は配布元の値で書く**。AltStore は再署名のときに team id を差し込むので
+# 実機では `net.gapul.blink.S3H296G6Q5` や `com.S3H296G6Q5.com.rileytestut.AltStore`
+# になるが、apps.sh が実機側を正規化して突き合わせる。App Store 版の
+# `com.keepassium.ios` とは別物なので、自ビルドは `net.gapul.*` の方。
 #
 # インストールは自動化できない (App Store も PAL も署名済み ipa を要求する)。
 # 自動でやるのは差分の検出だけ。
+#
+# 2026-08-15 に実機 (iPhone 16 / iOS 26.6) の全アプリを吸い出して総入れ替えした。
+# それまでの宣言は 12 行で、しかも 5 行が実機と食い違っていた:
+#   io.tailscale.ipn.macos      → io.tailscale.ipn.ios  (macOS の id を書いていた)
+#   im.vector.app               → io.element.elementx   (Element X に移行済み)
+#   org.jellyfin.swiftfin       → org.jellyfin.expo     (公式クライアントに移行済み)
+#   com.rileytestut.AltStore    → PAL 本体は io.altstore.AltStore、classic 版は別行
+#   org.mqttitude.MQTTitude     → com.aaronpk.overland  (位置ログは Overland に移行済み)
+#   com.kodjodevf.mangayomi     → 端末から消えている (宣言からも落とした)
+#
+# WebDriverAgentRunner は `ios start` が入れる自動化用のランナーで、xcodebuild が
+# 出し入れするものなのでここには載せない。
 
-io.tailscale.ipn.macos	appstore	Tailscale	-
+# 自宅インフラ (homelab に繋がるもの)
+io.tailscale.ipn.ios	appstore	Tailscale	tailnet
 md.obsidian	appstore	Obsidian	Self-hosted LiveSync
 com.8bit.bitwarden	appstore	Bitwarden	Vaultwarden
 io.heckel.ntfy	appstore	ntfy	push.gapul.net
-org.mqttitude.MQTTitude	appstore	OwnTracks	Dawarich
-im.vector.app	appstore	Element	Conduit
 io.robbie.HomeAssistant	appstore	Home Assistant	Home Assistant
-org.jellyfin.swiftfin	appstore	Swiftfin	Jellyfin
+org.jellyfin.expo	appstore	Jellyfin	Jellyfin
+com.paulgessinger.swift-paperless	appstore	Paperless	paperless-ngx
+io.element.elementx	appstore	Element X	Conduit
+com.aaronpk.overland	appstore	Overland	Dawarich
+nl.t-shaped.Sushitrain	appstore	Synctrain	Syncthing
+co.candyhouse.sesame2	appstore	Sesame	Home Assistant
+net.mullvad.MullvadVPN	appstore	Mullvad VPN	-
+com.wireguard.ios	appstore	WireGuard	-
+com.carriez.flutterHbb	appstore	RustDesk	-
+org.kde.kdeconnect	appstore	KDE Connect	-
+org.localsend.localsendApp	appstore	LocalSend	-
 
-net.gapul.blink	altstore-classic	Blink Shell (自ビルド)	-
-net.gapul.keepassium	altstore-classic	KeePassium Pro (自ビルド)	Syncthing (kdbx)
-com.kodjodevf.mangayomi	altstore-classic	Mangayomi	-
+# 自ビルド / サイドロード
+io.altstore.AltStore	manual	AltStore	-
+com.rileytestut.AltStore	altstore-classic	AltStore	-
+net.gapul.blink	altstore-classic	Blink	-
+net.gapul.keepassium	altstore-classic	KeePassium Pro	Syncthing (kdbx)
+com.amgiapp.AmgiApp	manual	Amgi	-
+app.aidoku.Aidoku	altstore-classic	Aidoku	-
+org.angelauramc.amethyst	manual	Amethyst	Nostr
 
-com.rileytestut.AltStore	altstore-pal	AltStore PAL	-
+# 連絡・SNS
+jp.naver.line	appstore	LINE	-
+org.whispersystems.signal	appstore	Signal	-
+ph.telegra.Telegraph	appstore	Telegram	-
+chat.simplex.app	appstore	SimpleX	-
+com.hammerandchisel.discord	appstore	Discord	-
+com.automattic.beeper	appstore	Beeper	-
+com.facebook.Messenger	appstore	Messenger	-
+com.burbn.instagram	appstore	Instagram	-
+xyz.blueskyweb.app	appstore	Bluesky	-
+com.thomasricouard.IceCubesApp	appstore	Ice Cubes	-
+com.jb55.damus2	appstore	Damus	-
+com.linkedin.LinkedIn	appstore	LinkedIn	-
+app.nerv	appstore	NERV	-
+
+# 仕事・学校
+com.tinyspeck.chatlyio	appstore	Slack	-
+com.microsoft.skype.teams	appstore	Teams	-
+jp.co.rakuten.link.business	appstore	Link Office	-
+coop.univ.cm2	appstore	大学生協アプリ（公式）	-
+jp.co.enrission.Shirucafe	appstore	SHIRU CAFE	-
+com.newchat.hai	appstore	setlog	-
+
+# メール・情報収集
+com.google.Gmail	appstore	Gmail	-
+de.tutao.tutanota	appstore	Tuta Mail	-
+com.ranchero.NetNewsWire.iOS	appstore	NetNewsWire	-
+com.kagi.kagiiOS	appstore	Orion	-
+com.anthropic.claude	appstore	Claude	-
+
+# 写真・カメラ
+com.google.photos	appstore	Google Photos	-
+com.amazon.CloudDrivePhotos	appstore	Amazon Photos	-
+io.ente.frame	appstore	Ente Photos	Ente
+io.ente.auth	appstore	Ente Auth	Ente
+com.chromanoir.Zeit	appstore	Halide	-
+com.blackmagic-design.DaVinciCamera	appstore	Blackmagic Cam	-
+com.adobe.capture.ios	appstore	Adobe Capture	-
+com.adobe.lrmobilephone	appstore	Lightroom	-
+com.scaniverse.Scaniverse	appstore	Scaniverse	-
+
+# メディア・娯楽
+com.stremio.pal	manual	Stremio	-
+org.videolan.vlc-ios	appstore	VLC	-
+com.nianticlabs.pokemongo	appstore	Pokémon GO	-
+jp.pokemon.pokemonhome	appstore	Pokémon HOME	-
+com.epicgames.store	manual	Epic Games	-
+com.distractionware.supgrav	appstore	Gravitron	-
+com.oreragames.pitch	appstore	Pitch	-
+
+# 学習
+com.duolingo.DuolingoMobile	appstore	Duolingo	-
+KIsApplication.LearnKokki	appstore	Learn Flags	-
+com.ryutai.kyonorule	appstore	いみなしるーる	-
+DevEn3.azooKey	appstore	azooKey	-
+
+# 決済・ポイント
+jp.pay2.app.ios	appstore	PayPay	-
+jp.co.rakuten.pay.shopper	appstore	Rakuten Pay	-
+com.kddi.auwalletapp	appstore	au PAY	-
+jp.co.family.familymart-app	appstore	ファミペイ	-
+com.smbc-card.vpoint	appstore	VポイントPay	-
+jp.co.rakuten.point.pointclub	appstore	楽天PointClub	-
+com.nttdocomo.premierclub	appstore	dポイント	-
+jp.co.jreast.JrePoint	appstore	JRE POINT	-
+jp.co.rakuten-card.RakutenCard	appstore	楽天カード	-
+com.smbc-card.vpass	appstore	三井住友カード	-
+jp.co.viewcard.viewcardapp.ios	appstore	ビューカード	-
+
+# 銀行・証券・送金
+jp.co.smbc.direct	appstore	三井住友銀行	-
+jp.co.rakuten-bank.sapp.rbapp	appstore	楽天銀行	-
+jp.co.netbk.netbanking	appstore	ドコモの銀行	-
+jp.co.japannetbank.smtapp.balance	appstore	PayPay銀行	-
+jp.co.japannetbank.smtapp.token	appstore	トークン	-
+jp.co.TNEOBANK	appstore	V NEOBANK	-
+com.MinnaNoGinko.bankapp	appstore	みんなの銀行	-
+jp.co.sbisec.sbiapp	appstore	SBI証券+	-
+com.revolut.revolut	appstore	Revolut	-
+com.transferwise.Transferwise	appstore	Wise	-
+in.unicco.zaim.ZaimForIPhone	appstore	Zaim	-
+
+# 暗号資産
+io.metamask.MetaMask	appstore	MetaMask	-
+com.fotolockr.cakewallet	appstore	Cake Wallet	-
+app.phantom	appstore	Phantom	-
+com.debank.rabby-mobile	appstore	Rabby Wallet	-
+com.z.coin.jp.wallet	appstore	GMOコイン	-
+
+# 交通・旅行
+jp.co.jreast.jreastapp	appstore	JR東日本アプリ	-
+com.jalglobalwallet.jgw	appstore	JAL マイル	-
+jp.co.ana.anamile	appstore	ANA Mileage	-
+ru.yandex.ytaxi	appstore	Yandex Go	-
+com.google.Maps	appstore	Google Maps	-
+
+# 店舗・クーポン
+jp.co.sej.omniapp	appstore	セブン-イレブン	-
+jp.co.lawson.iphone.LAWSON	appstore	ローソン	-
+jp.co.aeonst.app.myaeon	appstore	iAEON	-
+jp.co.burgerkingjapan	appstore	バーガーキング	-
+com.syn-inc.gindaco	appstore	築地銀だこ	-
+com.toridoll.marugame.ios.MarugameSeimen	appstore	丸亀製麺	-
+jp.co.br31ice.ios.ThirtyOneClub	appstore	31Club	-
+
+# キャリア・公共・生活
+com.kddi.kdla.jp	appstore	povo2.0	-
+com.nttdocomo.myahamo	appstore	ahamo	-
+jp.go.cao.mpa.iOS	appstore	Mynaportal	-
+jp.telnavi.app.ios	appstore	電話帳ナビ	jp-phone-opendata で置き換え予定
+jp.co.greenhouse.asken	appstore	あすけん	BYOK food app で置き換え予定
+bbl.intl.bambulab.com	appstore	Bambu Handy	-
