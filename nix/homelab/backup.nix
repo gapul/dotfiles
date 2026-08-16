@@ -50,6 +50,46 @@ in
     # vzdumps, the cold pass taken during the migration). Those are kept by the
     # archive tag now; scoping forget is the other half of not deciding another
     # host's retention from here.
+    # 稼働中のデータベースをファイルとしてコピーしても、復元できる保証が無い。
+    # 移行手順書にも「稼働中の postgres/couchdb をコピーすると壊れた状態で取れる」と
+    # 書いてあるのに、日々のバックアップは同じことをしていた。転送は毎日成功して
+    # いるが、そこから DB を戻せるかは別の話。
+    #
+    # そこで取得前に整合の取れたダンプを /var/lib 配下に吐き、それを本体と一緒に
+    # 拾わせる。上の paths には Dawarich の PGDATA そのものも入っているが、**復元は
+    # このダンプから行うこと**。生の PGDATA は稼働中のコピーなので起動する保証がない。
+    #
+    # 対象に入れていないもの:
+    #   attic  — DB を戻してもキャッシュ本体 (/srv、対象外) が無いと意味がない。作り直す
+    #   couchdb — 追記のみの形式で、稼働中のファイルコピーが公式に安全とされている
+    backupPrepareCommand = ''
+      set -eu
+      umask 077
+      rm -rf /var/lib/db-dumps
+      install -d -m 0700 /var/lib/db-dumps
+
+      ${pkgs.podman}/bin/podman exec dawarich_db \
+        sh -c 'pg_dump -U "$POSTGRES_USER" -Fc dawarich_production' \
+        > /var/lib/db-dumps/dawarich.dump
+
+      ${pkgs.podman}/bin/podman exec miniflux-db \
+        sh -c 'pg_dump -U "$POSTGRES_USER" -Fc miniflux' \
+        > /var/lib/db-dumps/miniflux.dump
+
+      # sqlite は WAL の途中でコピーすると千切れる。iterdump はトランザクション内で
+      # 読むので、稼働中でも一貫した SQL が出る。1行で書くのは、nix の indented
+      # string と nixfmt が複数行 Python のインデントを壊すため。
+      ${pkgs.podman}/bin/podman exec paperless \
+        python3 -c 'import sqlite3,sys; sys.stdout.writelines(l+"\n" for l in sqlite3.connect("/usr/src/paperless/data/db.sqlite3").iterdump())' \
+        > /var/lib/db-dumps/paperless.sql
+    '';
+
+    # ダンプは取得のあいだだけ存在すればよい。置きっぱなしにすると二重に容量を食う
+    # うえ、古いダンプが正本のように見えてしまう。
+    backupCleanupCommand = ''
+      rm -rf /var/lib/db-dumps
+    '';
+
     pruneOpts = resticCommon.retentionArgs ++ [ "--host homeserver" ];
     extraBackupArgs = [ "--tag homeserver" ];
     timerConfig = {
