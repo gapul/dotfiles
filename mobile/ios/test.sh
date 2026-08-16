@@ -8,7 +8,9 @@ stub=$(mktemp -d)
 trap 'rm -rf "$stub"' EXIT
 fail=0
 
-kept=$(grep -vE '^[[:space:]]*(#|$)' apps.tsv | head -1 | cut -f1)
+# パイプに head を挟むと、宣言が増えたときに grep が SIGPIPE で落ちて
+# pipefail に引っかかる。awk 一発で 1 行目だけ取る。
+kept=$(awk -F'\t' '$0 !~ /^[[:space:]]*(#|$)/ { print $1; exit }' apps.tsv)
 declared_count=$(grep -cvE '^[[:space:]]*(#|$)' apps.tsv)
 
 # 本物の出力は 1 行目がヘッダの CSV。ヘッダを落とし損ねると EXTRA に化けるので、
