@@ -11,6 +11,7 @@
 # Layout: everything replicated somewhere else lives under ~/Sync (2026-08. ~/Cloud is retired).
 #   ~/Sync/google-drive           <- remote google-drive:           (remote-primary, a mount, personal)
 #   ~/Sync/google-drive-school    <- remote google-drive-school:    (remote-primary, a mount)
+#   ~/Sync/google-drive-work      <- remote google-drive-work:      (remote-primary, a mount, company)
 #   ~/Sync/syncthing              <- Syncthing share                (local-primary, real files)
 #   ~/Sync/<ssh-host>             <- mutagen session                (peer-primary, home/mutagen-sync.nix)
 # The mount point name is the remote name, so the two never drift apart.
@@ -44,6 +45,9 @@ let
     # two writers racing to refresh it in a single rclone.conf.
     "google-drive"
     "google-drive-school"
+    # Company Workspace account. My Drive only; the "ISMS Docs" shared drive is not mounted
+    # (that needs its own section with team_drive set).
+    "google-drive-work"
   ];
 
   rcloneBin = lib.makeBinPath [
