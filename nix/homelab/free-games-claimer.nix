@@ -12,7 +12,8 @@
     environment = {
       TZ = "Asia/Tokyo";
       LANG = "ja_JP.UTF-8";
-      # microsoft.js (Bing Rewards) と gog.js は意図的に外してある。
+      # microsoft.js (Bing Rewards) と gog.js は意図的に外してある。前者は BAN
+      # リスク、後者は GOG_OTP_BACKUP_CODES を置かないと回らないため。
       # fab.js は Epic の 3D アセット (fab.com の Limited-Time Free)。認証は Epic の
       # OAuth で、epic-games.js と同じブラウザプロファイルと資格情報を使い回す。
       # 順序に意味があって、epic-games.js の直後に置くと SSO のセッションが温まった
@@ -22,11 +23,25 @@
       LOOP = "86400";
       START_TIME = "09:00";
       RUN_ON_STARTUP = "0";
-      # 受け取りはせず通知だけするウォッチャー。
+      # Microsoft Rewards は明示的に無効。CLAIM_CMD から外してあるだけだと
+      # スケジューラが毎朝セッション確認に行き、実際 2026-08-16 の実行でも
+      # ログイン済みとして触っていた。ポイント自動収集は Microsoft が実際に
+      # アカウント停止を出す領域なので、触らせない側に倒す。
+      MS_ACTIVE = "0";
+      MS_MOBILE_ACTIVE = "0";
+
+      # 受け取りはせず通知だけするウォッチャー。ログインを伴わないので
+      # アカウントのリスクが無く、増やす分にはほぼ副作用が無い。
       UBISOFT_ACTIVE = "1";
       HUMBLE_ACTIVE = "1";
       FANATICAL_ACTIVE = "1";
       LENOVO_ACTIVE = "1";
+      # IndieGala はログイン無しで freebies ページを実ブラウザで開いて差分を見る。
+      # PSN と Xbox はブラウザすら使わず GamerPower の公開 API を引くだけ。
+      # PS Plus の月替わりと Xbox の Free Play Days がここに乗る。
+      INDIEGALA_ACTIVE = "1";
+      PSN_ACTIVE = "1";
+      XBOX_ACTIVE = "1";
       NOTIFY_TITLE = "free-games";
       NOTIFY_LEVEL = "actions";
       # 旧ホストの IP を指したままだったので新ホストへ。
