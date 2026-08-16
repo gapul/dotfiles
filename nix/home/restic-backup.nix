@@ -100,11 +100,14 @@ let
     parseSnapshotTime = ''$(date -j -f "%Y-%m-%dT%H:%M:%S" "$(echo "$latest" | cut -d. -f1)" +%s 2>/dev/null || echo 0)'';
   };
 
+  # longRunning: the backup and the integrity check both stream the whole set to Drive and
+  # must not be reaped mid-flight. The monitor only reads the last snapshot's timestamp.
   agent =
     program: schedule:
     import ../lib/launchd-agent.nix {
       inherit program schedule;
       nice = 5;
+      longRunning = true;
     };
 in
 {

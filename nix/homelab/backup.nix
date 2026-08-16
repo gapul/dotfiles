@@ -20,7 +20,13 @@ in
     # /var/lib is where every service on this host keeps its state: the container
     # bind mounts under /var/lib/homelab, the named podman volumes, adguard,
     # syncthing's identity, gatus, the acme certs, samba's password db.
-    paths = [ "/var/lib" ];
+    paths = [
+      "/var/lib"
+      # Dawarich's postgres lives on the big disk, not in the named volume its compose file
+      # suggests, so the whole /srv exclusion below was silently dropping the location history.
+      # It is the Google Timeline replacement: nothing re-collects it.
+      "/srv/dawarich"
+    ];
     exclude = [
       # Container images are re-pullable and would dominate the repository. The
       # volumes directory underneath is deliberately not excluded — that is data.
@@ -31,10 +37,11 @@ in
       # Runtime scratch, regenerated on boot.
       "/var/lib/systemd/coredump"
     ];
-    # /srv is not backed up. It holds media, the attic cache and archivebox's
-    # dumps: large, and either re-obtainable or already content-addressed. The
-    # exception is /srv/syncthing, which is a copy of what the Mac holds and is
-    # backed up from there. Change this if that stops being true.
+    # The rest of /srv is not backed up. It holds media, the attic cache and archivebox's
+    # dumps: large, and either re-obtainable or already content-addressed. /srv/syncthing is
+    # a copy of what the Mac holds and is backed up from there. /srv/dawarich is the one
+    # exception and is listed above. Check this list again whenever a service is pointed at
+    # the big disk — that is how the location history went missing.
 
     # --host: the repository is shared, and forget without it applies this policy to
     # every host's snapshots, not just the ones written here. The policy is the same
