@@ -54,6 +54,11 @@ let
       # ここが今まで完全に無防備だった。Claude Code の履歴 (~/.config/claude) や
       # 各ツールの状態が入っている。store へのシンボリックリンクは中身を追わない。
       "${home}/.config"
+      # Hermes の状態。専用ユーザーのホームは gapul から読めない(drwx------)ので、
+      # マイクラと同じ方式にした——root の daemon が固めてここへ置き、restic はそれを拾う。
+      # 中身は state.db(Discord の会話 525 件、全文検索インデックス込み)と .env 一式で、
+      # どちらも作り直せない。hermes-agent 本体と node は再インストールできるので入れない。
+      "/Users/Shared/hermes-backups"
     ];
     extraExcludes = [
       "**/.DS_Store"
