@@ -63,7 +63,6 @@ def start_chrome():
         ],
         check=True,
     )
-    time.sleep(20)  # ページ読み込みと cookie の更新が走るまで待つ
 
 
 def stop_chrome():
@@ -182,15 +181,29 @@ def main():
         log("starting Chrome (automation profile)")
         start_chrome()
         started_chrome = True
+
+    # Chrome がページを読んで cookie を更新し終えるまでの時間は一定ではない
+    # (実測で20秒ではまだ古く、40秒で通った)。固定待ちにすると「セッションが
+    # 切れている」と誤判定するので、通るまで一定間隔で取り直す。
+    headers = None
+    started = time.time()
     try:
-        cookie = extract_cookie()
-        headers = build_headers(cookie)
-        if not is_authenticated(headers):
-            log("FAILED: Chrome のセッションが切れている。手動での再ログインが必要")
-            return 1
+        while time.time() - started < 150:
+            time.sleep(10)
+            try:
+                candidate = build_headers(extract_cookie())
+                if is_authenticated(candidate):
+                    headers = candidate
+                    break
+            except Exception:
+                pass  # Chrome 起動直後は cookie が読めないことがあるので待つ
     finally:
         if started_chrome:
             stop_chrome()
+    if headers is None:
+        log("FAILED: Chrome のセッションが切れている。手動での再ログインが必要")
+        return 1
+    log(f"refreshed via Chrome in {int(time.time() - started)}s")
 
     new = json.dumps(headers)
     try:
