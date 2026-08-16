@@ -24,18 +24,28 @@ let
   };
 
   confPath = "${home}/.config/mopidy/mopidy.conf";
-  authPath = "${home}/.config/mopidy/browser.json";
+
+  # The YouTube session cookies rotate every few hours, so the auth file has to be rewritable at
+  # runtime (refresh-cookies.py re-extracts them from Chrome). The sops copy is only the seed used
+  # on a fresh machine; the live file mopidy actually reads lives under state and is refreshed.
+  authSeedPath = "${home}/.config/mopidy/browser.json";
+  authPath = "${home}/.local/state/mopidy/browser.json";
 
   # At login, sops-nix (which generates config/auth) and mopidy startup may run concurrently.
   # Wait until the token is present in the config and the auth file is readable before starting.
   startScript = pkgs.writeShellScript "mopidy-start" ''
     conf="${confPath}"
+    mkdir -p "$(dirname "${authPath}")"
     for _ in $(seq 1 60); do
-      if [ -r "$conf" ] && [ -r "${authPath}" ] && grep -q '^token = .' "$conf" 2>/dev/null; then
+      if [ -r "$conf" ] && [ -r "${authSeedPath}" ] && grep -q '^token = .' "$conf" 2>/dev/null; then
         break
       fi
       sleep 1
     done
+    if [ ! -s "${authPath}" ] && [ -r "${authSeedPath}" ]; then
+      cp "${authSeedPath}" "${authPath}"
+      chmod 600 "${authPath}"
+    fi
     exec ${mopidyEnv}/bin/mopidy --config "$conf"
   '';
 in
@@ -48,22 +58,19 @@ in
   # rmpc config: display lyrics from .lrc files in lyrics_dir (~/.cache/rmpc/lyrics).
   # On every song change, on_song_change runs the lyrics-fetch script (lrclib sync -> YTM async, in that order),
   # reflected immediately via hot-reload. The script uses ytmusicapi, so it runs with the mopidy env's python.
-  xdg.configFile."rmpc/config.ron".text = ''
-    #![enable(implicit_some)]
-    (
-        address: "127.0.0.1:6600",
-        cache_dir: "~/.cache/rmpc",
-        lyrics_dir: "~/.cache/rmpc/lyrics",
-        enable_lyrics_hot_reload: true,
-        on_song_change: ["${mopidyEnv}/bin/python", "${../../configs/media/rmpc/lyrics-fetch.py}"],
-    )
-  '';
+  # The tab order lives in configs/media/rmpc/config.ron (rmpc opens whichever tab is listed first,
+  # and its default first tab is the empty Queue, so there is nothing to pick from on startup).
+  xdg.configFile."rmpc/config.ron".text =
+    builtins.replaceStrings
+      [ "@MOPIDY_PYTHON@" "@LYRICS_FETCH@" ]
+      [ "${mopidyEnv}/bin/python" "${../../configs/media/rmpc/lyrics-fetch.py}" ]
+      (builtins.readFile ../../configs/media/rmpc/config.ron);
 
-  # YouTube auth (ytmusicapi browser format = JSON of headers + cookies).
-  # Contains Google session cookies, so it's sops-managed. mopidy reads the decrypted file via auth_json.
-  # NOTE: cookies expire. When they do, regenerate from Zen's cookies and update sops.
+  # YouTube auth seed (ytmusicapi browser format = JSON of headers + cookies).
+  # Contains Google session cookies, so it's sops-managed. The start script copies it to authPath
+  # once, and refresh-cookies.py keeps that copy fresh from Chrome after that.
   sops.secrets."ytmusic/browser_json" = {
-    path = authPath;
+    path = authSeedPath;
     mode = "0400";
   };
 
@@ -113,6 +120,24 @@ in
       ProcessType = "Interactive"; # don't lower priority, for audio playback
       StandardOutPath = "/tmp/mopidy.out";
       StandardErrorPath = "/tmp/mopidy.err";
+    };
+  };
+
+  # YouTube rotates its session cookies every few hours, so a static copy dies within hours.
+  # Chrome keeps them alive while it runs, so briefly start the automation-profile Chrome on a
+  # schedule, re-extract, and hand the result to mopidy. See configs/media/mopidy/refresh-cookies.py.
+  launchd.agents.mopidy-cookies = {
+    enable = true;
+    config = {
+      ProgramArguments = [
+        "${mopidyEnv}/bin/python"
+        "${../../configs/media/mopidy/refresh-cookies.py}"
+      ];
+      RunAtLoad = true;
+      StartInterval = 7200; # 2h; the rotating cookies live in the single-hour range
+      ProcessType = "Background";
+      StandardOutPath = "/tmp/mopidy-cookies.log";
+      StandardErrorPath = "/tmp/mopidy-cookies.log";
     };
   };
 }
