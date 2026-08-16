@@ -119,6 +119,32 @@ with open(OUT, "wb") as f:
     plistlib.dump(profile, f)
 os.chmod(OUT, 0o600)
 
+# 署名する。Developer ID があれば「検証済み」で入る。無ければ無署名のまま
+# (インストールは通るが「未検証」と出るだけで実害はない)。
+#
+# ここで TLS 証明書は使えない。Let's Encrypt の証明書は用途が serverAuth に
+# 限定されていて、署名すると `unsuitable certificate purpose` で弾かれる。
+ident = subprocess.run(
+    ["security", "find-identity", "-v", "-p", "codesigning"],
+    capture_output=True, text=True,
+).stdout
+signer = next(
+    (line.split('"')[1] for line in ident.splitlines()
+     if "Developer ID Application" in line and "REVOKED" not in line),
+    None,
+)
+if signer:
+    signed = OUT + ".signed"
+    r = subprocess.run(["security", "cms", "-S", "-N", signer, "-i", OUT, "-o", signed])
+    if r.returncode == 0:
+        os.replace(signed, OUT)
+        os.chmod(OUT, 0o600)
+        print(f"署名: {signer}")
+    else:
+        print("署名に失敗した。無署名のまま続ける")
+else:
+    print("署名なし (Developer ID が見つからない)")
+
 print(f"作成: {OUT}")
 for p in content:
     real = [k for k in p if k in ("CalDAVPassword", "CardDAVPassword", "IncomingPassword") and p[k]]
