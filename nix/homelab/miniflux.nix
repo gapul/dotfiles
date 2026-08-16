@@ -21,6 +21,14 @@
       "BASE_URL" = "https://rss.gapul.net/";
       "CREATE_ADMIN" = "1";
       "RUN_MIGRATIONS" = "1";
+      # 自前の RSSHub を読むために必要。miniflux は既定で私有アドレスへの取得を
+      # SSRF 対策として拒否する (`refusing to access private network host`)。
+      # 同じ箱の rsshub は podman ネットワーク越しの私有アドレスにしかいないので、
+      # これが無いと自前 RSSHub のフィードが一件も更新されない。実際、移行後
+      # ずっと日経のフィードが失敗し続けていた。
+      #
+      # フィードの URL を決めるのは自分だけなので、SSRF の想定脅威はここでは薄い。
+      "FETCHER_ALLOW_PRIVATE_NETWORKS" = "1";
     };
     ports = [
       "8081:8080/tcp"
