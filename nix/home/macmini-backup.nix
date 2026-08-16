@@ -113,5 +113,8 @@ in
       }
     ];
     nice = 5;
+    # 母艦と同じ理由。Developer と minecraft のスナップショットを丸ごと流すので、
+    # Background バンドに置くと途中で刈られうる。
+    longRunning = true;
   };
 }
