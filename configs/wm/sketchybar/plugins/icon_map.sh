@@ -288,7 +288,7 @@ function __icon_map() {
    "Clock")
         icon_result=":clock:"
         ;;
-   "cmux")
+   "cmux" | "cmux NIGHTLY")
         icon_result=":cmux:"
         ;;
    "coconutBattery")
@@ -377,6 +377,9 @@ function __icon_map() {
         ;;
    "Default Folder X")
         icon_result=":default_folder_x:"
+        ;;
+   "Delta")
+        icon_result=":delta:"
         ;;
    "Deluge")
         icon_result=":deluge:"
@@ -1452,6 +1455,9 @@ function __icon_map() {
    "Sonarr")
         icon_result=":sonarr:"
         ;;
+   "SourceGit")
+        icon_result=":sourcegit:"
+        ;;
    "Sourcetree")
         icon_result=":sourcetree:"
         ;;
@@ -1758,7 +1764,7 @@ function __icon_map() {
    "Z-Library")
         icon_result=":z_library:"
         ;;
-   "Zed")
+   "Zed" | "Zed Preview")
         icon_result=":zed:"
         ;;
    "Zen" | "Zen Browser" | "Twilight")
@@ -1767,7 +1773,7 @@ function __icon_map() {
    "Zeplin")
         icon_result=":zeplin:"
         ;;
-   "zoom.us")
+   "zoom.us" | "Zoom")
         icon_result=":zoom:"
         ;;
    "Zotero")
