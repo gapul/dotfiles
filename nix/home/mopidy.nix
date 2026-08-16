@@ -58,16 +58,13 @@ in
   # rmpc config: display lyrics from .lrc files in lyrics_dir (~/.cache/rmpc/lyrics).
   # On every song change, on_song_change runs the lyrics-fetch script (lrclib sync -> YTM async, in that order),
   # reflected immediately via hot-reload. The script uses ytmusicapi, so it runs with the mopidy env's python.
-  xdg.configFile."rmpc/config.ron".text = ''
-    #![enable(implicit_some)]
-    (
-        address: "127.0.0.1:6600",
-        cache_dir: "~/.cache/rmpc",
-        lyrics_dir: "~/.cache/rmpc/lyrics",
-        enable_lyrics_hot_reload: true,
-        on_song_change: ["${mopidyEnv}/bin/python", "${../../configs/media/rmpc/lyrics-fetch.py}"],
-    )
-  '';
+  # The tab order lives in configs/media/rmpc/config.ron (rmpc opens whichever tab is listed first,
+  # and its default first tab is the empty Queue, so there is nothing to pick from on startup).
+  xdg.configFile."rmpc/config.ron".text =
+    builtins.replaceStrings
+      [ "@MOPIDY_PYTHON@" "@LYRICS_FETCH@" ]
+      [ "${mopidyEnv}/bin/python" "${../../configs/media/rmpc/lyrics-fetch.py}" ]
+      (builtins.readFile ../../configs/media/rmpc/config.ron);
 
   # YouTube auth seed (ytmusicapi browser format = JSON of headers + cookies).
   # Contains Google session cookies, so it's sops-managed. The start script copies it to authPath
