@@ -39,6 +39,24 @@ gatus からも podman からも健全に見えていた。
   `null.forEach` を踏み、ダッシュボードにブックマークしか出ていなかった。中身も
   移行で嘘になっていた (削除済みの AdGuard、ネイティブ化して消えたコンテナ名、
   旧 CT101 の IP を向いた glances) ので実機に合わせて書き直した。
+- **samba に `gapul` が居なかった**。インストール当日に手で置くはずの
+  `sudo smbpasswd -a gapul` が抜けていて、`pdbedit -L` が空だった。共有 `media` は
+  匿名で一覧はできるので「見えている = 使える」と誤解しやすい。パスワードを作って
+  登録し、認証が通ることと誤ったパスワードが `NT_STATUS_LOGON_FAILURE` で弾かれる
+  ことを確認、値は Bitwarden へ。
+- **Dawarich が tailnet のアドレスを拒否していた**。`dawarich.env` の
+  `APPLICATION_HOSTS` が `localhost,::1,127.0.0.1` のままで、`100.127.129.31:3005` に
+  投げると Rails の host authorization が 403 を返す。localhost からしか触っていな
+  かったので気付かなかった。スマホの OwnTracks が動き出す前に踏むところだった。
+  tailnet と LAN のアドレスを足して、母艦から OwnTracks 形式の POST を実際に通し、
+  points が増えることまで確認した。
+- **fgc の ntfy 通知は一度も届いていなかった**。`NOTIFY` が
+  `ntfy://fgc:<password>@127.0.0.1:8082/games` で、この 127.0.0.1 はコンテナ自身を指す。
+  fgc は `podman` ネットワーク、ntfy は `ntfy_default` にいるので名前でも届かない。
+  「失敗時に apprise がコマンド全体をログに吐く」= 平文パスワードが見えていたのは、
+  毎回失敗していたから。宛先を `host.containers.internal:8082` に直し、認証は
+  `games` への write-only トークンに変更(パスワードより漏れたときに切りやすい)。
+  apprise から1通通ることを確認済み。
 
 Home Assistant の `.storage` と `/var/lib/hass` は可変状態なのでリポジトリには入らない。
 壊れたら `.storage/core.config_entries.bak-claude` と `configuration.yaml.bak-recovery` が
@@ -46,22 +64,19 @@ Home Assistant の `.storage` と `/var/lib/hass` は可変状態なのでリポ
 
 ## 残っているもの
 
-- [ ] **Dawarich がそもそも未セットアップ**。ユーザーが既定の `demo@dawarich.app` だけで
-      points は 0 件。移行前から記録が始まっていなかった。アカウント作成 → API キー →
-      スマホの OwnTracks の宛先を `100.127.129.31:3005` に、の順
-- [ ] **samba に `gapul` が居ない**。`pdbedit -L` が空で、`smbpasswd -a gapul` が
-      効いていない。共有 `media` は匿名で一覧できるが、認証して書ける状態ではない。
-      パスワードは nix の外 (samba 自身の tdb) なので手で入れる
+- [ ] **Dawarich のスマホ側**。サーバ側は済み(ログインは `gapul@homeserver.local`、
+      API キー発行済み、`APPLICATION_HOSTS` 修正済み)。残りは iPhone の OwnTracks を
+      `http://100.127.129.31:3005/api/v1/owntracks/points?api_key=…` に向けるところ。
+      家の外でも記録するならスマホの Tailscale が常時オンである必要がある
 - [ ] **ブリッジの部屋が旧 server_name のまま**。discord の portal は 18 室が
       `!…:matrix.gapul.net` で、join が 404 になる。7月のドメイン変更の取りこぼしで、
       移行とは無関係。直すなら portal を作り直すことになるので判断が要る。telegram 側は
       `No user logins found` でそもそもログインが無い
-- [ ] **fgc の ntfy パスワードがログに平文で出る**。`apprise` の失敗時にコマンド全体を
-      吐くため。気になるなら ntfy 側でトークン方式に変える
-- [ ] **HAOS 由来のゴミ**。`core.entity_registry` に `platform: hassio` のエンティティが
-      63 件残っていて、これは永久に unavailable のまま。`/var/lib/homelab` にも廃止した
-      スタックの残骸ディレクトリがある (backrest / adguardhome-sync / wud / uptime-kuma /
-      stirling-pdf.bak / adguard-secondary)
+- [ ] **HAOS と旧ホスト由来のゴミ**。消すかどうかの判断待ち。`core.entity_registry` に
+      `platform: hassio` のエンティティが 63 件残っていて、これは永久に unavailable の
+      まま。`/var/lib/homelab` にも廃止したスタックの残骸ディレクトリが合計 17MB ある
+      (backrest 785K / uptime-kuma 649K / adguard-secondary 16M / adguardhome-sync /
+      wud / stirling-pdf.bak)。容量としては無視できるので、消す動機は見通しの良さだけ
 
 ## 落ち着いてからやること
 
