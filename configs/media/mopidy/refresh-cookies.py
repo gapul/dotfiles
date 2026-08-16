@@ -146,7 +146,37 @@ def mpd_state():
     return None
 
 
+def age_of(path):
+    try:
+        secs = time.time() - os.path.getmtime(path)
+    except OSError:
+        return None, "unknown"
+    return secs, f"{int(secs // 3600)}h{int(secs % 3600 // 60):02d}m"
+
+
+def still_valid():
+    """手持ちの cookie がまだ通るなら Chrome を起こす必要はない。
+
+    ついでに、失効を検出したときにその時点の経過時間をログに残す。何時間もつのかは
+    実測できていないので、この記録が溜まったら StartInterval を決め直す材料になる。
+    """
+    try:
+        with open(LIVE_PATH) as f:
+            headers = json.load(f)
+    except Exception:
+        return False
+    _, age = age_of(LIVE_PATH)
+    if is_authenticated(headers):
+        log(f"current cookie still valid (age {age})")
+        return True
+    log(f"current cookie expired (age {age}) -> refreshing")
+    return False
+
+
 def main():
+    if still_valid():
+        return 0
+
     started_chrome = False
     if not chrome_running():
         log("starting Chrome (automation profile)")
