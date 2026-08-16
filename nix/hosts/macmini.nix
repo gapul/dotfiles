@@ -487,6 +487,25 @@ in
     };
   };
 
+  # Hermes の状態を restic が読める場所へ固める。専用ユーザーのホームは gapul から
+  # 読めないので、マイクラと同じくここで tar にしてから拾わせる。restic(5:00)より前に走らせる。
+  launchd.daemons.hermes-backup = {
+    serviceConfig = {
+      ProgramArguments = [ "${../../configs/macmini/hermes/backup.sh}" ];
+      StartCalendarInterval = [
+        {
+          Hour = 4;
+          Minute = 50;
+        }
+      ];
+      ProcessType = "Background";
+      LowPriorityIO = true;
+      Nice = 10;
+      StandardOutPath = "/Users/Shared/hermes-backups/backup.log";
+      StandardErrorPath = "/Users/Shared/hermes-backups/backup.log";
+    };
+  };
+
   # popo — the Slack agent for the company workspace, run as its own user.
   #
   # It reaches the control plane at api.popo.sh with a bootstrap key (config/.env, outside nix) and
