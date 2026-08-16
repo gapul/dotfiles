@@ -53,18 +53,38 @@ let
       # Drive, and the restic repository lives on that same Drive, so backing up the mount would
       # feed the repository into itself.
       "${home}/Sync/syncthing" # Syncthing share (local-primary replicated data)
-      "${home}/Library/Application Support/minecraft/saves" # Minecraft worlds (non-reproducible)
+      # Single-player worlds. The multiplayer ones moved to the macmini, where the server tars
+      # /Users/mcsrv/server into /Users/Shared/minecraft-backups every ten minutes and
+      # home/macmini-backup.nix picks that up - so those are covered over there, not here.
+      "${home}/Library/Application Support/minecraft/saves"
       "${home}/Desktop" # small, but the only home dir that was silently outside the set
       # Voice Memos. iCloud sync for these is off (CloudRecordings_ckAssets is empty), so the
       # group container is the only copy. CloudRecordings.db carries the titles, so take the
       # whole container rather than just the .m4a files.
       "${home}/Library/Group Containers/group.com.apple.VoiceMemos.shared"
       "${home}/.local/share/keystats" # keystats time series (a re-run cannot recreate it)
+      # ActivityWatch, same class as keystats: 8 months and 1.1M events of what was on screen,
+      # recorded once and never recomputable. aw-server keeps it in one SQLite file.
+      "${home}/Library/Application Support/activitywatch/aw-server"
+      # Zen's profile. Bookmarks already ride floccus, so what is actually at stake here is the
+      # history and the per-extension settings; the caches under it are excluded below.
+      "${home}/Library/Application Support/zen/Profiles"
     ];
     extraExcludes = [
       "**/.DS_Store"
       "**/*.photoslibrary"
       "**/ae-mcp-commands"
+      # Zen's profile is ~1GB and almost all of it is refetchable browser cache. Keep places.sqlite
+      # and the extension state, drop the rest.
+      "**/zen/Profiles/*/cache2"
+      "**/zen/Profiles/*/startupCache"
+      "**/zen/Profiles/*/shader-cache"
+      "**/zen/Profiles/*/thumbnails"
+      "**/zen/Profiles/*/settings/**"
+      "**/zen/Profiles/*/minidumps"
+      "**/zen/Profiles/*/datareporting"
+      # aw-server rotates .bak copies next to the live DB; the live one is what matters.
+      "**/aw-server/*.db.bak.*"
     ];
     notifyBody = ''
       /usr/bin/osascript -e "display notification \"$2\" with title \"$1\"" 2>/dev/null || true
