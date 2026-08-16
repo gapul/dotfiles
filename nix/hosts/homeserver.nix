@@ -349,6 +349,19 @@ in
   # widening the whole thing.
   networking.firewall.trustedInterfaces = [ "tailscale0" ];
 
+  # Matter だけは例外で、LAN 側を開けないと成立しない。デバイスの発見が同一 L2 の
+  # mDNS なので、5353 が閉じていると commissioning が必ず `Discovery timed out` で
+  # 落ちる (2026-08-16 に SESAME Hub 3 で踏んだ。ペアリングコードは正しく、機器も
+  # 同じネットワークにいるのに、homeserver からは広告が一件も見えなかった)。
+  # 5540 は commissioning 後の運用トラフィック。
+  #
+  # tailnet 越しには来ないので trustedInterfaces では埋まらない。LAN インターフェイス
+  # に限定して開ける。
+  networking.firewall.interfaces.enp2s0.allowedUDPPorts = [
+    5353
+    5540
+  ];
+
   # --- Containers ---
   # podman rather than docker: no daemon, and conmon costs ~1-2MB per container
   # where the containerd-shim it replaces measured ~13MB across 34 containers.
