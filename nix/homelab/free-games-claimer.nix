@@ -13,8 +13,12 @@
       TZ = "Asia/Tokyo";
       LANG = "ja_JP.UTF-8";
       # microsoft.js (Bing Rewards) と gog.js は意図的に外してある。
-      CLAIM_CMD = "prime-gaming.js; epic-games.js; steam.js";
-      CLAIM_CMD_MANUAL = "prime-gaming.js; epic-games.js; steam.js";
+      # fab.js は Epic の 3D アセット (fab.com の Limited-Time Free)。認証は Epic の
+      # OAuth で、epic-games.js と同じブラウザプロファイルと資格情報を使い回す。
+      # 順序に意味があって、epic-games.js の直後に置くと SSO のセッションが温まった
+      # ままなので二度目のログインが要らない。
+      CLAIM_CMD = "prime-gaming.js; epic-games.js; fab.js; steam.js";
+      CLAIM_CMD_MANUAL = "prime-gaming.js; epic-games.js; fab.js; steam.js";
       LOOP = "86400";
       START_TIME = "09:00";
       RUN_ON_STARTUP = "0";
