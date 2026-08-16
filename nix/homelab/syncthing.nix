@@ -8,6 +8,15 @@
   # the host a new device ID and the Mac would have to re-accept it and rescan the
   # whole folder. That directory is part of the data to migrate, not something to
   # regenerate.
+  # 同期先の所有者を syncthing に固定する。移行直後は /srv/syncthing が uid 101000
+  # (旧 CT101 の rootless コンテナ時代の subuid) のままで、ネイティブの syncthing
+  # (uid 237) が自分のフォルダに書き込めなかった。Mac とは接続できているのに
+  # SyncHub が .stfolder だけの空、という形で 2026-08-16 まで気付かれていない。
+  systemd.tmpfiles.rules = [
+    "d /srv/syncthing 0755 syncthing syncthing -"
+    "Z /srv/syncthing - syncthing syncthing -"
+  ];
+
   services.syncthing = {
     enable = true;
     # The old container ran GUI on 8384 and sync on 22000, fronted at
