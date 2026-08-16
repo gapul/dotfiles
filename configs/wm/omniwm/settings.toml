@@ -311,14 +311,6 @@ binding = "Hyper+9"
 id = "moveToWorkspace.8"
 
 [[hotkeys]]
-binding = "Control+Option+Command+0"
-id = "switchWorkspace.9"
-
-[[hotkeys]]
-binding = "Hyper+0"
-id = "moveToWorkspace.9"
-
-[[hotkeys]]
 binding = "Control+Option+Command+Tab"
 id = "workspaceBackAndForth"
 
@@ -940,12 +932,5 @@ layoutType = "dwindle"
 name = "9"
 
 [workspaces.monitorAssignment]
-type = "main"
-
-[[workspaces]]
-id = "89253D58-01E9-49C6-8CEE-3DA58B13551B"
-layoutType = "dwindle"
-name = "10"
-
-[workspaces.monitorAssignment]
 type = "secondary"
+
