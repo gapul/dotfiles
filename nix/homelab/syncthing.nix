@@ -17,12 +17,22 @@
     openDefaultPorts = true;
     settings = {
       devices."macbook-mini".id = "3YUCLFD-KVCQOP4-KF4CPIA-MA5EDJH-QO6NQ7V-CHH3LVZ-GQTNFQZ-A4LEWQ2";
+      # iPhone は Synctrain (iOS の Syncthing クライアント)。ID はアプリの Start 画面の
+      # "This device's identifier" から読んだもの。公開鍵なので commit してよい。
+      devices."iphone" = {
+        id = "R3V5V7Y-ZRBHIHY-F35M3PX-4H3I73G-4UA7UHT-CH523JH-O37RSW3-PNLJPAX";
+        # モバイル回線でも中継越しに繋がるようにしておく。tailnet 内なら直結する。
+        introducer = false;
+      };
       folders."synchub" = {
         label = "SyncHub";
         # Was /mnt/jellyfin-media/syncthing/SyncHub on the old host, mounted into
         # the container as /data/SyncHub.
         path = "/srv/syncthing/SyncHub";
-        devices = [ "macbook-mini" ];
+        devices = [
+          "macbook-mini"
+          "iphone"
+        ];
         type = "sendreceive";
       };
     };
