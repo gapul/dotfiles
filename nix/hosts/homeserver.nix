@@ -62,6 +62,13 @@ let
     # A read-only window onto the restic repository, rebuilt here from the two
     # hand-written units that ran on the pve host (homelab/restic-view.nix).
     files.upstream = "127.0.0.1:8085";
+    # Anki の同期サーバ。AnkiWeb に預けず自前で持つ。クライアントは iOS の amgi と
+    # 母艦の Anki 本体。同期プロトコルは HTTP なので普通の vhost で足りる。
+    anki = {
+      upstream = "127.0.0.1:27701";
+      # 認証必須なので / は 401 を返す。それが健全な応答。
+      expect = [ "[STATUS] == 401" ];
+    };
     # pve.gapul.net has nothing left to point at.
     # Replaced uptime-kuma, which kept its monitor list in a SQLite file no one
     # could review. It ran on the Raspberry Pi and was stopped on 2026-08-12 —
