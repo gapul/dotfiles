@@ -66,8 +66,10 @@ let
     # 母艦の Anki 本体。同期プロトコルは HTTP なので普通の vhost で足りる。
     anki = {
       upstream = "127.0.0.1:27701";
-      # 認証必須なので / は 401 を返す。それが健全な応答。
-      expect = [ "[STATUS] == 401" ];
+      # 同期サーバはルートに何も生やさないので / は 404。認証を要求する 401 だと
+      # 思って書いたら実機は 404 だった (/sync/meta は GET だと 405)。この 404 自体が
+      # 「HTTP サーバが上がっている」証拠なので、それを生存確認に使う。
+      expect = [ "[STATUS] == 404" ];
     };
     # pve.gapul.net has nothing left to point at.
     # Replaced uptime-kuma, which kept its monitor list in a SQLite file no one
