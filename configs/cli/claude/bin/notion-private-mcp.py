@@ -33,16 +33,16 @@ TOKEN = ENV["NOTION_TOKEN_V2"].strip()
 USER_ID = ENV.get("NOTION_USER_ID", "").strip()
 
 
-def api(endpoint, payload):
-    req = urllib.request.Request(
-        f"{BASE}/{endpoint}",
-        data=json.dumps(payload).encode(),
-        headers={
-            "Content-Type": "application/json",
-            "Cookie": f"token_v2={TOKEN}",
-            "User-Agent": "Mozilla/5.0",
-        },
-    )
+def api(endpoint, payload, user_id=None):
+    """user_id picks which of the browser's logged-in Notion accounts to act as."""
+    headers = {
+        "Content-Type": "application/json",
+        "Cookie": f"token_v2={TOKEN}",
+        "User-Agent": "Mozilla/5.0",
+    }
+    if user_id:
+        headers["x-notion-active-user-header"] = user_id
+    req = urllib.request.Request(f"{BASE}/{endpoint}", data=json.dumps(payload).encode(), headers=headers)
     with urllib.request.urlopen(req, timeout=30) as r:
         return json.loads(r.read())
 
@@ -59,24 +59,32 @@ def unwrap(record):
 
 
 def spaces():
-    """[(space_id, name)] for every workspace this account can see, guest ones included."""
-    rm = api("loadUserContent", {}).get("recordMap", {})
-    names = {sid: unwrap(rec).get("name") for sid, rec in rm.get("space", {}).items()}
-    for rec in rm.get("space_view", {}).values():
-        sid = unwrap(rec).get("space_id")
-        if sid:
-            names.setdefault(sid, None)
-    # a guest can't read the space record itself, so label those by the pages shared with us
-    shared = {}
-    for rec in rm.get("block", {}).values():
-        block = unwrap(rec)
-        sid = block.get("space_id")
-        if sid and not names.get(sid):
-            shared.setdefault(sid, []).append(title_of(block))
-    return [
-        (sid, name or ("guest: " + ", ".join(shared[sid][:3]) if sid in shared else sid))
-        for sid, name in names.items()
-    ]
+    """[(space_id, name, user_id)] across every Notion account logged into the browser.
+
+    getSpaces is keyed by user id, so a cookie holding several sessions lists them all.
+    """
+    out = []
+    for user_id, blob in api("getSpaces", {}).items():
+        names = {sid: unwrap(rec).get("name") for sid, rec in blob.get("space", {}).items()}
+        for rec in blob.get("space_view", {}).values():
+            sid = unwrap(rec).get("space_id")
+            if sid:
+                names.setdefault(sid, None)
+        # a guest can't read the space record itself, so label those by the pages shared with us
+        shared = {}
+        for rec in api("loadUserContent", {}, user_id).get("recordMap", {}).get("block", {}).values():
+            block = unwrap(rec)
+            sid = block.get("space_id")
+            if sid and not names.get(sid):
+                shared.setdefault(sid, []).append(title_of(block))
+        for sid, name in names.items():
+            label = name or ("guest: " + ", ".join(shared[sid][:3]) if sid in shared else sid)
+            out.append((sid, label, user_id))
+    return out
+
+
+def users():
+    return list(api("getSpaces", {}).keys())
 
 
 def rich_text(prop):
@@ -132,15 +140,18 @@ def render(blocks, block_id, depth=0, seen=None):
     return lines
 
 
-def get_page(page_id):
+def get_page(page_id, user_id=None):
     pid = dashed(page_id)
     # ponytail: one chunk (~100 blocks). Long pages truncate; add cursor paging if that bites.
-    data = api(
-        "loadPageChunk",
-        {"pageId": pid, "limit": 100, "cursor": {"stack": []}, "chunkNumber": 0, "verticalColumns": False},
-    )
-    blocks = {k: unwrap(v) for k, v in data.get("recordMap", {}).get("block", {}).items()}
-    if pid not in blocks:
+    payload = {"pageId": pid, "limit": 100, "cursor": {"stack": []}, "chunkNumber": 0, "verticalColumns": False}
+    for uid in [user_id] if user_id else users():
+        blocks = {
+            k: unwrap(v)
+            for k, v in api("loadPageChunk", payload, uid).get("recordMap", {}).get("block", {}).items()
+        }
+        if pid in blocks:
+            break
+    else:
         return f"not found or no access: {pid}"
     head = f"# {title_of(blocks[pid])}\nhttps://www.notion.so/{pid.replace('-', '')}\n"
     body = []
@@ -150,9 +161,11 @@ def get_page(page_id):
 
 
 def search(query, space_id=None, limit=10):
-    targets = [(space_id, space_id)] if space_id else spaces()
+    targets = spaces()
+    if space_id:
+        targets = [t for t in targets if t[0] == space_id] or [(space_id, space_id, None)]
     hits = []
-    for sid, name in targets:
+    for sid, name, user_id in targets:
         data = api(
             "search",
             {
@@ -175,6 +188,7 @@ def search(query, space_id=None, limit=10):
                 "sort": {"field": "relevance"},
                 "source": "quick_find_input_change",
             },
+            user_id,
         )
         blocks = {k: unwrap(v) for k, v in data.get("recordMap", {}).get("block", {}).items()}
         for r in data.get("results", []):
@@ -193,14 +207,13 @@ def search(query, space_id=None, limit=10):
 
 
 def block_record(block_id):
-    got = api(
-        "syncRecordValues",
-        {"requests": [{"pointer": {"table": "block", "id": dashed(block_id)}, "version": -1}]},
-    )
-    rec = got.get("recordMap", {}).get("block", {}).get(dashed(block_id))
-    if not rec:
-        raise ValueError(f"no access to block {block_id}")
-    return unwrap(rec)
+    """(record, user_id) — which logged-in account can actually see this block."""
+    payload = {"requests": [{"pointer": {"table": "block", "id": dashed(block_id)}, "version": -1}]}
+    for uid in users():
+        rec = api("syncRecordValues", payload, uid).get("recordMap", {}).get("block", {}).get(dashed(block_id))
+        if rec and unwrap(rec).get("space_id"):
+            return unwrap(rec), uid
+    raise ValueError(f"no access to block {block_id}")
 
 
 def parse_markdown(text):
@@ -269,7 +282,7 @@ def block_args(bid, spec, parent_id, parent_table, space_id):
     }
 
 
-def save(space_id, operations):
+def save(space_id, operations, user_id=None):
     api(
         "saveTransactionsFanout",
         {
@@ -283,14 +296,16 @@ def save(space_id, operations):
                 }
             ],
         },
+        user_id,
     )
 
 
-def append_blocks(page_id, markdown, extra_ops=None, parent=None):
+def append_blocks(page_id, markdown, parent=None, user_id=None):
     pid = dashed(page_id)
-    parent = parent or block_record(pid)
+    if parent is None:
+        parent, user_id = block_record(pid)
     space_id = parent["space_id"]
-    ops = list(extra_ops or [])
+    ops = []
     ids = []
     for spec in parse_markdown(markdown):
         bid = str(uuid.uuid4())
@@ -311,13 +326,13 @@ def append_blocks(page_id, markdown, extra_ops=None, parent=None):
                 "args": {"id": bid},
             }
         )
-    save(space_id, ops)
+    save(space_id, ops, user_id)
     return len(ids)
 
 
 def create_page(parent_page_id, title, markdown=""):
     parent_id = dashed(parent_page_id)
-    parent = block_record(parent_id)
+    parent, user_id = block_record(parent_id)
     space_id = parent["space_id"]
     pid = str(uuid.uuid4())
     ops = [
@@ -334,15 +349,15 @@ def create_page(parent_page_id, title, markdown=""):
             "args": {"id": pid},
         },
     ]
-    save(space_id, ops)
+    save(space_id, ops, user_id)
     if markdown.strip():
-        append_blocks(pid, markdown, parent={"space_id": space_id})
+        append_blocks(pid, markdown, parent={"space_id": space_id}, user_id=user_id)
     return pid
 
 
 def delete_page(page_id):
     pid = dashed(page_id)
-    block = block_record(pid)
+    block, user_id = block_record(pid)
     space_id = block["space_id"]
     save(
         space_id,
@@ -360,6 +375,7 @@ def delete_page(page_id):
                 "args": {"id": pid},
             },
         ],
+        user_id,
     )
 
 
@@ -427,7 +443,7 @@ TOOLS = [
 
 def call_tool(name, args):
     if name == "notion_list_spaces":
-        return "\n".join(f"{sid}  {n}" for sid, n in spaces())
+        return "\n".join(f"{sid}  {n}  (account {uid[:8]})" for sid, n, uid in spaces())
     if name == "notion_search":
         return json.dumps(
             search(args["query"], args.get("space_id"), args.get("limit", 10)),
@@ -484,10 +500,10 @@ def serve():
 def selftest():
     found = spaces()
     assert found, "getSpaces returned nothing — token probably expired"
-    assert any(n != s for s, n in found), "no workspace names resolved"
-    print(f"spaces: {len(found)}")
-    for sid, name in found:
-        print(f"  {sid}  {name}")
+    assert any(n != s for s, n, _ in found), "no workspace names resolved"
+    print(f"accounts: {len(users())}, spaces: {len(found)}")
+    for sid, name, uid in found:
+        print(f"  {sid}  {name}  (account {uid[:8]})")
     hits = search("a", limit=3)
     print(f"search hits: {len(hits)}")
     if hits:
@@ -497,10 +513,10 @@ def selftest():
 
     if "--write" in sys.argv:
         # own space only — never scribble in a workspace we're a guest of
-        own = [(sid, n) for sid, n in found if not n.startswith("guest:") and not n.startswith(sid[:8])]
+        own = [(sid, n, u) for sid, n, u in found if not n.startswith("guest:") and not n.startswith(sid[:8])]
         # prefer the personal space so the test never litters a shared workspace
         own.sort(key=lambda t: 0 if "s Space" in t[1] else 1)
-        rm = api("loadUserContent", {}).get("recordMap", {})
+        rm = api("loadUserContent", {}, own[0][2]).get("recordMap", {})
         parent = [
             (unwrap(r)["id"], unwrap(r)["space_id"])
             for r in rm.get("block", {}).values()
