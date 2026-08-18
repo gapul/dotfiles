@@ -1,6 +1,7 @@
 {
   config,
   lib,
+  pkgs,
   user,
   nixIndexDatabase,
   agentSkills,
@@ -146,7 +147,7 @@ in
   # On the workstation that category is ~/Sync (see home/workstation.nix), which holds both the
   # rclone mounts and the Syncthing share — anything whose data also exists somewhere else.
   home.activation.userDataDirs = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    /bin/mkdir -p \
+    ${pkgs.coreutils}/bin/mkdir -p \
       "${config.xdg.dataHome}/codex" \
       "${config.xdg.stateHome}/codex/sqlite" \
       "${config.xdg.configHome}/npm" \
