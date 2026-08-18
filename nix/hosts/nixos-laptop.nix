@@ -260,6 +260,13 @@
   services.openssh.enable = true;
   services.openssh.settings.PasswordAuthentication = false;
 
+  # sudo without a password for wheel. This box is administered remotely over SSH
+  # (key-only, PasswordAuthentication = false), and prompting for a password there
+  # means someone has to be sitting at the machine for every rebuild. The trade-off
+  # is explicit: whoever holds the SSH private key gets root. That is already close
+  # to true, since `nixos-rebuild` is root-equivalent by construction.
+  security.sudo.wheelNeedsPassword = false;
+
   # Fingerprint auth (the HP laptop's fingerprint reader). Usable for sudo / login / unlocking hyprlock.
   # Enroll a fingerprint with `sudo fprintd-enroll $USER` on first run only.
   # * LUKS unlock happens at boot (initrd), so fingerprints can't be used there; it stays passphrase/TPM.
