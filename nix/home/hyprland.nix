@@ -7,6 +7,25 @@ let
   c = import ../lib/theme.nix; # c.base / c.text / c.iris ... (hex without leading #)
 in
 {
+  # Binaries referenced by the keybinds / exec-once below. Without these the rice
+  # is inert: $mod+Return execs a ghostty that is not in the closure, and the
+  # night-light / screenshot / clipboard binds silently do nothing.
+  home.packages = with pkgs; [
+    ghostty # $terminal
+    wofi # $menu, and the cliphist picker
+    hyprpaper # wallpaper daemon (exec-once)
+    hyprpolkitagent # polkit agent (exec-once)
+    hyprshot # screenshots
+    hyprpicker # color picker
+    wlogout # power menu
+    cliphist # clipboard history
+    wl-clipboard # wl-copy / wl-paste, used by the cliphist pipeline
+    wl-gammarelay-rs # night light dbus daemon
+    brightnessctl # backlight keys
+    playerctl # media keys
+    wireplumber # wpctl, used by the volume keys
+  ];
+
   # package = null: use the system Hyprland, HM manages only the config.
   wayland.windowManager.hyprland = {
     enable = true;

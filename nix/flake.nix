@@ -662,7 +662,13 @@
         nixpkgs-nixos.lib.optionalAttrs (builtins.pathExists ./hosts/nixos-laptop-hardware.nix) {
           "nixos-laptop" = nixpkgs-nixos.lib.nixosSystem {
             system = "x86_64-linux";
-            specialArgs = { inherit user; };
+            specialArgs = {
+              inherit user;
+              # Must be passed here, not defaulted in the module signature: the host
+              # uses it inside `imports`, and resolving a module argument from
+              # `_module.args` there needs `config`, which is infinite recursion.
+              hardwareConfig = ./hosts/nixos-laptop-hardware.nix;
+            };
             modules = [
               # SSO overlay absorbing upstream nixpkgs breakage (shared with darwin/standalone home).
               # Override things like tailscale's wrong vendorHash here.
