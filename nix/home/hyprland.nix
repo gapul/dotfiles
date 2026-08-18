@@ -40,12 +40,12 @@ in
 
       monitor = ",preferred,auto,1";
 
+      # Only things that have no systemd user unit of their own. hypridle / waybar /
+      # mako are started by their home-manager services below; listing them here as
+      # well launches a second copy of each (two bars stacked on the screen).
       exec-once = [
-        "hypridle"
         "hyprpolkitagent"
-        "waybar"
         "hyprpaper"
-        "mako"
         "wl-paste --watch cliphist store" # accumulate clipboard history
         "wl-gammarelay-rs" # dbus daemon for night light
       ];
