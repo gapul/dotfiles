@@ -240,4 +240,15 @@ in
 
   # ghostty config from dotfiles (reuses the same configs/terminals/ghostty as darwin).
   home.file.".config/ghostty".source = ../../configs/terminals/ghostty;
+
+  # The shared config is written for macOS, where ghostty lives as a Quick Terminal:
+  # `initial-window = false` plus `quit-after-last-window-closed = false` keep it resident
+  # with no window until cmd+space summons one. On Linux that combination means
+  # `$mod+Return` spawns a process that never maps a window, so the terminal looks broken
+  # while stray ghostty processes pile up. Undo just those two here; the shared config
+  # includes this file last, so these win.
+  home.file.".config/ghostty.local/platform.conf".text = ''
+    initial-window = true
+    quit-after-last-window-closed = true
+  '';
 }

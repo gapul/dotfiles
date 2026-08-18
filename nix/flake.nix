@@ -73,6 +73,11 @@
     disko.url = "github:nix-community/disko";
     disko.inputs.nixpkgs.follows = "nixpkgs-nixos";
 
+    # Zen browser. The daily driver on both machines, but there is no nixpkgs derivation for
+    # it (the mac gets it as a Homebrew cask), so on Linux it comes from the community flake.
+    zen-browser.url = "github:0xc000022070/zen-browser-flake";
+    zen-browser.inputs.nixpkgs.follows = "nixpkgs-nixos";
+
     # NixOS module that makes persistence targets explicit. Try it in a VM smoke test only for now;
     # don't apply it to the real machine until the data migration procedure is settled.
     preservation.url = "github:nix-community/preservation";
@@ -134,6 +139,7 @@
       sops-nix,
       lanzaboote,
       disko,
+      zen-browser,
       preservation,
       git-hooks,
       treefmt-nix,
@@ -691,6 +697,10 @@
                     ./home/linux.nix
                     ./home/hyprland.nix # Hyprland rice (nixos-laptop only)
                     ./home/ssh-tpm-agent.nix # TPM-sealed SSH key (nixos-laptop only: WSL has no TPM)
+                    (import ./home/linux-gui.nix {
+                      inherit pkgs;
+                      zen = zen-browser.packages.x86_64-linux.default;
+                    })
                     ./home/dev.nix # dev environment such as direnv
                     ./home/restic-backup-linux.nix # restic (systemd user timer)
                     sops-nix.homeManagerModules.sops
