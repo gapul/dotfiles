@@ -75,8 +75,10 @@
 
     # Zen browser. The daily driver on both machines, but there is no nixpkgs derivation for
     # it (the mac gets it as a Homebrew cask), so on Linux it comes from the community flake.
+    # Deliberately no `follows`: zen's package.nix wants ffmpeg_9, which the 26.05 series
+    # does not carry (it stops at ffmpeg_7), so pointing it at nixpkgs-nixos aborts
+    # evaluation. Left on its own lineage, like zrythm-darwin above.
     zen-browser.url = "github:0xc000022070/zen-browser-flake";
-    zen-browser.inputs.nixpkgs.follows = "nixpkgs-nixos";
 
     # NixOS module that makes persistence targets explicit. Try it in a VM smoke test only for now;
     # don't apply it to the real machine until the data migration procedure is settled.

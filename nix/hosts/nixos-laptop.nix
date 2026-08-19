@@ -152,6 +152,15 @@
   services.tlp.enable = true; # battery optimization (charge thresholds etc. tunable later)
   services.thermald.enable = true; # Intel CPU thermal control (proper thermal throttling)
   services.libinput.enable = true; # touchpad (tap, natural scroll, etc.)
+  # Lid close: suspend on battery, stay up on AC. The machine is administered over SSH,
+  # so closing it on the desk should not take it off the tailnet; on battery the default
+  # suspend still applies so a closed laptop in a bag does not cook itself.
+  services.logind.settings.Login = {
+    HandleLidSwitch = "suspend";
+    HandleLidSwitchExternalPower = "ignore";
+    HandleLidSwitchDocked = "ignore";
+  };
+
   # Suspend on lid close (default behavior; override with logind if needed).
   # Battery level / brightness are handled by brightnessctl + waybar.
 
