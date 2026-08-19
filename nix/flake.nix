@@ -692,17 +692,20 @@
               {
                 home-manager.useGlobalPkgs = true;
                 home-manager.useUserPackages = true;
-                home-manager.extraSpecialArgs = commonSpecialArgs;
+                # zen has no nixpkgs derivation, so it rides in as a module argument rather
+                # than through `pkgs`. Importing the module by hand with an explicit `pkgs`
+                # would bypass the module system's pkgs (the one carrying allowUnfree and
+                # the overlays), so it has to go through extraSpecialArgs.
+                home-manager.extraSpecialArgs = commonSpecialArgs // {
+                  zen = zen-browser.packages.x86_64-linux.default;
+                };
                 home-manager.users.${user.username} = {
                   imports = [
                     ./home/common.nix
                     ./home/linux.nix
                     ./home/hyprland.nix # Hyprland rice (nixos-laptop only)
                     ./home/ssh-tpm-agent.nix # TPM-sealed SSH key (nixos-laptop only: WSL has no TPM)
-                    (import ./home/linux-gui.nix {
-                      inherit pkgs;
-                      zen = zen-browser.packages.x86_64-linux.default;
-                    })
+                    ./home/linux-gui.nix # GUI apps (the mac's cask list, as packages)
                     ./home/dev.nix # dev environment such as direnv
                     ./home/restic-backup-linux.nix # restic (systemd user timer)
                     sops-nix.homeManagerModules.sops
