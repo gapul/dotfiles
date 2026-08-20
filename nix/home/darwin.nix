@@ -96,7 +96,7 @@ in
   ];
 
   # The other half of what `brew shellenv` did: its zsh completions (_deno, _ghostty, _mpv,
-  # _tailscale, _yt-dlp …). mkBefore puts it ahead of the compinit in modules/home/shell.nix,
+  # _yt-dlp …). mkBefore puts it ahead of the compinit in modules/home/shell.nix,
   # which is the only ordering that matters here.
   programs.zsh.completionInit = lib.mkBefore ''
     fpath=(/opt/homebrew/share/zsh/site-functions $fpath)
