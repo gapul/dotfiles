@@ -64,6 +64,11 @@
         description: RSS リーダー
         icon: miniflux.png
         siteMonitor: http://127.0.0.1:8081
+    - Readeck:
+        href: https://read.gapul.net
+        description: 後で読む
+        icon: readeck.png
+        siteMonitor: http://127.0.0.1:8087
     - Obsidian LiveSync:
         href: https://obsidian.gapul.net
         description: ノート同期 (CouchDB)

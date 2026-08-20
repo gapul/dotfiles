@@ -82,6 +82,16 @@ in
       ${pkgs.podman}/bin/podman exec paperless \
         python3 -c 'import sqlite3,sys; sys.stdout.writelines(l+"\n" for l in sqlite3.connect("/usr/src/paperless/data/db.sqlite3").iterdump())' \
         > /var/lib/db-dumps/paperless.sql
+
+      # readeck も sqlite。paperless と違ってコンテナが Go の最小イメージで python3 も
+      # sqlite3 も入っていないので、ホスト側から bind mount 先のファイルを直接読む。
+      # .backup はオンラインバックアップ API を使うので、稼働中でも千切れない。
+      # 初回 rebuild 時にはまだファイルが無いため、無ければ黙って飛ばす (ここで
+      # 失敗させるとバックアップ全体が落ちる)。
+      if [ -e /var/lib/homelab/readeck/data/db.sqlite3 ]; then
+        ${pkgs.sqlite}/bin/sqlite3 /var/lib/homelab/readeck/data/db.sqlite3 \
+          ".backup /var/lib/db-dumps/readeck.db"
+      fi
     '';
 
     # ダンプは取得のあいだだけ存在すればよい。置きっぱなしにすると二重に容量を食う
