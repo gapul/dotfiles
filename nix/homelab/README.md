@@ -32,6 +32,7 @@ name that matters now.
 | `matrix.env` | `CONDUIT_REGISTRATION_TOKEN` |
 | `miniflux.env` | `DATABASE_URL` (the whole `postgres://miniflux:<pw>@db/miniflux?sslmode=disable` string), `POSTGRES_PASSWORD`, `ADMIN_PASSWORD` |
 | `obsidian-couchdb.env` | `COUCHDB_USER`, `COUCHDB_PASSWORD` |
+| `searx.env` | `SEARXNG_SECRET` (`openssl rand -hex 32`)。SearXNG の `server.secret_key` に envsubst で入る |
 | `paperless.env` | `PAPERLESS_SECRET_KEY`, `PAPERLESS_ADMIN_PASSWORD` |
 | `vaultwarden.env` | `ADMIN_TOKEN` |
 | `gatus.env` | `NTFY_TOPIC`, `NTFY_TOKEN` (the `tk_...` bearer token; gatus substitutes them into its own config) |

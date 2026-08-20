@@ -45,6 +45,7 @@
     ./restic-view.nix
     ./rsshub.nix
     ./samba.nix
+    ./searx.nix
     ./syncthing.nix
     ./vaultwarden.nix
     ./vpn-relay.nix

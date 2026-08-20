@@ -69,6 +69,11 @@
         description: 後で読む
         icon: readeck.png
         siteMonitor: http://127.0.0.1:8087
+    - SearXNG:
+        href: https://search.gapul.net
+        description: メタ検索
+        icon: searxng.png
+        siteMonitor: http://127.0.0.1:8088
     - Obsidian LiveSync:
         href: https://obsidian.gapul.net
         description: ノート同期 (CouchDB)
