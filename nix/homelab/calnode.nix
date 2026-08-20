@@ -20,9 +20,23 @@
 
 {
   # 新規サービスなので旧ホストから移ってくるデータが無い。bind mount の元を先に作る。
+  #
+  # 1階層だけにしてあるのは、この木の下では2階層目を tmpfiles が作れないため。
+  # /var/lib/homelab 自体が uid 100000 (podman の userns root) 所有で、その下に
+  # root 所有の calnode/ を作ったあと、さらにその中へ降りようとすると systemd が
+  # 「Detected unsafe path transition /var/lib/homelab (owned by 100000) →
+  # /var/lib/homelab/calnode (owned by root)」で拒否する。所有者が非 root から
+  # root へ変わる経路を辿らせない安全策で、tmpfiles 側の設定では外せない。
+  #
+  # 実際 2026-08-20 の初回 rebuild で踏んだ。calnode/ はできるのに calnode/data/ が
+  # できず、podman が `statfs /var/lib/homelab/calnode/data: no such file or
+  # directory` で 125 を返して起動に失敗した (podman が自動で作るのは bind 先の
+  # 直下1階層までで、入れ子は作らない)。
+  #
+  # なので data/ という階層をやめて、mount 元をこのディレクトリ自身にする。
+  # readeck が同じ形で問題なく動いているのと揃う。
   systemd.tmpfiles.rules = [
     "d /var/lib/homelab/calnode 0700 root root -"
-    "d /var/lib/homelab/calnode/data 0700 root root -"
   ];
 
   virtualisation.oci-containers.containers."calnode" = {
@@ -38,7 +52,7 @@
       "PORT" = "3000";
     };
     volumes = [
-      "/var/lib/homelab/calnode/data:/data:rw"
+      "/var/lib/homelab/calnode:/data:rw"
     ];
     # コンテナ側の 3000 は homepage が既に host 側で使っているので 8086 に出す。
     ports = [
