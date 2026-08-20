@@ -317,13 +317,26 @@
           };
           shellcheck = {
             enable = true; # shell script lint (follows .shellcheckrc)
+            # .shellcheckrc に severity=error と書いてあるが、あれは効いていない。
+            # shellcheck 0.11 の rc が解釈するのは disable= の類だけで、severity は
+            # CLI 専用 (実測: 同じ rc に置いた disable=SC2001 は効き、severity=error は
+            # 無視されて style の指摘がそのまま出て exit 1 になる)。つまり「gate は
+            # error 級のみ」という意図は最初から実現していなかった。ここで渡し直す。
+            args = [ "--severity=error" ];
             excludes = [
               # The sketchybar configs stylistically use a lot of intentional word splitting, handled separately
               # (manual check: nix develop ./nix -c shellcheck configs/wm/sketchybar/...)
               "configs/wm/sketchybar/.*"
               # direnv files have no shebang and assume the direnv stdlib
               "\\.envrc$"
-              # The macmini AI commands are zsh (shellcheck doesn't support zsh, SC1071)
+              # zsh は shellcheck の対象外 (SC1071)。拡張子で外すのは、下の macmini の
+              # ように後からディレクトリを足していく形だと取りこぼすため。実際
+              # configs/shell/*.zsh が漏れていて、`just fmt` は origin/main でも
+              # SC1072 で落ちていた。prompt.zsh の `f() { x=$y }` も evalcache.zsh の
+              # `${${x}}` も zsh としては正しく、shellcheck が読めないだけなので、
+              # 書き換えて黙らせるのは筋が悪い。
+              "\\.zsh$"
+              # 拡張子を持たない zsh もある。macmini の AI コマンドは shebang だけが zsh
               "configs/macmini/bin/.*"
               # Same for their 母艦-side client wrappers
               "configs/macmini/client/.*"
