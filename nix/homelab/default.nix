@@ -17,10 +17,12 @@
   # their settings stop living in a web UI or a command line, and backup.nix
   # declares the restic schedule that backrest used to own. Dropped outright:
   # dockge, wud, backrest, uptime-kuma, adguardhome-sync, stirling-pdf.
+  #
+  # open-webui と anythingllm も 2026-08-20 に落とした。macmini の AI パネルと
+  # 用途が重なっていて、二重に持つ理由が無かった。合計で約 660MB 使っていた。
   imports = [
     ./blocky.nix
     ./anisette.nix
-    ./ai-frontends.nix
     ./anki.nix
     ./archivebox.nix
     ./attic.nix
