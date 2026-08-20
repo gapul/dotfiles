@@ -28,6 +28,11 @@
         # この箱の ntfy へ移してある。
         "push.gapul.net" = "http://127.0.0.1:8082";
         "alert.gapul.net" = "http://127.0.0.1:8082";
+        # 予約ページ。ここだけは tailnet の外の人間が開けないと意味が無いので、
+        # 他の gapul.net と違って Caddy ではなくトンネルを通す。つまり
+        # cal.gapul.net の DNS はこのトンネルの CNAME であって、この箱の
+        # tailnet アドレスを指す A レコードではない。
+        "cal.gapul.net" = "http://127.0.0.1:8086";
       };
       # 知らないホスト名は 404。Pi 側の設定もこうなっていた。
       default = "http_status:404";

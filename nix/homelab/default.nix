@@ -25,6 +25,7 @@
     ./archivebox.nix
     ./attic.nix
     ./backup.nix
+    ./calnode.nix
     ./cloudflared.nix
     ./dawarich.nix
     ./forgejo.nix

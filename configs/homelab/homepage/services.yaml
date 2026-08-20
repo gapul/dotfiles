@@ -73,6 +73,11 @@
         description: CalDAV / CardDAV
         icon: radicale.png
         siteMonitor: http://127.0.0.1:5232
+    - Calnode:
+        href: https://cal.gapul.net
+        description: 予約ページ (Radicale の空きから)
+        icon: mdi-calendar-clock
+        siteMonitor: http://127.0.0.1:8086
     - Forgejo:
         href: https://git.gapul.net
         description: Git ホスティング
