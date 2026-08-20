@@ -40,6 +40,7 @@
     ./paperless.nix
     ./playit.nix
     ./radicale.nix
+    ./readeck.nix
     ./restic-view.nix
     ./rsshub.nix
     ./samba.nix
