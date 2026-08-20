@@ -222,7 +222,10 @@
             ./home/git-hooks.nix # git hook that auto-rebuilds on main updates (main tree only)
           ]
           ++ secrets
-          ++ [ ./home/mopidy.nix ]
+          ++ [
+            ./home/secrets-darwin.nix # mac-only secrets (secrets/darwin.yaml)
+            ./home/mopidy.nix
+          ]
           ++ station;
         # headless AI worker (no sops). The backup module is separate from the
         # workstation's because it reads its password and ntfy credentials from
