@@ -1,5 +1,7 @@
 # shellcheck 設定 (リポ全体に適用。shellcheck が file から上方探索する)
 # 既存スクリプトが多いので gate は error 級のみ。warning/info は手動 review 用に出すが block しない。
-severity=error
+# その severity は rc では効かない (shellcheck 0.11 は CLI の --severity しか見ない) ので、
+# 実際に効かせているのは nix/flake.nix の pre-commit フック側の args。手で shellcheck を
+# 叩くときは --severity=error を自分で付けること。
 # 動的パスの source は追えず誤検出になるため無効 (sketchybar の colors.sh/icons.sh 等)
 disable=SC1091
