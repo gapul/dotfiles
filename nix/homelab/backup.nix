@@ -112,7 +112,48 @@ in
   ];
 
   # Known failure mode worth remembering: the rclone Google Drive token expires
-  # after roughly a week of disuse and both hosts then fail silently. Until this
-  # unit can notify (ntfy's token is sops-managed and waits for the host's age
-  # key), check it with `systemctl status restic-backups-homeserver`.
+  # after roughly a week of disuse and both hosts then fail silently.
+  #
+  # 「fail silently」がそのまま放置されていた。このユニットには OnFailure が無く、
+  # 上の方に書いてある「gatus already answers "did it run"」は事実ではない。gatus の
+  # エンドポイントは homeserver.nix の sites 表からしか生えず、実際に生成される27件は
+  # 全部 HTTP の死活監視で、バックアップに触れるものは一つも無い。母艦側
+  # (home/restic-backup.nix) は ntfy へ投げているので、無防備なのはこのホストだけだった。
+  #
+  # 保留の理由は「ntfy の token が sops 管理で、このホストの age 鍵待ち」と書いてあったが、
+  # 待つ必要はなかった。同じ topic と token は gatus が読んでいる gatus.env に既にあり、
+  # 新しい秘密を置かずに済む。age 鍵を作って sops へ移すのはそれとして進めればよく、
+  # そのときはここの EnvironmentFile を差し替えるだけになる。
+  #
+  # 制約として、ntfy はこの箱の中にいるので箱ごと落ちたときは飛ばない。これは gatus と
+  # 同じ穴で、そちらは Pi が二つ目の目になっている。バックアップの失敗は箱が生きている
+  # 前提で起きるので、ここでは実害にならない。
+  #
+  # 拾えないものも書いておく。これは「走って失敗した」を拾う仕組みなので、タイマーが
+  # そもそも発火しなくなった場合は沈黙したままになる。そこまで見るなら死人スイッチが要る。
+  systemd.services."ntfy-failure@" = {
+    description = "Notify ntfy that %i failed";
+    serviceConfig = {
+      Type = "oneshot";
+      EnvironmentFile = "/var/lib/secrets/gatus.env";
+      # %i は失敗したユニット名。OnFailure 側が %n で渡す。
+      ExecStart = "${pkgs.writeShellScript "ntfy-failure" ''
+        set -u
+        unit="$1"
+        # 本文に直近のログを入れる。通知だけ来ても結局 ssh する羽目になるため。
+        body="$(${pkgs.systemd}/bin/journalctl -u "$unit" -n 20 --no-pager -o cat 2>&1 || true)"
+        ${pkgs.curl}/bin/curl -fsS --max-time 15 \
+          -H "Authorization: Bearer $NTFY_TOKEN" \
+          -H "Title: $unit failed on homeserver" \
+          -H "Priority: high" \
+          -H "Tags: rotating_light" \
+          -d "$body" \
+          "http://127.0.0.1:8082/$NTFY_TOPIC" >/dev/null
+      ''} %i";
+    };
+  };
+
+  systemd.services."restic-backups-homeserver" = {
+    onFailure = [ "ntfy-failure@%n.service" ];
+  };
 }
