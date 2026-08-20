@@ -29,6 +29,7 @@ let
     dash.upstream = "127.0.0.1:3000"; # homepage
     vault.upstream = "127.0.0.1:8080"; # vaultwarden
     rss.upstream = "127.0.0.1:8081"; # miniflux
+    read.upstream = "127.0.0.1:8087"; # readeck (後で読む)
     obsidian = {
       upstream = "127.0.0.1:5984"; # couchdb (LiveSync)
       # CouchDB は require_valid_user なので / は 401 を返す。これが健全な応答で、
