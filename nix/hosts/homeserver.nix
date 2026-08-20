@@ -37,6 +37,11 @@ let
       expect = [ "[STATUS] == 401" ];
     };
     dav.upstream = "127.0.0.1:5232"; # radicale
+    # calnode (予約ページ)。他と違って公開先は Caddy ではなく cloudflared なので、
+    # ここで生える vhost は実際には誰も踏まない — cal.gapul.net はトンネルの CNAME
+    # だから。それでも表に載せているのは、gatus の監視対象がこの表からしか作られない
+    # ため。監視は upstream を直接叩くので、vhost を経由しなくても機能する。
+    cal.upstream = "127.0.0.1:8086";
     # DNS レコードもダッシュボードのリンクも前からあったのに vhost だけ無く、
     # https で開くと繋がらない状態だった (直接ポートを叩けば見えるので気付きにくい)。
     jellyfin.upstream = "127.0.0.1:8096";
