@@ -18,12 +18,13 @@ M4 Mac mini(24GB, ヘッドレス)上のローカルAI一式。gapul.net 経由�
 
 1. `darwin-rebuild switch`(brew群・Ollama agent・SSH/sleep設定が入る)
 2. `bash configs/macmini/bootstrap.sh`(venv再構築 → モデル取得 → スクリプト配置 → コンテナ起動 → launchd登録)
-3. Caddy(別ホスト `caddy`)に chat/docs/tools のブロック追記(`docs/`参照)
+3. Caddy(別ホスト `caddy`)に tools のブロック追記(`docs/`参照)
 
 ## サービス一覧(全てLAN 192.168.116.91)
 
 - Ollama :11434 / 埋め込み+リランク(Ruri)サーバー :8900 / AIツールWebパネル :8901
-- コンテナ: Open WebUI :3000 / AnythingLLM :3001 / Minecraft :25565(apple container、socatでhost公開)
+- コンテナ: Minecraft :25565(apple container、socatでhost公開)
+  - Open WebUI と AnythingLLM は 2026-08-12 に homeserver へ移し、2026-08-20 に廃止した。AIパネル(:8901)と用途が重なっていたため。
 
 ## 重要な運用上の罠(詳細は各スクリプトのコメント / Claudeメモ参照)
 
