@@ -57,6 +57,7 @@ let
     archive.upstream = "127.0.0.1:8000"; # archivebox
     ntfy.upstream = "127.0.0.1:8082";
     cache.upstream = "127.0.0.1:8083"; # attic (own nix binary cache)
+    shell.upstream = "127.0.0.1:8888"; # atuin (シェル履歴の同期サーバー)
     dns2.upstream = "127.0.0.1:4000"; # blocky の API/metrics (UI は無い)
     # These two used to be reached through Home Assistant's add-on ingress, which
     # does not exist without Supervisor. Both need their own A record in

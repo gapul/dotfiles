@@ -8,7 +8,27 @@
 {
   # Run resident as a Home Manager LaunchAgent instead of using Syncthing.app.
   # Reuse the existing ~/Library/Application Support/Syncthing config and device ID as-is.
-  services.syncthing.enable = true;
+  services.syncthing = {
+    enable = true;
+    # homeserver 側 (homelab/syncthing.nix) と対になる宣言。ここで書いておくと
+    # 追加時に GUI で受け入れる手作業が要らない。
+    #
+    # **override を両方 false にすること。** 既定は true で、その場合ここに書いた
+    # ものが唯一の正になり、GUI で足した既存の folder / device (synchub と iphone)
+    # が消える。上のコメントが言っているとおり、この Mac の syncthing 設定は
+    # 意図的に宣言化されておらず既存を再利用しているので、そこを壊してはいけない。
+    overrideDevices = false;
+    overrideFolders = false;
+    settings = {
+      devices."homeserver".id = "Y72TVZZ-IE3MUPY-3YI6D63-HON47QT-2UYVWHN-5C5N5RY-T2H4ID7-T776ZQF";
+      folders."personal-history" = {
+        label = "Personal History";
+        path = "${config.home.homeDirectory}/Sync/syncthing/personal-history";
+        devices = [ "homeserver" ];
+        type = "sendreceive";
+      };
+    };
+  };
 
   # Replace Ollama.app's menu-bar resident with a LaunchAgent for the Nix ollama.
   launchd.agents.ollama = {

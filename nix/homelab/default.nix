@@ -26,6 +26,7 @@
     ./anki.nix
     ./archivebox.nix
     ./attic.nix
+    ./atuin.nix
     ./backup.nix
     ./calnode.nix
     ./cloudflared.nix
