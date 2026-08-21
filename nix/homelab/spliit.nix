@@ -15,8 +15,12 @@
 {
   # rallly.nix と同じ理由で1階層。/var/lib/homelab の下に入れ子を作ろうとすると
   # tmpfiles が unsafe path transition で拒否する (calnode.nix 参照)。
+  #
+  # 所有者が root ではなく 70 なのは、postgres のイメージが uid 70 で動くため。
+  # root 所有の 0700 だと `mkdir: can't create directory '/var/lib/postgresql/18/':
+  # Permission denied` で起動に失敗する。既存の miniflux/db も uid 70 所有。
   systemd.tmpfiles.rules = [
-    "d /var/lib/homelab/spliit-db 0700 root root -"
+    "d /var/lib/homelab/spliit-db 0700 70 70 -"
   ];
 
   virtualisation.oci-containers.containers."spliit" = {
