@@ -42,6 +42,10 @@
         path = "${config.home.homeDirectory}/.local/share/atuin/key";
         mode = "0600";
       };
+      # atuin のパスワード。`atuin login` で使う。鍵と違ってファイルとして読まれる
+      # ものではないので path は指定せず、sops の既定の場所 (/run/... 相当) に置く。
+      # Bitwarden にも入れておくと、母艦が壊れているときに手で打てる。
+      "atuin/password" = { };
 
       # PII single source
       "pii/name" = { };
