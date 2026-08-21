@@ -1024,17 +1024,39 @@ restart what="bar":
 # secrets (sops encryption)
 # ─────────────────────────────────────────────
 
-# sops-encrypted secrets  (`just secrets` = edit, `just secrets rekey` = re-encrypt for all recipients)
+# sops-encrypted secrets  (`just secrets [file]` = edit, `just secrets rekey` = re-encrypt every file)
+# Files are split per host since #393: common / darwin / homelab, each with its own recipients.
 [group('secrets')]
-secrets cmd="edit":
+secrets cmd="edit" file="common":
     #!/usr/bin/env bash
     set -euo pipefail
-    f="{{justfile_directory()}}/secrets/secrets.yaml"
+    cd "{{justfile_directory()}}/secrets"
     case "{{cmd}}" in
-      edit)  sops "$f" ;;                # edit (default)
-      rekey) sops updatekeys "$f" ;;     # run after changing .sops.yaml
-      *)     echo "usage: just secrets [edit|rekey]" >&2; exit 2 ;;
+      edit)  sops "{{file}}.yaml" ;;                       # edit (default: common)
+      # rekey every file, not just one: .sops.yaml changes usually touch several rule blocks,
+      # and a file left un-rekeyed fails to decrypt on the host that just gained a recipient.
+      rekey) for f in *.yaml; do echo "→ $f"; sops updatekeys -y "$f"; done ;;
+      *)     echo "usage: just secrets [edit|rekey] [common|darwin|homelab]" >&2; exit 2 ;;
     esac
+
+# Mint an SSH user certificate from the Secure Enclave CA (`just ssh-cert [pubkey] [hours]`).
+# Touch ID is required per signature, so this cannot run unattended — which is the point.
+# Other machines get a long window (this Mac is the only thing that can sign, so a laptop cannot
+# renew its own): `just ssh-cert ~/tmp/laptop.pub 720`.
+[group('secrets')]
+ssh-cert pubkey="~/.ssh/id_ed25519.pub" hours="8":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    ca=~/.ssh/id_enclave_key
+    key=$(eval echo "{{pubkey}}")
+    [ -f "$ca" ] || { echo "no CA identity. see docs/SSH_CA.md" >&2; exit 1; }
+    [ -f "$key" ] || { echo "no such public key: $key" >&2; exit 1; }
+    # -w points ssh-keygen at Apple's CryptoTokenKit middleware. The CA is an sk-ecdsa key that
+    # never leaves the enclave, so signing happens inside it rather than in this process.
+    ssh-keygen -q -s "$ca" -w /usr/lib/ssh-keychain.dylib \
+      -I "$(basename "$key" .pub)-$(id -un)" \
+      -n "$(id -un)" -V "+{{hours}}h" "$key"
+    ssh-keygen -L -f "${key%.pub}-cert.pub" | sed -n '2,9p'
 
 
 # ─────────────────────────────────────────────

@@ -131,6 +131,7 @@ in
   imports = [
     ./homeserver-hardware.nix
     ../homelab # the Docker stacks that used to live on CT101 under dockge
+    ../modules/nixos/ssh-ca.nix
   ];
 
   # --- Boot ---
@@ -441,8 +442,10 @@ in
   };
 
   # --- Access ---
-  # Public-key only. Keys are not declared here: they live in the Bitwarden-managed
-  # agent, and this repo is public. Add them by hand, or via sops once it is wired.
+  # Public-key only. Individual keys are still not declared here, but they no longer have to be:
+  # modules/nixos/ssh-ca.nix trusts the user CA, so a new machine gets in by holding a certificate
+  # rather than by having its key copied onto this box. The one key worth placing by hand is the
+  # break-glass key (docs/SSH_CA.md), which is the recovery path if the CA is ever unavailable.
   services.openssh.enable = true;
   services.openssh.settings.PasswordAuthentication = false;
 

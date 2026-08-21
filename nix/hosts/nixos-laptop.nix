@@ -11,6 +11,7 @@
   # real machine into this same hosts/ dir and enable the import below (it need not be committed to the repo).
   imports = [
     hardwareConfig
+    ../modules/nixos/ssh-ca.nix
   ];
 
   # --- Bootloader: lanzaboote (Secure Boot support) ---
