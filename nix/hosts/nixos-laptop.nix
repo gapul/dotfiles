@@ -1,4 +1,5 @@
 {
+  config,
   pkgs,
   lib,
   user,
@@ -54,6 +55,10 @@
   # the key to an untampered boot chain, not to a person: whoever powers the laptop on gets a
   # decrypted disk. The TPM rate-limits PIN attempts in hardware, so a short PIN is enough — this is
   # not a passphrase, and brute force is not on the table.
+  # userspace TPM access (tpm2-tss + udev rules + the tss group). The LUKS slot above does not
+  # need this — that runs in initrd as root — but ssh-tpm-agent talks to the TPM as the user.
+  security.tpm2.enable = true;
+
   # tpm2-pin must match how the slot was enrolled; enrolling without --tpm2-with-pin and setting this
   # (or the reverse) just falls through to the passphrase prompt.
   boot.initrd.luks.devices.cryptroot.crypttabExtraOpts = [
@@ -237,6 +242,9 @@
       "wheel"
       "networkmanager"
       "video"
+      # Talking to /dev/tpmrm0 needs the tss group. Required by home/ssh-tpm-agent.nix, which
+      # asserts on this rather than failing at runtime with a permission error.
+      config.security.tpm2.tssGroup
     ];
     shell = pkgs.zsh;
   };
