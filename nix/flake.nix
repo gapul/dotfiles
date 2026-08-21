@@ -226,6 +226,7 @@
             ./home/restic-backup.nix
             ./home/rclone-mount.nix
             ./home/mutagen-sync.nix
+            ./home/personal-history.nix # 個人の記録を端末ごとに書き出して Syncthing に載せる
             ./home/maintenance.nix
             ./home/git-hooks.nix # git hook that auto-rebuilds on main updates (main tree only)
           ]

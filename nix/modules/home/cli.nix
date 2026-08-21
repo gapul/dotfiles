@@ -169,11 +169,17 @@ in
     # Yield Up to history-substring-search. atuin launches only via Ctrl+R
     flags = [ "--disable-up-arrow" ];
     settings = {
-      # Sync history across multiple machines (Mac / WSL / Linux server) via the official SaaS.
-      # Requires `atuin login -u gapul` (or register) once per machine before use.
-      # The E2E encryption key is ~/.local/share/atuin/key; backing it up to Bitwarden is recommended.
+      # Sync history across multiple machines (Mac / WSL / Linux server).
+      # 2026-08-21 に公式 SaaS (api.atuin.sh) から自前サーバーへ切り替えた
+      # (homelab/atuin.nix)。同期の中身はもともとクライアント側で暗号化されて
+      # いるので、移す動機はプライバシーではなく「他人のサーバーに依存しない」ほう。
+      # tailnet 内なので、外出先で Tailscale が切れている間は同期だけが止まる
+      # (履歴のローカル記録と検索は影響を受けない)。
+      #
+      # 各端末で一度だけ `atuin login -u gapul` が要る。
+      # E2E の鍵は ~/.local/share/atuin/key。Bitwarden に退避しておくこと。
       auto_sync = true;
-      sync_address = "https://api.atuin.sh";
+      sync_address = "https://shell.gapul.net";
       sync_frequency = "5m";
       update_check = false;
       search_mode = "fuzzy";
