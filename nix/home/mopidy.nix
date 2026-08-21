@@ -70,12 +70,13 @@ in
   # Contains Google session cookies, so it's sops-managed. The start script copies it to authPath
   # once, and refresh-cookies.py keeps that copy fresh from Chrome after that.
   sops.secrets."ytmusic/browser_json" = {
+    sopsFile = ../../secrets/darwin.yaml;
     path = authSeedPath;
     mode = "0400";
   };
 
   # Declare the LB token for template embedding (no path needed since a placeholder is used).
-  sops.secrets."listenbrainz/token" = { };
+  sops.secrets."listenbrainz/token".sopsFile = ../../secrets/darwin.yaml;
 
   # mopidy.conf contains the LB token, so it's generated via sops.templates (never stored in plaintext).
   sops.templates."mopidy.conf" = {

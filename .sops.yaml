@@ -1,12 +1,51 @@
 # Fork する人は: 自分の age 鍵を生成して下の public key を差し替え
 #   age-keygen -o ~/.config/sops/age/keys.txt
 #   出力された "# public key: age1..." の行を下の age1... に貼り換える
+#
+# 人間の鍵 (me / recovery) は全ファイルの受信者。ホスト鍵は各ホストの
+# /etc/ssh/ssh_host_ed25519_key から ssh-to-age で導出したもので、
+# 「そのマシンが自分に必要な分だけを自力で開ける」ための受信者。
+#   ssh-to-age < /etc/ssh/ssh_host_ed25519_key.pub
 keys:
   - &me       age1crkk4dtd824qu3h5q24vnm4pmrjymzkelt60qnyzwcje74gncudqjr693n
   # リカバリ鍵: 秘密鍵はオフライン保管 (Bitwarden 等)。主鍵紛失時の復旧用。
   - &recovery age1wkurr3ldjxslj4t3sa47lpslc9flpyznruxmgtqejar9ews59gqqvmkz55
+  # ホスト鍵 (SSH ホスト鍵由来)
+  - &mac      age14w27qfzm22u7yxwhwk78438z6v5au93pw43uvlxuyw3eg0sauc5qdle6wa
+  - &macmini  age1vrp2xu4wh8dwte9mx8cqezlkchz5nk8kwqn2673epjkqx43ycgtq352jet
 
+# 先頭の一致した rule が使われるので、狭いものから順に書く。
 creation_rules:
+  # mac 専用: Xcode の Apple ID、keystats の署名鍵、音楽まわりの資格情報。
+  # Linux 側 (laptop / WSL) に置いても使い道がないので受信者から外してある。
+  - path_regex: secrets/darwin\.yaml$
+    key_groups:
+      - age:
+          - *me
+          - *recovery
+          - *mac
+
+  # homelab (Proxmox の CT / 各サービス) 向け。ワークステーションから読むものは common に置く
+  # (radicale はここではなく common: calcurse が読むため)。sops-nix からは読んでいないので
+  # ホスト鍵の受信者はまだ無い。homeserver 移行のときに足す。
+  - path_regex: secrets/homelab\.yaml$
+    key_groups:
+      - age:
+          - *me
+          - *recovery
+
+  # どのマシンでも要るもの (PII / ssh_config / restic / rclone / VPN など)。
+  # macmini はまだ sops を読んでいないが、受信者は先に入れてある: 後から足すと
+  # 秘密ファイルを再暗号化し直すことになり、そのたびに平文を触る手数が増えるため。
+  - path_regex: secrets/common\.yaml$
+    key_groups:
+      - age:
+          - *me
+          - *recovery
+          - *mac
+          - *macmini
+
+  # 上のどれにも当たらない新規ファイルは、人間の鍵だけで暗号化する (安全側に倒す)。
   - path_regex: secrets/.*\.yaml$
     key_groups:
       - age:

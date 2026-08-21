@@ -8,7 +8,14 @@
   # (laptop / WSL / linux) import this file.
   sops = {
     age.keyFile = "${config.home.homeDirectory}/.config/sops/age/keys.txt";
-    defaultSopsFile = ../../secrets/secrets.yaml;
+    # common.yaml = what every machine needs. The mac-only half lives in secrets/darwin.yaml
+    # (see secrets-darwin.nix), so a rebuild on the laptop or WSL no longer materialises an Apple ID
+    # and a code-signing key that nothing there can use.
+    #
+    # Note on the host keys in .sops.yaml: they are recipients for the system-level sops that comes
+    # next, not for this module. sops runs as the user here and /etc/ssh/ssh_host_ed25519_key is
+    # 0600 root:wheel, so host-key decryption is only reachable from the nix-darwin / NixOS side.
+    defaultSopsFile = ../../secrets/common.yaml;
     secrets = {
       "vpn/proton".path = "${config.home.homeDirectory}/.config/wireguard/proton.conf";
       "vpn/wgcf".path = "${config.home.homeDirectory}/.config/wireguard/wgcf-profile.conf";
@@ -16,25 +23,9 @@
       "ssh_config".path = "${config.home.homeDirectory}/.ssh/config";
       "ssh_authorized_keys".path = "${config.home.homeDirectory}/.ssh/authorized_keys";
 
-      # Apple ID for xcodes' Xcode downloads. `just upgrade` reads these files into
-      # XCODES_USERNAME / XCODES_PASSWORD so username+password auth is non-interactive;
-      # 2FA is still prompted the first time and when Apple's cached session expires.
-      "xcodes/apple_id".path = "${config.home.homeDirectory}/.config/xcodes/apple_id";
-      "xcodes/password".path = "${config.home.homeDirectory}/.config/xcodes/password";
-
       # attic (self-hosted nix binary cache at cache.gapul.net): the whole client config, because
       # the push token lives in it. Was a hand-written plaintext file until 2026-08.
       "attic_config".path = "${config.home.homeDirectory}/.config/attic/config.toml";
-      # keystats: passphrase for signing its own release builds (self-made app, gapul/keystats)
-      "keystats_signing_pw".path = "${config.home.homeDirectory}/.config/keystats/signing.pw";
-      # The signing identity itself (base64 PKCS#12, cert + private key, valid to 2036).
-      # codesign/setup-signing.sh mints a *new* self-signed cert when the keychain is missing, so a
-      # rebuild on fresh hardware would change the Designated Requirement: already-installed copies
-      # would lose their Input Monitoring grant and reject the update. Restore instead of re-mint:
-      #   base64 -d < ~/.config/keystats/signing.p12.b64 > /tmp/id.p12
-      #   security import /tmp/id.p12 -k ~/Library/Keychains/keystats-signing.keychain-db \
-      #     -P "$(cat ~/.config/keystats/signing.pw)" -T /usr/bin/codesign -A
-      "keystats_signing_p12".path = "${config.home.homeDirectory}/.config/keystats/signing.p12.b64";
 
       # PII single source
       "pii/name" = { };
