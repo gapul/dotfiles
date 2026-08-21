@@ -38,6 +38,11 @@ let
       expect = [ "[STATUS] == 401" ];
     };
     dav.upstream = "127.0.0.1:5232"; # radicale
+    # サークル用の2つ。cal と同じく公開先は Caddy ではなく cloudflared なので、
+    # ここの vhost は踏まれない。表に載せているのは gatus の監視がここからしか
+    # 生えないため。
+    poll.upstream = "127.0.0.1:8089"; # rallly (日程調整)
+    split.upstream = "127.0.0.1:8090"; # spliit (割り勘)
     # calnode (予約ページ)。他と違って公開先は Caddy ではなく cloudflared なので、
     # ここで生える vhost は実際には誰も踏まない — cal.gapul.net はトンネルの CNAME
     # だから。それでも表に載せているのは、gatus の監視対象がこの表からしか作られない

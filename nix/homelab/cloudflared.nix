@@ -33,6 +33,10 @@
         # cal.gapul.net の DNS はこのトンネルの CNAME であって、この箱の
         # tailnet アドレスを指す A レコードではない。
         "cal.gapul.net" = "http://127.0.0.1:8086";
+        # 日程調整と割り勘。どちらもサークルや友人に URL を配る前提なので、
+        # cal と同じ理由でトンネルを通す。DNS はこのトンネルの CNAME にすること。
+        "poll.gapul.net" = "http://127.0.0.1:8089";
+        "split.gapul.net" = "http://127.0.0.1:8090";
       };
       # 知らないホスト名は 404。Pi 側の設定もこうなっていた。
       default = "http_status:404";
