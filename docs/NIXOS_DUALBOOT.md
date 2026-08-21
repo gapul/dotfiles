@@ -296,8 +296,8 @@ sudo fprintd-enroll $USER
 # Tailscale に参加 (homelab *.gapul.net)
 sudo tailscale up
 
-# TPM2 自動解錠を登録 (※ Secure Boot を ON にした後で。付録 A)
-sudo systemd-cryptenroll --tpm2-device=auto --tpm2-pcrs=7 /dev/nvme0n1p5
+# TPM2 + PIN 解錠を登録 (※ Secure Boot を ON にした後で。付録 A)
+sudo systemd-cryptenroll --tpm2-device=auto --tpm2-pcrs=7 --tpm2-with-pin=yes /dev/nvme0n1p5
 
 # restic バックアップの前提: rclone google-drive を再認証 → sops に token を入れる
 rclone authorize "drive"   # 出力 token を secrets.yaml の rclone_conf へ
@@ -313,20 +313,33 @@ Hyprland の主なキーバインド (`home/hyprland.nix`): `SUPER+Return`=ghost
 
 ---
 
-## 付録 A: TPM2 自動解錠 (パスフレーズ入力を省く)
+## 付録 A: TPM2 + PIN 解錠 (長いパスフレーズを短い PIN に置き換える)
 
 **設定は組込済み**。`nixos-laptop.nix` で `boot.initrd.systemd.enable = true;` と
-`boot.initrd.luks.devices.cryptroot.crypttabExtraOpts = [ "tpm2-device=auto" ];` を有効にしてある。
-あとは **Secure Boot を有効化した後 (Phase 8 完了後)** に、TPM へ鍵を登録するだけ:
+`boot.initrd.luks.devices.cryptroot.crypttabExtraOpts = [ "tpm2-device=auto" "tpm2-pin=yes" ];`
+を有効にしてある。あとは **Secure Boot を有効化した後 (Phase 8 完了後)** に、TPM へ鍵を登録するだけ:
 
 ```sh
 # 対象 LUKS パーティションに TPM2 を登録 (PCR 7 = Secure Boot 状態に束縛)
-# パーティションは lsblk で確認 (例: nvme0n1p5)。現在のパスフレーズを聞かれる。
-sudo systemd-cryptenroll --tpm2-device=auto --tpm2-pcrs=7 /dev/nvme0n1p5
+# パーティションは lsblk で確認 (例: nvme0n1p5)。現在のパスフレーズと、新しく決める PIN を聞かれる。
+sudo systemd-cryptenroll --tpm2-device=auto --tpm2-pcrs=7 --tpm2-with-pin=yes /dev/nvme0n1p5
 ```
 
-これで次回起動から TPM が自動解錠する。ブート列が改ざんされると PCR 7 が変わり TPM は鍵を出さない
-(= 安全に省略できる)。登録前やブート改ざん時はパスフレーズ入力にフォールバックする。
+これで次回起動から、長いパスフレーズの代わりに PIN の入力で解錠できる。ブート列が改ざんされると
+PCR 7 が変わり TPM は鍵を出さない。登録前やブート改ざん時はパスフレーズ入力にフォールバックする。
+
+### なぜ PIN を付けるのか
+
+PCR 7 だけの登録は「ブート列が改ざんされていなければ鍵を出す」という条件なので、**人ではなくマシンに
+束縛されている**。持ち出すノートでこれをやると、盗んだ相手が電源を入れるだけで復号されたディスクが
+手に入る。Secure Boot を固めた意味が、所持だけで抜けてしまう。
+
+PIN は TPM 側でハードウェア的に試行回数制限がかかる (失敗を重ねるとロックアウトする) ので、
+パスフレーズのような長さは要らない。総当たりが成立しないため、数字数桁でも実質的な壁になる。
+
+> ⚠️ `--tpm2-with-pin=yes` を付けずに登録したスロットに対して `tpm2-pin=yes` を設定しても
+> (逆も同様)、噛み合わずにパスフレーズ入力へフォールバックするだけ。登録済みのスロットを
+> 変更する場合は `sudo systemd-cryptenroll --wipe-slot=tpm2 /dev/nvme0n1p5` で消してから登録し直す。
 
 > ⚠️ **Secure Boot を有効化する前に登録しないこと**。PCR 7 の値が Secure Boot OFF 状態で固定され、
 > 後で ON にすると解錠できなくなる。必ず Phase 8 (Secure Boot ON) の後で登録する。
