@@ -45,11 +45,21 @@
 
   # systemd-based initrd (needed for TPM2 auto-unlock + a modern initrd). Works with lanzaboote.
   boot.initrd.systemd.enable = true;
-  # Auto-unlock cryptroot with TPM2. After enabling Secure Boot, enroll the key into
-  #   sudo systemd-cryptenroll --tpm2-device=auto --tpm2-pcrs=7 <LUKS partition>
+  # Unlock cryptroot with TPM2 + PIN. After enabling Secure Boot, enroll the key into
+  #   sudo systemd-cryptenroll --tpm2-device=auto --tpm2-pcrs=7 --tpm2-with-pin=yes <LUKS partition>
   # for PCR 7 (Secure Boot state) (docs Appendix A). If not enrolled, it falls back to the
   # passphrase, so it's safe. The device itself is defined by cryptroot in hardware-configuration.nix.
-  boot.initrd.luks.devices.cryptroot.crypttabExtraOpts = [ "tpm2-device=auto" ];
+  #
+  # The PIN is what makes this worth anything on a machine that leaves the house. PCR 7 alone binds
+  # the key to an untampered boot chain, not to a person: whoever powers the laptop on gets a
+  # decrypted disk. The TPM rate-limits PIN attempts in hardware, so a short PIN is enough — this is
+  # not a passphrase, and brute force is not on the table.
+  # tpm2-pin must match how the slot was enrolled; enrolling without --tpm2-with-pin and setting this
+  # (or the reverse) just falls through to the passphrase prompt.
+  boot.initrd.luks.devices.cryptroot.crypttabExtraOpts = [
+    "tpm2-device=auto"
+    "tpm2-pin=yes"
+  ];
 
   # --- Operational maintenance (don't exhaust the fixed dual-boot partition capacity) ---
   # Auto-GC + dedup the Nix store. Since capacity is shared with Windows, keep store bloat in check.
