@@ -23,6 +23,17 @@ class activitywatch:
     export_path = HOME / "Library/Application Support/activitywatch/aw-server/peewee-sqlite.v2.db"
 
 
+class atuin:
+    """端末で打ったコマンド。自前モジュール (atuin.py) が読む。
+
+    atuin は既定でローカルの SQLite に書くだけなので、これもエクスポート不要。
+    ActivityWatch が「Ghostty が前面にあった」までしか見ないのに対して、
+    こちらは中で何を打ったかを持っている。
+    """
+
+    export_path = HOME / ".local/share/atuin/history.db"
+
+
 # --- ここから下は、対応するデータを取ってきたら有効にする ---
 #
 # Google Takeout。"My Activity" に検索履歴と YouTube の視聴履歴が入っているので、

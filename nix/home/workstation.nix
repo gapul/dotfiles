@@ -124,9 +124,11 @@ in
   # sys.path の先頭に差し込むので、ここに置いたファイルは implicit namespace
   # package として `my.*` で import できる。__init__.py は要らない (PEP 420)。
   #
-  # activitywatch.py は上流に存在しないので自前。ActivityWatch はこの環境で
-  # 一番量のあるローカルデータ (実測 115 万イベント) なのに、HPI が持っているのは
-  # arbtt と rescuetime だけだった。
+  # activitywatch.py と atuin.py は上流に存在しないので自前。ActivityWatch は
+  # この環境で一番量のあるローカルデータ (実測 115 万イベント) なのに、HPI が
+  # 持っているのは arbtt と rescuetime だけだった。atuin も同様に無い。
+  # 前者は「Ghostty が前面にあった」までしか見えず、後者は端末の中しか見ない。
+  # 両方あって初めて時系列が繋がる。
   #
   # 本体は nix ではなく `uv tool install HPI` で入れる。HPI はモジュールを
   # 自分で書き換えて使う前提の設計 (editable install を推奨している) なので、
@@ -137,6 +139,7 @@ in
   # sys.path への差し込みを実行する。`hpi` CLI 経由なら不要。
   home.file.".config/my/my/config.py".source = ../../configs/hpi/config.py;
   home.file.".config/my/my/activitywatch.py".source = ../../configs/hpi/activitywatch.py;
+  home.file.".config/my/my/atuin.py".source = ../../configs/hpi/atuin.py;
 
   # LaTeX: latexmk default config (LuaLaTeX) and Japanese templates
   # latexmk 4.77+ officially supports $XDG_CONFIG_HOME/latexmk/latexmkrc, so use the XDG-compliant location
