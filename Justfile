@@ -1058,6 +1058,24 @@ ssh-cert pubkey="~/.ssh/id_ed25519.pub" hours="8":
       -n "$(id -un)" -V "+{{hours}}h" "$key"
     ssh-keygen -L -f "${key%.pub}-cert.pub" | sed -n '2,9p'
 
+# Issue a certificate to another machine and install it (`just ssh-cert-host macmini [hours]`).
+# Only this Mac can sign (Touch ID), so remote machines cannot renew themselves — hence the long
+# default window. Re-run this when it expires.
+[group('secrets')]
+ssh-cert-host host hours="720":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
+    # named after the host so the certificate's Key ID says where it went
+    if ! scp -q "{{host}}:.ssh/id_ed25519.pub" "$tmp/{{host}}.pub" 2>/dev/null; then
+      echo "{{host}}: no ~/.ssh/id_ed25519.pub. create one there first:" >&2
+      echo "  ssh {{host}} ssh-keygen -t ed25519 -a 100 -N '' -f ~/.ssh/id_ed25519" >&2
+      exit 1
+    fi
+    just ssh-cert "$tmp/{{host}}.pub" "{{hours}}"
+    scp -q "$tmp/{{host}}-cert.pub" "{{host}}:.ssh/id_ed25519-cert.pub"
+    echo "installed on {{host}}:~/.ssh/id_ed25519-cert.pub"
+
 
 # ─────────────────────────────────────────────
 # Setup / misc

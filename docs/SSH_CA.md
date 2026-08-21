@@ -53,12 +53,25 @@ just ssh-cert ~/tmp/laptop.pub 720     # 別マシンの鍵に 30 日
 なので有効期限を長めに切って、Mac で発行したものを持っていく。
 
 ```sh
-scp nixos-laptop:.ssh/id_ed25519.pub ~/tmp/laptop.pub
-just ssh-cert ~/tmp/laptop.pub 720
-scp ~/tmp/laptop-cert.pub nixos-laptop:.ssh/id_ed25519-cert.pub
+just ssh-cert-host macmini          # 既定 30 日
+just ssh-cert-host nixos-laptop 720
 ```
 
+鍵の取得・署名・設置までやる。相手に `~/.ssh/id_ed25519` が無ければ作り方を出して止まる。
+
 この非対称性は仕様。承認する端末を1台に絞ると決めた結果で、その1台が物理的に必要になる。
+期限が切れたら同じコマンドを打ち直す。
+
+### クライアント一覧
+
+| 機械 | 状態 |
+|---|---|
+| macbook-mini | `just ssh-cert`（CA 本体。証明書は 8 時間） |
+| macmini | 発行・設置済み（30 日） |
+| nixos-laptop | オフライン。起動したら `just ssh-cert-host nixos-laptop` |
+| ispc (Windows/WSL) | オフライン。WSL 側に鍵を作ってから同じコマンド |
+| iPhone (Blink) | 鍵が端末内にあるので、公開鍵を持ってきて `just ssh-cert <pub> 720` |
+| rpi4 | クライアント鍵なし。SSH で出る用事が無いので作っていない |
 
 ## break-glass 鍵
 

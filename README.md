@@ -169,6 +169,7 @@ curl -fsSL https://raw.githubusercontent.com/gapul/dotfiles/main/scripts/bootstr
     [secrets]
     secrets cmd="edit" file="common"                  # Files are split per host since #393: common / darwin / homelab, each with its own recipients.
     ssh-cert pubkey="~/.ssh/id_ed25519.pub" hours="8" # renew its own): `just ssh-cert ~/tmp/laptop.pub 720`.
+    ssh-cert-host host hours="720"                    # default window. Re-run this when it expires.
 ```
 <!-- END just-list -->
 
