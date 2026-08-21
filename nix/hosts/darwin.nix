@@ -421,7 +421,6 @@ in
       "keepassxc"
       "keyguard"
       "bitwarden" # Bitwarden official desktop app
-      "secretive" # isolate SSH keys in the Secure Enclave with Touch ID approval per use (MIT/OSS). Moved the SSH agent off Bitwarden
 
       # ─── Network / Remote ───
       "tailscale-app"
