@@ -33,6 +33,16 @@
         # モバイル回線でも中継越しに繋がるようにしておく。tailnet 内なら直結する。
         introducer = false;
       };
+      # 個人の記録の集約先。端末ごとに <ホスト名>/ を掘って、各端末は自分の
+      # ディレクトリしか書かない。同じファイルを複数の端末が書くことがないので、
+      # 構造として競合が起きない (home/personal-history.nix 参照)。
+      # iPhone には配らない。読むのは母艦と macmini だけで、量も多い。
+      folders."personal-history" = {
+        label = "Personal History";
+        path = "/srv/syncthing/personal-history";
+        devices = [ "macbook-mini" ];
+        type = "sendreceive";
+      };
       folders."synchub" = {
         label = "SyncHub";
         # Was /mnt/jellyfin-media/syncthing/SyncHub on the old host, mounted into

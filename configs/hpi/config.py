@@ -20,7 +20,12 @@ class activitywatch:
     常に最新が読める。
     """
 
-    export_path = HOME / "Library/Application Support/activitywatch/aw-server/peewee-sqlite.v2.db"
+    # 母艦の生 DB と、Syncthing 経由で集まった他端末ぶんの写しの両方を見る。
+    # get_files がグロブを受けるので、端末が増えても書き換えは要らない。
+    export_path = [
+        HOME / "Library/Application Support/activitywatch/aw-server/peewee-sqlite.v2.db",
+        HOME / "Sync/syncthing/personal-history/*/activitywatch/peewee-sqlite.v2.db",
+    ]
 
 
 # --- ここから下は、対応するデータを取ってきたら有効にする ---
