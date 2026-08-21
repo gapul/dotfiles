@@ -108,11 +108,18 @@
     # has its own repo now. This flake only says which machine installs it.
     claude-acp.url = "github:gapul/claude-acp";
     claude-acp.inputs.nixpkgs.follows = "nixpkgs";
+
+    # Secure Enclave SSH identities as a CLI + nix-darwin module, replacing the Secretive cask.
+    # Same hardware guarantee (the private key never leaves the enclave) without a GUI app or a
+    # resident agent process: it hands the identity to macOS' own CryptoTokenKit provider.
+    nix-secure-enclave-key.url = "github:ryoppippi/nix-secure-enclave-key";
+    nix-secure-enclave-key.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs =
     inputs@{
       claude-acp,
+      nix-secure-enclave-key,
       nixpkgs,
       nixpkgs-nixos,
       nixpkgs-unstable,
@@ -183,6 +190,7 @@
         mopidyPatches = mopidy-patches;
         nixpkgsUnstable = nixpkgs-unstable;
         nixpkgsHerdr = nixpkgs-herdr;
+        secureEnclaveKey = nix-secure-enclave-key;
       };
 
       # ECS "System" = host composer (unifies the darwin / home boilerplate)

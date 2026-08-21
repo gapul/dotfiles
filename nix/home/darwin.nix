@@ -4,6 +4,7 @@
   lib,
   user,
   nixpkgsUnstable,
+  secureEnclaveKey,
   ...
 }:
 let
@@ -169,6 +170,14 @@ in
     pngpaste # needed for macOS image paste in obsidian.nvim / img-clip
     syncthing # Syncthing CLI (the resident is the LaunchAgent in services.syncthing)
     xcodegen # generate .xcodeproj from project.yml (Mac-only, since meta.platforms = darwin in Linux nixpkgs)
+    # Replaces the secretive cask: same Secure Enclave guarantee (the private key is generated in
+    # the enclave and never leaves it), but a CLI handing the identity to macOS' own CryptoTokenKit
+    # provider instead of a GUI app plus a resident agent process.
+    # The flake also ships a darwinModules.default, deliberately not used: it runs
+    # `git config --global gpg.ssh.program …` on activation, which fights modules/home/git.nix
+    # (signing goes through scripts/git-ssh-keygen-bitwarden) and would flip commit.gpgsign off.
+    # Auth only here; wiring ssh_config to the enclave key is a manual migration (see PR).
+    secureEnclaveKey.packages.${pkgs.stdenv.hostPlatform.system}.default
     (callPackage ../pkgs/slk.nix { }) # Slack TUI (pinned to the official GitHub Release)
     # sketchybar's event helper. `sketchybarrc` used to compile it on every bar start from
     # sources kept in the config directory; the launchd agents put the profile first on PATH.
