@@ -24,8 +24,12 @@
   # (podman の userns root) 所有なので、その下に root 所有のディレクトリを作った
   # 後さらに中へ降りると systemd が unsafe path transition で拒否する。calnode で
   # 実際に踏んだ (詳細は calnode.nix)。なので db 用は入れ子にせず並べる。
+  #
+  # 所有者が root ではなく 70 なのは、postgres のイメージが uid 70 で動くため。
+  # root 所有の 0700 だと `mkdir: can't create directory '/var/lib/postgresql/18/':
+  # Permission denied` で起動に失敗する。既存の miniflux/db も uid 70 所有だった。
   systemd.tmpfiles.rules = [
-    "d /var/lib/homelab/rallly-db 0700 root root -"
+    "d /var/lib/homelab/rallly-db 0700 70 70 -"
   ];
 
   virtualisation.oci-containers.containers."rallly" = {
