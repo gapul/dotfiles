@@ -16,7 +16,10 @@ in
   # host-independent base (nix cache / firewall / security / login hardening, etc.)
   # is consolidated in darwin-common.nix. Only daily-driver workstation-specific
   # settings live here.
-  imports = [ ./darwin-common.nix ];
+  imports = [
+    ./darwin-common.nix
+    ../modules/darwin/ssh-ca.nix
+  ];
 
   # /etc/zshrc's last spawn. `brew shellenv` costs ~16ms per shell and everything it produced
   # is declared in home/darwin.nix instead: the PATH half was already redundant (PATH comes out

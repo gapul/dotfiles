@@ -53,8 +53,8 @@ just ssh-cert ~/tmp/laptop.pub 720     # 別マシンの鍵に 30 日
 なので有効期限を長めに切って、Mac で発行したものを持っていく。
 
 ```sh
-just ssh-cert-host macmini          # 既定 30 日
-just ssh-cert-host nixos-laptop 720
+just ssh-cert-host nixos-laptop     # 既定 30 日
+just ssh-cert-host nixos-laptop 168 # 7 日
 ```
 
 鍵の取得・署名・設置までやる。相手に `~/.ssh/id_ed25519` が無ければ作り方を出して止まる。
@@ -64,14 +64,25 @@ just ssh-cert-host nixos-laptop 720
 
 ### クライアント一覧
 
+証明書を持つのは人が操作する3種類だけ。サーバは持たない。
+
 | 機械 | 状態 |
 |---|---|
-| macbook-mini | `just ssh-cert`（CA 本体。証明書は 8 時間） |
-| macmini | 発行・設置済み（30 日） |
+| macbook-mini | `just ssh-cert`。CA 本体なので8時間で切り直せる |
 | nixos-laptop | オフライン。起動したら `just ssh-cert-host nixos-laptop` |
-| ispc (Windows/WSL) | オフライン。WSL 側に鍵を作ってから同じコマンド |
-| iPhone (Blink) | 鍵が端末内にあるので、公開鍵を持ってきて `just ssh-cert <pub> 720` |
-| rpi4 | クライアント鍵なし。SSH で出る用事が無いので作っていない |
+| iPhone / Android | 鍵が端末内にあるので、公開鍵を持ってきて `just ssh-cert <pub> 720`。証明書を端末に戻す |
+
+## 信頼する側（アクセス先）
+
+NixOS は `modules/nixos/ssh-ca.nix`、macOS は `modules/darwin/ssh-ca.nix` を import する。
+macOS 側は sshd が nix 管理ではないが、`/etc/ssh/sshd_config` が
+`Include /etc/ssh/sshd_config.d/*` で終わっているので drop-in を置けば足りる。
+
+- `homeserver`, `nixos-laptop` … NixOS モジュール
+- `macbook-mini`, `macmini` … darwin モジュール
+- Proxmox の CT … NixOS 化前なので `sshd_config` に手で1行
+
+nixos-laptop と macbook-mini は、クライアントでもありアクセス先でもあるので両方に出てくる。
 
 ## break-glass 鍵
 
@@ -85,14 +96,7 @@ shred -u /tmp/break-glass   # macOS では rm -P
 
 公開鍵を各ホストの `authorized_keys` に置く。CA を配るときに一度は各ホストを触るので、そのついでで済む。
 
-## 信頼する側
+## AuthorizedPrincipalsFile を使わない理由
 
-`nix/modules/nixos/ssh-ca.nix` を import するだけ。`homeserver` と `nixos-laptop` に入れてある。
-
-`AuthorizedPrincipalsFile` は使っていない。CA を信頼している場合、sshd は principal リストにログイン名が入っている証明書を受け入れる。`just ssh-cert` は `-n` にログイン名を入れて署名するので、これで足りる。
-
-Proxmox の CT はまだ NixOS 化されていないので、`/etc/ssh/sshd_config` に手で以下を足す。
-
-```
-TrustedUserCAKeys /etc/ssh/gapul-user-ca.pub
-```
+CA を信頼している場合、sshd は principal リストにログイン名が入っている証明書を受け入れる。
+`just ssh-cert` は `-n` にログイン名を入れて署名するので、それで足りる。

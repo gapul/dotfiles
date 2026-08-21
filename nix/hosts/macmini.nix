@@ -170,6 +170,7 @@ in
   # it just keeps Ollama resident via launchd to serve an inference API over Tailscale / LAN.
   imports = [
     ./darwin-common.nix
+    ../modules/darwin/ssh-ca.nix
     # マイクラのサーバーは上の表から生やす。別モジュールにしてあるのは、nix が同じ attrset の
     # 中で `launchd.daemons = {...}` と `launchd.daemons.foo = ...` を混ぜられないため。
     # サーバーを増やすときに触るのは minecraftServers だけで、ここは触らなくていい。
