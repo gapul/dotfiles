@@ -33,6 +33,8 @@ name that matters now.
 | `miniflux.env` | `DATABASE_URL` (the whole `postgres://miniflux:<pw>@db/miniflux?sslmode=disable` string), `POSTGRES_PASSWORD`, `ADMIN_PASSWORD` |
 | `obsidian-couchdb.env` | `COUCHDB_USER`, `COUCHDB_PASSWORD` |
 | `searx.env` | `SEARXNG_SECRET` (`openssl rand -hex 32`)。SearXNG の `server.secret_key` に envsubst で入る |
+| `rallly.env` | `DATABASE_URL` (`postgres://rallly:<pw>@db/rallly` の全体), `POSTGRES_PASSWORD`, `SECRET_PASSWORD` (**32文字以上**。短いと zod の検証で起動時に落ちる), `SUPPORT_EMAIL` (必須。ログイン用のメールを出さなくても値自体は要る) |
+| `spliit.env` | `POSTGRES_PRISMA_URL`, `POSTGRES_URL_NON_POOLING` (どちらも `postgresql://spliit:<pw>@db/spliit` の全体), `POSTGRES_PASSWORD` |
 | `paperless.env` | `PAPERLESS_SECRET_KEY`, `PAPERLESS_ADMIN_PASSWORD` |
 | `vaultwarden.env` | `ADMIN_TOKEN` |
 | `gatus.env` | `NTFY_TOPIC`, `NTFY_TOKEN` (the `tk_...` bearer token; gatus substitutes them into its own config) |

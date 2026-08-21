@@ -88,6 +88,16 @@
         description: 予約ページ (Radicale の空きから)
         icon: mdi-calendar-clock
         siteMonitor: http://127.0.0.1:8086
+    - Rallly:
+        href: https://poll.gapul.net
+        description: 日程調整
+        icon: rallly.png
+        siteMonitor: http://127.0.0.1:8089
+    - Spliit:
+        href: https://split.gapul.net
+        description: 割り勘
+        icon: mdi-cash-multiple
+        siteMonitor: http://127.0.0.1:8090
     - Forgejo:
         href: https://git.gapul.net
         description: Git ホスティング

@@ -43,10 +43,12 @@
     ./paperless.nix
     ./playit.nix
     ./radicale.nix
+    ./rallly.nix
     ./readeck.nix
     ./restic-view.nix
     ./rsshub.nix
     ./samba.nix
+    ./spliit.nix
     ./searx.nix
     ./syncthing.nix
     ./vaultwarden.nix
