@@ -3,6 +3,7 @@
   pkgs,
   user,
   claudeAcp,
+  sopsNix,
   ...
 }:
 let
@@ -168,8 +169,43 @@ in
   # Headless LLM worker (M4 Mac mini / 24GB).
   # Unlike the everyday workstation (darwin.nix), it loads no GUI casks at all;
   # it just keeps Ollama resident via launchd to serve an inference API over Tailscale / LAN.
+
+  # sops at the system level, decrypting with this machine's own SSH host key.
+  #
+  # This host used to carry no sops at all, on the deliberate policy of not copying the human age
+  # master key here — that one key opens every secret in the repo, and a headless box that nobody
+  # watches is the worst place to leave it. The cost was that restic's password and the ntfy
+  # credentials lived as hand-placed files outside the declaration.
+  #
+  # Host-key decryption removes the tradeoff: /etc/ssh/ssh_host_ed25519_key already exists here,
+  # never leaves the machine, and its age recipient is in .sops.yaml for secrets/common.yaml only.
+  # So the mini can open what it needs and nothing else, and no key had to be brought over.
+  # This runs as root during activation, which is why it works here and not in home-manager
+  # (that key is 0600 root:wheel).
+  sops = {
+    defaultSopsFile = ../../secrets/common.yaml;
+    age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
+
+    secrets =
+      let
+        # The backup runs as the login user, not root, so hand ownership over explicitly.
+        forUser = path: {
+          inherit path;
+          owner = user.username;
+          mode = "0400";
+        };
+      in
+      {
+        # Was ~/.config/restic/password, placed by hand. restic-common.nix's default path is the
+        # same location, so the module below keeps reading it without knowing it moved.
+        "restic_password" = forUser "/Users/${user.username}/.config/restic/password";
+        "unified_calendar/ntfy_url" = forUser "/Users/${user.username}/.config/ntfy/url";
+        "unified_calendar/ntfy_token" = forUser "/Users/${user.username}/.config/ntfy/token";
+      };
+  };
   imports = [
     ./darwin-common.nix
+    sopsNix.darwinModules.sops
     # マイクラのサーバーは上の表から生やす。別モジュールにしてあるのは、nix が同じ attrset の
     # 中で `launchd.daemons = {...}` と `launchd.daemons.foo = ...` を混ぜられないため。
     # サーバーを増やすときに触るのは minecraftServers だけで、ここは触らなくていい。
