@@ -297,7 +297,10 @@ in
       # ─── Network / Download / VPN ───
       # These are all daemons: brew wires up the launchd plist (`brew services`) and the mac
       # expects one system-wide instance, so a per-user nix copy would be the wrong shape.
-      "tailscale" # (b,c) tailnet daemon, paired with the tailscale-app cask
+      # No "tailscale" formula: the tailscale-app cask already ships both the daemon and a CLI at
+      # /usr/local/bin/tailscale. The formula's brew service was never started, and its own CLI sits
+      # earlier in PATH, so every `tailscale` call went through a binary built from a different
+      # source than the running daemon ("client version != tailscaled server version").
       "tor" # (b) SOCKS daemon via brew services
       "wireguard-tools" # (b) wg-quick + wireguard-go run as a root VPN engine
       "cloudflared" # (b) Cloudflare tunnel daemon
