@@ -116,6 +116,28 @@ in
     url = "https://raw.githubusercontent.com/prh/rules/89a6f9dd057a34dce15698260ced88183e332362/media/WEB%2BDB_PRESS.yml";
     hash = "sha256-6RTk8Qs/ZVG71vp7kYhu81CCh3uJwsRYk6ER09DMQVw=";
   };
+  # HPI (Human Programming Interface)。SaaS から引き出したエクスポートを、
+  # ローカルで横断的に引ける形にしておくための枠組み。
+  #
+  # `~/.config/my` が my.config パッケージとして読まれる。HPI 側の
+  # my/core/init.py が MY_CONFIG (既定は platformdirs の user_config_dir) を
+  # sys.path の先頭に差し込むので、ここに置いたファイルは implicit namespace
+  # package として `my.*` で import できる。__init__.py は要らない (PEP 420)。
+  #
+  # activitywatch.py は上流に存在しないので自前。ActivityWatch はこの環境で
+  # 一番量のあるローカルデータ (実測 115 万イベント) なのに、HPI が持っているのは
+  # arbtt と rescuetime だけだった。
+  #
+  # 本体は nix ではなく `uv tool install HPI` で入れる。HPI はモジュールを
+  # 自分で書き換えて使う前提の設計 (editable install を推奨している) なので、
+  # store に固めると噛み合わない。~/.local/bin は common.nix で PATH に入って
+  # いるので、uv が置く `hpi` はそのまま通る。
+  #
+  # ライブラリとして使うときは `import my.core.init` を先に呼ぶこと。これが
+  # sys.path への差し込みを実行する。`hpi` CLI 経由なら不要。
+  home.file.".config/my/my/config.py".source = ../../configs/hpi/config.py;
+  home.file.".config/my/my/activitywatch.py".source = ../../configs/hpi/activitywatch.py;
+
   # LaTeX: latexmk default config (LuaLaTeX) and Japanese templates
   # latexmk 4.77+ officially supports $XDG_CONFIG_HOME/latexmk/latexmkrc, so use the XDG-compliant location
   home.file.".config/latexmk/latexmkrc".source = ../../configs/tex/latexmkrc;
