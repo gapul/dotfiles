@@ -27,6 +27,22 @@
       # the push token lives in it. Was a hand-written plaintext file until 2026-08.
       "attic_config".path = "${config.home.homeDirectory}/.config/attic/config.toml";
 
+      # atuin の E2E 暗号鍵。これが無いと同期した履歴を復号できない。
+      #
+      # Bitwarden ではなくここに置く理由: 人間が打つものではなく、atuin が決まった
+      # パスから読むファイルだから。sops に載せておけば新しい端末でも rebuild だけで
+      # 正しい場所に materialise される。手でコピーする手順が消える。
+      # (Bitwarden 側に要るのは atuin の**パスワード**のほうで、あれは login のときに
+      #  人間が打つもの。別物。)
+      #
+      # mode が 0400 だと atuin login が書き戻そうとして失敗するので 0600。ただし
+      # sops が正なので、login が別の鍵を書いても次の activation で戻る。鍵を
+      # 変えるときは secrets/common.yaml を更新すること。
+      "atuin/key" = {
+        path = "${config.home.homeDirectory}/.local/share/atuin/key";
+        mode = "0600";
+      };
+
       # PII single source
       "pii/name" = { };
       "pii/email_personal" = { };

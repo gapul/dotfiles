@@ -176,8 +176,10 @@ in
       # tailnet 内なので、外出先で Tailscale が切れている間は同期だけが止まる
       # (履歴のローカル記録と検索は影響を受けない)。
       #
-      # 各端末で一度だけ `atuin login -u gapul` が要る。
-      # E2E の鍵は ~/.local/share/atuin/key。Bitwarden に退避しておくこと。
+      # 各端末で一度だけ `atuin login -u gapul` が要る。パスワードは人間が打つので
+      # Bitwarden。E2E の鍵のほうは sops に入れてあり (secrets/common.yaml の
+      # atuin/key、宣言は home/secrets.nix)、rebuild すれば端末に materialise される
+      # ので手でコピーする必要はない。
       auto_sync = true;
       sync_address = "https://shell.gapul.net";
       sync_frequency = "5m";
