@@ -18,15 +18,33 @@ MacBook の Secure Enclave。`protection = "bio"` なので、**署名のたび�
 
 ```sh
 nix-secure-enclave-key setup --key-file ~/.ssh/id_enclave_key --label auth --protection bio
+nix-secure-enclave-key setup --key-file ~/.ssh/id_enclave_ca  --label ca   --protection bio
 ```
 
-enclave の identity は **1本だけ**にしている。`nix-secure-enclave-key` は2本目以降に対して
-使える秘密鍵スタブを作らず、公開鍵の参照ファイルしか置かないため（`ssh-keygen -s` が
-`invalid format` で落ちる）。したがって enclave を割り当てられる役は1つで、その1つは
-「都度承認が効くこと」の価値が高い CA に使っている。
+### 2本目のスタブが作れない問題と回避策
+
+`nix-secure-enclave-key` は2本目以降の identity に対して、使える秘密鍵スタブを置けずに
+公開鍵の参照ファイルだけを残す（その状態で `ssh-keygen -s` を呼ぶと `invalid format`）。
+`ssh ensure` で作り直そうとすると応答が返らなくなる。
+
+原因はツールではなく `ssh-keygen -K` の挙動。resident key を**全部同じファイル名**
+`id_ecdsa_sk_rk` に書き出すので、2本目で `Overwrite (y/n)?` を聞いてきて、
+非対話で走らせているツールはそこで止まる。ツールは一時ディレクトリに複数のペアが
+出てくる前提で fingerprint で選り分ける作りなので、噛み合っていない。
+
+答えてやれば取れる。**どちらが残るかは列挙順次第なので、必ず fingerprint で照合すること。**
+
+```sh
+mkdir /tmp/k && cd /tmp/k
+yes y | ssh-keygen -w /usr/lib/ssh-keychain.dylib -K -N ""
+# 出てきた id_ecdsa_sk_rk.pub が目的の identity か確認してから配置する
+install -m 600 id_ecdsa_sk_rk     ~/.ssh/id_enclave_ca
+install -m 644 id_ecdsa_sk_rk.pub ~/.ssh/id_enclave_ca.pub
+```
 
 クライアント側の鍵は enclave である必要がない。証明書は任意の公開鍵に載せられるので、
-既存の Bitwarden 管理の鍵（`~/.ssh/id_ed25519.pub`）をそのまま証明書の対象にしている。
+今は既存の Bitwarden 管理の鍵（`~/.ssh/id_ed25519.pub`）を証明書の対象にしている。
+`id_enclave_key`（label `auth`）を使う形にも移せる。
 
 公開鍵は `nix/keys/ssh-user-ca.pub` にコミットしてある。CA の公開鍵は信頼する側が全員持つものなので、公開リポジトリに置いて問題ない。
 

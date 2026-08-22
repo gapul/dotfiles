@@ -1047,7 +1047,7 @@ secrets cmd="edit" file="common":
 ssh-cert pubkey="~/.ssh/id_ed25519.pub" hours="8":
     #!/usr/bin/env bash
     set -euo pipefail
-    ca=~/.ssh/id_enclave_key
+    ca=~/.ssh/id_enclave_ca
     key=$(eval echo "{{pubkey}}")
     [ -f "$ca" ] || { echo "no CA identity. see docs/SSH_CA.md" >&2; exit 1; }
     [ -f "$key" ] || { echo "no such public key: $key" >&2; exit 1; }
