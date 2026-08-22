@@ -47,6 +47,16 @@ if ssh -o BatchMode=yes -i /Users/hermes/.ssh/sandbox_ed25519 hsandbox@localhost
   2>/dev/null | tar xf - -C "$study_tmp" --strip-components=1; then
   rm -rf "$REPO/study"
   mv "$study_tmp" "$REPO/study"
+
+  # 学習記録の git 履歴はサンドボックスのディスクにしかない。丸ごとは重いので
+  # bundle 1ファイルで持ち出す(復元: git clone study.bundle)。
+  if ssh -o BatchMode=yes -i /Users/hermes/.ssh/sandbox_ed25519 hsandbox@localhost \
+    "cd ~/study && git bundle create /tmp/.study.bundle --all -q && cat /tmp/.study.bundle && rm -f /tmp/.study.bundle" \
+    > "$REPO/study.bundle.new" 2>/dev/null && [ -s "$REPO/study.bundle.new" ]; then
+    mv "$REPO/study.bundle.new" "$REPO/study.bundle"
+  else
+    rm -f "$REPO/study.bundle.new"
+  fi
 else
   rm -rf "$study_tmp"
 fi
@@ -71,6 +81,16 @@ if [ -x "$SOPS" ]; then
 fi
 
 git add -A
+
+# 秘密と生成物はコミットしない。tar の除外がまた壊れても、ここで止まる。
+# (除外の書き順ミスで資格情報が1か月コミットされ続けた事故の再発防止)
+leaked=$(git diff --cached --name-only \
+  | grep -E '(^|/)\.(dashboard_auth|gcal_client\.json|gcal_token\.json|studyplus[a-z_]*\.json)$|\.env$|\.png$|\.pdf$' || true)
+if [ -n "$leaked" ]; then
+  echo "$leaked" | while IFS= read -r f; do git reset -q -- "$f"; git rm -q --cached --ignore-unmatch "$f"; done
+  echo "$(date '+%F %T') REFUSED to commit: $leaked" >&2
+fi
+
 if ! git diff --cached --quiet; then
   git -c user.name="hermes" -c user.email="hermes@macmini.gapul.net" \
     commit -m "auto backup $(date +%Y-%m-%d_%H%M)"
