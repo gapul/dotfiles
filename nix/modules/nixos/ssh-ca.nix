@@ -1,5 +1,4 @@
-{ ... }:
-{
+_: {
   # Trust the user CA so this host stops needing per-key authorized_keys edits.
   #
   # The CA private key lives in the MacBook's Secure Enclave with `protection = "bio"`, so a

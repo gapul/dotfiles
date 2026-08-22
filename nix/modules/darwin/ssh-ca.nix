@@ -1,5 +1,4 @@
-{ ... }:
-{
+_: {
   # The darwin half of modules/nixos/ssh-ca.nix: trust the same user CA on the Macs that get
   # SSH'd into. macOS ships its own sshd rather than a nix-darwin-managed one, but its
   # /etc/ssh/sshd_config ends with `Include /etc/ssh/sshd_config.d/*`, so a drop-in is enough
