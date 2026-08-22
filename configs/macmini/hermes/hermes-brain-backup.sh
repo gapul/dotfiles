@@ -43,6 +43,7 @@ study_tmp=$(mktemp -d)
 if ssh -o BatchMode=yes -i /Users/hermes/.ssh/sandbox_ed25519 hsandbox@localhost \
   "tar cf - --exclude='.git' --exclude='*.png' --exclude='*.pdf' \
    --exclude='.gcal_token.json' --exclude='.dashboard_auth' --exclude='.gcal_client.json' \
+   --exclude='.studyplus_token.json' --exclude='.studyplus.json' \
    -C ~ study" \
   2>/dev/null | tar xf - -C "$study_tmp" --strip-components=1; then
   rm -rf "$REPO/study"
@@ -51,7 +52,7 @@ if ssh -o BatchMode=yes -i /Users/hermes/.ssh/sandbox_ed25519 hsandbox@localhost
   # 学習記録の git 履歴はサンドボックスのディスクにしかない。丸ごとは重いので
   # bundle 1ファイルで持ち出す(復元: git clone study.bundle)。
   if ssh -o BatchMode=yes -i /Users/hermes/.ssh/sandbox_ed25519 hsandbox@localhost \
-    "cd ~/study && git bundle create /tmp/.study.bundle --all -q && cat /tmp/.study.bundle && rm -f /tmp/.study.bundle" \
+    "cd ~/study && git bundle create /tmp/.study.bundle --all 2>/dev/null && cat /tmp/.study.bundle && rm -f /tmp/.study.bundle" \
     > "$REPO/study.bundle.new" 2>/dev/null && [ -s "$REPO/study.bundle.new" ]; then
     mv "$REPO/study.bundle.new" "$REPO/study.bundle"
   else
