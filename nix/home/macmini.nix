@@ -35,6 +35,13 @@ in
     # up under /nix/store). Declared here so a garbage collection can't take it away.
     pkgs.typst
 
+    # Hermes's sandbox file-sync needs GNU tar (--no-overwrite-dir), and search
+    # needs ripgrep. The sandbox symlinks ~/.local/bin/{tar,rg} at the stable
+    # /etc/profiles path; without a declaration a GC severs them and the tutor
+    # silently stops reading files (happened three times in one week).
+    pkgs.gnutar
+    pkgs.ripgrep
+
     # ccm: default Claude Code launch form on the mac mini. Permission prompts are kept.
     # Don't default --dangerously-skip-permissions even in non-interactive environments, because
     # prompt injection from external content would directly become arbitrary command execution rights.
