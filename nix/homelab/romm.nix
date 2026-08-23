@@ -97,6 +97,13 @@
   # RomM はプラットフォームごとの下位ディレクトリを見る (roms/gb, roms/snes, ...)。
   # 空でも作っておかないと、最初のスキャンが「ライブラリが無い」で終わる。
   systemd.tmpfiles.rules = [
+    # podman は bind mount の元を作らない (docker と違うところ)。無いまま起動すると
+    # `statfs ...: no such file or directory` で 125 を返し、restart を繰り返して
+    # start-limit-hit で止まる。
+    "d /var/lib/homelab/romm 0700 root root -"
+    "d /var/lib/homelab/romm/db 0700 root root -"
+    "d /var/lib/homelab/romm/resources 0700 root root -"
+    "d /var/lib/homelab/romm/redis 0700 root root -"
     "d /srv/games 0755 root root -"
     "d /srv/games/roms 0755 root root -"
     "d /srv/games/roms-assets 0755 root root -"
