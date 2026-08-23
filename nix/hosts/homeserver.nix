@@ -63,6 +63,9 @@ let
     roms.upstream = "127.0.0.1:8091";
     games.upstream = "127.0.0.1:8092";
     paperless.upstream = "127.0.0.1:8097";
+    # YouTube の保存 (Pinchflat)。落とし先は /srv/youtube で、jellyfin が /srv を
+    # /media として見ているので、落ちた時点で棚に並ぶ。
+    tube.upstream = "127.0.0.1:8098";
     git.upstream = "127.0.0.1:3003"; # forgejo
     archive.upstream = "127.0.0.1:8000"; # archivebox
     ntfy.upstream = "127.0.0.1:8082";
