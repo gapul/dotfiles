@@ -49,6 +49,7 @@
     ./free-games-claimer.nix
     ./gameyfin.nix
     ./git-annex.nix
+    ./hauk.nix
     ./homeassistant.nix
     ./homepage.nix
     ./jellyfin.nix
@@ -58,6 +59,7 @@
     ./ntfy.nix
     ./obsidian-couchdb.nix
     ./paperless.nix
+    ./pingvin-share.nix
     ./playit.nix
     ./radicale.nix
     ./rallly.nix
