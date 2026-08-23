@@ -23,7 +23,13 @@
 # binary and a directory with the right owner.
 { pkgs, ... }:
 {
-  environment.systemPackages = [ pkgs.git-annex ];
+  # git 本体も要る。ssh 越しの remote は git-upload-pack / git-receive-pack を
+  # 呼ぶので、git-annex だけ入れても clone できない (この host には git が
+  # 入っていなかった)。
+  environment.systemPackages = [
+    pkgs.git
+    pkgs.git-annex
+  ];
 
   # ssh remote, so no daemon and no port. The Macs reach it as
   # gapul@homeserver:/srv/annex over the tailnet, like every other path here.
