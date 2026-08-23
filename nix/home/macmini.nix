@@ -42,6 +42,17 @@ in
     pkgs.gnutar
     pkgs.ripgrep
 
+    # Sunshine — Moonlight のホスト側。iPhone / iPad からこの機械の画面を触る。
+    #
+    # macOS ホストは公式に experimental で、**ゲームパッドが動かない**
+    # ("Gamepads do not work" と docs に明記されている)。キーボードとマウスの
+    # ゲーム、エミュレータ、あるいは単に遠隔から画面を触る用途なら使える。
+    # パッドを使うなら Windows 側を起こすほうが早い。
+    #
+    # 画面収録とアクセシビリティの許可は launchd では与えられないので、
+    # 初回だけ手で通す (下の launchd.agents.sunshine の注記を参照)。
+    pkgs.sunshine
+
     # ccm: default Claude Code launch form on the mac mini. Permission prompts are kept.
     # Don't default --dangerously-skip-permissions even in non-interactive environments, because
     # prompt injection from external content would directly become arbitrary command execution rights.
@@ -247,6 +258,30 @@ in
       StandardErrorPath = "${config.home.homeDirectory}/.local/state/manabi/refresh.log";
     };
   };
+  # Sunshine を常駐させる。Moonlight (iOS の無料アプリ) がこの機械を見つけて
+  # 繋ぎに来る。
+  #
+  # 初回だけ手が要る。どちらも TCC の許可で、宣言では与えられない:
+  #   1. システム設定 > プライバシーとセキュリティ > 画面収録 に sunshine を追加
+  #   2. 同 > アクセシビリティ にも追加 (キーボード/マウスの注入に要る)
+  # 許可を与えたあと `launchctl kickstart -k gui/$UID/org.nix-community.home.sunshine`。
+  #
+  # ペアリングは https://localhost:47990 の Web UI から。ポートは tailnet 内だけに
+  # 開いていて、外には出していない。
+  launchd.agents.sunshine = {
+    enable = true;
+    config = {
+      ProgramArguments = [ "${pkgs.sunshine}/bin/sunshine" ];
+      RunAtLoad = true;
+      KeepAlive = true;
+      # 配信中に他のバックグラウンド仕事に負けると映像が途切れる。ComfyUI と
+      # 同じ Interactive にしておく。
+      ProcessType = "Interactive";
+      StandardOutPath = "/tmp/sunshine.log";
+      StandardErrorPath = "/tmp/sunshine.log";
+    };
+  };
+
   launchd.agents.comfyui = {
     enable = true;
     config = {
