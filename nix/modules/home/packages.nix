@@ -49,6 +49,7 @@ in
     tirith # command/URL/Skill defense for shell/AI agents
     (callPackage ../../pkgs/tuicr.nix { }) # review AI-generated diffs in a PR-style UI
     ghq # repo clone management
+    git-annex # content-addressed large files in git (fonts / assets; see homelab/git-annex.nix)
     lazyjj # jujutsu TUI
     jq # JSON processor
     fd # find alternative (also used in fzf defaultCommand)
