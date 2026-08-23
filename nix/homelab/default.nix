@@ -20,6 +20,19 @@
   #
   # open-webui と anythingllm も 2026-08-20 に落とした。macmini の AI パネルと
   # 用途が重なっていて、二重に持つ理由が無かった。合計で約 660MB 使っていた。
+  # /var/lib/homelab の所有者を root に戻す。移行直後は uid 100000 (旧 CT101 の
+  # rootless コンテナ時代の subuid) のままで、systemd-tmpfiles が
+  # 「Detected unsafe path transition /var/lib/homelab (owned by 100000) →
+  # .../romm (owned by root)」として配下の作成を拒否する。既存のスタックは
+  # ディレクトリが移行時から在るので気付かれなかったが、新しいスタックを足すと
+  # そこで初めて出る (RomM がそれ)。
+  #
+  # 配下は各スタックの所有のまま触らない。ここは入れ物なので root:0755 が正しい。
+  # /srv/syncthing で 2026-08-16 に直したのと同じ残骸。
+  systemd.tmpfiles.rules = [
+    "d /var/lib/homelab 0755 root root -"
+  ];
+
   imports = [
     ./blocky.nix
     ./anisette.nix
