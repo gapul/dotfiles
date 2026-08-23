@@ -52,6 +52,12 @@ let
     # https で開くと繋がらない状態だった (直接ポートを叩けば見えるので気付きにくい)。
     jellyfin.upstream = "127.0.0.1:8096";
     navidrome.upstream = "127.0.0.1:4533";
+    # ゲームの棚。roms は RomM (ブラウザでそのまま遊べる)、games は Gameyfin
+    # (DRM フリーの PC ゲームの目録)。実ファイルはどちらも /srv/games 配下で
+    # restic の対象外 — 吸い出し直せるものに容量を使わない、という他の /srv と
+    # 同じ扱い。
+    roms.upstream = "127.0.0.1:8091";
+    games.upstream = "127.0.0.1:8092";
     paperless.upstream = "127.0.0.1:8097";
     git.upstream = "127.0.0.1:3003"; # forgejo
     archive.upstream = "127.0.0.1:8000"; # archivebox

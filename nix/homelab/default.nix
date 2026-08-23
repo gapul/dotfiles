@@ -33,6 +33,7 @@
     ./dawarich.nix
     ./forgejo.nix
     ./free-games-claimer.nix
+    ./gameyfin.nix
     ./git-annex.nix
     ./homeassistant.nix
     ./homepage.nix
@@ -48,6 +49,7 @@
     ./rallly.nix
     ./readeck.nix
     ./restic-view.nix
+    ./romm.nix
     ./rsshub.nix
     ./samba.nix
     ./spliit.nix
