@@ -37,6 +37,8 @@ name that matters now.
 | `spliit.env` | `POSTGRES_PRISMA_URL`, `POSTGRES_URL_NON_POOLING` (どちらも `postgresql://spliit:<pw>@db/spliit` の全体), `POSTGRES_PASSWORD` |
 | `paperless.env` | `PAPERLESS_SECRET_KEY`, `PAPERLESS_ADMIN_PASSWORD` |
 | `vaultwarden.env` | `ADMIN_TOKEN` |
+| `romm.env` | `MARIADB_ROOT_PASSWORD`, `MARIADB_PASSWORD`, `DB_PASSWD` (後ろ2つは同じ値), `ROMM_AUTH_SECRET_KEY` (`openssl rand -hex 32`), `IGDB_CLIENT_ID`, `IGDB_CLIENT_SECRET` |
+| `gameyfin.env` | `IGDB_CLIENT_ID`, `IGDB_CLIENT_SECRET` (romm と同じ値で良い) |
 | `gatus.env` | `NTFY_TOPIC`, `NTFY_TOKEN` (the `tk_...` bearer token; gatus substitutes them into its own config) |
 | `mosquitto-ha.password` | a `mosquitto_passwd` hash, the part after `ha:` — not a plaintext password |
 | `free-games-claimer.env` | `NOTIFY` (an ntfy publish URL, so it embeds a credential) and `PANEL_PASSWORD`, which is also the VNC password |
