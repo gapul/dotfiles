@@ -55,13 +55,18 @@ for f in dawarich.dump miniflux.dump paperless.sql; do
 done
 
 # ── 2. 使い捨ての postgres に本当に流し込む ──────────────────
-# dawarich は 17、miniflux は 16。新しい方に合わせる (pg_restore は前方には
-# 流せるが、後方 — 新しいダンプを古いサーバへ — は落ちる)。
+# 本番と同じイメージを使う。素の postgres:17 では dawarich が復元できない。
+# あちらは PostGIS を使っていて (postgis / postgis_topology /
+# postgis_tiger_geocoder / fuzzystrmatch / pgcrypto)、拡張の無いサーバでは
+# pg_restore が落ちる。実際に落ちた — 訓練を入れて最初の一回で見つかった穴。
+#
+# miniflux は 16 だが、こちらのイメージ (17) に流し込める。pg_restore は前方には
+# 流せる。逆 — 新しいダンプを古いサーバへ — は落ちる。
 podman rm -f "$DB_CTR" >/dev/null 2>&1 || true
 if podman run -d --name "$DB_CTR" \
   -e POSTGRES_PASSWORD=drill \
   -v "$DUMPS:/dumps:ro" \
-  docker.io/library/postgres:17 >/dev/null 2>&1; then
+  docker.io/postgis/postgis:17-3.5-alpine >/dev/null 2>&1; then
 
   for i in $(seq 1 60); do
     podman exec "$DB_CTR" pg_isready -U postgres >/dev/null 2>&1 && break
