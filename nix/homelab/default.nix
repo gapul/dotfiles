@@ -59,12 +59,14 @@
     ./ntfy.nix
     ./obsidian-couchdb.nix
     ./paperless.nix
+    ./pinchflat.nix
     ./pingvin-share.nix
     ./playit.nix
     ./radicale.nix
     ./rallly.nix
     ./readeck.nix
     ./restic-view.nix
+    ./restore-drill.nix
     ./romm.nix
     ./rsshub.nix
     ./samba.nix
