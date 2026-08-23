@@ -36,7 +36,14 @@ in
     poppler-utils # PDF CLI (pdftotext etc. formerly brew poppler)
     bitwarden-cli # Bitwarden (bw)
     syft # SBOM
-    radare2 # reverse engineering (r2)
+    radare2 # reverse engineering (r2), small native binaries (e.g. REAPER)
+    # app / binary analysis: unofficial-client recon + Mac proprietary-app RE
+    jadx # APK: dex -> readable Java
+    apktool # APK: resources + AndroidManifest decode
+    apkeep # APK/XAPK downloader (Play / APKPure)
+    asar # extract Electron app.asar (e.g. Native Access)
+    cfr # JVM decompiler (e.g. Bitwig jars)
+    ghidra # native Mach-O/ELF reverse engineering (GUI)
     aria2 # downloader (aria2c)
     rclone # cloud storage sync
     calcurse # calendar TUI
