@@ -33,6 +33,8 @@
   systemd.services."podman-gameyfin".serviceConfig.Restart = lib.mkOverride 90 "always";
 
   systemd.tmpfiles.rules = [
+    # romm.nix と同じ理由。podman は bind mount の元を作らない。
+    "d /var/lib/homelab/gameyfin 0700 root root -"
     "d /srv/games/pc 0755 root root -"
   ];
 }
