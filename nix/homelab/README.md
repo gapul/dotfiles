@@ -39,6 +39,7 @@ name that matters now.
 | `vaultwarden.env` | `ADMIN_TOKEN` |
 | `romm.env` | `MARIADB_ROOT_PASSWORD`, `MARIADB_PASSWORD`, `DB_PASSWD` (後ろ2つは同じ値), `ROMM_AUTH_SECRET_KEY` (`openssl rand -hex 32`), `IGDB_CLIENT_ID`, `IGDB_CLIENT_SECRET` |
 | `gameyfin.env` | `APP_KEY` (**`head -c 32 /dev/urandom \| base64`**。AES 鍵として読まれるので 128/192/256 bit ちょうどでないと `Invalid AES key length` で起動ループする。hex 64 文字は 64 byte 扱いになって通らない), `IGDB_CLIENT_ID`, `IGDB_CLIENT_SECRET` (romm と同じ値で良い) |
+| `hauk/config.php` | `.env` ではなく PHP の設定ファイル。`/var/lib/homelab/hauk/config.php` に置く。イメージ内の `/etc/hauk/config-sample.php` を写して `password` をハッシュに差し替える (`podman exec hauk php -r 'echo password_hash("...", PASSWORD_DEFAULT);'`)。`public_url` は `https://where.gapul.net/` |
 | `gatus.env` | `NTFY_TOPIC`, `NTFY_TOKEN` (the `tk_...` bearer token; gatus substitutes them into its own config) |
 | `mosquitto-ha.password` | a `mosquitto_passwd` hash, the part after `ha:` — not a plaintext password |
 | `free-games-claimer.env` | `NOTIFY` (an ntfy publish URL, so it embeds a credential) and `PANEL_PASSWORD`, which is also the VNC password |
