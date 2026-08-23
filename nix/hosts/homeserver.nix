@@ -52,6 +52,10 @@ let
     # https で開くと繋がらない状態だった (直接ポートを叩けば見えるので気付きにくい)。
     jellyfin.upstream = "127.0.0.1:8096";
     navidrome.upstream = "127.0.0.1:4533";
+    # 家計簿 (fava)。台帳は beancount のテキストで /var/lib/homelab/fava にある。
+    # fava 自体はログインを持たないので、境界はここの vhost が tailnet アドレス
+    # にしか生えていないこと。外に出すなら認証を足すこと。
+    money.upstream = "127.0.0.1:8093";
     # ゲームの棚。roms は RomM (ブラウザでそのまま遊べる)、games は Gameyfin
     # (DRM フリーの PC ゲームの目録)。実ファイルはどちらも /srv/games 配下で
     # restic の対象外 — 吸い出し直せるものに容量を使わない、という他の /srv と
