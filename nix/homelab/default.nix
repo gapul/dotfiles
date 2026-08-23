@@ -33,6 +33,7 @@
     ./dawarich.nix
     ./forgejo.nix
     ./free-games-claimer.nix
+    ./git-annex.nix
     ./homeassistant.nix
     ./homepage.nix
     ./jellyfin.nix
