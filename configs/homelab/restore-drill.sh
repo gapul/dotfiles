@@ -50,7 +50,7 @@ if ! restic restore latest --host "$(hostname -s)" \
 fi
 
 DUMPS="$WORK/var/lib/db-dumps"
-for f in dawarich.dump miniflux.dump paperless.sql; do
+for f in dawarich.dump miniflux.dump paperless.sql readeck.db; do
   [ -s "$DUMPS/$f" ] || fail "$f がスナップショットに無い (または空)"
 done
 
@@ -68,8 +68,14 @@ if podman run -d --name "$DB_CTR" \
   -v "$DUMPS:/dumps:ro" \
   docker.io/postgis/postgis:17-3.5-alpine >/dev/null 2>&1; then
 
+  # -h 127.0.0.1 が要る。公式イメージは初期化用に一時的なサーバを立てて、
+  # 終わったら一度落として本番用に起動し直す。ソケット越しの pg_isready は
+  # その一時サーバにも応答するので、そこへ繋ぐと COPY の途中で再起動に
+  # 巻き込まれて "server closed the connection unexpectedly" になる。実際になった。
+  # 初期化中は listen_addresses が空で TCP を開かないので、TCP で見れば
+  # 本番用の起動だけを待てる。
   for i in $(seq 1 60); do
-    podman exec "$DB_CTR" pg_isready -U postgres >/dev/null 2>&1 && break
+    podman exec "$DB_CTR" pg_isready -h 127.0.0.1 -U postgres >/dev/null 2>&1 && break
     [ "$i" -eq 60 ] && fail "使い捨て postgres が起動しなかった"
     sleep 2
   done
@@ -94,7 +100,9 @@ else
   fail "使い捨て postgres を起動できなかった"
 fi
 
-# ── 3. sqlite は流し込むだけで足りる ─────────────────────────
+# ── 3. sqlite ────────────────────────────────────────────────
+# paperless は SQL のテキスト、readeck は .backup で取った sqlite ファイルそのもの
+# (コンテナが Go の最小イメージで python3 が無いため)。形が違うので確認も分ける。
 if [ -s "$DUMPS/paperless.sql" ]; then
   if sqlite3 "$WORK/paperless-drill.db" < "$DUMPS/paperless.sql" 2>/dev/null; then
     n=$(sqlite3 "$WORK/paperless-drill.db" \
@@ -109,6 +117,21 @@ if [ -s "$DUMPS/paperless.sql" ]; then
   fi
 fi
 
+if [ -s "$DUMPS/readeck.db" ]; then
+  # ファイルとして取れているので、開いて整合を見るだけでよい。
+  if sqlite3 "$DUMPS/readeck.db" "PRAGMA integrity_check" 2>/dev/null | grep -q '^ok$'; then
+    n=$(sqlite3 "$DUMPS/readeck.db" \
+      "SELECT count(*) FROM sqlite_master WHERE type='table'" 2>/dev/null)
+    if [ "${n:-0}" -lt 3 ]; then
+      fail "readeck: テーブルが ${n:-0} 個しかない"
+    else
+      echo "OK: readeck は ${n} テーブルで整合が取れている"
+    fi
+  else
+    fail "readeck: integrity_check が通らない"
+  fi
+fi
+
 # ── 4. 結果 ──────────────────────────────────────────────────
 if [ ${#FAILURES[@]} -gt 0 ]; then
   notify "復元訓練: 戻せないものがある" "$(printf '%s\n' "${FAILURES[@]}")" high
@@ -117,4 +140,4 @@ fi
 
 # 成功も鳴らす。月1回なので五月蝿くならないし、鳴らないと訓練自体が
 # 止まっていることに気付けない。
-notify "復元訓練: 全部戻せた" "dawarich / miniflux / paperless をスナップショットから復元して確認した" low
+notify "復元訓練: 全部戻せた" "dawarich / miniflux / paperless / readeck をスナップショットから復元して確認した" low
