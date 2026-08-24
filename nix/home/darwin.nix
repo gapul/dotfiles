@@ -170,6 +170,14 @@ in
     pngpaste # needed for macOS image paste in obsidian.nvim / img-clip
     syncthing # Syncthing CLI (the resident is the LaunchAgent in services.syncthing)
     xcodegen # generate .xcodeproj from project.yml (Mac-only, since meta.platforms = darwin in Linux nixpkgs)
+    # na: unofficial Native Access CLI. The tool lives in a private checkout
+    # (~/Developer/github.com/gapul/na-cli); this wrapper bundles pyzmq and calls it,
+    # so the RE'd source stays out of this public repo. Talks to NTKDaemon (agent below).
+    (writeShellScriptBin "na" ''
+      exec ${
+        python3.withPackages (p: [ p.pyzmq ])
+      }/bin/python3 "$HOME/Developer/github.com/gapul/na-cli/na" "$@"
+    '')
     # Replaces the secretive cask: same Secure Enclave guarantee (the private key is generated in
     # the enclave and never leaves it), but a CLI handing the identity to macOS' own CryptoTokenKit
     # provider instead of a GUI app plus a resident agent process.
@@ -291,6 +299,29 @@ in
 
   home.activation.mechvibesLogDir = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     /bin/mkdir -p "${config.home.homeDirectory}/Library/Logs/MechvibesDX"
+  '';
+
+  # NTKDaemon: Native Access's local daemon (ZeroMQ 5146/5563) that `na` drives.
+  # NA launches it on demand as an app (launchctl label `application.…NTKDaemon…`),
+  # so removing the GUI would leave nothing to start it. Declaring it here keeps it
+  # resident via launchd, making the Native Access GUI removable. The binary stays
+  # where NA's installer put it (proprietary, not nix-built); nix only owns the agent.
+  # Note: if the GUI is still installed, launching it spawns a second NTKDaemon that
+  # collides on the ports — remove /Applications/Native Access.app once this is live.
+  launchd.agents.ntkdaemon = {
+    enable = true;
+    config = {
+      ProgramArguments = [
+        "/Library/Application Support/Native Instruments/NTK/NTKDaemon.app/Contents/MacOS/NTKDaemon"
+      ];
+      RunAtLoad = true;
+      KeepAlive = true;
+      StandardOutPath = "${config.home.homeDirectory}/Library/Logs/NTKDaemon/ntkdaemon.log";
+      StandardErrorPath = "${config.home.homeDirectory}/Library/Logs/NTKDaemon/ntkdaemon.log";
+    };
+  };
+  home.activation.ntkdaemonLogDir = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    /bin/mkdir -p "${config.home.homeDirectory}/Library/Logs/NTKDaemon"
   '';
 
   # TCC pins its rows to the code signature, and what nix builds is ad-hoc
