@@ -359,10 +359,8 @@ in
       # Gatekeeper and won't launch, so no_quarantine is required (same as sioyek).
 
       # ─── Communication & Sync ───
-      # Migrating off proprietary Beeper to Element on the self-hosted Matrix (@gapul:gapul.net).
-      # Element runs alongside Beeper until the mautrix bridges for the networks in use are up
-      # (Discord/Telegram already bridged; see homelab/matrix.nix). Drop "beeper" once verified.
-      "beeper"
+      # Dropped proprietary Beeper (not in active use) for Element on the self-hosted Matrix
+      # (@gapul:gapul.net; Discord/Telegram bridged in homelab/matrix.nix).
       "element"
       "kdeconnect"
       "localsend"
