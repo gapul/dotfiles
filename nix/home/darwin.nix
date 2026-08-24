@@ -268,9 +268,12 @@ in
   # So also generate programs.lazygit.settings at the XDG path to make it reliably effective.
   # (This definition is Darwin-only. On Linux, HM's lazygit module itself defines the same path,
   #  so putting it in common.nix would conflict.)
-  xdg.configFile."lazygit/config.yml".source =
-    (pkgs.formats.yaml { }).generate "lazygit-config.yml"
-      config.programs.lazygit.settings;
+  #
+  # builtins.toFile で書く。pkgs.formats.yaml の generate はビルダーを要する派生に
+  # なり、CI (x86_64-linux) が darwin 用のそれを掴むと platform mismatch で落ちる。
+  # キャッシュに在るうちは代替で済むので表に出ないが、nixpkgs を上げた途端に落ちた。
+  # JSON は YAML 1.2 の部分集合なので lazygit はそのまま読める。
+  xdg.configFile."lazygit/config.yml".text = builtins.toJSON config.programs.lazygit.settings;
 
   # MechvibesDX at login, in place of a System Settings login item. Lives here
   # rather than in darwin-services.nix because it needs the package path from
