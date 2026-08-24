@@ -10,6 +10,7 @@
 {
   programs.git = {
     enable = true;
+    lfs.enable = true; # Git LFS (large binary assets, e.g. Unreal *.uasset/*.umap)
     ignores = [
       # Metadata macOS scatters into every folder (noise; not needed in repos)
       ".DS_Store"
