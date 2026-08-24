@@ -44,10 +44,12 @@
     ./calnode.nix
     ./cloudflared.nix
     ./dawarich.nix
+    ./fava.nix
     ./forgejo.nix
     ./free-games-claimer.nix
     ./gameyfin.nix
     ./git-annex.nix
+    ./hauk.nix
     ./homeassistant.nix
     ./homepage.nix
     ./jellyfin.nix
@@ -57,11 +59,14 @@
     ./ntfy.nix
     ./obsidian-couchdb.nix
     ./paperless.nix
+    ./pinchflat.nix
+    ./pingvin-share.nix
     ./playit.nix
     ./radicale.nix
     ./rallly.nix
     ./readeck.nix
     ./restic-view.nix
+    ./restore-drill.nix
     ./romm.nix
     ./rsshub.nix
     ./samba.nix

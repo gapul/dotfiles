@@ -46,6 +46,7 @@ in
       cfr # JVM decompiler (e.g. Bitwig jars)
       ghidra # native Mach-O/ELF reverse engineering (GUI)
       aria2 # downloader (aria2c)
+      legendary-gl # Epic Games CLI (legendary): install/update Unreal Engine + games without the official launcher
       rclone # cloud storage sync
       calcurse # calendar TUI
       cargo-cache # clean cargo build artifacts (just gc depends on it)
