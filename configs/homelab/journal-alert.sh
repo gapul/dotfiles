@@ -29,16 +29,30 @@ declare -a PATTERNS=(
   "Failed to establish secure session|Matter のペアリングに失敗している"
   "Discovery timed out|Matter がデバイスを見つけられない"
   "permission denied|権限まわりで拒否されている"
+  # 2026-08-24 に足した分。どれもこの日に実際に起きて、誰も気付かなかったもの。
+  # podman は bind mount の元ディレクトリを作らないので、新しいスタックを足すと
+  # ここで止まる。rebuild ごと exit 4 になるが、ログを見なければ分からない。
+  "no such file or directory|コンテナの bind mount 先が無い"
+  # restart を繰り返して systemd が諦めた状態。ユニットは failed のままになる。
+  "Start request repeated too quickly|再起動を繰り返して止まった"
+  # tmpfiles が uid の食い違いで配下の作成を拒否する。移行の残骸で出る。
+  "unsafe path transition|tmpfiles が所有者の食い違いで作成を拒否した"
 )
 
 SINCE="${1:--15min}"
 
+# journald は 1 回だけ読む。パターンごとに読み直すと、パターンを増やすたびに
+# 走査回数が倍々に増える (9 個で 18 回。12 時間分だと数分かかった)。
+SNAP=$(mktemp)
+trap 'rm -f "$SNAP"' EXIT
+journalctl --since "$SINCE" --no-pager > "$SNAP" 2>/dev/null
+
 for entry in "${PATTERNS[@]}"; do
   needle="${entry%%|*}"
   label="${entry#*|}"
-  hits=$(journalctl --since "$SINCE" --no-pager 2>/dev/null | grep -cF "$needle")
+  hits=$(grep -cF "$needle" "$SNAP")
   if [ "${hits:-0}" -gt 0 ]; then
-    sample=$(journalctl --since "$SINCE" --no-pager 2>/dev/null | grep -F "$needle" | tail -1 | cut -c1-200)
+    sample=$(grep -F "$needle" "$SNAP" | tail -1 | cut -c1-200)
     notify "$label" "直近 ${SINCE#-} で ${hits} 件
 ${sample}" high
   fi
