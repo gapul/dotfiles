@@ -38,17 +38,28 @@ check_gateway_manabi() {
 CANARY_STAMP=/var/run/hermes-canary.stamp
 CANARY_INTERVAL=10800
 
+# 応答が遅いだけで再起動しないよう、失敗は2回続いたときだけ本物とみなす。
+# (8/24 に1回目の実発動が誤検知だった: 冷えた状態の初回ターンが 280 秒を超え、
+#  会話は壊れていないのに gateway を落とした)
+CANARY_STRIKE=/var/run/hermes-canary.strike
+
 check_canary() {
-  local now last env key port reply
+  local now last env key port reply active
   now=$(date +%s)
   last=$(cat "$CANARY_STAMP" 2>/dev/null || echo 0)
   [ $((now - last)) -lt "$CANARY_INTERVAL" ] && return 0
+
+  # 本人がやり取りしている最中は投げない(横入りして待たされるだけ)
+  active=$(/usr/bin/python3 -c 'import json;print(json.load(open("/Users/hermes/manabi-home/.hermes/gateway_state.json")).get("active_agents",0))' 2>/dev/null || echo 0)
+  if [ "${active:-0}" != "0" ]; then
+    return 0
+  fi
   echo "$now" > "$CANARY_STAMP"
   env=/Users/hermes/manabi-home/.hermes/.env
   key=$(grep '^API_SERVER_KEY=' "$env" 2>/dev/null | cut -d= -f2-)
   port=$(grep '^API_SERVER_PORT=' "$env" 2>/dev/null | cut -d= -f2-)
   [ -n "$key" ] || return 0   # 設定が読めないときは判定しない
-  reply=$(curl -s -m 280 -X POST "http://127.0.0.1:${port:-8791}/v1/chat/completions" \
+  reply=$(curl -s -m 420 -X POST "http://127.0.0.1:${port:-8791}/v1/chat/completions" \
     -H "Content-Type: application/json" -H "Authorization: Bearer $key" \
     -d '{"model":"manabi","messages":[{"role":"user","content":"監視用の自動確認です。progress.md を読んで、いちばん近い締切をひとことで。"}]}' \
     | /usr/bin/python3 -c 'import json,sys
@@ -57,9 +68,22 @@ try:
 except Exception:
     pass')
   case "$reply" in
-    "") return 1 ;;
-    *guardrail*|*"claude-acp error"*|*halted*) return 1 ;;
+    "")
+      # 返ってこなかった。遅いだけのこともあるので、2回続いたときだけ本物とする
+      local strikes
+      strikes=$(( $(cat "$CANARY_STRIKE" 2>/dev/null || echo 0) + 1 ))
+      echo "$strikes" > "$CANARY_STRIKE"
+      [ "$strikes" -ge 2 ] && return 1
+      echo "[$(date '+%Y-%m-%d %H:%M:%S')] canary slow (strike $strikes/2) — 様子見"
+      return 0
+      ;;
+    *guardrail*|*"claude-acp error"*|*halted*)
+      # 壊れた返事が返ってきた。これは1回で本物
+      echo 2 > "$CANARY_STRIKE"
+      return 1
+      ;;
   esac
+  rm -f "$CANARY_STRIKE"
   return 0
 }
 
@@ -98,7 +122,8 @@ if ! check_canary; then
   if ! check_canary; then
     failures="${failures:+$failures,}canary"
   else
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] canary failed once, recovered by restart"
+    rm -f "$CANARY_STRIKE"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] canary failed, recovered by restart"
     notify default "canary: まなびの応答が壊れていたが再起動で復旧"
   fi
 fi
