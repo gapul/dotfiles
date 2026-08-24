@@ -51,6 +51,11 @@ let
     # DNS レコードもダッシュボードのリンクも前からあったのに vhost だけ無く、
     # https で開くと繋がらない状態だった (直接ポートを叩けば見えるので気付きにくい)。
     jellyfin.upstream = "127.0.0.1:8096";
+    # 位置ログ (Dawarich)。表に無かったので vhost も gatus の監視も無く、iPhone は
+    # tailnet の生アドレスに直接送っていた。移行でアドレスが変われば黙って壊れる形。
+    # なお HTTP の応答を見ても送信が止まったことは分からない (2026-08-23 に 36 時間
+    # 止まったが web は開いていた)。それは dawarich-freshness.nix の方で見る。
+    track.upstream = "127.0.0.1:3005";
     navidrome.upstream = "127.0.0.1:4533";
     # 家計簿 (fava)。台帳は beancount のテキストで /var/lib/homelab/fava にある。
     # fava 自体はログインを持たないので、境界はここの vhost が tailnet アドレス
