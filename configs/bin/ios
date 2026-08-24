@@ -47,7 +47,9 @@ _find_host() {
   local h
   for h in $(sed -n 's/.*ServerURLHere->http:\/\/\([^:]*\):8100.*/\1/p' "$LOG" 2>/dev/null | tail -1) $HOSTS; do
     [ -z "$h" ] && continue
-    if [ "$(curl -s -o /dev/null -w '%{http_code}' --max-time 2 "http://$h:8100/status")" = "200" ]; then
+    # 2 秒では足りない。iPhone が外の回線にいると tailnet は DERP リレー経由になり、
+    # 往復に 1 秒以上かかる。実際 WDA は応答しているのに down と判定されていた。
+    if [ "$(curl -s -o /dev/null -w '%{http_code}' --max-time 8 "http://$h:8100/status")" = "200" ]; then
       echo "$h"
       return 0
     fi
