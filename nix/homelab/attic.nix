@@ -93,8 +93,13 @@ in
     ];
     # atticd がホスト側から繋ぐ。compose の頃はコンテナ同士だったので publish は
     # 無かった。ループバックだけに出す。
+    #
+    # ホスト側は 5433。5432 は atuin が使う — nixpkgs の更新で services.atuin が
+    # ネイティブの postgres を要求するようになり (26.05 の atuin.nix)、そちらが
+    # 先に 5432 を掴んで attic-db が bind できずに起動ループした。
+    # DB_URL 側のポートも合わせること (/var/lib/secrets/attic.env)。
     ports = [
-      "127.0.0.1:5432:5432/tcp"
+      "127.0.0.1:5433:5432/tcp"
     ];
     log-driver = "journald";
     extraOptions = [
