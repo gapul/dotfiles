@@ -44,6 +44,7 @@
     ./calnode.nix
     ./cloudflared.nix
     ./dawarich.nix
+    ./dawarich-freshness.nix
     ./fava.nix
     ./forgejo.nix
     ./free-games-claimer.nix
