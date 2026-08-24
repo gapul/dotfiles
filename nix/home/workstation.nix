@@ -15,58 +15,62 @@ in
   # workstation layer: dev/daily tools for the main machine (laptop) / WSL / linux.
   # macmini (headless AI node) doesn't load this (split from common.nix 2026-07-19).
 
-  home.packages = with pkgs; [
-    launcher-search # ghostty launcher search backend (replaces core/launcher-search)
-    pandoc # document conversion
-    typst # typesetting
-    # Compose the TeX Live collections needed for Japanese academic documents via Nix.
-    # Avoid scheme-full while covering math, figures/tables, bibliographies, and common
-    # extra packages without adding them individually.
-    (texlive.combine {
-      inherit (texlive)
-        scheme-medium
-        latexmk
-        collection-langjapanese
-        collection-latexextra
-        collection-mathscience
-        collection-bibtexextra
-        collection-fontsrecommended
-        ;
-    })
-    poppler-utils # PDF CLI (pdftotext etc. formerly brew poppler)
-    bitwarden-cli # Bitwarden (bw)
-    syft # SBOM
-    radare2 # reverse engineering (r2), small native binaries (e.g. REAPER)
-    # app / binary analysis: unofficial-client recon + Mac proprietary-app RE
-    jadx # APK: dex -> readable Java
-    apktool # APK: resources + AndroidManifest decode
-    apkeep # APK/XAPK downloader (Play / APKPure)
-    asar # extract Electron app.asar (e.g. Native Access)
-    cfr # JVM decompiler (e.g. Bitwig jars)
-    ghidra # native Mach-O/ELF reverse engineering (GUI)
-    aria2 # downloader (aria2c)
-    rclone # cloud storage sync
-    calcurse # calendar TUI
-    cargo-cache # clean cargo build artifacts (just gc depends on it)
-    youtube-tui # YouTube TUI
-    gita # multi-repo git management (~/.config/gita)
-    compiledb # generate compile_commands.json
-    cmake # build system
-    meson # build system
-    tree-sitter # formerly tree-sitter-cli
-    # rust: rustc+cargo instead of rustup (pinned, declarative). Use rustup if you need nightly/toolchain switching
-    rustc # Rust compiler
-    cargo # Rust build/package management
-    docker-compose # container compose (points at the podman socket)
-    podman # containers (the machine VM is maintained separately)
-    fontforge # font editing CLI (GUI is the fontforge-app cask)
-    python3Packages.fonttools # font manipulation lib/CLI
-    stockfish # chess engine, spoken to over UCI (the Puddle chess wallpaper's opponent)
-    aerc # mail TUI
-    isync # IMAP sync (mbsync)
-    # Japanese proofreading textlint (whole ruleset pinned via buildNpmPackage; pnpm global retired)
-    (callPackage ../pkgs/textlint-ja.nix { })
-  ];
+  home.packages =
+    with pkgs;
+    [
+      launcher-search # ghostty launcher search backend (replaces core/launcher-search)
+      pandoc # document conversion
+      typst # typesetting
+      # Compose the TeX Live collections needed for Japanese academic documents via Nix.
+      # Avoid scheme-full while covering math, figures/tables, bibliographies, and common
+      # extra packages without adding them individually.
+      (texlive.combine {
+        inherit (texlive)
+          scheme-medium
+          latexmk
+          collection-langjapanese
+          collection-latexextra
+          collection-mathscience
+          collection-bibtexextra
+          collection-fontsrecommended
+          ;
+      })
+      poppler-utils # PDF CLI (pdftotext etc. formerly brew poppler)
+      bitwarden-cli # Bitwarden (bw)
+      syft # SBOM
+      radare2 # reverse engineering (r2), small native binaries (e.g. REAPER)
+      # app / binary analysis: unofficial-client recon + Mac proprietary-app RE
+      jadx # APK: dex -> readable Java
+      apkeep # APK/XAPK downloader (Play / APKPure)
+      asar # extract Electron app.asar (e.g. Native Access)
+      cfr # JVM decompiler (e.g. Bitwig jars)
+      ghidra # native Mach-O/ELF reverse engineering (GUI)
+      aria2 # downloader (aria2c)
+      rclone # cloud storage sync
+      calcurse # calendar TUI
+      cargo-cache # clean cargo build artifacts (just gc depends on it)
+      youtube-tui # YouTube TUI
+      gita # multi-repo git management (~/.config/gita)
+      compiledb # generate compile_commands.json
+      cmake # build system
+      meson # build system
+      tree-sitter # formerly tree-sitter-cli
+      # rust: rustc+cargo instead of rustup (pinned, declarative). Use rustup if you need nightly/toolchain switching
+      rustc # Rust compiler
+      cargo # Rust build/package management
+      docker-compose # container compose (points at the podman socket)
+      podman # containers (the machine VM is maintained separately)
+      fontforge # font editing CLI (GUI is the fontforge-app cask)
+      python3Packages.fonttools # font manipulation lib/CLI
+      stockfish # chess engine, spoken to over UCI (the Puddle chess wallpaper's opponent)
+      aerc # mail TUI
+      isync # IMAP sync (mbsync)
+      # Japanese proofreading textlint (whole ruleset pinned via buildNpmPackage; pnpm global retired)
+      (callPackage ../pkgs/textlint-ja.nix { })
+    ]
+    # apktool pulls in aapt, which nixpkgs marks unavailable on aarch64-linux (CI cross-evaluates).
+    # This is the mac workstation, so keep it darwin-only.
+    ++ lib.optionals pkgs.stdenv.isDarwin [ pkgs.apktool ];
 
   # User data location: everything that also lives somewhere else sits under ~/Sync (2026-08).
   # google-drive-* are rclone mounts (remote-primary, see home/rclone-mount.nix), syncthing holds
