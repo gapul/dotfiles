@@ -242,6 +242,7 @@
         macminiHeadless = base ++ [
           ./home/macmini.nix
           ./home/macmini-backup.nix
+          ./home/macmini-watchdog.nix
         ];
         wsl = linuxBase ++ [ ./home/wsl.nix ] ++ secrets ++ station;
         linuxServer = linuxBase ++ secrets ++ station;
