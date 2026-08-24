@@ -26,6 +26,12 @@
       # attic (self-hosted nix binary cache at cache.gapul.net): the whole client config, because
       # the push token lives in it. Was a hand-written plaintext file until 2026-08.
       "attic_config".path = "${config.home.homeDirectory}/.config/attic/config.toml";
+      # 自宅 Radicale(dav.gapul.net)の htpasswd と同じもの。カレンダー・タスク・連絡先を
+      # ここへ集約したので、calcurse の caldav 設定がこれを読む。サーバ側は sops を持たない
+      # ホストなので /var/lib/homelab/radicale/config/users に手置きした bcrypt と対で管理する。
+      # ワークステーションが読むので homelab.yaml ではなく common.yaml 側に置いてある。
+      "radicale/username" = { };
+      "radicale/password" = { };
 
       # atuin の E2E 暗号鍵。これが無いと同期した履歴を復号できない。
       #
@@ -75,20 +81,27 @@
       "calcurse-caldav-config" = {
         path = "${config.home.homeDirectory}/.config/calcurse/caldav/config";
         content = ''
+          # 宛先は自宅の Radicale(gapul/calendar)。Google カレンダーから移した。
+          # dav.gapul.net は Caddy が ACME 証明書で終端していて、A レコードは tailnet を
+          # 指しているので、tailnet の外からは名前が引けても届かない。
+          #
+          # キー名に注意: 以前の書式(General の同期ディレクトリ指定、CalDAV セクションの
+          # サーバ指定)はいまの calcurse-caldav が受け付けず、起動即エラーになる。
+          # 正しくは [General] の Hostname / Path / HTTPS。
+          # なおコメント行も設定として読まれるので、旧キー名をここに書いてはいけない。
           [General]
-          SyncDir = ~/.local/share/calcurse/
-          SpawnEditor = vi
-
-          [CalDAV]
-          ServerAddress = www.google.com
-          ServerPort = 443
-          ServerPath = /calendar/dav/${config.sops.placeholder."pii/email_personal"}/events/
+          Binary = calcurse
+          # 既定は DryRun = Yes。明示しないと接続だけして何も同期しない。
+          DryRun = No
+          Hostname = dav.gapul.net
+          Path = /gapul/calendar/
+          HTTPS = Yes
           InsecureSSL = No
           Verbose = Yes
 
           [Auth]
-          Username = ${config.sops.placeholder."pii/email_personal"}
-          Password = ${config.sops.placeholder."pii/gmail_app_password_caldav"}
+          Username = ${config.sops.placeholder."radicale/username"}
+          Password = ${config.sops.placeholder."radicale/password"}
         '';
       };
       "nvim-birthday.lua" = {
