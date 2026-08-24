@@ -41,6 +41,10 @@ in
     # macOS dmg is repackaged. See pkgs/vroid-studio.nix - the download URL carries a token
     # that has to be re-read from vroid.com on every version bump.
     (pkgs.callPackage ../pkgs/vroid-studio.nix { })
+    # AivisSpeech Engine (headless TTS, VOICEVOX-compatible API): no nixpkgs
+    # package and no cask. Engine only - the desktop app is not used, and voice
+    # models are runtime data the engine fetches itself. See pkgs/aivisspeech-engine.nix.
+    (pkgs.callPackage ../pkgs/aivisspeech-engine.nix { })
   ];
 
   # macOS settings (GUI/peripheral-oriented. Only values verified via `defaults read` on the machine are declared)
