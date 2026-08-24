@@ -109,9 +109,11 @@ let
       + "${py.interpreter} ${patchDir + "/ytstreamretry-patch.py"}\n" # fix bug where a song would simply refuse to play whenever googlevideo handed back a URL it then rejected, which it does sporadically even for a URL resolved seconds earlier (the same video flips between 200 and 403 within a minute, measured 2026-08-16): _get_track() returned cached URLs without checking them at all and gave up entirely when its own verification failed, so one dead URL meant no playback (check a cached URL with a one-byte ranged GET before handing it over, drop it from the cache when it is dead, and re-resolve once from scratch instead of giving up)
       + "${py.interpreter} ${patchDir + "/ytratelimit-patch.py"}\n" # guard against the failure mode where hammering stream resolution gets the whole IP blocked by googlevideo (hit for real on 2026-08-16: every URL, ranged or not, came back 403 and nothing would play until it expired on its own) — nothing in the code can recover from that state, and continuing to hammer only extends it, so space resolutions at least a second apart and stop resolving for 10 minutes once 5 in a row have failed
       + "${py.interpreter} ${patchDir + "/ytfallbackclient-patch.py"}\n" # keep playback working while googlevideo is refusing this IP: during such a block every normal audio-only format (251/140/...) answers 403, but format 18 (the AAC track inside the 360p mp4) fetched through the TV client still answered 206 when measured on 2026-08-16, so let the second resolution attempt fall back to player_client=tv_simply — lower quality and it wastes the video bytes, hence only as a fallback
-      # bundle & register the macOS Now Playing frontend (mopidy core announces itself as an audio source)
-      + "cp ${patchDir + "/nowplaying_fe.py"} mopidy_ytmusic/nowplaying_fe.py\n"
-      + "${py.interpreter} ${patchDir + "/nowplaying-patch.py"}\n";
+    # The Now Playing frontend that used to live inside mopidy is gone. Announcing itself worked, but the
+    # media keys never arrived: mopidy's main thread runs a GLib loop and macOS delivers remote commands
+    # through a Cocoa run loop that therefore never runs, so state pushed outward worked while commands
+    # coming inward were dropped. configs/media/mopidy/nowplaying-bridge.py owns that side now.
+    ;
   });
 
   mpdPatched = mkPatched pkgs.mopidy-mpd [
@@ -387,7 +389,8 @@ py.withPackages (
   ])
   ++ [
     ps.yt-dlp
-    ps.pyobjc-core # because nowplaying_fe hits MediaPlayer.framework
+    # nowplaying-bridge.py runs on this same interpreter and drives MediaPlayer.framework through pyobjc
+    ps.pyobjc-core
     ps.pyobjc-framework-Cocoa
   ]
 )
