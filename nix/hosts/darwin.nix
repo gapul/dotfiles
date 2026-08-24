@@ -363,7 +363,9 @@ in
       # Gatekeeper and won't launch, so no_quarantine is required (same as sioyek).
 
       # ─── Communication & Sync ───
-      "beeper"
+      # Dropped proprietary Beeper (not in active use) for Element on the self-hosted Matrix
+      # (@gapul:gapul.net; Discord/Telegram bridged in homelab/matrix.nix).
+      "element"
       "kdeconnect"
       "localsend"
       "simplex"
@@ -470,7 +472,9 @@ in
       "mixxx"
       "musescore"
       "milkytracker"
-      "native-access"
+      # native-access removed: replaced by the unofficial CLI (gapul/na-cli, on PATH via
+      # home/darwin.nix). NTKDaemon runs headless via launchd; keep the cask out so a rebuild
+      # doesn't reinstall the GUI and re-claim the native-access:// scheme.
       "openutau"
       "pd"
       "reaper"
