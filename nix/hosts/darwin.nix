@@ -514,8 +514,7 @@ in
 
       # ─── Games / Emulation ───
       "wine-stable" # WineHQ stable. Run Windows apps (used with winetricks)
-      "epic-games"
-      "heroic"
+      "heroic" # Epic/GOG/Amazon launcher (FOSS). Replaces the proprietary Epic Games launcher; pairs with legendary-gl (see workstation.nix)
       "prismlauncher"
       "retroarch-metal"
       "steam"
