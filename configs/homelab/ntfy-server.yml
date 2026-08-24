@@ -1,0 +1,30 @@
+# ntfy のサーバ設定。秘密は入らない (ユーザとトークンは user.db 側)。
+#
+# これが手で置かれたファイルのままだったせいで、iPhone にプッシュが届かない状態が
+# 気付かれずに続いていた。base-url が実際にアプリが使っているホスト名と違っていて、
+# その食い違いはどこにも現れない — 発行は 200 で成功し、web からは読める。
+#
+# base-url は「アプリに設定するホスト名」と一致していなければならない。
+# ntfy の iOS プッシュは、サーバの base-url とアプリ側のサーバ URL から同じ
+# ハッシュを計算して ntfy.sh 上の中継トピックを合わせる仕組みなので、ここが
+# ずれるとプッシュが永久に届かない。ローカルの配信は動き続けるので、
+# 「届かないのは電波のせい」に見える。
+base-url: "https://alert.gapul.net"
+
+# iOS は自前サーバから直接プッシュを受け取れない (APNs を通す必要がある)。
+# ntfy.sh に中継させるのがこの一行。無いとアプリを開いたときにしか届かない。
+upstream-base-url: "https://ntfy.sh"
+
+listen-http: ":80"
+# caddy と cloudflared の後ろにいる。クライアント IP はヘッダから取る。
+behind-proxy: true
+
+auth-file: "/var/lib/ntfy/user.db"
+# 既定で拒否。読む側にも権限が要る — これを知らずに購読すると 403 で無言の失敗になる。
+auth-default-access: "deny-all"
+
+cache-file: "/var/cache/ntfy/cache.db"
+cache-duration: "12h"
+attachment-cache-dir: "/var/cache/ntfy/attachments"
+attachment-total-size-limit: "1G"
+enable-login: true
