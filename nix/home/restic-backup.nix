@@ -97,7 +97,10 @@ let
           -d "$1: $2" \
           "$(cat "${ntfyUrlFile}")" >/dev/null 2>&1 || true
       fi'';
-    parseSnapshotTime = ''$(date -j -f "%Y-%m-%dT%H:%M:%S" "$(echo "$latest" | cut -d. -f1)" +%s 2>/dev/null || echo 0)'';
+    # 先頭 19 文字が "YYYY-MM-DDTHH:MM:SS"。小数秒が付く形と付かない形の両方が来るので
+    # `cut -d. -f1` だと後者でタイムゾーンごと残って解釈に失敗し、`|| echo 0` の
+    # 既定値 (epoch 0) が「20676 日前」という嘘の警告になっていた。
+    parseSnapshotTime = ''$(date -j -f "%Y-%m-%dT%H:%M:%S" "''${latest:0:19}" +%s 2>/dev/null || echo 0)'';
   };
 
   # longRunning: the backup and the integrity check both stream the whole set to Drive and
