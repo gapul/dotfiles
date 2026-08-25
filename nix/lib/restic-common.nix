@@ -220,6 +220,12 @@ rec {
             continue
           fi
           last_epoch=${parseSnapshotTime}
+          # 解釈に失敗すると 0 が返る。そのまま引き算すると「20676 日前」という
+          # 嘘の警告になり、本物の遅延と見分けが付かなくなる。別の文言で出す。
+          if [ "$last_epoch" -eq 0 ]; then
+            notify "restic ⚠️ 日付を解釈できない ($host)" "最後のスナップショットの時刻が読めない: $latest"
+            continue
+          fi
           age_days=$(( (now - last_epoch) / 86400 ))
           if [ "$age_days" -ge "$max_age_days" ]; then
             notify "restic ⚠️ backup is stale ($host)" "the last backup of $host was $age_days days ago"
