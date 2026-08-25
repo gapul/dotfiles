@@ -45,6 +45,9 @@ in
     # package and no cask. Engine only - the desktop app is not used, and voice
     # models are runtime data the engine fetches itself. See pkgs/aivisspeech-engine.nix.
     (pkgs.callPackage ../pkgs/aivisspeech-engine.nix { })
+    # AivisSpeech desktop editor (GUI). Bundles its own engine copy, but scripts
+    # keep using the newer headless engine above; both share the model dir.
+    (pkgs.callPackage ../pkgs/aivisspeech.nix { })
   ];
 
   # macOS settings (GUI/peripheral-oriented. Only values verified via `defaults read` on the machine are declared)
