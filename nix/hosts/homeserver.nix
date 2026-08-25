@@ -148,6 +148,7 @@ in
   # host's routing table.
   imports = [
     ./homeserver-hardware.nix
+    ../modules/authorized-keys.nix
     ../homelab # the Docker stacks that used to live on CT101 under dockge
   ];
 
@@ -459,8 +460,8 @@ in
   };
 
   # --- Access ---
-  # Public-key only. Keys are not declared here: they live in the Bitwarden-managed
-  # agent, and this repo is public. Add them by hand, or via sops once it is wired.
+  # Public-key only. The keys themselves are declared in modules/authorized-keys.nix, imported
+  # above — this host no longer needs anything placed by hand.
   services.openssh.enable = true;
   services.openssh.settings.PasswordAuthentication = false;
 

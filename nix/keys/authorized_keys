@@ -1,0 +1,4 @@
+# 母艦・macmini・homeserver の authorized_keys の唯一の出どころ。
+# 公開鍵は資格情報ではないので、暗号化せず平文で宣言する (詳細は PR を参照)。
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFc0vERDgqbotas7YjbabpVPWjtficFNWSW+8Hu/WL8x yuk8337@gmail.com
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIE/SloGL/mx6KvnWDmepZXD1XF0IWkuuSg8WNMGuqtkO mvrx-nolang-dev
