@@ -13,6 +13,10 @@ mopidy が読むファイルへ書き出す、を回して延命する。
 - 認証は mopidy の起動時に一度しか読まれないので、更新できたら mopidy を再起動する。
   ただし再生中は音が途切れるので、止まっているときだけ。
 
+Chrome を自分で起動するのはユーザーの指示で既定オフ。定期実行では Chrome が既に
+動いているときだけ取り直し、動いていなければログに残して終わる。取り直したいときは
+--launch-chrome を付けて手で実行する。
+
 --dry-run で書き出しと再起動をせず、抽出と検証だけ行う (動作確認用)。
 """
 
@@ -31,6 +35,8 @@ SEED_PATH = os.path.expanduser("~/.config/mopidy/browser.json")
 CHROME = "/Applications/Google Chrome.app"
 MOPIDY_LABEL = "org.nix-community.home.mopidy"
 DRY_RUN = "--dry-run" in sys.argv
+# Chrome を勝手に起こさない (ユーザーの指示)。取り直したいときだけ手で付ける。
+LAUNCH_CHROME = "--launch-chrome" in sys.argv
 
 
 def log(msg):
@@ -178,6 +184,12 @@ def main():
 
     started_chrome = False
     if not chrome_running():
+        if not LAUNCH_CHROME:
+            log(
+                "cookie を取り直したいが Chrome が動いていない。自動起動は無効なので何もしない "
+                "(取り直すなら --launch-chrome を付けて手で実行する)"
+            )
+            return 1
         log("starting Chrome (automation profile)")
         start_chrome()
         started_chrome = True

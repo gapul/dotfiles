@@ -124,6 +124,25 @@ in
     };
   };
 
+  # macOS playback controls (Control Center, media keys, AirPods). This has to be its own process:
+  # registering from inside mopidy makes it show up, but the keys never arrive, because mopidy's main
+  # thread runs a GLib loop and macOS delivers remote commands through a Cocoa run loop.
+  # See configs/media/mopidy/nowplaying-bridge.py. No signing or entitlement is needed.
+  launchd.agents.mopidy-nowplaying = {
+    enable = true;
+    config = {
+      ProgramArguments = [
+        "${mopidyEnv}/bin/python"
+        "${../../configs/media/mopidy/nowplaying-bridge.py}"
+      ];
+      RunAtLoad = true;
+      KeepAlive = true;
+      ProcessType = "Interactive"; # it answers key presses, so don't deprioritize it
+      StandardOutPath = "/tmp/mopidy-nowplaying.log";
+      StandardErrorPath = "/tmp/mopidy-nowplaying.log";
+    };
+  };
+
   # YouTube rotates its session cookies every few hours, so a static copy dies within hours.
   # Chrome keeps them alive while it runs, so briefly start the automation-profile Chrome on a
   # schedule, re-extract, and hand the result to mopidy. See configs/media/mopidy/refresh-cookies.py.
