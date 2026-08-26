@@ -10,8 +10,12 @@
 #   macbook      母艦が接続に使うクライアント鍵 (~/.ssh/id_ed25519)。
 #                コメント文字列が break-glass 鍵と同じ yuk8337@gmail.com なので、
 #                必ず fingerprint で見分けること (SHA256:2WG8EZ… が母艦)。
+#   macmini      macmini から homeserver へ出るための鍵。homeserver の手置き一覧に
+#                入っていたもので、宣言側に無いまま手置き分を消すと macmini →
+#                homeserver が切れる。
 #   mvrx         会社側の機械向け。あちらに公開鍵を登録し直せないので Bitwarden
 #                の agent に残す。ここに置くのは母艦へ戻ってくる経路のため。
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFc0vERDgqbotas7YjbabpVPWjtficFNWSW+8Hu/WL8x yuk8337@gmail.com
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIE/SloGL/mx6KvnWDmepZXD1XF0IWkuuSg8WNMGuqtkO mvrx-nolang-dev
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBLeOb9XOJPsmuTRf708qYoNckWk+/fhuWkpTWtTSu41 yuk8337@gmail.com
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILZva+I0ui3AGOMb2V7BTLOXXtCJYvCJg9PGmzWOD8Am macmini-outbound macmini
