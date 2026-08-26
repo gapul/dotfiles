@@ -7,7 +7,11 @@
 #                新たに作る代わりに、常用をやめたこの鍵をその役に充てている。
 #                金庫は他端末からも開けるので、母艦を失っても取り出せる。
 #                切り替え後、Bitwarden 側で SSH agent への露出をオフにすること。
+#   macbook      母艦が接続に使うクライアント鍵 (~/.ssh/id_ed25519)。
+#                コメント文字列が break-glass 鍵と同じ yuk8337@gmail.com なので、
+#                必ず fingerprint で見分けること (SHA256:2WG8EZ… が母艦)。
 #   mvrx         会社側の機械向け。あちらに公開鍵を登録し直せないので Bitwarden
 #                の agent に残す。ここに置くのは母艦へ戻ってくる経路のため。
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFc0vERDgqbotas7YjbabpVPWjtficFNWSW+8Hu/WL8x yuk8337@gmail.com
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIE/SloGL/mx6KvnWDmepZXD1XF0IWkuuSg8WNMGuqtkO mvrx-nolang-dev
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBLeOb9XOJPsmuTRf708qYoNckWk+/fhuWkpTWtTSu41 yuk8337@gmail.com
