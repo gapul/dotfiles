@@ -1024,18 +1024,20 @@ restart what="bar":
 # secrets (sops encryption)
 # ─────────────────────────────────────────────
 
-# sops-encrypted secrets  (`just secrets` = edit, `just secrets rekey` = re-encrypt for all recipients)
+# sops-encrypted secrets  (`just secrets [file]` = edit, `just secrets rekey` = re-encrypt every file)
+# Files are split per host since #393: common / darwin / homelab, each with its own recipients.
 [group('secrets')]
-secrets cmd="edit":
+secrets cmd="edit" file="common":
     #!/usr/bin/env bash
     set -euo pipefail
-    f="{{justfile_directory()}}/secrets/secrets.yaml"
+    cd "{{justfile_directory()}}/secrets"
     case "{{cmd}}" in
-      edit)  sops "$f" ;;                # edit (default)
-      rekey) sops updatekeys "$f" ;;     # run after changing .sops.yaml
-      *)     echo "usage: just secrets [edit|rekey]" >&2; exit 2 ;;
+      edit)  sops "{{file}}.yaml" ;;                       # edit (default: common)
+      # rekey every file, not just one: .sops.yaml changes usually touch several rule blocks,
+      # and a file left un-rekeyed fails to decrypt on the host that just gained a recipient.
+      rekey) for f in *.yaml; do echo "→ $f"; sops updatekeys -y "$f"; done ;;
+      *)     echo "usage: just secrets [edit|rekey] [common|darwin|homelab]" >&2; exit 2 ;;
     esac
-
 
 # ─────────────────────────────────────────────
 # Setup / misc

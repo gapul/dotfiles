@@ -167,7 +167,7 @@ curl -fsSL https://raw.githubusercontent.com/gapul/dotfiles/main/scripts/bootstr
     win-verify *flags                                 # Verify every PackageIdentifier in winget/apps.json exists (`just win-verify` / `just win-verify -Strict`)
 
     [secrets]
-    secrets cmd="edit"                                # sops-encrypted secrets  (`just secrets` = edit, `just secrets rekey` = re-encrypt for all recipients)
+    secrets cmd="edit" file="common"                  # Files are split per host since #393: common / darwin / homelab, each with its own recipients.
 ```
 <!-- END just-list -->
 
