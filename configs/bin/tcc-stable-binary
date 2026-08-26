@@ -17,11 +17,16 @@ NAME="${2:?安定した名前}"
 DEST_DIR="$HOME/.local/libexec/tcc"
 DEST="$DEST_DIR/$NAME"
 
-IDENTITY=$(security find-identity -v -p codesigning 2>/dev/null |
-  grep -m1 "Developer ID Application" | sed 's/.*"\(.*\)"/\1/')
-if [ -z "$IDENTITY" ]; then
-  echo "tcc-stable-binary: Developer ID が見つからない" >&2
-  exit 1
+# 自己署名の専用 identity を使う。Developer ID ではないのは、TCC が Apple 発行か
+# どうかを見ていないから — 要件式に cdhash が入らないことだけが効いている
+# (実測で確認)。コード署名の鍵は用途を絞るほど安全で、macmini のように外向きの
+# サービスが多い機械に Developer ID の秘密鍵を置かずに済む。
+#
+# 無ければ何もしない。tcc-signing-identity を機械ごとに一度走らせること。
+IDENTITY="gapul TCC Signing"
+if ! security find-identity -v -p codesigning 2>/dev/null | grep -qF "$IDENTITY"; then
+  echo "tcc-stable-binary: '$IDENTITY' が無い。tcc-signing-identity を先に実行" >&2
+  exit 0
 fi
 
 mkdir -p "$DEST_DIR"

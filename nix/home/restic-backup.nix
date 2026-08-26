@@ -139,10 +139,13 @@ in
   # 読めずにバックアップから漏れていた。
   #
   # store の restic は ad-hoc 署名で、同一性が cdhash になる。中身が変われば
-  # 別物。Developer ID で署名し直すと要件が
-  #   identifier "net.gapul.tcc.restic" and ... leaf[subject.OU] = <TeamID>
+  # 別物。自己署名の identity で署名し直すと要件が
+  #   identifier "net.gapul.tcc.restic" and certificate root = H"..."
   # だけになり、cdhash が入らない。場所を固定した上でこの署名にすれば、
   # restic を更新しても同じものとみなされる (実測で確認)。
+  #
+  # Developer ID を使わないのは、TCC が Apple 発行かどうかを見ていないから。
+  # コード署名の鍵は用途を絞るほど安全なので、TCC のために撒かない。
   #
   # 与えるのは一度だけ: システム設定 > プライバシーとセキュリティ >
   # フルディスクアクセス に ~/.local/libexec/tcc/restic を追加する。
