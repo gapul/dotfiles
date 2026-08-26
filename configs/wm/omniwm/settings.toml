@@ -52,6 +52,7 @@ top = 30.0
 animationsEnabled = true
 defaultLayoutType = "dwindle"
 hotkeysEnabled = true
+hyperKeyModifiers = "Control+Option+Shift+Command"
 ipcEnabled = true
 preventSleepEnabled = false
 systemHyperTrigger = "None"
@@ -468,14 +469,6 @@ id = "moveWindowUpOrToWorkspaceUp"
 
 [[hotkeys]]
 binding = "Unassigned"
-id = "consumeOrExpelWindowLeft"
-
-[[hotkeys]]
-binding = "Unassigned"
-id = "consumeOrExpelWindowRight"
-
-[[hotkeys]]
-binding = "Unassigned"
 id = "consumeWindowIntoColumn"
 
 [[hotkeys]]
@@ -509,6 +502,22 @@ id = "moveWorkspaceToMonitor.up"
 [[hotkeys]]
 binding = "Unassigned"
 id = "moveWorkspaceToMonitor.down"
+
+[[hotkeys]]
+binding = "Unassigned"
+id = "moveWindowToMonitor.left"
+
+[[hotkeys]]
+binding = "Unassigned"
+id = "moveWindowToMonitor.right"
+
+[[hotkeys]]
+binding = "Unassigned"
+id = "moveWindowToMonitor.up"
+
+[[hotkeys]]
+binding = "Unassigned"
+id = "moveWindowToMonitor.down"
 
 [[hotkeys]]
 binding = "Control+Option+Command+F"
@@ -740,35 +749,19 @@ id = "swapSplit"
 
 [[hotkeys]]
 binding = "Unassigned"
-id = "resizeGrow.left"
+id = "resizeGrow.horizontal"
 
 [[hotkeys]]
 binding = "Unassigned"
-id = "resizeGrow.right"
+id = "resizeGrow.vertical"
 
 [[hotkeys]]
 binding = "Unassigned"
-id = "resizeGrow.up"
+id = "resizeShrink.horizontal"
 
 [[hotkeys]]
 binding = "Unassigned"
-id = "resizeGrow.down"
-
-[[hotkeys]]
-binding = "Unassigned"
-id = "resizeShrink.left"
-
-[[hotkeys]]
-binding = "Unassigned"
-id = "resizeShrink.right"
-
-[[hotkeys]]
-binding = "Unassigned"
-id = "resizeShrink.up"
-
-[[hotkeys]]
-binding = "Unassigned"
-id = "resizeShrink.down"
+id = "resizeShrink.vertical"
 
 [[hotkeys]]
 binding = "Unassigned"
@@ -933,4 +926,3 @@ name = "9"
 
 [workspaces.monitorAssignment]
 type = "secondary"
-
