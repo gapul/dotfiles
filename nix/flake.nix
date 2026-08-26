@@ -684,6 +684,7 @@
                     ./home/common.nix
                     ./home/linux.nix
                     ./home/hyprland.nix # Hyprland rice (nixos-laptop only)
+                    ./home/ssh-tpm-agent.nix # TPM-sealed SSH key (nixos-laptop only: WSL has no TPM)
                     ./home/dev.nix # dev environment such as direnv
                     ./home/restic-backup-linux.nix # restic (systemd user timer)
                     sops-nix.homeManagerModules.sops
@@ -724,6 +725,7 @@
                   ./home/linux.nix
                   ./home/hyprland.nix
                   ./home/dev.nix
+                  ./home/ssh-tpm-agent.nix
                   ./home/workstation.nix
                 ];
               }
