@@ -1,0 +1,13 @@
+# 母艦・macmini・homeserver の authorized_keys の唯一の出どころ。
+# 公開鍵は資格情報ではないので、暗号化せず平文で宣言する (PR #431 を参照)。
+#
+# 役割:
+#   break-glass  Bitwarden の金庫にある鍵。日常では使わず、Secure Enclave が
+#                使えなくなったとき (母艦の故障・紛失) の復旧用。専用の鍵を
+#                新たに作る代わりに、常用をやめたこの鍵をその役に充てている。
+#                金庫は他端末からも開けるので、母艦を失っても取り出せる。
+#                切り替え後、Bitwarden 側で SSH agent への露出をオフにすること。
+#   mvrx         会社側の機械向け。あちらに公開鍵を登録し直せないので Bitwarden
+#                の agent に残す。ここに置くのは母艦へ戻ってくる経路のため。
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFc0vERDgqbotas7YjbabpVPWjtficFNWSW+8Hu/WL8x yuk8337@gmail.com
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIE/SloGL/mx6KvnWDmepZXD1XF0IWkuuSg8WNMGuqtkO mvrx-nolang-dev

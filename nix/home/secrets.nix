@@ -21,7 +21,10 @@
       "vpn/wgcf".path = "${config.home.homeDirectory}/.config/wireguard/wgcf-profile.conf";
       "rclone_conf".path = "${config.home.homeDirectory}/.config/rclone/rclone.conf";
       "ssh_config".path = "${config.home.homeDirectory}/.ssh/config";
-      "ssh_authorized_keys".path = "${config.home.homeDirectory}/.ssh/authorized_keys";
+      # "ssh_authorized_keys" is no longer placed here: modules/authorized-keys.nix declares the
+      # same keys for every host from nix/keys/authorized_keys, so writing a second copy into
+      # ~/.ssh/authorized_keys would just be a rival source that drifts. The value is still in
+      # secrets/common.yaml, unused, until this is confirmed working on a real rebuild.
 
       # attic (self-hosted nix binary cache at cache.gapul.net): the whole client config, because
       # the push token lives in it. Was a hand-written plaintext file until 2026-08.
