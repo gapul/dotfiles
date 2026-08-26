@@ -268,10 +268,29 @@ in
   #
   # ペアリングは https://localhost:47990 の Web UI から。ポートは tailnet 内だけに
   # 開いていて、外には出していない。
+  # 画面収録の許可を sunshine の更新で失わないようにする。
+  #
+  # TCC は許可をバイナリの場所と署名で識別する。nix の store を直接指すと、
+  # 更新のたびに別物になって許可が切れる。しかも画面収録は MDM でも無言に
+  # 付与できないので、切れるたびに画面共有で入って押し直すことになる。
+  #
+  # 自己署名の identity で署名すると要件式から cdhash が落ち、identifier と
+  # 証明書だけになる。中身が変わっても同じものとみなされる (実測で確認)。
+  #
+  # identity は機械ごとに一度 `tcc-signing-identity` を走らせて作る (sudo が
+  # 要るので activation からは呼ばない)。無い間はここは何もしない。
+  home.activation.tccStableSunshine = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    $DRY_RUN_CMD ${../../configs/bin/tcc-stable-binary} \
+      ${pkgs.sunshine}/bin/sunshine sunshine || true
+  '';
+
   launchd.agents.sunshine = {
     enable = true;
     config = {
-      ProgramArguments = [ "${pkgs.sunshine}/bin/sunshine" ];
+      # store のパスではなく署名済みの安定した場所を指す。TCC は許可を場所と
+      # 署名で識別するので、store を直接指すと sunshine を更新するたびに
+      # 画面収録の許可が切れる。詳しくは下の activation を参照。
+      ProgramArguments = [ "${config.home.homeDirectory}/.local/libexec/tcc/sunshine" ];
       RunAtLoad = true;
       KeepAlive = true;
       # 配信中に他のバックグラウンド仕事に負けると映像が途切れる。ComfyUI と
