@@ -141,6 +141,21 @@ in
           type = "standard";
         };
       };
+      # Select next source in Input menu (ctrl+opt+space) — OmniWM's command palette owns this.
+      # macOS documents this chord for input switching, so both fired together and OmniWM's own
+      # health check flagged it. Only 61 is disabled: 60 (ctrl+space, "select the previous input
+      # source") is untouched, so switching input sources still has a shortcut.
+      "61" = {
+        enabled = false;
+        value = {
+          parameters = [
+            32
+            49
+            786432
+          ];
+          type = "standard";
+        };
+      };
       # Mission Control / Application windows (ctrl+up, ctrl+down) — OmniWM owns this
       "32" = {
         enabled = false;
