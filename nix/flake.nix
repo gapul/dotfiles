@@ -236,9 +236,10 @@
             ./home/mopidy.nix
           ]
           ++ station;
-        # headless AI worker (no sops). The backup module is separate from the
-        # workstation's because it reads its password and ntfy credentials from
-        # hand-placed files rather than sops, and leaves pruning to the workstation.
+        # headless AI worker. No home-manager sops: the secrets it needs are placed by the
+        # system-side sops in hosts/macmini.nix (host-key decryption, which home-manager cannot do).
+        # The backup module is separate from the workstation's because it reads the plain default
+        # paths rather than sops.secrets attributes, and leaves pruning to the workstation.
         macminiHeadless = base ++ [
           ./home/macmini.nix
           ./home/macmini-backup.nix
@@ -629,13 +630,17 @@
       # Headless LLM worker (M4 Mac mini / 24GB):
       #   sudo darwin-rebuild switch --flake .#macmini
       # A minimal config that shares the same common.nix as the workstation but adds no GUI casks.
-      # No sops (policy of not bringing the age key onto the macmini).
+      # sops lives on the system side here rather than in home-manager, decrypting with the box's
+      # own SSH host key (hosts/macmini.nix). The old "no sops on the macmini" policy was really a
+      # policy of not copying the human age master key onto an unattended machine; a host key that
+      # was already here and only opens secrets/common.yaml does not violate it.
       darwinConfigurations.macmini = mkHost.darwin {
         host = ./hosts/macmini.nix;
         homeModules = roles.macminiHeadless;
         specialArgs = {
           inherit user;
           claudeAcp = claude-acp.packages.${system}.default;
+          sopsNix = sops-nix;
         };
       };
 
