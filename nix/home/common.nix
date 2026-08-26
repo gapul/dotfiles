@@ -153,4 +153,17 @@ in
   # SOPS definitions are split into home/secrets.nix (so macmini, which has no age key,
   # can share common.nix. 2026-07-19)
 
+  # The same list modules/authorized-keys.nix declares system-side, written here too.
+  #
+  # Not redundant: sshd reads both ~/.ssh/authorized_keys and the nix-managed path
+  # (authorizedKeysFiles defaults to ["%h/.ssh/authorized_keys" "/etc/ssh/authorized_keys.d/%u"],
+  # and nix-darwin adds an AuthorizedKeysCommand on top). Declaring only the system side would
+  # leave whatever was hand-placed in ~/.ssh still valid — macmini still carries a `root@pve` key
+  # for a host dismantled in 2026-08. Owning the file is what actually removes those.
+  #
+  # Both copies come from one source, so they cannot disagree. The alternative — dropping
+  # %h/.ssh/authorized_keys from authorizedKeysFiles — is a smaller diff but locks you out of a
+  # remote host if the declared path is ever wrong, so it is not worth it for one saved file.
+  home.file.".ssh/authorized_keys".source = ../keys/authorized_keys;
+
 }
