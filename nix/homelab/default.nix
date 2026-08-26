@@ -56,6 +56,7 @@
     ./jellyfin.nix
     ./journal-alert.nix
     ./matrix.nix
+    ./micromdm.nix
     ./miniflux.nix
     ./navidrome.nix
     ./ntfy.nix
