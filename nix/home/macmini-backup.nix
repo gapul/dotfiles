@@ -11,9 +11,10 @@
 # 一度も守られていなかったのが実害。
 #
 # 母艦と違う点は3つ。
-#   - sops を持たないホストなので(flake の macminiHeadless が "no sops")、パスワードと
-#     ntfy の資格情報は手置きのファイルをそのまま読む。共通ライブラリの既定パスが
-#     まさにその場所なので、宣言と手置きの境界はここだけで済む。
+#   - sops の入り口が違う。母艦は home-manager 側が人間の age 鍵で開けるが、こちらは
+#     hosts/macmini.nix のシステム側 sops が自分の SSH ホスト鍵で開いて、同じ場所に置く。
+#     パスは共通ライブラリの既定(=元の手置きの場所)のままなので、このファイルは
+#     どちらで置かれたかを知らずに済む。
 #   - 画面が無いので osascript は使わず、通知は ntfy だけ。
 #   - forget は自ホスト分だけで prune しない。共有リポジトリを repack するのは母艦の役。
 #
@@ -24,7 +25,8 @@ let
   home = config.home.homeDirectory;
   common = import ../lib/restic-common.nix { inherit home; };
 
-  # sops が無いので共通ライブラリの既定(手置き)をそのまま使う。
+  # 共通ライブラリの既定パスをそのまま使う。中身はシステム側 sops が置く
+  # (hosts/macmini.nix)。手置きだった頃と同じ場所なので、ここは変わらない。
   inherit (common) passwordFile;
   logFile = "${home}/Library/Logs/restic-backup.log";
 
