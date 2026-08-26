@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# TCC 用のコード署名 identity を用意する。機械ごとに一度だけ。
+#
+# 何のためか: TCC は許可をバイナリの場所と署名で識別する。nix が吐くバイナリは
+# ad-hoc 署名で、同一性が cdhash になるため、更新するたびに別物になって許可が
+# 切れる。証明書で署名すると要件式から cdhash が落ちて、identifier と証明書だけ
+# になる。中身が変わっても同じものとみなされる (実測で確認)。
+#
+# Developer ID ではなく自己署名なのは、TCC が Apple 発行かどうかを見ていないから。
+# 要件式に cdhash が入らないことだけが効いている。コード署名の鍵は用途を絞るほど
+# 安全なので、TCC のために Developer ID の署名を撒く理由がない。macmini のように
+# ネットワークに面したサービスが多い機械に Developer ID の秘密鍵を置かずに済む。
+#
+# sudo が要るのでここだけ手で走らせる。activation からは呼ばない
+# (毎回の rebuild で認証を要求されると運用に乗らない)。
+set -euo pipefail
+
+NAME="gapul TCC Signing"
+DAYS=3650
+WORK=$(mktemp -d)
+trap 'rm -rf "$WORK"' EXIT
+
+if security find-identity -v -p codesigning 2>/dev/null | grep -qF "$NAME"; then
+  echo "tcc-signing-identity: 既にある"
+  exit 0
+fi
+
+# extendedKeyUsage=codeSigning が無いと codesign が identity として認めない。
+openssl req -x509 -newkey rsa:2048 \
+  -keyout "$WORK/k.pem" -out "$WORK/c.crt" -days "$DAYS" -nodes \
+  -subj "/CN=$NAME/O=gapul" \
+  -addext "basicConstraints=critical,CA:false" \
+  -addext "keyUsage=critical,digitalSignature" \
+  -addext "extendedKeyUsage=critical,codeSigning" 2>/dev/null
+
+# macOS の security は OpenSSL 3 既定の PKCS12 を読めない (MAC verification failed)。
+# 旧形式で書き出す。
+PW=$(head -c 12 /dev/urandom | base64 | tr -d '/+=')
+openssl pkcs12 -export -out "$WORK/id.p12" \
+  -inkey "$WORK/k.pem" -in "$WORK/c.crt" -passout "pass:$PW" -name "$NAME" \
+  -macalg sha1 -keypbe PBE-SHA1-3DES -certpbe PBE-SHA1-3DES 2>/dev/null
+
+security import "$WORK/id.p12" -k "$HOME/Library/Keychains/login.keychain-db" \
+  -P "$PW" -T /usr/bin/codesign >/dev/null
+
+# 信頼設定を入れないと codesign が identity として選べない (一覧にも出ない)。
+sudo security add-trusted-cert -d -r trustRoot -p codeSign \
+  -k /Library/Keychains/System.keychain "$WORK/c.crt"
+
+if security find-identity -v -p codesigning 2>/dev/null | grep -qF "$NAME"; then
+  echo "tcc-signing-identity: 作成した ($DAYS 日)"
+else
+  echo "tcc-signing-identity: 作成したが identity として見えない" >&2
+  exit 1
+fi

@@ -94,6 +94,10 @@ rec {
       backupPaths,
       extraExcludes ? [ ],
       extraPathPkgs ? [ ],
+      # PATH の先頭に置くディレクトリ。macOS で TCC の許可を保たせるために、
+      # 署名済みの安定した場所に置いた restic を store の分より先に見せる用途。
+      # 空なら何も足さない (Linux 側は素の store パスのまま)。
+      pathPrefix ? "",
       # 間引きの一文。既定は repo 全体を prune する側で、共有リポジトリに書くだけの
       # ホストは forgetOwnHostOnly を渡す。
       forgetSnippet ? forgetInvocation,
@@ -102,7 +106,7 @@ rec {
     }:
     let
       resticEnv = ''
-        export PATH=${
+        export PATH=${lib.optionalString (pathPrefix != "") "${pathPrefix}:"}${
           lib.makeBinPath (
             [
               pkgs.restic
