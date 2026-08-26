@@ -36,6 +36,9 @@ let
   # Only the macOS-shaped bits are passed in here: notify goes through osascript (works in
   # launchd's GUI session) plus an ntfy push, and BSD date needs the fractional seconds
   # trimmed before it will parse restic's ISO8601 timestamp.
+  # TCC の許可を保たせるための安定した置き場。理由は下の activation を参照。
+  tccBinDir = "${home}/.local/libexec/tcc";
+
   scripts = common.mkScripts {
     inherit
       pkgs
@@ -43,6 +46,7 @@ let
       passwordFile
       logFile
       ;
+    pathPrefix = tccBinDir;
     backupPaths = [
       "${home}/Documents"
       "${home}/Pictures"
@@ -126,6 +130,26 @@ in
   #   Even if unset, notify still works with osascript only, so it's harmless.
   sops.secrets."unified_calendar/ntfy_url".path = "${home}/.config/ntfy/url";
   sops.secrets."unified_calendar/ntfy_token".path = "${home}/.config/ntfy/token";
+
+  # フルディスクアクセスを rebuild で失わないようにする。
+  #
+  # restic は Documents や Library の下を読むのでフルディスクアクセスが要る。
+  # ところが TCC は許可をバイナリの場所と署名で識別するので、素の store パスを
+  # 登録すると **更新のたびに別物になって許可が切れる**。実際、ボイスメモが
+  # 読めずにバックアップから漏れていた。
+  #
+  # store の restic は ad-hoc 署名で、同一性が cdhash になる。中身が変われば
+  # 別物。Developer ID で署名し直すと要件が
+  #   identifier "net.gapul.tcc.restic" and ... leaf[subject.OU] = <TeamID>
+  # だけになり、cdhash が入らない。場所を固定した上でこの署名にすれば、
+  # restic を更新しても同じものとみなされる (実測で確認)。
+  #
+  # 与えるのは一度だけ: システム設定 > プライバシーとセキュリティ >
+  # フルディスクアクセス に ~/.local/libexec/tcc/restic を追加する。
+  home.activation.tccStableRestic = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    $DRY_RUN_CMD ${../../configs/bin/tcc-stable-binary} \
+      ${pkgs.restic}/bin/restic restic || true
+  '';
 
   launchd.agents = {
     # daily 13:00 backup

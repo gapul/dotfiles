@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# TCC の許可が rebuild で消えないよう、安定した場所に署名付きで置く。
+#
+# 問題は 2 つ重なっている。
+#   1. nix のストアパスは更新のたびに変わる。TCC は場所で識別するので許可が切れる。
+#   2. ad-hoc 署名だと同一性が cdhash になる。中身が変われば別物になる。
+#
+# なので「場所を固定」して「Developer ID で署名」する。Developer ID の署名は
+# 「この identifier で、この証明書で署名されたもの」という要件になるので、
+# 中身が変わっても同じものとみなされる。
+#
+# 使い方: tcc-stable-binary <元のバイナリ> <安定した名前>
+set -euo pipefail
+
+SRC="${1:?元のバイナリ}"
+NAME="${2:?安定した名前}"
+DEST_DIR="$HOME/.local/libexec/tcc"
+DEST="$DEST_DIR/$NAME"
+
+IDENTITY=$(security find-identity -v -p codesigning 2>/dev/null |
+  grep -m1 "Developer ID Application" | sed 's/.*"\(.*\)"/\1/')
+if [ -z "$IDENTITY" ]; then
+  echo "tcc-stable-binary: Developer ID が見つからない" >&2
+  exit 1
+fi
+
+mkdir -p "$DEST_DIR"
+
+# 中身が同じなら触らない。署名し直すと cdhash が変わらなくても
+# ファイルの mtime が動いて、TCC が再評価する余地を作る。
+if [ -e "$DEST" ] && cmp -s "$SRC" "$DEST"; then
+  exit 0
+fi
+
+install -m 0755 "$SRC" "$DEST"
+
+# --identifier を固定するのが肝。既定だとファイル名から推測されるが、
+# 明示しておかないと将来のバージョンで変わりうる。
+codesign --force --sign "$IDENTITY" \
+  --identifier "net.gapul.tcc.$NAME" \
+  --options runtime \
+  --timestamp=none \
+  "$DEST" 2>/dev/null
+
+echo "tcc-stable-binary: $NAME を署名して $DEST に置いた"
