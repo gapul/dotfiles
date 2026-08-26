@@ -205,6 +205,7 @@ in
   };
   imports = [
     ./darwin-common.nix
+    ../modules/authorized-keys.nix
     sopsNix.darwinModules.sops
     # マイクラのサーバーは上の表から生やす。別モジュールにしてあるのは、nix が同じ attrset の
     # 中で `launchd.daemons = {...}` と `launchd.daemons.foo = ...` を混ぜられないため。
