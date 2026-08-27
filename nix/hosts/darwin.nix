@@ -365,6 +365,9 @@ in
     casks = [
       # ─── Browsers ───
       "google-chrome"
+      # Not the "helium" cask: that one is koush's unrelated Android desktop app, deprecated for
+      # failing Gatekeeper and disabled on 2026-09-01.
+      "helium-browser" # ungoogled-chromium based, kept as the Chromium-side second browser
       "tor-browser"
       "zen"
 
