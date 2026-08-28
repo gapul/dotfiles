@@ -2,6 +2,11 @@
 # 公開鍵は資格情報ではないので、暗号化せず平文で宣言する (PR #431 を参照)。
 #
 # 役割:
+#   (2026-08-26: 正体不明の鍵 SHA256:dORL3s… を削除した。Bitwarden の SSH 鍵3本の
+#    どれとも一致せず、母艦の旧 inbound 一覧にだけ入っていたもの。#431 で一覧を
+#    3台共通にしたことで、意図せず macmini と homeserver にも通るようになっていた。
+#    何かが入れなくなったら、この行の下に公開鍵を1行戻して rebuild すればよい。)
+#
 #   break-glass  Bitwarden の金庫にある鍵。日常では使わず、Secure Enclave が
 #                使えなくなったとき (母艦の故障・紛失) の復旧用。専用の鍵を
 #                新たに作る代わりに、常用をやめたこの鍵をその役に充てている。
@@ -15,7 +20,6 @@
 #                homeserver が切れる。
 #   mvrx         会社側の機械向け。あちらに公開鍵を登録し直せないので Bitwarden
 #                の agent に残す。ここに置くのは母艦へ戻ってくる経路のため。
-ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFc0vERDgqbotas7YjbabpVPWjtficFNWSW+8Hu/WL8x yuk8337@gmail.com
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIE/SloGL/mx6KvnWDmepZXD1XF0IWkuuSg8WNMGuqtkO mvrx-nolang-dev
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBLeOb9XOJPsmuTRf708qYoNckWk+/fhuWkpTWtTSu41 yuk8337@gmail.com
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILZva+I0ui3AGOMb2V7BTLOXXtCJYvCJg9PGmzWOD8Am macmini-outbound macmini
