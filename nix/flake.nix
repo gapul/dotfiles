@@ -265,7 +265,11 @@
       # available when the swap has no per-service rollback.
       homeserver = nixpkgs-nixos.lib.nixosSystem {
         system = "x86_64-linux";
-        specialArgs = { inherit user; };
+        # searxng だけ unstable から取るために渡す (homelab/searx.nix を参照)。
+        specialArgs = {
+          inherit user;
+          nixpkgsUnstable = nixpkgs-unstable;
+        };
         modules = [
           # Same SSO overlay as the other hosts (carries e.g. tailscale's vendorHash fix).
           { nixpkgs.overlays = [ overlayFixes ]; }
