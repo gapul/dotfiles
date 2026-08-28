@@ -166,9 +166,9 @@ let
   manabi = "/Users/Shared/manabi";
 in
 {
-  # Headless LLM worker (M4 Mac mini / 24GB).
+  # Headless AI worker (M4 Mac mini / 24GB).
   # Unlike the everyday workstation (darwin.nix), it loads no GUI casks at all;
-  # it just keeps Ollama resident via launchd to serve an inference API over Tailscale / LAN.
+  # it hosts the MLX stack (Whisper / VLM / TTS / RAG) and the Hermes agent.
 
   # sops at the system level, decrypting with this machine's own SSH host key.
   #
@@ -277,7 +277,6 @@ in
     ];
   };
 
-  # Ollama itself (nix package). The GUI ollama-app cask is not used.
   # nodejs: runtime for Playwright MCP (pnpm dlx) and claude-login-broker (inject-creds.js).
   # bitwarden-cli: after approval the broker pulls credentials via bw get. BW_SESSION is unlocked manually.
   # cloudflared: publishes the study agent's OpenAI-compatible API (127.0.0.1:8791) so the
@@ -289,7 +288,6 @@ in
   # been done. systemPackages rather than home.packages on purpose: ai-stack.sh builds its own
   # PATH from /opt/homebrew and /run/current-system/sw, and the per-user profile is not on it.
   environment.systemPackages = [
-    pkgs.ollama
     pkgs.nodejs_22
     pkgs.bitwarden-cli
     pkgs.cloudflared
@@ -301,36 +299,10 @@ in
     pkgs.marp-cli
   ];
 
-  # Keep Ollama resident via a LaunchAgent.
-  # Using an agent (login user) rather than a daemon (root) is to reliably grab Apple Silicon's
-  # Metal GPU. It runs in a GUI session, so enabling auto-login is a prerequisite.
-  launchd.agents.ollama = {
-    # The launch spec is SSO'd in nix/lib/ollama-agent.nix (shared with workstation). Add only the diff.
-    serviceConfig = (import ../lib/ollama-agent.nix { inherit pkgs; }) // {
-      StandardOutPath = "/Users/${user.username}/Library/Logs/ollama.log";
-      StandardErrorPath = "/Users/${user.username}/Library/Logs/ollama.log";
-      EnvironmentVariables = {
-        # nix-darwin bootstraps this agent into the system domain, which has no HOME.
-        # Without it ollama aborts at startup with `panic: $HOME is not defined`, and
-        # KeepAlive turns that into a crash loop that quietly fills the log file
-        # (26 MB of panics before this was noticed). Unlike the workstation, where
-        # home-manager runs the same spec inside the user's GUI session, here it has
-        # to be spelled out.
-        HOME = "/Users/${user.username}";
-        # Don't expose the API directly to the LAN. For external use, explicitly configure a
-        # reverse proxy with auth/ACLs or Tailscale Serve.
-        OLLAMA_HOST = "127.0.0.1:11434";
-        # Unload the model after 5 min idle. 30m was the old value and it meant one question
-        # left ~9G of a 12B model sitting there for half an hour, competing with whatever else
-        # this machine is doing. Reloading costs a few seconds; holding the memory costs more.
-        OLLAMA_KEEP_ALIVE = "5m";
-        # One model at a time. Two resident models is how 24G turns into swap.
-        OLLAMA_MAX_LOADED_MODELS = "1";
-      };
-      # Tier 1: somebody is watching a cursor blink while this answers.
-      ProcessType = "Interactive";
-    };
-  };
+  # (An ollama serve LaunchAgent was here, holding ~47G of GGUF weights in ollama's own blob
+  #  store. Dropped 2026-08-28: this machine's inference is MLX (faster than llama.cpp for the
+  #  same model on Apple Silicon) plus claude-bridge for the agent work, so ollama was carrying
+  #  a duplicate copy of the model library for a path nothing routed through any more.)
 
   # auto-fix パイプライン (GitHub issue → macmini の Claude Code → PR → CI → 自動マージ) が
   # 生きているかを1時間ごとに確かめる。監視対象と同じ GitHub Actions では回さない、という
@@ -384,7 +356,7 @@ in
   # everything ran at the same priority: a long agent turn competed with Minecraft ticks and with
   # inference somebody was waiting on.
   #
-  # The tiers are: Interactive for what a human is waiting on (ollama, ComfyUI, the game server),
+  # The tiers are: Interactive for what a human is waiting on (ComfyUI, the game server),
   # Standard for the cheap supervisors, Background for the agents and every batch job. Background
   # on Apple Silicon means the E cores, which is right for these: they spend their time waiting on
   # the network, not on the CPU.
@@ -575,8 +547,7 @@ in
     };
   };
 
-  # Keep the tunnel up as a daemon (root) so it survives logout, unlike the Ollama agent which
-  # needs a GUI session for Metal. Reads /usr/local/etc/manabi-tunnel.env for TUNNEL_TOKEN, which
+  # Keep the tunnel up as a daemon (root) so it survives logout. Reads /usr/local/etc/manabi-tunnel.env for TUNNEL_TOKEN, which
   # is issued per-tunnel in the Cloudflare dashboard and can't live in the nix store.
   launchd.daemons.manabi-tunnel = {
     serviceConfig = {

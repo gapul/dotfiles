@@ -1,6 +1,6 @@
 # macmini AIモデル manifest  (dest_dir | source_type | url_or_repo | note)
-# source_type: hfmirror=hf-mirror.com直 / github=GitHub release直 / ollama=ollama pull / uvtool=uv tool
-# 取得は bootstrap.sh が担当。母艦を経由せず macmini 直で落とす(hf-mirror/GitHub/ollama registry)。
+# source_type: hfmirror=hf-mirror.com直 / github=GitHub release直 / uvtool=uv tool
+# 取得は bootstrap.sh が担当。母艦を経由せず macmini 直で落とす(hf-mirror/GitHub)。
 
 # --- 文字起こし (mlx_whisper: uv tool install mlx-whisper) ---
 ~/.local/share/models/mlx/whisper-large-v3-mlx        hfmirror  mlx-community/whisper-large-v3-mlx        精度用 large-v3 (weights.npz)
@@ -26,11 +26,9 @@
 ~/.local/share/models/rag/ruri-v3-310m                 hfmirror  cl-nagoya/ruri-v3-310m                日本語埋め込みSOTA (onnx除外)
 ~/.local/share/models/rag/japanese-reranker-base-v2    hfmirror  hotchpotch/japanese-reranker-base-v2  日本語リランカー(Apple Silicon軽快)
 
-# --- LLM (ollama pull, OLLAMA_HOST=127.0.0.1) ---
-ollama  ollama  gemma4:12b-it-qat                  日本語主力(QAT=4bitでも日本語堅牢)
-ollama  ollama  qwen3.6:27b                        コーディング主力(17GB Q4_K_M、vision/tools/thinking)
-ollama  ollama  jaahas/qwen3.5-uncensored:latest   無検閲(gemma3-abliteratedは壊れてたので不採用)
-ollama  ollama  agents-a1-uncensored:latest        長時間調査・ツール利用(35B-A3B APEX I-Compact)
+# --- LLM ---
+# (ollama で GGUF を4本ぶら下げていたが 2026-08-28 に撤去。ollama 独自の blob ストアに
+#  47GB を抱えたまま、実際の推論は MLX と claude-bridge に移っていたため。)
 
 # --- 画像生成 (ComfyUI, 別途 ~/ComfyUI。klein 4B + Pony/RealVisXL等。別セッションで構築) ---
 # Chroma1-HD は保持。Qwen Image Edit は 2509 から 2511 Q4_K_M + 4-step Lightning LoRA へ更新。

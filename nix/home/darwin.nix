@@ -77,7 +77,6 @@ in
     config.lib.file.mkOutOfStoreSymlink "${config.xdg.dataHome}/appstoreconnect";
   home.file.".cloudflared".source =
     config.lib.file.mkOutOfStoreSymlink "${config.xdg.dataHome}/cloudflared";
-  home.file.".ollama".source = config.lib.file.mkOutOfStoreSymlink "${config.xdg.dataHome}/ollama";
   home.file.".dart-tool".source =
     config.lib.file.mkOutOfStoreSymlink "${config.xdg.stateHome}/dart-tool";
   # Ensure the entity exists first, else tool writes fail with ENOENT when the symlink target is missing
@@ -85,7 +84,6 @@ in
     /bin/mkdir -p \
       "${config.xdg.dataHome}/appstoreconnect" \
       "${config.xdg.dataHome}/cloudflared" \
-      "${config.xdg.dataHome}/ollama" \
       "${config.xdg.stateHome}/dart-tool"
   '';
 

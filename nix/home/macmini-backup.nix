@@ -64,8 +64,7 @@ let
     ];
     extraExcludes = [
       "**/.DS_Store"
-      # 再取得できる重みとキャッシュ。ollama のモデルは ~/.local/share 配下なので
-      # そもそも対象外だが、ai/ にも .gguf を置くことがある。
+      # 再取得できる重みとキャッシュ。ai/ に .gguf を置くことがある。
       "**/*.gguf"
       "**/*.safetensors"
       "**/*.bin"

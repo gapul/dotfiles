@@ -1,4 +1,4 @@
-import os, subprocess, tempfile, glob, shutil, json, urllib.request
+import os, subprocess, tempfile, glob, shutil
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.responses import HTMLResponse, FileResponse, PlainTextResponse
 from starlette.background import BackgroundTask
@@ -7,12 +7,6 @@ HOME = os.path.expanduser("~")
 BIN = f"{HOME}/.local/bin"
 ENV = dict(os.environ, PATH=f"{BIN}:/opt/homebrew/bin:/run/current-system/sw/bin:/usr/bin:/bin", HOME=HOME, PYTORCH_ENABLE_MPS_FALLBACK="1")
 app = FastAPI(title="macmini AI panel")
-
-ROLE_MODELS = {
-    "jp": ["gemma4:12b-it-qat"],
-    "coder": ["qwen3.6:27b", "qwen2.5-coder:14b"],
-    "unc": ["agents-a1-uncensored:latest", "jaahas/qwen3.5-uncensored:latest"],
-}
 
 def run(cmd, timeout=1200):
     r = subprocess.run(cmd, env=ENV, capture_output=True, text=True, timeout=timeout)
@@ -23,45 +17,17 @@ def save(up: UploadFile, d):
     with open(p, "wb") as f: shutil.copyfileobj(up.file, f)
     return p
 
-def ollama_json(path, body=None, timeout=10):
-    data = json.dumps(body).encode() if body is not None else None
-    req = urllib.request.Request(f"http://127.0.0.1:11434{path}", data=data,
-        headers={"Content-Type": "application/json"})
-    return json.load(urllib.request.urlopen(req, timeout=timeout))
-
-def installed_models():
-    try: return [m["name"] for m in ollama_json("/api/tags").get("models", [])]
-    except Exception: return []
-
-def select_model(role):
-    installed = set(installed_models())
-    return next((m for m in ROLE_MODELS.get(role, ROLE_MODELS["jp"]) if m in installed), ROLE_MODELS["jp"][0])
-
-def unload_other_models(keep):
-    try:
-        for item in ollama_json("/api/ps").get("models", []):
-            name = item.get("name", "")
-            if name and name != keep:
-                ollama_json("/api/generate", {"model": name, "keep_alive": 0}, 30)
-    except Exception: pass
-
 @app.get("/", response_class=HTMLResponse)
 def home():
     return HTML
 
 @app.get("/status")
 def status():
-    try: running = ollama_json("/api/ps").get("models", [])
-    except Exception: running = []
     disk = shutil.disk_usage(HOME)
-    return {"models": installed_models(),
-            "running": [m.get("name") for m in running],
-            "roles": {role: select_model(role) for role in ROLE_MODELS},
-            "disk_free_gb": round(disk.free / 1024 ** 3, 1)}
+    return {"disk_free_gb": round(disk.free / 1024 ** 3, 1)}
 
 @app.post("/transcribe", response_class=PlainTextResponse)
 async def transcribe(file: UploadFile = File(...), model: str = Form("fast"), diarize: str = Form("no")):
-    unload_other_models(None)
     d = tempfile.mkdtemp(); p = save(file, d)
     tool = f"{BIN}/transcribe-diarize" if diarize == "yes" else f"{BIN}/transcribe"
     args = [tool, p, "ja", model] if diarize == "yes" else [tool, p, "ja", "txt", model]
@@ -75,7 +41,6 @@ async def transcribe(file: UploadFile = File(...), model: str = Form("fast"), di
 
 @app.post("/tts")
 async def tts(text: str = Form(...), style: str = Form("Neutral")):
-    unload_other_models(None)
     d = tempfile.mkdtemp(); out_wav = os.path.join(d, "tts.wav")
     run([f"{BIN}/tts", text, out_wav, style])
     return FileResponse(out_wav, media_type="audio/wav", filename="tts.wav",
@@ -83,7 +48,6 @@ async def tts(text: str = Form(...), style: str = Form("Neutral")):
 
 @app.post("/clone")
 async def clone(ref: UploadFile = File(...), text: str = Form(...)):
-    unload_other_models(None)
     d = tempfile.mkdtemp(); rp = save(ref, d); out_wav = os.path.join(d, "cloned.wav")
     run([f"{BIN}/voice-clone", rp, text, out_wav])
     return FileResponse(out_wav, media_type="audio/wav", filename="cloned.wav",
@@ -91,7 +55,6 @@ async def clone(ref: UploadFile = File(...), text: str = Form(...)):
 
 @app.post("/vision", response_class=PlainTextResponse)
 async def vision(image: UploadFile = File(...), mode: str = Form("describe"), prompt: str = Form("")):
-    unload_other_models(None)
     d = tempfile.mkdtemp(); p = save(image, d)
     args = [f"{BIN}/ocr", p] if mode == "ocr" else ([f"{BIN}/describe", p, prompt] if prompt else [f"{BIN}/describe", p])
     out, err, rc = run(args)
@@ -100,7 +63,6 @@ async def vision(image: UploadFile = File(...), mode: str = Form("describe"), pr
 
 @app.post("/separate")
 async def separate(audio: UploadFile = File(...)):
-    unload_other_models(None)
     d = tempfile.mkdtemp(); p = save(audio, d)
     run([f"{BIN}/separate", p, d])
     stems = [f for f in glob.glob(d + "/*") if f != p and (f.endswith(".flac") or f.endswith(".wav"))]
@@ -111,14 +73,6 @@ async def separate(audio: UploadFile = File(...)):
     shutil.rmtree(d, ignore_errors=True)
     return FileResponse(zp, media_type="application/zip", filename="stems.zip",
                         background=BackgroundTask(shutil.rmtree, zd, True))
-
-@app.post("/ask", response_class=PlainTextResponse)
-async def ask(text: str = Form(...), model: str = Form("jp")):
-    m = select_model(model)
-    unload_other_models(m)
-    body = json.dumps({"model": m, "prompt": text, "stream": False, "think": False}).encode()
-    req = urllib.request.Request("http://127.0.0.1:11434/api/generate", data=body, headers={"Content-Type": "application/json"})
-    return json.load(urllib.request.urlopen(req, timeout=600)).get("response", "(err)")
 
 HTML = """<!doctype html><html lang=ja><head><meta charset=utf-8>
 <meta name=viewport content=\"width=device-width,initial-scale=1\">
@@ -160,11 +114,6 @@ button{background:#286983;color:#fffaf3}
 <input id=vip placeholder=\"質問(任意)\">
 <button onclick=vision()>実行</button><div class=out id=vio></div></div>
 
-<div class=card><h2>LLM に質問</h2>
-<textarea id=akt rows=2 placeholder=質問></textarea>
-<select id=akm><option value=jp>日本語</option><option value=coder>コーダー</option><option value=unc>無検閲</option></select>
-<button onclick=doask()>送信</button><div class=out id=ako></div></div>
-
 <div class=card><h2>声クローン</h2>
 <input type=file id=clr accept=\"audio/*\"> <span style=font-size:12px>参照音声3-10秒</span>
 <textarea id=clt rows=2 placeholder=喋らせる文章></textarea>
@@ -176,11 +125,10 @@ button{background:#286983;color:#fffaf3}
 
 <script>
 function fd(o){let f=new FormData();for(let k in o)f.append(k,o[k]);return f}
-async function status(){let r=await fetch("/status");let s=await r.json();sto.textContent="役割: "+JSON.stringify(s.roles,null,2)+"\\n実行中: "+JSON.stringify(s.running)+"\\n空き容量: "+s.disk_free_gb+" GB\\n導入済み: "+s.models.join(", ")}
+async function status(){let r=await fetch("/status");let s=await r.json();sto.textContent="空き容量: "+s.disk_free_gb+" GB"}
 async function transcribe(){tro.textContent=\"...\";let f=trf.files[0];let r=await fetch(\"/transcribe\",{method:\"POST\",body:fd({file:f,model:trm.value,diarize:trd.checked?\"yes\":\"no\"})});tro.textContent=await r.text()}
 async function dotts(){tto.textContent=\"...\";let r=await fetch(\"/tts\",{method:\"POST\",body:fd({text:ttt.value,style:tts.value})});let b=await r.blob();tto.innerHTML=\"<audio controls src=\"+URL.createObjectURL(b)+\"></audio>\"}
 async function vision(){vio.textContent=\"...\";let r=await fetch(\"/vision\",{method:\"POST\",body:fd({image:vif.files[0],mode:vim.value,prompt:vip.value})});vio.textContent=await r.text()}
-async function doask(){ako.textContent=\"...\";let r=await fetch(\"/ask\",{method:\"POST\",body:fd({text:akt.value,model:akm.value})});ako.textContent=await r.text()}
 async function doclone(){clo.textContent=\"...\";let r=await fetch(\"/clone\",{method:\"POST\",body:fd({ref:clr.files[0],text:clt.value})});let b=await r.blob();clo.innerHTML=\"<audio controls src=\"+URL.createObjectURL(b)+\"></audio>\"}
 async function dosep(){spo.textContent=\"分離中(数十秒)...\";let r=await fetch(\"/separate\",{method:\"POST\",body:fd({audio:spf.files[0]})});let b=await r.blob();let u=URL.createObjectURL(b);spo.innerHTML=\"<a href=\"+u+\" download=stems.zip style=color:#c4a7e7>stems.zip をダウンロード</a>\"}
 status()</script></body></html>"""
