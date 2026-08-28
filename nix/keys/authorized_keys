@@ -7,6 +7,9 @@
 #    3台共通にしたことで、意図せず macmini と homeserver にも通るようになっていた。
 #    何かが入れなくなったら、この行の下に公開鍵を1行戻して rebuild すればよい。)
 #
+#   enclave      母艦の Secure Enclave 鍵 (label auth)。取り出せず、利用のたびに
+#                Touch ID が要る。常用鍵をこれに移すのが目的で、移行が済んだら
+#                2WG8EZ… は常用から外して break-glass 役になる。
 #   break-glass  Bitwarden の金庫にある鍵。日常では使わず、Secure Enclave が
 #                使えなくなったとき (母艦の故障・紛失) の復旧用。専用の鍵を
 #                新たに作る代わりに、常用をやめたこの鍵をその役に充てている。
@@ -23,3 +26,4 @@
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIE/SloGL/mx6KvnWDmepZXD1XF0IWkuuSg8WNMGuqtkO mvrx-nolang-dev
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBLeOb9XOJPsmuTRf708qYoNckWk+/fhuWkpTWtTSu41 yuk8337@gmail.com
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILZva+I0ui3AGOMb2V7BTLOXXtCJYvCJg9PGmzWOD8Am macmini-outbound macmini
+sk-ecdsa-sha2-nistp256@openssh.com AAAAInNrLWVjZHNhLXNoYTItbmlzdHAyNTZAb3BlbnNzaC5jb20AAAAIbmlzdHAyNTYAAABBBP5Y2DQbhcGpmOGDewcxUuVZ+/XO1I/Zm4M4nZhBMPwygadJY9//NxbVAZs98vMIp1Yy+9wgkQcEuc1CNQdCY2cAAAAEc3NoOg== ssh:
