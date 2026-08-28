@@ -130,7 +130,9 @@ in
     #
     # SSH_SK_PROVIDER is what lets the agent hold the enclave identity at all: it is an sk-ecdsa key
     # behind macOS' CryptoTokenKit middleware, and ssh-add/ssh-agent need to be told which library
-    # to load. With AddKeysToAgent=yes in ssh_config, the first connection loads it by itself.
+    # to load. With AddKeysToAgent=yes in ssh_config, the first connection loads it by itself —
+    # and since ForwardAgent only applies to connections made from this Mac, making that connection
+    # is precisely what fills the agent. No login-time ssh-add job is needed.
     export SSH_SK_PROVIDER=/usr/lib/ssh-keychain.dylib
 
     # The Bitwarden vault is kept as the recovery path — its keys are still in every
@@ -299,28 +301,6 @@ in
   # that.
   # --minimized keeps it in the tray at login: the config-driven start_minimized
   # only applies when auto_start is set, which is the Windows registry path.
-  # Load the Secure Enclave key into the agent at login instead of waiting for the first local ssh
-  # to do it. ssh_config's AddKeysToAgent only fires on a connection made from this Mac, so without
-  # this the agent is empty until then — and anything that starts earlier (a launchd job, an
-  # already-open remote session using ForwardAgent) finds nothing to forward.
-  #
-  # ssh-add -K loads resident identities from the provider named by SSH_SK_PROVIDER. Adding the
-  # handle needs no user presence; only signing does, so this does not prompt at login.
-  launchd.agents.ssh-add-enclave = {
-    enable = true;
-    config = {
-      ProgramArguments = [
-        "/bin/sh"
-        "-c"
-        "/usr/bin/ssh-add -K 2>&1 | /usr/bin/logger -t ssh-add-enclave"
-      ];
-      EnvironmentVariables.SSH_SK_PROVIDER = "/usr/lib/ssh-keychain.dylib";
-      RunAtLoad = true;
-      # launchd hands the per-user agent socket to jobs, so no SSH_AUTH_SOCK is set here on purpose:
-      # setting it would pin a socket path that changes every login.
-    };
-  };
-
   launchd.agents.mechvibes-dx = {
     enable = true;
     config = {
