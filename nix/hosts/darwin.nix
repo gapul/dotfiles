@@ -268,7 +268,10 @@ in
       "osx-cross/arm" # QMK toolchain dependency tap
       "osx-cross/avr" # QMK / Keyball AVR toolchain tap
       "qmk/qmk" # QMK CLI
-      "voicevox/voicevox" # VOICEVOX official tap (required since not in homebrew/cask)
+      # Own fork of the VOICEVOX tap. Upstream is stuck at 0.25.1 (its autobump is dead), the fork
+      # carries 0.25.2. Declaring upstream while the fork is also tapped locally makes the cask
+      # token `voicevox` ambiguous, and every `brew bundle` — so every rebuild — dies on it.
+      "gapul/voicevox"
       "y3owk1n/tap" # cask distribution source for neru (full-screen keyboard navigation)
 
       # ─── Personal forks (gapul) — delete if you forked and don't need them ───
@@ -507,7 +510,7 @@ in
       # zrythm was removed since it was a trial version (x64/Rosetta/can't save). Consolidated onto the
       # self-made full nix version (pkgs/zrythm-darwin, arm64-native, -O2). Installed via home.packages.
       "vcv-rack"
-      "voicevox/voicevox/voicevox" # official tap only (not in homebrew/cask). Tap declaration required
+      "gapul/voicevox/voicevox" # from the fork tap above. Switch back once upstream catches up
       # self-made keystroke analytics. Developer ID signed + notarized, so it passes
       # Gatekeeper even with quarantine (no_quarantine not needed).
       "gapul/keystats/keystats"
