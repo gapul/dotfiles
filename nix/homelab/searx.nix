@@ -70,8 +70,15 @@
           disabled = false;
         }
         # 同じく既定で無効。これも Bing/Google とは別系統。
+        # ただし 2026-08 時点では CAPTCHA に沈んでいる。自動で外れるので置いてある。
         {
           name = "qwant";
+          disabled = false;
+        }
+        # これも自前クローラ。鍵が要らず、実測で 53 件返した (mojeek と同じ役割で、
+        # Google 系が全滅したときに残る側を厚くする)。
+        {
+          name = "mwmbl";
           disabled = false;
         }
       ];
