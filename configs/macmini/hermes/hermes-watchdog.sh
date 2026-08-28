@@ -42,9 +42,10 @@ CANARY_INTERVAL=10800
 # (8/24 に1回目の実発動が誤検知だった: 冷えた状態の初回ターンが 280 秒を超え、
 #  会話は壊れていないのに gateway を落とした)
 CANARY_STRIKE=/var/run/hermes-canary.strike
+CANARY_FILE=/Users/hsandbox/study/.canary
 
 check_canary() {
-  local now last env key port reply active
+  local now last env key port reply active token
   now=$(date +%s)
   last=$(cat "$CANARY_STAMP" 2>/dev/null || echo 0)
   [ $((now - last)) -lt "$CANARY_INTERVAL" ] && return 0
@@ -59,15 +60,29 @@ check_canary() {
   key=$(grep '^API_SERVER_KEY=' "$env" 2>/dev/null | cut -d= -f2-)
   port=$(grep '^API_SERVER_PORT=' "$env" 2>/dev/null | cut -d= -f2-)
   [ -n "$key" ] || return 0   # 設定が読めないときは判定しない
+
+  # 毎回ちがう合言葉を置いて、それを読ませる。progress.md のような中身が
+  # 変わらないファイルを読ませると read_file の重複判定に弾かれ、まなびは
+  # 記憶から答えてしまう。それでは「ファイルが読めなくなった」という
+  # いちばん多い壊れ方(tar 破損で2回起きた)を素通ししてしまう。
+  token=$(date +%y%m%d%H%M%S)
+  printf '%s\n' "$token" > "$CANARY_FILE" || return 0
+  chown hsandbox "$CANARY_FILE" 2>/dev/null
+
   reply=$(curl -s -m 420 -X POST "http://127.0.0.1:${port:-8791}/v1/chat/completions" \
     -H "Content-Type: application/json" -H "Authorization: Bearer $key" \
-    -d '{"model":"manabi","messages":[{"role":"user","content":"監視用の自動確認です。progress.md を読んで、いちばん近い締切をひとことで。"}]}' \
+    -d "$(/usr/bin/python3 -c 'import json,sys
+print(json.dumps({"model":"manabi","messages":[{"role":"user","content":
+  "監視用の自動確認です。/Users/hsandbox/study/.canary を読んで、"
+  "中に書いてある数字だけを返してください。説明は不要です。"}]}))')" \
     | /usr/bin/python3 -c 'import json,sys
 try:
     print(json.load(sys.stdin)["choices"][0]["message"]["content"][:400])
 except Exception:
     pass')
   case "$reply" in
+    *"$token"*)
+      ;;      # 合言葉が返った。会話もファイル読みも生きている
     "")
       # 返ってこなかった。遅いだけのこともあるので、2回続いたときだけ本物とする
       local strikes
@@ -81,6 +96,16 @@ except Exception:
       # 壊れた返事が返ってきた。これは1回で本物
       echo 2 > "$CANARY_STRIKE"
       return 1
+      ;;
+    *)
+      # 返事はあるが合言葉が入っていない。ファイルが読めていない疑い。
+      # 言い回しのブレで外すこともあるので、これも2回続いたときだけ本物とする
+      local miss
+      miss=$(( $(cat "$CANARY_STRIKE" 2>/dev/null || echo 0) + 1 ))
+      echo "$miss" > "$CANARY_STRIKE"
+      [ "$miss" -ge 2 ] && return 1
+      echo "[$(date '+%Y-%m-%d %H:%M:%S')] canary が合言葉を返さない (strike $miss/2) — 様子見"
+      return 0
       ;;
   esac
   rm -f "$CANARY_STRIKE"
