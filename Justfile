@@ -61,7 +61,7 @@ _rebuild-macos force="":
     # LocalHostName, so a machine that is not the workstation has to say so out loud, in
     # ~/.config/dotfiles/host (macmini declares that file in home/macmini.nix). Getting this
     # wrong is not a no-op: on the mac mini it quietly activated the workstation config,
-    # dropping the manabi tunnel and the ollama agent and pulling in the GUI cask list.
+    # dropping the manabi tunnel and pulling in the GUI cask list.
     name="$(cat "${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/host" 2>/dev/null || id -un)"
     sys_want=$(nix eval --raw "{{flake}}#darwinConfigurations.$name.config.system.build.toplevel.outPath")
     # Hosts whose home rides inside the darwin config (the mac mini) have no standalone
@@ -909,12 +909,12 @@ gc-deep:
     echo ""
     echo "━━━ Retired GUI cask data (Homebrew zap) ━━━"
     # Only pin casks moved to CLI/TUI and dropped from the declaration. --force lets the zap stanza
-    # (settings, caches, etc.) run even after a normal uninstall. ollama-app is excluded because it deletes
-    # the models in ~/.ollama, and unity-hub because it may share settings with the Unity CLI.
+    # (settings, caches, etc.) run even after a normal uninstall. unity-hub is excluded because it may
+    # share settings with the Unity CLI.
     zap_candidates=(cyberduck wireshark-app syncthing-app picview iina vlc)
     printf '  %s\n' "${zap_candidates[@]}"
     echo "  Removes app settings/caches; Cyberduck bookmarks and Wireshark profiles are included."
-    echo "  Preserved: ~/.ollama models, Syncthing core config, Unity Hub/CLI metadata."
+    echo "  Preserved: Syncthing core config, Unity Hub/CLI metadata."
     read -rp "  Zap all listed cask data? [y/N] " ans
     if [[ "$ans" == [yY] ]]; then
       brew uninstall --cask --zap --force "${zap_candidates[@]}" || true

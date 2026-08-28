@@ -30,20 +30,11 @@
     };
   };
 
-  # Replace Ollama.app's menu-bar resident with a LaunchAgent for the Nix ollama.
-  launchd.agents.ollama = {
-    enable = true;
-    # The launch spec is the SSO in nix/lib/ollama-agent.nix (shared with macmini). Add only the diffs.
-    config = (import ../../lib/ollama-agent.nix { inherit pkgs; }) // {
-      ProcessType = "Background";
-      StandardOutPath = "${config.home.homeDirectory}/Library/Logs/Ollama/ollama.log";
-      StandardErrorPath = "${config.home.homeDirectory}/Library/Logs/Ollama/ollama.log";
-    };
-  };
+  # (An ollama serve LaunchAgent was here. This machine never held a single model — inference
+  #  runs on the mac mini — so it was a resident daemon with nothing to serve.)
 
   home.activation.cliServiceLogDirs = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     /bin/mkdir -p \
-      "${config.home.homeDirectory}/Library/Logs/Ollama" \
       "${config.home.homeDirectory}/Library/Logs/Syncthing"
   '';
 

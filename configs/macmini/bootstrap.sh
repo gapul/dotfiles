@@ -1,6 +1,6 @@
 #!/bin/bash
 # macmini ローカルAIスタック bootstrap(まっさら or 再構築用)
-# 前提: darwin-rebuild 済(brew: ffmpeg/aria2/socat/container、nix: uv、Ollama、SSH/sleep設定)
+# 前提: darwin-rebuild 済(brew: ffmpeg/aria2/socat/container、nix: uv、SSH/sleep設定)
 # 使い方: bash configs/macmini/bootstrap.sh [--models] [--venvs] [--scripts] [--services]
 #         引数なし = 全部
 set -u
@@ -49,15 +49,9 @@ if [ $do_all = 1 ] || printf '%s' "$*" | grep -q venvs; then
   echo "  venv一式 完了"
 fi
 
-# ---------- models: manifest から macmini直DL(hf-mirror/GitHub/ollama) ----------
+# ---------- models: manifest から macmini直DL(hf-mirror/GitHub) ----------
 if [ $do_all = 1 ] || printf '%s' "$*" | grep -q models; then
   say "モデル取得(母艦経由せず macmini直)"
-  # ollama系(登録速い)
-  export OLLAMA_HOST=127.0.0.1:11434
-  ollama pull gemma4:12b-it-qat &
-  ollama pull qwen2.5-coder:14b &
-  ollama pull jaahas/qwen3.5-uncensored:latest &
-  wait
   echo "  ※ 大物safetensors(whisper/vlm/sbv2/rag/separator)は hf-mirror.com から aria2 self-healingで取得。"
   echo "    詳細URLは models.txt 参照。HF_ENDPOINT=https://hf-mirror.com で huggingface_hub 経由も可だが"
   echo "    308リダイレクトを扱えない場合あり→ aria2で各ファイルをローカルに落とし HF_HUB_OFFLINE=1 で読込。"
@@ -73,7 +67,7 @@ if [ $do_all = 1 ] || printf '%s' "$*" | grep -q services; then
   sudo container system dns delete host.container.internal 2>/dev/null || true
   sudo container system dns create host.container.internal --localhost 203.0.113.113
   launchctl kickstart -k "gui/$(id -u)/org.nix-community.home.ai-stack"
-  echo "  ai-stack supervisor 起動(ollama/埋め込み/パネル/コンテナ/socat を冪等維持)"
+  echo "  ai-stack supervisor 起動(埋め込み/パネル/コンテナ/socat を冪等維持)"
 fi
 
 say "完了。Caddy(別ホスト)に chat/docs/tools ブロック追記でスマホ公開。"
