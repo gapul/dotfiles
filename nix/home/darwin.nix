@@ -122,12 +122,29 @@ in
       $path
     )
 
-    # Bitwarden SSH agent: prefer the socket Desktop (direct-DL build) creates when enabled.
-    # Keys are stored in the Bitwarden Vault; Desktop approves each connection (Touch ID).
-    # To avoid breaking when Bitwarden isn't running/enabled, fall back to launchd default when the socket is absent.
-    if [[ -S "$HOME/.bitwarden-ssh-agent.sock" ]]; then
-      export SSH_AUTH_SOCK="$HOME/.bitwarden-ssh-agent.sock"
-    fi
+    # SSH keys come from the Secure Enclave now, not the Bitwarden vault, so leave SSH_AUTH_SOCK
+    # pointing at launchd's own agent. Overriding it to the Bitwarden socket meant that closing
+    # Bitwarden emptied the agent: direct logins still worked (ssh_config offers the enclave key as
+    # an IdentityFile), but the five hosts with ForwardAgent forwarded nothing, so git on the far
+    # side broke with no obvious cause.
+    #
+    # SSH_SK_PROVIDER is what lets the agent hold the enclave identity at all: it is an sk-ecdsa key
+    # behind macOS' CryptoTokenKit middleware, and ssh-add/ssh-agent need to be told which library
+    # to load. With AddKeysToAgent=yes in ssh_config, the first connection loads it by itself.
+    export SSH_SK_PROVIDER=/usr/lib/ssh-keychain.dylib
+
+    # The Bitwarden vault is kept as the recovery path — its keys are still in every
+    # authorized_keys, including the work host that only this Mac's enclave can otherwise reach.
+    # Opt into it for a session when the enclave is unavailable:
+    function use-bitwarden-agent() {
+      if [[ -S "$HOME/.bitwarden-ssh-agent.sock" ]]; then
+        export SSH_AUTH_SOCK="$HOME/.bitwarden-ssh-agent.sock"
+        echo "SSH_AUTH_SOCK -> Bitwarden (このシェルのみ)"
+      else
+        echo "Bitwarden Desktop が起動・アンロックされていません" >&2
+        return 1
+      fi
+    }
 
     # CocoaPods (avoid conflict with nix ruby)
     unset GEM_HOME GEM_PATH
@@ -282,6 +299,28 @@ in
   # that.
   # --minimized keeps it in the tray at login: the config-driven start_minimized
   # only applies when auto_start is set, which is the Windows registry path.
+  # Load the Secure Enclave key into the agent at login instead of waiting for the first local ssh
+  # to do it. ssh_config's AddKeysToAgent only fires on a connection made from this Mac, so without
+  # this the agent is empty until then — and anything that starts earlier (a launchd job, an
+  # already-open remote session using ForwardAgent) finds nothing to forward.
+  #
+  # ssh-add -K loads resident identities from the provider named by SSH_SK_PROVIDER. Adding the
+  # handle needs no user presence; only signing does, so this does not prompt at login.
+  launchd.agents.ssh-add-enclave = {
+    enable = true;
+    config = {
+      ProgramArguments = [
+        "/bin/sh"
+        "-c"
+        "/usr/bin/ssh-add -K 2>&1 | /usr/bin/logger -t ssh-add-enclave"
+      ];
+      EnvironmentVariables.SSH_SK_PROVIDER = "/usr/lib/ssh-keychain.dylib";
+      RunAtLoad = true;
+      # launchd hands the per-user agent socket to jobs, so no SSH_AUTH_SOCK is set here on purpose:
+      # setting it would pin a socket path that changes every login.
+    };
+  };
+
   launchd.agents.mechvibes-dx = {
     enable = true;
     config = {

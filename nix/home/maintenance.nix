@@ -122,9 +122,11 @@ let
     [ -d "$vault/.git" ] || { echo "SKIP: $vault is not a git repository"; exit 0; }
     [ -n "$(git -C "$vault" remote 2>/dev/null)" ] || { echo "SKIP: remote not configured"; exit 0; }
 
-    # Point explicitly at the Bitwarden SSH agent (so keys are reachable even in an unattended launchd session).
-    # Requires Bitwarden Desktop to be running and unlocked.
-    [ -S "${home}/.bitwarden-ssh-agent.sock" ] && export SSH_AUTH_SOCK="${home}/.bitwarden-ssh-agent.sock"
+    # No SSH_AUTH_SOCK override: the push uses the Secure Enclave key via ssh_config's IdentityFile,
+    # which needs no agent at all. Pointing at the Bitwarden socket used to be the only way to reach
+    # a key from an unattended launchd session; now it would just aim at something that is usually
+    # not running.
+    export SSH_SK_PROVIDER=/usr/lib/ssh-keychain.dylib
     export GIT_SSH_COMMAND="ssh -o BatchMode=yes -o ConnectTimeout=15"
 
     git -C "$vault" add -A
