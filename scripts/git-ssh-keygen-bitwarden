@@ -1,9 +1,0 @@
-#!/usr/bin/env bash
-set -euo pipefail
-
-socket="${HOME}/.bitwarden-ssh-agent.sock"
-if [ -S "$socket" ]; then
-  export SSH_AUTH_SOCK="$socket"
-fi
-
-exec /usr/bin/ssh-keygen "$@"

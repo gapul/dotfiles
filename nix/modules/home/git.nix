@@ -52,7 +52,10 @@
       "*.vrb"
     ];
     signing = {
-      key = "${config.home.homeDirectory}/.ssh/id_ed25519.pub";
+      # Secure Enclave key: non-extractable, Touch ID per signature. Signing now costs a
+      # deliberate physical gesture, which is the point — a commit cannot be signed in your name
+      # by anything running unattended on this machine.
+      key = "${config.home.homeDirectory}/.ssh/id_enclave_key.pub";
       signByDefault = true;
     };
     # HM 26.05: userName/userEmail/extraConfig merged into settings.*
@@ -83,9 +86,15 @@
       diff.colorMoved = "default";
       gpg.format = "ssh";
       "gpg \"ssh\"".allowedSignersFile = "${config.home.homeDirectory}/.ssh/allowed_signers";
-      "gpg \"ssh\"".program = "${config.home.homeDirectory}/.dotfiles/scripts/git-ssh-keygen-bitwarden";
+
+      "gpg \"ssh\"".program = "${config.home.homeDirectory}/.dotfiles/scripts/git-ssh-keygen-enclave";
     };
   };
+
+  # The allowed signers list was hand-placed at ~/.ssh/allowed_signers, i.e. the one input to
+  # signature verification lived outside the declaration. Both the old Bitwarden key and the new
+  # Secure Enclave key are listed so commits from either era still verify.
+  home.file.".ssh/allowed_signers".source = ../../keys/allowed_signers;
 
   # HM 26.05: programs.git.delta → migrated to standalone programs.delta
   programs.delta = {
