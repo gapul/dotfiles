@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# ssh-keygen wrapper for git's SSH signing, pointing at the Secure Enclave key.
+#
+# The key is an sk-ecdsa identity held by macOS' CryptoTokenKit provider, so ssh-keygen needs to be
+# told which middleware to load. git offers no way to pass -w, hence this shim.
+#
+# Replaces git-ssh-keygen-bitwarden, which exported SSH_AUTH_SOCK so ssh-keygen could reach the
+# Bitwarden agent. That made commit signing depend on the vault being unlocked and on that key
+# staying exposed to the agent — the very exposure we are retiring.
+set -euo pipefail
+export SSH_SK_PROVIDER="${SSH_SK_PROVIDER:-/usr/lib/ssh-keychain.dylib}"
+exec /usr/bin/ssh-keygen "$@"
