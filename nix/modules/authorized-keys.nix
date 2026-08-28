@@ -21,4 +21,10 @@
   # nix-darwin implements this as /etc/ssh/nix_authorized_keys.d/<user> plus an
   # AuthorizedKeysCommand, so it works the same on both platforms without touching ~/.ssh.
   users.users.${user.username}.openssh.authorizedKeys.keyFiles = [ ../keys/authorized_keys ];
+
+  # root is a separate list, not the same file. homeserver is still administered over a root login,
+  # so that path has to be declared too — but root should not inherit every key that may log in as
+  # the user. The company machine's key in particular has no business holding root on a home server.
+  # nix-darwin has no root user to manage here, so this only lands on NixOS hosts.
+  users.users.root.openssh.authorizedKeys.keyFiles = [ ../keys/authorized_keys_root ];
 }
