@@ -16,7 +16,7 @@
 #                金庫は他端末からも開けるので、母艦を失っても取り出せる。
 #                切り替え後、Bitwarden 側で SSH agent への露出をオフにすること。
 #   macbook      母艦が接続に使うクライアント鍵 (~/.ssh/id_ed25519)。
-#                コメント文字列が break-glass 鍵と同じ yuk8337@gmail.com なので、
+#                コメント文字列が break-glass 鍵と同じ macbook-mini なので、
 #                必ず fingerprint で見分けること (SHA256:2WG8EZ… が母艦)。
 #   macmini      macmini から homeserver へ出るための鍵。homeserver の手置き一覧に
 #                入っていたもので、宣言側に無いまま手置き分を消すと macmini →
@@ -27,6 +27,6 @@
 #
 #   mvrx         会社側の機械向け。あちらに公開鍵を登録し直せないので Bitwarden
 #                の agent に残す。ここに置くのは母艦へ戻ってくる経路のため。
-ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBLeOb9XOJPsmuTRf708qYoNckWk+/fhuWkpTWtTSu41 yuk8337@gmail.com
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBLeOb9XOJPsmuTRf708qYoNckWk+/fhuWkpTWtTSu41 macbook-mini
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILZva+I0ui3AGOMb2V7BTLOXXtCJYvCJg9PGmzWOD8Am macmini-outbound macmini
 sk-ecdsa-sha2-nistp256@openssh.com AAAAInNrLWVjZHNhLXNoYTItbmlzdHAyNTZAb3BlbnNzaC5jb20AAAAIbmlzdHAyNTYAAABBBP5Y2DQbhcGpmOGDewcxUuVZ+/XO1I/Zm4M4nZhBMPwygadJY9//NxbVAZs98vMIp1Yy+9wgkQcEuc1CNQdCY2cAAAAEc3NoOg== ssh:

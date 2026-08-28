@@ -1,11 +1,11 @@
 # git の SSH 署名を検証するときの許可リスト (gpg.ssh.allowedSignersFile)。
-# 公開鍵なので平文で宣言する。過去のコミットも検証できるよう旧鍵を残す。
+# 公開鍵なので平文で宣言してよいが、principal にメールアドレスは書かない。
+# user.nix の方針どおり、公開リポジトリに個人アドレスを出さないため。
 #
-#   2WG8EZ…    Bitwarden 管理の旧署名鍵。2026-08-28 まで使用
-#   6eKHIxVa…  Secure Enclave 鍵。以後はこちらで署名する
+# principal を * にすると署名者のアドレスを問わず、この鍵で署名されたものを
+# 検証する。利用者が1人なので「鍵が本人のものか」だけ見れば足りる。
 #
-# 署名者の照合はコミットの email に対して行われる。user.email は noreply の方だが、
-# 過去のコミットには gmail の方も混ざっているので、新鍵は両方の principal に登録する。
-yuk8337@gmail.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBLeOb9XOJPsmuTRf708qYoNckWk+/fhuWkpTWtTSu41
-yuk8337@gmail.com sk-ecdsa-sha2-nistp256@openssh.com AAAAInNrLWVjZHNhLXNoYTItbmlzdHAyNTZAb3BlbnNzaC5jb20AAAAIbmlzdHAyNTYAAABBBP5Y2DQbhcGpmOGDewcxUuVZ+/XO1I/Zm4M4nZhBMPwygadJY9//NxbVAZs98vMIp1Yy+9wgkQcEuc1CNQdCY2cAAAAEc3NoOg== ssh:
-92638132+gapul@users.noreply.github.com sk-ecdsa-sha2-nistp256@openssh.com AAAAInNrLWVjZHNhLXNoYTItbmlzdHAyNTZAb3BlbnNzaC5jb20AAAAIbmlzdHAyNTYAAABBBP5Y2DQbhcGpmOGDewcxUuVZ+/XO1I/Zm4M4nZhBMPwygadJY9//NxbVAZs98vMIp1Yy+9wgkQcEuc1CNQdCY2cAAAAEc3NoOg== ssh:
+#   1本目  Bitwarden 管理の旧署名鍵 (2WG8EZ…)。過去のコミット検証用に残す
+#   2本目  Secure Enclave 鍵 (6eKHIxVa…)。以後はこちらで署名する
+* ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBLeOb9XOJPsmuTRf708qYoNckWk+/fhuWkpTWtTSu41
+* sk-ecdsa-sha2-nistp256@openssh.com AAAAInNrLWVjZHNhLXNoYTItbmlzdHAyNTZAb3BlbnNzaC5jb20AAAAIbmlzdHAyNTYAAABBBP5Y2DQbhcGpmOGDewcxUuVZ+/XO1I/Zm4M4nZhBMPwygadJY9//NxbVAZs98vMIp1Yy+9wgkQcEuc1CNQdCY2cAAAAEc3NoOg== ssh:
