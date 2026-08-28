@@ -23,11 +23,21 @@ DEST="$DEST_DIR/$NAME"
 # サービスが多い機械に Developer ID の秘密鍵を置かずに済む。
 #
 # 無ければ何もしない。tcc-signing-identity を機械ごとに一度走らせること。
-IDENTITY="gapul TCC Signing"
-if ! security find-identity -v -p codesigning 2>/dev/null | grep -qF "$IDENTITY"; then
-  echo "tcc-stable-binary: '$IDENTITY' が無い。tcc-signing-identity を先に実行" >&2
+# 専用キーチェーンは再起動で施錠される。解錠しないと署名が
+# 「identity が無い」に見えて黙って何もしないまま終わる。
+PWFILE="$HOME/.config/tcc-keychain.password"
+if [ -s "$PWFILE" ] && [ -e "$HOME/Library/Keychains/tcc.keychain-db" ]; then
+  security unlock-keychain -p "$(cat "$PWFILE")" tcc.keychain 2>/dev/null || true
+fi
+
+# 名前ではなくハッシュで指す。同名の証明書が複数のキーチェーンにあると
+# codesign が ambiguous で止まる。
+SHAFILE="$HOME/.config/tcc-signing.sha1"
+if [ ! -s "$SHAFILE" ]; then
+  echo "tcc-stable-binary: 署名 identity が無い。tcc-signing-identity を先に実行" >&2
   exit 0
 fi
+IDENTITY=$(cat "$SHAFILE")
 
 mkdir -p "$DEST_DIR"
 

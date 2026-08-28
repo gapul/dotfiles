@@ -11,16 +11,32 @@
 # 安全なので、TCC のために Developer ID の署名を撒く理由がない。macmini のように
 # ネットワークに面したサービスが多い機械に Developer ID の秘密鍵を置かずに済む。
 #
-# sudo が要るのでここだけ手で走らせる。activation からは呼ばない
-# (毎回の rebuild で認証を要求されると運用に乗らない)。
+# ログインキーチェーンは使わない。ssh 越しだと施錠されていて
+# `SecKeychainItemImport: User interaction is not allowed` で止まる
+# (macmini で実際に踏んだ)。`launchctl asuser` で GUI セッションに潜り込む手も
+# 試したが動かなかった。専用のキーチェーンを作れば ssh だけで完結する。
+#
+# そのパスワードはファイルに置く。持ち出せるのは「TCC のためだけの署名鍵を使う」
+# 権限だけで、Developer ID のような外向きの信頼は伴わない。
+#
+# 機械ごとに一度だけ走らせる。activation からは呼ばない — 証明書を作り直すと
+# TCC の許可が切れるので、明示的な操作にしておく。
 set -euo pipefail
 
 NAME="gapul TCC Signing"
 DAYS=3650
+KEYCHAIN="$HOME/Library/Keychains/tcc.keychain-db"
+KEYCHAIN_SHORT="tcc.keychain"
+PWFILE="$HOME/.config/tcc-keychain.password"
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
 
-if security find-identity -v -p codesigning 2>/dev/null | grep -qF "$NAME"; then
+SHAFILE="$HOME/.config/tcc-signing.sha1"
+
+# 専用キーチェーンの中だけを見る。名前で全体を探すと、過去の試行が別の
+# キーチェーンに残していたものを拾って「ある」と誤判定する (macmini で踏んだ)。
+if [ -s "$SHAFILE" ] && security find-certificate -c "$NAME" \
+  "$HOME/Library/Keychains/tcc.keychain-db" >/dev/null 2>&1; then
   echo "tcc-signing-identity: 既にある"
   exit 0
 fi
@@ -35,20 +51,54 @@ openssl req -x509 -newkey rsa:2048 \
 
 # macOS の security は OpenSSL 3 既定の PKCS12 を読めない (MAC verification failed)。
 # 旧形式で書き出す。
-PW=$(head -c 12 /dev/urandom | base64 | tr -d '/+=')
+P12PW=$(head -c 12 /dev/urandom | base64 | tr -d '/+=')
 openssl pkcs12 -export -out "$WORK/id.p12" \
-  -inkey "$WORK/k.pem" -in "$WORK/c.crt" -passout "pass:$PW" -name "$NAME" \
+  -inkey "$WORK/k.pem" -in "$WORK/c.crt" -passout "pass:$P12PW" -name "$NAME" \
   -macalg sha1 -keypbe PBE-SHA1-3DES -certpbe PBE-SHA1-3DES 2>/dev/null
 
-security import "$WORK/id.p12" -k "$HOME/Library/Keychains/login.keychain-db" \
-  -P "$PW" -T /usr/bin/codesign >/dev/null
+# 専用キーチェーンを用意する。既にあれば作り直さない。
+mkdir -p "$(dirname "$PWFILE")"
+if [ ! -s "$PWFILE" ]; then
+  head -c 18 /dev/urandom | base64 | tr -d '/+=' > "$PWFILE"
+  chmod 0600 "$PWFILE"
+fi
+KCPW=$(cat "$PWFILE")
 
-# 信頼設定を入れないと codesign が identity として選べない (一覧にも出ない)。
-sudo security add-trusted-cert -d -r trustRoot -p codeSign \
-  -k /Library/Keychains/System.keychain "$WORK/c.crt"
+[ -e "$KEYCHAIN" ] || security create-keychain -p "$KCPW" "$KEYCHAIN_SHORT"
+security unlock-keychain -p "$KCPW" "$KEYCHAIN_SHORT"
+# 施錠のタイムアウトを外す。切れると activation の署名が黙って失敗する。
+security set-keychain-settings "$KEYCHAIN_SHORT"
 
-if security find-identity -v -p codesigning 2>/dev/null | grep -qF "$NAME"; then
-  echo "tcc-signing-identity: 作成した ($DAYS 日)"
+# 検索リストに入れないと codesign が identity を見つけられない。
+# 既存のリストを保ったまま追記する。
+CURRENT=$(security list-keychains -d user | sed 's/[" ]//g' | tr '\n' ' ')
+case "$CURRENT" in
+  *tcc.keychain*) ;;
+  *) security list-keychains -d user -s $CURRENT "$KEYCHAIN" ;;
+esac
+
+security import "$WORK/id.p12" -k "$KEYCHAIN_SHORT" \
+  -P "$P12PW" -T /usr/bin/codesign >/dev/null
+# codesign がパスワード確認を出さないようにする。
+security set-key-partition-list -S apple-tool:,apple:,codesign: \
+  -s -k "$KCPW" "$KEYCHAIN_SHORT" >/dev/null 2>&1 || true
+
+# 信頼設定 (add-trusted-cert) は要らない。codesign は署名に使うだけなら未信頼の
+# 証明書でも通り、要件式も同じ形になる (実測で確認)。入れようとすると GUI の認証
+# ダイアログが出て ssh 越しでは永久に待つ — macmini で 2 時間ぶら下がった。
+#
+# その代わり find-identity は -v を外して見る。-v は「有効な」identity だけを
+# 返すので、未信頼のものは出てこない。
+# 名前ではなくハッシュで指す。同名の証明書が他のキーチェーンにあると
+# codesign が ambiguous で止まるため (macmini で 2 つ残っていて踏んだ)。
+SHA=$(security find-certificate -c "$NAME" -Z \
+  "$HOME/Library/Keychains/tcc.keychain-db" 2>/dev/null |
+  awk '/^SHA-1 hash:/ {print $3; exit}')
+
+if [ -n "$SHA" ]; then
+  printf '%s\n' "$SHA" > "$SHAFILE"
+  chmod 0600 "$SHAFILE"
+  echo "tcc-signing-identity: 作成した ($DAYS 日, $SHA)"
 else
   echo "tcc-signing-identity: 作成したが identity として見えない" >&2
   exit 1
