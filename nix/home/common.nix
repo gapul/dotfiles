@@ -74,6 +74,12 @@ in
       # PlatformIO: move the default ~/.platformio (GBs from toolchains etc.) to XDG data.
       PLATFORMIO_CORE_DIR = "${config.xdg.dataHome}/platformio";
 
+      # Gradle: ~/.gradle had grown to 1.5GB here, and nothing on PATH put it there — it is the
+      # Gradle bundled inside Android Studio. Data rather than cache: alongside the wrapper
+      # distributions and build caches it is also where init scripts and gradle.properties
+      # (signing keys, tokens) live, and those are not regenerable.
+      GRADLE_USER_HOME = "${config.xdg.dataHome}/gradle";
+
       # Dart/Flutter: move the pub package cache ~/.pub-cache to XDG cache (re-fetchable).
       PUB_CACHE = "${config.xdg.cacheHome}/pub";
       # matplotlib: not XDG-aware on macOS, so set it explicitly via MPLCONFIGDIR.
