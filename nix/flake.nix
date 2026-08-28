@@ -73,6 +73,13 @@
     disko.url = "github:nix-community/disko";
     disko.inputs.nixpkgs.follows = "nixpkgs-nixos";
 
+    # Zen browser. The daily driver on both machines, but there is no nixpkgs derivation for
+    # it (the mac gets it as a Homebrew cask), so on Linux it comes from the community flake.
+    # Deliberately no `follows`: zen's package.nix wants ffmpeg_9, which the 26.05 series
+    # does not carry (it stops at ffmpeg_7), so pointing it at nixpkgs-nixos aborts
+    # evaluation. Left on its own lineage, like zrythm-darwin above.
+    zen-browser.url = "github:0xc000022070/zen-browser-flake";
+
     # NixOS module that makes persistence targets explicit. Try it in a VM smoke test only for now;
     # don't apply it to the real machine until the data migration procedure is settled.
     preservation.url = "github:nix-community/preservation";
@@ -134,6 +141,7 @@
       sops-nix,
       lanzaboote,
       disko,
+      zen-browser,
       preservation,
       git-hooks,
       treefmt-nix,
@@ -662,7 +670,13 @@
         nixpkgs-nixos.lib.optionalAttrs (builtins.pathExists ./hosts/nixos-laptop-hardware.nix) {
           "nixos-laptop" = nixpkgs-nixos.lib.nixosSystem {
             system = "x86_64-linux";
-            specialArgs = { inherit user; };
+            specialArgs = {
+              inherit user;
+              # Must be passed here, not defaulted in the module signature: the host
+              # uses it inside `imports`, and resolving a module argument from
+              # `_module.args` there needs `config`, which is infinite recursion.
+              hardwareConfig = ./hosts/nixos-laptop-hardware.nix;
+            };
             modules = [
               # SSO overlay absorbing upstream nixpkgs breakage (shared with darwin/standalone home).
               # Override things like tailscale's wrong vendorHash here.
@@ -678,13 +692,20 @@
               {
                 home-manager.useGlobalPkgs = true;
                 home-manager.useUserPackages = true;
-                home-manager.extraSpecialArgs = commonSpecialArgs;
+                # zen has no nixpkgs derivation, so it rides in as a module argument rather
+                # than through `pkgs`. Importing the module by hand with an explicit `pkgs`
+                # would bypass the module system's pkgs (the one carrying allowUnfree and
+                # the overlays), so it has to go through extraSpecialArgs.
+                home-manager.extraSpecialArgs = commonSpecialArgs // {
+                  zen = zen-browser.packages.x86_64-linux.default;
+                };
                 home-manager.users.${user.username} = {
                   imports = [
                     ./home/common.nix
                     ./home/linux.nix
                     ./home/hyprland.nix # Hyprland rice (nixos-laptop only)
                     ./home/ssh-tpm-agent.nix # TPM-sealed SSH key (nixos-laptop only: WSL has no TPM)
+                    ./home/linux-gui.nix # GUI apps (the mac's cask list, as packages)
                     ./home/dev.nix # dev environment such as direnv
                     ./home/restic-backup-linux.nix # restic (systemd user timer)
                     sops-nix.homeManagerModules.sops

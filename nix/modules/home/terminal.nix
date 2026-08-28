@@ -54,7 +54,7 @@ in
   # Keep the real data under XDG data and maintain the compat path ~/.terminfo as a symlink
   # (XDG-ify while keeping max compat so ssh targets and GUIs can read it even without TERMINFO_DIRS).
   home.activation.ghosttyTerminfo = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    run /bin/mkdir -p "${config.xdg.dataHome}/terminfo"
+    run ${pkgs.coreutils}/bin/mkdir -p "${config.xdg.dataHome}/terminfo"
     run ${pkgs.ncurses}/bin/tic -x -o "${config.xdg.dataHome}/terminfo" ${../../../configs/terminals/ghostty/xterm-ghostty.terminfo}
   '';
   home.file.".terminfo".source =

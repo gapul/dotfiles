@@ -7,6 +7,25 @@ let
   c = import ../lib/theme.nix; # c.base / c.text / c.iris ... (hex without leading #)
 in
 {
+  # Binaries referenced by the keybinds / exec-once below. Without these the rice
+  # is inert: $mod+Return execs a ghostty that is not in the closure, and the
+  # night-light / screenshot / clipboard binds silently do nothing.
+  home.packages = with pkgs; [
+    ghostty # $terminal
+    wofi # $menu, and the cliphist picker
+    hyprpaper # wallpaper daemon (exec-once)
+    hyprpolkitagent # polkit agent (exec-once)
+    hyprshot # screenshots
+    hyprpicker # color picker
+    wlogout # power menu
+    cliphist # clipboard history
+    wl-clipboard # wl-copy / wl-paste, used by the cliphist pipeline
+    wl-gammarelay-rs # night light dbus daemon
+    brightnessctl # backlight keys
+    playerctl # media keys
+    wireplumber # wpctl, used by the volume keys
+  ];
+
   # package = null: use the system Hyprland, HM manages only the config.
   wayland.windowManager.hyprland = {
     enable = true;
@@ -21,12 +40,12 @@ in
 
       monitor = ",preferred,auto,1";
 
+      # Only things that have no systemd user unit of their own. hypridle / waybar /
+      # mako are started by their home-manager services below; listing them here as
+      # well launches a second copy of each (two bars stacked on the screen).
       exec-once = [
-        "hypridle"
         "hyprpolkitagent"
-        "waybar"
         "hyprpaper"
-        "mako"
         "wl-paste --watch cliphist store" # accumulate clipboard history
         "wl-gammarelay-rs" # dbus daemon for night light
       ];
@@ -221,4 +240,15 @@ in
 
   # ghostty config from dotfiles (reuses the same configs/terminals/ghostty as darwin).
   home.file.".config/ghostty".source = ../../configs/terminals/ghostty;
+
+  # The shared config is written for macOS, where ghostty lives as a Quick Terminal:
+  # `initial-window = false` plus `quit-after-last-window-closed = false` keep it resident
+  # with no window until cmd+space summons one. On Linux that combination means
+  # `$mod+Return` spawns a process that never maps a window, so the terminal looks broken
+  # while stray ghostty processes pile up. Undo just those two here; the shared config
+  # includes this file last, so these win.
+  home.file.".config/ghostty.local/platform.conf".text = ''
+    initial-window = true
+    quit-after-last-window-closed = true
+  '';
 }

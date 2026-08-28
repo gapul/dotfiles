@@ -179,6 +179,17 @@ git -C /mnt/etc/nixos/dotfiles add -A      # flake は git 追跡ファイルし
 ## Phase 7. インストール
 
 この時点では **Secure Boot はまだ OFF**。lanzaboote の鍵が未登録なので OFF のまま入れる。
+
+> ⚠️ **先に署名鍵を作る**。lanzaboote はブートローダー設置時に `/var/lib/sbctl` の鍵で UKI を
+> 署名するため、鍵が無いと `nixos-install` の最後で
+> `Failed to read public key from /var/lib/sbctl/keys/db/db.pem` と言って**ブートローダー設置だけ失敗**する
+> (システム本体のビルドは終わっているので、鍵を作って再実行すれば続きから進む)。
+> 鍵の *作成* は BIOS の Setup Mode を必要としない。BIOS 操作が要るのは Phase 8 の *登録* から。
+> ```sh
+> nixos-install --no-bootloader --flake /mnt/etc/nixos/dotfiles/nix#nixos-laptop
+> nixos-enter --root /mnt -c 'sbctl create-keys'
+> ```
+
 ```sh
 nixos-install --flake /mnt/etc/nixos/dotfiles/nix#nixos-laptop
 ```

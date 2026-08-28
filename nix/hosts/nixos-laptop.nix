@@ -129,7 +129,7 @@
   services.tailscale.enable = true;
 
   time.timeZone = "Asia/Tokyo";
-  i18n.defaultLocale = "ja_JP.UTF-8";
+  i18n.defaultLocale = "en_US.UTF-8";
   console.keyMap = "us"; # "jp" for a JIS layout
 
   # Countermeasure for clock drift when dual-booting with Windows.
@@ -147,11 +147,26 @@
   };
 
   nixpkgs.config.allowUnfree = true;
+  # Obsidian / Bitwarden / Beeper all ship on Electron 39, which nixpkgs marks insecure
+  # because upstream Electron dropped it from support. The same three run on the mac against
+  # the same Electron, so refusing them only here would be theatre rather than a decision.
+  # This pin is maintenance: the version string goes stale on every nixpkgs bump, and the
+  # right time to delete the line is when a bump stops needing it.
+  nixpkgs.config.permittedInsecurePackages = [ "electron-39.8.10" ];
 
   # --- Laptop power/thermal/input (HP laptop) ---
   services.tlp.enable = true; # battery optimization (charge thresholds etc. tunable later)
   services.thermald.enable = true; # Intel CPU thermal control (proper thermal throttling)
   services.libinput.enable = true; # touchpad (tap, natural scroll, etc.)
+  # Lid close: suspend on battery, stay up on AC. The machine is administered over SSH,
+  # so closing it on the desk should not take it off the tailnet; on battery the default
+  # suspend still applies so a closed laptop in a bag does not cook itself.
+  services.logind.settings.Login = {
+    HandleLidSwitch = "suspend";
+    HandleLidSwitchExternalPower = "ignore";
+    HandleLidSwitchDocked = "ignore";
+  };
+
   # Suspend on lid close (default behavior; override with logind if needed).
   # Battery level / brightness are handled by brightnessctl + waybar.
 
@@ -180,6 +195,12 @@
     programs.hyprland.enable = lib.mkForce false;
     services.greetd.enable = lib.mkForce false;
     hardware.graphics.enable = lib.mkForce false;
+    # Anything that pulls in the graphics stack has to go too. With graphics off,
+    # hardware.graphics.package has no value, so a module that merely reads it (steam and
+    # gamescope both do) fails evaluation of the whole specialisation.
+    programs.steam.enable = lib.mkForce false;
+    programs.gamescope.enable = lib.mkForce false;
+    hardware.graphics.enable32Bit = lib.mkForce false;
   };
 
   # polkit agent for GUI privilege-escalation dialogs (specified explicitly since Hyprland ships no DE).
@@ -247,6 +268,12 @@
       config.security.tpm2.tssGroup
     ];
     shell = pkgs.zsh;
+    # Public keys, so they live in the repo rather than being curl'd onto the box
+    # by hand on every reinstall. Private keys stay in Bitwarden.
+    openssh.authorizedKeys.keys = [
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBLeOb9XOJPsmuTRf708qYoNckWk+/fhuWkpTWtTSu41"
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFc0vERDgqbotas7YjbabpVPWjtficFNWSW+8Hu/WL8x"
+    ];
   };
   programs.zsh.enable = true;
 
@@ -254,10 +281,49 @@
   services.openssh.enable = true;
   services.openssh.settings.PasswordAuthentication = false;
 
-  # Fingerprint auth (the HP laptop's fingerprint reader). Usable for sudo / login / unlocking hyprlock.
-  # Enroll a fingerprint with `sudo fprintd-enroll $USER` on first run only.
+  # sudo without a password for wheel. This box is administered remotely over SSH
+  # (key-only, PasswordAuthentication = false), and prompting for a password there
+  # means someone has to be sitting at the machine for every rebuild. The trade-off
+  # is explicit: whoever holds the SSH private key gets root. That is already close
+  # to true, since `nixos-rebuild` is root-equivalent by construction.
+  security.sudo.wheelNeedsPassword = false;
+
+  # Fingerprint auth (the HP laptop's fingerprint reader).
+  # Enabling fprintd makes NixOS insert pam_fprintd ahead of pam_unix in the PAM stacks, so
+  # greetd and the ttys accept a finger and fall back to the password on their own.
+  # Two things are deliberately not what they look like:
+  #   * sudo does NOT use it. wheelNeedsPassword = false above means the sudo auth stack is
+  #     never run, so pam_fprintd is never reached. Keeping NOPASSWD is the deliberate
+  #     choice: requiring a finger would make every SSH-driven `sudo` hang until someone
+  #     touches the machine.
+  #   * hyprlock does not go through PAM for this. It talks to fprintd over D-Bus itself and
+  #     needs its own `auth:fingerprint:enabled` switch (see home/hyprland.nix).
+  # Enroll a fingerprint with `fprintd-enroll` on first run only.
   # * LUKS unlock happens at boot (initrd), so fingerprints can't be used there; it stays passphrase/TPM.
   services.fprintd.enable = true;
+
+  # --- Gaming ---
+  # Steam has to be system-side: it needs the 32-bit graphics stack (driSupport32Bit) and
+  # its own firewall holes, neither of which home-manager can provide. gamescope is the
+  # micro-compositor games run inside — under Hyprland it is what keeps resolution and
+  # frame pacing sane instead of fighting the tiling WM. gamemode flips the CPU governor
+  # for the duration of a game and puts it back afterwards.
+  programs.steam = {
+    enable = true;
+    gamescopeSession.enable = true;
+    remotePlay.openFirewall = true;
+    localNetworkGameTransfers.openFirewall = true;
+  };
+  programs.gamescope.enable = true;
+  programs.gamemode.enable = true;
+  # 32-bit userspace GL for older titles and for Proton's 32-bit prefixes.
+  hardware.graphics.enable32Bit = true;
+
+  # --- Android apps (waydroid) ---
+  # Runs Android in a LXC container against the Wayland compositor, so Android apps appear
+  # as ordinary Hyprland windows. The image itself is not declarative: it is fetched once
+  # with `sudo waydroid init -s GAPPS` (or -s VANILLA) after the first rebuild.
+  virtualisation.waydroid.enable = true;
 
   # --- Containers (podman: rootless + docker-compatible) ---
   # The `docker` command can be used as an alias for podman (dockerCompat).

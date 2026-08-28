@@ -77,7 +77,7 @@ in
   # google-drive-* are rclone mounts (remote-primary, see home/rclone-mount.nix), syncthing holds
   # real local files (local-primary, the only one restic backs up).
   home.activation.workstationDataDirs = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    /bin/mkdir -p \
+    ${pkgs.coreutils}/bin/mkdir -p \
       "${config.home.homeDirectory}/Sync/google-drive-personal" \
       "${config.home.homeDirectory}/Sync/google-drive-school" \
       "${config.home.homeDirectory}/Sync/syncthing"
