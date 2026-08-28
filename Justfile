@@ -101,7 +101,13 @@ _rebuild-macos force="":
     # to anything user-interactive, which is all the tap needs.
     if [ "$do_sys" = 1 ]; then
       echo "━━━ nix-darwin" | tee -a "$log"
-      taskpolicy -c utility nh darwin switch {{flake}} -H "$name" -q -Q --diff never $nom_flag 2>&1 | tee -a "$log"
+      # Take sudo up front, the same way `just maintain` does. Without this the prompt lands in the
+      # middle of an activation that prints nothing, so the rebuild looks frozen — and when it runs
+      # without a tty (post-merge hook, an agent) it waits forever with no output at all.
+      sudo -v
+      # -Q (no build output) stays; -q does not. -q also hid nh's own progress, which is what made
+      # a stalled switch indistinguishable from a hung one.
+      taskpolicy -c utility nh darwin switch {{flake}} -H "$name" -Q --diff never $nom_flag 2>&1 | tee -a "$log"
       echo "✓ nix-darwin" | tee -a "$log"
     else
       echo "– nix-darwin unchanged" | tee -a "$log"
@@ -117,7 +123,7 @@ _rebuild-macos force="":
     # whose target already exists is skipped — the declaration silently does nothing. That is how
     # gh-dash/config.yml and slk/config.toml stayed plain files after #153 declared them.
     if [ "$do_home" = 1 ]; then
-      taskpolicy -c utility nh home switch {{flake}} -c "$name" -q -Q --diff never -b hm-bak $nom_flag 2>&1 | tee -a "$log"
+      taskpolicy -c utility nh home switch {{flake}} -c "$name" -Q --diff never -b hm-bak $nom_flag 2>&1 | tee -a "$log"
       echo "✓ home-manager" | tee -a "$log"
     else
       echo "– home-manager unchanged" | tee -a "$log"
