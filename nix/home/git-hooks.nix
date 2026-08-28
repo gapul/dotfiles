@@ -66,7 +66,7 @@ in
 {
   home.activation.installDotfilesRebuildHooks = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     if [ -d "${dotfilesDir}/.git" ]; then
-      run /bin/mkdir -p "${dotfilesDir}/.git/hooks"
+      run ${pkgs.coreutils}/bin/mkdir -p "${dotfilesDir}/.git/hooks"
       run /usr/bin/install -m 0755 ${postMerge} "${dotfilesDir}/.git/hooks/post-merge"
       run /usr/bin/install -m 0755 ${postRewrite} "${dotfilesDir}/.git/hooks/post-rewrite"
     fi

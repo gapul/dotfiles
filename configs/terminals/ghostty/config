@@ -90,3 +90,8 @@ quick-terminal-animation-duration = 0.12
 # 先頭 ? は「未生成でもエラーにしない」optional include。~ は Ghostty が展開する。
 config-file = ?~/.config/ghostty.local/font-size.conf
 
+# プラットフォーム別の上書き。上の initial-window / quit-after-last-window-closed は
+# macOS の Quick Terminal 常駐 (cmd+space で呼び出す) のための設定で、Linux では
+# 「起動しても窓が出ない」だけの意味になる。後勝ちなので font-size.conf より後に置く。
+# Linux 側の中身は nix/home/hyprland.nix が生成する。macOS では未生成 = ? で無視される。
+config-file = ?~/.config/ghostty.local/platform.conf
