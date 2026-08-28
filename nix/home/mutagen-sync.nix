@@ -167,6 +167,14 @@ in
     ensureScript
   ];
 
+  # mutagen defaults its data directory to ~/.mutagen, which is the last CLI in this config still
+  # writing a dotfile into $HOME (adb is the other holdout, but android-tools 35.0.2 derives
+  # $HOME/.android with no env override, so it stays). The directory holds the daemon's session
+  # state, so it is data rather than config or cache.
+  # The daemon inherits this from the shell that starts it: the ssh wrapper below is the only
+  # thing that ever launches it, so there is no launchd agent needing the variable separately.
+  home.sessionVariables.MUTAGEN_DATA_DIRECTORY = "${config.xdg.dataHome}/mutagen";
+
   # Pair a host the first time we ssh into it. Deliberately after the session ends: during it a
   # second connection would ask the Bitwarden agent to approve again, and on a host carrying port
   # forwards it would fail outright. The wrapper never touches ssh's own behaviour or exit code.
