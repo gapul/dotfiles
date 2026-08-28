@@ -122,12 +122,31 @@ in
       $path
     )
 
-    # Bitwarden SSH agent: prefer the socket Desktop (direct-DL build) creates when enabled.
-    # Keys are stored in the Bitwarden Vault; Desktop approves each connection (Touch ID).
-    # To avoid breaking when Bitwarden isn't running/enabled, fall back to launchd default when the socket is absent.
-    if [[ -S "$HOME/.bitwarden-ssh-agent.sock" ]]; then
-      export SSH_AUTH_SOCK="$HOME/.bitwarden-ssh-agent.sock"
-    fi
+    # SSH keys come from the Secure Enclave now, not the Bitwarden vault, so leave SSH_AUTH_SOCK
+    # pointing at launchd's own agent. Overriding it to the Bitwarden socket meant that closing
+    # Bitwarden emptied the agent: direct logins still worked (ssh_config offers the enclave key as
+    # an IdentityFile), but the five hosts with ForwardAgent forwarded nothing, so git on the far
+    # side broke with no obvious cause.
+    #
+    # SSH_SK_PROVIDER is what lets the agent hold the enclave identity at all: it is an sk-ecdsa key
+    # behind macOS' CryptoTokenKit middleware, and ssh-add/ssh-agent need to be told which library
+    # to load. With AddKeysToAgent=yes in ssh_config, the first connection loads it by itself —
+    # and since ForwardAgent only applies to connections made from this Mac, making that connection
+    # is precisely what fills the agent. No login-time ssh-add job is needed.
+    export SSH_SK_PROVIDER=/usr/lib/ssh-keychain.dylib
+
+    # The Bitwarden vault is kept as the recovery path — its keys are still in every
+    # authorized_keys, including the work host that only this Mac's enclave can otherwise reach.
+    # Opt into it for a session when the enclave is unavailable:
+    function use-bitwarden-agent() {
+      if [[ -S "$HOME/.bitwarden-ssh-agent.sock" ]]; then
+        export SSH_AUTH_SOCK="$HOME/.bitwarden-ssh-agent.sock"
+        echo "SSH_AUTH_SOCK -> Bitwarden (このシェルのみ)"
+      else
+        echo "Bitwarden Desktop が起動・アンロックされていません" >&2
+        return 1
+      fi
+    }
 
     # CocoaPods (avoid conflict with nix ruby)
     unset GEM_HOME GEM_PATH

@@ -91,6 +91,59 @@ in
     # CustomUserPreferences is the same mechanism declared instead of scripted, and only the keys
     # listed here are touched — the apps' other settings are left alone, which is what the old
     # "surgically write only these keys" comments were asking for.
+    # Thaw (menu bar manager, Ice fork): the settings were only ever in the app's own plist, so a
+    # fresh machine came up with defaults and the layout had to be rebuilt by hand. Captured from
+    # the running config on 2026-08-28.
+    #
+    # Two keys are deliberately absent. IceIcon and MenuBarAppearanceConfigurationV2 hold binary
+    # blobs (an encoded icon and a per-display appearance struct) that CustomUserPreferences cannot
+    # express, so they stay app-managed. Hotkeys is a nested dict whose entries are all unset.
+    # First-launch bookkeeping (hasCompletedFirstLaunch, SUHasLaunchedBefore, …) is also left out:
+    # declaring it would lie to the app about state it owns.
+    CustomUserPreferences."com.stonerl.Thaw" = {
+      AutoRehide = true;
+      CustomIceIconIsTemplate = false;
+      EnableAlwaysHiddenSection = true;
+      EnableSecondaryContextMenu = true;
+      HideApplicationMenus = true;
+      IceBarLocation = 0;
+      IceBarLocationOnHotkey = false;
+      IconRefreshInterval = 0.5;
+      ItemSpacingOffset = 0.0;
+      "NSStatusItem Preferred Position Thaw.ControlItem.AlwaysHidden" = 5434.0;
+      "NSStatusItem Preferred Position Thaw.ControlItem.Hidden" = 160.0;
+      "NSStatusItem Preferred Position Thaw.ControlItem.Visible" = 86.0;
+      "NSStatusItem Visible Thaw.ControlItem.AlwaysHidden" = true;
+      "NSStatusItem Visible Thaw.ControlItem.Hidden" = true;
+      "NSStatusItem Visible Thaw.ControlItem.Visible" = true;
+      "NSStatusItem VisibleCC Thaw.ControlItem.AlwaysHidden" = true;
+      "NSStatusItem VisibleCC Thaw.ControlItem.Hidden" = true;
+      "NSStatusItem VisibleCC Thaw.ControlItem.Visible" = true;
+      "NSWindow Frame PermissionsWindow" = "1005 478 550 683 0 0 2560 1608 ";
+      "NSWindow Frame SettingsWindow" = "855 493 850 602 0 0 2560 1608 ";
+      RehideInterval = 15.0;
+      RehideStrategy = 1;
+      SUEnableAutomaticChecks = false;
+      SectionDividerStyle = 0;
+      ShowAllSectionsOnUserDrag = true;
+      ShowIceIcon = true;
+      ShowMenuBarTooltips = false;
+      ShowOnClick = true;
+      ShowOnDoubleClick = true;
+      ShowOnHover = false;
+      ShowOnHoverDelay = 0.2;
+      ShowOnScroll = true;
+      TooltipDelay = 0.5;
+      UseIceBar = false;
+      UseIceBarOnlyOnNotchedDisplay = false;
+      hasMigrated0_10_0 = true;
+      hasMigrated0_10_1 = true;
+      hasMigrated0_11_10 = true;
+      hasMigrated0_11_13 = true;
+      hasMigrated0_11_13_1 = true;
+      hasMigrated0_8_0 = true;
+    };
+
     # Skim: VimTeX integration. Inverse search (click PDF -> jump to line in Neovim) + reload on save.
     CustomUserPreferences."net.sourceforge.skim-app.skim" = {
       SKTeXEditorPreset = "Custom";
