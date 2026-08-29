@@ -42,10 +42,10 @@ CANARY_INTERVAL=10800
 # (8/24 に1回目の実発動が誤検知だった: 冷えた状態の初回ターンが 280 秒を超え、
 #  会話は壊れていないのに gateway を落とした)
 CANARY_STRIKE=/var/run/hermes-canary.strike
-CANARY_FILE=/Users/hsandbox/study/.canary
+CANARY_DIR=/Users/hsandbox/study
 
 check_canary() {
-  local now last env key port reply active token
+  local now last env key port reply active token canary
   now=$(date +%s)
   last=$(cat "$CANARY_STAMP" 2>/dev/null || echo 0)
   [ $((now - last)) -lt "$CANARY_INTERVAL" ] && return 0
@@ -61,20 +61,24 @@ check_canary() {
   port=$(grep '^API_SERVER_PORT=' "$env" 2>/dev/null | cut -d= -f2-)
   [ -n "$key" ] || return 0   # 設定が読めないときは判定しない
 
-  # 毎回ちがう合言葉を置いて、それを読ませる。progress.md のような中身が
-  # 変わらないファイルを読ませると read_file の重複判定に弾かれ、まなびは
-  # 記憶から答えてしまう。それでは「ファイルが読めなくなった」という
-  # いちばん多い壊れ方(tar 破損で2回起きた)を素通ししてしまう。
+  # 毎回ちがう合言葉を、毎回ちがう名前のファイルに置いて読ませる。
+  # 中身を変えるだけでは足りない: read_file の重複判定は中身ではなく
+  # 「同じ場所を何回読んだか」で数えていて(8/28 深夜に4回目で弾かれた)、
+  # 名前が同じだと数回で必ずブロックされる。名前を変えれば毎回初回になる。
+  # 固定ファイルを読ませると、まなびは記憶から答えてしまい、
+  # 「ファイルが読めなくなった」という一番多い壊れ方を素通ししてしまう。
   token=$(date +%y%m%d%H%M%S)
-  printf '%s\n' "$token" > "$CANARY_FILE" || return 0
-  chown hsandbox "$CANARY_FILE" 2>/dev/null
+  canary="$CANARY_DIR/.canary-$token"
+  find "$CANARY_DIR" -maxdepth 1 -name '.canary*' -delete 2>/dev/null
+  printf '%s\n' "$token" > "$canary" || return 0
+  chown hsandbox "$canary" 2>/dev/null
 
   reply=$(curl -s -m 420 -X POST "http://127.0.0.1:${port:-8791}/v1/chat/completions" \
     -H "Content-Type: application/json" -H "Authorization: Bearer $key" \
     -d "$(/usr/bin/python3 -c 'import json,sys
 print(json.dumps({"model":"manabi","messages":[{"role":"user","content":
-  "監視用の自動確認です。/Users/hsandbox/study/.canary を読んで、"
-  "中に書いてある数字だけを返してください。説明は不要です。"}]}))')" \
+  "監視用の自動確認です。" + sys.argv[1] + " を読んで、"
+  "中に書いてある数字だけを返してください。説明は不要です。"}]}))' "$canary")" \
     | /usr/bin/python3 -c 'import json,sys
 try:
     print(json.load(sys.stdin)["choices"][0]["message"]["content"][:400])
