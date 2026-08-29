@@ -86,11 +86,11 @@
           name = "mojeek";
           disabled = true;
         }
-        # qwant も別系統だが、2026-08 時点で CAPTCHA に沈んでいる。自動で
-        # 外れるとはいえ毎回叩きに行って待たされるので、明示的に切る。
+        # qwant は英語だと CAPTCHA だが、日本語のクエリでは 10 件返る。
+        # 全滅ではないので有効なままにする。
         {
           name = "qwant";
-          disabled = true;
+          disabled = false;
         }
         # これも自前クローラ。鍵が要らず、実測で 53 件返した (mojeek と同じ役割で、
         # Google 系が全滅したときに残る側を厚くする)。
@@ -112,6 +112,23 @@
         }
         {
           name = "searchmysite";
+          disabled = false;
+        }
+        # Google 以外の大手インデックス。61 個を実測して見つけた中で、日英とも
+        # 安定して返る数少ない大手。ここが生きていると検索の軸を Google から
+        # 外せる。
+        {
+          name = "bing";
+          disabled = false;
+        }
+        # これも独立インデックス。日本語も返る。
+        {
+          name = "yandex";
+          disabled = false;
+        }
+        # フォーラム専門。性格が違うので幅が出る。
+        {
+          name = "boardreader";
           disabled = false;
         }
       ];
