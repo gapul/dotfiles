@@ -281,13 +281,23 @@
     failed=""
     for app in "''${LOGIN_APPS[@]}"; do
       name=$(basename "$app" .app)
-      if ! /usr/bin/osascript -e "tell application \"System Events\" to (name of login items) contains \"$name\"" 2>/dev/null | grep -q true; then
-        if [ ! -d "$app" ]; then
-          continue # not installed on this machine yet; the cask will bring it, next rebuild registers it
-        fi
-        /usr/bin/osascript -e "tell application \"System Events\" to make login item at end with properties {path:\"$app\", hidden:false}" >/dev/null 2>&1 ||
-          failed="$failed $name"
+      # Compare the registered path, not just the name. Matching on the name alone meant a moved
+      # app kept its stale entry forever: Puddle became a nix package, the declaration moved to
+      # /Applications/Nix Apps, and the login item still pointed at the deleted
+      # /Applications/Puddle.app — `path of login item` answered `missing value` and nothing
+      # noticed. A wrong path is worse than a missing one, since it fails silently at login.
+      current=$(/usr/bin/osascript -e "tell application \"System Events\" to get path of login item \"$name\"" 2>/dev/null)
+      if [ "$current" = "$app" ]; then
+        continue
       fi
+      if [ ! -d "$app" ]; then
+        continue # not installed on this machine yet; the cask will bring it, next rebuild registers it
+      fi
+      if [ -n "$current" ]; then
+        /usr/bin/osascript -e "tell application \"System Events\" to delete login item \"$name\"" >/dev/null 2>&1 || true
+      fi
+      /usr/bin/osascript -e "tell application \"System Events\" to make login item at end with properties {path:\"$app\", hidden:false}" >/dev/null 2>&1 ||
+        failed="$failed $name"
     done
     if [ -n "$failed" ]; then
       warnEcho "login items could not be registered:$failed"
