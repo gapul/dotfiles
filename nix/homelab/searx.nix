@@ -62,6 +62,12 @@
         public_instance = false;
       };
 
+      # エンジンを足すときは、必ず結果に**エンジン名が出ること**まで確認する。
+      # SearXNG は知らないショートカットを検索語として扱うので、`!foo` が
+      # 結果を返しても foo が動いている証拠にならない。存在しないエンジンを
+      # 2 つ入れてしまった (luxxle / rawweb)。`/config` に載っているかで実在を、
+      # 結果へのエンジン名の出現で稼働を確かめる。
+      #
       # duckduckgo / startpage / brave は既定で有効なまま残す。どれも
       # 2026-08 時点では CAPTCHA や rate limit に沈んでいるが、エンドポイント
       # 自体は生きていて (202 / 302 / 200 が返る)、対ボットのチャレンジを
@@ -92,14 +98,20 @@
           name = "mwmbl";
           disabled = false;
         }
-        # 対ボット網に巻き込まれていない側をさらに厚くする。どちらも鍵が要らず、
-        # 日本語のクエリで 30 件返すことを実測して選んだ。
+        # duckduckgo の別実装。既定の duckduckgo は CAPTCHA に沈んでいるが、
+        # こちらは通る。日本語のクエリでも結果が返り、結果にエンジン名が
+        # 出ることまで確認した。
         {
-          name = "luxxle";
+          name = "duckduckgo web";
+          disabled = false;
+        }
+        # 対ボット網に巻き込まれていない側を厚くする。どちらも鍵が要らない。
+        {
+          name = "privacywall";
           disabled = false;
         }
         {
-          name = "rawweb";
+          name = "searchmysite";
           disabled = false;
         }
       ];
