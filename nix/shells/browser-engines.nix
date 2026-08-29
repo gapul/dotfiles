@@ -73,10 +73,15 @@ in
   ladybird = pkgs.mkShellNoCC {
     packages = commonTools ++ [
       pkgs.python3
-      # vcpkg's bootstrap shells out to these three.
+      # vcpkg's bootstrap shells out to zip/unzip/tar; macOS supplies tar.
+      #
+      # Deliberately no pkgs.curl here. vcpkg builds its own curl and libpsl, but
+      # a nix curl on the search path wins, and liblagom-url ends up linked
+      # against a /nix/store libpsl. Nothing roots that path once the shell is
+      # gone, so the next GC deletes it and Ladybird stops launching with a dyld
+      # "Library not loaded" error. /usr/bin/curl covers the download step.
       pkgs.zip
       pkgs.unzip
-      pkgs.curl
     ];
 
     shellHook = appleToolchainHook + ''
