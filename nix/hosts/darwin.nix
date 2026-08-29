@@ -466,10 +466,15 @@ in
       # over configs/wm/omniwm/settings.toml in this repo. Two known shapes of that:
       #   - new keys. 0.6.3 added focus.raiseOnMouseFocus and gaps.fullscreenUsesOuterGaps;
       #     their absence alone wiped every hotkey (fixed by adding them, both false).
-      #   - renamed action ids. 0.6.4 renames assignFocusedWindowToScratchpad and
-      #     toggleScratchpadWindow to …ToScratchpad.1 / toggleScratchpad.1 and adds eighteen
-      #     more. It ships a migration, but an unknown id is exactly what invalidates a file,
-      #     so diff settings.toml after that upgrade rather than assuming.
+      #   - renamed action ids. 0.6.4 renamed assignFocusedWindowToScratchpad and
+      #     toggleScratchpadWindow to …ToScratchpad.1 / toggleScratchpad.1 and added eighteen
+      #     more, which is the same unknown-id condition. Its migration turned out to handle it:
+      #     upgraded 0.6.3 → 0.6.4 by hand on 2026-08-29 with OmniWM quit, and the file came back
+      #     migrated (+86/-8, the deletions being only those two Unassigned rows) with all
+      #     twenty-one hotkeys intact and no settings.toml.corrupt.
+      # That upgrade was done deliberately rather than left to `just maintain`, which trusts the
+      # taps and then runs `brew upgrade --cask --greedy`: the next maintenance run would have
+      # installed 0.6.4 unattended, and a wipe there is only noticed once the keys stop working.
       # In short: after any omniwm upgrade, check `ls ~/.config/omniwm/settings.toml.corrupt`
       # and `git diff configs/wm/omniwm/settings.toml` before doing anything else.
       "omniwm"
