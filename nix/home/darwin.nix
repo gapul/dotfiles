@@ -245,6 +245,11 @@ in
     # All of these exist in nixpkgs for aarch64-darwin and substitute from the cache, and none of
     # them needs a brew service / tap / keg. See hosts/darwin.nix's brews for what stays on brew and why.
     sox # audio processing (rec / play / sox / soxi)
+    # OpenSeeFace: webcam face/landmark tracking on the CPU, the FOSS half of what VSeeFace is
+    # usually credited with (VSeeFace itself is closed). Ships no .app — it is a python tracker
+    # that sends over UDP, which nijiexpose reads directly as a tracking source. Useful as the
+    # camera-side input when the iPhone is not in play.
+    openseeface
     # Talk to the iPhone over USB without Finder. Voice Memos keeps its recordings inside the app
     # sandbox, which AFC cannot reach, so the only way off the device is a device backup
     # (idevicebackup2) and pulling the AppDomainGroup-group.com.apple.VoiceMemos.shared files out
