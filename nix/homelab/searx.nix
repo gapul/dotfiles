@@ -114,17 +114,33 @@
           name = "searchmysite";
           disabled = false;
         }
-        # Google 以外の大手インデックス。61 個を実測して見つけた中で、日英とも
-        # 安定して返る数少ない大手。ここが生きていると検索の軸を Google から
-        # 外せる。
-        {
-          name = "bing";
-          disabled = false;
-        }
-        # これも独立インデックス。日本語も返る。
+        # bing は入れない。duckduckgo web が返すのは Bing のインデックスその
+        # ものなので結果が重複する一方、直接叩くと Microsoft に全クエリが渡る。
+        # 同じ結果を得るのに見られる相手が 1 つ増えるだけになる。ddg が落ちた
+        # ときだけ欲しくなるが、SearXNG に条件分岐は無く「落ちたら使う」は
+        # 「常に叩く」としてしか書けない。
+        #
+        # yandex は Google / Bing どちらでもない大きなインデックスで、いま
+        # 代替が無い (mojeek は塞がれ、brave は鍵待ち)。全クエリが Yandex に
+        # 渡る代償はあるが、代替が無いものは使うという判断。
         {
           name = "yandex";
           disabled = false;
+        }
+        # startpage を既定から外す。2026-08-30 に実機で切り分けたところ壁が
+        # 2 段あった。curl には JS チャレンジが返り、それを headless Chromium
+        # で越えると、その先で IP ベースの停止に当たる。
+        #
+        #   Access Temporarily Suspended
+        #   Our anti-abuse systems are activated when we receive a large
+        #   number of search requests from a particular internet connection
+        #
+        # ブラウザかどうかではなく、その IP からの検索回数で切られている。
+        # 自宅の IP から常用する限り構造的に使えない。毎回叩いて必ず失敗し
+        # 待たされるだけなので、`!sp` と書いたときだけ叩く形にする。
+        {
+          name = "startpage";
+          disabled = true;
         }
         # フォーラム専門。性格が違うので幅が出る。
         {
