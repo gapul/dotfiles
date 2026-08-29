@@ -15,6 +15,10 @@ let
   # The bundle actually launched: a signed copy of the one in the store, see
   # home.activation.mechvibesSign below.
   mechvibesApp = "/Applications/MechvibesDX.app";
+
+  # Native Access's daemon, where its installer puts it (proprietary, not nix-built).
+  # Bound here because both the `na` wrapper and the LaunchAgent below refer to it.
+  ntkDaemon = "/Library/Application Support/Native Instruments/NTK/NTKDaemon.app/Contents/MacOS/NTKDaemon";
 in
 {
   imports = [
@@ -190,7 +194,24 @@ in
     # na: unofficial Native Access CLI. The tool lives in a private checkout
     # (~/Developer/github.com/gapul/na-cli); this wrapper bundles pyzmq and calls it,
     # so the RE'd source stays out of this public repo. Talks to NTKDaemon (agent below).
+    # The daemon is not resident: this wrapper starts it, so nothing Native Instruments
+    # related runs until Native Access is actually used. `kickstart` on an already-running
+    # label is a no-op, so the common case costs one launchctl call.
     (writeShellScriptBin "na" ''
+      if [ -x "${ntkDaemon}" ]; then
+        /bin/launchctl kickstart "gui/$(/usr/bin/id -u)/org.nix-community.home.ntkdaemon" >/dev/null 2>&1 || true
+        # The daemon binds its ZeroMQ ports a moment after exec. A REQ socket would queue the
+        # request and still make the 5 s receive timeout, but waiting here keeps the failure
+        # mode honest: if the port never opens, na says so instead of timing out mid-command.
+        for _ in {1..50}; do
+          (exec 3<>/dev/tcp/127.0.0.1/5146) 2>/dev/null && break
+          /bin/sleep 0.1
+        done
+      else
+        echo "na: NTKDaemon is not installed (${ntkDaemon})." >&2
+        echo "na: install it from Native Access, then run na again." >&2
+        exit 1
+      fi
       exec ${
         python3.withPackages (p: [ p.pyzmq ])
       }/bin/python3 "$HOME/Developer/github.com/gapul/na-cli/na" "$@"
@@ -323,19 +344,24 @@ in
 
   # NTKDaemon: Native Access's local daemon (ZeroMQ 5146/5563) that `na` drives.
   # NA launches it on demand as an app (launchctl label `application.…NTKDaemon…`),
-  # so removing the GUI would leave nothing to start it. Declaring it here keeps it
-  # resident via launchd, making the Native Access GUI removable. The binary stays
-  # where NA's installer put it (proprietary, not nix-built); nix only owns the agent.
-  # Note: if the GUI is still installed, launching it spawns a second NTKDaemon that
-  # collides on the ports — remove /Applications/Native Access.app once this is live.
+  # so removing the GUI would leave nothing to start it. This agent is that starter,
+  # and the binary stays where NA's installer put it (proprietary, not nix-built);
+  # nix only owns the agent. Note: if the GUI is still installed, launching it spawns
+  # a second NTKDaemon that collides on the ports — remove /Applications/Native Access.app.
+  #
+  # Deliberately not resident. It used to be RunAtLoad + KeepAlive, which meant a NI
+  # daemon ran from login for the sake of a CLI used a few times a year — and once the
+  # binary disappeared (NTK uninstalled, 2026-08) launchd sat in a throttled respawn loop
+  # logging "No such file or directory" forever. The `na` wrapper in home.packages
+  # kickstarts this label instead, so the daemon's lifetime matches Native Access use.
   launchd.agents.ntkdaemon = {
     enable = true;
     config = {
-      ProgramArguments = [
-        "/Library/Application Support/Native Instruments/NTK/NTKDaemon.app/Contents/MacOS/NTKDaemon"
-      ];
-      RunAtLoad = true;
-      KeepAlive = true;
+      ProgramArguments = [ ntkDaemon ];
+      RunAtLoad = false;
+      # KeepAlive off as well: with nothing to restart it, a daemon that exits stays
+      # exited until the next `na`, which is what "on demand" has to mean here.
+      KeepAlive = false;
       StandardOutPath = "${config.home.homeDirectory}/Library/Logs/NTKDaemon/ntkdaemon.log";
       StandardErrorPath = "${config.home.homeDirectory}/Library/Logs/NTKDaemon/ntkdaemon.log";
     };
