@@ -53,6 +53,10 @@ in
     # ほうで、ここは Developer ID 署名の bundle をそのまま運ぶので版が上がっても剥がれない。
     # 常駐は launchd.agents.keebmouse (modules/home/darwin-chrome.nix) が持つ。
     (pkgs.callPackage ../pkgs/keebmouse.nix { })
+    # Puddle / keystats: 自作物。keebmouse と同じく cask をやめて署名済みリリースを取り込む。
+    # これで自作物のための tap (gapul/puddle, gapul/keystats) が両方畳める。
+    (pkgs.callPackage ../pkgs/puddle.nix { })
+    (pkgs.callPackage ../pkgs/keystats.nix { })
     # VOICEVOX: was the reason a fork of the upstream Homebrew tap existed at all — upstream is
     # stuck at 0.25.1 with a dead autobump, so the fork carried 0.25.2 by hand. nixpkgs packages
     # the same 0.25.2 and builds on aarch64-darwin, so the fork, the tap and the "switch back once
@@ -379,8 +383,6 @@ in
       # ─── Personal forks (gapul) — delete if you forked and don't need them ───
       "gapul/openutau"
       "gapul/azoo-key-skkserv"
-      "gapul/keystats" # self-made keystroke analytics (cask)
-      "gapul/puddle" # cask distribution tap for Puddle (self-built MIT fork of Plash)
       "gapul/armorpaint" # ArmorPaint source-build formula distribution tap (official is paid €16 → self-build for free full version)
       "gapul/inochi" # cask distribution tap for Inochi Creator (2D VTuber rigging) (not in homebrew/cask)
     ];
@@ -541,7 +543,6 @@ in
       "y3owk1n/tap/neru" # mouse-free full-screen navigation (grid/hints/scroll. System-wide version of Vimium. shortcat superset)
 
       # ─── macOS utilities ───
-      "gapul/puddle/puddle" # set any web page as desktop wallpaper (self-built MIT fork of Plash, Developer ID signed + notarized)
       "hammerspoon"
       "espanso"
       "maccy"
@@ -627,9 +628,6 @@ in
       # zrythm was removed since it was a trial version (x64/Rosetta/can't save). Consolidated onto the
       # self-made full nix version (pkgs/zrythm-darwin, arm64-native, -O2). Installed via home.packages.
       "vcv-rack"
-      # self-made keystroke analytics. Developer ID signed + notarized, so it passes
-      # Gatekeeper even with quarantine (no_quarantine not needed).
-      "gapul/keystats/keystats"
       "blackhole-2ch" # virtual audio device to route system audio into OBS / DAW
 
       # ─── Creative — Video / Animation / Stream ───
