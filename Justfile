@@ -104,7 +104,10 @@ _rebuild-macos force="":
       # Take sudo up front, the same way `just maintain` does. Without this the prompt lands in the
       # middle of an activation that prints nothing, so the rebuild looks frozen — and when it runs
       # without a tty (post-merge hook, an agent) it waits forever with no output at all.
-      sudo -v
+      # `sudo -v` alone is wrong on a host with NOPASSWD: it still insists on a password and, with
+      # no tty, fails outright — which is how the mac mini's post-merge rebuild started erroring
+      # instead of activating. Ask the cheap question first and only fall back to the prompt.
+      sudo -n true 2>/dev/null || sudo -v
       # -Q (no build output) stays; -q does not. -q also hid nh's own progress, which is what made
       # a stalled switch indistinguishable from a hung one.
       taskpolicy -c utility nh darwin switch {{flake}} -H "$name" -Q --diff never $nom_flag 2>&1 | tee -a "$log"
@@ -367,7 +370,9 @@ _maintain-macos:
     # well past sudo's five-minute timestamp, so each one raised its own Touch ID prompt
     # (the last two land after the parallel lanes, i.e. long after you walked away).
     # `sudo -v` takes the one prompt up front and the loop keeps the ticket warm until we exit.
-    sudo -v
+    # On a NOPASSWD host `sudo -v` still demands a password and fails without a tty, so ask
+    # the cheap question first.
+    sudo -n true 2>/dev/null || sudo -v
     while :; do sudo -n true 2>/dev/null; sleep 60; kill -0 "$$" 2>/dev/null || exit; done &
     sudo_keepalive=$!
     trap 'rc=$?; kill $sudo_keepalive 2>/dev/null || true; rm -rf "$maintenance_lock"; exit $rc' EXIT
