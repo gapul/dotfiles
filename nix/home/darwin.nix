@@ -279,8 +279,10 @@ in
   xdg.configFile."puddle/install.toml".source = ../../configs/puddle/install.toml;
 
   # The `puddle` CLI ships inside the app. Symlinked rather than copied so it follows updates.
+  # /Applications/Nix Apps is where nix-darwin copies systemPackages' bundles; it is a stable
+  # path (not a store path), so this keeps pointing at the current version by itself.
   home.file.".local/bin/puddle".source =
-    config.lib.file.mkOutOfStoreSymlink "/Applications/Puddle.app/Contents/Resources/puddle";
+    config.lib.file.mkOutOfStoreSymlink "/Applications/Nix Apps/Puddle.app/Contents/Resources/puddle";
 
   home.file.".config/ghostty" = {
     source = ../../configs/terminals/ghostty;
@@ -371,6 +373,60 @@ in
       StandardErrorPath = "${config.home.homeDirectory}/Library/Logs/NTKDaemon/ntkdaemon.log";
     };
   };
+  # keystats: the app used to install these two agents itself, into
+  # ~/Library/LaunchAgents/net.gapul.keystats{,.gui}.plist, pointing at /Applications. Now that
+  # the bundle is a nix package they are declared here instead, aimed at the stable
+  # /Applications/Nix Apps path. Shapes copied from the plists they replace.
+  #
+  # Its third agent, net.gapul.keystats.update, is deliberately not carried over: it ran
+  # keystats-update once a day to replace the app in place, which a read-only store copy cannot
+  # do and flake.lock makes redundant. `keystatsUpdateAgentRetire` below removes all three of the
+  # app-installed plists, so the old labels do not run a second copy alongside these.
+  launchd.agents.keystats = {
+    enable = true;
+    config = {
+      ProgramArguments = [ "/Applications/Nix Apps/Keystats.app/Contents/MacOS/keystatsd" ];
+      RunAtLoad = true;
+      KeepAlive = true;
+      ProcessType = "Background";
+      EnvironmentVariables = {
+        XDG_DATA_HOME = "${config.home.homeDirectory}/.local/share";
+        XDG_STATE_HOME = "${config.home.homeDirectory}/.local/state";
+      };
+    };
+  };
+
+  launchd.agents.keystats-gui = {
+    enable = true;
+    config = {
+      ProgramArguments = [
+        "/Applications/Nix Apps/Keystats.app/Contents/MacOS/KeystatsGUI"
+        "--background"
+      ];
+      RunAtLoad = true;
+      KeepAlive.SuccessfulExit = false; # quitting from the menu bar should stay quit
+      LimitLoadToSessionType = "Aqua";
+      EnvironmentVariables = {
+        XDG_DATA_HOME = "${config.home.homeDirectory}/.local/share";
+        XDG_STATE_HOME = "${config.home.homeDirectory}/.local/state";
+      };
+    };
+  };
+
+  # The app-installed plists point at /Applications/Keystats.app, which no longer exists, and
+  # their labels differ from the nix ones — left alone they would either fail forever or, once
+  # the app rewrote them, run a second copy next to the agents above. Same treatment the borders
+  # legacy plist got.
+  home.activation.keystatsLegacyAgents = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    for label in net.gapul.keystats net.gapul.keystats.gui net.gapul.keystats.update; do
+      plist="${config.home.homeDirectory}/Library/LaunchAgents/$label.plist"
+      if [ -e "$plist" ]; then
+        /bin/launchctl bootout "gui/$(/usr/bin/id -u)/$label" 2>/dev/null || true
+        rm -f "$plist"
+      fi
+    done
+  '';
+
   home.activation.ntkdaemonLogDir = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     /bin/mkdir -p "${config.home.homeDirectory}/Library/Logs/NTKDaemon"
   '';
