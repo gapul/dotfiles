@@ -295,8 +295,11 @@ cd ~/Developer/github.com/servo/servo
 - `./mach bootstrap` は Homebrew を叩く唯一の経路なので実行しない。必要な cmake /
   pkg-config は devShell 側にある。`MACH_USE_NIX` も立てない(mach が darwin で
   評価できない `shell.nix` に再突入する)
-- Servo の macOS 版は GStreamer 公式 pkg を sudo でシステムに入れないと通らないため、
-  宣言管理の外に出したくなければ `--media-stack dummy`(動画再生なし)
+- Servo の音声/動画を有効にするには GStreamer 公式 pkg (本体 + devel の2つ) を sudo で
+  システムに入れる必要があり、これは宣言管理の外に出る。macmini 側にだけ入れてあるので、
+  media 有効ビルドは macmini で行う。`./mach package` が GStreamer dylib を .app に
+  同梱するので、母艦は Servo.app を受け取るだけでよく何も入れなくてよい。
+  入れずにビルドするなら `--media-stack dummy`(再生なし)
 - Ladybird の headless は 2026-08 時点の master で壊れている(Compositor プロセスが
   起動しないまま WebContent が接続を叩いて落ちる)。GUI は正常
 - devShell に依存ライブラリを足さない。vcpkg が自前で建てるものと衝突すると nix 側が
