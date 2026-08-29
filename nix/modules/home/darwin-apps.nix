@@ -258,6 +258,12 @@
     # fresh machine came up missing them. Adding is idempotent (existing entries are skipped).
     LOGIN_APPS=(
       "/Applications/OmniWM.app"
+      # OmniWM has no exec action, so everything that used to be an aerospace
+      # after-startup/exec binding lives in Hammerspoon instead (close, new Ghostty window,
+      # display mirroring, moving a workspace to the next monitor, the cmd-m/cmd-h swallows).
+      # It was running here but undeclared: a fresh machine would come up with those keys
+      # silently dead, which is exactly the hole this list exists to close.
+      "/Applications/Hammerspoon.app"
       "/Applications/Ghostty.app"
       "/Applications/Puddle.app"
       "/Applications/Thaw.app"                # menu bar management
