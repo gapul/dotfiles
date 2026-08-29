@@ -364,14 +364,13 @@ in
       "winetricks" # (c) drives the wine-stable cask's prefix; nix winetricks would pull nix wine
 
       # ─── TUI utilities ───
-      # TODO(concord): held at 2.4.8 via `brew pin chojs23/tap/concord`. 2.5.0+ can't install on
-      # macOS — the cargo-dist-generated formula requires alsa-lib/pipewire (Linux-only, no macOS
-      # bottle) unconditionally. Root cause is upstream `dist` not gating Homebrew run-deps per
-      # target (concord's dist config already restricts them to Linux, but dist ignores it in the
-      # formula; not fixed as of dist 0.32.0). The pin is imperative, so a fresh machine needs
-      # `brew pin chojs23/tap/concord` re-run. Retry `brew unpin ... && brew upgrade concord` after
-      # new releases; real fix is a bug report to axodotdev/cargo-dist. See PR #119 for the
-      # `just maintain` hardening that keeps this pin from aborting upgrades.
+      # The 2.4.8 hold is gone (2026-08-29, unpinned and upgraded to 2.5.13). It was held because
+      # the cargo-dist-generated formula listed alsa-lib/pipewire (Linux-only, no macOS bottle)
+      # unconditionally, so 2.5.0+ could not install here. The 2.5.13 formula wraps them in
+      # `on_linux do`, which is the fix that was being waited on. Nothing to re-pin on a fresh
+      # machine any more — the pin was imperative (`brew pin`), so it only ever existed on this one.
+      # The `just maintain` hardening from PR #119 stays useful regardless: it is what keeps one
+      # broken formula from aborting the whole upgrade and rolling back the flake update.
       "chojs23/tap/concord" # (a) Discord TUI. tap-only, not in nixpkgs
       "wifitui" # (a) wifi TUI. nixpkgs marks it Linux-only
 
