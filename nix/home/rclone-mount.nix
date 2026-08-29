@@ -97,7 +97,14 @@ let
       # nfsmount, not mount: `rclone mount` needs macFUSE, a kext that costs a reboot and a
       # security approval. nfsmount serves the VFS over rclone's built-in NFS server and calls
       # mount_nfs, which needs neither root nor a third-party filesystem.
-      exec rclone nfsmount "${name}:" "${mountPoint}" \
+      # Not exec'd: the shell has to outlive rclone to clean up after it. launchd stops these
+      # agents on every home-manager activation, and rclone leaves the NFS mount entry behind when
+      # it goes. Until the agent comes back, the kernel holds a mount pointed at a dead server —
+      # it logs "nfs server localhost:/<remote>: not responding" every few seconds, and everything
+      # that so much as stats the path (ls, ps, Spotlight's mds, and therefore every mdfind on the
+      # machine) blocks in uninterruptible wait. The startup path above already knows how to clear
+      # a stale entry; doing it here instead means it never exists in the first place.
+      rclone nfsmount "${name}:" "${mountPoint}" \
         --config "${rcloneConf}" \
         --exclude "/restic-backup/**" \
         --exclude "/restic-archive/**" \
@@ -106,7 +113,31 @@ let
         --dir-cache-time 72h \
         --poll-interval 1m \
         --log-file "${logFile}" \
-        --log-level INFO
+        --log-level INFO &
+      rclone_pid=$!
+
+      # Unmount only after rclone has exited, never before: it owns the write-back cache, so
+      # pulling the mount out from under a live one is how you lose the writes it still holds.
+      cleanup() {
+        kill -TERM "$rclone_pid" 2>/dev/null
+        wait "$rclone_pid" 2>/dev/null
+        if mount | grep -q " ${mountPoint} "; then
+          umount -f "${mountPoint}" >>"${logFile}" 2>&1
+        fi
+        echo "$(date '+%F %T') stopped, mount released" >>"${logFile}"
+        exit 0
+      }
+      trap cleanup TERM INT
+
+      wait "$rclone_pid"
+      # rclone died on its own (crash, or the remote went away). Same cleanup, so KeepAlive
+      # restarts against a free mount point rather than the "could not unmount" dead end above.
+      status=$?
+      if mount | grep -q " ${mountPoint} "; then
+        umount -f "${mountPoint}" >>"${logFile}" 2>&1
+      fi
+      echo "$(date '+%F %T') rclone exited ($status), mount released" >>"${logFile}"
+      exit "$status"
     '';
 in
 {
