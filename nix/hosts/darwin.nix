@@ -95,6 +95,10 @@ in
     # AivisSpeech desktop editor (GUI). Bundles its own engine copy, but scripts
     # keep using the newer headless engine above; both share the model dir.
     (pkgs.callPackage ../pkgs/aivisspeech.nix { })
+    # Headitude: AirPods head orientation -> OSC. A head-rotation source that keeps
+    # working while the face is out of the camera frame. No nixpkgs package and no
+    # cask, so the official release zip is repackaged. See pkgs/headitude.nix.
+    (pkgs.callPackage ../pkgs/headitude.nix { })
   ];
 
   # macOS settings (GUI/peripheral-oriented. Only values verified via `defaults read` on the machine are declared)
@@ -543,6 +547,12 @@ in
       # (not in homebrew/cask, and nixpkgs only has the older Inochi2D). Currently v1.0.0-beta2.
       "gapul/inochi/nijigenerate" # rigging editor (Inochi Creator successor)
       "gapul/inochi/nijiexpose" # streaming runtime (Inochi Session successor)
+      # VCam: 3D (VRM) avatar out of a CoreMediaIO virtual camera, so OBS / Zoom / Meet see the
+      # avatar as a webcam. MIT and mac-native — the only maintained FOSS VRM runtime for macOS.
+      # Face tracking is the built-in camera by default and iFacialMocap (iPhone TrueDepth) for
+      # perfect sync. Stays a cask rather than brewCasks above: it wants Camera/Microphone TCC and
+      # registers a virtual camera, and both key on the bundle living at /Applications/VCam.app.
+      "vcamapp"
 
       # ─── Privacy / Security ───
       # Objective-See (Patrick Wardle) suite — all free and notarized
