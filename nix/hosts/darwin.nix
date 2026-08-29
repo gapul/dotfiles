@@ -454,11 +454,24 @@ in
       # OmniWM: main tiling WM (replaced aerospace 2026-08, trial concluded). Hotkeys are
       # GUI-configured (settings.toml schema is undocumented), so ~/.config/omniwm is
       # app-managed, not nix-generated. Hotkeys mirror the old aerospace hyper band (Cmd+Ctrl+Alt).
-      # PINNED BY HAND to v0.5.9 (2026-08-10): 0.5.10 regressed floating-panel focus, so OmniWM
-      # yanks focus off Ghostty's quick terminal and quick-terminal-autohide closes it within
-      # 100ms (upstream BarutSRB/OmniWM#559, fixed on main 08-09 but unreleased as of v0.6.0).
-      # onActivation.upgrade = false keeps it, but a manual `brew upgrade --cask` undoes it.
-      # Once v0.6.1 ships: `brew reinstall omniwm`, verify cmd+space, and drop this note.
+      # The v0.5.9 hand-pin is gone (2026-08-29). It was there because 0.5.10 regressed
+      # floating-panel focus and OmniWM yanked focus off Ghostty's quick terminal, which
+      # quick-terminal-autohide then closed within 100ms (BarutSRB/OmniWM#559). v0.6.1 shipped
+      # the fix ("recovery now leaves a foreign window that genuinely holds focus alone") and a
+      # `brew upgrade` has since carried this machine to 0.6.3, so there is nothing left to pin.
+      #
+      # What replaces that worry: a cask upgrade rewrites ~/.config/omniwm/settings.toml, and
+      # anything the new version cannot decode invalidates the WHOLE file — it lands in
+      # settings.toml.corrupt and defaults are written back, through the out-of-store symlink,
+      # over configs/wm/omniwm/settings.toml in this repo. Two known shapes of that:
+      #   - new keys. 0.6.3 added focus.raiseOnMouseFocus and gaps.fullscreenUsesOuterGaps;
+      #     their absence alone wiped every hotkey (fixed by adding them, both false).
+      #   - renamed action ids. 0.6.4 renames assignFocusedWindowToScratchpad and
+      #     toggleScratchpadWindow to …ToScratchpad.1 / toggleScratchpad.1 and adds eighteen
+      #     more. It ships a migration, but an unknown id is exactly what invalidates a file,
+      #     so diff settings.toml after that upgrade rather than assuming.
+      # In short: after any omniwm upgrade, check `ls ~/.config/omniwm/settings.toml.corrupt`
+      # and `git diff configs/wm/omniwm/settings.toml` before doing anything else.
       "omniwm"
       "thaw" # menu bar management (maintenance fork of Ice. Upstream jordanbaird-ice stalled at 0.11.12/2024-10 and won't launch on macOS Tahoe → migrated to Tahoe-compatible Thaw on 2026-07-27. Ice settings are importable)
       "karabiner-elements"
