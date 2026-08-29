@@ -120,6 +120,12 @@
     # Same hardware guarantee (the private key never leaves the enclave) without a GUI app or a
     # resident agent process: it hands the identity to macOS' own CryptoTokenKit provider.
     nix-secure-enclave-key.url = "github:ryoppippi/nix-secure-enclave-key";
+
+    # mocopi (Sony のモーションキャプチャ) を macOS で使う自作ツール。ソースは private の
+    # ままにしたいので github: ではなく git+ssh で引く。CI は read-only の deploy key を
+    # ssh-agent 経由で持つ (.github/actions/setup-nix)。実機は普段の GitHub 認証で足りる。
+    mocopi-mac.url = "git+ssh://git@github.com/gapul/mocopi-mac?ref=main";
+    mocopi-mac.inputs.nixpkgs.follows = "nixpkgs";
     nix-secure-enclave-key.inputs.nixpkgs.follows = "nixpkgs";
   };
 
@@ -127,6 +133,7 @@
     inputs@{
       claude-acp,
       nix-secure-enclave-key,
+      mocopi-mac,
       nixpkgs,
       nixpkgs-nixos,
       nixpkgs-unstable,
@@ -633,6 +640,7 @@
         specialArgs = {
           inherit user;
           brewNix = brew-nix;
+          mocopiMac = mocopi-mac;
           # hosts/darwin.nix declares the .app-shipping creative tools, which come from
           # nixos-unstable (see lib/unstable-pkgs.nix).
           nixpkgsUnstable = nixpkgs-unstable;

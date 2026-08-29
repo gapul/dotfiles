@@ -374,6 +374,27 @@
         "type": "github"
       }
     },
+    "mocopi-mac": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1787990304,
+        "narHash": "sha256-lI0ILpRxd1WF1pKVygwQBd5kKeku3kG9lqe/J8ZrvKc=",
+        "ref": "main",
+        "rev": "0fd873b9c26ce6b4b8633e53063c8f9f6c9b161b",
+        "revCount": 22,
+        "type": "git",
+        "url": "ssh://git@github.com/gapul/mocopi-mac"
+      },
+      "original": {
+        "ref": "main",
+        "type": "git",
+        "url": "ssh://git@github.com/gapul/mocopi-mac"
+      }
+    },
     "mopidy-patches": {
       "flake": false,
       "locked": {
@@ -760,6 +781,7 @@
         "git-hooks": "git-hooks",
         "home-manager": "home-manager_2",
         "lanzaboote": "lanzaboote",
+        "mocopi-mac": "mocopi-mac",
         "mopidy-patches": "mopidy-patches",
         "nix-darwin": "nix-darwin",
         "nix-homebrew": "nix-homebrew",
