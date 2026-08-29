@@ -62,6 +62,12 @@
         public_instance = false;
       };
 
+      # エンジンを足すときは、必ず結果に**エンジン名が出ること**まで確認する。
+      # SearXNG は知らないショートカットを検索語として扱うので、`!foo` が
+      # 結果を返しても foo が動いている証拠にならない。存在しないエンジンを
+      # 2 つ入れてしまった (luxxle / rawweb)。`/config` に載っているかで実在を、
+      # 結果へのエンジン名の出現で稼働を確かめる。
+      #
       # duckduckgo / startpage / brave は既定で有効なまま残す。どれも
       # 2026-08 時点では CAPTCHA や rate limit に沈んでいるが、エンドポイント
       # 自体は生きていて (202 / 302 / 200 が返る)、対ボットのチャレンジを
@@ -80,11 +86,11 @@
           name = "mojeek";
           disabled = true;
         }
-        # qwant も別系統だが、2026-08 時点で CAPTCHA に沈んでいる。自動で
-        # 外れるとはいえ毎回叩きに行って待たされるので、明示的に切る。
+        # qwant は英語だと CAPTCHA だが、日本語のクエリでは 10 件返る。
+        # 全滅ではないので有効なままにする。
         {
           name = "qwant";
-          disabled = true;
+          disabled = false;
         }
         # これも自前クローラ。鍵が要らず、実測で 53 件返した (mojeek と同じ役割で、
         # Google 系が全滅したときに残る側を厚くする)。
@@ -92,14 +98,53 @@
           name = "mwmbl";
           disabled = false;
         }
-        # 対ボット網に巻き込まれていない側をさらに厚くする。どちらも鍵が要らず、
-        # 日本語のクエリで 30 件返すことを実測して選んだ。
+        # duckduckgo の別実装。既定の duckduckgo は CAPTCHA に沈んでいるが、
+        # こちらは通る。日本語のクエリでも結果が返り、結果にエンジン名が
+        # 出ることまで確認した。
         {
-          name = "luxxle";
+          name = "duckduckgo web";
+          disabled = false;
+        }
+        # 対ボット網に巻き込まれていない側を厚くする。どちらも鍵が要らない。
+        {
+          name = "privacywall";
           disabled = false;
         }
         {
-          name = "rawweb";
+          name = "searchmysite";
+          disabled = false;
+        }
+        # bing は入れない。duckduckgo web が返すのは Bing のインデックスその
+        # ものなので結果が重複する一方、直接叩くと Microsoft に全クエリが渡る。
+        # 同じ結果を得るのに見られる相手が 1 つ増えるだけになる。ddg が落ちた
+        # ときだけ欲しくなるが、SearXNG に条件分岐は無く「落ちたら使う」は
+        # 「常に叩く」としてしか書けない。
+        #
+        # yandex は Google / Bing どちらでもない大きなインデックスで、いま
+        # 代替が無い (mojeek は塞がれ、brave は鍵待ち)。全クエリが Yandex に
+        # 渡る代償はあるが、代替が無いものは使うという判断。
+        {
+          name = "yandex";
+          disabled = false;
+        }
+        # startpage を既定から外す。2026-08-30 に実機で切り分けたところ壁が
+        # 2 段あった。curl には JS チャレンジが返り、それを headless Chromium
+        # で越えると、その先で IP ベースの停止に当たる。
+        #
+        #   Access Temporarily Suspended
+        #   Our anti-abuse systems are activated when we receive a large
+        #   number of search requests from a particular internet connection
+        #
+        # ブラウザかどうかではなく、その IP からの検索回数で切られている。
+        # 自宅の IP から常用する限り構造的に使えない。毎回叩いて必ず失敗し
+        # 待たされるだけなので、`!sp` と書いたときだけ叩く形にする。
+        {
+          name = "startpage";
+          disabled = true;
+        }
+        # フォーラム専門。性格が違うので幅が出る。
+        {
+          name = "boardreader";
           disabled = false;
         }
       ];
