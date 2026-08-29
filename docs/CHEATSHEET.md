@@ -271,6 +271,35 @@ nix-init --url https://github.com/nosarthur/gita
 # → 動く flake.nix が生成される
 ```
 
+### ブラウザエンジンのビルド(Ladybird / Servo)
+
+WebKit 以外のエンジンを母艦でビルドするための devShell。どちらも Xcode の clang と
+macOS SDK を使うので darwin 限定。定義は `nix/shells/browser-engines.nix`。
+
+```bash
+# Ladybird(CMake + vcpkg)
+nix develop ~/.dotfiles/nix#ladybird
+cd ~/Developer/github.com/LadybirdBrowser/ladybird
+python3 Meta/ladybird.py build
+./Build/release/bin/Ladybird.app/Contents/MacOS/Ladybird https://example.com
+
+# Servo(mach + cargo)
+nix develop ~/.dotfiles/nix#servo
+cd ~/Developer/github.com/servo/servo
+./mach build --release --media-stack dummy
+./target/release/servoshell --headless --exit -o out.png https://example.com
+```
+
+踏みやすい罠:
+
+- `./mach bootstrap` は Homebrew を叩く唯一の経路なので実行しない。必要な cmake /
+  pkg-config は devShell 側にある。`MACH_USE_NIX` も立てない(mach が darwin で
+  評価できない `shell.nix` に再突入する)
+- Servo の macOS 版は GStreamer 公式 pkg を sudo でシステムに入れないと通らないため、
+  宣言管理の外に出したくなければ `--media-stack dummy`(動画再生なし)
+- Ladybird の headless は 2026-08 時点の master で壊れている(Compositor プロセスが
+  起動しないまま WebContent が接続を叩いて落ちる)。GUI は正常
+
 ---
 
 ## 🩺 探索 / トラブル
