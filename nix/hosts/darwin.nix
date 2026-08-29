@@ -104,6 +104,11 @@ in
     # working while the face is out of the camera frame. No nixpkgs package and no
     # cask, so the official release zip is repackaged. See pkgs/headitude.nix.
     (pkgs.callPackage ../pkgs/headitude.nix { })
+    # SlimeVR Server: full-body tracking receiver, used here with mocopi's SlimeVR
+    # mode rather than SlimeVR's own trackers. nixpkgs' slimevr-server is
+    # `broken = isDarwin` and headless-only, so the official dmg is repackaged.
+    # See pkgs/slimevr-server.nix.
+    (pkgs.callPackage ../pkgs/slimevr-server.nix { })
   ];
 
   # macOS settings (GUI/peripheral-oriented. Only values verified via `defaults read` on the machine are declared)
