@@ -48,6 +48,13 @@ in
     #     A login item is registered by /Applications path, and this moves the bundle to
     #     /Applications/Nix Apps.
     pkgs.brewCasks.qview # lightweight image viewer, the original trial target
+    # VOICEVOX: was the reason a fork of the upstream Homebrew tap existed at all — upstream is
+    # stuck at 0.25.1 with a dead autobump, so the fork carried 0.25.2 by hand. nixpkgs packages
+    # the same 0.25.2 and builds on aarch64-darwin, so the fork, the tap and the "switch back once
+    # upstream catches up" note all go away together. The editor alone would be useless; the
+    # engine comes with it (voicevox-engine is a runtime reference, wired by nixpkgs'
+    # hardcode-paths patch) where the cask bundled it inside the .app.
+    pkgs.voicevox
     pkgs.brewCasks.audacity
     pkgs.brewCasks.fontforge-app
     pkgs.brewCasks.fontgoggles
@@ -358,10 +365,6 @@ in
       "osx-cross/arm" # QMK toolchain dependency tap
       "osx-cross/avr" # QMK / Keyball AVR toolchain tap
       "qmk/qmk" # QMK CLI
-      # Own fork of the VOICEVOX tap. Upstream is stuck at 0.25.1 (its autobump is dead), the fork
-      # carries 0.25.2. Declaring upstream while the fork is also tapped locally makes the cask
-      # token `voicevox` ambiguous, and every `brew bundle` — so every rebuild — dies on it.
-      "gapul/voicevox"
       "y3owk1n/tap" # cask distribution source for neru (full-screen keyboard navigation)
 
       # ─── Personal forks (gapul) — delete if you forked and don't need them ───
@@ -606,7 +609,6 @@ in
       # zrythm was removed since it was a trial version (x64/Rosetta/can't save). Consolidated onto the
       # self-made full nix version (pkgs/zrythm-darwin, arm64-native, -O2). Installed via home.packages.
       "vcv-rack"
-      "gapul/voicevox/voicevox" # from the fork tap above. Switch back once upstream catches up
       # self-made keystroke analytics. Developer ID signed + notarized, so it passes
       # Gatekeeper even with quarantine (no_quarantine not needed).
       "gapul/keystats/keystats"
