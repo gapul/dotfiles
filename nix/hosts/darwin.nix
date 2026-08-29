@@ -417,13 +417,6 @@ in
       # broken formula from aborting the whole upgrade and rolling back the flake update.
       "chojs23/tap/concord" # (a) Discord TUI. tap-only, not in nixpkgs
       "wifitui" # (a) wifi TUI. nixpkgs marks it Linux-only
-      "bitwig-studio"
-      "cycling74-max"
-      "freecad"
-      "krita"
-      "simplex"
-      "touchdesigner"
-      "upscayl"
 
       # ─── Network / Download / VPN ───
       # These are all daemons: brew wires up the launchd plist (`brew services`) and the mac
@@ -469,6 +462,17 @@ in
 
     # GUI applications (~100)
     casks = [
+      # brewCasks に移せた仲間だが、この7本だけ cask のまま。理由はサイズで、
+      # om ci(aarch64-darwin) の macos-14 ランナーは空きが約14GBしかなく、
+      # 合計約5GB を store に実体化しようとすると anki の展開中に無言で死ぬ。
+      # 母艦では問題なくビルドできるので、宣言できない理由ではなく CI の天井。
+      "bitwig-studio"
+      "cycling74-max"
+      "freecad"
+      "krita"
+      "simplex"
+      "touchdesigner"
+      "upscayl"
       # ─── Browsers ───
       "google-chrome"
       # Not the "helium" cask: that one is koush's unrelated Android desktop app, deprecated for
