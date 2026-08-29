@@ -297,7 +297,10 @@
     #   NTKDaemon  — Native Instruments' installer registers it; the daemon is started on demand
     #                by the `na` wrapper now (see launchd.agents.ntkdaemon in home/darwin.nix),
     #                so it has no reason to run from login until Native Access is used.
-    for name in AeroSpace Bitwarden Neru NTKDaemon; do
+    #   NIHardware… — the other half of the same NI leftover, and this one has nothing behind it at
+    #                all: the agent bundle is gone from every path its installer uses, so the login
+    #                item resolved to a missing value and started nothing every morning.
+    for name in AeroSpace Bitwarden Neru NTKDaemon NIHardwareAgent; do
       if /usr/bin/osascript -e "tell application \"System Events\" to (name of login items) contains \"$name\"" 2>/dev/null | grep -q true; then
         /usr/bin/osascript -e "tell application \"System Events\" to delete login item \"$name\"" >/dev/null 2>&1 || true
       fi
