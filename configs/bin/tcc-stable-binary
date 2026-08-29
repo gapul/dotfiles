@@ -27,7 +27,7 @@ DEST="$DEST_DIR/$NAME"
 # 「identity が無い」に見えて黙って何もしないまま終わる。
 PWFILE="$HOME/.config/tcc-keychain.password"
 if [ -s "$PWFILE" ] && [ -e "$HOME/Library/Keychains/tcc.keychain-db" ]; then
-  security unlock-keychain -p "$(cat "$PWFILE")" tcc.keychain 2>/dev/null || true
+  /usr/bin/security unlock-keychain -p "$(cat "$PWFILE")" tcc.keychain 2>/dev/null || true
 fi
 
 # 名前ではなくハッシュで指す。同名の証明書が複数のキーチェーンにあると
@@ -39,22 +39,34 @@ if [ ! -s "$SHAFILE" ]; then
 fi
 IDENTITY=$(cat "$SHAFILE")
 
-mkdir -p "$DEST_DIR"
+/bin/mkdir -p "$DEST_DIR"
 
 # 中身が同じなら触らない。署名し直すと cdhash が変わらなくても
 # ファイルの mtime が動いて、TCC が再評価する余地を作る。
-if [ -e "$DEST" ] && cmp -s "$SRC" "$DEST"; then
+if [ -e "$DEST" ] && /usr/bin/cmp -s "$SRC" "$DEST"; then
   exit 0
 fi
 
-install -m 0755 "$SRC" "$DEST"
+/usr/bin/install -m 0755 "$SRC" "$DEST"
 
 # --identifier を固定するのが肝。既定だとファイル名から推測されるが、
 # 明示しておかないと将来のバージョンで変わりうる。
-codesign --force --sign "$IDENTITY" \
+#
+# エラーを握り潰さない。未署名のまま安定パスに残ると TCC は cdhash で識別する
+# ことになり、許可が切れる — 何もしないより悪い。失敗したら消す。
+# (activation の PATH に /usr/bin が無くて codesign が見つからず、静かに
+#  未署名のコピーだけが残る状態を実際に作ってしまった。だから絶対パスで呼ぶ)
+# --options runtime (hardened runtime) は付けない。付けるとライブラリ検証が
+# 有効になり、nix store の ad-hoc 署名された dylib を読み込めなくなる。
+# sunshine が dyld の "Library not loaded ... code signature" で即死した。
+# TCC の要件式は署名 identity で決まるので、hardened runtime は要らない。
+if ! /usr/bin/codesign --force --sign "$IDENTITY" \
   --identifier "net.gapul.tcc.$NAME" \
-  --options runtime \
   --timestamp=none \
-  "$DEST" 2>/dev/null
+  "$DEST"; then
+  /bin/rm -f "$DEST"
+  echo "tcc-stable-binary: $NAME の署名に失敗した。未署名を残さないよう消した" >&2
+  exit 1
+fi
 
 echo "tcc-stable-binary: $NAME を署名して $DEST に置いた"
