@@ -299,6 +299,12 @@ cd ~/Developer/github.com/servo/servo
   宣言管理の外に出したくなければ `--media-stack dummy`(動画再生なし)
 - Ladybird の headless は 2026-08 時点の master で壊れている(Compositor プロセスが
   起動しないまま WebContent が接続を叩いて落ちる)。GUI は正常
+- devShell に依存ライブラリを足さない。vcpkg が自前で建てるものと衝突すると nix 側が
+  勝ち、成果物が `/nix/store` を参照する。その store path は誰も root していないので
+  次の GC で消え、ある日突然 dyld の "Library not loaded" で起動しなくなる。疑ったら
+  `otool -L` で `/nix/store` 参照が無いことを確認する
+- ビルドが重いときは macmini に投げる(10 コア / 24GB / 空きが多い)。home が両機とも
+  `/Users/gapul` なので、`Build/release` を同じパスに rsync すればそのまま動く
 
 ---
 
