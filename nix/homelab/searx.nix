@@ -62,23 +62,44 @@
         public_instance = false;
       };
 
+      # duckduckgo / startpage / brave は既定で有効なまま残す。どれも
+      # 2026-08 時点では CAPTCHA や rate limit に沈んでいるが、エンドポイント
+      # 自体は生きていて (202 / 302 / 200 が返る)、対ボットのチャレンジを
+      # 越えられないだけ。向こう側の気分で戻ることがあるので、SearXNG の
+      # 自動 suspend に任せる。
+      #
+      # 恒久的に効かせたいなら公式 API に寄せる道がある。braveapi エンジンが
+      # 同梱されていて、api_key を入れれば安定する (無料枠あり)。marginalia も
+      # 同様。どちらも鍵の取得が要るので、必要になったときに。
       engines = [
-        # 既定で無効。自前クローラの独立インデックスで、Google 系が軒並み
-        # CAPTCHA に沈んだときに残る側。ここを起こすのが今回の肝。
+        # mojeek は「Google 系が沈んでも残る側」として起こしていたが、2026-08-29
+        # 時点でスクレイピングそのものが塞がれた。homeserver / 母艦 / 外部の
+        # 3 経路すべてで 403 が返る (UA を変えても同じ) ので、IP の問題ではなく
+        # 向こう側の変更。実装が追いつくまで切る。
         {
           name = "mojeek";
-          disabled = false;
+          disabled = true;
         }
-        # 同じく既定で無効。これも Bing/Google とは別系統。
-        # ただし 2026-08 時点では CAPTCHA に沈んでいる。自動で外れるので置いてある。
+        # qwant も別系統だが、2026-08 時点で CAPTCHA に沈んでいる。自動で
+        # 外れるとはいえ毎回叩きに行って待たされるので、明示的に切る。
         {
           name = "qwant";
-          disabled = false;
+          disabled = true;
         }
         # これも自前クローラ。鍵が要らず、実測で 53 件返した (mojeek と同じ役割で、
         # Google 系が全滅したときに残る側を厚くする)。
         {
           name = "mwmbl";
+          disabled = false;
+        }
+        # 対ボット網に巻き込まれていない側をさらに厚くする。どちらも鍵が要らず、
+        # 日本語のクエリで 30 件返すことを実測して選んだ。
+        {
+          name = "luxxle";
+          disabled = false;
+        }
+        {
+          name = "rawweb";
           disabled = false;
         }
       ];
