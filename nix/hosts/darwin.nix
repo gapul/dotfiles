@@ -417,13 +417,6 @@ in
       # broken formula from aborting the whole upgrade and rolling back the flake update.
       "chojs23/tap/concord" # (a) Discord TUI. tap-only, not in nixpkgs
       "wifitui" # (a) wifi TUI. nixpkgs marks it Linux-only
-      "bitwig-studio"
-      "cycling74-max"
-      "freecad"
-      "krita"
-      "simplex"
-      "touchdesigner"
-      "upscayl"
 
       # ─── Network / Download / VPN ───
       # These are all daemons: brew wires up the launchd plist (`brew services`) and the mac
@@ -497,6 +490,7 @@ in
       # (@gapul:gapul.net; Discord/Telegram bridged in homelab/matrix.nix).
       "element"
       "kdeconnect"
+      "simplex"
 
       # ─── Window / Keyboard / Input ───
       # OmniWM: main tiling WM (replaced aerospace 2026-08, trial concluded). Hotkeys are
@@ -598,16 +592,20 @@ in
       # ─── Creative — Design / 2D ───
       "affinity"
       "gimp"
+      "krita"
       "inkscape"
       "darktable"
       "rawtherapee"
       "digikam" # photo management (RAW development, tag management)
+      "upscayl"
       "pika"
       "adobe-creative-cloud"
       "sf-symbols" # Apple SF Symbols catalog
 
       # ─── Creative — Audio / Music ───
+      "bitwig-studio"
       "cardinal"
+      "cycling74-max"
       "musescore"
       # native-access removed: replaced by the unofficial CLI (gapul/na-cli, on PATH via
       # home/darwin.nix). NTKDaemon runs headless via launchd; keep the cask out so a rebuild
@@ -633,11 +631,13 @@ in
       # ─── Creative — Video / Animation / Stream ───
       "obs"
       "lihaoyun6/tap/quickrecorder" # screen recorder (native ScreenCaptureKit, Tahoe-compatible). Switched from the old kap, which is Electron-based and stalled for ~1.7 years
+      "touchdesigner"
       "cavalry" # 2D motion graphics
       "opentoonz" # 2D animation (.pkg cask)
 
       # ─── 3D / CAD ───
       "blender"
+      "freecad"
       "kicad"
       "godot"
       "openfoam"
