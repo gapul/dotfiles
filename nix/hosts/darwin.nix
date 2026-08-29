@@ -34,7 +34,30 @@ in
   # reach ~/Applications, while nix-darwin copies these into /Applications/Nix Apps, where Finder
   # lists them and Spotlight indexes them. Everything without a bundle stays in home.packages.
   environment.systemPackages = [
-    pkgs.brewCasks.qview # brew-nix test target: lightweight image viewer distributed as a simple .app
+    # brew-nix: Homebrew casks as nix derivations, so the version is decided by flake.lock
+    # instead of by whenever `just maintain` last ran `brew upgrade --cask --greedy`.
+    # Casks live here rather than in homebrew.casks only when all of the following hold, because
+    # each one is a way this breaks:
+    #   - the artifact is a plain .app. A .pkg has to land in /Library (input methods, audio
+    #    drivers, VPN daemons), which a store copy cannot do.
+    #   - the cask is in homebrew/cask. brew-api mirrors the official API only, so nothing from
+    #     a third-party tap (omniwm, puddle, neru, keystats, … — 14 of them here) can come from it.
+    #   - upstream ships a hash. Six casks here are `no_check`, and those are the self-updating
+    #     ones (chrome, steam) where a pinned hash would go stale anyway.
+    #   - the app does not update itself, does not want TCC permissions, and is not a login item.
+    #     A login item is registered by /Applications path, and this moves the bundle to
+    #     /Applications/Nix Apps.
+    pkgs.brewCasks.qview # lightweight image viewer, the original trial target
+    pkgs.brewCasks.audacity
+    pkgs.brewCasks.fontforge-app
+    pkgs.brewCasks.fontgoggles
+    pkgs.brewCasks.goxel
+    pkgs.brewCasks.gyroflow
+    pkgs.brewCasks.imhex
+    pkgs.brewCasks.librecad
+    pkgs.brewCasks.material-maker
+    pkgs.brewCasks.milkytracker
+    pkgs.brewCasks.mixxx
     # ─── Creative: official is paid but nixpkgs source builds give a free full version ───
     # Unavailable/broken on 26.05-darwin, so from unstablePkgs (nixos-unstable, with allowUnfree).
     unstablePkgs.fritzing # PCB/circuit design CAD (official DL is paid. for the ESP32 project). cached, so instant
@@ -540,7 +563,6 @@ in
       "ghostty"
       "android-studio"
       "flutter"
-      "imhex"
       "trex"
       "deskflow"
       "codexbar" # show usage/limits of various AI coding vendors in the menu bar (bundles codexbar CLI, auto-linked into /opt/homebrew/bin)
@@ -555,20 +577,15 @@ in
       "rawtherapee"
       "digikam" # photo management (RAW development, tag management)
       "upscayl"
-      "fontforge-app"
-      "fontgoggles"
       "pika"
       "adobe-creative-cloud"
       "sf-symbols" # Apple SF Symbols catalog
 
       # ─── Creative — Audio / Music ───
-      "audacity"
       "bitwig-studio"
       "cardinal"
       "cycling74-max"
-      "mixxx"
       "musescore"
-      "milkytracker"
       # native-access removed: replaced by the unofficial CLI (gapul/na-cli, on PATH via
       # home/darwin.nix). NTKDaemon runs headless via launchd; keep the cask out so a rebuild
       # doesn't reinstall the GUI and re-claim the native-access:// scheme.
@@ -595,7 +612,6 @@ in
       # ─── Creative — Video / Animation / Stream ───
       "obs"
       "lihaoyun6/tap/quickrecorder" # screen recorder (native ScreenCaptureKit, Tahoe-compatible). Switched from the old kap, which is Electron-based and stalled for ~1.7 years
-      "gyroflow"
       "touchdesigner"
       "cavalry" # 2D motion graphics
       "opentoonz" # 2D animation (.pkg cask)
@@ -604,10 +620,7 @@ in
       "blender"
       "freecad"
       "kicad"
-      "librecad"
       "godot"
-      "goxel"
-      "material-maker"
       "openfoam"
 
       # ─── 3D Printing ───
