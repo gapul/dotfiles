@@ -262,9 +262,7 @@
       "/Applications/Puddle.app"
       "/Applications/Thaw.app"                # menu bar management
       "/Applications/azooKey skkserv.app"     # SKK conversion server for macSKK
-      "/Applications/Neru.app"                # keyboard-driven screen navigation
       "/Applications/Maccy.app"               # clipboard history
-      "/Applications/Bitwarden.app"           # provides the SSH agent socket
       "/Applications/LuLu.app"                # outbound firewall
       "/Applications/KDE Connect.app"         # phone integration
       "/Applications/ActivityWatch.app"       # time tracking
@@ -289,8 +287,17 @@
       warnEcho "login items could not be registered:$failed"
       warnEcho "  (grant Automation → System Events, then re-run \`just rebuild\`)"
     fi
-    # Retired login items (apps removed from the declaration): drop stale entries
-    for name in AeroSpace; do
+    # Retired login items (apps removed from the declaration): drop stale entries.
+    #   Bitwarden  — SSH keys moved to the Secure Enclave, so nothing needs the vault at login
+    #                any more; it is opened by hand when the vault is actually wanted.
+    #   Neru       — its own launchd label (com.y3owk1n.neru, installed by `neru services install`
+    #                in home.activation.neruService above) already keeps it resident. Registering
+    #                the app here as well started a second copy: two `neru` processes, one under
+    #                the native label and one under `application.com.y3owk1n.neru…`.
+    #   NTKDaemon  — Native Instruments' installer registers it; the daemon is started on demand
+    #                by the `na` wrapper now (see launchd.agents.ntkdaemon in home/darwin.nix),
+    #                so it has no reason to run from login until Native Access is used.
+    for name in AeroSpace Bitwarden Neru NTKDaemon; do
       if /usr/bin/osascript -e "tell application \"System Events\" to (name of login items) contains \"$name\"" 2>/dev/null | grep -q true; then
         /usr/bin/osascript -e "tell application \"System Events\" to delete login item \"$name\"" >/dev/null 2>&1 || true
       fi
