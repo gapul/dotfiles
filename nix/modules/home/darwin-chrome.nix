@@ -335,14 +335,16 @@ in
   '';
 
   # keebmouse (self-made, gapul/keebmouse): keyboard-driven pointer, Hyper+Shift+G to toggle.
-  # The app is a cask now (gapul/tap/keebmouse, declared in hosts/darwin.nix); it used to be
-  # scripts/bundle.sh run by hand into /Applications. The agent has always belonged here — it
-  # was a hand-written ~/Library/LaunchAgents/net.gapul.keebmouse.plist before, i.e. a
+  # The app is a nix package now (pkgs/keebmouse.nix, in hosts/darwin.nix); it was a cask before
+  # that, and scripts/bundle.sh run by hand into /Applications before that. The agent has always
+  # belonged here — it was a hand-written ~/Library/LaunchAgents/net.gapul.keebmouse.plist, i.e. a
   # login-time daemon nothing declared. Same KeepAlive shape as that plist.
   launchd.agents.keebmouse = {
     enable = true;
     config = {
-      ProgramArguments = [ "/Applications/keebmouse.app/Contents/MacOS/keebmouse" ];
+      # /Applications/Nix Apps: nix-darwin が systemPackages の .app を実体コピーで置く先。
+      # store パスではないので版が上がってもここは動かず、TCC の許可も持ち越せる。
+      ProgramArguments = [ "/Applications/Nix Apps/keebmouse.app/Contents/MacOS/keebmouse" ];
       RunAtLoad = true;
       KeepAlive = true;
       ProcessType = "Interactive";
