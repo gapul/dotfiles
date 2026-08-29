@@ -2,6 +2,7 @@
   lib,
   pkgs,
   brewNix,
+  mocopiMac,
   nixpkgsUnstable,
   user,
   ...
@@ -57,6 +58,12 @@ in
     # これで自作物のための tap (gapul/puddle, gapul/keystats) が両方畳める。
     (pkgs.callPackage ../pkgs/puddle.nix { })
     (pkgs.callPackage ../pkgs/keystats.nix { })
+    # mocopi: 自作。ソースは private repo のままなので flake input は git+ssh で引いている
+    # (flake.nix の mocopi-mac)。ここに置くと /Applications/Nix Apps に入るので、README に
+    # あった `nix build && cp -R result/Applications/mocopi.app ~/Applications/` の手作業が要らない。
+    # .app であることに意味がある: 独立した bundle は自前の Bluetooth 権限を持てるので、
+    # 起動したターミナルの権限を借りずに済む(mocopi-mac の flake.nix のコメント参照)。
+    mocopiMac.packages.${pkgs.stdenv.hostPlatform.system}.default
     # VOICEVOX: was the reason a fork of the upstream Homebrew tap existed at all — upstream is
     # stuck at 0.25.1 with a dead autobump, so the fork carried 0.25.2 by hand. nixpkgs packages
     # the same 0.25.2 and builds on aarch64-darwin, so the fork, the tap and the "switch back once

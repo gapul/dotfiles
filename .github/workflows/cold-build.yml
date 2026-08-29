@@ -35,6 +35,7 @@ jobs:
       - uses: ./.github/actions/setup-nix
         with:
           cachix: 'false'
+          mocopi-deploy-key: ${{ secrets.MOCOPI_DEPLOY_KEY }}
       - name: om ci run (no restored cache)
         run: |
           nix --accept-flake-config run github:juspay/omnix/v1.3.2 -- \
