@@ -58,6 +58,20 @@ in
     pkgs.brewCasks.material-maker
     pkgs.brewCasks.milkytracker
     pkgs.brewCasks.mixxx
+    pkgs.brewCasks.anki
+    pkgs.brewCasks.ente-auth
+    pkgs.brewCasks.keyguard
+    pkgs.brewCasks.knockknock # persistence scanner (Objective-See). 初回に Full Disk Access の再付与が要る
+    pkgs.brewCasks.localsend
+    pkgs.brewCasks.orcaslicer
+    # Scribus は同梱の Python.framework に PrivateHeaders への壊れた symlink を2本抱えていて、
+    # nixpkgs の noBrokenSymlinks fixup がそれを理由にビルドを落とす。中身は上流の配布物その
+    # ままで、壊れているのは使われないヘッダの参照だけなので、チェックのほうを外す。
+    (pkgs.brewCasks.scribus.overrideAttrs (_: {
+      dontCheckForBrokenSymlinks = true;
+    }))
+    pkgs.brewCasks.supercollider
+    pkgs.brewCasks.trex # 画面 OCR。Screen Recording の TCC を再付与する必要がある
     # ─── Creative: official is paid but nixpkgs source builds give a free full version ───
     # Unavailable/broken on 26.05-darwin, so from unstablePkgs (nixos-unstable, with allowUnfree).
     unstablePkgs.fritzing # PCB/circuit design CAD (official DL is paid. for the ESP32 project). cached, so instant
@@ -396,6 +410,13 @@ in
       # broken formula from aborting the whole upgrade and rolling back the flake update.
       "chojs23/tap/concord" # (a) Discord TUI. tap-only, not in nixpkgs
       "wifitui" # (a) wifi TUI. nixpkgs marks it Linux-only
+      "bitwig-studio"
+      "cycling74-max"
+      "freecad"
+      "krita"
+      "simplex"
+      "touchdesigner"
+      "upscayl"
 
       # ─── Network / Download / VPN ───
       # These are all daemons: brew wires up the launchd plist (`brew services`) and the mac
@@ -469,8 +490,6 @@ in
       # (@gapul:gapul.net; Discord/Telegram bridged in homelab/matrix.nix).
       "element"
       "kdeconnect"
-      "localsend"
-      "simplex"
 
       # ─── Window / Keyboard / Input ───
       # OmniWM: main tiling WM (replaced aerospace 2026-08, trial concluded). Hotkeys are
@@ -538,14 +557,11 @@ in
       # installed, and like ransomwhere it is an Installer-artifact cask, so brew just runs
       # the same installer the manual install did.
       "blockblock" # persistence attempt blocker (alerts when something installs itself to run at login)
-      "knockknock" # persistence scanner
       "lulu" # outbound firewall
       "ransomwhere" # ransomware (suspicious encryption behavior) detection
       # VPN / keys
       "mullvad-vpn" # no-log anonymous VPN (a separate layer from self-hosted WireGuard/Tailscale)
-      "ente-auth"
       "keepassxc"
-      "keyguard"
       "bitwarden" # Bitwarden official desktop app
 
       # ─── Network / Remote ───
@@ -563,28 +579,22 @@ in
       "ghostty"
       "android-studio"
       "flutter"
-      "trex"
       "deskflow"
       "codexbar" # show usage/limits of various AI coding vendors in the menu bar (bundles codexbar CLI, auto-linked into /opt/homebrew/bin)
 
       # ─── Creative — Design / 2D ───
       "affinity"
       "gimp"
-      "krita"
       "inkscape"
-      "scribus"
       "darktable"
       "rawtherapee"
       "digikam" # photo management (RAW development, tag management)
-      "upscayl"
       "pika"
       "adobe-creative-cloud"
       "sf-symbols" # Apple SF Symbols catalog
 
       # ─── Creative — Audio / Music ───
-      "bitwig-studio"
       "cardinal"
-      "cycling74-max"
       "musescore"
       # native-access removed: replaced by the unofficial CLI (gapul/na-cli, on PATH via
       # home/darwin.nix). NTKDaemon runs headless via launchd; keep the cask out so a rebuild
@@ -592,7 +602,6 @@ in
       "openutau"
       "pd"
       "reaper"
-      "supercollider"
       "surge-xt" # synth standalone/plugin (.pkg cask)
       # zrythm was removed since it was a trial version (x64/Rosetta/can't save). Consolidated onto the
       # self-made full nix version (pkgs/zrythm-darwin, arm64-native, -O2). Installed via home.packages.
@@ -612,13 +621,11 @@ in
       # ─── Creative — Video / Animation / Stream ───
       "obs"
       "lihaoyun6/tap/quickrecorder" # screen recorder (native ScreenCaptureKit, Tahoe-compatible). Switched from the old kap, which is Electron-based and stalled for ~1.7 years
-      "touchdesigner"
       "cavalry" # 2D motion graphics
       "opentoonz" # 2D animation (.pkg cask)
 
       # ─── 3D / CAD ───
       "blender"
-      "freecad"
       "kicad"
       "godot"
       "openfoam"
@@ -628,7 +635,6 @@ in
       # itself, so send / camera / temps / jog / firmware update all live here.
       # Reinstall bambu-studio temporarily if a cloud-side problem needs an
       # "authorized software" reference point.
-      "orcaslicer"
 
       # ─── Games / Emulation ───
       "wine-stable" # WineHQ stable. Run Windows apps (used with winetricks)
@@ -641,7 +647,6 @@ in
       "playcover-community"
 
       # ─── Productivity / Notes / Reading ───
-      "anki"
       "calibre"
       "obsidian"
       "libreoffice"
