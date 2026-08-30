@@ -66,6 +66,12 @@ in
     # playwright-mcp の接続先をこちらに向けられる。詳細と限界は pkgs/lightpanda.nix。
     # systemPackages なのは launchd agent が固定パスで参照するため。
     (pkgs.callPackage ../pkgs/lightpanda.nix { })
+    # node: playwright-mcp の実行に要る。pnpm の global store が持っていた node は
+    # リンク切れになっていて (~/Library/pnpm/bin/node → 消えた store パス)、そのせいで
+    # playwright-mcp の agent が "exec: node: not found" で status 127 のまま死んでいた。
+    # ランタイムは pnpm の管理から外して宣言側で持つ。パッケージ (@playwright/mcp) は
+    # pnpm の global store に残っているのでそちらのまま。
+    pkgs.nodejs
     # codex: 自前インストーラで ~/.local/bin に入っていたものを宣言に移す。home.packages
     # ではなく systemPackages なのは PATH の順で、/run/current-system/sw/bin が
     # ~/.local/bin より前に来る。profile 側だと手動インストール版が勝ってしまう。

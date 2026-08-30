@@ -5,6 +5,19 @@
   lib,
   ...
 }:
+let
+  # launchd は素の PATH で起動するので、playwright-mcp が要るものを列挙しておく。
+  # 実害があった: pnpm の global store が持っていた node がリンク切れになり
+  # (~/Library/pnpm/bin/node → 消えた store パス)、agent が "exec: node: not found" で
+  # status 127 のまま死んでいた。ランタイムは宣言側 (systemPackages の nodejs) から取り、
+  # パッケージ本体 (@playwright/mcp) は pnpm の global store に残っているものを使う。
+  mcpPath = lib.concatStringsSep ":" [
+    "${config.home.homeDirectory}/Library/pnpm/bin"
+    "/run/current-system/sw/bin"
+    "/usr/bin"
+    "/bin"
+  ];
+in
 {
   # Run resident as a Home Manager LaunchAgent instead of using Syncthing.app.
   # Reuse the existing ~/Library/Application Support/Syncthing config and device ID as-is.
@@ -64,8 +77,11 @@
       ProgramArguments = [
         "/run/current-system/sw/bin/lp"
         "serve"
+        # 9333 ではない。あそこには別に立てたヘッドレス Chrome が既に居て
+        # (/json/version が Chrome/152 を返す)、Lightpanda が AddressInUse で
+        # 起動できなかった。9223 は 9222 の実 Chrome の隣という意味。
         "--port"
-        "9333"
+        "9223"
       ];
       RunAtLoad = true;
       KeepAlive = true;
@@ -84,12 +100,13 @@
       ProgramArguments = [
         "${config.home.homeDirectory}/Library/pnpm/bin/playwright-mcp"
         "--cdp-endpoint"
-        "http://127.0.0.1:9333"
+        "http://127.0.0.1:9223"
         "--port"
         "8932"
         "--output-dir"
         "${config.home.homeDirectory}/tmp/playwright-mcp-light"
       ];
+      EnvironmentVariables.PATH = mcpPath;
       RunAtLoad = true;
       KeepAlive = true;
       ProcessType = "Background";
@@ -110,6 +127,7 @@
         "--output-dir"
         "${config.home.homeDirectory}/tmp/playwright-mcp"
       ];
+      EnvironmentVariables.PATH = mcpPath;
       RunAtLoad = true;
       KeepAlive = true;
       ProcessType = "Background";
