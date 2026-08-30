@@ -50,7 +50,7 @@ if ! restic restore latest --host "$(hostname -s)" \
 fi
 
 DUMPS="$WORK/var/lib/db-dumps"
-for f in dawarich.dump miniflux.dump paperless.sql readeck.db; do
+for f in dawarich.dump miniflux.dump matrix-synapse.dump paperless.sql readeck.db; do
   [ -s "$DUMPS/$f" ] || fail "$f がスナップショットに無い (または空)"
 done
 
@@ -80,9 +80,21 @@ if podman run -d --name "$DB_CTR" \
     sleep 2
   done
 
-  for db in dawarich miniflux; do
+  # matrix-synapse はブリッジで取り込んだ過去ログが入る。相手のネットワークから
+  # 取り直せるとは限らない (Signal の履歴は端末にしか無い) ので、戻せることを
+  # 毎回確かめる対象に入れる。
+  for db in dawarich miniflux matrix-synapse; do
     [ -s "$DUMPS/$db.dump" ] || continue
-    podman exec "$DB_CTR" psql -U postgres -qc "CREATE DATABASE drill_$db" >/dev/null 2>&1
+    # 識別子は必ず引用する。matrix-synapse のようにハイフンを含む名前だと
+    # 引用なしの CREATE DATABASE drill_matrix-synapse は構文エラーになる。
+    #
+    # Synapse は C 以外の照合順序の DB を見つけると起動を拒否する。戻せても起動
+    # しないなら復元できたことにならないので、本番と同じ条件で作る。dawarich の
+    # PostGIS で踏んだのと同じ形の穴 (訓練の意味はここにある)。
+    locale=""
+    [ "$db" = "matrix-synapse" ] && locale=" TEMPLATE template0 LC_COLLATE 'C' LC_CTYPE 'C'"
+    podman exec "$DB_CTR" psql -U postgres -qc \
+      "CREATE DATABASE \"drill_$db\"$locale" >/dev/null 2>&1
     if ! podman exec "$DB_CTR" pg_restore -U postgres -d "drill_$db" \
       --no-owner --no-privileges "/dumps/$db.dump" >/dev/null 2>&1; then
       fail "$db: pg_restore が失敗した"
