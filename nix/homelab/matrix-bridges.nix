@@ -63,6 +63,15 @@ in
         id = "discord";
         port = 29334;
         bot.username = "discordbot";
+        # nixpkgs の mautrix-discord は 0.7.7 で、bridgev2 より前の設定の形。
+        # DB は top-level の database ではなく appservice.database に置く。
+        # signal や meta はモジュール側が既定を持っているが、discord の settings の
+        # 既定は {} なので自分で書かないと "appservice.database not configured"
+        # で起動を繰り返す (2026-08-31 に実際に踏んだ)。
+        database = {
+          type = "sqlite3-fk-wal";
+          uri = "file:/var/lib/mautrix-discord/mautrix-discord.db?_txlock=immediate";
+        };
       };
       bridge = { inherit permissions; };
     };
