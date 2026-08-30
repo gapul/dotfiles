@@ -84,7 +84,22 @@ ${sample}" high
   done
 
 # 落ちたユニット。systemd が知っているのに誰も見ていない典型。
-failed=$(systemctl --failed --no-legend | awk '{print $1}' | tr '\n' ' ')
+#
+# 2026-08-30 に 3 日で 26 回鳴っていて、しかも本文が "●" だけだった。原因が 2 つ:
+#
+#   1. --no-legend でも先頭の状態マーク "●" は消えないので、awk '{print $1}' が
+#      ユニット名ではなくマークを拾っていた。名前が出ないので通知として無意味。
+#   2. podman が healthcheck ごとに作る使い捨てユニット (64桁-16桁の 16 進名) が
+#      DB の起動待ちなどで普通に失敗する。実害が無いのに毎回鳴るので、
+#      本物が混ざっていても気付けなくなる。
+#
+# --plain でマークを外し、16 進の使い捨ては除く。再起動ループ検知と同じ判定。
+failed=$(
+  systemctl --failed --no-legend --plain --no-pager 2>/dev/null |
+    awk '{print $1}' |
+    grep -vE '^[0-9a-f]{64}-[0-9a-f]{16}\.service$' |
+    tr '\n' ' '
+)
 if [ -n "${failed// /}" ]; then
   notify "failed unit がある" "$failed" high
 fi
