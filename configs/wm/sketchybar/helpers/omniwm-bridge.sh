@@ -10,7 +10,7 @@
 #
 # OmniWM が動いていない間は待機ループに入るだけ。
 
-OW=/opt/homebrew/bin/omniwmctl
+OW=/run/current-system/sw/bin/omniwmctl
 
 while :; do
   if pgrep -xq OmniWM && "$OW" ping >/dev/null 2>&1; then
