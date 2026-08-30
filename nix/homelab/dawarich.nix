@@ -14,7 +14,7 @@
 
   # Containers
   virtualisation.oci-containers.containers."dawarich_app" = {
-    image = "freikin/dawarich:latest";
+    image = "docker.io/freikin/dawarich:latest";
     environmentFiles = [ "/var/lib/secrets/dawarich.env" ];
     environment = {
       "APPLICATION_PROTOCOL" = "http";
@@ -92,7 +92,7 @@
     ];
   };
   virtualisation.oci-containers.containers."dawarich_db" = {
-    image = "postgis/postgis:17-3.5-alpine";
+    image = "docker.io/postgis/postgis:17-3.5-alpine";
     environmentFiles = [ "/var/lib/secrets/dawarich.env" ];
     environment = {
       "POSTGRES_DB" = "dawarich_production";
@@ -136,7 +136,7 @@
     ];
   };
   virtualisation.oci-containers.containers."dawarich_redis" = {
-    image = "redis:7.4-alpine";
+    image = "docker.io/library/redis:7.4-alpine";
     environmentFiles = [ "/var/lib/secrets/dawarich.env" ];
     volumes = [
       "dawarich_dawarich_shared:/data:rw"
@@ -183,7 +183,7 @@
     ];
   };
   virtualisation.oci-containers.containers."dawarich_sidekiq" = {
-    image = "freikin/dawarich:latest";
+    image = "docker.io/freikin/dawarich:latest";
     environmentFiles = [ "/var/lib/secrets/dawarich.env" ];
     environment = {
       "APPLICATION_PROTOCOL" = "http";

@@ -13,7 +13,7 @@
 
   # Containers
   virtualisation.oci-containers.containers."ntfy" = {
-    image = "binwiederhier/ntfy:latest";
+    image = "docker.io/binwiederhier/ntfy:latest";
     environment = {
       "TZ" = "Asia/Tokyo";
     };

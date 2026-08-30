@@ -16,7 +16,12 @@
 # 行うもので、それが無い今は「起動はしたが直後に落ちる」型を取り逃がす。そこは
 # journal-alert の再起動ループ検知 (PR #490) が 15 分以内に拾う。即死は
 # auto-update が巻き戻し、遅れて死ぬものは通知が拾う、という分担にしている。
-{ lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 {
   # 全コンテナに auto-update のラベルを付ける。宣言は 28 ファイルに散っている
   # ので個別には触らず、submodule の既定値として一度だけ入れる。mkDefault なので
@@ -34,6 +39,25 @@
   };
 
   config = {
+    # image 名が完全修飾でないと auto-update は起動時にこう言って死ぬ:
+    #   Error: short name: auto updates require fully-qualified image reference
+    #
+    # これを 2026-08-30 に本番で踏んだ。宣言 14 箇所が `postgres:16-alpine` の
+    # ような短縮名で、ラベルを足した途端に ntfy・vaultwarden・DB を含む 12 個が
+    # 起動できなくなった。nix の評価も CI も通っていた。CI が見るのは構成であって
+    # コンテナが起動するかではない、と PR に書いた直後にその穴に落ちた。
+    #
+    # なので、この一点だけは nix が見られる形にする。実行時の失敗を評価時のエラーに
+    # 移すだけだが、少なくとも同じ踏み方は二度としない。
+    assertions = lib.mapAttrsToList (name: c: {
+      assertion = lib.hasInfix "." (builtins.head (lib.splitString "/" c.image));
+      message = ''
+        コンテナ ${name} の image "${c.image}" が完全修飾ではない。
+        auto-update のラベルが付いていると podman が起動を拒否する。
+        レジストリを明示すること (例: postgres:16-alpine → docker.io/library/postgres:16-alpine)。
+      '';
+    }) config.virtualisation.oci-containers.containers;
+
     systemd.services.container-auto-update = {
       description = "コンテナの image を引き直して載せ替える";
       path = with pkgs; [

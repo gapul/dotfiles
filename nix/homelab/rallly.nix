@@ -62,7 +62,7 @@
   virtualisation.oci-containers.containers."rallly-db" = {
     # 上流の compose が指定しているのがこれ。18 系は PGDATA の位置が変わっているが、
     # 親ディレクトリごと mount するので気にしなくてよい (上流も同じことをしている)。
-    image = "postgres:18-alpine";
+    image = "docker.io/library/postgres:18-alpine";
     environmentFiles = [ "/var/lib/secrets/rallly.env" ];
     environment = {
       "POSTGRES_DB" = "rallly";
