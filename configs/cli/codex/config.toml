@@ -4,6 +4,13 @@ model = "gpt-5.5"
 model_reasoning_effort = "medium"
 personality = "pragmatic"
 
+# yolo を既定にする。`--yolo` を毎回打つのと同じ状態 — 承認を求めず、サンドボックスも
+# 通さない。codex 自身が「外側でサンドボックスされている環境向け」と警告する設定で、
+# ここではその外側が「自分の機械」であることを承知のうえで選んでいる。
+# 個別に絞りたいときは -a / -s のフラグが設定より優先されるので、そちらで上書きする。
+approval_policy = "never"
+sandbox_mode = "danger-full-access"
+
 [plugins."github@openai-curated"]
 enabled = true
 
