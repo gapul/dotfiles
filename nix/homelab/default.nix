@@ -54,6 +54,7 @@
     ./homeassistant.nix
     ./homepage.nix
     ./jellyfin.nix
+    ./container-auto-update.nix
     ./journal-alert.nix
     ./matrix.nix
     ./miniflux.nix
