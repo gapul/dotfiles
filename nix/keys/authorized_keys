@@ -10,19 +10,25 @@
 #   enclave      母艦の Secure Enclave 鍵 (label auth)。取り出せず、利用のたびに
 #                Touch ID が要る。常用鍵をこれに移すのが目的で、移行が済んだら
 #                2WG8EZ… は常用から外して break-glass 役になる。
-#   enclave-automation
-#                同じ Secure Enclave の 2 本目 (label automation, protection none)。
-#                秘密鍵が取り出せない点は auth と同じで、違うのは「指を触れた人が
-#                今ここにいる」証明を求めないこと。失うのは盗難耐性ではなく、
-#                乗っ取られた母艦から無人で使われない保証の方。
 #
-#                無人のジョブ (mutagen 同期・maintenance の push・自動デプロイ) は
-#                Touch ID を出せないので、auth 一本だと承認の窓が切れた瞬間に黙って
-#                全部落ちる。2026-08-30 に実際に踏んだ: ssh の接続多重化が再認証を
-#                隠すため、既存ソケットが期限切れになるまで誰も気付かなかった。
+#                【承知しておくこと】無人のジョブはこの鍵で認証できない。
+#                Touch ID の承認には窓があり、切れると mutagen 同期・maintenance の
+#                push・自動デプロイが黙って落ちる。ssh の接続多重化が再認証を隠すので
+#                気付くのが遅れる (2026-08-30 に実際に踏んだ)。デバッグ上は
+#                「Server accepts key の直後に we did not send a packet」に見える。
 #
-#                sshd は sk 鍵に既定で presence を要求するので、この行には
-#                no-touch-required が要る。付け忘れるとサーバー側が署名を拒否する。
+#                【試して駄目だった道 (2026-08-30)】生体認証なしの 2 本目を同じ
+#                Secure Enclave に作る案。CTK identity は
+#                `nix-secure-enclave-key setup --protection none` で作れるが、
+#                SSH から使えない:
+#                  - ツールは公開鍵の参照しか書かず、署名に必要なスタブを作らない
+#                    (auth は 545B の本物、新規は 213B の公開鍵コピー)
+#                  - ssh-keygen -t ecdsa-sk は Apple の provider が
+#                    "requested feature not supported" で登録を拒否する
+#                    (-O no-touch-required の有無に関わらず)
+#                  - ssh-add -s /usr/lib/ssh-keychain.dylib は agent refused operation
+#                上流 (ryoppippi/nix-secure-enclave-key) は最新 rev で修正なし。
+#                再挑戦する前に、ツールがスタブを書くようになったかを確認すること。
 #   break-glass  Bitwarden の金庫にある鍵。日常では使わず、Secure Enclave が
 #                使えなくなったとき (母艦の故障・紛失) の復旧用。専用の鍵を
 #                新たに作る代わりに、常用をやめたこの鍵をその役に充てている。
@@ -43,4 +49,3 @@
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBLeOb9XOJPsmuTRf708qYoNckWk+/fhuWkpTWtTSu41 macbook-mini
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILZva+I0ui3AGOMb2V7BTLOXXtCJYvCJg9PGmzWOD8Am macmini-outbound macmini
 sk-ecdsa-sha2-nistp256@openssh.com AAAAInNrLWVjZHNhLXNoYTItbmlzdHAyNTZAb3BlbnNzaC5jb20AAAAIbmlzdHAyNTYAAABBBP5Y2DQbhcGpmOGDewcxUuVZ+/XO1I/Zm4M4nZhBMPwygadJY9//NxbVAZs98vMIp1Yy+9wgkQcEuc1CNQdCY2cAAAAEc3NoOg== ssh:
-no-touch-required sk-ecdsa-sha2-nistp256@openssh.com AAAAInNrLWVjZHNhLXNoYTItbmlzdHAyNTZAb3BlbnNzaC5jb20AAAAIbmlzdHAyNTYAAABBBAwCGAA42K/AO4c5DLm/Wq2DUpg7+DZ99q62obRgzqXMkfUe4IlOU639q7thgDzXNmr0u96RHdpYLWoQ4LPXW7AAAAAEc3NoOg== enclave-automation
