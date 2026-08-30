@@ -19,6 +19,10 @@ in
     with pkgs;
     [
       launcher-search # ghostty launcher search backend (replaces core/launcher-search)
+      # mpv 本体。長く brew だったのは「nixpkgs mpv は aarch64-darwin 非対応」という注記が
+      # 理由だったが、2026-08-30 に確かめたら 0.41.0 がキャッシュ済みで普通に動いた(注記の
+      # ほうが古かった)。uosc は元から nixpkgs 側なので、これで本体とスクリプトの出所が揃う。
+      mpv
       pandoc # document conversion
       typst # typesetting
       # Compose the TeX Live collections needed for Japanese academic documents via Nix.

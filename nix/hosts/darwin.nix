@@ -414,8 +414,9 @@ in
     # binary exists on both sides brew wins. Don't leave duplicates around.
     brews = [
       # ─── Languages / Package managers ───
-      # (b) already pulled in as an mpv/yt-dlp dependency, so a nix deno would just be a second copy.
-      # Declared explicitly so removing mpv doesn't orphan it and break nvim skkeleton (denops runtime).
+      # (b) yt-dlp が引いてくるので nix の deno は二重になる。mpv は nixpkgs 側へ移した
+      # (home/workstation.nix)ので、その依存はもう理由に数えない。nvim skkeleton(denops
+      # ランタイム)が要るため、依存が外れても消えないよう明示的に宣言している。
       "deno"
 
       # ─── Keyboard firmware ───
@@ -450,7 +451,6 @@ in
 
       # ─── Documents / Fonts / Media ───
       "gstreamer" # (a) nixpkgs gst_all_1 doesn't support aarch64-darwin
-      "mpv" # (a) nixpkgs mpv doesn't support aarch64-darwin
       # 3D model previews in yazi (configs/cli/yazi/plugins/model.yazi). nixpkgs f3d can't build on
       # aarch64-darwin: its openusd dependency fails, taking f3d down with it.
       "f3d" # (a) headless 3D renderer
