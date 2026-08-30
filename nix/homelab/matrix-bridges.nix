@@ -35,6 +35,30 @@ let
   homeserver = {
     inherit address domain;
   };
+
+  # 過去ログの取り込み。ここは**ログインする前に**決めておく必要がある。
+  #
+  # 深く取れるのはポータルが初めて作られる一度きり。既定は 50 件で、後から遡るには
+  # 「backfill queue」が要るが、上流の設定にこう書いてある:
+  #
+  #   Settings for the backwards backfill queue. This only applies when connecting to
+  #   Beeper as standard Matrix servers don't support inserting messages into history.
+  #
+  # 素の Synapse は履歴の途中に差し込めない (MSC2716 が廃止された)。空の部屋へ
+  # 順に流し込む初回だけは効くので、そこで取れるだけ取る。既定のまま入ると、
+  # あとからやり直すには部屋を消すことになる。
+  #
+  # どれだけ取れるかは相手次第で、こちらの設定では決まらない:
+  #   Telegram / Discord — サーバ側に履歴がある。いちばん深く取れる
+  #   Meta / LinkedIn / Slack — サーバ側にある
+  #   Signal — 端末にしか無い。連携後のぶんが中心で、過去は基本的に取れない
+  backfill = {
+    enabled = true;
+    # 5000 は「取りたいだけ取る」と「初回同期が終わる」の折り合い。上流も
+    # 「高くすると全部取得してから流し始めるので時間がかかる」と書いている。
+    max_initial_messages = 5000;
+    max_catchup_messages = 5000;
+  };
 in
 {
   # mautrix のブリッジは libolm に依存する。libolm は Matrix 財団が 2024 年に非推奨
@@ -73,7 +97,31 @@ in
           uri = "file:/var/lib/mautrix-discord/mautrix-discord.db?_txlock=immediate";
         };
       };
-      bridge = { inherit permissions; };
+      bridge = {
+        inherit permissions;
+        # discord は 0.7.7 なので backfill の書き方も旧形式。bridgev2 の
+        # max_initial_messages ではなく、DM / チャンネル / スレッドを個別に指定する。
+        #
+        # チャンネルを DM と同じ深さにしない。ギルドのチャンネルは桁が違うので、
+        # 全部を初回に取りに行くと同期が終わらない (上流も「高くすると全部取得して
+        # から流し始めるので時間がかかる」と書いている)。
+        backfill = {
+          forward_limits = {
+            initial = {
+              dm = 5000;
+              channel = 1000;
+              thread = 500;
+            };
+            # -1 は「最後に橋渡ししたメッセージ以降を全部」。DM は取りこぼしたくない
+            # ので無制限、チャンネルは上限を置く。
+            missed = {
+              dm = -1;
+              channel = 1000;
+              thread = 500;
+            };
+          };
+        };
+      };
     };
   };
 
@@ -81,7 +129,7 @@ in
     enable = true;
     registerToSynapse = true;
     settings = {
-      inherit homeserver;
+      inherit homeserver backfill;
       bridge = { inherit permissions; };
     };
   };
@@ -95,6 +143,7 @@ in
       registerToSynapse = true;
       settings = {
         inherit homeserver;
+        inherit backfill;
         network.mode = "instagram";
         appservice = {
           id = "instagram";
@@ -110,6 +159,7 @@ in
       registerToSynapse = true;
       settings = {
         inherit homeserver;
+        inherit backfill;
         network.mode = "messenger";
         appservice = {
           id = "messenger";
