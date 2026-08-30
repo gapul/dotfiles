@@ -27,9 +27,19 @@
       # 道は同日に試して塞がっていた (Apple の provider が sk 鍵を登録できない、#499)。
       #
       # ファイルなので enclave の保証は無い。そのぶん ssh_config 側で宛先を
-      # homeserver / macmini / mvrx 同期の 3 つに絞ってあり、単独で失効できる。
+      # homeserver と macmini の 2 つに絞ってあり、単独で失効できる。
       "ssh_automation_key" = {
         path = "${config.home.homeDirectory}/.ssh/id_automation";
+        mode = "0600";
+      };
+      # mutagen の会社機同期だけ別の鍵にする。会社機の authorized_keys は自分の所有で
+      # 書き込めた (2026-08-30 に確認。「登録し直せない」は古い記録だった)。
+      #
+      # ssh_automation_key の使い回しにはしない。自宅と会社の権限が 1 本に混ざると、
+      # どちらかを失効させたいときに両方巻き添えになる。会社側だけ切りたい場面の方が
+      # 起きやすいので、境界はここで引く。
+      "ssh_mvrx_sync_key" = {
+        path = "${config.home.homeDirectory}/.ssh/id_mvrx_sync";
         mode = "0600";
       };
       # "ssh_authorized_keys" is no longer placed here: modules/authorized-keys.nix declares the
