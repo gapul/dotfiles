@@ -21,8 +21,8 @@
     tunnels."3e0ea569-07c5-4d37-a18f-e7295083ed83" = {
       credentialsFile = "/var/lib/secrets/cloudflared-homeserver.json";
       ingress = {
-        # Conduit。federation はここだけを通る。
-        "matrix.gapul.net" = "http://127.0.0.1:6167";
+        # Synapse。federation はここだけを通る (2026-08-31 に Conduit 6167 から移した)。
+        "matrix.gapul.net" = "http://127.0.0.1:8008";
         # ntfy。push はアプリ通知用、alert は unified-calendar の worker が
         # watchdog トピックへ投げてくる先で、Pi 側の ntfy にいたユーザとトークンは
         # この箱の ntfy へ移してある。
