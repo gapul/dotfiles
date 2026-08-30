@@ -35,6 +35,14 @@ in
   # reach ~/Applications, while nix-darwin copies these into /Applications/Nix Apps, where Finder
   # lists them and Spotlight indexes them. Everything without a bundle stays in home.packages.
   environment.systemPackages = [
+    # sketchybar 本体。felixkratz の tap から nixpkgs へ移した(注記の「tap-only」が古かった)。
+    # home.packages ではなくここに置くのは置き場所のため: 2本目のバーは
+    # configs/wm/sketchybar/bin-ext/sketchybar-ext という名前の symlink から起動する必要があり、
+    # あのディレクトリは store へのコピーなので nix で個別ファイルを足せない
+    # ("Error installing file ... outside $HOME")。systemPackages なら
+    # /run/current-system/sw/bin という、版にもユーザー名にも依存しない固定パスに出るので、
+    # コミット済みの symlink がそのまま指せる。
+    pkgs.sketchybar
     # brew-nix: Homebrew casks as nix derivations, so the version is decided by flake.lock
     # instead of by whenever `just maintain` last ran `brew upgrade --cask --greedy`.
     # Casks live here rather than in homebrew.casks only when all of the following hold, because
@@ -381,7 +389,6 @@ in
     taps = [
       "chojs23/tap" # Concord (Discord TUI)
       "deskflow/tap"
-      "felixkratz/formulae"
       "finnvoor/tools"
       "gerlero/openfoam"
       "gapul/kdeconnect" # fork of imshuhao/kdeconnect. Fixed the deprecated depends_on macos
@@ -461,11 +468,6 @@ in
 
       # (Xcode itself is managed by xcodes, which moved to nix — see home/darwin.nix. aria2, which
       #  xcodes uses for the parallel .xip download, was already declared in home/workstation.nix.)
-
-      # ─── Status bar (felixkratz tap) ───
-      # (borders/JankyBorders was dropped 2026-08: OmniWM draws its own active-window border, so the
-      #  resident daemon was 174MB of duplicate decoration.)
-      "felixkratz/formulae/sketchybar" # (a) tap-only. launched via launchd agent (home/darwin-chrome.nix)
 
       # ─── Transcription / other 3rd-party tap brews ───
       "finnvoor/tools/yap" # (a) Japanese transcription. tap-only, not in nixpkgs

@@ -232,7 +232,9 @@ in
   launchd.agents.sketchybar = {
     enable = true;
     config = {
-      ProgramArguments = [ "/opt/homebrew/bin/sketchybar" ];
+      # store パスを直に書くと版が変わるたびに plist ごと入れ替わるので、systemPackages が
+      # 出す固定パスを指す。basename が argv[0] になるので名前も "sketchybar" のまま。
+      ProgramArguments = [ "/run/current-system/sw/bin/sketchybar" ];
       RunAtLoad = true;
       KeepAlive = true;
       ProcessType = "Interactive";
