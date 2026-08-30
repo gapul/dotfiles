@@ -53,6 +53,10 @@ in
     # TCC を壊すのは「nix で置くこと」ではなく「ビルドのたび cdhash が変わる ad-hoc 署名」の
     # ほうで、ここは Developer ID 署名の bundle をそのまま運ぶので版が上がっても剥がれない。
     # 常駐は launchd.agents.keebmouse (modules/home/darwin-chrome.nix) が持つ。
+    # OmniWM: 主力のタイル型 WM。cask をやめて署名済みリリースを取り込む(pkgs/omniwm.nix に
+    # 経緯)。systemPackages なのは omniwmctl の置き場所のため — /run/current-system/sw/bin という
+    # 版にもユーザー名にも依存しない固定パスに出るので、configs 側のスクリプトが直に書ける。
+    (pkgs.callPackage ../pkgs/omniwm.nix { })
     (pkgs.callPackage ../pkgs/keebmouse.nix { })
     # Puddle / keystats: 自作物。keebmouse と同じく cask をやめて署名済みリリースを取り込む。
     # これで自作物のための tap (gapul/puddle, gapul/keystats) が両方畳める。
@@ -386,7 +390,6 @@ in
       "gerlero/openfoam"
       "gapul/kdeconnect" # fork of imshuhao/kdeconnect. Fixed the deprecated depends_on macos
       "lihaoyun6/tap" # QuickRecorder (screen recorder. Required since not in homebrew/cask)
-      "barutsrb/tap" # OmniWM (Niri/Hyprland-inspired tiling WM, main WM since 2026-08)
       "osx-cross/arm" # QMK toolchain dependency tap
       "osx-cross/avr" # QMK / Keyball AVR toolchain tap
       "qmk/qmk" # QMK CLI
@@ -527,33 +530,6 @@ in
       "kdeconnect"
 
       # ─── Window / Keyboard / Input ───
-      # OmniWM: main tiling WM (replaced aerospace 2026-08, trial concluded). Hotkeys are
-      # GUI-configured (settings.toml schema is undocumented), so ~/.config/omniwm is
-      # app-managed, not nix-generated. Hotkeys mirror the old aerospace hyper band (Cmd+Ctrl+Alt).
-      # The v0.5.9 hand-pin is gone (2026-08-29). It was there because 0.5.10 regressed
-      # floating-panel focus and OmniWM yanked focus off Ghostty's quick terminal, which
-      # quick-terminal-autohide then closed within 100ms (BarutSRB/OmniWM#559). v0.6.1 shipped
-      # the fix ("recovery now leaves a foreign window that genuinely holds focus alone") and a
-      # `brew upgrade` has since carried this machine to 0.6.3, so there is nothing left to pin.
-      #
-      # What replaces that worry: a cask upgrade rewrites ~/.config/omniwm/settings.toml, and
-      # anything the new version cannot decode invalidates the WHOLE file — it lands in
-      # settings.toml.corrupt and defaults are written back, through the out-of-store symlink,
-      # over configs/wm/omniwm/settings.toml in this repo. Two known shapes of that:
-      #   - new keys. 0.6.3 added focus.raiseOnMouseFocus and gaps.fullscreenUsesOuterGaps;
-      #     their absence alone wiped every hotkey (fixed by adding them, both false).
-      #   - renamed action ids. 0.6.4 renamed assignFocusedWindowToScratchpad and
-      #     toggleScratchpadWindow to …ToScratchpad.1 / toggleScratchpad.1 and added eighteen
-      #     more, which is the same unknown-id condition. Its migration turned out to handle it:
-      #     upgraded 0.6.3 → 0.6.4 by hand on 2026-08-29 with OmniWM quit, and the file came back
-      #     migrated (+86/-8, the deletions being only those two Unassigned rows) with all
-      #     twenty-one hotkeys intact and no settings.toml.corrupt.
-      # That upgrade was done deliberately rather than left to `just maintain`, which trusts the
-      # taps and then runs `brew upgrade --cask --greedy`: the next maintenance run would have
-      # installed 0.6.4 unattended, and a wipe there is only noticed once the keys stop working.
-      # In short: after any omniwm upgrade, check `ls ~/.config/omniwm/settings.toml.corrupt`
-      # and `git diff configs/wm/omniwm/settings.toml` before doing anything else.
-      "omniwm"
       "thaw" # menu bar management (maintenance fork of Ice. Upstream jordanbaird-ice stalled at 0.11.12/2024-10 and won't launch on macOS Tahoe → migrated to Tahoe-compatible Thaw on 2026-07-27. Ice settings are importable)
       "karabiner-elements"
       "macskk"

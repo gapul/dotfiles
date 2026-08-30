@@ -269,7 +269,7 @@
     # other ten were registered by hand or by each app's own "launch at login" toggle, so a
     # fresh machine came up missing them. Adding is idempotent (existing entries are skipped).
     LOGIN_APPS=(
-      "/Applications/OmniWM.app"
+      "/Applications/Nix Apps/OmniWM.app" # nix パッケージ化したので Nix Apps 側
       # OmniWM has no exec action, so everything that used to be an aerospace
       # after-startup/exec binding lives in Hammerspoon instead (close, new Ghostty window,
       # display mirroring, moving a workspace to the next monitor, the cmd-m/cmd-h swallows).
