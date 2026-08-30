@@ -50,7 +50,7 @@
   };
 
   virtualisation.oci-containers.containers."spliit-db" = {
-    image = "postgres:18-alpine";
+    image = "docker.io/library/postgres:18-alpine";
     environmentFiles = [ "/var/lib/secrets/spliit.env" ];
     environment = {
       "POSTGRES_DB" = "spliit";

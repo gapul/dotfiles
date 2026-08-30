@@ -23,7 +23,7 @@
 
   # Containers
   virtualisation.oci-containers.containers."archivebox" = {
-    image = "archivebox/archivebox:latest";
+    image = "docker.io/archivebox/archivebox:latest";
     environmentFiles = [ "/var/lib/secrets/archivebox.env" ];
     environment = {
       "ADMIN_USERNAME" = "admin";

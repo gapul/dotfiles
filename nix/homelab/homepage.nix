@@ -27,7 +27,7 @@
 
   # Containers
   virtualisation.oci-containers.containers."glances" = {
-    image = "nicolargo/glances:latest-full";
+    image = "docker.io/nicolargo/glances:latest-full";
     environment = {
       "GLANCES_OPT" = "-w";
     };
