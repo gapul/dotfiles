@@ -58,6 +58,7 @@
     ./self-deploy.nix
     ./journal-alert.nix
     ./matrix.nix
+    ./matrix-bridges.nix
     ./miniflux.nix
     ./navidrome.nix
     ./ntfy.nix
