@@ -189,11 +189,19 @@
   # the account is in admin, so the activation can write there without sudo.
   home.activation.mpvDroplet = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     app="/Applications/mpv.app"
-    script=${../../../configs/media/mpv-app/mpv.applescript}
+    # The script carries an @mpv@ placeholder rather than a hard-coded path: mpv moved from brew
+    # to nixpkgs, so the binary now lives at a store path that changes with every version.
+    # osacompile needs a real file, so substitute into a temporary copy.
+    script=$(mktemp -t mpv-applescript)
+    ${pkgs.gnused}/bin/sed \
+      's|@mpv@|${lib.getExe pkgs.mpv}|' \
+      ${../../../configs/media/mpv-app/mpv.applescript} > "$script"
     additions=${../../../configs/media/mpv-app/Info-additions.plist}
     icon=${../../../configs/media/mpv-app/mpv.icns}
     stamp="$app/Contents/Resources/.built-from"
-    want="$script $additions $icon"
+    # $script is a fresh mktemp every run, so stamp on what actually decides the contents:
+    # the mpv path baked in, plus the other two committed inputs.
+    want="${lib.getExe pkgs.mpv} $additions $icon"
 
     if [ "$(cat "$stamp" 2>/dev/null)" != "$want" ]; then
       $DRY_RUN_CMD rm -rf "$app"
@@ -215,6 +223,7 @@
       # next login instead of now.
       $DRY_RUN_CMD /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$app"
     fi
+    rm -f "$script"
   '';
 
   # macSKK / azooKey skkserv: defaults import the sandboxed app's preferences
