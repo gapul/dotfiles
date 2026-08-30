@@ -3,6 +3,10 @@
 #
 #   macbook      母艦のクライアント鍵 (Bitwarden の「GitHub」項目)
 #   enclave      母艦の Secure Enclave 鍵。取り出せず利用ごとに Touch ID
+#   enclave-automation
+#                同じ Secure Enclave の 2 本目 (protection none)。無人のジョブが
+#                Touch ID を出せないため。gapul 側の一覧に理由を詳しく書いてある。
+#                sk 鍵は既定で presence を要求されるので no-touch-required が要る。
 #   macmini      macmini から homeserver への自動化経路
 #
 # 手置きにあった SHA256:dORL3s… は載せていない。正体不明で、gapul 側の一覧からも
@@ -10,3 +14,4 @@
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBLeOb9XOJPsmuTRf708qYoNckWk+/fhuWkpTWtTSu41 macbook-mini
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILZva+I0ui3AGOMb2V7BTLOXXtCJYvCJg9PGmzWOD8Am macmini-outbound macmini
 sk-ecdsa-sha2-nistp256@openssh.com AAAAInNrLWVjZHNhLXNoYTItbmlzdHAyNTZAb3BlbnNzaC5jb20AAAAIbmlzdHAyNTYAAABBBP5Y2DQbhcGpmOGDewcxUuVZ+/XO1I/Zm4M4nZhBMPwygadJY9//NxbVAZs98vMIp1Yy+9wgkQcEuc1CNQdCY2cAAAAEc3NoOg== ssh:
+no-touch-required sk-ecdsa-sha2-nistp256@openssh.com AAAAInNrLWVjZHNhLXNoYTItbmlzdHAyNTZAb3BlbnNzaC5jb20AAAAIbmlzdHAyNTYAAABBBAwCGAA42K/AO4c5DLm/Wq2DUpg7+DZ99q62obRgzqXMkfUe4IlOU639q7thgDzXNmr0u96RHdpYLWoQ4LPXW7AAAAAEc3NoOg== enclave-automation
