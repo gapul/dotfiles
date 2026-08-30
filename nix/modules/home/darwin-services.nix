@@ -6,13 +6,13 @@
   ...
 }:
 let
-  # launchd は素の PATH で起動するので、playwright-mcp が要るものを列挙しておく。
-  # 実害があった: pnpm の global store が持っていた node がリンク切れになり
-  # (~/Library/pnpm/bin/node → 消えた store パス)、agent が "exec: node: not found" で
-  # status 127 のまま死んでいた。ランタイムは宣言側 (systemPackages の nodejs) から取り、
-  # パッケージ本体 (@playwright/mcp) は pnpm の global store に残っているものを使う。
+  # launchd は素の PATH で起動するので、必要なものを列挙しておく。
+  # 経緯: 元は pnpm の global install を使っていたが、その store が消えていた。node も
+  # @playwright/mcp も、存在しない store パスを指す symlink になっていて、agent は
+  # "exec: node: not found" → "Cannot find module .../cli.js" と順に死んでいた。今は
+  # どちらも宣言側から取るので pnpm への依存は無い。PATH を残すのは playwright が
+  # 実行時に呼ぶもの (node など) のため。
   mcpPath = lib.concatStringsSep ":" [
-    "${config.home.homeDirectory}/Library/pnpm/bin"
     "/run/current-system/sw/bin"
     "/usr/bin"
     "/bin"
@@ -66,7 +66,11 @@ in
   # `localhost:8931` (127.0.0.1 in the URL gets a 4xx — write the URL with localhost).
   # The connection to Chrome is lazy, so this stays cheap while Chrome is down, which is the
   # normal state: Chrome is started only for a job (see CLAUDE.md) and killed after.
-  # Binary is the pnpm global install (1.62 alpha); nixpkgs' playwright-mcp is 0.0.76, far behind.
+  # Binary comes from nixpkgs (0.0.69). It used to be the pnpm global install, but that store
+  # evaporated: both ~/Library/pnpm/bin/node and the @playwright/mcp package were symlinks into
+  # store paths that no longer exist, so the agent died with "node: not found" and then
+  # "Cannot find module .../cli.js". npm's latest is 0.0.79 — a patch ahead, which is a cheap
+  # price for not depending on a global store nothing declares.
   # Lightpanda: the cheap CDP target for background work. 19MB resident against Chrome's 296MB
   # (both measured here), so unlike Chrome this one can just stay up — there is no "start it for
   # the job and kill it after" dance. Chrome stays the exception, for logins, captchas and the
@@ -98,7 +102,7 @@ in
     enable = true;
     config = {
       ProgramArguments = [
-        "${config.home.homeDirectory}/Library/pnpm/bin/playwright-mcp"
+        "${lib.getExe pkgs.playwright-mcp}"
         "--cdp-endpoint"
         "http://127.0.0.1:9223"
         "--port"
@@ -119,7 +123,7 @@ in
     enable = true;
     config = {
       ProgramArguments = [
-        "${config.home.homeDirectory}/Library/pnpm/bin/playwright-mcp"
+        "${lib.getExe pkgs.playwright-mcp}"
         "--cdp-endpoint"
         "http://127.0.0.1:9222"
         "--port"
