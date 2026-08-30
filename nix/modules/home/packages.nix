@@ -87,7 +87,16 @@ in
     visidata # CSV/TSV table viewer + editor (TUI, `vd`)
     chafa # image → terminal
     ddgr # DuckDuckGo interactive terminal search
-    w3m # text browser
+    w3m # text browser (枯れている方。pager や外部レンダラとして呼ばれる用)
+    # chawan: 新しい方の端末ブラウザ (`cha`)。w3m と違って CSS を解釈し、
+    # sixel と kitty グラフィックスで画像を出せる — Ghostty は後者を喋るので実際に絵が出る。
+    # JS も部分的に動く。w3m を置き換えるのではなく、素で読める用途は w3m、
+    # 見た目が要る用途は chawan、という住み分け。
+    #
+    # 罠: https が「unexpected eof while reading」で全部落ちる。chawan の http アダプタは
+    # OpenSSL を直に叩いていて SSL_CERT_FILE しか見ず、この環境に入っているのは
+    # NIX_SSL_CERT_FILE だけだった。home/common.nix で SSL_CERT_FILE を足して解決している。
+    chawan
 
     # ─── nix-declaring things previously installed locally via cargo/uv (for reproducibility) ───
 
