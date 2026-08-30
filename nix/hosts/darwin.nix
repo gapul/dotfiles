@@ -57,6 +57,10 @@ in
     # 経緯)。systemPackages なのは omniwmctl の置き場所のため — /run/current-system/sw/bin という
     # 版にもユーザー名にも依存しない固定パスに出るので、configs 側のスクリプトが直に書ける。
     (pkgs.callPackage ../pkgs/omniwm.nix { })
+    # codex: 自前インストーラで ~/.local/bin に入っていたものを宣言に移す。home.packages
+    # ではなく systemPackages なのは PATH の順で、/run/current-system/sw/bin が
+    # ~/.local/bin より前に来る。profile 側だと手動インストール版が勝ってしまう。
+    pkgs.codex
     (pkgs.callPackage ../pkgs/keebmouse.nix { })
     # Puddle / keystats: 自作物。keebmouse と同じく cask をやめて署名済みリリースを取り込む。
     # これで自作物のための tap (gapul/puddle, gapul/keystats) が両方畳める。
@@ -631,6 +635,13 @@ in
       "opentoonz" # 2D animation (.pkg cask)
 
       # ─── 3D / CAD ───
+      # Unity Hub は「常用する GUI」ではなくインストーラの CLI として置いている。
+      #   Unity Hub.app/Contents/MacOS/Unity\ Hub -- --headless install --version <版> --changeset <hash>
+      # で GUI を開かずにエディタを入れられる。Hub 抜きでも公式の単体インストーラは取れるが、
+      # Personal ライセンスの認証が -createManualActivationFile → ポータル → -manualLicenseFile
+      # の遠回りになるので、手元で入れるぶんには Hub を通すほうが早い。nixpkgs の unityhub は
+      # Linux 専用なので cask で宣言する。
+      "unity-hub"
       "blender"
       "kicad"
       "godot"
