@@ -57,6 +57,11 @@ in
     # 経緯)。systemPackages なのは omniwmctl の置き場所のため — /run/current-system/sw/bin という
     # 版にもユーザー名にも依存しない固定パスに出るので、configs 側のスクリプトが直に書ける。
     (pkgs.callPackage ../pkgs/omniwm.nix { })
+    # terminal-browser: 端末の中で動く実ブラウザ。狙いは閲覧より agent 側で、
+    # `terminal-browser action` が開いているブラウザに対する agent 向け CLI になっている。
+    # Claude in Chrome の拡張を使わず、実ウィンドウも出さずに web を触らせられる。
+    # 上流は curl | bash のインストーラで自己更新するので、版を握るために宣言側に置く。
+    (pkgs.callPackage ../pkgs/terminal-browser.nix { })
     # codex: 自前インストーラで ~/.local/bin に入っていたものを宣言に移す。home.packages
     # ではなく systemPackages なのは PATH の順で、/run/current-system/sw/bin が
     # ~/.local/bin より前に来る。profile 側だと手動インストール版が勝ってしまう。
