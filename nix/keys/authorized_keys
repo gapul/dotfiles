@@ -29,6 +29,13 @@
 #                  - ssh-add -s /usr/lib/ssh-keychain.dylib は agent refused operation
 #                上流 (ryoppippi/nix-secure-enclave-key) は最新 rev で修正なし。
 #                再挑戦する前に、ツールがスタブを書くようになったかを確認すること。
+#   automation   母艦の無人ジョブ専用 (~/.ssh/id_automation, ed25519)。
+#                enclave 鍵は署名のたびに Touch ID の承認が要るので、承認の窓が
+#                切れると mutagen 同期などが黙って止まる (2026-08-30 に実際に踏んだ)。
+#                Secure Enclave のまま 2 本目を作る道は塞がっていた (この下の注記)。
+#                秘密鍵はファイルなので enclave の保証は無い。そのぶん宛先を
+#                homeserver / macmini / mvrx 同期の 3 つに絞ってあり、単独で失効できる。
+#                sops (common.yaml の ssh_automation_key) から配られる。
 #   break-glass  Bitwarden の金庫にある鍵。日常では使わず、Secure Enclave が
 #                使えなくなったとき (母艦の故障・紛失) の復旧用。専用の鍵を
 #                新たに作る代わりに、常用をやめたこの鍵をその役に充てている。
@@ -49,3 +56,4 @@
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBLeOb9XOJPsmuTRf708qYoNckWk+/fhuWkpTWtTSu41 macbook-mini
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILZva+I0ui3AGOMb2V7BTLOXXtCJYvCJg9PGmzWOD8Am macmini-outbound macmini
 sk-ecdsa-sha2-nistp256@openssh.com AAAAInNrLWVjZHNhLXNoYTItbmlzdHAyNTZAb3BlbnNzaC5jb20AAAAIbmlzdHAyNTYAAABBBP5Y2DQbhcGpmOGDewcxUuVZ+/XO1I/Zm4M4nZhBMPwygadJY9//NxbVAZs98vMIp1Yy+9wgkQcEuc1CNQdCY2cAAAAEc3NoOg== ssh:
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIE6CMmADF4LGvKe7usCqv4axb24SBjplR9j08u7X9Ro0 automation@macbook (homeserver/macmini/mvrx-sync 限定)

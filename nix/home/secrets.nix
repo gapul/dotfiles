@@ -21,6 +21,17 @@
       "vpn/wgcf".path = "${config.home.homeDirectory}/.config/wireguard/wgcf-profile.conf";
       "rclone_conf".path = "${config.home.homeDirectory}/.config/rclone/rclone.conf";
       "ssh_config".path = "${config.home.homeDirectory}/.ssh/config";
+      # 無人のジョブ専用の ed25519 鍵。常用鍵は Secure Enclave にあり署名のたびに
+      # Touch ID の承認が要るので、承認の窓が切れると mutagen 同期や自動デプロイが
+      # 黙って止まる (2026-08-30)。Secure Enclave のまま生体認証なしの 2 本目を作る
+      # 道は同日に試して塞がっていた (Apple の provider が sk 鍵を登録できない、#499)。
+      #
+      # ファイルなので enclave の保証は無い。そのぶん ssh_config 側で宛先を
+      # homeserver / macmini / mvrx 同期の 3 つに絞ってあり、単独で失効できる。
+      "ssh_automation_key" = {
+        path = "${config.home.homeDirectory}/.ssh/id_automation";
+        mode = "0600";
+      };
       # "ssh_authorized_keys" is no longer placed here: modules/authorized-keys.nix declares the
       # same keys for every host from nix/keys/authorized_keys, so writing a second copy into
       # ~/.ssh/authorized_keys would just be a rival source that drifts. The value is still in
