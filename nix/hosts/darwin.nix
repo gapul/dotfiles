@@ -62,6 +62,10 @@ in
     # Claude in Chrome の拡張を使わず、実ウィンドウも出さずに web を触らせられる。
     # 上流は curl | bash のインストーラで自己更新するので、版を握るために宣言側に置く。
     (pkgs.callPackage ../pkgs/terminal-browser.nix { })
+    # lightpanda: 裏で回す用の軽いブラウザ。実測で常駐 19MB (Chrome は 296MB)。CDP を喋るので
+    # playwright-mcp の接続先をこちらに向けられる。詳細と限界は pkgs/lightpanda.nix。
+    # systemPackages なのは launchd agent が固定パスで参照するため。
+    (pkgs.callPackage ../pkgs/lightpanda.nix { })
     # codex: 自前インストーラで ~/.local/bin に入っていたものを宣言に移す。home.packages
     # ではなく systemPackages なのは PATH の順で、/run/current-system/sw/bin が
     # ~/.local/bin より前に来る。profile 側だと手動インストール版が勝ってしまう。

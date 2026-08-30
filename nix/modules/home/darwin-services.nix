@@ -54,6 +54,50 @@
   # The connection to Chrome is lazy, so this stays cheap while Chrome is down, which is the
   # normal state: Chrome is started only for a job (see CLAUDE.md) and killed after.
   # Binary is the pnpm global install (1.62 alpha); nixpkgs' playwright-mcp is 0.0.76, far behind.
+  # Lightpanda: the cheap CDP target for background work. 19MB resident against Chrome's 296MB
+  # (both measured here), so unlike Chrome this one can just stay up — there is no "start it for
+  # the job and kill it after" dance. Chrome stays the exception, for logins, captchas and the
+  # SPAs Lightpanda renders empty.
+  launchd.agents.lightpanda = {
+    enable = true;
+    config = {
+      ProgramArguments = [
+        "/run/current-system/sw/bin/lp"
+        "serve"
+        "--port"
+        "9333"
+      ];
+      RunAtLoad = true;
+      KeepAlive = true;
+      ProcessType = "Background";
+      StandardErrorPath = "/tmp/lightpanda.err";
+      StandardOutPath = "/tmp/lightpanda.log";
+    };
+  };
+
+  # Second playwright-mcp, pointed at Lightpanda instead of Chrome. Two instances rather than
+  # switching one: the Chrome-backed 8931 keeps working exactly as before, and the caller picks
+  # a port instead of a mode. Both connect lazily, so an idle one costs nothing.
+  launchd.agents.playwright-mcp-light = {
+    enable = true;
+    config = {
+      ProgramArguments = [
+        "${config.home.homeDirectory}/Library/pnpm/bin/playwright-mcp"
+        "--cdp-endpoint"
+        "http://127.0.0.1:9333"
+        "--port"
+        "8932"
+        "--output-dir"
+        "${config.home.homeDirectory}/tmp/playwright-mcp-light"
+      ];
+      RunAtLoad = true;
+      KeepAlive = true;
+      ProcessType = "Background";
+      StandardErrorPath = "/tmp/playwright-mcp-light.err";
+      StandardOutPath = "/tmp/playwright-mcp-light.log";
+    };
+  };
+
   launchd.agents.playwright-mcp = {
     enable = true;
     config = {
