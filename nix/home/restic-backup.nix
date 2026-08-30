@@ -61,6 +61,14 @@ let
       # /Users/mcsrv/server into /Users/Shared/minecraft-backups every ten minutes and
       # home/macmini-backup.nix picks that up - so those are covered over there, not here.
       "${home}/Library/Application Support/minecraft/saves"
+      # PrismLauncher の instance。中身の大半はワールドではなく MOD 構成で、38MB のうち
+      # modded が 26MB を占める。個々の MOD は再ダウンロードできるが「どれをどの版で組んだか」
+      # の再現には手間がかかるので、ワールドと一緒に取る。ランチャーの assets/libraries/java
+      # (合計 1.6GB) はここに含まれない — あれは起動すれば取り直せる。
+      "${home}/Library/Application Support/PrismLauncher/instances"
+      # Steam のセーブ。ほとんどは Steam Cloud 側にあり、ローカルに残るのは 192KB しかない。
+      # 容量を食わないので、クラウド同期の対象外なタイトルのために取っておく。
+      "${home}/Library/Application Support/Steam/userdata"
       "${home}/Desktop" # small, but the only home dir that was silently outside the set
       # Voice Memos. iCloud sync for these is off (CloudRecordings_ckAssets is empty), so the
       # group container is the only copy. CloudRecordings.db carries the titles, so take the
