@@ -3,6 +3,7 @@
   lib,
   config,
   user,
+  nixpkgsUnstable,
   ...
 }:
 let
@@ -227,6 +228,13 @@ in
   #
   services.tailscale = {
     enable = true;
+    # 26.05 の系列は 1.98.10 で止まっており、上流は 1.102.3。tailnet はこの家の
+    # 全ホストを繋ぐ土台で、ここが古いままなのは searxng が 5 月版で止まって
+    # 検索が全滅したのと同じ形になる。unstable に寄せる。
+    package =
+      (import nixpkgsUnstable.legacyPackages.x86_64-linux.path {
+        system = "x86_64-linux";
+      }).tailscale;
     useRoutingFeatures = "server";
     # Connects itself on first boot. The key is placed by hand like the other
     # secrets — the point is that a reinstall does not need someone to remember

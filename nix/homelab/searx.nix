@@ -147,6 +147,31 @@
           name = "boardreader";
           disabled = false;
         }
+        # 古く素朴なページ専門。大手の索引から漏れる側を拾う。
+        {
+          name = "wiby";
+          disabled = false;
+        }
+        # IT カテゴリが薄い (44 個登録して有効 11 個、結果 17 件)。実測で動いた
+        # ものだけ足す。nixos wiki / crates.io / hex / codeberg / alpine は
+        # 0 件だったので入れない。
+        {
+          name = "hackernews";
+          disabled = false;
+        }
+        {
+          name = "gitlab";
+          disabled = false;
+        }
+        # 論文。arxiv や pubmed と別の索引で、こちらも実測済み。
+        {
+          name = "crossref";
+          disabled = false;
+        }
+        {
+          name = "openalex";
+          disabled = false;
+        }
       ];
     };
   };
