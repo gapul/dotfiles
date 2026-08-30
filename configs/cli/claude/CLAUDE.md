@@ -8,7 +8,7 @@
 - UTCではなくJST（日本時間）を使用
 
 ### ブラウザ操作
-常用ブラウザはZen。自動化は用途ごとに4段で、上から順に安い方を選ぶ。
+常用ブラウザはZen。自動化は3つで、まず1、足りなければ2、見せる必要があれば3。
 Chromeは2026-08-30に撤去した（Claude in Chrome拡張ごと）。拡張ができることはPlaywrightで
 全部できたうえ、拡張は`--remote-debugging-port`を開けている間ずっと、localhostの誰にでも
 ブラウザを明け渡す状態を作っていた。
@@ -17,21 +17,29 @@ Chromeは2026-08-30に撤去した（Claude in Chrome拡張ごと）。拡張が
 2. **Lightpanda**（常駐、CDP=9223 / Playwright MCP=`http://localhost:8932/mcp`）
    裏で回す既定。実測14MB。見えないし軽いので常駐させたままでよい。
    ただし実装していないAPIに触るSPAは**エラーではなく空で返る**。取れた内容が
-   空だったらここを疑い、下に落とす。
-3. **terminal-browser** — 見せる担当。Electron同梱の実Chromiumなので描画の穴がなく、
-   `terminal-browser open --split right <url>` で会話の隣に並ぶ。操作は
+   空だったらここを疑い、3へ落とす。
+3. **terminal-browser** — 実Chromium（Electron同梱）なので描画の穴がない。
+   `terminal-browser open --split right <url>` で会話の隣に並び、操作は
    `terminal-browser action -- snapshot|click|fill|eval`。ssh越しも可
-   （`open --ssh user@host <url>`）。TTYが無くても見えるペインを開くので、
-   **ユーザーの目視が要らない場面では使わない**。
-4. **Helium**（ungoogled-chromium）— フルのChromiumが要るとき。
-   `open -gjn -a Helium --args --user-data-dir=... --no-startup-window --remote-debugging-port=9222`
-   で起こすと`http://localhost:8931/mcp`のPlaywright MCPが掴む。常駐させない。
-   9222はローカルに開いたポートなので、使い終わったら落とす。
-   ungoogledなのでGoogleログインは通らない見込み。それが要る仕事は今この機械にはない。
+   （`open --ssh user@host <url>`）。終わったら`terminal-browser shutdown`。
+   **必ず見えるペインを開く**（TTYが無くても右に分割する）ので、ユーザーの
+   目視が要らない場面では2で粘る。
+   Playwrightからは掴めない: CDPは出しているが**ポートが毎回変わる**
+   （実測 53218 → 53337）ので、固定の`--cdp-endpoint`にできない。`action`で操作する。
+   herdrの`[experimental] kitty_graphics`が要る（既定false）。切れているとペインは
+   作られてブラウザも生きているのに**何も描かれない**。無言で失敗するので注意。
+   見えているかの確認は`terminal-browser ls`ではなくherdrに聞く。`ls`は自分の
+   モデルを喋るだけで描画を保証しない（`pane`も`viewport`も返るのに真っ白だった）。
+   `herdr pane process-info --pane <id>`の前面プロセスがterminal-browserなら生きて
+   いて、`herdr pane read <id>`が**空なら正常**（絵はテキストに写らない）。逆に
+   コマンド行とプロンプトが読めたらそれは死骸のシェル。
+   `shutdown`は残骸を残す。次の`open`がそれを拾うと`tty`も`cdpPort`も無いJSONを
+   返して終わり、空のペインだけが積もる。`pkill -f agent-browser`してから開き直す。
 
 - 速度は描画ではなく往復回数で決まる。読み取りだけなら1と2で足りる。
-- `--headless=new`をChromeで試した記録が残っているが（2026-08-10、拡張のnative hostが
-  起動しない）、Chromeごと無くなったので過去の話。Lightpandaは最初からheadless。
+- Heliumはこの動線には出てこない。ヘッドレスでWebGL/スクリーンショットが要る
+  検証（vrma-lab の`scripts/chrome-lab.sh`）専用に残してある。Lightpandaは
+  レンダラを持たないのでそこは代われず、terminal-browserは必ず見えてしまう。
 - ポートの確認は`netstat -an | grep LISTEN`で。**この機械に`/usr/bin/lsof`は無い**ので、
   lsofは黙って空を返し、空きポートに見えてしまう（9333で実際に踏んだ）。
 
