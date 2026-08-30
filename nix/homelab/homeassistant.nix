@@ -26,6 +26,13 @@
       # packet socket. Without them the box has an adapter (hci0 is present and
       # unblocked) that Home Assistant cannot manage, and both log an error every
       # start.
+      #
+      # habluetooth (6.26.5 で確認) は起動ごとに "Missing NET_ADMIN/NET_RAW
+      # capabilities for Bluetooth management" を出すが、これは上流の誤検知で、
+      # ここを直す必要はない。2026-08-30 に中から測った結果:
+      #   CapEff = 0x800435fb → NET_ADMIN も NET_RAW も立っている
+      #   AF_BLUETOOTH の raw ソケットも管理チャネル (HCI_CHANNEL_CONTROL) も開ける
+      # Bluetooth 自体は動いている。このログを見て capability を足しに来ないこと。
       extraOptions = [
         "--network=host"
         "--cap-add=NET_ADMIN"
