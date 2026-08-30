@@ -521,10 +521,15 @@ in
       "touchdesigner"
       "upscayl"
       # ─── Browsers ───
-      "google-chrome"
+      # google-chrome was dropped on 2026-08-30. It was here only for automation (Zen is the
+      # everyday browser), and every job it held has somewhere better to go: Lightpanda for the
+      # background work (14MB against Chrome's 296MB), terminal-browser when the run should be
+      # visible, and Helium below when a full Chromium is genuinely needed. The Claude in Chrome
+      # extension went with it — Playwright covers what it did, and it cost a debugging port
+      # open on localhost for as long as the browser ran.
       # Not the "helium" cask: that one is koush's unrelated Android desktop app, deprecated for
       # failing Gatekeeper and disabled on 2026-09-01.
-      "helium-browser" # ungoogled-chromium based, kept as the Chromium-side second browser
+      "helium-browser" # ungoogled-chromium based, now the Chromium of record here
       "tor-browser"
       "zen"
 

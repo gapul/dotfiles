@@ -64,17 +64,18 @@ in
   #
   # localhost-bound by the server itself, and it rejects any request whose Host is not
   # `localhost:8931` (127.0.0.1 in the URL gets a 4xx — write the URL with localhost).
-  # The connection to Chrome is lazy, so this stays cheap while Chrome is down, which is the
-  # normal state: Chrome is started only for a job (see CLAUDE.md) and killed after.
+  # The connection is lazy, so this stays cheap while nothing is on 9222 — the normal state.
+  # Chrome used to be what listened there; it was dropped on 2026-08-30 and Helium takes the
+  # role, started only for a job (see CLAUDE.md) and killed after.
   # Binary comes from nixpkgs (0.0.69). It used to be the pnpm global install, but that store
   # evaporated: both ~/Library/pnpm/bin/node and the @playwright/mcp package were symlinks into
   # store paths that no longer exist, so the agent died with "node: not found" and then
   # "Cannot find module .../cli.js". npm's latest is 0.0.79 — a patch ahead, which is a cheap
   # price for not depending on a global store nothing declares.
-  # Lightpanda: the cheap CDP target for background work. 19MB resident against Chrome's 296MB
-  # (both measured here), so unlike Chrome this one can just stay up — there is no "start it for
-  # the job and kill it after" dance. Chrome stays the exception, for logins, captchas and the
-  # SPAs Lightpanda renders empty.
+  # Lightpanda: the cheap CDP target for background work. 14MB resident against the 296MB a full
+  # Chromium takes (both measured here), so unlike that one this can just stay up — there is no
+  # "start it for the job and kill it after" dance. The heavy browser stays the exception, for
+  # the SPAs Lightpanda renders empty.
   launchd.agents.lightpanda = {
     enable = true;
     config = {
