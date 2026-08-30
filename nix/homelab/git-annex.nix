@@ -8,15 +8,29 @@
 # Why this host holds them: it has the 432GB pool, and it is the only always-on
 # machine, so it is the remote both Macs sync through.
 #
-# The licensing constraint is the reason this is worth doing at all. Commercial
-# Japanese fonts may not be placed on a server, and "remember not to" is not a
-# control. git-annex enforces it structurally through the preferred content
-# expression on this remote:
+# On the licensing constraint, which this module used to get wrong. The first version
+# excluded commercial Japanese fonts from this remote:
 #
 #   git annex wanted homeserver 'exclude=fonts/commercial/*'
 #
-# After that, `git annex copy --to homeserver` will not send those files, no
-# matter who runs it. The filenames still sync, so the Mac can see what exists.
+# on the reading that their EULAs forbid placing them "on a server". That was guarding the
+# wrong thing. What those clauses are aimed at is *serving* — one licence reaching many
+# machines or many people — and what they actually count is the number of devices the font is
+# installed and used on. Moving bytes between machines that are all mine is not redistribution;
+# installing on more machines than the licence allows is, and no storage rule can prevent that.
+#
+# This host is also not a server in the sense the clause imagines. It is a desktop that happens
+# to stay powered on, reachable only over the tailnet, and the annex sits behind ssh with no
+# daemon and no port. Nobody else can reach it.
+#
+# Meanwhile the exclusion had a cost that was clearly not intended: excluded files existed in
+# exactly one place, the Mac. The annex is deliberately outside restic (see below), so the
+# commercial fonts — the ones that cannot be re-downloaded — were the only assets here with no
+# second copy at all. The rule inverted its own purpose.
+#
+# So: everything goes to this remote. The constraint that remains is a usage one, not a storage
+# one — keep installs within what each licence allows — and it lives with the person, not in a
+# preferred content expression.
 #
 # Nothing here creates the repository — that is one `git annex init` and belongs
 # in the repo, not in the system definition. This module only provides the
