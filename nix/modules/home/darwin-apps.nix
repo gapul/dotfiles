@@ -192,7 +192,10 @@
     # The script carries an @mpv@ placeholder rather than a hard-coded path: mpv moved from brew
     # to nixpkgs, so the binary now lives at a store path that changes with every version.
     # osacompile needs a real file, so substitute into a temporary copy.
-    script=$(mktemp -t mpv-applescript)
+    # Plain `mktemp`, no -t: the activation runs GNU mktemp, where a -t template has to end in
+    # X characters ("too few X's in template" otherwise), while the BSD one in /usr/bin takes
+    # the same string as a literal prefix. Without the flag both behave identically.
+    script=$(mktemp)
     ${pkgs.gnused}/bin/sed \
       's|@mpv@|${lib.getExe pkgs.mpv}|' \
       ${../../../configs/media/mpv-app/mpv.applescript} > "$script"
