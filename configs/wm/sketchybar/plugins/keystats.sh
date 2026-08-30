@@ -1,7 +1,9 @@
 #!/bin/bash
 
 KEYSTATS_BIN="$(command -v keystats 2>/dev/null)"
-for c in /opt/homebrew/bin/keystats "$HOME/.local/bin/keystats"; do
+# /run/current-system/sw/bin: keystats は cask をやめて nix パッケージになったので、CLI は
+# systemPackages の出力先にいる。PATH 頼みだけだと launchd 起動のバーからは見えない。
+for c in /run/current-system/sw/bin/keystats /opt/homebrew/bin/keystats "$HOME/.local/bin/keystats"; do
   [ -x "$KEYSTATS_BIN" ] && break
   KEYSTATS_BIN="$c"
 done

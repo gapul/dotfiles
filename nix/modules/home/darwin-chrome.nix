@@ -226,9 +226,13 @@ in
   # `brew services start sketchybar` had been typed once on this machine, so a fresh mac rebuilt
   # from this repo came up with no bar. Own the daemon here, and retire the brew
   # service in the activation below.
-  # PATH mirrors what the brew plist exported — sketchybarrc and the plugins call brew-installed
-  # binaries (sketchybar, media-control, displayplacer, jq) and launchd starts with a bare PATH.
-  # The profile comes first for `sketchybar-helper`, which nix builds (nix/pkgs/sketchybar-helper).
+  # launchd starts with a bare PATH, so every source the plugins reach for has to be listed.
+  # Three of them now: the user profile for `sketchybar-helper` (nix builds it, see
+  # nix/pkgs/sketchybar-helper), /run/current-system/sw/bin for what systemPackages puts there
+  # (keystats' CLI since it stopped being a cask), and /opt/homebrew/bin for what is still brew —
+  # sketchybar itself, media-control, displayplacer, jq. Leaving the system path out is how the
+  # keystats item silently disappeared from the bar: the plugin resolves the binary with
+  # `command -v` and simply hides the item when it finds nothing.
   launchd.agents.sketchybar = {
     enable = true;
     config = {
@@ -237,7 +241,7 @@ in
       KeepAlive = true;
       ProcessType = "Interactive";
       EnvironmentVariables = {
-        PATH = "${config.home.profileDirectory}/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/bin:/bin:/usr/sbin:/sbin";
+        PATH = "${config.home.profileDirectory}/bin:/run/current-system/sw/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/bin:/bin:/usr/sbin:/sbin";
         LANG = "en_US.UTF-8";
       };
       StandardErrorPath = "/tmp/sketchybar.err";
@@ -269,7 +273,7 @@ in
       KeepAlive = true;
       ProcessType = "Interactive";
       EnvironmentVariables = {
-        PATH = "${config.home.homeDirectory}/.config/sketchybar/bin-ext:${config.home.profileDirectory}/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/bin:/bin:/usr/sbin:/sbin";
+        PATH = "${config.home.homeDirectory}/.config/sketchybar/bin-ext:${config.home.profileDirectory}/bin:/run/current-system/sw/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/bin:/bin:/usr/sbin:/sbin";
         LANG = "en_US.UTF-8";
         SB_PROFILE = "ext";
       };
