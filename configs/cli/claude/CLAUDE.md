@@ -7,26 +7,33 @@
 - macOS環境での開発に特化
 - UTCではなくJST（日本時間）を使用
 
-### ブラウザ操作（Claude in Chrome + Playwright MCP）
-Chromeは自動化専用（常用ブラウザはZen）。ユーザーに起動を頼まず自分で面倒を見る。
-自動化はDefaultではなく専用プロファイル `~/Library/Application Support/Google/Chrome-automation`
-を使う（Defaultのクローン。Cookie/Google login/拡張ごと引き継いでいるのでcaptcha耐性は同じ）。
-- 起動:
-  `open -gjn -a "Google Chrome" --args --user-data-dir="$HOME/Library/Application Support/Google/Chrome-automation" --no-startup-window --remote-debugging-port=9222`
-  窓なし・背景起動でフォーカスを奪わない。拡張は自動で再接続するのでクリック不要。
-  タブは `tabs_context_mcp {createIfEmpty: true}` が要るときだけ作る。
-- 終了: `pkill -f "Chrome-automation"`。ユーザーがDockから開いたDefaultのChromeを巻き込まないよう、
-  必ずこの形で撃つ（`tell application "Google Chrome" to quit` は両方落としうる）。
-- 常駐させない（窓なしで実メモリ約370MB）。
-- Playwright MCP(`playwright`)は同じChromeに9222でアタッチする。Chromeが落ちていても接続は遅延なので
-  起動順は自由。フォーム入力・待機・`browser_evaluate`はこちら、複数手を1往復で流すのは
-  claude-in-chromeの`browser_batch`が強い。両方とも同じ窓を見るので混ぜて使える。
-- 9222はローカルに開いたポートなので、自動化していない間はChromeを落としておく。
-- `--headless=new` は不可。2026-08-10に実測して拡張のnative hostが起動せず未接続になった（302MBまで減るが操作不能）。再挑戦しない。
-- 速度は描画ではなく往復回数で決まる。2手先が読めるなら `browser_batch` に束ねる。
-  画面を見る必要がない読み取りは `get_page_text` / `find` / `javascript_tool` を使い、
-  `computer` のスクリーンショットは座標クリックが必要なときだけ。
-- captcha/ログインが絡まない単なる情報取得はブラウザを起動せず WebFetch で済ませる。
+### ブラウザ操作
+常用ブラウザはZen。自動化は用途ごとに4段で、上から順に安い方を選ぶ。
+Chromeは2026-08-30に撤去した（Claude in Chrome拡張ごと）。拡張ができることはPlaywrightで
+全部できたうえ、拡張は`--remote-debugging-port`を開けている間ずっと、localhostの誰にでも
+ブラウザを明け渡す状態を作っていた。
+
+1. **WebFetch** — captcha/ログインが絡まない単なる情報取得。ブラウザを起こさない。
+2. **Lightpanda**（常駐、CDP=9223 / Playwright MCP=`http://localhost:8932/mcp`）
+   裏で回す既定。実測14MB。見えないし軽いので常駐させたままでよい。
+   ただし実装していないAPIに触るSPAは**エラーではなく空で返る**。取れた内容が
+   空だったらここを疑い、下に落とす。
+3. **terminal-browser** — 見せる担当。Electron同梱の実Chromiumなので描画の穴がなく、
+   `terminal-browser open --split right <url>` で会話の隣に並ぶ。操作は
+   `terminal-browser action -- snapshot|click|fill|eval`。ssh越しも可
+   （`open --ssh user@host <url>`）。TTYが無くても見えるペインを開くので、
+   **ユーザーの目視が要らない場面では使わない**。
+4. **Helium**（ungoogled-chromium）— フルのChromiumが要るとき。
+   `open -gjn -a Helium --args --user-data-dir=... --no-startup-window --remote-debugging-port=9222`
+   で起こすと`http://localhost:8931/mcp`のPlaywright MCPが掴む。常駐させない。
+   9222はローカルに開いたポートなので、使い終わったら落とす。
+   ungoogledなのでGoogleログインは通らない見込み。それが要る仕事は今この機械にはない。
+
+- 速度は描画ではなく往復回数で決まる。読み取りだけなら1と2で足りる。
+- `--headless=new`をChromeで試した記録が残っているが（2026-08-10、拡張のnative hostが
+  起動しない）、Chromeごと無くなったので過去の話。Lightpandaは最初からheadless。
+- ポートの確認は`netstat -an | grep LISTEN`で。**この機械に`/usr/bin/lsof`は無い**ので、
+  lsofは黙って空を返し、空きポートに見えてしまう（9333で実際に踏んだ）。
 
 ### コーディングスタイル
 - インデント: 2スペース（YAML, JSON, Lua, JavaScript, TypeScript）
