@@ -26,6 +26,15 @@ Chromeは2026-08-30に撤去した（Claude in Chrome拡張ごと）。拡張が
    目視が要らない場面では2で粘る。
    Playwrightからは掴めない: CDPは出しているが**ポートが毎回変わる**
    （実測 53218 → 53337）ので、固定の`--cdp-endpoint`にできない。`action`で操作する。
+   herdrの`[experimental] kitty_graphics`が要る（既定false）。切れているとペインは
+   作られてブラウザも生きているのに**何も描かれない**。無言で失敗するので注意。
+   見えているかの確認は`terminal-browser ls`ではなくherdrに聞く。`ls`は自分の
+   モデルを喋るだけで描画を保証しない（`pane`も`viewport`も返るのに真っ白だった）。
+   `herdr pane process-info --pane <id>`の前面プロセスがterminal-browserなら生きて
+   いて、`herdr pane read <id>`が**空なら正常**（絵はテキストに写らない）。逆に
+   コマンド行とプロンプトが読めたらそれは死骸のシェル。
+   `shutdown`は残骸を残す。次の`open`がそれを拾うと`tty`も`cdpPort`も無いJSONを
+   返して終わり、空のペインだけが積もる。`pkill -f agent-browser`してから開き直す。
 
 - 速度は描画ではなく往復回数で決まる。読み取りだけなら1と2で足りる。
 - Heliumはこの動線には出てこない。ヘッドレスでWebGL/スクリーンショットが要る
