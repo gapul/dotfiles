@@ -14,7 +14,7 @@
 
   # Containers
   virtualisation.oci-containers.containers."obsidian-couchdb" = {
-    image = "couchdb:3";
+    image = "docker.io/library/couchdb:3";
     environmentFiles = [ "/var/lib/secrets/obsidian-couchdb.env" ];
     environment = {
     };

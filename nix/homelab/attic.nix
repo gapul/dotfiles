@@ -82,7 +82,7 @@ in
 
   # Containers
   virtualisation.oci-containers.containers."attic-db" = {
-    image = "postgres:16-alpine";
+    image = "docker.io/library/postgres:16-alpine";
     environmentFiles = [ "/var/lib/secrets/attic.env" ];
     environment = {
       "POSTGRES_DB" = "attic";

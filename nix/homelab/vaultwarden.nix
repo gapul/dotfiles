@@ -14,7 +14,7 @@
 
   # Containers
   virtualisation.oci-containers.containers."vaultwarden" = {
-    image = "vaultwarden/server:latest";
+    image = "docker.io/vaultwarden/server:latest";
     environmentFiles = [ "/var/lib/secrets/vaultwarden.env" ];
     environment = {
       "DOMAIN" = "https://vault.gapul.net";

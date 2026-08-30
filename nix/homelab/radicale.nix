@@ -13,7 +13,7 @@
 
   # Containers
   virtualisation.oci-containers.containers."radicale" = {
-    image = "tomsquest/docker-radicale:latest";
+    image = "docker.io/tomsquest/docker-radicale:latest";
     volumes = [
       "/var/lib/homelab/radicale/config:/config:ro"
       "/var/lib/homelab/radicale/data:/data:rw"

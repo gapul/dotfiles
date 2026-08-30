@@ -13,7 +13,7 @@
 
   # Containers
   virtualisation.oci-containers.containers."navidrome" = {
-    image = "deluan/navidrome:latest";
+    image = "docker.io/deluan/navidrome:latest";
     environment = {
       "ND_LOGLEVEL" = "info";
       "ND_SCANSCHEDULE" = "1h";

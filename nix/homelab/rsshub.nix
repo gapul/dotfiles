@@ -13,7 +13,7 @@
 
   # Containers
   virtualisation.oci-containers.containers."rsshub" = {
-    image = "diygod/rsshub:latest";
+    image = "docker.io/diygod/rsshub:latest";
     environment = {
       "CACHE_EXPIRE" = "1800";
       "CACHE_TYPE" = "redis";
@@ -50,7 +50,7 @@
     ];
   };
   virtualisation.oci-containers.containers."rsshub-redis" = {
-    image = "redis:alpine";
+    image = "docker.io/library/redis:alpine";
     volumes = [
       "/var/lib/homelab/rsshub/redis:/data:rw"
     ];

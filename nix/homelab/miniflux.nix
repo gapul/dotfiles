@@ -60,7 +60,7 @@
     ];
   };
   virtualisation.oci-containers.containers."miniflux-db" = {
-    image = "postgres:16-alpine";
+    image = "docker.io/library/postgres:16-alpine";
     environmentFiles = [ "/var/lib/secrets/miniflux.env" ];
     environment = {
       "POSTGRES_DB" = "miniflux";
