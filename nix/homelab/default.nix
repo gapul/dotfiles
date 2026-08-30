@@ -55,6 +55,7 @@
     ./homepage.nix
     ./jellyfin.nix
     ./container-auto-update.nix
+    ./self-deploy.nix
     ./journal-alert.nix
     ./matrix.nix
     ./miniflux.nix
