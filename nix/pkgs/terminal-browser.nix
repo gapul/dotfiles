@@ -16,6 +16,7 @@
   lib,
   stdenvNoCC,
   fetchurl,
+  plemoljp,
 }:
 stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "terminal-browser";
@@ -46,6 +47,18 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     # bin/terminal-browser is a /bin/sh wrapper that resolves its own symlink to find the bundle,
     # so a plain symlink onto PATH is all that is needed — it follows the link back to $out.
     ln -s $out/libexec/terminal-browser/bin/terminal-browser $out/bin/terminal-browser
+
+    # タブバーとツールバーは Chromium ではなく自作のネイティブ描画モジュール
+    # (browser/native/pixel.node) が描いていて、そこに登録されるフォントは
+    # assets/fonts/JetBrainsMono-Regular.ttf ただ 1 本。フォールバックの連鎖が無いので、
+    # CJK を持たないこのフォントだと日本語のタイトルが全部豆腐になる (本文は Chromium が
+    # CoreText 経由で描くので正しく出る、という分かりにくい壊れ方をする)。
+    # パスが決め打ちなので、同じ名前で CJK を持つ等幅に差し替えれば直る。PlemolJP は
+    # JetBrains Mono に IBM Plex Sans JP を合わせたものなので、欧文の見た目が変わらない。
+    # assets/ は .app の外にあるため、ここを触っても同梱 Electron の署名には影響しない。
+    install -m444 ${plemoljp}/share/fonts/truetype/plemoljp/PlemolJP-Regular.ttf \
+      $out/libexec/terminal-browser/assets/fonts/JetBrainsMono-Regular.ttf
+
     runHook postInstall
   '';
 
