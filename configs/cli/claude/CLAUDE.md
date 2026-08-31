@@ -23,7 +23,9 @@ Chromeは2026-08-30に撤去した（Claude in Chrome拡張ごと）。拡張が
    `terminal-browser action -- snapshot|click|fill|eval`。ssh越しも可
    （`open --ssh user@host <url>`）。終わったら`terminal-browser shutdown`。
    **必ず見えるペインを開く**（TTYが無くても右に分割する）ので、ユーザーの
-   目視が要らない場面では2で粘る。
+   目視が要らない場面では2で粘る。フォーカスは奪わない（上流は`--focus`を決め打ちで
+   渡すが、stdoutが端末でないときは外すようパッケージ側で当ててある）。人が打った
+   ときだけ移る。常に移したいなら`TERMINAL_BROWSER_FOCUS=1`。
    Playwrightからは掴めない: CDPは出しているが**ポートが毎回変わる**
    （実測 53218 → 53337）ので、固定の`--cdp-endpoint`にできない。`action`で操作する。
    herdrの`[experimental] kitty_graphics`が要る（既定false）。切れているとペインは
