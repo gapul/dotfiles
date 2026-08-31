@@ -244,6 +244,7 @@
             ./home/personal-history.nix # 個人の記録を端末ごとに書き出して Syncthing に載せる
             ./home/maintenance.nix
             ./home/git-hooks.nix # git hook that auto-rebuilds on main updates (main tree only)
+            ./home/findmy-tag.nix # polls Find My for our own tags; only this Mac has the AOSKit path
           ]
           ++ secrets
           ++ [
