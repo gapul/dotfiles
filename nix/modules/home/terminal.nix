@@ -145,6 +145,13 @@ in
   # ファイルに出して configs/bin/remote-bootstrap からも同じものを張れるようにする。
   home.file.".config/herdr/config.toml".source = ../../../configs/cli/herdr/config.toml;
 
+  # terminal-browser の Vim 風キー操作。拡張 (Surfingkeys) は入れられない — Electron の
+  # loadExtension を露出していないので、拡張を読み込む経路そのものが無い。代わりに
+  # `--preload` でページ読み込み前に隔離ワールドへ差し込む。`tb` ラッパー (packages.nix)
+  # がこのパスを渡すので、素の terminal-browser は何も変わらない。
+  home.file.".config/terminal-browser/vimkeys.js".source =
+    ../../../configs/cli/terminal-browser/vimkeys.js;
+
   # `herdr --remote <host>` の前にリモートの下準備を済ませる。
   #
   # nssh は「ssh で下準備 → tmux を起動」の 2 段だが、herdr は --remote が自前で ssh を
