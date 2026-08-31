@@ -147,8 +147,9 @@ in
 
   # terminal-browser の Vim 風キー操作。拡張 (Surfingkeys) は入れられない — Electron の
   # loadExtension を露出していないので、拡張を読み込む経路そのものが無い。代わりに
-  # `--preload` でページ読み込み前に隔離ワールドへ差し込む。`tb` ラッパー (packages.nix)
-  # がこのパスを渡すので、素の terminal-browser は何も変わらない。
+  # `--preload` でページ読み込み前に隔離ワールドへ差し込む。パスを渡すのは
+  # pkgs/terminal-browser.nix の bin ラッパーで、open / new-tab のときだけ付ける。
+  # このファイルが無ければ何も足さないので、消せば素の terminal-browser に戻る。
   home.file.".config/terminal-browser/vimkeys.js".source =
     ../../../configs/cli/terminal-browser/vimkeys.js;
 

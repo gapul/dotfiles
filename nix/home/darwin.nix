@@ -8,10 +8,6 @@
   ...
 }:
 let
-  # 同じ store パスを指すために束ねる。hosts/darwin.nix も同じ .nix を callPackage
-  # しているが、あちらは systemPackages 用で、こちらは `tb` ラッパーが参照する。
-  terminal-browser = pkgs.callPackage ../pkgs/terminal-browser.nix { };
-
   # Bound here rather than inline in home.packages because the LaunchAgent below
   # needs the path too, and both must point at the same store path.
   mechvibes-dx = pkgs.callPackage ../pkgs/mechvibes-dx.nix { };
@@ -191,16 +187,6 @@ in
 
   # mac-specific packages
   home.packages = with pkgs; [
-    # tb: terminal-browser を Vim 風のキー操作つきで開く。terminal-browser は拡張を
-    # 読み込めない (Electron の loadExtension を露出していないので、Surfingkeys を
-    # 入れる経路そのものが無い) ため、`--preload` で同じ中身を差し込む。
-    # 素の `terminal-browser` は触らない — preload はページの keydown を capture で
-    # 奪うので、常に効かせると `action -- fill` のような自動操作と噛み合わない場面が出る。
-    # 人が読むときは tb、エージェントが動かすときは terminal-browser、と分けておく。
-    (writeShellScriptBin "tb" ''
-      exec ${lib.getExe terminal-browser} "$@" \
-        --preload="$HOME/.config/terminal-browser/vimkeys.js"
-    '')
     bun # generate/type-check karabiner.ts config
     pngpaste # needed for macOS image paste in obsidian.nvim / img-clip
     syncthing # Syncthing CLI (the resident is the LaunchAgent in services.syncthing)
