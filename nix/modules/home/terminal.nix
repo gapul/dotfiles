@@ -152,6 +152,7 @@ in
   # このファイルが無ければ何も足さないので、消せば素の terminal-browser に戻る。
   home.file.".config/terminal-browser/vimkeys.js".source =
     ../../../configs/cli/terminal-browser/vimkeys.js;
+  home.file.".config/terminal-browser/main.js".source = ../../../configs/cli/terminal-browser/main.js;
 
   # `herdr --remote <host>` の前にリモートの下準備を済ませる。
   #
