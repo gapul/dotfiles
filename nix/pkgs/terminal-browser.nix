@@ -16,6 +16,7 @@
   lib,
   stdenvNoCC,
   fetchurl,
+  plemoljp,
 }:
 stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "terminal-browser";
@@ -45,7 +46,53 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     cp -R . $out/libexec/terminal-browser/
     # bin/terminal-browser is a /bin/sh wrapper that resolves its own symlink to find the bundle,
     # so a plain symlink onto PATH is all that is needed — it follows the link back to $out.
-    ln -s $out/libexec/terminal-browser/bin/terminal-browser $out/bin/terminal-browser
+    # bin/terminal-browser は自分の symlink を辿ってバンドルを見つける /bin/sh ラッパーなので、
+    # libexec の実体を直接呼べばそのまま動く。ここで一枚かぶせているのは preload を既定で
+    # 差し込むため (Vim 風のキー操作。拡張が読めないので、そこにしか置き場所がない)。
+    #
+    # 付けるのは open と new-tab だけ。--preload はこの 2 つしか受け付けず、shutdown や ls に
+    # 渡すと unknown option で落ちる。サブコマンドを持たない `terminal-browser <url>` の形も
+    # open と同じ扱いなので、既知のコマンド名でなければ付ける。
+    # 利用者が自分で --preload を渡したときは黙って譲る (中で「同じ partition が別の preload で
+    # 走っている」と弾かれるため、二重に渡してはいけない)。
+    # スクリプトが無ければ何も足さない。素の terminal-browser として動く。
+    mkdir -p $out/bin
+    cat > $out/bin/terminal-browser <<WRAPPER
+    #!/bin/sh
+    set -eu
+    real="$out/libexec/terminal-browser/bin/terminal-browser"
+    preload="\''${XDG_CONFIG_HOME:-\$HOME/.config}/terminal-browser/vimkeys.js"
+
+    takes_preload=1
+    case "\''${1-}" in
+      ls|setup|upgrade|apps|register-app|unregister-app|shutdown|action) takes_preload=0 ;;
+      --version|--help|-h) takes_preload=0 ;;
+    esac
+    for arg in "\$@"; do
+      case "\$arg" in
+        --preload|--preload=*) takes_preload=0 ;;
+      esac
+    done
+
+    if [ "\$takes_preload" = 1 ] && [ -f "\$preload" ]; then
+      exec "\$real" "\$@" "--preload=\$preload"
+    fi
+    exec "\$real" "\$@"
+    WRAPPER
+    sed -i -e 's/^    //' $out/bin/terminal-browser
+    chmod +x $out/bin/terminal-browser
+
+    # タブバーとツールバーは Chromium ではなく自作のネイティブ描画モジュール
+    # (browser/native/pixel.node) が描いていて、そこに登録されるフォントは
+    # assets/fonts/JetBrainsMono-Regular.ttf ただ 1 本。フォールバックの連鎖が無いので、
+    # CJK を持たないこのフォントだと日本語のタイトルが全部豆腐になる (本文は Chromium が
+    # CoreText 経由で描くので正しく出る、という分かりにくい壊れ方をする)。
+    # パスが決め打ちなので、同じ名前で CJK を持つ等幅に差し替えれば直る。PlemolJP は
+    # JetBrains Mono に IBM Plex Sans JP を合わせたものなので、欧文の見た目が変わらない。
+    # assets/ は .app の外にあるため、ここを触っても同梱 Electron の署名には影響しない。
+    install -m444 ${plemoljp}/share/fonts/truetype/plemoljp/PlemolJP-Regular.ttf \
+      $out/libexec/terminal-browser/assets/fonts/JetBrainsMono-Regular.ttf
+
     runHook postInstall
   '';
 
