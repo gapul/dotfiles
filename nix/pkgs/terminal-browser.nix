@@ -44,11 +44,11 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     find . -name '.DS_Store' -delete
     mkdir -p $out/libexec/terminal-browser $out/bin
     cp -R . $out/libexec/terminal-browser/
-    # bin/terminal-browser is a /bin/sh wrapper that resolves its own symlink to find the bundle,
-    # so a plain symlink onto PATH is all that is needed — it follows the link back to $out.
     # bin/terminal-browser は自分の symlink を辿ってバンドルを見つける /bin/sh ラッパーなので、
     # libexec の実体を直接呼べばそのまま動く。ここで一枚かぶせているのは preload を既定で
-    # 差し込むため (Vim 風のキー操作。拡張が読めないので、そこにしか置き場所がない)。
+    # 差し込むため (Surfingkeys の代替。拡張が読めないので、そこにしか置き場所がない)。
+    # --main-script も一緒に渡す。ページから手の届かないタブ操作をそちらが持つ
+    # (Surfingkeys の content script / background script と同じ二層構成)。
     #
     # 付けるのは open と new-tab だけ。--preload はこの 2 つしか受け付けず、shutdown や ls に
     # 渡すと unknown option で落ちる。サブコマンドを持たない `terminal-browser <url>` の形も
@@ -61,7 +61,9 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     #!/bin/sh
     set -eu
     real="$out/libexec/terminal-browser/bin/terminal-browser"
-    preload="\''${XDG_CONFIG_HOME:-\$HOME/.config}/terminal-browser/vimkeys.js"
+    cfg="\''${XDG_CONFIG_HOME:-\$HOME/.config}/terminal-browser"
+    preload="\$cfg/vimkeys.js"
+    mainscript="\$cfg/main.js"
 
     takes_preload=1
     case "\''${1-}" in
@@ -74,9 +76,13 @@ stdenvNoCC.mkDerivation (finalAttrs: {
       esac
     done
 
-    if [ "\$takes_preload" = 1 ] && [ -f "\$preload" ]; then
-      exec "\$real" "\$@" "--preload=\$preload"
+    if [ "\$takes_preload" = 1 ]; then
+      [ -f "\$preload" ] && set -- "\$@" "--preload=\$preload"
+      [ -f "\$mainscript" ] && set -- "\$@" "--main-script=\$mainscript"
     fi
+    # main.js は ~/.config に置かれるので、自分の居場所から CLI を辿れない。実体を渡す。
+    TERMINAL_BROWSER_CLI="\$real"
+    export TERMINAL_BROWSER_CLI
     exec "\$real" "\$@"
     WRAPPER
     sed -i -e 's/^    //' $out/bin/terminal-browser
