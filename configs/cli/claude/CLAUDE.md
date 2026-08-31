@@ -28,6 +28,9 @@ Chromeは2026-08-30に撤去した（Claude in Chrome拡張ごと）。拡張が
    （実測 53218 → 53337）ので、固定の`--cdp-endpoint`にできない。`action`で操作する。
    herdrの`[experimental] kitty_graphics`が要る（既定false）。切れているとペインは
    作られてブラウザも生きているのに**何も描かれない**。無言で失敗するので注意。
+   設定を変えたら`herdr server reload-config`の**あとにクライアントを繋ぎ直す**
+   （`ctrl+t q` → `herdr`）。描画はクライアント側なので、reloadだけでは効かない。
+   セッションはサーバーが持っているので繋ぎ直しても何も失われない。
    見えているかの確認は`terminal-browser ls`ではなくherdrに聞く。`ls`は自分の
    モデルを喋るだけで描画を保証しない（`pane`も`viewport`も返るのに真っ白だった）。
    `herdr pane process-info --pane <id>`の前面プロセスがterminal-browserなら生きて
@@ -35,6 +38,22 @@ Chromeは2026-08-30に撤去した（Claude in Chrome拡張ごと）。拡張が
    コマンド行とプロンプトが読めたらそれは死骸のシェル。
    `shutdown`は残骸を残す。次の`open`がそれを拾うと`tty`も`cdpPort`も無いJSONを
    返して終わり、空のペインだけが積もる。`pkill -f agent-browser`してから開き直す。
+   日本語は素で出る（フォント設定は不要）。ページ内は問題なく、アドレス欄だけが
+   パーセントエンコードのまま出る。
+
+   **セッションは既定で1個を全員で共有する。** `~/Library/Application Support/
+   terminal-browser-5f6866a3/`にCookies/Local Storage/IndexedDB/Service Workerが
+   あり、全インスタンスがここを使う。ユーザーが一度ログインすると、以後エージェント
+   が開くページは全部そのクッキーを持って行く。**ログイン済みの状態が要らない仕事は
+   `--partition=<名前>`で分ける**（例: `--partition=agent`）。ただし分離するだけで、
+   使い捨てにはならない。実装が`persist:`を強制的に前置するので、名前ごとにディスクへ
+   残り続ける。捨てるならディレクトリごと消すしかない。
+   **CDPが開く。**バインドは`127.0.0.1`だけなので外からは来ないが、localhost上の
+   他プロセスからは触れる。Chromeを捨てた理由と同じ形なので、**使い終わったら
+   `terminal-browser shutdown`で落とす**。常駐させない。
+   クリップボード読み取りは既定で無効。`--allow-clipboard-read`を安易に渡さない。
+   `terminal-browser upgrade`は**使わない**。nix管理なのでstoreの外に実体ができる。
+   版は`nix/pkgs/terminal-browser.nix`で上げる。
 
 - 速度は描画ではなく往復回数で決まる。読み取りだけなら1と2で足りる。
 - Heliumはこの動線には出てこない。ヘッドレスでWebGL/スクリーンショットが要る
