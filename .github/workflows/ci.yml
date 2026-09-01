@@ -82,18 +82,23 @@ jobs:
             runner: ubuntu-24.04
           - system: aarch64-linux
             runner: ubuntu-24.04-arm
-          # 自前ランナー (macmini)。GitHub の macos-14 は毎回 nix store が空なので
-          # carla や breeze-icons を建て直し、実測で 4〜31 分とばらつき一度は時間切れ
-          # で落ちた。こちらは store が温まったままなので二度目以降は評価だけで終わる。
-          # M4 なので素の速度も macos-14 (Intel 世代) より速い。
+          # 自前ランナー (macmini) は用意してあるが、CI はまだ macos-14 のまま。
           #
-          # public リポジトリで self-hosted を使う危険は、fork PR の承認を
-          # all_external_contributors にして塞いである (リポジトリ設定)。
+          # 2026-09-01 に切り替えを試して、self-hosted 固有の穴を 7 つ埋めたところで
+          # 一度戻した: macOS が SSH 越しのユーザー作成を拒む / config.sh と run.sh が
+          # bin/ の下 / gapul で走るのに /var/log へ書こうとして launchd が EX_CONFIG /
+          # 登録トークンが 0400 root で読めない / actionlint がカスタムラベルを知らない /
+          # nixpkgs の runner が node24 しか持たず node20 の action が動かない / cachix。
           #
-          # 落ちたら macos-14 に戻せばよい。ランナーが offline のときはジョブが
-          # 待ち続けるので、そこは気付ける。
+          # 動機だった「macos-14 が遅い」は、実測すると 5〜6 分で安定していた。
+          # 時間切れを起こしたのは flake.lock を大きく動かした回だけで常態ではない。
+          # 得られる時間より詰まる時間の方が大きかった。
+          #
+          # ランナー自体は残してある (nix/hosts/macmini-ci-runner.nix)。CI が本当に
+          # 重くなったとき、あるいは macmini でしかできない仕事を CI から回したく
+          # なったときに、runner: macmini に変えれば続きから再開できる。
           - system: aarch64-darwin
-            runner: macmini
+            runner: macos-14
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
     steps:
