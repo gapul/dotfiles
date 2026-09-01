@@ -1,0 +1,7 @@
+# actionlint はカスタムラベルを知らないので、self-hosted ランナーのラベルをここに書く。
+# 書かないと "label \"macmini\" is unknown" で lint が落ちる。
+#
+# macmini: darwin のジョブを走らせる自前ランナー (nix/hosts/macmini-ci-runner.nix)。
+self-hosted-runner:
+  labels:
+    - macmini
