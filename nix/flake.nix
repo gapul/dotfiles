@@ -282,6 +282,8 @@
           # iMessage のブリッジ。他の mautrix は homeserver に置いてあるが、これだけ
           # chat.db と Messages.app が要るのでこの機械にしか置けない。
           ./home/macmini-imessage.nix
+          # 重いレンダリング。母艦を占有せずに済ませるため。
+          ./home/macmini-render.nix
         ];
         wsl = linuxBase ++ [ ./home/wsl.nix ] ++ secrets ++ station;
         linuxServer = linuxBase ++ secrets ++ station;
