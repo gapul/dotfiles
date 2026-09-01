@@ -429,7 +429,7 @@ end)
 -- 同じ動作は OmniWM 側で Hyper+M/N にも割り当ててあるが、1 つの id には 1 バインドしか
 -- 持てないので Tab のマッスルメモリはこちらで足す。
 hs.hotkey.bind(hyperShift, "tab", function()
-	hs.task.new("/opt/homebrew/bin/omniwmctl", nil, { "command", "swap-workspace-with-monitor", "right" }):start()
+	hs.task.new("/run/current-system/sw/bin/omniwmctl", nil, { "command", "swap-workspace-with-monitor", "right" }):start()
 end)
 
 -- AeroSpace が奪っていた macOS ネイティブ操作を殺す (automatically-unhide-macos-hidden-apps=false

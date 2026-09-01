@@ -189,11 +189,22 @@
   # the account is in admin, so the activation can write there without sudo.
   home.activation.mpvDroplet = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     app="/Applications/mpv.app"
-    script=${../../../configs/media/mpv-app/mpv.applescript}
+    # The script carries an @mpv@ placeholder rather than a hard-coded path: mpv moved from brew
+    # to nixpkgs, so the binary now lives at a store path that changes with every version.
+    # osacompile needs a real file, so substitute into a temporary copy.
+    # Plain `mktemp`, no -t: the activation runs GNU mktemp, where a -t template has to end in
+    # X characters ("too few X's in template" otherwise), while the BSD one in /usr/bin takes
+    # the same string as a literal prefix. Without the flag both behave identically.
+    script=$(mktemp)
+    ${pkgs.gnused}/bin/sed \
+      's|@mpv@|${lib.getExe pkgs.mpv}|' \
+      ${../../../configs/media/mpv-app/mpv.applescript} > "$script"
     additions=${../../../configs/media/mpv-app/Info-additions.plist}
     icon=${../../../configs/media/mpv-app/mpv.icns}
     stamp="$app/Contents/Resources/.built-from"
-    want="$script $additions $icon"
+    # $script is a fresh mktemp every run, so stamp on what actually decides the contents:
+    # the mpv path baked in, plus the other two committed inputs.
+    want="${lib.getExe pkgs.mpv} $additions $icon"
 
     if [ "$(cat "$stamp" 2>/dev/null)" != "$want" ]; then
       $DRY_RUN_CMD rm -rf "$app"
@@ -215,6 +226,7 @@
       # next login instead of now.
       $DRY_RUN_CMD /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$app"
     fi
+    rm -f "$script"
   '';
 
   # macSKK / azooKey skkserv: defaults import the sandboxed app's preferences
@@ -257,7 +269,7 @@
     # other ten were registered by hand or by each app's own "launch at login" toggle, so a
     # fresh machine came up missing them. Adding is idempotent (existing entries are skipped).
     LOGIN_APPS=(
-      "/Applications/OmniWM.app"
+      "/Applications/Nix Apps/OmniWM.app" # nix パッケージ化したので Nix Apps 側
       # OmniWM has no exec action, so everything that used to be an aerospace
       # after-startup/exec binding lives in Hammerspoon instead (close, new Ghostty window,
       # display mirroring, moving a workspace to the next monitor, the cmd-m/cmd-h swallows).
@@ -265,12 +277,12 @@
       # silently dead, which is exactly the hole this list exists to close.
       "/Applications/Hammerspoon.app"
       "/Applications/Ghostty.app"
-      "/Applications/Puddle.app"
+      "/Applications/Nix Apps/Puddle.app" # nix パッケージ化したので Nix Apps 側
       "/Applications/Thaw.app"                # menu bar management
       "/Applications/azooKey skkserv.app"     # SKK conversion server for macSKK
       "/Applications/Maccy.app"               # clipboard history
       "/Applications/LuLu.app"                # outbound firewall
-      "/Applications/KDE Connect.app"         # phone integration
+      "/Applications/Nix Apps/KDE Connect.app" # phone integration (nix パッケージ化したので Nix Apps 側)
       "/Applications/ActivityWatch.app"       # time tracking
       "/Applications/Obsidian.app"            # notes (LiveSync keeps running in the background)
       "/Applications/Zen.app"                 # browser
@@ -281,13 +293,23 @@
     failed=""
     for app in "''${LOGIN_APPS[@]}"; do
       name=$(basename "$app" .app)
-      if ! /usr/bin/osascript -e "tell application \"System Events\" to (name of login items) contains \"$name\"" 2>/dev/null | grep -q true; then
-        if [ ! -d "$app" ]; then
-          continue # not installed on this machine yet; the cask will bring it, next rebuild registers it
-        fi
-        /usr/bin/osascript -e "tell application \"System Events\" to make login item at end with properties {path:\"$app\", hidden:false}" >/dev/null 2>&1 ||
-          failed="$failed $name"
+      # Compare the registered path, not just the name. Matching on the name alone meant a moved
+      # app kept its stale entry forever: Puddle became a nix package, the declaration moved to
+      # /Applications/Nix Apps, and the login item still pointed at the deleted
+      # /Applications/Puddle.app — `path of login item` answered `missing value` and nothing
+      # noticed. A wrong path is worse than a missing one, since it fails silently at login.
+      current=$(/usr/bin/osascript -e "tell application \"System Events\" to get path of login item \"$name\"" 2>/dev/null)
+      if [ "$current" = "$app" ]; then
+        continue
       fi
+      if [ ! -d "$app" ]; then
+        continue # not installed on this machine yet; the cask will bring it, next rebuild registers it
+      fi
+      if [ -n "$current" ]; then
+        /usr/bin/osascript -e "tell application \"System Events\" to delete login item \"$name\"" >/dev/null 2>&1 || true
+      fi
+      /usr/bin/osascript -e "tell application \"System Events\" to make login item at end with properties {path:\"$app\", hidden:false}" >/dev/null 2>&1 ||
+        failed="$failed $name"
     done
     if [ -n "$failed" ]; then
       warnEcho "login items could not be registered:$failed"

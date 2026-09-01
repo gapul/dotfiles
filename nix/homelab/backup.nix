@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ config, pkgs, ... }:
 let
   # Same repository and the same retention as the Mac and the laptop. That file
   # is the single definition point on purpose: three hosts writing to one restic
@@ -75,6 +75,22 @@ in
       ${pkgs.podman}/bin/podman exec miniflux-db \
         sh -c 'pg_dump -U "$POSTGRES_USER" -Fc miniflux' \
         > /var/lib/db-dumps/miniflux.dump
+
+      # ネイティブの PostgreSQL (atuin が database.createLocally で生やしたクラスタ)。
+      # コンテナ側と違ってここは見落としていた。/var/lib は paths に入っているので
+      # PGDATA のファイルは restic に入るが、それは稼働中のコピーで、起動する保証が
+      # 無い。このファイル自身が dawarich についてそう書いている。
+      #
+      # Matrix の履歴がここに溜まる。ブリッジで取り込んだ過去ログは相手の
+      # ネットワークから取り直せるとは限らない (Signal は端末にしか無い) ので、
+      # 壊れたコピーしか無い状態にはしない。
+      ${pkgs.util-linux}/bin/runuser -u postgres -- \
+        ${config.services.postgresql.package}/bin/pg_dump -Fc matrix-synapse \
+        > /var/lib/db-dumps/matrix-synapse.dump
+
+      ${pkgs.util-linux}/bin/runuser -u postgres -- \
+        ${config.services.postgresql.package}/bin/pg_dump -Fc atuin \
+        > /var/lib/db-dumps/atuin.dump
 
       # sqlite は WAL の途中でコピーすると千切れる。iterdump はトランザクション内で
       # 読むので、稼働中でも一貫した SQL が出る。1行で書くのは、nix の indented

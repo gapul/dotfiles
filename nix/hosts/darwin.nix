@@ -2,6 +2,7 @@
   lib,
   pkgs,
   brewNix,
+  mocopiMac,
   nixpkgsUnstable,
   user,
   ...
@@ -34,7 +35,93 @@ in
   # reach ~/Applications, while nix-darwin copies these into /Applications/Nix Apps, where Finder
   # lists them and Spotlight indexes them. Everything without a bundle stays in home.packages.
   environment.systemPackages = [
-    pkgs.brewCasks.qview # brew-nix test target: lightweight image viewer distributed as a simple .app
+    # brew-nix: Homebrew casks as nix derivations, so the version is decided by flake.lock
+    # instead of by whenever `just maintain` last ran `brew upgrade --cask --greedy`.
+    # Casks live here rather than in homebrew.casks only when all of the following hold, because
+    # each one is a way this breaks:
+    #   - the artifact is a plain .app. A .pkg has to land in /Library (input methods, audio
+    #    drivers, VPN daemons), which a store copy cannot do.
+    #   - the cask is in homebrew/cask. brew-api mirrors the official API only, so nothing from
+    #     a third-party tap (omniwm, puddle, neru, keystats, … — 14 of them here) can come from it.
+    #   - upstream ships a hash. Six casks here are `no_check`, and those are the self-updating
+    #     ones (chrome, steam) where a pinned hash would go stale anyway.
+    #   - the app does not update itself, does not want TCC permissions, and is not a login item.
+    #     A login item is registered by /Applications path, and this moves the bundle to
+    #     /Applications/Nix Apps.
+    pkgs.brewCasks.qview # lightweight image viewer, the original trial target
+    # keebmouse: 自作。cask をやめて署名済みリリースを取り込む nix パッケージにした。
+    # TCC を壊すのは「nix で置くこと」ではなく「ビルドのたび cdhash が変わる ad-hoc 署名」の
+    # ほうで、ここは Developer ID 署名の bundle をそのまま運ぶので版が上がっても剥がれない。
+    # 常駐は launchd.agents.keebmouse (modules/home/darwin-chrome.nix) が持つ。
+    # OmniWM: 主力のタイル型 WM。cask をやめて署名済みリリースを取り込む(pkgs/omniwm.nix に
+    # 経緯)。systemPackages なのは omniwmctl の置き場所のため — /run/current-system/sw/bin という
+    # 版にもユーザー名にも依存しない固定パスに出るので、configs 側のスクリプトが直に書ける。
+    (pkgs.callPackage ../pkgs/omniwm.nix { })
+    # KDE Connect: スマホ連携。自作 tap の cask をやめて署名済みの dmg を取り込む
+    # (経緯は pkgs/kdeconnect.nix)。cask は `sha256 :no_check` で検証していなかったうえ、
+    # 固定していた CI ビルドが CDN から消えていて、新しい機械では 404 になる状態だった。
+    (pkgs.callPackage ../pkgs/kdeconnect.nix { })
+    # terminal-browser: 端末の中で動く実ブラウザ。狙いは閲覧より agent 側で、
+    # `terminal-browser action` が開いているブラウザに対する agent 向け CLI になっている。
+    # Claude in Chrome の拡張を使わず、実ウィンドウも出さずに web を触らせられる。
+    # 上流は curl | bash のインストーラで自己更新するので、版を握るために宣言側に置く。
+    (pkgs.callPackage ../pkgs/terminal-browser.nix { })
+    # lightpanda: 裏で回す用の軽いブラウザ。実測で常駐 19MB (Chrome は 296MB)。CDP を喋るので
+    # playwright-mcp の接続先をこちらに向けられる。詳細と限界は pkgs/lightpanda.nix。
+    # systemPackages なのは launchd agent が固定パスで参照するため。
+    (pkgs.callPackage ../pkgs/lightpanda.nix { })
+    # node: playwright-mcp の実行に要る。pnpm の global store が持っていた node は
+    # リンク切れになっていて (~/Library/pnpm/bin/node → 消えた store パス)、そのせいで
+    # playwright-mcp の agent が "exec: node: not found" で status 127 のまま死んでいた。
+    # ランタイムは pnpm の管理から外して宣言側で持つ。パッケージ (@playwright/mcp) は
+    # pnpm の global store に残っているのでそちらのまま。
+    pkgs.nodejs
+    # codex: 自前インストーラで ~/.local/bin に入っていたものを宣言に移す。home.packages
+    # ではなく systemPackages なのは PATH の順で、/run/current-system/sw/bin が
+    # ~/.local/bin より前に来る。profile 側だと手動インストール版が勝ってしまう。
+    pkgs.codex
+    (pkgs.callPackage ../pkgs/keebmouse.nix { })
+    # Puddle / keystats: 自作物。keebmouse と同じく cask をやめて署名済みリリースを取り込む。
+    # これで自作物のための tap (gapul/puddle, gapul/keystats) が両方畳める。
+    (pkgs.callPackage ../pkgs/puddle.nix { })
+    (pkgs.callPackage ../pkgs/keystats.nix { })
+    # mocopi: 自作。ソースは private repo のままなので flake input は git+ssh で引いている
+    # (flake.nix の mocopi-mac)。ここに置くと /Applications/Nix Apps に入るので、README に
+    # あった `nix build && cp -R result/Applications/mocopi.app ~/Applications/` の手作業が要らない。
+    # .app であることに意味がある: 独立した bundle は自前の Bluetooth 権限を持てるので、
+    # 起動したターミナルの権限を借りずに済む(mocopi-mac の flake.nix のコメント参照)。
+    mocopiMac.packages.${pkgs.stdenv.hostPlatform.system}.default
+    # VOICEVOX: was the reason a fork of the upstream Homebrew tap existed at all — upstream is
+    # stuck at 0.25.1 with a dead autobump, so the fork carried 0.25.2 by hand. nixpkgs packages
+    # the same 0.25.2 and builds on aarch64-darwin, so the fork, the tap and the "switch back once
+    # upstream catches up" note all go away together. The editor alone would be useless; the
+    # engine comes with it (voicevox-engine is a runtime reference, wired by nixpkgs'
+    # hardcode-paths patch) where the cask bundled it inside the .app.
+    pkgs.voicevox
+    pkgs.brewCasks.audacity
+    pkgs.brewCasks.fontforge-app
+    pkgs.brewCasks.fontgoggles
+    pkgs.brewCasks.goxel
+    pkgs.brewCasks.gyroflow
+    pkgs.brewCasks.imhex
+    pkgs.brewCasks.librecad
+    pkgs.brewCasks.material-maker
+    pkgs.brewCasks.milkytracker
+    pkgs.brewCasks.mixxx
+    pkgs.brewCasks.anki
+    pkgs.brewCasks.ente-auth
+    pkgs.brewCasks.keyguard
+    pkgs.brewCasks.knockknock # persistence scanner (Objective-See). 初回に Full Disk Access の再付与が要る
+    pkgs.brewCasks.localsend
+    pkgs.brewCasks.orcaslicer
+    # Scribus は同梱の Python.framework に PrivateHeaders への壊れた symlink を2本抱えていて、
+    # nixpkgs の noBrokenSymlinks fixup がそれを理由にビルドを落とす。中身は上流の配布物その
+    # ままで、壊れているのは使われないヘッダの参照だけなので、チェックのほうを外す。
+    (pkgs.brewCasks.scribus.overrideAttrs (_: {
+      dontCheckForBrokenSymlinks = true;
+    }))
+    pkgs.brewCasks.supercollider
+    pkgs.brewCasks.trex # 画面 OCR。Screen Recording の TCC を再付与する必要がある
     # ─── Creative: official is paid but nixpkgs source builds give a free full version ───
     # Unavailable/broken on 26.05-darwin, so from unstablePkgs (nixos-unstable, with allowUnfree).
     unstablePkgs.fritzing # PCB/circuit design CAD (official DL is paid. for the ESP32 project). cached, so instant
@@ -51,6 +138,15 @@ in
     # AivisSpeech desktop editor (GUI). Bundles its own engine copy, but scripts
     # keep using the newer headless engine above; both share the model dir.
     (pkgs.callPackage ../pkgs/aivisspeech.nix { })
+    # Headitude: AirPods head orientation -> OSC. A head-rotation source that keeps
+    # working while the face is out of the camera frame. No nixpkgs package and no
+    # cask, so the official release zip is repackaged. See pkgs/headitude.nix.
+    (pkgs.callPackage ../pkgs/headitude.nix { })
+    # SlimeVR Server: full-body tracking receiver, used here with mocopi's SlimeVR
+    # mode rather than SlimeVR's own trackers. nixpkgs' slimevr-server is
+    # `broken = isDarwin` and headless-only, so the official dmg is repackaged.
+    # See pkgs/slimevr-server.nix.
+    (pkgs.callPackage ../pkgs/slimevr-server.nix { })
   ];
 
   # macOS settings (GUI/peripheral-oriented. Only values verified via `defaults read` on the machine are declared)
@@ -315,24 +411,16 @@ in
       "felixkratz/formulae"
       "finnvoor/tools"
       "gerlero/openfoam"
-      "gapul/kdeconnect" # fork of imshuhao/kdeconnect. Fixed the deprecated depends_on macos
       "lihaoyun6/tap" # QuickRecorder (screen recorder. Required since not in homebrew/cask)
-      "barutsrb/tap" # OmniWM (Niri/Hyprland-inspired tiling WM, main WM since 2026-08)
       "osx-cross/arm" # QMK toolchain dependency tap
       "osx-cross/avr" # QMK / Keyball AVR toolchain tap
       "qmk/qmk" # QMK CLI
-      # Own fork of the VOICEVOX tap. Upstream is stuck at 0.25.1 (its autobump is dead), the fork
-      # carries 0.25.2. Declaring upstream while the fork is also tapped locally makes the cask
-      # token `voicevox` ambiguous, and every `brew bundle` — so every rebuild — dies on it.
-      "gapul/voicevox"
       "y3owk1n/tap" # cask distribution source for neru (full-screen keyboard navigation)
 
       # ─── Personal forks (gapul) — delete if you forked and don't need them ───
+      "gapul/tap" # gapul の汎用 cask タップ (webcam-motion-capture 等、homebrew/cask に無いもの)
       "gapul/openutau"
       "gapul/azoo-key-skkserv"
-      "gapul/keystats" # self-made keystroke analytics (cask)
-      "gapul/tap" # 雑多な自作物の cask 置き場 (いまは keebmouse。ソース repo は private なので成果物だけここ)
-      "gapul/puddle" # cask distribution tap for Puddle (self-built MIT fork of Plash)
       "gapul/armorpaint" # ArmorPaint source-build formula distribution tap (official is paid €16 → self-build for free full version)
       "gapul/inochi" # cask distribution tap for Inochi Creator (2D VTuber rigging) (not in homebrew/cask)
     ];
@@ -352,8 +440,9 @@ in
     # binary exists on both sides brew wins. Don't leave duplicates around.
     brews = [
       # ─── Languages / Package managers ───
-      # (b) already pulled in as an mpv/yt-dlp dependency, so a nix deno would just be a second copy.
-      # Declared explicitly so removing mpv doesn't orphan it and break nvim skkeleton (denops runtime).
+      # (b) yt-dlp が引いてくるので nix の deno は二重になる。mpv は nixpkgs 側へ移した
+      # (home/workstation.nix)ので、その依存はもう理由に数えない。nvim skkeleton(denops
+      # ランタイム)が要るため、依存が外れても消えないよう明示的に宣言している。
       "deno"
 
       # ─── Keyboard firmware ───
@@ -364,14 +453,13 @@ in
       "winetricks" # (c) drives the wine-stable cask's prefix; nix winetricks would pull nix wine
 
       # ─── TUI utilities ───
-      # TODO(concord): held at 2.4.8 via `brew pin chojs23/tap/concord`. 2.5.0+ can't install on
-      # macOS — the cargo-dist-generated formula requires alsa-lib/pipewire (Linux-only, no macOS
-      # bottle) unconditionally. Root cause is upstream `dist` not gating Homebrew run-deps per
-      # target (concord's dist config already restricts them to Linux, but dist ignores it in the
-      # formula; not fixed as of dist 0.32.0). The pin is imperative, so a fresh machine needs
-      # `brew pin chojs23/tap/concord` re-run. Retry `brew unpin ... && brew upgrade concord` after
-      # new releases; real fix is a bug report to axodotdev/cargo-dist. See PR #119 for the
-      # `just maintain` hardening that keeps this pin from aborting upgrades.
+      # The 2.4.8 hold is gone (2026-08-29, unpinned and upgraded to 2.5.13). It was held because
+      # the cargo-dist-generated formula listed alsa-lib/pipewire (Linux-only, no macOS bottle)
+      # unconditionally, so 2.5.0+ could not install here. The 2.5.13 formula wraps them in
+      # `on_linux do`, which is the fix that was being waited on. Nothing to re-pin on a fresh
+      # machine any more — the pin was imperative (`brew pin`), so it only ever existed on this one.
+      # The `just maintain` hardening from PR #119 stays useful regardless: it is what keeps one
+      # broken formula from aborting the whole upgrade and rolling back the flake update.
       "chojs23/tap/concord" # (a) Discord TUI. tap-only, not in nixpkgs
       "wifitui" # (a) wifi TUI. nixpkgs marks it Linux-only
 
@@ -389,7 +477,6 @@ in
 
       # ─── Documents / Fonts / Media ───
       "gstreamer" # (a) nixpkgs gst_all_1 doesn't support aarch64-darwin
-      "mpv" # (a) nixpkgs mpv doesn't support aarch64-darwin
       # 3D model previews in yazi (configs/cli/yazi/plugins/model.yazi). nixpkgs f3d can't build on
       # aarch64-darwin: its openusd dependency fails, taking f3d down with it.
       "f3d" # (a) headless 3D renderer
@@ -404,7 +491,13 @@ in
       # ─── Status bar (felixkratz tap) ───
       # (borders/JankyBorders was dropped 2026-08: OmniWM draws its own active-window border, so the
       #  resident daemon was 174MB of duplicate decoration.)
-      "felixkratz/formulae/sketchybar" # (a) tap-only. launched via launchd agent (home/darwin-chrome.nix)
+      # nixpkgs にも sketchybar はあるが、移して戻した(#485 → この revert)。理由は署名で、
+      # nixpkgs 版は nix がソースからビルドするので ad-hoc 署名になり、TCC が
+      # 「"sketchybar" would like to access data from other apps」を延々出し続けて収まらない。
+      # felixkratz が配るバイナリは署名済みなので黙る。keystats で2回権限が飛んだのと同じ話で、
+      # 「nix に置くこと」ではなく「ビルドのたび cdhash が変わること」が原因。逆に言えば、
+      # 署名済みの配布物を運ぶだけの keebmouse / Puddle / keystats は nix 化できている。
+      "felixkratz/formulae/sketchybar" # (a) 署名済みバイナリが要る。launchd agent は home/darwin-chrome.nix
 
       # ─── Transcription / other 3rd-party tap brews ───
       "finnvoor/tools/yap" # (a) Japanese transcription. tap-only, not in nixpkgs
@@ -419,11 +512,27 @@ in
 
     # GUI applications (~100)
     casks = [
+      # brewCasks に移せた仲間だが、この7本だけ cask のまま。理由はサイズで、
+      # om ci(aarch64-darwin) の macos-14 ランナーは空きが約14GBしかなく、
+      # 合計約5GB を store に実体化しようとすると anki の展開中に無言で死ぬ。
+      # 母艦では問題なくビルドできるので、宣言できない理由ではなく CI の天井。
+      "bitwig-studio"
+      "cycling74-max"
+      "freecad"
+      "krita"
+      "simplex"
+      "touchdesigner"
+      "upscayl"
       # ─── Browsers ───
-      "google-chrome"
+      # google-chrome was dropped on 2026-08-30. It was here only for automation (Zen is the
+      # everyday browser), and every job it held has somewhere better to go: Lightpanda for the
+      # background work (14MB against Chrome's 296MB), terminal-browser when the run should be
+      # visible, and Helium below when a full Chromium is genuinely needed. The Claude in Chrome
+      # extension went with it — Playwright covers what it did, and it cost a debugging port
+      # open on localhost for as long as the browser ran.
       # Not the "helium" cask: that one is koush's unrelated Android desktop app, deprecated for
       # failing Gatekeeper and disabled on 2026-09-01.
-      "helium-browser" # ungoogled-chromium based, kept as the Chromium-side second browser
+      "helium-browser" # ungoogled-chromium based, now the Chromium of record here
       "tor-browser"
       "zen"
 
@@ -446,41 +555,16 @@ in
       # Dropped proprietary Beeper (not in active use) for Element on the self-hosted Matrix
       # (@gapul:gapul.net; Discord/Telegram bridged in homelab/matrix.nix).
       "element"
-      "kdeconnect"
-      "localsend"
-      "simplex"
 
       # ─── Window / Keyboard / Input ───
-      # OmniWM: main tiling WM (replaced aerospace 2026-08, trial concluded). Hotkeys are
-      # GUI-configured (settings.toml schema is undocumented), so ~/.config/omniwm is
-      # app-managed, not nix-generated. Hotkeys mirror the old aerospace hyper band (Cmd+Ctrl+Alt).
-      # The v0.5.9 hand-pin is gone (2026-08-29). It was there because 0.5.10 regressed
-      # floating-panel focus and OmniWM yanked focus off Ghostty's quick terminal, which
-      # quick-terminal-autohide then closed within 100ms (BarutSRB/OmniWM#559). v0.6.1 shipped
-      # the fix ("recovery now leaves a foreign window that genuinely holds focus alone") and a
-      # `brew upgrade` has since carried this machine to 0.6.3, so there is nothing left to pin.
-      #
-      # What replaces that worry: a cask upgrade rewrites ~/.config/omniwm/settings.toml, and
-      # anything the new version cannot decode invalidates the WHOLE file — it lands in
-      # settings.toml.corrupt and defaults are written back, through the out-of-store symlink,
-      # over configs/wm/omniwm/settings.toml in this repo. Two known shapes of that:
-      #   - new keys. 0.6.3 added focus.raiseOnMouseFocus and gaps.fullscreenUsesOuterGaps;
-      #     their absence alone wiped every hotkey (fixed by adding them, both false).
-      #   - renamed action ids. 0.6.4 renames assignFocusedWindowToScratchpad and
-      #     toggleScratchpadWindow to …ToScratchpad.1 / toggleScratchpad.1 and adds eighteen
-      #     more. It ships a migration, but an unknown id is exactly what invalidates a file,
-      #     so diff settings.toml after that upgrade rather than assuming.
-      # In short: after any omniwm upgrade, check `ls ~/.config/omniwm/settings.toml.corrupt`
-      # and `git diff configs/wm/omniwm/settings.toml` before doing anything else.
-      "omniwm"
       "thaw" # menu bar management (maintenance fork of Ice. Upstream jordanbaird-ice stalled at 0.11.12/2024-10 and won't launch on macOS Tahoe → migrated to Tahoe-compatible Thaw on 2026-07-27. Ice settings are importable)
       "karabiner-elements"
       "macskk"
       "gapul/azoo-key-skkserv/azoo-key-skkserv" # skkserv for the azooKey conversion engine (gapul self-made tap)
       "y3owk1n/tap/neru" # mouse-free full-screen navigation (grid/hints/scroll. System-wide version of Vimium. shortcat superset)
+      "gapul/tap/webcam-motion-capture" # webcam full-body/hand/face mocap (VMC/OSC out). 自己更新するので brew-nix ではなく cask。mocopi+カメラの自前構成との比較検討用
 
       # ─── macOS utilities ───
-      "gapul/puddle/puddle" # set any web page as desktop wallpaper (self-built MIT fork of Plash, Developer ID signed + notarized)
       "hammerspoon"
       "espanso"
       "maccy"
@@ -494,6 +578,12 @@ in
       # (not in homebrew/cask, and nixpkgs only has the older Inochi2D). Currently v1.0.0-beta2.
       "gapul/inochi/nijigenerate" # rigging editor (Inochi Creator successor)
       "gapul/inochi/nijiexpose" # streaming runtime (Inochi Session successor)
+      # VCam: 3D (VRM) avatar out of a CoreMediaIO virtual camera, so OBS / Zoom / Meet see the
+      # avatar as a webcam. MIT and mac-native — the only maintained FOSS VRM runtime for macOS.
+      # Face tracking is the built-in camera by default and iFacialMocap (iPhone TrueDepth) for
+      # perfect sync. Stays a cask rather than brewCasks above: it wants Camera/Microphone TCC and
+      # registers a virtual camera, and both key on the bundle living at /Applications/VCam.app.
+      "vcamapp"
 
       # ─── Privacy / Security ───
       # Objective-See (Patrick Wardle) suite — all free and notarized
@@ -511,14 +601,11 @@ in
       # installed, and like ransomwhere it is an Installer-artifact cask, so brew just runs
       # the same installer the manual install did.
       "blockblock" # persistence attempt blocker (alerts when something installs itself to run at login)
-      "knockknock" # persistence scanner
       "lulu" # outbound firewall
       "ransomwhere" # ransomware (suspicious encryption behavior) detection
       # VPN / keys
       "mullvad-vpn" # no-log anonymous VPN (a separate layer from self-hosted WireGuard/Tailscale)
-      "ente-auth"
       "keepassxc"
-      "keyguard"
       "bitwarden" # Bitwarden official desktop app
 
       # ─── Network / Remote ───
@@ -536,74 +623,52 @@ in
       "ghostty"
       "android-studio"
       "flutter"
-      "imhex"
-      "trex"
       "deskflow"
       "codexbar" # show usage/limits of various AI coding vendors in the menu bar (bundles codexbar CLI, auto-linked into /opt/homebrew/bin)
 
       # ─── Creative — Design / 2D ───
       "affinity"
       "gimp"
-      "krita"
       "inkscape"
-      "scribus"
       "darktable"
       "rawtherapee"
       "digikam" # photo management (RAW development, tag management)
-      "upscayl"
-      "fontforge-app"
-      "fontgoggles"
       "pika"
       "adobe-creative-cloud"
       "sf-symbols" # Apple SF Symbols catalog
 
       # ─── Creative — Audio / Music ───
-      "audacity"
-      "bitwig-studio"
       "cardinal"
-      "cycling74-max"
-      "mixxx"
       "musescore"
-      "milkytracker"
       # native-access removed: replaced by the unofficial CLI (gapul/na-cli, on PATH via
       # home/darwin.nix). NTKDaemon runs headless via launchd; keep the cask out so a rebuild
       # doesn't reinstall the GUI and re-claim the native-access:// scheme.
       "openutau"
       "pd"
       "reaper"
-      "supercollider"
       "surge-xt" # synth standalone/plugin (.pkg cask)
       # zrythm was removed since it was a trial version (x64/Rosetta/can't save). Consolidated onto the
       # self-made full nix version (pkgs/zrythm-darwin, arm64-native, -O2). Installed via home.packages.
       "vcv-rack"
-      "gapul/voicevox/voicevox" # from the fork tap above. Switch back once upstream catches up
-      # self-made keystroke analytics. Developer ID signed + notarized, so it passes
-      # Gatekeeper even with quarantine (no_quarantine not needed).
-      "gapul/keystats/keystats"
-      # self-made keyboard-driven pointer (Hyper+Shift+G). Was a hand-run scripts/bundle.sh into
-      # /Applications — the last thing on this machine that was installed by hand. /Applications
-      # rather than the nix store on purpose: it needs Accessibility, and TCC keys the grant to
-      # the path and the signature, so a store path would mean re-approving it every rebuild.
-      # The resident agent stays in launchd.agents.keebmouse.
-      "gapul/tap/keebmouse"
       "blackhole-2ch" # virtual audio device to route system audio into OBS / DAW
 
       # ─── Creative — Video / Animation / Stream ───
       "obs"
       "lihaoyun6/tap/quickrecorder" # screen recorder (native ScreenCaptureKit, Tahoe-compatible). Switched from the old kap, which is Electron-based and stalled for ~1.7 years
-      "gyroflow"
-      "touchdesigner"
       "cavalry" # 2D motion graphics
       "opentoonz" # 2D animation (.pkg cask)
 
       # ─── 3D / CAD ───
+      # Unity Hub は「常用する GUI」ではなくインストーラの CLI として置いている。
+      #   Unity Hub.app/Contents/MacOS/Unity\ Hub -- --headless install --version <版> --changeset <hash>
+      # で GUI を開かずにエディタを入れられる。Hub 抜きでも公式の単体インストーラは取れるが、
+      # Personal ライセンスの認証が -createManualActivationFile → ポータル → -manualLicenseFile
+      # の遠回りになるので、手元で入れるぶんには Hub を通すほうが早い。nixpkgs の unityhub は
+      # Linux 専用なので cask で宣言する。
+      "unity-hub"
       "blender"
-      "freecad"
       "kicad"
-      "librecad"
       "godot"
-      "goxel"
-      "material-maker"
       "openfoam"
 
       # ─── 3D Printing ───
@@ -611,7 +676,6 @@ in
       # itself, so send / camera / temps / jog / firmware update all live here.
       # Reinstall bambu-studio temporarily if a cloud-side problem needs an
       # "authorized software" reference point.
-      "orcaslicer"
 
       # ─── Games / Emulation ───
       "wine-stable" # WineHQ stable. Run Windows apps (used with winetricks)
@@ -624,7 +688,6 @@ in
       "playcover-community"
 
       # ─── Productivity / Notes / Reading ───
-      "anki"
       "calibre"
       "obsidian"
       "libreoffice"

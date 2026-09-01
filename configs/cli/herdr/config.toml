@@ -45,3 +45,15 @@ show_agent_labels_on_pane_borders = true
 # そのときは rclone の死んだ NFS マウントが残っていて mds が getattrlistbulk で
 # 止まっていた)。OS 通知自体は Claude Code の Stop フック (agent-notify) が osascript で
 # 出しているので、外しても手元に届く通知は変わらない。むしろ二重通知が一本になる。
+
+[experimental]
+# terminal-browser がペインに絵を出すのに要る。既定は false で、切っていると
+# ペインは作られてブラウザのプロセスも前面に居座るのに、中身が何も描かれない。
+# エラーも出ないので「開いたのに見えない」という形でしか気づけない。
+#
+# 描画はクライアント側なので、この値を変えたら `herdr server reload-config` の
+# あとにクライアントを繋ぎ直すこと (ctrl+t q → herdr)。reload だけでは、繋がって
+# いるクライアントが古い値を握ったままで、有効にしたのに一切描かれない状態が続く
+# (2026-08-31 にここで数時間溶かした)。セッションはサーバー側が持っているので、
+# 繋ぎ直しても開いているペインもその中のプロセスも失われない。
+kitty_graphics = true

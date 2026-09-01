@@ -54,8 +54,12 @@
     ./homeassistant.nix
     ./homepage.nix
     ./jellyfin.nix
+    ./container-auto-update.nix
+    ./self-deploy.nix
+    ./vulnix.nix
     ./journal-alert.nix
     ./matrix.nix
+    ./matrix-bridges.nix
     ./miniflux.nix
     ./navidrome.nix
     ./ntfy.nix

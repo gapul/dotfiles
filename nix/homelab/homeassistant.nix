@@ -26,6 +26,13 @@
       # packet socket. Without them the box has an adapter (hci0 is present and
       # unblocked) that Home Assistant cannot manage, and both log an error every
       # start.
+      #
+      # habluetooth (6.26.5 で確認) は起動ごとに "Missing NET_ADMIN/NET_RAW
+      # capabilities for Bluetooth management" を出すが、これは上流の誤検知で、
+      # ここを直す必要はない。2026-08-30 に中から測った結果:
+      #   CapEff = 0x800435fb → NET_ADMIN も NET_RAW も立っている
+      #   AF_BLUETOOTH の raw ソケットも管理チャネル (HCI_CHANNEL_CONTROL) も開ける
+      # Bluetooth 自体は動いている。このログを見て capability を足しに来ないこと。
       extraOptions = [
         "--network=host"
         "--cap-add=NET_ADMIN"
@@ -77,13 +84,24 @@
     ];
   };
 
-  # ESPHome's yaml lived inside Home Assistant's config dir (config/esphome), not
-  # in the add-on's own data. Copy it into /var/lib/esphome.
-  services.esphome = {
-    enable = true;
-    address = "127.0.0.1";
-    port = 6052;
-  };
+  # ESPHome のダッシュボードは止めてある (2026-08-31)。
+  #
+  # 上流が本体からダッシュボードを削除し、esphome-device-builder という別パッケージに
+  # なった。nixpkgs のモジュールはまだ `esphome dashboard` を叩くので、起動するたびに
+  #
+  #   ERROR The built-in dashboard has been removed from ESPHome.
+  #
+  # で落ちて再起動を繰り返す。nixpkgs 側は対応中 (NixOS/nixpkgs#550245
+  # "nixos/esphome: convert to new device builder")。
+  #
+  # 止めても失うものは無い。移行のときに /var/lib/esphome へ yaml を持ってくる想定で
+  # 宣言したが、実際には Home Assistant の config 側 (data/esphome) に残ったままで、
+  # ここは空だった (2026-08-31 に確認: yaml 0 件)。何も提供していないサービスが
+  # 落ちていただけ。
+  #
+  # 版を古いところで固定する手もあったが採らない。ローリングに移した方針に反するうえ、
+  # 書き込み機に対して更新を止める形になる。上流の PR が入ったら enable に戻す。
+  services.esphome.enable = false;
 
   services.node-red = {
     enable = true;

@@ -12,7 +12,9 @@ REPO=/Users/hermes/hermes-brain
 cd "$REPO" || exit 1
 
 rsync -a "$SRC/SOUL.md" "$SRC/config.yaml" "$REPO/"
-for d in memories skills hooks cron; do
+# scripts も要る。cron の定義は --script でファイル名しか持っていないので、
+# 中身を退避しないと、ジョブだけ戻ってきて動かない状態になる。
+for d in memories skills hooks cron scripts; do
   [ -d "$SRC/$d" ] && rsync -a --delete "$SRC/$d/" "$REPO/$d/"
 done
 
@@ -25,7 +27,7 @@ if [ -d "$MANABI" ]; then
   rsync -a "$MANABI/SOUL.md" "$MANABI/config.yaml" "$REPO/manabi/" 2>/dev/null || true
   # 継ぎ手(claude-acp)はここでは退避しない。gapul/claude-acp が正で、この機械には
   # dotfiles の activation が store から敷いている。
-  for d in memories skills cron; do
+  for d in memories skills cron scripts; do
     [ -d "$MANABI/$d" ] && rsync -a --delete "$MANABI/$d/" "$REPO/manabi/$d/"
   done
 fi

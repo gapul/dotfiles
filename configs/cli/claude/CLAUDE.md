@@ -7,26 +7,62 @@
 - macOS環境での開発に特化
 - UTCではなくJST（日本時間）を使用
 
-### ブラウザ操作（Claude in Chrome + Playwright MCP）
-Chromeは自動化専用（常用ブラウザはZen）。ユーザーに起動を頼まず自分で面倒を見る。
-自動化はDefaultではなく専用プロファイル `~/Library/Application Support/Google/Chrome-automation`
-を使う（Defaultのクローン。Cookie/Google login/拡張ごと引き継いでいるのでcaptcha耐性は同じ）。
-- 起動:
-  `open -gjn -a "Google Chrome" --args --user-data-dir="$HOME/Library/Application Support/Google/Chrome-automation" --no-startup-window --remote-debugging-port=9222`
-  窓なし・背景起動でフォーカスを奪わない。拡張は自動で再接続するのでクリック不要。
-  タブは `tabs_context_mcp {createIfEmpty: true}` が要るときだけ作る。
-- 終了: `pkill -f "Chrome-automation"`。ユーザーがDockから開いたDefaultのChromeを巻き込まないよう、
-  必ずこの形で撃つ（`tell application "Google Chrome" to quit` は両方落としうる）。
-- 常駐させない（窓なしで実メモリ約370MB）。
-- Playwright MCP(`playwright`)は同じChromeに9222でアタッチする。Chromeが落ちていても接続は遅延なので
-  起動順は自由。フォーム入力・待機・`browser_evaluate`はこちら、複数手を1往復で流すのは
-  claude-in-chromeの`browser_batch`が強い。両方とも同じ窓を見るので混ぜて使える。
-- 9222はローカルに開いたポートなので、自動化していない間はChromeを落としておく。
-- `--headless=new` は不可。2026-08-10に実測して拡張のnative hostが起動せず未接続になった（302MBまで減るが操作不能）。再挑戦しない。
-- 速度は描画ではなく往復回数で決まる。2手先が読めるなら `browser_batch` に束ねる。
-  画面を見る必要がない読み取りは `get_page_text` / `find` / `javascript_tool` を使い、
-  `computer` のスクリーンショットは座標クリックが必要なときだけ。
-- captcha/ログインが絡まない単なる情報取得はブラウザを起動せず WebFetch で済ませる。
+### ブラウザ操作
+常用ブラウザはZen。自動化は3つで、まず1、足りなければ2、見せる必要があれば3。
+Chromeは2026-08-30に撤去した（Claude in Chrome拡張ごと）。拡張ができることはPlaywrightで
+全部できたうえ、拡張は`--remote-debugging-port`を開けている間ずっと、localhostの誰にでも
+ブラウザを明け渡す状態を作っていた。
+
+1. **WebFetch** — captcha/ログインが絡まない単なる情報取得。ブラウザを起こさない。
+2. **Lightpanda**（常駐、CDP=9223 / Playwright MCP=`http://localhost:8932/mcp`）
+   裏で回す既定。実測14MB。見えないし軽いので常駐させたままでよい。
+   ただし実装していないAPIに触るSPAは**エラーではなく空で返る**。取れた内容が
+   空だったらここを疑い、3へ落とす。
+3. **terminal-browser** — 実Chromium（Electron同梱）なので描画の穴がない。
+   `terminal-browser open --split right <url>` で会話の隣に並び、操作は
+   `terminal-browser action -- snapshot|click|fill|eval`。ssh越しも可
+   （`open --ssh user@host <url>`）。終わったら`terminal-browser shutdown`。
+   **必ず見えるペインを開く**（TTYが無くても右に分割する）ので、ユーザーの
+   目視が要らない場面では2で粘る。フォーカスは奪わない（上流は`--focus`を決め打ちで
+   渡すが、stdoutが端末でないときは外すようパッケージ側で当ててある）。人が打った
+   ときだけ移る。常に移したいなら`TERMINAL_BROWSER_FOCUS=1`。
+   Playwrightからは掴めない: CDPは出しているが**ポートが毎回変わる**
+   （実測 53218 → 53337）ので、固定の`--cdp-endpoint`にできない。`action`で操作する。
+   herdrの`[experimental] kitty_graphics`が要る（既定false）。切れているとペインは
+   作られてブラウザも生きているのに**何も描かれない**。無言で失敗するので注意。
+   設定を変えたら`herdr server reload-config`の**あとにクライアントを繋ぎ直す**
+   （`ctrl+t q` → `herdr`）。描画はクライアント側なので、reloadだけでは効かない。
+   セッションはサーバーが持っているので繋ぎ直しても何も失われない。
+   見えているかの確認は`terminal-browser ls`ではなくherdrに聞く。`ls`は自分の
+   モデルを喋るだけで描画を保証しない（`pane`も`viewport`も返るのに真っ白だった）。
+   `herdr pane process-info --pane <id>`の前面プロセスがterminal-browserなら生きて
+   いて、`herdr pane read <id>`が**空なら正常**（絵はテキストに写らない）。逆に
+   コマンド行とプロンプトが読めたらそれは死骸のシェル。
+   `shutdown`は残骸を残す。次の`open`がそれを拾うと`tty`も`cdpPort`も無いJSONを
+   返して終わり、空のペインだけが積もる。`pkill -f agent-browser`してから開き直す。
+   日本語は素で出る（フォント設定は不要）。ページ内は問題なく、アドレス欄だけが
+   パーセントエンコードのまま出る。
+
+   **セッションは既定で1個を全員で共有する。** `~/Library/Application Support/
+   terminal-browser-5f6866a3/`にCookies/Local Storage/IndexedDB/Service Workerが
+   あり、全インスタンスがここを使う。ユーザーが一度ログインすると、以後エージェント
+   が開くページは全部そのクッキーを持って行く。**ログイン済みの状態が要らない仕事は
+   `--partition=<名前>`で分ける**（例: `--partition=agent`）。ただし分離するだけで、
+   使い捨てにはならない。実装が`persist:`を強制的に前置するので、名前ごとにディスクへ
+   残り続ける。捨てるならディレクトリごと消すしかない。
+   **CDPが開く。**バインドは`127.0.0.1`だけなので外からは来ないが、localhost上の
+   他プロセスからは触れる。Chromeを捨てた理由と同じ形なので、**使い終わったら
+   `terminal-browser shutdown`で落とす**。常駐させない。
+   クリップボード読み取りは既定で無効。`--allow-clipboard-read`を安易に渡さない。
+   `terminal-browser upgrade`は**使わない**。nix管理なのでstoreの外に実体ができる。
+   版は`nix/pkgs/terminal-browser.nix`で上げる。
+
+- 速度は描画ではなく往復回数で決まる。読み取りだけなら1と2で足りる。
+- Heliumはこの動線には出てこない。ヘッドレスでWebGL/スクリーンショットが要る
+  検証（vrma-lab の`scripts/chrome-lab.sh`）専用に残してある。Lightpandaは
+  レンダラを持たないのでそこは代われず、terminal-browserは必ず見えてしまう。
+- ポートの確認は`netstat -an | grep LISTEN`で。**この機械に`/usr/bin/lsof`は無い**ので、
+  lsofは黙って空を返し、空きポートに見えてしまう（9333で実際に踏んだ）。
 
 ### コーディングスタイル
 - インデント: 2スペース（YAML, JSON, Lua, JavaScript, TypeScript）

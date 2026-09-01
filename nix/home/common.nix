@@ -47,6 +47,10 @@ in
       builtins.fromJSON (builtins.readFile ../../configs/shell/env-vars.json)
     ))
     // {
+      # chawan (cha) は OpenSSL を直に叩いていて SSL_CERT_FILE しか見ない。nix は
+      # NIX_SSL_CERT_FILE のほうを立てるので、そのままだと https が全部
+      # 「unexpected eof while reading」で落ちる。同じ束を指す別名として足す。
+      SSL_CERT_FILE = "/etc/ssl/certs/ca-certificates.crt";
       # ── Dynamic paths (HOME / XDG dependent, can't be in JSON) ──
       SOPS_AGE_KEY_FILE = "${config.home.homeDirectory}/.config/sops/age/keys.txt";
 

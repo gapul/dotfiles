@@ -227,6 +227,8 @@ in
   #
   services.tailscale = {
     enable = true;
+    # かつてここで unstable に逃がしていた (26.05 系列が 1.98.10 で止まり、上流は
+    # 1.102.3 だった)。2026-08-31 に nixpkgs-nixos ごと nixos-unstable へ移したので不要。
     useRoutingFeatures = "server";
     # Connects itself on first boot. The key is placed by hand like the other
     # secrets — the point is that a reinstall does not need someone to remember

@@ -5,6 +5,19 @@
   lib,
   ...
 }:
+let
+  # launchd は素の PATH で起動するので、必要なものを列挙しておく。
+  # 経緯: 元は pnpm の global install を使っていたが、その store が消えていた。node も
+  # @playwright/mcp も、存在しない store パスを指す symlink になっていて、agent は
+  # "exec: node: not found" → "Cannot find module .../cli.js" と順に死んでいた。今は
+  # どちらも宣言側から取るので pnpm への依存は無い。PATH を残すのは playwright が
+  # 実行時に呼ぶもの (node など) のため。
+  mcpPath = lib.concatStringsSep ":" [
+    "/run/current-system/sw/bin"
+    "/usr/bin"
+    "/bin"
+  ];
+in
 {
   # Run resident as a Home Manager LaunchAgent instead of using Syncthing.app.
   # Reuse the existing ~/Library/Application Support/Syncthing config and device ID as-is.
@@ -42,49 +55,43 @@
   # The MCP entry in ~/.config/claude/.claude.json used to be `stdio`, which means every session
   # spawns its own server process: measured 2026-08-15 at 15 sessions = 15 node processes, 176MB,
   # and ~120MB each once a session actually drives the browser. All of them attach over CDP to the
-  # same Chrome on 9222 anyway, so the isolation bought nothing. Listening on 8931 and pointing
-  # every session at `http://localhost:8931/mcp` collapses that to one process (70MB idle).
+  # same browser anyway, so the isolation bought nothing. Listening on a port and pointing every
+  # session at it collapses that to one process (70MB idle).
   #
   # Sessions still share the browser, so a parallel run must give each session its own tab
   # (`browser_tabs {action:"new"}` before navigating) — verified: without it two sessions grab the
   # same page and the second navigation wins.
   #
   # localhost-bound by the server itself, and it rejects any request whose Host is not
-  # `localhost:8931` (127.0.0.1 in the URL gets a 4xx — write the URL with localhost).
-  # The connection to Chrome is lazy, so this stays cheap while Chrome is down, which is the
-  # normal state: Chrome is started only for a job (see CLAUDE.md) and killed after.
-  # Binary is the pnpm global install (1.62 alpha); nixpkgs' playwright-mcp is 0.0.76, far behind.
-  launchd.agents.playwright-mcp = {
+  # `localhost:8932` (127.0.0.1 in the URL gets a 4xx — write the URL with localhost).
+  #
+  # There used to be a second instance on 8931 aimed at 9222, for whatever full browser was
+  # started for a job. It went away with Chrome: terminal-browser took that role and cannot be
+  # driven this way — it does expose CDP, but on a port that changes every launch (measured
+  # 53218 → 53337), so no static --cdp-endpoint can find it. It is driven by its own
+  # `terminal-browser action` instead. Binary comes from nixpkgs (0.0.69).
+  # Playwright MCP, pointed at Lightpanda. Connects lazily, so it costs nothing while idle.
+  launchd.agents.playwright-mcp-light = {
     enable = true;
     config = {
       ProgramArguments = [
-        "${config.home.homeDirectory}/Library/pnpm/bin/playwright-mcp"
+        "${lib.getExe pkgs.playwright-mcp}"
         "--cdp-endpoint"
-        "http://127.0.0.1:9222"
+        "http://127.0.0.1:9223"
         "--port"
-        "8931"
+        "8932"
         "--output-dir"
-        "${config.home.homeDirectory}/tmp/playwright-mcp"
+        "${config.home.homeDirectory}/tmp/playwright-mcp-light"
       ];
+      EnvironmentVariables.PATH = mcpPath;
       RunAtLoad = true;
       KeepAlive = true;
       ProcessType = "Background";
-      StandardErrorPath = "/tmp/playwright-mcp.err";
-      StandardOutPath = "/tmp/playwright-mcp.log";
+      StandardErrorPath = "/tmp/playwright-mcp-light.err";
+      StandardOutPath = "/tmp/playwright-mcp-light.log";
     };
   };
 
-  # Shell-independent env distribution: GUI apps / processes under launchd don't go through
-  # zsh's .zshenv (hm-session-vars.sh is effectively only read by zsh), so they receive none of
-  # home.sessionVariables' env. The most notable case is the accident where an unset GNUPGHOME makes
-  # gpg regenerate an empty ~/.gnupg, but EDITOR/PAGER/various telemetry opt-outs/XDG bases/CARGO_HOME etc.
-  # are also missed on the GUI side. At login, push them into the whole session via launchctl setenv to cut the zsh dependency.
-  #
-  # Auto-generated from home.sessionVariables rather than hardcoded (single source, drift prevention).
-  # Values are made safe with escapeShellArg (handles values with spaces/quotes like MANPAGER).
-  # Variables whose value contains "$" (e.g. the TERMINFO_DIRS that home-manager injects,
-  # "...:$TERMINFO_DIRS${TERMINFO_DIRS:+:}...") assume shell expansion at export time and
-  # break under the non-expanding launchctl setenv (a literal $ gets in), so they're excluded and left to zsh.
   launchd.agents.session-env = {
     enable = true;
     config = {

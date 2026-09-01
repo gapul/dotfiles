@@ -34,6 +34,7 @@ declare -a PATTERNS=(
   # ここで止まる。rebuild ごと exit 4 になるが、ログを見なければ分からない。
   "no such file or directory|コンテナの bind mount 先が無い"
   # restart を繰り返して systemd が諦めた状態。ユニットは failed のままになる。
+  # ただしこれは「諦めた」ときにしか出ない。諦めずに回り続ける方は下で別に見る。
   "Start request repeated too quickly|再起動を繰り返して止まった"
   # tmpfiles が uid の食い違いで配下の作成を拒否する。移行の残骸で出る。
   "unsafe path transition|tmpfiles が所有者の食い違いで作成を拒否した"
@@ -58,8 +59,47 @@ ${sample}" high
   fi
 done
 
+# 同じユニットが何度も失敗し続けている状態。
+#
+# これが無くて 2026-08-28 の romm-db を 2 日間見逃した。tc.log が壊れて MariaDB が
+# 毎回 abort していたのに、Restart=always で回り続けたので systemd は諦めず、
+# 上の "Start request repeated too quickly" も --failed も一度も引っかからなかった。
+# journald には 5948 件の失敗が並んでいた。
+#
+# 諦めたものは failed になるので捕まる。捕まらないのは諦めずに壊れ続ける方で、
+# 稼働中に見えるぶんこちらの方が長く放置される。
+# 5 回。deploy で数回失敗するのは普通なので、そこは鳴らさない。
+# 壊れて回り続けるものは桁が違う (romm-db は 28 分で 200 回だった)。
+LOOP_THRESHOLD=5
+grep -oE '[A-Za-z0-9@_.-]+\.service: Failed with result' "$SNAP" |
+  sed 's/: Failed with result$//' | sort | uniq -c | sort -rn |
+  while read -r count unit; do
+    [ "${count:-0}" -lt "$LOOP_THRESHOLD" ] && continue
+    # podman が内部で作る 16 進名のユニット (64桁-16桁) は中身を指さないので飛ばす。
+    # glob だと attic-db.service のような普通の名前まで巻き込むので、桁数で見る。
+    [[ "$unit" =~ ^[0-9a-f]{64}-[0-9a-f]{16}\.service$ ]] && continue
+    sample=$(grep -F "$unit" "$SNAP" | grep -viF 'Failed with result' | tail -1 | cut -c1-200)
+    notify "$unit が失敗を繰り返している" "直近 ${SINCE#-} で ${count} 回失敗。稼働中に見えても中身は起動できていない。
+${sample}" high
+  done
+
 # 落ちたユニット。systemd が知っているのに誰も見ていない典型。
-failed=$(systemctl --failed --no-legend | awk '{print $1}' | tr '\n' ' ')
+#
+# 2026-08-30 に 3 日で 26 回鳴っていて、しかも本文が "●" だけだった。原因が 2 つ:
+#
+#   1. --no-legend でも先頭の状態マーク "●" は消えないので、awk '{print $1}' が
+#      ユニット名ではなくマークを拾っていた。名前が出ないので通知として無意味。
+#   2. podman が healthcheck ごとに作る使い捨てユニット (64桁-16桁の 16 進名) が
+#      DB の起動待ちなどで普通に失敗する。実害が無いのに毎回鳴るので、
+#      本物が混ざっていても気付けなくなる。
+#
+# --plain でマークを外し、16 進の使い捨ては除く。再起動ループ検知と同じ判定。
+failed=$(
+  systemctl --failed --no-legend --plain --no-pager 2>/dev/null |
+    awk '{print $1}' |
+    grep -vE '^[0-9a-f]{64}-[0-9a-f]{16}\.service$' |
+    tr '\n' ' '
+)
 if [ -n "${failed// /}" ]; then
   notify "failed unit がある" "$failed" high
 fi

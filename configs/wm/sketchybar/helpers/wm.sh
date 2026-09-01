@@ -17,7 +17,7 @@
 # 発火側 (omniwm-event.sh) と受け側 (items/spaces.sh, plugins/*) で一貫させること。
 # 片側だけ変えるとイベントが誰にも届かず、バーが黙って更新されなくなる。
 
-OMNIWMCTL=/opt/homebrew/bin/omniwmctl
+OMNIWMCTL=/run/current-system/sw/bin/omniwmctl
 JQ="$HOME/.local/state/nix/profile/bin/jq"
 [ -x "$JQ" ] || JQ="$HOME/.nix-profile/bin/jq"
 [ -x "$JQ" ] || JQ=$(command -v jq)

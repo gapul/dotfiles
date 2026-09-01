@@ -22,9 +22,28 @@
     # Give herdr its own lineage instead, the same way nixpkgs-nixos is separate.
     nixpkgs-herdr.url = "github:NixOS/nixpkgs/nixos-unstable";
 
-    # For the real NixOS machine (Windows dual-boot HP laptop, x86_64).
+    # For the real NixOS machines (homeserver, and the Windows dual-boot HP laptop).
     # Separated from the darwin channels to hit the nixos cache cleanly.
-    nixpkgs-nixos.url = "github:NixOS/nixpkgs/nixos-26.05";
+    #
+    # ローリングで追う (2026-08-31 に nixos-26.05 から変更)。安定枝はこの構成では
+    # 実害を出していた: searxng が 3.5 ヶ月古いまま検索が全滅し、tailscale は上流と
+    # 4 世代ずれていた。そのたびに nixpkgsUnstable へ個別に逃がしていて、例外が
+    # 増えるほどどれが最新か分からなくなる。
+    #
+    # nixpkgs の安定枝は Debian の安定版とは性質が違う。修正はまず unstable に入り、
+    # niche なパッケージほど安定枝に降りてこない。ここで動かしているのは searxng /
+    # mautrix / attic / dawarich のような長い尾なので、安定枝は「上流が直したのに
+    # 固定されている版」になりやすい。
+    #
+    # 壊れたときに気づいて戻せるので踏み切れる: CI が 3 プラットフォームで通ってから
+    # main に入り、self-deploy が 1 時間ごとに取りに行き、失敗すれば古い世代のまま
+    # 残って通知が飛ぶ (#500)。起動はしたが中身が壊れている型は再起動ループ検知が
+    # 拾う (#490)。
+    #
+    # darwin 側は 26.05 のまま。あちらには nix-darwin#1462 の回帰と、
+    # ardour/aseprite/fritzing が unstable でビルドできない事情がある (上の nixpkgs と
+    # nixpkgs-unstable のコメントを参照)。制約は darwin 固有で、ここには効かない。
+    nixpkgs-nixos.url = "github:NixOS/nixpkgs/nixos-unstable";
 
     nix-darwin.url = "github:nix-darwin/nix-darwin/nix-darwin-26.05";
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
@@ -120,6 +139,12 @@
     # Same hardware guarantee (the private key never leaves the enclave) without a GUI app or a
     # resident agent process: it hands the identity to macOS' own CryptoTokenKit provider.
     nix-secure-enclave-key.url = "github:ryoppippi/nix-secure-enclave-key";
+
+    # mocopi (Sony のモーションキャプチャ) を macOS で使う自作ツール。ソースは private の
+    # ままにしたいので github: ではなく git+ssh で引く。CI は read-only の deploy key を
+    # ssh-agent 経由で持つ (.github/actions/setup-nix)。実機は普段の GitHub 認証で足りる。
+    mocopi-mac.url = "git+ssh://git@github.com/gapul/mocopi-mac?ref=main";
+    mocopi-mac.inputs.nixpkgs.follows = "nixpkgs";
     nix-secure-enclave-key.inputs.nixpkgs.follows = "nixpkgs";
   };
 
@@ -127,6 +152,7 @@
     inputs@{
       claude-acp,
       nix-secure-enclave-key,
+      mocopi-mac,
       nixpkgs,
       nixpkgs-nixos,
       nixpkgs-unstable,
@@ -252,6 +278,9 @@
           ./home/macmini.nix
           ./home/macmini-backup.nix
           ./home/macmini-watchdog.nix
+          # iMessage のブリッジ。他の mautrix は homeserver に置いてあるが、これだけ
+          # chat.db と Messages.app が要るのでこの機械にしか置けない。
+          ./home/macmini-imessage.nix
         ];
         wsl = linuxBase ++ [ ./home/wsl.nix ] ++ secrets ++ station;
         linuxServer = linuxBase ++ secrets ++ station;
@@ -265,11 +294,9 @@
       # available when the swap has no per-service rollback.
       homeserver = nixpkgs-nixos.lib.nixosSystem {
         system = "x86_64-linux";
-        # searxng だけ unstable から取るために渡す (homelab/searx.nix を参照)。
-        specialArgs = {
-          inherit user;
-          nixpkgsUnstable = nixpkgs-unstable;
-        };
+        # nixpkgs-nixos ごと nixos-unstable を追うようにしたので、個別に逃がす必要は無い
+        # (2026-08-31)。searxng も tailscale もこの入力から最新が来る。
+        specialArgs = { inherit user; };
         modules = [
           # Same SSO overlay as the other hosts (carries e.g. tailscale's vendorHash fix).
           { nixpkgs.overlays = [ overlayFixes ]; }
@@ -641,6 +668,7 @@
         specialArgs = {
           inherit user;
           brewNix = brew-nix;
+          mocopiMac = mocopi-mac;
           # hosts/darwin.nix declares the .app-shipping creative tools, which come from
           # nixos-unstable (see lib/unstable-pkgs.nix).
           nixpkgsUnstable = nixpkgs-unstable;

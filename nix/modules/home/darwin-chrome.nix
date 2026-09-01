@@ -226,9 +226,13 @@ in
   # `brew services start sketchybar` had been typed once on this machine, so a fresh mac rebuilt
   # from this repo came up with no bar. Own the daemon here, and retire the brew
   # service in the activation below.
-  # PATH mirrors what the brew plist exported — sketchybarrc and the plugins call brew-installed
-  # binaries (sketchybar, media-control, displayplacer, jq) and launchd starts with a bare PATH.
-  # The profile comes first for `sketchybar-helper`, which nix builds (nix/pkgs/sketchybar-helper).
+  # launchd starts with a bare PATH, so every source the plugins reach for has to be listed.
+  # Three of them now: the user profile for `sketchybar-helper` (nix builds it, see
+  # nix/pkgs/sketchybar-helper), /run/current-system/sw/bin for what systemPackages puts there
+  # (keystats' CLI since it stopped being a cask), and /opt/homebrew/bin for what is still brew —
+  # sketchybar itself, media-control, displayplacer, jq. Leaving the system path out is how the
+  # keystats item silently disappeared from the bar: the plugin resolves the binary with
+  # `command -v` and simply hides the item when it finds nothing.
   launchd.agents.sketchybar = {
     enable = true;
     config = {
@@ -237,7 +241,7 @@ in
       KeepAlive = true;
       ProcessType = "Interactive";
       EnvironmentVariables = {
-        PATH = "${config.home.profileDirectory}/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/bin:/bin:/usr/sbin:/sbin";
+        PATH = "${config.home.profileDirectory}/bin:/run/current-system/sw/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/bin:/bin:/usr/sbin:/sbin";
         LANG = "en_US.UTF-8";
       };
       StandardErrorPath = "/tmp/sketchybar.err";
@@ -269,7 +273,7 @@ in
       KeepAlive = true;
       ProcessType = "Interactive";
       EnvironmentVariables = {
-        PATH = "${config.home.homeDirectory}/.config/sketchybar/bin-ext:${config.home.profileDirectory}/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/bin:/bin:/usr/sbin:/sbin";
+        PATH = "${config.home.homeDirectory}/.config/sketchybar/bin-ext:${config.home.profileDirectory}/bin:/run/current-system/sw/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/bin:/bin:/usr/sbin:/sbin";
         LANG = "en_US.UTF-8";
         SB_PROFILE = "ext";
       };
@@ -335,14 +339,16 @@ in
   '';
 
   # keebmouse (self-made, gapul/keebmouse): keyboard-driven pointer, Hyper+Shift+G to toggle.
-  # The app is a cask now (gapul/tap/keebmouse, declared in hosts/darwin.nix); it used to be
-  # scripts/bundle.sh run by hand into /Applications. The agent has always belonged here — it
-  # was a hand-written ~/Library/LaunchAgents/net.gapul.keebmouse.plist before, i.e. a
+  # The app is a nix package now (pkgs/keebmouse.nix, in hosts/darwin.nix); it was a cask before
+  # that, and scripts/bundle.sh run by hand into /Applications before that. The agent has always
+  # belonged here — it was a hand-written ~/Library/LaunchAgents/net.gapul.keebmouse.plist, i.e. a
   # login-time daemon nothing declared. Same KeepAlive shape as that plist.
   launchd.agents.keebmouse = {
     enable = true;
     config = {
-      ProgramArguments = [ "/Applications/keebmouse.app/Contents/MacOS/keebmouse" ];
+      # /Applications/Nix Apps: nix-darwin が systemPackages の .app を実体コピーで置く先。
+      # store パスではないので版が上がってもここは動かず、TCC の許可も持ち越せる。
+      ProgramArguments = [ "/Applications/Nix Apps/keebmouse.app/Contents/MacOS/keebmouse" ];
       RunAtLoad = true;
       KeepAlive = true;
       ProcessType = "Interactive";
