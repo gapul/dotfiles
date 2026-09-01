@@ -271,6 +271,44 @@ nix-init --url https://github.com/nosarthur/gita
 # → 動く flake.nix が生成される
 ```
 
+### ブラウザエンジンのビルド(Ladybird / Servo)
+
+WebKit 以外のエンジンを母艦でビルドするための devShell。どちらも Xcode の clang と
+macOS SDK を使うので darwin 限定。定義は `nix/shells/browser-engines.nix`。
+
+```bash
+# Ladybird(CMake + vcpkg)
+nix develop ~/.dotfiles/nix#ladybird
+cd ~/Developer/github.com/LadybirdBrowser/ladybird
+python3 Meta/ladybird.py build
+./Build/release/bin/Ladybird.app/Contents/MacOS/Ladybird https://example.com
+
+# Servo(mach + cargo)
+nix develop ~/.dotfiles/nix#servo
+cd ~/Developer/github.com/servo/servo
+./mach build --release --media-stack dummy
+./target/release/servoshell --headless --exit -o out.png https://example.com
+```
+
+踏みやすい罠:
+
+- `./mach bootstrap` は Homebrew を叩く唯一の経路なので実行しない。必要な cmake /
+  pkg-config は devShell 側にある。`MACH_USE_NIX` も立てない(mach が darwin で
+  評価できない `shell.nix` に再突入する)
+- Servo の音声/動画を有効にするには GStreamer 公式 pkg (本体 + devel の2つ) を sudo で
+  システムに入れる必要があり、これは宣言管理の外に出る。macmini 側にだけ入れてあるので、
+  media 有効ビルドは macmini で行う。`./mach package` が GStreamer dylib を .app に
+  同梱するので、母艦は Servo.app を受け取るだけでよく何も入れなくてよい。
+  入れずにビルドするなら `--media-stack dummy`(再生なし)
+- Ladybird の headless は 2026-08 時点の master で壊れている(Compositor プロセスが
+  起動しないまま WebContent が接続を叩いて落ちる)。GUI は正常
+- devShell に依存ライブラリを足さない。vcpkg が自前で建てるものと衝突すると nix 側が
+  勝ち、成果物が `/nix/store` を参照する。その store path は誰も root していないので
+  次の GC で消え、ある日突然 dyld の "Library not loaded" で起動しなくなる。疑ったら
+  `otool -L` で `/nix/store` 参照が無いことを確認する
+- ビルドが重いときは macmini に投げる(10 コア / 24GB / 空きが多い)。home が両機とも
+  `/Users/gapul` なので、`Build/release` を同じパスに rsync すればそのまま動く
+
 ---
 
 ## 🩺 探索 / トラブル

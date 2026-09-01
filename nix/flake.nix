@@ -590,26 +590,34 @@
             # are Mach-O binaries. Putting them in a Linux shell got them execve'd, xargs fell back
             # to /bin/sh, and dash reported a syntax error inside the ELF. They stay darwin-only;
             # the git hooks are a local-dev convenience and checks.pre-commit is darwin-only too.
-            devShells.default = systemPkgs.mkShell (
-              {
-                buildInputs = [
-                  systemPkgs.shellcheck
-                  systemPkgs.statix
-                  systemPkgs.stylua
-                  systemPkgs.taplo
-                  systemPkgs.yq-go
-                  systemPkgs.jq
-                  systemPkgs.just
-                  systemPkgs.python3 # scripts/gen-docs.py (doc generation block)
-                  systemPkgs.bun
-                  systemPkgs.check-jsonschema
-                  systemPkgs.actionlint
-                  systemPkgs.gitleaks # om ci's gitleaks custom step
-                  systemPkgs.git # ci-lint / ci-gitleaks use git ls-files / rev-parse
-                ]
-                ++ lib.optionals isDarwinWorkstation preCommit.enabledPackages;
-              }
-              // lib.optionalAttrs isDarwinWorkstation { inherit (preCommit) shellHook; }
+            devShells = {
+              default = systemPkgs.mkShell (
+                {
+                  buildInputs = [
+                    systemPkgs.shellcheck
+                    systemPkgs.statix
+                    systemPkgs.stylua
+                    systemPkgs.taplo
+                    systemPkgs.yq-go
+                    systemPkgs.jq
+                    systemPkgs.just
+                    systemPkgs.python3 # scripts/gen-docs.py (doc generation block)
+                    systemPkgs.bun
+                    systemPkgs.check-jsonschema
+                    systemPkgs.actionlint
+                    systemPkgs.gitleaks # om ci's gitleaks custom step
+                    systemPkgs.git # ci-lint / ci-gitleaks use git ls-files / rev-parse
+                  ]
+                  ++ lib.optionals isDarwinWorkstation preCommit.enabledPackages;
+                }
+                // lib.optionalAttrs isDarwinWorkstation { inherit (preCommit) shellHook; }
+              );
+            }
+            # Ladybird and Servo build with Xcode's clang against the macOS SDK,
+            # so those two shells only exist on darwin. They are entered by hand
+            # rather than built by CI: the engines take hours and tens of GB.
+            // lib.optionalAttrs isDarwinWorkstation (
+              import ./shells/browser-engines.nix { pkgs = systemPkgs; }
             );
           }
           // lib.optionalAttrs isDarwinWorkstation {
