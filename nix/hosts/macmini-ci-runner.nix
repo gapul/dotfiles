@@ -72,9 +72,11 @@ let
 
     cd ${workDir}
 
+    # nixpkgs の github-runner は GitHub の配布物と構造が違い、config.sh も run.sh も
+    # bin/ の下にある。トップに置かれているつもりで叩くと何も起きずに終わる。
     if [ ! -f .runner ]; then
       token=$(cat /var/lib/secrets/github-runner-token)
-      ./config.sh \
+      ./bin/config.sh \
         --unattended --replace \
         --url ${repo} \
         --token "$token" \
@@ -83,14 +85,14 @@ let
         --work _work
     fi
 
-    exec ./run.sh
+    exec ./bin/run.sh
   '';
 in
 {
   # ランナー本体を展開する。GitHub の配布物は自己更新しようとするので、
   # store から作業領域へ複製して使う (store は読み取り専用)。
   system.activationScripts.postActivation.text = ''
-    if [ ! -x ${workDir}/run.sh ]; then
+    if [ ! -x ${workDir}/bin/run.sh ]; then
       /usr/bin/install -d -o ${user} -g staff -m 0700 ${workDir}
       /usr/bin/ditto ${pkgs.github-runner}/ ${workDir}/
       /usr/sbin/chown -R ${user}:staff ${workDir}
