@@ -107,8 +107,11 @@ in
       KeepAlive = true;
       UserName = user;
       WorkingDirectory = workDir;
-      StandardOutPath = "/var/log/gh-runner.log";
-      StandardErrorPath = "/var/log/gh-runner.log";
+      # gapul として走るので /var/log には書けない。書けない場所を指すと launchd は
+      # プロセスを起こす前に EX_CONFIG で諦め、ログも残らないので原因が見えない
+      # (2026-08-31 に踏んだ。exit 78 が延々出るだけだった)。
+      StandardOutPath = "${workDir}/runner.log";
+      StandardErrorPath = "${workDir}/runner.log";
     };
   };
 }
