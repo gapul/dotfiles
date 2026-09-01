@@ -30,18 +30,13 @@
 #
 # 代わりに、既定で無効な mojeek と qwant を起こしておく。mojeek は自前クローラの独立
 # インデックスなので、Google 系の対ボット網に巻き込まれない。ここが倒れずに残る。
-{ nixpkgsUnstable, ... }:
-{
-  # searxng は nixpkgs 26.05 系列だと 2026-05-16 版で止まっており、検索エンジン側の
-  # 変更に追随できず brave / duckduckgo / qwant / mojeek / startpage が一斉に
-  # CAPTCHA や access denied を返す状態になっていた (実際に全滅した)。
+_: {
+  # かつてここで unstable に逃がしていた。26.05 系列の searxng は 2026-05-16 版で
+  # 止まっており、検索エンジン側の変更に追随できず brave / duckduckgo / qwant /
+  # mojeek / startpage が一斉に CAPTCHA や access denied を返していた (実際に全滅した)。
   #
-  # スクレイパは壊れ続けるものなので、ここだけ unstable に寄せる。安定版であることの
-  # 意味が薄い類のパッケージで、古いことがそのまま機能しないことを意味する。
-  services.searx.package =
-    (import nixpkgsUnstable.legacyPackages.x86_64-linux.path {
-      system = "x86_64-linux";
-    }).searxng;
+  # 2026-08-31 に nixpkgs-nixos ごと nixos-unstable へ移したので、逃がす必要が無くなった。
+  # この件が「安定枝はこの構成には合わない」という判断の主な根拠になっている。
 
   services.searx = {
     enable = true;

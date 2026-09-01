@@ -42,6 +42,18 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     # ここでは実害が分かりやすく、署名が壊れた Electron は起動せず --help すら返さない。
     find . -name '._*' -delete
     find . -name '.DS_Store' -delete
+
+    # ペインを分けたときにフォーカスを奪わせない。terminal-browser は herdr の split に
+    # `--focus` を決め打ちで渡すので、エージェントが裏で 1 枚開くたびにユーザーの
+    # 入力先がブラウザのペインに飛ぶ。分割の後は全部明示的な pane id で動いている
+    # (swap も pane run も newPaneId を渡している) ので、外しても壊れない。
+    # 環境変数で切り替える形にして、判断は bin ラッパー側に置く。
+    # cli/dist/main.js は .app の外なので、ここを触っても同梱 Electron の署名は無事。
+    # cmux 側にも "--focus" があるが、そちらは別のリテラルなので巻き込まない。
+    substituteInPlace cli/dist/main.js \
+      --replace-fail \
+        '["--pane", from.id, "--direction", native, "--focus", ...ratio]' \
+        '["--pane", from.id, "--direction", native, ...(process.env.TERMINAL_BROWSER_NO_FOCUS ? [] : ["--focus"]), ...ratio]'
     mkdir -p $out/libexec/terminal-browser $out/bin
     cp -R . $out/libexec/terminal-browser/
     # bin/terminal-browser は自分の symlink を辿ってバンドルを見つける /bin/sh ラッパーなので、
@@ -83,6 +95,16 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     # main.js は ~/.config に置かれるので、自分の居場所から CLI を辿れない。実体を渡す。
     TERMINAL_BROWSER_CLI="\$real"
     export TERMINAL_BROWSER_CLI
+
+    # 分割したペインにフォーカスを移すかどうか。人が打ったなら移す (見るために開いた
+    # はずなので)。エージェントが開いたなら移さない — 裏で 1 枚開くたびに入力先が
+    # ブラウザに飛ぶと、ユーザーが打っている最中に持っていかれる。
+    # 見分けは stdout が端末かどうか。エージェントはパイプ越しに叩くのでここで分かれる。
+    # TERMINAL_BROWSER_FOCUS=1 を置けば常に移す。
+    if [ ! -t 1 ] && [ "\''${TERMINAL_BROWSER_FOCUS:-}" != 1 ]; then
+      TERMINAL_BROWSER_NO_FOCUS=1
+      export TERMINAL_BROWSER_NO_FOCUS
+    fi
     exec "\$real" "\$@"
     WRAPPER
     sed -i -e 's/^    //' $out/bin/terminal-browser
