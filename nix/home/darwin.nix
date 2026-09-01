@@ -67,6 +67,26 @@ in
     # homeConfigurations.<user> by user name is the only form that works.
     NH_DARWIN_FLAKE = "${config.home.homeDirectory}/.dotfiles/nix#darwinConfigurations.${user.username}";
     NH_HOME_FLAKE = "${config.home.homeDirectory}/.dotfiles/nix";
+
+    # Give cargo and cmake the ceiling nix already has.
+    #
+    # hosts/darwin-common.nix caps the nix daemon at max-jobs = 4 / cores = 2 for this
+    # machine's 8 logical cores (4P + 4E). Builds that do not go through nix inherit no
+    # such limit: cargo defaults to one job per logical core (8) and ninja to cores + 2
+    # (10), each job free to spawn its own threads.
+    #
+    # That gap is not theoretical. On 2026-08-29 a servo `cargo build --release` and a
+    # ladybird cmake build ran together on top of the usual resident agent sessions, on
+    # 16 GB: eight clang processes plus rustc, load average 200 with the CPU 40% idle
+    # (everything blocked on memory), 4.8 GB of the 5.1 GB swap consumed, and coreaudiod
+    # leaking real-time IO threads until it held 3 GB and two cores. The machine was not
+    # short of CPU, it was short of RAM, and the parallelism is what spent it.
+    #
+    # 4 matches nix's max-jobs, so a local build looks the same to the scheduler whichever
+    # path it came through. Heavy builds belong on the mac mini (10 cores, 24 GB, headless)
+    # anyway; this is the guard for when one runs here regardless.
+    CARGO_BUILD_JOBS = "4";
+    CMAKE_BUILD_PARALLEL_LEVEL = "4";
   };
 
   # Resolve brew trust.json duplication: converge the interactive shell (reads
