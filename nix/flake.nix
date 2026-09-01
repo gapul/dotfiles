@@ -278,6 +278,9 @@
           ./home/macmini.nix
           ./home/macmini-backup.nix
           ./home/macmini-watchdog.nix
+          # iMessage のブリッジ。他の mautrix は homeserver に置いてあるが、これだけ
+          # chat.db と Messages.app が要るのでこの機械にしか置けない。
+          ./home/macmini-imessage.nix
         ];
         wsl = linuxBase ++ [ ./home/wsl.nix ] ++ secrets ++ station;
         linuxServer = linuxBase ++ secrets ++ station;
