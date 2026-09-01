@@ -670,6 +670,21 @@
           inherit user;
           brewNix = brew-nix;
           mocopiMac = mocopi-mac;
+          # 重いビルドを macmini へ逃がす。同じ aarch64-darwin なのでそのまま走る。
+          #
+          # nix のデーモンは root として ssh するので、鍵の場所を明示する。root は
+          # 権限を無視して読めるので、普段使っている automation 鍵をそのまま指す
+          # (root 専用の鍵を増やすと管理する秘密が 1 つ増えるだけ)。
+          #
+          # 10 は macmini のコア数、1 は speed factor。big-parallel は「並列に強い
+          # 派生をここへ回す」印で、Chromium や LLVM のような重いものが該当する。
+          #
+          # builders-use-substitutes を付けないと、macmini が要る依存を母艦から
+          # 転送することになり、キャッシュから直接引ける利点が消える。
+          nixCustomConf = {
+            builders = "ssh-ng://gapul@macmini aarch64-darwin /Users/gapul/.ssh/id_automation 10 1 big-parallel,benchmark";
+            builders-use-substitutes = "true";
+          };
           # hosts/darwin.nix declares the .app-shipping creative tools, which come from
           # nixos-unstable (see lib/unstable-pkgs.nix).
           nixpkgsUnstable = nixpkgs-unstable;
@@ -690,6 +705,20 @@
           inherit user;
           claudeAcp = claude-acp.packages.${system}.default;
           sopsNix = sops-nix;
+          # 母艦からのリモートビルドを受ける側。接続してくるユーザーが trusted-users に
+          # 入っていないと、nix は「渡された派生を信用できない」として拒否する。
+          #
+          # darwin-common.nix には「trusted-user は root 相当になるので避け、
+          # substituter は root 所有の行で全ユーザーに効かせる」と書いてある。あれは
+          # キャッシュを足すためだけに昇格するのを避ける話で、リモートビルドでは
+          # この昇格が機能そのものの要求なので回避できない。
+          #
+          # 昇格の中身は「gapul として ssh できる人が macmini の nix store を root 相当に
+          # 触れる」こと。gapul として ssh できる時点で相当なことができるので、増分は
+          # 大きくない。ただし方針として書いてあるので、ここに理由を残す。
+          nixCustomConf = {
+            trusted-users = "root ${user.username}";
+          };
         };
       };
 

@@ -1,4 +1,13 @@
-{ pkgs, user, ... }:
+{
+  pkgs,
+  user,
+  # このホストだけ /etc/nix/nix.custom.conf に足したい設定。
+  #
+  # 分けて書けないのは、activation がマーカー間を丸ごと再生成するため。ホストごとに
+  # 別々の追記をすると片方が消える。共有の settings と混ぜて 1 ブロックにする。
+  nixCustomConf ? { },
+  ...
+}:
 {
   # Host-independent base settings shared by the workstation (darwin.nix) and the
   # headless LLM worker (macmini.nix). Changes here affect both hosts.
@@ -72,7 +81,8 @@
         cores = "2";
         extra-substituters = builtins.concatStringsSep " " (builtins.attrNames caches);
         extra-trusted-public-keys = builtins.concatStringsSep " " (builtins.attrValues caches);
-      };
+      }
+      // nixCustomConf;
       # Written as a store file and cat'd in: no heredoc quoting to get wrong.
       block = pkgs.writeText "nix-custom-conf-block" (
         ''
