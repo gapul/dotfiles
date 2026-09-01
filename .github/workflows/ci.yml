@@ -82,8 +82,18 @@ jobs:
             runner: ubuntu-24.04
           - system: aarch64-linux
             runner: ubuntu-24.04-arm
+          # 自前ランナー (macmini)。GitHub の macos-14 は毎回 nix store が空なので
+          # carla や breeze-icons を建て直し、実測で 4〜31 分とばらつき一度は時間切れ
+          # で落ちた。こちらは store が温まったままなので二度目以降は評価だけで終わる。
+          # M4 なので素の速度も macos-14 (Intel 世代) より速い。
+          #
+          # public リポジトリで self-hosted を使う危険は、fork PR の承認を
+          # all_external_contributors にして塞いである (リポジトリ設定)。
+          #
+          # 落ちたら macos-14 に戻せばよい。ランナーが offline のときはジョブが
+          # 待ち続けるので、そこは気付ける。
           - system: aarch64-darwin
-            runner: macos-14
+            runner: macmini
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
     steps:
