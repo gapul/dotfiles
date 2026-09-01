@@ -57,6 +57,10 @@ in
     # 経緯)。systemPackages なのは omniwmctl の置き場所のため — /run/current-system/sw/bin という
     # 版にもユーザー名にも依存しない固定パスに出るので、configs 側のスクリプトが直に書ける。
     (pkgs.callPackage ../pkgs/omniwm.nix { })
+    # KDE Connect: スマホ連携。自作 tap の cask をやめて署名済みの dmg を取り込む
+    # (経緯は pkgs/kdeconnect.nix)。cask は `sha256 :no_check` で検証していなかったうえ、
+    # 固定していた CI ビルドが CDN から消えていて、新しい機械では 404 になる状態だった。
+    (pkgs.callPackage ../pkgs/kdeconnect.nix { })
     # terminal-browser: 端末の中で動く実ブラウザ。狙いは閲覧より agent 側で、
     # `terminal-browser action` が開いているブラウザに対する agent 向け CLI になっている。
     # Claude in Chrome の拡張を使わず、実ウィンドウも出さずに web を触らせられる。
@@ -407,7 +411,6 @@ in
       "felixkratz/formulae"
       "finnvoor/tools"
       "gerlero/openfoam"
-      "gapul/kdeconnect" # fork of imshuhao/kdeconnect. Fixed the deprecated depends_on macos
       "lihaoyun6/tap" # QuickRecorder (screen recorder. Required since not in homebrew/cask)
       "osx-cross/arm" # QMK toolchain dependency tap
       "osx-cross/avr" # QMK / Keyball AVR toolchain tap
@@ -552,7 +555,6 @@ in
       # Dropped proprietary Beeper (not in active use) for Element on the self-hosted Matrix
       # (@gapul:gapul.net; Discord/Telegram bridged in homelab/matrix.nix).
       "element"
-      "kdeconnect"
 
       # ─── Window / Keyboard / Input ───
       "thaw" # menu bar management (maintenance fork of Ice. Upstream jordanbaird-ice stalled at 0.11.12/2024-10 and won't launch on macOS Tahoe → migrated to Tahoe-compatible Thaw on 2026-07-27. Ice settings are importable)
