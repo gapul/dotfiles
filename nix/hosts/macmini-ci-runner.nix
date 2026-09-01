@@ -70,6 +70,15 @@ let
       ]
     }:/usr/bin:/bin:/nix/var/nix/profiles/default/bin
 
+    # node20 を要求する action (actions/cache など) を node24 で走らせる。
+    #
+    # nixpkgs の github-runner は node24 しか同梱しない (上流が node20 を落としたため)。
+    # GitHub の hosted runner は node20 の action を黙って node24 に振り替えるが、
+    # self-hosted は素直に node20 を探しに行って
+    # 「externals/node20/bin/node ... No such file or directory」で止まる。
+    # hosted と同じ挙動にする。
+    export ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION=node24
+
     cd ${workDir}
 
     # nixpkgs の github-runner は GitHub の配布物と構造が違い、config.sh も run.sh も
