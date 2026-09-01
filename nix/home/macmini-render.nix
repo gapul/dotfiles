@@ -43,14 +43,12 @@
 { pkgs, ... }:
 {
   home.packages = with pkgs; [
-    # 3D。CLI で完結するので画面が無くてよい。
-    #   blender -b scene.blend -a              全フレーム
-    #   blender -b scene.blend -f 120          特定フレーム
-    #   blender -b scene.blend -o /tmp/out_ -a 出力先を指定
+    # Blender は nix ではなく brew の cask で入れる (hosts/macmini.nix)。理由はあちらの
+    # コメント参照: nixpkgs 版は依存の manifold が macmini でテスト中に落ち、
+    # aarch64-darwin のキャッシュも無いのでソースから建てることになる。
     #
-    # GPU を使うかは blend 側の設定次第。M4 は Metal で回るが、シーンによっては
-    # CPU の方が速いことがあるので、重いものは両方測ってから決めること。
-    blender
+    # 画面なしで焼くときは .app の中の実体を叩く:
+    #   /Applications/Blender.app/Contents/MacOS/Blender -b scene.blend -a
 
     # 書き出し後の変換と作り直し。編集ソフトを持ち出さずに済む仕事はここで終わる。
     # M4 のハードウェアエンコーダを使うなら -c:v hevc_videotoolbox / h264_videotoolbox。

@@ -275,6 +275,15 @@ in
       # `chrome-automation` wrapper (home/macmini.nix): own profile, windowless, CDP on 9222, and
       # stopped when the job ends. The chrome-launch.sh this comment used to point at never existed.
       "google-chrome"
+      # Blender。nix ではなく brew なのは、あちらだとソースから建てることになるため。
+      # 依存の manifold が macmini (macOS 26.5.2) でテスト中に SIGTRAP で落ちるうえ
+      # (GetNormalLegacyContract, exit 133)、aarch64-darwin のキャッシュも無いので
+      # blender ごと入らない。テストを外して建てる手も試したが 10 分で終わらなかった。
+      #
+      # 署名済みバイナリを運ぶだけのものは brew でよい、という [[nix-vs-brew-signing-rule]]
+      # のとおりの事例。CLI は .app の中にあり、画面なしで焼ける:
+      #   /Applications/Blender.app/Contents/MacOS/Blender -b scene.blend -a
+      "blender"
     ];
   };
 
