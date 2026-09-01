@@ -83,7 +83,11 @@ let
 
     # nixpkgs の github-runner は GitHub の配布物と構造が違い、config.sh も run.sh も
     # bin/ の下にある。トップに置かれているつもりで叩くと何も起きずに終わる。
-    if [ ! -f .runner ]; then
+    #
+    # さらに、状態 (.runner / .credentials / _work) は実体のある場所ではなく
+    # ~/.github-runner に書かれる。作業領域を見て「未設定」と判断すると、既に
+    # 登録済みなのに config.sh を叩いて「already configured」で止まる。
+    if [ ! -f ${home}/.github-runner/.runner ]; then
       token=$(cat /var/lib/secrets/github-runner-token)
       ./bin/config.sh \
         --unattended --replace \
