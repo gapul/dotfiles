@@ -138,6 +138,11 @@ in
     # AivisSpeech desktop editor (GUI). Bundles its own engine copy, but scripts
     # keep using the newer headless engine above; both share the model dir.
     (pkgs.callPackage ../pkgs/aivisspeech.nix { })
+    # Orca fork that can still start a print on a Bambu printer - the stock cask
+    # above only exports, since Bambu's Authorization Control ignores the print
+    # command from anything but Bambu Connect. Kept beside the cask, with its own
+    # bundle name and datadir. See pkgs/orcaslicer-bambulab.nix.
+    (pkgs.callPackage ../pkgs/orcaslicer-bambulab.nix { })
     # Headitude: AirPods head orientation -> OSC. A head-rotation source that keeps
     # working while the face is out of the camera frame. No nixpkgs package and no
     # cask, so the official release zip is repackaged. See pkgs/headitude.nix.
