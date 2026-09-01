@@ -17,10 +17,29 @@
 #              [[adobe-cc-undeclarable]] に「棚卸しで未宣言として再報告しない」と
 #              決めてある
 #
-# Adobe を macmini に入れると、あの機械で唯一の手動管理物になる。入れる価値は
-# aerender (AE をコマンドで焼ける) にあるので、実際に「AE の書き出しを投げたい」場面が
-# 来てから判断する。Premiere 側は Media Encoder の監視フォルダしか手が無く、あれは
-# アプリが起動している前提なので画面の無いこの機械には向かない。
+# Adobe は After Effects だけ入れる方針にした (2026-09-01)。狙いは aerender で、
+# これは画面なしでコンポを焼けるコマンド。macmini に置く意味があるのはここだけ。
+#
+# Premiere は入れない。書き出しを外から叩く手が Media Encoder の監視フォルダしか
+# 無く、あれはアプリが起動している前提なので画面の無いこの機械には向かない。
+# DaVinci も同じ理由で入れない (加えて nixpkgs のパッケージが x86_64-linux 専用)。
+#
+# 導入は手作業になる。Creative Cloud が自前で管理するので宣言できず、サインインも
+# GUI が要る。macmini は画面共有が有効なので、そこから入れられる:
+#
+#   1. 画面共有で macmini に繋ぐ
+#   2. Creative Cloud を入れてサインイン
+#   3. After Effects だけ入れる (Premiere は入れない)
+#
+# 入ると aerender はここに来る:
+#   /Applications/Adobe After Effects <年>/aerender
+#
+# 母艦から投げるならこうなる:
+#   ssh macmini '/Applications/Adobe\ After\ Effects\ 2026/aerender \
+#     -project /path/to.aep -comp "Main" -output /path/out.mov'
+#
+# ラッパーはまだ書かない。AE が入っていない状態で書いても試せず、実物を見てから
+# でないとパスも引数も決められない。入れたあとで足す。
 { pkgs, ... }:
 {
   home.packages = with pkgs; [
