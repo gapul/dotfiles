@@ -74,6 +74,10 @@ let
 in
 {
   # CI 専用のユーザー。ここで走るのはワークフローのコードなので、他の役割と混ぜない。
+  #
+  # knownUsers に入れないと nix-darwin はユーザーを作らない。users.users を書いただけでは
+  # 宣言が無視され、activation の install が "unknown user" で落ちる (2026-08-31 に踏んだ)。
+  users.knownUsers = [ user ];
   users.users.${user} = {
     inherit home;
     createHome = true;
