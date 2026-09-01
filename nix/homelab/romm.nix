@@ -37,6 +37,28 @@
   };
   systemd.services."podman-romm-db" = {
     serviceConfig.Restart = lib.mkOverride 90 "always";
+
+    # tc.log を起動前に消す。
+    #
+    # MariaDB はトランザクション調整ログをここに持つが、コンテナが強制終了されると
+    # 中途半端な状態で残る。次の起動で「Bad magic header in tc log」→「Crash recovery
+    # failed」→ Aborting となり、二度と上がらなくなる。2026-08-28 と 2026-09-01 の
+    # 二度踏んだ。前者は 2 日間気付かなかった (再起動を繰り返すので podman ps では
+    # Up に見える)。
+    #
+    # 消して安全なのは、このファイルが 2 相コミットの調整用で、複数のトランザクション
+    # エンジンか binlog がある場合にしか使われないため。ここは InnoDB 単独で binlog も
+    # 無いので調整する相手がいない。InnoDB 自身の復旧は ib_logfile が持っていて、
+    # そちらは無傷 (実際、壊れたときもログ順序番号とバッファプールは読めていた)。
+    #
+    # MariaDB 自身もこの状況で「delete tc log and start server」と言う。
+    serviceConfig.ExecStartPre = [
+      "-${pkgs.coreutils}/bin/rm -f /var/lib/homelab/romm/db/tc.log"
+    ];
+
+    # 強制終了そのものを減らす。既定の 10 秒では InnoDB の書き出しが終わらないことが
+    # あり、終わらなければ SIGKILL になって上の状態を作る。
+    serviceConfig.TimeoutStopSec = 120;
     after = [ "podman-network-romm_default.service" ];
     requires = [ "podman-network-romm_default.service" ];
     partOf = [ "podman-compose-romm-root.target" ];
