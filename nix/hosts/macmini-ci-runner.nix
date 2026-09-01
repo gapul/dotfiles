@@ -91,7 +91,16 @@ in
 {
   # ランナー本体を展開する。GitHub の配布物は自己更新しようとするので、
   # store から作業領域へ複製して使う (store は読み取り専用)。
+  #
+  # 登録トークンの権限もここで合わせる。手で置くと 0400 root になりがちだが、
+  # ランナーは gapul として走るので読めない。読めないと config.sh に空文字が渡り、
+  # 「Permission denied」だけがログに出て延々やり直す (2026-09-01 に踏んだ)。
   system.activationScripts.postActivation.text = ''
+    if [ -f /var/lib/secrets/github-runner-token ]; then
+      /usr/sbin/chown ${user} /var/lib/secrets/github-runner-token
+      /bin/chmod 0400 /var/lib/secrets/github-runner-token
+    fi
+
     if [ ! -x ${workDir}/bin/run.sh ]; then
       /usr/bin/install -d -o ${user} -g staff -m 0700 ${workDir}
       /usr/bin/ditto ${pkgs.github-runner}/ ${workDir}/
