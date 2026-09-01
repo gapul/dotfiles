@@ -282,7 +282,7 @@
       "/Applications/azooKey skkserv.app"     # SKK conversion server for macSKK
       "/Applications/Maccy.app"               # clipboard history
       "/Applications/LuLu.app"                # outbound firewall
-      "/Applications/KDE Connect.app"         # phone integration
+      "/Applications/Nix Apps/KDE Connect.app" # phone integration (nix パッケージ化したので Nix Apps 側)
       "/Applications/ActivityWatch.app"       # time tracking
       "/Applications/Obsidian.app"            # notes (LiveSync keeps running in the background)
       "/Applications/Zen.app"                 # browser
