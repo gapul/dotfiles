@@ -51,6 +51,11 @@ if [ "$rc" -eq 0 ]; then
   exit 0
 fi
 
+# 失敗の中身をジャーナルにも残す。通知にしか出さないと、あとから
+# `journalctl -u self-deploy` を見ても「失敗した」としか分からず、原因を追うのに
+# 手で再現する羽目になる (2026-09-01 に踏んだ)。通知は要約、ジャーナルは全文。
+printf '%s\n' "$out" >&2
+
 # 失敗したら state を進めない。次の周回で再試行する。ただし同じ revision で
 # 鳴り続けると読まなくなるので、通知は revision ごとに 1 回だけにする。
 if [ "$remote" != "$(cat "$ALERTED" 2>/dev/null)" ]; then
