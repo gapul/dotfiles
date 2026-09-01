@@ -57,6 +57,23 @@ let
 
   # 未登録なら登録して、あとは走らせるだけ。config.sh は .runner を作るので、
   # それがあるかどうかで二回目以降を判別する。
+  # node20 を要求する action (actions/checkout, actions/cache など) 用に、
+  # node24 への別名を用意する。
+  #
+  # nixpkgs の github-runner は node24 しか同梱しない (上流が node20 を落としたため)。
+  # GitHub の hosted runner は node20 の action を黙って node24 に振り替えるが、
+  # self-hosted は素直に node20 を探して
+  # 「externals/node20/bin/node ... No such file or directory」で止まる。
+  #
+  # 環境変数 (ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION) では効かなかった。プロセスの
+  # 環境に置いても .env に書いても、ランナーは store 側の実体を見に行く。実体を
+  # 用意するのが確実。
+  runner = pkgs.github-runner.overrideAttrs (old: {
+    postFixup = (old.postFixup or "") + ''
+      ln -sfn node24 $out/lib/externals/node20
+    '';
+  });
+
   runScript = pkgs.writeShellScript "gh-runner-macmini" ''
     set -euo pipefail
     export PATH=${
@@ -78,20 +95,6 @@ let
     # さらに、状態 (.runner / .credentials / _work) は実体のある場所ではなく
     # ~/.github-runner に書かれる。作業領域を見て「未設定」と判断すると、既に
     # 登録済みなのに config.sh を叩いて「already configured」で止まる。
-    # node20 を要求する action (actions/cache など) を node24 で走らせる。
-    #
-    # nixpkgs の github-runner は node24 しか同梱しない (上流が node20 を落としたため)。
-    # GitHub の hosted runner は node20 の action を黙って node24 に振り替えるが、
-    # self-hosted は素直に node20 を探しに行って
-    # 「externals/node20/bin/node ... No such file or directory」で止まる。
-    #
-    # プロセスの環境変数では効かない。ランナーはジョブを起こすときに .env を読むので、
-    # そちらに書く必要がある (export で済ませようとして一度空振りした)。
-    if ! grep -q ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION ${home}/.github-runner/.env 2>/dev/null; then
-      mkdir -p ${home}/.github-runner
-      echo 'ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION=node24' >> ${home}/.github-runner/.env
-    fi
-
     if [ ! -f ${home}/.github-runner/.runner ]; then
       token=$(cat /var/lib/secrets/github-runner-token)
       ./bin/config.sh \
@@ -121,7 +124,7 @@ in
 
     if [ ! -x ${workDir}/bin/run.sh ]; then
       /usr/bin/install -d -o ${user} -g staff -m 0700 ${workDir}
-      /usr/bin/ditto ${pkgs.github-runner}/ ${workDir}/
+      /usr/bin/ditto ${runner}/ ${workDir}/
       /usr/sbin/chown -R ${user}:staff ${workDir}
     fi
   '';
