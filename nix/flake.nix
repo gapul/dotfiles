@@ -278,6 +278,7 @@
           ./home/macmini.nix
           ./home/macmini-backup.nix
           ./home/macmini-watchdog.nix
+          ./home/findmy-tag.nix # Find My タグの定期取得。ノートではなく常時稼働のこちらに置く
           # iMessage のブリッジ。他の mautrix は homeserver に置いてあるが、これだけ
           # chat.db と Messages.app が要るのでこの機械にしか置けない。
           ./home/macmini-imessage.nix
