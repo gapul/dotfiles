@@ -365,6 +365,20 @@ in
             ];
             alerts = [ ntfyAlert ];
           }
+          # 藝祭 (2026-09-04〜06) の展示機。会場の Pi は自分が落ちたことを自分では
+          # 報せられない — 電源が抜けても、回線が切れても、固まっても、通知を出す側が
+          # 一緒に死ぬ。だから外から叩く。HTTP は喋らないので tcp で 22 を見る。
+          #
+          # 会期が終わったらこの項目ごと消す。監視だけ残ると、片付けた機械について
+          # 半年後に赤い通知が飛ぶ。
+          {
+            name = "kohgoron-pi";
+            group = "exhibition";
+            url = "tcp://100.69.79.75:22";
+            interval = "5m";
+            conditions = [ "[CONNECTED] == true" ];
+            alerts = [ ntfyAlert ];
+          }
         ];
       alerting.ntfy = {
         # ntfy runs on this host, so this notifies about everything except ntfy
