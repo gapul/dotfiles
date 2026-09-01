@@ -25,7 +25,10 @@
 #
 #   - リポジトリ側で fork PR の承認を all_external_contributors にした (2026-08-31)。
 #     既定の first_time_contributors は「一度通った人は以後フリー」なので足りない。
-#   - 専用ユーザーで動かす。作業領域はこのユーザーの中に閉じる。
+#   - ci.yml は action を SHA で固定してある。
+#
+# 専用ユーザーでの隔離は諦めた (下の let を参照)。macOS が SSH 越しのユーザー作成を
+# 拒み、通すには SSH 全体に Full Disk Access を与えることになるため。
 #
 # 過去に他人の fork から来た PR は 0 件。塞ぐのは実績ではなく経路の話。
 #
@@ -36,7 +39,18 @@
 # 残留物の心配より、常駐で store を温めておく利点を取る。
 { pkgs, ... }:
 let
-  user = "gh-runner";
+  # 専用ユーザーにはできなかった。macOS は SSH 経由の rebuild でユーザーを作らせない
+  # (「users cannot be create over SSH without Full Disk Access」)。この機械は headless で
+  # 運用しているので、そこを通すにはリモートログインに Full Disk Access を与えることに
+  # なる。SSH 越しの全プログラムに効く設定なので、専用ユーザーで得られる隔離と釣り合わない。
+  #
+  # 隔離を落としても成り立つのは、GitHub 側で fork PR の承認を all_external_contributors に
+  # したので、ここで走るのが自分のコードだけになっているため。加えて ci.yml は action を
+  # SHA で固定してある。
+  #
+  # 隔離を戻したくなったら、System Settings > General > Sharing > Remote Login の
+  # 「Allow full disk access for remote users」を入れてから専用ユーザーに戻す。
+  user = "gapul";
   home = "/Users/${user}";
   workDir = "${home}/actions-runner";
   repo = "https://github.com/gapul/dotfiles";
@@ -73,20 +87,6 @@ let
   '';
 in
 {
-  # CI 専用のユーザー。ここで走るのはワークフローのコードなので、他の役割と混ぜない。
-  #
-  # knownUsers に入れないと nix-darwin はユーザーを作らない。users.users を書いただけでは
-  # 宣言が無視され、activation の install が "unknown user" で落ちる (2026-08-31 に踏んだ)。
-  users.knownUsers = [ user ];
-  users.users.${user} = {
-    inherit home;
-    createHome = true;
-    description = "GitHub Actions self-hosted runner";
-    uid = 505;
-    gid = 20;
-    shell = "${pkgs.bashInteractive}/bin/bash";
-  };
-
   # ランナー本体を展開する。GitHub の配布物は自己更新しようとするので、
   # store から作業領域へ複製して使う (store は読み取り専用)。
   system.activationScripts.postActivation.text = ''
