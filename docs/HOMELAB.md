@@ -1,320 +1,428 @@
-# 自宅サーバー運用ガイド (Homelab Operations)
+# Homelab operations
 
-自宅 Proxmox ベースのセルフホスト基盤の構成・運用手順をまとめたドキュメント。
-設定の実体は `configs/homelab/<service>/`、ホスト構成は本書を参照。
+How the Proxmox-based self-hosting setup at home was built and run. The configuration itself
+lives in `configs/homelab/<service>/`; the host layout is described here.
 
-> **この構成は解体中。** ハイパーバイザ無しの NixOS 1台への置き換えが進行中で、
-> 設定の実体は `nix/hosts/homeserver.nix` と `nix/homelab/` に移っている。
-> 当日の手順は [HOMESERVER_MIGRATION.md](HOMESERVER_MIGRATION.md)。
-> 以下は移行元の記録として読むこと。
+> **Superseded.** This setup was replaced by a single NixOS machine with no hypervisor. The
+> configuration now lives in `nix/hosts/homeserver.nix` and `nix/homelab/`, and the steps taken
+> that day are in [HOMESERVER_MIGRATION.md](HOMESERVER_MIGRATION.md). What follows is a record
+> of what was replaced.
 
-- LAN: `192.168.116.0/24` / ゲートウェイ: `192.168.116.254`
-- ハイパーバイザ: **Proxmox VE 9.1**（`pve` = `192.168.116.100`）
-- tailnet: `tail079f44.ts.net`（MagicDNS 有効）
+- LAN `192.168.116.0/24`, gateway `192.168.116.254`
+- Hypervisor: Proxmox VE 9.1, `pve` at `192.168.116.100`
+- tailnet `tail079f44.ts.net`, MagicDNS on
 
 ---
 
-## 1. 構成（CT / VM 一覧）
+## 1. Containers and VMs
 
-| ID | 名前 | LAN IP | tailnet | 役割 |
+| ID | Name | LAN IP | tailnet | Role |
 |----|------|--------|---------|------|
-| pve | pve | `.100` | `100.101.225.43` | Proxmox ホスト |
-| CT101 | dockge | `.65` | — | Docker 母艦。Dockge(:5001)管理。スタックは `/opt/stacks/<name>/` |
-| CT102 | tailscale-router | (dhcp) | `100.107.201.72` | subnet router（`192.168.116.0/24` 広告・承認済） |
-| CT103 | caddy | `.119` | `100.64.125.107` | リバースプロキシ（Caddy / Tailscale 限定待受） |
-| CT104 | hermes | `.120` | — | Discord×Claude エージェント |
+| pve | pve | `.100` | `100.101.225.43` | The Proxmox host |
+| CT101 | dockge | `.65` | — | The Docker machine, managed through Dockge on :5001. Stacks live in `/opt/stacks/<name>/` |
+| CT102 | tailscale-router | dhcp | `100.107.201.72` | Subnet router, advertising and approved for `192.168.116.0/24` |
+| CT103 | caddy | `.119` | `100.64.125.107` | Reverse proxy: Caddy, listening on Tailscale only |
+| CT104 | hermes | `.120` | — | The Discord agent backed by Claude |
 | VM100 | haos | `.88` | — | Home Assistant OS |
-| — | rpi4 | `.53` | `100.69.79.75` | サブサーバー（AdGuard 主系）※**制作で停止する前提のノード** |
+| — | rpi4 | `.53` | `100.69.79.75` | Secondary server, primary AdGuard. Expected to be switched off during creative work |
 
 ---
 
-## 2. アクセス早見表
+## 2. How to reach things
 
-| 目的 | コマンド / URL |
+| Purpose | Command or URL |
 |------|----------------|
-| Proxmox | `ssh root@192.168.116.100` / `https://pve.gapul.net` |
-| CT へ入る | pve から `pct enter <id>` または `pct exec <id> -- <cmd>` |
-| ラズパイ | `ssh pi@192.168.116.53` |
-| Home Assistant SSH | `ssh hassio@192.168.116.88`（add-on / ed25519 鍵） |
-| HA Web | `https://home.gapul.net` |
-| Dockge | `https://dockge.gapul.net`（= `.65:5001`） |
-| Git (Forgejo) | `https://git.gapul.net`（= `.65:3003`）。GitHub のセルフホスト・ミラー |
-| AdGuard 主系/副系 | `https://dns.gapul.net` / `https://dns2.gapul.net` |
-| 監視 | `https://status.gapul.net`（Uptime Kuma） |
+| Proxmox | `ssh root@192.168.116.100`, `https://pve.gapul.net` |
+| Enter a container | From pve: `pct enter <id>` or `pct exec <id> -- <cmd>` |
+| Raspberry Pi | `ssh pi@192.168.116.53` |
+| Home Assistant over SSH | `ssh hassio@192.168.116.88`, through the add-on with an ed25519 key |
+| Home Assistant web | `https://home.gapul.net` |
+| Dockge | `https://dockge.gapul.net`, which is `.65:5001` |
+| Git (Forgejo) | `https://git.gapul.net`, `.65:3003`. A self-hosted mirror of GitHub |
+| AdGuard primary and secondary | `https://dns.gapul.net`, `https://dns2.gapul.net` |
+| Monitoring | `https://status.gapul.net`, Uptime Kuma |
 
-- SSH 認証は **Bitwarden agent の ed25519 鍵**（`SHA256:2WG8EZOQ47X+XFzjXtuoytt8e3K8qsJd7r/FdbFKmM4`）。
-- CT(.65/caddy 等)へは Mac から直接 SSH 不可 → **pve 経由（`pct`）**で操作する。
-- `*.gapul.net` は **Tailscale 接続時のみ**到達可（Caddy が tailnet 限定待受のため）。
+SSH authenticates with the ed25519 key in the Bitwarden agent
+(`SHA256:2WG8EZOQ47X+XFzjXtuoytt8e3K8qsJd7r/FdbFKmM4`).
 
-### アカウント / 認証情報
+Containers such as `.65` and caddy cannot be reached over SSH from the Mac; go through pve with
+`pct`. And `*.gapul.net` only resolves while Tailscale is connected, because Caddy listens on
+the tailnet alone.
 
-> ⚠️ **パスワードはこのリポジトリに書かない**（git 管理のため）。実パスワードは **Bitwarden** で管理し、ここには「ユーザー名」と「保管場所」のみ記載する。
+### Accounts
 
-| サービス | ユーザー名 | 認証方法 / パスワード保管 |
+Passwords do not go in this repository, since it is in git. Real passwords live in Bitwarden;
+what follows is the username and where to find the password.
+
+| Service | Username | Authentication and where the password lives |
 |----------|-----------|---------------------------|
-| Proxmox (SSH) | `root` | ed25519 鍵(Bitwarden agent) |
-| Proxmox (Web `pve.gapul.net`) | `root@pam` | パスワード → Bitwarden |
-| ラズパイ rpi4 | `pi` | ed25519 鍵（焼き込み時に投入）+ 緊急用パスワード(Bitwarden) |
-| Home Assistant (Web) | `gapul` | パスワード → Bitwarden |
-| Home Assistant (SSH add-on) | `hassio` | ed25519 鍵 / passwordless sudo |
-| AdGuard 主系・副系 | `gapul` | パスワード → Bitwarden（同期 `adguardhome-sync` も同一資格を使用。実体は CT101 `/opt/stacks/adguardhome-sync/compose.yaml` の env にのみ存在） |
-| Dockge (`.65:5001`) | （要確認） | パスワード → Bitwarden。忘失時は CT101 で `docker exec -it dockge npm run reset-password` |
-| Uptime Kuma (`status.gapul.net`) | （初回設定で作成） | パスワード → Bitwarden |
-| Forgejo (`git.gapul.net`) | `gapul` | admin。パスワード + API token → Bitwarden |
-| Cloudflare API (Caddy DNS-01) | — | トークンは CT103 `/etc/caddy/cf.env`（git 管理外） |
+| Proxmox over SSH | `root` | ed25519 key in the Bitwarden agent |
+| Proxmox web, `pve.gapul.net` | `root@pam` | Password, in Bitwarden |
+| Raspberry Pi rpi4 | `pi` | ed25519 key, written at imaging time, plus an emergency password in Bitwarden |
+| Home Assistant web | `gapul` | Password, in Bitwarden |
+| Home Assistant SSH add-on | `hassio` | ed25519 key, passwordless sudo |
+| AdGuard primary and secondary | `gapul` | Password, in Bitwarden. `adguardhome-sync` uses the same credentials, and they exist only in the env of CT101's `/opt/stacks/adguardhome-sync/compose.yaml` |
+| Dockge, `.65:5001` | to be confirmed | Password, in Bitwarden. If it is lost, run `docker exec -it dockge npm run reset-password` on CT101 |
+| Uptime Kuma, `status.gapul.net` | created on first run | Password, in Bitwarden |
+| Forgejo, `git.gapul.net` | `gapul` | Admin. Password and API token in Bitwarden |
+| Cloudflare API, for Caddy's DNS-01 | — | The token is in CT103's `/etc/caddy/cf.env`, outside git |
 
-- 秘密情報を dotfiles に入れる場合は **SOPS**（`.sops.yaml`）で暗号化し、平文でコミットしない。`work/ conf/ .env` は `.gitignore` 済み。
+Anything secret that does go into dotfiles is encrypted with SOPS through `.sops.yaml` and never
+committed in the clear. `work/`, `conf/` and `.env` are already in `.gitignore`.
 
-### SSH 鍵
+### SSH keys
 
-秘密鍵は **Bitwarden Desktop の SSH agent** が保持（Mac にファイルとして秘密鍵は置かない。`~/.ssh/*.bak` はバックアップ）。agent は 2 鍵を提供:
+The private keys are held by Bitwarden Desktop's SSH agent; no private key sits on the Mac as a
+file, and `~/.ssh/*.bak` are backups. The agent offers two keys:
 
-| ラベル | 種別 | フィンガープリント | 用途 |
+| Label | Type | Fingerprint | Use |
 |--------|------|--------------------|------|
-| `GitHub` | ed25519 | `SHA256:2WG8EZOQ47X+XFzjXtuoytt8e3K8qsJd7r/FdbFKmM4` | **homelab 標準**。下記すべてに登録 |
-| `mvrx-dev` | RSA | `SHA256:4WQSmfgnETVJxL6I7R13l5b8Qu6mGpx65FTs7ELov0U` | 別途（業務系）。homelab では未使用 |
+| `GitHub` | ed25519 | `SHA256:2WG8EZOQ47X+XFzjXtuoytt8e3K8qsJd7r/FdbFKmM4` | The homelab standard, registered everywhere below |
+| `mvrx-dev` | RSA | `SHA256:4WQSmfgnETVJxL6I7R13l5b8Qu6mGpx65FTs7ELov0U` | Work, unused in the homelab |
 
-**登録に使う公開鍵（ed25519）**:
+The public key to register:
+
 ```
-公開鍵は `secrets/secrets.yaml` の `ssh_authorized_keys` をSOPS経由で配布する。
+The public key is distributed from `ssh_authorized_keys` in `secrets/secrets.yaml` through SOPS.
 ```
 
-**この公開鍵の登録先**:
+Where it is registered:
 
-| ホスト | ユーザー | 登録方法 |
+| Host | User | How |
 |--------|---------|---------|
-| pve `.100` | `root` | 既存（`~/.ssh/authorized_keys`） |
-| rpi4 `.53` | `pi` | Raspberry Pi Imager の焼き込み時に投入 |
-| HA `.88` | `hassio` | add-on Configuration の `ssh.authorized_keys` |
-| CT102 tailscale-router | `root` | 既存 |
+| pve `.100` | `root` | Already in `~/.ssh/authorized_keys` |
+| rpi4 `.53` | `pi` | Written by Raspberry Pi Imager at flash time |
+| HA `.88` | `hassio` | `ssh.authorized_keys` in the add-on configuration |
+| CT102 tailscale-router | `root` | Already present |
 
-- CT101(dockge) / CT103(caddy) / CT104(hermes) には **この鍵は未登録** → pve から `pct enter/exec` でアクセスする。
-- 新ホストに登録する1行:
-  ```bash
-  mkdir -p ~/.ssh && install -m 600 /path/to/decrypted/authorized_keys ~/.ssh/authorized_keys
-  ```
+The key is not registered on CT101 (dockge), CT103 (caddy) or CT104 (hermes); reach those from
+pve with `pct enter` or `pct exec`. To register it on a new host:
 
-**参考: 各ホストのサーバ公開鍵（known_hosts 検証用）**
-- HA add-on `.88`: `SHA256:AxGmsu9vVDDMjp9+xKcZtIwTq7fePBlx3ruPUOgNzho`（add-on 再作成で変わることがある→ `ssh-keygen -R 192.168.116.88` で更新）
+```bash
+mkdir -p ~/.ssh && install -m 600 /path/to/decrypted/authorized_keys ~/.ssh/authorized_keys
+```
+
+Host keys, for known_hosts: the HA add-on at `.88` is
+`SHA256:AxGmsu9vVDDMjp9+xKcZtIwTq7fePBlx3ruPUOgNzho`. Recreating the add-on can change it, in
+which case `ssh-keygen -R 192.168.116.88`.
 
 ---
 
-## 3. DNS（AdGuard 二重化 + Tailscale 配布）
+## 3. DNS: two AdGuards, distributed by Tailscale
 
-ローカル DNS を主系（ラズパイ）／副系（CT101）で冗長化し、広告ブロックを全 tailnet 端末へ配布する。
+Local DNS is made redundant with a primary on the Pi and a secondary on CT101, and ad blocking
+is pushed to every device on the tailnet.
 
 ```
-全 tailnet 端末
-   │ DNS(Tailscale Global nameservers / Override ON, 上から優先):
-   │   1. 100.69.79.75    (主系 Pi)        ← 通常
-   │   2. 192.168.116.65  (副系 CT101)     ← 主系停止時のフェイルオーバー（CT102 subnet router 経由で外からも到達）
-   │   3. Quad9 9.9.9.9    (最終保険)       ← 両系ダウン時のみ
+every tailnet device
+   │ DNS, from Tailscale's global nameservers with Override on, in order:
+   │   1. 100.69.79.75    primary, the Pi          ← normally
+   │   2. 192.168.116.65  secondary, CT101         ← failover, reachable from outside through the CT102 subnet router
+   │   3. Quad9 9.9.9.9                            ← only if both are down
    ▼
- AdGuard 主系(.53) ──[adguardhome-sync 10分毎]──▶ AdGuard 副系(.65)
-   └ gapul.net だけ Split DNS → Cloudflare(1.1.1.1) → Caddy(tailnet IP)
+ AdGuard primary (.53) ──[adguardhome-sync, every 10 min]──▶ AdGuard secondary (.65)
+   └ gapul.net alone goes through split DNS to Cloudflare (1.1.1.1) and on to Caddy's tailnet IP
 ```
 
-- 主系: `configs/homelab/adguard/primary-pi/`（ラズパイ上 `~/adguard/primary-pi/`）
-- 副系・同期: CT101 `/opt/stacks/adguard-secondary/`、`/opt/stacks/adguardhome-sync/`（Dockge 管理）
-- AdGuard 管理ユーザー: `gapul`
-- **`gapul.net` の Split DNS（→Cloudflare）は必須**。消すと他端末で `*.gapul.net` が解決不能になる（公開DNSが CGNAT(100.64.x) を rebinding 保護で弾くため）。
-- **公開 DNS をグローバルに常設しない**こと。LAN内IP（.65）を入れると外出端末でタイムアウト→激遅になる（→ subnet router 経由で到達させる現構成が正解）。
-- Tailscale DNS 設定は管理コンソール `https://login.tailscale.com/admin/dns`。
+- Primary: `configs/homelab/adguard/primary-pi/`, deployed to `~/adguard/primary-pi/` on the Pi.
+- Secondary and sync: `/opt/stacks/adguard-secondary/` and `/opt/stacks/adguardhome-sync/` on
+  CT101, managed by Dockge.
+- The AdGuard admin user is `gapul`.
+- The split DNS for `gapul.net` to Cloudflare is required. Remove it and `*.gapul.net` stops
+  resolving on every other device, because public DNS rejects CGNAT addresses (100.64.x) as
+  rebinding.
+- Do not leave a LAN address in the global DNS list permanently. Putting `.65` there makes
+  devices away from home time out and everything crawl, which is why reaching it through the
+  subnet router is the right shape.
+- Tailscale's DNS settings are at `https://login.tailscale.com/admin/dns`.
 
 ---
 
-## 4. 運用手順：ラズパイの停止 / 復帰（制作モード）
+## 4. Stopping and restarting the Pi, for creative work
 
-ラズパイは「制作（TouchDesigner 等）で一時的に止める」前提のノード。止めても副系(.65)が DNS を継続する。
+The Pi is expected to be switched off from time to time, for TouchDesigner and similar. The
+secondary at `.65` keeps DNS running while it is off.
 
-**止める**（SDカード保護のため必ず graceful に）:
+To stop it, always gracefully, to protect the SD card:
+
 ```bash
 ssh pi@192.168.116.53 'sudo poweroff'
-# 緑LED(ACT)が消えたら電源を抜いてOK（赤LED=給電中の表示なので点いたままで正常）
-# Uptime Kuma の「AdGuard Primary Pi (.53)」モニターは Pause しておくと誤報が出ない
+# once the green ACT LED goes out it is safe to pull the power; the red LED just means power is present
+# pause the "AdGuard Primary Pi (.53)" monitor in Uptime Kuma to avoid a false alarm
 ```
 
-**戻す**:
-```bash
-# 電源を挿すだけ → 自動起動。AdGuard 主系も restart:unless-stopped で自動復帰
-ssh pi@192.168.116.53 'docker ps'   # 復帰確認
-# Kuma のモニターを Resume
-```
+To bring it back, plug it in — it boots on its own, and AdGuard comes back with
+`restart:unless-stopped`. Confirm with `ssh pi@192.168.116.53 'docker ps'` and resume the
+monitor.
 
-停止中の挙動（検証済み）: 副系(.65)で名前解決・広告ブロック継続、`gapul.net` も Cloudflare split で生存。
+While it is off, verified behaviour: the secondary at `.65` keeps resolving names and blocking
+ads, and `gapul.net` survives through the Cloudflare split.
 
 ---
 
-## 5. リバースプロキシ（Caddy / CT103）
+## 5. Reverse proxy: Caddy on CT103
 
-- Caddy は CT103 で **native systemd** 稼働。設定: `/etc/caddy/Caddyfile`（dotfiles: `configs/homelab/caddy/Caddyfile`）。
-- **Tailscale 限定待受**（LAN の 80/443 は閉）。TLS は Cloudflare DNS-01（`CF_API_TOKEN` は `/etc/caddy/cf.env`）。
+Caddy runs natively under systemd on CT103. Its configuration is `/etc/caddy/Caddyfile`, from
+`configs/homelab/caddy/Caddyfile` in dotfiles. It listens on Tailscale only, with ports 80 and
+443 closed on the LAN, and gets its TLS through Cloudflare DNS-01, with `CF_API_TOKEN` in
+`/etc/caddy/cf.env`.
 
-**新サービスを公開する手順**:
-1. CT103 の Caddyfile にブロックを追加:
+To publish a new service:
+
+1. Add a block to the Caddyfile on CT103:
+
    ```
    newsvc.gapul.net {
        tls { dns cloudflare {env.CF_API_TOKEN} }
        reverse_proxy 192.168.116.65:PORT
    }
    ```
-2. Cloudflare の A レコードは手で足さない。`just dns` が
-   Caddy の vhost 一覧と突き合わせて足りないものを出し、`just dns --apply` で作る
-   （proxied=false, ttl=60、宛先は tailnet の homeserver）。公開側（トンネル経由）の
-   CNAME も同じコマンドが `homelab/cloudflared.nix` の ingress と突き合わせる。
+
+2. Do not add the Cloudflare A record by hand. `just dns` compares Caddy's vhost list against
+   what exists and lists what is missing; `just dns --apply` creates them, with proxied false,
+   ttl 60, pointing at homeserver's tailnet address. The same command checks the public CNAMEs,
+   the ones through the tunnel, against the ingress in `homelab/cloudflared.nix`.
 3. `pct exec 103 -- systemctl reload caddy`
 
 ---
 
-## 6. 監視（Uptime Kuma / status.gapul.net）
+## 6. Monitoring: Uptime Kuma at status.gapul.net
 
-- CT101 の `/opt/stacks/uptime-kuma/`。`status.gapul.net` で UI。
-- モニター（DNS 監視 = 実際に解決できるかを毎分チェック）:
-  - **AdGuard Secondary (.65)** … 常時稼働前提＝**本気でアラート**
-  - **AdGuard Primary Pi (.53)** … 制作で止めるので**情報用**。停止前に Pause
-  - **Home Assistant (.88)** … HTTP 監視
-- ⚠️ **通知が未設定**。Discord webhook を登録すると実アラートが飛ぶ（既存の Discord 連携と相性◎）。
+Runs from `/opt/stacks/uptime-kuma/` on CT101, with its UI at `status.gapul.net`. The DNS
+monitors check every minute that a name actually resolves.
 
----
+- AdGuard secondary (.65) is supposed to be up permanently, so it alerts for real.
+- AdGuard primary on the Pi (.53) gets switched off deliberately, so it is informational.
+  Pause it before stopping the Pi.
+- Home Assistant (.88) is an HTTP check.
 
-## 7. Home Assistant（VM100 / .88）
-
-- **SSH**: `ssh hassio@192.168.116.88`（Advanced SSH & Web Terminal add-on、ed25519 鍵承認済、非rootだが passwordless sudo 可）。
-  - add-on は `ssh.password` / `ssh.authorized_keys` のどちらか未設定だと**起動拒否→再起動ループ**するので注意。
-  - 弾かれる時: ユーザー名は `hassio`（自分のMacユーザーではない）。ホスト鍵変更時は `ssh-keygen -R 192.168.116.88`。
-- **リバプロ整合**: Caddy 配下なので `configuration.yaml` に設定済み:
-  ```yaml
-  http:
-    use_x_forwarded_for: true
-    trusted_proxies:
-      - 192.168.116.119   # Caddy(CT103)
-  ```
-  （Caddy 側の `header_up -X-Forwarded-For` ハックは撤去済み＝実クライアントIPが記録される）
-- ⚠️ **HA Core の再起動は「設定 → システム」の電源アイコンから**行う。Developer Tools 経由の再起動は失敗して設定が読み込まれないことがあった。
+No notification target is configured. Registering a Discord webhook would make the alerts
+actually arrive, and fits the Discord integration that already exists.
 
 ---
 
-## 8. 運用上のハマりどころ（既知）
+## 7. Home Assistant, VM100 at .88
 
-| 事象 | 対処 |
+SSH in with `ssh hassio@192.168.116.88`, through the Advanced SSH & Web Terminal add-on, with
+the ed25519 key authorised. The user is not root but has passwordless sudo.
+
+The add-on refuses to start and loops if neither `ssh.password` nor `ssh.authorized_keys` is
+set. If you are refused, check that the username is `hassio` rather than your Mac username. If
+the host key changed, `ssh-keygen -R 192.168.116.88`.
+
+Because it sits behind Caddy, `configuration.yaml` has:
+
+```yaml
+http:
+  use_x_forwarded_for: true
+  trusted_proxies:
+    - 192.168.116.119   # Caddy on CT103
+```
+
+The `header_up -X-Forwarded-For` hack on the Caddy side has been removed, so real client
+addresses are recorded.
+
+Restart Home Assistant Core from Settings, System, through the power icon. Restarting through
+Developer Tools has failed in a way that left the configuration unread.
+
+---
+
+## 8. Things that have caught us out
+
+| Symptom | What to do |
 |------|------|
-| Docker Hub の pull 上限（自宅公開IP） | `docker pull --platform linux/amd64 mirror.gcr.io/<repo>:<tag>` → `docker tag` で元名に。デーモン再起動不要 |
-| 別アーキのイメージ流用で `exec format error` | arm64(Pi)↔amd64(CT) は混在不可。アーキを合わせて pull |
-| pve への SSH が時々 `Permission denied` | 経路が flap する。数秒おいて再試行で繋がる |
-| zram が二重化して `failed`（Pi/trixie） | OS標準 `systemd-zram-generator` に一本化（zram-tools は撤去）。`bootstrap.sh` 反映済み |
-| この Mac で広告ブロックが効かない | Mac の Tailscale クライアントが古いDNSを固着 → **Mac再起動**で解消 |
+| Docker Hub pull limits on the house's public IP | `docker pull --platform linux/amd64 mirror.gcr.io/<repo>:<tag>`, then `docker tag` back to the original name. No daemon restart needed |
+| `exec format error` from reusing an image built for another architecture | arm64 on the Pi and amd64 on the containers do not mix. Pull the matching architecture |
+| SSH to pve occasionally refused with `Permission denied` | The path flaps. Wait a few seconds and retry |
+| zram doubled up and failed, on the Pi under trixie | Standardise on the OS's own `systemd-zram-generator` and drop zram-tools. Already reflected in `bootstrap.sh` |
+| Ad blocking not working on this Mac | The Mac's Tailscale client is stuck on old DNS. Rebooting the Mac fixes it |
 
 ---
 
-## 9. Git ホスト（Forgejo / git.gapul.net）
+## 9. Git hosting: Forgejo at git.gapul.net
 
-GitHub 以外の git リモート。GitHub 障害・アカウント凍結時にもコードが自宅に残る冗長化。
+A git remote that is not GitHub, so the code is still at home if GitHub goes down or the
+account is frozen.
 
-- CT101 の Docker スタック（`/opt/stacks/forgejo/`、dotfiles: `configs/homelab/forgejo/`）。`.65:3003` → `git.gapul.net`。
-- git は **HTTPS のみ**（`DISABLE_SSH=true`）。push/pull は token 認証。admin = `gapul`。SQLite。
-- `INSTALL_LOCK=true`（compose env）で Web インストーラを飛ばし、admin は CLI で作成
-  （`docker exec -u git forgejo forgejo admin user create --admin ...`）。
+A Docker stack on CT101 in `/opt/stacks/forgejo/`, from `configs/homelab/forgejo/` in dotfiles,
+at `.65:3003` behind `git.gapul.net`. git is HTTPS only, with `DISABLE_SSH=true`, and push and
+pull authenticate with a token. The admin is `gapul`, and the store is SQLite. `INSTALL_LOCK=true`
+in the compose env skips the web installer, and the admin was created from the CLI with
+`docker exec -u git forgejo forgejo admin user create --admin ...`.
 
-**運用は Pull Mirror 方式**: Forgejo が GitHub から定期 pull（15分毎）。Mac の git 操作は変えず、
-push 先は GitHub のまま自宅へ複製され続ける。**外向き pull なので Caddy 無しでも冗長化は機能**
-（Caddy は Web UI / clone / push 用）。
+It runs as a pull mirror: Forgejo pulls from GitHub every 15 minutes. Nothing about the Mac's
+git usage changes — pushes still go to GitHub and get copied home. Because the pull is outbound,
+the redundancy works even without Caddy, which is only there for the web UI, clone and push.
 
-**状態**:
-- ✅ `dotfiles`（public）を Pull Mirror 登録済・稼働中。
-- ⏳ `obsidian-vault`（private）は GitHub の read token が必要 → Forgejo UI の Migration で token を貼って追加。
-- ⏳ Caddy 公開: Caddyfile に `git.gapul.net → .65:3003` 追加済。§5 の手順で Cloudflare A レコード追加 +
-  `pct exec 103 -- systemctl reload caddy` が必要（未実施でもミラーは動く）。
+State:
 
-**ミラー追加手順**（UI）: ＋ → New Migration → GitHub → repo URL → **「This repository will be a mirror」** に
-チェック → Migrate（private repo は GitHub token を入力）。
+- `dotfiles`, public, is registered as a pull mirror and working.
+- `obsidian-vault`, private, needs a GitHub read token. Add it through Migration in the Forgejo
+  UI, pasting the token.
+- Publishing through Caddy: `git.gapul.net` to `.65:3003` is in the Caddyfile. It still needs
+  the Cloudflare A record from section 5 and `pct exec 103 -- systemctl reload caddy`. The
+  mirror works without this.
+
+To add a mirror through the UI: plus, New Migration, GitHub, the repo URL, tick "This repository
+will be a mirror", Migrate. Private repositories need a GitHub token.
 
 ---
 
-## 10. バックアップ（Proxmox ゲスト）
+## 10. Backups of the Proxmox guests
 
-2段構え。vzdump で全ゲストをローカルに固め、restic で Google Drive へオフサイト退避（既存 Mac と**同一 restic リポジトリ**に host=pve タグで相乗り＝重複排除）。
+Two stages. vzdump packs every guest locally, and restic ships that offsite to Google Drive,
+sharing the same restic repository as the Mac under a `host=pve` tag so deduplication works
+across both.
 
 ```
-02:00  vzdump（全ゲスト, snapshotモード, zstd, keep-last=2）→ /var/lib/vz/dump
-03:00  restic backup /var/lib/vz/dump → rclone:google-drive:restic-backup (host=pve, tag=pve-vzdump)
+02:00  vzdump, all guests, snapshot mode, zstd, keep-last=2, into /var/lib/vz/dump
+03:00  restic backup /var/lib/vz/dump → rclone:google-drive:restic-backup, host=pve, tag=pve-vzdump
        restic forget --host pve --keep-daily 7 --keep-weekly 4 --keep-monthly 6 --prune
 ```
 
-- vzdump ジョブ: PVE の `/etc/pve/jobs.cfg`（`pvesh get /cluster/backup`）。`local` ストレージへ。
-- restic 層（pve は Debian なので Nix管理外の自前構成）:
-  - スクリプト: `/usr/local/bin/restic-pve-offsite.sh`
-  - timer: `/etc/systemd/system/restic-pve-offsite.{service,timer}`（毎日 03:00, `Persistent=true`）
-  - 秘密: `/root/.config/rclone/rclone.conf`（GDriveトークン）/ `/root/.restic.pw`（restic パスワード）= SOPS 復号値を pve root専用に配置（git管理外）
-- **手動実行**: `systemctl start restic-pve-offsite.service`
-- **確認**: `RCLONE_CONFIG=/root/.config/rclone/rclone.conf RESTIC_REPOSITORY=rclone:google-drive:restic-backup RESTIC_PASSWORD_FILE=/root/.restic.pw restic snapshots --host pve`
-- **リストア**: `restic restore <ID> --target /tmp/r` で取り出し → PVE UI / `pct restore` / `qmrestore` で復元。
-- ⚠️ 通知未整備: PVE バックアップ通知先が `mail-to-root`（実質届かない）。失敗検知のため **Discord 通知**に向けるのが次の改善。restic 層は母艦/macmini/rpi4 と同じ ntfy 通知に寄せてもよい。
+The vzdump job is in PVE's `/etc/pve/jobs.cfg`, visible through `pvesh get /cluster/backup`,
+writing to `local` storage.
 
-### 共有 restic リポジトリの全体像 / 母艦・macmini・rpi4 も相乗り（2026-07-20）
-pve だけでなく **母艦Mac / macmini / rpi4** も同一 restic リポジトリ `rclone:google-drive:restic-backup` を共有する（host 名で相乗り・重複排除）。各ホストの対象・スケジュール・デプロイ手順・秘密の場所・**復元テスト手順**は → [`configs/homelab/restic/README.md`](../configs/homelab/restic/README.md)。成果物（スクリプト/systemd/launchd）も同ディレクトリに収録。
-- 共有リポジトリのため `restic forget` は必ず `--host` スコープ、**prune は母艦の日次のみ**（排他ロック競合回避）。pve の後継 homeserver も同リポジトリに host=homeserver で相乗り（`nix/homelab/backup.nix`、03:00）。
-- 母艦の restic-monitor は `nix/lib/restic-common.nix` の `monitoredHosts` を**ホスト別**に見る。共有リポジトリでは「リポジトリ全体の最新1本」を見ても他の1台が生きている限り警告が出ず、1台だけ止まった状態を検知できない。**ホストを増やしたら monitoredHosts に足す**（足し忘れるとそのホストは無監視、退役ホストは外さないと毎日誤報）。
-- 書き込む側が居なくなったホストのスナップショット（pve の vzdump、移行時の cold/warm pass）は `archive` タグを付けて保持期限から外してある。外すと keep-monthly 6 の期限切れで消える。
-- Google OAuth は Production 公開済でトークン失効しない（旧: Testing で約7日ごとに失効し全ホスト同時停止の罠）。失敗時は ntfy 通知（母艦/macmini/rpi4）。
-- **スマホから中身プレビュー**: `files.gapul.net` = pve 上の restic mount(read-only FUSE, `--no-lock`) + Filebrowser を Caddy 公開（tailnet 限定・認証なし）。CF は `files.gapul.net` の個別 A レコード（→ caddy tailnet IP）が必要。
-- 復元テスト（2026-07-20）: 母艦/pve/macmini/rpi4 全ホストで、復元ファイルの SHA256 がライブと一致することを確認済み。
-- dash(Homepage) の Backup セクションに Backrest（閲覧/リストア）と Filebrowser（中身プレビュー）を登録済み。
+The restic layer is hand-built, since pve runs Debian and is outside nix:
 
-### HA 自動バックアップ（TODO）
-VM100 全体は上記 vzdump で取得済み。HA 内蔵の自動バックアップ（設定単位の復元用・暗号化パスワード要設定）は未設定。
+- Script: `/usr/local/bin/restic-pve-offsite.sh`
+- Timer: `/etc/systemd/system/restic-pve-offsite.{service,timer}`, daily at 03:00 with
+  `Persistent=true`
+- Secrets: `/root/.config/rclone/rclone.conf` for the Google Drive token and `/root/.restic.pw`
+  for the restic password, both decrypted from SOPS and placed for pve's root alone, outside git
+
+Run it by hand with `systemctl start restic-pve-offsite.service`. Check it with:
+
+```bash
+RCLONE_CONFIG=/root/.config/rclone/rclone.conf \
+RESTIC_REPOSITORY=rclone:google-drive:restic-backup \
+RESTIC_PASSWORD_FILE=/root/.restic.pw \
+restic snapshots --host pve
+```
+
+To restore, `restic restore <ID> --target /tmp/r` and then bring it back through the PVE UI,
+`pct restore` or `qmrestore`.
+
+Notifications are not sorted: PVE's backup notification target is `mail-to-root`, which in
+practice never arrives. Pointing it at Discord so failures are noticed is the next improvement.
+The restic layer could equally move to the same ntfy path the Mac, mac mini and Pi use.
+
+### The shared restic repository, 2026-07-20
+
+The Mac, the mac mini and the Pi share the same repository,
+`rclone:google-drive:restic-backup`, alongside pve, separated by host name and deduplicated
+across all of them. What each host backs up, on what schedule, how it is deployed, where its
+secrets live and how to test a restore are in
+[`configs/homelab/restic/README.md`](../configs/homelab/restic/README.md), which also holds the
+scripts, systemd units and launchd plists.
+
+- Because the repository is shared, `restic forget` is always scoped with `--host`, and pruning
+  happens only in the Mac's daily run, to avoid fighting over the exclusive lock. homeserver,
+  which replaced pve, uses the same repository as `host=homeserver` from
+  `nix/homelab/backup.nix` at 03:00.
+- The Mac's restic-monitor looks at `monitoredHosts` in `nix/lib/restic-common.nix` per host.
+  In a shared repository, looking at the single newest snapshot across the whole repository
+  never warns as long as one machine is still writing, so a single dead host goes unnoticed.
+  Add new hosts to `monitoredHosts` — forget and that host is unmonitored; leave a retired host
+  in and it produces a false alarm every day.
+- Snapshots from hosts that no longer write, meaning pve's vzdump and the cold and warm passes
+  from the migration, are tagged `archive` and exempted from retention. Remove the tag and
+  keep-monthly 6 will expire them.
+- The Google OAuth client is published as Production, so the token does not expire. It used to
+  be in Testing, where it expired roughly weekly and stopped every host at once. Failures
+  notify through ntfy on the Mac, the mac mini and the Pi.
+- To browse the contents from a phone, `files.gapul.net` is a read-only FUSE restic mount on
+  pve with `--no-lock`, plus Filebrowser, published through Caddy on the tailnet without
+  authentication. Cloudflare needs its own A record for `files.gapul.net` pointing at Caddy's
+  tailnet address.
+- Restore test, 2026-07-20: on the Mac, pve, the mac mini and the Pi, the SHA256 of the
+  restored files matched the live ones.
+- Homepage's Backup section lists Backrest, for browsing and restoring, and Filebrowser, for
+  previewing contents.
+
+### Home Assistant's own backups, still to do
+
+The whole of VM100 is covered by vzdump above. Home Assistant's built-in automatic backup, for
+restoring at the configuration level, is not set up and needs an encryption password chosen.
 
 ---
 
-## 11. Proxmox 運用改善（2026-06-29）
+## 11. Proxmox improvements, 2026-06-29
 
-**実施済み**
-- CT102 `onboot=1`（再起動後も subnet router 復帰）
-- `swappiness=10`、`fail2ban`（sshd jail 有効）
-- **SSH 鍵のみ化**（pve: `PasswordAuthentication no` / `PermitRootLogin prohibit-password`、`/etc/ssh/sshd_config.d/99-hardening.conf`）
-- バックアップ（§10）、CT101 rootfs 96%→51%（未使用イメージ prune + `pct resize 101 rootfs +8G`）
-- `apt dist-upgrade` 157件適用（subscription nag も自動除去）
+Done:
 
-**未実施 TODO（要・判断/枠/秘密）**
-1. **カーネル再起動**: `7.0.12-1-pve` 導入済だが稼働中は `6.17.4`。`ssh root@192.168.116.100 reboot` で反映（全ゲスト数分停止／DNS主系は Pi のため継続）。
-2. **PVE ファイアウォール**: リモート有効化は見送り。理由＝CT102 が `firewall=1`（要調整）/ pve 自身が Tailscale ノード（UDP 41641 等の許可が要）/ LAN 経由だと tailnet 到達性を検証できずロックアウト時はコンソール復旧のみ。pve は外部非公開＋SSH鍵のみ+fail2ban で実用十分。やるなら **コンソール attended** で。
-3. **root@pam の 2FA**: 未設定（Web UI で TOTP 登録）。
-4. **バックアップ/障害の Discord 通知**: 現状 `mail-to-root`（届かない）。PVE 通知ターゲットに Discord webhook を登録。
-5. **メモリ微オーバーコミット**: 割当 15872MB > 物理 15360MB。CT104(4G→2G)/CT101(6G→4G) で解消可（任意・緊急でない）。
+- CT102 set to `onboot=1`, so the subnet router comes back after a reboot
+- `swappiness=10` and fail2ban with the sshd jail enabled
+- Keys only for SSH: `PasswordAuthentication no` and `PermitRootLogin prohibit-password` in
+  `/etc/ssh/sshd_config.d/99-hardening.conf` on pve
+- The backups in section 10, and CT101's rootfs brought from 96% to 51% by pruning unused
+  images and `pct resize 101 rootfs +8G`
+- 157 packages through `apt dist-upgrade`, which also removed the subscription nag
+
+Still to do, each needing a decision, capacity or a secret:
+
+1. **Reboot for the kernel.** `7.0.12-1-pve` is installed but `6.17.4` is running.
+   `ssh root@192.168.116.100 reboot` picks it up, stopping every guest for a few minutes; DNS
+   continues because the primary is on the Pi.
+2. **The PVE firewall.** Enabling it remotely was ruled out: CT102 has `firewall=1` and would
+   need adjusting, pve is itself a Tailscale node and needs UDP 41641 and friends allowed, and
+   over the LAN there is no way to verify tailnet reachability, so a lockout would mean console
+   recovery only. pve is not exposed publicly and has keys-only SSH plus fail2ban, which is
+   adequate. If it is done, it should be done at the console.
+3. **2FA for root@pam**, not configured. Register a TOTP through the web UI.
+4. **Discord notifications for backups and failures.** Currently `mail-to-root`, which does not
+   arrive. Register a Discord webhook as a PVE notification target.
+5. **Slight memory overcommit**, 15872 MB allocated against 15360 MB physical. Reducing CT104
+   from 4 G to 2 G and CT101 from 6 G to 4 G resolves it. Optional, not urgent.
 
 ---
 
-## 関連
-- 各サービス設定: `configs/homelab/{adguard,caddy,forgejo,raspberrypi}/`
-- ラズパイ初期化: `configs/homelab/raspberrypi/bootstrap.sh`
-- 汎用チートシート: `docs/CHEATSHEET.md`
+## Related
+
+- Per-service configuration: `configs/homelab/{adguard,caddy,forgejo,raspberrypi}/`
+- Bootstrapping the Pi: `configs/homelab/raspberrypi/bootstrap.sh`
+- General cheatsheet: `docs/CHEATSHEET.md`
 
 ---
 
-## 12. メディアサーバー (Jellyfin / Navidrome / Samba)
+## 12. Media servers: Jellyfin, Navidrome and Samba
 
-CT101(dockge) に Docker スタックで配置。メディアは Proxmox `local-lvm` から切り出した専用ボリューム。
+Docker stacks on CT101, with the media on a dedicated volume carved out of Proxmox's
+`local-lvm`.
 
-### ストレージ
-- CT101 `mp0`: `local-lvm:vm-101-disk-1` (200G) → `/mnt/jellyfin-media`（`pct set 101 -mp0 local-lvm:200,mp=/mnt/jellyfin-media`、稼働中ホットプラグ可）
-- 構成: `/mnt/jellyfin-media/{movies,tv,music}` / リサイズ: `pct resize 101 mp0 +NNG`
+### Storage
 
-### サービス
-| サービス | URL | ポート | スタック |
+CT101's `mp0` is `local-lvm:vm-101-disk-1`, 200 G, mounted at `/mnt/jellyfin-media`, created
+with `pct set 101 -mp0 local-lvm:200,mp=/mnt/jellyfin-media` and hot-pluggable while running.
+Inside it are `movies`, `tv` and `music`. Resize with `pct resize 101 mp0 +NNG`.
+
+### Services
+
+| Service | URL | Port | Stack |
 |---|---|---|---|
-| Jellyfin(動画) | https://jellyfin.gapul.net | 8096 | `/opt/stacks/jellyfin/` |
-| Navidrome(音楽) | https://navidrome.gapul.net | 4533 | `/opt/stacks/navidrome/` |
-| Samba(共有) | `smb://192.168.116.65/media` | 445 | `/opt/stacks/samba/` |
+| Jellyfin, video | https://jellyfin.gapul.net | 8096 | `/opt/stacks/jellyfin/` |
+| Navidrome, music | https://navidrome.gapul.net | 4533 | `/opt/stacks/navidrome/` |
+| Samba, file sharing | `smb://192.168.116.65/media` | 445 | `/opt/stacks/samba/` |
 
-- Caddy(CT103) で各 `*.gapul.net` → `192.168.116.65:<port>`、Cloudflare A → `100.64.125.107`。
-- Samba: user `gapul` / パスワードは CT101 `/opt/stacks/samba/.smb-pass`(git管理外)。Mac は Finder `⌘K` → `smb://192.168.116.65/media`（tailnetからはCT102 subnet router経由）。
+Caddy on CT103 maps each `*.gapul.net` to `192.168.116.65:<port>`, with Cloudflare A records
+pointing at `100.64.125.107`.
 
-### HWトランスコード (Intel iGPU / Alder Lake-N)
-- `pct set 101 -dev0 /dev/dri/renderD128,gid=993 -dev1 /dev/dri/card1,gid=44`（ホットプラグ可）
-- Jellyfin compose に `devices: [/dev/dri:/dev/dri]`。UI: Dashboard→Playback→Hardware acceleration→**VAAPI**(`/dev/dri/renderD128`)を有効化。
+Samba's user is `gapul`, with the password in CT101's `/opt/stacks/samba/.smb-pass`, outside
+git. From the Mac, Finder, Command-K, `smb://192.168.116.65/media`; from the tailnet it goes
+through the CT102 subnet router.
 
-### dash(Homepage) / 監視
-- Homepage `services.yaml` に Media グループ(Jellyfin/Navidrome)追加済み。
-- Uptime Kuma に HTTP モニター追加推奨(各URL)。
+### Hardware transcoding on the Intel iGPU, Alder Lake-N
 
-### メモ
-- Docker Hub 制限回避: Jellyfin=lscr.io / Navidrome・Samba=mirror.gcr.io。
+`pct set 101 -dev0 /dev/dri/renderD128,gid=993 -dev1 /dev/dri/card1,gid=44`, hot-pluggable.
+Jellyfin's compose gets `devices: [/dev/dri:/dev/dri]`, and in the UI, Dashboard, Playback,
+Hardware acceleration, enable VAAPI on `/dev/dri/renderD128`.
+
+### Dashboard and monitoring
+
+Homepage's `services.yaml` has a Media group with Jellyfin and Navidrome. Adding HTTP monitors
+for each URL in Uptime Kuma is worth doing.
+
+### Note
+
+To avoid the Docker Hub limits, Jellyfin comes from lscr.io and Navidrome and Samba from
+mirror.gcr.io.
