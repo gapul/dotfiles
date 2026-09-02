@@ -39,6 +39,7 @@
     ./anki.nix
     ./archivebox.nix
     ./attic.nix
+    ./bambuddy.nix
     ./atuin.nix
     ./backup.nix
     ./calnode.nix

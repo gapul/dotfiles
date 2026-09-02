@@ -57,6 +57,9 @@ let
     # 止まったが web は開いていた)。それは dawarich-freshness.nix の方で見る。
     track.upstream = "127.0.0.1:3005";
     navidrome.upstream = "127.0.0.1:4533";
+    # 3D プリンタの操作盤 (Bambuddy)。プリンタを LAN Only + Developer Mode にした結果
+    # Bambu Handy が使えなくなったので、スマホから触る先がここになる。homelab/bambuddy.nix。
+    bambu.upstream = "127.0.0.1:8010";
     # 家計簿 (fava)。台帳は beancount のテキストで /var/lib/homelab/fava にある。
     # fava 自体はログインを持たないので、境界はここの vhost が tailnet アドレス
     # にしか生えていないこと。外に出すなら認証を足すこと。
