@@ -64,16 +64,16 @@ def gen_just_list() -> str:
 # 唯一の真実。説明だけはここで一元管理し、新フック追加時は `just docs` が
 # "—" を出すので追記に気付ける。
 HOOK_DESCRIPTIONS = {
-    "nixfmt": "整形チェック (未整形なら fail)",
-    "deadnix": "未使用コード検出 (モジュール引数 `{ lib, ... }` は許容)",
-    "shellcheck": "shell lint (.shellcheckrc に従う)",
-    "gitleaks": "機密 leak 検出",
+    "nixfmt": "Formatting check. Fails on anything unformatted.",
+    "deadnix": "Finds unused code. Module arguments like `{ lib, ... }` are allowed.",
+    "shellcheck": "Shell lint, following .shellcheckrc",
+    "gitleaks": "Secret detection",
 }
 
 
 def _files_to_target(files: str) -> str:
     mapping = {
-        "": "全 staged",
+        "": "all staged",
         r"\.nix$": "`*.nix`",
     }
     if files in mapping:
@@ -94,12 +94,12 @@ def gen_hooks() -> str:
             "}; }) (builtins.attrNames hs)))"
         ),
     )
-    lines = ["| フック | 対象 | 除外 | 内容 |", "|---|---|---|---|"]
+    lines = ["| Hook | Target | Excluded | What it does |", "|---|---|---|---|"]
     for name in sorted(hooks):
         h = hooks[name]
         target = _files_to_target(h.get("files", ""))
         excludes = h.get("excludes", [])
-        excl = "、".join(f"`{e}`" for e in excludes) if excludes else "—"
+        excl = ", ".join(f"`{e}`" for e in excludes) if excludes else "—"
         desc = HOOK_DESCRIPTIONS.get(name, "—")
         lines.append(f"| `{name}` | {target} | {excl} | {desc} |")
     return "\n".join(lines)
