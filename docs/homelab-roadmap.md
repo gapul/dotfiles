@@ -1,163 +1,217 @@
-# Homelab ロードマップ & サービス移行調査
+# Homelab roadmap and service migration notes
 
-> **注記(2026-08-09)**: この構成はハイパーバイザ無しの NixOS 1台へ置き換え中。
-> 設定の実体は `nix/hosts/homeserver.nix` と `nix/homelab/` に移っている。
-> 当日の手順は [HOMESERVER_MIGRATION.md](HOMESERVER_MIGRATION.md)。
-> 以下は移行元の記録。
+> **Superseded (2026-08-09).** This setup was replaced by a single NixOS machine with no
+> hypervisor. The configuration now lives in `nix/hosts/homeserver.nix` and `nix/homelab/`, and
+> the steps taken that day are in [HOMESERVER_MIGRATION.md](HOMESERVER_MIGRATION.md). What
+> follows is a record of what was replaced. Where a question has since been answered, the
+> answer is noted inline.
 
-最終更新: 2026-07-05
+Last updated 2026-07-05.
 
-pve(Proxmox)+ CT101(dockge/Docker)を中心とした自宅ホームラボの、残タスクとサービス移行の検討メモ。
-タスク番号は Claude Code のタスクリストと対応。
-
----
-
-## 0. この記録の背景(2026-07-05 に実施済み)
-
-- **Matrix を頂点ドメインで公開**: server_name を `matrix.gapul.net` → `gapul.net` に作り直し、Conduit を federation 有効化。
-  既存 CF Tunnel "homelab-pi" を再利用して `matrix.gapul.net` を公開、`gapul.net` の well-known 委任は Caddy が配信。
-  federationtester = OK。アカウント `@gapul:gapul.net` 作成・登録ロック済み。**これが自宅初のインターネット公開 ingress。**
-  (詳細は memory: matrix-federation-gapul)
-- **dash.gapul.net(homepage)をリッチ化**: docker 統計・Proxmox ウィジェット(読み取り専用トークン)・
-  siteMonitor・Glances(実ホスト CPU/RAM/温度)・天気・テーマ。表示は英語化。
+Remaining work and migration research for a home lab built around pve (Proxmox) and CT101
+(dockge on Docker). Task numbers match the Claude Code task list.
 
 ---
 
-## 1. 残タスク(ロードマップ)
+## 0. Background, done on 2026-07-05
 
-### A. Matrix ブリッジ
-- **#7 discord/telegram のログイン** — appservice 側(domain 修正・Conduit へ register・再接続)は完了済み。
-  残りはユーザー作業: Element で `@telegrambot:gapul.net` に DM → `login`、
-  `@discordbot:gapul.net` に DM → `delete-all-portals`(旧 portal 再生成)or `login-qr`。
-- **#8 signal/slack/twitter/meta の新規構築** — 元から未構築でクラッシュループ(`homeserver.address not configured`)。
-  bridgev2 形式で config 生成 → gapul.net 向け設定 → `register-appservice` → 各ネットワークにログイン。1個ずつ。
-- **#9 Google Messages ブリッジ追加** — `mautrix-gmessages` を compose 追加 → config/register(私)→
-  `@gmessagesbot` に DM → スマホの Google メッセージで QR ペアリング(ユーザー)。
-  ※ #8 と #9 は手順が同一(bridgev2 新規構築)なのでまとめると効率的。
+- **Matrix published on the apex domain.** server_name was rebuilt from `matrix.gapul.net` to
+  `gapul.net` and Conduit had federation enabled. The existing "homelab-pi" Cloudflare Tunnel
+  was reused to publish `matrix.gapul.net`, with Caddy serving the well-known delegation for
+  `gapul.net`. federationtester passed. The account `@gapul:gapul.net` was created and
+  registration locked. This was the first ingress from the internet into the house.
+- **dash.gapul.net (homepage) was filled out** with docker statistics, a Proxmox widget on a
+  read-only token, siteMonitor, Glances for host CPU, RAM and temperature, weather and theming.
+  The display language was switched to English.
 
-### B. 運用ハードニング
-- **#10 latest イメージの版固定** — 全スタックが `:latest`。今日ブリッジが壊れたのも latest 追従が一因。
-  Matrix スタックのダイジェスト取得済:
+---
+
+## 1. Remaining work
+
+### A. Matrix bridges
+
+- **#7, logging discord and telegram in.** The appservice side is done: the domain was
+  corrected, they are registered with Conduit, and they reconnect. What is left is a user
+  action — DM `@telegrambot:gapul.net` with `login`, and DM `@discordbot:gapul.net` with
+  either `delete-all-portals` to regenerate the old portals or `login-qr`.
+- **#8, building signal, slack, twitter and meta.** These were never set up and sat in a crash
+  loop with `homeserver.address not configured`. Generate a bridgev2 config, point it at
+  gapul.net, `register-appservice`, then log into each network. One at a time.
+- **#9, adding a Google Messages bridge.** Add `mautrix-gmessages` to the compose file,
+  configure and register it, then DM `@gmessagesbot` and pair by QR from Google Messages on the
+  phone. #8 and #9 are the same procedure, so doing them together is more efficient.
+
+### B. Operational hardening
+
+- **#10, pinning `latest` images.** Every stack ran `:latest`. Following latest was part of why
+  the bridges broke that day. Digests were collected for the Matrix stack:
   - conduit `sha256:4078e80577ccaaf05290a7bb08badc321a5c44a8c8f5f3dce0fb1ae5a0825e64`
   - mautrix/discord `sha256:7716389dfb11dc7a44c8363348a48e91c1c463ded012f0fb08cdf266fcb20246`
   - mautrix/telegram `sha256:17b71cf6d45d7fb4eff3e9ea254613881df6531989031efbfccad12acc1d0782`
-- **#11 バックアップの復元テスト** — vzdump+restic→GDrive が「戻せる」か検証。restic check/snapshots、
-  試験復元、Vaultwarden・新 Matrix データのカバレッジ、retention 確認。
-- **#12 平文シークレットを env/sops 化** — Proxmox トークン(homepage services.yaml)、
-  Conduit 登録トークン(compose)、CF_API_TOKEN(cf.env)が平文。最低 .env+perms、理想 sops/docker secrets。
-- **#13 Conduit の登録トークン削除** — `ALLOW_REGISTRATION=false` 済みだが compose にトークンが残存(不活性)。掃除。
-- **#14 CF トークンを DNS 専用に分割** — Caddy のトークンが DNS 編集 + Tunnel 編集の両方持ち(過剰)。
-  Caddy 用は `Zone:DNS:Edit` のみに。※トークン作成は CF ダッシュボード = ユーザー作業。
-- **#15 公開 Matrix のハードニング** — `matrix.gapul.net` に CF レート制限/WAF、Conduit 更新の徹底。
-  ※ Rules はトークン権限外の見込み → CF ダッシュボード作業。
-- **#16 掃除** — `/opt/stacks/matrix` の `cw-data.old-matrixdomain`/`db.old`/`synapse.old`/backup tar、
-  homepage の `services.yaml.bak-*` を整理。homepage/glances の docker.sock に socket-proxy を挟むか検討。
-- (通知: コンテナ異常 → ntfy は対応済み)
+- **#11, testing the restore.** Verify that vzdump plus restic to Google Drive can actually be
+  restored: `restic check`, snapshot listing, a trial restore, coverage of Vaultwarden and the
+  new Matrix data, and retention.
+- **#12, moving plaintext secrets into env or sops.** The Proxmox token in homepage's
+  services.yaml, Conduit's registration token in the compose file, and `CF_API_TOKEN` in cf.env
+  were all in the clear. At minimum a `.env` with permissions; ideally sops or docker secrets.
+- **#13, deleting Conduit's registration token.** `ALLOW_REGISTRATION=false` was already set,
+  but the token remained in the compose file, inert. Clean it up.
+- **#14, splitting the Cloudflare token so it is DNS-only.** Caddy's token could edit both DNS
+  and tunnels, which is more than it needs. Caddy's should be `Zone:DNS:Edit` alone. Creating
+  the token is a dashboard action.
+- **#15, hardening the public Matrix.** Rate limiting and WAF for `matrix.gapul.net`, and
+  keeping Conduit updated. Rules are likely outside what the token can do, so this is dashboard
+  work.
+- **#16, tidying up.** `cw-data.old-matrixdomain`, `db.old`, `synapse.old` and backup tarballs
+  under `/opt/stacks/matrix`, and homepage's `services.yaml.bak-*`. Consider putting a socket
+  proxy in front of the docker.sock that homepage and glances use.
 
-依存関係:
-- **#17(脱 Conduit)を決めてから #10(conduit ピン留め)/#13(トークン削除)** の順が無駄がない。
-- #14/#15 はどちらも CF ダッシュボードでのユーザー操作が必須。
-
----
-
-## 2. サービス移行調査(2026、web 調査ベース)
-
-### 2.1 やる価値が高い
-
-#### Conduit 脱却 → Tuwunel(データ保持)or continuwuity(wipe)【#17】
-公開 federation 中なのに Conduit は開発停滞。メンテ性=セキュリティなので脱 Conduit 自体は推奨。ただし**移行先の選択が重要**:
-
-- **重要事実**: 素の Conduit の RocksDB は **continuwuity と非互換**。continuwuity へ行くとデータ全消し(wipe)になる。
-  (conduwuit の Conduit 互換は一度 one-way になり、その後壊れて撤去された。continuwuity もこれを継承)
-- **Tuwunel** は 1.8.0 で **Conduit の RocksDB をその場移行**(rooms/media/knocks 等を保持)。データを残したいならこれが技術的に正解。
-  ただし企業/スイス政府系・実質1人開発・多少のプロジェクト間ドラマあり。
-- **continuwuity** は非企業コミュニティ後継で活発メンテ(0.5.x)。データ保持は不可だが、
-  server_name を `gapul.net` に保てば federation は復活する(=小規模個人サーバなら wipe も許容範囲)。
-- どちらも `CONDUIT_*` env 互換。appservice は admin room の `register-appservice` で登録(bridge 再登録が必要)。
-- **必ず data dir をバックアップ → コピーで試験してから本番**。continuwuity/tuwunel の DB は Conduit に戻せない。
-- 効ort: 低〜中。verdict: **脱 Conduit は推奨。データ保持したいなら Tuwunel、コミュニティ志向で wipe 許容なら continuwuity。**
-- Synapse/Dendrite はどちらも Conduit からのクリーン移行不可(同じく wipe)。個人規模には過剰。
-
-出典: continuwuity.org/introduction, forgejo.ellis.link/continuwuation/continuwuity, github.com/matrix-construct/tuwunel,
-docs.mau.fi(appservice), pistack.xyz(2026 比較)
-
-#### Uptime Kuma → Gatus【#18】
-- Go 単一バイナリ、YAML 宣言、RAM 約 1/3(~10-40MB vs Kuma ~100MB+)。**config-as-code 思想にドンピシャ。**
-- HTTP/TCP/ICMP/DNS/TLS/push、条件式(status/latency/JSONPath body/cert 期限)、ステータスページ、メンテ窓、バッジ/API。
-- **ntfy はネイティブ対応**(既存の通知経路そのまま)。ストレージは sqlite 推奨。
-- 移行: インポータ無し、~20 監視を YAML で再宣言(数時間)。履歴はリセット。
-- 補完(競合ではない): **Beszel**(エージェント型リソース監視)、**Healthchecks**(cron/バックアップの死活)。
-- 効ort: 低。verdict: **明確な勝ち。** Kuma を1週間並走 → パリティ確認して撤去。
-
-出典: github.com/TwiN/gatus, gatus.io/docs, homelabstarter.com
-
-#### WUD → Diun【#19】
-- Go・通知専用・Web UI なし・軽量(~20-40MB、cron で sleep)。**ntfy ネイティブ対応。**
-- `watchByDefault=true` で全 ~25 コンテナを一括監視、または `diun.enable=true` ラベルで選択。
-- ピン留め運用(#10)と噛み合う「通知のみ・自動更新しない」に最適(Watchtower は自動更新なので別物)。
-- WUD の Web UI/REST API/Home Assistant・MQTT を使ってないなら死重。
-- 効ort: 低(~20-30分)。verdict: **軽量化の明確な勝ち。**
-
-出典: crazymax.dev/diun, getwud.github.io/wud
-
-#### Obsidian: CouchDB → Syncthing【#20】
-- 既に Syncthing 稼働中 → CouchDB(~150-300MB・要バックアップ/更新)を1個丸ごと削減できる。
-- **ただし条件付き**。Syncthing は file-level で、同一ノートを複数端末で同時編集すると `.sync-conflict` を吐く。
-  `.obsidian/workspace*.json` は端末ごとに書き換わるので `.stignore` 必須(かつ Syncthing は .stignore 自体を同期しない)。
-- **モバイルが弱点**: iOS に公式アプリ無し → Möbius Sync(有料)or SyncTrain(無料・要 sandbox 連携)+ iOS のバックグラウンド制限。Android は快適。
-- **判断**: デスクトップ中心・常に1端末ずつ・モバイルは Android/読み中心 → **移行して良い**。
-  iOS で頻繁に同時編集 → LiveSync 据え置き(リアルタイム + チャンク単位の自動マージ + ネイティブモバイルが強い)。
-  無保守が欲しいなら Obsidian 公式 Sync(有料 E2EE)も選択肢。
-- 効ort: デスクトップ 30-60分 + モバイル毎の調整(iOS が長い)。**sync ≠ backup、必ず先にバックアップ。**
-
-出典: github.com/vrtmrz/obsidian-livesync, forum.syncthing.net, forum.obsidian.md(Möbius/SyncTrain)
-
-### 2.2 状況次第【#21】
-
-- **RSSHub → rss-bridge**: PHP・Redis 不要・Chromium 不要で軽い。ただし RSSHub は 1000+ ルートに対し
-  rss-bridge は ~200 bridges + 汎用 CssSelectorBridge。common な数サイトだけなら rss-bridge、ニッチ多数なら RSSHub 据え置き。
-  Miniflux はどちらの feed も食える。移行は feed URL 再作成。
-- **ArchiveBox → linkding**: これは**同等ではない**。linkding は軽量ブックマーク管理 + 任意の軽アーカイブ(SingleFile 拡張が本命)。
-  ArchiveBox は Chromium で HTML/PDF/screenshot/WARC/動画まで保存する本格アーカイバ。
-  実態が「後で読むリンク管理」なら linkding へ(桁違いに軽い)。本気の link-rot 対策アーカイブなら ArchiveBox 据え置き。
-  移行は Netscape bookmarks HTML で URL は移せるが、アーカイブ済みコンテンツは移らない(旧 data は静的保管で残す)。
-
-### 2.3 趣味枠(無理に変えなくていい)
-
-- **AdGuard Home → Blocky**: Go・単一 YAML・UI 無し・約半分のメモリ。config-as-code 好きなら。
-  ただし AGH の UI/クエリログ/クライアント別制御/DHCP を捨てる。二重化を既に組んでるので優先度低。
-- **Homepage → Glance**: Go・YAML・軽量な「朝の briefing」型。ただし homepage の深い per-service ウィジェット(今日作り込んだ)とは用途が違う。両方併用する人も多い。
-
-### 2.4 追加の移行候補(残りサービスを精査)
-
-- **【#22】Proxmox VE → Incus** — MEDIUM-HIGH、**最大の工数**。config-as-code 志向に最も合う唯一の移行。
-  Incus(LXD 系)は軽量・完全 OSS・API/CLI first、NixOS+Incus の宣言的ホストと好相性。
-  制約: Linux ゲスト限定(Windows VM 不可)・UI 貧弱・小コミュニティ。vzdump+qemu-img で移行可。
-  **まず Proxmox 併存で新規 Linux ワークロードから試すのが安全。**
-- **Samba に NFS を併用**(置換ではない)— Linux 間限定の共有は NFS が軽く速い。Samba はクロス OS の既定として残す。低工数の最適化。
-- **dockge → Komodo**(条件付き MEDIUM)— **複数 Docker ホストに増えたら**。Git 駆動のフリート管理。単一ホストには過剰。
-
-### 2.5 変えなくていい(既に軽量/ベスト)
-
-Vaultwarden(Rust・~50MB、公式 Bitwarden より遥かに軽い)、Miniflux(Go、FreshRSS は横移動)、
-ntfy(HTTP first・UnifiedPush)、Navidrome(gonic は軽いが UI を失う・~50MB 差は誤差)、
-Jellyfin(FOSS 動画の勝者)、Forgejo(既に GPL/コミュニティ版・Gitea と互換)、
-Paperless-ngx(OCR で代替が軒並み劣る・重さは category leader の対価)、dockge(単一ホストでは理想)、
-Caddy(config-as-code に最良・自動 TLS)、Home Assistant(2000+ 統合、代替不可)、
-Radicale(最軽量、クライアントが困ったら Baïkal/Davis)、Samba(クロス OS の既定として)。
-
-**補助 DB(Redis/Postgres)は per-stack で分離のまま**が正解(共有は SPOF 化・アップグレード結合・バックアップ複雑化を招くだけ、
-節約は数 MB で無意味)。
+Ordering: decide #17, leaving Conduit, before doing #10 (pinning conduit) and #13 (removing the
+token). #14 and #15 both require dashboard work.
 
 ---
 
-## 3. 推奨着手順
+## 2. Migration research, 2026
 
-1. **足場固め(B の即効くやつ)**: #11 復元テスト → (#17 の方針決定後に)#10 ピン留め・#13 トークン削除。
-2. **構成を軽く/堅く(C)**: #17 脱 Conduit(Tuwunel or continuwuity)→ #20 Obsidian を Syncthing 化(サービス 1 個減)→
-   #18 Gatus → #19 Diun。
-3. **ブリッジ群(A)**: #7 ログイン → #8/#9 新規構築(bridgev2 まとめて)。
-4. **CF ダッシュボード作業(ユーザー)**: #14 トークン分割・#15 WAF/レート制限。
-5. **長期・大物**: #22 Proxmox → Incus は併存で試してから。
+### 2.1 Clearly worth doing
 
-移行は必ず「データ dir バックアップ → コピーで試験 → 本番」。特に Matrix と Vaultwarden。
+#### Leaving Conduit: Tuwunel (keeps data) or continuwuity (wipes) — #17
+
+Conduit's development had stalled while it was federating publicly. Maintenance is security, so
+leaving it was the recommendation. The choice of destination mattered:
+
+- Plain Conduit's RocksDB is **not compatible with continuwuity**. Going there wipes the data.
+  conduwuit's Conduit compatibility was one-way, then broke, then was removed; continuwuity
+  inherits that.
+- **Tuwunel** migrates a Conduit RocksDB in place as of 1.8.0, keeping rooms, media and knocks.
+  Technically the right answer if the data matters. It is effectively a one-person project with
+  corporate and Swiss-government ties, and some inter-project drama.
+- **continuwuity** is the non-corporate community successor and is actively maintained (0.5.x).
+  It cannot keep the data, but keeping server_name as `gapul.net` restores federation, so for a
+  small personal server a wipe is tolerable.
+- Both are `CONDUIT_*` environment compatible. Appservices register through
+  `register-appservice` in the admin room, so bridges must be re-registered.
+- Always back up the data directory and test on a copy first. A continuwuity or tuwunel
+  database cannot go back to Conduit.
+- Effort low to medium.
+- Synapse and Dendrite both require a wipe as well, and were judged excessive at this scale.
+
+> **Outcome (2026-08-31).** Neither was chosen. The server moved to Synapse, because bridges
+> were about to go from two to roughly ten and Conduit keeps appservice registrations inside
+> RocksDB where only the admin room can reach them. Synapse reads them from config files, which
+> makes the whole bridge fleet declarable. See `nix/homelab/matrix.nix`.
+
+#### Uptime Kuma to Gatus — #18
+
+A single Go binary, YAML declarations, roughly a third of the memory (10-40 MB against Kuma's
+100 MB and up). It fits config-as-code directly.
+
+HTTP, TCP, ICMP, DNS, TLS and push checks; conditions on status, latency, JSONPath over the
+body and certificate expiry; status pages, maintenance windows, badges and an API. ntfy is
+supported natively, so the existing notification path carries over. sqlite is the recommended
+store.
+
+There is no importer; about twenty checks have to be redeclared in YAML, a few hours' work.
+History resets.
+
+Complementary rather than competing: **Beszel** for agent-based resource monitoring, and
+**Healthchecks** for whether cron jobs and backups are alive.
+
+Effort low. Run Kuma alongside for a week, confirm parity, then remove it.
+
+#### WUD to Diun — #19
+
+Go, notification only, no web UI, light (20-40 MB, sleeping between cron runs). ntfy is
+supported natively. `watchByDefault=true` watches all twenty-five containers at once, or the
+`diun.enable=true` label selects them individually.
+
+It fits "notify, never update automatically", which pairs with pinning (#10). Watchtower is a
+different thing, since it updates.
+
+If WUD's web UI, REST API, Home Assistant and MQTT integrations are unused, it is dead weight.
+
+Effort low, twenty to thirty minutes.
+
+#### Obsidian: CouchDB to Syncthing — #20
+
+Syncthing is already running, so this removes one whole service (CouchDB, 150-300 MB, needing
+backup and updates).
+
+It comes with conditions. Syncthing works at file level, so editing the same note on two
+devices at once produces `.sync-conflict` files. `.obsidian/workspace*.json` differs per device
+and needs a `.stignore`, and Syncthing does not sync `.stignore` itself.
+
+Mobile is the weak point. There is no official iOS app; the options are Möbius Sync (paid) or
+SyncTrain (free, needs sandbox integration), both fighting iOS background limits. Android is
+fine.
+
+The judgement: desktop-centred, one device at a time, mobile mostly Android or read-only, then
+migrate. Frequent simultaneous editing on iOS, then stay on LiveSync, which is realtime, merges
+per chunk, and has a proper mobile client. Obsidian's own paid Sync is an option if
+zero-maintenance matters more.
+
+Effort thirty to sixty minutes on desktop, plus per-device work on mobile, iOS being the long
+one. Sync is not backup — back up first.
+
+### 2.2 Depends — #21
+
+- **RSSHub to rss-bridge.** PHP, no Redis, no Chromium, so much lighter. But RSSHub has over a
+  thousand routes against rss-bridge's roughly two hundred plus a generic CssSelectorBridge. A
+  handful of common sites, use rss-bridge; many niche ones, stay. Miniflux consumes either.
+  Migration means recreating feed URLs.
+- **ArchiveBox to linkding.** These are not equivalent. linkding is lightweight bookmark
+  management with optional light archiving, mainly through the SingleFile extension. ArchiveBox
+  is a real archiver that drives Chromium to save HTML, PDF, screenshots, WARC and video. If
+  what is actually happening is "links to read later", linkding is orders of magnitude lighter.
+  If the point is defending against link rot, stay. URLs migrate through Netscape bookmark HTML
+  but archived content does not; keep the old data as a static store.
+
+### 2.3 Hobby-tier, no need to change
+
+- **AdGuard Home to Blocky.** Go, one YAML file, no UI, about half the memory. Appealing if you
+  like config-as-code, but it gives up AGH's UI, query log, per-client control and DHCP. The
+  pair is already redundant, so this is low priority.
+- **Homepage to Glance.** Go, YAML, a light "morning briefing". A different purpose from
+  homepage's deep per-service widgets, which had just been built out. Plenty of people run
+  both.
+
+### 2.4 Other candidates found while going through the rest
+
+- **#22, Proxmox VE to Incus.** Medium to high effort, the largest piece of work here, and the
+  one migration that genuinely fits config-as-code. Incus (from LXD) is light, fully open
+  source and API- and CLI-first, and pairs well with a declarative NixOS host. The constraints
+  are Linux guests only, so no Windows VM, a weak UI and a small community. vzdump plus
+  qemu-img can migrate. Safest to run it alongside Proxmox and start with new Linux workloads.
+- **Add NFS next to Samba**, not instead of it. Linux-to-Linux shares are lighter and faster
+  over NFS. Samba stays as the cross-OS default. Low effort.
+- **dockge to Komodo**, conditionally medium. Worth it once there is more than one Docker host,
+  for git-driven fleet management. Overkill for a single host.
+
+### 2.5 Leave alone, already light or already the best
+
+Vaultwarden (Rust, around 50 MB, far lighter than official Bitwarden), Miniflux (Go; FreshRSS
+would be sideways), ntfy (HTTP-first, UnifiedPush), Navidrome (gonic is lighter but loses the
+UI, and 50 MB is noise), Jellyfin (the winner among open-source video), Forgejo (already the
+GPL community fork, Gitea-compatible), Paperless-ngx (every alternative is worse at OCR; the
+weight is what being the category leader costs), dockge (ideal on a single host), Caddy (best
+fit for config-as-code, automatic TLS), Home Assistant (2000-plus integrations, no
+replacement), Radicale (the lightest; if a client struggles, Baïkal or Davis), Samba (the
+cross-OS default).
+
+Supporting databases (Redis, Postgres) stay separate per stack. Sharing them creates a single
+point of failure, couples upgrades and complicates backups, and saves a few megabytes.
+
+---
+
+## 3. Suggested order
+
+1. Groundwork with immediate effect: #11 restore testing, then, once #17 is decided, #10
+   pinning and #13 token removal.
+2. Lighter and sturdier: #17 leaving Conduit, #20 moving Obsidian to Syncthing (one service
+   fewer), #18 Gatus, #19 Diun.
+3. Bridges: #7 logins, then #8 and #9 built together as bridgev2.
+4. Dashboard work: #14 splitting the token, #15 WAF and rate limiting.
+5. Long term: #22 Proxmox to Incus, after running it alongside.
+
+Every migration goes: back up the data directory, test on a copy, then do it for real.
+Especially Matrix and Vaultwarden.
