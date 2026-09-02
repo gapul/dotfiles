@@ -26,6 +26,8 @@ name that matters now.
 | file | keys |
 | --- | --- |
 | `archivebox.env` | `ADMIN_PASSWORD` |
+| `authelia/jwt`, `authelia/session`, `authelia/storage-encryption` | それぞれ `openssl rand -hex 32` の生の文字列 1 行 (`.env` ではない)。`storage-encryption` を失うと DB 内の TOTP 秘密が復号できなくなり、登録し直しになる |
+| `authelia/users.yml` | Authelia のユーザーファイル。`users: { <name>: { disabled: false, displayname: ..., password: "<argon2id hash>", email: ..., groups: [admins] } }`。ハッシュは `nix run nixpkgs#authelia -- crypto hash generate argon2` で作る。平文のパスワードは入れない |
 | `attic.env` | `ATTIC_SERVER_TOKEN_HS256_SECRET_BASE64`, `POSTGRES_PASSWORD` |
 | `calnode.env` | `CALNODE_ENCRYPTION_KEY`, `CALNODE_RECOVERY_SECRET` — どちらも `openssl rand -hex 32`。前者を失うと DB 内の暗号化データは復号できなくなり、後者はそのときの唯一の逃げ道なので、同じ場所に置かない |
 | `dawarich.env` | `POSTGRES_PASSWORD`, `DATABASE_PASSWORD`, `SECRET_KEY_BASE`, `OTP_ENCRYPTION_PRIMARY_KEY`, `OTP_ENCRYPTION_KEY_DERIVATION_SALT`, `OTP_ENCRYPTION_DETERMINISTIC_KEY`, `APPLICATION_HOSTS` |

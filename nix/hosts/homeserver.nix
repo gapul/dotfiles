@@ -12,6 +12,7 @@ let
   macmini = "100.105.135.49"; # Mac mini AI node, stays where it is
 
   gatusPort = 8084;
+  autheliaPort = 9092; # homelab/authelia.nix と揃える
 
   # Wildcard cert issued by security.acme (lego) below. Using one *.gapul.net cert
   # instead of the per-vhost ACME the old Caddyfile did means 1 DNS-01 order rather
@@ -26,11 +27,17 @@ let
       upstream = "127.0.0.1:8123"; # home assistant, container
       extra = "header_up -X-Forwarded-For";
     };
-    dash.upstream = "127.0.0.1:3000"; # homepage
+    dash = {
+      upstream = "127.0.0.1:3000"; # homepage
+      auth = true;
+    };
     vault.upstream = "127.0.0.1:8080"; # vaultwarden
     rss.upstream = "127.0.0.1:8081"; # miniflux
     read.upstream = "127.0.0.1:8087"; # readeck (後で読む)
-    search.upstream = "127.0.0.1:8088"; # searxng
+    search = {
+      upstream = "127.0.0.1:8088"; # searxng
+      auth = true;
+    };
     obsidian = {
       upstream = "127.0.0.1:5984"; # couchdb (LiveSync)
       # CouchDB は require_valid_user なので / は 401 を返す。これが健全な応答で、
@@ -63,7 +70,10 @@ let
     # 家計簿 (fava)。台帳は beancount のテキストで /var/lib/homelab/fava にある。
     # fava 自体はログインを持たないので、境界はここの vhost が tailnet アドレス
     # にしか生えていないこと。外に出すなら認証を足すこと。
-    money.upstream = "127.0.0.1:8093";
+    money = {
+      upstream = "127.0.0.1:8093";
+      auth = true;
+    };
     # ゲームの棚。roms は RomM (ブラウザでそのまま遊べる)、games は Gameyfin
     # (DRM フリーの PC ゲームの目録)。実ファイルはどちらも /srv/games 配下で
     # restic の対象外 — 吸い出し直せるものに容量を使わない、という他の /srv と
@@ -73,9 +83,15 @@ let
     paperless.upstream = "127.0.0.1:8097";
     # YouTube の保存 (Pinchflat)。落とし先は /srv/youtube で、jellyfin が /srv を
     # /media として見ているので、落ちた時点で棚に並ぶ。
-    tube.upstream = "127.0.0.1:8098";
+    tube = {
+      upstream = "127.0.0.1:8098";
+      auth = true;
+    };
     git.upstream = "127.0.0.1:3003"; # forgejo
-    archive.upstream = "127.0.0.1:8000"; # archivebox
+    archive = {
+      upstream = "127.0.0.1:8000"; # archivebox
+      auth = true;
+    };
     ntfy.upstream = "127.0.0.1:8082";
     cache.upstream = "127.0.0.1:8083"; # attic (own nix binary cache)
     shell.upstream = "127.0.0.1:8888"; # atuin (シェル履歴の同期サーバー)
@@ -83,17 +99,32 @@ let
     # These two used to be reached through Home Assistant's add-on ingress, which
     # does not exist without Supervisor. Both need their own A record in
     # Cloudflare pointing at this host's tailnet address, same as the others.
-    esphome.upstream = "127.0.0.1:6052";
-    nodered.upstream = "127.0.0.1:1880";
-    comfy.upstream = "${macmini}:8188";
-    tools.upstream = "${macmini}:8901";
+    esphome = {
+      upstream = "127.0.0.1:6052";
+      auth = true;
+    };
+    nodered = {
+      upstream = "127.0.0.1:1880";
+      auth = true;
+    };
+    comfy = {
+      upstream = "${macmini}:8188";
+      auth = true;
+    };
+    tools = {
+      upstream = "${macmini}:8901";
+      auth = true;
+    };
     sync = {
       upstream = "127.0.0.1:8384"; # syncthing rejects requests whose Host it doesn't know
       extra = "header_up Host {upstream_hostport}";
     };
     # A read-only window onto the restic repository, rebuilt here from the two
     # hand-written units that ran on the pve host (homelab/restic-view.nix).
-    files.upstream = "127.0.0.1:8085";
+    files = {
+      upstream = "127.0.0.1:8085";
+      auth = true;
+    };
     # Anki の同期サーバ。AnkiWeb に預けず自前で持つ。クライアントは iOS の amgi と
     # 母艦の Anki 本体。同期プロトコルは HTTP なので普通の vhost で足りる。
     anki = {
@@ -108,7 +139,11 @@ let
     # could review. It ran on the Raspberry Pi and was stopped on 2026-08-12 —
     # every target in it still pointed at the CT this host replaced, so it had been
     # red across the board and watching nothing. Its job is the `sites` table now.
+    # SSO のログイン画面そのもの。ここに forward_auth を掛けると、認証を求める先が
+    # 自分になって永久に回るので、auth は付けない。
+    auth.upstream = "127.0.0.1:${toString autheliaPort}";
     status = {
+      auth = true;
       upstream = "127.0.0.1:${toString gatusPort}";
       monitor = false; # monitoring the monitor from itself proves nothing
     };
@@ -116,15 +151,34 @@ let
 
   # reverse_proxy takes an optional block; only emit braces when there is
   # something to put inside them.
+  # SSO。auth = true の vhost だけ、reverse_proxy の手前で Authelia に問い合わせる。
+  # 未ログインなら Authelia が 302 でログイン画面へ送り、戻ってきたら Remote-* が
+  # 上流に渡る (受け取る側が対応していれば、それで誰かが分かる)。
+  #
+  # 掛ける先を表の側で選んでいるのは、この表にブラウザで見る UI と機械が叩く
+  # エンドポイントが混ざっているから。一律に掛けると iPhone の位置ログ (track)、
+  # Obsidian の同期 (obsidian)、ビルドキャッシュ (cache)、通知 (ntfy) が黙って止まる。
+  # 独自ログインを持つもの (jellyfin/navidrome/git/paperless/rss/roms/games) も外して
+  # ある。あれらはネイティブアプリや git がそのまま叩くので、前段に人間向けの
+  # ログイン画面を置くとアプリ側が壊れる。vault は別の理由で外してある
+  # (保管庫を SSO の後ろに置くと、SSO のパスワードを忘れたとき開けなくなる)。
+  autheliaForwardAuth = ''
+    forward_auth 127.0.0.1:${toString autheliaPort} {
+      uri /api/authz/forward-auth
+      copy_headers Remote-User Remote-Groups Remote-Name Remote-Email
+    }
+  '';
+
   mkVhost =
     site:
     let
       block = lib.optionalString (site ? extra) " {\n    ${site.extra}\n  }";
+      auth = lib.optionalString (site.auth or false) autheliaForwardAuth;
     in
     {
       extraConfig = ''
         tls ${certDir}/cert.pem ${certDir}/key.pem
-        reverse_proxy ${site.upstream}${block}
+        ${auth}reverse_proxy ${site.upstream}${block}
       '';
     };
 in
