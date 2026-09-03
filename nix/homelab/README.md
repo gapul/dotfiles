@@ -26,22 +26,22 @@ name that matters now.
 | file | keys |
 | --- | --- |
 | `archivebox.env` | `ADMIN_PASSWORD` |
-| `authelia/jwt`, `authelia/session`, `authelia/storage-encryption` | それぞれ `openssl rand -hex 32` の生の文字列 1 行 (`.env` ではない)。`storage-encryption` を失うと DB 内の TOTP 秘密が復号できなくなり、登録し直しになる |
-| `authelia/users.yml` | Authelia のユーザーファイル。`users: { <name>: { disabled: false, displayname: ..., password: "<argon2id hash>", email: ..., groups: [admins] } }`。ハッシュは `nix run nixpkgs#authelia -- crypto hash generate argon2` で作る。平文のパスワードは入れない |
+| `authelia/jwt`, `authelia/session`, `authelia/storage-encryption` | one raw line from `openssl rand -hex 32` each, not an `.env`. Lose `storage-encryption` and the TOTP secrets in the database cannot be decrypted, so everyone re-enrols |
+| `authelia/users.yml` | Authelia's user file: `users: { <name>: { disabled: false, displayname: ..., password: "<argon2id hash>", email: ..., groups: [admins] } }`. Generate the hash with `nix run nixpkgs#authelia -- crypto hash generate argon2`. Never a plaintext password |
 | `attic.env` | `ATTIC_SERVER_TOKEN_HS256_SECRET_BASE64`, `POSTGRES_PASSWORD` |
-| `calnode.env` | `CALNODE_ENCRYPTION_KEY`, `CALNODE_RECOVERY_SECRET` — どちらも `openssl rand -hex 32`。前者を失うと DB 内の暗号化データは復号できなくなり、後者はそのときの唯一の逃げ道なので、同じ場所に置かない |
+| `calnode.env` | `CALNODE_ENCRYPTION_KEY` and `CALNODE_RECOVERY_SECRET`, both `openssl rand -hex 32`. Losing the first makes the encrypted data in the database unreadable and the second is the only way out of that, so do not keep them in the same place |
 | `dawarich.env` | `POSTGRES_PASSWORD`, `DATABASE_PASSWORD`, `SECRET_KEY_BASE`, `OTP_ENCRYPTION_PRIMARY_KEY`, `OTP_ENCRYPTION_KEY_DERIVATION_SALT`, `OTP_ENCRYPTION_DETERMINISTIC_KEY`, `APPLICATION_HOSTS` |
 | `matrix.env` | `CONDUIT_REGISTRATION_TOKEN` |
 | `miniflux.env` | `DATABASE_URL` (the whole `postgres://miniflux:<pw>@db/miniflux?sslmode=disable` string), `POSTGRES_PASSWORD`, `ADMIN_PASSWORD` |
 | `obsidian-couchdb.env` | `COUCHDB_USER`, `COUCHDB_PASSWORD` |
-| `searx.env` | `SEARXNG_SECRET` (`openssl rand -hex 32`)。SearXNG の `server.secret_key` に envsubst で入る |
-| `rallly.env` | `DATABASE_URL` (`postgres://rallly:<pw>@db/rallly` の全体), `POSTGRES_PASSWORD`, `SECRET_PASSWORD` (**32文字以上**。短いと zod の検証で起動時に落ちる), `SUPPORT_EMAIL` (必須。ログイン用のメールを出さなくても値自体は要る) |
-| `spliit.env` | `POSTGRES_PRISMA_URL`, `POSTGRES_URL_NON_POOLING` (どちらも `postgresql://spliit:<pw>@db/spliit` の全体), `POSTGRES_PASSWORD` |
+| `searx.env` | `SEARXNG_SECRET`, from `openssl rand -hex 32`, substituted into SearXNG's `server.secret_key` with envsubst |
+| `rallly.env` | `DATABASE_URL`, the whole `postgres://rallly:<pw>@db/rallly`, plus `POSTGRES_PASSWORD` and `SECRET_PASSWORD`, which must be at least 32 characters or zod rejects it at startup, and `SUPPORT_EMAIL`, which is required even if no login mail is ever sent |
+| `spliit.env` | `POSTGRES_PRISMA_URL` and `POSTGRES_URL_NON_POOLING`, both the whole `postgresql://spliit:<pw>@db/spliit`, plus `POSTGRES_PASSWORD` |
 | `paperless.env` | `PAPERLESS_SECRET_KEY`, `PAPERLESS_ADMIN_PASSWORD` |
 | `vaultwarden.env` | `ADMIN_TOKEN` |
-| `romm.env` | `MARIADB_ROOT_PASSWORD`, `MARIADB_PASSWORD`, `DB_PASSWD` (後ろ2つは同じ値), `ROMM_AUTH_SECRET_KEY` (`openssl rand -hex 32`), `IGDB_CLIENT_ID`, `IGDB_CLIENT_SECRET` |
-| `gameyfin.env` | `APP_KEY` (**`head -c 32 /dev/urandom \| base64`**。AES 鍵として読まれるので 128/192/256 bit ちょうどでないと `Invalid AES key length` で起動ループする。hex 64 文字は 64 byte 扱いになって通らない), `IGDB_CLIENT_ID`, `IGDB_CLIENT_SECRET` (romm と同じ値で良い) |
-| `hauk/config.php` | `.env` ではなく PHP の設定ファイル。`/var/lib/homelab/hauk/config.php` に置く。イメージ内の `/etc/hauk/config-sample.php` を写して `password` をハッシュに差し替える (`podman exec hauk php -r 'echo password_hash("...", PASSWORD_DEFAULT);'`)。`public_url` は `https://where.gapul.net/` |
+| `romm.env` | `MARIADB_ROOT_PASSWORD`, `MARIADB_PASSWORD` and `DB_PASSWD`, the last two being the same value, plus `ROMM_AUTH_SECRET_KEY` from `openssl rand -hex 32`, `IGDB_CLIENT_ID` and `IGDB_CLIENT_SECRET` |
+| `gameyfin.env` | `APP_KEY`, from `head -c 32 /dev/urandom \| base64`. It is read as an AES key, so anything other than exactly 128, 192 or 256 bits loops on `Invalid AES key length`; 64 hex characters are treated as 64 bytes and fail. Plus `IGDB_CLIENT_ID` and `IGDB_CLIENT_SECRET`, which can be the same values romm uses |
+| `hauk/config.php` | A PHP configuration file rather than an `.env`, placed at `/var/lib/homelab/hauk/config.php`. Copy `/etc/hauk/config-sample.php` out of the image and replace `password` with a hash, from `podman exec hauk php -r 'echo password_hash("...", PASSWORD_DEFAULT);'`. `public_url` is `https://where.gapul.net/` |
 | `gatus.env` | `NTFY_TOPIC`, `NTFY_TOKEN` (the `tk_...` bearer token; gatus substitutes them into its own config) |
 | `mosquitto-ha.password` | a `mosquitto_passwd` hash, the part after `ha:` — not a plaintext password |
 | `free-games-claimer.env` | `NOTIFY` (an ntfy publish URL, so it embeds a credential) and `PANEL_PASSWORD`, which is also the VNC password |

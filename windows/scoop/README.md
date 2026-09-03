@@ -1,43 +1,44 @@
-# Scoop (winget サブセット)
+# Scoop, alongside winget
 
-`winget` で取得できない MS Store 専用 app を sideload する目的で Scoop を併用する。
-GUI / 公式 CLI は `windows/winget/apps.json`、それ以外で必要なものを `scoop.json` に置く。
+Scoop is used to sideload apps that are only available from the Microsoft Store and cannot be
+had through `winget`. GUI apps and official CLIs go in `windows/winget/apps.json`; anything
+else goes in `scoop.json`.
 
-## 方針
+## Which goes where
 
-| 入れる先 | 対象 |
+| Installed through | For |
 |---|---|
-| `winget` (apps.json) | GUI app / 公式 CLI / system 統合 / 認証重視 |
-| `scoop` (scoop.json) | MS Store 専用 (Files 等) / portable / nonportable bucket |
+| winget, apps.json | GUI apps, official CLIs, anything integrated with the system, anything where provenance matters |
+| scoop, scoop.json | Store-only apps such as Files, portable apps, and the nonportable bucket |
 
-## 構成
+## Layout
 
 ```
 windows/scoop/
 ├── README.md
-├── scoop.json   # bucket + app の declarative 定義
-└── apply.ps1    # scoop 未導入なら install → bucket add → app install
+├── scoop.json   # buckets and apps, declaratively
+└── apply.ps1    # installs scoop if missing, adds buckets, installs apps
 ```
 
-## 実行
+## Running it
 
 ```powershell
-# DryRun (副作用なし)
+# no side effects
 just win-scoop -DryRun
 
-# 本番
+# for real
 just win-scoop
 ```
 
-bootstrap.ps1 の Step 2.5 として自動実行される。skip したい時:
+bootstrap.ps1 runs it as step 2.5. To skip it:
 
 ```powershell
 pwsh -File windows/bootstrap.ps1 -SkipScoop
 ```
 
-`apply.ps1` には `-SkipBuckets` / `-SkipApps` もある。
+`apply.ps1` also takes `-SkipBuckets` and `-SkipApps`.
 
-## scoop.json の書式
+## The format of scoop.json
 
 ```json
 {
@@ -46,14 +47,18 @@ pwsh -File windows/bootstrap.ps1 -SkipScoop
 }
 ```
 
-- `buckets`: `scoop bucket add` で登録する追加 bucket
-- `apps`: `scoop install` で入れる app。bucket 名のプレフィクスは scoop が自動解決
+`buckets` are registered with `scoop bucket add`, and `apps` are installed with
+`scoop install`. Scoop resolves the bucket prefix itself.
 
-## 何故 MS Store を避けるか
+## Why avoid the Microsoft Store
 
-- MSIX は `C:\Program Files\WindowsApps\` の TrustedInstaller 領域に入って設定 symlink できない
-- インストール履歴が MS アカウントに紐付く (テレメトリ方針と矛盾)
-- オフラインで再現できない (Store ログイン必須)
-- 配布チャネル次第で有料化や撤去のリスクあり (Files は Store だと有料、GitHub MSIX は無料、という非対称)
+- MSIX packages land in `C:\Program Files\WindowsApps\`, which belongs to TrustedInstaller, so
+  configuration cannot be symlinked into them.
+- Installation history is tied to a Microsoft account, which contradicts the telemetry policy
+  here.
+- It cannot be reproduced offline, since it requires being signed in.
+- Depending on the distribution channel, an app can become paid or disappear. Files is a good
+  example of the asymmetry: paid on the Store, free as an MSIX from GitHub.
 
-`nonportable` bucket は GitHub Release から MSIX を取得して sideload するため、これらの問題を回避できる。
+The `nonportable` bucket fetches the MSIX from a GitHub release and sideloads it, which avoids
+all of this.
