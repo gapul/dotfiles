@@ -1,45 +1,47 @@
-# Windows フォント declarative install
+# Declarative font installation on Windows
 
-`configs/fonts/` 配下の `.ttf` / `.otf` を Windows に user-scope install する。
-Mac の home-manager で `font-*` cask を入れるのと同じ精神で declarative 化。
+Installs every `.ttf` and `.otf` under `configs/fonts/` into Windows at user scope — the same
+idea as installing `font-*` casks through home-manager on the Mac.
 
-## 構成
+## Layout
 
 ```
 windows/fonts/
 ├── README.md
-└── apply.ps1   # configs/fonts/*.ttf|.otf を user-scope install
+└── apply.ps1   # installs configs/fonts/*.ttf and *.otf at user scope
 ```
 
-## 実行
+## Running it
 
 ```powershell
-just win-fonts            # 本番
-just win-fonts -DryRun    # 副作用確認
-just win-fonts -Force     # 既存も強制上書き
+just win-fonts            # for real
+just win-fonts -DryRun    # see what it would do
+just win-fonts -Force     # overwrite what is already there
 ```
 
-bootstrap.ps1 でも自動実行(`-SkipFonts` で省略可)。
+bootstrap.ps1 runs it too, and `-SkipFonts` skips it.
 
-## install 場所
+## Where things land
 
-- ファイル: `%LOCALAPPDATA%\Microsoft\Windows\Fonts\`
-- レジストリ: `HKCU\Software\Microsoft\Windows NT\CurrentVersion\Fonts`
-- 管理者権限不要(Windows 10 1809 以降 user-scope サポート)
+- Files: `%LOCALAPPDATA%\Microsoft\Windows\Fonts\`
+- Registry: `HKCU\Software\Microsoft\Windows NT\CurrentVersion\Fonts`
+- No administrator rights required; user-scope installation has been supported since Windows 10
+  1809.
 
-## 主な用途
+## What it is mainly for
 
-- **sketchybar-app-font.ttf**: Zebar bar.html で focused app icon を
-  process 名 → `:app_name:` ligature 変換するための専用フォント
-  (Mac SketchyBar と同じ icon mapping を再現)
+`sketchybar-app-font.ttf`, which Zebar's bar.html uses to turn a process name into an
+`:app_name:` ligature for the focused app icon, reproducing the icon mapping SketchyBar uses on
+the Mac.
 
-## HackGen Console NF について
+## HackGen Console NF
 
-apps.json / scoop どちらにも未収録のため、yuru7/HackGen の GitHub Release
-から `.zip` を DL → 解凍 → `configs/fonts/` に置けば apply.ps1 で install。
+It is in neither apps.json nor scoop, so download the `.zip` from yuru7/HackGen's GitHub
+releases, extract it, and drop the fonts into `configs/fonts/`; apply.ps1 installs them from
+there.
 
 ```powershell
-# 例: HackGen_NF release を取得
+# find the HackGen_NF release asset
 $url = (gh release view --repo yuru7/HackGen --json assets --jq '.assets[] | select(.name | contains("NF")) | .url' | Select-Object -First 1)
-# 手動 DL → 解凍 → configs/fonts/ にコピー
+# then download, extract and copy into configs/fonts/ by hand
 ```
