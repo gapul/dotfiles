@@ -1,19 +1,26 @@
-# Obsidian 設定スナップショット (追跡専用ミラー)
+# Obsidian configuration snapshot, a tracking mirror only
 
-このディレクトリは Obsidian の `.obsidian` 設定の **片方向スナップショット** です。
+This directory is a one-way snapshot of Obsidian's `.obsidian` configuration.
 
-- **本体は vault 側** (`~/Documents/notes/.obsidian`)。ここは履歴・差分閲覧用の**読み取りミラー**。
-- 更新は `just obsidian-snapshot` で **vault → dotfiles の一方通行**。
-  逆向き (dotfiles → vault) には**絶対に**戻さない（戻すと二重オーナーになり同期が壊れる）。
-- 日々の同期は Obsidian Git / Self-hosted LiveSync が担当。dotfiles は中身を所有しない。
+The real thing lives in the vault, at `~/Documents/notes/.obsidian`. What is here is a
+read-only mirror, for history and diffs.
 
-## 公開リポジトリ前提の安全設計
+It is updated with `just obsidian-snapshot`, which goes from the vault into dotfiles and never
+the other way. Copying back would create two owners and break the sync.
 
-このリポジトリは public。よって：
+Day-to-day syncing is Obsidian Git and Self-hosted LiveSync's job. dotfiles does not own the
+contents.
 
-- **ホワイトリスト方式**: 安全と確認した json のみ収録
-  (`app` `appearance` `hotkeys` `community-plugins` `core-plugins` `graph` `daily-notes` `types` `canvas`)。
-- **絶対に入れない**: `plugins/*/data.json`（LiveSync の CouchDB 認証・各種 API キーが入りうる）、
-  `workspace*.json`（端末状態）、`copilot-index-*` / `.smart-env`（キャッシュ）、プラグイン本体。
-- `just obsidian-snapshot` は非空の秘密値を検出すると**中止**する。さらに commit 前に `gitleaks` を通す。
-- 秘密ごと版管理したい設定は **sops 暗号化** (`just secrets` / `.sops.yaml`) してから置く。
+## Designed for a public repository
+
+This repository is public, so:
+
+- Only files confirmed to be safe are included, by whitelist: `app`, `appearance`, `hotkeys`,
+  `community-plugins`, `core-plugins`, `graph`, `daily-notes`, `types` and `canvas`.
+- Some things are never included: `plugins/*/data.json`, which can hold LiveSync's CouchDB
+  credentials and various API keys; `workspace*.json`, which is per-device state;
+  `copilot-index-*` and `.smart-env`, which are caches; and the plugins themselves.
+- `just obsidian-snapshot` aborts if it finds a non-empty secret value, and `gitleaks` runs
+  before the commit as well.
+- Configuration that has to be versioned along with its secrets is encrypted with sops first,
+  through `just secrets` and `.sops.yaml`.
