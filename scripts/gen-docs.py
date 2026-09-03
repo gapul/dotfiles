@@ -127,7 +127,7 @@ def gen_aliases() -> str:
                 aliases.setdefault(m.group(1), m.group(2))
     # ホームディレクトリの絶対パスは fork 先で変わるので伏せる。
     home = f"/Users/{user}"
-    lines = ["| alias | 展開先 |", "|---|---|"]
+    lines = ["| alias | Expands to |", "|---|---|"]
     for name in sorted(aliases):
         expansion = aliases[name].replace(home, "~")
         lines.append(f"| `{name}` | `{expansion}` |")
@@ -146,7 +146,7 @@ BLOCKS = [
 def _inject(text: str, name: str, body: str) -> str:
     begin, end = f"<!-- BEGIN {name} -->", f"<!-- END {name} -->"
     if begin not in text or end not in text:
-        sys.exit(f"マーカー {begin} / {end} が見つからない")
+        sys.exit(f"marker {begin} / {end} not found")
     pre, rest = text.split(begin, 1)
     _, post = rest.split(end, 1)
     return f"{pre}{begin}\n{body}\n{end}{post}"
@@ -183,13 +183,13 @@ def main() -> int:
 
     if check and drifted:
         print(
-            f"\nドキュメントが設定と乖離している: {', '.join(drifted)}\n"
-            "`just docs` を実行して commit してください。",
+            f"\ndocs have drifted from the configuration: {', '.join(drifted)}\n"
+            "Run `just docs` and commit the result.",
             file=sys.stderr,
         )
         return 1
     if not check:
-        print("ドキュメント生成ブロックを再生成した (git diff で確認)")
+        print("regenerated the generated doc blocks; check with git diff")
     return 0
 
 
