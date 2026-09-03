@@ -1,59 +1,77 @@
-# restic オフサイトバックアップ (共有リポジトリ)
+# Offsite backups with restic, in a shared repository
 
-母艦Mac / homeserver / macmini / rpi4 が **同一の暗号化 restic リポジトリ**を共有する:
-`rclone:google-drive:restic-backup` (Google Drive 上、rclone 経由)。host 名で相乗り・重複排除。
+The Mac, homeserver, the mac mini and rpi4 all share one encrypted restic repository,
+`rclone:google-drive:restic-backup`, held on Google Drive through rclone. They are separated by
+host name and deduplicated against each other.
 
-| ホスト | 対象 | スケジュール | 実装 | 秘密の場所 |
+| Host | What it backs up | Schedule | Implementation | Where the secrets live |
 |---|---|---|---|---|
-| 母艦 (MacBook-Mini) | Documents/Pictures/Downloads/Movies/Music/Minecraft | 日次 13:00 | home-manager `nix/home/restic-backup.nix` (launchd) | sops-nix |
-| homeserver | `/var/lib` (全サービスの状態。`/srv` のメディアと attic は対象外) | 日次 03:00 | NixOS `services.restic.backups.homeserver` (`nix/homelab/backup.nix`) | `/var/lib/secrets/` に手動配置 (age 鍵未導入のため) |
-| macmini | `~/Developer` + `~/.config` (除外: node_modules/.venv/target/.git/objects/モデルの重み) | 日次 05:00 | home-manager `nix/home/macmini-backup.nix` (launchd) | 手動配置の生ファイル (sops 非導入) |
-| rpi4 | `/home/pi` (docker サービスデータ) | 日次 04:30 | `restic-rpi-offsite.sh` + systemd timer | `/root/.config/rclone/rclone.conf` + `/root/.restic.pw` |
+| The Mac, MacBook-Mini | Documents, Pictures, Downloads, Movies, Music, Minecraft | Daily at 13:00 | home-manager, `nix/home/restic-backup.nix`, through launchd | sops-nix |
+| homeserver | `/var/lib`, the state of every service. The media in `/srv` and attic are excluded | Daily at 03:00 | NixOS, `services.restic.backups.homeserver` in `nix/homelab/backup.nix` | Placed by hand in `/var/lib/secrets/`, since there is no age key yet |
+| The mac mini | `~/Developer` and `~/.config`, excluding node_modules, .venv, target, .git/objects and model weights | Daily at 05:00 | home-manager, `nix/home/macmini-backup.nix`, through launchd | Raw files placed by hand; sops is not set up there |
+| rpi4 | `/home/pi`, the docker services' data | Daily at 04:30 | `restic-rpi-offsite.sh` and a systemd timer | `/root/.config/rclone/rclone.conf` and `/root/.restic.pw` |
 
-- 秘密はどれも `rclone.conf`(GDrive トークン) と restic パスワードで、**このリポジトリには含めない**(sops 経由 or 手動配置)。
-- **共有リポジトリなので `restic forget` は必ず `--host <自ホスト>` スコープ**にする。**prune は母艦の日次のみ**が実行し、他ホストは prune しない(排他ロック競合を避ける)。
-- Google OAuth は Production 公開済みでトークンは失効しない(以前は Testing のため約7日で失効し全ホスト停止した罠あり)。
+The secrets are always the same two things — `rclone.conf`, holding the Google Drive token, and
+the restic password — and neither is in this repository; they arrive through sops or by hand.
 
-## デプロイ手順
+Because the repository is shared, `restic forget` is always scoped with `--host <this host>`,
+and only the Mac's daily run prunes. Nothing else prunes, to avoid fighting over the exclusive
+lock.
 
-### rpi4 (Debian/aarch64)
+The Google OAuth client is published as Production, so the token does not expire. It used to be
+in Testing, where it expired roughly weekly and stopped every host at once.
+
+## Deploying
+
+### rpi4, Debian on aarch64
+
 ```sh
 sudo apt-get install -y restic rclone
-# 秘密を配置: /root/.config/rclone/rclone.conf , /root/.restic.pw (母艦 sops から)
-# ntfy 通知用: /root/.config/ntfy/{url,token}
+# place the secrets: /root/.config/rclone/rclone.conf and /root/.restic.pw, from the Mac's sops
+# and for notifications: /root/.config/ntfy/{url,token}
 sudo install -m755 restic-rpi-offsite.sh /usr/local/bin/restic-rpi-offsite.sh
 sudo install -m644 restic-rpi-offsite.service restic-rpi-offsite.timer /etc/systemd/system/
 sudo systemctl daemon-reload && sudo systemctl enable --now restic-rpi-offsite.timer
 ```
 
-### macmini / homeserver (宣言済み)
-スクリプトも launchd/systemd も nix が生成するので、ここに手順は無い。
-秘密だけ手で置く(sops/age を入れていない機械のため)。
+### The mac mini and homeserver, both declared
 
-- macmini: `nix/home/macmini-backup.nix`。秘密は `~/.config/rclone/rclone.conf` と
-  `~/.config/restic/password`、通知用に `~/.config/ntfy/{url,token}`。`just rebuild` で反映。
-- homeserver: `nix/homelab/backup.nix`。秘密は `/var/lib/secrets/{rclone.conf,restic.password}`。
+nix generates the script and the launchd or systemd unit, so there is no procedure here. Only
+the secrets go in by hand, because neither machine has sops or age.
 
-2026-08-12 まで macmini は `restic-macmini-offsite.sh` + `local.restic-macmini.plist` の
-imperative 構成だった。両方消したので、この README を見て手で置き直さないこと。
+- The mac mini: `nix/home/macmini-backup.nix`. The secrets are
+  `~/.config/rclone/rclone.conf` and `~/.config/restic/password`, plus
+  `~/.config/ntfy/{url,token}` for notifications. `just rebuild` applies it.
+- homeserver: `nix/homelab/backup.nix`. The secrets are
+  `/var/lib/secrets/{rclone.conf,restic.password}`.
 
-## スマホから中身を閲覧 (files.gapul.net)
+Until 2026-08-12 the mac mini used an imperative setup, `restic-macmini-offsite.sh` and
+`local.restic-macmini.plist`. Both are gone, so do not put them back by reading this file.
 
-暗号化リポジトリは Google Drive 上では中身が見えない。プレビューは homeserver 上の
-**restic mount (read-only FUSE) + Filebrowser** で行う。定義は `nix/homelab/restic-view.nix`
-(pve 時代は手書き systemd unit だった。移行時に宣言へ移し、ここの unit ファイルは消した)。
+## Browsing the contents from a phone, at files.gapul.net
 
-- restic mount は **`--no-lock` 必須**(常駐マウントのロックが日次 prune を塞ぐのを防ぐ)。
-- Filebrowser の待ち受けは **8085**。8082 は pve 時代のポートで、homeserver では ntfy の
-  コンテナが使っている(1台に畳んだことで生まれた衝突)。
-- **CF DNS**: `files.gapul.net` の A レコードが個別に要る(ワイルドカードは無い)。
-- tailnet 限定・認証なし。
+An encrypted repository shows nothing useful on Google Drive. Previewing happens on homeserver,
+through a read-only FUSE restic mount plus Filebrowser, declared in
+`nix/homelab/restic-view.nix`. In the pve days these were hand-written systemd units; the
+migration moved them into the declaration and the unit files here were deleted.
 
-## 復元テスト (2026-07-20 実施・全ホスト合格)
+- The restic mount needs `--no-lock`, so a permanently mounted repository does not block the
+  daily prune.
+- Filebrowser listens on 8085. 8082 was the port in the pve days, and on homeserver the ntfy
+  container has it — a collision created by folding everything onto one machine.
+- Cloudflare needs its own A record for `files.gapul.net`; there is no wildcard.
+- It is on the tailnet only, with no authentication.
 
-各ホストで「復元したファイルの SHA256 がライブと一致」を確認済み。手順:
+## Restore test, run on 2026-07-20, passed on every host
+
+For each host, the SHA256 of the restored file matched the live one:
+
 ```sh
-# 例 (対象ホストで、そのホストの restic 環境を export した状態):
-restic dump --host <host> latest <path> | sha256sum   # ← ライブの sha256sum と一致すれば OK
+# on the target host, with that host's restic environment exported:
+restic dump --host <host> latest <path> | sha256sum   # must match the live sha256sum
 ```
-- gdrive 越しの `restic ls`/`stats` は**2分でタイムアウトして誤った欠損判定をしがち**。件数確認は `restic find`(ピンポイント) か homeserver の `/mnt/restic-view` マウント、または backup run サマリの「processed N files」を使う。macOS に `timeout` は無い(gtimeout)。
+
+`restic ls` and `restic stats` over Google Drive tend to time out after two minutes and make
+things look missing when they are not. To count files, use `restic find` for a specific path,
+the `/mnt/restic-view` mount on homeserver, or the "processed N files" line in the backup run's
+summary. Note that macOS has no `timeout`; it is `gtimeout`.
