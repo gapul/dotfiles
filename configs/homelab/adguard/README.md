@@ -1,74 +1,86 @@
-# AdGuard Home 二重化 (A構成)
+# Two AdGuard Home instances
 
-ローカル DNS を主系(Raspberry Pi 4)/ 副系(.65)で冗長化する。
-**主系のラズパイは制作用途でいつでも停止でき、止めても副系が名前解決を継続する。**
+Local DNS made redundant with a primary on a Raspberry Pi 4 and a secondary on `.65`. The Pi can
+be switched off at any time for creative work, and the secondary keeps resolving names while it
+is gone.
 
-## 構成
+## The pieces
 
-| 役割 | ホスト | DNS | 管理UI | 外部URL |
+| Role | Host | DNS | Admin UI | External URL |
 |---|---|---|---|---|
-| 主系 | ラズパイ4 `192.168.116.53` | :53 | :3000 | `dns.gapul.net` |
-| 副系 | Docker母艦 `192.168.116.65` | :53 | :3080 | `dns2.gapul.net` |
-| 同期 | `.65` (adguardhome-sync) | — | — | 主系→副系 10分毎 |
+| Primary | Raspberry Pi 4, `192.168.116.53` | :53 | :3000 | `dns.gapul.net` |
+| Secondary | The Docker host, `192.168.116.65` | :53 | :3080 | `dns2.gapul.net` |
+| Sync | `.65`, adguardhome-sync | — | — | Primary to secondary, every 10 minutes |
 
 ```
-クライアント DNS 設定:
-  primary   = 192.168.116.53   ← 主系(Pi)。止めてもOK
-  secondary = 192.168.116.65   ← 副系。常時稼働でフェイルオーバー
+client DNS settings:
+  primary   = 192.168.116.53   the Pi. Safe to switch off
+  secondary = 192.168.116.65   always up, and takes over
 ```
 
-## セットアップ手順
+## Setting it up
 
-### 1. ラズパイの準備
-- Raspberry Pi OS Lite (64bit) を microSD に焼く
-- 固定IP `192.168.116.53` を割当(ルーターのDHCP予約 or dhcpcd 設定)
-- Docker + compose plugin を導入
-- microSD延命: `log2ram` 導入、`zram` 有効化
+### 1. Preparing the Pi
 
-### 2. 主系を起動 (ラズパイ上)
+- Flash Raspberry Pi OS Lite, 64-bit, to a microSD card.
+- Give it the fixed address `192.168.116.53`, either as a DHCP reservation on the router or
+  through dhcpcd.
+- Install Docker and the compose plugin.
+- To make the card last: install `log2ram` and enable `zram`.
+
+### 2. Starting the primary, on the Pi
+
 ```bash
 cd configs/homelab/adguard/primary-pi
 docker compose up -d
-# http://192.168.116.53:3000 で初期セットアップ → admin ログイン作成
+# then run the first-time setup at http://192.168.116.53:3000 and create the admin login
 ```
 
-### 3. 副系を起動 (.65 / Dockge から or CLI)
+### 3. Starting the secondary, on `.65`, through Dockge or the CLI
+
 ```bash
 cd configs/homelab/adguard/secondary
 docker compose up -d
-# http://192.168.116.65:3080 で初期セットアップ → 同じ admin で作成
+# first-time setup at http://192.168.116.65:3080, with the same admin
 ```
 
-### 4. 同期を起動 (.65)
+### 4. Starting the sync, on `.65`
+
 ```bash
 cd configs/homelab/adguard/sync
-cp .env.example .env   # 主系/副系の admin パスワードを記入 (sops管理推奨)
+cp .env.example .env   # fill in both admin passwords; sops is preferable
 docker compose up -d
 ```
-以後、主系で編集したフィルタ・書換ルール・設定が副系へ自動複製される。
 
-### 5. クライアントへ配布
-ルーターの DHCP 配布 DNS を `192.168.116.53` / `192.168.116.65` の2つに設定。
-(Tailscale 経由は既存の Split DNS `gapul.net→Cloudflare` 設定と併用)
+From then on, filters, rewrite rules and settings edited on the primary are copied to the
+secondary automatically.
 
-## 制作用途でラズパイを止める / 戻す
+### 5. Handing it to the clients
+
+Set the router's DHCP-distributed DNS to both `192.168.116.53` and `192.168.116.65`. Over
+Tailscale this coexists with the existing split DNS that sends `gapul.net` to Cloudflare.
+
+## Switching the Pi off and back on
 
 ```bash
-# 止める (ラズパイ上) — 副系(.65)が自動でDNSを引き継ぐ
+# stop it, on the Pi. The secondary at .65 takes over DNS automatically.
 docker compose -f primary-pi/compose.yaml down
-sudo systemctl disable docker   # 制作中はDockerごと止めてリソース解放する場合
+sudo systemctl disable docker   # also stop Docker entirely, to free resources during creative work
 
-# 制作 ... CPU/メモリ/IO がフルに使える
+# ... CPU, memory and IO are all yours
 
-# 戻す
+# bring it back
 sudo systemctl enable --now docker
 docker compose -f primary-pi/compose.yaml up -d
-# 復帰後、次の sync サイクルで副系との差分が再同期される
+# the next sync cycle reconciles it with the secondary
 ```
 
-`conf/` は volume に残るので、停止しても設定・ログイン情報は失われない。
+`conf/` lives in a volume, so settings and logins survive being stopped.
 
-## 注意
-- `work/` `conf/` `.env` は Git 管理外(`.gitignore` 済み)。設定実体と秘密情報はコミットしない
-- 主系/副系で **DHCPサーバー機能は使わない**(同期対象外。ルーターのDHCPを継続利用)
-- Tailscale は制作中も起動したままで可(軽量・リモート用)
+## Notes
+
+- `work/`, `conf/` and `.env` are outside git, already in `.gitignore`. Neither the real
+  configuration nor the secrets get committed.
+- Do not use the DHCP server feature on either instance. It is not synced, and the router keeps
+  doing DHCP.
+- Tailscale can stay running during creative work; it is light and it is how you get in.

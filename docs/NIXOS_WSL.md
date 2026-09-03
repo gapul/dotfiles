@@ -1,42 +1,43 @@
-# Windows の中の NixOS (WSL2)
+# NixOS inside Windows (WSL2)
 
-Adobe やテストのために Windows で起動している間も、再起動せずに普段のシェルと
-道具を使うための箱。GUI は Windows に任せ、こちらは CLI に徹する。
+A box for keeping the usual shell and tools while Windows is booted for Adobe work or testing,
+without rebooting. Windows handles the GUI; this side stays on the command line.
 
-## デュアルブートの NixOS とは何を共有するか
+## What it shares with the dual-boot NixOS
 
-**インストールは共有しない。** WSL2 は物理パーティションを起動する仕組みではなく、
-Microsoft のカーネルで VHDX の中の rootfs を動かすので、実機の NixOS パーティションを
-そのまま WSL の root にすることはできない。`wsl --mount --partition` でマウントして
-中を読むことはできるが、root にはならない。
+**Not the installation.** WSL2 does not boot a physical partition. It runs a rootfs inside a
+VHDX under Microsoft's kernel, so the real NixOS partition cannot become the WSL root.
+`wsl --mount --partition` can mount it and read its contents, but it will not serve as root.
 
-**共有するのは設定のほう。** `nixosConfigurations.wsl` の home は `roles.wsl` を
-読んでいて、これは Lab PC の standalone home-manager (`homeConfigurations.labpc-wsl`)
-と同じ実体。つまりどちらから入っても zsh / neovim / tmux / yazi / fzf が同じになる。
+**The configuration, though, is shared.** The home for `nixosConfigurations.wsl` comes from
+`roles.wsl`, the same thing the Lab PC's standalone home-manager
+(`homeConfigurations.labpc-wsl`) reads. Either way in, zsh, neovim, tmux, yazi and fzf are
+identical.
 
-`/nix/store` の共有はしない。デュアルブートなので同時には走らないが、nix の DB と
-GC root を 2 つの環境で持ち回ることになって事故りやすい。ビルド済みのものは
-Cachix / 自前 attic から降ってくるので、2 回ビルドしても実際の再ビルドはほぼ無い。
+`/nix/store` is not shared. Dual boot means they never run at once, but carrying one nix
+database and one set of GC roots across two environments invites accidents. Anything already
+built comes down from Cachix or the self-hosted attic, so building twice rarely means
+rebuilding twice.
 
-## tarball を作る
+## Building the tarball
 
-root と Linux が要る (母艦の mac では作れない)。homeserver で作って持ち帰る:
+Needs root and Linux, so the Mac cannot do it. Build it on homeserver and bring it back:
 
 ```sh
 just wsl-tarball
 ```
 
-中でやっているのはこれ:
+Which runs:
 
 ```sh
 sudo nix run <flake>#nixosConfigurations.wsl.config.system.build.tarballBuilder
-# → カレントに nixos.wsl ができる
+# leaves nixos.wsl in the current directory
 ```
 
-### sops の鍵を入れておく
+### Include the sops key
 
-`roles.wsl` は sops を読む。age 鍵が無いと初回の home-manager 適用で落ちるので、
-tarball を作るときに一緒に詰めておくのが楽 (あとから手で置いてもよい)。
+`roles.wsl` reads sops. Without an age key the first home-manager activation fails, so it is
+easiest to pack the key into the tarball. Placing it by hand afterwards works too.
 
 ```sh
 root=$(mktemp -d)
@@ -45,26 +46,28 @@ cp keys.txt "$root/home/gapul/.config/sops/age/keys.txt"
 sudo nix run <flake>#nixosConfigurations.wsl.config.system.build.tarballBuilder -- --extra-files "$root"
 ```
 
-## Windows 側に入れる
+## Installing it on Windows
 
 ```powershell
 wsl --import nixos $env:LOCALAPPDATA\WSL\nixos nixos.wsl --version 2
 wsl -d nixos
 ```
 
-以降は中で普通の NixOS として更新する。import し直すのは rootfs を作り直したいときだけ:
+After that it updates from the inside like any NixOS. Re-importing is only for rebuilding the
+rootfs itself:
 
 ```sh
 sudo nixos-rebuild switch --flake github:gapul/dotfiles?dir=nix#wsl
 ```
 
-## 既定の distro にするか
+## Making it the default distro
 
-しない。`wsl --import` した distro は既定にしなくても `wsl -d nixos` で入れる。
-Docker Desktop の WSL 統合を使う場合だけ、その distro を統合対象に入れる。
+No. An imported distro is reachable with `wsl -d nixos` without being the default. The only
+reason to touch this is Docker Desktop's WSL integration, which needs the distro added to its
+integration list.
 
-## Lab PC との使い分け
+## How this differs from the Lab PC
 
-Lab PC は OS を入れ替えられないので、Ubuntu の上に standalone home-manager を
-載せる形 (`homeConfigurations.labpc-wsl`) のまま。こちらは自分の機械なので
-NixOS ごと入れる。どちらも home は `roles.wsl` で同じ。
+The Lab PC's OS cannot be replaced, so it stays on Ubuntu with standalone home-manager on top
+(`homeConfigurations.labpc-wsl`). This machine is mine, so it gets NixOS itself. Both share the
+same home through `roles.wsl`.

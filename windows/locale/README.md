@@ -1,67 +1,71 @@
-# Windows ロケール / 言語設定
+# Windows locale and language
 
-英語 UI で動かしつつ、SJIS 由来の文字化け (`\` が `¥` で表示される等) を解消する。
+Running an English UI while getting rid of the Shift-JIS mojibake, such as `\` displaying as
+`¥`.
 
-## 構成
+## Layout
 
 ```
 windows/locale/
 ├── README.md
-└── apply.ps1   # 3 段階で declarative に適用
+└── apply.ps1   # applies three things declaratively
 ```
 
-## 適用内容(3 段階)
+## What it applies
 
-### A. User Language List = `ja-JP` 1 個 / IME = CorvusSKK のみ / UI = en-US Override
+### A. One language, `ja-JP`; CorvusSKK as the only IME; the UI overridden to en-US
 
-- `en-US` 言語を削除 → **英語キーボードレイアウト (0409:00000409) が消える**
-- `ja-JP` の `InputMethodTips` を CorvusSKK 1 個に → MS-IME が消える
-- 結果: タスクバーの言語インジケーターは SKK 1 個のみ、`Win+Space` 切替表示なし
-- 英語入力は **CorvusSKK の直接入力モード** (`l` キーで切替) で行う
-- UI Display は `Set-WinUILanguageOverride en-US` で英語に固定
-- **再ログイン**で完全反映
+- Removing the `en-US` language removes the English keyboard layout, `0409:00000409`.
+- Setting `ja-JP`'s `InputMethodTips` to CorvusSKK alone removes MS-IME.
+- The result is a single SKK entry in the taskbar's language indicator, with no `Win+Space`
+  switching.
+- English is typed through CorvusSKK's direct input mode, toggled with `l`.
+- `Set-WinUILanguageOverride en-US` fixes the display language to English.
+- Log out and back in for all of it to take effect.
 
-CorvusSKK の TIP は install 時に固定 CLSID で登録される(ユーザー間で共通):
-- ProfileGUID: `{956F14B3-5310-4CEF-9651-26710EB72F3A}`
-- CLSID: `{EAEA0E29-AA1E-48EF-B2DF-46F4E24C6265}`
+CorvusSKK's TIP is registered at install time under fixed CLSIDs, the same for every user:
 
-### B. System Locale = `en-US` + CodePage 65001 (UTF-8)
+- ProfileGUID `{956F14B3-5310-4CEF-9651-26710EB72F3A}`
+- CLSID `{EAEA0E29-AA1E-48EF-B2DF-46F4E24C6265}`
 
-- 非 Unicode プログラムを SJIS (CP932) から UTF-8 (CP65001) に切替
-- **`\` が `¥` で表示される根本原因の SJIS 解消**
-- cmd / PowerShell の console code page も 65001 化
-- Win10 の "Use Unicode UTF-8 for worldwide language support" Beta 機能と同等
-- **再起動必須**(CodePage は OS 起動時にしか効かない)
+### B. System locale `en-US` with code page 65001, UTF-8
 
-### C. Home Location = United States (GeoId 244)
+- Switches non-Unicode programs from Shift-JIS (CP932) to UTF-8 (CP65001).
+- This is what actually fixes `\` showing as `¥`.
+- The console code page for cmd and PowerShell becomes 65001 as well.
+- Equivalent to Windows 10's beta "Use Unicode UTF-8 for worldwide language support".
+- Requires a reboot; the code page only takes effect at boot.
 
-- Region を US 化
-- 時計 / 通貨 / 天気 app 等が英語表記
-- 日本在住で時刻 / 通貨は日本のままがいい場合は `-SkipHomeLocation`
+### C. Home location, United States, GeoId 244
 
-## 実行
+- Sets the region to the US.
+- The clock, currency and the weather app all read in English.
+- If you live in Japan and want the time and currency to stay Japanese, use
+  `-SkipHomeLocation`.
+
+## Running it
 
 ```powershell
-# DryRun (副作用なし)
+# no side effects
 just win-locale -DryRun
 
-# 本番 (自動 UAC、B 適用後は要再起動)
+# for real. Elevates itself; a reboot is needed after B
 just win-locale
 
-# 部分適用
-just win-locale -SkipSystemLocale   # 言語順序と Home だけ (再起動不要)
-just win-locale -SkipHomeLocation   # 言語順序と System Locale (日本地域は残す)
+# partially
+just win-locale -SkipSystemLocale   # only the language order and home location; no reboot
+just win-locale -SkipHomeLocation   # language order and system locale, keeping the Japanese region
 ```
 
-bootstrap.ps1 の Step 9 として自動実行される。skip したい時:
+bootstrap.ps1 runs it as step 9. To skip it:
 
 ```powershell
 just win-bootstrap -SkipLocale
 ```
 
-## 元に戻したい時
+## Undoing it
 
-Settings → Time & Language → Language で個別変更、または:
+Either change things individually under Settings, Time and Language, Language, or:
 
 ```powershell
 Set-WinUserLanguageList -LanguageList 'ja', 'en-US' -Force
