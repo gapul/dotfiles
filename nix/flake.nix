@@ -684,7 +684,14 @@
           # builders-use-substitutes を付けないと、macmini が要る依存を母艦から
           # 転送することになり、キャッシュから直接引ける利点が消える。
           nixCustomConf = {
-            builders = "ssh-ng://gapul@macmini aarch64-darwin /Users/gapul/.ssh/id_automation 10 1 big-parallel,benchmark";
+            # ホスト名ではなく tailnet の IP で書く。nix のデーモンは root として
+            # 動くので ~/.ssh/config を読まず、"macmini" を解決できない
+            # (Could not resolve hostname macmini)。
+            #
+            # root の ~/.ssh/known_hosts に macmini のホスト鍵が要る。無いと
+            # 「Host key verification failed」で止まる。これは一度きりの手作業:
+            #   sudo sh -c 'ssh-keyscan -H 100.105.135.49 >> /var/root/.ssh/known_hosts'
+            builders = "ssh-ng://gapul@100.105.135.49 aarch64-darwin /Users/gapul/.ssh/id_automation 10 1 big-parallel,benchmark";
             builders-use-substitutes = "true";
           };
           # hosts/darwin.nix declares the .app-shipping creative tools, which come from
