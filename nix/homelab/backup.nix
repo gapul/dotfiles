@@ -37,6 +37,11 @@ in
       "/var/lib/containers/storage/overlay-images"
       "/var/lib/containers/storage/overlay-layers"
       "/var/lib/containers/cache"
+      # Pingvin is a delivery cache. The source media stays in its project
+      # directory and shares can be recreated with `hs share create`; backing up
+      # both the uploaded copy and Pingvin's generated ZIP duplicates large files.
+      # Keep its small SQLite database and the consistent dump prepared below.
+      "/var/lib/homelab/pingvin-share/data/uploads"
       # Runtime scratch, regenerated on boot.
       "/var/lib/systemd/coredump"
     ];
