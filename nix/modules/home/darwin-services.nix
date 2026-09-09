@@ -70,6 +70,30 @@ in
   # driven this way — it does expose CDP, but on a port that changes every launch (measured
   # 53218 → 53337), so no static --cdp-endpoint can find it. It is driven by its own
   # `terminal-browser action` instead. Binary comes from nixpkgs (0.0.69).
+  # Lightpanda itself, serving the CDP endpoint the agent below dials. It was never declared:
+  # playwright-mcp came up fine and answered on 8932, but 9223 had nothing listening, so every
+  # navigation failed at connect time and the background path silently was not there
+  # (found 2026-09-09). Binary comes from systemPackages by fixed path rather than from `pkgs`
+  # here, which is what the comment in hosts/darwin.nix means by putting it there.
+  launchd.agents.lightpanda = {
+    enable = true;
+    config = {
+      ProgramArguments = [
+        "/run/current-system/sw/bin/lp"
+        "serve"
+        "--host"
+        "127.0.0.1"
+        "--port"
+        "9223"
+      ];
+      RunAtLoad = true;
+      KeepAlive = true;
+      ProcessType = "Background";
+      StandardErrorPath = "/tmp/lightpanda.err";
+      StandardOutPath = "/tmp/lightpanda.log";
+    };
+  };
+
   # Playwright MCP, pointed at Lightpanda. Connects lazily, so it costs nothing while idle.
   launchd.agents.playwright-mcp-light = {
     enable = true;
