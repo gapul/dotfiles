@@ -474,7 +474,11 @@ async def login_fill(
 
     # TOTP after the approval, never before: a code lives thirty seconds and a round trip to a
     # phone eats most of that.
-    values = {selector: VAULT.get(field_name, domain) for field_name, selector in selectors.items()}
+    try:
+        values = {selector: VAULT.get(field_name, domain) for field_name, selector in selectors.items()}
+    except RuntimeError as exc:
+        audit("outcome", id=request.id, approved=True, filled=False, reason=str(exc))
+        return {"filled": False, "error": str(exc)}
 
     try:
         await fill_via_cdp(port, values)
