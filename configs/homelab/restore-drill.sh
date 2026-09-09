@@ -141,7 +141,10 @@ if [ -s "$DUMPS/romm.sql" ] && podman run -d --name "$MYSQL_CTR" \
   -e MARIADB_ROOT_PASSWORD=drill \
   docker.io/library/mariadb:11 >/dev/null 2>&1; then
   for i in $(seq 1 60); do
-    podman exec "$MYSQL_CTR" mariadb-admin -uroot -pdrill ping >/dev/null 2>&1 && break
+    # mariadb-admin ping exits successfully even when authentication is denied;
+    # wait for an authenticated query so restore cannot race first-time setup.
+    podman exec "$MYSQL_CTR" mariadb -uroot -pdrill -e 'SELECT 1' \
+      >/dev/null 2>&1 && break
     [ "$i" -eq 60 ] && fail "使い捨て MariaDB が起動しなかった"
     sleep 2
   done
