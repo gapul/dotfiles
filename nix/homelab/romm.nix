@@ -123,7 +123,10 @@
     # `statfs ...: no such file or directory` で 125 を返し、restart を繰り返して
     # start-limit-hit で止まる。
     "d /var/lib/homelab/romm 0700 root root -"
-    "d /var/lib/homelab/romm/db 0700 root root -"
+    # MariaDB drops to uid/gid 999.  The mount root must remain traversable by
+    # that user; otherwise existing open tables appear to work while metadata
+    # operations such as mariadb-dump fail with EACCES.
+    "d /var/lib/homelab/romm/db 0700 999 999 -"
     "d /var/lib/homelab/romm/resources 0700 root root -"
     "d /var/lib/homelab/romm/redis 0700 root root -"
     "d /srv/games 0755 root root -"
