@@ -46,9 +46,10 @@ fi
 # 参加者一覧は sops から降りてくる (システム側が /etc/minecraft へ置く)。サーバーは遊んでいる
 # 間にこのファイルを書き換える (/whitelist add など) ので、起動のたびに宣言側で上書きする。
 # つまり一覧の正は repo であって、ゲーム内で足しても次の再起動で消える。
-for f in whitelist.json ops.json; do
-  [ -f "/etc/minecraft/$f" ] && cp -f "/etc/minecraft/$f" "$SERVER_DIR/$f"
-done
+# 一覧はインスタンスごとに差し替えられる (個人用は自分だけの一覧を見る)。
+wl="${WHITELIST_SRC:-/etc/minecraft/whitelist.json}"
+[ -f "$wl" ] && cp -f "$wl" "$SERVER_DIR/whitelist.json"
+[ -f /etc/minecraft/ops.json ] && cp -f /etc/minecraft/ops.json "$SERVER_DIR/ops.json"
 
 # 宣言された mod は store への symlink として置き直す。前回の分(= symlink)は毎回消すので、
 # 宣言から外した mod は次の起動で居なくなる。手で入れた実体の jar には触らない。
