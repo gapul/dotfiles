@@ -1,0 +1,27 @@
+[broker]
+# Bind on the tailnet so an agent on the mac mini reaches the same broker. 127.0.0.1 keeps it
+# local-only, which is the safer default until the far end is actually needed.
+host = "127.0.0.1"
+port = 8933
+
+# Only these can ever be the subject of login_fill. Nothing else reaches the vault, approved or
+# not. Keep passkey-only accounts off this list on purpose: they are the accounts an agent should
+# structurally be unable to enter.
+allowed_domains = ["github.com"]
+
+# Re-lock after this long without a release.
+vault_idle_seconds = 900
+
+# How long the person at the terminal gets before the question goes to the phone.
+local_timeout_seconds = 25
+remote_timeout_seconds = 600
+
+# sops-managed, mode 0400.
+vault_password_file = "~/.config/ask/bw-password"
+
+audit_log = "~/.local/state/ask/audit.jsonl"
+
+[matrix]
+homeserver = "https://gapul.net"
+room = "!yourroomid:gapul.net"
+token_file = "~/.config/ask/matrix-token"
