@@ -81,7 +81,7 @@ let
     roms.upstream = "127.0.0.1:8091";
     games.upstream = "127.0.0.1:8092";
     paperless.upstream = "127.0.0.1:8097";
-    # YouTube の保存 (Pinchflat)。落とし先は /srv/youtube で、jellyfin が /srv を
+    # YouTube の保存 (ytdl-sub)。落とし先は /srv/youtube で、jellyfin が /srv を
     # /media として見ているので、落ちた時点で棚に並ぶ。
     tube = {
       upstream = "127.0.0.1:8098";
@@ -119,10 +119,10 @@ let
       upstream = "127.0.0.1:8384"; # syncthing rejects requests whose Host it doesn't know
       extra = "header_up Host {upstream_hostport}";
     };
-    # A read-only window onto the restic repository, rebuilt here from the two
-    # hand-written units that ran on the pve host (homelab/restic-view.nix).
+    # Filestash replaces File Browser and exposes both the read-only Restic view
+    # and the writable Google Drive mount from one tailnet-only UI.
     files = {
-      upstream = "127.0.0.1:8085";
+      upstream = "127.0.0.1:8099";
       auth = true;
     };
     # Anki の同期サーバ。AnkiWeb に預けず自前で持つ。クライアントは iOS の amgi と
@@ -550,27 +550,6 @@ in
     randomizedDelaySec = "30min";
     # No reboots: nothing here needs a new kernel badly enough to drop the tunnels at 4am.
     allowReboot = false;
-  };
-
-  # Container images. Every stack pins `:latest` but nothing re-pulled it, so the tags had been
-  # frozen since the machine was built. `podman auto-update` only touches containers that opt in
-  # with io.containers.autoupdate=registry, and rolls a container back if the new image fails to
-  # come up, so the opt-in list is deliberately the stateless frontends (see homelab/*.nix).
-  systemd.services.homelab-image-update = {
-    description = "Pull newer images for containers labelled io.containers.autoupdate";
-    serviceConfig = {
-      Type = "oneshot";
-      ExecStart = "${pkgs.podman}/bin/podman auto-update";
-    };
-  };
-  systemd.timers.homelab-image-update = {
-    wantedBy = [ "timers.target" ];
-    timerConfig = {
-      # After the nightly switch, so a rebuild and an image pull never race.
-      OnCalendar = "Sun 05:30";
-      Persistent = true;
-      RandomizedDelaySec = "30min";
-    };
   };
 
   system.stateVersion = "26.05";

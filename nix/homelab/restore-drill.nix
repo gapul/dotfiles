@@ -22,20 +22,25 @@
       sqlite
       curl
       coreutils
+      gnugrep
       hostname
     ];
     environment = {
       RESTIC_REPOSITORY = (import ../lib/restic-common.nix { home = "/root"; }).repository;
       RESTIC_PASSWORD_FILE = "/var/lib/secrets/restic.password";
       RCLONE_CONFIG = "/var/lib/secrets/rclone.conf";
+      # restic 0.19 requires a cache location even for a one-shot restore.
+      XDG_CACHE_HOME = "/var/cache";
     };
     serviceConfig = {
       Type = "oneshot";
+      CacheDirectory = "restic";
       ExecStart = "${pkgs.bash}/bin/bash ${../../configs/homelab/restore-drill.sh}";
       # 使い捨ての postgres を起動して数百 MB を展開する。バックアップ本体と
       # ぶつからないよう、時刻は 03:00 から離してある。
       TimeoutStartSec = "60min";
     };
+    onFailure = [ "ntfy-failure@%n.service" ];
   };
 
   systemd.timers.restore-drill = {

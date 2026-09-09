@@ -7,12 +7,17 @@ host name and deduplicated against each other.
 | Host | What it backs up | Schedule | Implementation | Where the secrets live |
 |---|---|---|---|---|
 | The Mac, MacBook-Mini | Documents, Pictures, Downloads, Movies, Music, Minecraft | Daily at 13:00 | home-manager, `nix/home/restic-backup.nix`, through launchd | sops-nix |
-| homeserver | `/var/lib`, the state of every service. The media in `/srv` and attic are excluded | Daily at 03:00 | NixOS, `services.restic.backups.homeserver` in `nix/homelab/backup.nix` | Placed by hand in `/var/lib/secrets/`, since there is no age key yet |
+| homeserver | `/var/lib`, plus `/srv/dawarich` and `/srv/archivebox`. The media and attic are excluded | Daily at 03:00 | NixOS, `services.restic.backups.homeserver` in `nix/homelab/backup.nix` | Placed by hand in `/var/lib/secrets/`, since there is no age key yet |
 | The mac mini | `~/Developer` and `~/.config`, excluding node_modules, .venv, target, .git/objects and model weights | Daily at 05:00 | home-manager, `nix/home/macmini-backup.nix`, through launchd | Raw files placed by hand; sops is not set up there |
 | rpi4 | `/home/pi`, the docker services' data | Daily at 04:30 | `restic-rpi-offsite.sh` and a systemd timer | `/root/.config/rclone/rclone.conf` and `/root/.restic.pw` |
 
 The secrets are always the same two things — `rclone.conf`, holding the Google Drive token, and
 the restic password — and neither is in this repository; they arrive through sops or by hand.
+
+Pingvin Share X on homeserver is treated as a distribution cache. Its small SQLite database,
+which holds the share information and the accounts, is backed up along with a consistency dump,
+but the videos in `data/uploads` and the automatically generated ZIPs are not. The originals
+stay on the project side, and after a failure the shares are recreated with `hs share create`.
 
 Because the repository is shared, `restic forget` is always scoped with `--host <this host>`,
 and only the Mac's daily run prunes. Nothing else prunes, to avoid fighting over the exclusive
@@ -51,16 +56,14 @@ Until 2026-08-12 the mac mini used an imperative setup, `restic-macmini-offsite.
 ## Browsing the contents from a phone, at files.gapul.net
 
 An encrypted repository shows nothing useful on Google Drive. Previewing happens on homeserver,
-through a read-only FUSE restic mount plus Filebrowser, declared in
-`nix/homelab/restic-view.nix`. In the pve days these were hand-written systemd units; the
-migration moved them into the declaration and the unit files here were deleted.
+through Filestash, declared in `nix/homelab/{restic-view,filestash}.nix`. The same screen also
+reaches Google Drive, while the backup side stays read-only.
 
 - The restic mount needs `--no-lock`, so a permanently mounted repository does not block the
   daily prune.
-- Filebrowser listens on 8085. 8082 was the port in the pve days, and on homeserver the ntfy
-  container has it — a collision created by folding everything onto one machine.
+- Filestash listens on 8099.
 - Cloudflare needs its own A record for `files.gapul.net`; there is no wildcard.
-- It is on the tailnet only, with no authentication.
+- It is on the tailnet only, and goes through Caddy's shared authentication as well.
 
 ## Restore test, run on 2026-07-20, passed on every host
 

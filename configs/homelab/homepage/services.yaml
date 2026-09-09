@@ -42,11 +42,11 @@
         description: ファイル同期
         icon: syncthing.png
         siteMonitor: http://127.0.0.1:8384
-    - ファイル閲覧 (restic):
+    - ファイル閲覧:
         href: https://files.gapul.net
-        description: バックアップの中身をプレビュー (read-only)
-        icon: filebrowser.png
-        siteMonitor: http://127.0.0.1:8085
+        description: Google Drive / バックアップ閲覧
+        icon: mdi-folder-eye
+        siteMonitor: http://127.0.0.1:8099
     - ntfy:
         href: https://ntfy.gapul.net
         description: プッシュ通知

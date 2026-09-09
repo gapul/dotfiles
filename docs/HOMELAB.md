@@ -331,14 +331,12 @@ scripts, systemd units and launchd plists.
 - The Google OAuth client is published as Production, so the token does not expire. It used to
   be in Testing, where it expired roughly weekly and stopped every host at once. Failures
   notify through ntfy on the Mac, the mac mini and the Pi.
-- To browse the contents from a phone, `files.gapul.net` is a read-only FUSE restic mount on
-  pve with `--no-lock`, plus Filebrowser, published through Caddy on the tailnet without
-  authentication. Cloudflare needs its own A record for `files.gapul.net` pointing at Caddy's
-  tailnet address.
+- To browse the contents from a phone, `files.gapul.net` is Filestash on homeserver. It handles
+  both Google Drive and the read-only FUSE restic mount, with `--no-lock`, from one screen, and
+  Caddy authenticates in front of it. Cloudflare needs its own A record for `files.gapul.net`.
 - Restore test, 2026-07-20: on the Mac, pve, the mac mini and the Pi, the SHA256 of the
   restored files matched the live ones.
-- Homepage's Backup section lists Backrest, for browsing and restoring, and Filebrowser, for
-  previewing contents.
+- Homepage's Backup section lists Filestash, for browsing Drive and the backups.
 
 ### Home Assistant's own backups, still to do
 

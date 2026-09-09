@@ -45,9 +45,11 @@
     ./backup.nix
     ./calnode.nix
     ./cloudflared.nix
+    ./cli.nix
     ./dawarich.nix
     ./dawarich-freshness.nix
     ./fava.nix
+    ./filestash.nix
     ./forgejo.nix
     ./free-games-claimer.nix
     ./gameyfin.nix
@@ -67,7 +69,7 @@
     ./ntfy.nix
     ./obsidian-couchdb.nix
     ./paperless.nix
-    ./pinchflat.nix
+    ./ytdl-sub.nix
     ./pingvin-share.nix
     ./playit.nix
     ./radicale.nix
