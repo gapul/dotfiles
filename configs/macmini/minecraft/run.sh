@@ -59,6 +59,13 @@ if [ -n "$stale" ]; then
   kill -KILL $stale 2>/dev/null
 fi
 
+# 参加者一覧は sops から降りてくる (システム側が /etc/minecraft へ置く)。サーバーは遊んでいる
+# 間にこのファイルを書き換える (/whitelist add など) ので、起動のたびに宣言側で上書きする。
+# つまり一覧の正は repo であって、ゲーム内で足しても次の再起動で消える。
+for f in whitelist.json ops.json; do
+  [ -f "/etc/minecraft/$f" ] && cp -f "/etc/minecraft/$f" "$SERVER_DIR/$f"
+done
+
 # 宣言された jar は store への symlink として置き直す。前回の分(= symlink)は毎回消すので、
 # 宣言から外した jar は次の起動で居なくなる。手で入れた実体の jar には触らない。
 # Paper は plugins/、Fabric は mods/ を読む。どちらか片方しか使わないので、宣言も置き場所も
