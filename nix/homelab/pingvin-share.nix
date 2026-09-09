@@ -39,6 +39,8 @@
 
   systemd.tmpfiles.rules = [
     "d /var/lib/homelab/pingvin-share 0700 root root -"
-    "d /var/lib/homelab/pingvin-share/data 0700 root root -"
+    # Pingvin drops to uid/gid 1000. SQLite needs directory write access for
+    # journals/WAL files, not merely write access to pingvin-share.db itself.
+    "d /var/lib/homelab/pingvin-share/data 0700 1000 1000 -"
   ];
 }

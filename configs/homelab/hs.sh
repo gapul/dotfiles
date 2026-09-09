@@ -20,6 +20,7 @@ Usage:
   hs exec APP COMMAND [ARG...]
   hs api APP METHOD PATH [JSON]
   hs openapi APP
+  hs share create SHARE_ID EXPIRATION FILE [FILE...]
   hs ytdl check|run|inspect [MATCH]
   hs navidrome COMMAND [ARG...]
   hs archivebox COMMAND [ARG...]
@@ -79,6 +80,24 @@ api_token() {
   printf '%s' "$value"
 }
 
+pingvin_cookie() {
+  local response access_token login_body
+  [[ -n "${HS_PINGVIN_SHARE_EMAIL:-}" && -n "${HS_PINGVIN_SHARE_PASSWORD:-}" ]] || {
+    echo "HS_PINGVIN_SHARE_EMAIL and HS_PINGVIN_SHARE_PASSWORD are required" >&2
+    return 1
+  }
+  response="$(mktemp)"
+  trap 'rm -f "$response"' RETURN
+  login_body="$(jq -nc \
+    --arg email "$HS_PINGVIN_SHARE_EMAIL" \
+    --arg password "$HS_PINGVIN_SHARE_PASSWORD" \
+    '{email: $email, password: $password}')"
+  curl -fsS -H "Content-Type: application/json" --data-binary "$login_body" \
+    "$(base_url pingvin-share)/api/auth/signIn" >"$response"
+  access_token="$(jq -er .accessToken "$response")"
+  printf 'access_token=%s' "$access_token"
+}
+
 api() {
   local app="$1" method="$2" path="$3" body="${4:-}" token cookie_key cookie
   local -a args
@@ -98,31 +117,69 @@ api() {
   cookie="${!cookie_key:-}"
   [[ -n "$cookie" ]] && args+=(-H "Cookie: $cookie")
 
-  cookie_jar=""
   if [[ "$app" == pingvin-share && -z "$token" && -z "$cookie" && \
     -n "${HS_PINGVIN_SHARE_EMAIL:-}" && -n "${HS_PINGVIN_SHARE_PASSWORD:-}" ]]; then
-    cookie_jar="$(mktemp)"
-    trap 'rm -f "${cookie_jar:-}"' RETURN
-    login_body="$(jq -nc \
-      --arg email "$HS_PINGVIN_SHARE_EMAIL" \
-      --arg password "$HS_PINGVIN_SHARE_PASSWORD" \
-      '{email: $email, password: $password}')"
-    curl -fsS -c "$cookie_jar" -H "Content-Type: application/json" \
-      --data-binary "$login_body" "$(base_url "$app")/api/auth/signIn" >/dev/null
-    args+=(-b "$cookie_jar")
+    args+=(-H "Cookie: $(pingvin_cookie)")
   fi
   if [[ -n "$body" ]]; then
     jq -e . <<<"$body" >/dev/null
     args+=(-H "Content-Type: application/json" --data-binary "$body")
   fi
   response="$(mktemp)"
-  trap 'rm -f "${cookie_jar:-}" "${response:-}"' RETURN
+  trap 'rm -f "${response:-}"' RETURN
   curl "${args[@]}" -o "$response" "$(base_url "$app")$path"
   if jq -e . "$response" >/dev/null 2>&1; then
     jq -C . "$response"
   else
     cat "$response"
   fi
+}
+
+pingvin_share_create() {
+  local share_id="$1" expiration="$2" cookie chunk chunk_size total_size body
+  local file name encoded_name file_id size total index
+  shift 2
+  [[ $# -gt 0 ]] || { usage >&2; return 2; }
+  [[ "$share_id" =~ ^[a-zA-Z0-9_-]{3,50}$ ]] || {
+    echo "share ID must be 3-50 letters, digits, underscores, or hyphens" >&2
+    return 2
+  }
+  total_size=0
+  for file in "$@"; do
+    [[ -f "$file" ]] || { echo "not a file: $file" >&2; return 2; }
+    total_size=$((total_size + $(stat -c %s "$file")))
+  done
+
+  cookie="$(pingvin_cookie)"
+  chunk_size="$(curl -fsS "$(base_url pingvin-share)/api/configs" | \
+    jq -er '.[] | select(.key == "share.chunkSize") | .value | tonumber')"
+  body="$(jq -nc --arg id "$share_id" --arg name "${share_id:0:30}" \
+    --arg expiration "$expiration" --argjson size "$total_size" \
+    '{id:$id,name:$name,expiration:$expiration,description:"",recipients:[],security:{},size:$size}')"
+  curl -fsS -H "Cookie: $cookie" -H "Content-Type: application/json" \
+    --data-binary "$body" "$(base_url pingvin-share)/api/shares" >/dev/null
+
+  chunk="$(mktemp)"
+  trap 'rm -f "$chunk"' RETURN
+  for file in "$@"; do
+    name="$(basename "$file")"
+    encoded_name="$(jq -rn --arg value "$name" '$value | @uri')"
+    file_id="$(uuidgen | tr '[:upper:]' '[:lower:]')"
+    size="$(stat -c %s "$file")"
+    total=$(((size + chunk_size - 1) / chunk_size))
+    for ((index = 0; index < total; index++)); do
+      dd if="$file" of="$chunk" bs="$chunk_size" skip="$index" count=1 \
+        iflag=fullblock status=none
+      curl -fsS -H "Cookie: $cookie" -H "Content-Type: application/octet-stream" \
+        --data-binary "@$chunk" \
+        "$(base_url pingvin-share)/api/shares/$share_id/files?id=$file_id&name=$encoded_name&chunkIndex=$index&totalChunks=$total" \
+        >/dev/null
+      printf '%s: %d/%d chunks\n' "$name" "$((index + 1))" "$total"
+    done
+  done
+  curl -fsS -X POST -H "Cookie: $cookie" \
+    "$(base_url pingvin-share)/api/shares/$share_id/complete" >/dev/null
+  printf 'https://send.gapul.net/share/%s\n' "$share_id"
 }
 
 restic_cmd() {
@@ -186,6 +243,17 @@ case "$command" in
       # licence/feature gate disables it.
       rallly) api "$app" GET /api/private/openapi ;;
       *) echo "OpenAPI location is not registered for: $app" >&2; exit 2 ;;
+    esac
+    ;;
+  share)
+    action="${1:-}"
+    shift || true
+    case "$action" in
+      create)
+        [[ $# -ge 3 ]] || { usage >&2; exit 2; }
+        pingvin_share_create "$@"
+        ;;
+      *) usage >&2; exit 2 ;;
     esac
     ;;
   ytdl)

@@ -17,6 +17,7 @@ hs unit restart syncthing
 
 hs api romm GET /openapi.json
 hs openapi bambuddy
+hs share create exhibition-files never /path/to/vertical.mp4 /path/to/horizontal.mp4
 hs ytdl check
 hs backup snapshots
 hs backup run
@@ -46,7 +47,7 @@ HS_SOME_APP_COOKIE='session=...'
 |---|---|---|
 | 標準REST/OpenAPI | Bambuddy、Dawarich、Home Assistant、Jellyfin、Miniflux、Paperless、Readeck、RomM、Syncthing | `hs api`、各OpenAPI/REST API |
 | 標準プロトコル | Anki、Attic、CouchDB、Forgejo、Matrix、Navidrome、ntfy、Radicale、Samba、Vaultwarden | それぞれの公式CLIまたはHTTP/CalDAV/SMBプロトコル |
-| アプリ内CLI | ArchiveBox、Forgejo、Navidrome、Paperless、ytdl-sub | `hs archivebox`、`hs forgejo`、`hs navidrome`、`hs paperless`、`hs ytdl` |
+| アプリ内CLI | ArchiveBox、Forgejo、Navidrome、Paperless、Pingvin Share X、ytdl-sub | `hs archivebox`、`hs forgejo`、`hs navidrome`、`hs paperless`、`hs share`、`hs ytdl` |
 | ファイルが正本 | Fava/Beancount、Homepage、SearXNG、Blocky、Authelia、cloudflared、Filestash、Pingvin Share X | Git管理設定 + `hs unit`。Filestashの秘密鍵だけは `/var/lib/secrets` |
 | 内部HTTP API | Calnode、Gameyfin、Hauk、Pingvin Share X、Spliit | `hs api`または`hs exec`。日次の契約チェックで入口の破壊を検知 |
 | ホスト運用 | Podman全コンテナ、systemd全サービス、Restic | `hs status/logs/restart/exec/unit/backup` |

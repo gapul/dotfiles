@@ -13,6 +13,7 @@ let
       rclone
       restic
       systemd
+      util-linux
       ytdl-sub
     ];
     text = builtins.readFile ../../configs/homelab/hs.sh;
