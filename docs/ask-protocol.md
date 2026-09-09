@@ -98,10 +98,19 @@ iOS/watchOS app talking to APNs directly is the intended replacement, because no
 actions from a native app are answerable from the watch itself, which mirrored third-party
 notifications are not. Nothing above this layer should need to change when that lands.
 
-Touch ID is wanted for the local case and is not specified yet: whether a launchd agent can raise
-a `LocalAuthentication` prompt is unverified, and building the helper may run into the same
-"cannot build Swift from nixpkgs" wall documented for the Apple Speech APIs. Elicitation covers
-the local case until then.
+Touch ID sits in front of both, for the two kinds that are yes-or-no. A fingerprint can answer
+yes or no and nothing else, so `choose` and `ask_text` skip it. It goes first because when
+somebody is at the desk it is the fastest answer and the only one that software on this machine
+cannot produce by itself. The policy is `BiometricsOrCompanion`, so a paired Apple Watch satisfies
+it too.
+
+The prompt has no password fallback and is killed after the local timeout. A dialog left standing
+on a desk nobody is sitting at would otherwise stop the question ever reaching the phone.
+
+The helper (`helper/ask-approve.swift` in github.com/gapul/ask) is a separate binary because
+LocalAuthentication has no C-free entry point, and it is built with Xcode's toolchain because
+nixpkgs' swift cannot link the framework — the wall the Apple Speech work already documented.
+Whether it can raise a prompt from a launchd agent rather than a terminal is still unverified.
 
 ## What the human sees
 
@@ -149,7 +158,10 @@ channels, and the layers above stay as they are.
 
 ## Open
 
-- Touch ID from a launchd agent: unverified, see above.
+- Whether the Touch ID helper can raise its prompt from a launchd agent, where there is no
+  terminal. It builds and it is wired in; that one question is unanswered.
+- Getting the helper onto the machine declaratively. It cannot be built through nix here, so it
+  wants a CI build and a fetched release, the way lightpanda and terminal-browser already work.
 - The mac mini as requester: the broker holds the vault on the workstation and the secret crosses
   the tailnet to the requesting machine. WireGuard covers the wire. Same-user isolation on the
   far end is no better than it is here, which is to say weak, and no amount of protocol fixes it.

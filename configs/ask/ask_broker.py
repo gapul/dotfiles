@@ -279,6 +279,30 @@ class Matrix:
 MATRIX = Matrix(CONFIG)
 
 
+async def touch_id(prompt: str) -> bool | None:
+    """Touch ID (or a paired Watch) on the workstation.
+
+    True approved, False denied, None nothing answered — unavailable, or nobody was there. The
+    prompt has no password fallback and is killed on timeout, because a dialog left standing on a
+    desk nobody is sitting at would stop the question ever reaching the phone.
+    """
+    exe = shutil.which("ask-approve")
+    if not exe:
+        return None
+    proc = await asyncio.create_subprocess_exec(exe, prompt)
+    try:
+        code = await asyncio.wait_for(proc.wait(), timeout=CONFIG.local_timeout_seconds)
+    except asyncio.TimeoutError:
+        proc.kill()
+        await proc.wait()
+        return None
+    if code == 0:
+        return True
+    if code == 1:
+        return False
+    return None  # 2 = biometrics unavailable
+
+
 async def ask_human(ctx: Context, request: Request) -> str | None:
     """Local first, then the phone. Returns the raw answer, or None if nobody answered.
 
@@ -289,6 +313,15 @@ async def ask_human(ctx: Context, request: Request) -> str | None:
 
     prompt = f"{request.prompt}\n(from {request.requester})"
 
+    # A fingerprint can answer yes or no and nothing else, so it only stands in for the two kinds
+    # that are yes-or-no. It goes first: when someone is at the desk it is both the fastest answer
+    # and the one that cannot be produced by software on this machine.
+    if request.kind in ("approve", "login_fill"):
+        touched = await touch_id(prompt)
+        if touched is not None:
+            audit("answered", id=request.id, via="touch-id")
+            return "yes" if touched else "no"
+
     try:
         result = await asyncio.wait_for(
             ctx.elicit(message=prompt, schema=None),
@@ -298,8 +331,12 @@ async def ask_human(ctx: Context, request: Request) -> str | None:
         if answer is not None:
             audit("answered", id=request.id, via="elicitation")
             return answer
-    except (asyncio.TimeoutError, Exception):
-        pass
+    except asyncio.TimeoutError:
+        pass  # nobody at the terminal; the phone gets it
+    except Exception as exc:
+        # A client that does not implement elicitation is expected; anything else is worth a line
+        # in the log rather than silence.
+        audit("elicitation.failed", id=request.id, error=type(exc).__name__)
 
     if MATRIX.configured:
         answer = await MATRIX.ask(request, CONFIG.remote_timeout_seconds)
