@@ -126,11 +126,11 @@ pkgs.testers.runNixOSTest {
     machine.succeed("systemctl is-enabled restic-backups-homeserver.timer")
     machine.succeed("systemctl is-enabled restore-drill.timer")
 
-    # File Browser remains live during the Filestash trial. The VM has no
-    # Google credentials and cannot pull containers, so verify the declarative
-    # wiring rather than trying to start either remote-dependent service.
+    # The VM has no Google credentials and cannot pull containers, so verify the
+    # declarative Filestash wiring rather than starting remote-dependent units.
     machine.succeed("systemctl is-enabled google-drive-view-mount.service")
     machine.succeed("systemctl cat podman-filestash.service >/dev/null")
+    machine.fail("systemctl cat filebrowser.service")
 
     # Three of Home Assistant's five add-ons became native services. Home
     # Assistant itself and the Matter server are containers and cannot start here.

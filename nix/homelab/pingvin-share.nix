@@ -21,6 +21,7 @@
     image = "ghcr.io/smp46/pingvin-share-x:latest";
     environment = {
       "TZ" = "Asia/Tokyo";
+      "CONFIG_FILE" = "/opt/app/config.yaml";
       # 発行するリンクに載る URL。これが違うと、渡したリンクが内側の
       # アドレスを指してしまって相手から開けない。
       "APP_URL" = "https://send.gapul.net";
@@ -28,6 +29,7 @@
       "TRUST_PROXY" = "true";
     };
     volumes = [
+      "${../../configs/homelab/pingvin-share.yaml}:/opt/app/config.yaml:ro"
       "/var/lib/homelab/pingvin-share/data:/opt/app/backend/data:rw"
     ];
     ports = [ "8094:3000/tcp" ];

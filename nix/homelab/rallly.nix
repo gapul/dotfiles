@@ -10,9 +10,8 @@
 # SMTP が無くても最低限は回る。ログインしてポールを管理したくなったら、そのとき
 # SMTP を足す (SMTP_* を rallly.env に置くだけ)。
 #
-# タグを latest にしていないのは、Next.js + Prisma で DB マイグレーションが走る
-# 構造だから。`4` はメジャー内の更新だけ追うので、5 系が黙って降ってきて migration
-# が片道で走る事故を避けられる。
+# アプリは rolling release 方針で latest を追う。DB は独立して PostgreSQL 18 系に
+# 留め、更新前バックアップと復元訓練で片道 migration に備える。
 {
   pkgs,
   lib,
@@ -35,7 +34,7 @@
   virtualisation.oci-containers.containers."rallly" = {
     # Docker Hub だが、hosts/homeserver.nix が docker.io を mirror.gcr.io へ
     # 差し替えているので pull 制限には当たらない。
-    image = "docker.io/lukevella/rallly:4";
+    image = "docker.io/lukevella/rallly:latest";
     # DATABASE_URL / SECRET_PASSWORD / SUPPORT_EMAIL。README.md を見ること。
     # SECRET_PASSWORD は 32 文字以上でないとアプリが起動時に弾く (zod で検証している)。
     environmentFiles = [ "/var/lib/secrets/rallly.env" ];

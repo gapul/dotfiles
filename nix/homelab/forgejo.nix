@@ -13,7 +13,11 @@
 
   # Containers
   virtualisation.oci-containers.containers."forgejo" = {
-    image = "codeberg.org/forgejo/forgejo:11";
+    # Forgejo deliberately publishes no `latest` tag because each major upgrade
+    # requires verification. Track the newest major series instead; Podman then
+    # keeps us current within it. The 11 -> 16 migration was verified against a
+    # copy of the production /data before changing this declaration.
+    image = "codeberg.org/forgejo/forgejo:16";
     environment = {
       "FORGEJO__migrations__ALLOW_LOCALNETWORKS" = "false";
       "FORGEJO__security__INSTALL_LOCK" = "true";

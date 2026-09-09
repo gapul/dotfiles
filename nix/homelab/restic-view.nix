@@ -46,22 +46,6 @@ in
   };
 
   systemd.tmpfiles.rules = [ "d ${mountPoint} 0755 root root -" ];
-  # --allow-other is what lets filebrowser read a mount owned by root.
+  # --allow-other is what lets Filestash read a mount owned by root.
   programs.fuse.userAllowOther = true;
-
-  services.filebrowser = {
-    enable = true;
-    settings = {
-      address = "127.0.0.1";
-      # Not 8082: that was this service's port when it ran on the pve host, but
-      # ntfy's container publishes 8082 here. Two machines' worth of services
-      # sharing one port space is the new failure mode in this migration.
-      port = 8085;
-      root = mountPoint;
-    };
-  };
-  systemd.services.filebrowser = {
-    after = [ "restic-view-mount.service" ];
-    wants = [ "restic-view-mount.service" ];
-  };
 }

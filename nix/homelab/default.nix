@@ -45,6 +45,7 @@
     ./backup.nix
     ./calnode.nix
     ./cloudflared.nix
+    ./cli.nix
     ./dawarich.nix
     ./dawarich-freshness.nix
     ./fava.nix
@@ -68,7 +69,7 @@
     ./ntfy.nix
     ./obsidian-couchdb.nix
     ./paperless.nix
-    ./pinchflat.nix
+    ./ytdl-sub.nix
     ./pingvin-share.nix
     ./playit.nix
     ./radicale.nix

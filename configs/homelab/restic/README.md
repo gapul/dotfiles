@@ -6,7 +6,7 @@
 | ホスト | 対象 | スケジュール | 実装 | 秘密の場所 |
 |---|---|---|---|---|
 | 母艦 (MacBook-Mini) | Documents/Pictures/Downloads/Movies/Music/Minecraft | 日次 13:00 | home-manager `nix/home/restic-backup.nix` (launchd) | sops-nix |
-| homeserver | `/var/lib` (全サービスの状態。`/srv` のメディアと attic は対象外) | 日次 03:00 | NixOS `services.restic.backups.homeserver` (`nix/homelab/backup.nix`) | `/var/lib/secrets/` に手動配置 (age 鍵未導入のため) |
+| homeserver | `/var/lib`、`/srv/dawarich`、`/srv/archivebox`（メディアと attic は対象外） | 日次 03:00 | NixOS `services.restic.backups.homeserver` (`nix/homelab/backup.nix`) | `/var/lib/secrets/` に手動配置 (age 鍵未導入のため) |
 | macmini | `~/Developer` + `~/.config` (除外: node_modules/.venv/target/.git/objects/モデルの重み) | 日次 05:00 | home-manager `nix/home/macmini-backup.nix` (launchd) | 手動配置の生ファイル (sops 非導入) |
 | rpi4 | `/home/pi` (docker サービスデータ) | 日次 04:30 | `restic-rpi-offsite.sh` + systemd timer | `/root/.config/rclone/rclone.conf` + `/root/.restic.pw` |
 
@@ -40,14 +40,14 @@ imperative 構成だった。両方消したので、この README を見て手�
 ## スマホから中身を閲覧 (files.gapul.net)
 
 暗号化リポジトリは Google Drive 上では中身が見えない。プレビューは homeserver 上の
-**restic mount (read-only FUSE) + Filebrowser** で行う。定義は `nix/homelab/restic-view.nix`
-(pve 時代は手書き systemd unit だった。移行時に宣言へ移し、ここの unit ファイルは消した)。
+**restic mount (read-only FUSE) + Filestash** で行う。定義は
+`nix/homelab/{restic-view,filestash}.nix`。Filestashから同じ画面でGoogle Driveも
+扱えるが、バックアップ側は読み取り専用のままにする。
 
 - restic mount は **`--no-lock` 必須**(常駐マウントのロックが日次 prune を塞ぐのを防ぐ)。
-- Filebrowser の待ち受けは **8085**。8082 は pve 時代のポートで、homeserver では ntfy の
-  コンテナが使っている(1台に畳んだことで生まれた衝突)。
+- Filestash の待ち受けは **8099**。
 - **CF DNS**: `files.gapul.net` の A レコードが個別に要る(ワイルドカードは無い)。
-- tailnet 限定・認証なし。
+- tailnet 限定で、Caddyの共通認証も通す。
 
 ## 復元テスト (2026-07-20 実施・全ホスト合格)
 
