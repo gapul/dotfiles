@@ -75,12 +75,12 @@
     };
 
     systemd.timers.container-auto-update = {
-      description = "コンテナの更新を週 1 回走らせる";
+      description = "コンテナの更新を毎日走らせる";
       wantedBy = [ "timers.target" ];
       timerConfig = {
-        # 毎日は変化が多すぎ、月 1 では数ヶ月の滞留が戻ってくる。
-        # backup (03:13) と restore-drill を避けて日曜の朝に置く。
-        OnCalendar = "Sun 05:00";
+        # rolling tag を最大 24 時間以内に拾う。backup (03:13) と夜間の
+        # nixos-upgrade を避け、失敗時は Podman の rollback と ntfy が受け持つ。
+        OnCalendar = "*-*-* 05:00";
         Persistent = true;
         RandomizedDelaySec = "20min";
       };

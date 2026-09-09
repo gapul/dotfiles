@@ -256,9 +256,9 @@ pve だけでなく **母艦Mac / macmini / rpi4** も同一 restic リポジト
 - 母艦の restic-monitor は `nix/lib/restic-common.nix` の `monitoredHosts` を**ホスト別**に見る。共有リポジトリでは「リポジトリ全体の最新1本」を見ても他の1台が生きている限り警告が出ず、1台だけ止まった状態を検知できない。**ホストを増やしたら monitoredHosts に足す**（足し忘れるとそのホストは無監視、退役ホストは外さないと毎日誤報）。
 - 書き込む側が居なくなったホストのスナップショット（pve の vzdump、移行時の cold/warm pass）は `archive` タグを付けて保持期限から外してある。外すと keep-monthly 6 の期限切れで消える。
 - Google OAuth は Production 公開済でトークン失効しない（旧: Testing で約7日ごとに失効し全ホスト同時停止の罠）。失敗時は ntfy 通知（母艦/macmini/rpi4）。
-- **スマホから中身プレビュー**: `files.gapul.net` = pve 上の restic mount(read-only FUSE, `--no-lock`) + Filebrowser を Caddy 公開（tailnet 限定・認証なし）。CF は `files.gapul.net` の個別 A レコード（→ caddy tailnet IP）が必要。
+- **スマホから中身プレビュー**: `files.gapul.net` = homeserver 上の Filestash。Google Driveとrestic mount（read-only FUSE、`--no-lock`）を一画面で扱い、Caddy側でも認証する。
 - 復元テスト（2026-07-20）: 母艦/pve/macmini/rpi4 全ホストで、復元ファイルの SHA256 がライブと一致することを確認済み。
-- dash(Homepage) の Backup セクションに Backrest（閲覧/リストア）と Filebrowser（中身プレビュー）を登録済み。
+- dash(Homepage) の Backup セクションに Filestash（Drive / バックアップ閲覧）を登録済み。
 
 ### HA 自動バックアップ（TODO）
 VM100 全体は上記 vzdump で取得済み。HA 内蔵の自動バックアップ（設定単位の復元用・暗号化パスワード要設定）は未設定。

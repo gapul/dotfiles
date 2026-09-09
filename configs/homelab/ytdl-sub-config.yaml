@@ -1,0 +1,20 @@
+configuration:
+  working_directory: "/var/lib/ytdl-sub/work"
+  umask: "022"
+  persist_logs:
+    logs_directory: "/var/log/ytdl-sub"
+    keep_successful_logs: false
+
+presets:
+  jellyfin_channel:
+    preset:
+      - "Jellyfin TV Show by Date"
+      - "Only Recent"
+    overrides:
+      tv_show_directory: "/srv/youtube"
+      only_recent_date_range: "2months"
+      only_recent_max_files: 30
+    ytdl_options:
+      # Avoid a burst that looks like scraping and is more likely to be blocked.
+      sleep_interval: 3
+      max_sleep_interval: 8

@@ -26,6 +26,9 @@ in
       # suggests, so the whole /srv exclusion below was silently dropping the location history.
       # It is the Google Timeline replacement: nothing re-collects it.
       "/srv/dawarich"
+      # An ArchiveBox snapshot exists precisely because the original page may
+      # disappear.  Treating it as re-downloadable defeated that purpose.
+      "/srv/archivebox"
     ];
     exclude = [
       # Container images are re-pullable and would dominate the repository. The
@@ -37,11 +40,12 @@ in
       # Runtime scratch, regenerated on boot.
       "/var/lib/systemd/coredump"
     ];
-    # The rest of /srv is not backed up. It holds media, the attic cache and archivebox's
-    # dumps: large, and either re-obtainable or already content-addressed. /srv/syncthing is
-    # a copy of what the Mac holds and is backed up from there. /srv/dawarich is the one
-    # exception and is listed above. Check this list again whenever a service is pointed at
-    # the big disk — that is how the location history went missing.
+    # The rest of /srv is not backed up. It holds media and the attic cache: large,
+    # and either re-obtainable or already content-addressed. /srv/syncthing is a
+    # copy of what the Mac holds and is backed up from there. Dawarich and
+    # ArchiveBox are the exceptions listed above. Check this list again whenever
+    # a service is pointed at the big disk — that is how location history went
+    # missing.
 
     # --host: the repository is shared, and forget without it applies this policy to
     # every host's snapshots, not just the ones written here. The policy is the same
@@ -68,6 +72,14 @@ in
       rm -rf /var/lib/db-dumps
       install -d -m 0700 /var/lib/db-dumps
 
+      sqlite_backup() {
+        src="$1"
+        dst="$2"
+        if [ -e "$src" ]; then
+          ${pkgs.sqlite}/bin/sqlite3 "$src" ".timeout 30000" ".backup $dst"
+        fi
+      }
+
       ${pkgs.podman}/bin/podman exec dawarich_db \
         sh -c 'pg_dump -U "$POSTGRES_USER" -Fc dawarich_production' \
         > /var/lib/db-dumps/dawarich.dump
@@ -75,6 +87,18 @@ in
       ${pkgs.podman}/bin/podman exec miniflux-db \
         sh -c 'pg_dump -U "$POSTGRES_USER" -Fc miniflux' \
         > /var/lib/db-dumps/miniflux.dump
+
+      ${pkgs.podman}/bin/podman exec rallly-db \
+        sh -c 'pg_dump -U "$POSTGRES_USER" -Fc "$POSTGRES_DB"' \
+        > /var/lib/db-dumps/rallly.dump
+
+      ${pkgs.podman}/bin/podman exec spliit-db \
+        sh -c 'pg_dump -U "$POSTGRES_USER" -Fc "$POSTGRES_DB"' \
+        > /var/lib/db-dumps/spliit.dump
+
+      ${pkgs.podman}/bin/podman exec romm-db \
+        sh -c 'mariadb-dump --single-transaction -u"$MARIADB_USER" -p"$MARIADB_PASSWORD" "$MARIADB_DATABASE"' \
+        > /var/lib/db-dumps/romm.sql
 
       # ネイティブの PostgreSQL (atuin が database.createLocally で生やしたクラスタ)。
       # コンテナ側と違ってここは見落としていた。/var/lib は paths に入っているので
@@ -104,9 +128,40 @@ in
       # .backup はオンラインバックアップ API を使うので、稼働中でも千切れない。
       # 初回 rebuild 時にはまだファイルが無いため、無ければ黙って飛ばす (ここで
       # 失敗させるとバックアップ全体が落ちる)。
-      if [ -e /var/lib/homelab/readeck/data/db.sqlite3 ]; then
-        ${pkgs.sqlite}/bin/sqlite3 /var/lib/homelab/readeck/data/db.sqlite3 \
-          ".backup /var/lib/db-dumps/readeck.db"
+      sqlite_backup /var/lib/homelab/readeck/data/db.sqlite3 /var/lib/db-dumps/readeck.db
+      sqlite_backup /var/lib/homelab/forgejo/data/gitea/gitea.db /var/lib/db-dumps/forgejo.db
+      sqlite_backup /var/lib/homelab/navidrome/data/navidrome.db /var/lib/db-dumps/navidrome.db
+      sqlite_backup /var/lib/homelab/vaultwarden/data/db.sqlite3 /var/lib/db-dumps/vaultwarden.db
+      sqlite_backup /var/lib/homelab/pingvin-share/data/pingvin-share.db /var/lib/db-dumps/pingvin-share.db
+      sqlite_backup /var/lib/homelab/calnode/calnode.db /var/lib/db-dumps/calnode.db
+      sqlite_backup /var/lib/homelab/jellyfin/config/data/data/jellyfin.db /var/lib/db-dumps/jellyfin.db
+      sqlite_backup /var/lib/homelab/bambuddy/data/bambuddy.db /var/lib/db-dumps/bambuddy.db
+      sqlite_backup /var/lib/homelab/ntfy/lib/user.db /var/lib/db-dumps/ntfy-user.db
+      sqlite_backup /var/lib/homelab/ntfy/cache/cache.db /var/lib/db-dumps/ntfy-cache.db
+      sqlite_backup /var/lib/hass/home-assistant_v2.db /var/lib/db-dumps/home-assistant.db
+      sqlite_backup /srv/archivebox/index.sqlite3 /var/lib/db-dumps/archivebox.db
+
+      for bridge in discord telegram twitter meta; do
+        sqlite_backup "/var/lib/homelab/matrix/bridges/$bridge/mautrix-$bridge.db" \
+          "/var/lib/db-dumps/matrix-$bridge.db"
+        sqlite_backup "/var/lib/homelab/matrix/bridges/$bridge/db.db" \
+          "/var/lib/db-dumps/matrix-$bridge.db"
+      done
+
+      for db in workflow metadata share; do
+        sqlite_backup "/var/lib/homelab/filestash/state/db/$db.sql" \
+          "/var/lib/db-dumps/filestash-$db.db"
+      done
+
+      # Gameyfin uses an embedded H2 database, for which an online file copy is
+      # not consistent.  Stop only this catalogue long enough to copy its small
+      # DB, then let backupCleanupCommand bring it back even if restic fails.
+      if ${pkgs.systemd}/bin/systemctl is-active --quiet podman-gameyfin.service; then
+        touch /run/gameyfin-stopped-for-backup
+        ${pkgs.systemd}/bin/systemctl stop podman-gameyfin.service
+      fi
+      if [ -d /var/lib/homelab/gameyfin/db ]; then
+        ${pkgs.coreutils}/bin/cp -a /var/lib/homelab/gameyfin/db /var/lib/db-dumps/gameyfin-db
       fi
     '';
 
@@ -114,6 +169,10 @@ in
     # うえ、古いダンプが正本のように見えてしまう。
     backupCleanupCommand = ''
       rm -rf /var/lib/db-dumps
+      if [ -e /run/gameyfin-stopped-for-backup ]; then
+        rm -f /run/gameyfin-stopped-for-backup
+        ${pkgs.systemd}/bin/systemctl start podman-gameyfin.service
+      fi
     '';
 
     pruneOpts = resticCommon.retentionArgs ++ [ "--host homeserver" ];

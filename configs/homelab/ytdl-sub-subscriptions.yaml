@@ -1,0 +1,6 @@
+# Subscriptions-as-code. Add channels in this shape and validate them with
+# `hs ytdl check` before pushing:
+#
+# jellyfin_channel:
+#   "Channel name": "https://www.youtube.com/@channel/videos"
+{}

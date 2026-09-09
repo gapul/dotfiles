@@ -1,0 +1,53 @@
+# Settings with an operational or security effect are kept in Git. Values not
+# listed here retain Pingvin Share X's upstream default. The presence of this
+# file deliberately makes the web settings page read-only.
+general:
+  appName: Pingvin Share X
+  appUrl: https://send.gapul.net
+  showHomePage: "true"
+  defaultLanguage: en-US
+
+security:
+  sessionDuration: 3 months
+  secureCookies: "true"
+  enableEmailVerification: "false"
+  allowRegistration: "true"
+  allowUnauthenticatedShares: "false"
+  allowAdminAccessAllShares: "false"
+  customPasswordPolicy: "false"
+
+share:
+  enableShareEmailRecipients: "false"
+  enableShareDownloadNotifications: "false"
+  enableUserRecipients: "false"
+  autoOpenShareModal: "false"
+  reverseShareSimpleOnly: "false"
+  maxExpiration: 0 days
+  defaultExpiration: 7 days
+  shareIdLength: "8"
+  maxSize: "1000000000"
+  zipCompressionLevel: "9"
+  chunkSize: "10000000"
+  fileRetentionPeriod: 0 days
+
+smtp:
+  enabled: "false"
+
+ldap:
+  enabled: "false"
+
+oauth:
+  disablePassword: "false"
+
+s3:
+  enabled: "false"
+
+# Required by Pingvin's YAML loader even when the installation already has an
+# administrator. Never place an initial password in this world-readable file.
+initUser:
+  enabled: false
+  username: admin
+  email: admin@example.invalid
+  password: ""
+  isAdmin: true
+  ldapDN: ""
