@@ -111,6 +111,28 @@ in
     "claude/skills/step-by-step-tutor".source = claudeConfig "skills/step-by-step-tutor";
   };
 
+  # Codex: the herdr SessionStart hook reports the codex session id over the herdr socket,
+  # which is the only way herdr can resume the pane's agent after a reboot (claude does the
+  # same through configs/cli/claude/hooks). Without it a codex pane comes back as a bare shell.
+  # The script is an out-of-store symlink so `herdr integration install codex` can update it
+  # straight into the repo; hooks.json is generated here because the upstream file hardcodes
+  # an absolute macOS path that would be wrong on the Linux workstations.
+  xdg.dataFile."codex/herdr-agent-state.sh".source =
+    config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.dotfiles/configs/cli/codex/herdr-agent-state.sh";
+  xdg.dataFile."codex/hooks.json".text = builtins.toJSON {
+    hooks.SessionStart = [
+      {
+        hooks = [
+          {
+            type = "command";
+            command = "bash '${config.xdg.dataHome}/codex/herdr-agent-state.sh' session";
+            timeout = 10;
+          }
+        ];
+      }
+    ];
+  };
+
   # supermaven: sm-agent hardcodes $HOME/.supermaven (not XDG-aware).
   # Keep the real dir at ~/.local/share/supermaven and make $HOME a symlink to it.
   # (Moving it wholesale makes the agent lose its config and its auth, so the symlink is required)
