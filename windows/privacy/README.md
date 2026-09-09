@@ -1,74 +1,80 @@
-# Windows プライバシー / 標準機能 declarative 化
+# Declaring Windows privacy and built-in features
 
-Mac の `nix/hosts/darwin.nix` の `system.defaults` 相当を Windows でも宣言的に管理する。
-**WinUtil**(プライバシー + Service / Performance / Features)と
-**Win11Debloat**(UWP プリイン削除)の併用。
+The Windows equivalent of `system.defaults` in the Mac's `nix/hosts/darwin.nix`, managed
+declaratively. It uses WinUtil for privacy, services, performance and features, alongside
+Win11Debloat for removing the preinstalled UWP apps.
 
-## 構成
+## Layout
 
 ```
 windows/privacy/
 ├── README.md
-├── winutil-config.json          # ChrisTitusTech/winutil の export 設定
-├── win11debloat-args.txt        # Raphire/Win11Debloat の CLI 引数(空行/`#` コメント可)
-├── win11debloat-customapps.txt  # Win11Debloat 標準セット外で追加削除する UWP
-└── apply.ps1                    # 上 3 つを順に呼ぶ orchestrator + 追加 registry tweak
+├── winutil-config.json          # an exported ChrisTitusTech/winutil configuration
+├── win11debloat-args.txt        # CLI arguments for Raphire/Win11Debloat; blank lines and `#` comments allowed
+├── win11debloat-customapps.txt  # extra UWP apps to remove, beyond Win11Debloat's standard set
+└── apply.ps1                    # the orchestrator that runs the three in order, plus extra registry tweaks
 ```
 
-## 実行
+## Running it
 
 ```powershell
-# DryRun(副作用なしで何が走るか確認)
+# see what would run, with no side effects
 just win-privacy -DryRun
 pwsh -File windows/privacy/apply.ps1 -DryRun
 
-# 本番(管理者要、UAC promp あり)
+# for real. Needs administrator rights and raises a UAC prompt
 just win-privacy
 ```
 
-実行内容:
-1. `Win11Debloat`(`irm https://win11debloat.raphi.re/ | iex`)を一時取得 →
-   `win11debloat-args.txt` の引数で **自動実行**(`-Silent -RunDefaults` 等)
-2. `WinUtil`(`irm https://christitus.com/win | iex`)を一時取得 →
-   `winutil-config.json` を引数で渡して **GUI 起動**。GUI で **Import → Apply**
+What happens:
 
-WinUtil の CLI 自動 apply は version によって挙動が変わるため、本リポは GUI 経由の
-半自動運用(設定は declarative、最終 Apply はユーザー操作)を採用。
+1. Win11Debloat is fetched temporarily, through `irm https://win11debloat.raphi.re/ | iex`, and
+   run automatically with the arguments in `win11debloat-args.txt`, such as `-Silent` and
+   `-RunDefaults`.
+2. WinUtil is fetched temporarily, through `irm https://christitus.com/win | iex`, and started
+   with `winutil-config.json` passed to it. Its GUI opens, and you choose Import then Apply.
 
-## 設定の変更
+WinUtil's automatic CLI apply changes behaviour between versions, so this repository settles for
+a half-automatic arrangement: the configuration is declarative, and the final Apply is a user
+action.
+
+## Changing the configuration
 
 ### Win11Debloat
-`win11debloat-args.txt` を編集。1 行 1 引数(空行と `#` コメント可)。
-利用可能な引数は <https://github.com/Raphire/Win11Debloat#options> を参照。
 
-現状の引数(15 個):
+Edit `win11debloat-args.txt`, one argument per line, with blank lines and `#` comments allowed.
+The available arguments are at <https://github.com/Raphire/Win11Debloat#options>.
 
-- 必須: `-Silent`
-- UWP 削除: `-RemoveApps` / `-RemoveGamingApps`
-- テレメトリ/AI: `-DisableTelemetry` / `-DisableBing` / `-DisableCopilot` / `-DisableRecall`
-- 通知/誘導: `-DisableLockscreenTips` / `-DisableSuggestions` / `-DisableStickyKeys` / `-DisableWidgets`
-- エクスプローラ: `-ShowHiddenFolders` / `-ShowKnownFileExt` / `-HideHome` / `-HideGallery`
+The current fifteen:
 
-### Win11Debloat に存在しない引数の代替
+- Required: `-Silent`
+- Removing UWP apps: `-RemoveApps`, `-RemoveGamingApps`
+- Telemetry and AI: `-DisableTelemetry`, `-DisableBing`, `-DisableCopilot`, `-DisableRecall`
+- Notifications and nudges: `-DisableLockscreenTips`, `-DisableSuggestions`,
+  `-DisableStickyKeys`, `-DisableWidgets`
+- Explorer: `-ShowHiddenFolders`, `-ShowKnownFileExt`, `-HideHome`, `-HideGallery`
 
-以下は Win11Debloat の公式 wiki に**存在しない引数**だったため、別経路で実装:
+### Arguments that turned out not to exist
 
-| 元 | 代替 |
+These are not in Win11Debloat's wiki, so they are implemented another way:
+
+| Intended | Instead |
 |---|---|
-| `-RemoveCommApps` | `win11debloat-customapps.txt` に `microsoft.windowscommunicationsapps` |
-| `-RemoveDevApps` | `win11debloat-customapps.txt` に `Microsoft.Microsoft3DViewer` / `Microsoft.MixedReality.Portal` |
-| `-RemoveW11Outlook` | `win11debloat-customapps.txt` に `Microsoft.OutlookForWindows` |
-| `-DisableOnedrive`(Win10 only) | `apply.ps1` の OneDrive uninstall step(`OneDriveSetup.exe /uninstall`) |
+| `-RemoveCommApps` | `microsoft.windowscommunicationsapps` in `win11debloat-customapps.txt` |
+| `-RemoveDevApps` | `Microsoft.Microsoft3DViewer` and `Microsoft.MixedReality.Portal` in `win11debloat-customapps.txt` |
+| `-RemoveW11Outlook` | `Microsoft.OutlookForWindows` in `win11debloat-customapps.txt` |
+| `-DisableOnedrive`, which is Windows 10 only | The OneDrive uninstall step in `apply.ps1`, running `OneDriveSetup.exe /uninstall` |
 
 ### WinUtil
-1. 実機で WinUtil を起動: `irm https://christitus.com/win | iex`
-2. GUI でチェックを入れて選択
-3. `Settings → Export Config` で JSON 保存
-4. 保存先を `windows/privacy/winutil-config.json` に置き換え → commit
 
-## bootstrap への組み込み
+1. Start WinUtil on the machine: `irm https://christitus.com/win | iex`
+2. Tick what you want in the GUI.
+3. Save the JSON through Settings, Export Config.
+4. Replace `windows/privacy/winutil-config.json` with it and commit.
 
-`bootstrap.ps1` のステップ 7 として自動実行される。skip したい時は:
+## How it fits into bootstrap
+
+`bootstrap.ps1` runs it as step 7. To skip it:
 
 ```powershell
 pwsh -File windows/bootstrap.ps1 -SkipPrivacy
@@ -76,32 +82,36 @@ pwsh -File windows/bootstrap.ps1 -SkipPrivacy
 just win-bootstrap -SkipPrivacy
 ```
 
-後から個別に適用:
+To apply it separately afterwards:
 
 ```powershell
-just win-privacy           # 本番
-just win-privacy -DryRun   # 副作用確認
+just win-privacy           # for real
+just win-privacy -DryRun   # check the side effects
 ```
 
-`apply.ps1` は `-SkipWinUtil` / `-SkipWin11Debloat` / `-SkipCustomApps` で部分実行も可能。
+`apply.ps1` also takes `-SkipWinUtil`, `-SkipWin11Debloat` and `-SkipCustomApps` for partial
+runs.
 
-### カスタム UWP 削除 (win11debloat-customapps.txt)
+### Removing custom UWP apps, through win11debloat-customapps.txt
 
-Win11Debloat 標準セットに含まれない UWP を `Get-AppxPackage | Remove-AppxPackage` で直接削除する。
-Provisioned package も同時に削除して新規ユーザー作成時に戻らないようにする(管理者要)。
+UWP apps outside Win11Debloat's standard set are removed directly with
+`Get-AppxPackage | Remove-AppxPackage`. The provisioned package is removed at the same time so
+they do not come back when a new user is created, which needs administrator rights.
 
-1 行 1 PackageName、空行 / `#` コメント可。
+One PackageName per line, with blank lines and `#` comments allowed.
 
-### 追加 registry tweak
+### Extra registry tweaks
 
-`apply.ps1` に直書きされている declarative な registry 設定:
+Declarative registry settings written directly in `apply.ps1`:
 
-- `HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsBackup\DisableWindowsBackupUI = 1`
-  Windows 11 24H2 の Windows Backup UI を無効化(UWP 本体は CBS で削除不可なため機能 OFF のみ)
+- `HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsBackup\DisableWindowsBackupUI = 1`, which
+  disables the Windows Backup UI in Windows 11 24H2. The UWP part itself belongs to CBS and
+  cannot be removed, so turning the feature off is all there is.
 
-## 補完できないもの
+## What this cannot cover
 
-- 個別レジストリ書き換えで両ツールに含まれない tweak は別途 `apply.ps1` の
-  `$ExtraRegistry` 配列に追加(declarative 拡張ポイント)
-- macOS の `CustomUserPreferences` 相当の細かい設定は、各アプリ専用ポリシー
-  (Chrome の Enterprise Policy 等)で対応
+Registry tweaks neither tool includes go into the `$ExtraRegistry` array in `apply.ps1`, which
+is the declarative extension point.
+
+The fine-grained settings that would be `CustomUserPreferences` on macOS are handled through
+each application's own policy mechanism, such as Chrome's enterprise policy.

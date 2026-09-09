@@ -1,63 +1,67 @@
-# Windows ネイティブ環境(WSL 外)
+# The native Windows environment, outside WSL
 
-Windows 上で動く部分(PowerShell, winget, WezTerm 等)の dotfiles。
-WSL2 側の Linux 環境は `~/.dotfiles/nix/home/wsl.nix` で別管理。
+The dotfiles for what runs on Windows itself: PowerShell, winget, WezTerm and so on. The Linux
+side inside WSL2 is managed separately, through `~/.dotfiles/nix/home/wsl.nix`.
 
-## 構成
+## Layout
 
 ```
 windows/
 ├── README.md
-├── bootstrap.ps1                              # 0→1 セットアップ
+├── bootstrap.ps1                              # setup from nothing
 ├── ssh/
-│   └── config                                 # Windows OpenSSH 接続先
+│   └── config                                 # hosts for Windows OpenSSH
 ├── profile/
 │   └── Microsoft.PowerShell_profile.ps1       # $PROFILE
 └── winget/
-    └── apps.json                              # winget 宣言的 import 形式
+    └── apps.json                              # declarative, in winget import format
 ```
 
-## 初回セットアップ
+## First-time setup
 
-PowerShell 7 (`pwsh.exe`) を管理者で開いて:
+Open PowerShell 7 (`pwsh.exe`) as administrator:
 
 ```powershell
-# 実行ポリシーを ローカルスクリプト許可に
+# allow local scripts
 Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 
-# dotfiles を clone (git は winget で別途入れるか手動)
+# clone dotfiles. git comes from winget separately, or by hand
 git clone https://github.com/gapul/dotfiles.git $env:USERPROFILE\dotfiles
 
-# bootstrap 実行
+# run bootstrap
 & $env:USERPROFILE\dotfiles\windows\bootstrap.ps1
 ```
 
-## bootstrap.ps1 が何をするか
+## What bootstrap.ps1 does
 
-1. **winget** が無ければ Microsoft Store 経由で install を促す
-2. `winget/apps.json` を `winget import` で一括 install
-3. PowerShell `$PROFILE` を symlink (`profile/Microsoft.PowerShell_profile.ps1`)
-4. Windows OpenSSHのconfigを `%USERPROFILE%\.ssh\config` へsymlink
-5. age 鍵 / SSH 鍵が在れば ACL を本人のみに制限 (icacls)。無ければ警告
-6. git の global config 設定
+1. If winget is missing, points you at the Microsoft Store to install it.
+2. Installs everything in `winget/apps.json` with `winget import`.
+3. Symlinks PowerShell's `$PROFILE` to `profile/Microsoft.PowerShell_profile.ps1`.
+4. Symlinks the Windows OpenSSH config to `%USERPROFILE%\.ssh\config`.
+5. Restricts the ACL on the age and SSH keys to you alone with icacls, if they exist, and warns
+   if they do not.
+6. Sets the global git configuration.
 
-## 何が含まれない
+## What it does not do
 
-- 具体的にどの app を入れるか — `winget/apps.json` に追記して決める
-- WSL の install — Windows 機能を有効化するのは Windows 側手動
-  - PowerShell: `wsl --install -d Ubuntu`
-  - WSL 側で `~/.dotfiles/scripts/bootstrap-wsl.sh` を走らせる
+- Decide which apps to install; that is what adding to `winget/apps.json` is for.
+- Install WSL. Turning on the Windows feature is a manual step:
+  - In PowerShell, `wsl --install -d Ubuntu`
+  - Then, inside WSL, run `~/.dotfiles/scripts/bootstrap-wsl.sh`
 
-## パッケージマネージャの使い分け
+## winget and scoop
 
-- **winget が一次**。CLI / GUI とも基本は `apps.json` に追記して宣言的に管理
-- **scoop は補助**。`winget` リポジトリに無いもの限定 (legacy / portable 配布のみのツール)
-- 同名ツールが両方から入ると PATH 順で先勝ちになるので、`Find-DotfilesToolOverlap`
-  関数 (profile.ps1 で定義) を起動後 `Find-DotfilesToolOverlap` と叩いて重複を可視化。
-  重複があれば原則 scoop 側を `scoop uninstall <tool>` で外し winget に揃える
+winget comes first. Both CLIs and GUI apps are normally declared by adding them to `apps.json`.
 
-## 設定変更後の反映
+scoop is the fallback, only for things winget's repository does not carry: legacy tools and
+things distributed only as portables.
 
-PowerShell プロファイル: ファイル編集後 `. $PROFILE` で再読込
+If the same tool arrives from both, whichever comes first in PATH wins. `Find-DotfilesToolOverlap`,
+defined in profile.ps1, lists the duplicates. When there is one, the rule is to remove the scoop
+copy with `scoop uninstall <tool>` and standardise on winget.
 
-WezTerm: 設定ファイル変更後 WezTerm を再起動
+## Applying changes
+
+For the PowerShell profile, edit the file and reload with `. $PROFILE`.
+
+For WezTerm, edit the configuration and restart it.

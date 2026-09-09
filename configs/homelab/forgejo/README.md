@@ -1,64 +1,73 @@
-# Forgejo (GitHub 以外の自宅 git ホスト)
+# Forgejo, a git host at home that is not GitHub
 
-GitHub の代替/冗長リモート。GitHub 障害・アカウント凍結時にも dotfiles やコードが自宅に残る。
+A redundant remote, so dotfiles and the rest of the code are still at home if GitHub goes down
+or the account is frozen.
 
-- 公開: `https://git.gapul.net/` (Caddy・**Tailscale 限定**・Cloudflare DNS-01 TLS)
-- git は **HTTPS のみ**(SSH 無効)。push/pull は token 認証
+Published at `https://git.gapul.net/`, through Caddy, on Tailscale only, with TLS from
+Cloudflare DNS-01. git is HTTPS only, with SSH disabled, and push and pull authenticate with a
+token.
 
-## デプロイ (CT101 = dockge / .65)
+## Deploying, on CT101, dockge, at .65
 
 ```bash
-ssh proxmox            # root@192.168.116.100 (flap したら再試行)
+ssh proxmox            # root@192.168.116.100; retry if the path flaps
 pct enter 101
 mkdir -p /opt/stacks/forgejo/data && cd /opt/stacks/forgejo
-# compose.yaml を配置 (dotfiles の configs/homelab/forgejo/compose.yaml)。Dockge UI 推奨
+# put compose.yaml in place, from configs/homelab/forgejo/compose.yaml. The Dockge UI is easier.
 docker compose up -d
-docker compose logs -f          # "Starting new Web server" を確認
+docker compose logs -f          # wait for "Starting new Web server"
 ```
 
-## Caddy ルート反映 (CT103 = caddy)
+## Applying the Caddy route, on CT103
 
-dotfiles の `configs/homelab/caddy/Caddyfile` に `git.gapul.net → .65:3003` を追加済み。
-caddy CT に配ってリロード:
+`configs/homelab/caddy/Caddyfile` already routes `git.gapul.net` to `.65:3003`. Distribute it to
+the Caddy container and reload:
 
 ```bash
 ssh proxmox 'pct exec 103 -- caddy reload --config /etc/caddy/Caddyfile'
 ```
 
-## 初期設定 (ブラウザ)
+## First-time setup, in the browser
 
-1. `https://git.gapul.net/` を開く → 初回セットアップ画面
-2. admin ユーザー(gapul)を作成。DB は内蔵 SQLite で十分
-3. 設定 → Applications → **Generate New Token**(scope: repo)。token を控える(Bitwarden へ)
+1. Open `https://git.gapul.net/` and you get the setup screen.
+2. Create the admin user, `gapul`. The built-in SQLite is plenty.
+3. Under Settings, Applications, choose Generate New Token with the repo scope, and put the
+   token in Bitwarden.
 
-## リポジトリを冗長化する 2 方式
+## Two ways to make a repository redundant
 
-### 方式1: Pull Mirror (推奨・Mac の操作を変えない)
+### Pull mirror, recommended, because nothing on the Mac changes
 
-Forgejo が GitHub から定期的に pull して自宅へ複製し続ける。Mac 側は一切変更不要。
+Forgejo pulls from GitHub periodically and keeps a copy at home. Nothing on the Mac needs
+changing.
 
-1. Forgejo 右上 ＋ → **New Migration** → **GitHub**
-2. URL に GitHub repo (例 `https://github.com/gapul/dotfiles`)
-3. **「This repository will be a mirror」にチェック** → Migrate
-4. (private repo の場合のみ) GitHub の token を入力欄に
-5. 以後、設定した間隔で自動同期。`git.gapul.net/gapul/dotfiles` に常に最新の複製
+1. Plus, top right, then New Migration, then GitHub.
+2. Give the GitHub repo URL, for instance `https://github.com/gapul/dotfiles`.
+3. Tick "This repository will be a mirror", then Migrate.
+4. For a private repository, paste a GitHub token.
+5. From then on it syncs on the configured interval, and
+   `git.gapul.net/gapul/dotfiles` always holds a current copy.
 
-→ dotfiles・notes 等をこの方式で登録すれば、push 先は GitHub のままで自宅にも残る。
+Registering dotfiles, notes and the like this way means pushes still go to GitHub while a copy
+stays at home.
 
-### 方式2: 両方へ push (自宅をライブの相互リモートに)
+### Pushing to both, making home a live mirror
 
-Mac の repo で push 先を GitHub と Forgejo の両方にする:
+Point the Mac's repository at both remotes:
 
 ```bash
 cd ~/.dotfiles
-# まず Forgejo 側に空 repo を作成 (UI の New Repository) してから:
+# create an empty repository in Forgejo first, through New Repository, then:
 git remote set-url --add --push origin https://git.gapul.net/gapul/dotfiles.git
-git remote set-url --add --push origin https://github.com/gapul/dotfiles.git   # 既存分も再追加
-# 以後 `git push` で両方へ飛ぶ。token は git credential helper / .netrc に保存
+git remote set-url --add --push origin https://github.com/gapul/dotfiles.git   # re-add the existing one
+# from now on `git push` goes to both. The token lives in the git credential helper or .netrc
 git config credential.https://git.gapul.net.username gapul
 ```
 
-## メンテ
-- バックアップ: `./data`(SQLite + リポジトリ実体) を別途保全。Mac の restic 対象には無いので、
-  homelab 側で `./data` を定期 dump するか、重要 repo は GitHub が原本なので Forgejo 側は再構築可。
-- 更新: wud が新バージョンを通知 → Dockge で pull & redeploy。
+## Maintenance
+
+Back up `./data`, which holds the SQLite database and the repositories themselves, separately.
+It is not covered by the Mac's restic, so either dump it periodically from the homelab side, or
+accept that GitHub holds the original of anything important and Forgejo can be rebuilt.
+
+For updates, wud reports a new version and Dockge pulls and redeploys.

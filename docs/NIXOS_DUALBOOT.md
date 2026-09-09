@@ -1,369 +1,422 @@
-# NixOS / Windows デュアルブート 構築手順 (最大セキュリティ構成)
+# Dual-booting NixOS alongside Windows, with everything locked down
 
-現在 Windows がフル構築済みの 1 台の SSD を**縮小して空き領域に NixOS を入れる**手順。
-GPU は Intel 内蔵のみ前提。**両 OS とも暗号化 + 署名ブート**にする:
+How to shrink a single SSD that already has a full Windows installation on it and put NixOS in
+the free space. Assumes the Intel integrated GPU is the only graphics. Both systems end up
+encrypted and signed:
 
-- NixOS root … **LUKS 全ディスク暗号化**
-- ブート … **lanzaboote で Secure Boot 有効**（自分の鍵で署名、Microsoft 鍵も残して Windows 共存）
-- Windows … BitLocker を**一時中断するだけ**（復号しない）で維持
+- The NixOS root is fully encrypted with LUKS.
+- Booting goes through lanzaboote with Secure Boot enabled, signed with our own keys, keeping
+  the Microsoft keys so Windows still boots.
+- Windows keeps BitLocker; it is only suspended, never decrypted.
 
-設定は本 dotfiles の flake (`nix/`) に統合済み:
+The configuration is already part of this repository's flake, under `nix/`:
 
-- `nix/hosts/nixos-laptop.nix` … システム設定 (lanzaboote / LUKS+TPM2 / zram / Intel GPU / Hyprland /
-  fcitx5-mozc / tlp / fprintd / podman / tailscale / fwupd)
-- `nix/flake.nix` の `nixosConfigurations."nixos-laptop"` … lanzaboote + disko + home-manager を接続
-  (`home/common.nix` + `home/linux.nix` + `home/hyprland.nix` リック + `home/dev.nix` + `home/restic-backup-linux.nix`)
-- `nix/hosts/nixos-laptop-disk.nix` … disko 宣言的レイアウト (LUKS root のみ。`diskoConfigurations` でも公開)
-- `scripts/install-nixos-laptop.sh` … ガード付きインストール補助 (disko を使わない手続き型の選択肢)
-- `nix/hosts/nixos-laptop-hardware.nix` … **実機で生成して後から追加**するマシン固有ファイル (LUKS デバイス UUID もここに入る)
+- `nix/hosts/nixos-laptop.nix` — the system: lanzaboote, LUKS with TPM2, zram, the Intel GPU,
+  Hyprland, fcitx5-mozc, tlp, fprintd, podman, tailscale, fwupd.
+- `nixosConfigurations."nixos-laptop"` in `nix/flake.nix` — wires up lanzaboote, disko and
+  home-manager, pulling in `home/common.nix`, `home/linux.nix`, `home/hyprland.nix`,
+  `home/dev.nix` and `home/restic-backup-linux.nix`.
+- `nix/hosts/nixos-laptop-disk.nix` — the declarative disko layout, covering the LUKS root
+  only, also exposed through `diskoConfigurations`.
+- `scripts/install-nixos-laptop.sh` — a guarded install helper, the procedural alternative to
+  disko.
+- `nix/hosts/nixos-laptop-hardware.nix` — the machine-specific file, generated on the real
+  hardware and added afterwards. The LUKS device UUID lives here.
 
-> ⚠️ Windows を消さないこと。ESP (EFI システムパーティション) は**フォーマットせず流用**する。
-> 各コマンドのディスク名 (`nvme0n1` / `sda` 等) は必ず `lsblk` で実機を確認してから実行する。
+Do not delete Windows, and do not format the EFI system partition — it gets reused. Check every
+disk name (`nvme0n1`, `sda` and so on) against `lsblk` on the actual machine before running
+anything.
 
 ---
 
-## Phase 0. Windows 側の事前準備 (最重要)
+## Phase 0. Preparing Windows
 
-パーティション操作前にこれを怠ると Windows が起動不能になる。
+Skipping this before touching partitions is how Windows ends up unbootable.
 
-1. **重要データのバックアップ**を取る。
-2. **BitLocker を中断**（復号は不要）。管理者 PowerShell で:
+1. Back up anything that matters.
+2. Suspend BitLocker, without decrypting. In an administrator PowerShell:
+
    ```powershell
-   manage-bde -status                       # 暗号化状態を確認
-   (Get-BitLockerVolume -MountPoint C:).KeyProtector  # 回復キーを控える(必須)
-   manage-bde -protectors -disable C: -RebootCount 0  # 再有効化まで中断したままにする
+   manage-bde -status                                 # check the encryption state
+   (Get-BitLockerVolume -MountPoint C:).KeyProtector  # write down the recovery key. Required.
+   manage-bde -protectors -disable C: -RebootCount 0  # stay suspended until re-enabled
    ```
-   > データは暗号化されたまま保持される。Secure Boot 切替やブートローダ追加で TPM 測定値が変わり、
-   > 初回 Windows 起動時に**一度だけ回復キーを要求される**ことがあるので、回復キーは必ず手元に。
-3. **高速スタートアップを無効化** (コントロールパネル → 電源オプション → 電源ボタンの動作 →
-   「現在利用可能でない設定を変更します」→「高速スタートアップを有効にする」のチェックを外す)。
-   切らないと Windows 休止中の NTFS がロック/未確定状態のままになり、Linux から触ると破損する。
-   > これは**インストール作業中の一時的な措置**。本構成は NixOS から Windows NTFS を自動マウント
-   > しない (`boot.supportedFilesystems` はコメントアウト) ので、**インストール後は再有効化してよい**
-   > (Phase 9-2 参照)。C: を NixOS から読み書き共有する場合のみ OFF のまま運用する。
-4. **休止状態を無効化** (任意だが推奨)。管理者 PowerShell で:
-   ```powershell
-   powercfg /h off
-   ```
-5. **C: を縮小**。`diskmgmt.msc` (ディスクの管理) → C: を右クリック →「ボリュームの縮小」→
-   NixOS 用に空けたい容量 (例: 150000 MB ≒ 150GB) を指定。
-   生成された**未割り当て領域はそのまま**にしておく (NixOS インストーラ側で切る)。
 
-## Phase 1. BIOS / UEFI 設定
+   The data stays encrypted. Switching Secure Boot and adding a boot loader changes the TPM
+   measurements, so Windows may ask for the recovery key once on its next start. Have it to
+   hand.
 
-再起動して BIOS に入る (起動時 `Del` / `F2` 等)。
+3. Turn off Fast Startup: Control Panel, Power Options, "Choose what the power buttons do",
+   "Change settings that are currently unavailable", then untick "Turn on fast startup".
+   Leaving it on means Windows hibernates with NTFS locked and unfinalised, and touching it
+   from Linux corrupts it.
 
-- **Secure Boot は一旦 OFF のまま**。鍵を自分で登録するまでは NixOS が起動できないため、
-  インストール〜鍵登録 (Phase 8) の後で ON にする。
-- **UEFI モードを維持** (CSM / Legacy にしない)。Windows は元々 UEFI なのでそのまま。
-- USB から起動できるよう、必要なら Fast Boot を一時的に無効化。
+   This is temporary, for the installation. This setup never mounts the Windows NTFS from NixOS
+   — `boot.supportedFilesystems` is commented out — so it can go back on afterwards, as
+   described in 9-2. Leave it off only if you want to share C: read-write with NixOS.
 
-## Phase 2. インストーラ USB を作る (Mac から)
+4. Turn off hibernation, optional but recommended: `powercfg /h off` in an administrator
+   PowerShell.
+5. Shrink C:. In `diskmgmt.msc`, right-click C:, Shrink Volume, and give the amount you want
+   for NixOS, for instance 150000 MB for about 150 GB. Leave the resulting unallocated space
+   alone; the NixOS installer will carve it up.
 
-インストール作業は全て CLI (cryptsetup / nixos-install --flake / sbctl) で、デスクトップ環境は
-インストール後に flake から入るため、**minimal ISO** を使う (軽い・無駄が無い)。
+## Phase 1. BIOS and UEFI
 
-1. ISO をダウンロードして SHA256 を照合 (`channels.nixos.org` の "latest" は最新ビルドに追従):
+Reboot into the BIOS, usually with Del or F2.
+
+- Leave Secure Boot off for now. NixOS cannot boot until our own keys are enrolled, which
+  happens in phase 8.
+- Stay in UEFI mode; do not switch to CSM or Legacy. Windows is already UEFI.
+- If necessary, turn off Fast Boot temporarily so the machine will boot from USB.
+
+## Phase 2. Making the installer USB, from the Mac
+
+The whole installation is command line — cryptsetup, `nixos-install --flake`, sbctl — and the
+desktop comes from the flake afterwards, so the minimal ISO is enough and is lighter.
+
+1. Download the ISO and check the SHA256. The "latest" link on `channels.nixos.org` tracks the
+   newest build.
+
    ```sh
    cd ~/Downloads
    curl -L -o nixos-minimal-26.05-x86_64.iso \
      "https://channels.nixos.org/nixos-26.05/latest-nixos-minimal-x86_64-linux.iso"
    curl -sL "https://channels.nixos.org/nixos-26.05/latest-nixos-minimal-x86_64-linux.iso.sha256"
-   shasum -a 256 nixos-minimal-26.05-x86_64.iso   # 上の値と一致を確認
+   shasum -a 256 nixos-minimal-26.05-x86_64.iso   # must match
    ```
-2. USB を挿し、書き込む (macOS の `dd` は `status=progress` 非対応。進捗は `Ctrl+T`):
+
+2. Insert the USB stick and write to it. macOS's `dd` has no `status=progress`; press Ctrl-T
+   for progress.
+
    ```sh
-   diskutil list external physical          # USB の diskN を特定 (容量・Removable で判断)
+   diskutil list external physical          # find the USB's diskN, by size and Removable
    diskutil unmountDisk /dev/diskN
    sudo dd if=~/Downloads/nixos-minimal-26.05-x86_64.iso of=/dev/rdiskN bs=4m
    sync && diskutil eject /dev/diskN
    ```
-   > `rdiskN` (raw) を使うと速い。`diskN` を間違えると別ディスクを破壊するので必ず確認。
-   > 書込後に「The disk you attached was not readable」が出たら **Ignore** (Initialize は押さない)。
 
-## Phase 3. インストーラを起動
+   `rdiskN`, the raw device, is much faster. Getting `diskN` wrong destroys another disk, so
+   check. If macOS says "The disk you attached was not readable" afterwards, choose Ignore —
+   never Initialize.
 
-USB を挿して PC を起動 → 起動メニュー (`F12` / `F8` / `Esc` / `F11` 等) で **UEFI: USB...** を選択。
-minimal はテキストのログイン画面。`sudo -i` で root になり、`nmtui` 等で有線/Wi-Fi を接続しておく。
+## Phase 3. Booting the installer
 
-## Phase 4. パーティション作成 + LUKS 暗号化
+Plug the stick in and boot, choosing "UEFI: USB..." from the boot menu, usually F12, F8, Esc or
+F11. The minimal image gives a text login. Become root with `sudo -i` and get networking up,
+wired or wireless, with `nmtui`.
 
-> ⚠️ **前提**: 本リポジトリの NixOS 関連ファイルを **commit & push 済み**にしておくこと
-> (インストーラは github から clone する)。未 push のローカル変更は実機に届かない。
->
-> **やり方は 3 通り**。いずれも先に「空き領域に `cfdisk` で Linux パーティションを 1 つ作る」まで同じ。
->
-> **(a) disko (宣言的・推奨)** — ディスクレイアウトをリポジトリで管理。LUKS root **1 パーティションのみ**
-> 管理し GPT/Windows/ESP には触れない (安全)。
-> ```sh
-> nix-shell -p git --run 'git clone https://github.com/gapul/dotfiles.git /tmp/df'
-> # nix/hosts/nixos-laptop-disk.nix の device を実機の Linux パーティションに置換
-> #   (lsblk -o NAME,SIZE,FSTYPE,PATH で確認。絶対にディスク全体/Windows/ESP にしない)
-> sudo disko --mode destroy,format,mount --flake /tmp/df/nix#nixos-laptop  # LUKS+ext4 を /mnt に
-> mount /dev/nvme0n1p1 /mnt/boot          # ESP は disko 管理外。手動マウント (フォーマット禁止)
-> ```
-> 以降は Phase 6 (`nixos-generate-config --root /mnt` …) へ。
->
-> **(b) 補助スクリプト (ガード付き手続き)** — disko を使わず、デバイス取り違え/NTFS・ESP 誤消去を
-> 機械的に拒否しつつ Phase 4-6 を自動化:
-> ```sh
-> bash /tmp/df/scripts/install-nixos-laptop.sh /dev/nvme0n1p5 /dev/nvme0n1p1
-> ```
->
-> **(c) 手動** — 下記の詳細手順を 1 つずつ (中身を理解したい場合)。
+## Phase 4. Partitioning and LUKS
+
+Before starting, the NixOS files in this repository must be committed and pushed, because the
+installer clones from GitHub. Local changes that are not pushed never reach the machine.
+
+There are three ways to do this. All of them start the same way: create one Linux partition in
+the free space with `cfdisk`.
+
+**(a) disko, declarative, recommended.** The disk layout lives in the repository. It manages the
+LUKS root partition alone and never touches the GPT, Windows or the ESP, which is what makes it
+safe.
+
+```sh
+nix-shell -p git --run 'git clone https://github.com/gapul/dotfiles.git /tmp/df'
+# replace the device in nix/hosts/nixos-laptop-disk.nix with the real Linux partition
+#   check with lsblk -o NAME,SIZE,FSTYPE,PATH. Never the whole disk, Windows, or the ESP.
+sudo disko --mode destroy,format,mount --flake /tmp/df/nix#nixos-laptop  # LUKS and ext4 onto /mnt
+mount /dev/nvme0n1p1 /mnt/boot          # the ESP is outside disko. Mount by hand, never format.
+```
+
+Then continue at phase 6, with `nixos-generate-config --root /mnt`.
+
+**(b) The helper script**, a guarded procedure without disko, which automates phases 4 through 6
+while mechanically refusing to touch the wrong device or wipe NTFS or the ESP:
+
+```sh
+bash /tmp/df/scripts/install-nixos-laptop.sh /dev/nvme0n1p5 /dev/nvme0n1p1
+```
+
+**(c) By hand**, following the steps below one at a time, if you want to understand what is
+happening.
 
 ```sh
 sudo -i
 lsblk -o NAME,SIZE,FSTYPE,PARTTYPENAME,MOUNTPOINT
 ```
 
-典型的な既存構成 (NVMe の例):
+A typical existing layout on NVMe:
 
-| パーティション | 用途 | 触り方 |
+| Partition | Purpose | What to do |
 |---|---|---|
-| `nvme0n1p1` | ESP (vfat, ~100–300MB) | **流用** (フォーマット禁止) |
-| `nvme0n1p2` | Microsoft 予約 (MSR) | 触らない |
-| `nvme0n1p3` | Windows C: (ntfs) | 触らない |
-| `nvme0n1p4` | 回復 (ntfs) | 触らない |
-| 末尾の空き | Phase 0 で空けた領域 | ここに NixOS root を作る |
+| `nvme0n1p1` | ESP, vfat, 100-300 MB | Reuse. Never format |
+| `nvme0n1p2` | Microsoft Reserved | Leave alone |
+| `nvme0n1p3` | Windows C:, ntfs | Leave alone |
+| `nvme0n1p4` | Recovery, ntfs | Leave alone |
+| free space at the end | what phase 0 freed | The NixOS root goes here |
 
-空き領域に新パーティションを作成 (タイプは `Linux filesystem`):
+Create the new partition in the free space, with type `Linux filesystem`:
+
 ```sh
-cfdisk /dev/nvme0n1      # [New] → 全空き容量 → [Type: Linux filesystem] → [Write] → yes → [Quit]
+cfdisk /dev/nvme0n1      # New, all free space, Type: Linux filesystem, Write, yes, Quit
 ```
 
-作られた番号を `lsblk` で再確認 (ここでは `nvme0n1p5` と仮定)。**LUKS で暗号化**してから ext4 を作る:
+Check the resulting number with `lsblk` — assume `nvme0n1p5` here — then encrypt it with LUKS
+before making the filesystem:
+
 ```sh
-cryptsetup luksFormat /dev/nvme0n1p5         # パスフレーズを設定 (YES と大文字確認あり)
-cryptsetup open /dev/nvme0n1p5 cryptroot     # /dev/mapper/cryptroot として開く
+cryptsetup luksFormat /dev/nvme0n1p5         # set a passphrase; it asks for an uppercase YES
+cryptsetup open /dev/nvme0n1p5 cryptroot     # opens as /dev/mapper/cryptroot
 mkfs.ext4 -L nixos /dev/mapper/cryptroot
 ```
 
-> スワップは**平文パーティションを作らない**。host 設定で `zramSwap.enable = true;` 済み
-> (メモリ内・暗号化された RAM 上)。物理スワップが要る場合のみ、別途暗号化スワップを構成する。
+Do not create a plaintext swap partition. The host configuration already has
+`zramSwap.enable = true`, which is in RAM and encrypted. If real swap turns out to be needed,
+set up an encrypted swap separately.
 
-## Phase 5. マウント (ESP は流用)
+## Phase 5. Mounting, reusing the ESP
 
 ```sh
 mount /dev/disk/by-label/nixos /mnt
 mkdir -p /mnt/boot
-mount /dev/nvme0n1p1 /mnt/boot        # ← 既存 Windows ESP。フォーマットしない！
+mount /dev/nvme0n1p1 /mnt/boot        # the existing Windows ESP. Do not format it.
 ```
 
-> ESP が 100MB しかない場合、署名 UKI で埋まりやすい。`nix/hosts/nixos-laptop.nix` の
-> `boot.lanzaboote.configurationLimit` を 3〜5 に下げておくと安全 (260MB 以上あれば 8 のままで可)。
+If the ESP is only 100 MB it fills up quickly with signed UKIs. Lowering
+`boot.lanzaboote.configurationLimit` in `nix/hosts/nixos-laptop.nix` to 3 to 5 is the safe move;
+with 260 MB or more, 8 is fine.
 
-## Phase 6. ハードウェア設定を生成し、flake を取り込む
+## Phase 6. Generating the hardware configuration and pulling in the flake
 
 ```sh
 nixos-generate-config --root /mnt
 ```
 
-`/mnt/etc/nixos/hardware-configuration.nix` が生成される。`cryptroot` を開いた状態で実行したので、
-中に **`boot.initrd.luks.devices."cryptroot".device = "/dev/disk/by-uuid/…";`** が自動で入る。
-あわせて `fileSystems."/boot"` が ESP (vfat)、`fileSystems."/"` が `/dev/mapper/cryptroot` を
-指していることを確認する。
+This writes `/mnt/etc/nixos/hardware-configuration.nix`. Because `cryptroot` is open, it
+automatically contains
+`boot.initrd.luks.devices."cryptroot".device = "/dev/disk/by-uuid/…";`. Check that
+`fileSystems."/boot"` points at the vfat ESP and `fileSystems."/"` at `/dev/mapper/cryptroot`.
 
-dotfiles を取り込み、生成したハード設定をリポジトリ内の所定名にコピー:
+Then pull in dotfiles and copy the generated hardware configuration to the name the repository
+expects:
+
 ```sh
 nix-shell -p git
 git clone https://github.com/gapul/dotfiles.git /mnt/etc/nixos/dotfiles
 cp /mnt/etc/nixos/hardware-configuration.nix \
    /mnt/etc/nixos/dotfiles/nix/hosts/nixos-laptop-hardware.nix
-git -C /mnt/etc/nixos/dotfiles add -A      # flake は git 追跡ファイルしか含めないため必須
+git -C /mnt/etc/nixos/dotfiles add -A      # required: a flake only sees git-tracked files
 ```
 
-> この `nixos-laptop-hardware.nix` が存在して初めて flake に `nixosConfigurations."nixos-laptop"` が
-> 生える設計 (Mac 側 `nix flake check` を壊さないため)。
+`nixosConfigurations."nixos-laptop"` only appears in the flake once
+`nixos-laptop-hardware.nix` exists, which is deliberate — otherwise `nix flake check` on the Mac
+would break.
 
-## Phase 7. インストール
+## Phase 7. Installing
 
-この時点では **Secure Boot はまだ OFF**。lanzaboote の鍵が未登録なので OFF のまま入れる。
+Secure Boot is still off at this point, since the lanzaboote keys are not enrolled yet.
 
-> ⚠️ **先に署名鍵を作る**。lanzaboote はブートローダー設置時に `/var/lib/sbctl` の鍵で UKI を
-> 署名するため、鍵が無いと `nixos-install` の最後で
-> `Failed to read public key from /var/lib/sbctl/keys/db/db.pem` と言って**ブートローダー設置だけ失敗**する
-> (システム本体のビルドは終わっているので、鍵を作って再実行すれば続きから進む)。
-> 鍵の *作成* は BIOS の Setup Mode を必要としない。BIOS 操作が要るのは Phase 8 の *登録* から。
-> ```sh
-> nixos-install --no-bootloader --flake /mnt/etc/nixos/dotfiles/nix#nixos-laptop
-> nixos-enter --root /mnt -c 'sbctl create-keys'
-> ```
+Create the signing keys first. lanzaboote signs the UKI with the keys in `/var/lib/sbctl` when it
+installs the boot loader, and without them `nixos-install` fails at the very end with
+`Failed to read public key from /var/lib/sbctl/keys/db/db.pem` — only the boot loader
+installation fails; the system itself is already built, so creating the keys and re-running
+picks up where it stopped. Creating keys does not require the BIOS to be in Setup Mode; that is
+only needed to enrol them, in phase 8.
+
+```sh
+nixos-install --no-bootloader --flake /mnt/etc/nixos/dotfiles/nix#nixos-laptop
+nixos-enter --root /mnt -c 'sbctl create-keys'
+```
+
+Then:
 
 ```sh
 nixos-install --flake /mnt/etc/nixos/dotfiles/nix#nixos-laptop
 ```
 
-- 途中で **root パスワード**を聞かれる。
-- 通常ユーザー (`gapul`) のパスワードを設定:
-  ```sh
-  nixos-enter --root /mnt -c 'passwd gapul'
-  ```
+It asks for a root password along the way. Set the normal user's password too:
 
-完了したら再起動:
 ```sh
-reboot      # USB を抜く
+nixos-enter --root /mnt -c 'passwd gapul'
 ```
 
-## Phase 8. 初回起動後 → Secure Boot を有効化
+Then `reboot`, removing the USB stick.
 
-systemd-boot ベースのメニューに **NixOS** と **Windows Boot Manager** が並ぶ。
-起動時に LUKS パスフレーズを聞かれる → NixOS にログイン。
+## Phase 8. After the first boot: enabling Secure Boot
 
-### 8-1. Secure Boot 鍵を作って署名・登録
+The systemd-boot menu lists NixOS and Windows Boot Manager. Booting asks for the LUKS
+passphrase, then logs into NixOS.
+
+### 8-1. Create, sign with and enrol the Secure Boot keys
 
 ```sh
-# 鍵を生成 (host 設定の pkiBundle = /var/lib/sbctl と一致)
+# generate the keys, matching pkiBundle = /var/lib/sbctl in the host configuration
 sudo sbctl create-keys
 
-# lanzaboote は既に有効なので、再ビルドで UKI が自分の鍵で署名される
+# lanzaboote is already enabled, so a rebuild signs the UKI with our keys
 sudo nixos-rebuild switch --flake ~/.dotfiles/nix#nixos-laptop
-sudo sbctl verify        # 署名済みファイルが ✓ で並ぶことを確認
+sudo sbctl verify        # every signed file should be ticked
 ```
 
-### 8-2. BIOS を「Setup Mode」にして鍵を登録
+### 8-2. Put the BIOS in Setup Mode and enrol
 
-1. 再起動して BIOS へ。**Secure Boot の鍵をクリア / Setup Mode に**する
-   (メーカーにより "Erase all Secure Boot keys" / "Clear keys" / "Setup Mode")。
-2. NixOS に戻り、Microsoft 鍵を**残したまま**自分の鍵を登録:
+1. Reboot into the BIOS and clear the Secure Boot keys, or put it in Setup Mode. Depending on
+   the vendor this is "Erase all Secure Boot keys", "Clear keys" or "Setup Mode".
+2. Back in NixOS, enrol our keys while keeping the Microsoft ones:
+
    ```sh
-   sudo sbctl enroll-keys --microsoft   # -m: MS 鍵を残し Windows の起動を維持
+   sudo sbctl enroll-keys --microsoft   # keeps the MS keys so Windows still boots
    ```
 
-### 8-3. Secure Boot を ON
+### 8-3. Turn Secure Boot on
 
-1. 再起動して BIOS で **Secure Boot を Enabled** に戻す。
-2. NixOS 起動後に確認:
-   ```sh
-   bootctl status   # "Secure Boot: enabled (user)" になっていれば成功
-   ```
-   Windows も Boot Manager から起動できることを確認 (MS 鍵を残したので通る)。
+Reboot into the BIOS and set Secure Boot to Enabled. Once NixOS is up, `bootctl status` should
+say `Secure Boot: enabled (user)`. Check that Windows still boots from the boot manager; it will,
+because the Microsoft keys are still there.
 
-### 8-4. その他
+### 8-4. Loose ends
 
-- **時計ズレ対策** (NixOS は RTC=UTC、Windows は既定でローカル時刻)。Windows の管理者 PowerShell で:
-  ```powershell
-  reg add "HKLM\SYSTEM\CurrentControlSet\Control\TimeZoneInformation" /v RealTimeIsUniversal /t REG_DWORD /d 1 /f
-  ```
-- **BitLocker を再有効化**。Phase 0 で中断したので Windows 側で戻す:
-  ```powershell
-  manage-bde -protectors -enable C:
-  ```
-- **age 鍵の配置**: home-manager に `sops-nix` を入れているため、暗号化シークレットを使う場合は
-  `~/.config/sops/age/keys.txt` (または `SOPS_AGE_KEY_FILE`) に鍵を置く。鍵が無く復号で詰まる場合は、
-  当面 `nix/flake.nix` の該当 `imports` から `sops-nix.homeManagerModules.sops` を一時的に外してもよい。
+The clocks will disagree, since NixOS keeps the RTC in UTC and Windows defaults to local time.
+In an administrator PowerShell on Windows:
 
-## Phase 9. 以降の運用
+```powershell
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\TimeZoneInformation" /v RealTimeIsUniversal /t REG_DWORD /d 1 /f
+```
 
-設定変更は Mac と同じく flake から。lanzaboote が**毎回自動で署名**するので Secure Boot は維持される:
+Re-enable BitLocker, suspended back in phase 0, with `manage-bde -protectors -enable C:`.
+
+Place the age key. home-manager includes `sops-nix`, so using encrypted secrets needs a key at
+`~/.config/sops/age/keys.txt`, or wherever `SOPS_AGE_KEY_FILE` points. If there is no key yet
+and decryption blocks you, temporarily removing `sops-nix.homeManagerModules.sops` from the
+relevant `imports` in `nix/flake.nix` is a reasonable stopgap.
+
+## Phase 9. Living with it
+
+Configuration changes go through the flake, the same as on the Mac. lanzaboote re-signs every
+time, so Secure Boot stays intact:
+
 ```sh
 sudo nixos-rebuild switch --flake ~/.dotfiles/nix#nixos-laptop
 ```
 
-`nix/hosts/nixos-laptop-hardware.nix` をリポジトリに**コミット**しておけば以後そのまま再構築できる
-(LUKS デバイスの UUID とデバイスパスのみ。鍵そのものは含まれないので公開リポでも問題は小さいが、
-気になるなら `.gitignore` してローカル保持も可)。
+Commit `nix/hosts/nixos-laptop-hardware.nix` and the machine can be rebuilt from the repository
+from then on. It contains only the LUKS device UUID and device paths, no key material, so a
+public repository is a small risk; if that still bothers you, gitignore it and keep it locally.
 
-### 9-1. 両 OS を日常的に使うための小ワザ
+### 9-1. Making both systems pleasant to use daily
 
-Windows と NixOS を両方使う前提なので、切替コストを下げる運用を入れておく。
+Since both get used, it is worth lowering the cost of switching.
 
-- **NixOS から直接 Windows へ再起動**（systemd-boot のメニューを待たずに済む）:
-  ```sh
-  # 次回だけ Windows で起動して再起動
-  sudo bootctl set-oneshot auto-windows && systemctl reboot
-  # もしくは
-  sudo systemctl reboot --boot-loader-entry=auto-windows
-  ```
-  エントリ名は `bootctl list` で確認できる (`auto-windows` が標準)。
-- **メニュー表示時間**は `boot.loader.timeout = 5;` 済み。取り逃したらもう一度再起動でOK。
-- **Secure Boot 鍵をバックアップ**しておくと、BIOS 更新等で鍵が飛んでも復旧が速い:
-  ```sh
-  sudo tar czf ~/sbctl-keys-backup.tar.gz -C /var/lib sbctl   # 安全な場所/USB に退避
-  ```
-- **共有ファイル**は NTFS を Linux から書き込むより、両 OS が安全に読み書きできる
-  **exFAT の共有パーティション**を 1 つ用意する方が破損リスクが無い (休止状態の影響も受けない)。
-  必要になったら空き領域に `mkfs.exfat` で作る。
+Reboot straight into Windows without waiting for the systemd-boot menu:
 
-### 9-2. 高速スタートアップを戻す (任意)
+```sh
+# boot Windows next time only, then reboot
+sudo bootctl set-oneshot auto-windows && systemctl reboot
+# or
+sudo systemctl reboot --boot-loader-entry=auto-windows
+```
 
-Phase 0-3 で切った高速スタートアップは、**NixOS から Windows C: (NTFS) を触らない運用なら戻してよい**。
-危険なのは「Windows 休止状態の NTFS を Linux から書き込む」ケースだけで、本構成はそれを避けている。
-Windows の管理者 PowerShell で:
+`bootctl list` shows the entry names; `auto-windows` is the standard one.
+
+The menu timeout is already `boot.loader.timeout = 5`. If you miss it, just reboot again.
+
+Back up the Secure Boot keys, so a BIOS update that loses them is quick to recover from:
+
+```sh
+sudo tar czf ~/sbctl-keys-backup.tar.gz -C /var/lib sbctl   # keep it somewhere safe, or on a USB stick
+```
+
+For files shared between the two, a single exFAT partition both systems can safely read and
+write beats writing NTFS from Linux: no corruption risk, and hibernation does not affect it.
+Create one with `mkfs.exfat` in free space when the need comes up.
+
+### 9-2. Turning Fast Startup back on, optional
+
+The Fast Startup turned off in phase 0 can go back on, as long as NixOS never touches the
+Windows C: NTFS. The dangerous case is writing to a hibernated Windows NTFS from Linux, and this
+setup avoids it. In an administrator PowerShell:
+
 ```powershell
 powercfg /h on
 reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Power" /v HiberbootEnabled /t REG_DWORD /d 1 /f
 ```
-※ 将来 C: を NixOS から読み書き共有したくなったら、再び OFF にすること。
 
-### 9-3. インストール後の初回セットアップ (一度だけ)
+If you later want to share C: read-write with NixOS, turn it off again.
 
-flake に組み込んだ各機能の有効化に必要な手動ステップ。
+### 9-3. One-time setup after installing
+
+Manual steps needed to switch on the features the flake already contains.
 
 ```sh
-# 指紋を登録 (fprintd)。以後 sudo / hyprlock で指紋が使える
+# enrol a fingerprint (fprintd). sudo and hyprlock accept it afterwards
 sudo fprintd-enroll $USER
 
-# Tailscale に参加 (homelab *.gapul.net)
+# join Tailscale, for the homelab's *.gapul.net
 sudo tailscale up
 
-# TPM2 + PIN 解錠を登録 (※ Secure Boot を ON にした後で。付録 A)
+# enrol TPM2 with a PIN, only after Secure Boot is on. See appendix A.
 sudo systemd-cryptenroll --tpm2-device=auto --tpm2-pcrs=7 --tpm2-with-pin=yes /dev/nvme0n1p5
 
-# restic バックアップの前提: rclone google-drive を再認証 → sops に token を入れる
-rclone authorize "drive"   # 出力 token を secrets.yaml の rclone_conf へ
-# 初回バックアップは systemd timer (日次13:00) を待つか、手動起動:
+# restic needs rclone's google-drive re-authorised, with the token in sops
+rclone authorize "drive"   # put the printed token into rclone_conf in secrets.yaml
+# then either wait for the daily systemd timer at 13:00 or run it now:
 systemctl --user start restic-backup.service
 
-# age 鍵 (sops 復号用) を ~/.config/sops/age/keys.txt に配置 (無いと restic 等が止まる)
+# place the age key for sops at ~/.config/sops/age/keys.txt, or restic and friends will stop
 ```
 
-Hyprland の主なキーバインド (`home/hyprland.nix`): `SUPER+Return`=ghostty, `SUPER+R`=wofi,
-`SUPER+Q`=閉じる, `SUPER+F`=全画面, `SUPER+L`=ロック, `SUPER+E`=yazi, `SUPER+P`=範囲スクショ,
-`SUPER+C`=クリップボード履歴, `SUPER+1..0`=ワークスペース。5/15 分でロック/サスペンド (hypridle)。
+The main Hyprland bindings, from `home/hyprland.nix`: `SUPER+Return` for ghostty, `SUPER+R` for
+wofi, `SUPER+Q` to close, `SUPER+F` for fullscreen, `SUPER+L` to lock, `SUPER+E` for yazi,
+`SUPER+P` for a region screenshot, `SUPER+C` for clipboard history, and `SUPER+1` through `0`
+for workspaces. hypridle locks after 5 minutes and suspends after 15.
 
 ---
 
-## 付録 A: TPM2 + PIN 解錠 (長いパスフレーズを短い PIN に置き換える)
+## Appendix A: TPM2 with a PIN, replacing a long passphrase with a short one
 
-**設定は組込済み**。`nixos-laptop.nix` で `boot.initrd.systemd.enable = true;` と
-`boot.initrd.luks.devices.cryptroot.crypttabExtraOpts = [ "tpm2-device=auto" "tpm2-pin=yes" ];`
-を有効にしてある。あとは **Secure Boot を有効化した後 (Phase 8 完了後)** に、TPM へ鍵を登録するだけ:
+The configuration is already in place: `nixos-laptop.nix` sets
+`boot.initrd.systemd.enable = true` and
+`boot.initrd.luks.devices.cryptroot.crypttabExtraOpts = [ "tpm2-device=auto" "tpm2-pin=yes" ]`.
+All that is left is enrolling the key into the TPM, after Secure Boot is on, meaning after phase
+8:
 
 ```sh
-# 対象 LUKS パーティションに TPM2 を登録 (PCR 7 = Secure Boot 状態に束縛)
-# パーティションは lsblk で確認 (例: nvme0n1p5)。現在のパスフレーズと、新しく決める PIN を聞かれる。
+# enrol TPM2 against the LUKS partition, bound to PCR 7, the Secure Boot state.
+# Find the partition with lsblk, for example nvme0n1p5. It asks for the current
+# passphrase and for a new PIN.
 sudo systemd-cryptenroll --tpm2-device=auto --tpm2-pcrs=7 --tpm2-with-pin=yes /dev/nvme0n1p5
 ```
 
-これで次回起動から、長いパスフレーズの代わりに PIN の入力で解錠できる。ブート列が改ざんされると
-PCR 7 が変わり TPM は鍵を出さない。登録前やブート改ざん時はパスフレーズ入力にフォールバックする。
+From the next boot, the PIN unlocks the disk instead of the long passphrase. If the boot chain
+is tampered with, PCR 7 changes and the TPM refuses to release the key. Before enrolment, or
+after tampering, it falls back to the passphrase.
 
-### なぜ PIN を付けるのか
+### Why bother with the PIN
 
-PCR 7 だけの登録は「ブート列が改ざんされていなければ鍵を出す」という条件なので、**人ではなくマシンに
-束縛されている**。持ち出すノートでこれをやると、盗んだ相手が電源を入れるだけで復号されたディスクが
-手に入る。Secure Boot を固めた意味が、所持だけで抜けてしまう。
+Enrolling against PCR 7 alone means "release the key if the boot chain is untampered", which
+binds the disk to the machine rather than to a person. On a laptop that leaves the house, that
+means whoever steals it gets a decrypted disk simply by pressing the power button. Everything
+Secure Boot was locked down for is undone by possession alone.
 
-PIN は TPM 側でハードウェア的に試行回数制限がかかる (失敗を重ねるとロックアウトする) ので、
-パスフレーズのような長さは要らない。総当たりが成立しないため、数字数桁でも実質的な壁になる。
+A PIN gets hardware-enforced retry limiting from the TPM, which locks out after enough failures,
+so it does not need a passphrase's length. Brute force never gets going, which makes even a few
+digits a real barrier.
 
-> ⚠️ `--tpm2-with-pin=yes` を付けずに登録したスロットに対して `tpm2-pin=yes` を設定しても
-> (逆も同様)、噛み合わずにパスフレーズ入力へフォールバックするだけ。登録済みのスロットを
-> 変更する場合は `sudo systemd-cryptenroll --wipe-slot=tpm2 /dev/nvme0n1p5` で消してから登録し直す。
+Setting `tpm2-pin=yes` against a slot enrolled without `--tpm2-with-pin=yes`, or the reverse,
+does not fail loudly — it simply does not match and falls back to the passphrase. To change an
+existing slot, wipe it first with
+`sudo systemd-cryptenroll --wipe-slot=tpm2 /dev/nvme0n1p5` and enrol again.
 
-> ⚠️ **Secure Boot を有効化する前に登録しないこと**。PCR 7 の値が Secure Boot OFF 状態で固定され、
-> 後で ON にすると解錠できなくなる。必ず Phase 8 (Secure Boot ON) の後で登録する。
+Do not enrol before Secure Boot is on. PCR 7 would be fixed at its Secure-Boot-off value, and
+turning Secure Boot on afterwards would leave the disk unopenable. Always enrol after phase 8.
 
-## 付録 B: トラブルシュート
+## Appendix B: Troubleshooting
 
-| 症状 | 対処 |
+| Symptom | What to do |
 |---|---|
-| Windows 起動時に BitLocker 回復キーを要求される | Phase 0 で控えたキーで解錠。TPM 測定変化による一度きりの想定 |
-| `bootctl status` が "Secure Boot: disabled" | Phase 8-2/8-3 の鍵登録 or BIOS の Enable 漏れ。`sbctl verify` で署名確認 |
-| Secure Boot ON 後 NixOS が起動しない | BIOS を Setup Mode に戻し `sbctl enroll-keys -m` をやり直す。最悪 Secure Boot を OFF にすれば起動可 |
-| Windows が起動しない (Secure Boot ON) | `enroll-keys` で `--microsoft` を付け忘れ。再登録する |
-| メニューに Windows が出ない | ESP を `/mnt/boot` に正しくマウントしたか確認。別 ESP に入れていないか |
-| ESP 容量不足で switch が失敗 | `boot.lanzaboote.configurationLimit` を下げる / `nix-collect-garbage -d` で古い世代削除 |
-| LUKS パスフレーズを毎回聞かれて面倒 | 付録 A の TPM2 自動解錠を設定 |
-| Intel GPU で画面が出ない | `nixos-laptop.nix` の `hardware.graphics` を確認。最悪 `nomodeset` で起動して調査 |
+| Windows asks for the BitLocker recovery key | Unlock with the key from phase 0. Expected once, from the changed TPM measurements |
+| `bootctl status` says "Secure Boot: disabled" | Either the enrolment in 8-2 and 8-3 did not happen or it was not enabled in the BIOS. Check signatures with `sbctl verify` |
+| NixOS will not boot with Secure Boot on | Put the BIOS back into Setup Mode and redo `sbctl enroll-keys -m`. Worst case, turning Secure Boot off gets you booting again |
+| Windows will not boot with Secure Boot on | `--microsoft` was left off `enroll-keys`. Enrol again |
+| Windows is missing from the menu | Check that the ESP really is mounted at `/mnt/boot`, and that it did not end up on a different ESP |
+| A switch fails because the ESP is full | Lower `boot.lanzaboote.configurationLimit`, or delete old generations with `nix-collect-garbage -d` |
+| Tired of typing the LUKS passphrase | Set up the TPM2 unlock in appendix A |
+| Nothing on screen with the Intel GPU | Check `hardware.graphics` in `nixos-laptop.nix`. Worst case, boot with `nomodeset` and investigate |

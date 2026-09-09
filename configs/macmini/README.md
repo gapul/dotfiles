@@ -1,34 +1,52 @@
-# macmini ローカルAIスタック
+# The local AI stack on the mac mini
 
-M4 Mac mini(24GB, ヘッドレス)上のローカルAI一式。gapul.net 経由でスマホから操作。
+Everything AI-related on the headless M4 Mac mini with 24 GB, reachable from a phone through
+gapul.net.
 
-## 層構成(nix宣言 vs imperative)
+## What is declared in nix and what is not
 
-| 層 | 管理 | 場所 |
+| Layer | Managed by | Where |
 |---|---|---|
-| brew(ffmpeg/uv/aria2/socat/container/tailscale) | **nix宣言** | `nix/hosts/macmini.nix` の `homebrew.brews` |
-| ラッパーCLI(transcribe/tts/describe等) | 本リポ管理 | `configs/macmini/bin/` → `~/.local/bin/` |
-| サービス/スクリプト(ai-stack.sh 等) | 本リポ管理 | `configs/macmini/services/` → `~/` |
-| launchd supervisor | 本リポ管理 | `configs/macmini/launchd/` → `~/Library/LaunchAgents/` |
-| Python venv(ML) | **imperative** | `bootstrap.sh` で uv 再構築(torch/mlx/pyannote等はnix化困難) |
-| モデル(重い) | **imperative** | `models.txt` manifest + `bootstrap.sh`(hf-mirror/GitHub直DL) |
+| brew: ffmpeg, uv, aria2, socat, container, tailscale | Declared in nix | `homebrew.brews` in `nix/hosts/macmini.nix` |
+| Wrapper CLIs: transcribe, tts, describe and the rest | This repository | `configs/macmini/bin/` linked into `~/.local/bin/` |
+| Services and scripts, such as ai-stack.sh | This repository | `configs/macmini/services/` linked into `~/` |
+| The launchd supervisor | This repository | `configs/macmini/launchd/` linked into `~/Library/LaunchAgents/` |
+| Python venvs for ML | Imperative | Rebuilt by `bootstrap.sh` with uv; torch, mlx and pyannote are hard to express in nix |
+| The models, which are large | Imperative | The `models.txt` manifest plus `bootstrap.sh`, downloading from hf-mirror and GitHub |
 
-## 再現手順(まっさら macmini から)
+## Reproducing it from a clean mac mini
 
-1. `darwin-rebuild switch`(brew群・SSH/sleep設定が入る)
-2. `bash configs/macmini/bootstrap.sh`(venv再構築 → モデル取得 → スクリプト配置 → コンテナ起動 → launchd登録)
-3. Caddy(別ホスト `caddy`)に tools のブロック追記(`docs/`参照)
+1. `darwin-rebuild switch`, which brings in the brew packages and the SSH and sleep settings.
+2. `bash configs/macmini/bootstrap.sh`, which rebuilds the venvs, fetches the models, places the
+   scripts, starts the containers and registers the launchd agents.
+3. Add the tools block to Caddy, which runs on a different host; see `docs/`.
 
-## サービス一覧(全てLAN 192.168.116.91)
+## The services, all on 192.168.116.91
 
-- 埋め込み+リランク(Ruri)サーバー :8900 / AIツールWebパネル :8901
-- コンテナ: Minecraft :25565(apple container、socatでhost公開)
-  - Open WebUI と AnythingLLM は 2026-08-12 に homeserver へ移し、2026-08-20 に廃止した。AIパネル(:8901)と用途が重なっていたため。
-  - Ollama(:11434)と `ask` は 2026-08-28 に撤去。独自 blob ストアに 47GB を抱えたまま、推論の実体は MLX 系と claude-bridge に移っていたため。
+- The embedding and reranking server, Ruri, on :8900, and the AI tools web panel on :8901.
+- Containers: Minecraft on :25565, through apple container, published to the host with socat.
 
-## 重要な運用上の罠(詳細は各スクリプトのコメント / Claudeメモ参照)
+Open WebUI and AnythingLLM moved to homeserver on 2026-08-12 and were retired on 2026-08-20,
+because they overlapped with the AI panel on :8901.
 
-- **モデルDLは母艦を経由せず macmini 直**。HF Xetは絞られる(2.9KB/s〜)ので **hf-mirror.com**(8MB/s)or **GitHub**(TRvlvr等)を優先。aria2 self-healing + zip検証。
-- **量子化×日本語**: VLMの4bitは日本語生成を壊しうる(EMNLP2024で査読済)。Ruri は日本語堅牢。
-- **apple container**: 初回 `container system start` + `container system kernel set --recommended`。DNS死ぬので `--dns 1.1.1.1`。**ホストポート公開(-p)がHTTPで壊れる → socatで host→containerIP 転送**。
-- **SSH**: macminiはBitwardenエージェントがrefuseしがち → `ControlMaster` 多重化必須。
+Ollama, on :11434, and the `ask` command were removed on 2026-08-28. It was holding 47 GB in its
+own blob store while the actual inference had moved to the MLX stack and claude-bridge.
+
+## Things that catch you out
+
+The details are in the comments in each script.
+
+**Download models directly on the mac mini**, not through the Mac. HF Xet gets throttled, down
+to a few kilobytes per second, so prefer hf-mirror.com, which manages about 8 MB/s, or GitHub,
+for things like TRvlvr's releases. aria2 is used with self-healing plus zip verification.
+
+**Quantisation interacts badly with Japanese.** Four-bit VLMs can break Japanese generation;
+this is a peer-reviewed result from EMNLP 2024. Ruri holds up well in Japanese.
+
+**apple container** needs `container system start` and
+`container system kernel set --recommended` the first time. DNS breaks, so pass
+`--dns 1.1.1.1`. Publishing a host port with `-p` breaks over HTTP, so socat forwards from the
+host to the container's address instead.
+
+**SSH to the mac mini** is often refused by the Bitwarden agent, so `ControlMaster` multiplexing
+is effectively required.

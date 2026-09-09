@@ -1,33 +1,36 @@
-# GUI アプリ plist 管理
+# GUI application plists
 
-menubar / 入力系ユーティリティの設定を home-manager activation で復元する。
-Puddle は websites(壁紙)と security-scoped bookmark を壊さないよう、
-enforce したいキーのみ `defaults write`(surgical)。
+Restoring the settings of menubar and input utilities through home-manager activation.
 
-## 管理対象
+Puddle is handled surgically — only the keys worth enforcing are written with
+`defaults write` — so that its websites, meaning the wallpapers, and its security-scoped
+bookmarks are not destroyed.
 
-| App | 方式 | 説明 |
+## What is managed
+
+| App | Method | Notes |
 |---|---|---|
-| **Puddle** | surgical write (`nix/home/darwin.nix`) | 動的壁紙。websites/bookmark はライブ保持し全置換しない。behavior 3 キー(deactivateOnBattery / extendPuddleBelowMenuBar / showOnAllSpaces)のみ enforce |
+| Puddle | Surgical writes, in `nix/home/darwin.nix` | Dynamic wallpaper. websites and bookmarks stay live and are never wholesale replaced. Only three behaviour keys are enforced: deactivateOnBattery, extendPuddleBelowMenuBar and showOnAllSpaces |
 
-## menubar アイコンの表示/非表示
+## Hiding and showing menubar icons
 
-`NSStatusItem VisibleCC Item-*` = false で「アイコンを隠す」状態を管理対象に含める
-(Maccy)。rebuild の import で隠し状態が表示に戻らないよう明示保持する。
-位置キー `NSStatusItem Preferred Position*` は端末固有なので除外する。
+`NSStatusItem VisibleCC Item-*` set to false is what "hide this icon" means, and it is managed
+here for Maccy. Keeping it explicit stops a rebuild's import from making hidden icons visible
+again. The position keys, `NSStatusItem Preferred Position*`, are machine-specific and are
+excluded.
 
-## 新 Mac での復元
+## Restoring on a new Mac
 
-`just rebuild`(home-manager activation)で Puddle の behavior 3 キーが
-`defaults write` される。以下は GUI で手動:
+`just rebuild`, through home-manager activation, writes Puddle's three behaviour keys. The rest
+is done by hand in the GUI.
 
-### Puddle
-- 壁紙は `puddle apply` で入る(`~/.config/puddle/install.toml` の `wallpapers`)。
-  シェーダ本体は dotfiles ではなく gapul/puddle-shaders にあり、
-  `~/Library/Application Support/Puddle/Wallpapers/` へ展開される。
-  ここに残るのはワークスペース連動の inputs(実行時状態)だけ。
+For Puddle, the wallpapers come from `puddle apply`, driven by `wallpapers` in
+`~/.config/puddle/install.toml`. The shaders themselves are not in dotfiles; they are in
+gapul/puddle-shaders and are unpacked into
+`~/Library/Application Support/Puddle/Wallpapers/`. What stays here is only the
+workspace-linked inputs, which are runtime state.
 
-## 設定変更後の capture
+## Capturing a change
 
-Puddle は plist を持たない(surgical write)。behavior を変えたら
-`nix/modules/home/darwin-apps.nix` の puddlePrefs 内 `defaults write` を直接編集する。
+Puddle has no plist here, since it is written surgically. After changing a behaviour, edit the
+`defaults write` calls inside `puddlePrefs` in `nix/modules/home/darwin-apps.nix` directly.

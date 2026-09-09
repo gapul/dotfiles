@@ -1,82 +1,82 @@
-# Windows 物理キー remap
+# Remapping physical keys on Windows
 
-Mac の Karabiner-Elements のキー remap 部分を Windows で再現。
-SharpKeys と同じ仕組み(`HKLM\SYSTEM\CurrentControlSet\Control\Keyboard Layout\Scancode Map`)を、
-SharpKeys GUI に依存せず PowerShell で declarative に書き換える。
+The key-remapping half of Karabiner-Elements, reproduced on Windows. It uses the same mechanism
+SharpKeys does — `HKLM\SYSTEM\CurrentControlSet\Control\Keyboard Layout\Scancode Map` — but
+writes it declaratively from PowerShell, without needing the SharpKeys GUI.
 
-## 構成
+## Layout
 
 ```
 windows/sharpkeys/
 ├── README.md
-├── keymap.skl   # 人間可読の SharpKeys 形式 (参照用 — 実体は apply.ps1 内の $Mappings 配列)
-└── apply.ps1    # Scancode Map を組み立ててレジストリに書き込む
+├── keymap.skl   # human-readable SharpKeys format, for reference; the real source is the $Mappings array in apply.ps1
+└── apply.ps1    # builds the Scancode Map and writes it to the registry
 ```
 
-## 実行
+## Running it
 
 ```powershell
-# 適用 (管理者要、再起動で反映)
+# apply. Needs administrator rights, and takes effect after a reboot
 just win-keymap
 
-# 副作用なし確認
+# check without side effects
 just win-keymap -DryRun
 
-# remap を全削除して standard layout に戻す
+# remove every remap and return to the standard layout
 just win-keymap -Clear
 ```
 
-bootstrap.ps1 の Step 8 として自動実行される。skip したい時:
+bootstrap.ps1 runs it as step 8. To skip it:
 
 ```powershell
 pwsh -File windows/bootstrap.ps1 -SkipKeymap
 ```
 
-## 現状の remap
+## What is remapped
 
-| 機能 | 状態 |
+| Mapping | State |
 |---|---|
-| CapsLock → Left Ctrl | ✅ 適用済 (scancode 0x3A → 0x1D) |
-| Copilot key → Right Ctrl | ⏳ 実機 scancode 検証待ち |
+| CapsLock to Left Ctrl | Applied, scancode 0x3A to 0x1D |
+| The Copilot key to Right Ctrl | Waiting on a scancode from the real machine |
 
-## Copilot key の scancode 調査
+## Finding the Copilot key's scancode
 
-Win11 OEM の Copilot 専用キーは機種により異なる:
+The dedicated Copilot key on Windows 11 OEM machines differs by vendor:
 
-- **HP の一部機種**: scancode `0xE0 0x5C`(extended)
-- **Lenovo**: Win + Shift + F23 のシーケンス(scancode レベル remap 不可)
-- **その他**: `vk89` / `F23` 等
+- Some HP machines send the extended scancode `0xE0 0x5C`.
+- Lenovo sends a Win+Shift+F23 sequence, which cannot be remapped at the scancode level.
+- Others send `vk89`, `F23` and similar.
 
-調査方法(AutoHotkey の Key History を使う):
+To find out, use AutoHotkey's Key History:
 
-1. AHK スクリプトを起動した状態で Copilot キーを押す
-2. AHK のタスクトレイ右クリック → `Open` → `View` → `Key history and script info`
-3. ログから scancode を確認
+1. With the AHK script running, press the Copilot key.
+2. Right-click AHK in the tray, then Open, View, "Key history and script info".
+3. Read the scancode out of the log.
 
-scancode が `E0 5C` のようなら `apply.ps1` の `$Mappings` に有効化:
+If it turns out to be something like `E0 5C`, enable it in `$Mappings` in `apply.ps1`:
 
 ```powershell
 @{ Source = 'E05C'; Dest = 'E01D'; Comment = 'Copilot -> Right Ctrl' }
 ```
 
-`LSHIFT+LWIN+F23` のような **combination** だった場合は scancode 単独では remap 不可。
-その場合は **AHK 側** で `+#F23::RControl` のように remap する。
+If it is a combination such as `LSHIFT+LWIN+F23`, no scancode remap can catch it, and it has to
+be handled on the AHK side, as `+#F23::RControl`.
 
-## 組合せ remap (Ctrl+A → Home 等) は別レイヤー
+## Combinations are a different layer
 
-SharpKeys / Scancode Map は **キー単体の 1 対 1 remap** のみ。
-Emacs ショートカット(Ctrl+A → Home 等)は `windows/autohotkey/keymap.ahk` で実装。
+SharpKeys and the Scancode Map only do one-to-one remapping of single keys. The Emacs
+shortcuts, such as Ctrl+A to Home, are implemented in `windows/autohotkey/keymap.ahk`.
 
-## Bitdefender 除外設定
+## Excluding it from Bitdefender
 
-`apply.ps1` は `HKLM\SYSTEM\CurrentControlSet\Control\Keyboard Layout\Scancode Map` を
-直書きするため、Bitdefender のヒューリスティック検知で隔離される場合がある。
-**Bitdefender Security Center → Protection → Antivirus → Settings → Manage Exceptions**
-で以下を Add:
+Because `apply.ps1` writes
+`HKLM\SYSTEM\CurrentControlSet\Control\Keyboard Layout\Scancode Map` directly, Bitdefender's
+heuristics sometimes quarantine it. Add the directory under Bitdefender Security Center,
+Protection, Antivirus, Settings, Manage Exceptions:
 
 ```
 C:\Users\<user>\dotfiles\windows\sharpkeys\
 ```
 
-隔離された後は Bitdefender → Notifications → Quarantine から Restore して上記除外を追加。
-`just win-keymap` を再実行すれば再適用される。
+If it has already been quarantined, restore it from Bitdefender, Notifications, Quarantine, add
+the exception above, and run `just win-keymap` again.

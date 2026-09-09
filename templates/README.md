@@ -1,34 +1,36 @@
-# direnv テンプレ
+# direnv templates
 
-プロジェクト毎に言語別の dev shell を持つためのテンプレ。
+Templates for giving a project its own per-language dev shell.
 
-## 使い方
+## Using them
 
 ```bash
 cp -r ~/.dotfiles/templates/node/{.envrc,flake.nix} ~/Dev/my-project/
 cd ~/Dev/my-project
-direnv allow                     # 初回のみ承認
+direnv allow                     # approve once
 ```
 
-これで `cd` した瞬間に Nix dev shell に入る(`node`/`pnpm`/`typescript` が PATH に)。
+After that, entering the directory drops you into the Nix dev shell, with `node`, `pnpm` and
+`typescript` on PATH.
 
-## 中身
+## What each one contains
 
-| stack | 入るもの |
+| Stack | Packages |
 |---|---|
 | `node/` | nodejs_22, pnpm, typescript |
 | `python/` | python3, uv, ruff |
 | `rust/` | rustc, cargo, rust-analyzer, rustfmt, clippy |
 
-## 拡張
+## Extending one
 
-`flake.nix` の `packages` に追加するだけ:
+Add to `packages` in `flake.nix`:
+
 ```nix
 packages = with pkgs; [
   nodejs_22
   pnpm
-  postgresql     # ← 追加
+  postgresql     # added
 ];
 ```
 
-`cd` で reload される(`direnv reload` でも明示)。
+Changing directory reloads it, and `direnv reload` does so explicitly.

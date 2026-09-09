@@ -1,8 +1,10 @@
-# CodexBar 設定
+# CodexBar configuration
 
-`~/.config/codexbar/config.json` の実体です。out-of-store symlink で繋いであるので、
-CodexBar の UI 操作がそのままこのファイルに書き込まれる。[omniwm](../../wm/omniwm/README.md) と同じ扱い。
+This is the real `~/.config/codexbar/config.json`, linked in as an out-of-store symlink, so
+anything changed through CodexBar's UI is written straight back here. Handled the same way as
+[omniwm](../../wm/omniwm/README.md).
 
-- 配線は `nix/home/darwin.nix`。新しい mac では rebuild すればリンクが張られる。
-- `providers[].codexActiveSource` に Codex アカウントの UUID が入る。このリポジトリは public だが、
-  識別子だけで資格情報ではないのでそのまま追跡している。
+The wiring is in `nix/home/darwin.nix`, so a rebuild on a new Mac creates the link.
+
+`providers[].codexActiveSource` holds the UUID of the Codex account. This repository is public,
+but that is an identifier rather than a credential, so it stays tracked.
