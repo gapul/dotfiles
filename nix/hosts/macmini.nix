@@ -80,6 +80,7 @@ let
         # 本館と同じ理由で入れてある。母艦に残っていたシングルの世界を2つとも持ってきたので、
         # ひとり用でも世界の出し入れが要る。
         PLUGINS = "${multiverseCore}";
+        WHITELIST_SRC = "/etc/minecraft/whitelist-solo.json";
       };
     };
     # 最新で mod を遊ぶ側。Fabric は本体に追いつくのが速いので本館と同じ 26.2 に載る。
@@ -204,6 +205,12 @@ in
         # インスタンスへ配る (サーバーは自分でこのファイルを書き換えるため、宣言側を毎回勝たせる)。
         "minecraft/whitelist" = {
           path = "/etc/minecraft/whitelist.json";
+          owner = "mcsrv";
+          mode = "0444";
+        };
+        # 個人用だけ別の一覧にする。ひとり用の世界に友人まで入れる必要は無い。
+        "minecraft/whitelist_solo" = {
+          path = "/etc/minecraft/whitelist-solo.json";
           owner = "mcsrv";
           mode = "0444";
         };
