@@ -70,6 +70,12 @@ in
     # playwright-mcp の接続先をこちらに向けられる。詳細と限界は pkgs/lightpanda.nix。
     # systemPackages なのは launchd agent が固定パスで参照するため。
     (pkgs.callPackage ../pkgs/lightpanda.nix { })
+    # aac: エージェントに vault ごと渡さず、要求のたびに人が承認した 1 件だけを渡すための CLI。
+    # `aac run` が資格情報を子プロセスの環境変数として注入するので、値がエージェントの
+    # 会話ログに出ない。承認は crossterm の対話 UI なので `aac listen` は端末で人が動かす
+    # 前提であり、launchd で常駐させるものではない。詳細と限界は pkgs/aac.nix。
+    # bitwarden provider は `bw` を PATH から探すので、bw と同じ PATH 上にある必要がある。
+    (pkgs.callPackage ../pkgs/aac.nix { })
     # node: playwright-mcp の実行に要る。pnpm の global store が持っていた node は
     # リンク切れになっていて (~/Library/pnpm/bin/node → 消えた store パス)、そのせいで
     # playwright-mcp の agent が "exec: node: not found" で status 127 のまま死んでいた。
