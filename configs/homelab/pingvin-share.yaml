@@ -11,7 +11,7 @@ security:
   sessionDuration: 3 months
   secureCookies: "true"
   enableEmailVerification: "false"
-  allowRegistration: "true"
+  allowRegistration: "false"
   allowUnauthenticatedShares: "false"
   allowAdminAccessAllShares: "false"
   customPasswordPolicy: "false"
