@@ -11,6 +11,7 @@
 | rpi4 | `/home/pi` (docker サービスデータ) | 日次 04:30 | `restic-rpi-offsite.sh` + systemd timer | `/root/.config/rclone/rclone.conf` + `/root/.restic.pw` |
 
 - 秘密はどれも `rclone.conf`(GDrive トークン) と restic パスワードで、**このリポジトリには含めない**(sops 経由 or 手動配置)。
+- homeserver の Pingvin Share X は配布用キャッシュとして扱う。共有情報・アカウントを含む小さな SQLite DB とその整合性ダンプは保存するが、`data/uploads` の動画と自動生成 ZIP は保存しない。原本をプロジェクト側で保持し、障害時は `hs share create` で共有を作り直す。
 - **共有リポジトリなので `restic forget` は必ず `--host <自ホスト>` スコープ**にする。**prune は母艦の日次のみ**が実行し、他ホストは prune しない(排他ロック競合を避ける)。
 - Google OAuth は Production 公開済みでトークンは失効しない(以前は Testing のため約7日で失効し全ホスト停止した罠あり)。
 
