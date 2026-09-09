@@ -98,19 +98,8 @@ iOS/watchOS app talking to APNs directly is the intended replacement, because no
 actions from a native app are answerable from the watch itself, which mirrored third-party
 notifications are not. Nothing above this layer should need to change when that lands.
 
-Touch ID sits in front of both, for the two kinds that are yes-or-no. A fingerprint can answer
-yes or no and nothing else, so `choose` and `ask_text` skip it. It goes first because when
-somebody is at the desk it is the fastest answer and the only one that software on this machine
-cannot produce by itself. The policy is `BiometricsOrCompanion`, so a paired Apple Watch satisfies
-it too.
-
-The prompt has no password fallback and is killed after the local timeout. A dialog left standing
-on a desk nobody is sitting at would otherwise stop the question ever reaching the phone.
-
-The helper (`helper/ask-approve.swift` in github.com/gapul/ask) is a separate binary because
-LocalAuthentication has no C-free entry point, and it is built with Xcode's toolchain because
-nixpkgs' swift cannot link the framework — the wall the Apple Speech work already documented.
-Whether it can raise a prompt from a launchd agent rather than a terminal is still unverified.
+Touch ID was meant to sit in front of both, for the two kinds that are yes-or-no. It is not
+wired: `LAContext.evaluatePolicy` fails on this machine. See "Open".
 
 ## What the human sees
 
@@ -158,10 +147,28 @@ channels, and the layers above stay as they are.
 
 ## Open
 
-- Whether the Touch ID helper can raise its prompt from a launchd agent, where there is no
-  terminal. It builds and it is wired in; that one question is unanswered.
-- Getting the helper onto the machine declaratively. It cannot be built through nix here, so it
-  wants a CI build and a fetched release, the way lightpanda and terminal-browser already work.
+- **Touch ID.** `LAContext.evaluatePolicy` returns `LAError.systemCancel` (-4) immediately on this
+  machine, drawing nothing, while `canEvaluatePolicy` returns true and `bioutil` reports biometrics
+  enrolled and effective. Tried and rejected: ad-hoc CLI, Developer ID signature with an embedded
+  `Info.plist`, `NSApplication` as an accessory, a real `.app` bundle, dropping the hardened
+  runtime, biometrics-only policy, and activating the process first. Same result under an agent's
+  shell and under the user's own terminal, so the calling context is not the difference.
+
+  What does work is `pam_tid`: `sudo` raises its prompt, including from a process with no TTY,
+  which is what a launchd agent has. So the gate could be `sudo -v` — at the cost of the two
+  things this protocol asks for. The dialog is sudo's own and cannot be made to say what is being
+  released or which machine asked, and `sudo -k` would clobber the user's own sudo timestamp on
+  every request. A gesture that cannot state what it is approving is not the approval this
+  document describes, so it stays unwired.
+
+  The helper (`helper/ask-approve.swift` in github.com/gapul/ask) is kept, unwired, along with
+  this note. Prime suspect for the `systemCancel` is the window manager taking the panel, which
+  would fit the focus problems already recorded elsewhere, but that is a guess and testing it
+  means stopping OmniWM.
+- Getting a Touch ID helper onto the machine declaratively, if that ever resolves. It cannot be
+  built through nix here — nixpkgs' swift will not link LocalAuthentication, the wall the Apple
+  Speech work documented — so it wants a CI build and a fetched release, the way lightpanda and
+  terminal-browser already work.
 - The mac mini as requester: the broker holds the vault on the workstation and the secret crosses
   the tailnet to the requesting machine. WireGuard covers the wire. Same-user isolation on the
   far end is no better than it is here, which is to say weak, and no amount of protocol fixes it.
