@@ -22,6 +22,7 @@
       sqlite
       curl
       coreutils
+      gnugrep
       hostname
     ];
     environment = {
@@ -36,6 +37,7 @@
       # ぶつからないよう、時刻は 03:00 から離してある。
       TimeoutStartSec = "60min";
     };
+    onFailure = [ "ntfy-failure@%n.service" ];
   };
 
   systemd.timers.restore-drill = {

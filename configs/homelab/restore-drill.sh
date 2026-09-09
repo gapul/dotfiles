@@ -42,15 +42,31 @@ rm -rf "$WORK"
 mkdir -p "$WORK"
 
 # ── 1. スナップショットから取り出す ──────────────────────────
-if ! restic restore latest --host "$(hostname -s)" \
-  --include /var/lib/db-dumps --target "$WORK" >/dev/null 2>&1; then
+# Drive API の一時エラーで月次訓練が落ちても、以前は出力を /dev/null に捨てていたため
+# 「戻せない」のか「その瞬間だけ読めない」のか判別できなかった。3回だけ再試行し、
+# 最後の失敗理由を journal に残す。復元先は毎回空にして部分復元を混ぜない。
+restore_log="$WORK/restic-restore.log"
+restored=false
+for attempt in 1 2 3; do
+  rm -rf "${WORK:?}/var"
+  if restic restore latest --host "$(hostname -s)" \
+    --include /var/lib/db-dumps --target "$WORK" >"$restore_log" 2>&1; then
+    restored=true
+    break
+  fi
+  echo "restic restore attempt $attempt/3 failed" >&2
+  [ "$attempt" -lt 3 ] && sleep $((attempt * 10))
+done
+if [ "$restored" != true ]; then
+  echo "restic restore failed after 3 attempts:" >&2
+  tail -n 30 "$restore_log" >&2
   notify "復元訓練: スナップショットを取り出せない" \
     "restic restore が失敗した。バックアップから戻せない状態かもしれない" high
   exit 1
 fi
 
 DUMPS="$WORK/var/lib/db-dumps"
-for f in dawarich.dump miniflux.dump matrix-synapse.dump paperless.sql readeck.db; do
+for f in dawarich.dump miniflux.dump matrix-synapse.dump atuin.dump paperless.sql readeck.db; do
   [ -s "$DUMPS/$f" ] || fail "$f がスナップショットに無い (または空)"
 done
 
@@ -83,7 +99,7 @@ if podman run -d --name "$DB_CTR" \
   # matrix-synapse はブリッジで取り込んだ過去ログが入る。相手のネットワークから
   # 取り直せるとは限らない (Signal の履歴は端末にしか無い) ので、戻せることを
   # 毎回確かめる対象に入れる。
-  for db in dawarich miniflux matrix-synapse; do
+  for db in dawarich miniflux matrix-synapse atuin; do
     [ -s "$DUMPS/$db.dump" ] || continue
     # 識別子は必ず引用する。matrix-synapse のようにハイフンを含む名前だと
     # 引用なしの CREATE DATABASE drill_matrix-synapse は構文エラーになる。
@@ -152,4 +168,4 @@ fi
 
 # 成功も鳴らす。月1回なので五月蝿くならないし、鳴らないと訓練自体が
 # 止まっていることに気付けない。
-notify "復元訓練: 全部戻せた" "dawarich / miniflux / paperless / readeck をスナップショットから復元して確認した" low
+notify "復元訓練: 全部戻せた" "dawarich / miniflux / matrix-synapse / atuin / paperless / readeck をスナップショットから復元して確認した" low

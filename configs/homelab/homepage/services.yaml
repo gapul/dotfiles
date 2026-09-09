@@ -47,6 +47,11 @@
         description: バックアップの中身をプレビュー (read-only)
         icon: filebrowser.png
         siteMonitor: http://127.0.0.1:8085
+    - ファイル閲覧 (Filestash preview):
+        href: https://files-preview.gapul.net
+        description: Drive / バックアップ閲覧の移行テスト
+        icon: mdi-folder-eye
+        siteMonitor: http://127.0.0.1:8099
     - ntfy:
         href: https://ntfy.gapul.net
         description: プッシュ通知
