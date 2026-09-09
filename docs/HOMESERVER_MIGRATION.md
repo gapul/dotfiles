@@ -1,76 +1,81 @@
-# homeserver 移行手順(Proxmox → NixOS)
+# Migrating homeserver from Proxmox to NixOS
 
-pve(Proxmox 単一ノード)を、ハイパーバイザ無しの NixOS 1台に置き換える当日の手順。
-設定側は `nix/hosts/homeserver.nix` と `nix/homelab/` に揃っていて、CI の VM テストが
-起動まで確認済み。残りはデータの移送と、手で置く秘密と、一度きりの認証。
+The day's runbook for replacing pve, a single Proxmox node, with one NixOS machine and no
+hypervisor. The configuration side was already finished in `nix/hosts/homeserver.nix` and
+`nix/homelab/`, with the CI VM test confirming it boots. What was left was moving the data,
+placing the secrets by hand, and the one-time authentications.
 
-段階移行ではないので、サービスごとの切り戻しは無い。pve を消した瞬間に戻り先が消える。
+This is not a staged migration, so there is no per-service rollback. The moment pve is gone,
+there is nothing to go back to.
 
-判断待ちと手作業の一覧は [HOMESERVER_TODO.md](HOMESERVER_TODO.md)。本書は当日の手順のみ。
-
----
-
-## 0. 消える前に理解しておくこと
-
-いまの vzdump のバックアップは `/var/lib/vz/dump` にある。これは置き換える NVMe の
-同じディスクの上なので、フォーマットした瞬間に一緒に消える。**箱の外にコピーするまで、
-バックアップはバックアップとして機能していない。**
-
-切り戻しが必要になった場合の道は「pve を入れ直して、箱の外に退避したものから戻す」だけ。
-数時間かかる。
-
-作業中も家のインターネットは生きる。DNS 主系は Raspberry Pi にあり、この箱には無い。
+Decisions and manual steps still outstanding are in [HOMESERVER_TODO.md](HOMESERVER_TODO.md).
+This page is the runbook alone.
 
 ---
 
-## 1. 前日までにやること
+## 0. What to understand before anything disappears
 
-### 1.1 Home Assistant の最後のバックアップ
+The current vzdump backups are in `/var/lib/vz/dump`, which sits on the same NVMe that is about
+to be replaced, so formatting takes them with it. Until a copy exists outside the box, the
+backup is not functioning as a backup.
+
+If a rollback becomes necessary, the only route is reinstalling pve and restoring from whatever
+was copied out. That takes hours.
+
+The house keeps its internet throughout. The primary DNS is on the Raspberry Pi, not on this
+machine.
+
+---
+
+## 1. The day before
+
+### 1.1 A final Home Assistant backup
 
 ```sh
-ssh -J root@100.101.225.43 root@192.168.116.88   # 使えなければ pve のコンソールから
+ssh -J root@100.101.225.43 root@192.168.116.88   # or from pve's console if that does not work
 ha backups new
 ```
 
-Container 版には組み込みバックアップが無い。Supervisor が作る最後のフルバックアップになる。
+The container version has no built-in backup, so this is the last full backup Supervisor will
+ever make.
 
-### 1.2 平文パスワードのローテーション
+### 1.2 Rotating the plaintext passwords
 
-以下2つは compose ファイルに平文で入っていた。samba のほうは `command:` にあるので
-`ps` にも出る。移行を機に変える。
+Two passwords were in the compose files in the clear, and samba's is in `command:`, which means
+it shows up in `ps` as well. The migration is a good moment to change them:
 
-- archivebox の管理者パスワード
-- samba の共有ユーザー `gapul` のパスワード
+- ArchiveBox's admin password
+- The samba share user `gapul`'s password
 
-新しい値は移行後の `/var/lib/secrets/archivebox.env` と `smbpasswd` に入れる。
+The new values go into `/var/lib/secrets/archivebox.env` and `smbpasswd` after the migration.
 
-### 1.3 Cloudflare の A レコード
+### 1.3 Cloudflare A records
 
-2種類ある。**追加**が2件と、**付け替え**が20件超。
+Two kinds of change: two records to add, and more than twenty to repoint.
 
-追加は `esphome.gapul.net` と `nodered.gapul.net`。この2つは HA のアドオン ingress
-経由で開いていたもので、Supervisor が無くなると入口が消えるため独立した vhost にした。
-既存と同形(type A / proxied=false / ttl=60)。
+The additions are `esphome.gapul.net` and `nodered.gapul.net`. Both were previously reached
+through Home Assistant add-on ingress, and with Supervisor gone that entrance disappears, so
+they become independent vhosts. Same shape as the existing ones: type A, proxied false, ttl 60.
 
-付け替えのほうが本体で、**移行後でないとできない**。`*.gapul.net` は全件 Caddy の
-tailnet IP(現在 `100.64.125.107` = CT103)を指しているが、Caddy が新ホストへ移ると
-tailnet IP が変わる。20件超を手で直すと必ず取りこぼし、「そのサービスだけ繋がらない」を
-後日踏む。専用スクリプトを用意した。
+The repointing is the bigger half, and it can only be done after the migration. Every
+`*.gapul.net` currently points at Caddy's tailnet address, `100.64.125.107` on CT103, and moving
+Caddy to the new host changes that address. Editing twenty-odd records by hand guarantees
+missing one and finding out later that a single service does not connect, so there is a script.
 
 ```sh
 export CF_API_TOKEN=...   # Zone:DNS:Edit
-scripts/cf-repoint-records.sh --from 100.64.125.107 --to <新ホストの tailnet IP>
-# 一覧を確認してから
-scripts/cf-repoint-records.sh --from 100.64.125.107 --to <新ホストの tailnet IP> --apply
+scripts/cf-repoint-records.sh --from 100.64.125.107 --to <the new host's tailnet IP>
+# check the listing, then
+scripts/cf-repoint-records.sh --from 100.64.125.107 --to <the new host's tailnet IP> --apply
 ```
 
-既定は dry-run。新ホストの tailnet IP は `tailscale ip -4` で分かる。
-ワイルドカード証明書は取るが、DNS レコードはワイルドカードではないので1件ずつ必要。
+It is a dry run by default. `tailscale ip -4` gives the new host's address. The certificate is a
+wildcard, but the DNS records are not, so each one is needed individually.
 
-### 1.4 restic の疎通確認
+### 1.4 Checking restic still works
 
-rclone の Google Drive トークンは1週間ほど放置すると失効し、両ホストとも黙って止まる。
-当日に気づくと退避先が無い。
+The rclone Google Drive token expires after about a week of disuse, and both hosts then stop
+silently. Finding that out on the day means having nowhere to put the data.
 
 ```sh
 restic -r rclone:google-drive:restic-backup snapshots | tail -5
@@ -78,52 +83,54 @@ restic -r rclone:google-drive:restic-backup snapshots | tail -5
 
 ---
 
-## 2. データ退避(35GB)
+## 2. Getting the data out, 35 GB
 
-退避先は Google Drive の restic リポジトリか母艦 Mac。**200GB のマウントは同じ NVMe の上
-なので退避先にならない。**
+It goes either to the restic repository on Google Drive or to the Mac. The 200 GB mount is on
+the same NVMe, so it is not a destination.
 
-### 2.0 先にサービスを止める
+### 2.0 Stop the services first
 
-稼働中の postgres / couchdb / SQLite のデータディレクトリをそのままコピーすると、
-書き込み途中の状態が取れて復元時に壊れている。ここが移行で一番静かに失敗する場所。
+Copying a running postgres, couchdb or SQLite data directory captures a half-written state that
+turns out to be corrupt when restored. This is the quietest way for a migration to fail.
 
 ```sh
 ssh pve 'pct exec 101 -- sh -c "cd /opt/stacks && for d in */; do (cd \$d && docker compose down); done"'
 ssh pve 'qm shutdown 100'    # HAOS
 ```
 
-止めずに済ませたい場合は、少なくとも DB だけ論理ダンプを取る(`pg_dump`、CouchDB は
-レプリケーション)。ただし止められる状況なら止めるのが確実で速い。
+If stopping is not an option, at least take logical dumps of the databases: `pg_dump`, and
+replication for CouchDB. But when stopping is possible it is both safer and faster.
 
-**この時点から家のサービスは落ちる。** DNS 主系は Pi なのでインターネットは生きる。
+From this point the house's services are down. The internet keeps working, since primary DNS is
+on the Pi.
 
-### 2.0.1 先に確保しておくもの(止める前でもよい)
+### 2.0.1 Grab the irreplaceable things first, which can happen before stopping
 
-失うと復元不可能で、かつ小さいもの。時間のかかる本番コピーとは別に、単独で先に取る。
-**2026-08-09 に取得済み**、母艦の `~/tmp/homeserver-migration/`:
+Small things that cannot be reconstructed if lost. Worth taking separately from the slow main
+copy. These were taken on 2026-08-09, into `~/tmp/homeserver-migration/` on the Mac:
 
-| ファイル | 中身 |
+| File | Contents |
 |---|---|
-| `haos-backup-dc879ac6.tar`(28MB) | HAOS のフルバックアップ。HA config + Matter ファブリック + Node-RED のフロー |
-| `syncthing-identity.tar`(20KB) | Syncthing の cert.pem / key.pem / config.xml |
-| `CHECKSUMS.txt` | 上2つの sha256 |
+| `haos-backup-dc879ac6.tar`, 28 MB | The HAOS full backup: HA config, the Matter fabric, the Node-RED flows |
+| `syncthing-identity.tar`, 20 KB | Syncthing's cert.pem, key.pem and config.xml |
+| `CHECKSUMS.txt` | sha256 of both |
 
-これらは移行日までに中身が変わりうる(HA の DB は動き続ける)ので、当日にもう一度取り直す。
-それでも先に取っておく価値があるのは、ファブリックと Syncthing の身元だけは
-「壊れていても古くても、無いよりはるかにマシ」だから。
+Their contents can change before migration day — HA's database keeps running — so take them
+again on the day. Taking them early is still worth it, because for the fabric and Syncthing's
+identity, damaged or stale beats absent by a wide margin.
 
-### 2.1 バインドマウントとホスト側ディレクトリ
+### 2.1 Bind mounts and host directories
 
 ```sh
 ssh pve 'pct exec 101 -- tar -C /opt -czf - stacks' > ~/migration/ct101-stacks.tar.gz
 ssh pve 'pct exec 101 -- tar -C /mnt -czf - jellyfin-media' > ~/migration/bulk.tar.gz
 ```
 
-### 2.2 名前付きボリューム(コピーでは移らない)
+### 2.2 Named volumes, which copying does not move
 
-docker は `/var/lib/docker/volumes`、podman は `/var/lib/containers/storage/volumes` に
-置く。ディレクトリを持っていくのではなく export/import する。名前は新旧で一致している。
+docker keeps them in `/var/lib/docker/volumes` and podman in
+`/var/lib/containers/storage/volumes`. Rather than carrying the directory across, export and
+import them. The names match on both sides.
 
 ```sh
 for v in dawarich_dawarich_db_data dawarich_dawarich_public dawarich_dawarich_shared \
@@ -133,129 +140,132 @@ for v in dawarich_dawarich_db_data dawarich_dawarich_public dawarich_dawarich_sh
 done
 ```
 
-### 2.3 Home Assistant 一式(フルバックアップ1本で済む)
+### 2.3 All of Home Assistant, in one full backup
 
-HAOS からは個別にディレクトリを吸い出すのではなく、Supervisor のフルバックアップを
-1本作るのが早い。config もアドオンのデータも全部その中に入る。
+Rather than pulling directories out of HAOS individually, one Supervisor full backup is faster
+and contains everything, config and add-on data alike.
 
-**作成はシリアルコンソールから。** SSH アドオンは protection mode が有効で、中から
-`ha` を叩くと `unauthorized: missing or invalid API token` で拒否される。
-一方 SSH アドオンからは `/backup` が見えるので、作成はシリアル、取り出しは SSH と
-役割を分ける。
+Create it from the serial console. The SSH add-on runs with protection mode on, so running `ha`
+from inside it is refused with `unauthorized: missing or invalid API token`. The SSH add-on can
+see `/backup` though, so create over serial and fetch over SSH.
 
 ```sh
-# 作成(pve から HAOS のシリアルコンソールへ。login: root でパスワード無し)
+# create, from pve into HAOS's serial console. Login is root with no password.
 ssh pve
 { printf "\n"; sleep 3; printf "root\n"; sleep 6; \
   printf "nohup ha backups new --name pre-nixos-migration > /tmp/bk.log 2>&1 &\n"; sleep 5; \
   printf "exit\n"; sleep 2; } | timeout 35 socat - UNIX-CONNECT:/var/run/qemu-server/100.serial0
 
-# 取り出し(母艦から)
+# fetch, from the Mac
 ssh hassio@192.168.116.88 'ls -lh /backup/'
 ssh hassio@192.168.116.88 'cat /backup/<slug>.tar' > ~/tmp/homeserver-migration/haos-backup.tar
 ```
 
-中身と復元先の対応:
+What is inside and where it goes:
 
-| バックアップ内の tar | 中身 | 復元先 |
+| tar inside the backup | Contents | Restore to |
 |---|---|---|
-| `homeassistant.tar.gz` の `data/` | config 一式(`configuration.yaml` / `.storage` / `custom_components`(HACS) / `home-assistant_v2.db` / `esphome/`) | `/var/lib/hass` |
-| `core_matter_server.tar.gz` の `data/` | **Matter ファブリック**(`certificates/`) | `/var/lib/matter-server` |
-| `a0d7b954_nodered.tar.gz` の `config/` | Node-RED のフロー | `/var/lib/node-red` |
-| `core_mosquitto.tar.gz` | mosquitto の永続データ | `/var/lib/mosquitto` |
-| `5c53de3b_esphome.tar.gz` | `addon.json` のみで**中身は無い** | 不要 |
+| `data/` in `homeassistant.tar.gz` | The whole config: `configuration.yaml`, `.storage`, `custom_components` (HACS), `home-assistant_v2.db`, `esphome/` | `/var/lib/hass` |
+| `data/` in `core_matter_server.tar.gz` | The Matter fabric, in `certificates/` | `/var/lib/matter-server` |
+| `config/` in `a0d7b954_nodered.tar.gz` | The Node-RED flows | `/var/lib/node-red` |
+| `core_mosquitto.tar.gz` | mosquitto's persistent data | `/var/lib/mosquitto` |
+| `5c53de3b_esphome.tar.gz` | `addon.json` and nothing else | Not needed |
 
-ESPHome の yaml はアドオンのデータではなく HA の config 側(`data/esphome/`)にある。
-アドオンの tar を探しても空なので注意。
+The ESPHome yaml is not add-on data; it is on the HA config side, in `data/esphome/`. Searching
+the add-on's tar finds nothing, which is confusing.
 
-Matter のファブリックを失うと全 Matter デバイスを工場出荷リセットして再ペアリングする
-ことになる。取り出したら `tar -tzf` で `data/certificates/` が入っていることを必ず確認する。
+Losing the Matter fabric means factory-resetting and re-pairing every Matter device. After
+extracting, always confirm with `tar -tzf` that `data/certificates/` is in there.
 
-### 2.3.1 VM105 のディスクイメージ(保険)
+### 2.3.1 VM105's disk image, as insurance
 
-会社の L2TP トンネルは `nix/homelab/vpn-relay.nix` に宣言してあるが、**CI では検証できない**
-(サンドボックスから会社の終端に繋げない)。ネイティブ版が初回で上がらなかった場合に
-仕事が止まるので、旧 VM のディスクを丸ごと持っておく。
+The company L2TP tunnel is declared in `nix/homelab/vpn-relay.nix`, but CI cannot verify it —
+the sandbox cannot reach the company endpoint. If the native version does not come up first
+time, work stops, so keep the whole old VM disk.
 
 ```sh
 ssh pve 'qm stop 105; dd if=/dev/pve/vm-105-disk-0 bs=4M status=progress | zstd -T0' > ~/migration/vm105.img.zst
 ```
 
-10GB のうち実使用は少ないので圧縮すれば小さい。新ホストで `libvirt` に食わせれば
-数分で元の中継が復活する。トンネルが新環境で一度でも上がったら捨ててよい。
+Only a little of the 10 GB is actually used, so it compresses well. Feeding it to `libvirt` on
+the new host brings the old relay back in minutes. Once the tunnel has come up even once in the
+new environment, it can be thrown away.
 
-### 2.4 Syncthing の身元
+### 2.4 Syncthing's identity
 
-`/opt/stacks/syncthing/config/config/` にある cert.pem と key.pem。これが device ID の
-実体で、再生成すると Mac から見て別のマシンになり、全フォルダを再スキャンする。
+cert.pem and key.pem in `/opt/stacks/syncthing/config/config/`. They are the device ID;
+regenerating them makes the Mac see a different machine and rescan every folder.
 
-### 2.5 退避物の検証
+### 2.5 Verify what was copied out
 
-戻せないバックアップを取っても意味がないので、tar を1本 test 展開して中身を確認する。
+A backup that cannot be restored is not worth taking, so extract one tar as a test and look
+inside it.
 
 ---
 
-## 3. インストール
+## 3. Installing
 
-### 3.1 ISO
+### 3.1 The ISO
 
-このリポジトリの recovery ISO を使う。母艦は aarch64-darwin なので手元ではビルドできない。
-CI の Recovery ISO ジョブが毎回ビルドして artifact に上げているので、それを落とす。
+Use this repository's recovery ISO. The Mac is aarch64-darwin and cannot build it locally, but
+CI's Recovery ISO job builds one every time and uploads it as an artifact.
 
 ```sh
 gh run download --name "nixos-recovery-<sha>" --dir ~/tmp/iso
-# 中の SHA256 と付属の checksum を照合してから書き込む
+# check the SHA256 against the bundled checksum before writing it
 ```
 
-**インストールする世代と同じコミットの ISO を使うこと。** zpool は作成時の ZFS が
-feature flag を有効にするので、ISO 側が新しすぎると、インストールした側が
-プールを import できない状態になりうる。同一コミットなら同じ nixpkgs なので一致する。
+Use the ISO from the same commit as the generation being installed. A zpool enables feature
+flags from the ZFS that created it, so an ISO that is too new can leave the installed system
+unable to import the pool. The same commit means the same nixpkgs, so they agree.
 
-この ISO には以下が入っている。
+The ISO contains:
 
-- ZFS(`zpool` / `zfs`。これが無いと disko がプールを作れない)
-- disko、git、neovim、sops、age、cryptsetup
-- flakes 有効化済み。**これが無いと `disko --flake` も `nixos-install --flake` も
-  最初の一手で "experimental Nix feature 'nix-command' is disabled" で止まる**
-- 自前 cachix を substituter に登録済み。CI がホストのクロージャを push しているので、
-  インストールはビルドではなくダウンロードになる
-- この手順書そのもの。`homeserver-guide` で読める(tailscale 認証前でネットが無い状態でも読める)
+- ZFS, `zpool` and `zfs`. Without them disko cannot create the pool.
+- disko, git, neovim, sops, age, cryptsetup.
+- flakes, already enabled. Without that, both `disko --flake` and `nixos-install --flake` stop
+  on the very first command with "experimental Nix feature 'nix-command' is disabled".
+- Our own cachix registered as a substituter. CI pushes the host's closure, so installing is a
+  download rather than a build.
+- This runbook. `homeserver-guide` opens it, readable before Tailscale authentication and
+  therefore without a network.
 
-### 3.2 ディスクを切る
+### 3.2 Partitioning
 
-**ここから不可逆。** 実行前に、2章の退避物が箱の外にあることをもう一度確認する。
+Nothing after this is reversible. Before running it, confirm once more that everything from
+section 2 is outside the box.
 
 ```sh
 sudo disko --mode destroy,format,mount --flake github:gapul/dotfiles?dir=nix#homeserver
 ```
 
-GPT を切り直し、1GB の ESP と、残り全部の zpool `rpool` を作る。データセットは
-root / nix / var-lib / srv / home。srv だけスナップショット対象外。
+This lays down a fresh GPT with a 1 GB ESP and gives the rest to a zpool called `rpool`. The
+datasets are root, nix, var-lib, srv and home; only srv is excluded from snapshots.
 
-### 3.3 インストール
+### 3.3 Installing
 
 ```sh
 sudo nixos-install --flake github:gapul/dotfiles?dir=nix#homeserver
 sudo nixos-enter --root /mnt -c 'passwd gapul'
 
-# 鍵を置く (再起動後に入る唯一の手段。/home は独立データセットなので
-#  マウントされていることを findmnt で確認してから置く)
+# place the key, the only way in after the reboot. /home is its own dataset,
+# so confirm it is mounted with findmnt before writing to it.
 findmnt /mnt/home
 sudo install -d -m 700 -o 1000 -g 100 /mnt/home/gapul/.ssh
 curl -sL https://github.com/gapul.keys | sudo tee /mnt/home/gapul/.ssh/authorized_keys
 sudo chown 1000:100 /mnt/home/gapul/.ssh/authorized_keys
 sudo chmod 600 /mnt/home/gapul/.ssh/authorized_keys
 
-# ★必須: プールを明け渡してから再起動する
-#   これを飛ばすとプールにインストーラの hostId が残り、新システムは
-#   forceImportRoot=false のため import を拒否して起動しない。
+# Required: hand the pool back before rebooting.
+#   Skip this and the pool keeps the installer's hostId, and the new system,
+#   with forceImportRoot=false, refuses to import it and will not boot.
 sudo umount -R /mnt
 sudo zpool export rpool
 reboot
 ```
 
-**`zpool export` を忘れた場合の復旧**: 起動が initrd の緊急シェルに落ちる。
-`emergencyAccess = true` にしてあるのでパスワード無しで入れるので、そこで
+If `zpool export` was forgotten, the boot drops into the initrd emergency shell.
+`emergencyAccess = true` is set, so it lets you in without a password:
 
 ```sh
 zpool import -f rpool
@@ -265,59 +275,60 @@ reboot
 
 ---
 
-## 4. 秘密と一度きりの認証
+## 4. Secrets and one-time authentication
 
-すべて root 所有の 0400。sops-nix はこのホストの age 鍵ができるまで使えないので、
-最初は手で置く。鍵ができたら `secrets/secrets.yaml` に移す。
+Everything is root-owned and 0400. sops-nix is unusable until this host has an age key, so the
+first placement is by hand; once the key exists they move into `secrets/secrets.yaml`.
 
-| パス | 中身 |
+| Path | Contents |
 |---|---|
-| `/var/lib/secrets/acme-cloudflare.env` | `CF_DNS_API_TOKEN=...`(旧 `/etc/caddy/cf.env` と同じトークン。**変数名が違う**) |
-| `/var/lib/secrets/restic.password` | restic リポジトリのパスワード |
-| `/var/lib/secrets/rclone.conf` | rclone の設定(google-drive リモート) |
-| `/var/lib/secrets/mosquitto-ha.password` | mosquitto_passwd 形式のハッシュ部分のみ |
-| `/var/lib/secrets/gatus.env` | `NTFY_TOPIC` と `NTFY_TOKEN`(これが無いと gatus が起動しない) |
-| `/var/lib/secrets/<stack>.env` × 8 | キーの一覧は `nix/homelab/README.md` |
-| `/var/lib/secrets/mvrx/` 6ファイル | 会社トンネル一式。同じく `nix/homelab/README.md` |
+| `/var/lib/secrets/acme-cloudflare.env` | `CF_DNS_API_TOKEN=...`, the same token as the old `/etc/caddy/cf.env`, but under a different variable name |
+| `/var/lib/secrets/restic.password` | The restic repository password |
+| `/var/lib/secrets/rclone.conf` | The rclone configuration, with the google-drive remote |
+| `/var/lib/secrets/mosquitto-ha.password` | Just the hash part, in mosquitto_passwd format |
+| `/var/lib/secrets/gatus.env` | `NTFY_TOPIC` and `NTFY_TOKEN`. gatus does not start without them |
+| `/var/lib/secrets/<stack>.env`, eight of them | The keys are listed in `nix/homelab/README.md` |
+| `/var/lib/secrets/mvrx/`, six files | The company tunnel, also in `nix/homelab/README.md` |
 
-`<stack>.env` のキー名は旧 `.env` と一致しないものがある。paperless の `PAPERLESS_SECRET`
-はコンテナ側では `PAPERLESS_SECRET_KEY`、miniflux はパスワード単体ではなく `DATABASE_URL`
-全体が必要。ここを間違えるとサービスは失敗せずに間違った認証情報で起動する。
+Some of the `<stack>.env` key names differ from the old `.env` files. paperless's
+`PAPERLESS_SECRET` is `PAPERLESS_SECRET_KEY` inside the container, and miniflux needs the whole
+`DATABASE_URL` rather than the password alone. Getting these wrong does not make the service
+fail; it starts with the wrong credentials.
 
-mosquitto のハッシュ:
+The mosquitto hash:
 
 ```sh
-mosquitto_passwd -c /tmp/p ha       # 対話でパスワード入力
+mosquitto_passwd -c /tmp/p ha       # prompts for the password
 cut -d: -f2 /tmp/p > /var/lib/secrets/mosquitto-ha.password
 ```
 
-一度きりの認証:
+One-time authentication:
 
 ```sh
-sudo tailscale up --advertise-routes=192.168.116.0/24,192.168.1.0/24   # 管理画面でルート承認
-tailscale ip -4     # この IP に 1.3 の DNS 付け替えを行う
+sudo tailscale up --advertise-routes=192.168.116.0/24,192.168.1.0/24   # approve the routes in the admin console
+tailscale ip -4     # this is the address the DNS repointing in 1.3 uses
 sudo smbpasswd -a gapul
-# AdGuard の管理者アカウントは https://dns2.gapul.net の初回画面で作る
+# AdGuard's admin account is created on the first-run screen at https://dns2.gapul.net
 ```
 
 ---
 
-## 5. データ復元
+## 5. Restoring the data
 
-**所有者に注意。** 旧環境は全部 root で動く docker コンテナだったが、ネイティブサービスは
-それぞれ専用ユーザーで動く。
+Watch the ownership. Everything in the old setup ran as root in docker containers; the native
+services each run as their own user.
 
-| 復元先 | 所有者 |
+| Destination | Owner |
 |---|---|
-| `/var/lib/homelab/<stack>/` | root(コンテナが root で動くため) |
-| `/srv/`(旧 /mnt/jellyfin-media) | root |
+| `/var/lib/homelab/<stack>/` | root, since the containers run as root |
+| `/srv/`, formerly /mnt/jellyfin-media | root |
 | `/var/lib/hass`, `/var/lib/matter-server` | root |
-| `/var/lib/syncthing/.config/syncthing/`(cert.pem, key.pem) | `syncthing` |
+| `/var/lib/syncthing/.config/syncthing/`, cert.pem and key.pem | `syncthing` |
 | `/var/lib/esphome` | `esphome` |
 | `/var/lib/node-red` | `node-red` |
-| `/var/lib/AdGuardHome` | root(大文字に注意) |
+| `/var/lib/AdGuardHome` | root, and note the capitals |
 
-名前付きボリュームの取り込み:
+Importing the named volumes:
 
 ```sh
 for v in dawarich_dawarich_db_data ... ; do
@@ -326,43 +337,42 @@ for v in dawarich_dawarich_db_data ... ; do
 done
 ```
 
-Home Assistant の設定を1行直す。`/var/lib/hass/configuration.yaml` の
+One line of Home Assistant's configuration needs changing. In
+`/var/lib/hass/configuration.yaml`:
 
 ```yaml
 http:
-  trusted_proxies: [192.168.116.119]   # 旧 Caddy コンテナ
+  trusted_proxies: [192.168.116.119]   # the old Caddy container
 ```
 
-を `127.0.0.1` にする。Caddy が同じホストになったため。直さないと全リクエストが 400 で
-弾かれ、痕跡は HA のログにしか出ない。
+becomes `127.0.0.1`, since Caddy is now on the same host. Leave it and every request is rejected
+with a 400, with no trace of why outside HA's own log.
 
----
+### 5.1 Things that break because an address changed
 
-### 5.1 アドレスが変わるので直すもの
+A few places hardcode the old host's address. The services still start, so the discovery
+happens when someone tries to use them.
 
-旧ホストの IP を直書きしている設定が何箇所かある。サービスは起動するので、
-気づくのは「使おうとしたとき」になる。
-
-| どこ | 何を |
+| Where | What |
 |---|---|
-| `/var/lib/hass/configuration.yaml` | `trusted_proxies` を `127.0.0.1` に(前述) |
-| `/var/lib/homelab/homepage/config/services.yaml` | 19箇所の IP 直書き。`192.168.116.100`(pve、消滅)、`.88`(HAOS→localhost)、`.65`(CT101→localhost)。`.53`(Pi)と `.91` はそのまま |
-| スマホの OwnTracks | Dawarich の宛先が旧 CT101 の `:3005`。新ホストのアドレスへ |
-| MQTT クライアント | mosquitto の認証が HA ユーザー依存から独自ユーザーに変わる |
+| `/var/lib/hass/configuration.yaml` | `trusted_proxies` to `127.0.0.1`, as above |
+| `/var/lib/homelab/homepage/config/services.yaml` | 19 hardcoded addresses. `192.168.116.100` (pve, gone), `.88` (HAOS, now localhost), `.65` (CT101, now localhost). `.53` (the Pi) and `.91` stay |
+| OwnTracks on the phone | Points at Dawarich on the old CT101's `:3005`. Change it to the new host |
+| MQTT clients | mosquitto's authentication moves from the HA user to its own |
 
-### 5.1.1 復元に必要なものはバックアップの中に入れない
+### 5.1.1 What restoring needs must not live inside the backup
 
-`/var/lib/secrets` は restic のバックアップ対象に入っている。つまり **restic の
-パスワードと rclone の設定だけは、バックアップの外**(Bitwarden)に無いと、
-バックアップを開けられない。移行前に手元にあることを確認しておく。
+`/var/lib/secrets` is included in the restic backup, which means the restic password and the
+rclone configuration have to exist outside the backup — in Bitwarden — or the backup cannot be
+opened at all. Confirm they are to hand before migrating.
 
-母艦の `~/.ssh/config` は sops 管理で、`pve` などのエントリが入っている。
-`homeserver` のエントリ追加はそちら側の作業になる。
+The Mac's `~/.ssh/config` is managed through sops and contains entries such as `pve`. Adding a
+`homeserver` entry is work on that side.
 
-### 5.2 旧スナップショットの掃除(移行後でよい)
+### 5.2 Cleaning up the old snapshots, which can wait
 
-pve は `--host pve --tag pve-vzdump` で Google Drive に vzdump を送っていた。
-その host はもう存在しないので、放っておくと永久に残る。
+pve sent its vzdump to Google Drive under `--host pve --tag pve-vzdump`. That host no longer
+exists, so left alone they stay forever.
 
 ```sh
 restic forget --host pve --tag pve-vzdump --keep-last 1 --prune
@@ -370,40 +380,41 @@ restic forget --host pve --tag pve-vzdump --keep-last 1 --prune
 
 ---
 
-## 6. 検証
+## 6. Verifying
 
 ```sh
 systemctl --failed
 journalctl -p err -b --no-pager | tail -40
 ```
 
-- https://status.gapul.net が緑になるか(gatus が20件を監視している)
-- Matter デバイスが Home Assistant でオンラインに戻るか。戻らない場合はまずホストの
-  IPv6 を疑う。Matter は Wi-Fi 機器でも IPv6 を要求する
-- Syncthing の device ID が `Y72TVZZ-...` のままか。変わっていたら 2.4 の復元に失敗している
-- Mac から `restic snapshots` に homeserver タグの新しいスナップショットが出るか
-- `dig @<新ホスト> example.com` が引けるか(53番は AdGuard が持つ)
-- 会社トンネル: `systemctl status mvrx-vpn` と `ip -4 addr show ppp0`、tailnet 越しに
-  `ssh mvrx-nolang-dev` が通るか。**ここだけは CI で検証できていない唯一の箇所**なので、
-  駄目なら 2.3.1 のディスクイメージを libvirt で起動して仕事を優先する
-- Jellyfin のハードウェアトランスコードが効くか(`/dev/dri` はメタルなら素直に見える)
+- Does https://status.gapul.net go green? gatus watches twenty checks.
+- Do the Matter devices come back online in Home Assistant? If not, suspect the host's IPv6
+  first — Matter needs IPv6 even for Wi-Fi devices.
+- Is Syncthing's device ID still `Y72TVZZ-...`? If it changed, the restore in 2.4 failed.
+- Does `restic snapshots` from the Mac show a new snapshot tagged homeserver?
+- Does `dig @<the new host> example.com` answer? AdGuard owns port 53.
+- The company tunnel: `systemctl status mvrx-vpn`, `ip -4 addr show ppp0`, and whether
+  `ssh mvrx-nolang-dev` works over the tailnet. This is the one thing CI could not verify, so
+  if it fails, boot the disk image from 2.3.1 under libvirt and get work moving first.
+- Does Jellyfin's hardware transcoding work? On bare metal `/dev/dri` shows up without effort.
 
-コンテナは初回だけイメージ取得で時間がかかる。docker.io は mirror.gcr.io 経由に
-宣言済みなのでレート制限は踏まないはず。
+Containers take a while the first time, pulling images. docker.io is already declared to go
+through mirror.gcr.io, so the rate limit should not come up.
 
-データベースを持つスタック(attic / dawarich / miniflux / paperless)は、初回起動で
-アプリ側が一度死んで再起動する。compose の health 待ちが systemd の順序依存に変わり、
-「起動した」までしか見ないため。`Restart=always` が拾うので放っておいてよい。
+The stacks with databases — attic, dawarich, miniflux, paperless — die once on first start and
+restart. The compose health wait becomes a systemd ordering dependency, which only knows that
+the dependency started. `Restart=always` catches it, so leave it alone.
 
 ---
 
-## 7. 切り戻し
+## 7. Rolling back
 
-pve は既に存在しないので、戻すなら Proxmox を入れ直して 2章の退避物から復元する。
-数時間コース。
+pve no longer exists, so going back means reinstalling Proxmox and restoring from section 2.
+Several hours.
 
-現実的な保険は NixOS 側の世代で、設定の問題であれば再起動1回で前の世代を選べる。
-ZFS のスナップショットは自動で取られているので、データの問題なら `zfs rollback`。
+The realistic insurance is NixOS generations: if the problem is configuration, one reboot
+selects the previous generation. ZFS snapshots are taken automatically, so if the problem is
+data, `zfs rollback`.
 
-コンソールという保険は無くなる。pve の Web UI から noVNC で中に入る道が消えるので、
-起動しなくなったら物理アクセスになる。BIOS へは `systemctl reboot --firmware-setup`。
+What is gone is the console. There is no more noVNC into the machine from pve's web UI, so if it
+stops booting, that means physical access. `systemctl reboot --firmware-setup` gets to the BIOS.

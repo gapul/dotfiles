@@ -1,118 +1,120 @@
 # iOS
 
-iOS には adb に当たるものが無く、監視モード (Apple Configurator で supervise) を
-掛けない限り外から押し込めるものが何も無い。**入れる仕事は自動化できないが、
-入っているかの確認と、入れる物の生成はできる**ので、その 2 つを持っている。
+iOS has no equivalent of adb, and without supervised mode, meaning supervising the device with
+Apple Configurator, nothing can be pushed in from outside. Installing cannot be automated, but
+checking what is installed and generating what gets installed can be, so those are what lives
+here.
 
 ```
 ios/
-├── apps.tsv          # 入れるアプリの宣言 (bundleId + 入手経路 + 同期経路)
-├── sources.tsv       # AltStore 系 source の URL (Classic / PAL)
+├── apps.tsv          # which apps to install: bundleId, how to get it, how it syncs
+├── sources.tsv       # the URLs of the AltStore sources, Classic and PAL
 ├── apps.sh           # status | verify
-├── test.sh           # apps.sh の自己チェック (偽 ideviceinstaller、実機不要)
-└── profiles/serve.sh # nix が生成した .mobileconfig を LAN 配信
+├── test.sh           # self-check for apps.sh, against a fake ideviceinstaller, no device needed
+└── profiles/serve.sh # serves the .mobileconfig files nix generated over the LAN
 ```
 
-プロファイルの中身は `nix/mobile/ios-profiles.nix`。
+The contents of the profiles are in `nix/mobile/ios-profiles.nix`.
 
-## アプリ
+## Apps
 
 ```sh
-./apps.sh status   # USB 接続した iPhone と宣言の差分。MISSING があれば exit 1
-./apps.sh verify   # 宣言した bundleId が経路上に実在するか (3 経路すべて)
+./apps.sh status   # the declaration against a USB-connected iPhone. Exits 1 if anything is MISSING
+./apps.sh verify   # checks each declared bundleId still exists on its route, across all three
 ```
 
-3 つの経路を使い分けているので、`apps.tsv` の source 列でどれ担当かを宣言する。
+Three routes are in use, so the `source` column in `apps.tsv` says which one handles each app.
 
-| source | 入手 | verify の照会先 |
+| source | Where it comes from | What verify queries |
 |---|---|---|
-| `appstore` | App Store | iTunes Search API |
-| `altstore-classic` | 母艦で再署名して入れる自ビルド | `sources.tsv` の classic な source の JSON |
-| `altstore-pal` | AltStore PAL (代替マーケットプレイス) | 同 pal |
+| `appstore` | The App Store | The iTunes Search API |
+| `altstore-classic` | Self-built, re-signed on the Mac | The JSON of the classic source in `sources.tsv` |
+| `altstore-pal` | AltStore PAL, the alternative marketplace | The pal source in the same file |
 
-`status` は `ideviceinstaller` で実機を照会するので、USB 接続と端末側の
-「このコンピュータを信頼」が要る。ネットワーク越しには照会できない。
+`status` queries the device through `ideviceinstaller`, so it needs USB and "Trust this
+Computer" on the phone. There is no way to query it over the network.
 
-インストールは自動化できない。App Store も PAL も署名済み ipa を要求するので、
-手で入れる。だから `status` は「入れ直しの残りを数える」道具として使う。
+Installing cannot be automated. Both the App Store and PAL want a signed ipa, so it is done by
+hand, which makes `status` a way of counting what is left to reinstall.
 
-**自ビルドは再署名で bundleId が変わる。** App Store 版の `com.keepassium.ios` と
-自ビルドの `net.gapul.keepassium` は端末から見て別物なので、宣言する側も
-実機に入っている方を書く。`verify` が source の JSON と突き合わせるので、
-ここを取り違えると落ちる。
+**Re-signing a self-built app changes its bundleId.** The App Store's `com.keepassium.ios` and
+the self-built `net.gapul.keepassium` are different apps as far as the device is concerned, so
+declare whichever is actually installed. `verify` compares against the source's JSON, so getting
+this wrong makes it fail.
 
-自ビルドの署名配信は [gapul/altstore-source](https://github.com/gapul/altstore-source)
-(`sources.tsv` の `gapul-selfbuild`)。ビルド手順は `docs/self-build-software.md`。
+The signed self-builds are distributed through
+[gapul/altstore-source](https://github.com/gapul/altstore-source), which is `gapul-selfbuild` in
+`sources.tsv`. How they are built is in `docs/self-build-software.md`.
 
-## 構成プロファイル
+## Configuration profiles
 
-`.mobileconfig` は XML plist でしかないので、payload を nix の attrset で書いて
-`pkgs.formats.plist` に流している (`nix/mobile/ios-profiles.nix`)。
+A `.mobileconfig` is only an XML plist, so the payloads are written as a nix attrset and run
+through `pkgs.formats.plist`, in `nix/mobile/ios-profiles.nix`.
 
 ```sh
-nix build ./nix#ios-profiles   # 生成
-./profiles/serve.sh            # LAN に出す (中で nix build もする)
+nix build ./nix#ios-profiles   # generate them
+./profiles/serve.sh            # serve them on the LAN; this builds them too
 ```
 
-同じ LAN の iPhone の Safari から表示された URL を開くと、ダウンロード後に
-設定アプリの「プロファイルがダウンロードされました」から入る。Safari 以外の
-ブラウザではこの導線に乗らない。
+Open the printed URL in Safari on an iPhone on the same LAN, and after it downloads it appears
+in Settings under "Profile Downloaded". No other browser leads anywhere.
 
-PayloadUUID は名前のハッシュから決定的に導いている。ここが毎回変わると、
-更新のたびに別物として端末にプロファイルが積み上がる。
+The PayloadUUID is derived deterministically from a hash of the name. If it changed each time,
+every update would pile up on the device as a separate profile.
 
-ベンダーが署名済みで配っているものは書かない — NextDNS の DNS プロファイルも
-Tailscale の VPN プロファイルも本家が配っていて、そちらの方が信頼済みとして入る。
-配布元が無いものだけを宣言する。
+Anything a vendor distributes ready-signed is not written here. NextDNS's DNS profile and
+Tailscale's VPN profile both come from upstream and install as trusted, which is better. Only
+the things nobody distributes get declared.
 
-| 用途 | どこから |
+| Purpose | Where it comes from |
 |---|---|
-| 自宅 Radicale の CalDAV/CardDAV | `nix/mobile/ios-profiles.nix` (配布元が無いので自前)。宛先は `hosts/homeserver.nix` の `sites` 表が立てる `dav` の vhost |
-| DNS (NextDNS) | `https://apple.nextdns.io/<profile-id>` を Safari で開く |
-| 自宅 tailnet | Tailscale アプリ本体が VPN プロファイルを入れる |
+| CalDAV and CardDAV for the Radicale at home | `nix/mobile/ios-profiles.nix`, because nobody distributes one. The target is the `dav` vhost created by the `sites` table in `hosts/homeserver.nix` |
+| DNS, through NextDNS | Open `https://apple.nextdns.io/<profile-id>` in Safari |
+| The tailnet at home | The Tailscale app installs its own VPN profile |
 
-## ショートカット
+## Shortcuts
 
-iCloud で iPhone と母艦を往復しているので、母艦の
-`~/Library/Shortcuts/Shortcuts.sqlite` を読めば端末を繋がずに中身が取れる
-(素の bplist で暗号化されていない)。
-
-```sh
-./shortcuts.sh export   # 母艦の Shortcuts から shortcuts/*.plist に書き出す
-./shortcuts.sh status   # 書き出し済みと母艦の一覧の差分
-./shortcuts.sh build    # shortcuts/*.cherri を署名済み .shortcut にする
-```
-
-書き出しは**バックアップとレビューのため**にやっている。ショートカットの実体は
-iCloud にしか無く、消えたら戻せない。XML plist に開いてあるので差分も読める。
-
-新規に書くときは [Cherri](https://github.com/electrikmilk/cherri) を使う。
-テキストから署名済みの `.shortcut` (AEA1 コンテナ) を直接吐く Go 製の
-コンパイラで、flake があるので `nix run` で足りる。
-
-**手で組んだ plist は `shortcuts sign` に通らない。** XML でも binary でも、
-最小構成でも現行の必須キーを揃えても弾かれた。だから mobileconfig のように
-nix で組み立てる形は取れず、Cherri に任せている。
-
-`build` が出した `.shortcut` は母艦の Shortcuts に `open` で入れれば
-iCloud が iPhone に運ぶ。端末を繋ぐ必要は無い。
-
-## 端末内の CLI
-
-**iOS 上に環境を作らない。** iSH は i386 エミュレーションで遅く、a-Shell は
-サンドボックスの都合で普通の Unix にならない。どちらも母艦の設定を持ち込むには
-別系統の config を維持する羽目になる。
-
-代わりに [Blink Shell](https://blink.sh) から tailnet 越しに母艦へ入る:
+Shortcuts move between the phone and the Mac through iCloud, so reading the Mac's
+`~/Library/Shortcuts/Shortcuts.sqlite` gets at their contents without connecting a device. They
+are plain bplist and are not encrypted.
 
 ```sh
-ssh macmini    # あるいは homeserver
-nssh <host>    # rootless nix で nvim/yazi/tmux を自分の設定のまま
+./shortcuts.sh export   # writes the Mac's Shortcuts out into shortcuts/*.plist
+./shortcuts.sh status   # what has been exported against what the Mac has
+./shortcuts.sh build    # turns shortcuts/*.cherri into signed .shortcut files
 ```
 
-`nssh` が置いていく設定は `configs/shell/zshrc.remote` で、母艦と共通の部分は
-`configs/shell/zshrc.common` を直接読む。つまり iPhone から入っても同じ shell になる。
+Exporting is for backup and review. A shortcut exists only in iCloud, and if it goes there is
+nothing to restore from. Written out as XML plist, the diffs are readable too.
 
-Blink 自体の設定 (キーマップ、ホスト定義) はアプリ内に閉じていて外に出せないので、
-これは宣言管理の外。SSH 鍵は Blink で端末ごとに生成して公開鍵だけ配る
-(母艦の鍵を持ち出さない)。
+New ones are written with [Cherri](https://github.com/electrikmilk/cherri), a compiler in Go
+that turns text straight into a signed `.shortcut`, an AEA1 container. It has a flake, so
+`nix run` is enough.
+
+**A hand-built plist will not pass `shortcuts sign`.** XML or binary, minimal or with every
+currently required key present, it was rejected either way. So unlike the mobileconfig files
+these cannot be assembled in nix, and Cherri does it instead.
+
+A `.shortcut` from `build` goes into the Mac's Shortcuts with `open`, and iCloud carries it to
+the phone. No cable involved.
+
+## The CLI on the device
+
+**No environment is built on iOS.** iSH emulates i386 and is slow, and a-Shell's sandbox means
+it never quite becomes a normal Unix. Either would mean maintaining a second set of
+configuration to carry the Mac's setup across.
+
+Instead, [Blink Shell](https://blink.sh) connects to the Mac over the tailnet:
+
+```sh
+ssh macmini    # or homeserver
+nssh <host>    # nvim, yazi and tmux through rootless nix, with the usual configuration
+```
+
+The configuration `nssh` leaves behind is `configs/shell/zshrc.remote`, and the parts shared
+with the Mac come from reading `configs/shell/zshrc.common` directly. So the shell is the same
+one whether you arrive from the phone or not.
+
+Blink's own settings — key mappings, host definitions — are locked inside the app and cannot be
+extracted, so they are outside declarative management. SSH keys are generated per device in
+Blink and only the public key is distributed; the Mac's key never leaves the Mac.

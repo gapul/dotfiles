@@ -1,27 +1,58 @@
-# popo-agent chat-provider 作業の引き継ぎ（2026-07-13）
+# Handover: popo-agent chat providers, 2026-07-13
 
-別マシン（gapul mac + Windows実機 ispc）で進めた作業の残タスクです。可能なものから進めてください。
-リポジトリ: github.com/post-urban/popo-agent（デフォルト/統合ブランチは main のみ、GitHub Flow）。
+What is left from work done on other machines, the gapul Mac and the ispc Windows machine. Pick
+up whatever is workable. The repository is github.com/post-urban/popo-agent, which uses GitHub
+Flow with main as the only default and integration branch.
 
-## 完了済み（origin にある状態）
-5 本の feature ブランチを origin/main(#401) に rebase 済み。各 PR に provider 固有の制限・マイグレーション注意を明記済み。
-- Chatwork **PR #403 Open**（markdown変換 + ファイル送受信 + 5 migrations）
-- Telegram **PR #404 Open**（Bot API full + 5 migrations）
-- Windows(runtime) **PR #364 Open**（Windowsネイティブ互換 + fcntl修正 + CI Windows matrix）
-- LINE **PR #405 Closed（保留）** — ブランチ feat/chat-line は rebase済み(5e883bed)、再開は `gh pr reopen 405`
-- teams（feat/chat-teams, 5commits）— 未 rebase / 未 PR
+## Already done and on origin
 
-## 残タスク
-1. **teams ブランチ**: origin/main へ rebase → 検証（typecheck/vitest）→ PR。他 provider 同様、共有ファイル（chat-egress.ts / inbound.ts / identity.ts / route.ts）で加算的衝突、`buildChatLinkReassignedEmail`・`resolveSeatForSlackSender` の provider 拡張が必要になる想定。
-2. **マージ順の衝突対応**: chatwork/telegram/line/teams は同じ共有ファイルを触るため、1本マージ後に残りは main 追従 rebase（軽微な衝突解決）が必要。
-3. **token 解決の DRY 化**（任意）: 各 provider egress の「apiToken解決 → resolveRuntimeSecret → http_401 なら refresh して1回リトライ」が複数箇所に重複。`resolveXxxToken` に集約可能。
-4. **provider diff の深い監査**（任意）: 過剰実装/dead code。chatwork の未配線 interactivity-handler は削除済み。line/teams は未監査。
+Five feature branches are rebased onto origin/main at #401. Each pull request spells out its
+provider-specific limitations and migration caveats.
 
-## 実機（ispc / Windows, ssh ispc）依存で保留中のもの
-- **Chatwork ファイル送受信**: 既存 install に OAuth scope `rooms.files:read/write` の**再認可**が必要（再認可まで API が 400、実機 E2E 未検証）。scopes.ts には追加済み。
-- **LINE 実機 E2E 未実施**: LINE の DB は空。LINE Messaging API チャネル作成 + channel token/secret + webhook(line-test.mugen404.com) + tenant/install/連携 + LINE アプリからの送信、が必要。ispc の line worktree は古い commit(39d1893a) で未同期、.env の ENTITLEMENT_ISSUER が host.docker.internal:3000 に誤設定。
-- **Windows 追従リスク**: 今後 main に fcntl/OS固有の新規コードが増えたら Windows-guard 追従が必要（追加した Windows CI matrix が検出想定）。
+- Chatwork, PR #403, open: markdown conversion, file transfer both ways, five migrations.
+- Telegram, PR #404, open: the full Bot API, five migrations.
+- Windows runtime, PR #364, open: native Windows compatibility, an fcntl fix, and a Windows CI
+  matrix.
+- LINE, PR #405, closed and on hold. The branch feat/chat-line is rebased, at 5e883bed; reopen
+  with `gh pr reopen 405`.
+- Teams, feat/chat-teams, five commits, neither rebased nor opened as a PR.
 
-## 注意
-- data/ や .env を git に add しない。vault ノートを直接削除しない。.claude/plans/ に書かない。
-- 実機 ispc は Windows。認証情報の入力やアカウント作成は人間側の操作。
+## What is left
+
+1. **The teams branch.** Rebase onto origin/main, verify with typecheck and vitest, and open a
+   PR. Like the other providers, expect additive conflicts in the shared files —
+   chat-egress.ts, inbound.ts, identity.ts, route.ts — and expect
+   `buildChatLinkReassignedEmail` and `resolveSeatForSlackSender` to need extending for the new
+   provider.
+2. **Conflicts between merges.** chatwork, telegram, line and teams all touch the same shared
+   files, so after the first one merges the rest need rebasing onto main, with minor conflicts
+   to resolve.
+3. **Deduplicating token resolution**, optional. Every provider's egress repeats the same
+   sequence: resolve apiToken, call resolveRuntimeSecret, and on http_401 refresh and retry
+   once. It could collapse into a `resolveXxxToken`.
+4. **A deeper audit of the provider diffs**, optional, looking for over-implementation and dead
+   code. Chatwork's unwired interactivity-handler has already been deleted. line and teams have
+   not been audited.
+
+## Blocked on the ispc Windows machine, reachable as `ssh ispc`
+
+**Chatwork file transfer** needs the existing install re-authorised for the OAuth scopes
+`rooms.files:read/write`. Until it is, the API returns 400, and the end-to-end test on real
+hardware has not been done. The scopes are already in scopes.ts.
+
+**LINE has not been tested end to end.** Its database is empty. It needs a LINE Messaging API
+channel created, a channel token and secret, a webhook at line-test.mugen404.com, a tenant,
+install and link, and a message sent from the LINE app. The line worktree on ispc is out of
+date, at commit 39d1893a, and its `.env` has `ENTITLEMENT_ISSUER` wrongly set to
+host.docker.internal:3000.
+
+**Keeping Windows working** will need attention whenever new fcntl or OS-specific code lands on
+main, since the Windows guards have to follow. The Windows CI matrix that was added should catch
+it.
+
+## Ground rules
+
+Do not `git add` `data/` or `.env`. Do not delete vault notes directly. Do not write into
+`.claude/plans/`.
+
+ispc is a Windows machine, and entering credentials or creating accounts is a human's job.

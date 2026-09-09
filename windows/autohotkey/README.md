@@ -1,94 +1,95 @@
-# Windows 組合せキー remap (AutoHotkey)
+# Remapping key combinations on Windows, with AutoHotkey
 
-SharpKeys / Scancode Map では実現できない **組合せ remap** を担当する。
+Handles the combinations that SharpKeys and the Scancode Map cannot express.
 
-| レイヤー | ファイル | できること |
+| Layer | File | What it can do |
 |---|---|---|
-| 物理キー単体 (永続) | `windows/sharpkeys/` | CapsLock → Ctrl 等の 1 対 1 |
-| **組合せキー** (常駐) | `windows/autohotkey/keymap.ahk` | Ctrl+A → Home 等の Emacs ショートカット、コンテキスト依存 |
+| Single physical keys, persistent | `windows/sharpkeys/` | One-to-one, such as CapsLock to Ctrl |
+| Combinations, resident | `windows/autohotkey/keymap.ahk` | Emacs shortcuts such as Ctrl+A to Home, and anything context-dependent |
 
-## 構成
+## Layout
 
 ```
 windows/autohotkey/
 ├── README.md
-└── keymap.ahk   # AHK v2 スクリプト
+└── keymap.ahk   # an AHK v2 script
 ```
 
-## 起動
+## Starting it
 
-`bootstrap.ps1` が `keymap.ahk` を `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\`
-に symlink するため、ログイン時に自動起動する。
+`bootstrap.ps1` symlinks `keymap.ahk` into
+`%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\`, so it starts at login.
 
-リロード:
+To reload:
 
 ```powershell
-just win-keymap   # sharpkeys 適用 + AHK 再起動
+just win-keymap   # applies sharpkeys and restarts AHK
 ```
 
-手動:
-- AHK が常駐していれば、`.ahk` ファイル右クリック → `Run Script` で再ロード
-- またはタスクトレイ AHK アイコン右クリック → `Reload Script`
+By hand, if AHK is already resident, right-click the `.ahk` file and choose Run Script, or
+right-click AHK in the tray and choose Reload Script.
 
-## 実装内容
+## What it does
 
-### 1. Copilot キー → 右 Ctrl (scancode 単独 remap 不可な機種向け保険)
+### 1. The Copilot key to Right Ctrl, as insurance for machines where a scancode remap cannot
 
-Win11 OEM の Copilot 専用キーは機種によって挙動が違う:
+The dedicated Copilot key behaves differently by vendor:
 
-| 機種 | 送信内容 | 対処 |
+| Machine | What it sends | Handled by |
 |---|---|---|
-| HP 一部 | scancode `0xE0 0x5C`(extended) | SharpKeys (Scancode Map) で完結 |
-| Lenovo / 一部 24H2 | `LShift + LWin + F23`(キーシーケンス) | **scancode remap 不可 → AHK 担当** |
+| Some HP models | The extended scancode `0xE0 0x5C` | SharpKeys, through the Scancode Map |
+| Lenovo, and some 24H2 machines | The key sequence `LShift + LWin + F23` | Not remappable by scancode, so AHK |
 
-実機の挙動確認:
-1. AHK 起動中にタスクトレイ右クリック → `Open` → `View` → `Key history`
-2. Copilot キーを押す → ログから scancode を確認
-3. `keymap.ahk` の Copilot 行を実機に合うものに切り替え
+To find out which one you have: with AHK running, right-click the tray icon, then Open, View,
+Key history; press the Copilot key; read the scancode from the log; and switch the Copilot line
+in `keymap.ahk` to whichever matches.
 
-### 2. Emacs ショートカット復活
+### 2. Bringing back the Emacs shortcuts
 
-macOS は Cocoa text field 全般で Emacs キーバインドが標準で効く。Windows はデフォルトでは効かない。
-AHK で emulate する。
+macOS gives you Emacs bindings in every Cocoa text field as standard. Windows does not, so AHK
+emulates them.
 
-| key | 動作 |
+| Key | What it does |
 |---|---|
-| `Ctrl+A` | 行頭(Home) |
-| `Ctrl+E` | 行末(End) |
-| `Ctrl+B` | 1 文字左 |
-| `Ctrl+F` | 1 文字右 |
-| `Ctrl+P` | 1 行上 |
-| `Ctrl+N` | 1 行下 |
-| `Ctrl+H` | 1 文字削除(前) |
-| `Ctrl+D` | 1 文字削除(後) |
-| `Ctrl+K` | 行末まで kill |
+| `Ctrl+A` | Start of line, Home |
+| `Ctrl+E` | End of line, End |
+| `Ctrl+B` | One character left |
+| `Ctrl+F` | One character right |
+| `Ctrl+P` | One line up |
+| `Ctrl+N` | One line down |
+| `Ctrl+H` | Delete the character before |
+| `Ctrl+D` | Delete the character after |
+| `Ctrl+K` | Kill to end of line |
 
-#### 除外コンテキスト
+#### Where they are switched off
 
-- ターミナル系: `ConsoleWindowClass` / `CASCADIA_HOSTING_WINDOW_CLASS` / `WezTermWindow` / `mintty`
-- エディタ系: `Vim` / VS Code / Cursor / nvim / Hyper
+- Terminals: `ConsoleWindowClass`, `CASCADIA_HOSTING_WINDOW_CLASS`, `WezTermWindow`, `mintty`
+- Editors: Vim, VS Code, Cursor, nvim, Hyper
 
-これらでは Ctrl+A=全選択 等の元の意味を尊重。WinTitle Class または Process 名で判別。
+In those, the original meanings — Ctrl+A as select all, and so on — are respected. They are
+matched on window class or process name.
 
-### カスタマイズ
+### Customising it
 
-`EmacsExcludeClasses` / `EmacsExcludeProcesses` に追加してその app では Emacs binding を無効化:
+Add to `EmacsExcludeClasses` or `EmacsExcludeProcesses` to disable the Emacs bindings in another
+app:
 
 ```ahk
 EmacsExcludeProcesses := "i)^(WezTerm|wt|alacritty|Code|MyApp)\.exe$"
 ```
 
-## Bitdefender 除外設定
+## Excluding it from Bitdefender
 
-AHK は低レベルキーフック (`SetWindowsHookEx WH_KEYBOARD_LL`) を使うため、Bitdefender の
-Advanced Threat Defense でキーロガー扱いされてブロックされる場合がある (起動 → 数秒で消える、
-タスクトレイにアイコンが出ない等)。
-**Bitdefender Security Center → Protection → Antivirus → Settings → Manage Exceptions** で:
+AHK uses a low-level keyboard hook, `SetWindowsHookEx WH_KEYBOARD_LL`, so Bitdefender's Advanced
+Threat Defense sometimes treats it as a keylogger and blocks it: it starts, disappears a few
+seconds later, and never shows a tray icon.
+
+Under Bitdefender Security Center, Protection, Antivirus, Settings, Manage Exceptions, add both:
 
 ```
 C:\Users\<user>\dotfiles\windows\autohotkey\
 C:\Program Files\AutoHotkey\
 ```
 
-の両方を Add。Advanced Threat Defense でも別途 Application Exception 追加が必要なことがある
-(Protection → Advanced Threat Defense → Settings → Manage Exceptions → AutoHotkey64.exe)。
+Advanced Threat Defense sometimes needs its own application exception as well, under Protection,
+Advanced Threat Defense, Settings, Manage Exceptions, for AutoHotkey64.exe.

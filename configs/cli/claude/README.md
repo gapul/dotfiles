@@ -1,108 +1,115 @@
 # Claude Code
 
-母艦とリモート (nssh 先) で持ち方が違う。
+Held differently on the Mac and on remote machines reached through nssh.
 
-## 母艦 — まるごと symlink
+## On the Mac, symlinked wholesale
 
-`nix/home/workstation.nix` が out-of-store symlink を張っていて、ここにあるファイルが実体。
+`nix/home/workstation.nix` creates out-of-store symlinks, so the files here are the real thing.
 
-| 実体 | リンク先 |
+| The real file | Linked to |
 | --- | --- |
 | `settings.json` | `$CLAUDE_CONFIG_DIR/settings.json` |
 | `CLAUDE.md` | `$CLAUDE_CONFIG_DIR/CLAUDE.md` |
-| `hooks/` `output-styles/` `bin/` | 同名のディレクトリ |
-| `skills/{english-vocab,gapul-writing-voice,step-by-step-tutor}` | `skills/` の下 |
+| `hooks/`, `output-styles/`, `bin/` | The directories of the same name |
+| `skills/{english-vocab,gapul-writing-voice,step-by-step-tutor}` | Under `skills/` |
 
-`settings.json` をまるごと持てるのは、母艦が `defaultMode: bypassPermissions` で
-`permissions.allow` が育たないから。TUI からの書き戻しはそのままこのファイルに落ちるので、
-`git diff` に出てきたらコミットすればいい。
+Keeping the whole `settings.json` works because the Mac runs with
+`defaultMode: bypassPermissions`, so `permissions.allow` never grows. Anything the TUI writes
+back lands in this file, and when it shows up in `git diff` it can simply be committed.
 
-セッション履歴・`.claude.json` (資格情報)・`settings.local.json` は state なので持たない。
-vendored な skill (cloudflare/* など) も上流から取り直せるので管理しない。
+Session history, `.claude.json`, which holds credentials, and `settings.local.json` are state
+and are not kept. Vendored skills, such as cloudflare's, can be fetched again from upstream and
+are not managed either.
 
-## リモート (nssh 先) — 管理キーだけ merge
+## On remote machines, merging only the managed keys
 
-`settings.remote.json` の**管理キーだけ**を、ホストの既存 JSON へ
-`scripts/merge-claude-settings.py` が上書き merge する。`~/.bashrc` に `bashrc.remote` を読む
-行だけ足すのと同じ考え方で、管理外のキーはホスト側にそのまま残す。
+`scripts/merge-claude-settings.py` merges only the managed keys from `settings.remote.json`
+over whatever JSON the host already has. It is the same idea as adding a single line to
+`~/.bashrc` that sources `bashrc.remote`: anything unmanaged stays as the host had it.
 
-| | キー |
+| | Keys |
 | --- | --- |
-| 管理対象 | `permissions.defaultMode` / `theme` / `effortLevel` / `editorMode` / `verbose` / `preferredNotifChannel` / `skipDangerousModePermissionPrompt` / `skipWorkflowUsageWarning` / `environmentVariables` |
-| 管理外 (ホスト所有) | `permissions.allow` / `permissions.additionalDirectories` / `enabledPlugins` / `hooks` |
+| Managed | `permissions.defaultMode`, `theme`, `effortLevel`, `editorMode`, `verbose`, `preferredNotifChannel`, `skipDangerousModePermissionPrompt`, `skipWorkflowUsageWarning`, `environmentVariables` |
+| Unmanaged, owned by the host | `permissions.allow`, `permissions.additionalDirectories`, `enabledPlugins`, `hooks` |
 
-管理対象は**母艦の `settings.json` が実際に持っているキー**に限る。母艦が書いていない
-キーを配ると、母艦は既定値・リモートだけ明示値という食い違いが生まれ、下の「母艦が正」
-が成り立たなくなる。`tui` / `inputNeededNotifEnabled` / `agentPushNotifEnabled` は
-リモート側の値から起こしてしまったもので、母艦に無いので外した (2026-08-13)。
-既に配ってしまったホストの値は残るが、以後はホスト所有として扱う。
+The managed set is limited to keys the Mac's own `settings.json` actually contains.
+Distributing a key the Mac does not set would leave the Mac on the default while the remote had
+an explicit value, which breaks the rule below that the Mac is authoritative. `tui`,
+`inputNeededNotifEnabled` and `agentPushNotifEnabled` had been lifted from a remote machine's
+values rather than the Mac's, and were removed on 2026-08-13. The values already distributed
+stay where they are, and are treated as host-owned from now on.
 
-### なぜ母艦のように丸ごと symlink にしないのか
+### Why not symlink it the way the Mac does
 
-`defaultMode: bypassPermissions` を配った時点で `permissions.allow` は育たなくなるので、
-「symlink にすると承認済みの許可が毎回消える」という元の理由は消えた (2026-08-15)。
-それでも merge のままなのは、母艦の `settings.json` に**リモートへ持って行くと壊れる／
-意味が無いキー**が混ざっているため。
+Once `defaultMode: bypassPermissions` was distributed, `permissions.allow` stopped growing, so
+the original reason — that symlinking would wipe accumulated approvals every time — went away
+on 2026-08-15. It stays a merge because the Mac's `settings.json` contains keys that either
+break or mean nothing on a remote machine.
 
-- `hooks` — `/Users/gapul/.config/claude/hooks/*.sh` という絶対パス。Linux では存在しない
-  ので毎回失敗する。リモートは自前のフック (herdr 連携) を持っている
-- `enabledPlugins` — 母艦は clangd / swift LSP。この箱に要るのは rust-analyzer で、
-  配ると入れ替わってしまう。ツールチェーンはホストごとに違うので触らない
-- `extraKnownMarketplaces` — 上の plugin とセットでしか意味が無いので外す
-- `disableDeepLinkRegistration` — macOS の `~/Applications` URL ハンドラの話で Linux には無い
-- `defaultModel` — 母艦は `claude-sonnet-4-20250514` を固定している。これを配ると
-  リモートの既定モデルまで巻き戻る。**意図的に外している**ので、揃えたくなったら
-  ここに書き足すのではなく先に母艦側の固定を見直すこと
+- `hooks` — absolute paths like `/Users/gapul/.config/claude/hooks/*.sh`, which do not exist on
+  Linux and fail every time. Remote machines have their own hooks, integrated with herdr.
+- `enabledPlugins` — the Mac has clangd and the Swift LSP. What a given box needs is
+  rust-analyzer, and distributing this would replace it. Toolchains differ per host, so it is
+  left alone.
+- `extraKnownMarketplaces` — only meaningful together with those plugins, so it goes too.
+- `disableDeepLinkRegistration` — a macOS `~/Applications` URL handler thing, with no Linux
+  equivalent.
+- `defaultModel` — the Mac pins `claude-sonnet-4-20250514`. Distributing it would roll the
+  remote's default model back too. Leaving it out is deliberate; if they should match, revisit
+  the pin on the Mac first rather than adding it here.
 
-### 入れ子の扱い
+### Nesting
 
-`permissions` は `defaultMode` だけを管理する。merge は両側が object のキーだけ再帰する
-ので、ホストが育てた `allow` / `additionalDirectories` は残る。配列は再帰しない
-(`allow` を要素ごとに混ぜたいわけではない)。`--check` と `--adopt` も同じ構造をなぞる。
+Only `defaultMode` inside `permissions` is managed. The merge recurses only where both sides
+have an object, so `allow` and `additionalDirectories` as the host grew them survive. Arrays are
+not recursed into, since merging `allow` element by element is not the intent. `--check` and
+`--adopt` follow the same structure.
 
-### bypassPermissions を配ることの意味
+### What distributing bypassPermissions means
 
-リモートでも Claude Code が権限確認なしで動く。共有機に入れる場合は、その箱で
-Claude に許されることが自分のアカウントでできること全部になる、という前提で使う。
+Claude Code runs on the remote machine without asking for permission. On a shared machine, use
+it on the understanding that whatever Claude is allowed to do there is everything your account
+can do.
 
-`CLAUDE.md` と自作 skill は書き換わらないので、リモートでも普通に symlink する。
-`hooks/` `output-styles/` `bin/` は母艦のデスクトップ前提 (osascript 通知 / herdr /
-Notion MCP) なので持ち込まない。
+`CLAUDE.md` and the hand-written skills are never rewritten, so they are symlinked on remote
+machines as normal. `hooks/`, `output-styles/` and `bin/` assume the Mac's desktop —
+notifications through osascript, herdr, the Notion MCP — and are not carried across.
 
-このスクリプトを母艦の `settings.json` へ向けてはいけない。書き込みが tmp+rename なので、
-nix が張った symlink を実ファイルで置き換えて追跡を切る。母艦では `--adopt` (読むだけ) の
-向きでのみ使う。
+Never point this script at the Mac's own `settings.json`. It writes through a temporary file and
+a rename, which would replace the symlink nix created with a real file and break tracking. On
+the Mac, use it only in the `--adopt` direction, which just reads.
 
-## どちらが勝つか — クライアント端末が正
+## Which side wins: the client machine
 
-管理キーの値は接続元の母艦を正とする。リモートで設定をいじっても、それはそのホスト限りの
-一時的なものとして次の merge で上書きされる。値の更新は母艦から吸い上げる向きで行う。
+For the managed keys, the Mac you connect from is authoritative. Changing a setting on a remote
+machine is temporary, local to that host, and gets overwritten by the next merge. Updates travel
+in the other direction, pulled up from the Mac:
 
 ```
-just claude-settings-adopt     # 母艦の現在値を settings.remote.json へ取り込む
+just claude-settings-adopt     # pull the Mac's current values into settings.remote.json
 ```
 
-吸い上げるのは `settings.remote.json` が既に持っている管理キーだけで、キーの集合は増えない
-(`permissions` を巻き込まないため)。新しく管理したいキーがあるときは、先に
-`settings.remote.json` へそのキーを手で足してから `adopt` を走らせる。
+It pulls only the managed keys `settings.remote.json` already has; the set never grows, so that
+`permissions` is not swept in. To manage a new key, add it to `settings.remote.json` by hand
+first, then run `adopt`.
 
-## theme = auto とライト/ダーク追従
+## theme = auto, and following light and dark
 
-`auto` は TUI 上の表示が "Auto (match terminal)" で、**OS ではなく端末**を見る。
-実装は端末への OSC 11 (背景色問い合わせ) の応答 `rgb:RRRR/GGGG/BBBB` を読み、
-取れないときは `COLORFGBG` にフォールバックする。
+`auto` appears in the TUI as "Auto (match terminal)", and it watches the terminal rather than
+the OS. It sends OSC 11 to ask for the background colour, reads the `rgb:RRRR/GGGG/BBBB` reply,
+and falls back to `COLORFGBG` when there is no answer.
 
-つまり ssh 越しでも、応答するのは母艦の ghostty なので**そのまま追従する**。
-`nix/lib/theme.nix` の dark/light 2 端点や `theme-watch` のような side channel は
-Claude には要らない。
+That means it follows correctly even over ssh, because what answers is ghostty on the Mac.
+Claude needs neither the two dark and light endpoints in `nix/lib/theme.nix` nor a side channel
+like `theme-watch`.
 
-ただし tmux の内側では OSC 11 に応答するのが tmux 自身になるため、外側の ghostty まで
-問い合わせが届くかは tmux のバージョン依存。ここは nvim の `&background` 自動判定と同じ
-制約で、`configs/editors/nvim/lua/plugins/auto-dark-mode.lua` の OSC 111 に関する
-コメントも参照。
+Inside tmux, though, tmux itself answers the OSC 11, so whether the query reaches the outer
+ghostty depends on the tmux version. This is the same constraint nvim's automatic `&background`
+detection has; see the comments about OSC 111 in
+`configs/editors/nvim/lua/plugins/auto-dark-mode.lua`.
 
-## 適用
+## Applying it
 
-- 母艦: `just rebuild`
-- リモート: `nssh <host>`
-- 手で: `python3 scripts/merge-claude-settings.py ~/.claude/settings.json`
+- On the Mac: `just rebuild`
+- On a remote machine: `nssh <host>`
+- By hand: `python3 scripts/merge-claude-settings.py ~/.claude/settings.json`

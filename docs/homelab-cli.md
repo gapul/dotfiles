@@ -1,12 +1,13 @@
-# HomelabをコードとCLIから操作する
+# Operating the homelab from code and the CLI
 
-`hs` を母艦の共通入口にする。Web UI は閲覧・人間向け入力として残してよいが、
-起動・停止・調査・バックアップは UI を正本にしない。
+`hs` is the single entry point from the Mac. Web UIs may stay for browsing and for input meant
+for humans, but starting, stopping, investigating and backing up do not treat the UI as the
+source of truth.
 
 ```sh
 hs list
-hs status                          # 全体
-hs status paperless                # コンテナ単体
+hs status                          # everything
+hs status paperless                # one container
 hs logs paperless -f
 hs restart paperless
 hs exec paperless sh
@@ -24,7 +25,7 @@ hs backup run
 hs backup restore-drill
 ```
 
-API鍵は `/var/lib/secrets/homelab-cli.env` に置く。GitやNix storeには入れない。
+API keys go in `/var/lib/secrets/homelab-cli.env`, and never into git or the Nix store.
 
 ```sh
 HS_BAMBUDDY_TOKEN=...
@@ -33,46 +34,50 @@ HS_PAPERLESS_TOKEN=...
 HS_ROMM_TOKEN=...
 HS_HOMEASSISTANT_TOKEN=...
 
-# Cookie認証しか提供しないPingvin Share X用。実行時に短命Cookieへ交換する。
+# For Pingvin Share X, which only offers cookie authentication.
+# These are exchanged for a short-lived cookie at run time.
 HS_PINGVIN_SHARE_EMAIL=...
 HS_PINGVIN_SHARE_PASSWORD=...
 
-# 上記以外のCookie型APIを直接扱う場合。
+# For any other cookie-based API handled directly.
 HS_SOME_APP_COOKIE='session=...'
 ```
 
-## 操作経路
+## How each thing is reached
 
-| 種類 | 対象 | コード/CLI経路 |
+| Kind | Services | Route from code or the CLI |
 |---|---|---|
-| 標準REST/OpenAPI | Bambuddy、Dawarich、Home Assistant、Jellyfin、Miniflux、Paperless、Readeck、RomM、Syncthing | `hs api`、各OpenAPI/REST API |
-| 標準プロトコル | Anki、Attic、CouchDB、Forgejo、Matrix、Navidrome、ntfy、Radicale、Samba、Vaultwarden | それぞれの公式CLIまたはHTTP/CalDAV/SMBプロトコル |
-| アプリ内CLI | ArchiveBox、Forgejo、Navidrome、Paperless、Pingvin Share X、ytdl-sub | `hs archivebox`、`hs forgejo`、`hs navidrome`、`hs paperless`、`hs share`、`hs ytdl` |
-| ファイルが正本 | Fava/Beancount、Homepage、SearXNG、Blocky、Authelia、cloudflared、Filestash、Pingvin Share X | Git管理設定 + `hs unit`。Filestashの秘密鍵だけは `/var/lib/secrets` |
-| 内部HTTP API | Calnode、Gameyfin、Hauk、Pingvin Share X、Spliit | `hs api`または`hs exec`。日次の契約チェックで入口の破壊を検知 |
-| ホスト運用 | Podman全コンテナ、systemd全サービス、Restic | `hs status/logs/restart/exec/unit/backup` |
+| Standard REST or OpenAPI | Bambuddy, Dawarich, Home Assistant, Jellyfin, Miniflux, Paperless, Readeck, RomM, Syncthing | `hs api`, and each service's OpenAPI or REST API |
+| Standard protocols | Anki, Attic, CouchDB, Forgejo, Matrix, Navidrome, ntfy, Radicale, Samba, Vaultwarden | Each one's official CLI, or HTTP, CalDAV or SMB |
+| A CLI inside the app | ArchiveBox, Forgejo, Navidrome, Paperless, Pingvin Share X, ytdl-sub | `hs archivebox`, `hs forgejo`, `hs navidrome`, `hs paperless`, `hs share`, `hs ytdl` |
+| The file is the source of truth | Fava and Beancount, Homepage, SearXNG, Blocky, Authelia, cloudflared, Filestash, Pingvin Share X | Configuration in git plus `hs unit`. Only Filestash's private key lives in `/var/lib/secrets` |
+| Internal HTTP APIs | Calnode, Gameyfin, Hauk, Pingvin Share X, Spliit | `hs api` or `hs exec`. A daily contract check catches the entry point breaking |
+| Host operations | Every podman container, every systemd service, restic | `hs status/logs/restart/exec/unit/backup` |
 
-Ralllyのセルフホスト版はOpenAPI文書を配る一方、APIキー発行を上流が機能制限して
-いる。ライセンス制限を迂回する改造は行わない。現状は構成・DB・ライフサイクルを
-CLI管理し、投票の作成・編集だけをWeb UIに残す。代替候補は次の条件をすべて満たした
-時点で並行導入し、データ移行後に切り替える。
+Rallly's self-hosted version publishes an OpenAPI document while upstream restricts issuing API
+keys as a licensing matter. Modifying it to get around that restriction is not on the table. For
+now its configuration, database and lifecycle are managed from the CLI, and creating and editing
+polls stays in the web UI. A replacement gets installed alongside, and switched to after
+migrating the data, once a candidate satisfies all of:
 
-- 活発に保守され、ローリングタグか継続的なコンテナ配布がある
-- ゲスト投票を維持できる
-- 投票の作成・更新・取得・削除に公開APIがある
-- 既存Ralllyデータを失わず移行または並行保管できる
+- It is actively maintained, with a rolling tag or continuous container releases.
+- It can keep guest voting.
+- It has a public API for creating, updating, fetching and deleting polls.
+- The existing Rallly data can be migrated or kept in parallel without losing anything.
 
-Crab Fitは公開APIを持つが最終更新が2023年で、現行Ralllyより保守性が落ちるため
-置換しない。新しいGUIだけを理由に停止中のソフトへ戻すこともしない。
+Crab Fit has a public API but was last updated in 2023, which makes it less maintainable than
+the current Rallly, so it is not a replacement. Nor is going back to abandoned software just
+because its GUI is newer.
 
-## 置き換え方針
+## What is being replaced
 
-- Pinchflatは、購読をYAMLで管理できる`ytdl-sub`へ置換する。
-- File Browserの役割は、Google Driveと読み取り専用Resticを同時に見せられる
-  Filestashへ寄せる。Driveのデータ自体は移動しない。
-- Pingvin Share旧版は、ローリング配布されるPingvin Share Xへ置換する。
-- Web UIだけでしか主要操作を再現できない新規ソフトは、原則として増やさない。
+- Pinchflat is replaced by `ytdl-sub`, whose subscriptions can be managed in YAML.
+- File Browser's role moves to Filestash, which can show Google Drive and the read-only restic
+  mount at the same time. The data on Drive itself does not move.
+- The old Pingvin Share is replaced by Pingvin Share X, which is released on a rolling tag.
+- As a rule, no new software gets added whose main operations can only be reproduced through a
+  web UI.
 
-APIの到達性は`api-contract-check.timer`が毎日確認し、破壊的な上流変更はntfyへ
-通知する。永続DBは日次バックアップ前に整合したダンプを作り、月次の
-`restore-drill.timer`が別DBへ本当に復元する。
+`api-contract-check.timer` verifies daily that the APIs are still reachable and notifies ntfy
+about breaking upstream changes. Persistent databases get a consistent dump before the daily
+backup, and `restore-drill.timer` genuinely restores one into a separate database every month.
