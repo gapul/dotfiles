@@ -104,6 +104,5 @@ in
     rotate = 7;
     compress = true;
     copytruncate = true;
-    su = "1337 1337";
   };
 }
