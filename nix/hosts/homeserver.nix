@@ -125,6 +125,12 @@ let
       upstream = "127.0.0.1:8085";
       auth = true;
     };
+    # Filestash trial. Tailnet-only like the other Caddy sites; File Browser
+    # keeps files.gapul.net until this has proved it can restore real files.
+    files-preview = {
+      upstream = "127.0.0.1:8099";
+      auth = true;
+    };
     # Anki の同期サーバ。AnkiWeb に預けず自前で持つ。クライアントは iOS の amgi と
     # 母艦の Anki 本体。同期プロトコルは HTTP なので普通の vhost で足りる。
     anki = {

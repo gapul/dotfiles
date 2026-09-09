@@ -48,6 +48,7 @@
     ./dawarich.nix
     ./dawarich-freshness.nix
     ./fava.nix
+    ./filestash.nix
     ./forgejo.nix
     ./free-games-claimer.nix
     ./gameyfin.nix

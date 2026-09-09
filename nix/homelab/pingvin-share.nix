@@ -15,7 +15,10 @@
 
 {
   virtualisation.oci-containers.containers."pingvin-share" = {
-    image = "ghcr.io/stonith404/pingvin-share:latest";
+    # Original Pingvin Share was archived. X is its directly maintained fork.
+    # Keep the rolling tag: this homelab deliberately follows current releases,
+    # while container-auto-update supplies the failed-start rollback path.
+    image = "ghcr.io/smp46/pingvin-share-x:latest";
     environment = {
       "TZ" = "Asia/Tokyo";
       # 発行するリンクに載る URL。これが違うと、渡したリンクが内側の
