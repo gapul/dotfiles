@@ -60,6 +60,7 @@
     ./homeassistant.nix
     ./homepage.nix
     ./jellyfin.nix
+    ./lazy-http-services.nix
     ./container-auto-update.nix
     ./self-deploy.nix
     ./vulnix.nix

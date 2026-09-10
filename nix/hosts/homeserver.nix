@@ -48,8 +48,14 @@ let
     # サークル用の2つ。cal と同じく公開先は Caddy ではなく cloudflared なので、
     # ここの vhost は踏まれない。表に載せているのは gatus の監視がここからしか
     # 生えないため。
-    poll.upstream = "127.0.0.1:8089"; # rallly (日程調整)
-    split.upstream = "127.0.0.1:8090"; # spliit (割り勘)
+    poll = {
+      upstream = "127.0.0.1:8089"; # rallly (日程調整)
+      interval = "1h"; # socket activation: do not keep the container awake
+    };
+    split = {
+      upstream = "127.0.0.1:8090"; # spliit (割り勘)
+      interval = "1h";
+    };
     # calnode (予約ページ)。他と違って公開先は Caddy ではなく cloudflared なので、
     # ここで生える vhost は実際には誰も踏まない — cal.gapul.net はトンネルの CNAME
     # だから。それでも表に載せているのは、gatus の監視対象がこの表からしか作られない
@@ -57,7 +63,10 @@ let
     cal.upstream = "127.0.0.1:8086";
     # DNS レコードもダッシュボードのリンクも前からあったのに vhost だけ無く、
     # https で開くと繋がらない状態だった (直接ポートを叩けば見えるので気付きにくい)。
-    jellyfin.upstream = "127.0.0.1:8096";
+    jellyfin = {
+      upstream = "127.0.0.1:8096";
+      interval = "1h";
+    };
     # 位置ログ (Dawarich)。表に無かったので vhost も gatus の監視も無く、iPhone は
     # tailnet の生アドレスに直接送っていた。移行でアドレスが変われば黙って壊れる形。
     # なお HTTP の応答を見ても送信が止まったことは分からない (2026-08-23 に 36 時間
@@ -78,8 +87,14 @@ let
     # (DRM フリーの PC ゲームの目録)。実ファイルはどちらも /srv/games 配下で
     # restic の対象外 — 吸い出し直せるものに容量を使わない、という他の /srv と
     # 同じ扱い。
-    roms.upstream = "127.0.0.1:8091";
-    games.upstream = "127.0.0.1:8092";
+    roms = {
+      upstream = "127.0.0.1:8091";
+      interval = "1h";
+    };
+    games = {
+      upstream = "127.0.0.1:8092";
+      interval = "1h";
+    };
     paperless.upstream = "127.0.0.1:8097";
     # YouTube の保存 (ytdl-sub)。落とし先は /srv/youtube で、jellyfin が /srv を
     # /media として見ているので、落ちた時点で棚に並ぶ。
@@ -128,7 +143,10 @@ let
     # Public forms keep their own login for administration. Cloudflared sends
     # the public hostname to the same local gateway; this entry also supplies
     # the tailnet vhost and the direct upstream health check.
-    forms.upstream = "127.0.0.1:8102";
+    forms = {
+      upstream = "127.0.0.1:8102";
+      interval = "1h";
+    };
     # Anki の同期サーバ。AnkiWeb に預けず自前で持つ。クライアントは iOS の amgi と
     # 母艦の Anki 本体。同期プロトコルは HTTP なので普通の vhost で足りる。
     anki = {
@@ -377,11 +395,11 @@ in
           inherit name;
           group = "homelab";
           url = "http://${site.upstream}";
-          interval = "2m";
+          interval = site.interval or "2m";
           # Not `== 200`: several of these answer 3xx when perfectly healthy.
           # A service whose healthy answer is 4xx sets `expect` in the table above.
           conditions = site.expect or [ "[STATUS] < 400" ];
-          alerts = [ ntfyAlert ];
+          alerts = [ (ntfyAlert // { failure-threshold = site.failureThreshold or 3; }) ];
         }) (lib.filterAttrs (_: site: site.monitor or true) sites)
         # Everything above is dialled on loopback, which says nothing about the
         # path the outside world takes. These three do not come in through this

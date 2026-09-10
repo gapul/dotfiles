@@ -14,6 +14,9 @@
   ...
 }:
 
+let
+  privatePort = 18091;
+in
 {
   virtualisation.oci-containers.containers."romm-db" = {
     image = "docker.io/library/mariadb:11";
@@ -81,7 +84,7 @@
       "/srv/games/roms:/romm/library:rw"
       "/srv/games/roms-assets:/romm/assets:rw" # セーブデータ・ステート
     ];
-    ports = [ "8091:8080/tcp" ];
+    ports = [ "127.0.0.1:${toString privatePort}:8080/tcp" ];
     log-driver = "journald";
     extraOptions = [
       "--network-alias=romm"
@@ -113,7 +116,7 @@
 
   systemd.targets."podman-compose-romm-root" = {
     unitConfig.Description = "romm (ROM ライブラリ)";
-    wantedBy = [ "multi-user.target" ];
+    wantedBy = [ ];
   };
 
   # RomM はプラットフォームごとの下位ディレクトリを見る (roms/gb, roms/snes, ...)。

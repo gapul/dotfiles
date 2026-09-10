@@ -85,6 +85,30 @@ in
         fi
       }
 
+      start_for_backup() {
+        unit="$1"
+        marker="$2"
+        rm -f "$marker"
+        if ! ${pkgs.systemd}/bin/systemctl is-active --quiet "$unit"; then
+          touch "$marker"
+          ${pkgs.systemd}/bin/systemctl start "$unit"
+        fi
+      }
+
+      wait_healthy() {
+        container="$1"
+        attempt=0
+        while [ "$attempt" -lt 120 ]; do
+          if ${pkgs.podman}/bin/podman healthcheck run "$container" >/dev/null 2>&1; then
+            return 0
+          fi
+          attempt=$((attempt + 1))
+          ${pkgs.coreutils}/bin/sleep 1
+        done
+        echo "$container did not become healthy before backup" >&2
+        return 1
+      }
+
       ${pkgs.podman}/bin/podman exec dawarich_db \
         sh -c 'pg_dump -U "$POSTGRES_USER" -Fc dawarich_production' \
         > /var/lib/db-dumps/dawarich.dump
@@ -92,6 +116,16 @@ in
       ${pkgs.podman}/bin/podman exec miniflux-db \
         sh -c 'pg_dump -U "$POSTGRES_USER" -Fc miniflux' \
         > /var/lib/db-dumps/miniflux.dump
+
+      # These databases normally sleep with their HTTP frontends. Start only
+      # the ones that were inactive, and leave markers so cleanup can restore
+      # exactly the pre-backup state.
+      start_for_backup podman-rallly-db.service /run/backup-started-rallly-db
+      start_for_backup podman-spliit-db.service /run/backup-started-spliit-db
+      start_for_backup podman-romm-db.service /run/backup-started-romm-db
+      wait_healthy rallly-db
+      wait_healthy spliit-db
+      wait_healthy romm-db
 
       ${pkgs.podman}/bin/podman exec rallly-db \
         sh -c 'pg_dump -U "$POSTGRES_USER" -Fc "$POSTGRES_DB"' \
@@ -175,6 +209,13 @@ in
     # うえ、古いダンプが正本のように見えてしまう。
     backupCleanupCommand = ''
       rm -rf /var/lib/db-dumps
+      for service in rallly-db spliit-db romm-db; do
+        marker="/run/backup-started-$service"
+        if [ -e "$marker" ]; then
+          rm -f "$marker"
+          ${pkgs.systemd}/bin/systemctl stop "podman-$service.service"
+        fi
+      done
       if [ -e /run/gameyfin-stopped-for-backup ]; then
         rm -f /run/gameyfin-stopped-for-backup
         ${pkgs.systemd}/bin/systemctl start podman-gameyfin.service

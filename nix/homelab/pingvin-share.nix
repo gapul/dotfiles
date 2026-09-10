@@ -13,6 +13,9 @@
   ...
 }:
 
+let
+  privatePort = 18094;
+in
 {
   virtualisation.oci-containers.containers."pingvin-share" = {
     # Original Pingvin Share was archived. X is its directly maintained fork.
@@ -32,7 +35,7 @@
       "${../../configs/homelab/pingvin-share.yaml}:/opt/app/config.yaml:ro"
       "/var/lib/homelab/pingvin-share/data:/opt/app/backend/data:rw"
     ];
-    ports = [ "8094:3000/tcp" ];
+    ports = [ "127.0.0.1:${toString privatePort}:3000/tcp" ];
     log-driver = "journald";
   };
   systemd.services."podman-pingvin-share".serviceConfig.Restart = lib.mkOverride 90 "always";

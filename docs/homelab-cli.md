@@ -88,3 +88,21 @@ because its GUI is newer.
 `api-contract-check.timer` verifies daily that the APIs are still reachable and notifies ntfy
 about breaking upstream changes. Persistent databases get a consistent dump before the daily
 backup, and `restore-drill.timer` genuinely restores one into a separate database every month.
+
+## Services that sleep when unused
+
+Formera, Gameyfin, Jellyfin, Pingvin Share X, Rallly, RomM and Spliit keep only a systemd socket
+open while idle. The first browser, API or `hs` request starts the owning container group; open
+connections keep it alive. Formera, Pingvin Share X, Rallly and Spliit stop after 10 minutes
+without a connection. The media/catalogue services use 30 minutes so library scans can finish.
+
+`hs status APP` reports `sleeping` without waking it. API and `hs exec` operations wake it as
+needed. The daily container updater wakes every group briefly so rolling tags still pass through
+Podman's update rollback, then `StopWhenUnneeded` puts them back to sleep. Database backup does
+the same only for the three sleeping database containers and restores their previous state.
+
+```sh
+hs unit status lazy-spliit-http.socket
+hs unit status lazy-spliit.target
+hs unit logs lazy-spliit-http
+```

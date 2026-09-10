@@ -15,6 +15,7 @@
   ...
 }:
 let
+  privatePort = 18092;
   migrateState = pkgs.writeShellScript "gameyfin-state-migrate" ''
     set -eu
     state=/var/lib/homelab/gameyfin
@@ -78,7 +79,7 @@ in
       # 読み取り専用で渡す。目録が実体を消せる必要はない。
       "/srv/games/pc:/games:ro"
     ];
-    ports = [ "8092:8080/tcp" ];
+    ports = [ "127.0.0.1:${toString privatePort}:8080/tcp" ];
     log-driver = "journald";
   };
   systemd.services."podman-gameyfin" = {
