@@ -12,6 +12,24 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 import ask_broker as broker
 
+# The tests exercise code paths that write audit lines, and those were landing in the real log —
+# "Google — b@x" appearing in the record of what was actually released. A security log is only
+# worth reading if everything in it happened.
+import dataclasses
+import tempfile
+
+broker.CONFIG = dataclasses.replace(
+    broker.CONFIG, audit_log=Path(tempfile.mkdtemp(prefix="ask-test-")) / "audit.jsonl"
+)
+TEST_AUDIT_LOG = broker.CONFIG.audit_log
+
+
+def test_the_audit_log_under_test_is_not_the_real_one():
+    """Every other test in this file leans on this, so it is checked first rather than assumed."""
+    assert broker.CONFIG.audit_log == TEST_AUDIT_LOG
+    broker.CONFIG = broker.replace_allowlist(("example.com",))
+    assert broker.CONFIG.audit_log == TEST_AUDIT_LOG
+
 
 def test_yes_words():
     for word in ["yes", "Y", " ok ", "承認", "approve"]:
@@ -311,6 +329,30 @@ def test_the_account_list_outlives_an_apple_event():
         text=True,
     )
     assert compiled.returncode == 0, compiled.stderr
+
+
+def test_the_caller_is_told_the_wait_is_deliberate():
+    """Five minutes of silence and the client hangs up, so an answer given at minute six lands
+    nowhere. The heartbeat is what buys the human their reading time."""
+    from unittest.mock import patch
+
+    class FakeCtx:
+        pings = 0
+
+        async def report_progress(self, **kwargs):
+            FakeCtx.pings += 1
+
+    async def slow_answer(_ctx, _request):
+        await asyncio.sleep(0.05)
+        return "yes"
+
+    with patch.object(broker, "HEARTBEAT_SECONDS", 0.01), patch.object(
+        broker, "_ask_channels", slow_answer
+    ):
+        answer = asyncio.run(broker.ask_human(FakeCtx(), broker.Request(kind="approve", prompt="?", requester="test")))
+
+    assert answer == "yes"
+    assert FakeCtx.pings >= 1, FakeCtx.pings
 
 
 def test_tools_registered():
