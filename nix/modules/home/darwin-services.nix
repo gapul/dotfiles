@@ -6,13 +6,13 @@
   ...
 }:
 let
-  # launchd は素の PATH で起動するので、必要なものを列挙しておく。
-  # 経緯: 元は pnpm の global install を使っていたが、その store が消えていた。node も
-  # @playwright/mcp も、存在しない store パスを指す symlink になっていて、agent は
-  # "exec: node: not found" → "Cannot find module .../cli.js" と順に死んでいた。今は
-  # どちらも宣言側から取るので pnpm への依存は無い。PATH を残すのは playwright が
-  # 実行時に呼ぶもの (node など) のため。
-  mcpPath = lib.concatStringsSep ":" [
+  # launchd starts with almost nothing on PATH, so the agents that shell out to other binaries
+  # get this. The ask broker looks up `bw` and `terminal-browser` at runtime rather than baking in
+  # store paths, so both have to be findable here.
+  #
+  # (This used to carry a long note about pnpm's global store having gone stale under the
+  #  Playwright MCP agent. That agent is gone; the note went with it.)
+  agentPath = lib.concatStringsSep ":" [
     "/run/current-system/sw/bin"
     "${config.home.homeDirectory}/.local/state/nix/profile/bin"
     "/usr/bin"
@@ -60,46 +60,21 @@ in
       "${config.home.homeDirectory}/Library/Logs/Syncthing"
   '';
 
-  # One shared Playwright MCP server instead of one per Claude session.
-  # The MCP entry in ~/.config/claude/.claude.json used to be `stdio`, which means every session
-  # spawns its own server process: measured 2026-08-15 at 15 sessions = 15 node processes, 176MB,
-  # and ~120MB each once a session actually drives the browser. All of them attach over CDP to the
-  # same browser anyway, so the isolation bought nothing. Listening on a port and pointing every
-  # session at it collapses that to one process (70MB idle).
+  # (A resident Playwright MCP server lived here, on 8932, attached over CDP to Lightpanda on
+  #  9223. Removed 2026-09-10, having been broken the whole time and unmissed: the MCP entry in
+  #  ~/.config/claude/.claude.json pointed at 8931 while the agent listened on 8932, so nothing
+  #  ever connected, and Lightpanda was never started at all because no agent declared it.
   #
-  # Sessions still share the browser, so a parallel run must give each session its own tab
-  # (`browser_tabs {action:"new"}` before navigating) — verified: without it two sessions grab the
-  # same page and the second navigation wins.
+  #  It is not being repaired, for two reasons. The everyday Chromium path is agent-browser, which
+  #  ships inside terminal-browser and represents a page in 200-400 tokens where the MCP protocol
+  #  carries the accessibility tree in-context on every turn — measured upstream at 114k tokens
+  #  against 27k for the same task. And the cross-browser case, which is the one thing Playwright
+  #  genuinely has over agent-browser, did not work in this shape anyway: `--cdp-endpoint` attaches
+  #  to an existing Chromium, so Firefox and WebKit were never reachable through it.
   #
-  # localhost-bound by the server itself, and it rejects any request whose Host is not
-  # `localhost:8932` (127.0.0.1 in the URL gets a 4xx — write the URL with localhost).
-  #
-  # There used to be a second instance on 8931 aimed at 9222, for whatever full browser was
-  # started for a job. It went away with Chrome: terminal-browser took that role and cannot be
-  # driven this way — it does expose CDP, but on a port that changes every launch (measured
-  # 53218 → 53337), so no static --cdp-endpoint can find it. It is driven by its own
-  # `terminal-browser action` instead. Binary comes from nixpkgs (0.0.69).
-  # Playwright MCP, pointed at Lightpanda. Connects lazily, so it costs nothing while idle.
-  launchd.agents.playwright-mcp-light = {
-    enable = true;
-    config = {
-      ProgramArguments = [
-        "${lib.getExe pkgs.playwright-mcp}"
-        "--cdp-endpoint"
-        "http://127.0.0.1:9223"
-        "--port"
-        "8932"
-        "--output-dir"
-        "${config.home.homeDirectory}/tmp/playwright-mcp-light"
-      ];
-      EnvironmentVariables.PATH = mcpPath;
-      RunAtLoad = true;
-      KeepAlive = true;
-      ProcessType = "Background";
-      StandardErrorPath = "/tmp/playwright-mcp-light.err";
-      StandardOutPath = "/tmp/playwright-mcp-light.log";
-    };
-  };
+  #  Cross-browser testing now runs on demand through the `playwright-test` wrapper below rather
+  #  than from a daemon, because it is an occasional job and a daemon nobody notices is broken is
+  #  worse than no daemon.)
 
   # ask broker: holds the Bitwarden session, asks the human, and does the typing, so that a
   # password never has to be pasted into a conversation with an agent. Protocol and reasoning in
@@ -124,7 +99,7 @@ in
       ];
       # bw and terminal-browser are both looked up at runtime rather than baked in, so they have
       # to be on the agent's PATH; launchd starts with almost nothing.
-      EnvironmentVariables.PATH = mcpPath;
+      EnvironmentVariables.PATH = agentPath;
       RunAtLoad = true;
       KeepAlive = true;
       ProcessType = "Background";
