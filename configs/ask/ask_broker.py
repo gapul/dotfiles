@@ -60,6 +60,12 @@ class Config:
     matrix_room: str = ""
     matrix_token_file: str = ""
 
+    # Required when the broker is reachable from anywhere but this machine. Binding to the tailnet
+    # so an agent on the mac mini can ask means anything else on the tailnet can ask too — the
+    # approval still guards release, but nothing would stop a flood of requests without this.
+    # A file rather than a literal so it can be sops-managed like everything else here.
+    token_file: str = ""
+
     audit_log: Path = Path.home() / ".local/state/ask/audit.jsonl"
 
     @classmethod
@@ -77,6 +83,7 @@ class Config:
             local_timeout_seconds=broker.get("local_timeout_seconds", cls.local_timeout_seconds),
             remote_timeout_seconds=broker.get("remote_timeout_seconds", cls.remote_timeout_seconds),
             vault_password_file=broker.get("vault_password_file", ""),
+            token_file=broker.get("token_file", ""),
             matrix_homeserver=matrix.get("homeserver", ""),
             matrix_room=matrix.get("room", ""),
             matrix_token_file=matrix.get("token_file", ""),
@@ -489,10 +496,48 @@ async def login_fill(
     return {"filled": True}
 
 
+class RequireToken:
+    """Bearer check in front of the MCP app.
+
+    Off when no token file is configured, which keeps the loopback-only setup frictionless. It
+    refuses to stay off once the broker is listening on anything but localhost: an open endpoint
+    that hands out approval prompts is a way to make someone approve something by wearing them
+    down.
+    """
+
+    def __init__(self, app: Any, token: str) -> None:
+        self.app = app
+        self.token = token
+
+    async def __call__(self, scope: dict[str, Any], receive: Any, send: Any) -> None:
+        if scope["type"] != "http" or not self.token:
+            await self.app(scope, receive, send)
+            return
+        headers = dict(scope.get("headers") or [])
+        presented = headers.get(b"authorization", b"").decode()
+        if presented != f"Bearer {self.token}":
+            audit("unauthorized", path=scope.get("path"))
+            await send({"type": "http.response.start", "status": 401,
+                        "headers": [(b"content-type", b"text/plain")]})
+            await send({"type": "http.response.body", "body": b"unauthorized"})
+            return
+        await self.app(scope, receive, send)
+
+
 def main() -> None:
-    mcp.settings.host = CONFIG.host
-    mcp.settings.port = CONFIG.port
-    mcp.run(transport="streamable-http")
+    import uvicorn
+
+    token = ""
+    if CONFIG.token_file:
+        token = Path(CONFIG.token_file).expanduser().read_text().strip()
+    if not token and CONFIG.host not in ("127.0.0.1", "localhost", "::1"):
+        raise SystemExit(
+            f"refusing to listen on {CONFIG.host} without token_file: "
+            "an endpoint anyone can reach must not be one anyone can ask through"
+        )
+
+    app = RequireToken(mcp.streamable_http_app(), token)
+    uvicorn.run(app, host=CONFIG.host, port=CONFIG.port, log_level="info")
 
 
 if __name__ == "__main__":
