@@ -25,4 +25,11 @@ in
   xdg.dataFile."codex/themes/rose-pine.tmTheme".source = "${rosePineTmThemes}/dist/rose-pine.tmTheme";
   xdg.dataFile."codex/themes/rose-pine-dawn.tmTheme".source =
     "${rosePineTmThemes}/dist/rose-pine-dawn.tmTheme";
+
+  # Keep the cross-agent instructions identical on every host, including the headless macmini.
+  # CLAUDE.md is a small Claude-specific adapter that imports the canonical AGENTS.md beside it.
+  xdg.configFile."claude/CLAUDE.md".source =
+    config.lib.file.mkOutOfStoreSymlink "${agentStateRepo}/claude/CLAUDE.md";
+  xdg.configFile."claude/AGENTS.md".source =
+    config.lib.file.mkOutOfStoreSymlink "${agentStateRepo}/AGENTS.md";
 }
