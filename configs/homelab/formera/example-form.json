@@ -1,0 +1,45 @@
+{
+  "title": "参加申し込み",
+  "description": "必要事項を入力してください。",
+  "fields": [
+    {
+      "id": "name",
+      "type": "text",
+      "label": "名前",
+      "required": true,
+      "order": 0
+    },
+    {
+      "id": "email",
+      "type": "email",
+      "label": "メールアドレス",
+      "required": true,
+      "order": 1
+    },
+    {
+      "id": "attendance",
+      "type": "radio",
+      "label": "参加しますか？",
+      "required": true,
+      "options": [
+        "参加する",
+        "参加しない"
+      ],
+      "order": 2
+    },
+    {
+      "id": "comment",
+      "type": "textarea",
+      "label": "備考",
+      "required": false,
+      "order": 3
+    }
+  ],
+  "settings": {
+    "submit_button_text": "送信する",
+    "success_message": "回答を受け付けました。",
+    "allow_multiple": false,
+    "require_login": false,
+    "notify_on_submission": false
+  }
+}

@@ -51,6 +51,7 @@
     ./fava.nix
     ./filestash.nix
     ./forgejo.nix
+    ./formera.nix
     ./free-games-claimer.nix
     ./gameyfin.nix
     ./git-annex.nix

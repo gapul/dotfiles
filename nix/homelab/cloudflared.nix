@@ -40,6 +40,9 @@
         # ファイル共有と位置共有。どちらも「リンクを送る相手が tailnet の外に
         # いる」ことが前提なので、上の3つと同じ理由でトンネルを通す。
         "send.gapul.net" = "http://127.0.0.1:8094";
+        # Google Forms replacement. A local Caddy gateway splits the single
+        # public origin between Formera's frontend and REST API.
+        "forms.gapul.net" = "http://127.0.0.1:8102";
         "where.gapul.net" = "http://127.0.0.1:8095";
       };
       # 知らないホスト名は 404。Pi 側の設定もこうなっていた。

@@ -125,6 +125,10 @@ let
       upstream = "127.0.0.1:8099";
       auth = true;
     };
+    # Public forms keep their own login for administration. Cloudflared sends
+    # the public hostname to the same local gateway; this entry also supplies
+    # the tailnet vhost and the direct upstream health check.
+    forms.upstream = "127.0.0.1:8102";
     # Anki の同期サーバ。AnkiWeb に預けず自前で持つ。クライアントは iOS の amgi と
     # 母艦の Anki 本体。同期プロトコルは HTTP なので普通の vhost で足りる。
     anki = {
