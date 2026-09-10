@@ -67,6 +67,7 @@
     ./journal-alert.nix
     ./matrix.nix
     ./matrix-bridges.nix
+    ./memory-pressure-alert.nix
     ./miniflux.nix
     ./navidrome.nix
     ./ntfy.nix

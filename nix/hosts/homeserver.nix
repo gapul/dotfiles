@@ -30,10 +30,14 @@ let
     dash = {
       upstream = "127.0.0.1:3000"; # homepage
       auth = true;
+      interval = "1h";
     };
     vault.upstream = "127.0.0.1:8080"; # vaultwarden
     rss.upstream = "127.0.0.1:8081"; # miniflux
-    read.upstream = "127.0.0.1:8087"; # readeck (後で読む)
+    read = {
+      upstream = "127.0.0.1:8087"; # readeck (後で読む)
+      interval = "1h";
+    };
     search = {
       upstream = "127.0.0.1:8088"; # searxng
       auth = true;
@@ -72,7 +76,10 @@ let
     # なお HTTP の応答を見ても送信が止まったことは分からない (2026-08-23 に 36 時間
     # 止まったが web は開いていた)。それは dawarich-freshness.nix の方で見る。
     track.upstream = "127.0.0.1:3005";
-    navidrome.upstream = "127.0.0.1:4533";
+    navidrome = {
+      upstream = "127.0.0.1:4533";
+      interval = "1h";
+    };
     # 3D プリンタの操作盤 (Bambuddy)。プリンタを LAN Only + Developer Mode にした結果
     # Bambu Handy が使えなくなったので、スマホから触る先がここになる。homelab/bambuddy.nix。
     bambu.upstream = "127.0.0.1:8010";
@@ -106,6 +113,7 @@ let
     archive = {
       upstream = "127.0.0.1:8000"; # archivebox
       auth = true;
+      interval = "1h";
     };
     ntfy.upstream = "127.0.0.1:8082";
     cache.upstream = "127.0.0.1:8083"; # attic (own nix binary cache)
@@ -139,6 +147,7 @@ let
     files = {
       upstream = "127.0.0.1:8099";
       auth = true;
+      interval = "1h";
     };
     # Public forms keep their own login for administration. Cloudflared sends
     # the public hostname to the same local gateway; this entry also supplies

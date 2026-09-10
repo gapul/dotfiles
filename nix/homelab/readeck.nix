@@ -49,7 +49,7 @@
       "/var/lib/homelab/readeck:/readeck:rw"
     ];
     ports = [
-      "8087:8000/tcp"
+      "127.0.0.1:18087:8000/tcp"
     ];
     log-driver = "journald";
   };
