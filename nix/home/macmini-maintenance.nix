@@ -60,6 +60,12 @@ let
     prune_tree_if_stale "${home}/Developer/github.com/servo/servo/target"
     prune_tree_if_stale "${home}/Developer/github.com/gapul/readest/src-tauri/target"
 
+    # Server-side mobile builds keep large global caches outside each disposable checkout.
+    # Retain active caches for incremental builds, but let an unused toolchain relinquish them.
+    prune_tree_if_stale "${home}/.local/share/gradle/caches"
+    prune_tree_if_stale "${home}/.local/share/gradle/wrapper"
+    prune_tree_if_stale "${home}/.cache/pub"
+
     # DerivedData is per-project and reproducible. Evaluate children separately so
     # one active Xcode project does not retain every inactive project's cache.
     derived="${home}/Library/Developer/Xcode/DerivedData"
