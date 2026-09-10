@@ -42,6 +42,7 @@
 # でないとパスも引数も決められない。入れたあとで足す。
 {
   config,
+  lib,
   pkgs,
   ...
 }:
@@ -118,6 +119,12 @@ in
     ANDROID_SDK_ROOT = "${androidSdk}/libexec/android-sdk";
     JAVA_HOME = jdk.home;
   };
+
+  # Dart's unified analytics creates state here even for non-interactive native-hook builds.
+  # The directory is not created reliably on a headless worker before the first Flutter build.
+  home.activation.macminiDartState = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    run ${pkgs.coreutils}/bin/mkdir -p "${config.home.homeDirectory}/.dart-tool"
+  '';
 
   home.file = {
     ".local/bin/macmini-compile-worker".source =
