@@ -41,6 +41,11 @@
 # .git carries absolute paths (git worktrees) and an index that must stay consistent with the
 # working tree, neither of which survives being copied file by file.
 #
+# mvrx-nolang-dev is remote-primary, not a file-exchange peer. Its company source data and VRM
+# assets stay on that development server and are consumed over SSH. Replicating its whole working
+# set used 12 GB on the workstation and left two independently edited copies, so never recreate a
+# Mutagen session for it. Small one-off outputs can still be copied explicitly with scp.
+#
 # Prerequisites (harmless if unmet — pairing is skipped and logged, and the next ssh retries):
 #   the host accepts an unattended key-based login. Check with
 #     ssh -o BatchMode=yes <host> true
@@ -91,6 +96,7 @@ let
     case "$host" in
       *.* | *:* | */*) exit 0 ;;
       *-sync) exit 0 ;;
+      mvrx-nolang-dev) exit 0 ;;
     esac
     case " github localhost " in *" $host "*) exit 0 ;; esac
 
