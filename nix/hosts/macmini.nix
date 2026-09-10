@@ -302,10 +302,22 @@ in
       # (RustDesk was here for remote GUI. It never got its unattended access or its Screen
       #  Recording grant, so it had never once been used, while macOS Screen Sharing on :5900
       #  already covers the same job over the tailnet with nothing to install.)
-      # For Claude browser automation (Playwright MCP + claude-login-broker). Driven through the
-      # `chrome-automation` wrapper (home/macmini.nix): own profile, windowless, CDP on 9222, and
-      # stopped when the job ends. The chrome-launch.sh this comment used to point at never existed.
-      "google-chrome"
+      # Helium for agent-driven browsing, replacing google-chrome (2026-09-11). Both reasons
+      # the Chrome line used to give had expired: the resident Playwright MCP was deleted in
+      # #561, and login fills moved to the Safari native helper. What actually kept Chrome in
+      # service was Orca's bundled agent-browser, which resolves a browser by walking
+      # /Applications on its own, and Google's build happens to sit first in that order.
+      #
+      # Helium is the ungoogled-chromium build the workstation already treats as its Chromium
+      # of record, so both hosts now drive the same browser. agent-browser's search list only
+      # knows Chrome, Chrome Canary, Chromium and Brave, so it cannot find Helium on its own —
+      # the pin lives in AGENT_BROWSER_EXECUTABLE_PATH on the Orca agent (home/macmini.nix),
+      # which is also where that ordering stops mattering.
+      #
+      # No no_quarantine, unlike Orca above: it is notarized (Developer ID: imput LLC), spctl
+      # accepts it, and it launched headlessly on this host with the quarantine attribute still
+      # attached. The cask is auto_updates, so the app owns its own updates.
+      "helium-browser"
       # Creative Cloud is the supported installer and license runtime for After Effects. Adobe
       # manages AE itself after this bootstrap, but declaring the CC installer keeps brew's
       # cleanup=uninstall from removing it on a later rebuild. Login secrets are filled through
