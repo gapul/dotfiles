@@ -12,6 +12,7 @@ let
     inherit nixpkgsUnstable;
     inherit (pkgs.stdenv.hostPlatform) system;
   };
+  terminalBrowser = pkgs.callPackage ../pkgs/terminal-browser.nix { };
 in
 {
   # host-independent base (nix cache / firewall / security / login hardening, etc.)
@@ -65,16 +66,32 @@ in
     # `terminal-browser action` が開いているブラウザに対する agent 向け CLI になっている。
     # Claude in Chrome の拡張を使わず、実ウィンドウも出さずに web を触らせられる。
     # 上流は curl | bash のインストーラで自己更新するので、版を握るために宣言側に置く。
-    (pkgs.callPackage ../pkgs/terminal-browser.nix { })
-    # lightpanda: 裏で回す用の軽いブラウザ。実測で常駐 19MB (Chrome は 296MB)。CDP を喋るので
-    # playwright-mcp の接続先をこちらに向けられる。詳細と限界は pkgs/lightpanda.nix。
-    # systemPackages なのは launchd agent が固定パスで参照するため。
-    (pkgs.callPackage ../pkgs/lightpanda.nix { })
+    terminalBrowser
+    # agent-browser: terminal-browser が同梱している agent 向けブラウザ CLI。libexec の中に
+    # あって PATH に出ないので、ここで出す。単体で、ヘッドレスで、ペインを出さずに動く。
+    # これが agent の既定の経路 — 1 ページを 200〜400 token で表現するので、MCP 越しに
+    # アクセシビリティツリーを毎ターン文脈へ積むより桁で安い (上流の実測で 114k 対 27k)。
+    # 版は terminal-browser 本体と常に一致する。
+    (pkgs.writeShellScriptBin "agent-browser" ''
+      exec ${terminalBrowser}/libexec/terminal-browser/agent-browser/bin/agent-browser "$@"
+    '')
+    # playwright-test: クロスブラウザ検証を要るときだけ起こすラッパー。Firefox と WebKit で
+    # 試せるのは Playwright だけで、そこは agent-browser に無い能力なので残す。ただし常駐は
+    # やめた (経緯は modules/home/darwin-services.nix)。前の常駐は --cdp-endpoint で既存の
+    # Chromium にぶら下がる形だったので、そもそも Firefox にも WebKit にも届いていなかった。
+    (pkgs.writeShellScriptBin "playwright-test" ''
+      browser="''${1:-chromium}"
+      port="''${2:-8932}"
+      echo "playwright-mcp: $browser on http://localhost:$port/mcp (Ctrl-C to stop)" >&2
+      export PLAYWRIGHT_BROWSERS_PATH=${pkgs.playwright-driver.browsers}
+      exec ${lib.getExe pkgs.playwright-mcp} \
+        --browser "$browser" --port "$port" \
+        --output-dir "$HOME/tmp/playwright-test"
+    '')
     # node: playwright-mcp の実行に要る。pnpm の global store が持っていた node は
     # リンク切れになっていて (~/Library/pnpm/bin/node → 消えた store パス)、そのせいで
-    # playwright-mcp の agent が "exec: node: not found" で status 127 のまま死んでいた。
-    # ランタイムは pnpm の管理から外して宣言側で持つ。パッケージ (@playwright/mcp) は
-    # pnpm の global store に残っているのでそちらのまま。
+    # かつての playwright agent が "exec: node: not found" で死んでいた。ランタイムは
+    # pnpm の管理から外して宣言側で持つ。
     pkgs.nodejs
     # codex: 自前インストーラで ~/.local/bin に入っていたものを宣言に移す。home.packages
     # ではなく systemPackages なのは PATH の順で、/run/current-system/sw/bin が

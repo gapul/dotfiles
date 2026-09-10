@@ -35,6 +35,24 @@ def test_allowlist_refuses_before_touching_the_vault():
     assert "allowlist" in result["error"], result
 
 
+def test_refuses_to_listen_wide_open():
+    """The check that matters is not that auth works, but that it cannot be skipped by accident:
+    binding beyond loopback without a token has to stop the process, not warn."""
+    import dataclasses
+
+    original = broker.CONFIG
+    try:
+        broker.CONFIG = dataclasses.replace(original, host="100.64.0.1", token_file="")
+        try:
+            broker.main()
+        except SystemExit as exc:
+            assert "token_file" in str(exc), exc
+        else:
+            raise AssertionError("started anyway")
+    finally:
+        broker.CONFIG = original
+
+
 def test_tools_registered():
     names = {t.name for t in asyncio.run(broker.mcp.list_tools())}
     assert names == {"approve", "choose", "ask_text", "login_fill"}, names
