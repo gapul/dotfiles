@@ -674,6 +674,14 @@ def native_target(domain: str, target_name: str, bundle_id: str) -> dict[str, An
     return target if domain in domains else None
 
 
+def native_input_mode(target: dict[str, Any], bundle_id: str) -> str:
+    """Use keyboard input only for bundles explicitly named by the trusted broker config."""
+    bundles = target.get("keystroke_bundles", ())
+    if isinstance(bundles, list) and bundle_id in bundles:
+        return "keystroke"
+    return "ax_value"
+
+
 def sanitize_native_result(result: Any) -> dict[str, Any]:
     """Keep a compromised remote helper from smuggling a credential back to the MCP caller."""
     if not isinstance(result, dict) or not isinstance(result.get("filled"), bool):
@@ -687,7 +695,7 @@ def sanitize_native_result(result: Any) -> dict[str, Any]:
 
 
 async def fill_native_target(
-    target: dict[str, Any], bundle_id: str, value: str
+    target: dict[str, Any], bundle_id: str, value: str, input_mode: str
 ) -> dict[str, Any]:
     """Run the fixed native helper locally or over SSH, sending the secret only on stdin."""
     helper = Path.home() / ".local/bin/ask-native-fill"
@@ -714,7 +722,9 @@ async def fill_native_target(
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.DEVNULL,
     )
-    payload = json.dumps({"bundle_id": bundle_id, "value": value}).encode()
+    payload = json.dumps(
+        {"bundle_id": bundle_id, "input_mode": input_mode, "value": value}
+    ).encode()
     try:
         stdout, _ = await asyncio.wait_for(proc.communicate(payload), timeout=25)
     except asyncio.TimeoutError:
@@ -927,7 +937,12 @@ async def native_login_fill(
     value = ""
     try:
         value = VAULT.get(field, item_id)
-        result = await fill_native_target(configured_target, bundle_id, value)
+        result = await fill_native_target(
+            configured_target,
+            bundle_id,
+            value,
+            native_input_mode(configured_target, bundle_id),
+        )
     except RuntimeError as exc:
         result = {"filled": False, "error": str(exc)}
     finally:
