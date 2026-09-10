@@ -190,6 +190,31 @@ def test_native_helper_response_cannot_return_a_secret():
     }
 
 
+def test_labels_are_distinct_so_a_choice_means_something():
+    """The answer comes back as a label and is looked up by it, so two identical labels would be
+    one choice that silently resolves to whichever vault item came first."""
+    labelled = broker.dedupe_labels(
+        [("aaaaaaaa1111", "Google — me@x"), ("bbbbbbbb2222", "Google — me@x"), ("cc", "Other")]
+    )
+    labels = [label for _, label in labelled]
+    assert len(set(labels)) == 3, labels
+    assert labels[2] == "Other", labels
+
+
+def test_cdp_lookup_asks_for_every_browser():
+    """Plain `ls` lists only the caller's own terminal tab, and this broker has none: without
+    --all it reported no browser while one was open in front of the human."""
+    from types import SimpleNamespace
+    from unittest.mock import patch
+
+    reply = SimpleNamespace(stdout='{"self": null, "browsers": [{"cdpPort": 4242}]}')
+    with patch.object(broker.shutil, "which", return_value="/bin/terminal-browser"), patch.object(
+        broker.subprocess, "run", return_value=reply
+    ) as run:
+        assert broker.terminal_browser_cdp_port() == 4242
+    assert "--all" in run.call_args.args[0], run.call_args
+
+
 def test_tools_registered():
     names = {t.name for t in asyncio.run(broker.mcp.list_tools())}
     assert names == {"approve", "choose", "ask_text", "login_fill", "native_login_fill"}, names

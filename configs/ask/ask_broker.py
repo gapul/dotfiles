@@ -15,6 +15,7 @@ There is deliberately no `get_password`, not even a private one.
 from __future__ import annotations
 
 import asyncio
+import collections
 import json
 import os
 import shutil
@@ -212,8 +213,14 @@ class Vault:
             login = item.get("login") or {}
             uris = [u.get("uri") or "" for u in (login.get("uris") or [])]
             if any(host_matches(u, domain) for u in uris):
-                out_items.append((item["id"], item.get("name") or item["id"]))
-        return out_items
+                # The item name alone is not a choice: several Google logins are all called
+                # "Google", and the picker showed the same word three times. The username is
+                # what tells them apart, and it is an identifier rather than a secret — the
+                # person answering is about to release the password behind it anyway.
+                name = item.get("name") or item["id"]
+                username = login.get("username")
+                out_items.append((item["id"], f"{name} — {username}" if username else name))
+        return dedupe_labels(out_items)
 
     def get(self, what: str, key: str) -> str:
         """`what` is bw's object name: password, username, totp, uri."""
@@ -554,6 +561,19 @@ def host_matches(url: str, domain: str) -> bool:
     return host == wanted or host.endswith("." + wanted)
 
 
+def dedupe_labels(items: list[tuple[str, str]]) -> list[tuple[str, str]]:
+    """Make every label distinct, because the answer comes back as a label and is looked up by it.
+
+    Two vault entries with the same name and the same username would otherwise be one choice that
+    silently resolves to whichever came first — the wrong password, released on purpose.
+    """
+    counts = collections.Counter(label for _, label in items)
+    return [
+        (item_id, label if counts[label] == 1 else f"{label} ({item_id[:8]})")
+        for item_id, label in items
+    ]
+
+
 def pick_target(targets: list[dict[str, Any]], domain: str) -> dict[str, Any]:
     """Choose the page to type into, by domain and never by position.
 
@@ -634,11 +654,15 @@ def terminal_browser_cdp_port() -> int | None:
     `ls --json` answers with {"self": ..., "browsers": [{"cdpPort": ...}]} — the port is nested,
     which the first version of this missed and reported "no browser with an open CDP port" while
     a browser was sitting right there.
+
+    `--all` is not optional here: plain `ls` lists only the browsers in the caller's own terminal
+    tab, and this broker runs under launchd with no tab of its own, so it saw an empty list every
+    time while the browser was open in front of the human.
     """
     tb = shutil.which("terminal-browser")
     if not tb:
         return None
-    out = subprocess.run([tb, "ls", "--json"], capture_output=True, text=True)
+    out = subprocess.run([tb, "ls", "--json", "--all"], capture_output=True, text=True)
     try:
         data = json.loads(out.stdout)
     except json.JSONDecodeError:
