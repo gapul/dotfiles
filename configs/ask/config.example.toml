@@ -13,8 +13,12 @@ allowed_domains = ["github.com"]
 vault_idle_seconds = 900
 
 # How long the person at the terminal gets before the question goes to the phone.
-local_timeout_seconds = 25
+local_timeout_seconds = 90
 remote_timeout_seconds = 600
+
+# Touch ID (or a paired Apple Watch). Built by helper/build.sh in github.com/gapul/ask; the
+# channel is skipped when the app is not installed.
+touch_id_app = "~/Applications/AskApprove.app"
 
 # sops-managed, mode 0400.
 vault_password_file = "~/.config/ask/bw-password"
