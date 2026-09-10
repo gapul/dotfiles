@@ -53,6 +53,25 @@ def test_refuses_to_listen_wide_open():
         broker.CONFIG = original
 
 
+def test_elicitation_results_map_to_answers():
+    """The first live call failed here: elicit() needs a pydantic schema, not None, and the reader
+    was guessing at the result shape. Both ends are now pinned by this."""
+    from mcp.server.elicitation import AcceptedElicitation, CancelledElicitation, DeclinedElicitation
+
+    assert broker._elicit_answer(AcceptedElicitation(data=broker.YesNo(approved=True))) == "yes"
+    assert broker._elicit_answer(AcceptedElicitation(data=broker.YesNo(approved=False))) == "no"
+    assert broker._elicit_answer(AcceptedElicitation(data=broker.Choice(choice="b"))) == "b"
+    assert broker._elicit_answer(AcceptedElicitation(data=broker.FreeText(text="hi"))) == "hi"
+    # Declining is a no; cancelling is not an answer and must fall through to the next channel.
+    assert broker._elicit_answer(DeclinedElicitation()) == "no"
+    assert broker._elicit_answer(CancelledElicitation()) is None
+
+    assert broker._schema_for("approve") is broker.YesNo
+    assert broker._schema_for("login_fill") is broker.YesNo
+    assert broker._schema_for("choose") is broker.Choice
+    assert broker._schema_for("ask_text") is broker.FreeText
+
+
 def test_tools_registered():
     names = {t.name for t in asyncio.run(broker.mcp.list_tools())}
     assert names == {"approve", "choose", "ask_text", "login_fill"}, names

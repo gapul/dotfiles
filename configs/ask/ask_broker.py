@@ -28,6 +28,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from mcp.server.fastmcp import Context, FastMCP
+from pydantic import BaseModel, Field
 
 CONFIG_PATH = Path(os.environ.get("ASK_CONFIG", Path.home() / ".config/ask/broker.toml"))
 
@@ -286,6 +287,28 @@ class Matrix:
 MATRIX = Matrix(CONFIG)
 
 
+class YesNo(BaseModel):
+    """Elicitation wants a schema, and only primitive fields are allowed."""
+
+    approved: bool = Field(description="Approve this request?")
+
+
+class Choice(BaseModel):
+    choice: str = Field(description="One of the offered options")
+
+
+class FreeText(BaseModel):
+    text: str = Field(description="Your answer")
+
+
+def _schema_for(kind: str) -> type[BaseModel]:
+    if kind in ("approve", "login_fill"):
+        return YesNo
+    if kind == "choose":
+        return Choice
+    return FreeText
+
+
 async def ask_human(ctx: Context, request: Request) -> str | None:
     """Local first, then the phone. Returns the raw answer, or None if nobody answered.
 
@@ -298,7 +321,7 @@ async def ask_human(ctx: Context, request: Request) -> str | None:
 
     try:
         result = await asyncio.wait_for(
-            ctx.elicit(message=prompt, schema=None),
+            ctx.elicit(message=prompt, schema=_schema_for(request.kind)),
             timeout=CONFIG.local_timeout_seconds,
         )
         answer = _elicit_answer(result)
@@ -323,19 +346,23 @@ async def ask_human(ctx: Context, request: Request) -> str | None:
 
 
 def _elicit_answer(result: Any) -> str | None:
-    """FastMCP's elicitation result shape varies by SDK version; accept the plausible ones."""
+    """Map an elicitation result onto the same string an answer from any other channel would be.
+
+    Declining is an answer — a no — while cancelling is not, and should fall through to the phone
+    rather than be recorded as a refusal.
+    """
     action = getattr(result, "action", None)
-    if action in ("decline", "cancel"):
+    if action == "decline":
         return "no"
-    content = getattr(result, "content", None)
-    if isinstance(content, dict):
-        for key in ("answer", "text", "value", "choice"):
-            if key in content:
-                return str(content[key])
-    if isinstance(content, str):
-        return content
-    if action == "accept":
-        return "yes"
+    if action != "accept":
+        return None
+    data = getattr(result, "data", None)
+    if isinstance(data, YesNo):
+        return "yes" if data.approved else "no"
+    if isinstance(data, Choice):
+        return data.choice
+    if isinstance(data, FreeText):
+        return data.text
     return None
 
 
