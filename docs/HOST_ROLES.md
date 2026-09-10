@@ -30,7 +30,7 @@ stay with the machine that owns the workload.
 - `macmini-build -- COMMAND ...` builds the current clean, pushed Git commit in a disposable
   Mac mini checkout. A repository flake is used automatically; Ladybird and Servo use the
   dedicated toolchain shells. `--get RELATIVE_PATH` copies a selected artifact back.
-- Native Rust/CMake, Node, Flutter/Dart, Android API 35, unsigned Xcode/Swift, CocoaPods and
+- Native Rust/CMake, Node, Flutter/Dart, Android API 36, unsigned Xcode/Swift, CocoaPods and
   WebAssembly toolchains live on the Mac mini. Android emulators, Apple signing/export and device
   installation remain on the MacBook.
 - `macmini-render ffmpeg INPUT OUTPUT -- OPTIONS...` transcodes on the Mac mini and returns the
