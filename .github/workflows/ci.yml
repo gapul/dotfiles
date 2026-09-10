@@ -82,23 +82,30 @@ jobs:
             runner: ubuntu-24.04
           - system: aarch64-linux
             runner: ubuntu-24.04-arm
-          # 自前ランナー (macmini) は用意してあるが、CI はまだ macos-14 のまま。
+          # darwin だけ自前ランナー (macmini)。動機は「macos-14 が遅い」ではなく、遅さの
+          # 中身が転送だと分かったこと。
           #
-          # 2026-09-01 に切り替えを試して、self-hosted 固有の穴を 7 つ埋めたところで
-          # 一度戻した: macOS が SSH 越しのユーザー作成を拒む / config.sh と run.sh が
-          # bin/ の下 / gapul で走るのに /var/log へ書こうとして launchd が EX_CONFIG /
-          # 登録トークンが 0400 root で読めない / actionlint がカスタムラベルを知らない /
-          # nixpkgs の runner が node24 しか持たず node20 の action が動かない / cachix。
+          # 2026-09-10 の実測: 420s のジョブのうち 346s が nix build (pr-gate) で、その中身は
+          # 「6 derivations will be built / 6119 paths will be fetched (12.2 GiB, 展開 34.3 GiB)」。
+          # 実際に建てていたのは 6 個で、残りはキャッシュから落としていただけ。しかも数分後に
+          # 捨てられるランナーの上に展開している。store が残る機械では、この 346s は消える。
           #
-          # 動機だった「macos-14 が遅い」は、実測すると 5〜6 分で安定していた。
-          # 時間切れを起こしたのは flake.lock を大きく動かした回だけで常態ではない。
-          # 得られる時間より詰まる時間の方が大きかった。
+          # nix-fast-build --skip-cached で転送だけ止める案は先に試して落ちた。内側の
+          # nix-eval-jobs が自前の nix を抱えていて git input の narHash が外側と食い違い
+          # (CI では checkout が detached HEAD なので `could not read HEAD ref` が出る)、
+          # path: で渡すとフレークがリポジトリ根の configs/ を参照している構造と噛み合わない。
+          # 素の nix にも「実体化はするがクロージャは落とさない」動作は無い。
           #
-          # ランナー自体は残してある (nix/hosts/macmini-ci-runner.nix)。CI が本当に
-          # 重くなったとき、あるいは macmini でしかできない仕事を CI から回したく
-          # なったときに、runner: macmini に変えれば続きから再開できる。
+          # 2026-09-01 に一度試して戻したときの 7 つの穴 (SSH 越しのユーザー作成 / config.sh と
+          # run.sh の位置 / launchd の EX_CONFIG / 登録トークンの権限 / actionlint がカスタム
+          # ラベルを知らない / node24 / cachix) は hosts/macmini-ci-runner.nix 側で埋めてある。
+          # 戻したのはこの一行だけだった。
+          #
+          # macmini は AI 常駐 (ComfyUI / Hermes / 文字起こし) と同居する。CI は短時間なので
+          # 競合は許容範囲だが、重くなるようなら runner: macos-14 に戻せば済む。
           - system: aarch64-darwin
-            runner: macos-14
+          - system: aarch64-darwin
+            runner: macmini
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
     steps:
