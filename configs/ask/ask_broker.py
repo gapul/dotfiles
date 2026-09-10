@@ -503,7 +503,31 @@ def is_yes(answer: str | None) -> bool:
 # ----------------------------------------------------------------------------------- filling in
 
 
-async def fill_via_cdp(cdp_port: int, values: dict[str, str]) -> None:
+def pick_target(targets: list[dict[str, Any]], domain: str) -> dict[str, Any]:
+    """Choose the page to type into, by domain and never by position.
+
+    One CDP endpoint can front several pages — this machine had a SlimeVR GUI and a mocopi preview
+    sitting alongside the login — so taking the first one means typing a password into whatever
+    happens to be there. Ambiguity is refused rather than guessed.
+    """
+    import urllib.parse
+
+    wanted = domain.lower().lstrip(".")
+    matches = []
+    for target in targets:
+        if target.get("type") != "page" or not target.get("webSocketDebuggerUrl"):
+            continue
+        host = (urllib.parse.urlsplit(target.get("url", "")).hostname or "").lower()
+        if host == wanted or host.endswith("." + wanted):
+            matches.append(target)
+    if not matches:
+        raise RuntimeError(f"no open page on {domain}")
+    if len(matches) > 1:
+        raise RuntimeError(f"{len(matches)} pages open on {domain}; close all but one")
+    return matches[0]
+
+
+async def fill_via_cdp(cdp_port: int, values: dict[str, str], domain: str) -> None:
     """Type values into the page over CDP.
 
     Not through argv: `ps` shows another process's arguments to the same user, so passing a
@@ -512,9 +536,18 @@ async def fill_via_cdp(cdp_port: int, values: dict[str, str]) -> None:
 
     `values` maps an element ref's objectId-producing selector to the text to put in it.
     """
+    import urllib.request
+
     import websockets
 
-    async with websockets.connect(f"ws://127.0.0.1:{cdp_port}/devtools/page", max_size=None) as ws:
+    # The socket to talk to is the page target's own, listed by the CDP HTTP endpoint. There is no
+    # generic /devtools/page path to connect to.
+    targets = json.loads(
+        urllib.request.urlopen(f"http://127.0.0.1:{cdp_port}/json/list", timeout=10).read()
+    )
+    target = pick_target(targets, domain)
+
+    async with websockets.connect(target["webSocketDebuggerUrl"], max_size=None) as ws:
         counter = 0
 
         async def call(method: str, params: dict[str, Any]) -> dict[str, Any]:
@@ -548,7 +581,12 @@ async def fill_via_cdp(cdp_port: int, values: dict[str, str]) -> None:
 
 
 def terminal_browser_cdp_port() -> int | None:
-    """terminal-browser's CDP port changes every launch, so it is discovered rather than fixed."""
+    """terminal-browser's CDP port changes every launch, so it is discovered rather than fixed.
+
+    `ls --json` answers with {"self": ..., "browsers": [{"cdpPort": ...}]} — the port is nested,
+    which the first version of this missed and reported "no browser with an open CDP port" while
+    a browser was sitting right there.
+    """
     tb = shutil.which("terminal-browser")
     if not tb:
         return None
@@ -557,10 +595,9 @@ def terminal_browser_cdp_port() -> int | None:
         data = json.loads(out.stdout)
     except json.JSONDecodeError:
         return None
-    entries = data if isinstance(data, list) else [data]
-    for entry in entries:
-        if entry.get("cdpPort"):
-            return int(entry["cdpPort"])
+    for browser in data.get("browsers", []):
+        if browser.get("cdpPort"):
+            return int(browser["cdpPort"])
     return None
 
 
@@ -645,7 +682,7 @@ async def login_fill(
         return {"filled": False, "error": str(exc)}
 
     try:
-        await fill_via_cdp(port, values)
+        await fill_via_cdp(port, values, domain)
     finally:
         values.clear()
 

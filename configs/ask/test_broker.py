@@ -81,6 +81,26 @@ def test_applescript_strings_are_escaped():
     assert "\n" not in broker._as_applescript_string("two\nlines")
 
 
+def test_target_is_picked_by_domain():
+    """The first version took whatever page came first, and this machine answers that endpoint
+    with a SlimeVR GUI. Typing a password into the wrong page is the failure worth preventing."""
+    targets = [
+        {"type": "page", "url": "http://127.0.0.1:21112/#/", "webSocketDebuggerUrl": "ws://a"},
+        {"type": "page", "url": "https://accounts.google.com/v3/signin", "webSocketDebuggerUrl": "ws://b"},
+        {"type": "iframe", "url": "https://accounts.google.com/x", "webSocketDebuggerUrl": "ws://c"},
+    ]
+    assert broker.pick_target(targets, "accounts.google.com")["webSocketDebuggerUrl"] == "ws://b"
+    # a subdomain of the requested domain counts; an unrelated host does not
+    assert broker.pick_target(targets, "google.com")["webSocketDebuggerUrl"] == "ws://b"
+    for domain in ("example.invalid", "evil-google.com"):
+        try:
+            broker.pick_target(targets, domain)
+        except RuntimeError:
+            pass
+        else:
+            raise AssertionError(f"{domain} should not have matched")
+
+
 def test_tools_registered():
     names = {t.name for t in asyncio.run(broker.mcp.list_tools())}
     assert names == {"approve", "choose", "ask_text", "login_fill"}, names
