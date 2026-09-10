@@ -1,0 +1,86 @@
+#!/usr/bin/env python3
+"""macmini に USB キーボード/マウスとして入力を送る。
+
+TCC のダイアログのように、SSH からは押せないものを押すためのもの。OS からは本物の
+HID デバイスに見えるので、CGEvent の注入と違って許可が要らない。
+"""
+import sys, time
+
+KB, MOUSE = "/dev/hidg0", "/dev/hidg1"
+MODS = {"ctrl": 0x01, "shift": 0x02, "alt": 0x04, "opt": 0x04, "cmd": 0x08, "gui": 0x08}
+KEYS = {
+    **{c: 0x04 + i for i, c in enumerate("abcdefghijklmnopqrstuvwxyz")},
+    **{str(d): 0x1e + i for i, d in enumerate("1234567890")},
+    "enter": 0x28, "return": 0x28, "esc": 0x29, "escape": 0x29,
+    "backspace": 0x2a, "tab": 0x2b, "space": 0x2c, " ": 0x2c, "-": 0x2d,
+    "=": 0x2e, "[": 0x2f, "]": 0x30, "\\": 0x31, ";": 0x33, "'": 0x34,
+    "`": 0x35, ",": 0x36, ".": 0x37, "/": 0x38, "capslock": 0x39,
+    **{f"f{n}": 0x39 + n for n in range(1, 13)},
+    "right": 0x4f, "left": 0x50, "down": 0x51, "up": 0x52, "delete": 0x4c,
+    "home": 0x4a, "end": 0x4d, "pageup": 0x4b, "pagedown": 0x4e,
+}
+SHIFTED = {"!": "1", "@": "2", "#": "3", "$": "4", "%": "5", "^": "6", "&": "7",
+           "*": "8", "(": "9", ")": "0", "_": "-", "+": "=", "{": "[", "}": "]",
+           "|": "\\", ":": ";", '"': "'", "~": "`", "<": ",", ">": ".", "?": "/"}
+
+
+def send(dev, data):
+    with open(dev, "wb") as f:
+        f.write(bytes(data))
+        f.flush()
+
+
+def tap(code, mod=0):
+    send(KB, [mod, 0, code, 0, 0, 0, 0, 0])
+    time.sleep(0.008)
+    send(KB, [0] * 8)
+    time.sleep(0.008)
+
+
+def type_text(s):
+    for ch in s:
+        if ch == "\n":
+            tap(KEYS["enter"])
+        elif ch in SHIFTED:
+            tap(KEYS[SHIFTED[ch]], MODS["shift"])
+        elif ch.isupper():
+            tap(KEYS[ch.lower()], MODS["shift"])
+        elif ch in KEYS:
+            tap(KEYS[ch])
+
+
+def combo(spec):
+    parts = spec.lower().split("+")
+    mod = 0
+    for p in parts[:-1]:
+        mod |= MODS[p]
+    tap(KEYS[parts[-1]], mod)
+
+
+def mouse(x, y, click=0):
+    # 絶対座標 0..32767。相対だと「いまカーソルがどこか」を知る必要があり自動化では詰む。
+    send(MOUSE, [click, x & 0xFF, x >> 8, y & 0xFF, y >> 8, 0])
+    time.sleep(0.02)
+    if click:
+        send(MOUSE, [0, x & 0xFF, x >> 8, y & 0xFF, y >> 8, 0])
+
+
+if __name__ == "__main__":
+    cmd = sys.argv[1] if len(sys.argv) > 1 else ""
+    if cmd == "type":
+        arg = " ".join(sys.argv[2:])
+        if arg == "-":
+            # 標準入力から読む。パスワードのように、argv にも履歴にも残したくないもの用。
+            # 末尾の改行は落とす (Enter は明示的に送る)。
+            type_text(sys.stdin.read().rstrip("\n"))
+        else:
+            type_text(arg)
+    elif cmd == "key":
+        for spec in sys.argv[2:]:
+            combo(spec)
+    elif cmd == "move":
+        mouse(int(sys.argv[2]), int(sys.argv[3]))
+    elif cmd == "click":
+        mouse(int(sys.argv[2]), int(sys.argv[3]), 1)
+    else:
+        sys.exit("使い方: hid.py type <文字列> | key cmd+space | move X Y | click X Y")
