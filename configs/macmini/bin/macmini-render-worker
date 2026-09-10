@@ -35,5 +35,23 @@ case "$kind" in
     exec /Applications/Blender.app/Contents/MacOS/Blender \
       -b "$root/$input" -o "$root/out/render_" -f "$frame"
     ;;
+  after-effects)
+    [ "$#" -eq 3 ] || die "after-effects requires a project, output and composition"
+    project=$(decode "$1")
+    output=$(decode "$2")
+    comp=$(decode "$3")
+    case "$project" in /*|../*|*/../*|*/..) die "invalid project path" ;; esac
+    [[ "$project" =~ ^[A-Za-z0-9_./[:space:]-]+\.aep$ ]] || die "invalid project path"
+    [[ "$output" =~ ^[A-Za-z0-9_.-]+$ ]] || die "invalid output name"
+    [ -f "$root/project/$project" ] || die "project is missing from uploaded directory"
+    [ -n "$comp" ] || die "composition must not be empty"
+    aerender=
+    for candidate in /Applications/Adobe\ After\ Effects*/aerender; do
+      if [ -x "$candidate" ]; then aerender=$candidate; break; fi
+    done
+    [ -n "$aerender" ] || die "After Effects/aerender is not installed on the Mac mini"
+    exec "$aerender" -project "$root/project/$project" -comp "$comp" \
+      -output "$root/out/$output" -v ERRORS_AND_PROGRESS
+    ;;
   *) die "unknown renderer: $kind" ;;
 esac
