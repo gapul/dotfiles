@@ -47,6 +47,21 @@
 }:
 let
   dotfiles = "${config.home.homeDirectory}/.dotfiles";
+  # Compile-only Android SDK. The license was already accepted by the previous imperative SDK
+  # installation on this machine; keep that decision local to this composition. Emulator and
+  # system images deliberately stay out: device/Simulator testing belongs on the MacBook.
+  androidEnv = pkgs.callPackage "${pkgs.path}/pkgs/development/mobile/androidenv" {
+    licenseAccepted = true;
+  };
+  androidSdk =
+    (androidEnv.composeAndroidPackages {
+      platformVersions = [ "35" ];
+      buildToolsVersions = [ "35.0.0" ];
+      includeEmulator = false;
+      includeSystemImages = false;
+      includeNDK = false;
+    }).androidsdk;
+  jdk = pkgs.jdk21_headless;
 in
 {
   home.packages = with pkgs; [
@@ -72,7 +87,26 @@ in
     pkg-config
     gnumake
     bun
+
+    # Mobile/WebAssembly builds. Signing, Simulator and physical-device deployment still happen
+    # on the workstation; the mini produces unsigned archives/APKs and other deterministic output.
+    pkgs.flutter
+    androidSdk
+    jdk
+    pkgs.gradle
+    pkgs.cocoapods
+    pkgs.xcodegen
+    pkgs.swiftformat
+    pkgs.swiftlint
+    pkgs.wasm-pack
+    pkgs.protobuf
   ];
+
+  home.sessionVariables = {
+    ANDROID_HOME = "${androidSdk}/libexec/android-sdk";
+    ANDROID_SDK_ROOT = "${androidSdk}/libexec/android-sdk";
+    JAVA_HOME = jdk.home;
+  };
 
   home.file = {
     ".local/bin/macmini-compile-worker".source =
