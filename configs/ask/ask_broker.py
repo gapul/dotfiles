@@ -177,6 +177,39 @@ class Vault:
         self._expire_if_idle()
         return self._session is not None
 
+    def candidates(self, domain: str) -> list[tuple[str, str]]:
+        """(id, name) for every vault item matching the domain.
+
+        More than one is normal — a personal and a work account on the same site — and the
+        broker must not guess between them. The names come back so the human can pick; they are
+        not credentials, but they do describe the vault, so nothing outside this process sees
+        them except the person answering and the audit log.
+        """
+        self.ensure_unlocked()
+        out = subprocess.run(
+            [self._bw(), "list", "items", "--search", domain],
+            env={**os.environ, "BW_SESSION": self._session},
+            capture_output=True,
+            text=True,
+        )
+        if out.returncode != 0:
+            raise RuntimeError("bw list items failed")
+        self._last_used = time.time()
+        try:
+            items = json.loads(out.stdout)
+        except json.JSONDecodeError:
+            raise RuntimeError("bw list items returned nothing parseable") from None
+        # --search is fuzzy: it matches names and notes too, so a plain search for google.com
+        # came back with ten items here. Keep only those whose login URIs actually name the
+        # domain, so the human is choosing between real candidates rather than a haystack.
+        out_items = []
+        for item in items:
+            login = item.get("login") or {}
+            uris = [u.get("uri") or "" for u in (login.get("uris") or [])]
+            if any(host_matches(u, domain) for u in uris):
+                out_items.append((item["id"], item.get("name") or item["id"]))
+        return out_items
+
     def get(self, what: str, key: str) -> str:
         """`what` is bw's object name: password, username, totp, uri."""
         self.ensure_unlocked()
@@ -503,7 +536,41 @@ def is_yes(answer: str | None) -> bool:
 # ----------------------------------------------------------------------------------- filling in
 
 
-async def fill_via_cdp(cdp_port: int, values: dict[str, str]) -> None:
+def host_matches(url: str, domain: str) -> bool:
+    """Does this URL belong to the domain being asked about?
+
+    Exact host or a subdomain of it. Suffix comparison alone would let `evil-google.com` pass for
+    `google.com`, so the dot is part of the test.
+    """
+    import urllib.parse
+
+    host = (urllib.parse.urlsplit(url).hostname or "").lower()
+    wanted = domain.lower().lstrip(".")
+    return host == wanted or host.endswith("." + wanted)
+
+
+def pick_target(targets: list[dict[str, Any]], domain: str) -> dict[str, Any]:
+    """Choose the page to type into, by domain and never by position.
+
+    One CDP endpoint can front several pages — this machine had a SlimeVR GUI and a mocopi preview
+    sitting alongside the login — so taking the first one means typing a password into whatever
+    happens to be there. Ambiguity is refused rather than guessed.
+    """
+    matches = [
+        t
+        for t in targets
+        if t.get("type") == "page"
+        and t.get("webSocketDebuggerUrl")
+        and host_matches(t.get("url", ""), domain)
+    ]
+    if not matches:
+        raise RuntimeError(f"no open page on {domain}")
+    if len(matches) > 1:
+        raise RuntimeError(f"{len(matches)} pages open on {domain}; close all but one")
+    return matches[0]
+
+
+async def fill_via_cdp(cdp_port: int, values: dict[str, str], domain: str) -> None:
     """Type values into the page over CDP.
 
     Not through argv: `ps` shows another process's arguments to the same user, so passing a
@@ -512,9 +579,18 @@ async def fill_via_cdp(cdp_port: int, values: dict[str, str]) -> None:
 
     `values` maps an element ref's objectId-producing selector to the text to put in it.
     """
+    import urllib.request
+
     import websockets
 
-    async with websockets.connect(f"ws://127.0.0.1:{cdp_port}/devtools/page", max_size=None) as ws:
+    # The socket to talk to is the page target's own, listed by the CDP HTTP endpoint. There is no
+    # generic /devtools/page path to connect to.
+    targets = json.loads(
+        urllib.request.urlopen(f"http://127.0.0.1:{cdp_port}/json/list", timeout=10).read()
+    )
+    target = pick_target(targets, domain)
+
+    async with websockets.connect(target["webSocketDebuggerUrl"], max_size=None) as ws:
         counter = 0
 
         async def call(method: str, params: dict[str, Any]) -> dict[str, Any]:
@@ -548,7 +624,12 @@ async def fill_via_cdp(cdp_port: int, values: dict[str, str]) -> None:
 
 
 def terminal_browser_cdp_port() -> int | None:
-    """terminal-browser's CDP port changes every launch, so it is discovered rather than fixed."""
+    """terminal-browser's CDP port changes every launch, so it is discovered rather than fixed.
+
+    `ls --json` answers with {"self": ..., "browsers": [{"cdpPort": ...}]} — the port is nested,
+    which the first version of this missed and reported "no browser with an open CDP port" while
+    a browser was sitting right there.
+    """
     tb = shutil.which("terminal-browser")
     if not tb:
         return None
@@ -557,10 +638,9 @@ def terminal_browser_cdp_port() -> int | None:
         data = json.loads(out.stdout)
     except json.JSONDecodeError:
         return None
-    entries = data if isinstance(data, list) else [data]
-    for entry in entries:
-        if entry.get("cdpPort"):
-            return int(entry["cdpPort"])
+    for browser in data.get("browsers", []):
+        if browser.get("cdpPort"):
+            return int(browser["cdpPort"])
     return None
 
 
@@ -619,16 +699,47 @@ async def login_fill(
         return {"filled": False, "error": f"{domain} is not in the allowlist"}
 
     wanted = list(selectors.keys())
-    request = Request(
-        kind="login_fill",
-        prompt=f"Release {', '.join(wanted)} for {domain}?",
-        requester=requester,
-        domain=domain,
-        fields=wanted,
-    )
 
-    answer = await ask_human(ctx, request)
-    if not is_yes(answer):
+    # Which account? More than one item on a domain is ordinary, and picking for the human would
+    # be guessing with their credentials. So the choice replaces the yes/no: choosing is the
+    # approval. A fingerprint cannot express a choice, so these land on the dialog.
+    try:
+        candidates = VAULT.candidates(domain)
+    except RuntimeError as exc:
+        audit("outcome", domain=domain, filled=False, reason=str(exc))
+        return {"filled": False, "error": str(exc)}
+
+    if not candidates:
+        audit("outcome", domain=domain, filled=False, reason="no vault item")
+        return {"filled": False, "error": f"no vault item matches {domain}"}
+
+    if len(candidates) == 1:
+        item_id, item_name = candidates[0]
+        request = Request(
+            kind="login_fill",
+            prompt=f"Release {', '.join(wanted)} for {domain} ({item_name})?",
+            requester=requester,
+            domain=domain,
+            fields=wanted,
+        )
+        answer = await ask_human(ctx, request)
+        approved = is_yes(answer)
+    else:
+        names = [name for _, name in candidates]
+        request = Request(
+            kind="choose",
+            prompt=f"Which account for {domain}? Releasing {', '.join(wanted)}.",
+            options=names,
+            requester=requester,
+            domain=domain,
+            fields=wanted,
+        )
+        answer = await ask_human(ctx, request)
+        approved = answer in names
+        if approved:
+            item_id, item_name = candidates[names.index(answer)]
+
+    if not approved:
         audit("outcome", id=request.id, approved=False)
         return {"filled": False, "error": "not approved"}
 
@@ -639,17 +750,21 @@ async def login_fill(
     # TOTP after the approval, never before: a code lives thirty seconds and a round trip to a
     # phone eats most of that.
     try:
-        values = {selector: VAULT.get(field_name, domain) for field_name, selector in selectors.items()}
+        values = {
+            selector: VAULT.get(field_name, item_id)
+            for field_name, selector in selectors.items()
+        }
     except RuntimeError as exc:
         audit("outcome", id=request.id, approved=True, filled=False, reason=str(exc))
         return {"filled": False, "error": str(exc)}
 
     try:
-        await fill_via_cdp(port, values)
+        await fill_via_cdp(port, values, domain)
     finally:
         values.clear()
 
-    audit("outcome", id=request.id, approved=True, filled=True, domain=domain, fields=wanted)
+    audit("outcome", id=request.id, approved=True, filled=True, domain=domain,
+          fields=wanted, item=item_name)
     return {"filled": True}
 
 
