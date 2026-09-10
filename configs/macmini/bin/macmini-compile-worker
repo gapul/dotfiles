@@ -24,6 +24,9 @@ for encoded in "$@"; do args+=("$(decode "$encoded")"); done
 state="$HOME/.local/state/macmini-build"
 repo="$state/repos/$key"
 lock="$state/build.lock"
+# Keep GitHub credentials scoped to the network operations. This supports HTTPS remotes for
+# private repositories without writing a token or credential helper into the disposable clone.
+git_auth=(git -c credential.helper= -c "credential.helper=!gh auth git-credential")
 # ~/.dart-tool is linked to this XDG location by Home Manager. Recreate its target here because
 # the build worker must also survive an external cache cleanup between configuration activations.
 mkdir -p "$state/repos" "${XDG_STATE_HOME:-$HOME/.local/state}/dart-tool"
@@ -40,12 +43,12 @@ printf '%s\n' "$$" >"$lock/pid"
 trap 'rm -f "$lock/pid"; rmdir "$lock" 2>/dev/null || true' EXIT
 
 if [ ! -d "$repo/.git" ]; then
-  git clone --filter=blob:none "$url" "$repo"
+  "${git_auth[@]}" clone --filter=blob:none "$url" "$repo"
 elif [ "$(git -C "$repo" remote get-url origin)" != "$url" ]; then
   die "repository key collision or origin changed"
 fi
 
-git -C "$repo" fetch --prune origin
+"${git_auth[@]}" -C "$repo" fetch --prune origin
 git -C "$repo" cat-file -e "$commit^{commit}" 2>/dev/null ||
   die "commit is not available from origin; push it first"
 
