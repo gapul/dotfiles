@@ -102,7 +102,7 @@ in
       "${resticMount}:/storage/backups:ro"
       "${driveMount}:/storage/drive:rw"
     ];
-    ports = [ "127.0.0.1:8099:8334/tcp" ];
+    ports = [ "127.0.0.1:18099:8334/tcp" ];
     log-driver = "journald";
   };
 

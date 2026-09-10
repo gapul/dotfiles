@@ -16,6 +16,24 @@ let
   # One table defines the memory-reclaimable surface. Public ports stay stable;
   # containers move to loopback-only high ports hidden behind systemd sockets.
   groups = {
+    archivebox = {
+      containers.archivebox.pull = "missing";
+      endpoints.http = {
+        listen = "8000";
+        upstreamPort = 18000;
+      };
+      idleTimeout = "15min";
+      startupTimeout = 120;
+    };
+    filestash = {
+      containers.filestash.pull = "missing";
+      endpoints.http = {
+        listen = "127.0.0.1:8099";
+        upstreamPort = 18099;
+      };
+      idleTimeout = "15min";
+      startupTimeout = 120;
+    };
     formera = {
       containers = {
         # Built by Nix rather than pulled from a registry.
@@ -44,11 +62,32 @@ let
       idleTimeout = "30min";
       startupTimeout = 120;
     };
+    homepage = {
+      containers = {
+        glances.pull = "missing";
+        homepage.pull = "missing";
+      };
+      endpoints.http = {
+        listen = "3000";
+        upstreamPort = 18300;
+      };
+      idleTimeout = "15min";
+      startupTimeout = 120;
+    };
     jellyfin = {
       containers.jellyfin.pull = "missing";
       endpoints.http = {
         listen = "8096";
         upstreamPort = 18096;
+      };
+      idleTimeout = "30min";
+      startupTimeout = 120;
+    };
+    navidrome = {
+      containers.navidrome.pull = "missing";
+      endpoints.http = {
+        listen = "4533";
+        upstreamPort = 18533;
       };
       idleTimeout = "30min";
       startupTimeout = 120;
@@ -72,6 +111,15 @@ let
         upstreamPort = 18089;
       };
       idleTimeout = "10min";
+      startupTimeout = 120;
+    };
+    readeck = {
+      containers.readeck.pull = "missing";
+      endpoints.http = {
+        listen = "8087";
+        upstreamPort = 18087;
+      };
+      idleTimeout = "15min";
       startupTimeout = 120;
     };
     romm = {
