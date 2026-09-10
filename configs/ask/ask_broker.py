@@ -428,6 +428,13 @@ async def system_dialog(request: Request, prompt: str) -> str | None:
     body = _as_applescript_string(prompt)
     timeout = CONFIG.local_timeout_seconds
 
+    # `choose from list` has no `giving up after`, so the only clock on it is the one below that
+    # kills osascript — and at 90s that clock was firing while the human was still reading a list
+    # of accounts. A pick made after it fires goes nowhere and looks like the dialog was ignored.
+    # A list needs reading time, and it is modal on this desk anyway, so let it stand.
+    if request.kind == "choose":
+        timeout = CONFIG.remote_timeout_seconds
+
     if request.kind == "choose" and request.options:
         options = ", ".join(_as_applescript_string(o) for o in request.options)
         script = (
@@ -495,21 +502,28 @@ async def ask_human(ctx: Context, request: Request) -> str | None:
 
     # Elicitation stays as the fallback: it is what works if osascript ever cannot draw, and it is
     # the nicer place to answer when you happen to be looking at the terminal anyway.
-    try:
-        result = await asyncio.wait_for(
-            ctx.elicit(message=prompt, schema=_schema_for(request.kind)),
-            timeout=CONFIG.local_timeout_seconds,
-        )
-        answer = _elicit_answer(result)
-        if answer is not None:
-            audit("answered", id=request.id, via="elicitation")
-            return answer
-    except asyncio.TimeoutError:
-        pass  # nobody at the terminal; the phone gets it
-    except Exception as exc:
-        # A client that does not implement elicitation is expected; anything else is worth a line
-        # in the log rather than silence.
-        audit("elicitation.failed", id=request.id, error=type(exc).__name__)
+    #
+    # Except when it cannot show the question. The terminal client draws four choices and no more,
+    # so a list of eight accounts arrives there as four — and a human who picks from those four is
+    # answering a question nobody asked. Silence is better: let it go to the phone.
+    if request.kind == "choose" and len(request.options) > ELICITABLE_CHOICES:
+        audit("elicitation.skipped", id=request.id, options=len(request.options))
+    else:
+        try:
+            result = await asyncio.wait_for(
+                ctx.elicit(message=prompt, schema=_schema_for(request.kind)),
+                timeout=CONFIG.local_timeout_seconds,
+            )
+            answer = _elicit_answer(result)
+            if answer is not None:
+                audit("answered", id=request.id, via="elicitation")
+                return answer
+        except asyncio.TimeoutError:
+            pass  # nobody at the terminal; the phone gets it
+        except Exception as exc:
+            # A client that does not implement elicitation is expected; anything else is worth a
+            # line in the log rather than silence.
+            audit("elicitation.failed", id=request.id, error=type(exc).__name__)
 
     if MATRIX.configured:
         answer = await MATRIX.ask(request, CONFIG.remote_timeout_seconds)
@@ -704,6 +718,38 @@ def terminal_browser_cdp_port() -> int | None:
 
 
 LOGIN_FIELDS = {"username", "password", "totp"}
+
+# How many options the terminal client can draw. Beyond this it shows the first four and no sign
+# that there were others, which is worse than not asking there at all.
+ELICITABLE_CHOICES = 4
+
+# One sign-in, one question. Google asks for the address, then the password on the next page, then
+# sometimes a code — three approvals for what the human experienced as one decision, and by the
+# third the dialog is just something to dismiss. So the choice of account holds for a short while
+# and the following fields ride on it.
+#
+# What keeps this from being a hole: it is scoped to the domain that was approved, it only ever
+# reuses the item the human picked themselves, it expires in minutes, and every reuse is one line
+# in the audit log. A second domain, or the same domain later, asks again.
+APPROVAL_WINDOW_SECONDS = 180
+_recent_approvals: dict[str, tuple[str, str, float]] = {}
+
+
+def recent_approval(domain: str) -> tuple[str, str] | None:
+    """The item the human picked for this domain, if the window is still open."""
+    found = _recent_approvals.get(domain)
+    if not found:
+        return None
+    item_id, item_name, until = found
+    if time.time() >= until:
+        del _recent_approvals[domain]
+        return None
+    return item_id, item_name
+
+
+def remember_approval(domain: str, item_id: str, item_name: str) -> None:
+    _recent_approvals[domain] = (item_id, item_name, time.time() + APPROVAL_WINDOW_SECONDS)
+
 NATIVE_HELPER_ERRORS = {
     "invalid request",
     "native application did not respond",
@@ -867,7 +913,20 @@ async def login_fill(
         audit("outcome", domain=domain, filled=False, reason="no vault item")
         return {"filled": False, "error": f"no vault item matches {domain}"}
 
-    if len(candidates) == 1:
+    reused = recent_approval(domain)
+    if reused and any(item_id == reused[0] for item_id, _ in candidates):
+        item_id, item_name = reused
+        request = Request(
+            kind="login_fill",
+            prompt=f"Release {', '.join(wanted)} for {domain} ({item_name})?",
+            requester=requester,
+            domain=domain,
+            fields=wanted,
+        )
+        audit("reused", id=request.id, domain=domain, fields=wanted, item=item_name,
+              requester=requester)
+        approved = True
+    elif len(candidates) == 1:
         item_id, item_name = candidates[0]
         request = Request(
             kind="login_fill",
@@ -896,6 +955,8 @@ async def login_fill(
     if not approved:
         audit("outcome", id=request.id, approved=False)
         return {"filled": False, "error": "not approved"}
+
+    remember_approval(domain, item_id, item_name)
 
     port = terminal_browser_cdp_port()
     if port is None:
@@ -959,7 +1020,20 @@ async def native_login_fill(
         audit("outcome", domain=domain, filled=False, reason="no vault item")
         return {"filled": False, "error": f"no vault item matches {domain}"}
 
-    if len(candidates) == 1:
+    reused = recent_approval(domain)
+    if reused and any(item_id == reused[0] for item_id, _ in candidates):
+        item_id, item_name = reused
+        request = Request(
+            kind="native_login_fill",
+            prompt=f"Release {field} for {domain} ({item_name}) into {bundle_id} on {target}?",
+            requester=requester,
+            domain=domain,
+            fields=[field],
+        )
+        audit("reused", id=request.id, domain=domain, fields=[field], item=item_name,
+              requester=requester)
+        approved = True
+    elif len(candidates) == 1:
         item_id, item_name = candidates[0]
         request = Request(
             kind="native_login_fill",
@@ -987,6 +1061,8 @@ async def native_login_fill(
     if not approved:
         audit("outcome", id=request.id, approved=False)
         return {"filled": False, "error": "not approved"}
+
+    remember_approval(domain, item_id, item_name)
 
     value = ""
     try:

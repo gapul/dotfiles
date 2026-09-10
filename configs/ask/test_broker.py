@@ -227,6 +227,54 @@ def test_cdp_lookup_asks_for_every_browser():
     assert "--all" in run.call_args.args[0], run.call_args
 
 
+def test_one_sign_in_asks_once():
+    """Google wants the address, then the password on the next page. That is one decision to the
+    person answering, and asking three times is how a dialog becomes something to dismiss."""
+    from unittest.mock import AsyncMock, patch
+
+    broker.CONFIG = broker.replace_allowlist(("accounts.google.com",))
+    broker._recent_approvals.clear()
+    candidates = [("item-a", "Google — a@x"), ("item-b", "Google — b@x")]
+
+    async def run():
+        return [
+            await broker.login_fill(
+                ctx=None, domain="accounts.google.com", selectors={field: "#s"}, requester="test"
+            )
+            for field in ("username", "password")
+        ]
+
+    with patch.object(broker.VAULT, "candidates", return_value=candidates), patch.object(
+        broker.VAULT, "get", return_value="secret"
+    ), patch.object(broker, "terminal_browser_cdp_port", return_value=1), patch.object(
+        broker, "fill_via_cdp", AsyncMock(return_value=None)
+    ), patch.object(broker, "ask_human", AsyncMock(return_value="Google — b@x")) as asked:
+        assert asyncio.run(run()) == [{"filled": True}, {"filled": True}]
+
+    assert asked.await_count == 1, asked.await_count
+
+    # A different site is a different decision, and gets its own question.
+    broker.CONFIG = broker.replace_allowlist(("accounts.google.com", "github.com"))
+    with patch.object(broker.VAULT, "candidates", return_value=candidates), patch.object(
+        broker, "ask_human", AsyncMock(return_value="no")
+    ) as asked:
+        asyncio.run(
+            broker.login_fill(
+                ctx=None, domain="github.com", selectors={"password": "#s"}, requester="test"
+            )
+        )
+    assert asked.await_count == 1
+
+
+def test_the_window_closes():
+    """A held approval that never expires is a standing permission, which is not what was given."""
+    broker._recent_approvals.clear()
+    broker.remember_approval("example.com", "item-a", "Example — a@x")
+    assert broker.recent_approval("example.com") == ("item-a", "Example — a@x")
+    broker._recent_approvals["example.com"] = ("item-a", "Example — a@x", 0.0)
+    assert broker.recent_approval("example.com") is None
+
+
 def test_tools_registered():
     names = {t.name for t in asyncio.run(broker.mcp.list_tools())}
     assert names == {"approve", "choose", "ask_text", "login_fill", "native_login_fill"}, names
