@@ -24,7 +24,9 @@ for encoded in "$@"; do args+=("$(decode "$encoded")"); done
 state="$HOME/.local/state/macmini-build"
 repo="$state/repos/$key"
 lock="$state/build.lock"
-mkdir -p "$state/repos"
+# ~/.dart-tool is linked to this XDG location by Home Manager. Recreate its target here because
+# the build worker must also survive an external cache cleanup between configuration activations.
+mkdir -p "$state/repos" "${XDG_STATE_HOME:-$HOME/.local/state}/dart-tool"
 if ! mkdir "$lock" 2>/dev/null; then
   owner=$(cat "$lock/pid" 2>/dev/null || true)
   if [[ "$owner" =~ ^[0-9]+$ ]] && kill -0 "$owner" 2>/dev/null; then
