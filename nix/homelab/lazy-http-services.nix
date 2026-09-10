@@ -112,15 +112,18 @@ let
         endpointName: endpoint:
         let
           proxyName = "${targetName}-${endpointName}";
-          attempts = toString (group.startupTimeout * 4);
           waitForUpstream = pkgs.writeShellScript "${proxyName}-wait" ''
             set -eu
-            attempt=0
-            while [ "$attempt" -lt ${attempts} ]; do
-              if ${pkgs.netcat-openbsd}/bin/nc -z -w 1 127.0.0.1 ${toString endpoint.upstreamPort}; then
+            deadline=$((SECONDS + ${toString group.startupTimeout}))
+            while [ "$SECONDS" -lt "$deadline" ]; do
+              status="$(${pkgs.curl}/bin/curl -sS -o /dev/null -w '%{http_code}' \
+                --max-time 1 http://127.0.0.1:${toString endpoint.upstreamPort}/ 2>/dev/null || true)"
+              # A login redirect, 401 or 404 still proves that the application
+              # is ready. Only connection failures and server errors keep the
+              # first client queued on the systemd socket.
+              if [ "''${status:-000}" -ge 100 ] && [ "''${status:-000}" -lt 500 ]; then
                 exit 0
               fi
-              attempt=$((attempt + 1))
               ${pkgs.coreutils}/bin/sleep 0.25
             done
             echo "${proxyName}: upstream did not become ready within ${toString group.startupTimeout}s" >&2
