@@ -13,7 +13,7 @@ allowed_domains = ["github.com"]
 vault_idle_seconds = 900
 
 # How long the person at the terminal gets before the question goes to the phone.
-local_timeout_seconds = 25
+local_timeout_seconds = 90
 remote_timeout_seconds = 600
 
 # sops-managed, mode 0400.

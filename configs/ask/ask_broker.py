@@ -49,7 +49,12 @@ class Config:
     vault_idle_seconds: int = 900
 
     # How long the person at the terminal gets before the question goes to their phone.
-    local_timeout_seconds: int = 25
+    #
+    # 25s was the first guess and it was wrong: the dialog appears, and a person who has to
+    # notice it, read what is being asked and decide has usually not finished in that time. The
+    # cost of being generous here is only that someone who has actually walked away waits longer
+    # for their phone to buzz, which matters far less than timing out on someone who is present.
+    local_timeout_seconds: int = 90
     remote_timeout_seconds: int = 600
 
     # Read at unlock time and dropped immediately. A sops-managed file, mode 0400, which is how
