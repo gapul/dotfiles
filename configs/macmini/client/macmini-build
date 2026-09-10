@@ -12,6 +12,8 @@ examples:
   macmini-build -- cargo build --release
   macmini-build --profile servo -- ./mach build --release --media-stack dummy
   macmini-build --get target/release/myapp -- cargo build --release
+  macmini-build --get build/app/outputs/flutter-apk/app-release.apk -- flutter build apk --release
+  macmini-build --get dist -- pnpm build
 EOF
   exit 2
 }
