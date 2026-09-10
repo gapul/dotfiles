@@ -168,9 +168,9 @@ let
   manabi = "/Users/Shared/manabi";
 in
 {
-  # Headless AI worker (M4 Mac mini / 24GB).
-  # Unlike the everyday workstation (darwin.nix), it loads no GUI casks at all;
-  # it hosts the MLX stack (Whisper / VLM / TTS / RAG) and the Hermes agent.
+  # Headless AI/render worker (M4 Mac mini / 24GB). GUI casks are limited to software that
+  # provides a server-side capability: browser automation, Blender rendering, and Adobe's
+  # After Effects installer/runtime. Everyday interactive apps stay on the workstation.
 
   # sops at the system level, decrypting with this machine's own SSH host key.
   #
@@ -270,8 +270,7 @@ in
     localHostName = "macmini";
   };
 
-  # Headless operation, so brew is minimal (only Tailscale's daemon).
-  # Not loading GUI casks keeps rebuilds fast and the attack surface small.
+  # Headless operation, so brew stays limited to daemons and server-side GUI runtimes.
   homebrew = {
     enable = true;
     onActivation = {
@@ -307,6 +306,11 @@ in
       # `chrome-automation` wrapper (home/macmini.nix): own profile, windowless, CDP on 9222, and
       # stopped when the job ends. The chrome-launch.sh this comment used to point at never existed.
       "google-chrome"
+      # Creative Cloud is the supported installer and license runtime for After Effects. Adobe
+      # manages AE itself after this bootstrap, but declaring the CC installer keeps brew's
+      # cleanup=uninstall from removing it on a later rebuild. Login secrets are filled through
+      # the allowlisted ask MCP native helper; only adobe.com credentials can reach this bundle.
+      "adobe-creative-cloud"
       # Blender。nix ではなく brew なのは、あちらだとソースから建てることになるため。
       # 依存の manifold が macmini (macOS 26.5.2) でテスト中に SIGTRAP で落ちるうえ
       # (GetNormalLegacyContract, exit 133)、aarch64-darwin のキャッシュも無いので

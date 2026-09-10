@@ -13,9 +13,8 @@
 #
 #   DaVinci  — nixpkgs のパッケージは x86_64-linux 専用 (確認済み)。darwin で使うなら
 #              Blackmagic の dmg を手で入れることになり、宣言の外に出る
-#   Adobe    — Creative Cloud が自前で管理するので宣言できない。これは母艦でも同じで、
-#              [[adobe-cc-undeclarable]] に「棚卸しで未宣言として再報告しない」と
-#              決めてある
+#   Adobe    — Creative Cloud の導入器は brew cask で宣言する。After Effects 本体と更新は
+#              Creative Cloud が管理するため、そこから先は Nix の管理外
 #
 # Adobe は After Effects だけ入れる方針にした (2026-09-01)。狙いは aerender で、
 # これは画面なしでコンポを焼けるコマンド。macmini に置く意味があるのはここだけ。
@@ -24,11 +23,11 @@
 # 無く、あれはアプリが起動している前提なので画面の無いこの機械には向かない。
 # DaVinci も同じ理由で入れない (加えて nixpkgs のパッケージが x86_64-linux 専用)。
 #
-# 導入は手作業になる。Creative Cloud が自前で管理するので宣言できず、サインインも
-# GUI が要る。macmini は画面共有が有効なので、そこから入れられる:
+# Creative Cloud の導入器は hosts/macmini.nix で宣言する。サインイン情報は ask MCP の
+# allowlist 済み native helper で入力できるが、画面遷移と追加認証には画面共有を使う:
 #
-#   1. 画面共有で macmini に繋ぐ
-#   2. Creative Cloud を入れてサインイン
+#   1. Creative Cloud を起動し、MCP 経由でサインイン
+#   2. 画面共有で追加認証を完了
 #   3. After Effects だけ入れる (Premiere は入れない)
 #
 # 入ると aerender はここに来る:
