@@ -422,9 +422,21 @@
       };
 
       perSystemOutputs = flake-parts.lib.mkFlake { inherit inputs; } {
+        # aarch64-linux is not here. The only thing it ever built was the
+        # gapul-linux-aarch64 home config, which exists for a plain ARM Linux box — the
+        # Raspberry Pi, retired 2026-08-24. Nothing has run it since, and building a
+        # configuration no machine uses cost 116s of every pull request.
+        #
+        # The configuration itself stays: bootstrap-linux.sh picks it by architecture, so it is
+        # the path a future ARM box would come up on, and it is a parameterisation of the same
+        # home config rather than anything to maintain separately. Put "aarch64-linux" back here
+        # and in scripts/ci-plan-systems.sh when such a machine exists.
+        #
+        # nix-on-droid is aarch64-linux too but is unaffected: it is a top-level output built
+        # through its own app with --impure and the nix-on-droid substituter, never through this
+        # matrix.
         systems = [
           system
-          "aarch64-linux"
           "x86_64-linux"
         ];
 
@@ -472,9 +484,6 @@
                   inputs.self.homeConfigurations."${user.username}-wsl".activationPackage
                   inputs.self.homeConfigurations."labpc-wsl".activationPackage
                   inputs.self.homeConfigurations."${user.username}-linux".activationPackage
-                ]
-                ++ lib.optionals (system == "aarch64-linux") [
-                  inputs.self.homeConfigurations."${user.username}-linux-aarch64".activationPackage
                 ]
               );
             }
@@ -589,10 +598,6 @@
                   "labpc-wsl" = inputs.self.homeConfigurations."labpc-wsl";
                   "${user.username}-linux" = inputs.self.homeConfigurations."${user.username}-linux";
                 };
-              }
-              // lib.optionalAttrs (system == "aarch64-linux") {
-                homeConfigurations."${user.username}-linux-aarch64" =
-                  inputs.self.homeConfigurations."${user.username}-linux-aarch64";
               }
               // lib.optionalAttrs isDarwinWorkstation {
                 homeConfigurations."${user.username}" = inputs.self.homeConfigurations."${user.username}";
