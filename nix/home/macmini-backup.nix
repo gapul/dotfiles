@@ -16,11 +16,11 @@
 #     パスは共通ライブラリの既定(=元の手置きの場所)のままなので、このファイルは
 #     どちらで置かれたかを知らずに済む。
 #   - 画面が無いので osascript は使わず、通知は ntfy だけ。
-#   - forget は自ホスト分だけで prune しない。共有リポジトリを repack するのは母艦の役。
+#   - 共有リポジトリ全体の prune/check/鮮度監視を担当する。常時稼働ホストへ
+#     control-plane を集約し、母艦は自分のスナップショットを送るだけにする。
 #
-# 鮮度の監視はここには置かない。母艦の restic-monitor が monitoredHosts を列挙して
-# ホスト別に見ており、そこに macmini は入っている。整合性チェック(restic check)も
-# リポジトリ全体の話なので母艦の週次に任せる。
+# 各データ保有ホストは自分の backup だけを実行する。共有リポジトリを排他的に
+# repack/check する主体はこの Mac mini だけにし、同時実行とノートのスリープを避ける。
 let
   home = config.home.homeDirectory;
   common = import ../lib/restic-common.nix { inherit home; };
@@ -40,7 +40,6 @@ let
       passwordFile
       logFile
       ;
-    forgetSnippet = common.forgetOwnHostOnly;
     backupPaths = [
       # 作業ツリー一式。旧スクリプトが見ていた唯一の対象で、ホーム直下に散っていた
       # 書類も projects/ 配下へ集めてある(~/Documents は macOS の TCC が ssh と
@@ -103,24 +102,52 @@ let
           -d "$1: $2" \
           "$(cat "${ntfyUrlFile}")" >/dev/null 2>&1 || true
       fi'';
-    parseSnapshotTime = ''$(date -j -f "%Y-%m-%dT%H:%M:%S" "$(echo "$latest" | cut -d. -f1)" +%s 2>/dev/null || echo 0)'';
+    # Fractional seconds の有無に依存せず YYYY-MM-DDTHH:MM:SS だけを読む。
+    parseSnapshotTime = ''$(date -j -f "%Y-%m-%dT%H:%M:%S" "''${latest:0:19}" +%s 2>/dev/null || echo 0)'';
   };
 in
 {
   home.packages = [ pkgs.restic ];
 
   # 旧スクリプトと同じ 5:00。母艦は 13:00 なので、共有リポジトリのロックが重ならない。
-  launchd.agents.restic-backup = import ../lib/launchd-agent.nix {
-    program = "${scripts.backup}";
-    schedule = [
-      {
-        Hour = 5;
-        Minute = 0;
-      }
-    ];
-    nice = 5;
-    # 母艦と同じ理由。Developer と minecraft のスナップショットを丸ごと流すので、
-    # Background バンドに置くと途中で刈られうる。
-    longRunning = true;
+  launchd.agents = {
+    # 5:00 backup, followed by the sole repository-wide retention/prune pass.
+    restic-backup = import ../lib/launchd-agent.nix {
+      program = "${scripts.backup}";
+      schedule = [
+        {
+          Hour = 5;
+          Minute = 0;
+        }
+      ];
+      nice = 5;
+      longRunning = true;
+    };
+
+    # Repository integrity belongs to the always-on control-plane host.
+    restic-check = import ../lib/launchd-agent.nix {
+      program = "${scripts.check}";
+      schedule = [
+        {
+          Weekday = 0;
+          Hour = 14;
+          Minute = 0;
+        }
+      ];
+      nice = 5;
+      longRunning = true;
+    };
+
+    # One monitor checks freshness for every host in the shared repository.
+    restic-monitor = import ../lib/launchd-agent.nix {
+      program = "${scripts.monitor}";
+      schedule = [
+        {
+          Hour = 19;
+          Minute = 0;
+        }
+      ];
+      nice = 5;
+    };
   };
 }

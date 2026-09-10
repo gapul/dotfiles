@@ -114,6 +114,10 @@ let
   # (5) Daily git push of the Obsidian vault (history + GitHub backup).
   #   Live cross-device sync is handled by LiveSync (CouchDB), so daily git is enough.
   #   obsidian-git's auto-commit is expected to be OFF, consolidating ownership in this agent.
+  #   This intentionally stays on the workstation: homeserver owns the opaque LiveSync CouchDB,
+  #   not a materialized Markdown worktree.  Adding Syncthing for the same vault would create two
+  #   independent sync engines and conflict with LiveSync.  Move this only together with a future
+  #   migration that gives the server sole ownership of a real vault worktree.
   vaultGitPushScript = pkgs.writeShellScript "obsidian-vault-push" ''
     ${prelude "obsidian-vault.log"}
     vault=${home}/Documents/notes
