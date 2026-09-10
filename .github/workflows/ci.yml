@@ -80,6 +80,7 @@ jobs:
         include:
           - system: x86_64-linux
             runner: ubuntu-24.04
+            pr_runner: ubuntu-24.04
           # darwin だけ自前ランナー (macmini)。動機は「macos-14 が遅い」ではなく、遅さの
           # 中身が転送だと分かったこと。
           #
@@ -99,12 +100,22 @@ jobs:
           # ラベルを知らない / node24 / cachix) は hosts/macmini-ci-runner.nix 側で埋めてある。
           # 戻したのはこの一行だけだった。
           #
-          # macmini は AI 常駐 (ComfyUI / Hermes / 文字起こし) と同居する。CI は短時間なので
-          # 競合は許容範囲だが、重くなるようなら runner: macos-14 に戻せば済む。
+          # macmini は AI 常駐 (ComfyUI / Hermes / 文字起こし) と同居する。載せるのは pull
+          # request だけで、そちらは store が温まっていれば転送も計算もほとんど無い。重い方
+          # (main の om ci run) は GitHub に残す — 下の runs-on を参照。
           - system: aarch64-darwin
-          - system: aarch64-darwin
-            runner: macmini
-    runs-on: ${{ matrix.runner }}
+            runner: macos-14
+            pr_runner: macmini
+    # Pull requests go to the self-hosted runner, main goes to GitHub's.
+    #
+    # The split follows what the two events actually cost. A pull request builds `pr-gate`, which
+    # is dominated by transfer — 12.2 GiB on darwin, 3.7 GiB on linux, against six derivations
+    # actually built — so a machine whose store persists skips nearly all of it (measured
+    # 2026-09-10: 346s to 18s). `om ci run` on main is the opposite: it builds every output for
+    # the system, including the closures and VM tests no pull request touches, and it is what
+    # fills cachix. That is real work, and it belongs on a machine that exists to be spent rather
+    # than on one running things people depend on.
+    runs-on: ${{ github.event_name == 'pull_request' && matrix.pr_runner || matrix.runner }}
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
