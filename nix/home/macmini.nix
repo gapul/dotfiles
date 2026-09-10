@@ -33,6 +33,11 @@ in
   # (rebuild steps in configs/macmini/bootstrap.sh and README).
 
   home.packages = [
+    # Orca starts agent CLIs from its Aqua LaunchAgent instead of an interactive shell.
+    # Keep Codex declarative on the remote host so it is both discoverable and available
+    # after unattended rebuilds.
+    pkgs.codex
+
     # The study tutor renders plans and handouts with typst (show.py in the sandbox looks it
     # up under /nix/store). Declared here so a garbage collection can't take it away.
     pkgs.typst
@@ -175,6 +180,13 @@ in
       ProgramArguments = [
         "/Applications/Orca.app/Contents/MacOS/Orca"
       ];
+      EnvironmentVariables = {
+        PATH = "${config.home.profileDirectory}/bin:/Users/gapul/.local/bin:/run/current-system/sw/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin";
+        CLAUDE_CONFIG_DIR = "${config.xdg.configHome}/claude";
+        CODEX_HOME = "${config.xdg.dataHome}/codex";
+        CODEX_SQLITE_HOME = "${config.xdg.stateHome}/codex/sqlite";
+        XDG_CONFIG_HOME = "${config.xdg.configHome}";
+      };
       RunAtLoad = true;
       KeepAlive = true;
       ThrottleInterval = 30;
