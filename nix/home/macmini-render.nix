@@ -59,6 +59,7 @@ let
       platformVersions = [ "36" ];
       buildToolsVersions = [
         "28.0.3"
+        "35.0.0"
         "36.0.0"
       ];
       includeEmulator = false;
