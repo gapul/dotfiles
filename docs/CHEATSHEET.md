@@ -241,7 +241,8 @@ Fetching private repos works, through ssh agent forwarding.
 - `.#<user>` — macOS, which is this Mac
 - `.#<user>-wsl` — WSL2
 - `.#<user>-linux` — plain Linux, x86_64
-- `.#<user>-linux-aarch64` — plain Linux on ARM, such as a Raspberry Pi
+- `.#<user>-linux-aarch64` — plain Linux on ARM. No machine runs it since the Pi retired, so CI
+  does not build it; it is here for the next ARM box, which `bootstrap-linux.sh` picks by arch
 
 ---
 
