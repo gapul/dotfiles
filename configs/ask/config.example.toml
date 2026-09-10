@@ -38,9 +38,13 @@ identity_file = "~/.ssh/id_automation"
 # Only bundles listed here may receive keyboard events when an embedded browser does not expose
 # its HTML input as AXTextField. All other apps require an Accessibility-verified editable field.
 keystroke_bundles = ["com.adobe.acc.AdobeCreativeCloud"]
+# General-purpose browsers additionally verify the active tab's exact HTTPS domain in the fixed
+# helper immediately before writing. A caller-supplied domain cannot bypass the apps allowlist.
+url_check_bundles = ["com.apple.Safari"]
 
 [native_targets.macmini.apps]
 "com.adobe.acc.AdobeCreativeCloud" = ["adobe.com"]
+"com.apple.Safari" = ["accounts.google.com"]
 
 [matrix]
 homeserver = "https://gapul.net"

@@ -147,6 +147,19 @@ def test_native_target_requires_exact_app_and_domain():
         )
         assert broker.native_input_mode(target, "com.example.other") == "ax_value"
         assert broker.native_input_mode({}, "com.adobe.acc.AdobeCreativeCloud") == "ax_value"
+        browser_target = {"url_check_bundles": ["com.apple.Safari"]}
+        assert (
+            broker.native_url_domain(
+                browser_target, "com.apple.Safari", "accounts.google.com"
+            )
+            == "accounts.google.com"
+        )
+        assert (
+            broker.native_url_domain(
+                browser_target, "com.adobe.acc.AdobeCreativeCloud", "adobe.com"
+            )
+            == ""
+        )
     finally:
         broker.CONFIG = original
 

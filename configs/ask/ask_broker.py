@@ -761,6 +761,7 @@ NATIVE_HELPER_ERRORS = {
     "configured application is not frontmost",
     "focused element is not an editable text field",
     "Accessibility permission is unavailable",
+    "native browser page does not match the approved domain",
     "macOS Accessibility fill failed",
 }
 
@@ -787,6 +788,14 @@ def native_input_mode(target: dict[str, Any], bundle_id: str) -> str:
     return "ax_value"
 
 
+def native_url_domain(target: dict[str, Any], bundle_id: str, domain: str) -> str:
+    """Require an exact HTTPS page-domain check for configured general-purpose browsers."""
+    bundles = target.get("url_check_bundles", ())
+    if isinstance(bundles, list) and bundle_id in bundles:
+        return domain
+    return ""
+
+
 def sanitize_native_result(result: Any) -> dict[str, Any]:
     """Keep a compromised remote helper from smuggling a credential back to the MCP caller."""
     if not isinstance(result, dict) or not isinstance(result.get("filled"), bool):
@@ -800,7 +809,8 @@ def sanitize_native_result(result: Any) -> dict[str, Any]:
 
 
 async def fill_native_target(
-    target: dict[str, Any], bundle_id: str, value: str, input_mode: str
+    target: dict[str, Any], bundle_id: str, value: str, input_mode: str,
+    expected_domain: str,
 ) -> dict[str, Any]:
     """Run the fixed native helper locally or over SSH, sending the secret only on stdin."""
     helper = Path.home() / ".local/bin/ask-native-fill"
@@ -828,7 +838,12 @@ async def fill_native_target(
         stderr=asyncio.subprocess.DEVNULL,
     )
     payload = json.dumps(
-        {"bundle_id": bundle_id, "input_mode": input_mode, "value": value}
+        {
+            "bundle_id": bundle_id,
+            "expected_domain": expected_domain,
+            "input_mode": input_mode,
+            "value": value,
+        }
     ).encode()
     try:
         stdout, _ = await asyncio.wait_for(proc.communicate(payload), timeout=25)
@@ -1077,6 +1092,7 @@ async def native_login_fill(
             bundle_id,
             value,
             native_input_mode(configured_target, bundle_id),
+            native_url_domain(configured_target, bundle_id, domain),
         )
     except RuntimeError as exc:
         result = {"filled": False, "error": str(exc)}

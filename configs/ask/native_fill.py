@@ -17,6 +17,7 @@ import sys
 
 SCRIPT = r"""
 set expectedBundle to system attribute "ASK_NATIVE_BUNDLE_ID"
+set expectedDomain to system attribute "ASK_NATIVE_DOMAIN"
 set inputMode to system attribute "ASK_NATIVE_INPUT_MODE"
 set secretValue to system attribute "ASK_NATIVE_VALUE"
 
@@ -25,6 +26,14 @@ tell application "System Events"
     set frontProcess to first application process whose frontmost is true
     if bundle identifier of frontProcess is not expectedBundle then ¬
         error "frontmost application mismatch" number 1701
+    if expectedDomain is not "" then
+        if expectedBundle is not "com.apple.Safari" then error "page domain mismatch" number 1704
+        tell application id "com.apple.Safari" to set pageURL to URL of current tab of front window
+        set allowedOrigin to "https://" & expectedDomain
+        set allowedPrefix to allowedOrigin & "/"
+        if pageURL is not allowedOrigin and pageURL does not start with allowedPrefix then ¬
+            error "page domain mismatch" number 1704
+    end if
     set focusedElement to value of attribute "AXFocusedUIElement" of frontProcess
     set elementRole to value of attribute "AXRole" of focusedElement
     if elementRole is "AXTextField" or elementRole is "AXSecureTextField" or ¬
@@ -56,6 +65,7 @@ def main() -> int:
             raise ValueError("request is too large")
         payload = json.loads(raw)
         bundle_id = payload["bundle_id"]
+        expected_domain = payload.get("expected_domain", "")
         input_mode = payload.get("input_mode", "ax_value")
         value = payload["value"]
         if not isinstance(bundle_id, str) or not re.fullmatch(
@@ -64,6 +74,10 @@ def main() -> int:
             raise ValueError("invalid bundle identifier")
         if input_mode not in {"ax_value", "keystroke"}:
             raise ValueError("invalid input mode")
+        if expected_domain and not re.fullmatch(
+            r"[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?", expected_domain
+        ):
+            raise ValueError("invalid expected domain")
         if not isinstance(value, str) or not value:
             raise ValueError("credential value is empty")
     except (KeyError, TypeError, ValueError, json.JSONDecodeError):
@@ -73,6 +87,7 @@ def main() -> int:
     env = {
         **os.environ,
         "ASK_NATIVE_BUNDLE_ID": bundle_id,
+        "ASK_NATIVE_DOMAIN": expected_domain,
         "ASK_NATIVE_INPUT_MODE": input_mode,
         "ASK_NATIVE_VALUE": value,
     }
@@ -104,6 +119,8 @@ def main() -> int:
         error = "focused element is not an editable text field"
     elif "1703" in stderr:
         error = "Accessibility permission is unavailable"
+    elif "1704" in stderr:
+        error = "native browser page does not match the approved domain"
     else:
         error = "macOS Accessibility fill failed"
     result(False, error)
