@@ -308,6 +308,10 @@ in
     ];
   };
 
+  # cachix: CI runner のため。GitHub の hosted runner は毎回入れ直すしかないが、この機械は
+  # 常設なので宣言しておく。入れ直しに 30 秒以上かかっていて、それが setup-nix を
+  # 実際のビルドより長くしていた (56s の準備に対し 18s のビルド、2026-09-10 実測)。
+  #
   # nodejs: runtime for Playwright MCP (pnpm dlx) and claude-login-broker (inject-creds.js).
   # bitwarden-cli: after approval the broker pulls credentials via bw get. BW_SESSION is unlocked manually.
   # cloudflared: publishes the study agent's OpenAI-compatible API (127.0.0.1:8791) so the
@@ -319,6 +323,7 @@ in
   # been done. systemPackages rather than home.packages on purpose: ai-stack.sh builds its own
   # PATH from /opt/homebrew and /run/current-system/sw, and the per-user profile is not on it.
   environment.systemPackages = [
+    pkgs.cachix
     pkgs.nodejs_22
     pkgs.bitwarden-cli
     pkgs.cloudflared
