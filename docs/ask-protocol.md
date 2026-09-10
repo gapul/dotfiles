@@ -102,8 +102,10 @@ iOS/watchOS app talking to APNs directly is the intended replacement, because no
 actions from a native app are answerable from the watch itself, which mirrored third-party
 notifications are not. Nothing above this layer should need to change when that lands.
 
-Touch ID was meant to sit in front of all of them, for the two kinds that are yes-or-no. It is
-not wired, and after three attempts it looks unreachable rather than unfinished. See "Open".
+Touch ID sits in front of all of them, for the two kinds that are yes-or-no — a fingerprint can
+say yes or no and nothing else, so `choose` and `ask_text` skip it. The policy is
+`BiometricsOrCompanion`, so a paired Apple Watch satisfies it when a hand is not free. It falls
+through to the dialog when biometrics are unavailable.
 
 ## What the human sees
 
@@ -151,39 +153,13 @@ channels, and the layers above stay as they are.
 
 ## Open
 
-- **Touch ID.** `LAContext.evaluatePolicy` returns `LAError.systemCancel` (-4) immediately on this
-  machine, drawing nothing, while `canEvaluatePolicy` returns true and `bioutil` reports biometrics
-  enrolled and effective. Tried and rejected: ad-hoc CLI, Developer ID signature with an embedded
-  `Info.plist`, `NSApplication` as an accessory, a real `.app` bundle, dropping the hardened
-  runtime, biometrics-only policy, and activating the process first. Same result under an agent's
-  shell and under the user's own terminal, so the calling context is not the difference.
-
-  What does work is `pam_tid`: `sudo` raises its prompt, including from a process with no TTY,
-  which is what a launchd agent has. So the gate could be `sudo -v` — at the cost of the two
-  things this protocol asks for. The dialog is sudo's own and cannot be made to say what is being
-  released or which machine asked, and `sudo -k` would clobber the user's own sudo timestamp on
-  every request. A gesture that cannot state what it is approving is not the approval this
-  document describes, so it stays unwired.
-
-  Two further routes were tried and are also closed. `do shell script ... with administrator
-  privileges with prompt` takes a custom message but offers only a password field, no biometrics.
-  `sudo` does raise a Touch ID prompt, including from a process with no TTY, but its dialog is
-  sudo's own and cannot say what is being released or which machine asked.
-
-  So the three properties wanted here — a fingerprint, a custom message, and a background process
-  — are available in pairs and never all three. The system dialog gives up the fingerprint and
-  keeps the other two, which is the right trade: a gesture that cannot state what it approves is
-  not an approval. A two-step variant (read the dialog, then touch for `sudo -v`) would recover
-  the fingerprint at the cost of a third action, and could be a setting if it is ever wanted.
-
-  The helper (`helper/ask-approve.swift` in github.com/gapul/ask) is kept, unwired, along with
-  this note. Prime suspect for the `systemCancel` is the window manager taking the panel, which
-  would fit the focus problems already recorded elsewhere, but that is a guess and testing it
-  means stopping OmniWM.
-- Getting a Touch ID helper onto the machine declaratively, if that ever resolves. It cannot be
-  built through nix here — nixpkgs' swift will not link LocalAuthentication, the wall the Apple
-  Speech work documented — so it wants a CI build and a fetched release, the way lightpanda and
-  terminal-browser already work.
+- Getting the Touch ID helper onto the machine declaratively. It cannot be built through nix here
+  — nixpkgs' swift will not link LocalAuthentication, the wall the Apple Speech work documented —
+  so it wants a CI build and a fetched release, the way lightpanda and terminal-browser already
+  work. `helper/build.sh` in github.com/gapul/ask installs it by hand until then, and the broker
+  skips the channel when the app is not there.
+- The dialog stays on screen after the local timeout, because the elicitation and the osascript
+  call are not cancelled when another channel wins. Answering a stale one does nothing.
 - The mac mini as requester: the broker holds the vault on the workstation and the secret crosses
   the tailnet to the requesting machine. WireGuard covers the wire. Same-user isolation on the
   far end is no better than it is here, which is to say weak, and no amount of protocol fixes it.

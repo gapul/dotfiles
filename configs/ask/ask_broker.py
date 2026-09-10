@@ -19,6 +19,7 @@ import json
 import os
 import shutil
 import subprocess
+import tempfile
 import time
 import tomllib
 import uuid
@@ -57,6 +58,10 @@ class Config:
     local_timeout_seconds: int = 90
     remote_timeout_seconds: int = 600
 
+    # The .app that raises the Touch ID prompt. Empty or missing means that channel is skipped and
+    # the dialog answers instead.
+    touch_id_app: str = "~/Applications/AskApprove.app"
+
     # Read at unlock time and dropped immediately. A sops-managed file, mode 0400, which is how
     # every other secret on this machine is handled. The lock is the second layer here; the
     # approval is the first, so an auto-unlock does not remove the gate.
@@ -90,6 +95,7 @@ class Config:
             remote_timeout_seconds=broker.get("remote_timeout_seconds", cls.remote_timeout_seconds),
             vault_password_file=broker.get("vault_password_file", ""),
             token_file=broker.get("token_file", ""),
+            touch_id_app=broker.get("touch_id_app", cls.touch_id_app),
             matrix_homeserver=matrix.get("homeserver", ""),
             matrix_room=matrix.get("room", ""),
             matrix_token_file=matrix.get("token_file", ""),
@@ -314,6 +320,46 @@ def _schema_for(kind: str) -> type[BaseModel]:
     return FreeText
 
 
+async def touch_id(request: Request, prompt: str) -> str | None:
+    """Touch ID, or a paired Apple Watch — the policy is BiometricsOrCompanion.
+
+    Launched with `open`, not by running the binary. That distinction is the whole reason this
+    works: executed directly, even signed and inside a bundle, `LAContext.evaluatePolicy` returns
+    systemCancel without drawing anything, because the process is not a GUI application as far as
+    the window server is concerned. Going through LaunchServices makes it one. Six variations were
+    tried before that turned out to be the difference.
+
+    `open -W` waits but does not carry the exit code back, so the verdict comes through a file.
+    """
+    app = Path(CONFIG.touch_id_app).expanduser()
+    if not CONFIG.touch_id_app or not app.exists():
+        return None
+    if request.kind not in ("approve", "login_fill"):
+        return None  # a fingerprint can say yes or no and nothing else
+
+    with tempfile.TemporaryDirectory() as tmp:
+        verdict = Path(tmp) / "verdict"
+        proc = await asyncio.create_subprocess_exec(
+            "/usr/bin/open", "-W", "-a", str(app), "--args", prompt, str(verdict),
+            stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL,
+        )
+        try:
+            await asyncio.wait_for(proc.wait(), timeout=CONFIG.local_timeout_seconds)
+        except asyncio.TimeoutError:
+            proc.kill()
+            await proc.wait()
+            return None
+        if not verdict.exists():
+            return None
+        code = verdict.read_text().strip()
+
+    if code == "0":
+        return "yes"
+    if code == "1":
+        return "no"
+    return None  # 2 = biometrics unavailable, so let another channel answer
+
+
 def _as_applescript_string(text: str) -> str:
     """AppleScript string literal. The prompt carries a requester name and a reason that came in
     over the wire, so it is not something to paste into a script unescaped."""
@@ -390,6 +436,11 @@ async def ask_human(ctx: Context, request: Request) -> str | None:
           fields=request.fields, requester=request.requester)
 
     prompt = f"{request.prompt}\n(from {request.requester})"
+
+    answered = await touch_id(request, prompt)
+    if answered is not None:
+        audit("answered", id=request.id, via="touch-id")
+        return answered
 
     answered = await system_dialog(request, prompt)
     if answered is not None:
