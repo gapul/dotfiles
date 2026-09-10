@@ -282,7 +282,8 @@
         # headless AI worker. No home-manager sops: the secrets it needs are placed by the
         # system-side sops in hosts/macmini.nix (host-key decryption, which home-manager cannot do).
         # The backup module is separate from the workstation's because it reads the plain default
-        # paths rather than sops.secrets attributes, and leaves pruning to the workstation.
+        # paths rather than sops.secrets attributes.  It also owns repository-wide
+        # prune/check/monitor as the always-on backup control plane.
         macminiHeadless = base ++ [
           ./home/macmini.nix
           ./home/macmini-backup.nix

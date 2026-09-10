@@ -32,10 +32,9 @@ let
   ntfyUrlFile = config.sops.secrets."unified_calendar/ntfy_url".path;
   ntfyTokenFile = config.sops.secrets."unified_calendar/ntfy_token".path;
 
-  # The three scripts live in lib/restic-common.nix (shared with the linux version).
-  # Only the macOS-shaped bits are passed in here: notify goes through osascript (works in
-  # launchd's GUI session) plus an ntfy push, and BSD date needs the fractional seconds
-  # trimmed before it will parse restic's ISO8601 timestamp.
+  # The scripts live in lib/restic-common.nix (shared with the linux version).  This
+  # workstation only creates its own snapshots now.  Repository-wide prune/check/monitor
+  # are control-plane work and run on the always-on Mac mini (macmini-backup.nix).
   # TCC の許可を保たせるための安定した置き場。理由は下の activation を参照。
   tccBinDir = "${home}/.local/libexec/tcc";
 
@@ -47,6 +46,9 @@ let
       logFile
       ;
     pathPrefix = tccBinDir;
+    # Apply retention to this host's snapshot metadata, but leave the expensive
+    # repository-wide repack to the Mac mini.
+    forgetSnippet = common.forgetOwnHostOnly;
     backupPaths = [
       "${home}/Documents"
       "${home}/Pictures"
@@ -115,8 +117,7 @@ let
     parseSnapshotTime = ''$(date -j -f "%Y-%m-%dT%H:%M:%S" "''${latest:0:19}" +%s 2>/dev/null || echo 0)'';
   };
 
-  # longRunning: the backup and the integrity check both stream the whole set to Drive and
-  # must not be reaped mid-flight. The monitor only reads the last snapshot's timestamp.
+  # The backup streams the whole set to Drive and must not be reaped mid-flight.
   agent =
     program: schedule:
     import ../lib/launchd-agent.nix {
@@ -167,21 +168,6 @@ in
     restic-backup = agent "${scripts.backup}" [
       {
         Hour = 13;
-        Minute = 0;
-      }
-    ];
-    # weekly (Sun) 14:00 integrity check
-    restic-check = agent "${scripts.check}" [
-      {
-        Weekday = 0;
-        Hour = 14;
-        Minute = 0;
-      }
-    ];
-    # daily 19:00 run monitoring
-    restic-monitor = agent "${scripts.monitor}" [
-      {
-        Hour = 19;
         Minute = 0;
       }
     ];
