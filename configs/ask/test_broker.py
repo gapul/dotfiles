@@ -138,6 +138,15 @@ def test_native_target_requires_exact_app_and_domain():
         assert broker.native_target(
             "adobe.com", "workstation", "com.adobe.acc.AdobeCreativeCloud"
         ) is None
+        target = {
+            "keystroke_bundles": ["com.adobe.acc.AdobeCreativeCloud"]
+        }
+        assert (
+            broker.native_input_mode(target, "com.adobe.acc.AdobeCreativeCloud")
+            == "keystroke"
+        )
+        assert broker.native_input_mode(target, "com.example.other") == "ax_value"
+        assert broker.native_input_mode({}, "com.adobe.acc.AdobeCreativeCloud") == "ax_value"
     finally:
         broker.CONFIG = original
 

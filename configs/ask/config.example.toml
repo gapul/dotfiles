@@ -35,6 +35,9 @@ audit_log = "~/.local/state/ask/audit.jsonl"
 [native_targets.macmini]
 ssh_target = "gapul@100.105.135.49"
 identity_file = "~/.ssh/id_automation"
+# Only bundles listed here may receive keyboard events when an embedded browser does not expose
+# its HTML input as AXTextField. All other apps require an Accessibility-verified editable field.
+keystroke_bundles = ["com.adobe.acc.AdobeCreativeCloud"]
 
 [native_targets.macmini.apps]
 "com.adobe.acc.AdobeCreativeCloud" = ["adobe.com"]

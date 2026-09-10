@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fill one focused macOS text field without exposing its value to the caller.
+"""Fill one focused macOS login field without exposing its value to the caller.
 
 The broker sends a small JSON object on stdin. The value is passed to the system AppleScript
 process only through its environment: it never appears in argv, stdout, stderr, or the audit log.
@@ -17,6 +17,7 @@ import sys
 
 SCRIPT = r"""
 set expectedBundle to system attribute "ASK_NATIVE_BUNDLE_ID"
+set inputMode to system attribute "ASK_NATIVE_INPUT_MODE"
 set secretValue to system attribute "ASK_NATIVE_VALUE"
 
 tell application "System Events"
@@ -26,9 +27,16 @@ tell application "System Events"
         error "frontmost application mismatch" number 1701
     set focusedElement to value of attribute "AXFocusedUIElement" of frontProcess
     set elementRole to value of attribute "AXRole" of focusedElement
-    if elementRole is not "AXTextField" and elementRole is not "AXSecureTextField" and ¬
-        elementRole is not "AXTextArea" then error "focused element is not editable" number 1702
-    set value of attribute "AXValue" of focusedElement to secretValue
+    if elementRole is "AXTextField" or elementRole is "AXSecureTextField" or ¬
+        elementRole is "AXTextArea" then
+        set value of attribute "AXValue" of focusedElement to secretValue
+    else if inputMode is "keystroke" and elementRole is "AXGroup" then
+        -- Some CEF login windows, notably Creative Cloud 6.x, hide their focused HTML input
+        -- behind one AXGroup. The broker enables this mode per bundle; it is never the default.
+        keystroke secretValue
+    else
+        error "focused element is not editable" number 1702
+    end if
     return elementRole
 end tell
 """
@@ -48,18 +56,26 @@ def main() -> int:
             raise ValueError("request is too large")
         payload = json.loads(raw)
         bundle_id = payload["bundle_id"]
+        input_mode = payload.get("input_mode", "ax_value")
         value = payload["value"]
         if not isinstance(bundle_id, str) or not re.fullmatch(
             r"[A-Za-z0-9.-]+", bundle_id
         ):
             raise ValueError("invalid bundle identifier")
+        if input_mode not in {"ax_value", "keystroke"}:
+            raise ValueError("invalid input mode")
         if not isinstance(value, str) or not value:
             raise ValueError("credential value is empty")
     except (KeyError, TypeError, ValueError, json.JSONDecodeError):
         result(False, "invalid request")
         return 2
 
-    env = {**os.environ, "ASK_NATIVE_BUNDLE_ID": bundle_id, "ASK_NATIVE_VALUE": value}
+    env = {
+        **os.environ,
+        "ASK_NATIVE_BUNDLE_ID": bundle_id,
+        "ASK_NATIVE_INPUT_MODE": input_mode,
+        "ASK_NATIVE_VALUE": value,
+    }
     try:
         completed = subprocess.run(
             ["/usr/bin/osascript", "-"],
