@@ -279,6 +279,9 @@ in
       cleanup = "uninstall"; # undeclared brews are auto-uninstalled
       upgrade = false;
     };
+    taps = [
+      "stablyai/orca" # Orca ADE Remote Server and bundled CLI
+    ];
     # Same priority rule as hosts/darwin.nix: nix > homebrew > everything else, and each formula
     # states why brew owns it. (uv was dropped here — modules/home/packages.nix already installs it,
     # and brew winning the PATH meant the duplicate was invisible. ffmpeg and aria2 followed on
@@ -289,6 +292,7 @@ in
       "tailscale"
     ];
     casks = [
+      "stablyai/orca/orca" # bundled CLI runs the persistent Remote Orca Server below
       # (RustDesk was here for remote GUI. It never got its unattended access or its Screen
       #  Recording grant, so it had never once been used, while macOS Screen Sharing on :5900
       #  already covers the same job over the tailnet with nothing to install.)
