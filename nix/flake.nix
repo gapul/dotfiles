@@ -286,6 +286,7 @@
         # prune/check/monitor as the always-on backup control plane.
         macminiHeadless = base ++ [
           ./home/macmini.nix
+          ./home/macmini-maintenance.nix
           ./home/macmini-backup.nix
           ./home/macmini-watchdog.nix
           ./home/findmy-tag.nix # Find My タグの定期取得。ノートではなく常時稼働のこちらに置く
