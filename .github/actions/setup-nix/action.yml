@@ -74,6 +74,13 @@ runs:
       if: inputs.cachix == 'true'
       shell: bash
       run: |
+        # Already declared on the self-hosted runner, so there is nothing to do there — which is
+        # the point: installing it every run cost more than the build it was setting up for
+        # (56s of setup against 18s of nix build, measured 2026-09-10).
+        if command -v cachix >/dev/null 2>&1; then
+          echo "cachix: $(command -v cachix)"
+          exit 0
+        fi
         nix profile add nixpkgs#cachix
         echo "$HOME/.local/state/nix/profiles/profile/bin" >>"$GITHUB_PATH"
 
