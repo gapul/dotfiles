@@ -18,6 +18,13 @@ EOF
   exit 2
 }
 encode() { printf '%s' "$1" | /usr/bin/base64 | tr -d '\n'; }
+ssh_options=(
+  -o IdentityAgent=none
+  -o IdentitiesOnly=yes
+  -o BatchMode=yes
+  -o ClearAllForwardings=yes
+  -i "$HOME/.ssh/id_automation"
+)
 
 profile=auto
 get_path=
@@ -58,7 +65,7 @@ key=$(printf '%s' "$url" | shasum -a 256 | cut -c1-16)
 encoded_args=()
 for arg in "$@"; do encoded_args+=("$(encode "$arg")"); done
 echo "[send] ${repo##*/}@${commit:0:12} -> macmini"
-ssh macmini ~/.local/bin/macmini-compile-worker \
+/usr/bin/ssh "${ssh_options[@]}" macmini ~/.local/bin/macmini-compile-worker \
   "$key" "$(encode "$url")" "$commit" "$profile" "${encoded_args[@]}"
 
 if [ -n "$get_path" ]; then
@@ -70,5 +77,6 @@ if [ -n "$get_path" ]; then
   [ -n "$local_output" ] || local_output="./$(basename "$get_path")"
   remote="$HOME/.local/state/macmini-build/repos/$key/$get_path"
   echo "[get ] $get_path -> $local_output"
-  rsync -a "macmini:$remote" "$local_output"
+  rsync -a -e "/usr/bin/ssh -o IdentityAgent=none -o IdentitiesOnly=yes -o BatchMode=yes -o ClearAllForwardings=yes -i $HOME/.ssh/id_automation" \
+    "macmini:$remote" "$local_output"
 fi
