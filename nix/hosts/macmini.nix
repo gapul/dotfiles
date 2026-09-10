@@ -8,6 +8,7 @@
 }:
 let
   paperServer = pkgs.callPackage ../pkgs/paper-server.nix { };
+  aivisSpeechEngine = pkgs.callPackage ../pkgs/aivisspeech-engine.nix { };
 
   # サーバーに入れる jar は全部ここで固定する。plugins/ と mods/ に置かれるのは store への
   # symlink なので、宣言と中身がずれない。手で入れた実体の jar には触らない。
@@ -626,6 +627,11 @@ in
     # 気付きにくい)。java は前から登録済みだったが、公開ポートを持つのは lazymc に変わった。
     /usr/libexec/ApplicationFirewall/socketfilterfw --add ${pkgs.lazymc}/bin/lazymc >/dev/null 2>&1 || true
     /usr/libexec/ApplicationFirewall/socketfilterfw --unblockapp ${pkgs.lazymc}/bin/lazymc >/dev/null 2>&1 || true
+    # AivisSpeech is served to workstation clients over Tailscale.  Like lazymc,
+    # every Nix update can give its executable a new store path, so keep the
+    # incoming-connection permission tied to the declared package.
+    /usr/libexec/ApplicationFirewall/socketfilterfw --add ${aivisSpeechEngine}/libexec/aivisspeech-engine/run >/dev/null 2>&1 || true
+    /usr/libexec/ApplicationFirewall/socketfilterfw --unblockapp ${aivisSpeechEngine}/libexec/aivisspeech-engine/run >/dev/null 2>&1 || true
     # The hand-written plists the daemons above replace. nix-darwin names its units org.nixos.*,
     # so without this both copies would be loaded and Hermes would come up twice.
     for label in net.gapul.hermes-gateway net.gapul.hermes-gateway-imouto net.gapul.hermes-watchdog \
