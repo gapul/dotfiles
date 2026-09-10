@@ -2,6 +2,15 @@
 
 Held differently on the Mac and on remote machines reached through nssh.
 
+The hand-written Codex and Claude Code configuration now lives in the private
+`~/Developer/github.com/gapul/ai-agent-state` repository. Shared instructions
+have one source of truth in that repository's `AGENTS.md`; Claude Code imports
+it through its thin `CLAUDE.md` adapter.
+
+Session history is synchronized by the private repository's `scripts/sync-up`
+and `scripts/sync-down`. Authentication and machine-local runtime state remain
+outside Git.
+
 ## On the Mac, symlinked wholesale
 
 `nix/home/workstation.nix` creates out-of-store symlinks, so the files here are the real thing.
@@ -10,6 +19,7 @@ Held differently on the Mac and on remote machines reached through nssh.
 | --- | --- |
 | `settings.json` | `$CLAUDE_CONFIG_DIR/settings.json` |
 | `CLAUDE.md` | `$CLAUDE_CONFIG_DIR/CLAUDE.md` |
+| `../AGENTS.md` | `$CLAUDE_CONFIG_DIR/AGENTS.md` |
 | `hooks/`, `output-styles/`, `bin/` | The directories of the same name |
 | `skills/{english-vocab,gapul-writing-voice,step-by-step-tutor}` | Under `skills/` |
 

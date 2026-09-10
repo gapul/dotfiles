@@ -7,9 +7,8 @@
 let
   # Search binary for the ghostty launcher. Store-ify it to protect it from gc-deep's target cleanup.
   launcher-search = pkgs.callPackage ../pkgs/launcher-search.nix { };
-  claudeConfig =
-    path:
-    config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.dotfiles/configs/cli/claude/${path}";
+  agentStateRepo = "${config.home.homeDirectory}/Developer/github.com/gapul/ai-agent-state";
+  claudeConfig = path: config.lib.file.mkOutOfStoreSymlink "${agentStateRepo}/claude/${path}";
 in
 {
   # workstation layer: dev/daily tools for the main machine (laptop) / WSL / linux.
@@ -104,6 +103,7 @@ in
   xdg.configFile = {
     "claude/settings.json".source = claudeConfig "settings.json";
     "claude/CLAUDE.md".source = claudeConfig "CLAUDE.md";
+    "claude/AGENTS.md".source = config.lib.file.mkOutOfStoreSymlink "${agentStateRepo}/AGENTS.md";
     "claude/hooks".source = claudeConfig "hooks";
     "claude/output-styles".source = claudeConfig "output-styles";
     "claude/bin".source = claudeConfig "bin";
@@ -119,7 +119,7 @@ in
   # straight into the repo; hooks.json is generated here because the upstream file hardcodes
   # an absolute macOS path that would be wrong on the Linux workstations.
   xdg.dataFile."codex/herdr-agent-state.sh".source =
-    config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.dotfiles/configs/cli/codex/herdr-agent-state.sh";
+    config.lib.file.mkOutOfStoreSymlink "${agentStateRepo}/codex/herdr-agent-state.sh";
   xdg.dataFile."codex/hooks.json".text = builtins.toJSON {
     hooks.SessionStart = [
       {

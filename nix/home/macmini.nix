@@ -130,6 +130,37 @@ in
     };
   };
 
+  # Keep a Claude Code Remote Control server registered for the Claude mobile/web apps.
+  # It only opens outbound HTTPS connections to Anthropic; no inbound port is exposed.
+  # DO_NOT_TRACK remains the global default, but Remote Control requires feature-flag
+  # evaluation, so remove it only from this process. Each app-started session gets a
+  # dedicated dotfiles worktree to keep concurrent edits from colliding.
+  launchd.agents.claude-remote-control = {
+    enable = true;
+    config = {
+      ProgramArguments = [
+        "${pkgs.writeShellScript "claude-remote-control" ''
+          unset DO_NOT_TRACK DISABLE_TELEMETRY CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC DISABLE_GROWTHBOOK
+          export PATH="$HOME/.local/bin:${config.home.profileDirectory}/bin:/run/current-system/sw/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+          cd "$HOME/.dotfiles"
+          exec "$HOME/.local/bin/claude" remote-control \
+            --name "macmini" \
+            --spawn worktree \
+            --capacity 4 \
+            --permission-mode acceptEdits
+        ''}"
+      ];
+      RunAtLoad = true;
+      KeepAlive = true;
+      ThrottleInterval = 30;
+      ProcessType = "Standard";
+      LowPriorityIO = true;
+      Nice = 5;
+      StandardOutPath = "/tmp/claude-remote-control.log";
+      StandardErrorPath = "/tmp/claude-remote-control.log";
+    };
+  };
+
   # Hand-written agents the declarations above replace, plus one leftover that was already
   # disabled. Same shape as the workstation's retiredLaunchAgents list.
   home.activation.retiredMacminiAgents = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
