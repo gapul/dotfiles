@@ -24,6 +24,10 @@ result-*
 tmp/
 node_modules/
 
+# Python bytecode
+__pycache__/
+*.py[cod]
+
 # バックアップ残骸 (clean-junk 対象。コミットしない)
 *.bak
 *.bak.*
