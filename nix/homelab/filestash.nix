@@ -3,6 +3,41 @@ let
   stateDir = "/var/lib/homelab/filestash";
   resticMount = "/mnt/restic-view";
   driveMount = "/mnt/google-drive-view";
+  prepareConfig = pkgs.writeShellScript "filestash-prepare-config" ''
+    set -eu
+    umask 077
+
+    state=${stateDir}/state
+    config="$state/config/config.json"
+    secret=/var/lib/secrets/filestash-secret-key
+    ${pkgs.coreutils}/bin/install -d -m 0700 ${stateDir}
+    ${pkgs.coreutils}/bin/install -d -m 0700 -o 1000 -g 1000 "$state/config"
+
+    # Preserve the key created by the existing GUI-managed installation on the
+    # first switch. New installations get an equally opaque local key. The key
+    # never enters the Nix store or Git.
+    if [ ! -s "$secret" ]; then
+      old_secret=""
+      if [ -s "$config" ]; then
+        old_secret="$(${pkgs.jq}/bin/jq -er '.general.secret_key // empty' "$config" 2>/dev/null || true)"
+      fi
+      if [ -z "$old_secret" ]; then
+        old_secret="$(${pkgs.openssl}/bin/openssl rand -hex 32)"
+      fi
+      ${pkgs.coreutils}/bin/install -m 0600 /dev/null "$secret"
+      printf '%s\n' "$old_secret" > "$secret"
+    fi
+
+    tmp="$config.new"
+    ${pkgs.jq}/bin/jq -n \
+      --arg host 'files.gapul.net' \
+      --rawfile secret_key "$secret" \
+      '{general: {host: $host, secret_key: ($secret_key | rtrimstr("\n"))}, connections: []}' \
+      > "$tmp"
+    ${pkgs.coreutils}/bin/chown 1000:1000 "$tmp"
+    ${pkgs.coreutils}/bin/chmod 0600 "$tmp"
+    ${pkgs.coreutils}/bin/mv "$tmp" "$config"
+  '';
 in
 {
   # Reuse the rclone credential that already backs Restic instead of keeping a
@@ -39,15 +74,28 @@ in
     wantedBy = [ "multi-user.target" ];
   };
 
-  # Preview replacement for File Browser. Keep it on a separate tailnet-only
-  # hostname until the read-only Restic view and Drive connection are verified.
-  # The old files.gapul.net remains untouched during that trial.
+  # Filestash has no complete environment-variable schema. Generate its tiny
+  # JSON config before each start so the public setting is declarative while the
+  # signing key remains outside the Nix store.
+  system.activationScripts.filestashConfigMigrate.text = "${prepareConfig}";
+
+  systemd.services.filestash-prepare-config = {
+    description = "Render declarative Filestash configuration";
+    before = [ "podman-filestash.service" ];
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = prepareConfig;
+    };
+  };
+
+  # File Browser replacement. One UI exposes Google Drive and the read-only
+  # Restic mount without moving either data source.
   virtualisation.oci-containers.containers.filestash = {
     image = "docker.io/machines/filestash:latest";
     environment = {
       # Filestash prepends the request scheme itself; a full URL here produces
       # an invalid https://https://... redirect.
-      APPLICATION_URL = "files-preview.gapul.net";
+      APPLICATION_URL = "files.gapul.net";
     };
     volumes = [
       "${stateDir}/state:/app/data/state:rw"
@@ -60,9 +108,11 @@ in
 
   systemd.services.podman-filestash = {
     after = [
+      "filestash-prepare-config.service"
       "google-drive-view-mount.service"
       "restic-view-mount.service"
     ];
+    requires = [ "filestash-prepare-config.service" ];
     wants = [
       "google-drive-view-mount.service"
       "restic-view-mount.service"

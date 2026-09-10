@@ -10,9 +10,8 @@
 # 変数ではなく管理画面から app-password で登録する方式なので、ここには何も書かない。
 # radicale 側に予約を書き戻すのも同じ接続でやる。
 #
-# タグを latest にしていないのは、まだ v0.2 系で日に何度もコミットが入る段階だから。
-# `0.2` はパッチだけ追うので、破壊的変更が入った 0.3 が黙って降ってくることはない。
-# 落ち着いたら他と揃えて latest でいい。
+# rolling release 方針で latest を追う。状態は単一の SQLite DB なので、毎日の restic
+# バックアップと月次復元訓練を更新時の安全網にする。
 {
   lib,
   ...
@@ -40,7 +39,7 @@
   ];
 
   virtualisation.oci-containers.containers."calnode" = {
-    image = "ghcr.io/calnode/calnode:0.2";
+    image = "ghcr.io/calnode/calnode:latest";
     # CALNODE_ENCRYPTION_KEY と CALNODE_RECOVERY_SECRET。README.md を見ること。
     # BASE_URL が https なので、前者が無いとアプリは起動を拒否する。
     environmentFiles = [ "/var/lib/secrets/calnode.env" ];

@@ -1,22 +1,26 @@
 # configs/homelab
 
-> **注記(2026-08-09)**: この構成はハイパーバイザ無しの NixOS 1台へ置き換え中。
-> 設定の実体は `nix/hosts/homeserver.nix` と `nix/homelab/` に移っている。
-> 当日の手順は [HOMESERVER_MIGRATION.md](../../docs/HOMESERVER_MIGRATION.md)。
-> 以下は移行元の記録。
+> **Superseded (2026-08-09).** This setup was replaced by a single NixOS machine with no
+> hypervisor. The configuration now lives in `nix/hosts/homeserver.nix` and `nix/homelab/`, and
+> the steps taken that day are in
+> [HOMESERVER_MIGRATION.md](../../docs/HOMESERVER_MIGRATION.md). What follows is a record of
+> what was replaced.
 
-自宅セルフホスト基盤の設定一式。
+The configuration for the self-hosting setup at home. How it was operated, how it was put
+together and what went wrong are in [`docs/HOMELAB.md`](../../docs/HOMELAB.md).
 
-📖 **運用手順・構成・トラブルシュートは [`docs/HOMELAB.md`](../../docs/HOMELAB.md) を参照。**
+## One directory per service
 
-## サービス別ディレクトリ
-| ディレクトリ | 内容 |
+| Directory | Contents |
 |------|------|
-| `adguard/` | AdGuard Home 二重化（主系 Pi / 副系 CT101 / 同期）+ runbook |
-| `caddy/` | リバースプロキシ Caddyfile（CT103・Tailscale 限定） |
-| `raspberrypi/` | ラズパイ初期化 `bootstrap.sh`（Docker/zram/log2ram/Tailscale・SD延命） |
-| `forgejo/` | セルフホスト Git（GitHub ミラー・`git.gapul.net`・稼働中） |
+| `adguard/` | The two AdGuard Home instances — primary on the Pi, secondary on CT101, plus the sync — and the runbook |
+| `caddy/` | The reverse proxy Caddyfile, on CT103, listening on Tailscale only |
+| `raspberrypi/` | `bootstrap.sh` for the Pi: Docker, zram, log2ram, Tailscale, and the tweaks that keep the SD card alive |
+| `forgejo/` | Self-hosted git, mirroring GitHub, at `git.gapul.net` |
 
-## ホスト早見
-- pve `.100` / dockge(CT101) `.65` / caddy(CT103) `.119` / hermes(CT104) `.120` / HA(VM100) `.88` / rpi4 `.53`
-- CT へは pve から `pct exec <id> -- ...`
+## The hosts
+
+pve `.100`, dockge on CT101 `.65`, caddy on CT103 `.119`, hermes on CT104 `.120`, Home
+Assistant on VM100 `.88`, rpi4 `.53`.
+
+Containers are reached from pve with `pct exec <id> -- ...`.

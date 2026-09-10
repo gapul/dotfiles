@@ -1,118 +1,136 @@
-# Windows 実機セットアップ チェックリスト
+# Setting up a Windows machine
 
-macOS 上で前段階(設定ファイル整備)は済んでいる。実機ではこの順で進める。
-各ステップの「確認」を満たしてから次へ。
+The preparation, meaning the configuration files, is already done on macOS. On the machine
+itself, work through this in order, satisfying each step's check before moving on.
 
 ---
 
-## 0. 前提・準備
+## 0. Prerequisites
 
-- [ ] Windows 11 (PowerShell 7 = `pwsh` が使えること。無ければ後述の winget で入る)
-- [ ] **ローカルアカウント**で入る (Microsoft アカウントは使わない)。OOBE で
-      「インターネットに接続していません」経由か、既に MSA なら 設定 → アカウント →
-      「代わりにローカル アカウントでサインインする」で切り替える。宣言では表現
-      できないのでここに書く
-- [ ] BitLocker が有効か確認 (`manage-bde -status C:`)。秘密鍵を置くので**ディスク暗号化は必須**
-- [ ] Bitwarden 等に age 秘密鍵 / SSH 秘密鍵を準備しておく
+- [ ] Windows 11, with PowerShell 7 (`pwsh`) available. If it is not, winget installs it below.
+- [ ] Sign in with a **local account**, not a Microsoft account. Either take the "I don't have
+      internet" route during OOBE, or, if you already have an MSA, switch through Settings,
+      Accounts, "Sign in with a local account instead". This cannot be expressed
+      declaratively, which is why it is written down here.
+- [ ] Confirm BitLocker is on, with `manage-bde -status C:`. Private keys are going on this
+      disk, so encryption is not optional.
+- [ ] Have the age private key and the SSH private key ready, from Bitwarden or wherever they
+      live.
 
-## 1. clone
+## 1. Clone
 
 ```powershell
-Set-ExecutionPolicy -Scope CurrentUser RemoteSigned   # ローカルスクリプト許可
-# git は winget 宣言から外した (開発は WSL 側)。clone 用に一度だけ手で入れる:
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned   # allow local scripts
+# git is not in the winget declaration, since development happens on the WSL side.
+# Install it once by hand, just to clone:
 #   winget install --exact --id Git.Git
 git clone https://github.com/gapul/dotfiles.git $env:USERPROFILE\dotfiles
 ```
 
-- 確認: `%USERPROFILE%\dotfiles\windows\bootstrap.ps1` が存在
-- 注意: Windows ネイティブの clone 先は **`%USERPROFILE%\dotfiles`(ドット無し)**。
-  macOS/WSL の `~/.dotfiles` とは非対称(プラットフォーム慣習による意図的なもの)
+Check that `%USERPROFILE%\dotfiles\windows\bootstrap.ps1` exists.
 
-## 2. winget パッケージ ID の実在確認 ★最重要
+Note that the native Windows clone goes to `%USERPROFILE%\dotfiles`, without the leading dot,
+unlike `~/.dotfiles` on macOS and WSL. The asymmetry is deliberate and follows each platform's
+convention.
 
-`windows/winget/apps.json` の ID は実機で実在検証済 (2026-06-26)。
-編集後は **必ず `verify.ps1`** を回す:
+## 2. Check the winget package IDs exist
+
+This is the step that matters most. The IDs in `windows/winget/apps.json` were verified against
+a real machine on 2026-06-26. After editing them, always run `verify.ps1`:
 
 ```powershell
 pwsh -NoProfile -File $env:USERPROFILE\dotfiles\windows\winget\verify.ps1
-# CI 用 (MISS で exit 1)
+# for CI, exiting 1 on a miss
 pwsh -NoProfile -File $env:USERPROFILE\dotfiles\windows\winget\verify.ps1 -Strict
 ```
 
-- [ ] `verify.ps1` で MISS / ERR が 0 件
-- 解消済みの実在 ID(SETUP-CHECKLIST 旧版で「不確実」と書かれていたもの):
-  - sops → `SecretsOPerationS.SOPS` (Mozilla.SOPS は旧版)
-  - gitleaks → `Gitleaks.Gitleaks`
-  - typst → `Typst.Typst`
-  - bottom → `Clement.bottom`
-  - mpv → `shinchiro.mpv`
-  - **JetBrainsMono Nerd Font** → `DEVCOM.JetBrainsMonoNerdFont`
-    Terminal の `fontFace` 前提なので apps.json で自動 install される
-- Tor Browser / Zen / Beeper / Affinity 等 GUI は実機で要否を判断して追加
+- [ ] `verify.ps1` reports zero MISS and zero ERR.
 
-## 3. bootstrap 実行 (管理者 PowerShell 推奨)
+IDs that used to be listed here as uncertain and have since been confirmed:
+
+- sops is `SecretsOPerationS.SOPS`; Mozilla.SOPS is the old one
+- gitleaks is `Gitleaks.Gitleaks`
+- typst is `Typst.Typst`
+- bottom is `Clement.bottom`
+- mpv is `shinchiro.mpv`
+- JetBrainsMono Nerd Font is `DEVCOM.JetBrainsMonoNerdFont`, installed automatically from
+  apps.json because Terminal's `fontFace` assumes it
+
+GUI applications such as Tor Browser, Zen, Beeper and Affinity are added case by case, once you
+decide on the machine whether you want them.
+
+## 3. Run bootstrap, ideally from an administrator PowerShell
 
 ```powershell
-# 既定 (WSL=Ubuntu / ユーザー=Windows の $env:USERNAME)
+# defaults: WSL is Ubuntu, the user is Windows's $env:USERNAME
 & $env:USERPROFILE\dotfiles\windows\bootstrap.ps1
-# 別ユーザー/distro の場合
+# for a different user or distro
 & $env:USERPROFILE\dotfiles\windows\bootstrap.ps1 -WslUser alice -WslDistro Debian
 ```
 
-bootstrap がやること:
-1. winget 確認 → `apps.json` を `winget import`
-2. `$PROFILE` を symlink
-3. Windows Terminal `settings.json` を**生成**(`__WSL_USER__`/`__WSL_DISTRO__` 置換)
-4. age/SSH 鍵が在れば `icacls` で本人のみに ACL 制限
-5. git global config
+What it does:
 
-- [ ] symlink 作成に失敗する場合 → 管理者で実行 or 開発者モードを有効化
-      (設定 → プライバシーとセキュリティ → 開発者向け)
-- [ ] 既存の `$PROFILE` / WT settings は `.bak-<日時>` に退避される
+1. Checks winget, then installs everything in `apps.json` with `winget import`.
+2. Symlinks `$PROFILE`.
+3. Generates Windows Terminal's `settings.json`, substituting `__WSL_USER__` and
+   `__WSL_DISTRO__`.
+4. Restricts the ACL on the age and SSH keys to you alone with `icacls`, if they are present.
+5. Sets the global git configuration.
 
-## 4. 鍵配置 + 権限確認
+- [ ] If creating symlinks fails, run as administrator or turn on developer mode, under
+      Settings, Privacy and security, For developers.
+- [ ] An existing `$PROFILE` or Terminal settings file is moved aside to `.bak-<timestamp>`.
 
-- [ ] age 秘密鍵を `%USERPROFILE%\.config\sops\age\keys.txt` に配置
-- [ ] SSH 秘密鍵を `%USERPROFILE%\.ssh\id_ed25519` に配置
-- [ ] bootstrap を**再実行** → `icacls` で ACL が本人のみに絞られる
-- 確認: `icacls $env:USERPROFILE\.ssh\id_ed25519` が現在ユーザーのみ
-       (これをやらないと OpenSSH が "bad permissions" で鍵を拒否)
-- [ ] 署名/push する場合は GitHub に公開鍵を登録 (`gh ssh-key add` 等)
+## 4. Place the keys and check the permissions
 
-## 5. WSL2 (Linux 環境)
+- [ ] Put the age private key at `%USERPROFILE%\.config\sops\age\keys.txt`.
+- [ ] Put the SSH private key at `%USERPROFILE%\.ssh\id_ed25519`.
+- [ ] Run bootstrap again, so `icacls` narrows the ACLs to you alone.
+- Check with `icacls $env:USERPROFILE\.ssh\id_ed25519` that only the current user is listed.
+  Without this, OpenSSH refuses the key with "bad permissions".
+- [ ] If you are going to sign or push, register the public key with GitHub, through
+      `gh ssh-key add` or similar.
+
+## 5. WSL2
 
 ```powershell
-wsl --install -d Ubuntu        # 管理者。再起動が要る場合あり
+wsl --install -d Ubuntu        # as administrator. May need a reboot
 ```
 
-WSL に入ってから:
+Then, inside WSL:
+
 ```bash
 git clone https://github.com/gapul/dotfiles.git ~/.dotfiles
 ~/.dotfiles/scripts/bootstrap-wsl.sh
 ```
 
-- [ ] `bootstrap-wsl.sh` が home-manager(`#homeConfigurations.<user>-wsl`)を switch
-- 確認: `wslview` / `pbcopy`(clip.exe) / `explorer` 関数が動く
-- 注意: Terminal の WSL プロファイルの `startingDirectory` は bootstrap で
-        `//wsl$/<distro>/home/<user>` に展開済み。distro/user が違うと開けないので
-        `-WslDistro`/`-WslUser` を合わせること
+- [ ] `bootstrap-wsl.sh` switches home-manager to `#homeConfigurations.<user>-wsl`.
+- Check that `wslview`, `pbcopy` through clip.exe, and the `explorer` function all work.
+- Note that the WSL profile's `startingDirectory` in Terminal was already expanded by bootstrap
+  to `//wsl$/<distro>/home/<user>`. If the distro or user differs it will not open, so match
+  them with `-WslDistro` and `-WslUser`.
 
-## 6. 動作確認
+## 6. Checking it works
 
-- [ ] 新しい PowerShell: `starship` プロンプトが macOS と同じ見た目か
-      (`$env:STARSHIP_CONFIG` が `...\dotfiles\configs\shell\starship.toml` を指す)
-- [ ] `v` / `vim` で nvim が開く
-- [ ] `zoxide` (`z`) が動く
-- [ ] Windows Terminal: 既定が WSL(Ubuntu) プロファイル、フォントが Nerd Font
-- [ ] `g`/`gs`/`ga` 等 git エイリアス
+- [ ] In a new PowerShell, the starship prompt looks the same as on macOS, meaning
+      `$env:STARSHIP_CONFIG` points at `...\dotfiles\configs\shell\starship.toml`.
+- [ ] `v` and `vim` open nvim.
+- [ ] zoxide's `z` works.
+- [ ] Windows Terminal defaults to the WSL (Ubuntu) profile, with a Nerd Font.
+- [ ] The git aliases `g`, `gs`, `ga` and friends work.
 
 ---
 
-## まだ未対応 / 実機で詰める論点
+## Still unresolved, to settle on the machine
 
-- **SOPS 復号のネイティブ導線が無い**: Windows ネイティブ側は age 鍵を置くだけで、
-  secrets を復号して使う仕組みは未定義。当面は **WSL 側(sops-nix)で復号**して使う想定。
-  ネイティブで必要になったら `sops -d` を叩くラッパーを profile に足す
-- **winget の宣言的運用の限界**: import は入れるだけで「宣言外を消す」機能が無い
-  (Nix の `cleanup="uninstall"` 相当が無い)。不要 app は手動 uninstall
-- **profile の高度化** (oh-my-posh / PSFzf / Terminal-Icons) は実機で描画確認しながら
+**There is no native path for decrypting with SOPS.** On the native Windows side the age key is
+merely placed; nothing uses it to decrypt secrets. For now the assumption is that decryption
+happens on the WSL side, through sops-nix. If it becomes necessary natively, add a wrapper
+around `sops -d` to the profile.
+
+**winget can only go so far declaratively.** Import installs things but has no way to remove
+what is not declared — there is no equivalent of Nix's `cleanup="uninstall"`. Unwanted apps are
+uninstalled by hand.
+
+**A more capable profile** — oh-my-posh, PSFzf, Terminal-Icons — is worth doing on the machine,
+where the rendering can actually be checked.

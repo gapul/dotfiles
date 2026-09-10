@@ -1,55 +1,61 @@
 # hermes
 
-macmini の Hermes エージェント（専用ユーザー `hermes`、サンドボックスは `hsandbox`）のうち、
-**自分で書いたコードだけ**をここに置く。設定と秘密は置かない。
+The parts of the Hermes agent on the mac mini — running as a dedicated user, `hermes`, with its
+sandbox as `hsandbox` — that were written here. No configuration and no secrets.
 
-## claude-acp（別リポジトリへ移動）
+## claude-acp, moved to its own repository
 
-Hermes の `copilot-acp` プロバイダは、外部プロセスを spawn して stdio 上で
-JSON-RPC 2.0 を話す。`claude-acp` はその相手役を最小限だけ実装したアダプタで、
-`session/prompt` を受けるとサブスクの `claude -p` を呼び、返答をそのまま流し返す。
-これで Anthropic の API 課金なしに Claude を推論バックエンドにできる。
+Hermes's `copilot-acp` provider spawns an external process and speaks JSON-RPC 2.0 over stdio.
+`claude-acp` is a minimal adapter for the other end of that: it takes `session/prompt`, calls
+`claude -p` on the subscription, and passes the answer straight back. That makes Claude the
+inference backend without paying for Anthropic's API.
 
-内側の `claude` はツールを無効にして走らせる。ツール実行は Hermes の仕事で、
-Hermes が返答中の `<tool_call>` ブロックを自分のツール層で処理する。
+The inner `claude` runs with tools disabled. Executing tools is Hermes's job, and Hermes handles
+the `<tool_call>` blocks in the reply through its own tool layer.
 
-実体は **[gapul/claude-acp](https://github.com/gapul/claude-acp)** に移した。マシンの設定では
-なく Hermes を動かすための部品なので、dotfiles が持つ理由が無い。ここは flake input として
-参照し、`nix/hosts/macmini.nix` の activation が store から
-`/Users/hermes/.local/bin/claude-acp` へ敷く（別ユーザーのホームなので home-manager では
-届かない）。`.env` の `HERMES_COPILOT_ACP_COMMAND` がそのパスを指す。
+The code now lives in [gapul/claude-acp](https://github.com/gapul/claude-acp). It is a component
+for running Hermes rather than a setting for this machine, so dotfiles has no reason to hold it.
+It is referenced here as a flake input, and the activation in `nix/hosts/macmini.nix` lays it
+down from the store at `/Users/hermes/.local/bin/claude-acp` — home-manager cannot reach another
+user's home. `HERMES_COPILOT_ACP_COMMAND` in `.env` points at that path.
 
-### まなび側だけの上乗せ（HOME が `manabi-home` のとき）
+### What is added only on the manabi side, when HOME is `manabi-home`
 
-- **毎ターン先頭に日時を付ける**。内側の `claude` には日付しか渡らず、時刻を
-  聞かれると推測で答える（実測で1時間半ずれた）。曜日も渡して数え違えを防ぐ。
-- **やり取りのあとにサンドボックスの `~/study/after_turn.py` を呼ぶ**。向こうで
-  学習記録を git にコミットし、計画が変わったのに画像が無ければ作って `MEDIA:` を返す。
-  返信に `MEDIA:` が無いときだけ貼る（コミットは毎回したいので呼び出し自体は毎回）。
-  スクリプトが無くても黙って何もしないだけなので、片方だけ古くても壊れない。
+- **Prefix every turn with the date and time.** The inner `claude` only receives the date, so
+  asked for the time it guesses, and in practice was an hour and a half out. The day of the week
+  is passed too, to stop it miscounting.
+- **Call the sandbox's `~/study/after_turn.py` after each exchange.** That commits the study
+  record to git on the far side and, if the plan changed and there is no image, generates one
+  and returns `MEDIA:`. The image is attached only when the reply contains `MEDIA:`, but the
+  call happens every time because the commit should. If the script is missing it quietly does
+  nothing, so one side being out of date does not break anything.
 
-**壊れやすさ**: 実装が合わせているのは Hermes 内部の `agent/copilot_acp_client.py`
-の契約で、公開 API ではない。Hermes を上げたら会話が通ることを必ず確かめること。
+This is fragile. What the implementation matches is the contract in Hermes's internal
+`agent/copilot_acp_client.py`, which is not a public API. After upgrading Hermes, always check
+that a conversation still goes through.
 
-## まなび（別リポジトリへ移動）
+## manabi, moved to its own repository
 
-学習チューターの一式は **[gapul/manabi](https://github.com/gapul/manabi)**（private）に移した。
-gateway の起動シム、ダッシュボード、サンドボックスのスクリプト、SOUL とチャンネルプロンプト。
-この機械には `/Users/Shared/manabi` に clone してあり、launchd のユニットはそこを exec する。
-private なので flake input にはできない（CI が fetch できない）から、パス参照になっている。
-サービス側の更新は向こうで `git pull` すれば済み、dotfiles の rebuild は要らない。
+The whole study tutor now lives in [gapul/manabi](https://github.com/gapul/manabi), which is
+private: the gateway's startup shim, the dashboard, the sandbox scripts, SOUL and the channel
+prompts. On this machine it is cloned at `/Users/Shared/manabi`, and the launchd units exec from
+there. Being private it cannot be a flake input, since CI could not fetch it, hence the path
+reference. Updating the service is a `git pull` over there; no dotfiles rebuild is involved.
 
-## ここに無いもの
+## What is deliberately not here
 
-- `config.yaml`（`/Users/hermes/.hermes/` と `/Users/hermes/manabi-home/.hermes/`）は
-  Hermes 自身が実行中に書き換える。git に置くと常に差分が出るうえ、まなび側は
-  Discord のチャンネル ID と本人の学習状況が入るので公開リポジトリには置かない。
-- `.env`（トークン類）も同じ理由で置かない。
+`config.yaml`, in `/Users/hermes/.hermes/` and `/Users/hermes/manabi-home/.hermes/`, is
+rewritten by Hermes while it runs. Keeping it in git would mean a permanent diff, and the
+manabi one holds Discord channel IDs and someone's actual study record, which does not belong in
+a public repository.
 
-## 撤去したもの
+`.env`, holding the tokens, is absent for the same reason.
 
-`claude-bridge`（OpenAI 互換 :9180 経由で `claude -p` を叩く旧経路）は 2026-08-12 に
-撤去した。`model.provider` が `copilot-acp` に移ってから一度も使われておらず、最後に
-推論を捌いたのは 2026-07-17。gapul のホームの claude バイナリに依存していたのも、
-ユーザー分離を締められない理由になっていた。戻すなら niski84/claude-bridge を入れ直し、
-`model-providers/claude-cli` プラグインを有効化して `model.provider: claude-cli` に戻す。
+## What was removed
+
+`claude-bridge`, the old path that called `claude -p` through an OpenAI-compatible endpoint on
+:9180, was removed on 2026-08-12. Nothing had used it since `model.provider` moved to
+`copilot-acp`; the last inference it served was on 2026-07-17. It also depended on the claude
+binary in gapul's home, which was one of the things preventing proper user separation. To bring
+it back, reinstall niski84/claude-bridge, enable the `model-providers/claude-cli` plugin and set
+`model.provider: claude-cli`.

@@ -64,16 +64,16 @@ def gen_just_list() -> str:
 # 唯一の真実。説明だけはここで一元管理し、新フック追加時は `just docs` が
 # "—" を出すので追記に気付ける。
 HOOK_DESCRIPTIONS = {
-    "nixfmt": "整形チェック (未整形なら fail)",
-    "deadnix": "未使用コード検出 (モジュール引数 `{ lib, ... }` は許容)",
-    "shellcheck": "shell lint (.shellcheckrc に従う)",
-    "gitleaks": "機密 leak 検出",
+    "nixfmt": "Formatting check. Fails on anything unformatted.",
+    "deadnix": "Finds unused code. Module arguments like `{ lib, ... }` are allowed.",
+    "shellcheck": "Shell lint, following .shellcheckrc",
+    "gitleaks": "Secret detection",
 }
 
 
 def _files_to_target(files: str) -> str:
     mapping = {
-        "": "全 staged",
+        "": "all staged",
         r"\.nix$": "`*.nix`",
     }
     if files in mapping:
@@ -94,12 +94,12 @@ def gen_hooks() -> str:
             "}; }) (builtins.attrNames hs)))"
         ),
     )
-    lines = ["| フック | 対象 | 除外 | 内容 |", "|---|---|---|---|"]
+    lines = ["| Hook | Target | Excluded | What it does |", "|---|---|---|---|"]
     for name in sorted(hooks):
         h = hooks[name]
         target = _files_to_target(h.get("files", ""))
         excludes = h.get("excludes", [])
-        excl = "、".join(f"`{e}`" for e in excludes) if excludes else "—"
+        excl = ", ".join(f"`{e}`" for e in excludes) if excludes else "—"
         desc = HOOK_DESCRIPTIONS.get(name, "—")
         lines.append(f"| `{name}` | {target} | {excl} | {desc} |")
     return "\n".join(lines)
@@ -127,7 +127,7 @@ def gen_aliases() -> str:
                 aliases.setdefault(m.group(1), m.group(2))
     # ホームディレクトリの絶対パスは fork 先で変わるので伏せる。
     home = f"/Users/{user}"
-    lines = ["| alias | 展開先 |", "|---|---|"]
+    lines = ["| alias | Expands to |", "|---|---|"]
     for name in sorted(aliases):
         expansion = aliases[name].replace(home, "~")
         lines.append(f"| `{name}` | `{expansion}` |")
@@ -146,7 +146,7 @@ BLOCKS = [
 def _inject(text: str, name: str, body: str) -> str:
     begin, end = f"<!-- BEGIN {name} -->", f"<!-- END {name} -->"
     if begin not in text or end not in text:
-        sys.exit(f"マーカー {begin} / {end} が見つからない")
+        sys.exit(f"marker {begin} / {end} not found")
     pre, rest = text.split(begin, 1)
     _, post = rest.split(end, 1)
     return f"{pre}{begin}\n{body}\n{end}{post}"
@@ -183,13 +183,13 @@ def main() -> int:
 
     if check and drifted:
         print(
-            f"\nドキュメントが設定と乖離している: {', '.join(drifted)}\n"
-            "`just docs` を実行して commit してください。",
+            f"\ndocs have drifted from the configuration: {', '.join(drifted)}\n"
+            "Run `just docs` and commit the result.",
             file=sys.stderr,
         )
         return 1
     if not check:
-        print("ドキュメント生成ブロックを再生成した (git diff で確認)")
+        print("regenerated the generated doc blocks; check with git diff")
     return 0
 
 

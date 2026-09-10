@@ -1,95 +1,102 @@
-# モバイル (iOS / Android)
+# Mobile: iOS and Android
 
-スマホは nix が動かない (Android の Termux だけ例外) ので、`windows/` と同じ方針で扱う。
-**宣言ファイルを repo に置き、実機との差分を機械に判定させる。**
-適用まで自動化できるかはプラットフォーム次第で、できない層は差分を出すところで止める。
+Nix does not run on a phone, with Termux on Android the only exception, so phones are handled
+the way `windows/` is: the declaration lives in the repository, and a machine works out how the
+real device differs from it. How much of the applying can be automated depends on the platform,
+and where it cannot, the tooling stops at reporting the difference.
 
 ```
 mobile/
 ├── android/
-│   ├── apps.tsv + apps.sh          # 宣言 vs 実機、F-Droid 系は install まで
-│   ├── os-settings.conf            # adb で流すグローバル設定
-│   ├── os-apps.tsv + os.sh         # アプリ単位の設定 (権限 / 電池 / 既定ランチャー)
-│   ├── launcher-theme.py           # Kvaesitso のテーマを palettes.json から生成
-│   └── test.sh                     # 偽 adb での自己チェック
+│   ├── apps.tsv + apps.sh          # declaration against the device; F-Droid apps install too
+│   ├── os-settings.conf            # global settings pushed with adb
+│   ├── os-apps.tsv + os.sh         # per-app settings: permissions, battery, default launcher
+│   ├── launcher-theme.py           # generates Kvaesitso's theme from palettes.json
+│   └── test.sh                     # self-check against a fake adb
 └── ios/
-    ├── apps.tsv + sources.tsv      # App Store / AltStore Classic / AltStore PAL
-    ├── apps.sh                     # 宣言 vs 実機 (ideviceinstaller)、install は不可
-    ├── profiles/serve.sh           # nix が生成した .mobileconfig を配る
+    ├── apps.tsv + sources.tsv      # App Store, AltStore Classic, AltStore PAL
+    ├── apps.sh                     # declaration against the device through ideviceinstaller; cannot install
+    ├── profiles/serve.sh           # serves the .mobileconfig files nix generated
     └── test.sh
-nix/mobile/ios-profiles.nix         # .mobileconfig の中身 (pkgs.formats.plist)
-nix/hosts/droid.nix                 # Termux の中の CLI 環境 (nix-on-droid)
+nix/mobile/ios-profiles.nix         # the contents of the .mobileconfig, through pkgs.formats.plist
+nix/hosts/droid.nix                 # the CLI environment inside Termux, through nix-on-droid
 ```
 
-## どこまで機械にやらせるか
+## How far the machine gets
 
-| 層 | Android | iOS |
+| Layer | Android | iOS |
 |---|---|---|
-| アプリ: 宣言 | `android/apps.tsv` | `ios/apps.tsv` |
-| アプリ: 実在確認 | `apps.sh verify` (F-Droid 索引 / GitHub API / Play) | `apps.sh verify` (iTunes API / AltStore source) |
-| アプリ: 実機との差分 | `apps.sh status` (adb) | `apps.sh status` (ideviceinstaller / USB) |
-| アプリ: インストール | `apps.sh install` (F-Droid 系のみ。他は Obtainium / Aurora Store) | **不可**。署名済み ipa が要る |
-| OS 設定 (全体) | `os-settings.conf` → `os.sh` | **不可**。`.mobileconfig` で届く範囲だけ |
-| OS 設定 (アプリ単位) | `os-apps.tsv` → `os.sh` (権限 / 電池 / 既定ランチャー) | **不可** |
-| ランチャー | 既定の指定 + テーマ生成 (レイアウトは不可) | ホーム画面は一切触れない |
-| プロファイル生成 | — | `nix build .#ios-profiles` |
-| CLI 環境 | `nix/hosts/droid.nix` | 作らない。Blink から母艦へ ssh |
+| Apps: declared in | `android/apps.tsv` | `ios/apps.tsv` |
+| Apps: confirming they exist | `apps.sh verify`, against the F-Droid index, the GitHub API and Play | `apps.sh verify`, against the iTunes API and the AltStore source |
+| Apps: comparing with the device | `apps.sh status`, over adb | `apps.sh status`, through ideviceinstaller over USB |
+| Apps: installing | `apps.sh install`, F-Droid only. The rest go through Obtainium or Aurora Store | Not possible; it needs a signed ipa |
+| OS settings, global | `os-settings.conf` through `os.sh` | Not possible, beyond what a `.mobileconfig` can reach |
+| OS settings, per app | `os-apps.tsv` through `os.sh` | Not possible |
+| Launcher | Setting the default, and generating the theme. Layout is not possible | The home screen is untouched |
+| Generating profiles | — | `nix build .#ios-profiles` |
+| CLI environment | `nix/hosts/droid.nix` | Not attempted. ssh to the Mac from Blink |
 
-「不可」と書いた欄は API が無い。MDM を建てれば iOS も押し込めるが、端末 2 台に
-サーバを建てて監視モードを掛ける値打ちは無いと判断した。
+Everything marked as not possible has no API behind it. Standing up an MDM would let iOS be
+pushed around too, but running a server and putting two devices into supervised mode is not
+worth it.
 
-`status` はどちらも MISSING があれば exit 1 で、`windows/winget/status.ps1` と
-同じ扱い。EXTRA (実機に在るが宣言に無い) では落とさない。
+`status` on both sides exits 1 if anything is MISSING, the same as
+`windows/winget/status.ps1`. EXTRA, meaning something on the device that is not declared, does
+not fail.
 
-## 何が自動で、何が手動か
+## What runs automatically and what does not
 
-| | いつ走るか |
+| | When it runs |
 |---|---|
-| 宣言が配布元から消えていないか (`verify`) | **自動**。週次 CI (`.github/workflows/mobile-drift.yml`) |
-| スクリプト自身の健全性 (`test.sh`) | **自動**。同 CI + `just mobile-test` |
-| 実機との差分 (`status`) | 手動。端末を繋いだときだけ |
-| OS 設定のうち `settings` | 端末内から当てられる。Termux に権限を一度与えれば cron 可 |
-| OS 設定のうち debloat / アプリ個別 | 手動。署名レベルの権限が要るので adb 経由のみ |
-| アプリのインストール | ファイルを渡して端末側で一括。Obtainium (URL リスト) / Aurora Store (Favourites) |
+| Checking a declared app has not vanished from its source, `verify` | Automatically, weekly in CI, through `.github/workflows/mobile-drift.yml` |
+| The scripts' own sanity, `test.sh` | Automatically, in the same CI and through `just mobile-test` |
+| Comparing with the device, `status` | By hand, only when a device is plugged in |
+| The `settings` part of the OS settings | Can be applied from the device itself. Once Termux has the permission, it can run from cron |
+| Debloating and per-app OS settings | By hand. They need signature-level permissions, so adb only |
+| Installing apps | Hand the device a file and it does the rest: Obtainium takes a URL list, Aurora Store takes Favourites |
 
-インストールと `settings` は、**ファイルを渡せば端末側が自分でやる**ところまで来ている
-(Obtainium の URL リスト / Aurora Store の Favourites / Termux から走る `os.sh`)。
-母艦とケーブルが要るのは、署名レベルの権限が要る debloat とアプリ個別、
-それに実機との差分を数える `status` だけ。
+Installing and `settings` have reached the point where handing the device a file is enough —
+Obtainium's URL list, Aurora Store's favourites, and `os.sh` run from Termux. What still needs
+the Mac and a cable is debloating and the per-app settings, which need signature-level
+permissions, plus `status`, which counts the difference against the device.
 
-無線デバッグを tailnet 越しに常設すれば残りも自動にできるが、繋がっていない間に
-宣言だけ進んで「適用したつもり」になる状態を作りたくないので、そこは明示的に叩く形のまま。
+Leaving wireless debugging permanently available over the tailnet would automate the rest, but
+that would create a state where the declaration moves on while nothing is connected and it
+looks applied when it is not. So those stay explicit.
 
-自動にしたのは逆に**押した瞬間には気付けないもの**だけ。配布元の改名や削除は
-黙って進むので週次で見る (実際 `Catfriend1/syncthing-android` の改名はこれで見つかった)。
+What was automated instead is the opposite: the things you cannot notice at the moment they
+happen. A source being renamed or deleted goes by silently, so it gets checked weekly — which
+is how the rename of `Catfriend1/syncthing-android` was caught.
 
-## アプリ設定の同期
+## Syncing app settings
 
-スマホ側の設定は「ファイルとして同期できるもの」だけ自宅サーバで同期し、
-repo は**どのアプリが何の経路で同期されているか**だけを持つ (`apps.tsv` の
-同期列と下表)。鍵や DB そのものは入れない。
+Only settings that can be synced as files are synced through the home server, and the repository
+holds nothing more than which app syncs through which route: the sync column in `apps.tsv` and
+the table below. No keys and no databases.
 
-| アプリ | 経路 | サーバ側の宣言 |
+| App | Route | Declared on the server in |
 |---|---|---|
-| Obsidian | Self-hosted LiveSync (CouchDB) | `nix/homelab/obsidian-couchdb.nix` |
-| KeePassium (自ビルド) / KeePassDX | kdbx を Syncthing の SyncHub 経由 | `nix/homelab/syncthing.nix` |
+| Obsidian | Self-hosted LiveSync, over CouchDB | `nix/homelab/obsidian-couchdb.nix` |
+| KeePassium, self-built, and KeePassDX | The kdbx through Syncthing's SyncHub | `nix/homelab/syncthing.nix` |
 | Bitwarden | Vaultwarden | `nix/homelab/vaultwarden.nix` |
-| ntfy | push.gapul.net の topic 購読 | `nix/homelab/ntfy.nix` |
-| OwnTracks | 位置ログを Dawarich へ POST | `nix/homelab/dawarich.nix` |
-| カレンダー / 連絡先 | CalDAV / CardDAV | `nix/homelab/radicale.nix` |
-| RSS | Miniflux (Fever API) | `nix/homelab/miniflux.nix` |
-| 音楽 / 動画 / 書類 | Navidrome / Jellyfin / Paperless | 各 `nix/homelab/*.nix` |
-| Matrix | Conduit (@gapul:gapul.net) | `nix/homelab/matrix.nix` |
+| ntfy | Subscribing to topics on push.gapul.net | `nix/homelab/ntfy.nix` |
+| OwnTracks | Posting location to Dawarich | `nix/homelab/dawarich.nix` |
+| Calendar and contacts | CalDAV and CardDAV | `nix/homelab/radicale.nix` |
+| RSS | Miniflux, through the Fever API | `nix/homelab/miniflux.nix` |
+| Music, video and documents | Navidrome, Jellyfin and Paperless | The respective `nix/homelab/*.nix` |
+| Matrix | The homeserver at `@gapul:gapul.net` | `nix/homelab/matrix.nix` |
 
-新しい端末を Syncthing に加えるときは、端末の Device ID を
-`nix/homelab/syncthing.nix` の `settings.devices` に足して rebuild する。
-Web UI で承認するのではなく commit するのがこの repo の作法
-(ID は公開鍵なので commit してよい)。
+To add a device to Syncthing, put its device ID into `settings.devices` in
+`nix/homelab/syncthing.nix` and rebuild. Committing it, rather than approving it in the web UI,
+is how this repository works. The ID is a public key, so committing it is fine.
 
-## やらないこと
+## What is deliberately not attempted
 
-- **ホーム画面 / ウィジェット配置** — iOS は手段が無く、Android の Kvaesitso は
-  バージョン間で互換の無いバイナリなので、repo に置いても差分が見えない。
-  ランチャーはテーマだけ宣言する (`android/launcher-theme.py`)。
-- **アプリ本体のバックアップ** — 端末のフルバックアップは iCloud / Seedvault の仕事。
-- **iOS の設定トグル** — 監視モードを掛けない限り触れない。手で設定する。
+**Home screen and widget layout.** iOS offers no way at all, and Android's Kvaesitso stores it
+in a binary that is not compatible between versions, so putting it in the repository would show
+no meaningful diff. Only the launcher theme is declared, in `android/launcher-theme.py`.
+
+**Backing up the apps themselves.** A full device backup is iCloud's or Seedvault's job.
+
+**iOS settings toggles.** Nothing can touch them without supervised mode, so they are set by
+hand.

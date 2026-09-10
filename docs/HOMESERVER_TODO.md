@@ -1,102 +1,111 @@
-# homeserver 移行の残り
+# What is left after the homeserver migration
 
-移行そのものは 2026-08-11 に完了した。コンテナ30個とネイティブサービス一式が稼働、
-メモリは 9.7GB → 6.3GB、tailnet IP は `100.127.129.31`。当日の手順と実地の知見は
-[HOMESERVER_MIGRATION.md](HOMESERVER_MIGRATION.md) にある。
+The migration itself finished on 2026-08-11. Thirty containers and the native services are
+running, memory went from 9.7 GB to 6.3 GB, and the tailnet address is `100.127.129.31`. The
+steps taken that day, and what was learned doing it, are in
+[HOMESERVER_MIGRATION.md](HOMESERVER_MIGRATION.md).
 
-ここに残すのは、移行後に「使おうとして初めて壊れているとわかった」もの。移行前の
-判断待ちと当日手順は役目を終えたので落とした。
+What stays here is the things that turned out to be broken only when someone tried to use them.
+Pre-migration decisions and the day's runbook have served their purpose and are gone.
 
-2026-08-16 に実機を一通り当たり直した結果を反映してある。
+Rechecked against the running machine on 2026-08-16.
 
 ---
 
-## 見つけて直したもの (2026-08-16)
+## Found and fixed on 2026-08-16
 
-記録として残す。どれも「サービスは起動しているのに中身が死んでいる」形で、
-gatus からも podman からも健全に見えていた。
+Kept as a record. Every one of these had the same shape: the service was up and the contents
+were dead. gatus and podman both reported them healthy.
 
-- **Home Assistant が 8/11 の起動以降ずっと recovery mode だった**。移行後に
-  `trusted_proxies` を `127.0.0.1` へ直したとき、`[127.0.0.1, ::1]` と書いたのが原因。
-  YAML のフローシーケンスでは `::1` を引用符なしに置けない。5日間、Matter も自動化も
-  MQTT も動いていなかったのに、コンテナは `Up` でヘルスチェックも通っていた。
-- **MQTT が HAOS のアドオンを向いたままだった**。接続先が `core-mosquitto`、ユーザーが
-  `homeassistant`。mosquitto 側の `ha` は新規ユーザーなので、パスワードを作り直して
-  `/var/lib/secrets/mosquitto-ha.password` と Home Assistant の両方に入れ直した。
-- **Matter が `use_addon: true` のままだった**。接続先も `ws://core-matter-server:5580/ws`。
-  この設定だと Home Assistant が Supervisor のアドオン管理を呼びに行き、
-  `KeyError: 'hassio'` で統合ごと落ちる。ここから `backup` → `cloud` → `default_config` と
-  連鎖して default_config が丸ごと立たなくなっていた。`ws://127.0.0.1:5580/ws` に変更。
-  ファブリック (`/var/lib/matter-server`) は無事なので再ペアリングは不要だった。
-- **tailnet のサブネット経路が5日間ずっと未承認だった**。homeserver は 3 本
-  (`192.168.116.0/24` / `192.168.1.0/24` / `10.80.1.0/24`) を広告していたのに承認されて
-  おらず、さらに移行で消えたはずの `tailscale-router` と `mvrx-relay` が primary を
-  握ったままだった。承認より先に死んだノードを消す順でないと、承認してもそちらへ吸われる。
-  移行で物理的に無くなった 5 台 (`caddy` / `pve` / `tailscale-router` / `mvrx-relay` /
-  `mullvad-exit`) を削除してから 3 本を承認し、母艦から会社の開発機まで直接届くことを
-  確認した (`192.168.1.36:22` と `10.80.1.36:22` の両方)。ProxyJump の迂回はもう要らない。
-- **homepage が services.yaml を読めていなかった**。中身の無いグループが残っていて
-  `null.forEach` を踏み、ダッシュボードにブックマークしか出ていなかった。中身も
-  移行で嘘になっていた (削除済みの AdGuard、ネイティブ化して消えたコンテナ名、
-  旧 CT101 の IP を向いた glances) ので実機に合わせて書き直した。
-- **samba に `gapul` が居なかった**。インストール当日に手で置くはずの
-  `sudo smbpasswd -a gapul` が抜けていて、`pdbedit -L` が空だった。共有 `media` は
-  匿名で一覧はできるので「見えている = 使える」と誤解しやすい。パスワードを作って
-  登録し、認証が通ることと誤ったパスワードが `NT_STATUS_LOGON_FAILURE` で弾かれる
-  ことを確認、値は Bitwarden へ。
-- **Dawarich が tailnet のアドレスを拒否していた**。`dawarich.env` の
-  `APPLICATION_HOSTS` が `localhost,::1,127.0.0.1` のままで、`100.127.129.31:3005` に
-  投げると Rails の host authorization が 403 を返す。localhost からしか触っていな
-  かったので気付かなかった。スマホの OwnTracks が動き出す前に踏むところだった。
-  tailnet と LAN のアドレスを足して、母艦から OwnTracks 形式の POST を実際に通し、
-  points が増えることまで確認した。
-- **fgc の ntfy 通知は一度も届いていなかった**。`NOTIFY` が
-  `ntfy://fgc:<password>@127.0.0.1:8082/games` で、この 127.0.0.1 はコンテナ自身を指す。
-  fgc は `podman` ネットワーク、ntfy は `ntfy_default` にいるので名前でも届かない。
-  「失敗時に apprise がコマンド全体をログに吐く」= 平文パスワードが見えていたのは、
-  毎回失敗していたから。宛先を `host.containers.internal:8082` に直し、認証は
-  `games` への write-only トークンに変更(パスワードより漏れたときに切りやすい)。
-  apprise から1通通ることを確認済み。
+- **Home Assistant had been in recovery mode since it started on 8/11.** When
+  `trusted_proxies` was corrected to `127.0.0.1` after the migration, it was written as
+  `[127.0.0.1, ::1]`. In a YAML flow sequence `::1` cannot appear unquoted. For five days
+  Matter, automations and MQTT were all dead while the container reported `Up` and passed its
+  health check.
+- **MQTT still pointed at the HAOS add-on**, connecting to `core-mosquitto` as user
+  `homeassistant`. The `ha` user on the new mosquitto is new, so the password was regenerated
+  and written into both `/var/lib/secrets/mosquitto-ha.password` and Home Assistant.
+- **Matter was still set to `use_addon: true`**, pointing at
+  `ws://core-matter-server:5580/ws`. With that setting Home Assistant calls into Supervisor's
+  add-on management and the whole integration dies with `KeyError: 'hassio'`. That cascaded
+  through `backup` and `cloud` until `default_config` failed to load at all. Changed to
+  `ws://127.0.0.1:5580/ws`. The fabric in `/var/lib/matter-server` was intact, so nothing had
+  to be paired again.
+- **The tailnet subnet routes had gone unapproved for five days.** homeserver advertised three
+  (`192.168.116.0/24`, `192.168.1.0/24`, `10.80.1.0/24`) and none were approved, while
+  `tailscale-router` and `mvrx-relay` — both supposedly gone in the migration — still held
+  primary. Deleting the dead nodes has to come before approving, or the traffic is pulled back
+  to them anyway. Five machines that no longer physically exist (`caddy`, `pve`,
+  `tailscale-router`, `mvrx-relay`, `mullvad-exit`) were removed, then the three routes were
+  approved, and reaching the work development machine directly from the Mac was confirmed on
+  both `192.168.1.36:22` and `10.80.1.36:22`. The ProxyJump detour is no longer needed.
+- **homepage could not read services.yaml.** An empty group was left in it, which hit
+  `null.forEach`, and the dashboard showed nothing but bookmarks. The contents had also gone
+  stale in the migration — a deleted AdGuard, container names that had become native services,
+  a glances pointing at the old CT101 address — so it was rewritten against the running
+  machine.
+- **samba had no `gapul` user.** The `sudo smbpasswd -a gapul` that should have been run on
+  install day was missed, and `pdbedit -L` was empty. The `media` share lists anonymously,
+  which makes it easy to assume that seeing it means it works. A password was created and
+  registered, authentication was confirmed, a wrong password was confirmed to fail with
+  `NT_STATUS_LOGON_FAILURE`, and the value went into Bitwarden.
+- **Dawarich rejected its own tailnet address.** `APPLICATION_HOSTS` in `dawarich.env` was
+  still `localhost,::1,127.0.0.1`, so a request to `100.127.129.31:3005` got a 403 from Rails
+  host authorization. Nobody noticed because it had only ever been used from localhost. It
+  would have bitten the moment OwnTracks on the phone started sending. The tailnet and LAN
+  addresses were added, and an OwnTracks-shaped POST from the Mac was run through to confirm
+  the point count went up.
+- **fgc's ntfy notifications had never once arrived.** `NOTIFY` was
+  `ntfy://fgc:<password>@127.0.0.1:8082/games`, and that `127.0.0.1` means the container
+  itself. fgc is on the `podman` network and ntfy is on `ntfy_default`, so the name would not
+  resolve either. The reason the plaintext password was visible in the logs — apprise prints
+  the whole command on failure — is that it failed every single time. The destination is now
+  `host.containers.internal:8082`, and authentication moved from a password to a write-only
+  token for `games`, which is easier to revoke. One message from apprise was confirmed to
+  arrive.
 
-Home Assistant の `.storage` と `/var/lib/hass` は可変状態なのでリポジトリには入らない。
-壊れたら `.storage/core.config_entries.bak-claude` と `configuration.yaml.bak-recovery` が
-同じディレクトリにある。
+Home Assistant's `.storage` and `/var/lib/hass` are mutable state and are not in the
+repository. If something breaks, `.storage/core.config_entries.bak-claude` and
+`configuration.yaml.bak-recovery` sit in the same directory.
 
-## 残っているもの
+## Still open
 
-- [ ] **Dawarich のスマホ側**。サーバ側は済み(ログインは `gapul@homeserver.local`、
-      API キー発行済み、`APPLICATION_HOSTS` 修正済み)。残りは iPhone の OwnTracks を
-      `http://100.127.129.31:3005/api/v1/owntracks/points?api_key=…` に向けるところ。
-      家の外でも記録するならスマホの Tailscale が常時オンである必要がある
-- [ ] **ブリッジの部屋が旧 server_name のまま**。discord の portal は 18 室が
-      `!…:matrix.gapul.net` で、join が 404 になる。7月のドメイン変更の取りこぼしで、
-      移行とは無関係。直すなら portal を作り直すことになるので判断が要る。telegram 側は
-      `No user logins found` でそもそもログインが無い
-- [ ] **HAOS と旧ホスト由来のゴミ**。消すかどうかの判断待ち。`core.entity_registry` に
-      `platform: hassio` のエンティティが 63 件残っていて、これは永久に unavailable の
-      まま。`/var/lib/homelab` にも廃止したスタックの残骸ディレクトリが合計 17MB ある
-      (backrest 785K / uptime-kuma 649K / adguard-secondary 16M / adguardhome-sync /
-      wud / stirling-pdf.bak)。容量としては無視できるので、消す動機は見通しの良さだけ
+- [ ] **Dawarich on the phone.** The server side is done: the login is
+      `gapul@homeserver.local`, an API key exists, and `APPLICATION_HOSTS` is fixed. What
+      remains is pointing OwnTracks on the iPhone at
+      `http://100.127.129.31:3005/api/v1/owntracks/points?api_key=…`. Recording away from home
+      requires Tailscale to stay on on the phone.
+- [ ] **Bridge rooms still carry the old server_name.** Eighteen discord portals are
+      `!…:matrix.gapul.net` and joining them returns 404. This is fallout from the July domain
+      change, unrelated to the migration. Fixing it means recreating the portals, so it needs a
+      decision. The telegram side reports `No user logins found` and has no login at all.
+- [ ] **Leftovers from HAOS and the old host.** Waiting on a decision to delete.
+      `core.entity_registry` still holds 63 entities with `platform: hassio`, permanently
+      unavailable. `/var/lib/homelab` holds 17 MB of directories from retired stacks
+      (backrest 785K, uptime-kuma 649K, adguard-secondary 16M, adguardhome-sync, wud,
+      stirling-pdf.bak). The space is negligible; the only reason to delete is clarity.
 
-## 落ち着いてからやること
+## Worth doing once things settle
 
-急がないが、やると効くもの。
+Not urgent, but each of these pays off.
 
-- [ ] **2本目の NVMe を足して ZFS ミラーに**。いまは単騎で冗長ゼロ (`rpool` 472G、使用 5%)。
-      `zpool attach` で再インストール無しに変換できる。2台目のノードより先に効く
-- [ ] **秘密を sops に移す**。ホストの age 鍵ができたら、`/var/lib/secrets` の
-      手置きファイルを `secrets/secrets.yaml` へ。restic の ntfy 通知もこれ待ち
-- [ ] **イメージをダイジェスト固定 + Renovate**。いまは `:latest` のままで、
-      再現性としては中途半端
-- [ ] **Raspberry Pi も NixOS に**。AdGuard の主系と副系が1つの定義から生成できる
-- [ ] **gatus の死角を埋める**。ntfy とホスト自体が落ちたときは通知が飛ばない。
-      Pi から homeserver を見る監視を置くのが素直。今回の recovery mode のように
-      「HTTP 200 は返るが中身が死んでいる」も抜けるので、そこも考える価値がある
-- [ ] **Mullvad exit node**(欲しければ)。CT106 は中身が無かったので新規構築。
-      ホストの routing table を汚さないよう独自 netns で
-- [ ] **deploy-rs か colmena**。ホストが増えてきたら
-- [ ] **コンテナのネイティブ化**。forgejo / navidrome / miniflux などはモジュールがある。
-      データ移行の手間に見合うと思ったものだけ。Conduit は 2026-08-11 に移行済み
-      (`services.matrix-conduit`)。ブリッジは見送った理由を `nix/homelab/matrix.nix` の
-      冒頭に書いてある
-- [ ] **attic を `services.atticd` へ**。postgres の移行が絡むので単独でやる
+- [ ] **Add a second NVMe and make it a ZFS mirror.** There is currently one disk and no
+      redundancy (`rpool` 472 G, 5% used). `zpool attach` converts it without reinstalling.
+      This matters more than a second node.
+- [ ] **Move secrets into sops.** Once the host has an age key, the hand-placed files under
+      `/var/lib/secrets` can go into `secrets/secrets.yaml`. restic's ntfy notification is
+      waiting on this too.
+- [ ] **Put the Raspberry Pi on NixOS too**, so the primary and secondary AdGuard can be
+      generated from one definition.
+- [ ] **Close gatus's blind spots.** No notification goes out when ntfy or the host itself is
+      down. Watching homeserver from the Pi is the obvious answer. It also misses the shape
+      seen above, where HTTP returns 200 but the contents are dead, which is worth thinking
+      about.
+- [ ] **A Mullvad exit node**, if it turns out to be wanted. CT106 was empty, so this is a
+      fresh build. Give it its own netns rather than dirtying the host routing table.
+- [ ] **deploy-rs or colmena**, once there are more hosts.
+- [ ] **Turn containers into native services.** forgejo, navidrome and miniflux have modules.
+      Only the ones where the data migration is worth it. The bridges' reasons for staying as
+      they are are written at the top of `nix/homelab/matrix-bridges.nix`.
+- [ ] **Move attic to `services.atticd`.** A postgres migration is involved, so do it on its
+      own.

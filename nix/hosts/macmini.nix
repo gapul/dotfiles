@@ -80,6 +80,7 @@ let
         # 本館と同じ理由で入れてある。母艦に残っていたシングルの世界を2つとも持ってきたので、
         # ひとり用でも世界の出し入れが要る。
         PLUGINS = "${multiverseCore}";
+        WHITELIST_SRC = "/etc/minecraft/whitelist-solo.json";
       };
     };
     # 最新で mod を遊ぶ側。Fabric は本体に追いつくのが速いので本館と同じ 26.2 に載る。
@@ -199,6 +200,25 @@ in
         # Was ~/.config/restic/password, placed by hand. restic-common.nix's default path is the
         # same location, so the module below keeps reading it without knowing it moved.
         "restic_password" = forUser "/Users/${user.username}/.config/restic/password";
+        # マイクラの参加者一覧。名前と UUID は本人たちのもので、公開リポジトリに平文で置く
+        # ものではないので暗号化したまま持つ。置き場所は 1 か所で、起動時に run.sh が各
+        # インスタンスへ配る (サーバーは自分でこのファイルを書き換えるため、宣言側を毎回勝たせる)。
+        "minecraft/whitelist" = {
+          path = "/etc/minecraft/whitelist.json";
+          owner = "mcsrv";
+          mode = "0444";
+        };
+        # 個人用だけ別の一覧にする。ひとり用の世界に友人まで入れる必要は無い。
+        "minecraft/whitelist_solo" = {
+          path = "/etc/minecraft/whitelist-solo.json";
+          owner = "mcsrv";
+          mode = "0444";
+        };
+        "minecraft/ops" = {
+          path = "/etc/minecraft/ops.json";
+          owner = "mcsrv";
+          mode = "0444";
+        };
         "unified_calendar/ntfy_url" = forUser "/Users/${user.username}/.config/ntfy/url";
         "unified_calendar/ntfy_token" = forUser "/Users/${user.username}/.config/ntfy/token";
       };

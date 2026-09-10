@@ -17,6 +17,7 @@ WORK=/var/lib/restore-drill
 TOKEN_FILE=/var/lib/secrets/ntfy-alerts.token
 NTFY_URL=http://127.0.0.1:8082/alerts
 DB_CTR=restore-drill-db
+MYSQL_CTR=restore-drill-mariadb
 FAILURES=()
 
 notify() {
@@ -29,6 +30,7 @@ notify() {
 
 cleanup() {
   podman rm -f "$DB_CTR" >/dev/null 2>&1 || true
+  podman rm -f "$MYSQL_CTR" >/dev/null 2>&1 || true
   rm -rf "$WORK"
 }
 trap cleanup EXIT
@@ -66,7 +68,12 @@ if [ "$restored" != true ]; then
 fi
 
 DUMPS="$WORK/var/lib/db-dumps"
-for f in dawarich.dump miniflux.dump matrix-synapse.dump atuin.dump paperless.sql readeck.db; do
+for f in dawarich.dump miniflux.dump matrix-synapse.dump atuin.dump rallly.dump \
+  spliit.dump romm.sql paperless.sql readeck.db forgejo.db navidrome.db \
+  vaultwarden.db pingvin-share.db calnode.db jellyfin.db bambuddy.db \
+  ntfy-user.db ntfy-cache.db home-assistant.db archivebox.db \
+  matrix-discord.db matrix-telegram.db matrix-twitter.db matrix-meta.db \
+  filestash-workflow.db filestash-metadata.db filestash-share.db; do
   [ -s "$DUMPS/$f" ] || fail "$f がスナップショットに無い (または空)"
 done
 
@@ -99,7 +106,7 @@ if podman run -d --name "$DB_CTR" \
   # matrix-synapse はブリッジで取り込んだ過去ログが入る。相手のネットワークから
   # 取り直せるとは限らない (Signal の履歴は端末にしか無い) ので、戻せることを
   # 毎回確かめる対象に入れる。
-  for db in dawarich miniflux matrix-synapse atuin; do
+  for db in dawarich miniflux matrix-synapse atuin rallly spliit; do
     [ -s "$DUMPS/$db.dump" ] || continue
     # 識別子は必ず引用する。matrix-synapse のようにハイフンを含む名前だと
     # 引用なしの CREATE DATABASE drill_matrix-synapse は構文エラーになる。
@@ -128,7 +135,34 @@ else
   fail "使い捨て postgres を起動できなかった"
 fi
 
-# ── 3. sqlite ────────────────────────────────────────────────
+# ── 3. MariaDB ───────────────────────────────────────────────
+podman rm -f "$MYSQL_CTR" >/dev/null 2>&1 || true
+if [ -s "$DUMPS/romm.sql" ] && podman run -d --name "$MYSQL_CTR" \
+  -e MARIADB_ROOT_PASSWORD=drill \
+  docker.io/library/mariadb:11 >/dev/null 2>&1; then
+  for i in $(seq 1 60); do
+    # mariadb-admin ping exits successfully even when authentication is denied;
+    # wait for an authenticated query so restore cannot race first-time setup.
+    podman exec "$MYSQL_CTR" mariadb -uroot -pdrill -e 'SELECT 1' \
+      >/dev/null 2>&1 && break
+    [ "$i" -eq 60 ] && fail "使い捨て MariaDB が起動しなかった"
+    sleep 2
+  done
+  podman exec "$MYSQL_CTR" mariadb -uroot -pdrill -e 'CREATE DATABASE romm' >/dev/null 2>&1
+  if podman exec -i "$MYSQL_CTR" mariadb -uroot -pdrill romm \
+    < "$DUMPS/romm.sql" >/dev/null 2>&1; then
+    n=$(podman exec "$MYSQL_CTR" mariadb -N -uroot -pdrill romm -e \
+      "SELECT count(*) FROM information_schema.tables WHERE table_schema='romm'" 2>/dev/null)
+    [ "${n:-0}" -ge 5 ] || fail "romm: 復元後のテーブルが ${n:-0} 個しかない"
+    [ "${n:-0}" -lt 5 ] || echo "OK: romm は ${n} テーブルで復元できた"
+  else
+    fail "romm: MariaDB への復元に失敗した"
+  fi
+elif [ -s "$DUMPS/romm.sql" ]; then
+  fail "使い捨て MariaDB を起動できなかった"
+fi
+
+# ── 4. SQLite ────────────────────────────────────────────────
 # paperless は SQL のテキスト、readeck は .backup で取った sqlite ファイルそのもの
 # (コンテナが Go の最小イメージで python3 が無いため)。形が違うので確認も分ける。
 if [ -s "$DUMPS/paperless.sql" ]; then
@@ -160,7 +194,41 @@ if [ -s "$DUMPS/readeck.db" ]; then
   fi
 fi
 
-# ── 4. 結果 ──────────────────────────────────────────────────
+for db in forgejo navidrome vaultwarden pingvin-share calnode jellyfin bambuddy \
+  ntfy-user ntfy-cache home-assistant archivebox matrix-discord matrix-telegram \
+  matrix-twitter matrix-meta filestash-workflow filestash-metadata filestash-share; do
+  file="$DUMPS/$db.db"
+  [ -s "$file" ] || continue
+  if sqlite3 "$file" "PRAGMA integrity_check" 2>/dev/null | grep -q '^ok$'; then
+    n=$(sqlite3 "$file" "SELECT count(*) FROM sqlite_master WHERE type='table'" 2>/dev/null)
+    if [ "${n:-0}" -lt 1 ]; then
+      fail "$db: 復元後にテーブルが無い"
+    else
+      echo "OK: $db は ${n} テーブルで整合が取れている"
+    fi
+  else
+    fail "$db: integrity_check が通らない"
+  fi
+done
+
+# Gameyfin's H2 database is copied while the service is stopped.  H2 Recover
+# walks every page and emits SQL; a truncated/corrupt copy fails here.
+if [ -d "$DUMPS/gameyfin-db" ]; then
+  cp -a "$DUMPS/gameyfin-db" "$WORK/gameyfin-db"
+  if podman run --rm \
+    -v "$WORK/gameyfin-db:/drill:rw" \
+    --entrypoint sh ghcr.io/gameyfin/gameyfin:latest -lc \
+    'h2=$(find /opt/gameyfin/lib -name "h2-*.jar" | head -1); java -cp "$h2" org.h2.tools.Recover -dir /drill' \
+    >/dev/null 2>&1 && find "$WORK/gameyfin-db" -name '*.sql' -size +0c | grep -q .; then
+    echo "OK: gameyfin の H2 DB を走査・展開できた"
+  else
+    fail "gameyfin: H2 DB の復元走査に失敗した"
+  fi
+else
+  fail "gameyfin-db がスナップショットに無い"
+fi
+
+# ── 5. 結果 ──────────────────────────────────────────────────
 if [ ${#FAILURES[@]} -gt 0 ]; then
   notify "復元訓練: 戻せないものがある" "$(printf '%s\n' "${FAILURES[@]}")" high
   exit 1
@@ -168,4 +236,4 @@ fi
 
 # 成功も鳴らす。月1回なので五月蝿くならないし、鳴らないと訓練自体が
 # 止まっていることに気付けない。
-notify "復元訓練: 全部戻せた" "dawarich / miniflux / matrix-synapse / atuin / paperless / readeck をスナップショットから復元して確認した" low
+notify "復元訓練: 全部戻せた" "PostgreSQL / MariaDB / SQLite / H2 の全永続DBをスナップショットから復元して確認した" low

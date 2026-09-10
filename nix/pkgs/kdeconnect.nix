@@ -31,11 +31,11 @@ stdenvNoCC.mkDerivation (finalAttrs: {
   # 上流の macOS ビルドにバージョン番号は付かず、リリース系列と CI の通し番号しかない。
   # ファイル名がそのまま `release_<version>` なので、ここを直せば URL も追う。
   # 系列を跨ぐとき (26.08 → 26.12 など) はディレクトリ側の `release-26.08` も直すこと。
-  version = "26.08-6543";
+  version = "26.08-6568";
 
   src = fetchurl {
     url = "https://cdn.kde.org/ci-builds/network/kdeconnect-kde/release-26.08/macos-arm64/kdeconnect-kde-release_${finalAttrs.version}-macos-clang-arm64.dmg";
-    hash = "sha256-kDxboch/BgzbI7ildyOlgTC2F7P3+r7gDFGg1mZSJmo=";
+    hash = "sha256-+EbFRRi+mnTvXhFCrj1lv5cEfTHQ9OPMKlDFyr/+Dew=";
   };
 
   nativeBuildInputs = [ undmg ];

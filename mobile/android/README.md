@@ -2,149 +2,155 @@
 
 ```
 android/
-├── apps.tsv            # 入れるアプリの宣言 (packageId + 経路)
+├── apps.tsv            # which apps to install: packageId plus the route
 ├── apps.sh             # status | install | verify | obtainium
-├── os-settings.conf    # settings put するグローバル設定
-├── os-apps.tsv         # アプリ単位の OS 側設定 (既定ランチャー / 権限 / 電池)
-├── os-debloat.txt      # ユーザー 0 から外すプリイン
-├── os.sh               # 上 3 つを adb で適用 (差分表示 → 適用)
-├── launcher-theme.py   # Kvaesitso のテーマを palettes.json から生成
-└── test.sh             # 上のスクリプトの自己チェック (偽 adb、実機不要)
+├── os-settings.conf    # global settings applied through settings put
+├── os-apps.tsv         # per-app OS settings: default launcher, permissions, battery
+├── os-debloat.txt      # preinstalled apps to remove from user 0
+├── os.sh               # applies the three above over adb, showing the difference first
+├── launcher-theme.py   # generates Kvaesitso's theme from palettes.json
+└── test.sh             # self-check for the scripts above, against a fake adb, no device needed
 ```
 
-## アプリ
+## Apps
 
-3 つのストアを使い分けているので、`apps.tsv` の source 列でどれ担当かを宣言する。
+Three stores are in use, so the `source` column in `apps.tsv` says which one handles each app.
 
-| source | 配布元 | 母艦から入れる | 端末側で更新 |
+| source | Distributed by | Installable from the Mac | Updated on the device by |
 |---|---|---|---|
-| `fdroid` | F-Droid 公式 | ○ `apps.sh install` | Obtainium / F-Droid |
-| `izzy` | IzzyOnDroid | ○ 同上 | Obtainium |
-| `github` | GitHub Releases | × | Obtainium |
-| `play` | Play ストア | × | Aurora Store (Favourites を import して一括インストール) |
+| `fdroid` | F-Droid | Yes, `apps.sh install` | Obtainium or F-Droid |
+| `izzy` | IzzyOnDroid | Yes, the same | Obtainium |
+| `github` | GitHub releases | No | Obtainium |
+| `play` | The Play Store | No | Aurora Store, importing Favourites and installing them in one go |
 
 ```sh
-./apps.sh status      # 宣言 vs 実機。MISSING があれば exit 1
-./apps.sh install     # F-Droid 系を fdroidcl 経由で入れる。残りは経路を報告
-./apps.sh verify      # 4 経路すべてに実在するか確かめる
-./apps.sh obtainium   # 端末の Obtainium に貼る URL リストを出す
-./apps.sh adopt       # 端末に在って宣言に無いものを、経路を判定して tsv 行で出す
-./apps.sh aurora      # play 行を Aurora Store の Favourites に import できる JSON にする
+./apps.sh status      # declaration against the device. Exits 1 if anything is MISSING
+./apps.sh install     # installs the F-Droid ones through fdroidcl, and reports the route for the rest
+./apps.sh verify      # checks all four routes still carry what is declared
+./apps.sh obtainium   # prints the URL list to paste into Obtainium on the device
+./apps.sh adopt       # prints tsv lines for what is on the device but not declared, working out the route
+./apps.sh aurora      # turns the play rows into JSON that Aurora Store can import as Favourites
 ```
 
-Aurora Store で入れたものなど、端末側で先に増やしたアプリは `adopt` で回収する。
-packageId を目で追って書き写す作業になるので、経路の判定ごと機械にやらせる:
+Apps added on the device first, through Aurora Store or otherwise, are collected with `adopt`.
+Doing it by hand means reading package IDs off the screen and copying them, so the route
+detection is left to the machine:
 
 ```sh
-./apps.sh adopt >>apps.tsv   # 追記してから中身を見て整える
+./apps.sh adopt >>apps.tsv   # append, then read through and tidy up
 ```
 
-APK を取って `adb install` する部分は [fdroidcl](https://github.com/mvdan/fdroidcl)
-に任せている。ここが持つのは「何を入れるか」の宣言と差分の判定だけ。
+Fetching the APK and running `adb install` is [fdroidcl](https://github.com/mvdan/fdroidcl)'s
+job. What lives here is the declaration of what should be installed and the comparison against
+what is.
 
-`status` が `windows/winget/status.ps1` と同じ役割で、`just android-apps` から呼ぶ。
-EXTRA (端末に在るが宣言に無い) では落とさない。試しに入れたものは必ず在るし、
-消すかどうかは人が決めること。宣言を満たしていないことだけを失敗として扱う。
+`status` plays the same role as `windows/winget/status.ps1` and is called from
+`just android-apps`. EXTRA, meaning something present but undeclared, does not fail: anything
+tried out is going to be there, and whether to remove it is a person's decision. Only failing
+to satisfy the declaration counts as a failure.
 
-`verify` は F-Droid の索引 / GitHub API / Play のストアページを引いて、
-綴り間違いと配布元の移転を捕まえる。実際これで `Catfriend1/syncthing-android` が
-`researchxxl/` に改名済みなのが見つかった。GitHub 照会は `gh` があればそちらを使う
-(未認証の API は 60 回/時で、宣言が増えると rate limit で落ちる)。
+`verify` queries the F-Droid index, the GitHub API and the Play store page, catching typos and
+sources that have moved. That is how `Catfriend1/syncthing-android` was found to have been
+renamed to `researchxxl/`. GitHub is queried through `gh` if it is available, because the
+unauthenticated API allows 60 requests an hour and hits the rate limit as the declaration grows.
 
-**端末側の自動更新は Obtainium が担う。** `apps.sh obtainium` が出す URL リストを
-アプリ内の Import/Export → Import from URL List に貼る。URL は packageId / ref から
-機械的に決まるので、URL 一覧を別ファイルで持つことはしない。
+**Updates on the device are Obtainium's job.** Paste the URL list from `apps.sh obtainium` into
+the app under Import/Export, Import from URL List. The URLs follow mechanically from the package
+ID and ref, so there is no separate file listing them.
 
-Play しか配布元が無いものは Aurora Store に渡す。4.6 以降は Favourites の
-import/export と一括インストールがあるので、こちらもファイルを渡す形で済む:
+Anything distributed only through Play goes to Aurora Store, which since 4.6 can import and
+export Favourites and install them in bulk, so it is also a matter of handing over a file:
 
 ```sh
 ./apps.sh aurora >/tmp/aurora-favourites.json
 adb push /tmp/aurora-favourites.json /sdcard/Download/
-# 端末で Aurora Store → Favourites → Import → まとめて install
+# on the device: Aurora Store, Favourites, Import, then install them all
 ```
 
-形式は AuroraStore の `data/room/favourite/{ImportExport,Favourite}.kt` に合わせてある。
-`displayName` は packageId をそのまま置く (表示用のラベルでしかなく、正しい名前を
-取るには Play を 1 件ずつ引く必要があって割に合わない)。
+The format matches Aurora Store's `data/room/favourite/{ImportExport,Favourite}.kt`.
+`displayName` is just the package ID, since it is only a label and getting the real name would
+mean one Play lookup per app, which is not worth it.
 
-いまは `play` 行がゼロなので、**宣言した全アプリが Obtainium への 1 回の import で端末側に載る**。
-母艦から `install` できない `github` 行も、Obtainium に入れば追跡と更新は同じように効く。
-Play にしか無いものが出てきたときだけ手が要るので、GitHub 配布があるなら
-`play` ではなく `github` に寄せる (Bitwarden は GitHub Releases に APK があったので移した)。
+There are currently no `play` rows, which means every declared app arrives on the device through
+a single Obtainium import. Even the `github` rows, which cannot be installed from the Mac, are
+tracked and updated the same way once Obtainium has them. Only something available exclusively
+on Play needs manual work, so when a GitHub distribution exists, prefer `github` over `play` —
+Bitwarden was moved for exactly that reason, since its APK is on GitHub releases.
 
-## OS 設定
+## OS settings
 
 ```sh
-./os.sh --dry-run   # 何が変わるか見る
-./os.sh             # 適用
+./os.sh --dry-run   # see what would change
+./os.sh             # apply
 ```
 
-母艦から adb 越しにも、**端末の中 (Termux) からも同じファイルで走る**。
-USB デバッグを有効にして 1 台だけ繋いだ状態で実行する。
+The same file runs both over adb from the Mac and from inside the device, in Termux. Run it with
+USB debugging on and exactly one device connected.
 
-### ケーブル無しで settings を当てる
+### Applying settings without a cable
 
-Termux に `WRITE_SECURE_SETTINGS` を一度だけ与えておくと、以降は端末の中から
-`settings` を書けるようになる。母艦を出さずに済むので、ここだけは端末側で
-自動化できる (Termux:Boot や cron から呼ぶ)。
+Grant Termux `WRITE_SECURE_SETTINGS` once and it can write `settings` from the device
+afterwards. That removes the Mac from the loop, so this part can be automated on the device,
+from Termux:Boot or cron.
 
 ```sh
-# 母艦から一度だけ (この 1 回はケーブルが要る)
+# once from the Mac. This is the only time a cable is needed.
 adb shell pm grant com.termux.nix android.permission.WRITE_SECURE_SETTINGS
 
-# 以降は端末の Termux で
+# afterwards, in Termux on the device
 cd ~/.dotfiles/mobile/android && ./os.sh
 ```
 
-`uname -o` が `Android` を返すことで端末内と判定し、`adb` を挟まずに実行する。
+It detects that it is on the device by `uname -o` returning `Android`, and runs without adb.
 
-**debloat とアプリ個別は端末内からは通らない。** `pm uninstall` は
-`DELETE_PACKAGES`、`pm grant` は `GRANT_RUNTIME_PERMISSIONS` で、どちらも
-署名レベル。adb の shell uid だから通るのであって、アプリの uid には与えられない。
-黙って飛ばさず理由を出すので、その 2 つだけ母艦から流す。現在値と一致する行は
-飛ばすので、何度流しても同じ結果になる。
+**Debloating and the per-app settings cannot work from the device.** `pm uninstall` needs
+`DELETE_PACKAGES` and `pm grant` needs `GRANT_RUNTIME_PERMISSIONS`, both signature-level. They
+work over adb because of the shell uid, and cannot be granted to an app's uid. Rather than
+skipping them silently, the script says why, and those two are run from the Mac. Rows that
+already match the current value are skipped, so running it repeatedly gives the same result.
 
-- `os-settings.conf` — `settings` テーブルに載っているグローバル設定。
-  トグルの多くはここに無く、adb からは届かないので手で設定する。
-- `os-apps.tsv` — アプリ単位。既定ランチャー / 権限の付け外し / AppOps /
-  電池最適化の除外。アプリ「内部」の設定 (アカウントや同期先) はどうやっても
-  外から触れないので、アプリ自身の同期機能に任せる (`../README.md` の表)。
-- `os-debloat.txt` — `pm uninstall -k --user 0` なのでシステムパーティションは
-  無傷で、`adb shell cmd package install-existing <pkg>` で戻せる。
+- `os-settings.conf` — the global settings that live in the `settings` tables. Many toggles are
+  not there and cannot be reached over adb at all, so those are set by hand.
+- `os-apps.tsv` — per app: the default launcher, granting and revoking permissions, AppOps, and
+  battery optimisation exemptions. Settings *inside* an app, such as accounts and sync targets,
+  cannot be touched from outside by any means, so they are left to the app's own sync; see the
+  table in `../README.md`.
+- `os-debloat.txt` — this is `pm uninstall -k --user 0`, so the system partition is untouched
+  and `adb shell cmd package install-existing <pkg>` brings anything back.
 
-## ランチャー (Kvaesitso)
+## The launcher, Kvaesitso
 
-ホーム画面のレイアウトやウィジェット配置は宣言しない。Kvaesitso のバックアップは
-バージョン間で互換が保証されないバイナリで、repo に置いても差分が見えないため。
+Home screen layout and widget placement are not declared. Kvaesitso's backup is a binary with no
+compatibility guarantee between versions, so putting it in the repository would show no
+meaningful diff.
 
-宣言しているのは 2 つ:
+Two things are declared:
 
-- **既定ランチャーであること** — `os-apps.tsv` の `home` 行が
-  `cmd package set-home-activity` で設定する。
-- **テーマ** — `launcher-theme.py` が `configs/theme/palettes.json` から
-  ThemeBundle v2 (JSON) を生成する。母艦・tmux・Windows と同じ SSOT に乗るので、
-  rose-pine を差し替えればランチャーも一緒に変わる。light/dark 両方を 1 つの
-  テーマに入れてあるので、端末の外観設定に追従する。
+- **That it is the default launcher**, through the `home` row in `os-apps.tsv`, which runs
+  `cmd package set-home-activity`.
+- **The theme.** `launcher-theme.py` generates a ThemeBundle v2 JSON from
+  `configs/theme/palettes.json`, which is the same single source the Mac, tmux and Windows use,
+  so replacing rose-pine changes the launcher along with everything else. Light and dark are
+  both in the one theme, so it follows the device's appearance setting.
 
 ```sh
-just android-launcher-theme   # 生成して /sdcard/Download/ に push
-# 端末で Kvaesitso → 設定 → 外観 → テーマ → インポート
+just android-launcher-theme   # generates it and pushes it to /sdcard/Download/
+# on the device: Kvaesitso, Settings, Appearance, Theme, Import
 ```
 
-## 端末内の CLI (nix-on-droid)
+## The CLI on the device, through nix-on-droid
 
-母艦と同じ zsh / git / tmux / CLI ツールが Termux の上に載る。設定の実体は
-`nix/hosts/droid.nix` で、`nix/modules/home/` の git / cli / shell / terminal を
-そのまま共有している。GUI 前提の component と、flake input のモジュールに依存する
-component (nix-index, agent-skills) は読み込まない。
+The same zsh, git, tmux and CLI tools as the Mac, running on top of Termux. The configuration is
+`nix/hosts/droid.nix`, sharing the git, cli, shell and terminal components in
+`nix/modules/home/` unchanged. Components that assume a GUI, and components that depend on
+modules from flake inputs such as nix-index and agent-skills, are not loaded.
 
-初回は [Termux:Nix](https://f-droid.org/packages/com.termux.nix/) を入れて
-(通常の Termux ではなく nix 対応版)、アプリ内で:
+The first time, install [Termux:Nix](https://f-droid.org/packages/com.termux.nix/) — the
+nix-capable build, not ordinary Termux — and inside it run:
 
 ```sh
 nix-on-droid switch --flake github:gapul/dotfiles?dir=nix#default
 ```
 
-以降の更新も同じコマンド。CI では `nix run .#ci-nixondroid` (aarch64-linux)
-が activation package のビルドだけ通している。
+Updates use the same command. In CI, `nix run .#ci-nixondroid` on aarch64-linux builds the
+activation package and no more.

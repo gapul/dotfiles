@@ -1,51 +1,57 @@
 # ESPHome
 
-ESP チップに載る設定。ESPHome サーバ自体は `nix/hosts/homeserver.nix` の
-`sites` 表 (`esphome.gapul.net`) で宣言しているが、デバイスの YAML は
-そのコンテナの中にしか無く、repo の外に取り残されていた。ESPHome は
-YAML そのものが本体なので、置かない理由が無い。
+The configuration that runs on the ESP chips. The ESPHome server itself is declared through the
+`sites` table in `nix/hosts/homeserver.nix`, as `esphome.gapul.net`, but the device YAML existed
+only inside that container and was left outside the repository. With ESPHome the YAML is the
+thing itself, so there is no reason not to keep it here.
 
 ```
 esphome/
-├── plant-watering.yaml   # 鉢植え 4 つの自動水やり機 (ESP32 DevKitC)
-├── common/pot.yaml       # 鉢 1 つ分。GPIO と閾値だけ変えて 4 鉢に複製する
-├── secrets.example.yaml  # secrets.yaml の雛形 (実物は gitignore)
-└── validate.sh           # 実機なしで構文検証する
+├── plant-watering.yaml   # automatic watering for four pots, on an ESP32 DevKitC
+├── common/pot.yaml       # one pot; copied four times with different GPIOs and thresholds
+├── secrets.example.yaml  # a template for secrets.yaml, which is gitignored
+└── validate.sh           # checks the syntax without any hardware
 ```
 
-## 検証
+## Validating
 
 ```sh
 just esphome        # nix shell nixpkgs#esphome -c ./validate.sh
 ```
 
-実物の `secrets.yaml` が無ければ雛形を使って一時ディレクトリで検証するので、
-鍵を持っていない環境でも通る。CI もこれを回している。
+If there is no real `secrets.yaml`, it validates in a temporary directory using the template, so
+it passes on a machine without the keys. CI runs the same thing.
 
-`esphome config` は検証エラーを stdout に出す。`>/dev/null` すると黙って
-失敗するので、`validate.sh` は一度受けてから失敗時だけ見せている。
+`esphome config` writes validation errors to stdout, so redirecting to `/dev/null` makes it fail
+silently. `validate.sh` captures the output and shows it only on failure.
 
-## 書き込み
+## Flashing
 
 ```sh
 nix shell nixpkgs#esphome -c esphome run esphome/plant-watering.yaml
 ```
 
-初回は USB、以降は OTA。`secrets.yaml` を先に作る (雛形をコピーして埋める)。
+Over USB the first time and OTA afterwards. Create `secrets.yaml` first, by copying the
+template and filling it in.
 
-## 水やり機について
+## About the watering machine
 
-設計は [gapul/esp32-plant-watering](https://github.com/gapul/esp32-plant-watering)
-の `docs/design.md`。ここはその設計をそのまま YAML にしたもので、**部品が届く前に
-書いてある**。閾値と給水秒数は実測で詰める前提の仮置きなので、キャリブレーション後に
-直す。
+The design is in `docs/design.md` in
+[gapul/esp32-plant-watering](https://github.com/gapul/esp32-plant-watering). What is here is
+that design turned straight into YAML, written before the parts arrived. The thresholds and
+watering durations are placeholders meant to be pinned down by measurement, so revise them after
+calibration.
 
-設計から持ってきている制約:
+Constraints carried over from the design:
 
-- ADC は必ず ADC1 系 (GPIO32-35)。ADC2 系は Wi-Fi 使用中に読めない
-- ポンプは strapping pin (0, 2, 12, 15) を避ける。起動時に HIGH になる
-- センサーは常時通電しない。GPIO25 から給電し、測るときだけ ON にする (電蝕対策)
-- ポンプは必ず script 経由で回す。switch を直接 on にすると止める人がいなくなる
-- 再起動でポンプが回り出さないよう `restore_mode: ALWAYS_OFF`
-- 4 鉢は順番に回す。同時だと突入電流が USB 5V 2A を超える
-- センサーは給水するかしないかの判定にのみ使う。水量は秒数 × 実測流量の決め打ち
+- The ADC must be on ADC1, GPIO32-35. ADC2 cannot be read while Wi-Fi is in use.
+- Keep the pumps off the strapping pins, 0, 2, 12 and 15, which go high at boot.
+- The sensors are not permanently powered. They are fed from GPIO25 and switched on only while
+  measuring, to avoid electrolytic corrosion.
+- Pumps are always driven through a script. Turning the switch on directly leaves nobody to turn
+  it off.
+- `restore_mode: ALWAYS_OFF`, so a reboot does not start a pump.
+- The four pots are watered in turn. Simultaneously, the inrush current exceeds what 5 V 2 A
+  over USB can supply.
+- The sensors decide only whether to water, not how much. The volume is a fixed duration
+  multiplied by the measured flow rate.
