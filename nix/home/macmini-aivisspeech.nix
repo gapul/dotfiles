@@ -23,7 +23,7 @@ in
       ProgramArguments = [
         "${lib.getExe aivisEngine}"
         "--host"
-        "0.0.0.0"
+        "100.105.135.49"
         "--port"
         "10101"
         "--no-use_gpu"
