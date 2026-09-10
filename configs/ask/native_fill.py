@@ -28,7 +28,22 @@ tell application "System Events"
         error "frontmost application mismatch" number 1701
     if expectedDomain is not "" then
         if expectedBundle is not "com.apple.Safari" then error "page domain mismatch" number 1704
-        tell application id "com.apple.Safari" to set pageURL to URL of current tab of front window
+        -- Read Safari's visible address field through Accessibility. This avoids granting the
+        -- helper broad Apple Events control over Safari while keeping the URL check adjacent to
+        -- the focused-field write. Safari 26 places the smart search field one group below the
+        -- toolbar; refuse if that signed UI structure is not present rather than guessing.
+        set pageURL to ""
+        set frontToolbar to first UI element of front window of frontProcess whose role is "AXToolbar"
+        repeat with toolbarGroup in UI elements of frontToolbar
+            repeat with toolbarItem in UI elements of toolbarGroup
+                try
+                    if role of toolbarItem is "AXTextField" and ¬
+                        description of toolbarItem is "smart search field" then
+                        set pageURL to value of toolbarItem as text
+                    end if
+                end try
+            end repeat
+        end repeat
         set allowedOrigin to "https://" & expectedDomain
         set allowedPrefix to allowedOrigin & "/"
         if pageURL is not allowedOrigin and pageURL does not start with allowedPrefix then ¬
