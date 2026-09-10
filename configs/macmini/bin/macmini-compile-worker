@@ -1,0 +1,77 @@
+#!/bin/bash
+# Server half of macmini-build. Repositories below ~/.local/state/macmini-build are disposable,
+# persistent build caches; user checkouts under ~/Developer are never mutated.
+set -euo pipefail
+
+decode() { printf '%s' "$1" | /usr/bin/base64 -D; }
+die() { echo "macmini-compile-worker: $*" >&2; exit 2; }
+
+[ "$#" -ge 5 ] || die "invalid request"
+key=$1
+url=$(decode "$2")
+commit=$3
+profile=$4
+shift 4
+
+[[ "$key" =~ ^[0-9a-f]{16}$ ]] || die "invalid repository key"
+[[ "$commit" =~ ^[0-9a-fA-F]{40}$ ]] || die "invalid commit"
+case "$profile" in auto|plain|ladybird|servo|flake) ;; *) die "invalid profile: $profile" ;; esac
+
+args=()
+for encoded in "$@"; do args+=("$(decode "$encoded")"); done
+[ "${#args[@]}" -gt 0 ] || die "no build command"
+
+state="$HOME/.local/state/macmini-build"
+repo="$state/repos/$key"
+lock="$state/build.lock"
+mkdir -p "$state/repos"
+if ! mkdir "$lock" 2>/dev/null; then
+  owner=$(cat "$lock/pid" 2>/dev/null || true)
+  if [[ "$owner" =~ ^[0-9]+$ ]] && kill -0 "$owner" 2>/dev/null; then
+    die "another Mac mini build is already running (pid $owner)"
+  fi
+  rm -f "$lock/pid"
+  rmdir "$lock" 2>/dev/null || die "could not clear a stale build lock"
+  mkdir "$lock"
+fi
+printf '%s\n' "$$" >"$lock/pid"
+trap 'rm -f "$lock/pid"; rmdir "$lock" 2>/dev/null || true' EXIT
+
+if [ ! -d "$repo/.git" ]; then
+  git clone --filter=blob:none "$url" "$repo"
+elif [ "$(git -C "$repo" remote get-url origin)" != "$url" ]; then
+  die "repository key collision or origin changed"
+fi
+
+git -C "$repo" fetch --prune origin
+git -C "$repo" cat-file -e "$commit^{commit}" 2>/dev/null ||
+  die "commit is not available from origin; push it first"
+
+# Only this tool owns this checkout. Reset tracked/generated changes while preserving ignored
+# compiler caches (target, node_modules, Build) for fast incremental rebuilds.
+git -C "$repo" reset --hard "$commit"
+git -C "$repo" clean -ffd
+
+if [ "$profile" = auto ]; then
+  case "$(basename "$repo")" in
+    ladybird) profile=ladybird ;;
+    servo) profile=servo ;;
+    *)
+      if [ -f "$repo/flake.nix" ]; then profile=flake; else profile=plain; fi
+      ;;
+  esac
+fi
+
+echo "[macmini-build] repo=$url commit=${commit:0:12} profile=$profile"
+cd "$repo"
+case "$profile" in
+  ladybird|servo)
+    nix develop "$HOME/.dotfiles/nix#$profile" --command "${args[@]}"
+    ;;
+  flake)
+    nix develop --command "${args[@]}"
+    ;;
+  plain)
+    "${args[@]}"
+    ;;
+esac

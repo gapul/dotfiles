@@ -40,7 +40,14 @@
 #
 # ラッパーはまだ書かない。AE が入っていない状態で書いても試せず、実物を見てから
 # でないとパスも引数も決められない。入れたあとで足す。
-{ pkgs, ... }:
+{
+  config,
+  pkgs,
+  ...
+}:
+let
+  dotfiles = "${config.home.homeDirectory}/.dotfiles";
+in
 {
   home.packages = with pkgs; [
     # Blender は nix ではなく brew の cask で入れる (hosts/macmini.nix)。理由はあちらの
@@ -54,5 +61,23 @@
     # M4 のハードウェアエンコーダを使うなら -c:v hevc_videotoolbox / h264_videotoolbox。
     # 素材が HLG の HDR なので、SDR に落とすときは色変換を明示しないと眠い絵になる。
     ffmpeg-full
+
+    # General-purpose native build worker. Project-specific flakes still win when present;
+    # these tools cover ordinary Cargo/CMake/Node repositories and keep compilation off the
+    # interactive MacBook. rustup respects each repository's rust-toolchain.toml.
+    rustup
+    cmake
+    ninja
+    ccache
+    pkg-config
+    gnumake
+    bun
   ];
+
+  home.file = {
+    ".local/bin/macmini-compile-worker".source =
+      config.lib.file.mkOutOfStoreSymlink "${dotfiles}/configs/macmini/bin/macmini-compile-worker";
+    ".local/bin/macmini-render-worker".source =
+      config.lib.file.mkOutOfStoreSymlink "${dotfiles}/configs/macmini/bin/macmini-render-worker";
+  };
 }
