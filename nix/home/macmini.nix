@@ -165,21 +165,15 @@ in
     };
   };
 
-  # Keep a full Orca runtime on the macmini so the MacBook/mobile UI can reconnect
-  # without moving projects, terminals, provider credentials, or agent sessions.
-  # The advertised endpoint is the stable Tailscale address; the generated pairing
-  # link remains a secret in the owner-only log below.
-  launchd.agents.orca-server = {
+  # Orca recommends its desktop host on a Mac mini. Launch it inside the Aqua login
+  # session so macOS Keychain and LaunchServices are available; the headless `orca
+  # serve` path can deadlock in Electron startup on macOS 26. Remote sharing itself
+  # is enabled once in Settings -> Remote Orca Servers and persists in Orca's state.
+  launchd.agents.orca-desktop-server = {
     enable = true;
     config = {
       ProgramArguments = [
-        "${pkgs.writeShellScript "orca-server" ''
-          export PATH="$HOME/.local/bin:${config.home.profileDirectory}/bin:/run/current-system/sw/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
-          cd "$HOME"
-          exec /opt/homebrew/bin/orca serve \
-            --port 6768 \
-            --pairing-address 100.105.135.49
-        ''}"
+        "/Applications/Orca.app/Contents/MacOS/Orca"
       ];
       RunAtLoad = true;
       KeepAlive = true;
@@ -187,16 +181,11 @@ in
       ProcessType = "Standard";
       LowPriorityIO = true;
       Nice = 5;
-      StandardOutPath = "${config.home.homeDirectory}/.local/state/orca/server.log";
-      StandardErrorPath = "${config.home.homeDirectory}/.local/state/orca/server.log";
+      LimitLoadToSessionType = "Aqua";
+      StandardOutPath = "/tmp/orca-desktop-server.log";
+      StandardErrorPath = "/tmp/orca-desktop-server.log";
     };
   };
-
-  home.activation.orcaServerState = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    run install -d -m 700 "$HOME/.local/state/orca"
-    run touch "$HOME/.local/state/orca/server.log"
-    run chmod 600 "$HOME/.local/state/orca/server.log"
-  '';
 
   # Hand-written agents the declarations above replace, plus one leftover that was already
   # disabled. Same shape as the workstation's retiredLaunchAgents list.
