@@ -6,6 +6,9 @@ function __icon_map() {
    "Live")
         icon_result=":ableton:"
         ;;
+   "Accessibility Reader")
+        icon_result=":accessibility_reader:"
+        ;;
    "Acrobat")
         icon_result=":acrobat:"
         ;;
@@ -129,6 +132,9 @@ function __icon_map() {
    "Audio MIDI Setup")
         icon_result=":audio_midi_setup:"
         ;;
+   "AusweisApp")
+        icon_result=":ausweisapp:"
+        ;;
    "Automator")
         icon_result=":automator:"
         ;;
@@ -248,6 +254,9 @@ function __icon_map() {
         ;;
    "Caprine")
         icon_result=":caprine:"
+        ;;
+   "Carbon Copy Cloner")
+        icon_result=":carbon_copy_cloner:"
         ;;
    "ChatGPT Atlas")
         icon_result=":chatgpt_atlas:"
@@ -633,6 +642,9 @@ function __icon_map() {
    "Grayjay")
         icon_result=":grayjay:"
         ;;
+   "Grok Bot")
+        icon_result=":grok_bot:"
+        ;;
    "Hammerspoon")
         icon_result=":hammerspoon:"
         ;;
@@ -777,6 +789,9 @@ function __icon_map() {
    "KeePassXC")
         icon_result=":kee_pass_x_c:"
         ;;
+   "KensingtonWorks" | "KensingtonWorks2")
+        icon_result=":kensington_works:"
+        ;;
    "Keyboard Maestro")
         icon_result=":keyboard_maestro:"
         ;;
@@ -791,6 +806,9 @@ function __icon_map() {
         ;;
    "Kiro")
         icon_result=":kiro:"
+        ;;
+   "Kiro Crew")
+        icon_result=":kiro_crew:"
         ;;
    "kitty")
         icon_result=":kitty:"
@@ -894,6 +912,9 @@ function __icon_map() {
    "Marked 2")
         icon_result=":marked_2:"
         ;;
+   "MarkText" | "MarkText+")
+        icon_result=":marktext:"
+        ;;
    "Marta")
         icon_result=":marta:"
         ;;
@@ -996,11 +1017,17 @@ function __icon_map() {
    "Music" | "音乐" | "Musique" | "ミュージック" | "Musik" | "Chromatix" | "Музика" | "Музыка")
         icon_result=":music:"
         ;;
+   "Muxy")
+        icon_result=":muxy:"
+        ;;
    "Native Access")
         icon_result=":native_instruments:"
         ;;
    "Navicat Premium")
         icon_result=":navicat:"
+        ;;
+   "NeoHtop")
+        icon_result=":neohtop:"
         ;;
    "Neovide" | "neovide")
         icon_result=":neovide:"
@@ -1092,6 +1119,9 @@ function __icon_map() {
    "ONLYOFFICE")
         icon_result=":onlyoffice:"
         ;;
+   "OpenKnowledge")
+        icon_result=":open_knowledge:"
+        ;;
    "Open Video Downloader")
         icon_result=":open_video_downloader:"
         ;;
@@ -1131,6 +1161,9 @@ function __icon_map() {
    "Osaurus")
         icon_result=":osaurus:"
         ;;
+   "Otty")
+        icon_result=":otty:"
+        ;;
    "Overcast")
         icon_result=":overcast:"
         ;;
@@ -1151,6 +1184,9 @@ function __icon_map() {
         ;;
    "Parsec")
         icon_result=":parsec:"
+        ;;
+   "Paseo")
+        icon_result=":paseo:"
         ;;
    "Passepartout")
         icon_result=":passepartout:"
@@ -1268,6 +1304,9 @@ function __icon_map() {
         ;;
    "PS Remote Play")
         icon_result=":ps_remote_play:"
+        ;;
+   "PureMac")
+        icon_result=":puremac:"
         ;;
    "PyCharm")
         icon_result=":pycharm:"
@@ -1425,6 +1464,9 @@ function __icon_map() {
    "Signal")
         icon_result=":signal:"
         ;;
+   "Silveran Reader")
+        icon_result=":silveran_reader:"
+        ;;
    "sioyek")
         icon_result=":sioyek:"
         ;;
@@ -1515,6 +1557,9 @@ function __icon_map() {
    "System Information" | "System Profiler")
         icon_result=":system_information:"
         ;;
+   "T3 Code" | "T3 Code (Alpha)")
+        icon_result=":t3_code:"
+        ;;
    "T3 Chat")
         icon_result=":t3chat:"
         ;;
@@ -1562,6 +1607,9 @@ function __icon_map() {
         ;;
    "Microsoft To Do" | "Things")
         icon_result=":things:"
+        ;;
+   "Threema"*)
+        icon_result=":threema:"
         ;;
    "Thunderbird" | "Thunderbird Daily")
         icon_result=":thunderbird:"
@@ -1619,6 +1667,9 @@ function __icon_map() {
         ;;
    "Trello")
         icon_result=":trello:"
+        ;;
+   "Tuna" | "Tuna (beta)")
+        icon_result=":tuna:"
         ;;
    "Tuple")
         icon_result=":tuple:"

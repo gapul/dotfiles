@@ -395,10 +395,10 @@ in
     # Fetched rather than committed: the ttf is 280KB of someone else's build.
     (stdenvNoCC.mkDerivation {
       pname = "sketchybar-app-font";
-      version = "2.0.76";
+      version = "2.0.86";
       src = fetchurl {
-        url = "https://github.com/kvndrsslr/sketchybar-app-font/releases/download/v2.0.76/sketchybar-app-font.ttf";
-        hash = "sha256-KTkSC9ajasTtNJfuguN1IKXaAtR77k6x8I/J65YbLEI=";
+        url = "https://github.com/kvndrsslr/sketchybar-app-font/releases/download/v2.0.86/sketchybar-app-font.ttf";
+        hash = "sha256-GkegfByH/uafXRAG+kwbWggxHZh95+7fBF+Fdbeo30o=";
       };
       dontUnpack = true;
       installPhase = ''
