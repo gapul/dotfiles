@@ -77,6 +77,20 @@ login_fill domain:str  fields:[str]  target:{...}  →  {filled: bool}
 A request that only needs a password does not get a TOTP. `target` says where the values go —
 element refs from a page snapshot, in practice.
 
+**Which account.** More than one vault item on a domain is ordinary: a personal login and a work
+one, on the same site. The broker does not pick. When several match, the approval becomes the
+choice — the human is shown the account names and selects one, and selecting is the approval, so
+it is still one gesture. A fingerprint cannot express a choice, so these land on the dialog.
+
+Candidates are filtered by their login URIs rather than by `bw`'s search, which also matches names
+and notes: a plain search for google.com returned ten items on this machine where four are real.
+Host comparison is exact-or-subdomain, because plain suffix matching would let `evil-google.com`
+answer for `google.com`.
+
+The chosen account's name goes in the log. It is not a credential, and an audit trail that cannot
+say which account was released is not much of one — but it does mean the log describes the vault,
+which is worth knowing before pointing anything else at that file.
+
 **There is no request that returns a credential to the caller.** Not "there is one but do not use
 it": the broker has no code path that puts a secret in a response. This is the one rule the rest
 of the design is arranged around, borrowed from `aac`, whose `connect` prints credentials and
