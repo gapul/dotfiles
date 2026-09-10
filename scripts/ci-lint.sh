@@ -11,6 +11,20 @@
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
+# Tracked files that are actually readable here, NUL-separated.
+#
+# Some tracked entries are symlinks whose target is outside the repository — configs/cli/claude
+# and configs/cli/codex point into gapul/ai-agent-state — and the path is relative with enough
+# `..` to escape the checkout. That resolves only when the repo sits at ~/.dotfiles: not in a
+# worktree, and never in CI, where every linter then stops on the first one with a message that
+# reads like a lint failure ("openBinaryFile: does not exist", "Could not open file") but is a
+# missing file. Lint what is here; the linked content is linted where it lives.
+tracked() {
+  git ls-files -z "$@" | while IFS= read -r -d "" f; do
+    [ -f "$f" ] && printf '%s\0' "$f"
+  done
+}
+
 echo "==> just --summary (Justfile パース検証)"
 just --summary
 
@@ -18,19 +32,19 @@ echo "==> statix check (Nix アンチパターン)"
 statix check -c .statix.toml nix
 
 echo "==> shellcheck (全 .sh の error gate)"
-git ls-files -z '*.sh' | xargs -0 shellcheck -S error
+tracked '*.sh' | xargs -0 shellcheck -S error
 
 echo "==> stylua --check (nvim lua 整形)"
 stylua --check configs/editors/nvim/
 
 echo "==> taplo check (TOML 構文)"
-git ls-files -z '*.toml' | xargs -0 taplo check
+tracked '*.toml' | xargs -0 taplo check
 
 echo "==> jq empty (JSON 構文)"
-git ls-files -z '*.json' | xargs -0 jq empty
+tracked '*.json' | xargs -0 jq empty
 
 echo "==> yq (YAML 構文)"
-git ls-files -z '*.yml' '*.yaml' | xargs -0 yq -e '.'
+tracked '*.yml' '*.yaml' | xargs -0 yq -e '.'
 
 echo "==> actionlint (GitHub Actions workflow)"
 actionlint -color
