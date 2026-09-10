@@ -4,7 +4,8 @@
 
 Declarative macOS configuration built on a Nix flake: nix-darwin, home-manager, sops-nix.
 
-Day-to-day commands live in [docs/CHEATSHEET.md](docs/CHEATSHEET.md).
+Day-to-day commands live in [docs/CHEATSHEET.md](docs/CHEATSHEET.md). Machine responsibilities
+and data ownership are defined in [docs/HOST_ROLES.md](docs/HOST_ROLES.md).
 
 ---
 

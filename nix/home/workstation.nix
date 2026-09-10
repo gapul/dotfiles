@@ -82,8 +82,9 @@ in
   # real local files (local-primary, the only one restic backs up).
   home.activation.workstationDataDirs = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     ${pkgs.coreutils}/bin/mkdir -p \
-      "${config.home.homeDirectory}/Sync/google-drive-personal" \
+      "${config.home.homeDirectory}/Sync/google-drive" \
       "${config.home.homeDirectory}/Sync/google-drive-school" \
+      "${config.home.homeDirectory}/Sync/google-drive-work" \
       "${config.home.homeDirectory}/Sync/syncthing"
   '';
 

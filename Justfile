@@ -1381,15 +1381,15 @@ restore snapshot dest="/":
 
 alias unarchive := restore
 
-# Shared GoogleDrive mount ops (separate personal/school mounts). `just gdrive`=status / `open`=open in Finder
-# Both mounts are declared in nix/home/rclone-mount.nix as LaunchAgents (the old hand-written
+# Shared Google Drive mount ops. `just gdrive`=status / `open`=open in Finder.
+# All mounts are declared in nix/home/rclone-mount.nix as LaunchAgents (the old hand-written
 # ~/Library/LaunchAgents/com.gapul.rclone.* plists are retired), so remount is just a kickstart.
 [group('Backup')]
 gdrive cmd="status":
     #!/usr/bin/env bash
     set -euo pipefail
-    remotes=(google-drive-personal google-drive-school)
-    mounts=("$HOME/Sync/google-drive-personal" "$HOME/Sync/google-drive-school")
+    remotes=(google-drive google-drive-school google-drive-work)
+    mounts=("$HOME/Sync/google-drive" "$HOME/Sync/google-drive-school" "$HOME/Sync/google-drive-work")
     case "{{cmd}}" in
       status)
         for mp in "${mounts[@]}"; do
