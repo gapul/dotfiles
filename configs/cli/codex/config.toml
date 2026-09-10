@@ -1,6 +1,6 @@
 # 個人の好み (機種非依存)。TOML の仕様上、トップレベルのキーは
 # 最初のテーブルヘッダより前に置く必要がある。
-model = "gpt-5.5"
+model = "gpt-5.6-sol"
 model_reasoning_effort = "medium"
 personality = "pragmatic"
 
@@ -26,3 +26,9 @@ trust_level = "trusted"
 
 [features]
 hooks = true
+
+[hooks.state]
+
+[hooks.state."/Users/gapul/.local/share/codex/hooks.json:session_start:0:0"]
+trusted_hash = "sha256:9336acf25053064ad04cbab46e74c5c3c5d437eaa70ae879d1322a9ed9d72eac"
+enabled = true
