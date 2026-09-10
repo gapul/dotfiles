@@ -34,6 +34,7 @@
   ];
 
   imports = [
+    ./ci-runner.nix
     ./blocky.nix
     ./anisette.nix
     ./anki.nix
