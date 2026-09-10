@@ -78,9 +78,12 @@ jobs:
       matrix:
         system: ${{ fromJSON(needs.plan.outputs.systems) }}
         include:
+          # PR は homeserver、main は GitHub。理由は下の runs-on と homelab/ci-runner.nix。
+          # 実測 (2026-09-10): この pr-gate は 1484 パス / 3.7 GiB の転送で、GitHub の
+          # ランナーは毎回それを払っていた (2m31s のうち 151s)。
           - system: x86_64-linux
             runner: ubuntu-24.04
-            pr_runner: ubuntu-24.04
+            pr_runner: homeserver
           # darwin だけ自前ランナー (macmini)。動機は「macos-14 が遅い」ではなく、遅さの
           # 中身が転送だと分かったこと。
           #
