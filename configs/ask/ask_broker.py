@@ -177,6 +177,39 @@ class Vault:
         self._expire_if_idle()
         return self._session is not None
 
+    def candidates(self, domain: str) -> list[tuple[str, str]]:
+        """(id, name) for every vault item matching the domain.
+
+        More than one is normal — a personal and a work account on the same site — and the
+        broker must not guess between them. The names come back so the human can pick; they are
+        not credentials, but they do describe the vault, so nothing outside this process sees
+        them except the person answering and the audit log.
+        """
+        self.ensure_unlocked()
+        out = subprocess.run(
+            [self._bw(), "list", "items", "--search", domain],
+            env={**os.environ, "BW_SESSION": self._session},
+            capture_output=True,
+            text=True,
+        )
+        if out.returncode != 0:
+            raise RuntimeError("bw list items failed")
+        self._last_used = time.time()
+        try:
+            items = json.loads(out.stdout)
+        except json.JSONDecodeError:
+            raise RuntimeError("bw list items returned nothing parseable") from None
+        # --search is fuzzy: it matches names and notes too, so a plain search for google.com
+        # came back with ten items here. Keep only those whose login URIs actually name the
+        # domain, so the human is choosing between real candidates rather than a haystack.
+        out_items = []
+        for item in items:
+            login = item.get("login") or {}
+            uris = [u.get("uri") or "" for u in (login.get("uris") or [])]
+            if any(host_matches(u, domain) for u in uris):
+                out_items.append((item["id"], item.get("name") or item["id"]))
+        return out_items
+
     def get(self, what: str, key: str) -> str:
         """`what` is bw's object name: password, username, totp, uri."""
         self.ensure_unlocked()
@@ -503,6 +536,19 @@ def is_yes(answer: str | None) -> bool:
 # ----------------------------------------------------------------------------------- filling in
 
 
+def host_matches(url: str, domain: str) -> bool:
+    """Does this URL belong to the domain being asked about?
+
+    Exact host or a subdomain of it. Suffix comparison alone would let `evil-google.com` pass for
+    `google.com`, so the dot is part of the test.
+    """
+    import urllib.parse
+
+    host = (urllib.parse.urlsplit(url).hostname or "").lower()
+    wanted = domain.lower().lstrip(".")
+    return host == wanted or host.endswith("." + wanted)
+
+
 def pick_target(targets: list[dict[str, Any]], domain: str) -> dict[str, Any]:
     """Choose the page to type into, by domain and never by position.
 
@@ -510,16 +556,13 @@ def pick_target(targets: list[dict[str, Any]], domain: str) -> dict[str, Any]:
     sitting alongside the login — so taking the first one means typing a password into whatever
     happens to be there. Ambiguity is refused rather than guessed.
     """
-    import urllib.parse
-
-    wanted = domain.lower().lstrip(".")
-    matches = []
-    for target in targets:
-        if target.get("type") != "page" or not target.get("webSocketDebuggerUrl"):
-            continue
-        host = (urllib.parse.urlsplit(target.get("url", "")).hostname or "").lower()
-        if host == wanted or host.endswith("." + wanted):
-            matches.append(target)
+    matches = [
+        t
+        for t in targets
+        if t.get("type") == "page"
+        and t.get("webSocketDebuggerUrl")
+        and host_matches(t.get("url", ""), domain)
+    ]
     if not matches:
         raise RuntimeError(f"no open page on {domain}")
     if len(matches) > 1:
@@ -656,16 +699,47 @@ async def login_fill(
         return {"filled": False, "error": f"{domain} is not in the allowlist"}
 
     wanted = list(selectors.keys())
-    request = Request(
-        kind="login_fill",
-        prompt=f"Release {', '.join(wanted)} for {domain}?",
-        requester=requester,
-        domain=domain,
-        fields=wanted,
-    )
 
-    answer = await ask_human(ctx, request)
-    if not is_yes(answer):
+    # Which account? More than one item on a domain is ordinary, and picking for the human would
+    # be guessing with their credentials. So the choice replaces the yes/no: choosing is the
+    # approval. A fingerprint cannot express a choice, so these land on the dialog.
+    try:
+        candidates = VAULT.candidates(domain)
+    except RuntimeError as exc:
+        audit("outcome", domain=domain, filled=False, reason=str(exc))
+        return {"filled": False, "error": str(exc)}
+
+    if not candidates:
+        audit("outcome", domain=domain, filled=False, reason="no vault item")
+        return {"filled": False, "error": f"no vault item matches {domain}"}
+
+    if len(candidates) == 1:
+        item_id, item_name = candidates[0]
+        request = Request(
+            kind="login_fill",
+            prompt=f"Release {', '.join(wanted)} for {domain} ({item_name})?",
+            requester=requester,
+            domain=domain,
+            fields=wanted,
+        )
+        answer = await ask_human(ctx, request)
+        approved = is_yes(answer)
+    else:
+        names = [name for _, name in candidates]
+        request = Request(
+            kind="choose",
+            prompt=f"Which account for {domain}? Releasing {', '.join(wanted)}.",
+            options=names,
+            requester=requester,
+            domain=domain,
+            fields=wanted,
+        )
+        answer = await ask_human(ctx, request)
+        approved = answer in names
+        if approved:
+            item_id, item_name = candidates[names.index(answer)]
+
+    if not approved:
         audit("outcome", id=request.id, approved=False)
         return {"filled": False, "error": "not approved"}
 
@@ -676,7 +750,10 @@ async def login_fill(
     # TOTP after the approval, never before: a code lives thirty seconds and a round trip to a
     # phone eats most of that.
     try:
-        values = {selector: VAULT.get(field_name, domain) for field_name, selector in selectors.items()}
+        values = {
+            selector: VAULT.get(field_name, item_id)
+            for field_name, selector in selectors.items()
+        }
     except RuntimeError as exc:
         audit("outcome", id=request.id, approved=True, filled=False, reason=str(exc))
         return {"filled": False, "error": str(exc)}
@@ -686,7 +763,8 @@ async def login_fill(
     finally:
         values.clear()
 
-    audit("outcome", id=request.id, approved=True, filled=True, domain=domain, fields=wanted)
+    audit("outcome", id=request.id, approved=True, filled=True, domain=domain,
+          fields=wanted, item=item_name)
     return {"filled": True}
 
 
