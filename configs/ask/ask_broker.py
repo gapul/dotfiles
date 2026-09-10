@@ -192,8 +192,12 @@ class Vault:
         them except the person answering and the audit log.
         """
         self.ensure_unlocked()
+        # No --search. It reads names and notes rather than URIs, so which accounts appeared
+        # depended on what they happened to be called: asking for accounts.google.com returned
+        # four Google logins and hid the rest. The URIs are the only honest answer to "is this
+        # entry for this site", and filtering a few hundred items here costs nothing.
         out = subprocess.run(
-            [self._bw(), "list", "items", "--search", domain],
+            [self._bw(), "list", "items"],
             env={**os.environ, "BW_SESSION": self._session},
             capture_output=True,
             text=True,
@@ -205,14 +209,11 @@ class Vault:
             items = json.loads(out.stdout)
         except json.JSONDecodeError:
             raise RuntimeError("bw list items returned nothing parseable") from None
-        # --search is fuzzy: it matches names and notes too, so a plain search for google.com
-        # came back with ten items here. Keep only those whose login URIs actually name the
-        # domain, so the human is choosing between real candidates rather than a haystack.
         out_items = []
         for item in items:
             login = item.get("login") or {}
             uris = [u.get("uri") or "" for u in (login.get("uris") or [])]
-            if any(host_matches(u, domain) for u in uris):
+            if any(same_site(u, domain) for u in uris):
                 # The item name alone is not a choice: several Google logins are all called
                 # "Google", and the picker showed the same word three times. The username is
                 # what tells them apart, and it is an identifier rather than a secret — the
@@ -559,6 +560,35 @@ def host_matches(url: str, domain: str) -> bool:
     host = (urllib.parse.urlsplit(url).hostname or "").lower()
     wanted = domain.lower().lstrip(".")
     return host == wanted or host.endswith("." + wanted)
+
+
+def site_of(domain: str) -> str:
+    """The registrable part of a domain: accounts.google.com and google.com are one site.
+
+    Vault entries are saved wherever the login form happened to be that day — google.com for one
+    account, gemini.google.com for another — so matching the exact host hides accounts that are
+    plainly for the same login. Every password manager groups by site for this reason.
+
+    ponytail: the two-label rule with a short list of second-level suffixes, not the Public Suffix
+    List. It is wrong for the long tail (uk.com, s3.amazonaws.com), and being wrong here only
+    widens or narrows the list a human then picks from. Vendor the PSL if that stops being true.
+    """
+    labels = domain.lower().strip(".").split(".")
+    if len(labels) < 3:
+        return ".".join(labels)
+    second_level = {"co", "ne", "or", "ac", "go", "com", "net", "org", "gov", "edu"}
+    take = 3 if labels[-2] in second_level and len(labels[-1]) <= 3 else 2
+    return ".".join(labels[-take:])
+
+
+def same_site(url: str, domain: str) -> bool:
+    """Is this URL's host the same site as the domain being asked about?"""
+    import urllib.parse
+
+    host = (urllib.parse.urlsplit(url).hostname or "").lower()
+    if not host:
+        return False
+    return site_of(host) == site_of(domain)
 
 
 def dedupe_labels(items: list[tuple[str, str]]) -> list[tuple[str, str]]:

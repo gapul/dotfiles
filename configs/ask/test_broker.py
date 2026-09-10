@@ -190,6 +190,18 @@ def test_native_helper_response_cannot_return_a_secret():
     }
 
 
+def test_accounts_on_the_same_site_are_all_offered():
+    """An entry saved as google.com is for accounts.google.com too; matching the exact host hid
+    most of the Google logins and the picker offered four where there were more."""
+    assert broker.same_site("https://google.com/", "accounts.google.com")
+    assert broker.same_site("https://gemini.google.com/app", "accounts.google.com")
+    assert broker.same_site("https://www.google.co.jp/", "accounts.google.co.jp")
+    # Still not a suffix test: a lookalike registration is a different site.
+    assert not broker.same_site("https://evil-google.com/", "accounts.google.com")
+    assert not broker.same_site("https://google.com.evil.example/", "accounts.google.com")
+    assert not broker.same_site("", "accounts.google.com")
+
+
 def test_labels_are_distinct_so_a_choice_means_something():
     """The answer comes back as a label and is looked up by it, so two identical labels would be
     one choice that silently resolves to whichever vault item came first."""
