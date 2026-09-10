@@ -18,6 +18,20 @@ EOF
   exit 2
 }
 encode() { printf '%s' "$1" | /usr/bin/base64 | tr -d '\n'; }
+ssh_options=(
+  -o IdentityAgent=none
+  -o IdentitiesOnly=yes
+  -o BatchMode=yes
+  -o ClearAllForwardings=yes
+  -i "$HOME/.ssh/id_automation"
+)
+scp_options=(
+  -o IdentityAgent=none
+  -o IdentitiesOnly=yes
+  -o BatchMode=yes
+  -o ClearAllForwardings=yes
+  -i "$HOME/.ssh/id_automation"
+)
 retry() {
   local attempt
   for attempt in 1 2 3; do
@@ -32,7 +46,10 @@ kind=$1
 shift
 job="$(date +%s)-$$"
 remote="/tmp/macmini-render-$job"
-cleanup() { ssh macmini "/usr/bin/find '$remote' -depth -delete" >/dev/null 2>&1 || true; }
+cleanup() {
+  /usr/bin/ssh "${ssh_options[@]}" macmini "/usr/bin/find '$remote' -depth -delete" \
+    >/dev/null 2>&1 || true
+}
 trap cleanup EXIT INT TERM
 
 case "$kind" in
@@ -45,15 +62,15 @@ case "$kind" in
     [ -f "$input" ] || { echo "macmini-render: input not found: $input" >&2; exit 2; }
     input_name="input.${input##*.}"
     output_name="output.${output##*.}"
-    retry ssh macmini "/bin/mkdir -p '$remote'"
-    retry scp -q "$input" "macmini:$remote/$input_name"
+    retry /usr/bin/ssh "${ssh_options[@]}" macmini "/bin/mkdir -p '$remote'"
+    retry /usr/bin/scp "${scp_options[@]}" -q "$input" "macmini:$remote/$input_name"
     options=()
     for arg in "$@"; do options+=("$(encode "$arg")"); done
     echo "[render] ffmpeg on macmini"
-    ssh macmini ~/.local/bin/macmini-render-worker ffmpeg "$job" \
+    /usr/bin/ssh "${ssh_options[@]}" macmini ~/.local/bin/macmini-render-worker ffmpeg "$job" \
       "$(encode "$input_name")" "$(encode "$output_name")" "${options[@]}"
     mkdir -p "$(dirname "$output")"
-    retry scp -q "macmini:$remote/out/$output_name" "$output"
+    retry /usr/bin/scp "${scp_options[@]}" -q "macmini:$remote/out/$output_name" "$output"
     echo "[done] $output"
     ;;
   blender)
@@ -64,13 +81,14 @@ case "$kind" in
     [ -f "$input" ] || { echo "macmini-render: scene not found: $input" >&2; exit 2; }
     [[ "$frame" =~ ^[0-9]+$ ]] || usage
     input_name="scene.blend"
-    retry ssh macmini "/bin/mkdir -p '$remote'"
-    retry scp -q "$input" "macmini:$remote/$input_name"
+    retry /usr/bin/ssh "${ssh_options[@]}" macmini "/bin/mkdir -p '$remote'"
+    retry /usr/bin/scp "${scp_options[@]}" -q "$input" "macmini:$remote/$input_name"
     echo "[render] Blender frame $frame on macmini"
-    ssh macmini ~/.local/bin/macmini-render-worker blender "$job" \
+    /usr/bin/ssh "${ssh_options[@]}" macmini ~/.local/bin/macmini-render-worker blender "$job" \
       "$(encode "$input_name")" "$frame"
     mkdir -p "$output_dir"
-    retry rsync -a "macmini:$remote/out/" "$output_dir/"
+    retry rsync -a -e "/usr/bin/ssh -o IdentityAgent=none -o IdentitiesOnly=yes -o BatchMode=yes -o ClearAllForwardings=yes -i $HOME/.ssh/id_automation" \
+      "macmini:$remote/out/" "$output_dir/"
     echo "[done] $output_dir"
     ;;
   *) usage ;;
