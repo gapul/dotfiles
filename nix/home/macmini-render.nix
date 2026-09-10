@@ -34,12 +34,8 @@
 # 入ると aerender はここに来る:
 #   /Applications/Adobe After Effects <年>/aerender
 #
-# 母艦から投げるならこうなる:
-#   ssh macmini '/Applications/Adobe\ After\ Effects\ 2026/aerender \
-#     -project /path/to.aep -comp "Main" -output /path/out.mov'
-#
-# ラッパーはまだ書かない。AE が入っていない状態で書いても試せず、実物を見てから
-# でないとパスも引数も決められない。入れたあとで足す。
+# 母艦の `macmini-render after-effects` はこのパスを動的に検出する。素材切れを防ぐため、
+# After Effects の Collect Files でまとめたディレクトリ単位で一時転送し、完了後に消す。
 {
   config,
   pkgs,

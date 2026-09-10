@@ -8,12 +8,16 @@ usage() {
 usage:
   macmini-render ffmpeg INPUT OUTPUT [-- FFMPEG_OUTPUT_OPTIONS...]
   macmini-render blender PACKED_SCENE.blend OUTPUT_DIR [FRAME]
+  macmini-render after-effects COLLECTED_DIR PROJECT.aep OUTPUT COMP
 
 examples:
   macmini-render ffmpeg source.mov output.mp4 -- -c:v hevc_videotoolbox -tag:v hvc1 -c:a aac
   macmini-render blender scene.blend ./rendered 1
+  macmini-render after-effects ./Collected project.aep output.mov "Main Comp"
 
 Blender scenes must pack external assets (File > External Data > Pack Resources).
+After Effects projects must use File > Dependencies > Collect Files first. PROJECT.aep is
+relative to COLLECTED_DIR, so the collected assets keep their project-relative paths.
 EOF
   exit 2
 }
@@ -90,6 +94,34 @@ case "$kind" in
     retry rsync -a -e "/usr/bin/ssh -o IdentityAgent=none -o IdentitiesOnly=yes -o BatchMode=yes -o ClearAllForwardings=yes -i $HOME/.ssh/id_automation" \
       "macmini:$remote/out/" "$output_dir/"
     echo "[done] $output_dir"
+    ;;
+  after-effects)
+    [ "$#" -eq 4 ] || usage
+    project_dir=$1
+    project_file=$2
+    output=$3
+    comp=$4
+    [ -d "$project_dir" ] && [ ! -L "$project_dir" ] || {
+      echo "macmini-render: collected project directory not found: $project_dir" >&2
+      exit 2
+    }
+    case "$project_file" in /*|../*|*/../*|*/..) usage ;; esac
+    [[ "$project_file" =~ ^[A-Za-z0-9_./[:space:]-]+\.aep$ ]] || usage
+    [ -f "$project_dir/$project_file" ] || {
+      echo "macmini-render: project not found inside collected directory: $project_file" >&2
+      exit 2
+    }
+    [ -n "$comp" ] || usage
+    output_name="render.${output##*.}"
+    retry /usr/bin/ssh "${ssh_options[@]}" macmini "/bin/mkdir -p '$remote/project'"
+    retry rsync -a -e "/usr/bin/ssh -o IdentityAgent=none -o IdentitiesOnly=yes -o BatchMode=yes -o ClearAllForwardings=yes -i $HOME/.ssh/id_automation" \
+      "$project_dir/" "macmini:$remote/project/"
+    echo "[render] After Effects comp '$comp' on macmini"
+    /usr/bin/ssh "${ssh_options[@]}" macmini ~/.local/bin/macmini-render-worker after-effects "$job" \
+      "$(encode "$project_file")" "$(encode "$output_name")" "$(encode "$comp")"
+    mkdir -p "$(dirname "$output")"
+    retry /usr/bin/scp "${scp_options[@]}" -q "macmini:$remote/out/$output_name" "$output"
+    echo "[done] $output"
     ;;
   *) usage ;;
 esac

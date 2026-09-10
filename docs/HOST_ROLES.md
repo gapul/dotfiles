@@ -35,7 +35,9 @@ stay with the machine that owns the workload.
   installation remain on the MacBook.
 - `macmini-render ffmpeg INPUT OUTPUT -- OPTIONS...` transcodes on the Mac mini and returns the
   output file. `macmini-render blender PACKED_SCENE.blend OUTPUT_DIR [FRAME]` renders a packed
-  Blender scene and returns the rendered files.
+  Blender scene and returns the rendered files. `macmini-render after-effects COLLECTED_DIR
+  PROJECT.aep OUTPUT COMP` uploads an After Effects Collect Files directory, renders one
+  composition with `aerender`, returns the output and deletes the remote copy.
 - Build checkouts and render uploads are execution caches, not primary data. Render uploads are
   deleted after each job; inactive build checkouts are deleted by the weekly storage cleanup
   after 30 days.
