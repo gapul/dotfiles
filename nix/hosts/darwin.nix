@@ -148,13 +148,9 @@ in
     # macOS dmg is repackaged. See pkgs/vroid-studio.nix - the download URL carries a token
     # that has to be re-read from vroid.com on every version bump.
     (pkgs.callPackage ../pkgs/vroid-studio.nix { })
-    # AivisSpeech Engine (headless TTS, VOICEVOX-compatible API): no nixpkgs
-    # package and no cask. Engine only - the desktop app is not used, and voice
-    # models are runtime data the engine fetches itself. See pkgs/aivisspeech-engine.nix.
-    (pkgs.callPackage ../pkgs/aivisspeech-engine.nix { })
-    # AivisSpeech desktop editor (GUI). Bundles its own engine copy, but scripts
-    # keep using the newer headless engine above; both share the model dir.
-    (pkgs.callPackage ../pkgs/aivisspeech.nix { })
+    # AivisSpeech's engine and models live on the always-on Mac mini.  This
+    # workstation calls its VOICEVOX-compatible API over Tailscale instead of
+    # carrying a second engine/model cache locally.
     # Orca fork that can still start a print on a Bambu printer - the stock cask
     # above only exports, since Bambu's Authorization Control ignores the print
     # command from anything but Bambu Connect. Kept beside the cask, with its own
