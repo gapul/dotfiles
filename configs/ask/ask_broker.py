@@ -8,8 +8,8 @@ Runs on the workstation as a launchd agent in the GUI session, and listens on th
 an agent working on the mac mini reaches the same broker.
 
 The single rule this file is arranged around: **no code path returns a credential to the caller.**
-`login_fill` types values into a browser and answers whether that worked. There is deliberately no
-`get_password`, not even a private one.
+The login tools type values into a browser or approved native app and answer whether that worked.
+There is deliberately no `get_password`, not even a private one.
 """
 
 from __future__ import annotations
@@ -45,6 +45,10 @@ class Config:
     # Only these domains can ever be the subject of login_fill. An approval for anything else is
     # refused before the vault is touched, which is what bounds a mistaken or forged approval.
     allowed_domains: tuple[str, ...] = ()
+
+    # Named execution targets. Each target may be local or an SSH host, and each application is
+    # independently constrained to domains whose credentials it may receive.
+    native_targets: dict[str, dict[str, Any]] = field(default_factory=dict)
 
     # Re-lock the vault after this long without a release. A leaked session key expires.
     vault_idle_seconds: int = 900
@@ -90,6 +94,7 @@ class Config:
             host=broker.get("host", cls.host),
             port=broker.get("port", cls.port),
             allowed_domains=tuple(broker.get("allowed_domains", ())),
+            native_targets=raw.get("native_targets", {}),
             vault_idle_seconds=broker.get("vault_idle_seconds", cls.vault_idle_seconds),
             local_timeout_seconds=broker.get("local_timeout_seconds", cls.local_timeout_seconds),
             remote_timeout_seconds=broker.get("remote_timeout_seconds", cls.remote_timeout_seconds),
@@ -233,7 +238,7 @@ VAULT = Vault()
 
 @dataclass
 class Request:
-    kind: Literal["approve", "choose", "ask_text", "login_fill"]
+    kind: Literal["approve", "choose", "ask_text", "login_fill", "native_login_fill"]
     prompt: str
     requester: str
     options: list[str] = field(default_factory=list)
@@ -282,7 +287,7 @@ class Matrix:
         body = f"[ask] {request.prompt}\nfrom: {request.requester}"
         if request.options:
             body += "\noptions: " + " / ".join(request.options)
-        if request.kind in ("approve", "login_fill"):
+        if request.kind in ("approve", "login_fill", "native_login_fill"):
             body += "\nreply: yes / no"
 
         def post() -> None:
@@ -346,7 +351,7 @@ class FreeText(BaseModel):
 
 
 def _schema_for(kind: str) -> type[BaseModel]:
-    if kind in ("approve", "login_fill"):
+    if kind in ("approve", "login_fill", "native_login_fill"):
         return YesNo
     if kind == "choose":
         return Choice
@@ -367,7 +372,7 @@ async def touch_id(request: Request, prompt: str) -> str | None:
     app = Path(CONFIG.touch_id_app).expanduser()
     if not CONFIG.touch_id_app or not app.exists():
         return None
-    if request.kind not in ("approve", "login_fill"):
+    if request.kind not in ("approve", "login_fill", "native_login_fill"):
         return None  # a fingerprint can say yes or no and nothing else
 
     with tempfile.TemporaryDirectory() as tmp:
@@ -455,7 +460,7 @@ async def system_dialog(request: Request, prompt: str) -> str | None:
     answer = out.decode().strip()
     if not answer:
         return None  # gave up or cancelled: not an answer, so let the phone have it
-    if request.kind in ("approve", "login_fill"):
+    if request.kind in ("approve", "login_fill", "native_login_fill"):
         return "yes" if answer == "Approve" else "no"
     return answer
 
@@ -644,6 +649,87 @@ def terminal_browser_cdp_port() -> int | None:
     return None
 
 
+LOGIN_FIELDS = {"username", "password", "totp"}
+NATIVE_HELPER_ERRORS = {
+    "invalid request",
+    "native application did not respond",
+    "configured application is not frontmost",
+    "focused element is not an editable text field",
+    "Accessibility permission is unavailable",
+    "macOS Accessibility fill failed",
+}
+
+
+def native_target(domain: str, target_name: str, bundle_id: str) -> dict[str, Any] | None:
+    """Return a configured target only when this exact app/domain pairing is allowed."""
+    target = CONFIG.native_targets.get(target_name)
+    if not isinstance(target, dict):
+        return None
+    apps = target.get("apps", {})
+    if not isinstance(apps, dict):
+        return None
+    domains = apps.get(bundle_id, ())
+    if not isinstance(domains, list):
+        return None
+    return target if domain in domains else None
+
+
+def sanitize_native_result(result: Any) -> dict[str, Any]:
+    """Keep a compromised remote helper from smuggling a credential back to the MCP caller."""
+    if not isinstance(result, dict) or not isinstance(result.get("filled"), bool):
+        return {"filled": False, "error": "native helper returned an invalid response"}
+    if result["filled"]:
+        return {"filled": True}
+    error = result.get("error")
+    if error not in NATIVE_HELPER_ERRORS:
+        error = "native helper failed"
+    return {"filled": False, "error": error}
+
+
+async def fill_native_target(
+    target: dict[str, Any], bundle_id: str, value: str
+) -> dict[str, Any]:
+    """Run the fixed native helper locally or over SSH, sending the secret only on stdin."""
+    helper = Path.home() / ".local/bin/ask-native-fill"
+    ssh_target = target.get("ssh_target", "")
+    if ssh_target:
+        identity = Path(target.get("identity_file", "~/.ssh/id_automation")).expanduser()
+        command = [
+            "/usr/bin/ssh",
+            "-F", "/dev/null",
+            "-o", "IdentityAgent=none",
+            "-o", "IdentitiesOnly=yes",
+            "-o", "BatchMode=yes",
+            "-o", "ClearAllForwardings=yes",
+            "-i", str(identity),
+            ssh_target,
+            "/usr/bin/python3", ".local/bin/ask-native-fill",
+        ]
+    else:
+        command = ["/usr/bin/python3", str(helper)]
+
+    proc = await asyncio.create_subprocess_exec(
+        *command,
+        stdin=asyncio.subprocess.PIPE,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.DEVNULL,
+    )
+    payload = json.dumps({"bundle_id": bundle_id, "value": value}).encode()
+    try:
+        stdout, _ = await asyncio.wait_for(proc.communicate(payload), timeout=25)
+    except asyncio.TimeoutError:
+        proc.kill()
+        await proc.wait()
+        return {"filled": False, "error": "native fill timed out"}
+    try:
+        result = json.loads(stdout)
+    except json.JSONDecodeError:
+        return {"filled": False, "error": "native helper returned an invalid response"}
+    # A remote same-user process can replace the helper. Never relay arbitrary helper text to the
+    # MCP caller, because it could put the credential in an added JSON field or error string.
+    return sanitize_native_result(result)
+
+
 # ------------------------------------------------------------------------------------ mcp server
 
 mcp = FastMCP("ask")
@@ -689,7 +775,7 @@ async def login_fill(
 
     `selectors` maps a field name to a CSS selector on the page, e.g.
     `{"username": "#login_field", "password": "#password"}`. Valid field names are the ones `bw`
-    knows: username, password, totp, uri.
+    knows: username, password, or totp.
 
     Returns {"filled": bool}. **It never returns the values it typed**, and there is no other tool
     that does.
@@ -697,6 +783,10 @@ async def login_fill(
     if domain not in CONFIG.allowed_domains:
         audit("refused", domain=domain, reason="not in allowlist", requester=requester)
         return {"filled": False, "error": f"{domain} is not in the allowlist"}
+
+    unknown = set(selectors) - LOGIN_FIELDS
+    if unknown:
+        return {"filled": False, "error": "unsupported credential field"}
 
     wanted = list(selectors.keys())
 
@@ -766,6 +856,88 @@ async def login_fill(
     audit("outcome", id=request.id, approved=True, filled=True, domain=domain,
           fields=wanted, item=item_name)
     return {"filled": True}
+
+
+@mcp.tool()
+async def native_login_fill(
+    ctx: Context,
+    domain: str,
+    target: str,
+    bundle_id: str,
+    field: str,
+    requester: str = "unknown",
+) -> dict[str, Any]:
+    """Fill one focused field in an allowlisted native macOS app after human approval.
+
+    `target` and `bundle_id` must match the broker's native target allowlist. `field` is one of
+    username, password, or totp. The app must be frontmost with an editable field focused.
+    Returns only {"filled": bool}; the credential is sent directly to the fixed helper on stdin.
+    """
+    if domain not in CONFIG.allowed_domains:
+        audit("refused", domain=domain, reason="not in allowlist", requester=requester)
+        return {"filled": False, "error": f"{domain} is not in the allowlist"}
+    configured_target = native_target(domain, target, bundle_id)
+    if configured_target is None:
+        audit(
+            "refused", domain=domain, target=target, bundle_id=bundle_id,
+            reason="native target not in allowlist", requester=requester,
+        )
+        return {"filled": False, "error": "native app/domain target is not in the allowlist"}
+    if field not in LOGIN_FIELDS:
+        return {"filled": False, "error": "unsupported credential field"}
+
+    try:
+        candidates = VAULT.candidates(domain)
+    except RuntimeError as exc:
+        audit("outcome", domain=domain, filled=False, reason=str(exc))
+        return {"filled": False, "error": str(exc)}
+    if not candidates:
+        audit("outcome", domain=domain, filled=False, reason="no vault item")
+        return {"filled": False, "error": f"no vault item matches {domain}"}
+
+    if len(candidates) == 1:
+        item_id, item_name = candidates[0]
+        request = Request(
+            kind="native_login_fill",
+            prompt=f"Release {field} for {domain} ({item_name}) into {bundle_id} on {target}?",
+            requester=requester,
+            domain=domain,
+            fields=[field],
+        )
+        approved = is_yes(await ask_human(ctx, request))
+    else:
+        names = [name for _, name in candidates]
+        request = Request(
+            kind="choose",
+            prompt=f"Which account for {domain}? Releasing {field} into {bundle_id} on {target}.",
+            options=names,
+            requester=requester,
+            domain=domain,
+            fields=[field],
+        )
+        answer = await ask_human(ctx, request)
+        approved = answer in names
+        if approved:
+            item_id, item_name = candidates[names.index(answer)]
+
+    if not approved:
+        audit("outcome", id=request.id, approved=False)
+        return {"filled": False, "error": "not approved"}
+
+    value = ""
+    try:
+        value = VAULT.get(field, item_id)
+        result = await fill_native_target(configured_target, bundle_id, value)
+    except RuntimeError as exc:
+        result = {"filled": False, "error": str(exc)}
+    finally:
+        value = ""
+
+    audit(
+        "outcome", id=request.id, approved=True, filled=result["filled"], domain=domain,
+        fields=[field], item=item_name, target=target, bundle_id=bundle_id,
+    )
+    return result
 
 
 class RequireToken:

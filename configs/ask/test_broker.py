@@ -56,7 +56,11 @@ def test_refuses_to_listen_wide_open():
 def test_elicitation_results_map_to_answers():
     """The first live call failed here: elicit() needs a pydantic schema, not None, and the reader
     was guessing at the result shape. Both ends are now pinned by this."""
-    from mcp.server.elicitation import AcceptedElicitation, CancelledElicitation, DeclinedElicitation
+    from mcp.server.elicitation import (
+        AcceptedElicitation,
+        CancelledElicitation,
+        DeclinedElicitation,
+    )
 
     assert broker._elicit_answer(AcceptedElicitation(data=broker.YesNo(approved=True))) == "yes"
     assert broker._elicit_answer(AcceptedElicitation(data=broker.YesNo(approved=False))) == "no"
@@ -68,6 +72,7 @@ def test_elicitation_results_map_to_answers():
 
     assert broker._schema_for("approve") is broker.YesNo
     assert broker._schema_for("login_fill") is broker.YesNo
+    assert broker._schema_for("native_login_fill") is broker.YesNo
     assert broker._schema_for("choose") is broker.Choice
     assert broker._schema_for("ask_text") is broker.FreeText
 
@@ -110,9 +115,75 @@ def test_target_is_picked_by_domain():
             raise AssertionError(f"{domain} should not have matched")
 
 
+def test_native_target_requires_exact_app_and_domain():
+    import dataclasses
+
+    original = broker.CONFIG
+    try:
+        broker.CONFIG = dataclasses.replace(
+            original,
+            native_targets={
+                "macmini": {
+                    "apps": {"com.adobe.acc.AdobeCreativeCloud": ["adobe.com"]}
+                }
+            },
+        )
+        assert broker.native_target(
+            "adobe.com", "macmini", "com.adobe.acc.AdobeCreativeCloud"
+        )
+        assert broker.native_target(
+            "evil.example", "macmini", "com.adobe.acc.AdobeCreativeCloud"
+        ) is None
+        assert broker.native_target("adobe.com", "macmini", "com.example.fake") is None
+        assert broker.native_target(
+            "adobe.com", "workstation", "com.adobe.acc.AdobeCreativeCloud"
+        ) is None
+    finally:
+        broker.CONFIG = original
+
+
+def test_native_refuses_unknown_target_before_touching_vault():
+    import dataclasses
+
+    original = broker.CONFIG
+    try:
+        broker.CONFIG = dataclasses.replace(original, allowed_domains=("adobe.com",))
+
+        async def run():
+            return await broker.native_login_fill(
+                ctx=None,
+                domain="adobe.com",
+                target="macmini",
+                bundle_id="com.example.fake",
+                field="password",
+                requester="test",
+            )
+
+        result = asyncio.run(run())
+        assert result["filled"] is False, result
+        assert "allowlist" in result["error"], result
+    finally:
+        broker.CONFIG = original
+
+
+def test_native_helper_response_cannot_return_a_secret():
+    assert broker.sanitize_native_result({"filled": True, "password": "secret"}) == {
+        "filled": True
+    }
+    assert broker.sanitize_native_result({"filled": False, "error": "secret"}) == {
+        "filled": False,
+        "error": "native helper failed",
+    }
+    known = "configured application is not frontmost"
+    assert broker.sanitize_native_result({"filled": False, "error": known}) == {
+        "filled": False,
+        "error": known,
+    }
+
+
 def test_tools_registered():
     names = {t.name for t in asyncio.run(broker.mcp.list_tools())}
-    assert names == {"approve", "choose", "ask_text", "login_fill"}, names
+    assert names == {"approve", "choose", "ask_text", "login_fill", "native_login_fill"}, names
 
 
 def test_no_tool_returns_a_credential():

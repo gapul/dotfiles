@@ -97,6 +97,22 @@ of the design is arranged around, borrowed from `aac`, whose `connect` prints cr
 whose `run` injects them — a distinction that is only a footnote until someone reads the wrong
 docs at the wrong moment.
 
+### native_login_fill
+
+```
+native_login_fill domain:str target:str bundle_id:str field:str → {filled: bool}
+```
+
+Fills one currently focused `AXTextField`, `AXSecureTextField`, or `AXTextArea` in an explicitly
+allowlisted macOS application. The helper verifies the frontmost bundle identifier immediately
+before writing and never presses Submit. A remote target such as the Mac mini is reached with a
+fixed SSH destination and key from broker configuration; the secret travels only through SSH
+stdin, never argv or an MCP response.
+
+One field per request is deliberate. Multi-page native and embedded-browser login flows do not
+keep username, password and TOTP fields alive at the same time, and filling a Tab-based sequence
+would risk placing a later secret into the wrong control.
+
 ## Answering
 
 The broker tries channels in order and takes the first answer.
@@ -116,7 +132,7 @@ iOS/watchOS app talking to APNs directly is the intended replacement, because no
 actions from a native app are answerable from the watch itself, which mirrored third-party
 notifications are not. Nothing above this layer should need to change when that lands.
 
-Touch ID sits in front of all of them, for the two kinds that are yes-or-no — a fingerprint can
+Touch ID sits in front of all of them, for the yes-or-no kinds — a fingerprint can
 say yes or no and nothing else, so `choose` and `ask_text` skip it. The policy is
 `BiometricsOrCompanion`, so a paired Apple Watch satisfies it when a hand is not free. It falls
 through to the dialog when biometrics are unavailable.
@@ -174,9 +190,9 @@ channels, and the layers above stay as they are.
   skips the channel when the app is not there.
 - The dialog stays on screen after the local timeout, because the elicitation and the osascript
   call are not cancelled when another channel wins. Answering a stale one does nothing.
-- The mac mini as requester: the broker holds the vault on the workstation and the secret crosses
-  the tailnet to the requesting machine. WireGuard covers the wire. Same-user isolation on the
-  far end is no better than it is here, which is to say weak, and no amount of protocol fixes it.
+- The mac mini as a native target: the broker holds the vault on the workstation and the secret
+  crosses an SSH connection over the tailnet to a fixed helper. Same-user isolation on the far
+  end is no better than it is here, which is to say weak, and no amount of protocol fixes it.
 - Sessions in `terminal-browser` are split across seven directories on this machine, so a login
   performed once does not necessarily survive. Unrelated to this protocol, but it is the reason a
   passkey-only site cannot fall back to "just stay logged in" yet.
