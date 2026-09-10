@@ -87,10 +87,14 @@ docs at the wrong moment.
 
 The broker tries channels in order and takes the first answer.
 
-1. **Elicitation.** MCP elicitation (Claude Code 2.1.76+) puts the question in front of whoever is
-   at the terminal. Waits a short, bounded time — elicitation blocks indefinitely by default, so
-   the timeout belongs here, not in the caller.
-2. **Matrix.** Posts to a room on the self-hosted Conduit and waits for a reply. Element on the
+1. **A dialog on the workstation.** Drawn by the broker with osascript, so it lands where the
+   human is rather than wherever the request came from — which matters, because the agent that
+   asked may be on the mac mini. It is also the only local channel that gets noticed: a question
+   inside a terminal is invisible unless you happen to be looking at that terminal.
+2. **Elicitation.** MCP elicitation (Claude Code 2.1.76+), as the fallback if osascript cannot
+   draw, and the nicer place to answer when you are looking at the terminal anyway. It blocks
+   indefinitely by default, so the timeout belongs here, not in the caller.
+3. **Matrix.** Posts to a room on the self-hosted Conduit and waits for a reply. Element on the
    phone is the client. Reaches the human anywhere.
 
 Channels are pluggable and ordered by config. Matrix is the remote channel today; a self-built
@@ -98,8 +102,10 @@ iOS/watchOS app talking to APNs directly is the intended replacement, because no
 actions from a native app are answerable from the watch itself, which mirrored third-party
 notifications are not. Nothing above this layer should need to change when that lands.
 
-Touch ID was meant to sit in front of both, for the two kinds that are yes-or-no. It is not
-wired: `LAContext.evaluatePolicy` fails on this machine. See "Open".
+Touch ID sits in front of all of them, for the two kinds that are yes-or-no — a fingerprint can
+say yes or no and nothing else, so `choose` and `ask_text` skip it. The policy is
+`BiometricsOrCompanion`, so a paired Apple Watch satisfies it when a hand is not free. It falls
+through to the dialog when biometrics are unavailable.
 
 ## What the human sees
 
@@ -147,28 +153,13 @@ channels, and the layers above stay as they are.
 
 ## Open
 
-- **Touch ID.** `LAContext.evaluatePolicy` returns `LAError.systemCancel` (-4) immediately on this
-  machine, drawing nothing, while `canEvaluatePolicy` returns true and `bioutil` reports biometrics
-  enrolled and effective. Tried and rejected: ad-hoc CLI, Developer ID signature with an embedded
-  `Info.plist`, `NSApplication` as an accessory, a real `.app` bundle, dropping the hardened
-  runtime, biometrics-only policy, and activating the process first. Same result under an agent's
-  shell and under the user's own terminal, so the calling context is not the difference.
-
-  What does work is `pam_tid`: `sudo` raises its prompt, including from a process with no TTY,
-  which is what a launchd agent has. So the gate could be `sudo -v` — at the cost of the two
-  things this protocol asks for. The dialog is sudo's own and cannot be made to say what is being
-  released or which machine asked, and `sudo -k` would clobber the user's own sudo timestamp on
-  every request. A gesture that cannot state what it is approving is not the approval this
-  document describes, so it stays unwired.
-
-  The helper (`helper/ask-approve.swift` in github.com/gapul/ask) is kept, unwired, along with
-  this note. Prime suspect for the `systemCancel` is the window manager taking the panel, which
-  would fit the focus problems already recorded elsewhere, but that is a guess and testing it
-  means stopping OmniWM.
-- Getting a Touch ID helper onto the machine declaratively, if that ever resolves. It cannot be
-  built through nix here — nixpkgs' swift will not link LocalAuthentication, the wall the Apple
-  Speech work documented — so it wants a CI build and a fetched release, the way lightpanda and
-  terminal-browser already work.
+- Getting the Touch ID helper onto the machine declaratively. It cannot be built through nix here
+  — nixpkgs' swift will not link LocalAuthentication, the wall the Apple Speech work documented —
+  so it wants a CI build and a fetched release, the way lightpanda and terminal-browser already
+  work. `helper/build.sh` in github.com/gapul/ask installs it by hand until then, and the broker
+  skips the channel when the app is not there.
+- The dialog stays on screen after the local timeout, because the elicitation and the osascript
+  call are not cancelled when another channel wins. Answering a stale one does nothing.
 - The mac mini as requester: the broker holds the vault on the workstation and the secret crosses
   the tailnet to the requesting machine. WireGuard covers the wire. Same-user isolation on the
   far end is no better than it is here, which is to say weak, and no amount of protocol fixes it.

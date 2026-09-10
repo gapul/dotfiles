@@ -72,6 +72,15 @@ def test_elicitation_results_map_to_answers():
     assert broker._schema_for("ask_text") is broker.FreeText
 
 
+def test_applescript_strings_are_escaped():
+    """The prompt carries a reason and a requester name that arrived over the wire, and it is
+    pasted into a script. Quotes and backslashes have to stop being quotes and backslashes."""
+    assert broker._as_applescript_string('say "hi"') == '"say \\"hi\\""'
+    assert broker._as_applescript_string("back\\slash") == '"back\\\\slash"'
+    # display dialog takes one line; a newline in the middle would end the literal.
+    assert "\n" not in broker._as_applescript_string("two\nlines")
+
+
 def test_tools_registered():
     names = {t.name for t in asyncio.run(broker.mcp.list_tools())}
     assert names == {"approve", "choose", "ask_text", "login_fill"}, names
