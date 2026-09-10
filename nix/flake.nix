@@ -74,6 +74,14 @@
       flake = false;
     };
 
+    # Formera's backend is built from current main so the local compatibility
+    # patch can be dropped as soon as upstream fixes its malformed rate-limit
+    # headers. The weekly lock update keeps this rolling with the other services.
+    formera-source = {
+      url = "github:FormeraApp/Formera";
+      flake = false;
+    };
+
     # Pre-built nix-index database shared by macOS, NixOS, WSL, and Linux HM.
     nix-index-database.url = "github:nix-community/nix-index-database";
     nix-index-database.inputs.nixpkgs.follows = "nixpkgs";
@@ -174,6 +182,7 @@
       flake-parts,
       brew-nix,
       nix-homebrew,
+      formera-source,
       ...
     }:
     let
@@ -299,7 +308,7 @@
         system = "x86_64-linux";
         # nixpkgs-nixos ごと nixos-unstable を追うようにしたので、個別に逃がす必要は無い
         # (2026-08-31)。searxng も tailscale もこの入力から最新が来る。
-        specialArgs = { inherit user; };
+        specialArgs = { inherit user formera-source; };
         modules = [
           # Same SSO overlay as the other hosts (carries e.g. tailscale's vendorHash fix).
           { nixpkgs.overlays = [ overlayFixes ]; }
