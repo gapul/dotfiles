@@ -12,11 +12,11 @@
 }:
 stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "puddle";
-  version = "2.25.0";
+  version = "2.26.0";
 
   src = fetchurl {
     url = "https://github.com/gapul/homebrew-puddle/releases/download/v${finalAttrs.version}/Puddle-${finalAttrs.version}.zip";
-    hash = "sha256-1F2pbkTPigc12cEivmsTc9KWnrOAq3IiDNiopmlqd2I=";
+    hash = "sha256-6qdmdTEF/4xeabwXSAmNbLvLJj9p9NAW5SY9j14a8Es=";
   };
 
   nativeBuildInputs = [ unzip ];
