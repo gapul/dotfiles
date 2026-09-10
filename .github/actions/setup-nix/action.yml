@@ -62,14 +62,26 @@ runs:
     # pull: 常時 (cachix use gapul-dotfiles を substituter に追加)。
     # push: authToken がある時だけ (fork PR は secret が無いので自動的に pull のみ)。
     # cachix: 'false' の時は pull も push もしない (cold-build 用)。
+    # cachix-action の既定は nix-env で入れて PATH 上の cachix を which で探す。自前ランナー
+    # (macmini) ではどちらも成り立たない: ユーザープロファイルが home-manager の作る新形式
+    # なので nix-env が "incompatible with 'nix-env'" で止まり、nix profile で入れ直しても
+    # その profile の bin は PATH に無いので `Error: not found: cachix` になる。hosted runner
+    # は ~/.nix-profile が PATH に載っているので踏まない。
+    #
+    # 先に入れて PATH を通しておき、action 側の導入は no-op にする。GITHUB_PATH は次の
+    # ステップから効くので、同じステップ内で which させるこの action には前段が要る。
+    - name: Install cachix
+      if: inputs.cachix == 'true'
+      shell: bash
+      run: |
+        nix profile add nixpkgs#cachix
+        echo "$HOME/.local/state/nix/profiles/profile/bin" >>"$GITHUB_PATH"
+
     - name: Enable cachix (gapul-dotfiles)
       if: inputs.cachix == 'true'
       uses: cachix/cachix-action@97e5ff84d02b3b4f9936339f767e17f03c9252ed # v16
       with:
         name: gapul-dotfiles
         authToken: ${{ inputs.cachix-token }}
-        # 既定の installCommand は nix-env で入れるが、自前ランナー (macmini) のユーザー
-        # プロファイルは home-manager が作る新形式なので nix-env が
-        # "profile ... is incompatible with 'nix-env'" で止まる。GitHub の hosted runner は
-        # プロファイルが空なので踏まない。nix profile なら両方で通る。
-        installCommand: nix profile install nixpkgs#cachix
+        # 上のステップで入れて PATH も通してあるので、ここでは何もしない。
+        installCommand: "true"
