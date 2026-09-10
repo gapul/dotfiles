@@ -27,7 +27,7 @@ in
         "--port"
         "10101"
         "--no-use_gpu"
-        "--disable-sentry"
+        "--disable_sentry"
       ];
       RunAtLoad = true;
       KeepAlive = true;
