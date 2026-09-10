@@ -14,7 +14,7 @@ examples:
   macmini-build --get target/release/myapp -- cargo build --release
   macmini-build --get build/app/outputs/flutter-apk/app-release.apk -- flutter build apk --release
   macmini-build --get build/app/outputs/flutter-apk/app-debug.apk -- bash -c \
-    'dart run build_runner build --delete-conflicting-outputs && flutter build apk --debug'
+    'flutter pub run build_runner build --delete-conflicting-outputs && flutter build apk --debug'
   macmini-build --get dist -- pnpm build
 EOF
   exit 2
