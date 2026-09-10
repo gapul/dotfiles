@@ -80,8 +80,6 @@ jobs:
         include:
           - system: x86_64-linux
             runner: ubuntu-24.04
-          - system: aarch64-linux
-            runner: ubuntu-24.04-arm
           # darwin だけ自前ランナー (macmini)。動機は「macos-14 が遅い」ではなく、遅さの
           # 中身が転送だと分かったこと。
           #

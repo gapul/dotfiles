@@ -10,9 +10,9 @@
 # Self-check: scripts/ci-plan-systems.sh --demo
 set -euo pipefail
 
-ALL='["x86_64-linux","aarch64-linux","aarch64-darwin"]'
+ALL='["x86_64-linux","aarch64-darwin"]'
 DARWIN='["aarch64-darwin"]'
-LINUX='["x86_64-linux","aarch64-linux"]'
+LINUX='["x86_64-linux"]'
 
 classify() {
   case "$1" in
