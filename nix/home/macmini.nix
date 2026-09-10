@@ -55,11 +55,11 @@ in
     # 初回だけ手で通す (下の launchd.agents.sunshine の注記を参照)。
     pkgs.sunshine
 
-    # ccm: default Claude Code launch form on the mac mini. Permission prompts are kept.
-    # Don't default --dangerously-skip-permissions even in non-interactive environments, because
-    # prompt injection from external content would directly become arbitrary command execution rights.
+    # ccm: default Claude Code launch form on the mac mini. This deliberately bypasses
+    # permission prompts, so only use it when the active session is trusted.
     (pkgs.writeShellScriptBin "ccm" ''
       exec "$HOME/.local/bin/claude" \
+        --dangerously-skip-permissions \
         --remote-control dotfiles \
         --continue \
         --add-dir "$HOME/.dotfiles" \
@@ -137,6 +137,8 @@ in
   # DO_NOT_TRACK remains the global default, but Remote Control requires feature-flag
   # evaluation, so remove it only from this process. Start from the user's home so the
   # remote session can operate across the macmini instead of being tied to one checkout.
+  # The remote-control subcommand expresses --dangerously-skip-permissions as the
+  # equivalent bypassPermissions mode for every spawned session.
   launchd.agents.claude-remote-control = {
     enable = true;
     config = {
@@ -149,7 +151,7 @@ in
             --name "macmini" \
             --spawn same-dir \
             --capacity 4 \
-            --permission-mode acceptEdits
+            --permission-mode bypassPermissions
         ''}"
       ];
       RunAtLoad = true;
