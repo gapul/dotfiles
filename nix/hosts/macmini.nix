@@ -600,6 +600,16 @@ in
     # Power Nap wakes the machine for background work it does not need to do; this one never
     # sleeps in the first place.
     /usr/bin/pmset -a powernap 0 >/dev/null 2>&1 || true
+    # 画面を消させない。ここは省電力の話ではなく、遠隔操作の前提。ディスプレイが寝ると
+    # スクリーンセーバ経由でロック画面に戻り、そこから先はパスワードを打てる人間が要る。
+    # (キャプチャは HDMI に繋いだ側で見ているので、消えると何も見えなくもなる)
+    /usr/bin/pmset -a displaysleep 0 >/dev/null 2>&1 || true
+    /usr/bin/sudo -u ${user.username} /usr/bin/defaults -currentHost write com.apple.screensaver idleTime -int 0 >/dev/null 2>&1 || true
+    # ロックそのものの有効/無効は sysadminctl -screenLock にあり、変更にアカウントの
+    # パスワードが要るので宣言できない。無効にしてあるが、OS の更新で戻ったら手で戻す:
+    #   ssh -t macmini 'sysadminctl -screenLock off -password -'
+    # 同じ理由で TCC の許可 (sshd-keygen-wrapper のアクセシビリティと画面収録) も
+    # ここには書けない。docs/macmini-remote.md を参照。
     # Wi-Fi off. The mini is wired (en0 is the default route) and was sitting on both networks at
     # once, which buys nothing and keeps the radio, its driver extension and wifianalyticsd busy.
     # If the cable ever dies this machine needs hands anyway — it is three metres away.
