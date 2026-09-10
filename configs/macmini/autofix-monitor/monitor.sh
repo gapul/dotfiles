@@ -80,7 +80,7 @@ echo "[$ts] anomaly: ${ANOMALY}→ claudeで精査" >> "$LOG"
 
 read -r -d '' PROMPT <<EOF || true
 あなたは自動修正パイプライン(GitHub issue → macmini 上の Claude Code → ブランチ → PR → CI → 自動マージ)の監視担当です。
-現在時刻: $ts。以下のスナップショットを評価し、システムが正常か判断してください。必要なら gh コマンドで追加調査して構いません。
+現在時刻: ${ts}。以下のスナップショットを評価し、システムが正常か判断してください。必要なら gh コマンドで追加調査して構いません。
 
 [runner] $RUNNER
 [claude-in-progress の issue] $INPROG
