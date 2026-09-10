@@ -228,6 +228,30 @@ in
     };
   };
 
+  # Orca's browser client needs a secure context (`crypto.randomUUID` is unavailable on
+  # plain HTTP). Keep a tailnet-only HTTPS/WSS reverse proxy in front of the desktop
+  # server so iPhone Safari can load the UI and its encrypted WebSocket transport.
+  launchd.agents.orca-tailscale-serve = {
+    enable = true;
+    config = {
+      ProgramArguments = [
+        "${pkgs.writeShellScript "orca-tailscale-serve" ''
+          tailscale=/opt/homebrew/bin/tailscale
+          if [ -x "$tailscale" ]; then
+            "$tailscale" serve --bg --https=443 http://127.0.0.1:6768
+          fi
+        ''}"
+      ];
+      RunAtLoad = true;
+      StartInterval = 300;
+      ProcessType = "Background";
+      LowPriorityIO = true;
+      Nice = 10;
+      StandardOutPath = "/tmp/orca-tailscale-serve.log";
+      StandardErrorPath = "/tmp/orca-tailscale-serve.log";
+    };
+  };
+
   # Hand-written agents the declarations above replace, plus one leftover that was already
   # disabled. Same shape as the workstation's retiredLaunchAgents list.
   home.activation.retiredMacminiAgents = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
