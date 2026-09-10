@@ -14,9 +14,18 @@ let
   # 実行時に呼ぶもの (node など) のため。
   mcpPath = lib.concatStringsSep ":" [
     "/run/current-system/sw/bin"
+    "${config.home.homeDirectory}/.local/state/nix/profile/bin"
     "/usr/bin"
     "/bin"
   ];
+
+  # Runtime for the ask broker. mcp is the official SDK (FastMCP lives inside it) and websockets
+  # is what talks CDP to the browser — values are typed over the wire rather than handed to a
+  # command, because `ps` shows another process's arguments to the same user.
+  askPython = pkgs.python3.withPackages (ps: [
+    ps.mcp
+    ps.websockets
+  ]);
 in
 {
   # Run resident as a Home Manager LaunchAgent instead of using Syncthing.app.
@@ -89,6 +98,38 @@ in
       ProcessType = "Background";
       StandardErrorPath = "/tmp/playwright-mcp-light.err";
       StandardOutPath = "/tmp/playwright-mcp-light.log";
+    };
+  };
+
+  # ask broker: holds the Bitwarden session, asks the human, and does the typing, so that a
+  # password never has to be pasted into a conversation with an agent. Protocol and reasoning in
+  # docs/ask-protocol.md; the iPhone and Watch client that answers away from the desk is in
+  # github.com/gapul/ask.
+  #
+  # Bound to 127.0.0.1 to start with. It is meant to listen on the tailnet as well, so an agent
+  # working on the mac mini reaches this same broker, but local-only is the right default until
+  # that is actually wanted — the thing holds a vault session.
+  #
+  # No sops secrets declared yet on purpose: the Bitwarden password and the Matrix token do not
+  # exist in secrets/darwin.yaml yet, and declaring a secret that is not there fails activation.
+  # The broker reads ~/.config/ask/broker.toml, which is hand-made from config.example.toml, and
+  # degrades rather than dying when neither is configured: elicitation still works, login_fill
+  # refuses. Move the config into sops.templates once the values are in.
+  launchd.agents.ask-broker = {
+    enable = true;
+    config = {
+      ProgramArguments = [
+        "${askPython}/bin/python3"
+        "${../../../configs/ask/ask_broker.py}"
+      ];
+      # bw and terminal-browser are both looked up at runtime rather than baked in, so they have
+      # to be on the agent's PATH; launchd starts with almost nothing.
+      EnvironmentVariables.PATH = mcpPath;
+      RunAtLoad = true;
+      KeepAlive = true;
+      ProcessType = "Background";
+      StandardErrorPath = "/tmp/ask-broker.err";
+      StandardOutPath = "/tmp/ask-broker.log";
     };
   };
 
