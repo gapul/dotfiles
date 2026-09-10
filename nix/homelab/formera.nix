@@ -72,7 +72,14 @@ in
       respond @anonymousUpload 404
 
       @backend path /api/* /health /health/* /uploads/*
-      reverse_proxy @backend 127.0.0.1:${toString backendPort}
+      reverse_proxy @backend 127.0.0.1:${toString backendPort} {
+        # Formera currently serializes these numeric headers as control bytes.
+        # The submission is stored, but Cloudflare rejects the malformed
+        # upstream response as 502. Rate limiting still happens in Formera; only
+        # its broken informational response headers are removed here.
+        header_down -X-Ratelimit-Limit
+        header_down -X-Ratelimit-Remaining
+      }
       reverse_proxy 127.0.0.1:${toString frontendPort}
     }
   '';
