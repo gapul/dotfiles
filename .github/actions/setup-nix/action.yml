@@ -68,3 +68,8 @@ runs:
       with:
         name: gapul-dotfiles
         authToken: ${{ inputs.cachix-token }}
+        # 既定の installCommand は nix-env で入れるが、自前ランナー (macmini) のユーザー
+        # プロファイルは home-manager が作る新形式なので nix-env が
+        # "profile ... is incompatible with 'nix-env'" で止まる。GitHub の hosted runner は
+        # プロファイルが空なので踏まない。nix profile なら両方で通る。
+        installCommand: nix profile install nixpkgs#cachix
