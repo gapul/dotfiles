@@ -63,7 +63,10 @@ let
       ];
       includeEmulator = false;
       includeSystemImages = false;
-      includeNDK = false;
+      # Flutter 3.41's Android plugins request this exact side-by-side NDK. A Nix SDK is
+      # read-only, so Gradle cannot lazily install it during the first APK build.
+      includeNDK = true;
+      ndkVersions = [ "28.2.13676358" ];
     }).androidsdk;
   jdk = pkgs.jdk21_headless;
 in
