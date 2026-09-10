@@ -29,6 +29,8 @@ let
   ]);
 in
 {
+  home.file.".local/bin/ask-native-fill".source = ../../../configs/ask/native_fill.py;
+
   # Run resident as a Home Manager LaunchAgent instead of using Syncthing.app.
   # Reuse the existing ~/Library/Application Support/Syncthing config and device ID as-is.
   services.syncthing = {

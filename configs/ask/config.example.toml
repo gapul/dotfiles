@@ -29,6 +29,16 @@ vault_password_file = "~/.config/ask/bw-password"
 
 audit_log = "~/.local/state/ask/audit.jsonl"
 
+# Native filling writes one currently focused text field and never presses Submit. The named
+# target can be local (no ssh_target) or a trusted Mac reached over SSH. Apps are constrained to
+# the credential domains they may receive.
+[native_targets.macmini]
+ssh_target = "gapul@100.105.135.49"
+identity_file = "~/.ssh/id_automation"
+
+[native_targets.macmini.apps]
+"com.adobe.acc.AdobeCreativeCloud" = ["adobe.com"]
+
 [matrix]
 homeserver = "https://gapul.net"
 room = "!yourroomid:gapul.net"
