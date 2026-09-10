@@ -87,10 +87,14 @@ docs at the wrong moment.
 
 The broker tries channels in order and takes the first answer.
 
-1. **Elicitation.** MCP elicitation (Claude Code 2.1.76+) puts the question in front of whoever is
-   at the terminal. Waits a short, bounded time — elicitation blocks indefinitely by default, so
-   the timeout belongs here, not in the caller.
-2. **Matrix.** Posts to a room on the self-hosted Conduit and waits for a reply. Element on the
+1. **A dialog on the workstation.** Drawn by the broker with osascript, so it lands where the
+   human is rather than wherever the request came from — which matters, because the agent that
+   asked may be on the mac mini. It is also the only local channel that gets noticed: a question
+   inside a terminal is invisible unless you happen to be looking at that terminal.
+2. **Elicitation.** MCP elicitation (Claude Code 2.1.76+), as the fallback if osascript cannot
+   draw, and the nicer place to answer when you are looking at the terminal anyway. It blocks
+   indefinitely by default, so the timeout belongs here, not in the caller.
+3. **Matrix.** Posts to a room on the self-hosted Conduit and waits for a reply. Element on the
    phone is the client. Reaches the human anywhere.
 
 Channels are pluggable and ordered by config. Matrix is the remote channel today; a self-built
@@ -98,8 +102,8 @@ iOS/watchOS app talking to APNs directly is the intended replacement, because no
 actions from a native app are answerable from the watch itself, which mirrored third-party
 notifications are not. Nothing above this layer should need to change when that lands.
 
-Touch ID was meant to sit in front of both, for the two kinds that are yes-or-no. It is not
-wired: `LAContext.evaluatePolicy` fails on this machine. See "Open".
+Touch ID was meant to sit in front of all of them, for the two kinds that are yes-or-no. It is
+not wired, and after three attempts it looks unreachable rather than unfinished. See "Open".
 
 ## What the human sees
 
@@ -160,6 +164,17 @@ channels, and the layers above stay as they are.
   released or which machine asked, and `sudo -k` would clobber the user's own sudo timestamp on
   every request. A gesture that cannot state what it is approving is not the approval this
   document describes, so it stays unwired.
+
+  Two further routes were tried and are also closed. `do shell script ... with administrator
+  privileges with prompt` takes a custom message but offers only a password field, no biometrics.
+  `sudo` does raise a Touch ID prompt, including from a process with no TTY, but its dialog is
+  sudo's own and cannot say what is being released or which machine asked.
+
+  So the three properties wanted here — a fingerprint, a custom message, and a background process
+  — are available in pairs and never all three. The system dialog gives up the fingerprint and
+  keeps the other two, which is the right trade: a gesture that cannot state what it approves is
+  not an approval. A two-step variant (read the dialog, then touch for `sudo -v`) would recover
+  the fingerprint at the cost of a third action, and could be a setting if it is ever wanted.
 
   The helper (`helper/ask-approve.swift` in github.com/gapul/ask) is kept, unwired, along with
   this note. Prime suspect for the `systemCancel` is the window manager taking the panel, which

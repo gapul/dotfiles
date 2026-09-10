@@ -314,6 +314,73 @@ def _schema_for(kind: str) -> type[BaseModel]:
     return FreeText
 
 
+def _as_applescript_string(text: str) -> str:
+    """AppleScript string literal. The prompt carries a requester name and a reason that came in
+    over the wire, so it is not something to paste into a script unescaped."""
+    escaped = text.replace("\\", "\\\\").replace('"', '\\"').replace("\n", " ")
+    return f'"{escaped}"'
+
+
+async def system_dialog(request: Request, prompt: str) -> str | None:
+    """A real macOS dialog, drawn on the workstation.
+
+    This is the channel that gets noticed. Elicitation puts the question inside the terminal that
+    asked, which is invisible if you are not looking at that terminal — and if the agent is on the
+    mac mini, that terminal may not even be on this desk. The dialog is drawn by the broker, so it
+    lands where the human is regardless of who asked.
+
+    Unlike LocalAuthentication, which this machine refuses to present at all, osascript dialogs
+    come up fine from a launchd agent.
+    """
+    title = _as_applescript_string("Ask")
+    body = _as_applescript_string(prompt)
+    timeout = CONFIG.local_timeout_seconds
+
+    if request.kind == "choose" and request.options:
+        options = ", ".join(_as_applescript_string(o) for o in request.options)
+        script = (
+            f"tell application \"System Events\"\n activate\n"
+            f" set picked to choose from list {{{options}}} with title {title}"
+            f" with prompt {body}\n"
+            f" if picked is false then return \"\"\n return item 1 of picked\nend tell"
+        )
+    elif request.kind == "ask_text":
+        script = (
+            f"tell application \"System Events\"\n activate\n"
+            f" set r to display dialog {body} default answer \"\" with title {title}"
+            f" giving up after {timeout}\n"
+            f" if gave up of r then return \"\"\n return text returned of r\nend tell"
+        )
+    else:
+        script = (
+            f"tell application \"System Events\"\n activate\n"
+            f" set r to display dialog {body} buttons {{\"Deny\", \"Approve\"}}"
+            f" default button \"Approve\" with title {title} with icon caution"
+            f" giving up after {timeout}\n"
+            f" if gave up of r then return \"\"\n return button returned of r\nend tell"
+        )
+
+    proc = await asyncio.create_subprocess_exec(
+        "/usr/bin/osascript", "-e", script,
+        stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+    )
+    try:
+        out, _ = await asyncio.wait_for(proc.communicate(), timeout=timeout + 10)
+    except asyncio.TimeoutError:
+        proc.kill()
+        await proc.wait()
+        return None
+    if proc.returncode != 0:
+        return None
+
+    answer = out.decode().strip()
+    if not answer:
+        return None  # gave up or cancelled: not an answer, so let the phone have it
+    if request.kind in ("approve", "login_fill"):
+        return "yes" if answer == "Approve" else "no"
+    return answer
+
+
 async def ask_human(ctx: Context, request: Request) -> str | None:
     """Local first, then the phone. Returns the raw answer, or None if nobody answered.
 
@@ -324,6 +391,13 @@ async def ask_human(ctx: Context, request: Request) -> str | None:
 
     prompt = f"{request.prompt}\n(from {request.requester})"
 
+    answered = await system_dialog(request, prompt)
+    if answered is not None:
+        audit("answered", id=request.id, via="dialog")
+        return answered
+
+    # Elicitation stays as the fallback: it is what works if osascript ever cannot draw, and it is
+    # the nicer place to answer when you happen to be looking at the terminal anyway.
     try:
         result = await asyncio.wait_for(
             ctx.elicit(message=prompt, schema=_schema_for(request.kind)),
