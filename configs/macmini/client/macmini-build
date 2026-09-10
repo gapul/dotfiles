@@ -1,0 +1,72 @@
+#!/bin/bash
+# shellcheck disable=SC2029 # Arguments are intentionally encoded and expanded before ssh.
+# Build the current, pushed Git commit on the Mac mini without mutating its ~/Developer checkouts.
+set -euo pipefail
+
+usage() {
+  cat >&2 <<'EOF'
+usage: macmini-build [--profile auto|plain|flake|ladybird|servo]
+                     [--get RELATIVE_PATH] [--output LOCAL_PATH] -- COMMAND [ARG...]
+
+examples:
+  macmini-build -- cargo build --release
+  macmini-build --profile servo -- ./mach build --release --media-stack dummy
+  macmini-build --get target/release/myapp -- cargo build --release
+EOF
+  exit 2
+}
+encode() { printf '%s' "$1" | /usr/bin/base64 | tr -d '\n'; }
+
+profile=auto
+get_path=
+local_output=
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --profile) [ "$#" -ge 2 ] || usage; profile=$2; shift 2 ;;
+    --get) [ "$#" -ge 2 ] || usage; get_path=$2; shift 2 ;;
+    --output) [ "$#" -ge 2 ] || usage; local_output=$2; shift 2 ;;
+    --) shift; break ;;
+    -h|--help) usage ;;
+    *) usage ;;
+  esac
+done
+[ "$#" -gt 0 ] || usage
+case "$profile" in auto|plain|flake|ladybird|servo) ;; *) usage ;; esac
+
+repo=$(git rev-parse --show-toplevel 2>/dev/null) || {
+  echo "macmini-build: run this inside a Git repository" >&2
+  exit 2
+}
+if [ -n "$(git -C "$repo" status --porcelain)" ]; then
+  echo "macmini-build: the worktree is dirty; commit and push the exact source to build" >&2
+  exit 2
+fi
+upstream=$(git -C "$repo" rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null) || {
+  echo "macmini-build: the current branch has no upstream; push it first" >&2
+  exit 2
+}
+commit=$(git -C "$repo" rev-parse HEAD)
+if ! git -C "$repo" merge-base --is-ancestor "$commit" "$upstream"; then
+  echo "macmini-build: HEAD is not pushed to $upstream" >&2
+  exit 2
+fi
+url=$(git -C "$repo" remote get-url origin)
+key=$(printf '%s' "$url" | shasum -a 256 | cut -c1-16)
+
+encoded_args=()
+for arg in "$@"; do encoded_args+=("$(encode "$arg")"); done
+echo "[send] ${repo##*/}@${commit:0:12} -> macmini"
+ssh macmini ~/.local/bin/macmini-compile-worker \
+  "$key" "$(encode "$url")" "$commit" "$profile" "${encoded_args[@]}"
+
+if [ -n "$get_path" ]; then
+  case "$get_path" in /*|../*|*/../*|*/..) echo "macmini-build: unsafe --get path" >&2; exit 2 ;; esac
+  [[ "$get_path" =~ ^[A-Za-z0-9_./-]+$ ]] || {
+    echo "macmini-build: --get is limited to portable path characters" >&2
+    exit 2
+  }
+  [ -n "$local_output" ] || local_output="./$(basename "$get_path")"
+  remote="$HOME/.local/state/macmini-build/repos/$key/$get_path"
+  echo "[get ] $get_path -> $local_output"
+  rsync -a "macmini:$remote" "$local_output"
+fi

@@ -25,6 +25,8 @@ in
     map client [
       "ask"
       "describe"
+      "macmini-build"
+      "macmini-render"
       "ocr"
       "separate"
       "transcribe"

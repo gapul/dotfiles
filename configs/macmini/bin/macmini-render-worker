@@ -1,0 +1,39 @@
+#!/bin/bash
+# Server half of macmini-render. All input and output lives in one disposable /tmp job directory.
+set -euo pipefail
+
+decode() { printf '%s' "$1" | /usr/bin/base64 -D; }
+die() { echo "macmini-render-worker: $*" >&2; exit 2; }
+
+[ "$#" -ge 2 ] || die "invalid request"
+kind=$1
+job=$2
+shift 2
+[[ "$job" =~ ^[a-z0-9_-]+$ ]] || die "invalid job id"
+root="/tmp/macmini-render-$job"
+[ -d "$root" ] && [ ! -L "$root" ] || die "job directory is missing"
+mkdir -p "$root/out"
+
+case "$kind" in
+  ffmpeg)
+    [ "$#" -ge 2 ] || die "ffmpeg requires input and output names"
+    input=$(decode "$1")
+    output=$(decode "$2")
+    shift 2
+    [[ "$input" =~ ^[A-Za-z0-9_.-]+$ ]] || die "invalid input name"
+    [[ "$output" =~ ^[A-Za-z0-9_.-]+$ ]] || die "invalid output name"
+    options=()
+    for encoded in "$@"; do options+=("$(decode "$encoded")"); done
+    exec ffmpeg -hide_banner -y -i "$root/$input" "${options[@]}" "$root/out/$output"
+    ;;
+  blender)
+    [ "$#" -eq 2 ] || die "blender requires an input name and frame"
+    input=$(decode "$1")
+    frame=$2
+    [[ "$input" =~ ^[A-Za-z0-9_.-]+$ ]] || die "invalid input name"
+    [[ "$frame" =~ ^[0-9]+$ ]] || die "invalid frame"
+    exec /Applications/Blender.app/Contents/MacOS/Blender \
+      -b "$root/$input" -o "$root/out/render_" -f "$frame"
+    ;;
+  *) die "unknown renderer: $kind" ;;
+esac

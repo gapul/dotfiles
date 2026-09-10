@@ -25,6 +25,20 @@ stay with the machine that owns the workload.
 - Do not automatically mirror `mvrx-nolang-dev`. Access its assets over SSH and copy only the
   small result needed for local review.
 
+## Remote build and render
+
+- `macmini-build -- COMMAND ...` builds the current clean, pushed Git commit in a disposable
+  Mac mini checkout. A repository flake is used automatically; Ladybird and Servo use the
+  dedicated toolchain shells. `--get RELATIVE_PATH` copies a selected artifact back.
+- `macmini-render ffmpeg INPUT OUTPUT -- OPTIONS...` transcodes on the Mac mini and returns the
+  output file. `macmini-render blender PACKED_SCENE.blend OUTPUT_DIR [FRAME]` renders a packed
+  Blender scene and returns the rendered files.
+- Build checkouts and render uploads are execution caches, not primary data. Render uploads are
+  deleted after each job; inactive build checkouts are deleted by the weekly storage cleanup
+  after 30 days.
+- Signing, Simulator/device tests and GUI editing remain on the MacBook. NoLang repositories and
+  their VRM assets continue to build and render on `mvrx-nolang-dev`, not on the personal Mac mini.
+
 ## VRM assets
 
 The primary NoLang VRM collection is `mvrx-nolang-dev:~/Sync/MacBook-Mini/vrm-assets`. The old

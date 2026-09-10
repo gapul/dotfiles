@@ -70,6 +70,16 @@ let
       done
     fi
 
+    # macmini-build owns these clones, so an unused one is entirely reproducible. Active
+    # repositories keep their ignored compiler caches for incremental builds.
+    build_repos="${home}/.local/state/macmini-build/repos"
+    if [ -d "$build_repos" ]; then
+      for path in "$build_repos"/*; do
+        [ -e "$path" ] || continue
+        prune_tree_if_stale "$path"
+      done
+    fi
+
     after=$(/bin/df -k / | /usr/bin/awk 'NR == 2 { print $4 }')
     freed=$((after - before))
     echo "free space change: $((freed / 1024)) MiB"

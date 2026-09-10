@@ -1,0 +1,77 @@
+#!/bin/bash
+# shellcheck disable=SC2029 # Job IDs and base64 arguments are expanded locally before ssh.
+# Send a render/transcode to the Mac mini and bring back only the result.
+set -euo pipefail
+
+usage() {
+  cat >&2 <<'EOF'
+usage:
+  macmini-render ffmpeg INPUT OUTPUT [-- FFMPEG_OUTPUT_OPTIONS...]
+  macmini-render blender PACKED_SCENE.blend OUTPUT_DIR [FRAME]
+
+examples:
+  macmini-render ffmpeg source.mov output.mp4 -- -c:v hevc_videotoolbox -tag:v hvc1 -c:a aac
+  macmini-render blender scene.blend ./rendered 1
+
+Blender scenes must pack external assets (File > External Data > Pack Resources).
+EOF
+  exit 2
+}
+encode() { printf '%s' "$1" | /usr/bin/base64 | tr -d '\n'; }
+retry() {
+  local attempt
+  for attempt in 1 2 3; do
+    "$@" && return 0
+    [ "$attempt" = 3 ] || sleep 2
+  done
+  return 1
+}
+
+[ "$#" -ge 1 ] || usage
+kind=$1
+shift
+job="$(date +%s)-$$"
+remote="/tmp/macmini-render-$job"
+cleanup() { ssh macmini "/usr/bin/find '$remote' -depth -delete" >/dev/null 2>&1 || true; }
+trap cleanup EXIT INT TERM
+
+case "$kind" in
+  ffmpeg)
+    [ "$#" -ge 2 ] || usage
+    input=$1
+    output=$2
+    shift 2
+    [ "${1:-}" != -- ] || shift
+    [ -f "$input" ] || { echo "macmini-render: input not found: $input" >&2; exit 2; }
+    input_name="input.${input##*.}"
+    output_name="output.${output##*.}"
+    retry ssh macmini "/bin/mkdir -p '$remote'"
+    retry scp -q "$input" "macmini:$remote/$input_name"
+    options=()
+    for arg in "$@"; do options+=("$(encode "$arg")"); done
+    echo "[render] ffmpeg on macmini"
+    ssh macmini ~/.local/bin/macmini-render-worker ffmpeg "$job" \
+      "$(encode "$input_name")" "$(encode "$output_name")" "${options[@]}"
+    mkdir -p "$(dirname "$output")"
+    retry scp -q "macmini:$remote/out/$output_name" "$output"
+    echo "[done] $output"
+    ;;
+  blender)
+    [ "$#" -ge 2 ] && [ "$#" -le 3 ] || usage
+    input=$1
+    output_dir=$2
+    frame=${3:-1}
+    [ -f "$input" ] || { echo "macmini-render: scene not found: $input" >&2; exit 2; }
+    [[ "$frame" =~ ^[0-9]+$ ]] || usage
+    input_name="scene.blend"
+    retry ssh macmini "/bin/mkdir -p '$remote'"
+    retry scp -q "$input" "macmini:$remote/$input_name"
+    echo "[render] Blender frame $frame on macmini"
+    ssh macmini ~/.local/bin/macmini-render-worker blender "$job" \
+      "$(encode "$input_name")" "$frame"
+    mkdir -p "$output_dir"
+    retry rsync -a "macmini:$remote/out/" "$output_dir/"
+    echo "[done] $output_dir"
+    ;;
+  *) usage ;;
+esac
