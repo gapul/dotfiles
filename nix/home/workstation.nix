@@ -63,8 +63,8 @@ in
       # rust: rustc+cargo instead of rustup (pinned, declarative). Use rustup if you need nightly/toolchain switching
       rustc # Rust compiler
       cargo # Rust build/package management
-      docker-compose # container compose (points at the podman socket)
-      podman # containers (the machine VM is maintained separately)
+      # Container runtimes belong on the server hosts.  This workstation keeps
+      # only client/dev tooling and delegates container workloads to them.
       fontforge # font editing CLI (GUI is the fontforge-app cask)
       python3Packages.fonttools # font manipulation lib/CLI
       stockfish # chess engine, spoken to over UCI (the Puddle chess wallpaper's opponent)

@@ -293,6 +293,8 @@
           ./home/macmini-imessage.nix
           # 重いレンダリング。母艦を占有せずに済ませるため。
           ./home/macmini-render.nix
+          # 音声モデルと合成処理。クライアントは tailnet 越しの API を使う。
+          ./home/macmini-aivisspeech.nix
         ];
         wsl = linuxBase ++ [ ./home/wsl.nix ] ++ secrets ++ station;
         linuxServer = linuxBase ++ secrets ++ station;
