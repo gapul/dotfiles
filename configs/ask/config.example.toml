@@ -19,6 +19,10 @@ remote_timeout_seconds = 600
 # sops-managed, mode 0400.
 vault_password_file = "~/.config/ask/bw-password"
 
+# Required as soon as host is anything but loopback: the broker refuses to start on a reachable
+# address without one. sops-managed, mode 0400.
+#token_file = "~/.config/ask/token"
+
 audit_log = "~/.local/state/ask/audit.jsonl"
 
 [matrix]

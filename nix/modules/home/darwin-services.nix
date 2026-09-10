@@ -25,6 +25,7 @@ let
   askPython = pkgs.python3.withPackages (ps: [
     ps.mcp
     ps.websockets
+    ps.uvicorn
   ]);
 in
 {
