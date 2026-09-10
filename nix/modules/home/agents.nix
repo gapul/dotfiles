@@ -6,6 +6,7 @@
 }:
 let
   rosePineTmThemes = import ../../lib/rose-pine-tm-theme.nix { inherit pkgs; };
+  agentStateRepo = "${config.home.homeDirectory}/Developer/github.com/gapul/ai-agent-state";
 in
 {
   home.sessionVariables = {
@@ -18,7 +19,9 @@ in
   # auth/history/skills/plugins go to CODEX_HOME, SQLite is separated into CODEX_SQLITE_HOME.
   # Use an out-of-store symlink so settings updated from the TUI are reflected back into the repo.
   xdg.dataFile."codex/config.toml".source =
-    config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.dotfiles/configs/cli/codex/config.toml";
+    config.lib.file.mkOutOfStoreSymlink "${agentStateRepo}/codex/config.toml";
+  xdg.dataFile."codex/AGENTS.md".source =
+    config.lib.file.mkOutOfStoreSymlink "${agentStateRepo}/AGENTS.md";
   xdg.dataFile."codex/themes/rose-pine.tmTheme".source = "${rosePineTmThemes}/dist/rose-pine.tmTheme";
   xdg.dataFile."codex/themes/rose-pine-dawn.tmTheme".source =
     "${rosePineTmThemes}/dist/rose-pine-dawn.tmTheme";
