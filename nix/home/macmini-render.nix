@@ -96,6 +96,7 @@ in
     pkg-config
     gnumake
     bun
+    go
 
     # Mobile/WebAssembly builds. Signing, Simulator and physical-device deployment still happen
     # on the workstation; the mini produces unsigned archives/APKs and other deterministic output.

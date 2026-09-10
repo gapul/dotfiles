@@ -63,8 +63,10 @@ in
         "${dataDir}/config.yaml"
       ];
       WorkingDirectory = dataDir;
-      RunAtLoad = true;
-      KeepAlive = true;
+      # The bridge config is generated during its one-time Matrix registration. Until that
+      # exists, do not crash-loop every ten seconds; launchd watches the path and starts the
+      # bridge as soon as registration has created it.
+      KeepAlive.PathState."${dataDir}/config.yaml" = true;
       StandardOutPath = "${dataDir}/bridge.log";
       StandardErrorPath = "${dataDir}/bridge.log";
     };
