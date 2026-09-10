@@ -102,8 +102,6 @@ in
   # (osascript notifications, herdr) — move this to modules/home/agents.nix to share it.
   xdg.configFile = {
     "claude/settings.json".source = claudeConfig "settings.json";
-    "claude/CLAUDE.md".source = claudeConfig "CLAUDE.md";
-    "claude/AGENTS.md".source = config.lib.file.mkOutOfStoreSymlink "${agentStateRepo}/AGENTS.md";
     "claude/hooks".source = claudeConfig "hooks";
     "claude/output-styles".source = claudeConfig "output-styles";
     "claude/bin".source = claudeConfig "bin";
