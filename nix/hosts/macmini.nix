@@ -292,7 +292,14 @@ in
       "tailscale"
     ];
     casks = [
-      "stablyai/orca/orca" # bundled CLI runs the persistent Remote Orca Server below
+      {
+        name = "stablyai/orca/orca";
+        args = {
+          # This is a signed and notarized build, but quarantine makes the headless CLI wait
+          # indefinitely in dyld while syspolicyd's online check times out on this host.
+          no_quarantine = true;
+        };
+      } # bundled CLI runs the persistent Remote Orca Server below
       # (RustDesk was here for remote GUI. It never got its unattended access or its Screen
       #  Recording grant, so it had never once been used, while macOS Screen Sharing on :5900
       #  already covers the same job over the tailnet with nothing to install.)
