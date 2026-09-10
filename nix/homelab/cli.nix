@@ -25,6 +25,8 @@ in
   environment.etc."homelab/ytdl-sub-config.yaml".source = ../../configs/homelab/ytdl-sub-config.yaml;
   environment.etc."homelab/ytdl-sub-subscriptions.yaml".source =
     ../../configs/homelab/ytdl-sub-subscriptions.yaml;
+  environment.etc."homelab/formera/example-form.json".source =
+    ../../configs/homelab/formera/example-form.json;
 
   systemd.services.api-contract-check = {
     description = "Check that supported application APIs still exist";

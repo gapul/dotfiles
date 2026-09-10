@@ -98,6 +98,11 @@
         description: 割り勘
         icon: mdi-cash-multiple
         siteMonitor: http://127.0.0.1:8090
+    - Formera:
+        href: https://forms.gapul.net
+        description: フォーム作成・回答収集
+        icon: mdi-form-select
+        siteMonitor: http://127.0.0.1:8102
     - Forgejo:
         href: https://git.gapul.net
         description: Git ホスティング

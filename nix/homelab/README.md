@@ -26,6 +26,7 @@ name that matters now.
 | file | keys |
 | --- | --- |
 | `archivebox.env` | `ADMIN_PASSWORD` |
+| `formera.env` | `JWT_SECRET`, at least 32 random characters. The administrator login belongs in Bitwarden and `homelab-cli.env`, not this application env file |
 | `authelia/jwt`, `authelia/session`, `authelia/storage-encryption` | one raw line from `openssl rand -hex 32` each, not an `.env`. Lose `storage-encryption` and the TOTP secrets in the database cannot be decrypted, so everyone re-enrols |
 | `authelia/users.yml` | Authelia's user file: `users: { <name>: { disabled: false, displayname: ..., password: "<argon2id hash>", email: ..., groups: [admins] } }`. Generate the hash with `nix run nixpkgs#authelia -- crypto hash generate argon2`. Never a plaintext password. **This is the one file whose ownership and permissions differ.** jwt, session and storage-encryption are read by systemd's LoadCredential as root, so 0400 root is fine, but users.yml is opened by the authelia process itself and has to be `root:authelia-main` 0440, with its directory `/var/lib/secrets/authelia` at 0750 root:authelia-main. Left at 0400 root it loops on startup with `stat ...: permission denied`, which was hit on 2026-09-02 |
 | `attic.env` | `ATTIC_SERVER_TOKEN_HS256_SECRET_BASE64`, `POSTGRES_PASSWORD` |

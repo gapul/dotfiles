@@ -70,7 +70,7 @@ fi
 DUMPS="$WORK/var/lib/db-dumps"
 for f in dawarich.dump miniflux.dump matrix-synapse.dump atuin.dump rallly.dump \
   spliit.dump romm.sql paperless.sql readeck.db forgejo.db navidrome.db \
-  vaultwarden.db pingvin-share.db calnode.db jellyfin.db bambuddy.db \
+  vaultwarden.db pingvin-share.db formera.db calnode.db jellyfin.db bambuddy.db \
   ntfy-user.db ntfy-cache.db home-assistant.db archivebox.db \
   matrix-discord.db matrix-telegram.db matrix-twitter.db matrix-meta.db \
   filestash-workflow.db filestash-metadata.db filestash-share.db; do
@@ -194,7 +194,7 @@ if [ -s "$DUMPS/readeck.db" ]; then
   fi
 fi
 
-for db in forgejo navidrome vaultwarden pingvin-share calnode jellyfin bambuddy \
+for db in forgejo navidrome vaultwarden pingvin-share formera calnode jellyfin bambuddy \
   ntfy-user ntfy-cache home-assistant archivebox matrix-discord matrix-telegram \
   matrix-twitter matrix-meta filestash-workflow filestash-metadata filestash-share; do
   file="$DUMPS/$db.db"

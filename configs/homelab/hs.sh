@@ -20,6 +20,7 @@ Usage:
   hs exec APP COMMAND [ARG...]
   hs api APP METHOD PATH [JSON]
   hs openapi APP
+  hs forms list|get|create|update|delete|responses|export [ARG...]
   hs share create SHARE_ID EXPIRATION FILE [FILE...]
   hs ytdl check|run|inspect [MATCH]
   hs navidrome COMMAND [ARG...]
@@ -33,6 +34,8 @@ HS_<APP>_TOKEN (hyphens become underscores). Most use Bearer auth;
 Miniflux, Paperless, and Bambuddy get their native header automatically.
 Pingvin Share can instead use HS_PINGVIN_SHARE_EMAIL and
 HS_PINGVIN_SHARE_PASSWORD; hs obtains a short-lived cookie automatically.
+Formera uses HS_FORMERA_EMAIL and HS_FORMERA_PASSWORD to obtain a short-lived
+bearer token; the token itself is never stored.
 EOF
 }
 
@@ -51,6 +54,7 @@ base_url() {
     calnode) echo http://127.0.0.1:8086 ;;
     dawarich) echo http://127.0.0.1:3005 ;;
     filestash) echo http://127.0.0.1:8099 ;;
+    formera) echo http://127.0.0.1:8100 ;;
     forgejo) echo http://127.0.0.1:3003 ;;
     gameyfin) echo http://127.0.0.1:8092 ;;
     homeassistant) echo http://127.0.0.1:8123 ;;
@@ -70,6 +74,20 @@ base_url() {
     vaultwarden) echo http://127.0.0.1:8080 ;;
     *) echo "no API URL registered for: $1" >&2; exit 2 ;;
   esac
+}
+
+formera_token() {
+  local login_body
+  [[ -n "${HS_FORMERA_EMAIL:-}" && -n "${HS_FORMERA_PASSWORD:-}" ]] || {
+    echo "HS_FORMERA_EMAIL and HS_FORMERA_PASSWORD are required" >&2
+    return 1
+  }
+  login_body="$(jq -nc \
+    --arg email "$HS_FORMERA_EMAIL" \
+    --arg password "$HS_FORMERA_PASSWORD" \
+    '{email: $email, password: $password}')"
+  curl -fsS -H "Content-Type: application/json" --data-binary "$login_body" \
+    "$(base_url formera)/api/auth/login" | jq -er .token
 }
 
 api_token() {
@@ -120,6 +138,9 @@ api() {
   if [[ "$app" == pingvin-share && -z "$token" && -z "$cookie" && \
     -n "${HS_PINGVIN_SHARE_EMAIL:-}" && -n "${HS_PINGVIN_SHARE_PASSWORD:-}" ]]; then
     args+=(-H "Cookie: $(pingvin_cookie)")
+  fi
+  if [[ "$app" == formera && -z "$token" ]]; then
+    args+=(-H "Authorization: Bearer $(formera_token)")
   fi
   if [[ -n "$body" ]]; then
     jq -e . <<<"$body" >/dev/null
@@ -182,6 +203,60 @@ pingvin_share_create() {
   printf 'https://send.gapul.net/share/%s\n' "$share_id"
 }
 
+formera_export() {
+  local form_id="$1" format="$2" output="${3:--}" token
+  [[ "$format" == csv || "$format" == json ]] || {
+    echo "export format must be csv or json" >&2
+    return 2
+  }
+  token="$(formera_token)"
+  if [[ "$output" == - ]]; then
+    curl -fsS -H "Authorization: Bearer $token" \
+      "$(base_url formera)/api/forms/$form_id/export/$format"
+  else
+    curl -fsS -H "Authorization: Bearer $token" -o "$output" \
+      "$(base_url formera)/api/forms/$form_id/export/$format"
+    printf '%s\n' "$output"
+  fi
+}
+
+formera_forms() {
+  local action="${1:-}" form_id file format output body
+  shift || true
+  case "$action" in
+    list) api formera GET '/api/forms?page_size=100' ;;
+    get)
+      form_id="${1:-}"; [[ -n "$form_id" ]] || { usage >&2; return 2; }
+      api formera GET "/api/forms/$form_id"
+      ;;
+    create)
+      file="${1:-}"; [[ -f "$file" ]] || { echo "not a JSON file: $file" >&2; return 2; }
+      body="$(jq -c . "$file")"
+      api formera POST /api/forms "$body"
+      ;;
+    update)
+      form_id="${1:-}"; file="${2:-}"
+      [[ -n "$form_id" && -f "$file" ]] || { usage >&2; return 2; }
+      body="$(jq -c . "$file")"
+      api formera PUT "/api/forms/$form_id" "$body"
+      ;;
+    delete)
+      form_id="${1:-}"; [[ -n "$form_id" ]] || { usage >&2; return 2; }
+      api formera DELETE "/api/forms/$form_id"
+      ;;
+    responses)
+      form_id="${1:-}"; [[ -n "$form_id" ]] || { usage >&2; return 2; }
+      api formera GET "/api/forms/$form_id/submissions?page_size=100"
+      ;;
+    export)
+      form_id="${1:-}"; format="${2:-}"; output="${3:--}"
+      [[ -n "$form_id" && -n "$format" ]] || { usage >&2; return 2; }
+      formera_export "$form_id" "$format" "$output"
+      ;;
+    *) usage >&2; return 2 ;;
+  esac
+}
+
 restic_cmd() {
   RESTIC_REPOSITORY=rclone:google-drive:restic-backup \
     RESTIC_PASSWORD_FILE=/var/lib/secrets/restic.password \
@@ -238,6 +313,7 @@ case "$command" in
     app="${1:-}"
     case "$app" in
       bambuddy|romm) api "$app" GET /openapi.json ;;
+      formera) curl -fsS "$(base_url formera)/swagger/doc.json" | jq -C . ;;
       # Rallly publishes the private schema even on self-hosted installations.
       # API-key creation is intentionally not bypassed here when upstream's
       # licence/feature gate disables it.
@@ -245,6 +321,7 @@ case "$command" in
       *) echo "OpenAPI location is not registered for: $app" >&2; exit 2 ;;
     esac
     ;;
+  forms) formera_forms "$@" ;;
   share)
     action="${1:-}"
     shift || true

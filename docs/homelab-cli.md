@@ -18,6 +18,10 @@ hs unit restart syncthing
 
 hs api romm GET /openapi.json
 hs openapi bambuddy
+hs forms list
+hs forms create ./event-registration.json
+hs forms responses FORM_ID
+hs forms export FORM_ID csv ./responses.csv
 hs share create exhibition-files never /path/to/vertical.mp4 /path/to/horizontal.mp4
 hs ytdl check
 hs backup snapshots
@@ -33,6 +37,8 @@ HS_MINIFLUX_TOKEN=...
 HS_PAPERLESS_TOKEN=...
 HS_ROMM_TOKEN=...
 HS_HOMEASSISTANT_TOKEN=...
+HS_FORMERA_EMAIL=...
+HS_FORMERA_PASSWORD=...
 
 # For Pingvin Share X, which only offers cookie authentication.
 # These are exchanged for a short-lived cookie at run time.
@@ -47,7 +53,7 @@ HS_SOME_APP_COOKIE='session=...'
 
 | Kind | Services | Route from code or the CLI |
 |---|---|---|
-| Standard REST or OpenAPI | Bambuddy, Dawarich, Home Assistant, Jellyfin, Miniflux, Paperless, Readeck, RomM, Syncthing | `hs api`, and each service's OpenAPI or REST API |
+| Standard REST or OpenAPI | Bambuddy, Dawarich, Formera, Home Assistant, Jellyfin, Miniflux, Paperless, Readeck, RomM, Syncthing | `hs api`, `hs forms`, and each service's OpenAPI or REST API |
 | Standard protocols | Anki, Attic, CouchDB, Forgejo, Matrix, Navidrome, ntfy, Radicale, Samba, Vaultwarden | Each one's official CLI, or HTTP, CalDAV or SMB |
 | A CLI inside the app | ArchiveBox, Forgejo, Navidrome, Paperless, Pingvin Share X, ytdl-sub | `hs archivebox`, `hs forgejo`, `hs navidrome`, `hs paperless`, `hs share`, `hs ytdl` |
 | The file is the source of truth | Fava and Beancount, Homepage, SearXNG, Blocky, Authelia, cloudflared, Filestash, Pingvin Share X | Configuration in git plus `hs unit`. Only Filestash's private key lives in `/var/lib/secrets` |
@@ -75,6 +81,7 @@ because its GUI is newer.
 - File Browser's role moves to Filestash, which can show Google Drive and the read-only restic
   mount at the same time. The data on Drive itself does not move.
 - The old Pingvin Share is replaced by Pingvin Share X, which is released on a rolling tag.
+- Google Forms is replaced by Formera: a two-container frontend/API with SQLite. Forms can be edited visually or created and updated from JSON through `hs forms`; responses can be read or exported as CSV/JSON the same way. Anonymous file uploads are disabled at the gateway until upstream can bind an upload to a specific form, preventing public storage abuse.
 - As a rule, no new software gets added whose main operations can only be reproduced through a
   web UI.
 

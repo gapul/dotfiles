@@ -138,6 +138,7 @@ in
       sqlite_backup /var/lib/homelab/navidrome/data/navidrome.db /var/lib/db-dumps/navidrome.db
       sqlite_backup /var/lib/homelab/vaultwarden/data/db.sqlite3 /var/lib/db-dumps/vaultwarden.db
       sqlite_backup /var/lib/homelab/pingvin-share/data/pingvin-share.db /var/lib/db-dumps/pingvin-share.db
+      sqlite_backup /var/lib/homelab/formera/formera.db /var/lib/db-dumps/formera.db
       sqlite_backup /var/lib/homelab/calnode/calnode.db /var/lib/db-dumps/calnode.db
       sqlite_backup /var/lib/homelab/jellyfin/config/data/data/jellyfin.db /var/lib/db-dumps/jellyfin.db
       sqlite_backup /var/lib/homelab/bambuddy/data/bambuddy.db /var/lib/db-dumps/bambuddy.db
