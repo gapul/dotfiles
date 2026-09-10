@@ -133,8 +133,8 @@ in
   # Keep a Claude Code Remote Control server registered for the Claude mobile/web apps.
   # It only opens outbound HTTPS connections to Anthropic; no inbound port is exposed.
   # DO_NOT_TRACK remains the global default, but Remote Control requires feature-flag
-  # evaluation, so remove it only from this process. Start from the common parent of
-  # the machine's development checkouts instead of presenting dotfiles as the workspace.
+  # evaluation, so remove it only from this process. Start from the user's home so the
+  # remote session can operate across the macmini instead of being tied to one checkout.
   launchd.agents.claude-remote-control = {
     enable = true;
     config = {
@@ -142,7 +142,7 @@ in
         "${pkgs.writeShellScript "claude-remote-control" ''
           unset DO_NOT_TRACK DISABLE_TELEMETRY CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC DISABLE_GROWTHBOOK
           export PATH="$HOME/.local/bin:${config.home.profileDirectory}/bin:/run/current-system/sw/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
-          cd "$HOME/Developer"
+          cd "$HOME"
           exec "$HOME/.local/bin/claude" remote-control \
             --name "macmini" \
             --spawn same-dir \
