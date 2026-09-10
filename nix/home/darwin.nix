@@ -22,6 +22,7 @@ let
 in
 {
   imports = [
+    ../modules/home/darwin-agent-state-sync.nix
     ../modules/home/darwin-chrome.nix
     ../modules/home/darwin-services.nix
     ../modules/home/darwin-apps.nix

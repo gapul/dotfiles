@@ -18,6 +18,8 @@ let
   };
 in
 {
+  imports = [ ../modules/home/darwin-agent-state-sync.nix ];
+
   # macmini-specific layer. The base CLI/zsh/XDG set inherits home/common.nix
   # composed on the flake side (no sops/age keys are brought in).
   # Layout follows XDG/ghq (the dedicated ~/ai was retired 2026-07-19):
