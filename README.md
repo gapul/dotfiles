@@ -207,7 +207,7 @@ in `nix/flake.nix`; run `just docs` after changing one.
 | `deadnix` | `*.nix` | — | Finds unused code. Module arguments like `{ lib, ... }` are allowed. |
 | `gitleaks` | all staged | — | Secret detection |
 | `nixfmt` | `*.nix` | — | Formatting check. Fails on anything unformatted. |
-| `shellcheck` | all staged | `configs/wm/sketchybar/.*`, `\.envrc$`, `\.zsh$`, `configs/macmini/bin/.*`, `configs/macmini/client/.*`, `configs/macmini/setup-scripts/.*` | Shell lint, following .shellcheckrc |
+| `shellcheck` | all staged | `configs/cli/codex/.*`, `configs/wm/sketchybar/.*`, `\.envrc$`, `\.zsh$`, `configs/macmini/bin/.*`, `configs/macmini/client/.*`, `configs/macmini/setup-scripts/.*` | Shell lint, following .shellcheckrc |
 <!-- END hooks -->
 
 Notes:
