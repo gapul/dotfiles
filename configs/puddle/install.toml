@@ -31,3 +31,17 @@ wallpapers = [
     "audio-bars",
     "puddle-chess",
 ]
+
+# How Puddle behaves on this machine. Only the few keys worth having identical everywhere; the rest
+# of the settings window stays the user's, and Puddle disables exactly these toggles and points at
+# this file. Must stay last: TOML gives every key after a table header to that table.
+#
+# These lived in system.defaults.CustomUserPreferences until Puddle could read them here. That route
+# goes through `defaults write`, which resolved to the sandbox container that a retired build left
+# behind, so the declaration sat in a file the running app never read — deactivateOnBattery was
+# declared on 2026-08-08 and still false in the live domain a month later. Declaring it where the app
+# actually looks removes the gap instead of papering over it.
+[settings]
+deactivateOnBattery = true
+showOnAllSpaces = true
+extendPuddleBelowMenuBar = true

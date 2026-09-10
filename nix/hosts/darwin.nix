@@ -266,14 +266,11 @@ in
       SKAutoReloadFileUpdate = true;
       SKAutoCheckFileUpdate = true;
     };
-    # Puddle (dynamic wallpaper; self-built MIT fork of Plash). Its websites and security-scoped
-    # bookmarks live on the app side, so only these three behavior keys are enforced.
-    # (extendPuddleBelowMenuBar keeps its key name in Puddle for compatibility.)
-    CustomUserPreferences."net.gapul.Puddle" = {
-      deactivateOnBattery = true;
-      extendPuddleBelowMenuBar = true;
-      showOnAllSpaces = true;
-    };
+    # Puddle's three behavior keys moved to configs/puddle/install.toml, which Puddle reads directly.
+    # They were declared here from 2026-08-08 and never reached the running app: CustomUserPreferences
+    # is `defaults write`, and that resolved to the sandbox container a retired build left behind,
+    # while the Nix Apps build reads the standard domain. Declaring them in the file the app opens
+    # itself means there is no second place for the value to land.
 
     # Screenshots land in ~/Downloads. The Desktop is the macOS default, but desktop icons are
     # hidden here (finder.CreateDesktop = false), so shots would pile up somewhere invisible.
