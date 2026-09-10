@@ -199,6 +199,35 @@ in
     };
   };
 
+  # Orca toggles its macOS login-item registration when the desktop process exits. On this
+  # unattended host that can leave the declarative Home Manager agent disabled, which also
+  # drops paired mobile and desktop clients. Re-enable and bootstrap only when the service is
+  # absent; the normal KeepAlive policy handles ordinary process restarts.
+  launchd.agents.orca-server-watchdog = {
+    enable = true;
+    config = {
+      ProgramArguments = [
+        "${pkgs.writeShellScript "orca-server-watchdog" ''
+          domain="gui/$(${pkgs.coreutils}/bin/id -u)"
+          label="org.nix-community.home.orca-desktop-server"
+          plist="$HOME/Library/LaunchAgents/$label.plist"
+
+          if ! /bin/launchctl print "$domain/$label" >/dev/null 2>&1; then
+            /bin/launchctl enable "$domain/$label"
+            /bin/launchctl bootstrap "$domain" "$plist" 2>/dev/null || true
+          fi
+        ''}"
+      ];
+      RunAtLoad = true;
+      StartInterval = 60;
+      ProcessType = "Background";
+      LowPriorityIO = true;
+      Nice = 10;
+      StandardOutPath = "/tmp/orca-server-watchdog.log";
+      StandardErrorPath = "/tmp/orca-server-watchdog.log";
+    };
+  };
+
   # Hand-written agents the declarations above replace, plus one leftover that was already
   # disabled. Same shape as the workstation's retiredLaunchAgents list.
   home.activation.retiredMacminiAgents = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
