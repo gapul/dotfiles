@@ -13,6 +13,8 @@ let
   backendPort = 8100;
   frontendPort = 8101;
   gatewayPort = 8102;
+  privateBackendPort = 18100;
+  privateFrontendPort = 18101;
 
   # Temporary compatibility build. Upstream writes integer rate-limit values
   # as control bytes, which Go reverse proxies correctly reject. Tracking the
@@ -85,7 +87,7 @@ in
         TZ = "Asia/Tokyo";
       };
       volumes = [ "/var/lib/homelab/formera:/app/data:rw" ];
-      ports = [ "127.0.0.1:${toString backendPort}:8080/tcp" ];
+      ports = [ "127.0.0.1:${toString privateBackendPort}:8080/tcp" ];
       log-driver = "journald";
     };
 
@@ -96,7 +98,7 @@ in
         API_URL = "https://forms.gapul.net";
         TZ = "Asia/Tokyo";
       };
-      ports = [ "127.0.0.1:${toString frontendPort}:3000/tcp" ];
+      ports = [ "127.0.0.1:${toString privateFrontendPort}:3000/tcp" ];
       log-driver = "journald";
     };
   };

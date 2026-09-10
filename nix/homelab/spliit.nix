@@ -12,6 +12,9 @@
   ...
 }:
 
+let
+  privatePort = 18090;
+in
 {
   # rallly.nix と同じ理由で1階層。/var/lib/homelab の下に入れ子を作ろうとすると
   # tmpfiles が unsafe path transition で拒否する (calnode.nix 参照)。
@@ -34,7 +37,7 @@
       "DEFAULT_CURRENCY_CODE" = "JPY";
     };
     ports = [
-      "8090:3000/tcp"
+      "127.0.0.1:${toString privatePort}:3000/tcp"
     ];
     dependsOn = [ "spliit-db" ];
     log-driver = "journald";

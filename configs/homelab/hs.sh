@@ -40,11 +40,33 @@ EOF
 }
 
 need_app() {
-  [[ -n "${1:-}" ]] || { usage >&2; exit 2; }
-  podman container exists "$1" || {
-    echo "unknown container: $1" >&2
-    exit 2
-  }
+  local app="${1:-}" wake_app wake_url
+  [[ -n "$app" ]] || { usage >&2; exit 2; }
+  podman container exists "$app" && return 0
+
+  # Socket-activated containers do not exist while asleep. Wake the owning
+  # HTTP group, then wait for the ordinary podman operation to become possible.
+  case "$app" in
+    formera-backend) wake_app=formera ;;
+    formera-frontend) wake_url=http://127.0.0.1:8101 ;;
+    gameyfin|jellyfin|pingvin-share|rallly|romm|spliit) wake_app="$app" ;;
+    rallly-db) wake_app=rallly ;;
+    romm-db) wake_app=romm ;;
+    spliit-db) wake_app=spliit ;;
+    *) echo "unknown container: $app" >&2; exit 2 ;;
+  esac
+  wake_url="${wake_url:-$(base_url "$wake_app")}"
+  curl -sS -o /dev/null --max-time 150 "$wake_url/" || true
+  for _ in {1..120}; do
+    podman container exists "$app" && return 0
+    sleep 1
+  done
+  echo "container did not wake: $app" >&2
+  exit 1
+}
+
+known_unit() {
+  systemctl cat "podman-$1.service" >/dev/null 2>&1
 }
 
 base_url() {
@@ -272,8 +294,14 @@ case "$command" in
     ;;
   status)
     if [[ -n "${1:-}" ]]; then
-      need_app "$1"
-      podman inspect "$1" | jq -C '.[0] | {name:.Name,image:.ImageName,state:.State.Status,health:.State.Health.Status,restarts:.RestartCount,mounts:.Mounts}'
+      if podman container exists "$1"; then
+        podman inspect "$1" | jq -C '.[0] | {name:.Name,image:.ImageName,state:.State.Status,health:.State.Health.Status,restarts:.RestartCount,mounts:.Mounts}'
+      elif known_unit "$1"; then
+        jq -nC --arg name "$1" '{name:$name,state:"sleeping"}'
+      else
+        echo "unknown container: $1" >&2
+        exit 2
+      fi
     else
       systemctl --no-pager --failed
       podman ps --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}'
@@ -291,7 +319,10 @@ case "$command" in
     esac
     ;;
   logs)
-    need_app "${1:-}"
+    if [[ -z "${1:-}" ]] || ! known_unit "$1"; then
+      usage >&2
+      exit 2
+    fi
     app="$1"; shift
     exec journalctl -u "podman-$app.service" --no-pager "$@"
     ;;

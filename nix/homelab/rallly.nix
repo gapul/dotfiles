@@ -18,6 +18,9 @@
   ...
 }:
 
+let
+  privatePort = 18089;
+in
 {
   # bind mount の元。**1階層だけ**にしてある。/var/lib/homelab 自体が uid 100000
   # (podman の userns root) 所有なので、その下に root 所有のディレクトリを作った
@@ -43,7 +46,7 @@
       "NEXT_PUBLIC_BASE_URL" = "https://poll.gapul.net";
     };
     ports = [
-      "8089:3000/tcp"
+      "127.0.0.1:${toString privatePort}:3000/tcp"
     ];
     dependsOn = [ "rallly-db" ];
     log-driver = "journald";

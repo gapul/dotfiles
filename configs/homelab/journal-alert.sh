@@ -38,6 +38,10 @@ declare -a PATTERNS=(
   "Start request repeated too quickly|再起動を繰り返して止まった"
   # tmpfiles が uid の食い違いで配下の作成を拒否する。移行の残骸で出る。
   "unsafe path transition|tmpfiles が所有者の食い違いで作成を拒否した"
+  # Lazy containers may exit 137 when Podman finishes an intentional stop with
+  # SIGKILL. Systemd accepts that transition; a real memory kill is still
+  # unambiguous in the kernel's journal and must remain visible.
+  "oom-kill|メモリ不足でプロセスが強制終了された"
 )
 
 SINCE="${1:--15min}"
