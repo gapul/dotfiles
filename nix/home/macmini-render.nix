@@ -65,6 +65,9 @@ let
         "35.0.0"
         "36.0.0"
       ];
+      # Flutter plugins with Android native code request this through Gradle. Keep it inside the
+      # immutable SDK because Gradle cannot install missing SDK components into the Nix store.
+      cmakeVersions = [ "3.22.1" ];
       includeEmulator = false;
       includeSystemImages = false;
       # Flutter 3.41's Android plugins request this exact side-by-side NDK. A Nix SDK is
