@@ -84,6 +84,12 @@ runs:
         nix profile add nixpkgs#cachix
         echo "$HOME/.local/state/nix/profiles/profile/bin" >>"$GITHUB_PATH"
 
+        # `cachix use` edits the user nix.conf and stops if the file is not there
+        # ("openFile: does not exist"). The Determinate installer only writes /etc/nix/nix.conf,
+        # so on a fresh runner there is nothing to edit.
+        mkdir -p "$HOME/.config/nix"
+        touch "$HOME/.config/nix/nix.conf"
+
     - name: Enable cachix (gapul-dotfiles)
       if: inputs.cachix == 'true'
       uses: cachix/cachix-action@97e5ff84d02b3b4f9936339f767e17f03c9252ed # v16

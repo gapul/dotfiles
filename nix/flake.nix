@@ -393,6 +393,11 @@
             # error 級のみ」という意図は最初から実現していなかった。ここで渡し直す。
             args = [ "--severity=error" ];
             excludes = [
+              # Symlinks into another repository (gapul/ai-agent-state). The link is committed,
+              # the target is not, so in CI there is nothing behind it and shellcheck stops with
+              # "openBinaryFile: does not exist" — which reads like a lint failure but is a
+              # missing file. Anything under here is linted where it actually lives.
+              "configs/cli/codex/.*"
               # The sketchybar configs stylistically use a lot of intentional word splitting, handled separately
               # (manual check: nix develop ./nix -c shellcheck configs/wm/sketchybar/...)
               "configs/wm/sketchybar/.*"
