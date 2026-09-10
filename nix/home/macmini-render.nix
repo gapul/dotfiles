@@ -56,7 +56,10 @@ let
   androidSdk =
     (androidEnv.composeAndroidPackages {
       # Flutter 3.41 currently checks for API 36 and retains a compatibility check for 28.0.3.
-      platformVersions = [ "36" ];
+      platformVersions = [
+        "35"
+        "36"
+      ];
       buildToolsVersions = [
         "28.0.3"
         "35.0.0"
