@@ -288,6 +288,10 @@ in
       "tts"
       "voice-clone"
     ]
+    ++ [
+      # The workstation's broker sends approved native credentials to this fixed remote helper.
+      { ".local/bin/ask-native-fill".source = ../../configs/ask/native_fill.py; }
+    ]
   );
 
   # AI stack resident (replaces the old hand-written net.gapul.* plists. 2026-07-19)
