@@ -485,11 +485,39 @@ async def system_dialog(request: Request, prompt: str) -> str | None:
     return answer
 
 
+HEARTBEAT_SECONDS = 30
+
+
+async def keep_caller_waiting(ctx: Context) -> None:
+    """Tell the caller we are still here, every half minute, until cancelled.
+
+    A person reading a list of accounts takes longer than a client is willing to sit in silence:
+    Claude Code hangs up after five minutes of nothing, and the answer then arrives to a caller
+    that has already gone. Progress is the protocol's way of saying the wait is deliberate.
+    """
+    while True:
+        await asyncio.sleep(HEARTBEAT_SECONDS)
+        try:
+            await ctx.report_progress(progress=0, total=0, message="waiting for a human")
+        except Exception:
+            return  # a client that does not take progress is not a reason to stop asking
+
+
 async def ask_human(ctx: Context, request: Request) -> str | None:
     """Local first, then the phone. Returns the raw answer, or None if nobody answered.
 
     Elicitation blocks forever by default, so the timeout lives here rather than in the caller.
     """
+    heartbeat = asyncio.create_task(keep_caller_waiting(ctx)) if ctx is not None else None
+    try:
+        return await _ask_channels(ctx, request)
+    finally:
+        if heartbeat is not None:
+            heartbeat.cancel()
+
+
+async def _ask_channels(ctx: Context, request: Request) -> str | None:
+    """The channels themselves, in order. Split out only so the heartbeat above can wrap them."""
     audit("request", id=request.id, kind=request.kind, domain=request.domain,
           fields=request.fields, requester=request.requester)
 
