@@ -244,6 +244,22 @@
         "type": "github"
       }
     },
+    "formera-source": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1768854435,
+        "narHash": "sha256-o1iBUGj/V4OyUuLwkQi6eIFzfi5ImD9hYSuq4oaFfwE=",
+        "owner": "FormeraApp",
+        "repo": "Formera",
+        "rev": "1dc08fbb1b5e6cec34c895281abc04c1afe16cde",
+        "type": "github"
+      },
+      "original": {
+        "owner": "FormeraApp",
+        "repo": "Formera",
+        "type": "github"
+      }
+    },
     "git-hooks": {
       "inputs": {
         "flake-compat": "flake-compat",
@@ -778,6 +794,7 @@
         "claude-acp": "claude-acp",
         "disko": "disko",
         "flake-parts": "flake-parts",
+        "formera-source": "formera-source",
         "git-hooks": "git-hooks",
         "home-manager": "home-manager_2",
         "lanzaboote": "lanzaboote",

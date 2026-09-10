@@ -3,7 +3,9 @@
 # API. Unlike Formbricks v5 it needs no Redis, analytics service, or separate
 # PostgreSQL cluster: two rolling containers and one SQLite database are enough.
 {
+  formera-source,
   lib,
+  pkgs,
   ...
 }:
 
@@ -11,11 +13,59 @@ let
   backendPort = 8100;
   frontendPort = 8101;
   gatewayPort = 8102;
+
+  # Temporary compatibility build. Upstream writes integer rate-limit values
+  # as control bytes, which Go reverse proxies correctly reject. Tracking the
+  # source as a flake input keeps this rolling; remove the patch and image build
+  # when upstream changes these conversions to strconv.Itoa itself.
+  formeraBackend = pkgs.buildGoModule {
+    pname = "formera-backend";
+    version = "unstable-${builtins.substring 0 8 formera-source.rev}";
+    src = "${formera-source}/backend";
+    vendorHash = "sha256-OM81eTs8rXc2RBXXHsUXxjXgwmuSE/CNKQ7iMI0byak=";
+    postPatch = ''
+      substituteInPlace internal/middleware/ratelimit.go \
+        --replace-fail '"net/http"' '"net/http"
+        "strconv"' \
+        --replace-fail 'string(rune(config.Rate))' 'strconv.Itoa(config.Rate)' \
+        --replace-fail 'string(rune(remaining))' 'strconv.Itoa(remaining)' \
+        --replace-fail 'string(rune(limiter.Remaining(key)))' 'strconv.Itoa(limiter.Remaining(key))'
+    '';
+    env.CGO_ENABLED = "1";
+    subPackages = [ "cmd/server" ];
+  };
+
+  formeraBackendImage = pkgs.dockerTools.buildLayeredImage {
+    name = "localhost.local/formera-backend";
+    tag = "latest";
+    contents = [
+      pkgs.cacert
+      pkgs.tzdata
+    ];
+    config = {
+      Cmd = [
+        "${formeraBackend}/bin/server"
+        "serve"
+      ];
+      Env = [ "PORT=8080" ];
+      WorkingDir = "/app";
+      User = "100:101";
+    };
+    extraCommands = ''
+      mkdir -p app/data
+    '';
+    fakeRootCommands = ''
+      chown -R 100:101 app
+      chmod 0700 app/data
+    '';
+  };
 in
 {
   virtualisation.oci-containers.containers = {
     "formera-backend" = {
-      image = "ghcr.io/formeraapp/formera-backend:latest";
+      image = "localhost.local/formera-backend:latest";
+      imageFile = formeraBackendImage;
+      labels."io.containers.autoupdate" = lib.mkForce "local";
       environmentFiles = [ "/var/lib/secrets/formera.env" ];
       environment = {
         PORT = "8080";
@@ -72,14 +122,7 @@ in
       respond @anonymousUpload 404
 
       @backend path /api/* /health /health/* /uploads/*
-      reverse_proxy @backend 127.0.0.1:${toString backendPort} {
-        # Formera currently serializes these numeric headers as control bytes.
-        # The submission is stored, but Cloudflare rejects the malformed
-        # upstream response as 502. Rate limiting still happens in Formera; only
-        # its broken informational response headers are removed here.
-        header_down -X-Ratelimit-Limit
-        header_down -X-Ratelimit-Remaining
-      }
+      reverse_proxy @backend 127.0.0.1:${toString backendPort}
       reverse_proxy 127.0.0.1:${toString frontendPort}
     }
   '';
