@@ -275,6 +275,44 @@ def test_the_window_closes():
     assert broker.recent_approval("example.com") is None
 
 
+def test_the_account_list_outlives_an_apple_event():
+    """Apple events time out after two minutes and take osascript with them, so a list held open
+    while someone reads it has to say how long it may stand. It also has to compile."""
+    import subprocess
+    from unittest.mock import AsyncMock, patch
+
+    captured = {}
+
+    class FakeProc:
+        returncode = 0
+
+        async def communicate(self):
+            return b"Google \xe2\x80\x94 b@x", b""
+
+    async def fake_exec(*args, **kwargs):
+        captured["script"] = args[2]
+        return FakeProc()
+
+    request = broker.Request(
+        kind="choose",
+        prompt="Which account?",
+        options=["Google — a@x", "Google — b@x"],
+        requester="test",
+    )
+    with patch.object(broker.asyncio, "create_subprocess_exec", AsyncMock(side_effect=fake_exec)):
+        asyncio.run(broker.system_dialog(request, "Which account?"))
+
+    assert "with timeout of" in captured["script"], captured["script"]
+    if not Path("/usr/bin/osacompile").exists():
+        return  # not a mac: the string check above is all this machine can say
+    compiled = subprocess.run(
+        ["/usr/bin/osacompile", "-e", captured["script"], "-o", "/dev/null"],
+        capture_output=True,
+        text=True,
+    )
+    assert compiled.returncode == 0, compiled.stderr
+
+
 def test_tools_registered():
     names = {t.name for t in asyncio.run(broker.mcp.list_tools())}
     assert names == {"approve", "choose", "ask_text", "login_fill", "native_login_fill"}, names

@@ -437,10 +437,15 @@ async def system_dialog(request: Request, prompt: str) -> str | None:
 
     if request.kind == "choose" and request.options:
         options = ", ".join(_as_applescript_string(o) for o in request.options)
+        # `with timeout of` is what actually holds the list open. Apple events give up after two
+        # minutes by default, and osascript then dies with a timeout error — which is exactly what
+        # was happening at 121 seconds while someone was reading ten accounts and choosing one.
         script = (
             f"tell application \"System Events\"\n activate\n"
-            f" set picked to choose from list {{{options}}} with title {title}"
+            f" with timeout of {timeout} seconds\n"
+            f"  set picked to choose from list {{{options}}} with title {title}"
             f" with prompt {body}\n"
+            f" end timeout\n"
             f" if picked is false then return \"\"\n return item 1 of picked\nend tell"
         )
     elif request.kind == "ask_text":
