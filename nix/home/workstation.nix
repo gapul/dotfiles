@@ -2,9 +2,14 @@
   config,
   pkgs,
   lib,
+  nixpkgsAgents,
   ...
 }:
 let
+  fastPkgs = import ../lib/unstable-pkgs.nix {
+    nixpkgsUnstable = nixpkgsAgents;
+    inherit (pkgs.stdenv.hostPlatform) system;
+  };
   # Search binary for the ghostty launcher. Store-ify it to protect it from gc-deep's target cleanup.
   launcher-search = pkgs.callPackage ../pkgs/launcher-search.nix { };
   agentStateRepo = "${config.home.homeDirectory}/Developer/github.com/gapul/ai-agent-state";
@@ -39,8 +44,8 @@ in
           ;
       })
       poppler-utils # PDF CLI (pdftotext etc. formerly brew poppler)
-      bitwarden-cli # Bitwarden (bw)
-      syft # SBOM
+      fastPkgs.bitwarden-cli # Bitwarden (bw)
+      fastPkgs.syft # SBOM
       radare2 # reverse engineering (r2), small native binaries (e.g. REAPER)
       # app / binary analysis: unofficial-client recon + Mac proprietary-app RE
       jadx # APK: dex -> readable Java

@@ -71,9 +71,26 @@ runs:
     # 先に入れて PATH を通しておき、action 側の導入は no-op にする。GITHUB_PATH は次の
     # ステップから効くので、同じステップ内で which させるこの action には前段が要る。
     - name: Install cachix
+      id: cachix-setup
       if: inputs.cachix == 'true'
       shell: bash
+      env:
+        # トークンそのものは渡さない。有無だけ分かればいい。
+        HAS_TOKEN: ${{ inputs.cachix-token != '' }}
       run: |
+        # homeserver は substituter を root 所有の行で宣言してある (hosts/homeserver.nix)。
+        # そこで `cachix use` を呼ぶと "This user doesn't have permissions to configure
+        # binary caches" で落ちる — サービスユーザーは trusted-user ではないし、
+        # trusted-user は root 相当なので入れたくない (macmini-ci-runner.nix の判断)。
+        # 既に substituter として効いているなら、pull のために設定する必要はない。
+        if nix config show substituters 2>/dev/null | grep -q gapul-dotfiles; then
+          echo "preconfigured=true" >>"$GITHUB_OUTPUT"
+          # pull だけなら、この先で入れる cachix を誰も使わない。
+          if [ "$HAS_TOKEN" != "true" ]; then
+            echo "cachix: substituter は宣言済み、push も無いので何もしない"
+            exit 0
+          fi
+        fi
         # Already declared on the self-hosted runner, so there is nothing to do there — which is
         # the point: installing it every run cost more than the build it was setting up for
         # (56s of setup against 18s of nix build, measured 2026-09-10).
@@ -90,8 +107,10 @@ runs:
         mkdir -p "$HOME/.config/nix"
         touch "$HOME/.config/nix/nix.conf"
 
+    # push が要るとき (authToken あり) は必ず通す。pull だけなら、substituter が既に
+    # 宣言済みの機械では何もすることがないので飛ばす。
     - name: Enable cachix (gapul-dotfiles)
-      if: inputs.cachix == 'true'
+      if: inputs.cachix == 'true' && (inputs.cachix-token != '' || steps.cachix-setup.outputs.preconfigured != 'true')
       uses: cachix/cachix-action@97e5ff84d02b3b4f9936339f767e17f03c9252ed # v16
       with:
         name: gapul-dotfiles

@@ -1,10 +1,12 @@
 {
   config,
   lib,
+  nixpkgsAgents,
   pkgs,
   ...
 }:
 let
+  agentPkgs = nixpkgsAgents.legacyPackages.${pkgs.stdenv.hostPlatform.system};
   dotfiles = "${config.home.homeDirectory}/.dotfiles";
   # Place the AI stack's runtime assets via out-of-store symlinks with dotfiles as the single source.
   # Editing directly on the mini is reflected straight into the repo (same mechanism as nvim).
@@ -39,7 +41,7 @@ in
     # Orca starts agent CLIs from its Aqua LaunchAgent instead of an interactive shell.
     # Keep Codex declarative on the remote host so it is both discoverable and available
     # after unattended rebuilds.
-    pkgs.codex
+    agentPkgs.codex
 
     # The study tutor renders plans and handouts with typst (show.py in the sandbox looks it
     # up under /nix/store). Declared here so a garbage collection can't take it away.

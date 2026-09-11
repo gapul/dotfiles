@@ -2,10 +2,15 @@
   config,
   pkgs,
   lib,
+  nixpkgsAgents,
   user,
   ...
 }:
 let
+  agentPkgs = import ../lib/unstable-pkgs.nix {
+    nixpkgsUnstable = nixpkgsAgents;
+    inherit (pkgs.stdenv.hostPlatform) system;
+  };
   # wslu was removed from nixpkgs (project discontinued / archived, 2026-04-08).
   # The only thing that depended on it was wslview (opens URLs in the Windows default browser).
   # wslpath is provided by WSL itself, and WIN_USER detection hits cmd.exe directly, so all of wslu is unnecessary.
@@ -30,8 +35,8 @@ in
   home.packages = [
     wslview # replacement for the old wslu (opens URLs in the Windows default browser)
     pkgs.socat # UNIX<->Named Pipe bridge to share the Windows ssh-agent service from WSL
-    pkgs.claude-code # Claude Code CLI (Mac uses brew cask management, so declare via nix only on WSL)
-    pkgs.codex # OpenAI Codex CLI
+    agentPkgs.claude-code # Claude Code CLI
+    agentPkgs.codex # OpenAI Codex CLI; stable nixpkgs trails its fast release cadence
     pkgs.nodejs_22 # for building/testing the control-plane (Next.js) (engines: node>=20.11)
   ];
 
