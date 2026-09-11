@@ -171,6 +171,11 @@ in
     # `broken = isDarwin` and headless-only, so the official dmg is repackaged.
     # See pkgs/slimevr-server.nix.
     (pkgs.callPackage ../pkgs/slimevr-server.nix { })
+    # AquesTalkPlayer: the yukkuri voices, with a headless wav-out CLI, so that
+    # narration can be generated on macOS instead of on Windows through Yukkuri
+    # MovieMaker. The download is Turnstile-gated, so the dmg has to be added to
+    # the store by hand on a version bump. See pkgs/aquestalkplayer.nix.
+    (pkgs.callPackage ../pkgs/aquestalkplayer.nix { })
   ];
 
   # macOS settings (GUI/peripheral-oriented. Only values verified via `defaults read` on the machine are declared)
