@@ -19,6 +19,8 @@ let
     ];
     text = ''
       export SSL_CERT_FILE="${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+      export GIT_CONFIG_GLOBAL=/dev/null
+      export GIT_CONFIG_SYSTEM=/dev/null
 
       # A shared clone keeps Git objects and annex content hard-linked to the
       # central bare repository. It is an automation-only, untrusted annex peer.
