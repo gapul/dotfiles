@@ -3,11 +3,16 @@
   pkgs,
   brewNix,
   mocopiMac,
+  nixpkgsAgents,
   nixpkgsUnstable,
   user,
   ...
 }:
 let
+  agentPkgs = import ../lib/unstable-pkgs.nix {
+    nixpkgsUnstable = nixpkgsAgents;
+    inherit (pkgs.stdenv.hostPlatform) system;
+  };
   unstablePkgs = import ../lib/unstable-pkgs.nix {
     inherit nixpkgsUnstable;
     inherit (pkgs.stdenv.hostPlatform) system;
@@ -84,7 +89,7 @@ in
       port="''${2:-8932}"
       echo "playwright-mcp: $browser on http://localhost:$port/mcp (Ctrl-C to stop)" >&2
       export PLAYWRIGHT_BROWSERS_PATH=${pkgs.playwright-driver.browsers}
-      exec ${lib.getExe pkgs.playwright-mcp} \
+      exec ${lib.getExe agentPkgs.playwright-mcp} \
         --browser "$browser" --port "$port" \
         --output-dir "$HOME/tmp/playwright-test"
     '')
@@ -96,7 +101,8 @@ in
     # codex: 自前インストーラで ~/.local/bin に入っていたものを宣言に移す。home.packages
     # ではなく systemPackages なのは PATH の順で、/run/current-system/sw/bin が
     # ~/.local/bin より前に来る。profile 側だと手動インストール版が勝ってしまう。
-    pkgs.codex
+    agentPkgs.codex
+    agentPkgs.claude-code
     (pkgs.callPackage ../pkgs/keebmouse.nix { })
     # Puddle / keystats: 自作物。keebmouse と同じく cask をやめて署名済みリリースを取り込む。
     # これで自作物のための tap (gapul/puddle, gapul/keystats) が両方畳める。
@@ -635,7 +641,6 @@ in
       "altserver"
 
       # ─── Dev IDEs / Editors / SDK ───
-      "claude-code"
       "stablyai/orca/orca" # unified chat UI for Claude Code/Codex; custom tap avoids the unrelated disabled Plotly cask
       "ghostty"
       "android-studio"

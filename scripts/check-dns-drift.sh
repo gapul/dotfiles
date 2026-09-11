@@ -64,13 +64,15 @@ mapfile -t expected < <(
     --apply 'builtins.attrNames' | jq -r '.[]' | sort
 )
 
-token=$(nix develop "$flake" -c sops -d --extract '["cloudflare"]["api_token"]' "$repo/secrets/secrets.yaml" 2>/dev/null || true)
+# 秘密は secrets/{common,darwin,homelab}.yaml に割れている。単一の secrets.yaml は
+# もう無いので、そこを見ていた頃のこのスクリプトは token を空のまま先に進んでいた。
+token=$(nix develop "$flake" -c sops -d --extract '["cloudflare"]["api_token"]' "$repo/secrets/homelab.yaml" 2>/dev/null || true)
 if [[ -z ${token:-} ]]; then
   echo "sops から cloudflare.api_token を取れない (age 鍵がある環境で実行する)" >&2
   exit 1
 fi
 
-account_id=$(nix develop "$flake" -c sops -d --extract '["cloudflare"]["account_id"]' "$repo/secrets/secrets.yaml" 2>/dev/null || true)
+account_id=$(nix develop "$flake" -c sops -d --extract '["cloudflare"]["account_id"]' "$repo/secrets/homelab.yaml" 2>/dev/null || true)
 
 cf() {
   # トークンは引数に出さない。ps から見えるし、set -x でも漏れる。

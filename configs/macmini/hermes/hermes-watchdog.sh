@@ -10,6 +10,29 @@ STATE=/var/run/hermes-watchdog.state
 # shellcheck source=/dev/null
 [ -f "$ENV_FILE" ] && . "$ENV_FILE"
 
+# 前の回が終わっていないなら、それは詰まっている。launchd は StartInterval の
+# ジョブを重ねて起こさないので、1回詰まると監視がまるごと止まる。9/10 の再起動で
+# 実際にそうなり、14時間ぶん誰も見ていない状態になった(kickstart が起動できない
+# サービスを待ち続けていた)。長引いた先客は捨てて、今の回を走らせる。
+STALE_AFTER=900   # 15分。canary の待ち(420秒)より十分長い
+for other in $(pgrep -f "hermes-watchdog.sh" 2>/dev/null); do
+  [ "$other" = "$$" ] && continue
+  secs=$(ps -p "$other" -o etimes= 2>/dev/null | tr -d ' ')
+  [ -n "$secs" ] || continue
+  if [ "$secs" -gt "$STALE_AFTER" ]; then
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] 前の回が ${secs}s 詰まっていたので捨てた (pid $other)"
+    pkill -P "$other" 2>/dev/null
+    kill -9 "$other" 2>/dev/null
+  else
+    exit 0   # まだ走っている最中。重ねない
+  fi
+done
+
+# launchctl kickstart は、対象が起動できないと**戻ってこない**。詰まりの原因は
+# これだったので、待たずに投げる。復旧したかどうかは、このあとの sleep と
+# check_gateway で確かめる(戻り値は元から見ていない)。
+kick() { launchctl kickstart -k "$1" >/dev/null 2>&1 & }
+
 notify() {  # $1=priority $2=message
   [ -n "${NTFY_URL:-}" ] || return 0
   curl -s -m 10 \
@@ -129,8 +152,8 @@ failures=""
 restarted=""
 
 if ! check_gateway; then
-  launchctl kickstart -k system/org.nixos.hermes-gateway 2>/dev/null
-  launchctl kickstart -k system/org.nixos.hermes-gateway-manabi 2>/dev/null
+  kick system/org.nixos.hermes-gateway
+  kick system/org.nixos.hermes-gateway-manabi
   check_gateway_manabi || notify high "まなびの gateway を再起動した"
   restarted="gateway"
   sleep 20
@@ -145,7 +168,7 @@ echo "[$(date '+%Y-%m-%d %H:%M:%S')] checked${restarted:+ restarted:$restarted}$
 if ! check_canary; then
   # 会話が壊れているとき、プロセス再起動で直る類(重複判定のカウンタ等)がある。
   # 一度だけ再起動して再試行し、それでもだめなら鳴らす。
-  launchctl kickstart -k system/org.nixos.hermes-gateway-manabi 2>/dev/null
+  kick system/org.nixos.hermes-gateway-manabi
   sleep 30
   rm -f "$CANARY_STAMP"   # 再試行を許す
   if ! check_canary; then

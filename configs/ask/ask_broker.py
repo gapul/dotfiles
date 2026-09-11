@@ -65,7 +65,7 @@ class Config:
 
     # The .app that raises the Touch ID prompt. Empty or missing means that channel is skipped and
     # the dialog answers instead.
-    touch_id_app: str = "~/Applications/AskApprove.app"
+    touch_id_app: str = "/Applications/AskApprove.app"
 
     # Read at unlock time and dropped immediately. A sops-managed file, mode 0400, which is how
     # every other secret on this machine is handled. The lock is the second layer here; the
