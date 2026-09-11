@@ -15,12 +15,13 @@
     # pkgs. Don't add follows (keep it as a separate lineage that doesn't drag in other inputs).
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
 
-    # herdr only. nixpkgs-unstable is held at a revision where the darwin creative apps still
-    # build (ardour / aseprite / fritzing), so it cannot be moved just to pick up a herdr
-    # release: as of 2026-08 aseprite 1.3.18.1 fails on aarch64-darwin with
+    # Fast-moving agent/developer CLIs (Codex / OpenCode / Claude / Atuin / security tools / herdr).
+    # nixpkgs-unstable is held at a revision where the darwin creative apps still build
+    # (ardour / aseprite / fritzing), so it cannot be moved just to pick up these releases:
+    # as of 2026-08 aseprite 1.3.18.1 fails on aarch64-darwin with
     # "no member named 'format' in namespace 'fmt'" (NixOS/nixpkgs#552132, still open).
-    # Give herdr its own lineage instead, the same way nixpkgs-nixos is separate.
-    nixpkgs-herdr.url = "github:NixOS/nixpkgs/nixos-unstable";
+    # Give agents their own rolling lineage instead, the same way nixpkgs-nixos is separate.
+    nixpkgs-agents.url = "github:NixOS/nixpkgs/nixos-unstable";
 
     # For the real NixOS machines (homeserver, and the Windows dual-boot HP laptop).
     # Separated from the darwin channels to hit the nixos cache cleanly.
@@ -164,7 +165,7 @@
       nixpkgs,
       nixpkgs-nixos,
       nixpkgs-unstable,
-      nixpkgs-herdr,
+      nixpkgs-agents,
       nix-darwin,
       home-manager,
       nix-on-droid,
@@ -232,7 +233,7 @@
         agentSkills = agent-skills;
         mopidyPatches = mopidy-patches;
         nixpkgsUnstable = nixpkgs-unstable;
-        nixpkgsHerdr = nixpkgs-herdr;
+        nixpkgsAgents = nixpkgs-agents;
         secureEnclaveKey = nix-secure-enclave-key;
       };
 
@@ -338,12 +339,12 @@
           neovim
           yazi
           tmux
-          # herdr は母艦と同じ nixpkgs-herdr から取る (stable の 26.05 系でも
+          # herdr は母艦と同じ nixpkgs-agents から取る (stable の 26.05 系でも
           # nixpkgs-unstable でもなく)。`herdr --remote` は両端が同じビルドでないと
           # attach を拒否し、版が合わないとクライアントが自前のコピーを ~/.local/bin に
           # 落とす。remote-env に入れておけば flake の pin が両端を揃えるので、その
-          # フォールバックが発火しない (modules/home/packages.nix の herdrPkgs.herdr と対)。
-          nixpkgs-herdr.legacyPackages.${pkgs'.stdenv.hostPlatform.system}.herdr
+          # フォールバックが発火しない (modules/home/packages.nix の agentPkgs.herdr と対)。
+          nixpkgs-agents.legacyPackages.${pkgs'.stdenv.hostPlatform.system}.herdr
           git
           lazygit
           ripgrep
@@ -695,6 +696,7 @@
           inherit user;
           brewNix = brew-nix;
           mocopiMac = mocopi-mac;
+          nixpkgsAgents = nixpkgs-agents;
           # 重いビルドを macmini へ逃がす。同じ aarch64-darwin なのでそのまま走る。
           #
           # nix のデーモンは root として ssh するので、鍵の場所を明示する。root は

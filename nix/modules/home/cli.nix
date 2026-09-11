@@ -3,9 +3,14 @@
   config,
   pkgs,
   lib,
+  nixpkgsAgents,
   ...
 }:
 let
+  fastPkgs = import ../../lib/unstable-pkgs.nix {
+    nixpkgsUnstable = nixpkgsAgents;
+    inherit (pkgs.stdenv.hostPlatform) system;
+  };
   c = import ../../lib/theme.nix; # c.dark / c.light (hex without leading #)
 
   # yazi's plugins and flavors used to be committed next to package.toml — which already said
@@ -163,6 +168,7 @@ in
 
   programs.atuin = {
     enable = true;
+    package = fastPkgs.atuin;
     # The generated hook is a plain `eval "$(atuin init zsh)"`, which costs ~37ms per shell.
     # Emit it ourselves through evalcache instead (see initContent below).
     enableZshIntegration = false;
