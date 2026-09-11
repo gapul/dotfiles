@@ -1,12 +1,15 @@
 # Packages component (ECS: profile). One-off CLI tools (not covered by programs.*, OS-independent).
 {
   pkgs,
-  nixpkgsHerdr,
+  nixpkgsAgents,
   ...
 }:
 let
-  # herdr は別 lineage。理由は flake.nix の nixpkgs-herdr の項を参照。
-  herdrPkgs = nixpkgsHerdr.legacyPackages.${pkgs.stdenv.hostPlatform.system};
+  # 更新の速い CLI は別 lineage。allowUnfree もここで明示する。
+  agentPkgs = import ../../lib/unstable-pkgs.nix {
+    nixpkgsUnstable = nixpkgsAgents;
+    inherit (pkgs.stdenv.hostPlatform) system;
+  };
   gh-nix = pkgs.writeShellApplication {
     name = "gh-nix";
     runtimeInputs = [ pkgs.gh ];
@@ -46,7 +49,7 @@ in
     git-wt # unify worktree create/switch/safe-delete under `git wt`
     git-wtpr # `git wtpr <PR number|URL>` moves to a PR-dedicated worktree
     trash-cli # route git-wt deletions through the trash
-    tirith # command/URL/Skill defense for shell/AI agents
+    agentPkgs.tirith # command/URL/Skill defense for shell/AI agents
     (callPackage ../../pkgs/tuicr.nix { }) # review AI-generated diffs in a PR-style UI
     ghq # repo clone management
     git-annex # content-addressed large files in git (fonts / assets; see homelab/git-annex.nix)
@@ -64,8 +67,8 @@ in
     # AI agent multiplexer (config in modules/home/terminal.nix). Goes on every host so
     # `herdr --remote` finds a version-matched binary on the far side instead of installing one
     # into ~/.local/bin. 26.05 の系列にはまだ無いので unstable 系から。ただし
-    # nixpkgs-unstable ではなく専用の nixpkgs-herdr (理由は flake.nix の同名 input の項)。
-    herdrPkgs.herdr
+    # nixpkgs-unstable ではなく専用の nixpkgs-agents (理由は flake.nix の同名 input の項)。
+    agentPkgs.herdr
     podman-tui # Podman container / image / Pod management TUI
     iamb # Matrix TUI (Vim keybindings, E2EE support)
     newsboat # RSS/Atom feed reader TUI
@@ -81,7 +84,7 @@ in
     sops # secrets management
     gitleaks # secret leak scanning for pre-commit
     pre-commit # hook framework
-    opencode # AI coding CLI
+    agentPkgs.opencode # AI coding CLI; stable nixpkgs trails its fast release cadence
     (callPackage ../../pkgs/unity-cli.nix { }) # Unity Editor / module / project management CLI
     glow # markdown viewer
     visidata # CSV/TSV table viewer + editor (TUI, `vd`)
