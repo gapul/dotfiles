@@ -5,23 +5,23 @@
 }:
 
 let
-  version = "1.0.0-beta.6";
+  version = "1.0.0-beta.9";
   sources = {
     aarch64-darwin = {
       platform = "darwin-arm64";
-      hash = "sha256-LpsYpnQrlVroHDYgo7IILmZHBCY7IGq5DGLNngJcauU=";
+      hash = "sha256-RZ1oMKQR34bp2wV5uAOTLwxrwu/2p6tIM4XxZ2/ash8=";
     };
     x86_64-darwin = {
       platform = "darwin-x64";
-      hash = "sha256-/RuahJ+F4/Ls77XIH74tScdA5ofnSqh2mFXGYjGwXwk=";
+      hash = "sha256-XpiYkUTdJKC3TNsqXKCGdOHsf2hH/qA+6s1+621M0ZY=";
     };
     aarch64-linux = {
       platform = "linux-arm64";
-      hash = "sha256-yEnwgAgqmRK+aJ5grICZ0fCCPCqMl+9xDWoi5nlSzGw=";
+      hash = "sha256-Z3WydFM7lKVqzJScOoAjPcFdXFISfZuj9pGC+TH84Ns=";
     };
     x86_64-linux = {
       platform = "linux-x64";
-      hash = "sha256-i1I/0C5R/STVgaiMT3SnVglOMIyOwNm5qMlfQj/Zw9w=";
+      hash = "sha256-jA1uJDVEnIvn8OayzmMwv8XxepiuxLZZyFmUBFXdD+U=";
     };
   };
   source = sources.${stdenvNoCC.hostPlatform.system};

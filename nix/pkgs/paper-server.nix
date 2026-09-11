@@ -8,9 +8,9 @@
 }:
 let
   version = "26.2";
-  build = "121";
+  build = "123";
   # Paper's download URL embeds the object's sha256, so URL and hash cannot drift apart.
-  sha256 = "0de30efb024bc8b83c9c7d507d11802897ad8056b6110ec09fe1a91d126ccb54";
+  sha256 = "7b7b3b43c009103e1971a0576c26f655a7dd9b56a0a2a4438e352c03a7fecd08";
 in
 fetchurl {
   pname = "paper-server";
