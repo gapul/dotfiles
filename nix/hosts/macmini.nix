@@ -3,10 +3,15 @@
   pkgs,
   user,
   claudeAcp,
+  nixpkgsAgents,
   sopsNix,
   ...
 }:
 let
+  fastPkgs = import ../lib/unstable-pkgs.nix {
+    nixpkgsUnstable = nixpkgsAgents;
+    inherit (pkgs.stdenv.hostPlatform) system;
+  };
   paperServer = pkgs.callPackage ../pkgs/paper-server.nix { };
   aivisSpeechEngine = pkgs.callPackage ../pkgs/aivisspeech-engine.nix { };
 
@@ -340,7 +345,7 @@ in
   environment.systemPackages = [
     pkgs.cachix
     pkgs.nodejs_22
-    pkgs.bitwarden-cli
+    fastPkgs.bitwarden-cli
     pkgs.cloudflared
     pkgs.ffmpeg
     pkgs.aria2

@@ -20,11 +20,11 @@
 }:
 stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "terminal-browser";
-  version = "0.7.5";
+  version = "0.8.1";
 
   src = fetchurl {
     url = "https://github.com/zenbu-labs/terminal-browser/releases/download/v${finalAttrs.version}/terminal-browser-darwin-arm64.tar.gz";
-    hash = "sha256-Wnnrf3sl1BhpdfdYR0BAIw0ZnbqsNEXW8exTftrlWuc=";
+    hash = "sha256-Ow4DTVV5hquSiaqLrv3KXD62aqST4nEQ9OgsBfIkpzg=";
   };
 
   # An Electron bundle: patching anything in it would only break code signatures, and the
