@@ -20,7 +20,15 @@ let
   };
 in
 {
-  environment.systemPackages = [ hs ];
+  # Mail migration staging: mbsync mirrors the provider's IMAP mailbox and
+  # notmuch indexes the mirror locally.  No account or credentials are
+  # configured here; adding the packages is intentionally inert until the
+  # Sakura migration is scheduled.
+  environment.systemPackages = [
+    hs
+    pkgs.isync
+    pkgs.notmuch
+  ];
 
   environment.etc."homelab/ytdl-sub-config.yaml".source = ../../configs/homelab/ytdl-sub-config.yaml;
   environment.etc."homelab/ytdl-sub-subscriptions.yaml".source =
