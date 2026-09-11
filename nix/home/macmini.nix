@@ -72,37 +72,6 @@ in
         --add-dir "$HOME/.dotfiles" \
         "$@"
     '')
-    # chrome-automation: the same shape the workstation uses. Chrome here is only ever an
-    # automation target (Playwright MCP attaches over CDP on 9222, and claude-login-broker
-    # drives it), so it gets its own profile, comes up windowless in the background, and is
-    # expected to be shut down when the job is done rather than left resident.
-    #
-    # Not `--headless`: the workstation proved on 2026-08-10 that the extension's native host
-    # never starts in that mode. What was actually running on this machine were one-shot
-    # `--print-to-pdf` / `--screenshot` invocations that failed to exit — one had been stuck
-    # for three days holding 250M. `stop` matches on the profile path so it can only ever take
-    # down the automation instance.
-    (pkgs.writeShellScriptBin "chrome-automation" ''
-      profile="$HOME/Library/Application Support/Google/Chrome-automation"
-      case "''${1:-start}" in
-        start)
-          /usr/bin/open -gjn -a "Google Chrome" --args \
-            --user-data-dir="$profile" \
-            --no-startup-window \
-            --remote-debugging-port=9222
-          ;;
-        stop)
-          /usr/bin/pkill -f "Chrome-automation" || true
-          ;;
-        status)
-          /usr/bin/pgrep -fl "Chrome-automation" || echo "not running"
-          ;;
-        *)
-          echo "usage: chrome-automation [start|stop|status]" >&2
-          exit 2
-          ;;
-      esac
-    '')
   ];
 
   # launchd does not create the parent of StandardOutPath, and the dashboard agent's log moved out
@@ -188,6 +157,11 @@ in
         CODEX_HOME = "${config.xdg.dataHome}/codex";
         CODEX_SQLITE_HOME = "${config.xdg.stateHome}/codex/sqlite";
         XDG_CONFIG_HOME = "${config.xdg.configHome}";
+        # Orca's bundled agent-browser picks a browser by walking /Applications in the order
+        # Google Chrome, Chrome Canary, Chromium, Brave. Helium matches none of those names, so
+        # this pin is what makes it the target at all — and it also keeps a Chrome that some
+        # installer drops back in from quietly taking the job over again.
+        AGENT_BROWSER_EXECUTABLE_PATH = "/Applications/Helium.app/Contents/MacOS/Helium";
       };
       RunAtLoad = true;
       KeepAlive = true;
