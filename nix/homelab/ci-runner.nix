@@ -38,7 +38,7 @@
 #
 # The token is single-use and expires in an hour; it is only needed the first time, after which
 # the runner keeps its own credentials under StateDirectory.
-{ config, lib, ... }:
+{ lib, pkgs, ... }:
 {
   services.github-runners.dotfiles-pr = {
     enable = true;
@@ -47,6 +47,36 @@
     name = "homeserver";
     # The workflow selects on this. Keep it in step with `pr_runner` in ci.yml.
     extraLabels = [ "homeserver" ];
+
+    # The service starts with a nearly empty PATH, and the actions assume a normal machine.
+    # First run died with exit 127 in the step that writes the deploy key — `ssh-keyscan` was
+    # not there. The rest are what the standard actions shell out to: git for checkout, tar and
+    # the compressors for actions/cache, curl for downloads.
+    extraPackages = with pkgs; [
+      openssh
+      git
+      gnutar
+      gzip
+      zstd
+      curl
+      which
+    ];
+
+    # Node 20 reached EOL, so nixpkgs dropped it and this package ships only
+    # externals/node24. Several actions we pin still declare `using: node20`, and the
+    # runner looks the runtime up by that literal name: the step dies before it starts,
+    # with ENOENT on externals/node20/bin/node. GitHub's own runners no longer honour
+    # ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION either (tried in #586, no effect) —
+    # they just run those actions on 24. So point node20 at node24 and do the same.
+    #
+    # Chasing every action to a node24 release instead would be a moving target: the
+    # installer and cachix actions are pinned by SHA on purpose.
+    package = pkgs.github-runner.overrideAttrs (prev: {
+      postInstall = prev.postInstall + ''
+        ln -s ${pkgs.nodejs_24} $out/lib/externals/node20
+      '';
+    });
+
     serviceOverrides = {
       # Half the machine, at most, for everything outside the daemon.
       CPUQuota = "200%";
