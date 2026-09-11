@@ -38,7 +38,7 @@
 #
 # The token is single-use and expires in an hour; it is only needed the first time, after which
 # the runner keeps its own credentials under StateDirectory.
-{ config, lib, ... }:
+{ lib, pkgs, ... }:
 {
   services.github-runners.dotfiles-pr = {
     enable = true;
@@ -47,6 +47,20 @@
     name = "homeserver";
     # The workflow selects on this. Keep it in step with `pr_runner` in ci.yml.
     extraLabels = [ "homeserver" ];
+
+    # The service starts with a nearly empty PATH, and the actions assume a normal machine.
+    # First run died with exit 127 in the step that writes the deploy key — `ssh-keyscan` was
+    # not there. The rest are what the standard actions shell out to: git for checkout, tar and
+    # the compressors for actions/cache, curl for downloads.
+    extraPackages = with pkgs; [
+      openssh
+      git
+      gnutar
+      gzip
+      zstd
+      curl
+      which
+    ];
     serviceOverrides = {
       # Half the machine, at most, for everything outside the daemon.
       CPUQuota = "200%";
