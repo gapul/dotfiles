@@ -78,9 +78,12 @@ jobs:
       matrix:
         system: ${{ fromJSON(needs.plan.outputs.systems) }}
         include:
+          # PR は homeserver、main は GitHub。理由は下の runs-on と homelab/ci-runner.nix。
+          # 実測 (2026-09-10): この pr-gate は 1484 パス / 3.7 GiB の転送で、GitHub の
+          # ランナーは毎回それを払っていた (2m31s のうち 151s)。
           - system: x86_64-linux
             runner: ubuntu-24.04
-            pr_runner: ubuntu-24.04
+            pr_runner: homeserver
           # darwin だけ自前ランナー (macmini)。動機は「macos-14 が遅い」ではなく、遅さの
           # 中身が転送だと分かったこと。
           #
@@ -127,7 +130,13 @@ jobs:
       # secret 不可なので pull のみ。詳細は setup-nix/action.yml を参照。
       - uses: ./.github/actions/setup-nix
         with:
-          cachix-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          # homeserver だけ token を渡さない。あの機械のランナーはサービスユーザーで、
+          # trusted-user ではないので `cachix use` が「権限が無い」で落ちる (入れない方針は
+          # macmini-ci-runner.nix)。substituter は宣言済みなので pull は効いており、push は
+          # main の run が担う。macmini はユーザーが trusted なので今まで通り push する。
+          # 条件は「渡す側」で書く。`X && '' || secret` は空文字が falsy なので
+          # secret 側に落ちる (一度踏んだ)。
+          cachix-token: ${{ (github.event_name != 'pull_request' || matrix.pr_runner != 'homeserver') && secrets.CACHIX_AUTH_TOKEN || '' }}
           mocopi-deploy-key: ${{ secrets.MOCOPI_DEPLOY_KEY }}
 
       # PR は日常機だけを検証する (packages.<system>.pr-gate)。omnix は subflake の全出力を
