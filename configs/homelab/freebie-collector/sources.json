@@ -1,0 +1,19 @@
+{
+  "feeds": [
+    {"name": "Rekkerd", "url": "https://rekkerd.org/feed/"},
+    {"name": "Bedroom Producers Blog", "url": "https://bedroomproducersblog.com/feed/"},
+    {"name": "DTM Sale", "url": "https://dtm-sale.com/feed/"},
+    {"name": "Sawayaka Trip", "url": "https://sawayakatrip.com/feed/"}
+  ],
+  "seed_offers": [
+    {"title": "Vox Engine 2", "url": "https://vstalarm.com/product/vox-engine-2-limited-time-free/", "category": "audio/instruments", "deadline": "2026-09-12T09:00:00+09:00"},
+    {"title": "Rotation Mini", "url": "https://isotonikstudios.com/product/rotation-mini-by-rawton-forge/", "category": "audio/plugins", "deadline": "2026-09-12T23:59:00+09:00"},
+    {"title": "2B Reverbed", "url": "https://2bplayed.com/product/2b-reverbed/", "category": "audio/plugins", "deadline": "2026-09-14T23:59:00+09:00", "coupon": "FREESEP"},
+    {"title": "Astra A-2A", "url": "https://www.astracreativeaudio.com/en/", "category": "audio/plugins", "deadline": "2026-09-14T23:59:00+09:00", "install_risk": "unnotarized"},
+    {"title": "Texturium MIDI Orchestrator", "url": "https://textursphere.com/", "category": "audio/plugins", "deadline": "2026-09-15T23:59:00+09:00"},
+    {"title": "TouchMod IN / FX", "url": "https://essession.com/en", "category": "audio/plugins", "deadline": "2026-09-15T23:59:00+09:00", "platform": "windows"},
+    {"title": "Cymatics Producer Royale Free Contest Kit", "url": "https://cymatics.fm/pages/producer-royale-2026-song-contest-a", "category": "audio/sample-packs", "deadline": "2026-09-23T03:00:00+09:00", "offer_type": "limited-campaign-free"}
+  ],
+  "excluded_hosts": ["epicgames.com", "store.epicgames.com", "fab.com"],
+  "direct_downloads": []
+}
