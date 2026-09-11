@@ -1,67 +1,31 @@
 {
-  # Blocky in place of AdGuard Home. AdGuard's settings were already declared
-  # here, so this is not about declarativeness per se — it is that AdGuard keeps
-  # half its state in a file it writes itself (the admin account, and anything
-  # changed through the web UI), and reconciling that with nix means
-  # mutableSettings = true and hoping the two agree. Blocky has no UI and no
-  # writable state: the YAML below is the whole configuration.
+  # AdGuard Home の代わりの Blocky。AdGuard の設定もここに宣言してあったので、
+  # これは宣言的かどうかの話ではない。AdGuard は状態の半分を自分で書くファイルに
+  # 持つ (管理アカウントと、Web UI で変えたもの全部) ので、それを nix と噛み合わせ
+  # ようとすると mutableSettings = true にして両者が一致することを祈ることになる。
+  # Blocky は UI も書き込み状態も持たない。設定はこの YAML が全部。
   #
-  # What is lost: the query log browser and the per-client rules page. Metrics
-  # come out as Prometheus instead, and the API answers on :4000.
+  # 失うもの: 問い合わせログの閲覧と、クライアント別ルールのページ。メトリクスは
+  # Prometheus 形式で出て、API は :4000 で答える。
   #
-  # The Raspberry Pi still runs AdGuard as the primary resolver, so DNS for the
-  # house does not depend on this machine at all.
+  # 副は macmini (hosts/macmini-dns.nix)。設定は lib/blocky-settings.nix で共有して
+  # いて、この機械との差は待ち受けアドレスだけ。以前ここには「Raspberry Pi が
+  # AdGuard を主リゾルバとして動かしているので家の DNS はこの機械に依存しない」と
+  # 書いてあったが、Pi は 2026-08-24 に退役していて、その間この機械が唯一の
+  # リゾルバだった。
   services.blocky = {
     enable = true;
-    settings = {
-      # Only the loopback and this machine's own address — the podman bridges
-      # need :53 for aardvark-dns. This is the same collision AdGuard hit.
-      ports = {
-        dns = "127.0.0.1:53,192.168.116.98:53";
-        http = 4000; # metrics + API. dns2.gapul.net points here now.
-      };
-
-      upstreams.groups.default = [ "https://dns10.quad9.net/dns-query" ];
-      # DoH cannot resolve its own hostname, so these have to be addresses.
-      bootstrapDns = [
-        { upstream = "9.9.9.10"; }
-        { upstream = "149.112.112.10"; }
-      ];
-
-      blocking = {
-        denylists.ads = [
-          # hosts format. AdGuard's own list — which is what this host used
-          # before — is in AdGuard's `||domain^` syntax, and blocky parses it to
-          # zero entries: the download succeeds, blocking reports enabled, and
-          # nothing is blocked. That fails quietly, so it is worth being explicit
-          # that the format matters more than the source.
-          "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts"
-        ];
-        clientGroupsBlock.default = [ "ads" ];
-        # NXDOMAIN rather than 0.0.0.0: clients stop retrying, and it does not
-        # leave sockets hanging on a black hole.
-        blockType = "nxDomain";
-      };
-
-      caching = {
-        minTime = "5m";
-        maxTime = "30m";
-        prefetching = true;
-      };
-
-      prometheus.enable = true;
-      # Queries are not logged to disk. AdGuard kept a searchable log; if that
-      # turns out to be missed, set queryLog.type = "csv" and a path here.
-      queryLog.type = "none";
-      log.level = "info";
+    # ループバックとこの機械自身のアドレスだけ。podman のブリッジが aardvark-dns の
+    # ために :53 を要る。AdGuard が踏んだのと同じ衝突。
+    settings = import ../lib/blocky-settings.nix {
+      listen = "127.0.0.1:53,192.168.116.98:53";
     };
   };
 
-  # Port 53 is Blocky's; nothing else on this host may take it.
+  # 53 番は Blocky のもの。このホストでは他の何にも渡さない。
   services.resolved.enable = false;
 
-  # DNS has to be reachable from the LAN, unlike everything else here: clients
-  # point at this address directly.
+  # ここだけは LAN から届く必要がある。クライアントがこのアドレスを直接指す。
   networking.firewall.allowedTCPPorts = [ 53 ];
   networking.firewall.allowedUDPPorts = [ 53 ];
 }
