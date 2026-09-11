@@ -18,7 +18,7 @@ remote_timeout_seconds = 600
 
 # Touch ID (or a paired Apple Watch). Built by helper/build.sh in github.com/gapul/ask; the
 # channel is skipped when the app is not installed.
-touch_id_app = "~/Applications/AskApprove.app"
+touch_id_app = "/Applications/AskApprove.app"
 
 # sops-managed, mode 0400.
 vault_password_file = "~/.config/ask/bw-password"
