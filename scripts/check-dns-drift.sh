@@ -64,6 +64,29 @@ mapfile -t expected < <(
     --apply 'builtins.attrNames' | jq -r '.[]' | sort
 )
 
+# 公開向けのホストはトンネルの CNAME で出る。A レコードが無いのが正しい状態なので、
+# A の表からは外す。整合は下の「公開ホスト名 (トンネル)」で別に見ている。
+# これを外していなかった間、この検査は毎回 4 件の MISSING を出しっぱなしで、
+# 本物の欠落 (auth.gapul.net が 2026-09-11 まで A レコードごと無かった) が
+# その中に埋もれていた。赤が常態だと誰も読まない。
+# shellcheck disable=SC2016
+mapfile -t published < <(
+  nix eval --json "$flake#nixosConfigurations.homeserver.config.services.cloudflared.tunnels" \
+    --apply 'ts: builtins.concatLists (map (id: builtins.attrNames ts.${id}.ingress) (builtins.attrNames ts))' |
+    jq -r '.[]' | sort -u
+)
+
+only_a=()
+for host in "${expected[@]}"; do
+  # ":8102" のように port だけの vhost は名前を持たない。DNS の話ではない。
+  [[ $host == *.* ]] || continue
+  if printf '%s\n' "${published[@]+"${published[@]}"}" | grep -qx "$host"; then
+    continue
+  fi
+  only_a+=("$host")
+done
+expected=("${only_a[@]}")
+
 # 秘密は secrets/{common,darwin,homelab}.yaml に割れている。単一の secrets.yaml は
 # もう無いので、そこを見ていた頃のこのスクリプトは token を空のまま先に進んでいた。
 token=$(nix develop "$flake" -c sops -d --extract '["cloudflare"]["api_token"]' "$repo/secrets/homelab.yaml" 2>/dev/null || true)
