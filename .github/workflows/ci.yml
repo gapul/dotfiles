@@ -134,7 +134,9 @@ jobs:
           # trusted-user ではないので `cachix use` が「権限が無い」で落ちる (入れない方針は
           # macmini-ci-runner.nix)。substituter は宣言済みなので pull は効いており、push は
           # main の run が担う。macmini はユーザーが trusted なので今まで通り push する。
-          cachix-token: ${{ (github.event_name == 'pull_request' && matrix.pr_runner == 'homeserver') && '' || secrets.CACHIX_AUTH_TOKEN }}
+          # 条件は「渡す側」で書く。`X && '' || secret` は空文字が falsy なので
+          # secret 側に落ちる (一度踏んだ)。
+          cachix-token: ${{ (github.event_name != 'pull_request' || matrix.pr_runner != 'homeserver') && secrets.CACHIX_AUTH_TOKEN || '' }}
           mocopi-deploy-key: ${{ secrets.MOCOPI_DEPLOY_KEY }}
 
       # PR は日常機だけを検証する (packages.<system>.pr-gate)。omnix は subflake の全出力を
