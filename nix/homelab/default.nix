@@ -54,6 +54,7 @@
     ./forgejo.nix
     ./formera.nix
     ./free-games-claimer.nix
+    ./freebie-collector.nix
     ./gameyfin.nix
     ./git-annex.nix
     ./hauk.nix
