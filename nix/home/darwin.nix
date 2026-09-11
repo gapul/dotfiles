@@ -4,10 +4,20 @@
   lib,
   user,
   nixpkgsUnstable,
+  nixpkgsAgents,
   secureEnclaveKey,
   ...
 }:
 let
+  # The rolling lineage the agent CLIs ride on (same one cli.nix uses). gemini-cli belongs here
+  # rather than on the pinned channel: Google refuses old clients outright — 0.42 answers
+  # "This client is no longer supported" and hands back no model at all — so a pinned version of
+  # this particular tool is a version that stops working on Google's schedule, not ours.
+  agentPkgs = import ../lib/unstable-pkgs.nix {
+    nixpkgsUnstable = nixpkgsAgents;
+    inherit (pkgs.stdenv.hostPlatform) system;
+  };
+
   # Bound here rather than inline in home.packages because the LaunchAgent below
   # needs the path too, and both must point at the same store path.
   mechvibes-dx = pkgs.callPackage ../pkgs/mechvibes-dx.nix { };
@@ -209,14 +219,18 @@ in
   # mac-specific packages
   home.packages = with pkgs; [
     bun # generate/type-check karabiner.ts config
-    # gemini: Google's CLI. Auth is the account's own OAuth (`gemini` opens a browser once and
-    # keeps the grant in ~/.gemini), which is what the AI Pro subscription applies to. An API key
-    # would be a separate, separately billed thing that the subscription does not cover.
+    # agy: Google's terminal agent, for agents that want a second model rather than a browser.
+    # Auth is the account's own OAuth, which is what the AI Pro subscription applies to; an API
+    # key would be separately billed and the subscription does not cover it.
     #
-    # Signing in to Gemini through an automated browser is not an option and was tried: Google
+    # Not gemini-cli, which was tried first and is over: Google answers it with "this client is
+    # no longer supported" and hands back no model at all, whatever the version. nixpkgs marks
+    # the package for removal for the same reason. Antigravity is where that account went.
+    #
+    # Signing in through an automated browser is not the alternative, and was also tried: Google
     # returns the sign-in flow to its first step for anything driven over CDP, whatever the
-    # password is. OAuth is a different road — the human consents in their own browser.
-    gemini-cli
+    # password is. OAuth is a different road — the human consents in their own browser, once.
+    agentPkgs.antigravity-cli
     pngpaste # needed for macOS image paste in obsidian.nvim / img-clip
     syncthing # Syncthing CLI (the resident is the LaunchAgent in services.syncthing)
     xcodegen # generate .xcodeproj from project.yml (Mac-only, since meta.platforms = darwin in Linux nixpkgs)
