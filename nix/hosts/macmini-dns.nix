@@ -27,15 +27,29 @@ let
 
   # blocky は YAML を読む。JSON は YAML の部分集合なので、そのまま渡せる。
   configFile = pkgs.writeText "blocky.yml" (builtins.toJSON settings);
+
+  # macOS のアプリケーションファイアウォールは、素性を知らないバイナリへの着信を黙って
+  # 落とす。nix のバイナリは ad-hoc 署名なので毎回それに当たり、ループバックからは引ける
+  # のに LAN からは無応答、という一番わかりにくい壊れ方をする (ComfyUI の 8188 と同じ)。
+  #
+  # 許可は activation ではなくここで入れる。ALF は「このバイナリへの着信を許すか」を
+  # プロセスの起動時に見るので、順序がすべてになる。activation 側に置くと、許可を足す
+  # 処理と launchd がデーモンを起こす処理の前後関係が保証されず、実際 2026-09-11 の
+  # 初回デプロイでは許可が入っているのに LAN から無応答のままだった (手で起動し直して
+  # 直った)。起動の直前に自分の store path を入れれば、順序も更新も考えなくていい。
+  launch = pkgs.writeShellScript "blocky-with-firewall" ''
+    fw=/usr/libexec/ApplicationFirewall/socketfilterfw
+    if [ -x "$fw" ]; then
+      "$fw" --add ${pkgs.blocky}/bin/blocky >/dev/null 2>&1 || true
+      "$fw" --unblockapp ${pkgs.blocky}/bin/blocky >/dev/null 2>&1 || true
+    fi
+    exec ${pkgs.blocky}/bin/blocky --config ${configFile}
+  '';
 in
 {
   launchd.daemons.blocky = {
     serviceConfig = {
-      ProgramArguments = [
-        "${pkgs.blocky}/bin/blocky"
-        "--config"
-        "${configFile}"
-      ];
+      ProgramArguments = [ "${launch}" ];
       RunAtLoad = true;
       KeepAlive = true;
       # 上流が落ちている間に再起動を繰り返しても意味がないので少し置く。
@@ -44,19 +58,4 @@ in
       StandardErrorPath = "/var/log/blocky.log";
     };
   };
-
-  # macOS のアプリケーションファイアウォールは、署名の素性を知らないバイナリへの
-  # 着信を黙って落とす。nix のバイナリは ad-hoc 署名なので毎回それに当たる。
-  # ここで例外に入れておかないと、ループバックからは引けるのに LAN からは無応答、
-  # という一番わかりにくい壊れ方をする (ComfyUI の 8188 で踏んだのと同じ)。
-  #
-  # store path はバージョンが変わるたびに変わるので、activation のたびに入れ直す。
-  # 一度きりの手作業にすると、次の更新で黙って遮断される。
-  system.activationScripts.blockyFirewall.text = ''
-    fw=/usr/libexec/ApplicationFirewall/socketfilterfw
-    if [ -x "$fw" ]; then
-      "$fw" --add ${pkgs.blocky}/bin/blocky >/dev/null 2>&1 || true
-      "$fw" --unblockapp ${pkgs.blocky}/bin/blocky >/dev/null 2>&1 || true
-    fi
-  '';
 }
