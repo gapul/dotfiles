@@ -209,6 +209,14 @@ in
   # mac-specific packages
   home.packages = with pkgs; [
     bun # generate/type-check karabiner.ts config
+    # gemini: Google's CLI. Auth is the account's own OAuth (`gemini` opens a browser once and
+    # keeps the grant in ~/.gemini), which is what the AI Pro subscription applies to. An API key
+    # would be a separate, separately billed thing that the subscription does not cover.
+    #
+    # Signing in to Gemini through an automated browser is not an option and was tried: Google
+    # returns the sign-in flow to its first step for anything driven over CDP, whatever the
+    # password is. OAuth is a different road — the human consents in their own browser.
+    gemini-cli
     pngpaste # needed for macOS image paste in obsidian.nvim / img-clip
     syncthing # Syncthing CLI (the resident is the LaunchAgent in services.syncthing)
     xcodegen # generate .xcodeproj from project.yml (Mac-only, since meta.platforms = darwin in Linux nixpkgs)
