@@ -19,12 +19,6 @@
       path = "${config.home.homeDirectory}/.config/xcodes/password";
     };
 
-    # Gemini API key (AI Studio). Read by the `gemini` wrapper in darwin.nix at call time.
-    "gemini_api_key" = {
-      sopsFile = ../../secrets/darwin.yaml;
-      path = "${config.home.homeDirectory}/.config/gemini/api_key";
-    };
-
     # keystats: passphrase for signing its own release builds (self-made app, gapul/keystats)
     "keystats_signing_pw" = {
       sopsFile = ../../secrets/darwin.yaml;
