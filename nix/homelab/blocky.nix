@@ -15,12 +15,22 @@
   # リゾルバだった。
   services.blocky = {
     enable = true;
-    # ループバックとこの機械自身のアドレスだけ。podman のブリッジが aardvark-dns の
-    # ために :53 を要る。AdGuard が踏んだのと同じ衝突。
+    # ループバックとこの機械自身のアドレスだけ。0.0.0.0 にはできない: podman の
+    # ブリッジが aardvark-dns のために :53 を要る。AdGuard が踏んだのと同じ衝突。
+    #
+    # tailnet アドレスも足してある。tailnet の DNS 設定からこの解決器を指すため
+    # で、これが無いと外出先の端末は家の blocky を引けない (広告遮断も
+    # gapul.net の内向き解決も効かない)。
     settings = import ../lib/blocky-settings.nix {
-      listen = "127.0.0.1:53,192.168.116.98:53";
+      listen = "127.0.0.1:53,192.168.116.98:53,100.127.129.31:53";
     };
   };
+
+  # tailscale0 は blocky より後に上がる。tailnet アドレスを名指しで待ち受ける以上、
+  # 起動順で「まだ存在しないアドレスに bind できない」で落ちうるので、非ローカル
+  # アドレスへの bind を許す。After= で順序を付ける手もあるが、tailscaled が
+  # 再接続でアドレスを付け直す局面まではカバーできない。
+  boot.kernel.sysctl."net.ipv4.ip_nonlocal_bind" = 1;
 
   # 53 番は Blocky のもの。このホストでは他の何にも渡さない。
   services.resolved.enable = false;

@@ -20,9 +20,12 @@
 let
   # このホストの LAN アドレス。ルーターの DHCP 予約で固定してある。
   lanAddress = "192.168.116.100";
+  # tailnet アドレス。tailnet の DNS 設定はこちらを指す (外出先の端末は LAN の
+  # アドレスに届かない)。Tailscale のアドレスは機械ごとに固定。
+  tailnetAddress = "100.105.135.49";
 
   settings = import ../lib/blocky-settings.nix {
-    listen = "127.0.0.1:53,${lanAddress}:53";
+    listen = "127.0.0.1:53,${lanAddress}:53,${tailnetAddress}:53";
   };
 
   # blocky は YAML を読む。JSON は YAML の部分集合なので、そのまま渡せる。
@@ -51,8 +54,11 @@ in
     serviceConfig = {
       ProgramArguments = [ "${launch}" ];
       RunAtLoad = true;
+      # 起動時に tailnet のアドレスがまだ付いていないと bind に失敗して終了する。
+      # launchd が 30 秒おきに起こし直し、Tailscale が上がった時点で成功する。
+      # Linux 側の ip_nonlocal_bind に当たるものが macOS には無いので、順序ではなく
+      # 再試行で吸収する。
       KeepAlive = true;
-      # 上流が落ちている間に再起動を繰り返しても意味がないので少し置く。
       ThrottleInterval = 30;
       StandardOutPath = "/var/log/blocky.log";
       StandardErrorPath = "/var/log/blocky.log";
