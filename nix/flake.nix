@@ -737,6 +737,10 @@
         homeModules = roles.macminiHeadless;
         specialArgs = {
           inherit user;
+          # hosts/macmini.nix and its home layer both take this; without it the whole macmini
+          # configuration stops evaluating, which is where it was found — nothing in CI builds
+          # this closure, so it went unnoticed until something needed the mini again.
+          nixpkgsAgents = nixpkgs-agents;
           claudeAcp = claude-acp.packages.${system}.default;
           sopsNix = sops-nix;
           # 母艦からのリモートビルドを受ける側。接続してくるユーザーが trusted-users に
