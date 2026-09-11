@@ -209,6 +209,20 @@ in
   # mac-specific packages
   home.packages = with pkgs; [
     bun # generate/type-check karabiner.ts config
+    # gemini: Google's CLI, for agents that want a second model rather than a browser.
+    # Signing in to Gemini in an automated browser does not work — Google returns the sign-in
+    # flow to its first step for anything driven over CDP, whatever the password is — so the
+    # key is the way in. It is read at call time from the sops file rather than exported, so
+    # it lives in one process instead of in the environment of everything started from a shell.
+    (writeShellScriptBin "gemini" ''
+      key="${config.sops.secrets."gemini_api_key".path}"
+      if [ ! -r "$key" ]; then
+        echo "gemini: no API key at $key" >&2
+        echo "gemini: create one at https://aistudio.google.com/apikey and add it to sops" >&2
+        exit 1
+      fi
+      GEMINI_API_KEY="$(cat "$key")" exec ${gemini-cli}/bin/gemini "$@"
+    '')
     pngpaste # needed for macOS image paste in obsidian.nvim / img-clip
     syncthing # Syncthing CLI (the resident is the LaunchAgent in services.syncthing)
     xcodegen # generate .xcodeproj from project.yml (Mac-only, since meta.platforms = darwin in Linux nixpkgs)
