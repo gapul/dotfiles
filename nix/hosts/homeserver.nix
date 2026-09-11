@@ -138,6 +138,9 @@ let
       upstream = "${macmini}:8901";
       auth = true;
     };
+    # RecallVault's iPhone client authenticates with its own bearer token, so this
+    # machine endpoint must not be placed behind the browser-oriented Authelia flow.
+    recall.upstream = "${macmini}:8766";
     sync = {
       upstream = "127.0.0.1:8384"; # syncthing rejects requests whose Host it doesn't know
       extra = "header_up Host {upstream_hostport}";
