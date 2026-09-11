@@ -141,6 +141,17 @@ let
     # RecallVault's iPhone client authenticates with its own bearer token, so this
     # machine endpoint must not be placed behind the browser-oriented Authelia flow.
     recall.upstream = "${macmini}:8766";
+    # Orca の Web クライアント (macmini の常駐ランタイム)。スマホから使うために TLS が要る:
+    # 平文 HTTP + 生 IP は secure context ではないので、起動時に
+    # `crypto.randomUUID is not a function` で落ちる。tailscale serve が同じものを
+    # https://macmini.tail079f44.ts.net に出しているが、MagicDNS がこのネットワークの
+    # 端末で解決できていない (ts.net の split route が OS に効かない) ので、
+    # 既に実績のある gapul.net 側に寄せる。
+    #
+    # Authelia は挟まない。ページ自体は開けても、ランタイムはペアリングコードの
+    # デバイストークンを持たないクライアントを受け付けない。つまり入口の鍵は
+    # 既にコード側にあり、vhost は tailnet 内からしか引けない。
+    orca.upstream = "${macmini}:6768";
     sync = {
       upstream = "127.0.0.1:8384"; # syncthing rejects requests whose Host it doesn't know
       extra = "header_up Host {upstream_hostport}";
