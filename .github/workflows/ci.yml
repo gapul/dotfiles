@@ -130,7 +130,11 @@ jobs:
       # secret 不可なので pull のみ。詳細は setup-nix/action.yml を参照。
       - uses: ./.github/actions/setup-nix
         with:
-          cachix-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          # homeserver だけ token を渡さない。あの機械のランナーはサービスユーザーで、
+          # trusted-user ではないので `cachix use` が「権限が無い」で落ちる (入れない方針は
+          # macmini-ci-runner.nix)。substituter は宣言済みなので pull は効いており、push は
+          # main の run が担う。macmini はユーザーが trusted なので今まで通り push する。
+          cachix-token: ${{ (github.event_name == 'pull_request' && matrix.pr_runner == 'homeserver') && '' || secrets.CACHIX_AUTH_TOKEN }}
           mocopi-deploy-key: ${{ secrets.MOCOPI_DEPLOY_KEY }}
 
       # PR は日常機だけを検証する (packages.<system>.pr-gate)。omnix は subflake の全出力を
