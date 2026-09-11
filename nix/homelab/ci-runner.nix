@@ -61,6 +61,13 @@
       curl
       which
     ];
+
+    # This runner ships only externals/node24, while pinned actions still declare
+    # `using: node20` — the JS step then dies with ENOENT on a node that was never
+    # installed. GitHub's hosted runners remap it; this makes ours do the same instead
+    # of pinning every action to a version GitHub is retiring anyway.
+    extraEnvironment.ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION = "node24";
+
     serviceOverrides = {
       # Half the machine, at most, for everything outside the daemon.
       CPUQuota = "200%";
