@@ -206,6 +206,11 @@ in
         # Was ~/.config/restic/password, placed by hand. restic-common.nix's default path is the
         # same location, so the module below keeps reading it without knowing it moved.
         "restic_password" = forUser "/Users/${user.username}/.config/restic/password";
+        # For headless Claude Code. There is no interactive login on this machine and
+        # the keychain cannot be opened over SSH, so the OAuth token minted by
+        # `claude setup-token` is handed over as a file. claude-agent
+        # (nix/home/macmini-claude-agent.nix) reads it as CLAUDE_CODE_OAUTH_TOKEN.
+        "claude_code_oauth_token" = forUser "/Users/${user.username}/.config/claude/oauth-token";
         # マイクラの参加者一覧。名前と UUID は本人たちのもので、公開リポジトリに平文で置く
         # ものではないので暗号化したまま持つ。置き場所は 1 か所で、起動時に run.sh が各
         # インスタンスへ配る (サーバーは自分でこのファイルを書き換えるため、宣言側を毎回勝たせる)。
@@ -360,29 +365,11 @@ in
   #  same model on Apple Silicon) plus claude-bridge for the agent work, so ollama was carrying
   #  a duplicate copy of the model library for a path nothing routed through any more.)
 
-  # auto-fix パイプライン (GitHub issue → macmini の Claude Code → PR → CI → 自動マージ) が
-  # 生きているかを1時間ごとに確かめる。監視対象と同じ GitHub Actions では回さない、という
-  # 判断はスクリプト側の冒頭に書いてある。
-  #
-  # 元は手書きの plist と $HOME/autofix-monitor のスクリプトだった。中身は変えずに store へ
-  # 移し、状態(ログと Claude の出力)だけ XDG の state 配下に分けている。
-  launchd.agents.autofix-monitor = {
-    serviceConfig = {
-      ProgramArguments = [
-        "${pkgs.bash}/bin/bash"
-        "${../../configs/macmini/autofix-monitor/monitor.sh}"
-      ];
-      RunAtLoad = true;
-      StartInterval = 3600;
-      StandardOutPath = "/Users/${user.username}/.local/state/autofix-monitor/stdout.log";
-      StandardErrorPath = "/Users/${user.username}/.local/state/autofix-monitor/stderr.log";
-      EnvironmentVariables = {
-        # launchd から起動されるとシェルの環境が入らないので、スクリプトが要る分だけ渡す。
-        HOME = "/Users/${user.username}";
-        XDG_STATE_HOME = "/Users/${user.username}/.local/state";
-      };
-    };
-  };
+  # (The auto-fix pipeline's monitor lived here. System-level launchd.agents start in a
+  #  root context on a machine with no GUI login, and claude refuses
+  #  --dangerously-skip-permissions under root, so it woke up every hour and achieved
+  #  nothing. Its successor, claude-agent, is a home-manager agent instead — see
+  #  nix/home/macmini-claude-agent.nix.)
 
   # Paper, run straight on macOS as its own user rather than in a container.
   #
