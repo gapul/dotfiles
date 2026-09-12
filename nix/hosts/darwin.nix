@@ -176,6 +176,9 @@ in
     # MovieMaker. The download is Turnstile-gated, so the dmg has to be added to
     # the store by hand on a version bump. See pkgs/aquestalkplayer.nix.
     (pkgs.callPackage ../pkgs/aquestalkplayer.nix { })
+    # Open JTalk for the yukkuri engine's reading/accent analysis, under its own
+    # name so it does not become the default python. See pkgs/yukkuri-python.nix.
+    (pkgs.callPackage ../pkgs/yukkuri-python.nix { })
   ];
 
   # macOS settings (GUI/peripheral-oriented. Only values verified via `defaults read` on the machine are declared)
