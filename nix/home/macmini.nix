@@ -231,6 +231,34 @@ in
     };
   };
 
+  # geekfeed: ギーク情報と学生向け無料キャンペーンを毎朝集めて RSS/ICS を作り、push すると
+  # Cloudflare Pages (geekfeed.pages.dev) が公開する。収集の実体は ~/Developer 側のリポジトリで、
+  # ここで宣言するのは時刻だけ。--research は claude -p にウェブ調査させる分なので1日1回に留める。
+  # git と gh は nix プロファイル側にいるため、PATH は publish.sh が自前で組み立てる。
+  launchd.agents.geekfeed = {
+    enable = true;
+    config = {
+      ProgramArguments = [
+        "${pkgs.writeShellScript "geekfeed" ''
+          repo="$HOME/Developer/github.com/gapul/geekfeed"
+          [ -x "$repo/publish.sh" ] || exit 0
+          exec "$repo/publish.sh" --research
+        ''}"
+      ];
+      StartCalendarInterval = [
+        {
+          Hour = 7;
+          Minute = 30;
+        }
+      ];
+      ProcessType = "Background";
+      LowPriorityIO = true;
+      Nice = 10;
+      StandardOutPath = "/tmp/geekfeed.log";
+      StandardErrorPath = "/tmp/geekfeed.log";
+    };
+  };
+
   # Hand-written agents the declarations above replace, plus one leftover that was already
   # disabled. Same shape as the workstation's retiredLaunchAgents list.
   home.activation.retiredMacminiAgents = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
