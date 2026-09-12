@@ -298,6 +298,8 @@
           ./home/macmini-render.nix
           # 音声モデルと合成処理。クライアントは tailnet 越しの API を使う。
           ./home/macmini-aivisspeech.nix
+          # スライド編集の試作。PPTX の書き出しがブラウザでしか動かないので常駐が要る。
+          ./home/macmini-presenta.nix
         ];
         wsl = linuxBase ++ [ ./home/wsl.nix ] ++ secrets ++ station;
         linuxServer = linuxBase ++ secrets ++ station;
