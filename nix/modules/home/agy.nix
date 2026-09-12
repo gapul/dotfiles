@@ -22,11 +22,12 @@ let
     inherit (pkgs.stdenv.hostPlatform) system;
   };
 
-  # Declared keys only. Pro rather than Flash by default because this is the tool reached for a
-  # second opinion, where the answer matters more than what it costs; `--model` picks another per
-  # call (`agy models` lists them, Claude and gpt-oss included).
+  # Declared keys only. Flash at its highest effort: on the first real job through this tool — a
+  # licensing email to the author of an avatar collection — it read the situation well enough that
+  # Pro's extra cost had nothing to buy. `--model` reaches Pro per call when something warrants it
+  # (`agy models` lists them, Claude and gpt-oss included).
   settings = {
-    model = "gemini-3.1-pro-high";
+    model = "gemini-3.8-flash-high";
     enableTelemetry = false;
   };
 
