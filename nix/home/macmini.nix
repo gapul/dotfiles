@@ -353,6 +353,43 @@ in
       # The workstation's broker sends approved native credentials to this fixed remote helper.
       { ".local/bin/ask-native-fill".source = ../../configs/ask/native_fill.py; }
     ]
+    ++ [
+      # macmini's ssh client config. The workstation gets its own through sops
+      # (home/secrets.nix), but macmini holds no age key, so this half is declared in
+      # plain nix. Nothing here is a secret — hostnames, a user name, and paths to keys
+      # that live outside the store.
+      #
+      # Owning the file is the point. Until 2026-09-13 this was a hand-written file and
+      # Claude Code sessions running on macmini kept appending the same `Host github.com`
+      # block on every run; it had accumulated 84 copies. A store symlink cannot be
+      # appended to, so the next attempt fails loudly instead of growing the file.
+      #
+      # macbook-mini is the workstation. macmini reaches it over the tailnet with its own
+      # `macmini-outbound` key, verified without a forwarded agent, so this works from
+      # launchd jobs and from sessions nobody is attached to. It is a different path from
+      # configs/bin/open-on-mac, which goes through the RemoteForward on 127.0.0.1:2222
+      # and deliberately carries no key on this side — that one only exists while the
+      # workstation holds the connection open, so it cannot be what a background job uses.
+      {
+        ".ssh/config".text = ''
+          Host macbook-mini mac
+            HostName 100.67.200.89
+            User gapul
+            IdentityFile ~/.ssh/id_ed25519
+            IdentitiesOnly yes
+
+          Host ispc
+            HostName 100.73.228.38
+            User ispc_5CG54406V7
+            IdentityFile ~/.ssh/id_ed25519
+            IdentitiesOnly yes
+
+          Host github.com
+            IdentityFile ~/.ssh/mocopi_ci
+            IdentitiesOnly yes
+        '';
+      }
+    ]
   );
 
   # AI stack resident (replaces the old hand-written net.gapul.* plists. 2026-07-19)
