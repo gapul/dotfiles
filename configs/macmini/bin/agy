@@ -1,0 +1,9 @@
+#!/bin/zsh
+# agy stores its Google credentials in the login keychain, which only the console session can
+# open — an ssh session gets "User interaction is not allowed" and agy then reports itself as
+# logged out and prints a fresh login URL. Everything that reaches this machine arrives over
+# ssh, so without this the CLI is unusable here despite being authenticated.
+#
+# asuser hands the process to the logged-in GUI session, where the keychain is already unlocked.
+# It needs root to do that, which is why sudo is here (passwordless for this user on this host).
+exec sudo launchctl asuser "$(id -u)" /etc/profiles/per-user/gapul/bin/agy "$@"
