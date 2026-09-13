@@ -21,6 +21,9 @@
     serviceConfig = {
       Type = "oneshot";
       ExecStart = "${pkgs.bash}/bin/bash ${../../configs/homelab/journal-alert.sh} -15min";
+      # 「最後にこの合図で鳴らした内容と時刻」を置く場所。直らない 1 件で
+      # 15 分おきに鳴り続けないための間引きに使う (2026-09-13 に 7 時間で 28 通)。
+      StateDirectory = "journal-alert";
     };
   };
 
