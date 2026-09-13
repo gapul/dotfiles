@@ -340,6 +340,7 @@ in
       "sbv2_tts.py"
     ]
     ++ map aiWrapper [
+      "agy"
       "ask"
       "describe"
       "ocr"
