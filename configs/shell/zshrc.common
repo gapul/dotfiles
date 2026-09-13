@@ -7,7 +7,7 @@
 #   リモート: configs/shell/zshrc.remote が source する (nssh 先。home-manager 非経由)
 #
 # ここに置いてよいのは「どのホストでも成り立つ設定」だけ。
-#   - 母艦固有 (ghq / tirith / git-wt / launcher / vpn / codex テーマ / textlint パス) は
+#   - 母艦固有 (ghq / git-wt / launcher / vpn / codex テーマ / textlint パス) は
 #     shell.nix 側に残す
 #   - 案件固有は ~/.devkits/<案件>/shellrc (private repo)
 #   - このリポジトリは public なので勤務先の内部構成を書かない

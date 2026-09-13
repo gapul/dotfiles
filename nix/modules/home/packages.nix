@@ -49,7 +49,6 @@ in
     git-wt # unify worktree create/switch/safe-delete under `git wt`
     git-wtpr # `git wtpr <PR number|URL>` moves to a PR-dedicated worktree
     trash-cli # route git-wt deletions through the trash
-    agentPkgs.tirith # command/URL/Skill defense for shell/AI agents
     (callPackage ../../pkgs/tuicr.nix { }) # review AI-generated diffs in a PR-style UI
     ghq # repo clone management
     git-annex # content-addressed large files in git (fonts / assets; see homelab/git-annex.nix)
