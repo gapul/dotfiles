@@ -92,16 +92,26 @@ in
   services.matrix-synapse.settings.app_service_config_files = [ registrationFile ];
   systemd.services.matrix-synapse.serviceConfig.SupplementaryGroups = [ "matrix-line" ];
 
-  systemd.services.matrix-line = {
-    description = "Matrix-LINE bridge";
-    wantedBy = [ "multi-user.target" ];
-    wants = [ "network-online.target" ] ++ [ config.services.matrix-synapse.serviceUnit ];
-    after = [ "network-online.target" ] ++ [ config.services.matrix-synapse.serviceUnit ];
-    # 動画のサムネイルと音声の変換に使う。
-    path = [ pkgs.ffmpeg-headless ];
-
-    preStart = ''
-      old_umask=$(umask)
+  # config.yaml と登録ファイルは別の oneshot で先に作る。ブリッジ本体の preStart で
+  # 作ると、初回のデプロイで Synapse の再起動が登録ファイルより先に来て、存在しない
+  # ファイルを読んで Synapse ごと落ちる (2026-09-13 に実際に踏んだ)。
+  systemd.services.matrix-line-config = {
+    description = "Generate the Matrix-LINE bridge config and registration";
+    before = [ config.services.matrix-synapse.serviceUnit ];
+    wantedBy = [ config.services.matrix-synapse.serviceUnit ];
+    requires = [ "matrix-doublepuppet-registration.service" ];
+    after = [ "matrix-doublepuppet-registration.service" ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      User = "matrix-line";
+      Group = "matrix-line";
+      # ダブルパペットのトークンを読むためだけのグループ。本体の unit には付けない。
+      SupplementaryGroups = [ "matrix-doublepuppet" ];
+      StateDirectory = baseNameOf dataDir;
+      WorkingDirectory = dataDir;
+    };
+    script = ''
       umask 0177
       cp '${settingsFileUnsubstituted}' '${settingsFile}'
 
@@ -113,13 +123,30 @@ in
       fi
       chmod 640 '${registrationFile}'
 
-      ${lib.getExe pkgs.yq} -s '.[0].appservice.as_token = .[1].as_token
+      # スマホから自分が送った発言を @gapul として出す (matrix-doublepuppet.nix)。
+      DOUBLE_PUPPET="as_token:$(cat /var/lib/matrix-doublepuppet/as_token)" \
+        ${lib.getExe pkgs.yq} -s '.[0].appservice.as_token = .[1].as_token
         | .[0].appservice.hs_token = .[1].hs_token
+        | .[0].double_puppet.secrets["${domain}"] = env.DOUBLE_PUPPET
         | .[0]' \
         '${settingsFile}' '${registrationFile}' > '${settingsFile}.tmp'
       mv '${settingsFile}.tmp' '${settingsFile}'
-      umask $old_umask
     '';
+    restartTriggers = [ settingsFileUnsubstituted ];
+  };
+
+  systemd.services.matrix-line = {
+    description = "Matrix-LINE bridge";
+    wantedBy = [ "multi-user.target" ];
+    requires = [ "matrix-line-config.service" ];
+    wants = [ "network-online.target" ] ++ [ config.services.matrix-synapse.serviceUnit ];
+    after = [
+      "network-online.target"
+      "matrix-line-config.service"
+    ]
+    ++ [ config.services.matrix-synapse.serviceUnit ];
+    # 動画のサムネイルと音声の変換に使う。
+    path = [ pkgs.ffmpeg-headless ];
 
     serviceConfig = {
       User = "matrix-line";

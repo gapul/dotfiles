@@ -342,6 +342,18 @@ in
   # JSON は YAML 1.2 の部分集合なので lazygit はそのまま読める。
   xdg.configFile."lazygit/config.yml".text = builtins.toJSON config.programs.lazygit.settings;
 
+  # Element Desktop reads config.json from its profile directory on top of the bundled
+  # one. Point it at the self-hosted homeserver so a fresh sign-in needs no server entry.
+  # Account-level settings live on the server (account data) and are not declared here.
+  home.file."Library/Application Support/Element/config.json".text = builtins.toJSON {
+    default_server_config."m.homeserver" = {
+      base_url = "https://matrix.gapul.net";
+      server_name = "gapul.net";
+    };
+    disable_guests = true;
+    default_country_code = "JP";
+  };
+
   # MechvibesDX at login, in place of a System Settings login item. Lives here
   # rather than in darwin-services.nix because it needs the package path from
   # the let block above.
