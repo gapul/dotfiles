@@ -78,6 +78,11 @@ assert lib.assertMsg (builtins.elem "tirith" packageNames)
   "tirith must be installed in the workstation Home Manager profile";
 assert lib.assertMsg (lib.hasInfix "tirith init --shell zsh" home.programs.zsh.initContent)
   "tirith must have an active zsh preexec hook";
+assert lib.assertMsg
+  (lib.hasInfix ''
+    unset TIRITH_SESSION_ID
+    evalcache tirith init --shell zsh'' home.programs.zsh.initContent)
+  "each interactive shell must drop the inherited TIRITH_SESSION_ID before the hook loads, or herdr panes share one execution-receipt ledger";
 assert lib.assertMsg (
   home.programs.bat.config.theme == "auto:system"
   && home.programs.bat.config.theme-dark == "rose-pine"
