@@ -84,7 +84,10 @@ SINCE="${1:--15min}"
 # journald は 1 回だけ読む。パターンごとに読み直すと、パターンを増やすたびに
 # 走査回数が倍々に増える (9 個で 18 回。12 時間分だと数分かかった)。
 SNAP=$(mktemp)
-trap 'rm -f "$SNAP"' EXIT
+# 今回暴れていたユニット。下の while はパイプの中で回るので、外に持ち出すには
+# 変数ではなくファイルが要る。
+LOOPING=$(mktemp)
+trap 'rm -f "$SNAP" "$LOOPING"' EXIT
 journalctl --since "$SINCE" --no-pager > "$SNAP" 2>/dev/null
 
 for entry in "${PATTERNS[@]}"; do
@@ -123,9 +126,18 @@ grep -oE '[A-Za-z0-9@_.-]+\.service: Failed with result' "$SNAP" |
     # glob だと attic-db.service のような普通の名前まで巻き込むので、桁数で見る。
     [[ "$unit" =~ ^[0-9a-f]{64}-[0-9a-f]{16}\.service$ ]] && continue
     sample=$(grep -F "$unit" "$SNAP" | grep -viF 'Failed with result' | tail -1 | cut -c1-200)
+    echo "loop-$unit" >> "$LOOPING"
     notify_once "loop-$unit" "$unit" "$unit が失敗を繰り返している" "直近 ${SINCE#-} で ${count} 回失敗。稼働中に見えても中身は起動できていない。
 ${sample}" high
   done
+
+# 収まったユニットの記録は消す。残したままだと、6 時間以内に暴れ直したときに
+# 間引きに引っかかって黙る。これは 2026-08-28 の romm-db のような、
+# 直ったように見えて再発する壊れ方をちょうど取りこぼす。
+for state in "$STATE_DIR"/loop-*; do
+  [ -e "$state" ] || continue
+  grep -qxF "$(basename "$state")" "$LOOPING" 2>/dev/null || rm -f "$state"
+done
 
 # 落ちたユニット。systemd が知っているのに誰も見ていない典型。
 #
