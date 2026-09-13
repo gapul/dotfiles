@@ -77,6 +77,18 @@ in
     '')
   ];
 
+  # Claude Code on the mini gets the workstation's managed keys (bypassPermissions as the default
+  # mode, theme, effort, ...) from settings.remote.json, the same merge remote-bootstrap applies over
+  # nssh. Merged rather than linked: hooks and plugins stay host-owned, and Orca and the TUI rewrite
+  # this file in place (configs/cli/claude/README.md). An unparsable file is reported and left alone
+  # rather than failing an unattended switch.
+  home.activation.claudeManagedSettings = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    run ${pkgs.python3}/bin/python3 ${../../scripts/merge-claude-settings.py} \
+      "${config.xdg.configHome}/claude/settings.json" \
+      --managed ${../../configs/cli/claude/settings.remote.json} \
+      || echo "warning: Claude settings merge failed; left untouched" >&2
+  '';
+
   # launchd does not create the parent of StandardOutPath, and the dashboard agent's log moved out
   # of the (now deleted) project directory into XDG state.
   home.activation.manabiStateDir = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
