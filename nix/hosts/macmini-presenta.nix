@@ -3,8 +3,9 @@
 #
 # Only the runtime is declared here. The app itself is a checkout that gets built in place
 # (`pnpm install && pnpm db:migrate && pnpm build`), and its secrets live in the checkout's
-# .env.local, which next reads from the working directory. A restart after a deploy is
-# `sudo launchctl kickstart -k system/org.nixos.presenta`.
+# .env.local, which next reads from the working directory. The app waits for .next/BUILD_ID,
+# which `next build` writes last, so a fresh checkout does not crash-loop through its build.
+# A restart after a deploy is `sudo launchctl kickstart -k system/org.nixos.presenta`.
 #
 # Postgres is its own instance rather than nix-darwin's services.postgresql: that one is a user
 # agent, so it would only run while someone is logged in, and it wants /var/lib to be writable
