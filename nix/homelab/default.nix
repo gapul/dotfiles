@@ -69,6 +69,7 @@
     ./matrix.nix
     ./matrix-bridges.nix
     ./matrix-line.nix
+    ./matrix-doublepuppet.nix
     ./memory-pressure-alert.nix
     ./miniflux.nix
     ./navidrome.nix
