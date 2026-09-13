@@ -51,7 +51,7 @@ in
       ProgramArguments = [
         "/bin/sh"
         "-c"
-        "/bin/wait4path ${appDir}/.next && exec ${pkgs.pnpm}/bin/pnpm start -H 127.0.0.1 -p 3141"
+        "/bin/wait4path ${appDir}/.next/BUILD_ID && exec ${pkgs.pnpm}/bin/pnpm start -H 127.0.0.1 -p 3141"
       ];
       UserName = user.username;
       WorkingDirectory = appDir;
