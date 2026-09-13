@@ -145,6 +145,19 @@ in
     }))
     pkgs.brewCasks.supercollider
     pkgs.brewCasks.trex # 画面 OCR。Screen Recording の TCC を再付与する必要がある
+    # ─── Emulation ───
+    # The Pokémon RNG/breeding work runs here rather than on hardware: frame-level control and a
+    # debugger are what the manipulation needs, and neither exists on a real console. The 3DS side
+    # still requires system files and AES keys dumped from an own CFW'd console — none of these
+    # ship Nintendo code. All FOSS. retroarch-metal stays in homebrew.casks below: it is the
+    # phone-side/couch frontend, and these standalone cores are what the actual work uses.
+    # Azahar comes from nixpkgs because it has no cask at all. The other four are plain .apps in
+    # homebrew/cask with a real sha256 and no self-updater, so brew-nix pins them via flake.lock.
+    pkgs.azahar # 3DS. Citra successor (Citra and Lime3DS are both discontinued)
+    pkgs.brewCasks.melonds # DS. Slot-2 GBA cart support, so Pal Park (gen3 -> gen4) works
+    pkgs.brewCasks.desmume # DS. Older, but the better-documented Slot-2 path of the two
+    pkgs.brewCasks.mgba-app # GBA. nixpkgs marks mgba unsupported on aarch64-darwin
+    pkgs.brewCasks.sameboy # GB/GBC. Accuracy + debugger, the FOSS stand-in for Windows-only BGB
     # ─── Creative: official is paid but nixpkgs source builds give a free full version ───
     # Unavailable/broken on 26.05-darwin, so from unstablePkgs (nixos-unstable, with allowUnfree).
     unstablePkgs.fritzing # PCB/circuit design CAD (official DL is paid. for the ESP32 project). cached, so instant
