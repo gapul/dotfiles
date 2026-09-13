@@ -10,6 +10,7 @@ let
     concatMapAttrs
     mapAttrs
     mapAttrsToList
+    mkForce
     mkMerge
     ;
 
@@ -222,6 +223,29 @@ let
         systemd.services = concatMapAttrs (containerName: _: {
           "podman-${containerName}" = {
             partOf = [ "${targetName}.target" ];
+
+            # The only thing allowed to wake these containers is the lazy target.
+            #
+            # Each service module also declares wantedBy = compose-<group>-root.target
+            # (inherited from compose2nix). Those targets are not wanted by anything
+            # anymore, but a target that was active in an earlier generation stays
+            # active forever — nothing stops it when its wantedBy link disappears.
+            # jellyfin's has been active since 2026-08-11, romm's since 2026-08-23.
+            #
+            # switch-to-configuration restarts every active target on every switch,
+            # and starting a target pulls up its Wants. So each rebuild cold-started
+            # the whole lazy set behind our back. That is how 2026-09-13 broke:
+            # romm-db came up mid-switch, podman fires the first healthcheck ~0.2s
+            # after start, MariaDB needs ~11s, and the transient healthcheck unit
+            # sat in "failed" while switch-to-configuration took its final census.
+            # The switch had actually succeeded; it exited 4 anyway, so
+            # nixos-upgrade.service stayed failed and journal-alert paged every
+            # 15 minutes until the next upgrade run.
+            #
+            # --health-start-period does not help: it keeps the container status at
+            # "starting" but `podman healthcheck run` still exits 1, so the unit
+            # still fails (verified against podman 5.8.6).
+            wantedBy = mkForce [ ];
             # podman stop terminates conmon with SIGTERM (128 + 15). Treat that
             # expected sleep transition as clean so journal-alert does not page.
             serviceConfig.SuccessExitStatus = [
