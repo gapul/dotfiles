@@ -84,7 +84,7 @@ in
         # Settings shared with nssh hosts: setopt / keybindings / fzf-tab zstyles /
         # portable aliases and functions. nssh hosts read the very same file from
         # configs/shell/zshrc.remote, so the two never drift.
-        # Host-specific things (ghq / tirith / git-wt / launcher / vpn / codex theme)
+        # Host-specific things (ghq / git-wt / launcher / vpn / codex theme)
         # stay below, because they depend on tools only this machine has.
         source ${../../../configs/shell/zshrc.common}
 
@@ -121,19 +121,6 @@ in
             git-wt-shell "$@"
           fi
         }
-
-        # Inspect dangerous URLs, pipe-to-shell, and obfuscated payloads before running.
-        # Default policy blocks high-risk and warns on medium-risk; not always strict.
-        #
-        # tirith's hook exports TIRITH_SESSION_ID and reuses an inherited one, and the
-        # execution-receipt ledger (generation counter) is keyed by that id. herdr's server
-        # inherits the id from the shell that launched it and hands it to every pane, so a
-        # workspace restore has ~25 shells preparing receipts against one ledger at once and
-        # all but the last lose the race ("execution decision is stale: prepared generation N
-        # but current generation is M"), leaving the pane's command unexecuted. Drop the
-        # inherited id so each interactive shell owns its own ledger.
-        unset TIRITH_SESSION_ID
-        evalcache tirith init --shell zsh
 
         # The Codex TUI has no system theme, so pick the custom Rosé Pine / Dawn tmTheme
         # matching the OS appearance at startup.
