@@ -181,6 +181,10 @@ in
       sqlite_backup /var/lib/hass/home-assistant_v2.db /var/lib/db-dumps/home-assistant.db
       sqlite_backup /srv/archivebox/index.sqlite3 /var/lib/db-dumps/archivebox.db
 
+      # LINE のログイン (アクセストークンと E2EE 鍵) もここにある。失うと再ログインで済むが、
+      # ブリッジが Matrix 側に作った部屋との対応も一緒に消える。
+      sqlite_backup /var/lib/matrix-line/matrix-line.db /var/lib/db-dumps/matrix-line.db
+
       for bridge in discord telegram twitter meta; do
         sqlite_backup "/var/lib/homelab/matrix/bridges/$bridge/mautrix-$bridge.db" \
           "/var/lib/db-dumps/matrix-$bridge.db"

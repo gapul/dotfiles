@@ -12,9 +12,10 @@
 # ここに入れていないもの:
 #   telegram  — api_id / api_hash が要る。nix の settings に書くと store が
 #               誰でも読めるので、sops から environmentFile で渡す形にしてから足す。
-#   twitter / linkedin / gmessages / slack / line / imessage
+#   twitter / linkedin / gmessages / slack / imessage
 #             — モジュールが無い。パッケージがあるもの (gmessages, slack) は
 #               自前の unit、残りはコンテナ。第2陣以降。
+#   line      — モジュールもパッケージも無いので、両方を自前で書いた (matrix-line.nix)。
 #   teams     — 個人の teams.live.com 向けの実験的な実装しか無い。会社テナントは
 #               Azure のアプリ登録が要るので、そもそも許可の話になる。
 #   simplex   — 構造的に無理。あの設計は識別子を持たないことが核心で、
