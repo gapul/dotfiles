@@ -66,7 +66,16 @@ let
       servers = { };
       secrets = { };
     };
-    encryption.pickle_key = "";
+    # 他のブリッジと同じ方針 (matrix-bridges.nix の encryption)。pickle_key は
+    # config oneshot が初回に生成して ${dataDir}/pickle_key に置き、毎回差し込む。
+    encryption = {
+      allow = true;
+      default = true;
+      require = false;
+      msc4190 = true;
+      self_sign = true;
+      pickle_key = "";
+    };
     provisioning.shared_secret = "";
     public_media.signing_key = "";
     direct_media.server_key = "";
@@ -123,11 +132,18 @@ in
       fi
       chmod 640 '${registrationFile}'
 
+      # 作り直すと DB に保存した暗号鍵を復号できなくなるので、無いときだけ作る。
+      if [ ! -s '${dataDir}/pickle_key' ]; then
+        ${pkgs.openssl}/bin/openssl rand -hex 32 > '${dataDir}/pickle_key'
+      fi
+
       # スマホから自分が送った発言を @gapul として出す (matrix-doublepuppet.nix)。
+      PICKLE_KEY="$(cat '${dataDir}/pickle_key')" \
       DOUBLE_PUPPET="as_token:$(cat /var/lib/matrix-doublepuppet/as_token)" \
         ${lib.getExe pkgs.yq} -s '.[0].appservice.as_token = .[1].as_token
         | .[0].appservice.hs_token = .[1].hs_token
         | .[0].double_puppet.secrets["${domain}"] = env.DOUBLE_PUPPET
+        | .[0].encryption.pickle_key = env.PICKLE_KEY
         | .[0]' \
         '${settingsFile}' '${registrationFile}' > '${settingsFile}.tmp'
       mv '${settingsFile}.tmp' '${settingsFile}'
