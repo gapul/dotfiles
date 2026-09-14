@@ -3,7 +3,8 @@
 #
 # Deploys follow main by themselves: every two minutes presenta-deploy fetches the repo and, when
 # main moved, builds that commit in its own release directory while the old one keeps serving,
-# migrates the database, points `current` at the new release and restarts the app. A failed
+# runs the browser test suite against it on a side port with a throwaway database, migrates the
+# production database, points `current` at the new release and restarts the app. A failed
 # build leaves `current` alone and sends an ntfy alert. So shipping is `git push` to main; the
 # hand-run rsync into ~/Developer is no longer the production copy.
 #
@@ -65,6 +66,34 @@ let
     # The private repo is read with gh's token: the login keychain is locked for a daemon, so
     # git's osxkeychain helper cannot answer, and the machine's SSH key is a deploy key for another repo.
     git_() { git -c credential.helper= -c 'credential.helper=!gh auth git-credential' "$@"; }
+
+    e2e() (
+      set -euo pipefail
+      exec >${state}/e2e.log 2>&1
+      cd "$1"
+      db=postgresql://presenta@127.0.0.1:${pgPort}/presenta_e2e
+      ${postgres}/bin/dropdb -h 127.0.0.1 -p ${pgPort} -U presenta --if-exists presenta_e2e
+      ${postgres}/bin/createdb -h 127.0.0.1 -p ${pgPort} -U presenta presenta_e2e
+      # Set here, so next does not take production values from .env.local; the mailer points
+      # nowhere, so a test never sends real mail.
+      export DATABASE_URL=$db DATABASE_URL_UNPOOLED=$db AI_LIVE=0 \
+        AUTH_SECRET=$(openssl rand -hex 32) EMAIL_TOKEN_SECRET=$(openssl rand -hex 32) \
+        APP_BASE_URL=http://127.0.0.1:3151 AUTH_URL=http://127.0.0.1:3151 \
+        MAILER_URL=http://127.0.0.1:9/ MAILER_TOKEN=$(openssl rand -hex 16)
+      pnpm db:migrate
+      pnpm exec playwright install chromium >/dev/null
+      # Uploads go to a scratch directory, not the shared production data.
+      rm -rf ${state}/e2e-data && mkdir -p ${state}/e2e-data
+      export PRESENTA_DATA_DIR=${state}/e2e-data
+      pnpm start -H 127.0.0.1 -p 3151 &
+      server=$!
+      trap 'kill $server 2>/dev/null || true' EXIT
+      for _ in $(seq 60); do
+        curl -fsS http://127.0.0.1:3151/api/health >/dev/null 2>&1 && break
+        sleep 1
+      done
+      E2E_BASE_URL=http://127.0.0.1:3151 pnpm test:e2e
+    )
     if [ ! -d "$repo/.git" ]; then
       mkdir -p ${share}/releases
       git_ clone --quiet https://github.com/gapul/presenta-prototypes.git "$repo"
@@ -85,9 +114,22 @@ let
       set -a; . ${envFile}; set +a
       pnpm install --frozen-lockfile --reporter=silent
       pnpm build
-      pnpm db:migrate
     ); then
-      notify "build or migration of $rev failed; still serving $(basename "$(readlink ${share}/current)")"
+      notify "build of $rev failed; still serving $(basename "$(readlink ${share}/current)")"
+      exit 1
+    fi
+
+    # Browser tests gate the switch: the new release runs on a side port against a throwaway
+    # database before production is migrated or touched. Releases without the suite skip this.
+    if grep -q '"test:e2e"' "$release/package.json"; then
+      if ! e2e "$release"; then
+        notify "end-to-end tests failed for $rev; still serving $(basename "$(readlink ${share}/current)"). Log: ${state}/e2e.log"
+        exit 1
+      fi
+    fi
+
+    if ! (cd "$release" && set -a && . ${envFile} && set +a && pnpm db:migrate); then
+      notify "migration of $rev failed; still serving $(basename "$(readlink ${share}/current)")"
       exit 1
     fi
     ln -sfn "$release" ${share}/current.new && mv -h ${share}/current.new ${share}/current
