@@ -446,6 +446,19 @@ in
             alerts = [ ntfyAlert ];
           }
           {
+            # Presenta runs on the macmini behind its own tunnel. /api/health answers 200 only
+            # when the app can reach its Postgres, so this covers the app, the DB and the tunnel.
+            name = "presenta";
+            group = "public";
+            url = "https://presenta.gapul.net/api/health";
+            interval = "5m";
+            conditions = [
+              "[STATUS] == 200"
+              "[BODY].ok == true"
+            ];
+            alerts = [ ntfyAlert ];
+          }
+          {
             name = "push-ntfy";
             group = "public";
             url = "https://push.gapul.net/";
