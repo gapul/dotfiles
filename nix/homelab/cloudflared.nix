@@ -23,6 +23,9 @@
       ingress = {
         # Synapse。federation はここだけを通る (2026-08-31 に Conduit 6167 から移した)。
         "matrix.gapul.net" = "http://127.0.0.1:8008";
+        # matrix-hookshot's generic webhooks. Public so that senders outside the
+        # tailnet (Cloudflare Email Workers, CI) can post (matrix-hookshot.nix).
+        "hooks.gapul.net" = "http://127.0.0.1:9000";
         # ntfy。push はアプリ通知用、alert は unified-calendar の worker が
         # watchdog トピックへ投げてくる先で、Pi 側の ntfy にいたユーザとトークンは
         # この箱の ntfy へ移してある。
