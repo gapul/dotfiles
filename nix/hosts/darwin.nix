@@ -751,7 +751,9 @@ in
       "font-sf-mono"
 
       # ─── Tracking / Misc ───
-      "activitywatch"
+      # The stable cask (0.13.2) is x86_64-only and stopped launching when the macOS 27 upgrade
+      # dropped Rosetta. The beta is the arm64 Tauri build with aw-server-rust.
+      "activitywatch@beta"
       "gstreamer-runtime"
     ];
 

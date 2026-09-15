@@ -64,6 +64,11 @@ in
     # `.config/homebrew → ~/.homebrew` symlink below converges both paths onto the same entity
     # (Justfile rebuild's `env -u XDG_CONFIG_HOME` is harmless, so kept).
     PNPM_HOME = "${config.home.homeDirectory}/Library/pnpm";
+    # ActivityWatch (Tauri build) checks GitHub for updates on every start and, by default,
+    # installs them into its own bundle. The app comes from the activitywatch@beta cask, so updates
+    # belong to brew; this skips the check entirely (`auto_download = false` would still prompt).
+    # It reaches the login-item launch through the session-env agent in darwin-services.nix.
+    AW_DISABLE_AUTO_UPDATE = "1";
     # nh: darwin works with the darwinConfigurations.<user> form. For home on nh 4.3.2,
     # neither #name nor #...activationPackage works → flake only (no #) so it auto-detects
     # homeConfigurations.<user> by user name is the only form that works.
