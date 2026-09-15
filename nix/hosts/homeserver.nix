@@ -146,6 +146,12 @@ let
     # RecallVault's iPhone client authenticates with its own bearer token, so this
     # machine endpoint must not be placed behind the browser-oriented Authelia flow.
     recall.upstream = "${macmini}:8766";
+    # iPhone のヘルスケアの受け口 (homelab/health.nix)。PulsHealth アプリが bearer トークンで叩く
+    # 機械向けエンドポイントなので Authelia は挟まない。/ は認証が要るので健全なら 401。
+    health = {
+      upstream = "127.0.0.1:8105";
+      expect = [ "[STATUS] == 401" ];
+    };
     # Orca の Web クライアント (macmini の常駐ランタイム)。スマホから使うために TLS が要る:
     # 平文 HTTP + 生 IP は secure context ではないので、起動時に
     # `crypto.randomUUID is not a function` で落ちる。tailscale serve が同じものを

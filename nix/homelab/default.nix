@@ -57,6 +57,7 @@
     ./gameyfin.nix
     ./git-annex.nix
     ./hauk.nix
+    ./health.nix
     ./homebox.nix
     ./homeassistant.nix
     ./homepage.nix
