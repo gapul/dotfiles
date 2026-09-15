@@ -111,12 +111,23 @@ in
     rich-cli # rich formatting for csv/json/md etc. (called from piper previewer)
 
     # ─── centralized lint/format management (same binary/version across CLI, Neovim, CI) ───
-    # Neovim (conform/nvim-lint) references these on PATH. On the Mason side,
-    # excluded from ensure_installed to avoid double management (configs/editors/nvim/lua/plugins/tooling.lua).
+    # Neovim (conform/nvim-lint) references these on PATH. Mason is disabled
+    # (configs/editors/nvim/lua/plugins/tooling.lua), so nothing else installs them.
     stylua # Lua formatting
     shfmt # Shell formatting
     prettier # js/ts/json/yaml/css/md formatting
     ruff # Python lint + format
     markdownlint-cli2 # Markdown lint
+    markdown-toc # Markdown TOC (conform formatter from LazyVim's markdown extra)
+
+    # ─── LSP servers for the LazyVim extras in lazyvim.json (used to come from Mason) ───
+    # clangd is not here: /usr/bin/clangd from the Command Line Tools knows the macOS SDK.
+    # ocamllsp and prolog_ls come from opam and the swipl pack (plugins/ocaml.lua, prolog.lua).
+    lua-language-server # lua_ls
+    marksman # Markdown
+    pyright # Python (ruff above doubles as its LSP)
+    texlab # LaTeX
+    vtsls # TypeScript / JavaScript
+    vscode-langservers-extracted # eslint (vscode-eslint-language-server)
   ];
 }
