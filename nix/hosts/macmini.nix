@@ -377,28 +377,6 @@ in
   #  same model on Apple Silicon) plus claude-bridge for the agent work, so ollama was carrying
   #  a duplicate copy of the model library for a path nothing routed through any more.)
 
-  # auto-fix パイプライン (GitHub issue → macmini の Claude Code → PR → CI → 自動マージ) が
-  # 生きているかを1時間ごとに確かめる。監視対象と同じ GitHub Actions では回さない、という
-  # 判断はスクリプト側の冒頭に書いてある。
-  #
-  # 元は手書きの plist と $HOME/autofix-monitor のスクリプトだった。中身は変えずに store へ
-  # 移し、状態(ログと Claude の出力)だけ XDG の state 配下に分けている。
-  launchd.agents.autofix-monitor = {
-    # `command` for the wait4path /nix/store guard; see the minecraft daemons above.
-    command = "${pkgs.bash}/bin/bash ${../../configs/macmini/autofix-monitor/monitor.sh}";
-    serviceConfig = {
-      RunAtLoad = true;
-      StartInterval = 3600;
-      StandardOutPath = "/Users/${user.username}/.local/state/autofix-monitor/stdout.log";
-      StandardErrorPath = "/Users/${user.username}/.local/state/autofix-monitor/stderr.log";
-      EnvironmentVariables = {
-        # launchd から起動されるとシェルの環境が入らないので、スクリプトが要る分だけ渡す。
-        HOME = "/Users/${user.username}";
-        XDG_STATE_HOME = "/Users/${user.username}/.local/state";
-      };
-    };
-  };
-
   # Paper, run straight on macOS as its own user rather than in a container.
   #
   # It used to be an Apple container, which bought the itzg image's conveniences and cost far more:
