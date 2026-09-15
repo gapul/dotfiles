@@ -255,6 +255,9 @@ in
     # sketchybar's event helper. `sketchybarrc` used to compile it on every bar start from
     # sources kept in the config directory; the launchd agents put the profile first on PATH.
     (callPackage ../pkgs/sketchybar-helper { })
+    # Premiere Pro MCP server (registered with `claude mcp add -s user premiere-pro -- premiere-pro-mcp`).
+    # Was a hand build in ~/Developer; see the pin note in the package.
+    (callPackage ../pkgs/premiere-pro-mcp.nix { })
     # zrythm (DAW): broken=isDarwin in nixpkgs. Self-built for darwin with carla included.
     # See pkgs/zrythm-darwin/ for details. GUI must be launched in a foreground GUI session.
     # On 26.05-darwin appstream/libadwaita can't build on darwin, so this one package alone
@@ -315,6 +318,13 @@ in
   # installs the app, so nothing else puts it on PATH.
   home.file.".local/bin/whisky".source =
     config.lib.file.mkOutOfStoreSymlink "/Applications/Whisky.app/Contents/Resources/WhiskyCmd";
+
+  # tenbin: shell client for Tenbin AI for UTokyo (reads the session cookie from Zen, so mac-only).
+  # Was a hand-placed ~/.local/bin/tenbin until 2026-09-15.
+  home.file.".local/bin/tenbin" = {
+    source = ../../configs/bin/tenbin;
+    executable = true;
+  };
 
   home.file.".config/ghostty" = {
     source = ../../configs/terminals/ghostty;
