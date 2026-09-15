@@ -10,11 +10,11 @@
 # モジュールがやる。ここで書くのは「誰がどこに繋ぐか」だけでよい。
 #
 # ここに入れていないもの:
-#   telegram  — api_id / api_hash が要る。nix の settings に書くと store が
-#               誰でも読めるので、sops から environmentFile で渡す形にしてから足す。
-#   twitter / linkedin / gmessages / slack / imessage
-#             — モジュールが無い。パッケージがあるもの (gmessages, slack) は
-#               自前の unit、残りはコンテナ。第2陣以降。
+#   telegram / slack / gmessages
+#             — nixpkgs にモジュールが無い (telegram は古い Python 版しか無い)。
+#               matrix-bridges-v2.nix に mk-matrix-bridgev2.nix で書いた。
+#   twitter / linkedin / imessage
+#             — モジュールが無い。imessage は macmini 側 (home/macmini-imessage.nix)。
 #   line      — モジュールもパッケージも無いので、両方を自前で書いた (matrix-line.nix)。
 #   teams     — 個人の teams.live.com 向けの実験的な実装しか無い。会社テナントは
 #               Azure のアプリ登録が要るので、そもそも許可の話になる。

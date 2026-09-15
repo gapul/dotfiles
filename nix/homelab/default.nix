@@ -69,6 +69,8 @@
     ./matrix.nix
     ./matrix-bridges.nix
     ./matrix-line.nix
+    ./matrix-bridges-v2.nix
+    ./matrix-hookshot.nix
     ./matrix-doublepuppet.nix
     ./matrix-bridge-secrets.nix
     ./memory-pressure-alert.nix
