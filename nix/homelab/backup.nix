@@ -174,6 +174,9 @@ in
       sqlite_backup /var/lib/homelab/pingvin-share/data/pingvin-share.db /var/lib/db-dumps/pingvin-share.db
       sqlite_backup /var/lib/homelab/formera/formera.db /var/lib/db-dumps/formera.db
       sqlite_backup /var/lib/homelab/calnode/calnode.db /var/lib/db-dumps/calnode.db
+      sqlite_backup /var/lib/gotosocial/database.sqlite /var/lib/db-dumps/gotosocial.db
+      sqlite_backup /var/lib/writefreely/writefreely.db /var/lib/db-dumps/writefreely.db
+      sqlite_backup /var/lib/nostr-rs-relay/nostr.db /var/lib/db-dumps/nostr-relay.db
       sqlite_backup /var/lib/private/puls/health.db /var/lib/db-dumps/health.db
       sqlite_backup /var/lib/homelab/homebox/homebox.db /var/lib/db-dumps/homebox.db
       sqlite_backup /var/lib/homelab/jellyfin/config/data/data/jellyfin.db /var/lib/db-dumps/jellyfin.db
