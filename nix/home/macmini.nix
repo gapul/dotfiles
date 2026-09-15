@@ -385,6 +385,45 @@ in
     };
   };
 
+  # OCR for Paperless (homeserver) done by Apple Vision here instead of tesseract there.
+  # personal-tools/vision-ocr is a small Azure AI Document Intelligence look-alike, which is the
+  # only remote OCR engine Paperless 3 speaks. Vision reads Japanese receipts that tesseract
+  # garbles (compared on the same scan 2026-09-15). The CLI links Vision/PDFKit, so it is built
+  # with Xcode's swiftc, not nix; the wrapper rebuilds it whenever the source is newer. Exposed
+  # tailnet-only on :8930 through tailscale serve, like Fava and Orca.
+  launchd.agents.vision-ocr = {
+    enable = true;
+    config = {
+      ProgramArguments = [
+        "${pkgs.writeShellScript "vision-ocr" ''
+          src="$HOME/Developer/github.com/gapul/personal-tools/vision-ocr"
+          bin="$HOME/.local/share/vision-ocr/vision-ocr"
+          if [ ! -f "$src/server.py" ]; then
+            sleep 600
+            exit 0
+          fi
+          if [ ! -x "$bin" ] || [ "$src/vision-ocr.swift" -nt "$bin" ]; then
+            mkdir -p "$(dirname "$bin")"
+            /usr/bin/xcrun swiftc -O "$src/vision-ocr.swift" -o "$bin" || {
+              sleep 60
+              exit 1
+            }
+          fi
+          [ -x /opt/homebrew/bin/tailscale ] &&
+            /opt/homebrew/bin/tailscale serve --bg --https=8930 http://127.0.0.1:8930 >/dev/null 2>&1
+          export VISION_OCR_BIN="$bin"
+          export VISION_OCR_PUBLIC_URL=https://macmini.tail079f44.ts.net:8930
+          exec ${pkgs.python3}/bin/python3 "$src/server.py" --port 8930
+        ''}"
+      ];
+      RunAtLoad = true;
+      KeepAlive = true;
+      ProcessType = "Background";
+      StandardOutPath = "/tmp/vision-ocr.log";
+      StandardErrorPath = "/tmp/vision-ocr.log";
+    };
+  };
+
   # Nightly `git pull` on the checkout. The post-merge hook is what actually rebuilds; this only
   # exists because nothing was ever pulling here, so a merged flake.lock sat in GitHub while the
   # machine kept running last month's generation.
