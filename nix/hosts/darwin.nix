@@ -497,9 +497,6 @@ in
       "qmk/qmk/qmk" # (b) has to match the keg-only avr toolchain below; nixpkgs qmk pulls its own
       "osx-cross/avr/avr-gcc@12" # (b) keg-only AVR toolchain for Keyball
 
-      # ─── wine helpers ───
-      "winetricks" # (c) drives the wine-stable cask's prefix; nix winetricks would pull nix wine
-
       # ─── TUI utilities ───
       # The 2.4.8 hold is gone (2026-08-29, unpinned and upgraded to 2.5.13). It was held because
       # the cargo-dist-generated formula listed alsa-lib/pipewire (Linux-only, no macOS bottle)
@@ -726,8 +723,8 @@ in
       # "authorized software" reference point.
 
       # ─── Games / Emulation ───
-      "wine-stable" # WineHQ stable. Run Windows apps (used with winetricks)
-      # Whisky: SwiftUI bottle manager with its own bundled Wine + DXMT/DXVK/GPTK. The frankea fork
+      # Whisky: SwiftUI bottle manager with its own bundled Wine + DXMT/DXVK/GPTK. It replaces the
+      # wine-stable + winetricks pair, which never had a prefix created (x86_64-only, too). The frankea fork
       # is the maintained one (signed + notarized). Tap-qualified on purpose: plain "whisky" in
       # homebrew/cask is still the archived original.
       "frankea/whisky/whisky"
