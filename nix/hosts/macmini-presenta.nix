@@ -149,9 +149,11 @@ in
     install -d -m 0700 -o ${user.username} ${backupDir}
   '';
 
+  # Store-path jobs use `command` so nix-darwin waits for /nix/store, which macOS 27 mounts after
+  # launchd starts daemons (see the minecraft daemons in macmini.nix).
   launchd.daemons.presenta-backup = {
+    command = "${pgDump}";
     serviceConfig = {
-      ProgramArguments = [ "${pgDump}" ];
       UserName = user.username;
       StartCalendarInterval = [
         {
@@ -167,8 +169,8 @@ in
   };
 
   launchd.daemons.presenta-postgres = {
+    command = "${pgRun}";
     serviceConfig = {
-      ProgramArguments = [ "${pgRun}" ];
       UserName = user.username;
       RunAtLoad = true;
       KeepAlive = true;
@@ -178,8 +180,8 @@ in
   };
 
   launchd.daemons.presenta-deploy = {
+    command = "${deploy}";
     serviceConfig = {
-      ProgramArguments = [ "${deploy}" ];
       UserName = user.username;
       RunAtLoad = true;
       StartInterval = 120;

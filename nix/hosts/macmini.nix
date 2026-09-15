@@ -243,14 +243,17 @@ in
       launchd.daemons = lib.mapAttrs' (
         name: inst:
         lib.nameValuePair "minecraft-${name}" {
+          # `command` (not ProgramArguments) makes nix-darwin prepend `wait4path /nix/store`. Since
+          # macOS 27 /nix mounts after launchd starts daemons; a missing store binary exits 78
+          # (EX_CONFIG) and never retries on its own — only bootout/bootstrap brought it back.
+          # 常駐するのは lazymc。サーバー本体は接続が来たときに lazymc が起こす。
+          command = lib.escapeShellArgs [
+            "${pkgs.lazymc}/bin/lazymc"
+            "-c"
+            "${lazymcConfig name inst}"
+            "start"
+          ];
           serviceConfig = {
-            # 常駐するのは lazymc。サーバー本体は接続が来たときに lazymc が起こす。
-            ProgramArguments = [
-              "${pkgs.lazymc}/bin/lazymc"
-              "-c"
-              "${lazymcConfig name inst}"
-              "start"
-            ];
             EnvironmentVariables = {
               SERVER_DIR = inst.dir;
               SERVER_MEM = inst.memory;
@@ -381,11 +384,9 @@ in
   # 元は手書きの plist と $HOME/autofix-monitor のスクリプトだった。中身は変えずに store へ
   # 移し、状態(ログと Claude の出力)だけ XDG の state 配下に分けている。
   launchd.agents.autofix-monitor = {
+    # `command` for the wait4path /nix/store guard; see the minecraft daemons above.
+    command = "${pkgs.bash}/bin/bash ${../../configs/macmini/autofix-monitor/monitor.sh}";
     serviceConfig = {
-      ProgramArguments = [
-        "${pkgs.bash}/bin/bash"
-        "${../../configs/macmini/autofix-monitor/monitor.sh}"
-      ];
       RunAtLoad = true;
       StartInterval = 3600;
       StandardOutPath = "/Users/${user.username}/.local/state/autofix-monitor/stdout.log";
@@ -440,8 +441,8 @@ in
 
   # Hermes proper — the Discord side. Talks to Claude through the claude-acp adapter.
   launchd.daemons.hermes-gateway = {
+    command = "${../../configs/macmini/hermes/hermes-gateway-run.sh}";
     serviceConfig = {
-      ProgramArguments = [ "${../../configs/macmini/hermes/hermes-gateway-run.sh}" ];
       UserName = "hermes";
       RunAtLoad = true;
       KeepAlive = true;
@@ -471,8 +472,8 @@ in
   };
 
   launchd.daemons.hermes-watchdog = {
+    command = "${../../configs/macmini/hermes/hermes-watchdog.sh}";
     serviceConfig = {
-      ProgramArguments = [ "${../../configs/macmini/hermes/hermes-watchdog.sh}" ];
       StartInterval = 300;
       ProcessType = "Background";
       LowPriorityIO = true;
@@ -482,8 +483,8 @@ in
   };
 
   launchd.daemons.hermes-logrotate = {
+    command = "${../../configs/macmini/hermes/hermes-logrotate.sh}";
     serviceConfig = {
-      ProgramArguments = [ "${../../configs/macmini/hermes/hermes-logrotate.sh}" ];
       StartCalendarInterval = [
         {
           Hour = 4;
@@ -499,8 +500,8 @@ in
   };
 
   launchd.daemons.hermes-brain-backup = {
+    command = "${../../configs/macmini/hermes/hermes-brain-backup.sh}";
     serviceConfig = {
-      ProgramArguments = [ "${../../configs/macmini/hermes/hermes-brain-backup.sh}" ];
       UserName = "hermes";
       StartCalendarInterval = [
         {
@@ -545,8 +546,8 @@ in
   # 対象は上の表から作るので、サーバーを増やせばバックアップも自動で増える。
   # restic(5:00)より前に走らせて、その晩のうちに Google Drive まで乗せる。
   launchd.daemons.minecraft-backup = {
+    command = "${../../configs/macmini/minecraft/backup.sh}";
     serviceConfig = {
-      ProgramArguments = [ "${../../configs/macmini/minecraft/backup.sh}" ];
       EnvironmentVariables = {
         BACKUP_TARGETS = lib.concatStringsSep " " (
           lib.mapAttrsToList (name: inst: "${name}:${inst.dir}") minecraftServers
@@ -569,8 +570,8 @@ in
   # Hermes の状態を restic が読める場所へ固める。専用ユーザーのホームは gapul から
   # 読めないので、マイクラと同じくここで tar にしてから拾わせる。restic(5:00)より前に走らせる。
   launchd.daemons.hermes-backup = {
+    command = "${../../configs/macmini/hermes/backup.sh}";
     serviceConfig = {
-      ProgramArguments = [ "${../../configs/macmini/hermes/backup.sh}" ];
       StartCalendarInterval = [
         {
           Hour = 4;
