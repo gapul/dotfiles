@@ -103,6 +103,23 @@ in
     # ~/.local/bin より前に来る。profile 側だと手動インストール版が勝ってしまう。
     agentPkgs.codex
     agentPkgs.claude-code
+    # ─── moved off Homebrew (2026-09-15): same app, same data dirs, nothing to re-set up ───
+    # Upstream's signed release carried over as-is, so TCC grants and entitlements survive:
+    pkgs.utm # VMs stay in ~/Library/Containers/com.utmapp.UTM (same bundle id)
+    pkgs.upscayl
+    # Not obsidian / monitorcontrol: nixpkgs' repack breaks the bundle seal and drops the Team ID
+    # (`codesign -v`: "code has no resources but signature indicates they must be present"), so
+    # MonitorControl would lose Accessibility and Obsidian its Keychain ACLs. Not maccy either:
+    # nixpkgs trails the cask (2.7.0 vs 2.7.1) and the gap is freeze/crash fixes. They stay casks.
+    # Built from source (ad-hoc signed), which is fine for apps that ask for no TCC permission:
+    pkgs.inkscape
+    pkgs.prismlauncher # instances stay in ~/Library/Application Support/PrismLauncher
+    agentPkgs.zotero # 10.x like the cask was; stable is still on 9.x
+    # CLI. unstable for the fast-moving ones so they don't fall behind what brew had.
+    agentPkgs.deno # denops runtime for nvim skkeleton
+    agentPkgs.cloudflared
+    pkgs.tor
+    pkgs.wireguard-tools
     (pkgs.callPackage ../pkgs/keebmouse.nix { })
     # Puddle / keystats: 自作物。keebmouse と同じく cask をやめて署名済みリリースを取り込む。
     # これで自作物のための tap (gapul/puddle, gapul/keystats) が両方畳める。
@@ -126,8 +143,8 @@ in
     pkgs.brewCasks.fontgoggles
     pkgs.brewCasks.goxel
     pkgs.brewCasks.gyroflow
-    pkgs.brewCasks.imhex
-    pkgs.brewCasks.librecad
+    pkgs.imhex
+    pkgs.librecad
     pkgs.brewCasks.material-maker
     pkgs.brewCasks.milkytracker
     pkgs.brewCasks.mixxx
@@ -151,10 +168,11 @@ in
     # still requires system files and AES keys dumped from an own CFW'd console — none of these
     # ship Nintendo code. All FOSS. retroarch-metal stays in homebrew.casks below: it is the
     # phone-side/couch frontend, and these standalone cores are what the actual work uses.
-    # Azahar comes from nixpkgs because it has no cask at all. The other four are plain .apps in
-    # homebrew/cask with a real sha256 and no self-updater, so brew-nix pins them via flake.lock.
+    # Azahar and melonDS come from nixpkgs (Azahar has no cask; melonDS builds natively and cached).
+    # The other three are plain .apps in homebrew/cask with a real sha256 and no self-updater, so
+    # brew-nix pins them via flake.lock.
     pkgs.azahar # 3DS. Citra successor (Citra and Lime3DS are both discontinued)
-    pkgs.brewCasks.melonds # DS. Slot-2 GBA cart support, so Pal Park (gen3 -> gen4) works
+    pkgs.melonds # DS. Slot-2 GBA cart support, so Pal Park (gen3 -> gen4) works
     pkgs.brewCasks.desmume # DS. Older, but the better-documented Slot-2 path of the two
     pkgs.brewCasks.mgba-app # GBA. nixpkgs marks mgba unsupported on aarch64-darwin
     pkgs.brewCasks.sameboy # GB/GBC. Accuracy + debugger, the FOSS stand-in for Windows-only BGB
@@ -404,12 +422,33 @@ in
     localHostName = "MacBook-Mini";
   };
 
-  # Only provide via Nix the Nerd Fonts that have no matching cask
-  # (font-hackgen-nerd is HackGen, a different thing from Hack)
-  # (font-jetbrains-mono-nerd-font is managed on the cask side)
+  # Was the brew nextdns formula's own `nextdns install` daemon, which was idle (auto-activate
+  # off, not the system resolver). Same settings as its /etc/nextdns.conf.
+  services.nextdns = {
+    enable = true;
+    arguments = [
+      "-profile"
+      "43b9d5"
+      "-listen"
+      "localhost:53"
+      "-mdns"
+      "all"
+      "-bogus-priv"
+      "-use-hosts"
+      "-report-client-info=false"
+      "-auto-activate=false"
+      "-setup-router=false"
+      "-detect-captive-portals=false"
+      "-cache-size"
+      "0"
+    ];
+  };
+
   fonts.packages = with pkgs; [
     nerd-fonts.hack
     nerd-fonts.fira-code
+    nerd-fonts.jetbrains-mono
+    hackgen-nf-font # HackGen NF (Japanese + Nerd Fonts), not the same thing as Hack
     # sketchybar app icon font. Pinned to the release plugins/icon_map.sh came from — nixpkgs
     # is on an older one, and a font and a map that disagree draw the wrong glyphs.
     # Fetched rather than committed: the ttf is 280KB of someone else's build.
@@ -482,12 +521,6 @@ in
     # Caveat: /opt/homebrew/bin sits ahead of the nix profile in PATH (brew shellenv), so if the same
     # binary exists on both sides brew wins. Don't leave duplicates around.
     brews = [
-      # ─── Languages / Package managers ───
-      # (b) yt-dlp が引いてくるので nix の deno は二重になる。mpv は nixpkgs 側へ移した
-      # (home/workstation.nix)ので、その依存はもう理由に数えない。nvim skkeleton(denops
-      # ランタイム)が要るため、依存が外れても消えないよう明示的に宣言している。
-      "deno"
-
       # ─── Keyboard firmware ───
       "qmk/qmk/qmk" # (b) has to match the keg-only avr toolchain below; nixpkgs qmk pulls its own
       "osx-cross/avr/avr-gcc@12" # (b) keg-only AVR toolchain for Keyball
@@ -507,21 +540,18 @@ in
       "wifitui" # (a) wifi TUI. nixpkgs marks it Linux-only
 
       # ─── Network / Download / VPN ───
-      # These are all daemons: brew wires up the launchd plist (`brew services`) and the mac
-      # expects one system-wide instance, so a per-user nix copy would be the wrong shape.
+      # tor / wireguard-tools / cloudflared / nextdns moved to nix (2026-09-15): none of the brew
+      # services was ever started, and nextdns runs from services.nextdns below.
       # No "tailscale" formula: the tailscale-app cask already ships both the daemon and a CLI at
       # /usr/local/bin/tailscale. The formula's brew service was never started, and its own CLI sits
       # earlier in PATH, so every `tailscale` call went through a binary built from a different
       # source than the running daemon ("client version != tailscaled server version").
-      "tor" # (b) SOCKS daemon via brew services
-      "wireguard-tools" # (b) wg-quick + wireguard-go run as a root VPN engine
-      "cloudflared" # (b) Cloudflare tunnel daemon
-      "nextdns" # (b) DNS-over-HTTPS daemon (installs its own resolver config)
 
       # ─── Documents / Fonts / Media ───
       "gstreamer" # (a) nixpkgs gst_all_1 doesn't support aarch64-darwin
-      # 3D model previews in yazi (configs/cli/yazi/plugins/model.yazi). nixpkgs f3d can't build on
-      # aarch64-darwin: its openusd dependency fails, taking f3d down with it.
+      # 3D model previews in yazi (configs/cli/yazi/plugins/model.yazi). nixpkgs-unstable f3d builds
+      # now, but its offscreen render of a .glb comes out blank (checked 2026-09-15, 3.5.0) where
+      # brew's draws the model.
       "f3d" # (a) headless 3D renderer
 
       # ─── macOS specific CLI ───
@@ -565,7 +595,6 @@ in
       "krita"
       "simplex"
       "touchdesigner"
-      "upscayl"
       # ─── Browsers ───
       # google-chrome was dropped on 2026-08-30. It was here only for automation (Zen is the
       # everyday browser), and every job it held has somewhere better to go: Lightpanda for the
@@ -672,7 +701,6 @@ in
       # ─── Creative — Design / 2D ───
       "affinity"
       "gimp"
-      "inkscape"
       "darktable"
       "rawtherapee"
       "digikam" # photo management (RAW development, tag management)
@@ -723,7 +751,6 @@ in
       # ─── Games / Emulation ───
       "wine-stable" # WineHQ stable. Run Windows apps (used with winetricks)
       "heroic" # Epic/GOG/Amazon launcher (FOSS). Replaces the proprietary Epic Games launcher; pairs with legendary-gl (see workstation.nix)
-      "prismlauncher"
       "retroarch-metal"
       "steam"
       # ispc の Sunshine につなぐクライアント (Windows 専用のものを母艦から触る)
@@ -734,14 +761,8 @@ in
       "calibre"
       "obsidian"
       "libreoffice"
-      "zotero"
-
-      # ─── VM ───
-      "utm"
 
       # ─── Fonts ───
-      "font-hackgen-nerd"
-      "font-jetbrains-mono-nerd-font"
       "font-sf-mono"
 
       # ─── Tracking / Misc ───
