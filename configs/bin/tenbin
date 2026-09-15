@@ -1,0 +1,172 @@
+#!/usr/bin/env python3
+"""tenbin - drive GMO Tenbin AI for UTokyo's autonomous chat from the shell.
+
+Auth is the `sessionId` cookie of your logged-in tenbin session, read straight
+from the Zen (Firefox) cookie store. The orchestration ("自律実行型チャット")
+endpoint is not Turnstile-gated, so a valid session cookie is all it takes.
+
+Usage:
+  tenbin "your prompt"                 # ask, wait, print finalAnswer
+  tenbin --tool WebSearch "..."        # WebSearch | DeepResearch | ImageGeneration
+  echo "long prompt" | tenbin -        # read prompt from stdin
+  tenbin models                        # list enabled models
+  tenbin --raw "..."                   # also print artifacts / activity json
+
+Cookie source (first that works):
+  $TENBIN_COOKIE            full cookie header, e.g. "sessionId=..."
+  $TENBIN_COOKIE_FILE       file containing that line
+  Zen cookies.sqlite        auto-read (default)
+
+ponytail: poll loop, no WebSocket. Streaming would need graphql-ws; polling the
+finalAnswer is enough for a request/response CLI. Add WS if you want live tokens.
+"""
+import sys, os, json, time, glob, shutil, sqlite3, tempfile, urllib.request, urllib.error
+
+GQL = "https://biz-graphql.tenbin.ai/graphql"
+ORIGIN = "https://utokyo.tenbin.ai"
+ZEN_GLOB = os.path.expanduser("~/Library/Application Support/zen/Profiles/*/cookies.sqlite")
+
+
+def die(msg, code=1):
+    print(f"tenbin: {msg}", file=sys.stderr)
+    sys.exit(code)
+
+
+def cookie_from_zen():
+    # Zen is usually running, so the fresh sessionId lives in the -wal file and
+    # the live db is locked. Copy db+wal+shm to a temp dir and read WAL-aware.
+    for db in glob.glob(ZEN_GLOB):
+        tmp = tempfile.mkdtemp()
+        try:
+            for ext in ("", "-wal", "-shm"):
+                if os.path.exists(db + ext):
+                    shutil.copy2(db + ext, os.path.join(tmp, "cookies.sqlite" + ext))
+            con = sqlite3.connect(f"file:{tmp}/cookies.sqlite?mode=ro", uri=True, timeout=5)
+            row = con.execute(
+                "select value from moz_cookies where host='biz-graphql.tenbin.ai' and name='sessionId'"
+            ).fetchone()
+            con.close()
+            if row and row[0]:
+                return f"sessionId={row[0]}"
+        except sqlite3.Error:
+            continue
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+    return None
+
+
+def get_cookie():
+    if os.environ.get("TENBIN_COOKIE"):
+        return os.environ["TENBIN_COOKIE"]
+    f = os.environ.get("TENBIN_COOKIE_FILE")
+    if f and os.path.exists(f):
+        return open(f).read().strip()
+    c = cookie_from_zen()
+    if c:
+        return c
+    die("no session cookie: log into utokyo.tenbin.ai in Zen, or set $TENBIN_COOKIE")
+
+
+def gql(cookie, op, query, variables):
+    body = json.dumps({"operationName": op, "query": query, "variables": variables}).encode()
+    req = urllib.request.Request(
+        GQL, data=body,
+        headers={"content-type": "application/json", "cookie": cookie, "origin": ORIGIN,
+                 "referer": ORIGIN + "/"},
+    )
+    try:
+        r = json.load(urllib.request.urlopen(req, timeout=45))
+    except urllib.error.HTTPError as e:
+        die(f"HTTP {e.code}: {e.read().decode()[:300]}")
+    if r.get("errors"):
+        msg = r["errors"][0].get("message", "")
+        if "FORBIDDEN" in json.dumps(r) or "authenticate" in msg.lower() or "Unauthorized" in msg:
+            die("session rejected — cookie likely expired; re-open utokyo.tenbin.ai in Zen")
+        die("graphql: " + msg)
+    return r["data"]
+
+
+def cmd_models(cookie):
+    q = ("query ChatModelInfos($filter:ModelsFilter){models(filter:$filter)"
+         "{model name provider credit enabled recommended}}")
+    ms = gql(cookie, "ChatModelInfos", q, {"filter": None})["models"]
+    for m in ms:
+        if m.get("enabled"):
+            star = " *rec" if m.get("recommended") else ""
+            print(f"{m['model']:<32} {m.get('name',''):<28} cr={m.get('credit')}{star}")
+
+
+def cmd_ask(cookie, prompt, tool, raw):
+    cid = gql(cookie, "CreateEmptyWorkspaceSessionHistory",
+              "mutation CreateEmptyWorkspaceSessionHistory($chatType:ChatType $projectId:String "
+              "$isSecret:Boolean){createEmptyWorkspaceSessionHistory(chatType:$chatType "
+              "projectId:$projectId isSecret:$isSecret){id}}",
+              {"chatType": None})["createEmptyWorkspaceSessionHistory"]["id"]
+    sid = gql(cookie, "PrepareOrchestration",
+              "mutation PrepareOrchestration($conversationId:ID!)"
+              "{prepareOrchestration(conversationId:$conversationId){sessionId}}",
+              {"conversationId": cid})["prepareOrchestration"]["sessionId"]
+    vars = {"sessionId": sid, "conversationId": cid, "prompt": prompt}
+    if tool:
+        vars["selectedTool"] = tool
+    gql(cookie, "StartOrchestrationBackground",
+        "mutation StartOrchestrationBackground($sessionId:ID! $conversationId:ID! $prompt:String! "
+        "$selectedTool:String){startOrchestrationBackground(sessionId:$sessionId "
+        "conversationId:$conversationId prompt:$prompt selectedTool:$selectedTool){status}}",
+        vars)
+
+    q = ("query OrchestrationSessionsForConversation($conversationId:ID!)"
+         "{orchestrationSessions(conversationId:$conversationId)"
+         "{status finalAnswer abortedReason artifacts "
+         "mcpActivities{connectorName toolName status}}}")
+    done = {"RUNNING", "PENDING", "PREPARING", "QUEUED"}
+    deadline = time.time() + 600
+    while time.time() < deadline:
+        s = gql(cookie, "OrchestrationSessionsForConversation", q, {"conversationId": cid})["orchestrationSessions"]
+        if s:
+            st = s[0]["status"]
+            if s[0].get("finalAnswer") or st not in done:
+                if s[0].get("abortedReason"):
+                    die(f"aborted: {s[0]['abortedReason']}")
+                print(s[0].get("finalAnswer") or "(no answer)")
+                if raw:
+                    print("\n--- artifacts/activity ---", file=sys.stderr)
+                    print(json.dumps({"artifacts": s[0].get("artifacts"),
+                                      "mcpActivities": s[0].get("mcpActivities")},
+                                     ensure_ascii=False, indent=2), file=sys.stderr)
+                return
+        time.sleep(4)
+    die("timeout after 600s", 2)
+
+
+def main():
+    args = sys.argv[1:]
+    tool, raw = None, False
+    rest = []
+    i = 0
+    while i < len(args):
+        a = args[i]
+        if a == "--tool":
+            i += 1; tool = args[i]
+        elif a == "--raw":
+            raw = True
+        elif a in ("-h", "--help"):
+            print(__doc__); return
+        else:
+            rest.append(a)
+        i += 1
+
+    cookie = get_cookie()
+    if rest and rest[0] == "models":
+        return cmd_models(cookie)
+    if rest == ["-"] or not rest:
+        prompt = sys.stdin.read().strip()
+    else:
+        prompt = " ".join(rest)
+    if not prompt:
+        die("empty prompt")
+    cmd_ask(cookie, prompt, tool, raw)
+
+
+if __name__ == "__main__":
+    main()

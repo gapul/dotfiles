@@ -680,6 +680,9 @@ in
       "darktable"
       "rawtherapee"
       "digikam" # photo management (RAW development, tag management)
+      # Ink/Stitch: machine-embroidery extension for Inkscape. Was hand-installed from its .pkg
+      # (3.2.2); the cask is the same installer, one release newer.
+      "inkstitch"
       "pika"
       "adobe-creative-cloud"
       "sf-symbols" # Apple SF Symbols catalog
