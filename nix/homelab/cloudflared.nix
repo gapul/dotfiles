@@ -47,6 +47,11 @@
         # public origin between Formera's frontend and REST API.
         "forms.gapul.net" = "http://127.0.0.1:8102";
         "where.gapul.net" = "http://127.0.0.1:8095";
+        # 自分の発信の置き場 (homelab/social.nix)。Fediverse と Nostr は外のサーバーや
+        # アプリから届かないと成り立たないので、どれもトンネルを通す。
+        "social.gapul.net" = "http://127.0.0.1:8110";
+        "blog.gapul.net" = "http://127.0.0.1:8111";
+        "relay.gapul.net" = "http://127.0.0.1:8112";
       };
       # 知らないホスト名は 404。Pi 側の設定もこうなっていた。
       default = "http_status:404";

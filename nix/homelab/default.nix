@@ -91,6 +91,7 @@
     ./romm.nix
     ./rsshub.nix
     ./samba.nix
+    ./social.nix
     ./spliit.nix
     ./searx.nix
     ./syncthing.nix

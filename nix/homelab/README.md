@@ -40,6 +40,8 @@ name that matters now.
 | `spliit.env` | `POSTGRES_PRISMA_URL` and `POSTGRES_URL_NON_POOLING`, both the whole `postgresql://spliit:<pw>@db/spliit`, plus `POSTGRES_PASSWORD` |
 | `paperless.env` | `PAPERLESS_SECRET_KEY`, `PAPERLESS_ADMIN_PASSWORD`, `PAPERLESS_REMOTE_OCR_API_KEY` (the same value as the macmini's `~/.config/vision-ocr/key`) |
 | `vaultwarden.env` | `ADMIN_TOKEN` |
+| `nostr.env` | `NOSTR_PRIVATE_KEY` (hex) for npub16t57vts9…q08y5, the key behind gapul@gapul.net on Nostr. Losing it loses the identity |
+| `writefreely-admin.password` | first-run password for WriteFreely's admin `gapul`; read only while there are no users, changed from the UI afterwards |
 | `puls.env` | `PULS_TOKEN`, a random bearer token the PulsHealth app sends (it is also in the pairing QR). Changing it means re-pairing the iPhone |
 | `homebox.env` | `HBOX_AUTH_API_KEY_PEPPER`, from `openssl rand -base64 48`. Changing it invalidates every issued API key |
 | `romm.env` | `MARIADB_ROOT_PASSWORD`, `MARIADB_PASSWORD` and `DB_PASSWD`, the last two being the same value, plus `ROMM_AUTH_SECRET_KEY` from `openssl rand -hex 32`, `IGDB_CLIENT_ID` and `IGDB_CLIENT_SECRET` |
