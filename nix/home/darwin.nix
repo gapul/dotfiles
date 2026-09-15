@@ -306,6 +306,11 @@ in
   home.file.".local/bin/puddle".source =
     config.lib.file.mkOutOfStoreSymlink "/Applications/Nix Apps/Puddle.app/Contents/Resources/puddle";
 
+  # Same for Whisky's CLI (bottles, `run`, `shellenv` for driving its Wine by hand). The cask only
+  # installs the app, so nothing else puts it on PATH.
+  home.file.".local/bin/whisky".source =
+    config.lib.file.mkOutOfStoreSymlink "/Applications/Whisky.app/Contents/Resources/WhiskyCmd";
+
   home.file.".config/ghostty" = {
     source = ../../configs/terminals/ghostty;
     recursive = true;
