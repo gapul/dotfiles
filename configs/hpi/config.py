@@ -16,15 +16,15 @@ HOME = Path.home()
 class activitywatch:
     """画面・ウィンドウ・ブラウザタブ。自前モジュール (activitywatch.py) が読む。
 
-    aw-server が書いている生の SQLite をそのまま指す。エクスポート不要で、
+    aw-server-rust が書いている生の SQLite をそのまま指す。エクスポート不要で、
     常に最新が読める。
     """
 
     # 母艦の生 DB と、Syncthing 経由で集まった他端末ぶんの写しの両方を見る。
     # get_files がグロブを受けるので、端末が増えても書き換えは要らない。
     export_path = [
-        HOME / "Library/Application Support/activitywatch/aw-server/peewee-sqlite.v2.db",
-        HOME / "Sync/syncthing/personal-history/*/activitywatch/peewee-sqlite.v2.db",
+        HOME / "Library/Application Support/activitywatch/aw-server-rust/sqlite.db",
+        HOME / "Sync/syncthing/personal-history/*/activitywatch/sqlite.db",
     ]
 
 

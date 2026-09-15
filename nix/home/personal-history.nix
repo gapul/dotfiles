@@ -71,10 +71,13 @@ let
       ${pkgs.sqlite}/bin/sqlite3 "$ks" ".backup $out/keystats/keystats.db"
     fi
 
-    aw="$HOME/Library/Application Support/activitywatch/aw-server/peewee-sqlite.v2.db"
+    # 0.14 (Tauri 版) から aw-server-rust の DB。旧 aw-server (Python) の
+    # peewee-sqlite.v2.db は全件取り込み済みなので、古い写しは消して二重に読ませない。
+    aw="$HOME/Library/Application Support/activitywatch/aw-server-rust/sqlite.db"
     if [ -r "$aw" ]; then
       mkdir -p "$out/activitywatch"
-      ${pkgs.sqlite}/bin/sqlite3 "$aw" ".backup $out/activitywatch/peewee-sqlite.v2.db"
+      ${pkgs.sqlite}/bin/sqlite3 "$aw" ".backup $out/activitywatch/sqlite.db"
+      rm -f "$out/activitywatch/peewee-sqlite.v2.db"
     fi
   '';
 in
