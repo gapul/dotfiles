@@ -58,6 +58,7 @@
     ./gameyfin.nix
     ./git-annex.nix
     ./hauk.nix
+    ./homebox.nix
     ./homeassistant.nix
     ./homepage.nix
     ./jellyfin.nix
