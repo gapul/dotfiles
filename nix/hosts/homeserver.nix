@@ -103,6 +103,8 @@ let
       interval = "1h";
     };
     paperless.upstream = "127.0.0.1:8097";
+    # 持ち物の台帳 (Homebox)。LLM が API キーで叩く。
+    box.upstream = "127.0.0.1:8104";
     # YouTube の保存 (ytdl-sub)。落とし先は /srv/youtube で、jellyfin が /srv を
     # /media として見ているので、落ちた時点で棚に並ぶ。
     tube = {
