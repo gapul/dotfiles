@@ -18,6 +18,9 @@ let
     inherit (pkgs.stdenv.hostPlatform) system;
   };
   terminalBrowser = pkgs.callPackage ../pkgs/terminal-browser.nix { };
+  tahoma2d = pkgs.callPackage ../pkgs/tahoma2d.nix {
+    stuffDir = "/Users/${user.username}/Library/Application Support/Tahoma2D/Tahoma2D_stuff";
+  };
 in
 {
   # host-independent base (nix cache / firewall / security / login hardening, etc.)
@@ -122,7 +125,6 @@ in
     # hardcode-paths patch) where the cask bundled it inside the .app.
     pkgs.voicevox
     pkgs.brewCasks.audacity
-    pkgs.brewCasks.fontforge-app
     pkgs.brewCasks.fontgoggles
     pkgs.brewCasks.goxel
     pkgs.brewCasks.gyroflow
@@ -192,7 +194,24 @@ in
     # Open JTalk for the yukkuri engine's reading/accent analysis, under its own
     # name so it does not become the default python. See pkgs/yukkuri-python.nix.
     (pkgs.callPackage ../pkgs/yukkuri-python.nix { })
+    # sioyek: the cask was an unsigned x86_64 build that needed Rosetta and no_quarantine.
+    # nixpkgs builds it natively and it reads the same ~/Library/Application Support/sioyek
+    # (config from darwin-chrome.nix, plus the highlight/bookmark DBs).
+    pkgs.sioyek
+    # Tahoma2D replaces the x86_64-only opentoonz cask. See pkgs/tahoma2d.nix.
+    tahoma2d
   ];
+
+  # Tahoma2D writes its profiles and config into the stuff folder, so it has to live outside the
+  # store. Seed it once; after that it belongs to the app (copying over it would reset settings).
+  system.activationScripts.postActivation.text = lib.mkAfter ''
+    stuff="/Users/${user.username}/Library/Application Support/Tahoma2D/Tahoma2D_stuff"
+    if [ ! -d "$stuff" ]; then
+      /usr/bin/sudo -u ${user.username} /bin/mkdir -p "$stuff"
+      /usr/bin/sudo -u ${user.username} /bin/cp -R ${tahoma2d}/share/tahoma2d/stuff/. "$stuff/"
+      /bin/chmod -R u+w "$stuff"
+    fi
+  '';
 
   # macOS settings (GUI/peripheral-oriented. Only values verified via `defaults read` on the machine are declared)
   system.defaults = {
@@ -580,19 +599,12 @@ in
       "zen"
 
       # ─── PDF viewers ───
-      # sioyek is an unsigned x86_64 cask (runs under Rosetta). If brew's default quarantine
-      # is applied, Gatekeeper flags it as "damaged/malware" and it won't launch, so no_quarantine is required.
-      {
-        name = "sioyek";
-        args = {
-          no_quarantine = true;
-        };
-      } # lightweight PDF viewer with vim keybindings (zathura alternative, daily driver)
+      # sioyek (daily driver) comes from nixpkgs, see environment.systemPackages.
       "skim" # native SyncTeX viewer. Backup for TeX writing (integration later)
 
       # ─── Image viewers ───
       # qView is ad-hoc signed only (not notarized). With quarantine it gets rejected by
-      # Gatekeeper and won't launch, so no_quarantine is required (same as sioyek).
+      # Gatekeeper and won't launch, so no_quarantine is required.
 
       # ─── Communication & Sync ───
       # Dropped proprietary Beeper (not in active use) for Element on the self-hosted Matrix
@@ -699,7 +711,6 @@ in
       "obs"
       "lihaoyun6/tap/quickrecorder" # screen recorder (native ScreenCaptureKit, Tahoe-compatible). Switched from the old kap, which is Electron-based and stalled for ~1.7 years
       "cavalry" # 2D motion graphics
-      "opentoonz" # 2D animation (.pkg cask)
 
       # ─── 3D / CAD ───
       # Unity Hub は「常用する GUI」ではなくインストーラの CLI として置いている。
