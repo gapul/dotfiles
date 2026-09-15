@@ -19,6 +19,17 @@
         "security" = "user";
         "map to guest" = "never";
       };
+      # Paperless' stored files, read-only, so the archive can be browsed in Finder. Paperless
+      # tracks every file's path and checksum in its database: adding or moving files here would
+      # break it, which is why this is a ro bind mount and not a writable path. New documents go
+      # in through the Syncthing inbox; this is for looking only.
+      paperless = {
+        path = "/mnt/paperless";
+        browseable = "yes";
+        "read only" = "yes";
+        "guest ok" = "no";
+        "valid users" = "gapul";
+      };
       media = {
         # /srv is what /mnt/jellyfin-media became: one dataset for bulk data.
         path = "/srv";
@@ -28,5 +39,19 @@
         "valid users" = "gapul";
       };
     };
+  };
+
+  # originals/ and archive/ laid out as {year}/{type}/{correspondent}_{title} (PAPERLESS_FILENAME_FORMAT).
+  # The volume path is root-only to traverse; the bind mount side-steps that without loosening it.
+  # Under /mnt rather than /srv: /srv is the writable media share, and /var/lib (the source) is
+  # already in the restic set.
+  fileSystems."/mnt/paperless" = {
+    device = "/var/lib/containers/storage/volumes/paperless_media/_data/documents";
+    fsType = "none";
+    options = [
+      "bind"
+      "ro"
+      "nofail"
+    ];
   };
 }
