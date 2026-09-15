@@ -158,6 +158,10 @@ in
     pkgs.brewCasks.desmume # DS. Older, but the better-documented Slot-2 path of the two
     pkgs.brewCasks.mgba-app # GBA. nixpkgs marks mgba unsupported on aarch64-darwin
     pkgs.brewCasks.sameboy # GB/GBC. Accuracy + debugger, the FOSS stand-in for Windows-only BGB
+    # Cinny: a Matrix client that renders custom image reactions (MSC4027) and emoji packs, which
+    # Element Desktop still shows as raw mxc URLs. Used to view LINE reaction icons / stickers that
+    # Element can't. Ships Cinny.app, so nix-darwin surfaces it under /Applications/Nix Apps.
+    pkgs.cinny-desktop
     # ─── Creative: official is paid but nixpkgs source builds give a free full version ───
     # Unavailable/broken on 26.05-darwin, so from unstablePkgs (nixos-unstable, with allowUnfree).
     unstablePkgs.fritzing # PCB/circuit design CAD (official DL is paid. for the ESP32 project). cached, so instant
