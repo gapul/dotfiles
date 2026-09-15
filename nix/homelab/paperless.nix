@@ -22,6 +22,9 @@
       # receipts got read as Thai: the eight scans from 2026-08-25 came out dated 2569
       # (Buddhist era).
       "PAPERLESS_DATE_PARSER_LANGUAGES" = "ja+en";
+      # Japanese documents write dates year first. With the default DMY, a receipt's address
+      # "新宿3-22-12" became the document date 2022-12-03 once Vision OCR read it cleanly.
+      "PAPERLESS_DATE_ORDER" = "YMD";
       # Archive layout on disk, so the media volume stays browsable if Paperless itself is gone.
       # OCR goes to Apple Vision on the macmini (home/macmini.nix, vision-ocr), which speaks the
       # Azure Document Intelligence API. The key is PAPERLESS_REMOTE_OCR_API_KEY in paperless.env.
