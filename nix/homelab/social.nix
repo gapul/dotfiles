@@ -39,7 +39,7 @@ in
         "en"
       ];
       # 他サーバーの画像などのキャッシュは短く。自分の投稿の添付は消えない。
-      media-remote-cache-days = 7;
+      media-remote-cache-duration = "168h";
     };
   };
 
