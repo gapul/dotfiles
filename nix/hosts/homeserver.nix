@@ -471,6 +471,30 @@ in
             alerts = [ ntfyAlert ];
           }
           {
+            # Not a health check: a release watch. The PulsHealth iOS app on the store is 1.3
+            # (2026-01), older than the source reviewed for homelab/health.nix; QR pairing and
+            # the reviewed sync protocol arrive in 1.4. This "fails" once the store version moves,
+            # which is the ntfy that says it is time to install and re-review. Remove it then.
+            name = "pulshealth-app-store";
+            group = "watch";
+            url = "https://itunes.apple.com/lookup?id=6757657354&country=jp";
+            interval = "6h";
+            conditions = [
+              "[STATUS] == 200"
+              "[BODY].results[0].version == 1.3"
+            ];
+            alerts = [
+              (
+                ntfyAlert
+                // {
+                  failure-threshold = 1;
+                  send-on-resolved = false;
+                  description = "PulsHealth の App Store 版が 1.3 から変わった (1.4 が出たかも)";
+                }
+              )
+            ];
+          }
+          {
             name = "push-ntfy";
             group = "public";
             url = "https://push.gapul.net/";
