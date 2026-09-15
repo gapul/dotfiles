@@ -95,6 +95,36 @@ in
     run /bin/mkdir -p "${config.home.homeDirectory}/.local/state/manabi"
   '';
 
+  # auto-fix パイプライン (GitHub issue → macmini の Claude Code → PR → CI → 自動マージ) が
+  # 生きているかを1時間ごとに確かめる。監視対象と同じ GitHub Actions では回さない、という
+  # 判断はスクリプト側の冒頭に書いてある。
+  #
+  # 元は手書きの plist と $HOME/autofix-monitor のスクリプトだった。中身は変えずに store へ
+  # 移し、状態(ログと Claude の出力)だけ XDG の state 配下に分けている。
+  #
+  # Lives in home-manager, not nix-darwin's launchd.agents: activated over ssh, nix-darwin
+  # loads /Library/LaunchAgents into the system domain as root (claude refuses to run, and
+  # the logs turned root-owned, which then broke the real agent with EX_CONFIG) and never
+  # reloads the copy in the login session, so it kept running the old script.
+  launchd.agents.autofix-monitor = {
+    enable = true;
+    config = {
+      ProgramArguments = [
+        "${pkgs.bash}/bin/bash"
+        "${../../configs/macmini/autofix-monitor/monitor.sh}"
+      ];
+      RunAtLoad = true;
+      StartInterval = 3600;
+      StandardOutPath = "${config.home.homeDirectory}/.local/state/autofix-monitor/stdout.log";
+      StandardErrorPath = "${config.home.homeDirectory}/.local/state/autofix-monitor/stderr.log";
+      EnvironmentVariables = {
+        # launchd から起動されるとシェルの環境が入らないので、スクリプトが要る分だけ渡す。
+        HOME = config.home.homeDirectory;
+        XDG_STATE_HOME = "${config.home.homeDirectory}/.local/state";
+      };
+    };
+  };
+
   # glances, the box's own metrics endpoint (the homelab dashboard scrapes it). Was a hand-written
   # plist; same spec, just declared. Bound to 0.0.0.0 because the scrape comes from the homeserver,
   # and the machine is only reachable over the tailnet anyway.
