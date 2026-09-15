@@ -313,6 +313,37 @@ in
     done
   '';
 
+  # Keeps the Zaim web session alive for personal-tools/zaim/zaim_web.py. The `_y` cookie expires
+  # two hours after the last request (measured 2026-09-15; the value never changes and isn't tied
+  # to an IP), so an hourly request keeps it alive with no browser. The cookie is logged in on
+  # the workstation and copied to ~/.cache/zaim/cookie here. ntfy fires only on the ok -> expired
+  # transition, so a dead session doesn't page every hour.
+  launchd.agents.zaim-keepalive = import ../lib/launchd-agent.nix {
+    program = "${pkgs.writeShellScript "zaim-keepalive" ''
+      script="$HOME/Developer/github.com/gapul/personal-tools/zaim/zaim_web.py"
+      [ -f "$script" ] && [ -f "$HOME/.cache/zaim/cookie" ] || exit 0
+      state="$HOME/.local/state/zaim"
+      mkdir -p "$state"
+      if /usr/bin/python3 "$script" ping >/dev/null 2>&1; then
+        rm -f "$state/expired"
+        exit 0
+      fi
+      [ -e "$state/expired" ] && exit 1
+      touch "$state/expired"
+      url="$HOME/.config/ntfy/url"
+      tok="$HOME/.config/ntfy/token"
+      [ -r "$url" ] && [ -r "$tok" ] || exit 1
+      /usr/bin/curl -fsS --max-time 15 \
+        -H "Authorization: Bearer $(cat "$tok")" \
+        -H "Title: Zaim (macmini)" \
+        -H "Tags: warning" \
+        -d "セッションが切れた。母艦で zaim_web.py login → scp ~/.cache/zaim/cookie macmini:.cache/zaim/cookie" \
+        "$(cat "$url")" >/dev/null 2>&1 || true
+      exit 1
+    ''}";
+    schedule = [ { Minute = 17; } ];
+  };
+
   # Nightly `git pull` on the checkout. The post-merge hook is what actually rebuilds; this only
   # exists because nothing was ever pulling here, so a merged flake.lock sat in GitHub while the
   # machine kept running last month's generation.
