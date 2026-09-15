@@ -456,6 +456,7 @@ in
       "deskflow/tap"
       "felixkratz/formulae"
       "finnvoor/tools"
+      "frankea/whisky" # Whisky, community fork (upstream Whisky-App/Whisky archived 2025-05)
       "gerlero/openfoam"
       "lihaoyun6/tap" # QuickRecorder (screen recorder. Required since not in homebrew/cask)
       "osx-cross/arm" # QMK toolchain dependency tap
@@ -726,6 +727,10 @@ in
 
       # ─── Games / Emulation ───
       "wine-stable" # WineHQ stable. Run Windows apps (used with winetricks)
+      # Whisky: SwiftUI bottle manager with its own bundled Wine + DXMT/DXVK/GPTK. The frankea fork
+      # is the maintained one (signed + notarized). Tap-qualified on purpose: plain "whisky" in
+      # homebrew/cask is still the archived original.
+      "frankea/whisky/whisky"
       "heroic" # Epic/GOG/Amazon launcher (FOSS). Replaces the proprietary Epic Games launcher; pairs with legendary-gl (see workstation.nix)
       "prismlauncher"
       "retroarch-metal"
