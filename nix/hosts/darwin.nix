@@ -115,7 +115,6 @@ in
     # MonitorControl would lose Accessibility and Obsidian its Keychain ACLs. Not maccy either:
     # nixpkgs trails the cask (2.7.0 vs 2.7.1) and the gap is freeze/crash fixes. They stay casks.
     # Built from source (ad-hoc signed), which is fine for apps that ask for no TCC permission:
-    pkgs.inkscape
     pkgs.prismlauncher # instances stay in ~/Library/Application Support/PrismLauncher
     agentPkgs.zotero # 10.x like the cask was; stable is still on 9.x
     # CLI. unstable for the fast-moving ones so they don't fall behind what brew had.
@@ -717,6 +716,9 @@ in
       # ─── Creative — Design / 2D ───
       "affinity"
       "gimp"
+      # Inkscape stays a cask: inkstitch declares `depends_on cask: "inkscape"`, and with the nixpkgs
+      # build instead brew refuses to uninstall it, which aborts the whole bundle cleanup.
+      "inkscape"
       "darktable"
       "rawtherapee"
       "digikam" # photo management (RAW development, tag management)
