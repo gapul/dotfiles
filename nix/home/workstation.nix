@@ -69,7 +69,7 @@ in
       cargo # Rust build/package management
       # Container runtimes belong on the server hosts.  This workstation keeps
       # only client/dev tooling and delegates container workloads to them.
-      fontforge # font editing CLI (GUI is the fontforge-app cask)
+      fontforge # font editing CLI (no GUI: the only macOS GUI build is x86_64)
       python3Packages.fonttools # font manipulation lib/CLI
       stockfish # chess engine, spoken to over UCI (the Puddle chess wallpaper's opponent)
       aerc # mail TUI
