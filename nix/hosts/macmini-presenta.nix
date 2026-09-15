@@ -41,6 +41,15 @@ let
     fi
     exec ${postgres}/bin/postgres -D "$data" -h 127.0.0.1 -p ${pgPort} -k "$data"
   '';
+  cloudflaredDir = "${home}/.local/share/cloudflared";
+  tunnelConfig = pkgs.writeText "presenta-tunnel.yml" ''
+    tunnel: a4946214-cf23-49c6-96ba-0f375df201d3
+    credentials-file: ${cloudflaredDir}/presenta.json
+    ingress:
+      - hostname: presenta.gapul.net
+        service: http://127.0.0.1:3141
+      - service: http_status:404
+  '';
   backupDir = "/Users/Shared/presenta-backups";
   # One dump, replaced each night; restic keeps the history. Written beside and moved into place
   # so a failed run never leaves restic a truncated file.
@@ -176,6 +185,25 @@ in
       KeepAlive = true;
       StandardOutPath = "${state}/postgres.log";
       StandardErrorPath = "${state}/postgres.log";
+    };
+  };
+
+  # The tunnel that publishes presenta.gapul.net (ingress -> 127.0.0.1:3141). Its credentials file
+  # was created once with `cloudflared tunnel create` and cannot live in the store, so it stays in
+  # ~/.local/share/cloudflared. This used to be a hand-started process, and the 2026-09-15 reboot for
+  # the macOS 27 update left the site answering 530 until someone noticed.
+  launchd.daemons.presenta-tunnel = {
+    serviceConfig = {
+      ProgramArguments = [
+        "/bin/sh"
+        "-c"
+        "/bin/wait4path ${cloudflaredDir}/presenta.json && exec ${pkgs.cloudflared}/bin/cloudflared tunnel --no-autoupdate --config ${tunnelConfig} run"
+      ];
+      UserName = user.username;
+      RunAtLoad = true;
+      KeepAlive = true;
+      StandardOutPath = "${state}/tunnel.log";
+      StandardErrorPath = "${state}/tunnel.log";
     };
   };
 
