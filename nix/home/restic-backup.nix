@@ -78,7 +78,10 @@ let
       "${home}/Library/Group Containers/group.com.apple.VoiceMemos.shared"
       "${home}/.local/share/keystats" # keystats time series (a re-run cannot recreate it)
       # ActivityWatch, same class as keystats: 8 months and 1.1M events of what was on screen,
-      # recorded once and never recomputable. aw-server keeps it in one SQLite file.
+      # recorded once and never recomputable. aw-server-rust keeps it in one SQLite file.
+      # aw-server is the pre-0.14 Python server's DB: fully imported into the Rust one, kept as
+      # the untouched original (unchanged, so restic dedups it to nothing).
+      "${home}/Library/Application Support/activitywatch/aw-server-rust"
       "${home}/Library/Application Support/activitywatch/aw-server"
       # Zen's profile. Bookmarks already ride floccus, so what is actually at stake here is the
       # history and the per-extension settings; the caches under it are excluded below.

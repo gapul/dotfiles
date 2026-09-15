@@ -46,7 +46,10 @@ let
 in
 {
   launchd.agents.findmy-tag = {
-    enable = true;
+    # Off since the mini moved to macOS 27 (2026-09-15): fetch.py aborts every run on
+    # libffi's `ffi_trampoline_table_alloc` assertion (reached through pyobjc). Turn it
+    # back on once the libffi/pyobjc side is fixed.
+    enable = false;
     config = {
       ProgramArguments = [ "${poll}" ];
       StartInterval = 600;

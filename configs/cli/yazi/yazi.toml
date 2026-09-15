@@ -122,11 +122,10 @@ model3d = [
   { run = 'open-on-mac.cmd "$@"', desc = "Open with default", orphan = true, for = "windows" },
 ]
 # Fonts: Enter shows a specimen (FontGoggles); `O` adds Font Book and editing in FontForge.
+# The Mac has only the FontForge CLI (its GUI build is x86_64-only), so editing is Linux-only.
 font = [
-  { run = 'open-on-mac fontforge -- "$@"', desc = "Open on client", orphan = true, for = "linux" },
   { run = 'open-on-mac open -a "FontGoggles" -- "$@"', desc = "View in FontGoggles", orphan = true, for = "macos" },
   { run = 'open -a "Font Book" "$@"', desc = "View in Font Book", orphan = true, for = "macos" },
-  { run = 'open -a "FontForge" "$@"', desc = "Edit in FontForge", orphan = true, for = "macos" },
   { run = 'fontforge "$@"', desc = "Edit in FontForge", orphan = true, for = "linux" },
   { run = 'open-on-mac.cmd "$@"', desc = "Open with default", orphan = true, for = "windows" },
 ]
