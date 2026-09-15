@@ -18,6 +18,13 @@
     environmentFiles = [ "/var/lib/secrets/paperless.env" ];
     environment = {
       "PAPERLESS_ADMIN_USER" = "gapul";
+      # Without this dateparser guesses the language from the OCR text, and noisy Japanese
+      # receipts got read as Thai: the eight scans from 2026-08-25 came out dated 2569
+      # (Buddhist era).
+      "PAPERLESS_DATE_PARSER_LANGUAGES" = "ja+en";
+      # Archive layout on disk, so the media volume stays browsable if Paperless itself is gone.
+      "PAPERLESS_FILENAME_FORMAT" =
+        "{{ created_year }}/{{ document_type }}/{{ correspondent }}_{{ title }}";
       "PAPERLESS_OCR_LANGUAGE" = "jpn+eng";
       "PAPERLESS_OCR_LANGUAGES" = "jpn eng";
       "PAPERLESS_REDIS" = "redis://broker:6379";
