@@ -50,9 +50,11 @@ let
   '';
 in
 {
+  # `command` rather than ProgramArguments: nix-darwin then waits for /nix/store, which macOS 27
+  # mounts after launchd starts daemons (see the minecraft daemons in macmini.nix).
   launchd.daemons.blocky = {
+    command = "${launch}";
     serviceConfig = {
-      ProgramArguments = [ "${launch}" ];
       RunAtLoad = true;
       # 起動時に tailnet のアドレスがまだ付いていないと bind に失敗して終了する。
       # launchd が 30 秒おきに起こし直し、Tailscale が上がった時点で成功する。
