@@ -23,6 +23,11 @@
       # (Buddhist era).
       "PAPERLESS_DATE_PARSER_LANGUAGES" = "ja+en";
       # Archive layout on disk, so the media volume stays browsable if Paperless itself is gone.
+      # OCR goes to Apple Vision on the macmini (home/macmini.nix, vision-ocr), which speaks the
+      # Azure Document Intelligence API. The key is PAPERLESS_REMOTE_OCR_API_KEY in paperless.env.
+      # A failed remote OCR fails the consumption instead of falling back to tesseract.
+      "PAPERLESS_REMOTE_OCR_ENGINE" = "azureai";
+      "PAPERLESS_REMOTE_OCR_ENDPOINT" = "https://macmini.tail079f44.ts.net:8930";
       "PAPERLESS_FILENAME_FORMAT" =
         "{{ created_year }}/{{ document_type }}/{{ correspondent }}_{{ title }}";
       "PAPERLESS_OCR_LANGUAGE" = "jpn+eng";
