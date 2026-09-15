@@ -49,7 +49,6 @@
     ./cli.nix
     ./dawarich.nix
     ./dawarich-freshness.nix
-    ./fava.nix
     ./filestash.nix
     ./forgejo.nix
     ./formera.nix
