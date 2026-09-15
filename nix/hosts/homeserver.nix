@@ -83,11 +83,14 @@ let
     # 3D プリンタの操作盤 (Bambuddy)。プリンタを LAN Only + Developer Mode にした結果
     # Bambu Handy が使えなくなったので、スマホから触る先がここになる。homelab/bambuddy.nix。
     bambu.upstream = "127.0.0.1:8010";
-    # 家計簿 (fava)。台帳は beancount のテキストで /var/lib/homelab/fava にある。
-    # fava 自体はログインを持たないので、境界はここの vhost が tailnet アドレス
-    # にしか生えていないこと。外に出すなら認証を足すこと。
+    # 家計簿 (fava)。台帳の本体は macmini の ~/Developer/github.com/gapul/ledger で、
+    # Zaim の同期・帳簿生成・fava もあちら (home/macmini.nix の zaim-sync / fava)。
+    # ここは入口だけ。macmini 側は 127.0.0.1 にしか bind していないので、tailscale serve が
+    # 出している HTTPS (:5075) を上流にする。fava 自体はログインを持たないので Authelia を挟む。
+    # 2026-08-23 に作ったこの箱の fava (台帳は骨格だけで取引ゼロ) は二重になるので畳んだ。
+    # /var/lib/homelab/fava の骨格ファイルは消していない。
     money = {
-      upstream = "127.0.0.1:8093";
+      upstream = "https://macmini.tail079f44.ts.net:5075";
       auth = true;
     };
     # ゲームの棚。roms は RomM (ブラウザでそのまま遊べる)、games は Gameyfin
@@ -419,7 +422,8 @@ in
         lib.mapAttrsToList (name: site: {
           inherit name;
           group = "homelab";
-          url = "http://${site.upstream}";
+          # money points at the macmini through tailscale serve, so its upstream already carries https://.
+          url = if lib.hasPrefix "https://" site.upstream then site.upstream else "http://${site.upstream}";
           interval = site.interval or "2m";
           # Not `== 200`: several of these answer 3xx when perfectly healthy.
           # A service whose healthy answer is 4xx sets `expect` in the table above.
