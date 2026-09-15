@@ -313,35 +313,76 @@ in
     done
   '';
 
-  # Keeps the Zaim web session alive for personal-tools/zaim/zaim_web.py. The `_y` cookie expires
-  # two hours after the last request (measured 2026-09-15; the value never changes and isn't tied
-  # to an IP), so an hourly request keeps it alive with no browser. The cookie is logged in on
-  # the workstation and copied to ~/.cache/zaim/cookie here. ntfy fires only on the ok -> expired
-  # transition, so a dead session doesn't page every hour.
-  launchd.agents.zaim-keepalive = import ../lib/launchd-agent.nix {
-    program = "${pkgs.writeShellScript "zaim-keepalive" ''
-      script="$HOME/Developer/github.com/gapul/personal-tools/zaim/zaim_web.py"
-      [ -f "$script" ] && [ -f "$HOME/.cache/zaim/cookie" ] || exit 0
+  # Zaim → SQLite → Beancount ledger (personal-tools/zaim), plus Fava to read it.
+  #
+  # Hourly because the request is also what keeps the Zaim web session alive: the `_y` cookie
+  # expires two hours after the last request (measured 2026-09-15; the value never changes and
+  # isn't tied to an IP). Each run re-fetches the last 60 days so recategorised transactions
+  # follow, regenerates zaim.beancount, runs bean-check, and commits the ledger repo when it
+  # changed. The ledger lives under ~/Developer so restic already covers it (zaim.db included,
+  # it's only gitignored). The cookie is logged in on the workstation and copied to
+  # ~/.cache/zaim/cookie. ntfy fires once per distinct failure, not every hour.
+  launchd.agents.zaim-sync = import ../lib/launchd-agent.nix {
+    program = "${pkgs.writeShellScript "zaim-sync" ''
+      tools="$HOME/Developer/github.com/gapul/personal-tools/zaim"
+      ledger="$HOME/Developer/github.com/gapul/ledger"
+      [ -f "$tools/zaim_web.py" ] && [ -f "$ledger/main.beancount" ] || exit 0
       state="$HOME/.local/state/zaim"
       mkdir -p "$state"
-      if /usr/bin/python3 "$script" ping >/dev/null 2>&1; then
-        rm -f "$state/expired"
-        exit 0
+      py=${pkgs.python3}/bin/python3
+      git="${pkgs.git}/bin/git -C $ledger"
+
+      fail() {
+        [ "$(cat "$state/failed" 2>/dev/null)" = "$1" ] && exit 1
+        printf '%s' "$1" > "$state/failed"
+        url="$HOME/.config/ntfy/url"
+        tok="$HOME/.config/ntfy/token"
+        [ -r "$url" ] && [ -r "$tok" ] || exit 1
+        /usr/bin/curl -fsS --max-time 15 \
+          -H "Authorization: Bearer $(cat "$tok")" \
+          -H "Title: Zaim ledger (macmini)" \
+          -H "Tags: warning" \
+          -d "$1" "$(cat "$url")" >/dev/null 2>&1 || true
+        exit 1
+      }
+
+      out=$($py "$tools/zaim_web.py" sync --db "$ledger/zaim.db" 2>&1) ||
+        fail "同期に失敗: $out (Cookie切れなら母艦で zaim_web.py login → scp ~/.cache/zaim/cookie macmini:.cache/zaim/cookie)"
+      out=$($py "$tools/zaim_beancount.py" --db "$ledger/zaim.db" --rules "$ledger/rules.toml" \
+        --out "$ledger/zaim.beancount" 2>&1) || fail "帳簿の生成に失敗: $out"
+      out=$(${pkgs.beancount}/bin/bean-check "$ledger/main.beancount" 2>&1) || fail "bean-check: $out"
+      rm -f "$state/failed"
+      if [ -n "$($git status --porcelain)" ]; then
+        $git add -A && $git commit -q -m "zaim sync $(date +%F\ %H:%M)"
       fi
-      [ -e "$state/expired" ] && exit 1
-      touch "$state/expired"
-      url="$HOME/.config/ntfy/url"
-      tok="$HOME/.config/ntfy/token"
-      [ -r "$url" ] && [ -r "$tok" ] || exit 1
-      /usr/bin/curl -fsS --max-time 15 \
-        -H "Authorization: Bearer $(cat "$tok")" \
-        -H "Title: Zaim (macmini)" \
-        -H "Tags: warning" \
-        -d "セッションが切れた。母艦で zaim_web.py login → scp ~/.cache/zaim/cookie macmini:.cache/zaim/cookie" \
-        "$(cat "$url")" >/dev/null 2>&1 || true
-      exit 1
     ''}";
     schedule = [ { Minute = 17; } ];
+  };
+
+  # Fava for the ledger, tailnet-only HTTPS on :5075 via tailscale serve (same approach as Orca).
+  # Fava reloads the files itself when zaim-sync rewrites them.
+  launchd.agents.fava = {
+    enable = true;
+    config = {
+      ProgramArguments = [
+        "${pkgs.writeShellScript "fava" ''
+          ledger="$HOME/Developer/github.com/gapul/ledger/main.beancount"
+          if [ ! -f "$ledger" ]; then
+            sleep 600
+            exit 0
+          fi
+          [ -x /opt/homebrew/bin/tailscale ] &&
+            /opt/homebrew/bin/tailscale serve --bg --https=5075 http://127.0.0.1:5075 >/dev/null 2>&1
+          exec ${pkgs.fava}/bin/fava --host 127.0.0.1 --port 5075 "$ledger"
+        ''}"
+      ];
+      RunAtLoad = true;
+      KeepAlive = true;
+      ProcessType = "Background";
+      Nice = 10;
+      StandardOutPath = "/tmp/fava.log";
+      StandardErrorPath = "/tmp/fava.log";
+    };
   };
 
   # Nightly `git pull` on the checkout. The post-merge hook is what actually rebuilds; this only
