@@ -193,6 +193,8 @@ in
     # MovieMaker. The download is Turnstile-gated, so the dmg has to be added to
     # the store by hand on a version bump. See pkgs/aquestalkplayer.nix.
     (pkgs.callPackage ../pkgs/aquestalkplayer.nix { })
+    # Touch ID helper for the ask broker. Same requireFile shape: see pkgs/askapprove.nix.
+    (pkgs.callPackage ../pkgs/askapprove.nix { })
     # Open JTalk for the yukkuri engine's reading/accent analysis, under its own
     # name so it does not become the default python. See pkgs/yukkuri-python.nix.
     (pkgs.callPackage ../pkgs/yukkuri-python.nix { })
