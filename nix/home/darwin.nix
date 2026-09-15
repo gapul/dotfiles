@@ -69,6 +69,12 @@ in
     # belong to brew; this skips the check entirely (`auto_download = false` would still prompt).
     # It reaches the login-item launch through the session-env agent in darwin-services.nix.
     AW_DISABLE_AUTO_UPDATE = "1";
+    # aw-tauri already autostarts `aw-sync daemon` (its config.toml autostart list), which pushes every
+    # bucket to a sync directory every 5 minutes. Pointing that directory into the Syncthing share
+    # puts the whole ActivityWatch record on homeserver within minutes instead of the daily snapshot.
+    # aw-sync keeps its own per-device subdirectory, so this sits beside the <host>/ dirs of
+    # personal-history without colliding.
+    AW_SYNC_DIR = "${config.home.homeDirectory}/Sync/syncthing/personal-history/aw-sync";
     # nh: darwin works with the darwinConfigurations.<user> form. For home on nh 4.3.2,
     # neither #name nor #...activationPackage works → flake only (no #) so it auto-detects
     # homeConfigurations.<user> by user name is the only form that works.
