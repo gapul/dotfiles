@@ -525,7 +525,7 @@ in
       "y3owk1n/tap" # cask distribution source for neru (full-screen keyboard navigation)
 
       # ─── Personal forks (gapul) — delete if you forked and don't need them ───
-      "gapul/tap" # gapul の汎用 cask タップ (webcam-motion-capture 等、homebrew/cask に無いもの)
+      "gapul/tap" # gapul の汎用 cask タップ (homebrew/cask に無いもの)
       "gapul/openutau"
       "gapul/azoo-key-skkserv"
       "gapul/armorpaint" # ArmorPaint source-build formula distribution tap (official is paid €16 → self-build for free full version)
@@ -649,7 +649,6 @@ in
       "macskk"
       "gapul/azoo-key-skkserv/azoo-key-skkserv" # skkserv for the azooKey conversion engine (gapul self-made tap)
       "y3owk1n/tap/neru" # mouse-free full-screen navigation (grid/hints/scroll. System-wide version of Vimium. shortcat superset)
-      "gapul/tap/webcam-motion-capture" # webcam full-body/hand/face mocap (VMC/OSC out). 自己更新するので brew-nix ではなく cask。mocopi+カメラの自前構成との比較検討用
 
       # ─── macOS utilities ───
       "hammerspoon"
@@ -698,12 +697,6 @@ in
       # ─── Network / Remote ───
       "tailscale-app"
       "rustdesk"
-
-      # ─── iOS sideloading ───
-      # Pairs the iPhone for SideStore (self-hosted anisette; see the ios-selfbuild notes).
-      # Was a hand-installed /Applications/AltServer.app until 2026-08 — the cask ships the same
-      # version, so declaring it just puts it back under management.
-      "altserver"
 
       # ─── Dev IDEs / Editors / SDK ───
       "stablyai/orca/orca" # unified chat UI for Claude Code/Codex; custom tap avoids the unrelated disabled Plotly cask
