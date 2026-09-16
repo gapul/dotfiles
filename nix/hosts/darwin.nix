@@ -184,7 +184,10 @@ in
     # ─── Creative: official is paid but nixpkgs source builds give a free full version ───
     # Unavailable/broken on 26.05-darwin, so from unstablePkgs (nixos-unstable, with allowUnfree).
     unstablePkgs.fritzing # PCB/circuit design CAD (official DL is paid. for the ESP32 project). cached, so instant
-    unstablePkgs.ardour # DAW (official binary is pay-what-you-want. free via source build). cached, so instant
+    # DAW (official binary is pay-what-you-want. free via source build). cached, so instant.
+    # Wrapped: the nixpkgs bundle links libvamp-*.so by bare name and nothing in it starts
+    # (GUI or the ardour9-lua/export CLIs) until the load commands are repaired. See pkgs/.
+    (unstablePkgs.callPackage ../pkgs/ardour-darwin-vamp-fix.nix { })
     unstablePkgs.aseprite # pixel-art editor (official $20. source-available/self-built is free full)
     # VRoid Studio (VRM character modelling): no nixpkgs package and no cask, so the official
     # macOS dmg is repackaged. See pkgs/vroid-studio.nix - the download URL carries a token

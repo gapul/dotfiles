@@ -350,6 +350,22 @@ in
     executable = true;
   };
 
+  # voicevox-engine: the engine that VOICEVOX.app bundles, started by hand for the REST API
+  # (talk + singing: /sing_frame_audio_query -> /frame_synthesis). On macOS 27 it aborts on
+  # every synthesis in nixpkgs' Apple libffi; the shim swaps in upstream libffi at load time
+  # (see pkgs/libffi-mit-shim.nix). VOICEVOX.app launches the unshimmed engine itself, so the
+  # editor stays affected until nixpkgs fixes libffi; only this CLI is covered.
+  home.file.".local/bin/voicevox-engine" = {
+    executable = true;
+    text = ''
+      #!/bin/sh
+      export DYLD_LIBRARY_PATH=${
+        pkgs.callPackage ../pkgs/libffi-mit-shim.nix { }
+      }/lib''${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}
+      exec ${lib.getExe pkgs.voicevox-engine} --host 127.0.0.1 --port 50021 "$@"
+    '';
+  };
+
   home.file.".config/ghostty" = {
     source = ../../configs/terminals/ghostty;
     recursive = true;
