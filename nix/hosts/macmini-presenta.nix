@@ -121,6 +121,9 @@ let
     git -C "$repo" worktree prune
     git -C "$repo" worktree add --detach --force "$release" "$rev" >/dev/null
     ln -sfn ${envFile} "$release/.env.local"
+    # リポジトリにも data/ があるので、消してから張る（張るだけだと data/data になり、
+    # アプリはリリースの中を、動画ワーカーは共有の置き場を見て食い違う）。
+    rm -rf "$release/data"
     ln -sfn ${share}/data "$release/data"
     if ! (
       cd "$release"
@@ -277,6 +280,8 @@ in
         # pnpm start runs next through node, and the AI panel shells out to the claude CLI.
         PATH = "${home}/.local/bin:/etc/profiles/per-user/${user.username}/bin:/run/current-system/sw/bin:/usr/bin:/bin";
         NODE_ENV = "production";
+        # 置き場は明示する（cwd 任せにしない）。動画ワーカーも同じ場所を見る。
+        PRESENTA_DATA_DIR = "${share}/data";
       };
       StandardOutPath = "${state}/app.log";
       StandardErrorPath = "${state}/app.log";
