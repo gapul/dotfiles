@@ -76,6 +76,7 @@ in
     log-driver = "journald";
     extraOptions = [
       "--health-cmd=[\"pg_isready\", \"-U\", \"rallly\"]"
+      "--health-start-period=30s"
       "--health-interval=10s"
       "--health-retries=5"
       "--health-timeout=5s"

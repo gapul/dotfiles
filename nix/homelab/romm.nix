@@ -34,6 +34,7 @@ in
       "--network-alias=romm-db"
       "--network=romm_default"
       "--health-cmd=healthcheck.sh --connect --innodb_initialized"
+      "--health-start-period=30s"
       "--health-interval=10s"
       "--health-retries=5"
     ];
