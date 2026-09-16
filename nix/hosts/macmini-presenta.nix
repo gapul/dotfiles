@@ -18,8 +18,9 @@
 # by the login user. This one listens on localhost only and keeps its data under the user's
 # state directory.
 #
-# Video: presenta-voicevox speaks the speaker notes and presenta-video (workers/video, its own
-# dependencies) renders the deck with Remotion. Both are per-machine services, not part of a release.
+# Video: presenta-video (workers/video, its own dependencies) renders the deck with Remotion and has
+# the AivisSpeech engine on this machine read the speaker notes. It is a per-machine service, not
+# part of a release.
 #
 # Backups: the slide images and clips (~/.local/share/presenta/data) and the secrets (~/.config)
 # are taken by restic, see home/macmini-backup.nix. The database is dumped at 4:30 into /Users/Shared/presenta-backups,
@@ -213,32 +214,11 @@ in
     };
   };
 
-  # ナレーションの音声合成。macOS 27 では engine が同梱の libffi trampoline を開けずに
-  # /synthesis の途中で落ちるので、nix の libffi を先に見せる（DYLD_* は SIP の下では
-  # 継承されないため、環境ではなく launchd の EnvironmentVariables で渡す）。
-  launchd.daemons.presenta-voicevox = {
-    serviceConfig = {
-      ProgramArguments = [
-        "${pkgs.voicevox-engine}/bin/voicevox-engine"
-        "--host"
-        "127.0.0.1"
-        "--port"
-        "50021"
-      ];
-      UserName = user.username;
-      RunAtLoad = true;
-      KeepAlive = true;
-      ProcessType = "Background";
-      EnvironmentVariables = {
-        HOME = home;
-        DYLD_LIBRARY_PATH = "${pkgs.libffi}/lib";
-      };
-      StandardOutPath = "${state}/voicevox.log";
-      StandardErrorPath = "${state}/voicevox.log";
-    };
-  };
-
-  # 動画の書き出し。資料の発表原稿を VOICEVOX で読み上げ、Remotion がスライドを描いて mp4 にする。
+  # 動画の書き出し。資料の発表原稿を読み上げ、Remotion がスライドを描いて mp4 にする。
+  #
+  # 読み上げはこの機械で動いている AivisSpeech エンジン（home/macmini-aivisspeech.nix、
+  # VOICEVOX と同じ API）に頼む。VOICEVOX 本体（0.25.2）も置いてみたが、macOS 27 では
+  # /synthesis のたびに libffi の trampoline で落ちる（DYLD_LIBRARY_PATH でも直らない）。
   # キューは DB（VideoJob）なので、ここは待ち受けるだけ。アプリと同じ data/ とデータベースを見る。
   launchd.daemons.presenta-video = {
     serviceConfig = {
@@ -258,7 +238,9 @@ in
         HOME = home;
         PATH = "${home}/.local/bin:/etc/profiles/per-user/${user.username}/bin:/run/current-system/sw/bin:/usr/bin:/bin";
         PRESENTA_DATA_DIR = "${share}/data";
-        VOICEVOX_URL = "http://127.0.0.1:50021";
+        VOICEVOX_URL = "http://100.105.135.49:10101";
+        # AivisSpeech の「まお・ノーマル」。話者一覧は /speakers で引ける。
+        VOICEVOX_SPEAKER = "888753760";
         # pnpm はここに端末が無いと node_modules の作り直しで止まる（CI と同じ扱いにする）。
         CI = "true";
       };
