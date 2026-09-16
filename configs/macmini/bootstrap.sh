@@ -39,6 +39,9 @@ if [ $do_all = 1 ] || printf '%s' "$*" | grep -q venvs; then
   # TTS(Style-Bert-VITS2, numpy/setuptoolsピン重要)
   $UV venv --python 3.12 "$H/sbv2-venv"
   $UV pip install --python "$H/sbv2-venv/bin/python" style-bert-vits2 torch torchaudio soundfile "setuptools<81" "numpy==1.26.4"
+  # 表現力TTS/声クローン(Fish Audio S2 Pro, 純MLXなので torch は要らない。3.13以上)
+  $UV venv --python 3.13 "$H/.local/share/venvs/fish-venv"
+  $UV pip install --python "$H/.local/share/venvs/fish-venv/bin/python" mlx-speech
   # 音声分離
   $UV venv --python 3.12 "$H/sep-venv"
   $UV pip install --python "$H/sep-venv/bin/python" mlx-audio-separator torch
