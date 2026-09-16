@@ -67,8 +67,10 @@
 #                                               いて .pub だけ残っている (2026-09-16)。
 #                  6eKHIxVa…  ssh: (ECDSA-SK)   母艦の enclave 鍵。
 #                  Omlr022F…  mvrx-sync@macbook ssh_mvrx_sync_key。母艦の無人経路。
-#                jHs+Ozls は 2026-08-28 に母艦側の宣言から外した鍵なので、会社機側も
-#                消してよい候補。6AXiXLqd は母艦の Host mvrx-dev が使う鍵なので消さない。
+#                Host mvrx-dev と Host mvrx-nolang-dev は同じ機械 (HostName 192.168.1.36)
+#                に対する別名で、この 2 本は母艦から出ていくために使っていた歴代の鍵。
+#                どちらも母艦側の秘密鍵が消えているので、2026-09-16 に両方の IdentityFile を
+#                ssh_mvrx_sync_key へ向け直した。会社機側の 2 本は残す (人の判断)。
 #                どちらも手置きのファイルなので、実際に消すかは人が決める。ここからは触らない。
 #
 #                【ラベル重複の注意】mvrx-dev という名前の鍵は 2 本ある。
