@@ -221,8 +221,9 @@ in
 
   # 動画の書き出し。資料の発表原稿を読み上げ、Remotion がスライドを描いて mp4 にする。
   #
-  # 読み上げはこの機械で動いている AivisSpeech エンジン（home/macmini-aivisspeech.nix、
-  # VOICEVOX と同じ API）に頼む。VOICEVOX 本体（0.25.2）も置いてみたが、macOS 27 では
+  # 読み上げは fish-voicevox シム（home/macmini.nix）経由の Fish S2 Pro。シムが詰まったときは
+  # AivisSpeech エンジン（home/macmini-aivisspeech.nix、VOICEVOX と同じ API）に落ちる。
+  # VOICEVOX 本体（0.25.2）も置いてみたが、macOS 27 では
   # /synthesis のたびに libffi の trampoline で落ちる（DYLD_LIBRARY_PATH でも直らない）。
   # キューは DB（VideoJob）なので、ここは待ち受けるだけ。アプリと同じ data/ とデータベースを見る。
   launchd.daemons.presenta-video = {
@@ -243,9 +244,17 @@ in
         HOME = home;
         PATH = "${home}/.local/bin:/etc/profiles/per-user/${user.username}/bin:/run/current-system/sw/bin:/usr/bin:/bin";
         PRESENTA_DATA_DIR = "${share}/data";
-        VOICEVOX_URL = "http://100.105.135.49:10101";
-        # AivisSpeech の「まお・ノーマル」。話者一覧は /speakers で引ける。
-        VOICEVOX_SPEAKER = "888753760";
+        # Fish S2 Pro through the VOICEVOX-compatible shim (home/macmini.nix, fish-voicevox).
+        # The shim itself falls back to AivisSpeech on 100.105.135.49:10101 when Fish fails or
+        # would outrun the 120s the worker waits, so this stays as reliable as the engine it replaced.
+        #
+        # LICENCE: Fish S2 Pro is under the Fish Audio Research License — research, personal and
+        # evaluation use only. presenta.gapul.net is a public hosted service, which that licence
+        # counts as commercial use. Serving it from Fish needs an agreement with Fish Audio;
+        # without one, put this back to http://100.105.135.49:10101 with speaker 888753760.
+        VOICEVOX_URL = "http://127.0.0.1:10202";
+        # The shim only has one voice, but the worker always sends a speaker id.
+        VOICEVOX_SPEAKER = "900000001";
         # pnpm はここに端末が無いと node_modules の作り直しで止まる（CI と同じ扱いにする）。
         CI = "true";
       };
