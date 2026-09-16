@@ -56,8 +56,16 @@
 #    用事が出たら、公開鍵を1行戻して rebuild すればよい。)
 #
 #   mvrx         会社側の機械向け。会社機の authorized_keys は手置きで、このファイル
-#                の管理対象外なので自動では揃わない。実物に載っているのは
-#                enclave 鍵と ssh_mvrx_sync_key の 2 本 (2026-09-16 に指紋で確認)。
+#                の管理対象外なので自動では揃わない。2026-09-16 に実物を指紋で採ると
+#                4 本あった。
+#                  jHs+Ozls…  mvrx-nolang-dev   母艦から秘密鍵が消えている方の公開鍵。
+#                                               2026-08-28 に母艦側の宣言から外した鍵で、
+#                                               会社機には受理設定だけが残っている。
+#                  6AXiXLqd…  mvrx-dev          dotfiles のどこにも出てこない。持ち主不明。
+#                  6eKHIxVa…  ssh: (ECDSA-SK)   母艦の enclave 鍵。
+#                  Omlr022F…  mvrx-sync@macbook ssh_mvrx_sync_key。母艦の無人経路。
+#                上 2 本は宛先不明のまま残っている。棚卸しの価値はあるが、手置きの
+#                ファイルなので消すかどうかは人が決める。ここからは触らない。
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBLeOb9XOJPsmuTRf708qYoNckWk+/fhuWkpTWtTSu41 macbook-mini
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILZva+I0ui3AGOMb2V7BTLOXXtCJYvCJg9PGmzWOD8Am macmini-outbound macmini
 sk-ecdsa-sha2-nistp256@openssh.com AAAAInNrLWVjZHNhLXNoYTItbmlzdHAyNTZAb3BlbnNzaC5jb20AAAAIbmlzdHAyNTYAAABBBP5Y2DQbhcGpmOGDewcxUuVZ+/XO1I/Zm4M4nZhBMPwygadJY9//NxbVAZs98vMIp1Yy+9wgkQcEuc1CNQdCY2cAAAAEc3NoOg== ssh:
