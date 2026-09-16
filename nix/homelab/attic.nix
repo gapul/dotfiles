@@ -104,6 +104,7 @@ in
     log-driver = "journald";
     extraOptions = [
       "--health-cmd=pg_isready -U attic -d attic"
+      "--health-start-period=30s"
       "--health-interval=10s"
       "--health-retries=10"
       "--health-timeout=5s"
