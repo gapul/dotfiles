@@ -121,10 +121,8 @@ let
     git -C "$repo" worktree prune
     git -C "$repo" worktree add --detach --force "$release" "$rev" >/dev/null
     ln -sfn ${envFile} "$release/.env.local"
-    # リポジトリにも data/ があるので、消してから張る（張るだけだと data/data になり、
-    # アプリはリリースの中を、動画ワーカーは共有の置き場を見て食い違う）。
-    rm -rf "$release/data"
-    ln -sfn ${share}/data "$release/data"
+    # 共有の置き場は PRESENTA_DATA_DIR で渡す。リリースの中に data -> 共有 の symlink を張ると
+    # Tailwind の走査がツリーの外へ出て、turbopack が panic してビルドが落ちる。
     if ! (
       cd "$release"
       set -a; . ${envFile}; set +a
