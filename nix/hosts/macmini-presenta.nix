@@ -130,6 +130,10 @@ let
       pnpm build
       # 動画ワーカーは別パッケージ（アプリの依存には入っていない）。
       pnpm --dir workers/video install --frozen-lockfile --reporter=silent
+      # Remotion のブラウザ（93MB）はリリースごとに落とし直さず、共有の置き場を使う。
+      mkdir -p ${share}/remotion
+      rm -rf workers/video/node_modules/.remotion
+      ln -sfn ${share}/remotion workers/video/node_modules/.remotion
     ); then
       notify "build of $rev failed; still serving $(basename "$(readlink ${share}/current)")"
       exit 1
