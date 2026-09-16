@@ -488,6 +488,7 @@ in
       "ai-stack.sh"
       "ai_panel.py"
       "diarize_merge.py"
+      "fish_voicevox_shim.py"
       "llm_ask.py"
       "rag_server.py"
       "sbv2_tts.py"
@@ -496,6 +497,7 @@ in
       "agy"
       "ask"
       "describe"
+      "fish-voicevox"
       "ocr"
       "separate"
       "transcribe"
@@ -508,6 +510,36 @@ in
       { ".local/bin/ask-native-fill".source = ../../configs/ask/native_fill.py; }
     ]
   );
+
+  # A VOICEVOX-compatible front for Fish S2 Pro (mlx-speech), so anything that already speaks the
+  # VOICEVOX API can use it by pointing at this port — presenta's video worker does, see
+  # hosts/macmini-presenta.nix. Speech falls back to the AivisSpeech engine above when Fish fails
+  # or would take longer than the caller waits, so a slow model never costs us a video.
+  #
+  # Fish S2 Pro's weights are under the Fish Audio Research License: research, personal and
+  # evaluation use only. Serving presenta.gapul.net from it is a commercial use in that licence's
+  # terms and needs a separate agreement with Fish Audio.
+  #
+  # The model (6.3GB) and the venv are imperative assets like the rest of the AI stack, see
+  # configs/macmini/README.md.
+  launchd.agents.fish-voicevox = {
+    enable = true;
+    config = {
+      ProgramArguments = [
+        "${config.home.homeDirectory}/.local/bin/fish-voicevox"
+        "--port"
+        "10202"
+        # The caller (workers/video/voicevox.ts) gives up after 120s per chunk. Stay under it.
+        "--budget-seconds"
+        "90"
+      ];
+      RunAtLoad = true;
+      KeepAlive = true;
+      ProcessType = "Background";
+      StandardOutPath = "/tmp/fish-voicevox.log";
+      StandardErrorPath = "/tmp/fish-voicevox.log";
+    };
+  };
 
   # AI stack resident (replaces the old hand-written net.gapul.* plists. 2026-07-19)
   launchd.agents.ai-stack = {
