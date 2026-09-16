@@ -332,6 +332,24 @@ in
     executable = true;
   };
 
+  # Bitwig driven from scripts: DrivenByMoss's "Open Sound Control" controller is the receive/send
+  # end inside Bitwig; `bitwig` is the stdlib-only OSC client on this side. DrivenByMoss is neither in
+  # nixpkgs nor brew (mossgrabers.de zip), so it is fetched and linked into Bitwig's library dir.
+  # Bitwig only picks up .bwextension files from <library>/Extensions; the controller itself still
+  # has to be added once in Settings > Controllers (that state lives in Bitwig's binary prefs) and
+  # needs a MIDI input to activate: the IAC Driver, set online once via CoreMIDI (see `bitwig` help).
+  home.file."Documents/Bitwig Studio/Extensions/DrivenByMoss.bwextension".source = "${
+    pkgs.fetchzip {
+      url = "https://www.mossgrabers.de/Software/Bitwig/DrivenByMoss-26.6.5-Bitwig.zip";
+      hash = "sha256-DIFJBY9SX4QklKeSaazG/DJ+0psKKO+hfsO51+OQQC4=";
+      stripRoot = false;
+    }
+  }/DrivenByMoss.bwextension";
+  home.file.".local/bin/bitwig" = {
+    source = ../../configs/bin/bitwig;
+    executable = true;
+  };
+
   home.file.".config/ghostty" = {
     source = ../../configs/terminals/ghostty;
     recursive = true;
