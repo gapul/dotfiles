@@ -31,10 +31,14 @@
 #                再挑戦する前に、ツールがスタブを書くようになったかを確認すること。
 #   automation   母艦の無人ジョブ専用 (~/.ssh/id_automation, ed25519)。
 #                enclave 鍵は署名のたびに Touch ID の承認が要るので、承認の窓が
-#                切れると mutagen 同期などが黙って止まる (2026-08-30 に実際に踏んだ)。
+#                切れると無人のジョブが黙って止まる (2026-08-30 に実際に踏んだ)。
 #                Secure Enclave のまま 2 本目を作る道は塞がっていた (この下の注記)。
 #                秘密鍵はファイルなので enclave の保証は無い。そのぶん宛先を
-#                homeserver / macmini / mvrx 同期の 3 つに絞ってあり、単独で失効できる。
+#                homeserver と macmini に絞ってあり、単独で失効できる。
+#                (2026-09-16: 宛先に mvrx と書いてあったが、会社機の
+#                 authorized_keys に SHA256:EVujm1mG… は載っていない。-F /dev/null で
+#                 1 本ずつ試して Permission denied を確認済み。会社機へは
+#                 ssh_mvrx_sync_key (SHA256:Omlr022F…) で入る。)
 #                sops (common.yaml の ssh_automation_key) から配られる。
 #   break-glass  Bitwarden の金庫にある鍵。日常では使わず、Secure Enclave が
 #                使えなくなったとき (母艦の故障・紛失) の復旧用。専用の鍵を
@@ -51,9 +55,10 @@
 #    出ていく専用で、inbound には使われていなかった。会社機械から自宅へ入る
 #    用事が出たら、公開鍵を1行戻して rebuild すればよい。)
 #
-#   mvrx         会社側の機械向け。あちらに公開鍵を登録し直せないので Bitwarden
-#                の agent に残す。ここに置くのは母艦へ戻ってくる経路のため。
+#   mvrx         会社側の機械向け。会社機の authorized_keys は手置きで、このファイル
+#                の管理対象外なので自動では揃わない。実物に載っているのは
+#                enclave 鍵と ssh_mvrx_sync_key の 2 本 (2026-09-16 に指紋で確認)。
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBLeOb9XOJPsmuTRf708qYoNckWk+/fhuWkpTWtTSu41 macbook-mini
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILZva+I0ui3AGOMb2V7BTLOXXtCJYvCJg9PGmzWOD8Am macmini-outbound macmini
 sk-ecdsa-sha2-nistp256@openssh.com AAAAInNrLWVjZHNhLXNoYTItbmlzdHAyNTZAb3BlbnNzaC5jb20AAAAIbmlzdHAyNTYAAABBBP5Y2DQbhcGpmOGDewcxUuVZ+/XO1I/Zm4M4nZhBMPwygadJY9//NxbVAZs98vMIp1Yy+9wgkQcEuc1CNQdCY2cAAAAEc3NoOg== ssh:
-ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIE6CMmADF4LGvKe7usCqv4axb24SBjplR9j08u7X9Ro0 automation@macbook (homeserver/macmini/mvrx-sync 限定)
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIE6CMmADF4LGvKe7usCqv4axb24SBjplR9j08u7X9Ro0 automation@macbook (homeserver/macmini 限定)
