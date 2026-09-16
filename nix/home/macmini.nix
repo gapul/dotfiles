@@ -496,6 +496,7 @@ in
       "agy"
       "ask"
       "describe"
+      "fish-tts"
       "ocr"
       "separate"
       "transcribe"
