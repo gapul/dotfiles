@@ -32,6 +32,7 @@
     log-driver = "journald";
     extraOptions = [
       "--health-cmd=wget -q --tries=1 http://127.0.0.1:80/v1/health -O - | grep -Eo '\"healthy\"\\s*:\\s*true'"
+      "--health-start-period=30s"
       "--health-interval=1m0s"
       "--health-retries=3"
       "--health-timeout=10s"
