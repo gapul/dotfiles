@@ -67,15 +67,21 @@
 #                                               いて .pub だけ残っている (2026-09-16)。
 #                  6eKHIxVa…  ssh: (ECDSA-SK)   母艦の enclave 鍵。
 #                  Omlr022F…  mvrx-sync@macbook ssh_mvrx_sync_key。母艦の無人経路。
-#                Host mvrx-dev と Host mvrx-nolang-dev は同じ機械 (HostName 192.168.1.36)
-#                に対する別名で、この 2 本は母艦から出ていくために使っていた歴代の鍵。
+#                この 2 本の宛先は会社機 sean そのもの。Host mvrx-dev と
+#                Host mvrx-nolang-dev は同じ 1 台に対する別名で、ssh -G で両方を引くと
+#                user=gapul hostname=192.168.1.36 port=22 まで一致する (2026-09-16)。
+#                mvrx-dev という名前の別の開発機がある、という話ではない。
+#                2 本とも母艦から出ていくために使っていた歴代の鍵で、同じ 1 台に
+#                別々の鍵をあてていた形。
 #                どちらも母艦側の秘密鍵が消えているので、2026-09-16 に両方の IdentityFile を
 #                ssh_mvrx_sync_key へ向け直した。会社機側の 2 本は残す (人の判断)。
 #                どちらも手置きのファイルなので、実際に消すかは人が決める。ここからは触らない。
 #
 #                【ラベル重複の注意】mvrx-dev という名前の鍵は 2 本ある。
-#                  4WQSmfgn…  RSA      docs/HOMELAB.md の記載 (業務系・homelab では未使用)
-#                  6AXiXLqd…  ED25519  会社機の authorized_keys に載っている方
+#                  4WQSmfgn…  RSA      docs/HOMELAB.md の記載。実物は未確認で、どこの
+#                                      何の鍵かは 2026-09-16 時点で解明できていない。
+#                  6AXiXLqd…  ED25519  会社機 sean の authorized_keys に載っている方。
+#                                      母艦の ~/.ssh/id_ed25519_mvrx-dev.pub と同じ指紋。
 #                macbook-mini と同じで、名前ではなく fingerprint で見分けること。
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBLeOb9XOJPsmuTRf708qYoNckWk+/fhuWkpTWtTSu41 macbook-mini
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILZva+I0ui3AGOMb2V7BTLOXXtCJYvCJg9PGmzWOD8Am macmini-outbound macmini
