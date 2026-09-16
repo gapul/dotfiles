@@ -15,7 +15,7 @@
 # Nostr の鍵 (NIP-05 は gapul.net/.well-known/nostr.json):
 #   npub16t57vts9q96ht7c80n9h40l4grvfq35x7hq7de9kdxpqu02fjr2s7q08y5
 # 秘密鍵は /var/lib/secrets/nostr.env にだけあり、投稿の受け口が使う。
-{ ... }:
+_:
 
 let
   nostrPubkeyHex = "d2e9e62e05017575fb077ccb7abff540d8904686f5c1e6e4b669820e3d4990d5";
