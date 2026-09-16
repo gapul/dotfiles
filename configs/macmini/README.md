@@ -32,6 +32,21 @@ because they overlapped with the AI panel on :8901.
 Ollama, on :11434, and the `ask` command were removed on 2026-08-28. It was holding 47 GB in its
 own blob store while the actual inference had moved to the MLX stack and claude-bridge.
 
+## Three ways to make speech, and which one to reach for
+
+- `tts` — Style-Bert-VITS2, one fixed Japanese voice, a few seconds per line. The default.
+- `voice-clone` — GPT-SoVITS v2, copies a voice from a reference clip.
+- `fish-tts` — Fish Audio S2 Pro, 8-bit MLX (added 2026-09-16). Best expressiveness: emotion and
+  delivery are written inline as `[whisper]`, `[excited]`, `[pause]` and so on, and it clones
+  from a reference clip too. Japanese is a Tier 1 language upstream.
+
+`fish-tts` is the slow one. Measured RTF is 3 to 4, so ten seconds of speech takes half a minute,
+and the process peaks around 17 GB of the machine's 24 GB — do not run it alongside ComfyUI or
+another model. Use it when the line has to carry emotion, not to batch out a hundred of them.
+
+Its weights are under the Fish Audio Research License: research and non-commercial use only.
+Anything commercial needs a separate licence from Fish Audio.
+
 ## Things that catch you out
 
 The details are in the comments in each script.
