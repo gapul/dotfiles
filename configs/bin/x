@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# x: read X (Twitter) from the terminal through the local twitter-api-safe relay.
+#   x <tweet url|id>          the tweet and its thread/replies
+#   x @user [count]           latest posts by a user
+#   x search <query> [count]  latest posts matching a query (X search syntax works)
+# Output: one post per line, "<id>\t<created_at>\t<text>". Starts the relay on demand.
+set -euo pipefail
+
+RELAY=http://localhost:6900
+SETTINGS="$HOME/.config/twitter-api-safe/settings.json"
+LOG="$HOME/tmp/twitter-api-safe/server.log"
+
+start_relay() {
+  mkdir -p "$(dirname "$LOG")"
+  # ponytail: on-demand start instead of launchd; the relay opens a Chromium window (headless=false).
+  (nohup "$HOME/.local/state/nix/profile/bin/pnpm" dlx twitter-api-safe-mcp "$SETTINGS" >"$LOG" 2>&1 &)
+  for _ in $(seq 60); do curl -sf -m 2 "$RELAY/health" >/dev/null && return; sleep 0.5; done
+  echo "x: relay did not come up, see $LOG" >&2; exit 1
+}
+curl -sf -m 2 "$RELAY/health" >/dev/null || start_relay
+
+gql() { curl -sf -m 90 -G "$RELAY/i/api/graphql/$1/$2" --data-urlencode "variables=$3"; }
+# Every tweet object carries full_text + id_str; dedupe and flatten.
+posts='[.. | objects | select(has("full_text") and has("id_str")) | "\(.id_str)\t\(.created_at)\t\(.full_text | gsub("\n"; " "))"] | unique'
+newest='reverse | .[:$n] | .[]'
+
+case "${1:-}" in
+  ""|-h|--help) sed -n '2,6p' "$0"; exit 0 ;;
+  search)
+    [ $# -ge 2 ] || { echo "x search <query> [count]" >&2; exit 2; }
+    v=$(jq -nc --arg q "$2" --argjson n "${3:-20}" '{rawQuery:$q,count:$n,querySource:"typed_query",product:"Latest"}')
+    gql -TFXKoMnMTKdEXcCn-eahw SearchTimeline "$v" | jq -r --argjson n "${3:-20}" "$posts | $newest" ;;
+  @*)
+    v=$(jq -nc --arg s "${1#@}" '{screen_name:$s,withGrokTranslatedBio:false}')
+    uid=$(gql IGgvgiOx4QZndDHuD3x9TQ UserByScreenName "$v" | jq -re '.data.user.result.rest_id') \
+      || { echo "x: user ${1} not found" >&2; exit 1; }
+    v=$(jq -nc --arg u "$uid" --argjson n "${2:-20}" '{userId:$u,count:$n,includePromotedContent:false,withQuickPromoteEligibilityTweetFields:false,withVoice:false}')
+    gql PNd0vlufvrcIwrAnBYKE9g UserTweets "$v" | jq -r --argjson n "${2:-20}" "$posts | $newest" ;;
+  *)
+    id=${1##*/status/}; id=${id%%[?/]*}
+    [[ $id =~ ^[0-9]+$ ]] || { echo "x: not a tweet url/id: $1" >&2; exit 2; }
+    v=$(jq -nc --arg id "$id" '{focalTweetId:$id,referrer:"tweet",with_rux_injections:false,rankingMode:"Relevance",includePromotedContent:false,withCommunity:true,withQuickPromoteEligibilityTweetFields:false,withBirdwatchNotes:false,withVoice:false}')
+    # focal tweet first, then the rest of the conversation
+    gql 6uCvnic3m5reVuehkvHa3w TweetDetail "$v" | jq -r --arg id "$id" "$posts | sort_by(.[0:${#id}] != \$id) | .[]" ;;
+esac
