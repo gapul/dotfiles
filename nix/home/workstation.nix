@@ -28,6 +28,11 @@ in
       # ほうが古かった)。uosc は元から nixpkgs 側なので、これで本体とスクリプトの出所が揃う。
       mpv
       pandoc # document conversion
+      # Ears for the music tooling: aubiopitch / aubiotempo / aubioonset turn a rendered wav into
+      # numbers an agent can check (is the melody the one I wrote, is the tempo 100). The other
+      # half, `sox ... spectrogram`, is sox which is already here. See ~/tmp/music-tools-test/listen.
+      # 26.05 marks aubio linux-only; nixos-unstable builds it on aarch64-darwin (0.4.9, cached).
+      fastPkgs.aubio
       typst # typesetting
       # Compose the TeX Live collections needed for Japanese academic documents via Nix.
       # Avoid scheme-full while covering math, figures/tables, bibliographies, and common
