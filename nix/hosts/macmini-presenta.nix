@@ -245,7 +245,7 @@ in
       ProgramArguments = [
         "/bin/sh"
         "-c"
-        "/bin/wait4path ${appDir}/workers/video/node_modules && set -a && . ${envFile} && set +a && exec ${pkgs.pnpm}/bin/pnpm --dir ${appDir}/workers/video watch"
+        "/bin/wait4path ${appDir}/workers/video/node_modules && set -a && . ${envFile} && set +a && exec pnpm --dir ${appDir}/workers/video watch"
       ];
       UserName = user.username;
       WorkingDirectory = "${appDir}/workers/video";
@@ -259,6 +259,8 @@ in
         PATH = "${home}/.local/bin:/etc/profiles/per-user/${user.username}/bin:/run/current-system/sw/bin:/usr/bin:/bin";
         PRESENTA_DATA_DIR = "${share}/data";
         VOICEVOX_URL = "http://127.0.0.1:50021";
+        # pnpm はここに端末が無いと node_modules の作り直しで止まる（CI と同じ扱いにする）。
+        CI = "true";
       };
       StandardOutPath = "${state}/video.log";
       StandardErrorPath = "${state}/video.log";
