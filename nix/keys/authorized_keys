@@ -61,11 +61,20 @@
 #                  jHs+Ozls…  mvrx-nolang-dev   母艦から秘密鍵が消えている方の公開鍵。
 #                                               2026-08-28 に母艦側の宣言から外した鍵で、
 #                                               会社機には受理設定だけが残っている。
-#                  6AXiXLqd…  mvrx-dev          dotfiles のどこにも出てこない。持ち主不明。
+#                  6AXiXLqd…  mvrx-dev          母艦の ~/.ssh/id_ed25519_mvrx-dev.pub と同じ
+#                                               指紋。母艦から Host mvrx-dev へ出ていくための鍵が
+#                                               inbound 側にも載っている。この鍵も秘密鍵が消えて
+#                                               いて .pub だけ残っている (2026-09-16)。
 #                  6eKHIxVa…  ssh: (ECDSA-SK)   母艦の enclave 鍵。
 #                  Omlr022F…  mvrx-sync@macbook ssh_mvrx_sync_key。母艦の無人経路。
-#                上 2 本は宛先不明のまま残っている。棚卸しの価値はあるが、手置きの
-#                ファイルなので消すかどうかは人が決める。ここからは触らない。
+#                jHs+Ozls は 2026-08-28 に母艦側の宣言から外した鍵なので、会社機側も
+#                消してよい候補。6AXiXLqd は母艦の Host mvrx-dev が使う鍵なので消さない。
+#                どちらも手置きのファイルなので、実際に消すかは人が決める。ここからは触らない。
+#
+#                【ラベル重複の注意】mvrx-dev という名前の鍵は 2 本ある。
+#                  4WQSmfgn…  RSA      docs/HOMELAB.md の記載 (業務系・homelab では未使用)
+#                  6AXiXLqd…  ED25519  会社機の authorized_keys に載っている方
+#                macbook-mini と同じで、名前ではなく fingerprint で見分けること。
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBLeOb9XOJPsmuTRf708qYoNckWk+/fhuWkpTWtTSu41 macbook-mini
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILZva+I0ui3AGOMb2V7BTLOXXtCJYvCJg9PGmzWOD8Am macmini-outbound macmini
 sk-ecdsa-sha2-nistp256@openssh.com AAAAInNrLWVjZHNhLXNoYTItbmlzdHAyNTZAb3BlbnNzaC5jb20AAAAIbmlzdHAyNTYAAABBBP5Y2DQbhcGpmOGDewcxUuVZ+/XO1I/Zm4M4nZhBMPwygadJY9//NxbVAZs98vMIp1Yy+9wgkQcEuc1CNQdCY2cAAAAEc3NoOg== ssh:
