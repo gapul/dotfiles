@@ -51,7 +51,8 @@ in
       # primary browser" panel over the page.
       DontCheckDefaultBrowser = true;
       # Extensions come from AMO and keep updating there. The list is Zen's set as of
-      # 2026-09-17 (everything enabled there; KeePassXC-Browser was disabled and is left out),
+      # 2026-09-17 (everything enabled there except Zen Internet, which only makes sense with
+      # Zen's transparent content area; KeePassXC-Browser was disabled and is left out),
       # so the two browsers feel the same. Each content script is a cost on every page, so trim
       # here rather than in the UI: force_installed means the UI cannot remove them.
       ExtensionSettings = {
@@ -75,7 +76,6 @@ in
         "{aecec67f-0d10-4fa7-b7c7-609a2db280cf}" = amo "violentmonkey"; # Violentmonkey
         "{d07ccf11-c0cd-4938-a265-2a4d6ad01189}" = amo "view-page-archive"; # Web Archives
         "{799c0914-748b-41df-a25c-22d008f9e83f}" = amo "web-scrobbler"; # Web Scrobbler
-        "{91aa3897-2634-4a8a-9092-279db23a7689}" = amo "zen-internet"; # Zen Internet
       };
     };
 
