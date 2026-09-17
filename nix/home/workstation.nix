@@ -43,6 +43,19 @@ in
         exec ${python3.withPackages (ps: [ ps.pymeshlab ])}/bin/python3 "$@"
       '')
       typst # typesetting
+      # Circuit simulation. kicad-cli (KiCad 10, /Applications/KiCad) exports a SPICE netlist
+      # from a schematic; ngspice -b runs it; gnuplot turns wrdata output into a PNG the agent
+      # can read. Verified with an RC low-pass: -3 dB at 1585 Hz against 1592 theoretical.
+      ngspice
+      gnuplot
+      # build123d: Python CAD (OpenCascade via cadquery-ocp) for the parts OpenSCAD's CSG cannot
+      # do well - fillets, threads, constraints. Neither is in nixpkgs, so this is the sanctioned
+      # uv exception (see keychip-case for the per-repo form): uv resolves build123d on demand
+      # into its cache and pins Python 3.12, the newest with cadquery-ocp wheels.
+      # `build123d-python script.py` / `build123d-python -c '...'`.
+      (writeShellScriptBin "build123d-python" ''
+        exec ${lib.getExe uv} run --quiet --python 3.12 --with build123d python "$@"
+      '')
       # Compose the TeX Live collections needed for Japanese academic documents via Nix.
       # Avoid scheme-full while covering math, figures/tables, bibliographies, and common
       # extra packages without adding them individually.
