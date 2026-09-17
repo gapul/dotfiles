@@ -52,7 +52,8 @@ in
       DontCheckDefaultBrowser = true;
       # Extensions come from AMO and keep updating there. The list is Zen's set as of
       # 2026-09-17 (everything enabled there except Zen Internet, which only makes sense with
-      # Zen's transparent content area; KeePassXC-Browser was disabled and is left out),
+      # Zen's transparent content area, and DuckDuckGo Privacy Essentials, which duplicates
+      # uBlock Origin; KeePassXC-Browser was disabled and is left out),
       # so the two browsers feel the same. Each content script is a cost on every page, so trim
       # here rather than in the UI: force_installed means the UI cannot remove them.
       ExtensionSettings = {
@@ -60,7 +61,6 @@ in
         "{446900e4-71c2-419f-a6a7-df9c091e268b}" = amo "bitwarden-password-manager"; # Bitwarden Password Manager
         "{e58d3966-3d76-4cd9-8552-1582fbc800c1}" = amo "buster-captcha-solver"; # Buster: Captcha Solver for Humans
         "addon@darkreader.org" = amo "darkreader"; # Dark Reader
-        "jid1-ZAdIEUB7XOzOJw@jetpack" = amo "duckduckgo-for-firefox"; # DuckDuckGo Search & Tracker Protection
         "@testpilot-containers" = amo "multi-account-containers"; # Firefox Multi-Account Containers
         "firenvim@lacamb.re" = amo "firenvim"; # Firenvim
         "floccus@handmadeideas.org" = amo "floccus"; # floccus bookmarks sync
