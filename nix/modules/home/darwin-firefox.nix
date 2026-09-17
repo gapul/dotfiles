@@ -1,6 +1,7 @@
 # Darwin Firefox component (ECS: profile). Firefox Developer Edition, declared end to end:
-# arkenfox hardening plus the overrides this machine needs, the extensions and policies, the
-# Zen-like auto-hiding chrome, and the one WebRTC pref that lets Slack huddles connect.
+# arkenfox hardening plus the overrides this machine needs, the extensions and policies, a
+# keyboard-only chrome (nothing on screen but the page; Surfingkeys drives it, the url bar
+# floats in on ⌘L), and the one WebRTC pref that lets Slack huddles connect.
 #
 # Why a second Gecko browser next to Zen (2026-09-17): Zen has no Widevine licence, so DRM
 # playback never works there, and Helium (the Chromium here) ships no CDM either. Mozilla's
@@ -17,17 +18,6 @@
 }:
 let
   profile = "dev";
-  chromeDir = "${config.programs.firefox.profilesPath}/${profile}/chrome";
-
-  # MrOtherGuy's autohide hacks, pinned by commit. Together they are Zen's compact mode on
-  # stock Firefox: toolbar and sidebar stay out of the way until the pointer reaches the edge.
-  csshacksRev = "c887ca5fa6ea0915f00be339cb9910aed9586121";
-  csshack =
-    name: sha256:
-    pkgs.fetchurl {
-      url = "https://raw.githubusercontent.com/MrOtherGuy/firefox-csshacks/${csshacksRev}/chrome/${name}";
-      inherit sha256;
-    };
 
   amo = slug: {
     install_url = "https://addons.mozilla.org/firefox/downloads/latest/${slug}/latest.xpi";
@@ -159,7 +149,8 @@ in
         "browser.theme.macos.native-theme" = true;
         "widget.macos.titlebar-blend-mode.behind-window" = true;
 
-        # Stock vertical tabs; the sidebar hack below hides them until hovered.
+        # Vertical tabs, so no horizontal tab strip exists; the vertical one is hidden by
+        # userChrome (Surfingkeys handles tabs). Tabs are still there for ⌘1-9 and T.
         "sidebar.verticalTabs" = true;
         # Minimal chrome, the pref half (the CSS half is in userChrome below). No bookmarks
         # toolbar. No tool buttons at the bottom of the tab strip: the pref lists the enabled
@@ -170,57 +161,66 @@ in
         "sidebar.main.tools" = "none";
       };
       userChrome = ''
-        @import url("autohide_toolbox.css");
-        @import url("autohide_sidebar.css");
+        /* Keyboard-driven chrome (Surfingkeys does the navigation): nothing is shown by default and
+           nothing appears on hover. The vertical tab strip is off natively (sidebar.visibility =
+           hide-sidebar). The toolbar takes no space; the url bar alone floats in at the top centre
+           while it has focus (⌘L) or its dropdown is open, and leaves with it.
+           Verified with screenshots on 2026-09-17. */
 
-        /* Vertical tab strip (#sidebar-container, Firefox 157) slides off the left edge and comes
-           back when the pointer reaches it. autohide_sidebar.css only covers the classic panel.
-           10px stay inside the window as the hit area; the strip is invisible (opacity 0) while
-           hidden, so that overhang does not show. */
-        #browser { position: relative; }
-        #sidebar-container {
-          position: absolute;
-          inset-block: 0;
-          inset-inline-start: 0;
-          z-index: 3;
-          transform: translateX(calc(-100% + 10px));
-          transition: transform 150ms ease 350ms;
-          background-color: transparent;
+        #navigator-toolbox {
+          position: fixed !important;
+          top: 0;
+          inset-inline: 0;
+          height: 0 !important;
+          min-height: 0 !important;
+          overflow: visible !important;
+          z-index: 5 !important; /* above #browser (tabbox z 2) */
+          background-color: transparent !important;
         }
-        #sidebar-container > sidebar-main {
-          /* Overlaid on page content, so it needs a colour of its own: the launcher's usual one is
-             the native (vibrancy) window background, which is transparent here. -moz-Dialog follows
-             the chrome colour scheme. */
-          background-color: -moz-Dialog;
+        #navigator-toolbox > :not(#nav-bar) { display: none !important; }
+        /* The vertical tab strip: hide-sidebar alone leaves the launcher in place with vertical tabs on. */
+        #sidebar-container, #sidebar-launcher-splitter { display: none !important; }
+
+        #nav-bar {
+          position: fixed;
+          top: 8px;
+          left: 50%;
+          width: min(640px, 80vw);
+          height: 44px !important;
+          min-height: 44px !important;
+          align-items: center;
+          z-index: 4;
+          box-sizing: border-box;
+          padding-inline: 8px !important;
+          border-radius: 10px;
+          background-color: -moz-Dialog !important;
+          transform: translateX(-50%);
           opacity: 0;
-          transition: opacity 150ms ease 350ms;
+          pointer-events: none;
+          transition: opacity 120ms ease;
         }
-        #sidebar-container:is(:hover, :focus-within) { transform: none; transition-delay: 0ms; }
-        #sidebar-container:is(:hover, :focus-within) > sidebar-main { opacity: 1; transition-delay: 0ms; }
-        #sidebar-launcher-splitter { display: none !important; }
+        /* window-control spacers inside the bar (the traffic lights are native and stay top-left) */
+        #nav-bar :is(.titlebar-buttonbox-container, .titlebar-spacer) { display: none !important; }
+        #urlbar-container { min-width: 0 !important; width: auto !important; }
+        /* #urlbar is a popover in the top layer: the nav bar's opacity does not reach it. opacity
+           rather than visibility, so ⌘L can still focus it. */
+        #urlbar {
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity 120ms ease;
+        }
+        :root:has(#urlbar:is([open], [focused])) :is(#nav-bar, #urlbar) {
+          opacity: 1;
+          pointer-events: auto;
+        }
 
-        /* Minimal chrome: the nav bar keeps back, forward, the url bar and the extensions button.
-           Everything else is reachable from the macOS menu bar or a shortcut. */
+        /* Minimal bar: url bar and the extensions button only. */
         #alltabs-button, #smartwindow-group-tabs-button, #ai-window-toggle, #sidebar-button,
         #home-button, #PanelUI-button, #fxa-toolbar-menu-button,
-        #star-button-box, #reader-mode-button, #picture-in-picture-button { display: none !important; }
-        /* Vertical-tabs mode puts back/forward (and a spacer) back on the nav bar on every start
-           regardless of the declared placements, so they are hidden here. ⌘[ / ⌘] and the
-           trackpad swipe remain. */
+        #star-button-box, #reader-mode-button, #picture-in-picture-button,
         #back-button, #forward-button, #vertical-spacer { display: none !important; }
-
-        /* The tab strip's bottom row holds only the "customize sidebar" gear once the tools
-           are off. It lives in sidebar-main's shadow DOM, out of reach of selectors, so the
-           host is pulled past the container's clip edge by the row's height instead. */
-        #sidebar-container > sidebar-main { margin-block-end: -52px; }
       '';
     };
   };
 
-  home.file = {
-    "${chromeDir}/autohide_toolbox.css".source =
-      csshack "autohide_toolbox.css" "02xycvjiwk7qzji7llhxwhqyysgg26fbg39p9hl18lfjykjnjldr";
-    "${chromeDir}/autohide_sidebar.css".source =
-      csshack "autohide_sidebar.css" "103a8hamkz0218x4q6xfny5qrasdh1cwdkfcjn82ilfcf4cv1647";
-  };
 }
