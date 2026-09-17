@@ -32,6 +32,9 @@ let
   amo = slug: {
     install_url = "https://addons.mozilla.org/firefox/downloads/latest/${slug}/latest.xpi";
     installation_mode = "force_installed";
+    # Land in the extensions panel, not on the nav bar: the puzzle button is the one icon.
+    # Applies on install; an already pinned button is unpinned by hand once.
+    default_area = "menupanel";
   };
 in
 {
@@ -92,6 +95,13 @@ in
 
         # Stock vertical tabs; the sidebar hack below hides them until hovered.
         "sidebar.verticalTabs" = true;
+        # Minimal chrome, the pref half (the CSS half is in userChrome below). No bookmarks
+        # toolbar. No tool buttons at the bottom of the tab strip: the pref lists the enabled
+        # tools, but an empty list is treated as "first run" and refilled with the defaults, so
+        # name something that is not a tool. Only the customize gear stays (shadow DOM, out of
+        # reach of userChrome).
+        "browser.toolbars.bookmarks.visibility" = "never";
+        "sidebar.main.tools" = "none";
       };
       userChrome = ''
         @import url("autohide_toolbox.css");
@@ -122,6 +132,12 @@ in
         #sidebar-container:is(:hover, :focus-within) { transform: none; transition-delay: 0ms; }
         #sidebar-container:is(:hover, :focus-within) > sidebar-main { opacity: 1; transition-delay: 0ms; }
         #sidebar-launcher-splitter { display: none !important; }
+
+        /* Minimal chrome: the nav bar keeps back, forward, the url bar and the extensions button.
+           Everything else is reachable from the macOS menu bar or a shortcut. */
+        #alltabs-button, #smartwindow-group-tabs-button, #ai-window-toggle, #sidebar-button,
+        #home-button, #PanelUI-button, #fxa-toolbar-menu-button,
+        #star-button-box, #reader-mode-button, #picture-in-picture-button { display: none !important; }
       '';
     };
   };
