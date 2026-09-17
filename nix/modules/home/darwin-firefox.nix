@@ -192,8 +192,8 @@ in
           z-index: 4;
           box-sizing: border-box;
           padding-inline: 8px !important;
-          border-radius: 10px;
-          background-color: -moz-Dialog !important;
+          /* no backdrop: the url field draws its own pill, a bar behind it only adds a grey slab */
+          background-color: transparent !important;
           transform: translateX(-50%);
           opacity: 0;
           pointer-events: none;
