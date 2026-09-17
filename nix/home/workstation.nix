@@ -33,6 +33,15 @@ in
       # half, `sox ... spectrogram`, is sox which is already here. See ~/tmp/music-tools-test/listen.
       # 26.05 marks aubio linux-only; nixos-unstable builds it on aarch64-darwin (0.4.9, cached).
       fastPkgs.aubio
+      # LilyPond: text -> engraved score (PDF/PNG/MIDI). MuseScore's CLI covers MIDI -> score,
+      # this is for notation written as text in the first place.
+      lilypond
+      # MeshLab's scripting side. meshlabserver was dropped in 2020.x; the filters are driven
+      # from Python via pymeshlab instead. Wrapped as its own interpreter so it does not shadow
+      # the main python3 on PATH: `pymeshlab-python script.py`.
+      (writeShellScriptBin "pymeshlab-python" ''
+        exec ${python3.withPackages (ps: [ ps.pymeshlab ])}/bin/python3 "$@"
+      '')
       typst # typesetting
       # Compose the TeX Live collections needed for Japanese academic documents via Nix.
       # Avoid scheme-full while covering math, figures/tables, bibliographies, and common

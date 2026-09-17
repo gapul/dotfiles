@@ -162,6 +162,20 @@ in
       dontCheckForBrokenSymlinks = true;
     }))
     pkgs.brewCasks.supercollider
+    # Sonic Pi: live-coded instrument (Ruby DSL, OSC in, MIDI out to the IAC bus -> Bitwig).
+    # The agent-side counterpart to SuperCollider: a few lines make sound, and code can be
+    # pushed into the running app. nixpkgs' sonic-pi is linux-only, hence the cask.
+    pkgs.brewCasks.sonic-pi
+    # MeshLab: mesh cleanup/decimation for the scan and VRM work. meshlabserver is gone since
+    # 2020.x; scripting is pymeshlab (pymeshlab-python in home/workstation.nix). Ships meshlab.app.
+    pkgs.meshlab
+    # OpenSCAD: code-first CAD, the agent-written side of FreeCAD. -unstable is the maintained
+    # branch (2021.01 stable predates manifold/lazy-union); ships OpenSCAD.app and a CLI named
+    # openscad-unstable, so `openscad` below is the name everything else expects. From
+    # nixos-unstable: 26.05's snapshot wants manifold built from source, unstable's is cached.
+    unstablePkgs.openscad-unstable
+    # (not lib.getExe: nixpkgs' meta.mainProgram says "openscad" but the file is openscad-unstable)
+    (pkgs.writeShellScriptBin "openscad" ''exec ${unstablePkgs.openscad-unstable}/bin/openscad-unstable "$@"'')
     pkgs.brewCasks.trex # 画面 OCR。Screen Recording の TCC を再付与する必要がある
     # ─── Emulation ───
     # The Pokémon RNG/breeding work runs here rather than on hardware: frame-level control and a
