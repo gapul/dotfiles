@@ -167,16 +167,16 @@ in
     # The Pokémon RNG/breeding work runs here rather than on hardware: frame-level control and a
     # debugger are what the manipulation needs, and neither exists on a real console. The 3DS side
     # still requires system files and AES keys dumped from an own CFW'd console — none of these
-    # ship Nintendo code. All FOSS. retroarch-metal stays in homebrew.casks below: it is the
-    # phone-side/couch frontend, and these standalone cores are what the actual work uses.
+    # ship Nintendo code. All FOSS.
+    # GB/GBC/GBA/DS run inside RetroArch (retroarch-metal in homebrew.casks below) with the
+    # nixpkgs libretro cores declared in home/darwin.nix - same engines as the standalone
+    # SameBoy / mGBA / melonDS apps, one frontend, and a CLI + network command interface that
+    # the standalone apps never had. The standalone DeSmuME / mGBA / SameBoy apps went 2026-09-17;
+    # nothing had been saved in any of them. melonDS stays as a standalone only for Pal Park
+    # (Slot-2 GBA cart, which the libretro core makes awkward) and can go once that is done.
     # Azahar and melonDS come from nixpkgs (Azahar has no cask; melonDS builds natively and cached).
-    # The other three are plain .apps in homebrew/cask with a real sha256 and no self-updater, so
-    # brew-nix pins them via flake.lock.
-    pkgs.azahar # 3DS. Citra successor (Citra and Lime3DS are both discontinued)
-    pkgs.melonds # DS. Slot-2 GBA cart support, so Pal Park (gen3 -> gen4) works
-    pkgs.brewCasks.desmume # DS. Older, but the better-documented Slot-2 path of the two
-    pkgs.brewCasks.mgba-app # GBA. nixpkgs marks mgba unsupported on aarch64-darwin
-    pkgs.brewCasks.sameboy # GB/GBC. Accuracy + debugger, the FOSS stand-in for Windows-only BGB
+    pkgs.azahar # 3DS. Citra successor (Citra and Lime3DS are both discontinued). No usable libretro core yet
+    pkgs.melonds # DS standalone. Slot-2 GBA cart support, so Pal Park (gen3 -> gen4) works
     # Cinny: a Matrix client that renders custom image reactions (MSC4027) and emoji packs, which
     # Element Desktop still shows as raw mxc URLs. Used to view LINE reaction icons / stickers that
     # Element can't. Ships Cinny.app, so nix-darwin surfaces it under /Applications/Nix Apps.
