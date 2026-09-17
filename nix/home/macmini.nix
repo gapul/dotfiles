@@ -42,6 +42,7 @@ in
     # Keep Codex declarative on the remote host so it is both discoverable and available
     # after unattended rebuilds.
     agentPkgs.codex
+    agentPkgs.opencode
 
     # The study tutor renders plans and handouts with typst (show.py in the sandbox looks it
     # up under /nix/store). Declared here so a garbage collection can't take it away.
