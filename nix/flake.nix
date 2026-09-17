@@ -107,6 +107,11 @@
     # does not carry (it stops at ffmpeg_7), so pointing it at nixpkgs-nixos aborts
     # evaluation. Left on its own lineage, like zrythm-darwin above.
     zen-browser.url = "github:0xc000022070/zen-browser-flake";
+    # arkenfox user.js exposed as typed home-manager options (section / subsection / pref),
+    # so the hardening lives in the flake lock and the overrides are visible as nix diffs.
+    # Used by modules/home/darwin-firefox.nix.
+    arkenfox.url = "github:HeitorAugustoLN/arkenfox-nix";
+    arkenfox.inputs.nixpkgs.follows = "nixpkgs";
 
     # NixOS module that makes persistence targets explicit. Try it in a VM smoke test only for now;
     # don't apply it to the real machine until the data migration procedure is settled.
@@ -271,6 +276,9 @@
           base
           ++ [
             ./home/darwin.nix
+            # programs.firefox.arkenfox options for modules/home/darwin-firefox.nix (imported
+            # from home/darwin.nix). A flake input module has to enter through the role list.
+            inputs.arkenfox.modules.homeManager.arkenfox
             ./home/restic-backup.nix
             ./home/rclone-mount.nix
             ./home/personal-history.nix # 個人の記録を端末ごとに書き出して Syncthing に載せる
