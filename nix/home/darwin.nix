@@ -350,6 +350,29 @@ in
     executable = true;
   };
 
+  # RetroArch cores for the GB/GBC/GBA/DS emulation that used to be four standalone apps
+  # (hosts/darwin.nix, Emulation). Not declared as store paths on purpose: nixpkgs' libretro
+  # cores pull in retroarch-bare, which is marked broken on aarch64-darwin, and libretro's
+  # buildbot only publishes an unpinned nightly "latest" (no versioned URL to hash). So this
+  # is a declared procedure instead - fetch each missing core from the same buildbot the app's
+  # own Core Updater uses, into the directory retroarch.cfg points at. Delete a .dylib to get
+  # a fresh one on the next switch; RetroArch's updater can also refresh them in place.
+  # ponytail: "missing" is the only trigger, no staleness check - the updater covers that.
+  home.activation.retroarchCores = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    dir="${config.home.homeDirectory}/Library/Application Support/RetroArch/cores"
+    /bin/mkdir -p "$dir"
+    for core in sameboy mgba melonds; do
+      [ -e "$dir/''${core}_libretro.dylib" ] && continue
+      echo "retroarch: fetching $core core"
+      tmp=$(/usr/bin/mktemp -d)
+      $DRY_RUN_CMD /usr/bin/curl -fsSL -o "$tmp/core.zip" \
+        "https://buildbot.libretro.com/nightly/apple/osx/arm64/latest/''${core}_libretro.dylib.zip" \
+        && $DRY_RUN_CMD /usr/bin/unzip -q -o "$tmp/core.zip" -d "$dir" \
+        || echo "retroarch: $core core download failed (offline?), skipping" >&2
+      /bin/rm -rf "$tmp"
+    done
+  '';
+
   # voicevox-engine: the engine that VOICEVOX.app bundles, started by hand for the REST API
   # (talk + singing: /sing_frame_audio_query -> /frame_synthesis). On macOS 27 it aborts on
   # every synthesis in nixpkgs' Apple libffi; the shim swaps in upstream libffi at load time
