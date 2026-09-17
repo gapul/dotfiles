@@ -41,9 +41,17 @@ IDENTITY=$(cat "$SHAFILE")
 
 /bin/mkdir -p "$DEST_DIR"
 
-# 中身が同じなら触らない。署名し直すと cdhash が変わらなくても
-# ファイルの mtime が動いて、TCC が再評価する余地を作る。
-if [ -e "$DEST" ] && /usr/bin/cmp -s "$SRC" "$DEST"; then
+# 元が変わっていないなら触らない。ここを SRC と DEST の比較で書いていたが、
+# それは必ず「違う」になる — DEST には署名が埋まっているので、中身が一致する
+# ことはありえない。結果として activation のたびに置き直して署名し直し、
+# そのたびに TCC から別アプリに見えて画面収録の許可が落ちていた
+# (2026-09-10 に sunshine で発覚。許可の一覧に同名の項目が 2 つ並ぶ)。
+#
+# 見るのは元の store パス。nix では中身が変われば必ずパスが変わるので、
+# パスが同じなら署名し直す理由が無い。署名が剥がれている場合だけやり直す。
+STAMP="$DEST_DIR/.$NAME.src"
+if [ -e "$DEST" ] && [ -f "$STAMP" ] && [ "$(cat "$STAMP")" = "$SRC" ] \
+  && /usr/bin/codesign -dv "$DEST" 2>&1 | /usr/bin/grep -q "^Identifier=net.gapul.tcc.$NAME$"; then
   exit 0
 fi
 
@@ -68,5 +76,8 @@ if ! /usr/bin/codesign --force --sign "$IDENTITY" \
   echo "tcc-stable-binary: $NAME の署名に失敗した。未署名を残さないよう消した" >&2
   exit 1
 fi
+
+# 次回の判定用に、いま署名した元のパスを残す。
+printf '%s' "$SRC" > "$STAMP"
 
 echo "tcc-stable-binary: $NAME を署名して $DEST に置いた"

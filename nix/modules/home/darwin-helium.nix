@@ -10,8 +10,7 @@
 # Only policies can be declared this way. UI preferences that are not policies (theme, zoom,
 # Helium's own toggles) live in the profile's Preferences JSON, which Chromium rewrites while
 # running, so they stay out of nix.
-{ ... }:
-{
+_: {
   targets.darwin.defaults."net.imput.helium" = {
     # Sparkle self-update off: the cask owns the version and `just maintain` (brew --greedy)
     # moves it, the same as the other auto_updates casks. Found on 2026-09-17 with both on.
