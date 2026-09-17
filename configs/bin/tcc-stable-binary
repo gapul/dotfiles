@@ -50,8 +50,14 @@ IDENTITY=$(cat "$SHAFILE")
 # 見るのは元の store パス。nix では中身が変われば必ずパスが変わるので、
 # パスが同じなら署名し直す理由が無い。署名が剥がれている場合だけやり直す。
 STAMP="$DEST_DIR/.$NAME.src"
+# grep -q では受けない。一致した時点でパイプを閉じるので codesign が SIGPIPE で落ち、
+# pipefail のせいで判定全体が偽になる——つまり毎回署名し直す。前の修正がこれで効かなかった。
+SIGNED_ID=""
+if [ -e "$DEST" ]; then
+  SIGNED_ID=$(/usr/bin/codesign -dv "$DEST" 2>&1 | /usr/bin/sed -n 's/^Identifier=//p' || true)
+fi
 if [ -e "$DEST" ] && [ -f "$STAMP" ] && [ "$(cat "$STAMP")" = "$SRC" ] \
-  && /usr/bin/codesign -dv "$DEST" 2>&1 | /usr/bin/grep -q "^Identifier=net.gapul.tcc.$NAME$"; then
+  && [ "$SIGNED_ID" = "net.gapul.tcc.$NAME" ]; then
   exit 0
 fi
 
