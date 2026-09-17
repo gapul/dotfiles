@@ -99,7 +99,52 @@ in
     profiles.${profile} = {
       id = 0;
       isDefault = true;
+      search = {
+        default = "ddg";
+        force = true; # search.json.mozlz4 is regenerated on every switch, Firefox's copy loses
+      };
       settings = {
+        # Toolbar layout, declared. Firefox rewrites this pref while running; user.js puts it
+        # back on every start, so a toolbar dragged around in the UI lasts until the restart.
+        # The nav bar is the url bar and the extensions button, nothing else. Extensions sit
+        # in the extensions panel; new ones land there through the default_area policy above.
+        # (Vertical-tabs mode re-adds back/forward on start; the CSS below hides those.)
+        "browser.uiCustomization.state" = builtins.toJSON {
+          placements = {
+            "widget-overflow-fixed-list" = [ ];
+            "unified-extensions-area" = [
+              "ublock0_raymondhill_net-browser-action"
+              "_446900e4-71c2-419f-a6a7-df9c091e268b_-browser-action"
+            ];
+            "nav-bar" = [
+              "urlbar-container"
+              "unified-extensions-button"
+            ];
+            "toolbar-menubar" = [ "menubar-items" ];
+            TabsToolbar = [ ];
+            "vertical-tabs" = [ "tabbrowser-tabs" ];
+            PersonalToolbar = [ "personal-bookmarks" ];
+          };
+          seen = [
+            "reset-pbm-toolbar-button"
+            "developer-button"
+            "profiler-button"
+            "smartwindow-group-tabs-button"
+            "ai-window-toggle"
+            "screenshot-button"
+            "ublock0_raymondhill_net-browser-action"
+            "_446900e4-71c2-419f-a6a7-df9c091e268b_-browser-action"
+          ];
+          dirtyAreaCache = [
+            "nav-bar"
+            "TabsToolbar"
+            "vertical-tabs"
+            "unified-extensions-area"
+            "PersonalToolbar"
+          ];
+          currentVersion = 26; # Firefox 157's CustomizableUI kVersion; a lower value replays migrations
+          newElementCount = 1;
+        };
         "toolkit.legacyUserProfileCustomizations.stylesheets" = true; # load userChrome.css
 
         # Slack huddles on Firefox 155+: the DTLS ClientHello carries an X25519MLKEM768 key
@@ -119,8 +164,8 @@ in
         # Minimal chrome, the pref half (the CSS half is in userChrome below). No bookmarks
         # toolbar. No tool buttons at the bottom of the tab strip: the pref lists the enabled
         # tools, but an empty list is treated as "first run" and refilled with the defaults, so
-        # name something that is not a tool. Only the customize gear stays (shadow DOM, out of
-        # reach of userChrome).
+        # name something that is not a tool. The customize gear that remains is clipped away
+        # in userChrome.
         "browser.toolbars.bookmarks.visibility" = "never";
         "sidebar.main.tools" = "none";
       };
@@ -159,6 +204,15 @@ in
         #alltabs-button, #smartwindow-group-tabs-button, #ai-window-toggle, #sidebar-button,
         #home-button, #PanelUI-button, #fxa-toolbar-menu-button,
         #star-button-box, #reader-mode-button, #picture-in-picture-button { display: none !important; }
+        /* Vertical-tabs mode puts back/forward (and a spacer) back on the nav bar on every start
+           regardless of the declared placements, so they are hidden here. ⌘[ / ⌘] and the
+           trackpad swipe remain. */
+        #back-button, #forward-button, #vertical-spacer { display: none !important; }
+
+        /* The tab strip's bottom row holds only the "customize sidebar" gear once the tools
+           are off. It lives in sidebar-main's shadow DOM, out of reach of selectors, so the
+           host is pulled past the container's clip edge by the row's height instead. */
+        #sidebar-container > sidebar-main { margin-block-end: -52px; }
       '';
     };
   };
