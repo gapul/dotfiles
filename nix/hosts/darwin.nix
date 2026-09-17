@@ -632,6 +632,16 @@ in
       "helium-browser" # ungoogled-chromium based, now the Chromium of record here
       "tor-browser"
       "zen"
+      # Firefox Developer Edition: the DRM and video-call browser next to Zen (2026-09-17). Zen
+      # has no Widevine licence and Helium has no CDM at all, so neither plays Netflix, Prime
+      # Video or Spotify web; Mozilla's build carries the licence. The cask rather than nixpkgs'
+      # firefox-devedition-bin: on darwin nixpkgs re-signs the bundle ad hoc (TeamIdentifier not
+      # set, resources missing), and the nix-vs-brew signing rule wants the Developer ID signature
+      # kept so the microphone/camera TCC grants survive a rebuild. Everything else about it
+      # (profile, arkenfox hardening, extensions, policies) is declared in
+      # modules/home/darwin-firefox.nix; the app's own updater is disabled there, so the version
+      # moves with `just maintain` (brew --greedy) like the other auto_updates casks.
+      "firefox@developer-edition"
 
       # ─── PDF viewers ───
       # sioyek (daily driver) comes from nixpkgs, see environment.systemPackages.
