@@ -106,6 +106,7 @@ in
     # ~/.local/bin より前に来る。profile 側だと手動インストール版が勝ってしまう。
     agentPkgs.codex
     agentPkgs.claude-code
+    agentPkgs.opencode
     # ─── moved off Homebrew (2026-09-15): same app, same data dirs, nothing to re-set up ───
     # Upstream's signed release carried over as-is, so TCC grants and entitlements survive:
     pkgs.utm # VMs stay in ~/Library/Containers/com.utmapp.UTM (same bundle id)
