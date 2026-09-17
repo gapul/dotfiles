@@ -44,6 +44,9 @@ in
       # The store copy cannot update itself anyway; saying so stops the nag and leaves the
       # version to `just maintain` (brew --greedy), the same path the other auto_updates casks take.
       DisableAppUpdate = true;
+      # Zen stays the default browser; without this the first run parks a "make Firefox your
+      # primary browser" panel over the page.
+      DontCheckDefaultBrowser = true;
       # Extensions come from AMO and keep updating there. Keep this list short: this browser
       # exists for DRM and calls, and every content script here is one more thing on every page.
       ExtensionSettings = {
@@ -93,6 +96,32 @@ in
       userChrome = ''
         @import url("autohide_toolbox.css");
         @import url("autohide_sidebar.css");
+
+        /* Vertical tab strip (#sidebar-container, Firefox 157) slides off the left edge and comes
+           back when the pointer reaches it. autohide_sidebar.css only covers the classic panel.
+           10px stay inside the window as the hit area; the strip is invisible (opacity 0) while
+           hidden, so that overhang does not show. */
+        #browser { position: relative; }
+        #sidebar-container {
+          position: absolute;
+          inset-block: 0;
+          inset-inline-start: 0;
+          z-index: 3;
+          transform: translateX(calc(-100% + 10px));
+          transition: transform 150ms ease 350ms;
+          background-color: transparent;
+        }
+        #sidebar-container > sidebar-main {
+          /* Overlaid on page content, so it needs a colour of its own: the launcher's usual one is
+             the native (vibrancy) window background, which is transparent here. -moz-Dialog follows
+             the chrome colour scheme. */
+          background-color: -moz-Dialog;
+          opacity: 0;
+          transition: opacity 150ms ease 350ms;
+        }
+        #sidebar-container:is(:hover, :focus-within) { transform: none; transition-delay: 0ms; }
+        #sidebar-container:is(:hover, :focus-within) > sidebar-main { opacity: 1; transition-delay: 0ms; }
+        #sidebar-launcher-splitter { display: none !important; }
       '';
     };
   };
