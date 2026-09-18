@@ -334,6 +334,14 @@ in
     executable = true;
   };
 
+  # macmini の管理者認証ダイアログにパスワードを入れる。人が叩くもので、Claude は実行しない
+  # (アカウントのパスワードを代わりに入力しない線は、保管場所が sops になっても変わらない)。
+  # TCC のトグルは authorizationdb を緩めても認証を要求するので、この手数は消せない。
+  home.file.".local/bin/macmini-auth" = {
+    source = ../../configs/bin/macmini-auth;
+    executable = true;
+  };
+
   # Bitwig driven from scripts: DrivenByMoss's "Open Sound Control" controller is the receive/send
   # end inside Bitwig; `bitwig` is the stdlib-only OSC client on this side. DrivenByMoss is neither in
   # nixpkgs nor brew (mossgrabers.de zip), so it is fetched and linked into Bitwig's library dir.
