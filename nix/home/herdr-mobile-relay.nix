@@ -11,7 +11,8 @@
 # What the plugin cannot do is keep the relay running without Cloudflare: its
 # only background-service path bundles a cloudflared tunnel, and its
 # gateway/direct paths expect a foreground "Quick Start" pane left open. This
-# agent is that missing service.
+# agent is that missing service. Loaded on both Macs: each herdr server gets its
+# own relay, and the phone app lists them side by side.
 #
 # Transport: none of the plugin's three (temporary tunnel, Cloudflare named
 # tunnel, community WebRTC gateway). The relay stays on loopback and
@@ -28,7 +29,9 @@ let
   release = "${home}/.local/share/herdr-mobile-relay/current";
   configDir = "${home}/.config/herdr/plugins/config/herdr-mobile-relay.events";
   port = "8375";
-  tailscale = "/usr/local/bin/tailscale";
+  # The Tailscale.app CLI: /usr/local/bin on the workstation, /opt/homebrew/bin on the
+  # mac mini (brew-installed). Resolved at run time so one module serves both.
+  tailscale = "$(command -v tailscale || ls /opt/homebrew/bin/tailscale /usr/local/bin/tailscale 2>/dev/null | head -1)";
   # The plugin's scripts read HERDR_PLUGIN_CONFIG_DIR/HERDR_RELAY_ENV to find
   # relay.env; the relay binary reads the same two. Keep every caller on one
   # config so `assert_service_env_matches` never trips.
@@ -36,7 +39,8 @@ let
     export HERDR_PLUGIN_CONFIG_DIR="${configDir}"
     export HERDR_RELAY_ENV="${configDir}/relay.env"
     export HERDR_BIN="${config.home.profileDirectory}/bin/herdr"
-    export PATH="${config.home.profileDirectory}/bin:/usr/local/bin:/usr/bin:/bin"
+    export PATH="${config.home.profileDirectory}/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
+    tailscale=${tailscale}
   '';
   serve = pkgs.writeShellScript "herdr-mobile-relay" ''
     ${relayEnv}
@@ -51,13 +55,13 @@ let
     export HERDR_RELAY_HOST=127.0.0.1
     export HERDR_RELAY_PORT=${port}
     # Idempotent; tailscale keeps the serve config across reboots itself.
-    [ -x ${tailscale} ] &&
-      ${tailscale} serve --bg --https=${port} http://127.0.0.1:${port} >/dev/null 2>&1
+    [ -n "$tailscale" ] &&
+      "$tailscale" serve --bg --https=${port} http://127.0.0.1:${port} >/dev/null 2>&1
     exec "${release}/herdr-mobile-relay" serve
   '';
   qr = pkgs.writeShellScriptBin "herdr-mobile-relay-qr" ''
     ${relayEnv}
-    host="$(${tailscale} status --self --json | ${pkgs.jq}/bin/jq -r '.Self.DNSName | rtrimstr(".")')"
+    host="$("$tailscale" status --self --json | ${pkgs.jq}/bin/jq -r '.Self.DNSName | rtrimstr(".")')"
     exec bash "${release}/relay/setup-link.sh" "$host:${port}"
   '';
 in
