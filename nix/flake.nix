@@ -290,6 +290,7 @@
             ./home/maintenance.nix
             ./home/tmp-cleanup.nix # ~/tmp のスクラッチを7日で自動掃除 (macminiHeadless と共有)
             ./home/git-hooks.nix # git hook that auto-rebuilds on main updates (main tree only)
+            ./home/herdr-mobile-relay.nix # herdr をスマホ PWA から操作するリレー(tailnet 限定)
           ]
           ++ secrets
           ++ [
@@ -316,6 +317,7 @@
           # 音声モデルと合成処理。クライアントは tailnet 越しの API を使う。
           ./home/macmini-aivisspeech.nix
           ./home/tmp-cleanup.nix # ~/tmp のスクラッチを7日で自動掃除 (macWorkstation と共有)
+          ./home/herdr-mobile-relay.nix # herdr をスマホ PWA から操作するリレー(tailnet 限定、母艦と共有)
         ];
         wsl = linuxBase ++ [ ./home/wsl.nix ] ++ secrets ++ station;
         linuxServer = linuxBase ++ secrets ++ station;
