@@ -1,6 +1,7 @@
 {
   pkgs,
   user,
+  formera-source,
   ...
 }:
 # Boots the home server config in a VM and drives one request end to end.
@@ -18,7 +19,7 @@
 pkgs.testers.runNixOSTest {
   name = "homeserver-vm";
 
-  node.specialArgs = { inherit user; };
+  node.specialArgs = { inherit user formera-source; };
   node.pkgsReadOnly = false;
 
   nodes.machine =
