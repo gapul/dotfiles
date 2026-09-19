@@ -290,6 +290,7 @@
             ./home/maintenance.nix
             ./home/tmp-cleanup.nix # ~/tmp のスクラッチを7日で自動掃除 (macminiHeadless と共有)
             ./home/git-hooks.nix # git hook that auto-rebuilds on main updates (main tree only)
+            ./home/herdr-mobile-relay.nix # herdr をスマホ PWA から操作するリレー(tailnet 限定)
           ]
           ++ secrets
           ++ [
