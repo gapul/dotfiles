@@ -55,8 +55,13 @@
     # NixOS inside Windows (WSL2). Shares roles.wsl with the Lab PC's standalone home,
     # so the shell and CLI are identical whichever way the machine is booted.
     # Tracks the nixos lineage, not the darwin one (this host is x86_64-linux).
+    #
+    # main, not release-26.05: nixpkgs-nixos follows nixos-unstable, and the release
+    # branch still sets `boot.bootspec.enable`, which unstable removed. The release
+    # branch only makes sense against a matching release of nixpkgs, and evaluating
+    # it against unstable fails the assertion on every build.
     nixos-wsl = {
-      url = "github:nix-community/NixOS-WSL/release-26.05";
+      url = "github:nix-community/NixOS-WSL";
       inputs.nixpkgs.follows = "nixpkgs-nixos";
     };
 
