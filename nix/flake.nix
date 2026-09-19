@@ -698,7 +698,11 @@
               # The home server replaces Proxmox in one cut, so this booting is the
               # only verification before the old install is gone.
               homeserver-vm = import ./tests/homeserver-vm.nix {
-                inherit user;
+                # hosts/homeserver.nix pulls in homelab/formera.nix, which takes the
+                # source as a module argument. nixosConfigurations.homeserver passes it
+                # the same way; without it here the VM test stops evaluating with
+                # "attribute 'formera-source' missing".
+                inherit user formera-source;
                 pkgs = systemPkgs;
               };
             };
