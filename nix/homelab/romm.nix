@@ -34,9 +34,17 @@ in
       "--network-alias=romm-db"
       "--network=romm_default"
       "--health-cmd=healthcheck.sh --connect --innodb_initialized"
-      "--health-start-period=30s"
-      "--health-interval=10s"
-      "--health-retries=5"
+      # 定期実行はさせない (disable)。--health-cmd 自体は残るので、backup.nix の
+      # wait_healthy が使う `podman healthcheck run romm-db` はそのまま動く。
+      #
+      # 定期実行させていた頃、daily の flake auto-upgrade (nixos-upgrade.service)
+      # がこのコンテナを再起動させるたびに事故った。再起動直後、MariaDB がまだ
+      # 起動処理中のうちに最初のヘルスチェックが即座に走って失敗し、その一時
+      # systemd ユニットの失敗を switch-to-configuration が致命的エラーとして扱い、
+      # スイッチ自体は完了しているのに nixos-upgrade.service が failed のまま残って
+      # ntfy に流れていた (2026-09-21)。--health-start-period を延ばしても最初の
+      # 実行タイミングそのものは変わらないので効果が無かった。
+      "--health-interval=disable"
     ];
   };
   systemd.services."podman-romm-db" = {
