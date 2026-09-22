@@ -186,7 +186,8 @@ in
         "browser.theme.macos.native-theme" = true;
         "widget.macos.titlebar-blend-mode.behind-window" = true;
 
-        # Vertical tabs, collapsed to icons until hovered: Firefox's own expand-on-hover, no CSS.
+        # Vertical tabs on Firefox's own expand-on-hover; userChrome pushes the collapsed strip
+        # off screen so nothing shows until the pointer reaches the left edge.
         "sidebar.verticalTabs" = true;
         "sidebar.visibility" = "expand-on-hover";
         # Minimal chrome, the pref half (the CSS half is in userChrome below). No bookmarks
@@ -205,6 +206,10 @@ in
         #picture-in-picture-button { display: none !important; }
         /* the "customize sidebar" gear at the bottom of the tab strip (shadow DOM) */
         sidebar-main { margin-block-end: -52px; }
+        /* fully off screen until hovered (expand-on-hover leaves an icon column otherwise);
+           6px stay inside the window as the hit area */
+        #sidebar-container { margin-inline-start: calc(6px - var(--sidebar-launcher-collapsed-width)); transition: margin-inline-start 150ms; }
+        #sidebar-container:has([expanded]) { margin-inline-start: 0; }
       '';
     };
   };
