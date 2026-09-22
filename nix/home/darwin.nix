@@ -266,6 +266,9 @@ in
     # Premiere Pro MCP server (registered with `claude mcp add -s user premiere-pro -- premiere-pro-mcp`).
     # Was a hand build in ~/Developer; see the pin note in the package.
     (callPackage ../pkgs/premiere-pro-mcp.nix { })
+    # Laya typed-decision models on MLX (`laya-mlx predict`, `laya-snake`). Weights land in
+    # ~/.cache/huggingface on first use. mlx comes from Apple's Metal wheels, see the package.
+    (callPackage ../pkgs/laya-mlx.nix { })
     # zrythm (DAW): broken=isDarwin in nixpkgs. Self-built for darwin with carla included.
     # See pkgs/zrythm-darwin/ for details. GUI must be launched in a foreground GUI session.
     # On 26.05-darwin appstream/libadwaita can't build on darwin, so this one package alone
