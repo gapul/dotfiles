@@ -115,6 +115,13 @@ let
       auth = true;
     };
     git.upstream = "127.0.0.1:3003"; # forgejo
+    # Signet (homelab/nostr-bunker.nix), the NIP-46 signer for gapul@gapul.net's
+    # Nostr key. Behind Authelia: this is a key-management admin panel, not a
+    # public page, and the daemon it proxies to has no auth of its own.
+    bunker = {
+      upstream = "127.0.0.1:4174";
+      auth = true;
+    };
     archive = {
       upstream = "127.0.0.1:8000"; # archivebox
       auth = true;

@@ -77,6 +77,7 @@
     ./memory-pressure-alert.nix
     ./miniflux.nix
     ./navidrome.nix
+    ./nostr-bunker.nix
     ./ntfy.nix
     ./obsidian-couchdb.nix
     ./paperless.nix
