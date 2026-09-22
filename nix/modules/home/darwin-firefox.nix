@@ -19,15 +19,6 @@
 let
   profile = "dev";
   chromeDir = "${config.programs.firefox.profilesPath}/${profile}/chrome";
-  # MrOtherGuy's toolbar autohide, pinned by commit: the toolbar stays off screen until the
-  # pointer reaches the top edge (or ⌘L focuses the url bar).
-  csshacksRev = "c887ca5fa6ea0915f00be339cb9910aed9586121";
-  csshack =
-    name: sha256:
-    pkgs.fetchurl {
-      url = "https://raw.githubusercontent.com/MrOtherGuy/firefox-csshacks/${csshacksRev}/chrome/${name}";
-      inherit sha256;
-    };
 
   amo = slug: {
     install_url = "https://addons.mozilla.org/firefox/downloads/latest/${slug}/latest.xpi";
@@ -199,13 +190,9 @@ in
       };
       userChrome = ''
         @import url("autohide_toolbox.css");
-        /* nav bar: url bar and the extensions button only */
-        #back-button, #forward-button, #vertical-spacer, #alltabs-button,
-        #smartwindow-group-tabs-button, #ai-window-toggle, #sidebar-button, #home-button,
-        #PanelUI-button, #fxa-toolbar-menu-button, #star-button-box, #reader-mode-button,
-        #picture-in-picture-button { display: none !important; }
-        /* the "customize sidebar" gear at the bottom of the tab strip (shadow DOM) */
-        sidebar-main { margin-block-end: -52px; }
+        /* nav bar: url bar and the extensions button only (the rest was removed in Customize;
+           these five Firefox keeps putting back) */
+        #back-button, #forward-button, #vertical-spacer, #PanelUI-button, #star-button-box { display: none !important; }
         /* fully off screen until hovered (expand-on-hover leaves an icon column otherwise);
            6px stay inside the window as the hit area */
         #sidebar-container { margin-inline-start: calc(6px - var(--sidebar-launcher-collapsed-width)); transition: margin-inline-start 150ms; }
@@ -214,6 +201,10 @@ in
     };
   };
 
-  home.file."${chromeDir}/autohide_toolbox.css".source =
-    csshack "autohide_toolbox.css" "02xycvjiwk7qzji7llhxwhqyysgg26fbg39p9hl18lfjykjnjldr";
+  # MrOtherGuy's toolbar autohide, pinned by commit: the toolbar stays off screen until the
+  # pointer reaches the top edge (or ⌘L focuses the url bar).
+  home.file."${chromeDir}/autohide_toolbox.css".source = pkgs.fetchurl {
+    url = "https://raw.githubusercontent.com/MrOtherGuy/firefox-csshacks/c887ca5fa6ea0915f00be339cb9910aed9586121/chrome/autohide_toolbox.css";
+    sha256 = "02xycvjiwk7qzji7llhxwhqyysgg26fbg39p9hl18lfjykjnjldr";
+  };
 }
