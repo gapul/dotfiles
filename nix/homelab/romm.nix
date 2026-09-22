@@ -114,7 +114,7 @@ in
     serviceConfig = {
       Type = "oneshot";
       RemainAfterExit = true;
-      ExecStop = "podman network rm -f romm_default";
+      ExecStop = "${pkgs.podman}/bin/podman network rm -f romm_default";
     };
     script = ''
       podman network inspect romm_default || podman network create romm_default

@@ -56,7 +56,7 @@
     serviceConfig = {
       Type = "oneshot";
       RemainAfterExit = true;
-      ExecStop = "podman network rm -f navidrome_default";
+      ExecStop = "${pkgs.podman}/bin/podman network rm -f navidrome_default";
     };
     script = ''
       podman network inspect navidrome_default || podman network create navidrome_default

@@ -79,7 +79,7 @@
     serviceConfig = {
       Type = "oneshot";
       RemainAfterExit = true;
-      ExecStop = "podman network rm -f archivebox_default";
+      ExecStop = "${pkgs.podman}/bin/podman network rm -f archivebox_default";
     };
     script = ''
       podman network inspect archivebox_default || podman network create archivebox_default

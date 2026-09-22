@@ -61,7 +61,7 @@ in
     serviceConfig = {
       Type = "oneshot";
       RemainAfterExit = true;
-      ExecStop = "podman network rm -f jellyfin_default";
+      ExecStop = "${pkgs.podman}/bin/podman network rm -f jellyfin_default";
     };
     script = ''
       podman network inspect jellyfin_default || podman network create jellyfin_default
