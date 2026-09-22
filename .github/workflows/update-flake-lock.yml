@@ -17,6 +17,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  actions: write # 下の「CI を起こす」用
 
 jobs:
   update-lock:
@@ -25,7 +26,13 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+      # 素の nix-installer ではなく setup-nix なのは、flake input の1つ (mocopi-mac) が
+      # private で、deploy key が無いと `nix flake update` 自体が fetch で落ちるため
+      # (2026-09-21〜22 に毎時失敗していた)。ビルドはしないので cachix は要らない。
+      - uses: ./.github/actions/setup-nix
+        with:
+          cachix: 'false'
+          mocopi-deploy-key: ${{ secrets.MOCOPI_DEPLOY_KEY }}
       - name: Update flake.lock and open PR
         id: lock
         uses: DeterminateSystems/update-flake-lock@834c491b2ece4de0bbd00d85214bb5e83b4da5c6 # v28
@@ -37,12 +44,21 @@ jobs:
             automated
           commit-msg: 'chore(nix): update flake.lock'
       # 人が見て判断する余地の無い更新なので、CI が緑になった時点で入れる。
-      # main は3つの om ci を必須にしているので、auto-merge は実質「CI 緑まで待つ」の意味。
+      # main は om ci を必須にしているので、auto-merge は実質「CI 緑まで待つ」の意味。
       - name: Enable auto-merge
         if: steps.lock.outputs.pull-request-number != ''
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh pr merge --auto --squash "${{ steps.lock.outputs.pull-request-number }}"
+      # GITHUB_TOKEN が作った/更新した PR には pull_request イベントが飛ばない (GitHub の仕様、
+      # 無限ループ防止)。必須チェックが永遠に来ず auto-merge が待ち続ける (#601 が 11 日間
+      # BLOCKED のままだった)。例外は workflow_dispatch なので、こちらから CI を起こす。
+      # チェックは commit SHA に付くので、PR の head に対する dispatch 実行で必須チェックが満たされる。
+      - name: CI を起こす
+        if: steps.lock.outputs.pull-request-number != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run ci.yml --ref "$(gh pr view "${{ steps.lock.outputs.pull-request-number }}" --json headRefName -q .headRefName)"
 
   update-custom-packages:
     name: update custom packages -> PR
@@ -66,9 +82,15 @@ jobs:
           labels: |
             dependencies
             automated
-          body: 'Automated version and SHA-256 refresh for slk and Unity CLI.'
+          body: 'Automated version and SHA-256 refresh for slk, Unity CLI and the Paper server jar.'
       - name: Enable auto-merge
         if: steps.pkgs.outputs.pull-request-number != ''
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh pr merge --auto --squash "${{ steps.pkgs.outputs.pull-request-number }}"
+      # 上の update-lock と同じ理由。branch は create-pull-request が出力してくれる。
+      - name: CI を起こす
+        if: steps.pkgs.outputs.pull-request-operation == 'created' || steps.pkgs.outputs.pull-request-operation == 'updated'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run ci.yml --ref "${{ steps.pkgs.outputs.pull-request-branch }}"

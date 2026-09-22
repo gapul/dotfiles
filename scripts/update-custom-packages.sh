@@ -58,29 +58,30 @@ if [[ $pinned_unity != "$latest_unity" ]]; then
 fi
 
 # --- Paper (Minecraft server) ---------------------------------------------------------------
-# 追うのは「いちばん新しい MC バージョンの、いちばん新しい STABLE ビルド」。実験ビルドは拾わない。
+# 追うのは「STABLE ビルドを持つ、いちばん新しい MC バージョンの、いちばん新しい STABLE ビルド」。
+# 実験ビルドは拾わない。新しい MC 版が出た直後は ALPHA しか無い期間が数週間あり、そこで
+# 「最新版に STABLE が無い」と止めてしまうと、その間ひとつ前の版の STABLE 更新まで全部
+# 取りこぼす (26.3 が出てから 26.2 が build 123 で止まっていた)。
 # 配布 URL に sha256 が埋まっている API なので、jar を落とさずにハッシュを確定できる。
 pinned_paper_version=$(sed -n 's/^[[:space:]]*version = "\([^"]*\)";/\1/p' "$paper_file" | head -1)
 pinned_paper_build=$(sed -n 's/^[[:space:]]*build = "\([^"]*\)";/\1/p' "$paper_file" | head -1)
 
-paper_latest=$(curl -fsS --max-time 30 https://fill.papermc.io/v3/projects/paper | python3 -c '
-import json, sys
+# 新しい順に見て、最初に STABLE を持つ版で止まる。出力は "version build sha256"。
+paper_pick=$(curl -fsS --max-time 30 https://fill.papermc.io/v3/projects/paper | python3 -c '
+import json, sys, urllib.request
 versions = json.load(sys.stdin)["versions"]
-newest_series = next(iter(versions))
-print(versions[newest_series][0])
+for series in versions:
+    for v in versions[series]:
+        with urllib.request.urlopen(f"https://fill.papermc.io/v3/projects/paper/versions/{v}/builds", timeout=30) as r:
+            builds = json.load(r)
+        for b in builds:
+            if b.get("channel") == "STABLE":
+                print(v, b["id"], b["downloads"]["server:default"]["checksums"]["sha256"])
+                sys.exit(0)
 ')
 
-paper_build=$(curl -fsS --max-time 30 "https://fill.papermc.io/v3/projects/paper/versions/${paper_latest}/builds" | python3 -c '
-import json, sys
-for b in json.load(sys.stdin):
-    if b.get("channel") == "STABLE":
-        print(b["id"], b["downloads"]["server:default"]["checksums"]["sha256"])
-        break
-')
-
-if [[ -n $paper_build ]]; then
-  latest_build=${paper_build%% *}
-  latest_sha=${paper_build##* }
+if [[ -n $paper_pick ]]; then
+  read -r paper_latest latest_build latest_sha <<<"$paper_pick"
   if [[ $pinned_paper_version != "$paper_latest" || $pinned_paper_build != "$latest_build" ]]; then
     awk -v version="$paper_latest" -v build="$latest_build" -v sha="$latest_sha" '
       /^[[:space:]]*version = "/ && !v { sub(/"[^"]+"/, "\"" version "\""); v=1 }
