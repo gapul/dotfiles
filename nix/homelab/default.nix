@@ -75,7 +75,7 @@
     ./matrix-doublepuppet.nix
     ./matrix-bridge-secrets.nix
     ./memory-pressure-alert.nix
-    ./riscv-day-watch.nix # RISC-V Day 2026 Autumn の続報監視 (urlwatch, 11/11 後に外す)
+    ./site-watch.nix # サイト更新監視 (urlwatch → ntfy)。対象はファイル内の jobs リスト
     ./miniflux.nix
     ./navidrome.nix
     ./ntfy.nix
