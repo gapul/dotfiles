@@ -44,7 +44,8 @@ in
       # 2026-09-17 (everything enabled there except Zen Internet, which only makes sense with
       # Zen's transparent content area, and DuckDuckGo Privacy Essentials, which duplicates
       # uBlock Origin; KeePassXC-Browser was disabled and is left out). Trimmed on 2026-09-22:
-      # LINE, Web Archives, Dark Reader, Search by Image.
+      # LINE, Web Archives, Dark Reader, Search by Image, Global Speed (the one non-FOSS entry;
+      # playback speed is a Surfingkeys binding instead).
       # so the two browsers feel the same. Each content script is a cost on every page, so trim
       # here rather than in the UI: force_installed means the UI cannot remove them.
       ExtensionSettings = {
@@ -54,7 +55,6 @@ in
         "@testpilot-containers" = amo "multi-account-containers"; # Firefox Multi-Account Containers
         "firenvim@lacamb.re" = amo "firenvim"; # Firenvim
         "floccus@handmadeideas.org" = amo "floccus"; # floccus bookmarks sync
-        "{f4961478-ac79-4a18-87e9-d2fb8c0442c4}" = amo "global-speed"; # Global Speed - Video Speed Control
         "headereditor-amo@addon.firefoxcn.net" = amo "header-editor"; # Header Editor
         "sponsorBlocker@ajay.app" = amo "sponsorblock"; # SponsorBlock for YouTube - Skip Sponsorships
         "{7a7a4a92-a2a0-41d1-9fd7-1e92480d612d}" = amo "styl-us"; # Stylus
