@@ -527,6 +527,8 @@
                 '';
               };
               slk = systemPkgs.callPackage ./pkgs/slk.nix { };
+              # Exported so other flakes (laya-drive) can take `laya-python` from here.
+              laya-mlx = systemPkgs.callPackage ./pkgs/laya-mlx.nix { };
             }
             // lib.optionalAttrs (!isDarwinWorkstation) {
               remote-env = systemPkgs.buildEnv {
