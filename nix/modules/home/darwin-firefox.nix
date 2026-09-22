@@ -121,6 +121,42 @@ in
     profiles.${profile} = {
       id = 0;
       isDefault = true;
+      # Zen's containers, same ids so a profile copied over keeps its per-container cookies.
+      # Which site opens in which container is Multi-Account Containers' own storage and is
+      # set in its UI. Firefox's stock Work/Banking/Shopping keep their built-in names.
+      containersForce = true;
+      containers = {
+        personal = {
+          id = 1;
+          name = "Personal";
+          icon = "fingerprint";
+          color = "blue";
+        };
+        work = {
+          id = 2;
+          name = "Work";
+          icon = "briefcase";
+          color = "orange";
+        };
+        banking = {
+          id = 3;
+          name = "Banking";
+          icon = "dollar";
+          color = "green";
+        };
+        shopping = {
+          id = 4;
+          name = "Shopping";
+          icon = "cart";
+          color = "pink";
+        };
+        univ = {
+          id = 6;
+          name = "Univ";
+          icon = "fence";
+          color = "yellow";
+        };
+      };
       search = {
         default = "ddg";
         force = true; # search.json.mozlz4 is regenerated on every switch, Firefox's copy loses
