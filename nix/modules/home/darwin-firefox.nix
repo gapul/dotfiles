@@ -18,6 +18,16 @@
 }:
 let
   profile = "dev";
+  chromeDir = "${config.programs.firefox.profilesPath}/${profile}/chrome";
+  # MrOtherGuy's toolbar autohide, pinned by commit: the toolbar stays off screen until the
+  # pointer reaches the top edge (or ⌘L focuses the url bar).
+  csshacksRev = "c887ca5fa6ea0915f00be339cb9910aed9586121";
+  csshack =
+    name: sha256:
+    pkgs.fetchurl {
+      url = "https://raw.githubusercontent.com/MrOtherGuy/firefox-csshacks/${csshacksRev}/chrome/${name}";
+      inherit sha256;
+    };
 
   amo = slug: {
     install_url = "https://addons.mozilla.org/firefox/downloads/latest/${slug}/latest.xpi";
@@ -162,47 +172,6 @@ in
         force = true; # search.json.mozlz4 is regenerated on every switch, Firefox's copy loses
       };
       settings = {
-        # Toolbar layout, declared. Firefox rewrites this pref while running; user.js puts it
-        # back on every start, so a toolbar dragged around in the UI lasts until the restart.
-        # The nav bar is the url bar and the extensions button, nothing else. Extensions sit
-        # in the extensions panel; new ones land there through the default_area policy above.
-        # (Vertical-tabs mode re-adds back/forward on start; the CSS below hides those.)
-        "browser.uiCustomization.state" = builtins.toJSON {
-          placements = {
-            "widget-overflow-fixed-list" = [ ];
-            "unified-extensions-area" = [
-              "ublock0_raymondhill_net-browser-action"
-              "_446900e4-71c2-419f-a6a7-df9c091e268b_-browser-action"
-            ];
-            "nav-bar" = [
-              "urlbar-container"
-              "unified-extensions-button"
-            ];
-            "toolbar-menubar" = [ "menubar-items" ];
-            TabsToolbar = [ ];
-            "vertical-tabs" = [ "tabbrowser-tabs" ];
-            PersonalToolbar = [ "personal-bookmarks" ];
-          };
-          seen = [
-            "reset-pbm-toolbar-button"
-            "developer-button"
-            "profiler-button"
-            "smartwindow-group-tabs-button"
-            "ai-window-toggle"
-            "screenshot-button"
-            "ublock0_raymondhill_net-browser-action"
-            "_446900e4-71c2-419f-a6a7-df9c091e268b_-browser-action"
-          ];
-          dirtyAreaCache = [
-            "nav-bar"
-            "TabsToolbar"
-            "vertical-tabs"
-            "unified-extensions-area"
-            "PersonalToolbar"
-          ];
-          currentVersion = 26; # Firefox 157's CustomizableUI kVersion; a lower value replays migrations
-          newElementCount = 1;
-        };
         "toolkit.legacyUserProfileCustomizations.stylesheets" = true; # load userChrome.css
 
         # Slack huddles on Firefox 155+: the DTLS ClientHello carries an X25519MLKEM768 key
@@ -217,78 +186,29 @@ in
         "browser.theme.macos.native-theme" = true;
         "widget.macos.titlebar-blend-mode.behind-window" = true;
 
-        # Vertical tabs, so no horizontal tab strip exists; the vertical one is hidden by
-        # userChrome (Surfingkeys handles tabs). Tabs are still there for ⌘1-9 and T.
+        # Vertical tabs, collapsed to icons until hovered: Firefox's own expand-on-hover, no CSS.
         "sidebar.verticalTabs" = true;
+        "sidebar.visibility" = "expand-on-hover";
         # Minimal chrome, the pref half (the CSS half is in userChrome below). No bookmarks
         # toolbar. No tool buttons at the bottom of the tab strip: the pref lists the enabled
         # tools, but an empty list is treated as "first run" and refilled with the defaults, so
-        # name something that is not a tool. The customize gear that remains is clipped away
-        # in userChrome.
+        # name something that is not a tool.
         "browser.toolbars.bookmarks.visibility" = "never";
         "sidebar.main.tools" = "none";
       };
       userChrome = ''
-        /* Keyboard-driven chrome (Surfingkeys does the navigation): nothing is shown by default and
-           nothing appears on hover. The vertical tab strip is off natively (sidebar.visibility =
-           hide-sidebar). The toolbar takes no space; the url bar alone floats in at the top centre
-           while it has focus (⌘L) or its dropdown is open, and leaves with it.
-           Verified with screenshots on 2026-09-17. */
-
-        #navigator-toolbox {
-          position: fixed !important;
-          top: 0;
-          inset-inline: 0;
-          height: 0 !important;
-          min-height: 0 !important;
-          overflow: visible !important;
-          z-index: 5 !important; /* above #browser (tabbox z 2) */
-          background-color: transparent !important;
-        }
-        #navigator-toolbox > :not(#nav-bar) { display: none !important; }
-        /* The vertical tab strip: hide-sidebar alone leaves the launcher in place with vertical tabs on. */
-        #sidebar-container, #sidebar-launcher-splitter { display: none !important; }
-
-        #nav-bar {
-          position: fixed;
-          top: 8px;
-          left: 50%;
-          width: min(640px, 80vw);
-          height: 44px !important;
-          min-height: 44px !important;
-          align-items: center;
-          z-index: 4;
-          box-sizing: border-box;
-          padding-inline: 8px !important;
-          /* no backdrop: the url field draws its own pill, a bar behind it only adds a grey slab */
-          background-color: transparent !important;
-          transform: translateX(-50%);
-          opacity: 0;
-          pointer-events: none;
-          transition: opacity 120ms ease;
-        }
-        /* window-control spacers inside the bar (the traffic lights are native and stay top-left) */
-        #nav-bar :is(.titlebar-buttonbox-container, .titlebar-spacer) { display: none !important; }
-        #urlbar-container { min-width: 0 !important; width: auto !important; }
-        /* #urlbar is a popover in the top layer: the nav bar's opacity does not reach it. opacity
-           rather than visibility, so ⌘L can still focus it. */
-        #urlbar {
-          opacity: 0;
-          pointer-events: none;
-          transition: opacity 120ms ease;
-        }
-        :root:has(#urlbar:is([open], [focused])) :is(#nav-bar, #urlbar) {
-          opacity: 1;
-          pointer-events: auto;
-        }
-
-        /* Minimal bar: url bar and the extensions button only. */
-        #alltabs-button, #smartwindow-group-tabs-button, #ai-window-toggle, #sidebar-button,
-        #home-button, #PanelUI-button, #fxa-toolbar-menu-button,
-        #star-button-box, #reader-mode-button, #picture-in-picture-button,
-        #back-button, #forward-button, #vertical-spacer { display: none !important; }
+        @import url("autohide_toolbox.css");
+        /* nav bar: url bar and the extensions button only */
+        #back-button, #forward-button, #vertical-spacer, #alltabs-button,
+        #smartwindow-group-tabs-button, #ai-window-toggle, #sidebar-button, #home-button,
+        #PanelUI-button, #fxa-toolbar-menu-button, #star-button-box, #reader-mode-button,
+        #picture-in-picture-button { display: none !important; }
+        /* the "customize sidebar" gear at the bottom of the tab strip (shadow DOM) */
+        sidebar-main { margin-block-end: -52px; }
       '';
     };
   };
 
+  home.file."${chromeDir}/autohide_toolbox.css".source =
+    csshack "autohide_toolbox.css" "02xycvjiwk7qzji7llhxwhqyysgg26fbg39p9hl18lfjykjnjldr";
 }
