@@ -40,6 +40,30 @@ in
       # Zen stays the default browser; without this the first run parks a "make Firefox your
       # primary browser" panel over the page.
       DontCheckDefaultBrowser = true;
+      # Per-extension settings, for the extensions that read browser.storage.managed. This is a
+      # lock, not a seed: re-asserted on every start, so dashboard edits revert. uBlock Origin
+      # caches it and applies one restart late (uAssets discussion 16939).
+      "3rdparty".Extensions."uBlock0@raymondhill.net".toOverwrite = {
+        # uBO's default lists plus the Japanese one. Ids are the keys of assets/assets.json.
+        filterLists = [
+          "user-filters"
+          "ublock-filters"
+          "ublock-badware"
+          "ublock-privacy"
+          "ublock-unbreak"
+          "ublock-quick-fixes"
+          "easylist"
+          "easyprivacy"
+          "urlhaus-1"
+          "plowe-0"
+          "JPN-1"
+        ];
+      };
+      # Surfingkeys reads no managed storage; its settings live in configs/apps/surfingkeys/config.js,
+      # fetched by the extension from this repo's raw URL ("Load settings from" in advanced
+      # mode; set once per profile, the file:// scheme is refused by Firefox extensions):
+      #   https://raw.githubusercontent.com/gapul/dotfiles/main/configs/apps/surfingkeys/config.js
+
       # Extensions come from AMO and keep updating there. The list is Zen's set as of
       # 2026-09-17 (everything enabled there except Zen Internet, which only makes sense with
       # Zen's transparent content area, and DuckDuckGo Privacy Essentials, which duplicates
