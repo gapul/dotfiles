@@ -43,28 +43,25 @@ in
       # Extensions come from AMO and keep updating there. The list is Zen's set as of
       # 2026-09-17 (everything enabled there except Zen Internet, which only makes sense with
       # Zen's transparent content area, and DuckDuckGo Privacy Essentials, which duplicates
-      # uBlock Origin; KeePassXC-Browser was disabled and is left out),
+      # uBlock Origin; KeePassXC-Browser was disabled and is left out). Trimmed on 2026-09-22:
+      # LINE, Web Archives, Dark Reader, Search by Image.
       # so the two browsers feel the same. Each content script is a cost on every page, so trim
       # here rather than in the UI: force_installed means the UI cannot remove them.
       ExtensionSettings = {
         "{ef87d84c-2127-493f-b952-5b4e744245bc}" = amo "aw-watcher-web"; # ActivityWatch Web Watcher
         "{446900e4-71c2-419f-a6a7-df9c091e268b}" = amo "bitwarden-password-manager"; # Bitwarden Password Manager
         "{e58d3966-3d76-4cd9-8552-1582fbc800c1}" = amo "buster-captcha-solver"; # Buster: Captcha Solver for Humans
-        "addon@darkreader.org" = amo "darkreader"; # Dark Reader
         "@testpilot-containers" = amo "multi-account-containers"; # Firefox Multi-Account Containers
         "firenvim@lacamb.re" = amo "firenvim"; # Firenvim
         "floccus@handmadeideas.org" = amo "floccus"; # floccus bookmarks sync
         "{f4961478-ac79-4a18-87e9-d2fb8c0442c4}" = amo "global-speed"; # Global Speed - Video Speed Control
         "headereditor-amo@addon.firefoxcn.net" = amo "header-editor"; # Header Editor
-        "LINEPorted@FoxRefire" = amo "line-firefox-ported"; # LINE
-        "{2e5ff8c8-32fe-46d0-9fc8-6b8986621f3c}" = amo "search_by_image"; # Search by Image
         "sponsorBlocker@ajay.app" = amo "sponsorblock"; # SponsorBlock for YouTube - Skip Sponsorships
         "{7a7a4a92-a2a0-41d1-9fd7-1e92480d612d}" = amo "styl-us"; # Stylus
         "{a8332c60-5b6d-41ee-bfc8-e9bb331d34ad}" = amo "surfingkeys_ff"; # Surfingkeys
         "@ublacklist" = amo "ublacklist"; # uBlacklist
         "uBlock0@raymondhill.net" = amo "ublock-origin"; # uBlock Origin
         "{aecec67f-0d10-4fa7-b7c7-609a2db280cf}" = amo "violentmonkey"; # Violentmonkey
-        "{d07ccf11-c0cd-4938-a265-2a4d6ad01189}" = amo "view-page-archive"; # Web Archives
         "{799c0914-748b-41df-a25c-22d008f9e83f}" = amo "web-scrobbler"; # Web Scrobbler
       };
     };
