@@ -11,8 +11,14 @@
 # the cp313 wheel to match.
 #
 # Weights are downloaded on first use into ~/.cache/huggingface (not in the store).
+#
+# Exposes the CLIs plus `laya-python`, a python with laya_mlx importable, so scripts
+# (e.g. ~/Developer/github.com/gapul/laya-drive) can use the Python API without
+# a python3 of their own on PATH (same shape as pkgs/yukkuri-python.nix).
 {
   lib,
+  runCommand,
+  python3,
   python3Packages,
 }:
 let
@@ -54,34 +60,50 @@ let
     pythonImportsCheck = [ "mlx.core" ];
     meta.platforms = [ "aarch64-darwin" ];
   };
+  laya-mlx = python3Packages.buildPythonPackage rec {
+    pname = "laya-mlx";
+    version = "0.2.0";
+    format = "wheel";
+
+    src = python3Packages.fetchPypi {
+      pname = "laya_mlx";
+      inherit version format;
+      dist = "py3";
+      python = "py3";
+      hash = "sha256-GoCgzHnFW+gI3gsSCKFyVmIJtXgNeWuY2GI16c8zUYc=";
+    };
+
+    dependencies = with python3Packages; [
+      huggingface-hub
+      mlx
+      numpy
+      tokenizers
+    ];
+
+    pythonImportsCheck = [ "laya_mlx" ];
+
+    meta = {
+      description = "Native MLX runtime for Laya typed decision models";
+      homepage = "https://github.com/mizorewww/laya-mlx";
+      license = lib.licenses.asl20;
+      platforms = [ "aarch64-darwin" ];
+      mainProgram = "laya-mlx";
+    };
+  };
+  env = python3.withPackages (_: [ laya-mlx ]);
 in
-python3Packages.buildPythonApplication rec {
-  pname = "laya-mlx";
-  version = "0.2.0";
-  format = "wheel";
-
-  src = python3Packages.fetchPypi {
-    pname = "laya_mlx";
-    inherit version format;
-    dist = "py3";
-    python = "py3";
-    hash = "sha256-GoCgzHnFW+gI3gsSCKFyVmIJtXgNeWuY2GI16c8zUYc=";
-  };
-
-  dependencies = with python3Packages; [
-    huggingface-hub
-    mlx
-    numpy
-    tokenizers
-  ];
-
-  pythonImportsCheck = [ "laya_mlx" ];
-
-  meta = {
-    description = "Native MLX runtime for Laya typed decision models";
-    homepage = "https://github.com/mizorewww/laya-mlx";
-    license = lib.licenses.asl20;
-    platforms = [ "aarch64-darwin" ];
-    mainProgram = "laya-mlx";
-  };
-}
+runCommand "laya-mlx"
+  {
+    passthru = {
+      inherit env;
+      lib = laya-mlx;
+    };
+    meta = laya-mlx.meta // {
+      mainProgram = "laya-mlx";
+    };
+  }
+  ''
+    mkdir -p $out/bin
+    ln -s ${env}/bin/laya-mlx ${env}/bin/laya-snake $out/bin/
+    ln -s ${env}/bin/python3 $out/bin/laya-python
+  ''
