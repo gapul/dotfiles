@@ -290,7 +290,6 @@
             ./home/maintenance.nix
             ./home/tmp-cleanup.nix # ~/tmp のスクラッチを7日で自動掃除 (macminiHeadless と共有)
             ./home/git-hooks.nix # git hook that auto-rebuilds on main updates (main tree only)
-            ./home/riscv-day-watch.nix # RISC-V Day 2026 Autumn の続報監視 (11/11 後に外す)
           ]
           ++ secrets
           ++ [

@@ -75,6 +75,7 @@
     ./matrix-doublepuppet.nix
     ./matrix-bridge-secrets.nix
     ./memory-pressure-alert.nix
+    ./riscv-day-watch.nix # RISC-V Day 2026 Autumn の続報監視 (urlwatch, 11/11 後に外す)
     ./miniflux.nix
     ./navidrome.nix
     ./ntfy.nix
