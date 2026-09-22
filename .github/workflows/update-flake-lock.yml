@@ -17,7 +17,6 @@ on:
 permissions:
   contents: write
   pull-requests: write
-  actions: write # 下の「CI を起こす」用
 
 jobs:
   update-lock:
@@ -45,20 +44,17 @@ jobs:
           commit-msg: 'chore(nix): update flake.lock'
       # 人が見て判断する余地の無い更新なので、CI が緑になった時点で入れる。
       # main は om ci を必須にしているので、auto-merge は実質「CI 緑まで待つ」の意味。
+      #
+      # この PR の作者は github-actions[bot]。リポジトリの Actions 設定 (fork PR の承認ポリシー)
+      # が「外部コントリビュータ全員に承認を要求」だと bot も外部扱いになり、pull_request の
+      # run が action_required で止まって必須チェックが永遠に来ない (#601 が 11 日 BLOCKED)。
+      # 既定の「初回コントリビュータのみ」に戻してある (2026-09-22)。workflow_dispatch で CI を
+      # 起こす案は、その check が PR に紐づかず必須チェックを満たさないので使えない。
       - name: Enable auto-merge
         if: steps.lock.outputs.pull-request-number != ''
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh pr merge --auto --squash "${{ steps.lock.outputs.pull-request-number }}"
-      # GITHUB_TOKEN が作った/更新した PR には pull_request イベントが飛ばない (GitHub の仕様、
-      # 無限ループ防止)。必須チェックが永遠に来ず auto-merge が待ち続ける (#601 が 11 日間
-      # BLOCKED のままだった)。例外は workflow_dispatch なので、こちらから CI を起こす。
-      # チェックは commit SHA に付くので、PR の head に対する dispatch 実行で必須チェックが満たされる。
-      - name: CI を起こす
-        if: steps.lock.outputs.pull-request-number != ''
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh workflow run ci.yml --ref "$(gh pr view "${{ steps.lock.outputs.pull-request-number }}" --json headRefName -q .headRefName)"
 
   update-custom-packages:
     name: update custom packages -> PR
@@ -88,9 +84,3 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh pr merge --auto --squash "${{ steps.pkgs.outputs.pull-request-number }}"
-      # 上の update-lock と同じ理由。branch は create-pull-request が出力してくれる。
-      - name: CI を起こす
-        if: steps.pkgs.outputs.pull-request-operation == 'created' || steps.pkgs.outputs.pull-request-operation == 'updated'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh workflow run ci.yml --ref "${{ steps.pkgs.outputs.pull-request-branch }}"
