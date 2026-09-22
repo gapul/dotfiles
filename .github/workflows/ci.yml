@@ -49,6 +49,12 @@ jobs:
     runs-on: ubuntu-24.04
     outputs:
       systems: ${{ steps.plan.outputs.systems }}
+      # pr = pr-gate を自前ランナーで、main = om ci run を GitHub で。イベント名ではなく
+      # ここで決めるのは、workflow_dispatch を main 以外の branch に投げたときも PR 扱いに
+      # したいため。GITHUB_TOKEN が作った自動 PR には pull_request が飛ばないので、
+      # update-flake-lock.yml が dispatch で CI を起こす。そのときフル build を走らせる
+      # 理由は無いし、PR と違う検査になっては必須チェックの意味が変わる。
+      mode: ${{ steps.plan.outputs.mode }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -56,14 +62,21 @@ jobs:
 
       - id: plan
         run: |
+          mode="main"
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            systems=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD" \
+            mode="pr"
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.ref }}" != "refs/heads/main" ]; then
+            mode="pr"
+          fi
+          if [ "$mode" = pr ]; then
+            systems=$(git diff --name-only "origin/${{ github.base_ref || 'main' }}...HEAD" \
               | ./scripts/ci-plan-systems.sh)
           else
             systems=$(./scripts/ci-plan-systems.sh </dev/null)
           fi
+          echo "mode=$mode" >>"$GITHUB_OUTPUT"
           echo "systems=$systems" >>"$GITHUB_OUTPUT"
-          echo "building for: $systems"
+          echo "$mode: building for $systems"
 
   om-ci:
     name: om ci (${{ matrix.system }})
@@ -118,7 +131,7 @@ jobs:
     # the system, including the closures and VM tests no pull request touches, and it is what
     # fills cachix. That is real work, and it belongs on a machine that exists to be spent rather
     # than on one running things people depend on.
-    runs-on: ${{ github.event_name == 'pull_request' && matrix.pr_runner || matrix.runner }}
+    runs-on: ${{ needs.plan.outputs.mode == 'pr' && matrix.pr_runner || matrix.runner }}
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -136,7 +149,7 @@ jobs:
           # main の run が担う。macmini はユーザーが trusted なので今まで通り push する。
           # 条件は「渡す側」で書く。`X && '' || secret` は空文字が falsy なので
           # secret 側に落ちる (一度踏んだ)。
-          cachix-token: ${{ (github.event_name != 'pull_request' || matrix.pr_runner != 'homeserver') && secrets.CACHIX_AUTH_TOKEN || '' }}
+          cachix-token: ${{ (needs.plan.outputs.mode != 'pr' || matrix.pr_runner != 'homeserver') && secrets.CACHIX_AUTH_TOKEN || '' }}
           mocopi-deploy-key: ${{ secrets.MOCOPI_DEPLOY_KEY }}
 
       # PR は日常機だけを検証する (packages.<system>.pr-gate)。omnix は subflake の全出力を
@@ -144,14 +157,14 @@ jobs:
       # ここでは素の nix build で叩く。macmini closure / NixOS 群 / VM テストは下の main
       # 側で作られ、cachix もそこで埋まる。
       - name: nix build (pr-gate)
-        if: github.event_name == 'pull_request'
+        if: needs.plan.outputs.mode == 'pr'
         run: |
           nix --accept-flake-config build ./nix#packages.${{ matrix.system }}.pr-gate \
             --no-link --print-build-logs
 
       # omnix 本体は om.cachix.org から取得 (--accept-flake-config)。ソースビルドしない。
       - name: om ci run
-        if: github.event_name != 'pull_request'
+        if: needs.plan.outputs.mode != 'pr'
         run: |
           nix --accept-flake-config run github:juspay/omnix/v1.3.2 -- \
             ci run \
