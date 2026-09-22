@@ -312,8 +312,20 @@ in
     # 2FA is prompted interactively on first auth / when the cached Apple session expires.
     # aria2 (which xcodes picks up from PATH) is declared in home/workstation.nix.
     xcodes # Xcode version manager (download/select/switch, replaces mas for Xcode)
-    gnupg # GPG (git signing is SSH-based, so this is only for ad-hoc verify/decrypt)
   ];
+
+  # OpenPGP for mail (aerc picks gpg up from PATH via pgp-provider=auto). Git signing stays
+  # SSH-based (modules/home/git.nix), so gpg is only for mail and ad-hoc verify/decrypt.
+  # The key's passphrase lives in sops (darwin.yaml pgp/passphrase); pinentry-mac can cache
+  # it in the login keychain after the first prompt.
+  programs.gpg = {
+    enable = true;
+    homedir = "${config.xdg.dataHome}/gnupg"; # matches GNUPGHOME in home/common.nix
+  };
+  services.gpg-agent = {
+    enable = true;
+    pinentry.package = pkgs.pinentry_mac;
+  };
 
   # Puddle: catalogs it may browse, sources it may install from, and the wallpapers this
   # machine should have. `puddle apply` reconciles the last of those.
