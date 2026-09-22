@@ -87,6 +87,15 @@ in
         "uBlock0@raymondhill.net" = amo "ublock-origin"; # uBlock Origin
         "{aecec67f-0d10-4fa7-b7c7-609a2db280cf}" = amo "violentmonkey"; # Violentmonkey
         "{799c0914-748b-41df-a25c-22d008f9e83f}" = amo "web-scrobbler"; # Web Scrobbler
+        # Dropping an entry above leaves an already installed extension in place as an ordinary
+        # one; only "blocked" makes Firefox uninstall it. These were in the list once.
+        "LINEPorted@FoxRefire".installation_mode = "blocked"; # LINE
+        "{d07ccf11-c0cd-4938-a265-2a4d6ad01189}".installation_mode = "blocked"; # Web Archives
+        "addon@darkreader.org".installation_mode = "blocked"; # Dark Reader
+        "{2e5ff8c8-32fe-46d0-9fc8-6b8986621f3c}".installation_mode = "blocked"; # Search by Image
+        "{f4961478-ac79-4a18-87e9-d2fb8c0442c4}".installation_mode = "blocked"; # Global Speed
+        "{91aa3897-2634-4a8a-9092-279db23a7689}".installation_mode = "blocked"; # Zen Internet
+        "jid1-ZAdIEUB7XOzOJw@jetpack".installation_mode = "blocked"; # DuckDuckGo Privacy Essentials
       };
     };
 
