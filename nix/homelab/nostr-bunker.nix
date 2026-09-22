@@ -48,6 +48,7 @@ in
     description = "Build Signet (NIP-46 signer) images from a pinned commit";
     path = [
       pkgs.git
+      pkgs.gnused
       pkgs.podman
     ];
     # Skip the rebuild once this revision's marker exists, so a normal switch
@@ -62,6 +63,12 @@ in
       rm -rf ${signetSrcDir}
       git clone https://github.com/Letdown2491/signet.git ${signetSrcDir}
       git -C ${signetSrcDir} checkout ${signetRev}
+      # Podman deliberately has no unqualified registry search path. Keep the
+      # pinned upstream source intact on Git, but make its official Node base
+      # image explicit in the disposable checkout before building.
+      sed -i 's|^FROM node:|FROM docker.io/library/node:|' \
+        ${signetSrcDir}/apps/signet/Dockerfile \
+        ${signetSrcDir}/apps/signet-ui/Dockerfile
       podman build -t signet:local -f ${signetSrcDir}/apps/signet/Dockerfile ${signetSrcDir}
       podman build -t signet-ui:local -f ${signetSrcDir}/apps/signet-ui/Dockerfile ${signetSrcDir}
       rm -f /var/lib/homelab/signet/.built-*
@@ -74,7 +81,7 @@ in
     serviceConfig = {
       Type = "oneshot";
       RemainAfterExit = true;
-      ExecStop = "podman network rm -f signet_net";
+      ExecStop = "${pkgs.podman}/bin/podman network rm -f signet_net";
     };
     script = ''
       podman network inspect signet_net || podman network create signet_net

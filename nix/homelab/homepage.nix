@@ -101,7 +101,7 @@
     serviceConfig = {
       Type = "oneshot";
       RemainAfterExit = true;
-      ExecStop = "podman network rm -f homepage_default";
+      ExecStop = "${pkgs.podman}/bin/podman network rm -f homepage_default";
     };
     script = ''
       podman network inspect homepage_default || podman network create homepage_default
