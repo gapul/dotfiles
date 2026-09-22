@@ -40,6 +40,8 @@ in
       # Zen stays the default browser; without this the first run parks a "make Firefox your
       # primary browser" panel over the page.
       DontCheckDefaultBrowser = true;
+      # No page translation (the offer bar and the feature itself).
+      TranslateEnabled = false;
       # Per-extension settings, for the extensions that read browser.storage.managed. This is a
       # lock, not a seed: re-asserted on every start, so dashboard edits revert. uBlock Origin
       # caches it and applies one restart late (uAssets discussion 16939).
