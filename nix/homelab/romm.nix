@@ -124,7 +124,10 @@ in
   };
 
   systemd.targets."podman-compose-romm-root" = {
-    unitConfig.Description = "romm (ROM ライブラリ)";
+    unitConfig = {
+      Description = "romm (ROM ライブラリ)";
+      StopWhenUnneeded = true;
+    };
     wantedBy = [ ];
   };
 
