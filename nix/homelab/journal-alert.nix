@@ -6,9 +6,15 @@
 # 「誰も見に行かない」ことの方で、gatus は HTTP が 200 なら緑のままだった。
 #
 # なので Loki は入れていない。過去に遡って横断クエリしたくなったら考える。
-# いまは 5 日分で 1GB なので、保持を伸ばすだけなら journald の設定で済む。
+# 2026-09-23 時点では 13 日分で 2.5GB。調査可能性を残しつつ無制限に
+# 増やさないため、容量は 2GB、期間は最大 90 日で先に達した方を使う。
 { pkgs, ... }:
 {
+  services.journald.extraConfig = ''
+    SystemMaxUse=2G
+    MaxRetentionSec=90day
+  '';
+
   systemd.services.journal-alert = {
     description = "journald の壊れの合図を ntfy に流す";
     path = with pkgs; [
