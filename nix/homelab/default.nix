@@ -75,6 +75,7 @@
     ./matrix-doublepuppet.nix
     ./matrix-bridge-secrets.nix
     ./memory-pressure-alert.nix
+    ./site-watch.nix # サイト更新監視 (urlwatch → ntfy)。対象はファイル内の jobs リスト
     ./miniflux.nix
     ./navidrome.nix
     ./nostr-bunker.nix
