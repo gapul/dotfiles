@@ -6,18 +6,19 @@ files they came from disappear with Proxmox.
 
 ## Secrets
 
-No secret is in this tree. Where a compose file interpolated a value from its
-`.env`, that entry was removed from `environment` and the container instead reads
-`/var/lib/secrets/<stack>.env` at runtime.
+Secrets are encrypted in `secrets/homelab.yaml` and installed by sops-nix at
+`/var/lib/secrets/<stack>.env` (or the service-specific path below). The server
+decrypts only this file with its SSH host key; the human recovery recipients remain
+on the encrypted document, but their private keys never live on the server.
 
 This matters more than it looks. podman applies `-e` after `--env-file`, so an
 entry left behind in `environment` — even an empty string, or an upstream default
 like `password` — silently wins over the real value from the env file. The service
 then starts with the wrong credential rather than failing.
 
-Each file is root-owned, mode 0400, and written by hand at install time. Until
-this host has an age key of its own, sops-nix cannot encrypt to it; move them into
-`secrets/secrets.yaml` once it does.
+Most files are root-owned and mode 0400. Exceptions such as Authelia's user file
+are declared in `nix/homelab/secrets.nix`. Edit with `sops secrets/homelab.yaml`;
+do not edit the installed paths, because the next activation replaces them.
 
 Note that several keys are **not** named the way the old `.env` named them: the
 compose files renamed them on the way into the container, and it is the container

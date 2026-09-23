@@ -93,6 +93,7 @@
     ./romm.nix
     ./rsshub.nix
     ./samba.nix
+    ./secrets.nix
     ./social.nix
     ./spliit.nix
     ./searx.nix
