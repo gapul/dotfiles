@@ -230,6 +230,7 @@ Four strategies, depending on what the remote is:
 |---|---|---|
 | A compute node, non-root and ephemeral | `nssh user@host` | nvim, yazi and tmux through rootless Nix (`nix-portable`), unpacked on each start |
 | The same, but through herdr | `herdr --remote user@host` | The zsh function runs `configs/bin/remote-bootstrap` first, so the preparation matches nssh. herdr instead of tmux |
+| The same, but registered with `herdr machine add` | nothing on connect | The bridge bypasses both wrappers. `remote-bootstrap` installs a `dotfiles-sync.timer` (systemd --user, daily 04:50) that re-runs itself, so the clone still follows main |
 | A long-lived Linux server, root and persistent | On the remote: `bash <(curl -sL ...bootstrap-linux.sh)` | A full Nix install, a dotfiles clone, and home-manager as `.#<user>-linux` |
 | WSL2 | Inside WSL: `bash <(curl ...bootstrap-wsl.sh)` | The Linux common set plus WSL interop: clipboard, `/mnt/c/` |
 | A restricted environment where Nix is impossible and appending is about all you get | From the local machine: `sync-configs-rsync.sh user@host [--full]` | rsync nvim, zsh.local and the git config across. Installs nothing |

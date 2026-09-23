@@ -69,6 +69,11 @@ else
       fi
     fi
   fi
+  # fetch は https に寄せる (公開リポジトリ)。下の systemd timer は agent forward 無しで走るので、
+  # SSH URL のままだと鍵が無くて fetch が失敗する。push は SSH のまま残す。
+  push_url=$(git -C ~/.dotfiles remote get-url --push origin)
+  git -C ~/.dotfiles remote set-url origin "$(printf '%s' "$push_url" | sed -E 's#^git@github\.com:#https://github.com/#')"
+  git -C ~/.dotfiles remote set-url --push origin "$push_url"
   git -C ~/.dotfiles fetch --quiet origin && git -C ~/.dotfiles reset --hard --quiet '@{u}' \
     || echo "[bootstrap] WARNING: dotfiles の更新に失敗。既存の clone のまま続行します。" >&2
 fi
@@ -130,4 +135,35 @@ if [ -f ~/.bashrc ] && ! grep -qF "$marker" ~/.bashrc; then
     echo '# <<< dotfiles bashrc.remote <<<'
   } >> ~/.bashrc
   echo "[bootstrap] ~/.bashrc に dotfiles の bash 設定を読む行を追記しました"
+fi
+
+# 5. 日次の自己更新 (Linux で systemd --user が動くホストだけ)
+#    herdr の machine ブリッジ (`herdr machine add` で登録した接続) は nssh も herdr ラッパーも
+#    通らないので、この下準備が接続で走らない。mvrx-nolang-dev は 2026-09-23 に 187 コミット
+#    取り残されていた。そこでこのスクリプト自身を user timer で毎朝回す。ログアウト中も動くには
+#    linger が要る (`loginctl enable-linger` は root 権限。無ければログイン中だけ動く)。
+if [ "$(uname -s)" = "Linux" ] && systemctl --user show-environment >/dev/null 2>&1; then
+  mkdir -p ~/.config/systemd/user
+  cat > ~/.config/systemd/user/dotfiles-sync.service <<'UNIT'
+[Unit]
+Description=Pull dotfiles and refresh remote-bootstrap symlinks
+
+[Service]
+Type=oneshot
+ExecStart=%h/.dotfiles/configs/bin/remote-bootstrap
+UNIT
+  cat > ~/.config/systemd/user/dotfiles-sync.timer <<'UNIT'
+[Unit]
+Description=Daily dotfiles sync
+
+[Timer]
+OnCalendar=*-*-* 04:50:00
+Persistent=true
+RandomizedDelaySec=10m
+
+[Install]
+WantedBy=timers.target
+UNIT
+  systemctl --user daemon-reload
+  systemctl --user enable --quiet --now dotfiles-sync.timer
 fi
