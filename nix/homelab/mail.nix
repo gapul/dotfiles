@@ -37,15 +37,18 @@ let
         echo "$name: 写し元の資格情報が未設定 (secrets の mail/mirror-$name.env)、飛ばす"
         continue
       fi
+      # imapsync は /run/credentials 配下のファイルを「読めない」と拒む (2026-09-23 実測、
+      # exit 66) ので、両方のパスワードを自分の RuntimeDirectory に写してから渡す。
       printf '%s' "$SRC_PASSWORD" > "$RUNTIME_DIRECTORY/src.password"
+      cat "$CREDENTIALS_DIRECTORY/$name.password" > "$RUNTIME_DIRECTORY/dst.password"
       # --gmail1: imap.gmail.com:993、[Gmail] の親フォルダを除き、ラベルはフォルダのまま、
       # "All Mail" は最後に回して他フォルダに写した分を重複させない。
       ${pkgs.imapsync}/bin/imapsync --gmail1 --user1 "$SRC_USER" --passfile1 "$RUNTIME_DIRECTORY/src.password" \
         --host2 127.0.0.1 --port2 143 --nossl2 --notls2 \
-        --user2 "$name" --passfile2 "$CREDENTIALS_DIRECTORY/$name.password" \
+        --user2 "$name" --passfile2 "$RUNTIME_DIRECTORY/dst.password" \
         --automap --nofoldersizes --noreleasecheck --nolog --tmpdir "$RUNTIME_DIRECTORY" \
         --pidfile "$RUNTIME_DIRECTORY/$name.pid" || { echo "$name: imapsync が $? で終了"; status=1; }
-      rm -f "$RUNTIME_DIRECTORY/src.password"
+      rm -f "$RUNTIME_DIRECTORY/src.password" "$RUNTIME_DIRECTORY/dst.password"
     done
     exit $status
   '';
@@ -91,6 +94,8 @@ in
         provider = "cloudflare";
         secret = "%{env:CF_DNS_API_TOKEN}%";
         domains = [ "mail.gapul.net" ];
+        # 必須項目 (無いと "Missing property" で ACME 全体が止まり、自己署名のまま)。
+        contact = [ "gapul@gapul.net" ];
         renew-before = "30d";
         default = true;
       };
