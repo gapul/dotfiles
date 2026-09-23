@@ -18,6 +18,16 @@ permissions:
   contents: write
   pull-requests: write
 
+# PR を作るトークン。GITHUB_TOKEN (github-actions[bot]) が作った PR は、2026-06-11 の GitHub の
+# 仕様変更で必ず「maintainer の承認待ち」になり (承認ポリシーを最も緩くしても変わらない、
+# 実測 2026-09-23)、必須チェックが来ないので auto-merge が永遠に待つ。人の PAT で作れば
+# 作者が人になり、普通の PR と同じに CI が走る。secret が無ければ GITHUB_TOKEN に落ちる
+# (壊れはしないが、その PR は手で「Approve and run」が要る)。
+#   fine-grained PAT: gapul/dotfiles のみ, Contents: RW, Pull requests: RW, Workflows: RW
+#   gh secret set AUTOMATION_PR_TOKEN
+env:
+  PR_TOKEN: ${{ secrets.AUTOMATION_PR_TOKEN || github.token }}
+
 jobs:
   update-lock:
     name: nix flake update -> PR
@@ -36,6 +46,7 @@ jobs:
         id: lock
         uses: DeterminateSystems/update-flake-lock@834c491b2ece4de0bbd00d85214bb5e83b4da5c6 # v28
         with:
+          token: ${{ env.PR_TOKEN }}
           path-to-flake-dir: nix
           pr-title: 'chore(nix): update flake.lock'
           pr-labels: |
@@ -53,7 +64,7 @@ jobs:
       - name: Enable auto-merge
         if: steps.lock.outputs.pull-request-number != ''
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ env.PR_TOKEN }}
         run: gh pr merge --auto --squash "${{ steps.lock.outputs.pull-request-number }}"
 
   update-custom-packages:
@@ -65,12 +76,13 @@ jobs:
       - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
       - name: Update versions and hashes
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ env.PR_TOKEN }}
         run: ./scripts/update-custom-packages.sh
       - name: Open dependency PR
         id: pkgs
         uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676 # v7
         with:
+          token: ${{ env.PR_TOKEN }}
           branch: automation/custom-packages
           delete-branch: true
           title: 'chore(nix): update custom packages'
@@ -82,5 +94,5 @@ jobs:
       - name: Enable auto-merge
         if: steps.pkgs.outputs.pull-request-number != ''
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ env.PR_TOKEN }}
         run: gh pr merge --auto --squash "${{ steps.pkgs.outputs.pull-request-number }}"
