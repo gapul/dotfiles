@@ -49,8 +49,17 @@
     #
     # なので、この一点だけは nix が見られる形にする。実行時の失敗を評価時のエラーに
     # 移すだけだが、少なくとも同じ踏み方は二度としない。
+    #
+    # ただし対象は「registry ポリシーで auto-update されるコンテナ」に限る。
+    # nostr-bunker.nix の signet/signet-ui は label を disabled に上書きしていて、
+    # そもそもレジストリから引かない (pull = "never"; 元イメージがどこにも公開
+    # されていない自前ビルド)。この場合 podman は起動を拒否しないので、上の障害
+    # モードには当てはまらない — 除外しないと、存在しないレジストリを指すための
+    # 完全修飾名をでっち上げる羽目になる。
     assertions = lib.mapAttrsToList (name: c: {
-      assertion = lib.hasInfix "." (builtins.head (lib.splitString "/" c.image));
+      assertion =
+        (c.labels."io.containers.autoupdate" or "registry") != "registry"
+        || lib.hasInfix "." (builtins.head (lib.splitString "/" c.image));
       message = ''
         コンテナ ${name} の image "${c.image}" が完全修飾ではない。
         auto-update のラベルが付いていると podman が起動を拒否する。
