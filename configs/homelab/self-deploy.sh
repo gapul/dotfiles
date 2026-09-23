@@ -45,6 +45,32 @@ fi
 out=$(nixos-rebuild switch --refresh --flake "$FLAKE" 2>&1)
 rc=$?
 
+# podman はヘルスチェックのたびに transient なユニットを作る。コンテナが起動直後で
+# health_status=starting のあいだ、その実行は exit 1 を返す (--health-start-period を
+# 付けても、猶予が効くのは unhealthy と判定するかどうかだけで、実行の終了コードは
+# 変わらない)。switch-to-configuration はそれを「失敗したユニット」として数えるので、
+# 切り替え自体は成功しているのに exit 4 になる (2026-09-16 に romm-db で踏んだ)。
+#
+# 落ちたのがその一時ユニットだけなら成功として扱う。名前が「コンテナID(64桁hex)-
+# 連番.service」の形をしているものだけを対象にするので、本物の失敗は今までどおり
+# 失敗のまま残る。
+if [ "$rc" -ne 0 ]; then
+  failed_units=$(printf '%s\n' "$out" | sed -n 's/^warning: the following units failed: //p' | tr ',' '\n' | tr -d ' ')
+  if [ -n "$failed_units" ]; then
+    only_healthcheck=1
+    while IFS= read -r unit; do
+      [ -z "$unit" ] && continue
+      printf '%s' "$unit" | grep -Eq '^[0-9a-f]{64}-[0-9a-f]+\.service$' || only_healthcheck=0
+    done <<EOF
+$failed_units
+EOF
+    if [ "$only_healthcheck" = 1 ]; then
+      printf 'switch は成功。落ちたのは podman のヘルスチェック用 transient ユニットだけ:\n%s\n' "$failed_units" >&2
+      rc=0
+    fi
+  fi
+fi
+
 if [ "$rc" -eq 0 ]; then
   printf '%s' "$remote" > "$STATE"
   notify "homeserver を ${remote:0:8} に更新した" "$(printf '%s' "$out" | tail -3)"

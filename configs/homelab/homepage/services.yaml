@@ -69,6 +69,11 @@
         description: 後で読む
         icon: readeck.png
         siteMonitor: http://127.0.0.1:8087
+    - Homebox:
+        href: https://box.gapul.net
+        description: 持ち物の台帳
+        icon: homebox.png
+        siteMonitor: http://127.0.0.1:8104
     - SearXNG:
         href: https://search.gapul.net
         description: メタ検索
@@ -84,7 +89,7 @@
         icon: radicale.png
         siteMonitor: http://127.0.0.1:5232
     - Calnode:
-        href: https://cal.gapul.net
+        href: https://booking.gapul.net
         description: 予約ページ (Radicale の空きから)
         icon: mdi-calendar-clock
         siteMonitor: http://127.0.0.1:8086

@@ -79,6 +79,11 @@
         # than the parallelism gains. 4 x 2 keeps the total at the core count.
         max-jobs = "4";
         cores = "2";
+        # GC がビルド時にしか要らない依存 (dmg や wheel の取得物、ツールチェーン) まで消すと、
+        # 次の rebuild / CI がそれを全部取り直す (macmini の週次 GC 直後に pr-gate が 10 分超えた)。
+        # keep-derivations (既定 true) と組で、生きている出力の .drv が参照する入力を GC 対象から
+        # 外す。消えるのは本当に何からも参照されないものだけになる。
+        keep-outputs = "true";
         extra-substituters = builtins.concatStringsSep " " (builtins.attrNames caches);
         extra-trusted-public-keys = builtins.concatStringsSep " " (builtins.attrValues caches);
       }
