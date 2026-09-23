@@ -109,6 +109,12 @@ in
   # onto the same entity via symlink. Canonical is ~/.homebrew (the sudo side doesn't see XDG).
   home.file.".config/homebrew".source =
     config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.homebrew";
+  # aw-sync writes to ~/ActivityWatchSync unless AW_SYNC_DIR reaches it. When aw-tauri is started
+  # before the session-env agent (or by hand from the Dock) the variable is missing and a second
+  # 240 MB copy of the record silently grows in $HOME. The symlink makes both paths the same place,
+  # so the sync directory no longer depends on launch order. AW_SYNC_DIR stays declared above.
+  home.file."ActivityWatchSync".source =
+    config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/Sync/syncthing/personal-history/aw-sync";
 
   # Move real data of non-XDG tools under XDG, keep default paths via symlink
   # (same approach as terminfo). Classification: credentials/long-term data=data, telemetry state=state.
