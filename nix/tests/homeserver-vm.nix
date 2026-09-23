@@ -2,6 +2,7 @@
   pkgs,
   user,
   formera-source,
+  sopsNix,
   ...
 }:
 # Boots the home server config in a VM and drives one request end to end.
@@ -26,8 +27,13 @@ pkgs.testers.runNixOSTest {
     { lib, pkgs, ... }:
     {
       imports = [
+        sopsNix.nixosModules.sops
         ../hosts/homeserver.nix
       ];
+
+      # Production secrets are encrypted to the real host's SSH key. The VM
+      # verifies the declarations but must not try to decrypt or install them.
+      sops.secrets = lib.mkForce { };
 
       # disko is not imported, so the test framework supplies the root filesystem
       # and none of the ZFS config applies. Boot/hardware bits that a VM provides

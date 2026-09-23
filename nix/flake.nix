@@ -339,6 +339,7 @@
         modules = [
           # Same SSO overlay as the other hosts (carries e.g. tailscale's vendorHash fix).
           { nixpkgs.overlays = [ overlayFixes ]; }
+          sops-nix.nixosModules.sops
           ./hosts/homeserver.nix
           disko.nixosModules.disko
           ./hosts/homeserver-disk.nix
@@ -709,6 +710,7 @@
                 # the same way; without it here the VM test stops evaluating with
                 # "attribute 'formera-source' missing".
                 inherit user formera-source;
+                sopsNix = sops-nix;
                 pkgs = systemPkgs;
               };
             };
