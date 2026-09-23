@@ -33,11 +33,15 @@
         "alert.gapul.net" = "http://127.0.0.1:8082";
         # 予約ページ。ここだけは tailnet の外の人間が開けないと意味が無いので、
         # 他の gapul.net と違って Caddy ではなくトンネルを通す。つまり
-        # cal.gapul.net の DNS はこのトンネルの CNAME であって、この箱の
+        # booking.gapul.net の DNS はこのトンネルの CNAME であって、この箱の
         # tailnet アドレスを指す A レコードではない。
-        "cal.gapul.net" = "http://127.0.0.1:8086";
+        #
+        # 以前は cal.gapul.net だった。あの名前は unified-calendar の Worker が
+        # カスタムドメインとして掴んでいて、Cloudflare 管理の読み取り専用レコード
+        # (AAAA 100::) が入るため、この宣言は書いてあっても一度も効いていなかった。
+        "booking.gapul.net" = "http://127.0.0.1:8086";
         # 日程調整と割り勘。どちらもサークルや友人に URL を配る前提なので、
-        # cal と同じ理由でトンネルを通す。DNS はこのトンネルの CNAME にすること。
+        # booking と同じ理由でトンネルを通す。DNS はこのトンネルの CNAME にすること。
         "poll.gapul.net" = "http://127.0.0.1:8089";
         "split.gapul.net" = "http://127.0.0.1:8090";
         # ファイル共有と位置共有。どちらも「リンクを送る相手が tailnet の外に
