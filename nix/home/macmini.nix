@@ -314,78 +314,6 @@ in
     done
   '';
 
-  # Zaim → SQLite → Beancount ledger (personal-tools/zaim), plus Fava to read it.
-  #
-  # Hourly because the request is also what keeps the Zaim web session alive: the `_y` cookie
-  # expires two hours after the last request (measured 2026-09-15; the value never changes and
-  # isn't tied to an IP). Each run re-fetches the last 60 days so recategorised transactions
-  # follow, regenerates zaim.beancount, runs bean-check, and commits the ledger repo when it
-  # changed. The ledger lives under ~/Developer so restic already covers it (zaim.db included,
-  # it's only gitignored). The cookie is logged in on the workstation and copied to
-  # ~/.cache/zaim/cookie. ntfy fires once per distinct failure, not every hour.
-  launchd.agents.zaim-sync = import ../lib/launchd-agent.nix {
-    program = "${pkgs.writeShellScript "zaim-sync" ''
-      tools="$HOME/Developer/github.com/gapul/personal-tools/zaim"
-      ledger="$HOME/Developer/github.com/gapul/ledger"
-      [ -f "$tools/zaim_web.py" ] && [ -f "$ledger/main.beancount" ] || exit 0
-      state="$HOME/.local/state/zaim"
-      mkdir -p "$state"
-      py=${pkgs.python3}/bin/python3
-      git="${pkgs.git}/bin/git -C $ledger"
-
-      fail() {
-        [ "$(cat "$state/failed" 2>/dev/null)" = "$1" ] && exit 1
-        printf '%s' "$1" > "$state/failed"
-        url="$HOME/.config/ntfy/url"
-        tok="$HOME/.config/ntfy/token"
-        [ -r "$url" ] && [ -r "$tok" ] || exit 1
-        /usr/bin/curl -fsS --max-time 15 \
-          -H "Authorization: Bearer $(cat "$tok")" \
-          -H "Title: Zaim ledger (macmini)" \
-          -H "Tags: warning" \
-          -d "$1" "$(cat "$url")" >/dev/null 2>&1 || true
-        exit 1
-      }
-
-      out=$($py "$tools/zaim_web.py" sync --db "$ledger/zaim.db" 2>&1) ||
-        fail "同期に失敗: $out (Cookie切れなら母艦で zaim_web.py login → scp ~/.cache/zaim/cookie macmini:.cache/zaim/cookie)"
-      out=$($py "$tools/zaim_beancount.py" --db "$ledger/zaim.db" --rules "$ledger/rules.toml" \
-        --out "$ledger/zaim.beancount" 2>&1) || fail "帳簿の生成に失敗: $out"
-      out=$(${pkgs.beancount}/bin/bean-check "$ledger/main.beancount" 2>&1) || fail "bean-check: $out"
-      rm -f "$state/failed"
-      if [ -n "$($git status --porcelain)" ]; then
-        $git add -A && $git commit -q -m "zaim sync $(date +%F\ %H:%M)"
-      fi
-    ''}";
-    schedule = [ { Minute = 17; } ];
-  };
-
-  # Fava for the ledger, tailnet-only HTTPS on :5075 via tailscale serve (same approach as Orca).
-  # Fava reloads the files itself when zaim-sync rewrites them.
-  launchd.agents.fava = {
-    enable = true;
-    config = {
-      ProgramArguments = [
-        "${pkgs.writeShellScript "fava" ''
-          ledger="$HOME/Developer/github.com/gapul/ledger/main.beancount"
-          if [ ! -f "$ledger" ]; then
-            sleep 600
-            exit 0
-          fi
-          [ -x /opt/homebrew/bin/tailscale ] &&
-            /opt/homebrew/bin/tailscale serve --bg --https=5075 http://127.0.0.1:5075 >/dev/null 2>&1
-          exec ${pkgs.fava}/bin/fava --host 127.0.0.1 --port 5075 "$ledger"
-        ''}"
-      ];
-      RunAtLoad = true;
-      KeepAlive = true;
-      ProcessType = "Background";
-      Nice = 10;
-      StandardOutPath = "/tmp/fava.log";
-      StandardErrorPath = "/tmp/fava.log";
-    };
-  };
-
   # OCR for Paperless (homeserver) done by Apple Vision here instead of tesseract there.
   # personal-tools/vision-ocr is a small Azure AI Document Intelligence look-alike, which is the
   # only remote OCR engine Paperless 3 speaks. Vision reads Japanese receipts that tesseract
@@ -498,6 +426,7 @@ in
       "agy"
       "ask"
       "describe"
+      "fish-tts"
       "fish-voicevox"
       "ocr"
       "separate"
@@ -509,6 +438,43 @@ in
     ++ [
       # The workstation's broker sends approved native credentials to this fixed remote helper.
       { ".local/bin/ask-native-fill".source = ../../configs/ask/native_fill.py; }
+    ]
+    ++ [
+      # macmini's ssh client config. The workstation gets its own through sops
+      # (home/secrets.nix), but macmini holds no age key, so this half is declared in
+      # plain nix. Nothing here is a secret — hostnames, a user name, and paths to keys
+      # that live outside the store.
+      #
+      # Owning the file is the point. Until 2026-09-13 this was a hand-written file and
+      # Claude Code sessions running on macmini kept appending the same `Host github.com`
+      # block on every run; it had accumulated 84 copies. A store symlink cannot be
+      # appended to, so the next attempt fails loudly instead of growing the file.
+      #
+      # macbook-mini is the workstation. macmini reaches it over the tailnet with its own
+      # `macmini-outbound` key, verified without a forwarded agent, so this works from
+      # launchd jobs and from sessions nobody is attached to. It is a different path from
+      # configs/bin/open-on-mac, which goes through the RemoteForward on 127.0.0.1:2222
+      # and deliberately carries no key on this side — that one only exists while the
+      # workstation holds the connection open, so it cannot be what a background job uses.
+      {
+        ".ssh/config".text = ''
+          Host macbook-mini mac
+            HostName 100.67.200.89
+            User gapul
+            IdentityFile ~/.ssh/id_ed25519
+            IdentitiesOnly yes
+
+          Host ispc
+            HostName 100.73.228.38
+            User ispc_5CG54406V7
+            IdentityFile ~/.ssh/id_ed25519
+            IdentitiesOnly yes
+
+          Host github.com
+            IdentityFile ~/.ssh/mocopi_ci
+            IdentitiesOnly yes
+        '';
+      }
     ]
   );
 

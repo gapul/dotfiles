@@ -32,6 +32,10 @@
   systemd.services."podman-hauk".serviceConfig.Restart = lib.mkOverride 90 "always";
 
   systemd.tmpfiles.rules = [
-    "d /var/lib/homelab/hauk 0700 root root -"
+    # Apache runs as www-data (uid/gid 33) inside the container.  The config
+    # contains only a password hash, but it still has to be traversable/readable
+    # by that process; 0700 root:root made the backend report config.php missing.
+    "d /var/lib/homelab/hauk 0750 root 33 -"
+    "z /var/lib/homelab/hauk/config.php 0640 root 33 -"
   ];
 }

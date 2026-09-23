@@ -318,6 +318,10 @@
           ./home/macmini-aivisspeech.nix
           ./home/tmp-cleanup.nix # ~/tmp のスクラッチを7日で自動掃除 (macWorkstation と共有)
           ./home/herdr-mobile-relay.nix # herdr をスマホ PWA から操作するリレー(tailnet 限定、母艦と共有)
+          # dotfiles-pull (home/macmini.nix) は post-merge hook が rebuild する前提だが、hook を
+          # 入れる module がこの役に無く、.git/hooks の実体は 2026-08-09 に手で置いた古い版のまま
+          # だった (secrets/ の変更で rebuild しない)。宣言に載せて activation で更新させる。
+          ./home/git-hooks.nix
         ];
         wsl = linuxBase ++ [ ./home/wsl.nix ] ++ secrets ++ station;
         linuxServer = linuxBase ++ secrets ++ station;
@@ -337,6 +341,7 @@
         modules = [
           # Same SSO overlay as the other hosts (carries e.g. tailscale's vendorHash fix).
           { nixpkgs.overlays = [ overlayFixes ]; }
+          sops-nix.nixosModules.sops
           ./hosts/homeserver.nix
           disko.nixosModules.disko
           ./hosts/homeserver-disk.nix
@@ -529,6 +534,8 @@
                 '';
               };
               slk = systemPkgs.callPackage ./pkgs/slk.nix { };
+              # Exported so other flakes (laya-drive) can take `laya-python` from here.
+              laya-mlx = systemPkgs.callPackage ./pkgs/laya-mlx.nix { };
             }
             // lib.optionalAttrs (!isDarwinWorkstation) {
               remote-env = systemPkgs.buildEnv {
@@ -705,6 +712,7 @@
                 # the same way; without it here the VM test stops evaluating with
                 # "attribute 'formera-source' missing".
                 inherit user formera-source;
+                sopsNix = sops-nix;
                 pkgs = systemPkgs;
               };
             };
