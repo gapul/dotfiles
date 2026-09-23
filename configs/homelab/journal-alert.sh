@@ -20,6 +20,41 @@ notify() {
     -d "$body" "$NTFY_URL" || true
 }
 
+# 直らないものを 15 分おきに鳴らし続けない。
+#
+# 2026-09-13 に nixos-upgrade.service が failed のまま残り、この 1 件で 7 時間に
+# 28 通鳴った。次の upgrade が走るまで failed は消えないので、検知は正しいのに
+# 通知としては壊れている。読まなくなれば、隣に並んだ本物も見えなくなる。
+#
+# 状態が変わったら即座に鳴らす。変わらないなら 6 時間に 1 回まで。
+# 直ったら記録を消して、再発は待たずに鳴らす。
+STATE_DIR="${STATE_DIRECTORY:-/var/lib/journal-alert}"
+REPEAT_AFTER=21600
+
+mkdir -p "$STATE_DIR"
+
+notify_once() {
+  local key="$1" fingerprint="$2" title="$3" body="$4" prio="${5:-default}"
+  local file="$STATE_DIR/$key" prev_at=0 prev_fp="" now
+  now=$(date +%s)
+
+  if [ -r "$file" ]; then
+    IFS=$'\t' read -r prev_at prev_fp < "$file" || true
+  fi
+
+  if [ "$fingerprint" = "$prev_fp" ] && [ "$((now - ${prev_at:-0}))" -lt "$REPEAT_AFTER" ]; then
+    return 0
+  fi
+
+  printf '%s\t%s\n' "$now" "$fingerprint" > "$file"
+  notify "$title" "$body" "$prio"
+}
+
+# 合図が消えたことを記録する。次に出たときは 6 時間を待たずに鳴る。
+clear_once() {
+  rm -f "$STATE_DIR/$1"
+}
+
 # 拾う合図。左が journald の検索語、右が通知の見出し。
 # grep -F の固定文字列で見る (正規表現にすると誤爆が増える)。
 declare -a PATTERNS=(
@@ -49,17 +84,25 @@ SINCE="${1:--15min}"
 # journald は 1 回だけ読む。パターンごとに読み直すと、パターンを増やすたびに
 # 走査回数が倍々に増える (9 個で 18 回。12 時間分だと数分かかった)。
 SNAP=$(mktemp)
-trap 'rm -f "$SNAP"' EXIT
+# 今回暴れていたユニット。下の while はパイプの中で回るので、外に持ち出すには
+# 変数ではなくファイルが要る。
+LOOPING=$(mktemp)
+trap 'rm -f "$SNAP" "$LOOPING"' EXIT
 journalctl --since "$SINCE" --no-pager > "$SNAP" 2>/dev/null
 
 for entry in "${PATTERNS[@]}"; do
   needle="${entry%%|*}"
   label="${entry#*|}"
+  # 状態キーは検索語から作る。見出しは日本語なのでファイル名に向かない。
+  key="pattern-$(printf '%s' "$needle" | tr -c 'A-Za-z0-9' '-')"
   hits=$(grep -cF "$needle" "$SNAP")
   if [ "${hits:-0}" -gt 0 ]; then
     sample=$(grep -F "$needle" "$SNAP" | tail -1 | cut -c1-200)
-    notify "$label" "直近 ${SINCE#-} で ${hits} 件
+    # 件数は毎回変わるので指紋に入れない。入れると間引きが効かなくなる。
+    notify_once "$key" "$needle" "$label" "直近 ${SINCE#-} で ${hits} 件
 ${sample}" high
+  else
+    clear_once "$key"
   fi
 done
 
@@ -83,9 +126,18 @@ grep -oE '[A-Za-z0-9@_.-]+\.service: Failed with result' "$SNAP" |
     # glob だと attic-db.service のような普通の名前まで巻き込むので、桁数で見る。
     [[ "$unit" =~ ^[0-9a-f]{64}-[0-9a-f]{16}\.service$ ]] && continue
     sample=$(grep -F "$unit" "$SNAP" | grep -viF 'Failed with result' | tail -1 | cut -c1-200)
-    notify "$unit が失敗を繰り返している" "直近 ${SINCE#-} で ${count} 回失敗。稼働中に見えても中身は起動できていない。
+    echo "loop-$unit" >> "$LOOPING"
+    notify_once "loop-$unit" "$unit" "$unit が失敗を繰り返している" "直近 ${SINCE#-} で ${count} 回失敗。稼働中に見えても中身は起動できていない。
 ${sample}" high
   done
+
+# 収まったユニットの記録は消す。残したままだと、6 時間以内に暴れ直したときに
+# 間引きに引っかかって黙る。これは 2026-08-28 の romm-db のような、
+# 直ったように見えて再発する壊れ方をちょうど取りこぼす。
+for state in "$STATE_DIR"/loop-*; do
+  [ -e "$state" ] || continue
+  grep -qxF "$(basename "$state")" "$LOOPING" 2>/dev/null || rm -f "$state"
+done
 
 # 落ちたユニット。systemd が知っているのに誰も見ていない典型。
 #
@@ -105,11 +157,17 @@ failed=$(
     tr '\n' ' '
 )
 if [ -n "${failed// /}" ]; then
-  notify "failed unit がある" "$failed" high
+  # 顔ぶれが変わったら鳴らす。同じままなら 6 時間に 1 回。
+  notify_once "failed-units" "$failed" "failed unit がある" "$failed" high
+else
+  clear_once "failed-units"
 fi
 
 # restic の鮮度。転送が黙って止まるのはこの構成で実績がある
 # (rclone の Google Drive トークンが 1 週間で失効する)。
 if systemctl is-failed --quiet restic-backups-homeserver.service; then
-  notify "restic のバックアップが失敗している" "systemctl status restic-backups-homeserver" high
+  notify_once "restic" "failed" "restic のバックアップが失敗している" \
+    "systemctl status restic-backups-homeserver" high
+else
+  clear_once "restic"
 fi

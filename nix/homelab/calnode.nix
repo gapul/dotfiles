@@ -46,7 +46,7 @@
     environment = {
       # スキーム込みで書く。https であること自体が本番モード (secure cookie と
       # 暗号鍵の強制) のスイッチになっている。
-      "BASE_URL" = "https://cal.gapul.net";
+      "BASE_URL" = "https://booking.gapul.net";
       "DATABASE_URL" = "sqlite:///data/calnode.db";
       "PORT" = "3000";
     };

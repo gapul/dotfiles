@@ -52,6 +52,15 @@ in
         devices = [ "homeserver" ];
         type = "sendreceive";
       };
+      # Outside ~/Sync/syncthing on purpose: that directory is the synchub folder, and nesting
+      # the inbox inside it would ship every PDF to the iPhone share as well. Transient, so
+      # restic not covering it is fine.
+      folders."paperless-inbox" = {
+        label = "Paperless Inbox";
+        path = "${config.home.homeDirectory}/Sync/paperless-inbox";
+        devices = [ "homeserver" ];
+        type = "sendreceive";
+      };
     };
   };
 

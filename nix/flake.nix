@@ -55,8 +55,13 @@
     # NixOS inside Windows (WSL2). Shares roles.wsl with the Lab PC's standalone home,
     # so the shell and CLI are identical whichever way the machine is booted.
     # Tracks the nixos lineage, not the darwin one (this host is x86_64-linux).
+    #
+    # main, not release-26.05: nixpkgs-nixos follows nixos-unstable, and the release
+    # branch still sets `boot.bootspec.enable`, which unstable removed. The release
+    # branch only makes sense against a matching release of nixpkgs, and evaluating
+    # it against unstable fails the assertion on every build.
     nixos-wsl = {
-      url = "github:nix-community/NixOS-WSL/release-26.05";
+      url = "github:nix-community/NixOS-WSL";
       inputs.nixpkgs.follows = "nixpkgs-nixos";
     };
 
@@ -107,6 +112,11 @@
     # does not carry (it stops at ffmpeg_7), so pointing it at nixpkgs-nixos aborts
     # evaluation. Left on its own lineage, like zrythm-darwin above.
     zen-browser.url = "github:0xc000022070/zen-browser-flake";
+    # arkenfox user.js exposed as typed home-manager options (section / subsection / pref),
+    # so the hardening lives in the flake lock and the overrides are visible as nix diffs.
+    # Used by modules/home/darwin-firefox.nix.
+    arkenfox.url = "github:HeitorAugustoLN/arkenfox-nix";
+    arkenfox.inputs.nixpkgs.follows = "nixpkgs";
 
     # NixOS module that makes persistence targets explicit. Try it in a VM smoke test only for now;
     # don't apply it to the real machine until the data migration procedure is settled.
@@ -205,7 +215,11 @@
             builtins.elem (nixpkgs.lib.getName pkg) [
               "unity-cli"
               "vroid-studio" # free of charge but proprietary, see pkgs/vroid-studio.nix
-            ];
+            ]
+            # voicevox-engine and its core/onnxruntime/resource parts, for the
+            # ~/.local/bin/voicevox-engine wrapper in home/darwin.nix. The voice models are
+            # what makes them unfree; the system layer already allows them wholesale.
+            || nixpkgs.lib.hasPrefix "voicevox" (nixpkgs.lib.getName pkg);
           overlays = [
             overlayFixes
           ]
@@ -267,11 +281,14 @@
           base
           ++ [
             ./home/darwin.nix
+            # programs.firefox.arkenfox options for modules/home/darwin-firefox.nix (imported
+            # from home/darwin.nix). A flake input module has to enter through the role list.
+            inputs.arkenfox.modules.homeManager.arkenfox
             ./home/restic-backup.nix
             ./home/rclone-mount.nix
-            ./home/mutagen-sync.nix
             ./home/personal-history.nix # 個人の記録を端末ごとに書き出して Syncthing に載せる
             ./home/maintenance.nix
+            ./home/tmp-cleanup.nix # ~/tmp のスクラッチを7日で自動掃除 (macminiHeadless と共有)
             ./home/git-hooks.nix # git hook that auto-rebuilds on main updates (main tree only)
           ]
           ++ secrets
@@ -298,6 +315,11 @@
           ./home/macmini-render.nix
           # 音声モデルと合成処理。クライアントは tailnet 越しの API を使う。
           ./home/macmini-aivisspeech.nix
+          ./home/tmp-cleanup.nix # ~/tmp のスクラッチを7日で自動掃除 (macWorkstation と共有)
+          # dotfiles-pull (home/macmini.nix) は post-merge hook が rebuild する前提だが、hook を
+          # 入れる module がこの役に無く、.git/hooks の実体は 2026-08-09 に手で置いた古い版のまま
+          # だった (secrets/ の変更で rebuild しない)。宣言に載せて activation で更新させる。
+          ./home/git-hooks.nix
         ];
         wsl = linuxBase ++ [ ./home/wsl.nix ] ++ secrets ++ station;
         linuxServer = linuxBase ++ secrets ++ station;
@@ -317,6 +339,7 @@
         modules = [
           # Same SSO overlay as the other hosts (carries e.g. tailscale's vendorHash fix).
           { nixpkgs.overlays = [ overlayFixes ]; }
+          sops-nix.nixosModules.sops
           ./hosts/homeserver.nix
           disko.nixosModules.disko
           ./hosts/homeserver-disk.nix
@@ -509,6 +532,8 @@
                 '';
               };
               slk = systemPkgs.callPackage ./pkgs/slk.nix { };
+              # Exported so other flakes (laya-drive) can take `laya-python` from here.
+              laya-mlx = systemPkgs.callPackage ./pkgs/laya-mlx.nix { };
             }
             // lib.optionalAttrs (!isDarwinWorkstation) {
               remote-env = systemPkgs.buildEnv {
@@ -680,7 +705,12 @@
               # The home server replaces Proxmox in one cut, so this booting is the
               # only verification before the old install is gone.
               homeserver-vm = import ./tests/homeserver-vm.nix {
-                inherit user;
+                # hosts/homeserver.nix pulls in homelab/formera.nix, which takes the
+                # source as a module argument. nixosConfigurations.homeserver passes it
+                # the same way; without it here the VM test stops evaluating with
+                # "attribute 'formera-source' missing".
+                inherit user formera-source;
+                sopsNix = sops-nix;
                 pkgs = systemPkgs;
               };
             };

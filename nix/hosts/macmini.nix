@@ -234,6 +234,8 @@ in
     ../modules/authorized-keys.nix
     ./macmini-ci-runner.nix
     ./macmini-dns.nix
+    ./macmini-homeserver-monitor.nix
+    ./macmini-presenta.nix
     sopsNix.darwinModules.sops
     # マイクラのサーバーは上の表から生やす。別モジュールにしてあるのは、nix が同じ attrset の
     # 中で `launchd.daemons = {...}` と `launchd.daemons.foo = ...` を混ぜられないため。
@@ -242,14 +244,17 @@ in
       launchd.daemons = lib.mapAttrs' (
         name: inst:
         lib.nameValuePair "minecraft-${name}" {
+          # `command` (not ProgramArguments) makes nix-darwin prepend `wait4path /nix/store`. Since
+          # macOS 27 /nix mounts after launchd starts daemons; a missing store binary exits 78
+          # (EX_CONFIG) and never retries on its own — only bootout/bootstrap brought it back.
+          # 常駐するのは lazymc。サーバー本体は接続が来たときに lazymc が起こす。
+          command = lib.escapeShellArgs [
+            "${pkgs.lazymc}/bin/lazymc"
+            "-c"
+            "${lazymcConfig name inst}"
+            "start"
+          ];
           serviceConfig = {
-            # 常駐するのは lazymc。サーバー本体は接続が来たときに lazymc が起こす。
-            ProgramArguments = [
-              "${pkgs.lazymc}/bin/lazymc"
-              "-c"
-              "${lazymcConfig name inst}"
-              "start"
-            ];
             EnvironmentVariables = {
               SERVER_DIR = inst.dir;
               SERVER_MEM = inst.memory;
@@ -373,30 +378,6 @@ in
   #  same model on Apple Silicon) plus claude-bridge for the agent work, so ollama was carrying
   #  a duplicate copy of the model library for a path nothing routed through any more.)
 
-  # auto-fix パイプライン (GitHub issue → macmini の Claude Code → PR → CI → 自動マージ) が
-  # 生きているかを1時間ごとに確かめる。監視対象と同じ GitHub Actions では回さない、という
-  # 判断はスクリプト側の冒頭に書いてある。
-  #
-  # 元は手書きの plist と $HOME/autofix-monitor のスクリプトだった。中身は変えずに store へ
-  # 移し、状態(ログと Claude の出力)だけ XDG の state 配下に分けている。
-  launchd.agents.autofix-monitor = {
-    serviceConfig = {
-      ProgramArguments = [
-        "${pkgs.bash}/bin/bash"
-        "${../../configs/macmini/autofix-monitor/monitor.sh}"
-      ];
-      RunAtLoad = true;
-      StartInterval = 3600;
-      StandardOutPath = "/Users/${user.username}/.local/state/autofix-monitor/stdout.log";
-      StandardErrorPath = "/Users/${user.username}/.local/state/autofix-monitor/stderr.log";
-      EnvironmentVariables = {
-        # launchd から起動されるとシェルの環境が入らないので、スクリプトが要る分だけ渡す。
-        HOME = "/Users/${user.username}";
-        XDG_STATE_HOME = "/Users/${user.username}/.local/state";
-      };
-    };
-  };
-
   # Paper, run straight on macOS as its own user rather than in a container.
   #
   # It used to be an Apple container, which bought the itzg image's conveniences and cost far more:
@@ -439,8 +420,8 @@ in
 
   # Hermes proper — the Discord side. Talks to Claude through the claude-acp adapter.
   launchd.daemons.hermes-gateway = {
+    command = "${../../configs/macmini/hermes/hermes-gateway-run.sh}";
     serviceConfig = {
-      ProgramArguments = [ "${../../configs/macmini/hermes/hermes-gateway-run.sh}" ];
       UserName = "hermes";
       RunAtLoad = true;
       KeepAlive = true;
@@ -470,8 +451,8 @@ in
   };
 
   launchd.daemons.hermes-watchdog = {
+    command = "${../../configs/macmini/hermes/hermes-watchdog.sh}";
     serviceConfig = {
-      ProgramArguments = [ "${../../configs/macmini/hermes/hermes-watchdog.sh}" ];
       StartInterval = 300;
       ProcessType = "Background";
       LowPriorityIO = true;
@@ -481,8 +462,8 @@ in
   };
 
   launchd.daemons.hermes-logrotate = {
+    command = "${../../configs/macmini/hermes/hermes-logrotate.sh}";
     serviceConfig = {
-      ProgramArguments = [ "${../../configs/macmini/hermes/hermes-logrotate.sh}" ];
       StartCalendarInterval = [
         {
           Hour = 4;
@@ -498,8 +479,8 @@ in
   };
 
   launchd.daemons.hermes-brain-backup = {
+    command = "${../../configs/macmini/hermes/hermes-brain-backup.sh}";
     serviceConfig = {
-      ProgramArguments = [ "${../../configs/macmini/hermes/hermes-brain-backup.sh}" ];
       UserName = "hermes";
       StartCalendarInterval = [
         {
@@ -540,12 +521,45 @@ in
     };
   };
 
+  # nix store の GC。home/macmini-maintenance.nix の GC はユーザー権限なので、消せるのは
+  # home-manager の世代だけで、/nix/var/nix/profiles/system-* (root 所有) は残り続ける
+  # (2026-09-23 時点で 141 世代 / store 114G)。システム世代を落とせるのは root だけなので
+  # daemon で回す。日曜 03:45 = ユーザー側の掃除 (04:15) と restic (05:00) の前。
+  launchd.daemons.nix-gc = {
+    command = "${pkgs.writeShellScript "nix-gc" ''
+      set -u
+      export PATH=/nix/var/nix/profiles/default/bin:/usr/bin:/bin:/usr/sbin:/sbin
+      echo "==================== $(date '+%Y-%m-%d %H:%M:%S') ===================="
+      # TCC が .app に付ける com.apple.macl は root の chmod も弾き、GC がそのパスで
+      # 止まって "0 store paths deleted" になる (aquestalkplayer で数週間そうなっていた)。
+      # store の中の .app に付いていたら先に剥がす。生きているパスに付いていても害は無い。
+      for app in /nix/store/*/Applications/*.app; do
+        xattr -d com.apple.macl "$app" 2>/dev/null || true
+      done
+      nix-collect-garbage --delete-older-than 30d
+    ''}";
+    serviceConfig = {
+      StartCalendarInterval = [
+        {
+          Weekday = 0;
+          Hour = 3;
+          Minute = 45;
+        }
+      ];
+      ProcessType = "Background";
+      LowPriorityIO = true;
+      Nice = 10;
+      StandardOutPath = "/var/log/nix-gc.log";
+      StandardErrorPath = "/var/log/nix-gc.log";
+    };
+  };
+
   # ワールドの日次バックアップ。Realms から移ってくる以上、「壊しても戻せる」は要る。
   # 対象は上の表から作るので、サーバーを増やせばバックアップも自動で増える。
   # restic(5:00)より前に走らせて、その晩のうちに Google Drive まで乗せる。
   launchd.daemons.minecraft-backup = {
+    command = "${../../configs/macmini/minecraft/backup.sh}";
     serviceConfig = {
-      ProgramArguments = [ "${../../configs/macmini/minecraft/backup.sh}" ];
       EnvironmentVariables = {
         BACKUP_TARGETS = lib.concatStringsSep " " (
           lib.mapAttrsToList (name: inst: "${name}:${inst.dir}") minecraftServers
@@ -568,8 +582,8 @@ in
   # Hermes の状態を restic が読める場所へ固める。専用ユーザーのホームは gapul から
   # 読めないので、マイクラと同じくここで tar にしてから拾わせる。restic(5:00)より前に走らせる。
   launchd.daemons.hermes-backup = {
+    command = "${../../configs/macmini/hermes/backup.sh}";
     serviceConfig = {
-      ProgramArguments = [ "${../../configs/macmini/hermes/backup.sh}" ];
       StartCalendarInterval = [
         {
           Hour = 4;
