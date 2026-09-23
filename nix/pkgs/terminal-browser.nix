@@ -105,6 +105,20 @@ stdenvNoCC.mkDerivation (finalAttrs: {
       TERMINAL_BROWSER_NO_FOCUS=1
       export TERMINAL_BROWSER_NO_FOCUS
     fi
+
+    # ペインの描画がカクつくのを抑える。terminal-browser の既定フレームレートは
+    # 「一番速いディスプレイのリフレッシュレート」(browser/src/page/frame-rate.ts) で、
+    # この Mac だと 60。その 1 枚ごとに Retina 相当のピクセルが kitty graphics として
+    # herdr のソケットを通るので、端末側が食い切れずフレームが溜まって遅れて見える。
+    # ページを読むのに 60fps は要らない。スクロールの滑らかさは残る 30 で頭打ちにする。
+    # 動画を見たいときなどは TERMINAL_BROWSER_FPS=60 を置けば戻る。
+    #
+    # 効くのはブラウザ本体 (デーモン) の起動時なので、変えた後は
+    # terminal-browser shutdown を一度挟まないと現行のデーモンは古い値のまま。
+    # (この中はバッククォートがビルド時に展開されるので、コマンド名は囲まない。)
+    : "\''${TERMINAL_BROWSER_FPS:=30}"
+    export TERMINAL_BROWSER_FPS
+
     exec "\$real" "\$@"
     WRAPPER
     sed -i -e 's/^    //' $out/bin/terminal-browser

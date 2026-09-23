@@ -61,10 +61,10 @@ let
       interval = "1h";
     };
     # calnode (予約ページ)。他と違って公開先は Caddy ではなく cloudflared なので、
-    # ここで生える vhost は実際には誰も踏まない — cal.gapul.net はトンネルの CNAME
-    # だから。それでも表に載せているのは、gatus の監視対象がこの表からしか作られない
-    # ため。監視は upstream を直接叩くので、vhost を経由しなくても機能する。
-    cal.upstream = "127.0.0.1:8086";
+    # ここで生える vhost は実際には誰も踏まない — booking.gapul.net はトンネルの
+    # CNAME だから。それでも表に載せているのは、gatus の監視対象がこの表からしか
+    # 作られないため。監視は upstream を直接叩くので、vhost を経由しなくても機能する。
+    booking.upstream = "127.0.0.1:8086";
     # DNS レコードもダッシュボードのリンクも前からあったのに vhost だけ無く、
     # https で開くと繋がらない状態だった (直接ポートを叩けば見えるので気付きにくい)。
     jellyfin = {
@@ -83,14 +83,10 @@ let
     # 3D プリンタの操作盤 (Bambuddy)。プリンタを LAN Only + Developer Mode にした結果
     # Bambu Handy が使えなくなったので、スマホから触る先がここになる。homelab/bambuddy.nix。
     bambu.upstream = "127.0.0.1:8010";
-    # 家計簿 (fava)。台帳の本体は macmini の ~/Developer/github.com/gapul/ledger で、
-    # Zaim の同期・帳簿生成・fava もあちら (home/macmini.nix の zaim-sync / fava)。
-    # ここは入口だけ。macmini 側は 127.0.0.1 にしか bind していないので、tailscale serve が
-    # 出している HTTPS (:5075) を上流にする。fava 自体はログインを持たないので Authelia を挟む。
-    # 2026-08-23 に作ったこの箱の fava (台帳は骨格だけで取引ゼロ) は二重になるので畳んだ。
-    # /var/lib/homelab/fava の骨格ファイルは消していない。
+    # 家計簿 (fava)。台帳・同期ジョブ・fava は homelab/ledger.nix (2026-09-23 に macmini から
+    # 移した。macmini は常駐機ではない)。fava 自体はログインを持たないので Authelia を挟む。
     money = {
-      upstream = "https://macmini.tail079f44.ts.net:5075";
+      upstream = "127.0.0.1:5075";
       auth = true;
     };
     # ゲームの棚。roms は RomM (ブラウザでそのまま遊べる)、games は Gameyfin
@@ -435,7 +431,6 @@ in
         lib.mapAttrsToList (name: site: {
           inherit name;
           group = "homelab";
-          # money points at the macmini through tailscale serve, so its upstream already carries https://.
           url = if lib.hasPrefix "https://" site.upstream then site.upstream else "http://${site.upstream}";
           interval = site.interval or "2m";
           # Not `== 200`: several of these answer 3xx when perfectly healthy.
@@ -476,30 +471,6 @@ in
               "[BODY].ok == true"
             ];
             alerts = [ ntfyAlert ];
-          }
-          {
-            # Not a health check: a release watch. The PulsHealth iOS app on the store is 1.3
-            # (2026-01), older than the source reviewed for homelab/health.nix; QR pairing and
-            # the reviewed sync protocol arrive in 1.4. This "fails" once the store version moves,
-            # which is the ntfy that says it is time to install and re-review. Remove it then.
-            name = "pulshealth-app-store";
-            group = "watch";
-            url = "https://itunes.apple.com/lookup?id=6757657354&country=jp";
-            interval = "6h";
-            conditions = [
-              "[STATUS] == 200"
-              "[BODY].results[0].version == 1.3"
-            ];
-            alerts = [
-              (
-                ntfyAlert
-                // {
-                  failure-threshold = 1;
-                  send-on-resolved = false;
-                  description = "PulsHealth の App Store 版が 1.3 から変わった (1.4 が出たかも)";
-                }
-              )
-            ];
           }
           {
             name = "push-ntfy";
@@ -598,6 +569,10 @@ in
       "flakes"
     ];
     auto-optimise-store = true;
+    # Keep build-time inputs of live outputs across the weekly GC, so the x86_64-linux
+    # pr-gate on the runner here does not refetch and rebuild everything afterwards
+    # (same reason as darwin-common.nix).
+    keep-outputs = true;
     # Same safeguard as the laptop: give up on an unreachable cache quickly and
     # fall through to building from source.
     connect-timeout = 5;

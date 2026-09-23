@@ -2,6 +2,7 @@
   pkgs,
   user,
   formera-source,
+  sopsNix,
   ...
 }:
 # Boots the home server config in a VM and drives one request end to end.
@@ -26,8 +27,13 @@ pkgs.testers.runNixOSTest {
     { lib, pkgs, ... }:
     {
       imports = [
+        sopsNix.nixosModules.sops
         ../hosts/homeserver.nix
       ];
+
+      # Production secrets are encrypted to the real host's SSH key. The VM
+      # verifies the declarations but must not try to decrypt or install them.
+      sops.secrets = lib.mkForce { };
 
       # disko is not imported, so the test framework supplies the root filesystem
       # and none of the ZFS config applies. Boot/hardware bits that a VM provides
@@ -126,6 +132,13 @@ pkgs.testers.runNixOSTest {
     # backrest's replacement is a timer, so there is nothing to connect to.
     machine.succeed("systemctl is-enabled restic-backups-homeserver.timer")
     machine.succeed("systemctl is-enabled restore-drill.timer")
+
+    # The PR runner keeps its registration on disk but must not sit in memory
+    # waiting for work. A transient timer polls the public Actions API and wakes
+    # it only when a queued job carries the homeserver label.
+    machine.succeed("systemctl is-enabled github-runner-autoscale.timer")
+    machine.fail("systemctl is-enabled github-runner-dotfiles-pr.service")
+    machine.succeed("systemctl cat github-runner-autoscale.service >/dev/null")
 
     # The VM has no Google credentials and cannot pull containers, so verify the
     # declarative Filestash wiring rather than starting remote-dependent units.

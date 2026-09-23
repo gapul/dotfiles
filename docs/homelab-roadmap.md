@@ -26,7 +26,12 @@ Remaining work and migration research for a home lab built around pve (Proxmox) 
 
 ---
 
-## 1. Remaining work
+## 1. Historical remaining work
+
+This section records the 2026 migration decisions and is not the active backlog. Synapse,
+Gatus, declarative bridge services, restic restore drills, rolling container updates and
+SOPS-managed homeserver secrets were implemented afterwards. Current operational exceptions
+and deliberately deferred work live in [HOMESERVER_TODO.md](HOMESERVER_TODO.md).
 
 ### A. Matrix bridges
 

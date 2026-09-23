@@ -36,7 +36,6 @@
   imports = [
     ./ci-runner.nix
     ./blocky.nix
-    ./anisette.nix
     ./anki.nix
     ./archivebox.nix
     ./attic.nix
@@ -57,6 +56,7 @@
     ./gameyfin.nix
     ./git-annex.nix
     ./hauk.nix
+    ./ledger.nix
     ./health.nix
     ./homebox.nix
     ./homeassistant.nix
@@ -75,6 +75,7 @@
     ./matrix-doublepuppet.nix
     ./matrix-bridge-secrets.nix
     ./memory-pressure-alert.nix
+    ./site-watch.nix # サイト更新監視 (urlwatch → ntfy)。対象はファイル内の jobs リスト
     ./miniflux.nix
     ./navidrome.nix
     ./nostr-bunker.nix
@@ -92,6 +93,7 @@
     ./romm.nix
     ./rsshub.nix
     ./samba.nix
+    ./secrets.nix
     ./social.nix
     ./spliit.nix
     ./searx.nix
