@@ -18,6 +18,9 @@ let
     inherit (pkgs.stdenv.hostPlatform) system;
   };
   terminalBrowser = pkgs.callPackage ../pkgs/terminal-browser.nix { };
+  tahoma2d = pkgs.callPackage ../pkgs/tahoma2d.nix {
+    stuffDir = "/Users/${user.username}/Library/Application Support/Tahoma2D/Tahoma2D_stuff";
+  };
 in
 {
   # host-independent base (nix cache / firewall / security / login hardening, etc.)
@@ -103,6 +106,23 @@ in
     # ~/.local/bin より前に来る。profile 側だと手動インストール版が勝ってしまう。
     agentPkgs.codex
     agentPkgs.claude-code
+    agentPkgs.opencode
+    # ─── moved off Homebrew (2026-09-15): same app, same data dirs, nothing to re-set up ───
+    # Upstream's signed release carried over as-is, so TCC grants and entitlements survive:
+    pkgs.utm # VMs stay in ~/Library/Containers/com.utmapp.UTM (same bundle id)
+    pkgs.upscayl
+    # Not obsidian / monitorcontrol: nixpkgs' repack breaks the bundle seal and drops the Team ID
+    # (`codesign -v`: "code has no resources but signature indicates they must be present"), so
+    # MonitorControl would lose Accessibility and Obsidian its Keychain ACLs. Not maccy either:
+    # nixpkgs trails the cask (2.7.0 vs 2.7.1) and the gap is freeze/crash fixes. They stay casks.
+    # Built from source (ad-hoc signed), which is fine for apps that ask for no TCC permission:
+    pkgs.prismlauncher # instances stay in ~/Library/Application Support/PrismLauncher
+    agentPkgs.zotero # 10.x like the cask was; stable is still on 9.x
+    # CLI. unstable for the fast-moving ones so they don't fall behind what brew had.
+    agentPkgs.deno # denops runtime for nvim skkeleton
+    agentPkgs.cloudflared
+    pkgs.tor
+    pkgs.wireguard-tools
     (pkgs.callPackage ../pkgs/keebmouse.nix { })
     # Puddle / keystats: 自作物。keebmouse と同じく cask をやめて署名済みリリースを取り込む。
     # これで自作物のための tap (gapul/puddle, gapul/keystats) が両方畳める。
@@ -122,12 +142,11 @@ in
     # hardcode-paths patch) where the cask bundled it inside the .app.
     pkgs.voicevox
     pkgs.brewCasks.audacity
-    pkgs.brewCasks.fontforge-app
     pkgs.brewCasks.fontgoggles
     pkgs.brewCasks.goxel
     pkgs.brewCasks.gyroflow
-    pkgs.brewCasks.imhex
-    pkgs.brewCasks.librecad
+    pkgs.imhex
+    pkgs.librecad
     pkgs.brewCasks.material-maker
     pkgs.brewCasks.milkytracker
     pkgs.brewCasks.mixxx
@@ -144,11 +163,46 @@ in
       dontCheckForBrokenSymlinks = true;
     }))
     pkgs.brewCasks.supercollider
+    # Sonic Pi: live-coded instrument (Ruby DSL, OSC in, MIDI out to the IAC bus -> Bitwig).
+    # The agent-side counterpart to SuperCollider: a few lines make sound, and code can be
+    # pushed into the running app. nixpkgs' sonic-pi is linux-only, hence the cask.
+    pkgs.brewCasks.sonic-pi
+    # MeshLab: mesh cleanup/decimation for the scan and VRM work. meshlabserver is gone since
+    # 2020.x; scripting is pymeshlab (pymeshlab-python in home/workstation.nix). Ships meshlab.app.
+    pkgs.meshlab
+    # OpenSCAD: code-first CAD, the agent-written side of FreeCAD. -unstable is the maintained
+    # branch (2021.01 stable predates manifold/lazy-union); ships OpenSCAD.app and a CLI named
+    # openscad-unstable, so `openscad` below is the name everything else expects. From
+    # nixos-unstable: 26.05's snapshot wants manifold built from source, unstable's is cached.
+    unstablePkgs.openscad-unstable
+    # (not lib.getExe: nixpkgs' meta.mainProgram says "openscad" but the file is openscad-unstable)
+    (pkgs.writeShellScriptBin "openscad" ''exec ${unstablePkgs.openscad-unstable}/bin/openscad-unstable "$@"'')
     pkgs.brewCasks.trex # 画面 OCR。Screen Recording の TCC を再付与する必要がある
+    # ─── Emulation ───
+    # The Pokémon RNG/breeding work runs here rather than on hardware: frame-level control and a
+    # debugger are what the manipulation needs, and neither exists on a real console. The 3DS side
+    # still requires system files and AES keys dumped from an own CFW'd console — none of these
+    # ship Nintendo code. All FOSS.
+    # GB/GBC/GBA/DS run inside RetroArch (retroarch-metal in homebrew.casks below) with the
+    # nixpkgs libretro cores declared in home/darwin.nix - same engines as the standalone
+    # SameBoy / mGBA / melonDS apps, one frontend, and a CLI + network command interface that
+    # the standalone apps never had. The standalone DeSmuME / mGBA / SameBoy apps went 2026-09-17;
+    # nothing had been saved in any of them. melonDS stays as a standalone only for Pal Park
+    # (Slot-2 GBA cart, which the libretro core makes awkward) and can go once that is done.
+    # Azahar and melonDS come from nixpkgs (Azahar has no cask; melonDS builds natively and cached).
+    pkgs.azahar # 3DS. Citra successor (Citra and Lime3DS are both discontinued). No usable libretro core yet
+    pkgs.melonds # DS standalone. Slot-2 GBA cart support, so Pal Park (gen3 -> gen4) works
+    # Cinny: a Matrix client that renders custom image reactions (MSC4027) and emoji packs, which
+    # Element Desktop still shows as raw mxc URLs. Used to view LINE reaction icons / stickers that
+    # Element can't. Ships Cinny.app, so nix-darwin surfaces it under /Applications/Nix Apps.
+    pkgs.cinny-desktop
     # ─── Creative: official is paid but nixpkgs source builds give a free full version ───
     # Unavailable/broken on 26.05-darwin, so from unstablePkgs (nixos-unstable, with allowUnfree).
     unstablePkgs.fritzing # PCB/circuit design CAD (official DL is paid. for the ESP32 project). cached, so instant
-    unstablePkgs.ardour # DAW (official binary is pay-what-you-want. free via source build). cached, so instant
+    # DAW (official binary is pay-what-you-want. free via source build). cached, so instant.
+    # Wrapped: the nixpkgs bundle links libvamp-*.so by bare name and nothing in it starts
+    # (GUI or the ardour9-lua/export CLIs) until the load commands are repaired. See pkgs/.
+    (unstablePkgs.callPackage ../pkgs/ardour-darwin-vamp-fix.nix { })
     unstablePkgs.aseprite # pixel-art editor (official $20. source-available/self-built is free full)
     # VRoid Studio (VRM character modelling): no nixpkgs package and no cask, so the official
     # macOS dmg is repackaged. See pkgs/vroid-studio.nix - the download URL carries a token
@@ -176,10 +230,29 @@ in
     # MovieMaker. The download is Turnstile-gated, so the dmg has to be added to
     # the store by hand on a version bump. See pkgs/aquestalkplayer.nix.
     (pkgs.callPackage ../pkgs/aquestalkplayer.nix { })
+    # Touch ID helper for the ask broker. Same requireFile shape: see pkgs/askapprove.nix.
+    (pkgs.callPackage ../pkgs/askapprove.nix { })
     # Open JTalk for the yukkuri engine's reading/accent analysis, under its own
     # name so it does not become the default python. See pkgs/yukkuri-python.nix.
     (pkgs.callPackage ../pkgs/yukkuri-python.nix { })
+    # sioyek: the cask was an unsigned x86_64 build that needed Rosetta and no_quarantine.
+    # nixpkgs builds it natively and it reads the same ~/Library/Application Support/sioyek
+    # (config from darwin-chrome.nix, plus the highlight/bookmark DBs).
+    pkgs.sioyek
+    # Tahoma2D replaces the x86_64-only opentoonz cask. See pkgs/tahoma2d.nix.
+    tahoma2d
   ];
+
+  # Tahoma2D writes its profiles and config into the stuff folder, so it has to live outside the
+  # store. Seed it once; after that it belongs to the app (copying over it would reset settings).
+  system.activationScripts.postActivation.text = lib.mkAfter ''
+    stuff="/Users/${user.username}/Library/Application Support/Tahoma2D/Tahoma2D_stuff"
+    if [ ! -d "$stuff" ]; then
+      /usr/bin/sudo -u ${user.username} /bin/mkdir -p "$stuff"
+      /usr/bin/sudo -u ${user.username} /bin/cp -R ${tahoma2d}/share/tahoma2d/stuff/. "$stuff/"
+      /bin/chmod -R u+w "$stuff"
+    fi
+  '';
 
   # macOS settings (GUI/peripheral-oriented. Only values verified via `defaults read` on the machine are declared)
   system.defaults = {
@@ -391,12 +464,33 @@ in
     localHostName = "MacBook-Mini";
   };
 
-  # Only provide via Nix the Nerd Fonts that have no matching cask
-  # (font-hackgen-nerd is HackGen, a different thing from Hack)
-  # (font-jetbrains-mono-nerd-font is managed on the cask side)
+  # Was the brew nextdns formula's own `nextdns install` daemon, which was idle (auto-activate
+  # off, not the system resolver). Same settings as its /etc/nextdns.conf.
+  services.nextdns = {
+    enable = true;
+    arguments = [
+      "-profile"
+      "43b9d5"
+      "-listen"
+      "localhost:53"
+      "-mdns"
+      "all"
+      "-bogus-priv"
+      "-use-hosts"
+      "-report-client-info=false"
+      "-auto-activate=false"
+      "-setup-router=false"
+      "-detect-captive-portals=false"
+      "-cache-size"
+      "0"
+    ];
+  };
+
   fonts.packages = with pkgs; [
     nerd-fonts.hack
     nerd-fonts.fira-code
+    nerd-fonts.jetbrains-mono
+    hackgen-nf-font # HackGen NF (Japanese + Nerd Fonts), not the same thing as Hack
     # sketchybar app icon font. Pinned to the release plugins/icon_map.sh came from — nixpkgs
     # is on an older one, and a font and a map that disagree draw the wrong glyphs.
     # Fetched rather than committed: the ttf is 280KB of someone else's build.
@@ -435,10 +529,12 @@ in
     #  overwrites it every time. All taps are declared and version-managed below, so the activation-time
     #  check is turned off.)
     taps = [
+      "abue-ammar/tinycast" # Tinycast (native Spotlight-like launcher, AGPL-3.0). Not in homebrew/cask.
       "chojs23/tap" # Concord (Discord TUI)
       "deskflow/tap"
       "felixkratz/formulae"
       "finnvoor/tools"
+      "frankea/whisky" # Whisky, community fork (upstream Whisky-App/Whisky archived 2025-05)
       "gerlero/openfoam"
       "lihaoyun6/tap" # QuickRecorder (screen recorder. Required since not in homebrew/cask)
       "osx-cross/arm" # QMK toolchain dependency tap
@@ -448,7 +544,7 @@ in
       "y3owk1n/tap" # cask distribution source for neru (full-screen keyboard navigation)
 
       # ─── Personal forks (gapul) — delete if you forked and don't need them ───
-      "gapul/tap" # gapul の汎用 cask タップ (webcam-motion-capture 等、homebrew/cask に無いもの)
+      "gapul/tap" # gapul の汎用 cask タップ (homebrew/cask に無いもの)
       "gapul/openutau"
       "gapul/azoo-key-skkserv"
       "gapul/armorpaint" # ArmorPaint source-build formula distribution tap (official is paid €16 → self-build for free full version)
@@ -469,18 +565,9 @@ in
     # Caveat: /opt/homebrew/bin sits ahead of the nix profile in PATH (brew shellenv), so if the same
     # binary exists on both sides brew wins. Don't leave duplicates around.
     brews = [
-      # ─── Languages / Package managers ───
-      # (b) yt-dlp が引いてくるので nix の deno は二重になる。mpv は nixpkgs 側へ移した
-      # (home/workstation.nix)ので、その依存はもう理由に数えない。nvim skkeleton(denops
-      # ランタイム)が要るため、依存が外れても消えないよう明示的に宣言している。
-      "deno"
-
       # ─── Keyboard firmware ───
       "qmk/qmk/qmk" # (b) has to match the keg-only avr toolchain below; nixpkgs qmk pulls its own
       "osx-cross/avr/avr-gcc@12" # (b) keg-only AVR toolchain for Keyball
-
-      # ─── wine helpers ───
-      "winetricks" # (c) drives the wine-stable cask's prefix; nix winetricks would pull nix wine
 
       # ─── TUI utilities ───
       # The 2.4.8 hold is gone (2026-08-29, unpinned and upgraded to 2.5.13). It was held because
@@ -494,21 +581,18 @@ in
       "wifitui" # (a) wifi TUI. nixpkgs marks it Linux-only
 
       # ─── Network / Download / VPN ───
-      # These are all daemons: brew wires up the launchd plist (`brew services`) and the mac
-      # expects one system-wide instance, so a per-user nix copy would be the wrong shape.
+      # tor / wireguard-tools / cloudflared / nextdns moved to nix (2026-09-15): none of the brew
+      # services was ever started, and nextdns runs from services.nextdns below.
       # No "tailscale" formula: the tailscale-app cask already ships both the daemon and a CLI at
       # /usr/local/bin/tailscale. The formula's brew service was never started, and its own CLI sits
       # earlier in PATH, so every `tailscale` call went through a binary built from a different
       # source than the running daemon ("client version != tailscaled server version").
-      "tor" # (b) SOCKS daemon via brew services
-      "wireguard-tools" # (b) wg-quick + wireguard-go run as a root VPN engine
-      "cloudflared" # (b) Cloudflare tunnel daemon
-      "nextdns" # (b) DNS-over-HTTPS daemon (installs its own resolver config)
 
       # ─── Documents / Fonts / Media ───
       "gstreamer" # (a) nixpkgs gst_all_1 doesn't support aarch64-darwin
-      # 3D model previews in yazi (configs/cli/yazi/plugins/model.yazi). nixpkgs f3d can't build on
-      # aarch64-darwin: its openusd dependency fails, taking f3d down with it.
+      # 3D model previews in yazi (configs/cli/yazi/plugins/model.yazi). nixpkgs-unstable f3d builds
+      # now, but its offscreen render of a .glb comes out blank (checked 2026-09-15, 3.5.0) where
+      # brew's draws the model.
       "f3d" # (a) headless 3D renderer
 
       # ─── macOS specific CLI ───
@@ -552,34 +636,37 @@ in
       "krita"
       "simplex"
       "touchdesigner"
-      "upscayl"
       # ─── Browsers ───
-      # google-chrome was dropped on 2026-08-30. It was here only for automation (Zen is the
-      # everyday browser), and every job it held has somewhere better to go: Lightpanda for the
-      # background work (14MB against Chrome's 296MB), terminal-browser when the run should be
-      # visible, and Helium below when a full Chromium is genuinely needed. The Claude in Chrome
-      # extension went with it — Playwright covers what it did, and it cost a debugging port
-      # open on localhost for as long as the browser ran.
+      # google-chrome: back on 2026-09-23 as the stock Chromium for sites whose tracking or
+      # affiliate flows break under Helium's defaults (third-party cookies blocked, fingerprint
+      # noise, bundled uBlock Origin) — first case was a point-site card application. Not for
+      # automation: that was why it was dropped on 2026-08-30 (Lightpanda for background work,
+      # terminal-browser for visible runs, Helium below as the everyday Chromium), and the Claude
+      # in Chrome extension stays out — Playwright covers it without a debugging port on localhost.
+      "google-chrome"
       # Not the "helium" cask: that one is koush's unrelated Android desktop app, deprecated for
       # failing Gatekeeper and disabled on 2026-09-01.
       "helium-browser" # ungoogled-chromium based, now the Chromium of record here
       "tor-browser"
       "zen"
+      # Firefox Developer Edition: the DRM and video-call browser next to Zen (2026-09-17). Zen
+      # has no Widevine licence and Helium has no CDM at all, so neither plays Netflix, Prime
+      # Video or Spotify web; Mozilla's build carries the licence. The cask rather than nixpkgs'
+      # firefox-devedition-bin: on darwin nixpkgs re-signs the bundle ad hoc (TeamIdentifier not
+      # set, resources missing), and the nix-vs-brew signing rule wants the Developer ID signature
+      # kept so the microphone/camera TCC grants survive a rebuild. Everything else about it
+      # (profile, arkenfox hardening, extensions, policies) is declared in
+      # modules/home/darwin-firefox.nix; the app's own updater is disabled there, so the version
+      # moves with `just maintain` (brew --greedy) like the other auto_updates casks.
+      "firefox@developer-edition"
 
       # ─── PDF viewers ───
-      # sioyek is an unsigned x86_64 cask (runs under Rosetta). If brew's default quarantine
-      # is applied, Gatekeeper flags it as "damaged/malware" and it won't launch, so no_quarantine is required.
-      {
-        name = "sioyek";
-        args = {
-          no_quarantine = true;
-        };
-      } # lightweight PDF viewer with vim keybindings (zathura alternative, daily driver)
+      # sioyek (daily driver) comes from nixpkgs, see environment.systemPackages.
       "skim" # native SyncTeX viewer. Backup for TeX writing (integration later)
 
       # ─── Image viewers ───
       # qView is ad-hoc signed only (not notarized). With quarantine it gets rejected by
-      # Gatekeeper and won't launch, so no_quarantine is required (same as sioyek).
+      # Gatekeeper and won't launch, so no_quarantine is required.
 
       # ─── Communication & Sync ───
       # Dropped proprietary Beeper (not in active use) for Element on the self-hosted Matrix
@@ -592,7 +679,6 @@ in
       "macskk"
       "gapul/azoo-key-skkserv/azoo-key-skkserv" # skkserv for the azooKey conversion engine (gapul self-made tap)
       "y3owk1n/tap/neru" # mouse-free full-screen navigation (grid/hints/scroll. System-wide version of Vimium. shortcat superset)
-      "gapul/tap/webcam-motion-capture" # webcam full-body/hand/face mocap (VMC/OSC out). 自己更新するので brew-nix ではなく cask。mocopi+カメラの自前構成との比較検討用
 
       # ─── macOS utilities ───
       "hammerspoon"
@@ -600,6 +686,7 @@ in
       "maccy"
       "monitorcontrol"
       "qlmarkdown"
+      "abue-ammar/tinycast/tinycast" # Spotlight-like launcher (SwiftUI/AppKit, no Electron, AGPL-3.0)
 
       # ─── Creative / VTuber ───
       # nijigenerate/nijiexpose: 2D VTuber puppet rigging + streaming runtime (Live2D alternative,
@@ -642,12 +729,6 @@ in
       "tailscale-app"
       "rustdesk"
 
-      # ─── iOS sideloading ───
-      # Pairs the iPhone for SideStore (self-hosted anisette; see the ios-selfbuild notes).
-      # Was a hand-installed /Applications/AltServer.app until 2026-08 — the cask ships the same
-      # version, so declaring it just puts it back under management.
-      "altserver"
-
       # ─── Dev IDEs / Editors / SDK ───
       "stablyai/orca/orca" # unified chat UI for Claude Code/Codex; custom tap avoids the unrelated disabled Plotly cask
       "ghostty"
@@ -659,10 +740,15 @@ in
       # ─── Creative — Design / 2D ───
       "affinity"
       "gimp"
+      # Inkscape stays a cask: inkstitch declares `depends_on cask: "inkscape"`, and with the nixpkgs
+      # build instead brew refuses to uninstall it, which aborts the whole bundle cleanup.
       "inkscape"
       "darktable"
       "rawtherapee"
       "digikam" # photo management (RAW development, tag management)
+      # Ink/Stitch: machine-embroidery extension for Inkscape. Was hand-installed from its .pkg
+      # (3.2.2); the cask is the same installer, one release newer.
+      "inkstitch"
       "pika"
       "adobe-creative-cloud"
       "sf-symbols" # Apple SF Symbols catalog
@@ -686,7 +772,6 @@ in
       "obs"
       "lihaoyun6/tap/quickrecorder" # screen recorder (native ScreenCaptureKit, Tahoe-compatible). Switched from the old kap, which is Electron-based and stalled for ~1.7 years
       "cavalry" # 2D motion graphics
-      "opentoonz" # 2D animation (.pkg cask)
 
       # ─── 3D / CAD ───
       # Unity Hub は「常用する GUI」ではなくインストーラの CLI として置いている。
@@ -708,9 +793,12 @@ in
       # "authorized software" reference point.
 
       # ─── Games / Emulation ───
-      "wine-stable" # WineHQ stable. Run Windows apps (used with winetricks)
+      # Whisky: SwiftUI bottle manager with its own bundled Wine + DXMT/DXVK/GPTK. It replaces the
+      # wine-stable + winetricks pair, which never had a prefix created (x86_64-only, too). The frankea fork
+      # is the maintained one (signed + notarized). Tap-qualified on purpose: plain "whisky" in
+      # homebrew/cask is still the archived original.
+      "frankea/whisky/whisky"
       "heroic" # Epic/GOG/Amazon launcher (FOSS). Replaces the proprietary Epic Games launcher; pairs with legendary-gl (see workstation.nix)
-      "prismlauncher"
       "retroarch-metal"
       "steam"
       # ispc の Sunshine につなぐクライアント (Windows 専用のものを母艦から触る)
@@ -721,18 +809,14 @@ in
       "calibre"
       "obsidian"
       "libreoffice"
-      "zotero"
-
-      # ─── VM ───
-      "utm"
 
       # ─── Fonts ───
-      "font-hackgen-nerd"
-      "font-jetbrains-mono-nerd-font"
       "font-sf-mono"
 
       # ─── Tracking / Misc ───
-      "activitywatch"
+      # The stable cask (0.13.2) is x86_64-only and stopped launching when the macOS 27 upgrade
+      # dropped Rosetta. The beta is the arm64 Tauri build with aw-server-rust.
+      "activitywatch@beta"
       "gstreamer-runtime"
     ];
 

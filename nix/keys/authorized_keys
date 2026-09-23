@@ -31,10 +31,14 @@
 #                再挑戦する前に、ツールがスタブを書くようになったかを確認すること。
 #   automation   母艦の無人ジョブ専用 (~/.ssh/id_automation, ed25519)。
 #                enclave 鍵は署名のたびに Touch ID の承認が要るので、承認の窓が
-#                切れると mutagen 同期などが黙って止まる (2026-08-30 に実際に踏んだ)。
+#                切れると無人のジョブが黙って止まる (2026-08-30 に実際に踏んだ)。
 #                Secure Enclave のまま 2 本目を作る道は塞がっていた (この下の注記)。
 #                秘密鍵はファイルなので enclave の保証は無い。そのぶん宛先を
-#                homeserver / macmini / mvrx 同期の 3 つに絞ってあり、単独で失効できる。
+#                homeserver と macmini に絞ってあり、単独で失効できる。
+#                (2026-09-16: 宛先に mvrx と書いてあったが、会社機の
+#                 authorized_keys に SHA256:EVujm1mG… は載っていない。-F /dev/null で
+#                 1 本ずつ試して Permission denied を確認済み。会社機へは
+#                 ssh_mvrx_sync_key (SHA256:Omlr022F…) で入る。)
 #                sops (common.yaml の ssh_automation_key) から配られる。
 #   break-glass  Bitwarden の金庫にある鍵。日常では使わず、Secure Enclave が
 #                使えなくなったとき (母艦の故障・紛失) の復旧用。専用の鍵を
@@ -51,9 +55,35 @@
 #    出ていく専用で、inbound には使われていなかった。会社機械から自宅へ入る
 #    用事が出たら、公開鍵を1行戻して rebuild すればよい。)
 #
-#   mvrx         会社側の機械向け。あちらに公開鍵を登録し直せないので Bitwarden
-#                の agent に残す。ここに置くのは母艦へ戻ってくる経路のため。
+#   mvrx         会社側の機械向け。会社機の authorized_keys は手置きで、このファイル
+#                の管理対象外なので自動では揃わない。2026-09-16 に実物を指紋で採ると
+#                4 本あった。
+#                  jHs+Ozls…  mvrx-nolang-dev   母艦から秘密鍵が消えている方の公開鍵。
+#                                               2026-08-28 に母艦側の宣言から外した鍵で、
+#                                               会社機には受理設定だけが残っている。
+#                  6AXiXLqd…  mvrx-dev          母艦の ~/.ssh/id_ed25519_mvrx-dev.pub と同じ
+#                                               指紋。母艦から Host mvrx-dev へ出ていくための鍵が
+#                                               inbound 側にも載っている。この鍵も秘密鍵が消えて
+#                                               いて .pub だけ残っている (2026-09-16)。
+#                  6eKHIxVa…  ssh: (ECDSA-SK)   母艦の enclave 鍵。
+#                  Omlr022F…  mvrx-sync@macbook ssh_mvrx_sync_key。母艦の無人経路。
+#                この 2 本の宛先は会社機 sean そのもの。Host mvrx-dev と
+#                Host mvrx-nolang-dev は同じ 1 台に対する別名で、ssh -G で両方を引くと
+#                user=gapul hostname=192.168.1.36 port=22 まで一致する (2026-09-16)。
+#                mvrx-dev という名前の別の開発機がある、という話ではない。
+#                2 本とも母艦から出ていくために使っていた歴代の鍵で、同じ 1 台に
+#                別々の鍵をあてていた形。
+#                どちらも母艦側の秘密鍵が消えているので、2026-09-16 に両方の IdentityFile を
+#                ssh_mvrx_sync_key へ向け直した。会社機側の 2 本は残す (人の判断)。
+#                どちらも手置きのファイルなので、実際に消すかは人が決める。ここからは触らない。
+#
+#                【ラベル重複の注意】mvrx-dev という名前の鍵は 2 本ある。
+#                  4WQSmfgn…  RSA      docs/HOMELAB.md の記載。実物は未確認で、どこの
+#                                      何の鍵かは 2026-09-16 時点で解明できていない。
+#                  6AXiXLqd…  ED25519  会社機 sean の authorized_keys に載っている方。
+#                                      母艦の ~/.ssh/id_ed25519_mvrx-dev.pub と同じ指紋。
+#                macbook-mini と同じで、名前ではなく fingerprint で見分けること。
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBLeOb9XOJPsmuTRf708qYoNckWk+/fhuWkpTWtTSu41 macbook-mini
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILZva+I0ui3AGOMb2V7BTLOXXtCJYvCJg9PGmzWOD8Am macmini-outbound macmini
 sk-ecdsa-sha2-nistp256@openssh.com AAAAInNrLWVjZHNhLXNoYTItbmlzdHAyNTZAb3BlbnNzaC5jb20AAAAIbmlzdHAyNTYAAABBBP5Y2DQbhcGpmOGDewcxUuVZ+/XO1I/Zm4M4nZhBMPwygadJY9//NxbVAZs98vMIp1Yy+9wgkQcEuc1CNQdCY2cAAAAEc3NoOg== ssh:
-ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIE6CMmADF4LGvKe7usCqv4axb24SBjplR9j08u7X9Ro0 automation@macbook (homeserver/macmini/mvrx-sync 限定)
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIE6CMmADF4LGvKe7usCqv4axb24SBjplR9j08u7X9Ro0 automation@macbook (homeserver/macmini 限定)

@@ -36,6 +36,14 @@
     executable = true;
   };
 
+  # x: read X (Twitter) from the terminal via the local twitter-api-safe relay
+  # (fa0311/twitter_api_safe_relay). Needs ~/.config/twitter-api-safe/settings.json and a
+  # logged-in browser profile; the script starts the relay on demand, so nothing stays resident.
+  home.file.".local/bin/x" = {
+    source = ../../../configs/bin/x;
+    executable = true;
+  };
+
   # espanso: general-purpose snippets (public) — to the Container path on Mac
   home.file."Library/Application Support/espanso/match/base.yml".source =
     ../../../configs/espanso/base.yml;

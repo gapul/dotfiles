@@ -129,6 +129,13 @@ in
       # Same for GNUPGHOME. Running gpg from a zsh where it's unset regenerates an empty
       # ~/.gnupg, so pin it early in the guard-less .zshenv.
       export GNUPGHOME="$HOME/.local/share/gnupg"
+      # A host that can't log Claude Code in through a browser keeps a long-lived OAuth token in
+      # this file instead (the headless mini: its keychain only opens for the console session).
+      # It goes here rather than in .zshrc because `ssh host 'cmd'` reads only .zshenv, and every
+      # agent that reaches such a host arrives exactly that way. Absent on machines that log in
+      # normally, where the keychain already answers.
+      [ -r "$HOME/.config/claude/oauth-token" ] && \
+        export CLAUDE_CODE_OAUTH_TOKEN="$(cat "$HOME/.config/claude/oauth-token")"
       # npm too: pin its non-XDG defaults (~/.npmrc / ~/.npm) via env vars.
       ${xdgEnv.npm}
       if [ -e /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]; then
