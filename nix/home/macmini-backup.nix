@@ -60,6 +60,10 @@ let
       # 中身は state.db(Discord の会話 525 件、全文検索インデックス込み)と .env 一式で、
       # どちらも作り直せない。hermes-agent 本体と node は再インストールできるので入れない。
       "/Users/Shared/hermes-backups"
+      # Presenta のデータベース。4:30 に hosts/macmini-presenta.nix の daemon が pg_dump したもの。
+      "/Users/Shared/presenta-backups"
+      # Presenta のスライドの画像・動画。どのリリースからも共有する置き場（hosts/macmini-presenta.nix）。
+      "${home}/.local/share/presenta/data"
     ];
     extraExcludes = [
       "**/.DS_Store"

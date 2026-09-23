@@ -1,0 +1,140 @@
+#!/usr/bin/env python3
+"""Drive Bitwig over OSC through the DrivenByMoss "Open Sound Control" controller.
+
+  bitwig send /play 1                 send one message (ints/floats/strings inferred from the text)
+  bitwig send /track/1/volume 0.5
+  bitwig listen [seconds]             print every message Bitwig sends (default: until Ctrl-C)
+  bitwig state [seconds]              ask Bitwig for a full refresh and print the final value of each address
+
+Bitwig side: Settings > Controllers > Add > "Open Sound Control" (DrivenByMoss). The controller
+stays disabled until a MIDI input is assigned; with no hardware that means the IAC Driver, which
+ships offline. Put it online once (persists): MIDIObjectSetIntegerProperty(IAC device, "offline", 0).
+Receive port = BW_PORT (default 8000), send host 127.0.0.1 / port = BW_LISTEN (default 9000).
+Address list: DrivenByMoss-Manual.pdf, chapter "Open Sound Control (OSC) protocol".
+"""
+import os
+import socket
+import struct
+import sys
+import time
+
+HOST = os.environ.get("BW_HOST", "127.0.0.1")
+PORT = int(os.environ.get("BW_PORT", "8000"))
+LISTEN = int(os.environ.get("BW_LISTEN", "9000"))
+
+
+def _pad(b):
+    return b + b"\0" * (4 - len(b) % 4)
+
+
+def encode(addr, args):
+    tags, body = ",", b""
+    for a in args:
+        if isinstance(a, bool) or isinstance(a, int):
+            tags += "i"
+            body += struct.pack(">i", int(a))
+        elif isinstance(a, float):
+            tags += "f"
+            body += struct.pack(">f", a)
+        else:
+            tags += "s"
+            body += _pad(str(a).encode())
+    return _pad(addr.encode()) + _pad(tags.encode()) + body
+
+
+def _str(data, i):
+    end = data.index(b"\0", i)
+    return data[i:end].decode(errors="replace"), end + 4 - end % 4 if end % 4 else end + 4
+
+
+def decode(data):
+    """Yield (addr, args) for a message or a (nested) bundle."""
+    if data.startswith(b"#bundle"):
+        i = 16
+        while i < len(data):
+            (n,) = struct.unpack(">i", data[i : i + 4])
+            yield from decode(data[i + 4 : i + 4 + n])
+            i += 4 + n
+        return
+    addr, i = _str(data, 0)
+    tags, i = _str(data, i)
+    args = []
+    for t in tags[1:]:
+        if t == "i":
+            args.append(struct.unpack(">i", data[i : i + 4])[0]); i += 4
+        elif t == "f":
+            args.append(struct.unpack(">f", data[i : i + 4])[0]); i += 4
+        elif t == "s":
+            s, i = _str(data, i); args.append(s)
+        elif t == "T": args.append(True)
+        elif t == "F": args.append(False)
+        elif t == "N": args.append(None)
+        else:
+            break  # ponytail: blobs/other types unsupported, DrivenByMoss never sends them
+    yield addr, args
+
+
+def parse_arg(s):
+    for cast in (int, float):
+        try:
+            return cast(s)
+        except ValueError:
+            pass
+    return s
+
+
+def send(addr, *args):
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+        s.sendto(encode(addr, [parse_arg(a) if isinstance(a, str) else a for a in args]), (HOST, PORT))
+
+
+def receive(seconds, on_bound=None):
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        s.bind(("0.0.0.0", LISTEN))
+        if on_bound:
+            on_bound()  # e.g. send /refresh only once we can hear the reply
+        deadline = None if seconds is None else time.monotonic() + seconds
+        while deadline is None or time.monotonic() < deadline:
+            s.settimeout(None if deadline is None else max(0.01, deadline - time.monotonic()))
+            try:
+                data, _ = s.recvfrom(65536)
+            except socket.timeout:
+                return
+            yield from decode(data)
+
+
+def selftest():
+    msg = encode("/track/1/volume", [0.5, 3, "Bass"])
+    assert list(decode(msg)) == [("/track/1/volume", [0.5, 3, "Bass"])]
+    bundle = b"#bundle\0" + b"\0" * 8 + struct.pack(">i", len(msg)) + msg
+    assert list(decode(bundle)) == list(decode(msg))
+    assert [parse_arg(x) for x in ("1", "0.5", "mix")] == [1, 0.5, "mix"]
+    print("ok")
+
+
+def main(argv):
+    cmd = argv[1] if len(argv) > 1 else "help"
+    if cmd == "send" and len(argv) > 2:
+        send(argv[2], *argv[3:])
+    elif cmd == "listen":
+        for addr, args in receive(float(argv[2]) if len(argv) > 2 else None):
+            print(addr, *args, flush=True)
+    elif cmd == "state":
+        seen = {}
+        for addr, args in receive(float(argv[2]) if len(argv) > 2 else 1.0, lambda: send("/refresh")):
+            seen[addr] = args
+        for addr in sorted(seen):
+            print(addr, *seen[addr])
+    elif cmd == "selftest":
+        selftest()
+    else:
+        print(__doc__.strip())
+        sys.exit(cmd != "help")
+
+
+if __name__ == "__main__":
+    try:
+        main(sys.argv)
+    except (KeyboardInterrupt, BrokenPipeError):
+        pass

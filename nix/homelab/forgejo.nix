@@ -38,6 +38,7 @@
     log-driver = "journald";
     extraOptions = [
       "--health-cmd=[\"wget\", \"-qO-\", \"http://localhost:3000/api/healthz\"]"
+      "--health-start-period=30s"
       "--health-interval=1m0s"
       "--health-retries=3"
       "--health-timeout=10s"

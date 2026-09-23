@@ -6,18 +6,19 @@ files they came from disappear with Proxmox.
 
 ## Secrets
 
-No secret is in this tree. Where a compose file interpolated a value from its
-`.env`, that entry was removed from `environment` and the container instead reads
-`/var/lib/secrets/<stack>.env` at runtime.
+Secrets are encrypted in `secrets/homelab.yaml` and installed by sops-nix at
+`/var/lib/secrets/<stack>.env` (or the service-specific path below). The server
+decrypts only this file with its SSH host key; the human recovery recipients remain
+on the encrypted document, but their private keys never live on the server.
 
 This matters more than it looks. podman applies `-e` after `--env-file`, so an
 entry left behind in `environment` — even an empty string, or an upstream default
 like `password` — silently wins over the real value from the env file. The service
 then starts with the wrong credential rather than failing.
 
-Each file is root-owned, mode 0400, and written by hand at install time. Until
-this host has an age key of its own, sops-nix cannot encrypt to it; move them into
-`secrets/secrets.yaml` once it does.
+Most files are root-owned and mode 0400. Exceptions such as Authelia's user file
+are declared in `nix/homelab/secrets.nix`. Edit with `sops secrets/homelab.yaml`;
+do not edit the installed paths, because the next activation replaces them.
 
 Note that several keys are **not** named the way the old `.env` named them: the
 compose files renamed them on the way into the container, and it is the container
@@ -38,8 +39,12 @@ name that matters now.
 | `searx.env` | `SEARXNG_SECRET`, from `openssl rand -hex 32`, substituted into SearXNG's `server.secret_key` with envsubst |
 | `rallly.env` | `DATABASE_URL`, the whole `postgres://rallly:<pw>@db/rallly`, plus `POSTGRES_PASSWORD` and `SECRET_PASSWORD`, which must be at least 32 characters or zod rejects it at startup, and `SUPPORT_EMAIL`, which is required even if no login mail is ever sent |
 | `spliit.env` | `POSTGRES_PRISMA_URL` and `POSTGRES_URL_NON_POOLING`, both the whole `postgresql://spliit:<pw>@db/spliit`, plus `POSTGRES_PASSWORD` |
-| `paperless.env` | `PAPERLESS_SECRET_KEY`, `PAPERLESS_ADMIN_PASSWORD` |
+| `paperless.env` | `PAPERLESS_SECRET_KEY`, `PAPERLESS_ADMIN_PASSWORD`, `PAPERLESS_REMOTE_OCR_API_KEY` (the same value as the macmini's `~/.config/vision-ocr/key`) |
 | `vaultwarden.env` | `ADMIN_TOKEN` |
+| `nostr.env` | `NOSTR_PRIVATE_KEY` (hex) for npub16t57vts9…q08y5, the key behind gapul@gapul.net on Nostr. Losing it loses the identity |
+| `writefreely-admin.password` | first-run password for WriteFreely's admin `gapul`; read only while there are no users, changed from the UI afterwards |
+| `puls.env` | `PULS_TOKEN`, a random bearer token the PulsHealth app sends (it is also in the pairing QR). Changing it means re-pairing the iPhone |
+| `homebox.env` | `HBOX_AUTH_API_KEY_PEPPER`, from `openssl rand -base64 48`. Changing it invalidates every issued API key |
 | `romm.env` | `MARIADB_ROOT_PASSWORD`, `MARIADB_PASSWORD` and `DB_PASSWD`, the last two being the same value, plus `ROMM_AUTH_SECRET_KEY` from `openssl rand -hex 32`, `IGDB_CLIENT_ID` and `IGDB_CLIENT_SECRET` |
 | `gameyfin.env` | `APP_KEY`, from `head -c 32 /dev/urandom \| base64`. It is read as an AES key, so anything other than exactly 128, 192 or 256 bits loops on `Invalid AES key length`; 64 hex characters are treated as 64 bytes and fail. Plus `IGDB_CLIENT_ID` and `IGDB_CLIENT_SECRET`, which can be the same values romm uses |
 | `hauk/config.php` | A PHP configuration file rather than an `.env`, placed at `/var/lib/homelab/hauk/config.php`. Copy `/etc/hauk/config-sample.php` out of the image and replace `password` with a hash, from `podman exec hauk php -r 'echo password_hash("...", PASSWORD_DEFAULT);'`. `public_url` is `https://where.gapul.net/` |

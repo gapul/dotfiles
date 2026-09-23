@@ -28,7 +28,34 @@ in
       # ほうが古かった)。uosc は元から nixpkgs 側なので、これで本体とスクリプトの出所が揃う。
       mpv
       pandoc # document conversion
+      # Ears for the music tooling: aubiopitch / aubiotempo / aubioonset turn a rendered wav into
+      # numbers an agent can check (is the melody the one I wrote, is the tempo 100). The other
+      # half, `sox ... spectrogram`, is sox which is already here. See ~/tmp/music-tools-test/listen.
+      # 26.05 marks aubio linux-only; nixos-unstable builds it on aarch64-darwin (0.4.9, cached).
+      fastPkgs.aubio
+      # LilyPond: text -> engraved score (PDF/PNG/MIDI). MuseScore's CLI covers MIDI -> score,
+      # this is for notation written as text in the first place.
+      lilypond
+      # MeshLab's scripting side. meshlabserver was dropped in 2020.x; the filters are driven
+      # from Python via pymeshlab instead. Wrapped as its own interpreter so it does not shadow
+      # the main python3 on PATH: `pymeshlab-python script.py`.
+      (writeShellScriptBin "pymeshlab-python" ''
+        exec ${python3.withPackages (ps: [ ps.pymeshlab ])}/bin/python3 "$@"
+      '')
       typst # typesetting
+      # Circuit simulation. kicad-cli (KiCad 10, /Applications/KiCad) exports a SPICE netlist
+      # from a schematic; ngspice -b runs it; gnuplot turns wrdata output into a PNG the agent
+      # can read. Verified with an RC low-pass: -3 dB at 1585 Hz against 1592 theoretical.
+      ngspice
+      gnuplot
+      # build123d: Python CAD (OpenCascade via cadquery-ocp) for the parts OpenSCAD's CSG cannot
+      # do well - fillets, threads, constraints. Neither is in nixpkgs, so this is the sanctioned
+      # uv exception (see keychip-case for the per-repo form): uv resolves build123d on demand
+      # into its cache and pins Python 3.12, the newest with cadquery-ocp wheels.
+      # `build123d-python script.py` / `build123d-python -c '...'`.
+      (writeShellScriptBin "build123d-python" ''
+        exec ${lib.getExe uv} run --quiet --python 3.12 --with build123d python "$@"
+      '')
       # Compose the TeX Live collections needed for Japanese academic documents via Nix.
       # Avoid scheme-full while covering math, figures/tables, bibliographies, and common
       # extra packages without adding them individually.
@@ -69,7 +96,7 @@ in
       cargo # Rust build/package management
       # Container runtimes belong on the server hosts.  This workstation keeps
       # only client/dev tooling and delegates container workloads to them.
-      fontforge # font editing CLI (GUI is the fontforge-app cask)
+      fontforge # font editing CLI (no GUI: the only macOS GUI build is x86_64)
       python3Packages.fonttools # font manipulation lib/CLI
       stockfish # chess engine, spoken to over UCI (the Puddle chess wallpaper's opponent)
       aerc # mail TUI

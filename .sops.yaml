@@ -13,6 +13,7 @@ keys:
   # ホスト鍵 (SSH ホスト鍵由来)
   - &mac      age14w27qfzm22u7yxwhwk78438z6v5au93pw43uvlxuyw3eg0sauc5qdle6wa
   - &macmini  age1vrp2xu4wh8dwte9mx8cqezlkchz5nk8kwqn2673epjkqx43ycgtq352jet
+  - &homeserver age1p3c0r3fhuq3xdypvghv7kkz8a6e6k4fjajnxa7yk0psg3yqfg34s4pts7l
 
 # 先頭の一致した rule が使われるので、狭いものから順に書く。
 creation_rules:
@@ -25,18 +26,17 @@ creation_rules:
           - *recovery
           - *mac
 
-  # homelab (Proxmox の CT / 各サービス) 向け。ワークステーションから読むものは common に置く
-  # (radicale はここではなく common: calcurse が読むため)。sops-nix からは読んでいないので
-  # ホスト鍵の受信者はまだ無い。homeserver 移行のときに足す。
+  # homelab 向け。ワークステーションから読むものは common に置く
+  # (radicale はここではなく common: calcurse が読むため)。homeserver は自分の SSH
+  # ホスト鍵だけでこのファイルを復号でき、人間の age 主鍵を無人機へ置かない。
   - path_regex: secrets/homelab\.yaml$
     key_groups:
       - age:
           - *me
           - *recovery
+          - *homeserver
 
   # どのマシンでも要るもの (PII / ssh_config / restic / rclone / VPN など)。
-  # macmini はまだ sops を読んでいないが、受信者は先に入れてある: 後から足すと
-  # 秘密ファイルを再暗号化し直すことになり、そのたびに平文を触る手数が増えるため。
   - path_regex: secrets/common\.yaml$
     key_groups:
       - age:

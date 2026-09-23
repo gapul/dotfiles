@@ -8,7 +8,7 @@ steps taken that day, and what was learned doing it, are in
 What stays here is the things that turned out to be broken only when someone tried to use them.
 Pre-migration decisions and the day's runbook have served their purpose and are gone.
 
-Rechecked against the running machine on 2026-08-16.
+Rechecked against the running machine on 2026-09-23.
 
 ---
 
@@ -70,37 +70,34 @@ repository. If something breaks, `.storage/core.config_entries.bak-claude` and
 
 ## Still open
 
-- [ ] **Dawarich on the phone.** The server side is done: the login is
-      `gapul@homeserver.local`, an API key exists, and `APPLICATION_HOSTS` is fixed. What
-      remains is pointing OwnTracks on the iPhone at
-      `http://100.127.129.31:3005/api/v1/owntracks/points?api_key=…`. Recording away from home
-      requires Tailscale to stay on on the phone.
-- [ ] **Bridge rooms still carry the old server_name.** Eighteen discord portals are
+- [x] **Dawarich on the phone.** Overland is configured on the iPhone with the
+      `/api/v1/overland/batches` endpoint and `gapul-iphone` device ID. A live verification
+      on 2026-09-23 confirmed 53 newly ingested points; recording away from home requires
+      Tailscale to stay on on the phone.
+- [ ] **Bridge rooms still carry the old server_name (on hold by choice, 2026-09-23).** Eighteen discord portals are
       `!…:matrix.gapul.net` and joining them returns 404. This is fallout from the July domain
       change, unrelated to the migration. Fixing it means recreating the portals, so it needs a
       decision. The telegram side reports `No user logins found` and has no login at all.
-- [ ] **Leftovers from HAOS and the old host.** Waiting on a decision to delete.
-      `core.entity_registry` still holds 63 entities with `platform: hassio`, permanently
-      unavailable. `/var/lib/homelab` holds 17 MB of directories from retired stacks
-      (backrest 785K, uptime-kuma 649K, adguard-secondary 16M, adguardhome-sync, wud,
-      stirling-pdf.bak). The space is negligible; the only reason to delete is clarity.
+- [x] **Leftovers from HAOS and the old host.** The retired stack directories are gone as of
+      2026-09-23. Home Assistant's unavailable `platform: hassio` entities are harmless mutable
+      UI state, so they are not edited automatically.
 
 ## Worth doing once things settle
 
 Not urgent, but each of these pays off.
 
-- [ ] **Add a second NVMe and make it a ZFS mirror.** There is currently one disk and no
-      redundancy (`rpool` 472 G, 5% used). `zpool attach` converts it without reinstalling.
-      This matters more than a second node.
-- [ ] **Move secrets into sops.** Once the host has an age key, the hand-placed files under
-      `/var/lib/secrets` can go into `secrets/secrets.yaml`. restic's ntfy notification is
-      waiting on this too.
+- [x] **Keep a single NVMe.** A second internal NVMe cannot be added to this machine. The pool
+      therefore remains a healthy single-disk `rpool`; daily encrypted off-site backup and the
+      monthly restore drill are the recovery path rather than a local mirror.
+- [x] **Move live secrets into sops.** Forty-seven non-regenerable files are encrypted in
+      `secrets/homelab.yaml` and installed by sops-nix. The host decrypts only that file with
+      its SSH host key; backup copies and obsolete plaintext controls are not propagated.
 - [ ] **Put the Raspberry Pi on NixOS too**, so the primary and secondary AdGuard can be
       generated from one definition.
-- [ ] **Close gatus's blind spots.** No notification goes out when ntfy or the host itself is
-      down. Watching homeserver from the Pi is the obvious answer. It also misses the shape
-      seen above, where HTTP returns 200 but the contents are dead, which is worth thinking
-      about.
+- [x] **Close gatus's host and ntfy blind spots.** The always-on Mac mini checks the Gatus path
+      and ntfy health endpoint every minute. Three consecutive failures and the subsequent
+      recovery are mailed through Gmail, an independent route that still works when ntfy or
+      homeserver is down. Content-level checks such as stale location data remain on homeserver.
 - [ ] **A Mullvad exit node**, if it turns out to be wanted. CT106 was empty, so this is a
       fresh build. Give it its own netns rather than dirtying the host routing table.
 - [ ] **deploy-rs or colmena**, once there are more hosts.

@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# macmini に出ている管理者認証ダイアログに、sops に入れてあるログインパスワードを打ち込む。
+#
+# 呼ぶのは人間。Claude はこれを実行しない (アカウントのパスワードを代わりに入力しないという
+# 線は、保管場所が sops になっても変わらない)。人が叩くぶんには、毎回クリップボード経由で
+# パスワードを渡すより安全でも手数でも勝つので、道具として置いてある。
+#
+# TCC (画面収録・アクセシビリティ) のトグルだけは、authorizationdb を緩めても認証を要求する
+# ことを実測で確認済み (2026-09-17)。macOS 26 はこの経路を別扱いで固めている。パスワードを
+# 完全に無くすには MDM の PPPC プロファイルが要る。
+#
+# 値は argv にもシェル履歴にも乗せない。標準入力で渡し、向こうでは 0600 の一時ファイルを
+# 経由して打鍵し、直後に消す。
+set -euo pipefail
+
+HOST="${1:-macmini}"
+KEY='["macos"]["login_password"]'
+REPO="${DOTFILES_DIR:-$HOME/.dotfiles}"
+SECRETS="$REPO/secrets/common.yaml"
+
+if [ ! -r "$SECRETS" ]; then
+  echo "macmini-auth: $SECRETS が読めない" >&2
+  exit 1
+fi
+
+if ! sops -d --extract "$KEY" "$SECRETS" 2>/dev/null |
+  ssh "$HOST" 'umask 077
+    cat > /tmp/.macmini-auth
+    trap "rm -f /tmp/.macmini-auth" EXIT
+    /usr/bin/osascript \
+      -e "tell application \"System Events\" to keystroke (read POSIX file \"/tmp/.macmini-auth\" as «class utf8»)" \
+      -e "delay 0.3" \
+      -e "tell application \"System Events\" to key code 36" >/dev/null 2>&1'; then
+  echo "macmini-auth: 失敗した。sops の $KEY があるか、認証ダイアログが前面にあるか確認する" >&2
+  exit 1
+fi
+
+echo "macmini-auth: $HOST に入力した"

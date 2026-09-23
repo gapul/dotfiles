@@ -84,7 +84,7 @@ in
         # Settings shared with nssh hosts: setopt / keybindings / fzf-tab zstyles /
         # portable aliases and functions. nssh hosts read the very same file from
         # configs/shell/zshrc.remote, so the two never drift.
-        # Host-specific things (ghq / tirith / git-wt / launcher / vpn / codex theme)
+        # Host-specific things (ghq / git-wt / launcher / vpn / codex theme)
         # stay below, because they depend on tools only this machine has.
         source ${../../../configs/shell/zshrc.common}
 
@@ -121,10 +121,6 @@ in
             git-wt-shell "$@"
           fi
         }
-
-        # Inspect dangerous URLs, pipe-to-shell, and obfuscated payloads before running.
-        # Default policy blocks high-risk and warns on medium-risk; not always strict.
-        evalcache tirith init --shell zsh
 
         # The Codex TUI has no system theme, so pick the custom Rosé Pine / Dawn tmTheme
         # matching the OS appearance at startup.

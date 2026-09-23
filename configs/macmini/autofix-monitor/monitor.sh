@@ -7,6 +7,10 @@ set -uo pipefail
 export PATH="/Users/gapul/.local/bin:/etc/profiles/per-user/gapul/bin:/run/current-system/sw/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 # claude の認証は $CLAUDE_CONFIG_DIR にある(launchd 実行では既定で入らない)。
 export CLAUDE_CONFIG_DIR="${CLAUDE_CONFIG_DIR:-/Users/gapul/.config/claude}"
+# ただし launchd の agent からは keychain の認証が読めず "Not logged in" になる(7月から
+# 毎時空振りしていた)。ssh 経由と同じく oauth-token ファイルを使う。common.nix の .zshenv 参照。
+[ -r "$CLAUDE_CONFIG_DIR/oauth-token" ] && \
+  export CLAUDE_CODE_OAUTH_TOKEN="$(cat "$CLAUDE_CONFIG_DIR/oauth-token")"
 
 REPO="mugen404/prod-record"
 HEALTH_ISSUE=3

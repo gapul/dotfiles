@@ -42,6 +42,7 @@ in
     # Keep Codex declarative on the remote host so it is both discoverable and available
     # after unattended rebuilds.
     agentPkgs.codex
+    agentPkgs.opencode
 
     # The study tutor renders plans and handouts with typst (show.py in the sandbox looks it
     # up under /nix/store). Declared here so a garbage collection can't take it away.
@@ -77,11 +78,53 @@ in
     '')
   ];
 
+  # Claude Code on the mini gets the workstation's managed keys (bypassPermissions as the default
+  # mode, theme, effort, ...) from settings.remote.json, the same merge remote-bootstrap applies over
+  # nssh. Merged rather than linked: hooks and plugins stay host-owned, and Orca and the TUI rewrite
+  # this file in place (configs/cli/claude/README.md). An unparsable file is reported and left alone
+  # rather than failing an unattended switch.
+  home.activation.claudeManagedSettings = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    run ${pkgs.python3}/bin/python3 ${../../scripts/merge-claude-settings.py} \
+      "${config.xdg.configHome}/claude/settings.json" \
+      --managed ${../../configs/cli/claude/settings.remote.json} \
+      || echo "warning: Claude settings merge failed; left untouched" >&2
+  '';
+
   # launchd does not create the parent of StandardOutPath, and the dashboard agent's log moved out
   # of the (now deleted) project directory into XDG state.
   home.activation.manabiStateDir = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     run /bin/mkdir -p "${config.home.homeDirectory}/.local/state/manabi"
   '';
+
+  # auto-fix パイプライン (GitHub issue → macmini の Claude Code → PR → CI → 自動マージ) が
+  # 生きているかを1時間ごとに確かめる。監視対象と同じ GitHub Actions では回さない、という
+  # 判断はスクリプト側の冒頭に書いてある。
+  #
+  # 元は手書きの plist と $HOME/autofix-monitor のスクリプトだった。中身は変えずに store へ
+  # 移し、状態(ログと Claude の出力)だけ XDG の state 配下に分けている。
+  #
+  # Lives in home-manager, not nix-darwin's launchd.agents: activated over ssh, nix-darwin
+  # loads /Library/LaunchAgents into the system domain as root (claude refuses to run, and
+  # the logs turned root-owned, which then broke the real agent with EX_CONFIG) and never
+  # reloads the copy in the login session, so it kept running the old script.
+  launchd.agents.autofix-monitor = {
+    enable = true;
+    config = {
+      ProgramArguments = [
+        "${pkgs.bash}/bin/bash"
+        "${../../configs/macmini/autofix-monitor/monitor.sh}"
+      ];
+      RunAtLoad = true;
+      StartInterval = 3600;
+      StandardOutPath = "${config.home.homeDirectory}/.local/state/autofix-monitor/stdout.log";
+      StandardErrorPath = "${config.home.homeDirectory}/.local/state/autofix-monitor/stderr.log";
+      EnvironmentVariables = {
+        # launchd から起動されるとシェルの環境が入らないので、スクリプトが要る分だけ渡す。
+        HOME = config.home.homeDirectory;
+        XDG_STATE_HOME = "${config.home.homeDirectory}/.local/state";
+      };
+    };
+  };
 
   # glances, the box's own metrics endpoint (the homelab dashboard scrapes it). Was a hand-written
   # plist; same spec, just declared. Bound to 0.0.0.0 because the scrape comes from the homeserver,
@@ -271,6 +314,45 @@ in
     done
   '';
 
+  # OCR for Paperless (homeserver) done by Apple Vision here instead of tesseract there.
+  # personal-tools/vision-ocr is a small Azure AI Document Intelligence look-alike, which is the
+  # only remote OCR engine Paperless 3 speaks. Vision reads Japanese receipts that tesseract
+  # garbles (compared on the same scan 2026-09-15). The CLI links Vision/PDFKit, so it is built
+  # with Xcode's swiftc, not nix; the wrapper rebuilds it whenever the source is newer. Exposed
+  # tailnet-only on :8930 through tailscale serve, like Fava and Orca.
+  launchd.agents.vision-ocr = {
+    enable = true;
+    config = {
+      ProgramArguments = [
+        "${pkgs.writeShellScript "vision-ocr" ''
+          src="$HOME/Developer/github.com/gapul/personal-tools/vision-ocr"
+          bin="$HOME/.local/share/vision-ocr/vision-ocr"
+          if [ ! -f "$src/server.py" ]; then
+            sleep 600
+            exit 0
+          fi
+          if [ ! -x "$bin" ] || [ "$src/vision-ocr.swift" -nt "$bin" ]; then
+            mkdir -p "$(dirname "$bin")"
+            /usr/bin/xcrun swiftc -O "$src/vision-ocr.swift" -o "$bin" || {
+              sleep 60
+              exit 1
+            }
+          fi
+          [ -x /opt/homebrew/bin/tailscale ] &&
+            /opt/homebrew/bin/tailscale serve --bg --https=8930 http://127.0.0.1:8930 >/dev/null 2>&1
+          export VISION_OCR_BIN="$bin"
+          export VISION_OCR_PUBLIC_URL=https://macmini.tail079f44.ts.net:8930
+          exec ${pkgs.python3}/bin/python3 "$src/server.py" --port 8930
+        ''}"
+      ];
+      RunAtLoad = true;
+      KeepAlive = true;
+      ProcessType = "Background";
+      StandardOutPath = "/tmp/vision-ocr.log";
+      StandardErrorPath = "/tmp/vision-ocr.log";
+    };
+  };
+
   # Nightly `git pull` on the checkout. The post-merge hook is what actually rebuilds; this only
   # exists because nothing was ever pulling here, so a merged flake.lock sat in GitHub while the
   # machine kept running last month's generation.
@@ -335,13 +417,17 @@ in
       "ai-stack.sh"
       "ai_panel.py"
       "diarize_merge.py"
+      "fish_voicevox_shim.py"
       "llm_ask.py"
       "rag_server.py"
       "sbv2_tts.py"
     ]
     ++ map aiWrapper [
+      "agy"
       "ask"
       "describe"
+      "fish-tts"
+      "fish-voicevox"
       "ocr"
       "separate"
       "transcribe"
@@ -353,7 +439,74 @@ in
       # The workstation's broker sends approved native credentials to this fixed remote helper.
       { ".local/bin/ask-native-fill".source = ../../configs/ask/native_fill.py; }
     ]
+    ++ [
+      # macmini's ssh client config. The workstation gets its own through sops
+      # (home/secrets.nix), but macmini holds no age key, so this half is declared in
+      # plain nix. Nothing here is a secret — hostnames, a user name, and paths to keys
+      # that live outside the store.
+      #
+      # Owning the file is the point. Until 2026-09-13 this was a hand-written file and
+      # Claude Code sessions running on macmini kept appending the same `Host github.com`
+      # block on every run; it had accumulated 84 copies. A store symlink cannot be
+      # appended to, so the next attempt fails loudly instead of growing the file.
+      #
+      # macbook-mini is the workstation. macmini reaches it over the tailnet with its own
+      # `macmini-outbound` key, verified without a forwarded agent, so this works from
+      # launchd jobs and from sessions nobody is attached to. It is a different path from
+      # configs/bin/open-on-mac, which goes through the RemoteForward on 127.0.0.1:2222
+      # and deliberately carries no key on this side — that one only exists while the
+      # workstation holds the connection open, so it cannot be what a background job uses.
+      {
+        ".ssh/config".text = ''
+          Host macbook-mini mac
+            HostName 100.67.200.89
+            User gapul
+            IdentityFile ~/.ssh/id_ed25519
+            IdentitiesOnly yes
+
+          Host ispc
+            HostName 100.73.228.38
+            User ispc_5CG54406V7
+            IdentityFile ~/.ssh/id_ed25519
+            IdentitiesOnly yes
+
+          Host github.com
+            IdentityFile ~/.ssh/mocopi_ci
+            IdentitiesOnly yes
+        '';
+      }
+    ]
   );
+
+  # A VOICEVOX-compatible front for Fish S2 Pro (mlx-speech), so anything that already speaks the
+  # VOICEVOX API can use it by pointing at this port — presenta's video worker does, see
+  # hosts/macmini-presenta.nix. Speech falls back to the AivisSpeech engine above when Fish fails
+  # or would take longer than the caller waits, so a slow model never costs us a video.
+  #
+  # Fish S2 Pro's weights are under the Fish Audio Research License: research, personal and
+  # evaluation use only. Serving presenta.gapul.net from it is a commercial use in that licence's
+  # terms and needs a separate agreement with Fish Audio.
+  #
+  # The model (6.3GB) and the venv are imperative assets like the rest of the AI stack, see
+  # configs/macmini/README.md.
+  launchd.agents.fish-voicevox = {
+    enable = true;
+    config = {
+      ProgramArguments = [
+        "${config.home.homeDirectory}/.local/bin/fish-voicevox"
+        "--port"
+        "10202"
+        # The caller (workers/video/voicevox.ts) gives up after 120s per chunk. Stay under it.
+        "--budget-seconds"
+        "90"
+      ];
+      RunAtLoad = true;
+      KeepAlive = true;
+      ProcessType = "Background";
+      StandardOutPath = "/tmp/fish-voicevox.log";
+      StandardErrorPath = "/tmp/fish-voicevox.log";
+    };
+  };
 
   # AI stack resident (replaces the old hand-written net.gapul.* plists. 2026-07-19)
   launchd.agents.ai-stack = {
