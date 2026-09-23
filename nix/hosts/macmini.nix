@@ -234,6 +234,7 @@ in
     ../modules/authorized-keys.nix
     ./macmini-ci-runner.nix
     ./macmini-dns.nix
+    ./macmini-homeserver-monitor.nix
     ./macmini-presenta.nix
     sopsNix.darwinModules.sops
     # マイクラのサーバーは上の表から生やす。別モジュールにしてあるのは、nix が同じ attrset の
@@ -517,6 +518,39 @@ in
       # XDG state now, next to the dashboard refresh log, so nothing is resurrected anywhere.
       StandardOutPath = "/Users/${user.username}/.local/state/manabi/daily_review.log";
       StandardErrorPath = "/Users/${user.username}/.local/state/manabi/daily_review.log";
+    };
+  };
+
+  # nix store の GC。home/macmini-maintenance.nix の GC はユーザー権限なので、消せるのは
+  # home-manager の世代だけで、/nix/var/nix/profiles/system-* (root 所有) は残り続ける
+  # (2026-09-23 時点で 141 世代 / store 114G)。システム世代を落とせるのは root だけなので
+  # daemon で回す。日曜 03:45 = ユーザー側の掃除 (04:15) と restic (05:00) の前。
+  launchd.daemons.nix-gc = {
+    command = "${pkgs.writeShellScript "nix-gc" ''
+      set -u
+      export PATH=/nix/var/nix/profiles/default/bin:/usr/bin:/bin:/usr/sbin:/sbin
+      echo "==================== $(date '+%Y-%m-%d %H:%M:%S') ===================="
+      # TCC が .app に付ける com.apple.macl は root の chmod も弾き、GC がそのパスで
+      # 止まって "0 store paths deleted" になる (aquestalkplayer で数週間そうなっていた)。
+      # store の中の .app に付いていたら先に剥がす。生きているパスに付いていても害は無い。
+      for app in /nix/store/*/Applications/*.app; do
+        xattr -d com.apple.macl "$app" 2>/dev/null || true
+      done
+      nix-collect-garbage --delete-older-than 30d
+    ''}";
+    serviceConfig = {
+      StartCalendarInterval = [
+        {
+          Weekday = 0;
+          Hour = 3;
+          Minute = 45;
+        }
+      ];
+      ProcessType = "Background";
+      LowPriorityIO = true;
+      Nice = 10;
+      StandardOutPath = "/var/log/nix-gc.log";
+      StandardErrorPath = "/var/log/nix-gc.log";
     };
   };
 

@@ -16,8 +16,10 @@ on:
       - '.statix.toml'
       - '.gitleaks.toml'
       - 'om.yaml'
-      - '.github/actions/setup-nix/**'
-      - '.github/workflows/ci.yml'
+      # workflow だけを触る PR でも必須チェックが来るように .github は丸ごと。以前は
+      # ci.yml と setup-nix だけだったので、update-flake-lock.yml 単独の PR (#710) は
+      # CI が一度も走らず auto-merge が永遠に待った。
+      - '.github/**'
   pull_request:
     paths:
       - 'nix/**'
@@ -29,8 +31,10 @@ on:
       - '.statix.toml'
       - '.gitleaks.toml'
       - 'om.yaml'
-      - '.github/actions/setup-nix/**'
-      - '.github/workflows/ci.yml'
+      # workflow だけを触る PR でも必須チェックが来るように .github は丸ごと。以前は
+      # ci.yml と setup-nix だけだったので、update-flake-lock.yml 単独の PR (#710) は
+      # CI が一度も走らず auto-merge が永遠に待った。
+      - '.github/**'
   workflow_dispatch:
 
 concurrency:
@@ -143,11 +147,19 @@ jobs:
       # 作る仕様で出力を選べないため、PR 用の部分集合は flake 側の集約パッケージで表現し、
       # ここでは素の nix build で叩く。macmini closure / NixOS 群 / VM テストは下の main
       # 側で作られ、cachix もそこで埋まる。
+      # --out-link で GC 根を残す。自前ランナーの store は週次 GC (macmini: launchd.daemons.nix-gc)
+      # が掛かるが、pr-gate のクロージャはその機械のシステム世代に入っていないので、根が無いと
+      # 毎回消されて次の PR が全部ビルドし直しになる (2026-09-23 に GC 直後の CI が 10 分超えた)。
+      # リンクは次の run で上書きされるので、残るのは直近 1 本分だけ。
+      # homeserver のランナーは $HOME が RuntimeDirectory (/run、tmpfs) で再起動で消えるので、
+      # systemd が渡す STATE_DIRECTORY (/var/lib 配下) を優先する。macmini は $HOME で永続。
       - name: nix build (pr-gate)
         if: github.event_name == 'pull_request'
         run: |
+          roots="${STATE_DIRECTORY:-$HOME}/.local/state/nix-gcroots"
+          mkdir -p "$roots"
           nix --accept-flake-config build ./nix#packages.${{ matrix.system }}.pr-gate \
-            --no-link --print-build-logs
+            --out-link "$roots/pr-gate-${{ matrix.system }}" --print-build-logs
 
       # omnix 本体は om.cachix.org から取得 (--accept-flake-config)。ソースビルドしない。
       - name: om ci run

@@ -529,6 +529,7 @@ in
     #  overwrites it every time. All taps are declared and version-managed below, so the activation-time
     #  check is turned off.)
     taps = [
+      "abue-ammar/tinycast" # Tinycast (native Spotlight-like launcher, AGPL-3.0). Not in homebrew/cask.
       "chojs23/tap" # Concord (Discord TUI)
       "deskflow/tap"
       "felixkratz/formulae"
@@ -636,12 +637,13 @@ in
       "simplex"
       "touchdesigner"
       # ─── Browsers ───
-      # google-chrome was dropped on 2026-08-30. It was here only for automation (Zen is the
-      # everyday browser), and every job it held has somewhere better to go: Lightpanda for the
-      # background work (14MB against Chrome's 296MB), terminal-browser when the run should be
-      # visible, and Helium below when a full Chromium is genuinely needed. The Claude in Chrome
-      # extension went with it — Playwright covers what it did, and it cost a debugging port
-      # open on localhost for as long as the browser ran.
+      # google-chrome: back on 2026-09-23 as the stock Chromium for sites whose tracking or
+      # affiliate flows break under Helium's defaults (third-party cookies blocked, fingerprint
+      # noise, bundled uBlock Origin) — first case was a point-site card application. Not for
+      # automation: that was why it was dropped on 2026-08-30 (Lightpanda for background work,
+      # terminal-browser for visible runs, Helium below as the everyday Chromium), and the Claude
+      # in Chrome extension stays out — Playwright covers it without a debugging port on localhost.
+      "google-chrome"
       # Not the "helium" cask: that one is koush's unrelated Android desktop app, deprecated for
       # failing Gatekeeper and disabled on 2026-09-01.
       "helium-browser" # ungoogled-chromium based, now the Chromium of record here
@@ -684,6 +686,7 @@ in
       "maccy"
       "monitorcontrol"
       "qlmarkdown"
+      "abue-ammar/tinycast/tinycast" # Spotlight-like launcher (SwiftUI/AppKit, no Electron, AGPL-3.0)
 
       # ─── Creative / VTuber ───
       # nijigenerate/nijiexpose: 2D VTuber puppet rigging + streaming runtime (Live2D alternative,
