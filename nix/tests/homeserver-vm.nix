@@ -127,6 +127,13 @@ pkgs.testers.runNixOSTest {
     machine.succeed("systemctl is-enabled restic-backups-homeserver.timer")
     machine.succeed("systemctl is-enabled restore-drill.timer")
 
+    # The PR runner keeps its registration on disk but must not sit in memory
+    # waiting for work. A transient timer polls the public Actions API and wakes
+    # it only when a queued job carries the homeserver label.
+    machine.succeed("systemctl is-enabled github-runner-autoscale.timer")
+    machine.fail("systemctl is-enabled github-runner-dotfiles-pr.service")
+    machine.succeed("systemctl cat github-runner-autoscale.service >/dev/null")
+
     # The VM has no Google credentials and cannot pull containers, so verify the
     # declarative Filestash wiring rather than starting remote-dependent units.
     machine.succeed("systemctl is-enabled google-drive-view-mount.service")
