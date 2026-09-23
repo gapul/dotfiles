@@ -184,6 +184,7 @@ Generated from `just --list`. Run `just docs` after changing a recipe.
 | `nssh user@host` | nvim, yazi and tmux with your own config, through rootless Nix (`nix-portable`) |
 | `just ssh <host>` | Shorthand for `nssh` |
 | `herdr --remote user@host` | Same preparation, then connect with herdr. A zsh function runs `configs/bin/remote-bootstrap` first. |
+| `dotfiles-sync.timer` (on the remote) | Installed by `remote-bootstrap` on Linux hosts with `systemd --user`. Re-runs the same preparation daily at 04:50, so hosts reached only through `herdr machine` keep up with main. |
 
 ### Code quality
 
