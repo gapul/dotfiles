@@ -206,6 +206,11 @@ in
         # Was ~/.config/restic/password, placed by hand. restic-common.nix's default path is the
         # same location, so the module below keeps reading it without knowing it moved.
         "restic_password" = forUser "/Users/${user.username}/.config/restic/password";
+        # For headless Claude Code. There is no interactive login on this machine and
+        # the keychain cannot be opened over SSH, so the OAuth token minted by
+        # `claude setup-token` is handed over as a file. claude-agent
+        # (nix/home/macmini-claude-agent.nix) reads it as CLAUDE_CODE_OAUTH_TOKEN.
+        "claude_code_oauth_token" = forUser "/Users/${user.username}/.config/claude/oauth-token";
         # マイクラの参加者一覧。名前と UUID は本人たちのもので、公開リポジトリに平文で置く
         # ものではないので暗号化したまま持つ。置き場所は 1 か所で、起動時に run.sh が各
         # インスタンスへ配る (サーバーは自分でこのファイルを書き換えるため、宣言側を毎回勝たせる)。
@@ -248,11 +253,16 @@ in
           # macOS 27 /nix mounts after launchd starts daemons; a missing store binary exits 78
           # (EX_CONFIG) and never retries on its own — only bootout/bootstrap brought it back.
           # 常駐するのは lazymc。サーバー本体は接続が来たときに lazymc が起こす。
+          # lazymc は起こす前に <dir>/whitelist.json を自分で読んで弾く (wake_whitelist)。
+          # そのファイルを正 (/etc/minecraft) に揃えるのは run.sh だが、run.sh は本体の起動時
+          # にしか走らない。つまり一覧を直しても、本体が一度も起きないと古い一覧で弾かれ続ける
+          # (2026-09-23、綴りを直したのに翌日も入れなかった)。lazymc が読む前にここでも揃える。
           command = lib.escapeShellArgs [
-            "${pkgs.lazymc}/bin/lazymc"
-            "-c"
-            "${lazymcConfig name inst}"
-            "start"
+            "${pkgs.writeShellScript "lazymc-${name}" ''
+              wl="''${WHITELIST_SRC:-/etc/minecraft/whitelist.json}"
+              [ -f "$wl" ] && /bin/cp -f "$wl" "${inst.dir}/whitelist.json"
+              exec ${pkgs.lazymc}/bin/lazymc -c ${lazymcConfig name inst} start
+            ''}"
           ];
           serviceConfig = {
             EnvironmentVariables = {
@@ -377,6 +387,12 @@ in
   #  store. Dropped 2026-08-28: this machine's inference is MLX (faster than llama.cpp for the
   #  same model on Apple Silicon) plus claude-bridge for the agent work, so ollama was carrying
   #  a duplicate copy of the model library for a path nothing routed through any more.)
+
+  # (The auto-fix pipeline's monitor lived here. System-level launchd.agents start in a
+  #  root context on a machine with no GUI login, and claude refuses
+  #  --dangerously-skip-permissions under root, so it woke up every hour and achieved
+  #  nothing. Its successor, claude-agent, is a home-manager agent instead — see
+  #  nix/home/macmini-claude-agent.nix.)
 
   # Paper, run straight on macOS as its own user rather than in a container.
   #

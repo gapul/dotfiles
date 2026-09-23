@@ -1,0 +1,68 @@
+# Hand this repository's issues and failed Actions runs to claude-agent. The work
+# happens in the reusable workflow (claude-agent.yml), which calls the resident
+# runtime on the mac mini.
+#
+# Anything this misses - paths where the workflow does not run, fork pull requests,
+# workflows with no definition on the default branch - is picked up by the poller on
+# the mini every five minutes. Both share one record of what has been handled, so
+# arriving twice does not mean acting twice.
+name: Claude Agent (trigger)
+
+on:
+  issues:
+    types: [opened, labeled]
+  # Resume when someone answers a question the agent asked (claude-needs-info).
+  issue_comment:
+    types: [created]
+  # Catch failing CI. workflow_run only fires for definitions on the default branch, so
+  # a failure that exists only inside a pull request branch is the poller's to find.
+  # claude-agent's own workflows are deliberately not listed: that is where the loop of
+  # trying to fix its own failure forever would start.
+  workflow_run:
+    workflows:
+      - CI
+      - Cold reproducibility build
+      - Declaration drift (mobile / devices)
+      - Recovery ISO
+      - Update flake.lock
+      - Windows
+    types: [completed]
+
+# Serialise per issue and per run. A single global group would let GitHub cancel the
+# pending run for one issue when another is filed right after it, and the older issue
+# would be dropped.
+#
+# cancel-in-progress has to be false. claude-agent labels the issue claude-in-progress
+# while it works; that fires a labeled event, and a new run in the same group would
+# cancel the running job at the concurrency stage, before the `if` had a chance to skip
+# it. In other words it would kill itself. With false the job survives, and only
+# redundant pending runs are dropped.
+concurrency:
+  group: claude-agent-${{ github.event.issue.number || github.event.workflow_run.id }}
+  cancel-in-progress: false
+
+jobs:
+  issue:
+    if: >-
+      (
+        (github.event_name == 'issues' &&
+          (github.event.action == 'opened' || github.event.label.name == 'claude-fix'))
+        ||
+        (github.event_name == 'issue_comment' && github.event.issue.state == 'open'
+          && contains(github.event.issue.labels.*.name, 'claude-needs-info')
+          && !contains(github.event.comment.body, '<!-- claude-bot -->'))
+      )
+      && !contains(github.event.issue.labels.*.name, 'no-claude')
+    uses: ./.github/workflows/claude-agent.yml
+    with:
+      target_repo: ${{ github.repository }}
+      task: issue:${{ github.event.issue.number }}
+
+  ci-failure:
+    if: >-
+      github.event_name == 'workflow_run'
+      && github.event.workflow_run.conclusion == 'failure'
+    uses: ./.github/workflows/claude-agent.yml
+    with:
+      target_repo: ${{ github.repository }}
+      task: run:${{ github.event.workflow_run.id }}

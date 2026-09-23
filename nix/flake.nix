@@ -290,6 +290,7 @@
             ./home/maintenance.nix
             ./home/tmp-cleanup.nix # ~/tmp のスクラッチを7日で自動掃除 (macminiHeadless と共有)
             ./home/git-hooks.nix # git hook that auto-rebuilds on main updates (main tree only)
+            ./home/herdr-mobile-relay.nix # herdr をスマホ PWA から操作するリレー(tailnet 限定)
           ]
           ++ secrets
           ++ [
@@ -315,7 +316,10 @@
           ./home/macmini-render.nix
           # 音声モデルと合成処理。クライアントは tailnet 越しの API を使う。
           ./home/macmini-aivisspeech.nix
+          # スライド編集の試作。PPTX の書き出しがブラウザでしか動かないので常駐が要る。
+          ./home/macmini-presenta.nix
           ./home/tmp-cleanup.nix # ~/tmp のスクラッチを7日で自動掃除 (macWorkstation と共有)
+          ./home/herdr-mobile-relay.nix # herdr をスマホ PWA から操作するリレー(tailnet 限定、母艦と共有)
           # dotfiles-pull (home/macmini.nix) は post-merge hook が rebuild する前提だが、hook を
           # 入れる module がこの役に無く、.git/hooks の実体は 2026-08-09 に手で置いた古い版のまま
           # だった (secrets/ の変更で rebuild しない)。宣言に載せて activation で更新させる。

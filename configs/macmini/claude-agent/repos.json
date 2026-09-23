@@ -1,0 +1,45 @@
+{
+  "_comment": [
+    "The allowlist for claude-agent. Repositories not listed here are never touched.",
+    "trigger is one of: actions (driven by the caller workflow in that repository),",
+    "poller (the launchd job on the mac mini looks every five minutes), or both.",
+    "verify_hint is pasted into the prompt to say how work is verified in that repo.",
+    "ignore_workflows names claude-agent's own workflows, so it never tries to fix",
+    "its own failure and loop forever."
+  ],
+  "repos": [
+    {
+      "repo": "gapul/dotfiles",
+      "enabled": true,
+      "base": "main",
+      "trigger": "both",
+      "autofix_issues": true,
+      "autofix_ci": true,
+      "review": true,
+      "review_others": true,
+      "auto_merge": false,
+      "ignore_workflows": [
+        "Claude Agent",
+        "Claude Agent (trigger)"
+      ],
+      "verify_hint": "Run nix fmt to format, just docs to regenerate the generated README blocks, and check that nix eval .#darwinConfigurations.<host>.system (or nixosConfigurations.<host>.config.system.build.toplevel) still evaluates for any host you touched. just docs is mandatory after changing the Justfile: CI has failed on README drift before."
+    },
+    {
+      "repo": "mugen404/prod-record",
+      "enabled": true,
+      "base": "main",
+      "trigger": "poller",
+      "autofix_issues": true,
+      "autofix_ci": true,
+      "review": true,
+      "review_others": true,
+      "auto_merge": true,
+      "ignore_workflows": [
+        "Claude Agent",
+        "Claude Agent (trigger)"
+      ],
+      "verify_hint": "workers: cd apps/workers && node node_modules/typescript/bin/tsc --noEmit && node node_modules/vitest/vitest.mjs run. iOS: cd apps/ios/TsuzuriCore && swift build (the mac mini has no XCTest, so swift test cannot run; the compile check is as far as it goes).",
+      "_note": "No caller workflow yet. The repository still carries the old, dead claude-auto-fix.yml and watchdog.yml, which need removing before a caller is added; that is someone else's organisation, so it waits for a decision."
+    }
+  ]
+}

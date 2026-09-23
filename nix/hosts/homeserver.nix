@@ -89,6 +89,9 @@ let
       upstream = "127.0.0.1:5075";
       auth = true;
     };
+    # Stalwart の JMAP と管理画面 (homelab/mail.nix)。認証は Stalwart 自身が持つ。
+    # IMAPS 993 はここを通らず tailnet に直接。
+    mail.upstream = "127.0.0.1:8120";
     # ゲームの棚。roms は RomM (ブラウザでそのまま遊べる)、games は Gameyfin
     # (DRM フリーの PC ゲームの目録)。実ファイルはどちらも /srv/games 配下で
     # restic の対象外 — 吸い出し直せるものに容量を使わない、という他の /srv と

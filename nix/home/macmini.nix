@@ -18,10 +18,33 @@ let
     ".local/bin/${name}".source =
       config.lib.file.mkOutOfStoreSymlink "${dotfiles}/configs/macmini/bin/${name}";
   };
+
+  # 素の `claude` を Remote Control 付きにする覆い。herdr のペインで始めたセッションが
+  # そのまま claude.ai/code とスマホからも触れる。ccm と違って足すのはこれだけで、
+  # --continue も --add-dir も権限のバイパスも付けない。
+  #
+  # 書き換えるのは引数なしの対話起動だけ。--remote-control は名前を省略できるので、
+  # 他の引数の前に挿すと次のトークンを名前として食う (`claude mcp list` が "mcp" という名の
+  # セッションになる)。引数があるなら呼び手に意図があるということなので素通しする。
+  #
+  # DO_NOT_TRACK を外すのは launchd.agents.claude-remote-control と同じ理由。Remote Control は
+  # feature-flag の評価を要求し、これが立っていると起動を拒む。common.nix が全シェルに
+  # DO_NOT_TRACK=1 を撒いているので、外さないと素通り以前に落ちる。
+  #
+  # 逃げ道は CLAUDE_NO_REMOTE_CONTROL=1。launchd のジョブは $HOME/.local/bin/claude を
+  # 絶対パスで叩いていて、それはこの覆いの中身のほうなので影響を受けない。
+  claudeRemoteControlDefault = pkgs.writeShellScriptBin "claude" ''
+    if [ $# -eq 0 ] && [ -t 0 ] && [ -t 1 ] && [ "''${CLAUDE_NO_REMOTE_CONTROL:-}" != 1 ]; then
+      unset DO_NOT_TRACK DISABLE_TELEMETRY CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC DISABLE_GROWTHBOOK
+      set -- --remote-control
+    fi
+    exec "$HOME/.local/bin/claude" "$@"
+  '';
 in
 {
   imports = [
     ../modules/home/darwin-agent-state-sync.nix
+    ./macmini-claude-agent.nix
     ../modules/home/agy.nix
   ];
 
@@ -68,7 +91,14 @@ in
 
     # ccm: default Claude Code launch form on the mac mini. This deliberately bypasses
     # permission prompts, so only use it when the active session is trusted.
+    #
+    # DO_NOT_TRACK is unset here for the same reason launchd.agents.claude-remote-control
+    # does it: Remote Control needs feature-flag evaluation and refuses to start while any
+    # of these are set ("Remote Control requires feature-flag evaluation, which is disabled
+    # because DO_NOT_TRACK is set"). common.nix exports DO_NOT_TRACK=1 for every shell, so
+    # without this line the --remote-control here never worked (found 2026-09-13).
     (pkgs.writeShellScriptBin "ccm" ''
+      unset DO_NOT_TRACK DISABLE_TELEMETRY CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC DISABLE_GROWTHBOOK
       exec "$HOME/.local/bin/claude" \
         --dangerously-skip-permissions \
         --remote-control dotfiles \
@@ -76,7 +106,17 @@ in
         --add-dir "$HOME/.dotfiles" \
         "$@"
     '')
+
+    # claude 素打ちの既定は let の claudeRemoteControlDefault が持つ。home.packages に入れると
+    # PATH で負ける — この機械では ~/.local/bin (3 番目) が /etc/profiles/per-user/gapul/bin
+    # (7 番目) より先に来るので、覆いは本物の ~/.local/bin/claude に食われて一度も走らない。
+    # home.sessionPath 側で先頭に差してある。
   ];
+
+  # claude の覆いを PATH の先頭に差す。mkBefore なのは common.nix が ~/.local/bin を
+  # 先に入れていて、そこに Claude Code のネイティブ導入が自分で貼った本物の claude が
+  # 居るため。store の bin を丸ごと前に出すが、中に入っているのは claude 一本だけ。
+  home.sessionPath = lib.mkBefore [ "${claudeRemoteControlDefault}/bin" ];
 
   # Claude Code on the mini gets the workstation's managed keys (bypassPermissions as the default
   # mode, theme, effort, ...) from settings.remote.json, the same merge remote-bootstrap applies over
@@ -184,6 +224,37 @@ in
       Nice = 5;
       StandardOutPath = "/tmp/claude-remote-control.log";
       StandardErrorPath = "/tmp/claude-remote-control.log";
+    };
+  };
+
+  # herdr の server を GUI セッションの中で起こす。`herdr machine add` で母艦から登録すると
+  # server は ssh の向こう側で起動するが、そうすると gui/501 のセキュリティセッションに
+  # 属さない。macOS のログインキーチェーンは GUI セッションからしか開けないので、その
+  # server が抱えるペインで claude を打つと "You must be logged in to use Remote Control"
+  # で止まる (2026-09-13 に `launchctl procinfo` で確認。動いている claude-remote-control は
+  # domain = gui/501 を持ち、ssh から起きた herdr server は持っていなかった)。
+  #
+  # ここで先に起こしておけば、母艦のクライアントが繋ぎに来たときには GUI セッションの
+  # server が既に居るので、そちらが再利用される。ペインは keychain を読めるようになり、
+  # macmini 側で普通に claude が使える。
+  #
+  # ソケットは既定の ~/.config/herdr/herdr.sock のまま。machine プロファイルもそこを見る。
+  launchd.agents.herdr-server = {
+    enable = true;
+    config = {
+      ProgramArguments = [
+        "${pkgs.writeShellScript "herdr-server" ''
+          export PATH="${config.home.profileDirectory}/bin:/run/current-system/sw/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+          cd "$HOME"
+          exec herdr server
+        ''}"
+      ];
+      RunAtLoad = true;
+      KeepAlive = true;
+      ThrottleInterval = 30;
+      ProcessType = "Standard";
+      StandardOutPath = "/tmp/herdr-server.log";
+      StandardErrorPath = "/tmp/herdr-server.log";
     };
   };
 

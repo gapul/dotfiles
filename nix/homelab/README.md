@@ -51,6 +51,8 @@ name that matters now.
 | `gatus.env` | `NTFY_TOPIC`, `NTFY_TOKEN` (the `tk_...` bearer token; gatus substitutes them into its own config) |
 | `mosquitto-ha.password` | a `mosquitto_passwd` hash, the part after `ha:` — not a plaintext password |
 | `free-games-claimer.env` | `NOTIFY` (an ntfy publish URL, so it embeds a credential) and `PANEL_PASSWORD`, which is also the VNC password |
+| `mail/admin.password`, `mail/gmail.password`, `mail/work.password`, `mail/school.password` | one raw line each (`openssl rand -base64 24`). `admin` is Stalwart's fallback administrator (webadmin at mail.gapul.net); the other three are the mirror mailboxes, read by both Stalwart (memory directory) and imapsync |
+| `mail/mirror-<name>.env` | `SRC_USER=<google address>` and `SRC_PASSWORD=<Google app password>` for the account imapsync copies from. Leave `SRC_PASSWORD` empty to skip that account; it is not an error. Google requires 2-step verification before it issues app passwords, and a Workspace admin can disable them entirely |
 | `tailscale.key` | a Tailscale auth key. `services.tailscale.authKeyFile` reads it so a reinstall connects itself; revoke and replace it after use |
 
 The office tunnel keeps its own directory, `/var/lib/secrets/mvrx/`, because none
