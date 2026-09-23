@@ -70,11 +70,10 @@ repository. If something breaks, `.storage/core.config_entries.bak-claude` and
 
 ## Still open
 
-- [ ] **Dawarich on the phone.** The server side is done: the login is
-      `gapul@homeserver.local`, an API key exists, and `APPLICATION_HOSTS` is fixed. What
-      remains is pointing OwnTracks on the iPhone at
-      `http://100.127.129.31:3005/api/v1/owntracks/points?api_key=…`. Recording away from home
-      requires Tailscale to stay on on the phone.
+- [x] **Dawarich on the phone.** Overland is configured on the iPhone with the
+      `/api/v1/overland/batches` endpoint and `gapul-iphone` device ID. A live verification
+      on 2026-09-23 confirmed 53 newly ingested points; recording away from home requires
+      Tailscale to stay on on the phone.
 - [ ] **Bridge rooms still carry the old server_name.** Eighteen discord portals are
       `!…:matrix.gapul.net` and joining them returns 404. This is fallout from the July domain
       change, unrelated to the migration. Fixing it means recreating the portals, so it needs a
