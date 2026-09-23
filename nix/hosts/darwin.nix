@@ -529,6 +529,7 @@ in
     #  overwrites it every time. All taps are declared and version-managed below, so the activation-time
     #  check is turned off.)
     taps = [
+      "abue-ammar/tinycast" # Tinycast (native Spotlight-like launcher, AGPL-3.0). Not in homebrew/cask.
       "chojs23/tap" # Concord (Discord TUI)
       "deskflow/tap"
       "felixkratz/formulae"
@@ -685,6 +686,7 @@ in
       "maccy"
       "monitorcontrol"
       "qlmarkdown"
+      "abue-ammar/tinycast/tinycast" # Spotlight-like launcher (SwiftUI/AppKit, no Electron, AGPL-3.0)
 
       # ─── Creative / VTuber ───
       # nijigenerate/nijiexpose: 2D VTuber puppet rigging + streaming runtime (Live2D alternative,
