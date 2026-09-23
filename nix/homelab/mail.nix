@@ -13,7 +13,9 @@
 # EnvironmentFile で渡す)。Caddy のワイルドカード証明書を借りると更新のたびに
 # 再起動を仕込む必要があり、そちらの方が壊れやすい。HTTP (JMAP と管理画面) だけは
 # Caddy 経由 (mail.gapul.net → 8120)、IMAPS 993 は tailnet に直接
-# (trustedInterfaces = tailscale0 なので firewall は開けない)。
+# (trustedInterfaces = tailscale0 なので firewall は開けない)。imapsync も同じ 993 に
+# ループバックで入る。平文の 143 は Stalwart が LOGIN を拒む ("LOGIN is disabled on
+# the clear-text port") ので置かない。
 #
 # 写し元の資格情報 (mail/mirror-<name>.env の SRC_USER と SRC_PASSWORD) が空の口座は
 # 飛ばすだけなので、アプリパスワードが揃っていなくても他の口座は動く。
@@ -44,7 +46,7 @@ let
       # --gmail1: imap.gmail.com:993、[Gmail] の親フォルダを除き、ラベルはフォルダのまま、
       # "All Mail" は最後に回して他フォルダに写した分を重複させない。
       ${pkgs.imapsync}/bin/imapsync --gmail1 --user1 "$SRC_USER" --passfile1 "$RUNTIME_DIRECTORY/src.password" \
-        --host2 127.0.0.1 --port2 143 --nossl2 --notls2 \
+        --host2 127.0.0.1 --port2 993 --ssl2 \
         --user2 "$name" --passfile2 "$RUNTIME_DIRECTORY/dst.password" \
         --automap --nofoldersizes --noreleasecheck --nolog --tmpdir "$RUNTIME_DIRECTORY" \
         --pidfile "$RUNTIME_DIRECTORY/$name.pid" || { echo "$name: imapsync が $? で終了"; status=1; }
@@ -77,11 +79,6 @@ in
           bind = [ "[::]:993" ];
           protocol = "imap";
           tls.implicit = true;
-        };
-        # imapsync の書き込み口。ループバックだけなので平文。
-        imap = {
-          bind = [ "127.0.0.1:143" ];
-          protocol = "imap";
         };
         http = {
           bind = [ "127.0.0.1:8120" ];
