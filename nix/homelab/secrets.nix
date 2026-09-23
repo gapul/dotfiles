@@ -28,6 +28,13 @@ let
     { rel = "homebox.env"; }
     { rel = "homelab-cli.env"; }
     { rel = "ledger-deploy.key"; }
+    { rel = "mail/admin.password"; }
+    { rel = "mail/gmail.password"; }
+    { rel = "mail/work.password"; }
+    { rel = "mail/school.password"; }
+    { rel = "mail/mirror-gmail.env"; }
+    { rel = "mail/mirror-work.env"; }
+    { rel = "mail/mirror-school.env"; }
     {
       rel = "ledger-deploy.key.pub";
       mode = "0444";
