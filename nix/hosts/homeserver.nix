@@ -593,6 +593,10 @@ in
       "flakes"
     ];
     auto-optimise-store = true;
+    # Keep build-time inputs of live outputs across the weekly GC, so the x86_64-linux
+    # pr-gate on the runner here does not refetch and rebuild everything afterwards
+    # (same reason as darwin-common.nix).
+    keep-outputs = true;
     # Same safeguard as the laptop: give up on an unreachable cache quickly and
     # fall through to building from source.
     connect-timeout = 5;
