@@ -57,6 +57,7 @@
     ./git-annex.nix
     ./hauk.nix
     ./ledger.nix
+    ./mail.nix
     ./health.nix
     ./homebox.nix
     ./homeassistant.nix
