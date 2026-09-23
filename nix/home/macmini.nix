@@ -360,6 +360,52 @@ in
     schedule = [ { Minute = 17; } ];
   };
 
+  # Crypto wallet balances → the same ledger (personal-tools/crypto). Daily, not hourly: the
+  # public RPCs and CoinGecko's free tier are rate-limited and the balances only move when a
+  # hand-written transaction should already be in crypto.beancount. Reads public addresses
+  # only (wallets.toml in the ledger repo); a drift between chain and ledger fails bean-check
+  # and pings ntfy once, same contract as zaim-sync.
+  launchd.agents.crypto-sync = import ../lib/launchd-agent.nix {
+    program = "${pkgs.writeShellScript "crypto-sync" ''
+      tools="$HOME/Developer/github.com/gapul/personal-tools/crypto"
+      ledger="$HOME/Developer/github.com/gapul/ledger"
+      [ -f "$tools/crypto_beancount.py" ] && [ -f "$ledger/wallets.toml" ] || exit 0
+      state="$HOME/.local/state/crypto-sync"
+      mkdir -p "$state"
+      git="${pkgs.git}/bin/git -C $ledger"
+
+      fail() {
+        [ "$(cat "$state/failed" 2>/dev/null)" = "$1" ] && exit 1
+        printf '%s' "$1" > "$state/failed"
+        url="$HOME/.config/ntfy/url"
+        tok="$HOME/.config/ntfy/token"
+        [ -r "$url" ] && [ -r "$tok" ] || exit 1
+        /usr/bin/curl -fsS --max-time 15 \
+          -H "Authorization: Bearer $(cat "$tok")" \
+          -H "Title: Crypto ledger (macmini)" \
+          -H "Tags: warning" \
+          -d "$1" "$(cat "$url")" >/dev/null 2>&1 || true
+        exit 1
+      }
+
+      out=$(${pkgs.python3}/bin/python3 "$tools/crypto_beancount.py" --wallets "$ledger/wallets.toml" \
+        --balances "$ledger/crypto-balances.beancount" --prices "$ledger/crypto-prices.beancount" 2>&1) ||
+        fail "残高の取得に失敗: $out"
+      out=$(${pkgs.beancount}/bin/bean-check "$ledger/main.beancount" 2>&1) ||
+        fail "bean-check: $out (送金やガスを crypto.beancount に書き漏れていないか)"
+      rm -f "$state/failed"
+      if [ -n "$($git status --porcelain)" ]; then
+        $git add -A && $git commit -q -m "crypto sync $(date +%F)"
+      fi
+    ''}";
+    schedule = [
+      {
+        Hour = 6;
+        Minute = 40;
+      }
+    ];
+  };
+
   # Fava for the ledger, tailnet-only HTTPS on :5075 via tailscale serve (same approach as Orca).
   # Fava reloads the files itself when zaim-sync rewrites them.
   launchd.agents.fava = {
