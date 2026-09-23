@@ -426,6 +426,7 @@ in
       "agy"
       "ask"
       "describe"
+      "fish-tts"
       "fish-voicevox"
       "ocr"
       "separate"
