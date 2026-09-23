@@ -248,11 +248,16 @@ in
           # macOS 27 /nix mounts after launchd starts daemons; a missing store binary exits 78
           # (EX_CONFIG) and never retries on its own — only bootout/bootstrap brought it back.
           # 常駐するのは lazymc。サーバー本体は接続が来たときに lazymc が起こす。
+          # lazymc は起こす前に <dir>/whitelist.json を自分で読んで弾く (wake_whitelist)。
+          # そのファイルを正 (/etc/minecraft) に揃えるのは run.sh だが、run.sh は本体の起動時
+          # にしか走らない。つまり一覧を直しても、本体が一度も起きないと古い一覧で弾かれ続ける
+          # (2026-09-23、綴りを直したのに翌日も入れなかった)。lazymc が読む前にここでも揃える。
           command = lib.escapeShellArgs [
-            "${pkgs.lazymc}/bin/lazymc"
-            "-c"
-            "${lazymcConfig name inst}"
-            "start"
+            "${pkgs.writeShellScript "lazymc-${name}" ''
+              wl="''${WHITELIST_SRC:-/etc/minecraft/whitelist.json}"
+              [ -f "$wl" ] && /bin/cp -f "$wl" "${inst.dir}/whitelist.json"
+              exec ${pkgs.lazymc}/bin/lazymc -c ${lazymcConfig name inst} start
+            ''}"
           ];
           serviceConfig = {
             EnvironmentVariables = {
