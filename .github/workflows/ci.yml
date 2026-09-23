@@ -16,8 +16,10 @@ on:
       - '.statix.toml'
       - '.gitleaks.toml'
       - 'om.yaml'
-      - '.github/actions/setup-nix/**'
-      - '.github/workflows/ci.yml'
+      # workflow だけを触る PR でも必須チェックが来るように .github は丸ごと。以前は
+      # ci.yml と setup-nix だけだったので、update-flake-lock.yml 単独の PR (#710) は
+      # CI が一度も走らず auto-merge が永遠に待った。
+      - '.github/**'
   pull_request:
     paths:
       - 'nix/**'
@@ -29,8 +31,10 @@ on:
       - '.statix.toml'
       - '.gitleaks.toml'
       - 'om.yaml'
-      - '.github/actions/setup-nix/**'
-      - '.github/workflows/ci.yml'
+      # workflow だけを触る PR でも必須チェックが来るように .github は丸ごと。以前は
+      # ci.yml と setup-nix だけだったので、update-flake-lock.yml 単独の PR (#710) は
+      # CI が一度も走らず auto-merge が永遠に待った。
+      - '.github/**'
   workflow_dispatch:
 
 concurrency:
