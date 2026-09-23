@@ -22,7 +22,7 @@
       "rclone_conf".path = "${config.home.homeDirectory}/.config/rclone/rclone.conf";
       "ssh_config".path = "${config.home.homeDirectory}/.ssh/config";
       # 無人のジョブ専用の ed25519 鍵。常用鍵は Secure Enclave にあり署名のたびに
-      # Touch ID の承認が要るので、承認の窓が切れると mutagen 同期や自動デプロイが
+      # Touch ID の承認が要るので、承認の窓が切れると自動デプロイや定期ジョブが
       # 黙って止まる (2026-08-30)。Secure Enclave のまま生体認証なしの 2 本目を作る
       # 道は同日に試して塞がっていた (Apple の provider が sk 鍵を登録できない、#499)。
       #
@@ -32,8 +32,12 @@
         path = "${config.home.homeDirectory}/.ssh/id_automation";
         mode = "0600";
       };
-      # mutagen の会社機同期だけ別の鍵にする。会社機の authorized_keys は自分の所有で
-      # 書き込めた (2026-08-30 に確認。「登録し直せない」は古い記録だった)。
+      # 会社機だけ別の鍵にする。会社機の authorized_keys は自分の所有で書き込めた
+      # (2026-08-30 に確認。「登録し直せない」は古い記録だった)。mutagen 同期のために
+      # 作った鍵だが、mutagen を畳んだ後は ssh_config の mvrx-nolang-dev が使う。
+      # 母艦が持っている鍵のうち会社機が受理するのはこの鍵と enclave 鍵で、
+      # id_automation は載っていない (2026-09-16 に指紋と -F /dev/null の実測で確認)。
+      # 会社機側の一覧そのものは 4 本ある。詳細は nix/keys/authorized_keys の注記。
       #
       # ssh_automation_key の使い回しにはしない。自宅と会社の権限が 1 本に混ざると、
       # どちらかを失効させたいときに両方巻き添えになる。会社側だけ切りたい場面の方が

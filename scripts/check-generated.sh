@@ -47,10 +47,12 @@ if comm -12 "$check_tmp/managed.txt" "$check_tmp/excluded.txt" | grep -q .; then
 fi
 
 echo "Checking generated lazygit configuration against the (vendored) schema..."
-lazygit_config_drv="$(
-  nix eval --raw "$repo_root/nix#homeConfigurations.gapul.config.xdg.configFile.\"lazygit/config.yml\".source.drvPath"
-)"
-lazygit_config="$(nix-store --realise "$lazygit_config_drv")"
+# 中身は eval で取る。母艦の homeConfiguration は aarch64-darwin なので、その生成物の
+# derivation を x86_64-linux で realise すると "platform mismatch" で落ちる (cachix に
+# 載っている間だけ substitute で通っていた。flake.lock を進めた #705 で露呈)。
+lazygit_config="$check_tmp/lazygit-config.yml"
+nix eval --raw "$repo_root/nix#homeConfigurations.gapul.config.xdg.configFile.\"lazygit/config.yml\".text" \
+  >"$lazygit_config"
 # schema は同梱 (nix/tests/lazygit-config.schema.json)。毎回 raw.githubusercontent.com
 # から取ると CI がネットワークに依存して時々フレークするため vendor 化した。
 # 更新は flake.lock 更新時などに手動で curl し直す。
@@ -58,6 +60,9 @@ check-jsonschema \
   --default-filetype yaml \
   --schemafile "$repo_root/nix/tests/lazygit-config.schema.json" \
   "$lazygit_config"
+
+echo "Checking Claude Code managed settings against the workstation settings..."
+python3 "$repo_root/scripts/check-claude-settings-drift.py"
 
 echo "Checking generated tmux theme for home-manager-less hosts..."
 python3 "$repo_root/scripts/gen-tmux-theme.py" --check

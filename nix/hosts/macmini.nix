@@ -238,6 +238,9 @@ in
     ./darwin-common.nix
     ../modules/authorized-keys.nix
     ./macmini-ci-runner.nix
+    ./macmini-dns.nix
+    ./macmini-homeserver-monitor.nix
+    ./macmini-presenta.nix
     sopsNix.darwinModules.sops
     # マイクラのサーバーは上の表から生やす。別モジュールにしてあるのは、nix が同じ attrset の
     # 中で `launchd.daemons = {...}` と `launchd.daemons.foo = ...` を混ぜられないため。
@@ -246,14 +249,17 @@ in
       launchd.daemons = lib.mapAttrs' (
         name: inst:
         lib.nameValuePair "minecraft-${name}" {
+          # `command` (not ProgramArguments) makes nix-darwin prepend `wait4path /nix/store`. Since
+          # macOS 27 /nix mounts after launchd starts daemons; a missing store binary exits 78
+          # (EX_CONFIG) and never retries on its own — only bootout/bootstrap brought it back.
+          # 常駐するのは lazymc。サーバー本体は接続が来たときに lazymc が起こす。
+          command = lib.escapeShellArgs [
+            "${pkgs.lazymc}/bin/lazymc"
+            "-c"
+            "${lazymcConfig name inst}"
+            "start"
+          ];
           serviceConfig = {
-            # 常駐するのは lazymc。サーバー本体は接続が来たときに lazymc が起こす。
-            ProgramArguments = [
-              "${pkgs.lazymc}/bin/lazymc"
-              "-c"
-              "${lazymcConfig name inst}"
-              "start"
-            ];
             EnvironmentVariables = {
               SERVER_DIR = inst.dir;
               SERVER_MEM = inst.memory;
@@ -312,10 +318,22 @@ in
       # (RustDesk was here for remote GUI. It never got its unattended access or its Screen
       #  Recording grant, so it had never once been used, while macOS Screen Sharing on :5900
       #  already covers the same job over the tailnet with nothing to install.)
-      # For Claude browser automation (Playwright MCP + claude-login-broker). Driven through the
-      # `chrome-automation` wrapper (home/macmini.nix): own profile, windowless, CDP on 9222, and
-      # stopped when the job ends. The chrome-launch.sh this comment used to point at never existed.
-      "google-chrome"
+      # Helium for agent-driven browsing, replacing google-chrome (2026-09-11). Both reasons
+      # the Chrome line used to give had expired: the resident Playwright MCP was deleted in
+      # #561, and login fills moved to the Safari native helper. What actually kept Chrome in
+      # service was Orca's bundled agent-browser, which resolves a browser by walking
+      # /Applications on its own, and Google's build happens to sit first in that order.
+      #
+      # Helium is the ungoogled-chromium build the workstation already treats as its Chromium
+      # of record, so both hosts now drive the same browser. agent-browser's search list only
+      # knows Chrome, Chrome Canary, Chromium and Brave, so it cannot find Helium on its own —
+      # the pin lives in AGENT_BROWSER_EXECUTABLE_PATH on the Orca agent (home/macmini.nix),
+      # which is also where that ordering stops mattering.
+      #
+      # No no_quarantine, unlike Orca above: it is notarized (Developer ID: imput LLC), spctl
+      # accepts it, and it launched headlessly on this host with the quarantine attribute still
+      # attached. The cask is auto_updates, so the app owns its own updates.
+      "helium-browser"
       # Creative Cloud is the supported installer and license runtime for After Effects. Adobe
       # manages AE itself after this bootstrap, but declaring the CC installer keeps brew's
       # cleanup=uninstall from removing it on a later rebuild. Login secrets are filled through
@@ -413,8 +431,8 @@ in
 
   # Hermes proper — the Discord side. Talks to Claude through the claude-acp adapter.
   launchd.daemons.hermes-gateway = {
+    command = "${../../configs/macmini/hermes/hermes-gateway-run.sh}";
     serviceConfig = {
-      ProgramArguments = [ "${../../configs/macmini/hermes/hermes-gateway-run.sh}" ];
       UserName = "hermes";
       RunAtLoad = true;
       KeepAlive = true;
@@ -444,8 +462,8 @@ in
   };
 
   launchd.daemons.hermes-watchdog = {
+    command = "${../../configs/macmini/hermes/hermes-watchdog.sh}";
     serviceConfig = {
-      ProgramArguments = [ "${../../configs/macmini/hermes/hermes-watchdog.sh}" ];
       StartInterval = 300;
       ProcessType = "Background";
       LowPriorityIO = true;
@@ -455,8 +473,8 @@ in
   };
 
   launchd.daemons.hermes-logrotate = {
+    command = "${../../configs/macmini/hermes/hermes-logrotate.sh}";
     serviceConfig = {
-      ProgramArguments = [ "${../../configs/macmini/hermes/hermes-logrotate.sh}" ];
       StartCalendarInterval = [
         {
           Hour = 4;
@@ -472,8 +490,8 @@ in
   };
 
   launchd.daemons.hermes-brain-backup = {
+    command = "${../../configs/macmini/hermes/hermes-brain-backup.sh}";
     serviceConfig = {
-      ProgramArguments = [ "${../../configs/macmini/hermes/hermes-brain-backup.sh}" ];
       UserName = "hermes";
       StartCalendarInterval = [
         {
@@ -514,12 +532,45 @@ in
     };
   };
 
+  # nix store の GC。home/macmini-maintenance.nix の GC はユーザー権限なので、消せるのは
+  # home-manager の世代だけで、/nix/var/nix/profiles/system-* (root 所有) は残り続ける
+  # (2026-09-23 時点で 141 世代 / store 114G)。システム世代を落とせるのは root だけなので
+  # daemon で回す。日曜 03:45 = ユーザー側の掃除 (04:15) と restic (05:00) の前。
+  launchd.daemons.nix-gc = {
+    command = "${pkgs.writeShellScript "nix-gc" ''
+      set -u
+      export PATH=/nix/var/nix/profiles/default/bin:/usr/bin:/bin:/usr/sbin:/sbin
+      echo "==================== $(date '+%Y-%m-%d %H:%M:%S') ===================="
+      # TCC が .app に付ける com.apple.macl は root の chmod も弾き、GC がそのパスで
+      # 止まって "0 store paths deleted" になる (aquestalkplayer で数週間そうなっていた)。
+      # store の中の .app に付いていたら先に剥がす。生きているパスに付いていても害は無い。
+      for app in /nix/store/*/Applications/*.app; do
+        xattr -d com.apple.macl "$app" 2>/dev/null || true
+      done
+      nix-collect-garbage --delete-older-than 30d
+    ''}";
+    serviceConfig = {
+      StartCalendarInterval = [
+        {
+          Weekday = 0;
+          Hour = 3;
+          Minute = 45;
+        }
+      ];
+      ProcessType = "Background";
+      LowPriorityIO = true;
+      Nice = 10;
+      StandardOutPath = "/var/log/nix-gc.log";
+      StandardErrorPath = "/var/log/nix-gc.log";
+    };
+  };
+
   # ワールドの日次バックアップ。Realms から移ってくる以上、「壊しても戻せる」は要る。
   # 対象は上の表から作るので、サーバーを増やせばバックアップも自動で増える。
   # restic(5:00)より前に走らせて、その晩のうちに Google Drive まで乗せる。
   launchd.daemons.minecraft-backup = {
+    command = "${../../configs/macmini/minecraft/backup.sh}";
     serviceConfig = {
-      ProgramArguments = [ "${../../configs/macmini/minecraft/backup.sh}" ];
       EnvironmentVariables = {
         BACKUP_TARGETS = lib.concatStringsSep " " (
           lib.mapAttrsToList (name: inst: "${name}:${inst.dir}") minecraftServers
@@ -542,8 +593,8 @@ in
   # Hermes の状態を restic が読める場所へ固める。専用ユーザーのホームは gapul から
   # 読めないので、マイクラと同じくここで tar にしてから拾わせる。restic(5:00)より前に走らせる。
   launchd.daemons.hermes-backup = {
+    command = "${../../configs/macmini/hermes/backup.sh}";
     serviceConfig = {
-      ProgramArguments = [ "${../../configs/macmini/hermes/backup.sh}" ];
       StartCalendarInterval = [
         {
           Hour = 4;

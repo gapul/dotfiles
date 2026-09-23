@@ -160,8 +160,7 @@ in
   # 張るのでその 1 段目が無い。結果 herdr で入ったホストだけ dotfiles が更新されず、
   # nix-portable も symlink も Claude 設定も置かれないまま使うことになる
   # (2026-08-15 に ~/.dotfiles が 15 コミット遅れているのを発見。#309〜#323 が未着だった)。
-  # 素の `herdr` を打つ習慣を変えずに塞ぎたいので、mutagen の ssh ラッパー
-  # (home/mutagen-sync.nix) と同じ形で関数を被せる。
+  # 素の `herdr` を打つ習慣を変えずに塞ぎたいので、同名の関数を被せる。
   #
   # --remote が無いとき (ローカル起動) は素通り。判定は完全一致で行う。
   # --remote-keybindings という別のフラグがあるので部分一致では誤爆する。
@@ -199,13 +198,6 @@ in
         fi
       fi
       command herdr "$@"
-      local rc=$?
-      # nssh の最後と同じ。herdr で入ったホストも ~/Sync のペアを作る。接続中にやると
-      # Bitwarden agent の承認が再び走るので、必ずセッション終了後・バックグラウンドで。
-      if [[ -n "$target" ]] && (( $+commands[mutagen-sync-ensure] )); then
-        (mutagen-sync-ensure "$target" &) >/dev/null 2>&1
-      fi
-      return $rc
     }
   '';
 }

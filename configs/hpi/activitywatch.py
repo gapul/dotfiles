@@ -68,45 +68,47 @@ def _normalise_hostname(hostname: str) -> str:
     return hostname.removesuffix(".local")
 
 
-def _parse_ts(raw: str) -> datetime:
-    # sqlite には '2026-08-21 02:59:15.142000+00:00' の形で入っている。
-    dt = datetime.fromisoformat(raw)
-    if dt.tzinfo is None:
-        # 念のため。aw-server は UTC で書くので、素の値も UTC とみなす。
-        dt = dt.replace(tzinfo=timezone.utc)
-    return dt
+_EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
+
+
+def _from_ns(ns: int) -> datetime:
+    # aw-server-rust は UTC のエポックからのナノ秒で持つ。
+    return _EPOCH + timedelta(microseconds=ns // 1000)
 
 
 def events() -> Iterator[Event]:
-    """全バケットのイベントを時系列で返す。"""
+    """全バケットのイベントを時系列で返す。
+
+    読むのは aw-server-rust (0.14 以降) の DB。旧 aw-server (Python) の
+    peewee-sqlite.v2.db は 2026-09-15 の移行で全件ここへ取り込んだので、もう読まない。
+    """
     for db_path in inputs():
         # 稼働中の aw-server が WAL を持っているので、コピーしてから開く。
         # immutable=1 で直接開くと WAL 内の新しいイベントを取りこぼす。
         with sqlite_copy_and_open(db_path) as conn:
             buckets = {
-                key: (bid, btype, client, _normalise_hostname(hostname))
-                for key, bid, btype, client, hostname in conn.execute(
-                    "select key, id, type, client, hostname from bucketmodel"
+                row: (name, btype, client, _normalise_hostname(hostname))
+                for row, name, btype, client, hostname in conn.execute(
+                    "select id, name, type, client, hostname from buckets"
                 )
             }
-            for bucket_key, ts, duration, datastr in conn.execute(
-                "select bucket_id, timestamp, duration, datastr"
-                " from eventmodel order by timestamp"
+            for bucketrow, start, end, data in conn.execute(
+                "select bucketrow, starttime, endtime, data from events order by starttime"
             ):
-                meta = buckets.get(bucket_key)
+                meta = buckets.get(bucketrow)
                 if meta is None:
                     # バケットが消えたのにイベントが残っている場合。実データでは
                     # 見ていないが、外部キーは張られているだけで強制はされない。
                     continue
                 bid, btype, client, hostname = meta
                 yield Event(
-                    dt=_parse_ts(ts),
-                    duration=timedelta(seconds=float(duration)),
+                    dt=_from_ns(start),
+                    duration=timedelta(microseconds=(end - start) // 1000),
                     bucket=bid,
                     hostname=hostname,
                     type=btype,
                     client=client,
-                    data=json.loads(datastr),
+                    data=json.loads(data),
                 )
 
 

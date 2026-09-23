@@ -46,9 +46,15 @@ let
 in
 {
   launchd.agents.findmy-tag = {
+    # Was off 2026-09-15..17: on macOS 27 fetch.py aborted every run on libffi's
+    # `ffi_trampoline_table_alloc` assertion (reached through pyobjc). Root cause is
+    # nixpkgs' Apple libffi; upstream libffi is swapped in below until that is fixed.
     enable = true;
     config = {
       ProgramArguments = [ "${poll}" ];
+      # See pkgs/libffi-mit-shim.nix. launchd hands the environment straight to the shell
+      # script, and `exec` keeps it for python, so no SIP-restricted binary strips it.
+      EnvironmentVariables.DYLD_LIBRARY_PATH = "${pkgs.callPackage ../pkgs/libffi-mit-shim.nix { }}/lib";
       StartInterval = 600;
       # Nothing backfills a gap, so poll immediately after a reboot rather than
       # waiting out the first interval.

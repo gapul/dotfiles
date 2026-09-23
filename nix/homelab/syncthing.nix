@@ -15,6 +15,10 @@
   systemd.tmpfiles.rules = [
     "d /srv/syncthing 0755 syncthing syncthing -"
     "Z /srv/syncthing - syncthing syncthing -"
+    # Paperless inbox (folder below). Syncthing (uid 237) writes here and the paperless container
+    # (uid 1000, no userns) deletes each file once consumed, so both need write on the directory.
+    # Files arrive 0644, readable by paperless; the directory is the only thing opened up.
+    "d /var/lib/homelab/paperless/consume 0777 1000 1000 -"
   ];
 
   services.syncthing = {
@@ -41,6 +45,19 @@
         label = "Personal History";
         path = "/srv/syncthing/personal-history";
         devices = [ "macbook-mini" ];
+        type = "sendreceive";
+      };
+      # Drop a PDF on the Mac or save a scan on the iPhone and Paperless consumes it. This side is
+      # Paperless' consume directory itself: consumed files are deleted, and sendreceive carries
+      # the deletion back, so an emptied inbox is the confirmation. Syncthing's .stfolder and
+      # temp files are in Paperless' default ignore list.
+      folders."paperless-inbox" = {
+        label = "Paperless Inbox";
+        path = "/var/lib/homelab/paperless/consume";
+        devices = [
+          "macbook-mini"
+          "iphone"
+        ];
         type = "sendreceive";
       };
       folders."synchub" = {

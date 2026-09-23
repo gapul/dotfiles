@@ -23,6 +23,9 @@
       ingress = {
         # Synapse。federation はここだけを通る (2026-08-31 に Conduit 6167 から移した)。
         "matrix.gapul.net" = "http://127.0.0.1:8008";
+        # matrix-hookshot's generic webhooks. Public so that senders outside the
+        # tailnet (Cloudflare Email Workers, CI) can post (matrix-hookshot.nix).
+        "hooks.gapul.net" = "http://127.0.0.1:9000";
         # ntfy。push はアプリ通知用、alert は unified-calendar の worker が
         # watchdog トピックへ投げてくる先で、Pi 側の ntfy にいたユーザとトークンは
         # この箱の ntfy へ移してある。
@@ -30,11 +33,15 @@
         "alert.gapul.net" = "http://127.0.0.1:8082";
         # 予約ページ。ここだけは tailnet の外の人間が開けないと意味が無いので、
         # 他の gapul.net と違って Caddy ではなくトンネルを通す。つまり
-        # cal.gapul.net の DNS はこのトンネルの CNAME であって、この箱の
+        # booking.gapul.net の DNS はこのトンネルの CNAME であって、この箱の
         # tailnet アドレスを指す A レコードではない。
-        "cal.gapul.net" = "http://127.0.0.1:8086";
+        #
+        # 以前は cal.gapul.net だった。あの名前は unified-calendar の Worker が
+        # カスタムドメインとして掴んでいて、Cloudflare 管理の読み取り専用レコード
+        # (AAAA 100::) が入るため、この宣言は書いてあっても一度も効いていなかった。
+        "booking.gapul.net" = "http://127.0.0.1:8086";
         # 日程調整と割り勘。どちらもサークルや友人に URL を配る前提なので、
-        # cal と同じ理由でトンネルを通す。DNS はこのトンネルの CNAME にすること。
+        # booking と同じ理由でトンネルを通す。DNS はこのトンネルの CNAME にすること。
         "poll.gapul.net" = "http://127.0.0.1:8089";
         "split.gapul.net" = "http://127.0.0.1:8090";
         # ファイル共有と位置共有。どちらも「リンクを送る相手が tailnet の外に
@@ -44,6 +51,11 @@
         # public origin between Formera's frontend and REST API.
         "forms.gapul.net" = "http://127.0.0.1:8102";
         "where.gapul.net" = "http://127.0.0.1:8095";
+        # 自分の発信の置き場 (homelab/social.nix)。Fediverse と Nostr は外のサーバーや
+        # アプリから届かないと成り立たないので、どれもトンネルを通す。
+        "social.gapul.net" = "http://127.0.0.1:8110";
+        "blog.gapul.net" = "http://127.0.0.1:8111";
+        "relay.gapul.net" = "http://127.0.0.1:8112";
       };
       # 知らないホスト名は 404。Pi 側の設定もこうなっていた。
       default = "http_status:404";
