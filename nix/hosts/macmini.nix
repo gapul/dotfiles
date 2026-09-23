@@ -234,6 +234,7 @@ in
     ../modules/authorized-keys.nix
     ./macmini-ci-runner.nix
     ./macmini-dns.nix
+    ./macmini-homeserver-monitor.nix
     ./macmini-presenta.nix
     sopsNix.darwinModules.sops
     # マイクラのサーバーは上の表から生やす。別モジュールにしてあるのは、nix が同じ attrset の
