@@ -10,11 +10,12 @@
 # モジュールがやる。ここで書くのは「誰がどこに繋ぐか」だけでよい。
 #
 # ここに入れていないもの:
-#   telegram  — api_id / api_hash が要る。nix の settings に書くと store が
-#               誰でも読めるので、sops から environmentFile で渡す形にしてから足す。
-#   twitter / linkedin / gmessages / slack / line / imessage
-#             — モジュールが無い。パッケージがあるもの (gmessages, slack) は
-#               自前の unit、残りはコンテナ。第2陣以降。
+#   telegram / slack / gmessages
+#             — nixpkgs にモジュールが無い (telegram は古い Python 版しか無い)。
+#               matrix-bridges-v2.nix に mk-matrix-bridgev2.nix で書いた。
+#   twitter / linkedin / imessage
+#             — モジュールが無い。imessage は macmini 側 (home/macmini-imessage.nix)。
+#   line      — モジュールもパッケージも無いので、両方を自前で書いた (matrix-line.nix)。
 #   teams     — 個人の teams.live.com 向けの実験的な実装しか無い。会社テナントは
 #               Azure のアプリ登録が要るので、そもそも許可の話になる。
 #   simplex   — 構造的に無理。あの設計は識別子を持たないことが核心で、
@@ -52,6 +53,30 @@ let
   #   Telegram / Discord — サーバ側に履歴がある。いちばん深く取れる
   #   Meta / LinkedIn / Slack — サーバ側にある
   #   Signal — 端末にしか無い。連携後のぶんが中心で、過去は基本的に取れない
+  # ブリッジ側の暗号化 (end-to-bridge encryption)。
+  #
+  # Element / Element X は新しい DM を暗号化で作るので、これが無いとブリッジの
+  # ボットとの DM でコマンドが届かない (2026-09-13 に LINE の login が
+  # "this bridge has not been configured to support encryption" で弾かれた)。
+  #
+  #   allow/default — 暗号化されたルームでも動き、自分で作るポータルも暗号化する
+  #   require = false — 暗号化されていないルームも拒否しない (既存の管理用ルーム等)
+  #   self_sign — Element X は未検証の端末に鍵を渡さないので、ブリッジが自分の端末を
+  #               クロス署名する。これが無いと Element X から送った発言が読めない
+  #   msc4190 — appservice が自分の端末を管理する方式。Synapse 1.141 以降は
+  #             実験機能フラグ無しで使える (今は 1.159)
+  #
+  # pickle_key (ブリッジの DB に鍵を保存するときの鍵) は matrix-bridge-secrets.nix が
+  # host ごとに生成する。mautrix-meta だけは nixpkgs の既定の固定値のまま: 既に
+  # 暗号化が有効で DB に鍵が入っているので、変えると復号できなくなる。
+  encryption = {
+    allow = true;
+    default = true;
+    require = false;
+    msc4190 = true;
+    self_sign = true;
+  };
+
   backfill = {
     enabled = true;
     # 5000 は「取りたいだけ取る」と「初回同期が終わる」の折り合い。上流も
@@ -76,6 +101,13 @@ in
   #
   # **E2EE を有効にするときは、この判断をやり直すこと。** そのときは libolm が実際に
   # 使われる側に回るので、goolm かコンテナかを選び直す必要がある。
+  #
+  # 2026-09-14 追記: ブリッジ側の暗号化を有効にしたので、libolm は実際に使われる側に
+  # 回った。判断をやり直した結果、許可を続ける:
+  #   - libolm の既知の問題はタイミングのサイドチャネルで、観測するには暗号処理の
+  #     時間を測れる位置にいる必要がある。ブリッジと Synapse は同じ箱の localhost で
+  #     話し、その箱に入れる時点で DB の平文も読める。守る境界が変わらない
+  #   - goolm は上流が本番に勧めておらず、mautrix-discord 0.7.7 には選択肢自体が無い
   nixpkgs.config.permittedInsecurePackages = [ "olm-3.2.16" ];
 
   services.mautrix-discord = {
@@ -99,6 +131,16 @@ in
       };
       bridge = {
         inherit permissions;
+        # 旧形式の設定なので encryption も bridge の下。self_sign はこの版に無く、
+        # pickle_key も持たない (旧ブリッジは固定値を使う)。
+        encryption = {
+          inherit (encryption)
+            allow
+            default
+            require
+            msc4190
+            ;
+        };
         # discord は 0.7.7 なので backfill の書き方も旧形式。bridgev2 の
         # max_initial_messages ではなく、DM / チャンネル / スレッドを個別に指定する。
         #
@@ -128,8 +170,12 @@ in
   services.mautrix-signal = {
     enable = true;
     registerToSynapse = true;
+    environmentFile = "/var/lib/matrix-bridge-secrets/signal.env";
     settings = {
       inherit homeserver backfill;
+      encryption = encryption // {
+        pickle_key = "$ENCRYPTION_PICKLE_KEY";
+      };
       bridge = { inherit permissions; };
     };
   };
@@ -143,7 +189,7 @@ in
       registerToSynapse = true;
       settings = {
         inherit homeserver;
-        inherit backfill;
+        inherit backfill encryption;
         network.mode = "instagram";
         appservice = {
           id = "instagram";
@@ -159,7 +205,7 @@ in
       registerToSynapse = true;
       settings = {
         inherit homeserver;
-        inherit backfill;
+        inherit backfill encryption;
         network.mode = "messenger";
         appservice = {
           id = "messenger";

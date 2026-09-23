@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+# x: read X (Twitter) from the terminal through the local twitter-api-safe relay.
+#   x <tweet url|id>          the tweet and its thread/replies (focal post first)
+#   x @user [n]               latest posts by a user (default 20, max 100)
+#   x search <query> [n]      latest posts matching a query (X search syntax: from:, since:, lang:, -filter:replies ...)
+#   x top <query> [n]         same, ranked by X's "Top" instead of newest
+# Output, one post per line, tab-separated:
+#   <url>  <date, local time>  <likes>  <reposts>  <text>   (reposts are unwrapped to the original post)
+# Starts the relay on demand. Read-only; keep volume human-sized (per-endpoint limits are ~50-150/15min).
+set -euo pipefail
+
+RELAY=http://localhost:6900
+SETTINGS="$HOME/.config/twitter-api-safe/settings.json"
+LOG="$HOME/tmp/twitter-api-safe/server.log"
+PAGE=20
+
+start_relay() {
+  mkdir -p "$(dirname "$LOG")"
+  # ponytail: on-demand start instead of launchd; the relay opens a Chromium window (headless=false).
+  (nohup "$HOME/.local/state/nix/profile/bin/pnpm" dlx twitter-api-safe-mcp "$SETTINGS" >"$LOG" 2>&1 &)
+  for _ in $(seq 60); do curl -sf -m 2 "$RELAY/health" >/dev/null && return; sleep 0.5; done
+  echo "x: relay did not come up, see $LOG" >&2; exit 1
+}
+curl -sf -m 2 "$RELAY/health" >/dev/null || start_relay
+
+gql() { curl -sf -m 90 -G "$RELAY/i/api/graphql/$1/$2" --data-urlencode "variables=$3"; }
+
+# Walk timeline entries in order (jq mktime here yields local time, which is what we want) (skips pinned/quoted/bio noise that a bare `..` would pick up),
+# unwrap TweetWithVisibilityResults, and flatten to one TSV line per post.
+POSTS='
+  [.. | objects | select(.type? == "TimelineAddEntries") | .entries[] | .content
+   | (.itemContent // .items[]?.item.itemContent)? | objects | .tweet_results.result? | objects
+   | (.tweet // .) | select(.legacy?)
+   | (.legacy.retweeted_status_result.result // .) | (.tweet // .)
+   | . as $t | .legacy
+   | "https://x.com/\($t.core.user_results.result.core.screen_name // "i")/status/\(.id_str)\t"
+     + (.created_at | strptime("%a %b %d %H:%M:%S %z %Y") | mktime | strftime("%Y-%m-%d %H:%M")) + "\t"
+     + "\(.favorite_count)\t\(.retweet_count)\t"
+     + (.full_text | gsub("\n"; " "))]'
+CURSOR='[.. | objects | select(.entryId? // "" | startswith("cursor-bottom")) | .content.value // .content.itemContent.value][0] // ""'
+
+# paginate <queryId> <op> <variables-json> <n>: follow cursor-bottom until n posts or no progress.
+paginate() {
+  local qid=$1 op=$2 vars=$3 n=$4 cursor="" got=0 body lines
+  while :; do
+    body=$(gql "$qid" "$op" "$(jq -c --arg c "$cursor" 'if $c == "" then . else . + {cursor:$c} end' <<<"$vars")")
+    lines=$(jq -r "$POSTS | .[]" <<<"$body")
+    [ -n "$lines" ] || break
+    printf '%s\n' "$lines"
+    got=$((got + $(wc -l <<<"$lines")))
+    cursor=$(jq -r "$CURSOR" <<<"$body")
+    [ "$got" -lt "$n" ] && [ -n "$cursor" ] || break
+  done | head -n "$n"
+}
+
+n_arg() { local n=${1:-20}; [[ $n =~ ^[0-9]+$ ]] || { echo "x: count must be a number" >&2; exit 2; }; echo $(( n > 100 ? 100 : n )); }
+
+case "${1:-}" in
+  ""|-h|--help) sed -n '2,9p' "$0"; exit 0 ;;
+  search|top)
+    [ $# -ge 2 ] || { echo "x $1 <query> [n]" >&2; exit 2; }
+    product=Latest; [ "$1" = top ] && product=Top
+    n=$(n_arg "${3:-}")
+    v=$(jq -nc --arg q "$2" --arg p "$product" --argjson c "$PAGE" '{rawQuery:$q,count:$c,querySource:"typed_query",product:$p}')
+    paginate -TFXKoMnMTKdEXcCn-eahw SearchTimeline "$v" "$n" ;;
+  @*)
+    n=$(n_arg "${2:-}")
+    v=$(jq -nc --arg s "${1#@}" '{screen_name:$s,withGrokTranslatedBio:false}')
+    uid=$(gql IGgvgiOx4QZndDHuD3x9TQ UserByScreenName "$v" | jq -re '.data.user.result.rest_id') \
+      || { echo "x: user $1 not found" >&2; exit 1; }
+    v=$(jq -nc --arg u "$uid" --argjson c "$PAGE" '{userId:$u,count:$c,includePromotedContent:false,withQuickPromoteEligibilityTweetFields:false,withVoice:false}')
+    paginate PNd0vlufvrcIwrAnBYKE9g UserTweets "$v" "$n" ;;
+  *)
+    id=${1##*/status/}; id=${id%%[?/]*}
+    [[ $id =~ ^[0-9]+$ ]] || { echo "x: not a tweet url/id: $1" >&2; exit 2; }
+    v=$(jq -nc --arg id "$id" '{focalTweetId:$id,referrer:"tweet",with_rux_injections:false,rankingMode:"Relevance",includePromotedContent:false,withCommunity:true,withQuickPromoteEligibilityTweetFields:false,withBirdwatchNotes:false,withVoice:false}')
+    gql 6uCvnic3m5reVuehkvHa3w TweetDetail "$v" | jq -r --arg id "$id" "$POSTS | sort_by(test(\"/status/\" + \$id + \"\\t\") | not) | .[]" ;;
+esac

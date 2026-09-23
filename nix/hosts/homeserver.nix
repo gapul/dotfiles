@@ -61,10 +61,10 @@ let
       interval = "1h";
     };
     # calnode (予約ページ)。他と違って公開先は Caddy ではなく cloudflared なので、
-    # ここで生える vhost は実際には誰も踏まない — cal.gapul.net はトンネルの CNAME
-    # だから。それでも表に載せているのは、gatus の監視対象がこの表からしか作られない
-    # ため。監視は upstream を直接叩くので、vhost を経由しなくても機能する。
-    cal.upstream = "127.0.0.1:8086";
+    # ここで生える vhost は実際には誰も踏まない — booking.gapul.net はトンネルの
+    # CNAME だから。それでも表に載せているのは、gatus の監視対象がこの表からしか
+    # 作られないため。監視は upstream を直接叩くので、vhost を経由しなくても機能する。
+    booking.upstream = "127.0.0.1:8086";
     # DNS レコードもダッシュボードのリンクも前からあったのに vhost だけ無く、
     # https で開くと繋がらない状態だった (直接ポートを叩けば見えるので気付きにくい)。
     jellyfin = {
@@ -83,11 +83,10 @@ let
     # 3D プリンタの操作盤 (Bambuddy)。プリンタを LAN Only + Developer Mode にした結果
     # Bambu Handy が使えなくなったので、スマホから触る先がここになる。homelab/bambuddy.nix。
     bambu.upstream = "127.0.0.1:8010";
-    # 家計簿 (fava)。台帳は beancount のテキストで /var/lib/homelab/fava にある。
-    # fava 自体はログインを持たないので、境界はここの vhost が tailnet アドレス
-    # にしか生えていないこと。外に出すなら認証を足すこと。
+    # 家計簿 (fava)。台帳・同期ジョブ・fava は homelab/ledger.nix (2026-09-23 に macmini から
+    # 移した。macmini は常駐機ではない)。fava 自体はログインを持たないので Authelia を挟む。
     money = {
-      upstream = "127.0.0.1:8093";
+      upstream = "127.0.0.1:5075";
       auth = true;
     };
     # ゲームの棚。roms は RomM (ブラウザでそのまま遊べる)、games は Gameyfin
@@ -103,6 +102,8 @@ let
       interval = "1h";
     };
     paperless.upstream = "127.0.0.1:8097";
+    # 持ち物の台帳 (Homebox)。LLM が API キーで叩く。
+    box.upstream = "127.0.0.1:8104";
     # YouTube の保存 (ytdl-sub)。落とし先は /srv/youtube で、jellyfin が /srv を
     # /media として見ているので、落ちた時点で棚に並ぶ。
     tube = {
@@ -110,6 +111,13 @@ let
       auth = true;
     };
     git.upstream = "127.0.0.1:3003"; # forgejo
+    # Signet (homelab/nostr-bunker.nix), the NIP-46 signer for gapul@gapul.net's
+    # Nostr key. Behind Authelia: this is a key-management admin panel, not a
+    # public page, and the daemon it proxies to has no auth of its own.
+    bunker = {
+      upstream = "127.0.0.1:4174";
+      auth = true;
+    };
     archive = {
       upstream = "127.0.0.1:8000"; # archivebox
       auth = true;
@@ -141,6 +149,23 @@ let
     # RecallVault's iPhone client authenticates with its own bearer token, so this
     # machine endpoint must not be placed behind the browser-oriented Authelia flow.
     recall.upstream = "${macmini}:8766";
+    # iPhone のヘルスケアの受け口 (homelab/health.nix)。PulsHealth アプリが bearer トークンで叩く
+    # 機械向けエンドポイントなので Authelia は挟まない。/ は認証が要るので健全なら 401。
+    health = {
+      upstream = "127.0.0.1:8105";
+      expect = [ "[STATUS] == 401" ];
+    };
+    # Orca の Web クライアント (macmini の常駐ランタイム)。スマホから使うために TLS が要る:
+    # 平文 HTTP + 生 IP は secure context ではないので、起動時に
+    # `crypto.randomUUID is not a function` で落ちる。tailscale serve が同じものを
+    # https://macmini.tail079f44.ts.net に出しているが、MagicDNS がこのネットワークの
+    # 端末で解決できていない (ts.net の split route が OS に効かない) ので、
+    # 既に実績のある gapul.net 側に寄せる。
+    #
+    # Authelia は挟まない。ページ自体は開けても、ランタイムはペアリングコードの
+    # デバイストークンを持たないクライアントを受け付けない。つまり入口の鍵は
+    # 既にコード側にあり、vhost は tailnet 内からしか引けない。
+    orca.upstream = "${macmini}:6768";
     sync = {
       upstream = "127.0.0.1:8384"; # syncthing rejects requests whose Host it doesn't know
       extra = "header_up Host {upstream_hostport}";
@@ -406,7 +431,7 @@ in
         lib.mapAttrsToList (name: site: {
           inherit name;
           group = "homelab";
-          url = "http://${site.upstream}";
+          url = if lib.hasPrefix "https://" site.upstream then site.upstream else "http://${site.upstream}";
           interval = site.interval or "2m";
           # Not `== 200`: several of these answer 3xx when perfectly healthy.
           # A service whose healthy answer is 4xx sets `expect` in the table above.
@@ -431,6 +456,19 @@ in
             conditions = [
               "[STATUS] == 200"
               "[BODY].server.name == Conduit"
+            ];
+            alerts = [ ntfyAlert ];
+          }
+          {
+            # Presenta runs on the macmini behind its own tunnel. /api/health answers 200 only
+            # when the app can reach its Postgres, so this covers the app, the DB and the tunnel.
+            name = "presenta";
+            group = "public";
+            url = "https://presenta.gapul.net/api/health";
+            interval = "5m";
+            conditions = [
+              "[STATUS] == 200"
+              "[BODY].ok == true"
             ];
             alerts = [ ntfyAlert ];
           }
@@ -531,6 +569,10 @@ in
       "flakes"
     ];
     auto-optimise-store = true;
+    # Keep build-time inputs of live outputs across the weekly GC, so the x86_64-linux
+    # pr-gate on the runner here does not refetch and rebuild everything afterwards
+    # (same reason as darwin-common.nix).
+    keep-outputs = true;
     # Same safeguard as the laptop: give up on an unreachable cache quickly and
     # fall through to building from source.
     connect-timeout = 5;

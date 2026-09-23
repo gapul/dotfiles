@@ -1,0 +1,52 @@
+#!/bin/zsh
+# 表現力重視のTTS + 声クローン (Fish Audio S2 Pro / mlx-speech, 8bit MLX)
+#
+#   fish-tts "文章" [出力.wav] [参照音声] [参照文字起こし]
+#
+# 感情や演技は文中のタグで指定する: [whisper] [excited] [sad] [laughing]
+# [shouting] [singing] [pause] [emphasis] のほか [pitch up] のような記述的な
+# 指定も通る。日本語は上流で Tier 1 扱い。
+#
+# 参照音声を渡すとその声でクローンする(10-30秒程度が目安)。参照文字起こしを
+# 省略すると voice-clone と同じく mlx_whisper で自動で取る。
+#
+# 速いものではない。実測 RTF 3-4、つまり10秒喋らせるのに30-40秒かかる。
+# ピークで 17GB 使うので、24GB の本機では他の重い処理と重ねないこと。
+# 素早く量をこなすなら tts (Style-Bert-VITS2)、既存の声を写すだけなら
+# voice-clone (GPT-SoVITS) のほうが軽い。
+set -e
+eval "$(/opt/homebrew/bin/brew shellenv)"
+export PATH="$HOME/.local/bin:$PATH"
+
+text="$1"; out="${2:-/tmp/fish_tts_out.wav}"; ref="$3"; reftext="$4"
+if [[ -z "$text" ]]; then
+  echo "使い方: fish-tts \"文章\" [出力.wav] [参照音声] [参照文字起こし]"; exit 1
+fi
+
+model="$HOME/.local/share/models/mlx/fish-s2-pro-8bit"
+[[ -d "$model" ]] || { echo "モデルが無い: $model (setup-scripts/dl_fish_s2.sh)"; exit 1; }
+
+# 既定の 1024 トークンは約47秒ぶん。タグ込みで1文字あたり2トークン弱なので、
+# 長文でも途中で切れないよう文字数から積もる。
+tokens=$(( ${#text} * 2 + 256 ))
+(( tokens < 1024 )) && tokens=1024
+
+args=(--model "$model" --text "$text" --output "$out" --max-new-tokens "$tokens")
+
+if [[ -n "$ref" ]]; then
+  [[ -f "$ref" ]] || { echo "参照音声が無い: $ref"; exit 1; }
+  refwav="/tmp/fish_ref_$$.wav"
+  ffmpeg -y -i "$ref" -ar 44100 -ac 1 "$refwav" >/dev/null 2>&1
+  if [[ -z "$reftext" ]]; then
+    echo "[参照音声を自動文字起こし中...]" >&2
+    mlx_whisper "$refwav" --model "$HOME/.local/share/models/mlx/whisper-large-v3-turbo-mlx" \
+      --language ja --output-dir /tmp --output-format txt >/dev/null 2>&1
+    reftext="$(tr -d '\n' < "/tmp/fish_ref_$$.txt" 2>/dev/null)"
+  fi
+  echo "[参照文: $reftext]" >&2
+  args+=(--reference-audio "$refwav" --reference-text "$reftext")
+fi
+
+~/.local/share/venvs/fish-venv/bin/mlx-speech tts "${args[@]}"
+[[ -n "$ref" ]] && rm -f "/tmp/fish_ref_$$.wav" "/tmp/fish_ref_$$.txt"
+echo "→ $out"

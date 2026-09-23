@@ -24,9 +24,12 @@ in
   imports = [
     ../modules/home/darwin-agent-state-sync.nix
     ../modules/home/darwin-chrome.nix
+    ../modules/home/darwin-firefox.nix
+    ../modules/home/darwin-helium.nix
     ../modules/home/darwin-services.nix
     ../modules/home/darwin-apps.nix
     ../modules/home/darwin-ai-client.nix
+    ../modules/home/agy.nix
   ];
 
   # Nothing puts an .app under ~/Applications any more: bundles come from environment.systemPackages
@@ -63,6 +66,17 @@ in
     # `.config/homebrew → ~/.homebrew` symlink below converges both paths onto the same entity
     # (Justfile rebuild's `env -u XDG_CONFIG_HOME` is harmless, so kept).
     PNPM_HOME = "${config.home.homeDirectory}/Library/pnpm";
+    # ActivityWatch (Tauri build) checks GitHub for updates on every start and, by default,
+    # installs them into its own bundle. The app comes from the activitywatch@beta cask, so updates
+    # belong to brew; this skips the check entirely (`auto_download = false` would still prompt).
+    # It reaches the login-item launch through the session-env agent in darwin-services.nix.
+    AW_DISABLE_AUTO_UPDATE = "1";
+    # aw-tauri already autostarts `aw-sync daemon` (its config.toml autostart list), which pushes every
+    # bucket to a sync directory every 5 minutes. Pointing that directory into the Syncthing share
+    # puts the whole ActivityWatch record on homeserver within minutes instead of the daily snapshot.
+    # aw-sync keeps its own per-device subdirectory, so this sits beside the <host>/ dirs of
+    # personal-history without colliding.
+    AW_SYNC_DIR = "${config.home.homeDirectory}/Sync/syncthing/personal-history/aw-sync";
     # nh: darwin works with the darwinConfigurations.<user> form. For home on nh 4.3.2,
     # neither #name nor #...activationPackage works → flake only (no #) so it auto-detects
     # homeConfigurations.<user> by user name is the only form that works.
@@ -95,6 +109,12 @@ in
   # onto the same entity via symlink. Canonical is ~/.homebrew (the sudo side doesn't see XDG).
   home.file.".config/homebrew".source =
     config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.homebrew";
+  # aw-sync writes to ~/ActivityWatchSync unless AW_SYNC_DIR reaches it. When aw-tauri is started
+  # before the session-env agent (or by hand from the Dock) the variable is missing and a second
+  # 240 MB copy of the record silently grows in $HOME. The symlink makes both paths the same place,
+  # so the sync directory no longer depends on launch order. AW_SYNC_DIR stays declared above.
+  home.file."ActivityWatchSync".source =
+    config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/Sync/syncthing/personal-history/aw-sync";
 
   # Move real data of non-XDG tools under XDG, keep default paths via symlink
   # (same approach as terminfo). Classification: credentials/long-term data=data, telemetry state=state.
@@ -249,6 +269,12 @@ in
     # sketchybar's event helper. `sketchybarrc` used to compile it on every bar start from
     # sources kept in the config directory; the launchd agents put the profile first on PATH.
     (callPackage ../pkgs/sketchybar-helper { })
+    # Premiere Pro MCP server (registered with `claude mcp add -s user premiere-pro -- premiere-pro-mcp`).
+    # Was a hand build in ~/Developer; see the pin note in the package.
+    (callPackage ../pkgs/premiere-pro-mcp.nix { })
+    # Laya typed-decision models on MLX (`laya-mlx predict`, `laya-snake`). Weights land in
+    # ~/.cache/huggingface on first use. mlx comes from Apple's Metal wheels, see the package.
+    (callPackage ../pkgs/laya-mlx.nix { })
     # zrythm (DAW): broken=isDarwin in nixpkgs. Self-built for darwin with carla included.
     # See pkgs/zrythm-darwin/ for details. GUI must be launched in a foreground GUI session.
     # On 26.05-darwin appstream/libadwaita can't build on darwin, so this one package alone
@@ -305,6 +331,83 @@ in
   home.file.".local/bin/puddle".source =
     config.lib.file.mkOutOfStoreSymlink "/Applications/Nix Apps/Puddle.app/Contents/Resources/puddle";
 
+  # Same for Whisky's CLI (bottles, `run`, `shellenv` for driving its Wine by hand). The cask only
+  # installs the app, so nothing else puts it on PATH.
+  home.file.".local/bin/whisky".source =
+    config.lib.file.mkOutOfStoreSymlink "/Applications/Whisky.app/Contents/Resources/WhiskyCmd";
+
+  # tenbin: shell client for Tenbin AI for UTokyo (reads the session cookie from Zen, so mac-only).
+  # Was a hand-placed ~/.local/bin/tenbin until 2026-09-15.
+  home.file.".local/bin/tenbin" = {
+    source = ../../configs/bin/tenbin;
+    executable = true;
+  };
+
+  # macmini の管理者認証ダイアログにパスワードを入れる。人が叩くもので、Claude は実行しない
+  # (アカウントのパスワードを代わりに入力しない線は、保管場所が sops になっても変わらない)。
+  # TCC のトグルは authorizationdb を緩めても認証を要求するので、この手数は消せない。
+  home.file.".local/bin/macmini-auth" = {
+    source = ../../configs/bin/macmini-auth;
+    executable = true;
+  };
+
+  # Bitwig driven from scripts: DrivenByMoss's "Open Sound Control" controller is the receive/send
+  # end inside Bitwig; `bitwig` is the stdlib-only OSC client on this side. DrivenByMoss is neither in
+  # nixpkgs nor brew (mossgrabers.de zip), so it is fetched and linked into Bitwig's library dir.
+  # Bitwig only picks up .bwextension files from <library>/Extensions; the controller itself still
+  # has to be added once in Settings > Controllers (that state lives in Bitwig's binary prefs) and
+  # needs a MIDI input to activate: the IAC Driver, set online once via CoreMIDI (see `bitwig` help).
+  home.file."Documents/Bitwig Studio/Extensions/DrivenByMoss.bwextension".source = "${
+    pkgs.fetchzip {
+      url = "https://www.mossgrabers.de/Software/Bitwig/DrivenByMoss-26.6.5-Bitwig.zip";
+      hash = "sha256-DIFJBY9SX4QklKeSaazG/DJ+0psKKO+hfsO51+OQQC4=";
+      stripRoot = false;
+    }
+  }/DrivenByMoss.bwextension";
+  home.file.".local/bin/bitwig" = {
+    source = ../../configs/bin/bitwig;
+    executable = true;
+  };
+
+  # RetroArch cores for the GB/GBC/GBA/DS emulation that used to be four standalone apps
+  # (hosts/darwin.nix, Emulation). Not declared as store paths on purpose: nixpkgs' libretro
+  # cores pull in retroarch-bare, which is marked broken on aarch64-darwin, and libretro's
+  # buildbot only publishes an unpinned nightly "latest" (no versioned URL to hash). So this
+  # is a declared procedure instead - fetch each missing core from the same buildbot the app's
+  # own Core Updater uses, into the directory retroarch.cfg points at. Delete a .dylib to get
+  # a fresh one on the next switch; RetroArch's updater can also refresh them in place.
+  # ponytail: "missing" is the only trigger, no staleness check - the updater covers that.
+  home.activation.retroarchCores = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    dir="${config.home.homeDirectory}/Library/Application Support/RetroArch/cores"
+    /bin/mkdir -p "$dir"
+    for core in sameboy mgba melonds; do
+      [ -e "$dir/''${core}_libretro.dylib" ] && continue
+      echo "retroarch: fetching $core core"
+      tmp=$(/usr/bin/mktemp -d)
+      $DRY_RUN_CMD /usr/bin/curl -fsSL -o "$tmp/core.zip" \
+        "https://buildbot.libretro.com/nightly/apple/osx/arm64/latest/''${core}_libretro.dylib.zip" \
+        && $DRY_RUN_CMD /usr/bin/unzip -q -o "$tmp/core.zip" -d "$dir" \
+        || echo "retroarch: $core core download failed (offline?), skipping" >&2
+      /bin/rm -rf "$tmp"
+    done
+  '';
+
+  # voicevox-engine: the engine that VOICEVOX.app bundles, started by hand for the REST API
+  # (talk + singing: /sing_frame_audio_query -> /frame_synthesis). On macOS 27 it aborts on
+  # every synthesis in nixpkgs' Apple libffi; the shim swaps in upstream libffi at load time
+  # (see pkgs/libffi-mit-shim.nix). VOICEVOX.app launches the unshimmed engine itself, so the
+  # editor stays affected until nixpkgs fixes libffi; only this CLI is covered.
+  home.file.".local/bin/voicevox-engine" = {
+    executable = true;
+    text = ''
+      #!/bin/sh
+      export DYLD_LIBRARY_PATH=${
+        pkgs.callPackage ../pkgs/libffi-mit-shim.nix { }
+      }/lib''${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}
+      exec ${lib.getExe pkgs.voicevox-engine} --host 127.0.0.1 --port 50021 "$@"
+    '';
+  };
+
   home.file.".config/ghostty" = {
     source = ../../configs/terminals/ghostty;
     recursive = true;
@@ -340,6 +443,18 @@ in
   # キャッシュに在るうちは代替で済むので表に出ないが、nixpkgs を上げた途端に落ちた。
   # JSON は YAML 1.2 の部分集合なので lazygit はそのまま読める。
   xdg.configFile."lazygit/config.yml".text = builtins.toJSON config.programs.lazygit.settings;
+
+  # Element Desktop reads config.json from its profile directory on top of the bundled
+  # one. Point it at the self-hosted homeserver so a fresh sign-in needs no server entry.
+  # Account-level settings live on the server (account data) and are not declared here.
+  home.file."Library/Application Support/Element/config.json".text = builtins.toJSON {
+    default_server_config."m.homeserver" = {
+      base_url = "https://matrix.gapul.net";
+      server_name = "gapul.net";
+    };
+    disable_guests = true;
+    default_country_code = "JP";
+  };
 
   # MechvibesDX at login, in place of a System Settings login item. Lives here
   # rather than in darwin-services.nix because it needs the package path from

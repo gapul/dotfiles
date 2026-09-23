@@ -13,6 +13,10 @@
 ~/.local/share/models/sbv2/deberta-v2-large-japanese-char-wwm  hfmirror  ku-nlp/deberta-v2-large-japanese-char-wwm  日本語BERT 1.3GB
 ~/.local/share/models/sbv2/jvnv-F1-jp                          hfmirror  litagin/style_bert_vits2_jvnv (jvnv-F1-jp/*)  感情つき女性声
 
+# --- TTS 日本語 (Fish S2 Pro, mlx-speech, ~/.local/share/venvs/fish-venv, VOICEVOX互換シム fish-voicevox が使う) ---
+# ライセンス注意: Fish Audio Research License = 研究/個人/評価のみ。商用(ホスティング含む)は別途契約。
+~/.local/share/models/mlx/fish-s2-pro-8bit  hfmirror  appautomaton/fishaudio-s2-pro-8bit-mlx  int8 + codec同梱 6.3GB
+
 # --- 声クローン (GPT-SoVITS, ~/gsv-venv + ~/GPT-SoVITS, torchcodec必須, tts_infer.yaml custom=cpu/fp32/v2) ---
 ~/Developer/github.com/RVC-Boss/GPT-SoVITS/GPT_SoVITS/pretrained_models  hfmirror  XXXXRT/GPT-SoVITS-Pretrained (pretrained_models.zip 展開)  4.6GB
 

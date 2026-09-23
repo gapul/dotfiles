@@ -174,12 +174,21 @@ in
       sqlite_backup /var/lib/homelab/pingvin-share/data/pingvin-share.db /var/lib/db-dumps/pingvin-share.db
       sqlite_backup /var/lib/homelab/formera/formera.db /var/lib/db-dumps/formera.db
       sqlite_backup /var/lib/homelab/calnode/calnode.db /var/lib/db-dumps/calnode.db
+      sqlite_backup /var/lib/gotosocial/database.sqlite /var/lib/db-dumps/gotosocial.db
+      sqlite_backup /var/lib/writefreely/writefreely.db /var/lib/db-dumps/writefreely.db
+      sqlite_backup /var/lib/nostr-rs-relay/nostr.db /var/lib/db-dumps/nostr-relay.db
+      sqlite_backup /var/lib/private/puls/health.db /var/lib/db-dumps/health.db
+      sqlite_backup /var/lib/homelab/homebox/homebox.db /var/lib/db-dumps/homebox.db
       sqlite_backup /var/lib/homelab/jellyfin/config/data/data/jellyfin.db /var/lib/db-dumps/jellyfin.db
       sqlite_backup /var/lib/homelab/bambuddy/data/bambuddy.db /var/lib/db-dumps/bambuddy.db
       sqlite_backup /var/lib/homelab/ntfy/lib/user.db /var/lib/db-dumps/ntfy-user.db
       sqlite_backup /var/lib/homelab/ntfy/cache/cache.db /var/lib/db-dumps/ntfy-cache.db
       sqlite_backup /var/lib/hass/home-assistant_v2.db /var/lib/db-dumps/home-assistant.db
       sqlite_backup /srv/archivebox/index.sqlite3 /var/lib/db-dumps/archivebox.db
+
+      # LINE のログイン (アクセストークンと E2EE 鍵) もここにある。失うと再ログインで済むが、
+      # ブリッジが Matrix 側に作った部屋との対応も一緒に消える。
+      sqlite_backup /var/lib/matrix-line/matrix-line.db /var/lib/db-dumps/matrix-line.db
 
       for bridge in discord telegram twitter meta; do
         sqlite_backup "/var/lib/homelab/matrix/bridges/$bridge/mautrix-$bridge.db" \

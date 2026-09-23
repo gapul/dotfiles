@@ -1,0 +1,6 @@
+#!/bin/zsh
+# Fish S2 Pro を VOICEVOX 互換 API で喋らせるシム（presenta の VOICEVOX_URL をここに向ける）。
+# 使い方: fish-voicevox [--port 10202] [--host 127.0.0.1]
+exec ~/.local/share/venvs/fish-venv/bin/python \
+  ~/.local/share/ai-stack/fish_voicevox_shim.py \
+  --model ~/.local/share/models/mlx/fish-s2-pro-8bit "$@"
