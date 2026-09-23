@@ -1,0 +1,50 @@
+# A reusable workflow so a repository's own events can reach claude-agent on the mac
+# mini immediately. Other repositories call it with about ten lines.
+#
+#   jobs:
+#     agent:
+#       uses: gapul/dotfiles/.github/workflows/claude-agent.yml@main
+#       with:
+#         target_repo: ${{ github.repository }}
+#         task: issue:${{ github.event.issue.number }}
+#
+# The implementation (configs/macmini/claude-agent/) lives in the mac mini's nix
+# store; the runner only invokes ~/.local/bin/claude-agent. No checkout is needed, so
+# all a repository carries is the caller, and changing the logic means rebuilding
+# dotfiles once rather than editing every repository.
+#
+# ## Why pull request review is not triggered from here
+#
+# Reviewing a fork's pull request from Actions needs pull_request_target, which means
+# running a job that holds a write-capable token on a self-hosted runner, triggered by
+# someone else's pull request. A review can afford to be a few minutes late, so it is
+# the local poller's job instead: that runs on its own credentials, with no GitHub
+# workflow context around it.
+name: Claude Agent
+
+on:
+  workflow_call:
+    inputs:
+      target_repo:
+        description: The repository to work on (owner/repo)
+        required: true
+        type: string
+      task:
+        description: "issue:<number> or run:<run id>"
+        required: true
+        type: string
+
+jobs:
+  run:
+    runs-on: [self-hosted, macmini]
+    timeout-minutes: 45
+    steps:
+      - name: Dispatch to claude-agent
+        # Inputs come through env. Expanding ${{ }} straight into the shell body would
+        # let a value from outside, an issue title for instance, inject a command.
+        env:
+          TARGET_REPO: ${{ inputs.target_repo }}
+          TASK: ${{ inputs.task }}
+        run: |
+          set -uo pipefail
+          exec "$HOME/.local/bin/claude-agent" autofix "$TARGET_REPO" "$TASK"

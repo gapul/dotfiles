@@ -22,6 +22,7 @@ in
 {
   imports = [
     ../modules/home/darwin-agent-state-sync.nix
+    ./macmini-claude-agent.nix
     ../modules/home/agy.nix
   ];
 
