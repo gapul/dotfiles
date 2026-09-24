@@ -93,6 +93,11 @@
         description: 予約ページ (Radicale の空きから)
         icon: mdi-calendar-clock
         siteMonitor: http://127.0.0.1:8086
+    - unified-calendar:
+        href: https://ical.gapul.net
+        description: Google/iCloud/Radicale 統合配信
+        icon: mdi-calendar-sync
+        siteMonitor: http://127.0.0.1:8113
     - Rallly:
         href: https://poll.gapul.net
         description: 日程調整

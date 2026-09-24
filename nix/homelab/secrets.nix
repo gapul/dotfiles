@@ -58,6 +58,7 @@ let
       owner = "matrix-synapse";
     }
     { rel = "tailscale.key"; }
+    { rel = "unified-calendar.env"; }
     { rel = "vaultwarden.env"; }
     { rel = "writefreely-admin.password"; }
     { rel = "zaim.cookie"; }
