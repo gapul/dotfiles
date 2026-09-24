@@ -52,13 +52,6 @@ in
     # a service is pointed at the big disk — that is how location history went
     # missing.
 
-    # --host: the repository is shared, and forget without it applies this policy to
-    # every host's snapshots, not just the ones written here. The policy is the same
-    # on every host so nothing gets thinned differently — but it does mean whoever
-    # runs first expires the snapshots of hosts that no longer write any (pve's
-    # vzdumps, the cold pass taken during the migration). Those are kept by the
-    # archive tag now; scoping forget is the other half of not deciding another
-    # host's retention from here.
     # 稼働中のデータベースをファイルとしてコピーしても、復元できる保証が無い。
     # 移行手順書にも「稼働中の postgres/couchdb をコピーすると壊れた状態で取れる」と
     # 書いてあるのに、日々のバックアップは同じことをしていた。転送は毎日成功して
@@ -231,7 +224,10 @@ in
       fi
     '';
 
-    pruneOpts = resticCommon.retentionArgs ++ [ "--host homeserver" ];
+    # pruneOpts は意図的に空のままにする。共有リポジトリの forget/prune は
+    # 常時稼働の Mac mini だけが担当する (home/macmini-backup.nix)。Homeserver まで
+    # バックアップ直後に prune すると、05:00 の Mac mini バックアップと排他ロックが
+    # 競合し、保存済みのスナップショットがあるのにユニット全体が failed になる。
     extraBackupArgs = [ "--tag homeserver" ];
     timerConfig = {
       OnCalendar = "03:00";
