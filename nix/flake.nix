@@ -266,6 +266,46 @@
           ;
       };
 
+      darwinWorkstationSpecialArgs = {
+        inherit user;
+        brewNix = brew-nix;
+        mocopiMac = mocopi-mac;
+        nixpkgsAgents = nixpkgs-agents;
+        # 重いビルドを macmini へ逃がす。同じ aarch64-darwin なのでそのまま走る。
+        #
+        # nix のデーモンは root として ssh するので、鍵の場所を明示する。root は
+        # 権限を無視して読めるので、普段使っている automation 鍵をそのまま指す
+        # (root 専用の鍵を増やすと管理する秘密が 1 つ増えるだけ)。
+        #
+        # 10 は macmini のコア数、1 は speed factor。big-parallel は「並列に強い
+        # 派生をここへ回す」印で、Chromium や LLVM のような重いものが該当する。
+        #
+        # builders-use-substitutes を付けないと、macmini が要る依存を母艦から
+        # 転送することになり、キャッシュから直接引ける利点が消える。
+        nixCustomConf = {
+          # ホスト名ではなく tailnet の IP で書く。nix のデーモンは root として
+          # 動くので ~/.ssh/config を読まず、"macmini" を解決できない
+          # (Could not resolve hostname macmini)。
+          #
+          # root の ~/.ssh/known_hosts に macmini のホスト鍵が要る。無いと
+          # 「Host key verification failed」で止まる。これは一度きりの手作業:
+          #   sudo sh -c 'ssh-keyscan -H 100.105.135.49 >> /var/root/.ssh/known_hosts'
+          builders = "ssh-ng://gapul@100.105.135.49 aarch64-darwin /Users/gapul/.ssh/id_automation 10 1 big-parallel,benchmark";
+          builders-use-substitutes = "true";
+        };
+        # hosts/darwin.nix declares the .app-shipping creative tools, which come from
+        # nixos-unstable (see lib/unstable-pkgs.nix).
+        nixpkgsUnstable = nixpkgs-unstable;
+      };
+      darwinWorkstation =
+        includeManualSources:
+        mkHost.darwin {
+          host = ./hosts/darwin.nix;
+          specialArgs = darwinWorkstationSpecialArgs // {
+            inherit includeManualSources;
+          };
+        };
+
       # ECS "role" = a bundle of components (home/*.nix). A host just combines roles.
       # The ordering affects list concatenation order for home.packages etc., so keep it identical to the existing config.
       roles = rec {
@@ -506,7 +546,10 @@
               # to be expressed as an output of its own and built directly.
               pr-gate = systemPkgs.linkFarmFromDrvs "pr-gate" (
                 lib.optionals isDarwinWorkstation [
-                  inputs.self.darwinConfigurations.${user.username}.system
+                  # AquesTalkPlayer's licensed DMG is intentionally requireFile and cannot be
+                  # fetched by CI. Build the same workstation with only manual sources disabled;
+                  # the deployed darwinConfiguration below keeps them enabled.
+                  (darwinWorkstation false).system
                   inputs.self.homeConfigurations.${user.username}.activationPackage
                   # Formatting and the other hooks, on the PR rather than after the merge.
                   # It is seconds of work and it is the only check that has ever gone red on
@@ -724,40 +767,7 @@
     perSystemOutputs
     // {
       # System config: sudo darwin-rebuild switch --flake .#<username>
-      darwinConfigurations.${user.username} = mkHost.darwin {
-        host = ./hosts/darwin.nix;
-        specialArgs = {
-          inherit user;
-          brewNix = brew-nix;
-          mocopiMac = mocopi-mac;
-          nixpkgsAgents = nixpkgs-agents;
-          # 重いビルドを macmini へ逃がす。同じ aarch64-darwin なのでそのまま走る。
-          #
-          # nix のデーモンは root として ssh するので、鍵の場所を明示する。root は
-          # 権限を無視して読めるので、普段使っている automation 鍵をそのまま指す
-          # (root 専用の鍵を増やすと管理する秘密が 1 つ増えるだけ)。
-          #
-          # 10 は macmini のコア数、1 は speed factor。big-parallel は「並列に強い
-          # 派生をここへ回す」印で、Chromium や LLVM のような重いものが該当する。
-          #
-          # builders-use-substitutes を付けないと、macmini が要る依存を母艦から
-          # 転送することになり、キャッシュから直接引ける利点が消える。
-          nixCustomConf = {
-            # ホスト名ではなく tailnet の IP で書く。nix のデーモンは root として
-            # 動くので ~/.ssh/config を読まず、"macmini" を解決できない
-            # (Could not resolve hostname macmini)。
-            #
-            # root の ~/.ssh/known_hosts に macmini のホスト鍵が要る。無いと
-            # 「Host key verification failed」で止まる。これは一度きりの手作業:
-            #   sudo sh -c 'ssh-keyscan -H 100.105.135.49 >> /var/root/.ssh/known_hosts'
-            builders = "ssh-ng://gapul@100.105.135.49 aarch64-darwin /Users/gapul/.ssh/id_automation 10 1 big-parallel,benchmark";
-            builders-use-substitutes = "true";
-          };
-          # hosts/darwin.nix declares the .app-shipping creative tools, which come from
-          # nixos-unstable (see lib/unstable-pkgs.nix).
-          nixpkgsUnstable = nixpkgs-unstable;
-        };
-      };
+      darwinConfigurations.${user.username} = darwinWorkstation true;
 
       # Headless LLM worker (M4 Mac mini / 24GB):
       #   sudo darwin-rebuild switch --flake .#macmini
