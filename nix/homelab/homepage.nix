@@ -11,13 +11,14 @@
 
 {
 
-  # /app/config は書ける必要がある。homepage は起動時に logs/ を作り、置いていない
-  # 設定 (kubernetes.yaml など) は雛形を自分でコピーしてくるので、store を直接 ro で
-  # 当てると初期化に失敗して 500 を返す。宣言はリポジトリ側のままにして、起動ごとに
-  # 書ける場所へ配り直す。手で編集しても次の起動で戻る、が狙いどおりの挙動。
+  # /app/config has to be writable: homepage creates logs/ at startup and copies in
+  # templates for any config it does not find (kubernetes.yaml etc.), so a read-only
+  # store path fails initialisation with a 500. The declaration stays in the repo and
+  # is re-copied into a writable place on every start. Hand edits are reverted on the
+  # next start, which is the intended behaviour.
   #
-  # yaml だけ消してから配るので、homepage が作った雛形も毎回作り直される。logs/ は
-  # ディレクトリなので残る。
+  # Only the yaml files are deleted before copying, so homepage's own templates are
+  # regenerated each time too. logs/ is a directory and survives.
   systemd.services."podman-homepage".preStart = lib.mkAfter ''
     install -d -m 755 /var/lib/homelab/homepage
     find /var/lib/homelab/homepage -maxdepth 1 -type f -name "*.yaml" -delete
@@ -60,8 +61,9 @@
       "HOMEPAGE_ALLOWED_HOSTS" = "*";
     };
     volumes = [
-      # 中身は preStart がリポジトリ(configs/homelab/homepage)から配る。以前は
-      # /var/lib 側の手編集ファイルで、移行のたびに旧ホストの IP を直す作業が出ていた。
+      # Contents are copied by preStart from the repo (configs/homelab/homepage). It used
+      # to be hand-edited files under /var/lib, which meant fixing the old host's IPs
+      # after every migration.
       "/var/lib/homelab/homepage:/app/config:rw"
       # podman's socket speaks the Docker API, but homepage's config/docker.yaml and
       # glances both look for it at the conventional path, so keep the container
@@ -83,6 +85,9 @@
     };
     after = [
       "podman-network-homepage_default.service"
+      # Both are woken together by the lazy socket. Without this ordering homepage's
+      # first widget fetches race glances' web server and log ECONNREFUSED 127.0.0.1:61208.
+      "podman-glances.service"
     ];
     requires = [
       "podman-network-homepage_default.service"
