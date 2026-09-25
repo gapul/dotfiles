@@ -35,6 +35,10 @@ if ! docker container inspect "$name" >/dev/null 2>&1; then
   docker run -d --name "$name" --restart unless-stopped --network host \
     -v nixstore:/nix -v "$HOME:$HOME" -v /tmp:/tmp "${env[@]}" -w "$HOME" \
     nixos/nix sleep infinity >/dev/null
+  # The image ships /nix/var/nix/profiles/default (nix, coreutils, cacert...) without the
+  # gcroots/profiles link, so the first `nix-collect-garbage` deletes it and even `ls`
+  # disappears (happened 2026-09-25). Root it like a normal install does.
+  docker exec "$name" sh -c 'test -e /nix/var/nix/gcroots/profiles || ln -s ../profiles /nix/var/nix/gcroots/profiles'
 fi
 docker start "$name" >/dev/null 2>&1 || true
 case "${1:-}" in
