@@ -169,3 +169,10 @@ UNIT
   systemctl --user daemon-reload
   systemctl --user enable --quiet --now dotfiles-sync.timer
 fi
+
+# 6. rootless docker の中の nix (docs/CHEATSHEET.md)。コンテナを作るのは人が nixsh を叩いたときだけで、
+#    既にあるホストではパッケージ集合を上で追従させた ~/.dotfiles に合わせる。
+if docker container inspect nix >/dev/null 2>&1; then
+  ~/.local/bin/nixsh update \
+    || echo "[bootstrap] WARNING: nixsh update に失敗。前のパッケージ集合のまま続行します。" >&2
+fi

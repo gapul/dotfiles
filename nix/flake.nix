@@ -1004,8 +1004,8 @@
         targetSystem = "aarch64-linux";
         modules = roles.linuxServer;
       };
-      # Rootless-docker container on a shared machine: .#<username>-linux-shared
-      # (nixos/nix image, /nix in a volume, the real home bind-mounted; see docs/CHEATSHEET.md).
+      # Rootless-docker container on a shared machine: .#<username>-linux-shared. Only its
+      # config.home.path is built there (configs/bin/nixsh); never activated. See docs/CHEATSHEET.md.
       homeConfigurations."${user.username}-linux-shared" = mkHost.home {
         targetSystem = "x86_64-linux";
         modules = roles.linuxShared;
