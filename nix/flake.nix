@@ -758,7 +758,13 @@
                 # "attribute 'formera-source' missing".
                 inherit user formera-source;
                 sopsNix = sops-nix;
-                pkgs = systemPkgs;
+                # nixpkgs-nixos, not systemPkgs: runNixOSTest takes its NixOS module
+                # set from whichever nixpkgs pkgs came from, and systemPkgs is built
+                # from the 26.05-darwin lineage. hosts/homeserver.nix is deployed
+                # against nixos-unstable, so options that only exist there made the
+                # test fail to evaluate while the real config was fine
+                # (services.journald.settings was the one that caught this).
+                pkgs = nixpkgs-nixos.legacyPackages.${system};
               };
             };
           };
