@@ -16,6 +16,8 @@
 #   nixsh                 interactive zsh inside (bash until `nixsh update` has run), cwd kept
 #   nixsh <cmd> [args]    run one command inside, cwd kept
 #   nixsh update          rebuild the package set from ~/.dotfiles and collect garbage
+#                         (plain GC: the previous out-link target is simply unreachable. `-d` would
+#                         also drop the image's default profile as an "old generation")
 #
 # ponytail: no GPU passthrough (rootless docker has no nvidia runtime here); GPU work stays outside.
 set -euo pipefail
@@ -47,7 +49,7 @@ case "${1:-}" in
     exec docker exec -it "${env[@]}" -w "$PWD" "$name" "$shell" -l ;;
   update)
     exec docker exec -i "${env[@]}" "$name" sh -c \
-      "nix build --out-link '$home_path' '$HOME/.dotfiles/nix#homeConfigurations.$user-linux-shared.config.home.path' && nix-collect-garbage -d >/dev/null" ;;
+      "nix build --out-link '$home_path' '$HOME/.dotfiles/nix#homeConfigurations.$user-linux-shared.config.home.path' && nix-collect-garbage >/dev/null" ;;
   *)
     exec docker exec -i "${env[@]}" -w "$PWD" "$name" "$@" ;;
 esac
