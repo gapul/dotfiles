@@ -80,27 +80,6 @@ in
   # Fill in the darwin GUI runtime environment. nixpkgs zrythm is not meant for darwin,
   # so wrapGAppsHook4 does not wire these up, and it dies with exit 255 as-is.
   preFixup = (o.preFixup or "") + ''
-    # Generate a gdk-pixbuf loaders.cache including librsvg (SVG). Without it zrythm
-    # aborts startup with "SVG loader was not found" (the UI has a required SVG-based dep).
-    # However, librsvg's svg loader references @rpath/librsvg-2.2.dylib but there is no
-    # matching LC_RPATH, so dlopen fails. Rather than rebuild librsvg itself (Rust, heavy),
-    # copy just the loader into $out and rewrite the reference to an absolute path.
-    loaderdir="$out/lib/gdk-pixbuf-2.0/2.10.0/loaders"
-    mkdir -p "$loaderdir"
-    cp ${pkgs.librsvg}/lib/gdk-pixbuf-2.0/2.10.0/loaders/libpixbufloader_svg.dylib "$loaderdir/"
-    chmod +w "$loaderdir/libpixbufloader_svg.dylib"
-    install_name_tool -change @rpath/librsvg-2.2.dylib \
-      ${pkgs.librsvg}/lib/librsvg-2.2.dylib \
-      "$loaderdir/libpixbufloader_svg.dylib"
-    # Apple Silicon: the install_name_tool edit invalidates the ad-hoc signature and
-    # dyld rejects it with "no such file". Re-sign to make it valid again.
-    codesign --force --sign - "$loaderdir/libpixbufloader_svg.dylib"
-
-    ${pkgs.gdk-pixbuf.dev}/bin/gdk-pixbuf-query-loaders \
-      ${pkgs.gdk-pixbuf}/lib/gdk-pixbuf-2.0/2.10.0/loaders/*.so \
-      "$loaderdir/libpixbufloader_svg.dylib" \
-      > "$out/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache"
-
     gappsWrapperArgs+=(
       # GTK4's native display backend is "macos" (renamed from GTK3's "quartz").
       # By default it requests "quartz" and dies instantly with "No such backend", so inject the default.
@@ -112,8 +91,10 @@ in
       # so settings never persist (welcome shows every time). Switch off dconf to the keyfile
       # backend and persist to ~/.config/glib-2.0/settings/keyfile.
       --set-default GSETTINGS_BACKEND keyfile
-      # Point at the loaders.cache (including SVG) generated above.
-      --set GDK_PIXBUF_MODULE_FILE "$out/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache"
+      # librsvg ships a merged cache containing the standard gdk-pixbuf loaders and
+      # its SVG loader. Point directly at it; current nixpkgs also gives the Darwin
+      # loader an absolute librsvg install name, so no local copy/re-sign is needed.
+      --set GDK_PIXBUF_MODULE_FILE ${pkgs.librsvg}/${pkgs.gdk-pixbuf.binaryDir}/loaders.cache
     )
   '';
 
