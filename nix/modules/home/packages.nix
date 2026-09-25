@@ -70,6 +70,11 @@ in
     agentPkgs.herdr
     podman-tui # Podman container / image / Pod management TUI
     iamb # Matrix TUI (Vim keybindings, E2EE support)
+    # Matrix CLI for agents acting as the human account (E2EE via vodozemac, no olm), so it
+    # reaches encrypted rooms the curl wrappers in home/matrix-cli.nix cannot. One-time
+    # `--login password` and an Element device verification; credentials land in
+    # ~/.local/share/matrix-commander-rs. `--output json` for machine consumption.
+    matrix-commander-rs
     newsboat # RSS/Atom feed reader TUI
     presenterm # Markdown presentation TUI
     termshark # tshark/Wireshark packet analysis TUI
