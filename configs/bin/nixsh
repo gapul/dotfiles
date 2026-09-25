@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+#
+# Enter (or create) the rootless-docker Nix container on a shared Linux box where no one
+# will give us /nix. See docs/CHEATSHEET.md, "A shared Linux box, no sudo".
+#
+# The container runs as root, which rootless docker maps to the host user, so anything it
+# writes into the bind-mounted home comes out owned by us. HOME/USER are forced so that
+# home-manager's activation check (`$USER` must equal home.username) passes for that root.
+# /tmp is shared so the ssh agent socket behind ~/.ssh/ssh_auth_sock resolves inside.
+#
+#   nixsh                 interactive shell (zsh once home-manager has been applied)
+#   nixsh <cmd> [args]    run one command inside, cwd preserved
+#
+# ponytail: no GPU passthrough (rootless docker has no nvidia runtime here); GPU work stays outside.
+set -euo pipefail
+name=nix
+user=${USER:-$(id -un)}
+path="$HOME/.nix-profile/bin:/nix/var/nix/profiles/default/bin:/usr/local/bin:/usr/bin:/bin"
+if ! docker container inspect "$name" >/dev/null 2>&1; then
+  docker run -d --name "$name" --restart unless-stopped --network host \
+    -v nixstore:/nix -v "$HOME:$HOME" -v /tmp:/tmp \
+    -e HOME="$HOME" -e USER="$user" -e PATH="$path" -w "$HOME" \
+    nixos/nix sleep infinity >/dev/null
+fi
+docker start "$name" >/dev/null 2>&1 || true
+if [ $# -eq 0 ]; then
+  exec docker exec -it -e TERM="${TERM:-xterm-256color}" -w "$PWD" "$name" \
+    bash -c 'command -v zsh >/dev/null 2>&1 && exec zsh -l; exec bash -l'
+fi
+exec docker exec -i -e TERM="${TERM:-xterm-256color}" -w "$PWD" "$name" "$@"
