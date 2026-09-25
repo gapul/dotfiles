@@ -468,6 +468,17 @@ in
     default_country_code = "JP";
   };
 
+  # iamb (Matrix TUI, package in modules/home/packages.nix): same homeserver as Element.
+  # Session state and E2EE keys go to ~/.local/share/iamb on first login, not declared here.
+  # Plain text rather than pkgs.formats.toml: see the lazygit note above (CI platform mismatch).
+  xdg.configFile."iamb/config.toml".text = ''
+    default_profile = "gapul"
+
+    [profiles.gapul]
+    user_id = "@gapul:gapul.net"
+    url = "https://matrix.gapul.net"
+  '';
+
   # MechvibesDX at login, in place of a System Settings login item. Lives here
   # rather than in darwin-services.nix because it needs the package path from
   # the let block above.
