@@ -60,6 +60,10 @@ let
       upstream = "127.0.0.1:8090"; # spliit (割り勘)
       interval = "1h";
     };
+    # 統合カレンダー配信 (unified-calendar.nix)。他と違って公開先は Caddy ではなく
+    # cloudflared なので、ここで生える vhost は実際には誰も踏まない。表に載せているのは
+    # gatus の監視対象がこの表からしか作られないため。
+    ical.upstream = "127.0.0.1:8113";
     # calnode (予約ページ)。他と違って公開先は Caddy ではなく cloudflared なので、
     # ここで生える vhost は実際には誰も踏まない — booking.gapul.net はトンネルの
     # CNAME だから。それでも表に載せているのは、gatus の監視対象がこの表からしか

@@ -100,6 +100,7 @@
     ./spliit.nix
     ./searx.nix
     ./syncthing.nix
+    ./unified-calendar.nix
     ./vaultwarden.nix
     ./vpn-relay.nix
   ];
