@@ -329,6 +329,7 @@
             ./home/personal-history.nix # 個人の記録を端末ごとに書き出して Syncthing に載せる
             ./home/maintenance.nix
             ./home/tmp-cleanup.nix # ~/tmp のスクラッチを7日で自動掃除 (macminiHeadless と共有)
+            ./home/nix-gc-tcc.nix # root GC daemon (hosts/darwin-common.nix) が使う署名済み nix の安定コピー
             ./home/git-hooks.nix # git hook that auto-rebuilds on main updates (main tree only)
             ./home/herdr-mobile-relay.nix # herdr をスマホ PWA から操作するリレー(tailnet 限定)
           ]
@@ -359,6 +360,7 @@
           # スライド編集の試作。PPTX の書き出しがブラウザでしか動かないので常駐が要る。
           ./home/macmini-presenta.nix
           ./home/tmp-cleanup.nix # ~/tmp のスクラッチを7日で自動掃除 (macWorkstation と共有)
+          ./home/nix-gc-tcc.nix # root GC daemon (hosts/darwin-common.nix) が使う署名済み nix の安定コピー
           ./home/herdr-mobile-relay.nix # herdr をスマホ PWA から操作するリレー(tailnet 限定、母艦と共有)
           # dotfiles-pull (home/macmini.nix) は post-merge hook が rebuild する前提だが、hook を
           # 入れる module がこの役に無く、.git/hooks の実体は 2026-08-09 に手で置いた古い版のまま
