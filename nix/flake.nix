@@ -367,6 +367,9 @@
         ];
         wsl = linuxBase ++ [ ./home/wsl.nix ] ++ secrets ++ station;
         linuxServer = linuxBase ++ secrets ++ station;
+        # Shared hosts where the age key must never exist (other people hold sudo), e.g. the
+        # company GPU box reached through rootless docker. No secrets, no desktop extras.
+        linuxShared = linuxBase;
       };
 
       # Home server (x86_64, replacing the single-node Proxmox box outright).
@@ -1000,6 +1003,12 @@
       homeConfigurations."${user.username}-linux-aarch64" = mkHost.home {
         targetSystem = "aarch64-linux";
         modules = roles.linuxServer;
+      };
+      # Rootless-docker container on a shared machine: .#<username>-linux-shared
+      # (nixos/nix image, /nix in a volume, the real home bind-mounted; see docs/CHEATSHEET.md).
+      homeConfigurations."${user.username}-linux-shared" = mkHost.home {
+        targetSystem = "x86_64-linux";
+        modules = roles.linuxShared;
       };
     };
 }
