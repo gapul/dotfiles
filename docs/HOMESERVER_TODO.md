@@ -92,14 +92,15 @@ Not urgent, but each of these pays off.
 - [x] **Move live secrets into sops.** Forty-seven non-regenerable files are encrypted in
       `secrets/homelab.yaml` and installed by sops-nix. The host decrypts only that file with
       its SSH host key; backup copies and obsolete plaintext controls are not propagated.
-- [ ] **Put the Raspberry Pi on NixOS too**, so the primary and secondary AdGuard can be
-      generated from one definition.
+- [x] **Keep the Raspberry Pi on its current OS.** Converting it to NixOS was considered and
+      declined on 2026-09-23; the primary AdGuard keeps its existing deployment path.
 - [x] **Close gatus's host and ntfy blind spots.** The always-on Mac mini checks the Gatus path
       and ntfy health endpoint every minute. Three consecutive failures and the subsequent
       recovery are mailed through Gmail, an independent route that still works when ntfy or
       homeserver is down. Content-level checks such as stale location data remain on homeserver.
-- [ ] **A Mullvad exit node**, if it turns out to be wanted. CT106 was empty, so this is a
-      fresh build. Give it its own netns rather than dirtying the host routing table.
+- [x] **A Mullvad exit node.** It runs as a dedicated NixOS container with its own network
+      namespace, WireGuard tunnel, kill switch and Tailscale identity. The homeserver's routes,
+      DNS and firewall stay outside Mullvad's control.
 - [ ] **deploy-rs or colmena**, once there are more hosts.
 - [ ] **Turn containers into native services.** forgejo, navidrome and miniflux have modules.
       Only the ones where the data migration is worth it. The bridges' reasons for staying as
