@@ -10,10 +10,10 @@
 # 増やさないため、容量は 2GB、期間は最大 90 日で先に達した方を使う。
 { pkgs, ... }:
 {
-  services.journald.extraConfig = ''
-    SystemMaxUse=2G
-    MaxRetentionSec=90day
-  '';
+  services.journald.settings.Journal = {
+    SystemMaxUse = "2G";
+    MaxRetentionSec = "90day";
+  };
 
   systemd.services.journal-alert = {
     description = "journald の壊れの合図を ntfy に流す";
