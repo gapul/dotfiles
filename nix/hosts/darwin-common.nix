@@ -266,4 +266,34 @@
       StandardErrorPath = "/var/log/nix-gc.log";
     };
   };
+
+  # Store deduplication, right after the GC. Neither machine had ever been optimised: the first
+  # manual run on 2026-09-26 freed 10G on the workstation and ~30G on macmini. auto-optimise-store
+  # is left off because nix-darwin still warns it can corrupt the store on macOS (NixOS/nix#7273).
+  #
+  # Same executable as nix-gc, so the one Full Disk Access grant covers both jobs. The binary is
+  # multi-call and dispatches on argv[0], and launchd lets Program (the file TCC looks at) and
+  # ProgramArguments[0] (what nix sees) differ, so no wrapper is needed here either.
+  launchd.daemons.nix-store-optimise = {
+    serviceConfig = {
+      Program = "/Users/${user.username}/.local/libexec/tcc/nix-collect-garbage";
+      ProgramArguments = [
+        "nix"
+        "store"
+        "optimise"
+      ];
+      StartCalendarInterval = [
+        {
+          Weekday = 0;
+          Hour = 4;
+          Minute = 0;
+        }
+      ];
+      ProcessType = "Background";
+      LowPriorityIO = true;
+      Nice = 10;
+      StandardOutPath = "/var/log/nix-store-optimise.log";
+      StandardErrorPath = "/var/log/nix-store-optimise.log";
+    };
+  };
 }
