@@ -6,6 +6,7 @@
   nixpkgsAgents,
   nixpkgsUnstable,
   user,
+  includeManualSources ? true,
   ...
 }:
 let
@@ -225,13 +226,19 @@ in
     # `broken = isDarwin` and headless-only, so the official dmg is repackaged.
     # See pkgs/slimevr-server.nix.
     (pkgs.callPackage ../pkgs/slimevr-server.nix { })
-    # AquesTalkPlayer: the yukkuri voices, with a headless wav-out CLI, so that
-    # narration can be generated on macOS instead of on Windows through Yukkuri
-    # MovieMaker. The download is Turnstile-gated, so the dmg has to be added to
-    # the store by hand on a version bump. See pkgs/aquestalkplayer.nix.
+  ]
+  ++ lib.optionals includeManualSources [
+    # AquesTalkPlayer: the yukkuri voices, with a headless wav-out CLI. The download is
+    # Turnstile-gated, so the DMG has to be added to the store by hand.
     (pkgs.callPackage ../pkgs/aquestalkplayer.nix { })
-    # Touch ID helper for the ask broker. Same requireFile shape: see pkgs/askapprove.nix.
+    # Touch ID helper for the ask broker. Its signed artifact comes from a private release
+    # and is likewise added to the store by hand.
     (pkgs.callPackage ../pkgs/askapprove.nix { })
+  ]
+  ++ [
+    # Manual-source packages are inserted immediately before this package when
+    # includeManualSources is true. CI cannot fetch them, so the PR-only Darwin
+    # configuration disables them without changing the deployed workstation.
     # Open JTalk for the yukkuri engine's reading/accent analysis, under its own
     # name so it does not become the default python. See pkgs/yukkuri-python.nix.
     (pkgs.callPackage ../pkgs/yukkuri-python.nix { })

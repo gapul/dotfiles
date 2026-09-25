@@ -84,6 +84,8 @@ ln -sfn ~/.dotfiles/configs/cli/yazi         ~/.config/yazi
 ln -sfn ~/.dotfiles/configs/terminals/tmux   ~/.config/tmux
 #    yazi の opener が Enter で叩く。母艦へのトンネルが無ければ xdg-open に落ちる。
 ln -sfn ~/.dotfiles/configs/bin/open-on-mac  ~/.local/bin/open-on-mac
+#    rootless docker の中に nix を置くホスト用 (docs/CHEATSHEET.md)。無いホストでは使わないだけ。
+ln -sfn ~/.dotfiles/configs/bin/nixsh        ~/.local/bin/nixsh
 #    gh と codex は設定と同じディレクトリに認証情報 (hosts.yml / auth.json) を置くため、
 #    ディレクトリごとではなく設定ファイル単体を張る。認証情報はホスト側に残す。
 #    どちらもツール自身が設定を書き戻すことがあるが、その書き込みは dotfiles の
@@ -166,4 +168,11 @@ WantedBy=timers.target
 UNIT
   systemctl --user daemon-reload
   systemctl --user enable --quiet --now dotfiles-sync.timer
+fi
+
+# 6. rootless docker の中の nix (docs/CHEATSHEET.md)。コンテナを作るのは人が nixsh を叩いたときだけで、
+#    既にあるホストではパッケージ集合を上で追従させた ~/.dotfiles に合わせる。
+if docker container inspect nix >/dev/null 2>&1; then
+  ~/.local/bin/nixsh update \
+    || echo "[bootstrap] WARNING: nixsh update に失敗。前のパッケージ集合のまま続行します。" >&2
 fi

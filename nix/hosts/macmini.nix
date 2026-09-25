@@ -24,10 +24,6 @@ let
     url = "https://cdn.modrinth.com/data/3wmN97b8/versions/bzFXz39N/multiverse-core-5.8.0.jar";
     hash = "sha256-xSfZ4holpxyyRCrB8b/TqKHvt9ieDLDmqU9gAwT95sE=";
   };
-  twilightForest = pkgs.fetchurl {
-    url = "https://mediafilez.forgecdn.net/files/7797/302/twilightforest-1.21.1-4.8.3345-universal.jar";
-    hash = "sha256-ST2hbRAhD59To8M7PY/LSumxQBbuQg11PIlFYr2aujU=";
-  };
   # Fabric は本体の新版に当日〜数日で追いつくので、本館と同じ 26.2 に載る。サーバー用の
   # 起動 jar は meta が組み立てて返すので、URL に版が全部入っている。
   fabricServer = pkgs.fetchurl {
@@ -40,11 +36,6 @@ let
     name = "fabric-api-0.157.0+26.2.jar";
     url = "https://cdn.modrinth.com/data/P7dR8mSH/versions/vmQp7ixA/fabric-api-0.157.0%2B26.2.jar";
     hash = "sha256-rLfckKBDBRnElUgHTT+/b9gdEwY/CPCvNEsqawikJiA=";
-  };
-  neoforgeVersion = "21.1.248";
-  neoforgeInstaller = pkgs.fetchurl {
-    url = "https://maven.neoforged.net/releases/net/neoforged/neoforge/${neoforgeVersion}/neoforge-${neoforgeVersion}-installer.jar";
-    hash = "sha256-aO6rdwWbpT3xgS8a+lv1MKslZqPNzV+SSqbnG+QuQQw=";
   };
 
   # 寝ている間の status 応答に使う版。Paper を追う2本(本館と個人用)がここを見る。
@@ -90,7 +81,9 @@ let
       };
     };
     # 最新で mod を遊ぶ側。Fabric は本体に追いつくのが速いので本館と同じ 26.2 に載る。
-    # 逆に「Fabric に来ていない mod」が要るときだけ下の NeoForge 側を使う。
+    # NeoForge 1.21.1 の黄昏の森サーバーは 2026-09-25 に外した (立ち上げ以来ログイン 0)。
+    # 世界は /Users/Shared/minecraft-backups/modded-final-20260925.tar.gz。公式が 26.x に
+    # 追いつくか、非公式移植 (Twilight Forest: Re26、Fabric 版あり) をここに載せるかは次に要る日に決める。
     fabric = {
       dir = "/Users/mcsrv/fabric";
       java = pkgs.temurin-bin-25;
@@ -102,22 +95,6 @@ let
       env = {
         SERVER_JAR = "${fabricServer}";
         MODS = "${fabricApi}";
-      };
-    };
-    # mod 用。黄昏の森が追いついている最新が 1.21.1 なので、本館とは別の版で固定する。
-    # NeoForge 21.1 は Java 21 でしか動かない(25 では起動しない)。
-    modded = {
-      dir = "/Users/mcsrv/modded";
-      java = pkgs.temurin-bin-21;
-      memory = "3G";
-      port = 25567;
-      version = "1.21.1";
-      protocol = 767;
-      runner = ../../configs/macmini/minecraft/run-modded.sh;
-      env = {
-        NEOFORGE_INSTALLER = "${neoforgeInstaller}";
-        NEOFORGE_VERSION = neoforgeVersion;
-        MODS = "${twilightForest}";
       };
     };
   };
@@ -534,39 +511,6 @@ in
       # XDG state now, next to the dashboard refresh log, so nothing is resurrected anywhere.
       StandardOutPath = "/Users/${user.username}/.local/state/manabi/daily_review.log";
       StandardErrorPath = "/Users/${user.username}/.local/state/manabi/daily_review.log";
-    };
-  };
-
-  # nix store の GC。home/macmini-maintenance.nix の GC はユーザー権限なので、消せるのは
-  # home-manager の世代だけで、/nix/var/nix/profiles/system-* (root 所有) は残り続ける
-  # (2026-09-23 時点で 141 世代 / store 114G)。システム世代を落とせるのは root だけなので
-  # daemon で回す。日曜 03:45 = ユーザー側の掃除 (04:15) と restic (05:00) の前。
-  launchd.daemons.nix-gc = {
-    command = "${pkgs.writeShellScript "nix-gc" ''
-      set -u
-      export PATH=/nix/var/nix/profiles/default/bin:/usr/bin:/bin:/usr/sbin:/sbin
-      echo "==================== $(date '+%Y-%m-%d %H:%M:%S') ===================="
-      # TCC が .app に付ける com.apple.macl は root の chmod も弾き、GC がそのパスで
-      # 止まって "0 store paths deleted" になる (aquestalkplayer で数週間そうなっていた)。
-      # store の中の .app に付いていたら先に剥がす。生きているパスに付いていても害は無い。
-      for app in /nix/store/*/Applications/*.app; do
-        xattr -d com.apple.macl "$app" 2>/dev/null || true
-      done
-      nix-collect-garbage --delete-older-than 30d
-    ''}";
-    serviceConfig = {
-      StartCalendarInterval = [
-        {
-          Weekday = 0;
-          Hour = 3;
-          Minute = 45;
-        }
-      ];
-      ProcessType = "Background";
-      LowPriorityIO = true;
-      Nice = 10;
-      StandardOutPath = "/var/log/nix-gc.log";
-      StandardErrorPath = "/var/log/nix-gc.log";
     };
   };
 

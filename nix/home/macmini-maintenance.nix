@@ -36,7 +36,7 @@ let
     # Keep current generations and active service closures. Old Nix generations are
     # reproducible and were the largest recurring source of reclaimable space here.
     # This runs as the user, so it only drops home-manager generations; the system
-    # profile (root) is handled by launchd.daemons.nix-gc in hosts/macmini.nix.
+    # profile (root) is handled by launchd.daemons.nix-gc in hosts/darwin-common.nix.
     nix-collect-garbage --delete-older-than 30d || true
 
     # Package-manager caches are all re-downloadable. Prefer each tool's own pruning

@@ -266,6 +266,46 @@
           ;
       };
 
+      darwinWorkstationSpecialArgs = {
+        inherit user;
+        brewNix = brew-nix;
+        mocopiMac = mocopi-mac;
+        nixpkgsAgents = nixpkgs-agents;
+        # 重いビルドを macmini へ逃がす。同じ aarch64-darwin なのでそのまま走る。
+        #
+        # nix のデーモンは root として ssh するので、鍵の場所を明示する。root は
+        # 権限を無視して読めるので、普段使っている automation 鍵をそのまま指す
+        # (root 専用の鍵を増やすと管理する秘密が 1 つ増えるだけ)。
+        #
+        # 10 は macmini のコア数、1 は speed factor。big-parallel は「並列に強い
+        # 派生をここへ回す」印で、Chromium や LLVM のような重いものが該当する。
+        #
+        # builders-use-substitutes を付けないと、macmini が要る依存を母艦から
+        # 転送することになり、キャッシュから直接引ける利点が消える。
+        nixCustomConf = {
+          # ホスト名ではなく tailnet の IP で書く。nix のデーモンは root として
+          # 動くので ~/.ssh/config を読まず、"macmini" を解決できない
+          # (Could not resolve hostname macmini)。
+          #
+          # root の ~/.ssh/known_hosts に macmini のホスト鍵が要る。無いと
+          # 「Host key verification failed」で止まる。これは一度きりの手作業:
+          #   sudo sh -c 'ssh-keyscan -H 100.105.135.49 >> /var/root/.ssh/known_hosts'
+          builders = "ssh-ng://gapul@100.105.135.49 aarch64-darwin /Users/gapul/.ssh/id_automation 10 1 big-parallel,benchmark";
+          builders-use-substitutes = "true";
+        };
+        # hosts/darwin.nix declares the .app-shipping creative tools, which come from
+        # nixos-unstable (see lib/unstable-pkgs.nix).
+        nixpkgsUnstable = nixpkgs-unstable;
+      };
+      darwinWorkstation =
+        includeManualSources:
+        mkHost.darwin {
+          host = ./hosts/darwin.nix;
+          specialArgs = darwinWorkstationSpecialArgs // {
+            inherit includeManualSources;
+          };
+        };
+
       # ECS "role" = a bundle of components (home/*.nix). A host just combines roles.
       # The ordering affects list concatenation order for home.packages etc., so keep it identical to the existing config.
       roles = rec {
@@ -289,12 +329,14 @@
             ./home/personal-history.nix # 個人の記録を端末ごとに書き出して Syncthing に載せる
             ./home/maintenance.nix
             ./home/tmp-cleanup.nix # ~/tmp のスクラッチを7日で自動掃除 (macminiHeadless と共有)
+            ./home/nix-gc-tcc.nix # root GC daemon (hosts/darwin-common.nix) が使う署名済み nix の安定コピー
             ./home/git-hooks.nix # git hook that auto-rebuilds on main updates (main tree only)
             ./home/herdr-mobile-relay.nix # herdr をスマホ PWA から操作するリレー(tailnet 限定)
           ]
           ++ secrets
           ++ [
             ./home/secrets-darwin.nix # mac-only secrets (secrets/darwin.yaml)
+            ./home/matrix-cli.nix # matrix-send/read/rooms for agents (bot token from secrets/common.yaml)
             ./home/mopidy.nix
           ]
           ++ station;
@@ -319,6 +361,7 @@
           # スライド編集の試作。PPTX の書き出しがブラウザでしか動かないので常駐が要る。
           ./home/macmini-presenta.nix
           ./home/tmp-cleanup.nix # ~/tmp のスクラッチを7日で自動掃除 (macWorkstation と共有)
+          ./home/nix-gc-tcc.nix # root GC daemon (hosts/darwin-common.nix) が使う署名済み nix の安定コピー
           ./home/herdr-mobile-relay.nix # herdr をスマホ PWA から操作するリレー(tailnet 限定、母艦と共有)
           # dotfiles-pull (home/macmini.nix) は post-merge hook が rebuild する前提だが、hook を
           # 入れる module がこの役に無く、.git/hooks の実体は 2026-08-09 に手で置いた古い版のまま
@@ -327,6 +370,9 @@
         ];
         wsl = linuxBase ++ [ ./home/wsl.nix ] ++ secrets ++ station;
         linuxServer = linuxBase ++ secrets ++ station;
+        # Shared hosts where the age key must never exist (other people hold sudo), e.g. the
+        # company GPU box reached through rootless docker. No secrets, no desktop extras.
+        linuxShared = linuxBase;
       };
 
       # Home server (x86_64, replacing the single-node Proxmox box outright).
@@ -506,7 +552,10 @@
               # to be expressed as an output of its own and built directly.
               pr-gate = systemPkgs.linkFarmFromDrvs "pr-gate" (
                 lib.optionals isDarwinWorkstation [
-                  inputs.self.darwinConfigurations.${user.username}.system
+                  # AquesTalkPlayer's licensed DMG is intentionally requireFile and cannot be
+                  # fetched by CI. Build the same workstation with only manual sources disabled;
+                  # the deployed darwinConfiguration below keeps them enabled.
+                  (darwinWorkstation false).system
                   inputs.self.homeConfigurations.${user.username}.activationPackage
                   # Formatting and the other hooks, on the PR rather than after the merge.
                   # It is seconds of work and it is the only check that has ever gone red on
@@ -715,7 +764,13 @@
                 # "attribute 'formera-source' missing".
                 inherit user formera-source;
                 sopsNix = sops-nix;
-                pkgs = systemPkgs;
+                # nixpkgs-nixos, not systemPkgs: runNixOSTest takes its NixOS module
+                # set from whichever nixpkgs pkgs came from, and systemPkgs is built
+                # from the 26.05-darwin lineage. hosts/homeserver.nix is deployed
+                # against nixos-unstable, so options that only exist there made the
+                # test fail to evaluate while the real config was fine
+                # (services.journald.settings was the one that caught this).
+                pkgs = nixpkgs-nixos.legacyPackages.${system};
               };
             };
           };
@@ -724,40 +779,7 @@
     perSystemOutputs
     // {
       # System config: sudo darwin-rebuild switch --flake .#<username>
-      darwinConfigurations.${user.username} = mkHost.darwin {
-        host = ./hosts/darwin.nix;
-        specialArgs = {
-          inherit user;
-          brewNix = brew-nix;
-          mocopiMac = mocopi-mac;
-          nixpkgsAgents = nixpkgs-agents;
-          # 重いビルドを macmini へ逃がす。同じ aarch64-darwin なのでそのまま走る。
-          #
-          # nix のデーモンは root として ssh するので、鍵の場所を明示する。root は
-          # 権限を無視して読めるので、普段使っている automation 鍵をそのまま指す
-          # (root 専用の鍵を増やすと管理する秘密が 1 つ増えるだけ)。
-          #
-          # 10 は macmini のコア数、1 は speed factor。big-parallel は「並列に強い
-          # 派生をここへ回す」印で、Chromium や LLVM のような重いものが該当する。
-          #
-          # builders-use-substitutes を付けないと、macmini が要る依存を母艦から
-          # 転送することになり、キャッシュから直接引ける利点が消える。
-          nixCustomConf = {
-            # ホスト名ではなく tailnet の IP で書く。nix のデーモンは root として
-            # 動くので ~/.ssh/config を読まず、"macmini" を解決できない
-            # (Could not resolve hostname macmini)。
-            #
-            # root の ~/.ssh/known_hosts に macmini のホスト鍵が要る。無いと
-            # 「Host key verification failed」で止まる。これは一度きりの手作業:
-            #   sudo sh -c 'ssh-keyscan -H 100.105.135.49 >> /var/root/.ssh/known_hosts'
-            builders = "ssh-ng://gapul@100.105.135.49 aarch64-darwin /Users/gapul/.ssh/id_automation 10 1 big-parallel,benchmark";
-            builders-use-substitutes = "true";
-          };
-          # hosts/darwin.nix declares the .app-shipping creative tools, which come from
-          # nixos-unstable (see lib/unstable-pkgs.nix).
-          nixpkgsUnstable = nixpkgs-unstable;
-        };
-      };
+      darwinConfigurations.${user.username} = darwinWorkstation true;
 
       # Headless LLM worker (M4 Mac mini / 24GB):
       #   sudo darwin-rebuild switch --flake .#macmini
@@ -984,6 +1006,12 @@
       homeConfigurations."${user.username}-linux-aarch64" = mkHost.home {
         targetSystem = "aarch64-linux";
         modules = roles.linuxServer;
+      };
+      # Rootless-docker container on a shared machine: .#<username>-linux-shared. Only its
+      # config.home.path is built there (configs/bin/nixsh); never activated. See docs/CHEATSHEET.md.
+      homeConfigurations."${user.username}-linux-shared" = mkHost.home {
+        targetSystem = "x86_64-linux";
+        modules = roles.linuxShared;
       };
     };
 }

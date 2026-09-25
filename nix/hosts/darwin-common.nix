@@ -225,4 +225,45 @@
       };
     };
   };
+
+  # Nix store GC as root, weekly. The user-side GC (home/maintenance.nix, home/macmini-maintenance.nix)
+  # can only drop home-manager generations; /nix/var/nix/profiles/system-* is root-owned and kept
+  # piling up (macmini: 141 generations / 114G on 2026-09-23; workstation: 26 generations in two
+  # weeks, /nix free 123G -> 23G over July-September 2026).
+  #
+  # The program is a signed copy of `nix` at a stable path (home/nix-gc-tcc.nix), not the store
+  # binary, because TCC stamps `com.apple.macl` on .app bundles the user has opened (OmniWM,
+  # Keystats, terminal-browser's Electron, ...). chmod on such a directory is refused for any process
+  # without Full Disk Access, root included, and the GC then aborts with "0 store paths deleted"
+  # (this is what silently broke both machines' GC in September 2026; `xattr -d com.apple.macl`
+  # from a root daemon is refused the same way, so stripping the label is not an option).
+  # The copy is invoked directly, no shell wrapper: TCC attributes the chmod to the launchd
+  # program, and /bin/sh is not the thing we want to hand Full Disk Access to.
+  #
+  # One-time per machine: System Settings > Privacy & Security > Full Disk Access >
+  # add ~/.local/libexec/tcc/nix-collect-garbage. Until then the daemon runs but GC still
+  # stops at the first macl-tagged bundle; check /var/log/nix-gc.log for "0 store paths deleted".
+  #
+  # Sunday 03:45: before the user-side cleanups (04:15) and restic (05:00).
+  launchd.daemons.nix-gc = {
+    serviceConfig = {
+      ProgramArguments = [
+        "/Users/${user.username}/.local/libexec/tcc/nix-collect-garbage"
+        "--delete-older-than"
+        "30d"
+      ];
+      StartCalendarInterval = [
+        {
+          Weekday = 0;
+          Hour = 3;
+          Minute = 45;
+        }
+      ];
+      ProcessType = "Background";
+      LowPriorityIO = true;
+      Nice = 10;
+      StandardOutPath = "/var/log/nix-gc.log";
+      StandardErrorPath = "/var/log/nix-gc.log";
+    };
+  };
 }
