@@ -335,6 +335,7 @@
           ++ secrets
           ++ [
             ./home/secrets-darwin.nix # mac-only secrets (secrets/darwin.yaml)
+            ./home/matrix-cli.nix # matrix-send/read/rooms for agents (bot token from secrets/common.yaml)
             ./home/mopidy.nix
           ]
           ++ station;
