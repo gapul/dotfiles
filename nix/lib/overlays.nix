@@ -13,6 +13,15 @@ _final: prev: {
   # tailscale to 1.98.10 with a corrected hash, and the stale override itself became
   # the mismatch — "specified" in the CI error was our pinned value.)
 
+  # git-annex 10.20260421's test suite calls `bup init -r <path>`, and the bup that
+  # nixpkgs 2026-09-23 ships rejects a remote without host:path ("has no colon"), so
+  # "bup remote" fails 3/3 and homeserver cannot build (2026-09-25). Nothing here uses
+  # the bup remote; the annex speaks ssh. Building without the test suite also saves
+  # ~15 minutes on the N150, which has to compile git-annex itself because the
+  # nixos-unstable revision is not on cache.nixos.org.
+  # ponytail: drop once nixpkgs carries a git-annex that passes with the new bup.
+  git-annex = prev.haskell.lib.dontCheck prev.git-annex;
+
   pre-commit = prev.pre-commit.overridePythonAttrs (o: {
     disabledTests = (o.disabledTests or [ ]) ++ [
       "test_output_isatty"
