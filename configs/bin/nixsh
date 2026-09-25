@@ -1,30 +1,49 @@
 #!/usr/bin/env bash
 #
-# Enter (or create) the rootless-docker Nix container on a shared Linux box where no one
-# will give us /nix. See docs/CHEATSHEET.md, "A shared Linux box, no sudo".
+# Native-speed Nix on a shared Linux box where nobody will give us /nix: a rootless-docker
+# container from nixos/nix, /nix in a named volume, the real home bind-mounted at the same
+# path. See docs/CHEATSHEET.md, "A shared Linux box, no sudo".
 #
-# The container runs as root, which rootless docker maps to the host user, so anything it
-# writes into the bind-mounted home comes out owned by us. HOME/USER are forced so that
-# home-manager's activation check (`$USER` must equal home.username) passes for that root.
-# /tmp is shared so the ssh agent socket behind ~/.ssh/ssh_auth_sock resolves inside.
+# home-manager is NOT activated in there. Its files would point into /nix/store, which only
+# exists inside the container, and host-side readers (herdr, Claude Code, tmux) would break.
+# Only the package set of homeConfigurations.<user>-linux-shared (config.home.path) is built
+# and put on PATH; configs stay the remote-bootstrap symlinks into ~/.dotfiles, which resolve
+# identically inside and outside.
 #
-#   nixsh                 interactive shell (zsh once home-manager has been applied)
-#   nixsh <cmd> [args]    run one command inside, cwd preserved
+# The container runs as root, which rootless docker maps to the host user, so files it
+# writes into the home come out owned by us. USER/HOME are forced to match.
+#
+#   nixsh                 interactive zsh inside (bash until `nixsh update` has run), cwd kept
+#   nixsh <cmd> [args]    run one command inside, cwd kept
+#   nixsh update          rebuild the package set from ~/.dotfiles and collect garbage
 #
 # ponytail: no GPU passthrough (rootless docker has no nvidia runtime here); GPU work stays outside.
 set -euo pipefail
 name=nix
 user=${USER:-$(id -un)}
-path="$HOME/.nix-profile/bin:/nix/var/nix/profiles/default/bin:/usr/local/bin:/usr/bin:/bin"
+home_path="$HOME/.local/state/nix/home-path"
+sock="/run/user/$(id -u)/docker.sock"
+[ -S "$sock" ] && export DOCKER_HOST="${DOCKER_HOST:-unix://$sock}"
+env=(
+  -e HOME="$HOME" -e USER="$user" -e ZDOTDIR="$HOME/.config/zsh"
+  -e TERM="${TERM:-xterm-256color}"
+  -e PATH="$home_path/bin:$HOME/.local/bin:/nix/var/nix/profiles/default/bin:/usr/local/bin:/usr/bin:/bin"
+  -e NIX_CONFIG="experimental-features = nix-command flakes"
+)
 if ! docker container inspect "$name" >/dev/null 2>&1; then
+  mkdir -p "$HOME/.local/state/nix/profiles"
   docker run -d --name "$name" --restart unless-stopped --network host \
-    -v nixstore:/nix -v "$HOME:$HOME" -v /tmp:/tmp \
-    -e HOME="$HOME" -e USER="$user" -e PATH="$path" -w "$HOME" \
+    -v nixstore:/nix -v "$HOME:$HOME" -v /tmp:/tmp "${env[@]}" -w "$HOME" \
     nixos/nix sleep infinity >/dev/null
 fi
 docker start "$name" >/dev/null 2>&1 || true
-if [ $# -eq 0 ]; then
-  exec docker exec -it -e TERM="${TERM:-xterm-256color}" -w "$PWD" "$name" \
-    bash -c 'command -v zsh >/dev/null 2>&1 && exec zsh -l; exec bash -l'
-fi
-exec docker exec -i -e TERM="${TERM:-xterm-256color}" -w "$PWD" "$name" "$@"
+case "${1:-}" in
+  "")
+    shell=bash; [ -L "$home_path" ] && shell=zsh
+    exec docker exec -it "${env[@]}" -w "$PWD" "$name" "$shell" -l ;;
+  update)
+    exec docker exec -i "${env[@]}" "$name" sh -c \
+      "nix build --out-link '$home_path' '$HOME/.dotfiles/nix#homeConfigurations.$user-linux-shared.config.home.path' && nix-collect-garbage -d >/dev/null" ;;
+  *)
+    exec docker exec -i "${env[@]}" -w "$PWD" "$name" "$@" ;;
+esac
