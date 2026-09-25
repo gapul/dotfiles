@@ -59,10 +59,11 @@ let
       # Drive, and the restic repository lives on that same Drive, so backing up the mount would
       # feed the repository into itself.
       "${home}/Sync/syncthing" # Syncthing share (local-primary replicated data)
-      # Single-player worlds. The multiplayer ones moved to the macmini, where the server tars
-      # /Users/mcsrv/server into /Users/Shared/minecraft-backups every ten minutes and
-      # home/macmini-backup.nix picks that up - so those are covered over there, not here.
-      "${home}/Library/Application Support/minecraft/saves"
+      # No official-launcher data any more: the launcher itself was gone and its two throwaway
+      # single-player worlds were archived (restic --tag archive, snapshot 7e944f25, 2026-09-26)
+      # and deleted. The worlds that matter live on the macmini (/Users/mcsrv/*, tarred into
+      # /Users/Shared/minecraft-backups and picked up by home/macmini-backup.nix). Listing a
+      # missing path here would make every daily run exit non-zero and page ntfy.
       # PrismLauncher の instance。中身の大半はワールドではなく MOD 構成で、38MB のうち
       # modded が 26MB を占める。個々の MOD は再ダウンロードできるが「どれをどの版で組んだか」
       # の再現には手間がかかるので、ワールドと一緒に取る。ランチャーの assets/libraries/java
