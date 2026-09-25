@@ -1,87 +1,87 @@
 ---
-# gapul.net homelab — 全部 homeserver (100.127.129.31) の中。
-# 生存確認は siteMonitor に統一してある。移行でネイティブ化したサービス
-# (conduit / syncthing / blocky / gatus など) には docker コンテナが無く、
-# server+container 方式だと片方だけ光らないため。
+# gapul.net homelab: everything lives on homeserver (100.127.129.31) unless noted.
+# Liveness checks use siteMonitor throughout. Services that became native during
+# the migration (conduit / syncthing / blocky / gatus ...) have no container, so the
+# server+container style would light up only half of the tiles.
 
 - Home:
     - Home Assistant:
         href: https://home.gapul.net
-        description: スマートホーム
+        description: Smart home
         icon: home-assistant.png
         siteMonitor: http://127.0.0.1:8123
     - ESPHome:
         href: https://esphome.gapul.net
-        description: 自作デバイスのファーム管理
+        description: Firmware for DIY devices
         icon: esphome.png
         siteMonitor: http://127.0.0.1:6052
     - Node-RED:
         href: https://nodered.gapul.net
-        description: 自動化フロー
+        description: Automation flows
         icon: node-red.png
         siteMonitor: http://127.0.0.1:1880
 
 - Infrastructure:
     - Gatus:
         href: https://status.gapul.net
-        description: 稼働監視 (uptime-kuma の後継)
+        description: Uptime monitoring (successor to uptime-kuma)
         icon: gatus.png
         siteMonitor: http://127.0.0.1:8084
     - Attic:
         href: https://cache.gapul.net
-        description: 自前の Nix バイナリキャッシュ
+        description: Self-hosted Nix binary cache
         icon: nixos.png
         siteMonitor: http://127.0.0.1:8083
     - Blocky:
         href: https://dns2.gapul.net
-        description: DNS フィルタ (API のみ、UI は無い)
+        description: DNS filter (API only, no UI)
         icon: mdi-dns
         siteMonitor: http://127.0.0.1:4000
     - Syncthing:
         href: https://sync.gapul.net
-        description: ファイル同期
+        description: File sync
         icon: syncthing.png
         siteMonitor: http://127.0.0.1:8384
-    - ファイル閲覧:
+    - Files:
         href: https://files.gapul.net
-        description: Google Drive / バックアップ閲覧
+        description: Browse Google Drive / backups
         icon: mdi-folder-eye
         siteMonitor: http://127.0.0.1:8099
     - ntfy:
         href: https://ntfy.gapul.net
-        description: プッシュ通知
+        description: Push notifications
         icon: ntfy.png
         siteMonitor: http://127.0.0.1:8082
 
 - Apps:
     - Vaultwarden:
         href: https://vault.gapul.net
-        description: パスワード管理
+        description: Password manager
         icon: vaultwarden.png
         siteMonitor: http://127.0.0.1:8080
     - Miniflux:
         href: https://rss.gapul.net
-        description: RSS リーダー
+        description: RSS reader
         icon: miniflux.png
         siteMonitor: http://127.0.0.1:8081
     - Readeck:
         href: https://read.gapul.net
-        description: 後で読む
+        description: Read it later
         icon: readeck.png
         siteMonitor: http://127.0.0.1:8087
     - Homebox:
         href: https://box.gapul.net
-        description: 持ち物の台帳
+        description: Inventory
         icon: homebox.png
         siteMonitor: http://127.0.0.1:8104
     - SearXNG:
         href: https://search.gapul.net
-        description: メタ検索
+        description: Meta search
         icon: searxng.png
         siteMonitor: http://127.0.0.1:8088
     - Obsidian LiveSync:
         href: https://obsidian.gapul.net
-        description: ノート同期 (CouchDB)
+        description: Note sync (CouchDB)
         icon: obsidian.png
     - Radicale:
         href: https://dav.gapul.net
@@ -90,32 +90,32 @@
         siteMonitor: http://127.0.0.1:5232
     - Calnode:
         href: https://booking.gapul.net
-        description: 予約ページ (Radicale の空きから)
+        description: Booking page (free slots from Radicale)
         icon: mdi-calendar-clock
         siteMonitor: http://127.0.0.1:8086
     - Rallly:
         href: https://poll.gapul.net
-        description: 日程調整
+        description: Scheduling polls
         icon: rallly.png
         siteMonitor: http://127.0.0.1:8089
     - Spliit:
         href: https://split.gapul.net
-        description: 割り勘
+        description: Expense splitting
         icon: mdi-cash-multiple
         siteMonitor: http://127.0.0.1:8090
     - Formera:
         href: https://forms.gapul.net
-        description: フォーム作成・回答収集
+        description: Forms and responses
         icon: mdi-form-select
         siteMonitor: http://127.0.0.1:8102
     - Forgejo:
         href: https://git.gapul.net
-        description: Git ホスティング
+        description: Git hosting
         icon: forgejo.png
         siteMonitor: http://127.0.0.1:3003
     - Dawarich:
         href: http://100.127.129.31:3005
-        description: 位置ログ (Google Timeline 代替)
+        description: Location history (Google Timeline replacement)
         icon: mdi-map-marker-path
         siteMonitor: http://127.0.0.1:3005
     - Matrix (Conduit):
@@ -127,46 +127,46 @@
 - Tools:
     - Paperless-ngx:
         href: https://paperless.gapul.net
-        description: 書類管理 / OCR
+        description: Documents / OCR
         icon: paperless-ngx.png
         siteMonitor: http://127.0.0.1:8097
     - ArchiveBox:
         href: https://archive.gapul.net
-        description: Web アーカイブ
+        description: Web archive
         icon: archivebox.png
         siteMonitor: http://127.0.0.1:8000
     - RSSHub:
         href: http://100.127.129.31:1200
-        description: 何でも RSS 化
+        description: Turn anything into RSS
         icon: rsshub.png
         siteMonitor: http://127.0.0.1:1200
 
 - Media:
     - Jellyfin:
         href: https://jellyfin.gapul.net
-        description: 動画
+        description: Video
         icon: jellyfin.png
         siteMonitor: http://127.0.0.1:8096
     - Navidrome:
         href: https://navidrome.gapul.net
-        description: 音楽
+        description: Music
         icon: navidrome.png
         siteMonitor: http://127.0.0.1:4533
 
 - AI:
-    - AIツール:
+    - AI Tools:
         href: https://tools.gapul.net
-        description: 文字起こし/TTS/OCR/質問/声クローン/分離
+        description: Transcription / TTS / OCR / Q&A / voice clone / stem separation
         icon: mdi-robot
         siteMonitor: http://100.105.135.49:8901
-    - 画像生成 (ComfyUI):
+    - ComfyUI:
         href: https://comfy.gapul.net
-        description: 画像生成 (macmini M4)
+        description: Image generation (macmini M4)
         icon: mdi-image
         siteMonitor: http://100.105.135.49:8188
 
 - macmini (M4):
-    - システム:
+    - System:
         icon: mdi-desktop-tower-monitor
         href: http://100.105.135.49:61208
         widget:
@@ -176,23 +176,7 @@
           metric: info
     - CPU:
         widget: { type: glances, url: http://100.105.135.49:61208, version: 4, metric: cpu, chart: false }
-    - メモリ:
+    - Memory:
         widget: { type: glances, url: http://100.105.135.49:61208, version: 4, metric: memory, chart: false }
-    - ディスク:
+    - Disk:
         widget: { type: glances, url: http://100.105.135.49:61208, version: 4, metric: "fs:/", chart: false }
-
-- Raspberry Pi (.53):
-    - システム:
-        icon: mdi-raspberry-pi
-        href: http://192.168.116.53:61208
-        widget:
-          type: glances
-          url: http://192.168.116.53:61208
-          version: 4
-          metric: info
-    - CPU:
-        widget: { type: glances, url: http://192.168.116.53:61208, version: 4, metric: cpu, chart: false }
-    - メモリ:
-        widget: { type: glances, url: http://192.168.116.53:61208, version: 4, metric: memory, chart: false }
-    - ディスク:
-        widget: { type: glances, url: http://192.168.116.53:61208, version: 4, metric: "fs:/", chart: false }
