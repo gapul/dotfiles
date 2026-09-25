@@ -41,6 +41,10 @@ let
     }
     { rel = "miniflux.env"; }
     { rel = "mosquitto-ha.password"; }
+    {
+      rel = "mullvad-exit.conf";
+      restartUnits = [ "container@mullvad-exit.service" ];
+    }
     { rel = "mvrx/chap-secrets"; }
     { rel = "mvrx/conn.conf"; }
     { rel = "mvrx/ipsec.secrets"; }
@@ -81,6 +85,7 @@ let
       owner = file.owner or "root";
       group = file.group or "root";
       mode = file.mode or "0400";
+      restartUnits = file.restartUnits or [ ];
     };
 in
 {
