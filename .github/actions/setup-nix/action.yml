@@ -42,7 +42,10 @@ runs:
         printf '%s\n' "${{ inputs.mocopi-deploy-key }}" > ~/.ssh/mocopi_ci
         chmod 600 ~/.ssh/mocopi_ci
         ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null
-        cat >> ~/.ssh/config <<'EOF'
+        # The self-hosted macmini runner already declares this Host block in its nix-managed
+        # ~/.ssh/config (home/macmini.nix), which is a read-only store symlink: appending
+        # fails there. Only GitHub-hosted runners start without it.
+        grep -qs mocopi_ci ~/.ssh/config || cat >> ~/.ssh/config <<'EOF'
         Host github.com
           IdentityFile ~/.ssh/mocopi_ci
           IdentitiesOnly yes
