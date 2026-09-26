@@ -10,15 +10,15 @@
 [
   # modrinth:P7dR8mSH fabric-api
   (fetchurl {
-    name = "fabric-api-0.161.0+26.2.jar";
-    url = "https://cdn.modrinth.com/data/P7dR8mSH/versions/ewUK83HI/fabric-api-0.161.0%2B26.2.jar";
-    hash = "sha512-JQL6Wt546aEgs3R7wamiFn1mcXQ76kW/EV0xdMlBIa7ah8VJRG0aYEqcEfuCjeF6VR41FM5C8+kwad0Uva7lWw==";
+    name = "fabric-api-0.161.0+26.3.jar";
+    url = "https://cdn.modrinth.com/data/P7dR8mSH/versions/bNnaTiuM/fabric-api-0.161.0%2B26.3.jar";
+    hash = "sha512-7Wslhtb94R/ehHL1pSfFHpm2cCbkb5TUv9hefijOXuKZFz7hatV2zrUfOfmNMKgRCGpt6xqGpSSFnMFuEtoQnQ==";
   })
   # modrinth:gvQqBUqZ lithium
   (fetchurl {
-    name = "lithium-fabric-0.25.3+mc26.2.jar";
-    url = "https://cdn.modrinth.com/data/gvQqBUqZ/versions/f7vZ0VWU/lithium-fabric-0.25.3%2Bmc26.2.jar";
-    hash = "sha512-FItjjzxiKfuvSHEgojRKCvXkEaWqZTPV25112gqMDYME9j60zKE/TQOyybTCPVWd10wdgyQi74owh70AXmKovQ==";
+    name = "lithium-fabric-0.26.1+mc26.3.jar";
+    url = "https://cdn.modrinth.com/data/gvQqBUqZ/versions/WXHRsMRl/lithium-fabric-0.26.1%2Bmc26.3.jar";
+    hash = "sha512-rLubA3ogPwBeA6IL8dmGYBk4Srta0nZkgIoSuRljmiUB7LUvjw130n4UCZNbDb27cOAaxGZIDArkIe5AP2ScWQ==";
   })
   # modrinth:uXXizFIs ferrite-core
   (fetchurl {
@@ -26,16 +26,8 @@
     url = "https://cdn.modrinth.com/data/uXXizFIs/versions/d5ddUdiB/ferritecore-9.0.0-fabric.jar";
     hash = "sha512-2B+pfhF4TBnUL4nC9DODHQB2A91xk87kX6F35KapxSs4SxmFhuBKD39jzZlv7XEzIleL3pqNtX4RiIVK5cvlhA==";
   })
-  # modrinth:fQEb0iXm krypton
-  (fetchurl {
-    name = "krypton-0.3.1.jar";
-    url = "https://cdn.modrinth.com/data/fQEb0iXm/versions/5WeL0Nkz/krypton-0.3.1.jar";
-    hash = "sha512-uNmvNM0AUEk6+4piMsuPeF2qnYiHtwRfbmpTxrubX/xDGP2bA0epQOrP66R3PxDLgK4L4eec5MGIj5btoh5WTg==";
-  })
-  # modrinth:KOHu7RCS moonrise-opt
-  (fetchurl {
-    name = "Moonrise-Fabric-1.1.2+151ce65.jar";
-    url = "https://cdn.modrinth.com/data/KOHu7RCS/versions/72EQ5QZf/Moonrise-Fabric-1.1.2%2B151ce65.jar";
-    hash = "sha512-+UopCcXUlPTYnxbiTVqpdJTJH34rPVlTVLpAH63z3kOEri3BjTxAmxDOJkYrdtHYzviVnfXkm9PPAbOIfO0lHg==";
-  })
+  # modrinth:fQEb0iXm krypton optional
+  # (no release for 26.3 yet)
+  # modrinth:KOHu7RCS moonrise-opt optional
+  # (no release for 26.3 yet)
 ]

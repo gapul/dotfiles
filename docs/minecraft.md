@@ -46,7 +46,9 @@ table. Pick a port that does not collide with the others; port + 100 is used beh
 generated data and never appear in the declaration.
 
 **Adding a mod** means one more `# modrinth:<project id> <slug>` entry in
-`nix/pkgs/fabric-mods.nix`; the updater fills in the file, URL and hash. `mods/` is filled with
+`nix/pkgs/fabric-mods.nix`; the updater fills in the file, URL and hash. Append `optional` to the
+line for a mod that may lag behind the game version: it is included when a release exists and left
+out otherwise, without holding the game version back (Krypton and Moonrise). `mods/` is filled with
 symlinks into the store, and removing an entry removes the file on the next start. Dropping a
 jar in by hand also works for experiments, and those are left alone. Only server-side mods
 belong here; anything a client would have to install turns the server into a modpack server.
@@ -54,7 +56,7 @@ belong here; anything a client would have to install turns the server into a mod
 ## Updating the servers
 
 The `update-custom-packages` GitHub Action runs hourly. It takes the newest stable game version
-for which *every* mod in `fabric-mods.nix` has a release, and rewrites `nix/pkgs/fabric-server.nix`
+for which every required mod in `fabric-mods.nix` has a release, and rewrites `nix/pkgs/fabric-server.nix`
 (game, loader, installer, hash) and `fabric-mods.nix` (one release per mod) for it. A new game
 version is therefore adopted only once the whole set has caught up; until then loader and mod
 releases for the current version still flow. `mcProtocol` — what lazymc reports while the server
