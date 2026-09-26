@@ -128,6 +128,9 @@ let
     archive = {
       upstream = "127.0.0.1:8000"; # archivebox
       auth = true;
+      # REST API は ArchiveBox 自身の API キーで守られている (X-ArchiveBox-API-Key)。
+      # ここに Authelia を掛けると iPhone の共有シートからの登録がログイン画面に化ける。
+      authSkip = "/api/*";
       interval = "1h";
     };
     ntfy.upstream = "127.0.0.1:8082";
@@ -235,18 +238,27 @@ let
   # ある。あれらはネイティブアプリや git がそのまま叩くので、前段に人間向けの
   # ログイン画面を置くとアプリ側が壊れる。vault は別の理由で外してある
   # (保管庫を SSO の後ろに置くと、SSO のパスワードを忘れたとき開けなくなる)。
-  autheliaForwardAuth = ''
-    forward_auth 127.0.0.1:${toString autheliaPort} {
-      uri /api/authz/forward-auth
-      copy_headers Remote-User Remote-Groups Remote-Name Remote-Email
-    }
-  '';
+  # matcher が空なら全リクエストに、与えられていればそのパスを除いた分だけに掛ける。
+  # 除外は「機械が API キーで叩くパス」のためにある (archive の /api/*)。人間向けの
+  # 画面には従来どおり Authelia が掛かる。
+  mkForwardAuth =
+    skip:
+    let
+      matcher = lib.optionalString (skip != null) "@protected not path ${skip}\n    ";
+      target = lib.optionalString (skip != null) "@protected ";
+    in
+    ''
+      ${matcher}forward_auth ${target}127.0.0.1:${toString autheliaPort} {
+        uri /api/authz/forward-auth
+        copy_headers Remote-User Remote-Groups Remote-Name Remote-Email
+      }
+    '';
 
   mkVhost =
     site:
     let
       block = lib.optionalString (site ? extra) " {\n    ${site.extra}\n  }";
-      auth = lib.optionalString (site.auth or false) autheliaForwardAuth;
+      auth = lib.optionalString (site.auth or false) (mkForwardAuth (site.authSkip or null));
       # Raw Caddy directives placed before the proxy, for a vhost that also serves
       # something else (a static page, a second upstream on a path prefix).
       pre = site.pre or "";
