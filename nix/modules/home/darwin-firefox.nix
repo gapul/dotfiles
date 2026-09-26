@@ -93,6 +93,9 @@ in
         "uBlock0@raymondhill.net" = amo "ublock-origin"; # uBlock Origin
         "{aecec67f-0d10-4fa7-b7c7-609a2db280cf}" = amo "violentmonkey"; # Violentmonkey
         "{799c0914-748b-41df-a25c-22d008f9e83f}" = amo "web-scrobbler"; # Web Scrobbler
+        # Added 2026-09-26 on request, both FOSS:
+        "deArrow@ajay.app" = amo "dearrow"; # DeArrow (SponsorBlock's sibling: crowdsourced titles/thumbnails)
+        "{c607c8df-14a7-4f28-894f-29e8722976af}" = amo "temporary-containers"; # Temporary Containers
         # Dropping an entry above leaves an already installed extension in place as an ordinary
         # one; only "blocked" makes Firefox uninstall it. These were in the list once.
         "LINEPorted@FoxRefire".installation_mode = "blocked"; # LINE
