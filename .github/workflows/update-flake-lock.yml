@@ -90,7 +90,7 @@ jobs:
           labels: |
             dependencies
             automated
-          body: 'Automated version and SHA-256 refresh for slk, Unity CLI and the Paper server jar.'
+          body: 'Automated version and hash refresh for slk, Unity CLI, and the Fabric server jar and mods.'
       - name: Enable auto-merge
         if: steps.pkgs.outputs.pull-request-number != ''
         env:

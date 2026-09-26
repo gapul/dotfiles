@@ -4,7 +4,8 @@ set -euo pipefail
 repo=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 slk_file="$repo/nix/pkgs/slk.nix"
 unity_file="$repo/nix/pkgs/unity-cli.nix"
-paper_file="$repo/nix/pkgs/paper-server.nix"
+fabric_file="$repo/nix/pkgs/fabric-server.nix"
+mods_file="$repo/nix/pkgs/fabric-mods.nix"
 macmini_file="$repo/nix/hosts/macmini.nix"
 protocol_map_url="https://raw.githubusercontent.com/PrismarineJS/minecraft-data/master/data/pc/common/protocolVersions.json"
 tmp=$(mktemp -d)
@@ -57,60 +58,97 @@ if [[ $pinned_unity != "$latest_unity" ]]; then
   echo "unity-cli: $pinned_unity -> $latest_unity"
 fi
 
-# --- Paper (Minecraft server) ---------------------------------------------------------------
-# 追うのは「STABLE ビルドを持つ、いちばん新しい MC バージョンの、いちばん新しい STABLE ビルド」。
-# 実験ビルドは拾わない。新しい MC 版が出た直後は ALPHA しか無い期間が数週間あり、そこで
-# 「最新版に STABLE が無い」と止めてしまうと、その間ひとつ前の版の STABLE 更新まで全部
-# 取りこぼす (26.3 が出てから 26.2 が build 123 で止まっていた)。
-# 配布 URL に sha256 が埋まっている API なので、jar を落とさずにハッシュを確定できる。
-pinned_paper_version=$(sed -n 's/^[[:space:]]*version = "\([^"]*\)";/\1/p' "$paper_file" | head -1)
-pinned_paper_build=$(sed -n 's/^[[:space:]]*build = "\([^"]*\)";/\1/p' "$paper_file" | head -1)
+# --- Fabric (Minecraft servers) -------------------------------------------------------------
+# 追うのは「宣言してある mod が全部揃っている、いちばん新しい安定版の MC バージョン」。
+# 新しい版が出た直後は mod が追いつくまで数日〜数週間あり、その間は前の版に留まる。
+# 同じ版の中でも loader と mod の新しいリリースは拾う。
+# mod のハッシュは Modrinth が公開している sha512 をそのまま使う (jar を落とさない)。
+# Fabric の起動 jar だけはハッシュが公開されていないので、落として計る。
+pinned_mc=$(sed -n 's/^[[:space:]]*mcVersion = "\([^"]*\)";/\1/p' "$fabric_file" | head -1)
+pinned_loader=$(sed -n 's/^[[:space:]]*loader = "\([^"]*\)";/\1/p' "$fabric_file" | head -1)
+pinned_installer=$(sed -n 's/^[[:space:]]*installer = "\([^"]*\)";/\1/p' "$fabric_file" | head -1)
 
-# 新しい順に見て、最初に STABLE を持つ版で止まる。出力は "version build sha256"。
-paper_pick=$(curl -fsS --max-time 30 https://fill.papermc.io/v3/projects/paper | python3 -c '
-import json, sys, urllib.request
-versions = json.load(sys.stdin)["versions"]
-for series in versions:
-    for v in versions[series]:
-        with urllib.request.urlopen(f"https://fill.papermc.io/v3/projects/paper/versions/{v}/builds", timeout=30) as r:
-            builds = json.load(r)
-        for b in builds:
-            if b.get("channel") == "STABLE":
-                print(v, b["id"], b["downloads"]["server:default"]["checksums"]["sha256"])
-                sys.exit(0)
-')
+# 出力: 1 行目 "mc loader installer"、以降 1 mod につき "project slug name url sha512"。
+# 揃う版が無ければ何も出さない。
+fabric_pick=$(python3 - "$mods_file" <<'PY'
+import json, re, sys, urllib.parse, urllib.request
 
-if [[ -n $paper_pick ]]; then
-  read -r paper_latest latest_build latest_sha <<<"$paper_pick"
-  if [[ $pinned_paper_version != "$paper_latest" || $pinned_paper_build != "$latest_build" ]]; then
-    awk -v version="$paper_latest" -v build="$latest_build" -v sha="$latest_sha" '
-      /^[[:space:]]*version = "/ && !v { sub(/"[^"]+"/, "\"" version "\""); v=1 }
-      /^[[:space:]]*build = "/ && !b { sub(/"[^"]+"/, "\"" build "\""); b=1 }
-      /^[[:space:]]*sha256 = "/ && !s { sub(/"[^"]+"/, "\"" sha "\""); s=1 }
+def get(url):
+    with urllib.request.urlopen(url, timeout=30) as r:
+        return json.load(r)
+
+mods = re.findall(r"^\s*# modrinth:(\S+) (\S+)$", open(sys.argv[1]).read(), re.M)
+games = [g["version"] for g in get("https://meta.fabricmc.net/v2/versions/game") if g["stable"]]
+installer = get("https://meta.fabricmc.net/v2/versions/installer")[0]["version"]
+for mc in games:
+    loaders = [l for l in get(f"https://meta.fabricmc.net/v2/versions/loader/{mc}") if l["loader"]["stable"]]
+    if not loaders:
+        continue
+    picks = []
+    for project, slug in mods:
+        q = urllib.parse.urlencode({"loaders": '["fabric"]', "game_versions": f'["{mc}"]'})
+        vs = get(f"https://api.modrinth.com/v2/project/{project}/version?{q}")
+        if not vs:
+            break
+        f = next(x for x in vs[0]["files"] if x["primary"])
+        picks.append((project, slug, f["filename"], f["url"], f["hashes"]["sha512"]))
+    else:
+        print(mc, loaders[0]["loader"]["version"], installer)
+        for p in picks:
+            print(*p)
+        break
+PY
+)
+
+if [[ -n $fabric_pick ]]; then
+  read -r mc loader installer <<<"$(head -1 <<<"$fabric_pick")"
+  if [[ $pinned_mc != "$mc" || $pinned_loader != "$loader" || $pinned_installer != "$installer" ]]; then
+    curl -fsSL "https://meta.fabricmc.net/v2/versions/loader/${mc}/${loader}/${installer}/server/jar" -o "$tmp/fabric.jar"
+    fabric_hash=$(nix hash file --type sha256 "$tmp/fabric.jar")
+    awk -v mc="$mc" -v loader="$loader" -v installer="$installer" -v hash="$fabric_hash" '
+      /^[[:space:]]*mcVersion = "/ { sub(/"[^"]+"/, "\"" mc "\"") }
+      /^[[:space:]]*loader = "/ { sub(/"[^"]+"/, "\"" loader "\"") }
+      /^[[:space:]]*installer = "/ { sub(/"[^"]+"/, "\"" installer "\"") }
+      /^[[:space:]]*hash = "/ { sub(/"[^"]+"/, "\"" hash "\"") }
       { print }
-    ' "$paper_file" > "$tmp/paper.nix"
-    mv "$tmp/paper.nix" "$paper_file"
-    echo "paper: $pinned_paper_version-$pinned_paper_build -> $paper_latest-$latest_build"
+    ' "$fabric_file" > "$tmp/fabric-server.nix"
+    mv "$tmp/fabric-server.nix" "$fabric_file"
+    echo "fabric: $pinned_mc/$pinned_loader/$pinned_installer -> $mc/$loader/$installer"
+  fi
 
-    # サーバーが寝ている間の status は lazymc が代わりに返すので、そこに書く版も一緒に動かす。
-    # 置き去りにすると、更新した翌朝からサーバー一覧に「非対応」の×が出る(繋がりはするが、
-    # 友人からは入れない場所に見える)。protocol 番号は Paper の API に無いので外から引く。
-    paper_proto=$(curl -fsS --max-time 30 "$protocol_map_url" | python3 -c '
+  # mod 一覧はヘッダ (= 最初の `[` まで) を残して丸ごと作り直す。
+  {
+    sed -n '1,/^\[$/p' "$mods_file"
+    tail -n +2 <<<"$fabric_pick" | while read -r project slug name url sha512; do
+      sri=$(nix hash convert --hash-algo sha512 --to sri "$sha512")
+      printf '  # modrinth:%s %s\n  (fetchurl {\n    name = "%s";\n    url = "%s";\n    hash = "%s";\n  })\n' \
+        "$project" "$slug" "$name" "$url" "$sri"
+    done
+    echo "]"
+  } > "$tmp/fabric-mods.nix"
+  if ! cmp -s "$tmp/fabric-mods.nix" "$mods_file"; then
+    mv "$tmp/fabric-mods.nix" "$mods_file"
+    echo "fabric mods: 更新あり ($mc 向け)"
+  fi
+
+  # サーバーが寝ている間の status は lazymc が代わりに返すので、そこに書く protocol も一緒に動かす。
+  # 置き去りにすると、更新した翌朝からサーバー一覧に「非対応」の×が出る。番号は Fabric の API に
+  # 無いので外から引く。出たばかりの版はまだ載っていないことがあり、その時は据え置く。
+  if [[ $pinned_mc != "$mc" ]]; then
+    proto=$(curl -fsS --max-time 30 "$protocol_map_url" | python3 -c '
 import json, sys
 want = sys.argv[1]
 print(next((e["version"] for e in json.load(sys.stdin) if e["minecraftVersion"] == want), ""))
-' "$paper_latest")
-    if [[ -n $paper_proto ]]; then
-      awk -v version="$paper_latest" -v proto="$paper_proto" '
-        /^[[:space:]]*paperMcVersion = "/ { sub(/"[^"]+"/, "\"" version "\"") }
-        /^[[:space:]]*paperProtocol = / { sub(/= [0-9]+/, "= " proto) }
+' "$mc")
+    if [[ -n $proto ]]; then
+      awk -v proto="$proto" '
+        /^[[:space:]]*mcProtocol = / { sub(/= [0-9]+/, "= " proto) }
         { print }
       ' "$macmini_file" > "$tmp/macmini.nix"
       mv "$tmp/macmini.nix" "$macmini_file"
-      echo "paper (lazymc の表示): $paper_latest / protocol $paper_proto"
+      echo "fabric (lazymc の表示): $mc / protocol $proto"
     else
-      # 出たばかりの版はまだ載っていないことがある。間違った番号を書くより据え置く。
-      echo "paper: $paper_latest の protocol 番号が引けなかったので lazymc の表示は据え置き" >&2
+      echo "fabric: $mc の protocol 番号が引けなかったので lazymc の表示は据え置き" >&2
     fi
   fi
 fi
