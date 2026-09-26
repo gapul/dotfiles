@@ -645,6 +645,13 @@ in
     # incoming-connection permission tied to the declared package.
     /usr/libexec/ApplicationFirewall/socketfilterfw --add ${aivisSpeechEngine}/libexec/aivisspeech-engine/run >/dev/null 2>&1 || true
     /usr/libexec/ApplicationFirewall/socketfilterfw --unblockapp ${aivisSpeechEngine}/libexec/aivisspeech-engine/run >/dev/null 2>&1 || true
+    # Sunshine listens for Moonlight on 47984/47989/47990/48010. Unlike the packages above it is
+    # launched from the signed copy at ~/.local/libexec/tcc/sunshine (TCC ties screen recording and
+    # accessibility to that path), so the grant is tied to that stable path rather than a store one.
+    # Without it the TCP handshake still completes — launchd accepts the socket — and the service
+    # simply never answers, which reads as a network fault rather than a firewall one (2026-09-26).
+    /usr/libexec/ApplicationFirewall/socketfilterfw --add /Users/${user.username}/.local/libexec/tcc/sunshine >/dev/null 2>&1 || true
+    /usr/libexec/ApplicationFirewall/socketfilterfw --unblockapp /Users/${user.username}/.local/libexec/tcc/sunshine >/dev/null 2>&1 || true
     # The hand-written plists the daemons above replace. nix-darwin names its units org.nixos.*,
     # so without this both copies would be loaded and Hermes would come up twice.
     for label in net.gapul.hermes-gateway net.gapul.hermes-gateway-imouto net.gapul.hermes-watchdog \
