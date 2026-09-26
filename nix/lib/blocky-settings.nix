@@ -12,6 +12,11 @@
   };
 
   upstreams.groups.default = [ "https://dns10.quad9.net/dns-query" ];
+  # IPv4 only for outgoing connections (upstream and list downloads). macmini has no IPv6
+  # route, and the downloader dials the AAAA answer first and does not fall back inside an
+  # attempt, so raw.githubusercontent.com failed 3/3 and two of three lists were missing
+  # (2026-09-26). homeserver was fine only by luck of the answer order.
+  connectIPVersion = "v4";
   # DoH は自分のホスト名を引けないので、ここはアドレスで書く。
   bootstrapDns = [
     { upstream = "9.9.9.10"; }
@@ -54,6 +59,13 @@
       "ads"
       "threats"
     ];
+    # The lists are 5-18MB each; the 5s default timeout is for small ones. Retry with a real
+    # pause so a flaky first fetch does not leave a group empty until the 4h refresh.
+    loading.downloads = {
+      timeout = "60s";
+      attempts = 5;
+      cooldown = "5s";
+    };
     # 0.0.0.0 ではなく NXDOMAIN。クライアントが再試行をやめるし、
     # ブラックホールにソケットを吊るしたままにしない。
     blockType = "nxDomain";
