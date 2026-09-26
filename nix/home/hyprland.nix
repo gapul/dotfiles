@@ -202,20 +202,40 @@ in
     };
   };
 
-  # polkit agent. Like mako this ships its own unit, and unlike most packages it puts no
-  # binary in bin/ at all (the executable lives in libexec/), so the exec-once that named it
-  # could never have worked — Hyprland was spawning a command that does not exist.
+  # polkit agent and notification daemon. Neither gets started on its own: hyprpolkitagent
+  # puts no binary in bin/ at all (the executable lives in libexec/), so the exec-once that
+  # named it was spawning a command that does not exist, and home-manager's mako module only
+  # writes the config file — it defines no unit, and the one inside the package is installed
+  # but never enabled.
+  #
+  # These must carry a full Service section. `systemd.user.services.<name>` writes a complete
+  # unit into ~/.config/systemd/user, which takes priority over the one in the package, so
+  # setting only Unit/Install does not extend the packaged unit — it replaces it with a file
+  # that has no ExecStart. systemd then refuses the unit with BadUnitSetting, and home-manager
+  # activation fails with it, which is how both of these ended up inactive.
   systemd.user.services.hyprpolkitagent = {
-    Unit.PartOf = [ "graphical-session.target" ];
+    Unit = {
+      Description = "Hyprland polkit authentication agent";
+      PartOf = [ "graphical-session.target" ];
+      After = [ "graphical-session.target" ];
+    };
+    Service = {
+      ExecStart = "${pkgs.hyprpolkitagent}/libexec/hyprpolkitagent";
+      Restart = "on-failure";
+    };
     Install.WantedBy = [ "graphical-session.target" ];
   };
 
-  # notification daemon.
-  # home-manager's mako module only writes the config file — it defines no service — and the
-  # unit that ships inside the mako package is installed but never enabled, so nothing starts
-  # it and notifications silently go nowhere. Pull the packaged unit into the session target.
   systemd.user.services.mako = {
-    Unit.PartOf = [ "graphical-session.target" ];
+    Unit = {
+      Description = "Mako notification daemon";
+      PartOf = [ "graphical-session.target" ];
+      After = [ "graphical-session.target" ];
+    };
+    Service = {
+      ExecStart = "${pkgs.mako}/bin/mako";
+      Restart = "on-failure";
+    };
     Install.WantedBy = [ "graphical-session.target" ];
   };
 
