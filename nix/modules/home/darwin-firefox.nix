@@ -49,6 +49,36 @@ in
       # No Mozilla account: bookmarks ride floccus and there is nothing else to sync, so the
       # account button, the "Sign in" menu entries and the Sync settings all go away.
       DisableFirefoxAccounts = true;
+      # Cut the rest of the traffic to Mozilla that arkenfox does not already cover (2026-09-26).
+      # Still allowed on purpose: AMO (extension installs/updates), remote-settings (OneCRL
+      # certificate revocations and the add-on blocklist), the GMP updater (Widevine, the reason
+      # this browser exists) and the push service (Slack's web notifications ride it).
+      DisableTelemetry = true;
+      DisableFirefoxStudies = true;
+      DisableFeedbackCommands = true;
+      DisablePocket = true;
+      CaptivePortal = false;
+      UserMessaging = {
+        ExtensionRecommendations = false;
+        FeatureRecommendations = false;
+        UrlbarInterventions = false;
+        SkipOnboarding = true;
+        MoreFromMozilla = false;
+        WhatsNew = false;
+        FirefoxLabs = false;
+        Locked = true;
+      };
+      FirefoxSuggest = {
+        WebSuggestions = false;
+        SponsoredSuggestions = false;
+        ImproveSuggest = false;
+        Locked = true;
+      };
+      FirefoxHome = {
+        SponsoredTopSites = false;
+        Pocket = false;
+        SponsoredPocket = false;
+      };
       # Per-extension settings, for the extensions that read browser.storage.managed. This is a
       # lock, not a seed: re-asserted on every start, so dashboard edits revert. uBlock Origin
       # caches it and applies one restart late (uAssets discussion 16939).
@@ -215,6 +245,15 @@ in
         # name something that is not a tool.
         "browser.toolbars.bookmarks.visibility" = "never";
         "sidebar.main.tools" = "none";
+
+        # Mozilla endpoints arkenfox leaves open: region lookup, AMO metadata for the add-ons
+        # pane, Merino (urlbar suggestions) and the new-tab feeds.
+        "browser.region.network.url" = "";
+        "browser.region.update.enabled" = false;
+        "extensions.getAddons.cache.enabled" = false;
+        "browser.urlbar.quicksuggest.enabled" = false;
+        "browser.newtabpage.activity-stream.feeds.system.topstories" = false;
+        "browser.newtabpage.activity-stream.telemetry" = false;
       };
       userChrome = ''
         @import url("autohide_toolbox.css");
