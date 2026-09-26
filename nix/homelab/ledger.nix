@@ -92,6 +92,36 @@ let
     commit "wise sync"
   '';
 
+  # ntfy に1行送る (ntfy-failure@ と同じトピックとトークン)。失敗の通知ではなく、人が
+  # 動く必要のある知らせ用。
+  notify = pkgs.writeShellScript "ledger-notify" ''
+    set -u
+    ${pkgs.curl}/bin/curl -fsS --max-time 15 -H "Authorization: Bearer $NTFY_TOKEN" \
+      -H "Title: $1" -H "Tags: ledger" -d "$2" "http://127.0.0.1:8082/$NTFY_TOPIC" >/dev/null
+  '';
+
+  # Zaim の口座連携は取得が止まっても Zaim 側は何も言わない (2026-09 に住信SBI・PayPay銀行・
+  # 楽天銀行が夏で止まっていたのに気づかなかった)。口座ごとの最新日付が古ければ知らせる。
+  zaimStale = pkgs.writeShellScript "zaim-stale-check" ''
+    set -u
+    stale=$(${py} - ${book}/zaim.db <<'PY'
+    import sqlite3, sys, datetime
+    db = sqlite3.connect(sys.argv[1])
+    limit = (datetime.date.today() - datetime.timedelta(days=21)).isoformat()
+    rows = db.execute("""
+      SELECT acct, MAX(date) FROM (
+        SELECT from_account AS acct, date FROM transactions WHERE deleted_at IS NULL AND from_account IS NOT NULL
+        UNION ALL
+        SELECT to_account, date FROM transactions WHERE deleted_at IS NULL AND to_account IS NOT NULL)
+      GROUP BY acct HAVING MAX(date) < ?
+      ORDER BY 2""", (limit,)).fetchall()
+    for acct, last in rows:
+        print(f"{acct}: 最終 {last}")
+    PY
+    )
+    [ -z "$stale" ] || ${notify} "Zaim の連携が止まっている口座" "$stale"
+  '';
+
   common = {
     User = "ledger";
     Group = "ledger";
@@ -166,6 +196,44 @@ in
       # アクティビティは全期間を毎回引き直して wise.beancount を丸ごと作り直し、
       # 実残高との差を手数料として吸収してから balance を置く。動きが少ない口座なので日次で足りる。
       OnCalendar = "*-*-* 06:50:00";
+      Persistent = true;
+    };
+  };
+
+  systemd.services.zaim-stale-check = {
+    description = "Zaim の口座連携が止まっていないか (毎日)";
+    serviceConfig = common // {
+      Type = "oneshot";
+      EnvironmentFile = "/var/lib/secrets/gatus.env";
+      ExecStart = zaimStale;
+    };
+    onFailure = [ "ntfy-failure@%n.service" ];
+  };
+  systemd.timers.zaim-stale-check = {
+    description = "Zaim の連携停止の検知を毎日";
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnCalendar = "*-*-* 07:10:00";
+      Persistent = true;
+    };
+  };
+
+  # みんなの銀行は CSV も連携も無く、アプリの取引明細 PDF を年に1回落として
+  # personal-tools/minna で読む (前年分を1月に)。忘れるので知らせる。
+  systemd.services.minna-reminder = {
+    description = "みんなの銀行の PDF を落とす年次の知らせ";
+    serviceConfig = {
+      Type = "oneshot";
+      EnvironmentFile = "/var/lib/secrets/gatus.env";
+      ExecStart = "${notify} 'みんなの銀行の取引明細' 'アプリの マイページ > 取引明細・残高証明書発行 > 預金の取引明細 で前年分の PDF を落とし、personal-tools/minna/minna_beancount.py で minna.beancount を作り直す'";
+    };
+    onFailure = [ "ntfy-failure@%n.service" ];
+  };
+  systemd.timers.minna-reminder = {
+    description = "みんなの銀行の年次取り込みを 1 月に";
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnCalendar = "*-01-05 10:00:00";
       Persistent = true;
     };
   };
