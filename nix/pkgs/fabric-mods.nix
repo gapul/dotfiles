@@ -30,4 +30,10 @@
   # (no release for 26.3 yet)
   # modrinth:KOHu7RCS moonrise-opt optional
   # (no release for 26.3 yet)
+  # modrinth:bWrNNfkb floodgate optional
+  (fetchurl {
+    name = "Floodgate-Fabric-2.2.7-b69.jar";
+    url = "https://cdn.modrinth.com/data/bWrNNfkb/versions/m9eO07Zi/Floodgate-Fabric-2.2.7-b69.jar";
+    hash = "sha512-kYX8lsDzAe4IZ9gwZcIQJ3BirT0VNunUIxJj+jLtMiPQCCaMSN6eAPDpoiQKLEXEOJNNAe+kCxtSOw0HLrMi1Q==";
+  })
 ]

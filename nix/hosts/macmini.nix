@@ -13,6 +13,7 @@ let
     inherit (pkgs.stdenv.hostPlatform) system;
   };
   fabricServer = pkgs.callPackage ../pkgs/fabric-server.nix { };
+  geyser = pkgs.callPackage ../pkgs/geyser.nix { };
   fabricMods = import ../pkgs/fabric-mods.nix { inherit (pkgs) fetchurl; };
   aivisSpeechEngine = pkgs.callPackage ../pkgs/aivisspeech-engine.nix { };
 
@@ -159,6 +160,14 @@ in
           path = "/etc/minecraft/whitelist-solo.json";
           owner = "mcsrv";
           mode = "0444";
+        };
+        # Floodgate の鍵 (16 byte の AES 鍵を base64 で)。Bedrock の人は Java の認証を通らず、
+        # この鍵で署名された Geyser からの接続だけが通る。漏れると誰でも任意の名前で入れる。
+        # サーバー側 (run.sh) と Geyser 側 (下の daemon) の両方が起動時にここから置き直す。
+        "minecraft/floodgate_key" = {
+          path = "/etc/minecraft/floodgate-key.b64";
+          owner = "mcsrv";
+          mode = "0400";
         };
         "minecraft/ops" = {
           path = "/etc/minecraft/ops.json";
@@ -472,6 +481,37 @@ in
     };
   };
 
+  # Bedrock (スマホ / Switch / Win10 版) の入口。Geyser が BE の通信を Java に翻訳し、Floodgate
+  # (サーバー側 mod) が Java アカウント無しの人を Xbox アカウントで通す。standalone にしてある
+  # のは lazymc のため: サーバー内の mod として動かすと、サーバーが寝ている間は Geyser も居ない
+  # ので BE から起こせない。前段に常駐させ、Java クライアントとして lazymc を叩かせる。
+  # 待機コストは JVM 1 つ分 (300〜500MB)。無人時ゼロだった構成で唯一の常駐増。
+  # 本館だけ。solo に BE から入る日が来たら port を変えてもう 1 つ生やす。
+  launchd.daemons.geyser = {
+    command = "${pkgs.writeShellScript "geyser" ''
+      set -u
+      dir=/Users/mcsrv/geyser
+      /bin/mkdir -p "$dir/logs"
+      cd "$dir"
+      # 設定は宣言が正。Geyser は起動時に config.yml を書き換える (欠けたキーを補う) ので、
+      # 毎回 store から置き直す。
+      /bin/cp -f ${../../configs/macmini/minecraft/geyser-config.yml} config.yml
+      /bin/chmod 644 config.yml
+      /usr/bin/base64 -d /etc/minecraft/floodgate-key.b64 > key.pem
+      /bin/chmod 600 key.pem
+      exec ${pkgs.temurin-bin-25}/bin/java -Xms128M -Xmx512M -jar ${geyser} --nogui
+    ''}";
+    serviceConfig = {
+      UserName = "mcsrv";
+      WorkingDirectory = "/Users/mcsrv";
+      ProcessType = "Interactive";
+      RunAtLoad = true;
+      KeepAlive = true;
+      StandardOutPath = "/Users/mcsrv/geyser/logs/launchd.log";
+      StandardErrorPath = "/Users/mcsrv/geyser/logs/launchd.log";
+    };
+  };
+
   # ワールドの日次バックアップ。Realms から移ってくる以上、「壊しても戻せる」は要る。
   # 対象は上の表から作るので、サーバーを増やせばバックアップも自動で増える。
   # restic(5:00)より前に走らせて、その晩のうちに Google Drive まで乗せる。
@@ -597,6 +637,9 @@ in
     # 気付きにくい)。java は前から登録済みだったが、公開ポートを持つのは lazymc に変わった。
     /usr/libexec/ApplicationFirewall/socketfilterfw --add ${pkgs.lazymc}/bin/lazymc >/dev/null 2>&1 || true
     /usr/libexec/ApplicationFirewall/socketfilterfw --unblockapp ${pkgs.lazymc}/bin/lazymc >/dev/null 2>&1 || true
+    # Geyser は java そのものが UDP 19132 を持つ (lazymc を介さない)。宣言した JDK の java を許可する。
+    /usr/libexec/ApplicationFirewall/socketfilterfw --add ${pkgs.temurin-bin-25}/bin/java >/dev/null 2>&1 || true
+    /usr/libexec/ApplicationFirewall/socketfilterfw --unblockapp ${pkgs.temurin-bin-25}/bin/java >/dev/null 2>&1 || true
     # AivisSpeech is served to workstation clients over Tailscale.  Like lazymc,
     # every Nix update can give its executable a new store path, so keep the
     # incoming-connection permission tied to the declared package.
