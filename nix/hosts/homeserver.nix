@@ -117,12 +117,6 @@ let
     paperless.upstream = "127.0.0.1:8097";
     # 持ち物の台帳 (Homebox)。LLM が API キーで叩く。
     box.upstream = "127.0.0.1:8104";
-    # YouTube の保存 (ytdl-sub)。落とし先は /srv/youtube で、jellyfin が /srv を
-    # /media として見ているので、落ちた時点で棚に並ぶ。
-    tube = {
-      upstream = "127.0.0.1:8098";
-      auth = true;
-    };
     git.upstream = "127.0.0.1:3003"; # forgejo
     # Signet (homelab/nostr-bunker.nix), the NIP-46 signer for gapul@gapul.net's
     # Nostr key. Behind Authelia: this is a key-management admin panel, not a
