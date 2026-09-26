@@ -9,7 +9,10 @@ in
   # NixOS container so the WireGuard policy routes and kill switch can never
   # rewrite the homeserver's own network namespace.
   containers.mullvad-exit = {
-    autoStart = true;
+    # Declared but not running: the Mullvad account expired on 2026-08-03 and is
+    # not being renewed for now. Set to true (and re-register the WireGuard key
+    # via the Mullvad devices API) when the exit node is wanted again.
+    autoStart = false;
     privateNetwork = true;
     hostAddress = "10.233.0.1";
     localAddress = "10.233.0.2";
