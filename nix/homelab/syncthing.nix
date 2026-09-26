@@ -69,6 +69,11 @@
         path = "/srv/syncthing/obsidian-vault";
         devices = [ "macbook-mini" ];
         type = "receiveonly";
+        # 母艦の vault のファイルは 0600 で、そのまま複製されると vault-git ユーザー
+        # (syncthing グループに入れてある) が読めず、初回の commit が
+        # "open(.gitignore): Permission denied" で落ちた。パーミッションを運ばせない
+        # と syncthing 自身の umask で 0644 になる。送る側も同じ設定にしてある。
+        ignorePerms = true;
       };
       folders."synchub" = {
         label = "SyncHub";
