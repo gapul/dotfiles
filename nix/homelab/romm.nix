@@ -83,6 +83,9 @@ in
       "DB_HOST" = "romm-db";
       "DB_NAME" = "romm";
       "DB_USER" = "romm";
+      # Hasheous は鍵なしで使えるハッシュ照合 (No-Intro/Redump)。IGDB の前段で
+      # ROM を同定するので、ファイル名が雑でも棚に正しく並ぶ。
+      "HASHEOUS_API_ENABLED" = "true";
     };
     # DB_PASSWD / ROMM_AUTH_SECRET_KEY / IGDB_CLIENT_ID / IGDB_CLIENT_SECRET。
     # IGDB の 2 つが無いとメタデータが引けず、棚がファイル名の羅列になる。
