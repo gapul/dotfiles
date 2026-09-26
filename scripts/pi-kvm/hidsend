@@ -1,0 +1,107 @@
+#!/usr/bin/env python3
+"""Type into whatever this Pi's USB-C is plugged into.
+
+Usage:
+  hidsend "text to type" @enter
+  hidsend @ctrl+alt+del
+  hidsend --delay 0.05 "slow text"
+
+Plain arguments are typed literally. Arguments starting with @ are key names,
+optionally with modifiers: @enter, @f10, @ctrl+c, @super+shift+m.
+
+The report format is the USB HID boot keyboard's: one modifier byte, one
+reserved byte, then up to six simultaneous keycodes. Every press is followed by
+an all-zero report, because without an explicit release the receiving machine
+sees the key held down forever.
+"""
+import argparse, sys, time
+
+DEV = "/dev/hidg0"
+
+MODS = {"ctrl": 0x01, "shift": 0x02, "alt": 0x04, "super": 0x08, "gui": 0x08, "meta": 0x08}
+
+KEYS = {
+    "enter": 0x28, "return": 0x28, "esc": 0x29, "escape": 0x29, "bs": 0x2a,
+    "backspace": 0x2a, "tab": 0x2b, "space": 0x2c, "caps": 0x39,
+    "right": 0x4f, "left": 0x50, "down": 0x51, "up": 0x52,
+    "home": 0x4a, "end": 0x4d, "pgup": 0x4b, "pgdn": 0x4e,
+    "ins": 0x49, "del": 0x4c, "delete": 0x4c, "menu": 0x65,
+}
+KEYS.update({f"f{i}": 0x39 + i for i in range(1, 13)})
+
+# US layout. The firmware and most installers assume it, and the Pi has no idea
+# what is printed on the keycaps of the machine it is driving.
+SHIFTED = '~!@#$%^&*()_+{}|:"<>?'
+UNSHIFTED = r"`1234567890-=[]\;',./"
+PUNCT = {
+    "`": 0x35, "-": 0x2d, "=": 0x2e, "[": 0x2f, "]": 0x30, "\\": 0x31,
+    ";": 0x33, "'": 0x34, ",": 0x36, ".": 0x37, "/": 0x38, " ": 0x2c, "\n": 0x28, "\t": 0x2b,
+}
+
+
+def char_code(ch):
+    """Return (keycode, modifier) for one character, or None if unsupported."""
+    if "a" <= ch <= "z":
+        return 0x04 + ord(ch) - ord("a"), 0
+    if "A" <= ch <= "Z":
+        return 0x04 + ord(ch) - ord("A"), MODS["shift"]
+    if ch == "0":
+        return 0x27, 0
+    if "1" <= ch <= "9":
+        return 0x1e + ord(ch) - ord("1"), 0
+    if ch in PUNCT:
+        return PUNCT[ch], 0
+    if ch in SHIFTED:
+        base = UNSHIFTED[SHIFTED.index(ch)]
+        code, _ = char_code(base)
+        return code, MODS["shift"]
+    return None
+
+
+def report(fh, mod=0, code=0):
+    fh.write(bytes([mod, 0, code, 0, 0, 0, 0, 0]))
+    fh.flush()
+
+
+def tap(fh, code, mod, delay):
+    report(fh, mod, code)
+    report(fh)
+    time.sleep(delay)
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("items", nargs="+")
+    ap.add_argument("--delay", type=float, default=0.012, help="seconds between keys")
+    ap.add_argument("--device", default=DEV)
+    args = ap.parse_args()
+
+    with open(args.device, "wb") as fh:
+        for item in args.items:
+            if item.startswith("@"):
+                parts = item[1:].lower().split("+")
+                name = parts[-1]
+                mod = 0
+                for p in parts[:-1]:
+                    if p not in MODS:
+                        sys.exit(f"unknown modifier: {p}")
+                    mod |= MODS[p]
+                if name in KEYS:
+                    tap(fh, KEYS[name], mod, args.delay)
+                elif len(name) == 1:
+                    c = char_code(name)
+                    if c is None:
+                        sys.exit(f"unknown key: {name}")
+                    tap(fh, c[0], mod | c[1], args.delay)
+                else:
+                    sys.exit(f"unknown key: {name}")
+            else:
+                for ch in item:
+                    c = char_code(ch)
+                    if c is None:
+                        sys.exit(f"cannot type character: {ch!r}")
+                    tap(fh, c[0], c[1], args.delay)
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,12 @@
+[Unit]
+Description=USB gadget: ECM network + HID keyboard/mouse
+After=network-pre.target
+Before=network.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/usb-gadget.sh
+
+[Install]
+WantedBy=multi-user.target
