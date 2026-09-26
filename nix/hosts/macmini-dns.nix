@@ -52,7 +52,10 @@ let
         for _ in 1 2 3 4 5 6; do
           "$fw" --add ${pkgs.blocky}/bin/blocky >/dev/null 2>&1
           "$fw" --unblockapp ${pkgs.blocky}/bin/blocky >/dev/null 2>&1
-          "$fw" --listapps 2>/dev/null | grep -q "${pkgs.blocky}/bin/blocky" && exit 0
+          # ALF keys the rule on the ad-hoc signing identifier, so --listapps keeps showing
+          # the first store path that was ever added, not this one; any blocky entry means
+          # the rule exists.
+          "$fw" --listapps 2>/dev/null | grep -q -- "-blocky-[^/]*/bin/blocky" && exit 0
           sleep 20
         done
       ) &
