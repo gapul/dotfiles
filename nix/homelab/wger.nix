@@ -46,6 +46,14 @@ in
       ALLOW_REGISTRATION = "False";
       ALLOW_GUEST_USERS = "False";
       DJANGO_DEBUG = "False";
+      # 明示しないと環境変数が無いと言って落ちる (既定値は無い)。SQLite のファイルは
+      # /home/wger/db に置く (イメージがそのディレクトリを持っている)。
+      DJANGO_DB_ENGINE = "django.db.backends.sqlite3";
+      DJANGO_DB_DATABASE = "/home/wger/db/database.sqlite";
+      DJANGO_DB_USER = "";
+      DJANGO_DB_PASSWORD = "";
+      DJANGO_DB_HOST = "";
+      DJANGO_DB_PORT = "";
       DJANGO_PERFORM_MIGRATIONS = "True";
       DJANGO_COLLECTSTATIC_ON_STARTUP = "True";
       # 静的ファイルは Caddy が配るので、S3 でもなく whitenoise でもない素の置き場。
