@@ -21,6 +21,10 @@
     enable = true;
     port = 7777;
     maxPlayers = 8;
+    # 省略すると -world が渡らず、サーバは "Choose World:" の対話プロンプトで止まったまま
+    # 一度も listen しない (2026-09-26 に初回 switch で実際にそうなった)。パスを明示すると
+    # -autocreate と組で無ければ作る。ディレクトリはモジュールが tmpfiles で用意する。
+    worldPath = "/var/lib/terraria/.local/share/Terraria/Worlds/world.wld";
     autoCreatedWorldSize = "medium";
     messageOfTheDay = "homeserver terraria";
     # tailnet only. Anything wider goes through playit, not the LAN firewall.
