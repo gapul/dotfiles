@@ -40,11 +40,22 @@ let
   # 処理と launchd がデーモンを起こす処理の前後関係が保証されず、実際 2026-09-11 の
   # 初回デプロイでは許可が入っているのに LAN から無応答のままだった (手で起動し直して
   # 直った)。起動の直前に自分の store path を入れれば、順序も更新も考えなくていい。
+  #
+  # The registration is retried in the background for a while. At boot the daemon starts
+  # before the firewall accepts changes, the one-shot `--add` fails silently, and the entry
+  # from the previous store path is all that is left: loopback answers, LAN and tailnet do
+  # not (found 2026-09-26 after a rebuild had moved blocky to a new store path).
   launch = pkgs.writeShellScript "blocky-with-firewall" ''
     fw=/usr/libexec/ApplicationFirewall/socketfilterfw
     if [ -x "$fw" ]; then
-      "$fw" --add ${pkgs.blocky}/bin/blocky >/dev/null 2>&1 || true
-      "$fw" --unblockapp ${pkgs.blocky}/bin/blocky >/dev/null 2>&1 || true
+      (
+        for _ in 1 2 3 4 5 6; do
+          "$fw" --add ${pkgs.blocky}/bin/blocky >/dev/null 2>&1
+          "$fw" --unblockapp ${pkgs.blocky}/bin/blocky >/dev/null 2>&1
+          "$fw" --listapps 2>/dev/null | grep -q "${pkgs.blocky}/bin/blocky" && exit 0
+          sleep 20
+        done
+      ) &
     fi
     exec ${pkgs.blocky}/bin/blocky --config ${configFile}
   '';
