@@ -2,6 +2,7 @@
   lib,
   pkgs,
   brewNix,
+  cherri,
   mocopiMac,
   nixpkgsAgents,
   nixpkgsUnstable,
@@ -135,6 +136,9 @@ in
     # .app であることに意味がある: 独立した bundle は自前の Bluetooth 権限を持てるので、
     # 起動したターミナルの権限を借りずに済む(mocopi-mac の flake.nix のコメント参照)。
     mocopiMac.packages.${pkgs.stdenv.hostPlatform.system}.default
+    # ショートカットをコードから焼く (flake.nix の cherri を参照)。ソースは
+    # personal-tools/shortcuts、成果物は署名して端末に取り込む。
+    cherri.packages.${pkgs.stdenv.hostPlatform.system}.default
     # VOICEVOX: was the reason a fork of the upstream Homebrew tap existed at all — upstream is
     # stuck at 0.25.1 with a dead autobump, so the fork carried 0.25.2 by hand. nixpkgs packages
     # the same 0.25.2 and builds on aarch64-darwin, so the fork, the tap and the "switch back once
