@@ -190,11 +190,12 @@ in
         # Developer Edition ships with its dark theme switched on; follow the macOS appearance
         # instead (Firefox's "System theme — auto").
         "extensions.activeThemeID" = "default-theme@mozilla.org";
-        # 0 = dark, 1 = light, 2 = follow the system. Firefox writes these itself from the
-        # active theme, and once they are 0 the System theme cannot get out: the chrome's
-        # prefers-color-scheme comes from this pref, the System theme picks its dark variant
-        # from that, and writes 0 again (seen 2026-09-26 after switching away from the Dev
-        # Edition dark theme). user.js re-asserts 2 on every start, which breaks the loop.
+        # 0 = dark, 1 = light, 2 = follow the system. Firefox derives these from the active
+        # theme; pinned so the chrome and content color scheme cannot drift from the System
+        # theme above. (The dark UI seen on 2026-09-26 after switching themes was something
+        # else: extensions.json had been edited by hand, so addonStartup.json.lz4 still
+        # started the dark theme at boot. Switch themes through AddonManager, never by editing
+        # the addon DB.)
         "browser.theme.toolbar-theme" = 2;
         "browser.theme.content-theme" = 2;
 
