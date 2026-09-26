@@ -27,9 +27,13 @@ let
       upstream = "127.0.0.1:8123"; # home assistant, container
       extra = "header_up -X-Forwarded-For";
     };
+    # Authelia (auth = true) は「個人データがあるか、壊せる操作がある UI」にだけ掛ける
+    # (2026-09-26 に方針を絞った)。見るだけで保存データの無いもの (dash / search /
+    # status / comfy / tools) は tailnet 到達だけで足りるので外してある。掛けると
+    # プライベートウィンドウや iPhone、CLI から毎回ログインを求められるだけで、
+    # 守っている資産が無い。
     dash = {
       upstream = "127.0.0.1:3000"; # homepage
-      auth = true;
       interval = "1h";
     };
     vault.upstream = "127.0.0.1:8080"; # vaultwarden
@@ -38,10 +42,7 @@ let
       upstream = "127.0.0.1:8087"; # readeck (後で読む)
       interval = "1h";
     };
-    search = {
-      upstream = "127.0.0.1:8088"; # searxng
-      auth = true;
-    };
+    search.upstream = "127.0.0.1:8088"; # searxng
     obsidian = {
       upstream = "127.0.0.1:5984"; # couchdb (LiveSync)
       # CouchDB は require_valid_user なので / は 401 を返す。これが健全な応答で、
@@ -145,14 +146,8 @@ let
       upstream = "127.0.0.1:1880";
       auth = true;
     };
-    comfy = {
-      upstream = "${macmini}:8188";
-      auth = true;
-    };
-    tools = {
-      upstream = "${macmini}:8901";
-      auth = true;
-    };
+    comfy.upstream = "${macmini}:8188";
+    tools.upstream = "${macmini}:8901";
     # RecallVault's iPhone client authenticates with its own bearer token, so this
     # machine endpoint must not be placed behind the browser-oriented Authelia flow.
     recall.upstream = "${macmini}:8766";
@@ -209,7 +204,6 @@ let
     # 自分になって永久に回るので、auth は付けない。
     auth.upstream = "127.0.0.1:${toString autheliaPort}";
     status = {
-      auth = true;
       upstream = "127.0.0.1:${toString gatusPort}";
       monitor = false; # monitoring the monitor from itself proves nothing
     };
