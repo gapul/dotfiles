@@ -28,8 +28,8 @@
         icon: nixos.png
         siteMonitor: http://127.0.0.1:8083
     - Blocky:
-        href: https://dns2.gapul.net
-        description: DNS filter (API only, no UI)
+        href: https://dns2.gapul.net/check
+        description: DNS filter (check a domain, pause blocking 10 min)
         icon: mdi-dns
         siteMonitor: http://127.0.0.1:4000
     - Syncthing:
