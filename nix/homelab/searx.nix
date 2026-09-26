@@ -57,6 +57,13 @@ _: {
         public_instance = false;
       };
 
+      # JSON も返す。既定は html だけで、format=json は 403 になる。tailnet 内で
+      # Authelia の後ろなので公開の心配は無く、エージェントや CLI から叩ける。
+      search.formats = [
+        "html"
+        "json"
+      ];
+
       # エンジンを足すときは、必ず結果に**エンジン名が出ること**まで確認する。
       # SearXNG は知らないショートカットを検索語として扱うので、`!foo` が
       # 結果を返しても foo が動いている証拠にならない。存在しないエンジンを
@@ -81,11 +88,12 @@ _: {
           name = "mojeek";
           disabled = true;
         }
-        # qwant は英語だと CAPTCHA だが、日本語のクエリでは 10 件返る。
-        # 全滅ではないので有効なままにする。
+        # qwant は 2026-08 には日本語クエリで 10 件返していたが、2026-09-26 の
+        # 実測では英語/日本語とも CAPTCHA で 100% 失敗 (/stats/errors)。毎回
+        # 待たされてエラー表示が出るだけなので切る。
         {
           name = "qwant";
-          disabled = false;
+          disabled = true;
         }
         # これも自前クローラ。鍵が要らず、実測で 53 件返した (mojeek と同じ役割で、
         # Google 系が全滅したときに残る側を厚くする)。
@@ -100,14 +108,16 @@ _: {
           name = "duckduckgo web";
           disabled = false;
         }
-        # 対ボット網に巻き込まれていない側を厚くする。どちらも鍵が要らない。
+        # 対ボット網に巻き込まれていない側として起こしていたが、2026-09-26 の
+        # 実測でどちらも HTTP 403 が 100% (/stats/errors)。向こう側の変更なので
+        # 実装が追いつくまで切る。
         {
           name = "privacywall";
-          disabled = false;
+          disabled = true;
         }
         {
           name = "searchmysite";
-          disabled = false;
+          disabled = true;
         }
         # bing は入れない。duckduckgo web が返すのは Bing のインデックスその
         # ものなので結果が重複する一方、直接叩くと Microsoft に全クエリが渡る。
@@ -166,6 +176,24 @@ _: {
         {
           name = "openalex";
           disabled = false;
+        }
+        # 既定で有効だが 2026-09-26 の実測で 100% 失敗しているものを切る。
+        # 結果に寄与せず、タイムアウト待ちとエラー表示だけを生む。
+        #   vimeo ...... 検索ページが Cloudflare のチャレンジ (403)。母艦からも同じ。
+        #                searxng/searxng#3849 が CAPTCHA ラベルで開いたまま。
+        #   reuters .... 401
+        #   unsplash ... 応答が JSON でなくパースに失敗
+        {
+          name = "vimeo";
+          disabled = true;
+        }
+        {
+          name = "reuters";
+          disabled = true;
+        }
+        {
+          name = "unsplash";
+          disabled = true;
         }
       ];
     };
