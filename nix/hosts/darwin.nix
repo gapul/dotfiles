@@ -31,6 +31,7 @@ in
   imports = [
     ./darwin-common.nix
     ../modules/authorized-keys.nix
+    ../modules/darwin-chrome-policy.nix
   ];
 
   # /etc/zshrc's last spawn. `brew shellenv` costs ~16ms per shell and everything it produced
