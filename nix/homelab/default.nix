@@ -102,6 +102,7 @@
     ./searx.nix
     ./syncthing.nix
     ./unified-calendar.nix
+    ./vault-git.nix
     ./vaultwarden.nix
     ./vpn-relay.nix
     ./webmail.nix
