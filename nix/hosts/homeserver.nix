@@ -133,7 +133,22 @@ let
     ntfy.upstream = "127.0.0.1:8082";
     cache.upstream = "127.0.0.1:8083"; # attic (own nix binary cache)
     shell.upstream = "127.0.0.1:8888"; # atuin (シェル履歴の同期サーバー)
-    dns2.upstream = "127.0.0.1:4000"; # blocky の API/metrics (UI は無い)
+    # blocky の API/metrics (UI は無い)。/check は自前の 1 ページ (configs/homelab/dns-check.html):
+    # スマホからドメインを確認し、10 分だけブロックを止められる。/mm/ は macmini の blocky
+    # API を同一オリジンで出す (tailnet の第 1 リゾルバは macmini なので、片方だけ止めても
+    # 効かない。https ページから 100.x:4000 の平文 API は mixed content で叩けない)。
+    dns2 = {
+      upstream = "127.0.0.1:4000";
+      pre = ''
+        handle_path /check* {
+          root * ${pkgs.writeTextDir "index.html" (builtins.readFile ../../configs/homelab/dns-check.html)}
+          file_server
+        }
+        handle_path /mm/* {
+          reverse_proxy ${macmini}:4000
+        }
+      '';
+    };
     # These two used to be reached through Home Assistant's add-on ingress, which
     # does not exist without Supervisor. Both need their own A record in
     # Cloudflare pointing at this host's tailnet address, same as the others.
@@ -232,10 +247,14 @@ let
     let
       block = lib.optionalString (site ? extra) " {\n    ${site.extra}\n  }";
       auth = lib.optionalString (site.auth or false) autheliaForwardAuth;
+      # Raw Caddy directives placed before the proxy, for a vhost that also serves
+      # something else (a static page, a second upstream on a path prefix).
+      pre = site.pre or "";
     in
     {
       extraConfig = ''
         tls ${certDir}/cert.pem ${certDir}/key.pem
+        ${pre}
         ${auth}reverse_proxy ${site.upstream}${block}
       '';
     };
