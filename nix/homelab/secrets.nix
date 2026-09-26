@@ -69,7 +69,16 @@ let
       owner = "matrix-synapse";
     }
     { rel = "tailscale.key"; }
-    { rel = "unified-calendar.env"; }
+    {
+      rel = "unified-calendar.env";
+      owner = "unified-calendar";
+    }
+    # カレンダーの URL そのものが秘密 (知っていれば誰でも読める共有 .ics)。設定ごと
+    # sops に置いて、生成スクリプトにはファイルとして渡す。
+    {
+      rel = "unified-calendar.yaml";
+      owner = "unified-calendar";
+    }
     { rel = "vault-deploy.key"; }
     { rel = "vaultwarden.env"; }
     { rel = "writefreely-admin.password"; }

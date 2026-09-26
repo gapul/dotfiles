@@ -1,42 +1,92 @@
-# 統合カレンダー配信 (Google/iCloud/自宅Radicale/任意の.ics を1本のフィードにまとめる)。
+# 統合カレンダー配信 (Google/iCloud/自宅Radicale/任意の .ics を1本のフィードにまとめる)。
 # 元は Cloudflare Worker だったが、個人の予定を Google Calendar から自宅 Radicale へ
 # 移した (radicale.nix) のに合わせて homeserver 内部で完結させる方針に変えた。
-# Radicale(127.0.0.1:5232)はコンテナ間ネットワーク越しに直接叩けるので、外に晒す必要がない。
 #
-# ソース: gapul/unified-calendar(private)。push → main で GitHub Actions が
-# ghcr.io/gapul/unified-calendar:latest を焼く。Secret はコードに置かず、
-# 他のスタックと同じく /var/lib/secrets/unified-calendar.env を環境変数として渡す
-# (中身は secrets.nix 経由で sops-nix が homelab.yaml の homeserver_files/unified-calendar.env
-# から復元する)。
+# 2026-09-26 に private リポジトリのコンテナ (ghcr.io/gapul/unified-calendar) をやめ、
+# この repo の中で完結させた。コンテナ版は GHCR の認証が通らず一度も起動しておらず
+# (image pull で invalid username/password、start-limit-hit で停止)、ical.gapul.net は
+# 502 を返していた。private イメージを引くためだけに資格情報を homeserver に置くのは
+# 割に合わない。やることは「.ics をいくつか取ってきて窓で切って1本にまとめる」だけで、
+# 常駐プロセスも要らない。
+#
+# 構成は timer + 静的配信。スクリプトが <トークン>.ics を書き、Caddy がそのディレクトリを
+# そのまま出す。フィードの URL 自体が秘密なので、パスが推測できなければそれで足りる
+# (この設計は元の実装から引き継いでいる。feeds[].tokenEnv がそれ)。
+#
+# 秘密はコードに置かず /var/lib/secrets/ 配下から渡す (secrets.nix 経由で sops-nix が
+# homelab.yaml から復元する)。カレンダーの URL 自体が秘密なので設定ごとそちらに置く。
 {
-  lib,
+  config,
+  pkgs,
   ...
 }:
+let
+  port = 8113;
+  dataDir = "/var/lib/homelab/unified-calendar";
+  publicDir = "${dataDir}/public";
 
+  python = pkgs.python3.withPackages (ps: [
+    ps.icalendar
+    ps.pyyaml
+  ]);
+in
 {
   systemd.tmpfiles.rules = [
-    "d /var/lib/homelab/unified-calendar 0700 root root -"
+    "d ${dataDir} 0750 unified-calendar unified-calendar -"
+    # Caddy が読む先だけ他から見える。トークンを知らないとファイル名が当たらない。
+    "d ${publicDir} 0755 unified-calendar unified-calendar -"
   ];
 
-  virtualisation.oci-containers.containers."unified-calendar" = {
-    image = "ghcr.io/gapul/unified-calendar:latest";
-    environmentFiles = [ "/var/lib/secrets/unified-calendar.env" ];
-    environment = {
-      "PORT" = "8080";
-      "DATA_DIR" = "/data";
+  users.users.unified-calendar = {
+    isSystemUser = true;
+    group = "unified-calendar";
+  };
+  users.groups.unified-calendar = { };
+
+  systemd.services.unified-calendar = {
+    description = "Rebuild the merged calendar feeds";
+    serviceConfig = {
+      Type = "oneshot";
+      User = "unified-calendar";
+      Group = "unified-calendar";
+      EnvironmentFile = "/var/lib/secrets/unified-calendar.env";
+      # 失敗しても前回の出力を残す。購読側から見れば古い予定のほうが空より良い。
+      SuccessExitStatus = [ 1 ];
+      PrivateTmp = true;
+      ProtectSystem = "strict";
+      ProtectHome = true;
+      NoNewPrivileges = true;
+      ReadWritePaths = [ dataDir ];
     };
-    volumes = [
-      "/var/lib/homelab/unified-calendar:/data:rw"
-    ];
-    ports = [
-      "8113:8080/tcp"
-    ];
-    log-driver = "journald";
+    environment = {
+      CONFIG_FILE = "/var/lib/secrets/unified-calendar.yaml";
+      OUT_DIR = publicDir;
+    };
+    script = "${python}/bin/python3 ${../../configs/homelab/unified-calendar/build-feeds.py}";
   };
 
-  systemd.services."podman-unified-calendar" = {
-    serviceConfig = {
-      Restart = lib.mkOverride 90 "always";
+  systemd.timers.unified-calendar = {
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      # 予定の追加が反映されるまでの許容が15分。Google 側の .ics も同程度の粒度でしか
+      # 更新されないので、これ以上詰めても取り込めるものが増えない。
+      OnBootSec = "3min";
+      OnUnitActiveSec = "15min";
+      Persistent = true;
     };
   };
+
+  # cloudflared が ical.gapul.net をこのポートに流す。静的ファイルなので upstream は
+  # 要らず、Caddy が直接ディレクトリを出す。
+  services.caddy.virtualHosts.":${toString port}".extraConfig = ''
+    root * ${publicDir}
+    # ディレクトリ一覧を出すとトークンが漏れる。file_server は browse を付けない。
+    file_server
+    header Content-Type "text/calendar; charset=utf-8"
+    # 購読側は数分おきに取りに来る。生成が15分間隔なので、それに合わせる。
+    header Cache-Control "max-age=300"
+  '';
+
+  # 生成結果を Caddy が読めるように。dataDir 自体は 0750 のままで、public だけ通す。
+  users.users.${config.services.caddy.user}.extraGroups = [ "unified-calendar" ];
 }
