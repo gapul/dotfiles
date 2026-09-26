@@ -40,8 +40,11 @@ let
   };
 in
 {
+  # The image runs Apache as www-data (uid 33) and keeps its SQLite DB in this
+  # volume. Owned by root it fails on every request with "unable to open
+  # database file" (seen 2026-09-26), so hand the directory to uid 33.
   systemd.tmpfiles.rules = [
-    "d /var/lib/homelab/roundcube 0700 root root -"
+    "d /var/lib/homelab/roundcube 0700 33 33 -"
   ];
 
   virtualisation.oci-containers.containers."roundcube" = {
