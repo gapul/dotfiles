@@ -53,7 +53,8 @@ in
       DJANGO_DB_USER = "";
       DJANGO_DB_PASSWORD = "";
       DJANGO_DB_HOST = "";
-      DJANGO_DB_PORT = "";
+      # 空文字は int にキャストされて落ちる。SQLite では読まれないので値は何でもよい。
+      DJANGO_DB_PORT = "5432";
       DJANGO_PERFORM_MIGRATIONS = "True";
       DJANGO_COLLECTSTATIC_ON_STARTUP = "True";
       # 静的ファイルは Caddy が配るので、S3 でもなく whitenoise でもない素の置き場。
