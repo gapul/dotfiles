@@ -187,6 +187,10 @@ in
         # whole window and is what made Zen feel slow here — left off on purpose.
         "browser.theme.macos.native-theme" = true;
         "widget.macos.titlebar-blend-mode.behind-window" = true;
+        # Developer Edition ships with its dark theme switched on; follow the macOS appearance
+        # instead (Firefox's "System theme — auto"). Page content still renders light: arkenfox's
+        # resistFingerprinting reports prefers-color-scheme: light to every site by design.
+        "extensions.activeThemeID" = "default-theme@mozilla.org";
 
         # Vertical tabs on Firefox's own expand-on-hover; userChrome pushes the collapsed strip
         # off screen so nothing shows until the pointer reaches the left edge.
