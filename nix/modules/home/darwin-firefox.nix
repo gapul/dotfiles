@@ -46,6 +46,9 @@ in
       DontCheckDefaultBrowser = true;
       # No page translation (the offer bar and the feature itself).
       TranslateEnabled = false;
+      # No Mozilla account: bookmarks ride floccus and there is nothing else to sync, so the
+      # account button, the "Sign in" menu entries and the Sync settings all go away.
+      DisableFirefoxAccounts = true;
       # Per-extension settings, for the extensions that read browser.storage.managed. This is a
       # lock, not a seed: re-asserted on every start, so dashboard edits revert. uBlock Origin
       # caches it and applies one restart late (uAssets discussion 16939).
