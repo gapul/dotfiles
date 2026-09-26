@@ -34,12 +34,16 @@
     # cryptojacking・typosquatting・DGA、allowlist 2 件。nextdns-recommended は非公開なので
     # 相当物なし。AdGuard DNS filter は oisd big の取り込み元に入っている。
     denylists = {
-      # oisd big (NextDNS で使っていたもの) に、前からの StevenBlack を併置。oisd は
-      # 「壊さない」方針で apex (doubleclick.net 自体など) を落とさないので、StevenBlack が
-      # その分を埋める。ローカルで両方読ませて確認済み (2026-09-26)。
+      # oisd big (NextDNS で使っていたもの) と hagezi Multi PRO++ の併用。実測 (2026-09-26)
+      # で両者は 6 割ずつ互いに無いドメインを持つ補完関係だった。oisd は「壊さない」方針で
+      # apex (doubleclick.net 自体など) を落とさず、PRO++ がそこを埋める。PRO++ には
+      # Native Tracker (Apple / Windows・Office / Samsung / Xiaomi など、OS 組み込みの
+      # テレメトリ) も PRO++ の段階で組み込まれている。前はここに StevenBlack があったが、
+      # 両者に無い分は古いカウンターや使い捨て TLD の残骸で、逆に amazon-adsystem.com の
+      # apex を落とすなど副作用の方が目立つので外した。
       ads = [
         "https://big.oisd.nl/domainswild"
-        "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts"
+        "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/wildcard/pro.plus.txt"
       ];
       # hagezi Threat Intelligence Feeds (medium): NextDNS の Security タブの代わり。
       # フル版 (45MB) ではなく medium (18MB)。誤検知が少なく、macmini のメモリにも優しい。
