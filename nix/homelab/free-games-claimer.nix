@@ -20,6 +20,9 @@
       # ままなので二度目のログインが要らない。
       CLAIM_CMD = "prime-gaming.js; epic-games.js; fab.js; steam.js";
       CLAIM_CMD_MANUAL = "prime-gaming.js; epic-games.js; fab.js; steam.js";
+      # fab.js は CLAIM_CMD に載せただけでは走らない。サイト定義が opt-in
+      # (defaultActive=false) なので、これが無いとパネルで inactive のまま。
+      FAB_ACTIVE = "1";
       LOOP = "86400";
       START_TIME = "09:00";
       RUN_ON_STARTUP = "0";
