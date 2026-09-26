@@ -110,9 +110,14 @@ in
   #   - goolm は上流が本番に勧めておらず、mautrix-discord 0.7.7 には選択肢自体が無い
   nixpkgs.config.permittedInsecurePackages = [ "olm-3.2.16" ];
 
+  # Double puppeting for the three nixpkgs-module bridges: the env files come from
+  # matrix-bridge-secrets.nix, the modules envsubst "$DOUBLE_PUPPET_SECRET" into the config.
+  # Without it the bridges only invite @gapul to portals and the personal space, and own
+  # messages sent from the phone show up relayed by the bot.
   services.mautrix-discord = {
     enable = true;
     registerToSynapse = true;
+    environmentFile = "/var/lib/matrix-bridge-secrets/discord.env";
     settings = {
       inherit homeserver;
       appservice = {
@@ -131,6 +136,8 @@ in
       };
       bridge = {
         inherit permissions;
+        # mautrix-discord is still a v1 bridge: the key is login_shared_secret_map here.
+        login_shared_secret_map.${domain} = "$DOUBLE_PUPPET_SECRET";
         # 旧形式の設定なので encryption も bridge の下。self_sign はこの版に無く、
         # pickle_key も持たない (旧ブリッジは固定値を使う)。
         encryption = {
@@ -176,6 +183,7 @@ in
       encryption = encryption // {
         pickle_key = "$ENCRYPTION_PICKLE_KEY";
       };
+      double_puppet.secrets.${domain} = "$DOUBLE_PUPPET_SECRET";
       bridge = { inherit permissions; };
     };
   };
@@ -187,9 +195,11 @@ in
     instagram = {
       enable = true;
       registerToSynapse = true;
+      environmentFile = "/var/lib/matrix-bridge-secrets/instagram.env";
       settings = {
         inherit homeserver;
         inherit backfill encryption;
+        double_puppet.secrets.${domain} = "$DOUBLE_PUPPET_SECRET";
         network.mode = "instagram";
         appservice = {
           id = "instagram";
@@ -203,9 +213,11 @@ in
     messenger = {
       enable = true;
       registerToSynapse = true;
+      environmentFile = "/var/lib/matrix-bridge-secrets/messenger.env";
       settings = {
         inherit homeserver;
         inherit backfill encryption;
+        double_puppet.secrets.${domain} = "$DOUBLE_PUPPET_SECRET";
         network.mode = "messenger";
         appservice = {
           id = "messenger";
