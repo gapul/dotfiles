@@ -96,6 +96,14 @@ in
           "urlhaus-1"
           "plowe-0"
           "JPN-1"
+          # Added 2026-09-26: strip tracking parameters from URLs (what ClearURLs does), and
+          # the annoyance lists for cookie banners, newsletter/notification prompts.
+          "adguard-spyware-url"
+          "fanboy-cookiemonster"
+          "ublock-cookies-easylist"
+          "ublock-annoyances"
+          "easylist-newsletters"
+          "easylist-notifications"
         ];
       };
       # Surfingkeys reads no managed storage; its settings live in configs/apps/surfingkeys/config.js,
