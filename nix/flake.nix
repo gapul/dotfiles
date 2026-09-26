@@ -835,6 +835,7 @@
             system = "x86_64-linux";
             specialArgs = {
               inherit user;
+              nixpkgsAgents = nixpkgs-agents;
               # Must be passed here, not defaulted in the module signature: the host
               # uses it inside `imports`, and resolving a module argument from
               # `_module.args` there needs `config`, which is infinite recursion.
@@ -891,6 +892,7 @@
             system = "x86_64-linux";
             specialArgs = {
               inherit user;
+              nixpkgsAgents = nixpkgs-agents;
               hardwareConfig = ./hosts/nixos-laptop-hardware-ci.nix;
             };
             modules = [

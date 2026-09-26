@@ -3,9 +3,20 @@
   pkgs,
   lib,
   user,
+  nixpkgsAgents,
   hardwareConfig ? ./nixos-laptop-hardware.nix,
   ...
 }:
+let
+  # Fast-moving agent CLIs come from the dedicated nixpkgs-agents lineage, same as on
+  # darwin (hosts/darwin.nix). systemPackages rather than home.packages for the PATH
+  # order: /run/current-system/sw/bin sits ahead of ~/.local/bin, so a stray
+  # self-installed copy cannot win.
+  agentPkgs = import ../lib/unstable-pkgs.nix {
+    nixpkgsUnstable = nixpkgsAgents;
+    inherit (pkgs.stdenv.hostPlatform) system;
+  };
+in
 {
   # HP laptop dual-booting with Windows (x86_64, Intel integrated GPU).
   # Place the hardware-configuration.nix emitted by `nixos-generate-config` on the
@@ -359,6 +370,10 @@
     slurp # region selection (used with grim)
     brightnessctl # screen brightness
     playerctl # media keys
+
+    # Agent CLIs (see the agentPkgs note at the top of the file)
+    agentPkgs.claude-code
+    agentPkgs.codex
 
     # Geek-oriented CLI
     comma # run an uninstalled command with `, <cmd>` (integrates with nix-index)
