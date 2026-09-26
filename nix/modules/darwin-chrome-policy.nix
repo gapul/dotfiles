@@ -26,7 +26,7 @@ let
     # purpose: a hostname here would have to be resolved through the very resolver being bypassed.
     DnsOverHttpsTemplates = "https://1.1.1.1/dns-query https://1.0.0.1/dns-query";
   };
-  plist = pkgs.writeText "com.google.Chrome.plist" (lib.generators.toPlist { } policy);
+  plist = pkgs.writeText "com.google.Chrome.plist" (lib.generators.toPlist { escape = true; } policy);
   dir = "/Library/Managed Preferences/${user.username}";
 in
 {
