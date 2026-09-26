@@ -9,6 +9,9 @@
 #   ios tap X Y          タップ
 #   ios swipe X1 Y1 X2 Y2
 #   ios type "text"      フォーカス中の要素に入力
+#   ios click "label"    ラベル一致の要素をクリック (メニュー項目やダイアログのボタンは
+#                        座標タップが効かないことがあるのでこちらを使う)
+#   ios find "label"     要素の有無と枠を表示 (click の下見)
 #   ios open <bundleid>  アプリを起動 (セッションを張り直す)
 #   ios url <url>        URL / ディープリンクを開く
 #   ios source           画面の要素ツリー
@@ -148,6 +151,26 @@ open('$out', 'wb').write(base64.b64decode(json.load(sys.stdin)['value']))
   swipe)
     _ensure
     _actions "{\"type\":\"pointerMove\",\"duration\":0,\"x\":$2,\"y\":$3},{\"type\":\"pointerDown\",\"button\":0},{\"type\":\"pointerMove\",\"duration\":400,\"x\":$4,\"y\":$5},{\"type\":\"pointerUp\",\"button\":0}"
+    ;;
+  click | find)
+    _ensure
+    # W3C の element 検索。ラベル完全一致で最初の 1 つ。predicate なので
+    # "label BEGINSWITH 'X'" のような式もそのまま渡せる。
+    q="$2"
+    case "$q" in *" == "* | *BEGINSWITH* | *CONTAINS*) ;; *) q="label == '$q'" ;; esac
+    el=$(curl -s -X POST "$(_wda)/session/$(_sid)/element" -H 'Content-Type: application/json' \
+      -d "{\"using\":\"predicate string\",\"value\":\"$q\"}" |
+      python3 -c 'import json,sys; v=json.load(sys.stdin).get("value",{}); print(v.get("ELEMENT","") if isinstance(v,dict) else "",end="")')
+    [ -n "$el" ] || {
+      echo "ios: 要素が無い: $q" >&2
+      exit 1
+    }
+    if [ "$1" = find ]; then
+      curl -s "$(_wda)/session/$(_sid)/element/$el/rect"
+      echo
+    else
+      curl -s -X POST "$(_wda)/session/$(_sid)/element/$el/click" -H 'Content-Type: application/json' -d '{}' > /dev/null
+    fi
     ;;
   type)
     _ensure
