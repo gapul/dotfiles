@@ -6,7 +6,9 @@
 # Why a second Gecko browser next to Zen (2026-09-17): Zen has no Widevine licence, so DRM
 # playback never works there, and Helium (the Chromium here) ships no CDM either. Mozilla's
 # build carries the licence, so this is the browser for Netflix / Prime Video / Spotify web
-# and for calls. Zen stays the daily driver for its workspaces.
+# and for calls. Since 2026-09-26 it is also the default browser and the daily driver: Zen's
+# places.sqlite (history and bookmarks), cookies, form history and logins were moved into
+# this profile by hand; Zen stays installed but is not a login item any more.
 #
 # The .app is the cask (hosts/darwin.nix, see the note there on signing). home-manager runs
 # with package = null and only owns the profile and the policies; on darwin the policies go
@@ -38,8 +40,9 @@ in
       # The store copy cannot update itself anyway; saying so stops the nag and leaves the
       # version to `just maintain` (brew --greedy), the same path the other auto_updates casks take.
       DisableAppUpdate = true;
-      # Zen stays the default browser; without this the first run parks a "make Firefox your
-      # primary browser" panel over the page.
+      # This is the default browser (set once with `defaultbrowser firefoxdeveloperedition`;
+      # macOS asks for confirmation, so it is not declared). Without this a profile that is
+      # not yet the default parks a "make Firefox your primary browser" panel over the page.
       DontCheckDefaultBrowser = true;
       # No page translation (the offer bar and the feature itself).
       TranslateEnabled = false;
@@ -159,8 +162,16 @@ in
         };
       };
       search = {
-        default = "ddg";
+        # The self-hosted SearXNG (nix/homelab/searx.nix). It sits behind Authelia, so the first
+        # search of a session lands on the login page and comes back to the results.
+        default = "searx";
+        privateDefault = "searx";
         force = true; # search.json.mozlz4 is regenerated on every switch, Firefox's copy loses
+        engines.searx = {
+          name = "search.gapul.net";
+          urls = [ { template = "https://search.gapul.net/search?q={searchTerms}"; } ];
+          definedAliases = [ "@s" ];
+        };
       };
       settings = {
         "toolkit.legacyUserProfileCustomizations.stylesheets" = true; # load userChrome.css

@@ -87,6 +87,9 @@ let
       # Zen's profile. Bookmarks already ride floccus, so what is actually at stake here is the
       # history and the per-extension settings; the caches under it are excluded below.
       "${home}/Library/Application Support/zen/Profiles"
+      # Firefox Developer Edition took over as the daily browser on 2026-09-26 (Zen's history
+      # was moved into it); same reasoning, same exclusions.
+      "${home}/Library/Application Support/Firefox/Profiles"
     ];
     extraExcludes = [
       "**/.DS_Store"
@@ -101,6 +104,13 @@ let
       "**/zen/Profiles/*/settings/**"
       "**/zen/Profiles/*/minidumps"
       "**/zen/Profiles/*/datareporting"
+      "**/Firefox/Profiles/*/cache2"
+      "**/Firefox/Profiles/*/startupCache"
+      "**/Firefox/Profiles/*/shader-cache"
+      "**/Firefox/Profiles/*/thumbnails"
+      "**/Firefox/Profiles/*/settings/**"
+      "**/Firefox/Profiles/*/minidumps"
+      "**/Firefox/Profiles/*/datareporting"
       # aw-server rotates .bak copies next to the live DB; the live one is what matters.
       "**/aw-server/*.db.bak.*"
     ];
