@@ -80,13 +80,15 @@ let
           rm -f "$out/activitywatch/peewee-sqlite.v2.db"
         fi
 
-        # Zen の閲覧履歴とブックマーク (places.sqlite)。Firefox 系は起動中 DB を排他ロックで開くので
-        # 直接 .backup すると locked で落ちる。本体と -wal をいったん写してから、その写しを
-        # .backup で 1 ファイルに畳む (WAL の中身もここで本体に入る)。プロファイルごとに分ける。
-        for places in "$HOME/Library/Application Support/zen/Profiles"/*/places.sqlite; do
+        # Zen と Firefox の閲覧履歴とブックマーク (places.sqlite)。Firefox 系は起動中 DB を排他ロックで
+        # 開くので直接 .backup すると locked で落ちる。本体と -wal をいったん写してから、その写しを
+        # .backup で 1 ファイルに畳む (WAL の中身もここで本体に入る)。アプリ・プロファイルごとに分ける。
+        # 2026-09-26 に Zen の履歴を Firefox (dev プロファイル) へ移したので、以後の増分は firefox/ 側。
+        for places in "$HOME/Library/Application Support"/{zen,Firefox}/Profiles/*/places.sqlite; do
           [ -r "$places" ] || continue
           prof="$(basename "$(dirname "$places")")"
-          dst="$out/zen/''${prof// /_}"
+          app="$(basename "$(dirname "$(dirname "$(dirname "$places")")")")"
+          dst="$out/''${app,,}/''${prof// /_}"
           tmp="$(mktemp -d)"
           cp "$places" "$tmp/places.sqlite"
           [ -f "$places-wal" ] && cp "$places-wal" "$tmp/places.sqlite-wal"

@@ -293,7 +293,7 @@
       "/Applications/Nix Apps/KDE Connect.app" # phone integration (nix パッケージ化したので Nix Apps 側)
       "/Applications/ActivityWatch.app"       # time tracking
       "/Applications/Obsidian.app"            # notes (LiveSync keeps running in the background)
-      "/Applications/Zen.app"                 # browser
+      "/Applications/Firefox Developer Edition.app" # browser (took over from Zen 2026-09-26)
     )
     # Registration goes through System Events, so it silently does nothing until this process has
     # Automation permission. Report what failed instead of swallowing it — the old `|| true` made a
@@ -336,7 +336,9 @@
     #   NIHardware… — the other half of the same NI leftover, and this one has nothing behind it at
     #                all: the agent bundle is gone from every path its installer uses, so the login
     #                item resolved to a missing value and started nothing every morning.
-    for name in AeroSpace Bitwarden Neru NTKDaemon NIHardwareAgent; do
+    #   Zen        — the daily browser until 2026-09-26; Firefox Developer Edition is the default
+    #                browser and the login item now, Zen stays installed but is opened by hand.
+    for name in AeroSpace Bitwarden Neru NTKDaemon NIHardwareAgent Zen; do
       if /usr/bin/osascript -e "tell application \"System Events\" to (name of login items) contains \"$name\"" 2>/dev/null | grep -q true; then
         /usr/bin/osascript -e "tell application \"System Events\" to delete login item \"$name\"" >/dev/null 2>&1 || true
       fi

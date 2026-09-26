@@ -28,6 +28,6 @@ _: {
     ExtensionInstallForcelist = [
       "nngceckbapebfimnlniiiahkandclblb;https://clients2.9oo91e.qjz9zk/service/update2/crx"
     ];
-    DefaultBrowserSettingEnabled = false; # Zen stays the default; no prompt
+    DefaultBrowserSettingEnabled = false; # Firefox DE is the default; no prompt
   };
 }
