@@ -362,7 +362,6 @@ in
     ghostty # main terminal (config symlinked in home/hyprland.nix)
     kitty # fallback opened by Hyprland's stock SUPER+Q (home's $terminal is ghostty)
     wofi # app launcher (bound to SUPER+R etc.)
-    hyprpaper # wallpaper (waybar/mako moved to home-manager management)
     wl-clipboard # clipboard (wl-copy / wl-paste)
     cliphist # clipboard history (integrates with wofi)
     hyprpolkitagent # polkit auth dialog (autostart in the hyprland config)

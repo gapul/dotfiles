@@ -22,7 +22,6 @@ in
   home.packages = with pkgs; [
     ghostty # $terminal
     wofi # $menu, and the cliphist picker
-    hyprpaper # wallpaper daemon (exec-once)
     hyprpolkitagent # polkit agent (started by its own unit, see below)
     hyprshot # screenshots
     hyprpicker # color picker
@@ -52,8 +51,20 @@ in
       # Only things that have no systemd user unit of their own. hypridle / waybar /
       # mako are started by their home-manager services below; listing them here as
       # well launches a second copy of each (two bars stacked on the screen).
+      # Hyprland's stock background is a near-white gradient with its own logo on it, and
+      # the terminal sits on top of it at background-opacity 0.5 — the text came out
+      # unreadable. hyprpaper was in the closure and exec-once'd but never given a
+      # hyprpaper.conf, so it started and painted nothing. Rather than carry a daemon and a
+      # wallpaper image for a flat colour, let Hyprland paint the theme base itself.
+      # background_color alone is not enough: the stock wallpaper is drawn over it, so it
+      # has to be turned off as well before the colour is visible.
+      misc = {
+        background_color = "rgb(${c.base})";
+        force_default_wallpaper = 0;
+        disable_hyprland_logo = true;
+      };
+
       exec-once = [
-        "hyprpaper"
         "wl-paste --watch cliphist store" # accumulate clipboard history
         "wl-gammarelay-rs" # dbus daemon for night light
       ];
