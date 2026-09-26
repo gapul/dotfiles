@@ -77,7 +77,7 @@ wl="${WHITELIST_SRC:-/etc/minecraft/whitelist.json}"
 # 起動のたびに置き直す (Floodgate は無ければ自分で作ってしまい、Geyser 側と食い違う)。
 if [ -f /etc/minecraft/floodgate-key.b64 ]; then
   mkdir -p "$SERVER_DIR/config/floodgate"
-  base64 -d /etc/minecraft/floodgate-key.b64 > "$SERVER_DIR/config/floodgate/key.pem"
+  base64 --decode /etc/minecraft/floodgate-key.b64 > "$SERVER_DIR/config/floodgate/key.pem"
   chmod 600 "$SERVER_DIR/config/floodgate/key.pem"
 fi
 
