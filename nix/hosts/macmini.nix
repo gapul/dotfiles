@@ -497,7 +497,7 @@ in
       # 毎回 store から置き直す。
       /bin/cp -f ${../../configs/macmini/minecraft/geyser-config.yml} config.yml
       /bin/chmod 644 config.yml
-      /usr/bin/base64 -d /etc/minecraft/floodgate-key.b64 > key.pem
+      /usr/bin/base64 --decode /etc/minecraft/floodgate-key.b64 > key.pem
       /bin/chmod 600 key.pem
       exec ${pkgs.temurin-bin-25}/bin/java -Xms128M -Xmx512M -jar ${geyser} --nogui
     ''}";
