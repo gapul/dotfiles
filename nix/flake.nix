@@ -332,6 +332,7 @@
             ./home/nix-gc-tcc.nix # root GC daemon (hosts/darwin-common.nix) が使う署名済み nix の安定コピー
             ./home/git-hooks.nix # git hook that auto-rebuilds on main updates (main tree only)
             ./home/herdr-mobile-relay.nix # herdr をスマホ PWA から操作するリレー(tailnet 限定)
+            ./home/mail-otp.nix # メールで届く認証コードをクリップボードへ (Zen には Mail.app 連携が無い)
           ]
           ++ secrets
           ++ [
