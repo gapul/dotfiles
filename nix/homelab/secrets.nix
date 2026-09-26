@@ -70,6 +70,7 @@ let
     }
     { rel = "tailscale.key"; }
     { rel = "unified-calendar.env"; }
+    { rel = "vault-deploy.key"; }
     { rel = "vaultwarden.env"; }
     { rel = "writefreely-admin.password"; }
     { rel = "zaim.cookie"; }

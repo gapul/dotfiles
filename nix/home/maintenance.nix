@@ -111,46 +111,12 @@ let
     brew cleanup --prune=all 2>&1 | tail -20 || true
   '';
 
-  # (5) Daily git push of the Obsidian vault (history + GitHub backup).
-  #   Live cross-device sync is handled by LiveSync (CouchDB), so daily git is enough.
-  #   obsidian-git's auto-commit is expected to be OFF, consolidating ownership in this agent.
-  #   This intentionally stays on the workstation: homeserver owns the opaque LiveSync CouchDB,
-  #   not a materialized Markdown worktree.  Adding Syncthing for the same vault would create two
-  #   independent sync engines and conflict with LiveSync.  Move this only together with a future
-  #   migration that gives the server sole ownership of a real vault worktree.
-  vaultGitPushScript = pkgs.writeShellScript "obsidian-vault-push" ''
-    ${prelude "obsidian-vault.log"}
-    vault=${home}/Documents/notes
-    branch=main
-
-    [ -d "$vault/.git" ] || { echo "SKIP: $vault is not a git repository"; exit 0; }
-    [ -n "$(git -C "$vault" remote 2>/dev/null)" ] || { echo "SKIP: remote not configured"; exit 0; }
-
-    # No SSH_AUTH_SOCK override: the push uses the Secure Enclave key via ssh_config's IdentityFile,
-    # which needs no agent at all. Pointing at the Bitwarden socket used to be the only way to reach
-    # a key from an unattended launchd session; now it would just aim at something that is usually
-    # not running.
-    export SSH_SK_PROVIDER=/usr/lib/ssh-keychain.dylib
-    export GIT_SSH_COMMAND="ssh -o BatchMode=yes -o ConnectTimeout=15"
-
-    git -C "$vault" add -A
-    if git -C "$vault" diff --cached --quiet; then
-      echo "no changes (commit skipped)"
-    else
-      git -C "$vault" commit -m "vault backup: $(date '+%Y-%m-%d %H:%M:%S')" && echo "commit created"
-    fi
-
-    # Pull in changes from other machines before pushing (rebase on conflict; flake.lock etc. are out of scope)
-    git -C "$vault" pull --rebase --autostash origin "$branch" || echo "WARN: pull --rebase failed (continuing)"
-
-    if git -C "$vault" push origin "$branch"; then
-      echo "push succeeded"
-    else
-      echo "ERROR: push failed (Bitwarden locked / auth may be unavailable)"
-      notify "📝 vault git push failed" "Bitwarden locked or auth unavailable. Check log"
-      exit 1
-    fi
-  '';
+  # (5) The Obsidian vault's git history used to live here, as a daily commit+push from this
+  #   machine. It moved to homeserver on 2026-09-26 (nix/homelab/vault-git.nix): the laptop is
+  #   asleep for most of the day, so the history only advanced when it happened to be awake.
+  #   The server does not touch the LiveSync CouchDB for this; Syncthing carries a one-way,
+  #   send-only copy of the vault there (this machine sends, the server only receives), so
+  #   LiveSync remains the only thing writing into the vault on this side.
 
   agent = program: schedule: import ../lib/launchd-agent.nix { inherit program schedule; };
 in
@@ -186,13 +152,6 @@ in
         Day = 1;
         Hour = 12;
         Minute = 45;
-      }
-    ];
-    # Daily 13:30 git push the Obsidian vault (after restic at 13:00)
-    obsidian-vault-push = agent "${vaultGitPushScript}" [
-      {
-        Hour = 13;
-        Minute = 30;
       }
     ];
   };
