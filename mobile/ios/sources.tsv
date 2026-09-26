@@ -2,7 +2,8 @@
 # 書式: <名前>	<kind>	<URL>     (タブ区切り)
 #
 # kind:
-#   classic   AltStore Classic (母艦で再署名して入れる)。自ビルドはこちら
+#   classic   AltStore Classic (Remote AltServer で端末内再署名。初回のみ母艦の AltServer と
+#             有線ペアリング)。自ビルドはこちら
 #   pal       AltStore PAL (代替マーケットプレイス)。配布されているアプリはこちら
 #
 # source は AltStore の JSON 形式なので、apps[].bundleIdentifier を見れば
