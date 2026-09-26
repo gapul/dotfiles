@@ -62,6 +62,14 @@ in
         background_color = "rgb(${c.base})";
         force_default_wallpaper = 0;
         disable_hyprland_logo = true;
+        # If hyprlock dies while the session is locked, the compositor keeps holding the lock
+        # and the screen stays black: a replacement hyprlock is refused, and the documented
+        # recovery (`hyprctl eval 'hl.clear_crashed_lockscreen()'`) needs the lua config
+        # manager, which this build does not have. The session is then only recoverable by
+        # logging out. With this on, a fresh hyprlock takes the orphaned lock over instead.
+        # Seen for real: a rebuild restarted the session's units out from under a running
+        # hyprlock and left the machine unusable except over ssh.
+        allow_session_lock_restore = true;
       };
 
       exec-once = [
