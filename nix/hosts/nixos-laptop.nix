@@ -270,9 +270,14 @@
     shell = pkgs.zsh;
     # Public keys, so they live in the repo rather than being curl'd onto the box
     # by hand on every reinstall. Private keys stay in Bitwarden.
+    # Mirrors github.com/gapul.keys. A flake cannot fetch that list at build time, so
+    # this is a snapshot: rotating a key means editing here too. The previous snapshot
+    # went stale and locked this machine out entirely — the only way back in was typing
+    # a curl line on its physical keyboard.
     openssh.authorizedKeys.keys = [
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBLeOb9XOJPsmuTRf708qYoNckWk+/fhuWkpTWtTSu41"
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFc0vERDgqbotas7YjbabpVPWjtficFNWSW+8Hu/WL8x"
+      "sk-ecdsa-sha2-nistp256@openssh.com AAAAInNrLWVjZHNhLXNoYTItbmlzdHAyNTZAb3BlbnNzaC5jb20AAAAIbmlzdHAyNTYAAABBBP5Y2DQbhcGpmOGDewcxUuVZ+/XO1I/Zm4M4nZhBMPwygadJY9//NxbVAZs98vMIp1Yy+9wgkQcEuc1CNQdCY2cAAAAEc3NoOg=="
     ];
   };
   programs.zsh.enable = true;
