@@ -133,6 +133,21 @@ let
       authSkip = "/api/*";
       interval = "1h";
     };
+    # 食事の記録 (homelab/wger.nix)。独自ログインを持ち、公式の iOS アプリが
+    # 直接叩くので Authelia は掛けない。静的ファイルは Caddy が配る。
+    food = {
+      upstream = "127.0.0.1:8106";
+      pre = ''
+        handle /static/* {
+          root * /var/lib/homelab/wger
+          file_server
+        }
+        handle /media/* {
+          root * /var/lib/homelab/wger
+          file_server
+        }
+      '';
+    };
     ntfy.upstream = "127.0.0.1:8082";
     cache.upstream = "127.0.0.1:8083"; # attic (own nix binary cache)
     shell.upstream = "127.0.0.1:8888"; # atuin (シェル履歴の同期サーバー)
