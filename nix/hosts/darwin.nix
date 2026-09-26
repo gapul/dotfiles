@@ -419,27 +419,9 @@ in
     localHostName = "MacBook-Mini";
   };
 
-  # Was the brew nextdns formula's own `nextdns install` daemon, which was idle (auto-activate
-  # off, not the system resolver). Same settings as its /etc/nextdns.conf.
-  services.nextdns = {
-    enable = true;
-    arguments = [
-      "-profile"
-      "43b9d5"
-      "-listen"
-      "localhost:53"
-      "-mdns"
-      "all"
-      "-bogus-priv"
-      "-use-hosts"
-      "-report-client-info=false"
-      "-auto-activate=false"
-      "-setup-router=false"
-      "-detect-captive-portals=false"
-      "-cache-size"
-      "0"
-    ];
-  };
+  # NextDNS (profile 43b9d5, localhost:53, never the system resolver) was removed on
+  # 2026-09-26: DNS filtering moved to the two blocky hosts, handed out by the tailnet
+  # (nix/lib/blocky-settings.nix). nix-darwin drops the org.nixos.nextdns daemon on switch.
 
   fonts.packages = with pkgs; [
     nerd-fonts.hack
@@ -536,8 +518,8 @@ in
       "wifitui" # (a) wifi TUI. nixpkgs marks it Linux-only
 
       # ─── Network / Download / VPN ───
-      # tor / wireguard-tools / cloudflared / nextdns moved to nix (2026-09-15): none of the brew
-      # services was ever started, and nextdns runs from services.nextdns below.
+      # tor / wireguard-tools / cloudflared moved to nix (2026-09-15): none of the brew services
+      # was ever started. nextdns went the same way and was then retired (2026-09-26, blocky).
       # No "tailscale" formula: the tailscale-app cask already ships both the daemon and a CLI at
       # /usr/local/bin/tailscale. The formula's brew service was never started, and its own CLI sits
       # earlier in PATH, so every `tailscale` call went through a binary built from a different
