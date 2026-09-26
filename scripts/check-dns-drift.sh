@@ -237,7 +237,7 @@ done
 while IFS=$'\t' read -r name _ content; do
   [[ $content == *.cfargotunnel.com ]] || continue
   printf '%s\n' "${declared_hosts[@]}" | grep -qx "$name" && continue
-  echo "  管理外   $name -> ${content%%.*} (この repo に宣言が無い)"
+  echo "  別ホスト $name -> ${content%%.*} (homeserver の ingress に無い。macmini 側なら hosts/macmini*.nix)"
 done <<<"$cnames"
 
 # ── メール: Email Routing が要求するレコード ────────────────────────
@@ -288,9 +288,19 @@ if [[ -n ${account_id:-} ]]; then
     jq -r '.result[] | "\(.id)\t\(.name)\t\(.status)\t\(.connections|length)"' |
     while IFS=$'\t' read -r id name status conns; do
       mark="  "
-      printf '%s\n' "${ingress[@]}" | grep -q "$id" || mark="? "
+      if ! printf '%s\n' "${ingress[@]}" | grep -q "$id"; then
+        # 上の ingress は homeserver の services.cloudflared.tunnels だけを見ている。
+        # macmini のトンネル (manabi と、presenta を載せている macmini) は launchd から
+        # token 渡しで起動する形 (経路は Cloudflare
+        # 側に持つ) なので、宣言は repo にあってもこの表には出てこない。名前で拾う。
+        case "$name" in
+          manabi | macmini) mark="* " ;;
+          *) mark="? " ;;
+        esac
+      fi
       echo "  ${mark}${name} (${id:0:8}) status=${status} conns=${conns}"
     done
+  echo "  * = macmini 側で宣言しているトンネル (hosts/macmini.nix, hosts/macmini-presenta.nix)"
   echo "  ? = この repo に宣言が無いトンネル。使っていないなら消す"
 fi
 
