@@ -23,8 +23,9 @@
     # 変えると発行済みの API キーが全部無効になる。
     environmentFiles = [ "/var/lib/secrets/homebox.env" ];
     environment = {
-      # 最初のアカウントを作ったら false にする。tailnet の内側だけとはいえ、閉じておく。
-      "HBOX_OPTIONS_ALLOW_REGISTRATION" = "true";
+      # アカウントは 2026-09-26 に作成済みなので閉じた。tailnet の内側だけとはいえ、
+      # 登録できる状態を残す理由が無い。増やすときだけ一時的に true にする。
+      "HBOX_OPTIONS_ALLOW_REGISTRATION" = "false";
       "HBOX_LOG_FORMAT" = "text";
       "HBOX_WEB_MAX_UPLOAD_SIZE" = "20";
     };
