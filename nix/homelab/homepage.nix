@@ -59,6 +59,9 @@
     image = "ghcr.io/gethomepage/homepage:latest";
     environment = {
       "HOMEPAGE_ALLOWED_HOSTS" = "*";
+      # Host networking, so the container listens on the lazy proxy's upstream
+      # port directly instead of a published 18300->3000 mapping.
+      "PORT" = "18300";
     };
     volumes = [
       # Contents are copied by preStart from the repo (configs/homelab/homepage). It used
@@ -70,13 +73,14 @@
       # side unchanged and only swap the host side.
       "/run/podman/podman.sock:/var/run/docker.sock:ro"
     ];
-    ports = [
-      "127.0.0.1:18300:3000/tcp"
-    ];
     log-driver = "journald";
+    # Host network, like glances. services.yaml's siteMonitor and widgets.yaml's
+    # glances point at 127.0.0.1:<port>, and most of those services bind loopback
+    # only. On the bridge network 127.0.0.1 was the container itself, so every
+    # status tile showed 500 (noticed 2026-09-26; broken since the migration
+    # rewrote the old CT101 addresses to loopback).
     extraOptions = [
-      "--network-alias=homepage"
-      "--network=homepage_default"
+      "--network=host"
     ];
   };
   systemd.services."podman-homepage" = {
@@ -84,13 +88,9 @@
       Restart = lib.mkOverride 90 "always";
     };
     after = [
-      "podman-network-homepage_default.service"
       # Both are woken together by the lazy socket. Without this ordering homepage's
       # first widget fetches race glances' web server and log ECONNREFUSED 127.0.0.1:61208.
       "podman-glances.service"
-    ];
-    requires = [
-      "podman-network-homepage_default.service"
     ];
     partOf = [
       "podman-compose-homepage-root.target"
@@ -98,21 +98,6 @@
     wantedBy = [
       "podman-compose-homepage-root.target"
     ];
-  };
-
-  # Networks
-  systemd.services."podman-network-homepage_default" = {
-    path = [ pkgs.podman ];
-    serviceConfig = {
-      Type = "oneshot";
-      RemainAfterExit = true;
-      ExecStop = "${pkgs.podman}/bin/podman network rm -f homepage_default";
-    };
-    script = ''
-      podman network inspect homepage_default || podman network create homepage_default
-    '';
-    partOf = [ "podman-compose-homepage-root.target" ];
-    wantedBy = [ "podman-compose-homepage-root.target" ];
   };
 
   # Root service
