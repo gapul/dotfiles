@@ -60,6 +60,16 @@
         ];
         type = "sendreceive";
       };
+      # Obsidian の vault。中身の同期は LiveSync (obsidian-couchdb.nix) の仕事で、
+      # こちらは履歴を取るためだけの片方向の複製: 母艦が送り、ここは受けるだけ
+      # (receiveonly)。書き手が一人なので LiveSync と取り合いにならない。
+      # コミットは vault-git.nix の毎時タイマー。
+      folders."obsidian-vault" = {
+        label = "Obsidian Vault";
+        path = "/srv/syncthing/obsidian-vault";
+        devices = [ "macbook-mini" ];
+        type = "receiveonly";
+      };
       folders."synchub" = {
         label = "SyncHub";
         # Was /mnt/jellyfin-media/syncthing/SyncHub on the old host, mounted into
