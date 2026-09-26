@@ -19,6 +19,7 @@
 <div id="out"><small>ドメインを入れて確認。両方のリゾルバ (homeserver / macmini) に聞きます。</small></div>
 <div class="row"><button class="warn" id="off">10 分だけブロックを止める</button><button id="on">再開</button></div>
 <div id="status"><small>…</small></div>
+<p><small><a href="dns-check.mobileconfig" style="color:#63b3ed">iPhone のホーム画面に置く(構成プロファイル)</a></small></p>
 <script>
 const R = { homeserver: '', macmini: '/mm' };
 const q = async (base, path, opt) => (await fetch(base + path, opt)).json();
