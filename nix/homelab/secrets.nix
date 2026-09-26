@@ -32,9 +32,12 @@ let
     { rel = "mail/gmail.password"; }
     { rel = "mail/work.password"; }
     { rel = "mail/school.password"; }
-    { rel = "mail/mirror-gmail.env"; }
-    { rel = "mail/mirror-work.env"; }
-    { rel = "mail/mirror-school.env"; }
+    { rel = "mail/gmail.address"; }
+    { rel = "mail/gmail.app-password"; }
+    { rel = "mail/work.address"; }
+    { rel = "mail/work.app-password"; }
+    { rel = "mail/school.address"; }
+    { rel = "mail/school.app-password"; }
     {
       rel = "ledger-deploy.key.pub";
       mode = "0444";

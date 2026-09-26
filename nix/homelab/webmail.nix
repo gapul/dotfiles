@@ -10,8 +10,9 @@
 #   Serving it under the Radicale vhost makes it same-origin, so no CORS has to be
 #   faked in Caddy. Login is the Radicale credentials.
 #
-# Sending does not work yet: Stalwart has no submission listener (OP25B), so
-# Roundcube's SMTP fails. Reading is the point, so this is left as is.
+# Sending goes through Stalwart's submissions listener (mail.gapul.net:465) with the
+# same login; Stalwart relays it out through the Google account behind that mailbox
+# (homelab/mail.nix), so only that account's own address works as From.
 {
   lib,
   pkgs,
