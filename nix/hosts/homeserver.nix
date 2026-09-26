@@ -29,7 +29,7 @@ let
     };
     # Authelia (auth = true) は「個人データがあるか、壊せる操作がある UI」にだけ掛ける
     # (2026-09-26 に方針を絞った)。見るだけで保存データの無いもの (dash / search /
-    # status / comfy / tools) は tailnet 到達だけで足りるので外してある。掛けると
+    # status / tools) は tailnet 到達だけで足りるので外してある。掛けると
     # プライベートウィンドウや iPhone、CLI から毎回ログインを求められるだけで、
     # 守っている資産が無い。
     dash = {
@@ -151,7 +151,6 @@ let
       upstream = "127.0.0.1:1880";
       auth = true;
     };
-    comfy.upstream = "${macmini}:8188";
     tools.upstream = "${macmini}:8901";
     # RecallVault's iPhone client authenticates with its own bearer token, so this
     # machine endpoint must not be placed behind the browser-oriented Authelia flow.

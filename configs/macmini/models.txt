@@ -34,5 +34,5 @@
 # (ollama で GGUF を4本ぶら下げていたが 2026-08-28 に撤去。ollama 独自の blob ストアに
 #  47GB を抱えたまま、実際の推論は MLX と claude-bridge に移っていたため。)
 
-# --- 画像生成 (ComfyUI, 別途 ~/ComfyUI。klein 4B + Pony/RealVisXL等。別セッションで構築) ---
-# Chroma1-HD は保持。Qwen Image Edit は 2509 から 2511 Q4_K_M + 4-step Lightning LoRA へ更新。
+# --- 画像生成 (ComfyUI) は 2026-09-26 に撤去。7月中旬から未使用のまま 74GB を占めていた。---
+# 復活させるなら ghq で ComfyUI を clone し直し、モデルは Comfy-Org / HF から取り直す。
