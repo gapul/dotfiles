@@ -286,7 +286,6 @@
       "/Applications/Hammerspoon.app"
       "/Applications/Ghostty.app"
       "/Applications/Nix Apps/Puddle.app" # nix パッケージ化したので Nix Apps 側
-      "/Applications/Thaw.app"                # menu bar management
       "/Applications/azooKey skkserv.app"     # SKK conversion server for macSKK
       "/Applications/Maccy.app"               # clipboard history
       "/Applications/LuLu.app"                # outbound firewall
