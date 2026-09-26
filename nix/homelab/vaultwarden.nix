@@ -14,7 +14,10 @@
 
   # Containers
   virtualisation.oci-containers.containers."vaultwarden" = {
-    image = "docker.io/vaultwarden/server:latest";
+    # `testing` until 1.38 ships: the 2026.9 Bitwarden CLI needs
+    # /api/accounts/key-management/user-key-id, which 1.37.3 lacks (login fails
+    # with KeyIdBackfillError, vaultwarden#7750). Return to `latest` afterwards.
+    image = "docker.io/vaultwarden/server:testing";
     environmentFiles = [ "/var/lib/secrets/vaultwarden.env" ];
     environment = {
       "DOMAIN" = "https://vault.gapul.net";
