@@ -104,5 +104,6 @@
     ./unified-calendar.nix
     ./vaultwarden.nix
     ./vpn-relay.nix
+    ./webmail.nix
   ];
 }
