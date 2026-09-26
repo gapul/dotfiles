@@ -65,6 +65,7 @@
     ./homeassistant.nix
     ./homepage.nix
     ./jellyfin.nix
+    ./kavita.nix
     ./lazy-http-services.nix
     ./container-auto-update.nix
     ./self-deploy.nix

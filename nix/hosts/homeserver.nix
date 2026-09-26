@@ -154,6 +154,11 @@ let
       upstream = "127.0.0.1:8107";
       interval = "1h";
     };
+    # 電子書籍の OPDS カタログ (homelab/kavita.nix)。Readest が API キー付き URL で読む。
+    shelf = {
+      upstream = "127.0.0.1:8108";
+      interval = "1h";
+    };
     ntfy.upstream = "127.0.0.1:8082";
     cache.upstream = "127.0.0.1:8083"; # attic (own nix binary cache)
     shell.upstream = "127.0.0.1:8888"; # atuin (シェル履歴の同期サーバー)
