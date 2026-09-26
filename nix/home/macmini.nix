@@ -416,6 +416,10 @@ in
           -d "$1" "$(cat "$url")" >/dev/null 2>&1 || true
       }
       cd "$repo" || exit 0
+      # lazy.nvim はこの機械でも lazy-lock.json を書き換える (2026-09-26 に rebuild のたびに
+      # 再現)。母艦側の更新と重なると autostash が衝突して作業ツリーが壊れたまま残り、以後の
+      # pull が全部見送りになる。lock の正は母艦なので、ここでは黙って捨てる。
+      git checkout --quiet -- configs/editors/nvim/lazy-lock.json 2>/dev/null || true
       if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
         notify "作業ツリーが汚れているので pull を見送った"
         exit 0
