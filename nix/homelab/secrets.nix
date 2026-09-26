@@ -84,6 +84,7 @@ let
     { rel = "wger.env"; }
     { rel = "writefreely-admin.password"; }
     { rel = "zaim.cookie"; }
+    { rel = "wise.token"; }
   ];
 
   mkSecret =

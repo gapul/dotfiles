@@ -8,9 +8,11 @@
 # クローンを置かない方針なので、read-only の deploy key (/var/lib/secrets/ledger-deploy.key、
 # GitHub 側は "homeserver-ledger") で毎回 pull する。
 #
-# 秘密は2つ。Zaim の Cookie (/var/lib/secrets/zaim.cookie。母艦で `zaim_web.py login` して
-# scp する。最後のアクセスから2時間で切れるので毎時の同期が延命でもある) と上の鍵。
-# どちらも LoadCredential で渡し、ledger ユーザーからは読めない場所に置く。
+# 秘密は Zaim の Cookie (/var/lib/secrets/zaim.cookie。母艦で `zaim_web.py login` して
+# scp する。最後のアクセスから2時間で切れるので毎時の同期が延命でもある)、上の鍵、
+# Wise の個人 API トークン (sops。個人アカウントは SCA の公開鍵登録が廃止されていて
+# 残高明細は読めないので、SCA 不要のアクティビティ API と残高だけで組んである)。
+# どれも LoadCredential で渡し、ledger ユーザーからは読めない場所に置く。
 #
 # 失敗の通知は他のジョブと同じ ntfy-failure@。ただし Cookie 切れは直るまで毎時落ち続ける
 # ので、同じ理由の連続失敗は2回目から exit 0 にして通知を1回に抑える (macmini 時代と同じ)。
@@ -80,6 +82,16 @@ let
     commit "crypto sync"
   '';
 
+  wiseSync = pkgs.writeShellScript "wise-sync" ''
+    ${prelude "wise-sync"}
+    out=$(${py} ${tools}/wise/wise_beancount.py --token-file "$CREDENTIALS_DIRECTORY/wise-token" \
+      --rules ${book}/rules.toml --out ${book}/wise.beancount 2>&1) ||
+      fail "Wise の取り込みに失敗: $out"
+    out=$(${beanCheck} ${book}/main.beancount 2>&1) || fail "bean-check: $out"
+    rm -f "$state"
+    commit "wise sync"
+  '';
+
   common = {
     User = "ledger";
     Group = "ledger";
@@ -134,6 +146,26 @@ in
       # 日次で足りる: 無料 RPC と CoinGecko はレート制限があり、残高が動くのは
       # 手書きの取引を入れる時だけ。
       OnCalendar = "*-*-* 06:40:00";
+      Persistent = true;
+    };
+  };
+
+  systemd.services.wise-sync = {
+    description = "Wise の残高明細 → Beancount (毎日)";
+    serviceConfig = common // {
+      Type = "oneshot";
+      LoadCredential = common.LoadCredential ++ [ "wise-token:/var/lib/secrets/wise.token" ];
+      ExecStart = wiseSync;
+    };
+    onFailure = [ "ntfy-failure@%n.service" ];
+  };
+  systemd.timers.wise-sync = {
+    description = "Wise の明細取り込みを毎日";
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      # アクティビティは全期間を毎回引き直して wise.beancount を丸ごと作り直し、
+      # 実残高との差を手数料として吸収してから balance を置く。動きが少ない口座なので日次で足りる。
+      OnCalendar = "*-*-* 06:50:00";
       Persistent = true;
     };
   };
