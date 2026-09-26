@@ -331,7 +331,6 @@
             ./home/tmp-cleanup.nix # ~/tmp のスクラッチを7日で自動掃除 (macminiHeadless と共有)
             ./home/nix-gc-tcc.nix # root GC daemon (hosts/darwin-common.nix) が使う署名済み nix の安定コピー
             ./home/git-hooks.nix # git hook that auto-rebuilds on main updates (main tree only)
-            ./home/herdr-mobile-relay.nix # herdr をスマホ PWA から操作するリレー(tailnet 限定)
             ./home/mail-app.nix # Mail.app を裏で常駐させ、認証コードの純正 AutoFill を効かせる
           ]
           ++ secrets
@@ -363,7 +362,6 @@
           ./home/macmini-presenta.nix
           ./home/tmp-cleanup.nix # ~/tmp のスクラッチを7日で自動掃除 (macWorkstation と共有)
           ./home/nix-gc-tcc.nix # root GC daemon (hosts/darwin-common.nix) が使う署名済み nix の安定コピー
-          ./home/herdr-mobile-relay.nix # herdr をスマホ PWA から操作するリレー(tailnet 限定、母艦と共有)
           # dotfiles-pull (home/macmini.nix) は post-merge hook が rebuild する前提だが、hook を
           # 入れる module がこの役に無く、.git/hooks の実体は 2026-08-09 に手で置いた古い版のまま
           # だった (secrets/ の変更で rebuild しない)。宣言に載せて activation で更新させる。
