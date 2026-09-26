@@ -18,9 +18,7 @@
 # 食材データベースは wger.de の既定 (Open Food Facts 由来) を同期しない。日本の
 # 生鮮・惣菜がほとんど無く、ノイズになるため。文科省の八訂を ETL して API から
 # 流し込む (mogura のために決めた資産をそのまま使う)。
-{
-  ...
-}:
+_:
 
 let
   dataDir = "/var/lib/homelab/wger";
