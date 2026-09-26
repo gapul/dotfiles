@@ -42,9 +42,9 @@
 }:
 let
   dotfiles = "${config.home.homeDirectory}/.dotfiles";
-  # Compile-only Android SDK. The license was already accepted by the previous imperative SDK
-  # installation on this machine; keep that decision local to this composition. Emulator and
-  # system images deliberately stay out: device/Simulator testing belongs on the MacBook.
+  # Android SDK for compile work and an arm64 Google Play emulator. The emulator is used for
+  # compatibility testing of official Android apps on the Mac mini; keep its licensed Google
+  # system image local to this host composition.
   androidEnv = pkgs.callPackage "${pkgs.path}/pkgs/development/mobile/androidenv" {
     licenseAccepted = true;
   };
@@ -63,8 +63,10 @@ let
       # Flutter plugins with Android native code request this through Gradle. Keep it inside the
       # immutable SDK because Gradle cannot install missing SDK components into the Nix store.
       cmakeVersions = [ "3.22.1" ];
-      includeEmulator = false;
-      includeSystemImages = false;
+      includeEmulator = true;
+      includeSystemImages = true;
+      systemImageTypes = [ "google_apis_playstore" ];
+      abiVersions = [ "arm64-v8a" ];
       # Flutter 3.41's Android plugins request this exact side-by-side NDK. A Nix SDK is
       # read-only, so Gradle cannot lazily install it during the first APK build.
       includeNDK = true;
@@ -115,6 +117,7 @@ in
   home.sessionVariables = {
     ANDROID_HOME = "${androidSdk}/libexec/android-sdk";
     ANDROID_SDK_ROOT = "${androidSdk}/libexec/android-sdk";
+    ANDROID_AVD_HOME = "${config.xdg.configHome}/.android/avd";
     JAVA_HOME = jdk.home;
   };
 
