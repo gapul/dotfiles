@@ -67,7 +67,9 @@ in
     environment = {
       "TZ" = "Asia/Tokyo";
     };
-    # IGDB_CLIENT_ID / IGDB_CLIENT_SECRET。RomM と同じ Twitch のアプリで良い。
+    # v2 は IGDB の鍵を環境変数では読まない。管理画面 (Administration > Plugins >
+    # IGDB Metadata) から入れて DB に暗号化保存される (2026-09-27 に RomM と同じ
+    # Twitch アプリの鍵を設定済)。gameyfin.env の IGDB_* は v1 の名残で効いていない。
     environmentFiles = [ "/var/lib/secrets/gameyfin.env" ];
     volumes = [
       "/var/lib/homelab/gameyfin/db:/opt/gameyfin/db:rw"
