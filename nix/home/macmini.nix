@@ -54,7 +54,7 @@ in
   #   service bodies -> ~/.local/share/ai-stack/ (HM symlink)
   #   venvs -> ~/.local/share/venvs/, models -> ~/.local/share/models/
   #   (no app data here anymore: the web frontends moved to homeserver, minecraft to its own user)
-  #   ComfyUI / GPT-SoVITS -> ~/Developer/github.com/<owner>/<repo> (ghq style)
+  #   GPT-SoVITS -> ~/Developer/github.com/<owner>/<repo> (ghq style)
   #   own projects with no upstream -> ~/Developer/projects/<name>
   #     (~/ai grew two of these back after the retirement; moved out 2026-08-12)
   # venvs/models/data are non-reproducible assets, so they're managed imperatively
@@ -620,27 +620,10 @@ in
       ProgramArguments = [ "${config.home.homeDirectory}/.local/libexec/tcc/sunshine" ];
       RunAtLoad = true;
       KeepAlive = true;
-      # 配信中に他のバックグラウンド仕事に負けると映像が途切れる。ComfyUI と
-      # 同じ Interactive にしておく。
+      # 配信中に他のバックグラウンド仕事に負けると映像が途切れるので Interactive。
       ProcessType = "Interactive";
       StandardOutPath = "/tmp/sunshine.log";
       StandardErrorPath = "/tmp/sunshine.log";
-    };
-  };
-
-  launchd.agents.comfyui = {
-    enable = true;
-    config = {
-      ProgramArguments = [
-        "/bin/bash"
-        "${config.home.homeDirectory}/Developer/github.com/comfyanonymous/ComfyUI/run-comfy.sh"
-      ];
-      WorkingDirectory = "${config.home.homeDirectory}/Developer/github.com/comfyanonymous/ComfyUI";
-      RunAtLoad = true;
-      KeepAlive = true;
-      ProcessType = "Interactive";
-      StandardOutPath = "/tmp/comfyui.log";
-      StandardErrorPath = "/tmp/comfyui.log";
     };
   };
 }

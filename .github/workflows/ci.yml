@@ -107,7 +107,7 @@ jobs:
           # ラベルを知らない / node24 / cachix) は hosts/macmini-ci-runner.nix 側で埋めてある。
           # 戻したのはこの一行だけだった。
           #
-          # macmini は AI 常駐 (ComfyUI / Hermes / 文字起こし) と同居する。載せるのは pull
+          # macmini は AI 常駐 (Hermes / 文字起こし) と同居する。載せるのは pull
           # request だけで、そちらは store が温まっていれば転送も計算もほとんど無い。重い方
           # (main の om ci run) は GitHub に残す — 下の runs-on を参照。
           - system: aarch64-darwin

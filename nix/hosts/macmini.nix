@@ -357,7 +357,7 @@ in
   # everything ran at the same priority: a long agent turn competed with Minecraft ticks and with
   # inference somebody was waiting on.
   #
-  # The tiers are: Interactive for what a human is waiting on (ComfyUI, the game server),
+  # The tiers are: Interactive for what a human is waiting on (the game server, sunshine),
   # Standard for the cheap supervisors, Background for the agents and every batch job. Background
   # on Apple Silicon means the E cores, which is right for these: they spend their time waiting on
   # the network, not on the CPU.

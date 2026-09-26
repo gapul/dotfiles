@@ -41,7 +41,7 @@ own blob store while the actual inference had moved to the MLX stack and claude-
   from a reference clip too. Japanese is a Tier 1 language upstream.
 
 `fish-tts` is the slow one. Measured RTF is 3 to 4, so ten seconds of speech takes half a minute,
-and the process peaks around 17 GB of the machine's 24 GB — do not run it alongside ComfyUI or
+and the process peaks around 17 GB of the machine's 24 GB — do not run it alongside
 another model. Use it when the line has to carry emotion, not to batch out a hundred of them.
 
 Its weights are under the Fish Audio Research License: research and non-commercial use only.

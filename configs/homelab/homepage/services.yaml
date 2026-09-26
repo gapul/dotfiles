@@ -164,11 +164,6 @@
         description: Transcription / TTS / OCR / Q&A / voice clone / stem separation
         icon: mdi-robot
         siteMonitor: http://100.105.135.49:8901
-    - ComfyUI:
-        href: https://comfy.gapul.net
-        description: Image generation (macmini M4)
-        icon: mdi-image
-        siteMonitor: http://100.105.135.49:8188
 
 - macmini (M4):
     - System:
