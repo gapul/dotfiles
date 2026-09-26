@@ -91,7 +91,7 @@ let
     # config oneshot が初回に生成して ${dataDir}/pickle_key に置き、毎回差し込む。
     encryption = {
       allow = true;
-      default = true;
+      default = false; # new portals are plaintext; see the encryption note in matrix-bridges.nix
       require = false;
       msc4190 = true;
       self_sign = true;
