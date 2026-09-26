@@ -69,6 +69,7 @@ the things nobody distributes get declared.
 | Purpose | Where it comes from |
 |---|---|
 | CalDAV and CardDAV for the Radicale at home | `nix/mobile/ios-profiles.nix`, because nobody distributes one. The target is the `dav` vhost created by the `sites` table in `hosts/homeserver.nix` |
+| IMAP for the Stalwart at home (three mirror mailboxes) | `nix/mobile/ios-profiles.nix`; the same file installs on macOS for Mail.app. Passwords are typed on the device (they live only on homeserver) |
 | DNS, through NextDNS | Open `https://apple.nextdns.io/<profile-id>` in Safari |
 | The tailnet at home | The Tailscale app installs its own VPN profile |
 

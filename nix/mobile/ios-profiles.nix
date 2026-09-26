@@ -79,6 +79,38 @@ let
         }
       ];
     };
+    # The three Stalwart mailboxes (homelab/mail.nix). The same file installs on macOS
+    # for Mail.app. As with CalDAV vs CardDAV, Apple has no payload type that bundles
+    # accounts. Outgoing points at Stalwart too, but it has no submission listener
+    # yet, so this is read-only in practice.
+    homelab-mail = {
+      displayName = "Homelab Mail";
+      description = "自宅 Stalwart の IMAP 口座 (gmail / work / school の写し)。パスワードは初回に端末が訊く。";
+      payloads =
+        map
+          (name: {
+            PayloadType = "com.apple.mail.managed";
+            EmailAccountDescription = "Homelab (${name} mirror)";
+            EmailAccountType = "EmailTypeIMAP";
+            EmailAddress = "${name}@mail.gapul.net";
+            IncomingMailServerHostName = "mail.gapul.net";
+            IncomingMailServerPortNumber = 993;
+            IncomingMailServerUseSSL = true;
+            IncomingMailServerAuthentication = "EmailAuthPassword";
+            IncomingMailServerUsername = name;
+            OutgoingMailServerHostName = "mail.gapul.net";
+            OutgoingMailServerPortNumber = 465;
+            OutgoingMailServerUseSSL = true;
+            OutgoingMailServerAuthentication = "EmailAuthPassword";
+            OutgoingMailServerUsername = name;
+            OutgoingPasswordSameAsIncomingPassword = true;
+          })
+          [
+            "gmail"
+            "work"
+            "school"
+          ];
+    };
   };
 in
 pkgs.linkFarm "ios-profiles" (

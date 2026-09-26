@@ -49,7 +49,12 @@ let
       # 既定の `< 400` では常に赤かった。401 が返ること自体を生存確認に使う。
       expect = [ "[STATUS] == 401" ];
     };
-    dav.upstream = "127.0.0.1:5232"; # radicale
+    dav.upstream = "127.0.0.1:5232"; # radicale (homelab/webmail.nix adds InfCloud under /infcloud/)
+    # Roundcube (homelab/webmail.nix). Login is a Stalwart account, so no Authelia in front.
+    webmail = {
+      upstream = "127.0.0.1:8121";
+      interval = "1h";
+    };
     # サークル用の2つ。cal と同じく公開先は Caddy ではなく cloudflared なので、
     # ここの vhost は踏まれない。表に載せているのは gatus の監視がここからしか
     # 生えないため。
