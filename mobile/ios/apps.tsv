@@ -3,7 +3,7 @@
 #
 # source は「どの経路で入れるか」。3 つを使い分けている:
 #   appstore          App Store。verify は iTunes Search API で実在を見る
-#   altstore-classic  母艦で再署名して入れる自ビルド。verify は sources.tsv の
+#   altstore-classic  AltStore Classic (Remote AltServer) で端末内再署名。verify は sources.tsv の
 #                     classic な source の JSON に bundleId が在るかを見る
 #   altstore-pal      AltStore PAL (代替マーケットプレイス) 経由。同上 (pal)
 #   manual            配布元が AltStore 形式の JSON を出しておらず機械で確かめられない
@@ -50,6 +50,7 @@ org.localsend.localsendApp	appstore	LocalSend	-
 # 自ビルド / サイドロード
 io.altstore.AltStore	manual	AltStore	-
 com.rileytestut.AltStore	altstore-classic	AltStore	-
+com.jkcoxson.LocalDevVPN	appstore	LocalDevVPN	Remote AltServer 用ループバック VPN
 net.gapul.blink	altstore-classic	Blink	-
 net.gapul.keepassium	altstore-classic	KeePassium Pro	Syncthing (kdbx)
 com.amgiapp.AmgiApp	manual	Amgi	-

@@ -28,7 +28,7 @@ Three routes are in use, so the `source` column in `apps.tsv` says which one han
 | source | Where it comes from | What verify queries |
 |---|---|---|
 | `appstore` | The App Store | The iTunes Search API |
-| `altstore-classic` | Self-built, re-signed on the Mac | The JSON of the classic source in `sources.tsv` |
+| `altstore-classic` | Self-built, re-signed on the phone via Remote AltServer (one-time wired pairing with AltServer) | The JSON of the classic source in `sources.tsv` |
 | `altstore-pal` | AltStore PAL, the alternative marketplace | The pal source in the same file |
 
 `status` queries the device through `ideviceinstaller`, so it needs USB and "Trust this

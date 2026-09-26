@@ -668,6 +668,10 @@ in
       # ─── Network / Remote ───
       "tailscale-app"
       "rustdesk"
+      # AltStore Classic 2.3 signs on the phone via Remote AltServer, but the first setup step is a
+      # one-time wired pairing with AltServer on a computer (iOS 27 included). Kept declared so the
+      # pairing can be redone after a phone reset.
+      "altserver"
 
       # ─── Dev IDEs / Editors / SDK ───
       "stablyai/orca/orca" # unified chat UI for Claude Code/Codex; custom tap avoids the unrelated disabled Plotly cask
