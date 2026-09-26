@@ -81,6 +81,7 @@ let
     }
     { rel = "vault-deploy.key"; }
     { rel = "vaultwarden.env"; }
+    { rel = "wger.env"; }
     { rel = "writefreely-admin.password"; }
     { rel = "zaim.cookie"; }
   ];
