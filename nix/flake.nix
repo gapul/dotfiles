@@ -154,6 +154,13 @@
     claude-acp.url = "github:gapul/claude-acp";
     claude-acp.inputs.nixpkgs.follows = "nixpkgs";
 
+    # Shortcuts (Apple) をコードから作るコンパイラ。手で plist を組むのをやめた理由は
+    # 2026-09-27 に踏んだ罠: iOS 26 の組み込みアクションはパラメータ名が新旧で混在して
+    # いて、古い表記 (WFInput/WFDictionaryKey) を書いても黙って無視され、変数が渡らない
+    # ショートカットが出来上がる。cherri は実機と同じ表記を吐くのでそこを任せる。
+    cherri.url = "github:electrikmilk/cherri";
+    cherri.inputs.nixpkgs.follows = "nixpkgs";
+
     # Secure Enclave SSH identities as a CLI + nix-darwin module, replacing the Secretive cask.
     # Same hardware guarantee (the private key never leaves the enclave) without a GUI app or a
     # resident agent process: it hands the identity to macOS' own CryptoTokenKit provider.
@@ -169,6 +176,7 @@
 
   outputs =
     inputs@{
+      cherri,
       claude-acp,
       nix-secure-enclave-key,
       mocopi-mac,
@@ -271,6 +279,7 @@
         brewNix = brew-nix;
         mocopiMac = mocopi-mac;
         nixpkgsAgents = nixpkgs-agents;
+        inherit cherri;
         # 重いビルドを macmini へ逃がす。同じ aarch64-darwin なのでそのまま走る。
         #
         # nix のデーモンは root として ssh するので、鍵の場所を明示する。root は
