@@ -73,10 +73,13 @@ let
       # 容量を食わないので、クラウド同期の対象外なタイトルのために取っておく。
       "${home}/Library/Application Support/Steam/userdata"
       "${home}/Desktop" # small, but the only home dir that was silently outside the set
-      # Voice Memos. iCloud sync for these is off (CloudRecordings_ckAssets is empty), so the
-      # group container is the only copy. CloudRecordings.db carries the titles, so take the
-      # whole container rather than just the .m4a files.
-      "${home}/Library/Group Containers/group.com.apple.VoiceMemos.shared"
+      # Voice Memos used to be listed here, back when the group container was the only copy.
+      # The recordings were transcribed, renamed and moved to Drive
+      # (05_録音・動画/VoiceMemos_archive, 259 files) and deleted from both the Mac and the
+      # phone, so the container now holds 3.3MB of app scaffolding and zero .m4a. Keeping the
+      # path only produced a daily "operation not permitted" — launchd's restic has no Full
+      # Disk Access, so it could never read the container anyway — which made every run exit 3
+      # and the run-freshness monitor useless. Restore from Drive if recordings ever come back.
       "${home}/.local/share/keystats" # keystats time series (a re-run cannot recreate it)
       # ActivityWatch, same class as keystats: 8 months and 1.1M events of what was on screen,
       # recorded once and never recomputable. aw-server-rust keeps it in one SQLite file.
