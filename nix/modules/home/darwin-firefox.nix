@@ -188,9 +188,15 @@ in
         "browser.theme.macos.native-theme" = true;
         "widget.macos.titlebar-blend-mode.behind-window" = true;
         # Developer Edition ships with its dark theme switched on; follow the macOS appearance
-        # instead (Firefox's "System theme — auto"). Page content still renders light: arkenfox's
-        # resistFingerprinting reports prefers-color-scheme: light to every site by design.
+        # instead (Firefox's "System theme — auto").
         "extensions.activeThemeID" = "default-theme@mozilla.org";
+        # 0 = dark, 1 = light, 2 = follow the system. Firefox writes these itself from the
+        # active theme, and once they are 0 the System theme cannot get out: the chrome's
+        # prefers-color-scheme comes from this pref, the System theme picks its dark variant
+        # from that, and writes 0 again (seen 2026-09-26 after switching away from the Dev
+        # Edition dark theme). user.js re-asserts 2 on every start, which breaks the loop.
+        "browser.theme.toolbar-theme" = 2;
+        "browser.theme.content-theme" = 2;
 
         # Vertical tabs on Firefox's own expand-on-hover; userChrome pushes the collapsed strip
         # off screen so nothing shows until the pointer reaches the left edge.
