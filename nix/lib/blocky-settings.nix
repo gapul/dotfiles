@@ -57,31 +57,6 @@
         # carried over from the NextDNS allowlist
         1088045785.rsc.cdn77.org
         cdn.kde.org
-
-        # Affiliate-network (ASP) click and conversion hosts, mostly Japanese networks.
-        # A point-site reward (moppy/hapitas -> ASP redirect -> merchant) is attributed
-        # through these; when they fail to resolve the application still goes through
-        # and the reward is silently rejected weeks later. Blocking them saves no ads,
-        # it only breaks attribution, so they are allowed for every client. Checked
-        # against the ads group on 2026-09-27; the last three were not blocked and are
-        # listed so the set stays complete when the upstream lists change.
-        *.valuecommerce.com
-        *.a8.net
-        *.trafficgate.net
-        *.accesstrade.net
-        *.afi-b.com
-        *.affiliate-b.com
-        *.rentracks.jp
-        *.j-a-net.jp
-        *.link-a.net
-        *.felmat.net
-        *.af.moshimo.com
-        *.adcrops.net
-        *.tcs-asp.net
-        *.ebis.ne.jp
-        *.linksynergy.com
-        *.presco.tv
-        *.monetrack.com
       ''
     ];
     clientGroupsBlock.default = [
