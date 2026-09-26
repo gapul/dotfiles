@@ -1,4 +1,4 @@
-# Kavita — 電子書籍の OPDS カタログと Web リーダー (shelf.gapul.net)。
+# Kavita — 電子書籍の OPDS カタログと Web リーダー (books.gapul.net)。
 #
 # Audiobookshelf (audiobookshelf.nix) は電子書籍も棚に並べるが OPDS を話さない。
 # Readest の Audiobookshelf 連携はオーディオブックの同期だけなので、電子書籍を
