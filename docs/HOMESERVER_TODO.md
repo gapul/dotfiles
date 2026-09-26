@@ -98,9 +98,10 @@ Not urgent, but each of these pays off.
       and ntfy health endpoint every minute. Three consecutive failures and the subsequent
       recovery are mailed through Gmail, an independent route that still works when ntfy or
       homeserver is down. Content-level checks such as stale location data remain on homeserver.
-- [x] **A Mullvad exit node.** It runs as a dedicated NixOS container with its own network
+- [x] **A Mullvad exit node.** Declared as a dedicated NixOS container with its own network
       namespace, WireGuard tunnel, kill switch and Tailscale identity. The homeserver's routes,
-      DNS and firewall stay outside Mullvad's control.
+      DNS and firewall stay outside Mullvad's control. Not started: the Mullvad account expired
+      on 2026-08-03 and is parked for now (`autoStart = false`).
 - [ ] **deploy-rs or colmena**, once there are more hosts.
 - [ ] **Turn containers into native services.** forgejo, navidrome and miniflux have modules.
       Only the ones where the data migration is worth it. The bridges' reasons for staying as
