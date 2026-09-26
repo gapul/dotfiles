@@ -21,11 +21,33 @@ Twilight Forest one was retired on 2026-09-25, its world is in the backups direc
 The way in from outside is a playit tunnel forwarding to the matching port on the mac mini.
 From inside the tailnet, connect straight to `100.105.135.49:<port>`.
 
+## Bedrock players
+
+Phones, consoles and the Windows 10 edition join through Geyser, which translates the Bedrock
+protocol to Java, and Floodgate, a server-side mod that lets a player without a Java account in
+on their Xbox account. Geyser runs standalone as the `geyser` daemon (working directory
+`/Users/mcsrv/geyser`, UDP 19132, config from `configs/macmini/minecraft/geyser-config.yml`) and
+connects to lazymc's Java port, so a Bedrock connection wakes a sleeping server the same way a
+Java one does. From outside it is a playit "Minecraft Bedrock" tunnel to that port; from the
+tailnet, `100.105.135.49:19132`.
+
+The Floodgate key (`minecraft/floodgate_key` in sops, 16 random bytes base64) is placed by both
+run.sh and the Geyser wrapper on every start, so the two sides never drift. A Bedrock player
+appears as `.Gamertag` with a UUID derived from their Xbox XUID; whitelist them in that form
+(`https://api.geysermc.org/v2/xbox/xuid/<gamertag>` gives the XUID, the UUID is
+`00000000-0000-0000-0009-<xuid in hex, zero-padded to 12>`). Only the vanilla server has a Geyser;
+solo would need a second one on another port.
+
+Floodgate is `optional` in `fabric-mods.nix`: when it lags a game version, Java players keep
+playing and only Bedrock access waits. Geyser itself is pinned in `nix/pkgs/geyser.nix` and
+follows the newest build hourly (Bedrock updates monthly, Geyser catches up within days). What
+Bedrock players cannot see: anything a Java client mod would draw, and voice chat.
+
 ## Nothing runs while nobody plays
 
 lazymc holds the public port; the server itself runs on loopback at port + 100. With nobody
-connected the server is not running at all, and the idle cost is two lazymc processes, about
-18 MB and no measurable CPU. A connection wakes the server and joins it through, which the
+connected the server is not running at all, and the idle cost is two lazymc processes (about
+18 MB) plus the Geyser JVM (a few hundred MB) and no measurable CPU. A connection wakes the server and joins it through, which the
 client sees as "starting". Startup measures four to five seconds, and it stops again after ten
 idle minutes (an hour on solo).
 
