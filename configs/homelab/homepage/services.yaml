@@ -114,7 +114,7 @@
         icon: forgejo.png
         siteMonitor: http://127.0.0.1:3003
     - Dawarich:
-        href: http://100.127.129.31:3005
+        href: https://track.gapul.net
         description: Location history (Google Timeline replacement)
         icon: mdi-map-marker-path
         siteMonitor: http://127.0.0.1:3005
@@ -123,6 +123,26 @@
         description: "@gapul:gapul.net"
         icon: matrix-light.png
         siteMonitor: http://127.0.0.1:8008/_matrix/client/versions
+    - Fava:
+        href: https://money.gapul.net
+        description: Household ledger (Beancount)
+        icon: mdi-finance
+        siteMonitor: http://127.0.0.1:5075
+    - Roundcube:
+        href: https://webmail.gapul.net
+        description: Webmail (Stalwart account)
+        icon: roundcube.png
+        siteMonitor: http://127.0.0.1:8121
+    - Stalwart:
+        href: https://mail.gapul.net
+        description: Mail server admin / JMAP
+        icon: mdi-email-multiple
+        siteMonitor: http://127.0.0.1:8120
+    - Nostr bunker:
+        href: https://bunker.gapul.net
+        description: NIP-46 signer (key admin)
+        icon: mdi-key-chain
+        siteMonitor: http://127.0.0.1:4174
 
 - Tools:
     - Paperless-ngx:
@@ -140,6 +160,16 @@
         description: Turn anything into RSS
         icon: rsshub.png
         siteMonitor: http://127.0.0.1:1200
+    - Bambuddy:
+        href: https://bambu.gapul.net
+        description: 3D printer console (Bambu A1 mini)
+        icon: mdi-printer-3d
+        siteMonitor: http://127.0.0.1:8010
+    - ytdl-sub:
+        href: https://tube.gapul.net
+        description: YouTube archiving into Jellyfin
+        icon: mdi-youtube
+        siteMonitor: http://127.0.0.1:8098
 
 - Media:
     - Jellyfin:
@@ -152,6 +182,16 @@
         description: Music
         icon: navidrome.png
         siteMonitor: http://127.0.0.1:4533
+    - RomM:
+        href: https://roms.gapul.net
+        description: ROM library
+        icon: romm.png
+        siteMonitor: http://127.0.0.1:8091
+    - Gameyfin:
+        href: https://games.gapul.net
+        description: Game library
+        icon: mdi-gamepad-variant
+        siteMonitor: http://127.0.0.1:8092
 
 - macmini (M4):
     - System:
