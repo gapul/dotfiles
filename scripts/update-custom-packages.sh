@@ -77,7 +77,7 @@ def get(url):
     with urllib.request.urlopen(url, timeout=30) as r:
         return json.load(r)
 
-mods = re.findall(r"^\s*# modrinth:(\S+) (\S+)$", open(sys.argv[1]).read(), re.M)
+mods = re.findall(r"^\s*# modrinth:(\S+) (\S+)( optional)?$", open(sys.argv[1]).read(), re.M)
 games = [g["version"] for g in get("https://meta.fabricmc.net/v2/versions/game") if g["stable"]]
 installer = get("https://meta.fabricmc.net/v2/versions/installer")[0]["version"]
 for mc in games:
@@ -85,13 +85,18 @@ for mc in games:
     if not loaders:
         continue
     picks = []
-    for project, slug in mods:
+    for project, slug, optional in mods:
         q = urllib.parse.urlencode({"loaders": '["fabric"]', "game_versions": f'["{mc}"]'})
         vs = get(f"https://api.modrinth.com/v2/project/{project}/version?{q}")
         if not vs:
+            if optional:
+                picks.append((project, slug + "_optional", "-", "-", "-"))
+                continue
             break
-        f = next(x for x in vs[0]["files"] if x["primary"])
-        picks.append((project, slug, f["filename"], f["url"], f["hashes"]["sha512"]))
+        # 正式版があればそれ、無ければ beta/alpha (Modrinth は新しい順に返す)。
+        v = next((x for x in vs if x["version_type"] == "release"), vs[0])
+        f = next(x for x in v["files"] if x["primary"])
+        picks.append((project, slug + ("_optional" if optional else ""), f["filename"], f["url"], f["hashes"]["sha512"]))
     else:
         print(mc, loaders[0]["loader"]["version"], installer)
         for p in picks:
@@ -120,9 +125,14 @@ if [[ -n $fabric_pick ]]; then
   {
     sed -n '1,/^\[$/p' "$mods_file"
     tail -n +2 <<<"$fabric_pick" | while read -r project slug name url sha512; do
+      if [[ $name == - ]]; then
+        # 任意の mod がこの版にまだ無い。行だけ残して、出た時に拾えるようにする。
+        printf '  # modrinth:%s %s\n  # (no release for %s yet)\n' "$project" "${slug/_/ }" "$mc"
+        continue
+      fi
       sri=$(nix hash convert --hash-algo sha512 --to sri "$sha512")
       printf '  # modrinth:%s %s\n  (fetchurl {\n    name = "%s";\n    url = "%s";\n    hash = "%s";\n  })\n' \
-        "$project" "$slug" "$name" "$url" "$sri"
+        "$project" "${slug/_/ }" "$name" "$url" "$sri"
     done
     echo "]"
   } > "$tmp/fabric-mods.nix"
