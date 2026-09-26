@@ -1,8 +1,8 @@
-# Audiobookshelf — オーディオブックと電子書籍の棚 (books.gapul.net)。
+# Audiobookshelf — オーディオブックの棚 (audiobooks.gapul.net)。電子書籍の配信は kavita.nix。
 #
 # 接続してくるのは iPhone の 2 本。Audiobookshelf アプリ (自己ビルド、altstore-source の
-# abs- タグ) は API を直接、Readest は /opds のカタログを読む。どちらもここの
-# ユーザー名とパスワードでログインするので Authelia は挟まない (wger と同じ理由)。
+# abs- タグ) と Readest の ABS 連携。どちらもここのユーザー名とパスワードで
+# ログインするので Authelia は挟まない (wger と同じ理由)。
 #
 # 実ファイルは /srv/audiobooks と /srv/books。他の /srv と同じく restic の対象外
 # (買い直せる・取り直せるものに容量を使わない)。メタデータと再生位置は

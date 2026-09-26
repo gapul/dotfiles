@@ -148,14 +148,14 @@ let
         }
       '';
     };
-    # 本棚 (homelab/audiobookshelf.nix)。iPhone の Audiobookshelf アプリと Readest (OPDS) が
-    # 自前のログインで直接叩くので Authelia は挟まない。
-    books = {
+    # オーディオブック (homelab/audiobookshelf.nix)。iPhone の Audiobookshelf アプリと
+    # Readest の ABS 連携が自前のログインで直接叩くので Authelia は挟まない。
+    audiobooks = {
       upstream = "127.0.0.1:8107";
       interval = "1h";
     };
-    # 電子書籍の OPDS カタログ (homelab/kavita.nix)。Readest が API キー付き URL で読む。
-    shelf = {
+    # 電子書籍 (homelab/kavita.nix)。Readest が API キー付き URL で OPDS を読む。
+    books = {
       upstream = "127.0.0.1:8108";
       interval = "1h";
     };
