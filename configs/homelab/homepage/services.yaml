@@ -165,11 +165,6 @@
         description: 3D printer console (Bambu A1 mini)
         icon: mdi-printer-3d
         siteMonitor: http://127.0.0.1:8010
-    - ytdl-sub:
-        href: https://tube.gapul.net
-        description: YouTube archiving into Jellyfin
-        icon: mdi-youtube
-        siteMonitor: http://127.0.0.1:8098
 
 - Media:
     - Jellyfin:
