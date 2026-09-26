@@ -5,6 +5,7 @@ repo=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 slk_file="$repo/nix/pkgs/slk.nix"
 unity_file="$repo/nix/pkgs/unity-cli.nix"
 fabric_file="$repo/nix/pkgs/fabric-server.nix"
+geyser_file="$repo/nix/pkgs/geyser.nix"
 mods_file="$repo/nix/pkgs/fabric-mods.nix"
 macmini_file="$repo/nix/hosts/macmini.nix"
 protocol_map_url="https://raw.githubusercontent.com/PrismarineJS/minecraft-data/master/data/pc/common/protocolVersions.json"
@@ -160,5 +161,29 @@ print(next((e["version"] for e in json.load(sys.stdin) if e["minecraftVersion"] 
     else
       echo "fabric: $mc の protocol 番号が引けなかったので lazymc の表示は据え置き" >&2
     fi
+  fi
+fi
+
+# --- Geyser (Bedrock の入口) -----------------------------------------------------------------
+# 統合版はほぼ毎月更新され、Geyser はその数日後に追いつく。ビルドごとの sha256 を API が返すので
+# 落とさずに pin を動かせる。Java 側の版とは独立 (Geyser は複数の Java 版を同時に相手にする)。
+pinned_geyser=$(sed -n 's/^[[:space:]]*version = "\([^"]*\)";/\1/p' "$geyser_file" | head -1)
+pinned_geyser_build=$(sed -n 's/^[[:space:]]*build = "\([^"]*\)";/\1/p' "$geyser_file" | head -1)
+geyser_pick=$(curl -fsSL --max-time 30 https://download.geysermc.org/v2/projects/geyser/versions/latest/builds/latest | python3 -c '
+import json, sys
+d = json.load(sys.stdin)
+print(d["version"], d["build"], d["downloads"]["standalone"]["sha256"])
+')
+if [[ -n $geyser_pick ]]; then
+  read -r gv gb gsha <<<"$geyser_pick"
+  if [[ $pinned_geyser != "$gv" || $pinned_geyser_build != "$gb" ]]; then
+    awk -v version="$gv" -v build="$gb" -v sha="$gsha" '
+      /^[[:space:]]*version = "/ && !v { sub(/"[^"]+"/, "\"" version "\""); v=1 }
+      /^[[:space:]]*build = "/ && !b { sub(/"[^"]+"/, "\"" build "\""); b=1 }
+      /^[[:space:]]*sha256 = "/ && !s { sub(/"[^"]+"/, "\"" sha "\""); s=1 }
+      { print }
+    ' "$geyser_file" > "$tmp/geyser.nix"
+    mv "$tmp/geyser.nix" "$geyser_file"
+    echo "geyser: $pinned_geyser-$pinned_geyser_build -> $gv-$gb"
   fi
 fi

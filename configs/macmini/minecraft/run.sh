@@ -73,6 +73,13 @@ fi
 wl="${WHITELIST_SRC:-/etc/minecraft/whitelist.json}"
 [ -f "$wl" ] && cp -f "$wl" "$SERVER_DIR/whitelist.json"
 [ -f /etc/minecraft/ops.json ] && cp -f /etc/minecraft/ops.json "$SERVER_DIR/ops.json"
+# Floodgate (Bedrock 参加者の認証) の鍵。Geyser と同じ鍵でないと BE の人が通らない。正は sops で、
+# 起動のたびに置き直す (Floodgate は無ければ自分で作ってしまい、Geyser 側と食い違う)。
+if [ -f /etc/minecraft/floodgate-key.b64 ]; then
+  mkdir -p "$SERVER_DIR/config/floodgate"
+  base64 -d /etc/minecraft/floodgate-key.b64 > "$SERVER_DIR/config/floodgate/key.pem"
+  chmod 600 "$SERVER_DIR/config/floodgate/key.pem"
+fi
 
 # 宣言された jar は store への symlink として置き直す。前回の分(= symlink)は毎回消すので、
 # 宣言から外した jar は次の起動で居なくなる。手で入れた実体の jar には触らない。
