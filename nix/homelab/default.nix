@@ -58,6 +58,7 @@
     ./hauk.nix
     ./ledger.nix
     ./mail.nix
+    ./terraria.nix
     ./health.nix
     ./homebox.nix
     ./homeassistant.nix
