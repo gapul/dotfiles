@@ -141,7 +141,19 @@ let
       upstream = "127.0.0.1:4000";
       pre = ''
         handle_path /check* {
-          root * ${pkgs.writeTextDir "index.html" (builtins.readFile ../../configs/homelab/dns-check.html)}
+          root * ${
+            pkgs.runCommand "dns-check-site" { } ''
+              mkdir -p $out
+              cp ${../../configs/homelab/dns-check.html} $out/index.html
+              # The iOS web clip profile for this page, so a phone can install it from
+              # here instead of from mobile/ios/profiles/serve.sh on the LAN.
+              cp ${
+                import ../mobile/ios-profiles.nix { inherit pkgs lib user; }
+              }/dns-check.mobileconfig $out/dns-check.mobileconfig
+            ''
+          }
+          # Safari only offers to install a profile when the type is right.
+          header /dns-check.mobileconfig Content-Type application/x-apple-aspen-config
           file_server
         }
         handle_path /mm/* {

@@ -111,6 +111,24 @@ let
             "school"
           ];
     };
+    # blocky の確認ページ (hosts/homeserver.nix の dns2 vhost、configs/homelab/dns-check.html)
+    # をホーム画面のアイコンにする Web クリップ。FullScreen で Safari の枠なしに開く。
+    # tailnet の外では名前が引けないので、Tailscale が切れていると開かない。
+    dns-check = {
+      displayName = "DNS check (blocky)";
+      description = "dns2.gapul.net/check をホーム画面に置く。ドメインの遮断確認と 10 分停止。";
+      payloads = [
+        {
+          PayloadType = "com.apple.webClip.managed";
+          PayloadDisplayName = "DNS check";
+          URL = "https://dns2.gapul.net/check";
+          Label = "DNS check";
+          FullScreen = true;
+          IsRemovable = true;
+          Precomposed = true;
+        }
+      ];
+    };
   };
 in
 pkgs.linkFarm "ios-profiles" (
