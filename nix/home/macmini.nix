@@ -85,8 +85,9 @@ in
     # ゲーム、エミュレータ、あるいは単に遠隔から画面を触る用途なら使える。
     # パッドを使うなら Windows 側を起こすほうが早い。
     #
-    # 画面収録とアクセシビリティの許可は launchd では与えられないので、
-    # 初回だけ手で通す (下の launchd.agents.sunshine の注記を参照)。
+    # Screen recording and accessibility cannot be granted from launchd, so both are a one-time
+    # manual step (see the note on launchd.agents.sunshine below). The firewall exception is not
+    # manual any more: hosts/macmini.nix registers the signed copy with socketfilterfw.
     pkgs.sunshine
 
     # ccm: default Claude Code launch form on the mac mini. This deliberately bypasses
@@ -614,6 +615,21 @@ in
     $DRY_RUN_CMD ${../../configs/bin/tcc-stable-binary} \
       ${pkgs.sunshine}/bin/sunshine sunshine || true
   '';
+
+  # sunshine.conf out of the store, because Sunshine rewrites it from its own Web UI (same
+  # reasoning as omniwm's settings.toml). A read-only store symlink would make those saves fail.
+  #
+  # What the committed values are for, all found the hard way on 2026-09-26:
+  #   system_tray = disabled   Sunshine crashed on every start building its menu bar item
+  #                            (SIGTRAP in -[NSStatusBarButton setStatusMenu:]), which killed the
+  #                            process mid-pairing and surfaced on the client as
+  #                            RemoteHostClosedError. This is the one that made pairing impossible.
+  #   csrf_allowed_origins     the Web UI refuses its own setup POST from any non-default origin,
+  #                            so reaching it over the tailnet needs that origin listed.
+  #   origin_pin_allowed       pairing defaults to localhost only.
+  #   origin_web_ui_allowed    same, for the Web UI.
+  xdg.configFile."sunshine/sunshine.conf".source =
+    config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.dotfiles/configs/macmini/sunshine/sunshine.conf";
 
   launchd.agents.sunshine = {
     enable = true;
