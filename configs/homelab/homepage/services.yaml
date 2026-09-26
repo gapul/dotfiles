@@ -10,11 +10,6 @@
         description: Smart home
         icon: home-assistant.png
         siteMonitor: http://127.0.0.1:8123
-    - ESPHome:
-        href: https://esphome.gapul.net
-        description: Firmware for DIY devices
-        icon: esphome.png
-        siteMonitor: http://127.0.0.1:6052
     - Node-RED:
         href: https://nodered.gapul.net
         description: Automation flows
@@ -123,11 +118,11 @@
         description: Location history (Google Timeline replacement)
         icon: mdi-map-marker-path
         siteMonitor: http://127.0.0.1:3005
-    - Matrix (Conduit):
+    - Matrix (Synapse):
         href: https://app.element.io
         description: "@gapul:gapul.net"
         icon: matrix-light.png
-        siteMonitor: http://127.0.0.1:6167/_matrix/client/versions
+        siteMonitor: http://127.0.0.1:8008/_matrix/client/versions
 
 - Tools:
     - Paperless-ngx:
@@ -157,13 +152,6 @@
         description: Music
         icon: navidrome.png
         siteMonitor: http://127.0.0.1:4533
-
-- AI:
-    - AI Tools:
-        href: https://tools.gapul.net
-        description: Transcription / TTS / OCR / Q&A / voice clone / stem separation
-        icon: mdi-robot
-        siteMonitor: http://100.105.135.49:8901
 
 - macmini (M4):
     - System:

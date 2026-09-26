@@ -27,9 +27,6 @@ layout:
   Media:
     style: row
     columns: 2
-  AI:
-    style: row
-    columns: 2
   macmini (M4):
     style: row
     columns: 4
