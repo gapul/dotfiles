@@ -59,7 +59,13 @@ let
   # ボットとの DM でコマンドが届かない (2026-09-13 に LINE の login が
   # "this bridge has not been configured to support encryption" で弾かれた)。
   #
-  #   allow/default — 暗号化されたルームでも動き、自分で作るポータルも暗号化する
+  #   allow — 暗号化されたルームでも動く (2026-09-26 より前に作られたポータル)
+  #   default = false — 自分で作るポータルは平文 (2026-09-26)。自宅の単独サーバーでは
+  #             ブリッジも Synapse も同じ管理下で E2BE の守る範囲が無く、代わりに
+  #             「送信者と端末の持ち主が違う」警告 (bot の端末鍵で暗号化するため、
+  #             ゴーストとダブルパペットの発言に必ず付く)、bot トークン経路で読めない、
+  #             鍵紛失で過去ログが読めなくなる、が付いてくる。既存の部屋は Matrix の
+  #             仕様上戻せないのでそのまま。LINE の過去ログ取り込みも平文前提
   #   require = false — 暗号化されていないルームも拒否しない (既存の管理用ルーム等)
   #   self_sign — Element X は未検証の端末に鍵を渡さないので、ブリッジが自分の端末を
   #               クロス署名する。これが無いと Element X から送った発言が読めない
@@ -71,7 +77,7 @@ let
   # 暗号化が有効で DB に鍵が入っているので、変えると復号できなくなる。
   encryption = {
     allow = true;
-    default = true;
+    default = false;
     require = false;
     msc4190 = true;
     self_sign = true;
