@@ -14,7 +14,7 @@ in
     ghostty # $terminal
     wofi # $menu, and the cliphist picker
     hyprpaper # wallpaper daemon (exec-once)
-    hyprpolkitagent # polkit agent (exec-once)
+    hyprpolkitagent # polkit agent (started by its own unit, see below)
     hyprshot # screenshots
     hyprpicker # color picker
     wlogout # power menu
@@ -44,7 +44,6 @@ in
       # mako are started by their home-manager services below; listing them here as
       # well launches a second copy of each (two bars stacked on the screen).
       exec-once = [
-        "hyprpolkitagent"
         "hyprpaper"
         "wl-paste --watch cliphist store" # accumulate clipboard history
         "wl-gammarelay-rs" # dbus daemon for night light
@@ -183,7 +182,23 @@ in
     };
   };
 
-  # notification daemon
+  # polkit agent. Like mako this ships its own unit, and unlike most packages it puts no
+  # binary in bin/ at all (the executable lives in libexec/), so the exec-once that named it
+  # could never have worked — Hyprland was spawning a command that does not exist.
+  systemd.user.services.hyprpolkitagent = {
+    Unit.PartOf = [ "graphical-session.target" ];
+    Install.WantedBy = [ "graphical-session.target" ];
+  };
+
+  # notification daemon.
+  # home-manager's mako module only writes the config file — it defines no service — and the
+  # unit that ships inside the mako package is installed but never enabled, so nothing starts
+  # it and notifications silently go nowhere. Pull the packaged unit into the session target.
+  systemd.user.services.mako = {
+    Unit.PartOf = [ "graphical-session.target" ];
+    Install.WantedBy = [ "graphical-session.target" ];
+  };
+
   services.mako = {
     enable = true;
     settings = {
