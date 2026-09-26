@@ -24,7 +24,7 @@ let
   #
   # version/protocol are what lazymc reports while the server sleeps. The protocol number is not
   # in Fabric's API, so scripts/update-custom-packages.sh looks it up and rewrites both here.
-  mcVersion = fabricServer.mcVersion;
+  inherit (fabricServer) mcVersion;
   mcProtocol = 776;
   fabricInstance =
     extra:
