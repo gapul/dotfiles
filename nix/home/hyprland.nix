@@ -5,6 +5,15 @@
 # Colors are shared via configs/theme/palettes.json (rose-pine) as SSO ([[theme]]).
 let
   c = import ../lib/theme.nix; # c.base / c.text / c.iris ... (hex without leading #)
+  # Idle actions that only make sense in front of the machine. With the lid shut it is being
+  # used over ssh, and locking or suspending there is what made it look dead: the session
+  # goes to hyprlock nobody can dismiss, then hypridle suspends it off the network entirely.
+  # Closing the lid on AC already does nothing (HandleLidSwitchExternalPower = ignore in
+  # hosts/nixos-laptop.nix); this is the idle timer catching it a few minutes later instead.
+  # grep by store path, not by name: if it were missing from hypridle's PATH the guard would
+  # fail closed and the machine would simply never lock again, which is the failure you do
+  # not notice.
+  whenLidOpen = cmd: "${pkgs.gnugrep}/bin/grep -q open /proc/acpi/button/lid/LID/state && ${cmd}";
 in
 {
   # Binaries referenced by the keybinds / exec-once below. Without these the rice
@@ -166,8 +175,8 @@ in
       };
       listener = [
         {
-          timeout = 300; # lock after 5 minutes
-          on-timeout = "loginctl lock-session";
+          timeout = 300; # lock after 5 minutes (only with the lid open, see whenLidOpen)
+          on-timeout = whenLidOpen "loginctl lock-session";
         }
         {
           timeout = 360; # turn off screen after 6 minutes
@@ -175,8 +184,8 @@ in
           on-resume = "hyprctl dispatch dpms on";
         }
         {
-          timeout = 900; # suspend after 15 minutes (battery protection)
-          on-timeout = "systemctl suspend";
+          timeout = 900; # suspend after 15 minutes (battery protection, lid open only)
+          on-timeout = whenLidOpen "systemctl suspend";
         }
       ];
     };
