@@ -61,8 +61,25 @@ in
           openFirewall = true;
           useRoutingFeatures = "server";
           authKeyFile = "/var/lib/secrets/tailscale.key";
-          extraUpFlags = [ "--hostname=mullvad-exit" ];
-          extraSetFlags = [ "--advertise-exit-node" ];
+          # Passed to `tailscale up` rather than `tailscale set`: tailscaled-set would
+          # otherwise run before the login below has happened.
+          extraUpFlags = [
+            "--hostname=mullvad-exit"
+            "--advertise-exit-node"
+          ];
+        };
+
+        # nspawn runs with --notify-ready=yes and the host configures its end of the
+        # veth (link up, address, route) in ExecStartPost, i.e. only after the
+        # container's boot transaction has completed. tailscaled-autoconnect is
+        # Type=notify and stays in that transaction until the login succeeds, which
+        # needs the network: a deadlock that ends in the 1 min start timeout and a
+        # restart loop. Type=simple lets the boot finish while the login keeps
+        # retrying in the background. NotifyAccess keeps the socket the upstream
+        # script's `systemd-notify --ready` expects.
+        systemd.services.tailscaled-autoconnect.serviceConfig = {
+          Type = lib.mkForce "simple";
+          NotifyAccess = "all";
         };
 
         # Do not bring up the exit node until the Mullvad policy route and kill
