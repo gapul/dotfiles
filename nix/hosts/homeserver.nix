@@ -148,6 +148,12 @@ let
         }
       '';
     };
+    # 本棚 (homelab/audiobookshelf.nix)。iPhone の Audiobookshelf アプリと Readest (OPDS) が
+    # 自前のログインで直接叩くので Authelia は挟まない。
+    books = {
+      upstream = "127.0.0.1:8107";
+      interval = "1h";
+    };
     ntfy.upstream = "127.0.0.1:8082";
     cache.upstream = "127.0.0.1:8083"; # attic (own nix binary cache)
     shell.upstream = "127.0.0.1:8888"; # atuin (シェル履歴の同期サーバー)

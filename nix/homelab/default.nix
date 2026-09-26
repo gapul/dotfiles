@@ -39,6 +39,7 @@
     ./anki.nix
     ./archivebox.nix
     ./attic.nix
+    ./audiobookshelf.nix
     ./authelia.nix
     ./bambuddy.nix
     ./atuin.nix
