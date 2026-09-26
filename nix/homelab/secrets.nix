@@ -98,8 +98,15 @@ in
 
   # Preserve the restrictive directory permissions required by Authelia and
   # the office VPN while sops-nix replaces each file atomically.
+  #
+  # The top directory is 0711, not 0700: the files are symlinks into /run/secrets
+  # and some are opened by the service's own user (matrix-synapse reads
+  # synapse-registration-secret, authelia-main reads authelia/users.yml), which
+  # needs traverse permission on this directory. With 0700 Synapse died in
+  # ExecStartPre with "Permission denied" on os.stat and restart-looped 1,270
+  # times on 2026-09-26. Listing stays root-only.
   systemd.tmpfiles.rules = [
-    "d /var/lib/secrets 0700 root root -"
+    "d /var/lib/secrets 0711 root root -"
     "d /var/lib/secrets/authelia 0750 root authelia-main -"
     "d /var/lib/secrets/mvrx 0700 root root -"
   ];
