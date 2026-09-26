@@ -10,6 +10,7 @@ let
     state=${stateDir}/state
     config="$state/config/config.json"
     secret=/var/lib/secrets/filestash-secret-key
+    admin=/var/lib/secrets/filestash-admin-password
     ${pkgs.coreutils}/bin/install -d -m 0700 ${stateDir}
     ${pkgs.coreutils}/bin/install -d -m 0700 -o 1000 -g 1000 "$state/config"
 
@@ -28,11 +29,35 @@ let
       printf '%s\n' "$old_secret" > "$secret"
     fi
 
+    # Admin password, same treatment as the signing key: created once on the
+    # box, never in the store or Git. Without it Filestash offers /admin/setup
+    # to whoever opens the site first (found 2026-09-26). The same password
+    # opens the local backends below (plg_backend_local compares against
+    # auth.admin), so it is the one credential to keep in Bitwarden.
+    if [ ! -s "$admin" ]; then
+      ${pkgs.coreutils}/bin/install -m 0600 /dev/null "$admin"
+      ${pkgs.openssl}/bin/openssl rand -base64 24 | ${pkgs.coreutils}/bin/tr -d '/+=' > "$admin"
+    fi
+    admin_pw="$(${pkgs.coreutils}/bin/tr -d '\n' < "$admin")"
+    admin_hash="$(${pkgs.apacheHttpd}/bin/htpasswd -nbB "" "$admin_pw" | ${pkgs.coreutils}/bin/cut -d: -f2 | ${pkgs.coreutils}/bin/tr -d '\n')"
+
+    # The two mounts are declared as local backends with the password filled
+    # in, so the login page is a click, not a form. Before this the generated
+    # config had connections: [] and the UI showed nothing to open.
     tmp="$config.new"
     ${pkgs.jq}/bin/jq -n \
       --arg host 'files.gapul.net' \
       --rawfile secret_key "$secret" \
-      '{general: {host: $host, secret_key: ($secret_key | rtrimstr("\n"))}, connections: []}' \
+      --arg admin_hash "$admin_hash" \
+      --arg admin_pw "$admin_pw" \
+      '{
+        general: {host: $host, secret_key: ($secret_key | rtrimstr("\n"))},
+        auth: {admin: $admin_hash},
+        connections: [
+          {type: "local", label: "Google Drive", path: "/storage/drive", password: $admin_pw},
+          {type: "local", label: "Backups (restic)", path: "/storage/backups", password: $admin_pw}
+        ]
+      }' \
       > "$tmp"
     ${pkgs.coreutils}/bin/chown 1000:1000 "$tmp"
     ${pkgs.coreutils}/bin/chmod 0600 "$tmp"
