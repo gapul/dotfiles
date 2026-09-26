@@ -8,8 +8,11 @@ Two Minecraft servers run on the mac mini instead of paying for Realms. They are
 
 | Name | Public port | Version | Purpose |
 |---|---|---|---|
-| vanilla | 25565 | Fabric 26.2, tracking latest | The main server, for playing with friends. |
-| solo | 25566 | Fabric 26.2, tracking latest | Single player. Same build, own whitelist, sleeps after an hour. |
+| vanilla | 25565 | Fabric, tracking latest | The main server, for playing with friends. |
+| solo | 25566 | Fabric, tracking latest | Single player. Same build, own whitelist, sleeps after an hour. |
+
+The pinned version lives in `nix/pkgs/fabric-server.nix` and is moved by
+`scripts/update-custom-packages.sh`, so it is deliberately not repeated here.
 
 Both run Fabric with server-side mods only (Fabric API plus the Lithium / FerriteCore / Krypton /
 Moonrise performance set), so a plain launcher joins either one. Fabric replaced Paper on
@@ -111,11 +114,11 @@ sudo launchctl bootstrap system /Library/LaunchDaemons/org.nixos.minecraft-solo.
 ## Bringing in an old world
 
 A single-player world can be dropped in as it is and will be converted on startup. Worlds old
-enough to have no DataVersion, meaning 1.9 and earlier, are refused by 26.2, which asks you to
+enough to have no DataVersion, meaning 1.9 and earlier, are refused by the current version, which asks you to
 open them in an older version first. Passing them through a 1.12.2 server once fixes that.
 1.12.2 needs Java 8, so use `zulu8`.
 
-Inventory and coordinates live in `playerdata` inside the world — `players/data` in 26.2 — so
+Inventory and coordinates live in `playerdata` inside the world — `players/data` in current versions — so
 moving the folder carries them along.
 
 ## Where to look when something breaks
