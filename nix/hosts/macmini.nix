@@ -12,90 +12,48 @@ let
     nixpkgsUnstable = nixpkgsAgents;
     inherit (pkgs.stdenv.hostPlatform) system;
   };
-  paperServer = pkgs.callPackage ../pkgs/paper-server.nix { };
+  fabricServer = pkgs.callPackage ../pkgs/fabric-server.nix { };
+  fabricMods = import ../pkgs/fabric-mods.nix { inherit (pkgs) fetchurl; };
   aivisSpeechEngine = pkgs.callPackage ../pkgs/aivisspeech-engine.nix { };
 
-  # サーバーに入れる jar は全部ここで固定する。plugins/ と mods/ に置かれるのは store への
-  # symlink なので、宣言と中身がずれない。手で入れた実体の jar には触らない。
+  # Both Minecraft servers run the same Fabric build with the same server-side mods, so a plain
+  # launcher joins either one. Fabric replaced Paper on 2026-09-26: the game version can move the
+  # day Mojang ships (Paper's stable builds trail by weeks), the optimisation mods match Paper's
+  # performance, and nothing here depends on a Bukkit plugin any more. Anything that would need a
+  # client mod does not go on these servers; a modpack world is a separate, temporary instance.
   #
-  # Paper 本体と違って自動更新には載せていない。mod と plugin は本体の版に追いつく速度が
-  # まちまちで、勝手に上がると「昨日入れた世界が開かない」が起きるため。上げるときは人が決める。
-  multiverseCore = pkgs.fetchurl {
-    url = "https://cdn.modrinth.com/data/3wmN97b8/versions/bzFXz39N/multiverse-core-5.8.0.jar";
-    hash = "sha256-xSfZ4holpxyyRCrB8b/TqKHvt9ieDLDmqU9gAwT95sE=";
-  };
-  # Fabric は本体の新版に当日〜数日で追いつくので、本館と同じ 26.2 に載る。サーバー用の
-  # 起動 jar は meta が組み立てて返すので、URL に版が全部入っている。
-  fabricServer = pkgs.fetchurl {
-    name = "fabric-server-26.2-loader-0.19.3.jar";
-    url = "https://meta.fabricmc.net/v2/versions/loader/26.2/0.19.3/1.1.2/server/jar";
-    hash = "sha256-MB+DqsNrI/K8ZMxYVg7fmFM8+qMOU68AK6lQx19BALQ=";
-  };
-  # 大半の mod が要求するので最初から入れておく。無いと「mod を入れたのに起動しない」を必ず踏む。
-  fabricApi = pkgs.fetchurl {
-    name = "fabric-api-0.157.0+26.2.jar";
-    url = "https://cdn.modrinth.com/data/P7dR8mSH/versions/vmQp7ixA/fabric-api-0.157.0%2B26.2.jar";
-    hash = "sha256-rLfckKBDBRnElUgHTT+/b9gdEwY/CPCvNEsqawikJiA=";
-  };
-
-  # 寝ている間の status 応答に使う版。Paper を追う2本(本館と個人用)がここを見る。
-  # jar を上げたらここもずれるので、scripts/update-custom-packages.sh が paper-server.nix と
-  # 一緒に書き換える。手で直す場所ではない。
-  paperMcVersion = "26.2";
-  paperProtocol = 776;
-
-  # 立てているマイクラのサーバー。本館はバニラ(Paper)で最新を追い、mod 用は別インスタンスに
-  # する——mod は本体の新バージョンに追いつくのが遅く、「最新を追う」と両立しないため。
-  # version/protocol は寝ている間の status 応答に使う(lazymcConfig を参照)。
-  minecraftServers = {
-    # 友人と遊ぶ本館。世界を増やせるように Multiverse を入れてある(`/mv create` で足す)。
-    vanilla = {
-      dir = "/Users/mcsrv/server";
+  # version/protocol are what lazymc reports while the server sleeps. The protocol number is not
+  # in Fabric's API, so scripts/update-custom-packages.sh looks it up and rewrites both here.
+  mcVersion = fabricServer.mcVersion;
+  mcProtocol = 776;
+  fabricInstance =
+    extra:
+    {
       java = pkgs.temurin-bin-25;
       memory = "2G";
-      port = 25565;
-      version = paperMcVersion;
-      protocol = paperProtocol;
-      runner = ../../configs/macmini/minecraft/run.sh;
-      env = {
-        SERVER_JAR = "${paperServer}";
-        PLUGINS = "${multiverseCore}";
-      };
-    };
-    # 自分ひとり用。世界を分けたいだけなので設定は本館と同じ。無人のあいだ止まっている以上、
-    # 増やしても待機コストは無い。
-    solo = {
-      dir = "/Users/mcsrv/solo";
-      java = pkgs.temurin-bin-25;
-      memory = "2G";
-      port = 25566;
-      version = paperMcVersion;
-      protocol = paperProtocol;
-      runner = ../../configs/macmini/minecraft/run.sh;
-      env = {
-        SERVER_JAR = "${paperServer}";
-        # 本館と同じ理由で入れてある。母艦に残っていたシングルの世界を2つとも持ってきたので、
-        # ひとり用でも世界の出し入れが要る。
-        PLUGINS = "${multiverseCore}";
-        WHITELIST_SRC = "/etc/minecraft/whitelist-solo.json";
-      };
-    };
-    # 最新で mod を遊ぶ側。Fabric は本体に追いつくのが速いので本館と同じ 26.2 に載る。
-    # NeoForge 1.21.1 の黄昏の森サーバーは 2026-09-25 に外した (立ち上げ以来ログイン 0)。
-    # 世界は /Users/Shared/minecraft-backups/modded-final-20260925.tar.gz。公式が 26.x に
-    # 追いつくか、非公式移植 (Twilight Forest: Re26、Fabric 版あり) をここに載せるかは次に要る日に決める。
-    fabric = {
-      dir = "/Users/mcsrv/fabric";
-      java = pkgs.temurin-bin-25;
-      memory = "2G";
-      port = 25568;
-      version = "26.2";
-      protocol = 776;
+      version = mcVersion;
+      protocol = mcProtocol;
       runner = ../../configs/macmini/minecraft/run.sh;
       env = {
         SERVER_JAR = "${fabricServer}";
-        MODS = "${fabricApi}";
-      };
+        MODS = lib.concatStringsSep " " (map toString fabricMods);
+      }
+      // (extra.env or { });
+    }
+    // builtins.removeAttrs extra [ "env" ];
+
+  minecraftServers = {
+    # 友人と遊ぶ本館。
+    vanilla = fabricInstance {
+      dir = "/Users/mcsrv/vanilla";
+      port = 25565;
+    };
+    # 自分ひとり用。本館と同じもので、入れる人と寝るまでの時間だけ違う。
+    solo = fabricInstance {
+      dir = "/Users/mcsrv/solo";
+      port = 25566;
+      sleepAfter = 3600;
+      env.WHITELIST_SRC = "/etc/minecraft/whitelist-solo.json";
     };
   };
 
@@ -125,14 +83,14 @@ let
       wake_on_start = false
       wake_on_crash = false
       # 既定は「止める」ではなく「凍らせる」(SIGSTOP)。復帰は速いが 1.2GB を握ったままなので、
-      # 3本立てると待機だけで 3.6GB 持っていかれる——24GB を AI スタックと分け合う機械では損。
+      # 2本立てると待機だけで 2.4GB 持っていかれる——24GB を AI スタックと分け合う機械では損。
       # 起動は実測 4〜5 秒なので、素直に落とす。凍ったまま lazymc が死ぬと世界のロックを
       # 掴んだまま残る、という厄介な壊れ方も無くなる。
       freeze_process = false
 
       [time]
       # 10分無人で停止。起動は4秒弱なので、待たされる感覚はほぼ無い。
-      sleep_after = 600
+      sleep_after = ${toString (inst.sleepAfter or 600)}
       minimum_online_time = 60
 
       [motd]
@@ -371,7 +329,7 @@ in
   #  nothing. Its successor, claude-agent, is a home-manager agent instead — see
   #  nix/home/macmini-claude-agent.nix.)
 
-  # Paper, run straight on macOS as its own user rather than in a container.
+  # Minecraft, run straight on macOS as its own user rather than in a container.
   #
   # It used to be an Apple container, which bought the itzg image's conveniences and cost far more:
   # published ports never actually forwarded (the host side accepts then resets, TCP included, so
@@ -379,18 +337,18 @@ in
   # guest kernel meant ~3.2G resident no matter how small the JVM heap was. Native, the same world
   # sits at ~1.2G and binds the port itself. With this the mini has no containers left at all.
   #
-  # The jar comes from nix by content hash (pkgs/paper-server.nix), and the weekly
-  # update-custom-packages job moves that pin to the newest STABLE build. The client here is Prism,
-  # which starts the newest release, so the server follows it — but through a reviewed, revertible
-  # commit rather than by re-downloading LATEST behind our backs at some restart.
+  # The server jar and mods come from nix by content hash (pkgs/fabric-server.nix,
+  # pkgs/fabric-mods.nix), and the hourly update-custom-packages job moves those pins to the newest
+  # game version every mod supports. The client here is Prism, which starts the newest release, so
+  # the server follows it — but through a reviewed, revertible commit rather than by re-downloading
+  # LATEST behind our backs at some restart.
   #
   # Following costs one thing: a world conversion can arrive on its own schedule, and conversion is
   # one-way. run.sh snapshots the world first whenever the jar's version differs from the last run.
   #
-  # 26.1.2 -> 26.2 on 2026-08-15, before opening the server to friends: launchers start the newest
-  # release by default, so staying two versions behind would have made every guest hunt for an old
-  # profile. The pre-upgrade world is at /Users/mcsrv/server.bak-26.1.2-20260815 (the conversion to
-  # the new format is one-way).
+  # History: 26.1.2 -> 26.2 on 2026-08-15 before opening to friends (launchers start the newest
+  # release, so lagging would have made every guest hunt for an old profile); Paper -> Fabric on
+  # 2026-09-26 (see the minecraftServers comment).
 
   # --- Hermes, brought under nix -------------------------------------------------------------
   #

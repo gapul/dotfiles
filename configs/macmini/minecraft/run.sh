@@ -13,17 +13,23 @@ MEM="${SERVER_MEM:-2G}"
 
 cd "$SERVER_DIR" || exit 1
 
-# nix store のパスは <hash>-paper-<version>-<build>.jar になるので、先頭は固定できない。
-jar_version=$(basename "$JAR" | sed -nE 's/.*paper-([0-9][^-]*)-[0-9]+\.jar$/\1/p')
+# nix store のパスは <hash>-fabric-server-<version>-loader-<loader>.jar になるので、先頭は固定できない。
+jar_version=$(basename "$JAR" | sed -nE 's/.*fabric-server-([0-9][^-]*)-loader-.*\.jar$/\1/p')
 
-# Paper 26.2 で version_history.json が .paper/ 配下へ移った。両方見る。
+# 前回どの版で起動したかは、このスクリプト自身が .server-version に書き残す (Fabric は Paper の
+# version_history.json のような記録を残さない)。最初の一度だけ、Paper 時代の記録があればそれを使う。
 running_version=""
-for f in "$SERVER_DIR/.paper/version_history.json" "$SERVER_DIR/version_history.json"; do
-  if [ -f "$f" ]; then
-    running_version=$(sed -nE 's/.*"currentVersion":"[^"]*\(MC: ([^)]+)\)".*/\1/p' "$f")
-    [ -n "$running_version" ] && break
-  fi
-done
+marker="$SERVER_DIR/.server-version"
+if [ -f "$marker" ]; then
+  running_version=$(cat "$marker")
+else
+  for f in "$SERVER_DIR/.paper/version_history.json" "$SERVER_DIR/version_history.json"; do
+    if [ -f "$f" ]; then
+      running_version=$(sed -nE 's/.*"currentVersion":"[^"]*\(MC: ([^)]+)\)".*/\1/p' "$f")
+      [ -n "$running_version" ] && break
+    fi
+  done
+fi
 
 if [ -n "$jar_version" ] && [ -n "$running_version" ] && [ "$jar_version" != "$running_version" ]; then
   snapshot="${SERVER_DIR%/}.pre-$running_version"
@@ -37,6 +43,7 @@ if [ -n "$jar_version" ] && [ -n "$running_version" ] && [ "$jar_version" != "$r
   cp -a server.properties "$snapshot/" 2>/dev/null
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] $running_version -> $jar_version: 変換前の世界を $snapshot へ退避した"
 fi
+[ -n "$jar_version" ] && printf '%s\n' "$jar_version" > "$marker"
 
 # 前段の lazymc が突然死ぬと、その下のサーバーが宙に浮いたまま残る。macOS では止まった状態
 # (ps の T) で残るので TERM を送っても処理されず、世界のロックを掴んだままになる。次に起こした
@@ -69,8 +76,7 @@ wl="${WHITELIST_SRC:-/etc/minecraft/whitelist.json}"
 
 # 宣言された jar は store への symlink として置き直す。前回の分(= symlink)は毎回消すので、
 # 宣言から外した jar は次の起動で居なくなる。手で入れた実体の jar には触らない。
-# Paper は plugins/、Fabric は mods/ を読む。どちらか片方しか使わないので、宣言も置き場所も
-# 無いなら作らない(Paper のディレクトリに空の mods/ を生やさないため)。
+# Fabric は mods/ を読む。plugins/ は Paper 時代の名残で、宣言も置き場所も無いなら作らない。
 link_jars() {
   dir=$1
   shift
@@ -88,7 +94,7 @@ link_jars plugins ${PLUGINS:-}
 # shellcheck disable=SC2086
 link_jars mods ${MODS:-}
 
-# Aikar's flags から AlwaysPreTouch を外し -Xms を小さくしてある。無人時間が長く、24GB を
+# Aikar's flags (Paper 由来だが Fabric でも同じ JVM 調整が効く) から AlwaysPreTouch を外し -Xms を小さくしてある。無人時間が長く、24GB を
 # AI スタックと分け合う機械では、起動時に全ヒープを commit するのは損なので。
 exec "$JAVA" \
   -Xms512M "-Xmx$MEM" \
