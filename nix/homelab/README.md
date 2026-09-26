@@ -52,7 +52,7 @@ name that matters now.
 | `mosquitto-ha.password` | a `mosquitto_passwd` hash, the part after `ha:` — not a plaintext password |
 | `free-games-claimer.env` | `NOTIFY` (an ntfy publish URL, so it embeds a credential) and `PANEL_PASSWORD`, which is also the VNC password |
 | `mail/admin.password`, `mail/gmail.password`, `mail/work.password`, `mail/school.password` | one raw line each (`openssl rand -base64 24`). `admin` is Stalwart's fallback administrator (webadmin at mail.gapul.net); the other three are the mirror mailboxes, read by both Stalwart (memory directory) and imapsync |
-| `mail/mirror-<name>.env` | `SRC_USER=<google address>` and `SRC_PASSWORD=<Google app password>` for the account imapsync copies from. Leave `SRC_PASSWORD` empty to skip that account; it is not an error. Google requires 2-step verification before it issues app passwords, and a Workspace admin can disable them entirely |
+| `mail/<name>.address`, `mail/<name>.app-password` | the Google account behind each mailbox (`gmail` / `work` / `school`): its address, and a Google app password. Both imapsync (copying in) and Stalwart's outbound relay (sending as that identity through smtp.gmail.com) use the same pair. An empty `app-password` skips the copy and leaves that identity unable to send; it is not an error. Google requires 2-step verification before it issues app passwords, and a Workspace admin can disable them entirely |
 | `tailscale.key` | a Tailscale auth key. `services.tailscale.authKeyFile` reads it so a reinstall connects itself; revoke and replace it after use |
 
 The office tunnel keeps its own directory, `/var/lib/secrets/mvrx/`, because none
