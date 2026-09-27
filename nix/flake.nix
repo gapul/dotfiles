@@ -367,8 +367,6 @@
           ./home/macmini-render.nix
           # 音声モデルと合成処理。クライアントは tailnet 越しの API を使う。
           ./home/macmini-aivisspeech.nix
-          # スライド編集の試作。PPTX の書き出しがブラウザでしか動かないので常駐が要る。
-          ./home/macmini-presenta.nix
           ./home/tmp-cleanup.nix # ~/tmp のスクラッチを7日で自動掃除 (macWorkstation と共有)
           ./home/nix-gc-tcc.nix # root GC daemon (hosts/darwin-common.nix) が使う署名済み nix の安定コピー
           # dotfiles-pull (home/macmini.nix) は post-merge hook が rebuild する前提だが、hook を
