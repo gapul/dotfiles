@@ -1,0 +1,29 @@
+name: macmini firewall diag
+on:
+  workflow_dispatch:
+    inputs:
+      fix:
+        description: "apply the fix (setblockall off / setglobalstate on) when sudo -n works"
+        type: boolean
+        default: false
+jobs:
+  diag:
+    runs-on: [self-hosted, macmini]
+    timeout-minutes: 5
+    steps:
+      - name: Application Firewall state
+        run: |
+          fw=/usr/libexec/ApplicationFirewall/socketfilterfw
+          echo "## as user"; "$fw" --getglobalstate || true; "$fw" --getblockall || true; "$fw" --getstealthmode || true
+          echo "## sudo -n"; if sudo -n true 2>/dev/null; then echo "sudo: passwordless OK"; else echo "sudo: password required"; fi
+          echo "## listapps"; sudo -n "$fw" --listapps 2>&1 | head -60 || "$fw" --listapps 2>&1 | head -60 || true
+          echo "## listeners"; sudo -n lsof -nP -iTCP -sTCP:LISTEN 2>/dev/null | head -40 || lsof -nP -iTCP -sTCP:LISTEN | head -40 || true
+          echo "## pf"; sudo -n pfctl -s info 2>&1 | head -5 || true
+          echo "## sshd"; sudo -n launchctl print system/com.openssh.sshd 2>&1 | head -20 || launchctl print system/com.openssh.sshd 2>&1 | head -20 || true
+      - name: Fix
+        if: ${{ inputs.fix }}
+        run: |
+          fw=/usr/libexec/ApplicationFirewall/socketfilterfw
+          sudo -n "$fw" --setblockall off
+          sudo -n "$fw" --setglobalstate on
+          sudo -n "$fw" --getglobalstate; sudo -n "$fw" --getblockall
