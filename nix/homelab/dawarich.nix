@@ -22,8 +22,8 @@
       "DATABASE_NAME" = "dawarich_production";
       "DATABASE_PORT" = "5432";
       "DATABASE_USERNAME" = "dawarich";
-      # Reverse geocoding: photon on the macmini (launchd.daemons.photon in nix/hosts/macmini.nix).
-      "PHOTON_API_HOST" = "100.105.135.49:2322";
+      # Reverse geocoding: photon-proxy on the macmini (launchd.daemons.photon-proxy in nix/hosts/macmini.nix).
+      "PHOTON_API_HOST" = "100.105.135.49:2323";
       "PHOTON_API_USE_HTTPS" = "false";
       "PROMETHEUS_EXPORTER_ENABLED" = "false";
       "RAILS_ENV" = "production";
@@ -195,8 +195,8 @@
       "DATABASE_NAME" = "dawarich_production";
       "DATABASE_PORT" = "5432";
       "DATABASE_USERNAME" = "dawarich";
-      # Reverse geocoding: photon on the macmini (launchd.daemons.photon in nix/hosts/macmini.nix).
-      "PHOTON_API_HOST" = "100.105.135.49:2322";
+      # Reverse geocoding: photon-proxy on the macmini (launchd.daemons.photon-proxy in nix/hosts/macmini.nix).
+      "PHOTON_API_HOST" = "100.105.135.49:2323";
       "PHOTON_API_USE_HTTPS" = "false";
       "PROMETHEUS_EXPORTER_ENABLED" = "false";
       "RAILS_ENV" = "production";
