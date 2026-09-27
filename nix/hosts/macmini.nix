@@ -512,7 +512,7 @@ in
     };
   };
 
-  # Reverse geocoder for Dawarich on the homeserver (PHOTON_API_HOST in nix/homelab/dawarich.nix).
+  # Reverse geocoder for Dawarich on the homeserver, reached through photon-proxy below.
   # It lives here because the homeserver has ~4GB free and photon's embedded OpenSearch wants a
   # few. Japan extract only (~2GB compressed). The dump's "1.0" format covers every photon 1.x.
   # First start downloads it; to refresh, delete photon_data and restart (nothing auto-updates —
@@ -535,7 +535,7 @@ in
           url = "https://github.com/komoot/photon/releases/download/1.3.0/photon-1.3.0.jar";
           sha256 = "19biyn0y59lq9g4vcj4zf2cdj271d0p163hql6r0fj2y0k00g5x8";
         }
-      } serve -listen-ip 0.0.0.0
+      } serve -listen-ip 127.0.0.1
     ''}";
     serviceConfig = {
       UserName = user.username;
@@ -544,6 +544,20 @@ in
       ProcessType = "Background";
       StandardOutPath = "/Users/${user.username}/.local/share/photon.log";
       StandardErrorPath = "/Users/${user.username}/.local/share/photon.log";
+    };
+  };
+
+  # What Dawarich actually talks to: photon itself only listens on loopback. The proxy asks for
+  # Japanese and moves ward / 丁目 / 街区 into the fields Dawarich reads — see proxy.py.
+  launchd.daemons.photon-proxy = {
+    command = "${pkgs.python3.interpreter} ${../../configs/macmini/photon/proxy.py}";
+    serviceConfig = {
+      UserName = user.username;
+      RunAtLoad = true;
+      KeepAlive = true;
+      ProcessType = "Background";
+      StandardOutPath = "/Users/${user.username}/.local/share/photon-proxy.log";
+      StandardErrorPath = "/Users/${user.username}/.local/share/photon-proxy.log";
     };
   };
 
@@ -673,9 +687,11 @@ in
     /usr/libexec/ApplicationFirewall/socketfilterfw --add ${pkgs.lazymc}/bin/lazymc >/dev/null 2>&1 || true
     /usr/libexec/ApplicationFirewall/socketfilterfw --unblockapp ${pkgs.lazymc}/bin/lazymc >/dev/null 2>&1 || true
     # Geyser は java そのものが UDP 19132 を持つ (lazymc を介さない)。宣言した JDK の java を許可する。
-    # photon (TCP 2322, homeserver の Dawarich が叩く) も同じ java なので、この 1 行で通る。
     /usr/libexec/ApplicationFirewall/socketfilterfw --add ${pkgs.temurin-bin-25}/bin/java >/dev/null 2>&1 || true
     /usr/libexec/ApplicationFirewall/socketfilterfw --unblockapp ${pkgs.temurin-bin-25}/bin/java >/dev/null 2>&1 || true
+    # photon-proxy (TCP 2323, homeserver の Dawarich が叩く)。python も store path が変わるたびに登録し直す。
+    /usr/libexec/ApplicationFirewall/socketfilterfw --add ${pkgs.python3.interpreter} >/dev/null 2>&1 || true
+    /usr/libexec/ApplicationFirewall/socketfilterfw --unblockapp ${pkgs.python3.interpreter} >/dev/null 2>&1 || true
     # AivisSpeech is served to workstation clients over Tailscale.  Like lazymc,
     # every Nix update can give its executable a new store path, so keep the
     # incoming-connection permission tied to the declared package.
