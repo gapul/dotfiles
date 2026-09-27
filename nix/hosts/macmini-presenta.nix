@@ -222,8 +222,7 @@ in
 
   # 動画の書き出し。資料の発表原稿を読み上げ、Remotion がスライドを描いて mp4 にする。
   #
-  # 読み上げは fish-voicevox シム（home/macmini.nix）経由の Fish S2 Pro。シムが詰まったときは
-  # AivisSpeech エンジン（home/macmini-aivisspeech.nix、VOICEVOX と同じ API）に落ちる。
+  # 読み上げは AivisSpeech エンジン（home/macmini-aivisspeech.nix、VOICEVOX と同じ API）。
   # VOICEVOX 本体（0.25.2）も置いてみたが、macOS 27 では
   # /synthesis のたびに libffi の trampoline で落ちる（DYLD_LIBRARY_PATH でも直らない）。
   # キューは DB（VideoJob）なので、ここは待ち受けるだけ。アプリと同じ data/ とデータベースを見る。
@@ -245,17 +244,13 @@ in
         HOME = home;
         PATH = "${home}/.local/bin:/etc/profiles/per-user/${user.username}/bin:/run/current-system/sw/bin:/usr/bin:/bin";
         PRESENTA_DATA_DIR = "${share}/data";
-        # Fish S2 Pro through the VOICEVOX-compatible shim (home/macmini.nix, fish-voicevox).
-        # The shim itself falls back to AivisSpeech on 100.105.135.49:10101 when Fish fails or
-        # would outrun the 120s the worker waits, so this stays as reliable as the engine it replaced.
-        #
-        # LICENCE: Fish S2 Pro is under the Fish Audio Research License — research, personal and
-        # evaluation use only. presenta.mugen404.com is a public hosted service, which that licence
-        # counts as commercial use. Serving it from Fish needs an agreement with Fish Audio;
-        # without one, put this back to http://100.105.135.49:10101 with speaker 888753760.
-        VOICEVOX_URL = "http://127.0.0.1:10202";
-        # The shim only has one voice, but the worker always sends a speaker id.
-        VOICEVOX_SPEAKER = "900000001";
+        # AivisSpeech, voice まお (ノーマル). Fish S2 Pro through the fish-voicevox shim
+        # (home/macmini.nix, http://127.0.0.1:10202, speaker 900000001) was used until 2026-09-27;
+        # its Fish Audio Research License allows only research, personal and evaluation use, and a
+        # public service is commercial use in its terms. Do not switch back without an agreement
+        # with Fish Audio.
+        VOICEVOX_URL = "http://100.105.135.49:10101";
+        VOICEVOX_SPEAKER = "888753760";
         # pnpm はここに端末が無いと node_modules の作り直しで止まる（CI と同じ扱いにする）。
         CI = "true";
       };
