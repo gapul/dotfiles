@@ -530,7 +530,7 @@ in
   # or would take longer than the caller waits, so a slow model never costs us a video.
   #
   # Fish S2 Pro's weights are under the Fish Audio Research License: research, personal and
-  # evaluation use only. Serving presenta.gapul.net from it is a commercial use in that licence's
+  # evaluation use only. Serving presenta.mugen404.com from it is a commercial use in that licence's
   # terms and needs a separate agreement with Fish Audio.
   #
   # The model (6.3GB) and the venv are imperative assets like the rest of the AI stack, see

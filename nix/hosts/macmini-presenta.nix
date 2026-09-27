@@ -1,4 +1,4 @@
-# Presenta (gapul/presenta-prototypes) — the slide IDE served at presenta.gapul.net through the
+# Presenta (mugen404/presenta) — the slide IDE served at presenta.mugen404.com through the
 # macmini tunnel, which points at 127.0.0.1:3141.
 #
 # Deploys follow main by themselves: every two minutes presenta-deploy fetches the repo and, when
@@ -47,10 +47,10 @@ let
   '';
   cloudflaredDir = "${home}/.local/share/cloudflared";
   tunnelConfig = pkgs.writeText "presenta-tunnel.yml" ''
-    tunnel: a4946214-cf23-49c6-96ba-0f375df201d3
-    credentials-file: ${cloudflaredDir}/presenta.json
+    tunnel: e23babda-af37-4b76-ba84-dc25d0529c87
+    credentials-file: ${cloudflaredDir}/presenta-mugen.json
     ingress:
-      - hostname: presenta.gapul.net
+      - hostname: presenta.mugen404.com
         service: http://127.0.0.1:3141
       - service: http_status:404
   '';
@@ -109,7 +109,7 @@ let
     )
     if [ ! -d "$repo/.git" ]; then
       mkdir -p ${share}/releases
-      git_ clone --quiet https://github.com/gapul/presenta-prototypes.git "$repo"
+      git_ clone --quiet https://github.com/mugen404/presenta.git "$repo"
     fi
     git_ -C "$repo" fetch --quiet origin main
     rev=$(git -C "$repo" rev-parse origin/main)
@@ -200,16 +200,17 @@ in
     };
   };
 
-  # The tunnel that publishes presenta.gapul.net (ingress -> 127.0.0.1:3141). Its credentials file
-  # was created once with `cloudflared tunnel create` and cannot live in the store, so it stays in
-  # ~/.local/share/cloudflared. This used to be a hand-started process, and the 2026-09-15 reboot for
+  # The tunnel that publishes presenta.mugen404.com (ingress -> 127.0.0.1:3141). Its credentials file
+  # was created once with `cloudflared tunnel create` in the Mugen Cloudflare account (the one
+  # holding mugen404.com; a gapul-account tunnel cannot serve that zone) and cannot live in the
+  # store, so it stays in ~/.local/share/cloudflared. This used to be a hand-started process, and the 2026-09-15 reboot for
   # the macOS 27 update left the site answering 530 until someone noticed.
   launchd.daemons.presenta-tunnel = {
     serviceConfig = {
       ProgramArguments = [
         "/bin/sh"
         "-c"
-        "/bin/wait4path ${cloudflaredDir}/presenta.json && exec ${pkgs.cloudflared}/bin/cloudflared tunnel --no-autoupdate --config ${tunnelConfig} run"
+        "/bin/wait4path ${cloudflaredDir}/presenta-mugen.json && exec ${pkgs.cloudflared}/bin/cloudflared tunnel --no-autoupdate --config ${tunnelConfig} run"
       ];
       UserName = user.username;
       RunAtLoad = true;
@@ -249,7 +250,7 @@ in
         # would outrun the 120s the worker waits, so this stays as reliable as the engine it replaced.
         #
         # LICENCE: Fish S2 Pro is under the Fish Audio Research License — research, personal and
-        # evaluation use only. presenta.gapul.net is a public hosted service, which that licence
+        # evaluation use only. presenta.mugen404.com is a public hosted service, which that licence
         # counts as commercial use. Serving it from Fish needs an agreement with Fish Audio;
         # without one, put this back to http://100.105.135.49:10101 with speaker 888753760.
         VOICEVOX_URL = "http://127.0.0.1:10202";

@@ -520,7 +520,7 @@ in
             # when the app can reach its Postgres, so this covers the app, the DB and the tunnel.
             name = "presenta";
             group = "public";
-            url = "https://presenta.gapul.net/api/health";
+            url = "https://presenta.mugen404.com/api/health";
             interval = "5m";
             conditions = [
               "[STATUS] == 200"
