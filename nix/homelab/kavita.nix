@@ -24,6 +24,12 @@ in
 
   # JWT の署名鍵。他の秘密と同じ /var/lib/secrets に置くが、これは誰とも共有しない
   # 乱数なので、無ければ自分で作る (復元後に手で置き直す手順を増やさない)。
+  #
+  # /var/lib/secrets 自体はここで作らない。ディレクトリのモードは secrets.nix の
+  # tmpfiles が 0711 で持っていて、ここに `install -d -m 0700` があったせいで起動の
+  # たびに 0700 へ戻り、自分のユーザで秘密を開くサービス (unified-calendar) が
+  # Permission denied で止まった (2026-09-27)。`install -d` は既存ディレクトリの
+  # モードも書き換える。
   systemd.services.kavita-token = {
     description = "Generate the Kavita token key if missing";
     before = [ "kavita.service" ];
@@ -31,7 +37,6 @@ in
     serviceConfig.Type = "oneshot";
     script = ''
       if [ ! -s ${tokenKeyFile} ]; then
-        install -d -m 0700 /var/lib/secrets
         (umask 077; ${pkgs.openssl}/bin/openssl rand -base64 96 | tr -d '\n' > ${tokenKeyFile})
       fi
     '';
