@@ -203,8 +203,14 @@ in
           on-resume = "hyprctl dispatch dpms on";
         }
         {
-          timeout = 900; # suspend after 15 minutes (battery protection, lid open only)
-          on-timeout = whenLidOpen "systemctl suspend";
+          timeout = 900; # suspend after 15 minutes (battery protection, lid open and on battery)
+          # Suspending takes the machine off the network, and this one is administered over
+          # ssh, so only do it when there is a battery to protect. That matches what the lid
+          # already does (HandleLidSwitchExternalPower = ignore); until now the idle timer was
+          # the one path that still suspended a plugged-in laptop out from under a session.
+          # systemd-ac-power exits 0 on mains. Every clause is &&: with `a && b || c` the shell
+          # would run c whenever a failed, i.e. suspend as soon as the lid was shut.
+          on-timeout = whenLidOpen "! ${pkgs.systemd}/bin/systemd-ac-power && systemctl suspend";
         }
       ];
     };
