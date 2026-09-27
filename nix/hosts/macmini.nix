@@ -512,6 +512,41 @@ in
     };
   };
 
+  # Reverse geocoder for Dawarich on the homeserver (PHOTON_API_HOST in nix/homelab/dawarich.nix).
+  # It lives here because the homeserver has ~4GB free and photon's embedded OpenSearch wants a
+  # few. Japan extract only (~2GB compressed). The dump's "1.0" format covers every photon 1.x.
+  # First start downloads it; to refresh, delete photon_data and restart (nothing auto-updates —
+  # place names barely move, and an in-place unpack corrupts the index).
+  launchd.daemons.photon = {
+    command = "${pkgs.writeShellScript "photon" ''
+      set -eu
+      dir=/Users/${user.username}/.local/share/photon
+      /bin/mkdir -p "$dir"
+      cd "$dir"
+      if [ ! -d photon_data ]; then
+        /bin/rm -rf download && /bin/mkdir download
+        /usr/bin/curl -fsSL https://download1.graphhopper.com/public/asia/japan/photon-db-japan-1.0-latest.tar.bz2 \
+          | ${pkgs.lbzip2}/bin/lbzip2 -dc | /usr/bin/tar -x -C download
+        /bin/mv download/photon_data photon_data
+        /bin/rm -rf download
+      fi
+      exec ${pkgs.temurin-bin-25}/bin/java -Xmx4G -jar ${
+        pkgs.fetchurl {
+          url = "https://github.com/komoot/photon/releases/download/1.3.0/photon-1.3.0.jar";
+          sha256 = "19biyn0y59lq9g4vcj4zf2cdj271d0p163hql6r0fj2y0k00g5x8";
+        }
+      } serve -listen-ip 0.0.0.0
+    ''}";
+    serviceConfig = {
+      UserName = user.username;
+      RunAtLoad = true;
+      KeepAlive = true;
+      ProcessType = "Background";
+      StandardOutPath = "/Users/${user.username}/.local/share/photon.log";
+      StandardErrorPath = "/Users/${user.username}/.local/share/photon.log";
+    };
+  };
+
   # ワールドの日次バックアップ。Realms から移ってくる以上、「壊しても戻せる」は要る。
   # 対象は上の表から作るので、サーバーを増やせばバックアップも自動で増える。
   # restic(5:00)より前に走らせて、その晩のうちに Google Drive まで乗せる。
@@ -638,6 +673,7 @@ in
     /usr/libexec/ApplicationFirewall/socketfilterfw --add ${pkgs.lazymc}/bin/lazymc >/dev/null 2>&1 || true
     /usr/libexec/ApplicationFirewall/socketfilterfw --unblockapp ${pkgs.lazymc}/bin/lazymc >/dev/null 2>&1 || true
     # Geyser は java そのものが UDP 19132 を持つ (lazymc を介さない)。宣言した JDK の java を許可する。
+    # photon (TCP 2322, homeserver の Dawarich が叩く) も同じ java なので、この 1 行で通る。
     /usr/libexec/ApplicationFirewall/socketfilterfw --add ${pkgs.temurin-bin-25}/bin/java >/dev/null 2>&1 || true
     /usr/libexec/ApplicationFirewall/socketfilterfw --unblockapp ${pkgs.temurin-bin-25}/bin/java >/dev/null 2>&1 || true
     # AivisSpeech is served to workstation clients over Tailscale.  Like lazymc,
