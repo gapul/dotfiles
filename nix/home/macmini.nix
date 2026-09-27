@@ -525,13 +525,14 @@ in
   );
 
   # A VOICEVOX-compatible front for Fish S2 Pro (mlx-speech), so anything that already speaks the
-  # VOICEVOX API can use it by pointing at this port — presenta's video worker does, see
-  # hosts/macmini-presenta.nix. Speech falls back to the AivisSpeech engine above when Fish fails
+  # VOICEVOX API can use it by pointing at this port. presenta's video worker used it until
+  # 2026-09-27 and is back on AivisSpeech for the licence below. Speech falls back to the
+  # AivisSpeech engine above when Fish fails
   # or would take longer than the caller waits, so a slow model never costs us a video.
   #
   # Fish S2 Pro's weights are under the Fish Audio Research License: research, personal and
-  # evaluation use only. Serving presenta.mugen404.com from it is a commercial use in that licence's
-  # terms and needs a separate agreement with Fish Audio.
+  # evaluation use only. A public service such as presenta.mugen404.com is commercial use in that
+  # licence's terms and needs a separate agreement with Fish Audio.
   #
   # The model (6.3GB) and the venv are imperative assets like the rest of the AI stack, see
   # configs/macmini/README.md.
