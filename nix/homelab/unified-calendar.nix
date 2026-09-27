@@ -80,6 +80,11 @@ in
   # 要らず、Caddy が直接ディレクトリを出す。
   services.caddy.virtualHosts.":${toString port}".extraConfig = ''
     root * ${publicDir}
+    # "/" には何も無い (フィードは <トークン>.ics だけ) ので file_server は 404 を返し、
+    # gatus の疎通確認 (homeserver.nix の sites 表、[STATUS] < 400) が常に赤になる。
+    # ルートだけ 204 で応える。中身は出さないのでトークンは漏れない。
+    @root path /
+    respond @root 204
     # ディレクトリ一覧を出すとトークンが漏れる。file_server は browse を付けない。
     file_server
     header Content-Type "text/calendar; charset=utf-8"

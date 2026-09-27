@@ -120,8 +120,14 @@ in
   # needs traverse permission on this directory. With 0700 Synapse died in
   # ExecStartPre with "Permission denied" on os.stat and restart-looped 1,270
   # times on 2026-09-26. Listing stays root-only.
+  #
+  # `z` の行は既にあるディレクトリのモードを直すためのもの。他の unit が
+  # `install -d -m 0700` でここを 0700 に戻していた (kavita.nix、2026-09-27) のを
+  # 外したが、switch 時の tmpfiles 再実行はルールの文面が変わった時しか走らない。
+  # `d` だけだと既に壊れたディレクトリは再起動まで直らないので、意図を行として持つ。
   systemd.tmpfiles.rules = [
     "d /var/lib/secrets 0711 root root -"
+    "z /var/lib/secrets 0711 root root -"
     "d /var/lib/secrets/authelia 0750 root authelia-main -"
     "d /var/lib/secrets/mvrx 0700 root root -"
   ];

@@ -111,7 +111,8 @@
     path = [ pkgs.openssl ];
     script = ''
       f=/var/lib/secrets/synapse-registration-secret
-      install -d -m 0755 /var/lib/secrets
+      # /var/lib/secrets は secrets.nix の tmpfiles が 0711 で管理する。ここで
+      # install -d すると既存ディレクトリのモードまで書き換わる (kavita.nix 参照)。
       if [ ! -s "$f" ]; then
         openssl rand -hex 32 > "$f"
         chmod 0400 "$f"
