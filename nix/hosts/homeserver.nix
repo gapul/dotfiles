@@ -511,7 +511,7 @@ in
             interval = "5m";
             conditions = [
               "[STATUS] == 200"
-              "[BODY].server.name == Conduit"
+              "[BODY].server.name == Synapse"
             ];
             alerts = [ ntfyAlert ];
           }
