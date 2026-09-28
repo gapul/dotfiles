@@ -18,8 +18,12 @@
 # トークンのファイルは hosts/macmini.nix の sops が ~/.config/mautrix-imessage/ に置く
 # (host 鍵で開けるのは system 側だけなので、home-manager からは触れない)。
 #
-# config.yaml は activation のたびに下の設定から作り直す。ブリッジ自身にも config を
-# 書き戻す機能があるが、-n で止めてある。正は Nix 側。
+# config.yaml は launchd がブリッジを上げるたびに、起動ラッパーが下の設定とトークンから
+# 作り直す。activation でやらないのは順序の問題: nix-darwin では home-manager の
+# activation が sops より先に走るので、トークンを初めて入れた switch では「まだ無い」
+# で終わり、もう一度 switch するまで動かなかった。起動時に作れば sops が置いた次の
+# 周回で拾えるし、設定を変えれば plist が変わって再起動され、その場で反映される。
+# ブリッジ自身にも config を書き戻す機能があるが、-n で止めてある。正は Nix 側。
 #
 # ## Synapse 側の暗号化
 #
@@ -107,6 +111,21 @@ let
     };
   };
   settingsFile = (pkgs.formats.yaml { }).generate "mautrix-imessage-config.yaml" settings;
+
+  # 起動ラッパー。トークンを差し込んだ config.yaml を書いてからブリッジに exec する。
+  # exec なので TCC が見るのは署名済みの安定バイナリのまま (home-manager 自体も
+  # /bin/sh -c 'wait4path && exec ...' で包んでいるので、前から同じ形)。
+  start = pkgs.writeShellScript "mautrix-imessage-start" ''
+    set -euo pipefail
+    umask 077
+    /bin/mkdir -p '${dataDir}'
+    AS_TOKEN="$(cat '${tokenDir}/as_token')" HS_TOKEN="$(cat '${tokenDir}/hs_token')" \
+      ${pkgs.yq-go}/bin/yq \
+        '.appservice.as_token = strenv(AS_TOKEN) | .appservice.hs_token = strenv(HS_TOKEN)' \
+        '${settingsFile}' > '${dataDir}/config.yaml.tmp'
+    /bin/mv '${dataDir}/config.yaml.tmp' '${dataDir}/config.yaml'
+    exec '${stable}' -c '${dataDir}/config.yaml' -n
+  '';
 in
 {
   home.activation.tccStableIMessage = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
@@ -114,43 +133,16 @@ in
       ${bridge}/bin/mautrix-imessage mautrix-imessage || true
   '';
 
-  home.activation.imessageDataDir = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    $DRY_RUN_CMD /bin/mkdir -p ${dataDir}
-  '';
-
-  # トークンが両方あるときだけ config.yaml を作る。無ければ作らず、launchd は
-  # PathState で待ち続ける (下)。sops が置く前の rebuild でも壊れない。
-  home.activation.imessageConfig = lib.hm.dag.entryAfter [ "imessageDataDir" ] ''
-    if [ -r ${tokenDir}/as_token ] && [ -r ${tokenDir}/hs_token ]; then
-      (
-        umask 077
-        AS_TOKEN="$(cat ${tokenDir}/as_token)" HS_TOKEN="$(cat ${tokenDir}/hs_token)" \
-          $DRY_RUN_CMD ${pkgs.yq-go}/bin/yq \
-            '.appservice.as_token = strenv(AS_TOKEN) | .appservice.hs_token = strenv(HS_TOKEN)' \
-            ${settingsFile} > ${dataDir}/config.yaml.tmp
-        $DRY_RUN_CMD /bin/mv ${dataDir}/config.yaml.tmp ${dataDir}/config.yaml
-      )
-    else
-      echo "mautrix-imessage: token files missing under ${tokenDir}; config.yaml not written" >&2
-    fi
-  '';
-
   launchd.agents.mautrix-imessage = {
     enable = true;
     config = {
-      # store ではなく署名済みの安定した場所を指す。理由は上の activation を参照。
-      ProgramArguments = [
-        stable
-        "-c"
-        "${dataDir}/config.yaml"
-        # config は activation が作る。ブリッジには書き戻させない。
-        "-n"
-      ];
+      # ラッパー経由で、署名済みの安定した場所のバイナリに exec する。理由は上の activation を参照。
+      ProgramArguments = [ "${start}" ];
       WorkingDirectory = dataDir;
-      # The config is written by the activation above only once the sops tokens are in
-      # place. Until then, do not crash-loop every ten seconds; launchd watches the path
-      # and starts the bridge as soon as the file appears.
-      KeepAlive.PathState."${dataDir}/config.yaml" = true;
+      # Do not start until sops has placed the tokens (hosts/macmini.nix). Until then, do
+      # not crash-loop; launchd watches the path and starts the bridge as soon as the file
+      # appears. The token files are symlinks into /run/secrets; PathState follows them.
+      KeepAlive.PathState."${tokenDir}/hs_token" = true;
       # フルディスクアクセスが無いとブリッジは chat.db を開けずに即死する。既定の 10 秒で
       # 回すとログだけが太るので、間隔を空ける。許可を足せば次の周回で上がる。
       ThrottleInterval = 60;
