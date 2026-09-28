@@ -45,6 +45,16 @@ creation_rules:
           - *mac
           - *macmini
 
+  # Matrix の iMessage ブリッジの appservice トークン。登録は homeserver の Synapse が読み、
+  # 同じトークンをブリッジ本体 (macmini) が config に持つ。両方の host 鍵で開ける。
+  - path_regex: secrets/matrix-imessage\.yaml$
+    key_groups:
+      - age:
+          - *me
+          - *recovery
+          - *macmini
+          - *homeserver
+
   # 上のどれにも当たらない新規ファイルは、人間の鍵だけで暗号化する (安全側に倒す)。
   - path_regex: secrets/.*\.yaml$
     key_groups:

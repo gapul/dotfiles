@@ -77,6 +77,7 @@
     ./matrix-bridges-v2.nix
     ./matrix-hookshot.nix
     ./matrix-doublepuppet.nix
+    ./matrix-imessage.nix
     ./matrix-bridge-secrets.nix
     ./memory-pressure-alert.nix
     ./mullvad-exit.nix

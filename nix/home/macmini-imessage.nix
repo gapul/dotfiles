@@ -11,9 +11,22 @@
 # 待っていて tailnet から入れる。こちら側の受け口も tailnet アドレスで公開するので、
 # wsproxy (上流が NAT 越えのために用意しているもの) は要らない。
 #
-# 登録ファイルは homeserver 側の Synapse が読む必要がある。生成はこちらで行い、
-# 中身を homeserver へ運ぶ手作業が一度だけ要る。他のブリッジのように
-# services.mautrix-* が両側を面倒みてくれる構成にはならない (機械が別なので)。
+# 登録ファイルは homeserver 側の Synapse が読む必要がある。機械が別なので、他の
+# ブリッジのように services.mautrix-* が両側を面倒みてくれる構成にはならない。代わりに
+# as_token / hs_token を secrets/matrix-imessage.yaml に置き、homeserver は登録ファイル
+# (nix/homelab/matrix-imessage.nix)、こちらは config.yaml に、同じ値を差し込む。
+# トークンのファイルは hosts/macmini.nix の sops が ~/.config/mautrix-imessage/ に置く
+# (host 鍵で開けるのは system 側だけなので、home-manager からは触れない)。
+#
+# config.yaml は activation のたびに下の設定から作り直す。ブリッジ自身にも config を
+# 書き戻す機能があるが、-n で止めてある。正は Nix 側。
+#
+# ## Synapse 側の暗号化
+#
+# encryption は入れていない。このブリッジは bridge.user 固定で、着信があれば portal が
+# 勝手にできる (ログインの命令が要らない) ので、bot との DM を使う場面がほぼ無い。
+# Element X は新しい DM を暗号化で作るので、bot に命令を送るときは暗号化を切って
+# 部屋を作ること。
 #
 # ## フルディスクアクセス
 #
@@ -42,6 +55,58 @@ let
   bridge = pkgsWithOlm.callPackage ../pkgs/mautrix-imessage.nix { };
   dataDir = "${config.home.homeDirectory}/.local/share/mautrix-imessage";
   stable = "${config.home.homeDirectory}/.local/libexec/tcc/mautrix-imessage";
+  tokenDir = "${config.home.homeDirectory}/.config/mautrix-imessage";
+
+  # 足りない項目はブリッジが起動時に同梱の example config から補う。ここに書くのは
+  # 既定から変える分だけ。
+  settings = {
+    homeserver = {
+      # homeserver の tailnet アドレス。Synapse は 0.0.0.0:8008 で待っている。
+      address = "http://100.127.129.31:8008";
+      # 上流の既定は mautrix-wsproxy 経由だが、tailnet で双方向に届くので HTTP 直結。
+      websocket_proxy = null;
+      domain = "gapul.net";
+      software = "standard";
+    };
+    appservice = {
+      # 0.0.0.0 なのは、起動が Tailscale より先に来たときに tailnet アドレスへ bind
+      # できず落ちるのを避けるため。外からは ALF (hosts/macmini.nix) と hs_token で守る。
+      hostname = "0.0.0.0";
+      port = 29332; # nix/homelab/matrix-imessage.nix の登録と対
+      database = {
+        type = "sqlite3-fk-wal";
+        uri = "file:${dataDir}/mautrix-imessage.db?_txlock=immediate";
+      };
+      id = "imessage";
+      bot = {
+        username = "imessagebot";
+        displayname = "iMessage bridge bot";
+      };
+      ephemeral_events = true;
+      # activation で差し込む。
+      as_token = "";
+      hs_token = "";
+    };
+    imessage.platform = "mac";
+    bridge = {
+      user = "@gapul:gapul.net";
+      username_template = "imessage_{{.}}";
+      displayname_template = "{{.}} (iMessage)";
+      command_prefix = "!im";
+      # libheif 無しでビルドしてあるので変換できない (pkgs/mautrix-imessage.nix)。
+      convert_heif = false;
+    };
+    logging = {
+      min_level = "info";
+      writers = [
+        {
+          type = "stdout";
+          format = "pretty-colored";
+        }
+      ];
+    };
+  };
+  settingsFile = (pkgs.formats.yaml { }).generate "mautrix-imessage-config.yaml" settings;
 in
 {
   home.activation.tccStableIMessage = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
@@ -53,6 +118,23 @@ in
     $DRY_RUN_CMD /bin/mkdir -p ${dataDir}
   '';
 
+  # トークンが両方あるときだけ config.yaml を作る。無ければ作らず、launchd は
+  # PathState で待ち続ける (下)。sops が置く前の rebuild でも壊れない。
+  home.activation.imessageConfig = lib.hm.dag.entryAfter [ "imessageDataDir" ] ''
+    if [ -r ${tokenDir}/as_token ] && [ -r ${tokenDir}/hs_token ]; then
+      (
+        umask 077
+        AS_TOKEN="$(cat ${tokenDir}/as_token)" HS_TOKEN="$(cat ${tokenDir}/hs_token)" \
+          $DRY_RUN_CMD ${pkgs.yq-go}/bin/yq \
+            '.appservice.as_token = strenv(AS_TOKEN) | .appservice.hs_token = strenv(HS_TOKEN)' \
+            ${settingsFile} > ${dataDir}/config.yaml.tmp
+        $DRY_RUN_CMD /bin/mv ${dataDir}/config.yaml.tmp ${dataDir}/config.yaml
+      )
+    else
+      echo "mautrix-imessage: token files missing under ${tokenDir}; config.yaml not written" >&2
+    fi
+  '';
+
   launchd.agents.mautrix-imessage = {
     enable = true;
     config = {
@@ -61,12 +143,17 @@ in
         stable
         "-c"
         "${dataDir}/config.yaml"
+        # config は activation が作る。ブリッジには書き戻させない。
+        "-n"
       ];
       WorkingDirectory = dataDir;
-      # The bridge config is generated during its one-time Matrix registration. Until that
-      # exists, do not crash-loop every ten seconds; launchd watches the path and starts the
-      # bridge as soon as registration has created it.
+      # The config is written by the activation above only once the sops tokens are in
+      # place. Until then, do not crash-loop every ten seconds; launchd watches the path
+      # and starts the bridge as soon as the file appears.
       KeepAlive.PathState."${dataDir}/config.yaml" = true;
+      # フルディスクアクセスが無いとブリッジは chat.db を開けずに即死する。既定の 10 秒で
+      # 回すとログだけが太るので、間隔を空ける。許可を足せば次の周回で上がる。
+      ThrottleInterval = 60;
       StandardOutPath = "${dataDir}/bridge.log";
       StandardErrorPath = "${dataDir}/bridge.log";
     };

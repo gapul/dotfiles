@@ -176,6 +176,19 @@ in
         };
         "unified_calendar/ntfy_url" = forUser "/Users/${user.username}/.config/ntfy/url";
         "unified_calendar/ntfy_token" = forUser "/Users/${user.username}/.config/ntfy/token";
+        # iMessage ブリッジの appservice トークン。homeserver の Synapse が登録ファイルに持つ
+        # のと同じ値 (nix/homelab/matrix-imessage.nix)。home-manager 側
+        # (nix/home/macmini-imessage.nix) が activation で config.yaml に差し込む。
+        "matrix_imessage/as_token" =
+          forUser "/Users/${user.username}/.config/mautrix-imessage/as_token"
+          // {
+            sopsFile = ../../secrets/matrix-imessage.yaml;
+          };
+        "matrix_imessage/hs_token" =
+          forUser "/Users/${user.username}/.config/mautrix-imessage/hs_token"
+          // {
+            sopsFile = ../../secrets/matrix-imessage.yaml;
+          };
       };
   };
   imports = [
@@ -704,6 +717,11 @@ in
     # simply never answers, which reads as a network fault rather than a firewall one (2026-09-26).
     /usr/libexec/ApplicationFirewall/socketfilterfw --add /Users/${user.username}/.local/libexec/tcc/sunshine >/dev/null 2>&1 || true
     /usr/libexec/ApplicationFirewall/socketfilterfw --unblockapp /Users/${user.username}/.local/libexec/tcc/sunshine >/dev/null 2>&1 || true
+    # mautrix-imessage listens on 29332 for the homeserver's Synapse (appservice push over the
+    # tailnet). Same story as sunshine: it runs from the signed copy under ~/.local/libexec/tcc
+    # because full disk access is tied to that path, so the firewall grant follows it too.
+    /usr/libexec/ApplicationFirewall/socketfilterfw --add /Users/${user.username}/.local/libexec/tcc/mautrix-imessage >/dev/null 2>&1 || true
+    /usr/libexec/ApplicationFirewall/socketfilterfw --unblockapp /Users/${user.username}/.local/libexec/tcc/mautrix-imessage >/dev/null 2>&1 || true
     # The hand-written plists the daemons above replace. nix-darwin names its units org.nixos.*,
     # so without this both copies would be loaded and Hermes would come up twice.
     for label in net.gapul.hermes-gateway net.gapul.hermes-gateway-imouto net.gapul.hermes-watchdog \
