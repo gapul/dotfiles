@@ -25,8 +25,9 @@ in
   };
 
   # 名前空間はブリッジが --generate-registration で出すものと同じ (2026-09-28 に実機で
-  # 生成して写した)。bot と imessage_* を exclusive で取る。push_ephemeral は既読や
-  # 入力中の転送に要る (config の appservice.ephemeral_events と対)。
+  # 生成して写した)。bot と imessage_* を exclusive で取る。msc2409 の push_ephemeral は
+  # 既読や入力中の転送に要る (config の appservice.ephemeral_events と対)。ブリッジが
+  # 並べて出す素の `push_ephemeral` は Synapse が読まないので写していない。
   sops.templates.${registration} = {
     owner = "matrix-synapse";
     mode = "0400";
@@ -45,7 +46,6 @@ in
           - regex: '^@imessage_.*:${builtins.replaceStrings [ "." ] [ "\\." ] domain}$'
             exclusive: true
       de.sorunome.msc2409.push_ephemeral: true
-      push_ephemeral: true
     '';
   };
 
