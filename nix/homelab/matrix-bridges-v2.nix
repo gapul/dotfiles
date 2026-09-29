@@ -4,7 +4,7 @@
 # Ports sit next to the others in matrix-bridges.nix / matrix-line.nix
 # (discord 29334, instagram 29320, messenger 29321, signal 29328, line 29340).
 # twitter / linkedin use the upstream defaults (29327 / 29329); bluesky has no
-# upstream default worth keeping, so it takes the next free slot (29337).
+# upstream default worth keeping, so it takes the next free slot (29337); email likewise (29338).
 {
   imports = [
     # Slack. Log in with a token + cookie from the browser (d / xoxc-) or with
@@ -83,6 +83,28 @@
       title = "Bluesky";
       package = pkgs: pkgs.callPackage ../pkgs/mautrix-bluesky.nix { };
       port = 29337;
+    })
+
+    # Email over IMAP (matrimail): one email thread = one room, IMAP IDLE for
+    # delivery, replies/compose over SMTP submission (587) or the Gmail API.
+    # Postmoogle would have been the obvious choice but it is an SMTP server
+    # that must be reachable on port 25, and the home line is OP25B (mail.nix).
+    # Log in with `login` → email + app password (Google accounts: the same app
+    # passwords mail.nix uses for imapsync), then pick folders/labels to watch.
+    (import ./mk-matrix-bridgev2.nix {
+      name = "matrimail";
+      id = "email";
+      title = "Email";
+      package = pkgs: pkgs.callPackage ../pkgs/matrimail.nix { };
+      port = 29338;
+      network = {
+        # Upstream default is 3 minutes / 25 mails at startup. Take a day so a
+        # bridge restart never loses mail; older history stays in Stalwart.
+        imap = {
+          startup_backfill_seconds = 86400;
+          startup_backfill_max = 500;
+        };
+      };
     })
   ];
 }
