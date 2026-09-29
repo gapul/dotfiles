@@ -1,0 +1,32 @@
+Format contact names family-first when they are written in CJK script.
+
+The bridge concatenates "First Last" unconditionally, which produces
+"結己 川嶋" for Japanese contacts. Apple's own formatter writes such names
+as "川嶋結己" (family name first, no space). Keep the Western order for
+everything else.
+--- a/imessage/struct.go
++++ b/imessage/struct.go
+@@ -5,6 +5,7 @@ import (
+ 	"path/filepath"
+ 	"strings"
+ 	"time"
++	"unicode"
+ 
+ 	"github.com/gabriel-vasile/mimetype"
+ 	log "maunium.net/go/maulogger/v2"
+@@ -143,9 +144,14 @@ func (contact *Contact) Name() string {
+ 	if contact == nil {
+ 		return ""
+ 	}
+ 	if len(contact.FirstName) > 0 {
+ 		if len(contact.LastName) > 0 {
++			for _, r := range contact.FirstName + contact.LastName {
++				if unicode.Is(unicode.Han, r) || unicode.Is(unicode.Hiragana, r) || unicode.Is(unicode.Katakana, r) || unicode.Is(unicode.Hangul, r) {
++					return contact.LastName + contact.FirstName
++				}
++			}
+ 			return fmt.Sprintf("%s %s", contact.FirstName, contact.LastName)
+ 		} else {
+ 			return contact.FirstName
+ 		}
+ 	} else if len(contact.LastName) > 0 {
