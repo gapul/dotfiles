@@ -93,6 +93,16 @@
       suppress_key_server_warning = true;
 
       max_upload_size = "50M";
+
+      # ブリッジが作る部屋への招待を自動で受ける。ブリッジ 10 本分のポータルを手で
+      # 受けて回るのは現実的でない (iMessage の履歴同期で一度に 36 部屋できた、2026-09-29)。
+      # 送り主を自分のサーバーのユーザー (= ブリッジのゴースト) に限り、federation 越しの
+      # 招待は今まで通り手で受ける。DM に限定しないのはグループの部屋も対象にするため。
+      auto_accept_invites = {
+        enabled = true;
+        only_for_direct_messages = false;
+        only_from_local_users = true;
+      };
     };
   };
 
