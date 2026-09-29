@@ -66,6 +66,8 @@ let
       # 他のブリッジ (Signal 等、nixpkgs 既定) と同じく接尾辞なし。
       displayname_template = "{{.}}";
       command_prefix = "!im";
+      # 他のブリッジ (bridgev2 の既定) と同じく、部屋を「iMessage」スペースにまとめる。
+      personal_filtering_spaces = true;
       # libheif 無しでビルドしてあるので変換できない (pkgs/mautrix-imessage.nix)。
       convert_heif = false;
       # 過去ログの取り込み。効くのは部屋を初めて作る一度きりで、既定は直近 0.5 日・
