@@ -248,13 +248,20 @@ in
         StateDirectory = baseNameOf dataDir;
         WorkingDirectory = dataDir;
       };
+      # --generate-registration writes the tokens back into the config it was given, so
+      # it must not point at the store (2026-09-29: "read-only file system", the unit
+      # failed after writing a 0600 registration and Synapse got EACCES once). Work on
+      # a throwaway copy, and create the registration as 0640 directly (umask 0137)
+      # so there is no window where Synapse can see it unreadable.
       script = ''
         if [ ! -f '${registrationFile}' ]; then
-          umask 0177
+          umask 0137
+          cp '${settingsFile}' '${dataDir}/registration-config.yaml'
           ${lib.getExe config.services.mautrix-whatsapp.package} \
             --generate-registration \
-            --config='${settingsFile}' \
+            --config='${dataDir}/registration-config.yaml' \
             --registration='${registrationFile}'
+          rm -f '${dataDir}/registration-config.yaml'
         fi
         chmod 640 '${registrationFile}'
       '';
