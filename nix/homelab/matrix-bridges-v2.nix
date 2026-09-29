@@ -3,6 +3,7 @@
 #
 # Ports sit next to the others in matrix-bridges.nix / matrix-line.nix
 # (discord 29334, instagram 29320, messenger 29321, signal 29328, line 29340).
+# twitter / linkedin use the upstream defaults (29327 / 29329).
 {
   imports = [
     # Slack. Log in with a token + cookie from the browser (d / xoxc-) or with
@@ -45,6 +46,32 @@
 
         | .[0].network.api_id = (env.TELEGRAM_API_ID // "0" | tonumber)
         | .[0].network.api_hash = (env.TELEGRAM_API_HASH // "")'';
+    })
+
+    # X (Twitter). Log in with the auth_token + ct0 cookies from a logged-in
+    # browser session (`login` → cookies). DMs only; history sits on X's side,
+    # so backfill goes deep.
+    (import ./mk-matrix-bridgev2.nix {
+      name = "mautrix-twitter";
+      id = "twitter";
+      title = "X";
+      package = pkgs: pkgs.callPackage ../pkgs/mautrix-twitter.nix { };
+      port = 29327;
+      # Call it X in bridge info and the management room welcome.
+      network.x = true;
+    })
+
+    # LinkedIn. Log in with the li_at + JSESSIONID cookies from a logged-in
+    # browser session (`login` → cookies). Messaging only.
+    (import ./mk-matrix-bridgev2.nix {
+      name = "mautrix-linkedin";
+      id = "linkedin";
+      title = "LinkedIn";
+      package = pkgs: pkgs.callPackage ../pkgs/mautrix-linkedin.nix { };
+      port = 29329;
+      # Upstream creates portals for the 10 most recent chats only; take them all
+      # so the first sync matches the backfill policy of the other bridges.
+      network.sync.create_limit = 0;
     })
   ];
 }
