@@ -63,7 +63,8 @@ let
     bridge = {
       user = "@gapul:gapul.net";
       username_template = "imessage_{{.}}";
-      displayname_template = "{{.}} (iMessage)";
+      # 他のブリッジ (Signal 等、nixpkgs 既定) と同じく接尾辞なし。
+      displayname_template = "{{.}}";
       command_prefix = "!im";
       # libheif 無しでビルドしてあるので変換できない (pkgs/mautrix-imessage.nix)。
       convert_heif = false;

@@ -36,6 +36,10 @@ buildGoModule (finalAttrs: {
 
   vendorHash = "sha256-xTzxL4pk6tmWcEhd0bbdwP70hEqNDjB/xahLWY5nRKQ=";
 
+  # 連絡先の表示名を、日本語 (CJK) の名前だけ「姓名」の順にする。上流は無条件に
+  # "First Last" で、日本人の連絡先が「結己 川嶋」になる。Apple 自身の書式に合わせる。
+  patches = [ ./mautrix-imessage-cjk-name-order.patch ];
+
   # sqlite が cgo なので無効にはできない。
   env.CGO_ENABLED = "1";
 
