@@ -152,6 +152,10 @@ in
       };
       bridge = {
         inherit permissions;
+        # 起動時に作る DM ポータルの数。既定の 5 だと最近の 5 件で打ち切られ、残りは
+        # 相手からメッセージが来るまで部屋が生えない (2026-09-30 に実際に踏んだ)。
+        # 100 あれば手持ちの DM は全部入る。ギルドは別で、`guilds bridge` で選ぶ。
+        startup_private_channel_create_limit = 100;
         # mautrix-discord is still a v1 bridge: the key is login_shared_secret_map here.
         login_shared_secret_map.${domain} = "$DOUBLE_PUPPET_SECRET";
         # 旧形式の設定なので encryption も bridge の下。self_sign はこの版に無く、
