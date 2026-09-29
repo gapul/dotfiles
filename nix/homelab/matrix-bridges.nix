@@ -10,11 +10,11 @@
 # モジュールがやる。ここで書くのは「誰がどこに繋ぐか」だけでよい。
 #
 # ここに入れていないもの:
-#   telegram / slack / gmessages
-#             — nixpkgs にモジュールが無い (telegram は古い Python 版しか無い)。
+#   telegram / slack / gmessages / twitter / linkedin
+#             — nixpkgs にモジュールが無い (telegram は古い Python 版しか無く、
+#               twitter / linkedin はパッケージも無いので pkgs/ に自前で書いた)。
 #               matrix-bridges-v2.nix に mk-matrix-bridgev2.nix で書いた。
-#   twitter / linkedin / imessage
-#             — モジュールが無い。imessage は macmini 側 (home/macmini-imessage.nix)。
+#   imessage  — モジュールが無い。macmini 側 (home/macmini-imessage.nix)。
 #   line      — モジュールもパッケージも無いので、両方を自前で書いた (matrix-line.nix)。
 #   teams     — 個人の teams.live.com 向けの実験的な実装しか無い。会社テナントは
 #               Azure のアプリ登録が要るので、そもそも許可の話になる。
