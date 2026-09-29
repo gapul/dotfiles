@@ -11,10 +11,11 @@
 { lib, pkgs, ... }:
 let
   dir = "/var/lib/matrix-bridge-secrets";
-  # The nixpkgs-module bridges. The bridgev2 units in mk-matrix-bridgev2.nix and the LINE
+  # The nixpkgs-module bridges (googlechat has its own oneshot in matrix-googlechat.nix). The bridgev2 units in mk-matrix-bridgev2.nix and the LINE
   # bridge read the same secrets in their own config oneshots instead.
   bridges = [
     "signal"
+    "whatsapp"
     "discord"
     "instagram"
     "messenger"
@@ -22,6 +23,7 @@ let
   # nixpkgs units that envsubst their config from the env file, so they must run after it.
   consumers = [
     "mautrix-signal"
+    "mautrix-whatsapp"
     "mautrix-discord-registration"
     "mautrix-discord"
     "mautrix-meta-instagram-registration"

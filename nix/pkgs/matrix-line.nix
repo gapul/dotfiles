@@ -20,13 +20,13 @@
 }:
 buildGoModule (finalAttrs: {
   pname = "matrix-line";
-  version = "1.2.0-unstable-2026-09-09";
+  version = "1.2.0-unstable-2026-09-28";
 
   src = fetchFromGitHub {
     owner = "beeper";
     repo = "line";
-    rev = "3f830ca1aecb17a25870ec3607bcaf8432d4e4e8";
-    hash = "sha256-ngiEiyvgeMGeDLpK7gLxpw0sPJGyQEh7jL5WCEtAJqk=";
+    rev = "3b3c06640383e4323074784b7f242e41e9b85d35";
+    hash = "sha256-3GiSFzCSKIEN7vqgWXqkGfUY0Bf3f1cD3g6oqpiDwZQ=";
   };
 
   vendorHash = "sha256-qs0FaqCgKo0a9wrER6G1fAJ/UcOvoZEH2gNvS/hkm2E=";
