@@ -197,6 +197,7 @@ in
     ./macmini-ci-runner.nix
     ./macmini-dns.nix
     ./macmini-homeserver-monitor.nix
+    ./macmini-imessage.nix # iMessage ブリッジの常駐と config (home 側と分担、理由はファイル冒頭)
     ./macmini-presenta.nix
     sopsNix.darwinModules.sops
     # マイクラのサーバーは上の表から生やす。別モジュールにしてあるのは、nix が同じ attrset の
