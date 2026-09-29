@@ -3,7 +3,8 @@
 #
 # Ports sit next to the others in matrix-bridges.nix / matrix-line.nix
 # (discord 29334, instagram 29320, messenger 29321, signal 29328, line 29340).
-# twitter / linkedin use the upstream defaults (29327 / 29329).
+# twitter / linkedin use the upstream defaults (29327 / 29329); bluesky has no
+# upstream default worth keeping, so it takes the next free slot (29337).
 {
   imports = [
     # Slack. Log in with a token + cookie from the browser (d / xoxc-) or with
@@ -72,6 +73,16 @@
       # Upstream creates portals for the 10 most recent chats only; take them all
       # so the first sync matches the backfill policy of the other bridges.
       network.sync.create_limit = 0;
+    })
+    # Bluesky (DMs only). Log in with the handle and an app password from
+    # Settings → Privacy and security → App passwords; the main password works
+    # too but an app password can be revoked on its own.
+    (import ./mk-matrix-bridgev2.nix {
+      name = "mautrix-bluesky";
+      id = "bluesky";
+      title = "Bluesky";
+      package = pkgs: pkgs.callPackage ../pkgs/mautrix-bluesky.nix { };
+      port = 29337;
     })
   ];
 }
