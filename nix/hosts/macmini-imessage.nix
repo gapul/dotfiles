@@ -67,6 +67,17 @@ let
       command_prefix = "!im";
       # libheif 無しでビルドしてあるので変換できない (pkgs/mautrix-imessage.nix)。
       convert_heif = false;
+      # 過去ログの取り込み。効くのは部屋を初めて作る一度きりで、既定は直近 0.5 日・
+      # 100 件しか取らない。mini を iCloud に入れて「メッセージ」を同期させると chat.db に
+      # 全履歴が降りてくるので、それを新しい部屋へ流し込めるだけ流す (2026-09-29)。
+      # 遡りの後追い (deferred) は Beeper 専用で素の Synapse では効かない
+      # (matrix-bridges.nix の backfill のコメントと同じ事情)。
+      backfill = {
+        initial_limit = 5000;
+        initial_sync_max_age = 3650;
+        # 古いチャットを既読扱いにしない。未読は iMessage 側の状態に従う。
+        unread_hours_threshold = -1;
+      };
     };
     logging = {
       min_level = "info";
