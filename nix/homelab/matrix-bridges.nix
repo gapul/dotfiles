@@ -25,7 +25,12 @@
 #               Azure のアプリ登録が要るので、そもそも許可の話になる。
 #   simplex   — 構造的に無理。あの設計は識別子を持たないことが核心で、
 #               puppeting が必要とする安定した ID が存在しない。
-_:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   # Synapse は同じ箱の 8008 で待っている。ブリッジもホスト側の unit なので localhost でよい。
   address = "http://127.0.0.1:8008";
@@ -215,6 +220,45 @@ in
       bridge = { inherit permissions; };
     };
   };
+
+  # nixpkgs の whatsapp モジュールは登録ファイルを本体 unit の preStart で作り、その unit は
+  # Synapse の後に起動する。初回デプロイでは Synapse が存在しない登録ファイルを読んで落ち、
+  # 100ms 間隔の再起動が StartLimitBurst=5 に当たって止まる (2026-09-13 に LINE で踏んだ形。
+  # mk-matrix-bridgev2.nix と同じ対策)。先に登録だけ作る oneshot を Synapse の前に置く。
+  # 本体の preStart は「無ければ作る」なので二重生成にはならない。
+  systemd.services.mautrix-whatsapp-registration =
+    let
+      dataDir = "/var/lib/mautrix-whatsapp";
+      registrationFile = "${dataDir}/whatsapp-registration.yaml";
+      # 登録の生成に要るのは appservice の id / bot / port だけ。環境変数のプレースホルダは
+      # そのまま入るが、登録生成では読まれない。
+      settingsFile =
+        (pkgs.formats.json { }).generate "mautrix-whatsapp-registration-config.json"
+          config.services.mautrix-whatsapp.settings;
+    in
+    {
+      description = "Generate the mautrix-whatsapp appservice registration before Synapse starts";
+      before = [ config.services.matrix-synapse.serviceUnit ];
+      wantedBy = [ config.services.matrix-synapse.serviceUnit ];
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+        User = "mautrix-whatsapp";
+        Group = "mautrix-whatsapp";
+        StateDirectory = baseNameOf dataDir;
+        WorkingDirectory = dataDir;
+      };
+      script = ''
+        if [ ! -f '${registrationFile}' ]; then
+          umask 0177
+          ${lib.getExe config.services.mautrix-whatsapp.package} \
+            --generate-registration \
+            --config='${settingsFile}' \
+            --registration='${registrationFile}'
+        fi
+        chmod 640 '${registrationFile}'
+      '';
+    };
 
   # Instagram と Messenger は同じ mautrix-meta の別インスタンス。network.mode で
   # 分かれる。ポートと appservice.id と bot の名前は必ずずらすこと (揃えると
