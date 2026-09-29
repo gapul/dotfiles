@@ -15,6 +15,11 @@
 #               twitter / linkedin はパッケージも無いので pkgs/ に自前で書いた)。
 #               matrix-bridges-v2.nix に mk-matrix-bridgev2.nix で書いた。
 #   imessage  — モジュールが無い。macmini 側 (home/macmini-imessage.nix)。
+#   googlechat — mautrix-googlechat は Python の旧世代ブリッジで、nixpkgs にパッケージは
+#               あるがモジュールが無い。設定の形が bridgev2 と違うので matrix-googlechat.nix
+#               に自前で書いた。
+#   google voice — Beeper の実装は非公開 (公開されていた beeper/googlevoice は 2023 年に
+#               archive)。自前で動かせるものが無い。
 #   line      — モジュールもパッケージも無いので、両方を自前で書いた (matrix-line.nix)。
 #   teams     — 個人の teams.live.com 向けの実験的な実装しか無い。会社テナントは
 #               Azure のアプリ登録が要るので、そもそも許可の話になる。
@@ -184,6 +189,23 @@ in
     enable = true;
     registerToSynapse = true;
     environmentFile = "/var/lib/matrix-bridge-secrets/signal.env";
+    settings = {
+      inherit homeserver backfill;
+      encryption = encryption // {
+        pickle_key = "$ENCRYPTION_PICKLE_KEY";
+      };
+      double_puppet.secrets.${domain} = "$DOUBLE_PUPPET_SECRET";
+      bridge = { inherit permissions; };
+    };
+  };
+
+  # WhatsApp。ログインは bot に `login` → QR をスマホの WhatsApp「リンク済み
+  # デバイス」で読む。履歴は端末から history sync で来る (request_full_sync は
+  # モジュールの既定で true)。ポートはモジュール既定の 29318。
+  services.mautrix-whatsapp = {
+    enable = true;
+    registerToSynapse = true;
+    environmentFile = "/var/lib/matrix-bridge-secrets/whatsapp.env";
     settings = {
       inherit homeserver backfill;
       encryption = encryption // {
