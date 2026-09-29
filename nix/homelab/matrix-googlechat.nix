@@ -23,7 +23,15 @@ let
   dataDir = "/var/lib/${name}";
   registrationFile = "${dataDir}/${id}-registration.yaml";
   settingsFile = "${dataDir}/config.yaml";
-  pkg = pkgs.mautrix-googlechat;
+  # nixpkgs builds it against the default python (3.14), where it dies on import:
+  # `import cgi` (removed in 3.13) and an enum auto() ordering change, and aiohttp
+  # no longer pulls in async_timeout. Upstream has had 3 commits since v0.5.2
+  # (2025-07) and fixes none of this, so build it on 3.12 and add the missing
+  # dependency. Checked 2026-09-29 on homeserver: --generate-registration and a
+  # dry start both get as far as talking to Synapse.
+  pkg = (pkgs.mautrix-googlechat.override { python3 = pkgs.python312; }).overridePythonAttrs (o: {
+    propagatedBuildInputs = o.propagatedBuildInputs ++ [ pkgs.python312Packages.async-timeout ];
+  });
   domain = "gapul.net";
   port = 29319;
 
