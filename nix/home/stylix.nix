@@ -96,6 +96,15 @@ in
     };
   };
 
+  # The desktop-wide light/dark switch that apps read through the xdg portal
+  # (org.freedesktop.appearance color-scheme, served by xdg-desktop-portal-gtk from this key).
+  # Stylix's gtk target paints GTK but does not set it, so the portal answered "no
+  # preference" and ghostty — whose `theme = light:…,dark:…` follows that answer — came up
+  # in Rose Pine Dawn on a dark desktop. Derived from the same `variant` as `polarity` so a
+  # palette switch flips it too.
+  dconf.settings."org/gnome/desktop/interface".color-scheme =
+    if data.palettes.${data.active}.variant == "dark" then "prefer-dark" else "prefer-light";
+
   # Deliberately not listed above, because home/hyprland.nix already writes them by hand and
   # two writers for one option is a build error rather than a merge (`has conflicting
   # definition values`, seen for real on mako's background-color):
