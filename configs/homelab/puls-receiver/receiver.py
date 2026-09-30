@@ -6,12 +6,16 @@
 # Changes from upstream:
 #   - the gzip body is decompressed with a cap (MAX_RAW). Upstream bounds the compressed
 #     size only, so a small highly compressible body could expand without limit in memory.
+#   - GET /v1/stats, which is not part of the protocol. The DB lives under a DynamicUser
+#     StateDirectory (0700), so counting rows over SSH otherwise means root; this answers
+#     "did anything arrive" with the token the sender already holds.
 """Minimal Puls Sync Protocol v1 receiver: HTTP in, SQLite out, standard library only.
 
 Implements the receiver side of docs/protocol/README.md:
 
     POST /v1/batches       gzip NDJSON batch -> idempotent SQLite writes -> JSON counts
     GET  /v1/capabilities  {"protocolVersions":[1],"features":["batches","profile"],...}
+    GET  /v1/stats         row counts, the sample time span, and the last batch (local addition)
     GET  /healthz          {"ok":true}
 
 Environment: PULS_TOKEN (required), PULS_DB (default puls.sqlite),
@@ -45,6 +49,9 @@ AGG_ENUMS = {"func": {"sum", "average", "min", "max", "mostRecent", "duration"},
 UUID_RE = re.compile(r"^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$")
 ZERO_RESULT = {"accepted": 0, "deleted": 0, "duplicates": 0, "routePoints": 0,
                "seriesPoints": 0, "aggregateSamples": 0, "activitySummaries": 0}
+# Counted by /v1/stats. Interpolated into SQL, so this tuple is the only allowed source of names.
+STAT_TABLES = ("users", "batches", "samples", "deletions", "route_points", "series_points",
+               "aggregates", "activity_summaries")
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, name TEXT, email TEXT, date_of_birth_ms REAL,
@@ -242,6 +249,24 @@ def apply_batch(db, b, user_id):
     return res
 
 
+def iso_ms(ms):
+    """Epoch ms -> UTC ISO, or None for an empty table."""
+    return None if ms is None else datetime.fromtimestamp(ms / 1000, timezone.utc).isoformat(timespec="seconds")
+
+
+def stats(db):
+    """What /v1/stats answers: how much is stored, how far it reaches, and when it last grew."""
+    rows = {t: db.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0] for t in STAT_TABLES}
+    first, last = db.execute("SELECT MIN(start_ms), MAX(start_ms) FROM samples").fetchone()
+    batch = db.execute("SELECT received_at, type, reason FROM batches ORDER BY received_at DESC LIMIT 1").fetchone()
+    return {
+        "rows": rows,
+        "sampleTypes": db.execute("SELECT COUNT(DISTINCT type) FROM samples").fetchone()[0],
+        "sampleSpan": {"first": iso_ms(first), "last": iso_ms(last)},
+        "lastBatch": None if batch is None else {"receivedAt": batch[0], "type": batch[1], "reason": batch[2]},
+    }
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "puls-sqlite-receiver/1"
     protocol_version = "HTTP/1.1"
@@ -269,6 +294,13 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/v1/capabilities":
             return self.send_json(200, {"protocolVersions": PROTOCOL_VERSIONS, "features": ["batches", "profile"],
                                         "server": "puls-sqlite-receiver", "version": "1"})
+        if self.path == "/v1/stats":
+            try:
+                with self.server.lock:  # the same lock the writes take: no read during a half-applied batch
+                    return self.send_json(200, stats(self.server.db))
+            except sqlite3.Error as e:
+                self.log_error("stats failed: %s", e)
+                return self.send_json(500, {"error": "stats failed"})
         self.send_json(404, {"error": "not found"})
 
     def do_POST(self):
