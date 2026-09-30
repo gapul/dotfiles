@@ -118,7 +118,10 @@ let
       upstream = "127.0.0.1:8092";
       interval = "1h";
     };
-    paperless.upstream = "127.0.0.1:8097";
+    paperless = {
+      upstream = "127.0.0.1:8097";
+      interval = "1h"; # socket activation (lazy-http-services.nix): do not keep the container awake
+    };
     # Inventory of belongings (Homebox). LLMs call it with an API key.
     box.upstream = "127.0.0.1:8104";
     git.upstream = "127.0.0.1:3003"; # forgejo
