@@ -7,14 +7,20 @@
 # upstream default worth keeping, so it takes the next free slot (29337); email likewise (29338).
 {
   imports = [
-    # Slack. Log in with a token + cookie from the browser (d / xoxc-) or with
-    # email/password. Slack keeps history server-side, so backfill goes deep.
+    # Slack. Log in with `login` -> Email -> the 6-character code Slack mails you
+    # -> pick a workspace (one login per workspace). Token + cookie from a browser
+    # still works. Slack keeps history server-side, so backfill goes deep.
+    # pkgs/mautrix-slack.nix until nixpkgs ships >= 26.08 (the email flow).
     (import ./mk-matrix-bridgev2.nix {
       name = "mautrix-slack";
       id = "slack";
       title = "Slack";
-      package = pkgs: pkgs.mautrix-slack;
+      package = pkgs: pkgs.callPackage ../pkgs/mautrix-slack.nix { };
       port = 29335;
+      # Every workspace in full (channels + DMs), but channel portals start muted so
+      # only DMs and mentions notify (mentions are override push rules, which win
+      # over the room-level mute). Applies to portals created after this lands.
+      network.mute_channels_by_default = true;
     })
 
     # Google Messages (SMS/RCS via an Android phone). Pairs like Messages for
