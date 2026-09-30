@@ -136,6 +136,7 @@ in
     "claude/settings.json".source = claudeConfig "settings.json";
     "claude/hooks".source = claudeConfig "hooks";
     "claude/bin".source = claudeConfig "bin";
+    "claude/skills/anki-add".source = claudeConfig "skills/anki-add";
     "claude/skills/gapul-writing-voice".source = claudeConfig "skills/gapul-writing-voice";
     "claude/skills/step-by-step-tutor".source = claudeConfig "skills/step-by-step-tutor";
   };
