@@ -336,7 +336,9 @@
     #                item resolved to a missing value and started nothing every morning.
     #   Zen        — the daily browser until 2026-09-26; Firefox Developer Edition is the default
     #                browser and the login item now, Zen stays installed but is opened by hand.
-    for name in AeroSpace Bitwarden Neru NTKDaemon NIHardwareAgent Zen; do
+    #   LuLu       — dropped from the declaration in #879 (its network extension kept stalling
+    #                inbound ssh); the cask cleanup removes the app, this removes its login item.
+    for name in AeroSpace Bitwarden Neru NTKDaemon NIHardwareAgent Zen LuLu; do
       if /usr/bin/osascript -e "tell application \"System Events\" to (name of login items) contains \"$name\"" 2>/dev/null | grep -q true; then
         /usr/bin/osascript -e "tell application \"System Events\" to delete login item \"$name\"" >/dev/null 2>&1 || true
       fi
