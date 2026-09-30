@@ -827,6 +827,13 @@
           # small. But since the policy is written down, the reason is recorded here.
           nixCustomConf = {
             trusted-users = "root ${user.username}";
+            # darwin-common's max-jobs 4 x cores 2 is sized for the laptop (8 logical cores,
+            # 16 GB). Applied here it left one large derivation, the kind this machine exists
+            # to take, on two of its ten cores (an Azahar build ran as `make -j2`). 2 x 4 keeps
+            # the same ceiling of eight compiler processes, which matters because the resident
+            # models already hold most of the 24 GB, but gives a single big build four cores.
+            max-jobs = "2";
+            cores = "4";
           };
         };
       };
