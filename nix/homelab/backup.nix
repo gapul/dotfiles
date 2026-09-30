@@ -29,6 +29,10 @@ in
       # An ArchiveBox snapshot exists precisely because the original page may
       # disappear.  Treating it as re-downloadable defeated that purpose.
       "/srv/archivebox"
+      # Dumps from the 3DS: cartridge and eShop titles, save data, the NAND backup and
+      # the console-unique keys needed to decrypt any of it. Cartridges wear out and
+      # the eShop re-download service can end, so none of this is re-obtainable.
+      "/srv/games/3ds"
     ];
     exclude = [
       # Container images are re-pullable and would dominate the repository. The
@@ -47,10 +51,10 @@ in
     ];
     # The rest of /srv is not backed up. It holds media and the attic cache: large,
     # and either re-obtainable or already content-addressed. /srv/syncthing is a
-    # copy of what the Mac holds and is backed up from there. Dawarich and
-    # ArchiveBox are the exceptions listed above. Check this list again whenever
-    # a service is pointed at the big disk — that is how location history went
-    # missing.
+    # copy of what the Mac holds and is backed up from there. Dawarich,
+    # ArchiveBox and the 3DS dumps are the exceptions listed above. Check this
+    # list again whenever a service is pointed at the big disk — that is how
+    # location history went missing.
 
     # Copying a running database as files gives no guarantee it can be restored.
     # The migration runbook even says "copying a running postgres/couchdb captures a broken
