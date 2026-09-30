@@ -55,6 +55,15 @@ creation_rules:
           - *macmini
           - *homeserver
 
+  # Matrix の Telegram ブリッジの api_id / api_hash (my.telegram.org のアプリ登録)。
+  # homeserver の mautrix-telegram だけが読む。
+  - path_regex: secrets/matrix-telegram\.yaml$
+    key_groups:
+      - age:
+          - *me
+          - *recovery
+          - *homeserver
+
   # 上のどれにも当たらない新規ファイルは、人間の鍵だけで暗号化する (安全側に倒す)。
   - path_regex: secrets/.*\.yaml$
     key_groups:

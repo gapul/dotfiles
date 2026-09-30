@@ -33,13 +33,10 @@
       port = 29336;
     })
 
-    # Telegram. Needs an app's api_id / api_hash from https://my.telegram.org/apps,
-    # placed as root-owned /var/lib/secrets/mautrix-telegram.env:
-    #
-    #   TELEGRAM_API_ID=<api_id>
-    #   TELEGRAM_API_HASH=<api_hash>
-    #
-    # then `systemctl restart mautrix-telegram-config mautrix-telegram`.
+    # Telegram. Needs an app's api_id / api_hash from https://my.telegram.org/apps
+    # (app "Matrix Bridge", fetched 2026-09-30 through the site's form API). They sit
+    # in secrets/matrix-telegram.yaml as a KEY=value env file and sops-nix renders
+    # it to /run/secrets/mautrix-telegram.env (declared at the bottom of this file).
     (import ./mk-matrix-bridgev2.nix {
       name = "mautrix-telegram";
       id = "telegram";
@@ -48,7 +45,7 @@
       port = 29317;
       # Animated stickers are converted to gif.
       extraPath = pkgs: [ pkgs.lottieconverter ];
-      secretsFile = "/var/lib/secrets/mautrix-telegram.env";
+      secretsFile = "/run/secrets/mautrix-telegram.env";
       secretsJq = ''
 
         | .[0].network.api_id = (env.TELEGRAM_API_ID // "0" | tonumber)
@@ -113,4 +110,14 @@
       };
     })
   ];
+
+  # The Telegram app credentials, as the env file mk-matrix-bridgev2.nix reads.
+  sops.secrets."mautrix-telegram.env" = {
+    sopsFile = ../../secrets/matrix-telegram.yaml;
+    key = "mautrix_telegram/env";
+    restartUnits = [
+      "mautrix-telegram-config.service"
+      "mautrix-telegram.service"
+    ];
+  };
 }
