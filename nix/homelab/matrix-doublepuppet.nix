@@ -58,4 +58,12 @@ in
 
   services.matrix-synapse.settings.app_service_config_files = [ registrationFile ];
   systemd.services.matrix-synapse.serviceConfig.SupplementaryGroups = [ "matrix-doublepuppet" ];
+
+  # エージェント (ssh 越しの gapul) にもこのトークンを読ませる。ブリッジの管理部屋に
+  # @gapul 本人としてコマンドを送る用 (例: discord の `guilds bridge`)。ブリッジの
+  # コマンドは呼び出したユーザーのログインに対して動くので、@claude では代用できない。
+  # 使い方: Authorization: Bearer <as_token> に ?user_id=@gapul:gapul.net を付けて
+  # Client-Server API を叩く (appservice の masquerade)。ssh の既存セッションには
+  # 効かない (グループは次のログインから)。
+  users.users.gapul.extraGroups = [ "matrix-doublepuppet" ];
 }
