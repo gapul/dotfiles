@@ -6,4 +6,10 @@
 #
 # asuser hands the process to the logged-in GUI session, where the keychain is already unlocked.
 # It needs root to do that, which is why sudo is here (passwordless for this user on this host).
-exec sudo launchctl asuser "$(id -u)" /etc/profiles/per-user/gapul/bin/agy "$@"
+#
+# Drop back to the invoking user before exec'ing agy. Running agy as root left everything it
+# writes under ~/.gemini/antigravity-cli/ owned by root, and the home-manager activation that
+# merges settings.json (nix/modules/home/agy.nix) then failed with PermissionError and took the
+# whole rebuild down with it (2026-09-30). The audit session set by asuser survives the second
+# sudo, so the keychain stays reachable (verified: prints a reply, files come out owned by gapul).
+exec sudo launchctl asuser "$(id -u)" sudo -u "$(id -un)" /etc/profiles/per-user/gapul/bin/agy "$@"
