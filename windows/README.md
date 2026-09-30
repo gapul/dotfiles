@@ -1,7 +1,22 @@
 # The native Windows environment, outside WSL
 
-The dotfiles for what runs on Windows itself: PowerShell, winget, WezTerm and so on. The Linux
-side inside WSL2 is managed separately, through `~/.dotfiles/nix/home/wsl.nix`.
+The dotfiles for what runs on Windows itself: PowerShell, winget, WezTerm and so on.
+
+## What this machine is now
+
+This tree was written when Windows was the only OS here and Linux lived inside WSL2. That is no
+longer the case: the machine dual-boots, NixOS owns the larger partition and does the day-to-day
+work, and Windows is the secondary side. So `winget/apps.json` deliberately stays small — it
+carries what Windows still has to provide on its own, not a mirror of the Linux environment.
+
+Two rules follow from that, and they are why most of the old list is gone:
+
+- Anything NixOS already provides on the same disk is not declared here twice (mpv, Bitwarden,
+  Steam, LocalSend, KDE Connect and friends).
+- WSL is not declared at all. Its whole purpose was Linux-on-Windows, and there is a real NixOS
+  install one partition over.
+
+The Linux side is managed through the flake, not from here.
 
 ## Layout
 
