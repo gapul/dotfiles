@@ -151,6 +151,11 @@ in
       # sqlite は WAL の途中でコピーすると千切れる。iterdump はトランザクション内で
       # 読むので、稼働中でも一貫した SQL が出る。1行で書くのは、nix の indented
       # string と nixfmt が複数行 Python のインデントを壊すため。
+      # paperless sleeps too (lazy-http-services.nix); same start/marker dance as the
+      # databases below. redis first, the app container depends on it.
+      start_for_backup podman-paperless-redis.service /run/backup-started-paperless-redis
+      start_for_backup podman-paperless.service /run/backup-started-paperless
+      wait_healthy paperless
       ${pkgs.podman}/bin/podman exec paperless \
         python3 -c 'import sqlite3,sys; sys.stdout.writelines(l+"\n" for l in sqlite3.connect("/usr/src/paperless/data/db.sqlite3").iterdump())' \
         > /var/lib/db-dumps/paperless.sql
@@ -211,7 +216,7 @@ in
     # うえ、古いダンプが正本のように見えてしまう。
     backupCleanupCommand = ''
       rm -rf /var/lib/db-dumps
-      for service in rallly-db spliit-db romm-db; do
+      for service in rallly-db spliit-db romm-db paperless paperless-redis; do
         marker="/run/backup-started-$service"
         if [ -e "$marker" ]; then
           rm -f "$marker"

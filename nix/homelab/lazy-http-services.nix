@@ -93,6 +93,21 @@ let
       idleTimeout = "30min";
       startupTimeout = 120;
     };
+    # Paperless sleeps between uses: the web UI wakes it, the consume inbox wakes it
+    # (paperless.nix has a path unit), and backup.nix starts it for the sqlite dump.
+    # Startup runs migrations and the OCR-remote check, so give it longer to answer.
+    paperless = {
+      containers = {
+        paperless.pull = "missing";
+        paperless-redis.pull = "missing";
+      };
+      endpoints.http = {
+        listen = "127.0.0.1:8097";
+        upstreamPort = 18097;
+      };
+      idleTimeout = "15min";
+      startupTimeout = 180;
+    };
     pingvin-share = {
       containers.pingvin-share.pull = "missing";
       endpoints.http = {
