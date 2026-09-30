@@ -19,11 +19,11 @@
 }:
 stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "omniwm";
-  version = "0.6.4";
+  version = "0.7.3";
 
   src = fetchurl {
-    url = "https://github.com/BarutSRB/OmniWM/releases/download/v${finalAttrs.version}/OmniWM-v${finalAttrs.version}.zip";
-    hash = "sha256-myv1TSDWf1NicAMuBiUXbAbG4DuIl93wJVWNlIM55ec=";
+    url = "https://github.com/OmniNull/OmniWM/releases/download/v${finalAttrs.version}/OmniWM-v${finalAttrs.version}.zip";
+    hash = "sha256-u5nDoWynF45a6A+EN3x5I8tP+jZC2A1GFXGxlT1Q9d8=";
   };
 
   nativeBuildInputs = [ unzip ];
@@ -51,7 +51,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
 
   meta = {
     description = "Tiling window manager for macOS with Niri-inspired column-based layout";
-    homepage = "https://github.com/BarutSRB/OmniWM";
+    homepage = "https://github.com/OmniNull/OmniWM";
     platforms = [ "aarch64-darwin" ];
     mainProgram = "omniwmctl";
   };
