@@ -51,6 +51,11 @@
 
     home-manager.url = "github:nix-community/home-manager/release-26.05";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
+    # The NixOS hosts (laptop, WSL) run nixpkgs-nixos = nixos-unstable, so they need Home Manager's
+    # master branch: release-26.05 against unstable warns about the version mismatch and trips
+    # nixpkgs deprecations (`stdenv.isLinux`) inside its own modules.
+    home-manager-nixos.url = "github:nix-community/home-manager";
+    home-manager-nixos.inputs.nixpkgs.follows = "nixpkgs-nixos";
 
     # NixOS inside Windows (WSL2). Shares roles.wsl with the Lab PC's standalone home,
     # so the shell and CLI are identical whichever way the machine is booted.
@@ -194,6 +199,7 @@
       nixpkgs-agents,
       nix-darwin,
       home-manager,
+      home-manager-nixos,
       nix-on-droid,
       nixos-wsl,
       mopidy-patches,
@@ -875,7 +881,7 @@
               # Leave runtime fileSystems/luks to the generated hardware-configuration.nix, and
               # use disko only as an "install-time format/mount tool".
               { disko.enableConfig = false; }
-              home-manager.nixosModules.home-manager
+              home-manager-nixos.nixosModules.home-manager
               {
                 home-manager.useGlobalPkgs = true;
                 home-manager.useUserPackages = true;
@@ -926,7 +932,7 @@
               { nixpkgs.overlays = [ overlayFixes ]; }
               ./hosts/nixos-laptop.nix
               lanzaboote.nixosModules.lanzaboote
-              home-manager.nixosModules.home-manager
+              home-manager-nixos.nixosModules.home-manager
               {
                 home-manager.useGlobalPkgs = true;
                 home-manager.useUserPackages = true;
@@ -959,7 +965,7 @@
               { nixpkgs.overlays = [ overlayFixes ]; }
               nixos-wsl.nixosModules.default
               ./hosts/wsl.nix
-              home-manager.nixosModules.home-manager
+              home-manager-nixos.nixosModules.home-manager
               {
                 home-manager.useGlobalPkgs = true;
                 home-manager.useUserPackages = true;
