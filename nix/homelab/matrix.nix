@@ -95,6 +95,17 @@
 
       max_upload_size = "50M";
 
+      # Cap the in-process caches. Synapse's caches only grow (Python never hands the
+      # memory back), and the Discord bulk import on 2026-09-30 took the RSS from 350MB
+      # to 6.3GB on a 16GB box, with 6.8GB of zram in use. cache_autotuning evicts
+      # entries once the process passes max_cache_memory_usage until it is back under
+      # the target, so a burst costs at most ~1.5GB instead of everything.
+      caches.cache_autotuning = {
+        max_cache_memory_usage = "1536M";
+        target_cache_memory_usage = "1024M";
+        min_cache_ttl = "5m";
+      };
+
       # Auto-accept invites to rooms the bridges create. Accepting portals for 10 bridges by hand
       # isn't realistic (the iMessage history sync created 36 rooms at once, 2026-09-29).
       # Senders are limited to users on our own server (= bridge ghosts); invites over federation
