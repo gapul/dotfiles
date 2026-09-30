@@ -15,6 +15,10 @@
       title = "Slack";
       package = pkgs: pkgs.mautrix-slack;
       port = 29335;
+      # Every workspace in full (channels + DMs), but channel portals start muted so
+      # only DMs and mentions notify (mentions are override push rules, which win
+      # over the room-level mute). Applies to portals created after this lands.
+      network.mute_channels_by_default = true;
     })
 
     # Google Messages (SMS/RCS via an Android phone). Pairs like Messages for
