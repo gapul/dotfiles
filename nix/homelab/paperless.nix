@@ -193,7 +193,9 @@
     after = [ "lazy-paperless.target" ];
     serviceConfig.Type = "oneshot";
     script = ''
-      while [ -n "$(${pkgs.findutils}/bin/find /var/lib/homelab/paperless/consume -type f -not -name '.*' -print -quit)" ]; do
+      # Prune hidden directories too: Syncthing's .stfolder/ holds a marker file whose own
+      # name is not dotted, and matching it kept paperless awake forever (2026-09-30).
+      while [ -n "$(${pkgs.findutils}/bin/find /var/lib/homelab/paperless/consume -mindepth 1 -name '.*' -prune -o -type f -print -quit)" ]; do
         ${pkgs.coreutils}/bin/sleep 30
       done
       ${pkgs.coreutils}/bin/sleep 120
