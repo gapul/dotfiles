@@ -21,7 +21,9 @@ in
   # night-light / screenshot / clipboard binds silently do nothing.
   home.packages = with pkgs; [
     ghostty # $terminal
-    wofi # $menu, and the cliphist picker
+    # wofi is not listed here: it is declared through programs.wofi below, because stylix
+    # only themes what home-manager knows it manages. As a bare package it kept rendering
+    # its stock white sheet in the middle of a dark desktop.
     hyprpolkitagent # polkit agent (started by its own unit, see below)
     hyprshot # screenshots
     hyprpicker # color picker
@@ -53,11 +55,11 @@ in
       # well launches a second copy of each (two bars stacked on the screen).
       # Hyprland's stock background is a near-white gradient with its own logo on it, and
       # the terminal sits on top of it at background-opacity 0.5 — the text came out
-      # unreadable. hyprpaper was in the closure and exec-once'd but never given a
-      # hyprpaper.conf, so it started and painted nothing. Rather than carry a daemon and a
-      # wallpaper image for a flat colour, let Hyprland paint the theme base itself.
-      # background_color alone is not enough: the stock wallpaper is drawn over it, so it
-      # has to be turned off as well before the colour is visible.
+      # unreadable, so both are off below. hyprpaper used to be exec-once'd with no
+      # hyprpaper.conf and painted nothing, which is why this was a flat colour for a while;
+      # it now has a config, written by stylix from the generated wallpaper (home/stylix.nix).
+      # background_color stays as the colour behind it, which is what shows in the moment
+      # between the compositor starting and hyprpaper painting.
       misc = {
         background_color = "rgb(${c.base})";
         force_default_wallpaper = 0;
@@ -166,18 +168,68 @@ in
   };
 
   # lock screen appearance
+  # The launcher ($menu, and the cliphist picker). Declared through programs.* rather than
+  # home.packages so stylix can write its stylesheet — see home/stylix.nix.
+  programs.wofi.enable = true;
+
+  # hyprpaper paints the wallpaper stylix generates from the palette. It needs to be declared
+  # through services.* rather than home.packages, or stylix cannot see it and writes no config
+  # — which is exactly how it ended up running with an empty screen before.
+  services.hyprpaper.enable = true;
+
+  # The lock screen used to be a flat base colour with a bare input box on it: correct, but it
+  # looked like a prompt rather than part of the desk. It now blurs the wallpaper behind a
+  # clock, so a locked machine still reads as this machine.
   programs.hyprlock = {
     enable = true;
     settings = {
-      background = [ { color = "rgb(${c.base})"; } ];
+      background = [
+        {
+          path = "screenshot";
+          blur_passes = 3;
+          blur_size = 8;
+          brightness = "0.6";
+        }
+      ];
+
+      label = [
+        # Time, large and centred above the input. font_family has to name a font that is
+        # actually in the closure; JetBrainsMono Nerd Font comes in through home.packages.
+        {
+          text = "$TIME";
+          font_size = 92;
+          font_family = "JetBrainsMono Nerd Font";
+          color = "rgb(${c.text})";
+          position = "0, 180";
+          halign = "center";
+          valign = "center";
+        }
+        {
+          text = "cmd[update:43200000] date +\"%A, %d %B\"";
+          font_size = 20;
+          font_family = "JetBrainsMono Nerd Font";
+          color = "rgb(${c.subtle})";
+          position = "0, 90";
+          halign = "center";
+          valign = "center";
+        }
+      ];
+
       input-field = [
         {
-          size = "260, 50";
+          size = "300, 52";
+          rounding = 26;
           outline_thickness = 2;
           outer_color = "rgb(${c.iris})";
           inner_color = "rgb(${c.surface})";
           font_color = "rgb(${c.text})";
-          placeholder_text = "password";
+          check_color = "rgb(${c.foam})";
+          fail_color = "rgb(${c.love})";
+          placeholder_text = "";
+          fade_on_empty = false;
+          position = "0, -40";
+          halign = "center";
+          valign = "center";
         }
       ];
     };
@@ -299,11 +351,98 @@ in
       pulseaudio.format = "{volume}% {icon}";
       backlight.format = "{percent}% ";
     };
+    # The bar was a flat strip with the modules butted together and no way to tell one
+    # reading from the next. It is now transparent, with each group sitting on its own
+    # rounded slab, so the eye can separate them. Accents come from the palette rather
+    # than from a second colour list kept here.
     style = ''
-      * { font-family: "JetBrainsMono Nerd Font"; font-size: 13px; }
-      window#waybar { background: #${c.base}; color: #${c.text}; }
-      #workspaces button.active { color: #${c.iris}; }
-      #battery, #network, #pulseaudio, #backlight, #clock { padding: 0 8px; }
+      * {
+        font-family: "JetBrainsMono Nerd Font";
+        font-size: 13px;
+        /* waybar draws a 1px halo on every widget unless this is cleared */
+        border: none;
+        border-radius: 0;
+        min-height: 0;
+      }
+
+      /* Transparent bar: the slabs below are what is visible, so the wallpaper shows
+         between them and the bar stops reading as a black band across the screen. */
+      window#waybar {
+        background: transparent;
+        color: #${c.text};
+      }
+
+      /* Shared slab. margin gives the floating look; the top margin is what lifts it
+         off the screen edge. */
+      #workspaces,
+      #window,
+      #clock,
+      #pulseaudio,
+      #backlight,
+      #battery,
+      #network,
+      #tray {
+        background: alpha(#${c.surface}, 0.85);
+        border-radius: 10px;
+        margin: 6px 3px 0 3px;
+        padding: 2px 12px;
+      }
+
+      /* Workspaces read as a row of pills rather than a slab of numbers. */
+      #workspaces { padding: 2px 4px; }
+      #workspaces button {
+        color: #${c.muted};
+        padding: 0 8px;
+        border-radius: 8px;
+        transition: background 150ms ease, color 150ms ease;
+      }
+      #workspaces button.active {
+        color: #${c.base};
+        background: #${c.iris};
+      }
+      #workspaces button:hover {
+        color: #${c.text};
+        background: alpha(#${c.overlay}, 0.9);
+      }
+      #workspaces button.urgent {
+        color: #${c.base};
+        background: #${c.love};
+      }
+
+      /* The focused window's title is context, not a reading — keep it quiet, and let it
+         disappear entirely rather than leave an empty slab when nothing is focused. */
+      #window { color: #${c.subtle}; }
+      window#waybar.empty #window {
+        background: transparent;
+        padding: 0;
+        margin: 0;
+      }
+
+      #clock {
+        color: #${c.text};
+        padding: 2px 16px;
+      }
+
+      /* One accent per reading, so a glance lands on the right number. */
+      #pulseaudio { color: #${c.foam}; }
+      #backlight  { color: #${c.gold}; }
+      #battery    { color: #${c.pine}; }
+      #network    { color: #${c.iris}; }
+
+      /* States worth interrupting for. */
+      #battery.warning  { color: #${c.gold}; }
+      #battery.critical {
+        color: #${c.base};
+        background: #${c.love};
+      }
+      #battery.charging { color: #${c.foam}; }
+      #network.disconnected {
+        color: #${c.base};
+        background: #${c.love};
+      }
+
+      #tray { padding: 2px 10px; }
+      #tray menu { background: #${c.surface}; color: #${c.text}; }
     '';
   };
 

@@ -106,6 +106,14 @@
     disko.url = "github:nix-community/disko";
     disko.inputs.nixpkgs.follows = "nixpkgs-nixos";
 
+    # Stylix: applies one palette to the things nix cannot reach by hand — GTK, Qt and the
+    # launcher, which otherwise render in their stock white and look pasted onto the rice.
+    # Used only on nixos-laptop, and with autoEnable off, so it themes what it is asked to
+    # and leaves the hand-written configs (ghostty, yazi, bat …) alone. The palette still
+    # comes from configs/theme/palettes.json, so that file stays the single source of truth.
+    stylix.url = "github:nix-community/stylix";
+    stylix.inputs.nixpkgs.follows = "nixpkgs-nixos";
+
     # Zen browser. The daily driver on both machines, but there is no nixpkgs derivation for
     # it (the mac gets it as a Homebrew cask), so on Linux it comes from the community flake.
     # Deliberately no `follows`: zen's package.nix wants ffmpeg_9, which the 26.05 series
@@ -194,6 +202,7 @@
       sops-nix,
       lanzaboote,
       disko,
+      stylix,
       zen-browser,
       preservation,
       git-hooks,
@@ -875,6 +884,8 @@
                     ./home/common.nix
                     ./home/linux.nix
                     ./home/hyprland.nix # Hyprland rice (nixos-laptop only)
+                    stylix.homeModules.stylix
+                    ./home/stylix.nix # one palette for GTK/Qt/wofi (nixos-laptop only)
                     ./home/ssh-tpm-agent.nix # TPM-sealed SSH key (nixos-laptop only: WSL has no TPM)
                     ./home/linux-gui.nix # GUI apps (the mac's cask list, as packages)
                     ./home/dev.nix # dev environment such as direnv
@@ -917,6 +928,11 @@
                   ./home/common.nix
                   ./home/linux.nix
                   ./home/hyprland.nix
+                  # Kept in step with the real host's list: without these two, CI would build
+                  # a laptop whose desktop is themed differently from the one that ships, and
+                  # a broken stylix option would only surface at rebuild time on the machine.
+                  stylix.homeModules.stylix
+                  ./home/stylix.nix
                   ./home/dev.nix
                   ./home/ssh-tpm-agent.nix
                   ./home/workstation.nix
