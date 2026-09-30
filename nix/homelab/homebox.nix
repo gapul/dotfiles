@@ -1,12 +1,14 @@
-# 持ち物の台帳 (Homebox)。何を持っていて、どこにあって、いつ・いくらで買って保証がいつまでか。
+# Inventory of belongings (Homebox). What I own, where it is, when and for how much it was
+# bought, and when the warranty ends.
 #
-# 主な使い手は人ではなく LLM で、REST API を叩いて登録・検索する。v0.26 から API キー
-# (hb_ で始まる、発行したユーザーの権限を継ぐ) が使えるので、パスワードをスクリプトに
-# 持たせずに済む。nixpkgs の homebox は 0.25 で API キーが無いため、モジュールではなく
-# 公式イメージを使う。0.26 で items/locations の API は /v1/entities に統合された。
+# The main user is an LLM, not a person, which registers and searches via the REST API. API
+# keys (starting with hb_, inheriting the issuing user's permissions) are available since
+# v0.26, so scripts don't need to hold a password. nixpkgs' homebox is 0.25 and has no API
+# keys, so this uses the official image rather than the module. In 0.26 the items/locations
+# APIs were merged into /v1/entities.
 #
-# 領収書や保証書の原本は Paperless にあり、ここには Paperless の URL を持たせるだけ。
-# Go の単一バイナリと SQLite で、アイドル時のメモリは 50MB 未満。
+# Original receipts and warranty cards live in Paperless; this only holds the Paperless URL.
+# A single Go binary plus SQLite, under 50MB of memory when idle.
 {
   lib,
   ...
@@ -19,12 +21,13 @@
 
   virtualisation.oci-containers.containers."homebox" = {
     image = "ghcr.io/sysadminsmedia/homebox:latest";
-    # HBOX_AUTH_API_KEY_PEPPER (32 文字以上の乱数)。0.26 からこれが無いと起動しない。
-    # 変えると発行済みの API キーが全部無効になる。
+    # HBOX_AUTH_API_KEY_PEPPER (random, 32+ characters). Since 0.26 it won't start without it.
+    # Changing it invalidates every issued API key.
     environmentFiles = [ "/var/lib/secrets/homebox.env" ];
     environment = {
-      # アカウントは 2026-09-26 に作成済みなので閉じた。tailnet の内側だけとはいえ、
-      # 登録できる状態を残す理由が無い。増やすときだけ一時的に true にする。
+      # The account was created on 2026-09-26, so registration is closed. Even though it's
+      # tailnet-only, there's no reason to leave registration open. Set to true only
+      # temporarily when adding accounts.
       "HBOX_OPTIONS_ALLOW_REGISTRATION" = "false";
       "HBOX_LOG_FORMAT" = "text";
       "HBOX_WEB_MAX_UPLOAD_SIZE" = "20";

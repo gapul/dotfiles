@@ -1,13 +1,14 @@
-# 他人にファイルを渡す。WeTransfer の代わり。
+# Hand files to other people. A WeTransfer replacement.
 #
-# 端末間の同期は syncthing と samba で足りているので、埋まっていなかったのは
-# 「一度だけ誰かに渡す」方。Nextcloud のような共同作業の箱は要らない。
+# Sync between my own devices is covered by syncthing and samba, so the gap was "handing something
+# to someone once". A collaboration box like Nextcloud is not needed.
 #
-# 期限とダウンロード回数とパスワードを付けたリンクを発行して、期限が来たら実体ごと
-# 消える。渡した後に残り続けないことが要点で、そのために自分の箱でやる。
+# It issues links with an expiry, download count and password, and the files themselves are
+# deleted when they expire. The point is that nothing lingers after handing it over, which is why
+# it runs on my own box.
 #
-# cal / poll / split と同じくトンネルを通す。相手は tailnet の外にいるので、
-# caddy の vhost では届かない。DNS はこのトンネルの CNAME にすること。
+# Goes through the tunnel, like cal / poll / split. The recipient is outside the tailnet, so
+# caddy's vhost can't reach them. Point DNS at this tunnel's CNAME.
 {
   lib,
   ...
@@ -25,10 +26,10 @@ in
     environment = {
       "TZ" = "Asia/Tokyo";
       "CONFIG_FILE" = "/opt/app/config.yaml";
-      # 発行するリンクに載る URL。これが違うと、渡したリンクが内側の
-      # アドレスを指してしまって相手から開けない。
+      # The URL embedded in issued links. If it is wrong, links you hand out point at an internal
+      # address and the recipient can't open them.
       "APP_URL" = "https://send.gapul.net";
-      # トンネルの後ろにいるので、クライアント IP はヘッダから取る。
+      # It sits behind the tunnel, so the client IP comes from headers.
       "TRUST_PROXY" = "true";
     };
     volumes = [

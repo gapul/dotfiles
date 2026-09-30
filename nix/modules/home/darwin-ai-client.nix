@@ -1,7 +1,7 @@
 # AI client component (ECS: profile, darwin workstation only).
 # Client wrappers that ship work off to the mac mini AI node over ssh (transcribe / tts / ocr ...).
 # The mini-side bodies live in configs/macmini/bin and are declared in home/macmini.nix; these are
-# the 母艦 side of the same pair, and used to sit in ~/.local/bin as untracked files.
+# the main-Mac side of the same pair, and used to sit in ~/.local/bin as untracked files.
 # Out-of-store symlinks, so editing them in place lands straight in the repo (same as nvim).
 {
   config,

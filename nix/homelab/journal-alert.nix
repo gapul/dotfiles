@@ -1,13 +1,13 @@
-# journald の中身を定期的に見て、壊れの合図を ntfy に流す。
+# Periodically scan journald and send signs of breakage to ntfy.
 #
-# ログ集約そのものは既にできている。30 コンテナすべてが log-driver=journald
-# なので、`journalctl` 一本で横断検索が効く。2026-08-16 に 6 件の不具合を
-# 掘り出したときも、必要な情報は全部そこにあった。足りなかったのは
-# 「誰も見に行かない」ことの方で、gatus は HTTP が 200 なら緑のままだった。
+# Log aggregation itself is already in place. All 30 containers use log-driver=journald, so a
+# single `journalctl` searches across everything. When 6 bugs were dug out on 2026-08-16, all
+# the needed information was there. What was missing was that "nobody goes to look", and
+# gatus stayed green as long as HTTP returned 200.
 #
-# なので Loki は入れていない。過去に遡って横断クエリしたくなったら考える。
-# 2026-09-23 時点では 13 日分で 2.5GB。調査可能性を残しつつ無制限に
-# 増やさないため、容量は 2GB、期間は最大 90 日で先に達した方を使う。
+# So Loki is not installed. Reconsider if cross-cutting queries into the past become needed.
+# As of 2026-09-23, 13 days took 2.5GB. To keep things investigable without unbounded growth,
+# the limit is 2GB of space or at most 90 days, whichever is reached first.
 { pkgs, ... }:
 {
   services.journald.settings.Journal = {
@@ -27,8 +27,8 @@
     serviceConfig = {
       Type = "oneshot";
       ExecStart = "${pkgs.bash}/bin/bash ${../../configs/homelab/journal-alert.sh} -15min";
-      # 「最後にこの合図で鳴らした内容と時刻」を置く場所。直らない 1 件で
-      # 15 分おきに鳴り続けないための間引きに使う (2026-09-13 に 7 時間で 28 通)。
+      # Where "the content and time last alerted for this signal" is stored. Used for throttling
+      # so a single unfixed issue doesn't keep alerting every 15 minutes (28 messages in 7 hours on 2026-09-13).
       StateDirectory = "journal-alert";
     };
   };
@@ -37,7 +37,7 @@
     description = "journal-alert を 15 分おきに走らせる";
     wantedBy = [ "timers.target" ];
     timerConfig = {
-      # 検索窓と同じ間隔にする。ずらすと取りこぼすか二重に鳴る。
+      # Same interval as the search window. Offsetting it either misses entries or alerts twice.
       OnBootSec = "10min";
       OnUnitActiveSec = "15min";
       Persistent = true;

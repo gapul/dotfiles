@@ -20,9 +20,9 @@
     volumes = [
       "/var/lib/homelab/ntfy/cache:/var/cache/ntfy:rw"
       "/var/lib/homelab/ntfy/lib:/var/lib/ntfy:rw"
-      # 設定は git に置く。手で置かれたファイルのままだったせいで base-url が
-      # アプリの使うホスト名とずれ、iPhone にプッシュが届かない状態が気付かれずに
-      # 続いていた (発行は 200 で成功し web からは読めるので、どこにも現れない)。
+      # Keep the config in git. Because it was a hand-placed file, base-url drifted from the hostname
+      # the app uses, and pushes silently stopped reaching the iPhone without anyone noticing
+      # (publishing succeeded with 200 and the web UI could read it, so it showed up nowhere).
       "${../../configs/homelab/ntfy-server.yml}:/etc/ntfy/server.yml:ro"
     ];
     ports = [

@@ -1,32 +1,32 @@
-# メール。Stalwart (IMAP/JMAP、送信の受け口、管理画面) と、Google の3アカウントを写す imapsync。
+# Mail. Stalwart (IMAP/JMAP, submission endpoint, admin UI) plus imapsync mirroring 3 Google accounts.
 #
-# 家の回線は OP25B で 25 番が出入りとも通らない (2026-09-23 実測)。なので受信 (MX) は
-# まだ Google のまま、Gmail・会社・大学 (どれも Google の IMAP) を毎時 imapsync で写す。
-# Google 側の削除は写さない (こちらは保管庫)。
+# The home line has OP25B, so port 25 passes neither in nor out (measured 2026-09-23). So inbound (MX)
+# stays on Google for now, and Gmail, work, and university (all Google IMAP) are mirrored hourly
+# with imapsync. Deletions on the Google side are not mirrored (this side is the archive).
 #
-# 送信は「受け取った名義で返す」ために、From の名義ごとに出口を分ける。Google 名義の
-# メールは Stalwart の 465 で受けて、その口座の Google SMTP に同じアプリパスワードで
-# 認証して出す。Google が自分の送信済みに控えを残すので、次の写しで Stalwart 側にも
-# 戻ってきて、受信も送信済みも Google 側と揃ったままになる。gapul.net 名義の出口は
-# まだ無い (さくら等のリレーを決めたら route を1つ足す)。
+# Outbound is split by From identity so that replies go out "under the identity it was received as".
+# Mail under a Google identity is accepted on Stalwart's 465 and sent via that account's Google SMTP,
+# authenticating with the same app password. Google keeps a copy in its own Sent, which comes back
+# to Stalwart on the next mirror, so both inbox and Sent stay in sync with Google. There is no exit
+# for the gapul.net identity yet (add one route once a relay such as Sakura is chosen).
 #
-# 口座は Stalwart の memory ディレクトリで宣言する。1 口座 = 1 Google アカウント。
-# /var/lib/secrets/mail/<name>.{password,address,app-password} の3ファイルを、
-# Stalwart (LoadCredential 経由の %{file:}% マクロ) と imapsync の両方が読む。
-# address と app-password が写し元 (imapsync) と出口 (relay) の両方の資格情報。
-# app-password が空の口座は写しを飛ばし、その名義の送信は Google に蹴られる。
-# つまりアプリパスワードが揃っていなくても他の口座は動く。
+# Accounts are declared in Stalwart's memory directory. 1 account = 1 Google account.
+# The three files /var/lib/secrets/mail/<name>.{password,address,app-password} are read by both
+# Stalwart (via the %{file:}% macro through LoadCredential) and imapsync.
+# address and app-password are the credentials for both the mirror source (imapsync) and the exit (relay).
+# An account with an empty app-password skips the mirror, and Google rejects sending under that identity.
+# In other words, the other accounts work even if not all app passwords are in place.
 #
-# TLS は Stalwart 自身の ACME (dns-01、lego と同じ Cloudflare トークンを
-# EnvironmentFile で渡す)。Caddy のワイルドカード証明書を借りると更新のたびに
-# 再起動を仕込む必要があり、そちらの方が壊れやすい。HTTP (JMAP と管理画面) だけは
-# Caddy 経由 (mail.gapul.net → 8120)、IMAPS 993 と submissions 465 は tailnet に直接
-# (trustedInterfaces = tailscale0 なので firewall は開けない)。imapsync も同じ 993 に
-# ループバックで入る。平文の 143 は Stalwart が LOGIN を拒む ("LOGIN is disabled on
-# the clear-text port") ので置かない。
+# TLS uses Stalwart's own ACME (dns-01, with the same Cloudflare token as lego passed via
+# EnvironmentFile). Borrowing Caddy's wildcard certificate would require wiring a restart on every
+# renewal, which is more fragile. Only HTTP (JMAP and admin UI) goes through Caddy
+# (mail.gapul.net → 8120); IMAPS 993 and submissions 465 are direct on the tailnet
+# (trustedInterfaces = tailscale0, so no firewall opening). imapsync also enters the same 993 over
+# loopback. Plaintext 143 is not offered because Stalwart refuses LOGIN ("LOGIN is disabled on
+# the clear-text port").
 { pkgs, ... }:
 let
-  # Stalwart の口座名 → その Google アカウントのドメイン (送信の経路を From で選ぶため)。
+  # Stalwart account name → that Google account's domain (to pick the outbound route by From).
   accounts = {
     gmail = "gmail.com";
     work = "mvrks.co.jp";
@@ -61,7 +61,7 @@ let
     exit $status
   '';
 
-  # 口座ごとの3ファイルを LoadCredential の名前 (<name>.<kind>) → 実体に。
+  # Maps each account's three files from LoadCredential names (<name>.<kind>) to the real files.
   accountCredentials = builtins.listToAttrs (
     builtins.concatMap (
       name:
@@ -98,7 +98,7 @@ in
           protocol = "imap";
           tls.implicit = true;
         };
-        # クライアント (Roundcube、Mail.app、aerc) からの送信の受け口。認証必須。
+        # Submission endpoint for clients (Roundcube, Mail.app, aerc). Authentication required.
         submissions = {
           bind = [ "[::]:465" ];
           protocol = "smtp";
@@ -115,7 +115,7 @@ in
         provider = "cloudflare";
         secret = "%{env:CF_DNS_API_TOKEN}%";
         domains = [ "mail.gapul.net" ];
-        # 必須項目 (無いと "Missing property" で ACME 全体が止まり、自己署名のまま)。
+        # Required field (without it ACME stops entirely with "Missing property" and stays self-signed).
         contact = [ "gapul@gapul.net" ];
         renew-before = "30d";
         default = true;
@@ -127,8 +127,8 @@ in
           inherit name;
           class = "individual";
           secret = cred "${name}.password";
-          # 実アドレスを名義にする。must-match-sender (既定 true) がここを見るので、
-          # この口座で認証したら From はこのアドレスしか出せない。
+          # Use the real address as the identity. must-match-sender (default true) checks this, so once
+          # authenticated as this account, From can only be this address.
           email = [ (cred "${name}.address") ];
         }) accounts;
       };
@@ -137,7 +137,7 @@ in
         secret = cred "admin.password";
       };
 
-      # 465 は認証してからしか使えず、認証した口座だけ外へ中継できる (既定と同じだが明示)。
+      # 465 is usable only after auth, and only authenticated accounts may relay out (the default, but explicit).
       session.auth.require = [
         {
           "if" = "listener = 'submissions'";
@@ -153,7 +153,7 @@ in
         { "else" = false; }
       ];
 
-      # 出口は From のドメインで選ぶ。該当が無ければ mx (OP25B で届かない = 出せない名義)。
+      # Pick the exit by From domain. No match falls to mx (unreachable under OP25B = an identity that can't send).
       queue.strategy.route =
         builtins.attrValues (
           builtins.mapAttrs (name: domain: {

@@ -1,21 +1,22 @@
-# コンテナの更新を podman 自身に任せる。
+# Leave container updates to podman itself.
 #
-# podman は :latest でも勝手に取り直さない。宣言に latest と書いてあっても実体は
-# 初回に引いたまま止まるので、2026-08-30 に見たとき 20 個が数ヶ月から 1 年古かった。
-# 宣言が「常に最新」と言っているのに実体がそうでないなら、直すのは実体の側。
+# podman does not re-pull on its own, even for :latest. Even when the declaration says latest, the
+# actual image stays at whatever was pulled first; when I looked on 2026-08-30, 20 of them were
+# months to a year old. If the declaration says "always latest" and reality doesn't match, it is
+# reality that needs fixing.
 #
-# digest 固定 + Renovate は採らない。固定は「最新に居続ける」の逆だし、CI が検証
-# できるのは nix の構成であってコンテナが起動するかではないので、40 個ぶんの PR が
-# 毎週流れる割に得られる安全が小さい。
+# Digest pinning + Renovate is not used. Pinning is the opposite of "stay on latest", and what CI
+# can verify is the nix configuration, not whether a container starts, so 40 containers' worth of
+# PRs every week would buy little safety.
 #
-# podman auto-update を選んだ理由は rollback が既定で入っていること。更新後に
-# ユニットが起動できなければ前の image に戻して再起動する。自作のタイマーだと
-# ここを作り込むことになる。
+# podman auto-update was chosen because rollback is built in: if a unit fails to start after an
+# update, it goes back to the previous image and restarts. A home-made timer would have to build
+# that.
 #
-# 弱点も書いておく: 巻き戻しの判定は本来 SDNOTIFY で「準備完了」を受け取って
-# 行うもので、それが無い今は「起動はしたが直後に落ちる」型を取り逃がす。そこは
-# journal-alert の再起動ループ検知 (PR #490) が 15 分以内に拾う。即死は
-# auto-update が巻き戻し、遅れて死ぬものは通知が拾う、という分担にしている。
+# Its weakness, for the record: rollback is really meant to be decided by receiving "ready" via
+# SDNOTIFY, and without that it misses the "starts, then dies right after" type. That is caught
+# within 15 minutes by journal-alert's restart-loop detection (PR #490). The split is: auto-update
+# rolls back instant deaths, and notifications catch delayed ones.
 {
   config,
   lib,
@@ -23,13 +24,13 @@
   ...
 }:
 {
-  # 全コンテナに auto-update のラベルを付ける。宣言は 28 ファイルに散っている
-  # ので個別には触らず、submodule の既定値として一度だけ入れる。mkDefault なので
-  # 外したいコンテナがあれば、そのコンテナ自身の宣言で上書きできる。
+  # Put the auto-update label on every container. The declarations are spread across 28 files,
+  # so instead of touching each one, set it once as the submodule default. It is mkDefault, so
+  # a container that should opt out can override it in its own declaration.
   #
-  # DB の tag は postgres:16-alpine / mariadb:11 / couchdb:3 のようにメジャーで
-  # 縛ってあるので、16 が 17 に飛ぶような壊れ方は tag の時点で塞がっている。
-  # 除外すべきコンテナは今のところ無い。
+  # DB tags are pinned to a major version, like postgres:16-alpine / mariadb:11 / couchdb:3, so
+  # breakage like jumping from 16 to 17 is already blocked at the tag level.
+  # No container needs to be excluded for now.
   options.virtualisation.oci-containers.containers = lib.mkOption {
     type = lib.types.attrsOf (
       lib.types.submodule {
@@ -39,23 +40,24 @@
   };
 
   config = {
-    # image 名が完全修飾でないと auto-update は起動時にこう言って死ぬ:
+    # If the image name is not fully qualified, auto-update dies at startup with:
     #   Error: short name: auto updates require fully-qualified image reference
     #
-    # これを 2026-08-30 に本番で踏んだ。宣言 14 箇所が `postgres:16-alpine` の
-    # ような短縮名で、ラベルを足した途端に ntfy・vaultwarden・DB を含む 12 個が
-    # 起動できなくなった。nix の評価も CI も通っていた。CI が見るのは構成であって
-    # コンテナが起動するかではない、と PR に書いた直後にその穴に落ちた。
+    # This was hit in production on 2026-08-30. 14 declarations used short names like
+    # `postgres:16-alpine`, and as soon as the label was added, 12 containers including ntfy,
+    # vaultwarden and the DBs failed to start. Both nix evaluation and CI had passed. Right after
+    # writing in the PR that CI checks the configuration, not whether containers start, I fell into
+    # exactly that hole.
     #
-    # なので、この一点だけは nix が見られる形にする。実行時の失敗を評価時のエラーに
-    # 移すだけだが、少なくとも同じ踏み方は二度としない。
+    # So this one point is made visible to nix. It only moves a runtime failure to an evaluation-time
+    # error, but at least the same mistake won't happen twice.
     #
-    # ただし対象は「registry ポリシーで auto-update されるコンテナ」に限る。
-    # nostr-bunker.nix の signet/signet-ui は label を disabled に上書きしていて、
-    # そもそもレジストリから引かない (pull = "never"; 元イメージがどこにも公開
-    # されていない自前ビルド)。この場合 podman は起動を拒否しないので、上の障害
-    # モードには当てはまらない — 除外しないと、存在しないレジストリを指すための
-    # 完全修飾名をでっち上げる羽目になる。
+    # It only applies to "containers auto-updated with the registry policy", though.
+    # nostr-bunker.nix's signet/signet-ui override the label to disabled and never pull from a
+    # registry at all (pull = "never"; a self-built image whose source image is not published
+    # anywhere). podman does not refuse to start in that case, so the failure mode above does not
+    # apply — without the exclusion, I'd have to invent a fully-qualified name pointing at a
+    # nonexistent registry.
     assertions = lib.mapAttrsToList (name: c: {
       assertion =
         (c.labels."io.containers.autoupdate" or "registry") != "registry"
@@ -87,8 +89,8 @@
       description = "コンテナの更新を毎日走らせる";
       wantedBy = [ "timers.target" ];
       timerConfig = {
-        # rolling tag を最大 24 時間以内に拾う。backup (03:13) と夜間の
-        # nixos-upgrade を避け、失敗時は Podman の rollback と ntfy が受け持つ。
+        # Pick up rolling tags within 24 hours at most. Avoids backup (03:13) and the nightly
+        # nixos-upgrade; on failure, Podman's rollback and ntfy take over.
         OnCalendar = "*-*-* 05:00";
         Persistent = true;
         RandomizedDelaySec = "20min";

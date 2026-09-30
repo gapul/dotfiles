@@ -1,73 +1,75 @@
-# darwin の CI をこの機械で走らせる。
+# Run darwin CI on this machine.
 #
-# GitHub の macos-14 ランナーは毎回 nix store が空なので、carla や breeze-icons を
-# ソースから建て直す。2026-08-31 の実測で 4〜31 分とばらつき、一度は時間切れで落ちた。
-# そのたびに --admin で押し込むか、drvPath が main と同一であることを示して
-# 「この PR では落ちようがない」と論証する羽目になっていた。
+# GitHub's macos-14 runners start with an empty nix store every time, so they rebuild carla and
+# breeze-icons from source. Measured on 2026-08-31 it varied from 4 to 31 minutes, and once it
+# timed out. Each time I had to force it through with --admin, or argue "this PR cannot possibly
+# break" by showing the drvPath was identical to main.
 #
-# ここなら store が温まったままなので、二度目以降は評価だけで終わる。M4 なので
-# 素の速度も macos-14 (Intel 世代) より速い。
+# Here the store stays warm, so from the second run on it is evaluation only. It is an M4, so the
+# raw speed also beats macos-14 (Intel generation).
 #
-# ## services.github-runners を使わない理由
+# ## Why not services.github-runners
 #
-# あのモジュールは nix.enable を要求するが、この機械は Determinate Nix が
-# /etc/nix/nix.conf を持っているので nix.enable = false (darwin-common.nix)。
-# 前提が噛み合わない。
+# That module requires nix.enable, but on this machine Determinate Nix owns /etc/nix/nix.conf, so
+# nix.enable = false (darwin-common.nix). The premises don't fit.
 #
-# しかも要求の中身はこの構成では不要。モジュールがそれを欲しがるのは
-# trusted-users にランナーを入れるためだが、darwin-common.nix は
-# 「trusted-user は root 相当になるので避け、substituter は root 所有の行で全ユーザーに
-# 効かせる」という設計を既に採っている。ランナーはそのまま cachix を引ける。
+# What it requires is also unnecessary in this setup. The module wants it in order to add the
+# runner to trusted-users, but darwin-common.nix already takes the design "avoid trusted-user
+# since it is root-equivalent; make substituters apply to all users via root-owned lines". The
+# runner can pull from cachix as is.
 #
-# ## public リポジトリで self-hosted を使うことについて
+# ## Using self-hosted on a public repository
 #
-# 他人が PR を開くとこの機械で任意のコードが走る、というのが既定の危険。塞いである:
+# The default danger is that anyone opening a PR runs arbitrary code on this machine. It is closed:
 #
-#   - リポジトリ側で fork PR の承認を all_external_contributors にした (2026-08-31)。
-#     既定の first_time_contributors は「一度通った人は以後フリー」なので足りない。
-#   - ci.yml は action を SHA で固定してある。
+#   - The repository requires approval for fork PRs from all_external_contributors (2026-08-31).
+#     The default first_time_contributors means "free from then on once one PR has passed", which
+#     is not enough.
+#   - ci.yml pins actions by SHA.
 #
-# 専用ユーザーでの隔離は諦めた (下の let を参照)。macOS が SSH 越しのユーザー作成を
-# 拒み、通すには SSH 全体に Full Disk Access を与えることになるため。
+# Isolation via a dedicated user was given up (see the let below). macOS refuses to create users
+# over SSH, and allowing it would mean granting Full Disk Access to all of SSH.
 #
-# 過去に他人の fork から来た PR は 0 件。塞ぐのは実績ではなく経路の話。
+# There have been zero PRs from other people's forks so far. Closing this is about the path, not
+# the track record.
 #
-# ## ephemeral にしない理由
+# ## Why not ephemeral
 #
-# ジョブごとに使い捨てにすると登録し直しが要り、登録トークンは 1 時間で失効するので
-# PAT を置くことになる。承認を全外部に効かせた以上ここで走るのは自分のコードだけなので、
-# 残留物の心配より、常駐で store を温めておく利点を取る。
+# Making it disposable per job requires re-registering each time, and registration tokens expire
+# after an hour, so a PAT would have to live here. Since approval now applies to every external
+# contributor, only my own code runs here, so keeping the store warm by staying resident wins over
+# worrying about leftovers.
 { pkgs, ... }:
 let
-  # 専用ユーザーにはできなかった。macOS は SSH 経由の rebuild でユーザーを作らせない
-  # (「users cannot be create over SSH without Full Disk Access」)。この機械は headless で
-  # 運用しているので、そこを通すにはリモートログインに Full Disk Access を与えることに
-  # なる。SSH 越しの全プログラムに効く設定なので、専用ユーザーで得られる隔離と釣り合わない。
+  # Could not use a dedicated user. macOS does not let a rebuild over SSH create users
+  # ("users cannot be create over SSH without Full Disk Access"). This machine runs headless, so
+  # getting past that means giving Remote Login Full Disk Access. That setting applies to every
+  # program over SSH, which does not balance against the isolation a dedicated user would give.
   #
-  # 隔離を落としても成り立つのは、GitHub 側で fork PR の承認を all_external_contributors に
-  # したので、ここで走るのが自分のコードだけになっているため。加えて ci.yml は action を
-  # SHA で固定してある。
+  # Dropping the isolation is acceptable because GitHub now requires approval for fork PRs from
+  # all_external_contributors, so only my own code runs here. In addition, ci.yml pins actions by
+  # SHA.
   #
-  # 隔離を戻したくなったら、System Settings > General > Sharing > Remote Login の
-  # 「Allow full disk access for remote users」を入れてから専用ユーザーに戻す。
+  # To bring the isolation back, enable "Allow full disk access for remote users" under
+  # System Settings > General > Sharing > Remote Login, then switch back to a dedicated user.
   user = "gapul";
   home = "/Users/${user}";
   workDir = "${home}/actions-runner";
   repo = "https://github.com/gapul/dotfiles";
 
-  # 未登録なら登録して、あとは走らせるだけ。config.sh は .runner を作るので、
-  # それがあるかどうかで二回目以降を判別する。
-  # node20 を要求する action (actions/checkout, actions/cache など) 用に、
-  # node24 への別名を用意する。
+  # Register if not yet registered, then just run. config.sh creates .runner, so its presence
+  # tells the second and later runs apart.
+  # Provide a node20 alias pointing to node24 for actions that require node20
+  # (actions/checkout, actions/cache, etc.).
   #
-  # nixpkgs の github-runner は node24 しか同梱しない (上流が node20 を落としたため)。
-  # GitHub の hosted runner は node20 の action を黙って node24 に振り替えるが、
-  # self-hosted は素直に node20 を探して
-  # 「externals/node20/bin/node ... No such file or directory」で止まる。
+  # nixpkgs' github-runner only bundles node24 (upstream dropped node20).
+  # GitHub's hosted runners silently redirect node20 actions to node24, but
+  # self-hosted ones dutifully look for node20 and stop with
+  # "externals/node20/bin/node ... No such file or directory".
   #
-  # 環境変数 (ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION) では効かなかった。プロセスの
-  # 環境に置いても .env に書いても、ランナーは store 側の実体を見に行く。実体を
-  # 用意するのが確実。
+  # The environment variable (ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION) did not work. Whether set
+  # in the process environment or written to .env, the runner looks at the real files in the store.
+  # Providing the real file is the reliable fix.
   runner = pkgs.github-runner.overrideAttrs (old: {
     postFixup = (old.postFixup or "") + ''
       ln -sfn node24 $out/lib/externals/node20
@@ -110,12 +112,12 @@ let
   '';
 in
 {
-  # ランナー本体を展開する。GitHub の配布物は自己更新しようとするので、
-  # store から作業領域へ複製して使う (store は読み取り専用)。
+  # Unpack the runner itself. GitHub's distribution tries to update itself, so copy it from the
+  # store into the work area and use that (the store is read-only).
   #
-  # 登録トークンの権限もここで合わせる。手で置くと 0400 root になりがちだが、
-  # ランナーは gapul として走るので読めない。読めないと config.sh に空文字が渡り、
-  # 「Permission denied」だけがログに出て延々やり直す (2026-09-01 に踏んだ)。
+  # Also fix the registration token's permissions here. Placed by hand it tends to end up 0400 root,
+  # but the runner runs as gapul and cannot read it. Then config.sh gets an empty string, and it
+  # retries forever with only "Permission denied" in the log (hit on 2026-09-01).
   system.activationScripts.postActivation.text = ''
     if [ -f /var/lib/secrets/github-runner-token ]; then
       /usr/sbin/chown ${user} /var/lib/secrets/github-runner-token
@@ -137,9 +139,9 @@ in
       KeepAlive = true;
       UserName = user;
       WorkingDirectory = workDir;
-      # gapul として走るので /var/log には書けない。書けない場所を指すと launchd は
-      # プロセスを起こす前に EX_CONFIG で諦め、ログも残らないので原因が見えない
-      # (2026-08-31 に踏んだ。exit 78 が延々出るだけだった)。
+      # It runs as gapul, so it cannot write to /var/log. If the path is unwritable, launchd gives up
+      # with EX_CONFIG before starting the process and leaves no log, so the cause is invisible
+      # (hit on 2026-08-31; it just kept exiting 78).
       StandardOutPath = "${workDir}/runner.log";
       StandardErrorPath = "${workDir}/runner.log";
     };

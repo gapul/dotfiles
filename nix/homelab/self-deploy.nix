@@ -1,20 +1,21 @@
-# homeserver が自分で main を取りに行って切り替える。
+# homeserver fetches main itself and switches to it.
 #
-# 押し込む向きをやめる理由は資格情報の側にある。母艦から押す形だと、その経路は
-# 母艦の ssh 鍵に依存する。常用鍵を Secure Enclave に移してから鍵は Touch ID の
-# 承認を要求するようになり、無人のときは署名できない (2026-08-30 に窓が切れて
-# 実際に止まった)。鍵を足して回避するより、押す側の資格情報が要らない形にする。
+# The reason for dropping the push direction is on the credentials side. Pushing from the
+# main Mac makes that path depend on the main Mac's ssh key. Since the everyday key moved
+# to the Secure Enclave it requires Touch ID approval and can't sign while unattended (it
+# actually stopped on 2026-08-30 when the window expired). Rather than work around it by
+# adding keys, use a shape where the pushing side needs no credentials.
 #
-# homeserver は公開 flake を読むだけなので、誰の鍵も要らない。母艦が壊れていても
-# 出かけていても、マージされた設定は反映される。
+# homeserver only reads a public flake, so nobody's key is needed. Merged config gets
+# applied even if the main Mac is broken or away.
 { pkgs, ... }:
 {
   systemd.services.self-deploy = {
     description = "main が進んでいたら自分で切り替える";
-    # 自分自身を再起動させない。switch-to-configuration は定義が変わったユニットを
-    # 再起動するので、このユニット自身が対象になると切り替えの途中で殺される。
-    # (switch 本体は nixos-rebuild が systemd-run で別ユニットに逃がしているが、
-    #  再起動の対象になる側の話はそれとは別。)
+    # Don't let it restart itself. switch-to-configuration restarts units whose definition
+    # changed, so if this unit itself were a target it would be killed mid-switch.
+    # (nixos-rebuild moves the switch itself into a separate unit via systemd-run, but
+    #  being a restart target is a separate matter.)
     restartIfChanged = false;
     path = with pkgs; [
       git
@@ -28,7 +29,7 @@
     serviceConfig = {
       Type = "oneshot";
       ExecStart = "${pkgs.bash}/bin/bash ${../../configs/homelab/self-deploy.sh}";
-      # 切り替えは root でしかできない。
+      # Only root can switch.
       User = "root";
       StateDirectory = "self-deploy";
     };
@@ -41,7 +42,7 @@
       OnBootSec = "15min";
       OnUnitActiveSec = "1h";
       Persistent = true;
-      # 毎時ちょうどに GitHub を叩きに行かない。
+      # Don't hit GitHub exactly on the hour.
       RandomizedDelaySec = "10min";
     };
   };

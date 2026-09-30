@@ -26,24 +26,24 @@
     # For the real NixOS machines (homeserver, and the Windows dual-boot HP laptop).
     # Separated from the darwin channels to hit the nixos cache cleanly.
     #
-    # ローリングで追う (2026-08-31 に nixos-26.05 から変更)。安定枝はこの構成では
-    # 実害を出していた: searxng が 3.5 ヶ月古いまま検索が全滅し、tailscale は上流と
-    # 4 世代ずれていた。そのたびに nixpkgsUnstable へ個別に逃がしていて、例外が
-    # 増えるほどどれが最新か分からなくなる。
+    # Tracks the rolling branch (switched from nixos-26.05 on 2026-08-31). The stable branch was
+    # doing real damage in this setup: searxng sat 3.5 months stale and search broke entirely,
+    # and tailscale was 4 releases behind upstream. Each time we escaped to nixpkgsUnstable
+    # individually, and the more exceptions piled up, the harder it was to tell what was current.
     #
-    # nixpkgs の安定枝は Debian の安定版とは性質が違う。修正はまず unstable に入り、
-    # niche なパッケージほど安定枝に降りてこない。ここで動かしているのは searxng /
-    # mautrix / attic / dawarich のような長い尾なので、安定枝は「上流が直したのに
-    # 固定されている版」になりやすい。
+    # The nixpkgs stable branch is not like Debian stable. Fixes land in unstable first, and the
+    # more niche a package, the less likely it is to be backported. What runs here is the long
+    # tail (searxng / mautrix / attic / dawarich), so stable tends to mean "a version pinned
+    # even though upstream already fixed it".
     #
-    # 壊れたときに気づいて戻せるので踏み切れる: CI が 3 プラットフォームで通ってから
-    # main に入り、self-deploy が 1 時間ごとに取りに行き、失敗すれば古い世代のまま
-    # 残って通知が飛ぶ (#500)。起動はしたが中身が壊れている型は再起動ループ検知が
-    # 拾う (#490)。
+    # We can afford this because breakage is noticed and rolled back: changes reach main only
+    # after CI passes on 3 platforms, self-deploy pulls every hour, and on failure the old
+    # generation stays and a notification goes out (#500). The "boots but is broken inside"
+    # kind is caught by the restart-loop detector (#490).
     #
-    # darwin 側は 26.05 のまま。あちらには nix-darwin#1462 の回帰と、
-    # ardour/aseprite/fritzing が unstable でビルドできない事情がある (上の nixpkgs と
-    # nixpkgs-unstable のコメントを参照)。制約は darwin 固有で、ここには効かない。
+    # The darwin side stays on 26.05. It has the nix-darwin#1462 regression and
+    # ardour/aseprite/fritzing failing to build on unstable (see the nixpkgs and
+    # nixpkgs-unstable comments above). Those constraints are darwin-specific and don't apply here.
     nixpkgs-nixos.url = "github:NixOS/nixpkgs/nixos-unstable";
 
     nix-darwin.url = "github:nix-darwin/nix-darwin/nix-darwin-26.05";
@@ -154,10 +154,10 @@
     claude-acp.url = "github:gapul/claude-acp";
     claude-acp.inputs.nixpkgs.follows = "nixpkgs";
 
-    # Shortcuts (Apple) をコードから作るコンパイラ。手で plist を組むのをやめた理由は
-    # 2026-09-27 に踏んだ罠: iOS 26 の組み込みアクションはパラメータ名が新旧で混在して
-    # いて、古い表記 (WFInput/WFDictionaryKey) を書いても黙って無視され、変数が渡らない
-    # ショートカットが出来上がる。cherri は実機と同じ表記を吐くのでそこを任せる。
+    # Compiler that builds Apple Shortcuts from code. We stopped hand-assembling plists after a
+    # trap hit on 2026-09-27: iOS 26 built-in actions mix old and new parameter names, and the
+    # old spelling (WFInput/WFDictionaryKey) is silently ignored, producing a shortcut whose
+    # variables never get passed. cherri emits the same spelling as the device, so leave it to it.
     cherri.url = "github:electrikmilk/cherri";
     cherri.inputs.nixpkgs.follows = "nixpkgs";
 
@@ -166,9 +166,9 @@
     # resident agent process: it hands the identity to macOS' own CryptoTokenKit provider.
     nix-secure-enclave-key.url = "github:ryoppippi/nix-secure-enclave-key";
 
-    # mocopi (Sony のモーションキャプチャ) を macOS で使う自作ツール。ソースは private の
-    # ままにしたいので github: ではなく git+ssh で引く。CI は read-only の deploy key を
-    # ssh-agent 経由で持つ (.github/actions/setup-nix)。実機は普段の GitHub 認証で足りる。
+    # Home-made tool for using mocopi (Sony's motion capture) on macOS. The source should stay
+    # private, so it is fetched over git+ssh rather than github:. CI holds a read-only deploy key
+    # via ssh-agent (.github/actions/setup-nix). Real machines use their usual GitHub auth.
     mocopi-mac.url = "git+ssh://git@github.com/gapul/mocopi-mac?ref=main";
     mocopi-mac.inputs.nixpkgs.follows = "nixpkgs";
     nix-secure-enclave-key.inputs.nixpkgs.follows = "nixpkgs";
@@ -280,24 +280,24 @@
         mocopiMac = mocopi-mac;
         nixpkgsAgents = nixpkgs-agents;
         inherit cherri;
-        # 重いビルドを macmini へ逃がす。同じ aarch64-darwin なのでそのまま走る。
+        # Offload heavy builds to the macmini. It is the same aarch64-darwin, so they run as is.
         #
-        # nix のデーモンは root として ssh するので、鍵の場所を明示する。root は
-        # 権限を無視して読めるので、普段使っている automation 鍵をそのまま指す
-        # (root 専用の鍵を増やすと管理する秘密が 1 つ増えるだけ)。
+        # The nix daemon sshes as root, so the key location is explicit. root reads files
+        # regardless of permissions, so point at the everyday automation key directly
+        # (a root-only key would just be one more secret to manage).
         #
-        # 10 は macmini のコア数、1 は speed factor。big-parallel は「並列に強い
-        # 派生をここへ回す」印で、Chromium や LLVM のような重いものが該当する。
+        # 10 is the macmini's core count, 1 the speed factor. big-parallel marks "send
+        # parallel-friendly derivations here"; heavy things like Chromium and LLVM qualify.
         #
-        # builders-use-substitutes を付けないと、macmini が要る依存を母艦から
-        # 転送することになり、キャッシュから直接引ける利点が消える。
+        # Without builders-use-substitutes, the macmini's dependencies get transferred from the
+        # main Mac, losing the benefit of pulling them straight from the cache.
         nixCustomConf = {
-          # ホスト名ではなく tailnet の IP で書く。nix のデーモンは root として
-          # 動くので ~/.ssh/config を読まず、"macmini" を解決できない
-          # (Could not resolve hostname macmini)。
+          # Written as the tailnet IP, not the hostname. The nix daemon runs as root, so it
+          # doesn't read ~/.ssh/config and can't resolve "macmini"
+          # (Could not resolve hostname macmini).
           #
-          # root の ~/.ssh/known_hosts に macmini のホスト鍵が要る。無いと
-          # 「Host key verification failed」で止まる。これは一度きりの手作業:
+          # root's ~/.ssh/known_hosts needs the macmini host key. Without it the build stops
+          # with "Host key verification failed". This is a one-time manual step:
           #   sudo sh -c 'ssh-keyscan -H 100.105.135.49 >> /var/root/.ssh/known_hosts'
           builders = "ssh-ng://gapul@100.105.135.49 aarch64-darwin /Users/gapul/.ssh/id_automation 10 1 big-parallel,benchmark";
           builders-use-substitutes = "true";
@@ -335,12 +335,12 @@
             inputs.arkenfox.modules.homeManager.arkenfox
             ./home/restic-backup.nix
             ./home/rclone-mount.nix
-            ./home/personal-history.nix # 個人の記録を端末ごとに書き出して Syncthing に載せる
+            ./home/personal-history.nix # export personal records per machine and put them on Syncthing
             ./home/maintenance.nix
-            ./home/tmp-cleanup.nix # ~/tmp のスクラッチを7日で自動掃除 (macminiHeadless と共有)
-            ./home/nix-gc-tcc.nix # root GC daemon (hosts/darwin-common.nix) が使う署名済み nix の安定コピー
+            ./home/tmp-cleanup.nix # auto-clean ~/tmp scratch after 7 days (shared with macminiHeadless)
+            ./home/nix-gc-tcc.nix # stable copy of signed nix used by the root GC daemon (hosts/darwin-common.nix)
             ./home/git-hooks.nix # git hook that auto-rebuilds on main updates (main tree only)
-            ./home/mail-app.nix # Mail.app を裏で常駐させ、認証コードの純正 AutoFill を効かせる
+            ./home/mail-app.nix # keep Mail.app running in the background so native verification-code AutoFill works
           ]
           ++ secrets
           ++ [
@@ -359,19 +359,19 @@
           ./home/macmini-maintenance.nix
           ./home/macmini-backup.nix
           ./home/macmini-watchdog.nix
-          ./home/findmy-tag.nix # Find My タグの定期取得。ノートではなく常時稼働のこちらに置く
-          # iMessage のブリッジ。他の mautrix は homeserver に置いてあるが、これだけ
-          # chat.db と Messages.app が要るのでこの機械にしか置けない。
+          ./home/findmy-tag.nix # periodic Find My tag fetch; lives on this always-on machine, not the laptop
+          # iMessage bridge. The other mautrix bridges live on homeserver, but this one needs
+          # chat.db and Messages.app, so it can only run on this machine.
           ./home/macmini-imessage.nix
-          # 重いレンダリング。母艦を占有せずに済ませるため。
+          # Heavy rendering, so it doesn't tie up the main Mac.
           ./home/macmini-render.nix
-          # 音声モデルと合成処理。クライアントは tailnet 越しの API を使う。
+          # Voice models and synthesis. Clients use the API over the tailnet.
           ./home/macmini-aivisspeech.nix
-          ./home/tmp-cleanup.nix # ~/tmp のスクラッチを7日で自動掃除 (macWorkstation と共有)
-          ./home/nix-gc-tcc.nix # root GC daemon (hosts/darwin-common.nix) が使う署名済み nix の安定コピー
-          # dotfiles-pull (home/macmini.nix) は post-merge hook が rebuild する前提だが、hook を
-          # 入れる module がこの役に無く、.git/hooks の実体は 2026-08-09 に手で置いた古い版のまま
-          # だった (secrets/ の変更で rebuild しない)。宣言に載せて activation で更新させる。
+          ./home/tmp-cleanup.nix # auto-clean ~/tmp scratch after 7 days (shared with macWorkstation)
+          ./home/nix-gc-tcc.nix # stable copy of signed nix used by the root GC daemon (hosts/darwin-common.nix)
+          # dotfiles-pull (home/macmini.nix) relies on the post-merge hook to rebuild, but this role
+          # had no module installing the hook, so .git/hooks still held an old copy placed by hand on
+          # 2026-08-09 (it didn't rebuild on secrets/ changes). Declare it so activation updates it.
           ./home/git-hooks.nix
         ];
         wsl = linuxBase ++ [ ./home/wsl.nix ] ++ secrets ++ station;
@@ -389,8 +389,8 @@
       # available when the swap has no per-service rollback.
       homeserver = nixpkgs-nixos.lib.nixosSystem {
         system = "x86_64-linux";
-        # nixpkgs-nixos ごと nixos-unstable を追うようにしたので、個別に逃がす必要は無い
-        # (2026-08-31)。searxng も tailscale もこの入力から最新が来る。
+        # nixpkgs-nixos itself now tracks nixos-unstable, so no per-package escapes are needed
+        # (2026-08-31). searxng and tailscale both get their latest from this input.
         specialArgs = { inherit user formera-source; };
         modules = [
           # Same SSO overlay as the other hosts (carries e.g. tailscale's vendorHash fix).
@@ -406,9 +406,9 @@
       # Supports both Linux x86_64 / aarch64.
       remoteTools =
         pkgs': with pkgs'; [
-          # zsh 一式。母艦と同じ体験 (ゴーストテキスト補完 / 構文ハイライト /
-          # fzf-tab) をリモートでも出すため。設定は configs/shell/zshrc.remote が
-          # store から直接読む (home-manager はリモートで動かせないため)。
+          # The zsh set, to get the same experience as the main Mac (ghost-text completion /
+          # syntax highlighting / fzf-tab) remotely. configs/shell/zshrc.remote reads them
+          # straight from the store (home-manager can't run on the remote).
           zsh
           zsh-autosuggestions
           zsh-syntax-highlighting
@@ -418,11 +418,11 @@
           neovim
           yazi
           tmux
-          # herdr は母艦と同じ nixpkgs-agents から取る (stable の 26.05 系でも
-          # nixpkgs-unstable でもなく)。`herdr --remote` は両端が同じビルドでないと
-          # attach を拒否し、版が合わないとクライアントが自前のコピーを ~/.local/bin に
-          # 落とす。remote-env に入れておけば flake の pin が両端を揃えるので、その
-          # フォールバックが発火しない (modules/home/packages.nix の agentPkgs.herdr と対)。
+          # herdr comes from the same nixpkgs-agents as the main Mac (neither the stable 26.05
+          # series nor nixpkgs-unstable). `herdr --remote` refuses to attach unless both ends are
+          # the same build, and on a version mismatch the client drops its own copy into
+          # ~/.local/bin. Keeping it in remote-env lets the flake pin align both ends, so that
+          # fallback never fires (pairs with agentPkgs.herdr in modules/home/packages.nix).
           nixpkgs-agents.legacyPackages.${pkgs'.stdenv.hostPlatform.system}.herdr
           git
           lazygit
@@ -466,11 +466,11 @@
           };
           shellcheck = {
             enable = true; # shell script lint (follows .shellcheckrc)
-            # .shellcheckrc に severity=error と書いてあるが、あれは効いていない。
-            # shellcheck 0.11 の rc が解釈するのは disable= の類だけで、severity は
-            # CLI 専用 (実測: 同じ rc に置いた disable=SC2001 は効き、severity=error は
-            # 無視されて style の指摘がそのまま出て exit 1 になる)。つまり「gate は
-            # error 級のみ」という意図は最初から実現していなかった。ここで渡し直す。
+            # .shellcheckrc says severity=error, but it has no effect. The shellcheck 0.11 rc
+            # only honors disable= and the like; severity is CLI-only (measured: disable=SC2001
+            # in the same rc works, while severity=error is ignored, style findings still show,
+            # and it exits 1). So the intent "gate on error level only" was never realized.
+            # Pass it again here.
             args = [ "--severity=error" ];
             excludes = [
               # Symlinks into another repository (gapul/ai-agent-state). The link is committed,
@@ -483,16 +483,16 @@
               "configs/wm/sketchybar/.*"
               # direnv files have no shebang and assume the direnv stdlib
               "\\.envrc$"
-              # zsh は shellcheck の対象外 (SC1071)。拡張子で外すのは、下の macmini の
-              # ように後からディレクトリを足していく形だと取りこぼすため。実際
-              # configs/shell/*.zsh が漏れていて、`just fmt` は origin/main でも
-              # SC1072 で落ちていた。prompt.zsh の `f() { x=$y }` も evalcache.zsh の
-              # `${${x}}` も zsh としては正しく、shellcheck が読めないだけなので、
-              # 書き換えて黙らせるのは筋が悪い。
+              # zsh is out of scope for shellcheck (SC1071). Excluded by extension because adding
+              # directories one by one, like macmini below, misses things. configs/shell/*.zsh
+              # had in fact slipped through, and `just fmt` failed with SC1072 even on
+              # origin/main. Both `f() { x=$y }` in prompt.zsh and `${${x}}` in evalcache.zsh
+              # are valid zsh that shellcheck just can't read, so rewriting them to silence it
+              # is the wrong fix.
               "\\.zsh$"
-              # 拡張子を持たない zsh もある。macmini の AI コマンドは shebang だけが zsh
+              # Some zsh has no extension. The macmini AI commands are zsh only by shebang
               "configs/macmini/bin/.*"
-              # Same for their 母艦-side client wrappers
+              # Same for their main-Mac-side client wrappers
               "configs/macmini/client/.*"
               # Archive of one-shot scripts from macmini setup (historical artifacts, not style-refactored)
               "configs/macmini/setup-scripts/.*"
@@ -544,8 +544,8 @@
             packages = {
               unity-cli = systemPkgs.callPackage ./pkgs/unity-cli.nix { };
 
-              # iOS の構成プロファイル。中身は生成した XML だけなのでどの system でも建つ。
-              # 端末への配布は mobile/ios/profiles/serve.sh がこの出力を読む。
+              # iOS configuration profiles. The contents are just generated XML, so they build on any
+              # system. mobile/ios/profiles/serve.sh reads this output to deliver them to devices.
               ios-profiles = import ./mobile/ios-profiles.nix {
                 inherit lib user;
                 pkgs = systemPkgs;
@@ -805,17 +805,17 @@
           nixpkgsAgents = nixpkgs-agents;
           claudeAcp = claude-acp.packages.${system}.default;
           sopsNix = sops-nix;
-          # 母艦からのリモートビルドを受ける側。接続してくるユーザーが trusted-users に
-          # 入っていないと、nix は「渡された派生を信用できない」として拒否する。
+          # The side that receives remote builds from the main Mac. If the connecting user isn't in
+          # trusted-users, nix refuses with "can't trust the derivations it was handed".
           #
-          # darwin-common.nix には「trusted-user は root 相当になるので避け、
-          # substituter は root 所有の行で全ユーザーに効かせる」と書いてある。あれは
-          # キャッシュを足すためだけに昇格するのを避ける話で、リモートビルドでは
-          # この昇格が機能そのものの要求なので回避できない。
+          # darwin-common.nix says "avoid trusted-user since it is root-equivalent, and apply
+          # substituters to all users via a root-owned line". That is about not escalating just to
+          # add a cache; for remote builds the escalation is what the feature itself requires,
+          # so it can't be avoided.
           #
-          # 昇格の中身は「gapul として ssh できる人が macmini の nix store を root 相当に
-          # 触れる」こと。gapul として ssh できる時点で相当なことができるので、増分は
-          # 大きくない。ただし方針として書いてあるので、ここに理由を残す。
+          # The escalation means "anyone who can ssh in as gapul can touch the macmini's nix store
+          # as root". Being able to ssh in as gapul already allows a lot, so the increment is
+          # small. But since the policy is written down, the reason is recorded here.
           nixCustomConf = {
             trusted-users = "root ${user.username}";
           };
@@ -925,10 +925,10 @@
             ];
           };
 
-          # Windows の中の NixOS (WSL2)。tarball を作って wsl --import で入れる:
+          # NixOS inside Windows (WSL2). Build a tarball and install it with wsl --import:
           #   sudo nix run <flake>#nixosConfigurations.wsl.config.system.build.tarballBuilder
-          # 実機のデュアルブート NixOS とはインストールを共有しない (WSL2 は物理
-          # パーティションを起動できない)。共有するのは home の roles.wsl のほう。
+          # It doesn't share an install with the real dual-boot NixOS (WSL2 can't boot a physical
+          # partition). What it shares is the home-side roles.wsl.
           "wsl" = nixpkgs-nixos.lib.nixosSystem {
             system = "x86_64-linux";
             specialArgs = { inherit user; };

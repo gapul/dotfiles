@@ -1,29 +1,31 @@
-# Authelia. homeserver の各サービスの前に置く SSO。
+# Authelia. SSO placed in front of each homeserver service.
 #
-# ## なぜ Authentik ではないか
+# ## Why not Authentik
 #
-# Authentik は設定をデータベースに持ち、Web UI のフローエディタで編集する。宣言できない。
-# それは uptime-kuma を捨てた理由と同じ形で (監視リストが誰もレビューできない SQLite に
-# 入っていた)、ここでもう一度作りたくない。Authelia は設定が YAML 1 枚、ユーザーもファイル、
-# 秘密は /var/lib/secrets の下、で完結する。差分が git に出るし、まっさらな箱でも同じ形に戻る。
+# Authentik keeps its config in a database and edits it in a web UI flow editor. It can't be
+# declared. That's the same shape as the reason uptime-kuma was dropped (the monitor list lived
+# in SQLite that nobody could review), and I don't want to build that again here. Authelia is
+# self-contained: config is one YAML file, users are a file, secrets live under /var/lib/secrets.
+# Diffs show up in git, and a blank box comes back to the same shape.
 #
-# ## 何を守るか
+# ## What it protects
 #
-# 掛ける先は hosts/homeserver.nix の `sites` にある `auth = true` のものだけ。あの表に
-# ブラウザで見る UI と機械が叩くエンドポイントが混ざっているので、一律に掛けると
-# iPhone の位置ログ (track)、Obsidian の同期 (obsidian)、ビルドキャッシュ (cache)、
-# 通知 (ntfy) が黙って止まる。判断は表の側に書いてある。
+# It applies only to entries with `auth = true` in `sites` in hosts/homeserver.nix. That table
+# mixes UIs viewed in a browser with endpoints machines call, so applying it across the board
+# would silently stop iPhone location logging (track), Obsidian sync (obsidian), the build
+# cache (cache), and notifications (ntfy). The decision is written on the table's side.
 #
-# Vaultwarden (vault) はあえて外してある。パスワード保管庫を SSO の後ろに置くと、
-# SSO のパスワードを思い出せないときに保管庫が開けない、という循環になる。
+# Vaultwarden (vault) is deliberately excluded. Putting the password vault behind SSO creates a
+# loop: if you can't remember the SSO password, you can't open the vault.
 #
-# ## 二要素
+# ## Two-factor
 #
-# `two_factor` を既定にしている。tailnet の中にいることを本人性の根拠にしない、という
-# 判断。tailnet に載る端末が増えるほどその前提は弱くなるので。緩めるなら下の
-# access_control の policy を one_factor にする (1 箇所)。
+# `two_factor` is the default. The judgment is not to treat being inside the tailnet as proof of
+# identity, since that premise weakens as more devices join the tailnet. To relax it, set the
+# policy in access_control below to one_factor (one place).
 #
-# 初回登録は notifier が file なので、リンクはメールではなくサーバー上のファイルに出る:
+# The notifier is file-based, so the initial registration link lands in a file on the server,
+# not in email:
 #   ssh homeserver sudo cat /var/lib/authelia-main/notification.txt
 {
   config,
@@ -38,8 +40,8 @@ in
   services.authelia.instances.main = {
     enable = true;
 
-    # 秘密は他の homelab と同じ扱い。sops-nix はまだこの箱に鍵を持っていないので
-    # (homelab/README.md 参照)、install 時に手で置く root:0400 のファイル。
+    # Secrets are handled like the rest of homelab. sops-nix doesn't have a key on this box yet
+    # (see homelab/README.md), so these are root:0400 files placed by hand at install time.
     secrets = {
       jwtSecretFile = "/var/lib/secrets/authelia/jwt";
       sessionSecretFile = "/var/lib/secrets/authelia/session";
@@ -52,22 +54,22 @@ in
 
       log = {
         level = "info";
-        format = "text"; # journald が拾うので JSON にしない
+        format = "text"; # journald picks it up, so not JSON
       };
 
-      # ユーザーは 1 人。LDAP を立てる理由が無い。
-      # ファイルの中身は README の表に書いた形式で、パスワードは argon2id のハッシュ。
+      # One user. No reason to stand up LDAP.
+      # The file's contents follow the format in the README table; passwords are argon2id hashes.
       authentication_backend = {
-        password_reset.disable = true; # 通知経路がファイルしかないので窓口を開けない
+        password_reset.disable = true; # the only notification path is a file, so don't open this door
         file = {
           path = "/var/lib/secrets/authelia/users.yml";
           watch = false;
         };
       };
 
-      # 既定は deny。通す先は Caddy 側の forward_auth が付いた vhost だけなので、
-      # ここは「gapul.net のサブドメイン全部を two_factor で通す」1 本で足りる。
-      # サービスごとに強さを変えたくなったら、この上に個別の rule を積む。
+      # Default is deny. Only vhosts with forward_auth on the Caddy side get through, so a
+      # single rule "let every gapul.net subdomain through with two_factor" is enough here.
+      # To vary the strength per service, stack individual rules above this one.
       access_control = {
         default_policy = "deny";
         rules = [
@@ -80,8 +82,8 @@ in
 
       session = {
         name = "authelia_session";
-        # 親ドメインに載せることで、サブドメインを跨いでも 1 回のログインで済む。
-        # これが SSO の実体。
+        # Putting it on the parent domain means one login covers all subdomains.
+        # This is what SSO actually is.
         cookies = [
           {
             inherit domain;
@@ -102,7 +104,7 @@ in
 
       storage.local.path = "/var/lib/authelia-main/db.sqlite3";
 
-      # SMTP を持たない。TOTP の登録リンクはファイルに落ちる。
+      # No SMTP. TOTP registration links land in a file.
       notifier = {
         disable_startup_check = true;
         filesystem.filename = "/var/lib/authelia-main/notification.txt";
@@ -110,7 +112,7 @@ in
 
       totp = {
         issuer = domain;
-        algorithm = "sha1"; # 認証アプリの互換性が一番広い
+        algorithm = "sha1"; # widest authenticator app compatibility
         period = 30;
       };
     };

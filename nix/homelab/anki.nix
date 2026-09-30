@@ -1,15 +1,15 @@
-# Anki の同期サーバ。AnkiWeb に預けず自前で持つ。
+# Anki sync server. Self-hosted instead of trusting AnkiWeb.
 #
-# クライアントは iOS の amgi (FOSS フォーク) と母艦の Anki 本体。Anki 本体が
-# 同梱している rslib のサーバをそのまま使うので、追加の実装もリバースエンジニア
-# リングも要らない。同期プロトコルは素の HTTP なので、他と同じ caddy の vhost で足りる。
+# Clients are amgi on iOS (a FOSS fork) and desktop Anki on the workstation. It uses the rslib
+# server that ships with Anki itself, so no extra implementation or reverse engineering is
+# needed. The sync protocol is plain HTTP, so a caddy vhost like the others is enough.
 #
-# パスワードは他の秘密と同じく手で置く (/var/lib/secrets/anki-sync.password)。
-# 中身は平文1行で、モジュールがそれを読んでユーザーを作る。
+# The password is placed by hand like other secrets (/var/lib/secrets/anki-sync.password).
+# Its content is a single plaintext line, which the module reads to create the user.
 {
   services.anki-sync-server = {
     enable = true;
-    # caddy 経由でしか出さないので loopback に閉じる。tailnet 直叩きもさせない。
+    # Only exposed through caddy, so bind to loopback. No direct access over the tailnet either.
     address = "127.0.0.1";
     port = 27701;
     openFirewall = false;

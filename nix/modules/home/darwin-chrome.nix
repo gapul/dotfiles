@@ -346,8 +346,8 @@ in
   launchd.agents.keebmouse = {
     enable = true;
     config = {
-      # /Applications/Nix Apps: nix-darwin が systemPackages の .app を実体コピーで置く先。
-      # store パスではないので版が上がってもここは動かず、TCC の許可も持ち越せる。
+      # /Applications/Nix Apps: where nix-darwin places real copies of systemPackages' .app bundles.
+      # It's not a store path, so it stays put across version bumps and TCC grants carry over.
       ProgramArguments = [ "/Applications/Nix Apps/keebmouse.app/Contents/MacOS/keebmouse" ];
       RunAtLoad = true;
       KeepAlive = true;

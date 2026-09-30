@@ -14,7 +14,7 @@ let
   macmini = "100.105.135.49"; # Mac mini AI node, stays where it is
 
   gatusPort = 8084;
-  autheliaPort = 9092; # homelab/authelia.nix と揃える
+  autheliaPort = 9092; # keep in sync with homelab/authelia.nix
 
   # Wildcard cert issued by security.acme (lego) below. Using one *.gapul.net cert
   # instead of the per-vhost ACME the old Caddyfile did means 1 DNS-01 order rather
@@ -29,11 +29,11 @@ let
       upstream = "127.0.0.1:8123"; # home assistant, container
       extra = "header_up -X-Forwarded-For";
     };
-    # Authelia (auth = true) は「個人データがあるか、壊せる操作がある UI」にだけ掛ける
-    # (2026-09-26 に方針を絞った)。見るだけで保存データの無いもの (dash / search /
-    # status / tools) は tailnet 到達だけで足りるので外してある。掛けると
-    # プライベートウィンドウや iPhone、CLI から毎回ログインを求められるだけで、
-    # 守っている資産が無い。
+    # Authelia (auth = true) is applied only to "UIs that hold personal data or expose
+    # destructive operations" (policy narrowed on 2026-09-26). View-only things with no stored
+    # data (dash / search / status / tools) are left out because reaching the tailnet is
+    # enough. Applying it there would only demand a login every time from private windows,
+    # the iPhone, and the CLI, with no asset being protected.
     dash = {
       upstream = "127.0.0.1:3000"; # homepage
       interval = "1h";
@@ -41,14 +41,14 @@ let
     vault.upstream = "127.0.0.1:8080"; # vaultwarden
     rss.upstream = "127.0.0.1:8081"; # miniflux
     read = {
-      upstream = "127.0.0.1:8087"; # readeck (後で読む)
+      upstream = "127.0.0.1:8087"; # readeck (read later)
       interval = "1h";
     };
     search.upstream = "127.0.0.1:8088"; # searxng
     obsidian = {
       upstream = "127.0.0.1:5984"; # couchdb (LiveSync)
-      # CouchDB は require_valid_user なので / は 401 を返す。これが健全な応答で、
-      # 既定の `< 400` では常に赤かった。401 が返ること自体を生存確認に使う。
+      # CouchDB uses require_valid_user, so / returns 401. That is the healthy response, and
+      # the default `< 400` was always red. The 401 itself is used as the liveness check.
       expect = [ "[STATUS] == 401" ];
     };
     dav.upstream = "127.0.0.1:5232"; # radicale (homelab/webmail.nix adds InfCloud under /infcloud/)
@@ -57,57 +57,59 @@ let
       upstream = "127.0.0.1:8121";
       interval = "1h";
     };
-    # サークル用の2つ。cal と同じく公開先は Caddy ではなく cloudflared なので、
-    # ここの vhost は踏まれない。表に載せているのは gatus の監視がここからしか
-    # 生えないため。
+    # The two for the circle. Like cal, they are published via cloudflared rather than Caddy,
+    # so the vhosts here are never hit. They are listed only because gatus monitoring can
+    # only be generated from here.
     poll = {
-      upstream = "127.0.0.1:8089"; # rallly (日程調整)
+      upstream = "127.0.0.1:8089"; # rallly (scheduling)
       interval = "1h"; # socket activation: do not keep the container awake
     };
     split = {
-      upstream = "127.0.0.1:8090"; # spliit (割り勘)
+      upstream = "127.0.0.1:8090"; # spliit (bill splitting)
       interval = "1h";
     };
-    # 統合カレンダー配信 (unified-calendar.nix)。他と違って公開先は Caddy ではなく
-    # cloudflared なので、ここで生える vhost は実際には誰も踏まない。表に載せているのは
-    # gatus の監視対象がこの表からしか作られないため。
+    # Unified calendar feed (unified-calendar.nix). Unlike the others, it is published via
+    # cloudflared rather than Caddy, so nobody actually hits the vhost generated here. It is
+    # listed only because gatus monitoring targets are generated from this table alone.
     ical.upstream = "127.0.0.1:8113";
-    # calnode (予約ページ)。他と違って公開先は Caddy ではなく cloudflared なので、
-    # ここで生える vhost は実際には誰も踏まない — booking.gapul.net はトンネルの
-    # CNAME だから。それでも表に載せているのは、gatus の監視対象がこの表からしか
-    # 作られないため。監視は upstream を直接叩くので、vhost を経由しなくても機能する。
+    # calnode (booking page). Unlike the others, it is published via cloudflared rather than
+    # Caddy, so nobody actually hits the vhost generated here — booking.gapul.net is a CNAME
+    # to the tunnel. It is still listed because gatus monitoring targets are generated from
+    # this table alone. The monitor hits the upstream directly, so it works without the vhost.
     booking.upstream = "127.0.0.1:8086";
-    # DNS レコードもダッシュボードのリンクも前からあったのに vhost だけ無く、
-    # https で開くと繋がらない状態だった (直接ポートを叩けば見えるので気付きにくい)。
+    # The DNS record and the dashboard link existed already, but the vhost did not, so opening
+    # it over https failed (easy to miss because hitting the port directly worked).
     jellyfin = {
       upstream = "127.0.0.1:8096";
       interval = "1h";
     };
-    # 位置ログ (Dawarich)。表に無かったので vhost も gatus の監視も無く、iPhone は
-    # tailnet の生アドレスに直接送っていた。移行でアドレスが変われば黙って壊れる形。
-    # なお HTTP の応答を見ても送信が止まったことは分からない (2026-08-23 に 36 時間
-    # 止まったが web は開いていた)。それは dawarich-freshness.nix の方で見る。
+    # Location log (Dawarich). It was missing from the table, so there was no vhost and no gatus
+    # monitor, and the iPhone sent directly to the raw tailnet address — the kind of setup that
+    # silently breaks when a migration changes the address. Note that HTTP responses don't show
+    # that uploads stopped (on 2026-08-23 they stopped for 36 hours while the web UI still
+    # opened). dawarich-freshness.nix watches for that.
     track.upstream = "127.0.0.1:3005";
     navidrome = {
       upstream = "127.0.0.1:4533";
       interval = "1h";
     };
-    # 3D プリンタの操作盤 (Bambuddy)。プリンタを LAN Only + Developer Mode にした結果
-    # Bambu Handy が使えなくなったので、スマホから触る先がここになる。homelab/bambuddy.nix。
+    # 3D printer control panel (Bambuddy). Putting the printer in LAN Only + Developer Mode made
+    # Bambu Handy unusable, so this is where the phone goes instead. See homelab/bambuddy.nix.
     bambu.upstream = "127.0.0.1:8010";
-    # 家計簿 (fava)。台帳・同期ジョブ・fava は homelab/ledger.nix (2026-09-23 に macmini から
-    # 移した。macmini は常駐機ではない)。fava 自体はログインを持たないので Authelia を挟む。
+    # Household ledger (fava). The ledger, sync jobs, and fava live in homelab/ledger.nix (moved
+    # from macmini on 2026-09-23; macmini is not an always-on host). fava itself has no login,
+    # so Authelia sits in front of it.
     money = {
       upstream = "127.0.0.1:5075";
       auth = true;
     };
-    # Stalwart の JMAP と管理画面 (homelab/mail.nix)。認証は Stalwart 自身が持つ。
-    # IMAPS 993 はここを通らず tailnet に直接。
+    # Stalwart's JMAP and admin UI (homelab/mail.nix). Stalwart handles auth itself.
+    # IMAPS 993 does not go through here; it is exposed on the tailnet directly.
     mail.upstream = "127.0.0.1:8120";
-    # ゲームの棚。roms は RomM (ブラウザでそのまま遊べる)、games は Gameyfin
-    # (DRM フリーの PC ゲームの目録)。実ファイルはどちらも /srv/games 配下で
-    # restic の対象外 — 吸い出し直せるものに容量を使わない、という他の /srv と
-    # 同じ扱い。
+    # Game shelves. roms is RomM (playable directly in the browser); games is Gameyfin
+    # (a catalog of DRM-free PC games). The actual files for both live under /srv/games and
+    # are excluded from restic — the same treatment as the rest of /srv: don't spend space on
+    # things that can be dumped again.
     roms = {
       upstream = "127.0.0.1:8091";
       interval = "1h";
@@ -117,7 +119,7 @@ let
       interval = "1h";
     };
     paperless.upstream = "127.0.0.1:8097";
-    # 持ち物の台帳 (Homebox)。LLM が API キーで叩く。
+    # Inventory of belongings (Homebox). LLMs call it with an API key.
     box.upstream = "127.0.0.1:8104";
     git.upstream = "127.0.0.1:3003"; # forgejo
     # Signet (homelab/nostr-bunker.nix), the NIP-46 signer for gapul@gapul.net's
@@ -130,13 +132,13 @@ let
     archive = {
       upstream = "127.0.0.1:8000"; # archivebox
       auth = true;
-      # REST API は ArchiveBox 自身の API キーで守られている (X-ArchiveBox-API-Key)。
-      # ここに Authelia を掛けると iPhone の共有シートからの登録がログイン画面に化ける。
+      # The REST API is protected by ArchiveBox's own API key (X-ArchiveBox-API-Key).
+      # Putting Authelia here turns submissions from the iPhone share sheet into a login page.
       authSkip = "/api/*";
       interval = "1h";
     };
-    # 食事の記録 (homelab/wger.nix)。独自ログインを持ち、公式の iOS アプリが
-    # 直接叩くので Authelia は掛けない。静的ファイルは Caddy が配る。
+    # Meal log (homelab/wger.nix). It has its own login and the official iOS app calls it
+    # directly, so no Authelia. Caddy serves the static files.
     food = {
       upstream = "127.0.0.1:8106";
       pre = ''
@@ -150,24 +152,25 @@ let
         }
       '';
     };
-    # オーディオブック (homelab/audiobookshelf.nix)。iPhone の Audiobookshelf アプリと
-    # Readest の ABS 連携が自前のログインで直接叩くので Authelia は挟まない。
+    # Audiobooks (homelab/audiobookshelf.nix). The iPhone Audiobookshelf app and Readest's ABS
+    # integration call it directly with their own login, so no Authelia in front.
     audiobooks = {
       upstream = "127.0.0.1:8107";
       interval = "1h";
     };
-    # 電子書籍 (homelab/kavita.nix)。Readest が API キー付き URL で OPDS を読む。
+    # E-books (homelab/kavita.nix). Readest reads OPDS via a URL containing an API key.
     books = {
       upstream = "127.0.0.1:8108";
       interval = "1h";
     };
     ntfy.upstream = "127.0.0.1:8082";
     cache.upstream = "127.0.0.1:8083"; # attic (own nix binary cache)
-    shell.upstream = "127.0.0.1:8888"; # atuin (シェル履歴の同期サーバー)
-    # blocky の API/metrics (UI は無い)。/check は自前の 1 ページ (configs/homelab/dns-check.html):
-    # スマホからドメインを確認し、10 分だけブロックを止められる。/mm/ は macmini の blocky
-    # API を同一オリジンで出す (tailnet の第 1 リゾルバは macmini なので、片方だけ止めても
-    # 効かない。https ページから 100.x:4000 の平文 API は mixed content で叩けない)。
+    shell.upstream = "127.0.0.1:8888"; # atuin (shell history sync server)
+    # blocky's API/metrics (no UI). /check is a custom single page (configs/homelab/dns-check.html):
+    # it lets the phone check a domain and pause blocking for 10 minutes. /mm/ exposes macmini's
+    # blocky API on the same origin (macmini is the tailnet's first resolver, so pausing only one
+    # of them has no effect, and an https page can't call the plaintext API at 100.x:4000 due
+    # to mixed content).
     dns2 = {
       upstream = "127.0.0.1:4000";
       pre = ''
@@ -195,22 +198,22 @@ let
     # RecallVault's iPhone client authenticates with its own bearer token, so this
     # machine endpoint must not be placed behind the browser-oriented Authelia flow.
     recall.upstream = "${macmini}:8766";
-    # iPhone のヘルスケアの受け口 (homelab/health.nix)。PulsHealth アプリが bearer トークンで叩く
-    # 機械向けエンドポイントなので Authelia は挟まない。/ は認証が要るので健全なら 401。
+    # Intake for iPhone Health data (homelab/health.nix). A machine endpoint the PulsHealth app
+    # calls with a bearer token, so no Authelia in front. / requires auth, so healthy means 401.
     health = {
       upstream = "127.0.0.1:8105";
       expect = [ "[STATUS] == 401" ];
     };
-    # Orca の Web クライアント (macmini の常駐ランタイム)。スマホから使うために TLS が要る:
-    # 平文 HTTP + 生 IP は secure context ではないので、起動時に
-    # `crypto.randomUUID is not a function` で落ちる。tailscale serve が同じものを
-    # https://macmini.tail079f44.ts.net に出しているが、MagicDNS がこのネットワークの
-    # 端末で解決できていない (ts.net の split route が OS に効かない) ので、
-    # 既に実績のある gapul.net 側に寄せる。
+    # Orca's web client (the resident runtime on macmini). TLS is needed to use it from the phone:
+    # plain HTTP + a raw IP is not a secure context, so it crashes at startup with
+    # `crypto.randomUUID is not a function`. tailscale serve exposes the same thing at
+    # https://macmini.tail079f44.ts.net, but MagicDNS doesn't resolve on devices on this
+    # network (the ts.net split route doesn't take effect in the OS), so it goes through the
+    # already-proven gapul.net side instead.
     #
-    # Authelia は挟まない。ページ自体は開けても、ランタイムはペアリングコードの
-    # デバイストークンを持たないクライアントを受け付けない。つまり入口の鍵は
-    # 既にコード側にあり、vhost は tailnet 内からしか引けない。
+    # No Authelia. The page itself opens, but the runtime rejects clients that don't hold a
+    # device token from the pairing code. In other words, the lock on the door is already in
+    # the code, and the vhost is only resolvable from inside the tailnet.
     orca.upstream = "${macmini}:6768";
     sync = {
       upstream = "127.0.0.1:8384"; # syncthing rejects requests whose Host it doesn't know
@@ -230,13 +233,13 @@ let
       upstream = "127.0.0.1:8102";
       interval = "1h";
     };
-    # Anki の同期サーバ。AnkiWeb に預けず自前で持つ。クライアントは iOS の amgi と
-    # 母艦の Anki 本体。同期プロトコルは HTTP なので普通の vhost で足りる。
+    # Anki sync server. Kept self-hosted rather than on AnkiWeb. Clients are amgi on iOS and
+    # the Anki desktop app on the main Mac. The sync protocol is HTTP, so a plain vhost is enough.
     anki = {
       upstream = "127.0.0.1:27701";
-      # 同期サーバはルートに何も生やさないので / は 404。認証を要求する 401 だと
-      # 思って書いたら実機は 404 だった (/sync/meta は GET だと 405)。この 404 自体が
-      # 「HTTP サーバが上がっている」証拠なので、それを生存確認に使う。
+      # The sync server serves nothing at the root, so / is 404. It was written expecting an
+      # auth-demanding 401, but the real server returned 404 (/sync/meta returns 405 for GET).
+      # That 404 itself proves "the HTTP server is up", so it is used as the liveness check.
       expect = [ "[STATUS] == 404" ];
     };
     # pve.gapul.net has nothing left to point at.
@@ -244,8 +247,8 @@ let
     # could review. It ran on the Raspberry Pi and was stopped on 2026-08-12 —
     # every target in it still pointed at the CT this host replaced, so it had been
     # red across the board and watching nothing. Its job is the `sites` table now.
-    # SSO のログイン画面そのもの。ここに forward_auth を掛けると、認証を求める先が
-    # 自分になって永久に回るので、auth は付けない。
+    # The SSO login page itself. Putting forward_auth here would make it ask itself for
+    # authentication and loop forever, so no auth.
     auth.upstream = "127.0.0.1:${toString autheliaPort}";
     status = {
       upstream = "127.0.0.1:${toString gatusPort}";
@@ -255,20 +258,20 @@ let
 
   # reverse_proxy takes an optional block; only emit braces when there is
   # something to put inside them.
-  # SSO。auth = true の vhost だけ、reverse_proxy の手前で Authelia に問い合わせる。
-  # 未ログインなら Authelia が 302 でログイン画面へ送り、戻ってきたら Remote-* が
-  # 上流に渡る (受け取る側が対応していれば、それで誰かが分かる)。
+  # SSO. Only vhosts with auth = true consult Authelia before reverse_proxy.
+  # If not logged in, Authelia sends a 302 to the login page; on return, Remote-* headers are
+  # passed upstream (if the receiving side supports them, that identifies the user).
   #
-  # 掛ける先を表の側で選んでいるのは、この表にブラウザで見る UI と機械が叩く
-  # エンドポイントが混ざっているから。一律に掛けると iPhone の位置ログ (track)、
-  # Obsidian の同期 (obsidian)、ビルドキャッシュ (cache)、通知 (ntfy) が黙って止まる。
-  # 独自ログインを持つもの (jellyfin/navidrome/git/paperless/rss/roms/games) も外して
-  # ある。あれらはネイティブアプリや git がそのまま叩くので、前段に人間向けの
-  # ログイン画面を置くとアプリ側が壊れる。vault は別の理由で外してある
-  # (保管庫を SSO の後ろに置くと、SSO のパスワードを忘れたとき開けなくなる)。
-  # matcher が空なら全リクエストに、与えられていればそのパスを除いた分だけに掛ける。
-  # 除外は「機械が API キーで叩くパス」のためにある (archive の /api/*)。人間向けの
-  # 画面には従来どおり Authelia が掛かる。
+  # The target is chosen per entry because this table mixes browser UIs with endpoints that
+  # machines call. Applying it across the board would silently break iPhone location logging
+  # (track), Obsidian sync (obsidian), the build cache (cache), and notifications (ntfy).
+  # Services with their own login (jellyfin/navidrome/git/paperless/rss/roms/games) are also
+  # left out. Native apps and git call them directly, so putting a human-facing login page in
+  # front breaks the apps. vault is left out for a different reason
+  # (putting the password vault behind SSO means it can't be opened if the SSO password is forgotten).
+  # With an empty matcher it applies to all requests; if given, to everything except those paths.
+  # The exclusion exists for "paths that machines call with an API key" (archive's /api/*).
+  # Human-facing pages still get Authelia as before.
   mkForwardAuth =
     skip:
     let
@@ -417,8 +420,8 @@ in
   #
   services.tailscale = {
     enable = true;
-    # かつてここで unstable に逃がしていた (26.05 系列が 1.98.10 で止まり、上流は
-    # 1.102.3 だった)。2026-08-31 に nixpkgs-nixos ごと nixos-unstable へ移したので不要。
+    # This used to be pulled from unstable here (the 26.05 series was stuck at 1.98.10 while
+    # upstream was at 1.102.3). No longer needed since nixpkgs-nixos moved to nixos-unstable on 2026-08-31.
     useRoutingFeatures = "server";
     # Connects itself on first boot. The key is placed by hand like the other
     # secrets — the point is that a reinstall does not need someone to remember
@@ -593,14 +596,14 @@ in
   # widening the whole thing.
   networking.firewall.trustedInterfaces = [ "tailscale0" ];
 
-  # Matter だけは例外で、LAN 側を開けないと成立しない。デバイスの発見が同一 L2 の
-  # mDNS なので、5353 が閉じていると commissioning が必ず `Discovery timed out` で
-  # 落ちる (2026-08-16 に SESAME Hub 3 で踏んだ。ペアリングコードは正しく、機器も
-  # 同じネットワークにいるのに、homeserver からは広告が一件も見えなかった)。
-  # 5540 は commissioning 後の運用トラフィック。
+  # Matter is the one exception: it cannot work without opening the LAN side. Device discovery
+  # is mDNS on the same L2, so with 5353 closed, commissioning always fails with
+  # `Discovery timed out` (hit on 2026-08-16 with a SESAME Hub 3: the pairing code was correct
+  # and the device was on the same network, yet homeserver saw not a single advertisement).
+  # 5540 is the operational traffic after commissioning.
   #
-  # tailnet 越しには来ないので trustedInterfaces では埋まらない。LAN インターフェイス
-  # に限定して開ける。
+  # It doesn't arrive over the tailnet, so trustedInterfaces doesn't cover it. Open it only
+  # on the LAN interface.
   networking.firewall.interfaces.enp2s0.allowedUDPPorts = [
     5353
     5540

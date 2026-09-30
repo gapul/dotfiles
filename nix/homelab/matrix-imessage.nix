@@ -1,16 +1,16 @@
-# iMessage ブリッジの appservice 登録。ブリッジ本体はここには無い。
+# appservice registration for the iMessage bridge. The bridge itself is not here.
 #
-# 他の mautrix ブリッジは全部この箱で動くが、iMessage だけは chat.db と Messages.app が
-# 要るので macmini で動く (nix/home/macmini-imessage.nix)。Synapse から見ると「tailnet の
-# 向こうにいる appservice」で、この箱に置くのは登録ファイルだけ。
+# All other mautrix bridges run on this box, but iMessage alone needs chat.db and Messages.app, so
+# it runs on macmini (nix/home/macmini-imessage.nix). To Synapse it is "an appservice across the
+# tailnet", and only the registration file lives on this box.
 #
-# トークンの流れ: 他のブリッジは同じ箱で --generate-registration して Synapse に渡すが、
-# ここでは機械が別なので、as_token / hs_token を secrets/matrix-imessage.yaml に置いて
-# 両方の host 鍵で開ける形にした (.sops.yaml)。この箱は登録ファイルに、macmini は
-# ブリッジの config に、同じ値を差し込む。トークンを作り直すときは両方が同時に変わる。
+# Token flow: other bridges run --generate-registration on the same box and hand it to Synapse, but
+# here the machines differ, so as_token / hs_token live in secrets/matrix-imessage.yaml, openable
+# by both hosts' keys (.sops.yaml). This box injects the same values into the registration file and
+# macmini into the bridge config. Regenerating the tokens changes both at once.
 #
-# url は macmini の tailnet アドレス。Synapse はイベントをここへ push する。macmini 側の
-# ファイアウォール (hosts/macmini.nix の socketfilterfw) に穴が要るのはそのため。
+# url is macmini's tailnet address; Synapse pushes events there. That is why the macmini-side
+# firewall (socketfilterfw in hosts/macmini.nix) needs a hole.
 { config, ... }:
 let
   domain = "gapul.net";
@@ -24,10 +24,10 @@ in
     "matrix_imessage/hs_token".sopsFile = ../../secrets/matrix-imessage.yaml;
   };
 
-  # 名前空間はブリッジが --generate-registration で出すものと同じ (2026-09-28 に実機で
-  # 生成して写した)。bot と imessage_* を exclusive で取る。msc2409 の push_ephemeral は
-  # 既読や入力中の転送に要る (config の appservice.ephemeral_events と対)。ブリッジが
-  # 並べて出す素の `push_ephemeral` は Synapse が読まないので写していない。
+  # The namespaces match what the bridge emits with --generate-registration (generated on the real
+  # machine and copied on 2026-09-28). It claims bot and imessage_* exclusively. msc2409's
+  # push_ephemeral is needed to forward read receipts and typing (paired with appservice.ephemeral_events
+  # in the config). The bare `push_ephemeral` the bridge emits alongside is not read by Synapse, so it isn't copied.
   sops.templates.${registration} = {
     owner = "matrix-synapse";
     mode = "0400";

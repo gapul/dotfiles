@@ -18,17 +18,16 @@
   # declares the restic schedule that backrest used to own. Dropped outright:
   # dockge, wud, backrest, uptime-kuma, adguardhome-sync, stirling-pdf.
   #
-  # open-webui と anythingllm も 2026-08-20 に落とした。macmini の AI パネルと
-  # 用途が重なっていて、二重に持つ理由が無かった。合計で約 660MB 使っていた。
-  # /var/lib/homelab の所有者を root に戻す。移行直後は uid 100000 (旧 CT101 の
-  # rootless コンテナ時代の subuid) のままで、systemd-tmpfiles が
-  # 「Detected unsafe path transition /var/lib/homelab (owned by 100000) →
-  # .../romm (owned by root)」として配下の作成を拒否する。既存のスタックは
-  # ディレクトリが移行時から在るので気付かれなかったが、新しいスタックを足すと
-  # そこで初めて出る (RomM がそれ)。
+  # open-webui and anythingllm were also dropped on 2026-08-20. They overlapped with the
+  # macmini's AI panel and there was no reason to keep both. Together they used about 660MB.
+  # Give /var/lib/homelab back to root. Right after the migration it was still uid 100000 (the
+  # subuid from the old CT101 rootless-container days), and systemd-tmpfiles refuses to create
+  # anything under it with "Detected unsafe path transition /var/lib/homelab (owned by 100000) →
+  # .../romm (owned by root)". Existing stacks didn't notice because their directories existed
+  # since the migration, but it first shows up when a new stack is added (RomM was that one).
   #
-  # 配下は各スタックの所有のまま触らない。ここは入れ物なので root:0755 が正しい。
-  # /srv/syncthing で 2026-08-16 に直したのと同じ残骸。
+  # Leave the children owned by each stack. This is just the container, so root:0755 is right.
+  # Same leftover as the one fixed in /srv/syncthing on 2026-08-16.
   systemd.tmpfiles.rules = [
     "d /var/lib/homelab 0755 root root -"
   ];
@@ -82,7 +81,7 @@
     ./matrix-bridge-secrets.nix
     ./memory-pressure-alert.nix
     ./mullvad-exit.nix
-    ./site-watch.nix # サイト更新監視 (urlwatch → ntfy)。対象はファイル内の jobs リスト
+    ./site-watch.nix # site change monitoring (urlwatch → ntfy); targets are the jobs list in the file
     ./miniflux.nix
     ./navidrome.nix
     ./nostr-bunker.nix

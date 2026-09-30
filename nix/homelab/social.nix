@@ -1,20 +1,22 @@
-# 自分のドメインで外とつながる発信の置き場。どれも軽いものだけを選んだ (合計でメモリ数百 MB)。
+# Home for public-facing publishing on our own domain. Only lightweight things were picked
+# (a few hundred MB of memory in total).
 #
-#   social.gapul.net  GoToSocial      Fediverse のアカウント @gapul@gapul.net の本体
-#   relay.gapul.net   nostr-rs-relay  自分の Nostr 投稿を必ず残す個人リレー (書き込みは自分の鍵だけ)
-#   blog.gapul.net    WriteFreely     Fediverse からフォローできる長文ブログ (1 人用)
+#   social.gapul.net  GoToSocial      the Fediverse account @gapul@gapul.net itself
+#   relay.gapul.net   nostr-rs-relay  personal relay that always keeps our Nostr posts (writes only from our key)
+#   blog.gapul.net    WriteFreely     long-form blog followable from the Fediverse (single user)
 #
-# 3 つとも tailnet の外の人に届かないと意味が無いので、Caddy ではなく cloudflared のトンネルで
-# 出す (homelab/cloudflared.nix)。家の IP は出ない。
+# All three are pointless unless people outside the tailnet can reach them, so they're exposed
+# through the cloudflared tunnel rather than Caddy (homelab/cloudflared.nix). The home IP isn't exposed.
 #
-# アカウント名は @gapul@gapul.net (account-domain = gapul.net)。GoToSocial 本体は social.gapul.net に
-# 置き、gapul.net 直下の webfinger / host-meta / nodeinfo は CF Pages のポートフォリオ
-# (gapul/gapul.net) の _redirects で social.gapul.net に回す。gapul.net の MX には触らない。
-# host と account-domain は初回起動で DB に焼き込まれ、後から変えると作り直しになる。
+# The account is @gapul@gapul.net (account-domain = gapul.net). GoToSocial itself lives at
+# social.gapul.net; webfinger / host-meta / nodeinfo at the gapul.net root are routed to
+# social.gapul.net by the _redirects of the CF Pages portfolio (gapul/gapul.net). gapul.net's MX
+# is left alone. host and account-domain are baked into the DB on first start; changing them
+# later means starting over.
 #
-# Nostr の鍵 (NIP-05 は gapul.net/.well-known/nostr.json):
+# Nostr key (NIP-05 is gapul.net/.well-known/nostr.json):
 #   npub16t57vts9q96ht7c80n9h40l4grvfq35x7hq7de9kdxpqu02fjr2s7q08y5
-# 秘密鍵は /var/lib/secrets/nostr.env にだけあり、投稿の受け口が使う。
+# The private key exists only in /var/lib/secrets/nostr.env and is used by the posting endpoint.
 _:
 
 let
@@ -29,7 +31,7 @@ in
       protocol = "https";
       bind-address = "127.0.0.1";
       port = 8110;
-      # cloudflared が同じ箱の中から繋ぐので、転送元はループバックだけを信用する。
+      # cloudflared connects from inside the same box, so trust only loopback as the forwarder.
       trusted-proxies = [ "127.0.0.1/32" ];
       letsencrypt-enabled = false;
       accounts-registration-open = false;
@@ -38,7 +40,7 @@ in
         "ja"
         "en"
       ];
-      # 他サーバーの画像などのキャッシュは短く。自分の投稿の添付は消えない。
+      # Keep the cache of other servers' images etc. short. Attachments on our own posts aren't removed.
       media-remote-cache-duration = "168h";
     };
   };
@@ -55,10 +57,10 @@ in
       };
       network = {
         address = "127.0.0.1";
-        # トンネル経由なので接続元は 127.0.0.1 に見える。レート制限を実 IP で掛けるため。
+        # Via the tunnel the client looks like 127.0.0.1. This makes rate limiting use the real IP.
         remote_ip_header = "cf-connecting-ip";
       };
-      # 公開の無料リレーにしない。書き込めるのは自分の鍵だけ。読むのは誰でもよい。
+      # Not a free public relay. Only our key can write. Anyone may read.
       authorization.pubkey_whitelist = [ nostrPubkeyHex ];
       limits.messages_per_sec = 5;
     };
@@ -81,8 +83,8 @@ in
         port = 8111;
       };
     };
-    # 最初の管理ユーザーの初期パスワード。既定値は store に置かれた "nixos" なので必ず差し替える。
-    # 読むのは初回だけ (ユーザーが 0 人のとき)。ログイン後に画面から変える。
+    # Initial password for the first admin user. The default is "nixos" sitting in the store, so always replace it.
+    # Only read the first time (when there are 0 users). Change it in the UI after logging in.
     admin = {
       name = "gapul";
       initialPasswordFile = "/var/lib/secrets/writefreely-admin.password";

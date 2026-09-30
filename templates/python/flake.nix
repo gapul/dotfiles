@@ -18,7 +18,7 @@
           default = pkgs.mkShell {
             packages = with pkgs; [
               python3
-              uv # 仮想環境 + パッケージ管理
+              uv # virtualenv + package management
               ruff # linter / formatter
             ];
           };

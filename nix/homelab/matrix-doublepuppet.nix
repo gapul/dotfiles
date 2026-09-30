@@ -1,17 +1,18 @@
-# ダブルパペット用の appservice。@gapul:gapul.net 本人として送信できる登録を Synapse に置く。
+# Appservice for double puppeting. Puts a registration in Synapse that can send as
+# @gapul:gapul.net itself.
 #
-# 何に使うか:
-#   - ブリッジ: スマホの LINE から自分が送った発言を、ボットの代理ではなく
-#     @gapul の発言として Matrix に出す (mautrix の double_puppet.secrets に
-#     "as_token:<token>" を渡す標準の方式)
-#   - 過去ログの取り込み: Synapse は送信時刻の上書き (?ts=) を appservice にしか
-#     許さない。自分の古い発言を元の時刻で入れるにはこの登録が要る
+# What it is for:
+#   - Bridges: show messages I sent from LINE on the phone as @gapul's own messages in Matrix,
+#     rather than relayed by the bot (the standard way of passing "as_token:<token>" to
+#     mautrix's double_puppet.secrets)
+#   - History import: Synapse only lets appservices override the send timestamp (?ts=).
+#     Importing my old messages at their original times needs this registration
 #
-# 名前空間は @gapul:gapul.net だけに絞る。mautrix の手順書は @.*:domain だが、
-# このトークンで成りすませる範囲をわざわざ広げる理由が無い。
+# The namespace is narrowed to @gapul:gapul.net only. mautrix's guide uses @.*:domain, but
+# there is no reason to widen what this token can impersonate.
 #
-# トークンは初回に生成して /var/lib に置く。store には入らない。Synapse と
-# ブリッジはグループ経由で読む。
+# The token is generated on first run and kept in /var/lib, never in the store. Synapse and
+# the bridges read it via a group.
 { pkgs, ... }:
 let
   dataDir = "/var/lib/matrix-doublepuppet";
@@ -59,11 +60,11 @@ in
   services.matrix-synapse.settings.app_service_config_files = [ registrationFile ];
   systemd.services.matrix-synapse.serviceConfig.SupplementaryGroups = [ "matrix-doublepuppet" ];
 
-  # エージェント (ssh 越しの gapul) にもこのトークンを読ませる。ブリッジの管理部屋に
-  # @gapul 本人としてコマンドを送る用 (例: discord の `guilds bridge`)。ブリッジの
-  # コマンドは呼び出したユーザーのログインに対して動くので、@claude では代用できない。
-  # 使い方: Authorization: Bearer <as_token> に ?user_id=@gapul:gapul.net を付けて
-  # Client-Server API を叩く (appservice の masquerade)。ssh の既存セッションには
-  # 効かない (グループは次のログインから)。
+  # Let the agent (gapul over ssh) read this token too, to send commands to bridge management
+  # rooms as @gapul itself (e.g. discord's `guilds bridge`). Bridge commands act on the calling
+  # user's login, so @claude cannot stand in.
+  # Usage: call the Client-Server API with Authorization: Bearer <as_token> plus
+  # ?user_id=@gapul:gapul.net (appservice masquerade). Does not apply to existing ssh sessions
+  # (the group takes effect from the next login).
   users.users.gapul.extraGroups = [ "matrix-doublepuppet" ];
 }

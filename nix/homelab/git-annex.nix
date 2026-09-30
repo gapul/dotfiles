@@ -37,9 +37,8 @@
 # binary and a directory with the right owner.
 { pkgs, ... }:
 {
-  # git 本体も要る。ssh 越しの remote は git-upload-pack / git-receive-pack を
-  # 呼ぶので、git-annex だけ入れても clone できない (この host には git が
-  # 入っていなかった)。
+  # git itself is needed too. Remotes over ssh call git-upload-pack / git-receive-pack, so
+  # installing only git-annex does not allow cloning (this host did not have git installed).
   environment.systemPackages = [
     pkgs.git
     pkgs.git-annex

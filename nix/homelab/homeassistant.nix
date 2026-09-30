@@ -27,12 +27,12 @@
       # unblocked) that Home Assistant cannot manage, and both log an error every
       # start.
       #
-      # habluetooth (6.26.5 で確認) は起動ごとに "Missing NET_ADMIN/NET_RAW
-      # capabilities for Bluetooth management" を出すが、これは上流の誤検知で、
-      # ここを直す必要はない。2026-08-30 に中から測った結果:
-      #   CapEff = 0x800435fb → NET_ADMIN も NET_RAW も立っている
-      #   AF_BLUETOOTH の raw ソケットも管理チャネル (HCI_CHANNEL_CONTROL) も開ける
-      # Bluetooth 自体は動いている。このログを見て capability を足しに来ないこと。
+      # habluetooth (confirmed on 6.26.5) prints "Missing NET_ADMIN/NET_RAW
+      # capabilities for Bluetooth management" on every start, but that is an upstream false positive
+      # and nothing here needs fixing. Measured from inside on 2026-08-30:
+      #   CapEff = 0x800435fb → both NET_ADMIN and NET_RAW are set
+      #   both an AF_BLUETOOTH raw socket and the management channel (HCI_CHANNEL_CONTROL) open fine
+      # Bluetooth itself works. Don't come add capabilities after seeing this log.
       extraOptions = [
         "--network=host"
         "--cap-add=NET_ADMIN"
@@ -84,23 +84,23 @@
     ];
   };
 
-  # ESPHome のダッシュボードは止めてある (2026-08-31)。
+  # The ESPHome dashboard is stopped (2026-08-31).
   #
-  # 上流が本体からダッシュボードを削除し、esphome-device-builder という別パッケージに
-  # なった。nixpkgs のモジュールはまだ `esphome dashboard` を叩くので、起動するたびに
+  # Upstream removed the dashboard from the main package; it became a separate package,
+  # esphome-device-builder. The nixpkgs module still calls `esphome dashboard`, so every start fails with
   #
   #   ERROR The built-in dashboard has been removed from ESPHome.
   #
-  # で落ちて再起動を繰り返す。nixpkgs 側は対応中 (NixOS/nixpkgs#550245
-  # "nixos/esphome: convert to new device builder")。
+  # and restarts in a loop. nixpkgs is working on it (NixOS/nixpkgs#550245
+  # "nixos/esphome: convert to new device builder").
   #
-  # 止めても失うものは無い。移行のときに /var/lib/esphome へ yaml を持ってくる想定で
-  # 宣言したが、実際には Home Assistant の config 側 (data/esphome) に残ったままで、
-  # ここは空だった (2026-08-31 に確認: yaml 0 件)。何も提供していないサービスが
-  # 落ちていただけ。
+  # Nothing is lost by stopping it. It was declared expecting the yaml to be brought into
+  # /var/lib/esphome during the migration, but it actually stayed on the Home Assistant config side
+  # (data/esphome) and this was empty (checked 2026-08-31: 0 yaml files). A service providing
+  # nothing was simply crashing.
   #
-  # 版を古いところで固定する手もあったが採らない。ローリングに移した方針に反するうえ、
-  # 書き込み機に対して更新を止める形になる。上流の PR が入ったら enable に戻す。
+  # Pinning an old version was an option but not taken: it goes against the move to rolling, and it
+  # would freeze updates for the flashing tool. Switch back to enable once the upstream PR lands.
   services.esphome.enable = false;
 
   services.node-red = {

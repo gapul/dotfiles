@@ -1,16 +1,17 @@
-# iPhone のヘルスケアを自宅に貯める受け口 (health.gapul.net)。
+# Receiver that stores iPhone Health data at home (health.gapul.net).
 #
-# 送る側は PulsHealth (iOS、Apache-2.0、App Store 配布)。HealthKit を読み取り専用で読み、
-# 過去分を丸ごと送ったあとは差分を gzip NDJSON で POST してくる。送り先は設定した
-# サーバーだけで、開発者にも第三者にも行かないことはソースで確認した (2026-09-15)。
+# The sender is PulsHealth (iOS, Apache-2.0, distributed on the App Store). It reads HealthKit
+# read-only, and after sending the full history it POSTs deltas as gzip NDJSON. It sends only to
+# the configured server, never to the developer or third parties, which was verified in the
+# source (2026-09-15).
 #
-# 受ける側は公式の重い構成 (TimescaleDB + Go + Grafana) ではなく、同梱の Python + SQLite
-# の例を configs/homelab/puls-receiver に持ってきたもの。展開後サイズの上限だけ足してある。
-# 標準ライブラリだけで動き、DB は 1 ファイル。
+# The receiver is not the heavy official stack (TimescaleDB + Go + Grafana) but the bundled
+# Python + SQLite example brought into configs/homelab/puls-receiver, with only a cap on
+# decompressed size added. It runs on the standard library alone and the DB is a single file.
 #
-# 認証はアプリが持つ bearer トークン (/var/lib/secrets/puls.env の PULS_TOKEN) なので、
-# vhost に Authelia は挟まない。アプリの URL 検証は tailnet の 100.x に平文 http を許さないため、
-# Caddy の HTTPS を通す。
+# Auth is the bearer token held by the app (PULS_TOKEN in /var/lib/secrets/puls.env), so
+# Authelia is not put in front of the vhost. The app's URL validation does not allow plain http
+# to tailnet 100.x addresses, so it goes through Caddy's HTTPS.
 { pkgs, ... }:
 
 {

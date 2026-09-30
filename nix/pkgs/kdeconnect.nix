@@ -1,25 +1,25 @@
-# KDE Connect (macOS). 自作 tap `gapul/kdeconnect` の cask を置き換える。
+# KDE Connect (macOS). Replaces the cask from my own tap `gapul/kdeconnect`.
 #
-# tap をやめた理由は 2 つ。
+# Two reasons for dropping the tap.
 #
-# 1. **検証していなかった。** cask は `sha256 :no_check` で、KDE の CDN から降ってきた実行
-#    バイナリをそのまま入れていた。ここでは実ハッシュが付く。
-# 2. **すでに壊れていた。** cask が固定していた master の build 6325 は CDN から消えている
-#    (CI ディレクトリは古いものを刈る)。手元で動いていたのはインストール済みだったからで、
-#    まっさらな機械では 404 になる。番号を固定する設計そのものが保たない。
+# 1. **It wasn't verified.** The cask used `sha256 :no_check` and installed the executable binary
+#    straight from KDE's CDN. Here it gets a real hash.
+# 2. **It was already broken.** Build 6325 of master that the cask pinned is gone from the CDN
+#    (the CI directory prunes old ones). It only worked locally because it was already installed;
+#    a clean machine gets a 404. Pinning a build number just doesn't hold up as a design.
 #
-# 追随先も master から release ブランチに変えた。master は nightly なので、日々の変更を
-# そのまま浴びることになる。release-26.08 なら安定版系列の中で動く。
+# The tracked branch also changed from master to the release branch. master is nightly, so it would
+# take every day's changes directly. release-26.08 moves within the stable series.
 #
-# 版を上げるときは、下のディレクトリを見て build 番号とハッシュを差し替える:
+# To bump the version, look at the directory below and swap the build number and hash:
 #   https://cdn.kde.org/ci-builds/network/kdeconnect-kde/release-26.08/macos-arm64/
-# 古い番号は消えるので、上げないまま store から消えると取り直せない。attic / cachix に
-# 載っている間は残るが、それに寄りかからないこと。
+# Old numbers disappear, so if it drops out of the store without being bumped it can't be re-fetched.
+# It survives while it is in attic / cachix, but don't lean on that.
 #
-# 署名は KDE e.V. の Developer ID (team 5433B4KXM8) が付いた正規のもの。だから中身を
-# 触らずに運べば TCC の付与が生き残る (nix-darwin の /Applications/Nix Apps は実体の
-# コピーツリーなので、パスも安定している)。ビルドから作ると ad-hoc 署名になって
-# ローカルネットワークの許可が毎回外れるので、そこはやらない。
+# The signature is the genuine KDE e.V. Developer ID (team 5433B4KXM8). So shipping it without
+# touching the contents keeps TCC grants alive (nix-darwin's /Applications/Nix Apps is a copied tree
+# of the real files, so the path is stable too). Building from source gives an ad-hoc signature and
+# the local network permission gets dropped every time, so that is not done.
 {
   lib,
   stdenvNoCC,
@@ -28,9 +28,9 @@
 }:
 stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "kdeconnect";
-  # 上流の macOS ビルドにバージョン番号は付かず、リリース系列と CI の通し番号しかない。
-  # ファイル名がそのまま `release_<version>` なので、ここを直せば URL も追う。
-  # 系列を跨ぐとき (26.08 → 26.12 など) はディレクトリ側の `release-26.08` も直すこと。
+  # Upstream's macOS builds carry no version number, only the release series and a CI sequence number.
+  # The file name is literally `release_<version>`, so fixing this makes the URL follow.
+  # When crossing series (26.08 → 26.12 etc.), also fix `release-26.08` in the directory part.
   version = "26.08-6635";
 
   src = fetchurl {
@@ -41,7 +41,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
   nativeBuildInputs = [ undmg ];
   sourceRoot = ".";
 
-  # 署名済みバンドルなので中身は一切いじらない。
+  # Signed bundle, so the contents are not touched at all.
   dontPatchShebangs = true;
   dontStrip = true;
   dontFixup = true;

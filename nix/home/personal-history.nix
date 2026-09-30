@@ -1,26 +1,25 @@
-# 個人の記録を端末ごとのディレクトリへ書き出して Syncthing に載せる。
+# Export personal records into a per-machine directory and put them on Syncthing.
 #
-# --- なぜ「端末ごと」なのか ---
+# --- Why "per machine" ---
 #
-# 記録の実体は2種類に分かれる。
+# The records come in two kinds.
 #
-#   1. 1ファイル1書き手     … Claude Code の projects/<uuid>.jsonl。セッションごとに
-#                            別ファイルで、書くのはそのセッションを走らせた端末だけ。
-#                            追記のみ。そのまま同期しても衝突しない。
-#   2. 1ファイル複数書き手   … Claude Code の history.jsonl、nvim の keystrokes.jsonl。
-#                            どの端末も同じパスに追記する。**そのまま同期すると必ず
-#                            衝突する** (Syncthing なら sync-conflict-* が生える)。
+#   1. One writer per file      … Claude Code's projects/<uuid>.jsonl. A separate file per
+#                                 session, written only by the machine that ran it.
+#                                 Append-only. Syncing as is never conflicts.
+#   2. Many writers per file    … Claude Code's history.jsonl, nvim's keystrokes.jsonl.
+#                                 Every machine appends to the same path. **Syncing as is
+#                                 always conflicts** (Syncthing sprouts sync-conflict-*).
 #
-# 2 を素直に同期する方法は無い。なので、同期するのは元ファイルではなく
-# `<共有>/personal-history/<ホスト名>/` 以下の写しにする。各端末は自分の名前の
-# ディレクトリしか書かないので、構造として衝突が起きない。ActivityWatch の aw-sync が
-# 採っているのと同じ考え方。
+# There's no clean way to sync kind 2 directly. So what gets synced is not the original file
+# but a copy under `<share>/personal-history/<hostname>/`. Each machine writes only its own
+# directory, so conflicts can't happen by construction. Same idea as ActivityWatch's aw-sync.
 #
-# 読む側 (HPI) は `personal-history/*/claude/history.jsonl` のようにグロブで拾えば、
-# 全端末ぶんが1つの列として出てくる。get_files がグロブを受けるのでそのまま書ける。
+# The reader (HPI) globs something like `personal-history/*/claude/history.jsonl` and gets
+# all machines as one stream. get_files accepts globs, so it can be written as is.
 #
-# atuin だけはここに入れない。あちらは本体に同期機構があり (homelab/atuin.nix)、
-# レコード単位・暗号化つきなので、ファイルの写しを配るより筋がいい。
+# atuin alone stays out. It has its own sync (homelab/atuin.nix), per record and encrypted,
+# which beats handing around file copies.
 {
   config,
   pkgs,
@@ -30,9 +29,9 @@
 
 let
   home = config.home.homeDirectory;
-  # ~/Sync/syncthing は Syncthing の共有そのもの。restic の対象にも入っているので、
-  # ここへ書き出したものは同期と同時にバックアップにも乗る。Claude の history.jsonl が
-  # どこにもバックアップされていなかった問題も、これで片付く。
+  # ~/Sync/syncthing is the Syncthing share itself. It's also covered by restic, so anything
+  # exported here is backed up as well as synced. This also fixes Claude's history.jsonl not
+  # being backed up anywhere.
   shareRoot = "${home}/Sync/syncthing/personal-history";
 
   snapshot = pkgs.writeShellScript "personal-history-snapshot" ''
@@ -128,9 +127,9 @@ let
   '';
 in
 {
-  # 1日1回で足りる。どれも「後から集計する」ための記録で、分単位の鮮度は要らない。
-  # 端末が寝ていて発火しなかった日は、次に起きたときの回で追いつく (元が追記型なので
-  # 取りこぼしにならない)。
+  # Once a day is enough. These are all records for later aggregation; minute-level freshness
+  # isn't needed. On days the machine slept and it didn't fire, the next run after wake
+  # catches up (the sources are append-only, so nothing is lost).
   launchd.agents.personal-history-snapshot = import ../lib/launchd-agent.nix {
     program = "${snapshot}";
     schedule = {

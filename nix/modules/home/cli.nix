@@ -176,16 +176,16 @@ in
     flags = [ "--disable-up-arrow" ];
     settings = {
       # Sync history across multiple machines (Mac / WSL / Linux server).
-      # 2026-08-21 に公式 SaaS (api.atuin.sh) から自前サーバーへ切り替えた
-      # (homelab/atuin.nix)。同期の中身はもともとクライアント側で暗号化されて
-      # いるので、移す動機はプライバシーではなく「他人のサーバーに依存しない」ほう。
-      # tailnet 内なので、外出先で Tailscale が切れている間は同期だけが止まる
-      # (履歴のローカル記録と検索は影響を受けない)。
+      # Switched from the official SaaS (api.atuin.sh) to a self-hosted server on 2026-08-21
+      # (homelab/atuin.nix). The synced content was already encrypted client-side, so the
+      # motive was not privacy but "not depending on someone else's server".
+      # It is inside the tailnet, so while Tailscale is down away from home only sync stops
+      # (local history recording and search are unaffected).
       #
-      # 各端末で一度だけ `atuin login -u gapul` が要る。パスワードは人間が打つので
-      # Bitwarden。E2E の鍵のほうは sops に入れてあり (secrets/common.yaml の
-      # atuin/key、宣言は home/secrets.nix)、rebuild すれば端末に materialise される
-      # ので手でコピーする必要はない。
+      # Each machine needs `atuin login -u gapul` once. The password is typed by a human, so it
+      # lives in Bitwarden. The E2E key is in sops (atuin/key in secrets/common.yaml, declared in
+      # home/secrets.nix) and is materialised on the machine by a rebuild, so no manual copy is
+      # needed.
       auto_sync = true;
       sync_address = "https://shell.gapul.net";
       sync_frequency = "5m";
@@ -260,9 +260,9 @@ in
     source = ../../../configs/bin/nssh;
     executable = true;
   };
-  # nssh と herdr ラッパー (modules/home/terminal.nix) が共通で流し込む下準備。
-  # 普段は `ssh <host> bash -s` の stdin に食わせるが、リモートへ直接持って行って
-  # 単体で実行することもできるので executable のまま nssh の隣に置く。
+  # Setup shared by nssh and the herdr wrapper (modules/home/terminal.nix), both of which feed it
+  # in. Usually it goes to the stdin of `ssh <host> bash -s`, but it can also be carried to the
+  # remote and run standalone, so it stays executable next to nssh.
   home.file.".local/bin/remote-bootstrap" = {
     source = ../../../configs/bin/remote-bootstrap;
     executable = true;

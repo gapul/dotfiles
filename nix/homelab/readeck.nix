@@ -1,48 +1,48 @@
-# 後で読む (Pocket の代わり)。
+# Read later (a Pocket replacement).
 #
-# 既にあるものとの棲み分け。archivebox は「消える前に丸ごと保存する」ためのもので、
-# 読むための道具ではない。miniflux は購読で、読み終わったら流れていく。その二つの
-# 間に「あとで腰を据えて読む」が無かった。readeck はそこだけを埋める。
+# How it fits with what's already here: archivebox is for "save the whole thing before it
+# disappears", not a reading tool. miniflux is subscriptions that scroll away once read.
+# Between the two there was no "sit down and read it later". readeck fills just that gap.
 #
-# 選定理由は軽さ。karakeep のほうが AI タグ付けやネイティブアプリがあって機能は上だが、
-# Next.js に meilisearch とヘッドレス Chrome が付いてくる。readeck は Go の単一
-# バイナリと SQLite なので、この箱で一番小さい部類に収まる。空きメモリが 6.5GB しか
-# 無いところに calnode も入れるので、ここは軽いほうを取った。
+# Chosen for being light. karakeep has more features (AI tagging, native apps), but it brings
+# Next.js with meilisearch and a headless Chrome. readeck is a single Go binary plus SQLite,
+# among the smallest things on this box. With only 6.5GB of free memory and calnode going in
+# too, the lighter one won.
 #
-# miniflux 2.3.3 は readeck を統合先として最初から知っている (binary に wallabag /
-# linkding / shiori / karakeep と並んで入っているのを確認した)。購読で見つけたものを
-# その場で放り込めるので、二つを別々に使うより噛み合う。連携の設定は miniflux 側の
-# UI から readeck の URL と API トークンを入れる作業で、宣言できるものではない。
+# miniflux 2.3.3 knows readeck as an integration out of the box (confirmed in the binary
+# alongside wallabag / linkding / shiori / karakeep). Things found via subscriptions can be
+# dropped in on the spot, so the two mesh better than used separately. The integration is set
+# up by entering readeck's URL and API token in miniflux's UI; it can't be declared.
 #
-# 秘密は要らない。secret key は初回起動時に自前で生成してデータディレクトリに置く
-# (0.23.1 の "Use generated secret key during first run")。管理ユーザも初回に
-# ブラウザから作る。つまり rebuild 前に手で置くファイルは無い。
+# No secrets needed. The secret key is generated on first start and stored in the data
+# directory (0.23.1's "Use generated secret key during first run"). The admin user is also
+# created in the browser on first run. So there are no files to place by hand before rebuild.
 {
   lib,
   ...
 }:
 
 {
-  # 新規サービスなので旧ホストから移ってくるデータが無い。bind mount の元を先に作る。
+  # A new service, so there's no data migrating from the old host. Create the bind-mount source first.
   systemd.tmpfiles.rules = [
     "d /var/lib/homelab/readeck 0700 root root -"
   ];
 
   virtualisation.oci-containers.containers."readeck" = {
-    # Docker Hub ではなく Codeberg のレジストリ。0.23 系で安定しているので、
-    # 他のスタックと揃えて latest でよい (calnode を 0.2 に固定したのは、あちらが
-    # まだ v0.2 系で日に何度もコミットが入るため。ここは事情が違う)。
+    # Codeberg's registry, not Docker Hub. It's stable on the 0.23 series, so latest is fine,
+    # matching the other stacks (calnode was pinned to 0.2 because it's still on v0.2 with
+    # commits landing several times a day; the situation differs here).
     image = "codeberg.org/readeck/readeck:latest";
     environment = {
-      # HOST はイメージ側で既に 0.0.0.0 になっているので念押し。PORT のほうは
-      # イメージが空文字を入れており (podman image inspect で確認)、ここで
-      # 与えないと既定値の解釈に委ねることになるので明示する。
+      # HOST is already 0.0.0.0 in the image, so this is just to be sure. PORT is set to an
+      # empty string by the image (confirmed with podman image inspect), and without giving it
+      # here we'd depend on how the default gets interpreted, so set it explicitly.
       "READECK_SERVER_HOST" = "0.0.0.0";
       "READECK_SERVER_PORT" = "8000";
-      # Caddy 越しなので、名乗ってくる Host を明示的に許す必要がある。
+      # Behind Caddy, so the Host it presents must be explicitly allowed.
       "READECK_ALLOWED_HOSTS" = "read.gapul.net";
       "READECK_USE_X_FORWARDED" = "1";
-      # journald に流すので、JSON より読める形のほうがいい。
+      # Goes to journald, so a readable format beats JSON.
       "READECK_LOG_FORMAT" = "text";
     };
     volumes = [

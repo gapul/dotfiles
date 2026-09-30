@@ -220,12 +220,12 @@ in
     };
   };
 
-  # 動画の書き出し。資料の発表原稿を読み上げ、Remotion がスライドを描いて mp4 にする。
+  # Video export. Reads the deck's speaker notes aloud, and Remotion draws the slides into an mp4.
   #
-  # 読み上げは AivisSpeech エンジン（home/macmini-aivisspeech.nix、VOICEVOX と同じ API）。
-  # VOICEVOX 本体（0.25.2）も置いてみたが、macOS 27 では
-  # /synthesis のたびに libffi の trampoline で落ちる（DYLD_LIBRARY_PATH でも直らない）。
-  # キューは DB（VideoJob）なので、ここは待ち受けるだけ。アプリと同じ data/ とデータベースを見る。
+  # Narration uses the AivisSpeech engine (home/macmini-aivisspeech.nix, same API as VOICEVOX).
+  # VOICEVOX itself (0.25.2) was tried too, but on macOS 27 it crashes in libffi's trampoline on
+  # every /synthesis call (DYLD_LIBRARY_PATH doesn't fix it).
+  # The queue is the DB (VideoJob), so this only waits. It uses the same data/ and database as the app.
   launchd.daemons.presenta-video = {
     serviceConfig = {
       ProgramArguments = [
@@ -251,7 +251,7 @@ in
         # with Fish Audio.
         VOICEVOX_URL = "http://100.105.135.49:10101";
         VOICEVOX_SPEAKER = "888753760";
-        # pnpm はここに端末が無いと node_modules の作り直しで止まる（CI と同じ扱いにする）。
+        # Without a terminal here, pnpm stops when recreating node_modules (treat it like CI).
         CI = "true";
       };
       StandardOutPath = "${state}/video.log";
@@ -287,7 +287,7 @@ in
         # pnpm start runs next through node, and the AI panel shells out to the claude CLI.
         PATH = "${home}/.local/bin:/etc/profiles/per-user/${user.username}/bin:/run/current-system/sw/bin:/usr/bin:/bin";
         NODE_ENV = "production";
-        # 置き場は明示する（cwd 任せにしない）。動画ワーカーも同じ場所を見る。
+        # Set the location explicitly (don't rely on cwd). The video worker uses the same place.
         PRESENTA_DATA_DIR = "${share}/data";
       };
       StandardOutPath = "${state}/app.log";

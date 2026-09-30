@@ -1,13 +1,13 @@
-# Windows の中で動く NixOS (WSL2)。
+# NixOS running inside Windows (WSL2).
 #
-# デュアルブートの実機 NixOS とはインストールを共有しない (WSL2 は物理パーティションを
-# 起動せず、VHDX の中の rootfs を Microsoft のカーネルで動かす仕組みなので、そもそも
-# できない)。共有するのは設定のほうで、home は実機や Lab PC と同じ roles.wsl を読む。
+# It doesn't share an install with the real dual-boot NixOS (it simply can't: WSL2 doesn't
+# boot a physical partition, it runs the rootfs inside a VHDX on Microsoft's kernel). What's
+# shared is the configuration: home reads the same roles.wsl as the real machine and the Lab PC.
 #
-# 狙いは「Adobe を触るために Windows で起動している最中も、再起動せずに普段の
-# シェルと道具が使えること」。GUI は Windows 側に任せ、ここは CLI に徹する。
+# The goal: "while booted into Windows to use Adobe, the usual shell and tools are available
+# without rebooting". GUI is left to Windows; this stays CLI-only.
 #
-# tarball の作り方と入れ方は docs/NIXOS_WSL.md。
+# How to build and install the tarball: docs/NIXOS_WSL.md.
 {
   pkgs,
   lib,
@@ -18,16 +18,16 @@
   wsl = {
     enable = true;
     defaultUser = user.username;
-    # Windows 側の PATH を丸ごと引き継ぐと which/command -v が Windows の実行ファイルを
-    # 拾って紛らわしい。相互運用は残しつつ PATH 汚染だけ止める。
+    # Inheriting the whole Windows PATH makes which/command -v pick up Windows executables,
+    # which is confusing. Keep interop but stop the PATH pollution.
     interop.includePath = false;
-    # /mnt/c 越しに Windows のコマンドを呼べるのは残す (wslview が cmd.exe を叩く)。
+    # Keep the ability to call Windows commands via /mnt/c (wslview calls cmd.exe).
     wslConf.interop.enabled = true;
     wslConf.automount.enabled = true;
   };
 
-  # 実機の NixOS と同じ選択的 unfree。standalone HM 側の mkWslPkgs と揃える
-  # (揃えないと同じ roles.wsl が NixOS 統合のときだけ eval で落ちる)。
+  # Same selective unfree as the real NixOS machine. Kept in line with mkWslPkgs on the
+  # standalone HM side (otherwise the same roles.wsl fails eval only under the NixOS integration).
   nixpkgs.config.allowUnfreePredicate =
     pkg:
     builtins.elem (lib.getName pkg) [
@@ -43,7 +43,7 @@
     trusted-users = [ user.username ];
   };
 
-  # WSL は Windows 側の時計に追従するが、ログの時刻を母艦と揃えておく。
+  # WSL follows the Windows clock, but keep log timestamps in line with the main Mac.
   time.timeZone = "Asia/Tokyo";
 
   users.users.${user.username} = {
@@ -51,9 +51,9 @@
     extraGroups = [ "wheel" ];
     shell = pkgs.zsh;
   };
-  # home-manager が zsh の設定を置くので、システム側は shell を有効にするだけ。
+  # home-manager places the zsh config, so the system side only enables the shell.
   programs.zsh.enable = true;
 
-  # ブートローダも fileSystems も要らない (WSL がカーネルと rootfs を用意する)。
+  # No bootloader or fileSystems needed (WSL provides the kernel and rootfs).
   system.stateVersion = "26.05";
 }

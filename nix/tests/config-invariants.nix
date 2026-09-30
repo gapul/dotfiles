@@ -32,9 +32,10 @@ let
     map lib.getName
       macminiDarwin.home-manager.users.${user.username}.home.packages;
 
-  # Claude Code の settings.remote.json と母艦 settings.json の一致は scripts/check-claude-settings-drift.py
-  # で見る。母艦側は ai-agent-state への symlink で、flake が store にコピーされた時点で切れる
-  # (CI でも手元でも pure eval では読めない) ので、nix の中では検査できない。
+  # Whether Claude Code's settings.remote.json matches the main Mac's settings.json is checked by
+  # scripts/check-claude-settings-drift.py. The main Mac's copy is a symlink into ai-agent-state, which
+  # breaks once the flake is copied to the store (unreadable in pure eval, both in CI and locally), so it
+  # can't be checked inside nix.
 in
 assert lib.assertMsg (duplicated darwin packageNames == [ ])
   "nix > homebrew: declared on both sides for the workstation — ${lib.concatStringsSep ", " (duplicated darwin packageNames)}";

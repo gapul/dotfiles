@@ -1,21 +1,25 @@
-# 家計簿。Beancount の台帳 (/var/lib/ledger/book) と、それを埋める定期ジョブ、読む Fava。
+# Household ledger. The Beancount ledger (/var/lib/ledger/book), the scheduled jobs that fill
+# it, and Fava to read it.
 #
-# 2026-09-23 に macmini から移した。台帳は「毎時 Zaim を引いて毎日残高を突き合わせる」
-# 止まらない前提の仕事で、macmini は常駐機ではない。ここなら Caddy の隣で完結し
-# (money.gapul.net → 127.0.0.1:5075)、restic も /var/lib ごと拾う。
+# Moved from macmini on 2026-09-23. The ledger is a must-not-stop job ("pull Zaim hourly,
+# reconcile balances daily"), and macmini is not an always-on machine. Here it is
+# self-contained next to Caddy (money.gapul.net → 127.0.0.1:5075), and restic picks it up
+# with the rest of /var/lib.
 #
-# 中身は personal-tools (private repo) の zaim/ と crypto/。この箱にはリポジトリの
-# クローンを置かない方針なので、read-only の deploy key (/var/lib/secrets/ledger-deploy.key、
-# GitHub 側は "homeserver-ledger") で毎回 pull する。
+# The code is zaim/ and crypto/ from personal-tools (private repo). The policy is not to keep
+# repository clones on this box, so it pulls every time with a read-only deploy key
+# (/var/lib/secrets/ledger-deploy.key; "homeserver-ledger" on the GitHub side).
 #
-# 秘密は Zaim の Cookie (/var/lib/secrets/zaim.cookie。母艦で `zaim_web.py login` して
-# scp する。最後のアクセスから2時間で切れるので毎時の同期が延命でもある)、上の鍵、
-# Wise の個人 API トークン (sops。個人アカウントは SCA の公開鍵登録が廃止されていて
-# 残高明細は読めないので、SCA 不要のアクティビティ API と残高だけで組んである)。
-# どれも LoadCredential で渡し、ledger ユーザーからは読めない場所に置く。
+# Secrets are the Zaim cookie (/var/lib/secrets/zaim.cookie; run `zaim_web.py login` on the
+# main Mac and scp it. It expires 2 hours after the last access, so the hourly sync also keeps
+# it alive), the key above, and the Wise personal API token (sops. Personal accounts can no
+# longer register an SCA public key, so balance statements are unreadable; this is built only
+# on the SCA-free activity API and balances). All are passed via LoadCredential and kept where
+# the ledger user cannot read them.
 #
-# 失敗の通知は他のジョブと同じ ntfy-failure@。ただし Cookie 切れは直るまで毎時落ち続ける
-# ので、同じ理由の連続失敗は2回目から exit 0 にして通知を1回に抑える (macmini 時代と同じ)。
+# Failure notifications go through ntfy-failure@ like other jobs. But an expired cookie keeps
+# failing every hour until fixed, so consecutive failures for the same reason exit 0 from the
+# second one on, keeping it to one notification (same as in the macmini days).
 {
   pkgs,
   ...
@@ -35,7 +39,7 @@ let
       -o IdentitiesOnly=yes -o UserKnownHostsFile=${githubKnownHosts} "$@"
   '';
 
-  # 各ジョブの共通部: personal-tools を最新にし、失敗は理由ごとに1回だけ通知する。
+  # Shared part of each job: update personal-tools, and notify each failure reason only once.
   prelude = name: ''
     set -u
     export GIT_SSH_COMMAND=${gitSsh}
@@ -92,16 +96,17 @@ let
     commit "wise sync"
   '';
 
-  # ntfy に1行送る (ntfy-failure@ と同じトピックとトークン)。失敗の通知ではなく、人が
-  # 動く必要のある知らせ用。
+  # Send one line to ntfy (same topic and token as ntfy-failure@). Not for failures, but for
+  # notices that need a human to act.
   notify = pkgs.writeShellScript "ledger-notify" ''
     set -u
     ${pkgs.curl}/bin/curl -fsS --max-time 15 -H "Authorization: Bearer $NTFY_TOKEN" \
       -H "Title: $1" -H "Tags: ledger" -d "$2" "http://127.0.0.1:8082/$NTFY_TOPIC" >/dev/null
   '';
 
-  # Zaim の口座連携は取得が止まっても Zaim 側は何も言わない (2026-09 に住信SBI・PayPay銀行・
-  # 楽天銀行が夏で止まっていたのに気づかなかった)。口座ごとの最新日付が古ければ知らせる。
+  # When a Zaim account link stops fetching, Zaim says nothing (in 2026-09 we missed that
+  # SBI Sumishin Net Bank, PayPay Bank and Rakuten Bank had stopped over the summer). Notify
+  # when an account's latest date is old.
   zaimStale = pkgs.writeShellScript "zaim-stale-check" ''
     set -u
     stale=$(${py} - ${book}/zaim.db <<'PY'
@@ -136,7 +141,7 @@ in
     inherit home;
   };
   users.groups.ledger = { };
-  # Z: macmini から tar で持ってきた木は uid 501 のままなので、所有者をここで揃える。
+  # Z: the tree tarred over from macmini is still uid 501, so fix the ownership here.
   systemd.tmpfiles.rules = [
     "d ${home} 0750 ledger ledger -"
     "Z ${home} - ledger ledger -"
@@ -173,8 +178,8 @@ in
     description = "暗号資産の残高の突き合わせを毎日";
     wantedBy = [ "timers.target" ];
     timerConfig = {
-      # 日次で足りる: 無料 RPC と CoinGecko はレート制限があり、残高が動くのは
-      # 手書きの取引を入れる時だけ。
+      # Daily is enough: the free RPC and CoinGecko are rate-limited, and balances only move
+      # when hand-written transactions are added.
       OnCalendar = "*-*-* 06:40:00";
       Persistent = true;
     };
@@ -193,8 +198,9 @@ in
     description = "Wise の明細取り込みを毎日";
     wantedBy = [ "timers.target" ];
     timerConfig = {
-      # アクティビティは全期間を毎回引き直して wise.beancount を丸ごと作り直し、
-      # 実残高との差を手数料として吸収してから balance を置く。動きが少ない口座なので日次で足りる。
+      # Re-fetch all activity every time, rebuild wise.beancount entirely, absorb the difference
+      # from the real balance as fees, then place the balance. A low-activity account, so daily
+      # is enough.
       OnCalendar = "*-*-* 06:50:00";
       Persistent = true;
     };
@@ -218,8 +224,9 @@ in
     };
   };
 
-  # みんなの銀行は CSV も連携も無く、アプリの取引明細 PDF を年に1回落として
-  # personal-tools/minna で読む (前年分を1月に)。忘れるので知らせる。
+  # Minna Bank has neither CSV nor account linking, so the transaction statement PDF from the
+  # app is downloaded once a year and read with personal-tools/minna (the previous year, in
+  # January). It is easy to forget, so send a reminder.
   systemd.services.minna-reminder = {
     description = "みんなの銀行の PDF を落とす年次の知らせ";
     serviceConfig = {
@@ -238,7 +245,7 @@ in
     };
   };
 
-  # Fava は台帳ファイルの更新を自分で拾うので、同期後の再起動は要らない。
+  # Fava picks up ledger file changes by itself, so no restart is needed after a sync.
   systemd.services.fava = {
     description = "Fava (Beancount の閲覧)";
     wantedBy = [ "multi-user.target" ];

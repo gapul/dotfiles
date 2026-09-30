@@ -21,13 +21,12 @@
       "BASE_URL" = "https://rss.gapul.net/";
       "CREATE_ADMIN" = "1";
       "RUN_MIGRATIONS" = "1";
-      # 自前の RSSHub を読むために必要。miniflux は既定で私有アドレスへの取得を
-      # SSRF 対策として拒否する (`refusing to access private network host`)。
-      # 同じ箱の rsshub は podman ネットワーク越しの私有アドレスにしかいないので、
-      # これが無いと自前 RSSHub のフィードが一件も更新されない。実際、移行後
-      # ずっと日経のフィードが失敗し続けていた。
+      # Needed to read our own RSSHub. By default miniflux refuses to fetch private addresses
+      # as SSRF protection (`refusing to access private network host`). The rsshub on this box
+      # is only reachable at a private address over the podman network, so without this none
+      # of our RSSHub feeds update. In fact the Nikkei feeds kept failing ever since the migration.
       #
-      # フィードの URL を決めるのは自分だけなので、SSRF の想定脅威はここでは薄い。
+      # Only we decide the feed URLs, so the SSRF threat model is thin here.
       "FETCHER_ALLOW_PRIVATE_NETWORKS" = "1";
     };
     ports = [

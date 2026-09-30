@@ -1,116 +1,123 @@
-# メタ検索 (SearXNG)。tailnet 内のみ。
+# Metasearch (SearXNG). tailnet only.
 #
-# ここだけコンテナではなくネイティブモジュールなのは、default.nix の方針を破って
-# いるように見えて実は逆で、あの方針が「移設コストに見合わないから既存のスタックは
-# コンテナのまま」という話だから。これは新規で、移すデータが無い。そしてこのサービスの
-# 設定の本体はエンジンの取捨選択で、コンテナにすると settings.yml を /var/lib へ手で
-# 置くことになる。それは README が「設定が web UI やコマンドラインに住むのをやめる」と
-# 言っている状態そのものになる。services.searx なら下の settings がそのまま git に載る。
+# This one is a native module rather than a container. That looks like it breaks the
+# default.nix policy but is actually the opposite: that policy says "existing stacks stay
+# containers because moving them isn't worth the cost". This is new and has no data to
+# move. And the core of this service's config is which engines to keep; as a container,
+# settings.yml would have to be placed in /var/lib by hand. That is exactly the state the
+# README describes as "config stops living in the web UI or on the command line".
+# With services.searx, the settings below go straight into git.
 #
-# 上流の settings.yml にマージされる (use_default_settings)。エンジンは name で
-# 突き合わせるので、既定で無効なものを1行で起こせる。
+# Merged into upstream settings.yml (use_default_settings). Engines are matched by
+# name, so one line is enough to enable something that is disabled by default.
 #
-# limiter は入れない。あれは公開インスタンス向けのボット対策で、有効にすると valkey が
-# 要る。ここは tailnet 内の単独ユーザーなので、守る相手がいない。
+# No limiter. It is bot protection for public instances and needs valkey when enabled.
+# This is a single user inside the tailnet, so there is no one to protect against.
 #
-# --- ブロックについて (調べた結果) ---
-# 「VPS でやらないとブロックされる」は逆に近い。Google が先に潰すのは AWS/GCP/Azure や
-# 大手 VPS のレンジで、住宅 IP のほうが長生きする。ただし住宅 IP なら安全でもない。
+# --- About blocking (findings) ---
+# "It gets blocked unless you run it on a VPS" is closer to the reverse. Google kills
+# AWS/GCP/Azure and big VPS ranges first; residential IPs live longer. A residential IP
+# is not safe either, though.
 #
-# 停止時間の既定値 (searx/settings.yml):
-#   429 / Access Denied ......... 180秒
-#   通常の CAPTCHA .............. 1時間
-#   Cloudflare 経由の拒否 ....... 1日
-#   reCAPTCHA ................... 7日
-#   Cloudflare 経由の CAPTCHA ... 15日
-# つまり日常的に踏むほうは3分〜1時間で軽い。痛いのは下の2つで、Google が本気で
-# 嫌がったときに来る。個人利用の量なら滅多に引かないはずで、引いてもそのエンジンが
-# 抜けるだけで検索自体は他が答える。だから google も startpage も切らずに best-effort で
-# 有効なままにしてある。壊れたら勝手に外れる。
+# Default suspension times (searx/settings.yml):
+#   429 / Access Denied ......... 180 seconds
+#   Regular CAPTCHA ............. 1 hour
+#   Denial via Cloudflare ....... 1 day
+#   reCAPTCHA ................... 7 days
+#   CAPTCHA via Cloudflare ...... 15 days
+# So the ones hit day to day are light, 3 minutes to 1 hour. The bottom two hurt, and
+# they come when Google really objects. At personal-use volume they should rarely
+# trigger, and when they do only that engine drops out while the others still answer.
+# That's why google and startpage stay enabled on a best-effort basis rather than cut.
+# If they break, they drop out on their own.
 #
-# 代わりに、既定で無効な mojeek と qwant を起こしておく。mojeek は自前クローラの独立
-# インデックスなので、Google 系の対ボット網に巻き込まれない。ここが倒れずに残る。
+# Instead, mojeek and qwant, disabled by default, are enabled. mojeek is an independent
+# index with its own crawler, so it doesn't get caught in Google's anti-bot net. It is
+# the one that stays standing.
 _: {
-  # かつてここで unstable に逃がしていた。26.05 系列の searxng は 2026-05-16 版で
-  # 止まっており、検索エンジン側の変更に追随できず brave / duckduckgo / qwant /
-  # mojeek / startpage が一斉に CAPTCHA や access denied を返していた (実際に全滅した)。
+  # This used to be escaped to unstable here. searxng in the 26.05 series was stuck at
+  # the 2026-05-16 release and couldn't keep up with search engine changes, so brave /
+  # duckduckgo / qwant / mojeek / startpage all returned CAPTCHA or access denied at once
+  # (search actually went completely dead).
   #
-  # 2026-08-31 に nixpkgs-nixos ごと nixos-unstable へ移したので、逃がす必要が無くなった。
-  # この件が「安定枝はこの構成には合わない」という判断の主な根拠になっている。
+  # On 2026-08-31 all of nixpkgs-nixos moved to nixos-unstable, so the escape is no longer
+  # needed. This incident is the main basis for the judgment that "the stable branch
+  # doesn't fit this setup".
 
   services.searx = {
     enable = true;
 
-    # secret_key だけ。envsubst で下の $SEARXNG_SECRET に入る。
-    # 他の homelab と同じく手で置く (README.md 参照)。
+    # Only secret_key. envsubst puts it into $SEARXNG_SECRET below.
+    # Placed by hand like the rest of homelab (see README.md).
     environmentFile = "/var/lib/secrets/searx.env";
 
     settings = {
       server = {
-        # Caddy が同じ箱から叩くので loopback で足りる。
+        # Caddy calls it from the same box, so loopback is enough.
         bind_address = "127.0.0.1";
         port = 8088;
         base_url = "https://search.gapul.net/";
         secret_key = "$SEARXNG_SECRET";
-        # 公開しないので、どちらも要らない (limiter を true にすると valkey が要る)。
+        # Not public, so neither is needed (limiter = true would need valkey).
         limiter = false;
         public_instance = false;
       };
 
-      # JSON も返す。既定は html だけで、format=json は 403 になる。tailnet 内で
-      # Authelia の後ろなので公開の心配は無く、エージェントや CLI から叩ける。
+      # Also return JSON. The default is html only, and format=json gives 403. It's inside
+      # the tailnet behind Authelia, so exposure isn't a concern, and agents and CLIs can
+      # call it.
       search.formats = [
         "html"
         "json"
       ];
 
-      # エンジンを足すときは、必ず結果に**エンジン名が出ること**まで確認する。
-      # SearXNG は知らないショートカットを検索語として扱うので、`!foo` が
-      # 結果を返しても foo が動いている証拠にならない。存在しないエンジンを
-      # 2 つ入れてしまった (luxxle / rawweb)。`/config` に載っているかで実在を、
-      # 結果へのエンジン名の出現で稼働を確かめる。
+      # When adding an engine, always confirm that **the engine name appears** in results.
+      # SearXNG treats unknown shortcuts as search terms, so `!foo` returning results
+      # is no proof that foo works. Two nonexistent engines got added this way
+      # (luxxle / rawweb). Check existence by whether it is listed in `/config`, and
+      # check that it works by the engine name appearing in results.
       #
-      # duckduckgo / startpage / brave は既定で有効なまま残す。どれも
-      # 2026-08 時点では CAPTCHA や rate limit に沈んでいるが、エンドポイント
-      # 自体は生きていて (202 / 302 / 200 が返る)、対ボットのチャレンジを
-      # 越えられないだけ。向こう側の気分で戻ることがあるので、SearXNG の
-      # 自動 suspend に任せる。
+      # duckduckgo / startpage / brave stay enabled as by default. As of 2026-08 all
+      # of them are sunk by CAPTCHA or rate limits, but the endpoints themselves are
+      # alive (returning 202 / 302 / 200); they just can't get past the anti-bot
+      # challenge. They sometimes come back depending on the other side's mood, so
+      # leave it to SearXNG's automatic suspend.
       #
-      # 恒久的に効かせたいなら公式 API に寄せる道がある。braveapi エンジンが
-      # 同梱されていて、api_key を入れれば安定する (無料枠あり)。marginalia も
-      # 同様。どちらも鍵の取得が要るので、必要になったときに。
+      # To make them work permanently, there is the route of moving to official APIs.
+      # A braveapi engine is bundled and becomes stable once api_key is set (free tier
+      # available). marginalia is the same. Both need a key, so do it when needed.
       engines = [
-        # mojeek は「Google 系が沈んでも残る側」として起こしていたが、2026-08-29
-        # 時点でスクレイピングそのものが塞がれた。homeserver / 母艦 / 外部の
-        # 3 経路すべてで 403 が返る (UA を変えても同じ) ので、IP の問題ではなく
-        # 向こう側の変更。実装が追いつくまで切る。
+        # mojeek was enabled as "the one that survives when Google-family engines sink",
+        # but as of 2026-08-29 scraping itself is blocked. All 3 paths (homeserver /
+        # main Mac / external) get 403 (same even with a different UA), so it's not an IP
+        # problem but a change on their side. Off until the implementation catches up.
         {
           name = "mojeek";
           disabled = true;
         }
-        # qwant は 2026-08 には日本語クエリで 10 件返していたが、2026-09-26 の
-        # 実測では英語/日本語とも CAPTCHA で 100% 失敗 (/stats/errors)。毎回
-        # 待たされてエラー表示が出るだけなので切る。
+        # qwant returned 10 results for Japanese queries in 2026-08, but measured on
+        # 2026-09-26 it fails 100% with CAPTCHA for both English and Japanese
+        # (/stats/errors). It only makes every search wait and shows an error, so off.
         {
           name = "qwant";
           disabled = true;
         }
-        # これも自前クローラ。鍵が要らず、実測で 53 件返した (mojeek と同じ役割で、
-        # Google 系が全滅したときに残る側を厚くする)。
+        # Also its own crawler. Needs no key and returned 53 results when measured (same
+        # role as mojeek: thickens the side that survives when Google-family engines die).
         {
           name = "mwmbl";
           disabled = false;
         }
-        # duckduckgo の別実装。既定の duckduckgo は CAPTCHA に沈んでいるが、
-        # こちらは通る。日本語のクエリでも結果が返り、結果にエンジン名が
-        # 出ることまで確認した。
+        # An alternate duckduckgo implementation. The default duckduckgo is sunk by
+        # CAPTCHA, but this one gets through. Results come back for Japanese queries too,
+        # and the engine name was confirmed to appear in results.
         {
           name = "duckduckgo web";
           disabled = false;
         }
-        # 対ボット網に巻き込まれていない側として起こしていたが、2026-09-26 の
-        # 実測でどちらも HTTP 403 が 100% (/stats/errors)。向こう側の変更なので
-        # 実装が追いつくまで切る。
+        # Enabled as ones not caught in the anti-bot net, but measured on 2026-09-26
+        # both return HTTP 403 100% of the time (/stats/errors). It's a change on their
+        # side, so off until the implementation catches up.
         {
           name = "privacywall";
           disabled = true;
@@ -119,47 +126,48 @@ _: {
           name = "searchmysite";
           disabled = true;
         }
-        # bing は入れない。duckduckgo web が返すのは Bing のインデックスその
-        # ものなので結果が重複する一方、直接叩くと Microsoft に全クエリが渡る。
-        # 同じ結果を得るのに見られる相手が 1 つ増えるだけになる。ddg が落ちた
-        # ときだけ欲しくなるが、SearXNG に条件分岐は無く「落ちたら使う」は
-        # 「常に叩く」としてしか書けない。
+        # No bing. What duckduckgo web returns is Bing's index itself, so results
+        # duplicate, while calling it directly hands every query to Microsoft.
+        # It only adds one more party watching for the same results. It would only be
+        # wanted when ddg is down, but SearXNG has no conditionals, and "use it when the
+        # other is down" can only be written as "always call it".
         #
-        # yandex は Google / Bing どちらでもない大きなインデックスで、いま
-        # 代替が無い (mojeek は塞がれ、brave は鍵待ち)。全クエリが Yandex に
-        # 渡る代償はあるが、代替が無いものは使うという判断。
+        # yandex is a large index that is neither Google nor Bing, and there is currently
+        # no alternative (mojeek is blocked, brave is waiting on a key). Every query goes
+        # to Yandex, but the call is to use what has no alternative.
         {
           name = "yandex";
           disabled = false;
         }
-        # startpage を既定から外す。2026-08-30 に実機で切り分けたところ壁が
-        # 2 段あった。curl には JS チャレンジが返り、それを headless Chromium
-        # で越えると、その先で IP ベースの停止に当たる。
+        # Take startpage out of the defaults. Isolating it on the real machine on
+        # 2026-08-30 found two walls. curl gets a JS challenge, and getting past that with
+        # headless Chromium runs into an IP-based suspension behind it.
         #
         #   Access Temporarily Suspended
         #   Our anti-abuse systems are activated when we receive a large
         #   number of search requests from a particular internet connection
         #
-        # ブラウザかどうかではなく、その IP からの検索回数で切られている。
-        # 自宅の IP から常用する限り構造的に使えない。毎回叩いて必ず失敗し
-        # 待たされるだけなので、`!sp` と書いたときだけ叩く形にする。
+        # It's cut off by the number of searches from that IP, not by whether it's a
+        # browser. As long as it's used routinely from the home IP it structurally can't
+        # work. Calling it every time only fails and makes you wait, so only call it when
+        # `!sp` is written.
         {
           name = "startpage";
           disabled = true;
         }
-        # フォーラム専門。性格が違うので幅が出る。
+        # Forums only. A different character, so it adds breadth.
         {
           name = "boardreader";
           disabled = false;
         }
-        # 古く素朴なページ専門。大手の索引から漏れる側を拾う。
+        # Old, plain pages only. Picks up what falls out of the big indexes.
         {
           name = "wiby";
           disabled = false;
         }
-        # IT カテゴリが薄い (44 個登録して有効 11 個、結果 17 件)。実測で動いた
-        # ものだけ足す。nixos wiki / crates.io / hex / codeberg / alpine は
-        # 0 件だったので入れない。
+        # The IT category is thin (44 registered, 11 enabled, 17 results). Only add ones
+        # that worked when measured. nixos wiki / crates.io / hex / codeberg / alpine
+        # returned 0 results, so they're not added.
         {
           name = "hackernews";
           disabled = false;
@@ -168,7 +176,7 @@ _: {
           name = "gitlab";
           disabled = false;
         }
-        # 論文。arxiv や pubmed と別の索引で、こちらも実測済み。
+        # Papers. A separate index from arxiv and pubmed; also measured.
         {
           name = "crossref";
           disabled = false;
@@ -177,12 +185,12 @@ _: {
           name = "openalex";
           disabled = false;
         }
-        # 既定で有効だが 2026-09-26 の実測で 100% 失敗しているものを切る。
-        # 結果に寄与せず、タイムアウト待ちとエラー表示だけを生む。
-        #   vimeo ...... 検索ページが Cloudflare のチャレンジ (403)。母艦からも同じ。
-        #                searxng/searxng#3849 が CAPTCHA ラベルで開いたまま。
+        # Cut ones that are enabled by default but failed 100% when measured on 2026-09-26.
+        # They contribute no results and only produce timeout waits and error displays.
+        #   vimeo ...... The search page is a Cloudflare challenge (403). Same from the main Mac.
+        #                searxng/searxng#3849 is still open with the CAPTCHA label.
         #   reuters .... 401
-        #   unsplash ... 応答が JSON でなくパースに失敗
+        #   unsplash ... Response isn't JSON, so parsing fails
         {
           name = "vimeo";
           disabled = true;

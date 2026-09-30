@@ -1,13 +1,13 @@
-# LINE のブリッジ。nixpkgs に services.mautrix-* のモジュールもパッケージも無いので、
-# パッケージは pkgs/matrix-line.nix、モジュールは mk-matrix-bridgev2.nix で作る。
+# LINE bridge. nixpkgs has neither a services.mautrix-* module nor a package for it, so the
+# package is pkgs/matrix-line.nix and the module is built with mk-matrix-bridgev2.nix.
 #
-# ログインは Matrix 側で @linebot:gapul.net に DM して `login` を送る。LINE の
-# Chrome 拡張として振る舞うため、ログインすると Chrome 拡張版 LINE は切断される。
+# Log in from the Matrix side by DMing @linebot:gapul.net and sending `login`. It behaves as
+# LINE's Chrome extension, so logging in disconnects the Chrome extension version of LINE.
 #
-# 過去ログはこのブリッジでは取れない。bridgev2 の FetchMessages が直近の数十件しか
-# 返さない実装 (上流 pkg/connector/sync.go) で、LINE のサーバーにも古い履歴は無い。
-# backfill の値を大きくしても取れる量は増えない。深い過去は端末のバックアップから
-# 別に取り込む。
+# This bridge cannot fetch past history. bridgev2's FetchMessages implementation only returns
+# the latest few dozen messages (upstream pkg/connector/sync.go), and LINE's servers do not
+# keep old history either. Raising the backfill values does not fetch any more. Deep history
+# is imported separately from a device backup.
 import ./mk-matrix-bridgev2.nix {
   name = "matrix-line";
   id = "line";

@@ -1,22 +1,23 @@
-# mautrix-imessage: Matrix と iMessage を繋ぐブリッジ。
+# mautrix-imessage: a bridge between Matrix and iMessage.
 #
-# nixpkgs には無い。他の mautrix ブリッジ (discord / signal / meta / telegram) は
-# 入っているが、これだけ macOS 専用なので誰も入れていない。
+# Not in nixpkgs. The other mautrix bridges (discord / signal / meta / telegram) are, but this one
+# is macOS-only, so nobody has added it.
 #
-# なぜ Mac が要るか: iMessage には外から叩ける API が無い。このブリッジは
-# ~/Library/Messages/chat.db を読み、送信は Messages.app を動かして行う。つまり
-# 「iMessage にログイン済みの Mac」そのものが接続の実体で、Linux に置き換えられない。
-# homeserver に置けない唯一のブリッジ。
+# Why it needs a Mac: iMessage has no API reachable from outside. This bridge reads
+# ~/Library/Messages/chat.db and sends by driving Messages.app. In other words, "a Mac signed in
+# to iMessage" is itself the connection, and it cannot be replaced by Linux.
+# It is the only bridge that cannot live on the homeserver.
 #
-# タグが打たれていないので commit で固定する。上流は GitLab (mau.dev) が正で、
-# GitHub は鏡だが、鏡の方が fetchFromGitHub でそのまま取れるのでこちらを使う。
+# There are no tags, so it is pinned to a commit. Upstream's source of truth is GitLab (mau.dev),
+# and GitHub is a mirror, but the mirror can be fetched directly with fetchFromGitHub, so it is
+# used here.
 #
-# ビルドの確認 (2026-09-01, aarch64-darwin):
+# Build check (2026-09-01, aarch64-darwin):
 #   mautrix-imessage 0.1.0+dev.300ba6d0 (unknown with go1.26.6)
 #
-# olm が insecure の印付きなので、これを使う host は
-# nixpkgs.config.permittedInsecurePackages に "olm-3.2.16" が要る。homeserver 側は
-# nix/homelab/matrix-bridges.nix で既に許可済みで、そこに理由も書いてある。
+# olm is marked insecure, so any host using this needs "olm-3.2.16" in
+# nixpkgs.config.permittedInsecurePackages. The homeserver side already allows it in
+# nix/homelab/matrix-bridges.nix, which also explains why.
 {
   lib,
   buildGoModule,
@@ -36,29 +37,30 @@ buildGoModule (finalAttrs: {
 
   vendorHash = "sha256-xTzxL4pk6tmWcEhd0bbdwP70hEqNDjB/xahLWY5nRKQ=";
 
-  # 連絡先の表示名を、日本語 (CJK) の名前だけ「姓名」の順にする。上流は無条件に
-  # "First Last" で、日本人の連絡先が「結己 川嶋」になる。Apple 自身の書式に合わせる。
+  # Show contact display names in family-name-first order, only for Japanese (CJK) names. Upstream
+  # always uses "First Last", so Japanese contacts come out as "結己 川嶋". Match Apple's own
+  # formatting.
   patches = [ ./mautrix-imessage-cjk-name-order.patch ];
 
-  # sqlite が cgo なので無効にはできない。
+  # sqlite uses cgo, so this cannot be disabled.
   env.CGO_ENABLED = "1";
 
-  # libheif は付けない。
+  # libheif is not included.
   #
-  # 付けると HEIC を変換できるので本当は欲しいのだが、vendor されている Go
-  # バインディング (strukturag/libheif v1.19.5) が nixpkgs の libheif と噛み合わない。
-  # C 側の enum が別型になっていて `cannot use uint32(channel) as _Ctype_heif_channel`
-  # で通らない。古い libheif に固定する手はあるが、ローリングの方針に反するうえ、
-  # 画像処理ライブラリの更新を止めることになる。
+  # With it, HEIC could be converted, so it is actually wanted, but the vendored Go binding
+  # (strukturag/libheif v1.19.5) doesn't fit nixpkgs' libheif. The C enum has become a different
+  # type and it fails with `cannot use uint32(channel) as _Ctype_heif_channel`. Pinning an old
+  # libheif would work, but it goes against the rolling policy and would freeze updates of an
+  # image-processing library.
   #
-  # 上流の build.sh も libheif が見つからなければ tag を外すので、これは想定内の
-  # 構成。代償は iMessage の写真が .heic のまま Matrix に届くこと。バインディングが
-  # 追いついたら tags = [ "libheif" ] と pkg-config を戻す。
+  # Upstream's build.sh also drops the tag when libheif is not found, so this is an expected
+  # configuration. The cost is that iMessage photos reach Matrix as .heic. Once the binding catches
+  # up, restore tags = [ "libheif" ] and pkg-config.
 
-  # olm は mautrix-go の E2EE が要求する。他のブリッジ (nix/homelab/matrix-bridges.nix)
-  # で許可した libolm と同じもので、非推奨の印が付いている。ここでも使うのは
-  # ブリッジ側の E2EE を有効にしたときだけで、今は有効にしていない。
-  # E2EE を入れるときに、あちらと合わせて判断し直すこと。
+  # olm is required by mautrix-go's E2EE. It is the same libolm allowed for the other bridges
+  # (nix/homelab/matrix-bridges.nix) and carries the deprecation mark. Here too it is only used
+  # when E2EE is enabled on the bridge side, which it currently is not.
+  # When turning on E2EE, reconsider this together with that file.
   buildInputs = [ olm ];
 
   ldflags = [
@@ -68,7 +70,7 @@ buildGoModule (finalAttrs: {
     "-X main.Commit=${finalAttrs.src.rev}"
   ];
 
-  # 上流のテストは chat.db と Messages.app がある実機を前提にしている。
+  # Upstream's tests assume a real machine with chat.db and Messages.app.
   doCheck = false;
 
   meta = {

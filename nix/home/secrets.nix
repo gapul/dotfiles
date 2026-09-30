@@ -21,27 +21,28 @@
       "vpn/wgcf".path = "${config.home.homeDirectory}/.config/wireguard/wgcf-profile.conf";
       "rclone_conf".path = "${config.home.homeDirectory}/.config/rclone/rclone.conf";
       "ssh_config".path = "${config.home.homeDirectory}/.ssh/config";
-      # 無人のジョブ専用の ed25519 鍵。常用鍵は Secure Enclave にあり署名のたびに
-      # Touch ID の承認が要るので、承認の窓が切れると自動デプロイや定期ジョブが
-      # 黙って止まる (2026-08-30)。Secure Enclave のまま生体認証なしの 2 本目を作る
-      # 道は同日に試して塞がっていた (Apple の provider が sk 鍵を登録できない、#499)。
+      # ed25519 key dedicated to unattended jobs. The everyday key lives in the Secure Enclave and
+      # needs Touch ID approval for every signature, so when the approval window lapses, automatic
+      # deploys and scheduled jobs silently stop (2026-08-30). Making a second Secure Enclave key
+      # without biometrics was tried the same day and is blocked (Apple's provider cannot register
+      # sk keys, #499).
       #
-      # ファイルなので enclave の保証は無い。そのぶん ssh_config 側で宛先を
-      # homeserver と macmini の 2 つに絞ってあり、単独で失効できる。
+      # It is a file, so there is no enclave guarantee. To compensate, ssh_config limits its
+      # destinations to homeserver and macmini, and it can be revoked on its own.
       "ssh_automation_key" = {
         path = "${config.home.homeDirectory}/.ssh/id_automation";
         mode = "0600";
       };
-      # 会社機だけ別の鍵にする。会社機の authorized_keys は自分の所有で書き込めた
-      # (2026-08-30 に確認。「登録し直せない」は古い記録だった)。mutagen 同期のために
-      # 作った鍵だが、mutagen を畳んだ後は ssh_config の mvrx-nolang-dev が使う。
-      # 母艦が持っている鍵のうち会社機が受理するのはこの鍵と enclave 鍵で、
-      # id_automation は載っていない (2026-09-16 に指紋と -F /dev/null の実測で確認)。
-      # 会社機側の一覧そのものは 4 本ある。詳細は nix/keys/authorized_keys の注記。
+      # The work machine alone gets a separate key. The work machine's authorized_keys is owned by
+      # us and writable (confirmed 2026-08-30; "cannot re-register" was an outdated note). The key
+      # was made for mutagen sync; after mutagen was retired, ssh_config's mvrx-nolang-dev uses it.
+      # Of the keys the main Mac holds, the work machine accepts this one and the enclave key, and
+      # id_automation is not on it (confirmed 2026-09-16 by fingerprint and -F /dev/null tests).
+      # The work machine's own list has 4 keys. Details in the notes in nix/keys/authorized_keys.
       #
-      # ssh_automation_key の使い回しにはしない。自宅と会社の権限が 1 本に混ざると、
-      # どちらかを失効させたいときに両方巻き添えになる。会社側だけ切りたい場面の方が
-      # 起きやすいので、境界はここで引く。
+      # Do not reuse ssh_automation_key. If home and work privileges are mixed into one key,
+      # revoking either takes both down. Wanting to cut only the work side is the likelier case,
+      # so the boundary is drawn here.
       "ssh_mvrx_sync_key" = {
         path = "${config.home.homeDirectory}/.ssh/id_mvrx_sync";
         mode = "0600";
@@ -54,31 +55,32 @@
       # attic (self-hosted nix binary cache at cache.gapul.net): the whole client config, because
       # the push token lives in it. Was a hand-written plaintext file until 2026-08.
       "attic_config".path = "${config.home.homeDirectory}/.config/attic/config.toml";
-      # 自宅 Radicale(dav.gapul.net)の htpasswd と同じもの。カレンダー・タスク・連絡先を
-      # ここへ集約したので、calcurse の caldav 設定がこれを読む。サーバ側は sops を持たない
-      # ホストなので /var/lib/homelab/radicale/config/users に手置きした bcrypt と対で管理する。
-      # ワークステーションが読むので homelab.yaml ではなく common.yaml 側に置いてある。
+      # Same as the htpasswd of the home Radicale (dav.gapul.net). Calendars, tasks and contacts
+      # were consolidated there, so calcurse's caldav config reads this. The server is a host
+      # without sops, so this is managed as a pair with the bcrypt hand-placed in
+      # /var/lib/homelab/radicale/config/users. Workstations read it, so it lives in common.yaml
+      # rather than homelab.yaml.
       "radicale/username" = { };
       "radicale/password" = { };
 
-      # atuin の E2E 暗号鍵。これが無いと同期した履歴を復号できない。
+      # atuin's E2E encryption key. Without it, synced history cannot be decrypted.
       #
-      # Bitwarden ではなくここに置く理由: 人間が打つものではなく、atuin が決まった
-      # パスから読むファイルだから。sops に載せておけば新しい端末でも rebuild だけで
-      # 正しい場所に materialise される。手でコピーする手順が消える。
-      # (Bitwarden 側に要るのは atuin の**パスワード**のほうで、あれは login のときに
-      #  人間が打つもの。別物。)
+      # Why here and not in Bitwarden: it is not something a human types, but a file atuin reads
+      # from a fixed path. Keeping it in sops means a new machine materialises it in the right
+      # place with just a rebuild, and the manual copy step goes away.
+      # (What Bitwarden needs is atuin's **password**, which a human types at login. A different
+      #  thing.)
       #
-      # mode が 0400 だと atuin login が書き戻そうとして失敗するので 0600。ただし
-      # sops が正なので、login が別の鍵を書いても次の activation で戻る。鍵を
-      # 変えるときは secrets/common.yaml を更新すること。
+      # With mode 0400, atuin login fails trying to write it back, hence 0600. sops is the source
+      # of truth, though, so if login writes a different key, the next activation restores it.
+      # To change the key, update secrets/common.yaml.
       "atuin/key" = {
         path = "${config.home.homeDirectory}/.local/share/atuin/key";
         mode = "0600";
       };
-      # atuin のパスワード。`atuin login` で使う。鍵と違ってファイルとして読まれる
-      # ものではないので path は指定せず、sops の既定の場所 (/run/... 相当) に置く。
-      # Bitwarden にも入れておくと、母艦が壊れているときに手で打てる。
+      # atuin's password, used by `atuin login`. Unlike the key it is not read as a file, so no
+      # path is set and it goes in sops' default location (the /run/... equivalent).
+      # Keeping it in Bitwarden too means it can be typed by hand when the main Mac is broken.
       "atuin/password" = { };
 
       # PII single source

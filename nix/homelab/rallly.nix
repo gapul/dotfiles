@@ -1,17 +1,20 @@
-# 日程調整 (調整さん / Doodle の代わり)。サークル用なので tailnet の外から開ける。
+# Scheduling polls (instead of Chouseisan / Doodle). For the club, so it opens from outside
+# the tailnet.
 #
-# calnode との棲み分け。あちらは予約で、こちらは投票。予約は「公開した空き枠を
-# 誰か1人が取り、取られた枠は消える」排他的な仕組みで、日程調整は「候補日を並べて
-# 全員が全部に○×を付け、重なりを探す」非排他的な仕組み。前者で後者はできない
-# (1人が押さえた瞬間、他の人が同じ日に丸を付けられなくなる)。calnode の機能一覧に
-# 投票や集計に相当するものは無い。別のサービスが要る、という結論。
+# Division of labor with calnode: that one is booking, this one is voting. Booking is an
+# exclusive mechanism where "one person takes a published free slot and the taken slot
+# disappears"; scheduling is a non-exclusive one where "candidate dates are listed, everyone
+# marks yes/no on all of them, and you look for the overlap". The former can't do the latter
+# (the moment one person holds a slot, nobody else can mark the same day). calnode's feature
+# list has nothing equivalent to voting or tallying. Conclusion: a separate service is needed.
 #
-# 参加者はアカウント不要でゲストのまま投票できる。作成側もゲストで作れるので、
-# SMTP が無くても最低限は回る。ログインしてポールを管理したくなったら、そのとき
-# SMTP を足す (SMTP_* を rallly.env に置くだけ)。
+# Participants can vote as guests without an account. Creators can also create as guests, so
+# the minimum works even without SMTP. If logging in to manage polls becomes desirable, add
+# SMTP then (just put SMTP_* in rallly.env).
 #
-# アプリは rolling release 方針で latest を追う。DB は独立して PostgreSQL 18 系に
-# 留め、更新前バックアップと復元訓練で片道 migration に備える。
+# The app tracks latest under the rolling-release policy. The DB is kept separately on the
+# PostgreSQL 18 series, with pre-update backups and restore drills to prepare for one-way
+# migrations.
 {
   pkgs,
   lib,
@@ -22,27 +25,27 @@ let
   privatePort = 18089;
 in
 {
-  # bind mount の元。**1階層だけ**にしてある。/var/lib/homelab 自体が uid 100000
-  # (podman の userns root) 所有なので、その下に root 所有のディレクトリを作った
-  # 後さらに中へ降りると systemd が unsafe path transition で拒否する。calnode で
-  # 実際に踏んだ (詳細は calnode.nix)。なので db 用は入れ子にせず並べる。
+  # Bind mount sources. Kept to **one level only**. /var/lib/homelab itself is owned by
+  # uid 100000 (podman's userns root), so creating a root-owned directory under it and then
+  # descending further makes systemd refuse with an unsafe path transition. Actually hit
+  # this with calnode (details in calnode.nix). So the db directory sits alongside, not nested.
   #
-  # 所有者が root ではなく 70 なのは、postgres のイメージが uid 70 で動くため。
-  # root 所有の 0700 だと `mkdir: can't create directory '/var/lib/postgresql/18/':
-  # Permission denied` で起動に失敗する。既存の miniflux/db も uid 70 所有だった。
+  # The owner is 70 rather than root because the postgres image runs as uid 70.
+  # With root-owned 0700, startup fails with `mkdir: can't create directory
+  # '/var/lib/postgresql/18/': Permission denied`. The existing miniflux/db was also owned by uid 70.
   systemd.tmpfiles.rules = [
     "d /var/lib/homelab/rallly-db 0700 70 70 -"
   ];
 
   virtualisation.oci-containers.containers."rallly" = {
-    # Docker Hub だが、hosts/homeserver.nix が docker.io を mirror.gcr.io へ
-    # 差し替えているので pull 制限には当たらない。
+    # Docker Hub, but hosts/homeserver.nix swaps docker.io for mirror.gcr.io, so pull
+    # limits don't apply.
     image = "docker.io/lukevella/rallly:latest";
-    # DATABASE_URL / SECRET_PASSWORD / SUPPORT_EMAIL。README.md を見ること。
-    # SECRET_PASSWORD は 32 文字以上でないとアプリが起動時に弾く (zod で検証している)。
+    # DATABASE_URL / SECRET_PASSWORD / SUPPORT_EMAIL. See README.md.
+    # SECRET_PASSWORD must be 32+ characters or the app rejects it at startup (validated with zod).
     environmentFiles = [ "/var/lib/secrets/rallly.env" ];
     environment = {
-      # 自己ホストではこれを実行時に読む。ビルド時ではない。
+      # When self-hosted this is read at runtime, not at build time.
       "NEXT_PUBLIC_BASE_URL" = "https://poll.gapul.net";
     };
     ports = [
@@ -62,8 +65,8 @@ in
   };
 
   virtualisation.oci-containers.containers."rallly-db" = {
-    # 上流の compose が指定しているのがこれ。18 系は PGDATA の位置が変わっているが、
-    # 親ディレクトリごと mount するので気にしなくてよい (上流も同じことをしている)。
+    # This is what upstream's compose specifies. The 18 series moved PGDATA, but the parent
+    # directory is mounted as a whole so it doesn't matter (upstream does the same).
     image = "docker.io/library/postgres:18-alpine";
     environmentFiles = [ "/var/lib/secrets/rallly.env" ];
     environment = {

@@ -1,29 +1,31 @@
-# Terraria の専用サーバ。ワールドはここが正で、キャラクターは各自の Steam Cloud
-# (母艦では restic が Steam/userdata も拾う) に任せる。TShock のサーバーサイド
-# キャラクターは使わない: 単にワールドを一箇所に置きたいだけで、持ち込みチート対策は要らない。
+# Dedicated Terraria server. The world's source of truth is here; characters are left to each
+# player's Steam Cloud (on the workstation, restic also picks up Steam/userdata). TShock's
+# server-side characters are not used: the goal is just to keep the world in one place, and
+# there's no need to guard against cheated-in items.
 #
-# macmini の Minecraft と違ってここに置くのは、nixpkgs の terraria-server が
-# x86_64-linux 専用で、NixOS にはこのモジュールがあるから。サーバは 1 スレッドで数百 MB
-# なので lazymc のように寝かせる仕組みも要らない。
+# It lives here rather than next to the macmini's Minecraft because nixpkgs' terraria-server is
+# x86_64-linux only and NixOS has this module. The server is single-threaded and a few hundred MB,
+# so it doesn't need a sleep mechanism like lazymc.
 #
-# 到達は tailnet のみ (firewall は tailscale0 を trusted にしている)。外の友人を入れる
-# ときは Minecraft と同じく playit を 7777 に向ける。ワールドは
-# /var/lib/terraria/.local/share/Terraria/Worlds に自動生成され、backup.nix の /var/lib
-# ごと restic に乗る。コンソールは `tmux -S /var/lib/terraria/terraria.sock attach`。
+# Reachable only over the tailnet (the firewall trusts tailscale0). To let in friends from
+# outside, point playit at 7777 as with Minecraft. The world is auto-generated in
+# /var/lib/terraria/.local/share/Terraria/Worlds and goes to restic along with /var/lib in
+# backup.nix. Console: `tmux -S /var/lib/terraria/terraria.sock attach`.
 { lib, ... }:
 {
-  # terraria-server は unfree (Re-Logic の再配布可バイナリ)。このホストで unfree を
-  # 許すのはこれだけなので、matrix-bridges.nix の permittedInsecurePackages と同じく
-  # 使うモジュールの側に置く。
+  # terraria-server is unfree (Re-Logic's redistributable binary). It is the only unfree package
+  # allowed on this host, so, like permittedInsecurePackages in matrix-bridges.nix, it sits in the
+  # module that uses it.
   nixpkgs.config.allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [ "terraria-server" ];
 
   services.terraria = {
     enable = true;
     port = 7777;
     maxPlayers = 8;
-    # 省略すると -world が渡らず、サーバは "Choose World:" の対話プロンプトで止まったまま
-    # 一度も listen しない (2026-09-26 に初回 switch で実際にそうなった)。パスを明示すると
-    # -autocreate と組で無ければ作る。ディレクトリはモジュールが tmpfiles で用意する。
+    # If omitted, -world is not passed and the server sits at the interactive "Choose World:" prompt
+    # and never listens (this actually happened on the first switch on 2026-09-26). With an explicit
+    # path, together with -autocreate it creates the world if missing. The module prepares the
+    # directory via tmpfiles.
     worldPath = "/var/lib/terraria/.local/share/Terraria/Worlds/world.wld";
     autoCreatedWorldSize = "medium";
     messageOfTheDay = "homeserver terraria";
