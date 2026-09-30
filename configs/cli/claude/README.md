@@ -21,7 +21,7 @@ outside Git.
 | `CLAUDE.md` | `$CLAUDE_CONFIG_DIR/CLAUDE.md` |
 | `../AGENTS.md` | `$CLAUDE_CONFIG_DIR/AGENTS.md` |
 | `hooks/`, `bin/` | The directories of the same name |
-| `skills/{gapul-writing-voice,step-by-step-tutor}` | Under `skills/` |
+| `skills/{anki-add,gapul-writing-voice,step-by-step-tutor}` | Under `skills/` |
 
 Keeping the whole `settings.json` works because the Mac runs with
 `defaultMode: bypassPermissions`, so `permissions.allow` never grows. Anything the TUI writes

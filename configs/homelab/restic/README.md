@@ -1,6 +1,6 @@
 # Offsite backups with restic, in a shared repository
 
-The Mac, homeserver, the mac mini and rpi4 all share one encrypted restic repository,
+The Mac, homeserver and the mac mini all share one encrypted restic repository,
 `rclone:google-drive:restic-backup`, held on Google Drive through rclone. They are separated by
 host name and deduplicated against each other.
 
@@ -9,7 +9,6 @@ host name and deduplicated against each other.
 | The Mac, MacBook-Mini | Documents, Pictures, Downloads, Movies, Music, Minecraft | Daily at 13:00 | home-manager, `nix/home/restic-backup.nix`, through launchd | sops-nix |
 | homeserver | `/var/lib`, plus `/srv/dawarich` and `/srv/archivebox`. The media and attic are excluded | Daily at 03:00 | NixOS, `services.restic.backups.homeserver` in `nix/homelab/backup.nix` | Placed by hand in `/var/lib/secrets/`, since there is no age key yet |
 | The mac mini | `~/Developer` and `~/.config`, excluding node_modules, .venv, target, .git/objects and model weights | Daily at 05:00 | home-manager, `nix/home/macmini-backup.nix`, through launchd | Raw files placed by hand; sops is not set up there |
-| rpi4 | `/home/pi`, the docker services' data | Daily at 04:30 | `restic-rpi-offsite.sh` and a systemd timer | `/root/.config/rclone/rclone.conf` and `/root/.restic.pw` |
 
 The secrets are always the same two things — `rclone.conf`, holding the Google Drive token, and
 the restic password — and neither is in this repository; they arrive through sops or by hand.
@@ -27,17 +26,6 @@ The Google OAuth client is published as Production, so the token does not expire
 in Testing, where it expired roughly weekly and stopped every host at once.
 
 ## Deploying
-
-### rpi4, Debian on aarch64
-
-```sh
-sudo apt-get install -y restic rclone
-# place the secrets: /root/.config/rclone/rclone.conf and /root/.restic.pw, from the Mac's sops
-# and for notifications: /root/.config/ntfy/{url,token}
-sudo install -m755 restic-rpi-offsite.sh /usr/local/bin/restic-rpi-offsite.sh
-sudo install -m644 restic-rpi-offsite.service restic-rpi-offsite.timer /etc/systemd/system/
-sudo systemctl daemon-reload && sudo systemctl enable --now restic-rpi-offsite.timer
-```
 
 ### The mac mini and homeserver, both declared
 
