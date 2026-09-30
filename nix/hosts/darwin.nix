@@ -196,7 +196,28 @@ in
     # nothing had been saved in any of them. melonDS stays as a standalone only for Pal Park
     # (Slot-2 GBA cart, which the libretro core makes awkward) and can go once that is done.
     # Azahar and melonDS come from nixpkgs (Azahar has no cask; melonDS builds natively and cached).
-    pkgs.azahar # 3DS. Citra successor (Citra and Lime3DS are both discontinued). No usable libretro core yet
+    # 3DS. Citra successor (Citra and Lime3DS are both discontinued). No usable libretro core yet.
+    #
+    # nixpkgs' 2125.1.2 segfaults the moment a game boots on macOS 26+: with MoltenVK it enables
+    # VK_EXT_tooling_info and then calls getToolPropertiesEXT, a function pointer MoltenVK does
+    # not expose. Upstream fixed it in #2149 (in 2126.1.2), but 2126.1.2 does not build on darwin
+    # in nixpkgs yet (it looks for a bundled libMoltenVK.dylib). So carry #2149 on 2125.1.2, minus
+    # its MoltenVK version bump, which only affects the upstream-bundled copy. The Metal layer
+    # helper it adds references CAMetalLayer, which upstream links through that bundled
+    # MoltenVK; here QuartzCore has to be linked explicitly. Once nixpkgs ships a darwin build of
+    # 2126.1.2 or later the patch no longer applies and the build fails - drop this override then.
+    (pkgs.azahar.overrideAttrs (old: {
+      patches = (old.patches or [ ]) ++ [
+        (pkgs.fetchpatch {
+          url = "https://github.com/azahar-emu/azahar/commit/04f3a93854bf2602f2fa18123d9e47cfc77ba708.patch";
+          hash = "sha256-V+2XdYkSBJeaCd1YzTbBefsyT7BbfRaL/oJ2LEknSCM=";
+          excludes = [ "CMakeModules/DownloadExternals.cmake" ];
+        })
+      ];
+      env = (old.env or { }) // {
+        NIX_LDFLAGS = "-framework QuartzCore";
+      };
+    }))
     pkgs.melonds # DS standalone. Slot-2 GBA cart support, so Pal Park (gen3 -> gen4) works
     # Cinny: a Matrix client that renders custom image reactions (MSC4027) and emoji packs, which
     # Element Desktop still shows as raw mxc URLs. Used to view LINE reaction icons / stickers that
