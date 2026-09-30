@@ -5,85 +5,28 @@
     {
       "Packages": [
         {
-          "PackageIdentifier": "7zip.7zip"
-        },
-        {
-          "PackageIdentifier": "ahrm.sioyek"
-        },
-        {
-          "PackageIdentifier": "AutoHotkey.AutoHotkey"
-        },
-        {
-          "PackageIdentifier": "Bitdefender.Bitdefender"
-        },
-        {
-          "PackageIdentifier": "Bitwarden.Bitwarden"
-        },
-        {
-          "PackageIdentifier": "Captura.Captura"
-        },
-        {
-          "PackageIdentifier": "DEVCOM.JetBrainsMonoNerdFont"
-        },
-        {
-          "PackageIdentifier": "Ditto.Ditto"
-        },
-        {
-          "PackageIdentifier": "EpicGames.EpicGamesLauncher"
-        },
-        {
-          "PackageIdentifier": "Espanso.Espanso"
-        },
-        {
-          "PackageIdentifier": "Flow-Launcher.Flow-Launcher"
-        },
-        {
-          "PackageIdentifier": "glzr-io.glazewm"
-        },
-        {
-          "PackageIdentifier": "Google.Chrome"
-        },
-        {
-          "PackageIdentifier": "jurplel.qView"
-        },
-        {
-          "PackageIdentifier": "KDE.KDEConnect"
-        },
-        {
-          "PackageIdentifier": "LizardByte.Sunshine"
-        },
-        {
-          "PackageIdentifier": "LocalSend.LocalSend"
-        },
-        {
           "PackageIdentifier": "Microsoft.PowerShell"
         },
         {
-          "PackageIdentifier": "Microsoft.WSL"
+          "PackageIdentifier": "Tailscale.Tailscale"
+        },
+        {
+          "PackageIdentifier": "Mozilla.Firefox.DeveloperEdition"
         },
         {
           "PackageIdentifier": "nathancorvussolis.corvusskk"
         },
         {
-          "PackageIdentifier": "Playnite.Playnite"
+          "PackageIdentifier": "glzr-io.glazewm"
         },
         {
-          "PackageIdentifier": "shinchiro.mpv"
-        },
-        {
-          "PackageIdentifier": "tailscale.tailscale"
-        },
-        {
-          "PackageIdentifier": "Valve.Steam"
-        },
-        {
-          "PackageIdentifier": "voidtools.Everything"
+          "PackageIdentifier": "glzr-io.zebar"
         },
         {
           "PackageIdentifier": "wez.wezterm"
         },
         {
-          "PackageIdentifier": "Zen-Team.Zen-Browser"
+          "PackageIdentifier": "DEVCOM.JetBrainsMonoNerdFont"
         }
       ],
       "SourceDetails": {
