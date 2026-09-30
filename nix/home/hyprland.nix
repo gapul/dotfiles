@@ -27,7 +27,7 @@ in
     hyprpolkitagent # polkit agent (started by its own unit, see below)
     hyprshot # screenshots
     hyprpicker # color picker
-    wlogout # power menu
+    # wlogout is declared through programs.wlogout below, which also writes its stylesheet.
     cliphist # clipboard history
     wl-clipboard # wl-copy / wl-paste, used by the cliphist pipeline
     wl-gammarelay-rs # night light dbus daemon
@@ -176,6 +176,52 @@ in
   # through services.* rather than home.packages, or stylix cannot see it and writes no config
   # — which is exactly how it ended up running with an empty screen before.
   services.hyprpaper.enable = true;
+
+  # Power menu ($mod+Escape). With no style.css of its own it fell back to the package's
+  # stock sheet — near-black tiles with a #3700B3 highlight, the one screen off the palette.
+  # Only the style is written: the stock layout (actions and l/e/u/h/s/r keys) is kept, and
+  # the icons still come from the package, as the stock sheet had them.
+  programs.wlogout = {
+    enable = true;
+    style =
+      let
+        icon = name: "${pkgs.wlogout}/share/wlogout/icons/${name}.png";
+      in
+      ''
+        * {
+          background-image: none;
+          box-shadow: none;
+          font-family: "JetBrainsMono Nerd Font";
+        }
+        window {
+          background-color: alpha(#${c.base}, 0.85);
+        }
+        button {
+          margin: 8px;
+          border-radius: 8px;
+          border: 2px solid #${c.overlay};
+          color: #${c.text};
+          background-color: #${c.surface};
+          background-repeat: no-repeat;
+          background-position: center;
+          background-size: 25%;
+        }
+        button:focus, button:active, button:hover {
+          border-color: #${c.iris};
+          background-color: #${c.overlay};
+          outline-style: none;
+        }
+        #shutdown:focus, #shutdown:hover, #reboot:focus, #reboot:hover {
+          border-color: #${c.love};
+        }
+        #lock { background-image: image(url("${icon "lock"}")); }
+        #logout { background-image: image(url("${icon "logout"}")); }
+        #suspend { background-image: image(url("${icon "suspend"}")); }
+        #hibernate { background-image: image(url("${icon "hibernate"}")); }
+        #shutdown { background-image: image(url("${icon "shutdown"}")); }
+        #reboot { background-image: image(url("${icon "reboot"}")); }
+      '';
+  };
 
   # The lock screen used to be a flat base colour with a bare input box on it: correct, but it
   # looked like a prompt rather than part of the desk. It now blurs the wallpaper behind a
