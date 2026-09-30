@@ -290,7 +290,17 @@ in
         inherit homeserver;
         inherit backfill encryption;
         double_puppet.secrets.${domain} = "$DOUBLE_PUPPET_SECRET";
-        network.mode = "instagram";
+        network = {
+          mode = "instagram";
+          # Older conversations are fetched page by page after the initial sync. Left
+          # unset the bridge saw batch_count = 0 and never started (no "Starting thread
+          # backfill" in the log after the 2026-10-01 login; only the first inbox page,
+          # 15 chats, got portals). Upstream's own defaults, written out explicitly.
+          thread_backfill = {
+            batch_count = -1;
+            batch_delay = "2s";
+          };
+        };
         appservice = {
           id = "instagram";
           port = 29320;
@@ -308,7 +318,14 @@ in
         inherit homeserver;
         inherit backfill encryption;
         double_puppet.secrets.${domain} = "$DOUBLE_PUPPET_SECRET";
-        network.mode = "messenger";
+        network = {
+          mode = "messenger";
+          # Same as instagram above.
+          thread_backfill = {
+            batch_count = -1;
+            batch_delay = "2s";
+          };
+        };
         appservice = {
           id = "messenger";
           port = 29321;
