@@ -6,6 +6,8 @@
   ...
 }:
 let
+  # ZFS ARC ceiling in bytes (2GB); see the ZFS section for the history.
+  zfsArcMax = 2 * 1024 * 1024 * 1024;
   # Because Proxmox is replaced in one cut rather than drained service by service,
   # everything that used to sit on CT101 or in the HAOS VM ends up on this host.
   # Only two upstreams stay remote.
@@ -356,10 +358,26 @@ in
   boot.initrd.systemd.emergencyAccess = true;
   # ARC defaults to half of RAM, which would quietly eat the ~4.7GB this migration
   # is meant to recover. 2GB was the starting point; with everything moved in, the
-  # box sits at 6.1GB used with 9.3GB available and the ARC pegged at its ceiling,
-  # so it was reading from disk for want of 2GB it had to spare. 4GB still leaves
-  # ~5GB of headroom.
-  boot.kernelParams = [ "zfs.zfs_arc_max=4294967296" ];
+  # box sat at 6.1GB used with 9.3GB available and the ARC pegged at its ceiling,
+  # so it went to 4GB. Since then the Matrix bridges (14 of them), Stalwart and
+  # Dawarich moved in: 2026-09-30 the box was at 11.2GB used, 4.5GB available and
+  # 4.2GB of the zram swap in use, with the ARC still pegged at 4GB. Back to 2GB:
+  # a cache is the one thing here that can shrink without breaking anything.
+  #
+  # The kernel parameter only applies at boot, so the oneshot below writes the
+  # same value to sysfs and a switch takes effect without a reboot. Keep the two
+  # in step.
+  boot.kernelParams = [ "zfs.zfs_arc_max=${toString zfsArcMax}" ];
+  systemd.services.zfs-arc-max = {
+    description = "Apply zfs_arc_max without a reboot";
+    wantedBy = [ "multi-user.target" ];
+    after = [ "zfs-import.target" ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStart = "${pkgs.bash}/bin/sh -c 'echo ${toString zfsArcMax} > /sys/module/zfs/parameters/zfs_arc_max'";
+    };
+  };
   services.zfs.autoScrub.enable = true;
   services.zfs.trim.enable = true;
   # The actual replacement for vzdump's nightly per-guest snapshots. Dataset
