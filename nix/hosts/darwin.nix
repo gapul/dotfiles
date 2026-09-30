@@ -659,7 +659,11 @@ in
       # installed, and like ransomwhere it is an Installer-artifact cask, so brew just runs
       # the same installer the manual install did.
       "blockblock" # persistence attempt blocker (alerts when something installs itself to run at login)
-      "lulu" # outbound firewall
+      # lulu (outbound firewall) was removed 2026-09-30: its network extension repeatedly
+      # stalled inbound ssh to the MacBook (banner exchange timeout; "No current verdict
+      # available" in the LuLu log, 2026-09-27 and 2026-09-30), and restarting LuLu was the
+      # only fix. An outbound-only firewall that takes the inbound path down is not worth
+      # keeping; Tailscale + ALF cover what we need.
       "ransomwhere" # ransomware (suspicious encryption behavior) detection
       # VPN / keys
       "mullvad-vpn" # no-log anonymous VPN (a separate layer from self-hosted WireGuard/Tailscale)
