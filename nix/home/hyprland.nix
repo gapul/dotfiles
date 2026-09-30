@@ -14,6 +14,17 @@ let
   # fail closed and the machine would simply never lock again, which is the failure you do
   # not notice.
   whenLidOpen = cmd: "${pkgs.gnugrep}/bin/grep -q open /proc/acpi/button/lid/LID/state && ${cmd}";
+  # Region -> clipboard, which `hyprshot -m region --clipboard-only` did until Escape: hyprshot
+  # 1.3.0 never checks that slurp was cancelled, so it fed grim an empty geometry, copied the
+  # empty result over whatever was on the clipboard, and still announced "Screenshot saved".
+  # Doing the three steps here lets a cancelled selection simply stop. The window bind keeps
+  # hyprshot: that path writes a file, and a cancel makes grim fail before anything is saved.
+  screenshotRegion = pkgs.writeShellScript "screenshot-region" ''
+    set -euo pipefail
+    geometry=$(${pkgs.slurp}/bin/slurp -d) || exit 0
+    ${pkgs.grim}/bin/grim -g "$geometry" - | ${pkgs.wl-clipboard}/bin/wl-copy --type image/png
+    ${pkgs.libnotify}/bin/notify-send -a Hyprshot "Screenshot copied" "Image copied to the clipboard"
+  '';
 in
 {
   # Binaries referenced by the keybinds / exec-once below. Without these the rice
@@ -119,8 +130,8 @@ in
         "$mod, L, exec, hyprlock" # manual lock
         "$mod, C, exec, cliphist list | wofi --dmenu | cliphist decode | wl-copy" # paste from history
         "$mod, Escape, exec, wlogout" # power menu
-        # screenshot (hyprshot) / color picker
-        "$mod, P, exec, hyprshot -m region --clipboard-only" # region -> clipboard
+        # screenshot / color picker
+        "$mod, P, exec, ${screenshotRegion}" # region -> clipboard
         "$mod SHIFT, P, exec, hyprshot -m window" # window -> save
         "$mod SHIFT, C, exec, hyprpicker -a" # pick a color and copy
         # night light (switch color temperature 4000K / 6500K)
