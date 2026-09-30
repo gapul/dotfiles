@@ -96,6 +96,15 @@ in
       TEXMFHOME = "${config.xdg.dataHome}/texmf";
       TEXMFVAR = "${config.xdg.cacheHome}/texlive/texmf-var";
       TEXMFCONFIG = "${config.xdg.configHome}/texlive/texmf-config";
+
+      # RubyGems: the spec cache defaults to ~/.gem/specs on the system Ruby (RubyGems 3.0,
+      # rubygems/path_support.rb reads GEM_SPEC_CACHE). Re-fetchable, so cache.
+      GEM_SPEC_CACHE = "${config.xdg.cacheHome}/gem/specs";
+      # w3m: W3M_DIR replaces ~/.w3m as the rc dir (cookies, history, config).
+      W3M_DIR = "${config.xdg.stateHome}/w3m";
+      # Sonic Pi: SONIC_PI_HOME replaces $HOME as the parent of .sonic-pi
+      # (server/ruby/paths.rb), so it ends up at $XDG_DATA_HOME/sonic-pi/.sonic-pi.
+      SONIC_PI_HOME = "${config.xdg.dataHome}/sonic-pi";
     };
 
   home.sessionPath = [
