@@ -71,7 +71,7 @@ in
   # darwin-chrome.nix) re-sources it on an appearance change. Elsewhere there is no OS appearance
   # signal to follow, so it just loads the active palette (switch via active in palettes.json).
   home.file.".config/tmux/theme.conf".text =
-    if pkgs.stdenv.isDarwin then
+    if pkgs.stdenv.hostPlatform.isDarwin then
       ''
         if-shell '[ "$(/usr/bin/defaults read -g AppleInterfaceStyle 2>/dev/null)" = "Dark" ]' \
           'source-file -q ~/.config/tmux/rose-pine.conf' \
