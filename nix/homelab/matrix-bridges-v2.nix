@@ -61,8 +61,18 @@
       title = "X";
       package = pkgs: pkgs.callPackage ../pkgs/mautrix-twitter.nix { };
       port = 29327;
-      # Call it X in bridge info and the management room welcome.
-      network.x = true;
+      network = {
+        # Call it X in bridge info and the management room welcome.
+        x = true;
+        # Upstream syncs only the 20 most recent conversations on startup, which left
+        # most DMs without a portal after the first login (2026-10-01). Take them all;
+        # X's inbox API pages so the cost is a few extra requests.
+        conversation_sync_limit = 500;
+        # Resync the conversation list on every restart instead of trusting the cached
+        # session, so a raised limit (or a chat that appeared while the bridge was
+        # down) shows up without a fresh login.
+        cache_session = false;
+      };
     })
 
     # LinkedIn. Log in with the li_at + JSESSIONID cookies from a logged-in
