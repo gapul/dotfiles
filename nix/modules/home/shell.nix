@@ -68,7 +68,7 @@ in
     };
 
     initContent = lib.mkMerge [
-      # evalcache は cli.nix が order 851/910 から呼ぶので、それより前に定義しておく。
+      # cli.nix calls evalcache from order 851/910, so define it before that.
       (lib.mkOrder 500 ''
         source ${../../../configs/shell/evalcache.zsh}
       '')

@@ -1,13 +1,13 @@
-# RomM — ROM のライブラリ。Jellyfin と同じ発想で、棚に並んだものを
-# ブラウザから見て、そのまま遊べる (EmulatorJS がブラウザ内で動く)。
+# RomM — the ROM library. Same idea as Jellyfin: browse what's on the shelf from the
+# browser and play it right there (EmulatorJS runs in the browser).
 #
-# なぜ ROM だけ別建てかというと、PC ゲームと性質が違うから。ROM は 1 ファイル
-# 1 タイトルで、メタデータを外部 (IGDB) から引いて初めて棚になる。PC ゲームは
-# インストーラの塊で、必要なのは置き場所と目録だけ。同じ道具で両方やろうとすると
-# どちらも中途半端になる。PC 側は gameyfin.nix。
+# ROMs get their own service because they differ in nature from PC games. A ROM is one file
+# per title and only becomes a shelf entry once metadata is pulled from outside (IGDB). A PC
+# game is a bundle of installers, and all it needs is storage and a catalog. Using the same
+# tool for both leaves both half-done. The PC side is gameyfin.nix.
 #
-# 実ファイルは /srv/games/roms。大容量ディスク側で、restic の対象外。
-# 吸い出し直せるものにバックアップ容量を使わない、という他の /srv と同じ判断。
+# The actual files are in /srv/games/roms, on the large disk and excluded from restic.
+# Same call as the rest of /srv: don't spend backup space on things that can be dumped again.
 {
   pkgs,
   lib,
@@ -24,7 +24,7 @@ in
       "MARIADB_DATABASE" = "romm";
       "MARIADB_USER" = "romm";
     };
-    # MARIADB_ROOT_PASSWORD と MARIADB_PASSWORD は romm.env から。
+    # MARIADB_ROOT_PASSWORD and MARIADB_PASSWORD come from romm.env.
     environmentFiles = [ "/var/lib/secrets/romm.env" ];
     volumes = [
       "/var/lib/homelab/romm/db:/var/lib/mysql:rw"
@@ -34,42 +34,43 @@ in
       "--network-alias=romm-db"
       "--network=romm_default"
       "--health-cmd=healthcheck.sh --connect --innodb_initialized"
-      # 定期実行はさせない (disable)。--health-cmd 自体は残るので、backup.nix の
-      # wait_healthy が使う `podman healthcheck run romm-db` はそのまま動く。
+      # No periodic runs (disable). --health-cmd itself remains, so
+      # `podman healthcheck run romm-db`, used by backup.nix's wait_healthy, still works.
       #
-      # 定期実行させていた頃、daily の flake auto-upgrade (nixos-upgrade.service)
-      # がこのコンテナを再起動させるたびに事故った。再起動直後、MariaDB がまだ
-      # 起動処理中のうちに最初のヘルスチェックが即座に走って失敗し、その一時
-      # systemd ユニットの失敗を switch-to-configuration が致命的エラーとして扱い、
-      # スイッチ自体は完了しているのに nixos-upgrade.service が failed のまま残って
-      # ntfy に流れていた (2026-09-21)。--health-start-period を延ばしても最初の
-      # 実行タイミングそのものは変わらないので効果が無かった。
+      # While it ran periodically, the daily flake auto-upgrade (nixos-upgrade.service)
+      # caused an incident every time it restarted this container. Right after the restart,
+      # while MariaDB was still starting up, the first health check ran immediately and failed;
+      # switch-to-configuration treated the failure of that transient systemd unit as a fatal
+      # error, so even though the switch itself had completed, nixos-upgrade.service stayed
+      # failed and got reported to ntfy (2026-09-21). Extending --health-start-period didn't
+      # help because it doesn't change when the first run happens.
       "--health-interval=disable"
     ];
   };
   systemd.services."podman-romm-db" = {
     serviceConfig.Restart = lib.mkOverride 90 "always";
 
-    # tc.log を起動前に消す。
+    # Delete tc.log before starting.
     #
-    # MariaDB はトランザクション調整ログをここに持つが、コンテナが強制終了されると
-    # 中途半端な状態で残る。次の起動で「Bad magic header in tc log」→「Crash recovery
-    # failed」→ Aborting となり、二度と上がらなくなる。2026-08-28 と 2026-09-01 の
-    # 二度踏んだ。前者は 2 日間気付かなかった (再起動を繰り返すので podman ps では
-    # Up に見える)。
+    # MariaDB keeps its transaction coordinator log here, but if the container is killed it is
+    # left in a half-written state. The next start goes "Bad magic header in tc log" → "Crash
+    # recovery failed" → Aborting, and it never comes up again. Hit twice, on 2026-08-28 and
+    # 2026-09-01. The first went unnoticed for 2 days (it keeps restarting, so podman ps shows
+    # it as Up).
     #
-    # 消して安全なのは、このファイルが 2 相コミットの調整用で、複数のトランザクション
-    # エンジンか binlog がある場合にしか使われないため。ここは InnoDB 単独で binlog も
-    # 無いので調整する相手がいない。InnoDB 自身の復旧は ib_logfile が持っていて、
-    # そちらは無傷 (実際、壊れたときもログ順序番号とバッファプールは読めていた)。
+    # Deleting it is safe because this file is for two-phase commit coordination and is only
+    # used when there are multiple transactional engines or a binlog. Here it's InnoDB alone
+    # with no binlog, so there is nothing to coordinate with. InnoDB's own recovery lives in
+    # ib_logfile, which is intact (indeed, even when it broke, the log sequence number and
+    # buffer pool were readable).
     #
-    # MariaDB 自身もこの状況で「delete tc log and start server」と言う。
+    # MariaDB itself says "delete tc log and start server" in this situation.
     serviceConfig.ExecStartPre = [
       "-${pkgs.coreutils}/bin/rm -f /var/lib/homelab/romm/db/tc.log"
     ];
 
-    # 強制終了そのものを減らす。既定の 10 秒では InnoDB の書き出しが終わらないことが
-    # あり、終わらなければ SIGKILL になって上の状態を作る。
+    # Reduce forced kills in the first place. The default 10 seconds sometimes isn't enough
+    # for InnoDB to finish flushing, and if it doesn't finish it gets SIGKILL, producing the state above.
     serviceConfig.TimeoutStopSec = 120;
     after = [ "podman-network-romm_default.service" ];
     requires = [ "podman-network-romm_default.service" ];
@@ -83,18 +84,18 @@ in
       "DB_HOST" = "romm-db";
       "DB_NAME" = "romm";
       "DB_USER" = "romm";
-      # Hasheous は鍵なしで使えるハッシュ照合 (No-Intro/Redump)。IGDB の前段で
-      # ROM を同定するので、ファイル名が雑でも棚に正しく並ぶ。
+      # Hasheous is keyless hash matching (No-Intro/Redump). It identifies ROMs before IGDB,
+      # so they land on the shelf correctly even with sloppy file names.
       "HASHEOUS_API_ENABLED" = "true";
     };
-    # DB_PASSWD / ROMM_AUTH_SECRET_KEY / IGDB_CLIENT_ID / IGDB_CLIENT_SECRET。
-    # IGDB の 2 つが無いとメタデータが引けず、棚がファイル名の羅列になる。
+    # DB_PASSWD / ROMM_AUTH_SECRET_KEY / IGDB_CLIENT_ID / IGDB_CLIENT_SECRET.
+    # Without the two IGDB ones, metadata can't be fetched and the shelf is just a list of file names.
     environmentFiles = [ "/var/lib/secrets/romm.env" ];
     volumes = [
-      "/var/lib/homelab/romm/resources:/romm/resources:rw" # 取得したカバー画像
+      "/var/lib/homelab/romm/resources:/romm/resources:rw" # fetched cover images
       "/var/lib/homelab/romm/redis:/redis-data:rw"
       "/srv/games/roms:/romm/library:rw"
-      "/srv/games/roms-assets:/romm/assets:rw" # セーブデータ・ステート
+      "/srv/games/roms-assets:/romm/assets:rw" # save data and states
     ];
     ports = [ "127.0.0.1:${toString privatePort}:8080/tcp" ];
     log-driver = "journald";
@@ -134,12 +135,12 @@ in
     wantedBy = [ ];
   };
 
-  # RomM はプラットフォームごとの下位ディレクトリを見る (roms/gb, roms/snes, ...)。
-  # 空でも作っておかないと、最初のスキャンが「ライブラリが無い」で終わる。
+  # RomM looks at per-platform subdirectories (roms/gb, roms/snes, ...).
+  # Unless they exist, even empty, the first scan ends with "no library".
   systemd.tmpfiles.rules = [
-    # podman は bind mount の元を作らない (docker と違うところ)。無いまま起動すると
-    # `statfs ...: no such file or directory` で 125 を返し、restart を繰り返して
-    # start-limit-hit で止まる。
+    # podman doesn't create bind mount sources (unlike docker). Starting without them returns
+    # 125 with `statfs ...: no such file or directory`, restarts repeatedly, and stops at
+    # start-limit-hit.
     "d /var/lib/homelab/romm 0700 root root -"
     # MariaDB drops to uid/gid 999.  The mount root must remain traversable by
     # that user; otherwise existing open tables appear to work while metadata

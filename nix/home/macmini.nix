@@ -19,20 +19,21 @@ let
       config.lib.file.mkOutOfStoreSymlink "${dotfiles}/configs/macmini/bin/${name}";
   };
 
-  # 素の `claude` を Remote Control 付きにする覆い。herdr のペインで始めたセッションが
-  # そのまま claude.ai/code とスマホからも触れる。ccm と違って足すのはこれだけで、
-  # --continue も --add-dir も権限のバイパスも付けない。
+  # Wrapper that turns plain `claude` into a Remote Control session. A session started in a herdr
+  # pane can then be reached from claude.ai/code and the phone as well. Unlike ccm, this is the only
+  # thing it adds: no --continue, no --add-dir, no permission bypass.
   #
-  # 書き換えるのは引数なしの対話起動だけ。--remote-control は名前を省略できるので、
-  # 他の引数の前に挿すと次のトークンを名前として食う (`claude mcp list` が "mcp" という名の
-  # セッションになる)。引数があるなら呼び手に意図があるということなので素通しする。
+  # Only an interactive launch with no arguments is rewritten. --remote-control takes an optional
+  # name, so inserting it before other arguments makes it swallow the next token as the name
+  # (`claude mcp list` becomes a session named "mcp"). Arguments mean the caller has an intent, so
+  # they pass through untouched.
   #
-  # DO_NOT_TRACK を外すのは launchd.agents.claude-remote-control と同じ理由。Remote Control は
-  # feature-flag の評価を要求し、これが立っていると起動を拒む。common.nix が全シェルに
-  # DO_NOT_TRACK=1 を撒いているので、外さないと素通り以前に落ちる。
+  # DO_NOT_TRACK is unset for the same reason as in launchd.agents.claude-remote-control: Remote
+  # Control requires feature-flag evaluation and refuses to start while it is set. common.nix sets
+  # DO_NOT_TRACK=1 in every shell, so without unsetting it the launch fails before anything else.
   #
-  # 逃げ道は CLAUDE_NO_REMOTE_CONTROL=1。launchd のジョブは $HOME/.local/bin/claude を
-  # 絶対パスで叩いていて、それはこの覆いの中身のほうなので影響を受けない。
+  # Escape hatch: CLAUDE_NO_REMOTE_CONTROL=1. The launchd job calls $HOME/.local/bin/claude by
+  # absolute path, which is the binary this wrapper wraps, so it is unaffected.
   claudeRemoteControlDefault = pkgs.writeShellScriptBin "claude" ''
     if [ $# -eq 0 ] && [ -t 0 ] && [ -t 1 ] && [ "''${CLAUDE_NO_REMOTE_CONTROL:-}" != 1 ]; then
       unset DO_NOT_TRACK DISABLE_TELEMETRY CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC DISABLE_GROWTHBOOK
@@ -78,12 +79,12 @@ in
     pkgs.gnutar
     pkgs.ripgrep
 
-    # Sunshine — Moonlight のホスト側。iPhone / iPad からこの機械の画面を触る。
+    # Sunshine — the host side of Moonlight. Lets an iPhone / iPad drive this machine's screen.
     #
-    # macOS ホストは公式に experimental で、**ゲームパッドが動かない**
-    # ("Gamepads do not work" と docs に明記されている)。キーボードとマウスの
-    # ゲーム、エミュレータ、あるいは単に遠隔から画面を触る用途なら使える。
-    # パッドを使うなら Windows 側を起こすほうが早い。
+    # macOS hosts are officially experimental and **gamepads do not work**
+    # (the docs say "Gamepads do not work" outright). It is fine for keyboard-and-mouse
+    # games, emulators, or just remote screen access.
+    # For a gamepad, waking the Windows side is quicker.
     #
     # Screen recording and accessibility cannot be granted from launchd, so both are a one-time
     # manual step (see the note on launchd.agents.sunshine below). The firewall exception is not
@@ -108,15 +109,15 @@ in
         "$@"
     '')
 
-    # claude 素打ちの既定は let の claudeRemoteControlDefault が持つ。home.packages に入れると
-    # PATH で負ける — この機械では ~/.local/bin (3 番目) が /etc/profiles/per-user/gapul/bin
-    # (7 番目) より先に来るので、覆いは本物の ~/.local/bin/claude に食われて一度も走らない。
-    # home.sessionPath 側で先頭に差してある。
+    # The default for bare `claude` lives in claudeRemoteControlDefault in the let block. Putting it in
+    # home.packages loses on PATH — on this machine ~/.local/bin (3rd) comes before
+    # /etc/profiles/per-user/gapul/bin (7th), so the real ~/.local/bin/claude shadows the wrapper and it
+    # never runs. It is prepended via home.sessionPath instead.
   ];
 
-  # claude の覆いを PATH の先頭に差す。mkBefore なのは common.nix が ~/.local/bin を
-  # 先に入れていて、そこに Claude Code のネイティブ導入が自分で貼った本物の claude が
-  # 居るため。store の bin を丸ごと前に出すが、中に入っているのは claude 一本だけ。
+  # Prepend the claude wrapper to PATH. mkBefore because common.nix already adds ~/.local/bin, where
+  # Claude Code's native installer placed the real claude itself. This puts the whole store bin in
+  # front, but the only thing in it is claude.
   home.sessionPath = lib.mkBefore [ "${claudeRemoteControlDefault}/bin" ];
 
   # Claude Code on the mini gets the workstation's managed keys (bypassPermissions as the default
@@ -198,18 +199,18 @@ in
     };
   };
 
-  # herdr の server を GUI セッションの中で起こす。`herdr machine add` で母艦から登録すると
-  # server は ssh の向こう側で起動するが、そうすると gui/501 のセキュリティセッションに
-  # 属さない。macOS のログインキーチェーンは GUI セッションからしか開けないので、その
-  # server が抱えるペインで claude を打つと "You must be logged in to use Remote Control"
-  # で止まる (2026-09-13 に `launchctl procinfo` で確認。動いている claude-remote-control は
-  # domain = gui/501 を持ち、ssh から起きた herdr server は持っていなかった)。
+  # Start the herdr server inside the GUI session. When the workstation registers this machine with
+  # `herdr machine add`, the server starts on the far side of ssh and does not belong to the gui/501
+  # security session. The macOS login keychain can only be opened from the GUI session, so running
+  # claude in a pane owned by that server stops with "You must be logged in to use Remote Control"
+  # (confirmed 2026-09-13 with `launchctl procinfo`: the working claude-remote-control had
+  # domain = gui/501, and the herdr server started from ssh did not).
   #
-  # ここで先に起こしておけば、母艦のクライアントが繋ぎに来たときには GUI セッションの
-  # server が既に居るので、そちらが再利用される。ペインは keychain を読めるようになり、
-  # macmini 側で普通に claude が使える。
+  # Starting it here first means that when the workstation's client connects, a GUI-session server
+  # already exists and is reused. Panes can then read the keychain, and claude works normally on
+  # the macmini.
   #
-  # ソケットは既定の ~/.config/herdr/herdr.sock のまま。machine プロファイルもそこを見る。
+  # The socket stays at the default ~/.config/herdr/herdr.sock, which the machine profile also uses.
   launchd.agents.herdr-server = {
     enable = true;
     config = {
@@ -316,10 +317,10 @@ in
     };
   };
 
-  # geekfeed: ギーク情報と学生向け無料キャンペーンを毎朝集めて RSS/ICS を作り、push すると
-  # Cloudflare Pages (geekfeed.pages.dev) が公開する。収集の実体は ~/Developer 側のリポジトリで、
-  # ここで宣言するのは時刻だけ。--research は claude -p にウェブ調査させる分なので1日1回に留める。
-  # git と gh は nix プロファイル側にいるため、PATH は publish.sh が自前で組み立てる。
+  # geekfeed: every morning, collects geek news and free student campaigns into RSS/ICS; pushing it
+  # publishes to Cloudflare Pages (geekfeed.pages.dev). The collector itself lives in a repo under
+  # ~/Developer; only the schedule is declared here. --research has claude -p do web research, so it
+  # is kept to once a day. git and gh live in the nix profile, so publish.sh builds its own PATH.
   launchd.agents.geekfeed = {
     enable = true;
     config = {
@@ -591,27 +592,28 @@ in
       StandardErrorPath = "${config.home.homeDirectory}/.local/state/manabi/refresh.log";
     };
   };
-  # Sunshine を常駐させる。Moonlight (iOS の無料アプリ) がこの機械を見つけて
-  # 繋ぎに来る。
+  # Keep Sunshine running. Moonlight (a free iOS app) discovers this machine and
+  # connects to it.
   #
-  # 初回だけ手が要る。どちらも TCC の許可で、宣言では与えられない:
-  #   1. システム設定 > プライバシーとセキュリティ > 画面収録 に sunshine を追加
-  #   2. 同 > アクセシビリティ にも追加 (キーボード/マウスの注入に要る)
-  # 許可を与えたあと `launchctl kickstart -k gui/$UID/org.nix-community.home.sunshine`。
+  # The first run needs manual steps. Both are TCC grants that cannot be declared:
+  #   1. System Settings > Privacy & Security > Screen Recording: add sunshine
+  #   2. Same > Accessibility: add it too (needed to inject keyboard/mouse input)
+  # After granting, run `launchctl kickstart -k gui/$UID/org.nix-community.home.sunshine`.
   #
-  # ペアリングは https://localhost:47990 の Web UI から。ポートは tailnet 内だけに
-  # 開いていて、外には出していない。
-  # 画面収録の許可を sunshine の更新で失わないようにする。
+  # Pair from the Web UI at https://localhost:47990. The port is open only inside the tailnet,
+  # not to the outside.
+  # Keep the screen recording grant from being lost when sunshine updates.
   #
-  # TCC は許可をバイナリの場所と署名で識別する。nix の store を直接指すと、
-  # 更新のたびに別物になって許可が切れる。しかも画面収録は MDM でも無言に
-  # 付与できないので、切れるたびに画面共有で入って押し直すことになる。
+  # TCC identifies a grant by the binary's location and signature. Pointing straight at the nix
+  # store makes every update a different binary and drops the grant. Screen recording also cannot
+  # be granted silently even via MDM, so each loss means logging in over screen sharing to re-grant.
   #
-  # 自己署名の identity で署名すると要件式から cdhash が落ち、identifier と
-  # 証明書だけになる。中身が変わっても同じものとみなされる (実測で確認)。
+  # Signing with a self-signed identity drops the cdhash from the requirement, leaving only the
+  # identifier and certificate. The binary is then treated as the same even when its contents
+  # change (verified in practice).
   #
-  # identity は機械ごとに一度 `tcc-signing-identity` を走らせて作る (sudo が
-  # 要るので activation からは呼ばない)。無い間はここは何もしない。
+  # Create the identity once per machine by running `tcc-signing-identity` (it needs sudo, so
+  # activation does not call it). Until it exists, this does nothing.
   home.activation.tccStableSunshine = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     $DRY_RUN_CMD ${../../configs/bin/tcc-stable-binary} \
       ${pkgs.sunshine}/bin/sunshine sunshine || true
@@ -635,13 +637,13 @@ in
   launchd.agents.sunshine = {
     enable = true;
     config = {
-      # store のパスではなく署名済みの安定した場所を指す。TCC は許可を場所と
-      # 署名で識別するので、store を直接指すと sunshine を更新するたびに
-      # 画面収録の許可が切れる。詳しくは下の activation を参照。
+      # Point at a signed, stable location rather than the store path. TCC identifies grants by
+      # location and signature, so pointing at the store directly drops the screen recording grant
+      # every time sunshine updates. See the activation below for details.
       ProgramArguments = [ "${config.home.homeDirectory}/.local/libexec/tcc/sunshine" ];
       RunAtLoad = true;
       KeepAlive = true;
-      # 配信中に他のバックグラウンド仕事に負けると映像が途切れるので Interactive。
+      # Interactive, because losing out to other background work while streaming makes the video stutter.
       ProcessType = "Interactive";
       StandardOutPath = "/tmp/sunshine.log";
       StandardErrorPath = "/tmp/sunshine.log";

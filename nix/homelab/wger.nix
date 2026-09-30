@@ -1,23 +1,25 @@
-# 食事の記録 (あすけんの置き換えの土台)。
+# Meal logging (the groundwork for replacing Asken).
 #
-# あすけんの中核は「写真を撮ると日本の食事として推定され、点数が出る」ことだが、
-# それを満たす FOSS は無い。分解すると「食事日記 + 食品データベース」と「写真からの
-# 推定」で、前者は既製品に乗れる。wger は自宅に置けて REST API があり、iOS アプリも
-# 公式にある。後者は後から薄い層 (ショートカット → 好きなモデル → この API) として
-# 足せる。
+# Asken's core is "take a photo, it estimates the meal as Japanese food and gives a score", and no
+# FOSS does that. Broken down, it is "food diary + food database" and "estimation from photos";
+# the former can ride on existing software. wger can be self-hosted, has a REST API, and has an
+# official iOS app. The latter can be added later as a thin layer (Shortcut → any model → this
+# API).
 #
-# 公式の compose は web + nginx + postgres + redis + celery + powersync の 6 つだが、
-# ここでは web だけを動かす:
-#   - DB は SQLite (DJANGO_DB_* を渡さなければ /home/wger/db に作られる)。使うのは
-#     一人で、食事の記録はレコードが小さい。
-#   - 静的ファイルは nginx ではなく Caddy が直接配る (hosts/homeserver.nix の pre)。
-#     コンテナは gunicorn だけを持ち、/static と /media はディスクから読ませる。
-#   - celery は非同期の取り込み (wger.de からの食材同期) のためにあるが、こちらは
-#     八訂を自分で入れる前提なので要らない。USE_CELERY=False。
+# The official compose is 6 services: web + nginx + postgres + redis + celery + powersync, but
+# only web runs here:
+#   - The DB is SQLite (created in /home/wger/db unless DJANGO_DB_* is passed). There is a single
+#     user, and meal records are small.
+#   - Static files are served directly by Caddy instead of nginx (pre in hosts/homeserver.nix).
+#     The container only runs gunicorn; /static and /media are read from disk.
+#   - celery exists for async imports (ingredient sync from wger.de), but that is unnecessary
+#     here since the plan is to load the 8th-edition food composition tables myself.
+#     USE_CELERY=False.
 #
-# 食材データベースは wger.de の既定 (Open Food Facts 由来) を同期しない。日本の
-# 生鮮・惣菜がほとんど無く、ノイズになるため。文科省の八訂を ETL して API から
-# 流し込む (mogura のために決めた資産をそのまま使う)。
+# The ingredient database does not sync wger.de's default (derived from Open Food Facts). It has
+# almost no Japanese fresh food or prepared dishes, so it would just be noise. Instead, MEXT's
+# 8th-edition Standard Tables of Food Composition are ETL'd and pushed in via the API (reusing
+# the asset decided on for mogura).
 _:
 
 let
@@ -25,7 +27,7 @@ let
 in
 {
   systemd.tmpfiles.rules = [
-    # イメージは uid/gid 1000 の wger ユーザーで動く。
+    # The image runs as the wger user with uid/gid 1000.
     "d ${dataDir} 0755 1000 1000 -"
     "d ${dataDir}/db 0755 1000 1000 -"
     "d ${dataDir}/static 0755 1000 1000 -"
@@ -34,7 +36,7 @@ in
 
   virtualisation.oci-containers.containers.wger = {
     image = "docker.io/wger/server:latest";
-    # SECRET_KEY だけ。sops が置く (secrets.nix の managedFiles)。
+    # Only SECRET_KEY. Placed by sops (managedFiles in secrets.nix).
     environmentFiles = [ "/var/lib/secrets/wger.env" ];
     environment = {
       TZ = "Asia/Tokyo";
@@ -44,18 +46,18 @@ in
       ALLOW_REGISTRATION = "False";
       ALLOW_GUEST_USERS = "False";
       DJANGO_DEBUG = "False";
-      # 明示しないと環境変数が無いと言って落ちる (既定値は無い)。SQLite のファイルは
-      # /home/wger/db に置く (イメージがそのディレクトリを持っている)。
+      # Without this it fails saying the environment variable is missing (there is no default). The
+      # SQLite file lives in /home/wger/db (the image provides that directory).
       DJANGO_DB_ENGINE = "django.db.backends.sqlite3";
       DJANGO_DB_DATABASE = "/home/wger/db/database.sqlite";
       DJANGO_DB_USER = "";
       DJANGO_DB_PASSWORD = "";
       DJANGO_DB_HOST = "";
-      # 空文字は int にキャストされて落ちる。SQLite では読まれないので値は何でもよい。
+      # An empty string is cast to int and fails. SQLite never reads it, so any value works.
       DJANGO_DB_PORT = "5432";
       DJANGO_PERFORM_MIGRATIONS = "True";
       DJANGO_COLLECTSTATIC_ON_STARTUP = "True";
-      # 静的ファイルは Caddy が配るので、S3 でもなく whitenoise でもない素の置き場。
+      # Caddy serves static files, so use the plain storage: neither S3 nor whitenoise.
       DJANGO_STORAGES_STATICFILES_BACKEND = "django.contrib.staticfiles.storage.StaticFilesStorage";
       USE_CELERY = "False";
       SYNC_EXERCISES_CELERY = "False";

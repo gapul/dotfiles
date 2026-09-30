@@ -1,14 +1,14 @@
-# Blocky の設定本体。homeserver と macmini の両方から読む。
+# The Blocky configuration itself. Read by both homeserver and macmini.
 #
-# 2台で同じ設定を持つ理由は整理整頓ではなく正しさの側にある。クライアントは
-# DHCP で渡された 2 つのリゾルバのどちらを引くか選べるので、片方だけ広告リストが
-# 違ったり上流が違ったりすると、同じ端末の同じ問い合わせが日によって違う答えを
-# 返す。それは追いかけられないので、差は待ち受けアドレスだけに閉じる。
+# Keeping the same config on both is about correctness, not tidiness. A client can pick
+# either of the 2 resolvers handed out by DHCP, so if only one had different ad lists or
+# upstreams, the same query from the same device would get different answers on different
+# days. That can't be tracked down, so the only difference is the listen addresses.
 { listen }:
 {
   ports = {
     dns = listen;
-    http = 4000; # metrics + API. dns2.gapul.net が homeserver 側のこれを指す。
+    http = 4000; # metrics + API. dns2.gapul.net points at this on the homeserver side.
   };
 
   upstreams.groups.default = [ "https://dns10.quad9.net/dns-query" ];
@@ -17,41 +17,41 @@
   # attempt, so raw.githubusercontent.com failed 3/3 and two of three lists were missing
   # (2026-09-26). homeserver was fine only by luck of the answer order.
   connectIPVersion = "v4";
-  # DoH は自分のホスト名を引けないので、ここはアドレスで書く。
+  # DoH can't resolve its own hostname, so addresses are used here.
   bootstrapDns = [
     { upstream = "9.9.9.10"; }
     { upstream = "149.112.112.10"; }
   ];
 
   blocking = {
-    # 形式が先で出所は後。blocky が読めるのは hosts 形式・素のドメイン・ワイルドカード
-    # (*.example.com)・正規表現だけ。AdGuard の `||domain^` 記法 (oisd の既定形式、
-    # AdGuard DNS filter) は 0 件として黙って読まれ、blocking は enabled と言い、何も
-    # 遮断されない。だから oisd も hagezi も wildcard 版の URL を指す。
+    # Format first, source second. blocky only reads hosts format, plain domains, wildcards
+    # (*.example.com), and regexes. AdGuard's `||domain^` syntax (oisd's default format,
+    # AdGuard DNS filter) is silently read as 0 entries; blocking reports enabled and nothing
+    # is blocked. That's why both oisd and hagezi point at the wildcard URLs.
     #
-    # 2026-09-26 に NextDNS (profile 43b9d5) の設定をここへ引き継いだ。NextDNS 側は
-    # oisd + AdGuard DNS filter + nextdns-recommended、Security は脅威インテリジェンス・
-    # cryptojacking・typosquatting・DGA、allowlist 2 件。nextdns-recommended は非公開なので
-    # 相当物なし。AdGuard DNS filter は oisd big の取り込み元に入っている。
+    # On 2026-09-26 the NextDNS (profile 43b9d5) settings were carried over here. NextDNS had
+    # oisd + AdGuard DNS filter + nextdns-recommended, Security with threat intelligence,
+    # cryptojacking, typosquatting, and DGA, plus 2 allowlist entries. nextdns-recommended is
+    # private, so there is no equivalent. AdGuard DNS filter is among oisd big's sources.
     denylists = {
-      # oisd big (NextDNS で使っていたもの) と hagezi Multi PRO++ の併用。実測 (2026-09-26)
-      # で両者は 6 割ずつ互いに無いドメインを持つ補完関係だった。oisd は「壊さない」方針で
-      # apex (doubleclick.net 自体など) を落とさず、PRO++ がそこを埋める。PRO++ には
-      # Native Tracker (Apple / Windows・Office / Samsung / Xiaomi など、OS 組み込みの
-      # テレメトリ) も PRO++ の段階で組み込まれている。前はここに StevenBlack があったが、
-      # 両者に無い分は古いカウンターや使い捨て TLD の残骸で、逆に amazon-adsystem.com の
-      # apex を落とすなど副作用の方が目立つので外した。
+      # oisd big (what NextDNS used) combined with hagezi Multi PRO++. Measured on 2026-09-26,
+      # the two are complementary, each with about 60% of domains the other lacks. oisd follows a
+      # "don't break things" policy and doesn't block apexes (doubleclick.net itself, etc.);
+      # PRO++ fills that gap. PRO++ also already includes Native Tracker (Apple / Windows·Office
+      # / Samsung / Xiaomi and other OS-built-in telemetry) at the PRO++ level. StevenBlack used to
+      # be here, but what it had beyond the other two was old counters and leftover throwaway TLDs,
+      # and its side effects, such as blocking the amazon-adsystem.com apex, stood out, so it was removed.
       ads = [
         "https://big.oisd.nl/domainswild"
         "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/wildcard/pro.plus.txt"
       ];
-      # hagezi Threat Intelligence Feeds (medium): NextDNS の Security タブの代わり。
-      # フル版 (45MB) ではなく medium (18MB)。誤検知が少なく、macmini のメモリにも優しい。
+      # hagezi Threat Intelligence Feeds (medium): replaces the NextDNS Security tab.
+      # medium (18MB) rather than the full version (45MB). Fewer false positives, and easier on macmini's memory.
       threats = [
         "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/wildcard/tif.medium.txt"
       ];
     };
-    # NextDNS の allowlist をそのまま。インライン定義 (YAML の literal block と同じ扱い)。
+    # The NextDNS allowlist as is. Inline definition (treated like a YAML literal block).
     allowlists.ads = [
       ''
         # carried over from the NextDNS allowlist
@@ -70,8 +70,8 @@
       attempts = 5;
       cooldown = "5s";
     };
-    # 0.0.0.0 ではなく NXDOMAIN。クライアントが再試行をやめるし、
-    # ブラックホールにソケットを吊るしたままにしない。
+    # NXDOMAIN rather than 0.0.0.0. Clients stop retrying, and
+    # sockets aren't left hanging on a black hole.
     blockType = "nxDomain";
   };
 
@@ -82,8 +82,8 @@
   };
 
   prometheus.enable = true;
-  # 問い合わせはディスクに残さない。検索できるログが要るなら
-  # queryLog.type = "csv" とパスをここに置く。
+  # Queries are not kept on disk. If a searchable log is needed,
+  # put queryLog.type = "csv" and a path here.
   queryLog.type = "none";
   log.level = "info";
 }

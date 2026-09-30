@@ -44,12 +44,12 @@ let
     // builtins.removeAttrs extra [ "env" ];
 
   minecraftServers = {
-    # 友人と遊ぶ本館。
+    # The main world, for playing with friends.
     vanilla = fabricInstance {
       dir = "/Users/mcsrv/vanilla";
       port = 25565;
     };
-    # 自分ひとり用。本館と同じもので、入れる人と寝るまでの時間だけ違う。
+    # Just for me. Same as the main world; only who can join and the time until it sleeps differ.
     solo = fabricInstance {
       dir = "/Users/mcsrv/solo";
       port = 25566;
@@ -58,12 +58,13 @@ let
     };
   };
 
-  # 無人のあいだサーバーを止めておくための前段。公開ポートは lazymc が持ち、本体は loopback の
-  # 別ポートで動く。誰も居なければ本体はプロセスごと落ちているので CPU もメモリもゼロ、接続が
-  # 来たら起こして繋ぐ(その間クライアントには「起動中」と見える)。playit の転送先も lazymc。
+  # A front end that keeps the server stopped while nobody is on. lazymc owns the public port and the
+  # server itself runs on a separate loopback port. With nobody on, the server process is gone entirely,
+  # so zero CPU and memory; when a connection comes it wakes the server and connects (meanwhile the
+  # client sees "starting"). playit also forwards to lazymc.
   #
-  # コンテナ時代に試した ENABLE_AUTOPAUSE は knockd がゲストの eth0 に attach できず動かなかった。
-  # lazymc はホスト側で port を持つだけなので、その問題が無い。
+  # ENABLE_AUTOPAUSE, tried in the container days, did not work because knockd could not attach to the
+  # guest's eth0. lazymc just holds the port on the host side, so it doesn't have that problem.
   lazymcConfig =
     name: inst:
     pkgs.writeText "lazymc-${name}.toml" ''
@@ -102,10 +103,10 @@ let
       [advanced]
       rewrite_server_properties = true
     '';
-  # まなびはサービスなので、実体は gapul/manabi (private) にあり、この機械にはそのクローンが
-  # 置いてある。ここが持つのは「この機械がまなびを動かす」という宣言だけで、中身は向こうの
-  # 更新に追従する (dotfiles の rebuild は要らない)。private なので flake input にはできない
-  # ——CI が fetch できない——から、パスで参照する。
+  # manabi is a service, so the real thing lives in gapul/manabi (private) and this machine has a clone
+  # of it. All this file holds is the declaration "this machine runs manabi"; the contents follow
+  # updates over there (no dotfiles rebuild needed). It is private, so it cannot be a flake input
+  # — CI couldn't fetch it — and is referenced by path instead.
   manabi = "/Users/Shared/manabi";
 in
 {
@@ -147,23 +148,23 @@ in
         # `claude setup-token` is handed over as a file. claude-agent
         # (nix/home/macmini-claude-agent.nix) reads it as CLAUDE_CODE_OAUTH_TOKEN.
         "claude_code_oauth_token" = forUser "/Users/${user.username}/.config/claude/oauth-token";
-        # マイクラの参加者一覧。名前と UUID は本人たちのもので、公開リポジトリに平文で置く
-        # ものではないので暗号化したまま持つ。置き場所は 1 か所で、起動時に run.sh が各
-        # インスタンスへ配る (サーバーは自分でこのファイルを書き換えるため、宣言側を毎回勝たせる)。
+        # Minecraft player list. The names and UUIDs belong to the players and are not something to keep in
+        # plaintext in a public repo, so they stay encrypted. They live in one place and run.sh distributes
+        # them to each instance at startup (the server rewrites this file itself, so the declaration wins every time).
         "minecraft/whitelist" = {
           path = "/etc/minecraft/whitelist.json";
           owner = "mcsrv";
           mode = "0444";
         };
-        # 個人用だけ別の一覧にする。ひとり用の世界に友人まで入れる必要は無い。
+        # Only the solo world gets a separate list. No need to let friends into a single-player world.
         "minecraft/whitelist_solo" = {
           path = "/etc/minecraft/whitelist-solo.json";
           owner = "mcsrv";
           mode = "0444";
         };
-        # Floodgate の鍵 (16 byte の AES 鍵を base64 で)。Bedrock の人は Java の認証を通らず、
-        # この鍵で署名された Geyser からの接続だけが通る。漏れると誰でも任意の名前で入れる。
-        # サーバー側 (run.sh) と Geyser 側 (下の daemon) の両方が起動時にここから置き直す。
+        # Floodgate key (a 16-byte AES key, base64). Bedrock players skip Java authentication; only
+        # connections from a Geyser signed with this key get through. If it leaks, anyone can join under any name.
+        # Both the server side (run.sh) and the Geyser side (the daemon below) re-place it from here at startup.
         "minecraft/floodgate_key" = {
           path = "/etc/minecraft/floodgate-key.b64";
           owner = "mcsrv";
@@ -176,9 +177,9 @@ in
         };
         "unified_calendar/ntfy_url" = forUser "/Users/${user.username}/.config/ntfy/url";
         "unified_calendar/ntfy_token" = forUser "/Users/${user.username}/.config/ntfy/token";
-        # iMessage ブリッジの appservice トークン。homeserver の Synapse が登録ファイルに持つ
-        # のと同じ値 (nix/homelab/matrix-imessage.nix)。home-manager 側
-        # (nix/home/macmini-imessage.nix) が activation で config.yaml に差し込む。
+        # appservice token for the iMessage bridge. Same value the homeserver's Synapse holds in the
+        # registration file (nix/homelab/matrix-imessage.nix). The home-manager side
+        # (nix/home/macmini-imessage.nix) injects it into config.yaml during activation.
         "matrix_imessage/as_token" =
           forUser "/Users/${user.username}/.config/mautrix-imessage/as_token"
           // {
@@ -197,12 +198,12 @@ in
     ./macmini-ci-runner.nix
     ./macmini-dns.nix
     ./macmini-homeserver-monitor.nix
-    ./macmini-imessage.nix # iMessage ブリッジの常駐と config (home 側と分担、理由はファイル冒頭)
+    ./macmini-imessage.nix # iMessage bridge daemon and config (split with the home side; reason at the top of the file)
     ./macmini-presenta.nix
     sopsNix.darwinModules.sops
-    # マイクラのサーバーは上の表から生やす。別モジュールにしてあるのは、nix が同じ attrset の
-    # 中で `launchd.daemons = {...}` と `launchd.daemons.foo = ...` を混ぜられないため。
-    # サーバーを増やすときに触るのは minecraftServers だけで、ここは触らなくていい。
+    # Minecraft servers are generated from the table above. This is a separate module because nix cannot
+    # mix `launchd.daemons = {...}` and `launchd.daemons.foo = ...` in the same attrset.
+    # Adding a server only touches minecraftServers; this part needs no changes.
     {
       launchd.daemons = lib.mapAttrs' (
         name: inst:
@@ -210,11 +211,11 @@ in
           # `command` (not ProgramArguments) makes nix-darwin prepend `wait4path /nix/store`. Since
           # macOS 27 /nix mounts after launchd starts daemons; a missing store binary exits 78
           # (EX_CONFIG) and never retries on its own — only bootout/bootstrap brought it back.
-          # 常駐するのは lazymc。サーバー本体は接続が来たときに lazymc が起こす。
-          # lazymc は起こす前に <dir>/whitelist.json を自分で読んで弾く (wake_whitelist)。
-          # そのファイルを正 (/etc/minecraft) に揃えるのは run.sh だが、run.sh は本体の起動時
-          # にしか走らない。つまり一覧を直しても、本体が一度も起きないと古い一覧で弾かれ続ける
-          # (2026-09-23、綴りを直したのに翌日も入れなかった)。lazymc が読む前にここでも揃える。
+          # lazymc is the resident process. lazymc wakes the server itself when a connection comes.
+          # Before waking it, lazymc reads <dir>/whitelist.json itself and rejects (wake_whitelist).
+          # run.sh syncs that file to the source of truth (/etc/minecraft), but run.sh only runs when the server
+          # starts. So after fixing the list, if the server never wakes, players keep getting rejected by the
+          # stale list (2026-09-23: fixed a spelling, still couldn't join the next day). Sync it here too before lazymc reads it.
           command = lib.escapeShellArgs [
             "${pkgs.writeShellScript "lazymc-${name}" ''
               wl="''${WHITELIST_SRC:-/etc/minecraft/whitelist.json}"
@@ -302,21 +303,21 @@ in
       # cleanup=uninstall from removing it on a later rebuild. Login secrets are filled through
       # the allowlisted ask MCP native helper; only adobe.com credentials can reach this bundle.
       "adobe-creative-cloud"
-      # Blender。nix ではなく brew なのは、あちらだとソースから建てることになるため。
-      # 依存の manifold が macmini (macOS 26.5.2) でテスト中に SIGTRAP で落ちるうえ
-      # (GetNormalLegacyContract, exit 133)、aarch64-darwin のキャッシュも無いので
-      # blender ごと入らない。テストを外して建てる手も試したが 10 分で終わらなかった。
+      # Blender. brew rather than nix because nix would build it from source.
+      # Its dependency manifold crashes with SIGTRAP during tests on macmini (macOS 26.5.2)
+      # (GetNormalLegacyContract, exit 133), and there is no aarch64-darwin cache either, so
+      # blender doesn't install at all. Building with tests disabled was also tried; it didn't finish in 10 minutes.
       #
-      # 署名済みバイナリを運ぶだけのものは brew でよい、という [[nix-vs-brew-signing-rule]]
-      # のとおりの事例。CLI は .app の中にあり、画面なしで焼ける:
+      # A case of [[nix-vs-brew-signing-rule]]: brew is fine for things that just ship a signed binary.
+      # The CLI is inside the .app and can render headless:
       #   /Applications/Blender.app/Contents/MacOS/Blender -b scene.blend -a
       "blender"
     ];
   };
 
-  # cachix: CI runner のため。GitHub の hosted runner は毎回入れ直すしかないが、この機械は
-  # 常設なので宣言しておく。入れ直しに 30 秒以上かかっていて、それが setup-nix を
-  # 実際のビルドより長くしていた (56s の準備に対し 18s のビルド、2026-09-10 実測)。
+  # cachix: for the CI runner. GitHub's hosted runners have no choice but to reinstall every time, but
+  # this machine is permanent, so declare it. Reinstalling took over 30 seconds, which made setup-nix
+  # longer than the actual build (56s of setup vs 18s of build, measured 2026-09-10).
   #
   # nodejs: runtime for Playwright MCP (pnpm dlx) and claude-login-broker (inject-creds.js).
   # bitwarden-cli: after approval the broker pulls credentials via bw get. BW_SESSION is unlocked manually.
@@ -405,7 +406,7 @@ in
     };
   };
 
-  # The second instance ("まなび"), which runs out of its own HOME so it can hold its own
+  # The second instance ("manabi"), which runs out of its own HOME so it can hold its own
   # api_server port. Same binary, different profile.
   #
   # It used to be called imouto everywhere on this side while the outside world — the Telegram
@@ -495,12 +496,12 @@ in
     };
   };
 
-  # Bedrock (スマホ / Switch / Win10 版) の入口。Geyser が BE の通信を Java に翻訳し、Floodgate
-  # (サーバー側 mod) が Java アカウント無しの人を Xbox アカウントで通す。standalone にしてある
-  # のは lazymc のため: サーバー内の mod として動かすと、サーバーが寝ている間は Geyser も居ない
-  # ので BE から起こせない。前段に常駐させ、Java クライアントとして lazymc を叩かせる。
-  # 待機コストは JVM 1 つ分 (300〜500MB)。無人時ゼロだった構成で唯一の常駐増。
-  # 本館だけ。solo に BE から入る日が来たら port を変えてもう 1 つ生やす。
+  # Entry point for Bedrock (phone / Switch / Win10 editions). Geyser translates BE traffic to Java and
+  # Floodgate (a server-side mod) lets people without a Java account in via their Xbox account. It is
+  # standalone because of lazymc: running as a mod inside the server, Geyser is gone too while the server
+  # sleeps, so BE could not wake it. It stays resident in front and hits lazymc as a Java client.
+  # Idle cost is one JVM (300-500MB), the only resident addition to a setup that was zero when idle.
+  # Main world only. If the day comes to join solo from BE, change the port and add another one.
   launchd.daemons.geyser = {
     command = "${pkgs.writeShellScript "geyser" ''
       set -u
@@ -562,7 +563,7 @@ in
   };
 
   # What Dawarich actually talks to: photon itself only listens on loopback. The proxy asks for
-  # Japanese and moves ward / 丁目 / 街区 into the fields Dawarich reads — see proxy.py.
+  # Japanese and moves ward / chome / block into the fields Dawarich reads — see proxy.py.
   launchd.daemons.photon-proxy = {
     command = "${pkgs.python3.interpreter} ${../../configs/macmini/photon/proxy.py}";
     serviceConfig = {
@@ -575,9 +576,9 @@ in
     };
   };
 
-  # ワールドの日次バックアップ。Realms から移ってくる以上、「壊しても戻せる」は要る。
-  # 対象は上の表から作るので、サーバーを増やせばバックアップも自動で増える。
-  # restic(5:00)より前に走らせて、その晩のうちに Google Drive まで乗せる。
+  # Daily world backup. Having moved off Realms, "can restore if it breaks" is required.
+  # Targets are built from the table above, so adding a server adds its backup automatically.
+  # Runs before restic (5:00) so it reaches Google Drive the same night.
   launchd.daemons.minecraft-backup = {
     command = "${../../configs/macmini/minecraft/backup.sh}";
     serviceConfig = {
@@ -600,8 +601,8 @@ in
     };
   };
 
-  # Hermes の状態を restic が読める場所へ固める。専用ユーザーのホームは gapul から
-  # 読めないので、マイクラと同じくここで tar にしてから拾わせる。restic(5:00)より前に走らせる。
+  # Bundles Hermes's state where restic can read it. The dedicated user's home is not readable by gapul,
+  # so like Minecraft it is tarred here for restic to pick up. Runs before restic (5:00).
   launchd.daemons.hermes-backup = {
     command = "${../../configs/macmini/hermes/backup.sh}";
     serviceConfig = {

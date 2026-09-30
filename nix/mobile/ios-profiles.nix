@@ -1,11 +1,11 @@
-# iOS の構成プロファイル (.mobileconfig) を宣言から生成する。
+# Generate iOS configuration profiles (.mobileconfig) declaratively.
 #
-# .mobileconfig は XML plist でしかないので、payload を nix の attrset で書いて
-# pkgs.formats.plist に流せば済む。生成した先を iPhone に届けるところは
-# mobile/ios/profiles/serve.sh。
+# A .mobileconfig is just an XML plist, so writing the payload as a nix attrset and feeding
+# it to pkgs.formats.plist is enough. Delivering the output to the iPhone is
+# mobile/ios/profiles/serve.sh.
 #
-# nix にできるのは生成まで。適用は端末側の手作業になる (監視モードを掛けるか
-# MDM を建てない限り、外からプロファイルを押し込む API が iOS に無い)。
+# nix can only go as far as generating. Installing is manual on the device (iOS has no API
+# for pushing profiles from outside unless the device is supervised or an MDM is set up).
 {
   pkgs,
   lib,
@@ -14,9 +14,9 @@
 let
   plist = pkgs.formats.plist { };
 
-  # 文字列から決定的に UUID を作る。iOS はプロファイルを PayloadUUID で同定するので、
-  # ここが毎回変わると更新のたびに別物として端末に積み上がる。ハッシュから引くことで
-  # 「名前が同じなら UUID も同じ」を保つ。
+  # Derive a UUID deterministically from a string. iOS identifies profiles by PayloadUUID, so
+  # if this changed every time, each update would pile up on the device as a separate profile.
+  # Deriving it from a hash keeps "same name, same UUID".
   uuidOf =
     s:
     let
@@ -25,7 +25,7 @@ let
     in
     lib.toUpper "${part 0 8}-${part 8 4}-${part 12 4}-${part 16 4}-${part 20 12}";
 
-  # payload 側の定型 (バージョン / 識別子 / UUID) を埋めて Configuration で包む。
+  # Fill in the payload boilerplate (version / identifier / UUID) and wrap it in a Configuration.
   mkProfile =
     name:
     {
@@ -52,17 +52,17 @@ let
       ) payloads;
     };
 
-  # ベンダーが署名済みで配っているものはここに書かない (NextDNS の DNS プロファイルも
-  # Tailscale の VPN プロファイルも本家が配っている)。配布元が無いものだけ。
+  # Don't put profiles here that the vendor distributes signed (NextDNS's DNS profile and
+  # Tailscale's VPN profile are both distributed by upstream). Only ones with no distributor.
   profiles = {
     homelab-dav = {
       displayName = "Homelab CalDAV/CardDAV";
       description = "自宅 Radicale のカレンダーと連絡先。パスワードは初回に端末が訊く。";
       payloads = [
-        # 宛先は radicale の 5232 を直接ではなく hosts/homeserver.nix の sites 表が
-        # 立てている dav の vhost。Caddy が ACME 証明書で終端しているので、
-        # 資格情報が平文で流れない。A レコードは tailnet アドレスを指しているため、
-        # tailnet に入っていないと名前が引けても届かない。
+        # The target is not radicale's 5232 directly but the dav vhost set up by the sites
+        # table in hosts/homeserver.nix. Caddy terminates it with an ACME certificate, so
+        # credentials don't travel in plaintext. The A record points at a tailnet address, so
+        # without being on the tailnet the name resolves but is unreachable.
         {
           PayloadType = "com.apple.caldav.account";
           CalDAVAccountDescription = "Homelab (Radicale)";
@@ -111,11 +111,11 @@ let
             "school"
           ];
     };
-    # 自宅の blocky を iOS の暗号化 DNS (DoH) として登録する。hosts/homeserver.nix の dns2
-    # vhost が Caddy で TLS 終端し、blocky の HTTP ポートの /dns-query に流す。以前は
-    # NextDNS の配布プロファイルがこの役だった (2026-09-26 に blocky へ一本化)。
-    # dns2.gapul.net は tailnet アドレスを指すので、Tailscale が切れていると届かない。
-    # ServerAddresses は名前が引けない状態でも到達できるようにする IP のヒント。
+    # Register the home blocky as iOS encrypted DNS (DoH). The dns2 vhost in hosts/homeserver.nix
+    # terminates TLS in Caddy and forwards to /dns-query on blocky's HTTP port. The NextDNS
+    # distributed profile used to fill this role (consolidated onto blocky on 2026-09-26).
+    # dns2.gapul.net points at a tailnet address, so it's unreachable when Tailscale is down.
+    # ServerAddresses are IP hints that keep it reachable even when the name can't be resolved.
     homelab-dns = {
       displayName = "Homelab DNS (blocky)";
       description = "自宅 blocky を DNS over HTTPS で使う。広告・トラッカー遮断は nix/lib/blocky-settings.nix。";

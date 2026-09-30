@@ -61,35 +61,35 @@ in
     #     A login item is registered by /Applications path, and this moves the bundle to
     #     /Applications/Nix Apps.
     pkgs.brewCasks.qview # lightweight image viewer, the original trial target
-    # keebmouse: 自作。cask をやめて署名済みリリースを取り込む nix パッケージにした。
-    # TCC を壊すのは「nix で置くこと」ではなく「ビルドのたび cdhash が変わる ad-hoc 署名」の
-    # ほうで、ここは Developer ID 署名の bundle をそのまま運ぶので版が上がっても剥がれない。
-    # 常駐は launchd.agents.keebmouse (modules/home/darwin-chrome.nix) が持つ。
-    # OmniWM: 主力のタイル型 WM。cask をやめて署名済みリリースを取り込む(pkgs/omniwm.nix に
-    # 経緯)。systemPackages なのは omniwmctl の置き場所のため — /run/current-system/sw/bin という
-    # 版にもユーザー名にも依存しない固定パスに出るので、configs 側のスクリプトが直に書ける。
+    # keebmouse: self-made. Dropped the cask and made it a nix package that pulls in the signed release.
+    # What breaks TCC is not "placing it via nix" but ad-hoc signing whose cdhash changes on every
+    # build; this ships the Developer ID-signed bundle as is, so permissions survive version bumps.
+    # The resident agent is launchd.agents.keebmouse (modules/home/darwin-chrome.nix).
+    # OmniWM: the main tiling WM. Dropped the cask and pulls in the signed release (history in
+    # pkgs/omniwm.nix). It is in systemPackages for where omniwmctl lands — /run/current-system/sw/bin,
+    # a fixed path independent of version and username, so scripts in configs can hardcode it.
     (pkgs.callPackage ../pkgs/omniwm.nix { })
-    # KDE Connect: スマホ連携。自作 tap の cask をやめて署名済みの dmg を取り込む
-    # (経緯は pkgs/kdeconnect.nix)。cask は `sha256 :no_check` で検証していなかったうえ、
-    # 固定していた CI ビルドが CDN から消えていて、新しい機械では 404 になる状態だった。
+    # KDE Connect: phone integration. Dropped the cask from my own tap and pulls in the signed dmg
+    # (history in pkgs/kdeconnect.nix). The cask used `sha256 :no_check` and so verified nothing, and
+    # the pinned CI build had vanished from the CDN, so a new machine got a 404.
     (pkgs.callPackage ../pkgs/kdeconnect.nix { })
-    # terminal-browser: 端末の中で動く実ブラウザ。狙いは閲覧より agent 側で、
-    # `terminal-browser action` が開いているブラウザに対する agent 向け CLI になっている。
-    # Claude in Chrome の拡張を使わず、実ウィンドウも出さずに web を触らせられる。
-    # 上流は curl | bash のインストーラで自己更新するので、版を握るために宣言側に置く。
+    # terminal-browser: a real browser that runs inside the terminal. The point is the agent side more
+    # than browsing: `terminal-browser action` is an agent-facing CLI against the open browser.
+    # It lets an agent touch the web without the Claude in Chrome extension and without a real window.
+    # Upstream self-updates via a curl | bash installer, so it lives on the declarative side to pin the version.
     terminalBrowser
-    # agent-browser: terminal-browser が同梱している agent 向けブラウザ CLI。libexec の中に
-    # あって PATH に出ないので、ここで出す。単体で、ヘッドレスで、ペインを出さずに動く。
-    # これが agent の既定の経路 — 1 ページを 200〜400 token で表現するので、MCP 越しに
-    # アクセシビリティツリーを毎ターン文脈へ積むより桁で安い (上流の実測で 114k 対 27k)。
-    # 版は terminal-browser 本体と常に一致する。
+    # agent-browser: the agent-facing browser CLI bundled with terminal-browser. It sits inside libexec
+    # and is not on PATH, so expose it here. Standalone, headless, and runs without opening a pane.
+    # This is the agent's default path — it represents a page in 200-400 tokens, an order of magnitude
+    # cheaper than piling the accessibility tree into context every turn over MCP (upstream measured
+    # 114k vs 27k). Its version always matches terminal-browser itself.
     (pkgs.writeShellScriptBin "agent-browser" ''
       exec ${terminalBrowser}/libexec/terminal-browser/agent-browser/bin/agent-browser "$@"
     '')
-    # playwright-test: クロスブラウザ検証を要るときだけ起こすラッパー。Firefox と WebKit で
-    # 試せるのは Playwright だけで、そこは agent-browser に無い能力なので残す。ただし常駐は
-    # やめた (経緯は modules/home/darwin-services.nix)。前の常駐は --cdp-endpoint で既存の
-    # Chromium にぶら下がる形だったので、そもそも Firefox にも WebKit にも届いていなかった。
+    # playwright-test: a wrapper started only when cross-browser checks are needed. Only Playwright can
+    # test on Firefox and WebKit, which agent-browser cannot, so it stays. But it no longer runs
+    # resident (history in modules/home/darwin-services.nix). The old resident one hung off an existing
+    # Chromium via --cdp-endpoint, so it never reached Firefox or WebKit in the first place.
     (pkgs.writeShellScriptBin "playwright-test" ''
       browser="''${1:-chromium}"
       port="''${2:-8932}"
@@ -99,14 +99,14 @@ in
         --browser "$browser" --port "$port" \
         --output-dir "$HOME/tmp/playwright-test"
     '')
-    # node: playwright-mcp の実行に要る。pnpm の global store が持っていた node は
-    # リンク切れになっていて (~/Library/pnpm/bin/node → 消えた store パス)、そのせいで
-    # かつての playwright agent が "exec: node: not found" で死んでいた。ランタイムは
-    # pnpm の管理から外して宣言側で持つ。
+    # node: needed to run playwright-mcp. The node held by pnpm's global store had become a broken
+    # link (~/Library/pnpm/bin/node → a store path that was gone), which is why the former playwright
+    # agent died with "exec: node: not found". The runtime is taken out of pnpm's hands and held
+    # declaratively.
     pkgs.nodejs
-    # codex: 自前インストーラで ~/.local/bin に入っていたものを宣言に移す。home.packages
-    # ではなく systemPackages なのは PATH の順で、/run/current-system/sw/bin が
-    # ~/.local/bin より前に来る。profile 側だと手動インストール版が勝ってしまう。
+    # codex: moves what its own installer put in ~/.local/bin to the declaration. It is in systemPackages
+    # rather than home.packages because of PATH order: /run/current-system/sw/bin comes before
+    # ~/.local/bin. On the profile side the manually installed copy would win.
     agentPkgs.codex
     agentPkgs.claude-code
     agentPkgs.opencode
@@ -127,18 +127,18 @@ in
     pkgs.tor
     pkgs.wireguard-tools
     (pkgs.callPackage ../pkgs/keebmouse.nix { })
-    # Puddle / keystats: 自作物。keebmouse と同じく cask をやめて署名済みリリースを取り込む。
-    # これで自作物のための tap (gapul/puddle, gapul/keystats) が両方畳める。
+    # Puddle / keystats: self-made. Like keebmouse, dropped the cask and pulls in the signed release.
+    # This lets both taps for self-made things (gapul/puddle, gapul/keystats) be folded.
     (pkgs.callPackage ../pkgs/puddle.nix { })
     (pkgs.callPackage ../pkgs/keystats.nix { })
-    # mocopi: 自作。ソースは private repo のままなので flake input は git+ssh で引いている
-    # (flake.nix の mocopi-mac)。ここに置くと /Applications/Nix Apps に入るので、README に
-    # あった `nix build && cp -R result/Applications/mocopi.app ~/Applications/` の手作業が要らない。
-    # .app であることに意味がある: 独立した bundle は自前の Bluetooth 権限を持てるので、
-    # 起動したターミナルの権限を借りずに済む(mocopi-mac の flake.nix のコメント参照)。
+    # mocopi: self-made. The source stays a private repo, so the flake input is fetched via git+ssh
+    # (mocopi-mac in flake.nix). Putting it here lands it in /Applications/Nix Apps, so the manual
+    # `nix build && cp -R result/Applications/mocopi.app ~/Applications/` from the README is not needed.
+    # Being a .app matters: a standalone bundle can hold its own Bluetooth permission, so it does not
+    # borrow the permissions of the terminal that launched it (see the comment in mocopi-mac's flake.nix).
     mocopiMac.packages.${pkgs.stdenv.hostPlatform.system}.default
-    # ショートカットをコードから焼く (flake.nix の cherri を参照)。ソースは
-    # personal-tools/shortcuts、成果物は署名して端末に取り込む。
+    # Compiles Shortcuts from code (see cherri in flake.nix). The source is
+    # personal-tools/shortcuts; the output is signed and imported onto the device.
     cherri.packages.${pkgs.stdenv.hostPlatform.system}.default
     # VOICEVOX: was the reason a fork of the upstream Homebrew tap existed at all — upstream is
     # stuck at 0.25.1 with a dead autobump, so the fork carried 0.25.2 by hand. nixpkgs packages
@@ -159,12 +159,12 @@ in
     pkgs.brewCasks.anki
     pkgs.brewCasks.ente-auth
     pkgs.brewCasks.keyguard
-    pkgs.brewCasks.knockknock # persistence scanner (Objective-See). 初回に Full Disk Access の再付与が要る
+    pkgs.brewCasks.knockknock # persistence scanner (Objective-See). Needs Full Disk Access re-granted on first run
     pkgs.brewCasks.localsend
     pkgs.brewCasks.orcaslicer
-    # Scribus は同梱の Python.framework に PrivateHeaders への壊れた symlink を2本抱えていて、
-    # nixpkgs の noBrokenSymlinks fixup がそれを理由にビルドを落とす。中身は上流の配布物その
-    # ままで、壊れているのは使われないヘッダの参照だけなので、チェックのほうを外す。
+    # Scribus carries two broken symlinks to PrivateHeaders in its bundled Python.framework, and
+    # nixpkgs' noBrokenSymlinks fixup fails the build over them. The contents are upstream's
+    # distribution as is and only unused header references are broken, so the check is disabled instead.
     (pkgs.brewCasks.scribus.overrideAttrs (_: {
       dontCheckForBrokenSymlinks = true;
     }))
@@ -183,7 +183,7 @@ in
     unstablePkgs.openscad-unstable
     # (not lib.getExe: nixpkgs' meta.mainProgram says "openscad" but the file is openscad-unstable)
     (pkgs.writeShellScriptBin "openscad" ''exec ${unstablePkgs.openscad-unstable}/bin/openscad-unstable "$@"'')
-    pkgs.brewCasks.trex # 画面 OCR。Screen Recording の TCC を再付与する必要がある
+    pkgs.brewCasks.trex # Screen OCR. Screen Recording TCC must be re-granted
     # ─── Emulation ───
     # The Pokémon RNG/breeding work runs here rather than on hardware: frame-level control and a
     # debugger are what the manipulation needs, and neither exists on a real console. The 3DS side
@@ -486,7 +486,7 @@ in
       "y3owk1n/tap" # cask distribution source for neru (full-screen keyboard navigation)
 
       # ─── Personal forks (gapul) — delete if you forked and don't need them ───
-      "gapul/tap" # gapul の汎用 cask タップ (homebrew/cask に無いもの)
+      "gapul/tap" # gapul's general-purpose cask tap (things not in homebrew/cask)
       "gapul/openutau"
       "gapul/azoo-key-skkserv"
       "gapul/armorpaint" # ArmorPaint source-build formula distribution tap (official is paid €16 → self-build for free full version)
@@ -547,13 +547,13 @@ in
       # ─── Status bar (felixkratz tap) ───
       # (borders/JankyBorders was dropped 2026-08: OmniWM draws its own active-window border, so the
       #  resident daemon was 174MB of duplicate decoration.)
-      # nixpkgs にも sketchybar はあるが、移して戻した(#485 → この revert)。理由は署名で、
-      # nixpkgs 版は nix がソースからビルドするので ad-hoc 署名になり、TCC が
-      # 「"sketchybar" would like to access data from other apps」を延々出し続けて収まらない。
-      # felixkratz が配るバイナリは署名済みなので黙る。keystats で2回権限が飛んだのと同じ話で、
-      # 「nix に置くこと」ではなく「ビルドのたび cdhash が変わること」が原因。逆に言えば、
-      # 署名済みの配布物を運ぶだけの keebmouse / Puddle / keystats は nix 化できている。
-      "felixkratz/formulae/sketchybar" # (a) 署名済みバイナリが要る。launchd agent は home/darwin-chrome.nix
+      # nixpkgs also has sketchybar, but it was moved there and back (#485 → this revert). The reason is
+      # signing: nix builds the nixpkgs version from source, so it is ad-hoc signed and TCC keeps showing
+      # the prompt '"sketchybar" would like to access data from other apps' endlessly.
+      # The binary felixkratz distributes is signed, so it stays quiet. Same story as keystats losing its
+      # permissions twice: the cause is not "placing it in nix" but "the cdhash changing on every build".
+      # Conversely, keebmouse / Puddle / keystats, which just ship signed distributions, are in nix.
+      "felixkratz/formulae/sketchybar" # (a) needs the signed binary. The launchd agent is in home/darwin-chrome.nix
 
       # ─── Transcription / other 3rd-party tap brews ───
       "finnvoor/tools/yap" # (a) Japanese transcription. tap-only, not in nixpkgs
@@ -568,10 +568,10 @@ in
 
     # GUI applications (~100)
     casks = [
-      # brewCasks に移せた仲間だが、この7本だけ cask のまま。理由はサイズで、
-      # om ci(aarch64-darwin) の macos-14 ランナーは空きが約14GBしかなく、
-      # 合計約5GB を store に実体化しようとすると anki の展開中に無言で死ぬ。
-      # 母艦では問題なくビルドできるので、宣言できない理由ではなく CI の天井。
+      # These could move to brewCasks too, but these 7 stay casks. The reason is size: the macos-14
+      # runner of om ci (aarch64-darwin) has only about 14GB free, and materializing about 5GB total
+      # into the store dies silently while unpacking anki.
+      # They build fine on the main Mac, so this is a CI ceiling, not a reason they can't be declared.
       "bitwig-studio"
       "cycling74-max"
       "freecad"
@@ -715,12 +715,12 @@ in
       "cavalry" # 2D motion graphics
 
       # ─── 3D / CAD ───
-      # Unity Hub は「常用する GUI」ではなくインストーラの CLI として置いている。
-      #   Unity Hub.app/Contents/MacOS/Unity\ Hub -- --headless install --version <版> --changeset <hash>
-      # で GUI を開かずにエディタを入れられる。Hub 抜きでも公式の単体インストーラは取れるが、
-      # Personal ライセンスの認証が -createManualActivationFile → ポータル → -manualLicenseFile
-      # の遠回りになるので、手元で入れるぶんには Hub を通すほうが早い。nixpkgs の unityhub は
-      # Linux 専用なので cask で宣言する。
+      # Unity Hub is here not as "a GUI in regular use" but as the installer's CLI.
+      #   Unity Hub.app/Contents/MacOS/Unity\ Hub -- --headless install --version <version> --changeset <hash>
+      # installs an editor without opening the GUI. The official standalone installer is available without
+      # the Hub, but Personal license activation then takes the detour -createManualActivationFile → portal
+      # → -manualLicenseFile, so going through the Hub is faster for local installs. nixpkgs' unityhub is
+      # Linux-only, so it is declared as a cask.
       "unity-hub"
       "blender"
       "kicad"
@@ -742,7 +742,7 @@ in
       "heroic" # Epic/GOG/Amazon launcher (FOSS). Replaces the proprietary Epic Games launcher; pairs with legendary-gl (see workstation.nix)
       "retroarch-metal"
       "steam"
-      # ispc の Sunshine につなぐクライアント (Windows 専用のものを母艦から触る)
+      # Client for ispc's Sunshine (the Windows-only machine, driven from the main Mac)
       "moonlight"
       "playcover-community"
 

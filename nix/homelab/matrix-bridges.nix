@@ -1,30 +1,30 @@
-# Matrix のブリッジ。第1陣は資格情報を外から用意しなくてよいものだけ。
+# Matrix bridges. The first wave is only the ones that need no externally prepared credentials.
 #
-# Conduit のままだったら、この形では書けなかった。appservice の登録が RocksDB の
-# 中にあって admin room からしか変えられなかったので、コンテナに config.yaml を
-# 手置きするしかなかった。Synapse に替えて登録が設定ファイルになったので、
-# nixpkgs の services.mautrix-* がそのまま使える (#516 参照)。
+# This could not have been written this way while we were on Conduit. Appservice registrations
+# lived inside RocksDB and could only be changed from the admin room, so the only option was to
+# hand-place config.yaml in the container. Switching to Synapse made registrations a config
+# file, so nixpkgs' services.mautrix-* can be used as-is (see #516).
 #
-# registerToSynapse が既定で true。登録ファイルを生成して
-# services.matrix-synapse.settings.app_service_config_files に足すところまで
-# モジュールがやる。ここで書くのは「誰がどこに繋ぐか」だけでよい。
+# registerToSynapse defaults to true. The module generates the registration file and adds it
+# to services.matrix-synapse.settings.app_service_config_files. All that needs writing here
+# is "who connects where".
 #
-# ここに入れていないもの:
+# Not included here:
 #   telegram / slack / gmessages / twitter / linkedin
-#             — nixpkgs にモジュールが無い (telegram は古い Python 版しか無く、
-#               twitter / linkedin はパッケージも無いので pkgs/ に自前で書いた)。
-#               matrix-bridges-v2.nix に mk-matrix-bridgev2.nix で書いた。
-#   imessage  — モジュールが無い。macmini 側 (home/macmini-imessage.nix)。
-#   googlechat — mautrix-googlechat は Python の旧世代ブリッジで、nixpkgs にパッケージは
-#               あるがモジュールが無い。設定の形が bridgev2 と違うので matrix-googlechat.nix
-#               に自前で書いた。
-#   google voice — Beeper の実装は非公開 (公開されていた beeper/googlevoice は 2023 年に
-#               archive)。自前で動かせるものが無い。
-#   line      — モジュールもパッケージも無いので、両方を自前で書いた (matrix-line.nix)。
-#   teams     — 個人の teams.live.com 向けの実験的な実装しか無い。会社テナントは
-#               Azure のアプリ登録が要るので、そもそも許可の話になる。
-#   simplex   — 構造的に無理。あの設計は識別子を持たないことが核心で、
-#               puppeting が必要とする安定した ID が存在しない。
+#             — no nixpkgs module (telegram only has the old Python version, and
+#               twitter / linkedin have no package either, so they are written in pkgs/).
+#               Written in matrix-bridges-v2.nix via mk-matrix-bridgev2.nix.
+#   imessage  — no module. Lives on the macmini side (home/macmini-imessage.nix).
+#   googlechat — mautrix-googlechat is an old-generation Python bridge; nixpkgs has the package
+#               but no module. Its config shape differs from bridgev2, so it is written by hand
+#               in matrix-googlechat.nix.
+#   google voice — Beeper's implementation is closed (the public beeper/googlevoice was
+#               archived in 2023). Nothing we can run ourselves.
+#   line      — neither a module nor a package, so both are written by hand (matrix-line.nix).
+#   teams     — only an experimental implementation for personal teams.live.com. A company
+#               tenant needs an Azure app registration, so it is a question of permission anyway.
+#   simplex   — structurally impossible. Its design hinges on having no identifiers, so the
+#               stable ID that puppeting needs does not exist.
 {
   config,
   lib,
@@ -32,13 +32,13 @@
   ...
 }:
 let
-  # Synapse は同じ箱の 8008 で待っている。ブリッジもホスト側の unit なので localhost でよい。
+  # Synapse listens on 8008 on the same box. The bridges are host units too, so localhost is fine.
   address = "http://127.0.0.1:8008";
   domain = "gapul.net";
   admin = "@gapul:${domain}";
 
-  # 既定は permissions = { "*" = "relay" } で、誰でも relay として使える。
-  # 自分ひとりの箱なので閉じる。
+  # The default is permissions = { "*" = "relay" }, which lets anyone use it as a relay.
+  # This is a single-user box, so close it.
   permissions = {
     ${admin} = "admin";
   };
@@ -47,44 +47,47 @@ let
     inherit address domain;
   };
 
-  # 過去ログの取り込み。ここは**ログインする前に**決めておく必要がある。
+  # Backfill of past history. This has to be decided **before logging in**.
   #
-  # 深く取れるのはポータルが初めて作られる一度きり。既定は 50 件で、後から遡るには
-  # 「backfill queue」が要るが、上流の設定にこう書いてある:
+  # Deep history can only be fetched once, when the portal is first created. The default is
+  # 50 messages; going further back later needs the "backfill queue", but upstream's config
+  # says:
   #
   #   Settings for the backwards backfill queue. This only applies when connecting to
   #   Beeper as standard Matrix servers don't support inserting messages into history.
   #
-  # 素の Synapse は履歴の途中に差し込めない (MSC2716 が廃止された)。空の部屋へ
-  # 順に流し込む初回だけは効くので、そこで取れるだけ取る。既定のまま入ると、
-  # あとからやり直すには部屋を消すことになる。
+  # Plain Synapse cannot insert into the middle of history (MSC2716 was dropped). Only the
+  # initial pass, which streams into an empty room in order, works, so take as much as
+  # possible there. If you go in with the defaults, redoing it later means deleting the rooms.
   #
-  # どれだけ取れるかは相手次第で、こちらの設定では決まらない:
-  #   Telegram / Discord — サーバ側に履歴がある。いちばん深く取れる
-  #   Meta / LinkedIn / Slack — サーバ側にある
-  #   Signal — 端末にしか無い。連携後のぶんが中心で、過去は基本的に取れない
-  # ブリッジ側の暗号化 (end-to-bridge encryption)。
+  # How much can be fetched depends on the other side, not on settings here:
+  #   Telegram / Discord — history is on the server. The deepest backfill
+  #   Meta / LinkedIn / Slack — on the server
+  #   Signal — only on the device. Mostly what arrives after linking; past history is
+  #            basically not available
+  # Bridge-side encryption (end-to-bridge encryption).
   #
-  # Element / Element X は新しい DM を暗号化で作るので、これが無いとブリッジの
-  # ボットとの DM でコマンドが届かない (2026-09-13 に LINE の login が
-  # "this bridge has not been configured to support encryption" で弾かれた)。
+  # Element / Element X create new DMs encrypted, so without this, commands in DMs with the
+  # bridge bots never arrive (on 2026-09-13 the LINE login was rejected with
+  # "this bridge has not been configured to support encryption").
   #
-  #   allow — 暗号化されたルームでも動く (2026-09-26 より前に作られたポータル)
-  #   default = false — 自分で作るポータルは平文 (2026-09-26)。自宅の単独サーバーでは
-  #             ブリッジも Synapse も同じ管理下で E2BE の守る範囲が無く、代わりに
-  #             「送信者と端末の持ち主が違う」警告 (bot の端末鍵で暗号化するため、
-  #             ゴーストとダブルパペットの発言に必ず付く)、bot トークン経路で読めない、
-  #             鍵紛失で過去ログが読めなくなる、が付いてくる。既存の部屋は Matrix の
-  #             仕様上戻せないのでそのまま。LINE の過去ログ取り込みも平文前提
-  #   require = false — 暗号化されていないルームも拒否しない (既存の管理用ルーム等)
-  #   self_sign — Element X は未検証の端末に鍵を渡さないので、ブリッジが自分の端末を
-  #               クロス署名する。これが無いと Element X から送った発言が読めない
-  #   msc4190 — appservice が自分の端末を管理する方式。Synapse 1.141 以降は
-  #             実験機能フラグ無しで使える (今は 1.159)
+  #   allow — works in encrypted rooms too (portals created before 2026-09-26)
+  #   default = false — portals we create are plaintext (2026-09-26). On a single home server
+  #             the bridge and Synapse are under the same control, so E2BE protects nothing,
+  #             and instead it brings a "sender differs from device owner" warning (encrypted
+  #             with the bot's device key, so it is always attached to ghost and double-puppet
+  #             messages), unreadability via the bot token path, and lost history if the keys
+  #             are lost. Existing rooms stay as they are because the Matrix spec does not
+  #             allow reverting. The LINE history import also assumes plaintext
+  #   require = false — do not reject unencrypted rooms either (existing admin rooms, etc.)
+  #   self_sign — Element X does not share keys with unverified devices, so the bridge
+  #               cross-signs its own device. Without it, messages sent from Element X are unreadable
+  #   msc4190 — the appservice manages its own devices. Usable without an experimental
+  #             feature flag since Synapse 1.141 (currently 1.159)
   #
-  # pickle_key (ブリッジの DB に鍵を保存するときの鍵) は matrix-bridge-secrets.nix が
-  # host ごとに生成する。mautrix-meta だけは nixpkgs の既定の固定値のまま: 既に
-  # 暗号化が有効で DB に鍵が入っているので、変えると復号できなくなる。
+  # pickle_key (the key used when storing keys in the bridge DB) is generated per host by
+  # matrix-bridge-secrets.nix. Only mautrix-meta keeps nixpkgs' default fixed value: encryption
+  # is already enabled there and keys are in its DB, so changing it would make them undecryptable.
   encryption = {
     allow = true;
     default = false;
@@ -95,35 +98,38 @@ let
 
   backfill = {
     enabled = true;
-    # 5000 は「取りたいだけ取る」と「初回同期が終わる」の折り合い。上流も
-    # 「高くすると全部取得してから流し始めるので時間がかかる」と書いている。
+    # 5000 is a compromise between "take as much as we want" and "the initial sync finishes".
+    # Upstream also says "higher values take longer because everything is fetched before
+    # sending starts".
     max_initial_messages = 5000;
     max_catchup_messages = 5000;
   };
 in
 {
-  # mautrix のブリッジは libolm に依存する。libolm は Matrix 財団が 2024 年に非推奨
-  # にしたもので、nixpkgs も insecure の印を付けている。
+  # The mautrix bridges depend on libolm, which the Matrix Foundation deprecated in 2024,
+  # and nixpkgs marks it insecure.
   #
-  # 承知のうえで許可する。理由:
-  #   - この libolm が使われるのは「ブリッジ側の E2EE」だけで、ここでは有効にして
-  #     いない。ブリッジと Synapse は同じ箱の localhost で話し、暗号化の境界は
-  #     相手のネットワーク側 (Discord や Meta) にある。そこは向こうが平文で見ている。
-  #   - 逃げ道は 2 つあったがどちらも通らない。goolm (純 Go 実装) は signal / meta /
-  #     slack / gmessages には withGoolm フラグがあるが、mautrix-discord のパッケージ
-  #     は 0.7.7 と古くフラグが無い。つまり discord のためにどのみち許可が要る。
-  #     3 本だけ実験的な実装 (上流は「本番では勧めない」と書いている) に替えても、
-  #     許可リストは開いたままで、揃わないぶん読みにくくなるだけ。
+  # Allowed knowingly. Reasons:
+  #   - This libolm is only used for "bridge-side E2EE", which is not enabled here. The
+  #     bridges and Synapse talk over localhost on the same box, and the encryption boundary
+  #     is on the remote network's side (Discord, Meta), which sees plaintext anyway.
+  #   - There were two ways out and neither works. goolm (pure Go implementation) has a
+  #     withGoolm flag for signal / meta / slack / gmessages, but the mautrix-discord package
+  #     is an old 0.7.7 without the flag, so discord needs the allowance regardless. Switching
+  #     just three to an experimental implementation (upstream says "not recommended for
+  #     production") leaves the allowlist open and only makes things harder to read.
   #
-  # **E2EE を有効にするときは、この判断をやり直すこと。** そのときは libolm が実際に
-  # 使われる側に回るので、goolm かコンテナかを選び直す必要がある。
+  # **Revisit this decision when enabling E2EE.** libolm will then actually be in use, so the
+  # choice between goolm and containers has to be made again.
   #
-  # 2026-09-14 追記: ブリッジ側の暗号化を有効にしたので、libolm は実際に使われる側に
-  # 回った。判断をやり直した結果、許可を続ける:
-  #   - libolm の既知の問題はタイミングのサイドチャネルで、観測するには暗号処理の
-  #     時間を測れる位置にいる必要がある。ブリッジと Synapse は同じ箱の localhost で
-  #     話し、その箱に入れる時点で DB の平文も読める。守る境界が変わらない
-  #   - goolm は上流が本番に勧めておらず、mautrix-discord 0.7.7 には選択肢自体が無い
+  # Addendum 2026-09-14: bridge-side encryption is now enabled, so libolm is actually in use.
+  # After revisiting the decision, the allowance stays:
+  #   - libolm's known issue is a timing side channel; observing it requires being able to
+  #     time the crypto operations. The bridges and Synapse talk over localhost on the same
+  #     box, and anyone on that box can already read the DB in plaintext. The boundary being
+  #     protected does not change
+  #   - upstream does not recommend goolm for production, and mautrix-discord 0.7.7 has no
+  #     option at all
   nixpkgs.config.permittedInsecurePackages = [ "olm-3.2.16" ];
 
   # Double puppeting for the three nixpkgs-module bridges: the env files come from
@@ -140,11 +146,11 @@ in
         id = "discord";
         port = 29334;
         bot.username = "discordbot";
-        # nixpkgs の mautrix-discord は 0.7.7 で、bridgev2 より前の設定の形。
-        # DB は top-level の database ではなく appservice.database に置く。
-        # signal や meta はモジュール側が既定を持っているが、discord の settings の
-        # 既定は {} なので自分で書かないと "appservice.database not configured"
-        # で起動を繰り返す (2026-08-31 に実際に踏んだ)。
+        # nixpkgs' mautrix-discord is 0.7.7, with the pre-bridgev2 config shape.
+        # The DB goes in appservice.database, not the top-level database.
+        # signal and meta get defaults from the module, but discord's settings default
+        # to {}, so without writing it here it keeps restarting with
+        # "appservice.database not configured" (actually hit on 2026-08-31).
         database = {
           type = "sqlite3-fk-wal";
           uri = "file:/var/lib/mautrix-discord/mautrix-discord.db?_txlock=immediate";
@@ -152,14 +158,14 @@ in
       };
       bridge = {
         inherit permissions;
-        # 起動時に作る DM ポータルの数。既定の 5 だと最近の 5 件で打ち切られ、残りは
-        # 相手からメッセージが来るまで部屋が生えない (2026-09-30 に実際に踏んだ)。
-        # 100 あれば手持ちの DM は全部入る。ギルドは別で、`guilds bridge` で選ぶ。
+        # Number of DM portals created at startup. The default of 5 stops at the 5 most recent,
+        # and the rest get no room until the other side sends a message (actually hit on 2026-09-30).
+        # 100 covers all existing DMs. Guilds are separate and chosen with `guilds bridge`.
         startup_private_channel_create_limit = 100;
         # mautrix-discord is still a v1 bridge: the key is login_shared_secret_map here.
         login_shared_secret_map.${domain} = "$DOUBLE_PUPPET_SECRET";
-        # 旧形式の設定なので encryption も bridge の下。self_sign はこの版に無く、
-        # pickle_key も持たない (旧ブリッジは固定値を使う)。
+        # Old-style config, so encryption also sits under bridge. self_sign does not exist in
+        # this version, and there is no pickle_key (old bridges use a fixed value).
         encryption = {
           inherit (encryption)
             allow
@@ -168,12 +174,12 @@ in
             msc4190
             ;
         };
-        # discord は 0.7.7 なので backfill の書き方も旧形式。bridgev2 の
-        # max_initial_messages ではなく、DM / チャンネル / スレッドを個別に指定する。
+        # discord is 0.7.7, so backfill also uses the old format. Instead of bridgev2's
+        # max_initial_messages, DMs / channels / threads are set individually.
         #
-        # チャンネルを DM と同じ深さにしない。ギルドのチャンネルは桁が違うので、
-        # 全部を初回に取りに行くと同期が終わらない (上流も「高くすると全部取得して
-        # から流し始めるので時間がかかる」と書いている)。
+        # Channels do not get the same depth as DMs. Guild channels are orders of magnitude
+        # larger, so fetching all of them initially means the sync never finishes (upstream also
+        # says "higher values take longer because everything is fetched before sending starts").
         backfill = {
           forward_limits = {
             initial = {
@@ -181,8 +187,8 @@ in
               channel = 1000;
               thread = 500;
             };
-            # -1 は「最後に橋渡ししたメッセージ以降を全部」。DM は取りこぼしたくない
-            # ので無制限、チャンネルは上限を置く。
+            # -1 means "everything since the last bridged message". DMs must not miss anything,
+            # so unlimited; channels get a cap.
             missed = {
               dm = -1;
               channel = 1000;
@@ -208,9 +214,9 @@ in
     };
   };
 
-  # WhatsApp。ログインは bot に `login` → QR をスマホの WhatsApp「リンク済み
-  # デバイス」で読む。履歴は端末から history sync で来る (request_full_sync は
-  # モジュールの既定で true)。ポートはモジュール既定の 29318。
+  # WhatsApp. Log in by sending `login` to the bot → scan the QR with WhatsApp's "Linked
+  # devices" on the phone. History comes from the device via history sync (request_full_sync
+  # defaults to true in the module). The port is the module default 29318.
   services.mautrix-whatsapp = {
     enable = true;
     registerToSynapse = true;
@@ -225,17 +231,18 @@ in
     };
   };
 
-  # nixpkgs の whatsapp モジュールは登録ファイルを本体 unit の preStart で作り、その unit は
-  # Synapse の後に起動する。初回デプロイでは Synapse が存在しない登録ファイルを読んで落ち、
-  # 100ms 間隔の再起動が StartLimitBurst=5 に当たって止まる (2026-09-13 に LINE で踏んだ形。
-  # mk-matrix-bridgev2.nix と同じ対策)。先に登録だけ作る oneshot を Synapse の前に置く。
-  # 本体の preStart は「無ければ作る」なので二重生成にはならない。
+  # nixpkgs' whatsapp module creates the registration file in the main unit's preStart, and that
+  # unit starts after Synapse. On the first deploy Synapse reads a nonexistent registration file
+  # and crashes, and restarts at 100ms intervals hit StartLimitBurst=5 and stop (the pattern hit
+  # with LINE on 2026-09-13; same fix as mk-matrix-bridgev2.nix). A oneshot that only creates the
+  # registration is placed before Synapse. The main preStart is "create if missing", so nothing
+  # is generated twice.
   systemd.services.mautrix-whatsapp-registration =
     let
       dataDir = "/var/lib/mautrix-whatsapp";
       registrationFile = "${dataDir}/whatsapp-registration.yaml";
-      # 登録の生成に要るのは appservice の id / bot / port だけ。環境変数のプレースホルダは
-      # そのまま入るが、登録生成では読まれない。
+      # Generating the registration only needs the appservice id / bot / port. The env var
+      # placeholders go in as-is but are not read during registration generation.
       settingsFile =
         (pkgs.formats.json { }).generate "mautrix-whatsapp-registration-config.json"
           config.services.mautrix-whatsapp.settings;
@@ -271,9 +278,9 @@ in
       '';
     };
 
-  # Instagram と Messenger は同じ mautrix-meta の別インスタンス。network.mode で
-  # 分かれる。ポートと appservice.id と bot の名前は必ずずらすこと (揃えると
-  # 片方の登録がもう片方を上書きして、後から入れた方しか動かない)。
+  # Instagram and Messenger are separate instances of the same mautrix-meta, split by
+  # network.mode. Always use distinct ports, appservice.id and bot names (if they match, one
+  # registration overwrites the other and only the one added later works).
   services.mautrix-meta.instances = {
     instagram = {
       enable = true;

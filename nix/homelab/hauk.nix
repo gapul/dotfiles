@@ -1,17 +1,19 @@
-# 現在地を一時的に他人へ渡す。「今ここにいる」を期限付きの URL で送る道具。
+# Temporarily share current location with others. A tool for sending "I'm here now" as an
+# expiring URL.
 #
-# Dawarich と役割が違う。あちらは自分の軌跡を溜めるもの (Google Timeline の代替) で、
-# 他人に見せる仕組みではない。こちらは逆に、**位置をディスクに書かない**。セッション
-# 中だけ memcached の中にあり、終われば消える。履歴を持たないことが機能。
+# Different role from Dawarich. That one accumulates my own track (a Google Timeline
+# replacement) and isn't meant for showing others. This one, conversely, **never writes
+# location to disk**. It lives in memcached only during the session and disappears when it
+# ends. Having no history is the feature.
 #
-# 以前は Android クライアントしか無くて候補から外れていたが、2026 年に iOS の
-# クライアントが出た (App Store の "Hauk"、NickBouwhuis 作)。iOS 18.6 以上。
+# It was previously ruled out because there was only an Android client, but an iOS client
+# came out in 2026 ("Hauk" on the App Store, by NickBouwhuis). Requires iOS 18.6 or later.
 #
-# 相手は tailnet の外にいるので、cal / poll / split と同じくトンネルを通す。
-# DNS はこのトンネルの CNAME にすること。
+# The other party is outside the tailnet, so like cal / poll / split it goes through the tunnel.
+# DNS must be a CNAME to this tunnel.
 #
-# 設定は /var/lib/homelab/hauk/config.php を手で置く (パスワードのハッシュを含むので
-# この tree には入れない)。README.md を見ること。
+# Configuration is placed by hand at /var/lib/homelab/hauk/config.php (it contains the
+# password hash, so it's kept out of this tree). See README.md.
 {
   lib,
   ...

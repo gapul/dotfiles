@@ -1,41 +1,41 @@
 {
-  # AdGuard Home の代わりの Blocky。AdGuard の設定もここに宣言してあったので、
-  # これは宣言的かどうかの話ではない。AdGuard は状態の半分を自分で書くファイルに
-  # 持つ (管理アカウントと、Web UI で変えたもの全部) ので、それを nix と噛み合わせ
-  # ようとすると mutableSettings = true にして両者が一致することを祈ることになる。
-  # Blocky は UI も書き込み状態も持たない。設定はこの YAML が全部。
+  # Blocky in place of AdGuard Home. AdGuard's settings were declared here too, so this is not about
+  # being declarative or not. AdGuard keeps half its state in files it writes itself (the admin account
+  # and everything changed in the web UI), so meshing that with nix means setting mutableSettings = true
+  # and praying the two agree.
+  # Blocky has no UI and no written state. This YAML is the whole config.
   #
-  # 失うもの: 問い合わせログの閲覧と、クライアント別ルールのページ。メトリクスは
-  # Prometheus 形式で出て、API は :4000 で答える。
+  # What we lose: browsing the query log and the per-client rules page. Metrics come out in
+  # Prometheus format and the API answers on :4000.
   #
-  # 副は macmini (hosts/macmini-dns.nix)。設定は lib/blocky-settings.nix で共有して
-  # いて、この機械との差は待ち受けアドレスだけ。以前ここには「Raspberry Pi が
-  # AdGuard を主リゾルバとして動かしているので家の DNS はこの機械に依存しない」と
-  # 書いてあったが、Pi は 2026-08-24 に退役していて、その間この機械が唯一の
-  # リゾルバだった。
+  # The secondary is macmini (hosts/macmini-dns.nix). Settings are shared via lib/blocky-settings.nix,
+  # and the only difference from this machine is the listen addresses. This used to say "a Raspberry Pi
+  # runs AdGuard as the primary resolver, so home DNS does not depend on this machine", but the Pi was
+  # retired on 2026-08-24, and in the meantime this machine was the only
+  # resolver.
   services.blocky = {
     enable = true;
-    # ループバックとこの機械自身のアドレスだけ。0.0.0.0 にはできない: podman の
-    # ブリッジが aardvark-dns のために :53 を要る。AdGuard が踏んだのと同じ衝突。
+    # Only loopback and this machine's own addresses. It can't be 0.0.0.0: the podman bridge
+    # needs :53 for aardvark-dns. Same collision AdGuard ran into.
     #
-    # tailnet アドレスも足してある。tailnet の DNS 設定からこの解決器を指すため
-    # で、これが無いと外出先の端末は家の blocky を引けない (広告遮断も
-    # gapul.net の内向き解決も効かない)。
+    # The tailnet address is added too, so the tailnet DNS settings can point at this resolver;
+    # without it, devices away from home can't reach the home blocky (neither ad blocking nor
+    # internal resolution of gapul.net works).
     settings = import ../lib/blocky-settings.nix {
       listen = "127.0.0.1:53,192.168.116.98:53,100.127.129.31:53";
     };
   };
 
-  # tailscale0 は blocky より後に上がる。tailnet アドレスを名指しで待ち受ける以上、
-  # 起動順で「まだ存在しないアドレスに bind できない」で落ちうるので、非ローカル
-  # アドレスへの bind を許す。After= で順序を付ける手もあるが、tailscaled が
-  # 再接続でアドレスを付け直す局面まではカバーできない。
+  # tailscale0 comes up after blocky. Since it listens on the tailnet address by name, it can fail at
+  # startup with "cannot bind to an address that doesn't exist yet", so allow binding to non-local
+  # addresses. Ordering with After= is another option, but it can't cover tailscaled re-assigning the
+  # address on reconnect.
   boot.kernel.sysctl."net.ipv4.ip_nonlocal_bind" = 1;
 
-  # 53 番は Blocky のもの。このホストでは他の何にも渡さない。
+  # Port 53 belongs to Blocky. Nothing else gets it on this host.
   services.resolved.enable = false;
 
-  # ここだけは LAN から届く必要がある。クライアントがこのアドレスを直接指す。
+  # This one must be reachable from the LAN. Clients point at this address directly.
   networking.firewall.allowedTCPPorts = [ 53 ];
   networking.firewall.allowedUDPPorts = [ 53 ];
 }

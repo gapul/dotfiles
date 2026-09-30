@@ -4,29 +4,31 @@
   lib,
   ...
 }:
-# macmini の restic バックアップ。母艦の restic-backup.nix と同じ共通ライブラリを使う。
+# restic backup for macmini. Uses the same shared library as the main Mac's restic-backup.nix.
 #
-# 元は ~/.local/bin/restic-macmini-offsite.sh と手書きの plist で、対象が ~/Developer
-# だけだった。宣言の外にあったこと自体もだが、~/.config(Claude の履歴など)と ~/ai が
-# 一度も守られていなかったのが実害。
+# Originally this was ~/.local/bin/restic-macmini-offsite.sh plus a hand-written plist, and
+# it only covered ~/Developer. Being outside the declarations was one thing, but the real
+# damage was that ~/.config (Claude history and more) and ~/ai were never protected.
 #
-# 母艦と違う点は3つ。
-#   - sops の入り口が違う。母艦は home-manager 側が人間の age 鍵で開けるが、こちらは
-#     hosts/macmini.nix のシステム側 sops が自分の SSH ホスト鍵で開いて、同じ場所に置く。
-#     パスは共通ライブラリの既定(=元の手置きの場所)のままなので、このファイルは
-#     どちらで置かれたかを知らずに済む。
-#   - 画面が無いので osascript は使わず、通知は ntfy だけ。
-#   - 共有リポジトリ全体の prune/check/鮮度監視を担当する。常時稼働ホストへ
-#     control-plane を集約し、母艦は自分のスナップショットを送るだけにする。
+# Three differences from the main Mac:
+#   - The sops entry point differs. On the main Mac home-manager opens it with the human's
+#     age key; here the system-side sops in hosts/macmini.nix opens it with this machine's
+#     SSH host key and puts it in the same place. The path stays the shared library's
+#     default (= the original hand-placed location), so this file doesn't need to know
+#     which one placed it.
+#   - There is no screen, so no osascript; notifications go only to ntfy.
+#   - It owns prune/check/freshness monitoring for the whole shared repository. The
+#     control plane is concentrated on the always-on host, and the main Mac only sends
+#     its own snapshots.
 #
-# 各データ保有ホストは自分の backup だけを実行する。共有リポジトリを排他的に
-# repack/check する主体はこの Mac mini だけにし、同時実行とノートのスリープを避ける。
+# Each data-holding host runs only its own backup. Only this Mac mini exclusively
+# repacks/checks the shared repository, avoiding concurrent runs and laptop sleep.
 let
   home = config.home.homeDirectory;
   common = import ../lib/restic-common.nix { inherit home; };
 
-  # 共通ライブラリの既定パスをそのまま使う。中身はシステム側 sops が置く
-  # (hosts/macmini.nix)。手置きだった頃と同じ場所なので、ここは変わらない。
+  # Use the shared library's default path as is. The system-side sops places the contents
+  # (hosts/macmini.nix). It's the same place as when it was placed by hand, so nothing changes here.
   inherit (common) passwordFile;
   logFile = "${home}/Library/Logs/restic-backup.log";
 
@@ -41,40 +43,44 @@ let
       logFile
       ;
     backupPaths = [
-      # 作業ツリー一式。旧スクリプトが見ていた唯一の対象で、ホーム直下に散っていた
-      # 書類も projects/ 配下へ集めてある(~/Documents は macOS の TCC が ssh と
-      # launchd からの走査を拒むため、この機械では使わない)。
+      # The whole working tree. The only target the old script covered; documents that
+      # were scattered directly under home have also been gathered under projects/
+      # (~/Documents isn't used on this machine because macOS TCC refuses scans from ssh
+      # and launchd).
       "${home}/Developer"
-      # マイクラのワールド。実体は mcsrv のホーム(このエージェントからは読めない)なので、
-      # 4:40 の minecraft-backup が固めたものをここで拾う。offsite はこれが唯一の経路。
+      # Minecraft worlds. The real data lives in mcsrv's home (unreadable from this agent),
+      # so pick up what the 4:40 minecraft-backup packs up. This is the only offsite path.
       "/Users/Shared/minecraft-backups"
-      # ~/ai は 2026-08-12 に畳んだ。パスとして残すと lstat が失敗して毎朝 ntfy が鳴るので、
-      # 中身は宣言済みのレイアウトどおりに散らしてある。manabi-dashboard はさらに 2026-08-13 に
-      # サービスとして gapul/manabi へ切り出し、この機械では /Users/Shared/manabi の clone に
-      # なった——git にある以上ここで拾う必要はない。止まった mopidy-dev は ~/tmp へ退避した。
-      # ここが今まで完全に無防備だった。Claude Code の履歴 (~/.config/claude) や
-      # 各ツールの状態が入っている。store へのシンボリックリンクは中身を追わない。
+      # ~/ai was folded up on 2026-08-12. Leaving it as a path makes lstat fail and ntfy
+      # fire every morning, so its contents were scattered per the declared layout.
+      # manabi-dashboard was further split out as a service into gapul/manabi on
+      # 2026-08-13 and is a clone at /Users/Shared/manabi on this machine; since it's in
+      # git there's no need to pick it up here. The stopped mopidy-dev was moved to ~/tmp.
+      # This was completely unprotected until now. It holds Claude Code history
+      # (~/.config/claude) and each tool's state. Symlinks into the store aren't followed.
       "${home}/.config"
-      # Hermes の状態。専用ユーザーのホームは gapul から読めない(drwx------)ので、
-      # マイクラと同じ方式にした——root の daemon が固めてここへ置き、restic はそれを拾う。
-      # 中身は state.db(Discord の会話 525 件、全文検索インデックス込み)と .env 一式で、
-      # どちらも作り直せない。hermes-agent 本体と node は再インストールできるので入れない。
+      # Hermes state. The dedicated user's home isn't readable from gapul (drwx------),
+      # so it uses the same approach as Minecraft: a root daemon packs it up and puts it
+      # here, and restic picks that up. The contents are state.db (525 Discord
+      # conversations, including the full-text search index) and the .env set; neither
+      # can be recreated. hermes-agent itself and node can be reinstalled, so not included.
       "/Users/Shared/hermes-backups"
-      # Presenta のデータベース。4:30 に hosts/macmini-presenta.nix の daemon が pg_dump したもの。
+      # Presenta database. pg_dumped at 4:30 by the daemon in hosts/macmini-presenta.nix.
       "/Users/Shared/presenta-backups"
-      # Presenta のスライドの画像・動画。どのリリースからも共有する置き場（hosts/macmini-presenta.nix）。
+      # Presenta slide images and videos. The store shared by every release (hosts/macmini-presenta.nix).
       "${home}/.local/share/presenta/data"
     ];
     extraExcludes = [
       "**/.DS_Store"
-      # 再取得できる重みとキャッシュ。ai/ に .gguf を置くことがある。
+      # Re-downloadable weights and caches. .gguf files sometimes get put in ai/.
       "**/*.gguf"
       "**/*.safetensors"
       "**/*.bin"
       "**/models"
-      # models だけでは GPT-SoVITS の pretrained_models を拾えない。s2G488k.pth や
-      # s1v3.ckpt、bigvgan_generator.pt が素通りして、落とし直せる配布物 4.3GiB を
-      # 毎日 Google Drive へ運んでいた(2026-08-12 実測。これで 100MB 弱まで落ちる)。
+      # models alone doesn't catch GPT-SoVITS's pretrained_models. s2G488k.pth,
+      # s1v3.ckpt, and bigvgan_generator.pt slipped through, and 4.3GiB of re-downloadable
+      # distribution files went to Google Drive every day (measured 2026-08-12; this
+      # brings it down to just under 100MB).
       "**/pretrained_models"
       "**/*.pth"
       "**/*.ckpt"
@@ -88,10 +94,10 @@ let
       "**/.next"
       "**/.expo"
       "**/.git/objects"
-      # このリポジトリを開ける鍵をこのリポジトリの中に入れない。母艦側のモジュールが
-      # 冒頭で書いている方針と同じで、鍵はパスワードマネージャに置く。
+      # Don't put the key that opens this repository inside this repository. Same policy
+      # as stated at the top of the main Mac's module: the key lives in the password manager.
       "**/.config/restic"
-      # Claude Code が置き直せるもの。versions は数百MB のバイナリ。
+      # Things Claude Code can put back. versions holds binaries of several hundred MB.
       "**/.config/claude/cache"
       "**/.config/claude/downloads"
       "**/.config/claude/versions"
@@ -106,14 +112,14 @@ let
           -d "$1: $2" \
           "$(cat "${ntfyUrlFile}")" >/dev/null 2>&1 || true
       fi'';
-    # Fractional seconds の有無に依存せず YYYY-MM-DDTHH:MM:SS だけを読む。
+    # Read only YYYY-MM-DDTHH:MM:SS, regardless of whether fractional seconds are present.
     parseSnapshotTime = ''$(date -j -f "%Y-%m-%dT%H:%M:%S" "''${latest:0:19}" +%s 2>/dev/null || echo 0)'';
   };
 in
 {
   home.packages = [ pkgs.restic ];
 
-  # 旧スクリプトと同じ 5:00。母艦は 13:00 なので、共有リポジトリのロックが重ならない。
+  # 5:00, same as the old script. The main Mac runs at 13:00, so shared-repository locks don't overlap.
   launchd.agents = {
     # 5:00 backup, followed by the sole repository-wide retention/prune pass.
     restic-backup = import ../lib/launchd-agent.nix {

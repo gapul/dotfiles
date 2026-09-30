@@ -23,9 +23,9 @@ in
     with pkgs;
     [
       launcher-search # ghostty launcher search backend (replaces core/launcher-search)
-      # mpv 本体。長く brew だったのは「nixpkgs mpv は aarch64-darwin 非対応」という注記が
-      # 理由だったが、2026-08-30 に確かめたら 0.41.0 がキャッシュ済みで普通に動いた(注記の
-      # ほうが古かった)。uosc は元から nixpkgs 側なので、これで本体とスクリプトの出所が揃う。
+      # mpv itself. It stayed on brew for a long time because of a note saying "nixpkgs mpv doesn't
+      # support aarch64-darwin", but when checked on 2026-08-30, 0.41.0 was cached and worked fine
+      # (the note was outdated). uosc was already from nixpkgs, so now the player and scripts share a source.
       mpv
       pandoc # document conversion
       # Ears for the music tooling: aubiopitch / aubiotempo / aubioonset turn a rendered wav into
@@ -183,27 +183,26 @@ in
     url = "https://raw.githubusercontent.com/prh/rules/89a6f9dd057a34dce15698260ced88183e332362/media/WEB%2BDB_PRESS.yml";
     hash = "sha256-6RTk8Qs/ZVG71vp7kYhu81CCh3uJwsRYk6ER09DMQVw=";
   };
-  # HPI (Human Programming Interface)。SaaS から引き出したエクスポートを、
-  # ローカルで横断的に引ける形にしておくための枠組み。
+  # HPI (Human Programming Interface). A framework for keeping exports pulled from SaaS in a
+  # form that can be queried across sources locally.
   #
-  # `~/.config/my` が my.config パッケージとして読まれる。HPI 側の
-  # my/core/init.py が MY_CONFIG (既定は platformdirs の user_config_dir) を
-  # sys.path の先頭に差し込むので、ここに置いたファイルは implicit namespace
-  # package として `my.*` で import できる。__init__.py は要らない (PEP 420)。
+  # `~/.config/my` is loaded as the my.config package. HPI's my/core/init.py inserts
+  # MY_CONFIG (default: platformdirs' user_config_dir) at the front of sys.path, so files
+  # placed here can be imported as `my.*` as an implicit namespace package. No __init__.py
+  # is needed (PEP 420).
   #
-  # activitywatch.py と atuin.py は上流に存在しないので自前。ActivityWatch は
-  # この環境で一番量のあるローカルデータ (実測 115 万イベント) なのに、HPI が
-  # 持っているのは arbtt と rescuetime だけだった。atuin も同様に無い。
-  # 前者は「Ghostty が前面にあった」までしか見えず、後者は端末の中しか見ない。
-  # 両方あって初めて時系列が繋がる。
+  # activitywatch.py and atuin.py don't exist upstream, so they're custom. ActivityWatch is the
+  # largest body of local data in this environment (1.15 million events measured), yet HPI only
+  # had arbtt and rescuetime. atuin is missing too. The former only sees "Ghostty was in front"
+  # and the latter only sees inside the terminal. Only with both does the timeline connect.
   #
-  # 本体は nix ではなく `uv tool install HPI` で入れる。HPI はモジュールを
-  # 自分で書き換えて使う前提の設計 (editable install を推奨している) なので、
-  # store に固めると噛み合わない。~/.local/bin は common.nix で PATH に入って
-  # いるので、uv が置く `hpi` はそのまま通る。
+  # HPI itself is installed with `uv tool install HPI`, not nix. HPI is designed to be used
+  # by editing its modules yourself (it recommends an editable install), so freezing it in
+  # the store doesn't fit. ~/.local/bin is on PATH via common.nix, so the `hpi` that uv
+  # installs works as is.
   #
-  # ライブラリとして使うときは `import my.core.init` を先に呼ぶこと。これが
-  # sys.path への差し込みを実行する。`hpi` CLI 経由なら不要。
+  # When using it as a library, call `import my.core.init` first. That performs the sys.path
+  # insertion. Not needed via the `hpi` CLI.
   home.file.".config/my/my/config.py".source = ../../configs/hpi/config.py;
   home.file.".config/my/my/activitywatch.py".source = ../../configs/hpi/activitywatch.py;
   home.file.".config/my/my/atuin.py".source = ../../configs/hpi/atuin.py;

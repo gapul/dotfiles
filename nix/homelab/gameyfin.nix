@@ -1,14 +1,13 @@
-# Gameyfin — DRM フリーの PC ゲームの目録。GOG や itch.io で買ったインストーラを
-# /srv/games/pc に置くと、フォルダを走査して IGDB のメタデータを付けて並べる。
+# Gameyfin — a catalog of DRM-free PC games. Put installers bought on GOG or itch.io in
+# /srv/games/pc and it scans the folder, attaches IGDB metadata, and lists them.
 #
-# GameVault ではなくこちらにした理由は 2 つ。クライアントが Windows 専用でないこと
-# (ここは Mac と iPhone しかない) と、やることが「置いたものを目録にする」だけで
-# 独自のストア形式を持ち込まないこと。ファイルは普通のディレクトリのまま残るので、
-# 気に入らなければ消して別の道具に替えられる。
+# Two reasons for this over GameVault: the client isn't Windows-only (there are only Macs and
+# iPhones here), and all it does is "catalog what's been placed" without imposing its own
+# storage format. Files stay in a plain directory, so if it disappoints, delete it and switch tools.
 #
-# Steam や Epic の所有タイトルはここには並ばない。それらはインストーラを手元に
-# 置けないので、目録にできるのは「持っている」という事実だけで、それを自前で
-# 追う仕組みは今のところ良いものが無い (Playnite は Windows 専用)。
+# Titles owned on Steam or Epic don't show up here. Their installers can't be kept locally, so
+# the only thing to catalog is the fact of ownership, and there's no good self-hosted way to
+# track that for now (Playnite is Windows-only).
 {
   pkgs,
   lib,
@@ -67,9 +66,9 @@ in
     environment = {
       "TZ" = "Asia/Tokyo";
     };
-    # v2 は IGDB の鍵を環境変数では読まない。管理画面 (Administration > Plugins >
-    # IGDB Metadata) から入れて DB に暗号化保存される (2026-09-27 に RomM と同じ
-    # Twitch アプリの鍵を設定済)。gameyfin.env の IGDB_* は v1 の名残で効いていない。
+    # v2 doesn't read the IGDB key from environment variables. It's entered in the admin UI
+    # (Administration > Plugins > IGDB Metadata) and stored encrypted in the DB (set on 2026-09-27
+    # with the same Twitch app key as RomM). IGDB_* in gameyfin.env is a v1 leftover with no effect.
     environmentFiles = [ "/var/lib/secrets/gameyfin.env" ];
     volumes = [
       "/var/lib/homelab/gameyfin/db:/opt/gameyfin/db:rw"
@@ -78,7 +77,7 @@ in
       # Logs are operational data, not backup data.  Keep them outside
       # /var/lib so a logging loop cannot fill the Google Drive repository.
       "/var/log/gameyfin:/opt/gameyfin/logs:rw"
-      # 読み取り専用で渡す。目録が実体を消せる必要はない。
+      # Passed read-only. The catalog has no need to delete the actual files.
       "/srv/games/pc:/games:ro"
     ];
     ports = [ "127.0.0.1:${toString privatePort}:8080/tcp" ];
@@ -91,7 +90,7 @@ in
   };
 
   systemd.tmpfiles.rules = [
-    # romm.nix と同じ理由。podman は bind mount の元を作らない。
+    # Same reason as romm.nix. podman doesn't create bind-mount sources.
     "d /var/lib/homelab/gameyfin 0700 root root -"
     "d /var/lib/homelab/gameyfin/db 0755 1337 1337 -"
     "d /var/lib/homelab/gameyfin/data 0755 1337 1337 -"

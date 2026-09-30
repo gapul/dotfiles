@@ -1,13 +1,13 @@
-# Kavita — 電子書籍の OPDS カタログと Web リーダー (books.gapul.net)。
+# Kavita — OPDS catalog and web reader for e-books (books.gapul.net).
 #
-# Audiobookshelf (audiobookshelf.nix) は電子書籍も棚に並べるが OPDS を話さない。
-# Readest の Audiobookshelf 連携はオーディオブックの同期だけなので、電子書籍を
-# Readest (や他の OPDS クライアント) に配るにはカタログが別に要る。Kavita は
-# /srv/books をそのまま走査し、ユーザーごとの API キー付き URL で OPDS を出す。
-# calibre-web は Calibre のライブラリ DB が前提で、Komga は漫画寄りなのでこちら。
+# Audiobookshelf (audiobookshelf.nix) also shelves e-books but doesn't speak OPDS.
+# Readest's Audiobookshelf integration only syncs audiobooks, so serving e-books to Readest
+# (and other OPDS clients) needs a separate catalog. Kavita scans /srv/books as is and serves
+# OPDS via per-user URLs containing an API key. calibre-web requires a Calibre library DB
+# and Komga leans toward manga, hence this one.
 #
-# ライブラリは Audiobookshelf と同じ /srv/books を読むだけ (restic 対象外)。
-# 状態は /var/lib/kavita (バックアップ対象)。自前ログインを持つので Authelia は挟まない。
+# The library just reads the same /srv/books as Audiobookshelf (excluded from restic).
+# State is in /var/lib/kavita (backed up). It has its own login, so no Authelia in front.
 { pkgs, ... }:
 let
   tokenKeyFile = "/var/lib/secrets/kavita.token";
@@ -22,14 +22,14 @@ in
     };
   };
 
-  # JWT の署名鍵。他の秘密と同じ /var/lib/secrets に置くが、これは誰とも共有しない
-  # 乱数なので、無ければ自分で作る (復元後に手で置き直す手順を増やさない)。
+  # JWT signing key. It goes in /var/lib/secrets like the other secrets, but it's a random value
+  # shared with no one, so generate it if missing (no extra manual step to put it back after a restore).
   #
-  # /var/lib/secrets 自体はここで作らない。ディレクトリのモードは secrets.nix の
-  # tmpfiles が 0711 で持っていて、ここに `install -d -m 0700` があったせいで起動の
-  # たびに 0700 へ戻り、自分のユーザで秘密を開くサービス (unified-calendar) が
-  # Permission denied で止まった (2026-09-27)。`install -d` は既存ディレクトリの
-  # モードも書き換える。
+  # /var/lib/secrets itself is not created here. The directory mode is owned by the tmpfiles
+  # rule in secrets.nix at 0711; an `install -d -m 0700` here reset it to 0700 on every start,
+  # and a service that opens secrets as its own user (unified-calendar) stopped with
+  # Permission denied (2026-09-27). `install -d` also rewrites the mode of an existing
+  # directory.
   systemd.services.kavita-token = {
     description = "Generate the Kavita token key if missing";
     before = [ "kavita.service" ];
