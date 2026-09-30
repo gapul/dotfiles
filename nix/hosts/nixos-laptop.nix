@@ -226,6 +226,23 @@ in
     NIXOS_OZONE_WL = "1";
     MOZ_ENABLE_WAYLAND = "1";
   };
+  # Claude Code starts in bypassPermissions here, i.e. what --dangerously-skip-permissions does:
+  # this machine is driven remotely (herdr, ssh), so a permission prompt has nobody in front of
+  # it and the session simply stalls.
+  #
+  # It has to be a managed-settings file rather than the usual settings.json, because that one is
+  # a symlink into the ai-agent-state repo and therefore shared with the Mac — editing it would
+  # put the Mac into bypass too. /etc/claude-code/managed-settings.json is the only layer that is
+  # machine-local, and being NixOS it can still be declared rather than dropped by hand.
+  #
+  # defaultMode is a starting mode, not a lock: /permissions still switches the running session.
+  # skipDangerousModePermissionPrompt stops the first bypass session asking for confirmation,
+  # which would be the same stall this is meant to avoid.
+  environment.etc."claude-code/managed-settings.json".text = builtins.toJSON {
+    permissions.defaultMode = "bypassPermissions";
+    skipDangerousModePermissionPrompt = true;
+  };
+
   # dconf, where GTK app settings are stored (required by some GUI apps).
   programs.dconf.enable = true;
   # Also use the GTK portal for file-picker dialogs etc. (the hyprland portal is already bundled).
