@@ -42,6 +42,14 @@
     mutableTaps = true;
   };
 
+  # brew keeps its user config (trust.json, brew.env) in $XDG_CONFIG_HOME/homebrew, but falls
+  # back to ~/.homebrew when XDG_CONFIG_HOME is unset — as it is when activation runs
+  # `brew bundle`, which kept recreating ~/.homebrew. bin/brew loads /etc/homebrew/brew.env
+  # first and honors HOMEBREW_XDG_CONFIG_HOME from it, so pin the XDG location for every caller.
+  environment.etc."homebrew/brew.env".text = ''
+    HOMEBREW_XDG_CONFIG_HOME=/Users/${user.username}/.config
+  '';
+
   # Determinate Nix owns /etc/nix/nix.conf and does `!include nix.custom.conf`, so nix-darwin's
   # typed `nix.settings` is unavailable (nix.enable = false above) and this file is where our
   # settings have to land. It used to be five append-if-grep-misses blocks, which could only ever
