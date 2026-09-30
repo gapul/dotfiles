@@ -477,42 +477,42 @@ in
       autoUpdate = false;
       cleanup = "uninstall"; # auto-uninstall brews not declared (avoid zap since it deletes data)
       upgrade = false;
-      # Disable REQUIRE_TAP_TRUST (defaulted to true in Homebrew 6.0) only during activation.
-      # Prevents dependency formulae of unofficial taps (qmk/hid_bootloader_cli, etc.) from being
-      # rejected and stalling the bundle.
-      # All taps are declared and version-managed above, so the runtime trust check is redundant.
-      extraEnv = {
-        HOMEBREW_NO_REQUIRE_TAP_TRUST = "1";
-      };
     };
 
-    # Tap trust is handled in bulk via onActivation.extraEnv's HOMEBREW_NO_REQUIRE_TAP_TRUST=1.
-    # (REQUIRE_TAP_TRUST defaulted to true in Homebrew 6.0. `trusted: true` on tap lines does not
-    #  affect loading of dependency formulae, and manual `brew trust` is unusable since the bundle
-    #  overwrites it every time. All taps are declared and version-managed below, so the activation-time
-    #  check is turned off.)
-    taps = [
-      "abue-ammar/tinycast" # Tinycast (native Spotlight-like launcher, AGPL-3.0). Not in homebrew/cask.
-      "chojs23/tap" # Concord (Discord TUI)
-      "deskflow/tap"
-      "felixkratz/formulae"
-      "finnvoor/tools"
-      "frankea/whisky" # Whisky, community fork (upstream Whisky-App/Whisky archived 2025-05)
-      "gerlero/openfoam"
-      "lihaoyun6/tap" # QuickRecorder (screen recorder. Required since not in homebrew/cask)
-      "osx-cross/arm" # QMK toolchain dependency tap
-      "osx-cross/avr" # QMK / Keyball AVR toolchain tap
-      "qmk/qmk" # QMK CLI
-      "stablyai/orca" # Orca ADE (Claude Code/Codex chat UI and remote client)
-      "y3owk1n/tap" # cask distribution source for neru (full-screen keyboard navigation)
+    # Every tap here is ours to vouch for, so each gets `trusted: true` in the Brewfile. Homebrew 6
+    # refuses formulae/casks from untrusted non-official taps (HOMEBREW_REQUIRE_TAP_TRUST), and
+    # `brew bundle` records a trusted tap in trust.json before loading anything. A trusted tap
+    # covers every formula in it, including dependencies the Brewfile never names
+    # (osx-cross/avr/avr-binutils, qmk/qmk/hid_bootloader_cli). This replaces the deprecated
+    # HOMEBREW_NO_REQUIRE_TAP_TRUST=1 that used to switch the check off during activation.
+    taps =
+      map
+        (name: {
+          inherit name;
+          trusted = true;
+        })
+        [
+          "abue-ammar/tinycast" # Tinycast (native Spotlight-like launcher, AGPL-3.0). Not in homebrew/cask.
+          "chojs23/tap" # Concord (Discord TUI)
+          "deskflow/tap"
+          "felixkratz/formulae"
+          "finnvoor/tools"
+          "frankea/whisky" # Whisky, community fork (upstream Whisky-App/Whisky archived 2025-05)
+          "gerlero/openfoam"
+          "lihaoyun6/tap" # QuickRecorder (screen recorder. Required since not in homebrew/cask)
+          "osx-cross/arm" # QMK toolchain dependency tap
+          "osx-cross/avr" # QMK / Keyball AVR toolchain tap
+          "qmk/qmk" # QMK CLI
+          "stablyai/orca" # Orca ADE (Claude Code/Codex chat UI and remote client)
+          "y3owk1n/tap" # cask distribution source for neru (full-screen keyboard navigation)
 
-      # ─── Personal forks (gapul) — delete if you forked and don't need them ───
-      "gapul/tap" # gapul's general-purpose cask tap (things not in homebrew/cask)
-      "gapul/openutau"
-      "gapul/azoo-key-skkserv"
-      "gapul/armorpaint" # ArmorPaint source-build formula distribution tap (official is paid €16 → self-build for free full version)
-      "gapul/inochi" # cask distribution tap for Inochi Creator (2D VTuber rigging) (not in homebrew/cask)
-    ];
+          # ─── Personal forks (gapul) — delete if you forked and don't need them ───
+          "gapul/tap" # gapul's general-purpose cask tap (things not in homebrew/cask)
+          "gapul/openutau"
+          "gapul/azoo-key-skkserv"
+          "gapul/armorpaint" # ArmorPaint source-build formula distribution tap (official is paid €16 → self-build for free full version)
+          "gapul/inochi" # cask distribution tap for Inochi Creator (2D VTuber rigging) (not in homebrew/cask)
+        ];
 
     # brew leaves
     # (starship / fzf / atuin / pipx excluded, migrated to home-manager / uv management)

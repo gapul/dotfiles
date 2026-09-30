@@ -59,12 +59,6 @@ in
     HOMEBREW_CELLAR = "/opt/homebrew/Cellar";
     HOMEBREW_REPOSITORY = "/opt/homebrew/Library/.homebrew-is-managed-by-nix";
     INFOPATH = "/opt/homebrew/share/info:";
-    # NOTE: brew's trust.json can't be XDG-ified. The activation brew bundle
-    # strips XDG_CONFIG_HOME via `sudo --preserve-env=PATH --set-home` and always reads ~/.homebrew.
-    # Also, brew prefers XDG_CONFIG_HOME over HOMEBREW_USER_CONFIG_HOME, so the interactive shell's
-    # plain trust drifted to ~/.config/homebrew and got duplicated. The
-    # `.config/homebrew → ~/.homebrew` symlink below converges both paths onto the same entity
-    # (Justfile rebuild's `env -u XDG_CONFIG_HOME` is harmless, so kept).
     PNPM_HOME = "${config.home.homeDirectory}/Library/pnpm";
     # ActivityWatch (Tauri build) checks GitHub for updates on every start and, by default,
     # installs them into its own bundle. The app comes from the activitywatch@beta cask, so updates
@@ -104,11 +98,6 @@ in
     CMAKE_BUILD_PARALLEL_LEVEL = "4";
   };
 
-  # Resolve brew trust.json duplication: converge the interactive shell (reads
-  # ~/.config/homebrew via XDG_CONFIG_HOME priority) and the sudo/rebuild path (~/.homebrew)
-  # onto the same entity via symlink. Canonical is ~/.homebrew (the sudo side doesn't see XDG).
-  home.file.".config/homebrew".source =
-    config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.homebrew";
   # aw-sync writes to ~/ActivityWatchSync unless AW_SYNC_DIR reaches it. When aw-tauri is started
   # before the session-env agent (or by hand from the Dock) the variable is missing and a second
   # 240 MB copy of the record silently grows in $HOME. The symlink makes both paths the same place,

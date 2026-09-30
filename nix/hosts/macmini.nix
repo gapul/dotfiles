@@ -258,8 +258,12 @@ in
       cleanup = "uninstall"; # undeclared brews are auto-uninstalled
       upgrade = false;
     };
+    # Trusted for the same reason as in hosts/darwin.nix (Homebrew 6 tap trust).
     taps = [
-      "stablyai/orca" # Orca ADE Remote Server and bundled CLI
+      {
+        name = "stablyai/orca"; # Orca ADE Remote Server and bundled CLI
+        trusted = true;
+      }
     ];
     # Same priority rule as hosts/darwin.nix: nix > homebrew > everything else, and each formula
     # states why brew owns it. (uv was dropped here — modules/home/packages.nix already installs it,
