@@ -31,7 +31,7 @@ if [ "$SB_PROFILE" = "main" ]; then
   sketchybar-helper $HELPER > /dev/null 2>&1 &
 
   # Unload the macOS on screen indicator overlay for volume change
-  launchctl unload -F /System/Library/LaunchAgents/com.apple.OSDUIHelper.plist > /dev/null 2>&1 &
+  launchctl bootout "gui/$(id -u)/com.apple.OSDUIHelper" > /dev/null 2>&1 &
 fi
 
 # ─────────── スケール ───────────

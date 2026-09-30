@@ -34,7 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # 素の nix-installer ではなく setup-nix なのは、flake input の1つ (mocopi-mac) が
       # private で、deploy key が無いと `nix flake update` 自体が fetch で落ちるため
       # (2026-09-21〜22 に毎時失敗していた)。ビルドはしないので cachix は要らない。
@@ -44,7 +44,7 @@ jobs:
           mocopi-deploy-key: ${{ secrets.MOCOPI_DEPLOY_KEY }}
       - name: Update flake.lock and open PR
         id: lock
-        uses: DeterminateSystems/update-flake-lock@834c491b2ece4de0bbd00d85214bb5e83b4da5c6 # v28
+        uses: DeterminateSystems/update-flake-lock@da03c0f078bc4b2c37ee4f7e072d34bf8f188bb3 # v29
         with:
           token: ${{ env.PR_TOKEN }}
           path-to-flake-dir: nix
@@ -72,7 +72,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
       - name: Update versions and hashes
         env:
@@ -80,7 +80,7 @@ jobs:
         run: ./scripts/update-custom-packages.sh
       - name: Open dependency PR
         id: pkgs
-        uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676 # v7
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
           token: ${{ env.PR_TOKEN }}
           branch: automation/custom-packages

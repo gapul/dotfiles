@@ -59,17 +59,16 @@ in
       # Compose the TeX Live collections needed for Japanese academic documents via Nix.
       # Avoid scheme-full while covering math, figures/tables, bibliographies, and common
       # extra packages without adding them individually.
-      (texlive.combine {
-        inherit (texlive)
-          scheme-medium
+      (texliveMedium.withPackages (
+        ps: with ps; [
           latexmk
           collection-langjapanese
           collection-latexextra
           collection-mathscience
           collection-bibtexextra
           collection-fontsrecommended
-          ;
-      })
+        ]
+      ))
       poppler-utils # PDF CLI (pdftotext etc. formerly brew poppler)
       fastPkgs.bitwarden-cli # Bitwarden (bw)
       fastPkgs.syft # SBOM
@@ -106,7 +105,7 @@ in
     ]
     # apktool pulls in aapt, which nixpkgs marks unavailable on aarch64-linux (CI cross-evaluates).
     # This is the mac workstation, so keep it darwin-only.
-    ++ lib.optionals pkgs.stdenv.isDarwin [ pkgs.apktool ];
+    ++ lib.optionals pkgs.stdenv.hostPlatform.isDarwin [ pkgs.apktool ];
 
   # User data location: everything that also lives somewhere else sits under ~/Sync (2026-08).
   # google-drive-* are rclone mounts (remote-primary, see home/rclone-mount.nix), syncthing holds

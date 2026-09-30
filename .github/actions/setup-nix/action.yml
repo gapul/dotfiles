@@ -114,7 +114,7 @@ runs:
     # 宣言済みの機械では何もすることがないので飛ばす。
     - name: Enable cachix (gapul-dotfiles)
       if: inputs.cachix == 'true' && (inputs.cachix-token != '' || steps.cachix-setup.outputs.preconfigured != 'true')
-      uses: cachix/cachix-action@97e5ff84d02b3b4f9936339f767e17f03c9252ed # v16
+      uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
       with:
         name: gapul-dotfiles
         authToken: ${{ inputs.cachix-token }}
