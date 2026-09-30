@@ -1,20 +1,21 @@
-# 統合カレンダー配信 (Google/iCloud/自宅Radicale/任意の .ics を1本のフィードにまとめる)。
-# 元は Cloudflare Worker だったが、個人の予定を Google Calendar から自宅 Radicale へ
-# 移した (radicale.nix) のに合わせて homeserver 内部で完結させる方針に変えた。
+# Unified calendar feed (merges Google / iCloud / the home Radicale / any .ics into one feed).
+# It used to be a Cloudflare Worker, but when personal events moved from Google Calendar to the
+# home Radicale (radicale.nix), the policy changed to keep it self-contained inside homeserver.
 #
-# 2026-09-26 に private リポジトリのコンテナ (ghcr.io/gapul/unified-calendar) をやめ、
-# この repo の中で完結させた。コンテナ版は GHCR の認証が通らず一度も起動しておらず
-# (image pull で invalid username/password、start-limit-hit で停止)、ical.gapul.net は
-# 502 を返していた。private イメージを引くためだけに資格情報を homeserver に置くのは
-# 割に合わない。やることは「.ics をいくつか取ってきて窓で切って1本にまとめる」だけで、
-# 常駐プロセスも要らない。
+# On 2026-09-26 the container from a private repo (ghcr.io/gapul/unified-calendar) was dropped
+# and this was made self-contained within this repo. The container version never started because
+# GHCR auth failed (image pull gave invalid username/password, stopped at start-limit-hit), and
+# ical.gapul.net was returning 502. Putting credentials on homeserver just to pull a private
+# image is not worth it. All it does is "fetch a few .ics files, cut them to a window and merge
+# them into one", and it needs no resident process.
 #
-# 構成は timer + 静的配信。スクリプトが <トークン>.ics を書き、Caddy がそのディレクトリを
-# そのまま出す。フィードの URL 自体が秘密なので、パスが推測できなければそれで足りる
-# (この設計は元の実装から引き継いでいる。feeds[].tokenEnv がそれ)。
+# The setup is a timer plus static serving. The script writes <token>.ics and Caddy serves that
+# directory as-is. The feed URL itself is the secret, so an unguessable path is enough
+# (this design is inherited from the original implementation; that is feeds[].tokenEnv).
 #
-# 秘密はコードに置かず /var/lib/secrets/ 配下から渡す (secrets.nix 経由で sops-nix が
-# homelab.yaml から復元する)。カレンダーの URL 自体が秘密なので設定ごとそちらに置く。
+# Secrets are not in the code; they are passed from under /var/lib/secrets/ (restored from
+# homelab.yaml by sops-nix via secrets.nix). The calendar URLs themselves are secret, so the
+# whole config lives there.
 {
   config,
   pkgs,
@@ -33,7 +34,7 @@ in
 {
   systemd.tmpfiles.rules = [
     "d ${dataDir} 0750 unified-calendar unified-calendar -"
-    # Caddy が読む先だけ他から見える。トークンを知らないとファイル名が当たらない。
+    # Only what Caddy reads is visible to others. Without the token, file names cannot be guessed.
     "d ${publicDir} 0755 unified-calendar unified-calendar -"
   ];
 
@@ -50,7 +51,7 @@ in
       User = "unified-calendar";
       Group = "unified-calendar";
       EnvironmentFile = "/var/lib/secrets/unified-calendar.env";
-      # 失敗しても前回の出力を残す。購読側から見れば古い予定のほうが空より良い。
+      # Keep the previous output on failure. For subscribers, stale events beat an empty feed.
       SuccessExitStatus = [ 1 ];
       PrivateTmp = true;
       ProtectSystem = "strict";
@@ -68,16 +69,16 @@ in
   systemd.timers.unified-calendar = {
     wantedBy = [ "timers.target" ];
     timerConfig = {
-      # 予定の追加が反映されるまでの許容が15分。Google 側の .ics も同程度の粒度でしか
-      # 更新されないので、これ以上詰めても取り込めるものが増えない。
+      # The acceptable delay for new events is 15 minutes. Google's .ics only updates at about
+      # the same granularity, so tightening this further brings in nothing more.
       OnBootSec = "3min";
       OnUnitActiveSec = "15min";
       Persistent = true;
     };
   };
 
-  # cloudflared が ical.gapul.net をこのポートに流す。静的ファイルなので upstream は
-  # 要らず、Caddy が直接ディレクトリを出す。
+  # cloudflared routes ical.gapul.net to this port. They are static files, so no upstream is
+  # needed; Caddy serves the directory directly.
   services.caddy.virtualHosts.":${toString port}".extraConfig = ''
     root * ${publicDir}
     # "/" には何も無い (フィードは <トークン>.ics だけ) ので file_server は 404 を返し、
@@ -92,6 +93,6 @@ in
     header Cache-Control "max-age=300"
   '';
 
-  # 生成結果を Caddy が読めるように。dataDir 自体は 0750 のままで、public だけ通す。
+  # So Caddy can read the output. dataDir itself stays 0750; only public is let through.
   users.users.${config.services.caddy.user}.extraGroups = [ "unified-calendar" ];
 }

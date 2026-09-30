@@ -1,10 +1,11 @@
 {
   pkgs,
   user,
-  # このホストだけ /etc/nix/nix.custom.conf に足したい設定。
+  # Settings this host alone wants added to /etc/nix/nix.custom.conf.
   #
-  # 分けて書けないのは、activation がマーカー間を丸ごと再生成するため。ホストごとに
-  # 別々の追記をすると片方が消える。共有の settings と混ぜて 1 ブロックにする。
+  # They can't be written separately because activation regenerates everything between the
+  # markers. Separate per-host appends would wipe one another. Merge with the shared settings
+  # into a single block.
   nixCustomConf ? { },
   ...
 }:
@@ -79,10 +80,10 @@
         # than the parallelism gains. 4 x 2 keeps the total at the core count.
         max-jobs = "4";
         cores = "2";
-        # GC がビルド時にしか要らない依存 (dmg や wheel の取得物、ツールチェーン) まで消すと、
-        # 次の rebuild / CI がそれを全部取り直す (macmini の週次 GC 直後に pr-gate が 10 分超えた)。
-        # keep-derivations (既定 true) と組で、生きている出力の .drv が参照する入力を GC 対象から
-        # 外す。消えるのは本当に何からも参照されないものだけになる。
+        # If GC also removes build-time-only dependencies (fetched dmgs and wheels, toolchains),
+        # the next rebuild / CI refetches them all (pr-gate took over 10 minutes right after the
+        # macmini's weekly GC). Together with keep-derivations (default true), this keeps inputs
+        # referenced by live outputs' .drv files out of GC. Only truly unreferenced things go.
         keep-outputs = "true";
         extra-substituters = builtins.concatStringsSep " " (builtins.attrNames caches);
         extra-trusted-public-keys = builtins.concatStringsSep " " (builtins.attrValues caches);

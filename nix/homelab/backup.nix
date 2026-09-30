@@ -52,18 +52,19 @@ in
     # a service is pointed at the big disk — that is how location history went
     # missing.
 
-    # 稼働中のデータベースをファイルとしてコピーしても、復元できる保証が無い。
-    # 移行手順書にも「稼働中の postgres/couchdb をコピーすると壊れた状態で取れる」と
-    # 書いてあるのに、日々のバックアップは同じことをしていた。転送は毎日成功して
-    # いるが、そこから DB を戻せるかは別の話。
+    # Copying a running database as files gives no guarantee it can be restored.
+    # The migration runbook even says "copying a running postgres/couchdb captures a broken
+    # state", yet the daily backup was doing exactly that. The transfer succeeds every day,
+    # but whether the DB can be restored from it is a separate question.
     #
-    # そこで取得前に整合の取れたダンプを /var/lib 配下に吐き、それを本体と一緒に
-    # 拾わせる。上の paths には Dawarich の PGDATA そのものも入っているが、**復元は
-    # このダンプから行うこと**。生の PGDATA は稼働中のコピーなので起動する保証がない。
+    # So before the snapshot, write a consistent dump under /var/lib and let it be picked up
+    # along with everything else. The paths above also include Dawarich's PGDATA itself, but
+    # **restore from this dump**. The raw PGDATA is a copy of a running database and is not
+    # guaranteed to start.
     #
-    # 対象に入れていないもの:
-    #   attic  — DB を戻してもキャッシュ本体 (/srv、対象外) が無いと意味がない。作り直す
-    #   couchdb — 追記のみの形式で、稼働中のファイルコピーが公式に安全とされている
+    # Not included:
+    #   attic  — restoring the DB is pointless without the cache itself (/srv, excluded). Rebuild it
+    #   couchdb — append-only format; copying its files while running is officially safe
     backupPrepareCommand = ''
       set -eu
       umask 077
@@ -212,8 +213,8 @@ in
       fi
     '';
 
-    # ダンプは取得のあいだだけ存在すればよい。置きっぱなしにすると二重に容量を食う
-    # うえ、古いダンプが正本のように見えてしまう。
+    # The dumps only need to exist during the snapshot. Leaving them around doubles the space
+    # used, and an old dump could be mistaken for the source of truth.
     backupCleanupCommand = ''
       rm -rf /var/lib/db-dumps
       for service in rallly-db spliit-db romm-db paperless paperless-redis; do
@@ -229,10 +230,10 @@ in
       fi
     '';
 
-    # pruneOpts は意図的に空のままにする。共有リポジトリの forget/prune は
-    # 常時稼働の Mac mini だけが担当する (home/macmini-backup.nix)。Homeserver まで
-    # バックアップ直後に prune すると、05:00 の Mac mini バックアップと排他ロックが
-    # 競合し、保存済みのスナップショットがあるのにユニット全体が failed になる。
+    # pruneOpts is intentionally left empty. forget/prune on the shared repository is handled
+    # only by the always-on Mac mini (home/macmini-backup.nix). If Homeserver also pruned right
+    # after its backup, it would contend for the exclusive lock with the 05:00 Mac mini backup,
+    # and the whole unit would fail even though the snapshot was saved.
     extraBackupArgs = [ "--tag homeserver" ];
     timerConfig = {
       OnCalendar = "03:00";
@@ -256,29 +257,29 @@ in
   # Known failure mode worth remembering: the rclone Google Drive token expires
   # after roughly a week of disuse and both hosts then fail silently.
   #
-  # 「fail silently」がそのまま放置されていた。このユニットには OnFailure が無く、
-  # 上の方に書いてある「gatus already answers "did it run"」は事実ではない。gatus の
-  # エンドポイントは homeserver.nix の sites 表からしか生えず、実際に生成される27件は
-  # 全部 HTTP の死活監視で、バックアップに触れるものは一つも無い。母艦側
-  # (home/restic-backup.nix) は ntfy へ投げているので、無防備なのはこのホストだけだった。
+  # The "fail silently" was simply left as is. This unit had no OnFailure, and the
+  # "gatus already answers "did it run"" written further up is not true. gatus endpoints are
+  # generated only from the sites table in homeserver.nix, and all 27 actually generated are
+  # HTTP liveness checks; not one touches backups. The main Mac side
+  # (home/restic-backup.nix) posts to ntfy, so this host was the only unprotected one.
   #
-  # 保留の理由は「ntfy の token が sops 管理で、このホストの age 鍵待ち」と書いてあったが、
-  # 待つ必要はなかった。同じ topic と token は gatus が読んでいる gatus.env に既にあり、
-  # 新しい秘密を置かずに済む。age 鍵を作って sops へ移すのはそれとして進めればよく、
-  # そのときはここの EnvironmentFile を差し替えるだけになる。
+  # The stated reason for deferring was "the ntfy token is managed by sops and waits on this
+  # host's age key", but there was no need to wait. The same topic and token are already in
+  # gatus.env, which gatus reads, so no new secret is needed. Creating the age key and moving
+  # to sops can proceed separately; when it does, only the EnvironmentFile here needs swapping.
   #
-  # 制約として、ntfy はこの箱の中にいるので箱ごと落ちたときは飛ばない。これは gatus と
-  # 同じ穴で、そちらは Pi が二つ目の目になっている。バックアップの失敗は箱が生きている
-  # 前提で起きるので、ここでは実害にならない。
+  # One limitation: ntfy lives in this box, so nothing is sent if the whole box goes down. That
+  # is the same hole as gatus, where the Pi serves as a second pair of eyes. Backup failures
+  # happen while the box is alive, so it does no real harm here.
   #
-  # 拾えないものも書いておく。これは「走って失敗した」を拾う仕組みなので、タイマーが
-  # そもそも発火しなくなった場合は沈黙したままになる。そこまで見るなら死人スイッチが要る。
+  # Also noting what this can't catch. It catches "ran and failed", so if the timer stops
+  # firing altogether it stays silent. Covering that would need a dead man's switch.
   systemd.services."ntfy-failure@" = {
     description = "Notify ntfy that %i failed";
     serviceConfig = {
       Type = "oneshot";
       EnvironmentFile = "/var/lib/secrets/gatus.env";
-      # %i は失敗したユニット名。OnFailure 側が %n で渡す。
+      # %i is the name of the failed unit. The OnFailure side passes it as %n.
       ExecStart = "${pkgs.writeShellScript "ntfy-failure" ''
         set -u
         unit="$1"

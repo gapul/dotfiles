@@ -139,37 +139,38 @@ in
   # collides with Emacs). Many of the rest already agree anyway (c, x, z, e, hjkl, p, n, ?, R).
   # herdr ships rose-pine/rose-pine-dawn built in, so no palette generation is needed; the
   # names are pinned for the same reason as dark/light in lib/theme.nix.
-  # 中身は configs/cli/herdr/config.toml。母艦だけが home-manager を通るので、ここで
-  # .text に直書きしているとリモートには一生届かない (2026-08-15 に実害。auto_switch の
-  # 既定が false なので、リモートの herdr はテーマ追従が丸ごと効いていなかった)。
-  # ファイルに出して configs/bin/remote-bootstrap からも同じものを張れるようにする。
+  # The contents are in configs/cli/herdr/config.toml. Only the main Mac goes through
+  # home-manager, so writing it inline via .text here means it never reaches remotes (real
+  # damage on 2026-08-15: auto_switch defaults to false, so theme following on remote herdr
+  # didn't work at all). Keeping it in a file lets configs/bin/remote-bootstrap link the same one.
   home.file.".config/herdr/config.toml".source = ../../../configs/cli/herdr/config.toml;
 
-  # terminal-browser の Vim 風キー操作。拡張 (Surfingkeys) は入れられない — Electron の
-  # loadExtension を露出していないので、拡張を読み込む経路そのものが無い。代わりに
-  # `--preload` でページ読み込み前に隔離ワールドへ差し込む。パスを渡すのは
-  # pkgs/terminal-browser.nix の bin ラッパーで、open / new-tab のときだけ付ける。
-  # このファイルが無ければ何も足さないので、消せば素の terminal-browser に戻る。
+  # Vim-style keys for terminal-browser. Extensions (Surfingkeys) can't be installed: it
+  # doesn't expose Electron's loadExtension, so there's no path to load an extension at all.
+  # Instead, `--preload` injects into an isolated world before the page loads. The path is
+  # passed by the bin wrapper in pkgs/terminal-browser.nix, only for open / new-tab.
+  # Without this file nothing is added, so deleting it returns to plain terminal-browser.
   home.file.".config/terminal-browser/vimkeys.js".source =
     ../../../configs/cli/terminal-browser/vimkeys.js;
   home.file.".config/terminal-browser/main.js".source = ../../../configs/cli/terminal-browser/main.js;
 
-  # `herdr --remote <host>` の前にリモートの下準備を済ませる。
+  # Prepare the remote before `herdr --remote <host>`.
   #
-  # nssh は「ssh で下準備 → tmux を起動」の 2 段だが、herdr は --remote が自前で ssh を
-  # 張るのでその 1 段目が無い。結果 herdr で入ったホストだけ dotfiles が更新されず、
-  # nix-portable も symlink も Claude 設定も置かれないまま使うことになる
-  # (2026-08-15 に ~/.dotfiles が 15 コミット遅れているのを発見。#309〜#323 が未着だった)。
-  # 素の `herdr` を打つ習慣を変えずに塞ぎたいので、同名の関数を被せる。
+  # nssh has two stages, "prepare over ssh -> start tmux", but herdr's --remote opens its own
+  # ssh, so the first stage is missing. As a result, only hosts entered via herdr don't get
+  # dotfiles updated, and get used without nix-portable, symlinks, or Claude settings
+  # (found on 2026-08-15 that ~/.dotfiles was 15 commits behind; #309-#323 hadn't arrived).
+  # To close this without changing the habit of typing plain `herdr`, shadow it with a
+  # function of the same name.
   #
-  # --remote が無いとき (ローカル起動) は素通り。判定は完全一致で行う。
-  # --remote-keybindings という別のフラグがあるので部分一致では誤爆する。
-  # 下準備が失敗しても接続は止めない (繋げないと直せないため)。
+  # Without --remote (local launch) it passes straight through. Matching is exact.
+  # There's a separate flag --remote-keybindings, so a partial match would misfire.
+  # A failed preparation doesn't stop the connection (you can't fix it without connecting).
   #
-  # HERDR_ENV では分岐しない。herdr セッションの中から `herdr --remote` を打っても
-  # nesting で撥ねられずそのまま繋がるので (2026-08-15 実測。remote platform detection
-  # まで進む)、中に居ることを理由に飛ばすと「母艦の herdr からリモートへ移る」という
-  # 一番ありそうな経路でだけ下準備が抜ける。
+  # Don't branch on HERDR_ENV. Typing `herdr --remote` inside a herdr session isn't rejected
+  # as nesting and connects as is (measured 2026-08-15; it gets as far as remote platform
+  # detection), so skipping because we're inside would drop the preparation on exactly the
+  # most likely path: moving from the main Mac's herdr to a remote.
   programs.zsh.initContent = lib.mkAfter ''
     function herdr() {
       local target="" arg bootstrap url

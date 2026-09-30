@@ -1,13 +1,13 @@
-# ブリッジの秘密のうち、Nix の settings に書けないもの (store は誰でも読める) を
-# host 上で一度だけ生成して置く。暗号化の pickle_key と、ダブルパペットの as_token。
+# Bridge secrets that can't go in Nix settings (the store is world-readable) are generated once
+# on the host and placed there: the encryption pickle_key and the double-puppet as_token.
 #
-# nixpkgs の mautrix-* モジュールは environmentFile の変数を envsubst で config に
-# 差し込むので、ここで KEY=value 形式のファイルを作って渡す。値は初回に作ったものを
-# 使い続けること: 作り直すと、ブリッジが DB に保存した暗号鍵を復号できなくなる。
+# nixpkgs' mautrix-* modules envsubst environmentFile variables into the config, so this
+# creates KEY=value files to pass in. Keep using the values generated the first time:
+# regenerating them leaves the bridges unable to decrypt the keys they stored in their DB.
 #
-# LINE ブリッジ (matrix-line.nix) は自前の unit なので、自分の config oneshot で
-# 同じことをしている。mautrix-meta は nixpkgs の既定の固定値を使う (理由は
-# matrix-bridges.nix の encryption のコメント)。
+# The LINE bridge (matrix-line.nix) has its own unit, so its config oneshot does the same
+# thing itself. mautrix-meta uses the nixpkgs default fixed value (see the encryption comment
+# in matrix-bridges.nix for why).
 { lib, pkgs, ... }:
 let
   dir = "/var/lib/matrix-bridge-secrets";
@@ -33,7 +33,7 @@ let
   ];
 in
 {
-  # EnvironmentFile は systemd (root) が読むので、ファイルの所有者は root のままでよい。
+  # EnvironmentFile is read by systemd (root), so the files can stay owned by root.
   systemd.services =
     lib.genAttrs consumers (_: {
       requires = [ "matrix-bridge-secrets.service" ];

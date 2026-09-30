@@ -35,7 +35,7 @@ let
   # The scripts live in lib/restic-common.nix (shared with the linux version).  This
   # workstation only creates its own snapshots now.  Repository-wide prune/check/monitor
   # are control-plane work and run on the always-on Mac mini (macmini-backup.nix).
-  # TCC の許可を保たせるための安定した置き場。理由は下の activation を参照。
+  # A stable location so the TCC grant sticks. See the activation below for why.
   tccBinDir = "${home}/.local/libexec/tcc";
 
   scripts = common.mkScripts {
@@ -64,13 +64,13 @@ let
       # and deleted. The worlds that matter live on the macmini (/Users/mcsrv/*, tarred into
       # /Users/Shared/minecraft-backups and picked up by home/macmini-backup.nix). Listing a
       # missing path here would make every daily run exit non-zero and page ntfy.
-      # PrismLauncher の instance。中身の大半はワールドではなく MOD 構成で、38MB のうち
-      # modded が 26MB を占める。個々の MOD は再ダウンロードできるが「どれをどの版で組んだか」
-      # の再現には手間がかかるので、ワールドと一緒に取る。ランチャーの assets/libraries/java
-      # (合計 1.6GB) はここに含まれない — あれは起動すれば取り直せる。
+      # PrismLauncher instances. Most of the content is mod setups, not worlds: of 38MB, modded
+      # takes 26MB. Individual mods can be re-downloaded, but reproducing "which ones, at which
+      # versions" takes effort, so they are taken along with the worlds. The launcher's
+      # assets/libraries/java (1.6GB total) are not included — those are refetched on launch.
       "${home}/Library/Application Support/PrismLauncher/instances"
-      # Steam のセーブ。ほとんどは Steam Cloud 側にあり、ローカルに残るのは 192KB しかない。
-      # 容量を食わないので、クラウド同期の対象外なタイトルのために取っておく。
+      # Steam saves. Most live in Steam Cloud; only 192KB remains locally.
+      # It costs no space, so keep it for titles that are not cloud-synced.
       "${home}/Library/Application Support/Steam/userdata"
       "${home}/Desktop" # small, but the only home dir that was silently outside the set
       # Voice Memos used to be listed here, back when the group container was the only copy.
@@ -128,9 +128,9 @@ let
           -d "$1: $2" \
           "$(cat "${ntfyUrlFile}")" >/dev/null 2>&1 || true
       fi'';
-    # 先頭 19 文字が "YYYY-MM-DDTHH:MM:SS"。小数秒が付く形と付かない形の両方が来るので
-    # `cut -d. -f1` だと後者でタイムゾーンごと残って解釈に失敗し、`|| echo 0` の
-    # 既定値 (epoch 0) が「20676 日前」という嘘の警告になっていた。
+    # The first 19 characters are "YYYY-MM-DDTHH:MM:SS". Timestamps arrive both with and without
+    # fractional seconds, so with `cut -d. -f1` the latter kept its timezone and failed to parse,
+    # and the `|| echo 0` fallback (epoch 0) turned into a bogus "20676 days ago" warning.
     parseSnapshotTime = ''$(date -j -f "%Y-%m-%dT%H:%M:%S" "''${latest:0:19}" +%s 2>/dev/null || echo 0)'';
   };
 
@@ -157,24 +157,24 @@ in
   sops.secrets."unified_calendar/ntfy_url".path = "${home}/.config/ntfy/url";
   sops.secrets."unified_calendar/ntfy_token".path = "${home}/.config/ntfy/token";
 
-  # フルディスクアクセスを rebuild で失わないようにする。
+  # Keep Full Disk Access from being lost on rebuild.
   #
-  # restic は Documents や Library の下を読むのでフルディスクアクセスが要る。
-  # ところが TCC は許可をバイナリの場所と署名で識別するので、素の store パスを
-  # 登録すると **更新のたびに別物になって許可が切れる**。実際、ボイスメモが
-  # 読めずにバックアップから漏れていた。
+  # restic reads under Documents and Library, so it needs Full Disk Access.
+  # But TCC identifies grants by the binary's location and signature, so registering a bare
+  # store path means **it becomes a different binary on every update and the grant lapses**.
+  # In fact, Voice Memos went unreadable and silently dropped out of the backup.
   #
-  # store の restic は ad-hoc 署名で、同一性が cdhash になる。中身が変われば
-  # 別物。自己署名の identity で署名し直すと要件が
+  # The store's restic is ad-hoc signed, so its identity is the cdhash; if the content changes,
+  # it is a different binary. Re-signing with a self-signed identity reduces the requirement to
   #   identifier "net.gapul.tcc.restic" and certificate root = H"..."
-  # だけになり、cdhash が入らない。場所を固定した上でこの署名にすれば、
-  # restic を更新しても同じものとみなされる (実測で確認)。
+  # with no cdhash in it. With a fixed location plus this signature, restic is treated as the
+  # same binary across updates (verified by measurement).
   #
-  # Developer ID を使わないのは、TCC が Apple 発行かどうかを見ていないから。
-  # コード署名の鍵は用途を絞るほど安全なので、TCC のために撒かない。
+  # Developer ID is not used because TCC does not check whether the cert is Apple-issued.
+  # Code-signing keys are safer the narrower their use, so do not spread them around for TCC.
   #
-  # 与えるのは一度だけ: システム設定 > プライバシーとセキュリティ >
-  # フルディスクアクセス に ~/.local/libexec/tcc/restic を追加する。
+  # Grant it once: System Settings > Privacy & Security >
+  # Full Disk Access, add ~/.local/libexec/tcc/restic.
   home.activation.tccStableRestic = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     $DRY_RUN_CMD ${../../configs/bin/tcc-stable-binary} \
       ${pkgs.restic}/bin/restic restic || true

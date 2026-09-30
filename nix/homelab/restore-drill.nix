@@ -1,13 +1,12 @@
-# バックアップから実際に復元してみる訓練。月に1回。
+# A drill that actually restores from backup. Once a month.
 #
-# backup.nix が取る側で、restic の check がリポジトリの整合を見る側。どちらも
-# 「戻せるか」には答えない。2026-08 に見つかったのがまさにそこで、稼働中の
-# postgres をファイルとしてコピーしていて、転送は毎日成功していたのに復元できる
-# 保証が無かった。ダンプを取るように直したが、その直し自体は検証していない。
+# backup.nix is the taking side, and restic check verifies repository integrity. Neither answers
+# "can it be restored?". That is exactly what surfaced in 2026-08: a running postgres was being
+# copied as files, and although the transfer succeeded daily, there was no guarantee it could be
+# restored. It was fixed to take dumps, but the fix itself has not been verified.
 #
-# スナップショットの中にダンプが入っていることは目で見れば分かる。それは
-# 「ファイルがある」であって「復元できる」ではない。ここでやるのは後者で、
-# 使い捨ての postgres を立てて本当に pg_restore する。
+# You can see by eye that a dump is in the snapshot. That is "the file exists", not "it can be
+# restored". This does the latter: it starts a throwaway postgres and really runs pg_restore.
 {
   pkgs,
   ...
@@ -36,8 +35,8 @@
       Type = "oneshot";
       CacheDirectory = "restic";
       ExecStart = "${pkgs.bash}/bin/bash ${../../configs/homelab/restore-drill.sh}";
-      # 使い捨ての postgres を起動して数百 MB を展開する。バックアップ本体と
-      # ぶつからないよう、時刻は 03:00 から離してある。
+      # Starts a throwaway postgres and expands a few hundred MB. The time is kept away from 03:00
+      # so it doesn't collide with the backup itself.
       TimeoutStartSec = "60min";
     };
     onFailure = [ "ntfy-failure@%n.service" ];
@@ -48,7 +47,7 @@
     wantedBy = [ "timers.target" ];
     timerConfig = {
       OnCalendar = "monthly";
-      # 月初に一斉に走らせる必要は無い。バックアップ (03:00) と重ならない時刻。
+      # No need for everything to fire at the start of the month. A time that avoids the backup (03:00).
       RandomizedDelaySec = "6h";
       Persistent = true;
     };

@@ -1,21 +1,21 @@
-# iMessage ブリッジの常駐 (launchd) と config の生成。system 側 (nix-darwin) に置く。
+# Resident iMessage bridge (launchd) and config generation. Lives on the system side (nix-darwin).
 #
-# ブリッジ本体のビルドと署名は home 側 (nix/home/macmini-imessage.nix) が持つ。
-# ここが system 側にある理由は 2 つ:
+# Building and signing the bridge itself is owned by the home side (nix/home/macmini-imessage.nix).
+# This part is on the system side for two reasons:
 #
-#   1. TCC の同一性。macOS 26 は launchd ジョブの許可を「launchd が spawn した実行
-#      ファイル」で判定する。home-manager の launchd.agents は必ず
-#      `/bin/sh -c '/bin/wait4path /nix/store && exec …'` で包むので、フルディスク
-#      アクセスを見に来るのが /bin/sh になり、署名済みバイナリに付けた許可が効かない
-#      (2026-09-29 に実測: 包むと chat.db が EPERM、直接 spawn すると読める)。
-#      nix-darwin は serviceConfig.ProgramArguments を書けばそのまま plist に出す。
-#   2. 順序。config.yaml にはトークンが要り、それは system 側の sops が置く。
-#      home-manager の activation は sops より先に走るので、あちらで作ると導入直後の
-#      switch で作られない。ここなら postActivation で sops の後 (mkAfter = 1500 の次)
-#      に並べられる。
+#   1. TCC identity. macOS 26 decides permissions for launchd jobs by "the executable launchd
+#      spawned". home-manager's launchd.agents always wraps it in
+#      `/bin/sh -c '/bin/wait4path /nix/store && exec …'`, so /bin/sh is what gets checked
+#      for Full Disk Access and the grant on the signed binary does not apply
+#      (measured on 2026-09-29: wrapped, chat.db gives EPERM; spawned directly, it is readable).
+#      nix-darwin emits serviceConfig.ProgramArguments into the plist as written.
+#   2. Ordering. config.yaml needs the tokens, which system-side sops places.
+#      home-manager activation runs before sops, so creating it there would not produce it on
+#      the switch right after installation. Here it can be ordered after sops in postActivation
+#      (next after mkAfter = 1500).
 #
-# ジョブは config.yaml が現れるまで待つ (KeepAlive.PathState)。トークンが置かれる前の
-# rebuild でも壊れない。
+# The job waits until config.yaml appears (KeepAlive.PathState), so a rebuild before the
+# tokens are in place does not break anything.
 {
   lib,
   pkgs,
@@ -25,26 +25,27 @@
 let
   home = "/Users/${user.username}";
   dataDir = "${home}/.local/share/mautrix-imessage";
-  tokenDir = "${home}/.config/mautrix-imessage"; # hosts/macmini.nix の sops が置く
-  stable = "${home}/.local/libexec/tcc/mautrix-imessage"; # home 側の tcc-stable-binary が置く
+  tokenDir = "${home}/.config/mautrix-imessage"; # placed by sops in hosts/macmini.nix
+  stable = "${home}/.local/libexec/tcc/mautrix-imessage"; # placed by the home-side tcc-stable-binary
   configFile = "${dataDir}/config.yaml";
 
-  # 足りない項目はブリッジが起動時に同梱の example config から補う。ここに書くのは
-  # 既定から変える分だけ。
+  # Missing keys are filled in by the bridge at startup from its bundled example config.
+  # Only what differs from the defaults is written here.
   settings = {
     homeserver = {
-      # homeserver の tailnet アドレス。Synapse は 0.0.0.0:8008 で待っている。
+      # The homeserver's tailnet address. Synapse listens on 0.0.0.0:8008.
       address = "http://100.127.129.31:8008";
-      # 上流の既定は mautrix-wsproxy 経由だが、tailnet で双方向に届くので HTTP 直結。
+      # Upstream defaults to going through mautrix-wsproxy, but the tailnet is reachable both
+      # ways, so plain HTTP.
       websocket_proxy = null;
       domain = "gapul.net";
       software = "standard";
     };
     appservice = {
-      # 0.0.0.0 なのは、起動が Tailscale より先に来たときに tailnet アドレスへ bind
-      # できず落ちるのを避けるため。外からは ALF (hosts/macmini.nix) と hs_token で守る。
+      # 0.0.0.0 avoids crashing when startup comes before Tailscale and the tailnet address
+      # cannot be bound. From outside it is protected by ALF (hosts/macmini.nix) and hs_token.
       hostname = "0.0.0.0";
-      port = 29332; # nix/homelab/matrix-imessage.nix の登録と対
+      port = 29332; # pairs with the registration in nix/homelab/matrix-imessage.nix
       database = {
         type = "sqlite3-fk-wal";
         uri = "file:${dataDir}/mautrix-imessage.db?_txlock=immediate";
@@ -55,7 +56,7 @@ let
         displayname = "iMessage bridge bot";
       };
       ephemeral_events = true;
-      # activation で差し込む。
+      # Injected during activation.
       as_token = "";
       hs_token = "";
     };
@@ -63,22 +64,23 @@ let
     bridge = {
       user = "@gapul:gapul.net";
       username_template = "imessage_{{.}}";
-      # 他のブリッジ (Signal 等、nixpkgs 既定) と同じく接尾辞なし。
+      # No suffix, same as the other bridges (Signal etc., nixpkgs defaults).
       displayname_template = "{{.}}";
       command_prefix = "!im";
-      # 他のブリッジ (bridgev2 の既定) と同じく、部屋を「iMessage」スペースにまとめる。
+      # Group rooms into an "iMessage" space, same as the other bridges (bridgev2 default).
       personal_filtering_spaces = true;
-      # libheif 無しでビルドしてあるので変換できない (pkgs/mautrix-imessage.nix)。
+      # Built without libheif, so conversion is impossible (pkgs/mautrix-imessage.nix).
       convert_heif = false;
-      # 過去ログの取り込み。効くのは部屋を初めて作る一度きりで、既定は直近 0.5 日・
-      # 100 件しか取らない。mini を iCloud に入れて「メッセージ」を同期させると chat.db に
-      # 全履歴が降りてくるので、それを新しい部屋へ流し込めるだけ流す (2026-09-29)。
-      # 遡りの後追い (deferred) は Beeper 専用で素の Synapse では効かない
-      # (matrix-bridges.nix の backfill のコメントと同じ事情)。
+      # Backfill of past history. It only applies once, when a room is first created, and the
+      # default only takes the last 0.5 days / 100 messages. Signing the mini into iCloud and
+      # syncing Messages brings the full history down into chat.db, so stream as much of it as
+      # possible into the new rooms (2026-09-29). Deferred backward backfill is Beeper-only and
+      # does not work on plain Synapse (same situation as the backfill comment in
+      # matrix-bridges.nix).
       backfill = {
         initial_limit = 5000;
         initial_sync_max_age = 3650;
-        # 古いチャットを既読扱いにしない。未読は iMessage 側の状態に従う。
+        # Do not mark old chats as read. Unread state follows the iMessage side.
         unread_hours_threshold = -1;
       };
     };
@@ -95,9 +97,9 @@ let
   settingsFile = (pkgs.formats.yaml { }).generate "mautrix-imessage-config.yaml" settings;
 in
 {
-  # sops (mkAfter = 1500) の後。トークンが両方あるときだけ書く。root で走るので
-  # 所有者をユーザーに戻す。設定を変えれば plist は変わらないが、このスクリプトが
-  # 毎回 config を書き直すので、次の再起動で反映される。
+  # After sops (mkAfter = 1500). Writes only when both tokens exist. Runs as root, so
+  # ownership is handed back to the user. Changing settings does not change the plist, but
+  # this script rewrites the config every time, so it takes effect on the next restart.
   system.activationScripts.postActivation.text = lib.mkOrder 1600 ''
     if [ -r '${tokenDir}/as_token' ] && [ -r '${tokenDir}/hs_token' ]; then
       /bin/mkdir -p '${dataDir}'
@@ -117,8 +119,8 @@ in
   '';
 
   launchd.user.agents.mautrix-imessage.serviceConfig = {
-    # 包まずに署名済みバイナリを直接 spawn する。理由は冒頭のコメント。
-    # -n: config は上の activation が作る。ブリッジには書き戻させない。
+    # Spawn the signed binary directly without wrapping. See the comment at the top for why.
+    # -n: the config is created by the activation above. Do not let the bridge write it back.
     ProgramArguments = [
       stable
       "-c"
@@ -127,8 +129,8 @@ in
     ];
     WorkingDirectory = dataDir;
     KeepAlive.PathState.${configFile} = true;
-    # フルディスクアクセスが無い、あるいは chat.db にまだ 1 通も無い (ブリッジは
-    # 「未ログイン」として即死する) ときに、既定の 10 秒で回すとログだけが太る。
+    # Without Full Disk Access, or while chat.db has no messages yet (the bridge dies immediately
+    # as "not logged in"), cycling at the default 10 seconds only bloats the log.
     ThrottleInterval = 60;
     StandardOutPath = "${dataDir}/bridge.log";
     StandardErrorPath = "${dataDir}/bridge.log";

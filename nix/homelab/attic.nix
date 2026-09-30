@@ -1,12 +1,13 @@
-# attic は nixpkgs のモジュールで直接動かす。postgres だけ compose2nix 由来の
-# コンテナのまま。元は /opt/stacks/attic/compose.yaml。
+# attic runs directly via the nixpkgs module. Only postgres remains a container derived from
+# compose2nix. Originally /opt/stacks/attic/compose.yaml.
 #
-# サーバ側をモジュールにした理由は、server.toml が /var/lib/homelab/attic に手で
-# 置かれたまま宣言の外にあったことと、イメージが :latest だったこと。設定はここに来た。
+# The server was moved to the module because server.toml had been placed by hand in
+# /var/lib/homelab/attic, outside the declaration, and the image was :latest. The settings now
+# live here.
 #
-# postgres を据え置いたのは、コンテナの postgres:16-alpine が musl でクラスタを作って
-# いるため。glibc の postgres で同じ PGDATA を開くと照合順序が変わり、テキスト索引が
-# 壊れうる。移すなら pg_dump 経由になるので、それは別の日にやる。
+# postgres stays as is because the container's postgres:16-alpine created the cluster with musl.
+# Opening the same PGDATA with a glibc postgres changes collation, which can corrupt text indexes.
+# Moving it would have to go through pg_dump, so that is for another day.
 {
   pkgs,
   lib,
@@ -15,13 +16,15 @@
 }:
 
 let
-  # モジュールは settings に既定の `database.url = "sqlite://…"` を入れてくる。attic は
-  # 設定ファイルの値を環境変数より優先するので、ATTIC_SERVER_DATABASE_URL を渡しても
-  # 効かず、空の SQLite を作ってそちらを見にいく (実際にそうなった)。sqlite は元の
-  # 構成が CI の並列 push で接続プールを詰まらせて捨てた経緯があるので戻せない。
+  # The module injects a default `database.url = "sqlite://…"` into settings. attic prefers values
+  # from the config file over environment variables, so passing ATTIC_SERVER_DATABASE_URL has no
+  # effect and it creates an empty SQLite and uses that instead (this actually happened). sqlite
+  # cannot come back, since the original setup dropped it after CI's parallel pushes clogged the
+  # connection pool.
   #
-  # かといって URL は接続情報そのもので、ストアは誰でも読める。宣言はそのままに、
-  # URL だけ起動時に環境変数から差し込む。vpn-relay.nix と同じ手。
+  # But the URL is connection credentials in itself, and the store is world-readable. Keep the
+  # declaration as is and inject only the URL from an environment variable at startup. Same trick
+  # as vpn-relay.nix.
   serverToml = (pkgs.formats.toml { }).generate "atticd-server.toml" (
     lib.recursiveUpdate config.services.atticd.settings { database.url = "@DB_URL@"; }
   );
@@ -35,19 +38,19 @@ in
 {
   services.atticd = {
     enable = true;
-    # ATTIC_SERVER_TOKEN_HS256_SECRET_BASE64 と、postgres の URL
-    # (ATTIC_SERVER_DATABASE_URL) がここに入っている。URL は接続情報そのものなので
-    # settings には書かない。モジュールの設定検査はダミーの URL を渡して走るので、
-    # database.url が無くても通る。
+    # Holds ATTIC_SERVER_TOKEN_HS256_SECRET_BASE64 and the postgres URL
+    # (ATTIC_SERVER_DATABASE_URL). The URL is connection credentials in itself, so it is not written
+    # in settings. The module's config check runs with a dummy URL, so it passes even without
+    # database.url.
     environmentFile = "/var/lib/secrets/attic.env";
     settings = {
-      # Caddy が cache.gapul.net をここへ流す。コンテナが 8083:8080 で publish して
-      # いた側の番号に合わせてあるので、リバースプロキシ側は変えなくていい。
+      # Caddy forwards cache.gapul.net here. The port matches the one the container used to publish
+      # as 8083:8080, so the reverse proxy side needs no change.
       listen = "127.0.0.1:8083";
       storage = {
         type = "local";
-        # 2.3GB ある。/srv は自動スナップショットを切ってあるデータセットで、
-        # キャッシュを世代ごとに抱え込まないのが狙い。
+        # 2.3GB. /srv is a dataset with automatic snapshots turned off, so the cache
+        # isn't retained across generations.
         path = "/srv/attic/storage";
       };
       chunking = {
@@ -61,8 +64,8 @@ in
     };
   };
 
-  # モジュールの既定は DynamicUser で、UID が再起動をまたいで変わりうる。ストレージは
-  # /srv に既にあって所有者が固定なので、素の system user にする。
+  # The module's default is DynamicUser, whose UID can change across restarts. The storage already
+  # exists in /srv with a fixed owner, so use a plain system user.
   users.users.atticd = {
     isSystemUser = true;
     group = "atticd";
@@ -91,13 +94,13 @@ in
     volumes = [
       "/srv/attic/pgdata:/var/lib/postgresql/data:rw"
     ];
-    # atticd がホスト側から繋ぐ。compose の頃はコンテナ同士だったので publish は
-    # 無かった。ループバックだけに出す。
+    # atticd connects from the host. In the compose days it was container-to-container, so there
+    # was no publish. Expose it on loopback only.
     #
-    # ホスト側は 5433。5432 は atuin が使う — nixpkgs の更新で services.atuin が
-    # ネイティブの postgres を要求するようになり (26.05 の atuin.nix)、そちらが
-    # 先に 5432 を掴んで attic-db が bind できずに起動ループした。
-    # DB_URL 側のポートも合わせること (/var/lib/secrets/attic.env)。
+    # The host side is 5433. 5432 is used by atuin — a nixpkgs update made services.atuin require a
+    # native postgres (atuin.nix in 26.05), which grabbed 5432 first, so attic-db couldn't bind and
+    # went into a restart loop.
+    # Keep the port in DB_URL in sync (/var/lib/secrets/attic.env).
     ports = [
       "127.0.0.1:5433:5432/tcp"
     ];

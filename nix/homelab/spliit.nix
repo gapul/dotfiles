@@ -1,11 +1,12 @@
-# 割り勘 (walica / Splitwise の代わり)。相手がいる用途なので tailnet の外に出す。
+# Bill splitting (in place of walica / Splitwise). It is used with other people, so it is
+# exposed outside the tailnet.
 #
-# 認証が無い。グループは URL を知っている人だけが開ける方式で、walica の
-# 「アカウント不要、リンクを共有」と同じ考え方。つまりログインの仕組みも
-# SMTP も要らず、動かすのに必要なのは DB だけ。
+# There is no authentication. A group can be opened by anyone who knows its URL, the same idea
+# as walica's "no account needed, share the link". So neither a login system nor SMTP is
+# needed; the only thing it needs to run is a DB.
 #
-# 画像添付とレシートの読み取り (OpenAI) は既定で無効のまま。前者は S3 が要り、
-# 後者は外部の API に領収書を投げることになる。どちらも今は要らない。
+# Image attachments and receipt scanning (OpenAI) stay disabled by default. The former needs S3,
+# and the latter would send receipts to an external API. Neither is needed for now.
 {
   pkgs,
   lib,
@@ -16,24 +17,24 @@ let
   privatePort = 18090;
 in
 {
-  # rallly.nix と同じ理由で1階層。/var/lib/homelab の下に入れ子を作ろうとすると
-  # tmpfiles が unsafe path transition で拒否する (calnode.nix 参照)。
+  # A single level, for the same reason as rallly.nix. Trying to nest under /var/lib/homelab
+  # gets rejected by tmpfiles as an unsafe path transition (see calnode.nix).
   #
-  # 所有者が root ではなく 70 なのは、postgres のイメージが uid 70 で動くため。
-  # root 所有の 0700 だと `mkdir: can't create directory '/var/lib/postgresql/18/':
-  # Permission denied` で起動に失敗する。既存の miniflux/db も uid 70 所有。
+  # The owner is 70 rather than root because the postgres image runs as uid 70.
+  # With root-owned 0700, startup fails with `mkdir: can't create directory
+  # '/var/lib/postgresql/18/': Permission denied`. The existing miniflux/db is also owned by uid 70.
   systemd.tmpfiles.rules = [
     "d /var/lib/homelab/spliit-db 0700 70 70 -"
   ];
 
   virtualisation.oci-containers.containers."spliit" = {
     image = "ghcr.io/spliit-app/spliit:latest";
-    # POSTGRES_PRISMA_URL と POSTGRES_URL_NON_POOLING。どちらもパスワードを
-    # 含む接続文字列なので env ファイル側。README.md を見ること。
+    # POSTGRES_PRISMA_URL and POSTGRES_URL_NON_POOLING. Both are connection strings containing
+    # the password, so they go in the env file. See README.md.
     environmentFiles = [ "/var/lib/secrets/spliit.env" ];
     environment = {
       "BASE_URL" = "https://split.gapul.net";
-      # 円建てで使うので既定通貨を JPY にしておく。グループごとに変更できる。
+      # Used in yen, so the default currency is JPY. It can be changed per group.
       "DEFAULT_CURRENCY_CODE" = "JPY";
     };
     ports = [

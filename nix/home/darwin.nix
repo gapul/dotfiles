@@ -355,9 +355,10 @@ in
     executable = true;
   };
 
-  # macmini の管理者認証ダイアログにパスワードを入れる。人が叩くもので、Claude は実行しない
-  # (アカウントのパスワードを代わりに入力しない線は、保管場所が sops になっても変わらない)。
-  # TCC のトグルは authorizationdb を緩めても認証を要求するので、この手数は消せない。
+  # Types the password into the macmini admin authentication dialog. Run by a human; Claude does
+  # not run it (the line of not entering the account password on the user's behalf holds even
+  # now that it is stored in sops). TCC toggles demand authentication even with a relaxed
+  # authorizationdb, so this step cannot be eliminated.
   home.file.".local/bin/macmini-auth" = {
     source = ../../configs/bin/macmini-auth;
     executable = true;
@@ -450,10 +451,10 @@ in
   # (This definition is Darwin-only. On Linux, HM's lazygit module itself defines the same path,
   #  so putting it in common.nix would conflict.)
   #
-  # builtins.toFile で書く。pkgs.formats.yaml の generate はビルダーを要する派生に
-  # なり、CI (x86_64-linux) が darwin 用のそれを掴むと platform mismatch で落ちる。
-  # キャッシュに在るうちは代替で済むので表に出ないが、nixpkgs を上げた途端に落ちた。
-  # JSON は YAML 1.2 の部分集合なので lazygit はそのまま読める。
+  # Written via builtins.toFile. pkgs.formats.yaml's generate becomes a derivation that needs a
+  # builder, and when CI (x86_64-linux) picks up the darwin one it fails with a platform
+  # mismatch. While it is in the cache a substitute covers it so it stays hidden, but it broke
+  # the moment nixpkgs was bumped. JSON is a subset of YAML 1.2, so lazygit reads it as-is.
   xdg.configFile."lazygit/config.yml".text = builtins.toJSON config.programs.lazygit.settings;
 
   # Element Desktop reads config.json from its profile directory on top of the bundled

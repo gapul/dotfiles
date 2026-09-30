@@ -25,16 +25,16 @@ in
       RESTIC_REPOSITORY = resticCommon.repository;
       RESTIC_PASSWORD_FILE = "/var/lib/secrets/restic.password";
       RCLONE_CONFIG = "/var/lib/secrets/rclone.conf";
-      # restic 0.19 からキャッシュ領域が必須になり、置き場が分からないと
-      # 「unable to locate cache directory: neither $XDG_CACHE_HOME nor $HOME are
-      # defined」で起動を拒否する。systemd のユニットには HOME が無いので明示する。
-      # 下の CacheDirectory が /var/cache/restic を作るので、そこに一致させる。
+      # Since restic 0.19 a cache location is mandatory, and if it can't find one it refuses to
+      # start with "unable to locate cache directory: neither $XDG_CACHE_HOME nor $HOME are
+      # defined". systemd units have no HOME, so set it explicitly.
+      # CacheDirectory below creates /var/cache/restic, so match that.
       XDG_CACHE_HOME = "/var/cache";
     };
     serviceConfig = {
-      # restic はここに index を溜める。無いと毎回リポジトリを読み直すので、
-      # 覗くだけでも遅くなる。--no-cache で黙らせる手もあるが、それは症状を
-      # 消しているだけで、閲覧のたびに Google Drive を叩くことになる。
+      # restic accumulates the index here. Without it, the repository is re-read every time, so
+      # even just browsing is slow. --no-cache would silence it, but that only hides the symptom
+      # and hits Google Drive on every browse.
       CacheDirectory = "restic";
       ExecStartPre = "-${pkgs.fuse}/bin/fusermount -u ${mountPoint}";
       ExecStart = "${pkgs.restic}/bin/restic mount --no-lock --allow-other --no-default-permissions ${mountPoint}";

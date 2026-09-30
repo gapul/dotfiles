@@ -93,12 +93,12 @@ rec {
       backupPaths,
       extraExcludes ? [ ],
       extraPathPkgs ? [ ],
-      # PATH の先頭に置くディレクトリ。macOS で TCC の許可を保たせるために、
-      # 署名済みの安定した場所に置いた restic を store の分より先に見せる用途。
-      # 空なら何も足さない (Linux 側は素の store パスのまま)。
+      # Directory placed at the front of PATH. Used on macOS to keep the TCC grant by making a
+      # restic in a signed, stable location visible ahead of the store one.
+      # Empty adds nothing (Linux stays on the plain store path).
       pathPrefix ? "",
-      # 間引きの一文。既定は repo 全体を prune する側で、共有リポジトリに書くだけの
-      # ホストは forgetOwnHostOnly を渡す。
+      # The pruning clause. The default prunes the whole repo; hosts that only write to the
+      # shared repository pass forgetOwnHostOnly.
       forgetSnippet ? forgetInvocation,
       notifyBody,
       parseSnapshotTime,

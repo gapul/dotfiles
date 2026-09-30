@@ -76,8 +76,8 @@ let
       rel = "unified-calendar.env";
       owner = "unified-calendar";
     }
-    # カレンダーの URL そのものが秘密 (知っていれば誰でも読める共有 .ics)。設定ごと
-    # sops に置いて、生成スクリプトにはファイルとして渡す。
+    # The calendar URLs themselves are secret (shared .ics that anyone who knows them can
+    # read). Put the whole config in sops and pass it to the generator script as a file.
     {
       rel = "unified-calendar.yaml";
       owner = "unified-calendar";
@@ -121,10 +121,10 @@ in
   # ExecStartPre with "Permission denied" on os.stat and restart-looped 1,270
   # times on 2026-09-26. Listing stays root-only.
   #
-  # `z` の行は既にあるディレクトリのモードを直すためのもの。他の unit が
-  # `install -d -m 0700` でここを 0700 に戻していた (kavita.nix、2026-09-27) のを
-  # 外したが、switch 時の tmpfiles 再実行はルールの文面が変わった時しか走らない。
-  # `d` だけだと既に壊れたディレクトリは再起動まで直らないので、意図を行として持つ。
+  # The `z` line fixes the mode of the already existing directory. Another unit was
+  # resetting this to 0700 via `install -d -m 0700` (kavita.nix, 2026-09-27); that was
+  # removed, but tmpfiles only reruns on switch when the rule text changes. With `d`
+  # alone an already broken directory isn't fixed until reboot, so keep the intent as a line.
   systemd.tmpfiles.rules = [
     "d /var/lib/secrets 0711 root root -"
     "z /var/lib/secrets 0711 root root -"

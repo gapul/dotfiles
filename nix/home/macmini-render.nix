@@ -1,40 +1,43 @@
-# 重いレンダリングを macmini に寄せる。
+# Move heavy rendering to the macmini.
 #
-# この機械に置く理由は「余っているから」ではなく、母艦を占有せずに済むから。編集や
-# 執筆をしている最中に書き出しが走ると、その間ずっと使い物にならなくなる。
+# It lives on this machine not because it has spare capacity, but so the main Mac isn't tied
+# up. An export running while editing or writing makes the machine useless the whole time.
 #
-# 実測 (2026-09-01): メモリは 68% 空き、常時食っているのは まなび の next-server (22%)
-# だけ。MLX 系は呼ばれたときだけ動くので、書き出しと食い合うのは同時に叩いたときだけ。
+# Measured (2026-09-01): memory is 68% free, and the only constant consumer is the manabi
+# next-server (22%). The MLX stuff only runs when called, so it competes with exports only
+# when both are hit at the same time.
 #
-# ## 何が宣言でき、何ができないか
+# ## What can and can't be declared
 #
-#   blender  — nixpkgs にあり darwin 対応。`blender -b file.blend -a` で画面なしで焼ける
-#   ffmpeg   — 既に入っている。M4 の VideoToolbox でハードウェアエンコードが効く
+#   blender  — in nixpkgs with darwin support. `blender -b file.blend -a` renders headless
+#   ffmpeg   — already installed. Hardware encoding works via the M4's VideoToolbox
 #
-#   DaVinci  — nixpkgs のパッケージは x86_64-linux 専用 (確認済み)。darwin で使うなら
-#              Blackmagic の dmg を手で入れることになり、宣言の外に出る
-#   Adobe    — Creative Cloud の導入器は brew cask で宣言する。After Effects 本体と更新は
-#              Creative Cloud が管理するため、そこから先は Nix の管理外
+#   DaVinci  — the nixpkgs package is x86_64-linux only (verified). Using it on darwin means
+#              installing Blackmagic's dmg by hand, outside the declaration
+#   Adobe    — the Creative Cloud installer is declared as a brew cask. After Effects itself and
+#              its updates are managed by Creative Cloud, so beyond that it's outside Nix
 #
-# Adobe は After Effects だけ入れる方針にした (2026-09-01)。狙いは aerender で、
-# これは画面なしでコンポを焼けるコマンド。macmini に置く意味があるのはここだけ。
+# The Adobe policy is to install After Effects only (2026-09-01). The goal is aerender, a
+# command that renders comps headless. That is the only reason to have it on the macmini.
 #
-# Premiere は入れない。書き出しを外から叩く手が Media Encoder の監視フォルダしか
-# 無く、あれはアプリが起動している前提なので画面の無いこの機械には向かない。
-# DaVinci も同じ理由で入れない (加えて nixpkgs のパッケージが x86_64-linux 専用)。
+# No Premiere. The only way to trigger exports from outside is Media Encoder's watch folder,
+# which assumes the app is running, so it doesn't suit this headless machine.
+# DaVinci is skipped for the same reason (plus the nixpkgs package is x86_64-linux only).
 #
-# Creative Cloud の導入器は hosts/macmini.nix で宣言する。サインイン情報は ask MCP の
-# allowlist 済み native helper で入力できるが、画面遷移と追加認証には画面共有を使う:
+# The Creative Cloud installer is declared in hosts/macmini.nix. Sign-in credentials can be
+# entered via the ask MCP's allowlisted native helper, but screen transitions and extra
+# authentication use Screen Sharing:
 #
-#   1. Creative Cloud を起動し、MCP 経由でサインイン
-#   2. 画面共有で追加認証を完了
-#   3. After Effects だけ入れる (Premiere は入れない)
+#   1. Launch Creative Cloud and sign in via MCP
+#   2. Complete the extra authentication over Screen Sharing
+#   3. Install After Effects only (not Premiere)
 #
-# 入ると aerender はここに来る:
-#   /Applications/Adobe After Effects <年>/aerender
+# Once installed, aerender lands here:
+#   /Applications/Adobe After Effects <year>/aerender
 #
-# 母艦の `macmini-render after-effects` はこのパスを動的に検出する。素材切れを防ぐため、
-# After Effects の Collect Files でまとめたディレクトリ単位で一時転送し、完了後に消す。
+# The main Mac's `macmini-render after-effects` detects this path dynamically. To avoid missing
+# media, it temporarily transfers the whole directory gathered by After Effects' Collect Files,
+# and deletes it when done.
 {
   config,
   pkgs,
@@ -76,16 +79,16 @@ let
 in
 {
   home.packages = with pkgs; [
-    # Blender は nix ではなく brew の cask で入れる (hosts/macmini.nix)。理由はあちらの
-    # コメント参照: nixpkgs 版は依存の manifold が macmini でテスト中に落ち、
-    # aarch64-darwin のキャッシュも無いのでソースから建てることになる。
+    # Blender is installed as a brew cask, not via nix (hosts/macmini.nix). See the comment
+    # there for why: the nixpkgs build's manifold dependency fails its tests on the macmini, and
+    # there's no aarch64-darwin cache, so it would be built from source.
     #
-    # 画面なしで焼くときは .app の中の実体を叩く:
+    # For headless renders, call the binary inside the .app:
     #   /Applications/Blender.app/Contents/MacOS/Blender -b scene.blend -a
 
-    # 書き出し後の変換と作り直し。編集ソフトを持ち出さずに済む仕事はここで終わる。
-    # M4 のハードウェアエンコーダを使うなら -c:v hevc_videotoolbox / h264_videotoolbox。
-    # 素材が HLG の HDR なので、SDR に落とすときは色変換を明示しないと眠い絵になる。
+    # Post-export conversion and re-encoding. Jobs that don't need the editing app end here.
+    # For the M4 hardware encoder use -c:v hevc_videotoolbox / h264_videotoolbox.
+    # The footage is HLG HDR, so going to SDR without an explicit color conversion looks washed out.
     ffmpeg-full
 
     # General-purpose native build worker. Project-specific flakes still win when present;

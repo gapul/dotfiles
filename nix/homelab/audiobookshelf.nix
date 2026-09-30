@@ -1,12 +1,12 @@
-# Audiobookshelf — オーディオブックの棚 (audiobooks.gapul.net)。電子書籍の配信は kavita.nix。
+# Audiobookshelf — the audiobook shelf (audiobooks.gapul.net). Ebook serving is kavita.nix.
 #
-# 接続してくるのは iPhone の 2 本。Audiobookshelf アプリ (自己ビルド、altstore-source の
-# abs- タグ) と Readest の ABS 連携。どちらもここのユーザー名とパスワードで
-# ログインするので Authelia は挟まない (wger と同じ理由)。
+# Two iPhone clients connect: the Audiobookshelf app (self-built, abs- tag in altstore-source)
+# and Readest's ABS integration. Both log in with this server's username and password, so
+# Authelia is not put in front (same reason as wger).
 #
-# 実ファイルは /srv/audiobooks と /srv/books。他の /srv と同じく restic の対象外
-# (買い直せる・取り直せるものに容量を使わない)。メタデータと再生位置は
-# /var/lib/audiobookshelf で、こちらは /var/lib ごとバックアップに入る。
+# The actual files are /srv/audiobooks and /srv/books. Like the rest of /srv they are excluded from
+# restic (no space spent on things that can be re-bought or re-fetched). Metadata and playback
+# positions are in /var/lib/audiobookshelf, which is backed up along with /var/lib.
 _: {
   services.audiobookshelf = {
     enable = true;
@@ -14,7 +14,7 @@ _: {
     port = 8107;
   };
 
-  # アプリからのアップロードも受けるので audiobookshelf ユーザーの所有にしておく。
+  # Uploads from the apps are accepted too, so make it owned by the audiobookshelf user.
   systemd.tmpfiles.rules = [
     "d /srv/audiobooks 0755 audiobookshelf audiobookshelf -"
     "d /srv/books 0755 audiobookshelf audiobookshelf -"

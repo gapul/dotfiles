@@ -5,7 +5,7 @@
   ...
 }:
 let
-  # 更新の速い CLI は別 lineage。allowUnfree もここで明示する。
+  # Fast-moving CLIs are a separate lineage. allowUnfree is also set explicitly here.
   agentPkgs = import ../../lib/unstable-pkgs.nix {
     nixpkgsUnstable = nixpkgsAgents;
     inherit (pkgs.stdenv.hostPlatform) system;
@@ -65,8 +65,8 @@ in
     tmuxp # declare tmux sessions/layouts in YAML (~/.config/tmuxp/)
     # AI agent multiplexer (config in modules/home/terminal.nix). Goes on every host so
     # `herdr --remote` finds a version-matched binary on the far side instead of installing one
-    # into ~/.local/bin. 26.05 の系列にはまだ無いので unstable 系から。ただし
-    # nixpkgs-unstable ではなく専用の nixpkgs-agents (理由は flake.nix の同名 input の項)。
+    # into ~/.local/bin. Not in the 26.05 series yet, so from the unstable lineage. But not
+    # nixpkgs-unstable: the dedicated nixpkgs-agents (reason in flake.nix under the input of the same name).
     agentPkgs.herdr
     podman-tui # Podman container / image / Pod management TUI
     iamb # Matrix TUI (Vim keybindings, E2EE support)
@@ -94,15 +94,15 @@ in
     visidata # CSV/TSV table viewer + editor (TUI, `vd`)
     chafa # image → terminal
     ddgr # DuckDuckGo interactive terminal search
-    w3m # text browser (枯れている方。pager や外部レンダラとして呼ばれる用)
-    # chawan: 新しい方の端末ブラウザ (`cha`)。w3m と違って CSS を解釈し、
-    # sixel と kitty グラフィックスで画像を出せる — Ghostty は後者を喋るので実際に絵が出る。
-    # JS も部分的に動く。w3m を置き換えるのではなく、素で読める用途は w3m、
-    # 見た目が要る用途は chawan、という住み分け。
+    w3m # text browser (the mature one; called as a pager or external renderer)
+    # chawan: the newer terminal browser (`cha`). Unlike w3m it interprets CSS and can show images
+    # via sixel and kitty graphics — Ghostty speaks the latter, so images actually render.
+    # JS partly works too. It doesn't replace w3m; the split is w3m for plain reading and chawan
+    # where appearance matters.
     #
-    # 罠: https が「unexpected eof while reading」で全部落ちる。chawan の http アダプタは
-    # OpenSSL を直に叩いていて SSL_CERT_FILE しか見ず、この環境に入っているのは
-    # NIX_SSL_CERT_FILE だけだった。home/common.nix で SSL_CERT_FILE を足して解決している。
+    # Gotcha: all https fails with "unexpected eof while reading". chawan's http adapter calls OpenSSL
+    # directly and only looks at SSL_CERT_FILE, while this environment only had NIX_SSL_CERT_FILE.
+    # Solved by adding SSL_CERT_FILE in home/common.nix.
     chawan
 
     # ─── nix-declaring things previously installed locally via cargo/uv (for reproducibility) ───

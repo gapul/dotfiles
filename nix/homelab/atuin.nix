@@ -1,25 +1,25 @@
-# シェル履歴の同期サーバー (atuin)。tailnet 内のみ。
+# Shell history sync server (atuin). tailnet only.
 #
-# 端末のコマンド履歴を複数端末で共有するための口。ファイル同期ではなく atuin 本体の
-# 同期機構を使う。理由は競合で、履歴の SQLite を Syncthing に載せると両方の端末が
-# 同じファイルを書くので必ず衝突する。atuin はレコード単位の追記型で設計されていて、
-# しかも同期前にクライアント側で暗号化する (サーバーは中身を読めない)。
+# The endpoint for sharing command history across machines. It uses atuin's own sync rather than
+# file sync. The reason is conflicts: putting the history SQLite on Syncthing means both machines
+# write the same file, which always conflicts. atuin is designed as per-record append-only, and
+# it also encrypts client-side before syncing (the server cannot read the contents).
 #
-# つまり「自前でホストする」ことの意味が、他のサービスと少し違う。プライバシーは
-# 暗号化で担保されているので、自前にする理由は可用性と、他人のサーバーに依存しない
-# ことのほう。
+# So "self-hosting" means something slightly different here than for other services. Privacy is
+# already covered by encryption, so the reasons to self-host are availability and not depending
+# on someone else's server.
 #
-# database.createLocally が既定で true なので、ネイティブの PostgreSQL がこの箱に
-# 初めて1つ生える (今までの postgres は全部コンテナ側だった)。UNIX ソケット越しに
-# 繋がるので、ポートは開かない。
+# database.createLocally defaults to true, so this box gets its first native PostgreSQL
+# (all previous postgres instances were containers). It connects over a UNIX socket, so no port
+# is opened.
 #
-# openRegistration は false のまま。アカウントを作るときだけ一時的に true にして
-# `atuin register` し、済んだら戻す。開けっ放しにすると tailnet 内の誰でも
-# アカウントを作れてしまう。
+# openRegistration stays false. Only when creating an account, set it to true temporarily, run
+# `atuin register`, and revert it afterwards. Leaving it open lets anyone in the tailnet create
+# an account.
 {
   services.atuin = {
     enable = true;
-    # Caddy が同じ箱から叩くので loopback で足りる。
+    # Caddy calls it from the same box, so loopback is enough.
     host = "127.0.0.1";
     port = 8888;
     openRegistration = false;

@@ -1,15 +1,15 @@
-# 位置ログの鮮度を見る。6 時間おき。
+# Checks location log freshness, every 6 hours.
 #
-# Dawarich 本体は dawarich.nix。こちらは「記録が続いているか」だけを見る。
+# Dawarich itself is dawarich.nix. This only checks "is recording still happening".
 #
-# 分けてあるのは、これが本体の健康とは別の問いだから。2026-08-23 に位置ログが
-# 36 時間止まっていたのが見つかったが、そのあいだ Dawarich は正常に動いていた。
-# 止まっていたのは iPhone 側の Overland で、サーバから見て壊れているものは何も
-# 無い。gatus は HTTP の応答しか見ないので、この形の停止は原理的に捕まらない。
+# It is separate because this is a different question from the service's health. On 2026-08-23 the
+# location log was found to have stopped for 36 hours, while Dawarich was running normally the whole
+# time. What had stopped was Overland on the iPhone, and nothing looked broken from the server.
+# gatus only looks at HTTP responses, so this kind of stall can't be caught in principle.
 #
-# restic の monitor が最後のスナップショットの日付を見ているのと同じ考え方で、
-# 「動いているか」ではなく「入ってきているか」を見る。位置ログは取り直しが
-# 効かないので、気付くのが遅れた分だけ永久に空白になる。
+# Same idea as the restic monitor checking the date of the last snapshot: check
+# "is data coming in", not "is it running". Location logs can't be re-collected,
+# so every bit of delay in noticing becomes a permanent gap.
 {
   pkgs,
   ...
@@ -32,8 +32,8 @@
     description = "位置ログの鮮度を 6 時間おきに見る";
     wantedBy = [ "timers.target" ];
     timerConfig = {
-      # 閾値は 24 時間なので、6 時間おきに見れば「丸一日以上止まっている」ことに
-      # 最大 30 時間で気付く。1 時間おきにしても早く気付けるわけではない。
+      # The threshold is 24 hours, so checking every 6 hours notices "stopped for over a full day"
+      # within 30 hours at most. Checking hourly wouldn't notice any sooner.
       OnBootSec = "15min";
       OnUnitActiveSec = "6h";
       Persistent = true;

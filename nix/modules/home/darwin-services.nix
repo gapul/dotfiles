@@ -35,13 +35,13 @@ in
   # Reuse the existing ~/Library/Application Support/Syncthing config and device ID as-is.
   services.syncthing = {
     enable = true;
-    # homeserver 側 (homelab/syncthing.nix) と対になる宣言。ここで書いておくと
-    # 追加時に GUI で受け入れる手作業が要らない。
+    # Declaration paired with the homeserver side (homelab/syncthing.nix). Writing it here removes the
+    # manual step of accepting it in the GUI when adding.
     #
-    # **override を両方 false にすること。** 既定は true で、その場合ここに書いた
-    # ものが唯一の正になり、GUI で足した既存の folder / device (synchub と iphone)
-    # が消える。上のコメントが言っているとおり、この Mac の syncthing 設定は
-    # 意図的に宣言化されておらず既存を再利用しているので、そこを壊してはいけない。
+    # **Set both overrides to false.** The default is true, in which case what is written here becomes
+    # the sole source of truth and the existing folders / devices added in the GUI (synchub and iphone)
+    # disappear. As the comment above says, this Mac's syncthing config is deliberately not declared
+    # and reuses the existing one, so that must not be broken.
     overrideDevices = false;
     overrideFolders = false;
     settings = {

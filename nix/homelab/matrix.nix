@@ -1,24 +1,25 @@
-# Matrix の homeserver。2026-08-31 に Conduit から Synapse へ替えた。
+# Matrix homeserver. Switched from Conduit to Synapse on 2026-08-31.
 #
-# なぜ替えたか。ブリッジを Discord/Telegram の 2 本から 10 本規模に増やすことにしたが、
-# Conduit はその規模を載せる場所として向いていない:
+# Why switch: we decided to grow the bridges from 2 (Discord/Telegram) to around 10, and
+# Conduit is not a good place to carry that scale:
 #
-#   - Conduit 本家は止まっている。系譜は Conduit -> conduwuit (アーカイブ) ->
-#     continuwuity で、動いていたのは 0.10.12。しかも 2026 年中頃の continuwuity で
-#     「暗号化ブリッジが起動できない」「指定した localpart でユーザーが作られず
-#     mautrix-telegram が落ちる」が修正されている。まさに踏みに行く場所だった。
-#   - continuwuity への載せ替えも素直ではない。RocksDB のスキーマが分岐後で、
-#     移行は一方通行。
-#   - 決め手は登録方式。Conduit は appservice の登録を RocksDB に持ち admin room 経由
-#     でしか変えられない。だからこのファイルは以前「ブリッジは宣言できない」と書いて
-#     コンテナのまま置いていた。Synapse は登録を設定ファイルで読むので、そこが解ける。
-#     実際 nixpkgs の services.mautrix-* モジュールが使えるようになる。
+#   - Upstream Conduit has stalled. The lineage is Conduit -> conduwuit (archived) ->
+#     continuwuity, and what we ran was 0.10.12. On top of that, mid-2026 continuwuity fixed
+#     "encrypted bridges can't start" and "users aren't created with the requested localpart,
+#     so mautrix-telegram crashes". That is exactly where we were headed.
+#   - Moving to continuwuity isn't straightforward either. The RocksDB schema has diverged
+#     since the fork, and migration is one-way.
+#   - The deciding factor was registration. Conduit keeps appservice registrations in RocksDB
+#     and they can only be changed through the admin room. That is why this file used to say
+#     "bridges can't be declared" and kept them as containers. Synapse reads registrations
+#     from config files, which removes that obstacle. In practice the nixpkgs
+#     services.mautrix-* modules become usable.
 #
-# 移行のコストはゼロだった。まだ誰も使っていない (RocksDB は 4MB、部屋も履歴も無い)。
-# 使い始めてからでは同じ判断はできないので、ここで替える。
+# The migration cost was zero. Nobody uses it yet (RocksDB is 4MB, no rooms, no history).
+# The same call can't be made once it's in use, so switch now.
 #
-# server_name は gapul.net のまま。well-known (gapul.net/.well-known/matrix/server ->
-# matrix.gapul.net:443) と Cloudflare の CNAME が既にそれで通っているので触らない。
+# server_name stays gapul.net. well-known (gapul.net/.well-known/matrix/server ->
+# matrix.gapul.net:443) and the Cloudflare CNAME already work with it, so leave them alone.
 {
   config,
   lib,
@@ -33,18 +34,18 @@
       server_name = "gapul.net";
       public_baseurl = "https://matrix.gapul.net/";
 
-      # federation はここだけを通る。cloudflared が
-      # matrix.gapul.net -> 127.0.0.1:8008 で渡してくる。
+      # Federation goes through here only. cloudflared hands it over as
+      # matrix.gapul.net -> 127.0.0.1:8008.
       #
-      # 0.0.0.0 で待つのは、ブリッジが podman のネットワーク側から叩きに来るため。
-      # Conduit のときと露出範囲は同じ (下でファイアウォールに 8008 を開ける)。
+      # Listens on 0.0.0.0 because the bridges call in from the podman network side.
+      # Same exposure as with Conduit (8008 is opened in the firewall below).
       listeners = [
         {
           port = 8008;
           bind_addresses = [ "0.0.0.0" ];
           type = "http";
           tls = false;
-          # cloudflared が前段にいるので、送信元は X-Forwarded-For を見る。
+          # cloudflared sits in front, so take the source from X-Forwarded-For.
           x_forwarded = true;
           resources = [
             {
@@ -59,13 +60,13 @@
       ];
 
       enable_registration = false;
-      # 招待なしで誰でも作れる状態にはしない。ユーザーは register_new_matrix_user で作る。
+      # Don't let anyone register without an invite. Users are created with register_new_matrix_user.
       registration_shared_secret_path = "/var/lib/secrets/synapse-registration-secret";
 
       database = {
         name = "psycopg2";
         args = {
-          # UNIX ソケット越しに繋ぐので host は書かない。peer 認証で通る。
+          # Connects over the UNIX socket, so no host. Peer auth lets it through.
           database = "matrix-synapse";
           user = "matrix-synapse";
           cp_min = 5;
@@ -73,8 +74,8 @@
         };
       };
 
-      # 自分ひとりの箱なので、部屋の作成やメディアの取得は緩めでよい。
-      # ブリッジは大量のイベントを短時間に流すので、既定のレート制限だと詰まる。
+      # A single-user box, so room creation and media fetching can be lenient.
+      # Bridges push lots of events in a short time and clog on the default rate limits.
       rc_message = {
         per_second = 100;
         burst_count = 500;
@@ -83,7 +84,7 @@
         per_second = 100;
         burst_count = 500;
       };
-      # ブリッジの bot がユーザーを次々作るので、ここも緩めないと初回同期で止まる。
+      # Bridge bots create users one after another, so without loosening this too the first sync stalls.
       rc_registration = {
         per_second = 100;
         burst_count = 500;
@@ -94,10 +95,10 @@
 
       max_upload_size = "50M";
 
-      # ブリッジが作る部屋への招待を自動で受ける。ブリッジ 10 本分のポータルを手で
-      # 受けて回るのは現実的でない (iMessage の履歴同期で一度に 36 部屋できた、2026-09-29)。
-      # 送り主を自分のサーバーのユーザー (= ブリッジのゴースト) に限り、federation 越しの
-      # 招待は今まで通り手で受ける。DM に限定しないのはグループの部屋も対象にするため。
+      # Auto-accept invites to rooms the bridges create. Accepting portals for 10 bridges by hand
+      # isn't realistic (the iMessage history sync created 36 rooms at once, 2026-09-29).
+      # Senders are limited to users on our own server (= bridge ghosts); invites over federation
+      # are still accepted by hand. Not limited to DMs so that group rooms are covered too.
       auto_accept_invites = {
         enabled = true;
         only_for_direct_messages = false;
@@ -106,10 +107,10 @@
     };
   };
 
-  # 登録用の共有秘密。enable_registration = false なので外からは作れないが、
-  # register_new_matrix_user で自分のアカウントを作るのにこれが要る。ファイルが
-  # 無いと Synapse は起動しないので、無ければ作る。中身は一度作ったら変えない
-  # (変えると既に配った招待が通らなくなる)。
+  # Shared secret for registration. With enable_registration = false nobody can sign up from
+  # outside, but register_new_matrix_user needs this to create our own accounts. Synapse won't
+  # start without the file, so create it if missing. Never change the contents once created
+  # (changing it breaks invites already handed out).
   systemd.services.matrix-synapse-registration-secret = {
     description = "Synapse の登録共有秘密を用意する";
     wantedBy = [ "matrix-synapse.service" ];
@@ -131,13 +132,13 @@
     '';
   };
 
-  # Synapse は照合順序に厳しい。C 以外で作られた DB を見つけると起動を拒否する
-  # (allow_unsafe_locale で黙らせることはできるが、後で検索がおかしくなる)。
+  # Synapse is strict about collation. It refuses to start if it finds a DB created with
+  # anything other than C (allow_unsafe_locale silences it, but search breaks later).
   #
-  # このクラスタは atuin が services.atuin の database.createLocally = true で
-  # 生やしたもので、既定の照合順序は ja_JP.UTF-8。だから ensureDatabases では
-  # 作れない。initialScript もクラスタの初回作成時にしか走らないので使えない。
-  # 自分で作る。冪等なので毎回走ってよい。
+  # This cluster was spun up by atuin via services.atuin's database.createLocally = true,
+  # and its default collation is ja_JP.UTF-8, so ensureDatabases can't create it.
+  # initialScript only runs when the cluster is first created, so that's out too.
+  # Create it ourselves. It's idempotent, so running every time is fine.
   systemd.services.matrix-synapse-db-init = {
     description = "Synapse の DB を C ロケールで用意する";
     wantedBy = [ "matrix-synapse.service" ];
@@ -159,8 +160,8 @@
     '';
   };
 
-  # cloudflared と、この先ブリッジが podman 側から届く必要がある。閉じていると DROP
-  # なので接続拒否ではなくタイムアウトになり、ブリッジ側は「homeserver に繋がらない」
-  # としか言わない。Conduit が 6167 を開けていたのと露出範囲は同じ。
+  # cloudflared, and from here on the bridges on the podman side, need to reach it. When closed
+  # it's a DROP, so you get a timeout rather than connection refused, and the bridge only says
+  # "can't reach the homeserver". Same exposure as Conduit opening 6167.
   networking.firewall.allowedTCPPorts = [ 8008 ];
 }

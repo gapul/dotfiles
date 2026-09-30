@@ -28,9 +28,9 @@
     environment = {
       "ADMIN_USERNAME" = "admin";
       "ALLOWED_HOSTS" = "*";
-      # 0.9 の "control plane" は、リクエストの Host がこの BASE_URL から導かれる
-      # ホストと一致しないと API も admin も 403 にする。空のままだと外から叩いた
-      # ときだけ落ちるので、ここで明示する (2026-09-27)。
+      # 0.9's "control plane" returns 403 for both the API and admin unless the request's Host
+      # matches the host derived from this BASE_URL. Left empty, it breaks only when accessed
+      # from outside, so set it explicitly here (2026-09-27).
       "BASE_URL" = "https://archive.gapul.net";
       "CSRF_TRUSTED_ORIGINS" = "https://archive.gapul.net";
       "PGID" = "1000";
