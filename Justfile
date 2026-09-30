@@ -79,10 +79,9 @@ _rebuild-macos force="":
       echo "✓ already current (nothing to activate; use \`just rebuild force\` to activate anyway)"
       exit 0
     fi
-    # (No brew trust pass here: nix/hosts/darwin.nix sets HOMEBREW_NO_REQUIRE_TAP_TRUST=1 for the
-    #  whole activation, and a manual `brew trust` gets overwritten by the bundle anyway. The
-    #  _brew-trust-taps recipe is still needed by _upgrade-packages-macos, where `brew upgrade`
-    #  runs outside the activation and does enforce trust.)
+    # (No brew trust pass here: every tap in nix/hosts/darwin.nix is `trusted = true`, so the
+    #  activation's `brew bundle` records the trust itself. _upgrade-packages-macos still runs
+    #  _brew-trust-taps, because its `brew update` happens outside the activation.)
     # Tee the whole run to a fixed log so a failure can be inspected after the fact
     # without re-running — crucially the Homebrew bundle step, which runs during
     # nix-darwin activation and so is absent from `nix log <drv>`. When stdout is not
@@ -224,9 +223,9 @@ _upgrade-nix-runtime-macos:
 
 [private]
 _brew-trust-taps:
-    @-brew tap 2>/dev/null | grep -v '^homebrew/' | xargs -I% env -u XDG_CONFIG_HOME brew trust % >/dev/null
-    @-env -u XDG_CONFIG_HOME brew trust --cask gerlero/openfoam/openfoam@2606 >/dev/null
-    @-brew list --cask --full-name 2>/dev/null | grep '/' | xargs -I% env -u XDG_CONFIG_HOME brew trust --cask % >/dev/null
+    @-brew tap 2>/dev/null | grep -v '^homebrew/' | xargs -I% brew trust % >/dev/null
+    @-brew trust --cask gerlero/openfoam/openfoam@2606 >/dev/null
+    @-brew list --cask --full-name 2>/dev/null | grep '/' | xargs -I% brew trust --cask % >/dev/null
 
 [private]
 _upgrade-packages-macos:

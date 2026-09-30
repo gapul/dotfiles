@@ -190,10 +190,10 @@ LiveContainer can work around.
 - **Run the CI lint locally before pushing.** `cd nix && nix fmt -- <file>` and
   `nix run nixpkgs#statix -- check -c ../.statix.toml .` should both return 0. Hand-written nix
   tends to fail CI on formatting or an `inherit` suggestion — zrythm failed twice this way.
-- **Homebrew tap trust**, which became the default in Homebrew 6.0. For declarative rebuilds,
-  `homebrew.onActivation.extraEnv.HOMEBREW_NO_REQUIRE_TAP_TRUST = "1"` is already set in
-  darwin.nix. For manual installs, `HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 brew install ...`
-  gets past untrusted taps such as qmk's.
+- **Homebrew tap trust**, which became the default in Homebrew 6.0. Every tap in darwin.nix is
+  declared `trusted = true`, so the rebuild records the trust in `~/.config/homebrew/trust.json`
+  and manual installs from those taps work too. A new tap needs the same flag (or `brew trust
+  --tap <name>` for a one-off).
 - **Conflicting taps.** Two pull requests adding to the same place in `taps` conflict on merge.
   Resolve by keeping both lines: `git merge origin/main`, edit, commit.
 - **Heavy builds go to the mac mini.** Pass `CLAUDE_CODE_OAUTH_TOKEN` (from

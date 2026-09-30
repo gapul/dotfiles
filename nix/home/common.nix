@@ -175,6 +175,23 @@ in
       "${config.xdg.dataHome}/npm"
   '';
 
+  # Homebrew's user config (trust.json) lives in ~/.config/homebrew: /etc/homebrew/brew.env pins
+  # HOMEBREW_XDG_CONFIG_HOME (hosts/darwin-common.nix), so activation and interactive brew agree.
+  # It used to be ~/.homebrew behind a symlink; move whatever is left there once. Runs after
+  # linkGeneration so the old home-manager symlink is already gone. Existing files win.
+  home.activation.homebrewUserConfig = lib.mkIf pkgs.stdenv.isDarwin (
+    lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+      old="$HOME/.homebrew" new="${config.xdg.configHome}/homebrew"
+      if [ -d "$old" ] && [ ! -L "$old" ] && [ ! -L "$new" ]; then
+        run /bin/mkdir -p "$new"
+        for f in "$old"/* "$old"/.[!.]*; do
+          if [ -e "$f" ] && [ ! -e "$new/''${f##*/}" ]; then run /bin/mv "$f" "$new/"; fi
+        done
+        run /bin/rmdir "$old" 2>/dev/null || true
+      fi
+    ''
+  );
+
   # One-off CLI tools (not covered by programs.*, OS-independent)
 
   # SOPS definitions are split into home/secrets.nix (so macmini, which has no age key,
