@@ -698,8 +698,6 @@ in
       # ─── Dev IDEs / Editors / SDK ───
       "stablyai/orca/orca" # unified chat UI for Claude Code/Codex; custom tap avoids the unrelated disabled Plotly cask
       "ghostty"
-      "android-studio"
-      "flutter"
       "deskflow"
       "codexbar" # show usage/limits of various AI coding vendors in the menu bar (bundles codexbar CLI, auto-linked into /opt/homebrew/bin)
 
@@ -740,13 +738,6 @@ in
       "cavalry" # 2D motion graphics
 
       # ─── 3D / CAD ───
-      # Unity Hub is here not as "a GUI in regular use" but as the installer's CLI.
-      #   Unity Hub.app/Contents/MacOS/Unity\ Hub -- --headless install --version <version> --changeset <hash>
-      # installs an editor without opening the GUI. The official standalone installer is available without
-      # the Hub, but Personal license activation then takes the detour -createManualActivationFile → portal
-      # → -manualLicenseFile, so going through the Hub is faster for local installs. nixpkgs' unityhub is
-      # Linux-only, so it is declared as a cask.
-      "unity-hub"
       "blender"
       "kicad"
       "godot"
