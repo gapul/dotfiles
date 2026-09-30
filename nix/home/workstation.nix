@@ -129,15 +129,13 @@ in
   # Claude Code: CLAUDE_CONFIG_DIR mixes config with state (sessions/history/.claude.json hold
   # credentials), so only the hand-written parts are linked in. Out-of-store symlinks, so edits
   # made from the TUI (/config, skill authoring) land back in the repo.
-  # Vendored skills (cloudflare/*, wrangler, humanizer-ja, ...) stay unmanaged: they are
+  # Vendored skills (cloudflare/*, wrangler, ...) stay unmanaged: they are
   # re-installable from upstream. Workstation-only because the hooks are desktop-specific
   # (osascript notifications, herdr) — move this to modules/home/agents.nix to share it.
   xdg.configFile = {
     "claude/settings.json".source = claudeConfig "settings.json";
     "claude/hooks".source = claudeConfig "hooks";
-    "claude/output-styles".source = claudeConfig "output-styles";
     "claude/bin".source = claudeConfig "bin";
-    "claude/skills/english-vocab".source = claudeConfig "skills/english-vocab";
     "claude/skills/gapul-writing-voice".source = claudeConfig "skills/gapul-writing-voice";
     "claude/skills/step-by-step-tutor".source = claudeConfig "skills/step-by-step-tutor";
   };

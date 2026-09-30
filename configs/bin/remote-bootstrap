@@ -102,10 +102,10 @@ ln -sfn ~/.dotfiles/configs/cli/codex/config.toml ~/.codex/config.toml
 mkdir -p ~/.config/herdr
 ln -sfn ~/.dotfiles/configs/cli/herdr/config.toml ~/.config/herdr/config.toml
 #    Claude Code: 書き換わらないもの (CLAUDE.md / 自作 skill) は symlink で張る。
-#    hooks / output-styles / bin は母艦のデスクトップ前提なので持ち込まない。
+#    hooks / bin は母艦のデスクトップ前提なので持ち込まない。
 mkdir -p ~/.claude/skills
 ln -sfn ~/.dotfiles/configs/cli/claude/CLAUDE.md ~/.claude/CLAUDE.md
-for s in english-vocab gapul-writing-voice step-by-step-tutor; do
+for s in gapul-writing-voice step-by-step-tutor; do
   ln -sfn ~/.dotfiles/configs/cli/claude/skills/"$s" ~/.claude/skills/"$s"
 done
 #    settings.json だけは symlink にしない。permissions がホストごとに育つファイルで、

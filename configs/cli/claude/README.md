@@ -20,8 +20,8 @@ outside Git.
 | `settings.json` | `$CLAUDE_CONFIG_DIR/settings.json` |
 | `CLAUDE.md` | `$CLAUDE_CONFIG_DIR/CLAUDE.md` |
 | `../AGENTS.md` | `$CLAUDE_CONFIG_DIR/AGENTS.md` |
-| `hooks/`, `output-styles/`, `bin/` | The directories of the same name |
-| `skills/{english-vocab,gapul-writing-voice,step-by-step-tutor}` | Under `skills/` |
+| `hooks/`, `bin/` | The directories of the same name |
+| `skills/{gapul-writing-voice,step-by-step-tutor}` | Under `skills/` |
 
 Keeping the whole `settings.json` works because the Mac runs with
 `defaultMode: bypassPermissions`, so `permissions.allow` never grows. Anything the TUI writes
@@ -82,7 +82,7 @@ it on the understanding that whatever Claude is allowed to do there is everythin
 can do.
 
 `CLAUDE.md` and the hand-written skills are never rewritten, so they are symlinked on remote
-machines as normal. `hooks/`, `output-styles/` and `bin/` assume the Mac's desktop —
+machines as normal. `hooks/` and `bin/` assume the Mac's desktop —
 notifications through osascript, herdr, the Notion MCP — and are not carried across.
 
 Never point this script at the Mac's own `settings.json`. It writes through a temporary file and

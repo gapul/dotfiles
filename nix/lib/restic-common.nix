@@ -46,7 +46,6 @@ rec {
     "MacBook-Mini"
     "homeserver"
     "macmini"
-    "rpi4"
   ];
 
   # forget retention policy invocation (shared by both hosts' backupScript).
