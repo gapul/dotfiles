@@ -168,7 +168,7 @@ Recorder and so on) with things that line up with the Mac's `brew cask` set.
 | Clipboard history | Win+V, volatile | Ditto, persisted in SQLite |
 | Painting | Paint | Krita |
 | Screen recording | Game Bar | Captura, with OBS and ShareX |
-| 2FA | none | Ente Auth |
+| 2FA | none | Bitwarden (vault.gapul.net) |
 | Antivirus | Defender | Bitdefender Free; Defender switches itself to passive |
 | Outbound firewall | Defender Firewall | simplewall, the LuLu equivalent |
 | Persistence monitoring | none | Sysinternals Autoruns, standing in for BlockBlock and KnockKnock |
