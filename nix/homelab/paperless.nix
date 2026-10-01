@@ -59,6 +59,10 @@
     extraOptions = [
       "--network-alias=webserver"
       "--network=paperless_default"
+      # The 3.x image dropped its HEALTHCHECK, and backup.nix waits on `podman healthcheck run
+      # paperless` before dumping the database; without a check every nightly backup failed
+      # (2026-10-01). A 302 to the login page counts as up.
+      "--health-cmd=curl -fs -o /dev/null --max-time 5 http://localhost:8000"
     ];
   };
   systemd.services."podman-paperless" = {
