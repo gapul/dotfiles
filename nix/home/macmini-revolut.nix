@@ -9,10 +9,13 @@
 # app's internal API from inside the page. That needs a Mac with a GUI session, which is
 # this always-on one. Nobody watches its screen, so the window is harmless.
 #
-# Login is by hand (phone number + approval in the Revolut app): run `revolut_web.py login`
-# on the main Mac and rsync ~/.local/share/revolut/browser-profile here. When the session
-# expires the dump exits 2 and this agent says so on ntfy; how long a session lasts is still
-# being measured.
+# Login is by hand (phone number + approval in the Revolut app) and must happen on this
+# machine: Revolut binds the web session to the browser it was created in, so a profile
+# rsync'd from the main Mac lands on the sign-in page (measured 2026-10-02; the other member
+# sites in macmini-sites.nix do survive a copy). Run `revolut_web.py login` here over ssh and
+# drive it through Screen Sharing. The session asks for the passcode about an hour later and
+# every run after that; personal-tools types it from the sops secret (hosts/macmini.nix).
+# When even that fails the dump exits 2 and this agent says so on ntfy.
 let
   home = config.home.homeDirectory;
   tools = "${home}/Developer/github.com/gapul/personal-tools";
@@ -44,7 +47,7 @@ let
     out=$(mktemp -t revolut.XXXXXX)
     trap 'rm -f "$out"' EXIT
     if ! err=$(/usr/bin/python3 "${tools}/revolut/revolut_web.py" dump --out "$out" 2>&1 >/dev/null); then
-      fail "$err (母艦で revolut_web.py login → rsync -a ~/.local/share/revolut/browser-profile/ macmini:.local/share/revolut/browser-profile/)"
+      fail "$err (macmini 上で revolut_web.py login を起動し、画面共有でログインする。プロファイルの rsync は Revolut には効かない)"
     fi
     ssh="/usr/bin/ssh -i ${home}/.ssh/id_ed25519 -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=20"
     if ! err=$(/usr/bin/scp -q -i ${home}/.ssh/id_ed25519 -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=20 \
