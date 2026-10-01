@@ -200,7 +200,11 @@ let
     tools.upstream = "${macmini}:8901";
     # RecallVault's iPhone client authenticates with its own bearer token, so this
     # machine endpoint must not be placed behind the browser-oriented Authelia flow.
-    recall.upstream = "${macmini}:8766";
+    # The receiver answers only /health, /v1/status and /v1/watch-chunks; / is always 404.
+    recall = {
+      upstream = "${macmini}:8766";
+      probePath = "/health";
+    };
     # Intake for iPhone Health data (homelab/health.nix). A machine endpoint the PulsHealth app
     # calls with a bearer token, so no Authelia in front. / requires auth, so healthy means 401.
     health = {
@@ -511,7 +515,9 @@ in
         lib.mapAttrsToList (name: site: {
           inherit name;
           group = "homelab";
-          url = if lib.hasPrefix "https://" site.upstream then site.upstream else "http://${site.upstream}";
+          url =
+            (if lib.hasPrefix "https://" site.upstream then site.upstream else "http://${site.upstream}")
+            + (site.probePath or "");
           interval = site.interval or "2m";
           # Not `== 200`: several of these answer 3xx when perfectly healthy.
           # A service whose healthy answer is 4xx sets `expect` in the table above.
