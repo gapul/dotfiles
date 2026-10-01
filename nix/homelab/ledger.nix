@@ -73,9 +73,18 @@ let
       fail "Zaim の同期に失敗: $out (Cookie 切れなら母艦で zaim_web.py login → scp ~/.cache/zaim/cookie homeserver:/var/lib/secrets/zaim.cookie)"
     out=$(${py} ${tools}/zaim/zaim_beancount.py --db ${book}/zaim.db --rules ${book}/rules.toml \
       --out ${book}/zaim.beancount 2>&1) || fail "帳簿の生成に失敗: $out"
+    # Account balances (balance assertions against the linked banks) and point balances with
+    # expiry lots, read from Zaim's account pages. Prints lots expiring within 30 days; those
+    # go to ntfy as a notice, not a failure.
+    expiring=$(${py} ${tools}/zaim/zaim_balances.py --rules ${book}/rules.toml \
+      --balances ${book}/zaim-balances.beancount --points ${book}/zaim-points.beancount --expiring 30 2>/dev/null) ||
+      fail "残高とポイントの取得に失敗 (Zaim の口座ページ)"
     out=$(${beanCheck} ${book}/main.beancount 2>&1) || fail "bean-check: $out"
     rm -f "$state"
     commit "zaim sync"
+    if [ -n "$expiring" ] && [ "$(date +%H)" = "07" ]; then
+      ${notify} "ポイントの失効が近い" "$expiring"
+    fi
   '';
 
   cryptoSync = pkgs.writeShellScript "crypto-sync" ''
