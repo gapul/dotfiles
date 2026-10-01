@@ -45,6 +45,12 @@
       port = 29317;
       # Animated stickers are converted to gif.
       extraPath = pkgs: [ pkgs.lottieconverter ];
+      # Upstream creates portals for the 15 most recently active chats only (and checks
+      # 100), which is exactly what the first login on 2026-10-01 produced. Take them all.
+      network.sync = {
+        update_limit = -1;
+        create_limit = -1;
+      };
       secretsFile = "/run/secrets/mautrix-telegram.env";
       secretsJq = ''
 
