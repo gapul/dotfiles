@@ -112,7 +112,6 @@ in
     agentPkgs.opencode
     # ─── moved off Homebrew (2026-09-15): same app, same data dirs, nothing to re-set up ───
     # Upstream's signed release carried over as-is, so TCC grants and entitlements survive:
-    pkgs.utm # VMs stay in ~/Library/Containers/com.utmapp.UTM (same bundle id)
     pkgs.upscayl
     # Not obsidian / monitorcontrol: nixpkgs' repack breaks the bundle seal and drops the Team ID
     # (`codesign -v`: "code has no resources but signature indicates they must be present"), so
@@ -161,7 +160,6 @@ in
     pkgs.brewCasks.keyguard
     pkgs.brewCasks.knockknock # persistence scanner (Objective-See). Needs Full Disk Access re-granted on first run
     pkgs.brewCasks.localsend
-    pkgs.brewCasks.orcaslicer
     # Scribus carries two broken symlinks to PrivateHeaders in its bundled Python.framework, and
     # nixpkgs' noBrokenSymlinks fixup fails the build over them. The contents are upstream's
     # distribution as is and only unused header references are broken, so the check is disabled instead.
@@ -231,17 +229,13 @@ in
     # (GUI or the ardour9-lua/export CLIs) until the load commands are repaired. See pkgs/.
     (unstablePkgs.callPackage ../pkgs/ardour-darwin-vamp-fix.nix { })
     unstablePkgs.aseprite # pixel-art editor (official $20. source-available/self-built is free full)
-    # VRoid Studio (VRM character modelling): no nixpkgs package and no cask, so the official
-    # macOS dmg is repackaged. See pkgs/vroid-studio.nix - the download URL carries a token
-    # that has to be re-read from vroid.com on every version bump.
-    (pkgs.callPackage ../pkgs/vroid-studio.nix { })
     # AivisSpeech's engine and models live on the always-on Mac mini.  This
     # workstation calls its VOICEVOX-compatible API over Tailscale instead of
     # carrying a second engine/model cache locally.
-    # Orca fork that can still start a print on a Bambu printer - the stock cask
-    # above only exports, since Bambu's Authorization Control ignores the print
-    # command from anything but Bambu Connect. Kept beside the cask, with its own
-    # bundle name and datadir. See pkgs/orcaslicer-bambulab.nix.
+    # OrcaSlicer: the fork that can still start a print on a Bambu printer. Stock Orca
+    # only exports, since Bambu's Authorization Control ignores the print command from
+    # anything but Bambu Connect, so the stock cask was dropped (2026-10-01) and this is
+    # the only Orca. See pkgs/orcaslicer-bambulab.nix.
     (pkgs.callPackage ../pkgs/orcaslicer-bambulab.nix { })
     # Headitude: AirPods head orientation -> OSC. A head-rotation source that keeps
     # working while the face is out of the camera frame. No nixpkgs package and no
@@ -744,8 +738,9 @@ in
       "openfoam"
 
       # ─── 3D Printing ───
-      # Orca alone covers the Bambu A1 mini: it installs Bambu's network plugin
-      # itself, so send / camera / temps / jog / firmware update all live here.
+      # OrcaSlicer-bambulab (environment.systemPackages above) covers the Bambu A1 mini,
+      # including starting prints, with its own network implementation in place of
+      # Bambu's plugin (see pkgs/orcaslicer-bambulab.nix).
       # Reinstall bambu-studio temporarily if a cloud-side problem needs an
       # "authorized software" reference point.
 

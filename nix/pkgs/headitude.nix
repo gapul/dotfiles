@@ -48,7 +48,7 @@ stdenvNoCC.mkDerivation {
     runHook postInstall
   '';
 
-  # Unlike the VRoid dmg, the signature survives unpacking here: this bundle
+  # Unlike the OrcaSlicer-bambulab dmg, the signature survives unpacking here: this bundle
   # carries a modern _CodeSignature and nothing hangs off extended attributes,
   # so `spctl -a -t exec` still reports "Notarized Developer ID" after unzip.
   # That matters because the app asks for the Motion & Fitness TCC grant, and

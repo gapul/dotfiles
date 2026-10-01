@@ -2,7 +2,7 @@
 # fork on Style-Bert-VITS2 voices).
 #
 # Not in nixpkgs and there is no Homebrew cask, so the official dmg is
-# repackaged like vroid-studio. The app bundles its own copy of the engine,
+# repackaged like pkgs/orcaslicer-bambulab.nix. The app bundles its own copy of the engine,
 # but the declared headless engine (pkgs/aivisspeech-engine.nix, newer) stays
 # the one scripts use; both share the model directory under
 # ~/.local/share/AivisSpeech-Engine, so voices installed once work in both.
@@ -26,7 +26,7 @@ stdenvNoCC.mkDerivation {
     hash = "sha256-+DIP/FRNzv4qPPb32la4HINCoIt6rV5r7lWYQXtuw5c=";
   };
 
-  # Same reason as vroid-studio: the dmg is APFS, which undmg cannot read and
+  # Same reason as orcaslicer-bambulab: the dmg is APFS, which undmg cannot read and
   # hdiutil cannot attach inside the sandbox; 7zz handles it.
   nativeBuildInputs = [ _7zz ];
 

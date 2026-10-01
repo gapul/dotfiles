@@ -5,7 +5,7 @@
 # transfer over FTPS still works, but the MQTT `project_file` command is
 # acknowledged and then ignored - verified here against an A1 mini, where the
 # echo comes back and gcode_state never leaves FINISH. Upstream Orca declined to
-# route through Bambu Connect, so pkgs.brewCasks.orcaslicer can only slice and
+# route through Bambu Connect, so stock OrcaSlicer can only slice and
 # export. This fork replaces the proprietary bambu_networking plugin with its own
 # implementation and sends directly.
 #
@@ -40,7 +40,7 @@ stdenvNoCC.mkDerivation {
     hash = "sha256-cZR5WekYTwZG3oPbkegTem76YKJphrrrTnw+7pveNhc=";
   };
 
-  # Same reason as pkgs/vroid-studio.nix: the dmg is APFS, which undmg cannot
+  # The dmg is APFS, which undmg cannot
   # read, and hdiutil cannot attach an image inside the build sandbox.
   nativeBuildInputs = [ _7zz ];
 
@@ -62,7 +62,7 @@ stdenvNoCC.mkDerivation {
     # directory only as --datadir. So the real binary moves aside and a shell
     # script takes its place at CFBundleExecutable. Nothing is lost by doing so -
     # 7zz cannot restore the signature's extended attributes, so the bundle is
-    # already unsigned by the time it is installed (same as vroid-studio, and
+    # already unsigned by the time it is installed (and
     # store paths never carry com.apple.quarantine, so Gatekeeper is not asked).
     real="$out/Applications/${target}/Contents/MacOS/OrcaSlicer"
     mv "$real" "$real-bin"
