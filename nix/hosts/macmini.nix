@@ -580,6 +580,50 @@ in
     };
   };
 
+  # Read-only maps MCP for every Claude on the tailnet (POST http://macmini:2324/mcp): geocoding
+  # through photon-proxy above, Overture places, Apple Maps search/routes, Transitous transit,
+  # anonymous Google through SearXNG, weather. Same python as photon-proxy, so the firewall entry
+  # below already covers it. The Apple key is imperative state in ~/.config/apple-maps (backed up
+  # in Bitwarden); without it only the apple_* tools fail.
+  launchd.daemons.maps-mcp = {
+    command = "${pkgs.python3.interpreter} ${../../configs/macmini/maps-mcp/server.py}";
+    serviceConfig = {
+      UserName = user.username;
+      RunAtLoad = true;
+      KeepAlive = true;
+      ProcessType = "Background";
+      StandardOutPath = "/Users/${user.username}/.local/share/maps-mcp.log";
+      StandardErrorPath = "/Users/${user.username}/.local/share/maps-mcp.log";
+    };
+  };
+
+  # Japan slice of the newest Overture Maps release (places + addresses) for maps-mcp. Overture
+  # ships about monthly; the script is a no-op when the newest release is already built.
+  launchd.daemons.overture-japan = {
+    command = "${../../configs/macmini/overture/build.sh}";
+    path = [
+      pkgs.duckdb
+      pkgs.sqlite
+      pkgs.coreutils
+      pkgs.findutils
+    ];
+    serviceConfig = {
+      UserName = user.username;
+      StartCalendarInterval = [
+        {
+          Day = 2;
+          Hour = 3;
+          Minute = 30;
+        }
+      ];
+      ProcessType = "Background";
+      LowPriorityIO = true;
+      Nice = 10;
+      StandardOutPath = "/Users/${user.username}/.local/share/overture/build.log";
+      StandardErrorPath = "/Users/${user.username}/.local/share/overture/build.log";
+    };
+  };
+
   # Daily world backup. Having moved off Realms, "can restore if it breaks" is required.
   # Targets are built from the table above, so adding a server adds its backup automatically.
   # Runs before restic (5:00) so it reaches Google Drive the same night.
@@ -708,7 +752,8 @@ in
     # Geyser は java そのものが UDP 19132 を持つ (lazymc を介さない)。宣言した JDK の java を許可する。
     /usr/libexec/ApplicationFirewall/socketfilterfw --add ${pkgs.temurin-bin-25}/bin/java >/dev/null 2>&1 || true
     /usr/libexec/ApplicationFirewall/socketfilterfw --unblockapp ${pkgs.temurin-bin-25}/bin/java >/dev/null 2>&1 || true
-    # photon-proxy (TCP 2323, homeserver の Dawarich が叩く)。python も store path が変わるたびに登録し直す。
+    # photon-proxy (TCP 2323, called by Dawarich on the homeserver) and maps-mcp (TCP 2324) run the
+    # same python, so this one pair covers both. Re-registered whenever python's store path changes.
     /usr/libexec/ApplicationFirewall/socketfilterfw --add ${pkgs.python3.interpreter} >/dev/null 2>&1 || true
     /usr/libexec/ApplicationFirewall/socketfilterfw --unblockapp ${pkgs.python3.interpreter} >/dev/null 2>&1 || true
     # AivisSpeech is served to workstation clients over Tailscale.  Like lazymc,
