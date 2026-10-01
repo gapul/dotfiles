@@ -1,5 +1,5 @@
 # Signet: a self-hosted NIP-46 remote signer for the gapul@gapul.net Nostr identity
-# (social.nix, npub16t57vts9…q08y5). Upstream publishes no container image — the
+# (social.nix, npub1gapulzvd…p3w6c). Upstream publishes no container image — the
 # only documented path is a local docker compose build — so this builds from a
 # pinned commit instead of pinning a digest, which is what free-games-claimer.nix
 # does for the same reason (a stack that ends up holding a real credential).
