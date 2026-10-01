@@ -40,6 +40,12 @@
 # the runner keeps its own credentials under StateDirectory. Stopping the listener does not
 # remove that state, so the autoscaler below can wake the same registration without another
 # token.
+#
+# The autoscaler's read token is a separate, long-lived fine-grained PAT (gapul/dotfiles only,
+# Actions: read), placed the same way:
+#
+#   pbpaste | ssh homeserver 'sudo install -m 0400 /dev/stdin /var/lib/secrets/github-actions-read-token'
+
 { lib, pkgs, ... }:
 let
   runnerUnit = "github-runner-dotfiles-pr.service";
@@ -58,17 +64,38 @@ let
       api=https://api.github.com/repos/gapul/dotfiles/actions
       idle_file=/run/github-runner-autoscale/idle-since
 
-      fetch_json() {
+      # The anonymous allowance (60/hour) is per public IP, and every device at home shares this
+      # one: on 2026-09-30 other traffic used it up and PR jobs sat queued with nobody to wake
+      # the runner. A read-only token (fine-grained PAT: gapul/dotfiles, Actions read) gets its
+      # own 5000/hour. It is optional so a missing file degrades to the old anonymous polling.
+      token_file=/var/lib/secrets/github-actions-read-token
+
+      auth=()
+      if [ -r "$token_file" ]; then
+        # Read by curl from a root-only file in the RuntimeDirectory, so the token never appears
+        # in argv.
+        auth_header=/run/github-runner-autoscale/auth-header
+        (umask 077 && printf 'Authorization: Bearer %s\n' "$(cat "$token_file")" >"$auth_header")
+        auth=(-H "@$auth_header")
+      fi
+
+      get_json() {
         curl -fsS --retry 2 --retry-all-errors --max-time 20 \
           -H 'Accept: application/vnd.github+json' \
           -H 'X-GitHub-Api-Version: 2022-11-28' \
           -H 'User-Agent: gapul-homeserver-runner-autoscale' \
-          "$1"
+          "$@"
       }
 
-      # The repository is public, so this costs no persistent credential. One
-      # request every two minutes leaves half of GitHub's anonymous 60/hour
-      # allowance unused; job-list requests happen only while a PR run is live.
+      # An expired or revoked token must not leave PRs unattended: fall back to anonymous.
+      fetch_json() {
+        if [ "''${#auth[@]}" -gt 0 ] && get_json "''${auth[@]}" "$1"; then
+          return 0
+        fi
+        get_json "$1"
+      }
+
+      # One request every two minutes; job-list requests happen only while a PR run is live.
       if ! runs="$(fetch_json "$api/runs?event=pull_request&per_page=10")" \
         || ! jq -e '.workflow_runs | arrays' <<<"$runs" >/dev/null; then
         echo "GitHub Actions API unavailable; leaving runner state unchanged" >&2
