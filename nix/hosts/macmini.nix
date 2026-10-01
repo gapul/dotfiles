@@ -196,7 +196,20 @@ in
           // {
             sopsFile = ../../secrets/matrix-imessage.yaml;
           };
-      };
+      }
+      # Revolut's web session asks for the 6-digit passcode again about an hour after login, so the
+      # daily fetch (home/macmini-revolut.nix) cannot run unattended without it. personal-tools/revolut
+      # types it on the passcode page, once per run; a wrong code locks the account, so it never retries.
+      # Declared only once the key exists in common.yaml (sops-nix fails activation on a missing key),
+      # so the rest of this file can ship before the passcode is put in.
+      //
+        lib.optionalAttrs
+          (
+            builtins.match ".*\nrevolut:\n[ ]+passcode:.*" (builtins.readFile ../../secrets/common.yaml) != null
+          )
+          {
+            "revolut/passcode" = forUser "/Users/${user.username}/.config/revolut/passcode";
+          };
   };
   imports = [
     ./darwin-common.nix
