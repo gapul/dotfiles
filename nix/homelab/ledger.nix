@@ -17,6 +17,9 @@
 # on the SCA-free activity API and balances). All are passed via LoadCredential and kept where
 # the ledger user cannot read them.
 #
+# Revolut is the exception to "everything runs here": its web app is behind Cloudflare's bot
+# check, so a headed browser on macmini fetches it and pushes the JSON into incoming/.
+#
 # Failure notifications go through ntfy-failure@ like other jobs. But an expired cookie keeps
 # failing every hour until fixed, so consecutive failures for the same reason exit 0 from the
 # second one on, keeping it to one notification (same as in the macmini days).
@@ -28,6 +31,7 @@ let
   home = "/var/lib/ledger";
   book = "${home}/book";
   tools = "${home}/personal-tools";
+  incoming = "${home}/incoming"; # files pushed from other machines (Revolut dump from macmini)
   py = "${pkgs.python3}/bin/python3";
   beanCheck = "${pkgs.beancount}/bin/bean-check";
 
@@ -96,6 +100,21 @@ let
     commit "wise sync"
   '';
 
+  # Revolut has no personal API and app.revolut.com sits behind Cloudflare's bot check, so the
+  # fetch happens on macmini (home/macmini-revolut.nix: a headed Helium with a logged-in
+  # profile, driven over CDP), which scp's the JSON here. This side only renders it; the path
+  # unit below runs it whenever the file lands.
+  revolutSync = pkgs.writeShellScript "revolut-sync" ''
+    ${prelude "revolut-sync"}
+    [ -s ${incoming}/revolut.json ] || exit 0
+    out=$(${py} ${tools}/revolut/revolut_beancount.py --dump ${incoming}/revolut.json \
+      --rules ${book}/rules.toml --out ${book}/revolut.beancount 2>&1) ||
+      fail "Revolut の帳簿生成に失敗: $out"
+    out=$(${beanCheck} ${book}/main.beancount 2>&1) || fail "bean-check: $out"
+    rm -f "$state"
+    commit "revolut sync"
+  '';
+
   # Send one line to ntfy (same topic and token as ntfy-failure@). Not for failures, but for
   # notices that need a human to act.
   notify = pkgs.writeShellScript "ledger-notify" ''
@@ -125,6 +144,11 @@ let
     PY
     )
     [ -z "$stale" ] || ${notify} "Zaim の連携が止まっている口座" "$stale"
+    # The Revolut dump comes from macmini. Its own failures notify from there, but if macmini
+    # is down or the agent is gone, nothing arrives and nothing says so.
+    if [ -z "$(find ${incoming} -maxdepth 1 -name revolut.json -mtime -3 2>/dev/null)" ]; then
+      ${notify} "Revolut の取り込みが 3 日以上届いていない" "macmini の revolut-dump (launchd) か、Revolut のセッション (母艦で revolut_web.py login → プロファイルを rsync) を見る"
+    fi
   '';
 
   common = {
@@ -145,6 +169,8 @@ in
   systemd.tmpfiles.rules = [
     "d ${home} 0750 ledger ledger -"
     "Z ${home} - ledger ledger -"
+    # macmini scp's as root; ownership of what lands there is fixed by the service itself.
+    "d ${incoming} 0750 ledger ledger -"
   ];
 
   systemd.services.zaim-sync = {
@@ -206,6 +232,21 @@ in
     };
   };
 
+  systemd.services.revolut-sync = {
+    description = "Revolut の dump (macmini から) → Beancount";
+    serviceConfig = common // {
+      Type = "oneshot";
+      ExecStart = revolutSync;
+    };
+    onFailure = [ "ntfy-failure@%n.service" ];
+  };
+  systemd.paths.revolut-sync = {
+    description = "Revolut の dump が届いたら帳簿にする";
+    wantedBy = [ "multi-user.target" ];
+    # The sender writes to a temp name and mv's into place, so one trigger per delivery.
+    pathConfig.PathChanged = "${incoming}/revolut.json";
+  };
+
   systemd.services.zaim-stale-check = {
     description = "Zaim の口座連携が止まっていないか (毎日)";
     serviceConfig = common // {
@@ -224,26 +265,8 @@ in
     };
   };
 
-  # Minna Bank has neither CSV nor account linking, so the transaction statement PDF from the
-  # app is downloaded once a year and read with personal-tools/minna (the previous year, in
-  # January). It is easy to forget, so send a reminder.
-  systemd.services.minna-reminder = {
-    description = "みんなの銀行の PDF を落とす年次の知らせ";
-    serviceConfig = {
-      Type = "oneshot";
-      EnvironmentFile = "/var/lib/secrets/gatus.env";
-      ExecStart = "${notify} 'みんなの銀行の取引明細' 'アプリの マイページ > 取引明細・残高証明書発行 > 預金の取引明細 で前年分の PDF を落とし、personal-tools/minna/minna_beancount.py で minna.beancount を作り直す'";
-    };
-    onFailure = [ "ntfy-failure@%n.service" ];
-  };
-  systemd.timers.minna-reminder = {
-    description = "みんなの銀行の年次取り込みを 1 月に";
-    wantedBy = [ "timers.target" ];
-    timerConfig = {
-      OnCalendar = "*-01-05 10:00:00";
-      Persistent = true;
-    };
-  };
+  # (The yearly Minna Bank PDF reminder was here. The account is no longer used as of
+  # 2026-10; what it had is in minna.beancount already.)
 
   # Fava picks up ledger file changes by itself, so no restart is needed after a sync.
   systemd.services.fava = {
