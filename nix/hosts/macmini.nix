@@ -124,9 +124,13 @@ in
   #
   # Host-key decryption removes the tradeoff: /etc/ssh/ssh_host_ed25519_key already exists here,
   # never leaves the machine, and its age recipient is in .sops.yaml for secrets/common.yaml only.
-  # So the mini can open what it needs and nothing else, and no key had to be brought over.
+  # So activation can open what it needs without depending on any user-held key.
   # This runs as root during activation, which is why it works here and not in home-manager
   # (that key is 0600 root:wheel).
+  #
+  # Since 2026-10-02 the human age key is also hand-placed at ~/.config/sops/age/keys.txt
+  # (outside the declaration, by explicit choice) so sops can be used interactively on the mini.
+  # Declared secrets still decrypt through the host key above, not through that file.
   sops = {
     defaultSopsFile = ../../secrets/common.yaml;
     age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
