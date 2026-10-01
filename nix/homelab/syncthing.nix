@@ -37,6 +37,9 @@
         # Keep it reachable via relays even on mobile data. Inside the tailnet it connects directly.
         introducer = false;
       };
+      # Xiaomi Pad 5 running Syncthing-Fork (com.github.catfriend1.syncthingfork, managed
+      # by Obtainium, see configs/android/obtainium.json). ID from the app's "Show device ID".
+      devices."xiaomi-pad5".id = "M6ORNMD-BGMQFH5-7EXMWNZ-2MTSGYD-62HWC6H-UCCB3R3-QUSGIV5-T7PDVAH";
       # Where personal records are collected. Each device gets its own <hostname>/ and only
       # writes to its own directory. No file is ever written by more than one device, so
       # conflicts can't happen structurally (see home/personal-history.nix).
@@ -74,6 +77,21 @@
         # "open(.gitignore): Permission denied". Not carrying permissions makes them 0644 via
         # syncthing's own umask. The sending side has the same setting.
         ignorePerms = true;
+      };
+      # The tablet's whole internal storage (/storage/emulated/0), so its files can be read and
+      # edited from here. Android/, trash and device logs are excluded by /sdcard/.stignore (configs/android/stignore) on
+      # the tablet. Deletions on the tablet propagate, so removed or overwritten files are kept
+      # in .stversions for 30 days. Not in the restic set (backup.nix): this is the second copy
+      # of the tablet, not the only one.
+      folders."android-pad5" = {
+        label = "Xiaomi Pad 5";
+        path = "/srv/syncthing/android-pad5";
+        devices = [ "xiaomi-pad5" ];
+        type = "sendreceive";
+        versioning = {
+          type = "trashcan";
+          params.cleanoutDays = "30";
+        };
       };
       folders."synchub" = {
         label = "SyncHub";

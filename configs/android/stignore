@@ -1,0 +1,13 @@
+// Xiaomi Pad 5 internal storage -> homeserver /srv/syncthing/android-pad5
+// App-private data and OBBs: not readable as files anyway, and huge.
+/Android
+// Trash, caches and device logs.
+/.recycle
+/.mixplorer
+/ramdump
+/MIUI/BugReportCache
+/MIUI/debug_log
+(?d).thumbnails
+(?d).trashed-*
+(?d).pending-*
+(?d).DS_Store
