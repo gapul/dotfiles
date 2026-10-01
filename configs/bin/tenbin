@@ -2,7 +2,7 @@
 """tenbin - drive GMO Tenbin AI for UTokyo's autonomous chat from the shell.
 
 Auth is the `sessionId` cookie of your logged-in tenbin session, read straight
-from the Zen (Firefox) cookie store. The orchestration ("自律実行型チャット")
+from the Firefox Developer Edition cookie store. The orchestration ("自律実行型チャット")
 endpoint is not Turnstile-gated, so a valid session cookie is all it takes.
 
 Usage:
@@ -15,7 +15,7 @@ Usage:
 Cookie source (first that works):
   $TENBIN_COOKIE            full cookie header, e.g. "sessionId=..."
   $TENBIN_COOKIE_FILE       file containing that line
-  Zen cookies.sqlite        auto-read (default)
+  Firefox cookies.sqlite    auto-read (default)
 
 ponytail: poll loop, no WebSocket. Streaming would need graphql-ws; polling the
 finalAnswer is enough for a request/response CLI. Add WS if you want live tokens.
@@ -24,7 +24,7 @@ import sys, os, json, time, glob, shutil, sqlite3, tempfile, urllib.request, url
 
 GQL = "https://biz-graphql.tenbin.ai/graphql"
 ORIGIN = "https://utokyo.tenbin.ai"
-ZEN_GLOB = os.path.expanduser("~/Library/Application Support/zen/Profiles/*/cookies.sqlite")
+FIREFOX_GLOB = os.path.expanduser("~/Library/Application Support/Firefox/Profiles/*/cookies.sqlite")
 
 
 def die(msg, code=1):
@@ -32,10 +32,10 @@ def die(msg, code=1):
     sys.exit(code)
 
 
-def cookie_from_zen():
-    # Zen is usually running, so the fresh sessionId lives in the -wal file and
+def cookie_from_firefox():
+    # Firefox is usually running, so the fresh sessionId lives in the -wal file and
     # the live db is locked. Copy db+wal+shm to a temp dir and read WAL-aware.
-    for db in glob.glob(ZEN_GLOB):
+    for db in glob.glob(FIREFOX_GLOB):
         tmp = tempfile.mkdtemp()
         try:
             for ext in ("", "-wal", "-shm"):
@@ -61,10 +61,10 @@ def get_cookie():
     f = os.environ.get("TENBIN_COOKIE_FILE")
     if f and os.path.exists(f):
         return open(f).read().strip()
-    c = cookie_from_zen()
+    c = cookie_from_firefox()
     if c:
         return c
-    die("no session cookie: log into utokyo.tenbin.ai in Zen, or set $TENBIN_COOKIE")
+    die("no session cookie: log into utokyo.tenbin.ai in Firefox, or set $TENBIN_COOKIE")
 
 
 def gql(cookie, op, query, variables):
@@ -81,7 +81,7 @@ def gql(cookie, op, query, variables):
     if r.get("errors"):
         msg = r["errors"][0].get("message", "")
         if "FORBIDDEN" in json.dumps(r) or "authenticate" in msg.lower() or "Unauthorized" in msg:
-            die("session rejected — cookie likely expired; re-open utokyo.tenbin.ai in Zen")
+            die("session rejected — cookie likely expired; re-open utokyo.tenbin.ai in Firefox")
         die("graphql: " + msg)
     return r["data"]
 
