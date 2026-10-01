@@ -29,8 +29,16 @@ let
   # (2025-07) and fixes none of this, so build it on 3.12 and add the missing
   # dependency. Checked 2026-09-29 on homeserver: --generate-registration and a
   # dry start both get as far as talking to Synapse.
-  pkg = (pkgs.mautrix-googlechat.override { python3 = pkgs.python312; }).overridePythonAttrs (o: {
-    propagatedBuildInputs = o.propagatedBuildInputs ++ [ pkgs.python312Packages.async-timeout ];
+  # Upstream pins protobuf>=4,<5 (requirements.txt). nixpkgs' default is 7.x, which dropped
+  # FieldDescriptor.label; maugclib/pblite.py reads it, so every connect died with
+  # "AttributeError: ... has no attribute 'label'" right after the cookie login (2026-10-01).
+  # Swap protobuf for protobuf4 in this interpreter's package set only.
+  python = pkgs.python312.override {
+    self = python;
+    packageOverrides = _: super: { protobuf = super.protobuf4; };
+  };
+  pkg = (pkgs.mautrix-googlechat.override { python3 = python; }).overridePythonAttrs (o: {
+    propagatedBuildInputs = o.propagatedBuildInputs ++ [ python.pkgs.async-timeout ];
   });
   domain = "gapul.net";
   port = 29319;
