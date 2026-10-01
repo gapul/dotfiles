@@ -278,6 +278,27 @@ in
       '';
     };
 
+  # Fix two upstream bugs in Instagram's older-chat import (doChatBackfill in
+  # pkg/igconnector/chatsync.go, v0.2609.0, read on 2026-10-01). Messenger takes a different
+  # path (pkg/connector/threadbackfill.go) that has neither.
+  #   1. The loop is `for batchCount < BatchCount`, so batch_count = -1 (unlimited, also the
+  #      upstream default) means zero extra pages: it takes the first inbox page and sets
+  #      BackfillCompleted. That is why the first login only produced 15 chats.
+  #   2. startCursor is never advanced inside the loop, so a positive count re-fetches the same
+  #      second page over and over.
+  # BackfillCompleted lives in the login's metadata, so log in again after this lands.
+  services.mautrix-meta.package = pkgs.mautrix-meta.overrideAttrs (old: {
+    postPatch = (old.postPatch or "") + ''
+      substituteInPlace pkg/igconnector/chatsync.go \
+        --replace-fail \
+          'for batchCount < ic.Main.Config.ThreadBackfill.BatchCount {' \
+          'for ic.Main.Config.ThreadBackfill.BatchCount < 0 || batchCount < ic.Main.Config.ThreadBackfill.BatchCount {' \
+        --replace-fail \
+          'if !resp.Mailbox.ThreadsByFolder.PageInfo.HasNextPage {' \
+          'startCursor = resp.Mailbox.ThreadsByFolder.PageInfo.EndCursor; if !resp.Mailbox.ThreadsByFolder.PageInfo.HasNextPage {'
+    '';
+  });
+
   # Instagram and Messenger are separate instances of the same mautrix-meta, split by
   # network.mode. Always use distinct ports, appservice.id and bot names (if they match, one
   # registration overwrites the other and only the one added later works).
