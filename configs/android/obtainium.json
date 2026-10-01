@@ -358,7 +358,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "bitfire web engineering",
       "categories": [],
       "id": "at.bitfire.davdroid",
       "name": "DAVx⁵",
@@ -391,7 +391,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "SpiritCroc",
       "categories": [],
       "id": "chat.schildi.android",
       "name": "SchildiChat Next",
@@ -424,7 +424,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "Absinthe",
       "categories": [],
       "id": "com.absinthe.libchecker",
       "name": "LibChecker",
@@ -457,7 +457,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "艾星 Aistra",
       "categories": [],
       "id": "com.aistra.hail",
       "name": "Hail",
@@ -619,7 +619,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "Amr Hesham",
       "categories": [],
       "id": "com.amrdeveloper.linkhub",
       "name": "LinkHub",
@@ -738,7 +738,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "Artifex Software LLC",
       "categories": [],
       "id": "com.artifex.mupdf.viewer.app",
       "name": "MuPDF viewer",
@@ -1032,7 +1032,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "F-Droid official",
       "categories": [],
       "id": "com.caydey.ffshare",
       "name": "FFShare",
@@ -1065,7 +1065,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "The RethinkDNS Authors",
       "categories": [],
       "id": "com.celzero.bravedns",
       "name": "Rethink",
@@ -1098,7 +1098,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "F-Droid official",
       "categories": [],
       "id": "com.chooloo.www.koler",
       "name": "Koler",
@@ -1165,7 +1165,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "CosmosApps",
       "categories": [],
       "id": "com.cosmos.unreddit",
       "name": "Stealth",
@@ -1393,7 +1393,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "Ivan Ivanenko",
       "categories": [],
       "id": "com.foobnix.pro.pdf.reader",
       "name": "Librera FD",
@@ -1426,7 +1426,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "F-Droid official",
       "categories": [],
       "id": "com.gh4a",
       "name": "OctoDroid",
@@ -1459,7 +1459,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "Ashutosh Gangwar",
       "categories": [],
       "id": "com.github.ashutoshgngwr.noice",
       "name": "Noice",
@@ -1467,6 +1467,49 @@
       "pinned": false,
       "preferredApkIndex": 0,
       "url": "https://f-droid.org/packages/com.github.ashutoshgngwr.noice"
+    },
+    {
+      "additionalSettings": {
+        "allowInsecure": false,
+        "allowedSigningCertHashes": "",
+        "apkFilterRegEx": "",
+        "appAuthor": "",
+        "appName": "",
+        "autoApkFilterByArch": true,
+        "exemptFromBackgroundUpdates": false,
+        "fallbackToOlderReleases": true,
+        "filterReleaseNotesByRegEx": "",
+        "filterReleaseTitlesByRegEx": "",
+        "includePrereleases": false,
+        "includeTarballs": false,
+        "includeZips": false,
+        "invertAPKFilter": false,
+        "matchGroupToUse": "",
+        "minimumUpdateAgeDays": "",
+        "refreshBeforeDownload": false,
+        "releaseDateAsVersion": false,
+        "releaseTitleAsVersion": false,
+        "shizukuPretendToBeGooglePlay": false,
+        "skipUpdateNotifications": false,
+        "sortMethodChoice": "date",
+        "tarballedApkFilterRegEx": "",
+        "trackOnly": false,
+        "useLatestAssetDateAsReleaseDate": false,
+        "useVersionCodeAsOSVersion": false,
+        "verifyLatestTag": false,
+        "versionDetection": true,
+        "versionExtractionRegEx": "",
+        "zippedApkFilterRegEx": ""
+      },
+      "allowIdChange": false,
+      "author": "researchxxl",
+      "categories": [],
+      "id": "com.github.catfriend1.syncthingfork",
+      "name": "Syncthing-Fork",
+      "overrideSource": null,
+      "pinned": false,
+      "preferredApkIndex": 0,
+      "url": "https://github.com/researchxxl/syncthing-android"
     },
     {
       "additionalSettings": {
@@ -1492,7 +1535,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "Team LibreTube",
       "categories": [],
       "id": "com.github.libretube",
       "name": "LibreTube",
@@ -1525,7 +1568,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "F-Droid official",
       "categories": [],
       "id": "com.github.muellerma.coffee",
       "name": "Coffee",
@@ -1558,7 +1601,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "IzzyOnDroid",
       "categories": [],
       "id": "com.gitlab.mudlej.MjPdfReader",
       "name": "MJ PDF",
@@ -1591,7 +1634,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "AnkiDroid Open Source Team",
       "categories": [],
       "id": "com.ichi2.anki",
       "name": "AnkiDroid",
@@ -1624,7 +1667,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "Jiaqi Feng",
       "categories": [],
       "id": "com.jiaqifeng.hacki",
       "name": "Hacki",
@@ -1657,7 +1700,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "junkfood",
       "categories": [],
       "id": "com.junkfood.seal",
       "name": "Seal",
@@ -1733,7 +1776,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "Team Tusky",
       "categories": [],
       "id": "com.keylesspalace.tusky",
       "name": "Tusky",
@@ -1766,7 +1809,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "KG Soft",
       "categories": [],
       "id": "com.kgurgul.cpuinfo",
       "name": "CPU Info",
@@ -1885,7 +1928,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "Cameron Gutman",
       "categories": [],
       "id": "com.limelight",
       "name": "Moonlight",
@@ -1918,7 +1961,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "Logseq dev team",
       "categories": [],
       "id": "com.logseq.app",
       "name": "Logseq",
@@ -1951,7 +1994,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "Iamlooker",
       "categories": [],
       "id": "com.looker.droidify",
       "name": "Droid-ify",
@@ -1984,7 +2027,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "Antonios Hazim",
       "categories": [],
       "id": "com.machiav3lli.backup",
       "name": "Neo Backup",
@@ -2064,7 +2107,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "Space Cowboy",
       "categories": [],
       "id": "com.nononsenseapps.feeder",
       "name": "Feeder",
@@ -2097,7 +2140,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "F-Droid official",
       "categories": [],
       "id": "com.odysee.floss",
       "name": "Odysee",
@@ -2130,7 +2173,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "Ultranity",
       "categories": [],
       "id": "com.perol.asdpl.play.pixivez.libre",
       "name": "Pix-EzViewer",
@@ -2421,7 +2464,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "F-Droid official",
       "categories": [],
       "id": "com.tailscale.ipn",
       "name": "Tailscale",
@@ -2454,7 +2497,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "F-Droid official",
       "categories": [],
       "id": "com.termux.nix",
       "name": "Nix",
@@ -2487,7 +2530,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "TrianguloY",
       "categories": [],
       "id": "com.trianguloy.urlchecker",
       "name": "URLCheck",
@@ -2563,7 +2606,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "F-Droid official",
       "categories": [],
       "id": "com.vrem.wifianalyzer",
       "name": "WiFiAnalyzer",
@@ -2596,7 +2639,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "F-Droid official",
       "categories": [],
       "id": "com.waist.line",
       "name": "Waistline",
@@ -2791,7 +2834,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "Pawel Dube",
       "categories": [],
       "id": "de.kaffeemitkoffein.imagepipe",
       "name": "Imagepipe",
@@ -2824,7 +2867,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "Markus Fisch",
       "categories": [],
       "id": "de.markusfisch.android.binaryeye",
       "name": "Binary Eye",
@@ -2857,7 +2900,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "U. N. Owen",
       "categories": [],
       "id": "de.mm20.launcher2.release",
       "name": "Kvaesitso",
@@ -2890,7 +2933,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "Michael Moessner",
       "categories": [],
       "id": "de.moekadu.tuner",
       "name": "Tuner",
@@ -2923,7 +2966,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "F-Droid official",
       "categories": [],
       "id": "de.nulide.findmydevice",
       "name": "FMD",
@@ -2956,7 +2999,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "F-Droid official",
       "categories": [],
       "id": "de.wger.flutter",
       "name": "wger",
@@ -3119,7 +3162,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "IzzyOnDroid",
       "categories": [],
       "id": "dev.yaky.usbcamviewer",
       "name": "USB Camera",
@@ -3152,7 +3195,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "Xynngh",
       "categories": [],
       "id": "dummydomain.yetanothercallblocker",
       "name": "Yet Another Call Blocker",
@@ -3434,7 +3477,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "F-Droid official",
       "categories": [],
       "id": "io.anuke.mindustry",
       "name": "Mindustry",
@@ -3641,7 +3684,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "Muntashir Al-Islam",
       "categories": [],
       "id": "io.github.muntashirakon.AppManager",
       "name": "App Manager",
@@ -3717,7 +3760,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "sds100",
       "categories": [],
       "id": "io.github.sds100.keymapper",
       "name": "Key Mapper",
@@ -3793,7 +3836,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "Philipp C. Heckel",
       "categories": [],
       "id": "io.heckel.ntfy",
       "name": "ntfy",
@@ -3869,7 +3912,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "F-Droid official",
       "categories": [],
       "id": "io.spaceapi.community.myhackerspace",
       "name": "MyHackerspace",
@@ -4247,7 +4290,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "segler.alex",
       "categories": [],
       "id": "net.programmierecke.radiodroid2",
       "name": "RadioDroid",
@@ -4323,7 +4366,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "PeterCxy",
       "categories": [],
       "id": "net.typeblog.shelter",
       "name": "Shelter",
@@ -4519,7 +4562,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "F-Droid official",
       "categories": [],
       "id": "org.briarproject.briar.android",
       "name": "Briar",
@@ -4552,7 +4595,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "Jean-Francois Briere",
       "categories": [],
       "id": "org.ca.squawker",
       "name": "Squawker",
@@ -4628,7 +4671,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "Exodus Privacy",
       "categories": [],
       "id": "org.eu.exodus_privacy.exodusprivacy",
       "name": "Exodus",
@@ -4677,7 +4720,7 @@
       "name": "Ciyue",
       "overrideSource": null,
       "pinned": false,
-      "preferredApkIndex": 1,
+      "preferredApkIndex": 0,
       "url": "https://github.com/mumu-lhl/Ciyue"
     },
     {
@@ -4772,7 +4815,7 @@
         "allowedSigningCertHashes": "",
         "apkFilterRegEx": "",
         "appAuthor": "",
-        "appIdOrName": "",
+        "appIdOrName": "org.futo.inputmethod.latin",
         "appName": "",
         "autoApkFilterByArch": true,
         "exemptFromBackgroundUpdates": false,
@@ -4791,7 +4834,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "FUTO",
       "categories": [],
       "id": "org.futo.inputmethod.latin",
       "name": "FUTO Keyboard",
@@ -4824,7 +4867,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "The Godot Foundation",
       "categories": [],
       "id": "org.godotengine.editor.v4",
       "name": "Godot Engine 4 (release)",
@@ -4857,7 +4900,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "Marcel Klehr",
       "categories": [],
       "id": "org.handmadeideas.floccus",
       "name": "floccus bookmark sync",
@@ -4872,7 +4915,7 @@
         "allowedSigningCertHashes": "",
         "apkFilterRegEx": "",
         "appAuthor": "",
-        "appIdOrName": "",
+        "appIdOrName": "org.ironfoxoss.ironfox",
         "appName": "",
         "autoApkFilterByArch": true,
         "exemptFromBackgroundUpdates": false,
@@ -4891,7 +4934,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "IronFox OSS",
       "categories": [],
       "id": "org.ironfoxoss.ironfox",
       "name": "IronFox",
@@ -4924,7 +4967,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "Alinson Xavier",
       "categories": [],
       "id": "org.isoron.uhabits",
       "name": "Habits",
@@ -5033,7 +5076,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "F-Droid official",
       "categories": [],
       "id": "org.koreader.launcher.fdroid",
       "name": "KOReader",
@@ -5066,7 +5109,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "The Krita Foundation",
       "categories": [],
       "id": "org.krita",
       "name": "Krita",
@@ -5242,7 +5285,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "PixelDroid team",
       "categories": [],
       "id": "org.pixeldroid.app",
       "name": "PixelDroid",
@@ -5275,7 +5318,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "Yaroslav Pronin",
       "categories": [],
       "id": "org.proninyaroslav.libretorrent",
       "name": "LibreTorrent",
@@ -5308,7 +5351,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "F-Droid official",
       "categories": [],
       "id": "org.quantumbadger.redreader",
       "name": "RedReader",
@@ -5366,7 +5409,7 @@
         "allowedSigningCertHashes": "",
         "apkFilterRegEx": "",
         "appAuthor": "",
-        "appIdOrName": "",
+        "appIdOrName": "org.torproject.torbrowser",
         "appName": "",
         "autoApkFilterByArch": true,
         "exemptFromBackgroundUpdates": false,
@@ -5385,7 +5428,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "The Tor Project",
       "categories": [],
       "id": "org.torproject.torbrowser",
       "name": "Tor Browser",
@@ -5418,7 +5461,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "F-Droid official",
       "categories": [],
       "id": "org.videolan.vlc",
       "name": "VLC",
@@ -5510,7 +5553,7 @@
       "name": "Image Toolbox",
       "overrideSource": null,
       "pinned": false,
-      "preferredApkIndex": 1,
+      "preferredApkIndex": 0,
       "url": "https://github.com/T8RIN/ImageResizer"
     },
     {
@@ -5537,7 +5580,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "Mateusz Bak",
       "categories": [],
       "id": "software.mdev.bookstracker",
       "name": "Openreads",
@@ -5646,7 +5689,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "F-Droid official",
       "categories": [],
       "id": "ws.xsoh.etar",
       "name": "Etar",
@@ -5765,7 +5808,7 @@
         "versionExtractionRegEx": ""
       },
       "allowIdChange": false,
-      "author": "F-Droid",
+      "author": "Patrick Zedler",
       "categories": [],
       "id": "xyz.zedler.patrick.doodle",
       "name": "Doodle",
@@ -5778,7 +5821,6 @@
   "schemaVersion": 2,
   "settings": {
     "GHReqPrefix": "",
-    "autoExportFileName": "obtainium",
     "autoExportOnChanges": true,
     "bgUpdatesOnWiFiOnly": true,
     "bgUpdatesWhileChargingOnly": true,
@@ -5790,7 +5832,7 @@
     "firstRun": false,
     "googleVerificationWarningShown": true,
     "groupBy": "category",
-    "installMethod": "shizuku",
+    "installMethod": "system",
     "parallelDownloads": true,
     "pinUpdates": false,
     "removeOnExternalUninstall": false,

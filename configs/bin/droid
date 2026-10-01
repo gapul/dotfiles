@@ -97,7 +97,10 @@ case "${1:-}" in
     ;;
   obtainium)
     # configs/android/obtainium.json is the declared app list. Obtainium auto-exports
-    # to Documents/Obtainium/obtainium.json on every change; `pull` copies that back
+    # to Documents/Obtainium/obtainium-export-<time>-auto.json on every change and
+    # deletes the previous one (a custom export name is not used: Obtainium 1.6.17
+    # fails to delete the old file then and piles up "obtainium (N).json"). `pull`
+    # copies the newest one back
     # (minus versions, timestamps and release notes, so the diff only shows real
     # changes) and `push` drops an import file next to it. Obtainium's own import
     # goes through a file picker, so the last step is a tap on the device.
@@ -106,7 +109,12 @@ case "${1:-}" in
     case "${2:-}" in
       pull)
         tmp=$(mktemp)
-        _adb pull -q "$dir/obtainium.json" "$tmp" || exit 1
+        src=$(_sh "ls -t $dir/*-auto.json 2>/dev/null | head -1" | tr -d '\r')
+        [ -n "$src" ] || {
+          echo "droid: no auto-export in $dir (Obtainium > Import/export > Automatically export on changes)" >&2
+          exit 1
+        }
+        _adb pull -q "$src" "$tmp" || exit 1
         jq -S '{schemaVersion, settings: (.settings | del(.lastCompletedBGCheckTime)),
           apps: (.apps | map(del(.installedVersion, .latestVersion, .apkUrls, .otherAssetUrls,
             .lastUpdateCheck, .releaseDate, .changeLog, .releaseUrl, .pendingRepoRenameUrl)
