@@ -5,6 +5,7 @@
 /.recycle
 /.mixplorer
 /ramdump
+/MIUI/backup
 /MIUI/BugReportCache
 /MIUI/debug_log
 (?d).thumbnails
