@@ -47,7 +47,6 @@ in
     # ─── Passwords / 2FA ───
     bitwarden-desktop # the vault the SSH agent policy is built around
     keepassxc # offline vault (the same kdbx the iOS KeePassium build reads)
-    ente-auth # TOTP
 
     # ─── Notes / Documents ───
     obsidian # vault syncs over the self-hosted CouchDB LiveSync

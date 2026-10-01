@@ -156,7 +156,6 @@ in
     pkgs.brewCasks.milkytracker
     pkgs.brewCasks.mixxx
     pkgs.brewCasks.anki
-    pkgs.brewCasks.ente-auth
     pkgs.brewCasks.keyguard
     pkgs.brewCasks.knockknock # persistence scanner (Objective-See). Needs Full Disk Access re-granted on first run
     pkgs.brewCasks.localsend
