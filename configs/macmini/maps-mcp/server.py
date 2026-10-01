@@ -9,6 +9,8 @@ supply, from sources that stay ours or open (see the maps memory for why each wa
     apple_search / apple_route  Apple Maps Server API (key in ~/.config/apple-maps, 25k calls/day)
     transit_route               Transitous (open MOTIS instance; Google's API returns nothing in Japan)
     web_search                  self-hosted SearXNG; google + google cse is an anonymous Google search
+    hotpepper                   Hot Pepper Gourmet (restaurants with opening hours / closed days;
+                                key in ~/.config/hotpepper/key, free, needs the credit shown)
     weather                     Open-Meteo
 
 Everything is stdlib: the ES256 JWT for Apple is signed by the system openssl (LibreSSL),
@@ -40,6 +42,8 @@ SEARXNG = os.environ.get("SEARXNG_URL", "https://search.gapul.net")
 TRANSITOUS = "https://api.transitous.org/api/v5/plan"
 OVERTURE_DB = HOME / ".local/share/overture/japan.sqlite"
 APPLE_DIR = HOME / ".config/apple-maps"
+HOTPEPPER_KEY = HOME / ".config/hotpepper/key"
+HOTPEPPER_RANGES = (300, 500, 1000, 2000, 3000)  # the API takes range=1..5 for these metres
 UA = "gapul-maps-mcp/1.0 (+https://gapul.net)"
 TIMEOUT = 20
 
@@ -212,6 +216,26 @@ def web_search(query, engines="google,google cse", limit=8):
             "unresponsive": res.get("unresponsive_engines")}
 
 
+def hotpepper(lat, lon, radius_m=500, keyword=None, limit=10):
+    key = HOTPEPPER_KEY.read_text().strip()
+    rng = next((i + 1 for i, m in enumerate(HOTPEPPER_RANGES) if radius_m <= m), len(HOTPEPPER_RANGES))
+    params = {"key": key, "lat": lat, "lng": lon, "range": rng, "count": min(limit, 100), "format": "json",
+              "order": 4}  # 4 = recommended
+    if keyword:
+        params["keyword"] = keyword
+    res = http_json("https://webservice.recruit.co.jp/hotpepper/gourmet/v1/?" + urllib.parse.urlencode(params))["results"]
+    if "error" in res:
+        raise RuntimeError(res["error"])
+    return {"shops": [{"name": s["name"], "genre": s["genre"]["name"], "catch": s.get("catch"),
+                       "open": s.get("open"), "closed": s.get("close"), "budget": s.get("budget", {}).get("name"),
+                       "address": s.get("address"), "access": s.get("mobile_access"),
+                       "lat": s.get("lat"), "lon": s.get("lng"), "url": s.get("urls", {}).get("pc"),
+                       "distance_m": round(km(lat, lon, float(s["lat"]), float(s["lng"])) * 1000)}
+                      for s in res.get("shop", [])],
+            "available": res.get("results_available"),
+            "credit": "Powered by ホットペッパーグルメ Webサービス (http://webservice.recruit.co.jp/)"}
+
+
 def weather(lat, lon, days=2):
     q = urllib.parse.urlencode({"latitude": lat, "longitude": lon, "timezone": "Asia/Tokyo", "forecast_days": days,
                                 "hourly": "temperature_2m,precipitation_probability,precipitation,weather_code",
@@ -253,6 +277,11 @@ TOOLS = {
                    "CAPTCHA-suspended for a while and google cse then answers. Use for opening hours, temporary closures, "
                    "reviews (tabelog for restaurants).", {"query": STR, "engines": STR, "limit": {"type": "integer"}},
                    ["query"]),
+    "hotpepper": (hotpepper, "Restaurants around a point from Hot Pepper Gourmet, with opening hours (open) and "
+                  "closed days (closed) as free text, budget and access. Best source for restaurant hours; "
+                  "covers listed restaurants only. radius_m is rounded up to 300/500/1000/2000/3000.",
+                  {"lat": NUM, "lon": NUM, "radius_m": NUM, "keyword": STR, "limit": {"type": "integer"}},
+                  ["lat", "lon"]),
     "weather": (weather, "Weather forecast (Open-Meteo), hourly and daily, Asia/Tokyo.",
                 {"lat": NUM, "lon": NUM, "days": {"type": "integer"}}, ["lat", "lon"]),
 }
@@ -273,7 +302,7 @@ def handle(msg):
                   "capabilities": {"tools": {}}, "serverInfo": {"name": "maps", "version": "1.0"},
                   "instructions": "Read-only map tools: geocoding, nearby places (Overture), Apple Maps search and "
                                   "driving/walking/cycling routes, Japanese transit (Transitous), anonymous web "
-                                  "search, weather. The user's own location history is in the separate dawarich MCP."}
+                                  "search, restaurant opening hours (Hot Pepper), weather. The user's own location history is in the separate dawarich MCP."}
     elif method == "ping":
         result = {}
     elif method == "tools/list":
@@ -336,6 +365,8 @@ def selftest():
     assert transit_route(*k, *h)["itineraries"], "transit_route"
     assert web_search("清澄白河 カフェ")["results"], "web_search"
     assert weather(*k)["hourly"]["time"], "weather"
+    if HOTPEPPER_KEY.exists():
+        assert hotpepper(*k)["shops"], "hotpepper"
     assert {t["name"] for t in tools_list()} == set(TOOLS)
     print("ok" + ("" if OVERTURE_DB.exists() else " (nearby_places skipped: no Overture DB yet)"))
 
