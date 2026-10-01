@@ -78,7 +78,6 @@ in
       apkeep # APK/XAPK downloader (Play / APKPure)
       asar # extract Electron app.asar (e.g. Native Access)
       cfr # JVM decompiler (e.g. Bitwig jars)
-      ghidra # native Mach-O/ELF reverse engineering (GUI)
       aria2 # downloader (aria2c)
       legendary-gl # Epic Games CLI (legendary): install/update Unreal Engine + games without the official launcher
       rclone # cloud storage sync

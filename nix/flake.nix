@@ -237,7 +237,6 @@
             pkg:
             builtins.elem (nixpkgs.lib.getName pkg) [
               "unity-cli"
-              "vroid-studio" # free of charge but proprietary, see pkgs/vroid-studio.nix
             ]
             # voicevox-engine and its core/onnxruntime/resource parts, for the
             # ~/.local/bin/voicevox-engine wrapper in home/darwin.nix. The voice models are

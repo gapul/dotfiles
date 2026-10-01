@@ -37,7 +37,7 @@ stdenvNoCC.mkDerivation {
     url = "https://www.a-quest.com/products/aquestalkplayer.html#download";
   };
 
-  # Same as vroid-studio and aivisspeech: the dmg is APFS, which undmg cannot
+  # Same as orcaslicer-bambulab and aivisspeech: the dmg is APFS, which undmg cannot
   # read and hdiutil cannot attach inside the build sandbox. 7zz handles it.
   nativeBuildInputs = [ _7zz ];
 

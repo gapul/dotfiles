@@ -50,7 +50,7 @@ stdenvNoCC.mkDerivation {
   # Upstream signs ad hoc (TeamIdentifier is not set), so `spctl` rejects the
   # bundle — it is neither Developer ID signed nor notarised. That does not stop
   # it here: store paths never carry com.apple.quarantine, so Gatekeeper is not
-  # consulted at launch. Same situation as pkgs/vroid-studio.nix.
+  # consulted at launch. Same situation as pkgs/orcaslicer-bambulab.nix.
   #
   # The consequence to know about is macOS 15's Local Network permission, which
   # the server needs to hear trackers (and mocopi) on the LAN. TCC identifies an
