@@ -271,7 +271,7 @@ in
     (import ../pkgs/zrythm-darwin {
       pkgs = nixpkgsUnstable.legacyPackages.${pkgs.stdenv.hostPlatform.system};
     })
-    # ardour / aseprite / fritzing / qview / vroid-studio used to sit here. They ship .app
+    # ardour / aseprite / fritzing / qview used to sit here. They ship .app
     # bundles, and home-manager can only surface those under ~/Applications, so they moved to
     # environment.systemPackages in hosts/darwin.nix where nix-darwin puts them in
     # /Applications/Nix Apps. mechvibes-dx and zrythm stay: the former needs the per-user
