@@ -51,6 +51,7 @@
     ./dawarich-freshness.nix
     ./filestash.nix
     ./forgejo.nix
+    ./github-mirror.nix
     ./formera.nix
     ./free-games-claimer.nix
     ./freebie-collector.nix
