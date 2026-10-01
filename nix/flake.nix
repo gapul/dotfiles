@@ -119,15 +119,9 @@
     stylix.url = "github:nix-community/stylix";
     stylix.inputs.nixpkgs.follows = "nixpkgs-nixos";
 
-    # Zen browser. The daily driver on both machines, but there is no nixpkgs derivation for
-    # it (the mac gets it as a Homebrew cask), so on Linux it comes from the community flake.
-    # Deliberately no `follows`: zen's package.nix wants ffmpeg_9, which the 26.05 series
-    # does not carry (it stops at ffmpeg_7), so pointing it at nixpkgs-nixos aborts
-    # evaluation. Left on its own lineage, like zrythm-darwin above.
-    zen-browser.url = "github:0xc000022070/zen-browser-flake";
     # arkenfox user.js exposed as typed home-manager options (section / subsection / pref),
     # so the hardening lives in the flake lock and the overrides are visible as nix diffs.
-    # Used by modules/home/darwin-firefox.nix.
+    # Used by modules/home/firefox.nix (the Mac and the NixOS laptop).
     arkenfox.url = "github:HeitorAugustoLN/arkenfox-nix";
     arkenfox.inputs.nixpkgs.follows = "nixpkgs";
 
@@ -209,7 +203,6 @@
       lanzaboote,
       disko,
       stylix,
-      zen-browser,
       preservation,
       git-hooks,
       treefmt-nix,
@@ -344,8 +337,8 @@
           base
           ++ [
             ./home/darwin.nix
-            # programs.firefox.arkenfox options for modules/home/darwin-firefox.nix (imported
-            # from home/darwin.nix). A flake input module has to enter through the role list.
+            # programs.firefox.arkenfox options for modules/home/firefox.nix (imported via
+            # modules/home/darwin-firefox.nix from home/darwin.nix). A flake input module has to enter through the role list.
             inputs.arkenfox.modules.homeManager.arkenfox
             ./home/restic-backup.nix
             ./home/rclone-mount.nix
@@ -884,13 +877,7 @@
               {
                 home-manager.useGlobalPkgs = true;
                 home-manager.useUserPackages = true;
-                # zen has no nixpkgs derivation, so it rides in as a module argument rather
-                # than through `pkgs`. Importing the module by hand with an explicit `pkgs`
-                # would bypass the module system's pkgs (the one carrying allowUnfree and
-                # the overlays), so it has to go through extraSpecialArgs.
-                home-manager.extraSpecialArgs = commonSpecialArgs // {
-                  zen = zen-browser.packages.x86_64-linux.default;
-                };
+                home-manager.extraSpecialArgs = commonSpecialArgs;
                 home-manager.users.${user.username} = {
                   imports = [
                     ./home/common.nix
@@ -900,6 +887,8 @@
                     ./home/stylix.nix # one palette for GTK/Qt/wofi (nixos-laptop only)
                     ./home/ssh-tpm-agent.nix # TPM-sealed SSH key (nixos-laptop only: WSL has no TPM)
                     ./home/linux-gui.nix # GUI apps (the mac's cask list, as packages)
+                    # programs.firefox.arkenfox for modules/home/firefox.nix (imported by linux-gui.nix)
+                    inputs.arkenfox.modules.homeManager.arkenfox
                     ./home/dev.nix # dev environment such as direnv
                     ./home/restic-backup-linux.nix # restic (systemd user timer)
                     sops-nix.homeManagerModules.sops
@@ -947,6 +936,10 @@
                   ./home/stylix.nix
                   ./home/dev.nix
                   ./home/ssh-tpm-agent.nix
+                  # The GUI app list and the shared Firefox profile. Possible since Zen (which
+                  # needed an extra module argument) left on 2026-10-01.
+                  ./home/linux-gui.nix
+                  inputs.arkenfox.modules.homeManager.arkenfox
                   ./home/workstation.nix
                 ];
               }

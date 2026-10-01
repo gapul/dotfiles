@@ -91,7 +91,7 @@
         # 2026-08, replaced by launchd.agents.sketchybar. Removing the plist is enough for launchd;
         # brew's own bookkeeping is swept by the `brew services cleanup` in `just maintain`.
         "homebrew.mxcl.sketchybar"
-        # 2026-08, Google's updater. Chrome here is an automation target (the browser is Zen) and
+        # 2026-08, Google's updater. Chrome here is an automation target (the browser is Firefox Developer Edition) and
         # `brew upgrade --cask --greedy` in `just maintain` keeps it current, so a resident agent
         # waking up to check versions buys nothing. Chrome re-installs Keystone whenever it is
         # launched — the loop below runs every activation, which is what keeps this from coming
@@ -334,8 +334,8 @@
     #   NIHardware… — the other half of the same NI leftover, and this one has nothing behind it at
     #                all: the agent bundle is gone from every path its installer uses, so the login
     #                item resolved to a missing value and started nothing every morning.
-    #   Zen        — the daily browser until 2026-09-26; Firefox Developer Edition is the default
-    #                browser and the login item now, Zen stays installed but is opened by hand.
+    #   Zen        — the daily browser until 2026-09-26, removed 2026-10-01; Firefox Developer
+    #                Edition is the default browser and the login item now.
     #   LuLu       — dropped from the declaration in #879 (its network extension kept stalling
     #                inbound ssh); the cask cleanup removes the app, this removes its login item.
     for name in AeroSpace Bitwarden Neru NTKDaemon NIHardwareAgent Zen LuLu; do

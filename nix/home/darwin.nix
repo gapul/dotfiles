@@ -337,7 +337,7 @@ in
   home.file.".local/bin/whisky".source =
     config.lib.file.mkOutOfStoreSymlink "/Applications/Whisky.app/Contents/Resources/WhiskyCmd";
 
-  # tenbin: shell client for Tenbin AI for UTokyo (reads the session cookie from Zen, so mac-only).
+  # tenbin: shell client for Tenbin AI for UTokyo (reads the session cookie from Firefox Developer Edition, so mac-only).
   # Was a hand-placed ~/.local/bin/tenbin until 2026-09-15.
   home.file.".local/bin/tenbin" = {
     source = ../../configs/bin/tenbin;

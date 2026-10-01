@@ -1,4 +1,4 @@
-{ pkgs, zen, ... }:
+{ pkgs, ... }:
 # GUI apps for the NixOS laptop. Imported only on nixos-laptop.
 #
 # The mac declares the same set as Homebrew casks (hosts/darwin.nix): on darwin nixpkgs GUI
@@ -6,12 +6,32 @@
 # Linux there is no such split, so the packages go straight into the closure and stay
 # declarative.
 #
-# Zen is the exception: it has no nixpkgs derivation, so it comes in as a flake input
-# (see nix/flake.nix `zen-browser`) and is wired to the same list from there.
+# The browser is the exception to "just a package": Firefox Developer Edition is the daily
+# driver on both machines and its profile/policies live in modules/home/firefox.nix (shared with
+# the Mac), so it is wired through programs.firefox below instead of the list. It replaced Zen
+# here on 2026-10-01; Zen's old profile (~/.zen) is left on disk for manual deletion.
+let
+  browser = "firefox-devedition.desktop"; # nixpkgs' wrapper names it after the binary
+in
 {
+  imports = [ ../modules/home/firefox.nix ];
+
+  programs.firefox.package = pkgs.firefox-devedition;
+
+  xdg.mimeApps = {
+    enable = true;
+    defaultApplications = {
+      "text/html" = browser;
+      "application/xhtml+xml" = browser;
+      "x-scheme-handler/http" = browser;
+      "x-scheme-handler/https" = browser;
+      "x-scheme-handler/about" = browser;
+      "x-scheme-handler/unknown" = browser;
+    };
+  };
+
   home.packages = with pkgs; [
     # ─── Browsers ───
-    zen # daily driver. Comes from the zen-browser flake input, not nixpkgs.
     google-chrome # for sites that only test against Chrome, and for the automation profile
     tor-browser
 
