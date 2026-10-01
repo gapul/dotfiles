@@ -52,7 +52,12 @@ let
       exit 1
     }
     if [ -d ${tools}/.git ]; then
-      out=$(git -C ${tools} pull -q --ff-only 2>&1) || fail "personal-tools の pull に失敗: $out"
+      # This checkout only runs code, so make it match upstream outright. With pull --ff-only, a
+      # stray untracked copy of a file that upstream later adds ("would be overwritten by merge")
+      # stopped every sync until someone cleaned it by hand. reset --hard overwrites such files;
+      # untracked files upstream doesn't know about are left alone.
+      out=$(git -C ${tools} fetch -q 2>&1 && git -C ${tools} reset -q --hard '@{u}' 2>&1) \
+        || fail "personal-tools の更新に失敗: $out"
     else
       out=$(git clone -q git@github.com:gapul/personal-tools.git ${tools} 2>&1) || fail "personal-tools の clone に失敗: $out"
     fi
