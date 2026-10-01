@@ -124,6 +124,26 @@ let
     commit "revolut sync"
   '';
 
+  # Member sites read by macmini (home/macmini-sites.nix): Mobile Suica's SF history, and the
+  # JRE POINT / Bic Camera point balances. Each lands in incoming/ as JSON; this renders them.
+  sitesSync = pkgs.writeShellScript "sites-sync" ''
+    ${prelude "sites-sync"}
+    if [ -s ${incoming}/suica.json ]; then
+      out=$(${py} ${tools}/suica/suica_beancount.py --dump ${incoming}/suica.json --store ${book}/suica-rows.json \
+        --rules ${book}/rules.toml --out ${book}/suica.beancount 2>&1) || fail "Suica の帳簿生成に失敗: $out"
+    fi
+    dumps=""
+    for s in jrepoint biccamera; do [ -s ${incoming}/$s.json ] && dumps="$dumps ${incoming}/$s.json"; done
+    if [ -n "$dumps" ]; then
+      expiring=$(${py} ${tools}/points/sites_points.py --points ${book}/sites-points.beancount --expiring 30 $dumps 2>/dev/null) ||
+        fail "会員サイトのポイントの帳簿生成に失敗"
+    fi
+    out=$(${beanCheck} ${book}/main.beancount 2>&1) || fail "bean-check: $out"
+    rm -f "$state"
+    commit "sites sync"
+    [ -z "''${expiring:-}" ] || ${notify} "ポイントの失効が近い (会員サイト)" "$expiring"
+  '';
+
   # Send one line to ntfy (same topic and token as ntfy-failure@). Not for failures, but for
   # notices that need a human to act.
   notify = pkgs.writeShellScript "ledger-notify" ''
@@ -254,6 +274,25 @@ in
     wantedBy = [ "multi-user.target" ];
     # The sender writes to a temp name and mv's into place, so one trigger per delivery.
     pathConfig.PathChanged = "${incoming}/revolut.json";
+  };
+
+  systemd.services.sites-sync = {
+    description = "会員サイトの dump (Suica・JRE POINT・ビックカメラ、macmini から) → Beancount";
+    serviceConfig = common // {
+      Type = "oneshot";
+      EnvironmentFile = "/var/lib/secrets/gatus.env"; # ntfy token for the expiry notice
+      ExecStart = sitesSync;
+    };
+    onFailure = [ "ntfy-failure@%n.service" ];
+  };
+  systemd.paths.sites-sync = {
+    description = "会員サイトの dump が届いたら帳簿にする";
+    wantedBy = [ "multi-user.target" ];
+    pathConfig.PathChanged = [
+      "${incoming}/suica.json"
+      "${incoming}/jrepoint.json"
+      "${incoming}/biccamera.json"
+    ];
   };
 
   systemd.services.zaim-stale-check = {

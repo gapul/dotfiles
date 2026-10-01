@@ -368,6 +368,7 @@
           ./home/macmini-watchdog.nix
           ./home/findmy-tag.nix # periodic Find My tag fetch; lives on this always-on machine, not the laptop
           ./home/macmini-revolut.nix # Revolut fetch for the ledger; needs a headed browser (Cloudflare), so this GUI Mac
+          ./home/macmini-sites.nix # Suica / JRE POINT / Bic Camera for the ledger; same headed-browser reason
           # iMessage bridge. The other mautrix bridges live on homeserver, but this one needs
           # chat.db and Messages.app, so it can only run on this machine.
           ./home/macmini-imessage.nix
