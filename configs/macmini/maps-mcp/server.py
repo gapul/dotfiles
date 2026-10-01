@@ -6,11 +6,11 @@ supply, from sources that stay ours or open (see the maps memory for why each wa
     geocode / reverse_geocode   local photon via photon-proxy (:2323) + GSI address search
                                 + Overture addresses (block-level 番地) from the local SQLite
     nearby_places               Overture places (Japan) from the local SQLite
-    apple_search / apple_route  Apple Maps Server API (key in ~/.config/apple-maps, 25k calls/day)
+    apple_search / apple_route  Apple Maps Server API (key from sops, 25k calls/day)
     transit_route               Transitous (open MOTIS instance; Google's API returns nothing in Japan)
     web_search                  self-hosted SearXNG; google + google cse is an anonymous Google search
     hotpepper                   Hot Pepper Gourmet (restaurants with opening hours / closed days;
-                                key in ~/.config/hotpepper/key, free, needs the credit shown)
+                                key from sops, free, needs the credit shown)
     weather                     Open-Meteo
 
 Everything is stdlib: the ES256 JWT for Apple is signed by the system openssl (LibreSSL),
@@ -41,8 +41,10 @@ PHOTON = os.environ.get("PHOTON_URL", "http://127.0.0.1:2323")
 SEARXNG = os.environ.get("SEARXNG_URL", "https://search.gapul.net")
 TRANSITOUS = "https://api.transitous.org/api/v5/plan"
 OVERTURE_DB = HOME / ".local/share/overture/japan.sqlite"
-APPLE_DIR = HOME / ".config/apple-maps"
-HOTPEPPER_KEY = HOME / ".config/hotpepper/key"
+# Under launchd these come from the daemon's environment (nix/hosts/macmini.nix, keys from sops);
+# the fallback env file lets the selftest run by hand.
+APPLE_ENV = HOME / ".config/apple-maps/env"
+HOTPEPPER_KEY = Path(os.environ.get("HOTPEPPER_KEY_PATH", HOME / ".config/hotpepper/key"))
 HOTPEPPER_RANGES = (300, 500, 1000, 2000, 3000)  # the API takes range=1..5 for these metres
 UA = "gapul-maps-mcp/1.0 (+https://gapul.net)"
 TIMEOUT = 20
@@ -64,15 +66,17 @@ _apple = {"token": None, "until": 0.0}
 _apple_lock = threading.Lock()
 
 
-def _env(path):
-    return dict(l.split("=", 1) for l in path.read_text().splitlines() if "=" in l)
+def _apple_env():
+    if "APPLE_MAPS_KEY_PATH" in os.environ:
+        return os.environ
+    return dict(l.split("=", 1) for l in APPLE_ENV.read_text().splitlines() if "=" in l)
 
 
 def apple_token():
     with _apple_lock:
         if _apple["token"] and time.time() < _apple["until"]:
             return _apple["token"]
-        env = _env(APPLE_DIR / "env")
+        env = _apple_env()
         b64 = lambda b: base64.urlsafe_b64encode(b).rstrip(b"=").decode()
         now = int(time.time())
         head = b64(json.dumps({"alg": "ES256", "kid": env["APPLE_MAPS_KEY_ID"], "typ": "JWT"}).encode())
