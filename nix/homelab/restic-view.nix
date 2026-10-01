@@ -41,6 +41,12 @@ in
       ExecStop = "-${pkgs.fuse}/bin/fusermount -u ${mountPoint}";
       Restart = "on-failure";
       RestartSec = "30s";
+      # restic mount only ever grows: after five days it held 5.7G anonymous memory (peak 9.3G)
+      # and pushed the host into swap and memory-pressure alerts. Restart it daily (exceeding
+      # RuntimeMaxSec counts as a failure, so Restart= brings it back) and cap it so a heavy
+      # browse can't take the host down in between (the on-disk index is ~70M).
+      RuntimeMaxSec = "1d";
+      MemoryMax = "3G";
     };
     wantedBy = [ "multi-user.target" ];
   };
