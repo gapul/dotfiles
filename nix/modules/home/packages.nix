@@ -27,6 +27,27 @@ let
       ''${NIX_CONFIG:-}" "$@"
     '';
   };
+  # matrix-commander-rs creates every room encrypted, which this homeserver deliberately avoids
+  # (nix/homelab/matrix-bridges-v2.nix: a single-admin server gains nothing from E2BE and loses
+  # bot access and history). Its `--plain true` turns that off, but passing it unconditionally
+  # would also send plaintext into existing encrypted rooms, which is the one thing this client
+  # is here for. So inject it for room creation only. `--visibility private` already works; the
+  # "visibility: Public" it prints afterwards is a display bug, not the stored value.
+  matrix-commander-rs = pkgs.writeShellApplication {
+    name = "matrix-commander-rs";
+    text = ''
+      plain=()
+      for arg in "$@"; do
+        case "$arg" in
+          --room-create | --room-dm-create)
+            plain=(--plain true)
+            break
+            ;;
+        esac
+      done
+      exec ${pkgs.matrix-commander-rs}/bin/matrix-commander-rs "''${plain[@]}" "$@"
+    '';
+  };
   git-wtpr = pkgs.callPackage ../../pkgs/git-wtpr.nix { };
 in
 {
@@ -74,7 +95,7 @@ in
     # reaches encrypted rooms the curl wrappers in home/matrix-cli.nix cannot. One-time
     # `--login password` and an Element device verification; credentials land in
     # ~/.local/share/matrix-commander-rs. `--output json` for machine consumption.
-    matrix-commander-rs
+    matrix-commander-rs # wrapper defined above
     newsboat # RSS/Atom feed reader TUI
     presenterm # Markdown presentation TUI
     termshark # tshark/Wireshark packet analysis TUI
