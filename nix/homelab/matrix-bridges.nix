@@ -209,7 +209,14 @@ in
     registerToSynapse = true;
     environmentFile = "/var/lib/matrix-bridge-secrets/signal.env";
     settings = {
-      inherit homeserver backfill;
+      inherit homeserver;
+      # Signal history arrives once, as the transfer archive sent at link time, and the bridge
+      # deletes each chat from it after the first backfill. Anything past the initial cap is
+      # lost, so take everything: demola (5053 messages) lost its oldest 53 on 2026-10-01.
+      # The archive is local, so a large cap does not slow the sync the way it does elsewhere.
+      backfill = backfill // {
+        max_initial_messages = 100000;
+      };
       encryption = encryption // {
         pickle_key = "$ENCRYPTION_PICKLE_KEY";
       };
