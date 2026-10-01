@@ -23,6 +23,7 @@ in
   # real machine into this same hosts/ dir and enable the import below (it need not be committed to the repo).
   imports = [
     hardwareConfig
+    ./nixos-laptop-vivado.nix # FPGA coursework (Vivado 2020.2, installed by hand into /opt/Xilinx)
   ];
 
   # --- Bootloader: lanzaboote (Secure Boot support) ---
