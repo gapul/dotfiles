@@ -13,6 +13,7 @@
 #   droid url <url>      URL / ディープリンクを開く
 #   droid source         画面の要素ツリー (uiautomator)
 #   droid wifi           無線デバッグに切り替える (USB 接続中に一度)
+#   droid obtainium pull|push  sync the Obtainium app list with configs/android/obtainium.json
 #
 # 座標は画面のピクセルそのまま。スクリーンショットから拾った値をそのまま渡せる
 # (iOS 側は論理ポイントなので割り算が要る。ここは要らない)。
@@ -94,5 +95,33 @@ case "${1:-}" in
     _adb tcpip 5555 > /dev/null && sleep 2
     "$ADB" connect "$ip:5555"
     ;;
-  *) sed -n '3,15p' "$0" | sed 's/^# \{0,1\}//' ;;
+  obtainium)
+    # configs/android/obtainium.json is the declared app list. Obtainium auto-exports
+    # to Documents/Obtainium/obtainium.json on every change; `pull` copies that back
+    # (minus versions, timestamps and release notes, so the diff only shows real
+    # changes) and `push` drops an import file next to it. Obtainium's own import
+    # goes through a file picker, so the last step is a tap on the device.
+    f="${DROID_OBTAINIUM:-$HOME/.dotfiles/configs/android/obtainium.json}"
+    dir=/sdcard/Documents/Obtainium
+    case "${2:-}" in
+      pull)
+        tmp=$(mktemp)
+        _adb pull -q "$dir/obtainium.json" "$tmp" || exit 1
+        jq -S '{schemaVersion, settings: (.settings | del(.lastCompletedBGCheckTime)),
+          apps: (.apps | map(del(.installedVersion, .latestVersion, .apkUrls, .otherAssetUrls,
+            .lastUpdateCheck, .releaseDate, .changeLog, .releaseUrl, .pendingRepoRenameUrl)
+            | .additionalSettings |= (fromjson | del(.about))) | sort_by(.id | ascii_downcase))}' \
+          "$tmp" > "$f" && rm "$tmp"
+        git -C "$(dirname "$f")" diff --stat -- "$f"
+        ;;
+      push)
+        tmp=$(mktemp)
+        jq '.apps[].additionalSettings |= tojson' "$f" > "$tmp" &&
+          _adb push -q "$tmp" "$dir/obtainium-import.json" && rm "$tmp" &&
+          echo "Obtainium > Settings > Import/export > Obtainium import > obtainium-import.json"
+        ;;
+      *) echo "usage: droid obtainium pull|push" >&2; exit 1 ;;
+    esac
+    ;;
+  *) sed -n '3,16p' "$0" | sed 's/^# \{0,1\}//' ;;
 esac
