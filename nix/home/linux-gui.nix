@@ -27,8 +27,17 @@ in
       "x-scheme-handler/https" = browser;
       "x-scheme-handler/about" = browser;
       "x-scheme-handler/unknown" = browser;
+      # claude-cli:// deep links. Claude Code writes this association (and its own .desktop
+      # under ~/.local/share/applications) into an unmanaged mimeapps.list on its own; once
+      # the file became home-manager's, that copy blocked activation ("would be clobbered")
+      # and replacing it would have dropped the handler, so it is declared here instead.
+      "x-scheme-handler/claude-cli" = "claude-code-url-handler.desktop";
     };
   };
+  # Claude Code re-registers its handler with a plain write, which can turn the symlink back
+  # into a regular file and fail the next rebuild the same way. Everything it writes is
+  # declared above, so overwriting that copy loses nothing.
+  xdg.configFile."mimeapps.list".force = true;
 
   home.packages = with pkgs; [
     # ─── Browsers ───
