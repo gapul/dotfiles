@@ -57,6 +57,14 @@
         # carried over from the NextDNS allowlist
         1088045785.rsc.cdn77.org
         cdn.kde.org
+        # Media edges that hagezi PRO++ lists as trackers but that serve the actual
+        # images: profile pictures, attachments and link previews (2026-10-01, the
+        # Matrix bridges for Instagram / Messenger / LinkedIn failed every avatar and
+        # attachment with NXDOMAIN; the Tokyo edge is the one this house resolves to).
+        # The sonar / crash / metrics hosts next to them in the list stay blocked.
+        *.scontent-nrt1-1.xx.fbcdn.net
+        *.instagram.felp1-1.fna.fbcdn.net
+        *.media-akam.licdn.com
       ''
     ];
     clientGroupsBlock.default = [
