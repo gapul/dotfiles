@@ -177,10 +177,6 @@ in
         };
         "unified_calendar/ntfy_url" = forUser "/Users/${user.username}/.config/ntfy/url";
         "unified_calendar/ntfy_token" = forUser "/Users/${user.username}/.config/ntfy/token";
-        # Revolut's web session asks for the 6-digit passcode again about an hour after login, so the
-        # daily fetch (home/macmini-revolut.nix) cannot run unattended without it. personal-tools/revolut
-        # types it on the passcode page, once per run; a wrong code locks the account, so it never retries.
-        "revolut/passcode" = forUser "/Users/${user.username}/.config/revolut/passcode";
         # appservice token for the iMessage bridge. Same value the homeserver's Synapse holds in the
         # registration file (nix/homelab/matrix-imessage.nix). The home-manager side
         # (nix/home/macmini-imessage.nix) injects it into config.yaml during activation.
@@ -194,7 +190,20 @@ in
           // {
             sopsFile = ../../secrets/matrix-imessage.yaml;
           };
-      };
+      }
+      # Revolut's web session asks for the 6-digit passcode again about an hour after login, so the
+      # daily fetch (home/macmini-revolut.nix) cannot run unattended without it. personal-tools/revolut
+      # types it on the passcode page, once per run; a wrong code locks the account, so it never retries.
+      # Declared only once the key exists in common.yaml (sops-nix fails activation on a missing key),
+      # so the rest of this file can ship before the passcode is put in.
+      //
+        lib.optionalAttrs
+          (
+            builtins.match ".*\nrevolut:\n[ ]+passcode:.*" (builtins.readFile ../../secrets/common.yaml) != null
+          )
+          {
+            "revolut/passcode" = forUser "/Users/${user.username}/.config/revolut/passcode";
+          };
   };
   imports = [
     ./darwin-common.nix
