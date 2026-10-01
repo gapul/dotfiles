@@ -77,6 +77,7 @@
     ./matrix-googlechat.nix
     ./matrix-hookshot.nix
     ./matrix-doublepuppet.nix
+    ./matrix-lowpriority.nix
     ./matrix-imessage.nix
     ./matrix-bridge-secrets.nix
     ./memory-pressure-alert.nix
