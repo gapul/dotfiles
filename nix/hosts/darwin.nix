@@ -605,10 +605,10 @@ in
       # failing Gatekeeper and disabled on 2026-09-01.
       "helium-browser" # ungoogled-chromium based, now the Chromium of record here
       "tor-browser"
-      "zen"
-      # Firefox Developer Edition: the DRM and video-call browser next to Zen (2026-09-17). Zen
-      # has no Widevine licence and Helium has no CDM at all, so neither plays Netflix, Prime
-      # Video or Spotify web; Mozilla's build carries the licence. The cask rather than nixpkgs'
+      # Firefox Developer Edition: the daily browser, and the DRM and video-call one (2026-09-17;
+      # it replaced Zen, which had no Widevine licence and was removed 2026-10-01). Helium has no
+      # CDM at all, so it cannot play Netflix, Prime Video or Spotify web; Mozilla's build carries
+      # the licence. The cask rather than nixpkgs'
       # firefox-devedition-bin: on darwin nixpkgs re-signs the bundle ad hoc (TeamIdentifier not
       # set, resources missing), and the nix-vs-brew signing rule wants the Developer ID signature
       # kept so the microphone/camera TCC grants survive a rebuild. Everything else about it

@@ -87,26 +87,18 @@ let
       # the untouched original (unchanged, so restic dedups it to nothing).
       "${home}/Library/Application Support/activitywatch/aw-server-rust"
       "${home}/Library/Application Support/activitywatch/aw-server"
-      # Zen's profile. Bookmarks already ride floccus, so what is actually at stake here is the
-      # history and the per-extension settings; the caches under it are excluded below.
-      "${home}/Library/Application Support/zen/Profiles"
-      # Firefox Developer Edition took over as the daily browser on 2026-09-26 (Zen's history
-      # was moved into it); same reasoning, same exclusions.
+      # Firefox Developer Edition's profile (the daily browser since 2026-09-26). Bookmarks already
+      # ride floccus, so what is at stake here is the history and the per-extension settings; the
+      # caches under it are excluded below. Zen's profile left the set when Zen was removed
+      # (2026-10-01); its history stays in the older snapshots.
       "${home}/Library/Application Support/Firefox/Profiles"
     ];
     extraExcludes = [
       "**/.DS_Store"
       "**/*.photoslibrary"
       "**/ae-mcp-commands"
-      # Zen's profile is ~1GB and almost all of it is refetchable browser cache. Keep places.sqlite
+      # The profile is ~1GB and almost all of it is refetchable browser cache. Keep places.sqlite
       # and the extension state, drop the rest.
-      "**/zen/Profiles/*/cache2"
-      "**/zen/Profiles/*/startupCache"
-      "**/zen/Profiles/*/shader-cache"
-      "**/zen/Profiles/*/thumbnails"
-      "**/zen/Profiles/*/settings/**"
-      "**/zen/Profiles/*/minidumps"
-      "**/zen/Profiles/*/datareporting"
       "**/Firefox/Profiles/*/cache2"
       "**/Firefox/Profiles/*/startupCache"
       "**/Firefox/Profiles/*/shader-cache"
