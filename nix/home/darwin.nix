@@ -258,9 +258,6 @@ in
     # sketchybar's event helper. `sketchybarrc` used to compile it on every bar start from
     # sources kept in the config directory; the launchd agents put the profile first on PATH.
     (callPackage ../pkgs/sketchybar-helper { })
-    # Premiere Pro MCP server (registered with `claude mcp add -s user premiere-pro -- premiere-pro-mcp`).
-    # Was a hand build in ~/Developer; see the pin note in the package.
-    (callPackage ../pkgs/premiere-pro-mcp.nix { })
     # Laya typed-decision models on MLX (`laya-mlx predict`, `laya-snake`). Weights land in
     # ~/.cache/huggingface on first use. mlx comes from Apple's Metal wheels, see the package.
     (callPackage ../pkgs/laya-mlx.nix { })

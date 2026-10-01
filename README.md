@@ -286,10 +286,10 @@ checks both, and is worth running after a Determinate upgrade in particular.
 
 | Symptom | What to do |
 |---|---|
-| sketchybar, Ghostty or the launcher ignore their config after a reboot | Check the `/nix` mount with `just doctor`. If `noauto` came back, `sudo sed -i '' 's/,noauto//' /etc/fstab` |
+| sketchybar or Ghostty ignore their config after a reboot | Check the `/nix` mount with `just doctor`. If `noauto` came back, `sudo sed -i '' 's/,noauto//' /etc/fstab` |
 | `/nix` is missing, or the shell errors out | `sudo determinate-nixd init`, or `sudo diskutil mount "Nix Store"` |
 | `nh: more values required` | Open a new terminal. The old environment is inherited through `__HM_SESS_VARS_SOURCED`. |
 | `git push` fails | The dotfiles remote uses SSH. Check `~/.ssh/config`. |
 | A pre-commit hook blocks the commit | Leaks are shown redacted. For a false positive, add an allowlist entry to `.gitleaks.toml`. |
 | `darwin-rebuild switch` fails with a USER error | nix-darwin#1462. Use `just rebuild`, which goes through nh. |
-| Some Ghostty settings are ignored and stay at their defaults, such as `quick-terminal-position` | Ghostty 1.3.1 stops parsing at the first invalid line, for example `quick-terminal-screen = mouse` or `global:f18=...`. Check what actually applied with `+show-config`, then delete config lines from the top until the culprit shows up. |
+| Some Ghostty settings are ignored and stay at their defaults, such as `background-opacity` | Ghostty 1.3.1 stops parsing at the first invalid line, for example `quick-terminal-screen = mouse` or `global:f18=...`. Check what actually applied with `+show-config`, then delete config lines from the top until the culprit shows up. |

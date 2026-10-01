@@ -339,8 +339,8 @@ in
     screencapture.location = "/Users/${user.username}/Downloads";
 
     # Default keyboard shortcuts that are deliberately off. These were set by hand in System
-    # Settings and never declared, which mattered most for 64/65: Ghostty's Quick Terminal binds
-    # cmd+space, so Spotlight has to release it or the two fight and Ghostty loses.
+    # Settings and never declared, which mattered most for 64/65: Tinycast (the launcher) takes
+    # cmd+space, so Spotlight has to release it or the two fight.
     # Writing a hotkey id replaces its whole entry, so the original parameters are reproduced
     # verbatim — an entry with no parameters is disabled but also unrecoverable from the GUI.
     CustomUserPreferences."com.apple.symbolichotkeys".AppleSymbolicHotKeys = {

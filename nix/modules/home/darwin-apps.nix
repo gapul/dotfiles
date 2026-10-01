@@ -292,6 +292,7 @@
       "/Applications/ActivityWatch.app"       # time tracking
       "/Applications/Obsidian.app"            # notes (LiveSync keeps running in the background)
       "/Applications/Firefox Developer Edition.app" # browser (took over from Zen 2026-09-26)
+      "/Applications/Tinycast.app"            # launcher on cmd+space (replaced the Ghostty quick-terminal launcher 2026-10-01)
     )
     # Registration goes through System Events, so it silently does nothing until this process has
     # Automation permission. Report what failed instead of swallowing it — the old `|| true` made a
