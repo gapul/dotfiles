@@ -1,4 +1,9 @@
-{ pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 # One palette for the parts of the desktop that nix cannot reach by hand.
 #
 # The hand-written configs (ghostty, yazi, bat, nvim …) already follow
@@ -95,6 +100,33 @@ in
       hyprpaper.enable = true; # paints the generated wallpaper
     };
   };
+
+  # The desktop-wide light/dark switch that apps read through the xdg portal
+  # (org.freedesktop.appearance color-scheme, served by xdg-desktop-portal-gtk from this key).
+  # Stylix's gtk target paints GTK but does not set it, so the portal answered "no
+  # preference" and ghostty — whose `theme = light:…,dark:…` follows that answer — came up
+  # in Rose Pine Dawn on a dark desktop. Derived from the same `variant` as `polarity` so a
+  # palette switch flips it too.
+  dconf.settings."org/gnome/desktop/interface".color-scheme =
+    if data.palettes.${data.active}.variant == "dark" then "prefer-dark" else "prefer-light";
+
+  # adw-gtk3 6.x styles GTK4 through CSS custom properties, and its suggested-action buttons
+  # read --accent-bg-color, which the @define-color lines stylix writes never reach — file
+  # pickers came up dark with a stock-blue "Open" button. The variables go into the GTK4 file
+  # only: GTK3 cannot parse `:root` and prints a "Theme parsing error" on every launch, so
+  # stylix's shared `targets.gtk.extraCss` is the wrong place. The GTK3 file is stylix's
+  # unmodified CSS (both are the same derivation upstream), extended here for GTK4.
+  xdg.configFile."gtk-4.0/gtk.css".source = lib.mkForce (
+    pkgs.concatText "gtk4.css" [
+      config.xdg.configFile."gtk-3.0/gtk.css".source
+      (pkgs.writeText "gtk4-accent.css" ''
+        :root {
+          --accent-bg-color: #${p.iris};
+          --accent-fg-color: #${p.base};
+        }
+      '')
+    ]
+  );
 
   # Deliberately not listed above, because home/hyprland.nix already writes them by hand and
   # two writers for one option is a build error rather than a merge (`has conflicting
