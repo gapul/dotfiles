@@ -288,7 +288,17 @@ in
         set -u
         unit="$1"
         # 本文に直近のログを入れる。通知だけ来ても結局 ssh する羽目になるため。
-        body="$(${pkgs.systemd}/bin/journalctl -u "$unit" -n 20 --no-pager -o cat 2>&1 || true)"
+        #
+        # 素の末尾 20 行だと podman の health_status / exec イベント (restic の
+        # pre-start が DB コンテナを起こすたびに数十行出る) で埋まり、肝心の
+        # 「paperless did not become healthy before backup」が入らなかった上に、
+        # 4KB を超えて添付ファイル (attachment.txt) になり iPhone から読めなかった
+        # (2026-10-01)。イベント行と systemd の会計行を落として、本文に収まる量だけ送る。
+        body="$(${pkgs.systemd}/bin/journalctl -u "$unit" -n 300 --no-pager -o cat 2>&1 \
+          | ${pkgs.gnugrep}/bin/grep -Ev 'container (exec|exec_died|health_status|cleanup|init|start|died|remove|create|attach) |^\s*$|: Consumed [0-9]' \
+          | ${pkgs.coreutils}/bin/tail -n 25 \
+          | ${pkgs.coreutils}/bin/cut -c1-240 \
+          | ${pkgs.coreutils}/bin/head -c 3500 || true)"
         ${pkgs.curl}/bin/curl -fsS --max-time 15 \
           -H "Authorization: Bearer $NTFY_TOKEN" \
           -H "Title: $unit failed on homeserver" \
