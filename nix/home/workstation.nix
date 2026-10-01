@@ -10,8 +10,6 @@ let
     nixpkgsUnstable = nixpkgsAgents;
     inherit (pkgs.stdenv.hostPlatform) system;
   };
-  # Search binary for the ghostty launcher. Store-ify it to protect it from gc-deep's target cleanup.
-  launcher-search = pkgs.callPackage ../pkgs/launcher-search.nix { };
   agentStateRepo = "${config.home.homeDirectory}/Developer/github.com/gapul/ai-agent-state";
   claudeConfig = path: config.lib.file.mkOutOfStoreSymlink "${agentStateRepo}/claude/${path}";
 in
@@ -22,7 +20,6 @@ in
   home.packages =
     with pkgs;
     [
-      launcher-search # ghostty launcher search backend (replaces core/launcher-search)
       # mpv itself. It stayed on brew for a long time because of a note saying "nixpkgs mpv doesn't
       # support aarch64-darwin", but when checked on 2026-08-30, 0.41.0 was cached and worked fine
       # (the note was outdated). uosc was already from nixpkgs, so now the player and scripts share a source.
@@ -226,9 +223,6 @@ in
     "${pkgs.mpvScripts.uosc}/share/fonts/uosc_icons.otf";
   home.file.".config/mpv/fonts/uosc_textures.ttf".source =
     "${pkgs.mpvScripts.uosc}/share/fonts/uosc_textures.ttf";
-  home.file.".config/launcher/config.toml".source = ../../configs/launcher/config.toml;
-  # core/launcher.sh uses the store binary over a local build when this env is set.
-  home.sessionVariables.LAUNCHER_SEARCH_BIN = lib.getExe launcher-search;
   home.file.".config/calcurse" = {
     source = ../../configs/cli/calcurse;
     recursive = true;

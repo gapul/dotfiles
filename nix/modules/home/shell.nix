@@ -136,9 +136,6 @@ in
           command codex -c "tui.theme=\"$codex_theme\"" "$@"
         }
 
-        # Launcher (function definitions + Ghostty Quick Terminal resident loop)
-        [ -f ~/.config/launcher/shells/zsh.sh ] && source ~/.config/launcher/shells/zsh.sh
-
         # Claude Code: named-session launcher (create or resume)
         function cl() {
           local name=$1

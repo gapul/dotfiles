@@ -91,10 +91,10 @@ _rebuild-macos force="":
     log="$HOME/tmp/nix-rebuild.log"
     nom_flag=""; [ -t 1 ] || nom_flag="--no-nom"
     : > "$log"
-    # The build runs under a QoS clamp so it cannot starve Ghostty: if the build pins the
-    # CPU, Ghostty's event handling misses its deadline and the global keybind's CGEventTap
-    # is disabled with kCGEventTapDisabledByTimeout, after which cmd+space stops working
-    # while unfocused (Ghostty does not re-enable the tap itself: ghostty#11883).
+    # The build runs under a QoS clamp so it cannot starve the desktop. It was added when
+    # Ghostty's global cmd+space keybind lived on a CGEventTap that macOS disabled
+    # (kCGEventTapDisabledByTimeout) whenever a build pinned the CPU (ghostty#11883); that
+    # keybind is gone (cmd+space is Tinycast now), but a pinned CPU still stalls the UI.
     # `-c utility` rather than `-b`: background QoS parks the build on the efficiency cores,
     # which made every rebuild several times slower than it needed to be. utility still yields
     # to anything user-interactive, which is all the tap needs.

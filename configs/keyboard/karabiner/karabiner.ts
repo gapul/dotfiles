@@ -77,13 +77,4 @@ k.writeToProfile("Default profile", [
     k.map("return_or_enter").to("return_or_enter", "left_shift"),
     k.map("return_or_enter", "command").to("return_or_enter"),
   ]),
-  k.rule("Cmd+Ctrl+Opt+O で Obsidian Add Log を起動").manipulators([
-    k
-      .map(
-        "o",
-        ["left_command", "left_control", "left_option"],
-        ["caps_lock", "shift"],
-      )
-      .to$("$HOME/.config/launcher/core/add-log-standalone.sh"),
-  ]),
 ]);

@@ -61,12 +61,8 @@ initial-window = false
 # restart/再起動時に前回のウィンドウを復元しない
 window-save-state = never
 
-# 最後のウィンドウを閉じても Ghostty を終了させない
-# Quick Terminal のホットキーが常に効くようにバックグラウンド常駐
+# 最後のウィンドウを閉じても Ghostty を終了させない (ログイン項目として窓なしで常駐)
 quit-after-last-window-closed = false
-
-# グローバルホットキーの割り当て（Spotlight代替: cmd+space）
-keybind = global:super+space=toggle_quick_terminal
 
 # Ghostty標準の cmd+enter (toggle_fullscreen) を無効化
 # AeroSpaceのタイリングと競合するため
@@ -77,12 +73,6 @@ keybind = cmd+enter=unbind
 # performableを外して常にキーを消費させる。
 keybind = cmd+c=copy_to_clipboard
 
-# ドロップダウンの出現位置やアニメーション設定（Spotlight風）
-quick-terminal-position = center
-quick-terminal-size = 38%,480px
-quick-terminal-autohide = true
-quick-terminal-animation-duration = 0.12
-
 # ─── 解像度可変フォントサイズ ───
 # nh home switch 時に home.activation (ghosttyFontSize) が現在のメインディスプレイ
 # 解像度から font-size を算出し下記フラグメントへ書き出す (scripts/ghostty-fontsize.sh)。
@@ -91,7 +81,7 @@ quick-terminal-animation-duration = 0.12
 config-file = ?~/.config/ghostty.local/font-size.conf
 
 # プラットフォーム別の上書き。上の initial-window / quit-after-last-window-closed は
-# macOS の Quick Terminal 常駐 (cmd+space で呼び出す) のための設定で、Linux では
+# macOS で窓なし常駐させるための設定で、Linux では
 # 「起動しても窓が出ない」だけの意味になる。後勝ちなので font-size.conf より後に置く。
 # Linux 側の中身は nix/home/hyprland.nix が生成する。macOS では未生成 = ? で無視される。
 config-file = ?~/.config/ghostty.local/platform.conf

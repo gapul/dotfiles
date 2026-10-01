@@ -73,8 +73,6 @@ if is_macos then
 end
 
 -- ─── 未移植 (WezTerm に等価機能なし or OS 制約) ───
--- Ghostty: initial-window=false / quit-after-last-window-closed=false /
---          keybind=global:super+space=toggle_quick_terminal (Spotlight 代替)
--- → Quick Terminal 相当の global hotkey 機能は OS 側 (PowerToys / AutoHotkey 等) で対応
+-- Ghostty: initial-window=false / quit-after-last-window-closed=false
 
 return config
