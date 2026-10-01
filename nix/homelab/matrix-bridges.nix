@@ -162,6 +162,10 @@ in
         # and the rest get no room until the other side sends a message (actually hit on 2026-09-30).
         # 100 covers all existing DMs. Guilds are separate and chosen with `guilds bridge`.
         startup_private_channel_create_limit = 100;
+        # Same policy as slack's mute_channels_by_default: guild channel portals start muted,
+        # so only DMs and mentions notify (mentions are override push rules and win over the
+        # room-level mute). Upstream notes it only mutes for one user, which is all we have.
+        mute_channels_on_create = true;
         # mautrix-discord is still a v1 bridge: the key is login_shared_secret_map here.
         login_shared_secret_map.${domain} = "$DOUBLE_PUPPET_SECRET";
         # Old-style config, so encryption also sits under bridge. self_sign does not exist in
