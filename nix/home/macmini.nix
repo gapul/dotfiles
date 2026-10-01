@@ -50,7 +50,7 @@ in
   ];
 
   # macmini-specific layer. The base CLI/zsh/XDG set inherits home/common.nix
-  # composed on the flake side (no sops/age keys are brought in).
+  # composed on the flake side (the age key in ~/.config/sops/age is hand-placed, see hosts/macmini.nix).
   # Layout follows XDG/ghq (the dedicated ~/ai was retired 2026-07-19):
   #   service bodies -> ~/.local/share/ai-stack/ (HM symlink)
   #   venvs -> ~/.local/share/venvs/, models -> ~/.local/share/models/
