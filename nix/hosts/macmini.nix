@@ -1,4 +1,5 @@
 {
+  config,
   lib,
   pkgs,
   user,
@@ -175,6 +176,11 @@ in
           owner = "mcsrv";
           mode = "0444";
         };
+        # Keys for maps-mcp (configs/macmini/maps-mcp). The Apple Maps Server API key is a .p8 the
+        # portal lets you download exactly once (also kept in Bitwarden); its non-secret ids sit
+        # in the daemon's environment below.
+        "apple_maps/private_key" = forUser "/Users/${user.username}/.config/apple-maps/AuthKey.p8";
+        "hotpepper/api_key" = forUser "/Users/${user.username}/.config/hotpepper/key";
         "unified_calendar/ntfy_url" = forUser "/Users/${user.username}/.config/ntfy/url";
         "unified_calendar/ntfy_token" = forUser "/Users/${user.username}/.config/ntfy/token";
         # appservice token for the iMessage bridge. Same value the homeserver's Synapse holds in the
@@ -583,12 +589,18 @@ in
   # Read-only maps MCP for every Claude on the tailnet (POST http://macmini:2324/mcp): geocoding
   # through photon-proxy above, Overture places, Apple Maps search/routes, Transitous transit,
   # anonymous Google through SearXNG, weather. Same python as photon-proxy, so the firewall entry
-  # below already covers it. The Apple key is imperative state in ~/.config/apple-maps (backed up
-  # in Bitwarden); without it only the apple_* tools fail.
+  # below already covers it. Its two keys come from sops (see sops.secrets above); without them
+  # only the apple_* / hotpepper tools fail.
   launchd.daemons.maps-mcp = {
     command = "${pkgs.python3.interpreter} ${../../configs/macmini/maps-mcp/server.py}";
     serviceConfig = {
       UserName = user.username;
+      EnvironmentVariables = {
+        APPLE_MAPS_TEAM_ID = "S3H296G6Q5";
+        APPLE_MAPS_KEY_ID = "545ZH5BY4Z"; # Maps ID maps.net.gapul.claude
+        APPLE_MAPS_KEY_PATH = config.sops.secrets."apple_maps/private_key".path;
+        HOTPEPPER_KEY_PATH = config.sops.secrets."hotpepper/api_key".path;
+      };
       RunAtLoad = true;
       KeepAlive = true;
       ProcessType = "Background";
