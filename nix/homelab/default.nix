@@ -106,6 +106,7 @@
     ./searx.nix
     ./syncthing.nix
     ./unified-calendar.nix
+    ./utas-classes.nix # personal UTAS class schedule → Radicale "授業"
     ./vault-git.nix
     ./vaultwarden.nix
     ./vpn-relay.nix
