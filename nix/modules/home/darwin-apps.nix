@@ -285,7 +285,6 @@
       # silently dead, which is exactly the hole this list exists to close.
       "/Applications/Hammerspoon.app"
       "/Applications/Ghostty.app"
-      "/Applications/Nix Apps/Puddle.app" # nix パッケージ化したので Nix Apps 側
       "/Applications/azooKey skkserv.app"     # SKK conversion server for macSKK
       "/Applications/Maccy.app"               # clipboard history
       "/Applications/Nix Apps/KDE Connect.app" # phone integration (nix パッケージ化したので Nix Apps 側)
@@ -339,7 +338,9 @@
     #                Edition is the default browser and the login item now.
     #   LuLu       — dropped from the declaration in #879 (its network extension kept stalling
     #                inbound ssh); the cask cleanup removes the app, this removes its login item.
-    for name in AeroSpace Bitwarden Neru NTKDaemon NIHardwareAgent Zen LuLu; do
+    #   Puddle     — dropped 2026-10-02: it held a core at ~90% CPU and heated the MacBook Air;
+    #                launched by hand when the wallpaper is wanted.
+    for name in AeroSpace Bitwarden Neru NTKDaemon NIHardwareAgent Zen LuLu Puddle; do
       if /usr/bin/osascript -e "tell application \"System Events\" to (name of login items) contains \"$name\"" 2>/dev/null | grep -q true; then
         /usr/bin/osascript -e "tell application \"System Events\" to delete login item \"$name\"" >/dev/null 2>&1 || true
       fi
