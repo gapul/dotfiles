@@ -47,6 +47,13 @@
         path = "${config.home.homeDirectory}/.ssh/id_mvrx_sync";
         mode = "0600";
       };
+      # The university's csc cluster (Information Science Exercise II). The course asks for an
+      # ed25519 public key, and the everyday Secure Enclave key is ECDSA, so csc gets its own key.
+      # ssh_config pins it to Host csc only, so revoking it touches nothing else.
+      "ssh_csc_key" = {
+        path = "${config.home.homeDirectory}/.ssh/id_csc";
+        mode = "0600";
+      };
       # "ssh_authorized_keys" is no longer placed here: modules/authorized-keys.nix declares the
       # same keys for every host from nix/keys/authorized_keys, so writing a second copy into
       # ~/.ssh/authorized_keys would just be a rival source that drifts. The value is still in
