@@ -305,7 +305,9 @@
       # /Applications/Nix Apps, and the login item still pointed at the deleted
       # /Applications/Puddle.app — `path of login item` answered `missing value` and nothing
       # noticed. A wrong path is worse than a missing one, since it fails silently at login.
-      current=$(/usr/bin/osascript -e "tell application \"System Events\" to get path of login item \"$name\"" 2>/dev/null)
+      # An entry that is not registered at all makes osascript exit non-zero; `|| true` keeps
+      # that from aborting the whole activation under set -e, since adding it is the point.
+      current=$(/usr/bin/osascript -e "tell application \"System Events\" to get path of login item \"$name\"" 2>/dev/null || true)
       if [ "$current" = "$app" ]; then
         continue
       fi
