@@ -82,6 +82,9 @@ let
       rel = "unified-calendar.yaml";
       owner = "unified-calendar";
     }
+    # UTAS_ICS_URL (secret personal .ics) + Radicale credentials for utas-classes.nix.
+    # DynamicUser can't own it, so it stays root-only and systemd reads it as EnvironmentFile.
+    { rel = "utas-classes.env"; }
     { rel = "vault-deploy.key"; }
     { rel = "vaultwarden.env"; }
     { rel = "wger.env"; }
