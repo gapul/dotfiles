@@ -1,4 +1,4 @@
-# Checks location log freshness, every 6 hours.
+# Checks location log freshness, every hour.
 #
 # Dawarich itself is dawarich.nix. This only checks "is recording still happening".
 #
@@ -24,18 +24,23 @@
     ];
     serviceConfig = {
       Type = "oneshot";
-      ExecStart = "${pkgs.bash}/bin/bash ${../../configs/homelab/dawarich-freshness.sh} 24";
+      # 3 hours: since Overland took over (2026-09-24) the phone sends points around the clock,
+      # at home and asleep included, so every gap over 3 hours has been Overland stopping (15, 30
+      # and 35 hours in the week to 2026-10-03, each noticed only after the fact). At 24 hours the
+      # alert came a day late; at 3 the phone can be woken the same morning or evening.
+      ExecStart = "${pkgs.bash}/bin/bash ${../../configs/homelab/dawarich-freshness.sh} 3";
+      StateDirectory = "dawarich-freshness"; # remembers which stall was already notified
     };
   };
 
   systemd.timers.dawarich-freshness = {
-    description = "位置ログの鮮度を 6 時間おきに見る";
+    description = "位置ログの鮮度を 1 時間おきに見る";
     wantedBy = [ "timers.target" ];
     timerConfig = {
-      # The threshold is 24 hours, so checking every 6 hours notices "stopped for over a full day"
-      # within 30 hours at most. Checking hourly wouldn't notice any sooner.
+      # Hourly against a 3-hour threshold: a stall is reported within 4 hours. One notification
+      # per stall (the script keeps the last point it reported), so hourly doesn't mean noisy.
       OnBootSec = "15min";
-      OnUnitActiveSec = "6h";
+      OnUnitActiveSec = "1h";
       Persistent = true;
     };
   };
