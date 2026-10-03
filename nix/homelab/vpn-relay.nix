@@ -85,6 +85,19 @@ in
   # dial from a sandboxed VM. Keep the exported VM105 disk image until the tunnel
   # has come up here at least once.
 
+  # strongSwan 6.1.0 turned IKEv1 off by default, and the office only speaks
+  # IKEv1. Without this charon answers every attempt with "IKE version 1 not
+  # supported"; a tunnel brought up by 6.0.7 survived the upgrade until the next
+  # reboot, which is why it looked fine for days. Drop this when the office moves
+  # to IKEv2 or upstream removes IKEv1 for good.
+  nixpkgs.overlays = [
+    (_: prev: {
+      strongswan = prev.strongswan.overrideAttrs (old: {
+        configureFlags = old.configureFlags ++ [ "--enable-ikev1" ];
+      });
+    })
+  ];
+
   environment.systemPackages = with pkgs; [
     strongswan
     xl2tpd
