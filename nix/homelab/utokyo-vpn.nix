@@ -36,9 +36,17 @@ let
   # The gateway pushes a full tunnel (default route, its own DNS, IPv6). On the
   # machine that is the house's DNS server and subnet router that would take
   # everything down, so replace the server's split list with UTNET and drop the
-  # rest before handing over to the stock vpnc-script.
+  # rest before handing over to the stock vpnc-script. INTERNAL_IP4_NET* is the
+  # pool's network, which arrives as 10.0.0.0/8 and would swallow every private
+  # 10.x route on the box.
+  #
+  # vpnc-script's wrapper leaves sed off its PATH, and sed is what it uses to pin
+  # the gateway's host route outside the tunnel. The gateway sits in 133.11/16, so
+  # without that pin the tunnel's own traffic is routed into the tunnel.
   routeScript = pkgs.writeShellScript "utokyo-vpn-script" ''
+    export PATH=${pkgs.gnused}/bin:$PATH
     unset CISCO_SPLIT_EXC INTERNAL_IP4_DNS INTERNAL_IP6_DNS CISCO_DEF_DOMAIN CISCO_SPLIT_DNS
+    unset INTERNAL_IP4_NETADDR INTERNAL_IP4_NETMASK INTERNAL_IP4_NETMASKLEN
     unset INTERNAL_IP6_ADDRESS INTERNAL_IP6_NETMASK CISCO_IPV6_SPLIT_INC
     export CISCO_SPLIT_INC=${toString (builtins.length utnet)}
     ${builtins.concatStringsSep "\n" (
