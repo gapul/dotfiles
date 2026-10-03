@@ -435,9 +435,13 @@ in
     # to run `tailscale up`, which is exactly the step that leaves a headless
     # box unreachable.
     authKeyFile = "/var/lib/secrets/tailscale.key";
-    # Two subnets: the house, and the office network reached over the L2TP tunnel
-    # in homelab/vpn-relay.nix. The second one used to be advertised by VM105.
-    extraUpFlags = [ "--advertise-routes=192.168.116.0/24,192.168.1.0/24,10.80.1.0/24" ];
+    # The house; the office network reached over the L2TP tunnel in
+    # homelab/vpn-relay.nix (once advertised by VM105); and UTNET over
+    # homelab/utokyo-vpn.nix. These flags only apply when the node first logs in —
+    # on a running box change the routes with `tailscale set --advertise-routes=...`.
+    extraUpFlags = [
+      "--advertise-routes=192.168.116.0/24,192.168.1.0/24,10.80.1.0/24,130.69.0.0/16,133.11.0.0/16,157.82.0.0/16,192.51.208.0/20"
+    ];
   };
 
   # --- TLS ---
