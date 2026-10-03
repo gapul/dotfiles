@@ -349,6 +349,7 @@
             ./home/git-hooks.nix # git hook that auto-rebuilds on main updates (main tree only)
             ./home/mail-app.nix # keep Mail.app running in the background so native verification-code AutoFill works
             ./home/obsidian-caldav.nix # two-way sync of Obsidian tasks with the Radicale task lists
+            ./home/lifelog-pull.nix # bring the daily lifelog notes macmini writes into the vault
           ]
           ++ secrets
           ++ [
@@ -370,6 +371,7 @@
           ./home/findmy-tag.nix # periodic Find My tag fetch; lives on this always-on machine, not the laptop
           ./home/macmini-revolut.nix # Revolut fetch for the ledger; needs a headed browser (Cloudflare), so this GUI Mac
           ./home/macmini-sites.nix # Suica / JRE POINT / Bic Camera for the ledger; same headed-browser reason
+          ./home/macmini-lifelog.nix # daily lifelog notes for the vault (timeline + facts + agy summary)
           # iMessage bridge. The other mautrix bridges live on homeserver, but this one needs
           # chat.db and Messages.app, so it can only run on this machine.
           ./home/macmini-imessage.nix
