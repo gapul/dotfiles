@@ -13,6 +13,8 @@
 set -uo pipefail
 
 MAX_HOURS=${1:-24}
+# 止まるたびに1回だけ鳴らす。毎時見ているので、ここで抑えないと止まっている間ずっと鳴る。
+STATE=${STATE_DIRECTORY:-/var/lib/dawarich-freshness}/notified
 TOKEN_FILE=/var/lib/secrets/ntfy-alerts.token
 NTFY_URL=http://127.0.0.1:8082/alerts
 
@@ -36,6 +38,11 @@ fi
 age_h=$(( ( $(date +%s) - latest ) / 3600 ))
 
 if [ "$age_h" -ge "$MAX_HOURS" ]; then
+  if [ "$(cat "$STATE" 2>/dev/null)" = "$latest" ]; then
+    echo "位置ログが ${age_h} 時間止まっている (この停止は通知済み)"
+    exit 0
+  fi
+  echo "$latest" > "$STATE"
   notify "位置ログが ${age_h} 時間止まっている" \
     "最後の点は $(date -d "@$latest" '+%Y-%m-%d %H:%M') 。iPhone の Overland を見ること —
 送信先の URL、API キー、バックグラウンド更新、位置情報が「常に」になっているか。
