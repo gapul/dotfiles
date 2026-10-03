@@ -83,6 +83,33 @@ let
     # for Mail.app. As with CalDAV vs CardDAV, Apple has no payload type that bundles
     # accounts. Outgoing points at Stalwart too, but it has no submission listener
     # yet, so this is read-only in practice.
+    # gapul.net's MX stays on Cloudflare Email Routing (Sakura's mailbox plan has no
+    # catch-all), which forwards every address to this one Sakura mailbox. Sending goes
+    # out through Sakura too, and it accepts any @gapul.net as From, so replying from an
+    # alias only needs that alias added to the account's address list on the device.
+    sakura-mail = {
+      displayName = "gapul.net Mail";
+      description = "gapul.net のメール (さくらのメールボックス、全アドレスがここに届く)。パスワードは初回に端末が訊く。";
+      payloads = [
+        {
+          PayloadType = "com.apple.mail.managed";
+          EmailAccountDescription = "gapul.net";
+          EmailAccountType = "EmailTypeIMAP";
+          EmailAddress = "gapul@gapul.net";
+          IncomingMailServerHostName = "gapul.sakura.ne.jp";
+          IncomingMailServerPortNumber = 993;
+          IncomingMailServerUseSSL = true;
+          IncomingMailServerAuthentication = "EmailAuthPassword";
+          IncomingMailServerUsername = "gapul@gapul.sakura.ne.jp";
+          OutgoingMailServerHostName = "gapul.sakura.ne.jp";
+          OutgoingMailServerPortNumber = 465;
+          OutgoingMailServerUseSSL = true;
+          OutgoingMailServerAuthentication = "EmailAuthPassword";
+          OutgoingMailServerUsername = "gapul@gapul.sakura.ne.jp";
+          OutgoingPasswordSameAsIncomingPassword = true;
+        }
+      ];
+    };
     homelab-mail = {
       displayName = "Homelab Mail";
       description = "自宅 Stalwart の IMAP 口座 (gmail / work / school の写し)。パスワードは初回に端末が訊く。";
