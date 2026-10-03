@@ -60,6 +60,10 @@
         "social.gapul.net" = "http://127.0.0.1:8110";
         "blog.gapul.net" = "http://127.0.0.1:8111";
         "relay.gapul.net" = "http://127.0.0.1:8112";
+        # Forgejo (forgejo.nix). Was left on a tailnet-IP A record from the Proxmox migration,
+        # which only ever worked for devices on the tailnet; moved through the tunnel like
+        # everything else here so it's actually reachable from outside.
+        "git.gapul.net" = "http://127.0.0.1:3003";
       };
       # Unknown hostnames get 404. The Pi's config did the same.
       default = "http_status:404";
