@@ -113,6 +113,11 @@
         description: Git hosting
         icon: forgejo.png
         siteMonitor: http://127.0.0.1:3003
+    - wger:
+        href: https://food.gapul.net
+        description: Meal diary
+        icon: wger.png
+        siteMonitor: http://127.0.0.1:8106
     - Dawarich:
         href: https://track.gapul.net
         description: Location history (Google Timeline replacement)
@@ -192,6 +197,16 @@
         description: Game library
         icon: mdi-gamepad-variant
         siteMonitor: http://127.0.0.1:8092
+    - Audiobookshelf:
+        href: https://audiobooks.gapul.net
+        description: Audiobooks
+        icon: audiobookshelf.png
+        siteMonitor: http://127.0.0.1:8107
+    - Kavita:
+        href: https://books.gapul.net
+        description: E-books (OPDS)
+        icon: kavita.png
+        siteMonitor: http://127.0.0.1:8108
 
 - macmini (M4):
     - System:
