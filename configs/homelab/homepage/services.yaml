@@ -143,6 +143,11 @@
         description: NIP-46 signer (key admin)
         icon: mdi-key-chain
         siteMonitor: http://127.0.0.1:4174
+    - GoToSocial:
+        href: https://social.gapul.net
+        description: Fediverse (ActivityPub)
+        icon: gotosocial.png
+        siteMonitor: http://127.0.0.1:8110
 
 - Tools:
     - Paperless-ngx:
