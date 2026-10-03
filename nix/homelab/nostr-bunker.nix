@@ -52,8 +52,10 @@ in
       pkgs.podman
     ];
     # Skip the rebuild once this revision's marker exists, so a normal switch
-    # doesn't reclone and rebuild on every activation.
-    unitConfig.ConditionPathExists = "!${configDir}/../.built-${signetRev}";
+    # doesn't reclone and rebuild on every activation. The path has to be written
+    # out: systemd ignores a condition whose path contains "..", which made every
+    # boot rebuild both images (20+ minutes stuck in `chown -R` on a cold ARC).
+    unitConfig.ConditionPathExists = "!/var/lib/homelab/signet/.built-${signetRev}";
     serviceConfig = {
       Type = "oneshot";
       RemainAfterExit = true;
