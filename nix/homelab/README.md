@@ -69,6 +69,16 @@ and this repo is public.
 | `probe-host` | `host:port` on the far side for the watchdog, e.g. a machine's ssh port |
 | `peer` | the office concentrator's address on its own line. Everything else about the connection is in `vpn-relay.nix`; only this identifies an employer |
 
+UTokyo VPN (`utokyo-vpn.nix`) reads `/var/lib/secrets/utokyo-vpn/`, root 0600,
+each file the bare value with no trailing newline. All three come from the UTokyo
+Account item in Vaultwarden.
+
+| file | contents |
+| --- | --- |
+| `username` | the UTokyo Account as `<10 digits>@utac.u-tokyo.ac.jp` |
+| `password` | its password |
+| `totp-secret` | the authenticator-app seed: the `secret=` value of the otpauth URI, base32 |
+
 `APPLICATION_HOSTS` is in dawarich's list not because it is secret but because the
 old value names the old machine's LAN address; it has to be set for whatever this
 host's address turns out to be.
