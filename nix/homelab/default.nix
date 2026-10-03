@@ -107,6 +107,7 @@
     ./syncthing.nix
     ./unified-calendar.nix
     ./utas-classes.nix # personal UTAS class schedule → Radicale "授業"
+    ./utokyo-vpn.nix
     ./vault-git.nix
     ./vaultwarden.nix
     ./vpn-relay.nix
