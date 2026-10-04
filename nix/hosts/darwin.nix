@@ -495,7 +495,6 @@ in
           "osx-cross/arm" # QMK toolchain dependency tap
           "osx-cross/avr" # QMK / Keyball AVR toolchain tap
           "qmk/qmk" # QMK CLI
-          "stablyai/orca" # Orca ADE (Claude Code/Codex chat UI and remote client)
           "y3owk1n/tap" # cask distribution source for neru (full-screen keyboard navigation)
 
           # ─── Personal forks (gapul) — delete if you forked and don't need them ───
@@ -688,7 +687,6 @@ in
       "rustdesk"
 
       # ─── Dev IDEs / Editors / SDK ───
-      "stablyai/orca/orca" # unified chat UI for Claude Code/Codex; custom tap avoids the unrelated disabled Plotly cask
       "t3-code@nightly" # T3 Code client for the macmini t3code host; nightly to match its server protocol
       "ghostty"
       "deskflow"
