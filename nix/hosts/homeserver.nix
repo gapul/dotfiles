@@ -211,19 +211,10 @@ let
       upstream = "127.0.0.1:8105";
       expect = [ "[STATUS] == 401" ];
     };
-    # Orca's web client (the resident runtime on macmini). TLS is needed to use it from the phone:
-    # plain HTTP + a raw IP is not a secure context, so it crashes at startup with
-    # `crypto.randomUUID is not a function`. tailscale serve exposes the same thing at
-    # https://macmini.tail079f44.ts.net, but MagicDNS doesn't resolve on devices on this
-    # network (the ts.net split route doesn't take effect in the OS), so it goes through the
-    # already-proven gapul.net side instead.
-    #
-    # No Authelia. The page itself opens, but the runtime rejects clients that don't hold a
-    # device token from the pairing code. In other words, the lock on the door is already in
-    # the code, and the vhost is only resolvable from inside the tailnet.
-    orca.upstream = "${macmini}:6768";
-    # T3 Code on macmini (home/macmini.nix). Same shape as orca: the server rejects clients without
-    # a paired session, so no Authelia on the app itself.
+    # T3 Code on macmini (home/macmini.nix). Its web client needs TLS (plain HTTP + a raw IP is not
+    # a secure context), and the tailscale serve name does not resolve here: MagicDNS's ts.net split
+    # route doesn't take effect in the OS on these devices, so it goes through gapul.net instead.
+    # No Authelia on the app itself: the server rejects clients without a paired session.
     t3.upstream = "${macmini}:3773";
     # Its pairing page does mint those sessions, so it sits behind Authelia.
     t3pair = {
