@@ -286,33 +286,22 @@
     };
   };
 
-  # Store deduplication, right after the GC. Neither machine had ever been optimised: the first
-  # manual run on 2026-09-26 freed 10G on the workstation and ~30G on macmini. auto-optimise-store
-  # is left off because nix-darwin still warns it can corrupt the store on macOS (NixOS/nix#7273).
+  # No store deduplication on macOS. `nix store optimise` hardlinks every store file into
+  # /nix/store/.links/<hash>, and for a hardlinked file APFS reports the older link as the canonical
+  # path, so a running daemon whose executable was deduplicated is seen by the kernel as
+  # /nix/store/.links/<hash> (proc_pidpath, lsof and Activity Monitor all agree; restarting the
+  # daemon does not help). The Application Firewall identifies the process behind every new inbound
+  # flow through SecCode, which walks the executable's parent directory looking for a bundle: 700k+
+  # entries in .links, tens of seconds per flow, on a serial queue. With blocky answering DNS on
+  # macmini that queue never drained. socketfilterfw pinned a core for 16 hours and every
+  # non-loopback listener (sshd, VNC, Sunshine, the AI panel) completed the TCP handshake and then
+  # went silent, which reads as a network fault (2026-09-26..27). The weekly optimise job ran
+  # exactly once, on 2026-09-26 (~10G freed on the workstation, ~30G on macmini); the disk is
+  # cheaper than a headless machine nobody can reach, so the job is gone. auto-optimise-store stays
+  # off as well (NixOS/nix#7273).
   #
-  # Same executable as nix-gc, so the one Full Disk Access grant covers both jobs. The binary is
-  # multi-call and dispatches on argv[0], and launchd lets Program (the file TCC looks at) and
-  # ProgramArguments[0] (what nix sees) differ, so no wrapper is needed here either.
-  launchd.daemons.nix-store-optimise = {
-    serviceConfig = {
-      Program = "/Users/${user.username}/.local/libexec/tcc/nix-collect-garbage";
-      ProgramArguments = [
-        "nix"
-        "store"
-        "optimise"
-      ];
-      StartCalendarInterval = [
-        {
-          Weekday = 0;
-          Hour = 4;
-          Minute = 0;
-        }
-      ];
-      ProcessType = "Background";
-      LowPriorityIO = true;
-      Nice = 10;
-      StandardOutPath = "/var/log/nix-store-optimise.log";
-      StandardErrorPath = "/var/log/nix-store-optimise.log";
-    };
-  };
+  # Recovery on a store that was already optimised: `sudo rm -rf /nix/store/.links` (only the
+  # index; store paths stay intact and nix rebuilds it if optimise is ever run again), then
+  # `sudo kill $(pgrep -x socketfilterfw)` so launchd restarts the firewall with an empty queue.
+  # `launchctl kickstart -k system/com.apple.alf` is refused under SIP; a plain kill is not.
 }
