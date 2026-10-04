@@ -16,9 +16,9 @@
   })
   # modrinth:gvQqBUqZ lithium
   (fetchurl {
-    name = "lithium-fabric-0.26.1+mc26.3.jar";
-    url = "https://cdn.modrinth.com/data/gvQqBUqZ/versions/WXHRsMRl/lithium-fabric-0.26.1%2Bmc26.3.jar";
-    hash = "sha512-rLubA3ogPwBeA6IL8dmGYBk4Srta0nZkgIoSuRljmiUB7LUvjw130n4UCZNbDb27cOAaxGZIDArkIe5AP2ScWQ==";
+    name = "lithium-fabric-0.26.2+mc26.3.jar";
+    url = "https://cdn.modrinth.com/data/gvQqBUqZ/versions/xS0Q8LSi/lithium-fabric-0.26.2%2Bmc26.3.jar";
+    hash = "sha512-TX/uZhMu7ccf6rk5C5LJXXBY7b2tD+z6wdg2opULl6fKRjr77eYcfvNhzmXh+Sernond5b8uDgzkhq+1xdvuQA==";
   })
   # modrinth:uXXizFIs ferrite-core
   (fetchurl {
@@ -27,9 +27,17 @@
     hash = "sha512-2B+pfhF4TBnUL4nC9DODHQB2A91xk87kX6F35KapxSs4SxmFhuBKD39jzZlv7XEzIleL3pqNtX4RiIVK5cvlhA==";
   })
   # modrinth:fQEb0iXm krypton optional
-  # (no release for 26.3 yet)
+  (fetchurl {
+    name = "krypton-0.3.2.jar";
+    url = "https://cdn.modrinth.com/data/fQEb0iXm/versions/UugdIYJw/krypton-0.3.2.jar";
+    hash = "sha512-0dV+vUE5W3WwHxMM2VA+uNIIISQko5n/nzZ/UL6PvBxkckQrM8aG53fDFI9qYJUg6PtzLHVRV8NYyyB/1NESOg==";
+  })
   # modrinth:KOHu7RCS moonrise-opt optional
-  # (no release for 26.3 yet)
+  (fetchurl {
+    name = "Moonrise-Fabric-1.2.0+61c1328.jar";
+    url = "https://cdn.modrinth.com/data/KOHu7RCS/versions/5WWnR77M/Moonrise-Fabric-1.2.0%2B61c1328.jar";
+    hash = "sha512-pdO/MOsrW19PPSRJcEwUMUQs21tN4vUnrWX8lxFFs3l43W3kSWJRKhk4B94AXP56CBLExJrttjf6lfgTF7ZXdg==";
+  })
   # modrinth:bWrNNfkb floodgate optional
   (fetchurl {
     name = "Floodgate-Fabric-2.2.7-b69.jar";
