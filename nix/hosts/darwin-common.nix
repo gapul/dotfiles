@@ -135,8 +135,9 @@
       # into /nix/store/.links, APFS then reports .links/<hash> as the path of store daemons, and
       # socketfilterfw scans that 700k-entry directory on every inbound flow until all inbound
       # traffic stalls (macmini, 2026-09-26 and 2026-10-04). .links is only the dedup index, so
-      # drop it whenever it shows up; restart socketfilterfw (KeepAlive) to clear its backlog.
-      if [ -e /nix/store/.links ]; then
+      # drop it once it has entries; restart socketfilterfw (KeepAlive) to clear its backlog.
+      # nix itself recreates .links empty, which is harmless, so an empty one is left alone.
+      if /usr/bin/find /nix/store/.links -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null | /usr/bin/grep -q .; then
         /bin/rm -rf /nix/store/.links
         /usr/bin/pkill -x socketfilterfw || true
       fi
