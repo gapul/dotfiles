@@ -109,6 +109,13 @@ in
         "$@"
     '')
 
+    # t3-pair: one-time pairing link (QR) for a new phone or browser, over the tailnet HTTPS port the
+    # t3code agent publishes. tailscale lives in /opt/homebrew/bin, which an ssh shell here lacks.
+    (pkgs.writeShellScriptBin "t3-pair" ''
+      export PATH="/opt/homebrew/bin:$PATH"
+      exec "$HOME/.local/bin/t3" pair --tailscale --tailscale-serve-port 3773 "$@"
+    '')
+
     # The default for bare `claude` lives in claudeRemoteControlDefault in the let block. Putting it in
     # home.packages loses on PATH — on this machine ~/.local/bin (3rd) comes before
     # /etc/profiles/per-user/gapul/bin (7th), so the real ~/.local/bin/claude shadows the wrapper and it
@@ -136,6 +143,11 @@ in
   # of the (now deleted) project directory into XDG state.
   home.activation.manabiStateDir = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     run /bin/mkdir -p "${config.home.homeDirectory}/.local/state/manabi"
+  '';
+
+  # Same for the t3code agents' logs.
+  home.activation.t3codeStateDir = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    run /bin/mkdir -p "${config.xdg.stateHome}/t3code"
   '';
 
   # glances, the box's own metrics endpoint (the homelab dashboard scrapes it). Was a hand-written
@@ -314,6 +326,77 @@ in
       Nice = 10;
       StandardOutPath = "/tmp/orca-tailscale-serve.log";
       StandardErrorPath = "/tmp/orca-tailscale-serve.log";
+    };
+  };
+
+  # T3 Code (nightly) as the phone-facing agent host. The phone needs the TestFlight beta app; the store
+  # app cannot connect to nightly servers. The binary is not declared: nightly moves daily, so
+  # t3code-update below follows it with the official installer/updater (~/.t3, ~/.local/bin/t3).
+  # Run in the Aqua session so Claude finds its Keychain login, same as orca-desktop-server.
+  # Listens on loopback; --tailscale-serve publishes https://macmini.<tailnet>:3773 (443 is Orca's).
+  launchd.agents.t3code = {
+    enable = true;
+    config = {
+      ProgramArguments = [
+        "/bin/sh"
+        "-c"
+        ''[ -x "$HOME/.local/bin/t3" ] || exit 0; exec "$HOME/.local/bin/t3" serve --host 127.0.0.1 --port 3773 --tailscale-serve --tailscale-serve-port 3773''
+      ];
+      WorkingDirectory = "${config.home.homeDirectory}/Developer/github.com";
+      EnvironmentVariables = {
+        PATH = "/Users/gapul/.local/bin:${config.home.profileDirectory}/bin:/run/current-system/sw/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin";
+        CLAUDE_CONFIG_DIR = "${config.xdg.configHome}/claude";
+        CODEX_HOME = "${config.xdg.dataHome}/codex";
+        CODEX_SQLITE_HOME = "${config.xdg.stateHome}/codex/sqlite";
+        XDG_CONFIG_HOME = "${config.xdg.configHome}";
+      };
+      RunAtLoad = true;
+      KeepAlive = true;
+      ThrottleInterval = 30;
+      ProcessType = "Standard";
+      LowPriorityIO = true;
+      Nice = 5;
+      LimitLoadToSessionType = "Aqua";
+      # The startup banner prints a pairing token, so keep the log out of world-readable /tmp.
+      StandardOutPath = "${config.xdg.stateHome}/t3code/server.log";
+      StandardErrorPath = "${config.xdg.stateHome}/t3code/server.log";
+    };
+  };
+
+  # Installs t3 on first run, then follows the nightly train every morning. `t3 update` leaves a
+  # hand-started server running, so restart the agent only when the version actually changed
+  # (that interrupts running turns; 05:00 is when nothing should be running).
+  launchd.agents.t3code-update = {
+    enable = true;
+    config = {
+      ProgramArguments = [
+        "${pkgs.writeShellScript "t3code-update" ''
+          set -eu
+          export PATH="/usr/bin:/bin:/usr/sbin:/sbin"
+          t3="$HOME/.local/bin/t3"
+          before="$(/usr/bin/readlink "$t3" 2>/dev/null || true)"
+          if [ -x "$t3" ]; then
+            "$t3" update --channel nightly --yes
+          else
+            /usr/bin/curl -fsSL https://t3.codes/install.sh | T3CODE_CHANNEL=nightly /bin/sh
+          fi
+          if [ "$(/usr/bin/readlink "$t3")" != "$before" ]; then
+            /bin/launchctl kickstart -k "gui/$(/usr/bin/id -u)/org.nix-community.home.t3code"
+          fi
+        ''}"
+      ];
+      RunAtLoad = true;
+      StartCalendarInterval = [
+        {
+          Hour = 5;
+          Minute = 0;
+        }
+      ];
+      ProcessType = "Background";
+      LowPriorityIO = true;
+      Nice = 10;
+      StandardOutPath = "${config.xdg.stateHome}/t3code/update.log";
+      StandardErrorPath = "${config.xdg.stateHome}/t3code/update.log";
     };
   };
 
