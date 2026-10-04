@@ -79,24 +79,31 @@ in
 
   # Fill in the darwin GUI runtime environment. nixpkgs zrythm is not meant for darwin,
   # so wrapGAppsHook4 does not wire these up, and it dies with exit 255 as-is.
-  preFixup = (o.preFixup or "") + ''
-    gappsWrapperArgs+=(
-      # GTK4's native display backend is "macos" (renamed from GTK3's "quartz").
-      # By default it requests "quartz" and dies instantly with "No such backend", so inject the default.
-      --set-default GDK_BACKEND macos
-      # Fix for font config ("Fontconfig error: Cannot load default config file").
-      --set-default FONTCONFIG_FILE ${pkgs.fontconfig.out}/etc/fonts/fonts.conf
-      # gsettings/dconf writes fail without machine-id/dbus, producing
-      # "Could not set 'first-run' to 'false'. ... problem with your GSettings backend"
-      # so settings never persist (welcome shows every time). Switch off dconf to the keyfile
-      # backend and persist to ~/.config/glib-2.0/settings/keyfile.
-      --set-default GSETTINGS_BACKEND keyfile
-      # librsvg ships a merged cache containing the standard gdk-pixbuf loaders and
-      # its SVG loader. Point directly at it; current nixpkgs also gives the Darwin
-      # loader an absolute librsvg install name, so no local copy/re-sign is needed.
-      --set GDK_PIXBUF_MODULE_FILE ${pkgs.librsvg}/${pkgs.gdk-pixbuf.binaryDir}/loaders.cache
+  # nixpkgs prefixes XDG_DATA_DIRS with "$XDG_ICON_DIRS:...", and XDG_ICON_DIRS is empty on darwin.
+  # The leading ':' is an empty PATH-like segment, which makeWrapper rejects since
+  # GHSA-p7v3-pr2c-8584, so only add the separator when there is something before it.
+  preFixup =
+    builtins.replaceStrings [ "\"$XDG_ICON_DIRS:" ] [ "\"\${XDG_ICON_DIRS:+$XDG_ICON_DIRS:}" ] (
+      o.preFixup or ""
     )
-  '';
+    + ''
+      gappsWrapperArgs+=(
+        # GTK4's native display backend is "macos" (renamed from GTK3's "quartz").
+        # By default it requests "quartz" and dies instantly with "No such backend", so inject the default.
+        --set-default GDK_BACKEND macos
+        # Fix for font config ("Fontconfig error: Cannot load default config file").
+        --set-default FONTCONFIG_FILE ${pkgs.fontconfig.out}/etc/fonts/fonts.conf
+        # gsettings/dconf writes fail without machine-id/dbus, producing
+        # "Could not set 'first-run' to 'false'. ... problem with your GSettings backend"
+        # so settings never persist (welcome shows every time). Switch off dconf to the keyfile
+        # backend and persist to ~/.config/glib-2.0/settings/keyfile.
+        --set-default GSETTINGS_BACKEND keyfile
+        # librsvg ships a merged cache containing the standard gdk-pixbuf loaders and
+        # its SVG loader. Point directly at it; current nixpkgs also gives the Darwin
+        # loader an absolute librsvg install name, so no local copy/re-sign is needed.
+        --set GDK_PIXBUF_MODULE_FILE ${pkgs.librsvg}/${pkgs.gdk-pixbuf.binaryDir}/loaders.cache
+      )
+    '';
 
   meta = o.meta // {
     broken = false;
