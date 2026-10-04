@@ -109,11 +109,10 @@ in
         "$@"
     '')
 
-    # t3-pair: one-time pairing link (QR) for a new phone or browser, over the tailnet HTTPS port the
-    # t3code agent publishes. tailscale lives in /opt/homebrew/bin, which an ssh shell here lacks.
+    # t3-pair: one-time pairing link for a new phone or browser, from an ssh shell. The usual way is
+    # the t3pair.gapul.net page (launchd.agents.t3-pair-page), which also shows the QR.
     (pkgs.writeShellScriptBin "t3-pair" ''
-      export PATH="/opt/homebrew/bin:$PATH"
-      exec "$HOME/.local/bin/t3" pair --tailscale --tailscale-serve-port 3773 "$@"
+      exec "$HOME/.local/bin/t3" auth pairing create --ttl 5m --base-url https://t3.gapul.net "$@"
     '')
 
     # The default for bare `claude` lives in claudeRemoteControlDefault in the let block. Putting it in
@@ -333,14 +332,16 @@ in
   # app cannot connect to nightly servers. The binary is not declared: nightly moves daily, so
   # t3code-update below follows it with the official installer/updater (~/.t3, ~/.local/bin/t3).
   # Run in the Aqua session so Claude finds its Keychain login, same as orca-desktop-server.
-  # Listens on loopback; --tailscale-serve publishes https://macmini.<tailnet>:3773 (443 is Orca's).
+  # Clients reach it as https://t3.gapul.net (homeserver Caddy → :3773), not tailscale serve: MagicDNS
+  # does not resolve on the phone or the workstation (same reason as orca.gapul.net). t3 is Developer
+  # ID signed, so the firewall admits it without a socketfilterfw entry.
   launchd.agents.t3code = {
     enable = true;
     config = {
       ProgramArguments = [
         "/bin/sh"
         "-c"
-        ''[ -x "$HOME/.local/bin/t3" ] || exit 0; exec "$HOME/.local/bin/t3" serve --host 127.0.0.1 --port 3773 --tailscale-serve --tailscale-serve-port 3773''
+        ''[ -x "$HOME/.local/bin/t3" ] || exit 0; exec "$HOME/.local/bin/t3" serve --host 0.0.0.0 --port 3773''
       ];
       WorkingDirectory = "${config.home.homeDirectory}/Developer/github.com";
       EnvironmentVariables = {
@@ -360,6 +361,28 @@ in
       # The startup banner prints a pairing token, so keep the log out of world-readable /tmp.
       StandardOutPath = "${config.xdg.stateHome}/t3code/server.log";
       StandardErrorPath = "${config.xdg.stateHome}/t3code/server.log";
+    };
+  };
+
+  # t3pair.gapul.net: mints a one-time pairing link and its QR on demand. The script only answers the
+  # homeserver's Caddy (Authelia in front). Runs the same python as photon-proxy, which
+  # hosts/macmini.nix already admits through the firewall.
+  launchd.agents.t3-pair-page = {
+    enable = true;
+    config = {
+      ProgramArguments = [
+        pkgs.python3.interpreter
+        "${../../configs/macmini/t3-pair-page.py}"
+      ];
+      EnvironmentVariables.T3_PAIR_QRENCODE = lib.getExe pkgs.qrencode;
+      RunAtLoad = true;
+      KeepAlive = true;
+      ThrottleInterval = 30;
+      ProcessType = "Background";
+      LowPriorityIO = true;
+      Nice = 10;
+      StandardOutPath = "${config.xdg.stateHome}/t3code/pair-page.log";
+      StandardErrorPath = "${config.xdg.stateHome}/t3code/pair-page.log";
     };
   };
 
