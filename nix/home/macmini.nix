@@ -62,7 +62,7 @@ in
   # (rebuild steps in configs/macmini/bootstrap.sh and README).
 
   home.packages = [
-    # Orca starts agent CLIs from its Aqua LaunchAgent instead of an interactive shell.
+    # T3 Code starts agent CLIs from its Aqua LaunchAgent instead of an interactive shell.
     # Keep Codex declarative on the remote host so it is both discoverable and available
     # after unattended rebuilds.
     agentPkgs.codex
@@ -128,7 +128,7 @@ in
 
   # Claude Code on the mini gets the workstation's managed keys (bypassPermissions as the default
   # mode, theme, effort, ...) from settings.remote.json, the same merge remote-bootstrap applies over
-  # nssh. Merged rather than linked: hooks and plugins stay host-owned, and Orca and the TUI rewrite
+  # nssh. Merged rather than linked: hooks and plugins stay host-owned, and T3 Code and the TUI rewrite
   # this file in place (configs/cli/claude/README.md). An unparsable file is reported and left alone
   # rather than failing an unattended switch.
   home.activation.claudeManagedSettings = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
@@ -241,100 +241,13 @@ in
     };
   };
 
-  # Orca recommends its desktop host on a Mac mini. Launch it inside the Aqua login
-  # session so macOS Keychain and LaunchServices are available; the headless `orca
-  # serve` path can deadlock in Electron startup on macOS 26. Remote sharing itself
-  # is enabled once in Settings -> Remote Orca Servers and persists in Orca's state.
-  launchd.agents.orca-desktop-server = {
-    enable = true;
-    config = {
-      ProgramArguments = [
-        "/Applications/Orca.app/Contents/MacOS/Orca"
-      ];
-      EnvironmentVariables = {
-        PATH = "${config.home.profileDirectory}/bin:/Users/gapul/.local/bin:/run/current-system/sw/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin";
-        CLAUDE_CONFIG_DIR = "${config.xdg.configHome}/claude";
-        CODEX_HOME = "${config.xdg.dataHome}/codex";
-        CODEX_SQLITE_HOME = "${config.xdg.stateHome}/codex/sqlite";
-        XDG_CONFIG_HOME = "${config.xdg.configHome}";
-        # Orca's bundled agent-browser picks a browser by walking /Applications in the order
-        # Google Chrome, Chrome Canary, Chromium, Brave. Helium matches none of those names, so
-        # this pin is what makes it the target at all — and it also keeps a Chrome that some
-        # installer drops back in from quietly taking the job over again.
-        AGENT_BROWSER_EXECUTABLE_PATH = "/Applications/Helium.app/Contents/MacOS/Helium";
-      };
-      RunAtLoad = true;
-      KeepAlive = true;
-      ThrottleInterval = 30;
-      ProcessType = "Standard";
-      LowPriorityIO = true;
-      Nice = 5;
-      LimitLoadToSessionType = "Aqua";
-      StandardOutPath = "/tmp/orca-desktop-server.log";
-      StandardErrorPath = "/tmp/orca-desktop-server.log";
-    };
-  };
-
-  # Orca toggles its macOS login-item registration when the desktop process exits. On this
-  # unattended host that can leave the declarative Home Manager agent disabled, which also
-  # drops paired mobile and desktop clients. Re-enable and bootstrap only when the service is
-  # absent; the normal KeepAlive policy handles ordinary process restarts.
-  launchd.agents.orca-server-watchdog = {
-    enable = true;
-    config = {
-      ProgramArguments = [
-        "${pkgs.writeShellScript "orca-server-watchdog" ''
-          domain="gui/$(${pkgs.coreutils}/bin/id -u)"
-          label="org.nix-community.home.orca-desktop-server"
-          plist="$HOME/Library/LaunchAgents/$label.plist"
-
-          if ! /bin/launchctl print "$domain/$label" >/dev/null 2>&1; then
-            /bin/launchctl enable "$domain/$label"
-            /bin/launchctl bootstrap "$domain" "$plist" 2>/dev/null || true
-          fi
-        ''}"
-      ];
-      RunAtLoad = true;
-      StartInterval = 60;
-      ProcessType = "Background";
-      LowPriorityIO = true;
-      Nice = 10;
-      StandardOutPath = "/tmp/orca-server-watchdog.log";
-      StandardErrorPath = "/tmp/orca-server-watchdog.log";
-    };
-  };
-
-  # Orca's browser client needs a secure context (`crypto.randomUUID` is unavailable on
-  # plain HTTP). Keep a tailnet-only HTTPS/WSS reverse proxy in front of the desktop
-  # server so iPhone Safari can load the UI and its encrypted WebSocket transport.
-  launchd.agents.orca-tailscale-serve = {
-    enable = true;
-    config = {
-      ProgramArguments = [
-        "${pkgs.writeShellScript "orca-tailscale-serve" ''
-          tailscale=/opt/homebrew/bin/tailscale
-          if [ -x "$tailscale" ]; then
-            "$tailscale" serve --bg --https=443 http://127.0.0.1:6768
-          fi
-        ''}"
-      ];
-      RunAtLoad = true;
-      StartInterval = 300;
-      ProcessType = "Background";
-      LowPriorityIO = true;
-      Nice = 10;
-      StandardOutPath = "/tmp/orca-tailscale-serve.log";
-      StandardErrorPath = "/tmp/orca-tailscale-serve.log";
-    };
-  };
-
   # T3 Code (nightly) as the phone-facing agent host. The phone needs the TestFlight beta app; the store
   # app cannot connect to nightly servers. The binary is not declared: nightly moves daily, so
   # t3code-update below follows it with the official installer/updater (~/.t3, ~/.local/bin/t3).
-  # Runs in the Aqua session like orca-desktop-server.
+  # Runs in the Aqua session so macOS Keychain and LaunchServices are available.
   # Clients reach it as https://t3.gapul.net (homeserver Caddy → :3773), not tailscale serve: MagicDNS
-  # does not resolve on the phone or the workstation (same reason as orca.gapul.net). t3 is Developer
-  # ID signed, so the firewall admits it without a socketfilterfw entry.
+  # does not resolve on the phone or the workstation. t3 is Developer ID signed, so the firewall
+  # admits it without a socketfilterfw entry.
   launchd.agents.t3code = {
     enable = true;
     config = {
@@ -474,7 +387,7 @@ in
   # only remote OCR engine Paperless 3 speaks. Vision reads Japanese receipts that tesseract
   # garbles (compared on the same scan 2026-09-15). The CLI links Vision/PDFKit, so it is built
   # with Xcode's swiftc, not nix; the wrapper rebuilds it whenever the source is newer. Exposed
-  # tailnet-only on :8930 through tailscale serve, like Fava and Orca.
+  # tailnet-only on :8930 through tailscale serve, like Fava.
   launchd.agents.vision-ocr = {
     enable = true;
     config = {

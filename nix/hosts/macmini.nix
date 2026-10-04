@@ -281,13 +281,6 @@ in
       cleanup = "uninstall"; # undeclared brews are auto-uninstalled
       upgrade = false;
     };
-    # Trusted for the same reason as in hosts/darwin.nix (Homebrew 6 tap trust).
-    taps = [
-      {
-        name = "stablyai/orca"; # Orca ADE Remote Server and bundled CLI
-        trusted = true;
-      }
-    ];
     # Same priority rule as hosts/darwin.nix: nix > homebrew > everything else, and each formula
     # states why brew owns it. (uv was dropped here — modules/home/packages.nix already installs it,
     # and brew winning the PATH meant the duplicate was invisible. ffmpeg and aria2 followed on
@@ -298,32 +291,17 @@ in
       "tailscale"
     ];
     casks = [
-      {
-        name = "stablyai/orca/orca";
-        args = {
-          # This is a signed and notarized build, but quarantine makes the headless CLI wait
-          # indefinitely in dyld while syspolicyd's online check times out on this host.
-          no_quarantine = true;
-        };
-      } # bundled CLI runs the persistent Remote Orca Server below
       # (RustDesk was here for remote GUI. It never got its unattended access or its Screen
       #  Recording grant, so it had never once been used, while macOS Screen Sharing on :5900
       #  already covers the same job over the tailnet with nothing to install.)
       # Helium for agent-driven browsing, replacing google-chrome (2026-09-11). Both reasons
       # the Chrome line used to give had expired: the resident Playwright MCP was deleted in
-      # #561, and login fills moved to the Safari native helper. What actually kept Chrome in
-      # service was Orca's bundled agent-browser, which resolves a browser by walking
-      # /Applications on its own, and Google's build happens to sit first in that order.
+      # #561, and login fills moved to the Safari native helper.
       #
       # Helium is the ungoogled-chromium build the workstation already treats as its Chromium
-      # of record, so both hosts now drive the same browser. agent-browser's search list only
-      # knows Chrome, Chrome Canary, Chromium and Brave, so it cannot find Helium on its own —
-      # the pin lives in AGENT_BROWSER_EXECUTABLE_PATH on the Orca agent (home/macmini.nix),
-      # which is also where that ordering stops mattering.
-      #
-      # No no_quarantine, unlike Orca above: it is notarized (Developer ID: imput LLC), spctl
-      # accepts it, and it launched headlessly on this host with the quarantine attribute still
-      # attached. The cask is auto_updates, so the app owns its own updates.
+      # of record, so both hosts drive the same browser. It is notarized (Developer ID: imput
+      # LLC), spctl accepts it, and it launched headlessly on this host with the quarantine
+      # attribute still attached. The cask is auto_updates, so the app owns its own updates.
       "helium-browser"
       # Creative Cloud is the supported installer and license runtime for After Effects. Adobe
       # manages AE itself after this bootstrap, but declaring the CC installer keeps brew's
