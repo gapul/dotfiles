@@ -14,6 +14,12 @@ let
     ".local/share/ai-stack/${name}".source =
       config.lib.file.mkOutOfStoreSymlink "${dotfiles}/configs/macmini/services/${name}";
   };
+  # ssh to the work machine mvrx-nolang-dev (192.168.1.36). This machine does not take the tailnet's
+  # subnet routes, so it jumps through homeserver, which does reach the office. The key is
+  # id_mvrx_t3, made on this machine on 2026-10-04 and registered by hand in the work machine's
+  # authorized_keys. It is not in sops, and it is not the workstation's ssh_mvrx_sync_key: this way
+  # the work machine can revoke either one on its own.
+  mvrxSsh = "/usr/bin/ssh -i ${config.home.homeDirectory}/.ssh/id_mvrx_t3 -o IdentitiesOnly=yes -o BatchMode=yes -J gapul@100.127.129.31 gapul@192.168.1.36";
   aiWrapper = name: {
     ".local/bin/${name}".source =
       config.lib.file.mkOutOfStoreSymlink "${dotfiles}/configs/macmini/bin/${name}";
@@ -113,6 +119,10 @@ in
     # the t3pair.gapul.net page (launchd.agents.t3-pair-page), which also shows the QR.
     (pkgs.writeShellScriptBin "t3-pair" ''
       exec "$HOME/.local/bin/t3" auth pairing create --ttl 5m --base-url https://t3.gapul.net "$@"
+    '')
+    # The same for the T3 Code server on mvrx-nolang-dev (launchd.agents.t3code-mvrx-tunnel).
+    (pkgs.writeShellScriptBin "t3-pair-mvrx" ''
+      exec ${mvrxSsh} '~/.local/bin/t3 auth pairing create --ttl 5m --base-url https://t3-mvrx.gapul.net'
     '')
 
     # The default for bare `claude` lives in claudeRemoteControlDefault in the let block. Putting it in
@@ -339,6 +349,34 @@ in
       Nice = 10;
       StandardOutPath = "${config.xdg.stateHome}/t3code/update.log";
       StandardErrorPath = "${config.xdg.stateHome}/t3code/update.log";
+    };
+  };
+
+  # T3 Code on the work machine mvrx-nolang-dev, where the herdr sessions there moved to. The server
+  # runs on that machine and listens only on its own loopback (configs/bin/remote-bootstrap installs
+  # the units). This tunnel brings it to :3775 here, and clients reach it as
+  # https://t3-mvrx.gapul.net (homeserver Caddy → :3775), the same way as t3.gapul.net. /usr/bin/ssh
+  # is Apple-signed, so the firewall admits the listener.
+  launchd.agents.t3code-mvrx-tunnel = {
+    enable = true;
+    config = {
+      ProgramArguments = lib.splitString " " mvrxSsh ++ [
+        "-N"
+        "-o"
+        "ExitOnForwardFailure=yes"
+        "-o"
+        "ServerAliveInterval=30"
+        "-o"
+        "ServerAliveCountMax=3"
+        "-L"
+        "0.0.0.0:3775:127.0.0.1:3773"
+      ];
+      RunAtLoad = true;
+      KeepAlive = true;
+      ThrottleInterval = 30;
+      ProcessType = "Background";
+      StandardOutPath = "${config.xdg.stateHome}/t3code/mvrx-tunnel.log";
+      StandardErrorPath = "${config.xdg.stateHome}/t3code/mvrx-tunnel.log";
     };
   };
 
