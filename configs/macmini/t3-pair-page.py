@@ -1,7 +1,8 @@
 """Pairing page for the T3 Code server on this machine (t3pair.gapul.net).
 
 Each press mints a one-time 5-minute pairing link for https://t3.gapul.net and shows
-it as text and a QR code. A link grants agent access to this machine, so the page is
+it as text and a QR code. Once a device uses the link, the page mints the next one, so
+a link already spent on the phone is never pasted into another device. A link grants agent access to this machine, so the page is
 served only through the homeserver's Caddy behind Authelia: requests from any other
 address are refused, and only /health answers without Authelia's Remote-User header.
 """
@@ -47,14 +48,14 @@ PAGE = """<!doctype html>
   <button id="copy">URLをコピー</button>
 </main>
 <script>
-let expiresAt = 0, url = "";
+let expiresAt = 0, url = "", id = "", note = "";
 const $ = (id) => document.getElementById(id);
 async function mint() {
   $("status").textContent = "発行中…";
   const r = await fetch("new", { method: "POST" });
   if (!r.ok) { $("status").textContent = "発行に失敗しました (" + r.status + ")"; return; }
   const d = await r.json();
-  url = d.url; expiresAt = Date.parse(d.expiresAt);
+  url = d.url; id = d.id; expiresAt = Date.parse(d.expiresAt);
   $("qr").innerHTML = d.svg; $("qr").classList.remove("expired"); $("url").textContent = url;
   tick();
 }
@@ -62,10 +63,19 @@ function tick() {
   if (!expiresAt) return;
   const s = Math.round((expiresAt - Date.now()) / 1000);
   if (s <= 0) { $("qr").classList.add("expired"); $("status").textContent = "期限切れ。新しいリンクを発行してください"; return; }
-  $("status").textContent = "残り " + Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0") + "(1回限り)";
+  $("status").textContent = note + "残り " + Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0") + "(1回限り)";
+}
+async function poll() {
+  if (!id || document.hidden || expiresAt <= Date.now()) return;
+  const r = await fetch("status?id=" + encodeURIComponent(id));
+  if (r.ok && !(await r.json()).active && expiresAt > Date.now()) {
+    note = "前のリンクで接続されました。次のリンク: ";
+    mint();
+  }
 }
 setInterval(tick, 1000);
-$("new").onclick = mint;
+setInterval(poll, 3000);
+$("new").onclick = () => { note = ""; mint(); };
 $("copy").onclick = async () => { if (url) { await navigator.clipboard.writeText(url); $("status").textContent = "コピーしました"; } };
 mint();
 </script>
@@ -96,6 +106,18 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(403, "forbidden")
         if self.path == "/":
             return self.send(200, PAGE, "text/html; charset=utf-8")
+        if self.path.startswith("/status?id="):
+            # A consumed or revoked link drops out of the active list.
+            pid = self.path.split("=", 1)[1]
+            try:
+                active = subprocess.run(
+                    [T3, "auth", "pairing", "list", "--json"],
+                    capture_output=True, text=True, timeout=30, check=True,
+                ).stdout
+                ids = {p["id"] for p in json.loads(active)}
+            except (subprocess.SubprocessError, OSError, ValueError, KeyError):
+                return self.send(502, "list failed")
+            return self.send(200, json.dumps({"active": pid in ids}), "application/json")
         self.send(404, "not found")
 
     def do_POST(self):
@@ -117,7 +139,7 @@ class Handler(BaseHTTPRequestHandler):
         except (subprocess.SubprocessError, OSError, ValueError, KeyError) as e:
             self.log_error("mint failed: %s", type(e).__name__)
             return self.send(502, "mint failed")
-        body = {"url": pair["pairUrl"], "expiresAt": pair["expiresAt"], "svg": svg}
+        body = {"id": pair["id"], "url": pair["pairUrl"], "expiresAt": pair["expiresAt"], "svg": svg}
         self.send(200, json.dumps(body), "application/json")
 
 
