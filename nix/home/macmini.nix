@@ -331,7 +331,7 @@ in
   # T3 Code (nightly) as the phone-facing agent host. The phone needs the TestFlight beta app; the store
   # app cannot connect to nightly servers. The binary is not declared: nightly moves daily, so
   # t3code-update below follows it with the official installer/updater (~/.t3, ~/.local/bin/t3).
-  # Run in the Aqua session so Claude finds its Keychain login, same as orca-desktop-server.
+  # Runs in the Aqua session like orca-desktop-server.
   # Clients reach it as https://t3.gapul.net (homeserver Caddy → :3773), not tailscale serve: MagicDNS
   # does not resolve on the phone or the workstation (same reason as orca.gapul.net). t3 is Developer
   # ID signed, so the firewall admits it without a socketfilterfw entry.
@@ -341,7 +341,13 @@ in
       ProgramArguments = [
         "/bin/sh"
         "-c"
-        ''[ -x "$HOME/.local/bin/t3" ] || exit 0; exec "$HOME/.local/bin/t3" serve --host 0.0.0.0 --port 3773''
+        # The Keychain login belongs to the default ~/.claude, not CLAUDE_CONFIG_DIR, so Claude reports
+        # "Not logged in" without the long-lived token that .zshenv exports for shells.
+        ''
+          [ -x "$HOME/.local/bin/t3" ] || exit 0
+          [ -r "$HOME/.config/claude/oauth-token" ] && export CLAUDE_CODE_OAUTH_TOKEN="$(cat "$HOME/.config/claude/oauth-token")"
+          exec "$HOME/.local/bin/t3" serve --host 0.0.0.0 --port 3773
+        ''
       ];
       WorkingDirectory = "${config.home.homeDirectory}/Developer/github.com";
       EnvironmentVariables = {
