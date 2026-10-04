@@ -132,6 +132,18 @@ jobs:
     runs-on: ${{ github.event_name == 'pull_request' && matrix.pr_runner || matrix.runner }}
     timeout-minutes: 90
     steps:
+      # GitHub の ubuntu ランナーは root に ~20GB しか空きが無い。main の om ci run は VM
+      # テストや ISO まで全部作るので、上流の故障で途中終了しなくなった 2026-10-04 から
+      # 30 分・63 分でランナーごと落ちた (ログ無し、"The operation was canceled")。使わない
+      # 同梱ツールチェインを消して空きを作る。前後の df は、次に落ちたときの手掛かり。
+      - name: Free disk space (GitHub-hosted linux)
+        if: runner.environment == 'github-hosted' && runner.os == 'Linux'
+        run: |
+          df -h /
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost
+          sudo docker image prune --all --force >/dev/null 2>&1 || true
+          df -h /
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0 # gitleaks detect が全履歴を走査するため必須
