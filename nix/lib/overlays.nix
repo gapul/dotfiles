@@ -30,4 +30,19 @@ _final: prev: {
   git-annex = prev.git-annex.overrideAttrs (_: {
     doCheck = false;
   });
+
+  # rustdesk re-tagged 1.5.0 upstream, so nixpkgs' src hash went stale ("hash mismatch in
+  # fixed-output derivation"). Fixed in NixOS/nixpkgs#569507 (2026-10-03), but nixos-unstable
+  # was still on 2026-10-01. Only swap the hash while nixpkgs still carries the stale one, so
+  # this turns itself off once the fix lands instead of becoming the mismatch on the next bump
+  # (the tailscale lesson above). Delete it once that has happened.
+  rustdesk =
+    if prev.rustdesk.src.outputHash == "sha256-xuIUWxicsqCJoKRvIDy0YISCHK3qolf1nWS3XMAM3PM=" then
+      prev.rustdesk.overrideAttrs (o: {
+        src = o.src.overrideAttrs (_: {
+          outputHash = "sha256-1xa7X+swBIb8Lz3c6m8SeNZAiJWNCUpw+UbdSsMkeSk=";
+        });
+      })
+    else
+      prev.rustdesk;
 }
