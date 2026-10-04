@@ -222,6 +222,15 @@ let
     # device token from the pairing code. In other words, the lock on the door is already in
     # the code, and the vhost is only resolvable from inside the tailnet.
     orca.upstream = "${macmini}:6768";
+    # T3 Code on macmini (home/macmini.nix). Same shape as orca: the server rejects clients without
+    # a paired session, so no Authelia on the app itself.
+    t3.upstream = "${macmini}:3773";
+    # Its pairing page does mint those sessions, so it sits behind Authelia.
+    t3pair = {
+      upstream = "${macmini}:3774";
+      auth = true;
+      probePath = "/health";
+    };
     sync = {
       upstream = "127.0.0.1:8384"; # syncthing rejects requests whose Host it doesn't know
       extra = "header_up Host {upstream_hostport}";
