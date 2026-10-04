@@ -216,6 +216,9 @@ let
     # route doesn't take effect in the OS on these devices, so it goes through gapul.net instead.
     # No Authelia on the app itself: the server rejects clients without a paired session.
     t3.upstream = "${macmini}:3773";
+    # T3 Code on the work machine mvrx-nolang-dev, which binds it to its own loopback. macmini holds
+    # the ssh tunnel to it (launchd.agents.t3code-mvrx-tunnel in home/macmini.nix).
+    "t3-mvrx".upstream = "${macmini}:3775";
     # Its pairing page does mint those sessions, so it sits behind Authelia.
     t3pair = {
       upstream = "${macmini}:3774";

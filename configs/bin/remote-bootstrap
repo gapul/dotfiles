@@ -176,3 +176,53 @@ if docker container inspect nix >/dev/null 2>&1; then
   ~/.local/bin/nixsh update \
     || echo "[bootstrap] WARNING: nixsh update に失敗。前のパッケージ集合のまま続行します。" >&2
 fi
+
+# 7. T3 Code (nightly)。人が `curl -fsSL https://t3.codes/install.sh | T3CODE_CHANNEL=nightly sh`
+#    で ~/.local/bin/t3 を入れたホストだけが対象 (現状は mvrx-nolang-dev のみ。herdr のセッションを
+#    T3 へ移した先)。サーバーは自機のループバックだけで待ち受け、macmini の
+#    launchd.agents.t3code-mvrx-tunnel が ssh で引き出し、https://t3-mvrx.gapul.net として公開する。
+#    共有機なので 0.0.0.0 では開けない。版はクライアントや macmini と同じ nightly に揃える必要が
+#    あるので、macmini と同じ 05:00 に追従し、版が変わったときだけ再起動する。
+if [ -x ~/.local/bin/t3 ] && [ "$(uname -s)" = "Linux" ] && systemctl --user show-environment >/dev/null 2>&1; then
+  mkdir -p ~/.config/systemd/user ~/.local/state/t3code
+  cat > ~/.config/systemd/user/t3code.service <<'UNIT'
+[Unit]
+Description=T3 Code server (loopback only)
+
+[Service]
+WorkingDirectory=%h
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=%h/.local/bin/t3 serve --host 127.0.0.1 --port 3773
+Restart=on-failure
+RestartSec=30
+# 起動時のバナーにペアリング用トークンが出るので journal ではなく 600 のファイルへ。
+StandardOutput=append:%h/.local/state/t3code/server.log
+StandardError=append:%h/.local/state/t3code/server.log
+UMask=0077
+
+[Install]
+WantedBy=default.target
+UNIT
+  cat > ~/.config/systemd/user/t3code-update.service <<'UNIT'
+[Unit]
+Description=Follow the T3 Code nightly train
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c 'b=$$(readlink "$$HOME/.local/bin/t3"); "$$HOME/.local/bin/t3" update --channel nightly --yes; [ "$$(readlink "$$HOME/.local/bin/t3")" = "$$b" ] || systemctl --user restart t3code.service'
+# systemd が $ を自前で展開するので、シェルに渡す $ は $$ と書く。
+UNIT
+  cat > ~/.config/systemd/user/t3code-update.timer <<'UNIT'
+[Unit]
+Description=Daily T3 Code nightly update
+
+[Timer]
+OnCalendar=*-*-* 05:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+UNIT
+  systemctl --user daemon-reload
+  systemctl --user enable --quiet --now t3code.service t3code-update.timer
+fi
