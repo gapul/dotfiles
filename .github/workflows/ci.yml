@@ -107,13 +107,20 @@ jobs:
           # ラベルを知らない / node24 / cachix) は hosts/macmini-ci-runner.nix 側で埋めてある。
           # 戻したのはこの一行だけだった。
           #
-          # macmini は AI 常駐 (Hermes / 文字起こし) と同居する。載せるのは pull
-          # request だけで、そちらは store が温まっていれば転送も計算もほとんど無い。重い方
-          # (main の om ci run) は GitHub に残す — 下の runs-on を参照。
+          # macmini は AI 常駐 (Hermes / 文字起こし) と同居する。当初は pull request だけを
+          # 載せ、重い方 (main の om ci run) は GitHub に残していた。
+          #
+          # 2026-10-04 に main も macmini へ移した。darwin の構成は requireFile の入力
+          # (AquesTalkPlayer の dmg、private な gapul/ask の AskApprove zip) を持ち、使い捨ての
+          # macos-14 にはそれが無い。どちらも再配布できないので cachix にも上げられず、main の
+          # darwin は少なくとも 100 回連続で落ちていた。赤が常態になると本物の故障が埋もれる
+          # (linux の nixpkgsAgents 漏れが 3 日気付かれなかった)。macmini の store には両方が
+          # GC 根付きで入っている (取り込み方は pkgs/askapprove.nix と pkgs/aquestalkplayer.nix の冒頭)。
           - system: aarch64-darwin
-            runner: macos-14
+            runner: macmini
             pr_runner: macmini
-    # Pull requests go to the self-hosted runner, main goes to GitHub's.
+    # Pull requests go to the self-hosted runners; main goes to GitHub's on linux and to macmini
+    # on darwin (see the aarch64-darwin entry above for why darwin can't use GitHub's).
     #
     # The split follows what the two events actually cost. A pull request builds `pr-gate`, which
     # is dominated by transfer — 12.2 GiB on darwin, 3.7 GiB on linux, against six derivations
