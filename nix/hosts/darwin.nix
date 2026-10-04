@@ -119,7 +119,6 @@ in
     # nixpkgs trails the cask (2.7.0 vs 2.7.1) and the gap is freeze/crash fixes. They stay casks.
     # Built from source (ad-hoc signed), which is fine for apps that ask for no TCC permission:
     pkgs.prismlauncher # instances stay in ~/Library/Application Support/PrismLauncher
-    agentPkgs.zotero # 10.x like the cask was; stable is still on 9.x
     # CLI. unstable for the fast-moving ones so they don't fall behind what brew had.
     agentPkgs.deno # denops runtime for nvim skkeleton
     agentPkgs.cloudflared
@@ -760,6 +759,11 @@ in
       # ─── Productivity / Notes / Reading ───
       "calibre"
       "obsidian"
+      # Back from agentPkgs.zotero (2026-10-04): zotero 10.0.x fails to build on darwin in
+      # nixos-unstable ("AboutTranslations ... not found in ActorManagerParent.sys.mjs"), which
+      # blocked every flake.lock PR. Same app and data dirs either way; return to nixpkgs once
+      # NixOS/nixpkgs#569006 (or a successor) lands.
+      "zotero"
       "libreoffice"
 
       # ─── Fonts ───
