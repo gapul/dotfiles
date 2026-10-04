@@ -6,12 +6,16 @@
 # source (2026-09-15).
 #
 # The receiver is not the heavy official stack (TimescaleDB + Go + Grafana) but the bundled
-# Python + SQLite example brought into configs/homelab/puls-receiver, with only a cap on
-# decompressed size added. It runs on the standard library alone and the DB is a single file.
+# Python + SQLite example brought into configs/homelab/puls-receiver, with a cap on decompressed
+# size and a GET /v1/stats added. It runs on the standard library alone and the DB is a single file.
 #
 # Auth is the bearer token held by the app (PULS_TOKEN in /var/lib/secrets/puls.env), so
 # Authelia is not put in front of the vhost. The app's URL validation does not allow plain http
 # to tailnet 100.x addresses, so it goes through Caddy's HTTPS.
+#
+# DynamicUser puts the DB in /var/lib/private/puls (0700), so reading it directly needs root.
+# To see what has arrived, ask the service instead:
+#   curl -s -H "Authorization: Bearer $PULS_TOKEN" http://127.0.0.1:8105/v1/stats
 { pkgs, ... }:
 
 {
