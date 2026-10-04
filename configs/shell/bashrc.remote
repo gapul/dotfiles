@@ -33,6 +33,17 @@ if command -v fnm >/dev/null 2>&1; then
   eval "$(fnm env --use-on-cd)"
 fi
 
+# agent が生きているか。応答しない socket (転送元の agent が固まったまま残った /tmp/ssh-*/agent.*)
+# に当たると ssh-add -l は永久に待ち、ログインシェルごと止まる。T3 Code のサーバーは起動時に
+# `bash -ilc` で PATH を読むので、mvrx-nolang-dev で起動できなくなった (2026-10-04)。
+_dotfiles_agent_alive() {
+    if command -v timeout >/dev/null 2>&1; then
+        SSH_AUTH_SOCK="$1" timeout 2 ssh-add -l >/dev/null 2>&1
+    else
+        SSH_AUTH_SOCK="$1" ssh-add -l >/dev/null 2>&1
+    fi
+}
+
 # ── ssh-agent ソケットの安定化 (ForwardAgent 用) ────────────────────────────
 # nssh は -A で agent を転送するが、再接続のたびに転送 socket
 # (/tmp/ssh-*/agent.PID) のパスが変わる。tmux のような長命プロセスは最初に掴んだ
@@ -43,15 +54,15 @@ _dotfiles_fix_ssh_agent() {
     local stable="$HOME/.ssh/ssh_auth_sock" s
     # いま掴んでいる SSH_AUTH_SOCK が実体 (非安定パス) で生きていれば安定パスへ反映
     if [ -S "$SSH_AUTH_SOCK" ] && [ "$SSH_AUTH_SOCK" != "$stable" ] \
-        && SSH_AUTH_SOCK="$SSH_AUTH_SOCK" ssh-add -l >/dev/null 2>&1; then
+        && _dotfiles_agent_alive "$SSH_AUTH_SOCK"; then
         ln -snf "$SSH_AUTH_SOCK" "$stable"
     fi
     # 安定パスが死んでいたら、生きている最新の転送 socket を探して貼り替える
     # (socket 名に空白・改行は入らないため ls -t のまま扱える)
-    if ! SSH_AUTH_SOCK="$stable" ssh-add -l >/dev/null 2>&1; then
+    if ! _dotfiles_agent_alive "$stable"; then
         # shellcheck disable=SC2045
         for s in $(ls -t /tmp/ssh-*/agent.* 2>/dev/null); do
-            if SSH_AUTH_SOCK="$s" ssh-add -l >/dev/null 2>&1; then
+            if _dotfiles_agent_alive "$s"; then
                 ln -snf "$s" "$stable"; break
             fi
         done
@@ -79,7 +90,7 @@ _dotfiles_refresh_ssh_agent() {
     if [ -S "$stable" ] && { [ -z "$newest" ] || [ ! "$newest" -nt "$stable" ]; }; then
         return $__dotfiles_st
     fi
-    if [ -n "$newest" ] && SSH_AUTH_SOCK="$newest" ssh-add -l >/dev/null 2>&1; then
+    if [ -n "$newest" ] && _dotfiles_agent_alive "$newest"; then
         ln -snf "$newest" "$stable"
     else
         # newest が死んでいる等の例外は既存の総当たりに任せる

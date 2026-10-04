@@ -31,6 +31,15 @@ if command -v fnm >/dev/null 2>&1; then
   eval "$(fnm env --use-on-cd)"
 fi
 
+# 詳細は configs/shell/bashrc.remote の同名関数のコメントを参照。
+_dotfiles_agent_alive() {
+  if command -v timeout >/dev/null 2>&1; then
+    SSH_AUTH_SOCK="$1" timeout 2 ssh-add -l >/dev/null 2>&1
+  else
+    SSH_AUTH_SOCK="$1" ssh-add -l >/dev/null 2>&1
+  fi
+}
+
 # ── ssh-agent ソケットの安定化 (ForwardAgent 用) ────────────────────────────
 # 詳細は configs/shell/bashrc.remote の同名関数のコメントを参照。
 # 再接続で /tmp/ssh-*/agent.PID が変わっても、長命プロセスが安定パスを
@@ -38,12 +47,12 @@ fi
 _dotfiles_fix_ssh_agent() {
   local stable="$HOME/.ssh/ssh_auth_sock" s
   if [ -S "$SSH_AUTH_SOCK" ] && [ "$SSH_AUTH_SOCK" != "$stable" ] \
-      && SSH_AUTH_SOCK="$SSH_AUTH_SOCK" ssh-add -l >/dev/null 2>&1; then
+      && _dotfiles_agent_alive "$SSH_AUTH_SOCK"; then
     ln -snf "$SSH_AUTH_SOCK" "$stable"
   fi
-  if ! SSH_AUTH_SOCK="$stable" ssh-add -l >/dev/null 2>&1; then
+  if ! _dotfiles_agent_alive "$stable"; then
     for s in /tmp/ssh-*/agent.*(Nom); do
-      if SSH_AUTH_SOCK="$s" ssh-add -l >/dev/null 2>&1; then
+      if _dotfiles_agent_alive "$s"; then
         ln -snf "$s" "$stable"; break
       fi
     done
@@ -71,7 +80,7 @@ _dotfiles_refresh_ssh_agent() {
   if [ -S "$stable" ] && { [ -z "$newest" ] || [ ! "$newest" -nt "$stable" ]; }; then
     return $__dotfiles_st
   fi
-  if [ -n "$newest" ] && SSH_AUTH_SOCK="$newest" ssh-add -l >/dev/null 2>&1; then
+  if [ -n "$newest" ] && _dotfiles_agent_alive "$newest"; then
     ln -snf "$newest" "$stable"
   else
     _dotfiles_fix_ssh_agent
