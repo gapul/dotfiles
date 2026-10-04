@@ -8,7 +8,7 @@
 # macos-14 runner due to a dependency on the sandbox's isatty behavior. deselect just that one
 # test via pytestCheckHook's disabledTests (other tests and the build are preserved.
 # doCheck=false can't stop pytestCheckPhase and causes exit 127 in other environments, so it's not viable).
-_final: prev: {
+final: prev: {
   # (tailscale 1.98.9's vendorHash override was removed 2026-08-07: nixpkgs bumped
   # tailscale to 1.98.10 with a corrected hash, and the stale override itself became
   # the mismatch — "specified" in the CI error was our pinned value.)
@@ -45,4 +45,25 @@ _final: prev: {
       })
     else
       prev.rustdesk;
+
+  # trunk 0.21.14 vendors libdeflate-sys 1.23.1, whose C code uses the `evex512` target attribute
+  # that GCC 16 removed, so it fails on x86_64-linux. Stalwart's webadmin is built with trunk, so
+  # this took homeserver's mail service down with it in om ci. The patch is the one from
+  # NixOS/nixpkgs#569964 (bumps libdeflate to 1.25.2, open as of 2026-10-04). Same guard as
+  # rustdesk: only while nixpkgs still has the old cargoHash. Delete it once that PR has landed.
+  trunk =
+    if prev.trunk.cargoHash == "sha256-/5zvbSlMzZHxnAwuu0Jd6WVVjxJtIAQpRwZZHgYyPbs=" then
+      # cargoDeps is computed from the original arguments, so overriding cargoHash alone doesn't
+      # reach it; rebuild the vendor dir and patch the lockfile in the build itself as well.
+      prev.trunk.overrideAttrs (o: {
+        patches = (o.patches or [ ]) ++ [ ./trunk-libdeflate-gcc16.patch ];
+        cargoDeps = final.rustPlatform.fetchCargoVendor {
+          inherit (o) src;
+          name = "${o.pname}-${o.version}";
+          patches = [ ./trunk-libdeflate-gcc16.patch ];
+          hash = "sha256-8HwfZ9dyplxc405rM33uNnjNt5JBFGWcmDNZJGMha9s=";
+        };
+      })
+    else
+      prev.trunk;
 }
