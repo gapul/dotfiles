@@ -113,5 +113,6 @@
     ./vpn-relay.nix
     ./webmail.nix
     ./wger.nix
+    ./zipline.nix
   ];
 }
