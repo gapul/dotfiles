@@ -213,6 +213,7 @@ in
     serviceConfig = common // {
       Type = "oneshot";
       LoadCredential = common.LoadCredential ++ [ "zaim-cookie:/var/lib/secrets/zaim.cookie" ];
+      EnvironmentFile = "/var/lib/secrets/gatus.env"; # ntfy token for the point-expiry notice
       ExecStart = zaimSync;
     };
     onFailure = [ "ntfy-failure@%n.service" ];
