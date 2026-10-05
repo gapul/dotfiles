@@ -28,7 +28,8 @@
 # as a copy of production with `presenta-staging-reset` (run it again to refresh the copy). Its
 # secrets are ~/.config/presenta/env.staging: env.local with that database, that origin, its own
 # AUTH_SECRET/EMAIL_TOKEN_SECRET, and the mailer pointed nowhere so the copied users get no mail.
-# Video export has no worker there (jobs queue and wait).
+# Video export has no worker there (jobs queue and wait), but its packages are installed and
+# point at production's Remotion browser: PDF export prints with that headless Chrome.
 #
 # Backups: the slide images and clips (~/.local/share/presenta/data) and the secrets (~/.config)
 # are taken by restic, see home/macmini-backup.nix. The database is dumped at 4:30 into /Users/Shared/presenta-backups,
@@ -87,7 +88,9 @@ let
       e2ePort,
       e2eDb,
       restart,
-      video ? false,
+      # Where Remotion's headless Chrome lives. The video worker downloads it on first use, so an
+      # instance without a worker (staging) borrows production's.
+      remotion ? "${share}/remotion",
     }:
     pkgs.writeShellScript name ''
       set -euo pipefail
@@ -154,14 +157,13 @@ let
         set -a; . ${envFile}; set +a
         pnpm install --frozen-lockfile --reporter=silent
         pnpm build
-      ${lib.optionalString video ''
-        # 動画ワーカーは別パッケージ（アプリの依存には入っていない）。
-        pnpm --dir workers/video install --frozen-lockfile --reporter=silent
-        # Remotion のブラウザ（93MB）はリリースごとに落とし直さず、共有の置き場を使う。
-        mkdir -p ${share}/remotion
-        rm -rf workers/video/node_modules/.remotion
-        ln -sfn ${share}/remotion workers/video/node_modules/.remotion
-      ''}
+      # 動画ワーカーは別パッケージ（アプリの依存には入っていない）。staging でも入れる:
+      # PDF の書き出し（lib/pdf.ts）はここの Remotion の headless Chrome で刷る。無いと Helium.app を拾って詰まる。
+      pnpm --dir workers/video install --frozen-lockfile --reporter=silent
+      # Remotion のブラウザ（93MB）はリリースごとに落とし直さず、共有の置き場を使う。
+      mkdir -p ${remotion}
+      rm -rf workers/video/node_modules/.remotion
+      ln -sfn ${remotion} workers/video/node_modules/.remotion
       ); then
         notify "build of $rev failed; still serving $(basename "$(readlink ${share}/current)")"
         exit 1
@@ -199,7 +201,6 @@ let
       "org.nixos.presenta"
       "org.nixos.presenta-video"
     ];
-    video = true;
   };
 
   stagingShare = "${home}/.local/share/presenta-staging";
@@ -215,6 +216,7 @@ let
     e2ePort = "3251";
     e2eDb = "presenta_staging_e2e";
     restart = [ "org.nixos.presenta-staging" ];
+    remotion = "${share}/remotion";
   };
   # Replaces staging's database and uploads with a fresh copy of production's. Production is
   # only read (pg_dump takes a consistent snapshot while it keeps serving).
