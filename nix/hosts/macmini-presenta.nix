@@ -22,10 +22,23 @@
 # the AivisSpeech engine on this machine read the speaker notes. It is a per-machine service, not
 # part of a release.
 #
+# Staging: the same pipeline follows the `staging` branch into ~/.local/share/presenta-staging and
+# serves it tailnet-only at https://macmini.tail079f44.ts.net:3200 (tailscale serve -> 127.0.0.1:3241).
+# It has its own database (presenta_staging on the same Postgres) and its own uploads, both started
+# as a copy of production with `presenta-staging-reset` (run it again to refresh the copy). Its
+# secrets are ~/.config/presenta/env.staging: env.local with that database, that origin, its own
+# AUTH_SECRET/EMAIL_TOKEN_SECRET, and the mailer pointed nowhere so the copied users get no mail.
+# Video export has no worker there (jobs queue and wait).
+#
 # Backups: the slide images and clips (~/.local/share/presenta/data) and the secrets (~/.config)
 # are taken by restic, see home/macmini-backup.nix. The database is dumped at 4:30 into /Users/Shared/presenta-backups,
 # which home/macmini-backup.nix picks up at 5:00 — a copy of a running PGDATA would not restore.
-{ pkgs, user, ... }:
+{
+  lib,
+  pkgs,
+  user,
+  ...
+}:
 let
   home = "/Users/${user.username}";
   state = "${home}/.local/state/presenta";
@@ -63,112 +76,172 @@ let
     mv ${backupDir}/presenta.dump.tmp ${backupDir}/presenta.dump
     echo "$(date '+%F %T') dumped $(wc -c < ${backupDir}/presenta.dump) bytes"
   '';
-  deploy = pkgs.writeShellScript "presenta-deploy" ''
-    set -euo pipefail
-    export HOME=${home}
-    export PATH=${home}/.local/bin:/etc/profiles/per-user/${user.username}/bin:/run/current-system/sw/bin:/usr/bin:/bin
-    repo=${share}/repo
-
-    notify() {
-      if [ -r ${home}/.config/ntfy/url ] && [ -r ${home}/.config/ntfy/token ]; then
-        /usr/bin/curl -fsS --max-time 15 -H "Authorization: Bearer $(cat ${home}/.config/ntfy/token)" \
-          -H "Title: presenta deploy (macmini)" -H "Tags: warning" -d "$1" "$(cat ${home}/.config/ntfy/url)" >/dev/null 2>&1 || true
-      fi
-    }
-
-    # The private repo is read with gh's token: the login keychain is locked for a daemon, so
-    # git's osxkeychain helper cannot answer, and the machine's SSH key is a deploy key for another repo.
-    git_() { git -c credential.helper= -c 'credential.helper=!gh auth git-credential' "$@"; }
-
-    e2e() (
+  # One deploy loop per instance. Production follows main; staging follows the staging branch.
+  mkDeploy =
+    {
+      name,
+      branch,
+      share,
+      state,
+      envFile,
+      e2ePort,
+      e2eDb,
+      restart,
+      video ? false,
+    }:
+    pkgs.writeShellScript name ''
       set -euo pipefail
-      exec >${state}/e2e.log 2>&1
-      cd "$1"
-      db=postgresql://presenta@127.0.0.1:${pgPort}/presenta_e2e
-      ${postgres}/bin/dropdb -h 127.0.0.1 -p ${pgPort} -U presenta --if-exists presenta_e2e
-      ${postgres}/bin/createdb -h 127.0.0.1 -p ${pgPort} -U presenta presenta_e2e
-      # Set here, so next does not take production values from .env.local; the mailer points
-      # nowhere, so a test never sends real mail.
-      export DATABASE_URL=$db DATABASE_URL_UNPOOLED=$db AI_LIVE=0 \
-        AUTH_SECRET=$(openssl rand -hex 32) EMAIL_TOKEN_SECRET=$(openssl rand -hex 32) \
-        APP_BASE_URL=http://127.0.0.1:3151 AUTH_URL=http://127.0.0.1:3151 \
-        MAILER_URL=http://127.0.0.1:9/ MAILER_TOKEN=$(openssl rand -hex 16)
-      pnpm db:migrate
-      pnpm exec playwright install chromium >/dev/null
-      # Uploads go to a scratch directory, not the shared production data.
-      rm -rf ${state}/e2e-data && mkdir -p ${state}/e2e-data
-      export PRESENTA_DATA_DIR=${state}/e2e-data
-      pnpm start -H 127.0.0.1 -p 3151 &
-      server=$!
-      trap 'kill $server 2>/dev/null || true' EXIT
-      for _ in $(seq 60); do
-        curl -fsS http://127.0.0.1:3151/api/health >/dev/null 2>&1 && break
-        sleep 1
-      done
-      E2E_BASE_URL=http://127.0.0.1:3151 pnpm test:e2e
-    )
-    if [ ! -d "$repo/.git" ]; then
-      mkdir -p ${share}/releases
-      git_ clone --quiet https://github.com/mugen404/presenta.git "$repo"
-    fi
-    git_ -C "$repo" fetch --quiet origin main
-    rev=$(git -C "$repo" rev-parse origin/main)
-    [ "$(readlink ${share}/current 2>/dev/null || true)" = "${share}/releases/$rev" ] && exit 0
+      export HOME=${home}
+      export PATH=${home}/.local/bin:/etc/profiles/per-user/${user.username}/bin:/run/current-system/sw/bin:/usr/bin:/bin
+      repo=${share}/repo
 
-    echo "$(date '+%F %T') deploying $rev"
-    release=${share}/releases/$rev
-    rm -rf "$release"
-    git -C "$repo" worktree prune
-    git -C "$repo" worktree add --detach --force "$release" "$rev" >/dev/null
-    ln -sfn ${envFile} "$release/.env.local"
-    # 共有の置き場は PRESENTA_DATA_DIR で渡す。リリースの中に data -> 共有 の symlink を張ると
-    # Tailwind の走査がツリーの外へ出て、turbopack が panic してビルドが落ちる。
-    if ! (
-      cd "$release"
-      set -a; . ${envFile}; set +a
-      pnpm install --frozen-lockfile --reporter=silent
-      pnpm build
-      # 動画ワーカーは別パッケージ（アプリの依存には入っていない）。
-      pnpm --dir workers/video install --frozen-lockfile --reporter=silent
-      # Remotion のブラウザ（93MB）はリリースごとに落とし直さず、共有の置き場を使う。
-      mkdir -p ${share}/remotion
-      rm -rf workers/video/node_modules/.remotion
-      ln -sfn ${share}/remotion workers/video/node_modules/.remotion
-    ); then
-      notify "build of $rev failed; still serving $(basename "$(readlink ${share}/current)")"
-      exit 1
-    fi
+      notify() {
+        if [ -r ${home}/.config/ntfy/url ] && [ -r ${home}/.config/ntfy/token ]; then
+          /usr/bin/curl -fsS --max-time 15 -H "Authorization: Bearer $(cat ${home}/.config/ntfy/token)" \
+            -H "Title: ${name} (macmini)" -H "Tags: warning" -d "$1" "$(cat ${home}/.config/ntfy/url)" >/dev/null 2>&1 || true
+        fi
+      }
 
-    # Browser tests gate the switch: the new release runs on a side port against a throwaway
-    # database before production is migrated or touched. Releases without the suite skip this.
-    if grep -q '"test:e2e"' "$release/package.json"; then
-      if ! e2e "$release"; then
-        notify "end-to-end tests failed for $rev; still serving $(basename "$(readlink ${share}/current)"). Log: ${state}/e2e.log"
+      # The private repo is read with gh's token: the login keychain is locked for a daemon, so
+      # git's osxkeychain helper cannot answer, and the machine's SSH key is a deploy key for another repo.
+      git_() { git -c credential.helper= -c 'credential.helper=!gh auth git-credential' "$@"; }
+
+      e2e() (
+        set -euo pipefail
+        exec >${state}/e2e.log 2>&1
+        cd "$1"
+        db=postgresql://presenta@127.0.0.1:${pgPort}/${e2eDb}
+        ${postgres}/bin/dropdb -h 127.0.0.1 -p ${pgPort} -U presenta --if-exists ${e2eDb}
+        ${postgres}/bin/createdb -h 127.0.0.1 -p ${pgPort} -U presenta ${e2eDb}
+        # Set here, so next does not take production values from .env.local; the mailer points
+        # nowhere, so a test never sends real mail.
+        export DATABASE_URL=$db DATABASE_URL_UNPOOLED=$db AI_LIVE=0 \
+          AUTH_SECRET=$(openssl rand -hex 32) EMAIL_TOKEN_SECRET=$(openssl rand -hex 32) \
+          APP_BASE_URL=http://127.0.0.1:${e2ePort} AUTH_URL=http://127.0.0.1:${e2ePort} \
+          MAILER_URL=http://127.0.0.1:9/ MAILER_TOKEN=$(openssl rand -hex 16)
+        pnpm db:migrate
+        pnpm exec playwright install chromium >/dev/null
+        # Uploads go to a scratch directory, not the shared production data.
+        rm -rf ${state}/e2e-data && mkdir -p ${state}/e2e-data
+        export PRESENTA_DATA_DIR=${state}/e2e-data
+        pnpm start -H 127.0.0.1 -p ${e2ePort} &
+        server=$!
+        trap 'kill $server 2>/dev/null || true' EXIT
+        for _ in $(seq 60); do
+          curl -fsS http://127.0.0.1:${e2ePort}/api/health >/dev/null 2>&1 && break
+          sleep 1
+        done
+        E2E_BASE_URL=http://127.0.0.1:${e2ePort} pnpm test:e2e
+      )
+      if [ ! -d "$repo/.git" ]; then
+        mkdir -p ${share}/releases
+        git_ clone --quiet https://github.com/mugen404/presenta.git "$repo"
+      fi
+      git_ -C "$repo" fetch --quiet origin ${branch}
+      rev=$(git -C "$repo" rev-parse origin/${branch})
+      [ "$(readlink ${share}/current 2>/dev/null || true)" = "${share}/releases/$rev" ] && exit 0
+
+      echo "$(date '+%F %T') deploying $rev"
+      release=${share}/releases/$rev
+      rm -rf "$release"
+      git -C "$repo" worktree prune
+      git -C "$repo" worktree add --detach --force "$release" "$rev" >/dev/null
+      ln -sfn ${envFile} "$release/.env.local"
+      # 共有の置き場は PRESENTA_DATA_DIR で渡す。リリースの中に data -> 共有 の symlink を張ると
+      # Tailwind の走査がツリーの外へ出て、turbopack が panic してビルドが落ちる。
+      if ! (
+        cd "$release"
+        set -a; . ${envFile}; set +a
+        pnpm install --frozen-lockfile --reporter=silent
+        pnpm build
+      ${lib.optionalString video ''
+        # 動画ワーカーは別パッケージ（アプリの依存には入っていない）。
+        pnpm --dir workers/video install --frozen-lockfile --reporter=silent
+        # Remotion のブラウザ（93MB）はリリースごとに落とし直さず、共有の置き場を使う。
+        mkdir -p ${share}/remotion
+        rm -rf workers/video/node_modules/.remotion
+        ln -sfn ${share}/remotion workers/video/node_modules/.remotion
+      ''}
+      ); then
+        notify "build of $rev failed; still serving $(basename "$(readlink ${share}/current)")"
         exit 1
       fi
-    fi
 
-    if ! (cd "$release" && set -a && . ${envFile} && set +a && pnpm db:migrate); then
-      notify "migration of $rev failed; still serving $(basename "$(readlink ${share}/current)")"
-      exit 1
-    fi
-    ln -sfn "$release" ${share}/current.new && mv -h ${share}/current.new ${share}/current
-    sudo -n /bin/launchctl kickstart -k system/org.nixos.presenta
-    sudo -n /bin/launchctl kickstart -k system/org.nixos.presenta-video
-    echo "$(date '+%F %T') serving $rev"
+      # Browser tests gate the switch: the new release runs on a side port against a throwaway
+      # database before production is migrated or touched. Releases without the suite skip this.
+      if grep -q '"test:e2e"' "$release/package.json"; then
+        if ! e2e "$release"; then
+          notify "end-to-end tests failed for $rev; still serving $(basename "$(readlink ${share}/current)"). Log: ${state}/e2e.log"
+          exit 1
+        fi
+      fi
 
-    # Keep the three newest releases for a quick roll back (point current at one and kickstart).
-    ls -1dt ${share}/releases/*/ | tail -n +4 | while read -r old; do
-      git -C "$repo" worktree remove --force "$old" || rm -rf "$old"
-    done
+      if ! (cd "$release" && set -a && . ${envFile} && set +a && pnpm db:migrate); then
+        notify "migration of $rev failed; still serving $(basename "$(readlink ${share}/current)")"
+        exit 1
+      fi
+      ln -sfn "$release" ${share}/current.new && mv -h ${share}/current.new ${share}/current
+      ${lib.concatMapStrings (label: "sudo -n /bin/launchctl kickstart -k system/${label}\n") restart}
+      echo "$(date '+%F %T') serving $rev"
+
+      # Keep the three newest releases for a quick roll back (point current at one and kickstart).
+      ls -1dt ${share}/releases/*/ | tail -n +4 | while read -r old; do
+        git -C "$repo" worktree remove --force "$old" || rm -rf "$old"
+      done
+    '';
+  deploy = mkDeploy {
+    name = "presenta-deploy";
+    branch = "main";
+    inherit share state envFile;
+    e2ePort = "3151";
+    e2eDb = "presenta_e2e";
+    restart = [
+      "org.nixos.presenta"
+      "org.nixos.presenta-video"
+    ];
+    video = true;
+  };
+
+  stagingShare = "${home}/.local/share/presenta-staging";
+  stagingState = "${home}/.local/state/presenta-staging";
+  stagingEnv = "${home}/.config/presenta/env.staging";
+  stagingPort = "3241";
+  stagingDeploy = mkDeploy {
+    name = "presenta-staging-deploy";
+    branch = "staging";
+    share = stagingShare;
+    state = stagingState;
+    envFile = stagingEnv;
+    e2ePort = "3251";
+    e2eDb = "presenta_staging_e2e";
+    restart = [ "org.nixos.presenta-staging" ];
+  };
+  # Replaces staging's database and uploads with a fresh copy of production's. Production is
+  # only read (pg_dump takes a consistent snapshot while it keeps serving).
+  stagingReset = pkgs.writeShellScriptBin "presenta-staging-reset" ''
+    set -euo pipefail
+    pg="-h 127.0.0.1 -p ${pgPort} -U presenta"
+    dump=$(mktemp -t presenta-staging)
+    trap 'rm -f "$dump"' EXIT
+    ${postgres}/bin/pg_dump $pg -Fc presenta > "$dump"
+    ${postgres}/bin/dropdb $pg --if-exists --force presenta_staging
+    ${postgres}/bin/createdb $pg presenta_staging
+    ${postgres}/bin/pg_restore $pg --no-owner -d presenta_staging "$dump"
+    mkdir -p ${stagingShare}/data
+    /usr/bin/rsync -a --delete ${share}/data/ ${stagingShare}/data/
+    sudo /bin/launchctl kickstart -k system/org.nixos.presenta-staging || true
+    echo "staging now holds production as of $(date '+%F %T')"
   '';
 in
 {
   # launchd opens the log files but does not create their directory.
   system.activationScripts.postActivation.text = ''
-    sudo -u ${user.username} mkdir -p ${state} ${share}/releases ${share}/data ${home}/.config/presenta
+    sudo -u ${user.username} mkdir -p ${state} ${share}/releases ${share}/data ${home}/.config/presenta \
+      ${stagingState} ${stagingShare}/releases ${stagingShare}/data
     install -d -m 0700 -o ${user.username} ${backupDir}
   '';
+
+  environment.systemPackages = [ stagingReset ];
 
   # Store-path jobs use `command` so nix-darwin waits for /nix/store, which macOS 27 mounts after
   # launchd starts daemons (see the minecraft daemons in macmini.nix).
@@ -292,6 +365,41 @@ in
       };
       StandardOutPath = "${state}/app.log";
       StandardErrorPath = "${state}/app.log";
+    };
+  };
+
+  launchd.daemons.presenta-staging-deploy = {
+    command = "${stagingDeploy}";
+    serviceConfig = {
+      UserName = user.username;
+      RunAtLoad = true;
+      StartInterval = 120;
+      ProcessType = "Background";
+      StandardOutPath = "${stagingState}/deploy.log";
+      StandardErrorPath = "${stagingState}/deploy.log";
+    };
+  };
+
+  launchd.daemons.presenta-staging = {
+    serviceConfig = {
+      ProgramArguments = [
+        "/bin/sh"
+        "-c"
+        # tailscale serve keeps its mapping across restarts; setting it again here makes it declared.
+        "/bin/wait4path ${stagingShare}/current/.next/BUILD_ID && { /opt/homebrew/bin/tailscale serve --bg --https=3200 http://127.0.0.1:${stagingPort} >/dev/null 2>&1 || true; } && exec ${pkgs.pnpm}/bin/pnpm start -H 127.0.0.1 -p ${stagingPort}"
+      ];
+      UserName = user.username;
+      WorkingDirectory = "${stagingShare}/current";
+      RunAtLoad = true;
+      KeepAlive = true;
+      EnvironmentVariables = {
+        HOME = home;
+        PATH = "${home}/.local/bin:/etc/profiles/per-user/${user.username}/bin:/run/current-system/sw/bin:/usr/bin:/bin";
+        NODE_ENV = "production";
+        PRESENTA_DATA_DIR = "${stagingShare}/data";
+      };
+      StandardOutPath = "${stagingState}/app.log";
+      StandardErrorPath = "${stagingState}/app.log";
     };
   };
 }
