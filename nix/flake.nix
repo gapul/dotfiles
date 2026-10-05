@@ -379,6 +379,7 @@
           ./home/macmini-render.nix
           # Voice models and synthesis. Clients use the API over the tailnet.
           ./home/macmini-aivisspeech.nix
+          ./home/rclone-mount.nix # Google Drive under ~/Sync, same remotes as the main Mac (rclone_conf from hosts/macmini.nix)
           ./home/tmp-cleanup.nix # auto-clean ~/tmp scratch after 7 days (shared with macWorkstation)
           ./home/nix-gc-tcc.nix # stable copy of signed nix used by the root GC daemon (hosts/darwin-common.nix)
           # dotfiles-pull (home/macmini.nix) relies on the post-merge hook to rebuild, but this role
