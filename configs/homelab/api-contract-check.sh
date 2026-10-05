@@ -6,14 +6,19 @@ failures=()
 # Several of these sit behind lazy-http-services.nix and sleep until the first
 # request. That request blocks while the container starts, and romm takes 20s+
 # (valkey, then the backend) before it answers, so a flat 15s budget reported
-# "HTTP 000" every morning. Retry a dead first attempt with the proxy's own
-# startup budget (startupTimeout, 120s) before calling the route missing.
+# "HTTP 000" every morning. Others (pingvin-share) answer 502 from their own
+# frontend until the backend inside the container is up. Keep retrying a dead or
+# 5xx-gateway answer within the proxy's own startup budget (startupTimeout, 120s)
+# before calling the route missing.
 probe() {
-  local name="$1" url="$2" expected="$3" code
-  code="$(curl -sS -o /dev/null --max-time 15 -w '%{http_code}' "$url" || true)"
-  if [[ "$code" == 000 ]]; then
-    code="$(curl -sS -o /dev/null --max-time 120 -w '%{http_code}' "$url" || true)"
-  fi
+  local name="$1" url="$2" expected="$3" code deadline=$((SECONDS + 120))
+  while :; do
+    code="$(curl -sS -o /dev/null --max-time 15 -w '%{http_code}' "$url" || true)"
+    if [[ ! "$code" =~ ^(000|502|503|504)$ ]] || (( SECONDS >= deadline )); then
+      break
+    fi
+    sleep 5
+  done
   if [[ ! "$code" =~ $expected ]]; then
     failures+=("$name: HTTP $code ($url)")
     printf 'NG  %-18s HTTP %s\n' "$name" "$code"
