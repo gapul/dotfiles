@@ -148,6 +148,10 @@ in
         # Was ~/.config/restic/password, placed by hand. restic-common.nix's default path is the
         # same location, so the module below keeps reading it without knowing it moved.
         "restic_password" = forUser "/Users/${user.username}/.config/restic/password";
+        # Same rclone.conf as the main Mac (home/secrets.nix): the three Drive remotes behind the
+        # ~/Sync mounts (home/rclone-mount.nix) and the restic backend. Was a hand-placed file
+        # holding google-drive only.
+        "rclone_conf" = forUser "/Users/${user.username}/.config/rclone/rclone.conf";
         # For headless Claude Code. There is no interactive login on this machine and
         # the keychain cannot be opened over SSH, so the OAuth token minted by
         # `claude setup-token` is handed over as a file. claude-agent
