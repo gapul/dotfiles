@@ -96,18 +96,23 @@ pre-conversion world aside to `<instance>.pre-<old version>` first, keeping one 
 
 ## Backups
 
-Every night at 04:40 each instance is stopped in turn, archived, and kept for seven generations
-in `/Users/Shared/minecraft-backups`. The restic run at 05:00 carries that directory offsite.
+Every night at 04:40 each instance is stopped in turn, copied, and kept for seven generations
+as `/Users/Shared/minecraft-backups/<instance>/<date>/`. Each generation starts as an APFS clone
+of the previous one and rsync replaces only what changed, so unchanged region files share blocks
+across generations and seven of them cost about one world plus a week of edits. The restic run at
+05:00 carries that directory offsite, where the same files deduplicate.
 
-Besides the worlds, the archive takes `mods/`, `config/`, `server.properties`, `whitelist.json`
+Besides the worlds, each generation takes `mods/`, `config/`, `server.properties`, `whitelist.json`
 and `ops.json`. Declared jars can be restored from the store, but hand-installed jars and per-mod
 configuration exist nowhere else.
 
-To restore, stop the instance and unpack the tar over its directory.
+To restore, stop the instance and copy the generation over its directory. The backup copy makes
+everything world-readable for restic, so put ownership back afterwards.
 
 ```bash
 sudo launchctl bootout system/org.nixos.minecraft-solo
-sudo -u mcsrv tar xzf /Users/Shared/minecraft-backups/solo-<date>.tar.gz -C /Users/mcsrv/solo
+sudo rsync -a /Users/Shared/minecraft-backups/solo/<date>/ /Users/mcsrv/solo/
+sudo chown -R mcsrv /Users/mcsrv/solo
 sudo launchctl bootstrap system /Library/LaunchDaemons/org.nixos.minecraft-solo.plist
 ```
 
