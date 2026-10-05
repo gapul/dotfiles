@@ -153,6 +153,10 @@ in
         ${config.services.postgresql.package}/bin/pg_dump -Fc atuin \
         > /var/lib/db-dumps/atuin.dump
 
+      ${pkgs.util-linux}/bin/runuser -u postgres -- \
+        ${config.services.postgresql.package}/bin/pg_dump -Fc zipline \
+        > /var/lib/db-dumps/zipline.dump
+
       # sqlite は WAL の途中でコピーすると千切れる。iterdump はトランザクション内で
       # 読むので、稼働中でも一貫した SQL が出る。1行で書くのは、nix の indented
       # string と nixfmt が複数行 Python のインデントを壊すため。
