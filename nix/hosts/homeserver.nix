@@ -78,7 +78,7 @@ let
     # this table alone. The monitor hits the upstream directly, so it works without the vhost.
     booking.upstream = "127.0.0.1:8086";
     # Zipline (homelab/zipline.nix). Published via cloudflared like booking; listed here for gatus.
-    i.upstream = "127.0.0.1:8114";
+    snap.upstream = "127.0.0.1:8114";
     # The DNS record and the dashboard link existed already, but the vhost did not, so opening
     # it over https failed (easy to miss because hitting the port directly worked).
     jellyfin = {

@@ -57,7 +57,7 @@
         "where.gapul.net" = "http://127.0.0.1:8095";
         # Screenshot sharing (zipline.nix). Same reason as send: the link goes to people outside
         # the tailnet.
-        "i.gapul.net" = "http://127.0.0.1:8114";
+        "snap.gapul.net" = "http://127.0.0.1:8114";
         # Home for my own posts (homelab/social.nix). Fediverse and Nostr only work if external servers
         # and apps can reach them, so all of these go through the tunnel.
         "social.gapul.net" = "http://127.0.0.1:8110";
