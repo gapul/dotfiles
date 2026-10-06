@@ -110,6 +110,16 @@ in
     agentPkgs.codex
     agentPkgs.claude-code
     agentPkgs.opencode
+    # hermes-acp: the Hermes agent on macmini as a T3 Code provider (ACP Registry → Local command,
+    # executable /run/current-system/sw/bin/hermes-acp). Hermes runs as the hermes user there, so
+    # this only carries `hermes acp`'s stdio over ssh. The key file is named explicitly because T3
+    # spawns this unattended and must not depend on whichever ssh agent its environment carries.
+    (pkgs.writeShellScriptBin "hermes-acp" ''
+      exec ${pkgs.openssh}/bin/ssh -T -o BatchMode=yes -o ConnectTimeout=10 \
+        -o ServerAliveInterval=30 -o IdentitiesOnly=yes -i "$HOME/.ssh/id_ed25519" \
+        gapul@100.105.135.49 \
+        sudo -n -u hermes -H /Users/hermes/.local/bin/hermes acp --accept-hooks
+    '')
     # ─── moved off Homebrew (2026-09-15): same app, same data dirs, nothing to re-set up ───
     # Upstream's signed release carried over as-is, so TCC grants and entitlements survive:
     pkgs.upscayl
@@ -695,6 +705,9 @@ in
       "ghostty"
       "deskflow"
       "codexbar" # show usage/limits of various AI coding vendors in the menu bar (bundles codexbar CLI, auto-linked into /opt/homebrew/bin)
+      # DeepSeek Harness (dsh): plugin-based agent harness, desktop app. A cask rather than
+      # brewCasks because it updates itself (auto_updates), which the rule above excludes.
+      "deepseek-harness"
 
       # ─── Creative — Design / 2D ───
       "affinity"
