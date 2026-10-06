@@ -349,6 +349,19 @@ in
     # find marp on PATH. Declaring it here means that step never runs — and npm stays what it is
     # on this machine, a thing that comes along with node rather than a package manager anyone uses.
     pkgs.marp-cli
+    # hermes-acp: the Hermes agent as a T3 Code provider. The T3 server runs here, so it is
+    # registered as ACP Registry → Local command with /run/current-system/sw/bin/hermes-acp.
+    # Hermes lives under the hermes user, so this only hops users; gapul's sudo to hermes is
+    # passwordless, which -n relies on because T3 spawns it with no terminal.
+    (pkgs.writeShellScriptBin "hermes-acp" ''
+      exec /usr/bin/sudo -n -u hermes -H /Users/hermes/.local/bin/hermes acp --accept-hooks
+    '')
+    # dsh: DeepSeek Harness CLI (headless/tui/web profiles). Not in nixpkgs, and upstream ships
+    # it as an npm package that moves weekly, so this resolves @latest through npx on each run
+    # rather than pinning a version that would go stale. The desktop app is the workstation's.
+    (pkgs.writeShellScriptBin "dsh" ''
+      exec ${pkgs.nodejs_22}/bin/npx -y @deepseek-ai/dsh@latest "$@"
+    '')
   ];
 
   # (An ollama serve LaunchAgent was here, holding ~47G of GGUF weights in ollama's own blob
