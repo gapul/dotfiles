@@ -10,7 +10,7 @@
 # which restic already covers via /var/lib.
 #
 # Goes through the tunnel, like send / booking. A shared link is only useful if the
-# recipient outside the tailnet can open it, so DNS for i.gapul.net is the tunnel's CNAME.
+# recipient outside the tailnet can open it, so DNS for snap.gapul.net is the tunnel's CNAME.
 # The dashboard is public along with it and relies on Zipline's own login; registration is
 # off by default, so the only account is the one created on first visit.
 {
@@ -21,7 +21,7 @@
       # Behind cloudflared, so the client IP and scheme come from headers.
       CORE_TRUST_PROXY = "true";
       CORE_RETURN_HTTPS_URLS = "true";
-      CORE_DEFAULT_DOMAIN = "i.gapul.net";
+      CORE_DEFAULT_DOMAIN = "snap.gapul.net";
       # Already the default; pinned so the public dashboard never grows a sign-up form.
       FEATURES_USER_REGISTRATION = "false";
     };
