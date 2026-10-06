@@ -244,7 +244,11 @@ in
     # `broken = isDarwin` and headless-only, so the official dmg is repackaged.
     # See pkgs/slimevr-server.nix.
     (pkgs.callPackage ../pkgs/slimevr-server.nix { })
+    # Compositor: open-source Photoshop-style editor. See pkgs/compositor.nix.
+    (pkgs.callPackage ../pkgs/compositor.nix { })
   ]
+  # ArtCraft's seven pure-Rust Adobe-suite counterparts. See pkgs/artcraft-apps.nix.
+  ++ pkgs.callPackage ../pkgs/artcraft-apps.nix { }
   ++ lib.optionals includeManualSources [
     # AquesTalkPlayer: the yukkuri voices, with a headless wav-out CLI. The download is
     # Turnstile-gated, so the DMG has to be added to the store by hand.
