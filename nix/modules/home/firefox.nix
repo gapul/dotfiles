@@ -255,6 +255,15 @@ in
         "browser.urlbar.quicksuggest.enabled" = false;
         "browser.newtabpage.activity-stream.feeds.system.topstories" = false;
         "browser.newtabpage.activity-stream.telemetry" = false;
+
+        # Japanese default fonts: Kyuji Mincho / Kyuji Gothic (github.com/gapul/kyuji-font) draw
+        # shinjitai text with kyujitai glyphs without changing the text. Copied into
+        # ~/Library/Fonts by hand while that repo is private (a private flake input would break
+        # evaluation wherever no GitHub token is set); with the fonts absent Firefox falls back to
+        # its stock Japanese fonts. Pages that name their own fonts are covered by the repo's
+        # Violentmonkey script, not by these.
+        "font.name.serif.ja" = "Kyuji Mincho";
+        "font.name.sans-serif.ja" = "Kyuji Gothic";
       };
       userChrome = ''
         @import url("autohide_toolbox.css");
