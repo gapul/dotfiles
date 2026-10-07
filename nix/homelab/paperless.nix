@@ -63,6 +63,10 @@
       # paperless` before dumping the database; without a check every nightly backup failed
       # (2026-10-01). A 302 to the login page counts as up.
       "--health-cmd=curl -fs -o /dev/null --max-time 5 http://localhost:8000"
+      # Only for that manual run. A timed check fires while the restarted container is
+      # still booting, and switch-to-configuration treats the failed transient unit as
+      # fatal, so the daily nixos-upgrade ends up failed (2026-10-07).
+      "--health-interval=disable"
     ];
   };
   systemd.services."podman-paperless" = {
