@@ -36,7 +36,10 @@ else
 fi
 
 # An expired login turns the whole thing into a system that quietly does nothing.
-if [ -e "$LOG_FILE" ] && tail -500 "$LOG_FILE" | grep -q 'not authenticated'; then
+# Match only the line run_claude writes. A bare 'not authenticated' also hits this
+# monitor's own anomaly/NOTIFY lines (e.g. "gh is not authenticated"), so one blip
+# kept re-raising itself every hour.
+if [ -e "$LOG_FILE" ] && tail -500 "$LOG_FILE" | grep -q 'NOTIFY\[[a-z]*\] claude-agent: not authenticated:'; then
   add "Claude Code is not authenticated (claude setup-token needs redoing)"
 fi
 if ! gh auth status >/dev/null 2>&1; then
