@@ -11,7 +11,14 @@
     http = 4000; # metrics + API. dns2.gapul.net points at this on the homeserver side.
   };
 
-  upstreams.groups.default = [ "https://dns10.quad9.net/dns-query" ];
+  # Two providers so one provider dropping us doesn't take the tailnet's DNS down. Quad9
+  # answered 429 and then nothing to the home IP for ~20 min after a burst of ~6000 queries
+  # (2026-10-06), and both blocky failed every query. Both upstreams are unfiltered; blocking
+  # stays in the lists below.
+  upstreams.groups.default = [
+    "https://dns10.quad9.net/dns-query"
+    "https://cloudflare-dns.com/dns-query"
+  ];
   # IPv4 only for outgoing connections (upstream and list downloads). macmini has no IPv6
   # route, and the downloader dials the AAAA answer first and does not fall back inside an
   # attempt, so raw.githubusercontent.com failed 3/3 and two of three lists were missing
@@ -21,6 +28,8 @@
   bootstrapDns = [
     { upstream = "9.9.9.10"; }
     { upstream = "149.112.112.10"; }
+    { upstream = "1.1.1.1"; }
+    { upstream = "1.0.0.1"; }
   ];
 
   blocking = {
