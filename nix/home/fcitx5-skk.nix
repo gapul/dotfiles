@@ -7,9 +7,11 @@
 # The user half of SKK on the NixOS laptop (fcitx5-skk, on libskk); the IM framework, the addon and
 # its options (taken from macSKK's) are system-side in hosts/nixos-laptop.nix. It is the Linux side
 # of what macSKK does on the mac (configs/ime/skk/README.md): the same public dictionaries, and the
-# same punctuation as skkeleton.
+# same punctuation as skkeleton, and the azooKey skkserv on 127.0.0.1:1178 (see below).
 let
   skkDir = "${config.xdg.dataHome}/skk";
+  azooKeySkkserv = pkgs.callPackage ../pkgs/azoo-key-skkserv.nix { };
+  skkservPort = 1178;
   rules = "libskk/rules/gapul";
   kanaModes = [
     "hiragana"
@@ -107,5 +109,33 @@ in
     type=file,file=${skkDir}/SKK-JISYO.jinmei,mode=readonly
     type=file,file=${skkDir}/SKK-JISYO.propernoun,mode=readonly
     type=file,file=${skkDir}/SKK-JISYO.station,mode=readonly
+    type=server,host=127.0.0.1,port=${toString skkservPort},encoding=UTF-8
   '';
+
+  # azoo-key-skkserv, the skkserv macSKK and skkeleton use on the mac (azooKey skkserv.app there):
+  # AzooKeyKanaKanjiConverter with the Zenzai model, so compounds and whole phrases the SKK-JISYO
+  # files lack still convert (はいたつぎょうしゃ → 配達業者). It is queried after the files above, so
+  # their candidates come first. The server always answers in UTF-8, and libskk uses one encoding
+  # for both directions, so requests are UTF-8 too; the Linux build does not answer EUC-JP
+  # requests at all (nix/pkgs/azoo-key-skkserv.nix). skkeleton on Linux sends UTF-8 for the same
+  # reason (configs/editors/nvim/lua/plugins/skkeleton.lua).
+  systemd.user.services.azoo-key-skkserv = {
+    Unit.Description = "azoo-key-skkserv (skkserv on 127.0.0.1:${toString skkservPort})";
+    Service = {
+      ExecStart = lib.escapeShellArgs [
+        (lib.getExe azooKeySkkserv)
+        "--port"
+        (toString skkservPort)
+        "--incoming-charset"
+        "UTF-8"
+      ];
+      Restart = "on-failure";
+      RestartSec = 5;
+      Nice = 5;
+      NoNewPrivileges = true;
+      PrivateTmp = true;
+      ProtectSystem = "strict";
+    };
+    Install.WantedBy = [ "default.target" ];
+  };
 }
