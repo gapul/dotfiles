@@ -873,7 +873,7 @@
               # Override things like tailscale's wrong vendorHash here.
               { nixpkgs.overlays = [ overlayFixes ]; }
               ./hosts/nixos-laptop.nix
-              sops-nix.nixosModules.sops # hosts/nixos-laptop-eduroam.nix
+              sops-nix.nixosModules.sops # hosts/nixos-laptop-wifi.nix
               lanzaboote.nixosModules.lanzaboote
               disko.nixosModules.disko
               ./hosts/nixos-laptop-disk.nix
@@ -926,7 +926,7 @@
               # Override things like tailscale's wrong vendorHash here.
               { nixpkgs.overlays = [ overlayFixes ]; }
               ./hosts/nixos-laptop.nix
-              sops-nix.nixosModules.sops # hosts/nixos-laptop-eduroam.nix
+              sops-nix.nixosModules.sops # hosts/nixos-laptop-wifi.nix
               lanzaboote.nixosModules.lanzaboote
               home-manager-nixos.nixosModules.home-manager
               {
