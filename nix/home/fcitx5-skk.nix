@@ -11,6 +11,11 @@
 let
   skkDir = "${config.xdg.dataHome}/skk";
   rules = "libskk/rules/gapul";
+  kanaModes = [
+    "hiragana"
+    "katakana"
+    "hankaku-katakana"
+  ];
 in
 {
   # SKK is the only input method, as macSKK is on the mac: it is always on, and its own modes do
@@ -44,18 +49,25 @@ in
 
     # A libskk rule ("gapul") that is the default one plus a full-width ！, matching skkeleton and
     # configs/ime/skk/kana-rule.conf. libskk's default already widens ？ and ：, and leaves （） half
-    # width, so ！ is the only difference. libskk wants every keymap of a rule present, so each one
+    # width, so ！ is the only punctuation that differs. libskk wants every keymap of a rule present, so each one
     # only includes the default's. User rules are looked up under the config dir, not the data dir.
     "${rules}/metadata.json".text = builtins.toJSON {
       name = "gapul";
-      description = "Default, with a full-width ！ (as skkeleton / macSKK)";
+      description = "Default, with a full-width ！ and ; as sticky shift";
     };
+    # ; is a sticky shift: ;kanzi starts ▽かんじ, and inside ▽ it marks where the okurigana begins
+    # (;ka;ku → ▽か*く), so no chord with Shift is needed. macSKK and skkeleton both do this out of
+    # the box; libskk does not, but its start-preedit-kana is exactly that. Its rom-kana entry
+    # (; → ；) is dropped so the keymap gets the key.
     "${rules}/rom-kana/default.json".text = builtins.toJSON {
       include = [ "default/default" ];
-      define.rom-kana."!" = [
-        ""
-        "！"
-      ];
+      define.rom-kana = {
+        "!" = [
+          ""
+          "！"
+        ];
+        ";" = null;
+      };
     };
   }
   // lib.listToAttrs (
@@ -63,17 +75,24 @@ in
       (
         mode:
         lib.nameValuePair "${rules}/keymap/${mode}.json" {
-          text = builtins.toJSON { include = [ "default/${mode}" ]; };
+          text = builtins.toJSON (
+            {
+              include = [ "default/${mode}" ];
+            }
+            // lib.optionalAttrs (lib.elem mode kanaModes) {
+              define.keymap.";" = "start-preedit-kana";
+            }
+          );
         }
       )
-      [
-        "default"
-        "hankaku-katakana"
-        "hiragana"
-        "katakana"
-        "latin"
-        "wide-latin"
-      ]
+      (
+        [
+          "default"
+          "latin"
+          "wide-latin"
+        ]
+        ++ kanaModes
+      )
   );
 
   # The dictionaries are the copies modules/home/editor.nix already puts in ~/.local/share/skk for
