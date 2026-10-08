@@ -56,6 +56,7 @@ in
   imports = [
     hardwareConfig
     ./nixos-laptop-vivado.nix # FPGA coursework (Vivado 2020.2, installed by hand into /opt/Xilinx)
+    ./nixos-laptop-eduroam.nix # eduroam (UTokyo), credentials from secrets/nixos-laptop.yaml
   ];
 
   # --- Bootloader: lanzaboote (Secure Boot support) ---
