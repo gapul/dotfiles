@@ -3,6 +3,7 @@
   user,
   home-manager,
   lanzaboote,
+  sops-nix,
   commonSpecialArgs,
   ...
 }:
@@ -22,6 +23,7 @@ pkgs.testers.runNixOSTest {
       imports = [
         ../hosts/nixos-laptop.nix
         lanzaboote.nixosModules.lanzaboote
+        sops-nix.nixosModules.sops # hosts/nixos-laptop-wifi.nix
         home-manager.nixosModules.home-manager
         {
           home-manager.useGlobalPkgs = true;
@@ -44,6 +46,10 @@ pkgs.testers.runNixOSTest {
       services.fprintd.enable = lib.mkForce false;
       services.fwupd.enable = lib.mkForce false;
       services.tailscale.enable = lib.mkForce false;
+      # The VM has no laptop host key to open secrets/nixos-laptop.yaml with, so drop the
+      # secret and the env file NetworkManager would wait on. The profiles still evaluate.
+      sops.secrets = lib.mkForce { };
+      networking.networkmanager.ensureProfiles.environmentFiles = lib.mkForce [ ];
       virtualisation.graphics = false;
       virtualisation.memorySize = 3072;
       users.users.${user.username}.initialPassword = "smoke-test";
