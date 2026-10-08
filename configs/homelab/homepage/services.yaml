@@ -124,7 +124,7 @@
         icon: mdi-map-marker-path
         siteMonitor: http://127.0.0.1:3005
     - Matrix (Synapse):
-        href: https://app.element.io
+        href: https://element.gapul.net
         description: "@gapul:gapul.net"
         icon: matrix-light.png
         siteMonitor: http://127.0.0.1:8008/_matrix/client/versions
