@@ -14,6 +14,7 @@ keys:
   - &mac      age14w27qfzm22u7yxwhwk78438z6v5au93pw43uvlxuyw3eg0sauc5qdle6wa
   - &macmini  age1vrp2xu4wh8dwte9mx8cqezlkchz5nk8kwqn2673epjkqx43ycgtq352jet
   - &homeserver age1p3c0r3fhuq3xdypvghv7kkz8a6e6k4fjajnxa7yk0psg3yqfg34s4pts7l
+  - &laptop   age1l52l0wvryqtnv3ulkr9wyfnawukdyf5kaxd23pnvvp9msghmjdfsw2tx2s
 
 # 先頭の一致した rule が使われるので、狭いものから順に書く。
 creation_rules:
@@ -44,6 +45,14 @@ creation_rules:
           - *recovery
           - *mac
           - *macmini
+
+  # nixos-laptop 専用 (eduroam の資格情報)。システム側の sops-nix が SSH ホスト鍵で開ける。
+  - path_regex: secrets/nixos-laptop\.yaml$
+    key_groups:
+      - age:
+          - *me
+          - *recovery
+          - *laptop
 
   # Matrix の iMessage ブリッジの appservice トークン。登録は homeserver の Synapse が読み、
   # 同じトークンをブリッジ本体 (macmini) が config に持つ。両方の host 鍵で開ける。
