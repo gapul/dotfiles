@@ -3,14 +3,25 @@
   config,
   pkgs,
   lib,
+  nixpkgsAgents,
   ...
 }:
 let
+  # Neovim and its plugins follow nixos-unstable: the 26.05-darwin channel lagged a patch
+  # release behind (0.12.4 vs 0.12.5) and VimTeX a minor one.
+  editorPkgs = import ../../lib/unstable-pkgs.nix {
+    nixpkgsUnstable = nixpkgsAgents;
+    inherit (pkgs.stdenv.hostPlatform) system;
+  };
   lazyNixPlugins =
     pkgs.linkFarm "lazy-nix-plugins"
-      (import ../../../configs/editors/nvim/lazy2nix { inherit pkgs lib; }).plugins;
+      (import ../../../configs/editors/nvim/lazy2nix {
+        pkgs = editorPkgs;
+        inherit lib;
+      }).plugins;
 in
 {
+  home.packages = [ editorPkgs.neovim ];
   home.sessionVariables.LAZY_NIX_PLUGINS = lazyNixPlugins;
 
   # SKK dictionaries, for skkeleton (and the source macSKK's container copy is made from).
@@ -38,7 +49,7 @@ in
   # environment when HM applies.
   home.activation.firenvimNativeMessaging = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
     if [ -d "${config.xdg.dataHome}/nvim/lazy/firenvim" ]; then
-      run ${pkgs.neovim}/bin/nvim --headless \
+      run ${editorPkgs.neovim}/bin/nvim --headless \
         "+call firenvim#install(0)" \
         "+qa"
     fi
