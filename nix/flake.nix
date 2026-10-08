@@ -765,6 +765,7 @@
                 inherit
                   home-manager
                   lanzaboote
+                  sops-nix
                   user
                   ;
                 pkgs = systemPkgs;
