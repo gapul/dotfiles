@@ -139,6 +139,10 @@ in
       KeepAlive = true;
       UserName = user;
       WorkingDirectory = workDir;
+      # Isolate the CI runner's Nix cache from interactive and agent sessions to
+      # reduce cross-process interference on fetcher-cache-v4.sqlite. Multiple CI
+      # jobs still share this runner-specific database.
+      EnvironmentVariables.NIX_CACHE_HOME = "${home}/.cache/github-runner/nix";
       # It runs as gapul, so it cannot write to /var/log. If the path is unwritable, launchd gives up
       # with EX_CONFIG before starting the process and leaves no log, so the cause is invisible
       # (hit on 2026-08-31; it just kept exiting 78).
