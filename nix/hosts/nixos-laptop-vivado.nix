@@ -66,6 +66,18 @@ in
   environment.systemPackages = [
     (fhs "vivado" "${installDir}/Vivado/${version}/bin/vivado")
     (fhs "xilinx-shell" "bash") # for the installer, and for anything else under installDir
+    # Launcher entry (the installer's own shortcuts were turned off: they point into installDir
+    # without the FHS env). Started from $HOME/cpuex so vivado.log/.jou land there, not in $HOME.
+    (pkgs.makeDesktopItem {
+      name = "vivado";
+      desktopName = "Vivado ${version}";
+      # A script rather than sh -c: Exec= reserves `$` and quotes, so $HOME can't be written there.
+      exec = "${pkgs.writeShellScript "vivado-launch" ''
+        mkdir -p "$HOME/cpuex" && cd "$HOME/cpuex" && exec /run/current-system/sw/bin/vivado "$@"
+      ''}";
+      icon = "${installDir}/Vivado/${version}/doc/images/vivado_logo.png";
+      categories = [ "Development" ];
+    })
   ];
 
   # Owned by the user so the installer runs without root.
