@@ -288,13 +288,42 @@ in
   xdg.portal.extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
 
   # The keyboard layout is set via Hyprland's input{kb_layout}. The console uses console.keyMap.
-  # fcitx5 Japanese input is handled by i18n.inputMethod below, including the Wayland env vars.
+  # fcitx5 Japanese input is handled by i18n.inputMethod below, including the IM env vars.
 
-  # Japanese input (fcitx5 + Mozc)
+  # Japanese input: fcitx5 with SKK, as macSKK on the mac (configs/ime/skk/README.md). Mozc stays
+  # installed but out of the group; add it back from fcitx5-configtool if it is ever wanted.
+  # The dictionaries and the kana rule are user-side, in home/fcitx5-skk.nix.
+  # Hyprland runs no XDG autostart, so the daemon is started from its exec-once (home/hyprland.nix);
+  # before that, nothing ever started fcitx5 and neither IM worked.
   i18n.inputMethod = {
     enable = true;
     type = "fcitx5";
-    fcitx5.addons = with pkgs; [ fcitx5-mozc ];
+    fcitx5 = {
+      addons = with pkgs; [
+        fcitx5-skk
+        fcitx5-mozc
+      ];
+      # Written to /etc/xdg/fcitx5. A ~/.config/fcitx5 that fcitx5-configtool saves takes precedence.
+      settings = {
+        # Ctrl+Space (the default trigger) toggles between US keys and SKK. Inside SKK, the usual
+        # l / C-j / q switch latin, hiragana and katakana.
+        inputMethod = {
+          GroupOrder."0" = "Default";
+          "Groups/0" = {
+            Name = "Default";
+            "Default Layout" = "us";
+            DefaultIM = "skk";
+          };
+          "Groups/0/Items/0".Name = "keyboard-us";
+          "Groups/0/Items/1".Name = "skk";
+        };
+        addons.skk.globalSection = {
+          Rule = "gapul"; # default + full-width ！ (home/fcitx5-skk.nix)
+          InitialInputMode = "Hiragana";
+          ShowAnnotation = "True";
+        };
+      };
+    };
   };
 
   services.printing.enable = true;

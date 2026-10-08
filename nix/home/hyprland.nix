@@ -88,6 +88,9 @@ in
       exec-once = [
         "wl-paste --watch cliphist store" # accumulate clipboard history
         "wl-gammarelay-rs" # dbus daemon for night light
+        # Input method (SKK). The package's autostart entry is never read here: Hyprland does not
+        # run XDG autostart. fcitx5 comes from i18n.inputMethod (hosts/nixos-laptop.nix).
+        "fcitx5 -d --replace"
       ];
 
       input = {
