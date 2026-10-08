@@ -85,10 +85,22 @@ in
 
   # JTAG/UART access to Digilent and Xilinx boards for the logged-in user, instead of the
   # world-writable MODE 666 that Xilinx's own install_drivers script drops into /etc/udev.
-  services.udev.extraRules = ''
-    SUBSYSTEM=="usb", ATTR{idVendor}=="1443", TAG+="uaccess"
-    SUBSYSTEM=="usb", ATTR{idVendor}=="0403", ATTR{manufacturer}=="Digilent", TAG+="uaccess"
-    SUBSYSTEM=="usb", ATTR{idVendor}=="0403", ATTR{manufacturer}=="Xilinx", TAG+="uaccess"
-    SUBSYSTEM=="usb", ATTR{idVendor}=="03fd", TAG+="uaccess"
-  '';
+  services.udev.packages = [
+    # The file name matters: uaccess tags only turn into ACLs if they are set before
+    # 73-seat-late.rules runs. services.udev.extraRules lands in 99-local.rules, too late, which
+    # left the JTAG cable root-only (found 2026-10-08 with the board plugged in).
+    (pkgs.writeTextFile {
+      name = "xilinx-jtag-udev-rules";
+      destination = "/lib/udev/rules.d/70-xilinx-jtag.rules";
+      text = ''
+        SUBSYSTEM=="usb", ATTR{idVendor}=="1443", TAG+="uaccess"
+        SUBSYSTEM=="usb", ATTR{idVendor}=="0403", ATTR{manufacturer}=="Digilent", TAG+="uaccess"
+        SUBSYSTEM=="usb", ATTR{idVendor}=="0403", ATTR{manufacturer}=="Xilinx", TAG+="uaccess"
+        SUBSYSTEM=="usb", ATTR{idVendor}=="03fd", TAG+="uaccess"
+        # The board's USB-UART (the FT2232's second channel), for the loader and server.py,
+        # instead of putting the user in dialout.
+        SUBSYSTEM=="tty", ATTRS{idVendor}=="0403", ATTRS{manufacturer}=="Digilent", TAG+="uaccess"
+      '';
+    })
+  ];
 }
