@@ -45,7 +45,8 @@ require("lazy").setup({
       end
       return nix_plugins and (nix_plugins .. "/" .. plugin.name) or nil
     end,
-    patterns = nix_plugins and vim.fn.readdir(nix_plugins) or { "gapul" },
+    -- "gapul/" must stay in the Nix list too, or gapul/* falls back to a git clone.
+    patterns = vim.list_extend({ "gapul/" }, nix_plugins and vim.fn.readdir(nix_plugins) or {}),
     fallback = nix_plugins ~= nil or vim.fn.has("mac") ~= 1,
   },
   -- luarocks 不使用なので rocks サポートを無効化（checkhealth の luarocks ERROR 解消）
