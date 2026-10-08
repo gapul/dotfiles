@@ -14,7 +14,10 @@ let
   browser = "firefox-devedition.desktop"; # nixpkgs' wrapper names it after the binary
 in
 {
-  imports = [ ../modules/home/firefox.nix ];
+  imports = [
+    ../modules/home/firefox.nix
+    ./t3code-desktop.nix # T3 Code nightly (AppImage + CLI, self-updating)
+  ];
 
   # Always start on the declared profile. Developer Edition ignores profiles.ini's Default=1 and
   # creates a "dev-edition-default" profile of its own, which it then has to write into
