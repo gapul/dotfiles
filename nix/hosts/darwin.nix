@@ -706,7 +706,6 @@ in
       # build instead brew refuses to uninstall it, which aborts the whole bundle cleanup.
       "inkscape"
       "rawtherapee"
-      "digikam" # photo management (RAW development, tag management)
       # Ink/Stitch: machine-embroidery extension for Inkscape. Was hand-installed from its .pkg
       # (3.2.2); the cask is the same installer, one release newer.
       "inkstitch"
@@ -778,7 +777,6 @@ in
       # dropped Rosetta. The beta was the arm64 Tauri build; since 0.14.0 (2026-10-08) it is the
       # aw-qt build, pointed back at aw-server-rust by the aw-qt.toml in home/darwin.nix.
       "activitywatch@beta"
-      "gstreamer-runtime"
     ];
 
     masApps = {
