@@ -55,7 +55,9 @@ in
     # settings generated in hyprlang format (pinned explicitly since the default may switch to lua).
     configType = "hyprlang";
     settings = {
-      "$mod" = "SUPER";
+      # Hyper: Space held, from xremap (home/xremap.nix). Super alone is Cmd there, so the
+      # window manager cannot use it without taking Cmd+Q, Cmd+C, ... away from the apps.
+      "$mod" = "SUPER CTRL ALT";
       "$terminal" = "ghostty";
       "$menu" = "wofi --show drun";
 
@@ -95,7 +97,9 @@ in
 
       input = {
         kb_layout = "us"; # use "jp" for a JIS layout
-        kb_options = "ctrl:nocaps"; # Caps Lock is another Ctrl, as on the mac
+        # Caps Lock is Ctrl. xremap (home/xremap.nix) already sends it as Ctrl; this covers the
+        # time it is not running.
+        kb_options = "ctrl:nocaps";
         follow_mouse = 1;
         touchpad = {
           natural_scroll = true;

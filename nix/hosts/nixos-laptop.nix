@@ -187,6 +187,21 @@ in
     options = "ctrl:nocaps";
   };
   console.useXkbConfig = true;
+  # xremap (home/xremap.nix) runs as the user, reads the keyboards and writes to /dev/uinput.
+  # uinput already carries systemd's uaccess tag; the keyboards get it here, so the logged-in user
+  # on the active seat can read them. That is narrower than the input group, which would give every
+  # process of the user every input device even from an ssh session, and it applies without a
+  # re-login. The file name has to sort before 73-seat-late.rules (see nixos-laptop-vivado.nix).
+  hardware.uinput.enable = true;
+  services.udev.packages = [
+    (pkgs.writeTextFile {
+      name = "xremap-keyboard-uaccess";
+      destination = "/lib/udev/rules.d/70-xremap-keyboard.rules";
+      text = ''
+        SUBSYSTEM=="input", KERNEL=="event*", ENV{ID_INPUT_KEYBOARD}=="1", TAG+="uaccess"
+      '';
+    })
+  ];
 
   # Countermeasure for clock drift when dual-booting with Windows.
   # NixOS treats the RTC as UTC. Align Windows to UTC as well with

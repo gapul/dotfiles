@@ -18,6 +18,7 @@ in
     ../modules/home/firefox.nix
     ./t3code-desktop.nix # T3 Code nightly (AppImage + CLI, self-updating)
     ./fcitx5-skk.nix # SKK dictionaries and kana rule for fcitx5-skk
+    ./xremap.nix # mac-style Cmd / Ctrl / Hyper
   ];
 
   # Always start on the declared profile. Developer Edition ignores profiles.ini's Default=1 and
