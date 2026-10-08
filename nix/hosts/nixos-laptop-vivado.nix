@@ -51,6 +51,10 @@ let
         export LC_ALL=en_US.UTF-8
         # Java AWT draws an empty grey window under a non-reparenting WM such as Hyprland.
         export _JAVA_AWT_WM_NONREPARENTING=1
+        # Vivado's own binaries resolve libraries through the loader's built-in search path,
+        # which in the FHS env is glibc's store path, so libtinfo.so.5 under /usr/lib64 is never
+        # found ("couldn't load file librdi_commontasks.so"). Its launcher prepends to this.
+        export LD_LIBRARY_PATH=/usr/lib64''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
       '';
     };
 in
