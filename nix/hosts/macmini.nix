@@ -744,6 +744,13 @@ in
     };
   };
 
+  # Do not reopen the apps that were running at shutdown when the auto-login session comes back.
+  # loginwindow's "reopen windows" feature relaunched Adobe Illustrator 54 seconds after the
+  # 2026-10-09 reboot (the one that had just been done to get out of a 11GB-swap / jetsam loop),
+  # which put the memory pressure straight back. A headless box has no human to decide what to
+  # reopen; the daemons and agents that matter are declared and start on their own.
+  system.defaults.CustomUserPreferences."com.apple.loginwindow".TALLogoutSavesState = false;
+
   # Prep for headless operation (nix-darwin has no typed option, so an idempotent script).
   # postActivation is used by darwin-common, so put this in preActivation to avoid a collision.
   system.activationScripts.preActivation.text = ''
