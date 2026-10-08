@@ -8,6 +8,38 @@
   ...
 }:
 let
+  # Hold off suspend for a long job (Vivado install/synthesis) while on battery, where
+  # hypridle would otherwise suspend after 15 idle minutes and drop the machine off the
+  # tailnet. The inhibitor is taken by a root transient unit because an ssh session is not
+  # an active seat: polkit refuses a user's block-sleep inhibitor there ("requires
+  # interactive authentication"). An idle inhibitor also pauses hypridle's listeners.
+  # Closing the lid still suspends on battery (logind's LidSwitchIgnoreInhibited defaults
+  # to yes), which is the behaviour wanted for a laptop going into a bag.
+  keepAwake = pkgs.writeShellApplication {
+    name = "keep-awake";
+    runtimeInputs = [
+      pkgs.systemd
+      pkgs.coreutils
+    ];
+    text = ''
+      unit=keep-awake
+      case "''${1:-on}" in
+        on)
+          duration=''${2:-infinity}
+          sudo systemctl reset-failed "$unit" 2>/dev/null || true
+          sudo systemd-run --unit="$unit" --description="keep-awake: block sleep/idle" \
+            ${pkgs.systemd}/bin/systemd-inhibit --what=sleep:idle --who=keep-awake \
+            --why="keep-awake ($duration)" --mode=block ${pkgs.coreutils}/bin/sleep "$duration"
+          ;;
+        off) sudo systemctl stop "$unit" ;;
+        status) systemd-inhibit --list --no-pager ;;
+        *)
+          echo "usage: keep-awake [on [DURATION]|off|status]  (DURATION as for sleep(1), default infinity)" >&2
+          exit 2
+          ;;
+      esac
+    '';
+  };
   # Fast-moving agent CLIs come from the dedicated nixpkgs-agents lineage, same as on
   # darwin (hosts/darwin.nix). systemPackages rather than home.packages for the PATH
   # order: /run/current-system/sw/bin sits ahead of ~/.local/bin, so a stray
@@ -373,6 +405,7 @@ in
     curl
     wget
     sbctl # generate/enroll/verify Secure Boot keys (used for lanzaboote operation)
+    keepAwake # `keep-awake [on [DURATION]|off|status]`, see the let block
 
     # Minimal set to make Hyprland usable from the start.
     # A full rice (keybinds/waybar config/wallpaper) is meant to be moved to home-manager's
