@@ -325,7 +325,7 @@ in
     # Skim: VimTeX integration. Inverse search (click PDF -> jump to line in Neovim) + reload on save.
     CustomUserPreferences."net.sourceforge.skim-app.skim" = {
       SKTeXEditorPreset = "Custom";
-      SKTeXEditorCommand = "${pkgs.neovim}/bin/nvim";
+      SKTeXEditorCommand = "${agentPkgs.neovim}/bin/nvim"; # same lineage as modules/home/editor.nix
       SKTeXEditorArguments = "--headless -c \"VimtexInverseSearch %line '%file'\"";
       SKAutoReloadFileUpdate = true;
       SKAutoCheckFileUpdate = true;

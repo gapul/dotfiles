@@ -128,9 +128,6 @@ in
 
     # ─── nix-declaring things previously installed locally via cargo/uv (for reproducibility) ───
 
-    # ─── CLI migrated from Homebrew (stage 3) ───
-    neovim # the editor itself (config via mkOutOfStoreSymlink of configs/editors/nvim)
-
     # ─── for yazi preview (used via piper or the built-in previewer) ───
     ffmpegthumbnailer # video thumbnails (used by yazi's built-in video previewer)
     ouch # list/extract archive contents (zip/tar/7z etc.)
