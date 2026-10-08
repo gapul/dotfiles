@@ -125,6 +125,11 @@ in
       "flakes"
     ];
     auto-optimise-store = true; # store dedup
+    # The weekly GC alone let the disk fill between runs (79% used on 2026-10-08, 12 GiB of dead
+    # paths waiting for Monday). When a build sees less than min-free, nix collects dead paths
+    # until max-free is free. It never touches live generations, so rollback is unaffected.
+    min-free = 20 * 1024 * 1024 * 1024;
+    max-free = 50 * 1024 * 1024 * 1024;
     # General safeguard against unreachable substituters breaking builds: give up early
     # (connect-timeout), and on substitute failure fall through to a source build (fallback).
     # Even if some cache is down, local builds still succeed.
