@@ -66,4 +66,18 @@ final: prev: {
       })
     else
       prev.trunk;
+
+  # Determinate Nix 3.23 emits activity type 10113 (EvaluateFlakeDerivationOutput etc.), and
+  # nom 2.2.0 rejects any type it does not know, so every nh rebuild printed
+  # "ParseNixJSONMessageError ... invalid activity type: 10113". The patch is
+  # maralorn/nix-output-monitor#321 (fixes #320, open as of 2026-10-09): unknown types become
+  # Unknown instead of a parse error. Guarded on the version so a nom bump drops it; delete
+  # it once #321 has landed in a release.
+  nix-output-monitor =
+    if prev.nix-output-monitor.version == "2.2.0" then
+      prev.nix-output-monitor.overrideAttrs (o: {
+        patches = (o.patches or [ ]) ++ [ ./nom-unknown-activity-type.patch ];
+      })
+    else
+      prev.nix-output-monitor;
 }

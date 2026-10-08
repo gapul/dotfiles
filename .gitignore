@@ -12,6 +12,9 @@
 result
 result-*
 .direnv/
+# Determinate Nix's crash reporter, run as root without a usable HOME (nh's sudo activation),
+# drops .cache/nix/sentry relative to the cwd. Root-owned and 0700, so git can only warn about it.
+.cache/
 
 # home-manager backups
 *.backup
