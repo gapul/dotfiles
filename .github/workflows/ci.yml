@@ -221,26 +221,21 @@ jobs:
   # paths was om-ci above, and on GitHub's runner that job builds every output (VM tests,
   # ISOs) and kept being killed ("The runner has received a shutdown signal", every main run
   # from 2026-10-04 to 10-07). Nothing reached the cache, so each laptop rebuild compiled
-  # rustdesk, tuicr and the rest locally for half an hour. This closure is the part the
-  # laptop actually waits on, and it is small enough to finish on a stock runner.
+  # rustdesk, tuicr and the rest locally for half an hour.
+  #
+  # It runs on the macmini, whose nix daemon hands x86_64-linux to the Rosetta builder VM
+  # (hosts/macmini-rosetta-builder.nix): ten Apple cores and a store that persists, against a
+  # 4-vCPU hosted runner that starts empty every time. The runner user is trusted there, so the
+  # cachix step pushes what the VM built.
   #
   # nixos-laptop-ci differs from the real host only in its hardware file (the real one is not
   # in git), so the packages it builds are the same store paths the laptop asks for.
   laptop-closure:
     name: laptop closure (x86_64-linux → cachix)
     if: github.event_name != 'pull_request'
-    runs-on: ubuntu-24.04
+    runs-on: macmini
     timeout-minutes: 90
     steps:
-      # Same reason as om-ci: the stock root has ~20 GB free, and the closure plus its build
-      # inputs is close to that.
-      - name: Free disk space
-        run: |
-          df -h /
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost
-          sudo docker image prune --all --force >/dev/null 2>&1 || true
-          df -h /
-
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - uses: ./.github/actions/setup-nix
@@ -248,8 +243,12 @@ jobs:
           cachix-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
           mocopi-deploy-key: ${{ secrets.MOCOPI_DEPLOY_KEY }}
 
+      # --out-link keeps a GC root, for the same reason as pr-gate above: the macmini's weekly
+      # GC would otherwise drop the closure and the next run would rebuild what changed least.
       - name: nix build (nixos-laptop-ci toplevel)
         run: |
+          roots="$HOME/.local/state/nix-gcroots"
+          mkdir -p "$roots"
           nix --accept-flake-config build \
             './nix#nixosConfigurations.nixos-laptop-ci.config.system.build.toplevel' \
-            --no-link --print-build-logs
+            --out-link "$roots/laptop-closure" --print-build-logs
