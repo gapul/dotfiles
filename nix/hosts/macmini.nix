@@ -227,6 +227,7 @@ in
     ./macmini-homeserver-monitor.nix
     ./macmini-imessage.nix # iMessage bridge daemon and config (split with the home side; reason at the top of the file)
     ./macmini-presenta.nix
+    ./macmini-rosetta-builder.nix # x86_64-linux / aarch64-linux builds (the laptop's closure for cachix)
     sopsNix.darwinModules.sops
     # Minecraft servers are generated from the table above. This is a separate module because nix cannot
     # mix `launchd.daemons = {...}` and `launchd.daemons.foo = ...` in the same attrset.
