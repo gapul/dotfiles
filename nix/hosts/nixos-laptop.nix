@@ -290,8 +290,9 @@ in
   # The keyboard layout is set via Hyprland's input{kb_layout}. The console uses console.keyMap.
   # fcitx5 Japanese input is handled by i18n.inputMethod below, including the IM env vars.
 
-  # Japanese input: fcitx5 with SKK, as macSKK on the mac (configs/ime/skk/README.md). Mozc stays
-  # installed but out of the group; add it back from fcitx5-configtool if it is ever wanted.
+  # Japanese input: fcitx5 with SKK, set up after macSKK on the mac (configs/ime/skk/README.md).
+  # Mozc stays installed but out of the group; add it back from fcitx5-configtool if it is ever wanted.
+  # macSKK's skkserv (azooKey skkserv on localhost:1178) has no counterpart here: it is a mac app.
   # The dictionaries and the kana rule are user-side, in home/fcitx5-skk.nix.
   # Hyprland runs no XDG autostart, so the daemon is started from its exec-once (home/hyprland.nix);
   # before that, nothing ever started fcitx5 and neither IM worked.
@@ -303,23 +304,30 @@ in
         fcitx5-skk
         fcitx5-mozc
       ];
+      # Apps talk to fcitx5 over Wayland's text-input protocol instead of the GTK/Qt IM modules
+      # (GTK_IM_MODULE / QT_IM_MODULE are no longer set; XMODIFIERS stays, for XWayland apps).
+      # Through the GTK module Ghostty dropped every candidate picked from the window (a/s/d...),
+      # committing nothing; over text-input it takes them. fcitx5 itself warns about the GTK
+      # module on startup, as upstream advises against it under Hyprland.
+      waylandFrontend = true;
       # Written to /etc/xdg/fcitx5. A ~/.config/fcitx5 that fcitx5-configtool saves takes precedence.
       settings = {
-        # Ctrl+Space (the default trigger) toggles between US keys and SKK. Inside SKK, the usual
-        # l / C-j / q switch latin, hiragana and katakana.
-        inputMethod = {
-          GroupOrder."0" = "Default";
-          "Groups/0" = {
-            Name = "Default";
-            "Default Layout" = "us";
-            DefaultIM = "skk";
-          };
-          "Groups/0/Items/0".Name = "keyboard-us";
-          "Groups/0/Items/1".Name = "skk";
-        };
+        # The input method group (SKK alone) is user-side in home/fcitx5-skk.nix: fcitx5 rewrites
+        # ~/.config/fcitx5/profile on every exit, and that copy would shadow one written here.
+        # Taken from macSKK's settings (configs/ime/skk/macSKK.plist), option by option:
         addons.skk.globalSection = {
-          Rule = "gapul"; # default + full-width ！ (home/fcitx5-skk.nix)
-          InitialInputMode = "Hiragana";
+          Rule = "gapul"; # kanaRule: default + full-width ！ (home/fcitx5-skk.nix)
+          PunctuationStyle = "Japanese"; # punctuation = 0: 、。
+          # Starts in latin, so a new window (a terminal, nvim) takes ASCII until C-j.
+          InitialInputMode = "Latin";
+          "Candidate Layout" = "Horizontal"; # candidateListDirection = 1
+          # selectCandidateKeys = "ASDFGHJKL": the home row picks, nine to a page.
+          CandidateChooseKey = "Qwerty Center Row (a,s,d,...)";
+          PageSize = 9;
+          # inlineCandidateCount = 5: five candidates cycle in place before the window opens.
+          NTriggersToShowCandWin = 5;
+          # enterNewLine = false (macSKK's default): Enter only commits, it does not also send a newline.
+          EggLikeNewLine = "True";
           ShowAnnotation = "True";
         };
       };
