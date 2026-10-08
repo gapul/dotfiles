@@ -61,12 +61,12 @@ in
     HOMEBREW_REPOSITORY = "/opt/homebrew/Library/.homebrew-is-managed-by-nix";
     INFOPATH = "/opt/homebrew/share/info:";
     PNPM_HOME = "${config.home.homeDirectory}/Library/pnpm";
-    # ActivityWatch (Tauri build) checks GitHub for updates on every start and, by default,
+    # ActivityWatch (the earlier Tauri build) checks GitHub for updates on every start and, by default,
     # installs them into its own bundle. The app comes from the activitywatch@beta cask, so updates
     # belong to brew; this skips the check entirely (`auto_download = false` would still prompt).
     # It reaches the login-item launch through the session-env agent in darwin-services.nix.
     AW_DISABLE_AUTO_UPDATE = "1";
-    # aw-tauri already autostarts `aw-sync daemon` (its config.toml autostart list), which pushes every
+    # aw-sync (autostarted by aw-qt via aw-qt.toml below, by aw-tauri before that) pushes every
     # bucket to a sync directory every 5 minutes. Pointing that directory into the Syncthing share
     # puts the whole ActivityWatch record on homeserver within minutes instead of the daily snapshot.
     # aw-sync keeps its own per-device subdirectory, so this sits beside the <host>/ dirs of
@@ -98,6 +98,14 @@ in
     CARGO_BUILD_JOBS = "4";
     CMAKE_BUILD_PARALLEL_LEVEL = "4";
   };
+
+  # activitywatch@beta 0.14.0 replaced the Tauri build with aw-qt, whose default modules are the
+  # Python aw-server and its peewee DB. Keep the Rust server and DB (aw-server-rust/sqlite.db,
+  # read by personal-history and HPI) and the aw-sync daemon the Tauri build used to start.
+  home.file."Library/Application Support/activitywatch/aw-qt/aw-qt.toml".text = ''
+    [aw-qt]
+    autostart_modules = ["aw-server-rust", "aw-watcher-afk", "aw-watcher-window", "aw-sync"]
+  '';
 
   # aw-sync writes to ~/ActivityWatchSync unless AW_SYNC_DIR reaches it. When aw-tauri is started
   # before the session-env agent (or by hand from the Dock) the variable is missing and a second
@@ -269,6 +277,9 @@ in
     (import ../pkgs/zrythm-darwin {
       pkgs = nixpkgsUnstable.legacyPackages.${pkgs.stdenv.hostPlatform.system};
     })
+    # darktable: the cask was disabled on 2026-09-01 (fails Gatekeeper). nixpkgs builds it for
+    # darwin without a .app bundle, so it starts from the `darktable` command.
+    nixpkgsUnstable.legacyPackages.${pkgs.stdenv.hostPlatform.system}.darktable
     # ardour / aseprite / fritzing / qview used to sit here. They ship .app
     # bundles, and home-manager can only surface those under ~/Applications, so they moved to
     # environment.systemPackages in hosts/darwin.nix where nix-darwin puts them in
