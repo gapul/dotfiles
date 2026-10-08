@@ -180,7 +180,13 @@ in
 
   time.timeZone = "Asia/Tokyo";
   i18n.defaultLocale = "en_US.UTF-8";
-  console.keyMap = "us"; # "jp" for a JIS layout
+  # The console takes its keymap from the xkb settings so Caps Lock is Ctrl there too (the
+  # greeter and TTYs). Nothing here enables X; Hyprland has its own kb_options.
+  services.xserver.xkb = {
+    layout = "us"; # "jp" for a JIS layout
+    options = "ctrl:nocaps";
+  };
+  console.useXkbConfig = true;
 
   # Countermeasure for clock drift when dual-booting with Windows.
   # NixOS treats the RTC as UTC. Align Windows to UTC as well with
@@ -287,7 +293,7 @@ in
   # Also use the GTK portal for file-picker dialogs etc. (the hyprland portal is already bundled).
   xdg.portal.extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
 
-  # The keyboard layout is set via Hyprland's input{kb_layout}. The console uses console.keyMap.
+  # The keyboard layout is set via Hyprland's input{kb_layout}. The console uses services.xserver.xkb.
   # fcitx5 Japanese input is handled by i18n.inputMethod below, including the IM env vars.
 
   # Japanese input: fcitx5 with SKK, set up after macSKK on the mac (configs/ime/skk/README.md).

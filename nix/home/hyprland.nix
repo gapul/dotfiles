@@ -95,6 +95,7 @@ in
 
       input = {
         kb_layout = "us"; # use "jp" for a JIS layout
+        kb_options = "ctrl:nocaps"; # Caps Lock is another Ctrl, as on the mac
         follow_mouse = 1;
         touchpad = {
           natural_scroll = true;
