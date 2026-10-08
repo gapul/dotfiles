@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ config, pkgs, ... }:
 # GUI apps for the NixOS laptop. Imported only on nixos-laptop.
 #
 # The mac declares the same set as Homebrew casks (hosts/darwin.nix): on darwin nixpkgs GUI
@@ -16,7 +16,19 @@ in
 {
   imports = [ ../modules/home/firefox.nix ];
 
-  programs.firefox.package = pkgs.firefox-devedition;
+  # Always start on the declared profile. Developer Edition ignores profiles.ini's Default=1 and
+  # creates a "dev-edition-default" profile of its own, which it then has to write into
+  # profiles.ini; home-manager links that file read-only from the store, so the write fails and
+  # Firefox stops at "Profile Missing" (2026-10-08, Firefox 156). The wrapper already sets
+  # MOZ_LEGACY_PROFILES=1, which no longer prevents it. --profile skips the lookup entirely, and
+  # links opened later still reach the running window because they name the same profile.
+  # overrideAttrs keeps .override working, which home-manager uses to inject the policies.
+  programs.firefox.package = pkgs.firefox-devedition.overrideAttrs (old: {
+    makeWrapperArgs = old.makeWrapperArgs ++ [
+      "--add-flags"
+      "--profile ${config.home.homeDirectory}/${config.programs.firefox.profilesPath}/dev"
+    ];
+  });
 
   xdg.mimeApps = {
     enable = true;
