@@ -48,6 +48,10 @@
 
     nix-darwin.url = "github:nix-darwin/nix-darwin/nix-darwin-26.05";
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
+    # Lima + Rosetta 2 Linux builder VM on the macmini (hosts/macmini-rosetta-builder.nix).
+    # Its image is a NixOS system, so it tracks the same nixos-unstable as the Linux hosts.
+    nix-rosetta-builder.url = "github:cpick/nix-rosetta-builder";
+    nix-rosetta-builder.inputs.nixpkgs.follows = "nixpkgs-nixos";
 
     home-manager.url = "github:nix-community/home-manager/release-26.05";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
@@ -819,6 +823,7 @@
           nixpkgsAgents = nixpkgs-agents;
           claudeAcp = claude-acp.packages.${system}.default;
           sopsNix = sops-nix;
+          rosettaBuilder = inputs.nix-rosetta-builder;
           # The side that receives remote builds from the main Mac. If the connecting user isn't in
           # trusted-users, nix refuses with "can't trust the derivations it was handed".
           #
@@ -839,6 +844,12 @@
             # models already hold most of the 24 GB, but gives a single big build four cores.
             max-jobs = "2";
             cores = "4";
+            # x86_64-linux and aarch64-linux go to the Rosetta VM (hosts/macmini-rosetta-builder.nix).
+            # nix.buildMachines would say the same, but nix.enable = false here, so nothing would
+            # write /etc/nix/machines; the ssh side (host alias, key, known_hosts) comes from the
+            # module's /etc/ssh/ssh_config.d entry, which the root daemon reads.
+            builders = "ssh-ng://rosetta-builder aarch64-linux,x86_64-linux - 6 1 benchmark,big-parallel,kvm,nixos-test - -";
+            builders-use-substitutes = "true";
           };
         };
       };
