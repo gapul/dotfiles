@@ -44,6 +44,10 @@ let
           libxcb
           graphviz
           gnumake
+          # xsim compiles the elaborated design to native code and insists on /usr/bin/gcc
+          # ("XSIM 43-3388 /usr/bin/gcc not found"), so behavioral simulation needs a compiler here.
+          gcc
+          binutils
           unzip
         ];
       profile = ''
