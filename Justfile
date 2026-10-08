@@ -732,7 +732,6 @@ doctor format="":
     pgrep -xq sketchybar || down+=(sketchybar)
     pgrep -fq "sketchybar-ext" || down+=(sketchybar-ext)
     pgrep -xq OmniWM || down+=(omniwm)
-    pgrep -xq borders || down+=(borders)
     if [ ${#down[@]} -gt 0 ]; then
       echo "[warn] Down: ${down[*]} -> recover: just restart (individual: just restart <name>)"
       echo
@@ -827,7 +826,8 @@ gc:
     fexpr=()
     for n in "${names[@]}"; do fexpr+=( -name "$n" -o ); done
     unset 'fexpr[${#fexpr[@]}-1]'  # remove the trailing -o
-    n=$(find "$dir" -path "$dir/.git" -prune -o -type f \( "${fexpr[@]}" \) -print -delete | wc -l | tr -d ' ')
+    # .cache is root's (see .gitignore), so descending into it is only a Permission denied.
+    n=$(find "$dir" \( -path "$dir/.git" -o -name .cache \) -prune -o -type f \( "${fexpr[@]}" \) -print -delete | wc -l | tr -d ' ')
     echo "  $n removed"
     echo ""
     echo "━━━ Auto-backups in ~/.config (*.bak etc.) ━━━"
@@ -995,9 +995,7 @@ gc-deep:
 # ─────────────────────────────────────────────
 
 # NOTE: omniwm full restart = the workspace layout is reset, so only on explicit request (omniwm/all).
-#       borders config is consolidated in ~/.config/borders/bordersrc; the daemon itself is the
-#       nix-declared launchd agent (org.nix-community.home.borders), so restart = kickstart.
-# Restart the menu-bar/WM stack (`just restart`=bar-related / individual: sketchybar|borders|omniwm / all=everything)
+# Restart the menu-bar/WM stack (`just restart`=bar-related / individual: sketchybar|omniwm / all=everything)
 [group('Service')]
 restart what="bar":
     #!/usr/bin/env bash
@@ -1010,7 +1008,6 @@ restart what="bar":
       launchctl kickstart -k "gui/$uid/org.nix-community.home.sketchybar"
       launchctl kickstart -k "gui/$uid/org.nix-community.home.sketchybar-ext"
     }
-    bd() { echo "-> borders";     launchctl kickstart -k "gui/$uid/org.nix-community.home.borders"; }
     om() {
       echo "-> OmniWM (full restart)"
       osascript -e 'quit app "OmniWM"' 2>/dev/null
@@ -1020,12 +1017,11 @@ restart what="bar":
     }
 
     case "{{what}}" in
-      bar)            sb; bd ;;
+      bar)            sb ;;
       sketchybar|sb)  sb ;;
-      borders|bd)     bd ;;
       omniwm|om|wm)   om ;;
-      all)            sb; bd; om ;;
-      *) echo "usage: just restart [bar|sketchybar|borders|omniwm|all]" >&2; exit 2 ;;
+      all)            sb; om ;;
+      *) echo "usage: just restart [bar|sketchybar|omniwm|all]" >&2; exit 2 ;;
     esac
     echo "Done"
 

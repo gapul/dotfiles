@@ -139,7 +139,7 @@ Generated from `just --list`. Run `just docs` after changing a recipe.
     mobile-test                                       # Self-check both platforms' scripts with stubbed adb / ideviceinstaller (no device needed)
 
     [Service]
-    restart what="bar"                                # Restart the menu-bar/WM stack (`just restart`=bar-related / individual: sketchybar|borders|omniwm / all=everything)
+    restart what="bar"                                # Restart the menu-bar/WM stack (`just restart`=bar-related / individual: sketchybar|omniwm / all=everything)
 
     [Setup]
     claude-settings-adopt                             # Adopt this machine's Claude Code settings into the remote-managed keys (client wins)
