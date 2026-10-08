@@ -8,7 +8,9 @@ attr="darwinConfigurations.$user.config.homebrew"
 
 declared_brews=$(nix eval --json "$flake#$attr.brews" | jq -r '.[] | (if type == "string" then . else .name end) | split("/")[-1]' | sort -u)
 declared_casks=$(nix eval --json "$flake#$attr.casks" | jq -r '.[] | (if type == "string" then . else .name end) | split("/")[-1]' | sort -u)
-installed_brews=$(brew leaves 2>/dev/null | awk -F/ '{ print $NF }' | sort -u)
+# --installed-on-request: plain `brew leaves` also lists build-only deps (rust, pulled in to build
+# gstreamer/librsvg from source), which autoremove keeps and nothing would ever declare.
+installed_brews=$(brew leaves --installed-on-request 2>/dev/null | awk -F/ '{ print $NF }' | sort -u)
 installed_casks=$(brew list --cask 2>/dev/null | sort -u)
 
 missing_brews=$(comm -23 <(printf '%s\n' "$declared_brews") <(brew list --formula 2>/dev/null | sort -u))
