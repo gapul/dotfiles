@@ -331,7 +331,7 @@ in
     shell = pkgs.zsh;
     # Public keys, so they live in the repo rather than being curl'd onto the box
     # by hand on every reinstall. Private keys stay in Bitwarden.
-    # Mirrors github.com/gapul.keys. A flake cannot fetch that list at build time, so
+    # Mirrors github.com/gapul.keys (plus macmini, below). A flake cannot fetch that list at build time, so
     # this is a snapshot: rotating a key means editing here too. The previous snapshot
     # went stale and locked this machine out entirely — the only way back in was typing
     # a curl line on its physical keyboard.
@@ -339,6 +339,10 @@ in
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBLeOb9XOJPsmuTRf708qYoNckWk+/fhuWkpTWtTSu41"
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFc0vERDgqbotas7YjbabpVPWjtficFNWSW+8Hu/WL8x"
       "sk-ecdsa-sha2-nistp256@openssh.com AAAAInNrLWVjZHNhLXNoYTItbmlzdHAyNTZAb3BlbnNzaC5jb20AAAAIbmlzdHAyNTYAAABBBP5Y2DQbhcGpmOGDewcxUuVZ+/XO1I/Zm4M4nZhBMPwygadJY9//NxbVAZs98vMIp1Yy+9wgkQcEuc1CNQdCY2cAAAAEc3NoOg=="
+      # macmini's outbound key (same line as in keys/authorized_keys). Not on github.com/gapul.keys:
+      # it lets agents running on macmini reach this box directly instead of hopping through the
+      # Mac, which drops the session whenever the Mac sleeps.
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILZva+I0ui3AGOMb2V7BTLOXXtCJYvCJg9PGmzWOD8Am macmini-outbound"
     ];
   };
   programs.zsh.enable = true;
