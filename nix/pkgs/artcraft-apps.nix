@@ -1,6 +1,6 @@
 # ArtCraft's crafting apps (getartcraft.com/apps): open-source, pure-Rust
 # clean-room takes on the Adobe suite - PhotoCraft (Photoshop), VectorCraft
-# (Illustrator), FilmCraft (Premiere), LightCraft (Lightroom), PrintCraft
+# (Illustrator), FilmCraft (Premiere), LightCraft (Lightroom), PdfCraft
 # (Acrobat), EffectCraft (After Effects), DesignCraft (InDesign).
 #
 # Not in nixpkgs and no casks, so each official universal dmg is repackaged.
@@ -44,14 +44,16 @@ let
         runHook postUnpack
       '';
 
-      sourceRoot = "${name} ${version}";
+      # The volume folder is "<Name> <version>" for most apps but just "<Name>" for
+      # some releases, so the bundle is located rather than assumed.
+      sourceRoot = ".";
 
       dontFixup = true;
 
       installPhase = ''
         runHook preInstall
         mkdir -p $out/Applications
-        cp -R ${name}.app $out/Applications/
+        cp -R "$(find . -maxdepth 2 -name ${name}.app -print -quit)" $out/Applications/
         runHook postInstall
       '';
 
@@ -66,37 +68,37 @@ in
 map mkCraft [
   {
     name = "PhotoCraft";
-    version = "0.2.0";
-    hash = "sha256-1hKGg/gWyeySTODQetIsPthZmTDSzFSF/8Z9MCnTlRw=";
+    version = "0.5.0";
+    hash = "sha256-3/jIEF1ZONRvpLopVZ0+/A8eoZWlOS02z2K8FOot5ec=";
   }
   {
     name = "VectorCraft";
-    version = "0.3.0";
-    hash = "sha256-LKQfAKzeb7k4BHFD0OInwXH1mv7iTqHwwmzr3gt1PZc=";
+    version = "0.7.0";
+    hash = "sha256-yZdkGfA4wOzsLaVppK/BcXwv/a9Ux6tA0msMfwZv+p4=";
   }
   {
     name = "FilmCraft";
-    version = "0.2.0";
-    hash = "sha256-Fw5YhzU6qdgRnhlUP6fs/b/3x6ERODUvlnMdbTVLeFA=";
+    version = "0.4.0";
+    hash = "sha256-gf7u3WKUV5/lHwes/y+LrFfCynKgtJl373a+Z8fEUjc=";
   }
   {
     name = "LightCraft";
-    version = "0.2.0";
-    hash = "sha256-8acRVOMdA8pLtw2Tr9PiozVUyWQOXv+BMkbri57O1nc=";
+    version = "0.4.0";
+    hash = "sha256-x05FIwpUvOCb+Gzs7n4i8zdO5G+Lp3nd2j9O55ENP1w=";
   }
   {
-    name = "PrintCraft";
-    version = "0.2.0";
-    hash = "sha256-I+B+elhB6uJU3aNXIDN0E899STXYK15i2mVFntXfRZU=";
+    name = "PdfCraft";
+    version = "0.4.0";
+    hash = "sha256-dA2kkA6LxJVzgu8+83tUThne6UvXBPfcSaGzBuJU+hA=";
   }
   {
     name = "EffectCraft";
-    version = "0.3.0";
-    hash = "sha256-rkjJPBLRtyros5VI40FC38PvScRhVr/pscWIByBYY/A=";
+    version = "0.6.0";
+    hash = "sha256-K46Zt/Hkl+0PcnPPIQhNI4WFAHNOn7dV6GmlsIVJdco=";
   }
   {
     name = "DesignCraft";
-    version = "0.2.0";
-    hash = "sha256-gp2uT+p4QNVNn/kVug+m5ZxmY6jsQU7l49ZgF10rRlg=";
+    version = "0.4.0";
+    hash = "sha256-bEalS/C5kPz6geo4SbrVtnOlPt4GqVgMw/wc3+gtpa4=";
   }
 ]
