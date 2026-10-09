@@ -108,6 +108,13 @@ _rebuild-macos force="":
       home_want=$(readlink "$roots/rebuild-home")
     fi
     rm -f "$home_out"
+    # Activation output goes to the log only, as it did under nh: a no-op darwin activation is a
+    # screenful and home-manager prints a line per step. On failure the tail is shown.
+    activate() {
+      if ! "$@" >>"$log" 2>&1; then
+        tail -30 "$log" >&2; echo "activation failed (full log: $log)" >&2; exit 1
+      fi
+    }
     sys_have=$(readlink /run/current-system || true)
     home_have=$(readlink "$HOME/.local/state/home-manager/gcroots/current-home" || true)
     do_sys=1; do_home=1
@@ -136,7 +143,7 @@ _rebuild-macos force="":
       # at it, then run its activation as root. (activate-user is deprecated and empty.) nh cannot
       # be handed a store path for darwin ("Nix doesn't support nix store installables"), hence by hand.
       sudo nix-env -p /nix/var/nix/profiles/system --set "$sys_want"
-      taskpolicy -c utility sudo "$sys_want/activate" 2>&1 | tee -a "$log"
+      activate taskpolicy -c utility sudo "$sys_want/activate"
       echo "✓ nix-darwin" | tee -a "$log"
     else
       echo "– nix-darwin unchanged" | tee -a "$log"
@@ -153,7 +160,7 @@ _rebuild-macos force="":
     # gh-dash/config.yml and slk/config.toml stayed plain files after #153 declared them.
     # The activation script records the profile generation itself.
     if [ "$do_home" = 1 ]; then
-      HOME_MANAGER_BACKUP_EXT=hm-bak taskpolicy -c utility "$home_want/activate" 2>&1 | tee -a "$log"
+      HOME_MANAGER_BACKUP_EXT=hm-bak activate taskpolicy -c utility "$home_want/activate"
       echo "✓ home-manager" | tee -a "$log"
     else
       echo "– home-manager unchanged" | tee -a "$log"
