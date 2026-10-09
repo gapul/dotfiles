@@ -50,14 +50,25 @@ IDENTITY=$(cat "$SHAFILE")
 # 見るのは元の store パス。nix では中身が変われば必ずパスが変わるので、
 # パスが同じなら署名し直す理由が無い。署名が剥がれている場合だけやり直す。
 STAMP="$DEST_DIR/.$NAME.src"
+# スタンプは 2 行: 元の store パスと、署名したときの DEST の inode:mtime。
+# 先に安い方で判定する。codesign -dv は単体なら数十 ms なのに、home-manager の
+# activation の中だと 8 秒かかり、activation 全体の半分を占めていた(原因は不明)。
+# DEST を誰かが置き換えれば inode か mtime が変わるので、そのときだけ codesign で確かめる。
+dest_id() { /usr/bin/stat -f '%i:%m' "$DEST" 2>/dev/null || true; }
+if [ -e "$DEST" ] && [ -f "$STAMP" ] && [ "$(cat "$STAMP")" = "$SRC
+$(dest_id)" ]; then
+  exit 0
+fi
 # grep -q では受けない。一致した時点でパイプを閉じるので codesign が SIGPIPE で落ち、
 # pipefail のせいで判定全体が偽になる——つまり毎回署名し直す。前の修正がこれで効かなかった。
 SIGNED_ID=""
 if [ -e "$DEST" ]; then
   SIGNED_ID=$(/usr/bin/codesign -dv "$DEST" 2>&1 | /usr/bin/sed -n 's/^Identifier=//p' || true)
 fi
-if [ -e "$DEST" ] && [ -f "$STAMP" ] && [ "$(cat "$STAMP")" = "$SRC" ] \
+# 1 行目だけ比べる。古い 1 行のスタンプもここで通り、署名し直さずに 2 行に書き換わる。
+if [ -e "$DEST" ] && [ -f "$STAMP" ] && [ "$(/usr/bin/head -n 1 "$STAMP")" = "$SRC" ] \
   && [ "$SIGNED_ID" = "net.gapul.tcc.$NAME" ]; then
+  printf '%s\n%s' "$SRC" "$(dest_id)" > "$STAMP"
   exit 0
 fi
 
@@ -84,6 +95,6 @@ if ! /usr/bin/codesign --force --sign "$IDENTITY" \
 fi
 
 # 次回の判定用に、いま署名した元のパスを残す。
-printf '%s' "$SRC" > "$STAMP"
+printf '%s\n%s' "$SRC" "$(dest_id)" > "$STAMP"
 
 echo "tcc-stable-binary: $NAME を署名して $DEST に置いた"

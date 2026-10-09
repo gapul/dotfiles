@@ -46,27 +46,68 @@ recovery-iso:
 _rebuild-macos force="":
     #!/usr/bin/env bash
     set -euo pipefail
-    # Activate only what actually changed. Evaluating both outPaths costs about ten seconds;
-    # a switch that has nothing to do costs a minute (darwin ~15s incl. the Homebrew bundle,
-    # home ~40s of relinking). Most rebuilds — every `git pull` of main via the post-merge hook —
-    # change one of the two at most, and plenty change neither.
+    # Activate only what actually changed. Building both configurations costs ~7s on a tree nix has
+    # not evaluated yet and ~0.1s on one it has; a switch that has nothing to do still costs darwin
+    # ~15s (incl. the Homebrew bundle) and home ~7s. Most rebuilds — every `git
+    # pull` of main via the post-merge hook — change one of the two at most, and plenty change neither.
     # The catch: activation is also what repairs drift made outside nix (a hand-run `brew install`,
     # a `defaults write`, a launchd agent someone unloaded). Skipping means not repairing. That is
     # what `just rebuild force` is for, and what `just maintain` uses.
-    # nh is given the same flake path the check evaluates, plus the configuration name: left to
-    # itself it resolves the flake from the working directory's git root (a different tree when
-    # this runs from a worktree, so check and switch would disagree forever) and picks the config
-    # by hostname, which here is MacBook-Mini while the attribute is named after the user.
-    # The username is only the right answer on the workstation. Both Macs report the same
-    # LocalHostName, so a machine that is not the workstation has to say so out loud, in
-    # ~/.config/dotfiles/host (macmini declares that file in home/macmini.nix). Getting this
-    # wrong is not a no-op: on the mac mini it quietly activated the workstation config,
-    # dropping the manabi tunnel and pulling in the GUI cask list.
+    # The configuration name: nh used to pick it by hostname, which here is MacBook-Mini while the
+    # attribute is named after the user, and the username is only the right answer on the
+    # workstation. Both Macs report the same LocalHostName, so a machine that is not the
+    # workstation has to say so out loud, in ~/.config/dotfiles/host (macmini declares that file
+    # in home/macmini.nix). Getting this wrong is not a no-op: on the mac mini it quietly activated
+    # the workstation config, dropping the manabi tunnel and pulling in the GUI cask list.
     name="$(cat "${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/host" 2>/dev/null || id -un)"
-    sys_want=$(nix eval --raw "{{flake}}#darwinConfigurations.$name.config.system.build.toplevel.outPath")
+    # Tee the whole run to a fixed log so a failure can be inspected after the fact
+    # without re-running — crucially the Homebrew bundle step, which runs during
+    # nix-darwin activation and so is absent from `nix log <drv>`.
+    mkdir -p "$HOME/tmp"
+    log="$HOME/tmp/nix-rebuild.log"
+    : > "$log"
+    # Build first, then activate the built store path directly. The changed-or-not check used to be
+    # `nix eval …outPath`, which the eval cache never serves (6s darwin + 9s home, one after the
+    # other, on every run), and nh then evaluated again for its own build. `nix build` of the
+    # attribute is an eval-cache hit once the tree has been evaluated, and on a fresh tree the two
+    # side by side take ~7s against ~10s in one invocation. The out-links are GC roots, so a nix GC
+    # running alongside (`just maintain` starts one) cannot collect a build before it is activated.
+    # The build runs under a QoS clamp so it cannot starve the desktop. `-c utility` rather than
+    # `-b`: background QoS parks the build on the efficiency cores, which made every rebuild several
+    # times slower than it needed to be. utility still yields to anything user-interactive.
+    roots="${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles"
+    mkdir -p "$roots"
     # Hosts whose home rides inside the darwin config (the mac mini) have no standalone
-    # homeConfigurations entry; there is nothing to activate separately.
-    home_want=$(nix eval --raw "{{flake}}#homeConfigurations.$name.activationPackage.outPath" 2>/dev/null || true)
+    # homeConfigurations entry; there is nothing to activate separately. `?` never forces the value.
+    has_home=$(nix eval "{{flake}}#homeConfigurations" --apply "a: a ? \"$name\"" 2>/dev/null || echo false)
+    home_out=$(mktemp)
+    home_pid=""
+    if [ "$has_home" = true ]; then
+      taskpolicy -c utility nix build --out-link "$roots/rebuild-home" \
+        "{{flake}}#homeConfigurations.$name.activationPackage" >"$home_out" 2>&1 &
+      home_pid=$!
+    fi
+    # The darwin build is the one shown live. With a TTY it goes through nix-output-monitor, as nh
+    # did; without one (git hooks, CI, an agent shell) plain nix keeps the log greppable instead of
+    # cursor-control escape soup.
+    sys_attr="{{flake}}#darwinConfigurations.$name.config.system.build.toplevel"
+    if [ -t 1 ]; then
+      taskpolicy -c utility nix build --out-link "$roots/rebuild-sys" "$sys_attr" \
+        --log-format internal-json -v 2>&1 | nom --json 2>&1 | tee -a "$log"
+    else
+      taskpolicy -c utility nix build --out-link "$roots/rebuild-sys" "$sys_attr" 2>&1 | tee -a "$log"
+    fi
+    sys_want=$(readlink "$roots/rebuild-sys")
+    home_want=""
+    if [ -n "$home_pid" ]; then
+      if ! wait "$home_pid"; then
+        tee -a "$log" <"$home_out" >&2; rm -f "$home_out"
+        echo "home-manager build failed" >&2; exit 1
+      fi
+      cat "$home_out" >>"$log"
+      home_want=$(readlink "$roots/rebuild-home")
+    fi
+    rm -f "$home_out"
     sys_have=$(readlink /run/current-system || true)
     home_have=$(readlink "$HOME/.local/state/home-manager/gcroots/current-home" || true)
     do_sys=1; do_home=1
@@ -82,22 +123,6 @@ _rebuild-macos force="":
     # (No brew trust pass here: every tap in nix/hosts/darwin.nix is `trusted = true`, so the
     #  activation's `brew bundle` records the trust itself. _upgrade-packages-macos still runs
     #  _brew-trust-taps, because its `brew update` happens outside the activation.)
-    # Tee the whole run to a fixed log so a failure can be inspected after the fact
-    # without re-running — crucially the Homebrew bundle step, which runs during
-    # nix-darwin activation and so is absent from `nix log <drv>`. When stdout is not
-    # a TTY (git hooks, CI, an agent shell) drop nix-output-monitor's live TUI so the
-    # log stays greppable plain text instead of cursor-control escape soup.
-    mkdir -p "$HOME/tmp"
-    log="$HOME/tmp/nix-rebuild.log"
-    nom_flag=""; [ -t 1 ] || nom_flag="--no-nom"
-    : > "$log"
-    # The build runs under a QoS clamp so it cannot starve the desktop. It was added when
-    # Ghostty's global cmd+space keybind lived on a CGEventTap that macOS disabled
-    # (kCGEventTapDisabledByTimeout) whenever a build pinned the CPU (ghostty#11883); that
-    # keybind is gone (cmd+space is Tinycast now), but a pinned CPU still stalls the UI.
-    # `-c utility` rather than `-b`: background QoS parks the build on the efficiency cores,
-    # which made every rebuild several times slower than it needed to be. utility still yields
-    # to anything user-interactive, which is all the tap needs.
     if [ "$do_sys" = 1 ]; then
       echo "━━━ nix-darwin" | tee -a "$log"
       # Take sudo up front, the same way `just maintain` does. Without this the prompt lands in the
@@ -107,9 +132,11 @@ _rebuild-macos force="":
       # no tty, fails outright — which is how the mac mini's post-merge rebuild started erroring
       # instead of activating. Ask the cheap question first and only fall back to the prompt.
       sudo -n true 2>/dev/null || sudo -v
-      # -Q (no build output) stays; -q does not. -q also hid nh's own progress, which is what made
-      # a stalled switch indistinguishable from a hung one.
-      taskpolicy -c utility nh darwin switch {{flake}} -H "$name" -Q --diff never $nom_flag 2>&1 | tee -a "$log"
+      # What `darwin-rebuild switch` (and nh) do once the system is built: point the system profile
+      # at it, then run its activation as root. (activate-user is deprecated and empty.) nh cannot
+      # be handed a store path for darwin ("Nix doesn't support nix store installables"), hence by hand.
+      sudo nix-env -p /nix/var/nix/profiles/system --set "$sys_want"
+      taskpolicy -c utility sudo "$sys_want/activate" 2>&1 | tee -a "$log"
       echo "✓ nix-darwin" | tee -a "$log"
     else
       echo "– nix-darwin unchanged" | tee -a "$log"
@@ -120,12 +147,13 @@ _rebuild-macos force="":
       exit 0
     fi
     echo "━━━ home-manager" | tee -a "$log"
-    # -b hm-bak: standalone home-manager has no backupFileExtension option (that one only exists on
+    # hm-bak: standalone home-manager has no backupFileExtension option (that one only exists on
     # the nix-darwin/NixOS module path), and without a backup extension a newly declared home.file
     # whose target already exists is skipped — the declaration silently does nothing. That is how
     # gh-dash/config.yml and slk/config.toml stayed plain files after #153 declared them.
+    # The activation script records the profile generation itself.
     if [ "$do_home" = 1 ]; then
-      taskpolicy -c utility nh home switch {{flake}} -c "$name" -Q --diff never -b hm-bak $nom_flag 2>&1 | tee -a "$log"
+      HOME_MANAGER_BACKUP_EXT=hm-bak taskpolicy -c utility "$home_want/activate" 2>&1 | tee -a "$log"
       echo "✓ home-manager" | tee -a "$log"
     else
       echo "– home-manager unchanged" | tee -a "$log"
@@ -223,9 +251,11 @@ _upgrade-nix-runtime-macos:
 
 [private]
 _brew-trust-taps:
-    @-brew tap 2>/dev/null | grep -v '^homebrew/' | xargs -I% brew trust % >/dev/null
+    @# One brew per kind, not one per entry: `brew trust` takes many targets, and each brew start
+    @# is about 0.4s of Ruby — 28 of them were 11s of the package lane.
+    @-brew tap 2>/dev/null | grep -v '^homebrew/' | xargs brew trust >/dev/null
     @-brew trust --cask gerlero/openfoam/openfoam@2606 >/dev/null
-    @-brew list --cask --full-name 2>/dev/null | grep '/' | xargs -I% brew trust --cask % >/dev/null
+    @-brew list --cask --full-name 2>/dev/null | grep '/' | xargs brew trust --cask >/dev/null
 
 [private]
 _upgrade-packages-macos:
@@ -384,6 +414,14 @@ _maintain-macos:
     just _upgrade-nix-runtime-macos
     wait $outdated_pid || true
     cat "$outdated_out"; rm -f "$outdated_out"
+    # The nix GC is ~25s of walking the store even when nothing is collectable, and it shares
+    # nothing with the rest, so it runs in the background from here and its output is replayed at
+    # the end. It starts after the runtime upgrade above, which restarts the daemon. It is safe
+    # beside the builds below: a path being fetched or built is held by the builder's temp root,
+    # and every build here lands on an --out-link, which is a GC root.
+    gc_out=$(mktemp)
+    nh clean all --keep 5 --keep-since 7d >"$gc_out" 2>&1 &
+    gc_pid=$!
     # No `nix flake update` here on purpose. The weekly update-flake-lock workflow opens a PR for
     # it, and CI builds that lock and pushes the results to cachix, so rebuilding on a merged lock
     # is mostly downloads. Bumping the lock locally instead lands on a tree nothing has ever built
@@ -408,13 +446,19 @@ _maintain-macos:
     # find out is the same full home-manager eval the build below does anyway — a minute idle here
     # on a quiet machine, and it was still going after twelve on a loaded one (the source-to-store
     # writer is one daemon round trip per file). `?` on the attrset never forces the value.
-    home_attr=""
-    [ "$(nix eval "{{flake}}#homeConfigurations" --apply "a: a ? \"$name\"" 2>/dev/null)" = true ] \
-      && home_attr="{{flake}}#homeConfigurations.$name.activationPackage"
+    has_home=$(nix eval "{{flake}}#homeConfigurations" --apply "a: a ? \"$name\"" 2>/dev/null || echo false)
+    # The builds land on the same out-links `just rebuild` uses: GC roots, so the nix GC running
+    # alongside cannot collect them, and the rebuild's own build of the same tree is then an
+    # eval-cache hit (~0.1s). If the package lane's github-pins edits a pin meanwhile, the
+    # rebuild simply evaluates the new tree.
+    roots="${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles"; mkdir -p "$roots"
     nix_out=$(mktemp); tools_out=$(mktemp)
-    nix build --no-link \
-      "{{flake}}#darwinConfigurations.$name.config.system.build.toplevel" \
-      $home_attr >"$nix_out" 2>&1 &
+    (
+      [ "$has_home" = true ] &&
+        nix build --out-link "$roots/rebuild-home" "{{flake}}#homeConfigurations.$name.activationPackage" &
+      nix build --out-link "$roots/rebuild-sys" "{{flake}}#darwinConfigurations.$name.config.system.build.toplevel"
+      wait
+    ) >"$nix_out" 2>&1 &
     nix_pid=$!
     just _maintain-user-tools >"$tools_out" 2>&1 &
     tools_pid=$!
@@ -434,8 +478,10 @@ _maintain-macos:
     just rebuild force
     wait $tools_pid || true; cat "$tools_out"; rm -f "$tools_out"
     # Cleanup last: brew is free again only once the activation's bundle has run.
-    just gc
+    DOTFILES_GC_SKIP_NIX=1 just gc
     brew services cleanup || true
+    wait $gc_pid || true
+    echo "━━━ Nix store (remove old generations) ━━━"; cat "$gc_out"; rm -f "$gc_out"
     just doctor || true
     trap - EXIT
     kill $sudo_keepalive 2>/dev/null || true
@@ -776,9 +822,12 @@ tidy-apps:
 gc:
     #!/usr/bin/env bash
     set -u
-    echo "━━━ Nix store (remove old generations) ━━━"
-    nh clean all --keep 5 --keep-since 7d || true
-    echo ""
+    # `just maintain` runs this part itself, alongside everything else (see there).
+    if [ -z "${DOTFILES_GC_SKIP_NIX:-}" ]; then
+      echo "━━━ Nix store (remove old generations) ━━━"
+      nh clean all --keep 5 --keep-since 7d || true
+      echo ""
+    fi
     echo "━━━ Homebrew (downloads + old versions) ━━━"
     brew autoremove 2>&1 | tail -3 || true
     brew cleanup --prune=all 2>&1 | tail -3 || true
