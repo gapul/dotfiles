@@ -409,45 +409,49 @@ in
     defaultNetwork.settings.dns_enabled = true; # name resolution between containers
   };
 
-  environment.systemPackages = with pkgs; [
-    git
-    vim
-    curl
-    wget
-    sbctl # generate/enroll/verify Secure Boot keys (used for lanzaboote operation)
-    keepAwake # `keep-awake [on [DURATION]|off|status]`, see the let block
+  environment.systemPackages =
+    with pkgs;
+    [
+      git
+      vim
+      curl
+      wget
+      sbctl # generate/enroll/verify Secure Boot keys (used for lanzaboote operation)
+      keepAwake # `keep-awake [on [DURATION]|off|status]`, see the let block
 
-    # Minimal set to make Hyprland usable from the start.
-    # A full rice (keybinds/waybar config/wallpaper) is meant to be moved to home-manager's
-    # wayland.windowManager.hyprland and gradually removed from here.
-    ghostty # main terminal (config symlinked in home/hyprland.nix)
-    kitty # fallback opened by Hyprland's stock SUPER+Q (home's $terminal is ghostty)
-    wofi # app launcher (bound to SUPER+R etc.)
-    wl-clipboard # clipboard (wl-copy / wl-paste)
-    cliphist # clipboard history (integrates with wofi)
-    hyprpolkitagent # polkit auth dialog (autostart in the hyprland config)
-    grim # screenshot capture
-    slurp # region selection (used with grim)
-    brightnessctl # screen brightness
-    playerctl # media keys
+      # Minimal set to make Hyprland usable from the start.
+      # A full rice (keybinds/waybar config/wallpaper) is meant to be moved to home-manager's
+      # wayland.windowManager.hyprland and gradually removed from here.
+      ghostty # main terminal (config symlinked in home/hyprland.nix)
+      kitty # fallback opened by Hyprland's stock SUPER+Q (home's $terminal is ghostty)
+      wofi # app launcher (bound to SUPER+R etc.)
+      wl-clipboard # clipboard (wl-copy / wl-paste)
+      cliphist # clipboard history (integrates with wofi)
+      hyprpolkitagent # polkit auth dialog (autostart in the hyprland config)
+      grim # screenshot capture
+      slurp # region selection (used with grim)
+      brightnessctl # screen brightness
+      playerctl # media keys
 
-    # Agent CLIs (see the agentPkgs note at the top of the file)
-    agentPkgs.claude-code
-    agentPkgs.codex
+      # Agent CLIs (see the agentPkgs note at the top of the file)
+      agentPkgs.claude-code
+      agentPkgs.codex
 
-    # Geek-oriented CLI
-    comma # run an uninstalled command with `, <cmd>` (integrates with nix-index)
-    distrobox # run another distro's userland on podman (mix of Arch/Ubuntu tools)
-    lazydocker # TUI for podman/docker
-    btop # system monitor
-    nvtopPackages.intel # GPU monitor (Intel)
+      # Geek-oriented CLI
+      comma # run an uninstalled command with `, <cmd>` (integrates with nix-index)
+      distrobox # run another distro's userland on podman (mix of Arch/Ubuntu tools)
+      lazydocker # TUI for podman/docker
+      btop # system monitor
+      nvtopPackages.intel # GPU monitor (Intel)
 
-    # Hyprland QoL
-    hyprpicker # color picker
-    hyprshot # screenshot (window/region/screen)
-    wlogout # power menu
-    wl-gammarelay-rs # control color temperature (night light) via dbus
-  ];
+      # Hyprland QoL
+      hyprpicker # color picker
+      hyprshot # screenshot (window/region/screen)
+      wlogout # power menu
+      wl-gammarelay-rs # control color temperature (night light) via dbus
+    ]
+    # ArtCraft's pure-Rust Adobe-suite counterparts, same set as darwin. See pkgs/artcraft-apps.nix.
+    ++ pkgs.callPackage ../pkgs/artcraft-apps.nix { };
 
   # Enable if you want to read/write the NTFS Windows partition (optional)
   # boot.supportedFilesystems = [ "ntfs" ];
