@@ -450,7 +450,7 @@ in
       wlogout # power menu
       wl-gammarelay-rs # control color temperature (night light) via dbus
     ]
-    # ArtCraft's pure-Rust Adobe-suite counterparts, same set as darwin. See pkgs/artcraft-apps.nix.
+    # ArtCraft's pure-Rust Craft apps, same set as darwin (ArtCraft itself is macOS-only). See pkgs/artcraft-apps.nix.
     ++ pkgs.callPackage ../pkgs/artcraft-apps.nix { };
 
   # Enable if you want to read/write the NTFS Windows partition (optional)
