@@ -339,6 +339,7 @@ in
     ./homeserver-hardware.nix
     ../modules/authorized-keys.nix
     ../homelab # the Docker stacks that used to live on CT101 under dockge
+    ./homeserver-fpga.nix # the CPU-experiment FPGA board on USB (openFPGALoader + UART)
   ];
 
   # --- Boot ---
