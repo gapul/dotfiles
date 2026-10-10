@@ -24,7 +24,7 @@ permissions:
 # 作者が人になり、普通の PR と同じに CI が走る。secret が無ければ GITHUB_TOKEN に落ちる
 # (壊れはしないが、その PR は手で「Approve and run」が要る)。
 #   fine-grained PAT: gapul/dotfiles のみ, Contents: RW, Pull requests: RW, Workflows: RW
-#   gh secret set AUTOMATION_PR_TOKEN
+#   gh secret set AUTOMATION_PR_TOKEN   (the value is also kept in secrets/common.yaml: github.automation_pr_token)
 env:
   PR_TOKEN: ${{ secrets.AUTOMATION_PR_TOKEN || github.token }}
 
