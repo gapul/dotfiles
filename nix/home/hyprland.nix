@@ -68,14 +68,9 @@ in
     nwg-displays # monitor layout -> ~/.config/hypr/monitors.conf, sourced below
   ];
 
-  # Tray applets for Wi-Fi and Bluetooth. Both units Require tray.target, which pulls in
-  # waybar's tray (waybar.service is WantedBy tray.target).
-  services.network-manager-applet.enable = true;
-  services.blueman-applet.enable = true;
-  # waybar's tray only speaks StatusNotifierItem; without this nm-applet starts with the
-  # legacy XEmbed icon and never appears. The option only adds --indicator, it does not turn
-  # on an X session.
-  xsession.preferStatusNotifierItems = true;
+  # No tray applets for Wi-Fi and Bluetooth: their stock GTK icons sat next to the bar's
+  # Nerd Font pills and looked out of place, and Wi-Fi was already shown twice. Both are
+  # pills in waybar instead (network, bluetooth), which open the full tools on click.
 
   # nwg-displays writes its result here. The file is created empty on first activation so the
   # source line never points at nothing (Hyprland shows a config-error banner for that), and is
@@ -434,12 +429,13 @@ in
         "pulseaudio"
         "backlight"
         "battery"
+        "bluetooth"
         "network"
         "tray"
       ];
       clock.format = "{:%Y-%m-%d %H:%M}";
       battery = {
-        format = "{capacity}% {icon}";
+        format = "{icon} {capacity}%";
         format-icons = [
           "󰁻"
           "󰁽"
@@ -449,14 +445,31 @@ in
         ];
       };
       network = {
-        format-wifi = "{essid} ";
+        format-wifi = "󰖩 {essid}";
+        format-ethernet = "󰈀 {ifname}";
+        format-disconnected = "󰖪 offline";
         on-click = "nm-connection-editor";
       };
+      bluetooth = {
+        format = "󰂯";
+        format-disabled = "󰂲";
+        format-off = "󰂲";
+        format-connected = "󰂱 {device_alias}";
+        tooltip-format-connected = "{device_enumerate}";
+        tooltip-format-enumerate-connected = "{device_alias}";
+        on-click = "blueman-manager";
+      };
       pulseaudio = {
-        format = "{volume}% {icon}";
+        format = "{icon} {volume}%";
+        format-muted = "󰖁 muted";
+        format-icons.default = [
+          "󰕿"
+          "󰖀"
+          "󰕾"
+        ];
         on-click = "pavucontrol";
       };
-      backlight.format = "{percent}% ";
+      backlight.format = "󰃠 {percent}%";
     };
     # The bar was a flat strip with the modules butted together and no way to tell one
     # reading from the next. It is now transparent, with each group sitting on its own
@@ -487,6 +500,7 @@ in
       #pulseaudio,
       #backlight,
       #battery,
+      #bluetooth,
       #network,
       #tray {
         background: alpha(#${c.surface}, 0.85);
@@ -535,6 +549,9 @@ in
       #backlight  { color: #${c.gold}; }
       #battery    { color: #${c.pine}; }
       #network    { color: #${c.iris}; }
+      #bluetooth  { color: #${c.rose}; }
+      #bluetooth.off,
+      #bluetooth.disabled { color: #${c.muted}; }
 
       /* States worth interrupting for. */
       #battery.warning  { color: #${c.gold}; }
