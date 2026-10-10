@@ -180,7 +180,28 @@ in
 
   time.timeZone = "Asia/Tokyo";
   i18n.defaultLocale = "en_US.UTF-8";
-  console.keyMap = "us"; # "jp" for a JIS layout
+  # The console takes its keymap from the xkb settings so Caps Lock is Ctrl there too (the
+  # greeter and TTYs). Nothing here enables X; Hyprland has its own kb_options.
+  services.xserver.xkb = {
+    layout = "us"; # "jp" for a JIS layout
+    options = "ctrl:nocaps";
+  };
+  console.useXkbConfig = true;
+  # xremap (home/xremap.nix) runs as the user, reads the keyboards and writes to /dev/uinput.
+  # uinput already carries systemd's uaccess tag; the keyboards get it here, so the logged-in user
+  # on the active seat can read them. That is narrower than the input group, which would give every
+  # process of the user every input device even from an ssh session, and it applies without a
+  # re-login. The file name has to sort before 73-seat-late.rules (see nixos-laptop-vivado.nix).
+  hardware.uinput.enable = true;
+  services.udev.packages = [
+    (pkgs.writeTextFile {
+      name = "xremap-keyboard-uaccess";
+      destination = "/lib/udev/rules.d/70-xremap-keyboard.rules";
+      text = ''
+        SUBSYSTEM=="input", KERNEL=="event*", ENV{ID_INPUT_KEYBOARD}=="1", TAG+="uaccess"
+      '';
+    })
+  ];
 
   # Countermeasure for clock drift when dual-booting with Windows.
   # NixOS treats the RTC as UTC. Align Windows to UTC as well with
@@ -287,14 +308,51 @@ in
   # Also use the GTK portal for file-picker dialogs etc. (the hyprland portal is already bundled).
   xdg.portal.extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
 
-  # The keyboard layout is set via Hyprland's input{kb_layout}. The console uses console.keyMap.
-  # fcitx5 Japanese input is handled by i18n.inputMethod below, including the Wayland env vars.
+  # The keyboard layout is set via Hyprland's input{kb_layout}. The console uses services.xserver.xkb.
+  # fcitx5 Japanese input is handled by i18n.inputMethod below, including the IM env vars.
 
-  # Japanese input (fcitx5 + Mozc)
+  # Japanese input: fcitx5 with SKK, set up after macSKK on the mac (configs/ime/skk/README.md).
+  # Mozc stays installed but out of the group; add it back from fcitx5-configtool if it is ever wanted.
+  # macSKK's skkserv (azooKey skkserv on localhost:1178) has no counterpart here: it is a mac app.
+  # The dictionaries and the kana rule are user-side, in home/fcitx5-skk.nix.
+  # Hyprland runs no XDG autostart, so the daemon is started from its exec-once (home/hyprland.nix);
+  # before that, nothing ever started fcitx5 and neither IM worked.
   i18n.inputMethod = {
     enable = true;
     type = "fcitx5";
-    fcitx5.addons = with pkgs; [ fcitx5-mozc ];
+    fcitx5 = {
+      addons = with pkgs; [
+        fcitx5-skk
+        fcitx5-mozc
+      ];
+      # Apps talk to fcitx5 over Wayland's text-input protocol instead of the GTK/Qt IM modules
+      # (GTK_IM_MODULE / QT_IM_MODULE are no longer set; XMODIFIERS stays, for XWayland apps).
+      # Through the GTK module Ghostty dropped every candidate picked from the window (a/s/d...),
+      # committing nothing; over text-input it takes them. fcitx5 itself warns about the GTK
+      # module on startup, as upstream advises against it under Hyprland.
+      waylandFrontend = true;
+      # Written to /etc/xdg/fcitx5. A ~/.config/fcitx5 that fcitx5-configtool saves takes precedence.
+      settings = {
+        # The input method group (SKK alone) is user-side in home/fcitx5-skk.nix: fcitx5 rewrites
+        # ~/.config/fcitx5/profile on every exit, and that copy would shadow one written here.
+        # Taken from macSKK's settings (configs/ime/skk/macSKK.plist), option by option:
+        addons.skk.globalSection = {
+          Rule = "gapul"; # kanaRule: default + full-width ！ (home/fcitx5-skk.nix)
+          PunctuationStyle = "Japanese"; # punctuation = 0: 、。
+          # Starts in latin, so a new window (a terminal, nvim) takes ASCII until C-j.
+          InitialInputMode = "Latin";
+          "Candidate Layout" = "Horizontal"; # candidateListDirection = 1
+          # selectCandidateKeys = "ASDFGHJKL": the home row picks, nine to a page.
+          CandidateChooseKey = "Qwerty Center Row (a,s,d,...)";
+          PageSize = 9;
+          # inlineCandidateCount = 5: five candidates cycle in place before the window opens.
+          NTriggersToShowCandWin = 5;
+          # enterNewLine = false (macSKK's default): Enter only commits, it does not also send a newline.
+          EggLikeNewLine = "True";
+          ShowAnnotation = "True";
+        };
+      };
+    };
   };
 
   services.printing.enable = true;

@@ -93,7 +93,9 @@ in
       source = ${config.xdg.configHome}/hypr/monitors.conf
     '';
     settings = {
-      "$mod" = "SUPER";
+      # Hyper: Space held, from xremap (home/xremap.nix). Super alone is Cmd there, so the
+      # window manager cannot use it without taking Cmd+Q, Cmd+C, ... away from the apps.
+      "$mod" = "SUPER CTRL ALT";
       "$terminal" = "ghostty";
       "$menu" = "wofi --show drun";
 
@@ -126,10 +128,16 @@ in
       exec-once = [
         "wl-paste --watch cliphist store" # accumulate clipboard history
         "wl-gammarelay-rs" # dbus daemon for night light
+        # Input method (SKK). The package's autostart entry is never read here: Hyprland does not
+        # run XDG autostart. fcitx5 comes from i18n.inputMethod (hosts/nixos-laptop.nix).
+        "fcitx5 -d --replace"
       ];
 
       input = {
         kb_layout = "us"; # use "jp" for a JIS layout
+        # Caps Lock is Ctrl. xremap (home/xremap.nix) already sends it as Ctrl; this covers the
+        # time it is not running.
+        kb_options = "ctrl:nocaps";
         follow_mouse = 1;
         touchpad = {
           natural_scroll = true;
