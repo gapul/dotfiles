@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ config, pkgs, ... }:
 # Hyprland user config (Rick). Imported only on nixos-laptop.
 # The system side (hosts/nixos-laptop.nix) provides PAM/session for
 # programs.hyprland / hyprlock; this side manages appearance and keybinds.
@@ -25,6 +25,23 @@ let
     ${pkgs.grim}/bin/grim -g "$geometry" - | ${pkgs.wl-clipboard}/bin/wl-copy --type image/png
     ${pkgs.libnotify}/bin/notify-send -a Hyprshot "Screenshot copied" "Image copied to the clipboard"
   '';
+  # Hyprland has no settings app of its own, so $mod+comma (Cmd+, on the mac) opens a picker
+  # over the per-area GUI tools declared below. What they change lives outside the store
+  # (NetworkManager profiles, PipeWire/WirePlumber state, BlueZ pairings, monitors.conf), so
+  # it survives a rebuild instead of being overwritten by it. Anything under home-manager's
+  # control (GTK theme, keybinds, fonts) stays in nix on purpose: a GUI writing there would
+  # either hit a read-only symlink or be reverted on the next switch.
+  settingsMenu = pkgs.writeShellScript "settings-menu" ''
+    set -eu
+    choice=$(printf '%s\n' Sound Wi-Fi Bluetooth Displays \
+      | ${pkgs.wofi}/bin/wofi --dmenu --prompt Settings) || exit 0
+    case "$choice" in
+      Sound) exec ${pkgs.pavucontrol}/bin/pavucontrol ;;
+      Wi-Fi) exec ${pkgs.networkmanagerapplet}/bin/nm-connection-editor ;;
+      Bluetooth) exec blueman-manager ;; # system-side (services.blueman in hosts/nixos-laptop.nix)
+      Displays) exec ${pkgs.nwg-displays}/bin/nwg-displays ;;
+    esac
+  '';
 in
 {
   # Binaries referenced by the keybinds / exec-once below. Without these the rice
@@ -45,7 +62,29 @@ in
     brightnessctl # backlight keys
     playerctl # media keys
     wireplumber # wpctl, used by the volume keys
+    # GUI settings, reachable from $mod+comma, the launcher, and the waybar modules.
+    pavucontrol # audio devices / per-app volume
+    networkmanagerapplet # nm-connection-editor (the tray applet is the service below)
+    nwg-displays # monitor layout -> ~/.config/hypr/monitors.conf, sourced below
   ];
+
+  # Tray applets for Wi-Fi and Bluetooth. Both units Require tray.target, which pulls in
+  # waybar's tray (waybar.service is WantedBy tray.target).
+  services.network-manager-applet.enable = true;
+  services.blueman-applet.enable = true;
+  # waybar's tray only speaks StatusNotifierItem; without this nm-applet starts with the
+  # legacy XEmbed icon and never appears. The option only adds --indicator, it does not turn
+  # on an X session.
+  xsession.preferStatusNotifierItems = true;
+
+  # nwg-displays writes its result here. The file is created empty on first activation so the
+  # source line never points at nothing (Hyprland shows a config-error banner for that), and is
+  # never overwritten afterwards. Rules for a named output win over the catch-all `monitor`
+  # line in settings, so an empty file simply means "preferred, auto".
+  home.activation.hyprMonitorsConf = config.lib.dag.entryAfter [ "writeBoundary" ] ''
+    run mkdir -p "${config.xdg.configHome}/hypr"
+    [ -e "${config.xdg.configHome}/hypr/monitors.conf" ] || run touch "${config.xdg.configHome}/hypr/monitors.conf"
+  '';
 
   # package = null: use the system Hyprland, HM manages only the config.
   wayland.windowManager.hyprland = {
@@ -54,6 +93,10 @@ in
     portalPackage = null;
     # settings generated in hyprlang format (pinned explicitly since the default may switch to lua).
     configType = "hyprlang";
+    # Appended after settings, so nwg-displays' per-output rules land after the catch-all.
+    extraConfig = ''
+      source = ${config.xdg.configHome}/hypr/monitors.conf
+    '';
     settings = {
       "$mod" = "SUPER";
       "$terminal" = "ghostty";
@@ -130,6 +173,7 @@ in
         "$mod, L, exec, hyprlock" # manual lock
         "$mod, C, exec, cliphist list | wofi --dmenu | cliphist decode | wl-copy" # paste from history
         "$mod, Escape, exec, wlogout" # power menu
+        "$mod, comma, exec, ${settingsMenu}" # settings picker (Cmd+, on the mac)
         # screenshot / color picker
         "$mod, P, exec, ${screenshotRegion}" # region -> clipboard
         "$mod SHIFT, P, exec, hyprshot -m window" # window -> save
@@ -404,8 +448,14 @@ in
           "󰁹"
         ];
       };
-      network.format-wifi = "{essid} ";
-      pulseaudio.format = "{volume}% {icon}";
+      network = {
+        format-wifi = "{essid} ";
+        on-click = "nm-connection-editor";
+      };
+      pulseaudio = {
+        format = "{volume}% {icon}";
+        on-click = "pavucontrol";
+      };
       backlight.format = "{percent}% ";
     };
     # The bar was a flat strip with the modules butted together and no way to tell one
