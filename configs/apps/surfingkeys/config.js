@@ -24,6 +24,30 @@ mapkey("=", "Video: reset speed", () => rate(1 - document.querySelector("video")
 // The look is a floating command palette: one rounded sheet, hairline borders, frosted glass,
 // soft layered shadow, generous padding, no hard dividers. Fonts follow the rice (JetBrainsMono
 // Nerd Font) and fall back to the platform UI face.
+// Surfingkeys 1.17.11 pins its UI shadow host to color-scheme: light. That also
+// forces prefers-color-scheme inside its iframe to light, regardless of Firefox.
+// Opt this host into both schemes when it is lazily attached (or reattached).
+// Only touch Surfingkeys' extension iframe; leave the page's colour scheme alone.
+if (window === window.top && !window.__surfingkeysColorSchemeObserver) {
+  const followSystemScheme = (element) => {
+    if (!(element instanceof Element)) return;
+    const frame = element.shadowRoot?.querySelector("iframe.sk_ui");
+    if (frame?.src.startsWith("moz-extension://") && frame.src.endsWith("/pages/frontend.html")) {
+      element.style.colorScheme = "light dark";
+    }
+  };
+  document.querySelectorAll("div").forEach(followSystemScheme);
+  const observer = new MutationObserver((records) => {
+    for (const record of records) {
+      for (const node of record.addedNodes) {
+        followSystemScheme(node);
+      }
+    }
+  });
+  observer.observe(document.documentElement, { childList: true, subtree: true });
+  window.__surfingkeysColorSchemeObserver = observer;
+}
+
 settings.omnibarPosition = "middle"; // float the omnibar in the upper third instead of pinning it to the top edge
 settings.omnibarMaxResults = 8;
 settings.hintAlign = "left";
