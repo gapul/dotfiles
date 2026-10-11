@@ -288,7 +288,11 @@
   # that on 2026-10-11 the macmini had 57G free until a manual `nix-collect-garbage -d`. Rolling
   # back means rebuilding an older commit, which cachix makes mostly downloads.
   #
-  # Sunday 03:45: before the user-side cleanups (04:15) and restic (05:00).
+  # Daily at 03:45, before the user-side cleanups (Sunday 04:15) and restic (05:00). Weekly left
+  # the macmini at 27G free on 2026-10-11: om ci on main builds the other Mac's closure there
+  # (~70G in an afternoon) and nothing roots it, so it sat until Sunday. Not min-free/max-free:
+  # the GC would then run inside nix-daemon, which has no Full Disk Access and stops at the first
+  # macl-tagged bundle (see above). pr-gate keeps its out-link root, so PR builds stay warm.
   launchd.daemons.nix-gc = {
     serviceConfig = {
       ProgramArguments = [
@@ -297,7 +301,6 @@
       ];
       StartCalendarInterval = [
         {
-          Weekday = 0;
           Hour = 3;
           Minute = 45;
         }
