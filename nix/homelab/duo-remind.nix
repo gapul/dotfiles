@@ -20,14 +20,9 @@ let
     ];
     text = ''
       : "''${DUO_JWT:?DUO_JWT is required}"
-      : "''${HC_PING_KEY:?HC_PING_KEY is required}"
       : "''${NTFY_TOKEN:?NTFY_TOKEN is required}"
       : "''${NTFY_TOPIC:?NTFY_TOPIC is required}"
       export TZ=Asia/Tokyo
-      hc="http://127.0.0.1:8115/ping/$HC_PING_KEY/duo-remind"
-      # Healthchecks (healthchecks.nix) alerts if the success ping is late; /fail alerts at once.
-      on_exit() { rc=$?; [ "$rc" -eq 0 ] || curl -fsS --max-time 10 -o /dev/null "$hc/fail" || true; }
-      trap on_exit EXIT
       api=https://www.duolingo.com/2017-06-30
       log=/var/lib/duo-remind/xp.csv
 
@@ -71,7 +66,6 @@ let
       else
         echo "done today: xp=$xp streak=$streak"
       fi
-      curl -fsS --max-time 10 --retry 3 -o /dev/null "$hc"
     '';
   };
 in
@@ -81,7 +75,6 @@ in
     after = [
       "network-online.target"
       "podman-ntfy.service"
-      "healthchecks.service"
     ];
     wants = [ "network-online.target" ];
     onFailure = [ "ntfy-failure@%n.service" ];
@@ -91,7 +84,7 @@ in
       StateDirectory = "duo-remind";
       EnvironmentFile = [
         "/var/lib/secrets/gatus.env" # NTFY_TOPIC, NTFY_TOKEN, shared with the other alerts
-        "/var/lib/secrets/duo-remind.env" # DUO_JWT, HC_PING_KEY
+        "/var/lib/secrets/duo-remind.env" # DUO_JWT
       ];
       ExecStart = "${remind}/bin/duo-remind";
       NoNewPrivileges = true;

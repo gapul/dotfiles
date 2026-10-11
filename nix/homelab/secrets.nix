@@ -25,7 +25,6 @@ let
     { rel = "free-games-claimer.env"; }
     { rel = "gameyfin.env"; }
     { rel = "gatus.env"; }
-    { rel = "healthchecks.env"; }
     { rel = "github-runner-token"; }
     { rel = "homebox.env"; }
     { rel = "homelab-cli.env"; }
