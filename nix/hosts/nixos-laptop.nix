@@ -488,6 +488,10 @@ in
         package = pkgs.papirus-icon-theme;
         name = "Papirus-Dark";
       };
+      cursorTheme = {
+        package = pkgs.rose-pine-cursor;
+        name = "BreezeX-RosePine-Linux";
+      };
       settings = {
         background = {
           path = "${wallpaper}";

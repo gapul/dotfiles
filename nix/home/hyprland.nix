@@ -35,6 +35,11 @@ let
   # module in programs.waybar below).
   appIcon = name: "<span font_family='sketchybar-app-font' size='large' rise='-3500'>${name}</span>";
 
+  # The hands, cropped from the wallpaper, as the terminal greeting's picture.
+  fastfetchLogo = pkgs.runCommand "fastfetch-logo.png" { nativeBuildInputs = [ pkgs.imagemagick ]; } ''
+    magick ${lockWallpaper} -gravity center -crop 2600x1100+0+0 +repage -resize 880x -quality 92 PNG24:$out
+  '';
+
   # The dark palette's wallpaper, for the lock screen (hyprlock's config is static, and a
   # dark lock screen is right at any hour).
   lockWallpaper = import ../lib/wallpaper.nix {
@@ -86,7 +91,7 @@ let
   # check when they are, a warning with the names when not; a click restarts the stopped ones.
   guardUnits = [
     "xremap"
-    "hyprpaper"
+    "awww"
     "hypridle"
     "mako"
     "darkman"
@@ -131,11 +136,14 @@ let
   # empty result over whatever was on the clipboard, and still announced "Screenshot saved".
   # Doing the three steps here lets a cancelled selection simply stop. The window bind keeps
   # hyprshot: that path writes a file, and a cancel makes grim fail before anything is saved.
+  # The region goes to satty for arrows, boxes and blur; Enter (or the copy button) puts the
+  # result on the clipboard and closes it, Ctrl+S also saves it under ~/Pictures/Screenshots.
   screenshotRegion = pkgs.writeShellScript "screenshot-region" ''
     set -euo pipefail
     geometry=$(${pkgs.slurp}/bin/slurp -d) || exit 0
-    ${pkgs.grim}/bin/grim -g "$geometry" - | ${pkgs.wl-clipboard}/bin/wl-copy --type image/png
-    ${pkgs.libnotify}/bin/notify-send -a Hyprshot "Screenshot copied" "Image copied to the clipboard"
+    ${pkgs.grim}/bin/grim -g "$geometry" - | ${pkgs.satty}/bin/satty --filename - \
+      --copy-command "${pkgs.wl-clipboard}/bin/wl-copy --type image/png" --early-exit \
+      --init-tool arrow --output-filename "$HOME/Pictures/Screenshots/%Y-%m-%d_%H-%M-%S.png"
   '';
   # Hyprland has no settings app of its own, so $mod+comma (Cmd+, on the mac) opens a picker
   # over the per-area GUI tools declared below. What they change lives outside the store
@@ -402,6 +410,10 @@ in
     enable = true;
     package = null;
     portalPackage = null;
+    # Hyprtasking: every workspace in a grid with its windows, like Mission Control
+    # (Hyper+Tab, or three fingers down on the touchpad). nixpkgs builds it against the same
+    # Hyprland this system runs, so the plugin ABI matches (plugins must).
+    plugins = [ pkgs.hyprlandPlugins.hyprtasking ];
     # settings generated in hyprlang format (pinned explicitly since the default may switch to lua).
     configType = "hyprlang";
     # Appended after settings, so nwg-displays' per-output rules land after the catch-all.
@@ -481,9 +493,65 @@ in
           size = 6;
           passes = 2;
         };
+        # Unfocused windows a shade darker, and a soft shadow under every window, so the
+        # focused one reads at a glance.
+        dim_inactive = true;
+        dim_strength = 0.12;
+        shadow = {
+          enabled = true;
+          range = 24;
+          render_power = 3;
+          color = "rgba(${c.base}cc)";
+        };
       };
 
-      animations.enabled = true;
+      animations = {
+        enabled = true;
+        bezier = [
+          "ease, 0.16, 1, 0.3, 1" # ease-out, for things settling
+          "snap, 0.2, 0.9, 0.1, 1.05" # a touch of overshoot, for things appearing
+        ];
+        animation = [
+          "windows, 1, 5, snap, popin 85%"
+          "windowsOut, 1, 4, ease, popin 85%"
+          "fade, 1, 6, ease"
+          "layers, 1, 4, ease, fade"
+          "border, 1, 8, ease"
+          "workspaces, 1, 5, ease, slide"
+        ];
+      };
+
+      # Touchpad: three fingers sideways switch workspaces; three fingers down opens the
+      # overview (plugin:hyprtasking below). Four fingers belong to fusuma (home/linux-gui.nix).
+      gesture = [ "3, horizontal, workspace" ];
+
+      "plugin:hyprtasking" = {
+        layout = "grid";
+        gap_size = 24;
+        bg_color = "rgba(${c.base}ff)";
+        border_size = 2;
+        exit_on_hovered = false;
+        jump = {
+          enabled = true; # press a workspace's number to jump to it
+          label_color = "rgba(${c.text}ff)";
+          label_background = "rgba(${c.base}cc)";
+          label_size = 28;
+        };
+        gestures = {
+          enabled = true;
+          move_fingers = 3;
+          move_distance = 300;
+          open_fingers = 3;
+          open_distance = 300;
+          open_positive = true;
+        };
+        grid = {
+          rows = 3;
+          cols = 3;
+          loop = false;
+          layers = 1;
+        };
+      };
 
       bind = [
         "$mod, Return, exec, $terminal"
@@ -497,6 +565,7 @@ in
         "$mod, L, exec, hyprlock" # manual lock
         "$mod, C, exec, cliphist list | wofi --dmenu | cliphist decode | wl-copy" # paste from history
         "$mod, period, exec, wofi-emoji" # emoji picker, like Cmd+Ctrl+Space on the mac
+        "$mod, Tab, hyprtasking:toggle, cursor" # every workspace at a glance
         "$mod, slash, exec, ${cheatsheet}" # every keybind, searchable
         "$mod, Escape, exec, wlogout" # power menu
         "$mod, comma, exec, ${settingsMenu}" # settings picker (Cmd+, on the mac)
@@ -602,10 +671,9 @@ in
     '';
   };
 
-  # hyprpaper paints the wallpaper stylix generates from the palette. It needs to be declared
-  # through services.* rather than home.packages, or stylix cannot see it and writes no config
-  # — which is exactly how it ended up running with an empty screen before.
-  services.hyprpaper.enable = true;
+  # The wallpaper is painted by awww (home/darkman.nix), which can cross-fade between the
+  # day and night images; hyprpaper only swapped them.
+  services.hyprpaper.enable = false;
 
   # Power menu ($mod+Escape). With no style.css of its own it fell back to the package's
   # stock sheet — near-black tiles with a #3700B3 highlight, the one screen off the palette.
@@ -613,44 +681,46 @@ in
   # the icons still come from the package, as the stock sheet had them.
   programs.wlogout = {
     enable = true;
-    style =
+    # Six tiles, each a Nerd Font glyph and a word, in the palette: the same slab as the bar.
+    layout =
       let
-        icon = name: "${pkgs.wlogout}/share/wlogout/icons/${name}.png";
+        tile = label: glyph: text: action: keybind: {
+          inherit label action keybind;
+          text = "${glyph}  ${text}";
+        };
       in
-      ''
-        * {
-          background-image: none;
-          box-shadow: none;
-          font-family: "JetBrainsMono Nerd Font";
-        }
-        window {
-          background-color: alpha(#${c.base}, 0.85);
-        }
-        button {
-          margin: 8px;
-          border-radius: 8px;
-          border: 2px solid #${c.overlay};
-          color: #${c.text};
-          background-color: #${c.surface};
-          background-repeat: no-repeat;
-          background-position: center;
-          background-size: 25%;
-        }
-        button:focus, button:active, button:hover {
-          border-color: #${c.iris};
-          background-color: #${c.overlay};
-          outline-style: none;
-        }
-        #shutdown:focus, #shutdown:hover, #reboot:focus, #reboot:hover {
-          border-color: #${c.love};
-        }
-        #lock { background-image: image(url("${icon "lock"}")); }
-        #logout { background-image: image(url("${icon "logout"}")); }
-        #suspend { background-image: image(url("${icon "suspend"}")); }
-        #hibernate { background-image: image(url("${icon "hibernate"}")); }
-        #shutdown { background-image: image(url("${icon "shutdown"}")); }
-        #reboot { background-image: image(url("${icon "reboot"}")); }
-      '';
+      [
+        (tile "lock" "󰌾" "Lock" "loginctl lock-session" "l")
+        (tile "suspend" "󰒲" "Suspend" "systemctl suspend" "u")
+        (tile "logout" "󰍃" "Log out" "hyprctl dispatch exit" "e")
+        (tile "reboot" "󰜉" "Reboot" "systemctl reboot" "r")
+        (tile "shutdown" "󰐥" "Shut down" "systemctl poweroff" "s")
+        (tile "hibernate" "󰋊" "Hibernate" "systemctl hibernate" "h")
+      ];
+    style = ''
+      * {
+        background-image: none;
+        box-shadow: none;
+        font-family: "JetBrainsMono Nerd Font";
+        font-size: 20px;
+      }
+      window { background-color: alpha(#${c.base}, 0.75); }
+      button {
+        margin: 10px;
+        border-radius: 12px;
+        border: 1px solid alpha(#${c.hlMed}, 0.9);
+        color: #${c.subtle};
+        background-color: alpha(#${c.base}, 0.92);
+        transition: all 150ms ease;
+      }
+      button:focus, button:active, button:hover {
+        color: #${c.text};
+        border-color: #${c.iris};
+        background-color: alpha(#${c.overlay}, 0.9);
+        outline-style: none;
+      }
+      #shutdown:focus, #shutdown:hover, #reboot:focus, #reboot:hover { border-color: #${c.love}; }
+    '';
   };
 
   # The lock screen used to be a flat base colour with a bare input box on it: correct, but it
@@ -826,6 +896,60 @@ in
       };
     };
   };
+
+  # Cursor: Rosé Pine's, through GTK, X and Hyprland (home-manager exports the XCURSOR
+  # variables into the session). The greeter uses the same one (hosts/nixos-laptop.nix).
+  home.pointerCursor = {
+    package = pkgs.rose-pine-cursor;
+    name = "BreezeX-RosePine-Linux";
+    size = 24;
+    gtk.enable = true;
+  };
+
+  # A new terminal opens on the machine's card: the hands, and the few facts worth a glance,
+  # in the palette. Only in ghostty and not inside tmux, so scripts and ssh sessions stay quiet.
+  programs.fastfetch = {
+    enable = true;
+    settings = {
+      logo = {
+        source = fastfetchLogo;
+        type = "kitty-direct";
+        width = 44;
+        height = 14;
+        padding = {
+          top = 1;
+          right = 3;
+        };
+      };
+      display = {
+        separator = "  ";
+        color = {
+          keys = "magenta";
+          title = "blue";
+        };
+      };
+      modules = [
+        "title"
+        "separator"
+        { type = "os"; key = "󰣇 os"; }
+        { type = "kernel"; key = "󰌽 kernel"; }
+        { type = "wm"; key = "󰖲 wm"; }
+        { type = "uptime"; key = "󰔟 up"; }
+        { type = "packages"; key = "󰏖 pkgs"; }
+        { type = "cpu"; key = "󰻠 cpu"; }
+        { type = "memory"; key = "󰍛 mem"; }
+        { type = "disk"; key = "󰋊 disk"; }
+        { type = "battery"; key = "󰁹 bat"; }
+        "break"
+        "colors"
+      ];
+    };
+  };
+  programs.zsh.initContent = lib.mkOrder 1500 ''
+    if [[ -o interactive && -z "$TMUX" && "$TERM_PROGRAM" == ghostty && -z "$SSH_CONNECTION" ]]; then
+      ${lib.getExe pkgs.fastfetch}
+    fi
+  '';
 
   # Icon theme for GTK apps (stylix's gtk target sets the widget theme but no icon theme,
   # so only hicolor was there and many apps had no icon).
