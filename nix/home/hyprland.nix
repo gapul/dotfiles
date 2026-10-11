@@ -117,6 +117,8 @@ let
   guardUnits = [
     "xremap"
     "awww"
+    "fcitx5"
+    "azoo-key-skkserv"
     "hypridle"
     "mako"
     "darkman"
@@ -628,9 +630,9 @@ in
         };
 
         # Only things that have no systemd user unit of their own: hypridle / waybar / mako /
-        # awww are started by their home-manager services; listing them here as well would
-        # launch a second copy of each. fcitx5 (SKK) comes from i18n.inputMethod
-        # (hosts/nixos-laptop.nix); Hyprland does not run XDG autostart, so it is started here.
+        # awww / fcitx5 are started by their home-manager services (fcitx5's unit is in
+        # home/fcitx5-skk.nix, ordered after the skkserv); listing them here as well would
+        # launch a second copy of each.
         on = {
           _args = [
             "hyprland.start"
@@ -638,7 +640,6 @@ in
               function()
                 hl.exec_cmd("wl-paste --watch cliphist store") -- clipboard history
                 hl.exec_cmd("wl-gammarelay-rs") -- dbus daemon for night light
-                hl.exec_cmd("fcitx5 -d --replace")
               end'')
           ];
         };
