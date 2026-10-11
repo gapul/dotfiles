@@ -14,6 +14,8 @@
   # headless LLM worker (macmini.nix). Changes here affect both hosts.
   # GUI/peripheral-oriented settings (dock/finder/trackpad/fonts/homebrew) live on each host side.
 
+  imports = [ ./darwin-telemetry.nix ];
+
   nixpkgs.config.allowUnfree = true;
 
   # overlay to absorb temporary breakage in upstream nixpkgs (SSO: shared with flake.nix's mkPkgs).

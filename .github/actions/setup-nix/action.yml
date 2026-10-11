@@ -30,6 +30,10 @@ runs:
   steps:
     - name: Install Nix
       uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+      with:
+        # 既定では action と installer が実行イベントを install.determinate.systems に送る。
+        # 空文字で両方止まる (nix/hosts/darwin-telemetry.nix と同じ方針)。
+        diagnostic-endpoint: ''
 
     # flake input の1つ (mocopi-mac) が private repo なので、nix が git+ssh で取りに行ける
     # ように read-only の deploy key を置く。Install Nix の直後に置くのは、この後の
