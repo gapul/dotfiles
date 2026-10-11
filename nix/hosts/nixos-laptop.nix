@@ -169,10 +169,10 @@ in
         # No "resolution" line: on this HP firmware the mode rEFInd picked for "max" came up
         # with the red channel missing (everything blue); the mode the firmware is already in
         # is the panel's native one anyway.
-        # Not "linux": rEFInd then clears the screen before handing over, so the frame the GPU
-        # still holds when the Xe driver takes over from the EFI framebuffer is black rather
-        # than the menu (which showed for an instant in the middle of the boot).
-        use_graphics_for windows
+        # Graphics mode for both: without "linux" rEFInd drops to a text screen ("Starting
+        # nixos-generation-...", "Using load options") before the kernel, which is worse than
+        # the menu's frame showing for an instant when the Xe driver takes over.
+        use_graphics_for linux,windows
         hideui singleuser,hints,arrows,badges
         # Larger text and icons than the defaults (14px font, 128px icons) on the 1920x1200 panel.
         font fonts/ubuntu-mono-24.png
@@ -505,7 +505,9 @@ in
       # The GNOME keyring is not unlocked by this (no password at login); it asks the first
       # time something needs it.
       initial_session = {
-        command = "Hyprland";
+        # start-hyprland, not the bare binary: 0.56 sets the session up in the wrapper and
+        # shows a warning banner when started without it.
+        command = "${config.programs.hyprland.package}/bin/start-hyprland";
         user = "gapul";
       };
       default_session.user = "greeter";
