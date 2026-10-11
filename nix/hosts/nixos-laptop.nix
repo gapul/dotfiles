@@ -374,6 +374,9 @@ in
       "flakes"
     ];
     auto-optimise-store = true; # store dedup
+    # ~/.nix-profile and ~/.nix-defexpr move under XDG_STATE_HOME, as on the Macs
+    # (hosts/darwin-common.nix).
+    use-xdg-base-directories = true;
     # The weekly GC alone let the disk fill between runs (79% used on 2026-10-08, 12 GiB of dead
     # paths waiting for Monday). When a build sees less than min-free, nix collects dead paths
     # until max-free is free. It never touches live generations, so rollback is unaffected.
