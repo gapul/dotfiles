@@ -20,7 +20,9 @@ return {
         skkServerHost = "127.0.0.1",
         skkServerPort = 1178,
         skkServerResEnc = "utf-8",
-        skkServerReqEnc = "euc-jp",
+        -- macOS の azooKey skkserv.app は macSKK に合わせて EUC-JP で受ける。Linux 版は EUC-JP の
+        -- 要求に応答しないので UTF-8 で送る (nix/home/fcitx5-skk.nix)。
+        skkServerReqEnc = vim.fn.has("mac") == 1 and "euc-jp" or "utf-8",
       })
       vim.keymap.set({ "i", "c", "t" }, "<C-j>", "<Plug>(skkeleton-toggle)")
     end,
