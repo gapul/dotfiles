@@ -17,7 +17,15 @@
   imports = [ nixLinuxBuilder.darwinModules.default ];
 
   services.nix-linux-builder = {
-    enable = true;
+    # Disabled 2026-10-11: it corrupts outputs. Inside the guest, `cp` of a store file whose link
+    # count is above 1 (hardlinked by `nix store optimise`) writes a file of the same size full of
+    # NUL bytes; `cat` of the same file and `cp` of a file with a single link are fine. Probed with
+    # nvim-ts-autotag's source (/nix/store/f117p5v3ym1s54by762z633r4lfa9k3q-source): cp, also with
+    # --reflink=never and via $TMPDIR, gave zeros. It broke the laptop-closure job
+    # (nvim-ts-autotag's require check read zeroed Lua) and put a rose-pine-dawn.yazi with a
+    # zeroed preview.png into gapul-dotfiles.cachix. Until that is fixed upstream, the macmini has
+    # no Linux builder and laptop-closure cannot build x86_64-linux here.
+    enable = false;
     # One VM per build, and max-jobs = 2 here (flake.nix), so two can run at once. The resident
     # models hold most of the 24 GB; 6 GiB each keeps the worst case at 12 GiB. Four vCPUs matches
     # cores = 4.
