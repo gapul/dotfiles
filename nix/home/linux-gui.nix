@@ -2,6 +2,7 @@
   config,
   pkgs,
   nixpkgsStable,
+  user,
   ...
 }:
 # GUI apps for the NixOS laptop. Imported only on nixos-laptop.
@@ -146,6 +147,34 @@ in
     ];
   });
 
+  # Without user-dirs.dirs every XDG_*_DIR resolves to $HOME, so hyprshot and friends dropped
+  # their output straight into ~ (2026-10-11). Only the folders actually in use are declared;
+  # the rest stay null rather than seeding empty Desktop/Music/Public/Templates.
+  xdg.userDirs = {
+    enable = true;
+    createDirectories = true;
+    setSessionVariables = false; # xdg-user-dir reads user-dirs.dirs directly
+    documents = "${config.home.homeDirectory}/Documents";
+    download = "${config.home.homeDirectory}/Downloads";
+    pictures = "${config.home.homeDirectory}/Pictures";
+    videos = "${config.home.homeDirectory}/Videos";
+    desktop = null;
+    music = null;
+    publicShare = null;
+    templates = null;
+    projects = null;
+  };
+
+  # Code lives under ghq.root (modules/home/git.nix), not loose in ~/src. Seed the root and
+  # the own-account level so `ghq get` / `ghq create` have a place to land on a fresh install.
+  systemd.user.tmpfiles.rules = [
+    "d ${config.programs.git.settings.ghq.root}/github.com/${user.gitUser} 0755 - - -"
+  ];
+
+  # Keep the rest of the clutter out of ~ as well: GTK 2's rc file and adb's state dir.
+  gtk.gtk2.configLocation = "${config.xdg.configHome}/gtk-2.0/gtkrc";
+  home.sessionVariables.ANDROID_USER_HOME = "${config.xdg.dataHome}/android";
+
   xdg.mimeApps = {
     enable = true;
     defaultApplications = {
@@ -192,6 +221,13 @@ in
   home.packages = with pkgs; [
     fusuma
     librepods
+    # Screen of the Mac mini over the tailnet. Was a hand-written ~/.local/bin script calling
+    # `nix run nixpkgs#tigervnc`; the password stays a mutable file (vncpasswd output).
+    (writeShellApplication {
+      name = "vnc-macmini";
+      runtimeInputs = [ tigervnc ];
+      text = ''exec vncviewer -passwd "${config.xdg.configHome}/tigervnc/macmini.passwd" 100.105.135.49 "$@"'';
+    })
     # ─── Browsers ───
     google-chrome # for sites that only test against Chrome, and for the automation profile
     tor-browser
@@ -229,7 +265,9 @@ in
 
     # ─── Creative / CAD / DTM ───
     blender
-    freecad
+    # From stable: unstable's freecad 1.1.4 is uncached and its vtk fails to configure (PEGTL
+    # not found, 2026-10-12). Drop back to `freecad` once Hydra builds it again.
+    nixpkgsStable.legacyPackages.${pkgs.stdenv.hostPlatform.system}.freecad
     bitwig-studio
     reaper
     yabridge
