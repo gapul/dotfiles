@@ -279,6 +279,12 @@ in
   programs.hyprlock = {
     enable = true;
     settings = {
+      # Unlock with a finger as well as the password. hyprlock asks fprintd over D-Bus itself
+      # instead of going through PAM, so services.fprintd (hosts/nixos-laptop.nix) alone did not
+      # cover the lock screen. The placeholder shows fprintd's prompt ("Scan your finger", a
+      # retry message) inside the input field.
+      auth."fingerprint:enabled" = true;
+
       background = [
         {
           path = "screenshot";
@@ -321,7 +327,7 @@ in
           font_color = "rgb(${c.text})";
           check_color = "rgb(${c.foam})";
           fail_color = "rgb(${c.love})";
-          placeholder_text = "";
+          placeholder_text = "$FPRINTPROMPT";
           fade_on_empty = false;
           position = "0, -40";
           halign = "center";
