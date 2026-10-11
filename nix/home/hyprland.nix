@@ -696,7 +696,7 @@ in
           (bind (key "comma") (exec "${settingsMenu}")) # settings picker (Cmd+, on the mac)
           # screenshot / color picker
           (bind (key "P") (exec "${screenshotRegion}")) # region -> satty -> clipboard
-          (bind (shiftKey "P") (exec "hyprshot -m window")) # window -> save
+          (bind (shiftKey "P") (exec "hyprshot -m window -o ${config.xdg.userDirs.pictures}/Screenshots")) # window -> save
           (bind (shiftKey "C") (exec "hyprpicker -a")) # pick a color and copy
           # night light (switch color temperature 4000K / 6500K)
           (bind (shiftKey "N") (
@@ -1090,6 +1090,9 @@ in
     name = "BreezeX-RosePine-Linux";
     size = 24;
     gtk.enable = true;
+    # The theme still reaches every toolkit through XDG_DATA_DIRS / XCURSOR_PATH; only the
+    # legacy ~/.icons copy is dropped.
+    dotIcons.enable = false;
   };
 
   # A new terminal opens on the machine's card: the hands, and the few facts worth a glance,
