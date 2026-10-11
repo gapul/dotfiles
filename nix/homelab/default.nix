@@ -62,6 +62,7 @@
     ./mail.nix
     ./terraria.nix
     ./health.nix
+    ./healthchecks.nix # dead man's switch for timers (checks.gapul.net), alerts via ntfy
     ./homebox.nix
     ./homeassistant.nix
     ./homepage.nix
