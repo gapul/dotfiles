@@ -169,6 +169,14 @@ let
       interval = "1h";
     };
     ntfy.upstream = "127.0.0.1:8082";
+    # Healthchecks (homelab/healthchecks.nix): dead man's switch for the timers. The UI lists
+    # every job and when it last ran, so Authelia. /ping/* stays open for jobs on other hosts;
+    # the ping key in the URL is the credential there.
+    checks = {
+      upstream = "127.0.0.1:8115";
+      auth = true;
+      authSkip = "/ping/*";
+    };
     cache.upstream = "127.0.0.1:8083"; # attic (own nix binary cache)
     shell.upstream = "127.0.0.1:8888"; # atuin (shell history sync server)
     # blocky's API/metrics (no UI). /check is a custom single page (configs/homelab/dns-check.html):
