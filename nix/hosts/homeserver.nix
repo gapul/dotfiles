@@ -591,6 +591,32 @@ in
             alerts = [ ntfyAlert ];
           }
         ];
+      # Push-based checks: the dead man's switch the backup notes kept asking for. A timer
+      # pushes success=true after a run (and success=false on error); if nothing arrives within
+      # heartbeat.interval, gatus marks it down and alerts through the same ntfy. This is what
+      # ntfy-failure@ cannot see: a timer that never fires, or a unit lost in a rebuild.
+      #   curl -X POST -H "Authorization: Bearer $GATUS_PUSH_TOKEN" \
+      #     "http://127.0.0.1:8084/api/v1/endpoints/timers_<name>/external?success=true"
+      # The key is <group>_<name>. The token is GATUS_PUSH_TOKEN in gatus.env, which the pushing
+      # units already read for the ntfy pair.
+      external-endpoints = [
+        {
+          name = "duo-remind"; # homelab/duo-remind.nix, daily 21:00 JST
+          group = "timers";
+          token = "\${GATUS_PUSH_TOKEN}";
+          # 21:00 + up to 5 min of RandomizedDelaySec, so a day plus slack. A missed night is
+          # reported by about 22:00 the next day rather than racing the next run.
+          heartbeat.interval = "25h";
+          alerts = [
+            {
+              type = "ntfy";
+              failure-threshold = 1;
+              send-on-resolved = true;
+              enabled = true;
+            }
+          ];
+        }
+      ];
       alerting.ntfy = {
         # ntfy runs on this host, so this notifies about everything except ntfy
         # and the machine itself being down. The Pi is the second pair of eyes

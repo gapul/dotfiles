@@ -16,87 +16,149 @@ mapkey(">", "Video: speed up", () => rate(0.25));
 mapkey("<", "Video: slow down", () => rate(-0.25));
 mapkey("=", "Video: reset speed", () => rate(1 - document.querySelector("video")?.playbackRate));
 
-// Theme: Catppuccin palette (Mocha in dark mode, Latte in light), frosted panels, system
-// fonts. The UI lives in Surfingkeys' own iframe, so `prefers-color-scheme` there follows the
-// browser's content color scheme (the System theme in the Firefox module).
+// Theme (2026-10-11): the Rosé Pine pair the rest of the desktop uses (configs/theme/palettes.json
+// is the source of truth; this file is fetched over HTTP by the extension, so the values are
+// copied here rather than read). Dawn when the page prefers light, Main when it prefers dark:
+// the UI lives in Surfingkeys' own iframe, so `prefers-color-scheme` there follows the browser's
+// content color scheme (System theme in the Firefox module, flipped by darkman on the laptop).
+// The look is a floating command palette: one rounded sheet, hairline borders, frosted glass,
+// soft layered shadow, generous padding, no hard dividers. Fonts follow the rice (JetBrainsMono
+// Nerd Font) and fall back to the platform UI face.
+// Surfingkeys 1.17.11 pins its UI shadow host to color-scheme: light. That also
+// forces prefers-color-scheme inside its iframe to light, regardless of Firefox.
+// Opt this host into both schemes when it is lazily attached (or reattached).
+// Only touch Surfingkeys' extension iframe; leave the page's colour scheme alone.
+if (window === window.top && !window.__surfingkeysColorSchemeObserver) {
+  const followSystemScheme = (element) => {
+    if (!(element instanceof Element)) return;
+    const frame = element.shadowRoot?.querySelector("iframe.sk_ui");
+    if (frame?.src.startsWith("moz-extension://") && frame.src.endsWith("/pages/frontend.html")) {
+      element.style.colorScheme = "light dark";
+    }
+  };
+  document.querySelectorAll("div").forEach(followSystemScheme);
+  const observer = new MutationObserver((records) => {
+    for (const record of records) {
+      for (const node of record.addedNodes) {
+        followSystemScheme(node);
+      }
+    }
+  });
+  observer.observe(document.documentElement, { childList: true, subtree: true });
+  window.__surfingkeysColorSchemeObserver = observer;
+}
+
+settings.omnibarPosition = "middle"; // float the omnibar in the upper third instead of pinning it to the top edge
+settings.omnibarMaxResults = 8;
+settings.hintAlign = "left";
 settings.theme = `
 :root {
-  --sk-bg: rgba(239, 241, 245, 0.92); --sk-panel: #e6e9ef; --sk-line: #ccd0da;
-  --sk-fg: #4c4f69; --sk-dim: #8c8fa1; --sk-accent: #8839ef; --sk-accent2: #04a5e5;
-  --sk-green: #40a02b; --sk-yellow: #df8e1d; --sk-red: #d20f39; --sk-focus: #dce0e8;
+  --sk-bg: rgba(250, 244, 237, 0.86); --sk-panel: #fffaf3; --sk-raised: #f2e9e1;
+  --sk-line: rgba(87, 82, 121, 0.14); --sk-fg: #575279; --sk-dim: #797593; --sk-muted: #9893a5;
+  --sk-accent: #907aa9; --sk-accent2: #286983; --sk-foam: #56949f; --sk-gold: #ea9d34;
+  --sk-love: #b4637a; --sk-focus: rgba(144, 122, 169, 0.14);
+  --sk-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 20px 50px rgba(87, 82, 121, 0.22), 0 2px 8px rgba(87, 82, 121, 0.12);
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --sk-bg: rgba(30, 30, 46, 0.92); --sk-panel: #181825; --sk-line: #313244;
-    --sk-fg: #cdd6f4; --sk-dim: #6c7086; --sk-accent: #cba6f7; --sk-accent2: #89b4fa;
-    --sk-green: #a6e3a1; --sk-yellow: #f9e2af; --sk-red: #f38ba8; --sk-focus: #313244;
+    --sk-bg: rgba(31, 29, 46, 0.84); --sk-panel: #1f1d2e; --sk-raised: #26233a;
+    --sk-line: rgba(224, 222, 244, 0.1); --sk-fg: #e0def4; --sk-dim: #908caa; --sk-muted: #6e6a86;
+    --sk-accent: #c4a7e7; --sk-accent2: #9ccfd8; --sk-foam: #9ccfd8; --sk-gold: #f6c177;
+    --sk-love: #eb6f92; --sk-focus: rgba(196, 167, 231, 0.14);
+    --sk-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset, 0 24px 60px rgba(0, 0, 0, 0.55), 0 2px 10px rgba(0, 0, 0, 0.35);
   }
 }
 .sk_theme {
-  font-family: -apple-system, "SF Pro Text", system-ui, sans-serif; font-size: 13px;
+  font-family: "JetBrainsMono Nerd Font", -apple-system, "SF Pro Text", system-ui, sans-serif;
+  font-size: 13px; letter-spacing: 0.01em;
   background: var(--sk-bg); color: var(--sk-fg);
-  -webkit-backdrop-filter: blur(24px) saturate(160%); backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(28px) saturate(170%); backdrop-filter: blur(28px) saturate(170%);
 }
-.sk_theme input, .sk_theme textarea { font-family: inherit; color: var(--sk-fg); }
+.sk_theme input, .sk_theme textarea { font-family: inherit; color: var(--sk-fg); caret-color: var(--sk-accent); }
 .sk_theme kbd, #sk_keystroke, #sk_usage .kbd-span, .sk_theme .url {
-  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-family: "JetBrainsMono Nerd Font", ui-monospace, "SF Mono", Menlo, monospace;
 }
-/* omnibar */
+.sk_theme ::selection { background: var(--sk-focus); }
+
+/* omnibar: a floating sheet, no dividers, the focused row lit from inside */
 #sk_omnibar {
-  border: 1px solid var(--sk-line); border-radius: 14px; overflow: hidden;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+  width: min(760px, 92vw); left: calc(50% - min(760px, 92vw) / 2); top: 14%;
+  border: 1px solid var(--sk-line); border-radius: 20px; overflow: hidden;
+  box-shadow: var(--sk-shadow);
 }
-#sk_omnibarSearchArea { border-bottom: 1px solid var(--sk-line); padding: 10px 14px; }
-#sk_omnibarSearchArea input { font-size: 15px; background: transparent; }
-#sk_omnibarSearchArea .prompt { color: var(--sk-accent); font-weight: 600; }
-#sk_omnibarSearchArea .resultPage { color: var(--sk-dim); }
-#sk_omnibarSearchResult { max-height: 60vh; }
-#sk_omnibarSearchResult > ul > li { padding: 7px 14px; border-bottom: 1px solid var(--sk-line); }
-#sk_omnibarSearchResult > ul > li:last-child { border-bottom: 0; }
-#sk_omnibarSearchResult ul li.focused { background: var(--sk-focus); box-shadow: inset 3px 0 0 var(--sk-accent); }
-.sk_theme .title { color: var(--sk-fg); }
-.sk_theme .url { color: var(--sk-accent2); font-size: 11px; }
+.sk_omnibar_middle #sk_omnibarSearchArea { margin: 0; }
+#sk_omnibarSearchArea { border-bottom: 1px solid var(--sk-line); padding: 14px 18px; }
+#sk_omnibarSearchArea input { font-size: 17px; font-weight: 500; background: transparent; }
+#sk_omnibarSearchArea input::placeholder { color: var(--sk-muted); }
+#sk_omnibarSearchArea .prompt {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--sk-accent); background: var(--sk-focus); border-radius: 999px; padding: 3px 9px; margin-right: 8px;
+}
+#sk_omnibarSearchArea .resultPage { font-size: 11px; color: var(--sk-muted); }
+#sk_omnibarSearchResult { max-height: 56vh; margin: 6px 8px 8px; }
+/* the selectors carry .sk_theme + child combinators to outweigh the extension's own striped rows */
+.sk_theme #sk_omnibarSearchResult > ul > li { padding: 9px 12px; gap: 10px; border: 0; border-radius: 12px; margin: 2px 0; background: transparent; }
+.sk_theme #sk_omnibarSearchResult > ul > li:nth-child(odd) { background: transparent; }
+.sk_theme #sk_omnibarSearchResult > ul > li.focused { background: var(--sk-focus); box-shadow: inset 0 0 0 1px var(--sk-line); }
+#sk_omnibarSearchResult li div.url { font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.sk_theme .title { color: var(--sk-fg); font-weight: 500; }
+.sk_theme .url { color: var(--sk-accent2); font-size: 11px; opacity: 0.9; }
 .sk_theme .annotation { color: var(--sk-dim); }
 .sk_theme .omnibar_highlight { color: var(--sk-accent); font-weight: 600; text-decoration: none; }
-.sk_theme .omnibar_timestamp, .sk_theme .omnibar_visitcount { color: var(--sk-yellow); }
-.sk_theme .omnibar_folder { color: var(--sk-green); }
-.sk_theme .separator { color: var(--sk-dim); }
-/* status line, find bar, keystroke echo */
-#sk_status, #sk_find { border: 1px solid var(--sk-line); border-radius: 10px 0 0 0; padding: 4px 10px; }
+.sk_theme .omnibar_timestamp, .sk_theme .omnibar_visitcount { color: var(--sk-gold); font-size: 11px; }
+.sk_theme .omnibar_folder { color: var(--sk-foam); }
+.sk_theme .separator { color: var(--sk-muted); }
+
+/* status line, find bar, keystroke echo: small pills floating off the edges */
+#sk_status, #sk_find {
+  right: 16px; bottom: 16px; padding: 6px 12px;
+  border: 1px solid var(--sk-line); border-radius: 999px; box-shadow: var(--sk-shadow);
+}
 #sk_find input { background: transparent; }
-#sk_keystroke { border: 1px solid var(--sk-line); border-radius: 10px 0 0 0; padding: 6px 10px; }
+#sk_keystroke {
+  background: var(--sk-bg); color: var(--sk-fg); /* the extension pins #sk_keystroke to black by id */
+  right: 16px; bottom: 16px; padding: 10px 12px;
+  border: 1px solid var(--sk-line); border-radius: 14px; box-shadow: var(--sk-shadow);
+}
 #sk_keystroke kbd, #sk_usage .kbd-span {
-  background: var(--sk-panel); border: 1px solid var(--sk-line); border-radius: 5px; padding: 1px 5px;
+  background: var(--sk-raised); border: 1px solid var(--sk-line); border-radius: 6px; padding: 1px 6px;
   color: var(--sk-accent); box-shadow: 0 1px 0 var(--sk-line);
 }
 #sk_keystroke .candidates { color: var(--sk-dim); }
+
 /* help, banner, bubble, popup, tab switcher */
-#sk_usage { border-radius: 14px; border: 1px solid var(--sk-line); }
-#sk_usage .feature_name > span { color: var(--sk-accent2); }
+#sk_usage { border-radius: 20px; border: 1px solid var(--sk-line); box-shadow: var(--sk-shadow); padding: 12px; }
+#sk_usage .feature_name > span { color: var(--sk-accent2); font-weight: 600; letter-spacing: 0.04em; }
 #sk_banner {
-  border: 1px solid var(--sk-line); border-radius: 0 0 12px 12px; padding: 6px 14px;
-  background: var(--sk-bg); color: var(--sk-fg);
+  left: calc(50% - 200px); width: 400px; text-align: center;
+  border: 1px solid var(--sk-line); border-radius: 0 0 16px 16px; padding: 8px 16px;
+  background: var(--sk-bg); color: var(--sk-fg); box-shadow: var(--sk-shadow);
 }
-#sk_bubble { border: 1px solid var(--sk-line); border-radius: 10px; }
-#sk_popup { border: 1px solid var(--sk-line); border-radius: 12px; }
-#sk_tabs { background: var(--sk-bg); border-radius: 14px; }
-div.sk_tab { border-radius: 10px; border: 1px solid var(--sk-line); background: var(--sk-panel); }
-div.sk_tab_title { color: var(--sk-fg); }
+#sk_bubble { border: 1px solid var(--sk-line); border-radius: 12px; box-shadow: var(--sk-shadow); }
+#sk_popup { border: 1px solid var(--sk-line); border-radius: 16px; box-shadow: var(--sk-shadow); }
+#sk_tabs { background: var(--sk-bg); padding: 10px; }
+div.sk_tab { border-radius: 14px; border: 1px solid var(--sk-line); background: var(--sk-panel); margin: 4px; padding: 8px 10px; box-shadow: var(--sk-shadow); }
+div.sk_tab_title { color: var(--sk-fg); font-weight: 500; }
 div.sk_tab_url { color: var(--sk-accent2); }
-div.sk_tab_hint { background: var(--sk-accent); color: var(--sk-panel); border-radius: 5px; font-weight: 700; }
+div.sk_tab_hint { background: var(--sk-accent); color: var(--sk-panel); border: 0; border-radius: 999px; font-weight: 700; padding: 1px 7px; }
+
 /* editor (vim mode) */
-#sk_editor { background: var(--sk-panel) !important; }
+#sk_editor { background: var(--sk-panel) !important; border-radius: 16px; }
 .ace_editor { background: var(--sk-panel) !important; color: var(--sk-fg) !important; }
 `;
 
-// Link hints: same accent, readable at a glance.
+// Hints live in the page, not the iframe, and take one static style, so they use colours that
+// read on both light and dark pages: iris on near-black for links, foam for text hints.
+const hintFont = `font-family: "JetBrainsMono Nerd Font", ui-monospace, "SF Mono", Menlo, monospace; font-size: 11px; font-weight: 700; letter-spacing: 0.04em;`;
 api.Hints.style(`
-  font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 11px; font-weight: 700;
-  padding: 2px 5px; border: 0; border-radius: 5px;
-  background: #cba6f7; color: #1e1e2e; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  ${hintFont}
+  padding: 2px 7px; border: 0; border-radius: 999px;
+  background: #c4a7e7; color: #191724;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.35) inset, 0 3px 10px rgba(25, 23, 36, 0.4);
 `);
 api.Hints.style(`
-  font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 11px; font-weight: 700;
-  padding: 2px 5px; border: 0; border-radius: 5px;
-  background: #89b4fa; color: #1e1e2e; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  ${hintFont}
+  padding: 2px 7px; border: 0; border-radius: 999px;
+  background: #9ccfd8; color: #191724;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.35) inset, 0 3px 10px rgba(25, 23, 36, 0.4);
 `, "text");

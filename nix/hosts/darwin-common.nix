@@ -1,4 +1,6 @@
 {
+  config,
+  lib,
   pkgs,
   user,
   # Settings this host alone wants added to /etc/nix/nix.custom.conf.
@@ -13,6 +15,8 @@
   # Host-independent base settings shared by the workstation (darwin.nix) and the
   # headless LLM worker (macmini.nix). Changes here affect both hosts.
   # GUI/peripheral-oriented settings (dock/finder/trackpad/fonts/homebrew) live on each host side.
+
+  imports = [ ./darwin-telemetry.nix ];
 
   nixpkgs.config.allowUnfree = true;
 
@@ -96,7 +100,22 @@
         extra-substituters = builtins.concatStringsSep " " (builtins.attrNames caches);
         extra-trusted-public-keys = builtins.concatStringsSep " " (builtins.attrValues caches);
       }
+      // passthroughSettings
       // nixCustomConf;
+      # Third-party modules (nix-linux-builder) declare their nix.conf lines through nix.settings,
+      # which nothing writes while nix.enable = false. Carry over the keys we rely on. Only on hosts
+      # that enable such a module: with no definitions, reading nix.settings throws.
+      passthroughSettings = lib.optionalAttrs (config.services.nix-linux-builder.enable or false) (
+        lib.mapAttrs (_: v: if builtins.isList v then lib.concatStringsSep " " v else toString v) (
+          lib.filterAttrs (
+            k: _:
+            builtins.elem k [
+              "external-builders"
+              "extra-experimental-features"
+            ]
+          ) config.nix.settings
+        )
+      );
       # Written as a store file and cat'd in: no heredoc quoting to get wrong.
       block = pkgs.writeText "nix-custom-conf-block" (
         ''
@@ -263,27 +282,25 @@
   # add ~/.local/libexec/tcc/nix-collect-garbage. Until then the daemon runs but GC still
   # stops at the first macl-tagged bundle; check /var/log/nix-gc.log for "0 store paths deleted".
   #
-  # 2d, not 30d, and no generation count: `nix-collect-garbage` can only express an age, and
-  # the program has to stay this binary invoked directly (a wrapper would be the thing TCC
-  # grants Full Disk Access to), so `nh clean all --keep 5` — what `just gc` uses by hand — is
-  # not available here. 30d never freed anything: these machines rebuild about three times a
-  # day, so the window held roughly 90 system closures at once (macmini on 2026-09-25: 97
-  # generations, 137G used, oldest exactly 30 days old, so a run would have dropped one).
-  # 7d (the next step) still held ~18 system + ~29 home generations on the MacBook, about 35G
-  # of store only old generations referenced (2026-10-01). Two days still leaves ~6 rebuilds
-  # to roll back to, which covers "yesterday's rebuild broke something".
+  # --delete-old: no generation but the current one is kept (decided 2026-10-11). Age windows
+  # never kept up: these machines rebuild about three times a day, so 30d held ~90 system
+  # closures (macmini on 2026-09-25: 97 generations, 137G used) and even 2d left enough behind
+  # that on 2026-10-11 the macmini had 57G free until a manual `nix-collect-garbage -d`. Rolling
+  # back means rebuilding an older commit, which cachix makes mostly downloads.
   #
-  # Sunday 03:45: before the user-side cleanups (04:15) and restic (05:00).
+  # Daily at 03:45, before the user-side cleanups (Sunday 04:15) and restic (05:00). Weekly left
+  # the macmini at 27G free on 2026-10-11: om ci on main builds the other Mac's closure there
+  # (~70G in an afternoon) and nothing roots it, so it sat until Sunday. Not min-free/max-free:
+  # the GC would then run inside nix-daemon, which has no Full Disk Access and stops at the first
+  # macl-tagged bundle (see above). pr-gate keeps its out-link root, so PR builds stay warm.
   launchd.daemons.nix-gc = {
     serviceConfig = {
       ProgramArguments = [
         "/Users/${user.username}/.local/libexec/tcc/nix-collect-garbage"
-        "--delete-older-than"
-        "2d"
+        "--delete-old"
       ];
       StartCalendarInterval = [
         {
-          Weekday = 0;
           Hour = 3;
           Minute = 45;
         }

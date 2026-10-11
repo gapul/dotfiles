@@ -48,6 +48,7 @@
     ./cli.nix
     ./dawarich.nix
     ./dawarich-freshness.nix
+    ./duo-remind.nix # Duolingo: 21:00 JST にその日まだなら ntfy
     ./element-web.nix
     ./filestash.nix
     ./forgejo.nix
