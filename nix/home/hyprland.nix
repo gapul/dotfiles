@@ -951,6 +951,18 @@ in
     fi
   '';
 
+  # Scrolling with the mac's feel, where the toolkit allows it. Wayland has no system-wide
+  # inertia (libinput reports finger motion, each app decides what to do after the fingers
+  # lift): GTK apps coast on their own, Firefox coasts through its own physics (set a little
+  # lower friction here, and the mac-like curve for wheel steps), Electron/Chromium apps do
+  # not coast on Linux at all.
+  programs.firefox.profiles.dev.settings = {
+    "apz.gtk.kinetic_scroll.enabled" = true;
+    "apz.fling_friction" = "0.0015"; # default 0.002; lower = longer coast
+    "general.smoothScroll" = true;
+    "general.smoothScroll.msdPhysics.enabled" = true;
+  };
+
   # Icon theme for GTK apps (stylix's gtk target sets the widget theme but no icon theme,
   # so only hicolor was there and many apps had no icon).
   gtk.iconTheme = {
