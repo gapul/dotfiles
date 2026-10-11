@@ -411,9 +411,11 @@ in
     package = null;
     portalPackage = null;
     # Hyprtasking: every workspace in a grid with its windows, like Mission Control
-    # (Hyper+Tab, or three fingers down on the touchpad). nixpkgs builds it against the same
+    # (Hyper+Tab). nixpkgs builds it against the same
     # Hyprland this system runs, so the plugin ABI matches (plugins must).
-    plugins = [ pkgs.hyprlandPlugins.hyprtasking ];
+    # Off for now: with the plugin loaded, two-finger scrolling stopped reaching the apps
+    # (2026-10-11, its touchpad hooks). To try again: put it back, log in afresh, test scrolling.
+    # plugins = [ pkgs.hyprlandPlugins.hyprtasking ];
     # settings generated in hyprlang format (pinned explicitly since the default may switch to lua).
     configType = "hyprlang";
     # Appended after settings, so nwg-displays' per-output rules land after the catch-all.
@@ -521,8 +523,8 @@ in
         ];
       };
 
-      # Touchpad: three fingers sideways switch workspaces; three fingers down opens the
-      # overview (plugin:hyprtasking below). Four fingers belong to fusuma (home/linux-gui.nix).
+      # Touchpad: three fingers sideways switch workspaces. Four fingers belong to fusuma
+      # (home/linux-gui.nix).
       gesture = [ "3, horizontal, workspace" ];
 
       "plugin:hyprtasking" = {
@@ -537,14 +539,9 @@ in
           label_background = "rgba(${c.base}cc)";
           label_size = 28;
         };
-        gestures = {
-          enabled = true;
-          move_fingers = 3;
-          move_distance = 300;
-          open_fingers = 3;
-          open_distance = 300;
-          open_positive = true;
-        };
+        # The plugin's own touchpad hooks are off: with them on, two-finger scrolling stopped
+        # reaching the apps. The overview is Hyper+Tab.
+        gestures.enabled = false;
         grid = {
           rows = 3;
           cols = 3;
@@ -565,7 +562,7 @@ in
         "$mod, L, exec, hyprlock" # manual lock
         "$mod, C, exec, cliphist list | wofi --dmenu | cliphist decode | wl-copy" # paste from history
         "$mod, period, exec, wofi-emoji" # emoji picker, like Cmd+Ctrl+Space on the mac
-        "$mod, Tab, hyprtasking:toggle, cursor" # every workspace at a glance
+        # "$mod, Tab, hyprtasking:toggle, cursor" # every workspace at a glance (plugin off, see above)
         "$mod, slash, exec, ${cheatsheet}" # every keybind, searchable
         "$mod, Escape, exec, wlogout" # power menu
         "$mod, comma, exec, ${settingsMenu}" # settings picker (Cmd+, on the mac)
