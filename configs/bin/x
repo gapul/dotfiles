@@ -17,7 +17,10 @@ PAGE=20
 start_relay() {
   mkdir -p "$(dirname "$LOG")"
   # ponytail: on-demand start instead of launchd; the relay opens a Chromium window (headless=false).
-  (nohup "$HOME/.local/state/nix/profile/bin/pnpm" dlx twitter-api-safe-mcp "$SETTINGS" >"$LOG" 2>&1 &)
+  # The laptop's pnpm sits in the nix profile; the macmini's comes from /etc/profiles via PATH.
+  local pnpm="$HOME/.local/state/nix/profile/bin/pnpm"
+  [ -x "$pnpm" ] || pnpm=$(command -v pnpm)
+  (nohup "$pnpm" dlx twitter-api-safe-mcp "$SETTINGS" >"$LOG" 2>&1 &)
   for _ in $(seq 60); do curl -sf -m 2 "$RELAY/health" >/dev/null && return; sleep 0.5; done
   echo "x: relay did not come up, see $LOG" >&2; exit 1
 }
