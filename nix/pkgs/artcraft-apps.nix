@@ -218,4 +218,34 @@ map mkCraft [
     hash = "sha256-8ifNBfBWRVZUzgio6mRvYWbrYQugM+djWgY40q0vpAI=";
     linuxHash = "sha256-3lteYfsVfxrlSuCjk7V+hs0cNU/qiwhSkokPqiEM93g=";
   }
+  {
+    name = "WordCraft";
+    version = "0.4.0";
+    hash = "sha256-kNMLI7fx84c/EI22EhjVFNjKVGXvftO6pTmo7STphlU=";
+    linuxHash = "sha256-hA+YXJj/rrFSqGQhOZ5RuQXWz4vLCALs0mgtfXcjGiY=";
+  }
+  {
+    name = "GridCraft";
+    version = "0.4.0";
+    hash = "sha256-TLddio6a2H11doFR2J6zolLjUn2whT6UcElctCQBmns=";
+    linuxHash = "sha256-0k855lr/r1sY6/KkI+8S8FQxttI2qLE0V+e/WOMoMJw=";
+  }
+  {
+    name = "DeckCraft";
+    version = "0.4.0";
+    hash = "sha256-1BFpxsHQ01Ip/mato4Vs1mm4kXyCw1cSNr37nLJMf5A=";
+    linuxHash = "sha256-1gdw8NbaiH/tXHaYP0kABG2H3X+9aWVKMiBJF4lLIs4=";
+  }
+  {
+    name = "SoundCraft";
+    version = "0.4.0";
+    hash = "sha256-M5dZfRVshQTxBNkE7oI2vIpJJiNIAKA0RJsIJtF7gFE=";
+    linuxHash = "sha256-Ad51aYJtOQ8+QwCdI3IY30iLKOyjqEV94YLjNBIFLnc=";
+  }
+  {
+    name = "CADCraft";
+    version = "0.4.0";
+    hash = "sha256-8ifNBfBWRVZUzgio6mRvYWbrYQugM+djWgY40q0vpAI=";
+    linuxHash = "sha256-3lteYfsVfxrlSuCjk7V+hs0cNU/qiwhSkokPqiEM93g=";
+  }
 ]

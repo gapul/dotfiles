@@ -268,6 +268,7 @@
       pkgs = mkPkgs system;
       user = import ./user.nix;
       commonSpecialArgs = {
+        nixpkgsStable = nixpkgs;
         inherit user;
         nixIndexDatabase = nix-index-database;
         agentSkills = agent-skills;
@@ -908,6 +909,7 @@
                     ./home/hyprland.nix # Hyprland rice (nixos-laptop only)
                     stylix.homeModules.stylix
                     ./home/stylix.nix # one palette for GTK/Qt/wofi (nixos-laptop only)
+                    ./home/darkman.nix # light by day, dark after sunset (nixos-laptop only)
                     ./home/ssh-tpm-agent.nix # TPM-sealed SSH key (nixos-laptop only: WSL has no TPM)
                     ./home/linux-gui.nix # GUI apps (the mac's cask list, as packages)
                     # programs.firefox.arkenfox for modules/home/firefox.nix (imported by linux-gui.nix)
@@ -958,6 +960,7 @@
                   # a broken stylix option would only surface at rebuild time on the machine.
                   stylix.homeModules.stylix
                   ./home/stylix.nix
+                  ./home/darkman.nix
                   ./home/dev.nix
                   ./home/ssh-tpm-agent.nix
                   # The GUI app list and the shared Firefox profile. Possible since Zen (which
