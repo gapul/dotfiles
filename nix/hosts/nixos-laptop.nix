@@ -288,14 +288,30 @@ in
   systemd.services.fbcon-unbind = {
     description = "Unbind the kernel text console from the framebuffer";
     wantedBy = [ "graphical.target" ];
-    after = [ "greetd.service" ];
-    unitConfig.ConditionPathExists = "/sys/class/vtconsole/vtcon1/bind";
+    # Before the greeter: the text console was being drawn in the moment between Plymouth
+    # letting go of the display and Hyprland's first frame. fbcon re-binds itself when the
+    # GPU driver registers its framebuffer, so wait for that (xe's "xedrmfb") first.
+    after = [ "plymouth-start.service" ];
+    before = [ "greetd.service" ];
     serviceConfig = {
       Type = "oneshot";
       RemainAfterExit = true;
-      # Give cage a moment to own the display first, so the unbind itself is not a flash.
-      ExecStart = "${pkgs.bash}/bin/sh -c 'sleep 4; echo 0 > /sys/class/vtconsole/vtcon1/bind'";
-      ExecStop = "${pkgs.bash}/bin/sh -c 'echo 1 > /sys/class/vtconsole/vtcon1/bind'";
+      ExecStart = pkgs.writeShellScript "fbcon-unbind" ''
+        for _ in $(seq 1 150); do
+          grep -qs xedrmfb /sys/class/graphics/fb0/name && break
+          sleep 0.1
+        done
+        for v in /sys/class/vtconsole/vtcon*; do
+          grep -qs "frame buffer" "$v/name" && echo 0 > "$v/bind"
+        done
+        exit 0
+      '';
+      ExecStop = pkgs.writeShellScript "fbcon-rebind" ''
+        for v in /sys/class/vtconsole/vtcon*; do
+          grep -qs "frame buffer" "$v/name" && echo 1 > "$v/bind"
+        done
+        exit 0
+      '';
     };
   };
 
