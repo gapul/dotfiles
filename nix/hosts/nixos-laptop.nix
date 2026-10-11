@@ -102,13 +102,20 @@ in
     "systemd.show_status=false"
     "vt.global_cursor_default=0" # no blinking cursor on the brief text console
   ];
-  # Plymouth normally clears the screen when it quits, which leaves a text console for the
-  # second before the greeter draws. --retain-splash keeps its last frame on the framebuffer
-  # until cage/ReGreet paints over it.
-  systemd.services.plymouth-quit.serviceConfig.ExecStart = [
-    ""
-    "-${pkgs.plymouth}/bin/plymouth quit --retain-splash" # "-": fine if plymouthd is not running
-  ];
+  # Hand the screen from Plymouth to the greeter without a text console in between. Stock
+  # order is: Plymouth quits (screen cleared, console shows) -> greetd starts -> cage draws a
+  # second later. Instead, as GDM does: greetd no longer waits for Plymouth; it deactivates
+  # it first (the splash stays, the DRM device is released), cage draws over the splash, and
+  # only then Plymouth quits, keeping its last frame rather than clearing.
+  services.greetd.greeterManagesPlymouth = true;
+  systemd.services.greetd.serviceConfig.ExecStartPre = "-${pkgs.plymouth}/bin/plymouth deactivate";
+  systemd.services.plymouth-quit = {
+    after = [ "greetd.service" ];
+    serviceConfig.ExecStart = [
+      ""
+      "-${pkgs.bash}/bin/sh -c 'sleep 3; ${pkgs.plymouth}/bin/plymouth quit --retain-splash'" # "-": fine if plymouthd is not running
+    ];
+  };
 
   # --- OS menu: rEFInd in front of systemd-boot ---
   # systemd-boot's menu is text only, and lanzaboote keeps it that way. rEFInd gives the
