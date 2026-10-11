@@ -235,7 +235,8 @@ in
           cat ${conf}
           echo
           echo "menuentry \"NixOS\" {"
-          echo "    icon theme/icons/os_nixos.png"
+          # (a stanza's icon path is relative to the volume root, unlike icons_dir and banner)
+          echo "    icon EFI/refind/theme/icons/os_nixos.png"
           echo "    loader /EFI/Linux/$(basename "$latest")"
           safe=$(ls "$esp"/EFI/Linux/nixos-generation-$latest_n-specialisation-safe-*.efi 2>/dev/null | head -n 1)
           [ -n "$safe" ] && {
