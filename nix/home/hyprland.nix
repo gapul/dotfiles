@@ -1040,6 +1040,9 @@ in
     name = "BreezeX-RosePine-Linux";
     size = 24;
     gtk.enable = true;
+    # The theme still reaches every toolkit through XDG_DATA_DIRS / XCURSOR_PATH; only the
+    # legacy ~/.icons copy is dropped.
+    dotIcons.enable = false;
   };
 
   # A new terminal opens on the machine's card: the hands, and the few facts worth a glance,

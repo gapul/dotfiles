@@ -171,6 +171,10 @@ in
     "d ${config.programs.git.settings.ghq.root}/github.com/${user.gitUser} 0755 - - -"
   ];
 
+  # Keep the rest of the clutter out of ~ as well: GTK 2's rc file and adb's state dir.
+  gtk.gtk2.configLocation = "${config.xdg.configHome}/gtk-2.0/gtkrc";
+  home.sessionVariables.ANDROID_USER_HOME = "${config.xdg.dataHome}/android";
+
   xdg.mimeApps = {
     enable = true;
     defaultApplications = {
@@ -217,6 +221,13 @@ in
   home.packages = with pkgs; [
     fusuma
     librepods
+    # Screen of the Mac mini over the tailnet. Was a hand-written ~/.local/bin script calling
+    # `nix run nixpkgs#tigervnc`; the password stays a mutable file (vncpasswd output).
+    (writeShellApplication {
+      name = "vnc-macmini";
+      runtimeInputs = [ tigervnc ];
+      text = ''exec vncviewer -passwd "${config.xdg.configHome}/tigervnc/macmini.passwd" 100.105.135.49 "$@"'';
+    })
     # ─── Browsers ───
     google-chrome # for sites that only test against Chrome, and for the automation profile
     tor-browser
@@ -235,7 +246,10 @@ in
 
     # ─── Devices / Remote ───
     # pymobiledevice3 7.7 needs qh3 < 2; unstable currently supplies qh3 2.x.
-    (nixpkgsStable.legacyPackages.${pkgs.stdenv.hostPlatform.system}.callPackage ../pkgs/pymobiledevice3.nix { })
+    (nixpkgsStable.legacyPackages.${pkgs.stdenv.hostPlatform.system}.callPackage
+      ../pkgs/pymobiledevice3.nix
+      { }
+    )
     libimobiledevice
     uxplay # iPhone AirPlay receiver
     android-tools # adb; USB permissions are provided by systemd
@@ -293,6 +307,5 @@ in
     lutris # GOG / standalone installers / emulators
     heroic # Epic / GOG / Amazon — the libraries the homelab free-games claimer fills up
   ];
-
 
 }
