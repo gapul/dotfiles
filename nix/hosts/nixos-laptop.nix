@@ -169,7 +169,10 @@ in
         # No "resolution" line: on this HP firmware the mode rEFInd picked for "max" came up
         # with the red channel missing (everything blue); the mode the firmware is already in
         # is the panel's native one anyway.
-        use_graphics_for linux,windows
+        # Not "linux": rEFInd then clears the screen before handing over, so the frame the GPU
+        # still holds when the Xe driver takes over from the EFI framebuffer is black rather
+        # than the menu (which showed for an instant in the middle of the boot).
+        use_graphics_for windows
         hideui singleuser,hints,arrows,badges
         # Larger text and icons than the defaults (14px font, 128px icons) on the 1920x1200 panel.
         font fonts/ubuntu-mono-24.png
