@@ -223,10 +223,10 @@ jobs:
   # from 2026-10-04 to 10-07). Nothing reached the cache, so each laptop rebuild compiled
   # rustdesk, tuicr and the rest locally for half an hour.
   #
-  # It runs on the macmini, whose nix daemon hands x86_64-linux to the Rosetta builder VM
-  # (hosts/macmini-rosetta-builder.nix): ten Apple cores and a store that persists, against a
-  # 4-vCPU hosted runner that starts empty every time. The runner user is trusted there, so the
-  # cachix step pushes what the VM built.
+  # It runs on the macmini, whose nix daemon hands x86_64-linux to a Rosetta VM through
+  # external-builders (hosts/macmini-linux-builder.nix): Apple cores and the host's persistent
+  # store, against a 4-vCPU hosted runner that starts empty every time. The runner user is
+  # trusted there, so the cachix step pushes what the VM built.
   #
   # nixos-laptop-ci differs from the real host only in its hardware file (the real one is not
   # in git), so the packages it builds are the same store paths the laptop asks for.
