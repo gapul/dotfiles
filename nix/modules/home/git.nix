@@ -56,7 +56,10 @@
       # deliberate physical gesture, which is the point — a commit cannot be signed in your name
       # by anything running unattended on this machine.
       key = "${config.home.homeDirectory}/.ssh/id_enclave_key.pub";
-      signByDefault = true;
+      # The Enclave key only exists on the Macs. Elsewhere every commit failed outright on the
+      # missing /usr/bin/ssh-keygen, so Linux commits go unsigned and GitHub signs the squash
+      # merge, rather than handing signing to a key that needs no gesture.
+      signByDefault = pkgs.stdenv.hostPlatform.isDarwin;
     };
     # HM 26.05: userName/userEmail/extraConfig merged into settings.*
     settings = {

@@ -2,6 +2,7 @@
   config,
   pkgs,
   nixpkgsStable,
+  user,
   ...
 }:
 # GUI apps for the NixOS laptop. Imported only on nixos-laptop.
@@ -145,6 +146,30 @@ in
       "--profile ${config.home.homeDirectory}/${config.programs.firefox.profilesPath}/dev"
     ];
   });
+
+  # Without user-dirs.dirs every XDG_*_DIR resolves to $HOME, so hyprshot and friends dropped
+  # their output straight into ~ (2026-10-11). Only the folders actually in use are declared;
+  # the rest stay null rather than seeding empty Desktop/Music/Public/Templates.
+  xdg.userDirs = {
+    enable = true;
+    createDirectories = true;
+    setSessionVariables = false; # xdg-user-dir reads user-dirs.dirs directly
+    documents = "${config.home.homeDirectory}/Documents";
+    download = "${config.home.homeDirectory}/Downloads";
+    pictures = "${config.home.homeDirectory}/Pictures";
+    videos = "${config.home.homeDirectory}/Videos";
+    desktop = null;
+    music = null;
+    publicShare = null;
+    templates = null;
+    projects = null;
+  };
+
+  # Code lives under ghq.root (modules/home/git.nix), not loose in ~/src. Seed the root and
+  # the own-account level so `ghq get` / `ghq create` have a place to land on a fresh install.
+  systemd.user.tmpfiles.rules = [
+    "d ${config.programs.git.settings.ghq.root}/github.com/${user.gitUser} 0755 - - -"
+  ];
 
   xdg.mimeApps = {
     enable = true;

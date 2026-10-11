@@ -662,7 +662,7 @@ in
           (bind (key "comma") (exec "${settingsMenu}")) # settings picker (Cmd+, on the mac)
           # screenshot / color picker
           (bind (key "P") (exec "${screenshotRegion}")) # region -> satty -> clipboard
-          (bind (shiftKey "P") (exec "hyprshot -m window")) # window -> save
+          (bind (shiftKey "P") (exec "hyprshot -m window -o ${config.xdg.userDirs.pictures}/Screenshots")) # window -> save
           (bind (shiftKey "C") (exec "hyprpicker -a")) # pick a color and copy
           # night light (switch color temperature 4000K / 6500K)
           (bind (shiftKey "N") (exec "busctl --user set-property rs.wl-gammarelay / rs.wl.gammarelay Temperature q 4000"))
