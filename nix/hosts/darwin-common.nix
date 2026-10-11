@@ -282,23 +282,18 @@
   # add ~/.local/libexec/tcc/nix-collect-garbage. Until then the daemon runs but GC still
   # stops at the first macl-tagged bundle; check /var/log/nix-gc.log for "0 store paths deleted".
   #
-  # 2d, not 30d, and no generation count: `nix-collect-garbage` can only express an age, and
-  # the program has to stay this binary invoked directly (a wrapper would be the thing TCC
-  # grants Full Disk Access to), so `nh clean all --keep 5` — what `just gc` uses by hand — is
-  # not available here. 30d never freed anything: these machines rebuild about three times a
-  # day, so the window held roughly 90 system closures at once (macmini on 2026-09-25: 97
-  # generations, 137G used, oldest exactly 30 days old, so a run would have dropped one).
-  # 7d (the next step) still held ~18 system + ~29 home generations on the MacBook, about 35G
-  # of store only old generations referenced (2026-10-01). Two days still leaves ~6 rebuilds
-  # to roll back to, which covers "yesterday's rebuild broke something".
+  # --delete-old: no generation but the current one is kept (decided 2026-10-11). Age windows
+  # never kept up: these machines rebuild about three times a day, so 30d held ~90 system
+  # closures (macmini on 2026-09-25: 97 generations, 137G used) and even 2d left enough behind
+  # that on 2026-10-11 the macmini had 57G free until a manual `nix-collect-garbage -d`. Rolling
+  # back means rebuilding an older commit, which cachix makes mostly downloads.
   #
   # Sunday 03:45: before the user-side cleanups (04:15) and restic (05:00).
   launchd.daemons.nix-gc = {
     serviceConfig = {
       ProgramArguments = [
         "/Users/${user.username}/.local/libexec/tcc/nix-collect-garbage"
-        "--delete-older-than"
-        "2d"
+        "--delete-old"
       ];
       StartCalendarInterval = [
         {
