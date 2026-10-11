@@ -7,11 +7,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1790154098,
-        "narHash": "sha256-SviEpvFefXCPOmQ2b41c4ujE7BzWYJ/h8p/HZNxD2B8=",
+        "lastModified": 1791738353,
+        "narHash": "sha256-WzO385lhPpiVu5UiG7ReW/s3nNRDvPsHzDUBxs8zqfs=",
         "owner": "Kyure-A",
         "repo": "agent-skills-nix",
-        "rev": "dc122af897ab9a685c20ae54c639021619dbbb52",
+        "rev": "660b518c0e0a75b2952df82c3110e7cee7f13a2f",
         "type": "github"
       },
       "original": {
@@ -114,11 +114,11 @@
     "brew-api": {
       "flake": false,
       "locked": {
-        "lastModified": 1791732312,
-        "narHash": "sha256-7Ls9QQjySdvz7/XraGijrk/S1CKiR/XduEKNzLr4cco=",
+        "lastModified": 1791748753,
+        "narHash": "sha256-dJHIqg83B6hIHU98ipn163AVLaY9BvIiCayY6B2nyfk=",
         "owner": "BatteredBunny",
         "repo": "brew-api",
-        "rev": "5a607868e2948bd7d179a8a27f9ed5d6d45dd837",
+        "rev": "fcd8e2c8f36c1e017f0803b0dc71843460200b36",
         "type": "github"
       },
       "original": {
