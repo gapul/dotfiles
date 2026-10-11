@@ -474,6 +474,9 @@ in
         background_color = "rgb(${c.base})";
         force_default_wallpaper = 0;
         disable_hyprland_logo = true;
+        # The random one-liner Hyprland draws at the bottom of a bare screen ("How do I exit
+        # vim????") showed whenever the wallpaper was not up yet (session start, after a resume).
+        disable_splash_rendering = true;
         # If hyprlock dies while the session is locked, the compositor keeps holding the lock
         # and the screen stays black: a replacement hyprlock is refused, and the documented
         # recovery (`hyprctl eval 'hl.clear_crashed_lockscreen()'`) needs the lua config
@@ -850,7 +853,9 @@ in
       general = {
         lock_cmd = "pidof hyprlock || hyprlock";
         before_sleep_cmd = "loginctl lock-session";
-        after_sleep_cmd = "hyprctl dispatch dpms on";
+        # The wallpaper daemon came back from suspend without its buffers (bare screen until
+        # something repainted); starting it afresh repaints within a second.
+        after_sleep_cmd = "hyprctl dispatch dpms on; systemctl --user try-restart awww.service";
       };
       listener = [
         {
