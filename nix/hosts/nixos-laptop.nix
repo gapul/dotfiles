@@ -274,6 +274,26 @@ in
       text = "${install}";
     };
 
+  # No kernel text console on the panel once the greeter is up. Every hand-over of the
+  # display (Plymouth to greeter, lock and unlock, suspend and resume, the last second of a
+  # shutdown) let fbcon paint its text console for an instant. Unbinding fbcon from the
+  # framebuffer stops that for good: the VTs still exist (Ctrl+Alt+F2 still logs in, just
+  # on a black screen), and `echo 1 > /sys/class/vtconsole/vtcon1/bind` brings the text back
+  # if it is ever needed. The safe specialisation keeps the console.
+  systemd.services.fbcon-unbind = {
+    description = "Unbind the kernel text console from the framebuffer";
+    wantedBy = [ "graphical.target" ];
+    after = [ "greetd.service" ];
+    unitConfig.ConditionPathExists = "/sys/class/vtconsole/vtcon1/bind";
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      # Give cage a moment to own the display first, so the unbind itself is not a flash.
+      ExecStart = "${pkgs.bash}/bin/sh -c 'sleep 4; echo 0 > /sys/class/vtconsole/vtcon1/bind'";
+      ExecStop = "${pkgs.bash}/bin/sh -c 'echo 1 > /sys/class/vtconsole/vtcon1/bind'";
+    };
+  };
+
   # The ESP itself cannot be encrypted (firmware reads it in plaintext), but Secure Boot
   # verifies the signature of kernel/initrd (UKI), so tampering with the boot chain on the ESP is detected.
   # Since the existing Windows ESP is reused, confirm that the generated hardware-configuration.nix's
@@ -544,6 +564,7 @@ in
     programs.hyprland.enable = lib.mkForce false;
     services.greetd.enable = lib.mkForce false;
     services.displayManager.regreet.enable = lib.mkForce false; # reads greetd's session user
+    systemd.services.fbcon-unbind.enable = lib.mkForce false; # the text console is the point here
     hardware.graphics.enable = lib.mkForce false;
     # Anything that pulls in the graphics stack has to go too. With graphics off,
     # hardware.graphics.package has no value, so a module that merely reads it (steam and
