@@ -35,6 +35,31 @@ let
   # module in programs.waybar below).
   appIcon = name: "<span font_family='sketchybar-app-font' size='large' rise='-3500'>${name}</span>";
 
+  # The power menu's icons: Nerd Font glyphs drawn into PNGs in the palette's text colour
+  # (code points, so the private-use characters survive any editor; the UTF-8 locale is
+  # needed because the build sandbox's C locale makes bash print the escape literally).
+  wlogoutIcons =
+    let
+      glyphs = {
+        lock = "f033e";
+        suspend = "f04b2";
+        logout = "f0343";
+        reboot = "f0709";
+        shutdown = "f0425";
+        hibernate = "f02ca";
+      };
+      font = "${pkgs.nerd-fonts.jetbrains-mono}/share/fonts/truetype/NerdFonts/JetBrainsMono/JetBrainsMonoNerdFontMono-Regular.ttf";
+    in
+    pkgs.runCommand "wlogout-icons" { nativeBuildInputs = [ pkgs.imagemagick ]; } ''
+      mkdir -p $out
+      ${lib.concatStringsSep "\n" (
+        lib.mapAttrsToList (
+          name: cp:
+          "magick -background none -fill '#${c.text}' -font ${font} -pointsize 320 label:\"$(LC_ALL=C.UTF-8 printf '\\U000${cp}')\" -trim +repage -gravity center -extent 400x400 PNG32:$out/${name}.png"
+        ) glyphs
+      )}
+    '';
+
   # The hands, cropped from the wallpaper, as the terminal greeting's picture.
   fastfetchLogo = pkgs.runCommand "fastfetch-logo.png" { nativeBuildInputs = [ pkgs.imagemagick ]; } ''
     magick ${lockWallpaper} -gravity center -crop 2600x1100+0+0 +repage -resize 880x -quality 92 PNG24:$out
@@ -179,13 +204,11 @@ let
     # CPU, memory, (disk), what is playing, volume, input source, Bluetooth, Wi-Fi, battery.
     modules-right = [
       "custom/guard"
-      "idle_inhibitor"
       "cpu"
       "memory"
       "disk"
       "mpris"
       "pulseaudio"
-      "custom/ime"
       "bluetooth"
       "network"
       "battery"
@@ -326,7 +349,7 @@ let
       interval = 60;
     };
     network = {
-      format-wifi = "󰖩 {essid}";
+      format-wifi = "󰖩";
       format-ethernet = "󰈀 {ifname}";
       format-disconnected = "󰖪";
       tooltip-format-wifi = "{essid} ({signalStrength}%)";
@@ -366,7 +389,7 @@ let
   };
 in
 {
-  imports = [ ./wl-keyboard.nix ];
+  imports = [ ./wl-keyboard.nix ./waybar-appearance.nix ./desktop-appearance.nix ];
   # Binaries referenced by the keybinds / exec-once below. Without these the rice
   # is inert: $mod+Return execs a ghostty that is not in the closure, and the
   # night-light / screenshot / clipboard binds silently do nothing.
@@ -680,46 +703,65 @@ in
   # the icons still come from the package, as the stock sheet had them.
   programs.wlogout = {
     enable = true;
-    # Six tiles, each a Nerd Font glyph and a word, in the palette: the same slab as the bar.
+    # Six tiles: a big glyph (rendered from the bar's font into an image at build time, since
+    # a GTK label cannot size its icon apart from its word) and a word under it, in the
+    # palette: the same slab as the bar.
     layout =
       let
-        tile = label: glyph: text: action: keybind: {
-          inherit label action keybind;
-          text = "${glyph}  ${text}";
+        tile = label: text: action: keybind: {
+          inherit
+            label
+            text
+            action
+            keybind
+            ;
         };
       in
       [
-        (tile "lock" "󰌾" "Lock" "loginctl lock-session" "l")
-        (tile "suspend" "󰒲" "Suspend" "systemctl suspend" "u")
-        (tile "logout" "󰍃" "Log out" "hyprctl dispatch exit" "e")
-        (tile "reboot" "󰜉" "Reboot" "systemctl reboot" "r")
-        (tile "shutdown" "󰐥" "Shut down" "systemctl poweroff" "s")
-        (tile "hibernate" "󰋊" "Hibernate" "systemctl hibernate" "h")
+        (tile "lock" "Lock" "loginctl lock-session" "l")
+        (tile "suspend" "Suspend" "systemctl suspend" "u")
+        (tile "logout" "Log out" "hyprctl dispatch exit" "e")
+        (tile "reboot" "Reboot" "systemctl reboot" "r")
+        (tile "shutdown" "Shut down" "systemctl poweroff" "s")
+        (tile "hibernate" "Hibernate" "systemctl hibernate" "h")
       ];
-    style = ''
-      * {
-        background-image: none;
-        box-shadow: none;
-        font-family: "JetBrainsMono Nerd Font";
-        font-size: 34px;
-      }
-      window { background-color: alpha(#${c.base}, 0.75); }
-      button {
-        margin: 10px;
-        border-radius: 12px;
-        border: 1px solid alpha(#${c.hlMed}, 0.9);
-        color: #${c.subtle};
-        background-color: alpha(#${c.base}, 0.92);
-        transition: all 150ms ease;
-      }
-      button:focus, button:active, button:hover {
-        color: #${c.text};
-        border-color: #${c.iris};
-        background-color: alpha(#${c.overlay}, 0.9);
-        outline-style: none;
-      }
-      #shutdown:focus, #shutdown:hover, #reboot:focus, #reboot:hover { border-color: #${c.love}; }
-    '';
+    style =
+      let
+        icon = name: "image(url(\"${wlogoutIcons}/${name}.png\"))";
+      in
+      ''
+        * {
+          background-image: none;
+          box-shadow: none;
+          font-family: "JetBrainsMono Nerd Font";
+          font-size: 22px;
+        }
+        window { background-color: alpha(#${c.base}, 0.75); }
+        button {
+          margin: 10px;
+          border-radius: 12px;
+          border: 1px solid alpha(#${c.hlMed}, 0.9);
+          color: #${c.subtle};
+          background-color: alpha(#${c.base}, 0.92);
+          background-repeat: no-repeat;
+          background-position: center 32%;
+          background-size: 38%;
+          transition: all 150ms ease;
+        }
+        button:focus, button:active, button:hover {
+          color: #${c.text};
+          border-color: #${c.iris};
+          background-color: alpha(#${c.overlay}, 0.9);
+          outline-style: none;
+        }
+        #shutdown:focus, #shutdown:hover, #reboot:focus, #reboot:hover { border-color: #${c.love}; }
+        #lock { background-image: ${icon "lock"}; }
+        #suspend { background-image: ${icon "suspend"}; }
+        #logout { background-image: ${icon "logout"}; }
+        #reboot { background-image: ${icon "reboot"}; }
+        #shutdown { background-image: ${icon "shutdown"}; }
+        #hibernate { background-image: ${icon "hibernate"}; }
+      '';
   };
 
   # The lock screen used to be a flat base colour with a bare input box on it: correct, but it
