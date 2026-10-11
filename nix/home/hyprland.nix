@@ -958,9 +958,25 @@ in
   # not coast on Linux at all.
   programs.firefox.profiles.dev.settings = {
     "apz.gtk.kinetic_scroll.enabled" = true;
-    "apz.fling_friction" = "0.0015"; # default 0.002; lower = longer coast
+    # The coast after the fingers lift: friction well under the default 0.002, so a flick
+    # carries on the way it does on the mac, and a lower stop threshold so it tails off
+    # instead of halting.
+    "apz.fling_friction" = "0.001";
+    "apz.fling_stopped_threshold" = "0.005";
+    "apz.fling_min_velocity_threshold" = "0.3";
+    # Wheel/step scrolling on a spring-damper curve tuned towards the mac's: quick start,
+    # long settle.
     "general.smoothScroll" = true;
     "general.smoothScroll.msdPhysics.enabled" = true;
+    "general.smoothScroll.msdPhysics.continuousMotionMaxDeltaMS" = 120;
+    "general.smoothScroll.msdPhysics.motionBeginSpringConstant" = 1250;
+    "general.smoothScroll.msdPhysics.regularSpringConstant" = 1000;
+    "general.smoothScroll.msdPhysics.slowdownMinDeltaMS" = 12;
+    "general.smoothScroll.msdPhysics.slowdownMinDeltaRatio" = "1.3";
+    "general.smoothScroll.msdPhysics.slowdownSpringConstant" = 2000;
+    "general.smoothScroll.currentVelocityWeighting" = "0.15";
+    "general.smoothScroll.stopDecelerationWeighting" = "0.6";
+    "mousewheel.min_line_scroll_amount" = 10;
   };
 
   # Icon theme for GTK apps (stylix's gtk target sets the widget theme but no icon theme,
