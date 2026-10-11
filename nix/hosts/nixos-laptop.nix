@@ -498,7 +498,18 @@ in
   # is in the greetd stack and ReGreet shows its "place your finger" prompt.
   services.greetd = {
     enable = true;
-    settings.default_session.user = "greeter";
+    settings = {
+      # Straight into Hyprland at boot: the LUKS PIN typed a few seconds earlier is the
+      # gate, and the user/session picker had nothing to pick (one user, one session).
+      # ReGreet is still the default_session, so it is what comes up after a logout.
+      # The GNOME keyring is not unlocked by this (no password at login); it asks the first
+      # time something needs it.
+      initial_session = {
+        command = "Hyprland";
+        user = "gapul";
+      };
+      default_session.user = "greeter";
+    };
   };
   services.displayManager.regreet =
     let
