@@ -49,6 +49,7 @@ name that matters now.
 | `romm.env` | `MARIADB_ROOT_PASSWORD`, `MARIADB_PASSWORD` and `DB_PASSWD`, the last two being the same value, plus `ROMM_AUTH_SECRET_KEY` from `openssl rand -hex 32`, `IGDB_CLIENT_ID` and `IGDB_CLIENT_SECRET` |
 | `gameyfin.env` | `APP_KEY`, from `head -c 32 /dev/urandom \| base64`. It is read as an AES key, so anything other than exactly 128, 192 or 256 bits loops on `Invalid AES key length`; 64 hex characters are treated as 64 bytes and fail. Plus `IGDB_CLIENT_ID` and `IGDB_CLIENT_SECRET`, which can be the same values romm uses |
 | `hauk/config.php` | A PHP configuration file rather than an `.env`, placed at `/var/lib/homelab/hauk/config.php`. Copy `/etc/hauk/config-sample.php` out of the image and replace `password` with a hash, from `podman exec hauk php -r 'echo password_hash("...", PASSWORD_DEFAULT);'`. `public_url` is `https://where.gapul.net/` |
+| `duo-remind.env` | `DUO_JWT`, the `jwt_token` cookie from a logged-in duolingo.com session (duo-remind.nix). Lasts months; the script posts "token expired" to ntfy when it stops working |
 | `gatus.env` | `NTFY_TOPIC`, `NTFY_TOKEN` (the `tk_...` bearer token; gatus substitutes them into its own config) |
 | `mosquitto-ha.password` | a `mosquitto_passwd` hash, the part after `ha:` — not a plaintext password |
 | `free-games-claimer.env` | `NOTIFY` (an ntfy publish URL, so it embeds a credential) and `PANEL_PASSWORD`, which is also the VNC password |
