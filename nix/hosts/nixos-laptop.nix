@@ -97,8 +97,17 @@ in
     "quiet"
     "splash"
     "udev.log_level=3"
-    "rd.systemd.show_status=auto"
-    "systemd.show_status=auto"
+    "rd.udev.log_level=3"
+    "rd.systemd.show_status=false"
+    "systemd.show_status=false"
+    "vt.global_cursor_default=0" # no blinking cursor on the brief text console
+  ];
+  # Plymouth normally clears the screen when it quits, which leaves a text console for the
+  # second before the greeter draws. --retain-splash keeps its last frame on the framebuffer
+  # until cage/ReGreet paints over it.
+  systemd.services.plymouth-quit.serviceConfig.ExecStart = [
+    ""
+    "-${pkgs.plymouth}/bin/plymouth quit --retain-splash" # "-": fine if plymouthd is not running
   ];
 
   # --- OS menu: rEFInd in front of systemd-boot ---
@@ -699,6 +708,8 @@ in
   # as ordinary Hyprland windows. The image itself is not declarative: it is fetched once
   # with `sudo waydroid init -s GAPPS` (or -s VANILLA) after the first rebuild.
   virtualisation.waydroid.enable = true;
+  # Current kernels omit legacy ip_tables; use Waydroid's nftables backend.
+  virtualisation.waydroid.package = pkgs.waydroid-nftables;
 
   # --- Containers (podman: rootless + docker-compatible) ---
   # The `docker` command can be used as an alias for podman (dockerCompat).

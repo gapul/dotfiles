@@ -91,7 +91,7 @@ let
     "mako"
     "darkman"
     "hyprpolkitagent"
-    "ssh-tpm-agent"
+    "ssh-tpm-agent.socket" # the service is socket-activated and idle between uses
   ];
   guard = pkgs.writeShellScript "bar-guard" ''
     units="${lib.concatStringsSep " " guardUnits}"
