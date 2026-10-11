@@ -158,6 +158,12 @@
     # nix-darwin's homebrew module assumes brew is already installed by hand; this makes the
     # prefix a nix-managed thing, so a fresh mac needs no curl-into-bash bootstrap step.
     nix-homebrew.url = "github:zhaofengli/nix-homebrew";
+    # Homebrew itself, which nix-homebrew pins to 7.0.4. Taken over here on 2026-10-11 because
+    # gapul-dotfiles holds a brew-7.0.4-patched with nearly every file empty (built on the macmini
+    # from APFS-compressed sources), and a cachix path can only be avoided by changing its hash.
+    brew-src.url = "github:Homebrew/brew/7.0.9";
+    brew-src.flake = false;
+    nix-homebrew.inputs.brew-src.follows = "brew-src";
 
     # The ACP adapter that lets Hermes run inference on the Claude subscription. It used to live in
     # configs/macmini/, but it is a part of Hermes' plumbing rather than a machine setting, so it
@@ -213,6 +219,7 @@
       flake-parts,
       brew-nix,
       nix-homebrew,
+      brew-src,
       formera-source,
       ...
     }:
@@ -272,11 +279,14 @@
 
       # ECS "System" = host composer (unifies the darwin / home boilerplate)
       mkHost = import ./lib/mk-host.nix {
+        # Must match the brew-src tag in inputs.
+        brewVersion = "7.0.9";
         inherit
           nixpkgs
           nix-darwin
           home-manager
           nix-homebrew
+          brew-src
           user
           system
           commonSpecialArgs
