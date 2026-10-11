@@ -19,6 +19,7 @@ let
     { rel = "calnode.env"; }
     { rel = "cloudflared-homeserver.json"; }
     { rel = "dawarich.env"; }
+    { rel = "duo-remind.env"; }
     { rel = "filestash-secret-key"; }
     { rel = "formera.env"; }
     { rel = "free-games-claimer.env"; }
