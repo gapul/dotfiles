@@ -33,11 +33,11 @@ let
     echo "==================== $(date '+%Y-%m-%d %H:%M:%S') ===================="
     before=$(/bin/df -k / | /usr/bin/awk 'NR == 2 { print $4 }')
 
-    # Keep current generations and active service closures. Old Nix generations are
+    # Keep only the current generations and active service closures. Old Nix generations are
     # reproducible and were the largest recurring source of reclaimable space here.
     # This runs as the user, so it only drops home-manager generations; the system
     # profile (root) is handled by launchd.daemons.nix-gc in hosts/darwin-common.nix.
-    nix-collect-garbage --delete-older-than 30d || true
+    nix-collect-garbage --delete-old || true
 
     # Package-manager caches are all re-downloadable. Prefer each tool's own pruning
     # semantics instead of deleting implementation-specific directories by hand.
