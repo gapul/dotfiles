@@ -265,7 +265,9 @@ in
 
     # ─── Creative / CAD / DTM ───
     blender
-    freecad
+    # From stable: unstable's freecad 1.1.4 is uncached and its vtk fails to configure (PEGTL
+    # not found, 2026-10-12). Drop back to `freecad` once Hydra builds it again.
+    nixpkgsStable.legacyPackages.${pkgs.stdenv.hostPlatform.system}.freecad
     bitwig-studio
     reaper
     yabridge
