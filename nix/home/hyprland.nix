@@ -434,212 +434,301 @@ in
     enable = true;
     package = null;
     portalPackage = null;
-    # Hyprtasking: every workspace in a grid with its windows, like Mission Control
-    # (Hyper+Tab). nixpkgs builds it against the same
-    # Hyprland this system runs, so the plugin ABI matches (plugins must).
-    # Off for now: with the plugin loaded, two-finger scrolling stopped reaching the apps
-    # (2026-10-11, its touchpad hooks). To try again: put it back, log in afresh, test scrolling.
-    # plugins = [ pkgs.hyprlandPlugins.hyprtasking ];
-    # settings generated in hyprlang format (pinned explicitly since the default may switch to lua).
-    configType = "hyprlang";
-    # Appended after settings, so nwg-displays' per-output rules land after the catch-all.
-    extraConfig = ''
-      source = ${config.xdg.configHome}/hypr/monitors.conf
-    '';
-    settings = {
-      # Hyper: Space held (and the Copilot key as a prefix), from xremap (home/xremap.nix). Not
-      # plain Super, so Super+key stays free for the apps, as on the mac (configs/keyboard/karabiner).
-      "$mod" = "SUPER CTRL ALT";
-      "$terminal" = "ghostty";
-      "$menu" = "${launcher} toggle";
+    # Hyprland 0.55+ reads a Lua config (hyprland.lua); the hyprlang .conf is deprecated and
+    # goes away in 0.57. home-manager renders `settings` as hl.<name>(...) calls: attribute
+    # values with `_args` are multi-argument calls, `_var` entries become locals, and
+    # mkLuaInline values are raw Lua. Hyprland's API reference: the `hl.meta.lua` stubs in
+    # the package (share/hypr/stubs) and https://wiki.hypr.land/Configuring/Start/.
+    configType = "lua";
+    # Curves before the animations that name them, options before the binds that use them.
+    importantPrefixes = [
+      "curve"
+      "config"
+      "monitor"
+      "gesture"
+      "on"
+    ];
+    # The overview plugin stays off (its touchpad hooks broke two-finger scrolling,
+    # 2026-10-11). To try again: plugins = [ pkgs.hyprlandPlugins.hyprtasking ]; and a bind
+    # to hl.dsp "hyprtasking:toggle", then log in afresh and test scrolling.
+    settings =
+      let
+        inherit (lib.generators) mkLuaInline;
+        # Hyper: Space held (and the Copilot key as a prefix), from xremap (home/xremap.nix).
+        # Not plain Super, so Super+key stays free for the apps, as on the mac
+        # (configs/keyboard/karabiner).
+        key = k: mkLuaInline ''mod .. " + ${k}"'';
+        shiftKey = k: mkLuaInline ''mod .. " + SHIFT + ${k}"'';
+        exec = cmd: mkLuaInline ''hl.dsp.exec_cmd(${builtins.toJSON cmd})'';
+        bind = k: dsp: { _args = [ k dsp ]; };
+        bindOpts = k: dsp: opts: { _args = [ k dsp opts ]; };
+      in
+      {
+        mod._var = "SUPER + CTRL + ALT";
+        terminal._var = "ghostty";
+        menu._var = "${launcher} toggle";
 
-      monitor = [
-        ",preferred,auto,1"
-        # The 4K monitor at 1.5: 2560x1440 logical, so text is the same size as on the panel.
-        # nwg-displays' monitors.conf (sourced below) wins over this if it names the output.
-        "DP-1,preferred,auto,1.5"
-      ];
+        monitor = [
+          {
+            output = "";
+            mode = "preferred";
+            position = "auto";
+            scale = 1;
+          }
+          # The 4K monitor at 1.5: 2560x1440 logical, so text is the same size as on the panel.
+          # nwg-displays' monitors.conf (read in extraConfig below) wins over this if it names
+          # the output.
+          {
+            output = "DP-1";
+            mode = "preferred";
+            position = "auto";
+            scale = 1.5;
+          }
+        ];
 
-      # Only things that have no systemd user unit of their own. hypridle / waybar /
-      # mako are started by their home-manager services below; listing them here as
-      # well launches a second copy of each (two bars stacked on the screen).
-      # Hyprland's stock background is a near-white gradient with its own logo on it, and
-      # the terminal sits on top of it at background-opacity 0.5 — the text came out
-      # unreadable, so both are off below. hyprpaper used to be exec-once'd with no
-      # hyprpaper.conf and painted nothing, which is why this was a flat colour for a while;
-      # it now has a config, written by stylix from the generated wallpaper (home/stylix.nix).
-      # background_color stays as the colour behind it, which is what shows in the moment
-      # between the compositor starting and hyprpaper painting.
-      misc = {
-        background_color = "rgb(${c.base})";
-        force_default_wallpaper = 0;
-        disable_hyprland_logo = true;
-        # The random one-liner Hyprland draws at the bottom of a bare screen ("How do I exit
-        # vim????") showed whenever the wallpaper was not up yet (session start, after a resume).
-        disable_splash_rendering = true;
-        # If hyprlock dies while the session is locked, the compositor keeps holding the lock
-        # and the screen stays black: a replacement hyprlock is refused, and the documented
-        # recovery (`hyprctl eval 'hl.clear_crashed_lockscreen()'`) needs the lua config
-        # manager, which this build does not have. The session is then only recoverable by
-        # logging out. With this on, a fresh hyprlock takes the orphaned lock over instead.
-        # Seen for real: a rebuild restarted the session's units out from under a running
-        # hyprlock and left the machine unusable except over ssh.
-        allow_session_lock_restore = true;
-      };
-
-      exec-once = [
-        "wl-paste --watch cliphist store" # accumulate clipboard history
-        "wl-gammarelay-rs" # dbus daemon for night light
-        # Input method (SKK). The package's autostart entry is never read here: Hyprland does not
-        # run XDG autostart. fcitx5 comes from i18n.inputMethod (hosts/nixos-laptop.nix).
-        "fcitx5 -d --replace"
-      ];
-
-      input = {
-        kb_layout = "us"; # use "jp" for a JIS layout
-        # Caps Lock is Ctrl (also in hosts/nixos-laptop.nix for the console and greeter).
-        kb_options = "ctrl:nocaps";
-        follow_mouse = 1;
-        touchpad = {
-          natural_scroll = true;
-          tap-to-click = true;
+        config = {
+          # Hyprland's stock background (its logo on a gradient) and the splash one-liner are
+          # off; background_color is what shows between the compositor starting and awww
+          # painting the wallpaper.
+          misc = {
+            background_color = "rgb(${c.base})";
+            force_default_wallpaper = 0;
+            disable_hyprland_logo = true;
+            disable_splash_rendering = true;
+            # If hyprlock dies while the session is locked, the compositor keeps holding the
+            # lock and the screen stays black; with this on, a fresh hyprlock takes the
+            # orphaned lock over. Seen for real: a rebuild restarted the session's units out
+            # from under a running hyprlock and left the machine unusable except over ssh.
+            allow_session_lock_restore = true;
+          };
+          input = {
+            kb_layout = "us"; # use "jp" for a JIS layout
+            # Caps Lock is Ctrl (also in hosts/nixos-laptop.nix for the console and greeter).
+            kb_options = "ctrl:nocaps";
+            follow_mouse = 1;
+            touchpad = {
+              natural_scroll = true;
+              tap_to_click = true;
+            };
+          };
+          general = {
+            gaps_in = 5;
+            gaps_out = 10;
+            border_size = 2;
+            col = {
+              active_border = {
+                colors = [
+                  "rgb(${c.iris})"
+                  "rgb(${c.foam})"
+                ];
+                angle = 45;
+              };
+              inactive_border = "rgb(${c.overlay})";
+            };
+            layout = "dwindle";
+          };
+          decoration = {
+            rounding = 8;
+            blur = {
+              enabled = true;
+              size = 6;
+              passes = 2;
+            };
+            # Unfocused windows a shade darker, and a soft shadow under every window, so the
+            # focused one reads at a glance.
+            dim_inactive = true;
+            dim_strength = 0.12;
+            shadow = {
+              enabled = true;
+              range = 24;
+              render_power = 3;
+              color = "rgba(${c.base}cc)";
+            };
+          };
+          animations.enabled = true;
         };
-      };
 
-      general = {
-        gaps_in = 5;
-        gaps_out = 10;
-        border_size = 2;
-        "col.active_border" = "rgb(${c.iris}) rgb(${c.foam}) 45deg";
-        "col.inactive_border" = "rgb(${c.overlay})";
-        layout = "dwindle";
-      };
-
-      decoration = {
-        rounding = 8;
-        blur = {
-          enabled = true;
-          size = 6;
-          passes = 2;
-        };
-        # Unfocused windows a shade darker, and a soft shadow under every window, so the
-        # focused one reads at a glance.
-        dim_inactive = true;
-        dim_strength = 0.12;
-        shadow = {
-          enabled = true;
-          range = 24;
-          render_power = 3;
-          color = "rgba(${c.base}cc)";
-        };
-      };
-
-      animations = {
-        enabled = true;
-        bezier = [
-          "ease, 0.16, 1, 0.3, 1" # ease-out, for things settling
-          "snap, 0.2, 0.9, 0.1, 1.05" # a touch of overshoot, for things appearing
+        curve = [
+          # ease-out, for things settling
+          {
+            _args = [
+              "ease"
+              {
+                type = "bezier";
+                points = [
+                  [ 0.16 1 ]
+                  [ 0.3 1 ]
+                ];
+              }
+            ];
+          }
+          # a touch of overshoot, for things appearing
+          {
+            _args = [
+              "snap"
+              {
+                type = "bezier";
+                points = [
+                  [ 0.2 0.9 ]
+                  [ 0.1 1.05 ]
+                ];
+              }
+            ];
+          }
         ];
         animation = [
-          "windows, 1, 5, snap, popin 85%"
-          "windowsOut, 1, 4, ease, popin 85%"
-          "fade, 1, 6, ease"
-          "layers, 1, 4, ease, fade"
-          "border, 1, 8, ease"
-          "workspaces, 1, 5, ease, slide"
+          {
+            leaf = "windows";
+            enabled = true;
+            speed = 5;
+            bezier = "snap";
+            style = "popin 85%";
+          }
+          {
+            leaf = "windowsOut";
+            enabled = true;
+            speed = 4;
+            bezier = "ease";
+            style = "popin 85%";
+          }
+          {
+            leaf = "fade";
+            enabled = true;
+            speed = 6;
+            bezier = "ease";
+          }
+          {
+            leaf = "layers";
+            enabled = true;
+            speed = 4;
+            bezier = "ease";
+            style = "fade";
+          }
+          {
+            leaf = "border";
+            enabled = true;
+            speed = 8;
+            bezier = "ease";
+          }
+          {
+            leaf = "workspaces";
+            enabled = true;
+            speed = 5;
+            bezier = "ease";
+            style = "slide";
+          }
         ];
-      };
 
-      # Touchpad: three fingers sideways switch workspaces. Four fingers belong to fusuma
-      # (home/linux-gui.nix).
-      gesture = [ "3, horizontal, workspace" ];
-
-      "plugin:hyprtasking" = {
-        layout = "grid";
-        gap_size = 24;
-        bg_color = "rgba(${c.base}ff)";
-        border_size = 2;
-        exit_on_hovered = false;
-        jump = {
-          enabled = true; # press a workspace's number to jump to it
-          label_color = "rgba(${c.text}ff)";
-          label_background = "rgba(${c.base}cc)";
-          label_size = 28;
+        # Touchpad: three fingers sideways switch workspaces. Four fingers belong to fusuma
+        # (home/linux-gui.nix).
+        gesture = {
+          fingers = 3;
+          direction = "horizontal";
+          action = "workspace";
         };
-        # The plugin's own touchpad hooks are off: with them on, two-finger scrolling stopped
-        # reaching the apps. The overview is Hyper+Tab.
-        gestures.enabled = false;
-        grid = {
-          rows = 3;
-          cols = 3;
-          loop = false;
-          layers = 1;
+
+        # Only things that have no systemd user unit of their own: hypridle / waybar / mako /
+        # awww are started by their home-manager services; listing them here as well would
+        # launch a second copy of each. fcitx5 (SKK) comes from i18n.inputMethod
+        # (hosts/nixos-laptop.nix); Hyprland does not run XDG autostart, so it is started here.
+        on = {
+          _args = [
+            "hyprland.start"
+            (mkLuaInline ''
+              function()
+                hl.exec_cmd("wl-paste --watch cliphist store") -- clipboard history
+                hl.exec_cmd("wl-gammarelay-rs") -- dbus daemon for night light
+                hl.exec_cmd("fcitx5 -d --replace")
+              end'')
+          ];
         };
+
+        bind = [
+          (bind (key "Return") (mkLuaInline "hl.dsp.exec_cmd(terminal)"))
+          (bind (key "Q") (mkLuaInline "hl.dsp.window.close()"))
+          (bind (shiftKey "M") (mkLuaInline "hl.dsp.exit()")) # quit Hyprland
+          (bind (key "E") (mkLuaInline ''hl.dsp.exec_cmd(terminal .. " -e yazi")'')) # file manager
+          (bind (key "R") (mkLuaInline "hl.dsp.exec_cmd(menu)"))
+          (bind "SUPER + space" (mkLuaInline "hl.dsp.exec_cmd(menu)")) # Win+Space, like Cmd+Space
+          (bind (key "V") (mkLuaInline ''hl.dsp.window.float({ action = "toggle" })''))
+          (bind (key "F") (mkLuaInline "hl.dsp.window.fullscreen()"))
+          (bind (key "L") (exec "hyprlock")) # manual lock
+          (bind (key "C") (exec "cliphist list | wofi --dmenu | cliphist decode | wl-copy")) # paste from history
+          (bind (key "period") (exec "wofi-emoji")) # emoji picker, like Cmd+Ctrl+Space on the mac
+          (bind (key "slash") (exec "${cheatsheet}")) # every keybind, searchable
+          # Power menu. Three tiles a row with a wide margin, so the tiles are not the whole screen.
+          (bind (key "Escape") (exec "wlogout --buttons-per-row 3 --margin 240 --column-spacing 16 --row-spacing 16"))
+          (bind (key "comma") (exec "${settingsMenu}")) # settings picker (Cmd+, on the mac)
+          # screenshot / color picker
+          (bind (key "P") (exec "${screenshotRegion}")) # region -> satty -> clipboard
+          (bind (shiftKey "P") (exec "hyprshot -m window")) # window -> save
+          (bind (shiftKey "C") (exec "hyprpicker -a")) # pick a color and copy
+          # night light (switch color temperature 4000K / 6500K)
+          (bind (shiftKey "N") (exec "busctl --user set-property rs.wl-gammarelay / rs.wl.gammarelay Temperature q 4000"))
+          (bind (shiftKey "D") (exec "busctl --user set-property rs.wl-gammarelay / rs.wl.gammarelay Temperature q 6500"))
+          # move focus
+          (bind (key "left") (mkLuaInline ''hl.dsp.focus({ direction = "left" })''))
+          (bind (key "right") (mkLuaInline ''hl.dsp.focus({ direction = "right" })''))
+          (bind (key "up") (mkLuaInline ''hl.dsp.focus({ direction = "up" })''))
+          (bind (key "down") (mkLuaInline ''hl.dsp.focus({ direction = "down" })''))
+          # move / resize windows with the mouse
+          (bindOpts (key "mouse:272") (mkLuaInline "hl.dsp.window.drag()") { mouse = true; })
+          (bindOpts (key "mouse:273") (mkLuaInline "hl.dsp.window.resize()") { mouse = true; })
+          # volume / brightness (work while locked, repeat while held)
+          (bindOpts "XF86AudioRaiseVolume" (exec "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+") { locked = true; repeating = true; })
+          (bindOpts "XF86AudioLowerVolume" (exec "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-") { locked = true; repeating = true; })
+          (bindOpts "XF86MonBrightnessUp" (exec "brightnessctl set 5%+") { locked = true; repeating = true; })
+          (bindOpts "XF86MonBrightnessDown" (exec "brightnessctl set 5%-") { locked = true; repeating = true; })
+          (bindOpts "XF86AudioMute" (exec "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle") { locked = true; })
+          (bindOpts "XF86AudioPlay" (exec "playerctl play-pause") { locked = true; })
+          (bindOpts "XF86AudioNext" (exec "playerctl next") { locked = true; })
+          (bindOpts "XF86AudioPrev" (exec "playerctl previous") { locked = true; })
+        ]
+        # Hyper+1..9,0 switch to workspaces 1..10; with Shift, move the window there.
+        ++ builtins.concatLists (
+          builtins.genList (
+            i:
+            let
+              n = toString (i + 1);
+              k = toString (if i + 1 == 10 then 0 else i + 1);
+            in
+            [
+              (bind (key k) (mkLuaInline "hl.dsp.focus({ workspace = ${n} })"))
+              (bind (shiftKey k) (mkLuaInline "hl.dsp.window.move({ workspace = ${n} })"))
+            ]
+          ) 10
+        );
       };
-
-      bind = [
-        "$mod, Return, exec, $terminal"
-        "$mod, Q, killactive"
-        "$mod SHIFT, M, exit" # quit Hyprland
-        "$mod, E, exec, $terminal -e yazi" # file manager (yazi)
-        "$mod, R, exec, $menu"
-        "SUPER, space, exec, $menu" # Win+Space, like Cmd+Space on the mac
-        "$mod, V, togglefloating"
-        "$mod, F, fullscreen"
-        "$mod, L, exec, hyprlock" # manual lock
-        "$mod, C, exec, cliphist list | wofi --dmenu | cliphist decode | wl-copy" # paste from history
-        "$mod, period, exec, wofi-emoji" # emoji picker, like Cmd+Ctrl+Space on the mac
-        # "$mod, Tab, hyprtasking:toggle, cursor" # every workspace at a glance (plugin off, see above)
-        "$mod, slash, exec, ${cheatsheet}" # every keybind, searchable
-        # Power menu. Three tiles a row with a wide margin, so the tiles are not the whole screen.
-        "$mod, Escape, exec, wlogout --buttons-per-row 3 --margin 240 --column-spacing 16 --row-spacing 16" # power menu
-        "$mod, comma, exec, ${settingsMenu}" # settings picker (Cmd+, on the mac)
-        # screenshot / color picker
-        "$mod, P, exec, ${screenshotRegion}" # region -> clipboard
-        "$mod SHIFT, P, exec, hyprshot -m window" # window -> save
-        "$mod SHIFT, C, exec, hyprpicker -a" # pick a color and copy
-        # night light (switch color temperature 4000K / 6500K)
-        "$mod SHIFT, N, exec, busctl --user set-property rs.wl-gammarelay / rs.wl.gammarelay Temperature q 4000"
-        "$mod SHIFT, D, exec, busctl --user set-property rs.wl-gammarelay / rs.wl.gammarelay Temperature q 6500"
-        # move focus
-        "$mod, left, movefocus, l"
-        "$mod, right, movefocus, r"
-        "$mod, up, movefocus, u"
-        "$mod, down, movefocus, d"
-      ]
-      ++ builtins.concatLists (
-        builtins.genList (
-          i:
-          let
-            n = toString (i + 1);
-            key = toString (if i + 1 == 10 then 0 else i + 1); # workspace 10 maps to the 0 key
-          in
-          [
-            "$mod, ${key}, workspace, ${n}"
-            "$mod SHIFT, ${key}, movetoworkspace, ${n}"
-          ]
-        ) 10
-      );
-
-      bindm = [
-        "$mod, mouse:272, movewindow"
-        "$mod, mouse:273, resizewindow"
-      ];
-
-      # volume / brightness (supports key-repeat while held)
-      bindel = [
-        ",XF86AudioRaiseVolume, exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+"
-        ",XF86AudioLowerVolume, exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"
-        ",XF86MonBrightnessUp, exec, brightnessctl set 5%+"
-        ",XF86MonBrightnessDown, exec, brightnessctl set 5%-"
-      ];
-      bindl = [
-        ",XF86AudioMute, exec, wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"
-        ",XF86AudioPlay, exec, playerctl play-pause"
-        ",XF86AudioNext, exec, playerctl next"
-        ",XF86AudioPrev, exec, playerctl previous"
-      ];
-    };
+    # nwg-displays writes its result as hyprlang ("monitor=NAME,MODE,POSITION,SCALE[,...]"),
+    # which the Lua config cannot `source`; read it here and hand each line to hl.monitor, so
+    # a named output still wins over the catch-all above. (The file is created empty on
+    # first activation, see home.activation.hyprMonitorsConf.)
+    extraConfig = ''
+      do
+        local path = (os.getenv("XDG_CONFIG_HOME") or (os.getenv("HOME") .. "/.config")) .. "/hypr/monitors.conf"
+        local f = io.open(path)
+        if f then
+          for line in f:lines() do
+            local spec = line:match("^%s*monitor%s*=%s*(.-)%s*$")
+            if spec and spec ~= "" then
+              local parts = {}
+              for part in (spec .. ","):gmatch("%s*([^,]*)%s*,") do parts[#parts + 1] = part end
+              if parts[2] == "disable" then
+                hl.monitor({ output = parts[1], disabled = true })
+              else
+                hl.monitor({
+                  output = parts[1],
+                  mode = (parts[2] ~= "" and parts[2]) or "preferred",
+                  position = (parts[3] ~= "" and parts[3]) or "auto",
+                  scale = (parts[4] ~= "" and parts[4]) or "auto",
+                })
+              end
+            end
+          end
+          f:close()
+        end
+      end
+    '';
   };
 
   # lock screen appearance
