@@ -101,6 +101,133 @@ in
     "systemd.show_status=auto"
   ];
 
+  # --- OS menu: rEFInd in front of systemd-boot ---
+  # systemd-boot's menu is text only, and lanzaboote keeps it that way. rEFInd gives the
+  # choice between NixOS and Windows a graphical menu (icons on the same ASCII wallpaper as
+  # the desktop, the rEFInd-minimal theme's flat icons). Nothing in nixpkgs' refind module is
+  # used, because that module lays out its own unsigned kernels, which Secure Boot would
+  # refuse. Instead the activation script below copies rEFInd's binary to the ESP, signs it
+  # with the sbctl keys (the same db key that signs the UKIs, so PCR 7 and the LUKS TPM
+  # binding are unchanged), writes a refind.conf whose NixOS entry points at the newest
+  # lanzaboote UKI (with the safe specialisation and older generations in its submenu, and
+  # systemd-boot itself as the last resort), and puts rEFInd first in the firmware's boot
+  # order. systemd-boot stays installed and second in the order: if the firmware ever
+  # refuses rEFInd, the next entry is the old menu.
+  system.activationScripts.refind =
+    let
+      theme = pkgs.fetchFromGitHub {
+        owner = "EvanPurkhiser";
+        repo = "rEFInd-minimal";
+        rev = "56a06a4bd9ed76c05523a22017056dbecca4145d";
+        hash = "sha256-ALDa8bhgiHyIRmyGh8/1P56TvEG/gqC0qOqAWbtURyg=";
+      };
+      palettes = (builtins.fromJSON (builtins.readFile ../../configs/theme/palettes.json)).palettes;
+      wallpaper = import ../lib/wallpaper.nix {
+        inherit pkgs;
+        p = palettes.rose-pine;
+        name = "rose-pine";
+      };
+      # The panel's size; rEFInd scales the banner to the screen anyway, this keeps the file small.
+      background = pkgs.runCommand "refind-background.png" { nativeBuildInputs = [ pkgs.imagemagick ]; } ''
+        magick ${wallpaper} -resize 1920x1200 $out
+      '';
+      conf = pkgs.writeText "refind.conf" ''
+        timeout 5
+        resolution max
+        use_graphics_for linux,windows
+        hideui singleuser,hints,arrows,badges
+        icons_dir theme/icons
+        banner theme/background.png
+        banner_scale fillscreen
+        selection_big theme/selection_big.png
+        selection_small theme/selection_small.png
+        showtools shutdown,reboot,firmware
+        # Windows is found by scanning the ESP; the UKIs, systemd-boot and the fallback copy
+        # of it are hidden, since the stanza written below covers them in one entry.
+        scanfor manual,internal
+        dont_scan_dirs ESP:/EFI/Linux,ESP:/EFI/systemd,ESP:/EFI/BOOT,ESP:/EFI/nixos
+        default_selection NixOS
+      '';
+      install = pkgs.writeShellScript "refind-install" ''
+        set -eu
+        PATH=${lib.makeBinPath [ pkgs.coreutils pkgs.gnused pkgs.gnugrep pkgs.util-linux pkgs.sbctl pkgs.efibootmgr ]}
+        esp=/boot
+        d=$esp/EFI/refind
+        mkdir -p "$d/theme/icons"
+
+        # The binary, signed. Re-signed only when rEFInd's package changes or the signature
+        # is missing, so a normal switch does not touch it.
+        if ! cmp -s ${pkgs.refind}/share/refind/refind_x64.efi "$d/refind_x64.efi.unsigned" 2>/dev/null; then
+          cp ${pkgs.refind}/share/refind/refind_x64.efi "$d/refind_x64.efi.unsigned"
+          cp "$d/refind_x64.efi.unsigned" "$d/refind_x64.efi"
+        fi
+        # (sbctl verify exits 0 either way; its check mark is the answer.)
+        if ! sbctl verify "$d/refind_x64.efi" 2>&1 | grep -q '✓'; then
+          sbctl sign "$d/refind_x64.efi" >/dev/null
+        fi
+
+        # Theme and background.
+        cp ${theme}/selection_big.png ${theme}/selection_small.png "$d/theme/"
+        cp ${theme}/icons/*.png "$d/theme/icons/"
+        cp ${background} "$d/theme/background.png"
+
+        # The NixOS entry: the newest generation's UKI, its safe specialisation, the three
+        # generations before it, and systemd-boot (every generation, the old text menu).
+        gen_of() { basename "$1" | sed -n 's/^nixos-generation-\([0-9]*\)-.*/\1/p'; }
+        date_of() { date -d "@$(stat -c %Y "/nix/var/nix/profiles/system-$1-link" 2>/dev/null || echo 0)" '+%Y-%m-%d %H:%M'; }
+        latest=""; latest_n=0
+        for f in "$esp"/EFI/Linux/nixos-generation-*.efi; do
+          case "$f" in *specialisation*) continue ;; esac
+          n=$(gen_of "$f"); [ "$n" -gt "$latest_n" ] && { latest_n=$n; latest=$f; }
+        done
+        [ -n "$latest" ] || { echo "refind: no UKI in $esp/EFI/Linux" >&2; exit 0; }
+        {
+          cat ${conf}
+          echo
+          echo "menuentry \"NixOS\" {"
+          echo "    icon theme/icons/os_nixos.png"
+          echo "    loader /EFI/Linux/$(basename "$latest")"
+          safe=$(ls "$esp"/EFI/Linux/nixos-generation-$latest_n-specialisation-safe-*.efi 2>/dev/null | head -n 1)
+          [ -n "$safe" ] && {
+            echo "    submenuentry \"Generation $latest_n, safe mode (no Hyprland, no GPU)\" {"
+            echo "        loader /EFI/Linux/$(basename "$safe")"
+            echo "    }"
+          }
+          for f in $(ls "$esp"/EFI/Linux/nixos-generation-*.efi | grep -v specialisation | sort -t- -k3,3nr); do
+            n=$(gen_of "$f"); [ "$n" -lt "$latest_n" ] || continue
+            echo "    submenuentry \"Generation $n, $(date_of "$n")\" {"
+            echo "        loader /EFI/Linux/$(basename "$f")"
+            echo "    }"
+          done | head -n 12
+          echo "    submenuentry \"systemd-boot (every generation)\" {"
+          echo "        loader /EFI/systemd/systemd-bootx64.efi"
+          echo "    }"
+          echo "}"
+        } > "$d/refind.conf.new"
+        mv "$d/refind.conf.new" "$d/refind.conf"
+
+        # Firmware entry, first in the order. systemd-boot's entry stays as the fallback.
+        dev=$(findmnt -no SOURCE "$esp")
+        disk=/dev/$(lsblk -no PKNAME "$dev")
+        part=$(cat "/sys/class/block/$(basename "$dev")/partition")
+        # (efibootmgr prints "Boot0005* rEFInd<tab>HD(...)": the label ends at a tab.)
+        if ! efibootmgr | grep -q "^Boot[0-9A-F]*\* rEFInd$(printf '\t')"; then
+          efibootmgr -q -c -d "$disk" -p "$part" -L rEFInd -l '\EFI\refind\refind_x64.efi'
+        fi
+        num=$(efibootmgr | sed -n "s/^Boot\([0-9A-F]*\)\* rEFInd$(printf '\t').*/\1/p" | head -n 1)
+        [ -n "$num" ] || { echo "refind: no firmware entry" >&2; exit 0; }
+        order=$(efibootmgr | sed -n 's/^BootOrder: //p')
+        case "$order" in
+          "$num"|"$num,"*) ;;
+          *) efibootmgr -q -o "$num,$(echo "$order" | sed "s/\b$num\b//; s/,,/,/; s/^,//; s/,$//")" ;;
+        esac
+      '';
+    in
+    {
+      deps = [ ];
+      text = "${install}";
+    };
+
   # The ESP itself cannot be encrypted (firmware reads it in plaintext), but Secure Boot
   # verifies the signature of kernel/initrd (UKI), so tampering with the boot chain on the ESP is detected.
   # Since the existing Windows ESP is reused, confirm that the generated hardware-configuration.nix's
