@@ -1,4 +1,6 @@
 {
+  config,
+  lib,
   pkgs,
   user,
   # Settings this host alone wants added to /etc/nix/nix.custom.conf.
@@ -13,6 +15,8 @@
   # Host-independent base settings shared by the workstation (darwin.nix) and the
   # headless LLM worker (macmini.nix). Changes here affect both hosts.
   # GUI/peripheral-oriented settings (dock/finder/trackpad/fonts/homebrew) live on each host side.
+
+  imports = [ ./darwin-telemetry.nix ];
 
   nixpkgs.config.allowUnfree = true;
 
@@ -96,7 +100,22 @@
         extra-substituters = builtins.concatStringsSep " " (builtins.attrNames caches);
         extra-trusted-public-keys = builtins.concatStringsSep " " (builtins.attrValues caches);
       }
+      // passthroughSettings
       // nixCustomConf;
+      # Third-party modules (nix-linux-builder) declare their nix.conf lines through nix.settings,
+      # which nothing writes while nix.enable = false. Carry over the keys we rely on. Only on hosts
+      # that enable such a module: with no definitions, reading nix.settings throws.
+      passthroughSettings = lib.optionalAttrs (config.services.nix-linux-builder.enable or false) (
+        lib.mapAttrs (_: v: if builtins.isList v then lib.concatStringsSep " " v else toString v) (
+          lib.filterAttrs (
+            k: _:
+            builtins.elem k [
+              "external-builders"
+              "extra-experimental-features"
+            ]
+          ) config.nix.settings
+        )
+      );
       # Written as a store file and cat'd in: no heredoc quoting to get wrong.
       block = pkgs.writeText "nix-custom-conf-block" (
         ''
