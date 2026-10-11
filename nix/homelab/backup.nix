@@ -185,7 +185,6 @@ in
       sqlite_backup /var/lib/writefreely/writefreely.db /var/lib/db-dumps/writefreely.db
       sqlite_backup /var/lib/nostr-rs-relay/nostr.db /var/lib/db-dumps/nostr-relay.db
       sqlite_backup /var/lib/private/puls/health.db /var/lib/db-dumps/health.db
-      sqlite_backup /var/lib/healthchecks/healthchecks.sqlite /var/lib/db-dumps/healthchecks.db
       sqlite_backup /var/lib/homelab/homebox/homebox.db /var/lib/db-dumps/homebox.db
       sqlite_backup /var/lib/homelab/jellyfin/config/data/data/jellyfin.db /var/lib/db-dumps/jellyfin.db
       sqlite_backup /var/lib/homelab/bambuddy/data/bambuddy.db /var/lib/db-dumps/bambuddy.db
