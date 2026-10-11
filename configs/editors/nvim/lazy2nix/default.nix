@@ -34,6 +34,7 @@ let
     "denops.vim"
     "harpoon"
     "skkeleton"
+    "tokyonight.nvim"
     "typewriter.nvim"
     "vim-tidal"
   ];
