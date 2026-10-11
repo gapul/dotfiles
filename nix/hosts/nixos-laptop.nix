@@ -150,7 +150,8 @@ in
         banner_scale fillscreen
         selection_big theme/selection_big.png
         selection_small theme/selection_small.png
-        showtools shutdown,reboot,firmware
+        # Only the tools the theme has flat icons for (it has none for "firmware").
+        showtools shutdown,reboot
         # Windows is found by scanning the ESP; the UKIs, systemd-boot and the fallback copy
         # of it are hidden, since the stanza written below covers them in one entry.
         scanfor manual,internal
@@ -420,7 +421,13 @@ in
 
   # --- Desktop: Hyprland (Wayland tiling compositor) ---
   # Enable Hyprland itself + xdg-desktop-portal-hyprland + XWayland together.
-  programs.hyprland.enable = true;
+  programs.hyprland = {
+    enable = true;
+    # uwsm (a systemd-managed way to start Hyprland) is not used here; the session is started
+    # the plain way. The greeter still lists "Hyprland (uwsm-managed)", because that entry is
+    # shipped inside the Hyprland package itself, not by this option: pick "Hyprland".
+    withUWSM = false;
+  };
 
   # Electron clients such as T3 need Secret Service to encrypt saved connection tokens.
   # Password login unlocks the keyring via PAM; fingerprint login still needs a keyring prompt.
