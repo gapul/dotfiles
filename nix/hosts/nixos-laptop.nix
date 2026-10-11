@@ -154,10 +154,14 @@ in
       # from the palette instead of the theme's dark ones: a translucent iris rounded square.
       icons = pkgs.runCommand "refind-icons" { nativeBuildInputs = [ pkgs.imagemagick ]; } ''
         mkdir -p $out
-        for f in ${theme}/icons/*.png; do
-          # PNG32: forces true-colour RGBA. ImageMagick would otherwise write these two-colour
-          # icons as palette PNGs, which rEFInd cannot read (it draws a hatched square instead).
-          magick "$f" -channel RGB -negate +channel "PNG32:$out/$(basename "$f")"
+        # Scaled here to the sizes refind.conf asks for (big_icon_size / small_icon_size), so
+        # rEFInd never scales at boot: its scaler failed on these and drew hatched squares.
+        # PNG32 forces true-colour RGBA (ImageMagick would otherwise write palette PNGs).
+        for f in ${theme}/icons/os_*.png; do
+          magick "$f" -channel RGB -negate +channel -resize 192x192 "PNG32:$out/$(basename "$f")"
+        done
+        for f in ${theme}/icons/func_*.png; do
+          magick "$f" -channel RGB -negate +channel -resize 72x72 "PNG32:$out/$(basename "$f")"
         done
         magick -size 208x208 xc:none -fill "#${palettes.rose-pine.iris}59" -stroke "#${palettes.rose-pine.iris}" -strokewidth 3 \
           -draw "roundrectangle 3,3 204,204 24,24" PNG32:$out/selection_big.png
