@@ -43,25 +43,13 @@ let
 
   # The wallpaper is generated from the same palette instead of being a binary checked into
   # git: a tracked image would go stale the moment `active` changes, and it would be the one
-  # part of the look that does not follow the theme. A near-flat vertical wash keeps windows
-  # readable, and a single wide, heavily blurred iris glow stops it reading as a solid fill.
-  wallpaper =
-    pkgs.runCommand "rose-pine-wallpaper.png"
-      {
-        nativeBuildInputs = [ pkgs.imagemagick ];
-      }
-      ''
-        magick -size 3840x2400 gradient:"#${p.overlay}-#${p.base}" \
-          \( -size 3840x2400 xc:none \
-             -fill "#${p.iris}" -draw "ellipse 1150,760 1250,900 0,360" \
-             -blur 0x220 -alpha set -channel A -evaluate multiply 0.16 +channel \) \
-          -compose Over -composite \
-          \( -size 3840x2400 xc:none \
-             -fill "#${p.pine}" -draw "ellipse 2900,1850 1050,760 0,360" \
-             -blur 0x240 -alpha set -channel A -evaluate multiply 0.13 +channel \) \
-          -compose Over -composite \
-          -quality 92 PNG24:$out
-      '';
+  # part of the look that does not follow the theme. It is the hands of the Creation of Adam
+  # as ASCII art on the palette's base colour (lib/wallpaper.nix has the how and why).
+  wallpaper = import ../lib/wallpaper.nix {
+    inherit pkgs p;
+    name = data.active;
+  };
+
 in
 {
   stylix = {
@@ -95,20 +83,29 @@ in
 
     targets = {
       gtk.enable = true; # file pickers, Bitwig's EULA, anything GTK
+      # Hyprland rounds and frames every window itself (rounding 8, border 2 in home/hyprland.nix),
+      # so GTK's own client-side decoration only has to stay out of the way. Firefox reads the
+      # `decoration` node's radius as -moz-gtk-csd-titlebar-radius and clips its window to it; the
+      # theme's radius is larger than Hyprland's, so with the toolbar hidden a thin arc of GTK's 1px
+      # decoration border and the wallpaper behind it showed at the top-left corner of the page
+      # (2026-10-11). Square corner, no border: Hyprland's clip is the only one left.
+      gtk.extraCss = ''
+        decoration {
+          border-radius: 0;
+          border: none;
+        }
+      '';
       qt.enable = true;
       wofi.enable = true; # the white sheet in the middle of the screen
-      hyprpaper.enable = true; # paints the generated wallpaper
+      hyprpaper.enable = false; # darkman.nix selects the light/dark wallpaper at runtime
     };
   };
 
   # The desktop-wide light/dark switch that apps read through the xdg portal
-  # (org.freedesktop.appearance color-scheme, served by xdg-desktop-portal-gtk from this key).
-  # Stylix's gtk target paints GTK but does not set it, so the portal answered "no
-  # preference" and ghostty — whose `theme = light:…,dark:…` follows that answer — came up
-  # in Rose Pine Dawn on a dark desktop. Derived from the same `variant` as `polarity` so a
-  # palette switch flips it too.
-  dconf.settings."org/gnome/desktop/interface".color-scheme =
-    if data.palettes.${data.active}.variant == "dark" then "prefer-dark" else "prefer-light";
+  # (org.freedesktop.appearance color-scheme, served by xdg-desktop-portal-gtk from the dconf
+  # key org/gnome/desktop/interface color-scheme) is not pinned here any more. Stylix's gtk
+  # target paints GTK but does not set it, and until 2026-10-11 this file derived it from
+  # `variant`; since then home/darkman.nix owns the key and flips it with the sun.
 
   # adw-gtk3 6.x styles GTK4 through CSS custom properties, and its suggested-action buttons
   # read --accent-bg-color, which the @define-color lines stylix writes never reach — file
