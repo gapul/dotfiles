@@ -427,7 +427,7 @@ _maintain-macos:
     # beside the builds below: a path being fetched or built is held by the builder's temp root,
     # and every build here lands on an --out-link, which is a GC root.
     gc_out=$(mktemp)
-    nh clean all --keep 5 --keep-since 7d >"$gc_out" 2>&1 &
+    nh clean all --keep 1 --keep-since 0h >"$gc_out" 2>&1 &
     gc_pid=$!
     # No `nix flake update` here on purpose. The weekly update-flake-lock workflow opens a PR for
     # it, and CI builds that lock and pushes the results to cachix, so rebuilding on a merged lock
@@ -832,7 +832,7 @@ gc:
     # `just maintain` runs this part itself, alongside everything else (see there).
     if [ -z "${DOTFILES_GC_SKIP_NIX:-}" ]; then
       echo "━━━ Nix store (remove old generations) ━━━"
-      nh clean all --keep 5 --keep-since 7d || true
+      nh clean all --keep 1 --keep-since 0h || true
       echo ""
     fi
     echo "━━━ Homebrew (downloads + old versions) ━━━"
