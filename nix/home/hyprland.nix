@@ -366,6 +366,7 @@ let
   };
 in
 {
+  imports = [ ./wl-keyboard.nix ];
   # Binaries referenced by the keybinds / exec-once below. Without these the rice
   # is inert: $mod+Return execs a ghostty that is not in the closure, and the
   # night-light / screenshot / clipboard binds silently do nothing.
@@ -564,7 +565,8 @@ in
         "$mod, period, exec, wofi-emoji" # emoji picker, like Cmd+Ctrl+Space on the mac
         # "$mod, Tab, hyprtasking:toggle, cursor" # every workspace at a glance (plugin off, see above)
         "$mod, slash, exec, ${cheatsheet}" # every keybind, searchable
-        "$mod, Escape, exec, wlogout" # power menu
+        # Power menu. Three tiles a row with a wide margin, so the tiles are not the whole screen.
+        "$mod, Escape, exec, wlogout --buttons-per-row 3 --margin 240 --column-spacing 16 --row-spacing 16" # power menu
         "$mod, comma, exec, ${settingsMenu}" # settings picker (Cmd+, on the mac)
         # screenshot / color picker
         "$mod, P, exec, ${screenshotRegion}" # region -> clipboard
@@ -699,7 +701,7 @@ in
         background-image: none;
         box-shadow: none;
         font-family: "JetBrainsMono Nerd Font";
-        font-size: 20px;
+        font-size: 34px;
       }
       window { background-color: alpha(#${c.base}, 0.75); }
       button {
