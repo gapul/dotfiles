@@ -17,15 +17,14 @@
   imports = [ nixLinuxBuilder.darwinModules.default ];
 
   services.nix-linux-builder = {
-    # Disabled 2026-10-11: it corrupts outputs. Inside the guest, `cp` of a store file whose link
-    # count is above 1 (hardlinked by `nix store optimise`) writes a file of the same size full of
-    # NUL bytes; `cat` of the same file and `cp` of a file with a single link are fine. Probed with
-    # nvim-ts-autotag's source (/nix/store/f117p5v3ym1s54by762z633r4lfa9k3q-source): cp, also with
-    # --reflink=never and via $TMPDIR, gave zeros. It broke the laptop-closure job
-    # (nvim-ts-autotag's require check read zeroed Lua) and put a rose-pine-dawn.yazi with a
-    # zeroed preview.png into gapul-dotfiles.cachix. Until that is fixed upstream, the macmini has
-    # no Linux builder and laptop-closure cannot build x86_64-linux here.
-    enable = false;
+    # Needs a store without APFS-compressed files. On 2026-10-11 about 70% of the store's files
+    # carried the compressed flag (by an unidentified tool, around 2026-10-05). Copying such a file
+    # inside the guest gave NUL bytes; natively on darwin it gave an empty file. That zeroed a
+    # rose-pine-dawn.yazi and emptied 16 vimplugins, and CI pushed some of them to gapul-dotfiles.
+    # The store was expanded with `afscexpand /nix/store` (then every Mach-O it had rewritten got
+    # a fresh inode, or exec failed with "Code Signature Invalid"). Before trusting this builder
+    # again, check that this prints nothing: /usr/bin/find /nix/store -flags +compressed -print -quit
+    enable = true;
     # One VM per build, and max-jobs = 2 here (flake.nix), so two can run at once. The resident
     # models hold most of the 24 GB; 6 GiB each keeps the worst case at 12 GiB. Four vCPUs matches
     # cores = 4.
