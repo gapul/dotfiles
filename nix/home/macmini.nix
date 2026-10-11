@@ -532,6 +532,8 @@ in
   xdg.configFile."claude/skills/anki-add".source = agentState "claude/skills/anki-add";
   xdg.configFile."claude/skills/gapul-writing-voice".source =
     agentState "claude/skills/gapul-writing-voice";
+  xdg.configFile."claude/skills/mvrx-weekly-report".source =
+    agentState "claude/skills/mvrx-weekly-report";
   xdg.configFile."claude/skills/step-by-step-tutor".source =
     agentState "claude/skills/step-by-step-tutor";
 
