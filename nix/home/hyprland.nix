@@ -775,8 +775,8 @@ in
       # field stays usable.
       auth.fingerprint = {
         enabled = true;
-        ready_message = "指紋またはパスワード";
-        present_message = "読み取り中…";
+        ready_message = "Fingerprint or password";
+        present_message = "Reading…";
       };
 
       # The ASCII hands, as on the desktop, a touch darker so the clock reads.
