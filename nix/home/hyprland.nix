@@ -1018,6 +1018,12 @@ in
     "general.smoothScroll.currentVelocityWeighting" = "0.15";
     "general.smoothScroll.stopDecelerationWeighting" = "0.6";
     "mousewheel.min_line_scroll_amount" = 10;
+
+    # Japanese on pages whose web font has no kana or kanji: Firefox on Linux falls back to
+    # its *serif* default for ja (Spotify's track names came out in a mincho), where the
+    # mac's default is the gothic. The families themselves are modules/home/firefox.nix's.
+    "font.default.ja" = "sans-serif";
+    "font.name.monospace.ja" = "Noto Sans Mono CJK JP";
   };
 
   # Icon theme for GTK apps (stylix's gtk target sets the widget theme but no icon theme,
