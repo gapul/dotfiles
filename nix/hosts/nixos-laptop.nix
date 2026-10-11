@@ -71,12 +71,250 @@ in
   boot.loader.efi.canTouchEfiVariables = true;
   # Menu display seconds. Since both Windows and NixOS are used, allow enough time to not miss the menu.
   boot.loader.timeout = 5;
+  # The menu is systemd-boot's text menu (lanzaboote keeps that; a graphical loader such as
+  # rEFInd would have to be signed by hand to keep Secure Boot). "max" draws it at the panel's
+  # native resolution instead of the firmware's 80x25 text mode, so it is small and sharp.
+  boot.loader.systemd-boot.consoleMode = "max";
   boot.lanzaboote = {
     enable = true;
     # Where sbctl places keys. Match the `sbctl create-keys` default.
     pkiBundle = "/var/lib/sbctl";
     configurationLimit = 8; # If the ESP is only 100MB, lower to 3-5
   };
+  # --- Boot screen ---
+  # Plymouth draws the boot (and the LUKS PIN prompt) instead of the kernel log: a themed
+  # animation from adi1090x's set, picked by name below (the package has ~70 of them; only the
+  # chosen one is built, the full set is ~500 MB). The console is kept quiet so nothing scrolls
+  # under it; the log is still in `journalctl -b`, and Esc shows it during boot.
+  boot.plymouth = {
+    enable = true;
+    theme = "rings";
+    themePackages = [ (pkgs.adi1090x-plymouth-themes.override { selected_themes = [ "rings" ]; }) ];
+  };
+  boot.consoleLogLevel = 3;
+  boot.initrd.verbose = false;
+  boot.kernelParams = [
+    "quiet"
+    "splash"
+    "udev.log_level=3"
+    "rd.udev.log_level=3"
+    "rd.systemd.show_status=false"
+    "systemd.show_status=false"
+    "vt.global_cursor_default=0" # no blinking cursor on the brief text console
+  ];
+  # Hand the screen from Plymouth to the greeter without a text console in between. Stock
+  # order is: Plymouth quits (screen cleared, console shows) -> greetd starts -> cage draws a
+  # second later. Instead, as GDM does: greetd no longer waits for Plymouth; it deactivates
+  # it first (the splash stays, the DRM device is released), cage draws over the splash, and
+  # only then Plymouth quits, keeping its last frame rather than clearing.
+  services.greetd.greeterManagesPlymouth = true;
+  systemd.services.greetd.serviceConfig.ExecStartPre = "-${pkgs.plymouth}/bin/plymouth deactivate";
+  systemd.services.plymouth-quit = {
+    after = [ "greetd.service" ];
+    serviceConfig.ExecStart = [
+      ""
+      "-${pkgs.bash}/bin/sh -c 'sleep 3; ${pkgs.plymouth}/bin/plymouth quit --retain-splash'" # "-": fine if plymouthd is not running
+    ];
+  };
+
+  # --- OS menu: rEFInd in front of systemd-boot ---
+  # systemd-boot's menu is text only, and lanzaboote keeps it that way. rEFInd gives the
+  # choice between NixOS and Windows a graphical menu (icons on the same ASCII wallpaper as
+  # the desktop, the rEFInd-minimal theme's flat icons). Nothing in nixpkgs' refind module is
+  # used, because that module lays out its own unsigned kernels, which Secure Boot would
+  # refuse. Instead the activation script below copies rEFInd's binary to the ESP, signs it
+  # with the sbctl keys (the same db key that signs the UKIs, so PCR 7 and the LUKS TPM
+  # binding are unchanged), writes a refind.conf whose NixOS entry points at the newest
+  # lanzaboote UKI (with the safe specialisation and older generations in its submenu, and
+  # systemd-boot itself as the last resort), and puts rEFInd first in the firmware's boot
+  # order. systemd-boot stays installed and second in the order: if the firmware ever
+  # refuses rEFInd, the next entry is the old menu.
+  system.activationScripts.refind =
+    let
+      theme = pkgs.fetchFromGitHub {
+        owner = "EvanPurkhiser";
+        repo = "rEFInd-minimal";
+        rev = "56a06a4bd9ed76c05523a22017056dbecca4145d";
+        hash = "sha256-ALDa8bhgiHyIRmyGh8/1P56TvEG/gqC0qOqAWbtURyg=";
+      };
+      palettes = (builtins.fromJSON (builtins.readFile ../../configs/theme/palettes.json)).palettes;
+      wallpaper = import ../lib/wallpaper.nix {
+        inherit pkgs;
+        p = palettes.rose-pine;
+        name = "rose-pine";
+      };
+      # The panel's size (rEFInd scales the banner to the screen anyway). The ASCII characters
+      # at full strength fought with the icons and labels, so the picture is dimmed to a faint
+      # texture behind them.
+      background = pkgs.runCommand "refind-background.png" { nativeBuildInputs = [ pkgs.imagemagick ]; } ''
+        magick ${wallpaper} -resize 1920x1200 -fill "#${palettes.rose-pine.base}" -colorize 55% PNG24:$out
+      '';
+      # The theme's icons are black, drawn for its light background; on the dark wallpaper
+      # they vanished. Inverted to white here (alpha kept), and the selection marks are made
+      # from the palette instead of the theme's dark ones: a translucent iris rounded square.
+      icons = pkgs.runCommand "refind-icons" { nativeBuildInputs = [ pkgs.imagemagick ]; } ''
+        mkdir -p $out
+        # Scaled here to the sizes refind.conf asks for (big_icon_size / small_icon_size), so
+        # rEFInd never scales at boot: its scaler failed on these and drew hatched squares.
+        # PNG32 forces true-colour RGBA (ImageMagick would otherwise write palette PNGs).
+        for f in ${theme}/icons/os_*.png; do
+          magick "$f" -channel RGB -negate +channel -resize 192x192 "PNG32:$out/$(basename "$f")"
+        done
+        for f in ${theme}/icons/func_*.png; do
+          magick "$f" -channel RGB -negate +channel -resize 72x72 "PNG32:$out/$(basename "$f")"
+        done
+        magick -size 208x208 xc:none -fill "#${palettes.rose-pine.iris}59" -stroke "#${palettes.rose-pine.iris}" -strokewidth 3 \
+          -draw "roundrectangle 3,3 204,204 24,24" PNG32:$out/selection_big.png
+        magick -size 88x88 xc:none -fill "#${palettes.rose-pine.iris}59" -stroke "#${palettes.rose-pine.iris}" -strokewidth 2 \
+          -draw "roundrectangle 2,2 85,85 14,14" PNG32:$out/selection_small.png
+      '';
+      conf = pkgs.writeText "refind.conf" ''
+        timeout 5
+        # No "resolution" line: on this HP firmware the mode rEFInd picked for "max" came up
+        # with the red channel missing (everything blue); the mode the firmware is already in
+        # is the panel's native one anyway.
+        # Graphics mode for both: without "linux" rEFInd drops to a text screen ("Starting
+        # nixos-generation-...", "Using load options") before the kernel, which is worse than
+        # the menu's frame showing for an instant when the Xe driver takes over.
+        use_graphics_for linux,windows
+        hideui singleuser,hints,arrows,badges
+        # Larger text and icons than the defaults (14px font, 128px icons) on the 1920x1200 panel.
+        font fonts/ubuntu-mono-24.png
+        big_icon_size 192
+        small_icon_size 72
+        icons_dir theme/icons
+        banner theme/background.png
+        banner_scale fillscreen
+        selection_big theme/selection_big.png
+        selection_small theme/selection_small.png
+        # Only the tools the theme has flat icons for (it has none for "firmware").
+        showtools shutdown,reboot
+        # Windows is found by scanning the ESP; the UKIs, systemd-boot and the fallback copy
+        # of it are hidden, since the stanza written below covers them in one entry.
+        scanfor manual,internal
+        dont_scan_dirs ESP:/EFI/Linux,ESP:/EFI/systemd,ESP:/EFI/BOOT,ESP:/EFI/nixos
+        default_selection NixOS
+      '';
+      install = pkgs.writeShellScript "refind-install" ''
+        set -eu
+        PATH=${lib.makeBinPath [ pkgs.coreutils pkgs.gnused pkgs.gnugrep pkgs.util-linux pkgs.sbctl pkgs.efibootmgr ]}
+        esp=/boot
+        d=$esp/EFI/refind
+        mkdir -p "$d/theme/icons"
+
+        # The binary, signed. Re-signed only when rEFInd's package changes or the signature
+        # is missing, so a normal switch does not touch it.
+        if ! cmp -s ${pkgs.refind}/share/refind/refind_x64.efi "$d/refind_x64.efi.unsigned" 2>/dev/null; then
+          cp ${pkgs.refind}/share/refind/refind_x64.efi "$d/refind_x64.efi.unsigned"
+          cp "$d/refind_x64.efi.unsigned" "$d/refind_x64.efi"
+        fi
+        # (sbctl verify exits 0 either way; its check mark is the answer.)
+        if ! sbctl verify "$d/refind_x64.efi" 2>&1 | grep -q '✓'; then
+          sbctl sign "$d/refind_x64.efi" >/dev/null
+        fi
+
+        # Theme and background.
+        cp ${icons}/selection_big.png ${icons}/selection_small.png "$d/theme/"
+        cp ${icons}/*.png "$d/theme/icons/"
+        rm -f "$d/theme/icons/selection_big.png" "$d/theme/icons/selection_small.png"
+        cp ${background} "$d/theme/background.png"
+        mkdir -p "$d/fonts"
+        cp ${pkgs.refind}/share/refind/fonts/ubuntu-mono-24.png "$d/fonts/"
+
+        # The NixOS entry: the newest generation's UKI, its safe specialisation, the three
+        # generations before it, and systemd-boot (every generation, the old text menu).
+        gen_of() { basename "$1" | sed -n 's/^nixos-generation-\([0-9]*\)-.*/\1/p'; }
+        date_of() { date -d "@$(stat -c %Y "/nix/var/nix/profiles/system-$1-link" 2>/dev/null || echo 0)" '+%Y-%m-%d %H:%M'; }
+        latest=""; latest_n=0
+        for f in "$esp"/EFI/Linux/nixos-generation-*.efi; do
+          case "$f" in *specialisation*) continue ;; esac
+          n=$(gen_of "$f"); [ "$n" -gt "$latest_n" ] && { latest_n=$n; latest=$f; }
+        done
+        [ -n "$latest" ] || { echo "refind: no UKI in $esp/EFI/Linux" >&2; exit 0; }
+        {
+          cat ${conf}
+          echo
+          echo "menuentry \"NixOS\" {"
+          # (a stanza's icon path is relative to the volume root, unlike icons_dir and banner)
+          echo "    icon EFI/refind/theme/icons/os_nixos.png"
+          echo "    loader /EFI/Linux/$(basename "$latest")"
+          safe=$(ls "$esp"/EFI/Linux/nixos-generation-$latest_n-specialisation-safe-*.efi 2>/dev/null | head -n 1)
+          [ -n "$safe" ] && {
+            echo "    submenuentry \"Generation $latest_n, safe mode (no Hyprland, no GPU)\" {"
+            echo "        loader /EFI/Linux/$(basename "$safe")"
+            echo "    }"
+          }
+          for f in $(ls "$esp"/EFI/Linux/nixos-generation-*.efi | grep -v specialisation | sort -t- -k3,3nr); do
+            n=$(gen_of "$f"); [ "$n" -lt "$latest_n" ] || continue
+            echo "    submenuentry \"Generation $n, $(date_of "$n")\" {"
+            echo "        loader /EFI/Linux/$(basename "$f")"
+            echo "    }"
+          done | head -n 12
+          echo "    submenuentry \"systemd-boot (every generation)\" {"
+          echo "        loader /EFI/systemd/systemd-bootx64.efi"
+          echo "    }"
+          echo "}"
+        } > "$d/refind.conf.new"
+        mv "$d/refind.conf.new" "$d/refind.conf"
+
+        # Firmware entry, first in the order. systemd-boot's entry stays as the fallback.
+        dev=$(findmnt -no SOURCE "$esp")
+        disk=/dev/$(lsblk -no PKNAME "$dev")
+        part=$(cat "/sys/class/block/$(basename "$dev")/partition")
+        # (efibootmgr prints "Boot0005* rEFInd<tab>HD(...)": the label ends at a tab.)
+        if ! efibootmgr | grep -q "^Boot[0-9A-F]*\* rEFInd$(printf '\t')"; then
+          efibootmgr -q -c -d "$disk" -p "$part" -L rEFInd -l '\EFI\refind\refind_x64.efi'
+        fi
+        num=$(efibootmgr | sed -n "s/^Boot\([0-9A-F]*\)\* rEFInd$(printf '\t').*/\1/p" | head -n 1)
+        [ -n "$num" ] || { echo "refind: no firmware entry" >&2; exit 0; }
+        order=$(efibootmgr | sed -n 's/^BootOrder: //p')
+        case "$order" in
+          "$num"|"$num,"*) ;;
+          *) efibootmgr -q -o "$num,$(echo "$order" | sed "s/\b$num\b//; s/,,/,/; s/^,//; s/,$//")" ;;
+        esac
+      '';
+    in
+    {
+      deps = [ ];
+      text = "${install}";
+    };
+
+  # No kernel text console on the panel once the greeter is up. Every hand-over of the
+  # display (Plymouth to greeter, lock and unlock, suspend and resume, the last second of a
+  # shutdown) let fbcon paint its text console for an instant. Unbinding fbcon from the
+  # framebuffer stops that for good: the VTs still exist (Ctrl+Alt+F2 still logs in, just
+  # on a black screen), and `echo 1 > /sys/class/vtconsole/vtcon1/bind` brings the text back
+  # if it is ever needed. The safe specialisation keeps the console.
+  systemd.services.fbcon-unbind = {
+    description = "Unbind the kernel text console from the framebuffer";
+    wantedBy = [ "graphical.target" ];
+    # Before the greeter: the text console was being drawn in the moment between Plymouth
+    # letting go of the display and Hyprland's first frame. fbcon re-binds itself when the
+    # GPU driver registers its framebuffer, so wait for that (xe's "xedrmfb") first.
+    after = [ "plymouth-start.service" ];
+    before = [ "greetd.service" ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStart = pkgs.writeShellScript "fbcon-unbind" ''
+        for _ in $(seq 1 150); do
+          grep -qs xedrmfb /sys/class/graphics/fb0/name && break
+          sleep 0.1
+        done
+        for v in /sys/class/vtconsole/vtcon*; do
+          grep -qs "frame buffer" "$v/name" && echo 0 > "$v/bind"
+        done
+        exit 0
+      '';
+      ExecStop = pkgs.writeShellScript "fbcon-rebind" ''
+        for v in /sys/class/vtconsole/vtcon*; do
+          grep -qs "frame buffer" "$v/name" && echo 1 > "$v/bind"
+        done
+        exit 0
+      '';
+    };
+  };
+
   # The ESP itself cannot be encrypted (firmware reads it in plaintext), but Secure Boot
   # verifies the signature of kernel/initrd (UKI), so tampering with the boot chain on the ESP is detected.
   # Since the existing Windows ESP is reused, confirm that the generated hardware-configuration.nix's
@@ -178,9 +416,43 @@ in
   # Authenticate with `sudo tailscale up` on first run only.
   services.tailscale.enable = true;
 
+  services.espanso = {
+    enable = true;
+    package = pkgs.espanso-wayland;
+  };
+  programs.kdeconnect.enable = true;
+
   time.timeZone = "Asia/Tokyo";
   i18n.defaultLocale = "en_US.UTF-8";
-  console.keyMap = "us"; # "jp" for a JIS layout
+  # The console takes its keymap from the xkb settings so Caps Lock is Ctrl there too (the
+  # greeter and TTYs). Nothing here enables X; Hyprland has its own kb_options.
+  services.xserver.xkb = {
+    layout = "us"; # "jp" for a JIS layout
+    options = "ctrl:nocaps";
+  };
+  console.useXkbConfig = true;
+  # xremap (home/xremap.nix) runs as the user, reads the keyboards and writes to /dev/uinput.
+  # uinput already carries systemd's uaccess tag; the keyboards get it here, so the logged-in user
+  # on the active seat can read them. That is narrower than the input group, which would give every
+  # process of the user every input device even from an ssh session, and it applies without a
+  # re-login. The file name has to sort before 73-seat-late.rules (see nixos-laptop-vivado.nix).
+  hardware.uinput.enable = true;
+  services.udev.packages = [
+    (pkgs.writeTextFile {
+      name = "fusuma-touchpad-uaccess";
+      destination = "/lib/udev/rules.d/70-fusuma-touchpad.rules";
+      text = ''
+        SUBSYSTEM=="input", KERNEL=="event*", ENV{ID_INPUT_TOUCHPAD}=="1", TAG+="uaccess"
+      '';
+    })
+    (pkgs.writeTextFile {
+      name = "xremap-keyboard-uaccess";
+      destination = "/lib/udev/rules.d/70-xremap-keyboard.rules";
+      text = ''
+        SUBSYSTEM=="input", KERNEL=="event*", ENV{ID_INPUT_KEYBOARD}=="1", TAG+="uaccess"
+      '';
+    })
+  ];
 
   # Countermeasure for clock drift when dual-booting with Windows.
   # NixOS treats the RTC as UTC. Align Windows to UTC as well with
@@ -192,6 +464,7 @@ in
     enable = true;
     extraPackages = with pkgs; [
       intel-media-driver # Gen8+ (recommended)
+      intel-compute-runtime # OpenCL for DaVinci Resolve on the Intel GPU
       intel-vaapi-driver # fallback for older generations (formerly vaapiIntel)
     ];
   };
@@ -211,10 +484,15 @@ in
   # Lid close: suspend on battery, stay up on AC. The machine is administered over SSH,
   # so closing it on the desk should not take it off the tailnet; on battery the default
   # suspend still applies so a closed laptop in a bag does not cook itself.
+  # Power button: a press locks the session (logind sends Lock to the session, hypridle runs
+  # hyprlock), a long press (5 s) powers off. logind's default is poweroff on a plain press, which
+  # on a laptop is one stray touch from losing the session.
   services.logind.settings.Login = {
     HandleLidSwitch = "suspend";
     HandleLidSwitchExternalPower = "ignore";
     HandleLidSwitchDocked = "ignore";
+    HandlePowerKey = "lock";
+    HandlePowerKeyLongPress = "poweroff";
   };
 
   # Suspend on lid close (default behavior; override with logind if needed).
@@ -227,16 +505,97 @@ in
 
   # --- Desktop: Hyprland (Wayland tiling compositor) ---
   # Enable Hyprland itself + xdg-desktop-portal-hyprland + XWayland together.
-  programs.hyprland.enable = true;
+  programs.hyprland = {
+    enable = true;
+    # uwsm (a systemd-managed way to start Hyprland) is not used here; the session is started
+    # the plain way. The greeter still lists "Hyprland (uwsm-managed)", because that entry is
+    # shipped inside the Hyprland package itself, not by this option: pick "Hyprland".
+    withUWSM = false;
+  };
 
-  # Login: greetd + tuigreet (lightweight, Wayland support; launches Hyprland from a TTY).
+  # Electron clients such as T3 need Secret Service to encrypt saved connection tokens.
+  # Password login unlocks the keyring via PAM; fingerprint login still needs a keyring prompt.
+  services.gnome.gnome-keyring.enable = true;
+  security.pam.services.greetd.enableGnomeKeyring = true;
+
+  # Login: greetd + ReGreet (GTK greeter under cage) on the same generated wallpaper the
+  # desktop uses (home/stylix.nix), in the palette's colours. It lists the Wayland sessions
+  # NixOS knows about (Hyprland, from programs.hyprland) and remembers the last user/session.
+  # The module sets greetd's default_session itself. Fingerprint works as before: pam_fprintd
+  # is in the greetd stack and ReGreet shows its "place your finger" prompt.
   services.greetd = {
     enable = true;
-    settings.default_session = {
-      command = "${pkgs.tuigreet}/bin/tuigreet --time --cmd Hyprland";
-      user = "greeter";
+    settings = {
+      # Straight into Hyprland at boot: the LUKS PIN typed a few seconds earlier is the
+      # gate, and the user/session picker had nothing to pick (one user, one session).
+      # ReGreet is still the default_session, so it is what comes up after a logout.
+      # The GNOME keyring is not unlocked by this (no password at login); it asks the first
+      # time something needs it.
+      initial_session = {
+        # start-hyprland, not the bare binary: 0.56 sets the session up in the wrapper and
+        # shows a warning banner when started without it.
+        command = "${config.programs.hyprland.package}/bin/start-hyprland";
+        user = "gapul";
+      };
+      default_session.user = "greeter";
     };
   };
+  services.displayManager.regreet =
+    let
+      data = builtins.fromJSON (builtins.readFile ../../configs/theme/palettes.json);
+      c = data.palettes.${data.active};
+      wallpaper = import ../lib/wallpaper.nix {
+        inherit pkgs;
+        p = c;
+        name = data.active;
+      };
+    in
+    {
+      enable = true;
+      cageArgs = [ "-s" "-d" "-m" "last" ];
+      font = {
+        package = pkgs.dejavu_fonts;
+        name = "DejaVu Sans";
+        size = 14;
+      };
+      iconTheme = {
+        package = pkgs.papirus-icon-theme;
+        name = "Papirus-Dark";
+      };
+      cursorTheme = {
+        package = pkgs.rose-pine-cursor;
+        name = "BreezeX-RosePine-Linux";
+      };
+      settings = {
+        background = {
+          path = "${wallpaper}";
+          fit = "Cover";
+        };
+        GTK.application_prefer_dark_theme = c.variant == "dark";
+        widget.clock = {
+          format = "%Y-%m-%d %H:%M";
+          resolution = "60s";
+          timezone = "Asia/Tokyo";
+        };
+      };
+      # Translucent card in the palette's surface colour, so the form sits on the wallpaper
+      # like the bar and hyprlock do rather than as a stock grey Adwaita box.
+      extraCss = ''
+        window { background: transparent; }
+        box.horizontal > box, box.vertical > box.login {
+          background: alpha(#${c.surface}, 0.85);
+          border-radius: 16px;
+          padding: 24px;
+        }
+        * { color: #${c.text}; }
+        entry, combobox, button {
+          background: alpha(#${c.overlay}, 0.9);
+          border-radius: 10px;
+        }
+        button.suggested-action { background: #${c.iris}; color: #${c.base}; }
+        entry:focus { outline: 2px solid #${c.iris}; }
+      '';
+    };
 
   # Recovery profile for when changes around Hyprland/GPU/greetd prevent a normal boot.
   # Enter a TTY from the "safe" specialisation in systemd-boot, then roll back to the
@@ -244,6 +603,8 @@ in
   specialisation.safe.configuration = {
     programs.hyprland.enable = lib.mkForce false;
     services.greetd.enable = lib.mkForce false;
+    services.displayManager.regreet.enable = lib.mkForce false; # reads greetd's session user
+    systemd.services.fbcon-unbind.enable = lib.mkForce false; # the text console is the point here
     hardware.graphics.enable = lib.mkForce false;
     # Anything that pulls in the graphics stack has to go too. With graphics off,
     # hardware.graphics.package has no value, so a module that merely reads it (steam and
@@ -287,22 +648,73 @@ in
   # Also use the GTK portal for file-picker dialogs etc. (the hyprland portal is already bundled).
   xdg.portal.extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
 
-  # The keyboard layout is set via Hyprland's input{kb_layout}. The console uses console.keyMap.
-  # fcitx5 Japanese input is handled by i18n.inputMethod below, including the Wayland env vars.
+  # The keyboard layout is set via Hyprland's input{kb_layout}. The console uses services.xserver.xkb.
+  # fcitx5 Japanese input is handled by i18n.inputMethod below, including the IM env vars.
 
-  # Japanese input (fcitx5 + Mozc)
+  # Japanese input: fcitx5 with SKK, set up after macSKK on the mac (configs/ime/skk/README.md).
+  # Mozc stays installed but out of the group; add it back from fcitx5-configtool if it is ever wanted.
+  # macSKK's skkserv (azooKey skkserv on localhost:1178) has no counterpart here: it is a mac app.
+  # The dictionaries and the kana rule are user-side, in home/fcitx5-skk.nix.
+  # Hyprland runs no XDG autostart, so the daemon is started from its exec-once (home/hyprland.nix);
+  # before that, nothing ever started fcitx5 and neither IM worked.
   i18n.inputMethod = {
     enable = true;
     type = "fcitx5";
-    fcitx5.addons = with pkgs; [ fcitx5-mozc ];
+    fcitx5 = {
+      addons = with pkgs; [
+        fcitx5-skk
+        fcitx5-mozc
+      ];
+      # Apps talk to fcitx5 over Wayland's text-input protocol instead of the GTK/Qt IM modules
+      # (GTK_IM_MODULE / QT_IM_MODULE are no longer set; XMODIFIERS stays, for XWayland apps).
+      # Through the GTK module Ghostty dropped every candidate picked from the window (a/s/d...),
+      # committing nothing; over text-input it takes them. fcitx5 itself warns about the GTK
+      # module on startup, as upstream advises against it under Hyprland.
+      waylandFrontend = true;
+      # Written to /etc/xdg/fcitx5. A ~/.config/fcitx5 that fcitx5-configtool saves takes precedence.
+      settings = {
+        # The input method group (SKK alone) is user-side in home/fcitx5-skk.nix: fcitx5 rewrites
+        # ~/.config/fcitx5/profile on every exit, and that copy would shadow one written here.
+        # Taken from macSKK's settings (configs/ime/skk/macSKK.plist), option by option:
+        addons.skk.globalSection = {
+          Rule = "gapul"; # kanaRule: default + full-width ！ (home/fcitx5-skk.nix)
+          PunctuationStyle = "Japanese"; # punctuation = 0: 、。
+          # Starts in latin, so a new window (a terminal, nvim) takes ASCII until C-j.
+          InitialInputMode = "Latin";
+          "Candidate Layout" = "Horizontal"; # candidateListDirection = 1
+          # selectCandidateKeys = "ASDFGHJKL": the home row picks, nine to a page.
+          CandidateChooseKey = "Qwerty Center Row (a,s,d,...)";
+          PageSize = 9;
+          # inlineCandidateCount = 5: five candidates cycle in place before the window opens.
+          NTriggersToShowCandWin = 5;
+          # enterNewLine = false (macSKK's default): Enter only commits, it does not also send a newline.
+          EggLikeNewLine = "True";
+          ShowAnnotation = "True";
+        };
+      };
+    };
   };
 
   services.printing.enable = true;
+  # USB transport for iPhone tools. Android USB access uses systemd uaccess rules.
+  services.usbmuxd.enable = true;
   # mDNS (.local name resolution / network printer auto-discovery).
   services.avahi = {
     enable = true;
     nssmdns4 = true;
     openFirewall = true;
+    publish.enable = true; # Allow UxPlay to announce its AirPlay service.
+    publish.userServices = true;
+    allowInterfaces = [ "wlp0s20f3" ]; # Do not advertise the USB tethering address.
+  };
+  # Re-register the receiver after Avahi restarts during a system switch.
+  systemd.services.avahi-daemon.postStart = ''
+    ${pkgs.systemd}/bin/systemctl --user --machine=gapul@.host --no-block try-restart uxplay.service || true
+  '';
+  # UxPlay uses fixed ports; accept AirPlay only on the Wi-Fi interface.
+  networking.firewall.interfaces.wlp0s20f3 = {
+    allowedTCPPorts = [ 7000 7001 7002 ];
+    allowedUDPPorts = [ 7000 7001 7002 ];
   };
   services.pipewire = {
     enable = true;
@@ -313,6 +725,19 @@ in
   # Bluetooth (keyboard/earphones etc.).
   hardware.bluetooth.enable = true;
   services.blueman.enable = true;
+  # LibrePods 0.2.5 ranks SBC above PipeWire's default A2DP (AAC on AirPods).
+  nixpkgs.overlays = [
+    (_final: prev: {
+      librepods = prev.librepods.overrideAttrs (old: {
+        postPatch = (old.postPatch or "") + ''
+          substituteInPlace media/mediacontroller.cpp \
+            --replace-fail 'QStringList profiles = {"a2dp-sink-sbc_xq", "a2dp-sink-sbc", "a2dp-sink"};' \
+              'QStringList profiles = {"a2dp-sink", "a2dp-sink-sbc_xq", "a2dp-sink-sbc"};'
+        '';
+      });
+    })
+  ];
+
 
   # Fonts (Nerd Font glyphs for ghostty/waybar + Japanese/emoji).
   fonts.packages = with pkgs; [
@@ -377,6 +802,10 @@ in
   # Enroll a fingerprint with `fprintd-enroll` on first run only.
   # * LUKS unlock happens at boot (initrd), so fingerprints can't be used there; it stays passphrase/TPM.
   services.fprintd.enable = true;
+  # hyprlock talks to fprintd itself (auth.fingerprint in home/hyprland.nix), so its PAM stack must
+  # not also run pam_fprintd: with both, the password prompt would wait behind a second fingerprint
+  # request, and the two would fight over the sensor.
+  security.pam.services.hyprlock.fprintAuth = false;
 
   # --- Gaming ---
   # Steam has to be system-side: it needs the 32-bit graphics stack (driSupport32Bit) and
@@ -400,6 +829,8 @@ in
   # as ordinary Hyprland windows. The image itself is not declarative: it is fetched once
   # with `sudo waydroid init -s GAPPS` (or -s VANILLA) after the first rebuild.
   virtualisation.waydroid.enable = true;
+  # Current kernels omit legacy ip_tables; use Waydroid's nftables backend.
+  virtualisation.waydroid.package = pkgs.waydroid-nftables;
 
   # --- Containers (podman: rootless + docker-compatible) ---
   # The `docker` command can be used as an alias for podman (dockerCompat).
