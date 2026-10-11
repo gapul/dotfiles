@@ -136,15 +136,34 @@ in
         p = palettes.rose-pine;
         name = "rose-pine";
       };
-      # The panel's size; rEFInd scales the banner to the screen anyway, this keeps the file small.
+      # The panel's size (rEFInd scales the banner to the screen anyway). The ASCII characters
+      # at full strength fought with the icons and labels, so the picture is dimmed to a faint
+      # texture behind them.
       background = pkgs.runCommand "refind-background.png" { nativeBuildInputs = [ pkgs.imagemagick ]; } ''
-        magick ${wallpaper} -resize 1920x1200 $out
+        magick ${wallpaper} -resize 1920x1200 -fill "#${palettes.rose-pine.base}" -colorize 55% PNG24:$out
+      '';
+      # The theme's icons are black, drawn for its light background; on the dark wallpaper
+      # they vanished. Inverted to white here (alpha kept), and the selection marks are made
+      # from the palette instead of the theme's dark ones: a translucent iris rounded square.
+      icons = pkgs.runCommand "refind-icons" { nativeBuildInputs = [ pkgs.imagemagick ]; } ''
+        mkdir -p $out
+        for f in ${theme}/icons/*.png; do
+          magick "$f" -channel RGB -negate +channel "$out/$(basename "$f")"
+        done
+        magick -size 208x208 xc:none -fill "#${palettes.rose-pine.iris}59" -stroke "#${palettes.rose-pine.iris}" -strokewidth 3 \
+          -draw "roundrectangle 3,3 204,204 24,24" $out/selection_big.png
+        magick -size 88x88 xc:none -fill "#${palettes.rose-pine.iris}59" -stroke "#${palettes.rose-pine.iris}" -strokewidth 2 \
+          -draw "roundrectangle 2,2 85,85 14,14" $out/selection_small.png
       '';
       conf = pkgs.writeText "refind.conf" ''
         timeout 5
         resolution max
         use_graphics_for linux,windows
         hideui singleuser,hints,arrows,badges
+        # Larger text and icons than the defaults (14px font, 128px icons) on the 1920x1200 panel.
+        font fonts/ubuntu-mono-24.png
+        big_icon_size 192
+        small_icon_size 72
         icons_dir theme/icons
         banner theme/background.png
         banner_scale fillscreen
@@ -177,9 +196,12 @@ in
         fi
 
         # Theme and background.
-        cp ${theme}/selection_big.png ${theme}/selection_small.png "$d/theme/"
-        cp ${theme}/icons/*.png "$d/theme/icons/"
+        cp ${icons}/selection_big.png ${icons}/selection_small.png "$d/theme/"
+        cp ${icons}/*.png "$d/theme/icons/"
+        rm -f "$d/theme/icons/selection_big.png" "$d/theme/icons/selection_small.png"
         cp ${background} "$d/theme/background.png"
+        mkdir -p "$d/fonts"
+        cp ${pkgs.refind}/share/refind/fonts/ubuntu-mono-24.png "$d/fonts/"
 
         # The NixOS entry: the newest generation's UKI, its safe specialisation, the three
         # generations before it, and systemd-boot (every generation, the old text menu).
@@ -381,6 +403,7 @@ in
     enable = true;
     extraPackages = with pkgs; [
       intel-media-driver # Gen8+ (recommended)
+      intel-compute-runtime # OpenCL for DaVinci Resolve on the Intel GPU
       intel-vaapi-driver # fallback for older generations (formerly vaapiIntel)
     ];
   };
