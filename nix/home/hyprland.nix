@@ -1,10 +1,122 @@
-{ config, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 # Hyprland user config (Rick). Imported only on nixos-laptop.
 # The system side (hosts/nixos-laptop.nix) provides PAM/session for
 # programs.hyprland / hyprlock; this side manages appearance and keybinds.
 # Colors are shared via configs/theme/palettes.json (rose-pine) as SSO ([[theme]]).
 let
+  # Hold a lock for the lifetime of drun so repeated gestures cannot stack windows.
+  launcher = pkgs.writeShellScript "wofi-launcher" ''
+    set -eu
+    mode="''${1:-open}"
+    pattern='^${pkgs.wofi}/bin/wofi --show drun$'
+    case "$mode" in
+      close)
+        ${pkgs.procps}/bin/pkill -u "$UID" -f "$pattern" || true
+        exit 0
+        ;;
+      toggle)
+        if ${pkgs.procps}/bin/pkill -u "$UID" -f "$pattern"; then
+          exit 0
+        fi
+        ;;
+      open) ;;
+      *) exit 2 ;;
+    esac
+    exec ${pkgs.util-linux}/bin/flock -n -E 0 "$XDG_RUNTIME_DIR/wofi-drun.lock" \
+      ${pkgs.wofi}/bin/wofi --show drun
+  '';
   c = import ../lib/theme.nix; # c.base / c.text / c.iris ... (hex without leading #)
+  # An app icon for the bar: a sketchybar-app-font ligature, in that font (see the workspaces
+  # module in programs.waybar below).
+  appIcon = name: "<span font_family='sketchybar-app-font' size='large' rise='-3500'>${name}</span>";
+
+  # The dark palette's wallpaper, for the lock screen (hyprlock's config is static, and a
+  # dark lock screen is right at any hour).
+  lockWallpaper = import ../lib/wallpaper.nix {
+    inherit pkgs;
+    p = (builtins.fromJSON (builtins.readFile ../../configs/theme/palettes.json)).palettes.rose-pine;
+    name = "rose-pine";
+  };
+
+  # Hyper+/ : every keybind, searchable. Read from Hyprland itself (so it cannot go stale),
+  # with the modifier mask turned back into names, plus the few things xremap adds that
+  # Hyprland cannot see.
+  cheatsheet = pkgs.writeShellScript "keys-cheatsheet" ''
+    {
+      printf '%s\n' \
+        "Space (held)         Hyper" \
+        "left Ctrl            Hyper" \
+        "Copilot, then key    Hyper+key (within 1.5 s)" \
+        "Copilot, G           game mode on/off (Hyper off on Space and left Ctrl)" \
+        "Caps Lock            Ctrl" \
+        ""
+      ${pkgs.hyprland}/bin/hyprctl binds -j | ${pkgs.jq}/bin/jq -r '
+        def mods: [
+          (if .modmask / 64 % 2 >= 1 then "Super" else empty end),
+          (if .modmask / 4 % 2 >= 1 then "Ctrl" else empty end),
+          (if .modmask / 8 % 2 >= 1 then "Alt" else empty end),
+          (if .modmask / 1 % 2 >= 1 then "Shift" else empty end)
+        ];
+        def modname: if (.modmask % 128 - .modmask % 1) >= 76 and (.modmask / 64 % 2 >= 1) and (.modmask / 4 % 2 >= 1) and (.modmask / 8 % 2 >= 1)
+          then (["Hyper"] + (if .modmask % 2 == 1 then ["Shift"] else [] end)) else mods end;
+        .[] | select(.key != "") |
+        ((modname + [.key]) | join("+")) + "\t" + .dispatcher + (if .arg != "" then " " + .arg else "" end)
+      ' | ${pkgs.coreutils}/bin/sort | ${pkgs.coreutils}/bin/expand -t 22
+    } | ${pkgs.wofi}/bin/wofi --dmenu --prompt keys --width 760 --height 560 >/dev/null
+  '';
+
+  # The bar's own scripts (the items ported from the mac's sketchybar, configs/wm/sketchybar).
+  # A TUI in a new ghostty window, as the mac's open_tui.sh does.
+  tui = title: cmd: "${lib.getExe pkgs.ghostty} --title=${title} -e ${cmd}";
+  # Input source: fcitx5 reports 2 when an input method is active (SKK here), 1 when the
+  # keys go through as they are. SKK's own kana/latin mode is not visible from outside, so
+  # this shows "▽あ" for SKK on and "A" for off, like the mac's ▽ marker.
+  imeStatus = pkgs.writeShellScript "bar-ime" ''
+    case "$(${pkgs.fcitx5}/bin/fcitx5-remote 2>/dev/null)" in
+      2) printf '{"text":"▽あ","class":"skk","tooltip":"SKK"}\n' ;;
+      *) printf '{"text":"A","class":"latin","tooltip":"direct input"}\n' ;;
+    esac
+  '';
+  # Services that should always be running in the session (the mac's app_guard). A green
+  # check when they are, a warning with the names when not; a click restarts the stopped ones.
+  guardUnits = [
+    "xremap"
+    "hyprpaper"
+    "hypridle"
+    "mako"
+    "darkman"
+    "hyprpolkitagent"
+    "ssh-tpm-agent"
+  ];
+  guard = pkgs.writeShellScript "bar-guard" ''
+    units="${lib.concatStringsSep " " guardUnits}"
+    down=""
+    tip=""
+    for u in $units; do
+      state=$(${pkgs.systemd}/bin/systemctl --user is-active "$u" 2>/dev/null)
+      if [ "$state" = active ]; then
+        tip="$tip✓ $u"
+      else
+        tip="$tip✗ $u ($state)"
+        down="$down $u"
+        [ "$1" = fix ] && ${pkgs.systemd}/bin/systemctl --user restart "$u" 2>/dev/null
+      fi
+      tip="$tip
+    "
+    done
+    # One line per unit in the tooltip: JSON wants the newlines as the two characters \n.
+    tip=$(printf '%s' "$tip" | ${pkgs.gnused}/bin/sed -z 's/\n *$//; s/\n */\\n/g')
+    if [ -z "$down" ]; then
+      printf '{"text":"󰄬","class":"ok","tooltip":"%s"}\n' "$tip"
+    else
+      printf '{"text":"󰀦%s","class":"down","tooltip":"%s"}\n' "$down" "$tip"
+    fi
+  '';
   # Idle actions that only make sense in front of the machine. With the lid shut it is being
   # used over ssh, and locking or suspending there is what made it look dead: the session
   # goes to hyprlock nobody can dismiss, then hypridle suspends it off the network entirely.
@@ -42,6 +154,208 @@ let
       Displays) exec ${pkgs.nwg-displays}/bin/nwg-displays ;;
     esac
   '';
+  # The bar itself (programs.waybar below adds the output and the width).
+  bar = {
+    layer = "top";
+    position = "top";
+    height = 30;
+    margin-top = 6;
+    spacing = 0;
+    modules-left = [
+      "custom/logo"
+      "hyprland/workspaces"
+      "hyprland/window"
+    ];
+    modules-center = [ "clock" ];
+    # Right, in the mac bar's order where it has the same things: guard, sleep inhibit,
+    # CPU, memory, (disk), what is playing, volume, input source, Bluetooth, Wi-Fi, battery.
+    modules-right = [
+      "custom/guard"
+      "idle_inhibitor"
+      "cpu"
+      "memory"
+      "disk"
+      "mpris"
+      "pulseaudio"
+      "custom/ime"
+      "bluetooth"
+      "network"
+      "battery"
+    ];
+    # The mac's apple logo: a menu of system monitor / settings / lock. Left click opens
+    # the monitor, middle the display settings, right locks the screen.
+    "custom/logo" = {
+      # A custom module with nothing to run shows nothing, so the glyph is its output:
+      # U+F313, the NixOS snowflake in the Nerd Font (written as a code point so it survives
+      # editors and terminals that drop private-use characters).
+      exec = "printf '\\uf313'";
+      interval = "once";
+      format = "{}";
+      tooltip-format = "click: system monitor · middle: displays · right: lock";
+      on-click = tui "System Monitor" (lib.getExe pkgs.bottom);
+      on-click-middle = "nwg-displays";
+      on-click-right = "${pkgs.systemd}/bin/loginctl lock-session";
+    };
+    "custom/ime" = {
+      exec = imeStatus;
+      return-type = "json";
+      interval = 1;
+      on-click = "${pkgs.fcitx5}/bin/fcitx5-configtool";
+    };
+    "custom/guard" = {
+      exec = guard;
+      return-type = "json";
+      interval = 15;
+      on-click = "${guard} fix";
+    };
+    # Keep the screen awake (the mac's nosleep): click to toggle; hypridle then neither
+    # locks nor suspends while it is on.
+    idle_inhibitor = {
+      format = "{icon}";
+      format-icons = {
+        activated = "󰅶";
+        deactivated = "󰾪";
+      };
+      tooltip-format-activated = "sleep inhibited";
+      tooltip-format-deactivated = "sleep allowed";
+    };
+    "hyprland/workspaces" = {
+      format = "{id} {windows}";
+      format-window-separator = "";
+      on-click = "activate";
+      sort-by-number = true;
+      # Only workspaces that exist (have windows or are active), and only this output's:
+      # Hyprland's workspaces belong to a monitor, so each monitor's bar lists its own.
+      all-outputs = false;
+      # Each window on the workspace as its app's icon. The icons are the ligatures of
+      # sketchybar-app-font (the font the SketchyBar rices use: ":firefox:" is the Firefox
+      # icon), applied with a Pango span to the icon only. The font also carries a few digits
+      # that are parts of ligatures, so it must not be the label's font. Keys are Hyprland
+      # window classes (regex); anything unmatched gets the generic app glyph.
+      window-rewrite-default = appIcon ":default:";
+      window-rewrite = {
+        "class<firefox.*>" = appIcon ":firefox:";
+        "class<tor-browser.*>" = appIcon ":tor_browser:";
+        "class<google-chrome.*|chromium.*>" = appIcon ":google_chrome:";
+        "class<com.mitchellh.ghostty>" = appIcon ":ghostty:";
+        "class<kitty>" = appIcon ":kitty:";
+        "class<com.t3tools.T3Code>" = appIcon ":t3_code:";
+        "class<[Cc]ode.*>" = appIcon ":code:";
+        "class<steam.*>" = appIcon ":steam:";
+        "class<discord.*>" = appIcon ":discord:";
+        "class<obsidian>" = appIcon ":obsidian:";
+        "class<Slack>" = appIcon ":slack:";
+        "class<org.telegram.desktop>" = appIcon ":telegram:";
+        "class<mpv>" = appIcon ":mpv:";
+        "class<com.obsproject.Studio>" = appIcon ":obsstudio:";
+        "class<Bitwarden>" = appIcon ":bit_warden:";
+        "class<org.keepassxc.KeePassXC>" = appIcon ":kee_pass_x_c:";
+        "class<org.pwmt.zathura>" = appIcon ":preview:";
+        "class<calibre.*>" = appIcon ":calibre:";
+        "class<thunar|org.gnome.Nautilus|yazi>" = appIcon ":finder:";
+        "class<Bitwig.*>" = appIcon ":bitwig_studio:";
+        "class<anki>" = appIcon ":anki:";
+        "class<kicad.*>" = appIcon ":kicad:";
+        "class<Godot.*>" = appIcon ":godot:";
+        "class<mscore|MuseScore.*>" = appIcon ":musescore:";
+        "class<zotero|Zotero>" = appIcon ":zotero:";
+        "class<blender>" = appIcon ":blender:";
+        "class<gimp.*>" = appIcon ":gimp:";
+        "class<org.inkscape.Inkscape>" = appIcon ":inkscape:";
+        "class<libreoffice.*>" = appIcon ":libreoffice:";
+        "class<thunderbird>" = appIcon ":thunderbird:";
+        "class<pavucontrol|nm-connection-editor|blueman-manager|nwg-displays>" = appIcon ":gear:";
+      };
+    };
+    "hyprland/window" = {
+      format = "{initialClass}";
+      max-length = 32;
+      separate-outputs = true;
+      rewrite = {
+        "com.mitchellh.ghostty" = "Ghostty";
+        "firefox.*" = "Firefox";
+        "com.t3tools.T3Code" = "T3 Code";
+        "google-chrome.*" = "Chrome";
+        "com.obsproject.Studio" = "OBS Studio";
+      };
+    };
+    clock = {
+      format = "{:%m/%d %H:%M}";
+      tooltip-format = "{:%Y-%m-%d %A}";
+      on-click = tui "Calendar" (lib.getExe' pkgs.calcurse "calcurse");
+    };
+    mpris = {
+      # Previous / play-pause / next as in the reference; the buttons are one label, so the
+      # clicks are: left play-pause, middle previous, right next.
+      format = "󰒮 {status_icon} 󰒭  {dynamic}";
+      dynamic-order = [ "title" "artist" ];
+      dynamic-separator = " — ";
+      dynamic-len = 32;
+      status-icons = {
+        playing = "󰏤";
+        paused = "󰐊";
+        stopped = "󰐊";
+      };
+      interval = 2;
+      on-click = "play-pause";
+      on-click-middle = "previous";
+      on-click-right = "next";
+    };
+    cpu = {
+      format = "󰻠 {usage}%";
+      interval = 5;
+      on-click = tui "System Monitor" (lib.getExe pkgs.bottom);
+    };
+    memory = {
+      format = "󰍛 {percentage}%";
+      tooltip-format = "{used:0.1f} GiB / {total:0.1f} GiB";
+      interval = 10;
+      on-click = tui "System Monitor" (lib.getExe pkgs.bottom);
+    };
+    disk = {
+      format = "{used} ({percentage_used}%)";
+      path = "/";
+      interval = 60;
+    };
+    network = {
+      format-wifi = "󰖩 {essid}";
+      format-ethernet = "󰈀 {ifname}";
+      format-disconnected = "󰖪";
+      tooltip-format-wifi = "{essid} ({signalStrength}%)";
+      tooltip-format-ethernet = "{ifname}";
+      on-click = "nm-connection-editor";
+    };
+    battery = {
+      format = "{icon} {capacity}%";
+      format-charging = "󱐋 {capacity}%";
+      format-icons = [
+        "󰁻"
+        "󰁽"
+        "󰁿"
+        "󰂁"
+        "󰁹"
+      ];
+    };
+    pulseaudio = {
+      format = "{icon} {volume}%";
+      format-muted = "󰖁";
+      format-icons.default = [
+        "󰕿"
+        "󰖀"
+        "󰕾"
+      ];
+      on-click = "pavucontrol";
+    };
+    bluetooth = {
+      format = "󰂯";
+      format-disabled = "󰂲";
+      format-off = "󰂲";
+      format-connected = "󰂱";
+      tooltip-format-connected = "{device_enumerate}";
+      tooltip-format-enumerate-connected = "{device_alias}";
+      on-click = "blueman-manager";
+    };
+  };
 in
 {
   # Binaries referenced by the keybinds / exec-once below. Without these the rice
@@ -57,6 +371,7 @@ in
     hyprpicker # color picker
     # wlogout is declared through programs.wlogout below, which also writes its stylesheet.
     cliphist # clipboard history
+    wofi-emoji # emoji picker ($mod+period)
     wl-clipboard # wl-copy / wl-paste, used by the cliphist pipeline
     wl-gammarelay-rs # night light dbus daemon
     brightnessctl # backlight keys
@@ -66,16 +381,12 @@ in
     pavucontrol # audio devices / per-app volume
     networkmanagerapplet # nm-connection-editor (the tray applet is the service below)
     nwg-displays # monitor layout -> ~/.config/hypr/monitors.conf, sourced below
+    sketchybar-app-font # the app icons in the bar's workspaces (programs.waybar below)
   ];
 
-  # Tray applets for Wi-Fi and Bluetooth. Both units Require tray.target, which pulls in
-  # waybar's tray (waybar.service is WantedBy tray.target).
-  services.network-manager-applet.enable = true;
-  services.blueman-applet.enable = true;
-  # waybar's tray only speaks StatusNotifierItem; without this nm-applet starts with the
-  # legacy XEmbed icon and never appears. The option only adds --indicator, it does not turn
-  # on an X session.
-  xsession.preferStatusNotifierItems = true;
+  # No tray applets for Wi-Fi and Bluetooth: their stock GTK icons sat next to the bar's
+  # Nerd Font pills and looked out of place, and Wi-Fi was already shown twice. Both are
+  # pills in waybar instead (network, bluetooth), which open the full tools on click.
 
   # nwg-displays writes its result here. The file is created empty on first activation so the
   # source line never points at nothing (Hyprland shows a config-error banner for that), and is
@@ -98,11 +409,18 @@ in
       source = ${config.xdg.configHome}/hypr/monitors.conf
     '';
     settings = {
-      "$mod" = "SUPER";
+      # Hyper: Space held (and the Copilot key as a prefix), from xremap (home/xremap.nix). Not
+      # plain Super, so Super+key stays free for the apps, as on the mac (configs/keyboard/karabiner).
+      "$mod" = "SUPER CTRL ALT";
       "$terminal" = "ghostty";
-      "$menu" = "wofi --show drun";
+      "$menu" = "${launcher} toggle";
 
-      monitor = ",preferred,auto,1";
+      monitor = [
+        ",preferred,auto,1"
+        # The 4K monitor at 1.5: 2560x1440 logical, so text is the same size as on the panel.
+        # nwg-displays' monitors.conf (sourced below) wins over this if it names the output.
+        "DP-1,preferred,auto,1.5"
+      ];
 
       # Only things that have no systemd user unit of their own. hypridle / waybar /
       # mako are started by their home-manager services below; listing them here as
@@ -131,10 +449,15 @@ in
       exec-once = [
         "wl-paste --watch cliphist store" # accumulate clipboard history
         "wl-gammarelay-rs" # dbus daemon for night light
+        # Input method (SKK). The package's autostart entry is never read here: Hyprland does not
+        # run XDG autostart. fcitx5 comes from i18n.inputMethod (hosts/nixos-laptop.nix).
+        "fcitx5 -d --replace"
       ];
 
       input = {
         kb_layout = "us"; # use "jp" for a JIS layout
+        # Caps Lock is Ctrl (also in hosts/nixos-laptop.nix for the console and greeter).
+        kb_options = "ctrl:nocaps";
         follow_mouse = 1;
         touchpad = {
           natural_scroll = true;
@@ -168,10 +491,13 @@ in
         "$mod SHIFT, M, exit" # quit Hyprland
         "$mod, E, exec, $terminal -e yazi" # file manager (yazi)
         "$mod, R, exec, $menu"
+        "SUPER, space, exec, $menu" # Win+Space, like Cmd+Space on the mac
         "$mod, V, togglefloating"
         "$mod, F, fullscreen"
         "$mod, L, exec, hyprlock" # manual lock
         "$mod, C, exec, cliphist list | wofi --dmenu | cliphist decode | wl-copy" # paste from history
+        "$mod, period, exec, wofi-emoji" # emoji picker, like Cmd+Ctrl+Space on the mac
+        "$mod, slash, exec, ${cheatsheet}" # every keybind, searchable
         "$mod, Escape, exec, wlogout" # power menu
         "$mod, comma, exec, ${settingsMenu}" # settings picker (Cmd+, on the mac)
         # screenshot / color picker
@@ -225,7 +551,56 @@ in
   # lock screen appearance
   # The launcher ($menu, and the cliphist picker). Declared through programs.* rather than
   # home.packages so stylix can write its stylesheet — see home/stylix.nix.
-  programs.wofi.enable = true;
+  xdg.configFile."wofi/launcher".source = launcher;
+  programs.wofi = {
+    enable = true;
+    settings = {
+      width = 640;
+      height = 420;
+      location = "center";
+      allow_markup = true;
+      insensitive = true;
+      hide_scroll = true;
+      prompt = "";
+      allow_images = true; # app icons in the list
+      image_size = 20;
+    };
+    # The same slab as the bar and the notifications: base at 92 %, a thin hlMed line, 12px
+    # corners, the bar's font. Stylix's sheet had the colours but stock shapes.
+    style = lib.mkForce ''
+      * {
+        font-family: "JetBrainsMono Nerd Font";
+        font-size: 13px;
+      }
+      window {
+        background-color: alpha(#${c.base}, 0.92);
+        border: 1px solid alpha(#${c.hlMed}, 0.9);
+        border-radius: 12px;
+        color: #${c.text};
+      }
+      #outer-box { margin: 10px; }
+      #input {
+        background-color: alpha(#${c.surface}, 0.9);
+        color: #${c.text};
+        border: 1px solid alpha(#${c.hlMed}, 0.9);
+        border-radius: 8px;
+        padding: 6px 10px;
+        margin-bottom: 8px;
+      }
+      #input:focus { border-color: #${c.iris}; }
+      #entry {
+        padding: 6px 10px;
+        border-radius: 8px;
+        color: #${c.subtle};
+      }
+      #entry:selected {
+        background-color: alpha(#${c.overlay}, 0.9);
+        color: #${c.text};
+      }
+      #entry:selected #text { color: #${c.text}; }
+      #entry image { margin-right: 8px; }
+    '';
+  };
 
   # hyprpaper paints the wallpaper stylix generates from the palette. It needs to be declared
   # through services.* rather than home.packages, or stylix cannot see it and writes no config
@@ -284,12 +659,20 @@ in
   programs.hyprlock = {
     enable = true;
     settings = {
+      # Fingerprint and password side by side: hyprlock asks fprintd directly (pam_fprintd is off
+      # for hyprlock in hosts/nixos-laptop.nix), so touching the sensor unlocks while the password
+      # field stays usable.
+      auth.fingerprint = {
+        enabled = true;
+        ready_message = "指紋またはパスワード";
+        present_message = "読み取り中…";
+      };
+
+      # The ASCII hands, as on the desktop, a touch darker so the clock reads.
       background = [
         {
-          path = "screenshot";
-          blur_passes = 3;
-          blur_size = 8;
-          brightness = "0.6";
+          path = "${lockWallpaper}";
+          brightness = "0.7";
         }
       ];
 
@@ -314,18 +697,31 @@ in
           halign = "center";
           valign = "center";
         }
+        # What the fingerprint reader is doing (ready / reading / retry), under the field.
+        {
+          text = "$FPRINTPROMPT";
+          font_size = 13;
+          font_family = "JetBrainsMono Nerd Font";
+          color = "rgb(${c.muted})";
+          position = "0, -100";
+          halign = "center";
+          valign = "center";
+        }
       ];
 
       input-field = [
         {
-          size = "300, 52";
-          rounding = 26;
-          outline_thickness = 2;
-          outer_color = "rgb(${c.iris})";
-          inner_color = "rgb(${c.surface})";
+          # The bar's slab: 12px corners, thin hlMed line, iris when it has focus.
+          size = "320, 44";
+          rounding = 12;
+          outline_thickness = 1;
+          outer_color = "rgb(${c.hlMed})";
+          inner_color = "rgba(${c.base}eb)";
           font_color = "rgb(${c.text})";
+          font_family = "JetBrainsMono Nerd Font";
           check_color = "rgb(${c.foam})";
           fail_color = "rgb(${c.love})";
+          capslock_color = "rgb(${c.gold})";
           placeholder_text = "";
           fade_on_empty = false;
           position = "0, -40";
@@ -409,59 +805,60 @@ in
   services.mako = {
     enable = true;
     settings = {
-      background-color = "#${c.surface}";
+      # Same slab as the bar and the launcher; sits under the bar at the top right.
+      font = "JetBrainsMono Nerd Font 12";
+      background-color = "#${c.base}eb";
       text-color = "#${c.text}";
-      border-color = "#${c.iris}";
-      border-radius = 8;
+      border-color = "#${c.hlMed}e6";
+      border-size = 1;
+      border-radius = 12;
+      padding = "10,14";
+      margin = "8";
+      width = 380;
+      anchor = "top-right";
+      outer-margin = "44,8,0,0"; # below the bar (6 + 30 + 8)
       default-timeout = 5000;
+      icons = true;
+      max-icon-size = 32;
+      "urgency=high" = {
+        border-color = "#${c.love}";
+        default-timeout = 0;
+      };
     };
   };
 
+  # Icon theme for GTK apps (stylix's gtk target sets the widget theme but no icon theme,
+  # so only hicolor was there and many apps had no icon).
+  gtk.iconTheme = {
+    name = "Papirus-Dark";
+    package = pkgs.papirus-icon-theme;
+  };
+
   # status bar
+  # After the yabai/SketchyBar rice at reddit.com/r/unixporn/comments/1x2zwou: one rounded
+  # bar floating a little below the top edge, about four fifths of the screen wide, with
+  # three groups and air between them. Left: the workspaces, each as its number and the
+  # icons of the windows on it, then the focused app's name. Centre: the clock. Right: what
+  # is playing, CPU, memory, disk, Wi-Fi, battery. No tray: the only things that used it
+  # (fcitx5, LibrePods) have their own item or launcher entry. Monochrome on
+  # purpose: text and subtle from the palette, accents kept for warnings.
+  #
+  # `width` is in pixels, so there are two bars with the same content: mainBar for the
+  # 1920-wide panel, and extBar, four fifths of the 4K monitor at scale 1.5, for anything else.
   programs.waybar = {
     enable = true;
     systemd.enable = true;
-    settings.mainBar = {
-      layer = "top";
-      position = "top";
-      height = 32;
-      modules-left = [
-        "hyprland/workspaces"
-        "hyprland/window"
-      ];
-      modules-center = [ "clock" ];
-      modules-right = [
-        "pulseaudio"
-        "backlight"
-        "battery"
-        "network"
-        "tray"
-      ];
-      clock.format = "{:%Y-%m-%d %H:%M}";
-      battery = {
-        format = "{capacity}% {icon}";
-        format-icons = [
-          "󰁻"
-          "󰁽"
-          "󰁿"
-          "󰂁"
-          "󰁹"
-        ];
-      };
-      network = {
-        format-wifi = "{essid} ";
-        on-click = "nm-connection-editor";
-      };
-      pulseaudio = {
-        format = "{volume}% {icon}";
-        on-click = "pavucontrol";
-      };
-      backlight.format = "{percent}% ";
+    settings.mainBar = bar // {
+      output = [ "eDP-1" ];
+      width = 1520;
     };
-    # The bar was a flat strip with the modules butted together and no way to tell one
-    # reading from the next. It is now transparent, with each group sitting on its own
-    # rounded slab, so the eye can separate them. Accents come from the palette rather
-    # than from a second colour list kept here.
+    settings.extBar = bar // {
+      output = [
+        "!eDP-1"
+        "*" # star after the exclusions: every other output
+      ];
+      width = 2048; # four fifths of the 4K monitor's 2560 logical pixels (scale 1.5, above)
+    };
     style = ''
       * {
         font-family: "JetBrainsMono Nerd Font";
@@ -472,84 +869,90 @@ in
         min-height: 0;
       }
 
-      /* Transparent bar: the slabs below are what is visible, so the wallpaper shows
-         between them and the bar stops reading as a black band across the screen. */
+      /* The bar window is the pill: fixed width (settings), rounded, slightly translucent. */
       window#waybar {
-        background: transparent;
+        background: alpha(#${c.base}, 0.92);
+        border: 1px solid alpha(#${c.hlMed}, 0.9);
+        border-radius: 12px;
         color: #${c.text};
       }
+      .modules-left { padding-left: 10px; }
+      .modules-right { padding-right: 14px; }
 
-      /* Shared slab. margin gives the floating look; the top margin is what lifts it
-         off the screen edge. */
+      #custom-logo,
       #workspaces,
       #window,
       #clock,
-      #pulseaudio,
-      #backlight,
-      #battery,
+      #custom-guard,
+      #idle_inhibitor,
+      #mpris,
+      #cpu,
+      #memory,
+      #disk,
       #network,
-      #tray {
-        background: alpha(#${c.surface}, 0.85);
-        border-radius: 10px;
-        margin: 6px 3px 0 3px;
-        padding: 2px 12px;
+      #battery,
+      #pulseaudio,
+      #custom-ime,
+      #bluetooth {
+        padding: 0 9px;
       }
 
-      /* Workspaces read as a row of pills rather than a slab of numbers. */
-      #workspaces { padding: 2px 4px; }
+      #custom-logo {
+        color: #${c.text};
+        font-size: 15px;
+        padding: 0 6px 0 2px;
+      }
+
+      /* "1 <icons>" per workspace, spaced out; the focused one is underlined. */
+      #workspaces { padding: 0; }
       #workspaces button {
-        color: #${c.muted};
-        padding: 0 8px;
-        border-radius: 8px;
-        transition: background 150ms ease, color 150ms ease;
+        color: #${c.subtle};
+        padding: 0 9px;
+        border-bottom: 2px solid transparent;
+        transition: color 150ms ease, border-color 150ms ease;
       }
       #workspaces button.active {
-        color: #${c.base};
-        background: #${c.iris};
-      }
-      #workspaces button:hover {
         color: #${c.text};
-        background: alpha(#${c.overlay}, 0.9);
+        border-bottom: 2px solid #${c.text};
       }
-      #workspaces button.urgent {
-        color: #${c.base};
-        background: #${c.love};
-      }
+      #workspaces button.empty { color: #${c.muted}; }
+      #workspaces button:hover { color: #${c.text}; }
+      #workspaces button.urgent { color: #${c.love}; }
 
-      /* The focused window's title is context, not a reading — keep it quiet, and let it
-         disappear entirely rather than leave an empty slab when nothing is focused. */
-      #window { color: #${c.subtle}; }
-      window#waybar.empty #window {
-        background: transparent;
-        padding: 0;
-        margin: 0;
-      }
-
-      #clock {
+      #window {
         color: #${c.text};
-        padding: 2px 16px;
+        padding-left: 14px;
       }
+      window#waybar.empty #window { padding: 0; }
 
-      /* One accent per reading, so a glance lands on the right number. */
-      #pulseaudio { color: #${c.foam}; }
-      #backlight  { color: #${c.gold}; }
-      #battery    { color: #${c.pine}; }
-      #network    { color: #${c.iris}; }
+      #clock { color: #${c.text}; }
 
-      /* States worth interrupting for. */
+      /* Readings are quiet; accents are kept for the states worth noticing. */
+      #mpris,
+      #cpu,
+      #memory,
+      #disk,
+      #network,
+      #battery,
+      #pulseaudio,
+      #bluetooth { color: #${c.subtle}; }
+      #mpris { color: #${c.muted}; }
+      #mpris.playing { color: #${c.subtle}; }
       #battery.warning  { color: #${c.gold}; }
-      #battery.critical {
-        color: #${c.base};
-        background: #${c.love};
-      }
+      #battery.critical { color: #${c.love}; }
       #battery.charging { color: #${c.foam}; }
-      #network.disconnected {
-        color: #${c.base};
-        background: #${c.love};
-      }
+      #network.disconnected { color: #${c.love}; }
+      #bluetooth.off,
+      #bluetooth.disabled { color: #${c.muted}; }
 
-      #tray { padding: 2px 10px; }
-      #tray menu { background: #${c.surface}; color: #${c.text}; }
+      /* The ported mac items. */
+      #custom-ime { color: #${c.text}; }
+      #custom-ime.latin { color: #${c.subtle}; }
+      #idle_inhibitor { color: #${c.muted}; }
+      #idle_inhibitor.activated { color: #${c.gold}; }
+      #custom-guard.ok { color: #${c.pine}; }
+      #custom-guard.down { color: #${c.love}; }
+
     '';
   };
 
