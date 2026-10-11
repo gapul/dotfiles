@@ -61,9 +61,11 @@ let
     '';
 
   # The hands, cropped from the wallpaper, as the terminal greeting's picture.
-  fastfetchLogo = pkgs.runCommand "fastfetch-logo.png" { nativeBuildInputs = [ pkgs.imagemagick ]; } ''
-    magick ${lockWallpaper} -gravity center -crop 2600x1100+0+0 +repage -resize 880x -quality 92 PNG24:$out
-  '';
+  fastfetchLogo =
+    pkgs.runCommand "fastfetch-logo.png" { nativeBuildInputs = [ pkgs.imagemagick ]; }
+      ''
+        magick ${lockWallpaper} -gravity center -crop 2600x1100+0+0 +repage -resize 880x -quality 92 PNG24:$out
+      '';
 
   # The dark palette's wallpaper, for the lock screen (hyprlock's config is static, and a
   # dark lock screen is right at any hour).
@@ -321,7 +323,10 @@ let
       # Previous / play-pause / next as in the reference; the buttons are one label, so the
       # clicks are: left play-pause, middle previous, right next.
       format = "󰒮 {status_icon} 󰒭  {dynamic}";
-      dynamic-order = [ "title" "artist" ];
+      dynamic-order = [
+        "title"
+        "artist"
+      ];
       dynamic-separator = " — ";
       dynamic-len = 32;
       status-icons = {
@@ -391,7 +396,11 @@ let
   };
 in
 {
-  imports = [ ./wl-keyboard.nix ./waybar-appearance.nix ./desktop-appearance.nix ];
+  imports = [
+    ./wl-keyboard.nix
+    ./waybar-appearance.nix
+    ./desktop-appearance.nix
+  ];
   # Binaries referenced by the keybinds / exec-once below. Without these the rice
   # is inert: $mod+Return execs a ghostty that is not in the closure, and the
   # night-light / screenshot / clipboard binds silently do nothing.
@@ -461,9 +470,20 @@ in
         # (configs/keyboard/karabiner).
         key = k: mkLuaInline ''mod .. " + ${k}"'';
         shiftKey = k: mkLuaInline ''mod .. " + SHIFT + ${k}"'';
-        exec = cmd: mkLuaInline ''hl.dsp.exec_cmd(${builtins.toJSON cmd})'';
-        bind = k: dsp: { _args = [ k dsp ]; };
-        bindOpts = k: dsp: opts: { _args = [ k dsp opts ]; };
+        exec = cmd: mkLuaInline "hl.dsp.exec_cmd(${builtins.toJSON cmd})";
+        bind = k: dsp: {
+          _args = [
+            k
+            dsp
+          ];
+        };
+        bindOpts = k: dsp: opts: {
+          _args = [
+            k
+            dsp
+            opts
+          ];
+        };
       in
       {
         mod._var = "SUPER + CTRL + ALT";
@@ -558,8 +578,14 @@ in
               {
                 type = "bezier";
                 points = [
-                  [ 0.16 1 ]
-                  [ 0.3 1 ]
+                  [
+                    0.16
+                    1
+                  ]
+                  [
+                    0.3
+                    1
+                  ]
                 ];
               }
             ];
@@ -571,8 +597,14 @@ in
               {
                 type = "bezier";
                 points = [
-                  [ 0.2 0.9 ]
-                  [ 0.1 1.05 ]
+                  [
+                    0.2
+                    0.9
+                  ]
+                  [
+                    0.1
+                    1.05
+                  ]
                 ];
               }
             ];
@@ -658,15 +690,21 @@ in
           (bind (key "period") (exec "wofi-emoji")) # emoji picker, like Cmd+Ctrl+Space on the mac
           (bind (key "slash") (exec "${cheatsheet}")) # every keybind, searchable
           # Power menu. Three tiles a row with a wide margin, so the tiles are not the whole screen.
-          (bind (key "Escape") (exec "wlogout --buttons-per-row 3 --margin 240 --column-spacing 16 --row-spacing 16"))
+          (bind (key "Escape") (
+            exec "wlogout --buttons-per-row 3 --margin 240 --column-spacing 16 --row-spacing 16"
+          ))
           (bind (key "comma") (exec "${settingsMenu}")) # settings picker (Cmd+, on the mac)
           # screenshot / color picker
           (bind (key "P") (exec "${screenshotRegion}")) # region -> satty -> clipboard
           (bind (shiftKey "P") (exec "hyprshot -m window")) # window -> save
           (bind (shiftKey "C") (exec "hyprpicker -a")) # pick a color and copy
           # night light (switch color temperature 4000K / 6500K)
-          (bind (shiftKey "N") (exec "busctl --user set-property rs.wl-gammarelay / rs.wl.gammarelay Temperature q 4000"))
-          (bind (shiftKey "D") (exec "busctl --user set-property rs.wl-gammarelay / rs.wl.gammarelay Temperature q 6500"))
+          (bind (shiftKey "N") (
+            exec "busctl --user set-property rs.wl-gammarelay / rs.wl.gammarelay Temperature q 4000"
+          ))
+          (bind (shiftKey "D") (
+            exec "busctl --user set-property rs.wl-gammarelay / rs.wl.gammarelay Temperature q 6500"
+          ))
           # move focus
           (bind (key "left") (mkLuaInline ''hl.dsp.focus({ direction = "left" })''))
           (bind (key "right") (mkLuaInline ''hl.dsp.focus({ direction = "right" })''))
@@ -676,10 +714,22 @@ in
           (bindOpts (key "mouse:272") (mkLuaInline "hl.dsp.window.drag()") { mouse = true; })
           (bindOpts (key "mouse:273") (mkLuaInline "hl.dsp.window.resize()") { mouse = true; })
           # volume / brightness (work while locked, repeat while held)
-          (bindOpts "XF86AudioRaiseVolume" (exec "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+") { locked = true; repeating = true; })
-          (bindOpts "XF86AudioLowerVolume" (exec "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-") { locked = true; repeating = true; })
-          (bindOpts "XF86MonBrightnessUp" (exec "brightnessctl set 5%+") { locked = true; repeating = true; })
-          (bindOpts "XF86MonBrightnessDown" (exec "brightnessctl set 5%-") { locked = true; repeating = true; })
+          (bindOpts "XF86AudioRaiseVolume" (exec "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+") {
+            locked = true;
+            repeating = true;
+          })
+          (bindOpts "XF86AudioLowerVolume" (exec "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-") {
+            locked = true;
+            repeating = true;
+          })
+          (bindOpts "XF86MonBrightnessUp" (exec "brightnessctl set 5%+") {
+            locked = true;
+            repeating = true;
+          })
+          (bindOpts "XF86MonBrightnessDown" (exec "brightnessctl set 5%-") {
+            locked = true;
+            repeating = true;
+          })
           (bindOpts "XF86AudioMute" (exec "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle") { locked = true; })
           (bindOpts "XF86AudioPlay" (exec "playerctl play-pause") { locked = true; })
           (bindOpts "XF86AudioNext" (exec "playerctl next") { locked = true; })
@@ -1067,15 +1117,42 @@ in
       modules = [
         "title"
         "separator"
-        { type = "os"; key = "󰣇 os"; }
-        { type = "kernel"; key = "󰌽 kernel"; }
-        { type = "wm"; key = "󰖲 wm"; }
-        { type = "uptime"; key = "󰔟 up"; }
-        { type = "packages"; key = "󰏖 pkgs"; }
-        { type = "cpu"; key = "󰻠 cpu"; }
-        { type = "memory"; key = "󰍛 mem"; }
-        { type = "disk"; key = "󰋊 disk"; }
-        { type = "battery"; key = "󰁹 bat"; }
+        {
+          type = "os";
+          key = "󰣇 os";
+        }
+        {
+          type = "kernel";
+          key = "󰌽 kernel";
+        }
+        {
+          type = "wm";
+          key = "󰖲 wm";
+        }
+        {
+          type = "uptime";
+          key = "󰔟 up";
+        }
+        {
+          type = "packages";
+          key = "󰏖 pkgs";
+        }
+        {
+          type = "cpu";
+          key = "󰻠 cpu";
+        }
+        {
+          type = "memory";
+          key = "󰍛 mem";
+        }
+        {
+          type = "disk";
+          key = "󰋊 disk";
+        }
+        {
+          type = "battery";
+          key = "󰁹 bat";
+        }
         "break"
         "colors"
       ];

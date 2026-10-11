@@ -210,7 +210,10 @@ in
 
     # ─── Devices / Remote ───
     # pymobiledevice3 7.7 needs qh3 < 2; unstable currently supplies qh3 2.x.
-    (nixpkgsStable.legacyPackages.${pkgs.stdenv.hostPlatform.system}.callPackage ../pkgs/pymobiledevice3.nix { })
+    (nixpkgsStable.legacyPackages.${pkgs.stdenv.hostPlatform.system}.callPackage
+      ../pkgs/pymobiledevice3.nix
+      { }
+    )
     libimobiledevice
     uxplay # iPhone AirPlay receiver
     android-tools # adb; USB permissions are provided by systemd
@@ -268,6 +271,5 @@ in
     lutris # GOG / standalone installers / emulators
     heroic # Epic / GOG / Amazon — the libraries the homelab free-games claimer fills up
   ];
-
 
 }

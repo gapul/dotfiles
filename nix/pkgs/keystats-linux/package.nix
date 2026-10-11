@@ -1,4 +1,10 @@
-{ lib, rustPlatform, pkg-config, gtk4, wrapGAppsHook4 }:
+{
+  lib,
+  rustPlatform,
+  pkg-config,
+  gtk4,
+  wrapGAppsHook4,
+}:
 rustPlatform.buildRustPackage {
   pname = "keystats-linux";
   version = "0.1.0";
@@ -8,7 +14,10 @@ rustPlatform.buildRustPackage {
     filter = path: type: builtins.baseNameOf path != "target" && lib.cleanSourceFilter path type;
   };
   cargoLock.lockFile = ./Cargo.lock;
-  nativeBuildInputs = [ pkg-config wrapGAppsHook4 ];
+  nativeBuildInputs = [
+    pkg-config
+    wrapGAppsHook4
+  ];
   buildInputs = [ gtk4 ];
   doCheck = true;
   postInstall = ''
