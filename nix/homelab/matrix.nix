@@ -95,6 +95,22 @@
 
       max_upload_size = "50M";
 
+      # Keep deleted messages. By default Synapse strips the original content of a
+      # redacted event from event_json after 7 days. Synapse accepts null for "forever",
+      # but the NixOS module drops null settings before writing homeserver.yaml, so a
+      # 100-year period is the way to say it here. Edits are already safe (an m.replace
+      # is a separate event; the original stays as sent), and media is never removed on
+      # redaction, so this was the only gap. The motivation is the bridges: LINE/Signal/
+      # etc. forward the other side's "unsend" as a redaction, which otherwise destroys
+      # the only copy we have (2026-10-11). Clients still see the message as deleted;
+      # only the admin paths below get the content back.
+      redaction_retention_period = "36500d";
+      # MSC2815: lets a server admin fetch the unredacted content over the client API
+      #   GET /_matrix/client/unstable/fi.mau.msc2815/rooms/{room}/event/{event}
+      #       ?fi.mau.msc2815.include_unredacted_content=true
+      # Without it the retained content is only reachable with sudo + psql on this box.
+      experimental_features.msc2815_enabled = true;
+
       # Cap the in-process caches. Synapse's caches only grow (Python never hands the
       # memory back), and the Discord bulk import on 2026-09-30 took the RSS from 350MB
       # to 6.3GB on a 16GB box, with 6.8GB of zram in use. cache_autotuning evicts
