@@ -137,7 +137,7 @@ in
         rev = "56a06a4bd9ed76c05523a22017056dbecca4145d";
         hash = "sha256-ALDa8bhgiHyIRmyGh8/1P56TvEG/gqC0qOqAWbtURyg=";
       };
-      palettes = (builtins.fromJSON (builtins.readFile ../../configs/theme/palettes.json)).palettes;
+      inherit (builtins.fromJSON (builtins.readFile ../../configs/theme/palettes.json)) palettes;
       wallpaper = import ../lib/wallpaper.nix {
         inherit pkgs;
         p = palettes.rose-pine;
@@ -146,9 +146,11 @@ in
       # The panel's size (rEFInd scales the banner to the screen anyway). The ASCII characters
       # at full strength fought with the icons and labels, so the picture is dimmed to a faint
       # texture behind them.
-      background = pkgs.runCommand "refind-background.png" { nativeBuildInputs = [ pkgs.imagemagick ]; } ''
-        magick ${wallpaper} -resize 1920x1200 -fill "#${palettes.rose-pine.base}" -colorize 55% PNG24:$out
-      '';
+      background =
+        pkgs.runCommand "refind-background.png" { nativeBuildInputs = [ pkgs.imagemagick ]; }
+          ''
+            magick ${wallpaper} -resize 1920x1200 -fill "#${palettes.rose-pine.base}" -colorize 55% PNG24:$out
+          '';
       # The theme's icons are black, drawn for its light background; on the dark wallpaper
       # they vanished. Inverted to white here (alpha kept), and the selection marks are made
       # from the palette instead of the theme's dark ones: a translucent iris rounded square.
@@ -197,7 +199,16 @@ in
       '';
       install = pkgs.writeShellScript "refind-install" ''
         set -eu
-        PATH=${lib.makeBinPath [ pkgs.coreutils pkgs.gnused pkgs.gnugrep pkgs.util-linux pkgs.sbctl pkgs.efibootmgr ]}
+        PATH=${
+          lib.makeBinPath [
+            pkgs.coreutils
+            pkgs.gnused
+            pkgs.gnugrep
+            pkgs.util-linux
+            pkgs.sbctl
+            pkgs.efibootmgr
+          ]
+        }
         esp=/boot
         d=$esp/EFI/refind
         mkdir -p "$d/theme/icons"
@@ -552,7 +563,12 @@ in
     in
     {
       enable = true;
-      cageArgs = [ "-s" "-d" "-m" "last" ];
+      cageArgs = [
+        "-s"
+        "-d"
+        "-m"
+        "last"
+      ];
       font = {
         package = pkgs.dejavu_fonts;
         name = "DejaVu Sans";
@@ -713,8 +729,16 @@ in
   '';
   # UxPlay uses fixed ports; accept AirPlay only on the Wi-Fi interface.
   networking.firewall.interfaces.wlp0s20f3 = {
-    allowedTCPPorts = [ 7000 7001 7002 ];
-    allowedUDPPorts = [ 7000 7001 7002 ];
+    allowedTCPPorts = [
+      7000
+      7001
+      7002
+    ];
+    allowedUDPPorts = [
+      7000
+      7001
+      7002
+    ];
   };
   services.pipewire = {
     enable = true;
@@ -737,7 +761,6 @@ in
       });
     })
   ];
-
 
   # Fonts (Nerd Font glyphs for ghostty/waybar + Japanese/emoji).
   fonts.packages = with pkgs; [

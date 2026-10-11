@@ -20,7 +20,7 @@
 # re-applies the current mode after every switch, which also covers the one activation
 # where home-manager resets the key it no longer manages.
 let
-  palettes = (builtins.fromJSON (builtins.readFile ../../configs/theme/palettes.json)).palettes;
+  inherit (builtins.fromJSON (builtins.readFile ../../configs/theme/palettes.json)) palettes;
   wallpaperFor =
     name:
     import ../lib/wallpaper.nix {
