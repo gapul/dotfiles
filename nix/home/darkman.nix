@@ -21,26 +21,27 @@
 # where home-manager resets the key it no longer manages.
 let
   palettes = (builtins.fromJSON (builtins.readFile ../../configs/theme/palettes.json)).palettes;
-  wallpaperConfig =
-    mode: name:
-    let
-      image = import ../lib/wallpaper.nix {
-        inherit pkgs name;
-        p = palettes.${name};
-      };
-    in
-    pkgs.writeText "hyprpaper-${mode}.conf" "wallpaper {\n  monitor=\n  path=${image}\n}\nsplash=false\n";
-  lightWallpaper = wallpaperConfig "light" "rose-pine-dawn";
-  darkWallpaper = wallpaperConfig "dark" "rose-pine";
-  wallpaperStart = pkgs.writeShellScript "hyprpaper-appearance" ''
+  wallpaperFor =
+    name:
+    import ../lib/wallpaper.nix {
+      inherit pkgs name;
+      p = palettes.${name};
+    };
+  lightWallpaper = wallpaperFor "rose-pine-dawn";
+  darkWallpaper = wallpaperFor "rose-pine";
+  # awww (the renamed swww) paints the wallpaper and can cross-fade to the other one, which
+  # is what makes the sunrise/sunset switch a transition rather than a cut.
+  awww = "${pkgs.awww}/bin/awww";
+  setWallpaper = pkgs.writeShellScript "wallpaper-set" ''
     set -eu
-    # Query on every start so login, service restarts and new monitors use the current mode.
-    mode=$(${pkgs.darkman}/bin/darkman get 2>/dev/null) || mode=dark
+    mode=''${1:-$(${pkgs.darkman}/bin/darkman get 2>/dev/null || echo dark)}
     case "$mode" in
-      light) wallpaper=${lightWallpaper} ;;
-      *) wallpaper=${darkWallpaper} ;;
+      light) image=${lightWallpaper} ;;
+      *) image=${darkWallpaper} ;;
     esac
-    exec ${config.services.hyprpaper.package}/bin/hyprpaper --config "$wallpaper"
+    # Wait for the daemon's socket (this also runs right after the daemon starts).
+    for _ in $(seq 1 50); do ${awww} query >/dev/null 2>&1 && break; sleep 0.1; done
+    exec ${awww} img "$image" --transition-type fade --transition-duration 2 --transition-fps 60
   '';
   apply = pkgs.writeShellScript "appearance-apply" ''
     set -eu
@@ -51,13 +52,24 @@ let
     esac
     # dconf directly rather than gsettings: no schema lookup, and it is what the portal watches.
     ${pkgs.dconf}/bin/dconf write /org/gnome/desktop/interface/color-scheme "'$scheme'"
-    # Do not block darkman's hook: hyprpaper queries darkman over D-Bus when starting.
-    ${pkgs.systemd}/bin/systemctl --user --no-block try-restart hyprpaper.service
+    ${setWallpaper} "$1" || true
   '';
 in
 {
-  # Own the launch config instead of Stylix's single, build-time wallpaper.
-  systemd.user.services.hyprpaper.Service.ExecStart = lib.mkForce "${wallpaperStart}";
+  # The wallpaper daemon; the image for the current mode is set as soon as it is up.
+  systemd.user.services.awww = {
+    Unit = {
+      Description = "awww wallpaper daemon";
+      PartOf = [ "graphical-session.target" ];
+      After = [ "graphical-session.target" ];
+    };
+    Service = {
+      ExecStart = "${pkgs.awww}/bin/awww-daemon";
+      ExecStartPost = "${setWallpaper}";
+      Restart = "on-failure";
+    };
+    Install.WantedBy = [ "graphical-session.target" ];
+  };
 
   services.darkman = {
     enable = true;
