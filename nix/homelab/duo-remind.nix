@@ -20,9 +20,17 @@ let
     ];
     text = ''
       : "''${DUO_JWT:?DUO_JWT is required}"
+      : "''${GATUS_PUSH_TOKEN:?GATUS_PUSH_TOKEN is required}"
       : "''${NTFY_TOKEN:?NTFY_TOKEN is required}"
       : "''${NTFY_TOPIC:?NTFY_TOPIC is required}"
       export TZ=Asia/Tokyo
+      # gatus external endpoint (hosts/homeserver.nix): a heartbeat that alerts if no push
+      # arrives within 25h, so a timer that never fires is noticed too.
+      push() { curl -fsS --max-time 10 -o /dev/null -X POST \
+        -H "Authorization: Bearer $GATUS_PUSH_TOKEN" \
+        "http://127.0.0.1:8084/api/v1/endpoints/timers_duo-remind/external?success=$1&error=$2"; }
+      on_exit() { rc=$?; [ "$rc" -eq 0 ] || push false "exit%20$rc" || true; }
+      trap on_exit EXIT
       api=https://www.duolingo.com/2017-06-30
       log=/var/lib/duo-remind/xp.csv
 
@@ -66,6 +74,7 @@ let
       else
         echo "done today: xp=$xp streak=$streak"
       fi
+      push true ""
     '';
   };
 in
@@ -75,6 +84,7 @@ in
     after = [
       "network-online.target"
       "podman-ntfy.service"
+      "gatus.service"
     ];
     wants = [ "network-online.target" ];
     onFailure = [ "ntfy-failure@%n.service" ];
@@ -83,7 +93,7 @@ in
       DynamicUser = true;
       StateDirectory = "duo-remind";
       EnvironmentFile = [
-        "/var/lib/secrets/gatus.env" # NTFY_TOPIC, NTFY_TOKEN, shared with the other alerts
+        "/var/lib/secrets/gatus.env" # NTFY_TOPIC, NTFY_TOKEN, GATUS_PUSH_TOKEN, shared with the other alerts
         "/var/lib/secrets/duo-remind.env" # DUO_JWT
       ];
       ExecStart = "${remind}/bin/duo-remind";
