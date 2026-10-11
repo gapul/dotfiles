@@ -148,16 +148,20 @@ in
       icons = pkgs.runCommand "refind-icons" { nativeBuildInputs = [ pkgs.imagemagick ]; } ''
         mkdir -p $out
         for f in ${theme}/icons/*.png; do
-          magick "$f" -channel RGB -negate +channel "$out/$(basename "$f")"
+          # PNG32: forces true-colour RGBA. ImageMagick would otherwise write these two-colour
+          # icons as palette PNGs, which rEFInd cannot read (it draws a hatched square instead).
+          magick "$f" -channel RGB -negate +channel "PNG32:$out/$(basename "$f")"
         done
         magick -size 208x208 xc:none -fill "#${palettes.rose-pine.iris}59" -stroke "#${palettes.rose-pine.iris}" -strokewidth 3 \
-          -draw "roundrectangle 3,3 204,204 24,24" $out/selection_big.png
+          -draw "roundrectangle 3,3 204,204 24,24" PNG32:$out/selection_big.png
         magick -size 88x88 xc:none -fill "#${palettes.rose-pine.iris}59" -stroke "#${palettes.rose-pine.iris}" -strokewidth 2 \
-          -draw "roundrectangle 2,2 85,85 14,14" $out/selection_small.png
+          -draw "roundrectangle 2,2 85,85 14,14" PNG32:$out/selection_small.png
       '';
       conf = pkgs.writeText "refind.conf" ''
         timeout 5
-        resolution max
+        # No "resolution" line: on this HP firmware the mode rEFInd picked for "max" came up
+        # with the red channel missing (everything blue); the mode the firmware is already in
+        # is the panel's native one anyway.
         use_graphics_for linux,windows
         hideui singleuser,hints,arrows,badges
         # Larger text and icons than the defaults (14px font, 128px icons) on the 1920x1200 panel.
