@@ -163,6 +163,14 @@ in
         for f in ${theme}/icons/func_*.png; do
           magick "$f" -channel RGB -negate +channel -resize 72x72 "PNG32:$out/$(basename "$f")"
         done
+        # Tools the theme has no icon for (rEFInd draws a hatched square then): Nerd Font
+        # glyphs in the same thin white, info / eye-slash / microchip. The glyphs are given
+        # as UTF-8 bytes so the build's locale does not matter.
+        font=${pkgs.nerd-fonts.jetbrains-mono}/share/fonts/truetype/NerdFonts/JetBrainsMono/JetBrainsMonoNerdFont-Regular.ttf
+        glyph() { magick -size 72x72 xc:none -font "$font" -pointsize 54 -fill white -gravity center -annotate +0+0 "$(printf "$2")" "PNG32:$out/$1.png"; }
+        glyph func_about '\xef\x81\x9a'
+        glyph func_hidden '\xef\x81\xb0'
+        glyph func_firmware '\xef\x8b\x9b'
         magick -size 208x208 xc:none -fill "#${palettes.rose-pine.iris}59" -stroke "#${palettes.rose-pine.iris}" -strokewidth 3 \
           -draw "roundrectangle 3,3 204,204 24,24" PNG32:$out/selection_big.png
         magick -size 88x88 xc:none -fill "#${palettes.rose-pine.iris}59" -stroke "#${palettes.rose-pine.iris}" -strokewidth 2 \
@@ -194,6 +202,8 @@ in
         scanfor manual,internal
         dont_scan_dirs ESP:/EFI/Linux,ESP:/EFI/systemd,ESP:/EFI/BOOT,ESP:/EFI/nixos
         default_selection NixOS
+        # refind.log at the ESP root, for reading what it loaded and why after a boot.
+        log_level 1
       '';
       install = pkgs.writeShellScript "refind-install" ''
         set -eu
@@ -237,6 +247,11 @@ in
           echo "menuentry \"NixOS\" {"
           # (a stanza's icon path is relative to the volume root, unlike icons_dir and banner)
           echo "    icon EFI/refind/theme/icons/os_nixos.png"
+          # use_graphics_for only covers entries rEFInd found itself; a stanza needs these
+          # two, or it drops to a text screen ("Starting nixos-generation-...") before the
+          # kernel. ostype also picks the Linux handling for the entry.
+          echo "    ostype Linux"
+          echo "    graphics on"
           echo "    loader /EFI/Linux/$(basename "$latest")"
           safe=$(ls "$esp"/EFI/Linux/nixos-generation-$latest_n-specialisation-safe-*.efi 2>/dev/null | head -n 1)
           [ -n "$safe" ] && {
@@ -415,6 +430,12 @@ in
   # The home homelab is on Tailscale (*.gapul.net). Join this machine too.
   # Authenticate with `sudo tailscale up` on first run only.
   services.tailscale.enable = true;
+
+  services.espanso = {
+    enable = true;
+    package = pkgs.espanso-wayland;
+  };
+  programs.kdeconnect.enable = true;
 
   time.timeZone = "Asia/Tokyo";
   i18n.defaultLocale = "en_US.UTF-8";
@@ -697,6 +718,18 @@ in
     enable = true;
     nssmdns4 = true;
     openFirewall = true;
+    publish.enable = true; # Allow UxPlay to announce its AirPlay service.
+    publish.userServices = true;
+    allowInterfaces = [ "wlp0s20f3" ]; # Do not advertise the USB tethering address.
+  };
+  # Re-register the receiver after Avahi restarts during a system switch.
+  systemd.services.avahi-daemon.postStart = ''
+    ${pkgs.systemd}/bin/systemctl --user --machine=gapul@.host --no-block try-restart uxplay.service || true
+  '';
+  # UxPlay uses fixed ports; accept AirPlay only on the Wi-Fi interface.
+  networking.firewall.interfaces.wlp0s20f3 = {
+    allowedTCPPorts = [ 7000 7001 7002 ];
+    allowedUDPPorts = [ 7000 7001 7002 ];
   };
   services.pipewire = {
     enable = true;
