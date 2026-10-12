@@ -4,7 +4,7 @@
   name,
   variant ? "dark",
   # Cell size in pixels on the 3840x2400 canvas; larger = coarser, fewer characters.
-  fontSize ? 26,
+  fontSize ? 15,
 }:
 # Wallpaper for the palette `p`: the wave of Hokusai's "The Great Wave off Kanagawa"
 # (Fugaku sanjūrokkei; the Wikimedia Commons scan, public domain) as ASCII art in the
