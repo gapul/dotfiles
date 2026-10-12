@@ -1,0 +1,32 @@
+name: SearXNG (search.gapul.net)
+homepage: https://github.com/ublacklist/builtin#readme
+lastModified: 2026-09-30T21:51:23Z
+
+pages:
+  - name: All
+    includeRegex: "/search(\\?|$)"
+    results:
+      - root: .category-general
+        url: a
+        props:
+          title: h3
+          $category: [const, "web"]
+      - root: .category-images
+        url: .result-url > a
+        props:
+          title: .title
+          $category: [const, "images"]
+      - root: .category-videos
+        url: a
+        props:
+          title: h3
+          $category: [const, "videos"]
+      - root: .category-news
+        url: a
+        props:
+          title: h3
+          $category: [const, "news"]
+    commonProps:
+      $site: searx # backwards compatibility
+    matches:
+      - https://search.gapul.net/*

@@ -39,6 +39,24 @@
       ipv6.method = "auto";
     };
 
+    profiles.haus-5g-01 = {
+      connection = {
+        id = "Haus-5G-01";
+        type = "wifi";
+        autoconnect = true;
+      };
+      wifi = {
+        ssid = "Haus-5G-01";
+        mode = "infrastructure";
+      };
+      wifi-security = {
+        key-mgmt = "wpa-psk";
+        psk = "$HAUS_5G_01_PSK";
+      };
+      ipv4.method = "auto";
+      ipv6.method = "auto";
+    };
+
     # The iPhone's Personal Hotspot, as the fallback uplink when nothing else is around. The
     # negative priority makes any other known network win when both are in range, and metered
     # tells NetworkManager-aware apps to hold back on large background transfers.
