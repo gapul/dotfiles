@@ -1,7 +1,15 @@
 {
   pkgs,
+  lib ? pkgs.lib,
   p,
   name,
+  # The picture: any public-domain scan (url + sha256 for fetchurl), and the part of it to
+  # use, as fractions (left, top, right, bottom). Default: Hiroshige's Ōhashi rain.
+  source ? {
+    url = "https://upload.wikimedia.org/wikipedia/commons/7/72/Hiroshige%2C_Sudden_shower_over_Shin-%C5%8Chashi_bridge_and_Atake%2C_1857.jpg";
+    sha256 = "1yci11zx75hr1icvp05f1jmcr6bq74h3piz0j3a2a4xgmn6dsdm2";
+  },
+  crop ? [ 0.035 0.012 0.965 0.985 ],
   # iPhone Pro portrait canvas; cells scaled for it.
   width ? 1290,
   height ? 2796,
@@ -19,18 +27,16 @@
 # print's dark areas become characters, so the rain, the bridge's timbers and the dark sky
 # and river carry the picture. Fitted by width; the base colour fills above and below.
 let
-  source = pkgs.fetchurl {
-    url = "https://upload.wikimedia.org/wikipedia/commons/7/72/Hiroshige%2C_Sudden_shower_over_Shin-%C5%8Chashi_bridge_and_Atake%2C_1857.jpg";
-    sha256 = "1yci11zx75hr1icvp05f1jmcr6bq74h3piz0j3a2a4xgmn6dsdm2";
-  };
+  picture = pkgs.fetchurl { inherit (source) url sha256; };
   python = pkgs.python3.withPackages (ps: [ ps.pillow ]);
   fontPackage = pkgs.nerd-fonts.jetbrains-mono;
   render = pkgs.writeText "ascii-rain.py" ''
     import sys
     from PIL import Image, ImageDraw, ImageFont, ImageOps, ImageFilter
 
-    src, font_path, variant, base, text, muted, out, w, h, font_size, threshold, thicken = sys.argv[1:13]
+    src, font_path, variant, base, text, muted, out, w, h, font_size, threshold, thicken, crop = sys.argv[1:14]
     W, H, FONT_SIZE, THRESHOLD, THICKEN = int(w), int(h), int(font_size), float(threshold), int(thicken)
+    cx0, cy0, cx1, cy1 = (float(x) for x in crop.split(","))
     RAMP = " .,:;-~=+*xkX%#@"
 
     def rgb(hx):
@@ -43,8 +49,6 @@ let
     cols, rows = int(W / cw), int(H / ch)
 
     img = Image.open(src).convert("L")
-    # The print without its paper margin.
-    cx0, cy0, cx1, cy1 = 0.035, 0.012, 0.965, 0.985
     img = img.crop((int(img.width * cx0), int(img.height * cy0), int(img.width * cx1), int(img.height * cy1)))
     img = ImageOps.autocontrast(img, cutoff=1)
     if THICKEN > 1:
@@ -81,7 +85,7 @@ let
     canvas.save(out, "PNG", optimize=True)
   '';
 in
-pkgs.runCommand "${name}-phone-rain.png" { nativeBuildInputs = [ python ]; } ''
+pkgs.runCommand "${name}-phone.png" { nativeBuildInputs = [ python ]; } ''
   font=$(find ${fontPackage}/share/fonts -name 'JetBrainsMonoNerdFontMono-Regular.ttf' | head -n 1)
-  python3 ${render} ${source} "$font" ${p.variant} ${p.base} ${p.text} ${p.muted} $out ${toString width} ${toString height} ${toString fontSize} ${toString threshold} ${toString thicken}
+  python3 ${render} ${picture} "$font" ${p.variant} ${p.base} ${p.text} ${p.muted} $out ${toString width} ${toString height} ${toString fontSize} ${toString threshold} ${toString thicken} ${lib.concatMapStringsSep "," toString crop}
 ''
