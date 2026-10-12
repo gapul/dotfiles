@@ -3,6 +3,8 @@
   p,
   name,
   variant ? "dark",
+  # Cell size in pixels on the 3840x2400 canvas; larger = coarser, fewer characters.
+  fontSize ? 26,
 }:
 # Wallpaper for the palette `p`: the wave of Hokusai's "The Great Wave off Kanagawa"
 # (Fugaku sanjūrokkei; the Wikimedia Commons scan, public domain) as ASCII art in the
@@ -20,9 +22,9 @@ let
     import sys, colorsys
     from PIL import Image, ImageDraw, ImageFont, ImageOps
 
-    src, font_path, variant, base, text, muted, out, how = sys.argv[1:9]
+    src, font_path, variant, base, text, muted, out, how, font_size = sys.argv[1:10]
     W, H = 3840, 2400
-    FONT_SIZE = 15
+    FONT_SIZE = int(font_size)
     RAMP = " .,:;-~=+*xkX%#@"
 
     def rgb(h):
@@ -91,5 +93,5 @@ let
 in
 pkgs.runCommand "${name}-wave-${variant}.png" { nativeBuildInputs = [ python ]; } ''
   font=$(find ${fontPackage}/share/fonts -name 'JetBrainsMonoNerdFontMono-Regular.ttf' | head -n 1)
-  python3 ${render} ${source} "$font" ${p.variant} ${p.base} ${p.text} ${p.muted} $out ${variant}
+  python3 ${render} ${source} "$font" ${p.variant} ${p.base} ${p.text} ${p.muted} $out ${variant} ${toString fontSize}
 ''
