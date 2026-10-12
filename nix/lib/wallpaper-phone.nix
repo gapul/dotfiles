@@ -20,6 +20,11 @@
   # Dark lines (the rain, the timbers) are thinner than a cell; a minimum filter of this
   # size on the full-resolution print thickens them so they survive the downscale.
   thicken ? 9,
+  # Local contrast: 0 = off; otherwise the radius (in cells) of the blur subtracted from the
+  # picture before the threshold. Engravings and etchings are hatched all over, so by
+  # plain darkness every cell fills; relative to their surroundings, the lines stand out.
+  highpass ? 0,
+  highpassGain ? 2.0,
 }:
 # A portrait wallpaper for the phone in the palette `p`: Hiroshige's "Sudden Shower over
 # Shin-Ōhashi Bridge and Atake" (Meisho Edo hyakkei, 1857; the Wikimedia Commons scan,
@@ -27,15 +32,18 @@
 # print's dark areas become characters, so the rain, the bridge's timbers and the dark sky
 # and river carry the picture. Fitted by width; the base colour fills above and below.
 let
-  picture = pkgs.fetchurl { inherit (source) url sha256; };
+  # `source` is fetched, or, when it carries a `path`, used as it is (e.g. a file already in
+  # the store, to spare Wikimedia another download).
+  picture = source.path or (pkgs.fetchurl { inherit (source) url sha256; });
   python = pkgs.python3.withPackages (ps: [ ps.pillow ]);
   fontPackage = pkgs.nerd-fonts.jetbrains-mono;
   render = pkgs.writeText "ascii-rain.py" ''
     import sys
     from PIL import Image, ImageDraw, ImageFont, ImageOps, ImageFilter
 
-    src, font_path, variant, base, text, muted, out, w, h, font_size, threshold, thicken, crop = sys.argv[1:14]
+    src, font_path, variant, base, text, muted, out, w, h, font_size, threshold, thicken, crop, highpass, hp_gain = sys.argv[1:16]
     W, H, FONT_SIZE, THRESHOLD, THICKEN = int(w), int(h), int(font_size), float(threshold), int(thicken)
+    HIGHPASS, HP_GAIN = int(highpass), float(hp_gain)
     cx0, cy0, cx1, cy1 = (float(x) for x in crop.split(","))
     RAMP = " .,:;-~=+*xkX%#@"
 
@@ -60,6 +68,7 @@ let
         fit_cols = int(fit_rows * (img.width / img.height) * (ch / cw))
     small = img.resize((fit_cols, fit_rows), Image.LANCZOS)
     px = small.load()
+    blurred = small.filter(ImageFilter.GaussianBlur(HIGHPASS)).load() if HIGHPASS > 0 else None
 
     def fade(i, n, width):
         e = min(i, n - 1 - i)
@@ -73,6 +82,8 @@ let
     for j in range(fit_rows):
         for i in range(fit_cols):
             v = px[i, j] / 255.0
+            if blurred is not None:
+                v = max(0.0, min(1.0, 0.5 + (v - blurred[i, j] / 255.0) * HP_GAIN))
             # Dark = dense, as for the desktop; the light water in the middle stays sparse.
             density = max(0.0, min(1.0, (THRESHOLD - v) / (THRESHOLD * 0.8))) ** 0.9
             density *= fade(i, fit_cols, fit_cols * 0.04) * fade(j, fit_rows, fit_rows * 0.03)
@@ -87,5 +98,5 @@ let
 in
 pkgs.runCommand "${name}-phone.png" { nativeBuildInputs = [ python ]; } ''
   font=$(find ${fontPackage}/share/fonts -name 'JetBrainsMonoNerdFontMono-Regular.ttf' | head -n 1)
-  python3 ${render} ${picture} "$font" ${p.variant} ${p.base} ${p.text} ${p.muted} $out ${toString width} ${toString height} ${toString fontSize} ${toString threshold} ${toString thicken} ${lib.concatMapStringsSep "," toString crop}
+  python3 ${render} ${picture} "$font" ${p.variant} ${p.base} ${p.text} ${p.muted} $out ${toString width} ${toString height} ${toString fontSize} ${toString threshold} ${toString thicken} ${lib.concatMapStringsSep "," toString crop} ${toString highpass} ${toString highpassGain}
 ''
