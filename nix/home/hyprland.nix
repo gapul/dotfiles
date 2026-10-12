@@ -400,7 +400,9 @@ in
     # wofi is not listed here: it is declared through programs.wofi below, because stylix
     # only themes what home-manager knows it manages. As a bare package it kept rendering
     # its stock white sheet in the middle of a dark desktop.
-    hyprpolkitagent # polkit agent (started by its own unit, see below)
+    # hyprpolkitagent is not listed: its unit below runs it from the package directly, and
+    # the system's copy (hosts/nixos-laptop.nix) already ships the D-Bus service file; a
+    # second copy here made dbus-broker log a duplicate name at every login.
     hyprshot # screenshots
     hyprpicker # color picker
     # wlogout is declared through programs.wlogout below, which also writes its stylesheet.
@@ -1036,6 +1038,7 @@ in
   # Cursor: Rosé Pine's, through GTK, X and Hyprland (home-manager exports the XCURSOR
   # variables into the session). The greeter uses the same one (hosts/nixos-laptop.nix).
   home.pointerCursor = {
+    enable = true;
     package = pkgs.rose-pine-cursor;
     name = "BreezeX-RosePine-Linux";
     size = 24;

@@ -331,12 +331,8 @@ in
         done
         exit 0
       '';
-      ExecStop = pkgs.writeShellScript "fbcon-rebind" ''
-        for v in /sys/class/vtconsole/vtcon*; do
-          grep -qs "frame buffer" "$v/name" && echo 1 > "$v/bind"
-        done
-        exit 0
-      '';
+      # No ExecStop: re-binding the console when the unit stops at shutdown put the text
+      # console on screen for the half second before Plymouth's reboot splash.
     };
   };
 
