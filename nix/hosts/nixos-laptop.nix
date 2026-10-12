@@ -537,7 +537,11 @@ in
   # Electron clients such as T3 need Secret Service to encrypt saved connection tokens.
   # Password login unlocks the keyring via PAM; fingerprint login still needs a keyring prompt.
   services.gnome.gnome-keyring.enable = true;
-  security.pam.services.greetd.enableGnomeKeyring = true;
+  # Not in greetd's PAM stack: the session is an autologin, so there is no password for
+  # pam_gnome_keyring to unlock with, and it only logged "couldn't unlock the login
+  # keyring" at every boot. The daemon starts on demand over D-Bus; the keyring is
+  # unlocked on first use (silently, if its password is empty).
+  security.pam.services.greetd.enableGnomeKeyring = false;
 
   # Login: greetd + ReGreet (GTK greeter under cage) on the same generated wallpaper the
   # desktop uses (home/stylix.nix), in the palette's colours. It lists the Wayland sessions
