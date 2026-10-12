@@ -6,6 +6,8 @@
 # 検証する。利用者が1人なので「鍵が本人のものか」だけ見れば足りる。
 #
 #   1本目  Bitwarden 管理の旧署名鍵 (2WG8EZ…)。過去のコミット検証用に残す
-#   2本目  Secure Enclave 鍵 (6eKHIxVa…)。以後はこちらで署名する
+#   2本目  Secure Enclave 鍵 (6eKHIxVa…)。Mac はこちらで署名する
+#   3本目  nixos-laptop の TPM 封印鍵 (/zAlN75X…)。laptop はこちらで署名する
 * ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBLeOb9XOJPsmuTRf708qYoNckWk+/fhuWkpTWtTSu41
 * sk-ecdsa-sha2-nistp256@openssh.com AAAAInNrLWVjZHNhLXNoYTItbmlzdHAyNTZAb3BlbnNzaC5jb20AAAAIbmlzdHAyNTYAAABBBP5Y2DQbhcGpmOGDewcxUuVZ+/XO1I/Zm4M4nZhBMPwygadJY9//NxbVAZs98vMIp1Yy+9wgkQcEuc1CNQdCY2cAAAAEc3NoOg== ssh:
+* ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBGVhoG7ACXNi+C5aFsXv9JEbBAAhuG5jEdUSnQShCOr9wVvafH44c01F8dUNy2S3uBC3va2N5vHwTw5YDRPAQFI=
