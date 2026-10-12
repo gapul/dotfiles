@@ -35,9 +35,8 @@ let
     cols, rows = int(W / cw), int(H / ch)
 
     img = Image.open(src).convert("RGB")
-    # The wave and what it is about to swallow: the left two thirds, without the cartouche
-    # at the top and the margin at the bottom.
-    cx0, cy0, cx1, cy1 = 0.0, 0.09, 0.74, 0.74
+    # The whole print (Fuji, the boats, the cartouche), only the paper margin trimmed.
+    cx0, cy0, cx1, cy1 = 0.01, 0.01, 0.99, 0.99
     img = img.crop((int(img.width * cx0), int(img.height * cy0), int(img.width * cx1), int(img.height * cy1)))
     fit_cols = cols
     fit_rows = int(fit_cols * (img.height / img.width) * (cw / ch))
@@ -55,9 +54,6 @@ let
     def density_dark(i, j):
         # The print's dark areas (the Prussian-blue water and outlines) as characters,
         # the pale sky and the white foam empty: the wave as a mass with the foam cut out.
-        # The title cartouche sits in the top-left corner of the crop; left blank.
-        if i < fit_cols * 0.17 and j < fit_rows * 0.37:
-            return 0.0
         v = gray[i, j] / 255.0
         return max(0.0, min(1.0, (0.78 - v) / 0.55)) ** 0.75
 
