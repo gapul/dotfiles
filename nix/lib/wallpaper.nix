@@ -11,9 +11,10 @@
 # the fastfetch logo) imports this file, so changing `subject` changes all of them.
 let
   subject = "wave";
-  # The wave with what is drawn and what is left bare swapped: the print's light areas
-  # (sky, foam, the boats) as characters, the dark water as bare base colour.
-  invert = true;
+  # In the dark palette the wave is drawn with what is drawn and what is left bare
+  # swapped: the print's light areas (sky, foam, the boats) as characters, the dark water
+  # as bare base colour. The light palette keeps the print's own dark areas as characters.
+  invert = p.variant == "dark";
 in
 if subject == "wave" then
   import ./wallpaper-wave.nix { inherit pkgs p name invert; }
