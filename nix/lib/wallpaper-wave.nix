@@ -1,10 +1,13 @@
 {
   pkgs,
+  lib ? pkgs.lib,
   p,
   name,
   variant ? "dark",
   # Cell size in pixels on the 3840x2400 canvas; larger = coarser, fewer characters.
   fontSize ? 15,
+  # Swap what is drawn and what is left bare (the print's light areas as characters).
+  invert ? false,
 }:
 # Wallpaper for the palette `p`: the wave of Hokusai's "The Great Wave off Kanagawa"
 # (Fugaku sanjūrokkei; the Wikimedia Commons scan, public domain) as ASCII art in the
@@ -22,7 +25,8 @@ let
     import sys, colorsys
     from PIL import Image, ImageDraw, ImageFont, ImageOps
 
-    src, font_path, variant, base, text, muted, out, how, font_size = sys.argv[1:10]
+    src, font_path, variant, base, text, muted, out, how, font_size, invert = sys.argv[1:11]
+    INVERT = invert == "true"
     W, H = 3840, 2400
     FONT_SIZE = int(font_size)
     RAMP = " .,:;-~=+*xkX%#@"
@@ -81,6 +85,8 @@ let
     for j in range(fit_rows):
         for i in range(fit_cols):
             density = pick(i, j)
+            if INVERT:
+                density = 1.0 - density
             density *= fade(i, fit_cols, fit_cols * 0.05) * fade(j, fit_rows, fit_rows * 0.1)
             k = int(density * (n - 1) + 0.5)
             if k == 0:
@@ -93,5 +99,5 @@ let
 in
 pkgs.runCommand "${name}-wave-${variant}.png" { nativeBuildInputs = [ python ]; } ''
   font=$(find ${fontPackage}/share/fonts -name 'JetBrainsMonoNerdFontMono-Regular.ttf' | head -n 1)
-  python3 ${render} ${source} "$font" ${p.variant} ${p.base} ${p.text} ${p.muted} $out ${variant} ${toString fontSize}
+  python3 ${render} ${source} "$font" ${p.variant} ${p.base} ${p.text} ${p.muted} $out ${variant} ${toString fontSize} ${lib.boolToString invert}
 ''

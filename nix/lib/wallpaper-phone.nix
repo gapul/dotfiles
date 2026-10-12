@@ -25,6 +25,9 @@
   # plain darkness every cell fills; relative to their surroundings, the lines stand out.
   highpass ? 0,
   highpassGain ? 2.0,
+  # Swap what is drawn and what is left bare: the characters fill the light areas and the
+  # dark areas of the picture become empty.
+  invert ? false,
 }:
 # A portrait wallpaper for the phone in the palette `p`: Hiroshige's "Sudden Shower over
 # Shin-Ōhashi Bridge and Atake" (Meisho Edo hyakkei, 1857; the Wikimedia Commons scan,
@@ -44,6 +47,7 @@ let
     src, font_path, variant, base, text, muted, out, w, h, font_size, threshold, thicken, crop, highpass, hp_gain = sys.argv[1:16]
     W, H, FONT_SIZE, THRESHOLD, THICKEN = int(w), int(h), int(font_size), float(threshold), int(thicken)
     HIGHPASS, HP_GAIN = int(highpass), float(hp_gain)
+    INVERT = sys.argv[16] == "true"
     cx0, cy0, cx1, cy1 = (float(x) for x in crop.split(","))
     RAMP = " .,:;-~=+*xkX%#@"
 
@@ -86,6 +90,8 @@ let
                 v = max(0.0, min(1.0, 0.5 + (v - blurred[i, j] / 255.0) * HP_GAIN))
             # Dark = dense, as for the desktop; the light water in the middle stays sparse.
             density = max(0.0, min(1.0, (THRESHOLD - v) / (THRESHOLD * 0.8))) ** 0.9
+            if INVERT:
+                density = 1.0 - density
             density *= fade(i, fit_cols, fit_cols * 0.04) * fade(j, fit_rows, fit_rows * 0.03)
             k = int(density * (n - 1) + 0.5)
             if k == 0:
@@ -98,5 +104,5 @@ let
 in
 pkgs.runCommand "${name}-phone.png" { nativeBuildInputs = [ python ]; } ''
   font=$(find ${fontPackage}/share/fonts -name 'JetBrainsMonoNerdFontMono-Regular.ttf' | head -n 1)
-  python3 ${render} ${picture} "$font" ${p.variant} ${p.base} ${p.text} ${p.muted} $out ${toString width} ${toString height} ${toString fontSize} ${toString threshold} ${toString thicken} ${lib.concatMapStringsSep "," toString crop} ${toString highpass} ${toString highpassGain}
+  python3 ${render} ${picture} "$font" ${p.variant} ${p.base} ${p.text} ${p.muted} $out ${toString width} ${toString height} ${toString fontSize} ${toString threshold} ${toString thicken} ${lib.concatMapStringsSep "," toString crop} ${toString highpass} ${toString highpassGain} ${lib.boolToString invert}
 ''
