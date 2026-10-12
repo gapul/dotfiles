@@ -101,6 +101,11 @@ in
     "rd.systemd.show_status=false"
     "systemd.show_status=false"
     "vt.global_cursor_default=0" # no blinking cursor on the brief text console
+    # fbcon binds to the GPU's framebuffer as soon as it appears (while Plymouth still owns
+    # the display, so nothing shows) instead of deferring until the first console output,
+    # which came after fbcon-unbind had run and put the text console on screen for a
+    # moment between the greeter and Hyprland's first frame.
+    "fbcon=nodefer"
   ];
   # Hand the screen from Plymouth to the greeter without a text console in between. Stock
   # order is: Plymouth quits (screen cleared, console shows) -> greetd starts -> cage draws a
@@ -314,6 +319,11 @@ in
       ExecStart = pkgs.writeShellScript "fbcon-unbind" ''
         for _ in $(seq 1 150); do
           grep -qs xedrmfb /sys/class/graphics/fb0/name && break
+          sleep 0.1
+        done
+        # ... and for fbcon's own console entry, registered a moment after the framebuffer.
+        for _ in $(seq 1 100); do
+          grep -qs "frame buffer" /sys/class/vtconsole/vtcon*/name && break
           sleep 0.1
         done
         for v in /sys/class/vtconsole/vtcon*; do

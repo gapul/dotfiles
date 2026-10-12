@@ -11,9 +11,9 @@
 # What follows the switch is the desktop-wide color-scheme the xdg portal serves from dconf
 # (org.freedesktop.appearance color-scheme, via xdg-desktop-portal-gtk): Firefox
 # (browser.theme.* = 2 in modules/home/firefox.nix), ghostty (theme = light:…,dark:…),
-# libadwaita/GTK4 and Electron apps. The hand-themed parts of the rice (waybar, the
-# Hyprland borders, mako, hyprlock, wofi, nvim) and stylix's GTK3/Qt colours are generated
-# once from palettes.json and stay on the active palette; they are not switched here.
+# libadwaita/GTK4 and Electron apps. waybar-appearance.nix and desktop-appearance.nix
+# also switch the bar, Hyprland borders, notifications, lock screen, menus, and GTK/Qt
+# palettes. Application-specific themes such as nvim remain independently configured.
 #
 # home/stylix.nix used to pin the same dconf key from the palette's `variant`; that line is
 # gone, because two writers for one key means the rebuild undoes the sun. The oneshot below
@@ -87,7 +87,15 @@ in
   systemd.user.services.darkman-apply = {
     Unit = {
       Description = "Re-apply the current darkman mode to the portal color-scheme";
-      After = [ "darkman.service" ];
+      # After the session target like awww, not before it: a unit the target wants is
+      # implicitly waited for, and this one waits for awww's socket (the desktop script
+      # sets the wallpaper), which only starts once the target is reached. That stalled
+      # the whole session (bar, wallpaper, input method) for half a minute after login.
+      After = [
+        "darkman.service"
+        "graphical-session.target"
+        "awww.service"
+      ];
       Requires = [ "darkman.service" ];
       PartOf = [ "graphical-session.target" ];
     };
