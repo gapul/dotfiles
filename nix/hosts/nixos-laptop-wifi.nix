@@ -39,6 +39,32 @@
       ipv6.method = "auto";
     };
 
+    # 0000UTokyo, the campus-only SSID. utelecon says it takes the same UTokyo Wi-Fi account
+    # with the same PEAP/MSCHAPv2 settings, so this is the eduroam profile with the SSID swapped.
+    profiles."0000utokyo" = {
+      connection = {
+        id = "0000UTokyo";
+        type = "wifi";
+        autoconnect = true;
+      };
+      wifi = {
+        ssid = "0000UTokyo";
+        mode = "infrastructure";
+      };
+      wifi-security.key-mgmt = "wpa-eap";
+      "802-1x" = {
+        eap = "peap";
+        phase2-auth = "mschapv2";
+        identity = "$EDUROAM_IDENTITY";
+        anonymous-identity = "anonymous@wifi.u-tokyo.ac.jp";
+        password = "$EDUROAM_PASSWORD";
+        ca-cert = "/etc/ssl/certs/ca-certificates.crt";
+        domain-suffix-match = "u-tokyo.ac.jp";
+      };
+      ipv4.method = "auto";
+      ipv6.method = "auto";
+    };
+
     profiles.haus-5g-01 = {
       connection = {
         id = "Haus-5G-01";
