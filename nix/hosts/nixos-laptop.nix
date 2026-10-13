@@ -514,6 +514,10 @@ in
 
   # --- Laptop power/thermal/input (HP laptop) ---
   services.tlp.enable = true; # battery optimization (charge thresholds etc. tunable later)
+  # TLP turns Wi-Fi power saving on whenever the laptop goes to battery, overriding the
+  # NetworkManager per-profile setting, and the iPhone hotspot then drops the dozing client.
+  # Costs a little battery on every network, not just the hotspot.
+  services.tlp.settings.WIFI_PWR_ON_BAT = "off";
   services.thermald.enable = true; # Intel CPU thermal control (proper thermal throttling)
   services.libinput.enable = true; # touchpad (tap, natural scroll, etc.)
   # Lid close: suspend on battery, stay up on AC. The machine is administered over SSH,
