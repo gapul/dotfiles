@@ -420,6 +420,15 @@ in
   # power on a box that runs 24/7 is worth the tuning.
   powerManagement.powertop.enable = true;
 
+  # Bias intel_pstate's hardware P-state choice towards efficiency. The default,
+  # balance_performance, jumps to the 2.9GHz turbo on every small burst; on this
+  # fanless N150 that kept the package around 60-75°C under a mostly idle load
+  # (2026-10-13). The services here are I/O- and latency-tolerant, so trading a
+  # little burst speed for heat is fine. Applied to every CPU at boot.
+  systemd.tmpfiles.rules = [
+    "w /sys/devices/system/cpu/cpu*/cpufreq/energy_performance_preference - - - - balance_power"
+  ];
+
   time.timeZone = "Asia/Tokyo";
   i18n.defaultLocale = "ja_JP.UTF-8";
 

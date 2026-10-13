@@ -95,6 +95,13 @@
 
       max_upload_size = "50M";
 
+      # Presence is the most expensive optional feature in Synapse, and here it buys
+      # little: one human account, while the bridges register hundreds of puppets whose
+      # online state Synapse otherwise tracks and fans out. Synapse was the largest CPU
+      # user on the box (~40% of a core at idle, 2026-10-13). Clients just stop showing
+      # online dots.
+      presence.enabled = false;
+
       # Keep deleted messages. By default Synapse strips the original content of a
       # redacted event from event_json after 7 days. Synapse accepts null for "forever",
       # but the NixOS module drops null settings before writing homeserver.yaml, so a
