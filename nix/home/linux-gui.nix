@@ -99,6 +99,9 @@ in
 
   # Fusuma runs in the graphical session and dispatches directly to Hyprland.
   # Four fingers leave two-finger application gestures and three-finger drag free.
+  # Hyprland only: niri has these gestures built in (three fingers sideways scroll the columns,
+  # up/down switch workspaces, four fingers open the overview), and fusuma's four-finger swipes
+  # would fire on top of them.
   xdg.configFile."fusuma/config.yml".text = ''
     swipe:
       4:
@@ -126,6 +129,7 @@ in
       After = [ "graphical-session.target" ];
     };
     Service = {
+      ExecCondition = "${import ../lib/wm-session.nix { inherit pkgs; }}/bin/wm-session is hyprland";
       ExecStart = "${pkgs.fusuma}/bin/fusuma --config ${config.xdg.configHome}/fusuma/config.yml";
       Restart = "on-failure";
       RestartSec = 3;

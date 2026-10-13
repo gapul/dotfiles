@@ -7,6 +7,9 @@
 # Hyprland user config (Rick). Imported only on nixos-laptop.
 # The system side (hosts/nixos-laptop.nix) provides PAM/session for
 # programs.hyprland / hyprlock; this side manages appearance and keybinds.
+# niri is the default session now (home/niri.nix, imported below); Hyprland stays selectable
+# in the greeter. Everything here except wayland.windowManager.hyprland serves both sessions,
+# and the compositor-specific commands go through wm-session (lib/wm-session.nix).
 # Colors are shared via configs/theme/palettes.json (rose-pine) as SSO ([[theme]]).
 let
   # Hold a lock for the lifetime of drun so repeated gestures cannot stack windows.
@@ -31,6 +34,7 @@ let
       ${pkgs.wofi}/bin/wofi --show drun
   '';
   c = import ../lib/theme.nix; # c.base / c.text / c.iris ... (hex without leading #)
+  wmSession = "${import ../lib/wm-session.nix { inherit pkgs; }}/bin/wm-session";
   # An app icon for the bar: a sketchybar-app-font ligature, in that font (see the workspaces
   # module in programs.waybar below).
   appIcon = name: "<span font_family='sketchybar-app-font' size='large' rise='-3500'>${name}</span>";
@@ -198,10 +202,13 @@ let
     height = 30;
     margin-top = 6;
     spacing = 0;
+    # Both compositors' modules: waybar disables the ones whose compositor is not running.
     modules-left = [
       "custom/logo"
       "hyprland/workspaces"
+      "niri/workspaces"
       "hyprland/window"
+      "niri/window"
     ];
     modules-center = [ "clock" ];
     # Right, in the mac bar's order where it has the same things: guard, sleep inhibit,
@@ -302,6 +309,23 @@ let
         "class<pavucontrol|nm-connection-editor|blueman-manager|nwg-displays>" = appIcon ":gear:";
       };
     };
+    # niri's workspaces are per output and dynamic (there is always one empty one at the end),
+    # and the module cannot list the windows on each, so it is the number alone.
+    "niri/workspaces" = {
+      format = "{index}";
+    };
+    "niri/window" = {
+      format = "{app_id}";
+      max-length = 32;
+      separate-outputs = true;
+      rewrite = {
+        "com.mitchellh.ghostty" = "Ghostty";
+        "firefox.*" = "Firefox";
+        "com.t3tools.T3Code" = "T3 Code";
+        "google-chrome.*" = "Chrome";
+        "com.obsproject.Studio" = "OBS Studio";
+      };
+    };
     "hyprland/window" = {
       format = "{initialClass}";
       max-length = 32;
@@ -397,10 +421,14 @@ let
 in
 {
   imports = [
+    ./niri.nix
     ./wl-keyboard.nix
     ./waybar-appearance.nix
     ./desktop-appearance.nix
   ];
+  # For home/niri.nix, which binds the same scripts.
+  _module.args.desktopScripts = { inherit launcher settingsMenu screenshotRegion; };
+
   # Binaries referenced by the keybinds / exec-once below. Without these the rice
   # is inert: $mod+Return execs a ghostty that is not in the closure, and the
   # night-light / screenshot / clipboard binds silently do nothing.
@@ -865,7 +893,7 @@ in
       [
         (tile "lock" "Lock" "loginctl lock-session" "l")
         (tile "suspend" "Suspend" "systemctl suspend" "u")
-        (tile "logout" "Log out" "hyprctl dispatch exit" "e")
+        (tile "logout" "Log out" "${wmSession} exit" "e")
         (tile "reboot" "Reboot" "systemctl reboot" "r")
         (tile "shutdown" "Shut down" "systemctl poweroff" "s")
         (tile "hibernate" "Hibernate" "systemctl hibernate" "h")
@@ -997,7 +1025,7 @@ in
         before_sleep_cmd = "loginctl lock-session";
         # The wallpaper daemon came back from suspend without its buffers (bare screen until
         # something repainted); starting it afresh repaints within a second.
-        after_sleep_cmd = "hyprctl dispatch dpms on; systemctl --user try-restart awww.service";
+        after_sleep_cmd = "${wmSession} dpms on; systemctl --user try-restart awww.service";
       };
       listener = [
         {
@@ -1006,8 +1034,8 @@ in
         }
         {
           timeout = 360; # turn off screen after 6 minutes
-          on-timeout = "hyprctl dispatch dpms off";
-          on-resume = "hyprctl dispatch dpms on";
+          on-timeout = "${wmSession} dpms off";
+          on-resume = "${wmSession} dpms on";
         }
         {
           timeout = 900; # suspend after 15 minutes (battery protection, lid open and on battery)

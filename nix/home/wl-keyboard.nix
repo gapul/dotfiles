@@ -7,19 +7,19 @@
 let
   pointer = "${pkgs.wl-kbptr}/bin/wl-kbptr";
   control = "${pkgs.wlrctl}/bin/wlrctl";
+  # Hyprland or niri, whichever is running (lib/wm-session.nix). niri has no submaps, so the
+  # mouse mode (m) and the Escape-to-cancel bind of the grid are Hyprland-only; under niri the
+  # grid is cancelled with wl-kbptr's own Escape.
+  wm = "${import ../lib/wm-session.nix { inherit pkgs; }}/bin/wm-session";
+  whichKey = "${pkgs.wlr-which-key}/bin/wlr-which-key";
   # A layer-shell overlay does not suppress Hyprland's global shortcuts by
   # itself: a still-held Hyper+L would lock the session while selecting labels.
   grid = pkgs.writeShellScript "wl-grid" ''
     set -eu
     exec 9>"''${XDG_RUNTIME_DIR:?}/wl-grid.lock"
     ${pkgs.util-linux}/bin/flock -n 9 || exit 0
-    cleanup() {
-      if [ "$(hyprctl submap)" = wl-pointer ]; then
-        hyprctl dispatch submap reset >/dev/null
-      fi
-    }
-    trap cleanup EXIT
-    hyprctl dispatch submap wl-pointer >/dev/null
+    trap '${wm} submap reset' EXIT
+    ${wm} submap wl-pointer
     ${pointer} -o modes=tile,bisect
   '';
   yaml = pkgs.formats.yaml { };
@@ -39,7 +39,7 @@ let
       {
         key = "m";
         desc = "Mouse mode: hjkl move, s/d/f click, u/n scroll, Esc exit";
-        cmd = "hyprctl dispatch submap wl-mouse";
+        cmd = "${wm} submap wl-mouse";
       }
       {
         key = "w";
@@ -48,49 +48,49 @@ let
           {
             key = "h";
             desc = "Move left";
-            cmd = "hyprctl dispatch movewindow l";
+            cmd = "${wm} move l";
             keep_open = true;
           }
           {
             key = "j";
             desc = "Move down";
-            cmd = "hyprctl dispatch movewindow d";
+            cmd = "${wm} move d";
             keep_open = true;
           }
           {
             key = "k";
             desc = "Move up";
-            cmd = "hyprctl dispatch movewindow u";
+            cmd = "${wm} move u";
             keep_open = true;
           }
           {
             key = "l";
             desc = "Move right";
-            cmd = "hyprctl dispatch movewindow r";
+            cmd = "${wm} move r";
             keep_open = true;
           }
           {
             key = "Left";
             desc = "Narrower";
-            cmd = "hyprctl dispatch resizeactive -40 0";
+            cmd = "${wm} resize -40 0";
             keep_open = true;
           }
           {
             key = "Right";
             desc = "Wider";
-            cmd = "hyprctl dispatch resizeactive 40 0";
+            cmd = "${wm} resize 40 0";
             keep_open = true;
           }
           {
             key = "Up";
             desc = "Shorter";
-            cmd = "hyprctl dispatch resizeactive 0 -40";
+            cmd = "${wm} resize 0 -40";
             keep_open = true;
           }
           {
             key = "Down";
             desc = "Taller";
-            cmd = "hyprctl dispatch resizeactive 0 40";
+            cmd = "${wm} resize 0 40";
             keep_open = true;
           }
         ];
@@ -112,6 +112,11 @@ in
     modes=tile,bisect
   '';
   xdg.configFile."wlr-which-key/config.yaml".source = menu;
+  # For home/niri.nix, which binds the same two keys.
+  _module.args.wlKeyboard = {
+    inherit grid;
+    menu = whichKey;
+  };
   wayland.windowManager.hyprland.settings.bind =
     let
       inherit (lib.generators) mkLuaInline;
@@ -126,7 +131,7 @@ in
       {
         _args = [
           (mkLuaInline ''mod .. " + K"'')
-          (mkLuaInline ''hl.dsp.exec_cmd("${pkgs.wlr-which-key}/bin/wlr-which-key")'')
+          (mkLuaInline ''hl.dsp.exec_cmd("${whichKey}")'')
         ];
       }
     ];

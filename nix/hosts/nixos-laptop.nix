@@ -543,8 +543,17 @@ in
   # Periodic SSD TRIM (lifespan / performance maintenance).
   services.fstrim.enable = true;
 
-  # --- Desktop: Hyprland (Wayland tiling compositor) ---
-  # Enable Hyprland itself + xdg-desktop-portal-hyprland + XWayland together.
+  # --- Desktop: niri (scrollable tiling), with Hyprland kept as the fallback session ---
+  # niri is what greetd starts (below); its config is home/niri.nix. The nixpkgs module also
+  # sets up the GNOME portal niri uses for screencasts. Nautilus stays out: file pickers keep
+  # going through the GTK portal, as under Hyprland.
+  programs.niri = {
+    enable = true;
+    useNautilus = false;
+  };
+  # X11 apps under niri: xwayland-satellite, in systemPackages below.
+
+  # Hyprland itself + xdg-desktop-portal-hyprland + XWayland, still listed in the greeter.
   programs.hyprland = {
     enable = true;
     # uwsm (a systemd-managed way to start Hyprland) is not used here; the session is started
@@ -564,21 +573,21 @@ in
 
   # Login: greetd + ReGreet (GTK greeter under cage) on the same generated wallpaper the
   # desktop uses (home/stylix.nix), in the palette's colours. It lists the Wayland sessions
-  # NixOS knows about (Hyprland, from programs.hyprland) and remembers the last user/session.
+  # NixOS knows about (niri and Hyprland) and remembers the last user/session.
   # The module sets greetd's default_session itself. Fingerprint works as before: pam_fprintd
   # is in the greetd stack and ReGreet shows its "place your finger" prompt.
   services.greetd = {
     enable = true;
     settings = {
-      # Straight into Hyprland at boot: the LUKS PIN typed a few seconds earlier is the
+      # Straight into niri at boot: the LUKS PIN typed a few seconds earlier is the
       # gate, and the user/session picker had nothing to pick (one user, one session).
       # ReGreet is still the default_session, so it is what comes up after a logout.
       # The GNOME keyring is not unlocked by this (no password at login); it asks the first
       # time something needs it.
       initial_session = {
-        # start-hyprland, not the bare binary: 0.56 sets the session up in the wrapper and
-        # shows a warning banner when started without it.
-        command = "${config.programs.hyprland.package}/bin/start-hyprland";
+        # niri-session, not the bare binary: it runs niri as a systemd user service and brings
+        # up graphical-session.target, which the bar, xremap, hypridle and the rest hang off.
+        command = "${config.programs.niri.package}/bin/niri-session";
         user = "gapul";
       };
       default_session.user = "greeter";
@@ -650,6 +659,7 @@ in
   # Enter a TTY from the "safe" specialisation in systemd-boot, then roll back to the
   # previous generation or fix the config. Does not affect the normal configuration.
   specialisation.safe.configuration = {
+    programs.niri.enable = lib.mkForce false;
     programs.hyprland.enable = lib.mkForce false;
     services.greetd.enable = lib.mkForce false;
     services.displayManager.regreet.enable = lib.mkForce false; # reads greetd's session user
@@ -911,6 +921,9 @@ in
       # wayland.windowManager.hyprland and gradually removed from here.
       ghostty # main terminal (config symlinked in home/hyprland.nix)
       kitty # fallback opened by Hyprland's stock SUPER+Q (home's $terminal is ghostty)
+      # X11 apps under niri (T3 Code runs on X11, home/t3code-desktop.nix): niri starts it on
+      # demand when it finds it on PATH, and sets DISPLAY for its clients.
+      xwayland-satellite
       wofi # app launcher (bound to SUPER+R etc.)
       wl-clipboard # clipboard (wl-copy / wl-paste)
       cliphist # clipboard history (integrates with wofi)

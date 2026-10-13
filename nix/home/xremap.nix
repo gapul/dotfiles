@@ -166,10 +166,22 @@ let
   };
 
   configFile = (pkgs.formats.yaml { }).generate "xremap.yml" config;
+
+  # The window-aware build for whichever compositor the session runs (lib/wm-session.nix): the
+  # game-mode classes above are matched against the focused window, which only that
+  # compositor's IPC can name. The unit starts after graphical-session.target, which niri only
+  # reaches once NIRI_SOCKET is in the user manager's environment; anything else gets the
+  # Hyprland build, as before niri.
+  xremap = pkgs.writeShellScript "xremap-session" ''
+    if ${import ../lib/wm-session.nix { inherit pkgs; }}/bin/wm-session is niri; then
+      exec ${lib.getExe pkgs.xremap.niri} "$@"
+    fi
+    exec ${lib.getExe pkgs.xremap.hyprland} "$@"
+  '';
 in
 {
   # Needs /dev/input/event* and /dev/uinput: the input and uinput groups (hosts/nixos-laptop.nix).
-  # It runs in the session rather than as root so that it can ask Hyprland which window is focused.
+  # It runs in the session rather than as root so that it can ask niri / Hyprland which window is focused.
   systemd.user.services.xremap = {
     Unit = {
       Description = "xremap (bottom row layout; Hyper on left Ctrl, Space held and the Copilot key; game mode)";
@@ -179,7 +191,7 @@ in
     Service = {
       # --watch=device picks up keyboards plugged in later.
       ExecStart = lib.escapeShellArgs [
-        (lib.getExe pkgs.xremap.hyprland)
+        xremap
         "--watch=device"
         configFile
       ];
