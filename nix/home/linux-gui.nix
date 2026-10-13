@@ -140,6 +140,9 @@ in
   # MOZ_LEGACY_PROFILES=1, which no longer prevents it. --profile skips the lookup entirely, and
   # links opened later still reach the running window because they name the same profile.
   # overrideAttrs keeps .override working, which home-manager uses to inject the policies.
+  # The profile stays at ~/.mozilla/firefox (home-manager's new default is under
+  # ~/.config; moving it is a manual migration, not worth a profile scare).
+  programs.firefox.configPath = ".mozilla/firefox";
   programs.firefox.package = pkgs.firefox-devedition.overrideAttrs (old: {
     makeWrapperArgs = old.makeWrapperArgs ++ [
       "--add-flags"
