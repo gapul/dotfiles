@@ -128,7 +128,11 @@ in
   # re-installable from upstream. Workstation-only because the hooks are desktop-specific
   # (osascript notifications, herdr) — move this to modules/home/agents.nix to share it.
   xdg.configFile = {
-    "claude/settings.json".source = claudeConfig "settings.json";
+    # Linux keeps a writable local file; common.nix applies attribution even
+    # when the private checkout is absent.
+    "claude/settings.json" = lib.mkIf pkgs.stdenv.hostPlatform.isDarwin {
+      source = claudeConfig "settings.json";
+    };
     "claude/hooks".source = claudeConfig "hooks";
     "claude/bin".source = claudeConfig "bin";
     "claude/skills/anki-add".source = claudeConfig "skills/anki-add";
