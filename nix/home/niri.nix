@@ -13,7 +13,7 @@
 # wlKeyboard (wl-keyboard.nix) are the scripts those modules build, passed in as module args.
 #
 # The keys follow the Hyprland rice, on Super: Mod is niri's mod-key, Super by default, which
-# xremap also sends for left Ctrl, Space held and Copilot-then-key (home/xremap.nix), and which
+# xremap also sends for left Ctrl and Copilot-then-key (home/xremap.nix), and which
 # drags and resizes windows with the mouse. What changes from Hyprland is the layout: windows
 # are columns on a strip that scrolls sideways, and workspaces stack vertically.
 let

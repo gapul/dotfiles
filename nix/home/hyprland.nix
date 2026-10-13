@@ -85,10 +85,9 @@ let
   cheatsheet = pkgs.writeShellScript "keys-cheatsheet" ''
     {
       printf '%s\n' \
-        "Space (held)         Super" \
         "left Ctrl            Super" \
         "Copilot, then key    Super+key (within 1.5 s)" \
-        "Copilot, G           game mode on/off (Super off on Space and left Ctrl)" \
+        "Copilot, G           game mode on/off (left Ctrl back to Ctrl)" \
         "Caps Lock            Ctrl" \
         ""
       ${pkgs.hyprland}/bin/hyprctl binds -j | ${pkgs.jq}/bin/jq -r '
@@ -493,7 +492,7 @@ in
     settings =
       let
         inherit (lib.generators) mkLuaInline;
-        # Super, which xremap also sends for left Ctrl, Space held and Copilot-then-key
+        # Super, which xremap also sends for left Ctrl and Copilot-then-key
         # (home/xremap.nix). The same key as niri's Mod (home/niri.nix).
         key = k: mkLuaInline ''mod .. " + ${k}"'';
         shiftKey = k: mkLuaInline ''mod .. " + SHIFT + ${k}"'';

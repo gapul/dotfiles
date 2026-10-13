@@ -25,22 +25,22 @@
 #    window manager has it now and niri's defaults (mouse drag on Mod) line up.
 #
 #      - The physical left Ctrl is Super.
-#      - Space held is Super too; tapped, it is Space.
+#      - Space is only Space. Held, it used to be Super as well (tapped, Space), and was dropped:
+#        a dual-role key turns every slow or overlapping Space into a window-manager shortcut.
 #      - The Copilot key is a prefix: press it, then within copilotTimeout press a key, and Super+<key>
 #        (or Super+Shift+<key>) is sent. The firmware sends Copilot as the chord LeftMeta+LeftShift+F23,
 #        pressed and released in the same instant no matter how long the key is held (kernel 6.18
 #        decodes the F23), so it cannot be a held modifier, only a prefix. Nothing happens if no key
 #        follows.
 #
-# 3. Keeps games playable. A game needs Space and left Ctrl held down (jump, crouch) and reacts to the
-#    press at once, which the held/alone split above breaks: a held Space would reach the game as Super,
-#    and a tapped one only on release. So the two Super modmaps are off
+# 3. Keeps games playable. A game needs left Ctrl held down (crouch), and as Super it would reach the
+#    game as the window manager's key instead. So the left Ctrl modmap is off
 #
 #      - in game windows (Steam games are the class steam_app_<id>; gamescope is the compositor they run
 #        inside, also as the Steam Deck-style session), and
 #      - in "game" mode, toggled by Copilot then G for games xremap cannot recognise, with a mako
 #        notification each way. Copilot stays a Super prefix in game mode, so the window manager is
-#        still reachable; only the held keys are plain.
+#        still reachable; only left Ctrl is plain.
 #
 #    The bottom-row modmap stays on in both cases, so the row does not change meaning mid-game.
 #
@@ -79,7 +79,7 @@ let
   # How long after pressing Copilot the next key is still taken as Super+key.
   copilotTimeout = 1500;
 
-  # Window classes that get the plain Space and left Ctrl (xremap --list-windows prints the class).
+  # Window classes that get the plain left Ctrl (xremap --list-windows prints the class).
   games = [
     "/^steam_app_/"
     "gamescope"
@@ -137,16 +137,10 @@ let
         };
       }
       {
-        name = "Super on left Ctrl and Space held (not in games)";
+        name = "Super on left Ctrl (not in games)";
         mode = "default";
         application.not = games;
-        remap = {
-          Control_L = wmKey;
-          Space = {
-            held = wmKey;
-            alone = "Space";
-          };
-        };
+        remap.Control_L = wmKey;
       }
     ];
 
@@ -155,11 +149,9 @@ let
       # nested remap is xremap's prefix-key form: it stays armed for timeout_millis and applies to the
       # next key only. exact_match so that the entry is not also taken for F23 with other modifiers.
       (copilotPrefix "default" "game" (
-        notify "Game mode on" "Space and left Ctrl are plain keys. Copilot, G turns it off."
+        notify "Game mode on" "Left Ctrl is a plain Ctrl. Copilot, G turns it off."
       ))
-      (copilotPrefix "game" "default" (
-        notify "Game mode off" "Space held and left Ctrl are Super again."
-      ))
+      (copilotPrefix "game" "default" (notify "Game mode off" "Left Ctrl is Super again."))
     ];
   };
 
@@ -182,7 +174,7 @@ in
   # It runs in the session rather than as root so that it can ask niri / Hyprland which window is focused.
   systemd.user.services.xremap = {
     Unit = {
-      Description = "xremap (bottom row layout; Super on left Ctrl, Space held and the Copilot key; game mode)";
+      Description = "xremap (bottom row layout; Super on left Ctrl and the Copilot key; game mode)";
       PartOf = [ "graphical-session.target" ];
       After = [ "graphical-session.target" ];
     };
