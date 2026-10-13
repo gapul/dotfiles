@@ -55,6 +55,7 @@ in
   # real machine into this same hosts/ dir and enable the import below (it need not be committed to the repo).
   imports = [
     hardwareConfig
+    ./nixos-laptop-virtualisation.nix # virt-manager, KVM and virtual TPM
     ./nixos-laptop-vivado.nix # FPGA coursework (Vivado 2020.2, installed by hand into /opt/Xilinx)
     ./nixos-laptop-wifi.nix # eduroam + 0000UTokyo + iPhone hotspot, credentials from secrets/nixos-laptop.yaml
   ];
