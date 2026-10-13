@@ -156,8 +156,12 @@ let
       # Copilot arrives as Meta+Shift_L+F23 (see the header); after the modmap the Meta is Ctrl. The
       # nested remap is xremap's prefix-key form: it stays armed for timeout_millis and applies to the
       # next key only. exact_match so that the entry is not also taken for F23 with other modifiers.
-      (copilotPrefix "default" "game" (notify "Game mode on" "Space and left Ctrl are plain keys. Copilot, G turns it off."))
-      (copilotPrefix "game" "default" (notify "Game mode off" "Space held and left Ctrl are Hyper again."))
+      (copilotPrefix "default" "game" (
+        notify "Game mode on" "Space and left Ctrl are plain keys. Copilot, G turns it off."
+      ))
+      (copilotPrefix "game" "default" (
+        notify "Game mode off" "Space held and left Ctrl are Hyper again."
+      ))
     ];
   };
 

@@ -49,6 +49,9 @@ let
   };
 
   rosePineDawn = pkgs.runCommand "rose-pine-dawn.yazi" { } ''
+    # Rebuilt under a new store path: the x86_64-linux build of 2026-10-10 on the macmini's
+    # nix-linux-builder came out with flavor.toml, tmtheme.xml and preview.png zeroed, and cachix
+    # cannot drop that copy from gapul-dotfiles. Changing this script is what moves the path.
     cp -r ${rosePine} $out
     chmod -R u+w $out
     ${lib.concatStringsSep "\n" (

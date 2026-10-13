@@ -73,6 +73,15 @@ creation_rules:
           - *recovery
           - *homeserver
 
+  # Tor onion サービスの鍵 (mkp224o で作った vanity アドレス gpssh / gpapp / gapulnet)。
+  # hs_ed25519_secret_key をそのまま sops の binary 形式で包んであり、homeserver の tor が読む。
+  - path_regex: secrets/tor-onion/[^/]+\.json$
+    key_groups:
+      - age:
+          - *me
+          - *recovery
+          - *homeserver
+
   # 上のどれにも当たらない新規ファイルは、人間の鍵だけで暗号化する (安全側に倒す)。
   - path_regex: secrets/.*\.yaml$
     key_groups:

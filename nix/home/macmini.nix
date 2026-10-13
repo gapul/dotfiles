@@ -8,6 +8,9 @@
 let
   agentPkgs = nixpkgsAgents.legacyPackages.${pkgs.stdenv.hostPlatform.system};
   dotfiles = "${config.home.homeDirectory}/.dotfiles";
+  agentState =
+    path:
+    config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/Developer/github.com/gapul/ai-agent-state/${path}";
   # Place the AI stack's runtime assets via out-of-store symlinks with dotfiles as the single source.
   # Editing directly on the mini is reflected straight into the repo (same mechanism as nvim).
   aiService = name: {
@@ -521,6 +524,19 @@ in
   # LocalHostName, so there is nothing else to tell them apart.
   xdg.configFile."dotfiles/host".text = "macmini\n";
 
+  # The hand-written Claude Code pieces that home/workstation.nix links on the laptop, minus
+  # settings.json (merged by claudeManagedSettings below) and hooks (desktop notifications).
+  # Same out-of-store links into ai-agent-state, which darwin-agent-state-sync keeps current here
+  # too, so sessions on this machine get the notion-private MCP script and the same skills.
+  xdg.configFile."claude/bin".source = agentState "claude/bin";
+  xdg.configFile."claude/skills/anki-add".source = agentState "claude/skills/anki-add";
+  xdg.configFile."claude/skills/gapul-writing-voice".source =
+    agentState "claude/skills/gapul-writing-voice";
+  xdg.configFile."claude/skills/mvrx-weekly-report".source =
+    agentState "claude/skills/mvrx-weekly-report";
+  xdg.configFile."claude/skills/step-by-step-tutor".source =
+    agentState "claude/skills/step-by-step-tutor";
+
   # AI stack runtime assets (bodies in configs/macmini/{services,bin})
   home.file = lib.mkMerge (
     map aiService [
@@ -566,6 +582,15 @@ in
       # configs/bin/open-on-mac, which goes through the RemoteForward on 127.0.0.1:2222
       # and deliberately carries no key on this side — that one only exists while the
       # workstation holds the connection open, so it cannot be what a background job uses.
+      # x: read X from the terminal (configs/bin/x). Same script as the laptop's
+      # (modules/home/darwin-apps.nix); the relay's settings and its logged-in browser
+      # profile under ~/.local/share/twitter-api-safe are hand-placed, as there.
+      {
+        ".local/bin/x" = {
+          source = ../../configs/bin/x;
+          executable = true;
+        };
+      }
       {
         ".ssh/config".text = ''
           Host macbook-mini mac

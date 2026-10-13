@@ -7,6 +7,11 @@
   user,
   ...
 }:
+let
+  # nixos-laptop's TPM-sealed key (home/ssh-tpm-agent.nix). Absent from the option set on configs
+  # that never import the module, hence attrByPath rather than a plain lookup.
+  tpmSigning = lib.attrByPath [ "services" "ssh-tpm-agent" "enable" ] false config;
+in
 {
   programs.git = {
     enable = true;
@@ -55,8 +60,19 @@
       # Secure Enclave key: non-extractable, Touch ID per signature. Signing now costs a
       # deliberate physical gesture, which is the point — a commit cannot be signed in your name
       # by anything running unattended on this machine.
-      key = "${config.home.homeDirectory}/.ssh/id_enclave_key.pub";
-      signByDefault = true;
+      #
+      # The laptop signs with its TPM key instead: it cannot leave the TPM, and its PIN is the
+      # gesture — asked once per agent lifetime through askpass, then cached by ssh-tpm-agent.
+      # ssh-keygen given a .pub signs through SSH_AUTH_SOCK, which is that agent.
+      key =
+        if tpmSigning then
+          "${config.home.homeDirectory}/.ssh/id_ecdsa.pub"
+        else
+          "${config.home.homeDirectory}/.ssh/id_enclave_key.pub";
+      # Neither key exists on the other Linux hosts (WSL, droid). There every commit failed
+      # outright on the missing /usr/bin/ssh-keygen, so they go unsigned and GitHub signs the
+      # squash merge, rather than handing signing to a key that needs no gesture.
+      signByDefault = pkgs.stdenv.hostPlatform.isDarwin || tpmSigning;
     };
     # HM 26.05: userName/userEmail/extraConfig merged into settings.*
     settings = {
@@ -87,7 +103,12 @@
       gpg.format = "ssh";
       "gpg \"ssh\"".allowedSignersFile = "${config.home.homeDirectory}/.ssh/allowed_signers";
 
-      "gpg \"ssh\"".program = "${config.home.homeDirectory}/.dotfiles/scripts/git-ssh-keygen-enclave";
+      # The Enclave wrapper execs macOS' /usr/bin/ssh-keygen; on Linux it broke verification too.
+      "gpg \"ssh\"".program =
+        if pkgs.stdenv.hostPlatform.isDarwin then
+          "${config.home.homeDirectory}/.dotfiles/scripts/git-ssh-keygen-enclave"
+        else
+          "${pkgs.openssh}/bin/ssh-keygen";
     };
   };
 

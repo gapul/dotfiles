@@ -133,6 +133,7 @@ in
     "claude/bin".source = claudeConfig "bin";
     "claude/skills/anki-add".source = claudeConfig "skills/anki-add";
     "claude/skills/gapul-writing-voice".source = claudeConfig "skills/gapul-writing-voice";
+    "claude/skills/mvrx-weekly-report".source = claudeConfig "skills/mvrx-weekly-report";
     "claude/skills/step-by-step-tutor".source = claudeConfig "skills/step-by-step-tutor";
   };
 
