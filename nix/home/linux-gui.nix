@@ -181,6 +181,12 @@ in
   xdg.mimeApps = {
     enable = true;
     defaultApplications = {
+      "application/pdf" = "org.pwmt.zathura.desktop";
+      "image/png" = "swayimg.desktop";
+      "image/jpeg" = "swayimg.desktop";
+      "image/webp" = "swayimg.desktop";
+      "image/gif" = "swayimg.desktop";
+      "image/svg+xml" = "swayimg.desktop";
       "text/html" = browser;
       "application/xhtml+xml" = browser;
       "x-scheme-handler/http" = browser;
@@ -307,6 +313,8 @@ in
     orca-slicer # Bambu A1 mini, same profile set as the mac
 
     # ─── Utilities ───
+    zathura # Keyboard-driven PDF viewer, also used by Yazi.
+    swayimg # Wayland image viewer, also used by Yazi.
     imhex # hex editor
 
     # ─── Wayland extras that have no macOS counterpart ───
