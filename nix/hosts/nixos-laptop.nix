@@ -101,6 +101,11 @@ in
     "rd.systemd.show_status=false"
     "systemd.show_status=false"
     "vt.global_cursor_default=0" # no blinking cursor on the brief text console
+    # fbcon binds to the GPU's framebuffer as soon as it appears (while Plymouth still owns
+    # the display, so nothing shows) instead of deferring until the first console output,
+    # which came after fbcon-unbind had run and put the text console on screen for a
+    # moment between the greeter and Hyprland's first frame.
+    "fbcon=nodefer"
   ];
   # Hand the screen from Plymouth to the greeter without a text console in between. Stock
   # order is: Plymouth quits (screen cleared, console shows) -> greetd starts -> cage draws a
@@ -165,6 +170,14 @@ in
         for f in ${theme}/icons/func_*.png; do
           magick "$f" -channel RGB -negate +channel -resize 72x72 "PNG32:$out/$(basename "$f")"
         done
+        # Tools the theme has no icon for (rEFInd draws a hatched square then): Nerd Font
+        # glyphs in the same thin white, info / eye-slash / microchip. The glyphs are given
+        # as UTF-8 bytes so the build's locale does not matter.
+        font=${pkgs.nerd-fonts.jetbrains-mono}/share/fonts/truetype/NerdFonts/JetBrainsMono/JetBrainsMonoNerdFont-Regular.ttf
+        glyph() { magick -size 72x72 xc:none -font "$font" -pointsize 54 -fill white -gravity center -annotate +0+0 "$(printf "$2")" "PNG32:$out/$1.png"; }
+        glyph func_about '\xef\x81\x9a'
+        glyph func_hidden '\xef\x81\xb0'
+        glyph func_firmware '\xef\x8b\x9b'
         magick -size 208x208 xc:none -fill "#${palettes.rose-pine.iris}59" -stroke "#${palettes.rose-pine.iris}" -strokewidth 3 \
           -draw "roundrectangle 3,3 204,204 24,24" PNG32:$out/selection_big.png
         magick -size 88x88 xc:none -fill "#${palettes.rose-pine.iris}59" -stroke "#${palettes.rose-pine.iris}" -strokewidth 2 \
@@ -196,6 +209,8 @@ in
         scanfor manual,internal
         dont_scan_dirs ESP:/EFI/Linux,ESP:/EFI/systemd,ESP:/EFI/BOOT,ESP:/EFI/nixos
         default_selection NixOS
+        # refind.log at the ESP root, for reading what it loaded and why after a boot.
+        log_level 1
       '';
       install = pkgs.writeShellScript "refind-install" ''
         set -eu
@@ -248,6 +263,11 @@ in
           echo "menuentry \"NixOS\" {"
           # (a stanza's icon path is relative to the volume root, unlike icons_dir and banner)
           echo "    icon EFI/refind/theme/icons/os_nixos.png"
+          # use_graphics_for only covers entries rEFInd found itself; a stanza needs these
+          # two, or it drops to a text screen ("Starting nixos-generation-...") before the
+          # kernel. ostype also picks the Linux handling for the entry.
+          echo "    ostype Linux"
+          echo "    graphics on"
           echo "    loader /EFI/Linux/$(basename "$latest")"
           safe=$(ls "$esp"/EFI/Linux/nixos-generation-$latest_n-specialisation-safe-*.efi 2>/dev/null | head -n 1)
           [ -n "$safe" ] && {
@@ -312,17 +332,18 @@ in
           grep -qs xedrmfb /sys/class/graphics/fb0/name && break
           sleep 0.1
         done
+        # ... and for fbcon's own console entry, registered a moment after the framebuffer.
+        for _ in $(seq 1 100); do
+          grep -qs "frame buffer" /sys/class/vtconsole/vtcon*/name && break
+          sleep 0.1
+        done
         for v in /sys/class/vtconsole/vtcon*; do
           grep -qs "frame buffer" "$v/name" && echo 0 > "$v/bind"
         done
         exit 0
       '';
-      ExecStop = pkgs.writeShellScript "fbcon-rebind" ''
-        for v in /sys/class/vtconsole/vtcon*; do
-          grep -qs "frame buffer" "$v/name" && echo 1 > "$v/bind"
-        done
-        exit 0
-      '';
+      # No ExecStop: re-binding the console when the unit stops at shutdown put the text
+      # console on screen for the half second before Plymouth's reboot splash.
     };
   };
 
@@ -530,7 +551,11 @@ in
   # Electron clients such as T3 need Secret Service to encrypt saved connection tokens.
   # Password login unlocks the keyring via PAM; fingerprint login still needs a keyring prompt.
   services.gnome.gnome-keyring.enable = true;
-  security.pam.services.greetd.enableGnomeKeyring = true;
+  # Not in greetd's PAM stack: the session is an autologin, so there is no password for
+  # pam_gnome_keyring to unlock with, and it only logged "couldn't unlock the login
+  # keyring" at every boot. The daemon starts on demand over D-Bus; the keyring is
+  # unlocked on first use (silently, if its password is empty).
+  security.pam.services.greetd.enableGnomeKeyring = false;
 
   # Login: greetd + ReGreet (GTK greeter under cage) on the same generated wallpaper the
   # desktop uses (home/stylix.nix), in the palette's colours. It lists the Wayland sessions

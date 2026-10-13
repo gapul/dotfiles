@@ -87,7 +87,15 @@ in
   systemd.user.services.darkman-apply = {
     Unit = {
       Description = "Re-apply the current darkman mode to the portal color-scheme";
-      After = [ "darkman.service" ];
+      # After the session target like awww, not before it: a unit the target wants is
+      # implicitly waited for, and this one waits for awww's socket (the desktop script
+      # sets the wallpaper), which only starts once the target is reached. That stalled
+      # the whole session (bar, wallpaper, input method) for half a minute after login.
+      After = [
+        "darkman.service"
+        "graphical-session.target"
+        "awww.service"
+      ];
       Requires = [ "darkman.service" ];
       PartOf = [ "graphical-session.target" ];
     };

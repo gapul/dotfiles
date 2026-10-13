@@ -152,8 +152,16 @@ let
         mkdir -p ${lib.escapeShellArg "${config.xdg.configHome}/${builtins.dirOf path}"}
         ln -sfn "$theme/${path}" ${lib.escapeShellArg "${config.xdg.configHome}/${path}"}
       '') paths}
-      dconf write /org/gnome/desktop/interface/gtk-theme "'$gtk'"
-      dconf write /org/gnome/desktop/interface/icon-theme "'$icons'"
+      # dconf needs the session bus. At boot the home-manager unit runs before the user's
+      # bus exists (dbus would try to autolaunch and fail on the missing DISPLAY); the
+      # values from the previous run are still in the database then, and darkman writes
+      # them again once the session is up.
+      bus="''${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/bus"
+      if [ -S "$bus" ]; then
+        export DBUS_SESSION_BUS_ADDRESS="''${DBUS_SESSION_BUS_ADDRESS:-unix:path=$bus}"
+        dconf write /org/gnome/desktop/interface/gtk-theme "'$gtk'"
+        dconf write /org/gnome/desktop/interface/icon-theme "'$icons'"
+      fi
       if systemctl --user is-active --quiet mako.service; then
         ${pkgs.mako}/bin/makoctl reload
       fi
