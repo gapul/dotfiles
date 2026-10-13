@@ -62,7 +62,10 @@ let
     { rel = "paperless.env"; }
     { rel = "playit.env"; }
     { rel = "puls.env"; }
-    { rel = "rallly.env"; }
+    {
+      rel = "rallly.env";
+      restartUnits = [ "podman-rallly.service" ];
+    }
     { rel = "rclone.conf"; }
     { rel = "restic.password"; }
     { rel = "romm.env"; }

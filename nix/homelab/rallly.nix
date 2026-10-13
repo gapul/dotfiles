@@ -8,9 +8,11 @@
 # (the moment one person holds a slot, nobody else can mark the same day). calnode's feature
 # list has nothing equivalent to voting or tallying. Conclusion: a separate service is needed.
 #
-# Participants can vote as guests without an account. Creators can also create as guests, so
-# the minimum works even without SMTP. If logging in to manage polls becomes desirable, add
-# SMTP then (just put SMTP_* in rallly.env).
+# Participants can vote as guests without an account, but upstream dropped guest poll creation:
+# /new now redirects to an email-OTP login, so SMTP is required to create anything. Mail goes
+# out through Gmail SMTP with the same app password the mail mirror uses (the gapul.net identity
+# has no outbound route yet, see mail.nix). ALLOWED_EMAILS limits sign-up to the owner so a
+# stranger on this public instance can't register and make Rallly send mail through that account.
 #
 # The app tracks latest under the rolling-release policy. The DB is kept separately on the
 # PostgreSQL 18 series, with pre-update backups and restore drills to prepare for one-way
