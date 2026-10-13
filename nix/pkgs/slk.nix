@@ -5,15 +5,15 @@
 }:
 
 let
-  version = "0.24.0";
+  version = "0.26.0";
   sources = {
     aarch64-darwin = {
       arch = "arm64";
-      hash = "sha256-nqYE0aRGaUTNvy7fiBq7gM6d8Y6oIK+dcLWZeBpytbo=";
+      hash = "sha256-AVH/Lv9sZF2awBUFBcGWHQ5jusFAVxxOdlslcAFAgN4=";
     };
     x86_64-darwin = {
       arch = "x86_64";
-      hash = "sha256-P/FmoRrT9HCIzzLvL0laQeQFGEWFPrEHZHtY4+70YDc=";
+      hash = "sha256-1vyVck0VZQM/NpfTR9zcZvu3vRQqscTUHbWHmm79yrs=";
     };
   };
   source = sources.${stdenvNoCC.hostPlatform.system};

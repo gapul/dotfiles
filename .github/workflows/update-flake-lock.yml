@@ -45,6 +45,15 @@ jobs:
       - name: Update flake.lock and open PR
         id: lock
         uses: DeterminateSystems/update-flake-lock@da03c0f078bc4b2c37ee4f7e072d34bf8f188bb3 # v29
+        # この action は既定で OpenTelemetry のトレースとログ (debug 行込み) を
+        # otel.determinate.systems に、実行イベントを install.determinate.systems に送る。
+        # GitHub がマスクするのはワークフローログだけで、送信先には PR 用トークンを持つ
+        # job のログがそのまま届く。OTEL_SDK_DISABLED で前者、未宣言の diagnostic-endpoint
+        # 入力 (bundle は INPUT_DIAGNOSTIC-ENDPOINT を読む) を空にして後者を止める。
+        # with: に書くと未宣言入力の警告が出るので env で渡す。
+        env:
+          OTEL_SDK_DISABLED: 'true'
+          INPUT_DIAGNOSTIC-ENDPOINT: ''
         with:
           token: ${{ env.PR_TOKEN }}
           path-to-flake-dir: nix
@@ -74,6 +83,8 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+        with:
+          diagnostic-endpoint: '' # テレメトリ送信を止める (.github/actions/setup-nix と同じ)
       - name: Update versions and hashes
         env:
           GH_TOKEN: ${{ env.PR_TOKEN }}

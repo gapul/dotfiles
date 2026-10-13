@@ -34,7 +34,8 @@ in
   # Restore the checked styles with Stylus's Import button; preserve unrelated styles.
   # CSS media queries are used because Stylus's background scheme cache can lag behind
   # darkman on this Firefox profile. Refresh the export deliberately when updating upstream.
-  xdg.dataFile."firefox/stylus-light-themes.json".source = ../../../configs/apps/stylus/light-themes.json;
+  xdg.dataFile."firefox/stylus-light-themes.json".source =
+    ../../../configs/apps/stylus/light-themes.json;
   xdg.dataFile."firefox/light-site-themes.json".text = builtins.toJSON {
     mode = "prefers-color-scheme: light (inside exported CSS)";
     styles = [
@@ -158,7 +159,9 @@ in
         "{799c0914-748b-41df-a25c-22d008f9e83f}" = amo "web-scrobbler"; # Web Scrobbler
         # Added 2026-09-26 on request, both FOSS:
         # Allow temporarily disabling DeArrow without uninstalling its saved settings.
-        "deArrow@ajay.app" = (amo "dearrow") // { installation_mode = "normal_installed"; };
+        "deArrow@ajay.app" = (amo "dearrow") // {
+          installation_mode = "normal_installed";
+        };
         "{c607c8df-14a7-4f28-894f-29e8722976af}" = amo "temporary-containers"; # Temporary Containers
         # Added 2026-10-11: NIP-07 (window.nostr) bridge to a NIP-46 remote signer, for sites that
         # only know extension login (events.kojira.io). Keys stay in the bunker; the extension holds
@@ -355,7 +358,14 @@ in
             "floccus_handmadeideas_org-browser-action"
             "_446900e4-71c2-419f-a6a7-df9c091e268b_-browser-action"
           ];
-          dirtyAreaCache = [ "nav-bar" "TabsToolbar" "vertical-tabs" "unified-extensions-area" "toolbar-menubar" "PersonalToolbar" ];
+          dirtyAreaCache = [
+            "nav-bar"
+            "TabsToolbar"
+            "vertical-tabs"
+            "unified-extensions-area"
+            "toolbar-menubar"
+            "PersonalToolbar"
+          ];
           currentVersion = 28;
           newElementCount = 0;
         };
