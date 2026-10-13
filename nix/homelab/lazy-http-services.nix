@@ -166,6 +166,61 @@ let
 
   targetUnits = map (name: "lazy-${name}.target") (attrNames groups);
 
+  # Health of the lazy groups, reported to gatus once a day instead of polled.
+  #
+  # gatus used to probe these through their public ports every hour. Each probe
+  # woke the group, and with idle timeouts of 10–30 minutes every group was
+  # awake for a sixth to a half of each hour, all of them starting at the same
+  # minute — on a fanless N150 that was the bulk of the heat (2026-10-13).
+  #
+  # container-auto-update already wakes every group once a day, so the check
+  # rides on that: probe each upstream port directly (not the public socket,
+  # which would start the proxy and hold the group up for its idle timeout) and
+  # push the result to a gatus external endpoint. A group that is broken but
+  # unused is noticed within a day; one that fails on a real wake still shows up
+  # as a failed proxy unit in journal-alert.
+  lazyHealthReport = pkgs.writeShellScript "lazy-health-report" ''
+    set -u
+    push() { # group success error
+      curl -fsS --max-time 10 -o /dev/null -X POST \
+        -H "Authorization: Bearer $GATUS_PUSH_TOKEN" \
+        "http://127.0.0.1:8084/api/v1/endpoints/lazy_$1/external?success=$2&error=$3" \
+        || echo "lazy-health-report: push for $1 failed" >&2
+    }
+    # Same readiness rule as the proxy's ExecStartPre: any HTTP answer below 500.
+    probe() { # port timeout
+      deadline=$((SECONDS + $2))
+      while [ "$SECONDS" -lt "$deadline" ]; do
+        status="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 5 \
+          "http://127.0.0.1:$1/" 2>/dev/null || true)"
+        if [ "''${status:-000}" -ge 100 ] && [ "''${status:-000}" -lt 500 ]; then
+          return 0
+        fi
+        sleep 1
+      done
+      echo "last status ''${status:-000}"
+      return 1
+    }
+    ${lib.concatStrings (
+      mapAttrsToList (groupName: group: ''
+        err=""
+        ${lib.concatStrings (
+          mapAttrsToList (endpointName: endpoint: ''
+            if ! out=$(probe ${toString endpoint.upstreamPort} ${toString group.startupTimeout}); then
+              err="$err ${endpointName}:${toString endpoint.upstreamPort}($out)"
+            fi
+          '') group.endpoints
+        )}
+        if [ -z "$err" ]; then
+          push ${groupName} true ""
+        else
+          echo "lazy-health-report: ${groupName} not ready:$err" >&2
+          push ${groupName} false "not%20ready"
+        fi
+      '') groups
+    )}
+  '';
+
   mkGroup =
     groupName: group:
     let
@@ -283,9 +338,42 @@ in
         # use Podman's built-in failed-start rollback. StopWhenUnneeded returns
         # each group to sleep afterwards, unless a real client still needs it.
         systemd.services.container-auto-update = {
-          wants = targetUnits;
+          wants = targetUnits ++ [ "lazy-health-report.service" ];
           after = targetUnits;
         };
+
+        # Ordered after the updater so it sees the containers it left running,
+        # and wanting the targets itself keeps the groups up until it is done.
+        systemd.services.lazy-health-report = {
+          description = "Report lazy container groups' health to gatus";
+          wants = targetUnits;
+          after = targetUnits ++ [ "container-auto-update.service" ];
+          path = [
+            pkgs.curl
+            pkgs.coreutils
+          ];
+          serviceConfig = {
+            Type = "oneshot";
+            ExecStart = lazyHealthReport;
+            EnvironmentFile = "/var/lib/secrets/gatus.env";
+          };
+        };
+
+        services.gatus.settings.external-endpoints = mapAttrsToList (groupName: _: {
+          name = groupName;
+          group = "lazy";
+          token = "\${GATUS_PUSH_TOKEN}";
+          # Daily 05:00 plus up to 20 minutes of RandomizedDelaySec and the update itself.
+          heartbeat.interval = "25h";
+          alerts = [
+            {
+              type = "ntfy";
+              failure-threshold = 1;
+              send-on-resolved = true;
+              enabled = true;
+            }
+          ];
+        }) groups;
       }
     ]
   );
