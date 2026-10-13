@@ -273,6 +273,12 @@ in
     nixpkgsStable.legacyPackages.${pkgs.stdenv.hostPlatform.system}.freecad
     bitwig-studio
     reaper
+    # Interactive audio/video sequencing and show control. From stable: unstable's 3.8.2 does
+    # not compile against fmt 12 (is_container_adaptor_like, 2026-10-13). Drop back to
+    # `ossia-score` once Hydra builds it again.
+    nixpkgsStable.legacyPackages.${pkgs.stdenv.hostPlatform.system}.ossia-score
+    easyeffects # PipeWire audio processing; launch manually when needed.
+    qpwgraph # PipeWire routing and patchbay.
     yabridge
     yabridgectl
     wineWow64Packages.yabridge # Wine version matched to yabridge; keep separate from game runners.
@@ -280,6 +286,7 @@ in
     davinci-resolve
     creativeWineApps.cavalry
     creativeWineApps.affinity
+    (import ../pkgs/touchdesigner.nix { inherit pkgs; })
     musescore
     cardinal
     surge-xt
