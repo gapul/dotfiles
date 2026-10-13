@@ -41,6 +41,10 @@ concurrency:
   group: claude-agent-${{ github.event.issue.number || github.event.workflow_run.id }}
   cancel-in-progress: false
 
+# Only people with write access can start it. This is a public repository, and claude-agent
+# runs with --dangerously-skip-permissions as the mini's login user, so a stranger's issue,
+# comment or fork pull request (through its failure log) would be a prompt that executes.
+# run-autofix.sh checks the same thing again, because the poller does not come through here.
 jobs:
   issue:
     if: >-
@@ -50,8 +54,10 @@ jobs:
         ||
         (github.event_name == 'issue_comment' && github.event.issue.state == 'open'
           && contains(github.event.issue.labels.*.name, 'claude-needs-info')
-          && !contains(github.event.comment.body, '<!-- claude-bot -->'))
+          && !contains(github.event.comment.body, '<!-- claude-bot -->')
+          && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association))
       )
+      && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association)
       && !contains(github.event.issue.labels.*.name, 'no-claude')
     uses: ./.github/workflows/claude-agent.yml
     with:
@@ -62,6 +68,7 @@ jobs:
     if: >-
       github.event_name == 'workflow_run'
       && github.event.workflow_run.conclusion == 'failure'
+      && github.event.workflow_run.head_repository.full_name == github.repository
     uses: ./.github/workflows/claude-agent.yml
     with:
       target_repo: ${{ github.repository }}

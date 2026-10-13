@@ -63,6 +63,16 @@ run_issue() {
   [ "$state" != "OPEN" ] && { log "issue #$n is not open"; return 0; }
   case ",$labels," in *,no-claude,*) log "labelled no-claude: #$n"; return 0 ;; esac
   seen "$REPO/issue-$n/$updated" && { log "already handled: #$n ($updated)"; return 0; }
+
+  # A stranger's issue is never handed to claude, not even when labelled claude-fix:
+  # the body is still their text. Restate it in an issue of your own instead.
+  local assoc
+  assoc="$(gh api "repos/$REPO/issues/$n" -q .author_association 2>/dev/null)"
+  if ! trusted_association "$assoc"; then
+    log "issue #$n is by an outside author (${assoc:-unknown}), leaving it alone"
+    mark_seen "$REPO/issue-$n/$updated"
+    return 0
+  fi
   attempts_ok "$REPO/issue-$n" 3 || return 0
 
   note() { gh issue comment "$n" --repo "$REPO" --body "$1
@@ -83,10 +93,11 @@ $MARK" >/dev/null 2>&1 || true; }
   git checkout --quiet -B "$branch" || return 1
 
   # Feed the thread back in as context (answers to earlier questions and so on),
-  # minus the bot's own comments.
+  # minus the bot's own comments and anything from outside authors.
   local thread
-  thread="$(gh issue view "$n" --repo "$REPO" --comments \
-    --json comments -q '.comments[] | "--- " + .author.login + ":\n" + .body' 2>/dev/null | grep -v "$MARK" || true)"
+  thread="$(gh api --paginate "repos/$REPO/issues/$n/comments" \
+    -q '.[] | select(.author_association | IN("OWNER", "MEMBER", "COLLABORATOR"))
+          | "--- " + .user.login + ":\n" + .body' 2>/dev/null | grep -v "$MARK" || true)"
 
   local prompt log_file
   log_file="$STATE_DIR/logs/issue-${n}.log"
@@ -210,6 +221,17 @@ run_ci() {
   conclusion="$(jq -r .conclusion <<<"$meta")"
 
   [ "$conclusion" != "failure" ] && { log "run $id did not fail ($conclusion)"; return 0; }
+
+  # A run for a fork's pull request: its log is output the fork's code chose to print,
+  # so it does not go into a prompt. A fork PR whose branch happens to be named like
+  # the base would otherwise even get past the "not on origin" check further down.
+  local head_repo
+  head_repo="$(gh api "repos/$REPO/actions/runs/$id" -q .head_repository.full_name 2>/dev/null)"
+  if [ "$head_repo" != "$REPO" ]; then
+    log "run $id is from ${head_repo:-an unknown repository}, not $REPO; leaving it alone"
+    mark_seen "$REPO/run-$id"
+    return 0
+  fi
 
   # Never react to claude-agent's own workflows. This is where the loop of trying to
   # fix its own failure forever gets cut.

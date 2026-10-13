@@ -88,6 +88,7 @@ jobs:
           - system: x86_64-linux
             runner: ubuntu-24.04
             pr_runner: homeserver
+            fork_runner: ubuntu-24.04
           # darwin だけ自前ランナー (macmini)。動機は「macos-14 が遅い」ではなく、遅さの
           # 中身が転送だと分かったこと。
           #
@@ -119,6 +120,7 @@ jobs:
           - system: aarch64-darwin
             runner: macmini
             pr_runner: macmini
+            fork_runner: macos-14
     # Pull requests go to the self-hosted runners; main goes to GitHub's on linux and to macmini
     # on darwin (see the aarch64-darwin entry above for why darwin can't use GitHub's).
     #
@@ -129,7 +131,15 @@ jobs:
     # the system, including the closures and VM tests no pull request touches, and it is what
     # fills cachix. That is real work, and it belongs on a machine that exists to be spent rather
     # than on one running things people depend on.
-    runs-on: ${{ github.event_name == 'pull_request' && matrix.pr_runner || matrix.runner }}
+    #
+    # A pull request from a fork never reaches a self-hosted runner. Both run as a real user with
+    # no isolation (macmini-ci-runner.nix gave up on a dedicated user), so the fork's scripts/ and
+    # nix/ would run with that user's keys and tokens. The repository's fork-approval setting used
+    # to be the only thing in the way, and it had to be relaxed to first_time_contributors so that
+    # github-actions[bot]'s flake.lock PRs are not held for approval (update-flake-lock.yml).
+    # A fork goes to GitHub's runners instead. Its darwin pr-gate may fail there for want of the
+    # requireFile inputs; a red check on a stranger's PR is the acceptable price.
+    runs-on: ${{ github.event_name != 'pull_request' && matrix.runner || github.event.pull_request.head.repo.full_name == github.repository && matrix.pr_runner || matrix.fork_runner }}
     timeout-minutes: 90
     steps:
       # GitHub の ubuntu ランナーは root に ~20GB しか空きが無い。main の om ci run は VM
