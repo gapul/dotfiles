@@ -62,6 +62,9 @@ in
     devenv # Nix-based dev shell (combined with direnv)
     nix-fast-build # parallel + remote nix build (speeds up self-built pkgs / flake checks)
     nixpkgs-review # build & review a nixpkgs PR / bump before applying it
+    nurl # print a fetcher call (fetchFromGitHub etc.) with its hash filled in, for pkgs/
+    nix-melt # flake.lock viewer TUI (which input pulled which nixpkgs, how stale each pin is)
+    nixos-anywhere # install a NixOS host over SSH (kexec + disko + nixos-install in one command)
     tealdeer # tldr CLI (manual because programs.tealdeer doesn't support archive_source)
 
     # ─── CLI migrated from Homebrew (stage 1: git-related + basics) ───
