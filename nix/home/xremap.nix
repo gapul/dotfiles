@@ -12,32 +12,34 @@
 # 1. Lays out the bottom row. Left to right:
 #
 #      physical:  Ctrl   Fn  Win   Alt  無変換 [Space] 変換  カタカナひらがな  Alt   Copilot
-#      logical:   Hyper  Fn  Ctrl  Win  Alt   [Space] Alt   Win             Ctrl  (Hyper prefix)
+#      logical:   Super  Fn  Ctrl  Win  Alt   [Space] Alt   Win             Ctrl  (Super prefix)
 #
-#    Ctrl / Win / Alt sit next to Space in the US order on both sides, with Hyper at the two ends. ¥
+#    Ctrl / Win / Alt sit next to Space in the US order on both sides, with Super (the window manager's key) at the two ends. ¥
 #    (next to Backspace) is backslash, where a US board has it; ろ (left of the right Shift) has no US
 #    counterpart and is left as it is (xkb gives it no symbol). fcitx5 does not use any of these keys
 #    (its trigger is Ctrl+Space); SKK's own mode keys are letters.
 #
-# 2. Adds Hyper, the window manager's modifier (home/hyprland.nix), the way Karabiner adds it on the mac
-#    (configs/keyboard/karabiner/karabiner.ts):
+# 2. Puts Super, the window manager's modifier (home/niri.nix, home/hyprland.nix), where the mac has
+#    Hyper from Karabiner (configs/keyboard/karabiner/karabiner.ts). It used to be Hyper here too
+#    (Super+Ctrl+Alt), to keep Super+key free for the apps; Linux apps barely use Super, so the
+#    window manager has it now and niri's defaults (mouse drag on Mod) line up.
 #
-#      - The physical left Ctrl is Hyper (Super+Ctrl+Alt).
-#      - Space held is Hyper too; tapped, it is Space.
-#      - The Copilot key is a prefix: press it, then within copilotTimeout press a key, and Hyper+<key>
-#        (or Hyper+Shift+<key>) is sent. The firmware sends Copilot as the chord LeftMeta+LeftShift+F23,
+#      - The physical left Ctrl is Super.
+#      - Space held is Super too; tapped, it is Space.
+#      - The Copilot key is a prefix: press it, then within copilotTimeout press a key, and Super+<key>
+#        (or Super+Shift+<key>) is sent. The firmware sends Copilot as the chord LeftMeta+LeftShift+F23,
 #        pressed and released in the same instant no matter how long the key is held (kernel 6.18
 #        decodes the F23), so it cannot be a held modifier, only a prefix. Nothing happens if no key
 #        follows.
 #
 # 3. Keeps games playable. A game needs Space and left Ctrl held down (jump, crouch) and reacts to the
-#    press at once, which the held/alone split above breaks: a held Space would reach the game as Hyper,
-#    and a tapped one only on release. So the two Hyper modmaps are off
+#    press at once, which the held/alone split above breaks: a held Space would reach the game as Super,
+#    and a tapped one only on release. So the two Super modmaps are off
 #
 #      - in game windows (Steam games are the class steam_app_<id>; gamescope is the compositor they run
 #        inside, also as the Steam Deck-style session), and
 #      - in "game" mode, toggled by Copilot then G for games xremap cannot recognise, with a mako
-#        notification each way. Copilot stays a Hyper prefix in game mode, so the window manager is
+#        notification each way. Copilot stays a Super prefix in game mode, so the window manager is
 #        still reachable; only the held keys are plain.
 #
 #    The bottom-row modmap stays on in both cases, so the row does not change meaning mid-game.
@@ -48,13 +50,9 @@
 # Ctrl+A/E/... as text-editing keys outside terminals). Linux apps have no Cmd/Ctrl split, so that
 # translation had to be maintained per application; it was dropped in favour of the apps' own keys.
 let
-  hyper = [
-    "Super_L"
-    "Control_L"
-    "Alt_L"
-  ];
+  wmKey = "Super_L";
 
-  # Keys that Copilot-then-key turns into Hyper+key: everything home/hyprland.nix binds on $mod, plus the
+  # Keys that Copilot-then-key turns into Super+key: everything home/niri.nix binds on Mod, plus the
   # rest of the main block so a new bind does not need a change here.
   copilotKeys = lib.stringToCharacters "abcdefghijklmnopqrstuvwxyz0123456789" ++ [
     "enter"
@@ -78,7 +76,7 @@ let
     "rightbrace"
   ];
 
-  # How long after pressing Copilot the next key is still taken as Hyper+key.
+  # How long after pressing Copilot the next key is still taken as Super+key.
   copilotTimeout = 1500;
 
   # Window classes that get the plain Space and left Ctrl (xremap --list-windows prints the class).
@@ -95,14 +93,14 @@ let
     body
   ];
 
-  # The Copilot prefix table; G toggles game mode instead of sending Hyper+G, so there is one table per
+  # The Copilot prefix table; G toggles game mode instead of sending Super+G, so there is one table per
   # mode, differing only in what G does.
   copilotTable =
     nextMode: notice:
     lib.listToAttrs (
       lib.concatMap (k: [
-        (lib.nameValuePair k "Super-C-Alt-${k}")
-        (lib.nameValuePair "Shift-${k}" "Super-C-Alt-Shift-${k}")
+        (lib.nameValuePair k "Super-${k}")
+        (lib.nameValuePair "Shift-${k}" "Super-Shift-${k}")
       ]) copilotKeys
     )
     // {
@@ -113,7 +111,7 @@ let
     };
 
   copilotPrefix = mode: nextMode: notice: {
-    name = "Copilot, then key, is Hyper+key (${mode} mode)";
+    name = "Copilot, then key, is Super+key (${mode} mode)";
     inherit mode;
     exact_match = true;
     remap."C-Shift_L-F23" = {
@@ -139,13 +137,13 @@ let
         };
       }
       {
-        name = "Hyper on left Ctrl and Space held (not in games)";
+        name = "Super on left Ctrl and Space held (not in games)";
         mode = "default";
         application.not = games;
         remap = {
-          Control_L = hyper;
+          Control_L = wmKey;
           Space = {
-            held = hyper;
+            held = wmKey;
             alone = "Space";
           };
         };
@@ -160,7 +158,7 @@ let
         notify "Game mode on" "Space and left Ctrl are plain keys. Copilot, G turns it off."
       ))
       (copilotPrefix "game" "default" (
-        notify "Game mode off" "Space held and left Ctrl are Hyper again."
+        notify "Game mode off" "Space held and left Ctrl are Super again."
       ))
     ];
   };
@@ -184,7 +182,7 @@ in
   # It runs in the session rather than as root so that it can ask niri / Hyprland which window is focused.
   systemd.user.services.xremap = {
     Unit = {
-      Description = "xremap (bottom row layout; Hyper on left Ctrl, Space held and the Copilot key; game mode)";
+      Description = "xremap (bottom row layout; Super on left Ctrl, Space held and the Copilot key; game mode)";
       PartOf = [ "graphical-session.target" ];
       After = [ "graphical-session.target" ];
     };

@@ -12,15 +12,16 @@
 # power menu. Only the compositor's own config is here; desktopScripts (hyprland.nix) and
 # wlKeyboard (wl-keyboard.nix) are the scripts those modules build, passed in as module args.
 #
-# The keys follow the Hyprland rice: Hyper (Super+Ctrl+Alt, from xremap) drives the window
-# manager so Super+key stays free for the apps, as on the mac. What changes is the layout:
-# windows are columns on a strip that scrolls sideways, and workspaces stack vertically.
+# The keys follow the Hyprland rice, on Super: Mod is niri's mod-key, Super by default, which
+# xremap also sends for left Ctrl, Space held and Copilot-then-key (home/xremap.nix), and which
+# drags and resizes windows with the mouse. What changes from Hyprland is the layout: windows
+# are columns on a strip that scrolls sideways, and workspaces stack vertically.
 let
   c = import ../lib/theme.nix; # hex without the leading #
-  hyper = "Super+Ctrl+Alt";
+  mod = "Mod";
   # A KDL string literal (JSON's escaping is a subset of KDL's).
   str = builtins.toJSON;
-  # One bind. `title` is what the hotkey overlay (Hyper+/) shows instead of the raw command.
+  # One bind. `title` is what the hotkey overlay (Super+/) shows instead of the raw command.
   bind =
     {
       key,
@@ -37,21 +38,21 @@ let
 
   binds = [
     (bind {
-      key = "${hyper}+Return";
+      key = "${mod}+Return";
       action = spawn [ "ghostty" ];
       title = "Terminal";
     })
     (bind {
-      key = "${hyper}+Q";
+      key = "${mod}+Q";
       opts = " repeat=false";
       action = "close-window";
     })
     (bind {
-      key = "${hyper}+Shift+M";
+      key = "${mod}+Shift+M";
       action = "quit";
     })
     (bind {
-      key = "${hyper}+E";
+      key = "${mod}+E";
       action = spawn [
         "ghostty"
         "-e"
@@ -60,7 +61,7 @@ let
       title = "Files (yazi)";
     })
     (bind {
-      key = "${hyper}+R";
+      key = "${mod}+R";
       action = spawn [
         "${desktopScripts.launcher}"
         "toggle"
@@ -77,39 +78,39 @@ let
       title = "Launcher";
     })
     (bind {
-      key = "${hyper}+V";
+      key = "${mod}+V";
       action = "toggle-window-floating";
     })
     (bind {
-      key = "${hyper}+F";
+      key = "${mod}+F";
       action = "fullscreen-window";
     })
     (bind {
-      key = "${hyper}+Shift+F";
+      key = "${mod}+Shift+F";
       action = "maximize-column";
     })
     (bind {
-      key = "${hyper}+L";
+      key = "${mod}+L";
       action = spawn [ "hyprlock" ];
       title = "Lock";
     })
     (bind {
-      key = "${hyper}+C";
+      key = "${mod}+C";
       action = spawnSh "cliphist list | wofi --dmenu | cliphist decode | wl-copy";
       title = "Clipboard history";
     })
     (bind {
-      key = "${hyper}+Period";
+      key = "${mod}+Period";
       action = spawn [ "wofi-emoji" ];
       title = "Emoji";
     })
     (bind {
-      key = "${hyper}+Slash";
+      key = "${mod}+Slash";
       action = "show-hotkey-overlay";
     })
     # Power menu. Three tiles a row with a wide margin, so the tiles are not the whole screen.
     (bind {
-      key = "${hyper}+Escape";
+      key = "${mod}+Escape";
       action = spawn [
         "wlogout"
         "--buttons-per-row"
@@ -124,22 +125,22 @@ let
       title = "Power menu";
     })
     (bind {
-      key = "${hyper}+Comma";
+      key = "${mod}+Comma";
       action = spawn [ "${desktopScripts.settingsMenu}" ];
       title = "Settings";
     })
     (bind {
-      key = "${hyper}+P";
+      key = "${mod}+P";
       action = spawn [ "${desktopScripts.screenshotRegion}" ];
       title = "Screenshot a region (satty, clipboard)";
     })
     # Saved under screenshot-path below and copied, like Hyprland's hyprshot -m window.
     (bind {
-      key = "${hyper}+Shift+P";
+      key = "${mod}+Shift+P";
       action = "screenshot-window";
     })
     (bind {
-      key = "${hyper}+Shift+C";
+      key = "${mod}+Shift+C";
       action = spawn [
         "hyprpicker"
         "-a"
@@ -147,28 +148,28 @@ let
       title = "Pick a colour";
     })
     (bind {
-      key = "${hyper}+Shift+N";
+      key = "${mod}+Shift+N";
       action = spawnSh "busctl --user set-property rs.wl-gammarelay / rs.wl.gammarelay Temperature q 4000";
       title = "Night light on";
     })
     (bind {
-      key = "${hyper}+Shift+D";
+      key = "${mod}+Shift+D";
       action = spawnSh "busctl --user set-property rs.wl-gammarelay / rs.wl.gammarelay Temperature q 6500";
       title = "Night light off";
     })
     # wl-keyboard.nix: pointer by labels, and the which-key menu.
     (bind {
-      key = "${hyper}+I";
+      key = "${mod}+I";
       action = spawn [ "${wlKeyboard.grid}" ];
       title = "Pointer: grid";
     })
     (bind {
-      key = "${hyper}+K";
+      key = "${mod}+K";
       action = spawn [ "${wlKeyboard.menu}" ];
       title = "Menu (wlr-which-key)";
     })
     (bind {
-      key = "${hyper}+O";
+      key = "${mod}+O";
       opts = " repeat=false";
       action = "toggle-overview";
     })
@@ -176,61 +177,61 @@ let
     # Focus: sideways through the columns, up and down through a column's windows and on into
     # the next workspace.
     (bind {
-      key = "${hyper}+Left";
+      key = "${mod}+Left";
       action = "focus-column-left";
     })
     (bind {
-      key = "${hyper}+Right";
+      key = "${mod}+Right";
       action = "focus-column-right";
     })
     (bind {
-      key = "${hyper}+Up";
+      key = "${mod}+Up";
       action = "focus-window-or-workspace-up";
     })
     (bind {
-      key = "${hyper}+Down";
+      key = "${mod}+Down";
       action = "focus-window-or-workspace-down";
     })
     (bind {
-      key = "${hyper}+Shift+Left";
+      key = "${mod}+Shift+Left";
       action = "move-column-left";
     })
     (bind {
-      key = "${hyper}+Shift+Right";
+      key = "${mod}+Shift+Right";
       action = "move-column-right";
     })
     (bind {
-      key = "${hyper}+Shift+Up";
+      key = "${mod}+Shift+Up";
       action = "move-window-up-or-to-workspace-up";
     })
     (bind {
-      key = "${hyper}+Shift+Down";
+      key = "${mod}+Shift+Down";
       action = "move-window-down-or-to-workspace-down";
     })
     # Column width, and taking a window into / out of the neighbouring column.
     (bind {
-      key = "${hyper}+Minus";
+      key = "${mod}+Minus";
       action = ''set-column-width "-10%"'';
     })
     (bind {
-      key = "${hyper}+Equal";
+      key = "${mod}+Equal";
       action = ''set-column-width "+10%"'';
     })
     (bind {
-      key = "${hyper}+BracketLeft";
+      key = "${mod}+BracketLeft";
       action = "consume-or-expel-window-left";
     })
     (bind {
-      key = "${hyper}+BracketRight";
+      key = "${mod}+BracketRight";
       action = "consume-or-expel-window-right";
     })
     (bind {
-      key = "${hyper}+WheelScrollDown";
+      key = "${mod}+WheelScrollDown";
       opts = " cooldown-ms=150";
       action = "focus-workspace-down";
     })
     (bind {
-      key = "${hyper}+WheelScrollUp";
+      key = "${mod}+WheelScrollUp";
       opts = " cooldown-ms=150";
       action = "focus-workspace-up";
     })
@@ -294,7 +295,7 @@ let
       ];
     })
   ]
-  # Hyper+1..9,0 go to workspaces 1..10; with Shift, the focused column moves there.
+  # Super+1..9,0 go to workspaces 1..10; with Shift, the focused column moves there.
   ++ builtins.concatLists (
     builtins.genList (
       i:
@@ -304,11 +305,11 @@ let
       in
       [
         (bind {
-          key = "${hyper}+${k}";
+          key = "${mod}+${k}";
           action = "focus-workspace ${n}";
         })
         (bind {
-          key = "${hyper}+Shift+${k}";
+          key = "${mod}+Shift+${k}";
           action = "move-column-to-workspace ${n}";
         })
       ]

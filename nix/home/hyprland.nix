@@ -79,16 +79,16 @@ let
     name = "rose-pine";
   };
 
-  # Hyper+/ : every keybind, searchable. Read from Hyprland itself (so it cannot go stale),
+  # Super+/ : every keybind, searchable. Read from Hyprland itself (so it cannot go stale),
   # with the modifier mask turned back into names, plus the few things xremap adds that
   # Hyprland cannot see.
   cheatsheet = pkgs.writeShellScript "keys-cheatsheet" ''
     {
       printf '%s\n' \
-        "Space (held)         Hyper" \
-        "left Ctrl            Hyper" \
-        "Copilot, then key    Hyper+key (within 1.5 s)" \
-        "Copilot, G           game mode on/off (Hyper off on Space and left Ctrl)" \
+        "Space (held)         Super" \
+        "left Ctrl            Super" \
+        "Copilot, then key    Super+key (within 1.5 s)" \
+        "Copilot, G           game mode on/off (Super off on Space and left Ctrl)" \
         "Caps Lock            Ctrl" \
         ""
       ${pkgs.hyprland}/bin/hyprctl binds -j | ${pkgs.jq}/bin/jq -r '
@@ -98,10 +98,8 @@ let
           (if .modmask / 8 % 2 >= 1 then "Alt" else empty end),
           (if .modmask / 1 % 2 >= 1 then "Shift" else empty end)
         ];
-        def modname: if (.modmask % 128 - .modmask % 1) >= 76 and (.modmask / 64 % 2 >= 1) and (.modmask / 4 % 2 >= 1) and (.modmask / 8 % 2 >= 1)
-          then (["Hyper"] + (if .modmask % 2 == 1 then ["Shift"] else [] end)) else mods end;
         .[] | select(.key != "") |
-        ((modname + [.key]) | join("+")) + "\t" + .dispatcher + (if .arg != "" then " " + .arg else "" end)
+        ((mods + [.key]) | join("+")) + "\t" + .dispatcher + (if .arg != "" then " " + .arg else "" end)
       ' | ${pkgs.coreutils}/bin/sort | ${pkgs.coreutils}/bin/expand -t 22
     } | ${pkgs.wofi}/bin/wofi --dmenu --prompt keys --width 760 --height 560 >/dev/null
   '';
@@ -495,9 +493,8 @@ in
     settings =
       let
         inherit (lib.generators) mkLuaInline;
-        # Hyper: Space held (and the Copilot key as a prefix), from xremap (home/xremap.nix).
-        # Not plain Super, so Super+key stays free for the apps, as on the mac
-        # (configs/keyboard/karabiner).
+        # Super, which xremap also sends for left Ctrl, Space held and Copilot-then-key
+        # (home/xremap.nix). The same key as niri's Mod (home/niri.nix).
         key = k: mkLuaInline ''mod .. " + ${k}"'';
         shiftKey = k: mkLuaInline ''mod .. " + SHIFT + ${k}"'';
         exec = cmd: mkLuaInline "hl.dsp.exec_cmd(${builtins.toJSON cmd})";
@@ -516,7 +513,7 @@ in
         };
       in
       {
-        mod._var = "SUPER + CTRL + ALT";
+        mod._var = "SUPER";
         terminal._var = "ghostty";
         menu._var = "${launcher} toggle";
 
@@ -765,7 +762,7 @@ in
           (bindOpts "XF86AudioNext" (exec "playerctl next") { locked = true; })
           (bindOpts "XF86AudioPrev" (exec "playerctl previous") { locked = true; })
         ]
-        # Hyper+1..9,0 switch to workspaces 1..10; with Shift, move the window there.
+        # Super+1..9,0 switch to workspaces 1..10; with Shift, move the window there.
         ++ builtins.concatLists (
           builtins.genList (
             i:

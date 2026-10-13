@@ -13,7 +13,7 @@ let
   wm = "${import ../lib/wm-session.nix { inherit pkgs; }}/bin/wm-session";
   whichKey = "${pkgs.wlr-which-key}/bin/wlr-which-key";
   # A layer-shell overlay does not suppress Hyprland's global shortcuts by
-  # itself: a still-held Hyper+L would lock the session while selecting labels.
+  # itself: a still-held Super+L would lock the session while selecting labels.
   grid = pkgs.writeShellScript "wl-grid" ''
     set -eu
     exec 9>"''${XDG_RUNTIME_DIR:?}/wl-grid.lock"
