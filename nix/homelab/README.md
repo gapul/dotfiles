@@ -37,7 +37,7 @@ name that matters now.
 | `miniflux.env` | `DATABASE_URL` (the whole `postgres://miniflux:<pw>@db/miniflux?sslmode=disable` string), `POSTGRES_PASSWORD`, `ADMIN_PASSWORD` |
 | `obsidian-couchdb.env` | `COUCHDB_USER`, `COUCHDB_PASSWORD` |
 | `searx.env` | `SEARXNG_SECRET`, from `openssl rand -hex 32`, substituted into SearXNG's `server.secret_key` with envsubst |
-| `rallly.env` | `DATABASE_URL`, the whole `postgres://rallly:<pw>@db/rallly`, plus `POSTGRES_PASSWORD` and `SECRET_PASSWORD`, which must be at least 32 characters or zod rejects it at startup, and `SUPPORT_EMAIL`, which is required even if no login mail is ever sent |
+| `rallly.env` | `DATABASE_URL`, the whole `postgres://rallly:<pw>@db/rallly`, plus `POSTGRES_PASSWORD` and `SECRET_PASSWORD`, which must be at least 32 characters or zod rejects it at startup, `SUPPORT_EMAIL`, and the login-mail settings `SMTP_HOST`/`SMTP_PORT`/`SMTP_SECURE`/`SMTP_USER`/`SMTP_PWD` (Gmail, same app password as `mail--gmail.app-password`), `NOREPLY_EMAIL`, `NOREPLY_EMAIL_NAME`, and `ALLOWED_EMAILS` (owner only) |
 | `spliit.env` | `POSTGRES_PRISMA_URL` and `POSTGRES_URL_NON_POOLING`, both the whole `postgresql://spliit:<pw>@db/spliit`, plus `POSTGRES_PASSWORD` |
 | `paperless.env` | `PAPERLESS_SECRET_KEY`, `PAPERLESS_ADMIN_PASSWORD`, `PAPERLESS_REMOTE_OCR_API_KEY` (the same value as the macmini's `~/.config/vision-ocr/key`) |
 | `vaultwarden.env` | `ADMIN_TOKEN` |
