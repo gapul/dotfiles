@@ -36,13 +36,13 @@ let
     # the iPhone, and the CLI, with no asset being protected.
     dash = {
       upstream = "127.0.0.1:3000"; # homepage
-      interval = "1h";
+      monitor = false; # lazy: lazy-http-services.nix reports it to gatus daily
     };
     vault.upstream = "127.0.0.1:8080"; # vaultwarden
     rss.upstream = "127.0.0.1:8081"; # miniflux
     read = {
       upstream = "127.0.0.1:8087"; # readeck (read later)
-      interval = "1h";
+      monitor = false; # lazy: lazy-http-services.nix reports it to gatus daily
     };
     search.upstream = "127.0.0.1:8088"; # searxng
     obsidian = {
@@ -62,11 +62,11 @@ let
     # only be generated from here.
     poll = {
       upstream = "127.0.0.1:8089"; # rallly (scheduling)
-      interval = "1h"; # socket activation: do not keep the container awake
+      monitor = false; # lazy: lazy-http-services.nix reports it to gatus daily
     };
     split = {
       upstream = "127.0.0.1:8090"; # spliit (bill splitting)
-      interval = "1h";
+      monitor = false; # lazy: lazy-http-services.nix reports it to gatus daily
     };
     # Unified calendar feed (unified-calendar.nix). Unlike the others, it is published via
     # cloudflared rather than Caddy, so nobody actually hits the vhost generated here. It is
@@ -83,7 +83,7 @@ let
     # it over https failed (easy to miss because hitting the port directly worked).
     jellyfin = {
       upstream = "127.0.0.1:8096";
-      interval = "1h";
+      monitor = false; # lazy: lazy-http-services.nix reports it to gatus daily
     };
     # Location log (Dawarich). It was missing from the table, so there was no vhost and no gatus
     # monitor, and the iPhone sent directly to the raw tailnet address — the kind of setup that
@@ -93,7 +93,7 @@ let
     track.upstream = "127.0.0.1:3005";
     navidrome = {
       upstream = "127.0.0.1:4533";
-      interval = "1h";
+      monitor = false; # lazy: lazy-http-services.nix reports it to gatus daily
     };
     # 3D printer control panel (Bambuddy). Putting the printer in LAN Only + Developer Mode made
     # Bambu Handy unusable, so this is where the phone goes instead. See homelab/bambuddy.nix.
@@ -114,15 +114,15 @@ let
     # things that can be dumped again.
     roms = {
       upstream = "127.0.0.1:8091";
-      interval = "1h";
+      monitor = false; # lazy: lazy-http-services.nix reports it to gatus daily
     };
     games = {
       upstream = "127.0.0.1:8092";
-      interval = "1h";
+      monitor = false; # lazy: lazy-http-services.nix reports it to gatus daily
     };
     paperless = {
       upstream = "127.0.0.1:8097";
-      interval = "1h"; # socket activation (lazy-http-services.nix): do not keep the container awake
+      monitor = false; # lazy: lazy-http-services.nix reports it to gatus daily
     };
     # Inventory of belongings (Homebox). LLMs call it with an API key.
     box.upstream = "127.0.0.1:8104";
@@ -140,7 +140,7 @@ let
       # The REST API is protected by ArchiveBox's own API key (X-ArchiveBox-API-Key).
       # Putting Authelia here turns submissions from the iPhone share sheet into a login page.
       authSkip = "/api/*";
-      interval = "1h";
+      monitor = false; # lazy: lazy-http-services.nix reports it to gatus daily
     };
     # Meal log (homelab/wger.nix). It has its own login and the official iOS app calls it
     # directly, so no Authelia. Caddy serves the static files.
@@ -236,14 +236,14 @@ let
     files = {
       upstream = "127.0.0.1:8099";
       auth = true;
-      interval = "1h";
+      monitor = false; # lazy: lazy-http-services.nix reports it to gatus daily
     };
     # Public forms keep their own login for administration. Cloudflared sends
     # the public hostname to the same local gateway; this entry also supplies
     # the tailnet vhost and the direct upstream health check.
     forms = {
       upstream = "127.0.0.1:8102";
-      interval = "1h";
+      monitor = false; # lazy: lazy-http-services.nix reports it to gatus daily
     };
     # Anki sync server. Kept self-hosted rather than on AnkiWeb. Clients are amgi on iOS and
     # the Anki desktop app on the main Mac. The sync protocol is HTTP, so a plain vhost is enough.
