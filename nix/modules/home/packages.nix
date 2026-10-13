@@ -53,6 +53,9 @@ in
 {
   home.packages = with pkgs; [
     nixd # Nix LSP (used from Neovim)
+    nixfmt # Nix formatter: nixd formats with it in Neovim (same as nix fmt / treefmt)
+    statix # Nix linter: suggests simpler idioms (nvim-lint)
+    deadnix # Nix linter: unused bindings and arguments (nvim-lint)
     gh-nix # bridge gh auth temporarily into Nix access-tokens
     nix-output-monitor # make nh / nix build output readable (`nom`)
     nix-tree # nix store dependency TUI
