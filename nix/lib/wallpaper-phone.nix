@@ -9,7 +9,12 @@
     url = "https://upload.wikimedia.org/wikipedia/commons/7/72/Hiroshige%2C_Sudden_shower_over_Shin-%C5%8Chashi_bridge_and_Atake%2C_1857.jpg";
     sha256 = "1yci11zx75hr1icvp05f1jmcr6bq74h3piz0j3a2a4xgmn6dsdm2";
   },
-  crop ? [ 0.035 0.012 0.965 0.985 ],
+  crop ? [
+    0.035
+    0.012
+    0.965
+    0.985
+  ],
   # iPhone Pro portrait canvas; cells scaled for it.
   width ? 1290,
   height ? 2796,
@@ -104,5 +109,7 @@ let
 in
 pkgs.runCommand "${name}-phone.png" { nativeBuildInputs = [ python ]; } ''
   font=$(find ${fontPackage}/share/fonts -name 'JetBrainsMonoNerdFontMono-Regular.ttf' | head -n 1)
-  python3 ${render} ${picture} "$font" ${p.variant} ${p.base} ${p.text} ${p.muted} $out ${toString width} ${toString height} ${toString fontSize} ${toString threshold} ${toString thicken} ${lib.concatMapStringsSep "," toString crop} ${toString highpass} ${toString highpassGain} ${lib.boolToString invert}
+  python3 ${render} ${picture} "$font" ${p.variant} ${p.base} ${p.text} ${p.muted} $out ${toString width} ${toString height} ${toString fontSize} ${toString threshold} ${toString thicken} ${
+    lib.concatMapStringsSep "," toString crop
+  } ${toString highpass} ${toString highpassGain} ${lib.boolToString invert}
 ''
