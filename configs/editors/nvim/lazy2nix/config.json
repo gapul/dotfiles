@@ -1,7 +1,6 @@
 {
-  "$comment": "lazy2nix settings. Excluded plugins keep being managed by lazy.nvim because they have a build step or are local development plugins.",
+  "$comment": "lazy2nix settings. Excluded plugins keep being managed by lazy.nvim because they have a build step or are local development plugins. firenvim is the exception: its build step (firenvim#install) runs from the home-manager activation in nix/modules/home/editor.nix.",
   "exclude": [
-    "firenvim",
     "markdown-preview.nvim",
     "mason.nvim",
     "nvim-in-the-loop",
