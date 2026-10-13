@@ -128,6 +128,15 @@ _seen_path() { printf '%s/%s\n' "$SEEN_DIR" "${1//\//__}"; }
 seen()      { [ -e "$(_seen_path "$1")" ]; }
 mark_seen() { date +%s > "$(_seen_path "$1")"; }
 
+# --- who may steer claude -----------------------------------------------
+# Issues, comments and fork pull requests on a public repository can come from anyone,
+# and autofix runs claude with --dangerously-skip-permissions as the login user. Text
+# that ends up in its prompt has to come from someone with write access to the repo.
+# The values are GitHub's author_association.
+trusted_association() {
+  case "${1:-}" in OWNER|MEMBER|COLLABORATOR) return 0 ;; *) return 1 ;; esac
+}
+
 # --- repos.json ---------------------------------------------------------
 repo_list() {
   jq -r '.repos[] | select(.enabled != false) | .repo' "$REPOS_JSON" 2>/dev/null
