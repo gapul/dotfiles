@@ -79,6 +79,7 @@ in
     lazyjj # jujutsu TUI
     jq # JSON processor
     fd # find alternative (also used in fzf defaultCommand)
+    ripgrep # grep alternative (LazyVim's project search and pickers need rg)
     just # command runner (runs this Justfile)
     bottom # system monitor (btm)
     fastfetch # system info display (neofetch successor)
