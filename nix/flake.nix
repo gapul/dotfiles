@@ -48,10 +48,10 @@
 
     nix-darwin.url = "github:nix-darwin/nix-darwin/nix-darwin-26.05";
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
-    # Lima + Rosetta 2 Linux builder VM on the macmini (hosts/macmini-rosetta-builder.nix).
-    # Its image is a NixOS system, so it tracks the same nixos-unstable as the Linux hosts.
-    nix-rosetta-builder.url = "github:cpick/nix-rosetta-builder";
-    nix-rosetta-builder.inputs.nixpkgs.follows = "nixpkgs-nixos";
+    # FOSS Linux builder on the macmini (hosts/macmini-linux-builder.nix): a Virtualization.framework
+    # VM per build that shares the host /nix/store over VirtioFS, so it keeps no store of its own.
+    # Its nixpkgs is left unfollowed: the host binary needs that pin's apple-sdk (25.05) headers.
+    nix-linux-builder.url = "github:input-output-hk/nix-linux-builder";
 
     home-manager.url = "github:nix-community/home-manager/release-26.05";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
@@ -158,6 +158,12 @@
     # nix-darwin's homebrew module assumes brew is already installed by hand; this makes the
     # prefix a nix-managed thing, so a fresh mac needs no curl-into-bash bootstrap step.
     nix-homebrew.url = "github:zhaofengli/nix-homebrew";
+    # Homebrew itself, which nix-homebrew pins to 7.0.4. Taken over here on 2026-10-11 because
+    # gapul-dotfiles holds a brew-7.0.4-patched with nearly every file empty (built on the macmini
+    # from APFS-compressed sources), and a cachix path can only be avoided by changing its hash.
+    brew-src.url = "github:Homebrew/brew/7.0.9";
+    brew-src.flake = false;
+    nix-homebrew.inputs.brew-src.follows = "brew-src";
 
     # The ACP adapter that lets Hermes run inference on the Claude subscription. It used to live in
     # configs/macmini/, but it is a part of Hermes' plumbing rather than a machine setting, so it
@@ -213,6 +219,7 @@
       flake-parts,
       brew-nix,
       nix-homebrew,
+      brew-src,
       formera-source,
       ...
     }:
@@ -273,11 +280,14 @@
 
       # ECS "System" = host composer (unifies the darwin / home boilerplate)
       mkHost = import ./lib/mk-host.nix {
+        # Must match the brew-src tag in inputs.
+        brewVersion = "7.0.9";
         inherit
           nixpkgs
           nix-darwin
           home-manager
           nix-homebrew
+          brew-src
           user
           system
           commonSpecialArgs
@@ -824,7 +834,7 @@
           nixpkgsAgents = nixpkgs-agents;
           claudeAcp = claude-acp.packages.${system}.default;
           sopsNix = sops-nix;
-          rosettaBuilder = inputs.nix-rosetta-builder;
+          nixLinuxBuilder = inputs.nix-linux-builder;
           # The side that receives remote builds from the main Mac. If the connecting user isn't in
           # trusted-users, nix refuses with "can't trust the derivations it was handed".
           #
@@ -845,12 +855,6 @@
             # models already hold most of the 24 GB, but gives a single big build four cores.
             max-jobs = "2";
             cores = "4";
-            # x86_64-linux and aarch64-linux go to the Rosetta VM (hosts/macmini-rosetta-builder.nix).
-            # nix.buildMachines would say the same, but nix.enable = false here, so nothing would
-            # write /etc/nix/machines; the ssh side (host alias, key, known_hosts) comes from the
-            # module's /etc/ssh/ssh_config.d entry, which the root daemon reads.
-            builders = "ssh-ng://rosetta-builder aarch64-linux,x86_64-linux - 6 1 benchmark,big-parallel,kvm,nixos-test - -";
-            builders-use-substitutes = "true";
           };
         };
       };

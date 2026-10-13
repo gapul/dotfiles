@@ -246,8 +246,10 @@ in
     (pkgs.callPackage ../pkgs/slimevr-server.nix { })
     # Compositor: open-source Photoshop-style editor. See pkgs/compositor.nix.
     (pkgs.callPackage ../pkgs/compositor.nix { })
+    # ArtCraft itself (the studio's AI crafting engine). See pkgs/artcraft.nix.
+    (pkgs.callPackage ../pkgs/artcraft.nix { })
   ]
-  # ArtCraft's seven pure-Rust Adobe-suite counterparts. See pkgs/artcraft-apps.nix.
+  # ArtCraft's pure-Rust Craft apps (Adobe, Office, Pro Tools and AutoCAD counterparts). See pkgs/artcraft-apps.nix.
   ++ pkgs.callPackage ../pkgs/artcraft-apps.nix { }
   ++ lib.optionals includeManualSources [
     # AquesTalkPlayer: the yukkuri voices, with a headless wav-out CLI. The download is

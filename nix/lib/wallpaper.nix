@@ -17,6 +17,13 @@ let
   invert = p.variant == "dark";
 in
 if subject == "wave" then
-  import ./wallpaper-wave.nix { inherit pkgs p name invert; }
+  import ./wallpaper-wave.nix {
+    inherit
+      pkgs
+      p
+      name
+      invert
+      ;
+  }
 else
   import ./wallpaper-hands.nix { inherit pkgs p name; }

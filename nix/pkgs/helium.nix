@@ -1,4 +1,9 @@
-{ appimageTools, fetchurl, lib, makeDesktopItem }:
+{
+  appimageTools,
+  fetchurl,
+  lib,
+  makeDesktopItem,
+}:
 let
   pname = "helium";
   version = "0.19.2.1";
@@ -11,8 +16,15 @@ let
     desktopName = "Helium";
     exec = "helium %U";
     icon = "helium";
-    categories = [ "Network" "WebBrowser" ];
-    mimeTypes = [ "text/html" "x-scheme-handler/http" "x-scheme-handler/https" ];
+    categories = [
+      "Network"
+      "WebBrowser"
+    ];
+    mimeTypes = [
+      "text/html"
+      "x-scheme-handler/http"
+      "x-scheme-handler/https"
+    ];
   };
   contents = appimageTools.extractType2 { inherit pname version src; };
 in

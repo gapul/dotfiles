@@ -80,7 +80,7 @@ let
   nixGcScript = pkgs.writeShellScript "nix-gc" ''
     ${prelude "maintenance-gc.log"}
     before=$(df -h /nix 2>/dev/null | awk 'NR==2{print $4}')
-    nix-collect-garbage --delete-older-than 30d 2>&1 || true
+    nix-collect-garbage --delete-old 2>&1 || true
     after=$(df -h /nix 2>/dev/null | awk 'NR==2{print $4}')
     echo "free /nix: $before -> $after"
   '';

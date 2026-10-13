@@ -7,6 +7,8 @@
   nix-darwin,
   home-manager,
   nix-homebrew,
+  brew-src,
+  brewVersion,
   user,
   system,
   commonSpecialArgs,
@@ -28,6 +30,14 @@
         # Every darwin host in this repo drives Homebrew, so the installation manager belongs
         # here rather than in one host file (the asymmetry between hosts is what bites later).
         nix-homebrew.darwinModules.nix-homebrew
+        # flake.nix overrides nix-homebrew's brew-src, whose version label is hard-coded in
+        # nix-homebrew; the label is what HOMEBREW_VERSION gets patched to, so it follows ours.
+        {
+          nix-homebrew.package = brew-src // {
+            name = "brew-${brewVersion}";
+            version = brewVersion;
+          };
+        }
         host
       ]
       ++ nixpkgs.lib.optionals (homeModules != [ ]) [

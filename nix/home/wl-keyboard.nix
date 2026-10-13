@@ -117,20 +117,43 @@ in
       inherit (lib.generators) mkLuaInline;
     in
     [
-      { _args = [ (mkLuaInline ''mod .. " + I"'') (mkLuaInline ''hl.dsp.exec_cmd("${grid}")'') ]; }
-      { _args = [ (mkLuaInline ''mod .. " + K"'') (mkLuaInline ''hl.dsp.exec_cmd("${pkgs.wlr-which-key}/bin/wlr-which-key")'') ]; }
+      {
+        _args = [
+          (mkLuaInline ''mod .. " + I"'')
+          (mkLuaInline ''hl.dsp.exec_cmd("${grid}")'')
+        ];
+      }
+      {
+        _args = [
+          (mkLuaInline ''mod .. " + K"'')
+          (mkLuaInline ''hl.dsp.exec_cmd("${pkgs.wlr-which-key}/bin/wlr-which-key")'')
+        ];
+      }
     ];
   # Keep unmodified mouse keys in a dedicated mode so normal typing is unaffected.
   wayland.windowManager.hyprland.submaps =
     let
       inherit (lib.generators) mkLuaInline;
-      exec = cmd: mkLuaInline ''hl.dsp.exec_cmd(${builtins.toJSON cmd})'';
-      bind = k: dsp: { _args = [ k dsp ]; };
-      repeating = k: dsp: { _args = [ k dsp { repeating = true; } ]; };
+      exec = cmd: mkLuaInline "hl.dsp.exec_cmd(${builtins.toJSON cmd})";
+      bind = k: dsp: {
+        _args = [
+          k
+          dsp
+        ];
+      };
+      repeating = k: dsp: {
+        _args = [
+          k
+          dsp
+          { repeating = true; }
+        ];
+      };
     in
     {
       wl-pointer.settings.bind = [
-        (bind (mkLuaInline ''mod .. " + Escape"'') (exec "${pkgs.procps}/bin/pkill -u ${config.home.username} -x wl-kbptr"))
+        (bind (mkLuaInline ''mod .. " + Escape"'') (
+          exec "${pkgs.procps}/bin/pkill -u ${config.home.username} -x wl-kbptr"
+        ))
       ];
       wl-mouse.settings.bind = [
         (repeating "h" (exec "${control} pointer move -15 0"))
