@@ -19,6 +19,15 @@ let
   passwordFile = config.sops.secrets."restic_password".path;
   logFile = "${home}/.local/state/restic/restic-backup.log";
 
+  # Linux XDG directories
+  backupPaths = [
+    "${home}/Documents"
+    "${home}/Pictures"
+    "${home}/Downloads"
+    "${home}/Music"
+    "${home}/Videos"
+  ];
+
   # The three scripts live in lib/restic-common.nix (shared with the darwin version).
   # Only the Linux-shaped bits are passed in here: notify goes through notify-send (mako),
   # and GNU date parses restic's ISO8601 timestamp directly.
@@ -28,15 +37,8 @@ let
       lib
       passwordFile
       logFile
+      backupPaths
       ;
-    # Linux XDG directories
-    backupPaths = [
-      "${home}/Documents"
-      "${home}/Pictures"
-      "${home}/Downloads"
-      "${home}/Music"
-      "${home}/Videos"
-    ];
     extraPathPkgs = [ pkgs.libnotify ];
     notifyBody = ''notify-send "$1" "$2" 2>/dev/null || true'';
     parseSnapshotTime = ''$(date -d "$latest" +%s 2>/dev/null || echo 0)'';
@@ -70,14 +72,22 @@ in
   # env sourced by Justfile / interactive shells (SSO for repo/password/rclone/archiveTag).
   home.file.".config/restic/env".text = common.envFileText;
 
-  systemd.user.services = {
-    restic-backup = mkService "restic encrypted backup" scripts.backup;
-    restic-check = mkService "restic integrity check" scripts.check;
-    restic-monitor = mkService "restic run monitoring" scripts.monitor;
-  };
-  systemd.user.timers = {
-    restic-backup = mkTimer "daily restic backup" "*-*-* 13:00:00";
-    restic-check = mkTimer "weekly restic integrity check" "Sun *-*-* 14:00:00";
-    restic-monitor = mkTimer "daily restic run monitoring" "*-*-* 19:00:00";
+  systemd.user = {
+    # restic counts a missing source path as an unreadable file: the snapshot is saved but the run
+    # exits 3 and pages as a failure. ~/Music never existed on the laptop, so every daily run
+    # "failed" until 2026-10-14. Create the targets instead of dropping them, so whatever lands
+    # there later is covered without touching this list.
+    tmpfiles.rules = map (p: "d ${p} - - - -") backupPaths; # "-": leave existing modes alone
+
+    services = {
+      restic-backup = mkService "restic encrypted backup" scripts.backup;
+      restic-check = mkService "restic integrity check" scripts.check;
+      restic-monitor = mkService "restic run monitoring" scripts.monitor;
+    };
+    timers = {
+      restic-backup = mkTimer "daily restic backup" "*-*-* 13:00:00";
+      restic-check = mkTimer "weekly restic integrity check" "Sun *-*-* 14:00:00";
+      restic-monitor = mkTimer "daily restic run monitoring" "*-*-* 19:00:00";
+    };
   };
 }
