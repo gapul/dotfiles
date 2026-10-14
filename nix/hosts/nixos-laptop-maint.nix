@@ -39,6 +39,9 @@ in
     boot.plymouth.enable = lib.mkForce false;
 
     boot.initrd = {
+      # Btrfs has to be readable here too: the maint initrd is built from the ext4 config, so
+      # without this it could create a Btrfs filesystem but not mount it.
+      supportedFilesystems = [ "btrfs" ];
       # The USB Ethernet adapter on the desk (ASIX AX88179 family, in NCM mode).
       availableKernelModules = [
         "cdc_ncm"
@@ -64,6 +67,9 @@ in
             networkConfig.DHCP = "yes";
           };
         };
+        # glibc dlopens libgcc_s for pthread_cancel; btrfs-progs aborted without it (2026-10-14).
+        # Run such a tool with LD_LIBRARY_PATH=<this>/lib, the path printed by `ls /nix/store`.
+        storePaths = [ "${pkgs.stdenv.cc.cc.lib}" ];
         services = {
           # The addresses on tty1, refreshed, so the screen says where to ssh to.
           maint-banner = {
@@ -132,6 +138,11 @@ in
           grep = "${pkgs.gnugrep}/bin/grep";
           findmnt = "${pkgs.util-linux}/bin/findmnt";
           chattr = "${pkgs.e2fsprogs}/bin/chattr";
+          # Streaming the whole root out to homeserver and back (tar | zstd over ssh via macmini).
+          tar = "${pkgs.gnutar}/bin/tar";
+          zstd = "${pkgs.zstd}/bin/zstd";
+          dd = "${pkgs.coreutils}/bin/dd";
+          wc = "${pkgs.coreutils}/bin/wc";
           # `unlock` at the console (Alt+F2): the TPM key wants the PIN, which is typed there
           # rather than carried over ssh.
           unlock = "${pkgs.writeShellScript "unlock" ''
