@@ -12,10 +12,14 @@
 #
 # Reaching it, from a running system (rEFInd is first in the boot order and always boots the
 # newest generation, so the one-shot has to go through systemd-boot):
-#   sudo bootctl set-oneshot nixos-generation-<N>-specialisation-maint-<hash>.efi
-#   sudo efibootmgr --bootnext <systemd-boot's Boot####>
-#   sudo systemctl reboot
-# then `ssh -p 2222 root@<laptop's LAN address>`. Nothing is unlocked or mounted; inside:
+#   - write systemd-boot's LoaderEntryOneShot EFI variable (4a67b082-…) with the entry id
+#     (`bootctl list`), as UTF-16LE after the 07000000 attribute bytes. `bootctl set-oneshot`
+#     refuses, since the running system was booted by rEFInd, not systemd-boot;
+#   - sudo efibootmgr --bootnext <systemd-boot's Boot####, "NixOS">
+#   - sudo systemctl reboot
+# The menu may still show; pick the "…-maint" entry. Then `ssh -p 2222 root@<address>`: the
+# address is on screen, as DHCP in the initrd gets a different lease from the usual one.
+# Nothing is unlocked or mounted; inside:
 #   systemd-cryptsetup attach cryptroot /dev/disk/by-uuid/<uuid> - tpm2-device=auto,tpm2-pin=yes
 # `systemctl reboot` from there goes back through rEFInd to the normal generation.
 let
@@ -23,7 +27,15 @@ let
 in
 {
   specialisation.maint.configuration = {
-    boot.kernelParams = [ "rd.systemd.unit=maint.target" ];
+    # The normal boot is silent (quiet, splash, no cursor), which here left a black screen with
+    # no way to tell whether the network came up. Show everything instead.
+    boot.kernelParams = lib.mkForce [
+      "rd.systemd.unit=maint.target"
+      "root=fstab"
+      "loglevel=7"
+      "rd.systemd.show_status=true"
+    ];
+    boot.plymouth.enable = lib.mkForce false;
 
     boot.initrd = {
       # The USB Ethernet adapter on the desk (ASIX AX88179 family, in NCM mode).
@@ -45,9 +57,43 @@ in
       systemd = {
         network = {
           enable = true;
+          # Any wired interface: in the initrd the adapter may not get its usual enp… name.
           networks."10-wired" = {
-            matchConfig.Name = "en*";
+            matchConfig.Type = "ether";
             networkConfig.DHCP = "yes";
+          };
+        };
+        services = {
+          # The addresses on tty1, refreshed, so the screen says where to ssh to.
+          maint-banner = {
+            wantedBy = [ "maint.target" ];
+            serviceConfig = {
+              StandardOutput = "tty";
+              TTYPath = "/dev/tty1";
+              Restart = "always";
+            };
+            script = ''
+              while :; do
+                printf '\n== maint: ssh -p 2222 root@<address> | shell on Alt+F2 ==\n'
+                ip -br addr
+                sleep 10
+              done
+            '';
+          };
+          # A root shell on tty2 at the physical keyboard, for when the network does not come
+          # up. Only in this boot entry; cryptroot stays locked until someone unlocks it.
+          maint-shell = {
+            wantedBy = [ "maint.target" ];
+            serviceConfig = {
+              ExecStart = "/bin/sh -l";
+              StandardInput = "tty";
+              StandardOutput = "tty";
+              StandardError = "tty";
+              TTYPath = "/dev/tty2";
+              TTYReset = true;
+              TTYVHangup = true;
+              Restart = "always";
+            };
           };
         };
         # Waits here instead of going on to unlock and mount the root filesystem.
