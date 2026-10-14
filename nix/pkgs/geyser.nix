@@ -6,10 +6,10 @@
 { fetchurl }:
 let
   version = "2.11.3";
-  build = "1251";
+  build = "1253";
 in
 fetchurl {
   name = "geyser-standalone-${version}-${build}.jar";
   url = "https://download.geysermc.org/v2/projects/geyser/versions/${version}/builds/${build}/downloads/standalone";
-  sha256 = "5c9349f2dfc4c51e20f7711e6c05f6b57ecdefa742bc06765653e3f3ce4fb0b6";
+  sha256 = "4a18ed2de67f11fd3239d1e875d9c0323dac1a6758c760444ab3dedec8d63e3c";
 }
