@@ -55,7 +55,7 @@ top = 30.0
 
 [general]
 animationsEnabled = true
-defaultLayoutType = "dwindle"
+defaultLayoutType = "niri"
 hotkeysEnabled = true
 hyperKeyModifiers = "Control+Option+Shift+Command"
 ipcEnabled = true
@@ -518,11 +518,11 @@ binding = "Control+Option+Command+H"
 id = "focus.left"
 
 [[hotkeys]]
-binding = "Control+Option+Command+J"
+binding = "Unassigned"
 id = "focus.down"
 
 [[hotkeys]]
-binding = "Control+Option+Command+K"
+binding = "Unassigned"
 id = "focus.up"
 
 [[hotkeys]]
@@ -558,11 +558,11 @@ binding = "Unassigned"
 id = "focusWindowUpOrBottom"
 
 [[hotkeys]]
-binding = "Unassigned"
+binding = "Control+Option+Command+J"
 id = "focusWindowOrWorkspaceDown"
 
 [[hotkeys]]
-binding = "Unassigned"
+binding = "Control+Option+Command+K"
 id = "focusWindowOrWorkspaceUp"
 
 [[hotkeys]]
@@ -650,19 +650,19 @@ binding = "Unassigned"
 id = "moveWindowUp"
 
 [[hotkeys]]
-binding = "Unassigned"
+binding = "Hyper+J"
 id = "moveWindowDownOrToWorkspaceDown"
 
 [[hotkeys]]
-binding = "Unassigned"
+binding = "Hyper+K"
 id = "moveWindowUpOrToWorkspaceUp"
 
 [[hotkeys]]
-binding = "Unassigned"
+binding = "Control+Option+Command+Left Bracket"
 id = "consumeWindowIntoColumn"
 
 [[hotkeys]]
-binding = "Unassigned"
+binding = "Control+Option+Command+Right Bracket"
 id = "expelWindowFromColumn"
 
 [[hotkeys]]
@@ -726,11 +726,11 @@ binding = "Hyper+L"
 id = "moveColumn.right"
 
 [[hotkeys]]
-binding = "Hyper+K"
+binding = "Unassigned"
 id = "moveColumn.up"
 
 [[hotkeys]]
-binding = "Hyper+J"
+binding = "Unassigned"
 id = "moveColumn.down"
 
 [[hotkeys]]
@@ -742,7 +742,7 @@ binding = "Control+Option+End"
 id = "moveColumnToLast"
 
 [[hotkeys]]
-binding = "Option+T"
+binding = "Control+Option+Command+T"
 id = "toggleColumnTabbed"
 
 [[hotkeys]]
@@ -862,11 +862,11 @@ binding = "Unassigned"
 id = "moveColumnToIndex.9"
 
 [[hotkeys]]
-binding = "Option+Period"
+binding = "Control+Option+Command+R"
 id = "cycleSizeForward"
 
 [[hotkeys]]
-binding = "Option+Comma"
+binding = "Hyper+R"
 id = "cycleSizeBackward"
 
 [[hotkeys]]
@@ -886,7 +886,7 @@ binding = "Unassigned"
 id = "cycleWindowSecondarySpanBackward"
 
 [[hotkeys]]
-binding = "Option+Shift+F"
+binding = "Hyper+F"
 id = "toggleContainerFullPrimarySpan"
 
 [[hotkeys]]
@@ -1022,7 +1022,7 @@ binding = "Option+Shift+T"
 id = "toggleWorkspaceLayout"
 
 [[hotkeys]]
-binding = "Option+Shift+O"
+binding = "Control+Option+Command+O"
 id = "toggleOverview"
 
 [[hotkeys]]
@@ -1031,7 +1031,7 @@ id = "toggleSystemStats"
 
 [[workspaces]]
 id = "AD36F001-C57E-41A5-AC1D-DF5249D007F0"
-layoutType = "dwindle"
+layoutType = "niri"
 name = "1"
 
 [workspaces.monitorAssignment]
@@ -1039,7 +1039,7 @@ type = "main"
 
 [[workspaces]]
 id = "454CECD4-5E9D-4ED1-95D7-979D48817F5F"
-layoutType = "dwindle"
+layoutType = "niri"
 name = "2"
 
 [workspaces.monitorAssignment]
@@ -1047,7 +1047,7 @@ type = "main"
 
 [[workspaces]]
 id = "BEB842B5-E894-4791-9FD1-397C3CDD3538"
-layoutType = "dwindle"
+layoutType = "niri"
 name = "3"
 
 [workspaces.monitorAssignment]
@@ -1055,7 +1055,7 @@ type = "main"
 
 [[workspaces]]
 id = "248AA883-2261-4D45-943C-79C0E46A232B"
-layoutType = "dwindle"
+layoutType = "niri"
 name = "4"
 
 [workspaces.monitorAssignment]
@@ -1063,7 +1063,7 @@ type = "main"
 
 [[workspaces]]
 id = "8B8C45D6-CE9E-41D9-BD50-BE4989D5E3DE"
-layoutType = "dwindle"
+layoutType = "niri"
 name = "5"
 
 [workspaces.monitorAssignment]
@@ -1071,7 +1071,7 @@ type = "main"
 
 [[workspaces]]
 id = "5953F2BF-A378-4266-91B2-287174C4FA4D"
-layoutType = "dwindle"
+layoutType = "niri"
 name = "6"
 
 [workspaces.monitorAssignment]
@@ -1079,7 +1079,7 @@ type = "main"
 
 [[workspaces]]
 id = "A7D5E104-6985-4516-8ED5-07F144F2A33D"
-layoutType = "dwindle"
+layoutType = "niri"
 name = "7"
 
 [workspaces.monitorAssignment]
@@ -1087,7 +1087,7 @@ type = "main"
 
 [[workspaces]]
 id = "B307EF93-A1BF-4C81-A8D9-19D571373C95"
-layoutType = "dwindle"
+layoutType = "niri"
 name = "8"
 
 [workspaces.monitorAssignment]
@@ -1095,7 +1095,7 @@ type = "main"
 
 [[workspaces]]
 id = "978A6E17-E25E-4A1E-ABE0-666E392F5081"
-layoutType = "dwindle"
+layoutType = "niri"
 name = "9"
 
 [workspaces.monitorAssignment]

@@ -7,12 +7,12 @@
       "complex_modifications": {
         "rules": [
           {
-            "description": "スペースキーを単押しでスペース、長押しでCmd+Ctrl+Optにする (Minecraftでは無効)",
+            "description": "Caps Lock を Cmd+Ctrl+Opt にする (Minecraftでは無効)",
             "manipulators": [
               {
                 "type": "basic",
                 "from": {
-                  "key_code": "spacebar",
+                  "key_code": "caps_lock",
                   "modifiers": {
                     "optional": [
                       "any"
@@ -28,14 +28,41 @@
                     ]
                   }
                 ],
-                "to_if_alone": [
+                "conditions": [
                   {
-                    "key_code": "spacebar"
+                    "type": "frontmost_application_unless",
+                    "bundle_identifiers": [
+                      "^com\\.mojang\\.minecraft",
+                      "^net\\.java\\.openjdk\\.",
+                      "^org\\.lwjgl\\.glfw",
+                      "minecraft"
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "description": "Minecraft では Caps Lock を Ctrl にする",
+            "manipulators": [
+              {
+                "type": "basic",
+                "from": {
+                  "key_code": "caps_lock",
+                  "modifiers": {
+                    "optional": [
+                      "any"
+                    ]
+                  }
+                },
+                "to": [
+                  {
+                    "key_code": "left_control"
                   }
                 ],
                 "conditions": [
                   {
-                    "type": "frontmost_application_unless",
+                    "type": "frontmost_application_if",
                     "bundle_identifiers": [
                       "^com\\.mojang\\.minecraft",
                       "^net\\.java\\.openjdk\\.",
@@ -413,19 +440,7 @@
         {
           "identifiers": {
             "is_keyboard": true
-          },
-          "simple_modifications": [
-            {
-              "from": {
-                "key_code": "caps_lock"
-              },
-              "to": [
-                {
-                  "key_code": "left_control"
-                }
-              ]
-            }
-          ]
+          }
         }
       ],
       "name": "Default profile",
