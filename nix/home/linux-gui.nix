@@ -255,7 +255,6 @@ in
     thunderbird
 
     # ─── Messaging ───
-    beeper
     simplex-chat-desktop
 
     # ─── Devices / Remote ───
@@ -294,10 +293,12 @@ in
     yabridgectl
     wineWow64Packages.yabridge # Wine version matched to yabridge; keep separate from game runners.
     obs-studio
-    davinci-resolve
+    # davinci-resolve and TouchDesigner are out while cryptroot moves to Btrfs (2026-10-15),
+    # to shrink the store being moved; both go back afterwards.
+    # davinci-resolve
     creativeWineApps.cavalry
     creativeWineApps.affinity
-    (import ../pkgs/touchdesigner.nix { inherit pkgs; })
+    # (import ../pkgs/touchdesigner.nix { inherit pkgs; })
     musescore
     cardinal
     surge-xt

@@ -511,8 +511,8 @@ in
   };
 
   nixpkgs.config.allowUnfree = true;
-  # Obsidian / Bitwarden / Beeper all ship on Electron 39, which nixpkgs marks insecure
-  # because upstream Electron dropped it from support. The same three run on the mac against
+  # Obsidian / Bitwarden both ship on Electron 39, which nixpkgs marks insecure
+  # because upstream Electron dropped it from support. The same two run on the mac against
   # the same Electron, so refusing them only here would be theatre rather than a decision.
   # This pin is maintenance: the version string goes stale on every nixpkgs bump, and the
   # right time to delete the line is when a bump stops needing it.
