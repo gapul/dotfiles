@@ -327,8 +327,8 @@ let
                 options "ctrl:nocaps"
             }
         }
+        // No tap-to-click: palm taps while typing moved the caret and committed SKK preedits.
         touchpad {
-            tap
             natural-scroll
         }
         focus-follows-mouse
