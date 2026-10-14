@@ -19,9 +19,10 @@
 #   - sudo systemctl reboot
 # The menu may still show; pick the "…-maint" entry. Then `ssh -p 2222 root@<address>`: the
 # address is on screen, as DHCP in the initrd gets a different lease from the usual one.
-# Nothing is unlocked or mounted; inside:
-#   systemd-cryptsetup attach cryptroot /dev/disk/by-uuid/<uuid> - tpm2-device=auto,tpm2-pin=yes
-# `systemctl reboot` from there goes back through rEFInd to the normal generation.
+# Nothing is unlocked or mounted. The TPM key wants the PIN, so someone at the laptop types
+# `unlock` in the shell on Alt+F2 and enters it; /dev/mapper/cryptroot then appears for the
+# ssh session. `systemctl reboot` (it complains about the bus, and reboots anyway) goes back
+# through rEFInd to the normal generation.
 let
   hostKey = "/etc/secrets/initrd/ssh_host_ed25519_key";
 in
@@ -121,6 +122,21 @@ in
           du = "${pkgs.coreutils}/bin/du";
           df = "${pkgs.coreutils}/bin/df";
           ip = "${pkgs.iproute2}/bin/ip";
+          # Enough of a userland to move a filesystem around by hand.
+          ls = "${pkgs.coreutils}/bin/ls";
+          mv = "${pkgs.coreutils}/bin/mv";
+          rm = "${pkgs.coreutils}/bin/rm";
+          mkdir = "${pkgs.coreutils}/bin/mkdir";
+          sync = "${pkgs.coreutils}/bin/sync";
+          find = "${pkgs.findutils}/bin/find";
+          grep = "${pkgs.gnugrep}/bin/grep";
+          findmnt = "${pkgs.util-linux}/bin/findmnt";
+          chattr = "${pkgs.e2fsprogs}/bin/chattr";
+          # `unlock` at the console (Alt+F2): the TPM key wants the PIN, which is typed there
+          # rather than carried over ssh.
+          unlock = "${pkgs.writeShellScript "unlock" ''
+            exec systemd-cryptsetup attach cryptroot ${config.boot.initrd.luks.devices.cryptroot.device} - tpm2-device=auto,tpm2-pin=yes
+          ''}";
         };
       };
     };
