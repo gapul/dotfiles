@@ -13,9 +13,9 @@
 # power menu. Only the compositor's own config is here; desktopScripts (hyprland.nix) and
 # wlKeyboard (wl-keyboard.nix) are the scripts those modules build, passed in as module args.
 #
-# The keys follow the Hyprland rice, on Super: Mod is niri's mod-key, Super by default, which
-# xremap also sends for left Ctrl and Copilot-then-key (home/xremap.nix), and which
-# drags and resizes windows with the mouse. What changes from Hyprland is the layout: windows
+# The keys follow OmniWM on the mac (configs/wm/omniwm/settings.toml), on Super: Mod is niri's
+# mod-key, Super by default, which xremap sends for Caps Lock and Copilot-then-key
+# (home/xremap.nix), and which drags and resizes windows with the mouse. What changes from Hyprland is the layout: windows
 # are columns on a strip that scrolls sideways, and workspaces stack vertically.
 let
   c = import ../lib/theme.nix; # hex without the leading #
@@ -49,10 +49,6 @@ let
       action = "close-window";
     })
     (bind {
-      key = "${mod}+Shift+M";
-      action = "quit";
-    })
-    (bind {
       key = "${mod}+E";
       action = spawn [
         "ghostty"
@@ -61,15 +57,7 @@ let
       ];
       title = "Files (yazi)";
     })
-    (bind {
-      key = "${mod}+R";
-      action = spawn [
-        "${desktopScripts.launcher}"
-        "toggle"
-      ];
-      title = "Launcher";
-    })
-    # Win+Space, like Cmd+Space
+    # Super+Space, and thumb Ctrl+Space through xremap, like Cmd+Space on the mac.
     (bind {
       key = "Super+Space";
       action = spawn [
@@ -91,7 +79,7 @@ let
       action = "maximize-column";
     })
     (bind {
-      key = "${mod}+L";
+      key = "${mod}+Shift+Escape";
       action = spawn [ "hyprlock" ];
       title = "Lock";
     })
@@ -149,23 +137,23 @@ let
       title = "Pick a colour";
     })
     (bind {
-      key = "${mod}+Shift+N";
+      key = "${mod}+Alt+N";
       action = spawnSh "busctl --user set-property rs.wl-gammarelay / rs.wl.gammarelay Temperature q 4000";
       title = "Night light on";
     })
     (bind {
-      key = "${mod}+Shift+D";
+      key = "${mod}+Alt+D";
       action = spawnSh "busctl --user set-property rs.wl-gammarelay / rs.wl.gammarelay Temperature q 6500";
       title = "Night light off";
     })
     # wl-keyboard.nix: pointer by labels, and the which-key menu.
     (bind {
-      key = "${mod}+I";
+      key = "${mod}+G";
       action = spawn [ "${wlKeyboard.grid}" ];
       title = "Pointer: grid";
     })
     (bind {
-      key = "${mod}+K";
+      key = "${mod}+Semicolon";
       action = spawn [ "${wlKeyboard.menu}" ];
       title = "Menu (wlr-which-key)";
     })
@@ -175,6 +163,72 @@ let
       action = "toggle-overview";
     })
 
+    # The same on H/J/K/L, as OmniWM has them on the mac (configs/wm/omniwm/settings.toml).
+    (bind {
+      key = "${mod}+H";
+      action = "focus-column-left";
+    })
+    (bind {
+      key = "${mod}+Shift+H";
+      action = "move-column-left";
+    })
+    (bind {
+      key = "${mod}+L";
+      action = "focus-column-right";
+    })
+    (bind {
+      key = "${mod}+Shift+L";
+      action = "move-column-right";
+    })
+    (bind {
+      key = "${mod}+K";
+      action = "focus-window-or-workspace-up";
+    })
+    (bind {
+      key = "${mod}+Shift+K";
+      action = "move-window-up-or-to-workspace-up";
+    })
+    (bind {
+      key = "${mod}+J";
+      action = "focus-window-or-workspace-down";
+    })
+    (bind {
+      key = "${mod}+Shift+J";
+      action = "move-window-down-or-to-workspace-down";
+    })
+    # Also as on the mac: column widths, tabbed column, previous workspace, monitors.
+    (bind {
+      key = "${mod}+R";
+      action = "switch-preset-column-width";
+    })
+    (bind {
+      key = "${mod}+Shift+R";
+      action = "switch-preset-column-width-back";
+    })
+    (bind {
+      key = "${mod}+T";
+      action = "toggle-column-tabbed-display";
+    })
+    (bind {
+      key = "${mod}+Tab";
+      action = "focus-workspace-previous";
+    })
+    (bind {
+      key = "${mod}+N";
+      action = "focus-monitor-previous";
+    })
+    (bind {
+      key = "${mod}+M";
+      action = "focus-monitor-next";
+    })
+    (bind {
+      key = "${mod}+Shift+N";
+      action = "move-workspace-to-monitor-left";
+    })
+    (bind {
+      key = "${mod}+Shift+M";
+      action = "move-workspace-to-monitor-right";
+    })
     # Focus: sideways through the columns, up and down through a column's windows and on into
     # the next workspace.
     (bind {
