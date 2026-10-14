@@ -32,16 +32,43 @@ let
   # awww (the renamed swww) paints the wallpaper and can cross-fade to the other one, which
   # is what makes the sunrise/sunset switch a transition rather than a cut.
   awww = "${pkgs.awww}/bin/awww";
+  # One picture per niri workspace, like the mac's Puddle wallpaper that follows the OmniWM
+  # workspace: workspace 1 is the wallpaper itself, 2..10 rotate its hue in 36° steps.
+  # Named <mode>-<n>.png; Hyprland (no niri socket) always gets workspace 1's.
+  wallpaperSet = pkgs.runCommand "wallpapers-per-workspace" { nativeBuildInputs = [ pkgs.imagemagick ]; } ''
+    mkdir $out
+    for mode in light dark; do
+      if [ $mode = light ]; then src=${lightWallpaper}; else src=${darkWallpaper}; fi
+      ln -s $src $out/$mode-1.png
+      for n in $(seq 2 10); do
+        magick $src -modulate 100,100,$(( (100 + (n - 1) * 20) % 200 )) $out/$mode-$n.png
+      done
+    done
+  '';
+  # wallpaper-set [MODE] [SECONDS] [OUTPUT]: paints each output (or only OUTPUT) with its
+  # active workspace's picture. MODE defaults to darkman's; SECONDS is the fade (niri-events
+  # passes a short one, and the output whose workspace changed).
   setWallpaper = pkgs.writeShellScript "wallpaper-set" ''
     set -eu
-    mode=''${1:-$(${pkgs.darkman}/bin/darkman get 2>/dev/null || echo dark)}
-    case "$mode" in
-      light) image=${lightWallpaper} ;;
-      *) image=${darkWallpaper} ;;
-    esac
+    mode=''${1:-}
+    [ -n "$mode" ] || mode=$(${pkgs.darkman}/bin/darkman get 2>/dev/null || echo dark)
+    [ "$mode" = light ] || mode=dark
+    duration=''${2:-2}
+    only=''${3:-}
     # Wait for the daemon's socket (this also runs right after the daemon starts).
     for _ in $(seq 1 50); do ${awww} query >/dev/null 2>&1 && break; sleep 0.1; done
-    exec ${awww} img "$image" --transition-type fade --transition-duration 2 --transition-fps 60
+    paint() {
+      ${awww} img "$@" --transition-type fade --transition-duration "$duration" --transition-fps 60
+    }
+    if active=$(${pkgs.niri}/bin/niri msg --json workspaces 2>/dev/null); then
+      printf '%s' "$active" | ${pkgs.jq}/bin/jq -r '.[] | select(.is_active) | "\(.output) \(.idx)"' |
+        while read -r output idx; do
+          [ -z "$only" ] || [ "$output" = "$only" ] || continue
+          paint -o "$output" "${wallpaperSet}/$mode-$(( (idx - 1) % 10 + 1 )).png"
+        done
+    else
+      paint "${wallpaperSet}/$mode-1.png"
+    fi
   '';
   apply = pkgs.writeShellScript "appearance-apply" ''
     set -eu
@@ -56,6 +83,9 @@ let
   '';
 in
 {
+  # For home/niri.nix, whose event daemon repaints on a workspace switch.
+  _module.args.wallpaperScripts = { inherit setWallpaper; };
+
   # The wallpaper daemon; the image for the current mode is set as soon as it is up.
   systemd.user.services.awww = {
     Unit = {

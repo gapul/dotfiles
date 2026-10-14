@@ -94,6 +94,9 @@ in
   };
   boot.consoleLogLevel = 3;
   boot.initrd.verbose = false;
+  # The newest stable kernel rather than nixpkgs' LTS default: Lunar Lake is recent hardware,
+  # and nothing here builds an out-of-tree module (no ZFS) that would pin the version.
+  boot.kernelPackages = pkgs.linuxPackages_latest;
   boot.kernelParams = [
     "quiet"
     "splash"
@@ -521,6 +524,13 @@ in
   services.tlp.settings.WIFI_PWR_ON_BAT = "off";
   services.thermald.enable = true; # Intel CPU thermal control (proper thermal throttling)
   services.libinput.enable = true; # touchpad (tap, natural scroll, etc.)
+
+  # Per-application outbound connection log, the mac's LuLu. Allow is the default: this is for
+  # seeing what connects, not for blocking it. The tray UI is home/opensnitch-ui.nix.
+  services.opensnitch = {
+    enable = true;
+    settings.DefaultAction = "allow";
+  };
   # Lid close: suspend on battery, stay up on AC. The machine is administered over SSH,
   # so closing it on the desk should not take it off the tailnet; on battery the default
   # suspend still applies so a closed laptop in a bag does not cook itself.
@@ -914,6 +924,7 @@ in
       curl
       wget
       sbctl # generate/enroll/verify Secure Boot keys (used for lanzaboote operation)
+      bpftrace # DTrace-style tracing: which process wrote a file, sent a key, opened a socket
       keepAwake # `keep-awake [on [DURATION]|off|status]`, see the let block
 
       # Minimal set to make Hyprland usable from the start.

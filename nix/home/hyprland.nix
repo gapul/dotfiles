@@ -1106,6 +1106,9 @@ in
         border-color = "#${c.love}";
         default-timeout = 0;
       };
+      # `makoctl mode -a do-not-disturb`: notifications are kept (makoctl history) but not
+      # shown. niri-events (home/niri.nix) turns it on while the screen is being cast.
+      "mode=do-not-disturb".invisible = 1;
     };
   };
 

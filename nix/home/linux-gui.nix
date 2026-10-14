@@ -29,6 +29,7 @@ in
     ./t3code-desktop.nix # T3 Code nightly (AppImage + CLI, self-updating)
     ./fcitx5-skk.nix # SKK dictionaries and kana rule for fcitx5-skk
     ./xremap.nix # mac-style Cmd / Ctrl / Hyper
+    ./opensnitch-ui.nix # which app connects where, LuLu-style; the daemon is in hosts/nixos-laptop.nix
   ];
 
   # Keep the English UI locale while preferring Japanese CJK fallback glyphs.

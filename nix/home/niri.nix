@@ -4,6 +4,7 @@
   pkgs,
   desktopScripts,
   wlKeyboard,
+  wallpaperScripts,
   ...
 }:
 # niri, the default session on nixos-laptop (greetd starts niri-session, hosts/nixos-laptop.nix).
@@ -328,10 +329,14 @@ let
             }
         }
         // No tap-to-click: palm taps while typing moved the caret and committed SKK preedits.
+        // As on the mac: a two-finger press is the right click, three fingers the middle
+        // (which pastes the primary selection), and the pad ignores the palm while typing.
+        // Focus follows clicks only, so a brushed pad does not move it either.
         touchpad {
             natural-scroll
+            click-method "clickfinger"
+            dwt
         }
-        focus-follows-mouse
     }
 
     // The panel at 1, as under Hyprland; the 4K monitor at 1.5, i.e. 2560x1440 logical.
@@ -406,6 +411,14 @@ let
         match app-id=r#"firefox"# title="^Picture-in-Picture$"
         open-floating true
     }
+    // Blacked out in screen shares and recordings (screenshots still show them):
+    // passwords, messages and mail.
+    window-rule {
+        match app-id=r#"(?i)^(bitwarden|org\.keepassxc\.keepassxc|keepassxc)$"#
+        match app-id=r#"(?i)^(beeper|signal|element|chat-simplex|chat\.simplex)"#
+        match app-id=r#"(?i)^thunderbird"#
+        block-out-from "screencast"
+    }
 
     binds {
     ${lib.concatMapStrings (b: "    ${b}\n") binds}}
@@ -417,7 +430,68 @@ let
     HOME=$TMPDIR niri validate -c ${kdl}
     cp ${kdl} $out
   '';
+  # Reacts to niri's event stream, for what the config file cannot say:
+  #   - a terminal taking focus turns SKK off (nvim there has skkeleton);
+  #   - a workspace switch repaints that output's wallpaper (home/darkman.nix);
+  #   - while a screen cast runs, mako holds notifications back (its do-not-disturb mode).
+  niriEvents = pkgs.writers.writePython3 "niri-events" { flakeIgnore = [ "E501" ]; } ''
+    import json
+    import subprocess
+    import time
+
+    NIRI = "${pkgs.niri}/bin/niri"
+    TERMINALS = {"com.mitchellh.ghostty"}
+
+
+    def run(*args):
+        subprocess.run(args, check=False)
+
+
+    windows = {}
+    outputs = {}  # workspace id -> output name
+    casting = False
+    events = subprocess.Popen([NIRI, "msg", "--json", "event-stream"], stdout=subprocess.PIPE, text=True)
+    for line in events.stdout:
+        [(kind, body)] = json.loads(line).items()
+        if kind == "WorkspacesChanged":
+            outputs = {w["id"]: w.get("output") or "" for w in body["workspaces"]}
+        elif kind == "WindowsChanged":
+            windows = {w["id"]: w.get("app_id") for w in body["windows"]}
+        elif kind == "WindowOpenedOrChanged":
+            windows[body["window"]["id"]] = body["window"].get("app_id")
+        elif kind == "WindowClosed":
+            windows.pop(body["id"], None)
+        elif kind == "WindowFocusChanged":
+            if windows.get(body["id"]) in TERMINALS:
+                # Give fcitx5 a moment to see the new focus, or this turns off the old window.
+                time.sleep(0.15)
+                run("${pkgs.fcitx5}/bin/fcitx5-remote", "-c")
+        elif kind == "WorkspaceActivated":
+            run("${wallpaperScripts.setWallpaper}", "", "0.5", outputs.get(body["id"], ""))
+        elif kind == "CastsChanged":
+            now = bool(body["casts"])
+            if now != casting:
+                casting = now
+                run("${pkgs.mako}/bin/makoctl", "mode", "-a" if now else "-r", "do-not-disturb")
+    raise SystemExit(events.wait() or 1)
+  '';
 in
 {
   xdg.configFile."niri/config.kdl".source = validated;
+
+  systemd.user.services.niri-events = {
+    Unit = {
+      Description = "React to niri events (SKK off in terminals, per-workspace wallpaper, quiet casts)";
+      PartOf = [ "graphical-session.target" ];
+      After = [ "graphical-session.target" ];
+    };
+    Service = {
+      # Only under niri; Hyprland, the fallback session, has no NIRI_SOCKET.
+      ExecCondition = "${pkgs.runtimeShell} -c '[ -n \"$NIRI_SOCKET\" ]'";
+      ExecStart = "${niriEvents}";
+      Restart = "on-failure";
+      RestartSec = 2;
+    };
+    Install.WantedBy = [ "graphical-session.target" ];
+  };
 }
