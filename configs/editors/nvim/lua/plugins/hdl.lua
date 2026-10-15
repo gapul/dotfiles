@@ -40,6 +40,11 @@ return {
       -- (run from the project root).
       opts.linters.verilator = {
         prepend_args = { "--timing", "-y", "src" },
+        -- verilator comes from a project's devShell; outside one, skip it instead of
+        -- failing with ENOENT on every save.
+        condition = function()
+          return vim.fn.executable("verilator") == 1
+        end,
       }
     end,
   },

@@ -101,7 +101,10 @@ in
     ]
     # apktool pulls in aapt, which nixpkgs marks unavailable on aarch64-linux (CI cross-evaluates).
     # This is the mac workstation, so keep it darwin-only.
-    ++ lib.optionals pkgs.stdenv.hostPlatform.isDarwin [ pkgs.apktool ];
+    ++ lib.optionals pkgs.stdenv.hostPlatform.isDarwin [ pkgs.apktool ]
+    # A C compiler on Linux, where nothing else puts one on PATH (the mac has Xcode's cc).
+    # nvim-treesitter's main branch compiles its parsers with it and stops without one.
+    ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [ pkgs.gcc ];
 
   # User data location: everything that also lives somewhere else sits under ~/Sync (2026-08).
   # google-drive-* are rclone mounts (remote-primary, see home/rclone-mount.nix), syncthing holds
