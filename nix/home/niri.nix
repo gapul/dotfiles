@@ -385,12 +385,15 @@ let
         // No tap-to-click: palm taps while typing moved the caret and committed SKK preedits.
         // As on the mac: a two-finger press is the right click, three fingers the middle
         // (which pastes the primary selection), and the pad ignores the palm while typing.
-        // Focus follows clicks only, so a brushed pad does not move it either.
         touchpad {
             natural-scroll
             click-method "clickfinger"
             dwt
         }
+        // Hovering a window focuses it. max-scroll-amount 0% keeps that to windows already on
+        // screen: brushing the sliver of a column at the edge would otherwise scroll the strip
+        // over to it.
+        focus-follows-mouse max-scroll-amount="0%"
     }
 
     // The panel at 1, as under Hyprland; the 4K monitor at 1.5, i.e. 2560x1440 logical.
