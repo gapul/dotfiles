@@ -171,7 +171,14 @@ in
 
   programs.atuin = {
     enable = true;
-    package = fastPkgs.atuin;
+    # On darwin 18.23.0 is not cached yet and builds here, where its PTY end-to-end tests
+    # (e2e_capture, e2e_pty) fail in the build sandbox (2026-10-15). Build it without the test
+    # run there; Linux keeps the cached build. Drop this once darwin is cached again.
+    package =
+      if pkgs.stdenv.hostPlatform.isDarwin then
+        fastPkgs.atuin.overrideAttrs { doCheck = false; }
+      else
+        fastPkgs.atuin;
     # The generated hook is a plain `eval "$(atuin init zsh)"`, which costs ~37ms per shell.
     # Emit it ourselves through evalcache instead (see initContent below).
     enableZshIntegration = false;
