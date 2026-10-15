@@ -398,6 +398,7 @@ let
       "pulseaudio"
       "bluetooth"
       "network"
+      "custom/power"
       "battery"
     ];
     # The mac's apple logo: a menu of system monitor / settings / lock. Left click opens
@@ -419,6 +420,34 @@ let
       return-type = "json";
       interval = 1;
       on-click = "${pkgs.fcitx5}/bin/fcitx5-configtool";
+    };
+    # TLP's mode: performance (its AC mode), balanced (battery), power-saver. TLP picks AC or
+    # battery by itself; a click cycles the three by hand, a right click hands it back to TLP.
+    # /run/tlp/last_pwr starts with the mode as 0 / 1 / 2 and is world-readable; tlp itself needs
+    # root, which wheel has without a password (hosts/nixos-laptop.nix).
+    "custom/power" = {
+      exec = pkgs.writeShellScript "bar-power" ''
+        read -r mode _ < /run/tlp/last_pwr 2>/dev/null || mode=0
+        manual=""; [ -e /run/tlp/manual_mode ] && manual=" (manual)"
+        case "$mode" in
+          1) printf '{"text":"󰾅","class":"balanced","tooltip":"balanced%s"}\n' "$manual" ;;
+          2) printf '{"text":"󰾆","class":"power-saver","tooltip":"power-saver%s"}\n' "$manual" ;;
+          *) printf '{"text":"󰓅","class":"performance","tooltip":"performance%s"}\n' "$manual" ;;
+        esac
+      '';
+      return-type = "json";
+      interval = 10;
+      signal = 10;
+      on-click = pkgs.writeShellScript "bar-power-next" ''
+        read -r mode _ < /run/tlp/last_pwr 2>/dev/null || mode=0
+        case "$mode" in 0) next=balanced ;; 1) next=power-saver ;; *) next=performance ;; esac
+        /run/wrappers/bin/sudo ${pkgs.tlp}/bin/tlp "$next" >/dev/null
+        ${pkgs.procps}/bin/pkill -RTMIN+10 -x waybar
+      '';
+      on-click-right = pkgs.writeShellScript "bar-power-auto" ''
+        /run/wrappers/bin/sudo ${pkgs.tlp}/bin/tlp start >/dev/null
+        ${pkgs.procps}/bin/pkill -RTMIN+10 -x waybar
+      '';
     };
     "custom/guard" = {
       exec = guard;
@@ -1199,7 +1228,17 @@ in
           # the one path that still suspended a plugged-in laptop out from under a session.
           # systemd-ac-power exits 0 on mains. Every clause is &&: with `a && b || c` the shell
           # would run c whenever a failed, i.e. suspend as soon as the lid was shut.
-          on-timeout = whenLidOpen "! ${pkgs.systemd}/bin/systemd-ac-power && systemctl suspend";
+          # Nor while it is being worked on remotely: an open ssh session or a nix build running
+          # (builders run as nixbld*) keeps it up, since "idle" here only means nobody touched
+          # the keyboard. On 2026-10-15 the battery timer kept dropping the laptop mid-rebuild.
+          on-timeout = whenLidOpen (
+            "! ${pkgs.systemd}/bin/systemd-ac-power"
+            + " && ! ${pkgs.procps}/bin/pgrep -f 'sshd-session: [^ ]+@' >/dev/null"
+            + " && ! ${pkgs.procps}/bin/pgrep -u ${
+               lib.concatMapStringsSep "," (n: "nixbld${toString n}") (lib.range 1 32)
+             } >/dev/null"
+            + " && systemctl suspend"
+          );
         }
       ];
     };
@@ -1455,6 +1494,7 @@ in
       #battery,
       #pulseaudio,
       #custom-ime,
+      #custom-power,
       #bluetooth {
         padding: 0 9px;
       }

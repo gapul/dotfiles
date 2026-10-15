@@ -525,6 +525,9 @@ in
   # Costs a little battery on every network, not just the hotspot.
   services.tlp.settings.WIFI_PWR_ON_BAT = "off";
   services.thermald.enable = true; # Intel CPU thermal control (proper thermal throttling)
+  # Battery state over D-Bus for whatever asks for it (waybar logged "Failed to get percentage
+  # from UPower"). It only reports; TLP still does the AC / battery switching.
+  services.upower.enable = true;
   services.libinput.enable = true; # touchpad (tap, natural scroll, etc.)
 
   # A sched_ext scheduler on top of the stock kernel: scx_lavd aims at interactive latency and
