@@ -1,14 +1,38 @@
 diff --git a/crates/ap-cli/src/command/listen.rs b/crates/ap-cli/src/command/listen.rs
-index 1c245ca..d7743d8 100644
+index 1c245ca..643d77e 100644
 --- a/crates/ap-cli/src/command/listen.rs
 +++ b/crates/ap-cli/src/command/listen.rs
-@@ -209,6 +209,48 @@ fn apply_status_spans(app: &mut App, name: &str, status: &ProviderStatus) {
+@@ -25,7 +25,7 @@ use super::tui::{
+     restore_terminal, wait_for_keypress,
+ };
+ use super::util::{format_listen_notification, format_relative_time, val_style};
+-use crate::providers::{CredentialProvider, LookupResult, ProviderStatus};
++use crate::providers::{Candidate, CredentialProvider, LookupResult, ProviderStatus};
+ use crate::storage::{FileConnectionCache, FileIdentityStorage};
+ 
+ use super::DEFAULT_PROXY_URL;
+@@ -141,6 +141,13 @@ enum Phase {
+         identity: ap_proxy_protocol::IdentityFingerprint,
+         reply: oneshot::Sender<CredentialRequestReply>,
+     },
++    /// Several credentials match (local patch): the approval command picks one or denies.
++    CredentialChoice {
++        query: ap_client::CredentialQuery,
++        candidates: Vec<Candidate>,
++        identity: ap_proxy_protocol::IdentityFingerprint,
++        reply: oneshot::Sender<CredentialRequestReply>,
++    },
+     /// Waiting for the user to enter unlock input (password or session key).
+     UnlockInput,
+ }
+@@ -209,6 +216,78 @@ fn apply_status_spans(app: &mut App, name: &str, status: &ProviderStatus) {
      }
  }
  
 +/// Answer a pending credential request (keyboard or approval command).
 +fn resolve_credential(
 +    app: &mut App,
++    provider: &dyn CredentialProvider,
 +    old_phase: Phase,
 +    approval: &CredentialApproval,
 +    approval_cache: &mut ApprovalCache,
@@ -35,9 +59,38 @@ index 1c245ca..d7743d8 100644
 +        }
 +        let _ = reply.send(CredentialRequestReply {
 +            approved: true,
-+            credential: Some(credential),
++            credential: Some(provider.outgoing(credential)),
 +            credential_id: cred_id,
 +        });
++    }
++}
++
++/// Answer a pending choice: send candidate `picked`, or deny when it is `None`.
++fn resolve_choice(
++    app: &mut App,
++    provider: &dyn CredentialProvider,
++    old_phase: Phase,
++    picked: Option<usize>,
++    approval_cache: &mut ApprovalCache,
++) {
++    let Phase::CredentialChoice { query, mut candidates, identity, reply } = old_phase else {
++        return;
++    };
++    match picked.filter(|i| *i < candidates.len()) {
++        Some(i) => {
++            let chosen = candidates.swap_remove(i);
++            app.push_msg(MessageKind::Info, format!("Picked: {}", chosen.name));
++            let phase = Phase::CredentialApproval { query, credential: chosen.credential, identity, reply };
++            resolve_credential(app, provider, phase, &CredentialApproval::Approve, approval_cache);
++        }
++        None => {
++            let _ = reply.send(CredentialRequestReply {
++                approved: false,
++                credential: None,
++                credential_id: None,
++            });
++            app.push_msg(MessageKind::Error, format!("Credential denied for {query}"));
++        }
 +    }
 +}
 +
@@ -51,27 +104,44 @@ index 1c245ca..d7743d8 100644
  /// Reload the session list from disk (the client may have updated it).
  async fn reload_connections() -> Vec<ConnectionInfo> {
      match FileConnectionCache::load_or_create("user_client") {
-@@ -309,6 +351,15 @@ async fn run_event_loop(
+@@ -309,6 +388,17 @@ async fn run_event_loop(
  ) -> Result<EventLoopExit> {
      let mut phase = Phase::Idle;
  
 +    // AAC_APPROVAL_COMMAND (local patch): when set, a credential request is approved by running
 +    // this command instead of by keyboard. Exit 0 approves; anything else, including a failure to
-+    // start it, denies. Keyboard [y]/[a] are ignored so that anything able to type into this
++    // start it, denies. When several credentials match, the command also gets AAC_CANDIDATES (a
++    // JSON list of name/username/uri, no secrets) and approves by printing the 1-based number of
++    // the one to send. Keyboard [y]/[a] are ignored so that anything able to type into this
 +    // terminal (tmux send-keys from an agent) cannot approve; [n] still denies.
 +    let approval_cmd = std::env::var_os("AAC_APPROVAL_COMMAND").filter(|c| !c.is_empty());
-+    let (approval_tx, mut approval_rx) = mpsc::unbounded_channel::<(u64, bool)>();
++    let (approval_tx, mut approval_rx) = mpsc::unbounded_channel::<(u64, Option<usize>)>();
 +    let mut approval_seq: u64 = 0;
 +    let mut approval_prompt = String::new();
 +
      // Seed session info panel for this iteration
      app.set_connection_panel(connection_info_messages(sessions, None));
      app.enter_idle(idle_footer(), IDLE_COMMANDS);
-@@ -421,34 +472,21 @@ async fn run_event_loop(
+@@ -421,34 +511,36 @@ async fn run_event_loop(
                                      app.enter_idle(idle_footer(), IDLE_COMMANDS);
                                  }
  
 -                                // Credential approval
++                                // Choosing among several credentials happens only in the approval command
++                                (Phase::CredentialChoice { .. }, AppAction::CredentialConfirmed(CredentialApproval::Deny)) => {
++                                    let old_phase = std::mem::replace(&mut phase, Phase::Idle);
++                                    resolve_choice(app, &*provider, old_phase, None, approval_cache);
++                                    app.enter_idle(idle_footer(), IDLE_COMMANDS);
++                                }
++                                (Phase::CredentialChoice { .. }, AppAction::CredentialConfirmed(_)) => {
++                                    app.push_msg(MessageKind::Warning, "Pick the credential through the approval command, or [n] to deny");
++                                    app.set_mode(Mode::CredentialConfirm {
++                                        title: approval_prompt.clone(),
++                                        description: Line::from(""),
++                                        auto_approve_minutes: 10,
++                                    });
++                                    app.footer = external_approval_footer();
++                                }
 +                                // Credential approval: keyboard approve is off while an approval command is set
 +                                (Phase::CredentialApproval { .. }, AppAction::CredentialConfirmed(approval))
 +                                    if approval_cmd.is_some() && !matches!(approval, CredentialApproval::Deny) =>
@@ -111,11 +181,33 @@ index 1c245ca..d7743d8 100644
 -                                            });
 -                                        }
 -                                    }
-+                                    resolve_credential(app, old_phase, approval, approval_cache);
++                                    resolve_credential(app, &*provider, old_phase, approval, approval_cache);
                                      app.enter_idle(idle_footer(), IDLE_COMMANDS);
                                  }
  
-@@ -625,6 +663,31 @@ async fn run_event_loop(
+@@ -493,7 +585,11 @@ async fn run_event_loop(
+             }
+ 
+             // Handle requests (require caller action via oneshot reply)
+-            request = request_rx.recv() => {
++            // One prompt at a time (local patch): a request arriving while another waits for an
++            // answer stays queued in the channel. Upstream took it at once and overwrote the pending
++            // prompt, dropping its reply — with approvals in Matrix taking a while, and several
++            // agents asking, a tap then landed on a request that was already gone.
++            request = request_rx.recv(), if matches!(phase, Phase::Idle) => {
+                 if let Some(request) = request {
+                     match request {
+                         UserClientRequest::VerifyFingerprint { fingerprint, reply, .. } => {
+@@ -559,7 +655,7 @@ async fn run_event_loop(
+                                         let cred_id = credential.credential_id.clone();
+                                         let _ = reply.send(CredentialRequestReply {
+                                             approved: true,
+-                                            credential: Some(credential),
++                                            credential: Some(provider.outgoing(credential)),
+                                             credential_id: cred_id,
+                                         });
+                                         app.push_msg(MessageKind::Success, format!("Auto-approved credential for {label}"));
+@@ -625,6 +721,103 @@ async fn run_event_loop(
                                                  Style::default().fg(Color::Yellow),
                                              )
                                          );
@@ -140,27 +232,330 @@ index 1c245ca..d7743d8 100644
 +                                                    .stderr(std::process::Stdio::null())
 +                                                    .status()
 +                                                    .is_ok_and(|s| s.success());
-+                                                let _ = tx.send((seq, approved));
++                                                let _ = tx.send((seq, approved.then_some(0)));
 +                                            });
 +                                            app.footer = external_approval_footer();
 +                                        }
++                                    }
++                                    LookupResult::Multiple(candidates) if approval_cmd.is_some() => {
++                                        app.push_msg(MessageKind::Info, format!("{} credentials match — waiting for the approval command to pick one", candidates.len()));
++                                        for (i, c) in candidates.iter().enumerate() {
++                                            app.push_msg(MessageKind::Info, format!(
++                                                "  {}. {} — {}",
++                                                i + 1,
++                                                c.name,
++                                                c.credential.username.as_deref().unwrap_or("no username"),
++                                            ));
++                                        }
++                                        let fresh_connections = reload_connections().await;
++                                        let device_label = fresh_connections
++                                            .iter()
++                                            .find(|s| s.fingerprint == identity)
++                                            .and_then(|s| s.name.clone())
++                                            .unwrap_or_else(|| "unknown device".to_string());
++                                        let listing = serde_json::Value::Array(
++                                            candidates
++                                                .iter()
++                                                .map(|c| serde_json::json!({
++                                                    "name": c.name,
++                                                    "username": c.credential.username,
++                                                    "uri": c.credential.uri,
++                                                }))
++                                                .collect(),
++                                        )
++                                        .to_string();
++                                        let count = candidates.len();
++                                        approval_prompt = format!("Pick one of {count} credentials for {query} to send to {device_label}");
++                                        app.commands = &[];
++                                        app.set_mode(Mode::CredentialConfirm {
++                                            title: approval_prompt.clone(),
++                                            description: Line::from(""),
++                                            auto_approve_minutes: 10,
++                                        });
++                                        app.footer = external_approval_footer();
++                                        let domain = query.to_string();
++                                        let domain = domain.strip_prefix("domain: ").unwrap_or(&domain).to_string();
++                                        phase = Phase::CredentialChoice { query, candidates, identity, reply };
++                                        approval_seq += 1;
++                                        let seq = approval_seq;
++                                        let tx = approval_tx.clone();
++                                        let cmd = approval_cmd.clone().unwrap_or_default();
++                                        tokio::task::spawn_blocking(move || {
++                                            // The answer is the chosen number on stdout; stderr stays detached.
++                                            let picked = std::process::Command::new(&cmd)
++                                                .env("AAC_DOMAIN", &domain)
++                                                .env("AAC_DEVICE", &device_label)
++                                                .env("AAC_CANDIDATES", &listing)
++                                                .stdin(std::process::Stdio::null())
++                                                .stderr(std::process::Stdio::null())
++                                                .output()
++                                                .ok()
++                                                .filter(|o| o.status.success())
++                                                .and_then(|o| String::from_utf8_lossy(&o.stdout).trim().parse::<usize>().ok())
++                                                .and_then(|n| n.checked_sub(1))
++                                                .filter(|i| *i < count);
++                                            let _ = tx.send((seq, picked));
++                                        });
++                                    }
++                                    LookupResult::Multiple(candidates) => {
++                                        app.push_msg(MessageKind::Error, format!(
++                                            "{} credentials match {} — ask for one by --id",
++                                            candidates.len(),
++                                            query,
++                                        ));
++                                        let _ = reply.send(CredentialRequestReply {
++                                            approved: false,
++                                            credential: None,
++                                            credential_id: None,
++                                        });
                                      }
                                      result @ (LookupResult::NotReady { .. } | LookupResult::NotFound) => {
                                          let label = query.to_string();
-@@ -650,6 +713,16 @@ async fn run_event_loop(
+@@ -650,6 +843,26 @@ async fn run_event_loop(
                  }
              }
  
 +            // Approval command finished; a stale result (already answered by [n]) is ignored
-+            Some((seq, approved)) = approval_rx.recv() => {
-+                if seq == approval_seq && matches!(phase, Phase::CredentialApproval { .. }) {
-+                    let old_phase = std::mem::replace(&mut phase, Phase::Idle);
-+                    let approval = if approved { CredentialApproval::Approve } else { CredentialApproval::Deny };
-+                    resolve_credential(app, old_phase, &approval, approval_cache);
-+                    app.enter_idle(idle_footer(), IDLE_COMMANDS);
++            Some((seq, answer)) = approval_rx.recv() => {
++                if seq == approval_seq {
++                    match phase {
++                        Phase::CredentialApproval { .. } => {
++                            let old_phase = std::mem::replace(&mut phase, Phase::Idle);
++                            let approval = if answer.is_some() { CredentialApproval::Approve } else { CredentialApproval::Deny };
++                            resolve_credential(app, &*provider, old_phase, &approval, approval_cache);
++                            app.enter_idle(idle_footer(), IDLE_COMMANDS);
++                        }
++                        Phase::CredentialChoice { .. } => {
++                            let old_phase = std::mem::replace(&mut phase, Phase::Idle);
++                            resolve_choice(app, &*provider, old_phase, answer, approval_cache);
++                            app.enter_idle(idle_footer(), IDLE_COMMANDS);
++                        }
++                        _ => {}
++                    }
 +                }
 +            }
 +
              // Handle tracing log entries routed into the TUI
              log_entry = async {
                  match log_rx.as_mut() {
+diff --git a/crates/ap-cli/src/providers/bitwarden.rs b/crates/ap-cli/src/providers/bitwarden.rs
+index 160a999..3eb546d 100644
+--- a/crates/ap-cli/src/providers/bitwarden.rs
++++ b/crates/ap-cli/src/providers/bitwarden.rs
+@@ -10,7 +10,7 @@ use secrecy::{ExposeSecret, SecretString, zeroize::Zeroizing};
+ use serde::Deserialize;
+ use tracing::info;
+ 
+-use super::{CredentialProvider, CredentialQuery, LookupResult, ProviderStatus};
++use super::{Candidate, CredentialProvider, CredentialQuery, LookupResult, ProviderStatus};
+ 
+ /// Fallback path when `bw` is not found on `$PATH` (macOS Homebrew default).
+ const BW_FALLBACK_PATH: &str = "/opt/homebrew/bin/bw";
+@@ -34,6 +34,8 @@ struct BwUri {
+ #[derive(Deserialize)]
+ struct BwItem {
+     id: Option<String>,
++    #[serde(default)]
++    name: String,
+     login: Option<BwLogin>,
+ }
+ 
+@@ -149,23 +151,86 @@ fn looks_like_session_key(input: &str) -> bool {
+ }
+ 
+ /// Look up a credential from the Bitwarden CLI.
+-fn lookup_credential(bw: &str, search: &str, session: Option<&str>) -> Option<CredentialData> {
++/// What `bw get item` found: one credential, several (it refuses to guess), or none.
++enum BwLookup {
++    One(CredentialData),
++    Many(Vec<Candidate>),
++    None,
++}
++
++fn lookup_credential(bw: &str, search: &str, session: Option<&str>) -> BwLookup {
+     let mut cmd = Command::new(bw);
+     cmd.args(["get", "item", search]);
+     if let Some(key) = session {
+         cmd.env("BW_SESSION", key);
+     }
+-    let output = cmd.output().ok()?;
++    let Ok(output) = cmd.output() else {
++        return BwLookup::None;
++    };
+ 
+     if !output.status.success() {
+         let stderr = String::from_utf8_lossy(&output.stderr);
++        // `bw get item` searches name, username and URI, and gives up on more than one hit.
++        // List them instead so the approver can pick (local patch).
++        if stderr.contains("More than one result") {
++            let candidates = list_candidates(bw, search, session);
++            if !candidates.is_empty() {
++                return BwLookup::Many(candidates);
++            }
++        }
+         if !stderr.contains("Not found") {
+             info!("bw get item failed: {}", stderr);
+         }
+-        return None;
++        return BwLookup::None;
+     }
+ 
+-    let item: BwItem = serde_json::from_slice(&output.stdout).ok()?;
++    match serde_json::from_slice::<BwItem>(&output.stdout).ok().and_then(credential_from_item) {
++        Some(credential) => BwLookup::One(credential),
++        None => BwLookup::None,
++    }
++}
++
++/// The current TOTP code for vault item `id`, from `bw get totp`.
++fn current_totp(bw: &str, id: &str, session: Option<&str>) -> Option<String> {
++    let mut cmd = Command::new(bw);
++    cmd.args(["get", "totp", id]);
++    if let Some(key) = session {
++        cmd.env("BW_SESSION", key);
++    }
++    let output = cmd.output().ok()?;
++    if !output.status.success() {
++        info!("bw get totp failed: {}", String::from_utf8_lossy(&output.stderr));
++        return None;
++    }
++    let code = String::from_utf8_lossy(&output.stdout).trim().to_string();
++    (!code.is_empty() && code.chars().all(|c| c.is_ascii_alphanumeric())).then_some(code)
++}
++
++/// Every login item `bw list items --search` returns for `search`, in vault order.
++fn list_candidates(bw: &str, search: &str, session: Option<&str>) -> Vec<Candidate> {
++    let mut cmd = Command::new(bw);
++    cmd.args(["list", "items", "--search", search]);
++    if let Some(key) = session {
++        cmd.env("BW_SESSION", key);
++    }
++    let Ok(output) = cmd.output() else {
++        return Vec::new();
++    };
++    if !output.status.success() {
++        info!("bw list items failed: {}", String::from_utf8_lossy(&output.stderr));
++        return Vec::new();
++    }
++    serde_json::from_slice::<Vec<BwItem>>(&output.stdout)
++        .unwrap_or_default()
++        .into_iter()
++        .filter_map(|item| {
++            let name = item.name.clone();
++            credential_from_item(item).map(|credential| Candidate { name, credential })
++        })
++        .collect()
++}
++
++fn credential_from_item(item: BwItem) -> Option<CredentialData> {
+     let login = item.login?;
+ 
+     let uri = login
+@@ -273,6 +338,18 @@ impl CredentialProvider for BitwardenProvider {
+         Ok(())
+     }
+ 
++    fn outgoing(&self, mut credential: CredentialData) -> CredentialData {
++        if credential.totp.is_none() {
++            return credential;
++        }
++        // Never send the secret itself: the code from `bw get totp`, or nothing.
++        credential.totp = match (&self.bw_path, &credential.credential_id) {
++            (Some(bw), Some(id)) => current_totp(bw, id, self.session.as_ref().map(|s| s.expose_secret())),
++            _ => None,
++        };
++        credential
++    }
++
+     fn lookup(&self, query: &CredentialQuery) -> LookupResult {
+         let bw = match &self.bw_path {
+             Some(p) => p,
+@@ -286,8 +363,9 @@ impl CredentialProvider for BitwardenProvider {
+         let search = query.search_string();
+ 
+         match lookup_credential(bw, search, self.session.as_ref().map(|s| s.expose_secret())) {
+-            Some(cred) => LookupResult::Found(cred),
+-            None => {
++            BwLookup::One(cred) => LookupResult::Found(cred),
++            BwLookup::Many(candidates) => LookupResult::Multiple(candidates),
++            BwLookup::None => {
+                 // When there's no cached session the vault might still be unlocked
+                 // natively (e.g. via BW_SESSION in the shell). Check `bw status`
+                 // to distinguish "not found" from "vault locked".
+@@ -309,6 +387,35 @@ impl CredentialProvider for BitwardenProvider {
+ mod tests {
+     use super::*;
+ 
++    // -- outgoing() (local patch) --------------------------------------------
++
++    fn credential(totp: Option<&str>) -> CredentialData {
++        CredentialData {
++            username: Some("u".into()),
++            password: None,
++            totp: totp.map(String::from),
++            uri: None,
++            notes: None,
++            credential_id: Some("id".into()),
++            domain: None,
++        }
++    }
++
++    #[test]
++    fn outgoing_never_sends_the_totp_secret() {
++        // No usable `bw`: the code cannot be made, and the secret must not go out instead.
++        let provider = BitwardenProvider::with_session(None);
++        let sent = provider.outgoing(credential(Some("JBSWY3DPEHPK3PXP")));
++        assert_eq!(sent.totp, None);
++        assert_eq!(sent.username.as_deref(), Some("u"));
++    }
++
++    #[test]
++    fn outgoing_leaves_items_without_totp_alone() {
++        let provider = BitwardenProvider::with_session(None);
++        assert_eq!(provider.outgoing(credential(None)).totp, None);
++    }
++
+     // -- looks_like_session_key() -------------------------------------------
+ 
+     /// 88 A's — valid base64 of the right length.
+diff --git a/crates/ap-cli/src/providers/mod.rs b/crates/ap-cli/src/providers/mod.rs
+index b5a8eab..63e3f07 100644
+--- a/crates/ap-cli/src/providers/mod.rs
++++ b/crates/ap-cli/src/providers/mod.rs
+@@ -29,6 +29,13 @@ pub enum ProviderStatus {
+     NotInstalled { install_hint: String },
+ }
+ 
++/// One of several matching credentials, with the vault item's name for display.
++#[derive(Debug)]
++pub struct Candidate {
++    pub name: String,
++    pub credential: CredentialData,
++}
++
+ /// Result of a credential lookup.
+ #[derive(Debug)]
+ pub enum LookupResult {
+@@ -36,6 +43,8 @@ pub enum LookupResult {
+     Found(CredentialData),
+     /// No matching credential exists.
+     NotFound,
++    /// More than one credential matches (local patch); the caller has to pick one.
++    Multiple(Vec<Candidate>),
+     /// The provider is not ready (e.g. vault locked).
+     NotReady { message: String },
+ }
+@@ -61,6 +70,13 @@ pub trait CredentialProvider: Send + Sync {
+ 
+     /// Look up a credential.
+     fn lookup(&self, query: &CredentialQuery) -> LookupResult;
++
++    /// Last step before an approved credential leaves (local patch). Bitwarden swaps the stored
++    /// TOTP secret for the current code here, so the secret never leaves the vault side and the
++    /// code is fresh even after a slow approval.
++    fn outgoing(&self, credential: CredentialData) -> CredentialData {
++        credential
++    }
+ }
+ 
+ /// Create a provider by name.

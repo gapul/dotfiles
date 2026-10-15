@@ -16,7 +16,10 @@ rustPlatform.buildRustPackage {
 
   # Local: AAC_APPROVAL_COMMAND lets `aac listen` approve credential requests by running a command
   # (macmini: aac-matrix-approve, a ✅ reaction in Matrix) and turns keyboard approval off while it
-  # is set, so tmux send-keys from an agent cannot approve. Unset, behaviour is upstream's.
+  # is set, so tmux send-keys from an agent cannot approve. When `bw get item` finds several
+  # matches, they go to the same command as AAC_CANDIDATES and the approver picks one (it prints the
+  # number). Unset, behaviour is upstream's except that several matches are denied with a hint.
+  # Always: the `totp` field carries the current code from `bw get totp`, never the stored secret.
   patches = [ ./agent-access-approval-command.patch ];
 
   cargoHash = "sha256-jNE5ozp6YW1dlx948KfvNAZ8/ZPPvSYeRc89WGSy5HI=";

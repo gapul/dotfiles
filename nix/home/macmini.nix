@@ -496,6 +496,64 @@ in
   #
   # It refuses to touch a dirty tree (this is the main tree, and work happens in worktrees) and
   # notifies through the same ntfy files restic uses — there is no screen to put a dialog on.
+  # `aac listen` without a human: unlock bw with the sops-held master password
+  # (hosts/macmini.nix, bitwarden/master_password) and start the listener in the tmux session
+  # `aac` on its own tmux socket, where `tmux -L aac attach -t aac` shows it. Every 5 minutes it checks again, so a
+  # listener that exited (crash, /exit, reboot) comes back. Approval stays in Matrix
+  # (AAC_APPROVAL_COMMAND); the pairing is on disk, so nothing needs typing.
+  #
+  # The unlock happens inside the pane (aac-listen-run), not here: a session key passed on the
+  # tmux command line stays in the tmux server's argv for anyone to read with ps (it did, the first
+  # time). The socket is separate and reads no config because continuum-restore otherwise
+  # replaces the new `aac` session with the saved one, which is only a shell.
+  launchd.agents.aac-listen =
+    let
+      path = "${config.home.profileDirectory}/bin:/etc/profiles/per-user/${config.home.username}/bin:/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin:/usr/bin:/bin:/usr/sbin:/sbin";
+      run = pkgs.writeShellScript "aac-listen-run" ''
+        export PATH="${path}"
+        pw="$HOME/.config/aac/bw-master-password"
+        if ! session=$(bw unlock --raw --passwordfile "$pw" 2>/dev/null) || [ -z "$session" ]; then
+          url="$HOME/.config/ntfy/url"
+          tok="$HOME/.config/ntfy/token"
+          if [ -r "$url" ] && [ -r "$tok" ]; then
+            /usr/bin/curl -fsS --max-time 15 \
+              -H "Authorization: Bearer $(cat "$tok")" \
+              -H "Title: aac listen (macmini)" \
+              -H "Tags: warning" \
+              -d "bw unlock に失敗したので aac listen を起動できない" "$(cat "$url")" >/dev/null 2>&1 || true
+          fi
+          echo "bw unlock failed"
+          sleep 60
+          exit 1
+        fi
+        export BW_SESSION="$session"
+        bw sync >/dev/null 2>&1 || true
+        export AAC_APPROVAL_COMMAND=aac-matrix-approve
+        exec aac listen
+      '';
+    in
+    {
+      enable = true;
+      config = {
+        ProgramArguments = [
+          "${pkgs.writeShellScript "aac-listen-start" ''
+            export PATH="${path}"
+            [ -r "$HOME/.config/aac/bw-master-password" ] || exit 0
+            # Running, or still unlocking: leave it.
+            pgrep -qf '^aac listen' && exit 0
+            pgrep -qf 'bash .*aac-listen-run' && exit 0
+            tmux -L aac kill-server 2>/dev/null
+            tmux -L aac -f /dev/null new-session -d -s aac -x 200 -y 50 ${run}
+          ''}"
+        ];
+        RunAtLoad = true;
+        StartInterval = 300;
+        ProcessType = "Background";
+        StandardOutPath = "${config.home.homeDirectory}/Library/Logs/aac-listen.log";
+        StandardErrorPath = "${config.home.homeDirectory}/Library/Logs/aac-listen.log";
+      };
+    };
+
   launchd.agents.dotfiles-pull = import ../lib/launchd-agent.nix {
     program = "${pkgs.writeShellScript "dotfiles-pull" ''
       export PATH="${config.home.profileDirectory}/bin:/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
