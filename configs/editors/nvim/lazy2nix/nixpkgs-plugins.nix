@@ -6,6 +6,7 @@
   "clangd_extensions.nvim" = "clangd_extensions-nvim";
   "conform.nvim" = "conform-nvim";
   "denops.vim" = "denops-vim";
+  "firenvim" = "firenvim";
   "flash.nvim" = "flash-nvim";
   "friendly-snippets" = "friendly-snippets";
   "gitsigns.nvim" = "gitsigns-nvim";
