@@ -269,10 +269,30 @@ in
         "-c"
         # The Keychain login belongs to the default ~/.claude, not CLAUDE_CONFIG_DIR, so Claude reports
         # "Not logged in" without the long-lived token that .zshenv exports for shells.
+        #
+        # The server runs from a copy at a stable path. TCC charges every file access of the agents'
+        # commands to this binary and identifies it by location, and ~/.local/bin/t3 points into a
+        # new versions/<ver> directory every morning. Each update therefore made t3 a new app that
+        # had to ask for Documents/Downloads/Desktop again, and with nobody at the screen the ask
+        # never got an answer, so a plain `ls ~/Documents` hung the turn for good. The copy keeps
+        # the vendor's Developer ID signature (its designated requirement is the team ID, the same
+        # for every version), so one Full Disk Access grant to ~/.local/libexec/tcc/t3code/t3 holds
+        # across updates. The whole version directory is cloned because t3 loads client/ and
+        # node_modules/ from beside itself; cp -c makes APFS clones, so it takes no space.
         ''
           [ -x "$HOME/.local/bin/t3" ] || exit 0
           [ -r "$HOME/.config/claude/oauth-token" ] && export CLAUDE_CODE_OAUTH_TOKEN="$(cat "$HOME/.config/claude/oauth-token")"
-          exec "$HOME/.local/bin/t3" serve --host 0.0.0.0 --port 3773
+          src="$(/usr/bin/dirname "$(/usr/bin/readlink -f "$HOME/.local/bin/t3")")"
+          tcc="$HOME/.local/libexec/tcc"
+          if [ "$(cat "$tcc/.t3code.src" 2>/dev/null)" != "$src" ] || [ ! -x "$tcc/t3code/t3" ]; then
+            /bin/rm -rf "$tcc/t3code.new"
+            /bin/mkdir -p "$tcc"
+            /bin/cp -cR "$src" "$tcc/t3code.new" || exit 1
+            /bin/rm -rf "$tcc/t3code"
+            /bin/mv "$tcc/t3code.new" "$tcc/t3code"
+            echo "$src" >"$tcc/.t3code.src"
+          fi
+          exec "$tcc/t3code/t3" serve --host 0.0.0.0 --port 3773
         ''
       ];
       WorkingDirectory = "${config.home.homeDirectory}/Developer/github.com";
