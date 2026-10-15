@@ -32,7 +32,8 @@ pkgs.testers.runNixOSTest {
           home-manager.users.${user.username}.imports = [
             ../home/common.nix
             ../home/linux.nix
-            ../home/hyprland.nix
+            # Not hyprland.nix: it now needs stylix, darkman and the rest of the desktop modules,
+            # and the script below only checks system-level state.
             ../home/dev.nix
             ../home/workstation.nix
           ];
@@ -40,9 +41,15 @@ pkgs.testers.runNixOSTest {
       ];
 
       boot.lanzaboote.enable = lib.mkForce false;
+      # The maint boot (hosts/nixos-laptop-maint.nix) needs the laptop's LUKS device and an initrd
+      # secret only Lanzaboote carries; neither exists here, and the script does not use it.
+      specialisation.maint = lib.mkForce { configuration = { }; };
+      # The test driver reads the serial console; the laptop keeps it quiet for Plymouth.
+      boot.consoleLogLevel = lib.mkForce 7;
       boot.initrd.luks.devices = lib.mkForce { };
       boot.loader.efi.canTouchEfiVariables = lib.mkForce false;
       services.greetd.enable = lib.mkForce false;
+      services.displayManager.regreet.enable = lib.mkForce false; # needs greetd's greeter user
       services.fprintd.enable = lib.mkForce false;
       services.fwupd.enable = lib.mkForce false;
       services.tailscale.enable = lib.mkForce false;
