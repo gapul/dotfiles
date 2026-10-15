@@ -578,13 +578,7 @@ in
       #
       # macbook-mini is the workstation. macmini reaches it over the tailnet with its own
       # `macmini-outbound` key, verified without a forwarded agent, so this works from
-      # launchd jobs and from sessions nobody is attached to. It is a different path from
-      # configs/bin/open-on-mac, which goes through the RemoteForward on 127.0.0.1:2222
-      # and deliberately carries no key on this side — that one only exists while the
-      # workstation holds the connection open, so it cannot be what a background job uses.
-      # x: read X from the terminal (configs/bin/x). Same script as the laptop's
-      # (modules/home/darwin-apps.nix); the relay's settings and its logged-in browser
-      # profile under ~/.local/share/twitter-api-safe are hand-placed, as there.
+      # launchd jobs and from sessions nobody is attached to.
       {
         ".local/bin/x" = {
           source = ../../configs/bin/x;

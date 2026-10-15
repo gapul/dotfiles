@@ -55,7 +55,10 @@ in
   # real machine into this same hosts/ dir and enable the import below (it need not be committed to the repo).
   imports = [
     hardwareConfig
+    ./nixos-laptop-virtualisation.nix # virt-manager, KVM and virtual TPM
     ./nixos-laptop-vivado.nix # FPGA coursework (Vivado 2020.2, installed by hand into /opt/Xilinx)
+    ./nixos-laptop-btrfs.nix # cryptroot as Btrfs subvolumes (@, @home, @nix, @log)
+    ./nixos-laptop-maint.nix # initrd-only maintenance boot with ssh, for work on an unmounted root
     ./nixos-laptop-wifi.nix # eduroam + 0000UTokyo + iPhone hotspot, credentials from secrets/nixos-laptop.yaml
   ];
 
@@ -93,6 +96,9 @@ in
   };
   boot.consoleLogLevel = 3;
   boot.initrd.verbose = false;
+  # The newest stable kernel rather than nixpkgs' LTS default: Lunar Lake is recent hardware,
+  # and nothing here builds an out-of-tree module (no ZFS) that would pin the version.
+  boot.kernelPackages = pkgs.linuxPackages_latest;
   boot.kernelParams = [
     "quiet"
     "splash"
@@ -505,8 +511,8 @@ in
   };
 
   nixpkgs.config.allowUnfree = true;
-  # Obsidian / Bitwarden / Beeper all ship on Electron 39, which nixpkgs marks insecure
-  # because upstream Electron dropped it from support. The same three run on the mac against
+  # Obsidian / Bitwarden both ship on Electron 39, which nixpkgs marks insecure
+  # because upstream Electron dropped it from support. The same two run on the mac against
   # the same Electron, so refusing them only here would be theatre rather than a decision.
   # This pin is maintenance: the version string goes stale on every nixpkgs bump, and the
   # right time to delete the line is when a bump stops needing it.
@@ -514,8 +520,27 @@ in
 
   # --- Laptop power/thermal/input (HP laptop) ---
   services.tlp.enable = true; # battery optimization (charge thresholds etc. tunable later)
+  # TLP turns Wi-Fi power saving on whenever the laptop goes to battery, overriding the
+  # NetworkManager per-profile setting, and the iPhone hotspot then drops the dozing client.
+  # Costs a little battery on every network, not just the hotspot.
+  services.tlp.settings.WIFI_PWR_ON_BAT = "off";
   services.thermald.enable = true; # Intel CPU thermal control (proper thermal throttling)
   services.libinput.enable = true; # touchpad (tap, natural scroll, etc.)
+
+  # A sched_ext scheduler on top of the stock kernel: scx_lavd aims at interactive latency and
+  # battery on laptops. It is a userspace service, so stopping it falls back to EEVDF at once,
+  # with no reboot.
+  services.scx = {
+    enable = true;
+    scheduler = "scx_lavd";
+  };
+
+  # Per-application outbound connection log, the mac's LuLu. Allow is the default: this is for
+  # seeing what connects, not for blocking it. The tray UI is home/opensnitch-ui.nix.
+  services.opensnitch = {
+    enable = true;
+    settings.DefaultAction = "allow";
+  };
   # Lid close: suspend on battery, stay up on AC. The machine is administered over SSH,
   # so closing it on the desk should not take it off the tailnet; on battery the default
   # suspend still applies so a closed laptop in a bag does not cook itself.
@@ -538,8 +563,17 @@ in
   # Periodic SSD TRIM (lifespan / performance maintenance).
   services.fstrim.enable = true;
 
-  # --- Desktop: Hyprland (Wayland tiling compositor) ---
-  # Enable Hyprland itself + xdg-desktop-portal-hyprland + XWayland together.
+  # --- Desktop: niri (scrollable tiling), with Hyprland kept as the fallback session ---
+  # niri is what greetd starts (below); its config is home/niri.nix. The nixpkgs module also
+  # sets up the GNOME portal niri uses for screencasts. Nautilus stays out: file pickers keep
+  # going through the GTK portal, as under Hyprland.
+  programs.niri = {
+    enable = true;
+    useNautilus = false;
+  };
+  # X11 apps under niri: xwayland-satellite, in systemPackages below.
+
+  # Hyprland itself + xdg-desktop-portal-hyprland + XWayland, still listed in the greeter.
   programs.hyprland = {
     enable = true;
     # uwsm (a systemd-managed way to start Hyprland) is not used here; the session is started
@@ -559,21 +593,21 @@ in
 
   # Login: greetd + ReGreet (GTK greeter under cage) on the same generated wallpaper the
   # desktop uses (home/stylix.nix), in the palette's colours. It lists the Wayland sessions
-  # NixOS knows about (Hyprland, from programs.hyprland) and remembers the last user/session.
+  # NixOS knows about (niri and Hyprland) and remembers the last user/session.
   # The module sets greetd's default_session itself. Fingerprint works as before: pam_fprintd
   # is in the greetd stack and ReGreet shows its "place your finger" prompt.
   services.greetd = {
     enable = true;
     settings = {
-      # Straight into Hyprland at boot: the LUKS PIN typed a few seconds earlier is the
+      # Straight into niri at boot: the LUKS PIN typed a few seconds earlier is the
       # gate, and the user/session picker had nothing to pick (one user, one session).
       # ReGreet is still the default_session, so it is what comes up after a logout.
       # The GNOME keyring is not unlocked by this (no password at login); it asks the first
       # time something needs it.
       initial_session = {
-        # start-hyprland, not the bare binary: 0.56 sets the session up in the wrapper and
-        # shows a warning banner when started without it.
-        command = "${config.programs.hyprland.package}/bin/start-hyprland";
+        # niri-session, not the bare binary: it runs niri as a systemd user service and brings
+        # up graphical-session.target, which the bar, xremap, hypridle and the rest hang off.
+        command = "${config.programs.niri.package}/bin/niri-session";
         user = "gapul";
       };
       default_session.user = "greeter";
@@ -645,6 +679,7 @@ in
   # Enter a TTY from the "safe" specialisation in systemd-boot, then roll back to the
   # previous generation or fix the config. Does not affect the normal configuration.
   specialisation.safe.configuration = {
+    programs.niri.enable = lib.mkForce false;
     programs.hyprland.enable = lib.mkForce false;
     services.greetd.enable = lib.mkForce false;
     services.displayManager.regreet.enable = lib.mkForce false; # reads greetd's session user
@@ -899,6 +934,7 @@ in
       curl
       wget
       sbctl # generate/enroll/verify Secure Boot keys (used for lanzaboote operation)
+      bpftrace # DTrace-style tracing: which process wrote a file, sent a key, opened a socket
       keepAwake # `keep-awake [on [DURATION]|off|status]`, see the let block
 
       # Minimal set to make Hyprland usable from the start.
@@ -906,6 +942,9 @@ in
       # wayland.windowManager.hyprland and gradually removed from here.
       ghostty # main terminal (config symlinked in home/hyprland.nix)
       kitty # fallback opened by Hyprland's stock SUPER+Q (home's $terminal is ghostty)
+      # X11 apps under niri (T3 Code runs on X11, home/t3code-desktop.nix): niri starts it on
+      # demand when it finds it on PATH, and sets DISPLAY for its clients.
+      xwayland-satellite
       wofi # app launcher (bound to SUPER+R etc.)
       wl-clipboard # clipboard (wl-copy / wl-paste)
       cliphist # clipboard history (integrates with wofi)

@@ -26,6 +26,7 @@ let
     "wlogout/style.css"
     "mako/config"
     "hypr/hyprlock.conf"
+    "niri/config.kdl" # niri reloads it by itself when the link changes
     "wlr-which-key/config.yaml"
     "gtk-3.0/gtk.css"
     "gtk-4.0/gtk.css"

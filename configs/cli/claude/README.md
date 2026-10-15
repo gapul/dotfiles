@@ -33,6 +33,12 @@ are not managed either.
 
 ## On remote machines, merging only the managed keys
 
+Nix-managed Linux workstations keep a writable local `~/.config/claude/settings.json`.
+Home Manager merges `attribution.commit = ""` and `attribution.pr = ""` after linking
+files, without requiring the private `ai-agent-state` checkout. Other settings are
+preserved. This avoids a dangling settings symlink silently restoring Claude's
+default commit attribution when that checkout is absent.
+
 `scripts/merge-claude-settings.py` merges only the managed keys from `settings.remote.json`
 over whatever JSON the host already has. It is the same idea as adding a single line to
 `~/.bashrc` that sources `bashrc.remote`: anything unmanaged stays as the host had it.

@@ -97,6 +97,9 @@
       wifi = {
         ssid = "iPhone 9 Pro";
         mode = "infrastructure";
+        # 2 = disable. The hotspot drops clients that doze through its beacons; see the TLP
+        # WIFI_PWR_ON_BAT note in nixos-laptop.nix for why this alone is not enough on battery.
+        powersave = 2;
       };
       wifi-security = {
         key-mgmt = "wpa-psk";
