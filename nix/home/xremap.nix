@@ -7,55 +7,51 @@
 # remapper that sits between the keyboard and the compositor, reading evdev and writing to a uinput
 # device). The keyboard is used as a US one (kb_layout us in home/hyprland.nix, so the symbol keys
 # already read by US position) and the shortcuts are the apps' own Linux ones (Ctrl+C copies, ...).
-# The modifiers sit where the mac has them (configs/keyboard/karabiner/karabiner.ts), so one hand
-# shape works on both machines; the shortcuts stay the apps' own Linux ones. xremap does four things:
+# xremap does two things:
 #
-# 1. Lays out the bottom row by distance from Space, as on a MacBook (fn ctrl opt cmd [Space] cmd opt):
+# 1. Lays out the bottom row. Left to right:
 #
-#      physical:  Ctrl  Fn  Win   Alt  無変換  [Space] 変換    カタカナひらがな  Alt  Copilot
-#      logical:   Ctrl  Fn  Ctrl  Alt  Ctrl_R [Space] Ctrl_R  Alt             Alt  (Super prefix)
-#      mac:             fn  ctrl  opt  cmd    [Space] cmd     opt
+#      physical:  Ctrl   Fn  Win   Alt  無変換 [Space] 変換  カタカナひらがな  Alt   Copilot
+#      logical:   Super  Fn  Ctrl  Win  Alt   [Space] Alt   Win             Ctrl  (Super prefix)
 #
-#    The keys next to Space are Ctrl, where the mac has Cmd, so Ctrl+C / Ctrl+V / Ctrl+T ... are
-#    pressed with the same thumb as Cmd+C / Cmd+V / Cmd+T. They are the right Ctrl, which lets the
-#    keymap below tell the thumb (Cmd) from the left Ctrl / Win (the mac's Control). ¥ (next to
-#    Backspace) is backslash, where a US board has it; ろ (left of the right Shift) has no US
-#    counterpart and is left as it is (xkb gives it no symbol). fcitx5's trigger is Ctrl+Space, on
-#    Win+Space like the mac's Control+Space; SKK's own mode keys are letters.
+#    Ctrl / Win / Alt sit next to Space in the US order on both sides, with Super (the window manager's key) at the two ends. ¥
+#    (next to Backspace) is backslash, where a US board has it; ろ (left of the right Shift) has no US
+#    counterpart and is left as it is (xkb gives it no symbol). fcitx5 does not use any of these keys
+#    (its trigger is Ctrl+Space); SKK's own mode keys are letters.
 #
-# 2. Puts Super, the window manager's modifier (home/niri.nix, home/hyprland.nix), on Caps Lock, where
-#    the mac has Hyper (Cmd+Ctrl+Opt) from Karabiner, so the window-manager keys match OmniWM's.
+# 2. Puts Super, the window manager's modifier (home/niri.nix, home/hyprland.nix), where the mac has
+#    Hyper from Karabiner (configs/keyboard/karabiner/karabiner.ts). It used to be Hyper here too
+#    (Super+Ctrl+Alt), to keep Super+key free for the apps; Linux apps barely use Super, so the
+#    window manager has it now and niri's defaults (mouse drag on Mod) line up.
 #
-#      - Caps Lock is Super. Before, it was the physical left Ctrl, and before that Space held; a
-#        dual-role Space turned every slow or overlapping Space into a window-manager shortcut.
+#      - The physical left Ctrl is Super.
+#      - Space is only Space. Held, it used to be Super as well (tapped, Space), and was dropped:
+#        a dual-role key turns every slow or overlapping Space into a window-manager shortcut.
 #      - The Copilot key is a prefix: press it, then within copilotTimeout press a key, and Super+<key>
 #        (or Super+Shift+<key>) is sent. The firmware sends Copilot as the chord LeftMeta+LeftShift+F23,
 #        pressed and released in the same instant no matter how long the key is held (kernel 6.18
 #        decodes the F23), so it cannot be a held modifier, only a prefix. Nothing happens if no key
 #        follows.
 #
-# 3. Gives the thumb Ctrl the two mac meanings Linux has on another key:
-#
-#      - thumb+Space is Super+Space, the launcher, like Cmd+Space (a plain Ctrl+Space toggles fcitx5);
-#      - in terminals, thumb+C / thumb+V copy and paste (Ctrl+Shift+C / V), like Cmd+C / Cmd+V, while
-#        the left Ctrl still sends Ctrl+C (interrupt) and Ctrl+V (Neovim's block selection).
-#
-#    Nothing else is translated. An earlier version re-rolled every Cmd+key per application (and
-#    Ctrl+A/E/... as text-editing keys outside terminals); that needed upkeep for each app and was
-#    dropped. Cmd+arrow (line start / end) and Opt+arrow (word) are not carried over.
-#
-# 4. Keeps games playable: Caps Lock is a plain Ctrl (xkb's ctrl:nocaps, below) instead of Super
+# 3. Keeps games playable. A game needs left Ctrl held down (crouch), and as Super it would reach the
+#    game as the window manager's key instead. So the left Ctrl modmap is off
 #
 #      - in game windows (Steam games are the class steam_app_<id>; gamescope is the compositor they run
 #        inside, also as the Steam Deck-style session), and
 #      - in "game" mode, toggled by Copilot then G for games xremap cannot recognise, with a mako
 #        notification each way. Copilot stays a Super prefix in game mode, so the window manager is
-#        still reachable.
+#        still reachable; only left Ctrl is plain.
 #
 #    The bottom-row modmap stays on in both cases, so the row does not change meaning mid-game.
 #
-# Caps Lock as Ctrl where xremap does not run (greeter, TTYs, games) is xkb's job (ctrl:nocaps in
-# home/hyprland.nix, home/niri.nix and hosts/nixos-laptop.nix); xremap reads the key before xkb.
+# Caps Lock as Ctrl is xkb's job (ctrl:nocaps in home/hyprland.nix and hosts/nixos-laptop.nix).
+#
+# An earlier version re-rolled the modifier row mac-style (無変換/変換 as Cmd, Cmd+key sent as Ctrl+key,
+# Ctrl+A/E/... as text-editing keys outside terminals). Linux apps have no Cmd/Ctrl split, so that
+# translation had to be maintained per application; it was dropped in favour of the apps' own keys.
+#
+# A later layout put Super on Caps Lock and Ctrl on the keys next to Space (0a5377a0, where the mac
+# has Hyper and Cmd); on 2026-10-15 the laptop went back to this one.
 let
   wmKey = "Super_L";
 
@@ -86,10 +82,7 @@ let
   # How long after pressing Copilot the next key is still taken as Super+key.
   copilotTimeout = 1500;
 
-  # Terminal window classes, where Ctrl+C is an interrupt rather than copy.
-  terminals = [ "com.mitchellh.ghostty" ];
-
-  # Window classes where Caps Lock stays a plain Ctrl (xremap --list-windows prints the class).
+  # Window classes that get the plain left Ctrl (xremap --list-windows prints the class).
   games = [
     "/^steam_app_/"
     "gamescope"
@@ -138,40 +131,30 @@ let
         name = "bottom row";
         remap = {
           Super_L = "Control_L";
-          Muhenkan = "Control_R";
-          Henkan = "Control_R";
-          Katakanahiragana = "Alt_R";
+          Alt_L = "Super_L";
+          Muhenkan = "Alt_L";
+          Henkan = "Alt_R";
+          Katakanahiragana = "Super_R";
+          Alt_R = "Control_R";
           Yen = "backslash";
         };
       }
       {
-        name = "Super on Caps Lock (not in games)";
+        name = "Super on left Ctrl (not in games)";
         mode = "default";
         application.not = games;
-        remap.CapsLock = wmKey;
+        remap.Control_L = wmKey;
       }
     ];
 
     keymap = [
-      {
-        name = "Thumb Ctrl+Space is the launcher, like Cmd+Space";
-        remap."Ctrl_R-space" = "Super-space";
-      }
-      {
-        name = "Thumb Ctrl+C / V copy and paste in terminals, like Cmd+C / V";
-        application.only = terminals;
-        remap = {
-          "Ctrl_R-c" = "C-Shift-c";
-          "Ctrl_R-v" = "C-Shift-v";
-        };
-      }
       # Copilot arrives as Meta+Shift_L+F23 (see the header); after the modmap the Meta is Ctrl. The
       # nested remap is xremap's prefix-key form: it stays armed for timeout_millis and applies to the
       # next key only. exact_match so that the entry is not also taken for F23 with other modifiers.
       (copilotPrefix "default" "game" (
-        notify "Game mode on" "Caps Lock is a plain Ctrl. Copilot, G turns it off."
+        notify "Game mode on" "Left Ctrl is a plain Ctrl. Copilot, G turns it off."
       ))
-      (copilotPrefix "game" "default" (notify "Game mode off" "Caps Lock is Super again."))
+      (copilotPrefix "game" "default" (notify "Game mode off" "Left Ctrl is Super again."))
     ];
   };
 
@@ -194,7 +177,7 @@ in
   # It runs in the session rather than as root so that it can ask niri / Hyprland which window is focused.
   systemd.user.services.xremap = {
     Unit = {
-      Description = "xremap (mac-like bottom row; Super on Caps Lock and the Copilot key; game mode)";
+      Description = "xremap (bottom row layout; Super on left Ctrl and the Copilot key; game mode)";
       PartOf = [ "graphical-session.target" ];
       After = [ "graphical-session.target" ];
     };
