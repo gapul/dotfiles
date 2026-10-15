@@ -70,6 +70,9 @@ in
   # venvs/models/data are non-reproducible assets, so they're managed imperatively
   # (rebuild steps in configs/macmini/bootstrap.sh and README).
 
+  # Read by the patched `aac listen` (nix/pkgs/agent-access.nix): approval goes through Matrix.
+  home.sessionVariables.AAC_APPROVAL_COMMAND = "aac-matrix-approve";
+
   home.packages = [
     # T3 Code starts agent CLIs from its Aqua LaunchAgent instead of an interactive shell.
     # Keep Codex declarative on the remote host so it is both discoverable and available
@@ -128,6 +131,11 @@ in
       exec ${mvrxSsh} '~/.local/bin/t3 auth pairing create --ttl 5m --base-url https://t3-mvrx.gapul.net'
     '')
 
+    # aac-matrix-approve: `aac listen` runs this for each credential request (AAC_APPROVAL_COMMAND,
+    # set above) and sends the credential only on the approver's ✅ in the ask approvals room.
+    (pkgs.writers.writePython3Bin "aac-matrix-approve" { flakeIgnore = [ "E501" ]; } (
+      builtins.readFile ../../configs/aac/aac-matrix-approve.py
+    ))
     # The default for bare `claude` lives in claudeRemoteControlDefault in the let block. Putting it in
     # home.packages loses on PATH — on this machine ~/.local/bin (3rd) comes before
     # /etc/profiles/per-user/gapul/bin (7th), so the real ~/.local/bin/claude shadows the wrapper and it

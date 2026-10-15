@@ -77,6 +77,7 @@ in
     git-wtpr # `git wtpr <PR number|URL>` moves to a PR-dedicated worktree
     trash-cli # route git-wt deletions through the trash
     (callPackage ../../pkgs/tuicr.nix { }) # review AI-generated diffs in a PR-style UI
+    (callPackage ../../pkgs/agent-access.nix { }) # aac: inject one approved Bitwarden credential into an agent's command
     ghq # repo clone management
     git-annex # content-addressed large files in git (fonts / assets; see homelab/git-annex.nix)
     lazyjj # jujutsu TUI

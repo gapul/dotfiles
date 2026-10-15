@@ -1,0 +1,166 @@
+diff --git a/crates/ap-cli/src/command/listen.rs b/crates/ap-cli/src/command/listen.rs
+index 1c245ca..d7743d8 100644
+--- a/crates/ap-cli/src/command/listen.rs
++++ b/crates/ap-cli/src/command/listen.rs
+@@ -209,6 +209,48 @@ fn apply_status_spans(app: &mut App, name: &str, status: &ProviderStatus) {
+     }
+ }
+ 
++/// Answer a pending credential request (keyboard or approval command).
++fn resolve_credential(
++    app: &mut App,
++    old_phase: Phase,
++    approval: &CredentialApproval,
++    approval_cache: &mut ApprovalCache,
++) {
++    let Phase::CredentialApproval { query, credential, identity, reply } = old_phase else {
++        return;
++    };
++    let label = credential.domain.clone().unwrap_or_else(|| query.to_string());
++    let cred_id = credential.credential_id.clone();
++    if matches!(approval, CredentialApproval::Deny) {
++        let _ = reply.send(CredentialRequestReply {
++            approved: false,
++            credential: None,
++            credential_id: cred_id,
++        });
++        app.push_msg(MessageKind::Error, format!("Credential denied for {label}"));
++    } else {
++        if let CredentialApproval::AutoApprove { minutes } = approval {
++            let mins = *minutes;
++            approval_cache.approve(identity, &query, mins);
++            app.push_msg(MessageKind::Success, format!("Credential sent for {label} (auto-approving for {mins}m)"));
++        } else {
++            app.push_msg(MessageKind::Success, format!("Credential sent for {label}"));
++        }
++        let _ = reply.send(CredentialRequestReply {
++            approved: true,
++            credential: Some(credential),
++            credential_id: cred_id,
++        });
++    }
++}
++
++fn external_approval_footer() -> Line<'static> {
++    Line::from(Span::styled(
++        " Waiting for the approval command — [n] deny",
++        Style::default().fg(Color::Yellow),
++    ))
++}
++
+ /// Reload the session list from disk (the client may have updated it).
+ async fn reload_connections() -> Vec<ConnectionInfo> {
+     match FileConnectionCache::load_or_create("user_client") {
+@@ -309,6 +351,15 @@ async fn run_event_loop(
+ ) -> Result<EventLoopExit> {
+     let mut phase = Phase::Idle;
+ 
++    // AAC_APPROVAL_COMMAND (local patch): when set, a credential request is approved by running
++    // this command instead of by keyboard. Exit 0 approves; anything else, including a failure to
++    // start it, denies. Keyboard [y]/[a] are ignored so that anything able to type into this
++    // terminal (tmux send-keys from an agent) cannot approve; [n] still denies.
++    let approval_cmd = std::env::var_os("AAC_APPROVAL_COMMAND").filter(|c| !c.is_empty());
++    let (approval_tx, mut approval_rx) = mpsc::unbounded_channel::<(u64, bool)>();
++    let mut approval_seq: u64 = 0;
++    let mut approval_prompt = String::new();
++
+     // Seed session info panel for this iteration
+     app.set_connection_panel(connection_info_messages(sessions, None));
+     app.enter_idle(idle_footer(), IDLE_COMMANDS);
+@@ -421,34 +472,21 @@ async fn run_event_loop(
+                                     app.enter_idle(idle_footer(), IDLE_COMMANDS);
+                                 }
+ 
+-                                // Credential approval
++                                // Credential approval: keyboard approve is off while an approval command is set
++                                (Phase::CredentialApproval { .. }, AppAction::CredentialConfirmed(approval))
++                                    if approval_cmd.is_some() && !matches!(approval, CredentialApproval::Deny) =>
++                                {
++                                    app.push_msg(MessageKind::Warning, "Keyboard approval is off — approve through the approval command, or [n] to deny");
++                                    app.set_mode(Mode::CredentialConfirm {
++                                        title: approval_prompt.clone(),
++                                        description: Line::from(""),
++                                        auto_approve_minutes: 10,
++                                    });
++                                    app.footer = external_approval_footer();
++                                }
+                                 (Phase::CredentialApproval { .. }, AppAction::CredentialConfirmed(approval)) => {
+                                     let old_phase = std::mem::replace(&mut phase, Phase::Idle);
+-                                    if let Phase::CredentialApproval { query, credential, identity, reply } = old_phase {
+-                                        let label = credential.domain.clone().unwrap_or_else(|| query.to_string());
+-                                        let cred_id = credential.credential_id.clone();
+-                                        if matches!(approval, CredentialApproval::Deny) {
+-                                            let _ = reply.send(CredentialRequestReply {
+-                                                approved: false,
+-                                                credential: None,
+-                                                credential_id: cred_id,
+-                                            });
+-                                            app.push_msg(MessageKind::Error, format!("Credential denied for {label}"));
+-                                        } else {
+-                                            if let CredentialApproval::AutoApprove { minutes } = approval {
+-                                                let mins = *minutes;
+-                                                approval_cache.approve(identity, &query, mins);
+-                                                app.push_msg(MessageKind::Success, format!("Credential sent for {label} (auto-approving for {mins}m)"));
+-                                            } else {
+-                                                app.push_msg(MessageKind::Success, format!("Credential sent for {label}"));
+-                                            }
+-                                            let _ = reply.send(CredentialRequestReply {
+-                                                approved: true,
+-                                                credential: Some(credential),
+-                                                credential_id: cred_id,
+-                                            });
+-                                        }
+-                                    }
++                                    resolve_credential(app, old_phase, approval, approval_cache);
+                                     app.enter_idle(idle_footer(), IDLE_COMMANDS);
+                                 }
+ 
+@@ -625,6 +663,31 @@ async fn run_event_loop(
+                                                 Style::default().fg(Color::Yellow),
+                                             )
+                                         );
++                                        approval_prompt = format!("Send credential for {domain} to {device_label}?");
++                                        if let Some(cmd) = approval_cmd.clone() {
++                                            approval_seq += 1;
++                                            let seq = approval_seq;
++                                            let tx = approval_tx.clone();
++                                            let username = match &phase {
++                                                Phase::CredentialApproval { credential, .. } => credential.username.clone().unwrap_or_default(),
++                                                _ => String::new(),
++                                            };
++                                            let (domain, device) = (domain.clone(), device_label.clone());
++                                            tokio::task::spawn_blocking(move || {
++                                                // stdio is detached: the TUI owns the terminal.
++                                                let approved = std::process::Command::new(&cmd)
++                                                    .env("AAC_DOMAIN", &domain)
++                                                    .env("AAC_DEVICE", &device)
++                                                    .env("AAC_USERNAME", &username)
++                                                    .stdin(std::process::Stdio::null())
++                                                    .stdout(std::process::Stdio::null())
++                                                    .stderr(std::process::Stdio::null())
++                                                    .status()
++                                                    .is_ok_and(|s| s.success());
++                                                let _ = tx.send((seq, approved));
++                                            });
++                                            app.footer = external_approval_footer();
++                                        }
+                                     }
+                                     result @ (LookupResult::NotReady { .. } | LookupResult::NotFound) => {
+                                         let label = query.to_string();
+@@ -650,6 +713,16 @@ async fn run_event_loop(
+                 }
+             }
+ 
++            // Approval command finished; a stale result (already answered by [n]) is ignored
++            Some((seq, approved)) = approval_rx.recv() => {
++                if seq == approval_seq && matches!(phase, Phase::CredentialApproval { .. }) {
++                    let old_phase = std::mem::replace(&mut phase, Phase::Idle);
++                    let approval = if approved { CredentialApproval::Approve } else { CredentialApproval::Deny };
++                    resolve_credential(app, old_phase, &approval, approval_cache);
++                    app.enter_idle(idle_footer(), IDLE_COMMANDS);
++                }
++            }
++
+             // Handle tracing log entries routed into the TUI
+             log_entry = async {
+                 match log_rx.as_mut() {
