@@ -523,7 +523,7 @@ let
       };
     };
     clock = {
-      format = "{:%m/%d %H:%M}";
+      format = "{:%Y-%m-%d %H:%M}";
       tooltip-format = "{:%Y-%m-%d %A}";
       on-click = tui "Calendar" (lib.getExe' pkgs.calcurse "calcurse");
     };
