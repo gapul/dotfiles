@@ -41,6 +41,7 @@
     gptfdisk
     jq
     neovim
+    nixos-facter # hardware report (facter.json) for hardware.facter.reportPath
     parted
     ripgrep
     sbctl
