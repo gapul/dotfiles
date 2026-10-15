@@ -362,7 +362,6 @@
             ./home/tmp-cleanup.nix # auto-clean ~/tmp scratch after 7 days (shared with macminiHeadless)
             ./home/nix-gc-tcc.nix # stable copy of signed nix used by the root GC daemon (hosts/darwin-common.nix)
             ./home/git-hooks.nix # git hook that auto-rebuilds on main updates (main tree only)
-            ./home/mail-app.nix # keep Mail.app running in the background so native verification-code AutoFill works
             ./home/obsidian-caldav.nix # two-way sync of Obsidian tasks with the Radicale task lists
             ./home/lifelog-pull.nix # bring the daily lifelog notes macmini writes into the vault
           ]
