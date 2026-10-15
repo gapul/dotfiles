@@ -187,6 +187,7 @@ in
     enable = true;
     defaultApplications = {
       "application/pdf" = "org.pwmt.zathura.desktop";
+      "application/epub+zip" = "com.github.johnfactotum.Foliate.desktop";
       "image/png" = "swayimg.desktop";
       "image/jpeg" = "swayimg.desktop";
       "image/webp" = "swayimg.desktop";
@@ -318,6 +319,7 @@ in
 
     # ─── Utilities ───
     zathura # Keyboard-driven PDF viewer, also used by Yazi.
+    foliate # EPUB reader; its OPDS catalog pulls books from Kavita for offline reading.
     swayimg # Wayland image viewer, also used by Yazi.
     imhex # hex editor
 
