@@ -529,7 +529,9 @@
           gitleaks = {
             enable = true;
             name = "gitleaks";
-            entry = "${pkgs.gitleaks}/bin/gitleaks protect --staged --no-banner --redact";
+            # `protect` is deprecated and broken in 8.30 (it adds --pre-commit and then rejects it);
+            # `git --pre-commit --staged` is its replacement since 8.19.
+            entry = "${pkgs.gitleaks}/bin/gitleaks git --pre-commit --staged --no-banner --redact";
             pass_filenames = false;
           };
         };
