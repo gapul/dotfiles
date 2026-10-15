@@ -12,24 +12,19 @@ scrolloff      = 5 # カーソル上下に5行の余白
 #     (yazi は "linux" 限定値に対応。"unix" は mac も含むので linux 専用に使えない)
 #   - Windows の run は cmd.exe /C 実行。`start "" "$@"` で既定アプリ起動、
 #     `tar -xf` は Windows 10+ 同梱の bsdtar.exe (zip/tar/gz/bz2 対応)。
-#   - 見る系の Enter は OS を問わず configs/bin/open-on-mac を通す。ssh 先が Linux とは限らず
-#     (ヘッドレスな macmini に入ることもある)、遠いかどうかは OS では決まらないため。
-#     スクリプトが SSH_CONNECTION と母艦へのトンネルを見て、遠ければファイルごと母艦へ渡し、
-#     手元なら `--` の前に書いたコマンドでその場で開く。`--` を省くと mac は open、他は xdg-open。
-#     nvim / vd / unzip のように端末で完結するものは、その場で開くのが正しいので通さない。
-#     `O` で選ぶだけの候補 (Photoshop や Inkscape など) は手元前提のまま素通し。
+# Files open on the machine running Yazi.
 video = [
-  { run = 'open-on-mac mpv -- "$@"', desc = "Open in mpv", orphan = true, for = "unix" },
-  { run = 'set "OPEN_ON_MAC_LOCAL=mpv" && open-on-mac.cmd "$@"', desc = "Open in mpv", orphan = true, for = "windows" },
+  { run = 'mpv "$@"', desc = "Open in mpv", orphan = true, for = "unix" },
+  { run = 'mpv "$@"', desc = "Open in mpv", orphan = true, for = "windows" },
   { run = 'start "" "$@"', desc = "Open with default", orphan = true, for = "windows" },
 ]
 audio = [
-  { run = 'open-on-mac mpv -- "$@"', desc = "Play in mpv", orphan = true, for = "unix" },
-  { run = 'set "OPEN_ON_MAC_LOCAL=mpv" && open-on-mac.cmd "$@"', desc = "Play in mpv", orphan = true, for = "windows" },
+  { run = 'mpv "$@"', desc = "Play in mpv", orphan = true, for = "unix" },
+  { run = 'mpv "$@"', desc = "Play in mpv", orphan = true, for = "windows" },
   { run = 'start "" "$@"', desc = "Play with default", orphan = true, for = "windows" },
 ]
 image = [
-  { run = 'open-on-mac open -a qView -- "$@"', desc = "Open in qView", orphan = true, for = "macos" },
+  { run = 'open -a qView "$@"', desc = "Open in qView", orphan = true, for = "macos" },
   { run = 'qlmanage -p "$@"', desc = "Quick Look", orphan = true, for = "macos" },
   { run = 'open -a "Preview" "$@"', desc = "Open in Preview", orphan = true, for = "macos" },
   # Edit paths (surfaced via `O`; Enter stays on the viewer above).
@@ -37,131 +32,134 @@ image = [
   { run = 'open -a "GIMP" "$@"', desc = "Edit in GIMP", orphan = true, for = "macos" },
   { run = 'open -a "krita" "$@"', desc = "Edit in Krita", orphan = true, for = "macos" },
   { run = 'open -a "Affinity" "$@"', desc = "Edit in Affinity", orphan = true, for = "macos" },
-  { run = 'open-on-mac -- "$@"', desc = "Open on client", orphan = true, for = "linux" },
+  { run = 'swayimg "$@"', desc = "View in swayimg", orphan = true, for = "linux" },
   { run = 'gimp "$@"', desc = "Edit in GIMP", orphan = true, for = "linux" },
   { run = 'krita "$@"', desc = "Edit in Krita", orphan = true, for = "linux" },
   # Windows: qView (Mac と共通)、PicView、ImageGlass、最後に関連付け fallback
-  { run = 'set "OPEN_ON_MAC_LOCAL=qview" && open-on-mac.cmd "$@"', desc = "Open in qView", orphan = true, for = "windows" },
+  { run = 'qview "$@"', desc = "Open in qView", orphan = true, for = "windows" },
   { run = 'PicView "$@"', desc = "Open in PicView", orphan = true, for = "windows" },
   { run = 'ImageGlass "$@"', desc = "Open in ImageGlass", orphan = true, for = "windows" },
   { run = 'start "" "$@"', desc = "Open with default", orphan = true, for = "windows" },
 ]
 office = [
-  { run = 'open-on-mac libreoffice -- "$@"', desc = "Open on client", orphan = true, for = "linux" },
+  { run = 'libreoffice "$@"', desc = "Open locally", orphan = true, for = "linux" },
   # macOS: default to Quick Look (fast native preview). `O` (open interactively) also offers
   # "Reveal in Finder" (hit Space there for the polished native Quick Look) and LibreOffice.
-  { run = 'open-on-mac qlmanage -p -- "$@"', desc = "Quick Look (preview)", orphan = true, for = "macos" },
+  { run = 'qlmanage -p "$@"', desc = "Quick Look (preview)", orphan = true, for = "macos" },
   { run = 'open -R "$@"', desc = "Reveal in Finder", orphan = true, for = "macos" },
   { run = 'open -a "LibreOffice" "$@"', desc = "Open in LibreOffice", orphan = true, for = "macos" },
   { run = 'libreoffice "$@"', desc = "Open in LibreOffice", orphan = true, for = "linux" },
   # Windows: LibreOffice (soffice) → MS Office 関連付け fallback
-  { run = 'set "OPEN_ON_MAC_LOCAL=soffice" && open-on-mac.cmd "$@"', desc = "Open in LibreOffice", orphan = true, for = "windows" },
+  { run = 'soffice "$@"', desc = "Open in LibreOffice", orphan = true, for = "windows" },
   { run = 'start "" "$@"', desc = "Open with default (Word/Excel/PPT)", orphan = true, for = "windows" },
 ]
 pdf = [
-  { run = 'open-on-mac zathura -- "$@"', desc = "Open on client", orphan = true, for = "linux" },
-  { run = 'open-on-mac open -a sioyek -- "$@"', desc = "Open in Sioyek", orphan = true, for = "macos" },
+  { run = 'zathura "$@"', desc = "Open locally", orphan = true, for = "linux" },
+  { run = 'open -a sioyek "$@"', desc = "Open in Sioyek", orphan = true, for = "macos" },
   { run = 'open -a "Preview" "$@"', desc = "Open in Preview", orphan = true, for = "macos" },
   { run = 'zathura "$@"', desc = "Open in Zathura", orphan = true, for = "linux" },
   # Windows: Sioyek (vim 風 keybind、Mac と共通) → 関連付け fallback
-  { run = 'set "OPEN_ON_MAC_LOCAL=sioyek" && open-on-mac.cmd "$@"', desc = "Open in Sioyek (vim keybind)", orphan = true, for = "windows" },
+  { run = 'sioyek "$@"', desc = "Open in Sioyek (vim keybind)", orphan = true, for = "windows" },
   { run = 'start "" "$@"', desc = "Open with default", orphan = true, for = "windows" },
 ]
 edit = [
-  { run = 'nvim "$@"', desc = "Edit in Neovim", block = true, for = "unix" },
-  { run = 'nvim "$@"', desc = "Edit in Neovim", block = true, for = "windows" },
+  { run = 'nvim %s', desc = "Edit in Neovim", block = true, for = "unix" },
+  { run = 'nvim %s', desc = "Edit in Neovim", block = true, for = "windows" },
 ]
 # Dual-purpose text formats (view OR edit). Enter defaults to editing (nvim); `O` (open
 # interactively) also offers a rendered view. Same pattern as the office opener above.
 html = [
-  { run = 'nvim "$@"', desc = "Edit in Neovim", block = true, for = "unix" },
+  { run = 'nvim %s', desc = "Edit in Neovim", block = true, for = "unix" },
   { run = 'open "$@"', desc = "View in browser", orphan = true, for = "macos" },
-  { run = 'open-on-mac -- "$@"', desc = "Open on client", orphan = true, for = "linux" },
-  { run = 'nvim "$@"', desc = "Edit in Neovim", block = true, for = "windows" },
+  { run = 'xdg-open "$1"', desc = "Open locally", orphan = true, for = "linux" },
+  { run = 'nvim %s', desc = "Edit in Neovim", block = true, for = "windows" },
   { run = 'start "" "$@"', desc = "View in browser", orphan = true, for = "windows" },
 ]
 markdown = [
-  { run = 'nvim "$@"', desc = "Edit in Neovim", block = true, for = "unix" },
+  { run = 'nvim %s', desc = "Edit in Neovim", block = true, for = "unix" },
   { run = 'glow -p "$@"', desc = "Render with glow", block = true, for = "unix" },
   { run = 'qlmanage -p "$@" >/dev/null 2>&1', desc = "Quick Look (rendered)", orphan = true, for = "macos" },
-  { run = 'nvim "$@"', desc = "Edit in Neovim", block = true, for = "windows" },
+  { run = 'nvim %s', desc = "Edit in Neovim", block = true, for = "windows" },
   { run = 'start "" "$@"', desc = "Open with default", orphan = true, for = "windows" },
 ]
 # SVG is both a viewable image and editable XML. Enter keeps viewing (image viewer, as before);
 # `O` adds editing the source (nvim) and the vector (Inkscape).
 svg = [
-  { run = 'open-on-mac open -a qView -- "$@"', desc = "View in qView", orphan = true, for = "macos" },
-  { run = 'nvim "$@"', desc = "Edit source in Neovim", block = true, for = "unix" },
+  { run = 'swayimg "$@"', desc = "View in swayimg", orphan = true, for = "linux" },
+  { run = 'open -a qView "$@"', desc = "View in qView", orphan = true, for = "macos" },
+  { run = 'nvim %s', desc = "Edit source in Neovim", block = true, for = "unix" },
   { run = 'open -b com.adobe.illustrator "$@"', desc = "Edit in Illustrator", orphan = true, for = "macos" },
   { run = 'open -a "Inkscape" "$@"', desc = "Edit in Inkscape", orphan = true, for = "macos" },
-  { run = 'open-on-mac -- "$@"', desc = "Open on client", orphan = true, for = "linux" },
+  { run = 'xdg-open "$1"', desc = "Open locally", orphan = true, for = "linux" },
   { run = 'inkscape "$@"', desc = "Edit in Inkscape", orphan = true, for = "linux" },
-  { run = 'open-on-mac.cmd "$@"', desc = "View with default", orphan = true, for = "windows" },
-  { run = 'nvim "$@"', desc = "Edit source in Neovim", block = true, for = "windows" },
+  { run = 'start "" "$@"', desc = "View with default", orphan = true, for = "windows" },
+  { run = 'nvim %s', desc = "Edit source in Neovim", block = true, for = "windows" },
 ]
 # CSV/TSV: tabular data. Enter opens VisiData (view AND edit as a table); `O` also offers
 # raw editing (nvim), a spreadsheet (LibreOffice), and Quick Look.
 csv = [
   { run = 'vd "$@"', desc = "Table view/edit (VisiData)", block = true, for = "unix" },
-  { run = 'nvim "$@"', desc = "Edit raw in Neovim", block = true, for = "unix" },
+  { run = 'nvim %s', desc = "Edit raw in Neovim", block = true, for = "unix" },
   { run = 'open -a "LibreOffice" "$@"', desc = "Open in LibreOffice", orphan = true, for = "macos" },
   { run = 'qlmanage -p "$@" >/dev/null 2>&1', desc = "Quick Look", orphan = true, for = "macos" },
   { run = 'libreoffice "$@"', desc = "Open in LibreOffice", orphan = true, for = "linux" },
   { run = 'vd "$@"', desc = "Table view/edit (VisiData)", block = true, for = "windows" },
-  { run = 'nvim "$@"', desc = "Edit raw in Neovim", block = true, for = "windows" },
+  { run = 'nvim %s', desc = "Edit raw in Neovim", block = true, for = "windows" },
 ]
 # 3D models: Enter previews (macOS Quick Look renders STL/OBJ via SceneKit); `O` opens the
 # editors/slicers — Blender for modelling, OrcaSlicer/Bambu Studio for 3D printing.
 model3d = [
-  { run = 'open-on-mac blender -- "$@"', desc = "Open on client", orphan = true, for = "linux" },
-  { run = 'open-on-mac qlmanage -p -- "$@"', desc = "Quick Look (preview)", orphan = true, for = "macos" },
+  { run = 'blender "$@"', desc = "Open locally", orphan = true, for = "linux" },
+  { run = 'qlmanage -p "$@"', desc = "Quick Look (preview)", orphan = true, for = "macos" },
   { run = 'open -a "Blender" "$@"', desc = "Edit in Blender", orphan = true, for = "macos" },
   { run = 'open -a "OrcaSlicer" "$@"', desc = "Slice in OrcaSlicer", orphan = true, for = "macos" },
   { run = 'open -a "BambuStudio" "$@"', desc = "Slice in Bambu Studio", orphan = true, for = "macos" },
   { run = 'blender "$@"', desc = "Edit in Blender", orphan = true, for = "linux" },
-  { run = 'open-on-mac.cmd "$@"', desc = "Open with default", orphan = true, for = "windows" },
+  { run = 'start "" "$@"', desc = "Open with default", orphan = true, for = "windows" },
 ]
 # Fonts: Enter shows a specimen (FontGoggles); `O` adds Font Book and editing in FontForge.
 # The Mac has only the FontForge CLI (its GUI build is x86_64-only), so editing is Linux-only.
 font = [
-  { run = 'open-on-mac open -a "FontGoggles" -- "$@"', desc = "View in FontGoggles", orphan = true, for = "macos" },
+  { run = 'open -a "FontGoggles" "$@"', desc = "View in FontGoggles", orphan = true, for = "macos" },
   { run = 'open -a "Font Book" "$@"', desc = "View in Font Book", orphan = true, for = "macos" },
   { run = 'fontforge "$@"', desc = "Edit in FontForge", orphan = true, for = "linux" },
-  { run = 'open-on-mac.cmd "$@"', desc = "Open with default", orphan = true, for = "windows" },
+  { run = 'start "" "$@"', desc = "Open with default", orphan = true, for = "windows" },
 ]
 # Adobe-native documents: Enter opens the native app; `O` adds a quick preview / alternatives.
 # open -b <bundle id> is used because the .app names carry a year (e.g. "Adobe Photoshop 2026").
 psd = [
-  { run = 'open-on-mac gimp -- "$@"', desc = "Open on client", orphan = true, for = "linux" },
-  { run = 'open-on-mac open -b com.adobe.Photoshop -- "$@"', desc = "Edit in Photoshop", orphan = true, for = "macos" },
+  { run = 'gimp "$@"', desc = "Open locally", orphan = true, for = "linux" },
+  { run = 'open -b com.adobe.Photoshop "$@"', desc = "Edit in Photoshop", orphan = true, for = "macos" },
   { run = 'qlmanage -p "$@" >/dev/null 2>&1', desc = "Quick Look", orphan = true, for = "macos" },
   { run = 'open -a "GIMP" "$@"', desc = "Edit in GIMP", orphan = true, for = "macos" },
   { run = 'open -a "krita" "$@"', desc = "Edit in Krita", orphan = true, for = "macos" },
   { run = 'gimp "$@"', desc = "Edit in GIMP", orphan = true, for = "linux" },
 ]
 ai = [
-  { run = 'open-on-mac inkscape -- "$@"', desc = "Open on client", orphan = true, for = "linux" },
-  { run = 'open-on-mac open -b com.adobe.illustrator -- "$@"', desc = "Edit in Illustrator", orphan = true, for = "macos" },
+  { run = 'inkscape "$@"', desc = "Open locally", orphan = true, for = "linux" },
+  { run = 'open -b com.adobe.illustrator "$@"', desc = "Edit in Illustrator", orphan = true, for = "macos" },
   { run = 'qlmanage -p "$@" >/dev/null 2>&1', desc = "Quick Look", orphan = true, for = "macos" },
   { run = 'open -a "Inkscape" "$@"', desc = "Edit in Inkscape", orphan = true, for = "macos" },
   { run = 'inkscape "$@"', desc = "Edit in Inkscape", orphan = true, for = "linux" },
 ]
 indd = [
-  { run = 'open-on-mac -- "$@"', desc = "Open on client", orphan = true, for = "linux" },
-  { run = 'open-on-mac open -b com.adobe.InDesign -- "$@"', desc = "Edit in InDesign", orphan = true, for = "macos" },
+  { run = 'xdg-open "$1"', desc = "Open locally", orphan = true, for = "linux" },
+  { run = 'open -b com.adobe.InDesign "$@"', desc = "Edit in InDesign", orphan = true, for = "macos" },
   { run = 'qlmanage -p "$@" >/dev/null 2>&1', desc = "Quick Look", orphan = true, for = "macos" },
 ]
+# Linux: detect archive formats and prompt before overwriting existing files.
 extract = [
-  { run = 'unzip -o "$1" -d "$(dirname "$1")"', desc = "Extract zip here", for = "unix" },
-  { run = 'tar -xvf "$1" -C "$(dirname "$1")"', desc = "Extract tar here", for = "unix" },
+  { run = 'ouch decompress "$@"', desc = "Extract to folder (auto-detect format)", block = true, for = "linux" },
+  { run = 'unzip -o "$1" -d "$(dirname "$1")"', desc = "Extract zip here", for = "macos" },
+  { run = 'tar -xvf "$1" -C "$(dirname "$1")"', desc = "Extract tar here", for = "macos" },
   { run = 'open "$@"', desc = "Open with Archive Utility", orphan = true, for = "macos" },
-  # Windows: 7zip 優先 (rar/7z/zip 全部対応)、fallback で bsdtar (Win 10+ 標準)
   { run = '7z x "$1" -o"$(dirname "$1")" -y', desc = "Extract here (7-Zip)", for = "windows" },
   { run = 'tar -xf "$1"', desc = "Extract here (bsdtar)", for = "windows" },
 ]
 fallback = [
-  { run = 'open-on-mac -- "$@"', desc = "Open with the client default", orphan = true, for = "unix" },
-  { run = 'open-on-mac.cmd "$@"', desc = "Open with Windows default", orphan = true, for = "windows" },
+  { run = 'xdg-open "$1"', desc = "Open with default", orphan = true, for = "linux" },
+  { run = 'open "$@"', desc = "Open with default", orphan = true, for = "macos" },
+  { run = 'start "" "$@"', desc = "Open with Windows default", orphan = true, for = "windows" },
 ]
 # AirDrop the selected files (macOS only). Helper: configs/bin/airdrop (~/.local/bin, on PATH).
 # Only ever surfaced via `O` (open --interactive), never as the Enter default.
@@ -236,40 +234,3 @@ group = "git"
 url   = "*/"
 run   = "git"
 group = "git"
-
-# ─── プレビュー強化 (各ツールは home.packages / apps.json で導入) ───
-# シェルコマンドを previewer にするには piper プラグイン(`piper --`)経由が必須。
-# piper が sh -c で実行し、$w/$h(pane幅高さ)・$t(light/dark)を env、$1 をファイルパスとして渡す。
-# CLICOLOR_FORCE は yazi が CLI に渡す TTY を non-tty 化するため必要 (色を強制)。
-
-# Markdown を glow でレンダリング表示
-[[plugin.prepend_previewers]]
-url = "*.md"
-run  = 'piper -- CLICOLOR_FORCE=1 glow -w=$w "$1"'
-
-# JSON を jq で整形 + 色付け
-[[plugin.prepend_previewers]]
-url = "*.{json,jsonc}"
-run  = 'piper -- CLICOLOR_FORCE=1 jq -C . "$1"'
-
-# CSV/TSV を rich でテーブル表示
-[[plugin.prepend_previewers]]
-url = "*.{csv,tsv}"
-run  = 'piper -- rich "$1" --csv --force-terminal --width=$w'
-
-# 書庫の中身一覧を ouch で表示
-[[plugin.prepend_previewers]]
-mime = "application/{zip,gzip,x-tar,x-bzip2,x-xz,x-7z-compressed,x-rar,vnd.rar}"
-run  = 'piper -- ouch list "$1"'
-
-# 動画は ffmpegthumbnailer (yazi 内蔵 video previewer が自動使用。ルール不要)
-
-# 3D モデルを f3d でレンダリング (plugins/model.yazi)。previewer だけだとカーソルを
-# 合わせるまで走らないので preloader にも同じルールを入れる。
-[[plugin.prepend_previewers]]
-url = "*.{vrm,vrma,glb,gltf,obj,stl,ply,fbx,dae,3mf,off,usd,usda,usdc,usdz}"
-run  = "model"
-
-[[plugin.prepend_preloaders]]
-url = "*.{vrm,vrma,glb,gltf,obj,stl,ply,fbx,dae,3mf,off,usd,usda,usdc,usdz}"
-run  = "model"

@@ -7,6 +7,9 @@
 # Hyprland user config (Rick). Imported only on nixos-laptop.
 # The system side (hosts/nixos-laptop.nix) provides PAM/session for
 # programs.hyprland / hyprlock; this side manages appearance and keybinds.
+# niri is the default session now (home/niri.nix, imported below); Hyprland stays selectable
+# in the greeter. Everything here except wayland.windowManager.hyprland serves both sessions,
+# and the compositor-specific commands go through wm-session (lib/wm-session.nix).
 # Colors are shared via configs/theme/palettes.json (rose-pine) as SSO ([[theme]]).
 let
   # Hold a lock for the lifetime of drun so repeated gestures cannot stack windows.
@@ -31,6 +34,7 @@ let
       ${pkgs.wofi}/bin/wofi --show drun
   '';
   c = import ../lib/theme.nix; # c.base / c.text / c.iris ... (hex without leading #)
+  wmSession = "${import ../lib/wm-session.nix { inherit pkgs; }}/bin/wm-session";
   # An app icon for the bar: a sketchybar-app-font ligature, in that font (see the workspaces
   # module in programs.waybar below).
   appIcon = name: "<span font_family='sketchybar-app-font' size='large' rise='-3500'>${name}</span>";
@@ -75,17 +79,18 @@ let
     name = "rose-pine";
   };
 
-  # Hyper+/ : every keybind, searchable. Read from Hyprland itself (so it cannot go stale),
+  # Super+/ : every keybind, searchable. Read from Hyprland itself (so it cannot go stale),
   # with the modifier mask turned back into names, plus the few things xremap adds that
   # Hyprland cannot see.
   cheatsheet = pkgs.writeShellScript "keys-cheatsheet" ''
     {
       printf '%s\n' \
-        "Space (held)         Hyper" \
-        "left Ctrl            Hyper" \
-        "Copilot, then key    Hyper+key (within 1.5 s)" \
-        "Copilot, G           game mode on/off (Hyper off on Space and left Ctrl)" \
-        "Caps Lock            Ctrl" \
+        "Caps Lock            Super" \
+        "無変換 / 変換          Ctrl (where the mac has Cmd)" \
+        "無変換+Space          launcher, like Cmd+Space" \
+        "無変換+C / V (term)   copy / paste, like Cmd+C / V" \
+        "Copilot, then key    Super+key (within 1.5 s)" \
+        "Copilot, G           game mode on/off (Caps Lock back to Ctrl)" \
         ""
       ${pkgs.hyprland}/bin/hyprctl binds -j | ${pkgs.jq}/bin/jq -r '
         def mods: [
@@ -94,10 +99,8 @@ let
           (if .modmask / 8 % 2 >= 1 then "Alt" else empty end),
           (if .modmask / 1 % 2 >= 1 then "Shift" else empty end)
         ];
-        def modname: if (.modmask % 128 - .modmask % 1) >= 76 and (.modmask / 64 % 2 >= 1) and (.modmask / 4 % 2 >= 1) and (.modmask / 8 % 2 >= 1)
-          then (["Hyper"] + (if .modmask % 2 == 1 then ["Shift"] else [] end)) else mods end;
         .[] | select(.key != "") |
-        ((modname + [.key]) | join("+")) + "\t" + .dispatcher + (if .arg != "" then " " + .arg else "" end)
+        ((mods + [.key]) | join("+")) + "\t" + .dispatcher + (if .arg != "" then " " + .arg else "" end)
       ' | ${pkgs.coreutils}/bin/sort | ${pkgs.coreutils}/bin/expand -t 22
     } | ${pkgs.wofi}/bin/wofi --dmenu --prompt keys --width 760 --height 560 >/dev/null
   '';
@@ -198,10 +201,13 @@ let
     height = 30;
     margin-top = 6;
     spacing = 0;
+    # Both compositors' modules: waybar disables the ones whose compositor is not running.
     modules-left = [
       "custom/logo"
       "hyprland/workspaces"
+      "niri/workspaces"
       "hyprland/window"
+      "niri/window"
     ];
     modules-center = [ "clock" ];
     # Right, in the mac bar's order where it has the same things: guard, sleep inhibit,
@@ -302,6 +308,23 @@ let
         "class<pavucontrol|nm-connection-editor|blueman-manager|nwg-displays>" = appIcon ":gear:";
       };
     };
+    # niri's workspaces are per output and dynamic (there is always one empty one at the end),
+    # and the module cannot list the windows on each, so it is the number alone.
+    "niri/workspaces" = {
+      format = "{index}";
+    };
+    "niri/window" = {
+      format = "{app_id}";
+      max-length = 32;
+      separate-outputs = true;
+      rewrite = {
+        "com.mitchellh.ghostty" = "Ghostty";
+        "firefox.*" = "Firefox";
+        "com.t3tools.T3Code" = "T3 Code";
+        "google-chrome.*" = "Chrome";
+        "com.obsproject.Studio" = "OBS Studio";
+      };
+    };
     "hyprland/window" = {
       format = "{initialClass}";
       max-length = 32;
@@ -397,10 +420,14 @@ let
 in
 {
   imports = [
+    ./niri.nix
     ./wl-keyboard.nix
     ./waybar-appearance.nix
     ./desktop-appearance.nix
   ];
+  # For home/niri.nix, which binds the same scripts.
+  _module.args.desktopScripts = { inherit launcher settingsMenu screenshotRegion; };
+
   # Binaries referenced by the keybinds / exec-once below. Without these the rice
   # is inert: $mod+Return execs a ghostty that is not in the closure, and the
   # night-light / screenshot / clipboard binds silently do nothing.
@@ -467,9 +494,8 @@ in
     settings =
       let
         inherit (lib.generators) mkLuaInline;
-        # Hyper: Space held (and the Copilot key as a prefix), from xremap (home/xremap.nix).
-        # Not plain Super, so Super+key stays free for the apps, as on the mac
-        # (configs/keyboard/karabiner).
+        # Super, which xremap sends for Caps Lock and Copilot-then-key
+        # (home/xremap.nix). The same key as niri's Mod (home/niri.nix).
         key = k: mkLuaInline ''mod .. " + ${k}"'';
         shiftKey = k: mkLuaInline ''mod .. " + SHIFT + ${k}"'';
         exec = cmd: mkLuaInline "hl.dsp.exec_cmd(${builtins.toJSON cmd})";
@@ -488,7 +514,7 @@ in
         };
       in
       {
-        mod._var = "SUPER + CTRL + ALT";
+        mod._var = "SUPER";
         terminal._var = "ghostty";
         menu._var = "${launcher} toggle";
 
@@ -737,7 +763,7 @@ in
           (bindOpts "XF86AudioNext" (exec "playerctl next") { locked = true; })
           (bindOpts "XF86AudioPrev" (exec "playerctl previous") { locked = true; })
         ]
-        # Hyper+1..9,0 switch to workspaces 1..10; with Shift, move the window there.
+        # Super+1..9,0 switch to workspaces 1..10; with Shift, move the window there.
         ++ builtins.concatLists (
           builtins.genList (
             i:
@@ -865,7 +891,7 @@ in
       [
         (tile "lock" "Lock" "loginctl lock-session" "l")
         (tile "suspend" "Suspend" "systemctl suspend" "u")
-        (tile "logout" "Log out" "hyprctl dispatch exit" "e")
+        (tile "logout" "Log out" "${wmSession} exit" "e")
         (tile "reboot" "Reboot" "systemctl reboot" "r")
         (tile "shutdown" "Shut down" "systemctl poweroff" "s")
         (tile "hibernate" "Hibernate" "systemctl hibernate" "h")
@@ -997,7 +1023,7 @@ in
         before_sleep_cmd = "loginctl lock-session";
         # The wallpaper daemon came back from suspend without its buffers (bare screen until
         # something repainted); starting it afresh repaints within a second.
-        after_sleep_cmd = "hyprctl dispatch dpms on; systemctl --user try-restart awww.service";
+        after_sleep_cmd = "${wmSession} dpms on; systemctl --user try-restart awww.service";
       };
       listener = [
         {
@@ -1006,8 +1032,8 @@ in
         }
         {
           timeout = 360; # turn off screen after 6 minutes
-          on-timeout = "hyprctl dispatch dpms off";
-          on-resume = "hyprctl dispatch dpms on";
+          on-timeout = "${wmSession} dpms off";
+          on-resume = "${wmSession} dpms on";
         }
         {
           timeout = 900; # suspend after 15 minutes (battery protection, lid open and on battery)
@@ -1082,6 +1108,9 @@ in
         border-color = "#${c.love}";
         default-timeout = 0;
       };
+      # `makoctl mode -a do-not-disturb`: notifications are kept (makoctl history) but not
+      # shown. niri-events (home/niri.nix) turns it on while the screen is being cast.
+      "mode=do-not-disturb".invisible = 1;
     };
   };
 
