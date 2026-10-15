@@ -442,11 +442,11 @@ let
         read -r mode _ < /run/tlp/last_pwr 2>/dev/null || mode=0
         case "$mode" in 0) next=balanced ;; 1) next=power-saver ;; *) next=performance ;; esac
         /run/wrappers/bin/sudo ${pkgs.tlp}/bin/tlp "$next" >/dev/null
-        ${pkgs.procps}/bin/pkill -RTMIN+10 -x waybar
+        ${pkgs.procps}/bin/pkill -RTMIN+10 -x '\.?waybar(-wrapped)?'
       '';
       on-click-right = pkgs.writeShellScript "bar-power-auto" ''
         /run/wrappers/bin/sudo ${pkgs.tlp}/bin/tlp start >/dev/null
-        ${pkgs.procps}/bin/pkill -RTMIN+10 -x waybar
+        ${pkgs.procps}/bin/pkill -RTMIN+10 -x '\.?waybar(-wrapped)?'
       '';
     };
     "custom/guard" = {

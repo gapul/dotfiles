@@ -506,7 +506,9 @@ let
 
     def refresh_bar():
         # custom/niri-ws-N in the bar (home/hyprland.nix) rerun on SIGRTMIN+9.
-        run("${pkgs.procps}/bin/pkill", "-RTMIN+9", "-x", "waybar")
+        # nixpkgs wraps waybar, so the process is .waybar-wrapped; -x with the exact pattern so the
+        # signal (fatal to anything not expecting it) reaches waybar alone.
+        run("${pkgs.procps}/bin/pkill", "-RTMIN+9", "-x", r"\.?waybar(-wrapped)?")
 
 
     windows = {}
