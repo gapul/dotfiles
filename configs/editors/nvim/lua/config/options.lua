@@ -19,3 +19,6 @@ vim.opt.pumblend = 10
 vim.opt.wrap = true
 vim.opt.linebreak = true
 vim.opt.breakindent = true
+
+-- Project direnv environments for edited files (config/direnv.lua).
+require("config.direnv")

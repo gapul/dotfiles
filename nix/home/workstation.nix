@@ -86,6 +86,7 @@ in
       cmake # build system
       meson # build system
       tree-sitter # formerly tree-sitter-cli
+      tclint # Tcl LSP / linter / formatter (tclsp, tclfmt) for the CPU experiment's Vivado scripts
       # rust: rustc+cargo instead of rustup (pinned, declarative). Use rustup if you need nightly/toolchain switching
       rustc # Rust compiler
       cargo # Rust build/package management
