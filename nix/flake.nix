@@ -778,12 +778,16 @@
             checks = {
               nixos-smoke = import ./tests/nixos-smoke.nix {
                 inherit
-                  home-manager
                   lanzaboote
                   sops-nix
                   user
                   ;
-                pkgs = systemPkgs;
+                # The laptop's own nixpkgs and home-manager, as nixosConfigurations.nixos-laptop
+                # uses them, for the same reason as homeserver-vm below: systemPkgs is the
+                # 26.05-darwin lineage, and hosts/nixos-laptop.nix sets options that only exist on
+                # nixos-unstable (services.displayManager.regreet failed main's CI on 2026-10-15).
+                pkgs = nixpkgs-nixos.legacyPackages.${system};
+                home-manager = home-manager-nixos;
                 inherit commonSpecialArgs;
               };
               preservation-smoke = import ./tests/preservation-smoke.nix {
