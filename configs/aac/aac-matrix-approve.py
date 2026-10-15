@@ -7,7 +7,8 @@ error — exits 1, which aac reads as a denial.
 
 When several vault items match, aac sets AAC_CANDIDATES instead (a JSON list of name / username /
 uri, no secrets). The buttons are then 1️⃣…9️⃣ and ❌, and a Matrix reply to the question with a
-number works too (the only way past nine). The chosen number goes to stdout with exit 0, which aac
+number works too (the only way past nine), as does a plain message holding just the number: aac
+asks one question at a time and only messages after this one are read, so it cannot answer another. The chosen number goes to stdout with exit 0, which aac
 reads as "send that one".
 
 The bot token is readable by the agents, so the answer only counts when it comes from the
@@ -83,7 +84,8 @@ def sync(token: str, since: str | None, timeout_ms: int) -> dict:
 
 def answer_in(batch: dict, posted: str, buttons: dict[str, str], choices: int = 0) -> str | None:
     """The approver's answer to `posted`: a reaction mapped through `buttons` (bare key → answer),
-    or, when there are `choices`, a reply to it holding a number from 1 to `choices`."""
+    or, when there are `choices`, a number from 1 to `choices` in a reply to it or a plain message
+    (one that replies to some other message does not count)."""
     events = batch.get("rooms", {}).get("join", {}).get(ROOM, {}).get("timeline", {}).get("events", [])
     for event in events:
         if event.get("sender") != APPROVER:
@@ -97,7 +99,8 @@ def answer_in(batch: dict, posted: str, buttons: dict[str, str], choices: int = 
             if answer is not None:
                 return answer
         elif event.get("type") == "m.room.message" and choices:
-            if (relates.get("m.in_reply_to") or {}).get("event_id") != posted:
+            replied = (relates.get("m.in_reply_to") or {}).get("event_id")
+            if replied not in (None, posted):
                 continue
             # A reply body quotes the original as "> " lines first.
             text = "\n".join(line for line in content.get("body", "").splitlines() if not line.startswith(">")).strip()
@@ -126,7 +129,7 @@ def question(domain: str, device: str, username: str, candidates: list[dict] | N
         f"tap a number, or {NO} to deny",
     ])
     if len(candidates) > len(KEYCAPS):
-        text = text.replace("tap a number", f"tap 1–{len(KEYCAPS)} or reply with the number")
+        text = text.replace("tap a number", f"tap 1–{len(KEYCAPS)} or send the number")
     buttons = {KEYCAPS[i]: str(i + 1) for i in range(min(len(candidates), len(KEYCAPS)))}
     buttons[NO] = "no"
     return text, buttons
