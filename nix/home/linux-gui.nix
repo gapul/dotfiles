@@ -29,6 +29,7 @@ in
     ./t3code-desktop.nix # T3 Code nightly (AppImage + CLI, self-updating)
     ./fcitx5-skk.nix # SKK dictionaries and kana rule for fcitx5-skk
     ./xremap.nix # mac-style Cmd / Ctrl / Hyper
+    ./opensnitch-ui.nix # which app connects where, LuLu-style; the daemon is in hosts/nixos-laptop.nix
   ];
 
   # Keep the English UI locale while preferring Japanese CJK fallback glyphs.
@@ -99,6 +100,9 @@ in
 
   # Fusuma runs in the graphical session and dispatches directly to Hyprland.
   # Four fingers leave two-finger application gestures and three-finger drag free.
+  # Hyprland only: niri has these gestures built in (three fingers sideways scroll the columns,
+  # up/down switch workspaces, four fingers open the overview), and fusuma's four-finger swipes
+  # would fire on top of them.
   xdg.configFile."fusuma/config.yml".text = ''
     swipe:
       4:
@@ -126,6 +130,7 @@ in
       After = [ "graphical-session.target" ];
     };
     Service = {
+      ExecCondition = "${import ../lib/wm-session.nix { inherit pkgs; }}/bin/wm-session is hyprland";
       ExecStart = "${pkgs.fusuma}/bin/fusuma --config ${config.xdg.configHome}/fusuma/config.yml";
       Restart = "on-failure";
       RestartSec = 3;
@@ -181,6 +186,12 @@ in
   xdg.mimeApps = {
     enable = true;
     defaultApplications = {
+      "application/pdf" = "org.pwmt.zathura.desktop";
+      "image/png" = "swayimg.desktop";
+      "image/jpeg" = "swayimg.desktop";
+      "image/webp" = "swayimg.desktop";
+      "image/gif" = "swayimg.desktop";
+      "image/svg+xml" = "swayimg.desktop";
       "text/html" = browser;
       "application/xhtml+xml" = browser;
       "x-scheme-handler/http" = browser;
@@ -244,7 +255,6 @@ in
     thunderbird
 
     # ─── Messaging ───
-    beeper
     simplex-chat-desktop
 
     # ─── Devices / Remote ───
@@ -273,6 +283,12 @@ in
     nixpkgsStable.legacyPackages.${pkgs.stdenv.hostPlatform.system}.freecad
     bitwig-studio
     reaper
+    # Interactive audio/video sequencing and show control. From stable: unstable's 3.8.2 does
+    # not compile against fmt 12 (is_container_adaptor_like, 2026-10-13). Drop back to
+    # `ossia-score` once Hydra builds it again.
+    nixpkgsStable.legacyPackages.${pkgs.stdenv.hostPlatform.system}.ossia-score
+    easyeffects # PipeWire audio processing; launch manually when needed.
+    qpwgraph # PipeWire routing and patchbay.
     yabridge
     yabridgectl
     wineWow64Packages.yabridge # Wine version matched to yabridge; keep separate from game runners.
@@ -280,6 +296,7 @@ in
     davinci-resolve
     creativeWineApps.cavalry
     creativeWineApps.affinity
+    (import ../pkgs/touchdesigner.nix { inherit pkgs; })
     musescore
     cardinal
     surge-xt
@@ -300,6 +317,8 @@ in
     orca-slicer # Bambu A1 mini, same profile set as the mac
 
     # ─── Utilities ───
+    zathura # Keyboard-driven PDF viewer, also used by Yazi.
+    swayimg # Wayland image viewer, also used by Yazi.
     imhex # hex editor
 
     # ─── Wayland extras that have no macOS counterpart ───

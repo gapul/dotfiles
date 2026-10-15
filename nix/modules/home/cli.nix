@@ -274,12 +274,6 @@ in
     source = ../../../configs/bin/fzf-preview-repo;
     executable = true;
   };
-  # yazi's Linux openers call this; on a desktop Linux box it just delegates to xdg-open.
-  # Remote hosts get it from nssh instead (they never run home-manager).
-  home.file.".local/bin/open-on-mac" = {
-    source = ../../../configs/bin/open-on-mac;
-    executable = true;
-  };
   home.file.".config/yazi" = {
     source = ../../../configs/cli/yazi;
     recursive = true;
@@ -287,7 +281,6 @@ in
   home.file.".config/yazi/plugins/full-border.yazi".source = pkgs.yaziPlugins.full-border;
   home.file.".config/yazi/plugins/git.yazi".source = pkgs.yaziPlugins.git;
   home.file.".config/yazi/plugins/jump-to-char.yazi".source = pkgs.yaziPlugins.jump-to-char;
-  home.file.".config/yazi/plugins/piper.yazi".source = pkgs.yaziPlugins.piper;
   home.file.".config/yazi/plugins/smart-enter.yazi".source = pkgs.yaziPlugins.smart-enter;
   home.file.".config/yazi/plugins/smart-filter.yazi".source = pkgs.yaziPlugins.smart-filter;
   home.file.".config/yazi/plugins/smart-paste.yazi".source = pkgs.yaziPlugins.smart-paste;

@@ -33,6 +33,25 @@ in
 
   programs.home-manager.enable = true;
 
+  # Linux workstations may not have the private ai-agent-state checkout. Keep
+  # attribution independent of it, while preserving host-owned Claude settings.
+  home.activation.claudeAttribution = lib.mkIf pkgs.stdenv.hostPlatform.isLinux (
+    lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+      run ${pkgs.python3}/bin/python3 ${../../scripts/merge-claude-settings.py} \
+        "${config.xdg.configHome}/claude/settings.json" \
+        --managed ${
+          pkgs.writeText "claude-attribution.json" (
+            builtins.toJSON {
+              attribution = {
+                commit = "";
+                pr = "";
+              };
+            }
+          )
+        }
+    ''
+  );
+
   # Don't generate HM option docs (man home-configuration.nix / options.json).
   # Removes the per-switch 'options.json ... without proper context' warning + slight speedup.
   # Refer to the home-manager official docs (online) for options.

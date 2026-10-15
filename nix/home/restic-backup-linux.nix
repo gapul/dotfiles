@@ -26,6 +26,12 @@ let
     "${home}/Downloads"
     "${home}/Music"
     "${home}/Videos"
+    # Beyond the XDG folders: code, app settings and keys. The ext4-to-Btrfs move (2026-10-15)
+    # needed a one-off hand copy because none of these were in the daily backup.
+    "${home}/Developer"
+    "${home}/.config"
+    "${home}/.ssh"
+    "${home}/.local/share/keyrings"
   ];
 
   # The three scripts live in lib/restic-common.nix (shared with the darwin version).
