@@ -85,12 +85,10 @@ let
   cheatsheet = pkgs.writeShellScript "keys-cheatsheet" ''
     {
       printf '%s\n' \
-        "Caps Lock            Super" \
-        "無変換 / 変換          Ctrl (where the mac has Cmd)" \
-        "無変換+Space          launcher, like Cmd+Space" \
-        "無変換+C / V (term)   copy / paste, like Cmd+C / V" \
+        "left Ctrl / left Alt Super" \
         "Copilot, then key    Super+key (within 1.5 s)" \
-        "Copilot, G           game mode on/off (Caps Lock back to Ctrl)" \
+        "Copilot, G           game mode on/off (left Ctrl back to Ctrl)" \
+        "Caps Lock            Ctrl" \
         ""
       ${pkgs.hyprland}/bin/hyprctl binds -j | ${pkgs.jq}/bin/jq -r '
         def mods: [
@@ -494,7 +492,7 @@ in
     settings =
       let
         inherit (lib.generators) mkLuaInline;
-        # Super, which xremap sends for Caps Lock and Copilot-then-key
+        # Super, which xremap also sends for left Ctrl, left Alt and Copilot-then-key
         # (home/xremap.nix). The same key as niri's Mod (home/niri.nix).
         key = k: mkLuaInline ''mod .. " + ${k}"'';
         shiftKey = k: mkLuaInline ''mod .. " + SHIFT + ${k}"'';
