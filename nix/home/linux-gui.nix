@@ -271,7 +271,6 @@ in
     localsend # AirDrop-shaped transfer to the phone
     kdePackages.kdeconnect-kde
     rustdesk
-    deskflow # share one keyboard/mouse across machines
 
     # ─── Network ───
     mullvad-vpn
@@ -313,6 +312,7 @@ in
     retroarch
     moonlight-qt
     brave-origin
+    (callPackage ../pkgs/slimbrave-neo.nix { }) # Brave enterprise-policy editor
     (pkgs.callPackage ../pkgs/helium.nix { })
     orca-slicer # Bambu A1 mini, same profile set as the mac
 
