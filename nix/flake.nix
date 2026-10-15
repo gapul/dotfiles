@@ -529,9 +529,13 @@
           gitleaks = {
             enable = true;
             name = "gitleaks";
-            # `protect` is deprecated and broken in 8.30 (it adds --pre-commit and then rejects it);
-            # `git --pre-commit --staged` is its replacement since 8.19.
-            entry = "${pkgs.gitleaks}/bin/gitleaks git --pre-commit --staged --no-banner --redact";
+            # The staged diff, scanned from stdin. `protect --staged` is deprecated and broken in 8.30
+            # (it adds --pre-commit and then rejects it), and its replacement `git --pre-commit
+            # --staged` failed inside the pre-commit-run check's sandbox ("stat git") while working
+            # outside it; feeding the diff in avoids gitleaks starting git at all.
+            entry = "${pkgs.writeShellScript "gitleaks-staged" ''
+              ${pkgs.git}/bin/git diff --cached --no-color | ${pkgs.gitleaks}/bin/gitleaks stdin --no-banner --redact
+            ''}";
             pass_filenames = false;
           };
         };
