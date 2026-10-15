@@ -504,7 +504,13 @@ let
         subprocess.run(args, check=False)
 
 
+    def refresh_bar():
+        # custom/niri-ws-N in the bar (home/hyprland.nix) rerun on SIGRTMIN+9.
+        run("${pkgs.procps}/bin/pkill", "-RTMIN+9", "-x", "waybar")
+
+
     windows = {}
+    placed = {}  # window id -> (app_id, workspace_id), what the bar shows
     outputs = {}  # workspace id -> output name
     casting = False
     events = subprocess.Popen([NIRI, "msg", "--json", "event-stream"], stdout=subprocess.PIPE, text=True)
@@ -512,18 +518,31 @@ let
         [(kind, body)] = json.loads(line).items()
         if kind == "WorkspacesChanged":
             outputs = {w["id"]: w.get("output") or "" for w in body["workspaces"]}
+            refresh_bar()
         elif kind == "WindowsChanged":
             windows = {w["id"]: w.get("app_id") for w in body["windows"]}
+            placed = {w["id"]: (w.get("app_id"), w.get("workspace_id")) for w in body["windows"]}
+            refresh_bar()
         elif kind == "WindowOpenedOrChanged":
-            windows[body["window"]["id"]] = body["window"].get("app_id")
+            w = body["window"]
+            windows[w["id"]] = w.get("app_id")
+            # Also sent for every title change; only a new window or a move matters to the bar.
+            if placed.get(w["id"]) != (w.get("app_id"), w.get("workspace_id")):
+                placed[w["id"]] = (w.get("app_id"), w.get("workspace_id"))
+                refresh_bar()
         elif kind == "WindowClosed":
             windows.pop(body["id"], None)
+            placed.pop(body["id"], None)
+            refresh_bar()
+        elif kind in ("WindowLayoutsChanged", "WorkspaceUrgencyChanged"):
+            refresh_bar()
         elif kind == "WindowFocusChanged":
             if windows.get(body["id"]) in TERMINALS:
                 # Give fcitx5 a moment to see the new focus, or this turns off the old window.
                 time.sleep(0.15)
                 run("${pkgs.fcitx5}/bin/fcitx5-remote", "-c")
         elif kind == "WorkspaceActivated":
+            refresh_bar()
             run("${wallpaperScripts.setWallpaper}", "", "0.5", outputs.get(body["id"], ""))
         elif kind == "CastsChanged":
             now = bool(body["casts"])

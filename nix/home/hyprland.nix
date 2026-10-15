@@ -38,6 +38,183 @@ let
   # An app icon for the bar: a sketchybar-app-font ligature, in that font (see the workspaces
   # module in programs.waybar below).
   appIcon = name: "<span font_family='sketchybar-app-font' size='large' rise='-3500'>${name}</span>";
+  # Which app gets which icon: a regex on the Hyprland window class / niri app_id, and the
+  # sketchybar-app-font ligature. Shared by both compositors' workspace modules; the first match
+  # wins, anything unmatched gets :default:.
+  appIconRules = [
+    {
+      app = "firefox.*";
+      icon = ":firefox:";
+    }
+    {
+      app = "tor-browser.*";
+      icon = ":tor_browser:";
+    }
+    {
+      app = "google-chrome.*|chromium.*";
+      icon = ":google_chrome:";
+    }
+    {
+      app = "com.mitchellh.ghostty";
+      icon = ":ghostty:";
+    }
+    {
+      app = "kitty";
+      icon = ":kitty:";
+    }
+    {
+      app = "com.t3tools.T3Code";
+      icon = ":t3_code:";
+    }
+    {
+      app = "[Cc]ode.*";
+      icon = ":code:";
+    }
+    {
+      app = "steam.*";
+      icon = ":steam:";
+    }
+    {
+      app = "discord.*";
+      icon = ":discord:";
+    }
+    {
+      app = "obsidian";
+      icon = ":obsidian:";
+    }
+    {
+      app = "Slack";
+      icon = ":slack:";
+    }
+    {
+      app = "org.telegram.desktop";
+      icon = ":telegram:";
+    }
+    {
+      app = "mpv";
+      icon = ":mpv:";
+    }
+    {
+      app = "com.obsproject.Studio";
+      icon = ":obsstudio:";
+    }
+    {
+      app = "Bitwarden";
+      icon = ":bit_warden:";
+    }
+    {
+      app = "org.keepassxc.KeePassXC";
+      icon = ":kee_pass_x_c:";
+    }
+    {
+      app = "org.pwmt.zathura";
+      icon = ":preview:";
+    }
+    {
+      app = "calibre.*";
+      icon = ":calibre:";
+    }
+    {
+      app = "thunar|org.gnome.Nautilus|yazi";
+      icon = ":finder:";
+    }
+    {
+      app = "Bitwig.*";
+      icon = ":bitwig_studio:";
+    }
+    {
+      app = "anki";
+      icon = ":anki:";
+    }
+    {
+      app = "kicad.*";
+      icon = ":kicad:";
+    }
+    {
+      app = "Godot.*";
+      icon = ":godot:";
+    }
+    {
+      app = "mscore|MuseScore.*";
+      icon = ":musescore:";
+    }
+    {
+      app = "zotero|Zotero";
+      icon = ":zotero:";
+    }
+    {
+      app = "blender";
+      icon = ":blender:";
+    }
+    {
+      app = "gimp.*";
+      icon = ":gimp:";
+    }
+    {
+      app = "org.inkscape.Inkscape";
+      icon = ":inkscape:";
+    }
+    {
+      app = "libreoffice.*";
+      icon = ":libreoffice:";
+    }
+    {
+      app = "thunderbird";
+      icon = ":thunderbird:";
+    }
+    {
+      app = "pavucontrol|nm-connection-editor|blueman-manager|nwg-displays";
+      icon = ":gear:";
+    }
+  ];
+
+  # niri's workspace module shows only the number, so under niri each workspace is its own
+  # custom module, "N <icons>" like Hyprland's: custom/niri-ws-N runs this with N. It lists the
+  # windows of the Nth workspace on the bar's output (WAYBAR_OUTPUT_NAME) in column order, prints
+  # nothing (hiding the module) when that workspace is empty and not active, and exits quietly
+  # under Hyprland. niri-events (home/niri.nix) signals waybar to rerun these on every change.
+  niriWorkspaces = 10;
+  niriWorkspace = pkgs.writers.writePython3 "niri-workspace" { flakeIgnore = [ "E501" ]; } ''
+    import json
+    import os
+    import re
+    import subprocess
+    import sys
+
+    RULES = json.loads(${builtins.toJSON (builtins.toJSON appIconRules)})
+    SPAN = "<span font_family='sketchybar-app-font' size='large' rise='-3500'>{}</span>"
+
+
+    def niri(what):
+        out = subprocess.run(["${pkgs.niri}/bin/niri", "msg", "--json", what], capture_output=True, text=True, check=True)
+        return json.loads(out.stdout)
+
+
+    def icon(app_id):
+        for rule in RULES:
+            if re.fullmatch(rule["app"], app_id or ""):
+                return rule["icon"]
+        return ":default:"
+
+
+    n = int(sys.argv[1])
+    if not os.environ.get("NIRI_SOCKET"):
+        sys.exit(0)
+    output = os.environ.get("WAYBAR_OUTPUT_NAME")
+    workspaces = [w for w in niri("workspaces") if w["idx"] == n and (output is None or w["output"] == output)]
+    if not workspaces:
+        print(json.dumps({"text": ""}))
+        sys.exit(0)
+    ws = workspaces[0]
+    windows = [w for w in niri("windows") if w.get("workspace_id") == ws["id"]]
+    windows.sort(key=lambda w: (w.get("layout") or {}).get("pos_in_scrolling_layout") or [0, 0])
+    if not windows and not ws["is_active"]:
+        print(json.dumps({"text": ""}))
+        sys.exit(0)
+    icons = "".join(SPAN.format(icon(w.get("app_id"))) for w in windows)
+    classes = [c for c, on in (("active", ws["is_active"]), ("urgent", ws.get("is_urgent")), ("empty", not windows)) if on]
+    print(json.dumps({"text": f"{n} {icons}".strip(), "class": classes}))
+  '';
 
   # The power menu's icons: Nerd Font glyphs drawn into PNGs in the palette's text colour
   # (code points, so the private-use characters survive any editor; the UTF-8 locale is
@@ -203,7 +380,9 @@ let
     modules-left = [
       "custom/logo"
       "hyprland/workspaces"
-      "niri/workspaces"
+    ]
+    ++ map (n: "custom/niri-ws-${toString n}") (lib.range 1 niriWorkspaces)
+    ++ [
       "hyprland/window"
       "niri/window"
     ];
@@ -272,45 +451,24 @@ let
       # that are parts of ligatures, so it must not be the label's font. Keys are Hyprland
       # window classes (regex); anything unmatched gets the generic app glyph.
       window-rewrite-default = appIcon ":default:";
-      window-rewrite = {
-        "class<firefox.*>" = appIcon ":firefox:";
-        "class<tor-browser.*>" = appIcon ":tor_browser:";
-        "class<google-chrome.*|chromium.*>" = appIcon ":google_chrome:";
-        "class<com.mitchellh.ghostty>" = appIcon ":ghostty:";
-        "class<kitty>" = appIcon ":kitty:";
-        "class<com.t3tools.T3Code>" = appIcon ":t3_code:";
-        "class<[Cc]ode.*>" = appIcon ":code:";
-        "class<steam.*>" = appIcon ":steam:";
-        "class<discord.*>" = appIcon ":discord:";
-        "class<obsidian>" = appIcon ":obsidian:";
-        "class<Slack>" = appIcon ":slack:";
-        "class<org.telegram.desktop>" = appIcon ":telegram:";
-        "class<mpv>" = appIcon ":mpv:";
-        "class<com.obsproject.Studio>" = appIcon ":obsstudio:";
-        "class<Bitwarden>" = appIcon ":bit_warden:";
-        "class<org.keepassxc.KeePassXC>" = appIcon ":kee_pass_x_c:";
-        "class<org.pwmt.zathura>" = appIcon ":preview:";
-        "class<calibre.*>" = appIcon ":calibre:";
-        "class<thunar|org.gnome.Nautilus|yazi>" = appIcon ":finder:";
-        "class<Bitwig.*>" = appIcon ":bitwig_studio:";
-        "class<anki>" = appIcon ":anki:";
-        "class<kicad.*>" = appIcon ":kicad:";
-        "class<Godot.*>" = appIcon ":godot:";
-        "class<mscore|MuseScore.*>" = appIcon ":musescore:";
-        "class<zotero|Zotero>" = appIcon ":zotero:";
-        "class<blender>" = appIcon ":blender:";
-        "class<gimp.*>" = appIcon ":gimp:";
-        "class<org.inkscape.Inkscape>" = appIcon ":inkscape:";
-        "class<libreoffice.*>" = appIcon ":libreoffice:";
-        "class<thunderbird>" = appIcon ":thunderbird:";
-        "class<pavucontrol|nm-connection-editor|blueman-manager|nwg-displays>" = appIcon ":gear:";
-      };
+      window-rewrite = lib.listToAttrs (
+        map (r: lib.nameValuePair "class<${r.app}>" (appIcon r.icon)) appIconRules
+      );
     };
-    # niri's workspaces are per output and dynamic (there is always one empty one at the end),
-    # and the module cannot list the windows on each, so it is the number alone.
-    "niri/workspaces" = {
-      format = "{index}";
-    };
+  }
+  // lib.listToAttrs (
+    map (
+      n:
+      lib.nameValuePair "custom/niri-ws-${toString n}" {
+        exec = "${niriWorkspace} ${toString n}";
+        return-type = "json";
+        # Rerun on SIGRTMIN+9, which niri-events sends on each window / workspace change.
+        signal = 9;
+        on-click = "${pkgs.niri}/bin/niri msg action focus-workspace ${toString n}";
+      }
+    ) (lib.range 1 niriWorkspaces)
+  )
+  // {
     "niri/window" = {
       format = "{app_id}";
       max-length = 32;
@@ -1322,6 +1480,27 @@ in
       #workspaces button.empty { color: #${c.muted}; }
       #workspaces button:hover { color: #${c.text}; }
       #workspaces button.urgent { color: #${c.love}; }
+      ${lib.concatMapStringsSep ", " (n: "#custom-niri-ws-${toString n}") (lib.range 1 niriWorkspaces)} {
+        color: #${c.subtle};
+        padding: 0 9px;
+        border-bottom: 2px solid transparent;
+      }
+      ${
+        lib.concatMapStringsSep ", " (n: "#custom-niri-ws-${toString n}.active") (
+          lib.range 1 niriWorkspaces
+        )
+      } {
+        color: #${c.text};
+        border-bottom: 2px solid #${c.text};
+      }
+      ${
+        lib.concatMapStringsSep ", " (n: "#custom-niri-ws-${toString n}.empty") (lib.range 1 niriWorkspaces)
+      } { color: #${c.muted}; }
+      ${
+        lib.concatMapStringsSep ", " (n: "#custom-niri-ws-${toString n}.urgent") (
+          lib.range 1 niriWorkspaces
+        )
+      } { color: #${c.love}; }
 
       #window {
         color: #${c.text};
