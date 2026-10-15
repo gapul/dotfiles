@@ -5,8 +5,8 @@ let
   src = pkgs.fetchFromGitHub {
     owner = "gapul";
     repo = "keystats";
-    rev = "5e307f5bc0ca96d9875c2840abe9f53e39967dd1";
-    hash = "sha256-cnQjekEUapdi18BOBSYd7/Eaid7wT5sq11dK9LSNbeg=";
+    rev = "e66ec1f9f0ed65283bf252a9cf60f07374f1b83a"; # niri support (gapul/keystats#2)
+    hash = "sha256-yDs3DV7ER11uze1NzjzbtWyH3ilRSeXM8HumsvAVxQM=";
   };
   keystats = pkgs.callPackage "${src}/linux/package.nix" { };
 in
