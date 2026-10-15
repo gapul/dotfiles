@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# pre-commit の `gitleaks protect --staged` は --no-verify で飛ばせるため、
+# pre-commit の `gitleaks git --pre-commit --staged` は --no-verify で飛ばせるため、
 # CI 側でも gitleaks detect で二重化する。gitleaks は devShell (nix develop ./nix)
 # の PATH 前提。
 #
