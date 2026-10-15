@@ -290,7 +290,8 @@
   #
   # Daily at 03:45, before the user-side cleanups (Sunday 04:15) and restic (05:00). Weekly left
   # the macmini at 27G free on 2026-10-11: om ci on main builds the other Mac's closure there
-  # (~70G in an afternoon) and nothing roots it, so it sat until Sunday. Not min-free/max-free:
+  # (~70G in an afternoon) and nothing roots it, so it sat until Sunday (omnix's own `result`
+  # link in the runner checkout did root it until ci.yml started removing it). Not min-free/max-free:
   # the GC would then run inside nix-daemon, which has no Full Disk Access and stops at the first
   # macl-tagged bundle (see above). pr-gate keeps its out-link root, so PR builds stay warm.
   launchd.daemons.nix-gc = {
