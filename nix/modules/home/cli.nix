@@ -218,6 +218,12 @@ in
     # Same reason as atuin: the generated `eval "$(direnv hook zsh)"` costs ~37ms per shell.
     enableZshIntegration = false;
     nix-direnv.enable = true;
+    # Silence the "loading/using flake" lines and the env diff on every cd; errors still print.
+    # log_filter keeps only matching lines; log_format = "-" prints a literal "-" on 2.37.1.
+    config.global = {
+      log_filter = "^$";
+      hide_env_diff = true;
+    };
   };
 
   # Cached replacements for the integrations disabled above. evalcache is defined in
