@@ -285,6 +285,9 @@ in
         # off screen so nothing shows until the pointer reaches the left edge.
         "sidebar.verticalTabs" = true;
         "sidebar.visibility" = "expand-on-hover";
+        # Ctrl+Tab goes to the tab used last (and on through recent ones while Ctrl is held),
+        # like Alt+Tab between windows, instead of the next tab in the strip.
+        "browser.ctrlTab.sortByRecentlyUsed" = true;
         # Minimal chrome, the pref half (the CSS half is in userChrome below). No bookmarks
         # toolbar. No tool buttons at the bottom of the tab strip: the pref lists the enabled
         # tools, but an empty list is treated as "first run" and refilled with the defaults, so
