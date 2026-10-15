@@ -33,7 +33,6 @@
   "rose-pine" = "rose-pine";
   "smear-cursor.nvim" = "smear-cursor-nvim";
   "snacks.nvim" = "snacks-nvim";
-  "supermaven-nvim" = "supermaven-nvim";
   "todo-comments.nvim" = "todo-comments-nvim";
   "tokyonight.nvim" = "tokyonight-nvim";
   "trouble.nvim" = "trouble-nvim";

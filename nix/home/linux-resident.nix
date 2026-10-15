@@ -25,9 +25,19 @@
     Unit.PartOf = [ "graphical-session.target" ];
     Install.WantedBy = lib.mkForce [ "graphical-session.target" ];
   };
-  systemd.user.services.activitywatch-watcher-aw-watcher-window-wayland.Service = {
-    Restart = "on-failure";
-    RestartSec = 5;
+  # The target's ordering does not carry over to the services it pulls in, so the watcher itself
+  # waits for the session too. Under niri it still started before WAYLAND_DISPLAY reached the
+  # user manager, panicked, and hit the start limit; with no limit it retries until it connects.
+  systemd.user.services.activitywatch-watcher-aw-watcher-window-wayland = {
+    Unit = {
+      After = [ "graphical-session.target" ];
+      PartOf = [ "graphical-session.target" ];
+      StartLimitIntervalSec = 0;
+    };
+    Service = {
+      Restart = "on-failure";
+      RestartSec = 5;
+    };
   };
   xdg.configFile."espanso/config/default.yml".text = ''
     keyboard_layout:
