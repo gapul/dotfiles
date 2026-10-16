@@ -226,6 +226,7 @@ in
     ./macmini-dns.nix
     ./macmini-homeserver-monitor.nix
     ./macmini-imessage.nix # iMessage bridge daemon and config (split with the home side; reason at the top of the file)
+    ./macmini-mail.nix # aerc accounts, rendered by the system sops (host key)
     ./macmini-presenta.nix
     ./macmini-linux-builder.nix # x86_64-linux / aarch64-linux builds (the laptop's closure for cachix)
     sopsNix.darwinModules.sops

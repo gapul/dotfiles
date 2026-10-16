@@ -3,6 +3,9 @@
 # The home line has OP25B, so port 25 passes neither in nor out (measured 2026-09-23). So inbound (MX)
 # stays on Google for now, and Gmail, work, and university (all Google IMAP) are mirrored hourly
 # with imapsync. Deletions on the Google side are not mirrored (this side is the archive).
+# On top of the hourly pass, mail-push-<name> holds an IMAP IDLE on each Google INBOX and copies
+# just the INBOX the moment something arrives, so new mail reaches the clients (which IDLE on
+# Stalwart in turn) in seconds rather than up to an hour later.
 #
 # Outbound is split by From identity so that replies go out "under the identity it was received as".
 # Mail under a Google identity is accepted on Stalwart's 465 and sent via that account's Google SMTP,
@@ -36,30 +39,133 @@ let
   secretDir = "/var/lib/secrets/mail";
   cred = name: "%{file:/run/credentials/stalwart.service/${name}}%";
 
+  # Both the hourly pass and the push watchers run as this user, so they can share the lock dir.
+  mirrorUser = "mail-mirror";
+  lockDir = "/run/mail-mirror-lock";
+
+  # One imapsync run for one account; extra arguments go to imapsync (the push path narrows it to
+  # INBOX). The hourly pass and a push can fire together, and two imapsync runs that both see a
+  # message missing on Stalwart would both append it, so each account's runs are serialised by flock.
+  syncAccount = pkgs.writeShellScript "mail-sync-account" ''
+    set -u
+    name=$1
+    shift
+    if [ ! -s "$CREDENTIALS_DIRECTORY/$name.app-password" ]; then
+      echo "$name: Google のアプリパスワードが未設定 (secrets の mail/$name.app-password)、飛ばす"
+      exit 0
+    fi
+    # imapsync は /run/credentials 配下のファイルを「読めない」と拒む (2026-09-23 実測、
+    # exit 66) ので、両方のパスワードを自分の RuntimeDirectory に写してから渡す。
+    work=$(mktemp -d "$RUNTIME_DIRECTORY/$name.XXXXXX")
+    trap 'rm -rf "$work"' EXIT
+    cat "$CREDENTIALS_DIRECTORY/$name.app-password" > "$work/src.password"
+    cat "$CREDENTIALS_DIRECTORY/$name.password" > "$work/dst.password"
+    exec 9> "${lockDir}/$name.lock"
+    ${pkgs.util-linux}/bin/flock 9
+    # --gmail1: imap.gmail.com:993、[Gmail] の親フォルダを除き、ラベルはフォルダのまま、
+    # "All Mail" は最後に回して他フォルダに写した分を重複させない。
+    ${pkgs.imapsync}/bin/imapsync --gmail1 --user1 "$(cat "$CREDENTIALS_DIRECTORY/$name.address")" \
+      --passfile1 "$work/src.password" \
+      --host2 127.0.0.1 --port2 993 --ssl2 \
+      --user2 "$name" --passfile2 "$work/dst.password" \
+      --automap --nofoldersizes --noreleasecheck --nolog --tmpdir "$work" \
+      --pidfile "$work/pid" "$@" || { status=$?; echo "$name: imapsync が $status で終了"; exit 1; }
+  '';
+
   mirror = pkgs.writeShellScript "mail-mirror" ''
     set -u
     status=0
     for name in ${toString names}; do
-      if [ ! -s "$CREDENTIALS_DIRECTORY/$name.app-password" ]; then
-        echo "$name: Google のアプリパスワードが未設定 (secrets の mail/$name.app-password)、飛ばす"
-        continue
-      fi
-      # imapsync は /run/credentials 配下のファイルを「読めない」と拒む (2026-09-23 実測、
-      # exit 66) ので、両方のパスワードを自分の RuntimeDirectory に写してから渡す。
-      cat "$CREDENTIALS_DIRECTORY/$name.app-password" > "$RUNTIME_DIRECTORY/src.password"
-      cat "$CREDENTIALS_DIRECTORY/$name.password" > "$RUNTIME_DIRECTORY/dst.password"
-      # --gmail1: imap.gmail.com:993、[Gmail] の親フォルダを除き、ラベルはフォルダのまま、
-      # "All Mail" は最後に回して他フォルダに写した分を重複させない。
-      ${pkgs.imapsync}/bin/imapsync --gmail1 --user1 "$(cat "$CREDENTIALS_DIRECTORY/$name.address")" \
-        --passfile1 "$RUNTIME_DIRECTORY/src.password" \
-        --host2 127.0.0.1 --port2 993 --ssl2 \
-        --user2 "$name" --passfile2 "$RUNTIME_DIRECTORY/dst.password" \
-        --automap --nofoldersizes --noreleasecheck --nolog --tmpdir "$RUNTIME_DIRECTORY" \
-        --pidfile "$RUNTIME_DIRECTORY/$name.pid" || { echo "$name: imapsync が $? で終了"; status=1; }
-      rm -f "$RUNTIME_DIRECTORY/src.password" "$RUNTIME_DIRECTORY/dst.password"
+      ${syncAccount} "$name" || status=1
     done
     exit $status
   '';
+
+  # The push watcher for one account. goimapnotify discards its hooks' output, so the hook sends
+  # its own to the journal under the unit's name. --maxage keeps the INBOX pass to the last couple
+  # of days: it only has to catch what just arrived, and the hourly pass covers everything else.
+  pushConfig =
+    name:
+    (pkgs.formats.json { }).generate "goimapnotify-${name}.json" {
+      configurations = [
+        {
+          host = "imap.gmail.com";
+          port = 993;
+          tls = true;
+          # goimapnotify skips certificate verification unless told otherwise, and this
+          # connection carries the Google app password.
+          tlsOptions.rejectUnauthorized = true;
+          usernameCMD = "cat \"$CREDENTIALS_DIRECTORY/${name}.address\"";
+          passwordCMD = "cat \"$CREDENTIALS_DIRECTORY/${name}.app-password\"";
+          boxes = [
+            {
+              mailbox = "INBOX";
+              onNewMail = "systemd-cat -t mail-push-${name} ${syncAccount} ${name} --folder INBOX --maxage 2";
+            }
+          ];
+        }
+      ];
+    };
+  push = pkgs.writeShellScript "mail-push" ''
+    set -u
+    name=$1
+    # No app password means no mirror either (see syncAccount). Exit cleanly so the unit stays
+    # inactive instead of restart-looping until one is put in.
+    if [ ! -s "$CREDENTIALS_DIRECTORY/$name.app-password" ]; then
+      echo "$name: Google のアプリパスワードが未設定、IDLE 監視はしない"
+      exit 0
+    fi
+    exec ${pkgs.goimapnotify}/bin/goimapnotify -conf "$2"
+  '';
+
+  mirrorServiceConfig = {
+    User = mirrorUser;
+    Group = mirrorUser;
+    ProtectSystem = "strict";
+    ProtectHome = true;
+    PrivateTmp = true;
+    NoNewPrivileges = true;
+    ReadWritePaths = [ lockDir ];
+  };
+
+  # One IDLE watcher per account (see push).
+  pushUnits = builtins.listToAttrs (
+    map (name: {
+      name = "mail-push-${name}";
+      value = {
+        description = "${name} の Google INBOX を IMAP IDLE で見張り、届いたらすぐ Stalwart に写す";
+        after = [
+          "stalwart.service"
+          "network-online.target"
+        ];
+        wants = [ "network-online.target" ];
+        requires = [ "stalwart.service" ];
+        wantedBy = [ "multi-user.target" ];
+        environment.HOME = "/run/mail-push-${name}";
+        # goimapnotify runs every hook through `sh -c`.
+        path = [ pkgs.bash ];
+        serviceConfig = mirrorServiceConfig // {
+          RuntimeDirectory = "mail-push-${name}";
+          WorkingDirectory = "/run/mail-push-${name}";
+          LoadCredential = map (kind: "${name}.${kind}:${secretDir}/${name}.${kind}") [
+            "password"
+            "address"
+            "app-password"
+          ];
+          ExecStart = "${push} ${name} ${pushConfig name}";
+          # Gmail drops long IDLE sessions and the line drops now and then; goimapnotify
+          # reconnects by itself, and this covers it giving up.
+          Restart = "on-failure";
+          RestartSec = 30;
+        };
+        unitConfig = {
+          StartLimitIntervalSec = 600;
+          StartLimitBurst = 5;
+        };
+        onFailure = [ "ntfy-failure@%n.service" ];
+      };
+    }) names
+  );
 
   # Maps each account's three files from LoadCredential names (<name>.<kind>) to the real files.
   accountCredentials = builtins.listToAttrs (
@@ -173,22 +279,23 @@ in
       }) accounts;
     };
   };
-  systemd.services.stalwart.serviceConfig.EnvironmentFile = "/var/lib/secrets/acme-cloudflare.env";
+  systemd.services = pushUnits // {
+    stalwart.serviceConfig.EnvironmentFile = "/var/lib/secrets/acme-cloudflare.env";
 
-  systemd.services.mail-mirror = {
-    description = "Google の各口座を Stalwart に写す (毎時)";
-    after = [ "stalwart.service" ];
-    requires = [ "stalwart.service" ];
-    environment.HOME = "/run/mail-mirror";
-    serviceConfig = {
-      Type = "oneshot";
-      DynamicUser = true;
-      RuntimeDirectory = "mail-mirror";
-      WorkingDirectory = "/run/mail-mirror";
-      LoadCredential = builtins.attrValues (builtins.mapAttrs (k: v: "${k}:${v}") accountCredentials);
-      ExecStart = mirror;
+    mail-mirror = {
+      description = "Google の各口座を Stalwart に写す (毎時)";
+      after = [ "stalwart.service" ];
+      requires = [ "stalwart.service" ];
+      environment.HOME = "/run/mail-mirror";
+      serviceConfig = mirrorServiceConfig // {
+        Type = "oneshot";
+        RuntimeDirectory = "mail-mirror";
+        WorkingDirectory = "/run/mail-mirror";
+        LoadCredential = builtins.attrValues (builtins.mapAttrs (k: v: "${k}:${v}") accountCredentials);
+        ExecStart = mirror;
+      };
+      onFailure = [ "ntfy-failure@%n.service" ];
     };
-    onFailure = [ "ntfy-failure@%n.service" ];
   };
   systemd.timers.mail-mirror = {
     description = "メールの写しを毎時";
@@ -199,5 +306,14 @@ in
     };
   };
 
-  systemd.tmpfiles.rules = [ "d ${secretDir} 0700 root root -" ];
+  users.users.${mirrorUser} = {
+    isSystemUser = true;
+    group = mirrorUser;
+  };
+  users.groups.${mirrorUser} = { };
+
+  systemd.tmpfiles.rules = [
+    "d ${secretDir} 0700 root root -"
+    "d ${lockDir} 0700 ${mirrorUser} ${mirrorUser} -"
+  ];
 }

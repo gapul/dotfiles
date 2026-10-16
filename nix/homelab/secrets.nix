@@ -30,9 +30,21 @@ let
     { rel = "homelab-cli.env"; }
     { rel = "ledger-deploy.key"; }
     { rel = "mail/admin.password"; }
-    { rel = "mail/gmail.password"; }
-    { rel = "mail/work.password"; }
-    { rel = "mail/school.password"; }
+    {
+      rel = "mail/gmail.password";
+      sopsFile = ../../secrets/mail.yaml;
+      key = "stalwart/gmail";
+    }
+    {
+      rel = "mail/work.password";
+      sopsFile = ../../secrets/mail.yaml;
+      key = "stalwart/work";
+    }
+    {
+      rel = "mail/school.password";
+      sopsFile = ../../secrets/mail.yaml;
+      key = "stalwart/school";
+    }
     { rel = "mail/gmail.address"; }
     { rel = "mail/gmail.app-password"; }
     { rel = "mail/work.address"; }
@@ -104,7 +116,11 @@ let
       id = lib.replaceStrings [ "/" ] [ "--" ] file.rel;
     in
     lib.nameValuePair "homeserver-files/${id}" {
-      key = "homeserver_files/${id}";
+      # Most files live under homeserver_files in homelab.yaml. A file that other hosts also read
+      # (the Stalwart login passwords, which every mail client holds) lives in its own sops file
+      # instead, so its value has one home rather than a copy per recipient set.
+      key = file.key or "homeserver_files/${id}";
+      sopsFile = file.sopsFile or ../../secrets/homelab.yaml;
       path = "/var/lib/secrets/${file.rel}";
       owner = file.owner or "root";
       group = file.group or "root";
