@@ -928,6 +928,7 @@
                     ./home/restic-backup-linux.nix # restic (systemd user timer)
                     sops-nix.homeManagerModules.sops
                     ./home/secrets.nix
+                    ./home/thunderbird.nix # mail accounts as a sops template (needs secrets.nix)
                     ./home/workstation.nix
                   ];
                 };
