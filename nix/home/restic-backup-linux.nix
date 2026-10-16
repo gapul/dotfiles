@@ -86,7 +86,12 @@ in
     tmpfiles.rules = map (p: "d ${p} - - - -") backupPaths; # "-": leave existing modes alone
 
     services = {
-      restic-backup = mkService "restic encrypted backup" scripts.backup;
+      # tmpfiles only applies the rules above at login and on switch, so a target deleted in
+      # between still failed the next run (~/Videos, 2026-10-16). Re-apply them right before
+      # each backup; "-" mode means this never touches existing directories.
+      restic-backup = lib.recursiveUpdate (mkService "restic encrypted backup" scripts.backup) {
+        Service.ExecStartPre = "${pkgs.systemd}/bin/systemd-tmpfiles --user --create";
+      };
       restic-check = mkService "restic integrity check" scripts.check;
       restic-monitor = mkService "restic run monitoring" scripts.monitor;
     };
