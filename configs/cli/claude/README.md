@@ -45,8 +45,8 @@ over whatever JSON the host already has. It is the same idea as adding a single 
 
 | | Keys |
 | --- | --- |
-| Managed | `permissions.defaultMode`, `theme`, `effortLevel`, `editorMode`, `verbose`, `preferredNotifChannel`, `skipDangerousModePermissionPrompt`, `skipWorkflowUsageWarning`, `environmentVariables` |
-| Unmanaged, owned by the host | `permissions.allow`, `permissions.additionalDirectories`, `enabledPlugins`, `hooks` |
+| Managed | `permissions.defaultMode`, `permissions.deny`, `hooks.PreToolUse`, `theme`, `effortLevel`, `editorMode`, `verbose`, `preferredNotifChannel`, `skipDangerousModePermissionPrompt`, `skipWorkflowUsageWarning`, `environmentVariables` |
+| Unmanaged, owned by the host | `permissions.allow`, `permissions.additionalDirectories`, `enabledPlugins`, `hooks` other than `PreToolUse` |
 
 The managed set is limited to keys the Mac's own `settings.json` actually contains.
 Distributing a key the Mac does not set would leave the Mac on the default while the remote had
@@ -62,7 +62,9 @@ the original reason — that symlinking would wipe accumulated approvals every t
 on 2026-08-15. It stays a merge because the Mac's `settings.json` contains keys that either
 break or mean nothing on a remote machine.
 
-- `hooks` — absolute paths like `/Users/gapul/.config/claude/hooks/*.sh`, which do not exist on
+- `hooks` — except `PreToolUse`, which only calls `$HOME/.local/bin/aac-approval-notify`
+  (nix/modules/home/agents.nix, present on every host). The rest use absolute paths like
+  `/Users/gapul/.config/claude/hooks/*.sh`, which do not exist on
   Linux and fail every time. Remote machines have their own hooks, integrated with herdr.
 - `enabledPlugins` — the Mac has clangd and the Swift LSP. What a given box needs is
   rust-analyzer, and distributing this would replace it. Toolchains differ per host, so it is
@@ -76,7 +78,9 @@ break or mean nothing on a remote machine.
 
 ### Nesting
 
-Only `defaultMode` inside `permissions` is managed. The merge recurses only where both sides
+Only `defaultMode` and `deny` inside `permissions` are managed. `deny` carries the agent
+guardrails (e.g. `aac connect` / `aac listen`, which only the human side of Bitwarden Agent
+Access may run) and replaces the host's list wholesale. The merge recurses only where both sides
 have an object, so `allow` and `additionalDirectories` as the host grew them survive. Arrays are
 not recursed into, since merging `allow` element by element is not the intent. `--check` and
 `--adopt` follow the same structure.
