@@ -2,6 +2,8 @@
   lib,
   rustPlatform,
   fetchFromGitHub,
+  pkg-config,
+  openssl,
 }:
 rustPlatform.buildRustPackage {
   pname = "agent-access";
@@ -24,6 +26,9 @@ rustPlatform.buildRustPackage {
 
   cargoHash = "sha256-jNE5ozp6YW1dlx948KfvNAZ8/ZPPvSYeRc89WGSy5HI=";
   strictDeps = true;
+  # openssl-sys (pulled in by the CLI's HTTP stack) links the system OpenSSL.
+  nativeBuildInputs = [ pkg-config ];
+  buildInputs = [ openssl ];
   # Only the CLI; the workspace also holds the relay, uniffi bindings and examples.
   cargoBuildFlags = [
     "-p"
