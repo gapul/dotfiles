@@ -755,6 +755,10 @@ in
       waylandFrontend = true;
       # Written to /etc/xdg/fcitx5. A ~/.config/fcitx5 that fcitx5-configtool saves takes precedence.
       settings = {
+        # The preedit (▽…) is drawn in fcitx5's own popup, not inside the app: under niri, browsers
+        # and T3 Code kept each successive SKK preedit string as text (2026-10-16), so apps only
+        # ever receive committed text.
+        globalOptions.Behavior.PreeditEnabledByDefault = "False";
         # The input method group (SKK alone) is user-side in home/fcitx5-skk.nix: fcitx5 rewrites
         # ~/.config/fcitx5/profile on every exit, and that copy would shadow one written here.
         # Taken from macSKK's settings (configs/ime/skk/macSKK.plist), option by option:
