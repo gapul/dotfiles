@@ -460,7 +460,21 @@ in
   services.espanso = {
     enable = true;
     package = pkgs.espanso-wayland;
+    # The tools the package's PATH wrapper would have supplied (see below).
+    extraPackages = with pkgs; [
+      libnotify
+      setxkbmap
+      kdotool
+      wl-clipboard
+    ];
   };
+  # nixpkgs now wraps bin/espanso in a shell script that prefixes PATH, and the capability
+  # wrapper the module builds around it refuses a script target (ensure-wrapper-integrity),
+  # failing the whole system build. Point it at the ELF behind the script, with the same
+  # override the module applies. Drop this once nixpkgs fixes the module.
+  security.wrappers.espanso.source = lib.mkForce "${
+    pkgs.espanso-wayland.override { securityWrapperPath = config.security.wrapperDir; }
+  }/bin/.espanso-wrapped";
   programs.kdeconnect.enable = true;
 
   time.timeZone = "Asia/Tokyo";
