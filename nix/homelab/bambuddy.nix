@@ -17,8 +17,8 @@
 #
 # Runs on bridge. Upstream's compose defaults to host networking, but that's for finding the
 # printer via SSDP, and on this box both 8000 and 3000 are already taken. The printer can be
-# added by IP (192.168.116.97), so dropping discovery to avoid the conflicts is the better
-# trade. The virtual printer feature (990 / 8883 / 322 / 50000-) isn't used either, so only
+# added by IP (192.168.116.86 since 2026-10-16; it moved from .97 when the printer was
+# re-paired), so dropping discovery to avoid the conflicts is the better trade. The virtual printer feature (990 / 8883 / 322 / 50000-) isn't used either, so only
 # the one UI port needs to be open.
 #
 # No secrets needed. The printer's access code is entered in the UI and stored in the data
