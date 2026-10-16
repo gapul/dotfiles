@@ -43,13 +43,17 @@ let
   mirrorUser = "mail-mirror";
   lockDir = "/run/mail-mirror-lock";
 
-  # One imapsync run for one account; extra arguments go to imapsync (the push path narrows it to
-  # INBOX). The hourly pass and a push can fire together, and two imapsync runs that both see a
-  # message missing on Stalwart would both append it, so each account's runs are serialised by flock.
+  # One imapsync run over one part of one account; extra arguments go to imapsync and pick the
+  # folders. The hourly pass and a push can fire together, and two imapsync runs that both see a
+  # message missing from the same Stalwart folder would both append it, so runs over the same part
+  # are serialised by flock. The lock is per part, not per account: the hourly pass over the other
+  # folders takes about 10 minutes ([Gmail]/All Mail), and a push that waited on it would arrive
+  # that late (17:41 → 17:51 on 2026-10-16). INBOX alone takes about a minute.
   syncAccount = pkgs.writeShellScript "mail-sync-account" ''
     set -u
     name=$1
-    shift
+    part=$2
+    shift 2
     if [ ! -s "$CREDENTIALS_DIRECTORY/$name.app-password" ]; then
       echo "$name: Google のアプリパスワードが未設定 (secrets の mail/$name.app-password)、飛ばす"
       exit 0
@@ -60,7 +64,7 @@ let
     trap 'rm -rf "$work"' EXIT
     cat "$CREDENTIALS_DIRECTORY/$name.app-password" > "$work/src.password"
     cat "$CREDENTIALS_DIRECTORY/$name.password" > "$work/dst.password"
-    exec 9> "${lockDir}/$name.lock"
+    exec 9> "${lockDir}/$name.$part.lock"
     ${pkgs.util-linux}/bin/flock 9
     # --gmail1: imap.gmail.com:993、[Gmail] の親フォルダを除き、ラベルはフォルダのまま、
     # "All Mail" は最後に回して他フォルダに写した分を重複させない。
@@ -76,7 +80,8 @@ let
     set -u
     status=0
     for name in ${toString names}; do
-      ${syncAccount} "$name" || status=1
+      ${syncAccount} "$name" inbox --folder INBOX || status=1
+      ${syncAccount} "$name" rest --exclude '^INBOX$' || status=1
     done
     exit $status
   '';
@@ -100,7 +105,7 @@ let
           boxes = [
             {
               mailbox = "INBOX";
-              onNewMail = "systemd-cat -t mail-push-${name} ${syncAccount} ${name} --folder INBOX --maxage 2";
+              onNewMail = "systemd-cat -t mail-push-${name} ${syncAccount} ${name} inbox --folder INBOX --maxage 2";
             }
           ];
         }
