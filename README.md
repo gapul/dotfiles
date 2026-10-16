@@ -136,6 +136,7 @@ Generated from `just --list`. Run `just docs` after changing a recipe.
     ios-apps cmd="status"                             # Diff ios/apps.tsv against a USB-connected iPhone (`just ios-apps` / `just ios-apps verify`)
     ios-profiles port="8000"                          # Build the declared .mobileconfig profiles and serve them on the LAN for an iPhone to install
     ios-shortcuts cmd="status"                        # Export iCloud-synced Shortcuts into the repo, or compile .cherri sources into signed shortcuts
+    mail-profiles mode="mac" port="8000"              # Mail profiles with their passwords filled in from sops (`mac` = open here for Mail.app, `serve` = iPhone over the tailnet)
     mobile-test                                       # Self-check both platforms' scripts with stubbed adb / ideviceinstaller (no device needed)
 
     [Service]

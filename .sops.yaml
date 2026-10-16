@@ -82,6 +82,18 @@ creation_rules:
           - *recovery
           - *homeserver
 
+  # メールクライアントが自宅 Stalwart にログインするパスワード。Stalwart 本体 (homeserver) と
+  # 各端末の aerc が同じ値を読む。macmini はシステム側 sops がホスト鍵で開ける。母艦・laptop・WSL は
+  # home-manager 側の sops が人間の鍵で開けるので、ホスト鍵は要らない。
+  # Google のアプリパスワードはここに置かない (homelab.yaml のまま homeserver から出さない)。
+  - path_regex: secrets/mail\.yaml$
+    key_groups:
+      - age:
+          - *me
+          - *recovery
+          - *macmini
+          - *homeserver
+
   # 上のどれにも当たらない新規ファイルは、人間の鍵だけで暗号化する (安全側に倒す)。
   - path_regex: secrets/.*\.yaml$
     key_groups:

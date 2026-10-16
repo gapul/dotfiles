@@ -1536,6 +1536,11 @@ ios-shortcuts cmd="status":
 ios-profiles port="8000":
     @mobile/ios/profiles/serve.sh {{port}}
 
+# Mail profiles with their passwords filled in from sops (`mac` = open here for Mail.app, `serve` = iPhone over the tailnet)
+[group('Mobile')]
+mail-profiles mode="mac" port="8000":
+    @mobile/ios/profiles/mail.sh {{mode}} {{port}}
+
 # Self-check both platforms' scripts with stubbed adb / ideviceinstaller (no device needed)
 [group('Mobile')]
 mobile-test:

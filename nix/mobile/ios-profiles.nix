@@ -6,6 +6,10 @@
 #
 # nix can only go as far as generating. Installing is manual on the device (iOS has no API
 # for pushing profiles from outside unless the device is supervised or an MDM is set up).
+#
+# The mail profiles carry no password here, since the output lands in the world-readable store.
+# mobile/ios/profiles/mail.sh (`just mail-profiles`) copies them out and fills the passwords in
+# from sops, so a device gets them without typing anything.
 {
   pkgs,
   lib,
@@ -89,7 +93,7 @@ let
     # alias only needs that alias added to the account's address list on the device.
     sakura-mail = {
       displayName = "gapul.net Mail";
-      description = "gapul.net のメール (さくらのメールボックス、全アドレスがここに届く)。パスワードは初回に端末が訊く。";
+      description = "gapul.net のメール (さくらのメールボックス、全アドレスがここに届く)。パスワードは just mail-profiles 経由なら入っていて、そうでなければ初回に端末が訊く。";
       payloads = [
         {
           PayloadType = "com.apple.mail.managed";
@@ -112,7 +116,7 @@ let
     };
     homelab-mail = {
       displayName = "Homelab Mail";
-      description = "自宅 Stalwart の IMAP 口座 (gmail / work / school の写し)。パスワードは初回に端末が訊く。";
+      description = "自宅 Stalwart の IMAP 口座 (gmail / work / school の写し)。パスワードは just mail-profiles 経由なら入っていて、そうでなければ初回に端末が訊く。";
       payloads =
         map
           (name: {
