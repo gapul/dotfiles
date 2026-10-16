@@ -72,11 +72,11 @@ let
     })
     (bind {
       key = "${mod}+F";
-      action = "fullscreen-window";
+      action = "maximize-column";
     })
     (bind {
       key = "${mod}+Shift+F";
-      action = "maximize-column";
+      action = "fullscreen-window";
     })
     (bind {
       key = "${mod}+Shift+Escape";
@@ -182,19 +182,19 @@ let
     })
     (bind {
       key = "${mod}+K";
-      action = "focus-window-or-workspace-up";
+      action = "focus-window-up";
     })
     (bind {
       key = "${mod}+Shift+K";
-      action = "move-window-up-or-to-workspace-up";
+      action = "move-window-up";
     })
     (bind {
       key = "${mod}+J";
-      action = "focus-window-or-workspace-down";
+      action = "focus-window-down";
     })
     (bind {
       key = "${mod}+Shift+J";
-      action = "move-window-down-or-to-workspace-down";
+      action = "move-window-down";
     })
     # Also as on the mac: column widths, tabbed column, previous workspace, monitors.
     (bind {
@@ -229,8 +229,7 @@ let
       key = "${mod}+Shift+M";
       action = "move-workspace-to-monitor-right";
     })
-    # Focus: sideways through the columns, up and down through a column's windows and on into
-    # the next workspace.
+    # Focus: sideways through the columns, up and down through a column's windows.
     (bind {
       key = "${mod}+Left";
       action = "focus-column-left";
@@ -241,11 +240,11 @@ let
     })
     (bind {
       key = "${mod}+Up";
-      action = "focus-window-or-workspace-up";
+      action = "focus-window-up";
     })
     (bind {
       key = "${mod}+Down";
-      action = "focus-window-or-workspace-down";
+      action = "focus-window-down";
     })
     (bind {
       key = "${mod}+Shift+Left";
@@ -257,11 +256,11 @@ let
     })
     (bind {
       key = "${mod}+Shift+Up";
-      action = "move-window-up-or-to-workspace-up";
+      action = "move-window-up";
     })
     (bind {
       key = "${mod}+Shift+Down";
-      action = "move-window-down-or-to-workspace-down";
+      action = "move-window-down";
     })
     # Column width, and taking a window into / out of the neighbouring column.
     (bind {
@@ -291,6 +290,203 @@ let
       action = "focus-workspace-up";
     })
 
+    # From niri's default config, on keys the binds above leave free. Where the default moves
+    # with Ctrl, Shift moves here (as on H/J/K/L and the digits), and Ctrl moves the workspace.
+    (bind {
+      key = "${mod}+U";
+      action = "focus-workspace-down";
+    })
+    (bind {
+      key = "${mod}+I";
+      action = "focus-workspace-up";
+    })
+    (bind {
+      key = "${mod}+Page_Down";
+      action = "focus-workspace-down";
+    })
+    (bind {
+      key = "${mod}+Page_Up";
+      action = "focus-workspace-up";
+    })
+    (bind {
+      key = "${mod}+Shift+U";
+      action = "move-column-to-workspace-down";
+    })
+    (bind {
+      key = "${mod}+Shift+I";
+      action = "move-column-to-workspace-up";
+    })
+    (bind {
+      key = "${mod}+Shift+Page_Down";
+      action = "move-column-to-workspace-down";
+    })
+    (bind {
+      key = "${mod}+Shift+Page_Up";
+      action = "move-column-to-workspace-up";
+    })
+    (bind {
+      key = "${mod}+Ctrl+U";
+      action = "move-workspace-down";
+    })
+    (bind {
+      key = "${mod}+Ctrl+I";
+      action = "move-workspace-up";
+    })
+    (bind {
+      key = "${mod}+Ctrl+Page_Down";
+      action = "move-workspace-down";
+    })
+    (bind {
+      key = "${mod}+Ctrl+Page_Up";
+      action = "move-workspace-up";
+    })
+    (bind {
+      key = "${mod}+Home";
+      action = "focus-column-first";
+    })
+    (bind {
+      key = "${mod}+End";
+      action = "focus-column-last";
+    })
+    (bind {
+      key = "${mod}+Shift+Home";
+      action = "move-column-to-first";
+    })
+    (bind {
+      key = "${mod}+Shift+End";
+      action = "move-column-to-last";
+    })
+    (bind {
+      key = "${mod}+Shift+Ctrl+H";
+      action = "move-column-to-monitor-left";
+    })
+    (bind {
+      key = "${mod}+Shift+Ctrl+J";
+      action = "move-column-to-monitor-down";
+    })
+    (bind {
+      key = "${mod}+Shift+Ctrl+K";
+      action = "move-column-to-monitor-up";
+    })
+    (bind {
+      key = "${mod}+Shift+Ctrl+L";
+      action = "move-column-to-monitor-right";
+    })
+    (bind {
+      key = "${mod}+Shift+Ctrl+Left";
+      action = "move-column-to-monitor-left";
+    })
+    (bind {
+      key = "${mod}+Shift+Ctrl+Down";
+      action = "move-column-to-monitor-down";
+    })
+    (bind {
+      key = "${mod}+Shift+Ctrl+Up";
+      action = "move-column-to-monitor-up";
+    })
+    (bind {
+      key = "${mod}+Shift+Ctrl+Right";
+      action = "move-column-to-monitor-right";
+    })
+    # Window height within a column, and the rest of the column-width actions.
+    (bind {
+      key = "${mod}+Shift+Minus";
+      action = ''set-window-height "-10%"'';
+    })
+    (bind {
+      key = "${mod}+Shift+Equal";
+      action = ''set-window-height "+10%"'';
+    })
+    (bind {
+      key = "${mod}+Ctrl+Shift+R";
+      action = "switch-preset-window-height";
+    })
+    (bind {
+      key = "${mod}+Ctrl+R";
+      action = "reset-window-height";
+    })
+    (bind {
+      key = "${mod}+Ctrl+F";
+      action = "expand-column-to-available-width";
+    })
+    (bind {
+      key = "${mod}+Ctrl+C";
+      action = "center-visible-columns";
+    })
+    (bind {
+      key = "${mod}+Shift+V";
+      action = "switch-focus-between-floating-and-tiling";
+    })
+    # Mouse wheels: with Ctrl the column goes along; Shift turns the vertical wheel sideways.
+    (bind {
+      key = "${mod}+Ctrl+WheelScrollDown";
+      opts = " cooldown-ms=150";
+      action = "move-column-to-workspace-down";
+    })
+    (bind {
+      key = "${mod}+Ctrl+WheelScrollUp";
+      opts = " cooldown-ms=150";
+      action = "move-column-to-workspace-up";
+    })
+    (bind {
+      key = "${mod}+WheelScrollRight";
+      action = "focus-column-right";
+    })
+    (bind {
+      key = "${mod}+WheelScrollLeft";
+      action = "focus-column-left";
+    })
+    (bind {
+      key = "${mod}+Ctrl+WheelScrollRight";
+      action = "move-column-right";
+    })
+    (bind {
+      key = "${mod}+Ctrl+WheelScrollLeft";
+      action = "move-column-left";
+    })
+    (bind {
+      key = "${mod}+Shift+WheelScrollDown";
+      action = "focus-column-right";
+    })
+    (bind {
+      key = "${mod}+Shift+WheelScrollUp";
+      action = "focus-column-left";
+    })
+    (bind {
+      key = "${mod}+Ctrl+Shift+WheelScrollDown";
+      action = "move-column-right";
+    })
+    (bind {
+      key = "${mod}+Ctrl+Shift+WheelScrollUp";
+      action = "move-column-left";
+    })
+    (bind {
+      key = "Super+Alt+L";
+      action = spawn [ "hyprlock" ];
+      title = "Lock";
+    })
+    # Leaving niri asks for confirmation first.
+    (bind {
+      key = "${mod}+Shift+E";
+      action = "quit";
+    })
+    (bind {
+      key = "Ctrl+Alt+Delete";
+      action = "quit";
+    })
+    (bind {
+      key = "Print";
+      action = "screenshot";
+    })
+    (bind {
+      key = "Ctrl+Print";
+      action = "screenshot-screen";
+    })
+    (bind {
+      key = "Alt+Print";
+      action = "screenshot-window";
+    })
+
     # Volume / brightness / media (work while locked; held keys repeat by default).
     (bind {
       key = "XF86AudioRaiseVolume";
@@ -306,6 +502,19 @@ let
       key = "XF86AudioMute";
       opts = locked;
       action = spawnSh "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle";
+    })
+    (bind {
+      key = "XF86AudioMicMute";
+      opts = locked;
+      action = spawnSh "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle";
+    })
+    (bind {
+      key = "XF86AudioStop";
+      opts = locked;
+      action = spawn [
+        "playerctl"
+        "stop"
+      ];
     })
     (bind {
       key = "XF86MonBrightnessUp";
