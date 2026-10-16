@@ -457,10 +457,14 @@ in
   # Authenticate with `sudo tailscale up` on first run only.
   services.tailscale.enable = true;
 
-  services.espanso = {
-    enable = true;
-    package = pkgs.espanso-wayland;
-  };
+  # espanso is off for now. On Wayland the nixpkgs module puts a cap_dac_override security
+  # wrapper on bin/espanso, but that file is a bash wrapper script, and ensure-wrapper-integrity
+  # rejects non-ELF targets, which fails the whole system build. home/linux-resident.nix keeps
+  # its config, so turning it back on is just restoring this block.
+  # services.espanso = {
+  #   enable = true;
+  #   package = pkgs.espanso-wayland;
+  # };
   programs.kdeconnect.enable = true;
 
   time.timeZone = "Asia/Tokyo";
