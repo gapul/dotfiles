@@ -94,6 +94,15 @@ creation_rules:
           - *macmini
           - *homeserver
 
+  # macmini 専用 (aac listen を無人で解錠する Bitwarden のマスターパスワード)。
+  # 金庫全体の鍵なので common には置かず、macmini のホスト鍵だけを受信者にする。
+  - path_regex: secrets/macmini\.yaml$
+    key_groups:
+      - age:
+          - *me
+          - *recovery
+          - *macmini
+
   # 上のどれにも当たらない新規ファイルは、人間の鍵だけで暗号化する (安全側に倒す)。
   - path_regex: secrets/.*\.yaml$
     key_groups:

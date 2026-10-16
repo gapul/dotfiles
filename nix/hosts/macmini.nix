@@ -217,6 +217,24 @@ in
           )
           {
             "revolut/passcode" = forUser "/Users/${user.username}/.config/revolut/passcode";
+          }
+      # Bitwarden master password, so `aac listen` comes up unlocked without a human
+      # (launchd.agents.aac-listen in home/macmini.nix). Chosen knowingly on 2026-10-15: whoever can
+      # read this file (the login user, so the agents too, and root) can open the whole vault
+      # without the Matrix approval. Own file, macmini host key only. Declared once the key exists.
+      //
+        lib.optionalAttrs
+          (
+            builtins.pathExists ../../secrets/macmini.yaml
+            &&
+              builtins.match "(.*\n)?bitwarden:\n[ ]+master_password:.*" (
+                builtins.readFile ../../secrets/macmini.yaml
+              ) != null
+          )
+          {
+            "bitwarden/master_password" = forUser "/Users/${user.username}/.config/aac/bw-master-password" // {
+              sopsFile = ../../secrets/macmini.yaml;
+            };
           };
   };
   imports = [
