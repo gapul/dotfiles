@@ -89,23 +89,24 @@
       "pii/email_school" = { };
       "pii/email_work" = { };
       "pii/birthday" = { };
-      "pii/gmail_app_password_mail" = { };
       "pii/gmail_app_password_caldav" = { };
+
+      # Mail client logins (aerc-accounts.conf below; lib/aerc-accounts.nix has the reasoning).
+      # aerc used to log in to Google with pii/gmail_app_password_mail; that key is no longer
+      # placed on workstations, since mail now goes through Stalwart and the app password only
+      # has to live on homeserver (and macmini, for macmini-homeserver-monitor's alerts).
+      "stalwart/gmail".sopsFile = ../../secrets/mail.yaml;
+      "sakura/mail_password" = { };
     };
 
     # aerc / calcurse templates are OS-independent (`~/.config/...`)
     templates = {
       "aerc-accounts.conf" = {
         path = "${config.home.homeDirectory}/.config/aerc/accounts.conf";
-        content = ''
-          [Gmail]
-          source = imaps://${config.sops.placeholder."pii/email_personal"}@imap.gmail.com:993
-          source-cred-cmd = echo "${config.sops.placeholder."pii/gmail_app_password_mail"}"
-          outgoing = smtps+plain://${config.sops.placeholder."pii/email_personal"}@smtp.gmail.com:465
-          outgoing-cred-cmd = echo "${config.sops.placeholder."pii/gmail_app_password_mail"}"
-          from = ${config.sops.placeholder."pii/name"} <${config.sops.placeholder."pii/email_personal"}>
-          copy-to = Sent
-        '';
+        content = import ../lib/aerc-accounts.nix {
+          placeholder = name: config.sops.placeholder.${name};
+          secretPath = name: config.sops.secrets.${name}.path;
+        };
       };
 
       "calcurse-caldav-config" = {
