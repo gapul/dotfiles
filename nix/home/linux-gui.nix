@@ -318,6 +318,9 @@ in
     orca-slicer # Bambu A1 mini, same profile set as the mac
 
     # ─── Utilities ───
+    # Dictionary lookup. Reads the StarDict (and slob) sets kept in the assets annex under
+    # references/dictionaries/; point it at a checkout from Edit > Dictionaries > Sources.
+    goldendict-ng
     zathura # Keyboard-driven PDF viewer, also used by Yazi.
     foliate # EPUB reader; its OPDS catalog pulls books from Kavita for offline reading.
     swayimg # Wayland image viewer, also used by Yazi.
