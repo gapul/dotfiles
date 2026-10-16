@@ -924,6 +924,7 @@
                     # programs.firefox.arkenfox for modules/home/firefox.nix (imported by linux-gui.nix)
                     inputs.arkenfox.modules.homeManager.arkenfox
                     ./home/dev.nix # dev environment such as direnv
+                    ./home/distrobox.nix # Ubuntu distrobox with ROS 2 (nixos-laptop only)
                     ./home/restic-backup-linux.nix # restic (systemd user timer)
                     sops-nix.homeManagerModules.sops
                     ./home/secrets.nix
@@ -971,6 +972,7 @@
                   ./home/stylix.nix
                   ./home/darkman.nix
                   ./home/dev.nix
+                  ./home/distrobox.nix
                   ./home/ssh-tpm-agent.nix
                   # The GUI app list and the shared Firefox profile. Possible since Zen (which
                   # needed an extra module argument) left on 2026-10-01.
