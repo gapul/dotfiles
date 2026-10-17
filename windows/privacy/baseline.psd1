@@ -4,6 +4,7 @@
 # - Registry: 値はすべて DWord。HKCU は apply.ps1 を実行したユーザーに入る
 # - Services: StartupType Disabled + 停止
 # - Tasks:    無効化。その build に存在しないタスクは skip (verify でも absent 扱い)
+# - Capabilities: Windows の追加機能 (Get-WindowsCapability) を削除。名前は ~~~~ より前で照合する
 #
 # Home / Pro では AllowTelemetry=0 は「必須 (1)」として扱われる。0 が効くのは
 # Enterprise / Education のみ。送信本体の DiagTrack を止めるのが実効的な停止。
@@ -74,5 +75,16 @@
         '\Microsoft\Windows\Feedback\Siuf\DmClientOnScenarioDownload'
         '\Microsoft\Windows\Windows Error Reporting\QueueReporting'
         '\Microsoft\Windows\Flighting\FeatureConfig\UsageDataReporting'
+    )
+
+    Capabilities = @(
+        'VBSCRIPT'                        # 非推奨、マルウェアの常套手段
+        'Browser.InternetExplorer'        # Edge の IE モード
+        'App.StepsRecorder'               # 非推奨 (ステップ記録ツール)
+        'Media.WindowsMediaPlayer'        # 旧 Windows Media Player
+        'Microsoft.Windows.PowerShell.ISE' # PowerShell 7 + WezTerm で代替
+        'MathRecognizer'                  # 数式入力パネル
+        'Microsoft.Wallpapers.Extended'   # 追加の壁紙
+        'Hello.Face'                      # Windows Hello 顔認証 (IR カメラ無しなら不要)
     )
 }

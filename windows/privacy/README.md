@@ -104,6 +104,12 @@ confirmed on a Windows 11 Pro install (build 26300, in a VM) to stop the telemet
 - Services: `DiagTrack`, `dmwappushservice` and `WerSvc`, stopped and disabled.
 - Scheduled tasks: Application Experience, CEIP, disk diagnostics, feedback, error reporting and
   usage data reporting. A task the build does not have is skipped.
+- Capabilities, the optional features in Settings, Optional features: VBScript, Internet Explorer
+  mode, Steps Recorder, the legacy Windows Media Player, PowerShell ISE, the Math Input Panel, the
+  extra wallpapers and Windows Hello Face. They are matched by the part of the name before
+  `~~~~`, or that plus a dotted suffix (`Hello.Face` matches `Hello.Face.20134~~~~0.0.1.0`), so
+  a new version of a capability still matches. `verify.ps1` checks these only when
+  run as administrator, since `Get-WindowsCapability` needs it.
 
 On Home and Pro, `AllowTelemetry = 0` is treated as 1, "Required"; only Enterprise and
 Education honour 0. What actually stops the uploads there is `DiagTrack` being disabled.
@@ -168,6 +174,11 @@ file with the export. Then run `check-upstream.sh`.
 ### Custom UWP apps
 
 `win11debloat-customapps.txt`, one PackageName per line, blank lines and `#` comments allowed.
+Besides apps nothing here uses, it removes what Win11Debloat leaves behind: the Xbox identity,
+overlay and TCUI packages and Edge's Game Assist (games live on the NixOS side; a game that signs
+in with an Xbox account will not work), the CrossDevice package behind Phone Link, and the
+inbox Media Player, Photos and Camera, which leaves no default app for images and video until
+one is installed.
 
 ### Baseline
 

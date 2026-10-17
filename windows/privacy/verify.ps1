@@ -1,4 +1,4 @@
-﻿# baseline.psd1 の宣言と実機の状態を照合する (読み取りのみ、管理者不要)。
+﻿# baseline.psd1 の宣言と実機の状態を照合する (読み取りのみ。追加機能の照合だけは管理者が要る)。
 # apply.ps1 の後や Windows Update の後に回して、戻された設定が無いかを見る。
 # 不一致が 1 つでもあれば exit 1。
 #
@@ -59,6 +59,24 @@ foreach ($t in $Baseline.Tasks) {
         Bad "task $t : $($task.State) (期待 Disabled)"
     } else {
         Ok "task $t : Disabled"
+    }
+}
+
+# Get-WindowsCapability は管理者が要る。非管理者なら追加機能だけ照合を飛ばす
+$isAdmin = (New-Object Security.Principal.WindowsPrincipal(
+    [Security.Principal.WindowsIdentity]::GetCurrent())).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+if ($Baseline.Capabilities -and -not $isAdmin) {
+    Skip "追加機能 $($Baseline.Capabilities.Count) 件 (照合には管理者 PowerShell が要る)"
+} elseif ($Baseline.Capabilities) {
+    $installed = @(Get-WindowsCapability -Online | Where-Object State -eq 'Installed')
+    foreach ($c in $Baseline.Capabilities) {
+        # apply.ps1 の Test-CapabilityName と同じ照合
+        $caps = @($installed | Where-Object { $h = ($_.Name -split '~')[0]; ($h -eq $c) -or ($h -like "$c.*") })
+        if ($caps) {
+            Bad "capability $c : Installed (期待 削除)"
+        } else {
+            Ok "capability $c : 未 install"
+        }
     }
 }
 

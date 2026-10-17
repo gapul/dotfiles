@@ -62,6 +62,13 @@ if (-not $DryRun) {
     Start-Transcript -Path $logFile | Out-Null
 }
 
+# 追加機能の名前 (Hello.Face.20134~~~~0.0.1.0) が baseline の名前 (Hello.Face) に当たるか。
+# ~~~~ より前が一致するか、その後ろに .<枝番> が付いたものを同じ機能とみなす
+function Test-CapabilityName([string]$Name, [string]$Base) {
+    $head = ($Name -split '~')[0]
+    return ($head -eq $Base) -or ($head -like "$Base.*")
+}
+
 # 取得物の置き場。%TEMP% は昇格前のユーザー権限でも書けるので、SHA256 照合の後に
 # 中身を差し替えられうる (照合したものと実行するものが一致しない)。
 # Administrators と SYSTEM だけが書ける ACL を作成時点で付けたディレクトリを使う。
@@ -203,6 +210,9 @@ if (-not $SkipCustomApps) {
                 # Get-AppxProvisionedPackage は管理者要。非管理者なら静かに skip
                 if ($_.Exception.Message -match 'elevation') {
                     Log "Skip (provisioned): $app (管理者要)"
+                } elseif ($_.Exception.Message -match 'not found') {
+                    # user 側の削除と一緒に provisioned も消えていた (Edge.GameAssist など)
+                    Log "Skip (provisioned): $app (既に無い)"
                 } else {
                     Err "Provisioned 削除失敗: $app - $($_.Exception.Message)"
                 }
@@ -274,7 +284,7 @@ if (-not $SkipWinUtil) {
 # 上の 2 ツールの実装が版で変わっても、ここに書いたものは必ず入る。
 # 最後に置くのは、ツールが同じキーを別の値にした場合にこちらを勝たせるため。
 if (-not $SkipBaseline) {
-    Log "Baseline: レジストリ $($Baseline.Registry.Count) / サービス $($Baseline.Services.Count) / タスク $($Baseline.Tasks.Count)"
+    Log "Baseline: レジストリ $($Baseline.Registry.Count) / サービス $($Baseline.Services.Count) / タスク $($Baseline.Tasks.Count) / 追加機能 $($Baseline.Capabilities.Count)"
     foreach ($r in $Baseline.Registry) {
         if ($DryRun) { Dry "Set $($r.Path)\$($r.Name) = $($r.Value)"; continue }
         try {
@@ -306,6 +316,25 @@ if (-not $SkipBaseline) {
             Log "Disabled (task): $t"
         } catch {
             Err "タスク無効化失敗: $t - $($_.Exception.Message)"
+        }
+    }
+    if ($Baseline.Capabilities) {
+        if ($DryRun) {
+            foreach ($c in $Baseline.Capabilities) { Dry "Remove-WindowsCapability -Online -Name $c (~~~~ より前で照合)" }
+        } else {
+            $installed = @(Get-WindowsCapability -Online | Where-Object State -eq 'Installed')
+            foreach ($c in $Baseline.Capabilities) {
+                $caps = @($installed | Where-Object { Test-CapabilityName $_.Name $c })
+                if (-not $caps) { Log "Skip (capability): $c (未 install)"; continue }
+                foreach ($cap in $caps) {
+                    try {
+                        Remove-WindowsCapability -Online -Name $cap.Name | Out-Null
+                        Log "Removed (capability): $($cap.Name)"
+                    } catch {
+                        Err "追加機能削除失敗: $($cap.Name) - $($_.Exception.Message)"
+                    }
+                }
+            }
         }
     }
 } else {
