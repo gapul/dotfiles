@@ -21,7 +21,7 @@ itself, work through this in order, satisfying each step's check before moving o
 
 ```powershell
 Set-ExecutionPolicy -Scope CurrentUser RemoteSigned   # allow local scripts
-# git is not in the winget declaration, since development happens on the WSL side.
+# git is not in winget/apps.json; day-to-day development happens on the NixOS side.
 # Install it once by hand, just to clone:
 #   winget install --exact --id Git.Git
 git clone https://github.com/gapul/dotfiles.git $env:USERPROFILE\dotfiles
@@ -62,24 +62,19 @@ decide on the machine whether you want them.
 ## 3. Run bootstrap, ideally from an administrator PowerShell
 
 ```powershell
-# defaults: WSL is Ubuntu, the user is Windows's $env:USERNAME
+& $env:USERPROFILE\dotfiles\windows\bootstrap.ps1 -DryRun   # the plan, no side effects
 & $env:USERPROFILE\dotfiles\windows\bootstrap.ps1
-# for a different user or distro
-& $env:USERPROFILE\dotfiles\windows\bootstrap.ps1 -WslUser alice -WslDistro Debian
 ```
 
-What it does:
-
-1. Checks winget, then installs everything in `apps.json` with `winget import`.
-2. Symlinks `$PROFILE`.
-3. Generates Windows Terminal's `settings.json`, substituting `__WSL_USER__` and
-   `__WSL_DISTRO__`.
-4. Restricts the ACL on the age and SSH keys to you alone with `icacls`, if they are present.
-5. Sets the global git configuration.
+The nine steps it runs, and the `-Skip*` switch for each, are listed in `windows/README.md`.
 
 - [ ] If creating symlinks fails, run as administrator or turn on developer mode, under
       Settings, Privacy and security, For developers.
-- [ ] An existing `$PROFILE` or Terminal settings file is moved aside to `.bak-<timestamp>`.
+- [ ] An existing `$PROFILE` or config file is moved aside to `.bak-<timestamp>`.
+- [ ] The privacy step (7) downloads the pinned Win11Debloat and WinUtil and refuses to run
+      either one if its SHA256 does not match `windows/privacy/upstream.psd1`. It ends with
+      `失敗 N 件` and exit 1 if anything failed; the full output is kept in
+      `%LOCALAPPDATA%\dotfiles\privacy-apply-<timestamp>.log`.
 
 ## 4. Place the keys and check the permissions
 
@@ -91,7 +86,10 @@ What it does:
 - [ ] If you are going to sign or push, register the public key with GitHub, through
       `gh ssh-key add` or similar.
 
-## 5. WSL2
+## 5. WSL2, only on a Windows-only machine
+
+Skip this on the dual-boot machine: NixOS is one partition over and nothing here depends on WSL.
+On a machine where Windows is the only OS:
 
 ```powershell
 wsl --install -d Ubuntu        # as administrator. May need a reboot
@@ -106,9 +104,6 @@ git clone https://github.com/gapul/dotfiles.git ~/.dotfiles
 
 - [ ] `bootstrap-wsl.sh` switches home-manager to `#homeConfigurations.<user>-wsl`.
 - Check that `wslview`, `pbcopy` through clip.exe, and the `explorer` function all work.
-- Note that the WSL profile's `startingDirectory` in Terminal was already expanded by bootstrap
-  to `//wsl$/<distro>/home/<user>`. If the distro or user differs it will not open, so match
-  them with `-WslDistro` and `-WslUser`.
 
 ## 6. Checking it works
 
@@ -116,17 +111,17 @@ git clone https://github.com/gapul/dotfiles.git ~/.dotfiles
       `$env:STARSHIP_CONFIG` points at `...\dotfiles\configs\shell\starship.toml`.
 - [ ] `v` and `vim` open nvim.
 - [ ] zoxide's `z` works.
-- [ ] Windows Terminal defaults to the WSL (Ubuntu) profile, with a Nerd Font.
+- [ ] WezTerm starts with the JetBrainsMono Nerd Font.
+- [ ] `just win-privacy-verify` ends with `baseline と一致`. Run it again after a feature update;
+      Windows sometimes turns a task or service back on.
 - [ ] The git aliases `g`, `gs`, `ga` and friends work.
 
 ---
 
 ## Still unresolved, to settle on the machine
 
-**There is no native path for decrypting with SOPS.** On the native Windows side the age key is
-merely placed; nothing uses it to decrypt secrets. For now the assumption is that decryption
-happens on the WSL side, through sops-nix. If it becomes necessary natively, add a wrapper
-around `sops -d` to the profile.
+**SOPS decryption works natively.** The profile sets `$env:SOPS_AGE_KEY_FILE` to the key from
+step 4, and `Get-DotfilesSecret` / `Copy-DotfilesSecret` decrypt from `secrets/`.
 
 **winget can only go so far declaratively.** Import installs things but has no way to remove
 what is not declared — there is no equivalent of Nix's `cleanup="uninstall"`. Unwanted apps are

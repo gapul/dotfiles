@@ -23,46 +23,59 @@ The Linux side is managed through the flake, not from here.
 ```
 windows/
 ├── README.md
-├── bootstrap.ps1                              # setup from nothing
-├── ssh/
-│   └── config                                 # hosts for Windows OpenSSH
-├── profile/
-│   └── Microsoft.PowerShell_profile.ps1       # $PROFILE
-└── winget/
-    └── apps.json                              # declarative, in winget import format
+├── SETUP-CHECKLIST.md          # the first-time setup on a machine, step by step
+├── bootstrap.ps1               # setup from nothing; runs the apply scripts below
+├── PSScriptAnalyzerSettings.psd1
+├── winget/                     # apps.json (winget import format), verify.ps1, status.ps1
+├── scoop/                      # the fallback for what winget does not carry
+├── profile/                    # $PROFILE for PowerShell 7 and 5.1
+├── ssh/                        # hosts for Windows OpenSSH
+├── privacy/                    # telemetry and preinstalled apps: Win11Debloat, WinUtil, baseline
+├── sharpkeys/                  # key remapping through the Scancode Map
+├── autohotkey/                 # the AHK keymap, started from the Startup folder
+├── locale/                     # language list, system locale, home location
+├── fonts/                      # user-scope install of configs/fonts/
+├── theme/                      # renders the palette into the zebar, GlazeWM and Terminal configs
+└── tasks/                      # GlazeWM autostart through Task Scheduler
 ```
 
 ## First-time setup
 
-Open PowerShell 7 (`pwsh.exe`) as administrator:
+Follow `SETUP-CHECKLIST.md`. In short, from an administrator PowerShell:
 
 ```powershell
-# allow local scripts
 Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
-
-# clone dotfiles. git comes from winget separately, or by hand
 git clone https://github.com/gapul/dotfiles.git $env:USERPROFILE\dotfiles
-
-# run bootstrap
 & $env:USERPROFILE\dotfiles\windows\bootstrap.ps1
 ```
 
 ## What bootstrap.ps1 does
 
-1. If winget is missing, points you at the Microsoft Store to install it.
-2. Installs everything in `winget/apps.json` with `winget import`.
-3. Symlinks PowerShell's `$PROFILE` to `profile/Microsoft.PowerShell_profile.ps1`.
-4. Symlinks the Windows OpenSSH config to `%USERPROFILE%\.ssh\config`.
-5. Restricts the ACL on the age and SSH keys to you alone with icacls, if they exist, and warns
-   if they do not.
+It is idempotent, and `-DryRun` shows the plan without side effects.
+
+1. Checks winget, and installs PowerShell 7 first, because the profile needs PSReadLine 2.2+.
+2. Installs `winget/apps.json` with `winget import`, then applies `scoop/scoop.json`
+   (`-SkipScoop`).
+3. Symlinks `$PROFILE`, for both PowerShell 7 and 5.1.
+4. Symlinks tool configs from `configs/`: the SSH config, Zed, espanso, WezTerm, GlazeWM and
+   zebar.
+5. Restricts the ACL on the age and SSH keys to you alone with icacls, if they exist, and sets
+   up the ssh-agent service (or, with `-UseBitwardenSSH`, disables it in favour of Bitwarden's).
 6. Sets the global git configuration.
+7. Applies `privacy/` (`-SkipPrivacy`); see `privacy/README.md`.
+8. Applies the keymap, SharpKeys and AutoHotkey (`-SkipKeymap`), renders the theme, and installs
+   the fonts (`-SkipFonts`).
+9. Applies the locale and language settings (`-SkipLocale`).
+
+Each step also has its own `just win-*` recipe for running it alone.
 
 ## What it does not do
 
 - Decide which apps to install; that is what adding to `winget/apps.json` is for.
-- Install WSL. Turning on the Windows feature is a manual step:
-  - In PowerShell, `wsl --install -d Ubuntu`
-  - Then, inside WSL, run `~/.dotfiles/scripts/bootstrap-wsl.sh`
+- Install WSL. On the dual-boot machine there is no reason to, and nothing here needs it. The
+  WSL pieces that remain (`-WslUser`, the ssh-agent relay in `nix/home/wsl.nix`,
+  `docs/NIXOS_WSL.md`) are kept for a Windows-only machine; there, WSL is a manual step:
+  `wsl --install -d Ubuntu`, then `~/.dotfiles/scripts/bootstrap-wsl.sh` inside it.
 
 ## winget and scoop
 

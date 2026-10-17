@@ -1262,11 +1262,26 @@ win-status *flags:
 win-upgrade:
     pwsh.exe -NoProfile -Command "winget upgrade --all --silent --accept-package-agreements --accept-source-agreements"
 
-# Declaratively apply telemetry/built-in feature settings (Win11Debloat + WinUtil)
-# Pass `-DryRun` `-SkipWinUtil` `-SkipWin11Debloat` via `*flags`
+# Declaratively apply telemetry/built-in feature settings (pinned Win11Debloat + WinUtil + baseline.psd1)
+# Pass `-DryRun` `-SkipWinUtil` `-SkipWin11Debloat` `-SkipCustomApps` `-SkipBaseline` via `*flags`
 [group('Windows')]
 win-privacy *flags:
     pwsh.exe -NoProfile -ExecutionPolicy Bypass -File windows/privacy/apply.ps1 {{flags}}
+
+# Compare the machine against windows/privacy/baseline.psd1 (read-only, exits 1 on drift)
+[group('Windows')]
+win-privacy-verify:
+    pwsh.exe -NoProfile -ExecutionPolicy Bypass -File windows/privacy/verify.ps1
+
+# Check the privacy declarations against the pinned upstream scripts (runs on macOS/Linux)
+[group('Windows')]
+win-privacy-check-upstream:
+    windows/privacy/check-upstream.sh
+
+# Re-pin Win11Debloat and WinUtil to their latest releases, then run the check above
+[group('Windows')]
+win-privacy-update-upstream:
+    windows/privacy/update-upstream.sh
 
 # Declaratively apply Scoop buckets + apps (for sideloading MS Store-only apps)
 # Pass `-DryRun` `-SkipBuckets` `-SkipApps` via `*flags`

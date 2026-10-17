@@ -339,17 +339,19 @@ if (Get-Command git -ErrorAction SilentlyContinue) {
     }
 }
 
-# 7. プライバシー / 標準機能の declarative 適用 (Win11Debloat + WinUtil)
-#    - Win11Debloat: CLI 完結 (引数は windows/privacy/win11debloat-args.txt)
-#    - WinUtil: GUI 起動 (設定は windows/privacy/winutil-config.json を Import)
-#    -SkipPrivacy で個別実行 (just win-privacy) に振替可能。
+# 7. プライバシー / 標準機能の declarative 適用 (Win11Debloat + baseline + WinUtil)
+#    - Win11Debloat / WinUtil は windows/privacy/upstream.psd1 の固定版を SHA256 照合して実行
+#    - Win11Debloat: 引数は windows/privacy/win11debloat-args.txt
+#    - Baseline: windows/privacy/baseline.psd1 (ツールの版に依存しないレジストリ / サービス / タスク)
+#    - WinUtil: windows/privacy/winutil-config.json を headless 適用 (GUI なし)
+#    -SkipPrivacy で個別実行 (just win-privacy) に振替可能。確認は just win-privacy-verify。
 if (-not $SkipPrivacy) {
     $applyPs1 = Join-Path $WindowsDir 'privacy\apply.ps1'
     if (Test-Path $applyPs1) {
         if ($DryRun) {
             & $applyPs1 -DryRun
         } else {
-            Log 'プライバシー適用 (Win11Debloat + WinUtil) — skip するには -SkipPrivacy'
+            Log 'プライバシー適用 (Win11Debloat + baseline + WinUtil) — skip するには -SkipPrivacy'
             & $applyPs1
         }
     } else {
