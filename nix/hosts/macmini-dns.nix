@@ -19,14 +19,14 @@
 # is the listen address.
 { pkgs, ... }:
 let
-  # This host's LAN address. Pinned by a DHCP reservation on the router.
-  lanAddress = "192.168.116.100";
-  # tailnet address. The tailnet DNS setting points here (devices away from home can't
-  # reach the LAN address). Tailscale addresses are fixed per machine.
-  tailnetAddress = "100.105.135.49";
-
+  # Every address on the host rather than a list of them. The LAN address is a DHCP reservation
+  # (192.168.116.100) and the tailnet DNS setting points at the tailnet one (100.105.135.49), but
+  # naming them made blocky depend on both being assigned: when the router lost its reservations
+  # on 2026-10-09 this host came back as .77, the bind failed, and blocky restart-looped for a
+  # week, taking the loopback and tailnet listeners down with the LAN one. macOS has no
+  # ip_nonlocal_bind, and nothing else here wants port 53.
   settings = import ../lib/blocky-settings.nix {
-    listen = "127.0.0.1:53,${lanAddress}:53,${tailnetAddress}:53";
+    listen = ":53";
   };
 
   # blocky reads YAML. JSON is a subset of YAML, so it can be passed as is.
@@ -73,14 +73,23 @@ in
     command = "${launch}";
     serviceConfig = {
       RunAtLoad = true;
-      # If the tailnet address isn't assigned yet at startup, bind fails and it exits.
-      # launchd restarts it every 30 seconds, and it succeeds once Tailscale is up.
-      # macOS has no equivalent of Linux's ip_nonlocal_bind, so this is absorbed by
-      # retrying rather than by ordering.
+      # Restarts blocky if it exits for any other reason (list download panics, a bad config).
       KeepAlive = true;
       ThrottleInterval = 30;
       StandardOutPath = "/var/log/blocky.log";
       StandardErrorPath = "/var/log/blocky.log";
     };
   };
+
+  # This host's own lookups go through blocky too. The brew tailscaled (open source, not the App
+  # Store build) only writes /etc/resolver/search.tailscale on macOS and cannot replace the
+  # system resolver, so "Use Tailscale DNS" did nothing here: the Mac kept the router's DHCP DNS,
+  # plain and unfiltered (found 2026-10-17). Local blocky first, homeserver over the tailnet when
+  # it is down. No public server as a third entry: mDNSResponder races the listed servers rather
+  # than trying them in order, so a public one would answer around the blocklists.
+  networking.knownNetworkServices = [ "Ethernet" ];
+  networking.dns = [
+    "127.0.0.1"
+    "100.127.129.31"
+  ];
 }

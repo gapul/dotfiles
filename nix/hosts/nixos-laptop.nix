@@ -40,6 +40,44 @@ let
       esac
     '';
   };
+  # Captive portals answer only on the network's own DNS, which the DNS-over-TLS setup below
+  # never asks. `captive-portal on` points the uplink at the DHCP-provided servers in plain DNS
+  # until the login page is done; `off` (or the link going down) drops the override again.
+  captivePortal = pkgs.writeShellApplication {
+    name = "captive-portal";
+    runtimeInputs = [
+      pkgs.systemd
+      pkgs.networkmanager
+      pkgs.iproute2
+      pkgs.gawk
+      pkgs.gnused
+    ];
+    text = ''
+      dev=$(ip route show default | awk '{print $5; exit}')
+      if [ -z "$dev" ]; then
+        echo "captive-portal: no default route" >&2
+        exit 1
+      fi
+      case "''${1:-on}" in
+        on)
+          read -r -a servers <<<"$(nmcli -g IP4.DNS,IP6.DNS device show "$dev" | sed 's/\\:/:/g' | tr '|\n' '  ')"
+          if [ "''${#servers[@]}" -eq 0 ]; then
+            echo "captive-portal: $dev has no DHCP-provided DNS" >&2
+            exit 1
+          fi
+          sudo resolvectl dns "$dev" "''${servers[@]}"
+          sudo resolvectl dnsovertls "$dev" no
+          sudo resolvectl domain "$dev" '~.'
+          echo "plain DNS via ''${servers[*]} on $dev; run 'captive-portal off' after logging in"
+          ;;
+        off) sudo resolvectl revert "$dev" ;;
+        *)
+          echo "usage: captive-portal [on|off]" >&2
+          exit 2
+          ;;
+      esac
+    '';
+  };
   # Fast-moving agent CLIs come from the dedicated nixpkgs-agents lineage, same as on
   # darwin (hosts/darwin.nix). systemPackages rather than home.packages for the PATH
   # order: /run/current-system/sw/bin sits ahead of ~/.local/bin, so a stray
@@ -452,6 +490,59 @@ in
 
   networking.hostName = "nixos-laptop";
   networking.networkmanager.enable = true;
+  # A fresh MAC on every connection, so networks cannot track the laptop across visits or places.
+  # The default ("preserve") joins with the hardware MAC. Costs a re-login at captive portals, and a
+  # wired LAN that admits registered MACs only needs cloned-mac-address=permanent on its profile.
+  networking.networkmanager.wifi.macAddress = "random";
+  networking.networkmanager.ethernet.macAddress = "random";
+  # Do not announce "nixos-laptop" in DHCP requests either, or the random MAC is tied straight
+  # back to this machine. Global defaults, so every profile (including ad-hoc ones) inherits them.
+  networking.networkmanager.settings.connection = {
+    "ipv4.dhcp-send-hostname" = false;
+    "ipv6.dhcp-send-hostname" = false;
+  };
+
+  # The network the laptop is on never sees a DNS query. NetworkManager does not hand the
+  # DHCP-provided servers to resolved at all (dns = "none"). While Tailscale is up it registers
+  # tailscale0 as the default route with the tailnet resolvers (the two blockys, inside
+  # WireGuard), so lookups get the same blocklists as every other device. When Tailscale is down
+  # resolved has no link servers and uses the fallback: Quad9 over strict TLS. Quad9 is a
+  # fallback rather than global DNS= on purpose: global servers would be queried alongside
+  # tailscale0, and Quad9's answer would win over blocky's NXDOMAIN for blocked names.
+  # Strict DoT means captive portals need `captive-portal on` (see the let block). mkForce because
+  # the resolved module sets dns = "systemd-resolved", which would push the DHCP servers in.
+  networking.networkmanager.dns = lib.mkForce "none";
+  # dns = "none" only stops NetworkManager writing resolv.conf; it still hands each connection's
+  # DHCP servers to resolved unless this is off (found on the first switch, 2026-10-17: the
+  # Wi-Fi link came up as a second default route next to tailscale0).
+  networking.networkmanager.settings.main.systemd-resolved = false;
+  services.resolved = {
+    enable = true;
+    settings.Resolve = {
+      FallbackDNS = [
+        "9.9.9.9#dns.quad9.net"
+        "149.112.112.112#dns.quad9.net"
+        "2620:fe::fe#dns.quad9.net"
+        "2620:fe::9#dns.quad9.net"
+      ];
+      # Applies to the fallback servers; tailscaled turns it off on its own link.
+      DNSOverTLS = "true";
+      # LLMNR would answer for the hostname on every network; avahi already covers mDNS.
+      LLMNR = "false";
+      MulticastDNS = "false";
+    };
+  };
+  # Drop a captive-portal override when the link goes away, so the next network starts on DoT.
+  networking.networkmanager.dispatcherScripts = [
+    {
+      type = "basic";
+      source = pkgs.writeShellScript "captive-portal-revert" ''
+        if [ "$2" = down ]; then
+          ${pkgs.systemd}/bin/resolvectl revert "$1" 2>/dev/null || true
+        fi
+      '';
+    }
+  ];
 
   # The home homelab is on Tailscale (*.gapul.net). Join this machine too.
   # Authenticate with `sudo tailscale up` on first run only.
@@ -957,6 +1048,7 @@ in
       sbctl # generate/enroll/verify Secure Boot keys (used for lanzaboote operation)
       bpftrace # DTrace-style tracing: which process wrote a file, sent a key, opened a socket
       keepAwake # `keep-awake [on [DURATION]|off|status]`, see the let block
+      captivePortal # `captive-portal [on|off]`, see the let block
 
       # Minimal set to make Hyprland usable from the start.
       # A full rice (keybinds/waybar config/wallpaper) is meant to be moved to home-manager's
