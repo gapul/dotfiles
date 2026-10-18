@@ -18,6 +18,8 @@ return {
     "LazyVim/LazyVim",
     opts = {
       colorscheme = "rose-pine",
+      -- LazyVim / Neovim 更新時の NEWS ポップアップを出さない
+      news = { lazyvim = false, neovim = false },
     },
   },
 }

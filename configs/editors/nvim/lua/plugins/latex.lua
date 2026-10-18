@@ -11,7 +11,7 @@ return {
       vim.g.vimtex_compiler_latexmk = {
         out_dir = "",
         callback = 1,
-        continuous = 1,
+        continuous = 0, -- 単発コンパイル（下の autocmd で開いた時・保存時に実行）
         executable = "latexmk",
         options = {
           "-verbose",
@@ -45,11 +45,25 @@ return {
               and vim.api.nvim_get_current_buf() == args.buf
               and vim.b[args.buf].vimtex_skim_sync_generation == generation
               and vim.fn.exists(":VimtexView") == 2
+              -- PDF 未生成なら呼ばない（"Viewer cannot read PDF file!" 警告を防ぐ）
+              and vim.fn.eval("exists('b:vimtex.compiler') && filereadable(b:vimtex.compiler.get_file('pdf'))") == 1
             then
               vim.cmd("silent! VimtexView")
             end
           end, 600)
         end,
+      })
+
+      -- .tex を開いた時と保存の度にコンパイル（初回成功時に Skim が開く）
+      vim.api.nvim_create_autocmd("User", {
+        pattern = "VimtexEventInitPost",
+        group = skim_sync_group,
+        command = "VimtexCompile",
+      })
+      vim.api.nvim_create_autocmd("BufWritePost", {
+        pattern = "*.tex",
+        group = skim_sync_group,
+        command = "silent! VimtexCompile",
       })
 
       -- quickfix: 余計な警告で開きすぎないように
