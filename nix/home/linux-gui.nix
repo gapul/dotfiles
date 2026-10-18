@@ -20,6 +20,18 @@ let
   browser = "firefox-devedition.desktop"; # nixpkgs' wrapper names it after the binary
   creativeWineApps = import ../pkgs/creative-wine-apps.nix { inherit pkgs; };
   niji = pkgs.callPackage ../pkgs/nijigenerate.nix { };
+  # adb ignores ANDROID_USER_HOME and always keeps its key and server state in $HOME/.android,
+  # so it runs with HOME pointed into the XDG data dir; the state lands in
+  # ~/.local/share/android/.android. scrcpy puts its own android-tools first on PATH, so it is
+  # given this one instead of reading the variable.
+  androidTools = pkgs.symlinkJoin {
+    name = "android-tools-xdg";
+    paths = [ pkgs.android-tools ];
+    nativeBuildInputs = [ pkgs.makeWrapper ];
+    postBuild = ''
+      wrapProgram $out/bin/adb --set HOME ${config.xdg.dataHome}/android
+    '';
+  };
 in
 {
   imports = [
@@ -206,9 +218,12 @@ in
     "d ${config.programs.git.settings.ghq.root}/github.com/${user.gitUser} 0755 - - -"
   ];
 
-  # Keep the rest of the clutter out of ~ as well: GTK 2's rc file and adb's state dir.
+  # Keep the rest of the clutter out of ~ as well: GTK 2's rc file, the Android SDK tools' state
+  # dir (adb itself needs the wrapper above), and the PulseAudio cookie that clients with an old
+  # bundled libpulse (Steam's runtime) write to ~/.pulse-cookie.
   gtk.gtk2.configLocation = "${config.xdg.configHome}/gtk-2.0/gtkrc";
   home.sessionVariables.ANDROID_USER_HOME = "${config.xdg.dataHome}/android";
+  home.sessionVariables.PULSE_COOKIE = "${config.xdg.configHome}/pulse/cookie";
 
   xdg.mimeApps = {
     enable = true;
@@ -294,8 +309,8 @@ in
     )
     libimobiledevice
     uxplay # iPhone AirPlay receiver
-    android-tools # adb; USB permissions are provided by systemd
-    scrcpy # Android display and control
+    androidTools # adb; USB permissions are provided by systemd
+    (scrcpy.override { android-tools = androidTools; }) # Android display and control
     (callPackage ../pkgs/syncclipboard.nix { })
     localsend # AirDrop-shaped transfer to the phone
     kdePackages.kdeconnect-kde
