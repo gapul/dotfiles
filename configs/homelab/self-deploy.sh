@@ -71,9 +71,11 @@ EOF
   fi
 fi
 
+# 成功は通知しない。main は 1 時間おきに進むので日に何度も鳴り、読んでも
+# することが無い。何に切り替わったかはジャーナルに残す。
 if [ "$rc" -eq 0 ]; then
   printf '%s' "$remote" > "$STATE"
-  notify "homeserver を ${remote:0:8} に更新した" "$(printf '%s' "$out" | tail -3)"
+  printf 'homeserver を %s に更新した\n' "${remote:0:8}"
   exit 0
 fi
 
