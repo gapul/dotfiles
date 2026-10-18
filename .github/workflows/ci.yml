@@ -200,6 +200,15 @@ jobs:
             --extra-access-tokens ${{ secrets.GITHUB_TOKEN }} \
             -- --accept-flake-config
 
+      # omnix は checkout 直下に `result` (ビルド結果の JSON) を out-link として書く。自前ランナーの
+      # _work は run をまたいで残るので、これが main の全クロージャ (macmini の toplevel と
+      # home-manager 世代込み、2026-10-16 の実測で 57.5G) の GC 根になり、darwin-common.nix の
+      # 「main の成果物は何も root しないので日次 GC が片付ける」前提が崩れていた。cachix に
+      # push 済みなので手元に残す理由は無い。pr-gate の根 (上の --out-link) はそのまま。
+      - name: Drop omnix result link
+        if: github.event_name != 'pull_request' && always()
+        run: rm -f result
+
   # system に依らない検査 (lint / gitleaks / generated-drift)。om ci の build/flake-check は
   # om.yaml の checks 構成側で無効にしてあるので、ここは custom step だけを回す。
   # 独立ジョブにしているのは、どの system ジョブに相乗りさせても、そのジョブがそのまま
