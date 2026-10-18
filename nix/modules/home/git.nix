@@ -101,7 +101,7 @@ in
       merge.flakelock.driver = "cp -f %B %A";
       diff.colorMoved = "default";
       gpg.format = "ssh";
-      "gpg \"ssh\"".allowedSignersFile = "${config.home.homeDirectory}/.ssh/allowed_signers";
+      "gpg \"ssh\"".allowedSignersFile = "${config.xdg.configHome}/git/allowed_signers";
 
       # The Enclave wrapper execs macOS' /usr/bin/ssh-keygen; on Linux it broke verification too.
       "gpg \"ssh\"".program =
@@ -114,8 +114,9 @@ in
 
   # The allowed signers list was hand-placed at ~/.ssh/allowed_signers, i.e. the one input to
   # signature verification lived outside the declaration. Both the old Bitwarden key and the new
-  # Secure Enclave key are listed so commits from either era still verify.
-  home.file.".ssh/allowed_signers".source = ../../keys/allowed_signers;
+  # Secure Enclave key are listed so commits from either era still verify. Only git reads it
+  # (through allowedSignersFile above), so it lives with git's config, not in ~/.ssh.
+  xdg.configFile."git/allowed_signers".source = ../../keys/allowed_signers;
 
   # HM 26.05: programs.git.delta → migrated to standalone programs.delta
   programs.delta = {
