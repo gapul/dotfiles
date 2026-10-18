@@ -292,6 +292,7 @@
       "/Applications/Obsidian.app"            # notes (LiveSync keeps running in the background)
       "/Applications/Firefox Developer Edition.app" # browser (took over from Zen 2026-09-26)
       "/Applications/Tinycast.app"            # launcher on cmd+space (replaced the Ghostty quick-terminal launcher 2026-10-01)
+      "/Applications/Nix Apps/Puddle.app"     # web-page wallpaper; back at login 2026-10-18 after its 10-02 removal for CPU load
     )
     # Registration goes through System Events, so it silently does nothing until this process has
     # Automation permission. Report what failed instead of swallowing it — the old `|| true` made a
@@ -340,9 +341,7 @@
     #                Edition is the default browser and the login item now.
     #   LuLu       — dropped from the declaration in #879 (its network extension kept stalling
     #                inbound ssh); the cask cleanup removes the app, this removes its login item.
-    #   Puddle     — dropped 2026-10-02: it held a core at ~90% CPU and heated the MacBook Air;
-    #                launched by hand when the wallpaper is wanted.
-    for name in AeroSpace Bitwarden Neru NTKDaemon NIHardwareAgent Zen LuLu Puddle; do
+    for name in AeroSpace Bitwarden Neru NTKDaemon NIHardwareAgent Zen LuLu; do
       if /usr/bin/osascript -e "tell application \"System Events\" to (name of login items) contains \"$name\"" 2>/dev/null | grep -q true; then
         /usr/bin/osascript -e "tell application \"System Events\" to delete login item \"$name\"" >/dev/null 2>&1 || true
       fi
