@@ -382,14 +382,15 @@ in
         "browser.newtabpage.activity-stream.feeds.system.topstories" = false;
         "browser.newtabpage.activity-stream.telemetry" = false;
 
-        # Japanese default fonts: Kyuji Mincho / Kyuji Gothic (github.com/gapul/kyuji-font) draw
-        # shinjitai text with kyujitai glyphs without changing the text. Copied into
-        # ~/Library/Fonts by hand while that repo is private (a private flake input would break
-        # evaluation wherever no GitHub token is set); with the fonts absent Firefox falls back to
-        # its stock Japanese fonts. Pages that name their own fonts are covered by the repo's
-        # Violentmonkey script, not by these.
-        "font.name.serif.ja" = "Kyuji Mincho";
-        "font.name.sans-serif.ja" = "Kyuji Gothic";
+        # Japanese default fonts. On the mac: Kyuji Mincho / Kyuji Gothic
+        # (github.com/gapul/kyuji-font), which draw shinjitai text with kyujitai glyphs without
+        # changing the text. They are copied into ~/Library/Fonts by hand while that repo is
+        # private (a private flake input would break evaluation wherever no GitHub token is set),
+        # so Linux has no copy and naming them there left Firefox's ja defaults pointing at a
+        # missing family. Linux names Noto CJK JP instead.
+        # Pages that name their own fonts are covered by the repo's Violentmonkey script.
+        "font.name.serif.ja" = if pkgs.stdenv.isDarwin then "Kyuji Mincho" else "Noto Serif CJK JP";
+        "font.name.sans-serif.ja" = if pkgs.stdenv.isDarwin then "Kyuji Gothic" else "Noto Sans CJK JP";
       };
       userContent =
         if pkgs.stdenv.isLinux then
