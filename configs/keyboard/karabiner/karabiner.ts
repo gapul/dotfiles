@@ -1,5 +1,12 @@
 import * as k from "karabiner.ts";
 
+const minecraftApps = [
+  /^com\.mojang\.minecraft/,
+  /^net\.java\.openjdk\./,
+  /^org\.lwjgl\.glfw/,
+  /minecraft/,
+];
+
 const inputModeSwitch = {
   ...k
     .rule("Input Mode Switch (Ctrl+Shift)")
@@ -28,6 +35,17 @@ const characterConversion = {
 };
 
 k.writeToProfile("Default profile", [
+  k
+    .rule(
+      "スペースキーを単押しでスペース、長押しでCmd+Ctrl+Optにする (Minecraftでは無効)",
+      k.ifApp(minecraftApps).unless(),
+    )
+    .manipulators([
+      k
+        .map({ key_code: "spacebar", modifiers: { optional: ["any"] } })
+        .to("left_control", ["left_command", "left_option"])
+        .toIfAlone("spacebar"),
+    ]),
   inputModeSwitch,
   characterConversion,
   k.rule("Cmd+Q を長押し(1秒)で終了 (slowquitapps代替)").manipulators([

@@ -19,8 +19,8 @@
 #    counterpart and is left as it is (xkb gives it no symbol). fcitx5 does not use any of these keys
 #    (its trigger is Ctrl+Space); SKK's own mode keys are letters.
 #
-# 2. Puts Super, the window manager's modifier (home/niri.nix, home/hyprland.nix), where the mac's
-#    OmniWM uses Hyper (Cmd+Ctrl+Opt; the mac's modifier keys are macOS defaults). It used to be Hyper here too
+# 2. Puts Super, the window manager's modifier (home/niri.nix, home/hyprland.nix), where the mac has
+#    Hyper from Karabiner (configs/keyboard/karabiner/karabiner.ts). It used to be Hyper here too
 #    (Super+Ctrl+Alt), to keep Super+key free for the apps; Linux apps barely use Super, so the
 #    window manager has it now and niri's defaults (mouse drag on Mod) line up.
 #
