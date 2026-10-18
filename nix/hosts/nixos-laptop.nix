@@ -99,6 +99,7 @@ in
     ./nixos-laptop-btrfs.nix # cryptroot as Btrfs subvolumes (@, @home, @nix, @log)
     ./nixos-laptop-maint.nix # initrd-only maintenance boot with ssh, for work on an unmounted root
     ./nixos-laptop-wifi.nix # eduroam + 0000UTokyo + iPhone hotspot, credentials from secrets/nixos-laptop.yaml
+    ./nixos-laptop-zsh.nix # ZDOTDIR from the system zshenv, so no ~/.zshenv
   ];
 
   # --- Bootloader: lanzaboote (Secure Boot support) ---
