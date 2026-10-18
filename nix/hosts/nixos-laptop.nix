@@ -1055,7 +1055,6 @@ in
       # A full rice (keybinds/waybar config/wallpaper) is meant to be moved to home-manager's
       # wayland.windowManager.hyprland and gradually removed from here.
       ghostty # main terminal (config symlinked in home/hyprland.nix)
-      kitty # fallback opened by Hyprland's stock SUPER+Q (home's $terminal is ghostty)
       # X11 apps under niri (T3 Code runs on X11, home/t3code-desktop.nix): niri starts it on
       # demand when it finds it on PATH, and sets DISPLAY for its clients.
       xwayland-satellite
