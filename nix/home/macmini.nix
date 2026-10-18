@@ -73,6 +73,29 @@ in
   # Read by the patched `aac listen` (nix/pkgs/agent-access.nix): approval goes through Matrix.
   home.sessionVariables.AAC_APPROVAL_COMMAND = "aac-matrix-approve";
 
+  # Tools xdg-ninja found in ~ on the mini (2026-10-18). rustup and cocoapods serve the build
+  # worker (home/macmini-render.nix), whose ssh-run commands read .zshenv and so get these.
+  home.sessionVariables.RUSTUP_HOME = "${config.xdg.dataHome}/rustup";
+  home.sessionVariables.KERAS_HOME = "${config.xdg.stateHome}/keras";
+  home.sessionVariables.GOPATH = "${config.xdg.dataHome}/go";
+  home.sessionVariables.CP_HOME_DIR = "${config.xdg.dataHome}/cocoapods";
+  home.sessionVariables.NODE_REPL_HISTORY = "${config.xdg.stateHome}/node_repl_history";
+  # Move what already exists in the same switch that sets the variables, so the two never disagree.
+  # Only when the old path is real data and the new one does not exist yet; a rename on one volume.
+  home.activation.xdgMigrateLegacyDirs = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    xdgMigrate() {
+      if [ -e "$HOME/$1" ] && [ ! -L "$HOME/$1" ] && [ ! -e "$2" ]; then
+        run /bin/mkdir -p "$(/usr/bin/dirname "$2")"
+        run /bin/mv "$HOME/$1" "$2"
+      fi
+    }
+    xdgMigrate .rustup "${config.xdg.dataHome}/rustup"
+    xdgMigrate .keras "${config.xdg.stateHome}/keras"
+    xdgMigrate go "${config.xdg.dataHome}/go"
+    xdgMigrate .cocoapods "${config.xdg.dataHome}/cocoapods"
+    xdgMigrate .node_repl_history "${config.xdg.stateHome}/node_repl_history"
+  '';
+
   home.packages = [
     # T3 Code starts agent CLIs from its Aqua LaunchAgent instead of an interactive shell.
     # Keep Codex declarative on the remote host so it is both discoverable and available
@@ -646,6 +669,15 @@ in
       "transcribe-diarize"
       "tts"
       "voice-clone"
+    ]
+    ++ [
+      # The same convergence links the workstations get (home/workstation.nix, not imported here): a
+      # launch path that ignores CLAUDE_CONFIG_DIR / CODEX_HOME lands in the XDG dirs anyway. Until
+      # 2026-10-18 these were the dangling leftovers of the 2026-08-09 workstation generation.
+      {
+        ".codex".source = config.lib.file.mkOutOfStoreSymlink "${config.xdg.dataHome}/codex";
+        ".claude".source = config.lib.file.mkOutOfStoreSymlink "${config.xdg.configHome}/claude";
+      }
     ]
     ++ [
       # The workstation's broker sends approved native credentials to this fixed remote helper.

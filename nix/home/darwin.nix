@@ -114,21 +114,7 @@ in
   home.file."ActivityWatchSync".source =
     config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/Sync/syncthing/personal-history/aw-sync";
 
-  # Move real data of non-XDG tools under XDG, keep default paths via symlink
-  # (same approach as terminfo). Classification: credentials/long-term data=data, telemetry state=state.
-  home.file.".appstoreconnect".source =
-    config.lib.file.mkOutOfStoreSymlink "${config.xdg.dataHome}/appstoreconnect";
-  home.file.".cloudflared".source =
-    config.lib.file.mkOutOfStoreSymlink "${config.xdg.dataHome}/cloudflared";
-  home.file.".dart-tool".source =
-    config.lib.file.mkOutOfStoreSymlink "${config.xdg.stateHome}/dart-tool";
-  # Ensure the entity exists first, else tool writes fail with ENOENT when the symlink target is missing
-  home.activation.xdgSymlinkTargets = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    /bin/mkdir -p \
-      "${config.xdg.dataHome}/appstoreconnect" \
-      "${config.xdg.dataHome}/cloudflared" \
-      "${config.xdg.stateHome}/dart-tool"
-  '';
+  # ~/.appstoreconnect, ~/.cloudflared, ~/.dart-tool -> XDG: home/darwin-xdg-links.nix (shared with the mini).
 
   home.sessionPath = [
     "/opt/homebrew/bin"

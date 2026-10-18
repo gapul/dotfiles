@@ -352,6 +352,7 @@
           base
           ++ [
             ./home/darwin.nix
+            ./home/darwin-xdg-links.nix # ~/.appstoreconnect, ~/.cloudflared, ~/.dart-tool -> XDG
             # programs.firefox.arkenfox options for modules/home/firefox.nix (imported via
             # modules/home/darwin-firefox.nix from home/darwin.nix). A flake input module has to enter through the role list.
             inputs.arkenfox.modules.homeManager.arkenfox
@@ -379,6 +380,7 @@
         # prune/check/monitor as the always-on backup control plane.
         macminiHeadless = base ++ [
           ./home/macmini.nix
+          ./home/darwin-xdg-links.nix # ~/.appstoreconnect, ~/.cloudflared, ~/.dart-tool -> XDG
           ./home/macmini-maintenance.nix
           ./home/macmini-backup.nix
           ./home/macmini-watchdog.nix
