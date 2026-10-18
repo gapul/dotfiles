@@ -170,9 +170,18 @@ _rebuild-macos force="":
 _rebuild-linux:
     #!/usr/bin/env bash
     set -euo pipefail
-    echo "━━━ home-manager"
-    nh home switch -q -Q --diff never
-    echo "✓ home-manager"
+    # On a NixOS host with its own nixosConfigurations entry (nixos-laptop), home-manager is a
+    # NixOS module, so there is no standalone homeConfigurations to switch; rebuild the system.
+    host=$(hostname)
+    if [ -e /etc/NIXOS ] && [ "$(nix eval "{{flake}}#nixosConfigurations" --apply "a: a ? \"$host\"" 2>/dev/null || echo false)" = true ]; then
+      echo "━━━ nixos ($host, home-manager included)"
+      nh os switch "{{flake}}" -H "$host" -q -Q --diff never
+      echo "✓ nixos"
+    else
+      echo "━━━ home-manager"
+      nh home switch -q -Q --diff never
+      echo "✓ home-manager"
+    fi
 
 [private]
 _rebuild-windows:
@@ -715,9 +724,9 @@ outdated:
     echo "━━━ flake inputs (lock last-modified) ━━━"
     if command -v jq >/dev/null; then
       nix flake metadata {{flake}} --json 2>/dev/null \
-        | jq -r '.locks.nodes | to_entries[] | select(.value.locked.lastModified) | "\(.key)\t\(.value.locked.lastModified)"' \
-        | while IFS=$'\t' read -r name ts; do printf '  %-22s %s\n' "$name" "$(date -r "$ts" '+%Y-%m-%d')"; done \
-        | sort -k2
+        | jq -r '.locks.nodes | to_entries[] | select(.value.locked.lastModified) | "\(.key)\t\(.value.locked.lastModified | strftime("%Y-%m-%d"))"' \
+        | while IFS=$'\t' read -r name day; do printf '  %-22s %s\n' "$name" "$day"; done \
+        | sort -b -k2
     else
       echo "  (jq not installed, skip)"
     fi
