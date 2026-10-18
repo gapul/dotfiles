@@ -17,6 +17,7 @@ in
     agentSkills.homeManagerModules.default
     ../modules/home/git.nix
     ../modules/home/cli.nix
+    ../modules/home/fastfetch.nix
     ../modules/home/nix-tools.nix
     ../modules/home/shell.nix
     ../modules/home/packages.nix
