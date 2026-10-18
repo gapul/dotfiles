@@ -9,13 +9,16 @@
 #   distrobox assemble create --file ~/.config/distrobox/containers.ini
 #   distrobox enter ubuntu   # the first entry runs the apt install below and takes a while
 # Changing the container below takes `distrobox assemble create --replace --file ...`,
-# which recreates the container; ~/distrobox/ubuntu (the container's home) survives it.
+# which recreates the container; the container's home survives it.
 #
 # The container gets its own home so tutorials can edit ~/.bashrc without touching the
 # home-manager one. Its root filesystem is not declarative: apt changes made inside persist
 # until the container is replaced, so anything worth keeping belongs in the list below.
 let
-  boxHome = "${config.home.homeDirectory}/distrobox/ubuntu";
+  # The container's home holds only the shell rc files the init hook keeps writing, so it is
+  # app data, not work: under XDG_DATA_HOME rather than loose in ~ (it was ~/distrobox/ubuntu
+  # until 2026-10-18). The host home is mounted as well, so workspaces belong in ~/Developer.
+  boxHome = "${config.xdg.dataHome}/distrobox/ubuntu";
 
   # The hooks run as root inside the container, which sees the host's /nix and home. The
   # container keeps the hook command it was created with, so it calls them through fixed
