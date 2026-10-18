@@ -141,8 +141,23 @@ rc=$?
 # Pull out the last REVIEW_JSON block.
 json="$(awk '/^<<<REVIEW_JSON$/{flag=1; buf=""; next} /^REVIEW_JSON$/{flag=0; last=buf; next} flag{buf = buf $0 "\n"} END{printf "%s", last}' "$out")"
 if ! jq -e . >/dev/null 2>&1 <<<"$json"; then
-  log "could not extract REVIEW_JSON: $out"
-  notify "claude-agent: malformed review output" "$REPO #$PR. Log: $out"
+  # A single bad answer is usually a one-off and the next poll retries it, so
+  # only a repeat on the same head SHA is worth a notification. Keep each bad
+  # output aside: the retry overwrites $out, which used to destroy the evidence.
+  # After the third miss on one SHA, stop retrying (#853 notified 50 times).
+  bad="${out%.log}.malformed-$(date +%Y%m%d-%H%M%S).log"
+  cp "$out" "$bad"
+  fails_file="$(_seen_path "$REPO/pr-$PR/$sha").malformed"
+  fails=$(( $(cat "$fails_file" 2>/dev/null || echo 0) + 1 ))
+  echo "$fails" > "$fails_file"
+  log "could not extract REVIEW_JSON (attempt $fails): $bad"
+  if [ "$fails" -ge 2 ]; then
+    notify "claude-agent: malformed review output" "$REPO #$PR, ${fails} times on the same commit. Log: $bad"
+  fi
+  if [ "$fails" -ge 3 ]; then
+    log "giving up on this commit: $REPO #$PR ($sha)"
+    mark_seen "$REPO/pr-$PR/$sha"
+  fi
   exit 1
 fi
 
