@@ -693,7 +693,6 @@ in
       "t3-code@nightly" # T3 Code client for the macmini t3code host; nightly to match its server protocol
       "ghostty"
       "deskflow"
-      "codexbar" # show usage/limits of various AI coding vendors in the menu bar (bundles codexbar CLI, auto-linked into /opt/homebrew/bin)
       # DeepSeek Harness (dsh): plugin-based agent harness, desktop app. A cask rather than
       # brewCasks because it updates itself (auto_updates), which the rule above excludes.
       "deepseek-harness"
