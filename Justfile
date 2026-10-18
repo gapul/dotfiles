@@ -246,7 +246,15 @@ update *inputs:
 
 [private]
 _update-lock *inputs:
-    @nix flake update --quiet {{inputs}} --flake {{flake}}
+    #!/usr/bin/env bash
+    set -euo pipefail
+    # Unauthenticated GitHub API calls are capped at 60/h per IP; past that, inputs silently keep
+    # their cached revision ("using cached version"). Borrow gh's token when it is logged in.
+    if command -v gh >/dev/null && token=$(gh auth token 2>/dev/null) && [ -n "$token" ]; then
+      export NIX_CONFIG="access-tokens = github.com=$token
+    ${NIX_CONFIG:-}"
+    fi
+    nix flake update --quiet {{inputs}} --flake {{flake}}
 
 # Upgrade all package layers.
 [group('Build')]
@@ -708,19 +716,21 @@ search query scope="":
 outdated:
     #!/usr/bin/env bash
     set -u
-    echo "━━━ Homebrew (formula + cask, --greedy) ━━━"
-    o=$(brew outdated --greedy 2>/dev/null); [ -n "$o" ] && echo "$o" || echo "  (up to date)"
-    echo ""
-    echo "━━━ Xcode (xcodes) ━━━"
-    if command -v xcodes >/dev/null; then
-      # auth-free preview: show what's installed. `xcodes update` (Apple login + maybe 2FA)
-      # is intentionally left to `just upgrade` so this stays non-interactive.
-      inst=$(xcodes installed 2>/dev/null | tr -s ' ' | paste -sd', ' - || true)
-      echo "  installed: ${inst:-none}   (just upgrade -> xcodes install --latest)"
-    else
-      echo "  (xcodes not installed)"
+    if [ "{{os()}}" = macos ]; then
+      echo "━━━ Homebrew (formula + cask, --greedy) ━━━"
+      o=$(brew outdated --greedy 2>/dev/null); [ -n "$o" ] && echo "$o" || echo "  (up to date)"
+      echo ""
+      echo "━━━ Xcode (xcodes) ━━━"
+      if command -v xcodes >/dev/null; then
+        # auth-free preview: show what's installed. `xcodes update` (Apple login + maybe 2FA)
+        # is intentionally left to `just upgrade` so this stays non-interactive.
+        inst=$(xcodes installed 2>/dev/null | tr -s ' ' | paste -sd', ' - || true)
+        echo "  installed: ${inst:-none}   (just upgrade -> xcodes install --latest)"
+      else
+        echo "  (xcodes not installed)"
+      fi
+      echo ""
     fi
-    echo ""
     echo "━━━ flake inputs (lock last-modified) ━━━"
     if command -v jq >/dev/null; then
       nix flake metadata {{flake}} --json 2>/dev/null \
@@ -738,6 +748,26 @@ outdated:
 doctor format="":
     #!/usr/bin/env bash
     set -u
+    if [ "{{os()}}" != macos ]; then
+      # Everything below is macOS-specific (APFS, Login Items, the bar/WM stack, Homebrew).
+      if [[ -n "{{format}}" ]]; then echo "just doctor: --json is macOS-only" >&2; exit 2; fi
+      pass=0; fail=0
+      check() { if eval "$2"; then echo "  [ok] $1"; pass=$((pass+1)); else echo "  [FAIL] $1"; fail=$((fail+1)); fi; }
+      warn() { if eval "$2"; then echo "  [ok] $1"; else echo "  [warn] $3"; fi; }
+      echo "== nix =="
+      check "nix daemon reachable" 'nix store info >/dev/null 2>&1'
+      if command -v systemctl >/dev/null; then
+        echo "== systemd =="
+        check "no failed system units" '[[ -z "$(systemctl --failed --no-legend --plain 2>/dev/null)" ]]'
+        check "no failed user units" '[[ -z "$(systemctl --user --failed --no-legend --plain 2>/dev/null)" ]]'
+      fi
+      echo "== dotfiles =="
+      warn "Working tree clean (no uncommitted)" '[[ -z "$(git -C {{justfile_directory()}} status --short)" ]]' "Uncommitted changes -> commit/push recommended"
+      check "age private key present" '[[ -f ~/.config/sops/age/keys.txt ]]'
+      echo
+      echo "Result: $pass passed, $fail failed"
+      exit $fail
+    fi
     if [[ "{{format}}" == "json" || "{{format}}" == "--json" ]]; then
       brew_json=$({ "{{justfile_directory()}}/scripts/check-brew-drift.sh" --json; } 2>/dev/null || true)
       [[ -n $brew_json ]] || brew_json='{"ok":false,"error":"brew drift check failed"}'
@@ -843,10 +873,12 @@ gc:
       nh clean all --keep 1 --keep-since 0h || true
       echo ""
     fi
-    echo "━━━ Homebrew (downloads + old versions) ━━━"
-    brew autoremove 2>&1 | tail -3 || true
-    brew cleanup --prune=all 2>&1 | tail -3 || true
-    echo ""
+    if command -v brew >/dev/null; then
+      echo "━━━ Homebrew (downloads + old versions) ━━━"
+      brew autoremove 2>&1 | tail -3 || true
+      brew cleanup --prune=all 2>&1 | tail -3 || true
+      echo ""
+    fi
     echo "━━━ pnpm store ━━━"
     command -v pnpm >/dev/null && pnpm store prune 2>&1 | tail -2 || true
     echo ""
@@ -859,10 +891,12 @@ gc:
     echo "━━━ cargo (large build artifacts only, keep registry) ━━━"
     command -v cargo-cache >/dev/null && cargo cache --autoclean 2>&1 | tail -2 || echo "  (cargo-cache not installed, skip)"
     echo ""
-    echo "━━━ iOS Simulator (unavailable devices) ━━━"
-    command -v xcrun >/dev/null && xcrun simctl delete unavailable 2>&1 | tail -1 || true
-    du -sh ~/Library/Developer/CoreSimulator 2>/dev/null | sed 's|^|  |' || true
-    echo ""
+    if [ "{{os()}}" = macos ]; then
+      echo "━━━ iOS Simulator (unavailable devices) ━━━"
+      command -v xcrun >/dev/null && xcrun simctl delete unavailable 2>&1 | tail -1 || true
+      du -sh ~/Library/Developer/CoreSimulator 2>/dev/null | sed 's|^|  |' || true
+      echo ""
+    fi
     echo "━━━ podman (stopped containers + dangling images) ━━━"
     # A stopped machine causes connection errors, so skip silently
     if command -v podman >/dev/null && podman info >/dev/null 2>&1; then
@@ -871,12 +905,14 @@ gc:
       echo "  (podman not available / machine stopped, skip)"
     fi
     echo ""
-    echo "━━━ Electron updater leftovers (~/Library/Caches/*.ShipIt) ━━━"
-    # Leftover downloaded updates from Squirrel.framework. Re-fetched on the next update
-    sz=$(du -shc ~/Library/Caches/*.ShipIt 2>/dev/null | tail -1 | cut -f1)
-    echo "  total: ${sz:-0}"
-    rm -rf ~/Library/Caches/*.ShipIt/* 2>/dev/null || true
-    echo ""
+    if [ "{{os()}}" = macos ]; then
+      echo "━━━ Electron updater leftovers (~/Library/Caches/*.ShipIt) ━━━"
+      # Leftover downloaded updates from Squirrel.framework. Re-fetched on the next update
+      sz=$(du -shc ~/Library/Caches/*.ShipIt 2>/dev/null | tail -1 | cut -f1)
+      echo "  total: ${sz:-0}"
+      rm -rf ~/Library/Caches/*.ShipIt/* 2>/dev/null || true
+      echo ""
+    fi
     echo "━━━ Repo junk files (.DS_Store / AppleDouble / vim swap etc.) ━━━"
     dir="{{justfile_directory()}}"
     # Name patterns of junk scattered by macOS / editors / the OS (.git excluded)
@@ -891,8 +927,11 @@ gc:
     for n in "${names[@]}"; do fexpr+=( -name "$n" -o ); done
     unset 'fexpr[${#fexpr[@]}-1]'  # remove the trailing -o
     # .cache is root's (see .gitignore), so descending into it is only a Permission denied.
-    n=$(find "$dir" \( -path "$dir/.git" -o -name .cache \) -prune -o -type f \( "${fexpr[@]}" \) -print -delete | wc -l | tr -d ' ')
-    echo "  $n removed"
+    # Delete outside find: -delete implies -depth, which silently turns -prune off (BSD and GNU
+    # alike), so it would descend into .git and remove e.g. *.orig/*~ there.
+    mapfile -d '' junk < <(find "$dir" \( -path "$dir/.git" -o -name .cache \) -prune -o -type f \( "${fexpr[@]}" \) -print0)
+    [ ${#junk[@]} -gt 0 ] && rm -f "${junk[@]}"
+    echo "  ${#junk[@]} removed"
     echo ""
     echo "━━━ Auto-backups in ~/.config (*.bak etc.) ━━━"
     m=$(find ~/.config -maxdepth 3 \( -name '*.bak' -o -name '*.bak.[0-9]*' \) -type f -print -delete 2>/dev/null | wc -l | tr -d ' ')
