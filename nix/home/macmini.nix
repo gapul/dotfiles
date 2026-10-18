@@ -101,7 +101,6 @@ in
     # Keep Codex declarative on the remote host so it is both discoverable and available
     # after unattended rebuilds.
     agentPkgs.codex
-    agentPkgs.opencode
 
     # The study tutor renders plans and handouts with typst (show.py in the sandbox looks it
     # up under /nix/store). Declared here so a garbage collection can't take it away.
@@ -632,6 +631,23 @@ in
   # username, which names the workstation config — and both Macs report the same
   # LocalHostName, so there is nothing else to tell them apart.
   xdg.configFile."dotfiles/host".text = "macmini\n";
+
+  # OpenCode (installed by modules/home/packages.nix) defaults to the llama-server on this machine.
+  programs.opencode.settings = {
+    provider."llama.cpp" = {
+      npm = "@ai-sdk/openai-compatible";
+      name = "llama-server (local macmini)";
+      options.baseURL = "http://127.0.0.1:8080/v1";
+      models."ornith-1.5-35b-a3b-abliterated" = {
+        name = "Ornith-1.5 35B-A3B abliterated (IQ3_M)";
+        limit = {
+          context = 65536;
+          output = 16384;
+        };
+      };
+    };
+    model = "llama.cpp/ornith-1.5-35b-a3b-abliterated";
+  };
 
   # The hand-written Claude Code pieces that home/workstation.nix links on the laptop, minus
   # settings.json (merged by claudeManagedSettings below) and hooks (desktop notifications).

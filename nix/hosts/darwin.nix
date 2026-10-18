@@ -3,6 +3,7 @@
   pkgs,
   brewNix,
   cherri,
+  llmAgents,
   mocopiMac,
   nixpkgsAgents,
   nixpkgsUnstable,
@@ -109,7 +110,7 @@ in
     # ~/.local/bin. On the profile side the manually installed copy would win.
     agentPkgs.codex
     agentPkgs.claude-code
-    agentPkgs.opencode
+    llmAgents.packages.${pkgs.stdenv.hostPlatform.system}.opencode
     # ─── moved off Homebrew (2026-09-15): same app, same data dirs, nothing to re-set up ───
     # Upstream's signed release carried over as-is, so TCC grants and entitlements survive:
     pkgs.upscayl
