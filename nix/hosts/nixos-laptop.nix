@@ -94,6 +94,7 @@ in
   imports = [
     hardwareConfig
     ./nixos-laptop-virtualisation.nix # virt-manager, KVM and virtual TPM
+    ./nixos-laptop-darling.nix # Darling (macOS CLI binaries), package revived in pkgs/darling.nix
     ./nixos-laptop-vivado.nix # FPGA coursework (Vivado 2020.2, installed by hand into /opt/Xilinx)
     ./nixos-laptop-btrfs.nix # cryptroot as Btrfs subvolumes (@, @home, @nix, @log)
     ./nixos-laptop-maint.nix # initrd-only maintenance boot with ssh, for work on an unmounted root
