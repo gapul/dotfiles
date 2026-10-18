@@ -110,8 +110,17 @@ in
   # User data location: everything that also lives somewhere else sits under ~/Sync (2026-08).
   # google-drive-* are rclone mounts (remote-primary, see home/rclone-mount.nix), syncthing holds
   # real local files (local-primary, the only one restic backs up).
+  #
+  # Work is kept per project, not per file type (2026-10-18): one folder per piece of work under
+  # ~/Documents/Projects, whatever tools it needs (art/, rig/, 3d/, audio/, video/, exports/ as
+  # needed), so a project can be found, backed up and archived as a unit. Git repositories go
+  # under ~/Developer (ghq) instead, which is per project as well. Assets reused across projects
+  # stay in each app's library or ~/Documents/assets, and a finished project leaves through
+  # `just archive`. Pictures/Music/Videos are only for inboxes (screenshots, recordings) and media
+  # to consume. ~/Documents is in restic's paths, and **/build is excluded there.
   home.activation.workstationDataDirs = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     ${pkgs.coreutils}/bin/mkdir -p \
+      "${config.home.homeDirectory}/Documents/Projects" \
       "${config.home.homeDirectory}/Sync/google-drive" \
       "${config.home.homeDirectory}/Sync/google-drive-school" \
       "${config.home.homeDirectory}/Sync/google-drive-work" \
