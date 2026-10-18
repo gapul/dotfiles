@@ -12,6 +12,11 @@
 # of the same version, so the app and the CLI never disagree.
 let
   appDir = "${config.xdg.dataHome}/t3code";
+  # T3's own data (runtime, tools, userdata, scratch, worktrees) under XDG data instead of ~/.t3.
+  # T3CODE_HOME is the CLI's, the installer's and the app's switch for it; the app, the updater
+  # and every shell get it, so the desktop app, `t3` and its local server agree. Moved from ~/.t3
+  # on 2026-10-18; local threads from before keep their old scratch paths in their history.
+  t3Home = "${config.xdg.dataHome}/t3";
   appImage = "${appDir}/T3-Code.AppImage";
   releases = "https://github.com/pingdotgg/t3code/releases/download";
 
@@ -30,6 +35,7 @@ let
         "Run: systemctl --user start t3code-update"
       exit 1
     fi
+    export T3CODE_HOME="${t3Home}"
     export CLAUDE_CONFIG_DIR="${config.xdg.configHome}/claude"
     export CODEX_HOME="${config.xdg.dataHome}/codex"
     export CODEX_SQLITE_HOME="${config.xdg.stateHome}/codex/sqlite"
@@ -63,6 +69,7 @@ let
         ]
       )
     }"
+    export T3CODE_HOME="${t3Home}"
     t3="$HOME/.local/bin/t3"
     if [ -x "$t3" ]; then
       "$t3" update --channel nightly --yes
@@ -70,7 +77,7 @@ let
       curl -fsSL https://t3.codes/install.sh | T3CODE_CHANNEL=nightly sh
     fi
 
-    # ~/.local/bin/t3 -> ~/.t3/runtime/versions/<version>/t3
+    # ~/.local/bin/t3 -> $T3CODE_HOME/runtime/versions/<version>/t3
     version="$(basename "$(dirname "$(readlink "$t3")")")"
     mkdir -p "${appDir}"
     [ "$(cat "${appDir}/version" 2>/dev/null || true)" = "$version" ] && exit 0
@@ -108,6 +115,8 @@ let
   '';
 in
 {
+  home.sessionVariables.T3CODE_HOME = t3Home;
+
   xdg.desktopEntries.t3code = {
     name = "T3 Code (Nightly)";
     exec = "${launcher} %U";
