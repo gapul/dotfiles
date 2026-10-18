@@ -926,6 +926,7 @@
                     ./home/dev.nix # dev environment such as direnv
                     ./home/distrobox.nix # Ubuntu distrobox with ROS 2 (nixos-laptop only)
                     ./home/restic-backup-linux.nix # restic (systemd user timer)
+                    ./home/rclone-mount.nix # Google Drive + iCloud under ~/Sync (systemd user services)
                     sops-nix.homeManagerModules.sops
                     ./home/secrets.nix
                     ./home/thunderbird.nix # mail accounts as a sops template (needs secrets.nix)
