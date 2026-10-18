@@ -1297,11 +1297,15 @@ in
       anchor = "top-right";
       outer-margin = "44,8,0,0"; # below the bar (6 + 30 + 8)
       default-timeout = 5000;
+      # default-timeout only applies when the sender leaves the expiry to the server; apps that
+      # ask for "never expire" (expire_timeout 0) stayed on screen until clicked. Ignore what the
+      # sender asks for so every notification goes away on its own (history keeps them).
+      ignore-timeout = 1;
       icons = true;
       max-icon-size = 32;
       "urgency=high" = {
         border-color = "#${c.love}";
-        default-timeout = 0;
+        default-timeout = 15000; # longer than normal so it is not missed, but it still goes
       };
       # `makoctl mode -a do-not-disturb`: notifications are kept (makoctl history) but not
       # shown. niri-events (home/niri.nix) turns it on while the screen is being cast.
