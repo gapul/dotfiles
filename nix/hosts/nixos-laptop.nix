@@ -980,6 +980,28 @@ in
   # SSH is public-key only (password auth disabled). Keys follow the Bitwarden-managed policy.
   services.openssh.enable = true;
   services.openssh.settings.PasswordAuthentication = false;
+  # No "Last login" line on ssh logins. That is what ~/.hushlogin was doing here (home/common.nix
+  # writes it for macOS' login(1)); with sshd quiet the file can go from this host's home.
+  services.openssh.settings.PrintLastLog = false;
+
+  # Dotfiles home/common.nix and the shared modules keep in ~ for other hosts, which this laptop
+  # does not need (checked 2026-10-18):
+  #   ~/.claude, ~/.codex: symlinks for launchers that ignore CLAUDE_CONFIG_DIR / CODEX_HOME
+  #     (CodexBar and other macOS GUI apps). Here both variables are in the systemd user
+  #     environment and niri's, and no ~/.claude.json was ever created, so nothing bypasses them.
+  #   ~/.terminfo: Ghostty's terminfo for hosts without it. Here ghostty is a system package, so
+  #     xterm-ghostty is in /run/current-system/sw/share/terminfo, which TERMINFO_DIRS lists and
+  #     sudo keeps; the compile into ~/.local/share/terminfo is skipped with it.
+  #   ~/.hushlogin: replaced by PrintLastLog above.
+  home-manager.users.${user.username} =
+    { lib, ... }:
+    {
+      home.file.".claude".enable = lib.mkForce false;
+      home.file.".codex".enable = lib.mkForce false;
+      home.file.".terminfo".enable = lib.mkForce false;
+      home.file.".hushlogin".enable = lib.mkForce false;
+      home.activation.ghosttyTerminfo = lib.mkForce (lib.hm.dag.entryAnywhere "");
+    };
 
   # sudo without a password for wheel. This box is administered remotely over SSH
   # (key-only, PasswordAuthentication = false), and prompting for a password there
