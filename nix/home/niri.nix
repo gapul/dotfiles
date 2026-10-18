@@ -654,6 +654,14 @@ let
         skip-at-startup
     }
 
+    // greetd starts the session with XDG_SESSION_TYPE=tty and niri passes its own environment
+    // to everything it spawns, so apps saw "tty" under Wayland. Libraries that branch on it
+    // break: bindbc-opengl (nijiexpose) then looks for a GLX context, finds none next to the
+    // EGL one SDL made, and the app crashes at start.
+    environment {
+        XDG_SESSION_TYPE "wayland"
+    }
+
     screenshot-path "${config.xdg.userDirs.pictures}/Screenshots/%Y-%m-%d_%H-%M-%S.png"
 
     // Things with no systemd user unit of their own (the bar, idle, notifications, wallpaper and

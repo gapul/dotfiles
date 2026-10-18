@@ -19,6 +19,7 @@
 let
   browser = "firefox-devedition.desktop"; # nixpkgs' wrapper names it after the binary
   creativeWineApps = import ../pkgs/creative-wine-apps.nix { inherit pkgs; };
+  niji = pkgs.callPackage ../pkgs/nijigenerate.nix { };
 in
 {
   imports = [
@@ -279,6 +280,7 @@ in
 
     # ─── Notes / Documents ───
     obsidian # vault syncs over the self-hosted CouchDB LiveSync
+    libreoffice
     thunderbird
 
     # ─── Messaging ───
@@ -322,6 +324,10 @@ in
     davinci-resolve
     creativeWineApps.cavalry
     creativeWineApps.affinity
+    krita
+    openutau
+    niji.nijigenerate # Inochi2D rigging editor
+    niji.nijiexpose # Inochi2D streaming runtime
     (import ../pkgs/touchdesigner.nix { inherit pkgs; })
     musescore
     cardinal
