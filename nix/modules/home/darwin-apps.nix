@@ -153,7 +153,7 @@
   home.file.".config/karabiner".source =
     config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.dotfiles/configs/keyboard/karabiner";
 
-  # Hammerspoon: modal keyboard-mouse that doesn't conflict with the Space-Hyper WM band (OmniWM).
+  # Hammerspoon: modal keyboard-mouse that doesn't conflict with the Hyper (Cmd+Ctrl+Opt) WM band (OmniWM).
   # init.lua sets hs.autoLaunch(true), so once launched it stays resident at login too.
   home.file.".hammerspoon".source =
     config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.dotfiles/configs/keyboard/hammerspoon";

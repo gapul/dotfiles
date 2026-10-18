@@ -7,47 +7,6 @@
       "complex_modifications": {
         "rules": [
           {
-            "description": "スペースキーを単押しでスペース、長押しでCmd+Ctrl+Optにする (Minecraftでは無効)",
-            "manipulators": [
-              {
-                "type": "basic",
-                "from": {
-                  "key_code": "spacebar",
-                  "modifiers": {
-                    "optional": [
-                      "any"
-                    ]
-                  }
-                },
-                "to": [
-                  {
-                    "key_code": "left_control",
-                    "modifiers": [
-                      "left_command",
-                      "left_option"
-                    ]
-                  }
-                ],
-                "to_if_alone": [
-                  {
-                    "key_code": "spacebar"
-                  }
-                ],
-                "conditions": [
-                  {
-                    "type": "frontmost_application_unless",
-                    "bundle_identifiers": [
-                      "^com\\.mojang\\.minecraft",
-                      "^net\\.java\\.openjdk\\.",
-                      "^org\\.lwjgl\\.glfw",
-                      "minecraft"
-                    ]
-                  }
-                ]
-              }
-            ]
-          },
-          {
             "description": "Input Mode Switch (Ctrl+Shift)",
             "manipulators": [
               {
@@ -279,19 +238,7 @@
         {
           "identifiers": {
             "is_keyboard": true
-          },
-          "simple_modifications": [
-            {
-              "from": {
-                "key_code": "caps_lock"
-              },
-              "to": [
-                {
-                  "key_code": "left_control"
-                }
-              ]
-            }
-          ]
+          }
         }
       ],
       "name": "Default profile",
