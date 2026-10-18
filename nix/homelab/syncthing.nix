@@ -40,6 +40,9 @@
       # Xiaomi Pad 5 running Syncthing-Fork (com.github.catfriend1.syncthingfork, managed
       # by Obtainium, see configs/android/obtainium.json). ID from the app's "Show device ID".
       devices."xiaomi-pad5".id = "M6ORNMD-BGMQFH5-7EXMWNZ-2MTSGYD-62HWC6H-UCCB3R3-QUSGIV5-T7PDVAH";
+      # The NixOS laptop (home/linux-gui.nix). Its identity was generated with `syncthing generate`
+      # into ~/.local/state/syncthing before the first switch.
+      devices."nixos-laptop".id = "ZXOFKEO-I2FVEKF-3ULLNRS-MYU2KOE-O3XSEPQ-RD2Q2R4-KTUIHWB-4CZWRAP";
       # Where personal records are collected. Each device gets its own <hostname>/ and only
       # writes to its own directory. No file is ever written by more than one device, so
       # conflicts can't happen structurally (see home/personal-history.nix).
@@ -60,6 +63,7 @@
         devices = [
           "macbook-mini"
           "iphone"
+          "nixos-laptop"
         ];
         type = "sendreceive";
       };
@@ -101,6 +105,7 @@
         devices = [
           "macbook-mini"
           "iphone"
+          "nixos-laptop"
         ];
         type = "sendreceive";
       };
