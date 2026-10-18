@@ -24,6 +24,13 @@
       wifi = {
         ssid = "eduroam";
         mode = "infrastructure";
+        # 2.4 GHz only. The AP 74:a2:e6:38:20:3c/3d (5 GHz ch52, the one also broadcasting
+        # ist_members) completes EAP but never answers DHCP: 0 leases in 54 tries over
+        # 2026-10-15/16, while the campus a8:f7:d9:* APs lease at once. wpa_supplicant keeps
+        # picking it for being 5 GHz and ignores a failed BSSID for only 10 s, so the laptop
+        # ends up on the iPhone hotspot. NetworkManager has no BSSID denylist; dropping 5 GHz
+        # is the way to keep away from it.
+        band = "bg";
       };
       wifi-security.key-mgmt = "wpa-eap";
       "802-1x" = {
@@ -50,6 +57,7 @@
       wifi = {
         ssid = "0000UTokyo";
         mode = "infrastructure";
+        band = "bg"; # same AP problem as eduroam above
       };
       wifi-security.key-mgmt = "wpa-eap";
       "802-1x" = {
