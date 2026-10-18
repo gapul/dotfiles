@@ -112,7 +112,7 @@ Generated from `just --list`. Run `just docs` after changing a recipe.
 
     [Clean]
     gc                                                # GC all layers at once (only regenerable caches; Trash and whole-home deletion are in gc-deep)
-    gc-deep                                           # Interactively delete heavy regenerable data (Trash / ~/tmp scratch / zap of retired casks / CoreSimulator cache / podman / old build artifacts)
+    gc-deep                                           # Interactively delete heavy regenerable data (Trash / zap of retired casks / CoreSimulator cache / podman / old build artifacts)
     tidy-apps                                         # Hide backstage apps (Adobe helpers, Karabiner's driver manager) from the Applications launcher
 
     [Homelab]
