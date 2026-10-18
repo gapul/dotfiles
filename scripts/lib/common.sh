@@ -16,7 +16,7 @@ DOTFILES_DIR="${DOTFILES_DIR:-$HOME/.dotfiles}"
 SOPS_KEY="${SOPS_KEY:-$HOME/.config/sops/age/keys.txt}"
 SSH_PRIV="${SSH_PRIV:-$HOME/.ssh/id_ed25519}"
 SSH_PUB="${SSH_PUB:-$HOME/.ssh/id_ed25519.pub}"
-SSH_ALLOWED="${SSH_ALLOWED:-$HOME/.ssh/allowed_signers}"
+SSH_ALLOWED="${SSH_ALLOWED:-${XDG_CONFIG_HOME:-$HOME/.config}/git/allowed_signers}"
 
 # Nix channel refs (NixOS リリースを上げる時はここだけ)
 NIX_DARWIN_REF="${NIX_DARWIN_REF:-nix-darwin/nix-darwin-26.05}"
@@ -107,6 +107,7 @@ require_ssh_key() {
   if [ ! -f "$SSH_ALLOWED" ]; then
     local email
     email=$(nix eval --raw -f "$DOTFILES_DIR/nix/user.nix" gitEmail 2>/dev/null || echo "$DEFAULT_GIT_EMAIL")
+    mkdir -p "$(dirname "$SSH_ALLOWED")"
     echo "$email $(awk '{print $1, $2}' "$SSH_PUB")" >"$SSH_ALLOWED"
     chmod 600 "$SSH_ALLOWED"
   fi
