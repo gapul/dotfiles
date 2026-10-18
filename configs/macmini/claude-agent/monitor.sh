@@ -107,7 +107,7 @@ ${DETAIL}
 やること:
 1. gh コマンドと ${STATE_DIR} のログを読んで、何が起きているかを特定する。
 2. 自分で直せる範囲なら直す。具体的には次まで。
-   - セルフホスト runner が落ちている場合の再起動 (~/actions-runner/svc.sh stop; ~/actions-runner/svc.sh start)
+   - セルフホスト runner が落ちている場合の再起動 (sudo -n launchctl kickstart -k system/org.nixos.gh-runner。ログは ~/Library/Logs/gh-runner.log)
    - 90分以上残っている ${STATE_DIR} 配下のロックディレクトリの削除
    - 停滞している claude-in-progress ラベルの掛け直し (claude-failed へ)
 3. リポジトリのコードには一切触らないこと。基盤の復旧だけが仕事で、コードの修正は run-autofix.sh の仕事。

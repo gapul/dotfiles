@@ -54,7 +54,14 @@ let
   # System Settings > General > Sharing > Remote Login, then switch back to a dedicated user.
   user = "gapul";
   home = "/Users/${user}";
-  workDir = "${home}/actions-runner";
+  # The runner copied out of the store (see postActivation) is data; what config.sh writes
+  # (.runner, .credentials, _work, _diag, self-updated bin.*) goes to RUNNER_ROOT, which nixpkgs'
+  # wrapper otherwise defaults to ~/.github-runner. Both lived in ~ until 2026-10-18.
+  workDir = "${home}/.local/share/github-runner";
+  stateDir = "${home}/.local/state/github-runner";
+  legacyWorkDir = "${home}/actions-runner";
+  legacyStateDir = "${home}/.github-runner";
+  logFile = "${home}/Library/Logs/gh-runner.log";
   repo = "https://github.com/gapul/dotfiles";
 
   # Register if not yet registered, then just run. config.sh creates .runner, so its presence
@@ -89,15 +96,23 @@ let
       ]
     }:/usr/bin:/bin:/nix/var/nix/profiles/default/bin
 
+    # One-time move of an existing registration. Done here rather than in activation because
+    # launchd has already stopped the old runner by the time this starts, so nothing holds it.
+    if [ ! -e ${stateDir} ] && [ -d ${legacyStateDir} ]; then
+      mkdir -p "$(dirname ${stateDir})"
+      mv ${legacyStateDir} ${stateDir}
+    fi
+
+    # postActivation installs this after launchd has already started the job; KeepAlive retries.
     cd ${workDir}
 
     # nixpkgs の github-runner は GitHub の配布物と構造が違い、config.sh も run.sh も
     # bin/ の下にある。トップに置かれているつもりで叩くと何も起きずに終わる。
     #
     # さらに、状態 (.runner / .credentials / _work) は実体のある場所ではなく
-    # ~/.github-runner に書かれる。作業領域を見て「未設定」と判断すると、既に
+    # RUNNER_ROOT (${stateDir}) に書かれる。作業領域を見て「未設定」と判断すると、既に
     # 登録済みなのに config.sh を叩いて「already configured」で止まる。
-    if [ ! -f ${home}/.github-runner/.runner ]; then
+    if [ ! -f ${stateDir}/.runner ]; then
       token=$(cat /var/lib/secrets/github-runner-token)
       ./bin/config.sh \
         --unattended --replace \
@@ -129,6 +144,10 @@ in
       /usr/bin/ditto ${runner}/ ${workDir}/
       /usr/sbin/chown -R ${user}:staff ${workDir}
     fi
+    # The old copy only held the store's runner and runner.log.
+    if [ -x ${workDir}/bin/run.sh ] && [ -d ${legacyWorkDir} ]; then
+      /bin/rm -rf ${legacyWorkDir}
+    fi
   '';
 
   launchd.daemons.gh-runner = {
@@ -138,16 +157,19 @@ in
       RunAtLoad = true;
       KeepAlive = true;
       UserName = user;
-      WorkingDirectory = workDir;
+      # Not workDir: on the first switch it does not exist yet when launchd starts the job, and a
+      # missing WorkingDirectory fails with EX_CONFIG before the script can run.
+      WorkingDirectory = home;
       # Isolate the CI runner's Nix cache from interactive and agent sessions to
       # reduce cross-process interference on fetcher-cache-v4.sqlite. Multiple CI
       # jobs still share this runner-specific database.
       EnvironmentVariables.NIX_CACHE_HOME = "${home}/.cache/github-runner/nix";
+      EnvironmentVariables.RUNNER_ROOT = stateDir;
       # It runs as gapul, so it cannot write to /var/log. If the path is unwritable, launchd gives up
       # with EX_CONFIG before starting the process and leaves no log, so the cause is invisible
       # (hit on 2026-08-31; it just kept exiting 78).
-      StandardOutPath = "${workDir}/runner.log";
-      StandardErrorPath = "${workDir}/runner.log";
+      StandardOutPath = logFile;
+      StandardErrorPath = logFile;
     };
   };
 }
