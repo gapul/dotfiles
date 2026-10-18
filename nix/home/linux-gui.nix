@@ -62,6 +62,32 @@ in
     </fontconfig>
   '';
 
+  # Syncthing as a systemd user service, like the Mac's LaunchAgent (modules/home/darwin-services.nix).
+  # Paired with homelab/syncthing.nix, where this machine is device "nixos-laptop". Both overrides
+  # are false so devices and folders accepted in the GUI survive a rebuild. The identity lives in
+  # ~/.local/state/syncthing (cert.pem / key.pem); recreating it means a new device ID to re-pair.
+  services.syncthing = {
+    enable = true;
+    overrideDevices = false;
+    overrideFolders = false;
+    settings = {
+      devices."homeserver".id = "Y72TVZZ-IE3MUPY-3YI6D63-HON47QT-2UYVWHN-5C5N5RY-T2H4ID7-T776ZQF";
+      folders."synchub" = {
+        label = "SyncHub";
+        path = "${config.home.homeDirectory}/Sync/syncthing";
+        devices = [ "homeserver" ];
+        type = "sendreceive";
+      };
+      # Drop a PDF here and Paperless on the homeserver consumes it (same as the Mac).
+      folders."paperless-inbox" = {
+        label = "Paperless Inbox";
+        path = "${config.home.homeDirectory}/Sync/paperless-inbox";
+        devices = [ "homeserver" ];
+        type = "sendreceive";
+      };
+    };
+  };
+
   # Use Qt's built-in styles: the session's Kvantum theme lacks its QML module.
   systemd.user.services.librepods = {
     Unit = {
@@ -316,6 +342,7 @@ in
     (callPackage ../pkgs/slimbrave-neo.nix { }) # Brave enterprise-policy editor
     (pkgs.callPackage ../pkgs/helium.nix { })
     orca-slicer # Bambu A1 mini, same profile set as the mac
+    voicevox # same as the mac (hosts/darwin.nix); bundles voicevox-engine
 
     # ─── Utilities ───
     zathura # Keyboard-driven PDF viewer, also used by Yazi.
@@ -329,7 +356,8 @@ in
 
     # ─── Non-Steam game launchers ───
     # Steam itself is system-side (programs.steam in hosts/nixos-laptop.nix) because it
-    # needs the 32-bit graphics stack. These two only manage their own prefixes.
+    # needs the 32-bit graphics stack. These only manage their own prefixes.
+    prismlauncher # Minecraft; instances stay in ~/.local/share/PrismLauncher
     lutris # GOG / standalone installers / emulators
     heroic # Epic / GOG / Amazon — the libraries the homelab free-games claimer fills up
   ];
