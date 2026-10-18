@@ -179,12 +179,12 @@ in
         # and exclude those domains in Dark Reader. light-site-themes.json records sources.
         # Prefer maintained site-specific styles over reversing Dark Reader's light palette.
         "addon@darkreader.org" =
-          if pkgs.stdenv.isLinux then amo "darkreader" else { installation_mode = "blocked"; };
+          if pkgs.stdenv.hostPlatform.isLinux then amo "darkreader" else { installation_mode = "blocked"; };
         "{2e5ff8c8-32fe-46d0-9fc8-6b8986621f3c}".installation_mode = "blocked"; # Search by Image
         "{f4961478-ac79-4a18-87e9-d2fb8c0442c4}".installation_mode = "blocked"; # Global Speed
         # Website backgrounds need site-specific CSS as well as the transparent window below.
         "{91aa3897-2634-4a8a-9092-279db23a7689}" =
-          if pkgs.stdenv.isLinux then amo "zen-internet" else { installation_mode = "blocked"; };
+          if pkgs.stdenv.hostPlatform.isLinux then amo "zen-internet" else { installation_mode = "blocked"; };
         "jid1-ZAdIEUB7XOzOJw@jetpack".installation_mode = "blocked"; # DuckDuckGo Privacy Essentials
       };
     };
@@ -261,8 +261,8 @@ in
         "toolkit.legacyUserProfileCustomizations.stylesheets" = true; # load userChrome.css
         # GTK/Wayland must allocate an alpha-capable window at startup. The tab pref lets
         # Zen Internet's transparent website backgrounds reach that window (Linux only).
-        "widget.transparent-windows" = pkgs.stdenv.isLinux;
-        "browser.tabs.allow_transparent_browser" = pkgs.stdenv.isLinux;
+        "widget.transparent-windows" = pkgs.stdenv.hostPlatform.isLinux;
+        "browser.tabs.allow_transparent_browser" = pkgs.stdenv.hostPlatform.isLinux;
 
         # Slack huddles on Firefox 155+: the DTLS ClientHello carries an X25519MLKEM768 key
         # share (1459 bytes, split over two records through TURN) and Slack's Chime media
@@ -388,11 +388,13 @@ in
         # so Linux has no copy and naming them there left Firefox's ja defaults pointing at a
         # missing family. Linux names Noto CJK JP instead.
         # Pages that name their own fonts are covered by the repo's Violentmonkey script.
-        "font.name.serif.ja" = if pkgs.stdenv.isDarwin then "Kyuji Mincho" else "Noto Serif CJK JP";
-        "font.name.sans-serif.ja" = if pkgs.stdenv.isDarwin then "Kyuji Gothic" else "Noto Sans CJK JP";
+        "font.name.serif.ja" =
+          if pkgs.stdenv.hostPlatform.isDarwin then "Kyuji Mincho" else "Noto Serif CJK JP";
+        "font.name.sans-serif.ja" =
+          if pkgs.stdenv.hostPlatform.isDarwin then "Kyuji Gothic" else "Noto Sans CJK JP";
       };
       userContent =
-        if pkgs.stdenv.isLinux then
+        if pkgs.stdenv.hostPlatform.isLinux then
           ''
             @-moz-document url("about:newtab"), url("about:home"), url("about:blank") {
               html, body { background: transparent !important; }

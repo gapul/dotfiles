@@ -169,7 +169,7 @@ in
   # HOMEBREW_XDG_CONFIG_HOME (hosts/darwin-common.nix), so activation and interactive brew agree.
   # It used to be ~/.homebrew behind a symlink; move whatever is left there once. Runs after
   # linkGeneration so the old home-manager symlink is already gone. Existing files win.
-  home.activation.homebrewUserConfig = lib.mkIf pkgs.stdenv.isDarwin (
+  home.activation.homebrewUserConfig = lib.mkIf pkgs.stdenv.hostPlatform.isDarwin (
     lib.hm.dag.entryAfter [ "linkGeneration" ] ''
       old="$HOME/.homebrew" new="${config.xdg.configHome}/homebrew"
       if [ -d "$old" ] && [ ! -L "$old" ] && [ ! -L "$new" ]; then
