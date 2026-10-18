@@ -130,6 +130,10 @@ in
     fpath=(/opt/homebrew/share/zsh/site-functions $fpath)
   '';
 
+  # The terminal card (modules/home/fastfetch.nix) with the same wave as the laptop's greeting.
+  # Ghostty speaks the kitty graphics protocol. Run by hand: new terminals stay quiet here.
+  programs.fastfetch.settings.logo = import ../lib/fastfetch-logo.nix { inherit pkgs; };
+
   # Append Mac-specific zsh init (added after common's initContent)
   programs.zsh.initContent = lib.mkAfter ''
     # (No brew shellenv here: /etc/zshrc runs one before this file is read, and by then

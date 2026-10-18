@@ -241,13 +241,6 @@ let
       )}
     '';
 
-  # The hands, cropped from the wallpaper, as the terminal greeting's picture.
-  fastfetchLogo =
-    pkgs.runCommand "fastfetch-logo.png" { nativeBuildInputs = [ pkgs.imagemagick ]; }
-      ''
-        magick ${lockWallpaper} -gravity center -crop 2600x1100+0+0 +repage -resize 880x -quality 92 PNG24:$out
-      '';
-
   # The dark palette's wallpaper, for the lock screen (hyprlock's config is static, and a
   # dark lock screen is right at any hour).
   lockWallpaper = import ../lib/wallpaper.nix {
@@ -1326,72 +1319,9 @@ in
     dotIcons.enable = false;
   };
 
-  # A new terminal opens on the machine's card: the hands, and the few facts worth a glance,
-  # in the palette. Only in ghostty and not inside tmux, so scripts and ssh sessions stay quiet.
-  programs.fastfetch = {
-    enable = true;
-    settings = {
-      logo = {
-        source = fastfetchLogo;
-        type = "kitty-direct";
-        width = 44;
-        height = 14;
-        padding = {
-          top = 1;
-          right = 3;
-        };
-      };
-      display = {
-        separator = "  ";
-        color = {
-          keys = "magenta";
-          title = "blue";
-        };
-      };
-      modules = [
-        "title"
-        "separator"
-        {
-          type = "os";
-          key = "󰣇 os";
-        }
-        {
-          type = "kernel";
-          key = "󰌽 kernel";
-        }
-        {
-          type = "wm";
-          key = "󰖲 wm";
-        }
-        {
-          type = "uptime";
-          key = "󰔟 up";
-        }
-        {
-          type = "packages";
-          key = "󰏖 pkgs";
-        }
-        {
-          type = "cpu";
-          key = "󰻠 cpu";
-        }
-        {
-          type = "memory";
-          key = "󰍛 mem";
-        }
-        {
-          type = "disk";
-          key = "󰋊 disk";
-        }
-        {
-          type = "battery";
-          key = "󰁹 bat";
-        }
-        "break"
-        "colors"
-      ];
-    };
-  };
+  # A new terminal opens on the machine's card (modules/home/fastfetch.nix) with the wave.
+  # Only in ghostty and not inside tmux, so scripts and ssh sessions stay quiet.
+  programs.fastfetch.settings.logo = import ../lib/fastfetch-logo.nix { inherit pkgs; };
   programs.zsh.initContent = lib.mkOrder 1500 ''
     if [[ -o interactive && -z "$TMUX" && "$TERM_PROGRAM" == ghostty && -z "$SSH_CONNECTION" ]]; then
       ${lib.getExe pkgs.fastfetch}
