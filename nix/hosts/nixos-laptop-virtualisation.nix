@@ -1,8 +1,9 @@
 { pkgs, user, ... }:
 {
-  # quickemu runs the VMs in ~/vm (windows-11, macos-sequoia, freebsd-15.1). quickget writes each
-  # .conf with a shebang naming the quickemu store path it ran from, which garbage collection then
-  # removed; the shebangs point at /run/current-system/sw/bin/quickemu instead, which this keeps.
+  # quickemu runs the VMs in ~/.local/share/quickemu (windows-11, macos-sequoia, freebsd-15.1).
+  # quickget writes each .conf with a shebang naming the quickemu store path it ran from, which
+  # garbage collection then removed; the shebangs point at /run/current-system/sw/bin/quickemu
+  # instead, which this keeps.
   environment.systemPackages = [ pkgs.quickemu ];
   programs.virt-manager.enable = true;
   virtualisation.libvirtd = {
