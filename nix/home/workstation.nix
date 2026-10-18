@@ -130,7 +130,7 @@ in
   # codex / claude: launch paths that don't read the env (CODEX_HOME / CLAUDE_CONFIG_DIR)
   # (popo's env-less spawn) regenerate ~/.codex ~/.claude and
   # cause a split, so symlink them to the XDG entities so every path converges on the
-  # same location (same technique as .supermaven).
+  # same location.
   home.file.".codex".source = config.lib.file.mkOutOfStoreSymlink "${config.xdg.dataHome}/codex";
   home.file.".claude".source = config.lib.file.mkOutOfStoreSymlink "${config.xdg.configHome}/claude";
 
@@ -175,12 +175,6 @@ in
       }
     ];
   };
-
-  # supermaven: sm-agent hardcodes $HOME/.supermaven (not XDG-aware).
-  # Keep the real dir at ~/.local/share/supermaven and make $HOME a symlink to it.
-  # (Moving it wholesale makes the agent lose its config and its auth, so the symlink is required)
-  home.file.".supermaven".source =
-    config.lib.file.mkOutOfStoreSymlink "${config.xdg.dataHome}/supermaven";
 
   # bday: launcher for the homemade birthday-tui. Puts the ghq (~/Developer) checkout on PATH.
   # nvim reads the same checkout via lazy dev (configs/editors/nvim/lua/config/lazy.lua).
