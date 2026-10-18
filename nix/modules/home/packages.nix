@@ -1,6 +1,7 @@
 # Packages component (ECS: profile). One-off CLI tools (not covered by programs.*, OS-independent).
 {
   pkgs,
+  llmAgents,
   nixpkgsAgents,
   ...
 }:
@@ -118,7 +119,6 @@ in
     sops # secrets management
     gitleaks # secret leak scanning for pre-commit
     pre-commit # hook framework
-    agentPkgs.opencode # AI coding CLI; stable nixpkgs trails its fast release cadence
     (callPackage ../../pkgs/unity-cli.nix { }) # Unity Editor / module / project management CLI
     glow # markdown viewer
     visidata # CSV/TSV table viewer + editor (TUI, `vd`)
@@ -162,4 +162,12 @@ in
     vtsls # TypeScript / JavaScript
     vscode-langservers-extracted # eslint (vscode-eslint-language-server)
   ];
+
+  # AI coding CLI; even nixpkgs-unstable trails its release cadence (see the llm-agents input).
+  # Updates come only from rebuilds, so its own self-updater stays off.
+  programs.opencode = {
+    enable = true;
+    package = llmAgents.packages.${pkgs.stdenv.hostPlatform.system}.opencode;
+    settings.autoupdate = false;
+  };
 }
