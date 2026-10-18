@@ -264,6 +264,9 @@ function __icon_map() {
    "Carbon Copy Cloner")
         icon_result=":carbon_copy_cloner:"
         ;;
+   "CC Switch")
+        icon_result=":cc_switch:"
+        ;;
    "ChatGPT Atlas")
         icon_result=":chatgpt_atlas:"
         ;;
@@ -344,6 +347,9 @@ function __icon_map() {
         ;;
    "Creative Cloud")
         icon_result=":creative_cloud:"
+        ;;
+   "Crest")
+        icon_result=":crest:"
         ;;
    "CrossOver")
         icon_result=":crossover:"
@@ -560,6 +566,9 @@ function __icon_map() {
         ;;
    "ForkLift")
         icon_result=":forklift:"
+        ;;
+   "Foundry VTT" | "Foundry VTT*" | "Foundry Virtual Tabletop" | "Foundry Virtual Tabletop*")
+        icon_result=":foundry_vtt:"
         ;;
    "Foxit PDF Reader")
         icon_result=":foxit_reader:"
@@ -1584,7 +1593,7 @@ function __icon_map() {
    "System Information" | "System Profiler")
         icon_result=":system_information:"
         ;;
-   "T3 Code" | "T3 Code (Alpha)")
+   "T3 Code" | "T3 Code (Alpha)" | "T3 Code (Nightly)")
         icon_result=":t3_code:"
         ;;
    "T3 Chat")
@@ -1619,6 +1628,9 @@ function __icon_map() {
         ;;
    "Termius")
         icon_result=":termius:"
+        ;;
+   "Tern")
+        icon_result=":tern:"
         ;;
    "TestFlight")
         icon_result=":testflight:"
@@ -1805,6 +1817,9 @@ function __icon_map() {
         ;;
    "Wispr Flow")
         icon_result=":wispr_flow:"
+        ;;
+   "WorkBuddy" | "Workbuddy")
+        icon_result=":workbuddy:"
         ;;
    "xemu")
         icon_result=":xbox:"
