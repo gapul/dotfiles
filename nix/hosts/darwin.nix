@@ -97,7 +97,7 @@ in
       export PLAYWRIGHT_BROWSERS_PATH=${pkgs.playwright-driver.browsers}
       exec ${lib.getExe agentPkgs.playwright-mcp} \
         --browser "$browser" --port "$port" \
-        --output-dir "$HOME/tmp/playwright-test"
+        --output-dir /tmp/playwright-test
     '')
     # node: needed to run playwright-mcp. The node held by pnpm's global store had become a broken
     # link (~/Library/pnpm/bin/node → a store path that was gone), which is why the former playwright

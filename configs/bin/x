@@ -11,7 +11,7 @@ set -euo pipefail
 
 RELAY=http://localhost:6900
 SETTINGS="$HOME/.config/twitter-api-safe/settings.json"
-LOG="$HOME/tmp/twitter-api-safe/server.log"
+LOG="${XDG_STATE_HOME:-$HOME/.local/state}/twitter-api-safe/server.log"
 PAGE=20
 
 start_relay() {

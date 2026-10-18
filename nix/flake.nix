@@ -359,7 +359,6 @@
             ./home/rclone-mount.nix
             ./home/personal-history.nix # export personal records per machine and put them on Syncthing
             ./home/maintenance.nix
-            ./home/tmp-cleanup.nix # auto-clean ~/tmp scratch after 7 days (shared with macminiHeadless)
             ./home/nix-gc-tcc.nix # stable copy of signed nix used by the root GC daemon (hosts/darwin-common.nix)
             ./home/git-hooks.nix # git hook that auto-rebuilds on main updates (main tree only)
             ./home/obsidian-caldav.nix # two-way sync of Obsidian tasks with the Radicale task lists
@@ -394,7 +393,6 @@
           # Voice models and synthesis. Clients use the API over the tailnet.
           ./home/macmini-aivisspeech.nix
           ./home/rclone-mount.nix # Google Drive under ~/Sync, same remotes as the main Mac (rclone_conf from hosts/macmini.nix)
-          ./home/tmp-cleanup.nix # auto-clean ~/tmp scratch after 7 days (shared with macWorkstation)
           ./home/nix-gc-tcc.nix # stable copy of signed nix used by the root GC daemon (hosts/darwin-common.nix)
           # dotfiles-pull (home/macmini.nix) relies on the post-merge hook to rebuild, but this role
           # had no module installing the hook, so .git/hooks still held an old copy placed by hand on
