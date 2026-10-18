@@ -114,11 +114,11 @@
     "brew-api": {
       "flake": false,
       "locked": {
-        "lastModified": 1792318879,
-        "narHash": "sha256-ukYq64Tlr3H1zWNk43edlaliKhQnNp0TiZmnodzpiq4=",
+        "lastModified": 1792333080,
+        "narHash": "sha256-9fvMj3ZjhoL4oh7P4QxOPUSqHTV9y3Px3yjUlJp3jgQ=",
         "owner": "BatteredBunny",
         "repo": "brew-api",
-        "rev": "01eb1334506aa1a8080fbbd4fe39d703877b5ba0",
+        "rev": "477ffd3243917ea4b75e50b2f01cc0c1a35256b3",
         "type": "github"
       },
       "original": {
@@ -1158,11 +1158,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1792307278,
-        "narHash": "sha256-wJgFFtw/vlzsjWrQFmTn40TTkSkqHM4XXN0nh4q4uMk=",
+        "lastModified": 1782012058,
+        "narHash": "sha256-9mWUnReOUXfKjZuJAL/bAFH3LUyECTRtXgSNVjRw3UY=",
         "owner": "oxalica",
         "repo": "rust-overlay",
-        "rev": "42076d1c6a0fb405ed04f9a674e4a8f69de62ba3",
+        "rev": "8534567325bd8a8d2928e6afd81e0a87d19efd3c",
         "type": "github"
       },
       "original": {
