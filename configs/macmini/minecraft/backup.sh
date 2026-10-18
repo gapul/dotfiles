@@ -10,7 +10,8 @@ set -u
 
 TARGETS="${BACKUP_TARGETS:?BACKUP_TARGETS が未設定}"
 DEST=/Users/Shared/minecraft-backups
-KEEP=7
+# 世代履歴は Google Drive の restic が保持する。ローカルは転送用の最新1世代のみ。
+KEEP=1
 
 mkdir -p "$DEST"
 chmod 755 "$DEST"
