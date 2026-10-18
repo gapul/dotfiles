@@ -12,6 +12,13 @@ allowed_domains = ["github.com"]
 # Re-lock after this long without a release.
 vault_idle_seconds = 900
 
+# Channels to try, in order. On the headless mac mini, where nobody sees a dialog: ["matrix"].
+channels = ["touch_id", "dialog", "elicitation", "matrix"]
+
+# `run`: the child is killed after this, and each output stream is cut at this many bytes.
+run_timeout_seconds = 300
+run_output_bytes = 65536
+
 # How long the person at the terminal gets before the question goes to the phone.
 local_timeout_seconds = 90
 remote_timeout_seconds = 600
@@ -47,6 +54,9 @@ url_check_bundles = ["com.apple.Safari"]
 "com.apple.Safari" = ["accounts.google.com"]
 
 [matrix]
-homeserver = "https://gapul.net"
+homeserver = "https://matrix.gapul.net"
 room = "!yourroomid:gapul.net"
 token_file = "~/.config/ask/matrix-token"
+# The only user whose reply counts. Matrix is skipped entirely without it. The room must be
+# unencrypted: the broker reads it over the plain client API.
+approver = "@gapul:gapul.net"

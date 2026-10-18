@@ -91,6 +91,7 @@ def test_elicitation_results_map_to_answers():
     assert broker._schema_for("approve") is broker.YesNo
     assert broker._schema_for("login_fill") is broker.YesNo
     assert broker._schema_for("native_login_fill") is broker.YesNo
+    assert broker._schema_for("run") is broker.YesNo
     assert broker._schema_for("choose") is broker.Choice
     assert broker._schema_for("ask_text") is broker.FreeText
 
@@ -368,9 +369,301 @@ def test_the_caller_is_told_the_wait_is_deliberate():
     assert FakeCtx.pings >= 1, FakeCtx.pings
 
 
+def _no_vault():
+    """A vault that fails the test if anything reaches it."""
+    from unittest.mock import patch
+
+    def touched(*_args, **_kwargs):
+        raise AssertionError("the vault was reached")
+
+    return patch.object(broker.VAULT, "candidates", side_effect=touched)
+
+
+def test_run_refuses_bad_requests_before_touching_the_vault():
+    """Everything that can be checked without a human is checked before one is asked, and before
+    the vault is unlocked: a malformed request should cost nothing."""
+    broker.CONFIG = broker.replace_allowlist(("github.com",))
+    cases = [
+        dict(domain="evil.example", env={"T": "password"}, command=["true"], cwd="/"),
+        dict(domain="github.com", env={}, command=["true"], cwd="/"),
+        dict(domain="github.com", env={"BAD-NAME": "password"}, command=["true"], cwd="/"),
+        dict(domain="github.com", env={"BW_SESSION": "password"}, command=["true"], cwd="/"),
+        dict(domain="github.com", env={"T": "notes"}, command=["true"], cwd="/"),
+        dict(domain="github.com", env={"T": "password"}, command=[], cwd="/"),
+        dict(domain="github.com", env={"T": "password"}, command=["true"], cwd="relative"),
+        dict(domain="github.com", env={"T": "password"}, command=["true"], cwd="/does/not/exist"),
+        dict(domain="github.com", env={"PATH": "password"}, command=["true"], cwd="/"),
+        dict(domain="github.com", env={"DYLD_INSERT_LIBRARIES": "password"}, command=["true"], cwd="/"),
+        dict(domain="github.com", env={"T": "password"}, command=["tr\0ue"], cwd="/"),
+        dict(domain="github.com", env={"T": "password"}, command=["no-such-program-xyz"], cwd="/"),
+        dict(domain="github.com", env={"T": "password"}, command=["echo", "x" * 2000], cwd="/"),
+    ]
+    with _no_vault():
+        for case in cases:
+            result = asyncio.run(broker.run(ctx=None, requester="test", **case))
+            assert result["ran"] is False and result["error"], (case, result)
+
+
+def test_run_puts_the_secret_in_the_env_and_not_in_the_answer():
+    """The child gets the value; the caller gets the child's output with the value taken out. The
+    vault session is not passed down, even if the broker's own environment somehow had one."""
+    import os
+    from unittest.mock import AsyncMock, patch
+
+    broker.CONFIG = broker.replace_allowlist(("github.com",))
+    secret = "ghp_s3cr3t-value"
+    script = 'echo "token=$GH_TOKEN"; echo "user=$GH_USER" >&2; echo "session=${BW_SESSION:-none}"'
+    with patch.dict(os.environ, {"BW_SESSION": "leaked-session"}), patch.object(
+        broker.VAULT, "candidates", return_value=[("item-a", "GitHub — me")]
+    ), patch.object(
+        broker.VAULT, "get", side_effect=lambda field, _item: {"password": secret, "username": "me"}[field]
+    ), patch.object(broker, "ask_human", AsyncMock(return_value="yes")) as asked:
+        result = asyncio.run(
+            broker.run(
+                ctx=None, domain="github.com", env={"GH_TOKEN": "password", "GH_USER": "username"},
+                command=["/bin/sh", "-c", script], cwd="/", requester="test",
+            )
+        )
+
+    assert result["ran"] and result["exit_code"] == 0, result
+    assert secret not in str(result), result
+    assert "token=[redacted]" in result["stdout"], result
+    assert "session=none" in result["stdout"], result
+    # Too short to scrub without wrecking ordinary output; usernames are not secrets anyway.
+    assert "user=me" in result["stderr"], result
+    # The human was shown the command itself, not a summary of it.
+    prompt = asked.await_args.args[1].prompt
+    assert script in prompt or "/bin/sh -c" in prompt, prompt
+    assert secret not in TEST_AUDIT_LOG.read_text()
+
+
+def test_run_denied_releases_nothing():
+    from unittest.mock import AsyncMock, patch
+
+    broker.CONFIG = broker.replace_allowlist(("github.com",))
+    with patch.object(
+        broker.VAULT, "candidates", return_value=[("item-a", "GitHub — me")]
+    ), patch.object(broker.VAULT, "get", side_effect=AssertionError("released")), patch.object(
+        broker, "ask_human", AsyncMock(return_value="no")
+    ), patch.object(broker, "run_child", AsyncMock(side_effect=AssertionError("ran"))):
+        result = asyncio.run(
+            broker.run(ctx=None, domain="github.com", env={"T": "password"},
+                       command=["true"], cwd="/", requester="test")
+        )
+    assert result == {"ran": False, "error": "not approved"}, result
+
+
+def test_run_asks_every_time():
+    """The approval is for a command, so a second command is a second question."""
+    from unittest.mock import AsyncMock, patch
+
+    broker.CONFIG = broker.replace_allowlist(("github.com",))
+    with patch.object(
+        broker.VAULT, "candidates", return_value=[("item-a", "GitHub — me")]
+    ), patch.object(broker.VAULT, "get", return_value="s3cr3t"), patch.object(
+        broker, "ask_human", AsyncMock(return_value="yes")
+    ) as asked:
+        for _ in range(2):
+            asyncio.run(broker.run(ctx=None, domain="github.com", env={"T": "password"},
+                                   command=["true"], cwd="/", requester="test"))
+    assert asked.await_count == 2, asked.await_count
+
+
+def test_run_times_out_and_kills_what_it_started():
+    import dataclasses
+    import time
+
+    original = broker.CONFIG
+    try:
+        broker.CONFIG = dataclasses.replace(original, run_timeout_seconds=0.5)
+        started = time.time()
+        # The grandchild holds the pipe open; killing only the shell would leave communicate()
+        # waiting for it.
+        result = asyncio.run(broker.run_child(["/bin/sh", "-c", "sleep 30 & sleep 30"], "/", {}, []))
+        assert result["timed_out"] is True, result
+        assert time.time() - started < 10
+    finally:
+        broker.CONFIG = original
+
+
+def test_scrub():
+    assert broker.scrub("a s3cr3t b", ["s3cr3t"]) == "a [redacted] b"
+    # The longer value first, so a secret containing another is not half-replaced.
+    assert broker.scrub("abcdefgh", ["abcd", "abcdefgh"]) == "[redacted]"
+    assert broker.scrub("pin 123", ["123"]) == "pin 123"
+
+
+def test_matrix_needs_an_approver():
+    """Without one, any member of the room could answer, including one invited later."""
+    import dataclasses
+
+    cfg = dataclasses.replace(
+        broker.CONFIG, matrix_homeserver="https://x", matrix_room="!r:x", matrix_token_file="/t"
+    )
+    assert not broker.Matrix(cfg).configured
+    assert broker.Matrix(dataclasses.replace(cfg, matrix_approver="@me:x")).configured
+
+
+def test_matrix_replies_answer_only_their_own_question():
+    # A plain "yes" would answer every question waiting, and a late one the next question too.
+    assert broker.matrix_answer("yes", None, "$q1") is None
+    assert broker.matrix_answer("yes", None, "") is None
+    assert broker.matrix_answer("yes", "$q1", "$q1") == "yes"
+    assert broker.matrix_answer("yes", "$q2", "$q1") is None
+    # Element quotes the original above the reply.
+    assert broker.matrix_answer("> <@ask:x> [ask] Run?\n\nyes", "$q1", "$q1") == "yes"
+    assert broker.matrix_answer("[ask] Run?", None, "$q1") is None
+
+
+def test_channels_follow_config():
+    """On a headless machine the dialog would sit unseen for the whole local timeout."""
+    import dataclasses
+    from unittest.mock import AsyncMock, patch
+
+    original = broker.CONFIG
+    try:
+        broker.CONFIG = dataclasses.replace(original, channels=("matrix",))
+        with patch.object(broker, "touch_id", AsyncMock(side_effect=AssertionError("touch id"))), \
+                patch.object(broker, "system_dialog", AsyncMock(side_effect=AssertionError("dialog"))), \
+                patch.object(broker.MATRIX, "ask", AsyncMock(return_value="yes")), \
+                patch.object(broker.Matrix, "configured", True):
+            request = broker.Request(kind="run", prompt="?", requester="test")
+            assert asyncio.run(broker._ask_channels(None, request)) == "yes"
+    finally:
+        broker.CONFIG = original
+
+
+def test_the_human_sees_what_will_run():
+    """Newlines, bidi overrides and zero-width characters are how a screen is made to lie."""
+    assert broker.visible("a\nb") == "a\\nb"
+    assert broker.visible("x\u202ey") == "x\\u{202e}y"
+    assert broker.visible("x\u200by") == "x\\u{200b}y"
+    assert broker.visible("日本語 ok") == "日本語 ok"
+    assert "\n" not in broker.Request(kind="run", prompt="?", requester="me\nin /safe").requester
+
+
+def test_run_is_never_answered_by_the_caller():
+    """Elicitation is answered by the client that asked, which for run is the one being held back."""
+    import dataclasses
+    from unittest.mock import AsyncMock, patch
+
+    class Ctx:
+        async def elicit(self, **_):
+            raise AssertionError("asked the caller")
+
+    original = broker.CONFIG
+    try:
+        broker.CONFIG = dataclasses.replace(original, channels=("elicitation",))
+        request = broker.Request(kind="run", prompt="?", requester="t", no_elicitation=True)
+        assert asyncio.run(broker._ask_channels(Ctx(), request)) is None
+    finally:
+        broker.CONFIG = original
+
+
+def test_run_shows_and_runs_the_resolved_program():
+    from unittest.mock import AsyncMock, patch
+
+    broker.CONFIG = broker.replace_allowlist(("github.com",))
+    with patch.object(
+        broker.VAULT, "candidates", return_value=[("item-a", "GitHub — me")]
+    ), patch.object(broker.VAULT, "get", return_value="s3cr3t"), patch.object(
+        broker, "ask_human", AsyncMock(return_value="yes")
+    ) as asked, patch.object(broker, "run_child", AsyncMock(return_value={"ran": True})) as ran:
+        asyncio.run(broker.run(ctx=None, domain="github.com", env={"T": "password"},
+                               command=["true"], cwd="/tmp", requester="t"))
+    program = ran.await_args.args[0][0]
+    assert program.startswith("/") and program in asked.await_args.args[1].prompt, program
+    assert ran.await_args.args[1] == str(Path("/tmp").resolve())
+
+
+def test_run_survives_an_escaped_grandchild():
+    """A setsid'd grandchild keeps the pipe open after the group is killed; waiting on it forever
+    would hang the broker and leave the request unanswered."""
+    import dataclasses
+    import time
+
+    original = broker.CONFIG
+    try:
+        broker.CONFIG = dataclasses.replace(original, run_timeout_seconds=0.5)
+        script = "use POSIX; if (fork == 0) { POSIX::setsid(); sleep 20; exit } print qq(before\n); sleep 20"
+        started = time.time()
+        result = asyncio.run(broker.run_child(["/usr/bin/perl", "-e", script], "/", {}, []))
+        assert result["timed_out"] is True, result
+        assert time.time() - started < 15, time.time() - started
+    finally:
+        broker.CONFIG = original
+
+
+def test_run_output_is_bounded_while_read():
+    import dataclasses
+
+    original = broker.CONFIG
+    try:
+        broker.CONFIG = dataclasses.replace(original, run_output_bytes=1000)
+        result = asyncio.run(
+            broker.run_child(["/bin/sh", "-c", "head -c 5000000 /dev/zero | tr '\\0' a"], "/", {}, [])
+        )
+        assert len(result["stdout"]) == 1000 and result["truncated"], (len(result["stdout"]), result["truncated"])
+    finally:
+        broker.CONFIG = original
+
+
+def test_scrub_catches_escaped_forms():
+    secret = 'p&ss<w>rd"/x y'
+    import json as _json
+    import urllib.parse
+
+    for form in (
+        _json.dumps(secret)[1:-1],
+        _json.dumps(secret)[1:-1].replace("&", "\\u0026").replace("<", "\\u003c").replace(">", "\\u003e"),
+        urllib.parse.quote(secret, safe=""),
+        urllib.parse.quote_plus(secret),
+    ):
+        assert broker.scrub(f"[{form}]", [secret]) == "[[redacted]]", form
+
+
+def test_unlock_only_from_loopback():
+    from unittest.mock import patch
+
+    async def call(client, body):
+        sent = []
+
+        async def receive():
+            return {"type": "http.request", "body": body, "more_body": False}
+
+        async def send(message):
+            sent.append(message)
+
+        async def app(*_):
+            raise AssertionError("fell through to the MCP app")
+
+        scope = {"type": "http", "path": "/unlock", "method": "POST", "client": (client, 1)}
+        await broker.Unlock(app)(scope, receive, send)
+        return sent[0]["status"]
+
+    with patch.object(broker.VAULT, "unlock") as unlock:
+        assert asyncio.run(call("100.64.0.9", b'{"password": "pw"}')) == 403
+        assert unlock.call_count == 0
+        assert asyncio.run(call("127.0.0.1", b'{"password": "pw"}')) == 200
+        unlock.assert_called_once_with("pw")
+    with patch.object(broker.VAULT, "unlock", side_effect=RuntimeError("bw unlock failed")):
+        assert asyncio.run(call("127.0.0.1", b'{"password": "wrong"}')) == 403
+    assert "pw" not in TEST_AUDIT_LOG.read_text()
+
+
+def test_a_string_is_not_a_channel_list():
+    try:
+        broker._str_list("matrix", "broker.channels")
+    except SystemExit:
+        pass
+    else:
+        raise AssertionError("accepted a bare string")
+    assert broker._str_list(["matrix"], "broker.channels") == ("matrix",)
+
+
 def test_tools_registered():
     names = {t.name for t in asyncio.run(broker.mcp.list_tools())}
-    assert names == {"approve", "choose", "ask_text", "login_fill", "native_login_fill"}, names
+    assert names == {"approve", "choose", "ask_text", "login_fill", "native_login_fill", "run"}, names
 
 
 def test_no_tool_returns_a_credential():
