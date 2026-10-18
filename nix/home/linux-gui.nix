@@ -184,9 +184,11 @@ in
   # MOZ_LEGACY_PROFILES=1, which no longer prevents it. --profile skips the lookup entirely, and
   # links opened later still reach the running window because they name the same profile.
   # overrideAttrs keeps .override working, which home-manager uses to inject the policies.
-  # The profile stays at ~/.mozilla/firefox (home-manager's new default is under
-  # ~/.config; moving it is a manual migration, not worth a profile scare).
-  programs.firefox.configPath = ".mozilla/firefox";
+  # The profile lives under XDG_CONFIG_HOME (Firefox 147+ uses it when ~/.mozilla/firefox is
+  # absent). Set explicitly: home-manager only defaults to it from stateVersion 26.05. Moved from
+  # ~/.mozilla/firefox by hand on 2026-10-18. ~/.mozilla itself stays, because Firefox still reads
+  # user native-messaging hosts (firenvim) only from ~/.mozilla/native-messaging-hosts.
+  programs.firefox.configPath = "${pkgs.lib.removePrefix "${config.home.homeDirectory}/" config.xdg.configHome}/mozilla/firefox";
   programs.firefox.package = pkgs.firefox-devedition.overrideAttrs (old: {
     makeWrapperArgs = old.makeWrapperArgs ++ [
       "--add-flags"
