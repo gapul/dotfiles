@@ -35,20 +35,16 @@ const characterConversion = {
 };
 
 k.writeToProfile("Default profile", [
-  // The window manager's key is Caps Lock, as on the NixOS laptop (nix/home/xremap.nix sends
-  // Super for it there). Space held used to be Hyper here; it was dropped on both machines
-  // because a slow or overlapping Space fired window-manager shortcuts.
   k
-    .rule("Caps Lock を Cmd+Ctrl+Opt にする (Minecraftでは無効)", k.ifApp(minecraftApps).unless())
+    .rule(
+      "スペースキーを単押しでスペース、長押しでCmd+Ctrl+Optにする (Minecraftでは無効)",
+      k.ifApp(minecraftApps).unless(),
+    )
     .manipulators([
       k
-        .map({ key_code: "caps_lock", modifiers: { optional: ["any"] } })
-        .to("left_control", ["left_command", "left_option"]),
-    ]),
-  k
-    .rule("Minecraft では Caps Lock を Ctrl にする", k.ifApp(minecraftApps))
-    .manipulators([
-      k.map({ key_code: "caps_lock", modifiers: { optional: ["any"] } }).to("left_control"),
+        .map({ key_code: "spacebar", modifiers: { optional: ["any"] } })
+        .to("left_control", ["left_command", "left_option"])
+        .toIfAlone("spacebar"),
     ]),
   inputModeSwitch,
   characterConversion,
