@@ -238,6 +238,7 @@ in
           };
   };
   imports = [
+    ./macmini-syncclipboard.nix
     ./darwin-common.nix
     ../modules/authorized-keys.nix
     ./macmini-ci-runner.nix
@@ -359,6 +360,7 @@ in
   # been done. systemPackages rather than home.packages on purpose: ai-stack.sh builds its own
   # PATH from /opt/homebrew and /run/current-system/sw, and the per-user profile is not on it.
   environment.systemPackages = [
+    (pkgs.callPackage ../pkgs/syncclipboard.nix { })
     pkgs.cachix
     pkgs.nodejs_22
     fastPkgs.bitwarden-cli
