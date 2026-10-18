@@ -23,6 +23,11 @@
     # Give agents their own rolling lineage instead, the same way nixpkgs-nixos is separate.
     nixpkgs-agents.url = "github:NixOS/nixpkgs/nixos-unstable";
 
+    # OpenCode ships several releases a week and nixpkgs lags them (2026-10: 1.19.0 vs 1.19.3), and
+    # T3 Code's update button cannot write to the store. llm-agents.nix repackages it daily.
+    # No nixpkgs follows: its binary cache (cache.numtide.com) only hits on its own nixpkgs pin.
+    llm-agents.url = "github:numtide/llm-agents.nix";
+
     # For the real NixOS machines (homeserver, and the Windows dual-boot HP laptop).
     # Separated from the darwin channels to hit the nixos cache cleanly.
     #
@@ -272,6 +277,7 @@
         inherit user;
         nixIndexDatabase = nix-index-database;
         agentSkills = agent-skills;
+        llmAgents = inputs.llm-agents;
         mopidyPatches = mopidy-patches;
         nixpkgsUnstable = nixpkgs-unstable;
         nixpkgsAgents = nixpkgs-agents;
@@ -300,6 +306,7 @@
         inherit user;
         brewNix = brew-nix;
         mocopiMac = mocopi-mac;
+        llmAgents = inputs.llm-agents;
         nixpkgsAgents = nixpkgs-agents;
         inherit cherri;
         # Offload heavy builds to the macmini. It is the same aarch64-darwin, so they run as is.
