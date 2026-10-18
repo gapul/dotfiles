@@ -649,6 +649,10 @@ in
     model = "llama.cpp/ornith-1.5-35b-a3b-abliterated";
   };
 
+  # Same as home/darwin.nix on the MacBook: apps come from environment.systemPackages into
+  # /Applications/Nix Apps, so the linker would only leave an empty ~/Applications/Home Manager Apps.
+  targets.darwin.linkApps.enable = false;
+
   # The hand-written Claude Code pieces that home/workstation.nix links on the laptop, minus
   # settings.json (merged by claudeManagedSettings below) and hooks (desktop notifications).
   # Same out-of-store links into ai-agent-state, which darwin-agent-state-sync keeps current here
