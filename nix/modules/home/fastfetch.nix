@@ -13,9 +13,11 @@ let
     type = "custom";
     inherit key format;
   };
+  # Follows gapul.net's terminal page (`curl gapul.net`): its tagline, links and colours.
   profileConfig = (pkgs.formats.json { }).generate "fastfetch-profile.jsonc" {
     # The GitHub avatar, kept in the repo: fetching it would break the build whenever it changes.
-    # `auto` draws it with the kitty protocol in Ghostty and falls back to blocks elsewhere.
+    # `auto` draws it with the kitty protocol in Ghostty; terminals without image support get
+    # the OS logo instead (this fastfetch is built without chafa).
     logo = {
       source = ../../../configs/profile/avatar.png;
       type = "auto";
@@ -29,23 +31,30 @@ let
     display = {
       separator = "  ";
       key.width = 12;
-      color.keys = "magenta";
+      color.keys = "38;5;80";
     };
     modules = [
       {
         type = "custom";
-        format = "{#1;34}gapul";
+        format = "{#1;38;5;111}gapul{#} {#38;5;245}—{#} 自己目的化進行中。";
       }
       {
         type = "custom";
-        format = "{#90}─────────────────────────────";
+        format = "{#38;5;245}自分のパソコンの環境構築に人生を費しています。";
       }
+      blank
       (fact "󰑴 school" "University of Tokyo")
       (fact "󰍎 based" "Tokyo")
       blank
-      (fact " github" "github.com/gapul")
-      (fact "󰕄 x" "@gapul1729")
-      (fact " dots" "github.com/gapul/dotfiles")
+      (fact "󰖟 web" "https://gapul.net")
+      (fact " works" "https://gapul.net/works")
+      (fact "󰑫 blog" "https://gapul.net/blog")
+      (fact " github" "https://github.com/gapul")
+      (fact "󰕄 x" "https://x.com/gapul1729")
+      (fact "󰘨 matrix" "@gapul:gapul.net")
+      (fact "󰇮 contact" "https://gapul.net/contact")
+      (fact "󰌆 pgp" "F2DE 0D61 E8D1 34A1 DB43  17C7 306E 740A 6FA1 BCF5")
+      (fact " dots" "https://github.com/gapul/dotfiles")
       blank
       {
         type = "os";
