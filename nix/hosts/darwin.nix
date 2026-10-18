@@ -149,7 +149,6 @@ in
     pkgs.brewCasks.fontgoggles
     pkgs.brewCasks.goxel
     pkgs.brewCasks.gyroflow
-    pkgs.imhex
     pkgs.librecad
     pkgs.brewCasks.material-maker
     pkgs.brewCasks.milkytracker
@@ -690,7 +689,6 @@ in
 
       # ─── Network / Remote ───
       "tailscale-app"
-      "rustdesk"
 
       # ─── Dev IDEs / Editors / SDK ───
       "t3-code@nightly" # T3 Code client for the macmini t3code host; nightly to match its server protocol
