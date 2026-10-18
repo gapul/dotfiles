@@ -190,7 +190,8 @@ open_or_create_pr() {
     [ -n "$url" ] && { printf '%s\n' "$url"; return 0; }
     out="$(gh pr create --repo "$REPO" --base "$BASE" --head "$branch" \
       --title "$title" --body "$body" 2>&1)"
-    log "gh pr create (attempt ${attempt}): $out"
+    # To stderr: callers capture stdout as the URL, and an empty capture is how they see failure.
+    log "gh pr create (attempt ${attempt}): $out" >&2
     url="$(printf '%s\n' "$out" | grep -o 'https://github.com/[^[:space:]]*/pull/[0-9][0-9]*' | tail -1)"
     [ -n "$url" ] && { printf '%s\n' "$url"; return 0; }
     sleep 5
@@ -345,7 +346,15 @@ Failed run: https://github.com/${REPO}/actions/runs/${id}
 
 🤖 Claude Code (macmini) による自動修正。
 $MARK")"
-    log "done: ${pr_url:-failed to create the PR}"
+    if [ -z "$pr_url" ]; then
+      # Nothing points at this branch, so it would stay on origin forever. It has happened with
+      # "No commits between main and claude/ci-*" (the fix was already on main), leaving a
+      # dozen of them behind by 2026-10-18.
+      log "no PR for $work_branch, deleting the branch"
+      git push --quiet origin --delete "$work_branch" || log "could not delete $work_branch"
+    else
+      log "done: $pr_url"
+    fi
   else
     log "done: pushed a fix to $work_branch (the existing PR reruns CI)"
   fi
