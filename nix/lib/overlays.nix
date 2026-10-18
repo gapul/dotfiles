@@ -31,26 +31,11 @@ final: prev: {
     doCheck = false;
   });
 
-  # rustdesk re-tagged 1.5.0 upstream, so nixpkgs' src hash went stale ("hash mismatch in
-  # fixed-output derivation"). Fixed in NixOS/nixpkgs#569507 (2026-10-03), but nixos-unstable
-  # was still on 2026-10-01. Only swap the hash while nixpkgs still carries the stale one, so
-  # this turns itself off once the fix lands instead of becoming the mismatch on the next bump
-  # (the tailscale lesson above). Delete it once that has happened.
-  rustdesk =
-    if prev.rustdesk.src.outputHash == "sha256-xuIUWxicsqCJoKRvIDy0YISCHK3qolf1nWS3XMAM3PM=" then
-      prev.rustdesk.overrideAttrs (o: {
-        src = o.src.overrideAttrs (_: {
-          outputHash = "sha256-1xa7X+swBIb8Lz3c6m8SeNZAiJWNCUpw+UbdSsMkeSk=";
-        });
-      })
-    else
-      prev.rustdesk;
-
   # trunk 0.21.14 vendors libdeflate-sys 1.23.1, whose C code uses the `evex512` target attribute
   # that GCC 16 removed, so it fails on x86_64-linux. Stalwart's webadmin is built with trunk, so
   # this took homeserver's mail service down with it in om ci. The patch is the one from
-  # NixOS/nixpkgs#569964 (bumps libdeflate to 1.25.2, open as of 2026-10-04). Same guard as
-  # rustdesk: only while nixpkgs still has the old cargoHash. Delete it once that PR has landed.
+  # NixOS/nixpkgs#569964 (bumps libdeflate to 1.25.2, open as of 2026-10-04). Only while
+  # nixpkgs still has the old cargoHash. Delete it once that PR has landed.
   trunk =
     if prev.trunk.cargoHash == "sha256-/5zvbSlMzZHxnAwuu0Jd6WVVjxJtIAQpRwZZHgYyPbs=" then
       # cargoDeps is computed from the original arguments, so overriding cargoHash alone doesn't

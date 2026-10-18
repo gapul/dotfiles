@@ -291,7 +291,6 @@ in
       text = ''exec vncviewer -passwd "${config.xdg.configHome}/tigervnc/macmini.passwd" 100.105.135.49 "$@"'';
     })
     # ─── Browsers ───
-    google-chrome # for sites that only test against Chrome, and for the automation profile
     tor-browser
 
     # ─── Passwords / 2FA ───
@@ -319,7 +318,6 @@ in
     (callPackage ../pkgs/syncclipboard.nix { })
     localsend # AirDrop-shaped transfer to the phone
     kdePackages.kdeconnect-kde
-    rustdesk
 
     # ─── Network ───
     mullvad-vpn
@@ -374,7 +372,6 @@ in
     zathura # Keyboard-driven PDF viewer, also used by Yazi.
     foliate # EPUB reader; its OPDS catalog pulls books from Kavita for offline reading.
     swayimg # Wayland image viewer, also used by Yazi.
-    imhex # hex editor
 
     # ─── Wayland extras that have no macOS counterpart ───
     swappy # annotate what hyprshot captured
