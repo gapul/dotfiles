@@ -186,9 +186,12 @@ in
   # overrideAttrs keeps .override working, which home-manager uses to inject the policies.
   # The profile lives under XDG_CONFIG_HOME (Firefox 147+ uses it when ~/.mozilla/firefox is
   # absent). Set explicitly: home-manager only defaults to it from stateVersion 26.05. Moved from
-  # ~/.mozilla/firefox by hand on 2026-10-18. ~/.mozilla itself stays, because Firefox still reads
-  # user native-messaging hosts (firenvim) only from ~/.mozilla/native-messaging-hosts.
+  # ~/.mozilla/firefox by hand on 2026-10-18.
   programs.firefox.configPath = "${pkgs.lib.removePrefix "${config.home.homeDirectory}/" config.xdg.configHome}/mozilla/firefox";
+  # home-manager always lists the Firefox package itself as a native-messaging host, so it links
+  # ~/.mozilla/native-messaging-hosts (only a .keep: the package ships no hosts) and ~/.mozilla
+  # outlives the profile's move to XDG_CONFIG_HOME. With Firenvim gone there are no hosts at all.
+  mozilla.firefoxNativeMessagingHosts = pkgs.lib.mkForce [ ];
   programs.firefox.package = pkgs.firefox-devedition.overrideAttrs (old: {
     makeWrapperArgs = old.makeWrapperArgs ++ [
       "--add-flags"
