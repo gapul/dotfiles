@@ -1,4 +1,4 @@
-# Editor component (ECS: profile). nvim/vim/firenvim + lazy2nix plugin bundle.
+# Editor component (ECS: profile). nvim/vim + lazy2nix plugin bundle.
 {
   config,
   pkgs,
@@ -43,26 +43,4 @@ in
   home.file.".config/nvim".source =
     config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.dotfiles/configs/editors/nvim";
 
-  # The Native Messaging manifest requires the launcher's absolute path by spec, and
-  # Firenvim's launcher itself embeds the HOME/XDG/PATH from install time. To avoid
-  # keeping stale paths after migrating username or home, regenerate from the current
-  # environment when HM applies.
-  #
-  # Runs on every switch from the Nix-built plugin (not a lazy.nvim clone), so a new machine
-  # gets the manifests on its first switch. --clean keeps LazyVim out of it: without
-  # LAZY_NIX_PLUGINS in this environment it would fall back to cloning every plugin.
-  # The prologue puts that variable into the launcher, because the browser starts nvim with
-  # its own environment and lazy.lua would otherwise not find the Nix plugin bundle there.
-  # firenvim only writes a browser's manifest when that browser's config dir exists; on
-  # macOS Firefox's is ~/Library/Application Support/Mozilla, which Firefox itself may never
-  # create (home-manager's profile lives under .../Firefox), so make sure it is there.
-  home.activation.firenvimNativeMessaging = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
-    ${lib.optionalString (pkgs.stdenv.isDarwin && config.programs.firefox.enable) ''
-      run mkdir -p "$HOME/Library/Application Support/Mozilla"
-    ''}
-    run ${editorPkgs.neovim}/bin/nvim --headless --clean \
-      --cmd "set rtp^=${lazyNixPlugins}/firenvim" \
-      "+call firenvim#install(0, 'export LAZY_NIX_PLUGINS=${lazyNixPlugins}')" \
-      "+qa"
-  '';
 }
