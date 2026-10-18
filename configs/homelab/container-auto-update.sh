@@ -6,7 +6,9 @@
 # 既定で有効)。ここでやるのは「いつ回すか」と「何が起きたかを人に届けるか」だけで、
 # 更新の手順を自前で書き直すことはしない。
 #
-# 何も更新が無かった週は黙る。鳴り続けると読まなくなる。
+# 鳴らすのは失敗と巻き戻しだけ。rolling tag のコンテナが多く、成功まで通知すると
+# ほぼ毎日鳴って読まなくなる。起動後しばらくして落ちる型は journal-alert が拾う。
+# 何を更新したかはジャーナルに残す (journalctl -u container-auto-update)。
 set -uo pipefail
 
 TOKEN_FILE=/var/lib/secrets/ntfy-alerts.token
@@ -42,10 +44,11 @@ if [ -z "$changed" ]; then
   exit 0
 fi
 
-# 巻き戻しや失敗が混ざっていたら優先度を上げる。
-prio=default
-printf '%s' "$changed" | grep -qiE "fail|rolled" && prio=high
+printf '%s\n' "$changed"
+[ -n "$pruned" ] && printf '%s\n' "$pruned"
 
-notify "コンテナを更新した" "$(printf '%s' "$changed" | sed 's/\t/  /g')
+# 巻き戻しや失敗が無ければ黙る。
+bad=$(printf '%s\n' "$changed" | grep -iE "fail|rolled")
+[ -z "$bad" ] && exit 0
 
-${pruned}" "$prio"
+notify "コンテナの更新で失敗・巻き戻しが出た" "$(printf '%s' "$bad" | sed 's/\t/  /g')" high
