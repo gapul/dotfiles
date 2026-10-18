@@ -89,6 +89,7 @@ in
     fastfetch # system info display (neofetch successor)
     dust # disk usage (formerly du-dust)
     ncdu # disk usage TUI
+    xdg-ninja # lists dotfiles in ~ that could live under XDG dirs (`xdg-ninja --skip-ok --skip-unsupported`)
     yazi # file manager TUI
     tmux # terminal multiplexer (config in modules/home/terminal.nix)
     tmuxp # declare tmux sessions/layouts in YAML (~/.config/tmuxp/)
