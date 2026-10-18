@@ -87,7 +87,6 @@ in
     ripgrep # grep alternative (LazyVim's project search and pickers need rg)
     just # command runner (runs this Justfile)
     bottom # system monitor (btm)
-    fastfetch # system info display (neofetch successor)
     dust # disk usage (formerly du-dust)
     ncdu # disk usage TUI
     xdg-ninja # lists dotfiles in ~ that could live under XDG dirs (`xdg-ninja --skip-ok --skip-unsupported`)
