@@ -9,7 +9,8 @@ an agent working on the mac mini reaches the same broker.
 
 The single rule this file is arranged around: **no code path returns a credential to the caller.**
 The login tools type values into a browser or approved native app and answer whether that worked.
-There is deliberately no `get_password`, not even a private one.
+`run` puts them in a child's environment and returns that child's output with the values scrubbed
+out. There is deliberately no `get_password`, not even a private one.
 """
 
 from __future__ import annotations
@@ -18,7 +19,10 @@ import asyncio
 import collections
 import json
 import os
+import re
+import shlex
 import shutil
+import signal
 import subprocess
 import tempfile
 import time
@@ -75,6 +79,17 @@ class Config:
     matrix_homeserver: str = ""
     matrix_room: str = ""
     matrix_token_file: str = ""
+    # The only Matrix user whose reply counts as an answer. Without it anyone else in the room, or
+    # anyone who gets invited later, could approve a release.
+    matrix_approver: str = ""
+
+    # Which channels to try, in this order. A headless machine (the mac mini) has nobody in front of
+    # its screen, so a dialog there only burns local_timeout_seconds before the phone hears of it.
+    channels: tuple[str, ...] = ("touch_id", "dialog", "elicitation", "matrix")
+
+    # `run`: how long the child may take, and how much of its output comes back.
+    run_timeout_seconds: int = 300
+    run_output_bytes: int = 65536
 
     # Required when the broker is reachable from anywhere but this machine. Binding to the tailnet
     # so an agent on the mac mini can ask means anything else on the tailnet can ask too — the
@@ -102,11 +117,23 @@ class Config:
             vault_password_file=broker.get("vault_password_file", ""),
             token_file=broker.get("token_file", ""),
             touch_id_app=broker.get("touch_id_app", cls.touch_id_app),
+            channels=_str_list(broker.get("channels", cls.channels), "broker.channels"),
+            run_timeout_seconds=broker.get("run_timeout_seconds", cls.run_timeout_seconds),
+            run_output_bytes=broker.get("run_output_bytes", cls.run_output_bytes),
             matrix_homeserver=matrix.get("homeserver", ""),
             matrix_room=matrix.get("room", ""),
             matrix_token_file=matrix.get("token_file", ""),
+            matrix_approver=matrix.get("approver", ""),
             audit_log=Path(broker.get("audit_log", str(cls.audit_log))).expanduser(),
         )
+
+
+def _str_list(value: Any, key: str) -> tuple[str, ...]:
+    """A TOML list of strings. A bare string would otherwise become a tuple of its characters,
+    which for `channels = "matrix"` silently turns every channel off."""
+    if not isinstance(value, (list, tuple)) or not all(isinstance(v, str) for v in value):
+        raise SystemExit(f"{key} must be a list of strings, got {value!r}")
+    return tuple(value)
 
 
 CONFIG = Config.load()
@@ -153,7 +180,7 @@ class Vault:
         if self._session:
             return
         if not CONFIG.vault_password_file:
-            raise RuntimeError("vault is locked and no vault_password_file is configured")
+            raise RuntimeError("vault is locked: run ask-unlock on the broker's machine")
         password = Path(CONFIG.vault_password_file).expanduser().read_text().strip()
         try:
             self.unlock(password)
@@ -244,15 +271,47 @@ VAULT = Vault()
 # --------------------------------------------------------------------------------------- asking
 
 
+# The kinds whose answer is yes or no, which is all a fingerprint or a two-button dialog can say.
+YES_NO_KINDS = ("approve", "login_fill", "native_login_fill", "run")
+
+
+def visible(text: str) -> str:
+    """Text as the human should see it: every character that does not print as itself spelled out.
+
+    Anything shown in an approval arrives from the caller, and a newline, a right-to-left override
+    or a zero-width space is a way to make the screen say something other than what will happen —
+    a hundred blank lines push the real command below the fold of a phone notification.
+    """
+    out = []
+    for ch in text:
+        if ch == " " or ch.isprintable():
+            out.append(ch)
+        elif ch == "\n":
+            out.append("\\n")
+        elif ch == "\t":
+            out.append("\\t")
+        else:
+            out.append(f"\\u{{{ord(ch):04x}}}")
+    return "".join(out)
+
+
 @dataclass
 class Request:
-    kind: Literal["approve", "choose", "ask_text", "login_fill", "native_login_fill"]
+    kind: Literal["approve", "choose", "ask_text", "login_fill", "native_login_fill", "run"]
     prompt: str
     requester: str
     options: list[str] = field(default_factory=list)
     domain: str | None = None
     fields: list[str] = field(default_factory=list)
+    # Elicitation is answered by the calling client, which for `run` is the party the approval is
+    # supposed to hold back: a client could accept its own question.
+    no_elicitation: bool = False
     id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
+
+    def __post_init__(self) -> None:
+        # The requester is a caller-chosen label appended under the question; it must not be able to
+        # add lines of its own ("\nin /safe/repo").
+        self.requester = visible(self.requester)[:120]
 
     def as_json(self) -> dict[str, Any]:
         return {
@@ -270,8 +329,8 @@ class Request:
 class Matrix:
     """Posts the question into a room and waits for a reply. Element on the phone is the client.
 
-    Deliberately the dumbest thing that works: send, then poll for a message from someone other
-    than us. Replacing this with APNs straight to the watch app changes only this class.
+    Deliberately the dumbest thing that works: send, then poll for the approver's reply to that
+    message. Replacing this with APNs straight to the watch app changes only this class.
     """
 
     def __init__(self, cfg: Config) -> None:
@@ -279,10 +338,24 @@ class Matrix:
 
     @property
     def configured(self) -> bool:
-        return bool(self.cfg.matrix_homeserver and self.cfg.matrix_room and self.cfg.matrix_token_file)
+        return bool(
+            self.cfg.matrix_homeserver
+            and self.cfg.matrix_room
+            and self.cfg.matrix_token_file
+            and self.cfg.matrix_approver
+        )
 
     def _token(self) -> str:
         return Path(self.cfg.matrix_token_file).expanduser().read_text().strip()
+
+    def _whoami(self, base: str, token: str) -> str:
+        import urllib.request
+
+        req = urllib.request.Request(
+            f"{base}/_matrix/client/v3/account/whoami",
+            headers=_matrix_headers(token),
+        )
+        return json.loads(urllib.request.urlopen(req, timeout=20).read()).get("user_id", "")
 
     async def ask(self, request: Request, timeout: int) -> str | None:
         import urllib.error
@@ -292,40 +365,58 @@ class Matrix:
         base = self.cfg.matrix_homeserver.rstrip("/")
         room = self.cfg.matrix_room
 
+        loop = asyncio.get_running_loop()
+        # The token file sits where the agents can read it. If it were the approver's own account,
+        # reading it would be enough to answer yes; as a separate bot's, it can only ask.
+        try:
+            me = await loop.run_in_executor(None, self._whoami, base, token)
+        except Exception:
+            audit("matrix.failed", id=request.id, error="whoami")
+            return None
+        if me == self.cfg.matrix_approver:
+            audit("matrix.refused", id=request.id, reason="bot token is the approver's account")
+            return None
+
         body = f"[ask] {request.prompt}\nfrom: {request.requester}"
         if request.options:
             body += "\noptions: " + " / ".join(request.options)
-        if request.kind in ("approve", "login_fill", "native_login_fill"):
-            body += "\nreply: yes / no"
+        if request.kind in YES_NO_KINDS:
+            body += "\nreply to this message: yes / no"
+        else:
+            body += "\nreply to this message with the answer"
 
-        def post() -> None:
+        def post() -> str:
             req = urllib.request.Request(
                 f"{base}/_matrix/client/v3/rooms/{room}/send/m.room.message/{uuid.uuid4().hex}",
                 method="PUT",
                 data=json.dumps({"msgtype": "m.text", "body": body}).encode(),
-                headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+                headers={**_matrix_headers(token), "Content-Type": "application/json"},
             )
-            urllib.request.urlopen(req, timeout=20).read()
+            return json.loads(urllib.request.urlopen(req, timeout=20).read()).get("event_id", "")
 
-        def sync(since: str | None) -> tuple[str, list[str]]:
+        def sync(since: str | None) -> tuple[str, list[tuple[str, str | None]]]:
             url = f"{base}/_matrix/client/v3/sync?timeout=20000"
             if since:
                 url += f"&since={since}"
-            req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"})
+            req = urllib.request.Request(url, headers=_matrix_headers(token))
             data = json.loads(urllib.request.urlopen(req, timeout=40).read())
-            texts: list[str] = []
+            texts: list[tuple[str, str | None]] = []
             joined = data.get("rooms", {}).get("join", {}).get(room, {})
             for event in joined.get("timeline", {}).get("events", []):
                 if event.get("type") != "m.room.message":
                     continue
+                if event.get("sender") != self.cfg.matrix_approver:
+                    continue
                 content = event.get("content", {})
                 if content.get("msgtype") == "m.text":
-                    texts.append(content.get("body", ""))
+                    replied = (
+                        (content.get("m.relates_to") or {}).get("m.in_reply_to") or {}
+                    ).get("event_id")
+                    texts.append((content.get("body", ""), replied))
             return data.get("next_batch", ""), texts
 
-        loop = asyncio.get_running_loop()
         since, _ = await loop.run_in_executor(None, sync, None)  # start from now
-        await loop.run_in_executor(None, post)
+        posted = await loop.run_in_executor(None, post)
 
         deadline = time.time() + timeout
         while time.time() < deadline:
@@ -334,11 +425,34 @@ class Matrix:
             except Exception:
                 await asyncio.sleep(2)
                 continue
-            for text in texts:
-                answer = text.strip()
-                if answer and not answer.startswith("[ask]"):
+            for text, replied in texts:
+                answer = matrix_answer(text, replied, posted)
+                if answer is not None:
                     return answer
         return None
+
+
+def _matrix_headers(token: str) -> dict[str, str]:
+    # Python-urllib's default User-Agent gets a 403 from the proxy in front of matrix.gapul.net,
+    # while curl's goes through; every call came back "forbidden" until this was set.
+    return {"Authorization": f"Bearer {token}", "User-Agent": "ask-broker"}
+
+
+def matrix_answer(text: str, replied: str | None, posted: str) -> str | None:
+    """A message from the approver, read as an answer to the question posted as `posted`.
+
+    Only a Matrix reply to that exact message counts. A plain "yes" would answer every question
+    waiting at that moment — including one raised alongside the one the human meant — and a late
+    answer to a question that already timed out would land on the next one. A reply's body quotes
+    the original as "> " lines first; the answer is what comes after them.
+    """
+    if not posted or replied != posted:
+        return None
+    lines = [line for line in text.splitlines() if not line.startswith(">")]
+    answer = "\n".join(lines).strip()
+    if not answer or answer.startswith("[ask]"):
+        return None
+    return answer
 
 
 MATRIX = Matrix(CONFIG)
@@ -359,7 +473,7 @@ class FreeText(BaseModel):
 
 
 def _schema_for(kind: str) -> type[BaseModel]:
-    if kind in ("approve", "login_fill", "native_login_fill"):
+    if kind in YES_NO_KINDS:
         return YesNo
     if kind == "choose":
         return Choice
@@ -380,7 +494,7 @@ async def touch_id(request: Request, prompt: str) -> str | None:
     app = Path(CONFIG.touch_id_app).expanduser()
     if not CONFIG.touch_id_app or not app.exists():
         return None
-    if request.kind not in ("approve", "login_fill", "native_login_fill"):
+    if request.kind not in YES_NO_KINDS:
         return None  # a fingerprint can say yes or no and nothing else
 
     with tempfile.TemporaryDirectory() as tmp:
@@ -480,7 +594,7 @@ async def system_dialog(request: Request, prompt: str) -> str | None:
     answer = out.decode().strip()
     if not answer:
         return None  # gave up or cancelled: not an answer, so let the phone have it
-    if request.kind in ("approve", "login_fill", "native_login_fill"):
+    if request.kind in YES_NO_KINDS:
         return "yes" if answer == "Approve" else "no"
     return answer
 
@@ -523,15 +637,19 @@ async def _ask_channels(ctx: Context, request: Request) -> str | None:
 
     prompt = f"{request.prompt}\n(from {request.requester})"
 
-    answered = await touch_id(request, prompt)
-    if answered is not None:
-        audit("answered", id=request.id, via="touch-id")
-        return answered
+    channels = CONFIG.channels
 
-    answered = await system_dialog(request, prompt)
-    if answered is not None:
-        audit("answered", id=request.id, via="dialog")
-        return answered
+    if "touch_id" in channels:
+        answered = await touch_id(request, prompt)
+        if answered is not None:
+            audit("answered", id=request.id, via="touch-id")
+            return answered
+
+    if "dialog" in channels:
+        answered = await system_dialog(request, prompt)
+        if answered is not None:
+            audit("answered", id=request.id, via="dialog")
+            return answered
 
     # Elicitation stays as the fallback: it is what works if osascript ever cannot draw, and it is
     # the nicer place to answer when you happen to be looking at the terminal anyway.
@@ -539,7 +657,9 @@ async def _ask_channels(ctx: Context, request: Request) -> str | None:
     # Except when it cannot show the question. The terminal client draws four choices and no more,
     # so a list of eight accounts arrives there as four — and a human who picks from those four is
     # answering a question nobody asked. Silence is better: let it go to the phone.
-    if request.kind == "choose" and len(request.options) > ELICITABLE_CHOICES:
+    if "elicitation" not in channels or ctx is None or request.no_elicitation:
+        pass
+    elif request.kind == "choose" and len(request.options) > ELICITABLE_CHOICES:
         audit("elicitation.skipped", id=request.id, options=len(request.options))
     else:
         try:
@@ -558,7 +678,7 @@ async def _ask_channels(ctx: Context, request: Request) -> str | None:
             # line in the log rather than silence.
             audit("elicitation.failed", id=request.id, error=type(exc).__name__)
 
-    if MATRIX.configured:
+    if "matrix" in channels and MATRIX.configured:
         answer = await MATRIX.ask(request, CONFIG.remote_timeout_seconds)
         if answer is not None:
             audit("answered", id=request.id, via="matrix")
@@ -1134,6 +1254,270 @@ async def native_login_fill(
     return result
 
 
+ENV_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+
+# Kept out of the child's environment. The broker's own process never has BW_SESSION in it (the
+# session is passed to each `bw` call explicitly), but a child that inherited one would be holding
+# the whole vault, so this does not rely on that staying true.
+WITHHELD_ENV = {"BW_SESSION", "ASK_BW_PASSWORD"}
+
+# Names a released value may not be put under. Not because the value could inject anything — it is
+# the caller's own secret — but because these hand it to a loader, a shell or an interpreter that
+# was not what the human approved, and which may print it back in some escaped form scrub misses.
+RESERVED_ENV = {
+    "PATH", "HOME", "SHELL", "USER", "TMPDIR", "IFS", "PS4", "ENV", "BASH_ENV", "ZDOTDIR",
+    "PROMPT_COMMAND", "PYTHONPATH", "PYTHONSTARTUP", "NODE_OPTIONS", "PERL5OPT", "RUBYOPT",
+} | WITHHELD_ENV
+RESERVED_ENV_PREFIXES = ("DYLD_", "LD_")
+
+# The longest command the human is asked to read. Past this, approval is not reading any more, and
+# truncating what is shown would be showing something other than what runs.
+MAX_SHOWN_COMMAND = 1000
+
+
+def scrub(text: str, secrets: list[str]) -> str:
+    """Take released values out of what goes back to the caller.
+
+    This catches a command that echoes what it was given — `env`, a verbose flag, an error message
+    quoting a token, a JSON or URL encoder that escaped a character or two on the way. It does not
+    catch a command written to disguise the value first (base64, one character per line), and
+    cannot: that is what showing the human the exact command is for.
+    """
+    import urllib.parse
+
+    forms: set[str] = set()
+    for secret in secrets:
+        if len(secret) < 4:  # shorter would turn every "1234" in a log into noise
+            continue
+        forms.add(secret)
+        forms.add(json.dumps(secret)[1:-1])  # Python / JS JSON
+        forms.add(json.dumps(secret, ensure_ascii=False)[1:-1])
+        forms.add(  # Go's encoding/json escapes these three
+            json.dumps(secret)[1:-1].replace("&", "\\u0026").replace("<", "\\u003c").replace(">", "\\u003e")
+        )
+        forms.add(urllib.parse.quote(secret, safe=""))
+        forms.add(urllib.parse.quote_plus(secret))
+    for form in sorted(forms, key=len, reverse=True):
+        text = text.replace(form, "[redacted]")
+    return text
+
+
+class _Drain:
+    """Read a pipe to the end, keeping only the first `keep` bytes.
+
+    Reading everything and cutting afterwards held the whole of a runaway command's output in this
+    process. The buffer lives on the object so a read cancelled at the timeout still leaves what it
+    had got.
+    """
+
+    def __init__(self, keep: int) -> None:
+        self.keep = keep
+        self.buf = bytearray()
+        self.total = 0
+
+    async def __call__(self, stream: asyncio.StreamReader) -> None:
+        while chunk := await stream.read(65536):
+            self.total += len(chunk)
+            room = self.keep - len(self.buf)
+            if room > 0:
+                self.buf += chunk[:room]
+
+
+def resolve_program(name: str, path: str) -> str | None:
+    """The executable a bare name would run, as an absolute path, so the human is shown what will
+    actually execute rather than a name the PATH could resolve to something else."""
+    if os.sep in name:
+        resolved = os.path.realpath(name)
+        return resolved if os.access(resolved, os.X_OK) and os.path.isfile(resolved) else None
+    found = shutil.which(name, path=path)
+    return os.path.realpath(found) if found else None
+
+
+async def run_child(
+    command: list[str], cwd: str, env: dict[str, str], secrets: list[str]
+) -> dict[str, Any]:
+    """Run the approved command with the released values in its environment, and nowhere else.
+
+    Not through a shell, and not with the values in argv: `ps` shows another process's arguments to
+    the same user. Its own process group, so a timeout takes down whatever it spawned as well — and
+    if something escaped the group and still holds a pipe, the wait for it is bounded too.
+    """
+    child_env = {k: v for k, v in os.environ.items() if k not in WITHHELD_ENV}
+    child_env.update(env)
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            *command,
+            cwd=cwd,
+            env=child_env,
+            stdin=asyncio.subprocess.DEVNULL,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            start_new_session=True,
+        )
+    except (OSError, ValueError) as exc:
+        return {"ran": False, "error": f"could not start {command[0]}: {type(exc).__name__}"}
+
+    # Kept past the limit by the longest secret, so a value straddling the cut is still scrubbed
+    # whole before the cut is made.
+    limit = CONFIG.run_output_bytes
+    keep = limit + 4 * max((len(s.encode()) for s in secrets), default=0)
+    out, err = _Drain(keep), _Drain(keep)
+    readers = asyncio.gather(out(proc.stdout), err(proc.stderr))
+
+    timed_out = False
+    try:
+        await asyncio.wait_for(asyncio.shield(readers), timeout=CONFIG.run_timeout_seconds)
+        await asyncio.wait_for(proc.wait(), timeout=5)
+    except asyncio.TimeoutError:
+        timed_out = True
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        try:
+            await asyncio.wait_for(asyncio.shield(readers), timeout=5)
+        except asyncio.TimeoutError:
+            readers.cancel()  # a setsid'd grandchild holds the pipe; stop waiting on it
+        try:
+            await asyncio.wait_for(proc.wait(), timeout=5)
+        except asyncio.TimeoutError:
+            pass
+
+    def shown(drain: _Drain) -> str:
+        return scrub(bytes(drain.buf).decode(errors="replace"), secrets)[:limit]
+
+    return {
+        "ran": True,
+        "exit_code": proc.returncode,
+        "timed_out": timed_out,
+        "stdout": shown(out),
+        "stderr": shown(err),
+        "truncated": out.total > limit or err.total > limit,
+    }
+
+
+def check_run_request(
+    domain: str, env: dict[str, str], command: list[str], cwd: str
+) -> str | None:
+    """Everything about a run that can be refused without a human or the vault."""
+    if domain not in CONFIG.allowed_domains:
+        return f"{domain} is not in the allowlist"
+    if not env:
+        return "env is empty: nothing to release"
+    for name in env:
+        if not ENV_NAME.fullmatch(name) or name in RESERVED_ENV or name.startswith(RESERVED_ENV_PREFIXES):
+            return f"environment variable name not allowed: {visible(name)}"
+    if set(env.values()) - LOGIN_FIELDS:
+        return "unsupported credential field"
+    if not command or not all(isinstance(arg, str) and arg for arg in command):
+        return "command must be a non-empty argv list"
+    if any("\0" in arg for arg in command) or "\0" in cwd:
+        return "NUL in command or cwd"
+    if not os.path.isabs(cwd) or not os.path.isdir(cwd):
+        return f"{visible(cwd)} is not a directory on the broker's machine"
+    return None
+
+
+@mcp.tool()
+async def run(
+    ctx: Context,
+    domain: str,
+    env: dict[str, str],
+    command: list[str],
+    cwd: str,
+    requester: str = "unknown",
+) -> dict[str, Any]:
+    """Run `command` with credentials for `domain` in its environment, after the human approves.
+
+    `env` maps an environment variable to a credential field, e.g. `{"GH_TOKEN": "password"}`.
+    Valid fields are username, password, or totp. `command` is an argv list, run without a shell
+    in `cwd` on the broker's machine; the human sees exactly this command, with its program resolved
+    to an absolute path, before approving.
+
+    Returns {"ran", "exit_code", "stdout", "stderr", "timed_out", "truncated"}. Released values are
+    replaced by "[redacted]" in the output. **It never returns the values themselves.**
+    """
+    error = check_run_request(domain, env, command, cwd)
+    if error:
+        audit("refused", domain=visible(domain), reason=error, requester=visible(requester))
+        return {"ran": False, "error": error}
+
+    # What is shown is what runs: the program as an absolute path and the directory with its
+    # symlinks resolved, both fixed here rather than looked up again at exec time.
+    program = resolve_program(command[0], os.environ.get("PATH", ""))
+    if program is None:
+        return {"ran": False, "error": f"{visible(command[0])} is not an executable on the broker's PATH"}
+    command = [program, *command[1:]]
+    cwd = os.path.realpath(cwd)
+    shown = visible(shlex.join(command))
+    if len(shown) > MAX_SHOWN_COMMAND:
+        return {"ran": False, "error": f"command is longer than {MAX_SHOWN_COMMAND} characters to read"}
+    shown = f"{shown}\nin {visible(cwd)}"
+
+    try:
+        candidates = VAULT.candidates(domain)
+    except RuntimeError as exc:
+        audit("outcome", domain=domain, ran=False, reason=str(exc))
+        return {"ran": False, "error": str(exc)}
+    if not candidates:
+        audit("outcome", domain=domain, ran=False, reason="no vault item")
+        return {"ran": False, "error": f"no vault item matches {domain}"}
+
+    # The command is the thing being approved, so unlike the login tools there is no window in
+    # which an earlier approval carries over: every run is asked about on its own.
+    mapping = ", ".join(f"{field_name} as {name}" for name, field_name in env.items())
+    fields = sorted(set(env.values()))
+    if len(candidates) == 1:
+        item_id, item_name = candidates[0]
+        request = Request(
+            kind="run",
+            prompt=f"Run with {domain} ({item_name}) {mapping}:\n{shown}",
+            requester=requester,
+            domain=domain,
+            fields=fields,
+            no_elicitation=True,
+        )
+        approved = is_yes(await ask_human(ctx, request))
+    else:
+        names = [name for _, name in candidates]
+        request = Request(
+            kind="choose",
+            prompt=f"Which account for {domain}? Releasing {mapping} to:\n{shown}",
+            options=names,
+            requester=requester,
+            domain=domain,
+            fields=fields,
+            no_elicitation=True,
+        )
+        answer = await ask_human(ctx, request)
+        approved = answer in names
+        if approved:
+            item_id, item_name = candidates[names.index(answer)]
+
+    if not approved:
+        audit("outcome", id=request.id, approved=False)
+        return {"ran": False, "error": "not approved"}
+
+    # Fetched after the approval: a TOTP lives thirty seconds.
+    values: dict[str, str] = {}
+    try:
+        values = {name: VAULT.get(field_name, item_id) for name, field_name in env.items()}
+        result = await run_child(command, cwd, values, list(values.values()))
+    except Exception as exc:
+        # Whatever went wrong, the audit line below still gets written; the message does not carry
+        # str(exc), which for a failure mid-run could quote anything.
+        result = {"ran": False, "error": f"run failed: {type(exc).__name__}"}
+    finally:
+        values.clear()
+
+    audit(
+        "outcome", id=request.id, approved=True, ran=result["ran"], domain=domain,
+        fields=fields, env=sorted(env), item=item_name, command=command, cwd=cwd,
+        exit_code=result.get("exit_code"), timed_out=result.get("timed_out"),
+    )
+    return result
+
+
 class RequireToken:
     """Bearer check in front of the MCP app.
 
@@ -1162,8 +1546,66 @@ class RequireToken:
         await self.app(scope, receive, send)
 
 
+class Unlock:
+    """POST /unlock {"password": ...}: open the vault from a human at this machine's keyboard.
+
+    For a broker that must not keep the master password on disk — the mac mini, where the agents
+    run as the same user and could read any file the broker can. The password arrives over loopback
+    from `ask-unlock`, is used once and dropped; the session then lives only in this process.
+    Knowing the endpoint is no help to an agent: it would need the password.
+    """
+
+    def __init__(self, app: Any) -> None:
+        self.app = app
+
+    async def __call__(self, scope: dict[str, Any], receive: Any, send: Any) -> None:
+        if scope["type"] != "http" or scope.get("path") != "/unlock":
+            await self.app(scope, receive, send)
+            return
+
+        async def reply(status: int, body: dict[str, Any]) -> None:
+            await send({"type": "http.response.start", "status": status,
+                        "headers": [(b"content-type", b"application/json")]})
+            await send({"type": "http.response.body", "body": json.dumps(body).encode()})
+
+        client = (scope.get("client") or ("", 0))[0]
+        if scope.get("method") != "POST" or client not in ("127.0.0.1", "::1"):
+            await reply(403, {"unlocked": False})
+            return
+        raw = b""
+        while True:
+            message = await receive()
+            raw += message.get("body", b"")
+            if not message.get("more_body"):
+                break
+        try:
+            password = json.loads(raw).get("password", "")
+        except (json.JSONDecodeError, AttributeError):
+            password = ""
+        if not isinstance(password, str) or not password:
+            await reply(400, {"unlocked": False})
+            return
+        try:
+            await asyncio.get_running_loop().run_in_executor(None, VAULT.unlock, password)
+        except RuntimeError:
+            audit("vault.unlock_failed", via="ask-unlock")
+            await reply(403, {"unlocked": False})
+            return
+        finally:
+            password = ""
+        audit("vault.unlocked", via="ask-unlock")
+        await reply(200, {"unlocked": True})
+
+
 def main() -> None:
+    import sys
+
     import uvicorn
+
+    if CONFIG.matrix_homeserver and not MATRIX.configured:
+        missing = [k for k in ("room", "token_file", "approver") if not getattr(CONFIG, f"matrix_{k}")]
+        print(f"ask: [matrix] is missing {', '.join(missing)}, so the matrix channel is off",
+              file=sys.stderr)
 
     token = ""
     if CONFIG.token_file:
@@ -1174,7 +1616,7 @@ def main() -> None:
             "an endpoint anyone can reach must not be one anyone can ask through"
         )
 
-    app = RequireToken(mcp.streamable_http_app(), token)
+    app = RequireToken(Unlock(mcp.streamable_http_app()), token)
     uvicorn.run(app, host=CONFIG.host, port=CONFIG.port, log_level="info")
 
 
