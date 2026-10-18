@@ -90,9 +90,11 @@ let
   '';
 in
 {
+  # The profile lives under XDG_CONFIG_HOME, which Thunderbird uses when ~/.thunderbird is absent
+  # (moved from ~/.thunderbird by hand on 2026-10-18).
   # Same shape home-manager's own module writes. A single Default=1 profile is claimed by the
   # install on first start, so no installs.ini entry is needed.
-  home.file.".thunderbird/profiles.ini".text = ''
+  xdg.configFile."thunderbird/profiles.ini".text = ''
     [General]
     StartWithLastProfile=1
     Version=2
@@ -105,7 +107,7 @@ in
   '';
 
   sops.templates."thunderbird-user.js" = {
-    path = "${config.home.homeDirectory}/.thunderbird/${profile}/user.js";
+    path = "${config.xdg.configHome}/thunderbird/${profile}/user.js";
     content = userJs;
   };
 }
