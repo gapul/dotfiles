@@ -11,8 +11,8 @@ carries what Windows still has to provide on its own, not a mirror of the Linux 
 
 Two rules follow from that, and they are why most of the old list is gone:
 
-- Anything NixOS already provides on the same disk is not declared here twice (mpv, Bitwarden,
-  Steam, LocalSend, KDE Connect and friends).
+- Anything NixOS already provides on the same disk is not declared here twice (mpv, Steam,
+  KDE Connect and friends).
 - WSL is not declared at all. Its whole purpose was Linux-on-Windows, and there is a real NixOS
   install one partition over.
 

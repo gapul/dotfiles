@@ -294,7 +294,6 @@ in
     tor-browser
 
     # ─── Passwords / 2FA ───
-    bitwarden-desktop # the vault the SSH agent policy is built around
     keepassxc # offline vault (the same kdbx the iOS KeePassium build reads)
 
     # ─── Notes / Documents ───
@@ -316,7 +315,6 @@ in
     androidTools # adb; USB permissions are provided by systemd
     (scrcpy.override { android-tools = androidTools; }) # Android display and control
     (callPackage ../pkgs/syncclipboard.nix { })
-    localsend # AirDrop-shaped transfer to the phone
     kdePackages.kdeconnect-kde
 
     # ─── Network ───

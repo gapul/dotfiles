@@ -156,7 +156,6 @@ in
     pkgs.brewCasks.anki
     pkgs.brewCasks.keyguard
     pkgs.brewCasks.knockknock # persistence scanner (Objective-See). Needs Full Disk Access re-granted on first run
-    pkgs.brewCasks.localsend
     # Scribus carries two broken symlinks to PrivateHeaders in its bundled Python.framework, and
     # nixpkgs' noBrokenSymlinks fixup fails the build over them. The contents are upstream's
     # distribution as is and only unused header references are broken, so the check is disabled instead.
