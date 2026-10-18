@@ -211,7 +211,7 @@ Use this repository's recovery ISO. The Mac is aarch64-darwin and cannot build i
 CI's Recovery ISO job builds one every time and uploads it as an artifact.
 
 ```sh
-gh run download --name "nixos-recovery-<sha>" --dir ~/tmp/iso
+gh run download --name "nixos-recovery-<sha>" --dir /tmp/iso
 # check the SHA256 against the bundled checksum before writing it
 ```
 

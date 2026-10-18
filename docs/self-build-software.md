@@ -96,7 +96,7 @@ ArmorPaint needs xcodebuild and Metal, which fits Homebrew and fights nix.
 
 ```bash
 # 1. create the tap
-mkdir -p ~/tmp/homebrew-armorpaint/Formula && cd ~/tmp/homebrew-armorpaint
+mkdir -p /tmp/homebrew-armorpaint/Formula && cd /tmp/homebrew-armorpaint
 # write Formula/armorpaint.rb, see below
 git init && git add -A && git commit -m init
 gh repo create gapul/homebrew-armorpaint --public --source=. --push
@@ -211,7 +211,7 @@ LiveContainer can work around.
 | ArmorPaint | C, Homebrew source build | tap `gapul/homebrew-armorpaint`, PR #74 |
 | Fritzing, Ardour, Aseprite | A, plain nix | `nix/home/darwin.nix`, PR #77 |
 | Inochi Creator | D, cask | tap `gapul/homebrew-inochi`, PR #77 |
-| Blink, KeePassium (iOS) | E, Xcode and AltStore | `~/tmp/ios-selfbuild/`, in progress |
+| Blink, KeePassium (iOS) | E, Xcode and AltStore | `~/Documents/Projects/ios-selfbuild/`, in progress |
 | keebmouse (mine) | D, cask | tap `gapul/homebrew-tap`; the source repo is private, so only the build output goes in the tap |
 
 keebmouse goes to `/Applications` rather than the nix store because its TCC grant, for

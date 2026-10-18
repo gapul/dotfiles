@@ -27,7 +27,7 @@ in
       pandoc # document conversion
       # Ears for the music tooling: aubiopitch / aubiotempo / aubioonset turn a rendered wav into
       # numbers an agent can check (is the melody the one I wrote, is the tempo 100). The other
-      # half, `sox ... spectrogram`, is sox which is already here. See ~/tmp/music-tools-test/listen.
+      # half, `sox ... spectrogram`, is sox which is already here.
       # 26.05 marks aubio linux-only; nixos-unstable builds it on aarch64-darwin (0.4.9, cached).
       fastPkgs.aubio
       # LilyPond: text -> engraved score (PDF/PNG/MIDI). MuseScore's CLI covers MIDI -> score,
