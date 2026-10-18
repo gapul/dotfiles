@@ -4,7 +4,8 @@
   lib,
   ...
 }:
-# Mount Google Drive as plaintext under ~/Sync via rclone (macOS only).
+# Mount Google Drive as plaintext under ~/Sync via rclone: launchd agents on macOS, systemd user
+# services on Linux (nixos-laptop).
 # The purpose is "sharing/collaboration with others", not a cold archive. It is unencrypted
 # because it should be plainly visible from the Web UI and to those you share with.
 #
@@ -48,6 +49,9 @@ let
     # (that needs its own section with team_drive set).
     "google-drive-work"
   ];
+
+  # Unprivileged FUSE unmount goes through the setuid wrapper NixOS installs.
+  fusermount = "/run/wrappers/bin/fusermount3";
 
   rcloneBin = lib.makeBinPath [
     pkgs.rclone
@@ -142,23 +146,77 @@ in
 {
   home.packages = [ pkgs.rclone ];
 
+  # One systemd user service per mount. Type=notify: rclone reports ready once the FUSE mount is
+  # up. A remote missing from rclone.conf skips the unit (ExecCondition) instead of failing
+  # it, matching the mac's "not configured yet" exit. Stale mounts left by a crashed rclone are
+  # lazily unmounted before start and after stop, so nothing blocks on a dead FUSE server.
+  systemd.user.services = lib.mkIf pkgs.stdenv.hostPlatform.isLinux (
+    lib.listToAttrs (
+      map (
+        name:
+        let
+          mountPoint = "${home}/Sync/${name}";
+        in
+        lib.nameValuePair "rclone-${name}" {
+          Unit = {
+            Description = "rclone mount of ${name}: at ${mountPoint}";
+            StartLimitIntervalSec = 0; # keep retrying while offline
+          };
+          Service = {
+            Type = "notify";
+            ExecCondition = "${pkgs.writeShellScript "rclone-configured-${name}" ''
+              [ -f "${rcloneConf}" ] && ${pkgs.gnugrep}/bin/grep -q '^\[${name}\]' "${rcloneConf}"
+            ''}";
+            ExecStartPre = [
+              "${pkgs.coreutils}/bin/mkdir -p ${mountPoint} ${cacheDir}"
+              "-${fusermount} -uz ${mountPoint}"
+            ];
+            # Same flags as the mac's nfsmount, restic repository excluded the same way.
+            ExecStart = lib.escapeShellArgs [
+              "${pkgs.rclone}/bin/rclone"
+              "mount"
+              "${name}:"
+              mountPoint
+              "--config=${rcloneConf}"
+              "--exclude=/restic-backup/**"
+              "--exclude=/restic-archive/**"
+              "--vfs-cache-mode=writes"
+              "--dir-cache-time=72h"
+              "--poll-interval=1m"
+              "--log-level=INFO"
+            ];
+            ExecStopPost = "-${fusermount} -uz ${mountPoint}";
+            # rclone mount finds fusermount3 on PATH.
+            Environment = [ "PATH=/run/wrappers/bin" ];
+            Restart = "on-failure";
+            RestartSec = 30;
+            Nice = 5;
+          };
+          Install.WantedBy = [ "default.target" ];
+        }
+      ) remotes
+    )
+  );
+
   # One agent per remote. These used to be hand-written plists in ~/Library/LaunchAgents
   # (com.gapul.rclone.*), which is why the mount points silently kept pointing at the old ~/Cloud.
-  launchd.agents = lib.listToAttrs (
-    map (name: {
-      name = "rclone-${name}";
-      value = {
-        enable = true;
-        config = {
-          ProgramArguments = [ "${mountScript name}" ];
-          RunAtLoad = true;
-          KeepAlive.SuccessfulExit = false; # restart a crashed mount, leave a skipped one alone
-          ProcessType = "Background";
-          LowPriorityIO = true;
-          Nice = 5;
-          StandardErrorPath = "${logDir}/${name}.log";
+  launchd.agents = lib.mkIf pkgs.stdenv.hostPlatform.isDarwin (
+    lib.listToAttrs (
+      map (name: {
+        name = "rclone-${name}";
+        value = {
+          enable = true;
+          config = {
+            ProgramArguments = [ "${mountScript name}" ];
+            RunAtLoad = true;
+            KeepAlive.SuccessfulExit = false; # restart a crashed mount, leave a skipped one alone
+            ProcessType = "Background";
+            LowPriorityIO = true;
+            Nice = 5;
+            StandardErrorPath = "${logDir}/${name}.log";
+          };
         };
-      };
-    }) remotes
+      }) remotes
+    )
   );
 }
