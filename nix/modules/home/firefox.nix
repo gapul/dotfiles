@@ -147,7 +147,8 @@ in
         "{446900e4-71c2-419f-a6a7-df9c091e268b}" = amo "bitwarden-password-manager"; # Bitwarden Password Manager
         "{e58d3966-3d76-4cd9-8552-1582fbc800c1}" = amo "buster-captcha-solver"; # Buster: Captcha Solver for Humans
         "@testpilot-containers" = amo "multi-account-containers"; # Firefox Multi-Account Containers
-        "firenvim@lacamb.re" = amo "firenvim"; # Firenvim
+        # Firenvim was dropped on 2026-10-18; blocked so the copies already installed are removed.
+        "firenvim@lacamb.re".installation_mode = "blocked";
         "floccus@handmadeideas.org" = amo "floccus"; # floccus bookmarks sync
         "headereditor-amo@addon.firefoxcn.net" = amo "header-editor"; # Header Editor
         "sponsorBlocker@ajay.app" = amo "sponsorblock"; # SponsorBlock for YouTube - Skip Sponsorships
@@ -307,7 +308,6 @@ in
             widget-overflow-fixed-list = [ ];
             unified-extensions-area = [
               "_ef87d84c-2127-493f-b952-5b4e744245bc_-browser-action"
-              "firenvim_lacamb_re-browser-action"
               "_a8332c60-5b6d-41ee-bfc8-e9bb331d34ad_-browser-action"
               "sponsorblocker_ajay_app-browser-action"
               "_ublacklist-browser-action"
@@ -345,7 +345,6 @@ in
             "vertical-spacer"
             "screenshot-button"
             "_ef87d84c-2127-493f-b952-5b4e744245bc_-browser-action"
-            "firenvim_lacamb_re-browser-action"
             "_a8332c60-5b6d-41ee-bfc8-e9bb331d34ad_-browser-action"
             "sponsorblocker_ajay_app-browser-action"
             "_ublacklist-browser-action"
