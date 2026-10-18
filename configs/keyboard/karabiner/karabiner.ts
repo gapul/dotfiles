@@ -34,23 +34,6 @@ const characterConversion = {
   enabled: false,
 };
 
-const emacsKeys = {
-  ...k
-    .rule("Emacs Style Keybindings (Ctrl)")
-    .manipulators([
-      k.map("a", "control").to("home"),
-      k.map("e", "control").to("end"),
-      k.map("f", "control").to("right_arrow"),
-      k.map("b", "control").to("left_arrow"),
-      k.map("n", "control").to("down_arrow"),
-      k.map("p", "control").to("up_arrow"),
-      k.map("h", "control").to("delete_or_backspace"),
-      k.map("d", "control").to("delete_forward"),
-    ])
-    .build(),
-  enabled: false,
-};
-
 k.writeToProfile("Default profile", [
   // The window manager's key is Caps Lock, as on the NixOS laptop (nix/home/xremap.nix sends
   // Super for it there). Space held used to be Hyper here; it was dropped on both machines
@@ -69,7 +52,6 @@ k.writeToProfile("Default profile", [
     ]),
   inputModeSwitch,
   characterConversion,
-  emacsKeys,
   k.rule("Cmd+Q を長押し(1秒)で終了 (slowquitapps代替)").manipulators([
     k
       .map("q", "left_command")
