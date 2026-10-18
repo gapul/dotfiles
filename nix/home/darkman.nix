@@ -116,6 +116,12 @@ in
     darkModeScripts.appearance = "${apply} dark";
   };
 
+  # Start darkman only once the session is up. Without the ordering it came up before niri had
+  # imported WAYLAND_DISPLAY into the user manager, kept that environment for days, and every
+  # sunrise/sundown the wallpaper switch failed ("WAYLAND_DISPLAY variable not set ... awww-daemon
+  # socket not found"), so the wallpaper stayed in whatever mode login had painted.
+  systemd.user.services.darkman.Unit.After = [ "graphical-session.target" ];
+
   systemd.user.services.darkman-apply = {
     Unit = {
       Description = "Re-apply the current darkman mode to the portal color-scheme";
