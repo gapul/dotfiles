@@ -491,7 +491,6 @@ in
         [
           "abue-ammar/tinycast" # Tinycast (native Spotlight-like launcher, AGPL-3.0). Not in homebrew/cask.
           "chojs23/tap" # Concord (Discord TUI)
-          "deskflow/tap"
           "felixkratz/formulae"
           "finnvoor/tools"
           "frankea/whisky" # Whisky, community fork (upstream Whisky-App/Whisky archived 2025-05)
@@ -693,7 +692,6 @@ in
       # ─── Dev IDEs / Editors / SDK ───
       "t3-code@nightly" # T3 Code client for the macmini t3code host; nightly to match its server protocol
       "ghostty"
-      "deskflow"
       # DeepSeek Harness (dsh): plugin-based agent harness, desktop app. A cask rather than
       # brewCasks because it updates itself (auto_updates), which the rule above excludes.
       "deepseek-harness"
