@@ -45,9 +45,23 @@ The broker runs on the workstation as a launchd agent in the GUI session. It lis
 tailnet, not only on a unix socket, because agents also run on the mac mini when that is the dev
 box, and the answer has to reach whichever machine asked.
 
+A second instance runs on the mac mini itself, for the agents T3 Code starts there. The workstation
+is a laptop and is often asleep exactly when the human is away and answering from a phone, so a
+mac mini agent cannot depend on it. The mac mini has nobody in front of its screen, so that
+instance asks over Matrix only (`channels`, below), and it holds its own vault session.
+
+The agents there run as the same user as the broker, which shapes how that instance is set up:
+whatever it reads from disk, they can read; whatever it reads from a writable file, they can
+rewrite. So its config is a read-only store path, the master password is never written down — a
+human runs `ask-unlock` over ssh and the session exists only in the broker's memory — and its
+Matrix token belongs to a bot that can ask but not answer. What this does not stop is an agent
+replacing the broker itself and waiting for the next `ask-unlock` to type the password into its
+impostor. Only a separate user for the broker closes that; see Open.
+
 ## Requests
 
-Four kinds. The first three return an answer; the last one returns only whether it worked.
+Six kinds. The first three return an answer; the two fill kinds return only whether it worked;
+`run` returns what the command it ran printed.
 
 ### approve
 
@@ -113,6 +127,38 @@ One field per request is deliberate. Multi-page native and embedded-browser logi
 keep username, password and TOTP fields alive at the same time, and filling a Tab-based sequence
 would risk placing a later secret into the wrong control.
 
+### run
+
+```
+run  domain:str  env:{VAR: field}  command:[str]  cwd:str  →  {ran, exit_code, stdout, stderr, timed_out, truncated}
+```
+
+Runs `command` (an argv list, no shell) in `cwd` on the broker's machine with the released fields
+in its environment, e.g. `env = {"GH_TOKEN": "password"}`. This is the `spawn` arrow in the shape
+above, and the same thing `aac run` does, with the approval coming from the channels here instead
+of a terminal UI that only works for someone sitting at it.
+
+**The human approves the command, not just the domain.** The prompt shows the exact argv — the
+program resolved to an absolute path, and that path is what runs — and the directory with symlinks
+resolved. Every character that does not print as itself is spelled out (`\n`, `\u{202e}`), so
+blank lines or a direction override cannot push the real command out of view, and a command too
+long to read is refused rather than shown cut. It is the command that decides where the value goes: `gh api user` uses it, `env` prints
+it. For the same reason nothing carries over between runs — the login tools' three-minute window
+does not apply, and every run is its own question.
+
+**What comes back is the child's output, with the released values replaced by `[redacted]`.** This
+bends the rule above, and the bend should be stated plainly: the broker still has no code path that
+puts a secret in a response, but the child is a program the caller chose, and output is what it
+chose to print. Scrubbing catches the accidental cases — `env`, a verbose flag, an error message
+quoting the token. It cannot catch a command written to disguise the value first, and does not
+try. That is what reading the command before approving is for.
+
+Bounded, so a request cannot hold the broker indefinitely: the child is killed with everything it
+spawned after `run_timeout_seconds`, and each stream is cut at `run_output_bytes`. The vault session
+is never in the child's environment. The domain allowlist applies here as it does to the fill
+tools, and so does the account choice: several matching items become a pick, and the pick is the
+approval.
+
 ## Answering
 
 The broker tries channels in order and takes the first answer.
@@ -127,7 +173,23 @@ The broker tries channels in order and takes the first answer.
 3. **Matrix.** Posts to a room on the self-hosted Conduit and waits for a reply. Element on the
    phone is the client. Reaches the human anywhere.
 
-Channels are pluggable and ordered by config. Matrix is the remote channel today; a self-built
+Which of these are tried is set by `channels` in the broker config, in the order above. The
+headless mac mini instance lists only `matrix`: a dialog nobody can see would hold every request
+for the full local timeout before the phone heard about it.
+
+Only the configured `approver` can answer on Matrix, and only by replying to the question's own
+message. The room is the boundary otherwise, and a room is something people get invited to. A plain
+"yes" is ignored: it would answer every question waiting at that moment, including one raised next
+to the one the human meant, and a late answer to a question that timed out would land on the next.
+The broker posts with a bot account's token, never the approver's, and refuses to ask if the token
+turns out to be the approver's own — the token file is readable by whatever runs as the same user,
+and a token that can answer would let that answer itself. The broker reads messages over the plain
+client API, so the room must not be end-to-end encrypted.
+
+`run` is never answered by elicitation. Elicitation is answered by the client that made the call,
+and for `run` that client is exactly the party the approval is meant to hold back.
+
+Matrix is the remote channel today; a self-built
 iOS/watchOS app talking to APNs directly is the intended replacement, because notification
 actions from a native app are answerable from the watch itself, which mirrored third-party
 notifications are not. Nothing above this layer should need to change when that lands.
@@ -190,6 +252,17 @@ channels, and the layers above stay as they are.
   skips the channel when the app is not there.
 - The dialog stays on screen after the local timeout, because the elicitation and the osascript
   call are not cancelled when another channel wins. Answering a stale one does nothing.
+- The mac mini instance runs as the agents' own user. Its setup keeps secrets off disk and its
+  config read-only, but an agent can still stop the launchd job and listen on the port itself, then
+  collect the master password from the next `ask-unlock`. Running the broker as its own macOS user,
+  with `run` dropping to the agent's user for the child, is the fix. Until then, an unexpected
+  "locked" is a reason to look at what is listening before unlocking.
+- Known and accepted for now (2026-10-14): the mac mini holds a token for @gapul:gapul.net — the
+  approver, and a Synapse server admin — at ~/.config/matrix/gapul_token, readable by the agents
+  there. With it an agent can reply "yes" to its own question, or mint a token for any account,
+  so Matrix approval is no barrier to an agent on the mac mini that goes looking. Closing it means
+  moving server admin to an account whose token is not on that machine and approving from a
+  dedicated account, or verifying replies by their E2EE device signature.
 - The mac mini as a native target: the broker holds the vault on the workstation and the secret
   crosses an SSH connection over the tailnet to a fixed helper. Same-user isolation on the far
   end is no better than it is here, which is to say weak, and no amount of protocol fixes it.
