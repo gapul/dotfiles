@@ -63,8 +63,7 @@ _rebuild-macos force="":
     # Tee the whole run to a fixed log so a failure can be inspected after the fact
     # without re-running — crucially the Homebrew bundle step, which runs during
     # nix-darwin activation and so is absent from `nix log <drv>`.
-    mkdir -p "$HOME/tmp"
-    log="$HOME/tmp/nix-rebuild.log"
+    log=/tmp/nix-rebuild.log
     : > "$log"
     # Build first, then activate the built store path directly. The changed-or-not check used to be
     # `nix eval …outPath`, which the eval cache never serves (6s darwin + 9s home, one after the
@@ -916,7 +915,7 @@ gc:
     echo "━━━ Done ━━━"
     df -h / 2>&1 | head -2 | tail -1
 
-# Interactively delete heavy regenerable data (Trash / ~/tmp scratch / zap of retired casks / CoreSimulator cache / podman / old build artifacts)
+# Interactively delete heavy regenerable data (Trash / zap of retired casks / CoreSimulator cache / podman / old build artifacts)
 [group('Clean')]
 gc-deep:
     #!/usr/bin/env bash
@@ -941,36 +940,6 @@ gc-deep:
       echo "  $d removed"
     else
       echo "  skipped"
-    fi
-    echo ""
-    echo "━━━ ~/tmp scratch (entries untouched >30 days) ━━━"
-    # ~/tmp is where scratch work goes (see docs/CHEATSHEET.md). Git worktrees and clones live
-    # here too, so anything holding a .git is skipped: deleting a worktree behind git's back
-    # strands its metadata in the parent repo and takes any uncommitted work with it.
-    tmp_root="$HOME/tmp"
-    if [ ! -d "$tmp_root" ]; then
-      echo "  ($tmp_root not found, skip)"
-    else
-      tmp_list=$(mktemp)
-      find "$tmp_root" -mindepth 1 -maxdepth 1 -mtime +30 ! -exec test -e {}/.git \; -print 2>/dev/null > "$tmp_list"
-      cnt=$(wc -l < "$tmp_list" | tr -d ' ')
-      if [ "$cnt" -eq 0 ]; then
-        echo "  None (everything is either recent or a git worktree)"
-      else
-        sed 's|^|  |' "$tmp_list"
-        total=$(xargs -I{} du -sk "{}" < "$tmp_list" 2>/dev/null | awk '{s+=$1}END{printf "%.1fG", s/1024/1024}')
-        echo "  $cnt entries, $total"
-        read -rp "  Delete these? [y/N] " ans
-        if [[ "$ans" == [yY] ]]; then
-          xargs -I{} rm -rf -- "{}" < "$tmp_list"
-          # A worktree may still have been removed by hand at some point; drop the stale metadata.
-          git -C "{{justfile_directory()}}" worktree prune 2>/dev/null || true
-          echo "  removed"
-        else
-          echo "  skipped"
-        fi
-      fi
-      rm -f "$tmp_list"
     fi
     echo ""
     echo "━━━ Retired GUI cask data (Homebrew zap) ━━━"
@@ -1476,10 +1445,9 @@ wsl-tarball flake="github:gapul/dotfiles?dir=nix":
         "{{flake}}#nixosConfigurations.wsl.config.system.build.tarballBuilder"; \
       echo "$d/nixos.wsl"' | tail -1 | {
       read -r remote
-      mkdir -p ~/tmp
-      scp "homeserver:$remote" ~/tmp/nixos.wsl
+      scp "homeserver:$remote" /tmp/nixos.wsl
       ssh homeserver "rm -rf $(dirname "$remote")"
-      echo "できた: ~/tmp/nixos.wsl  (Windows 側で wsl --import する。docs/NIXOS_WSL.md)"
+      echo "できた: /tmp/nixos.wsl  (Windows 側で wsl --import する。docs/NIXOS_WSL.md)"
     }
 
 # Fetch, diff, or apply the tailnet policy file (ACL / split DNS). Needs TS_API_KEY
