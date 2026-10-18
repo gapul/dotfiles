@@ -3316,21 +3316,21 @@
       "additionalSettings": {
         "allowInsecure": false,
         "allowedSigningCertHashes": "",
-        "apkFilterRegEx": "",
+        "apkFilterRegEx": "\\.apk$",
         "appAuthor": "",
         "appName": "",
         "autoApkFilterByArch": true,
-        "autoSelectHighestVersionCode": false,
         "exemptFromBackgroundUpdates": false,
-        "filterVersionsByRegEx": "",
+        "fallbackToOlderReleases": true,
+        "filterReleaseTitlesByRegEx": "",
         "invertAPKFilter": false,
         "matchGroupToUse": "",
         "minimumUpdateAgeDays": "",
         "refreshBeforeDownload": false,
+        "releaseDateAsVersion": false,
         "shizukuPretendToBeGooglePlay": false,
         "skipUpdateNotifications": false,
         "trackOnly": false,
-        "trySelectingSuggestedVersionCode": true,
         "useVersionCodeAsOSVersion": false,
         "versionDetection": true,
         "versionExtractionRegEx": ""
@@ -3343,7 +3343,7 @@
       "overrideSource": null,
       "pinned": false,
       "preferredApkIndex": 0,
-      "url": "https://apt.izzysoft.de/fdroid/index/apk/dev.yaky.usbcamviewer"
+      "url": "https://gitlab.com/yaky/android-usb-cam-viewer"
     },
     {
       "additionalSettings": {
@@ -3469,24 +3469,36 @@
       "additionalSettings": {
         "allowInsecure": false,
         "allowedSigningCertHashes": "",
-        "apkFilterRegEx": "",
+        "apkFilterRegEx": "helio-[\\d.]+\\.apk$",
         "appAuthor": "",
         "appName": "",
-        "autoApkFilterByArch": true,
-        "autoSelectHighestVersionCode": false,
+        "autoApkFilterByArch": false,
+        "customLinkFilterRegex": "",
+        "defaultPseudoVersioningMethod": "partialAPKHash",
         "exemptFromBackgroundUpdates": false,
-        "filterVersionsByRegEx": "",
+        "filterByLinkText": false,
+        "intermediateLink": [],
         "invertAPKFilter": false,
         "matchGroupToUse": "",
+        "matchLinksOutsideATags": false,
         "minimumUpdateAgeDays": "",
         "refreshBeforeDownload": false,
+        "requestHeader": [
+          {
+            "requestHeader": "User-Agent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36"
+          }
+        ],
+        "reverseSort": false,
         "shizukuPretendToBeGooglePlay": false,
+        "skipSort": false,
         "skipUpdateNotifications": false,
+        "sortByLastLinkSegment": false,
         "trackOnly": false,
-        "trySelectingSuggestedVersionCode": true,
         "useVersionCodeAsOSVersion": false,
         "versionDetection": true,
-        "versionExtractionRegEx": ""
+        "versionExtractWholePage": false,
+        "versionExtractionRegEx": "",
+        "zippedApkFilterRegEx": ""
       },
       "allowIdChange": false,
       "author": "Peter Rudenko",
@@ -3496,7 +3508,7 @@
       "overrideSource": null,
       "pinned": false,
       "preferredApkIndex": 0,
-      "url": "https://f-droid.org/packages/fm.helio"
+      "url": "https://helio.fm/"
     },
     {
       "additionalSettings": {
