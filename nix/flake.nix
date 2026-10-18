@@ -115,6 +115,10 @@
     # NixOS Secure Boot support (signed UKI). Used only on nixos-laptop.
     lanzaboote.url = "github:nix-community/lanzaboote/v1.1.0";
     lanzaboote.inputs.nixpkgs.follows = "nixpkgs-nixos";
+    # v1.1.0's own lock pins a rust-overlay that still reads `stdenv.isLinux`/`isDarwin`, which
+    # nixos-unstable warns about on every eval. Own the input so `nix flake update` moves it.
+    lanzaboote.inputs.rust-overlay.url = "github:oxalica/rust-overlay";
+    lanzaboote.inputs.rust-overlay.inputs.nixpkgs.follows = "nixpkgs-nixos";
 
     # disko: declarative disk layout. Manages only nixos-laptop's LUKS root (for dual-boot safety).
     disko.url = "github:nix-community/disko";

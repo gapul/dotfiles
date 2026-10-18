@@ -26,7 +26,7 @@ let
       "x-scheme-handler/https"
     ];
   };
-  contents = appimageTools.extractType2 { inherit pname version src; };
+  contents = appimageTools.extract { inherit pname version src; };
 in
 appimageTools.wrapType2 {
   inherit pname version src;
