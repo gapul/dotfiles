@@ -119,7 +119,7 @@ in
   '';
 
   # codex / claude: launch paths that don't read the env (CODEX_HOME / CLAUDE_CONFIG_DIR)
-  # (GUI apps like CodexBar, popo's env-less spawn) regenerate ~/.codex ~/.claude and
+  # (popo's env-less spawn) regenerate ~/.codex ~/.claude and
   # cause a split, so symlink them to the XDG entities so every path converges on the
   # same location (same technique as .supermaven).
   home.file.".codex".source = config.lib.file.mkOutOfStoreSymlink "${config.xdg.dataHome}/codex";
