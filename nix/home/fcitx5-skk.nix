@@ -59,7 +59,7 @@ in
     };
     # ; is a sticky shift: ;kanzi starts ▽かんじ, and inside ▽ it marks where the okurigana begins
     # (;ka;ku → ▽か*く), so no chord with Shift is needed. macSKK and skkeleton both do this out of
-    # the box; libskk does not, but its start-preedit-kana is exactly that. Its rom-kana entry
+    # the box; libskk does not, but its start-preedit-no-delete is exactly that. Its rom-kana entry
     # (; → ；) is dropped so the keymap gets the key.
     "${rules}/rom-kana/default.json".text = builtins.toJSON {
       include = [ "default/default" ];
@@ -86,7 +86,13 @@ in
               include = [ "default/${mode}" ];
             }
             // lib.optionalAttrs (lib.elem mode kanaModes) {
-              define.keymap.";" = "start-preedit-kana";
+              # Not start-preedit-kana: from the plain state that one takes the app's surrounding
+              # text, cuts everything after the cursor, and appends it again on commit (libskk
+              # state.vala). Over Wayland's text-input the app (Obsidian, Chromium) never deletes
+              # that text, so each commit after a ; duplicated the rest of the note, starting with
+              # the line break after the cursor, which looked like C-j inserting a newline. Inside
+              # ▽ both commands mark the okurigana the same way.
+              define.keymap.";" = "start-preedit-no-delete";
             }
           );
         }
