@@ -685,6 +685,13 @@ let
         match app-id=r#"firefox"# title="^Picture-in-Picture$"
         open-floating true
     }
+    // File pickers: yazi in ghostty, opened by termfilechooser (home/linux-gui.nix).
+    window-rule {
+        match app-id=r#"^net\.gapul\.termfilechooser$"#
+        open-floating true
+        default-column-width { proportion 0.6; }
+        default-window-height { proportion 0.7; }
+    }
     // Blacked out in screen shares and recordings (screenshots still show them):
     // passwords, messages and mail.
     window-rule {

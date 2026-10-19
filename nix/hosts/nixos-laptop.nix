@@ -834,8 +834,26 @@ in
 
   # dconf, where GTK app settings are stored (required by some GUI apps).
   programs.dconf.enable = true;
-  # Also use the GTK portal for file-picker dialogs etc. (the hyprland portal is already bundled).
-  xdg.portal.extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
+  # Also use the GTK portal for the rest of the dialogs (the hyprland portal is already bundled).
+  # File pickers go to termfilechooser instead, which opens yazi in a terminal
+  # (its config is in home/linux-gui.nix).
+  xdg.portal.extraPortals = [
+    pkgs.xdg-desktop-portal-gtk
+    pkgs.xdg-desktop-portal-termfilechooser
+  ];
+  # nixpkgs' niri module sets FileChooser to gtk when useNautilus is off, hence mkForce. Its other
+  # entries (gnome;gtk default, Access, Notification, Secret) stay as they are. Hyprland has no
+  # NixOS-side portal config, so its entry repeats the package's default line (Hyprland 0.56).
+  xdg.portal.config = {
+    niri."org.freedesktop.impl.portal.FileChooser" = lib.mkForce [ "termfilechooser" ];
+    hyprland = {
+      default = [
+        "hyprland"
+        "gtk"
+      ];
+      "org.freedesktop.impl.portal.FileChooser" = [ "termfilechooser" ];
+    };
+  };
 
   # The keyboard layout is set via Hyprland's input{kb_layout}. The console uses services.xserver.xkb.
   # fcitx5 Japanese input is handled by i18n.inputMethod below, including the IM env vars.

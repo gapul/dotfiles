@@ -260,6 +260,22 @@ in
   # declared above, so overwriting that copy loses nothing.
   xdg.configFile."mimeapps.list".force = true;
 
+  # File pickers (the portal's FileChooser, set to termfilechooser in hosts/nixos-laptop.nix)
+  # open yazi in ghostty. The class gives the window its own app id, which niri floats
+  # (home/niri.nix). It also keeps ghostty out of a running instance, because the portal waits
+  # for this process to exit before reading the selection.
+  # Opening: Enter picks the file under the cursor, Space selects several, q cancels.
+  # Saving: yazi starts on the suggested file name; pick it, or rename it first.
+  xdg.configFile."xdg-desktop-portal-termfilechooser/config".text = ''
+    [filechooser]
+    cmd=${pkgs.xdg-desktop-portal-termfilechooser}/share/xdg-desktop-portal-termfilechooser/yazi-wrapper.sh
+    default_dir=$HOME
+    create_help_file=0
+    env=TERMCMD=${pkgs.ghostty}/bin/ghostty --class=net.gapul.termfilechooser --title=termfilechooser -e
+    open_mode=suggested
+    save_mode=suggested
+  '';
+
   # These synth packages ship standalone binaries without desktop entries.
   xdg.desktopEntries.cardinal = {
     name = "Cardinal";
