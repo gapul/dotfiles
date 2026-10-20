@@ -42,6 +42,21 @@ prompts. On this machine it is cloned at `/Users/Shared/manabi`, and the launchd
 there. Being private it cannot be a flake input, since CI could not fetch it, hence the path
 reference. Updating the service is a `git pull` over there; no dotfiles rebuild is involved.
 
+## soudan, the public one
+
+A third gateway, `HOME=/Users/hermes/soudan-home`, answers anyone in one Discord server
+(`DISCORD_ALLOW_ALL_USERS`). Strangers write its prompts, so it is built on the assumption that
+someone will try to break out:
+
+- Its tools run as `hsoudan` (uid 450), not `hsandbox`. Below 500 macOS does not make it a
+  member of staff, so it cannot read `/Users/gapul` or `/Users/hermes`.
+- `hsoudan.pf` blocks it from localhost, the LAN and the tailnet; the internet stays open.
+- Its login shell (`hsoudan-shell`) caps processes, CPU time and file size.
+- Only `terminal`, `code_execution`, `web`, `clarify` and `todo` are enabled. The `file` tools
+  read some document formats on the host side, and memory, skills, cron, delegation, browser and
+  the Discord admin tools would either act on the host or carry one user's input to the next.
+- `soudan-gateway-run.sh` is here rather than in a private repository: nothing in it is private.
+
 ## What is deliberately not here
 
 `config.yaml`, in `/Users/hermes/.hermes/` and `/Users/hermes/manabi-home/.hermes/`, is

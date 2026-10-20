@@ -232,11 +232,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1787440965,
-        "narHash": "sha256-f+AwXml9jCJoQs+z7gbJtlIS4Qyhgn7FXBEKNHnz/dA=",
+        "lastModified": 1792486815,
+        "narHash": "sha256-QArKfiANBlsThA2Ve3lOpzFBy7q2ueSCdxlE5zFNisQ=",
         "owner": "gapul",
         "repo": "claude-acp",
-        "rev": "4a7599d002f83eb8349add3ebebbd19d56e5c802",
+        "rev": "b90790f722a1e57dd2d2fb1baef7d061c57c7ea3",
         "type": "github"
       },
       "original": {
