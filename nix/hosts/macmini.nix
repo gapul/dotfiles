@@ -115,15 +115,27 @@ let
   # first because Hermes's file sync uses GNU-only flags, and rg for search.
   hsoudanTools = pkgs.buildEnv {
     name = "hsoudan-tools";
-    paths = with pkgs; [
-      bashInteractive
-      curl
-      git
-      gnutar
-      jq
-      python3
-      ripgrep
-    ];
+    paths =
+      (with pkgs; [
+        bashInteractive
+        curl
+        git
+        gnutar
+        jq
+        python3
+        ripgrep
+        # The bot is there for the CPU experiment: simulate SystemVerilog, assemble and disassemble
+        # RV32IMF (clang/llvm know RISC-V, so no cross gcc to build), run minrt.ml. spike is Linux-only.
+        clang
+        gnumake
+        iverilog
+        llvmPackages.llvm
+        ocaml
+        perl
+      ])
+      # verilator in this nixpkgs fails to build on darwin (lexer mismatch); the agents channel
+      # has a cached one that works.
+      ++ [ fastPkgs.verilator ];
   };
   hsoudanShell = pkgs.writeShellScriptBin "hsoudan-shell" ''
     ulimit -u 256
