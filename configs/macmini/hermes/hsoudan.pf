@@ -1,0 +1,9 @@
+# Loaded into the com.apple/hsoudan anchor. hsoudan (uid 450) is the sandbox of the public Discord
+# bot, so its commands are written by strangers: it may reach the internet, and nothing of ours —
+# not localhost (llama.cpp, the Hermes api_servers), not the LAN, not the tailnet.
+# pf matches `user` on loopback too (tested 2026-10-20). DNS still works: lookups go through
+# mDNSResponder, which is not uid 450.
+table <hsoudan_private> const { 0.0.0.0/8 10.0.0.0/8 100.64.0.0/10 127.0.0.0/8 169.254.0.0/16 \
+  172.16.0.0/12 192.0.0.0/24 192.168.0.0/16 198.18.0.0/15 224.0.0.0/4 240.0.0.0/4 }
+block return out quick inet proto { tcp udp } from any to <hsoudan_private> user 450
+block return out quick inet6 proto { tcp udp } from any to { ::1 fc00::/7 fe80::/10 ff00::/8 } user 450
