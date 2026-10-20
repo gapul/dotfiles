@@ -14,7 +14,9 @@ let
   # an active seat: polkit refuses a user's block-sleep inhibitor there ("requires
   # interactive authentication"). An idle inhibitor also pauses hypridle's listeners.
   # Closing the lid still suspends on battery (logind's LidSwitchIgnoreInhibited defaults
-  # to yes), which is the behaviour wanted for a laptop going into a bag.
+  # to yes), which is the behaviour wanted for a laptop going into a bag. `lid` also takes
+  # the low-level handle-lid-switch lock, which logind always honours, so closing the lid
+  # does not suspend either: the bar's coffee button, like the mac's `pmset disablesleep`.
   keepAwake = pkgs.writeShellApplication {
     name = "keep-awake";
     runtimeInputs = [
@@ -23,18 +25,21 @@ let
     ];
     text = ''
       unit=keep-awake
-      case "''${1:-on}" in
-        on)
+      mode=''${1:-on}
+      case "$mode" in
+        on | lid)
           duration=''${2:-infinity}
+          what=sleep:idle
+          [ "$mode" = lid ] && what=sleep:idle:handle-lid-switch
           sudo systemctl reset-failed "$unit" 2>/dev/null || true
           sudo systemd-run --unit="$unit" --description="keep-awake: block sleep/idle" \
-            ${pkgs.systemd}/bin/systemd-inhibit --what=sleep:idle --who=keep-awake \
+            ${pkgs.systemd}/bin/systemd-inhibit --what="$what" --who=keep-awake \
             --why="keep-awake ($duration)" --mode=block ${pkgs.coreutils}/bin/sleep "$duration"
           ;;
         off) sudo systemctl stop "$unit" ;;
         status) systemd-inhibit --list --no-pager ;;
         *)
-          echo "usage: keep-awake [on [DURATION]|off|status]  (DURATION as for sleep(1), default infinity)" >&2
+          echo "usage: keep-awake [on|lid [DURATION]|off|status]  (DURATION as for sleep(1), default infinity)" >&2
           exit 2
           ;;
       esac
@@ -1071,7 +1076,7 @@ in
       wget
       sbctl # generate/enroll/verify Secure Boot keys (used for lanzaboote operation)
       bpftrace # DTrace-style tracing: which process wrote a file, sent a key, opened a socket
-      keepAwake # `keep-awake [on [DURATION]|off|status]`, see the let block
+      keepAwake # `keep-awake [on|lid [DURATION]|off|status]`, see the let block
       captivePortal # `captive-portal [on|off]`, see the let block
 
       # Minimal set to make Hyprland usable from the start.

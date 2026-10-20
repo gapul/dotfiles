@@ -384,6 +384,7 @@ let
     # CPU, memory, (disk), what is playing, volume, input source, Bluetooth, Wi-Fi, battery.
     modules-right = [
       "custom/guard"
+      "custom/nosleep"
       "cpu"
       "memory"
       "disk"
@@ -448,16 +449,28 @@ let
       interval = 15;
       on-click = "${guard} fix";
     };
-    # Keep the screen awake (the mac's nosleep): click to toggle; hypridle then neither
-    # locks nor suspends while it is on.
-    idle_inhibitor = {
-      format = "{icon}";
-      format-icons = {
-        activated = "󰅶";
-        deactivated = "󰾪";
-      };
-      tooltip-format-activated = "sleep inhibited";
-      tooltip-format-deactivated = "sleep allowed";
+    # The mac's coffee cup (sketchybar's nosleep): gold while sleep is blocked, grey otherwise.
+    # A click toggles keep-awake's `lid` mode (hosts/nixos-laptop.nix): a root inhibitor
+    # against sleep, idle and the lid switch, so neither hypridle nor closing the lid
+    # suspends. The state is that unit, so `keep-awake on` from ssh shows here too.
+    "custom/nosleep" = {
+      exec = pkgs.writeShellScript "bar-nosleep" ''
+        # U+F0176, nf-md-coffee, as UTF-8 bytes: bash's \U escape depends on the locale.
+        cup='\xf3\xb0\x85\xb6'
+        if ${pkgs.systemd}/bin/systemctl is-active --quiet keep-awake; then
+          printf '{"text":"'"$cup"'","class":"on","tooltip":"sleep disabled"}\n'
+        else
+          printf '{"text":"'"$cup"'","class":"off","tooltip":"sleep allowed"}\n'
+        fi
+      '';
+      return-type = "json";
+      interval = 30;
+      signal = 11;
+      on-click = pkgs.writeShellScript "bar-nosleep-toggle" ''
+        export PATH=/run/wrappers/bin:/run/current-system/sw/bin:$PATH
+        if systemctl is-active --quiet keep-awake; then keep-awake off; else keep-awake lid; fi >/dev/null 2>&1
+        ${pkgs.procps}/bin/pkill -RTMIN+11 -x '\.?waybar(-wrapped)?'
+      '';
     };
     "hyprland/workspaces" = {
       format = "{id} {windows}";
@@ -1419,7 +1432,7 @@ in
       #window,
       #clock,
       #custom-guard,
-      #idle_inhibitor,
+      #custom-nosleep,
       #mpris,
       #cpu,
       #memory,
@@ -1505,8 +1518,8 @@ in
       /* The ported mac items. */
       #custom-ime { color: #${c.text}; }
       #custom-ime.latin { color: #${c.subtle}; }
-      #idle_inhibitor { color: #${c.muted}; }
-      #idle_inhibitor.activated { color: #${c.gold}; }
+      #custom-nosleep { color: #${c.muted}; }
+      #custom-nosleep.on { color: #${c.gold}; }
       #custom-guard.ok { color: #${c.pine}; }
       #custom-guard.down { color: #${c.love}; }
 
