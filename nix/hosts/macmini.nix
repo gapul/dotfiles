@@ -109,6 +109,33 @@ let
   # updates over there (no dotfiles rebuild needed). It is private, so it cannot be a flake input
   # — CI couldn't fetch it — and is referenced by path instead.
   manabi = "/Users/Shared/manabi";
+
+  # hsoudan's login shell. Hermes's ssh backend runs everything through it, so this is where the
+  # limits go: a process cap (fork bombs), CPU seconds and file size per process. PATH puts GNU tar
+  # first because Hermes's file sync uses GNU-only flags, and rg for search.
+  hsoudanTools = pkgs.buildEnv {
+    name = "hsoudan-tools";
+    paths = with pkgs; [
+      bashInteractive
+      curl
+      git
+      gnutar
+      jq
+      python3
+      ripgrep
+    ];
+  };
+  hsoudanShell = pkgs.writeShellScriptBin "hsoudan-shell" ''
+    ulimit -u 256
+    ulimit -t 1200
+    ulimit -f 4194304
+    export PATH=${hsoudanTools}/bin:/usr/bin:/bin:/usr/sbin:/sbin
+    exec ${pkgs.bashInteractive}/bin/bash "$@"
+  '';
+  hsoudanPf = pkgs.writeShellScript "hsoudan-pf" ''
+    /sbin/pfctl -E >/dev/null 2>&1
+    exec /sbin/pfctl -q -a com.apple/hsoudan -f ${../../configs/macmini/hermes/hsoudan.pf}
+  '';
 in
 {
   # Headless AI/render worker (M4 Mac mini / 24GB). GUI casks are limited to software that
@@ -466,6 +493,56 @@ in
       ProcessType = "Background";
       StandardOutPath = "/Users/hermes/manabi-home/gateway.log";
       StandardErrorPath = "/Users/hermes/manabi-home/gateway.log";
+    };
+  };
+
+  # The third instance ("soudan"): a consulting bot that anyone in one Discord server may talk
+  # to. Same binary again, its own HOME (/Users/hermes/soudan-home). Because strangers write its
+  # prompts, its tools run as hsoudan, a sandbox user that is not hsandbox: sharing would hand
+  # them the sister's ~/study. config.yaml there keeps the toolsets to terminal/code_execution/
+  # web — the file tools open some documents on the host side, so they are off.
+  launchd.daemons.hermes-gateway-soudan = {
+    command = "${../../configs/macmini/hermes/soudan-gateway-run.sh}";
+    serviceConfig = {
+      UserName = "hermes";
+      RunAtLoad = true;
+      KeepAlive = true;
+      ProcessType = "Background";
+      StandardOutPath = "/Users/hermes/soudan-home/gateway.log";
+      StandardErrorPath = "/Users/hermes/soudan-home/gateway.log";
+    };
+  };
+
+  # hsoudan: uid below 500 on purpose. macOS counts every local account from 500 up as a member of
+  # staff, and staff can read /Users/gapul (750) — ~/.config, ~/.claude and the rest. Under 500 it
+  # is in no group but its own.
+  users.knownUsers = [ "hsoudan" ];
+  users.knownGroups = [ "hsoudan" ];
+  users.groups.hsoudan = {
+    gid = 450;
+    description = "Hermes soudan sandbox";
+  };
+  users.users.hsoudan = {
+    uid = 450;
+    gid = 450;
+    home = "/Users/hsoudan";
+    createHome = true;
+    isHidden = true;
+    description = "Hermes soudan sandbox";
+    shell = "${hsoudanShell}/bin/hsoudan-shell";
+    openssh.authorizedKeys.keys = [
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOipX/vfkDx974jCOFgOrruVC7bWQ3P1gjpgtMOtJp+0 hermes-to-hsoudan"
+    ];
+  };
+
+  # Its network rules, as a sub-anchor of com.apple (which /etc/pf.conf already evaluates). pf
+  # forgets anchors at boot, so a daemon reloads them; activation does it too, for the first time.
+  launchd.daemons.hsoudan-pf = {
+    command = "${hsoudanPf}";
+    serviceConfig = {
+      RunAtLoad = true;
+      StandardOutPath = "/var/log/hsoudan-pf.log";
+      StandardErrorPath = "/var/log/hsoudan-pf.log";
     };
   };
 
@@ -865,6 +942,11 @@ in
     # The Hermes agent's inference adapter (see configs/macmini/hermes/README.md). It lives in
     # another user's home, which home-manager can't reach, and hermes never rewrites it — so the
     # declaration is the source of truth and gets laid down on every activation.
+    ${hsoudanPf} || true
+    if [ -d /Users/hsoudan ]; then
+      /bin/chmod 700 /Users/hsoudan
+      /usr/bin/install -d -o hsoudan -g hsoudan -m 700 /Users/hsoudan/workspace
+    fi
     if [ -d /Users/hermes ]; then
       /usr/bin/install -d -o hermes -g staff -m 755 /Users/hermes/.local/bin
       /usr/bin/install -o hermes -g staff -m 755 \
