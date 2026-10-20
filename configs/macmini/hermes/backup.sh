@@ -16,6 +16,11 @@ keep=14
 
 [ -d "$src" ] || { echo "$(date '+%F %T') skip: $src が無い"; exit 0; }
 /bin/mkdir -p "$dst"
+# The tarballs hold .env — every token Hermes has. /Users/Shared is readable by every local
+# account, sandboxes included, so the directory and its files belong to gapul (restic runs as
+# gapul) and nobody else. They were 644 until 2026-10-20.
+/usr/sbin/chown gapul "$dst"
+/bin/chmod 700 "$dst"
 
 stamp=$(/bin/date +%Y%m%d-%H%M)
 out="$dst/hermes-$stamp.tar.gz"
@@ -32,7 +37,8 @@ done
 [ -d "$src/skills" ] && /bin/cp -R "$src/skills" "$tmp/" || true
 
 /usr/bin/tar -czf "$out" -C "$tmp" .
-/bin/chmod 644 "$out"
+/usr/sbin/chown gapul "$out"
+/bin/chmod 600 "$out"
 echo "$(date '+%F %T') ok: $out ($(/usr/bin/du -h "$out" | /usr/bin/cut -f1))"
 
 # 世代を絞る。restic 側でも履歴は持つが、共有ディスクに積み続ける理由は無い。

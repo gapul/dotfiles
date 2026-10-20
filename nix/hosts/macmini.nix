@@ -530,6 +530,9 @@ in
     isHidden = true;
     description = "Hermes soudan sandbox";
     shell = "${hsoudanShell}/bin/hsoudan-shell";
+    # The shell's PATH does not survive: bash -l and nix-darwin's environment rebuild it. The
+    # per-user profile is on that rebuilt PATH ahead of /usr/bin, so the tools go there as well.
+    packages = [ hsoudanTools ];
     openssh.authorizedKeys.keys = [
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOipX/vfkDx974jCOFgOrruVC7bWQ3P1gjpgtMOtJp+0 hermes-to-hsoudan"
     ];
