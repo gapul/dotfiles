@@ -871,6 +871,13 @@ gc:
     if [ -z "${DOTFILES_GC_SKIP_NIX:-}" ]; then
       echo "━━━ Nix store (remove old generations) ━━━"
       nh clean all --keep 1 --keep-since 0h || true
+      # The bootloader was installed by the rebuild, before this removed the older system
+      # generations, so their UKIs stay in the menu with no closure behind them. Picking one
+      # unlocks the disk and then drops to the initrd's emergency mode (nixos-laptop,
+      # 2026-10-22). Installing it again from the remaining generation prunes them.
+      if [ -e /etc/NIXOS ]; then
+        sudo /nix/var/nix/profiles/system/bin/switch-to-configuration boot 2>&1 | tail -1 || true
+      fi
       echo ""
     fi
     if command -v brew >/dev/null; then
