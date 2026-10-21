@@ -73,6 +73,16 @@ a Marp draft, `.md` and `.pdf`, to #presentation for Tuesday's report. Its input
   because only gapul's gh login can read the org's private repos. The bot gets commit subjects
   and PR titles, never the token.
 
+Nothing about the team's second core may appear: the slides go to the whole class. The
+collector drops #cpu2, its threads and every message or minutes line that names it (a keyword
+list), the prompt forbids it, and the publisher refuses to push a draft that still contains one
+of those words.
+
+`soudan-slides-publish.py`, as gapul at Monday 21:45 and again at 23:15 (`--final`, which
+reports a missing draft on ntfy), copies the draft into the private repo IS-CPU-6/slides under
+`progress/<date>/`. The org has deploy keys disabled, so this is gapul's gh too. It reads the
+sandbox's files without following symlinks.
+
 The agent writes the slides inside the sandbox and runs `marp` there (Helium as the Chromium);
 the PDF is attached from `/Users/hsoudan/workspace/progress/`. `config.yaml` sets
 `platform_toolsets.cron` to the same tools as Discord, minus `clarify`.

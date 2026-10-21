@@ -25,6 +25,16 @@ from pathlib import Path
 GUILD = "1556901980042035340"
 MEETING = "1559435621284446338"
 PRESENTATION = "1559134355861803069"
+# The team keeps its second core to itself for now: the slides go to the whole class. Nothing
+# about it should reach the model, so it is cut here, before the prompt — #cpu2 is that core's
+# channel, and anything else that names it is dropped by keyword. soudan-slides-publish.py
+# checks the finished slides against the same words before they are pushed.
+SECRET_CHANNELS = {"1562094197119393872"}
+SECRET = re.compile(
+    r"2nd|２nd|second|セカンド|ヤバコア|SIMT|warp|ワープ|OoO|out.of.order|アウトオブオーダ"
+    r"|スーパースカラ|superscalar|VLIW|GPU|アクセラレータ|ベクトル命令|ベクトル演算",
+    re.I,
+)
 GITHUB_DIGEST = "/Users/gapul/.local/state/soudan-feed/github.md"
 DAYS = 8
 JST = dt.timezone(dt.timedelta(hours=9))
@@ -58,6 +68,31 @@ def api(path):
                 return None
             raise
     raise RuntimeError("rate limited: " + path)
+
+
+def drop_secret_lines(text):
+    """Drop every line that names the second core, with the lines nested under it.
+
+    Nesting is by indentation for list items and by level for markdown headings, which is how
+    the HackMD minutes and the GitHub digest are laid out.
+    """
+    out, skip = [], None  # skip = ("indent", n) or ("heading", level)
+    for line in text.splitlines():
+        stripped = line.lstrip()
+        heading = re.match(r"(#+)\s", stripped)
+        indent = len(line) - len(stripped)
+        if skip and stripped:
+            kind, n = skip
+            if kind == "heading" and not (heading and len(heading.group(1)) <= n):
+                continue
+            if kind == "indent" and indent > n:
+                continue
+            skip = None
+        if SECRET.search(line):
+            skip = ("heading", len(heading.group(1))) if heading else ("indent", indent)
+            continue
+        out.append(line)
+    return "\n".join(out)
 
 
 def snowflake(t):
@@ -109,7 +144,15 @@ def main():
     for c in sorted(channels, key=lambda c: (c.get("parent_id") or "", c["position"])) + threads:
         if c["type"] not in (0, 5, 11, 12):
             continue
-        msgs = [m for m in messages_since(c["id"], since) if not m["author"].get("bot")]
+        if c["id"] in SECRET_CHANNELS or c.get("parent_id") in SECRET_CHANNELS:
+            continue
+        if SECRET.search(c["name"]):
+            continue
+        msgs = [
+            m
+            for m in messages_since(c["id"], since)
+            if not m["author"].get("bot") and not SECRET.search(m["content"])
+        ]
         if not msgs:
             continue
         parent = by_id.get(c.get("parent_id") or "", {}).get("name")
@@ -135,7 +178,7 @@ def main():
             with urllib.request.urlopen(base + "/download", timeout=30) as r:
                 body = r.read().decode("utf-8", "replace")
             print(f"## {base}")
-            print(body.strip()[:20000])
+            print(drop_secret_lines(body.strip())[:20000])
         except Exception as e:  # a private note just gets skipped
             print(f"## {base} (読めなかった: {e})")
         print()
@@ -153,7 +196,7 @@ def main():
         age = time.time() - p.stat().st_mtime
         if age > 3 * 86400:
             print(f"(注意: この要約は {age / 86400:.0f} 日前のもの)")
-        print(p.read_text()[:30000])
+        print(drop_secret_lines(p.read_text())[:30000])
     except OSError as e:
         print(f"(GitHub の要約が読めなかった: {e})")
 
