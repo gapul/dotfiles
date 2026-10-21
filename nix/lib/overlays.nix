@@ -65,4 +65,21 @@ final: prev: {
       })
     else
       prev.nix-output-monitor;
+
+  # Qt 6.12's uic rejects the leading "::" in dictionary_tool.ui's custom widget class, so
+  # mozc 2.30.5544.102 stopped building on nixos-unstable, and fcitx5-mozc and the laptop's
+  # whole system with it (NixOS/nixpkgs#576522). This is upstream's fix
+  # (google/mozc@29c082a). Guarded on the version so a mozc bump drops it.
+  # It goes in postPatch, not patches: buildBazelPackage's deps fetch keeps its own copy of
+  # the source attrs, so this leaves that fixed-output derivation and its hash alone.
+  mozc =
+    if prev.mozc.version == "2.30.5544.102" then
+      prev.mozc.overrideAttrs (o: {
+        postPatch = (o.postPatch or "") + ''
+          substituteInPlace src/gui/dictionary_tool/dictionary_tool.ui \
+            --replace-fail '::mozc::gui::DictionaryContentTableWidget' 'mozc::gui::DictionaryContentTableWidget'
+        '';
+      })
+    else
+      prev.mozc;
 }
