@@ -56,6 +56,26 @@ someone will try to break out:
   read some document formats on the host side, and memory, skills, cron, delegation, browser and
   the Discord admin tools would either act on the host or carry one user's input to the next.
 - `soudan-gateway-run.sh` is here rather than in a private repository: nothing in it is private.
+- Its `.env` sets `HERMES_MEDIA_DELIVERY_STRICT=1`, `HERMES_MEDIA_TRUST_RECENT_FILES=0` and
+  `HERMES_MEDIA_ALLOW_DIRS=/Users/hsoudan/workspace`. By default a reply containing
+  `MEDIA:/some/path` uploads any file hermes can read that is not on a short credential
+  denylist, which here includes the other two instances' homes and, through staff, gapul's.
+
+### Weekly progress slides
+
+A Hermes cron job in the soudan home (`hermes cron list` there) runs Monday 21:00 JST and posts
+a Marp draft, `.md` and `.pdf`, to #presentation for Tuesday's report. Its inputs:
+
+- `soudan-weekly-collect.py`, the job's pre-run script, run on the host as hermes: the week's
+  Discord messages (bot token), the HackMD minutes linked in #meeting, and the GitHub digest.
+  Activation copies it into `$HERMES_HOME/scripts/`, the only place Hermes runs scripts from.
+- `soudan-github-digest.py`, run daily at 20:30 as gapul (`home/macmini-soudan-digest.nix`),
+  because only gapul's gh login can read the org's private repos. The bot gets commit subjects
+  and PR titles, never the token.
+
+The agent writes the slides inside the sandbox and runs `marp` there (Helium as the Chromium);
+the PDF is attached from `/Users/hsoudan/workspace/progress/`. `config.yaml` sets
+`platform_toolsets.cron` to the same tools as Discord, minus `clarify`.
 
 ## What is deliberately not here
 
