@@ -17,6 +17,10 @@
   services.kdeconnect.enable = true;
   services.activitywatch = {
     enable = true;
+    # The service only runs aw-server, so the Rust server alone is enough. The default
+    # pkgs.activitywatch also pulls in aw-qt and the Python aw-core, whose `peewee==3.*` pin
+    # breaks the build whenever nixpkgs moves peewee ahead (4.4.0 on 2026-10-20).
+    package = pkgs.aw-server-rust;
     watchers.aw-watcher-window-wayland.package = pkgs.aw-watcher-window-wayland;
   };
   # Window and AFK capture need a live Wayland session, not just a user login.
