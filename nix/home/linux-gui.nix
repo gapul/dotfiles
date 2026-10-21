@@ -43,6 +43,7 @@ in
     ./fcitx5-skk.nix # SKK dictionaries and kana rule for fcitx5-skk
     ./xremap.nix # mac-style Cmd / Ctrl / Hyper
     ./opensnitch-ui.nix # which app connects where, LuLu-style; the daemon is in hosts/nixos-laptop.nix
+    ./gaming.nix # Prism Launcher, Lutris, MangoHud
   ];
 
   # Keep the English UI locale while preferring Japanese CJK fallback glyphs.
@@ -278,6 +279,43 @@ in
     save_mode=suggested
   '';
 
+  # The input preset for calls (RNNoise only), made in EasyEffects' GUI on 2026-10-13. It is a
+  # read-only symlink, so changing it means editing it here; "Save as" a new name still works.
+  # Which preset is loaded is runtime state in ~/.config/easyeffects/db and stays mutable.
+  xdg.dataFile."easyeffects/input/Calls - Noise Reduction.json".text = builtins.toJSON {
+    input = {
+      blocklist = [ ];
+      plugins_order = [ "rnnoise#0" ];
+      "rnnoise#0" = {
+        bypass = false;
+        input-gain = 0.0;
+        output-gain = 0.0;
+        model-name = "";
+        use-standard-model = true;
+        enable-vad = false;
+        vad-thres = 50.0;
+        wet = 0.0;
+        release = 20.0;
+      };
+    };
+  };
+
+  # claude-cli:// handler. Claude Code's native installer wrote this pointing at its own
+  # ~/.local/bin/claude; the CLI now comes only from nixpkgs (hosts/nixos-laptop.nix), so the
+  # entry calls whatever `claude` is on PATH. force: Claude Code may rewrite it on its own.
+  xdg.dataFile."applications/claude-code-url-handler.desktop" = {
+    force = true;
+    text = ''
+      [Desktop Entry]
+      Name=Claude Code URL Handler
+      Comment=Handle claude-cli:// deep links for Claude Code
+      Exec=claude --handle-uri %u
+      Type=Application
+      NoDisplay=true
+      MimeType=x-scheme-handler/claude-cli;
+    '';
+  };
+
   # These synth packages ship standalone binaries without desktop entries.
   xdg.desktopEntries.cardinal = {
     name = "Cardinal";
@@ -397,10 +435,7 @@ in
     wl-mirror # mirror a region into a window (for screen sharing a slice)
 
     # ─── Non-Steam game launchers ───
-    # Steam itself is system-side (programs.steam in hosts/nixos-laptop.nix) because it
-    # needs the 32-bit graphics stack. These only manage their own prefixes.
-    prismlauncher # Minecraft; instances stay in ~/.local/share/PrismLauncher
-    lutris # GOG / standalone installers / emulators
+    # Prism Launcher and Lutris are home-manager modules (home/gaming.nix).
     heroic # Epic / GOG / Amazon — the libraries the homelab free-games claimer fills up
   ];
 
