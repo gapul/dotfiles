@@ -1,5 +1,5 @@
 # Overlay (SSO) that absorbs temporary breakage in upstream nixpkgs.
-# Both flake.nix's mkPkgs/mkWslPkgs (standalone home) and the nix-darwin system's
+# Both flake.nix's mkPkgs (standalone home) and the nix-darwin system's
 # nixpkgs.overlays (hosts/darwin-common.nix; the pkgs used by the embedded home-manager)
 # import this. With only one, the darwin system's pre-commit stays vanilla
 # and the isatty test breakage recurs in om ci (aarch64-darwin).

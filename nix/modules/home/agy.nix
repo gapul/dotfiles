@@ -13,12 +13,12 @@
   config,
   lib,
   pkgs,
-  nixpkgsAgents,
+  nixpkgsUnstable,
   ...
 }:
 let
   agentPkgs = import ../../lib/unstable-pkgs.nix {
-    nixpkgsUnstable = nixpkgsAgents;
+    inherit nixpkgsUnstable;
     inherit (pkgs.stdenv.hostPlatform) system;
   };
 

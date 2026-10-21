@@ -10,19 +10,6 @@
     # Align on the 26.05 series (avoids the nix-darwin#1462 'USER is root' regression)
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-26.05-darwin";
 
-    # For zrythm-darwin (nix/pkgs/zrythm-darwin) only. On 26.05-darwin, appstream-1.1.2 can't
-    # build on darwin (via a libadwaita dependency), so build just that one package with unstable
-    # pkgs. Don't add follows (keep it as a separate lineage that doesn't drag in other inputs).
-    nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
-
-    # Fast-moving agent/developer CLIs (Codex / OpenCode / Claude / Atuin / security tools / herdr).
-    # nixpkgs-unstable is held at a revision where the darwin creative apps still build
-    # (ardour / aseprite / fritzing), so it cannot be moved just to pick up these releases:
-    # as of 2026-08 aseprite 1.3.18.1 fails on aarch64-darwin with
-    # "no member named 'format' in namespace 'fmt'" (NixOS/nixpkgs#552132, still open).
-    # Give agents their own rolling lineage instead, the same way nixpkgs-nixos is separate.
-    nixpkgs-agents.url = "github:NixOS/nixpkgs/nixos-unstable";
-
     # OpenCode ships several releases a week and nixpkgs lags them (2026-10: 1.19.0 vs 1.19.3), and
     # T3 Code's update button cannot write to the store. llm-agents.nix repackages it daily.
     # No nixpkgs follows: its binary cache (cache.numtide.com) only hits on its own nixpkgs pin.
@@ -46,9 +33,16 @@
     # generation stays and a notification goes out (#500). The "boots but is broken inside"
     # kind is caught by the restart-loop detector (#490).
     #
-    # The darwin side stays on 26.05. It has the nix-darwin#1462 regression and
-    # ardour/aseprite/fritzing failing to build on unstable (see the nixpkgs and
-    # nixpkgs-unstable comments above). Those constraints are darwin-specific and don't apply here.
+    # The darwin systems stay on 26.05 for the nix-darwin#1462 regression; that constraint is
+    # darwin-specific and doesn't apply here.
+    #
+    # This is also the one rolling nixpkgs for everything else that wants unstable, passed to
+    # modules as `nixpkgsUnstable` (lib/unstable-pkgs.nix): the agent/developer CLIs on every
+    # host (codex, claude-code, herdr, neovim …) and the darwin creative apps that 26.05-darwin
+    # can't build (ardour, aseprite, fritzing, zrythm, darktable). Those used to be two more
+    # inputs on the same branch, meant to let one be held back while the other moved, but
+    # nothing ever held them and all three stayed locked to one commit. If a darwin app breaks
+    # on unstable again, add a pinned input for that app alone rather than a second lineage.
     nixpkgs-nixos.url = "github:NixOS/nixpkgs/nixos-unstable";
 
     nix-darwin.url = "github:nix-darwin/nix-darwin/nix-darwin-26.05";
@@ -208,8 +202,6 @@
       mocopi-mac,
       nixpkgs,
       nixpkgs-nixos,
-      nixpkgs-unstable,
-      nixpkgs-agents,
       nix-darwin,
       home-manager,
       home-manager-nixos,
@@ -249,6 +241,7 @@
           config.allowUnfreePredicate =
             pkg:
             builtins.elem (nixpkgs.lib.getName pkg) [
+              "claude-code" # WSL (home/wsl.nix)
               "unity-cli"
             ]
             # voicevox-engine and its core/onnxruntime/resource parts, for the
@@ -262,18 +255,6 @@
             brew-nix.overlays.default
           ];
         };
-      mkWslPkgs =
-        targetSystem:
-        import nixpkgs {
-          system = targetSystem;
-          config.allowUnfreePredicate =
-            pkg:
-            builtins.elem (nixpkgs.lib.getName pkg) [
-              "claude-code"
-              "unity-cli"
-            ];
-          overlays = [ overlayFixes ];
-        };
       pkgs = mkPkgs system;
       user = import ./user.nix;
       commonSpecialArgs = {
@@ -283,15 +264,14 @@
         agentSkills = agent-skills;
         llmAgents = inputs.llm-agents;
         mopidyPatches = mopidy-patches;
-        nixpkgsUnstable = nixpkgs-unstable;
-        nixpkgsAgents = nixpkgs-agents;
+        nixpkgsUnstable = nixpkgs-nixos;
         secureEnclaveKey = nix-secure-enclave-key;
       };
 
       # ECS "System" = host composer (unifies the darwin / home boilerplate)
       mkHost = import ./lib/mk-host.nix {
-        # Must match the brew-src tag in inputs.
-        brewVersion = "7.0.9";
+        # The brew-src tag, read back from the lock so the version is written only once (in inputs).
+        brewVersion = (builtins.fromJSON (builtins.readFile ./flake.lock)).nodes.brew-src.original.ref;
         inherit
           nixpkgs
           nix-darwin
@@ -302,7 +282,6 @@
           system
           commonSpecialArgs
           mkPkgs
-          mkWslPkgs
           ;
       };
 
@@ -310,8 +289,7 @@
         inherit user;
         brewNix = brew-nix;
         mocopiMac = mocopi-mac;
-        llmAgents = inputs.llm-agents;
-        nixpkgsAgents = nixpkgs-agents;
+        inherit (commonSpecialArgs) llmAgents nixpkgsUnstable;
         inherit cherri;
         # Offload heavy builds to the macmini. It is the same aarch64-darwin, so they run as is.
         #
@@ -335,9 +313,6 @@
           builders = "ssh-ng://gapul@100.105.135.49 aarch64-darwin /Users/gapul/.ssh/id_automation 10 1 big-parallel,benchmark";
           builders-use-substitutes = "true";
         };
-        # hosts/darwin.nix declares the .app-shipping creative tools, which come from
-        # nixos-unstable (see lib/unstable-pkgs.nix).
-        nixpkgsUnstable = nixpkgs-unstable;
       };
       darwinWorkstation =
         includeManualSources:
@@ -346,6 +321,55 @@
           specialArgs = darwinWorkstationSpecialArgs // {
             inherit includeManualSources;
           };
+        };
+
+      # nixos-laptop and its CI twin. One definition, so the CI build cannot drift from the real
+      # host's module list (it used to be a hand-kept copy).
+      mkLaptop =
+        {
+          hardwareConfig,
+          extraModules ? [ ],
+          extraHome ? [ ],
+        }:
+        nixpkgs-nixos.lib.nixosSystem {
+          system = "x86_64-linux";
+          specialArgs = {
+            inherit user hardwareConfig;
+            inherit (commonSpecialArgs) nixpkgsUnstable;
+          };
+          modules = [
+            # SSO overlay absorbing upstream nixpkgs breakage (shared with darwin/standalone home).
+            # Override things like tailscale's wrong vendorHash here.
+            { nixpkgs.overlays = [ overlayFixes ]; }
+            ./hosts/nixos-laptop.nix
+            sops-nix.nixosModules.sops # hosts/nixos-laptop-wifi.nix
+            lanzaboote.nixosModules.lanzaboote
+          ]
+          ++ extraModules
+          ++ [
+            home-manager-nixos.nixosModules.home-manager
+            {
+              home-manager.useGlobalPkgs = true;
+              home-manager.useUserPackages = true;
+              home-manager.extraSpecialArgs = commonSpecialArgs;
+              home-manager.users.${user.username}.imports = [
+                ./home/common.nix
+                ./home/linux.nix
+                ./home/hyprland.nix # Hyprland rice (nixos-laptop only)
+                stylix.homeModules.stylix
+                ./home/stylix.nix # one palette for GTK/Qt/wofi (nixos-laptop only)
+                ./home/darkman.nix # light by day, dark after sunset (nixos-laptop only)
+                ./home/ssh-tpm-agent.nix # TPM-sealed SSH key (nixos-laptop only: WSL has no TPM)
+                ./home/linux-gui.nix # GUI apps (the mac's cask list, as packages)
+                # programs.firefox.arkenfox for modules/home/firefox.nix (imported by linux-gui.nix)
+                inputs.arkenfox.modules.homeManager.arkenfox
+                ./home/dev.nix # dev environment such as direnv
+                ./home/distrobox.nix # Ubuntu distrobox with ROS 2 (nixos-laptop only)
+              ]
+              ++ extraHome
+              ++ [ ./home/workstation.nix ];
+            }
+          ];
         };
 
       # ECS "role" = a bundle of components (home/*.nix). A host just combines roles.
@@ -457,12 +481,12 @@
           neovim
           yazi
           tmux
-          # herdr comes from the same nixpkgs-agents as the main Mac (neither the stable 26.05
-          # series nor nixpkgs-unstable). `herdr --remote` refuses to attach unless both ends are
+          # herdr comes from the same nixpkgs-nixos as the main Mac (not the stable 26.05
+          # series). `herdr --remote` refuses to attach unless both ends are
           # the same build, and on a version mismatch the client drops its own copy into
           # ~/.local/bin. Keeping it in remote-env lets the flake pin align both ends, so that
           # fallback never fires (pairs with agentPkgs.herdr in modules/home/packages.nix).
-          nixpkgs-agents.legacyPackages.${pkgs'.stdenv.hostPlatform.system}.herdr
+          nixpkgs-nixos.legacyPackages.${pkgs'.stdenv.hostPlatform.system}.herdr
           git
           lazygit
           ripgrep
@@ -852,7 +876,7 @@
           # hosts/macmini.nix and its home layer both take this; without it the whole macmini
           # configuration stops evaluating, which is where it was found — nothing in CI builds
           # this closure, so it went unnoticed until something needed the mini again.
-          nixpkgsAgents = nixpkgs-agents;
+          inherit (commonSpecialArgs) nixpkgsUnstable;
           claudeAcp = claude-acp.packages.${system}.default;
           sopsNix = sops-nix;
           nixLinuxBuilder = inputs.nix-linux-builder;
@@ -884,6 +908,8 @@
       # A lightweight config loading only terminal-oriented components (git/cli/shell/terminal) (hosts/droid.nix).
       nixOnDroidConfigurations.default = nix-on-droid.lib.nixOnDroidConfiguration {
         pkgs = import nixpkgs { system = "aarch64-linux"; };
+        # modules/home/cli.nix takes it; without it this output did not evaluate at all.
+        extraSpecialArgs = { inherit (commonSpecialArgs) nixpkgsUnstable; };
         modules = [ ./hosts/droid.nix ];
       };
 
@@ -896,57 +922,27 @@
       # `nix flake check` / pre-commit on the Mac don't fail on an import error.
       nixosConfigurations =
         nixpkgs-nixos.lib.optionalAttrs (builtins.pathExists ./hosts/nixos-laptop-hardware.nix) {
-          "nixos-laptop" = nixpkgs-nixos.lib.nixosSystem {
-            system = "x86_64-linux";
-            specialArgs = {
-              inherit user;
-              nixpkgsAgents = nixpkgs-agents;
-              # Must be passed here, not defaulted in the module signature: the host
-              # uses it inside `imports`, and resolving a module argument from
-              # `_module.args` there needs `config`, which is infinite recursion.
-              hardwareConfig = ./hosts/nixos-laptop-hardware.nix;
-            };
-            modules = [
-              # SSO overlay absorbing upstream nixpkgs breakage (shared with darwin/standalone home).
-              # Override things like tailscale's wrong vendorHash here.
-              { nixpkgs.overlays = [ overlayFixes ]; }
-              ./hosts/nixos-laptop.nix
-              sops-nix.nixosModules.sops # hosts/nixos-laptop-wifi.nix
-              lanzaboote.nixosModules.lanzaboote
+          # The hardware config and disko are what this host has and nixos-laptop-ci doesn't;
+          # the secret-backed home modules need the real sops keys, so CI leaves them out too.
+          "nixos-laptop" = mkLaptop {
+            # Must be passed as a specialArg, not defaulted in the module signature: the host
+            # uses it inside `imports`, and resolving a module argument from
+            # `_module.args` there needs `config`, which is infinite recursion.
+            hardwareConfig = ./hosts/nixos-laptop-hardware.nix;
+            extraModules = [
               disko.nixosModules.disko
               ./hosts/nixos-laptop-disk.nix
               # Leave runtime fileSystems/luks to the generated hardware-configuration.nix, and
               # use disko only as an "install-time format/mount tool".
               { disko.enableConfig = false; }
-              home-manager-nixos.nixosModules.home-manager
-              {
-                home-manager.useGlobalPkgs = true;
-                home-manager.useUserPackages = true;
-                home-manager.extraSpecialArgs = commonSpecialArgs;
-                home-manager.users.${user.username} = {
-                  imports = [
-                    ./home/common.nix
-                    ./home/linux.nix
-                    ./home/hyprland.nix # Hyprland rice (nixos-laptop only)
-                    stylix.homeModules.stylix
-                    ./home/stylix.nix # one palette for GTK/Qt/wofi (nixos-laptop only)
-                    ./home/darkman.nix # light by day, dark after sunset (nixos-laptop only)
-                    ./home/ssh-tpm-agent.nix # TPM-sealed SSH key (nixos-laptop only: WSL has no TPM)
-                    ./home/linux-gui.nix # GUI apps (the mac's cask list, as packages)
-                    # programs.firefox.arkenfox for modules/home/firefox.nix (imported by linux-gui.nix)
-                    inputs.arkenfox.modules.homeManager.arkenfox
-                    ./home/dev.nix # dev environment such as direnv
-                    ./home/distrobox.nix # Ubuntu distrobox with ROS 2 (nixos-laptop only)
-                    ./home/restic-backup-linux.nix # restic (systemd user timer)
-                    ./home/rclone-mount.nix # Google Drive under ~/Sync, same remotes as the mac (systemd user services)
-                    ./home/laptop-remote.nix # SSH tunnel to the avatar viewers (systemd user service)
-                    sops-nix.homeManagerModules.sops
-                    ./home/secrets.nix
-                    ./home/thunderbird.nix # mail accounts as a sops template (needs secrets.nix)
-                    ./home/workstation.nix
-                  ];
-                };
-              }
+            ];
+            extraHome = [
+              ./home/restic-backup-linux.nix # restic (systemd user timer)
+              ./home/rclone-mount.nix # Google Drive under ~/Sync, same remotes as the mac (systemd user services)
+              ./home/laptop-remote.nix # SSH tunnel to the avatar viewers (systemd user service)
+              sops-nix.homeManagerModules.sops
+              ./home/secrets.nix
+              ./home/thunderbird.nix # mail accounts as a sops template (needs secrets.nix)
             ];
           };
         }
@@ -957,47 +953,7 @@
           inherit homeserver;
 
           # Config for CI-evaluating the common NixOS settings without exposing the machine-specific hardware-configuration.
-          "nixos-laptop-ci" = nixpkgs-nixos.lib.nixosSystem {
-            system = "x86_64-linux";
-            specialArgs = {
-              inherit user;
-              nixpkgsAgents = nixpkgs-agents;
-              hardwareConfig = ./hosts/nixos-laptop-hardware-ci.nix;
-            };
-            modules = [
-              # SSO overlay absorbing upstream nixpkgs breakage (shared with darwin/standalone home).
-              # Override things like tailscale's wrong vendorHash here.
-              { nixpkgs.overlays = [ overlayFixes ]; }
-              ./hosts/nixos-laptop.nix
-              sops-nix.nixosModules.sops # hosts/nixos-laptop-wifi.nix
-              lanzaboote.nixosModules.lanzaboote
-              home-manager-nixos.nixosModules.home-manager
-              {
-                home-manager.useGlobalPkgs = true;
-                home-manager.useUserPackages = true;
-                home-manager.extraSpecialArgs = commonSpecialArgs;
-                home-manager.users.${user.username}.imports = [
-                  ./home/common.nix
-                  ./home/linux.nix
-                  ./home/hyprland.nix
-                  # Kept in step with the real host's list: without these two, CI would build
-                  # a laptop whose desktop is themed differently from the one that ships, and
-                  # a broken stylix option would only surface at rebuild time on the machine.
-                  stylix.homeModules.stylix
-                  ./home/stylix.nix
-                  ./home/darkman.nix
-                  ./home/dev.nix
-                  ./home/distrobox.nix
-                  ./home/ssh-tpm-agent.nix
-                  # The GUI app list and the shared Firefox profile. Possible since Zen (which
-                  # needed an extra module argument) left on 2026-10-01.
-                  ./home/linux-gui.nix
-                  inputs.arkenfox.modules.homeManager.arkenfox
-                  ./home/workstation.nix
-                ];
-              }
-            ];
-          };
+          "nixos-laptop-ci" = mkLaptop { hardwareConfig = ./hosts/nixos-laptop-hardware-ci.nix; };
 
           # NixOS inside Windows (WSL2). Build a tarball and install it with wsl --import:
           #   sudo nix run <flake>#nixosConfigurations.wsl.config.system.build.tarballBuilder
@@ -1050,7 +1006,6 @@
       # Used on Windows + WSL2 environments such as the Lab PC
       homeConfigurations."${user.username}-wsl" = mkHost.home {
         targetSystem = "x86_64-linux";
-        wsl = true;
         modules = roles.wsl;
       };
 
@@ -1069,7 +1024,6 @@
         in
         mkHost.home {
           targetSystem = "x86_64-linux";
-          wsl = true;
           modules = roles.wsl;
           # Only the username differs from every other home config, so start from
           # commonSpecialArgs instead of re-listing its members (re-listing meant this host

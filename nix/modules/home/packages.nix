@@ -2,13 +2,13 @@
 {
   pkgs,
   llmAgents,
-  nixpkgsAgents,
+  nixpkgsUnstable,
   ...
 }:
 let
   # Fast-moving CLIs are a separate lineage. allowUnfree is also set explicitly here.
   agentPkgs = import ../../lib/unstable-pkgs.nix {
-    nixpkgsUnstable = nixpkgsAgents;
+    inherit nixpkgsUnstable;
     inherit (pkgs.stdenv.hostPlatform) system;
   };
   gh-nix = pkgs.writeShellApplication {
@@ -95,8 +95,7 @@ in
     tmuxp # declare tmux sessions/layouts in YAML (~/.config/tmuxp/)
     # AI agent multiplexer (config in modules/home/terminal.nix). Goes on every host so
     # `herdr --remote` finds a version-matched binary on the far side instead of installing one
-    # into ~/.local/bin. Not in the 26.05 series yet, so from the unstable lineage. But not
-    # nixpkgs-unstable: the dedicated nixpkgs-agents (reason in flake.nix under the input of the same name).
+    # into ~/.local/bin. Not in the 26.05 series yet, so from the unstable lineage.
     agentPkgs.herdr
     podman-tui # Podman container / image / Pod management TUI
     iamb # Matrix TUI (Vim keybindings, E2EE support)

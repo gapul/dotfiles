@@ -13,7 +13,6 @@
   system,
   commonSpecialArgs,
   mkPkgs,
-  mkWslPkgs,
 }:
 {
   darwin =
@@ -57,12 +56,11 @@
   home =
     {
       targetSystem ? system,
-      wsl ? false,
       modules,
       specialArgs ? commonSpecialArgs,
     }:
     home-manager.lib.homeManagerConfiguration {
-      pkgs = (if wsl then mkWslPkgs else mkPkgs) targetSystem;
+      pkgs = mkPkgs targetSystem;
       extraSpecialArgs = specialArgs;
       inherit modules;
     };
