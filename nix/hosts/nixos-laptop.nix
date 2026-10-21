@@ -919,9 +919,13 @@ in
     enable = true;
     nssmdns4 = true;
     openFirewall = true;
-    publish.enable = true; # Allow UxPlay to announce its AirPlay service.
-    publish.userServices = true;
-    allowInterfaces = [ "wlp0s20f3" ]; # Do not advertise the USB tethering address.
+    # Allow UxPlay to announce its AirPlay service.
+    settings.publish = {
+      disable-publishing = false;
+      disable-user-service-publishing = false;
+      publish-addresses = true;
+    };
+    settings.server.allow-interfaces = [ "wlp0s20f3" ]; # Do not advertise the USB tethering address.
   };
   # Re-register the receiver after Avahi restarts during a system switch.
   systemd.services.avahi-daemon.postStart = ''
