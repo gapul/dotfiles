@@ -14,13 +14,14 @@
 # is left alone. host and account-domain are baked into the DB on first start; changing them
 # later means starting over.
 #
-# Nostr key (NIP-05 is gapul.net/.well-known/nostr.json), rotated to a vanity npub before real use began:
-#   npub1gapulzvd6qtpf28gffvnrm5evxp6ca97ygcndgzyd4f7cuux7hzs0p3w6c
+# Nostr key (NIP-05 is gapul.net/.well-known/nostr.json), rotated on 2026-10-22 to a longer vanity npub:
+#   npub1gapulnet42rluh85gpkqfhq465fzqzvtfa6y4sx6wvrx4wvph5rs960ve3
+# The previous key (npub1gapulzvd…p3w6c) is kept as nostr_gapulzvd_old_sk in secrets/vanity-split.yaml.
 # The private key exists only in /var/lib/secrets/nostr.env and is used by the posting endpoint.
 _:
 
 let
-  nostrPubkeyHex = "4743cf898dd01614a8e84a5931ee996183ac74be223136a0446d53ec7386f5c5";
+  nostrPubkeyHex = "4743cfcf2baa87fe5cf4406c04dc15d51220098b4f744ac0da73066ab981bd07";
 in
 {
   services.gotosocial = {
