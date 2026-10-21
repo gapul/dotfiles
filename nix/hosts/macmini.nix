@@ -961,6 +961,10 @@ in
     if [ -d /Users/hsoudan ]; then
       /bin/chmod 700 /Users/hsoudan
       /usr/bin/install -d -o hsoudan -g hsoudan -m 700 /Users/hsoudan/workspace
+      # The soudan gateway runs as hermes on this host and looks for project context files
+      # (.git, HERMES.md, AGENTS.md) in the terminal cwd before every turn; an EACCES there
+      # aborts the turn. hermes gets traverse only, so it can stat named paths but not list.
+      /bin/chmod +a "user:hermes allow search" /Users/hsoudan /Users/hsoudan/workspace 2>/dev/null || true
     fi
     if [ -d /Users/hermes ]; then
       /usr/bin/install -d -o hermes -g staff -m 755 /Users/hermes/.local/bin
