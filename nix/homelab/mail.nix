@@ -199,9 +199,15 @@ in
     // accountCredentials;
     settings = {
       server.hostname = "mail.gapul.net";
-      server.http = {
-        url = "https://mail.gapul.net";
+      # 0.15 reads these as http.*; under server.http they were silently ignored, so the
+      # JMAP session advertised http://mail.gapul.net:8120 (the default expression).
+      # url is an expression, hence the inner quotes. permissive-cors lets the Twake Mail
+      # web client (webmail.gapul.net, homelab/webmail.nix) call JMAP cross-origin; auth
+      # is an Authorization header, not cookies, so "*" does not widen what a page can do.
+      http = {
+        url = "'https://mail.gapul.net'";
         use-x-forwarded = true;
+        permissive-cors = true;
       };
       server.listener = {
         imaps = {
@@ -209,7 +215,7 @@ in
           protocol = "imap";
           tls.implicit = true;
         };
-        # Submission endpoint for clients (Roundcube, Mail.app, aerc). Authentication required.
+        # Submission endpoint for clients (Mail.app, aerc). Authentication required.
         submissions = {
           bind = [ "[::]:465" ];
           protocol = "smtp";

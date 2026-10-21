@@ -52,7 +52,7 @@ let
       expect = [ "[STATUS] == 401" ];
     };
     dav.upstream = "127.0.0.1:5232"; # radicale (homelab/webmail.nix adds InfCloud under /infcloud/)
-    # Roundcube (homelab/webmail.nix). Login is a Stalwart account, so no Authelia in front.
+    # Twake Mail (homelab/webmail.nix). Login is a Stalwart account, so no Authelia in front.
     webmail = {
       upstream = "127.0.0.1:8121";
       interval = "1h";

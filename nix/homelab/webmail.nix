@@ -1,11 +1,12 @@
 # Browser access to mail, calendar, tasks and contacts. Both pieces are clients of
 # servers that already run here (Stalwart, Radicale) and hold no data of their own.
 #
-# - Roundcube (webmail.gapul.net) reads Stalwart over IMAPS 993. Login is the
-#   Stalwart account name (gmail / work / school) and its password. nixpkgs'
-#   services.roundcube assumes nginx and would fight Caddy for 80/443, so it runs
-#   as a container. The DB is SQLite (image default) and only holds sessions and
-#   preferences.
+# - Twake Mail (webmail.gapul.net, linagora/tmail-web) is a static Flutter web build that
+#   talks JMAP to Stalwart straight from the browser. The container only serves files
+#   (nginx); login is the Stalwart account name (gmail / work / school) and its password,
+#   sent as Basic auth to mail.gapul.net. That is cross-origin, so it depends on
+#   http.permissive-cors and on http.url advertising the public https URL in the JMAP
+#   session (both in homelab/mail.nix). Replaced Roundcube on 2026-10-22 to drop PHP.
 # - InfCloud (dav.gapul.net/infcloud/) is a static HTML/JS CalDAV/CardDAV client.
 #   Serving it under the Radicale vhost makes it same-origin, so no CORS has to be
 #   faked in Caddy. Login is the Radicale credentials.
@@ -39,27 +40,33 @@ let
       CFG
     '';
   };
+  # The app reads this at startup in the browser. Everything Google/Linagora-specific
+  # (push via FCM, the Twake app grid, Sentry) is off. DOMAIN_REDIRECT_URL only matters
+  # if the login page ends up on an OIDC flow.
+  twakeEnv = pkgs.writeText "tmail-env.file" ''
+    SERVER_URL=https://mail.gapul.net/
+    DOMAIN_REDIRECT_URL=https://webmail.gapul.net
+    WEB_OIDC_CLIENT_ID=teammail-web
+    OIDC_SCOPES=openid,profile,email,offline_access
+    APP_GRID_AVAILABLE=unsupported
+    FCM_AVAILABLE=unsupported
+    IOS_FCM=unsupported
+    FORWARD_WARNING_MESSAGE=
+    PLATFORM=other
+    WS_ECHO_PING=
+    COZY_INTEGRATION=
+    COZY_EXTERNAL_BRIDGE_VERSION=
+    SENTRY_ENABLED=false
+    SENTRY_DSN=
+    SENTRY_ENVIRONMENT=
+    FORCE_EMAIL_QUERY=false
+  '';
 in
 {
-  # The image runs Apache as www-data (uid 33) and keeps its SQLite DB in this
-  # volume. Owned by root it fails on every request with "unable to open
-  # database file" (seen 2026-09-26), so hand the directory to uid 33.
-  systemd.tmpfiles.rules = [
-    "d /var/lib/homelab/roundcube 0700 33 33 -"
-  ];
-
-  virtualisation.oci-containers.containers."roundcube" = {
-    image = "docker.io/roundcube/roundcubemail:latest-apache";
-    environment = {
-      "ROUNDCUBEMAIL_DEFAULT_HOST" = "ssl://mail.gapul.net";
-      "ROUNDCUBEMAIL_DEFAULT_PORT" = "993";
-      "ROUNDCUBEMAIL_SMTP_SERVER" = "ssl://mail.gapul.net";
-      "ROUNDCUBEMAIL_SMTP_PORT" = "465";
-      "ROUNDCUBEMAIL_SKIN" = "elastic";
-      "ROUNDCUBEMAIL_PLUGINS" = "archive,zipdownload";
-    };
+  virtualisation.oci-containers.containers."twake-mail" = {
+    image = "docker.io/linagora/tmail-web:latest";
     volumes = [
-      "/var/lib/homelab/roundcube:/var/roundcube/db:rw"
+      "${twakeEnv}:/usr/share/nginx/html/assets/env.file:ro"
     ];
     ports = [
       "127.0.0.1:8121:80/tcp"
@@ -67,16 +74,11 @@ in
     log-driver = "journald";
   };
 
-  systemd.services."podman-roundcube" = {
+  systemd.services."podman-twake-mail" = {
     serviceConfig = {
       Restart = lib.mkOverride 90 "always";
     };
   };
-
-  # The container reaches mail.gapul.net (this host's tailnet address) on 993.
-  # Those packets arrive on the podman bridge, which trustedInterfaces = tailscale0
-  # does not cover. Bridges are podman0, podman1, ... so use the iptables wildcard.
-  networking.firewall.interfaces."podman+".allowedTCPPorts = [ 993 ];
 
   # The dav vhost itself (tls / reverse_proxy) comes from the sites table in
   # hosts/homeserver.nix. Caddy evaluates handle_path before reverse_proxy in its
