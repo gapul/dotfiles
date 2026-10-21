@@ -970,6 +970,8 @@ in
       # (.git, HERMES.md, AGENTS.md) in the terminal cwd before every turn; an EACCES there
       # aborts the turn. hermes gets traverse only, so it can stat named paths but not list.
       /bin/chmod +a "user:hermes allow search" /Users/hsoudan /Users/hsoudan/workspace 2>/dev/null || true
+      # gapul picks the weekly slide draft up from workspace/progress (home/macmini-soudan-digest.nix).
+      /bin/chmod +a "user:${user.username} allow search" /Users/hsoudan /Users/hsoudan/workspace 2>/dev/null || true
     fi
     # The weekly-slides cron job's pre-run script. Hermes only runs scripts that resolve inside
     # $HERMES_HOME/scripts, so it is copied there rather than linked into the store.
