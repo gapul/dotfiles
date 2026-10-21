@@ -606,11 +606,15 @@ let
     }
 
     // The panel at 1, as under Hyprland; the 4K monitor at 1.5, i.e. 2560x1440 logical.
+    // The 32" 1080p Dell looks oversized at 1, so 0.8 (2400x1350 logical).
     output "eDP-1" {
         scale 1
     }
     output "DP-1" {
         scale 1.5
+    }
+    output "Dell Inc. DELL S3222HS 8K9LQD3" {
+        scale 0.8
     }
 
     cursor {
