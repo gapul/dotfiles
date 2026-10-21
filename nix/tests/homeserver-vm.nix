@@ -66,6 +66,12 @@ pkgs.testers.runNixOSTest {
       # ordering the real host needs and let caddy start straight away.
       systemd.services.caddy.after = lib.mkForce [ "network.target" ];
       systemd.services.caddy.wants = lib.mkForce [ ];
+      # Same for blocky and the dns.gapul.net cert its DNS-over-TLS listener reads.
+      systemd.services.blocky.after = lib.mkForce [ ];
+      systemd.services.blocky.wants = lib.mkForce [
+        "network-online.target"
+        "nss-lookup.target"
+      ];
 
       # For `blocky validate` below; the daemon has the package, the shell does not.
       environment.systemPackages = [ pkgs.blocky ];

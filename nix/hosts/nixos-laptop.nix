@@ -91,6 +91,19 @@ let
     inherit nixpkgsUnstable;
     inherit (pkgs.stdenv.hostPlatform) system;
   };
+
+  # resolved's DNS order (see services.resolved below). IP#name: the name the TLS cert is
+  # checked against.
+  homeDns = [
+    "100.127.129.31#dns.gapul.net" # homeserver
+    "100.105.135.49#dns.gapul.net" # macmini
+  ];
+  publicDns = [
+    "9.9.9.9#dns.quad9.net"
+    "149.112.112.112#dns.quad9.net"
+    "1.1.1.1#cloudflare-dns.com"
+    "1.0.0.1#cloudflare-dns.com"
+  ];
 in
 {
   # HP laptop dual-booting with Windows (x86_64, Intel integrated GPU).
@@ -510,12 +523,14 @@ in
   };
 
   # The network the laptop is on never sees a DNS query. NetworkManager does not hand the
-  # DHCP-provided servers to resolved at all (dns = "none"). While Tailscale is up it registers
-  # tailscale0 as the default route with the tailnet resolvers (the two blockys, inside
-  # WireGuard), so lookups get the same blocklists as every other device. When Tailscale is down
-  # resolved has no link servers and uses the fallback: Quad9 over strict TLS. Quad9 is a
-  # fallback rather than global DNS= on purpose: global servers would be queried alongside
-  # tailscale0, and Quad9's answer would win over blocky's NXDOMAIN for blocked names.
+  # DHCP-provided servers to resolved at all (dns = "none"), and Tailscale does not either
+  # (--accept-dns=false below). resolved has one ordered list instead, all of it on strict TLS:
+  # the two home blockys over the tailnet (homeserver, then macmini; both serve DNS over TLS as
+  # dns.gapul.net), then Quad9, then Cloudflare. resolved stays on the first server that answers
+  # and moves down the list only when the current one stops answering, so the public servers
+  # are only reached when the tailnet is not. That covers Tailscale being up with its own
+  # resolver not answering, which with tailscaled managing DNS left nothing to fall back to
+  # (2026-10-22, just after boot: `jd maintain` could not resolve github.com).
   # Strict DoT means captive portals need `captive-portal on` (see the let block). mkForce because
   # the resolved module sets dns = "systemd-resolved", which would push the DHCP servers in.
   networking.networkmanager.dns = lib.mkForce "none";
@@ -526,17 +541,51 @@ in
   services.resolved = {
     enable = true;
     settings.Resolve = {
-      FallbackDNS = [
-        "9.9.9.9#dns.quad9.net"
-        "149.112.112.112#dns.quad9.net"
-        "2620:fe::fe#dns.quad9.net"
-        "2620:fe::9#dns.quad9.net"
-      ];
-      # Applies to the fallback servers; tailscaled turns it off on its own link.
+      DNS = homeDns ++ publicDns;
+      Domains = [ "~." ];
+      # Only used when DNS= is empty, which it never is; explicit so systemd's compiled-in
+      # list (Google among it) is never the answer.
+      FallbackDNS = publicDns;
       DNSOverTLS = "true";
       # LLMNR would answer for the hostname on every network; avahi already covers mDNS.
       LLMNR = "false";
       MulticastDNS = "false";
+    };
+  };
+  # Names on the tailnet's MagicDNS (100.100.100.100) are not resolvable with this; everything
+  # here addresses tailnet hosts by IP or by *.gapul.net already.
+  services.tailscale.extraSetFlags = [ "--accept-dns=false" ];
+  # Once resolved has moved to a public server it stays there for as long as that one answers,
+  # past the tailnet coming back. Restart it when a home blocky is reachable again, so the
+  # blocklists apply again within a few minutes.
+  systemd.services.resolved-prefer-home = {
+    description = "Move resolved back to the home DNS once it is reachable";
+    serviceConfig.Type = "oneshot";
+    path = [
+      pkgs.systemd
+      pkgs.gawk
+      pkgs.coreutils
+      pkgs.bash
+    ];
+    script = ''
+      current=$(resolvectl status --no-pager | awk '/^Global/ { g = 1 } g && /Current DNS Server:/ { print $4; exit }')
+      case "$current" in
+        "" | 100.127.129.31* | 100.105.135.49*) exit 0 ;;
+      esac
+      for ip in 100.127.129.31 100.105.135.49; do
+        if timeout 3 bash -c "</dev/tcp/$ip/853" 2>/dev/null; then
+          echo "resolved is on $current while $ip answers on 853; restarting it"
+          systemctl restart systemd-resolved
+          exit 0
+        fi
+      done
+    '';
+  };
+  systemd.timers.resolved-prefer-home = {
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnBootSec = "2min";
+      OnUnitActiveSec = "3min";
     };
   };
   # Drop a captive-portal override when the link goes away, so the next network starts on DoT.
