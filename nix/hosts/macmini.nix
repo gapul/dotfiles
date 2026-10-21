@@ -132,6 +132,10 @@ let
         llvmPackages.llvm
         ocaml
         perl
+        # Weekly progress slides: Marp markdown -> PDF. marp drives a Chromium, which is the Helium
+        # cask (CHROME_PATH in hsoudanShell); it talks to it over a pipe, so pf's loopback block
+        # does not get in the way.
+        marp-cli
       ])
       # verilator in this nixpkgs fails to build on darwin (lexer mismatch); the agents channel
       # has a cached one that works.
@@ -142,6 +146,7 @@ let
     ulimit -t 1200
     ulimit -f 4194304
     export PATH=${hsoudanTools}/bin:/usr/bin:/bin:/usr/sbin:/sbin
+    export CHROME_PATH=/Applications/Helium.app/Contents/MacOS/Helium
     exec ${pkgs.bashInteractive}/bin/bash "$@"
   '';
   hsoudanPf = pkgs.writeShellScript "hsoudan-pf" ''
@@ -965,6 +970,13 @@ in
       # (.git, HERMES.md, AGENTS.md) in the terminal cwd before every turn; an EACCES there
       # aborts the turn. hermes gets traverse only, so it can stat named paths but not list.
       /bin/chmod +a "user:hermes allow search" /Users/hsoudan /Users/hsoudan/workspace 2>/dev/null || true
+    fi
+    # The weekly-slides cron job's pre-run script. Hermes only runs scripts that resolve inside
+    # $HERMES_HOME/scripts, so it is copied there rather than linked into the store.
+    if [ -d /Users/hermes/soudan-home/.hermes ]; then
+      /usr/bin/install -d -o hermes -g staff -m 700 /Users/hermes/soudan-home/.hermes/scripts
+      /usr/bin/install -o hermes -g staff -m 700 ${../../configs/macmini/hermes/soudan-weekly-collect.py} \
+        /Users/hermes/soudan-home/.hermes/scripts/soudan-weekly-collect.py
     fi
     if [ -d /Users/hermes ]; then
       /usr/bin/install -d -o hermes -g staff -m 755 /Users/hermes/.local/bin
