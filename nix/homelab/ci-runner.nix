@@ -197,21 +197,6 @@ in
       which
     ];
 
-    # Node 20 reached EOL, so nixpkgs dropped it and this package ships only
-    # externals/node24. Several actions we pin still declare `using: node20`, and the
-    # runner looks the runtime up by that literal name: the step dies before it starts,
-    # with ENOENT on externals/node20/bin/node. GitHub's own runners no longer honour
-    # ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION either (tried in #586, no effect) —
-    # they just run those actions on 24. So point node20 at node24 and do the same.
-    #
-    # Chasing every action to a node24 release instead would be a moving target: the
-    # installer and cachix actions are pinned by SHA on purpose.
-    package = pkgs.github-runner.overrideAttrs (prev: {
-      postInstall = prev.postInstall + ''
-        ln -s ${pkgs.nodejs_24} $out/lib/externals/node20
-      '';
-    });
-
     serviceOverrides = {
       # Half the machine, at most, for everything outside the daemon.
       CPUQuota = "200%";

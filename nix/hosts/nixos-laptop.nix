@@ -623,12 +623,6 @@ in
   };
 
   nixpkgs.config.allowUnfree = true;
-  # Obsidian / Bitwarden both ship on Electron 39, which nixpkgs marks insecure
-  # because upstream Electron dropped it from support. The same two run on the mac against
-  # the same Electron, so refusing them only here would be theatre rather than a decision.
-  # This pin is maintenance: the version string goes stale on every nixpkgs bump, and the
-  # right time to delete the line is when a bump stops needing it.
-  nixpkgs.config.permittedInsecurePackages = [ "electron-39.8.10" ];
 
   # --- Laptop power/thermal/input (HP laptop) ---
   services.tlp.enable = true; # battery optimization (charge thresholds etc. tunable later)
