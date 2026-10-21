@@ -4,13 +4,13 @@
   pkgs,
   user,
   claudeAcp,
-  nixpkgsAgents,
+  nixpkgsUnstable,
   sopsNix,
   ...
 }:
 let
   fastPkgs = import ../lib/unstable-pkgs.nix {
-    nixpkgsUnstable = nixpkgsAgents;
+    inherit nixpkgsUnstable;
     inherit (pkgs.stdenv.hostPlatform) system;
   };
   fabricServer = pkgs.callPackage ../pkgs/fabric-server.nix { };

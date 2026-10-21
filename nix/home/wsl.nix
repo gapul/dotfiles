@@ -2,13 +2,13 @@
   config,
   pkgs,
   lib,
-  nixpkgsAgents,
+  nixpkgsUnstable,
   user,
   ...
 }:
 let
   agentPkgs = import ../lib/unstable-pkgs.nix {
-    nixpkgsUnstable = nixpkgsAgents;
+    inherit nixpkgsUnstable;
     inherit (pkgs.stdenv.hostPlatform) system;
   };
   # wslu was removed from nixpkgs (project discontinued / archived, 2026-04-08).

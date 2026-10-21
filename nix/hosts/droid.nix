@@ -4,7 +4,7 @@
 # ECS: this Entity composes the modules/home components (git/cli/shell/terminal)
 # as-is. It does not load components that assume flake input modules like
 # nix-index/agent-skills, nor GUI/workstation roles.
-{ pkgs, ... }:
+{ pkgs, nixpkgsUnstable, ... }:
 let
   user = import ../user.nix;
 in
@@ -25,7 +25,7 @@ in
     backupFileExtension = "hm-bak";
     useGlobalPkgs = true;
     extraSpecialArgs = {
-      inherit user;
+      inherit user nixpkgsUnstable;
     };
     config = {
       imports = [
