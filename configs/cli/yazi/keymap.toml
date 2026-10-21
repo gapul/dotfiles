@@ -35,7 +35,7 @@ desc = "Show or hide the preview pane"
 # i opens an external preview: Quick Look on macOS, the default viewer on Linux.
 [[mgr.prepend_keymap]]
 on   = "i"
-run  = "shell 'if [ \"$(uname -s)\" = Darwin ]; then qlmanage -p \"$@\"; else xdg-open \"$1\"; fi' --orphan"
+run  = 'shell --orphan -- if [ "$(uname -s)" = Darwin ]; then qlmanage -p %s; else xdg-open %h; fi'
 desc = "Inspect in external viewer"
 
 # ─── yamb bookmarks (u = leader). Jump/add/delete/rename frequent dirs. ───
