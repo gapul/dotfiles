@@ -12,7 +12,7 @@ pkgs.testers.runNixOSTest {
 
   node.specialArgs = {
     inherit user;
-    inherit (commonSpecialArgs) nixpkgsAgents;
+    inherit (commonSpecialArgs) nixpkgsUnstable;
     hardwareConfig = ./nixos-test-hardware.nix;
   };
   node.pkgsReadOnly = false;

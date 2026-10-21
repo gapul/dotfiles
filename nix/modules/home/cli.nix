@@ -3,12 +3,12 @@
   config,
   pkgs,
   lib,
-  nixpkgsAgents,
+  nixpkgsUnstable,
   ...
 }:
 let
   fastPkgs = import ../../lib/unstable-pkgs.nix {
-    nixpkgsUnstable = nixpkgsAgents;
+    inherit nixpkgsUnstable;
     inherit (pkgs.stdenv.hostPlatform) system;
   };
   c = import ../../lib/theme.nix; # c.dark / c.light (hex without leading #)

@@ -3,14 +3,14 @@
   config,
   pkgs,
   lib,
-  nixpkgsAgents,
+  nixpkgsUnstable,
   ...
 }:
 let
   # Neovim and its plugins follow nixos-unstable: the 26.05-darwin channel lagged a patch
   # release behind (0.12.4 vs 0.12.5) and VimTeX a minor one.
   editorPkgs = import ../../lib/unstable-pkgs.nix {
-    nixpkgsUnstable = nixpkgsAgents;
+    inherit nixpkgsUnstable;
     inherit (pkgs.stdenv.hostPlatform) system;
   };
   lazyNixPlugins =

@@ -2,12 +2,12 @@
   config,
   pkgs,
   lib,
-  nixpkgsAgents,
+  nixpkgsUnstable,
   ...
 }:
 let
   fastPkgs = import ../lib/unstable-pkgs.nix {
-    nixpkgsUnstable = nixpkgsAgents;
+    inherit nixpkgsUnstable;
     inherit (pkgs.stdenv.hostPlatform) system;
   };
   agentStateRepo = "${config.home.homeDirectory}/Developer/github.com/gapul/ai-agent-state";
