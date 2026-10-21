@@ -14,6 +14,9 @@
     # T3 Code's update button cannot write to the store. llm-agents.nix repackages it daily.
     # No nixpkgs follows: its binary cache (cache.numtide.com) only hits on its own nixpkgs pin.
     llm-agents.url = "github:numtide/llm-agents.nix";
+    # Build plumbing only (module system and formatter), so sharing them doesn't touch the cache.
+    llm-agents.inputs.flake-parts.follows = "flake-parts";
+    llm-agents.inputs.treefmt-nix.follows = "treefmt-nix";
 
     # For the real NixOS machines (homeserver, and the Windows dual-boot HP laptop).
     # Separated from the darwin channels to hit the nixos cache cleanly.
@@ -107,12 +110,19 @@
     sops-nix.inputs.nixpkgs.follows = "nixpkgs";
 
     # NixOS Secure Boot support (signed UKI). Used only on nixos-laptop.
-    lanzaboote.url = "github:nix-community/lanzaboote/v1.1.0";
+    # A tag, so a new release needs a hand bump here. 1.2.0's only change is the Measured Boot
+    # (systemd-pcrlock) policy, which this host doesn't use.
+    lanzaboote.url = "github:nix-community/lanzaboote/v1.2.0";
     lanzaboote.inputs.nixpkgs.follows = "nixpkgs-nixos";
-    # v1.1.0's own lock pins a rust-overlay that still reads `stdenv.isLinux`/`isDarwin`, which
-    # nixos-unstable warns about on every eval. Own the input so `nix flake update` moves it.
-    lanzaboote.inputs.rust-overlay.url = "github:oxalica/rust-overlay";
-    lanzaboote.inputs.rust-overlay.inputs.nixpkgs.follows = "nixpkgs-nixos";
+    # lanzaboote's own lock pinned a rust-overlay that still read `stdenv.isLinux`/`isDarwin`,
+    # which nixos-unstable warns about on every eval. It has to be a top-level input for
+    # `nix flake update` to move it: an override written as `lanzaboote.inputs.rust-overlay.url`
+    # is locked once and then left alone (it sat at 2026-06-21 until 2026-10-21).
+    rust-overlay.url = "github:oxalica/rust-overlay";
+    rust-overlay.inputs.nixpkgs.follows = "nixpkgs-nixos";
+    lanzaboote.inputs.rust-overlay.follows = "rust-overlay";
+    # Its pre-commit is git-hooks.nix under the old name, only kept for the project's own checks.
+    lanzaboote.inputs.pre-commit.follows = "git-hooks";
 
     # disko: declarative disk layout. Manages only nixos-laptop's LUKS root (for dual-boot safety).
     disko.url = "github:nix-community/disko";
@@ -125,12 +135,14 @@
     # comes from configs/theme/palettes.json, so that file stays the single source of truth.
     stylix.url = "github:nix-community/stylix";
     stylix.inputs.nixpkgs.follows = "nixpkgs-nixos";
+    stylix.inputs.flake-parts.follows = "flake-parts";
 
     # arkenfox user.js exposed as typed home-manager options (section / subsection / pref),
     # so the hardening lives in the flake lock and the overrides are visible as nix diffs.
     # Used by modules/home/firefox.nix (the Mac and the NixOS laptop).
     arkenfox.url = "github:HeitorAugustoLN/arkenfox-nix";
     arkenfox.inputs.nixpkgs.follows = "nixpkgs";
+    arkenfox.inputs.flake-parts.follows = "flake-parts";
 
     # NixOS module that makes persistence targets explicit. Try it in a VM smoke test only for now;
     # don't apply it to the real machine until the data migration procedure is settled.
@@ -164,7 +176,7 @@
     # Homebrew itself, which nix-homebrew pins to 7.0.4. Taken over here on 2026-10-11 because
     # gapul-dotfiles holds a brew-7.0.4-patched with nearly every file empty (built on the macmini
     # from APFS-compressed sources), and a cachix path can only be avoided by changing its hash.
-    brew-src.url = "github:Homebrew/brew/7.0.9";
+    brew-src.url = "github:Homebrew/brew/7.0.10";
     brew-src.flake = false;
     nix-homebrew.inputs.brew-src.follows = "brew-src";
 
@@ -185,13 +197,14 @@
     # Same hardware guarantee (the private key never leaves the enclave) without a GUI app or a
     # resident agent process: it hands the identity to macOS' own CryptoTokenKit provider.
     nix-secure-enclave-key.url = "github:ryoppippi/nix-secure-enclave-key";
+    nix-secure-enclave-key.inputs.nixpkgs.follows = "nixpkgs";
+    nix-secure-enclave-key.inputs.flake-parts.follows = "flake-parts";
 
     # Home-made tool for using mocopi (Sony's motion capture) on macOS. The source should stay
     # private, so it is fetched over git+ssh rather than github:. CI holds a read-only deploy key
     # via ssh-agent (.github/actions/setup-nix). Real machines use their usual GitHub auth.
     mocopi-mac.url = "git+ssh://git@github.com/gapul/mocopi-mac?ref=main";
     mocopi-mac.inputs.nixpkgs.follows = "nixpkgs";
-    nix-secure-enclave-key.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs =
