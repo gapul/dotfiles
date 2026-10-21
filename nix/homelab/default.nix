@@ -57,7 +57,7 @@
     ./freebie-collector.nix
     ./gameyfin.nix
     ./git-annex.nix
-    ./hauk.nix
+    # ./hauk.nix  # disabled 2026-10-22: image ships PHP 8.5.11 (CVE-2026-109618, unauthenticated RCE under mod_php); see hauk.nix
     ./ledger.nix
     ./mail.nix
     ./terraria.nix
