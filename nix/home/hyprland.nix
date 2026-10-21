@@ -163,7 +163,7 @@ let
       icon = ":thunderbird:";
     }
     {
-      app = "pavucontrol|nm-connection-editor|blueman-manager|nwg-displays";
+      app = "pavucontrol|nm-connection-editor|blueman-manager|nwg-displays|net.gapul.settings";
       icon = ":gear:";
     }
   ];
@@ -276,6 +276,12 @@ let
   # The bar's own scripts (the items ported from the mac's sketchybar, configs/wm/sketchybar).
   # A TUI in a new ghostty window, as the mac's open_tui.sh does.
   tui = title: cmd: "${lib.getExe pkgs.ghostty} --title=${title} -e ${cmd}";
+  # The Wi-Fi / Bluetooth TUIs, with their own app id so niri floats them like the GUI
+  # settings tools (home/niri.nix). wifitui talks to NetworkManager over D-Bus, bluetui to BlueZ.
+  settingsTui =
+    title: cmd: "${lib.getExe pkgs.ghostty} --class=net.gapul.settings --title=${title} -e ${cmd}";
+  wifiTui = settingsTui "Wi-Fi" (lib.getExe pkgs.wifitui);
+  bluetoothTui = settingsTui "Bluetooth" (lib.getExe pkgs.bluetui);
   # Input source: fcitx5 reports 2 when an input method is active (SKK here), 1 when the
   # keys go through as they are. SKK's own kana/latin mode is not visible from outside, so
   # this shows "▽あ" for SKK on and "A" for off, like the mac's ▽ marker.
@@ -346,19 +352,20 @@ let
       --init-tool arrow --output-filename "$HOME/Pictures/Screenshots/%Y-%m-%d_%H-%M-%S.png"
   '';
   # Hyprland has no settings app of its own, so $mod+comma (Cmd+, on the mac) opens a picker
-  # over the per-area GUI tools declared below. What they change lives outside the store
-  # (NetworkManager profiles, PipeWire/WirePlumber state, BlueZ pairings, monitors.conf), so
-  # it survives a rebuild instead of being overwritten by it. Anything under home-manager's
-  # control (GTK theme, keybinds, fonts) stays in nix on purpose: a GUI writing there would
-  # either hit a read-only symlink or be reverted on the next switch.
+  # over the per-area tools (Wi-Fi and Bluetooth as TUIs, the rest GUIs). What they change
+  # lives outside the store (NetworkManager profiles, PipeWire/WirePlumber state, BlueZ
+  # pairings, monitors.conf), so it survives a rebuild instead of being overwritten by it.
+  # Anything under home-manager's control (GTK theme, keybinds, fonts) stays in nix on
+  # purpose: a GUI writing there would either hit a read-only symlink or be reverted on the
+  # next switch.
   settingsMenu = pkgs.writeShellScript "settings-menu" ''
     set -eu
     choice=$(printf '%s\n' Sound Wi-Fi Bluetooth Displays \
       | ${pkgs.wofi}/bin/wofi --dmenu --prompt Settings) || exit 0
     case "$choice" in
       Sound) exec ${pkgs.pavucontrol}/bin/pavucontrol ;;
-      Wi-Fi) exec ${pkgs.networkmanagerapplet}/bin/nm-connection-editor ;;
-      Bluetooth) exec blueman-manager ;; # system-side (services.blueman in hosts/nixos-laptop.nix)
+      Wi-Fi) exec ${wifiTui} ;;
+      Bluetooth) exec ${bluetoothTui} ;;
       Displays) exec ${pkgs.nwg-displays}/bin/nwg-displays ;;
     esac
   '';
@@ -575,7 +582,9 @@ let
       format-disconnected = "󰖪";
       tooltip-format-wifi = "{essid} ({signalStrength}%)";
       tooltip-format-ethernet = "{ifname}";
-      on-click = "nm-connection-editor";
+      # Right click: the GUI editor, for what the TUI does not cover (eduroam's EAP, wired, VPN).
+      on-click = wifiTui;
+      on-click-right = "nm-connection-editor";
     };
     battery = {
       format = "{icon} {capacity}%";
@@ -605,7 +614,8 @@ let
       format-connected = "󰂱";
       tooltip-format-connected = "{device_enumerate}";
       tooltip-format-enumerate-connected = "{device_alias}";
-      on-click = "blueman-manager";
+      on-click = bluetoothTui;
+      on-click-right = "blueman-manager"; # system-side (services.blueman in hosts/nixos-laptop.nix)
     };
   };
 in
