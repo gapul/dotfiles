@@ -188,7 +188,7 @@ _: {
         # Cut ones that are enabled by default but failed 100% when measured on 2026-09-26.
         # They contribute no results and only produce timeout waits and error displays.
         #   vimeo ...... The search page is a Cloudflare challenge (403). Same from the main Mac.
-        #                searxng/searxng#3849 is still open with the CAPTCHA label.
+        #                Still failing 2026-10-21 (timeout) though searxng#3849 was closed.
         #   reuters .... 401
         #   unsplash ... Response isn't JSON, so parsing fails
         {

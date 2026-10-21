@@ -762,8 +762,9 @@ in
       "obsidian"
       # Back from unstablePkgs.zotero (2026-10-04): zotero 10.0.x fails to build on darwin in
       # nixos-unstable ("AboutTranslations ... not found in ActorManagerParent.sys.mjs"), which
-      # blocked every flake.lock PR. Same app and data dirs either way; return to nixpkgs once
-      # NixOS/nixpkgs#569006 (or a successor) lands.
+      # blocked every flake.lock PR. Same app and data dirs either way. #569006 closed unmerged;
+      # nixpkgs' 10.0.4 now builds, but by bundling firefox-esr-140-bin, which is marked insecure
+      # and not cached (2026-10-21), so the cask stays.
       "zotero"
       "libreoffice"
 
