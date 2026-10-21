@@ -678,6 +678,7 @@ let
         match app-id=r#"^(org\.pulseaudio\.)?pavucontrol$"#
         match app-id=r#"^nm-connection-editor$"#
         match app-id=r#"^blueman-manager$"#
+        match app-id=r#"^net\.gapul\.settings$"#
         match app-id=r#"^nwg-displays$"#
         open-floating true
     }
