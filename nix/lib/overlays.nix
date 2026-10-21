@@ -37,6 +37,35 @@ _final: prev: {
     else
       prev.mozc;
 
+  # calibre 9.16.0's installCheck fails on nixos-unstable once pyopenjtalk-plus builds again.
+  # test_speech_dispatcher imports the speechd Python module, which this speech-dispatcher
+  # 0.12.1 does not install, so it fails every time. The FTS and IPC tests wait on background
+  # indexers and sockets with fixed timeouts and fail when the builder is busy: this happened
+  # on nixos-laptop at load ~44 (2026-10-21). Only these five tests are skipped; the other
+  # ~670 still run. Guarded on the version so a calibre bump drops it.
+  calibre =
+    if prev.calibre.version == "9.16.0" then
+      prev.calibre.overrideAttrs (o: {
+        installCheckPhase =
+          builtins.replaceStrings
+            [ "python setup.py test" ]
+            [
+              (
+                "python setup.py test"
+                + prev.lib.concatMapStrings (t: " --exclude-test-name ${t}") [
+                  "test_speech_dispatcher"
+                  "test_fts_pool"
+                  "test_fts_search"
+                  "test_export_import"
+                  "test_listener_ipc"
+                ]
+              )
+            ]
+            o.installCheckPhase;
+      })
+    else
+      prev.calibre;
+
   # pyopenjtalk-plus 0.4.1-post9's test_run_njd_from_mecab_invalid_input_should_not_break_next_call
   # matches the TypeError text "must be str", which Python 3.14 words as "Expected str, got int".
   # Only the assertion's regex is stale; the behaviour it tests still holds. It took piper-tts and
