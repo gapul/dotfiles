@@ -32,8 +32,8 @@ pkgs.testers.runNixOSTest {
       ];
 
       # Same overlay nixosConfigurations.homeserver applies in flake.nix. Without it the VM
-      # builds the upstream-broken packages the real host avoids (git-annex's bup test,
-      # trunk under GCC 16, ...), and the test fails for reasons the host doesn't have.
+      # builds the upstream-broken packages the real host avoids,
+      # and the test fails for reasons the host doesn't have.
       nixpkgs.overlays = [ (import ../lib/overlays.nix) ];
 
       # Production secrets are encrypted to the real host's SSH key. The VM

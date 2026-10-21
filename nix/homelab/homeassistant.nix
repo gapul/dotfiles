@@ -84,24 +84,12 @@
     ];
   };
 
-  # The ESPHome dashboard is stopped (2026-08-31).
-  #
-  # Upstream removed the dashboard from the main package; it became a separate package,
-  # esphome-device-builder. The nixpkgs module still calls `esphome dashboard`, so every start fails with
-  #
-  #   ERROR The built-in dashboard has been removed from ESPHome.
-  #
-  # and restarts in a loop. nixpkgs is working on it (NixOS/nixpkgs#550245
-  # "nixos/esphome: convert to new device builder").
-  #
-  # Nothing is lost by stopping it. It was declared expecting the yaml to be brought into
-  # /var/lib/esphome during the migration, but it actually stayed on the Home Assistant config side
-  # (data/esphome) and this was empty (checked 2026-08-31: 0 yaml files). A service providing
-  # nothing was simply crashing.
-  #
-  # Pinning an old version was an option but not taken: it goes against the move to rolling, and it
-  # would freeze updates for the flashing tool. Switch back to enable once the upstream PR lands.
-  services.esphome.enable = false;
+  # ESPHome device builder (dashboard), behind esphome.<domain> (hosts/homeserver.nix).
+  services.esphome = {
+    enable = true;
+    address = "127.0.0.1";
+    port = 6052;
+  };
 
   services.node-red = {
     enable = true;
