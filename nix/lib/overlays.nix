@@ -37,6 +37,26 @@ _final: prev: {
     else
       prev.mozc;
 
+  # Since Qt 6.12, qmlcachegen's generated C++ names QQmlPrivate::AOTLookupValidation types
+  # unqualified, and in musescore's unity build a "using namespace" from its own sources makes
+  # them ambiguous. musescore 4.7.5 stopped building on nixos-unstable (NixOS/nixpkgs#576580),
+  # which took nixos-laptop's home-manager down with it. The patch is from NixOS/nixpkgs#576411
+  # (open as of 2026-10-21): it keeps the qmlcache sources out of unity builds. Guarded on the
+  # version and on the patch not already being there, so either an upstream merge or a bump
+  # drops it.
+  musescore =
+    if
+      prev.musescore.version == "4.7.5"
+      && !(builtins.any (p: prev.lib.hasInfix "qmlcachegen-unity-build" (toString p)) (
+        prev.musescore.patches or [ ]
+      ))
+    then
+      prev.musescore.overrideAttrs (o: {
+        patches = (o.patches or [ ]) ++ [ ./musescore-qmlcachegen-unity-build.patch ];
+      })
+    else
+      prev.musescore;
+
   # calibre 9.16.0's installCheck fails on nixos-unstable once pyopenjtalk-plus builds again.
   # test_speech_dispatcher imports the speechd Python module, which this speech-dispatcher
   # 0.12.1 does not install, so it fails every time. The FTS and IPC tests wait on background
