@@ -1,7 +1,9 @@
-{ config, pkgs, ... }:
+{ pkgs, ... }:
 {
   # SSH aliases and keys remain owned by sops; retry while the network is unavailable.
   # User units cannot order themselves after the system tailscaled.service.
+  # Replaces the hand-written ~/.config/systemd/user/avatar-viewer-tunnel.service (same command).
+  # vnc-macmini, which this file also used to carry, lives in home/linux-gui.nix.
   systemd.user.services.avatar-viewer-tunnel = {
     Unit = {
       Description = "SSH tunnel to avatar viewers via homeserver";
@@ -15,16 +17,4 @@
     };
     Install.WantedBy = [ "default.target" ];
   };
-
-  # Keep the existing command/path; pin the viewer to the flake instead of nix run.
-  # The VNC password is machine-local secret state and must not enter the store.
-  home.file.".local/bin/vnc-macmini".source = pkgs.writeShellScript "vnc-macmini" ''
-    set -eu
-    password_file="${config.home.homeDirectory}/.vnc/macmini.passwd"
-    if [ ! -r "$password_file" ]; then
-      echo "VNC password file missing: $password_file" >&2
-      exit 1
-    fi
-    exec ${pkgs.tigervnc}/bin/vncviewer -passwd "$password_file" 100.105.135.49 "$@"
-  '';
 }
