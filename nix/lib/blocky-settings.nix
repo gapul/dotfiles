@@ -4,12 +4,21 @@
 # either of the 2 resolvers handed out by DHCP, so if only one had different ad lists or
 # upstreams, the same query from the same device would get different answers on different
 # days. That can't be tracked down, so the only difference is the listen addresses.
-{ listen }:
+#
+# `tls` adds DNS over TLS on 853: { listen, certFile, keyFile }. Both serve the name
+# dns.gapul.net, so a client that pins it (nixos-laptop's resolved, `IP#dns.gapul.net`) can
+# verify either one. Each host gets that cert on its own (security.acme on homeserver, lego on
+# macmini).
+{
+  listen,
+  tls ? null,
+}:
 {
   ports = {
     dns = listen;
     http = 4000; # metrics + API. dns2.gapul.net points at this on the homeserver side.
-  };
+  }
+  // (if tls == null then { } else { tls = tls.listen; });
 
   # Two providers so one provider dropping us doesn't take the tailnet's DNS down. Quad9
   # answered 429 and then nothing to the home IP for ~20 min after a burst of ~6000 queries
@@ -104,3 +113,11 @@
   queryLog.type = "none";
   log.level = "info";
 }
+// (
+  if tls == null then
+    { }
+  else
+    {
+      inherit (tls) certFile keyFile;
+    }
+)
