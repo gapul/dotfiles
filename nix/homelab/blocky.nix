@@ -1,3 +1,7 @@
+{ config, ... }:
+let
+  dnsCertDir = config.security.acme.certs."dns.gapul.net".directory;
+in
 {
   # Blocky in place of AdGuard Home. AdGuard's settings were declared here too, so this is not about
   # being declarative or not. AdGuard keeps half its state in files it writes itself (the admin account
@@ -23,7 +27,34 @@
     # internal resolution of gapul.net works).
     settings = import ../lib/blocky-settings.nix {
       listen = "127.0.0.1:53,192.168.116.98:53,100.127.129.31:53";
+      # DNS over TLS for nixos-laptop, which puts this resolver first in its own ordered list
+      # and keeps every server there on strict TLS (hosts/nixos-laptop.nix).
+      tls = {
+        listen = "127.0.0.1:853,192.168.116.98:853,100.127.129.31:853";
+        certFile = "${dnsCertDir}/fullchain.pem";
+        keyFile = "${dnsCertDir}/key.pem";
+      };
     };
+  };
+
+  # Its own cert for the one name, not the *.gapul.net wildcard Caddy uses: macmini's blocky
+  # serves the same name with a cert it issues itself, and neither host needs the other's key.
+  # Same Cloudflare DNS-01 credential as the wildcard (homeserver.nix).
+  security.acme.certs."dns.gapul.net" = {
+    dnsProvider = "cloudflare";
+    environmentFile = "/var/lib/secrets/acme-cloudflare.env";
+    group = "dns-tls";
+    # blocky reads the files once at start.
+    reloadServices = [ "blocky.service" ];
+  };
+  users.groups.dns-tls = { };
+  systemd.services.blocky = {
+    # DynamicUser, so the cert's group is added as a supplementary one.
+    serviceConfig.SupplementaryGroups = [ "dns-tls" ];
+    # The preliminary self-signed cert covers the first boot; ordering keeps a restart from
+    # racing a renewal (as for Caddy).
+    after = [ "acme-finished-dns.gapul.net.target" ];
+    wants = [ "acme-finished-dns.gapul.net.target" ];
   };
 
   # tailscale0 comes up after blocky. Since it listens on the tailnet address by name, it can fail at
@@ -36,6 +67,9 @@
   services.resolved.enable = false;
 
   # This one must be reachable from the LAN. Clients point at this address directly.
-  networking.firewall.allowedTCPPorts = [ 53 ];
+  networking.firewall.allowedTCPPorts = [
+    53
+    853
+  ];
   networking.firewall.allowedUDPPorts = [ 53 ];
 }
