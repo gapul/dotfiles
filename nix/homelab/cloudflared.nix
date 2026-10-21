@@ -54,7 +54,7 @@
         # Google Forms replacement. A local Caddy gateway splits the single
         # public origin between Formera's frontend and REST API.
         "forms.gapul.net" = "http://127.0.0.1:8102";
-        "where.gapul.net" = "http://127.0.0.1:8095";
+        # where.gapul.net (Hauk) is off until the image is rebuilt on a patched PHP; see hauk.nix.
         # Screenshot sharing (zipline.nix). Same reason as send: the link goes to people outside
         # the tailnet.
         "snap.gapul.net" = "http://127.0.0.1:8114";

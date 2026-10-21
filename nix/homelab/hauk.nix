@@ -1,3 +1,8 @@
+# DISABLED 2026-10-22 (not imported from default.nix, ingress removed from cloudflared.nix).
+# docker.io/bilde2910/hauk:latest (built 2026-10-01) runs PHP 8.5.11 under mod_php, which is
+# hit by CVE-2026-109618 / CVE-2026-109619 (unauthenticated RCE, fixed in 8.5.12), and upstream
+# has not rebuilt it (Hauk#244). Before re-enabling: build the image from a patched php:apache,
+# bind 127.0.0.1 only, keep memcached off the podman bridge, set display_errors/expose_php Off.
 # Temporarily share current location with others. A tool for sending "I'm here now" as an
 # expiring URL.
 #
