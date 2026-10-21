@@ -91,6 +91,95 @@
       ipv6.method = "auto";
     };
 
+    profiles.ag20r = {
+      connection = {
+        id = "AG20R-8C21B8";
+        type = "wifi";
+        autoconnect = true;
+      };
+      wifi = {
+        ssid = "AG20R-8C21B8";
+        mode = "infrastructure";
+      };
+      wifi-security = {
+        key-mgmt = "wpa-psk";
+        psk = "$AG20R_PSK";
+      };
+      ipv4.method = "auto";
+      ipv6.method = "auto";
+    };
+
+    # The lab's SSIDs. The 2.4 GHz one shares the 5 GHz one's passphrase.
+    profiles.ist-members = {
+      connection = {
+        id = "ist_members";
+        type = "wifi";
+        autoconnect = true;
+      };
+      wifi = {
+        ssid = "ist_members";
+        mode = "infrastructure";
+      };
+      wifi-security = {
+        key-mgmt = "wpa-psk";
+        psk = "$IST_MEMBERS_PSK";
+      };
+      ipv4.method = "auto";
+      ipv6.method = "auto";
+    };
+    profiles.ist-members-24 = {
+      connection = {
+        id = "ist_members2.4";
+        type = "wifi";
+        autoconnect = true;
+      };
+      wifi = {
+        ssid = "ist_members2.4";
+        mode = "infrastructure";
+      };
+      wifi-security = {
+        key-mgmt = "wpa-psk";
+        psk = "$IST_MEMBERS_PSK";
+      };
+      ipv4.method = "auto";
+      ipv6.method = "auto";
+    };
+
+    # The DGX (promaxgb10). Its own hotspot is joined by hand only, so autoconnect stays off.
+    profiles.dgx-hotspot = {
+      connection = {
+        id = "dgx-hotspot";
+        type = "wifi";
+        autoconnect = false;
+      };
+      wifi = {
+        ssid = "promaxgb10-4ab6";
+        mode = "infrastructure";
+      };
+      wifi-security = {
+        key-mgmt = "wpa-psk";
+        psk = "$DGX_HOTSPOT_PSK";
+      };
+      ipv4.method = "auto";
+      ipv6.method = "ignore";
+    };
+    # Direct cable to the DGX through the USB Ethernet adapter. "shared" makes the laptop the
+    # DHCP server and NAT gateway on 10.42.0.0/24, so the DGX gets online through the laptop's uplink.
+    profiles.dgx-share = {
+      connection = {
+        id = "dgx-share";
+        type = "ethernet";
+        interface-name = "enp0s20f0u1";
+        autoconnect = true;
+        autoconnect-priority = 100;
+      };
+      ipv4 = {
+        method = "shared";
+        addresses = "10.42.0.1/24";
+      };
+      ipv6.method = "disabled";
+    };
+
     # The iPhone's Personal Hotspot, as the fallback uplink when nothing else is around. The
     # negative priority makes any other known network win when both are in range, and metered
     # tells NetworkManager-aware apps to hold back on large background transfers.
