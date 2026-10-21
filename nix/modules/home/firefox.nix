@@ -263,6 +263,9 @@ in
         # Zen Internet's transparent website backgrounds reach that window (Linux only).
         "widget.transparent-windows" = pkgs.stdenv.hostPlatform.isLinux;
         "browser.tabs.allow_transparent_browser" = pkgs.stdenv.hostPlatform.isLinux;
+        # File pickers through the xdg portal (yazi via termfilechooser on the laptop) instead
+        # of Firefox's own GTK dialog. 1 = always, 2 = Firefox's default auto-detect.
+        "widget.use-xdg-desktop-portal.file-picker" = if pkgs.stdenv.hostPlatform.isLinux then 1 else 2;
 
         # Slack huddles on Firefox 155+: the DTLS ClientHello carries an X25519MLKEM768 key
         # share (1459 bytes, split over two records through TURN) and Slack's Chime media
