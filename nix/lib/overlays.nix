@@ -36,4 +36,26 @@ _final: prev: {
       })
     else
       prev.mozc;
+
+  # pyopenjtalk-plus 0.4.1-post9's test_run_njd_from_mecab_invalid_input_should_not_break_next_call
+  # matches the TypeError text "must be str", which Python 3.14 words as "Expected str, got int".
+  # Only the assertion's regex is stale; the behaviour it tests still holds. It took piper-tts and
+  # calibre, and with them nixos-laptop, down on nixos-unstable (NixOS/nixpkgs#576442, open as of
+  # 2026-10-21). Guarded on the version and on Python 3.14, so either moving drops it.
+  pythonPackagesExtensions = prev.pythonPackagesExtensions ++ [
+    (_pyFinal: pyPrev: {
+      pyopenjtalk-plus =
+        if
+          pyPrev.pyopenjtalk-plus.version == "0.4.1-post9"
+          && prev.lib.versionAtLeast pyPrev.python.version "3.14"
+        then
+          pyPrev.pyopenjtalk-plus.overridePythonAttrs (o: {
+            disabledTests = (o.disabledTests or [ ]) ++ [
+              "test_run_njd_from_mecab_invalid_input_should_not_break_next_call"
+            ];
+          })
+        else
+          pyPrev.pyopenjtalk-plus;
+    })
+  ];
 }
