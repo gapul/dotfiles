@@ -265,12 +265,14 @@ in
   # (home/niri.nix). It also keeps ghostty out of a running instance, because the portal waits
   # for this process to exit before reading the selection.
   # Opening: Enter picks the file under the cursor, Space selects several, q cancels.
-  # Saving: yazi starts on the suggested file name; pick it, or rename it first.
+  # Saving: the portal creates the suggested file (with help text, hence create_help_file=1)
+  # and yazi starts on it; pick it with Enter, or rename it first. With 0 the file does not
+  # exist and there is nothing to pick, so every save ends as a cancel.
   xdg.configFile."xdg-desktop-portal-termfilechooser/config".text = ''
     [filechooser]
     cmd=${pkgs.xdg-desktop-portal-termfilechooser}/share/xdg-desktop-portal-termfilechooser/yazi-wrapper.sh
     default_dir=$HOME
-    create_help_file=0
+    create_help_file=1
     env=TERMCMD=${pkgs.ghostty}/bin/ghostty --class=net.gapul.termfilechooser --title=termfilechooser -e
     open_mode=suggested
     save_mode=suggested
