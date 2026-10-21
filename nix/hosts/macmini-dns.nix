@@ -17,7 +17,12 @@
 # daemon. Port 53 is below 1024, so it runs as root (an agent isn't enough). The config
 # contents are shared with homeserver via lib/blocky-settings.nix; the only difference
 # is the listen address.
-{ pkgs, ... }:
+{
+  config,
+  pkgs,
+  user,
+  ...
+}:
 let
   # Every address on the host rather than a list of them. The LAN address is a DHCP reservation
   # (192.168.116.100) and the tailnet DNS setting points at the tailnet one (100.105.135.49), but
@@ -29,8 +34,59 @@ let
     listen = ":53";
   };
 
+  # DNS over TLS on 853 for nixos-laptop, under the name dns.gapul.net like homeserver's. The
+  # cert comes from lego below; blocky refuses to start when the files are missing, so until the
+  # first issue succeeds the wrapper starts the plain config instead of taking :53 down too.
+  tlsDir = "/var/lib/blocky-tls";
+  tlsSettings = import ../lib/blocky-settings.nix {
+    listen = ":53";
+    tls = {
+      listen = ":853";
+      certFile = "${tlsDir}/cert.pem";
+      keyFile = "${tlsDir}/key.pem";
+    };
+  };
+
   # blocky reads YAML. JSON is a subset of YAML, so it can be passed as is.
   configFile = pkgs.writeText "blocky.yml" (builtins.toJSON settings);
+  tlsConfigFile = pkgs.writeText "blocky-tls.yml" (builtins.toJSON tlsSettings);
+
+  # Copies what lego issued to a fixed place (its own storage layout is lego's business) and
+  # restarts blocky, which reads the files once at start.
+  deployHook = pkgs.writeShellScript "blocky-tls-deploy" ''
+    set -eu
+    install -d -m 0700 ${tlsDir}
+    install -m 0644 "$LEGO_CERT_PATH" ${tlsDir}/cert.pem
+    install -m 0600 "$LEGO_CERT_KEY_PATH" ${tlsDir}/key.pem
+    /bin/launchctl kickstart -k system/org.nixos.blocky
+  '';
+
+  # Gets the cert the first time and renews it from then on, once a day, when under 30 days
+  # are left. lego 4 (this nixpkgs) has no command that does both: `run` always orders a new
+  # cert, so it only runs while there is none. DNS-01 through Cloudflare, with the token in
+  # sops. Propagation is checked against Cloudflare directly: this host's own resolver is the
+  # blocky being served.
+  legoRun = pkgs.writeShellScript "lego-dns-cert" ''
+    set -eu
+    CF_DNS_API_TOKEN="$(cat ${config.sops.secrets."cloudflare/api_token".path})"
+    export CF_DNS_API_TOKEN
+    lego=(
+      ${pkgs.lego}/bin/lego
+      --accept-tos --email ${user.gitEmail}
+      --path /var/lib/lego
+      --dns cloudflare --dns.resolvers 1.1.1.1:53
+      --domains dns.gapul.net
+    )
+    issued=/var/lib/lego/certificates/dns.gapul.net
+    if [ -s "$issued.crt" ]; then
+      # A cert lego holds but blocky never got (the hook failed): hand it over now.
+      if [ ! -s ${tlsDir}/cert.pem ]; then
+        LEGO_CERT_PATH="$issued.crt" LEGO_CERT_KEY_PATH="$issued.key" ${deployHook}
+      fi
+      exec "''${lego[@]}" renew --days 30 --renew-hook ${deployHook}
+    fi
+    exec "''${lego[@]}" run --run-hook ${deployHook}
+  '';
 
   # The macOS application firewall silently drops incoming connections to binaries it
   # doesn't recognize. Nix binaries are ad-hoc signed, so they hit this every time, and it
@@ -63,12 +119,32 @@ let
         done
       ) &
     fi
+    if [ -s ${tlsDir}/cert.pem ] && [ -s ${tlsDir}/key.pem ]; then
+      exec ${pkgs.blocky}/bin/blocky --config ${tlsConfigFile}
+    fi
     exec ${pkgs.blocky}/bin/blocky --config ${configFile}
   '';
 in
 {
   # `command` rather than ProgramArguments: nix-darwin then waits for /nix/store, which macOS 27
   # mounts after launchd starts daemons (see the minecraft daemons in macmini.nix).
+  sops.secrets."cloudflare/api_token".sopsFile = ../../secrets/macmini.yaml;
+
+  launchd.daemons.lego-dns-cert = {
+    command = "${legoRun}";
+    serviceConfig = {
+      RunAtLoad = true;
+      StartCalendarInterval = [
+        {
+          Hour = 5;
+          Minute = 17;
+        }
+      ];
+      StandardOutPath = "/var/log/lego-dns-cert.log";
+      StandardErrorPath = "/var/log/lego-dns-cert.log";
+    };
+  };
+
   launchd.daemons.blocky = {
     command = "${launch}";
     serviceConfig = {
