@@ -401,7 +401,7 @@ in
     niji.nijigenerate # Inochi2D rigging editor
     niji.nijiexpose # Inochi2D streaming runtime
     (import ../pkgs/touchdesigner.nix { inherit pkgs; })
-    musescore
+    # musescore: dropped 2026-10-22 while 4.7.5 fails with Qt 6.12 (NixOS/nixpkgs#576580); re-add once that is fixed
     cardinal
     surge-xt
     vcv-rack
