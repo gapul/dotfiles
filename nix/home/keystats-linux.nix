@@ -1,4 +1,4 @@
-{ ... }:
+_:
 let
   # Source of truth is gapul/keystats (linux/), checked out via ghq; this only pins a rev.
   # Bump the rev in the URL + sha256 together when the Linux port changes.
