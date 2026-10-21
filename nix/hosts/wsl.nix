@@ -26,7 +26,7 @@
     wslConf.automount.enabled = true;
   };
 
-  # Same selective unfree as the real NixOS machine. Kept in line with mkWslPkgs on the
+  # Same selective unfree as the real NixOS machine. Kept in line with mkPkgs on the
   # standalone HM side (otherwise the same roles.wsl fails eval only under the NixOS integration).
   nixpkgs.config.allowUnfreePredicate =
     pkg:

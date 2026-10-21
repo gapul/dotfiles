@@ -1,12 +1,12 @@
 {
   config,
   lib,
-  nixpkgsAgents,
+  nixpkgsUnstable,
   pkgs,
   ...
 }:
 let
-  agentPkgs = nixpkgsAgents.legacyPackages.${pkgs.stdenv.hostPlatform.system};
+  agentPkgs = nixpkgsUnstable.legacyPackages.${pkgs.stdenv.hostPlatform.system};
   dotfiles = "${config.home.homeDirectory}/.dotfiles";
   agentState =
     path:

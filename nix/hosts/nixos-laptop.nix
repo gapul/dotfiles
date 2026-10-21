@@ -3,7 +3,7 @@
   pkgs,
   lib,
   user,
-  nixpkgsAgents,
+  nixpkgsUnstable,
   hardwareConfig ? ./nixos-laptop-hardware.nix,
   ...
 }:
@@ -83,12 +83,12 @@ let
       esac
     '';
   };
-  # Fast-moving agent CLIs come from the dedicated nixpkgs-agents lineage, same as on
+  # Fast-moving agent CLIs come from the rolling nixpkgs (nixpkgsUnstable), same as on
   # darwin (hosts/darwin.nix). systemPackages rather than home.packages for the PATH
   # order: /run/current-system/sw/bin sits ahead of ~/.local/bin, so a stray
   # self-installed copy cannot win.
   agentPkgs = import ../lib/unstable-pkgs.nix {
-    nixpkgsUnstable = nixpkgsAgents;
+    inherit nixpkgsUnstable;
     inherit (pkgs.stdenv.hostPlatform) system;
   };
 in

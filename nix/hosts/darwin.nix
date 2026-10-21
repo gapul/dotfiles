@@ -5,17 +5,13 @@
   cherri,
   llmAgents,
   mocopiMac,
-  nixpkgsAgents,
   nixpkgsUnstable,
+  nixpkgsFritzing,
   user,
   includeManualSources ? true,
   ...
 }:
 let
-  agentPkgs = import ../lib/unstable-pkgs.nix {
-    nixpkgsUnstable = nixpkgsAgents;
-    inherit (pkgs.stdenv.hostPlatform) system;
-  };
   unstablePkgs = import ../lib/unstable-pkgs.nix {
     inherit nixpkgsUnstable;
     inherit (pkgs.stdenv.hostPlatform) system;
@@ -96,7 +92,7 @@ in
       port="''${2:-8932}"
       echo "playwright-mcp: $browser on http://localhost:$port/mcp (Ctrl-C to stop)" >&2
       export PLAYWRIGHT_BROWSERS_PATH=${pkgs.playwright-driver.browsers}
-      exec ${lib.getExe agentPkgs.playwright-mcp} \
+      exec ${lib.getExe unstablePkgs.playwright-mcp} \
         --browser "$browser" --port "$port" \
         --output-dir /tmp/playwright-test
     '')
@@ -108,8 +104,8 @@ in
     # codex: moves what its own installer put in ~/.local/bin to the declaration. It is in systemPackages
     # rather than home.packages because of PATH order: /run/current-system/sw/bin comes before
     # ~/.local/bin. On the profile side the manually installed copy would win.
-    agentPkgs.codex
-    agentPkgs.claude-code
+    unstablePkgs.codex
+    unstablePkgs.claude-code
     llmAgents.packages.${pkgs.stdenv.hostPlatform.system}.opencode
     # ─── moved off Homebrew (2026-09-15): same app, same data dirs, nothing to re-set up ───
     # Upstream's signed release carried over as-is, so TCC grants and entitlements survive:
@@ -121,8 +117,8 @@ in
     # Built from source (ad-hoc signed), which is fine for apps that ask for no TCC permission:
     pkgs.prismlauncher # instances stay in ~/Library/Application Support/PrismLauncher
     # CLI. unstable for the fast-moving ones so they don't fall behind what brew had.
-    agentPkgs.deno # denops runtime for nvim skkeleton
-    agentPkgs.cloudflared
+    unstablePkgs.deno # denops runtime for nvim skkeleton
+    unstablePkgs.cloudflared
     pkgs.tor
     pkgs.wireguard-tools
     (pkgs.callPackage ../pkgs/keebmouse.nix { })
@@ -220,7 +216,12 @@ in
     pkgs.cinny-desktop
     # ─── Creative: official is paid but nixpkgs source builds give a free full version ───
     # Unavailable/broken on 26.05-darwin, so from unstablePkgs (nixos-unstable, with allowUnfree).
-    unstablePkgs.fritzing # PCB/circuit design CAD (official DL is paid. for the ESP32 project). cached, so instant
+    # PCB/circuit design CAD (official DL is paid. for the ESP32 project). Pinned, see the
+    # nixpkgs-fritzing input. cached, so instant
+    (import ../lib/unstable-pkgs.nix {
+      nixpkgsUnstable = nixpkgsFritzing;
+      inherit (pkgs.stdenv.hostPlatform) system;
+    }).fritzing
     # DAW (official binary is pay-what-you-want. free via source build). cached, so instant.
     # Wrapped: the nixpkgs bundle links libvamp-*.so by bare name and nothing in it starts
     # (GUI or the ardour9-lua/export CLIs) until the load commands are repaired. See pkgs/.
@@ -326,7 +327,7 @@ in
     # Skim: VimTeX integration. Inverse search (click PDF -> jump to line in Neovim) + reload on save.
     CustomUserPreferences."net.sourceforge.skim-app.skim" = {
       SKTeXEditorPreset = "Custom";
-      SKTeXEditorCommand = "${agentPkgs.neovim}/bin/nvim"; # same lineage as modules/home/editor.nix
+      SKTeXEditorCommand = "${unstablePkgs.neovim}/bin/nvim"; # same lineage as modules/home/editor.nix
       SKTeXEditorArguments = "--headless -c \"VimtexInverseSearch %line '%file'\"";
       SKAutoReloadFileUpdate = true;
       SKAutoCheckFileUpdate = true;
@@ -759,7 +760,7 @@ in
       # ─── Productivity / Notes / Reading ───
       "calibre"
       "obsidian"
-      # Back from agentPkgs.zotero (2026-10-04): zotero 10.0.x fails to build on darwin in
+      # Back from unstablePkgs.zotero (2026-10-04): zotero 10.0.x fails to build on darwin in
       # nixos-unstable ("AboutTranslations ... not found in ActorManagerParent.sys.mjs"), which
       # blocked every flake.lock PR. Same app and data dirs either way; return to nixpkgs once
       # NixOS/nixpkgs#569006 (or a successor) lands.

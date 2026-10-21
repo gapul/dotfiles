@@ -445,7 +445,7 @@ _maintain-macos:
     gc_out=$(mktemp)
     nh clean all --keep 1 --keep-since 0h >"$gc_out" 2>&1 &
     gc_pid=$!
-    # No `nix flake update` here on purpose. The weekly update-flake-lock workflow opens a PR for
+    # No `nix flake update` here on purpose. The hourly update-flake-lock workflow opens a PR for
     # it, and CI builds that lock and pushes the results to cachix, so rebuilding on a merged lock
     # is mostly downloads. Bumping the lock locally instead lands on a tree nothing has ever built
     # and turns every maintain into a from-source build of every custom package. `just update`
