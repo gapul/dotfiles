@@ -48,6 +48,12 @@
     # on unstable again, add a pinned input for that app alone rather than a second lineage.
     nixpkgs-nixos.url = "github:NixOS/nixpkgs/nixos-unstable";
 
+    # The one such pin: fritzing 1.0.6 segfaults on aarch64-darwin while generating its parts
+    # database at nixos-unstable 02c087f (2026-10-20), and isn't in cache.nixos.org there.
+    # This is the last commit where it built and is cached. A commit, not a branch, so lock
+    # updates leave it alone; drop it once fritzing builds on nixpkgs-nixos again.
+    nixpkgs-fritzing.url = "github:NixOS/nixpkgs/fe13242281a67641c0102cdb1087f0ebe586c7df";
+
     nix-darwin.url = "github:nix-darwin/nix-darwin/nix-darwin-26.05";
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
     # FOSS Linux builder on the macmini (hosts/macmini-linux-builder.nix): a Virtualization.framework
@@ -303,6 +309,7 @@
         brewNix = brew-nix;
         mocopiMac = mocopi-mac;
         inherit (commonSpecialArgs) llmAgents nixpkgsUnstable;
+        nixpkgsFritzing = inputs.nixpkgs-fritzing;
         inherit cherri;
         # Offload heavy builds to the macmini. It is the same aarch64-darwin, so they run as is.
         #

@@ -6,6 +6,7 @@
   llmAgents,
   mocopiMac,
   nixpkgsUnstable,
+  nixpkgsFritzing,
   user,
   includeManualSources ? true,
   ...
@@ -215,7 +216,12 @@ in
     pkgs.cinny-desktop
     # ─── Creative: official is paid but nixpkgs source builds give a free full version ───
     # Unavailable/broken on 26.05-darwin, so from unstablePkgs (nixos-unstable, with allowUnfree).
-    unstablePkgs.fritzing # PCB/circuit design CAD (official DL is paid. for the ESP32 project). cached, so instant
+    # PCB/circuit design CAD (official DL is paid. for the ESP32 project). Pinned, see the
+    # nixpkgs-fritzing input. cached, so instant
+    (import ../lib/unstable-pkgs.nix {
+      nixpkgsUnstable = nixpkgsFritzing;
+      inherit (pkgs.stdenv.hostPlatform) system;
+    }).fritzing
     # DAW (official binary is pay-what-you-want. free via source build). cached, so instant.
     # Wrapped: the nixpkgs bundle links libvamp-*.so by bare name and nothing in it starts
     # (GUI or the ardour9-lua/export CLIs) until the load commands are repaired. See pkgs/.
