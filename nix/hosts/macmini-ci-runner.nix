@@ -66,22 +66,7 @@ let
 
   # Register if not yet registered, then just run. config.sh creates .runner, so its presence
   # tells the second and later runs apart.
-  # Provide a node20 alias pointing to node24 for actions that require node20
-  # (actions/checkout, actions/cache, etc.).
-  #
-  # nixpkgs' github-runner only bundles node24 (upstream dropped node20).
-  # GitHub's hosted runners silently redirect node20 actions to node24, but
-  # self-hosted ones dutifully look for node20 and stop with
-  # "externals/node20/bin/node ... No such file or directory".
-  #
-  # The environment variable (ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION) did not work. Whether set
-  # in the process environment or written to .env, the runner looks at the real files in the store.
-  # Providing the real file is the reliable fix.
-  runner = pkgs.github-runner.overrideAttrs (old: {
-    postFixup = (old.postFixup or "") + ''
-      ln -sfn node24 $out/lib/externals/node20
-    '';
-  });
+  runner = pkgs.github-runner;
 
   runScript = pkgs.writeShellScript "gh-runner-macmini" ''
     set -euo pipefail

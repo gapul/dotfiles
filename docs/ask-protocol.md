@@ -247,8 +247,8 @@ channels, and the layers above stay as they are.
 
 - Getting the Touch ID helper onto the machine declaratively. It cannot be built through nix here
   — nixpkgs' swift will not link LocalAuthentication, the wall the Apple Speech work documented —
-  so it wants a CI build and a fetched release, the way lightpanda and terminal-browser already
-  work. `helper/build.sh` in github.com/gapul/ask installs it by hand until then, and the broker
+  so it wants a CI build and a fetched release, the way terminal-browser already
+  works. `helper/build.sh` in github.com/gapul/ask installs it by hand until then, and the broker
   skips the channel when the app is not there.
 - The dialog stays on screen after the local timeout, because the elicitation and the osascript
   call are not cancelled when another channel wins. Answering a stale one does nothing.
