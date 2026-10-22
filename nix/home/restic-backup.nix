@@ -138,7 +138,7 @@ in
 {
   home.packages = [ pkgs.restic ];
 
-  # restic passphrase (stored in sops's defaultSopsFile = secrets/secrets.yaml)
+  # restic passphrase (stored in sops's defaultSopsFile = secrets/common.yaml)
   sops.secrets."restic_password".path = common.passwordFile;
 
   # env sourced by the Justfile / interactive shell (SSO for repo/password/rclone/archiveTag).

@@ -31,7 +31,7 @@
 #   the remote exists in rclone.conf. Note that rclone.conf is a symlink into the sops-nix secret
 #   (home/secrets.nix, key rclone_conf), so `rclone config create` writes are thrown away at the
 #   next activation. Get a token with `rclone authorize drive` and put the section into
-#   secrets/secrets.yaml instead.
+#   secrets/common.yaml instead.
 let
   home = config.home.homeDirectory;
   rcloneConf = "${home}/.config/rclone/rclone.conf";

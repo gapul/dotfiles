@@ -45,6 +45,9 @@ let
       logFile
       backupPaths
       ;
+    # Retention for this host's snapshots only; the mac mini prunes the shared repository, and a
+    # second prune over rclone would fight it for the exclusive lock.
+    forgetSnippet = common.forgetOwnHostOnly;
     extraPathPkgs = [ pkgs.libnotify ];
     notifyBody = ''notify-send "$1" "$2" 2>/dev/null || true'';
     parseSnapshotTime = ''$(date -d "$latest" +%s 2>/dev/null || echo 0)'';
@@ -72,7 +75,7 @@ in
 {
   home.packages = [ pkgs.restic ];
 
-  # restic passphrase (stored in sops defaultSopsFile = secrets/secrets.yaml)
+  # restic passphrase (stored in sops defaultSopsFile = secrets/common.yaml)
   sops.secrets."restic_password".path = common.passwordFile;
 
   # env sourced by Justfile / interactive shells (SSO for repo/password/rclone/archiveTag).
