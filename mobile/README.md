@@ -8,7 +8,7 @@ and where it cannot, the tooling stops at reporting the difference.
 ```
 mobile/
 ├── android/
-│   ├── apps.tsv + apps.sh          # older app declaration against the device; F-Droid apps install too
+│   ├── apps.tsv + apps.ts          # older app declaration against the device; F-Droid apps install too
 │   ├── os-settings.conf            # global settings pushed with adb
 │   ├── os-apps.tsv + os.sh         # per-app settings: permissions, battery, default launcher
 │   ├── launcher-theme.py           # generates Kvaesitso's theme from palettes.json
@@ -28,9 +28,9 @@ nix/hosts/droid.nix                 # the CLI environment inside Termux, through
 | Layer | Android | iOS |
 |---|---|---|
 | Apps: declared in | `configs/android/obtainium.json` (Obtainium); `android/apps.tsv` is older and partial | `ios/apps.tsv` |
-| Apps: confirming they exist | `apps.sh verify` (`apps.tsv` rows only), against the F-Droid index, the GitHub API and Play | `apps.sh verify`, against the iTunes API and the AltStore source |
-| Apps: comparing with the device | `apps.sh status`, over adb | `apps.sh status`, through ideviceinstaller over USB |
-| Apps: installing | `droid obtainium push` hands Obtainium its list; `apps.sh install` covers F-Droid rows only | Not possible; it needs a signed ipa |
+| Apps: confirming they exist | `apps.ts verify` (`apps.tsv` rows only), against the F-Droid index, the GitHub API and Play | `apps.sh verify`, against the iTunes API and the AltStore source |
+| Apps: comparing with the device | `apps.ts status`, over adb | `apps.sh status`, through ideviceinstaller over USB |
+| Apps: installing | `droid obtainium push` hands Obtainium its list; `apps.ts install` covers F-Droid rows only | Not possible; it needs a signed ipa |
 | OS settings, global | `os-settings.conf` through `os.sh` | Not possible, beyond what a `.mobileconfig` can reach |
 | OS settings, per app | `os-apps.tsv` through `os.sh` | Not possible |
 | Launcher | Setting the default, and generating the theme. Layout is not possible | The home screen is untouched |
