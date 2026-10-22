@@ -1485,7 +1485,7 @@ gdrive cmd="status":
 # Diff the repo's declarations against Cloudflare DNS: A records, tunnel CNAMEs, and mail (MX/SPF/DKIM)
 [group('Homelab')]
 dns *flags:
-    @scripts/check-dns-drift.sh {{flags}}
+    @nix shell nixpkgs#bun -c scripts/check-dns-drift.ts {{flags}}
 
 # Build the NixOS-WSL rootfs tarball on homeserver and bring it back (mac can't build it)
 [group('Homelab')]
@@ -1525,7 +1525,7 @@ esphome:
 # Diff apps.tsv against the device, or converge it (`just android-apps` / `install` / `verify` / `obtainium`)
 [group('Mobile')]
 android-apps cmd="status":
-    @nix shell nixpkgs#android-tools nixpkgs#fdroidcl -c mobile/android/apps.sh {{cmd}}
+    @nix shell nixpkgs#android-tools nixpkgs#fdroidcl nixpkgs#bun -c mobile/android/apps.ts {{cmd}}
 
 # Apply the declared Android OS settings over adb (`just android-os` = diff + apply, `just android-os --dry-run`)
 [group('Mobile')]
@@ -1565,4 +1565,4 @@ mail-profiles mode="mac" port="8000":
 # Self-check both platforms' scripts with stubbed adb / ideviceinstaller (no device needed)
 [group('Mobile')]
 mobile-test:
-    @mobile/android/test.sh && mobile/ios/test.sh
+    @nix shell nixpkgs#bun -c mobile/android/test.sh && mobile/ios/test.sh
