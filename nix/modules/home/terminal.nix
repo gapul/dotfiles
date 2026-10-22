@@ -8,43 +8,12 @@
 let
   c = import ../../lib/theme.nix; # active theme's palette (switch via active in nix/lib/theme.nix)
 
-  # Generate tmux's rose-pine status bar from the active palette c.
+  # tmux's rose-pine status bar from the active palette c (layout shared with the committed
+  # configs/terminals/tmux/theme-remote.conf, see lib/tmux-theme.nix).
   # Switch active in palettes.json -> just rebuild follows it, same as the other themed tools.
-  mkTmuxTheme = p: ''
-    # rose-pine (generated from configs/theme/palettes.json — do not edit by hand)
-    set -g status-position top
-    set -g status-interval 5
-    set -g status-justify left
-
-    set -g status-style               "bg=#${p.base},fg=#${p.subtle}"
-    set -g status-left-length 40
-    set -g status-right-length 80
-    set -g status-left  "#[bg=#${p.pine},fg=#${p.base},bold] #S #[bg=#${p.base},fg=#${p.pine}]#[default] "
-    # status-right, left to right:
-    #   - PREFIX badge while the prefix key is armed (client_prefix). tmux redraws the status
-    #     on client_prefix change, so it appears/disappears in real time (independent of interval).
-    #   - 💾 HH:MM = last tmux-resurrect save time, so you can always see it saved without
-    #     pressing anything. Read via a script because tmux would strftime-expand %-tokens in
-    #     an inline #(); the script keeps the % inside itself. (continuum here has no
-    #     #{continuum_status}, so this is the reliable way to surface the last save.)
-    set -g status-right "#{?client_prefix,#[bg=#${p.love}#,fg=#${p.base}#,bold] PREFIX #[default] ,}#[fg=#${p.muted}]#(${config.home.homeDirectory}/.config/tmux/resurrect-status.sh) #[fg=#${p.muted}]%Y-%m-%d #[fg=#${p.foam}]%H:%M "
-
-    # inactive / active windows (tabs)
-    set -g window-status-format         "#[fg=#${p.muted}] #I #W "
-    set -g window-status-current-format "#[bg=#${p.overlay},fg=#${p.iris},bold] #I #W "
-    set -g window-status-separator ""
-    set -g window-status-activity-style "fg=#${p.gold}"
-
-    # pane border / message / copy mode
-    set -g pane-border-style        "fg=#${p.overlay}"
-    set -g pane-active-border-style "fg=#${p.pine}"
-    set -g message-style            "bg=#${p.overlay},fg=#${p.text}"
-    set -g message-command-style    "bg=#${p.overlay},fg=#${p.text}"
-    set -g mode-style               "bg=#${p.hlMed},fg=#${p.text}"
-    set -g display-panes-active-colour "#${p.iris}"
-    set -g display-panes-colour        "#${p.muted}"
-    set -g clock-mode-colour           "#${p.foam}"
-  '';
+  mkTmuxTheme =
+    p:
+    (import ../../lib/tmux-theme.nix).mk p "${config.home.homeDirectory}/.config/tmux/resurrect-status.sh";
 in
 {
   # Distribute Ghostty's terminfo to all hosts. If TERM=xterm-ghostty is unknown on an
