@@ -67,6 +67,11 @@ in
         ]
       ))
       poppler-utils # PDF CLI (pdftotext etc. formerly brew poppler)
+      # imozuru Claude Code plugin: its scripts need Python >= 3.10 (macOS /usr/bin/python3 is 3.9),
+      # yt-dlp pulls YouTube subtitles, tesseract OCRs PDFs without a text layer (with pdftoppm above).
+      python3
+      yt-dlp
+      tesseract
       fastPkgs.bitwarden-cli # Bitwarden (bw)
       fastPkgs.syft # SBOM
       radare2 # reverse engineering (r2), small native binaries (e.g. REAPER)
