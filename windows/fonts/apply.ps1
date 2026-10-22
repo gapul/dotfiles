@@ -11,7 +11,6 @@
 [CmdletBinding()]
 param(
     [switch]$DryRun,
-    [switch]$Force,        # 互換のため残す (HackGen は未 install 時だけ入れる)
     [switch]$SkipHackGen   # HackGen 自動 DL を skip
 )
 
