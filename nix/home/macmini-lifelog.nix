@@ -1,4 +1,9 @@
-{ config, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 # Writes the daily lifelog notes (timeline + facts + summary) for the Obsidian vault. The code
 # is personal-tools/lifelog (private repo); its docstring lists the sources and the rules.
 #
@@ -13,24 +18,27 @@ let
   home = config.home.homeDirectory;
   tools = "${home}/Developer/github.com/gapul/personal-tools";
 
-  run = pkgs.writeShellScript "lifelog" ''
-    set -u
-    # launchd passes no LANG; Python then writes the Japanese note fine but git/gh messages
-    # and anything a shell interpolates next to multibyte text go wrong.
-    export LANG=en_US.UTF-8
-    export PATH="${pkgs.gh}/bin:${pkgs.rsync}/bin:${pkgs.git}/bin:/usr/bin:/bin"
-    # https remote and no terminal: never wait on a credential prompt. A stale clone only means
-    # an older script, so a failed pull is not fatal.
-    GIT_TERMINAL_PROMPT=0 git -C "${tools}" pull -q --ff-only >/dev/null 2>&1 || true
-    [ -f "${tools}/lifelog/lifelog.py" ] || exit 0
-    exec ${pkgs.python3}/bin/python3 "${tools}/lifelog/lifelog.py"
-  '';
+  run = pkgs.writeShellApplication {
+    name = "lifelog";
+    bashOptions = [ "nounset" ];
+    text = ''
+      # launchd passes no LANG; Python then writes the Japanese note fine but git/gh messages
+      # and anything a shell interpolates next to multibyte text go wrong.
+      export LANG=en_US.UTF-8
+      export PATH="${pkgs.gh}/bin:${pkgs.rsync}/bin:${pkgs.git}/bin:/usr/bin:/bin"
+      # https remote and no terminal: never wait on a credential prompt. A stale clone only means
+      # an older script, so a failed pull is not fatal.
+      GIT_TERMINAL_PROMPT=0 git -C "${tools}" pull -q --ff-only >/dev/null 2>&1 || true
+      [ -f "${tools}/lifelog/lifelog.py" ] || exit 0
+      exec ${pkgs.python3}/bin/python3 "${tools}/lifelog/lifelog.py"
+    '';
+  };
 in
 {
   launchd.agents.lifelog = {
     enable = true;
     config = {
-      ProgramArguments = [ "${run}" ];
+      ProgramArguments = [ (lib.getExe run) ];
       # Today's note grows through the day; yesterday's settles once the main Mac's snapshot
       # (04:20 or on wake) arrives. Unchanged days cost a few API calls and no summary.
       StartInterval = 3600;

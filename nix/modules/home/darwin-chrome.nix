@@ -121,22 +121,26 @@ let
   # branches on AppleInterfaceStyle inside colors.sh, so re-running it is enough to follow
   # the OS. Polling, so no extra binary is needed.
   # tmux is on the nix profile PATH; include it so the tmux re-source below is found.
-  themeWatch = pkgs.writeShellScript "theme-watch" ''
-    export PATH="/opt/homebrew/bin:$HOME/.local/state/nix/profile/bin:$PATH"
-    last=""
-    while true; do
-      cur="$(defaults read -g AppleInterfaceStyle 2>/dev/null || echo Light)"
-      if [ "$cur" != "$last" ]; then
-        last="$cur"
-        # バーは内蔵用と外部モニタ用の 2 インスタンスあるので両方 reload する
-        "$HOME/.config/sketchybar/helpers/sb-all.sh" --reload
-        # tmux: re-source theme.conf so the running server re-picks rose-pine / rose-pine-dawn
-        # by the new appearance. No-op if no tmux server is running.
-        command -v tmux >/dev/null 2>&1 && tmux source-file "$HOME/.config/tmux/theme.conf" >/dev/null 2>&1
-      fi
-      sleep 2
-    done
-  '';
+  themeWatch = pkgs.writeShellApplication {
+    name = "theme-watch";
+    bashOptions = [ ];
+    text = ''
+      export PATH="/opt/homebrew/bin:$HOME/.local/state/nix/profile/bin:$PATH"
+      last=""
+      while true; do
+        cur="$(defaults read -g AppleInterfaceStyle 2>/dev/null || echo Light)"
+        if [ "$cur" != "$last" ]; then
+          last="$cur"
+          # バーは内蔵用と外部モニタ用の 2 インスタンスあるので両方 reload する
+          "$HOME/.config/sketchybar/helpers/sb-all.sh" --reload
+          # tmux: re-source theme.conf so the running server re-picks rose-pine / rose-pine-dawn
+          # by the new appearance. No-op if no tmux server is running.
+          command -v tmux >/dev/null 2>&1 && tmux source-file "$HOME/.config/tmux/theme.conf" >/dev/null 2>&1
+        fi
+        sleep 2
+      done
+    '';
+  };
 in
 {
   # The bar is tuned live, so the config directory is one out-of-store symlink into the checkout
@@ -185,13 +189,13 @@ in
   # The ~/.config copy stays for manual invocation — same derivation, so it can't drift.
   # (The sketchybar helpers deliberately stay out of the store: the whole config dir is an
   #  mkOutOfStoreSymlink into the checkout because the bar is tuned live.)
-  home.file.".config/theme/theme-watch.sh".source = themeWatch;
+  home.file.".config/theme/theme-watch.sh".source = lib.getExe themeWatch;
 
   # Launch the watcher above as a resident launchd agent (at login + liveness monitoring).
   launchd.agents.theme-watch = {
     enable = true;
     config = {
-      ProgramArguments = [ "${themeWatch}" ];
+      ProgramArguments = [ (lib.getExe themeWatch) ];
       RunAtLoad = true;
       KeepAlive = true;
       ProcessType = "Background";

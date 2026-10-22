@@ -58,7 +58,7 @@ let
     Unit.Description = desc;
     Service = {
       Type = "oneshot";
-      ExecStart = "${script}";
+      ExecStart = lib.getExe script;
       Nice = 5;
       IOSchedulingClass = "idle";
     };

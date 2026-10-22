@@ -68,24 +68,28 @@ let
 
   # urlwatch 2.29 in nixpkgs predates the built-in ntfy reporter; the shell reporter pipes the
   # text report into this. NTFY_TOKEN/NTFY_TOPIC come from gatus.env like the other alerts.
-  notify = pkgs.writeShellScript "site-watch-notify" ''
-    body=$(${pkgs.coreutils}/bin/cat)
-    [ -n "$body" ] || exit 0
-    exec ${pkgs.curl}/bin/curl -fsS --max-time 15 \
-      -H "Authorization: Bearer $NTFY_TOKEN" \
-      -H "Title: site-watch" \
-      -H "Tags: bell" \
-      -H "Priority: high" \
-      --data-binary "$body" \
-      "http://127.0.0.1:8082/$NTFY_TOPIC" -o /dev/null
-  '';
+  notify = pkgs.writeShellApplication {
+    name = "site-watch-notify";
+    bashOptions = [ ];
+    text = ''
+      body=$(${pkgs.coreutils}/bin/cat)
+      [ -n "$body" ] || exit 0
+      exec ${pkgs.curl}/bin/curl -fsS --max-time 15 \
+        -H "Authorization: Bearer $NTFY_TOKEN" \
+        -H "Title: site-watch" \
+        -H "Tags: bell" \
+        -H "Priority: high" \
+        --data-binary "$body" \
+        "http://127.0.0.1:8082/$NTFY_TOPIC" -o /dev/null
+    '';
+  };
 
   config = pkgs.writeText "site-watch-config.yaml" ''
     display: {new: true, error: true, unchanged: false, empty-diff: true}
     report:
       text: {details: true, footer: false, line_length: 75, minimal: false}
       stdout: {enabled: true, color: false}
-      shell: {enabled: true, command: ['${notify}'], ignore_stdout: true, ignore_stderr: false}
+      shell: {enabled: true, command: ['${lib.getExe notify}'], ignore_stdout: true, ignore_stderr: false}
     job_defaults: {all: {}, shell: {}, url: {}, browser: {}}
   '';
 in

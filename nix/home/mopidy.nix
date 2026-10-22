@@ -33,21 +33,25 @@ let
 
   # At login, sops-nix (which generates config/auth) and mopidy startup may run concurrently.
   # Wait until the token is present in the config and the auth file is readable before starting.
-  startScript = pkgs.writeShellScript "mopidy-start" ''
-    conf="${confPath}"
-    mkdir -p "$(dirname "${authPath}")"
-    for _ in $(seq 1 60); do
-      if [ -r "$conf" ] && [ -r "${authSeedPath}" ] && grep -q '^token = .' "$conf" 2>/dev/null; then
-        break
+  startScript = pkgs.writeShellApplication {
+    name = "mopidy-start";
+    bashOptions = [ ];
+    text = ''
+      conf="${confPath}"
+      mkdir -p "$(dirname "${authPath}")"
+      for _ in $(seq 1 60); do
+        if [ -r "$conf" ] && [ -r "${authSeedPath}" ] && grep -q '^token = .' "$conf" 2>/dev/null; then
+          break
+        fi
+        sleep 1
+      done
+      if [ ! -s "${authPath}" ] && [ -r "${authSeedPath}" ]; then
+        cp "${authSeedPath}" "${authPath}"
+        chmod 600 "${authPath}"
       fi
-      sleep 1
-    done
-    if [ ! -s "${authPath}" ] && [ -r "${authSeedPath}" ]; then
-      cp "${authSeedPath}" "${authPath}"
-      chmod 600 "${authPath}"
-    fi
-    exec ${mopidyEnv}/bin/mopidy --config "$conf"
-  '';
+      exec ${mopidyEnv}/bin/mopidy --config "$conf"
+    '';
+  };
 in
 {
   home.packages = [
@@ -115,7 +119,7 @@ in
   launchd.agents.mopidy = {
     enable = true;
     config = {
-      ProgramArguments = [ "${startScript}" ];
+      ProgramArguments = [ "${startScript}/bin/mopidy-start" ];
       RunAtLoad = true;
       KeepAlive = true;
       ProcessType = "Interactive"; # don't lower priority, for audio playback

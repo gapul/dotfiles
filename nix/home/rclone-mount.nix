@@ -64,84 +64,93 @@ let
       mountPoint = "${home}/Sync/${name}";
       logFile = "${logDir}/${name}.log";
     in
-    pkgs.writeShellScript "rclone-mount-${name}" ''
-      set -uo pipefail
-      export PATH=${rcloneBin}:$PATH
-      mkdir -p "${logDir}" "${cacheDir}" "${mountPoint}"
+    pkgs.writeShellApplication {
+      name = "rclone-mount-${name}";
+      # False positive: cleanup is invoked by `trap cleanup TERM INT`; ShellCheck 0.11 misses traps
+      # on functions that `exit` when the script also ends in an explicit `exit`.
+      excludeShellChecks = [ "SC2329" ];
+      bashOptions = [
+        "nounset"
+        "pipefail"
+      ];
+      text = ''
+        export PATH=${rcloneBin}:$PATH
+        mkdir -p "${logDir}" "${cacheDir}" "${mountPoint}"
 
-      # Exit 0 when unconfigured. Paired with KeepAlive.SuccessfulExit=false below, launchd leaves it
-      # alone instead of respawning a doomed mount every few seconds until the remote is created.
-      if [ ! -f "${rcloneConf}" ] || ! grep -q '^\[${name}\]' "${rcloneConf}"; then
-        echo "$(date '+%F %T') SKIP: remote ${name} not in ${rcloneConf} (run: rclone config create ${name} drive)" >>"${logFile}"
-        exit 0
-      fi
-      # An entry in `mount` does not mean the mount works. rclone is its own NFS server, so when it
-      # dies the entry lingers with nothing behind it, and everything that touches the path blocks
-      # in uninterruptible wait — including Spotlight's mds, which takes every mdfind on the machine
-      # down with it (2026-08-10: the school mount sat stale for 7h because this branch kept
-      # reporting "already mounted"). Treat it as live only while an rclone is still serving it.
-      if mount | grep -q " ${mountPoint} "; then
-        if pgrep -f "nfsmount ${name}: ${mountPoint}" >/dev/null; then
-          echo "$(date '+%F %T') already mounted" >>"${logFile}"
+        # Exit 0 when unconfigured. Paired with KeepAlive.SuccessfulExit=false below, launchd leaves it
+        # alone instead of respawning a doomed mount every few seconds until the remote is created.
+        if [ ! -f "${rcloneConf}" ] || ! grep -q '^\[${name}\]' "${rcloneConf}"; then
+          echo "$(date '+%F %T') SKIP: remote ${name} not in ${rcloneConf} (run: rclone config create ${name} drive)" >>"${logFile}"
           exit 0
         fi
-        echo "$(date '+%F %T') stale mount left by a dead rclone, unmounting" >>"${logFile}"
-        umount -f "${mountPoint}" >>"${logFile}" 2>&1
-        # Give up rather than let launchd respawn against an occupied mount point every few seconds.
+        # An entry in `mount` does not mean the mount works. rclone is its own NFS server, so when it
+        # dies the entry lingers with nothing behind it, and everything that touches the path blocks
+        # in uninterruptible wait — including Spotlight's mds, which takes every mdfind on the machine
+        # down with it (2026-08-10: the school mount sat stale for 7h because this branch kept
+        # reporting "already mounted"). Treat it as live only while an rclone is still serving it.
         if mount | grep -q " ${mountPoint} "; then
-          echo "$(date '+%F %T') SKIP: could not unmount ${mountPoint} (try: sudo umount -f)" >>"${logFile}"
-          exit 0
+          if pgrep -f "nfsmount ${name}: ${mountPoint}" >/dev/null; then
+            echo "$(date '+%F %T') already mounted" >>"${logFile}"
+            exit 0
+          fi
+          echo "$(date '+%F %T') stale mount left by a dead rclone, unmounting" >>"${logFile}"
+          umount -f "${mountPoint}" >>"${logFile}" 2>&1
+          # Give up rather than let launchd respawn against an occupied mount point every few seconds.
+          if mount | grep -q " ${mountPoint} "; then
+            echo "$(date '+%F %T') SKIP: could not unmount ${mountPoint} (try: sudo umount -f)" >>"${logFile}"
+            exit 0
+          fi
         fi
-      fi
 
-      echo "$(date '+%F %T') mount start" >>"${logFile}"
-      # foreground execution (launchd keeps it alive). Exclude the restic repository to protect it:
-      # excluded paths don't appear on the mount, so they can't be deleted from Finder either.
-      # nfsmount, not mount: `rclone mount` needs macFUSE, a kext that costs a reboot and a
-      # security approval. nfsmount serves the VFS over rclone's built-in NFS server and calls
-      # mount_nfs, which needs neither root nor a third-party filesystem.
-      # Not exec'd: the shell has to outlive rclone to clean up after it. launchd stops these
-      # agents on every home-manager activation, and rclone leaves the NFS mount entry behind when
-      # it goes. Until the agent comes back, the kernel holds a mount pointed at a dead server —
-      # it logs "nfs server localhost:/<remote>: not responding" every few seconds, and everything
-      # that so much as stats the path (ls, ps, Spotlight's mds, and therefore every mdfind on the
-      # machine) blocks in uninterruptible wait. The startup path above already knows how to clear
-      # a stale entry; doing it here instead means it never exists in the first place.
-      rclone nfsmount "${name}:" "${mountPoint}" \
-        --config "${rcloneConf}" \
-        --exclude "/restic-backup/**" \
-        --exclude "/restic-archive/**" \
-        --volname "${name}" \
-        --vfs-cache-mode writes \
-        --dir-cache-time 72h \
-        --poll-interval 1m \
-        --log-file "${logFile}" \
-        --log-level INFO &
-      rclone_pid=$!
+        echo "$(date '+%F %T') mount start" >>"${logFile}"
+        # foreground execution (launchd keeps it alive). Exclude the restic repository to protect it:
+        # excluded paths don't appear on the mount, so they can't be deleted from Finder either.
+        # nfsmount, not mount: `rclone mount` needs macFUSE, a kext that costs a reboot and a
+        # security approval. nfsmount serves the VFS over rclone's built-in NFS server and calls
+        # mount_nfs, which needs neither root nor a third-party filesystem.
+        # Not exec'd: the shell has to outlive rclone to clean up after it. launchd stops these
+        # agents on every home-manager activation, and rclone leaves the NFS mount entry behind when
+        # it goes. Until the agent comes back, the kernel holds a mount pointed at a dead server —
+        # it logs "nfs server localhost:/<remote>: not responding" every few seconds, and everything
+        # that so much as stats the path (ls, ps, Spotlight's mds, and therefore every mdfind on the
+        # machine) blocks in uninterruptible wait. The startup path above already knows how to clear
+        # a stale entry; doing it here instead means it never exists in the first place.
+        rclone nfsmount "${name}:" "${mountPoint}" \
+          --config "${rcloneConf}" \
+          --exclude "/restic-backup/**" \
+          --exclude "/restic-archive/**" \
+          --volname "${name}" \
+          --vfs-cache-mode writes \
+          --dir-cache-time 72h \
+          --poll-interval 1m \
+          --log-file "${logFile}" \
+          --log-level INFO &
+        rclone_pid=$!
 
-      # Unmount only after rclone has exited, never before: it owns the write-back cache, so
-      # pulling the mount out from under a live one is how you lose the writes it still holds.
-      cleanup() {
-        kill -TERM "$rclone_pid" 2>/dev/null
-        wait "$rclone_pid" 2>/dev/null
+        # Unmount only after rclone has exited, never before: it owns the write-back cache, so
+        # pulling the mount out from under a live one is how you lose the writes it still holds.
+        cleanup() {
+          kill -TERM "$rclone_pid" 2>/dev/null
+          wait "$rclone_pid" 2>/dev/null
+          if mount | grep -q " ${mountPoint} "; then
+            umount -f "${mountPoint}" >>"${logFile}" 2>&1
+          fi
+          echo "$(date '+%F %T') stopped, mount released" >>"${logFile}"
+          exit 0
+        }
+        trap cleanup TERM INT
+
+        wait "$rclone_pid"
+        # rclone died on its own (crash, or the remote went away). Same cleanup, so KeepAlive
+        # restarts against a free mount point rather than the "could not unmount" dead end above.
+        status=$?
         if mount | grep -q " ${mountPoint} "; then
           umount -f "${mountPoint}" >>"${logFile}" 2>&1
         fi
-        echo "$(date '+%F %T') stopped, mount released" >>"${logFile}"
-        exit 0
-      }
-      trap cleanup TERM INT
-
-      wait "$rclone_pid"
-      # rclone died on its own (crash, or the remote went away). Same cleanup, so KeepAlive
-      # restarts against a free mount point rather than the "could not unmount" dead end above.
-      status=$?
-      if mount | grep -q " ${mountPoint} "; then
-        umount -f "${mountPoint}" >>"${logFile}" 2>&1
-      fi
-      echo "$(date '+%F %T') rclone exited ($status), mount released" >>"${logFile}"
-      exit "$status"
-    '';
+        echo "$(date '+%F %T') rclone exited ($status), mount released" >>"${logFile}"
+        exit "$status"
+      '';
+    };
 in
 {
   home.packages = [ pkgs.rclone ];
@@ -164,9 +173,15 @@ in
           };
           Service = {
             Type = "notify";
-            ExecCondition = "${pkgs.writeShellScript "rclone-configured-${name}" ''
-              [ -f "${rcloneConf}" ] && ${pkgs.gnugrep}/bin/grep -q '^\[${name}\]' "${rcloneConf}"
-            ''}";
+            ExecCondition = "${
+              pkgs.writeShellApplication {
+                name = "rclone-configured-${name}";
+                bashOptions = [ ];
+                text = ''
+                  [ -f "${rcloneConf}" ] && ${pkgs.gnugrep}/bin/grep -q '^\[${name}\]' "${rcloneConf}"
+                '';
+              }
+            }/bin/rclone-configured-${name}";
             ExecStartPre = [
               "${pkgs.coreutils}/bin/mkdir -p ${mountPoint} ${cacheDir}"
               "-${fusermount} -uz ${mountPoint}"
@@ -207,7 +222,7 @@ in
         value = {
           enable = true;
           config = {
-            ProgramArguments = [ "${mountScript name}" ];
+            ProgramArguments = [ (lib.getExe (mountScript name)) ];
             RunAtLoad = true;
             KeepAlive.SuccessfulExit = false; # restart a crashed mount, leave a skipped one alone
             ProcessType = "Background";

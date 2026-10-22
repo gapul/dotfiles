@@ -41,7 +41,7 @@ let
     # secrets/ belongs here too: sops-nix renders those files at activation, so a secrets-only
     # merge changes nothing on disk until a rebuild runs. That failure is completely silent —
     # the repo says one thing and ~/.ssh/config says another.
-    if ${git} diff ${range} --name-only 2>/dev/null \
+    if ${git} diff "${range}" --name-only 2>/dev/null \
        | grep -qE '^(flake\.nix|flake\.lock|nix/|configs/|secrets/|Justfile)'; then
       echo "▶ dotfiles: nix/config changed (${label}) → running just rebuild"
       # rebuild targets the main tree's current state (= merged main).
@@ -51,24 +51,28 @@ let
   '';
 
   # post-merge: after git pull / git merge. No arguments.
-  postMerge = pkgs.writeShellScript "dotfiles-post-merge" ''
-    set -euo pipefail
-    ${guardAndRebuild "HEAD@{1}..HEAD" "merge"}
-  '';
+  postMerge = pkgs.writeShellApplication {
+    name = "dotfiles-post-merge";
+    text = ''
+      ${guardAndRebuild "HEAD@{1}..HEAD" "merge"}
+    '';
+  };
 
   # post-rewrite: after git pull --rebase etc. Only when $1=rebase.
-  postRewrite = pkgs.writeShellScript "dotfiles-post-rewrite" ''
-    set -euo pipefail
-    [ "''${1:-}" = "rebase" ] || exit 0
-    ${guardAndRebuild "ORIG_HEAD..HEAD" "rebase"}
-  '';
+  postRewrite = pkgs.writeShellApplication {
+    name = "dotfiles-post-rewrite";
+    text = ''
+      [ "''${1:-}" = "rebase" ] || exit 0
+      ${guardAndRebuild "ORIG_HEAD..HEAD" "rebase"}
+    '';
+  };
 in
 {
   home.activation.installDotfilesRebuildHooks = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     if [ -d "${dotfilesDir}/.git" ]; then
       run ${pkgs.coreutils}/bin/mkdir -p "${dotfilesDir}/.git/hooks"
-      run /usr/bin/install -m 0755 ${postMerge} "${dotfilesDir}/.git/hooks/post-merge"
-      run /usr/bin/install -m 0755 ${postRewrite} "${dotfilesDir}/.git/hooks/post-rewrite"
+      run /usr/bin/install -m 0755 ${postMerge}/bin/dotfiles-post-merge "${dotfilesDir}/.git/hooks/post-merge"
+      run /usr/bin/install -m 0755 ${postRewrite}/bin/dotfiles-post-rewrite "${dotfilesDir}/.git/hooks/post-rewrite"
     fi
   '';
 }

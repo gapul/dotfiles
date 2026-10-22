@@ -13,26 +13,32 @@
 # Colors are shared via configs/theme/palettes.json (rose-pine) as SSO ([[theme]]).
 let
   # Hold a lock for the lifetime of drun so repeated gestures cannot stack windows.
-  launcher = pkgs.writeShellScript "wofi-launcher" ''
-    set -eu
-    mode="''${1:-open}"
-    pattern='^${pkgs.wofi}/bin/wofi --show drun$'
-    case "$mode" in
-      close)
-        ${pkgs.procps}/bin/pkill -u "$UID" -f "$pattern" || true
-        exit 0
-        ;;
-      toggle)
-        if ${pkgs.procps}/bin/pkill -u "$UID" -f "$pattern"; then
+  launcher = pkgs.writeShellApplication {
+    name = "wofi-launcher";
+    bashOptions = [
+      "errexit"
+      "nounset"
+    ];
+    text = ''
+      mode="''${1:-open}"
+      pattern='^${pkgs.wofi}/bin/wofi --show drun$'
+      case "$mode" in
+        close)
+          ${pkgs.procps}/bin/pkill -u "$UID" -f "$pattern" || true
           exit 0
-        fi
-        ;;
-      open) ;;
-      *) exit 2 ;;
-    esac
-    exec ${pkgs.util-linux}/bin/flock -n -E 0 "$XDG_RUNTIME_DIR/wofi-drun.lock" \
-      ${pkgs.wofi}/bin/wofi --show drun
-  '';
+          ;;
+        toggle)
+          if ${pkgs.procps}/bin/pkill -u "$UID" -f "$pattern"; then
+            exit 0
+          fi
+          ;;
+        open) ;;
+        *) exit 2 ;;
+      esac
+      exec ${pkgs.util-linux}/bin/flock -n -E 0 "$XDG_RUNTIME_DIR/wofi-drun.lock" \
+        ${pkgs.wofi}/bin/wofi --show drun
+    '';
+  };
   c = import ../lib/theme.nix; # c.base / c.text / c.iris ... (hex without leading #)
   wmSession = "${import ../lib/wm-session.nix { inherit pkgs; }}/bin/wm-session";
   # An app icon for the bar: a sketchybar-app-font ligature, in that font (see the workspaces
@@ -252,26 +258,30 @@ let
   # Super+/ : every keybind, searchable. Read from Hyprland itself (so it cannot go stale),
   # with the modifier mask turned back into names, plus the few things xremap adds that
   # Hyprland cannot see.
-  cheatsheet = pkgs.writeShellScript "keys-cheatsheet" ''
-    {
-      printf '%s\n' \
-        "left Ctrl / left Alt Super" \
-        "Copilot, then key    Super+key (within 1.5 s)" \
-        "Copilot, G           game mode on/off (left Ctrl back to Ctrl)" \
-        "Caps Lock            Ctrl" \
-        ""
-      ${pkgs.hyprland}/bin/hyprctl binds -j | ${pkgs.jq}/bin/jq -r '
-        def mods: [
-          (if .modmask / 64 % 2 >= 1 then "Super" else empty end),
-          (if .modmask / 4 % 2 >= 1 then "Ctrl" else empty end),
-          (if .modmask / 8 % 2 >= 1 then "Alt" else empty end),
-          (if .modmask / 1 % 2 >= 1 then "Shift" else empty end)
-        ];
-        .[] | select(.key != "") |
-        ((mods + [.key]) | join("+")) + "\t" + .dispatcher + (if .arg != "" then " " + .arg else "" end)
-      ' | ${pkgs.coreutils}/bin/sort | ${pkgs.coreutils}/bin/expand -t 22
-    } | ${pkgs.wofi}/bin/wofi --dmenu --prompt keys --width 760 --height 560 >/dev/null
-  '';
+  cheatsheet = pkgs.writeShellApplication {
+    name = "keys-cheatsheet";
+    bashOptions = [ ];
+    text = ''
+      {
+        printf '%s\n' \
+          "left Ctrl / left Alt Super" \
+          "Copilot, then key    Super+key (within 1.5 s)" \
+          "Copilot, G           game mode on/off (left Ctrl back to Ctrl)" \
+          "Caps Lock            Ctrl" \
+          ""
+        ${pkgs.hyprland}/bin/hyprctl binds -j | ${pkgs.jq}/bin/jq -r '
+          def mods: [
+            (if .modmask / 64 % 2 >= 1 then "Super" else empty end),
+            (if .modmask / 4 % 2 >= 1 then "Ctrl" else empty end),
+            (if .modmask / 8 % 2 >= 1 then "Alt" else empty end),
+            (if .modmask / 1 % 2 >= 1 then "Shift" else empty end)
+          ];
+          .[] | select(.key != "") |
+          ((mods + [.key]) | join("+")) + "\t" + .dispatcher + (if .arg != "" then " " + .arg else "" end)
+        ' | ${pkgs.coreutils}/bin/sort | ${pkgs.coreutils}/bin/expand -t 22
+      } | ${pkgs.wofi}/bin/wofi --dmenu --prompt keys --width 760 --height 560 >/dev/null
+    '';
+  };
 
   # The bar's own scripts (the items ported from the mac's sketchybar, configs/wm/sketchybar).
   # A TUI in a new ghostty window, as the mac's open_tui.sh does.
@@ -285,12 +295,16 @@ let
   # Input source: fcitx5 reports 2 when an input method is active (SKK here), 1 when the
   # keys go through as they are. SKK's own kana/latin mode is not visible from outside, so
   # this shows "▽あ" for SKK on and "A" for off, like the mac's ▽ marker.
-  imeStatus = pkgs.writeShellScript "bar-ime" ''
-    case "$(${pkgs.fcitx5}/bin/fcitx5-remote 2>/dev/null)" in
-      2) printf '{"text":"▽あ","class":"skk","tooltip":"SKK"}\n' ;;
-      *) printf '{"text":"A","class":"latin","tooltip":"direct input"}\n' ;;
-    esac
-  '';
+  imeStatus = pkgs.writeShellApplication {
+    name = "bar-ime";
+    bashOptions = [ ];
+    text = ''
+      case "$(${pkgs.fcitx5}/bin/fcitx5-remote 2>/dev/null)" in
+        2) printf '{"text":"▽あ","class":"skk","tooltip":"SKK"}\n' ;;
+        *) printf '{"text":"A","class":"latin","tooltip":"direct input"}\n' ;;
+      esac
+    '';
+  };
   # Services that should always be running in the session (the mac's app_guard). A green
   # check when they are, a warning with the names when not; a click restarts the stopped ones.
   guardUnits = [
@@ -304,30 +318,34 @@ let
     "hyprpolkitagent"
     "ssh-tpm-agent.socket" # the service is socket-activated and idle between uses
   ];
-  guard = pkgs.writeShellScript "bar-guard" ''
-    units="${lib.concatStringsSep " " guardUnits}"
-    down=""
-    tip=""
-    for u in $units; do
-      state=$(${pkgs.systemd}/bin/systemctl --user is-active "$u" 2>/dev/null)
-      if [ "$state" = active ]; then
-        tip="$tip✓ $u"
+  guard = pkgs.writeShellApplication {
+    name = "bar-guard";
+    bashOptions = [ ];
+    text = ''
+      units="${lib.concatStringsSep " " guardUnits}"
+      down=""
+      tip=""
+      for u in $units; do
+        state=$(${pkgs.systemd}/bin/systemctl --user is-active "$u" 2>/dev/null)
+        if [ "$state" = active ]; then
+          tip="$tip✓ $u"
+        else
+          tip="$tip✗ $u ($state)"
+          down="$down $u"
+          [ "$1" = fix ] && ${pkgs.systemd}/bin/systemctl --user restart "$u" 2>/dev/null
+        fi
+        tip="$tip
+      "
+      done
+      # One line per unit in the tooltip: JSON wants the newlines as the two characters \n.
+      tip=$(printf '%s' "$tip" | ${pkgs.gnused}/bin/sed -z 's/\n *$//; s/\n */\\n/g')
+      if [ -z "$down" ]; then
+        printf '{"text":"󰄬","class":"ok","tooltip":"%s"}\n' "$tip"
       else
-        tip="$tip✗ $u ($state)"
-        down="$down $u"
-        [ "$1" = fix ] && ${pkgs.systemd}/bin/systemctl --user restart "$u" 2>/dev/null
+        printf '{"text":"󰀦%s","class":"down","tooltip":"%s"}\n' "$down" "$tip"
       fi
-      tip="$tip
-    "
-    done
-    # One line per unit in the tooltip: JSON wants the newlines as the two characters \n.
-    tip=$(printf '%s' "$tip" | ${pkgs.gnused}/bin/sed -z 's/\n *$//; s/\n */\\n/g')
-    if [ -z "$down" ]; then
-      printf '{"text":"󰄬","class":"ok","tooltip":"%s"}\n' "$tip"
-    else
-      printf '{"text":"󰀦%s","class":"down","tooltip":"%s"}\n' "$down" "$tip"
-    fi
-  '';
+    '';
+  };
   # Idle actions that only make sense in front of the machine. With the lid shut it is being
   # used over ssh, and locking or suspending there is what made it look dead: the session
   # goes to hyprlock nobody can dismiss, then hypridle suspends it off the network entirely.
@@ -344,13 +362,15 @@ let
   # hyprshot: that path writes a file, and a cancel makes grim fail before anything is saved.
   # The region goes to satty for arrows, boxes and blur; Enter (or the copy button) puts the
   # result on the clipboard and closes it, Ctrl+S also saves it under ~/Pictures/Screenshots.
-  screenshotRegion = pkgs.writeShellScript "screenshot-region" ''
-    set -euo pipefail
-    geometry=$(${pkgs.slurp}/bin/slurp -d) || exit 0
-    ${pkgs.grim}/bin/grim -g "$geometry" - | ${pkgs.satty}/bin/satty --filename - \
-      --copy-command "${pkgs.wl-clipboard}/bin/wl-copy --type image/png" --early-exit \
-      --init-tool arrow --output-filename "$HOME/Pictures/Screenshots/%Y-%m-%d_%H-%M-%S.png"
-  '';
+  screenshotRegion = pkgs.writeShellApplication {
+    name = "screenshot-region";
+    text = ''
+      geometry=$(${pkgs.slurp}/bin/slurp -d) || exit 0
+      ${pkgs.grim}/bin/grim -g "$geometry" - | ${pkgs.satty}/bin/satty --filename - \
+        --copy-command "${pkgs.wl-clipboard}/bin/wl-copy --type image/png" --early-exit \
+        --init-tool arrow --output-filename "$HOME/Pictures/Screenshots/%Y-%m-%d_%H-%M-%S.png"
+    '';
+  };
   # Hyprland has no settings app of its own, so $mod+comma (Cmd+, on the mac) opens a picker
   # over the per-area tools (Wi-Fi and Bluetooth as TUIs, the rest GUIs). What they change
   # lives outside the store (NetworkManager profiles, PipeWire/WirePlumber state, BlueZ
@@ -358,17 +378,23 @@ let
   # Anything under home-manager's control (GTK theme, keybinds, fonts) stays in nix on
   # purpose: a GUI writing there would either hit a read-only symlink or be reverted on the
   # next switch.
-  settingsMenu = pkgs.writeShellScript "settings-menu" ''
-    set -eu
-    choice=$(printf '%s\n' Sound Wi-Fi Bluetooth Displays \
-      | ${pkgs.wofi}/bin/wofi --dmenu --prompt Settings) || exit 0
-    case "$choice" in
-      Sound) exec ${pkgs.pavucontrol}/bin/pavucontrol ;;
-      Wi-Fi) exec ${wifiTui} ;;
-      Bluetooth) exec ${bluetoothTui} ;;
-      Displays) exec ${pkgs.nwg-displays}/bin/nwg-displays ;;
-    esac
-  '';
+  settingsMenu = pkgs.writeShellApplication {
+    name = "settings-menu";
+    bashOptions = [
+      "errexit"
+      "nounset"
+    ];
+    text = ''
+      choice=$(printf '%s\n' Sound Wi-Fi Bluetooth Displays \
+        | ${pkgs.wofi}/bin/wofi --dmenu --prompt Settings) || exit 0
+      case "$choice" in
+        Sound) exec ${pkgs.pavucontrol}/bin/pavucontrol ;;
+        Wi-Fi) exec ${wifiTui} ;;
+        Bluetooth) exec ${bluetoothTui} ;;
+        Displays) exec ${pkgs.nwg-displays}/bin/nwg-displays ;;
+      esac
+    '';
+  };
   # The bar itself (programs.waybar below adds the output and the width).
   bar = {
     layer = "top";
@@ -417,7 +443,7 @@ let
       on-click-right = "${pkgs.systemd}/bin/loginctl lock-session";
     };
     "custom/ime" = {
-      exec = imeStatus;
+      exec = lib.getExe imeStatus;
       return-type = "json";
       interval = 1;
       on-click = "${pkgs.fcitx5}/bin/fcitx5-configtool";
@@ -427,57 +453,87 @@ let
     # /run/tlp/last_pwr starts with the mode as 0 / 1 / 2 and is world-readable; tlp itself needs
     # root, which wheel has without a password (hosts/nixos-laptop.nix).
     "custom/power" = {
-      exec = pkgs.writeShellScript "bar-power" ''
-        read -r mode _ < /run/tlp/last_pwr 2>/dev/null || mode=0
-        manual=""; [ -e /run/tlp/manual_mode ] && manual=" (manual)"
-        case "$mode" in
-          1) printf '{"text":"󰾅","class":"balanced","tooltip":"balanced%s"}\n' "$manual" ;;
-          2) printf '{"text":"󰾆","class":"power-saver","tooltip":"power-saver%s"}\n' "$manual" ;;
-          *) printf '{"text":"󰓅","class":"performance","tooltip":"performance%s"}\n' "$manual" ;;
-        esac
-      '';
+      exec = lib.getExe (
+        pkgs.writeShellApplication {
+          name = "bar-power";
+          bashOptions = [ ];
+          text = ''
+            read -r mode _ < /run/tlp/last_pwr 2>/dev/null || mode=0
+            manual=""; [ -e /run/tlp/manual_mode ] && manual=" (manual)"
+            case "$mode" in
+              1) printf '{"text":"󰾅","class":"balanced","tooltip":"balanced%s"}\n' "$manual" ;;
+              2) printf '{"text":"󰾆","class":"power-saver","tooltip":"power-saver%s"}\n' "$manual" ;;
+              *) printf '{"text":"󰓅","class":"performance","tooltip":"performance%s"}\n' "$manual" ;;
+            esac
+          '';
+        }
+      );
       return-type = "json";
       interval = 10;
       signal = 10;
-      on-click = pkgs.writeShellScript "bar-power-next" ''
-        read -r mode _ < /run/tlp/last_pwr 2>/dev/null || mode=0
-        case "$mode" in 0) next=balanced ;; 1) next=power-saver ;; *) next=performance ;; esac
-        /run/wrappers/bin/sudo ${pkgs.tlp}/bin/tlp "$next" >/dev/null
-        ${pkgs.procps}/bin/pkill -RTMIN+10 -x '\.?waybar(-wrapped)?'
-      '';
-      on-click-right = pkgs.writeShellScript "bar-power-auto" ''
-        /run/wrappers/bin/sudo ${pkgs.tlp}/bin/tlp start >/dev/null
-        ${pkgs.procps}/bin/pkill -RTMIN+10 -x '\.?waybar(-wrapped)?'
-      '';
+      on-click = lib.getExe (
+        pkgs.writeShellApplication {
+          name = "bar-power-next";
+          bashOptions = [ ];
+          text = ''
+            read -r mode _ < /run/tlp/last_pwr 2>/dev/null || mode=0
+            case "$mode" in 0) next=balanced ;; 1) next=power-saver ;; *) next=performance ;; esac
+            /run/wrappers/bin/sudo ${pkgs.tlp}/bin/tlp "$next" >/dev/null
+            ${pkgs.procps}/bin/pkill -RTMIN+10 -x '\.?waybar(-wrapped)?'
+          '';
+        }
+      );
+      on-click-right = lib.getExe (
+        pkgs.writeShellApplication {
+          name = "bar-power-auto";
+          bashOptions = [ ];
+          text = ''
+            /run/wrappers/bin/sudo ${pkgs.tlp}/bin/tlp start >/dev/null
+            ${pkgs.procps}/bin/pkill -RTMIN+10 -x '\.?waybar(-wrapped)?'
+          '';
+        }
+      );
     };
     "custom/guard" = {
-      exec = guard;
+      exec = lib.getExe guard;
       return-type = "json";
       interval = 15;
-      on-click = "${guard} fix";
+      on-click = "${lib.getExe guard} fix";
     };
     # The mac's coffee cup (sketchybar's nosleep): gold while sleep is blocked, grey otherwise.
     # A click toggles keep-awake's `lid` mode (hosts/nixos-laptop.nix): a root inhibitor
     # against sleep, idle and the lid switch, so neither hypridle nor closing the lid
     # suspends. The state is that unit, so `keep-awake on` from ssh shows here too.
     "custom/nosleep" = {
-      exec = pkgs.writeShellScript "bar-nosleep" ''
-        # U+F0176, nf-md-coffee, as UTF-8 bytes: bash's \U escape depends on the locale.
-        cup='\xf3\xb0\x85\xb6'
-        if ${pkgs.systemd}/bin/systemctl is-active --quiet keep-awake; then
-          printf '{"text":"'"$cup"'","class":"on","tooltip":"sleep disabled"}\n'
-        else
-          printf '{"text":"'"$cup"'","class":"off","tooltip":"sleep allowed"}\n'
-        fi
-      '';
+      exec = lib.getExe (
+        pkgs.writeShellApplication {
+          name = "bar-nosleep";
+          bashOptions = [ ];
+          text = ''
+            # U+F0176, nf-md-coffee, as UTF-8 bytes: bash's \U escape depends on the locale.
+            cup='\xf3\xb0\x85\xb6'
+            if ${pkgs.systemd}/bin/systemctl is-active --quiet keep-awake; then
+              printf '{"text":"%b","class":"on","tooltip":"sleep disabled"}\n' "$cup"
+            else
+              printf '{"text":"%b","class":"off","tooltip":"sleep allowed"}\n' "$cup"
+            fi
+          '';
+        }
+      );
       return-type = "json";
       interval = 30;
       signal = 11;
-      on-click = pkgs.writeShellScript "bar-nosleep-toggle" ''
-        export PATH=/run/wrappers/bin:/run/current-system/sw/bin:$PATH
-        if systemctl is-active --quiet keep-awake; then keep-awake off; else keep-awake lid; fi >/dev/null 2>&1
-        ${pkgs.procps}/bin/pkill -RTMIN+11 -x '\.?waybar(-wrapped)?'
-      '';
+      on-click = lib.getExe (
+        pkgs.writeShellApplication {
+          name = "bar-nosleep-toggle";
+          bashOptions = [ ];
+          text = ''
+            export PATH=/run/wrappers/bin:/run/current-system/sw/bin:$PATH
+            if systemctl is-active --quiet keep-awake; then keep-awake off; else keep-awake lid; fi >/dev/null 2>&1
+            ${pkgs.procps}/bin/pkill -RTMIN+11 -x '\.?waybar(-wrapped)?'
+          '';
+        }
+      );
     };
     "hyprland/workspaces" = {
       format = "{id} {windows}";
@@ -717,7 +773,7 @@ in
       {
         mod._var = "SUPER";
         terminal._var = "ghostty";
-        menu._var = "${launcher} toggle";
+        menu._var = "${lib.getExe launcher} toggle";
 
         monitor = [
           {
@@ -917,14 +973,14 @@ in
           (bind (key "L") (exec "hyprlock")) # manual lock
           (bind (key "C") (exec "cliphist list | wofi --dmenu | cliphist decode | wl-copy")) # paste from history
           (bind (key "period") (exec "wofi-emoji")) # emoji picker, like Cmd+Ctrl+Space on the mac
-          (bind (key "slash") (exec "${cheatsheet}")) # every keybind, searchable
+          (bind (key "slash") (exec (lib.getExe cheatsheet))) # every keybind, searchable
           # Power menu. Three tiles a row with a wide margin, so the tiles are not the whole screen.
           (bind (key "Escape") (
             exec "wlogout --buttons-per-row 3 --margin 240 --column-spacing 16 --row-spacing 16"
           ))
-          (bind (key "comma") (exec "${settingsMenu}")) # settings picker (Cmd+, on the mac)
+          (bind (key "comma") (exec (lib.getExe settingsMenu))) # settings picker (Cmd+, on the mac)
           # screenshot / color picker
-          (bind (key "P") (exec "${screenshotRegion}")) # region -> satty -> clipboard
+          (bind (key "P") (exec (lib.getExe screenshotRegion))) # region -> satty -> clipboard
           (bind (shiftKey "P") (exec "hyprshot -m window -o ${config.xdg.userDirs.pictures}/Screenshots")) # window -> save
           (bind (shiftKey "C") (exec "hyprpicker -a")) # pick a color and copy
           # night light (switch color temperature 4000K / 6500K)
@@ -1014,7 +1070,7 @@ in
   # lock screen appearance
   # The launcher ($menu, and the cliphist picker). Declared through programs.* rather than
   # home.packages so stylix can write its stylesheet — see home/stylix.nix.
-  xdg.configFile."wofi/launcher".source = launcher;
+  xdg.configFile."wofi/launcher".source = lib.getExe launcher;
   programs.wofi = {
     enable = true;
     settings = {

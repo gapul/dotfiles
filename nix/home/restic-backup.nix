@@ -174,7 +174,7 @@ in
 
   launchd.agents = {
     # daily 13:00 backup
-    restic-backup = agent "${scripts.backup}" [
+    restic-backup = agent (lib.getExe scripts.backup) [
       {
         Hour = 13;
         Minute = 0;

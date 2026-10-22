@@ -42,38 +42,44 @@ let
   # which Electron's fields don't bind; the sleep lets niri hand focus back before the paste,
   # and the clipboard keeps the text in case the paste misses. Recipe from
   # tecosaur/emacs-everywhere#50 (its niri comment) and abdubanna/nvim-wl-anywhere.
-  editField = pkgs.writeShellScript "edit-field" ''
-    set -eu
-    wtype=${pkgs.wtype}/bin/wtype
-    wlcopy=${pkgs.wl-clipboard}/bin/wl-copy
-    wlpaste=${pkgs.wl-clipboard}/bin/wl-paste
-    f=$(mktemp --suffix=.md)
-    trap 'rm -f "$f"' EXIT
+  editField = pkgs.writeShellApplication {
+    name = "edit-field";
+    bashOptions = [
+      "errexit"
+      "nounset"
+    ];
+    text = ''
+      wtype=${pkgs.wtype}/bin/wtype
+      wlcopy=${pkgs.wl-clipboard}/bin/wl-copy
+      wlpaste=${pkgs.wl-clipboard}/bin/wl-paste
+      f=$(mktemp --suffix=.md)
+      trap 'rm -f "$f"' EXIT
 
-    # Take what the field already holds: select all, copy, read it back.
-    $wlcopy --clear
-    $wtype -M ctrl -k a -m ctrl
-    sleep 0.05
-    $wtype -M ctrl -k c -m ctrl
-    sleep 0.1
-    $wlpaste --no-newline >"$f" 2>/dev/null || true
-    before=$(cat "$f")
-
-    ${pkgs.ghostty}/bin/ghostty --class=net.gapul.editfield --title=edit-field \
-      -e nvim +'normal! G$' "$f"
-
-    after=$(cat "$f")
-    [ "$after" = "$before" ] && exit 0
-    sleep 0.15
-    if [ -z "$after" ]; then
+      # Take what the field already holds: select all, copy, read it back.
+      $wlcopy --clear
       $wtype -M ctrl -k a -m ctrl
-      $wtype -k BackSpace
-    else
-      $wlcopy <"$f"
-      $wtype -M ctrl -k a -m ctrl
-      $wtype -M ctrl -k v -m ctrl
-    fi
-  '';
+      sleep 0.05
+      $wtype -M ctrl -k c -m ctrl
+      sleep 0.1
+      $wlpaste --no-newline >"$f" 2>/dev/null || true
+      before=$(cat "$f")
+
+      ${pkgs.ghostty}/bin/ghostty --class=net.gapul.editfield --title=edit-field \
+        -e nvim +'normal! G$' "$f"
+
+      after=$(cat "$f")
+      [ "$after" = "$before" ] && exit 0
+      sleep 0.15
+      if [ -z "$after" ]; then
+        $wtype -M ctrl -k a -m ctrl
+        $wtype -k BackSpace
+      else
+        $wlcopy <"$f"
+        $wtype -M ctrl -k a -m ctrl
+        $wtype -M ctrl -k v -m ctrl
+      fi
+    '';
+  };
 
   binds = [
     (bind {
@@ -97,14 +103,14 @@ let
     })
     (bind {
       key = "${mod}+W";
-      action = spawn [ "${editField}" ];
+      action = spawn [ (lib.getExe editField) ];
       title = "Edit the focused text field in nvim";
     })
     # Super+Space, and thumb Ctrl+Space through xremap, like Cmd+Space on the mac.
     (bind {
       key = "Super+Space";
       action = spawn [
-        "${desktopScripts.launcher}"
+        (lib.getExe desktopScripts.launcher)
         "toggle"
       ];
       title = "Launcher";
@@ -158,12 +164,12 @@ let
     })
     (bind {
       key = "${mod}+Comma";
-      action = spawn [ "${desktopScripts.settingsMenu}" ];
+      action = spawn [ (lib.getExe desktopScripts.settingsMenu) ];
       title = "Settings";
     })
     (bind {
       key = "${mod}+P";
-      action = spawn [ "${desktopScripts.screenshotRegion}" ];
+      action = spawn [ (lib.getExe desktopScripts.screenshotRegion) ];
       title = "Screenshot a region (satty, clipboard)";
     })
     # Saved under screenshot-path below and copied, like Hyprland's hyprshot -m window.
@@ -824,7 +830,7 @@ let
                 run("${pkgs.fcitx5}/bin/fcitx5-remote", "-c")
         elif kind == "WorkspaceActivated":
             refresh_bar()
-            run("${wallpaperScripts.setWallpaper}", "", "0.5", outputs.get(body["id"], ""))
+            run("${lib.getExe wallpaperScripts.setWallpaper}", "", "0.5", outputs.get(body["id"], ""))
         elif kind == "CastsChanged":
             now = bool(body["casts"])
             if now != casting:
