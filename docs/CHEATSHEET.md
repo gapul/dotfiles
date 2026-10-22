@@ -184,7 +184,7 @@ Four layers of storage. The reasoning is in the comments in `nix/home/restic-bac
 
 | Layer | For | Where |
 |---|---|---|
-| GitHub and Forgejo | Code, which is reproducible | git. GitHub is the original, with a Forgejo mirror at home; see [HOMELAB.md](./HOMELAB.md) |
+| GitHub and Forgejo | Code, which is reproducible | git. GitHub is the original, with a Forgejo mirror at home (`nix/homelab/forgejo.nix`) |
 | restic warm | Files still in use, automatically and daily | `google-drive:restic-backup`, encrypted |
 | restic cold | Files no longer in use, kept forever | The same repository, under `--tag archive` |
 | rclone mount | Plaintext cloud storage shared with other people | `~/Sync/google-drive-{personal,school}`, no kernel extension needed |
