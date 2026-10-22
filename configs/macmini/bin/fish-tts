@@ -1,4 +1,4 @@
-#!/bin/zsh
+#!/bin/bash
 # 表現力重視のTTS + 声クローン (Fish Audio S2 Pro / mlx-speech, 8bit MLX)
 #
 #   fish-tts "文章" [出力.wav] [参照音声] [参照文字起こし]
