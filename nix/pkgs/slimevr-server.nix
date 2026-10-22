@@ -19,7 +19,7 @@
   undmg,
 }:
 let
-  version = "20.1.0";
+  version = "21.1.0";
   app = "SlimeVR.app";
 in
 stdenvNoCC.mkDerivation {
@@ -28,7 +28,7 @@ stdenvNoCC.mkDerivation {
 
   src = fetchurl {
     url = "https://github.com/SlimeVR/SlimeVR-Server/releases/download/v${version}/SlimeVR-mac.dmg";
-    hash = "sha256-M3JlnTYq8EdrQQ1y0tWfI2VRcOLGtcVMudJnDXhBiL4=";
+    hash = "sha256-N1OSBUhuKhz5cyhu4la7BUKPGY59xzzmCICMm7GXnRw=";
   };
 
   # undmg, not 7zz: the image is HFS+ (only VRoid's is APFS, which is why that
