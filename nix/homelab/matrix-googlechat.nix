@@ -33,17 +33,10 @@ let
   # FieldDescriptor.label; maugclib/pblite.py reads it, so every connect died with
   # "AttributeError: ... has no attribute 'label'" right after the cookie login (2026-10-01).
   # Swap protobuf for protobuf4 in this interpreter's package set only.
-  # anyio 4.14.2's test suite fails under this 3.12 set (test_tls: "server_hostname can only be
-  # specified in client mode", plus an unraisable-warning group in test_functools) since the
-  # 2026-10-11 flake.lock bump; it took self-deploy down with it. The library itself is fine, and
-  # the default-python copy comes prebuilt from the cache with its tests already run, so skip them here.
   python = pkgs.python312.override {
     self = python;
     packageOverrides = _: super: {
       protobuf = super.protobuf4;
-      anyio = super.anyio.overridePythonAttrs (_: {
-        doCheck = false;
-      });
     };
   };
   pkg = (pkgs.mautrix-googlechat.override { python3 = python; }).overridePythonAttrs (o: {
