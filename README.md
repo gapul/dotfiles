@@ -157,7 +157,7 @@ Generated from `just --list`. Run `just docs` after changing a recipe.
     win-autostart-glazewm *flags                      # Pass `-Unregister` (delete the task) via `*flags`
     win-bootstrap *flags                              # Run the native Windows bootstrap (`just win-bootstrap` / `just win-bootstrap -DryRun`)
     win-fmt                                           # Lint Windows-related .ps1 with PSScriptAnalyzer (exit 1 on Warning or above)
-    win-fonts *flags                                  # Pass `-DryRun` `-Force` (overwrite existing too) via `*flags`
+    win-fonts *flags                                  # Pass `-DryRun` or `-SkipHackGen` via `*flags`
     win-keymap *flags                                 # Pass `-DryRun` `-Clear` (delete Scancode Map and return to standard) via `*flags`
     win-locale *flags                                 # Pass `-DryRun` `-SkipLanguageList` `-SkipSystemLocale` `-SkipHomeLocation` via `*flags`
     win-privacy *flags                                # Pass `-DryRun` `-SkipWinUtil` `-SkipWin11Debloat` `-SkipCustomApps` `-SkipBaseline` via `*flags`
