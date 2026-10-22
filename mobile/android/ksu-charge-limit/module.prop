@@ -1,0 +1,6 @@
+id=charge_limit
+name=Charge limit
+version=1
+versionCode=1
+author=gapul
+description=Stops charging the battery at 80% and resumes at 75%. The device keeps running on USB power.
