@@ -161,7 +161,7 @@ in
 
   # Codex: the herdr SessionStart hook reports the codex session id over the herdr socket,
   # which is the only way herdr can resume the pane's agent after a reboot (claude does the
-  # same through configs/cli/claude/hooks). Without it a codex pane comes back as a bare shell.
+  # same through its hooks in ai-agent-state). Without it a codex pane comes back as a bare shell.
   # The script is an out-of-store symlink so `herdr integration install codex` can update it
   # straight into the repo; hooks.json is generated here because the upstream file hardcodes
   # an absolute macOS path that would be wrong on the Linux workstations.
