@@ -57,7 +57,7 @@ HS_SOME_APP_COOKIE='session=...'
 | Standard protocols | Anki, Attic, CouchDB, Forgejo, Matrix, Navidrome, ntfy, Radicale, Samba, Vaultwarden | Each one's official CLI, or HTTP, CalDAV or SMB |
 | A CLI inside the app | ArchiveBox, Forgejo, Navidrome, Paperless, Pingvin Share X, ytdl-sub | `hs archivebox`, `hs forgejo`, `hs navidrome`, `hs paperless`, `hs share`, `hs ytdl` |
 | The file is the source of truth | Fava and Beancount, Homepage, SearXNG, Blocky, Authelia, cloudflared, Filestash, Pingvin Share X | Configuration in git plus `hs unit`. Only Filestash's private key lives in `/var/lib/secrets` |
-| Internal HTTP APIs | Calnode, Gameyfin, Hauk, Pingvin Share X, Spliit | `hs api` or `hs exec`. A daily contract check catches the entry point breaking |
+| Internal HTTP APIs | Calnode, Gameyfin, Pingvin Share X, Spliit | `hs api` or `hs exec`. A daily contract check catches the entry point breaking. Hauk is disabled since 2026-10-22 (see `nix/homelab/hauk.nix`) |
 | Host operations | Every podman container, every systemd service, restic | `hs status/logs/restart/exec/unit/backup` |
 
 Rallly's self-hosted version publishes an OpenAPI document while upstream restricts issuing API
@@ -91,10 +91,13 @@ backup, and `restore-drill.timer` genuinely restores one into a separate databas
 
 ## Services that sleep when unused
 
-Formera, Gameyfin, Jellyfin, Pingvin Share X, Rallly, RomM and Spliit keep only a systemd socket
-open while idle. The first browser, API or `hs` request starts the owning container group; open
-connections keep it alive. Formera, Pingvin Share X, Rallly and Spliit stop after 10 minutes
-without a connection. The media/catalogue services use 30 minutes so library scans can finish.
+ArchiveBox, Filestash, Formera, Gameyfin, Homepage (with Glances), Jellyfin, Navidrome,
+Paperless, Pingvin Share X, Rallly, Readeck, RomM and Spliit keep only a systemd socket open while
+idle (`nix/homelab/lazy-http-services.nix`). The first browser, API or `hs` request starts the
+owning container group; open connections keep it alive. Formera, Pingvin Share X, Rallly and
+Spliit stop after 10 minutes without a connection; ArchiveBox, Filestash, Homepage, Paperless and
+Readeck after 15. The media/catalogue services (Gameyfin, Jellyfin, Navidrome, RomM) use 30
+minutes so library scans can finish.
 
 `hs status APP` reports `sleeping` without waking it. API and `hs exec` operations wake it as
 needed. The daily container updater wakes every group briefly so rolling tags still pass through

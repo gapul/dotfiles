@@ -1,7 +1,7 @@
 """Smallest checks that fail if the parts that matter break.
 
     nix shell --impure --expr 'with import <nixpkgs> {}; python3.withPackages (ps: [ ps.mcp ps.websockets ])' \
-      --command python3 broker/test_broker.py
+      --command python3 configs/ask/test_broker.py
 """
 
 import asyncio
