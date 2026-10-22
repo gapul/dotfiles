@@ -67,11 +67,10 @@ in
         ]
       ))
       poppler-utils # PDF CLI (pdftotext etc. formerly brew poppler)
-      # imozuru Claude Code plugin: yt-dlp pulls YouTube subtitles, tesseract OCRs PDFs without a
-      # text layer (with pdftoppm above). Its scripts also need Python >= 3.10 (macOS
-      # /usr/bin/python3 is 3.9); mopidy.nix's mopidyEnv already puts python3 on PATH here, and a
-      # second python3 would collide with it in home-manager-path.
-      yt-dlp
+      # imozuru Claude Code plugin: tesseract OCRs PDFs without a text layer (with pdftoppm above).
+      # It also needs Python >= 3.10 (macOS /usr/bin/python3 is 3.9) and yt-dlp for YouTube
+      # subtitles; mopidy.nix's mopidyEnv already puts both on PATH here, and a second copy of
+      # either collides with it in home-manager-path.
       tesseract
       fastPkgs.bitwarden-cli # Bitwarden (bw)
       fastPkgs.syft # SBOM
