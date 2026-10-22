@@ -7,6 +7,7 @@ workstation, explicit on remotes" drift; that happened on 2026-08-13, hence this
 The workstation file is a symlink into gapul/ai-agent-state, which is not in this repository.
 Where the link is dangling (CI checkout, a store copy) there is nothing to compare, so skip.
 """
+
 import json
 import sys
 from pathlib import Path
@@ -40,7 +41,10 @@ def main():
     managed = json.loads((CLAUDE / "settings.remote.json").read_text())
     drifted = drift(managed, json.loads(workstation.read_text()))
     if drifted:
-        print("claude: settings.remote.json の管理キーが母艦の settings.json と食い違う:", file=sys.stderr)
+        print(
+            "claude: settings.remote.json の管理キーが母艦の settings.json と食い違う:",
+            file=sys.stderr,
+        )
         for d in drifted:
             print(f"  {d}", file=sys.stderr)
         return 1

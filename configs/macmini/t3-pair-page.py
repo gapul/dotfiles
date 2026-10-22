@@ -112,7 +112,10 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 active = subprocess.run(
                     [T3, "auth", "pairing", "list", "--json"],
-                    capture_output=True, text=True, timeout=30, check=True,
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                    check=True,
                 ).stdout
                 ids = {p["id"] for p in json.loads(active)}
             except (subprocess.SubprocessError, OSError, ValueError, KeyError):
@@ -127,19 +130,41 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(404, "not found")
         try:
             out = subprocess.run(
-                [T3, "auth", "pairing", "create", "--ttl", "5m", "--label", "pair-page",
-                 "--base-url", BASE_URL, "--json"],
-                capture_output=True, text=True, timeout=30, check=True,
+                [
+                    T3,
+                    "auth",
+                    "pairing",
+                    "create",
+                    "--ttl",
+                    "5m",
+                    "--label",
+                    "pair-page",
+                    "--base-url",
+                    BASE_URL,
+                    "--json",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=30,
+                check=True,
             ).stdout
             pair = json.loads(out)
             svg = subprocess.run(
                 [QRENCODE, "-t", "SVG", "-m", "1", "-o", "-", pair["pairUrl"]],
-                capture_output=True, text=True, timeout=10, check=True,
+                capture_output=True,
+                text=True,
+                timeout=10,
+                check=True,
             ).stdout
         except (subprocess.SubprocessError, OSError, ValueError, KeyError) as e:
             self.log_error("mint failed: %s", type(e).__name__)
             return self.send(502, "mint failed")
-        body = {"id": pair["id"], "url": pair["pairUrl"], "expiresAt": pair["expiresAt"], "svg": svg}
+        body = {
+            "id": pair["id"],
+            "url": pair["pairUrl"],
+            "expiresAt": pair["expiresAt"],
+            "svg": svg,
+        }
         self.send(200, json.dumps(body), "application/json")
 
 
