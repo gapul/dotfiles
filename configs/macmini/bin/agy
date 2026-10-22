@@ -1,4 +1,4 @@
-#!/bin/zsh
+#!/bin/bash
 # agy stores its Google credentials in the login keychain, which only the console session can
 # open — an ssh session gets "User interaction is not allowed" and agy then reports itself as
 # logged out and prints a fresh login URL. Everything that reaches this machine arrives over

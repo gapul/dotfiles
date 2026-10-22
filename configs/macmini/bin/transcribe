@@ -1,4 +1,4 @@
-#!/bin/zsh
+#!/bin/bash
 # Whisper (MLX) 文字起こし — 速度/精度を選択可
 # 使い方: transcribe <ファイル> [言語 ja/en/auto] [形式 txt/srt/vtt/json/all] [モデル fast|accurate]
 #   fast     = large-v3-turbo (速い・日本語も上位精度) ※既定
