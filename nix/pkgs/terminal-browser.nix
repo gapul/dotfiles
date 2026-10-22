@@ -20,11 +20,11 @@
 }:
 stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "terminal-browser";
-  version = "0.8.1";
+  version = "0.13.4";
 
   src = fetchurl {
     url = "https://github.com/zenbu-labs/terminal-browser/releases/download/v${finalAttrs.version}/terminal-browser-darwin-arm64.tar.gz";
-    hash = "sha256-Ow4DTVV5hquSiaqLrv3KXD62aqST4nEQ9OgsBfIkpzg=";
+    hash = "sha256-8BcjDHjGCgfvRFGh6wqScn8LlVqPzYeuw1iRDF0MA8c=";
   };
 
   # An Electron bundle: patching anything in it would only break code signatures, and the
@@ -79,8 +79,8 @@ stdenvNoCC.mkDerivation (finalAttrs: {
 
     takes_preload=1
     case "\''${1-}" in
-      ls|setup|upgrade|apps|register-app|unregister-app|shutdown|action) takes_preload=0 ;;
-      --version|--help|-h) takes_preload=0 ;;
+      ls|setup|upgrade|config|apps|register-app|unregister-app|shutdown|action|claude-bridge|capabilities|help) takes_preload=0 ;;
+      --version|-v|--help|-h) takes_preload=0 ;;
     esac
     for arg in "\$@"; do
       case "\$arg" in
