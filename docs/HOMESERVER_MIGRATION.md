@@ -11,6 +11,14 @@ there is nothing to go back to.
 Decisions and manual steps still outstanding are in [HOMESERVER_TODO.md](HOMESERVER_TODO.md).
 This page is the runbook alone.
 
+The migration was done on 2026-08-11. The page stays because the recovery ISO carries it as
+`homeserver-guide` for a reinstall, but three things have changed since, so read it with these in
+mind: DNS is Blocky on this machine with the mac mini as secondary (`nix/homelab/blocky.nix`,
+`nix/hosts/macmini-dns.nix`) and the Pi is retired, so this machine going down does take the
+primary DNS with it, and the AdGuard steps below no longer apply; the secrets in
+`/var/lib/secrets/` are installed by sops-nix from `secrets/homelab.yaml`
+(`nix/homelab/secrets.nix`) instead of placed by hand.
+
 ---
 
 ## 0. What to understand before anything disappears
@@ -308,7 +316,6 @@ One-time authentication:
 sudo tailscale up --advertise-routes=192.168.116.0/24,192.168.1.0/24   # approve the routes in the admin console
 tailscale ip -4     # this is the address the DNS repointing in 1.3 uses
 sudo smbpasswd -a gapul
-# AdGuard's admin account is created on the first-run screen at https://dns2.gapul.net
 ```
 
 ---
@@ -326,7 +333,6 @@ services each run as their own user.
 | `/var/lib/syncthing/.config/syncthing/`, cert.pem and key.pem | `syncthing` |
 | `/var/lib/esphome` | `esphome` |
 | `/var/lib/node-red` | `node-red` |
-| `/var/lib/AdGuardHome` | root, and note the capitals |
 
 Importing the named volumes:
 
@@ -392,7 +398,7 @@ journalctl -p err -b --no-pager | tail -40
   first — Matter needs IPv6 even for Wi-Fi devices.
 - Is Syncthing's device ID still `Y72TVZZ-...`? If it changed, the restore in 2.4 failed.
 - Does `restic snapshots` from the Mac show a new snapshot tagged homeserver?
-- Does `dig @<the new host> example.com` answer? AdGuard owns port 53.
+- Does `dig @<the new host> example.com` answer? Blocky owns port 53.
 - The company tunnel: `systemctl status mvrx-vpn`, `ip -4 addr show ppp0`, and whether
   `ssh mvrx-nolang-dev` works over the tailnet. This is the one thing CI could not verify, so
   if it fails, boot the disk image from 2.3.1 under libvirt and get work moving first.

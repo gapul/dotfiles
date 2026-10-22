@@ -12,13 +12,12 @@ in
   # not, and gatus already answers "did it run".
   services.restic.backups.homeserver = {
     inherit (resticCommon) repository;
-    # Placed by hand at install time, like the other secrets here, until this host
-    # has an age key for sops-nix.
+    # Installed by sops-nix from secrets/homelab.yaml (homeserver_files, see secrets.nix).
     passwordFile = "/var/lib/secrets/restic.password";
     rcloneConfigFile = "/var/lib/secrets/rclone.conf";
 
     # /var/lib is where every service on this host keeps its state: the container
-    # bind mounts under /var/lib/homelab, the named podman volumes, adguard,
+    # bind mounts under /var/lib/homelab, the named podman volumes,
     # syncthing's identity, gatus, the acme certs, samba's password db.
     paths = [
       "/var/lib"

@@ -463,9 +463,8 @@ in
   # DNS-01 against Cloudflare, because every name here resolves to a tailnet address
   # and no port 80 is reachable from the internet for HTTP-01.
   #
-  # The credential is a plain env file placed by hand at first: sops-nix can only
-  # encrypt to this host's age key, and that key does not exist until the host does.
-  # Move it under secrets/secrets.yaml once the host is up.
+  # The credential is an env file that sops-nix installs from secrets/homelab.yaml
+  # (homeserver_files, see homelab/secrets.nix):
   #   /var/lib/secrets/acme-cloudflare.env  (mode 0400, root)
   #   CF_DNS_API_TOKEN=...
   # Note the name: lego wants CF_DNS_API_TOKEN, while the Caddy plugin this replaces
@@ -473,7 +472,7 @@ in
   security.acme = {
     acceptTerms = true;
     # A GitHub noreply address, since this repo is public (the real one lives in
-    # secrets.yaml). Expiry mail therefore bounces; renewal is automatic and its
+    # secrets/common.yaml). Expiry mail therefore bounces; renewal is automatic and its
     # failure shows up as every vhost going red in gatus.
     defaults.email = user.gitEmail;
     certs."gapul.net" = {
