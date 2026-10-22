@@ -11,7 +11,11 @@ ios/
 ├── sources.tsv       # the URLs of the AltStore sources, Classic and PAL
 ├── apps.sh           # status | verify
 ├── test.sh           # self-check for apps.sh, against a fake ideviceinstaller, no device needed
-└── profiles/serve.sh # serves the .mobileconfig files nix generated over the LAN
+├── shortcuts.sh      # export | status | build for Shortcuts
+├── shortcuts/        # exported Shortcuts, as XML plist
+└── profiles/
+    ├── serve.sh      # serves the .mobileconfig files nix generated over the LAN
+    └── mail.sh       # fills mail passwords from sops and installs the mail profiles (`just mail-profiles`)
 ```
 
 The contents of the profiles are in `nix/mobile/ios-profiles.nix`.
@@ -62,15 +66,16 @@ in Settings under "Profile Downloaded". No other browser leads anywhere.
 The PayloadUUID is derived deterministically from a hash of the name. If it changed each time,
 every update would pile up on the device as a separate profile.
 
-Anything a vendor distributes ready-signed is not written here. NextDNS's DNS profile and
-Tailscale's VPN profile both come from upstream and install as trusted, which is better. Only
-the things nobody distributes get declared.
+Anything a vendor distributes ready-signed is not written here. Tailscale's VPN profile comes
+from upstream and installs as trusted, which is better. Only the things nobody distributes get
+declared.
 
 | Purpose | Where it comes from |
 |---|---|
 | CalDAV and CardDAV for the Radicale at home | `nix/mobile/ios-profiles.nix`, because nobody distributes one. The target is the `dav` vhost created by the `sites` table in `hosts/homeserver.nix` |
-| IMAP for the Stalwart at home (three mirror mailboxes) | `nix/mobile/ios-profiles.nix`; the same file installs on macOS for Mail.app. Passwords are typed on the device (they live only on homeserver) |
-| DNS, through NextDNS | Open `https://apple.nextdns.io/<profile-id>` in Safari |
+| IMAP for gapul.net, the Sakura mailbox (`sakura-mail`) | `nix/mobile/ios-profiles.nix`; the same file installs on macOS for Mail.app |
+| IMAP for the Stalwart at home (three mirror mailboxes, `homelab-mail`) | `nix/mobile/ios-profiles.nix`. `just mail-profiles` (`profiles/mail.sh`) fills both mail profiles' passwords from sops; otherwise the device asks on first use |
+| DNS, DoH to the blocky at home (`homelab-dns`) | `nix/mobile/ios-profiles.nix`. NextDNS is retired |
 | The tailnet at home | The Tailscale app installs its own VPN profile |
 
 ## Shortcuts

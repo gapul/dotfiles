@@ -2,7 +2,8 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Declarative macOS configuration built on a Nix flake: nix-darwin, home-manager, sops-nix.
+Declarative macOS and NixOS configuration built on a Nix flake: nix-darwin, NixOS
+(nixos-laptop, homeserver, wsl), home-manager, sops-nix.
 
 Day-to-day commands live in [docs/CHEATSHEET.md](docs/CHEATSHEET.md). Machine responsibilities
 and data ownership are defined in [docs/HOST_ROLES.md](docs/HOST_ROLES.md).
@@ -31,13 +32,14 @@ age-keygen -o ~/.config/sops/age/keys.txt
 # Copy the "# public key: age1..." line into .sops.yaml
 $EDITOR .sops.yaml
 
-# 4. The previous owner's secrets cannot be decrypted, so start empty
-rm secrets/secrets.yaml
-sops secrets/secrets.yaml   # opens an editor; write your own secrets as YAML
+# 4. The previous owner's secrets cannot be decrypted, so start empty.
+#    Secrets are split per host: secrets/{common,darwin,homelab,macmini,mail,nixos-laptop,...}.yaml
+rm secrets/*.yaml
+just secrets edit common    # opens sops in an editor; write your own secrets as YAML
 
 # 5. Optional: drop the personal brew taps
 $EDITOR nix/hosts/darwin.nix
-# "gapul/openutau" and "gapul/zrythm" are personal forks and can go.
+# The "gapul/..." taps (tap, openutau, azoo-key-skkserv, armorpaint, inochi) are personal and can go.
 # GUI casks you do not want (gimp, blender, ...) can go too.
 
 # 6. Bootstrap
@@ -53,19 +55,18 @@ you need to touch. Everything else works unchanged.
 nix/
 |-- flake.nix        entry point: darwin / nixos / home-manager configurations and devShells
 |-- user.nix         username, email and so on. Edit this first.
-|-- hosts/           per machine: darwin.nix (main Mac), macmini.nix, nixos-laptop.nix, wsl.nix
+|-- hosts/           per machine: darwin.nix (main Mac), macmini.nix, nixos-laptop.nix, homeserver.nix, wsl.nix
 |-- home/            home-manager: common.nix plus per-OS (darwin/linux/wsl/hyprland) and backup
-|-- lib/             theming. palettes.json is the single source for rose-pine dark and light.
+|-- lib/             shared helpers, including theming (theme.nix)
 `-- pkgs/            packages built here rather than taken from nixpkgs
 configs/             real application configs (ghostty, tmux, sketchybar, nvim, karabiner, yazi, ...)
-secrets/secrets.yaml age-encrypted through SOPS
+configs/theme/       palettes.json is the single source for rose-pine dark and light.
+secrets/*.yaml       age-encrypted through SOPS, one file per host or purpose
 .sops.yaml           recipients (age public keys)
 scripts/bootstrap.sh zero-to-one setup for a new Mac. Linux and WSL variants live alongside it.
 windows/             Windows-side setup (winget, scoop, AutoHotkey, ...)
 mobile/              iOS and Android: app declarations, adb settings, configuration profiles
 esphome/             device configs that run on ESP chips (the plant waterer)
-tailscale/           tailnet policy: ACLs and split DNS. Fetched, not committed by hand.
-nextdns/             NextDNS profile settings. Fetched, not committed by hand.
 templates/           direnv dev-shell templates (node, python, rust)
 Justfile             the commands used day to day
 ```

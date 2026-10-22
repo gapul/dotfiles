@@ -93,7 +93,8 @@ Not urgent, but each of these pays off.
       `secrets/homelab.yaml` and installed by sops-nix. The host decrypts only that file with
       its SSH host key; backup copies and obsolete plaintext controls are not propagated.
 - [x] **Keep the Raspberry Pi on its current OS.** Converting it to NixOS was considered and
-      declined on 2026-09-23; the primary AdGuard keeps its existing deployment path.
+      declined on 2026-09-23. The Pi's AdGuard is now retired: home DNS is Blocky on
+      homeserver, with the Mac mini as secondary (`nix/homelab/blocky.nix`).
 - [x] **Close gatus's host and ntfy blind spots.** The always-on Mac mini checks the Gatus path
       and ntfy health endpoint every minute. Three consecutive failures and the subsequent
       recovery are mailed through Gmail, an independent route that still works when ntfy or
@@ -106,5 +107,4 @@ Not urgent, but each of these pays off.
 - [ ] **Turn containers into native services.** forgejo, navidrome and miniflux have modules.
       Only the ones where the data migration is worth it. The bridges' reasons for staying as
       they are are written at the top of `nix/homelab/matrix-bridges.nix`.
-- [ ] **Move attic to `services.atticd`.** A postgres migration is involved, so do it on its
-      own.
+- [x] **Move attic to `services.atticd`.** Done (`nix/homelab/attic.nix`).

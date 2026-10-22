@@ -1,5 +1,9 @@
 # rpi4 を USB キーボードにする
 
+> 旧手順。現行は [`scripts/pi-kvm/`](../../../scripts/pi-kvm/README.md) の composite gadget
+> （キーボード・マウス・ネットワークを常時まとめて出す）。こちらは g_ether を外して HID だけを
+> 作る前提なので、pi-kvm の usb-gadget.service と同時には使えない。
+
 macmini が SSH からも画面共有からも触れなくなったとき（TCC の許可を一から入れる、
 ログイン画面から進めない、など）のための最後の入り口。使い方は
 [`docs/macmini-remote.md`](../../../docs/macmini-remote.md) を参照。

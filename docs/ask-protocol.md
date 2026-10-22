@@ -45,18 +45,13 @@ The broker runs on the workstation as a launchd agent in the GUI session. It lis
 tailnet, not only on a unix socket, because agents also run on the mac mini when that is the dev
 box, and the answer has to reach whichever machine asked.
 
-A second instance runs on the mac mini itself, for the agents T3 Code starts there. The workstation
-is a laptop and is often asleep exactly when the human is away and answering from a phone, so a
-mac mini agent cannot depend on it. The mac mini has nobody in front of its screen, so that
-instance asks over Matrix only (`channels`, below), and it holds its own vault session.
+Only the workstation runs a broker (`launchd.agents.ask-broker` in
+`nix/modules/home/darwin-services.nix`). Nothing on the mac mini does; vault access for the agents
+there goes through `aac listen` with Matrix approval instead (`nix/home/macmini.nix`).
 
-The agents there run as the same user as the broker, which shapes how that instance is set up:
-whatever it reads from disk, they can read; whatever it reads from a writable file, they can
-rewrite. So its config is a read-only store path, the master password is never written down — a
-human runs `ask-unlock` over ssh and the session exists only in the broker's memory — and its
-Matrix token belongs to a bot that can ask but not answer. What this does not stop is an agent
-replacing the broker itself and waiting for the next `ask-unlock` to type the password into its
-impostor. Only a separate user for the broker closes that; see Open.
+The agents run as the same user as the broker: whatever it reads from disk, they can read;
+whatever it reads from a writable file, they can rewrite. Only a separate user for the broker
+closes that; see Open.
 
 ## Requests
 
@@ -170,11 +165,11 @@ The broker tries channels in order and takes the first answer.
 2. **Elicitation.** MCP elicitation (Claude Code 2.1.76+), as the fallback if osascript cannot
    draw, and the nicer place to answer when you are looking at the terminal anyway. It blocks
    indefinitely by default, so the timeout belongs here, not in the caller.
-3. **Matrix.** Posts to a room on the self-hosted Conduit and waits for a reply. Element on the
+3. **Matrix.** Posts to a room on the self-hosted Synapse and waits for a reply. Element on the
    phone is the client. Reaches the human anywhere.
 
-Which of these are tried is set by `channels` in the broker config, in the order above. The
-headless mac mini instance lists only `matrix`: a dialog nobody can see would hold every request
+Which of these are tried is set by `channels` in the broker config, in the order above. A
+headless instance should list only `matrix`: a dialog nobody can see would hold every request
 for the full local timeout before the phone heard about it.
 
 Only the configured `approver` can answer on Matrix, and only by replying to the question's own
@@ -245,16 +240,14 @@ channels, and the layers above stay as they are.
 
 ## Open
 
-- Getting the Touch ID helper onto the machine declaratively. It cannot be built through nix here
-  — nixpkgs' swift will not link LocalAuthentication, the wall the Apple Speech work documented —
-  so it wants a CI build and a fetched release, the way terminal-browser already
-  works. `helper/build.sh` in github.com/gapul/ask installs it by hand until then, and the broker
-  skips the channel when the app is not there.
+- The Touch ID helper is declared (`nix/pkgs/askapprove.nix`, in `nix/hosts/darwin.nix`) but not
+  built through nix — nixpkgs' swift will not link LocalAuthentication — so the signed zip from
+  `helper/build.sh` in github.com/gapul/ask is added to the store by hand once per version. The
+  broker skips the channel when the app is not there.
 - The dialog stays on screen after the local timeout, because the elicitation and the osascript
   call are not cancelled when another channel wins. Answering a stale one does nothing.
-- The mac mini instance runs as the agents' own user. Its setup keeps secrets off disk and its
-  config read-only, but an agent can still stop the launchd job and listen on the port itself, then
-  collect the master password from the next `ask-unlock`. Running the broker as its own macOS user,
+- The broker runs as the agents' own user, so an agent can stop the launchd job and listen on the
+  port itself, then collect the master password from the next `ask-unlock`. Running the broker as its own macOS user,
   with `run` dropping to the agent's user for the child, is the fix. Until then, an unexpected
   "locked" is a reason to look at what is listening before unlocking.
 - Known and accepted for now (2026-10-14): the mac mini holds a token for @gapul:gapul.net — the

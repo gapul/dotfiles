@@ -14,6 +14,12 @@ android/
 
 ## Apps
 
+The declared Obtainium app list is `configs/android/obtainium.json`, synced with
+`droid obtainium pull|push` (`configs/bin/droid`): `pull` copies Obtainium's auto-export back
+into the repository, `push` drops an import file on the device. `apps.tsv` is the older, smaller
+declaration that `apps.sh` and the weekly drift CI still read; it does not list everything the
+device has.
+
 Three stores are in use, so the `source` column in `apps.tsv` says which one handles each app.
 
 | source | Distributed by | Installable from the Mac | Updated on the device by |
@@ -54,9 +60,10 @@ sources that have moved. That is how `Catfriend1/syncthing-android` was found to
 renamed to `researchxxl/`. GitHub is queried through `gh` if it is available, because the
 unauthenticated API allows 60 requests an hour and hits the rate limit as the declaration grows.
 
-**Updates on the device are Obtainium's job.** Paste the URL list from `apps.sh obtainium` into
-the app under Import/Export, Import from URL List. The URLs follow mechanically from the package
-ID and ref, so there is no separate file listing them.
+**Updates on the device are Obtainium's job.** Its app list is `configs/android/obtainium.json`:
+`droid obtainium push` puts it on the device for Obtainium's own import, and `droid obtainium
+pull` brings changes made on the device back. `apps.sh obtainium` still prints a URL list
+derived from `apps.tsv` for Import from URL List, but that covers only the `apps.tsv` rows.
 
 Anything distributed only through Play goes to Aurora Store, which since 4.6 can import and
 export Favourites and install them in bulk, so it is also a matter of handing over a file:

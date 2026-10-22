@@ -31,6 +31,12 @@ The destructive command is intentionally not wrapped by a helper:
 sudo disko --mode destroy,format,mount --flake ./nix#nixos-laptop
 ```
 
+disko still formats the LUKS root as ext4, but the host mounts Btrfs
+subvolumes `@`, `@home`, `@nix` and `@log` (`nix/hosts/nixos-laptop-btrfs.nix`).
+Before installing, remake `/dev/mapper/cryptroot` as Btrfs with those
+subvolumes and mount them, as in the note at the end of phase 4 of
+`docs/NIXOS_DUALBOOT.md`.
+
 Mount the existing EFI System Partition at `/mnt/boot` without formatting it,
 then follow `docs/NIXOS_DUALBOOT.md` to generate the hardware configuration and
 install NixOS.
