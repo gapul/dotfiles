@@ -539,17 +539,15 @@ _maintain-linux:
       git -C "$HOME/.dotfiles" pull --rebase --autostash
     fi
     just outdated
-    lock="{{flake}}/flake.lock"
-    old_lock=$(mktemp)
-    cp "$lock" "$old_lock"
-    trap 'rc=$?; if [ $rc -ne 0 ]; then cp "$old_lock" "$lock"; echo "Restored flake.lock after failed maintain" >&2; fi; rm -f "$old_lock"; rm -rf "$maintenance_lock"; exit $rc' EXIT
-    just _update-lock
+    trap 'rc=$?; rm -rf "$maintenance_lock"; exit $rc' EXIT
+    # No `nix flake update` here, as in _maintain-macos: the update-flake-lock workflow bumps the
+    # lock through a PR that CI builds into cachix. A local bump left flake.lock dirty after every
+    # maintain and built inputs nothing had cached; `just update` is there for a bump on purpose.
     just rebuild
     just gc
     just _maintain-user-tools
     just doctor || true
     trap - EXIT
-    rm -f "$old_lock"
     rm -rf "$maintenance_lock"
 
 [private]
