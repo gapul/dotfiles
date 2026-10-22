@@ -567,16 +567,15 @@
               # direnv files have no shebang and assume the direnv stdlib
               "\\.envrc$"
               # zsh is out of scope for shellcheck (SC1071). Excluded by extension because adding
-              # directories one by one, like macmini below, misses things. configs/shell/*.zsh
+              # directories one by one misses things. configs/shell/*.zsh
               # had in fact slipped through, and `just fmt` failed with SC1072 even on
               # origin/main. Both `f() { x=$y }` in prompt.zsh and `${${x}}` in evalcache.zsh
               # are valid zsh that shellcheck just can't read, so rewriting them to silence it
               # is the wrong fix.
               "\\.zsh$"
-              # Some zsh has no extension. The macmini AI commands are zsh only by shebang
-              "configs/macmini/bin/.*"
-              # Same for their main-Mac-side client wrappers
-              "configs/macmini/client/.*"
+              # The extensionless macmini AI commands (configs/macmini/bin, configs/macmini/client)
+              # used to be zsh and were excluded here; they are bash now and linted like the rest
+              # (the default `types = [ "shell" ]` picks them up by shebang).
               # Archive of one-shot scripts from macmini setup (historical artifacts, not style-refactored)
               "configs/macmini/setup-scripts/.*"
             ];

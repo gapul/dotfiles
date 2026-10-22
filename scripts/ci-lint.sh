@@ -4,7 +4,7 @@
 # 全ツールは devShell (nix develop ./nix) の PATH 前提で叩く。
 # - just --summary : Justfile パース検証 (整形は just バージョン依存のため gate にしない)
 # - statix         : Nix アンチパターン (repeated_keys は誤検出のため .statix.toml で除外)
-# - shellcheck     : 全 .sh を error 重大度で gate (warning/info は既存資産が多く除外)
+# - shellcheck     : 全 .sh と拡張子なしの macmini コマンドを error 重大度で gate (warning/info は既存資産が多く除外)
 # - ruff           : 全 .py の lint + 整形チェック (設定は pyproject.toml)
 # - pyright        : 全 .py の型チェック (basic。third-party import は解決しない前提)
 # - stylua         : nvim 配下の lua 整形 (uosc/yazi 等 vendored は対象外)
@@ -33,8 +33,9 @@ just --summary
 echo "==> statix check (Nix アンチパターン)"
 statix check -c .statix.toml nix
 
-echo "==> shellcheck (全 .sh の error gate)"
-tracked '*.sh' | xargs -0 shellcheck -S error
+# configs/macmini/{bin,client} は拡張子なしの bash スクリプト (shebang で判別) なので明示的に足す。
+echo "==> shellcheck (全 .sh + macmini コマンドの error gate)"
+tracked '*.sh' configs/macmini/bin configs/macmini/client | xargs -0 shellcheck -S error
 
 # --force-exclude: ファイル名で渡しても pyproject.toml の extend-exclude を効かせる。
 echo "==> ruff check (Python lint)"

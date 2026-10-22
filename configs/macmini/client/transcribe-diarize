@@ -1,19 +1,21 @@
-#!/bin/zsh
+#!/bin/bash
 # 母艦→macmini 透過・話者分離つき文字起こし。
 # 使い方: transcribe-diarize <ファイル> [ja/en/auto] [fast|accurate]
-emulate -L zsh
 file="$1"; lang="${2:-ja}"; model="${3:-fast}"
 if [[ -z "$file" || ! -f "$file" ]]; then
   echo "使い方: transcribe-diarize <ファイル> [ja/en/auto] [fast|accurate]"
   exit 1
 fi
-base="${file:t:r}"; ext="${file:e}"
+# zsh の ${file:t:r} / ${file:e} 相当 (拡張子は最後のパス要素の最後の . 以降)
+name="${file##*/}"
+case "$name" in *.*) base="${name%.*}"; ext="${name##*.}" ;; *) base="$name"; ext="" ;; esac
 tag="trd_$$"; rf="/tmp/${tag}.${ext}"
-retry() { local i; for i in 1 2 3; do "$@" && return 0; sleep 2; done; return 1; }
+retry() { local _; for _ in 1 2 3; do "$@" && return 0; sleep 2; done; return 1; }
 
 echo "[send] $file → macmini"
 retry scp -q "$file" "macmini:$rf" || { echo "scp失敗"; exit 1; }
 echo "[run ] 話者分離つき文字起こし (model=$model lang=$lang)"
+# shellcheck disable=SC2088 # ~ は macmini 側のシェルで展開させる
 retry ssh macmini "~/.local/bin/transcribe-diarize $rf $lang $model >/dev/null 2>&1" || { echo "実行失敗"; exit 1; }
 
 outdir="$(cd "$(dirname "$file")" && pwd)"
