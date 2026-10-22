@@ -281,7 +281,10 @@ def selftest() -> None:
     assert split_text("   ") == []
     assert split_text("あ。い。") == ["あ。い。"]
     # 上限を超えたら次のかたまりへ送る
-    assert split_text("あ" * 70 + "。" + "い" * 70 + "。", 120) == ["あ" * 70 + "。", "い" * 70 + "。"]
+    assert split_text("あ" * 70 + "。" + "い" * 70 + "。", 120) == [
+        "あ" * 70 + "。",
+        "い" * 70 + "。",
+    ]
     # 上限より長い 1 文は切らない（切ると読みが壊れる）
     long_one = "う" * 300 + "。"
     assert split_text(long_one, 120) == [long_one]
@@ -314,7 +317,9 @@ def main() -> None:
         help="1 回の /synthesis に使ってよい秒数。超えそうなぶんは AivisSpeech に回す。"
         " 呼び出し側（presenta）は 120 秒で諦めるので、それより短くすること。",
     )
-    parser.add_argument("--selftest", action="store_true", help="切り方と WAV の往復を確かめて終わる")
+    parser.add_argument(
+        "--selftest", action="store_true", help="切り方と WAV の往復を確かめて終わる"
+    )
     args = parser.parse_args()
 
     if args.selftest:

@@ -113,9 +113,7 @@ def write_atomic(path: pathlib.Path, data: dict) -> None:
         raise
 
 
-def adopt_tree(
-    managed: dict, current: dict, prefix: str = ""
-) -> tuple[dict, list[str], list[str]]:
+def adopt_tree(managed: dict, current: dict, prefix: str = "") -> tuple[dict, list[str], list[str]]:
     """管理ファイルの構造をなぞって、ホスト側の現在値へ差し替えた木を返す。
 
     管理キーの集合は増やさない。managed に無いキーは見に行かないので、
@@ -161,9 +159,7 @@ def adopt(source: pathlib.Path, managed_path: pathlib.Path) -> int:
     updated, changed, missing = adopt_tree(managed, current)
 
     for key in missing:
-        print(
-            f"[claude-settings] {source} に {key} が無いので据え置き", file=sys.stderr
-        )
+        print(f"[claude-settings] {source} に {key} が無いので据え置き", file=sys.stderr)
     if not changed:
         print(f"[claude-settings] {managed_path} は {source} と一致しています")
         return 0

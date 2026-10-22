@@ -4,9 +4,9 @@
 # 非同期) にフォールバック。rmpc は .lrc の [ar:][ti:][al:][length:] メタで曲にマッチする。
 # MPD を自分で読むので rmpc の env var 名には依存しない。ytmusicapi を使うため mopidy env
 # の python で実行する想定 (auth は ~/.config/mopidy/browser.json)。
+import json
 import os
 import re
-import json
 import socket
 import urllib.parse
 import urllib.request
@@ -45,14 +45,18 @@ def lrc_headers(artist, title, album, dur):
     if album:
         h.append(f"[al:{album}]")
     if dur:
-        h.append(f"[length:{int(dur)//60:02d}:{int(dur)%60:02d}]")
+        h.append(f"[length:{int(dur) // 60:02d}:{int(dur) % 60:02d}]")
     return "\n".join(h) + "\n"
 
 
 def fetch_lrclib(artist, title, album, dur):
     q = urllib.parse.urlencode(
-        {"artist_name": artist, "track_name": title, "album_name": album or "",
-         "duration": int(dur) if dur else ""}
+        {
+            "artist_name": artist,
+            "track_name": title,
+            "album_name": album or "",
+            "duration": int(dur) if dur else "",
+        }
     )
     try:
         req = urllib.request.Request(
@@ -72,6 +76,7 @@ def fetch_ytmusic(file_uri):
     vid = file_uri.split(":")[2]
     try:
         from ytmusicapi import YTMusic
+
         yt = YTMusic(auth=AUTH)
         wp = yt.get_watch_playlist(videoId=vid)
         lid = wp.get("lyrics")

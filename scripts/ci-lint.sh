@@ -5,6 +5,8 @@
 # - just --summary : Justfile パース検証 (整形は just バージョン依存のため gate にしない)
 # - statix         : Nix アンチパターン (repeated_keys は誤検出のため .statix.toml で除外)
 # - shellcheck     : 全 .sh を error 重大度で gate (warning/info は既存資産が多く除外)
+# - ruff           : 全 .py の lint + 整形チェック (設定は pyproject.toml)
+# - pyright        : 全 .py の型チェック (basic。third-party import は解決しない前提)
 # - stylua         : nvim 配下の lua 整形 (uosc/yazi 等 vendored は対象外)
 # - taplo/jq/yq    : toml/json/yaml の構文検証 (設定破損の即検知)
 # - actionlint     : GitHub Actions workflow の文法/式チェック
@@ -33,6 +35,17 @@ statix check -c .statix.toml nix
 
 echo "==> shellcheck (全 .sh の error gate)"
 tracked '*.sh' | xargs -0 shellcheck -S error
+
+# --force-exclude: ファイル名で渡しても pyproject.toml の extend-exclude を効かせる。
+echo "==> ruff check (Python lint)"
+tracked '*.py' | xargs -0 ruff check --force-exclude --no-fix
+
+echo "==> ruff format --check (Python 整形)"
+tracked '*.py' | xargs -0 ruff format --check --force-exclude
+
+# ファイル名で渡すと exclude が効かないので、対象選びは pyproject.toml の tool.pyright に任せる。
+echo "==> pyright (Python 型チェック)"
+pyright
 
 echo "==> stylua --check (nvim lua 整形)"
 stylua --check configs/editors/nvim/

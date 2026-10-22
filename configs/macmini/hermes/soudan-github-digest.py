@@ -43,7 +43,7 @@ def jst(stamp):
 def main():
     out_path = sys.argv[1]
     days = int(sys.argv[2]) if len(sys.argv) > 2 else 8
-    since = dt.datetime.now(dt.timezone.utc) - dt.timedelta(days=days)
+    since = dt.datetime.now(dt.UTC) - dt.timedelta(days=days)
     since_s = since.strftime("%Y-%m-%dT%H:%M:%SZ")
 
     lines = [
@@ -69,9 +69,7 @@ def main():
             for c in commits:
                 if c["sha"] in seen:
                     continue
-                author = (c.get("author") or {}).get("login") or c["commit"]["author"][
-                    "name"
-                ]
+                author = (c.get("author") or {}).get("login") or c["commit"]["author"]["name"]
                 seen[c["sha"]] = (
                     c["commit"]["author"]["date"],
                     br["name"],
@@ -107,9 +105,7 @@ def main():
         if issues:
             section.append("### issues")
             for i in issues:
-                section.append(
-                    f"- #{i['number']} {i['state']} {i['user']['login']}: {i['title']}"
-                )
+                section.append(f"- #{i['number']} {i['state']} {i['user']['login']}: {i['title']}")
 
         if section:
             lines.append(f"## {name}")
