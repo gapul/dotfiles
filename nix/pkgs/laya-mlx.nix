@@ -22,7 +22,7 @@
   python3Packages,
 }:
 let
-  mlxVersion = "0.32.2";
+  mlxVersion = "0.32.4";
   mlx-metal = python3Packages.buildPythonPackage rec {
     pname = "mlx-metal";
     version = mlxVersion;
@@ -34,7 +34,7 @@ let
       python = "py3";
       abi = "none";
       platform = "macosx_26_0_arm64";
-      hash = "sha256-5qvqyaxSZYMMnBVBtvlum+N6hcJEZ2OkatRmxjo4N6s=";
+      hash = "sha256-UU35LUGiholdJWS0sY9NpFCWvXpKDEfhBC80WtWn+TY=";
     };
     meta.platforms = [ "aarch64-darwin" ];
   };
@@ -48,7 +48,7 @@ let
       python = "cp313";
       abi = "cp313";
       platform = "macosx_26_0_arm64";
-      hash = "sha256-34x15Qneho/KFI3+s42SzpVu7Thlach8rrcr0W0taWI=";
+      hash = "sha256-7xMOPaiVyFN0sRpsOJrLEiiT8v/L7YJri2L9RaILetY=";
     };
     dependencies = [ mlx-metal ];
     # core.*.so looks for libmlx.dylib at @rpath = mlx/lib next to itself; pip
@@ -62,7 +62,7 @@ let
   };
   laya-mlx = python3Packages.buildPythonPackage rec {
     pname = "laya-mlx";
-    version = "0.2.0";
+    version = "0.5.0";
     format = "wheel";
 
     src = python3Packages.fetchPypi {
@@ -70,7 +70,7 @@ let
       inherit version format;
       dist = "py3";
       python = "py3";
-      hash = "sha256-GoCgzHnFW+gI3gsSCKFyVmIJtXgNeWuY2GI16c8zUYc=";
+      hash = "sha256-3nmQWAxL45dGY8qiHJhoTLApaRJ+ywtVlgn+LceKHX8=";
     };
 
     dependencies = with python3Packages; [

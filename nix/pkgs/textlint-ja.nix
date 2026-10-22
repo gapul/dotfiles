@@ -25,7 +25,7 @@ buildNpmPackage {
 
   src = ../../configs/textlint;
 
-  npmDepsHash = "sha256-s1AsdfLBveAZOOR+BeNaAt71FwCF/4Bs5zBaaQcqV88=";
+  npmDepsHash = "sha256-yzSrsPPnTeJlbzmilhkmx65VhjETi/lz03uPKumXg14=";
 
   # No build script (just bundling rules)
   dontNpmBuild = true;

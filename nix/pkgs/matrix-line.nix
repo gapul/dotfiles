@@ -20,16 +20,16 @@
 }:
 buildGoModule (finalAttrs: {
   pname = "matrix-line";
-  version = "1.2.0-unstable-2026-09-28";
+  version = "1.2.0-unstable-2026-10-22";
 
   src = fetchFromGitHub {
     owner = "beeper";
     repo = "line";
-    rev = "3b3c06640383e4323074784b7f242e41e9b85d35";
-    hash = "sha256-3GiSFzCSKIEN7vqgWXqkGfUY0Bf3f1cD3g6oqpiDwZQ=";
+    rev = "72c7a51a44f344966b916bd2f42a734381061186";
+    hash = "sha256-4metipU3tnHDEu0VfP80JZnVOdk9LzQmr1rOqj4W3Zs=";
   };
 
-  vendorHash = "sha256-qs0FaqCgKo0a9wrER6G1fAJ/UcOvoZEH2gNvS/hkm2E=";
+  vendorHash = "sha256-Cq2JwmYXieO6FDUxJ1pe8AByHmZkKQHqfzu6YGdFRXU=";
 
   # sqlite uses cgo, so it can't be disabled.
   env.CGO_ENABLED = "1";
