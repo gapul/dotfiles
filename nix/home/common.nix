@@ -183,6 +183,33 @@ in
     ''
   );
 
+  # launchd opens an agent's StandardOutPath/StandardErrorPath itself and creates the file but
+  # never its directory; with the directory missing the agent's output silently goes nowhere.
+  # Every declared agent's log parent is derived here, before setupLaunchAgents bootstraps them,
+  # instead of a mkdir next to each agent. Only directories under $HOME (/tmp already exists,
+  # and nothing else is the user's to create).
+  home.activation.launchdLogDirs =
+    let
+      logDirs = lib.unique (
+        lib.filter (dir: lib.hasPrefix "${config.home.homeDirectory}/" dir) (
+          lib.concatMap (
+            agent:
+            map dirOf (
+              lib.filter (path: path != null) [
+                agent.config.StandardOutPath
+                agent.config.StandardErrorPath
+              ]
+            )
+          ) (lib.filter (agent: agent.enable) (lib.attrValues config.launchd.agents))
+        )
+      );
+    in
+    lib.mkIf (pkgs.stdenv.hostPlatform.isDarwin && logDirs != [ ]) (
+      lib.hm.dag.entryBetween [ "setupLaunchAgents" ] [ "writeBoundary" ] ''
+        run /bin/mkdir -p ${lib.escapeShellArgs logDirs}
+      ''
+    );
+
   # One-off CLI tools (not covered by programs.*, OS-independent)
 
   # SOPS definitions are split into home/secrets.nix (so macmini, which has no age key,

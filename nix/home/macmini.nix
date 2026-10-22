@@ -207,16 +207,9 @@ in
       || echo "warning: Claude settings merge failed; left untouched" >&2
   '';
 
-  # launchd does not create the parent of StandardOutPath, and the dashboard agent's log moved out
-  # of the (now deleted) project directory into XDG state.
-  home.activation.manabiStateDir = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    run /bin/mkdir -p "${config.home.homeDirectory}/.local/state/manabi"
-  '';
-
-  # Same for the t3code agents' logs.
-  home.activation.t3codeStateDir = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    run /bin/mkdir -p "${config.xdg.stateHome}/t3code"
-  '';
+  # (~/.local/state/manabi and ~/.local/state/t3code, the agents' log directories, are created by
+  #  home.activation.launchdLogDirs in home/common.nix like every other agent's log parent.
+  #  hosts/macmini.nix's manabi-daily-review daemon logs into the same manabi directory.)
 
   # glances, the box's own metrics endpoint (the homelab dashboard scrapes it). Was a hand-written
   # plist; same spec, just declared. Bound to 0.0.0.0 because the scrape comes from the homeserver,

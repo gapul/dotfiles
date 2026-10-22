@@ -718,14 +718,14 @@ in
   # Nerd Font pills and looked out of place, and Wi-Fi was already shown twice. Both are
   # pills in waybar instead (network, bluetooth), which open the full tools on click.
 
-  # nwg-displays writes its result here. The file is created empty on first activation so the
-  # source line never points at nothing (Hyprland shows a config-error banner for that), and is
-  # never overwritten afterwards. Rules for a named output win over the catch-all `monitor`
-  # line in settings, so an empty file simply means "preferred, auto".
-  home.activation.hyprMonitorsConf = config.lib.dag.entryAfter [ "writeBoundary" ] ''
-    run mkdir -p "${config.xdg.configHome}/hypr"
-    [ -e "${config.xdg.configHome}/hypr/monitors.conf" ] || run touch "${config.xdg.configHome}/hypr/monitors.conf"
-  '';
+  # nwg-displays writes its result here. The file is created empty if missing (tmpfiles `f`, run
+  # at activation whenever the rule set changes and at every login) so the source line never
+  # points at nothing (Hyprland shows a config-error banner for that), and is never overwritten
+  # afterwards. Rules for a named output win over the catch-all `monitor` line in settings, so an
+  # empty file simply means "preferred, auto".
+  systemd.user.tmpfiles.rules = [
+    "f ${config.xdg.configHome}/hypr/monitors.conf 0644 - - -"
+  ];
 
   # package = null: use the system Hyprland, HM manages only the config.
   wayland.windowManager.hyprland = {
@@ -1039,7 +1039,7 @@ in
     # nwg-displays writes its result as hyprlang ("monitor=NAME,MODE,POSITION,SCALE[,...]"),
     # which the Lua config cannot `source`; read it here and hand each line to hl.monitor, so
     # a named output still wins over the catch-all above. (The file is created empty on
-    # first activation, see home.activation.hyprMonitorsConf.)
+    # first activation, see systemd.user.tmpfiles.rules above.)
     extraConfig = ''
       do
         local path = (os.getenv("XDG_CONFIG_HOME") or (os.getenv("HOME") .. "/.config")) .. "/hypr/monitors.conf"

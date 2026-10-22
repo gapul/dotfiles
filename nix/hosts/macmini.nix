@@ -906,21 +906,32 @@ in
   # reopen; the daemons and agents that matter are declared and start on their own.
   system.defaults.CustomUserPreferences."com.apple.loginwindow".TALLogoutSavesState = false;
 
-  # Prep for headless operation (nix-darwin has no typed option, so an idempotent script).
+  # Never sleep, so it can serve inference unattended. The display stays awake too: that is not
+  # about power but about remote operation. A sleeping display falls through the screensaver
+  # to the lock screen, and past that it takes a human who can type the password (and the HDMI
+  # capture the desk watches goes dark). nix-darwin applies both with `systemsetup
+  # -setComputerSleep/-setDisplaySleep never`, the same settings as `pmset -a sleep 0 /
+  # displaysleep 0`.
+  power.sleep = {
+    computer = "never";
+    display = "never";
+  };
+
+  # Remote Login (SSH); this machine is administered over it. nix-darwin only bootstraps Apple's
+  # com.openssh.sshd when `systemsetup -getremotelogin` reports Off, so an sshd that is already
+  # running is never restarted. Its sshd_config.d files (099-host-keys, 100-nix-darwin) are
+  # written whether or not this is set, so the effective sshd config is unchanged.
+  services.openssh.enable = true;
+
+  # Prep for headless operation (the parts nix-darwin has no typed option for, so an idempotent script).
   # postActivation is used by darwin-common, so put this in preActivation to avoid a collision.
   system.activationScripts.preActivation.text = ''
-    # Prevent sleep: don't let it sleep so it can serve inference unattended.
-    /usr/bin/pmset -a sleep 0          >/dev/null 2>&1 || true
+    # On top of power.sleep.computer (idle sleep): refuse sleep outright.
     /usr/bin/pmset -a disablesleep 1   >/dev/null 2>&1 || true
-    # Enable Remote Login (SSH). Key auth reuses the existing setup (Bitwarden agent etc.) as-is.
-    /usr/sbin/systemsetup -setremotelogin on >/dev/null 2>&1 || true
     # Power Nap wakes the machine for background work it does not need to do; this one never
     # sleeps in the first place.
     /usr/bin/pmset -a powernap 0 >/dev/null 2>&1 || true
-    # 画面を消させない。ここは省電力の話ではなく、遠隔操作の前提。ディスプレイが寝ると
-    # スクリーンセーバ経由でロック画面に戻り、そこから先はパスワードを打てる人間が要る。
-    # (キャプチャは HDMI に繋いだ側で見ているので、消えると何も見えなくもなる)
-    /usr/bin/pmset -a displaysleep 0 >/dev/null 2>&1 || true
+    # 画面を消させない (power.sleep.display = "never" と同じ理由)。スクリーンセーバも止める。
     /usr/bin/sudo -u ${user.username} /usr/bin/defaults -currentHost write com.apple.screensaver idleTime -int 0 >/dev/null 2>&1 || true
     # ロックそのものの有効/無効は sysadminctl -screenLock にあり、変更にアカウントの
     # パスワードが要るので宣言できない。無効にしてあるが、OS の更新で戻ったら手で戻す:
@@ -980,9 +991,9 @@ in
     # Google's updater, removed. Chrome here is an automation target that gets upgraded by hand
     # with the rest of the declaration, so a resident agent waking up to check for versions is
     # noise. Chrome re-installs Keystone whenever it is launched, so this runs every activation
-    # rather than once; checkInterval 0 keeps it quiet in between.
+    # rather than once; checkInterval 0 (system.defaults.CustomUserPreferences in
+    # darwin-common.nix) keeps it quiet in between.
     guiuid=$(/usr/bin/id -u ${user.username})
-    /usr/bin/sudo -u ${user.username} /usr/bin/defaults write com.google.Keystone.Agent checkInterval 0 >/dev/null 2>&1 || true
     for label in com.google.GoogleUpdater.wake com.google.keystone.agent com.google.keystone.xpcservice; do
       /bin/launchctl bootout "gui/$guiuid/$label" >/dev/null 2>&1 || true
       /bin/rm -f "/Users/${user.username}/Library/LaunchAgents/$label.plist" || true
