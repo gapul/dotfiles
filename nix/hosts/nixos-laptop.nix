@@ -1086,7 +1086,7 @@ in
   #     environment and niri's, and no ~/.claude.json was ever created, so nothing bypasses them.
   #   ~/.terminfo: Ghostty's terminfo for hosts without it. Here ghostty is a system package, so
   #     xterm-ghostty is in /run/current-system/sw/share/terminfo, which TERMINFO_DIRS lists and
-  #     sudo keeps; the compile into ~/.local/share/terminfo is skipped with it.
+  #     sudo keeps; the compiled entries in ~/.local/share/terminfo are skipped with it.
   #   ~/.hushlogin: replaced by PrintLastLog above.
   home-manager.users.${user.username} =
     { lib, ... }:
@@ -1095,7 +1095,7 @@ in
       home.file.".codex".enable = lib.mkForce false;
       home.file.".terminfo".enable = lib.mkForce false;
       home.file.".hushlogin".enable = lib.mkForce false;
-      home.activation.ghosttyTerminfo = lib.mkForce (lib.hm.dag.entryAnywhere "");
+      xdg.dataFile."terminfo".enable = lib.mkForce false;
     };
 
   # sudo without a password for wheel. This box is administered remotely over SSH
