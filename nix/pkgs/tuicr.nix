@@ -6,16 +6,16 @@
 }:
 rustPlatform.buildRustPackage {
   pname = "tuicr";
-  version = "0.19.1";
+  version = "0.27.0";
 
   src = fetchFromGitHub {
     owner = "agavra";
     repo = "tuicr";
-    tag = "v0.19.1";
-    hash = "sha256-uLtwpieKBTbLLDmgE4LLNljvv69i0cBRvU1WEgy09Xo=";
+    tag = "v0.27.0";
+    hash = "sha256-kObt0MLJZYASWM1vexZTPaIeFaU2XpT9sHUSdClRz2Y=";
   };
 
-  cargoHash = "sha256-jEPgXXlqTgVX+GutQX8JCwtLS0J3cx7RV76NdM5m6QE=";
+  cargoHash = "sha256-azgmxJP3iQO+WfJCWqfi19rCSb6D0a0luWcgEW+8Sbg=";
   strictDeps = true;
   nativeCheckInputs = [ git ];
   checkFlags = [ "--skip=should_return_no_changes_for_clean_repo" ];
@@ -23,7 +23,7 @@ rustPlatform.buildRustPackage {
   meta = {
     description = "Review AI-generated diffs like a GitHub pull request in the terminal";
     homepage = "https://tuicr.dev";
-    changelog = "https://github.com/agavra/tuicr/blob/v0.19.1/CHANGELOG.md";
+    changelog = "https://github.com/agavra/tuicr/blob/v0.27.0/CHANGELOG.md";
     license = lib.licenses.mit;
     mainProgram = "tuicr";
     platforms = lib.platforms.unix;
