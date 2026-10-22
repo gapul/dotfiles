@@ -389,8 +389,21 @@ for (const r of required) {
     err(e.message);
   }
   const label = `${rtype} ${rname}${rpri ? ` (pri=${rpri})` : ""}`;
-  if (haveContents.includes(want)) {
+  // SPF is one record per name, and it may authorise more senders than Cloudflare's suggestion
+  // (the live one adds a:www3120.sakura.ne.jp for sakura-mail). Any SPF that includes every
+  // mechanism Cloudflare asks for is enough. Creating Cloudflare's version beside it would leave
+  // two SPF records, which receivers treat as a permerror.
+  const spfTerms = (s: string): string[] => s.split(/\s+/).filter((t) => t !== "" && !/^[~?+-]?all$/.test(t));
+  const wantSpf = rtype === "TXT" && want.startsWith("v=spf1 ");
+  const spfOk =
+    wantSpf &&
+    haveContents.some((h) => h.startsWith("v=spf1 ") && spfTerms(want).every((t) => spfTerms(h).includes(t)));
+  if (haveContents.includes(want) || spfOk) {
     out(`  ok       ${label}`);
+  } else if (wantSpf && haveContents.some((h) => h.startsWith("v=spf1 "))) {
+    // An SPF exists but lacks Cloudflare's include: --apply must not add a second one.
+    out(`  WRONG    ${label} -> SPF に ${spfTerms(want).join(" ")} を足す (手で直す。--apply は二重 SPF を作るので触らない)`);
+    mailBad++;
   } else {
     out(`  MISSING  ${label} -> ${Array.from(want).slice(0, 50).join("")}`);
     mailBad++;
