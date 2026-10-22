@@ -20,10 +20,10 @@ in
   home.packages =
     with pkgs;
     [
-      # mpv itself. It stayed on brew for a long time because of a note saying "nixpkgs mpv doesn't
-      # support aarch64-darwin", but when checked on 2026-08-30, 0.41.0 was cached and worked fine
-      # (the note was outdated). uosc was already from nixpkgs, so now the player and scripts share a source.
-      mpv
+      # mpv itself comes from programs.mpv below (package = pkgs.mpv, the default). It stayed on
+      # brew for a long time because of a note saying "nixpkgs mpv doesn't support aarch64-darwin",
+      # but when checked on 2026-08-30, 0.41.0 was cached and worked fine (the note was outdated).
+      # uosc was already from nixpkgs, so now the player and scripts share a source.
       pandoc # document conversion
       # Ears for the music tooling: aubiopitch / aubiotempo / aubioonset turn a rendered wav into
       # numbers an agent can check (is the melody the one I wrote, is the tempo 100). The other
@@ -235,10 +235,76 @@ in
     source = ../../configs/tex/templates;
     recursive = true;
   };
-  home.file.".config/mpv" = {
-    source = ../../configs/media/mpv;
-    recursive = true;
+  programs.mpv = {
+    enable = true;
+    # No `scripts` here: that swaps the binary for a makeWrapper'd mpv whose uosc
+    # passthru.extraWrapperArgs set FONTCONFIG_FILE to a fonts.conf holding only uosc's fonts
+    # (subtitles / osd-font would lose the system fonts) and pull in uosc's ziggy helper, which
+    # was dropped on purpose (see below). uosc stays a plain ~/.config/mpv/scripts entry.
+    config =
+      let
+        # Initial chrome colours (Rosé Pine dark). scripts/theme-follow.lua switches them to
+        # dark/light by watching the macOS appearance.
+        inherit ((import ../lib/theme.nix).dark) base text;
+      in
+      {
+        # Appearance
+        osc = false;
+        border = false;
+        keepaspect-window = false;
+        background-color = "#${base}";
+
+        # OSD
+        osd-font = "SF Pro Display";
+        osd-font-size = 32;
+        osd-color = "#${text}";
+        osd-border-color = "#${base}";
+        osd-border-size = 2;
+        osd-bar-align-y = "0.95"; # strings: Nix floats print as 0.950000
+        osd-bar-h = 2;
+        osd-bar-w = 90;
+
+        # Audio files get a window too
+        force-window = true;
+        geometry = "400x400";
+
+        # Video
+        hwdec = "auto";
+        vo = "gpu";
+
+        # Screenshots
+        screenshot-directory = "~/Pictures";
+        screenshot-format = "png";
+      };
+    scriptOpts.uosc = {
+      # Tokyo Night style colours
+      color = "foreground=c0caf5,foreground_text=1a1b26,background=1a1b26,background_text=c0caf5,curtain=1a1b26,success=9ece6a,error=f7768e";
+
+      # Timeline
+      timeline_style = "bar";
+      timeline_size = 4;
+      timeline_size_max = 40;
+      timeline_persistency = "";
+      timeline_border = 1;
+
+      # Controls
+      controls = "menu,gap,subtitles,<has_many_audio>audio,<has_many_video>video,<has_many_edition>editions,<stream>stream-quality,gap,space,speed,space,shuffle,loop-playlist,loop-file,gap,prev,items,next,gap,fullscreen";
+      controls_persistency = "";
+
+      # Top bar
+      top_bar = "always";
+      top_bar_title = "\${media-title}";
+      top_bar_persistency = "";
+
+      # Window
+      window_border_size = 0;
+
+      # UI
+      opacity = "timeline=0.9,position=0.9,chapters=0.3,slider=0.9,slider_gauge=0.3,speed=0.6,menu=1,submenu=1,border=1,title=0.9,tooltip=0.9,thumbnail=1,curtain=0.5,idle_indicator=0.8,audio_indicator=0.5,buffering_indicator=0.8,playlist_position=0.8";
+    };
   };
+  home.file.".config/mpv/scripts/theme-follow.lua".source =
+    ../../configs/media/mpv/scripts/theme-follow.lua;
   # uosc: stop vendoring (an 18MB bundled ziggy binary) and supply it from nixpkgs.
   # Keep third-party binaries out of the repo (the ziggy-dependent DL feature is unused).
   home.file.".config/mpv/scripts/uosc".source = "${pkgs.mpvScripts.uosc}/share/mpv/scripts/uosc";
