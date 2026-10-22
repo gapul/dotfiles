@@ -9,8 +9,291 @@
   ...
 }:
 
-{
+let
+  inherit (import ../lib/homeserver-sites.nix { inherit pkgs; }) macmini sites;
 
+  # services.yaml, rendered from the same `sites` table that drives Caddy and gatus, so a
+  # dashboard tile's href and siteMonitor cannot drift from the vhost and its upstream.
+  # Liveness checks use siteMonitor throughout. Services that became native during the
+  # migration (conduit / syncthing / blocky / gatus ...) have no container, so the
+  # server+container style would light up only half of the tiles.
+  # Groups and tiles render in list order.
+  #
+  # A tile for a `sites` entry: href is its gapul.net vhost, siteMonitor its upstream.
+  site =
+    key:
+    {
+      name,
+      description,
+      icon,
+      path ? "",
+      monitor ? true,
+    }:
+    {
+      ${name} = {
+        href = "https://${key}.gapul.net${path}";
+        inherit description icon;
+      }
+      // lib.optionalAttrs monitor { siteMonitor = "http://${sites.${key}.upstream}"; };
+    };
+  # A tile for something that is not in `sites` (no vhost there), written out in full.
+  tile = name: attrs: { ${name} = attrs; };
+  glancesMac = "http://${macmini}:61208";
+  glances = metric: {
+    type = "glances";
+    url = glancesMac;
+    version = 4;
+    inherit metric;
+    chart = false;
+  };
+
+  services = [
+    {
+      Home = [
+        (site "home" {
+          name = "Home Assistant";
+          description = "Smart home";
+          icon = "home-assistant.png";
+        })
+        (site "nodered" {
+          name = "Node-RED";
+          description = "Automation flows";
+          icon = "node-red.png";
+        })
+      ];
+    }
+    {
+      Infrastructure = [
+        (site "status" {
+          name = "Gatus";
+          description = "Uptime monitoring (successor to uptime-kuma)";
+          icon = "gatus.png";
+        })
+        (site "cache" {
+          name = "Attic";
+          description = "Self-hosted Nix binary cache";
+          icon = "nixos.png";
+        })
+        (site "dns2" {
+          name = "Blocky";
+          path = "/check";
+          description = "DNS filter (check a domain, pause blocking 10 min)";
+          icon = "mdi-dns";
+        })
+        (site "sync" {
+          name = "Syncthing";
+          description = "File sync";
+          icon = "syncthing.png";
+        })
+        (site "files" {
+          name = "Files";
+          description = "Browse Google Drive / backups";
+          icon = "mdi-folder-eye";
+        })
+        (site "ntfy" {
+          name = "ntfy";
+          description = "Push notifications";
+          icon = "ntfy.png";
+        })
+      ];
+    }
+    {
+      Apps = [
+        (site "vault" {
+          name = "Vaultwarden";
+          description = "Password manager";
+          icon = "vaultwarden.png";
+        })
+        (site "rss" {
+          name = "Miniflux";
+          description = "RSS reader";
+          icon = "miniflux.png";
+        })
+        (site "read" {
+          name = "Readeck";
+          description = "Read it later";
+          icon = "readeck.png";
+        })
+        (site "box" {
+          name = "Homebox";
+          description = "Inventory";
+          icon = "homebox.png";
+        })
+        (site "search" {
+          name = "SearXNG";
+          description = "Meta search";
+          icon = "searxng.png";
+        })
+        (site "obsidian" {
+          name = "Obsidian LiveSync";
+          description = "Note sync (CouchDB)";
+          icon = "obsidian.png";
+          # CouchDB answers / with 401 (require_valid_user), which siteMonitor shows as down.
+          monitor = false;
+        })
+        (site "dav" {
+          name = "Radicale";
+          description = "CalDAV / CardDAV";
+          icon = "radicale.png";
+        })
+        (site "booking" {
+          name = "Calnode";
+          description = "Booking page (free slots from Radicale)";
+          icon = "mdi-calendar-clock";
+        })
+        (site "ical" {
+          name = "unified-calendar";
+          description = "Google/iCloud/Radicale 統合配信";
+          icon = "mdi-calendar-sync";
+        })
+        (site "poll" {
+          name = "Rallly";
+          description = "Scheduling polls";
+          icon = "rallly.png";
+        })
+        (site "split" {
+          name = "Spliit";
+          description = "Expense splitting";
+          icon = "mdi-cash-multiple";
+        })
+        (site "forms" {
+          name = "Formera";
+          description = "Forms and responses";
+          icon = "mdi-form-select";
+        })
+        (site "git" {
+          name = "Forgejo";
+          description = "Git hosting";
+          icon = "forgejo.png";
+        })
+        (site "food" {
+          name = "wger";
+          description = "Meal diary";
+          icon = "wger.png";
+        })
+        (site "track" {
+          name = "Dawarich";
+          description = "Location history (Google Timeline replacement)";
+          icon = "mdi-map-marker-path";
+        })
+        # Synapse is not in `sites` (its vhosts live in homelab/matrix.nix).
+        (tile "Matrix (Synapse)" {
+          href = "https://element.gapul.net";
+          description = "@gapul:gapul.net";
+          icon = "matrix-light.png";
+          siteMonitor = "http://127.0.0.1:8008/_matrix/client/versions";
+        })
+        (site "money" {
+          name = "Fava";
+          description = "Household ledger (Beancount)";
+          icon = "mdi-finance";
+        })
+        (site "webmail" {
+          name = "Roundcube";
+          description = "Webmail (Stalwart account)";
+          icon = "roundcube.png";
+        })
+        (site "mail" {
+          name = "Stalwart";
+          description = "Mail server admin / JMAP";
+          icon = "mdi-email-multiple";
+        })
+        (site "bunker" {
+          name = "Nostr bunker";
+          description = "NIP-46 signer (key admin)";
+          icon = "mdi-key-chain";
+        })
+        # Not in `sites` either (homelab/gotosocial.nix has its own vhost).
+        (tile "GoToSocial" {
+          href = "https://social.gapul.net";
+          description = "Fediverse (ActivityPub)";
+          icon = "gotosocial.png";
+          siteMonitor = "http://127.0.0.1:8110";
+        })
+      ];
+    }
+    {
+      Tools = [
+        (site "paperless" {
+          name = "Paperless-ngx";
+          description = "Documents / OCR";
+          icon = "paperless-ngx.png";
+        })
+        (site "archive" {
+          name = "ArchiveBox";
+          description = "Web archive";
+          icon = "archivebox.png";
+        })
+        # No vhost: reached on the tailnet address directly.
+        (tile "RSSHub" {
+          href = "http://100.127.129.31:1200";
+          description = "Turn anything into RSS";
+          icon = "rsshub.png";
+          siteMonitor = "http://127.0.0.1:1200";
+        })
+        (site "bambu" {
+          name = "Bambuddy";
+          description = "3D printer console (Bambu A1 mini)";
+          icon = "mdi-printer-3d";
+        })
+      ];
+    }
+    {
+      Media = [
+        (site "jellyfin" {
+          name = "Jellyfin";
+          description = "Video";
+          icon = "jellyfin.png";
+        })
+        (site "navidrome" {
+          name = "Navidrome";
+          description = "Music";
+          icon = "navidrome.png";
+        })
+        (site "roms" {
+          name = "RomM";
+          description = "ROM library";
+          icon = "romm.png";
+        })
+        (site "games" {
+          name = "Gameyfin";
+          description = "Game library";
+          icon = "mdi-gamepad-variant";
+        })
+        (site "audiobooks" {
+          name = "Audiobookshelf";
+          description = "Audiobooks";
+          icon = "audiobookshelf.png";
+        })
+        (site "books" {
+          name = "Kavita";
+          description = "E-books (OPDS)";
+          icon = "kavita.png";
+        })
+      ];
+    }
+    {
+      "macmini (M4)" = [
+        (tile "System" {
+          icon = "mdi-desktop-tower-monitor";
+          href = glancesMac;
+          widget = {
+            type = "glances";
+            url = glancesMac;
+            version = 4;
+            metric = "info";
+          };
+        })
+        (tile "CPU" { widget = glances "cpu"; })
+        (tile "Memory" { widget = glances "memory"; })
+        (tile "Disk" { widget = glances "fs:/"; })
+      ];
+    }
+  ];
+
+  servicesYaml = (pkgs.formats.yaml { }).generate "homepage-services.yaml" services;
+in
+{
   # /app/config has to be writable: homepage creates logs/ at startup and copies in
   # templates for any config it does not find (kubernetes.yaml etc.), so a read-only
   # store path fails initialisation with a 500. The declaration stays in the repo and
@@ -23,6 +306,7 @@
     install -d -m 755 /var/lib/homelab/homepage
     find /var/lib/homelab/homepage -maxdepth 1 -type f -name "*.yaml" -delete
     cp -L ${../../configs/homelab/homepage}/*.yaml /var/lib/homelab/homepage/
+    cp -L ${servicesYaml} /var/lib/homelab/homepage/services.yaml
     chmod u+w /var/lib/homelab/homepage/*.yaml
   '';
 
@@ -64,7 +348,8 @@
       "PORT" = "18300";
     };
     volumes = [
-      # Contents are copied by preStart from the repo (configs/homelab/homepage). It used
+      # Contents are copied by preStart from the repo (configs/homelab/homepage, plus the
+      # services.yaml generated above). It used
       # to be hand-edited files under /var/lib, which meant fixing the old host's IPs
       # after every migration.
       "/var/lib/homelab/homepage:/app/config:rw"
