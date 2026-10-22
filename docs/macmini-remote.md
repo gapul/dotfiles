@@ -72,8 +72,8 @@ ffmpeg -f avfoundation -framerate 30 -i "USB3.0 capture" -frames:v 20 -update 1 
 
 デバイス番号は挿し直すたびに変わるので、番号ではなく名前で指定する。
 
-Pi 側の HID ガジェットの作り方は `configs/rpi/hid/` にある。普段は使わないので、Pi は
-USB イーサネットのガジェット構成に戻してある。
+Pi 側の HID ガジェット（キーボード・マウス・ネットワークの composite gadget）の作り方は
+[`scripts/pi-kvm/README.md`](../scripts/pi-kvm/README.md) にある。
 
 ## 画面共有について
 

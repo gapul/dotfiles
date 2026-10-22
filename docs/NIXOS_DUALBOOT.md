@@ -11,13 +11,18 @@ encrypted and signed:
 
 The configuration is already part of this repository's flake, under `nix/`:
 
-- `nix/hosts/nixos-laptop.nix` — the system: lanzaboote, LUKS with TPM2, zram, the Intel GPU,
-  Hyprland, fcitx5-mozc, tlp, fprintd, podman, tailscale, fwupd.
+- `nix/hosts/nixos-laptop.nix` — the system: lanzaboote with rEFInd in front of systemd-boot,
+  LUKS with TPM2, zram, the Intel GPU, niri (Hyprland stays as a second session in the
+  greeter), fcitx5 with SKK, tlp, fprintd, podman, tailscale, fwupd.
+- `nix/hosts/nixos-laptop-btrfs.nix` — the root is Btrfs, in subvolumes `@` (`/`), `@home`,
+  `@nix` and `@log` (`/var/log`) on the LUKS device. It overrides the generated hardware file's
+  ext4 root with `mkForce`.
 - `nixosConfigurations."nixos-laptop"` in `nix/flake.nix` — wires up lanzaboote, disko and
-  home-manager, pulling in `home/common.nix`, `home/linux.nix`, `home/hyprland.nix`,
-  `home/dev.nix` and `home/restic-backup-linux.nix`.
+  home-manager, pulling in `home/common.nix`, `home/linux.nix`, `home/hyprland.nix` (which
+  imports `home/niri.nix`), `home/dev.nix` and `home/restic-backup-linux.nix`.
 - `nix/hosts/nixos-laptop-disk.nix` — the declarative disko layout, covering the LUKS root
-  only, also exposed through `diskoConfigurations`.
+  only, also exposed through `diskoConfigurations`. It still formats ext4; see the note at the
+  end of phase 4.
 - `scripts/install-nixos-laptop.sh` — a guarded install helper, the procedural alternative to
   disko.
 - `nix/hosts/nixos-laptop-hardware.nix` — the machine-specific file, generated on the real
@@ -172,6 +177,30 @@ Do not create a plaintext swap partition. The host configuration already has
 `zramSwap.enable = true`, which is in RAM and encrypted. If real swap turns out to be needed,
 set up an encrypted swap separately.
 
+**Btrfs subvolumes.** disko, the helper script and `mkfs.ext4` above all make ext4, but the host
+now mounts Btrfs subvolumes (`nix/hosts/nixos-laptop-btrfs.nix`), so a system installed onto
+ext4 will not find its root. The helper script goes on through phase 6 on ext4, so it no longer
+fits; use (a) or (c), then, with `cryptroot` open, remake the filesystem before phase 5:
+
+```sh
+umount -R /mnt 2>/dev/null                    # after disko, which has already mounted ext4
+mkfs.btrfs -f -L nixos /dev/mapper/cryptroot
+mount /dev/mapper/cryptroot /mnt
+for s in @ @home @nix @log; do btrfs subvolume create /mnt/$s; done
+umount /mnt
+o=compress=zstd:1,noatime
+mount -o subvol=@,$o /dev/mapper/cryptroot /mnt
+mkdir -p /mnt/home /mnt/nix /mnt/var/log /mnt/boot
+mount -o subvol=@home,$o /dev/mapper/cryptroot /mnt/home
+mount -o subvol=@nix,$o /dev/mapper/cryptroot /mnt/nix
+mount -o subvol=@log,$o /dev/mapper/cryptroot /mnt/var/log
+```
+
+In phase 5, skip the first `mount` and only mount the ESP. `nixos-laptop-btrfs.nix` declares
+`/home`, `/nix` and `/var/log` itself, so remove those entries from the generated hardware file
+in phase 6. snapper expects `/.snapshots` and `/home/.snapshots` to be subvolumes; after the
+first boot, make them with `sudo btrfs subvolume create /.snapshots /home/.snapshots`.
+
 ## Phase 5. Mounting, reusing the ESP
 
 ```sh
@@ -245,6 +274,11 @@ Then `reboot`, removing the USB stick.
 The systemd-boot menu lists NixOS and Windows Boot Manager. Booting asks for the LUKS
 passphrase, then logs into NixOS.
 
+rEFInd's graphical menu comes in front of it once an activation has run with the sbctl keys and
+a UKI on the ESP, at the latest with the rebuild in 8-1. The activation script in
+`nixos-laptop.nix` copies and signs rEFInd and puts it first in the firmware's boot order;
+systemd-boot stays second as the fallback, and is also the last entry in rEFInd's NixOS submenu.
+
 ### 8-1. Create, sign with and enrol the Secure Boot keys
 
 ```sh
@@ -305,10 +339,14 @@ public repository is a small risk; if that still bothers you, gitignore it and k
 
 Since both get used, it is worth lowering the cost of switching.
 
-Reboot straight into Windows without waiting for the systemd-boot menu:
+Reboot straight into Windows without waiting for the boot menu. rEFInd now starts first and does
+not read systemd-boot's one-shot entry, so set the firmware's BootNext instead; the
+`bootctl` lines below only take effect when systemd-boot is the loader that runs:
 
 ```sh
-# boot Windows next time only, then reboot
+# boot Windows next time only: find "Windows Boot Manager" in efibootmgr's list
+sudo efibootmgr --bootnext XXXX && systemctl reboot
+# with systemd-boot in front, as before rEFInd
 sudo bootctl set-oneshot auto-windows && systemctl reboot
 # or
 sudo systemctl reboot --boot-loader-entry=auto-windows
@@ -356,14 +394,15 @@ sudo tailscale up
 sudo systemd-cryptenroll --tpm2-device=auto --tpm2-pcrs=7 --tpm2-with-pin=yes /dev/nvme0n1p5
 
 # restic needs rclone's google-drive re-authorised, with the token in sops
-rclone authorize "drive"   # put the printed token into rclone_conf in secrets.yaml
+rclone authorize "drive"   # put the printed token into rclone_conf in secrets/common.yaml
 # then either wait for the daily systemd timer at 13:00 or run it now:
 systemctl --user start restic-backup.service
 
 # place the age key for sops at ~/.config/sops/age/keys.txt, or restic and friends will stop
 ```
 
-The main Hyprland bindings, from `home/hyprland.nix`: `SUPER+Return` for ghostty, `SUPER+R` for
+niri is the default session; `SUPER+/` shows its bindings (`home/niri.nix`). The main bindings of
+the Hyprland session, from `home/hyprland.nix`: `SUPER+Return` for ghostty, `SUPER+R` for
 wofi, `SUPER+Q` to close, `SUPER+F` for fullscreen, `SUPER+L` to lock, `SUPER+E` for yazi,
 `SUPER+P` for a region screenshot, `SUPER+C` for clipboard history, and `SUPER+1` through `0`
 for workspaces. hypridle locks after 5 minutes and suspends after 15.

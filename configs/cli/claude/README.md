@@ -13,19 +13,22 @@ outside Git.
 
 ## On the Mac, symlinked wholesale
 
-`nix/home/workstation.nix` creates out-of-store symlinks, so the files here are the real thing.
+`nix/home/workstation.nix` and `nix/modules/home/agents.nix` create out-of-store symlinks
+straight into `ai-agent-state`, so the real files live there. `settings.json`, `CLAUDE.md` and
+`skills` in this directory are only symlinks into that checkout, kept for browsing.
 
-| The real file | Linked to |
+| The real file, in `ai-agent-state` | Linked to |
 | --- | --- |
-| `settings.json` | `$CLAUDE_CONFIG_DIR/settings.json` |
-| `CLAUDE.md` | `$CLAUDE_CONFIG_DIR/CLAUDE.md` |
-| `../AGENTS.md` | `$CLAUDE_CONFIG_DIR/AGENTS.md` |
-| `hooks/`, `bin/` | The directories of the same name |
-| `skills/{anki-add,gapul-writing-voice,step-by-step-tutor}` | Under `skills/` |
+| `claude/settings.json` | `$CLAUDE_CONFIG_DIR/settings.json` (macOS only) |
+| `claude/CLAUDE.md` | `$CLAUDE_CONFIG_DIR/CLAUDE.md` |
+| `AGENTS.md` | `$CLAUDE_CONFIG_DIR/AGENTS.md` |
+| `claude/hooks/`, `claude/bin/` | The directories of the same name |
+| `claude/skills/{anki-add,gapul-writing-voice,mvrx-weekly-report,step-by-step-tutor}` | Under `skills/` |
 
 Keeping the whole `settings.json` works because the Mac runs with
 `defaultMode: bypassPermissions`, so `permissions.allow` never grows. Anything the TUI writes
-back lands in this file, and when it shows up in `git diff` it can simply be committed.
+back lands in this file, and when it shows up in `ai-agent-state`'s `git diff` it can simply be
+committed.
 
 Session history, `.claude.json`, which holds credentials, and `settings.local.json` are state
 and are not kept. Vendored skills, such as cloudflare's, can be fetched again from upstream and

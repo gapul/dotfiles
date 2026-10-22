@@ -278,7 +278,7 @@ reboot
 ## 4. Secrets and one-time authentication
 
 Everything is root-owned and 0400. sops-nix is unusable until this host has an age key, so the
-first placement is by hand; once the key exists they move into `secrets/secrets.yaml`.
+first placement is by hand; once the key exists they move into `secrets/homelab.yaml`.
 
 | Path | Contents |
 |---|---|

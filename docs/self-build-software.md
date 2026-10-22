@@ -35,7 +35,7 @@ is declarative and reproducible. Anything bound to the Apple toolchain — `xcod
 
 ### A: plain nix, when darwin already works
 
-Add it to `home.packages` in `nix/home/darwin.nix`. Unfree packages such as Aseprite need
+Add it to `environment.systemPackages` in `nix/hosts/darwin.nix`. Unfree packages such as Aseprite need
 `allowUnfree`.
 
 ```nix
@@ -50,7 +50,7 @@ let
   };
 in
 {
-  home.packages = with pkgs; [
+  environment.systemPackages = with pkgs; [
     unstablePkgs.fritzing  # cached, installs immediately
     unstablePkgs.ardour    # cached, installs immediately
     unstablePkgs.aseprite  # unfree, built from source
@@ -209,14 +209,15 @@ LiveContainer can work around.
 |---|---|---|
 | Zrythm | B, ported into nix | `nix/pkgs/zrythm-darwin/`, PR #66 |
 | ArmorPaint | C, Homebrew source build | tap `gapul/homebrew-armorpaint`, PR #74 |
-| Fritzing, Ardour, Aseprite | A, plain nix | `nix/home/darwin.nix`, PR #77 |
+| Fritzing, Ardour, Aseprite | A, plain nix | `nix/hosts/darwin.nix`, PR #77 |
 | Inochi Creator | D, cask | tap `gapul/homebrew-inochi`, PR #77 |
 | Blink, KeePassium (iOS) | E, Xcode and AltStore | `~/Documents/Projects/ios-selfbuild/`, in progress |
-| keebmouse (mine) | D, cask | tap `gapul/homebrew-tap`; the source repo is private, so only the build output goes in the tap |
+| keebmouse (mine) | nix package of the signed release | `nix/pkgs/keebmouse.nix`; the source repo is private, so only the build output goes in tap `gapul/homebrew-tap` |
 
-keebmouse goes to `/Applications` rather than the nix store because its TCC grant, for
-accessibility, is tied to the path and the code signature. `scripts/dist.sh` builds from HEAD
-outside the working tree, signs with a Developer ID, notarizes, attaches a zip to a release in
-the tap, rewrites the cask's version and sha256, and pushes. As long as the signing identity
-does not change, the permission survives. The resident agent is declared in
+keebmouse's TCC grant, for accessibility, is tied to the path and the code signature.
+`scripts/dist.sh` builds from HEAD outside the working tree, signs with a Developer ID,
+notarizes and attaches a zip to a release in the tap. `nix/pkgs/keebmouse.nix` fetches that zip
+without touching the bundle, and nix-darwin copies it to a stable `/Applications/Nix Apps/`
+path, so bumping the version and hash there is the whole update. As long as the signing
+identity does not change, the permission survives. The resident agent is declared in
 `nix/modules/home/darwin-chrome.nix`.

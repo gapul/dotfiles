@@ -7,10 +7,10 @@ gapul.net.
 
 | Layer | Managed by | Where |
 |---|---|---|
-| brew: ffmpeg, uv, aria2, socat, container, tailscale | Declared in nix | `homebrew.brews` in `nix/hosts/macmini.nix` |
+| brew: tailscale only (ffmpeg, uv and aria2 come from nix) | Declared in nix | `homebrew.brews` in `nix/hosts/macmini.nix` |
 | Wrapper CLIs: transcribe, tts, describe and the rest | This repository | `configs/macmini/bin/` linked into `~/.local/bin/` |
-| Services and scripts, such as ai-stack.sh | This repository | `configs/macmini/services/` linked into `~/` |
-| The launchd supervisor | This repository | `configs/macmini/launchd/` linked into `~/Library/LaunchAgents/` |
+| Services and scripts, such as ai-stack.sh | This repository | `configs/macmini/services/` linked into `~/.local/share/ai-stack/` by `nix/home/macmini.nix` |
+| The launchd supervisor | Declared in nix | `launchd.agents.ai-stack` in `nix/home/macmini.nix` |
 | Python venvs for ML | Imperative | Rebuilt by `bootstrap.sh` with uv; torch, mlx and pyannote are hard to express in nix |
 | The models, which are large | Imperative | The `models.txt` manifest plus `bootstrap.sh`, downloading from hf-mirror and GitHub |
 
@@ -24,7 +24,8 @@ gapul.net.
 ## The services, all on 192.168.116.91
 
 - The embedding and reranking server, Ruri, on :8900, and the AI tools web panel on :8901.
-- Containers: Minecraft on :25565, through apple container, published to the host with socat.
+- Minecraft: native Fabric servers, vanilla on :25565 and solo on :25566, each behind a lazymc
+  launchd daemon in `nix/hosts/macmini.nix` that wakes the server on connect. No containers.
 
 Open WebUI and AnythingLLM moved to homeserver on 2026-08-12 and were retired on 2026-08-20,
 because they overlapped with the AI panel on :8901.
