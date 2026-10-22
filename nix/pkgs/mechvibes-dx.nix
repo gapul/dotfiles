@@ -1,11 +1,11 @@
 # MechvibesDX - mechanical keyboard sound simulator (successor to Mechvibes).
 #
-# Not in nixpkgs, and the upstream macOS DMG cannot be used: it is built against
-# rdev 0.5.3 from crates.io, whose macOS keyboard handler calls Text Input
-# Services from rdev's event-tap thread. macOS 26 made those calls assert on the
-# main queue, so the released app dies with SIGTRAP on the FIRST keypress. See
-# the postPatch below - upstream rdev fixed this on main (b7e201b, is_main_thread
-# + a main-queue hop) but has not cut a release since 0.5.3 in 2023.
+# Not in nixpkgs, and the upstream macOS DMG is not used: rdev 0.5.3's macOS
+# keyboard handler calls Text Input Services from rdev's event-tap thread, and
+# macOS 26 made those calls assert on the main queue, so the app died with
+# SIGTRAP on the FIRST keypress. Since 0.8.3 upstream vendors rdev in
+# patches/rdev with a main-queue hop (the same approach as rdev main's b7e201b);
+# the postPatch below swaps that hop for a cheaper no-op, see there.
 {
   lib,
   stdenv,
@@ -15,7 +15,7 @@
   libicns,
 }:
 let
-  version = "0.8.1";
+  version = "0.8.4";
   appName = "MechvibesDX";
 in
 rustPlatform.buildRustPackage {
@@ -26,37 +26,35 @@ rustPlatform.buildRustPackage {
     owner = "hainguyents13";
     repo = "mechvibes-dx";
     tag = "v${version}";
-    hash = "sha256-UV/iBgC9GGaoP+ee3bXE4U6hv2Ywpp4+cyKFVevpQOw=";
+    hash = "sha256-c1dxyesdEnfHs4VMGVpWkE1acIWWKv0d3E/Q4UcDgEI=";
   };
 
-  cargoHash = "sha256-xr+mOzcdqM/MON29WcBG6nbQ4DgtL50zt4b7tozs9Ho=";
+  cargoHash = "sha256-yqVQfNWXadUrLh+K2rNxLw2tV7SQcActEgrX+lchnWE=";
 
   nativeBuildInputs = [
     imagemagick # resize icon.png into the sizes png2icns accepts
     libicns # png2icns, standing in for the runner's iconutil
   ];
 
-  # Drop rdev's per-keystroke key-name lookup instead of taking upstream main's
-  # main-queue hop. MechvibesDX never reads Event.name (input_listener.rs only
-  # matches on map_key_to_code), so the hop would pay a synchronous dispatch to
-  # the UI thread on every keypress for a value that is thrown away - and a busy
-  # UI thread would then stall the event tap, i.e. the whole system's input.
-  # Returning None off-main costs nothing and cannot stall.
+  # Drop rdev's per-keystroke key-name lookup off the main thread instead of
+  # taking upstream's main-queue hop. MechvibesDX never reads Event.name
+  # (input_listener.rs only matches on map_key_to_code), so the hop pays a
+  # synchronous dispatch to the UI thread on every keypress for a value that is
+  # thrown away - and a busy UI thread then stalls the event tap, i.e. the whole
+  # system's input. Returning None off-main costs nothing and cannot stall.
   #
-  # Editing a vendored crate is safe here because fetchCargoVendor writes
-  # `"files": {}` in .cargo-checksum.json, so cargo verifies no per-file hashes.
-  # Drop this whole block once rdev releases > 0.5.3 and upstream bumps it.
+  # rdev is a path dependency in the source tree now (patches/rdev, wired in by
+  # [patch.crates-io]), so this edits the source rather than $cargoDepsCopy.
+  # Drop this once upstream drops the vendored rdev for a release > 0.5.3 and
+  # that release does not hop either.
   postPatch = ''
-    substituteInPlace $cargoDepsCopy/source-registry-0/rdev-0.5.3/src/macos/keyboard.rs \
+    substituteInPlace patches/rdev/src/macos/keyboard.rs \
       --replace-fail \
-        '        let mut keyboard = TISCopyCurrentKeyboardInputSource();' \
-        '        extern "C" {
-            fn pthread_main_np() -> i32;
-        }
-        if pthread_main_np() == 0 {
-            return None;
-        }
-        let mut keyboard = TISCopyCurrentKeyboardInputSource();'
+        '            dispatch::Queue::main().exec_sync(move || {
+                    Self::string_from_code_raw(code, modifier_state, ds.0)
+                })' \
+        '            let _ = ds;
+                None'
 
     # Keep the Dock icon out: this is a tray app that runs from login to
     # shutdown, so a permanent Dock tile buys nothing. LSUIElement alone does
@@ -66,6 +64,8 @@ rustPlatform.buildRustPackage {
     # and never exposes the policy, and Config::with_event_loop cannot be used
     # from outside the crate because UserWindowEvent is not re-exported, so the
     # only seam is tao's own default.
+    # Editing a vendored crate is safe because fetchCargoVendor writes
+    # `"files": {}` in .cargo-checksum.json, so cargo verifies no per-file hashes.
     substituteInPlace $cargoDepsCopy/source-registry-0/tao-0.34.5/src/platform_impl/macos/app_delegate.rs \
       --replace-fail \
         'activation_policy: ActivationPolicy::Regular,' \

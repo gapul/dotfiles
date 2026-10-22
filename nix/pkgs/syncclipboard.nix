@@ -8,7 +8,7 @@
 }:
 let
   pname = "syncclipboard";
-  version = "3.3.1";
+  version = "3.3.3";
   baseUrl = "https://github.com/Jeric-X/SyncClipboard/releases/download/v${version}";
   meta = {
     description = "Cross-platform clipboard synchronization";
@@ -26,7 +26,7 @@ if stdenvNoCC.hostPlatform.isDarwin then
     inherit pname version meta;
     src = fetchurl {
       url = "${baseUrl}/SyncClipboard_macos_arm64.dmg";
-      hash = "sha256-XbxsFAYWBLXgqjLEbsGTJ1OgjpWCERny6I8zYayGtok=";
+      hash = "sha256-viDdA7rs1eA+769nozB8j19VQiQ+eKmFyuiBXoC9CzE=";
     };
     nativeBuildInputs = [ undmg ];
     sourceRoot = ".";
@@ -46,7 +46,7 @@ else
     inherit pname version;
     src = fetchurl {
       url = "${baseUrl}/SyncClipboard_linux_x64.AppImage";
-      hash = "sha256-fHRs/RxwPTIreiPohNnUYh6wBrVKcrg9HUA+3I1rqDU=";
+      hash = "sha256-SeCvB7MAGZ3MkttZNu0cAcHPdWlk/fIIS37y0SaCZGc=";
     };
     extraPkgs = pkgs: [
       pkgs.icu

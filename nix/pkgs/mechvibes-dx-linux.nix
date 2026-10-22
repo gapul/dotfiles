@@ -5,10 +5,10 @@
 }:
 let
   pname = "mechvibes-dx";
-  version = "0.8.1";
+  version = "0.8.4";
   src = fetchurl {
     url = "https://github.com/hainguyents13/mechvibes-dx/releases/download/v${version}/mechvibes-dx-${version}-x86_64.AppImage";
-    sha256 = "a5d1bcfefccf47ae5a17615120aaa259b7137f437ffaf9bd807502eadf51b284";
+    hash = "sha256-G5w7fP8v4JrM51Fr8ZYnV2e8CvnxNo6SzfPByupZZbU=";
   };
 in
 appimageTools.wrapType2 {

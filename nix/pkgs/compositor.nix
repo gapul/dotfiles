@@ -17,11 +17,11 @@
 }:
 stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "compositor";
-  version = "1.4.9";
+  version = "1.5.5";
 
   src = fetchurl {
     url = "https://github.com/robbietilton/Compositor/releases/download/v${finalAttrs.version}/Compositor.dmg";
-    hash = "sha256-t3/R3cjrRgeFNtiXMQXy3pcFG/vZDAHJwQqXSRHoMf8=";
+    hash = "sha256-e+LDGJLUCLXhqhNmCPK1yZ238bwkkJQjMCpEujmj6p8=";
   };
 
   nativeBuildInputs = [ _7zz ];

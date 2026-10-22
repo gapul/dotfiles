@@ -31,11 +31,11 @@ stdenvNoCC.mkDerivation (finalAttrs: {
   # Upstream's macOS builds carry no version number, only the release series and a CI sequence number.
   # The file name is literally `release_<version>`, so fixing this makes the URL follow.
   # When crossing series (26.08 → 26.12 etc.), also fix `release-26.08` in the directory part.
-  version = "26.08-6635";
+  version = "26.08-6821";
 
   src = fetchurl {
     url = "https://cdn.kde.org/ci-builds/network/kdeconnect-kde/release-26.08/macos-arm64/kdeconnect-kde-release_${finalAttrs.version}-macos-clang-arm64.dmg";
-    hash = "sha256-Qs3qPHLKoL7O2nvW6ve/3SGZC56/zTr2k+tZLZU7ZvE=";
+    hash = "sha256-cnc4ea8v9hEgCJov36gfKMcSBjr01u/m9TXvhya1AYc=";
   };
 
   nativeBuildInputs = [ undmg ];
