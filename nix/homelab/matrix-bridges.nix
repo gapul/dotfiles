@@ -298,17 +298,23 @@ in
   #   2. startCursor is never advanced inside the loop, so a positive count re-fetches the same
   #      second page over and over.
   # BackfillCompleted lives in the login's metadata, so log in again after this lands.
-  services.mautrix-meta.package = pkgs.mautrix-meta.overrideAttrs (old: {
-    postPatch = (old.postPatch or "") + ''
-      substituteInPlace pkg/igconnector/chatsync.go \
-        --replace-fail \
-          'for batchCount < ic.Main.Config.ThreadBackfill.BatchCount {' \
-          'for ic.Main.Config.ThreadBackfill.BatchCount < 0 || batchCount < ic.Main.Config.ThreadBackfill.BatchCount {' \
-        --replace-fail \
-          'if !resp.Mailbox.ThreadsByFolder.PageInfo.HasNextPage {' \
-          'startCursor = resp.Mailbox.ThreadsByFolder.PageInfo.EndCursor; if !resp.Mailbox.ThreadsByFolder.PageInfo.HasNextPage {'
-    '';
-  });
+  # v0.2610.0 (nixpkgs 26.10, NixOS/nixpkgs#574905) rewrote the loop and fixed both, and the
+  # patterns no longer match there, so the patch stops at 26.10 and goes away with it.
+  services.mautrix-meta.package =
+    if lib.versionOlder pkgs.mautrix-meta.version "26.10" then
+      pkgs.mautrix-meta.overrideAttrs (old: {
+        postPatch = (old.postPatch or "") + ''
+          substituteInPlace pkg/igconnector/chatsync.go \
+            --replace-fail \
+              'for batchCount < ic.Main.Config.ThreadBackfill.BatchCount {' \
+              'for ic.Main.Config.ThreadBackfill.BatchCount < 0 || batchCount < ic.Main.Config.ThreadBackfill.BatchCount {' \
+            --replace-fail \
+              'if !resp.Mailbox.ThreadsByFolder.PageInfo.HasNextPage {' \
+              'startCursor = resp.Mailbox.ThreadsByFolder.PageInfo.EndCursor; if !resp.Mailbox.ThreadsByFolder.PageInfo.HasNextPage {'
+        '';
+      })
+    else
+      pkgs.mautrix-meta;
 
   # Instagram and Messenger are separate instances of the same mautrix-meta, split by
   # network.mode. Always use distinct ports, appservice.id and bot names (if they match, one

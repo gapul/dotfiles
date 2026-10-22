@@ -18,7 +18,7 @@ gapul.net.
 
 1. `darwin-rebuild switch`, which brings in the brew packages and the SSH and sleep settings.
 2. `bash configs/macmini/bootstrap.sh`, which rebuilds the venvs, fetches the models, places the
-   scripts, starts the containers and registers the launchd agents.
+   scripts and registers the launchd agents.
 3. Add the tools block to Caddy, which runs on a different host; see `docs/`.
 
 ## The services, all on 192.168.116.91
@@ -58,11 +58,6 @@ for things like TRvlvr's releases. aria2 is used with self-healing plus zip veri
 
 **Quantisation interacts badly with Japanese.** Four-bit VLMs can break Japanese generation;
 this is a peer-reviewed result from EMNLP 2024. Ruri holds up well in Japanese.
-
-**apple container** needs `container system start` and
-`container system kernel set --recommended` the first time. DNS breaks, so pass
-`--dns 1.1.1.1`. Publishing a host port with `-p` breaks over HTTP, so socat forwards from the
-host to the container's address instead.
 
 **SSH to the mac mini** is often refused by the Bitwarden agent, so `ControlMaster` multiplexing
 is effectively required.

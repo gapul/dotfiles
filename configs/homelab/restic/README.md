@@ -8,7 +8,7 @@ host name and deduplicated against each other.
 |---|---|---|---|---|
 | The Mac, MacBook-Mini | Documents, Pictures, Downloads, Movies, Music, Minecraft | Daily at 13:00 | home-manager, `nix/home/restic-backup.nix`, through launchd | sops-nix |
 | homeserver | `/var/lib`, plus `/srv/dawarich` and `/srv/archivebox`. The media and attic are excluded | Daily at 03:00 | NixOS, `services.restic.backups.homeserver` in `nix/homelab/backup.nix` | sops-nix (`secrets/homelab.yaml`, opened with the SSH host key), installed in `/var/lib/secrets/` |
-| The mac mini | `~/Developer` and `~/.config`, excluding node_modules, .venv, target, .git/objects and model weights | Daily at 05:00 | home-manager, `nix/home/macmini-backup.nix`, through launchd | sops-nix on the system side (`nix/hosts/macmini.nix`, opened with the SSH host key) |
+| The mac mini | `~/Developer`, `~/.config`, and the nightly Minecraft, Hermes and Presenta dumps under `/Users/Shared/*-backups` plus Presenta's media store, excluding node_modules, .venv, target, .git/objects and model weights | Daily at 05:00 | home-manager, `nix/home/macmini-backup.nix`, through launchd | sops-nix on the system side (`nix/hosts/macmini.nix`, opened with the SSH host key) |
 | nixos-laptop | Documents, Pictures, Downloads, Music, Videos, `~/Developer`, `~/.config`, `~/.ssh`, keyrings | Daily at 13:00 | home-manager, `nix/home/restic-backup-linux.nix`, through systemd user timers | sops-nix |
 
 The secrets are always the same two things — `rclone.conf`, holding the Google Drive token, and
