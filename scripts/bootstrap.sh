@@ -8,10 +8,9 @@
 #   2. Determinate Nix install
 #   3. ~/.dotfiles を git clone
 #   4. age 秘密鍵を ~/.config/sops/age/keys.txt に配置 (手動 paste 待ち)
-#   5. nix run nix-darwin -- switch
-#   6. 各 third-party brew tap を trust
-#   7. nix run home-manager -- switch
-#   8. brew uninstall (Nix側に移行した重複)
+#   5. nix run nix-darwin -- switch (homebrew.taps の trusted = true で tap 信頼、
+#      onActivation.cleanup = "uninstall" で未宣言の brew (Nix 側に移った重複) の削除も兼ねる)
+#   6. nix run home-manager -- switch
 #
 # 何度走らせても安全 (idempotent)。
 
@@ -86,23 +85,11 @@ require_ssh_key
 log "darwin-rebuild switch (sudo パスワード入力あり)..."
 sudo nix run "$NIX_DARWIN_REF" -- switch --flake "$DOTFILES_DIR/nix#$(whoami)"
 
-# 6. 第三者 tap の cask 信頼
-#    一覧は darwin.nix の homebrew.taps から nix eval で取得 → 宣言と常に一致
-#    (手書きコピーはドリフトするため廃止)。
-log "Trusting third-party brew taps (darwin.nix と自動同期)..."
-while IFS= read -r tap; do
-  [ -n "$tap" ] && { brew trust "$tap" 2>/dev/null || true; }
-done < <(darwin_taps; echo)
-
-# 7. home-manager switch (ユーザー権限で実行、sudo 禁止)
+# 6. home-manager switch (ユーザー権限で実行、sudo 禁止)
 log "home-manager switch..."
 nix run "$HOME_MANAGER_REF" -- switch --flake "$DOTFILES_DIR/nix#$(whoami)" -b backup
 
-# 8. brew 重複の uninstall (Nix 管理に移行済のもの)
-log "Cleaning duplicates installed by both brew and Nix..."
-brew uninstall starship fzf atuin 2>/dev/null || true
-
-# 9. ghq 配下の全 repo を gita に登録 (空でも安全)
+# 7. ghq 配下の全 repo を gita に登録 (空でも安全)
 #    gita 本体は nix (home/workstation.nix) で入る。以前ここで uv tool install していたが、
 #    nix と二重管理になっていたので削除した。
 if command -v gita >/dev/null && command -v ghq >/dev/null; then
@@ -110,11 +97,11 @@ if command -v gita >/dev/null && command -v ghq >/dev/null; then
   ghq list -p 2>/dev/null | xargs -I {} gita add {} 2>&1 | tail -3 || true
 fi
 
-# 10. SKK 公開辞書を ~/.skk/ に install (skkeleton 用)
+# 8. SKK 公開辞書を ~/.skk/ に install (skkeleton 用)
 log "Installing SKK public dictionaries..."
 bash "$DOTFILES_DIR/scripts/install-skk-dicts-macskk.sh" || true
 
-# 11. gh auth (ブラウザ認証、未済なら起動)。SSH 鍵管理用 scope も要求
+# 9. gh auth (ブラウザ認証、未済なら起動)。SSH 鍵管理用 scope も要求
 GH_SCOPES="admin:public_key,admin:ssh_signing_key"
 if command -v gh >/dev/null; then
   if ! gh auth status >/dev/null 2>&1; then
@@ -129,7 +116,7 @@ if command -v gh >/dev/null; then
   fi
 fi
 
-# 11.5. GitHub に SSH 鍵を auth + signing 両方として登録 (べき等、既存ならスキップ)
+# 9.5. GitHub に SSH 鍵を auth + signing 両方として登録 (べき等、既存ならスキップ)
 if command -v gh >/dev/null && gh auth status >/dev/null 2>&1 && [ -f "$SSH_PUB" ]; then
   KEY_BODY=$(awk '{print $1, $2}' "$SSH_PUB")
   HOST_LABEL="$(hostname -s)"
@@ -147,7 +134,7 @@ if command -v gh >/dev/null && gh auth status >/dev/null 2>&1 && [ -f "$SSH_PUB"
   fi
 fi
 
-# 12. 残った手動 GUI ステップを ~/POST-BOOTSTRAP.md に書き出す
+# 10. 残った手動 GUI ステップを ~/POST-BOOTSTRAP.md に書き出す
 POST_FILE="$HOME/POST-BOOTSTRAP.md"
 cat > "$POST_FILE" <<'EOF'
 # 新 Mac セットアップ — 手動 GUI ステップ

@@ -1,6 +1,8 @@
 # macmini AIモデル manifest  (dest_dir | source_type | url_or_repo | note)
 # source_type: hfmirror=hf-mirror.com直 / github=GitHub release直 / uvtool=uv tool
-# 取得は bootstrap.sh が担当。母艦を経由せず macmini 直で落とす(hf-mirror/GitHub)。
+# 取得は手動。母艦を経由せず macmini 直で落とす(hf-mirror/GitHub)。大物 safetensors は hf-mirror.com から
+# aria2 で各ファイルをローカルに落とし HF_HUB_OFFLINE=1 で読む (HF_ENDPOINT=https://hf-mirror.com の
+# huggingface_hub 経由は 308 リダイレクトを扱えない場合がある)。venv だけは bootstrap.sh が再構築する。
 
 # --- 文字起こし (mlx_whisper: uv tool install mlx-whisper) ---
 ~/.local/share/models/mlx/whisper-large-v3-mlx        hfmirror  mlx-community/whisper-large-v3-mlx        精度用 large-v3 (weights.npz)

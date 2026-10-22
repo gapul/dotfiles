@@ -205,14 +205,14 @@
     # the same string as a literal prefix. Without the flag both behave identically.
     script=$(mktemp)
     ${pkgs.gnused}/bin/sed \
-      's|@mpv@|${lib.getExe pkgs.mpv}|' \
+      's|@mpv@|${lib.getExe config.programs.mpv.finalPackage}|' \
       ${../../../configs/media/mpv-app/mpv.applescript} > "$script"
     additions=${../../../configs/media/mpv-app/Info-additions.plist}
     icon=${../../../configs/media/mpv-app/mpv.icns}
     stamp="$app/Contents/Resources/.built-from"
     # $script is a fresh mktemp every run, so stamp on what actually decides the contents:
     # the mpv path baked in, plus the other two committed inputs.
-    want="${lib.getExe pkgs.mpv} $additions $icon"
+    want="${lib.getExe config.programs.mpv.finalPackage} $additions $icon"
 
     if [ "$(cat "$stamp" 2>/dev/null)" != "$want" ]; then
       $DRY_RUN_CMD rm -rf "$app"
