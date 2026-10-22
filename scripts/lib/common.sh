@@ -120,13 +120,3 @@ hm_switch() {
   log "home-manager switch (.#$1)..."
   nix run "$HOME_MANAGER_REF" -- switch --flake "$DOTFILES_DIR/nix#$1" -b backup
 }
-
-# darwin.nix の homebrew.taps を1行1tapで出力 (jq 不要。bootstrap.sh の
-# 手書き tap 一覧を廃し、宣言と自動同期させるための単一 source)。
-darwin_taps() {
-  local user
-  user=$(nix eval --raw -f "$DOTFILES_DIR/nix/user.nix" username 2>/dev/null || whoami)
-  nix eval --raw \
-    "$DOTFILES_DIR/nix#darwinConfigurations.$user.config.homebrew.taps" \
-    --apply 'ts: builtins.concatStringsSep "\n" (map (t: t.name) ts)'
-}
