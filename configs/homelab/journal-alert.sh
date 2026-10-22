@@ -122,9 +122,10 @@ grep -oE '[A-Za-z0-9@_.-]+\.service: Failed with result' "$SNAP" |
   sed 's/: Failed with result$//' | sort | uniq -c | sort -rn |
   while read -r count unit; do
     [ "${count:-0}" -lt "$LOOP_THRESHOLD" ] && continue
-    # podman が内部で作る 16 進名のユニット (64桁-16桁) は中身を指さないので飛ばす。
+    # podman が内部で作る 16 進名のユニット (64桁-16進) は中身を指さないので飛ばす。
     # glob だと attic-db.service のような普通の名前まで巻き込むので、桁数で見る。
-    [[ "$unit" =~ ^[0-9a-f]{64}-[0-9a-f]{16}\.service$ ]] && continue
+    # 後ろ半分は乱数を %x で出したものなので、先頭の 0 が落ちて 16 桁に満たないことがある。
+    [[ "$unit" =~ ^[0-9a-f]{64}-[0-9a-f]+\.service$ ]] && continue
     sample=$(grep -F "$unit" "$SNAP" | grep -viF 'Failed with result' | tail -1 | cut -c1-200)
     echo "loop-$unit" >> "$LOOPING"
     notify_once "loop-$unit" "$unit" "$unit が失敗を繰り返している" "直近 ${SINCE#-} で ${count} 回失敗。稼働中に見えても中身は起動できていない。
@@ -145,15 +146,20 @@ done
 #
 #   1. --no-legend でも先頭の状態マーク "●" は消えないので、awk '{print $1}' が
 #      ユニット名ではなくマークを拾っていた。名前が出ないので通知として無意味。
-#   2. podman が healthcheck ごとに作る使い捨てユニット (64桁-16桁の 16 進名) が
+#   2. podman が healthcheck ごとに作る使い捨てユニット (64桁-16進の名前) が
 #      DB の起動待ちなどで普通に失敗する。実害が無いのに毎回鳴るので、
 #      本物が混ざっていても気付けなくなる。
 #
 # --plain でマークを外し、16 進の使い捨ては除く。再起動ループ検知と同じ判定。
+#
+# 2026-10-23 05:11 に、使い捨てが除けずに鳴った。毎朝の container-auto-update で
+# dawarich_app が作り直され、起動待ちの 80 秒ほど healthcheck が失敗していただけ。
+# 名前の後ろ半分が 14 桁 (0a69…-8a155e74d0379d) で、16 桁固定の判定をすり抜けた。
+# self-deploy.sh と同じく桁数は問わない。
 failed=$(
   systemctl --failed --no-legend --plain --no-pager 2>/dev/null |
     awk '{print $1}' |
-    grep -vE '^[0-9a-f]{64}-[0-9a-f]{16}\.service$' |
+    grep -vE '^[0-9a-f]{64}-[0-9a-f]+\.service$' |
     tr '\n' ' '
 )
 if [ -n "${failed// /}" ]; then
