@@ -160,7 +160,10 @@ Generated from `just --list`. Run `just docs` after changing a recipe.
     win-fonts *flags                                  # Pass `-DryRun` `-Force` (overwrite existing too) via `*flags`
     win-keymap *flags                                 # Pass `-DryRun` `-Clear` (delete Scancode Map and return to standard) via `*flags`
     win-locale *flags                                 # Pass `-DryRun` `-SkipLanguageList` `-SkipSystemLocale` `-SkipHomeLocation` via `*flags`
-    win-privacy *flags                                # Pass `-DryRun` `-SkipWinUtil` `-SkipWin11Debloat` via `*flags`
+    win-privacy *flags                                # Pass `-DryRun` `-SkipWinUtil` `-SkipWin11Debloat` `-SkipCustomApps` `-SkipBaseline` via `*flags`
+    win-privacy-check-upstream                        # Check the privacy declarations against the pinned upstream scripts (runs on macOS/Linux)
+    win-privacy-update-upstream                       # Re-pin Win11Debloat and WinUtil to their latest releases, then run the check above
+    win-privacy-verify                                # Compare the machine against windows/privacy/baseline.psd1 (read-only, exits 1 on drift)
     win-scoop *flags                                  # Pass `-DryRun` `-SkipBuckets` `-SkipApps` via `*flags`
     win-status *flags                                 # Diff between apps.json (declaration) and winget list (actual install). exit 1 if any MISSING
     win-theme *flags                                  # Pass `-DryRun` `-ActivePalette rose-pine-dawn` etc. via `*flags`
