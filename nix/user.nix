@@ -7,7 +7,7 @@
 
   # git commit author info
   # The email uses GitHub noreply to avoid exposing a personal address on public repos.
-  # (the real address is encrypted and consolidated under pii: in secrets.yaml)
+  # (the real address is encrypted and consolidated under pii: in secrets/common.yaml)
   gitUser = "gapul";
   gitEmail = "92638132+gapul@users.noreply.github.com";
 

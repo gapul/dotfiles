@@ -1,6 +1,6 @@
 #!/bin/bash
 # macmini ローカルAIスタック bootstrap(まっさら or 再構築用)
-# 前提: darwin-rebuild 済(brew: ffmpeg/aria2/socat/container、nix: uv、SSH/sleep設定)
+# 前提: darwin-rebuild 済(nix: uv、SSH/sleep設定)
 # 使い方: bash configs/macmini/bootstrap.sh [--models] [--venvs] [--scripts] [--services]
 #         引数なし = 全部
 set -u
@@ -65,17 +65,11 @@ if [ $do_all = 1 ] || printf '%s' "$*" | grep -q models; then
   echo "    308リダイレクトを扱えない場合あり→ aria2で各ファイルをローカルに落とし HF_HUB_OFFLINE=1 で読込。"
 fi
 
-# ---------- services: コンテナランタイム + launchd起動 ----------
+# ---------- services: launchd起動 ----------
 if [ $do_all = 1 ] || printf '%s' "$*" | grep -q services; then
-  say "コンテナランタイム + launchd"
-  container system status 2>/dev/null | grep -q running || container system start
-  container system kernel set --recommended 2>/dev/null || true   # 初回のみ
-  # loopback待受のホストサービスをコンテナから参照するためのApple Container公式機構。
-  # macOS再起動でpf ruleが消えるため、bootstrap再実行または運用自動化が必要。
-  sudo container system dns delete host.container.internal 2>/dev/null || true
-  sudo container system dns create host.container.internal --localhost 203.0.113.113
+  say "launchd"
   launchctl kickstart -k "gui/$(id -u)/org.nix-community.home.ai-stack"
-  echo "  ai-stack supervisor 起動(埋め込み/パネル/コンテナ/socat を冪等維持)"
+  echo "  ai-stack supervisor 起動(埋め込み/パネルを冪等維持)"
 fi
 
 say "完了。Caddy(別ホスト)に chat/docs/tools ブロック追記でスマホ公開。"
