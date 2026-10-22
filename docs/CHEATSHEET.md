@@ -9,7 +9,7 @@ it, see [README.md](../README.md).
 
 | Key or command | What it does |
 |---|---|
-| Ctrl+G | Fuzzy-pick any ghq repo through fzf and cd into it |
+| Ctrl+] | Fuzzy-pick any ghq repo through fzf and cd into it |
 | Ctrl+R | Fuzzy-search history through atuin |
 | `<TAB>` | Fuzzy completion through fzf-tab, on every command |
 | `just rebuild` | Run this after changing any configuration |
@@ -28,9 +28,9 @@ Those six cover most days.
 | `just rebuild` | `nh darwin switch` and `nh home switch` |
 | `just update` | Update the flake inputs, then rebuild |
 | `just upgrade` | Bring brew, casks with `--greedy`, mas and Nix all up to date |
-| `just gc` | Delete old generations and run the store GC, `--keep 5 --keep-since 7d` |
+| `just gc` | Delete old generations and run the store GC, `nh clean all --keep 1 --keep-since 0h` |
 | `just check` | Syntax and type checking, without building |
-| `just diff` | The difference between the running system and the flake |
+| `just check diff` | The difference between the running system and the flake |
 | `just doctor` | Health check, worth running after a reboot or a Determinate upgrade |
 
 ---
@@ -47,7 +47,7 @@ eza and bat have already replaced ls and cat; home-manager aliases them automati
 | `la` | eza -a --icons=auto --git |
 | `lt` | eza tree |
 | `bottom`, `btm` | A system monitor TUI, replacing top |
-| `gdu`, `dust`, `diskonaut` | Visualise disk usage |
+| `dust` | Visualise disk usage |
 | `yazi` | File manager TUI |
 
 That table is the memorable subset. Every alias that is actually defined is in the generated
@@ -88,7 +88,7 @@ file holds the portable aliases shared between this machine and anything reached
 
 | Key or command | What it does |
 |---|---|
-| Ctrl+G | Pick across repos through fzf, using ghq and a hand-written widget |
+| Ctrl+] | Pick across repos through fzf, using ghq and a hand-written widget |
 | `cd <TAB>` | fzf-tab, fuzzy with an eza preview |
 | `z <name>` | zoxide, cd by how often you go there |
 | `ghq look <repo>` | Open a subshell in that repo |
@@ -101,12 +101,12 @@ file holds the portable aliases shared between this machine and anything reached
 
 | Command | What it does |
 |---|---|
-| `ghq get owner/repo` | Clone into `~/ghq/<host>/<owner>/<repo>` |
+| `ghq get owner/repo` | Clone into `~/Developer/<host>/<owner>/<repo>` |
 | `ghq get <https or ssh URL>` | A URL works too |
 | `ghq list` | Every managed repo, by relative path |
 | `ghq list -p` | The same with full paths, for scripting |
 | `ghq look <name>` | A subshell in that repo |
-| `ghq root` | The value of ghq.root, `~/ghq` |
+| `ghq root` | The value of ghq.root, `~/Developer` |
 
 ### gita, for working across all of them
 
@@ -170,8 +170,8 @@ file holds the portable aliases shared between this machine and anything reached
 
 | Command | What it does |
 |---|---|
-| `just secrets-edit` | Edit `secrets/secrets.yaml` transparently through sops |
-| `just secrets-rekey` | Re-encrypt after changing `.sops.yaml` |
+| `just secrets [edit] [file]` | Edit `secrets/<file>.yaml` (default `common`) through sops. Files are split per host: common, darwin, homelab, macmini, mail, nixos-laptop, ... |
+| `just secrets rekey` | Re-encrypt every file after changing `.sops.yaml` |
 
 The age private key is `~/.config/sops/age/keys.txt`. Back it up in Bitwarden.
 
@@ -187,7 +187,7 @@ Four layers of storage. The reasoning is in the comments in `nix/home/restic-bac
 | GitHub and Forgejo | Code, which is reproducible | git. GitHub is the original, with a Forgejo mirror at home; see [HOMELAB.md](./HOMELAB.md) |
 | restic warm | Files still in use, automatically and daily | `google-drive:restic-backup`, encrypted |
 | restic cold | Files no longer in use, kept forever | The same repository, under `--tag archive` |
-| rclone mount | Plaintext cloud storage shared with other people | `~/Sync/google-drive-{personal,school}`, no kernel extension needed |
+| rclone mount | Plaintext cloud storage shared with other people | `~/Sync/google-drive`, `google-drive-school` and `google-drive-work`, no kernel extension needed |
 
 ### Warm, for files in use, daily and on demand
 
@@ -215,7 +215,7 @@ Four layers of storage. The reasoning is in the comments in `nix/home/restic-bac
 | `just gdrive remount`, `open` | Remount, or open in Finder |
 
 Cold storage is kept permanently through restic's `--keep-tag archive` rather than by appending,
-so `forget` never thins it out. The shared mounts use fuse-t over NFS, so macFUSE's kernel
+so `forget` never thins it out. The shared mounts use rclone's built-in `nfsmount`, so macFUSE's kernel
 extension and the recovery-mode dance are not needed, and the `restic` and
 `google-drive:restic-backup` folders are excluded from the mount so they cannot be deleted by
 accident.
@@ -353,7 +353,7 @@ Things that catch people out:
 Ctrl+R                    # pick up where yesterday left off, through atuin
 
 # go to a project
-Ctrl+G                    # choose a repo through fzf and cd into it
+Ctrl+]                    # choose a repo through fzf and cd into it
 
 # see where things stand
 gita ll                   # branch state across every repo
@@ -371,7 +371,7 @@ ga . && gc -m "feat: ..."
 gp
 
 # on to another repo
-Ctrl+G
+Ctrl+]
 
 # try a command you do not have
 , asciinema rec demo.cast # run it without installing
@@ -397,7 +397,7 @@ to their macOS equivalents:
 | `bash scripts/bootstrap.sh` | `pwsh -File windows/bootstrap.ps1`, or `just win-bootstrap` |
 | `just rebuild` | `git pull` is enough. There is no Nix; config symlinks update by re-running bootstrap |
 | `just upgrade` | `winget upgrade --all` |
-| `just secrets edit` | `sops $env:USERPROFILE\dotfiles\secrets\secrets.yaml` |
+| `just secrets edit` | `sops $env:USERPROFILE\dotfiles\secrets\common.yaml`, or another per-host file |
 | `just check` | `just win-verify`, which checks the apps.json IDs exist, plus `just win-fmt` for PSScriptAnalyzer |
 | `pbcopy < file` in WSL | `Get-Content file \| Set-Clipboard` |
 | `xdg-open file` in WSL | `start file` in pwsh, or `explorer file` |
@@ -425,10 +425,10 @@ Their settings are not synced; the dictionary can be copied from macOS.
 
 - eza, bat, delta and tealdeer are managed declaratively through home-manager's `programs.*`.
 - fzf-tab comes in through `programs.zsh.plugins` as `pkgs.zsh-fzf-tab`.
-- `ghq.root` is persisted through `programs.git.extraConfig.ghq.root`.
-- The Ctrl+G widget is the `ghq-fzf` function inside `programs.zsh.initContent`.
+- `ghq.root` is persisted through `programs.git.settings.ghq.root`.
+- The Ctrl+] widget is the `ghq-fzf` function inside `programs.zsh.initContent`.
 - `gita-sync` is another function there, running `gita add` over everything in `ghq list`.
-- gita itself comes from `uv tool install gita`, automated in `bootstrap.sh`.
+- gita itself is a nix package, in `nix/home/workstation.nix`.
 - nom is wired in through a wrapper function around `nix build` that inserts
   `--log-format internal-json -v |& nom --json`.
 - nh is not wrapped in nom, because it has its own TUI. The alias was withdrawn in `5d8bdac`.

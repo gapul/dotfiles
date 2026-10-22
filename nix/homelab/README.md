@@ -33,7 +33,7 @@ name that matters now.
 | `attic.env` | `ATTIC_SERVER_TOKEN_HS256_SECRET_BASE64`, `POSTGRES_PASSWORD` |
 | `calnode.env` | `CALNODE_ENCRYPTION_KEY` and `CALNODE_RECOVERY_SECRET`, both `openssl rand -hex 32`. Losing the first makes the encrypted data in the database unreadable and the second is the only way out of that, so do not keep them in the same place |
 | `dawarich.env` | `POSTGRES_PASSWORD`, `DATABASE_PASSWORD`, `SECRET_KEY_BASE`, `OTP_ENCRYPTION_PRIMARY_KEY`, `OTP_ENCRYPTION_KEY_DERIVATION_SALT`, `OTP_ENCRYPTION_DETERMINISTIC_KEY`, `APPLICATION_HOSTS` |
-| `matrix.env` | `CONDUIT_REGISTRATION_TOKEN` |
+| `synapse-registration-secret` | Synapse's `registration_shared_secret`, one raw line. `register_new_matrix_user` needs it to create accounts. Never change it once created; invites already handed out break |
 | `miniflux.env` | `DATABASE_URL` (the whole `postgres://miniflux:<pw>@db/miniflux?sslmode=disable` string), `POSTGRES_PASSWORD`, `ADMIN_PASSWORD` |
 | `obsidian-couchdb.env` | `COUCHDB_USER`, `COUCHDB_PASSWORD` |
 | `searx.env` | `SEARXNG_SECRET`, from `openssl rand -hex 32`, substituted into SearXNG's `server.secret_key` with envsubst |
@@ -48,7 +48,7 @@ name that matters now.
 | `homebox.env` | `HBOX_AUTH_API_KEY_PEPPER`, from `openssl rand -base64 48`. Changing it invalidates every issued API key |
 | `romm.env` | `MARIADB_ROOT_PASSWORD`, `MARIADB_PASSWORD` and `DB_PASSWD`, the last two being the same value, plus `ROMM_AUTH_SECRET_KEY` from `openssl rand -hex 32`, `IGDB_CLIENT_ID` and `IGDB_CLIENT_SECRET` |
 | `gameyfin.env` | `APP_KEY`, from `head -c 32 /dev/urandom \| base64`. It is read as an AES key, so anything other than exactly 128, 192 or 256 bits loops on `Invalid AES key length`; 64 hex characters are treated as 64 bytes and fail. Plus `IGDB_CLIENT_ID` and `IGDB_CLIENT_SECRET`, which can be the same values romm uses |
-| `hauk/config.php` | A PHP configuration file rather than an `.env`, placed at `/var/lib/homelab/hauk/config.php`. Copy `/etc/hauk/config-sample.php` out of the image and replace `password` with a hash, from `podman exec hauk php -r 'echo password_hash("...", PASSWORD_DEFAULT);'`. `public_url` is `https://where.gapul.net/` |
+| `hauk/config.php` | Hauk is disabled since 2026-10-22 (see `hauk.nix`). A PHP configuration file rather than an `.env`, placed at `/var/lib/homelab/hauk/config.php`. Copy `/etc/hauk/config-sample.php` out of the image and replace `password` with a hash, from `podman exec hauk php -r 'echo password_hash("...", PASSWORD_DEFAULT);'`. `public_url` is `https://where.gapul.net/` |
 | `duo-remind.env` | `DUO_JWT`, the `jwt_token` cookie from a logged-in duolingo.com session (duo-remind.nix). Lasts months; the script posts "token expired" to ntfy when it stops working |
 | `gatus.env` | `NTFY_TOPIC`, `NTFY_TOKEN` (the `tk_...` bearer token; gatus substitutes them into its own config), `GATUS_PUSH_TOKEN` (`openssl rand -hex 24`; bearer token for gatus external endpoints, which timers such as duo-remind push to after each run) |
 | `mosquitto-ha.password` | a `mosquitto_passwd` hash, the part after `ha:` — not a plaintext password |
@@ -88,53 +88,6 @@ host's address turns out to be.
 Two of these passwords existed in plaintext in the compose files on the old host —
 archivebox's admin password, and samba's, which was in `command:` and therefore
 also visible in `ps`. They are worth rotating rather than carrying over.
-
-## Home Assistant
-
-Not an env file, but the same category of thing that fails quietly: Home
-Assistant's own `configuration.yaml` carries
-
-```yaml
-http:
-  use_x_forwarded_for: true
-  trusted_proxies: [192.168.116.119]
-```
-
-which is the old Caddy container's address. Caddy runs on the same host now, so
-that has to become `127.0.0.1` or Home Assistant rejects every proxied request
-with a 400 and the only clue is in its log.
-
-What to carry over, none of it regenerable:
-
-| from the old machine | to |
-| --- | --- |
-| `supervisor/homeassistant` (69MB, includes `esphome/`, `custom_components/`, `.storage`) | `/var/lib/hass` |
-| `supervisor/apps/data/core_matter_server` (8MB, the Matter fabric) | `/var/lib/matter-server` |
-| `supervisor/homeassistant/esphome/*.yaml` | `/var/lib/esphome` |
-| `supervisor/apps/data/a0d7b954_nodered` (flows) | `/var/lib/node-red` |
-
-`/var/lib/secrets/mosquitto-ha.password` holds a `mosquitto_passwd`-format hash,
-not a plaintext password. The add-on authenticated MQTT clients against Home
-Assistant's user accounts; nothing does that here, so every client needs the new
-credential.
-
-Take one `ha backups new` before the swap. Container installs have no backup
-button, so that is the last full snapshot the Supervisor will ever make.
-
-## Data
-
-Bind mounts moved with the machine:
-
-- `/opt/stacks/<stack>/x` → `/var/lib/homelab/<stack>/x`
-- `/mnt/jellyfin-media` (the old 200GB LVM volume) → `/srv`, its own ZFS dataset
-  with auto-snapshot off
-- the docker socket → podman's, on the host side only; containers still find it at
-  `/var/run/docker.sock` because that is what homepage's and glances' configs say
-
-Named volumes (`dawarich_*`, paperless's `data`/`media`, `redisdata`) are not bind
-mounts and do not move by copying a directory: docker keeps them under
-`/var/lib/docker/volumes` and podman under `/var/lib/containers/storage/volumes`.
-Their contents have to be exported and imported.
 
 ## Health gating
 

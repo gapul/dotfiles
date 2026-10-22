@@ -8,7 +8,7 @@ and where it cannot, the tooling stops at reporting the difference.
 ```
 mobile/
 ├── android/
-│   ├── apps.tsv + apps.sh          # declaration against the device; F-Droid apps install too
+│   ├── apps.tsv + apps.sh          # older app declaration against the device; F-Droid apps install too
 │   ├── os-settings.conf            # global settings pushed with adb
 │   ├── os-apps.tsv + os.sh         # per-app settings: permissions, battery, default launcher
 │   ├── launcher-theme.py           # generates Kvaesitso's theme from palettes.json
@@ -18,6 +18,7 @@ mobile/
     ├── apps.sh                     # declaration against the device through ideviceinstaller; cannot install
     ├── profiles/serve.sh           # serves the .mobileconfig files nix generated
     └── test.sh
+configs/android/obtainium.json      # the Obtainium app list, synced by `droid obtainium pull|push`
 nix/mobile/ios-profiles.nix         # the contents of the .mobileconfig, through pkgs.formats.plist
 nix/hosts/droid.nix                 # the CLI environment inside Termux, through nix-on-droid
 ```
@@ -26,10 +27,10 @@ nix/hosts/droid.nix                 # the CLI environment inside Termux, through
 
 | Layer | Android | iOS |
 |---|---|---|
-| Apps: declared in | `android/apps.tsv` | `ios/apps.tsv` |
-| Apps: confirming they exist | `apps.sh verify`, against the F-Droid index, the GitHub API and Play | `apps.sh verify`, against the iTunes API and the AltStore source |
+| Apps: declared in | `configs/android/obtainium.json` (Obtainium); `android/apps.tsv` is older and partial | `ios/apps.tsv` |
+| Apps: confirming they exist | `apps.sh verify` (`apps.tsv` rows only), against the F-Droid index, the GitHub API and Play | `apps.sh verify`, against the iTunes API and the AltStore source |
 | Apps: comparing with the device | `apps.sh status`, over adb | `apps.sh status`, through ideviceinstaller over USB |
-| Apps: installing | `apps.sh install`, F-Droid only. The rest go through Obtainium or Aurora Store | Not possible; it needs a signed ipa |
+| Apps: installing | `droid obtainium push` hands Obtainium its list; `apps.sh install` covers F-Droid rows only | Not possible; it needs a signed ipa |
 | OS settings, global | `os-settings.conf` through `os.sh` | Not possible, beyond what a `.mobileconfig` can reach |
 | OS settings, per app | `os-apps.tsv` through `os.sh` | Not possible |
 | Launcher | Setting the default, and generating the theme. Layout is not possible | The home screen is untouched |
@@ -53,10 +54,10 @@ not fail.
 | Comparing with the device, `status` | By hand, only when a device is plugged in |
 | The `settings` part of the OS settings | Can be applied from the device itself. Once Termux has the permission, it can run from cron |
 | Debloating and per-app OS settings | By hand. They need signature-level permissions, so adb only |
-| Installing apps | Hand the device a file and it does the rest: Obtainium takes a URL list, Aurora Store takes Favourites |
+| Installing apps | Hand the device a file and it does the rest: Obtainium imports `configs/android/obtainium.json` (`droid obtainium push`), Aurora Store takes Favourites |
 
 Installing and `settings` have reached the point where handing the device a file is enough —
-Obtainium's URL list, Aurora Store's favourites, and `os.sh` run from Termux. What still needs
+Obtainium's import file, Aurora Store's favourites, and `os.sh` run from Termux. What still needs
 the Mac and a cable is debloating and the per-app settings, which need signature-level
 permissions, plus `status`, which counts the difference against the device.
 

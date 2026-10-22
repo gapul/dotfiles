@@ -7,10 +7,10 @@
 | macSKK | An input method, sandboxed in a container | Japanese input in GUI applications |
 | skkeleton | An nvim plugin | SKK inside the editor |
 | azooKey skkserv | `/Applications/azooKey skkserv.app` | An skkserv on localhost:1178 |
-| Public dictionaries | `~/.skk/SKK-JISYO.{L,geo,jinmei,propernoun,station}` | Read directly by skkeleton |
+| Public dictionaries | `~/.local/share/skk/SKK-JISYO.{L,geo,jinmei,propernoun,station}` | Placed by nix (`nix/modules/home/editor.nix`), read directly by skkeleton |
 | Public dictionaries, macSKK's copy | `~/Library/Containers/net.mtgto.../Documents/Dictionaries/` | What macSKK can read from inside its sandbox |
 | User dictionary, macSKK | `skk-jisyo.utf8` in the same place | macSKK's own learning |
-| User dictionary, skkeleton | `~/.skk/skkeleton-user-dict` | skkeleton's own learning |
+| User dictionary, skkeleton | `~/.local/share/skk/skkeleton-user-dict` | skkeleton's own learning |
 
 ## What dotfiles manages
 
@@ -21,8 +21,9 @@
   punctuation: `！`, `？` and `：` become full width, `（）` stay half width, and
   `#!use-default` inherits the rest.
 
-The two plists are applied by `home.activation.skkPlistImport` in home.nix, through
-`defaults import` followed by `killall cfprefsd` to flush.
+The two plists are applied by `home.activation.skkPlistImport` in
+`nix/modules/home/darwin-apps.nix`, through `defaults import` followed by `killall cfprefsd` to
+flush.
 
 `kana-rule.conf` is not a plist but a file inside the container's Documents, so
 `home.activation.skkKanaRule` copies it in with `install`. As with the dictionaries, a symlink
@@ -30,8 +31,9 @@ does not work.
 
 ## What the sandbox will not allow
 
-1. **Dictionaries cannot be symlinked.** macSKK's sandbox cannot read a symlink into `~/.skk/`;
-   it gets NSPOSIX EPERM. A real copy is required, which means keeping 9 MB twice.
+1. **Dictionaries cannot be symlinked.** macSKK's sandbox cannot read a symlink into
+   `~/.local/share/skk/`; it gets NSPOSIX EPERM. A real copy is required, which means keeping
+   9 MB twice.
 2. **Writing the plist directly does not work.** macSKK does not load the `dictionaries[]`
    array at startup; it registers them from runtime events through NSFilePresenter. Even
    `defaults import` will not reproduce the dictionary list.
@@ -41,8 +43,8 @@ does not work.
 ## First-time setup on a new Mac
 
 ```bash
-# 1. put the public dictionaries in ~/.skk/, for skkeleton
-bash ~/.dotfiles/scripts/install-skk-dicts.sh
+# 1. nix already places the public dictionaries in ~/.local/share/skk/, for skkeleton
+#    (nix/modules/home/editor.nix), so there is nothing to run for this step
 
 # 2. start macSKK once, by switching to Japanese input from the menu bar,
 #    and wait for its container directory to be created
@@ -61,28 +63,12 @@ bash ~/.dotfiles/scripts/install-skk-dicts-macskk.sh
 After changing macSKK or skkserv through their GUIs, get it back into dotfiles with:
 
 ```bash
-# extract macSKK's plist and convert it to XML, so git diff is readable
-cp ~/Library/Containers/net.mtgto.inputmethod.macSKK/Data/Library/Preferences/net.mtgto.inputmethod.macSKK.plist \
-   ~/.dotfiles/configs/ime/skk/macSKK.plist
-plutil -convert xml1 ~/.dotfiles/configs/ime/skk/macSKK.plist
-
-# extract azooKey skkserv's plist, drop the UI state, convert to XML
-cp ~/Library/Containers/io.github.gitusp.azoo-key-skkserv/Data/Library/Preferences/io.github.gitusp.azoo-key-skkserv.plist \
-   ~/.dotfiles/configs/ime/skk/azoo-key-skkserv.plist
-python3 -c "
-import plistlib
-p = '$HOME/dotfiles/configs/ime/skk/azoo-key-skkserv.plist'
-with open(p, 'rb') as f: d = plistlib.load(f)
-for k in list(d):
-    if k.startswith('NSWindow Frame'): del d[k]
-with open(p, 'wb') as f: plistlib.dump(d, f)
-"
-plutil -convert xml1 ~/.dotfiles/configs/ime/skk/azoo-key-skkserv.plist
+just plist-sync
 ```
 
-`defaults import` accepts both XML and binary, so keeping the dotfiles copy as XML is fine.
-macSKK writing binary back through its GUI does not matter, because converting again at capture
-time keeps the history clean.
+It updates only the keys the repo plists already track, so window frames and other UI state stay
+out. To track a new key, add it to the repo plist once with `plutil -insert`. Review the diff
+before committing.
 
 After changing kana-rule, which is a real file, a plain copy is enough:
 
