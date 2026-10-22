@@ -38,7 +38,7 @@ jobs:
       # 終了コード、それに生成物の形式を見る。
       - name: self-check (stubbed device)
         run: |
-          mobile/android/test.sh
+          nix shell nixpkgs#bun -c mobile/android/test.sh
           mobile/ios/test.sh
 
       # 配布元への照会。gh の rate limit を避けるためトークンを渡す
@@ -46,7 +46,7 @@ jobs:
       - name: android — declarations resolve upstream
         env:
           GH_TOKEN: ${{ github.token }}
-        run: nix shell nixpkgs#fdroidcl -c mobile/android/apps.sh verify
+        run: nix shell nixpkgs#fdroidcl nixpkgs#bun -c mobile/android/apps.ts verify
 
       - name: ios — declarations resolve upstream
         run: mobile/ios/apps.sh verify

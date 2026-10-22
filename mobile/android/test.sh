@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# os.sh / apps.sh の自己チェック。偽の adb を PATH に置いて回すので実機は要らない。
+# os.sh / apps.ts の自己チェック。偽の adb を PATH に置いて回すので実機は要らない。
 #
 # 見張っているのは 2 つ:
 #   - ループの stdin。ループ内の adb から </dev/null を外すと adb が宣言ファイルを
@@ -79,16 +79,16 @@ check "os.sh の設定差分" \
   "$(grep -cvE '^[[:space:]]*(#|$)' os-settings.conf)" \
   "$(grep -cE '^  (global|system|secure)\.' <<<"$out" || true)"
 
-# ── apps.sh status: MISSING / EXTRA の判定と終了コード ───────────────────
-out=$(./apps.sh status </dev/null) && status_rc=0 || status_rc=$?
-check "apps.sh の MISSING 数" "$((declared_count - 1))" "$(grep -c MISSING <<<"$out" || true)"
-check "apps.sh の EXTRA 数" "1" "$(grep -c EXTRA <<<"$out" || true)"
+# ── apps.ts status: MISSING / EXTRA の判定と終了コード ───────────────────
+out=$(./apps.ts status </dev/null) && status_rc=0 || status_rc=$?
+check "apps.ts の MISSING 数" "$((declared_count - 1))" "$(grep -c MISSING <<<"$out" || true)"
+check "apps.ts の EXTRA 数" "1" "$(grep -c EXTRA <<<"$out" || true)"
 check "MISSING があれば exit 1" "1" "$status_rc"
 
-# ── apps.sh obtainium: play 以外の全行が URL になるか ────────────────────
+# ── apps.ts obtainium: play 以外の全行が URL になるか ────────────────────
 check "obtainium の URL 数" \
   "$(grep -vE '^[[:space:]]*(#|$)' apps.tsv | grep -cv $'\tplay\t')" \
-  "$(./apps.sh obtainium 2>/dev/null | grep -c '^https://' || true)"
+  "$(./apps.ts obtainium 2>/dev/null | grep -c '^https://' || true)"
 
 # ── os.sh: アプリ個別の宣言が適用対象として出るか ────────────────────────
 check "既定ランチャーの差分" "1" "$(grep -c '既定ランチャー' <<<"$out_os" || true)"
@@ -104,13 +104,13 @@ else
   fail=1
 fi
 
-# ── apps.sh adopt: 宣言に無いものだけを tsv 行として出すか ────────────────
+# ── apps.ts adopt: 宣言に無いものだけを tsv 行として出すか ────────────────
 # 偽 adb は宣言済み 1 件 + 未宣言 1 件を返す。出るのは後者だけであるべき。
-out=$(./apps.sh adopt 2>/dev/null || true)
+out=$(./apps.ts adopt 2>/dev/null || true)
 check "adopt の行数" "1" "$(grep -c '^com.example.undeclared' <<<"$out" || true)"
 
-# ── apps.sh aurora: play 行だけが Favourites になり、形式が Aurora の schema か ──
-aurora=$(./apps.sh aurora)
+# ── apps.ts aurora: play 行だけが Favourites になり、形式が Aurora の schema か ──
+aurora=$(./apps.ts aurora)
 check "aurora の favourites 数" \
   "$(grep -cE $'\tplay\t' apps.tsv || true)" \
   "$(python3 -c 'import json,sys; print(len(json.load(sys.stdin)["favourites"]))' <<<"$aurora")"
