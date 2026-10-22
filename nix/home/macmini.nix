@@ -113,6 +113,14 @@ in
     pkgs.gnutar
     pkgs.ripgrep
 
+    # imozuru Claude Code plugin: its scripts need Python >= 3.10 (macOS /usr/bin/python3 is 3.9),
+    # pdftotext/pdftoppm read PDFs, tesseract OCRs ones without a text layer, yt-dlp pulls
+    # YouTube subtitles. workstation.nix (not imported here) declares the same tools.
+    pkgs.python3
+    pkgs.poppler-utils
+    pkgs.tesseract
+    pkgs.yt-dlp
+
     # Sunshine — the host side of Moonlight. Lets an iPhone / iPad drive this machine's screen.
     #
     # macOS hosts are officially experimental and **gamepads do not work**
