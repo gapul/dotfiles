@@ -13,7 +13,6 @@ import datetime as dt
 import hashlib
 import html
 import json
-import os
 import re
 import shutil
 import sqlite3
@@ -22,40 +21,77 @@ import tarfile
 import urllib.parse
 import urllib.request
 import zipfile
+from collections.abc import Mapping
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
 UA = "freebie-collector/1.0 (+personal archival)"
 POSITIVE = (
-    "limited time free", "free for a limited", "temporarily free", "100% off",
-    "free until", "free through", "期間限定無料", "期間限定で無料", "無償配布",
-    "今だけ無料", "無料配布",
+    "limited time free",
+    "free for a limited",
+    "temporarily free",
+    "100% off",
+    "free until",
+    "free through",
+    "期間限定無料",
+    "期間限定で無料",
+    "無償配布",
+    "今だけ無料",
+    "無料配布",
 )
 NEGATIVE = (
-    "free trial", "trial version", "demo version", "free weekend", "体験版",
-    "無料体験", "フリーウィークエンド", "subscription required",
+    "free trial",
+    "trial version",
+    "demo version",
+    "free weekend",
+    "体験版",
+    "無料体験",
+    "フリーウィークエンド",
+    "subscription required",
 )
 ASSET_WORDS = {
-    "font": "fonts/free", "typeface": "fonts/free", "フォント": "fonts/free",
-    "sample pack": "audio/sample-packs", "サンプルパック": "audio/sample-packs",
-    "kontakt": "audio/instruments", "instrument": "audio/instruments", "音源": "audio/instruments",
-    "plugin": "audio/plugins", "plug-in": "audio/plugins", "vst": "audio/plugins", "プラグイン": "audio/plugins",
-    "sound effect": "audio/sfx", "sfx": "audio/sfx", "効果音": "audio/sfx",
-    "brush": "graphics/brushes", "ブラシ": "graphics/brushes",
-    "texture": "textures", "テクスチャ": "textures",
-    "lut": "video/luts", "template": "templates", "テンプレート": "templates",
-    "3d model": "3d/models", "3d asset": "3d/models", "3dモデル": "3d/models",
+    "font": "fonts/free",
+    "typeface": "fonts/free",
+    "フォント": "fonts/free",
+    "sample pack": "audio/sample-packs",
+    "サンプルパック": "audio/sample-packs",
+    "kontakt": "audio/instruments",
+    "instrument": "audio/instruments",
+    "音源": "audio/instruments",
+    "plugin": "audio/plugins",
+    "plug-in": "audio/plugins",
+    "vst": "audio/plugins",
+    "プラグイン": "audio/plugins",
+    "sound effect": "audio/sfx",
+    "sfx": "audio/sfx",
+    "効果音": "audio/sfx",
+    "brush": "graphics/brushes",
+    "ブラシ": "graphics/brushes",
+    "texture": "textures",
+    "テクスチャ": "textures",
+    "lut": "video/luts",
+    "template": "templates",
+    "テンプレート": "templates",
+    "3d model": "3d/models",
+    "3d asset": "3d/models",
+    "3dモデル": "3d/models",
 }
 ARCHIVES = {".zip", ".tar", ".tgz", ".gz", ".bz2", ".xz"}
 NO_ANNEX = {"README.md", "offer.json", "LICENSE", "LICENSE.txt", "OFL.txt"}
 
 
 def now() -> dt.datetime:
-    return dt.datetime.now(dt.timezone.utc).astimezone()
+    return dt.datetime.now(dt.UTC).astimezone()
 
 
 def fetch(url: str, timeout: int = 30) -> bytes:
-    req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": "application/rss+xml, application/atom+xml, text/xml, */*"})
+    req = urllib.request.Request(
+        url,
+        headers={
+            "User-Agent": UA,
+            "Accept": "application/rss+xml, application/atom+xml, text/xml, */*",
+        },
+    )
     with urllib.request.urlopen(req, timeout=timeout) as response:
         return response.read(8 * 1024 * 1024)
 
@@ -77,10 +113,25 @@ def feed_items(data: bytes) -> list[dict[str, str]]:
         link = text_of(node.find("link"))
         if not link:
             link_node = node.find("{*}link")
-            link = (link_node.attrib.get("href", "") if link_node is not None else "")
-        body = text_of(node.find("description")) or text_of(node.find("{*}summary")) or text_of(node.find("{*}content"))
-        published = text_of(node.find("pubDate")) or text_of(node.find("{*}published")) or text_of(node.find("{*}updated"))
-        result.append({"title": html.unescape(title), "url": link, "summary": html.unescape(re.sub(r"<[^>]+>", " ", body)), "published": published})
+            link = link_node.attrib.get("href", "") if link_node is not None else ""
+        body = (
+            text_of(node.find("description"))
+            or text_of(node.find("{*}summary"))
+            or text_of(node.find("{*}content"))
+        )
+        published = (
+            text_of(node.find("pubDate"))
+            or text_of(node.find("{*}published"))
+            or text_of(node.find("{*}updated"))
+        )
+        result.append(
+            {
+                "title": html.unescape(title),
+                "url": link,
+                "summary": html.unescape(re.sub(r"<[^>]+>", " ", body)),
+                "published": published,
+            }
+        )
     return result
 
 
@@ -114,15 +165,26 @@ def db_open(path: Path) -> sqlite3.Connection:
     return db
 
 
-def store_offer(db: sqlite3.Connection, item: dict[str, object]) -> bool:
+def store_offer(db: sqlite3.Connection, item: Mapping[str, object]) -> bool:
     oid = stable_id(str(item["url"]))
     exists = db.execute("SELECT 1 FROM offers WHERE id=?", (oid,)).fetchone() is not None
-    db.execute("""INSERT INTO offers(id,title,url,source,category,discovered,published,deadline,status,details)
+    db.execute(
+        """INSERT INTO offers(id,title,url,source,category,discovered,published,deadline,status,details)
         VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET
         title=excluded.title, category=excluded.category, deadline=COALESCE(excluded.deadline,offers.deadline), details=excluded.details""",
-        (oid, item["title"], item["url"], item.get("source", "seed"), item.get("category", "misc"),
-         item.get("discovered", now().isoformat()), item.get("published", ""), item.get("deadline"),
-         item.get("status", "claim-required"), json.dumps(item, ensure_ascii=False, sort_keys=True)))
+        (
+            oid,
+            item["title"],
+            item["url"],
+            item.get("source", "seed"),
+            item.get("category", "misc"),
+            item.get("discovered", now().isoformat()),
+            item.get("published", ""),
+            item.get("deadline"),
+            item.get("status", "claim-required"),
+            json.dumps(item, ensure_ascii=False, sort_keys=True),
+        ),
+    )
     return not exists
 
 
@@ -140,7 +202,11 @@ def scan(config: dict, db: sqlite3.Connection) -> tuple[int, list[str]]:
                 combined = f"{item['title']} {item['summary']}"
                 if not qualifies(combined):
                     continue
-                item.update(source=source["name"], category=category_for(combined), discovered=now().isoformat())
+                item.update(
+                    source=source["name"],
+                    category=category_for(combined),
+                    discovered=now().isoformat(),
+                )
                 added += int(store_offer(db, item))
         except Exception as exc:  # one broken feed must not suppress the other sources
             errors.append(f"{source['name']}: {exc}")
@@ -154,7 +220,9 @@ def safe_name(value: str) -> str:
 
 
 def run(cmd: list[str], cwd: Path, check: bool = True) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(cmd, cwd=cwd, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=check)
+    return subprocess.run(
+        cmd, cwd=cwd, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=check
+    )
 
 
 def safe_extract(archive: Path, target: Path) -> None:
@@ -184,10 +252,12 @@ def metadata_args(meta: dict[str, object]) -> list[str]:
         "offer-type": meta.get("offer_type", "limited-time-free"),
         "acquired-price": meta.get("acquired_price", "0"),
         "acquired": meta.get("acquired", now().date().isoformat()),
-        "source": meta.get("source"), "vendor": meta.get("vendor"),
+        "source": meta.get("source"),
+        "vendor": meta.get("vendor"),
         "announced-until": meta.get("deadline"),
         "asset-type": meta.get("asset_type") or str(meta.get("category", "misc")).split("/")[-1],
-        "license": meta.get("license"), "platform": meta.get("platform"),
+        "license": meta.get("license"),
+        "platform": meta.get("platform"),
     }
     args: list[str] = []
     for key, value in pairs.items():
@@ -264,21 +334,35 @@ def prepare_unmanaged_downloads(inbox: Path) -> None:
         except Exception:
             continue
     for payload in inbox.iterdir():
-        if not payload.is_file() or payload.name.endswith(".freebie.json") or payload.name in manifested:
+        if (
+            not payload.is_file()
+            or payload.name.endswith(".freebie.json")
+            or payload.name in manifested
+        ):
             continue
-        result = subprocess.run([mdls, "-raw", "-name", "kMDItemWhereFroms", str(payload)],
-                                text=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        result = subprocess.run(
+            [mdls, "-raw", "-name", "kMDItemWhereFroms", str(payload)],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+        )
         urls = re.findall(r'https?://[^"\\s)]+', result.stdout)
         if not urls:
             continue
-        source = urls[0].replace('\\U0026', '&')
+        source = urls[0].replace("\\U0026", "&")
         host = urllib.parse.urlsplit(source).hostname or "unknown"
         meta = {
-            "file": payload.name, "title": payload.stem, "vendor": host,
-            "source": source, "category": category_for(payload.name),
-            "offer_type": "limited-time-free", "acquired_price": "0",
+            "file": payload.name,
+            "title": payload.stem,
+            "vendor": host,
+            "source": source,
+            "category": category_for(payload.name),
+            "offer_type": "limited-time-free",
+            "acquired_price": "0",
         }
-        (inbox / f"{payload.name}.freebie.json").write_text(json.dumps(meta, ensure_ascii=False, indent=2) + "\n")
+        (inbox / f"{payload.name}.freebie.json").write_text(
+            json.dumps(meta, ensure_ascii=False, indent=2) + "\n"
+        )
 
 
 def download_declared(config: dict, inbox: Path, db: sqlite3.Connection) -> tuple[int, list[str]]:
@@ -291,7 +375,13 @@ def download_declared(config: dict, inbox: Path, db: sqlite3.Connection) -> tupl
         row = db.execute("SELECT status FROM offers WHERE id=?", (oid,)).fetchone()
         if row and row[0] == "acquired":
             continue
-        filename = safe_name(str(entry.get("filename") or Path(urllib.parse.urlsplit(url).path).name or f"{oid}.download"))
+        filename = safe_name(
+            str(
+                entry.get("filename")
+                or Path(urllib.parse.urlsplit(url).path).name
+                or f"{oid}.download"
+            )
+        )
         payload = inbox / filename
         manifest = inbox / f"{filename}.freebie.json"
         if payload.exists() and manifest.exists():
@@ -299,7 +389,9 @@ def download_declared(config: dict, inbox: Path, db: sqlite3.Connection) -> tupl
         try:
             payload.write_bytes(fetch(url))
             meta = dict(entry)
-            meta.update(file=filename, source=entry.get("source", url), acquired=now().date().isoformat())
+            meta.update(
+                file=filename, source=entry.get("source", url), acquired=now().date().isoformat()
+            )
             manifest.write_text(json.dumps(meta, ensure_ascii=False, indent=2) + "\n")
             downloaded += 1
         except Exception as exc:
@@ -316,7 +408,9 @@ def export_queue(db: sqlite3.Connection, output: Path) -> int:
         try:
             if deadline and dt.datetime.fromisoformat(deadline) < current:
                 db.execute("UPDATE offers SET status='expired' WHERE id=?", (oid,))
-            elif not deadline and dt.datetime.fromisoformat(discovered) < current - dt.timedelta(days=14):
+            elif not deadline and dt.datetime.fromisoformat(discovered) < current - dt.timedelta(
+                days=14
+            ):
                 db.execute("UPDATE offers SET status='stale' WHERE id=?", (oid,))
         except ValueError:
             continue
@@ -325,9 +419,15 @@ def export_queue(db: sqlite3.Connection, output: Path) -> int:
         WHERE status = 'claim-required'
         ORDER BY CASE WHEN deadline IS NULL THEN 1 ELSE 0 END, deadline, discovered DESC""").fetchall()
     stamp = now().isoformat(timespec="seconds")
-    lines = ["# Limited-time free claim queue", "", f"Updated: {stamp}", "",
-             "Automatically discovered offers. A zero-price checkout, login, CAPTCHA, or license consent still needs a site adapter or human confirmation.", ""]
-    for title, url, source, category, deadline, status, details in rows:
+    lines = [
+        "# Limited-time free claim queue",
+        "",
+        f"Updated: {stamp}",
+        "",
+        "Automatically discovered offers. A zero-price checkout, login, CAPTCHA, or license consent still needs a site adapter or human confirmation.",
+        "",
+    ]
+    for title, url, source, category, deadline, _status, details in rows:
         extra = json.loads(details)
         suffix = f" — deadline `{deadline}`" if deadline else ""
         coupon = f" — coupon `{extra['coupon']}`" if extra.get("coupon") else ""
@@ -343,8 +443,16 @@ def notify(message: str) -> None:
     base = Path.home() / ".config/ntfy"
     if not (base / "url").is_file() or not (base / "token").is_file():
         return
-    req = urllib.request.Request((base / "url").read_text().strip(), data=message.encode(), method="POST",
-        headers={"Authorization": "Bearer " + (base / "token").read_text().strip(), "Title": "limited freebies", "Tags": "package"})
+    req = urllib.request.Request(
+        (base / "url").read_text().strip(),
+        data=message.encode(),
+        method="POST",
+        headers={
+            "Authorization": "Bearer " + (base / "token").read_text().strip(),
+            "Title": "limited freebies",
+            "Tags": "package",
+        },
+    )
     try:
         urllib.request.urlopen(req, timeout=15).read()
     except Exception:
@@ -353,9 +461,15 @@ def notify(message: str) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("command", choices=("scan", "ingest", "report", "run"), nargs="?", default="run")
-    parser.add_argument("--config", type=Path, default=Path.home() / ".config/freebie-collector/sources.json")
-    parser.add_argument("--state", type=Path, default=Path.home() / ".local/state/freebie-collector")
+    parser.add_argument(
+        "command", choices=("scan", "ingest", "report", "run"), nargs="?", default="run"
+    )
+    parser.add_argument(
+        "--config", type=Path, default=Path.home() / ".config/freebie-collector/sources.json"
+    )
+    parser.add_argument(
+        "--state", type=Path, default=Path.home() / ".local/state/freebie-collector"
+    )
     parser.add_argument("--repo", type=Path, default=Path.home() / "Documents/assets")
     parser.add_argument("--inbox", type=Path, default=Path.home() / "Downloads/freebie-inbox")
     args = parser.parse_args()
@@ -378,8 +492,20 @@ def main() -> int:
         errors.extend(ingest_errors)
     count = export_queue(db, args.state / "claim-queue.md")
     if new or ingested or errors:
-        notify(f"new/updated: {new}, ingested: {len(ingested)}, waiting: {count}, errors: {len(errors)}")
-    print(json.dumps({"new_or_updated": new, "ingested": [str(p) for p in ingested], "waiting": count, "errors": errors}, ensure_ascii=False))
+        notify(
+            f"new/updated: {new}, ingested: {len(ingested)}, waiting: {count}, errors: {len(errors)}"
+        )
+    print(
+        json.dumps(
+            {
+                "new_or_updated": new,
+                "ingested": [str(p) for p in ingested],
+                "waiting": count,
+                "errors": errors,
+            },
+            ensure_ascii=False,
+        )
+    )
     return 1 if errors and not count else 0
 
 

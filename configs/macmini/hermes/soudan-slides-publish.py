@@ -20,6 +20,7 @@ import subprocess
 import sys
 import urllib.request
 from pathlib import Path
+from typing import NoReturn
 
 SRC_ROOT = "/Users/hsoudan/workspace/progress"
 REPO = Path.home() / ".local/share/soudan-slides"
@@ -63,7 +64,7 @@ def notify(title, body):
         pass
 
 
-def fail(msg):
+def fail(msg) -> NoReturn:
     print(msg, file=sys.stderr)
     notify("進捗スライドを slides repo に上げられない", msg)
     sys.exit(1)
@@ -94,9 +95,7 @@ def main():
     src = Path(SRC_ROOT) / target.isoformat()
 
     try:
-        names = sorted(
-            n for n in os.listdir(src) if re.fullmatch(r"progress-\d+\.(md|pdf)", n)
-        )
+        names = sorted(n for n in os.listdir(src) if re.fullmatch(r"progress-\d+\.(md|pdf)", n))
     except OSError:
         names = []
     if not any(n.endswith(".md") for n in names):

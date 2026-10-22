@@ -52,8 +52,12 @@ MKCALENDAR_BODY = """<?xml version="1.0" encoding="utf-8"?>
 </C:mkcalendar>"""
 
 
-def request(method: str, url: str, body: str | None = None, headers: dict | None = None) -> tuple[int, str]:
-    auth = base64.b64encode(f"{os.environ['RADICALE_USER']}:{os.environ['RADICALE_PASSWORD']}".encode()).decode()
+def request(
+    method: str, url: str, body: str | None = None, headers: dict | None = None
+) -> tuple[int, str]:
+    auth = base64.b64encode(
+        f"{os.environ['RADICALE_USER']}:{os.environ['RADICALE_PASSWORD']}".encode()
+    ).decode()
     req = urllib.request.Request(
         url,
         data=body.encode() if body is not None else None,
@@ -74,13 +78,20 @@ def parse_events(ics: str) -> dict[str, tuple[str, datetime | None]]:
     for block in re.findall(r"^BEGIN:VEVENT\n.*?^END:VEVENT$", ics, re.S | re.M):
         uid = re.search(r"^UID:(.+)$", block, re.M).group(1).strip()
         start = re.search(r"^DTSTART[^:]*:(\d{8}T\d{6})", block, re.M)
-        events[uid] = (block, datetime.strptime(start.group(1), "%Y%m%dT%H%M%S").replace(tzinfo=JST) if start else None)
+        events[uid] = (
+            block,
+            datetime.strptime(start.group(1), "%Y%m%dT%H%M%S").replace(tzinfo=JST)
+            if start
+            else None,
+        )
     return events
 
 
 def event_hash(block: str) -> str:
     # DTSTAMP/LAST-MODIFIED change on every rebuild; leave them out of the hash.
-    stable = "\n".join(line for line in block.splitlines() if not line.startswith(("DTSTAMP", "LAST-MODIFIED")))
+    stable = "\n".join(
+        line for line in block.splitlines() if not line.startswith(("DTSTAMP", "LAST-MODIFIED"))
+    )
     return hashlib.sha256(stable.encode()).hexdigest()
 
 
@@ -99,7 +110,9 @@ def main() -> int:
 
     status, _ = request("PROPFIND", base, headers={"Depth": "0"})
     if status == 404:
-        status, body = request("MKCALENDAR", base, MKCALENDAR_BODY, {"Content-Type": "application/xml"})
+        status, body = request(
+            "MKCALENDAR", base, MKCALENDAR_BODY, {"Content-Type": "application/xml"}
+        )
         if status not in (200, 201):
             print(f"error: MKCALENDAR {status}: {body[:200]}", file=sys.stderr)
             return 1
@@ -112,7 +125,12 @@ def main() -> int:
         if state.get(uid, {}).get("hash") == digest:
             continue
         body = f"BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//gapul//utas-classes//JA\n{VTIMEZONE}\n{block}\nEND:VCALENDAR\n"
-        status, text = request("PUT", base + href_name(uid), body.replace("\n", "\r\n"), {"Content-Type": "text/calendar; charset=utf-8"})
+        status, text = request(
+            "PUT",
+            base + href_name(uid),
+            body.replace("\n", "\r\n"),
+            {"Content-Type": "text/calendar; charset=utf-8"},
+        )
         if status not in (200, 201, 204):
             print(f"warning: PUT {uid}: {status}: {text[:200]}", file=sys.stderr)
             continue

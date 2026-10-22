@@ -21,6 +21,7 @@ Implements the receiver side of docs/protocol/README.md:
 Environment: PULS_TOKEN (required), PULS_DB (default puls.sqlite),
 PULS_BIND (default 127.0.0.1), PULS_PORT (default 8080). Python 3.11+.
 """
+
 from __future__ import annotations
 
 import hmac
@@ -31,27 +32,58 @@ import sqlite3
 import sys
 import threading
 import zlib
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 PROTOCOL_VERSIONS = [1]
 DEFAULT_USER = "5ea4d000-0000-4000-8000-000000000001"
 MAX_BODY = 256 << 20  # compressed bytes, as the reference server
 MAX_RAW = 512 << 20  # decompressed bytes; the app pages batches far below this
-COUNTS = ("sampleCount", "deletionCount", "routeCount", "seriesCount",
-          "aggregateCount", "activitySummaryCount", "profileCount")
+COUNTS = (
+    "sampleCount",
+    "deletionCount",
+    "routeCount",
+    "seriesCount",
+    "aggregateCount",
+    "activitySummaryCount",
+    "profileCount",
+)
 # kind -> the detail field that must be present for that kind
-KINDS = {"quantity": None, "category": "category", "workout": "workout", "heartbeatSeries": "heartbeats",
-         "ecg": "ecg", "stateOfMind": "stateOfMind", "medicationDose": "medicationDose"}
-AGG_ENUMS = {"func": {"sum", "average", "min", "max", "mostRecent", "duration"},
-             "intervalUnit": {"minute", "hour", "day", "week", "month"},
-             "deviceFilter": {"all", "watch", "iphone"}}
+KINDS = {
+    "quantity": None,
+    "category": "category",
+    "workout": "workout",
+    "heartbeatSeries": "heartbeats",
+    "ecg": "ecg",
+    "stateOfMind": "stateOfMind",
+    "medicationDose": "medicationDose",
+}
+AGG_ENUMS = {
+    "func": {"sum", "average", "min", "max", "mostRecent", "duration"},
+    "intervalUnit": {"minute", "hour", "day", "week", "month"},
+    "deviceFilter": {"all", "watch", "iphone"},
+}
 UUID_RE = re.compile(r"^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$")
-ZERO_RESULT = {"accepted": 0, "deleted": 0, "duplicates": 0, "routePoints": 0,
-               "seriesPoints": 0, "aggregateSamples": 0, "activitySummaries": 0}
+ZERO_RESULT = {
+    "accepted": 0,
+    "deleted": 0,
+    "duplicates": 0,
+    "routePoints": 0,
+    "seriesPoints": 0,
+    "aggregateSamples": 0,
+    "activitySummaries": 0,
+}
 # Counted by /v1/stats. Interpolated into SQL, so this tuple is the only allowed source of names.
-STAT_TABLES = ("users", "batches", "samples", "deletions", "route_points", "series_points",
-               "aggregates", "activity_summaries")
+STAT_TABLES = (
+    "users",
+    "batches",
+    "samples",
+    "deletions",
+    "route_points",
+    "series_points",
+    "aggregates",
+    "activity_summaries",
+)
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, name TEXT, email TEXT, date_of_birth_ms REAL,
@@ -94,12 +126,16 @@ def is_uuid(v):
 
 def is_ms(v):
     """A required epoch-ms timestamp: a number in year 1..9999, not 0 (0 means absent)."""
-    return (isinstance(v, (int, float)) and not isinstance(v, bool)
-            and v != 0 and -62135596800000 <= v <= 253402300799999)
+    return (
+        isinstance(v, (int, float))
+        and not isinstance(v, bool)
+        and v != 0
+        and -62135596800000 <= v <= 253402300799999
+    )
 
 
 def now():
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return datetime.now(UTC).isoformat(timespec="seconds")
 
 
 def parse_batch(text):
@@ -125,7 +161,11 @@ def parse_batch(text):
         if not isinstance(pts, list) or len(pts) > 4000:
             raise BadRequest(f"{what} {i}: points must be a list of at most 4000")
         for p in pts:
-            if not isinstance(p, dict) or not is_ms(p.get("t")) or any(p.get(k) is None for k in required):
+            if (
+                not isinstance(p, dict)
+                or not is_ms(p.get("t"))
+                or any(p.get(k) is None for k in required)
+            ):
                 raise BadRequest(f"{what} {i}: bad point")
         return pts
 
@@ -138,15 +178,31 @@ def parse_batch(text):
     if not is_uuid(header.get("batchID")) or not header.get("type"):
         raise BadRequest("invalid batch header: batchID must be a UUID and type non-empty")
     counts = {k: header.get(k) or 0 for k in COUNTS}
-    if any(isinstance(n, bool) or not isinstance(n, int) or not 0 <= n <= 100_000 for n in counts.values()):
+    if any(
+        isinstance(n, bool) or not isinstance(n, int) or not 0 <= n <= 100_000
+        for n in counts.values()
+    ):
         raise BadRequest("invalid batch header: counts must be integers 0..100000")
     if counts["profileCount"] > 1 or sum(counts.values()) > 200_000:
         raise BadRequest("invalid batch header: too many declared lines")
 
-    b = {"header": header, "samples": [], "deletions": [], "routes": [], "series": [],
-         "aggregates": [], "activitySummaries": [], "profile": None}
+    b = {
+        "header": header,
+        "samples": [],
+        "deletions": [],
+        "routes": [],
+        "series": [],
+        "aggregates": [],
+        "activitySummaries": [],
+        "profile": None,
+    }
     for i, s in take(counts["sampleCount"], "sample"):
-        if not is_uuid(s.get("uuid")) or not s.get("type") or s.get("kind") not in KINDS or not is_ms(s.get("start")):
+        if (
+            not is_uuid(s.get("uuid"))
+            or not s.get("type")
+            or s.get("kind") not in KINDS
+            or not is_ms(s.get("start"))
+        ):
             raise BadRequest(f"sample {i}: bad uuid, type, kind, or start")
         if KINDS[s["kind"]] and s.get(KINDS[s["kind"]]) is None:
             raise BadRequest(f"sample {i}: {s['kind']} sample missing {KINDS[s['kind']]}")
@@ -167,16 +223,27 @@ def parse_batch(text):
         b["series"].append(s)
     for i, a in take(counts["aggregateCount"], "aggregate", "aggregate"):
         iv = a.get("intervalValue")
-        if (not a.get("type") or any(a.get(k) not in v for k, v in AGG_ENUMS.items())
-                or isinstance(iv, bool) or not isinstance(iv, int) or iv < 1):
+        if (
+            not a.get("type")
+            or any(a.get(k) not in v for k, v in AGG_ENUMS.items())
+            or isinstance(iv, bool)
+            or not isinstance(iv, int)
+            or iv < 1
+        ):
             raise BadRequest(f"aggregate {i}: bad type, func, interval, or deviceFilter")
-        if not is_ms(a.get("bucketStart")) or not is_ms(a.get("bucketEnd")) or a["bucketEnd"] <= a["bucketStart"]:
+        if (
+            not is_ms(a.get("bucketStart"))
+            or not is_ms(a.get("bucketEnd"))
+            or a["bucketEnd"] <= a["bucketStart"]
+        ):
             raise BadRequest(f"aggregate {i}: bucketEnd must be after bucketStart")
         b["aggregates"].append(a)
     for i, a in take(counts["activitySummaryCount"], "activity summary", "activitySummary"):
         if not is_ms(a.get("date")) or a.get("moveMode") not in (None, 0, 1):
             raise BadRequest(f"activity summary {i}: bad date or moveMode")
-        if a.get("localDate") is not None and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(a["localDate"])):
+        if a.get("localDate") is not None and not re.fullmatch(
+            r"\d{4}-\d{2}-\d{2}", str(a["localDate"])
+        ):
             raise BadRequest(f"activity summary {i}: invalid localDate")
         b["activitySummaries"].append(a)
     for _, p in take(counts["profileCount"], "profile", "profile"):
@@ -188,7 +255,7 @@ def parse_batch(text):
 
 def local_day(a):
     """Upsert key for an activity summary: localDate, else the UTC day of the legacy date."""
-    return a.get("localDate") or datetime.fromtimestamp(a["date"] / 1000, timezone.utc).strftime("%Y-%m-%d")
+    return a.get("localDate") or datetime.fromtimestamp(a["date"] / 1000, UTC).strftime("%Y-%m-%d")
 
 
 def apply_batch(db, b, user_id):
@@ -196,74 +263,173 @@ def apply_batch(db, b, user_id):
     h, res, ts = b["header"], dict(ZERO_RESULT), now()
     with db:
         db.execute("INSERT OR IGNORE INTO users (id) VALUES (?)", (user_id,))
-        if not db.execute("INSERT OR IGNORE INTO batches VALUES (?,?,?,?,?,?,?,?,?)",
-                          (h["batchID"], user_id, h.get("deviceID"), h["type"], h.get("reason"),
-                           h.get("schemaVersion") or 1, h.get("clientVersion"), h.get("exportedAt"), ts)).rowcount:
+        if not db.execute(
+            "INSERT OR IGNORE INTO batches VALUES (?,?,?,?,?,?,?,?,?)",
+            (
+                h["batchID"],
+                user_id,
+                h.get("deviceID"),
+                h["type"],
+                h.get("reason"),
+                h.get("schemaVersion") or 1,
+                h.get("clientVersion"),
+                h.get("exportedAt"),
+                ts,
+            ),
+        ).rowcount:
             res["duplicates"] = len(b["samples"])  # retried upload: already applied
             return res
         for s in b["samples"]:  # the UUID is the identity; a known UUID is never overwritten
             res["accepted"] += db.execute(
                 "INSERT OR IGNORE INTO samples VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-                (s["uuid"], user_id, s["type"], s["kind"], s["start"], s.get("end") or s["start"], s.get("value"),
-                 s.get("unit"), s.get("category"), s.get("sourceName"), s.get("device"),
-                 json.dumps(s, separators=(",", ":")))).rowcount
+                (
+                    s["uuid"],
+                    user_id,
+                    s["type"],
+                    s["kind"],
+                    s["start"],
+                    s.get("end") or s["start"],
+                    s.get("value"),
+                    s.get("unit"),
+                    s.get("category"),
+                    s.get("sourceName"),
+                    s.get("device"),
+                    json.dumps(s, separators=(",", ":")),
+                ),
+            ).rowcount
         res["duplicates"] = len(b["samples"]) - res["accepted"]
         for r in b["routes"]:
             res["routePoints"] += db.executemany(
                 "INSERT OR IGNORE INTO route_points VALUES (?,?,?,?,?,?,?,?,?,?)",
-                [(r["workoutUUID"], p["t"], user_id, p["lat"], p["lon"], p.get("alt"), p.get("hAcc"), p.get("vAcc"),
-                  p.get("speed"), p.get("course")) for p in r["points"]]).rowcount
+                [
+                    (
+                        r["workoutUUID"],
+                        p["t"],
+                        user_id,
+                        p["lat"],
+                        p["lon"],
+                        p.get("alt"),
+                        p.get("hAcc"),
+                        p.get("vAcc"),
+                        p.get("speed"),
+                        p.get("course"),
+                    )
+                    for p in r["points"]
+                ],
+            ).rowcount
         for s in b["series"]:
             res["seriesPoints"] += db.executemany(
                 "INSERT OR IGNORE INTO series_points VALUES (?,?,?,?,?,?)",
-                [(s["workoutUUID"], s["type"], p["t"], user_id, p["value"], s.get("unit")) for p in s["points"]]).rowcount
-        if b["profile"] is not None:  # a complete snapshot: null or absent fields clear stored values
+                [
+                    (s["workoutUUID"], s["type"], p["t"], user_id, p["value"], s.get("unit"))
+                    for p in s["points"]
+                ],
+            ).rowcount
+        if (
+            b["profile"] is not None
+        ):  # a complete snapshot: null or absent fields clear stored values
             p = b["profile"]
-            db.execute("INSERT INTO users VALUES (?,?,?,?,?,?) ON CONFLICT (id) DO UPDATE SET name=excluded.name,"
-                       " email=excluded.email, date_of_birth_ms=excluded.date_of_birth_ms,"
-                       " biological_sex=excluded.biological_sex, updated_at=excluded.updated_at",
-                       (user_id, p.get("name"), p.get("email"), p.get("dateOfBirth"), p.get("biologicalSex"), ts))
-        for a in b["aggregates"]:  # upsert on the bucket identity; an explicit null clears the value
-            db.execute("INSERT INTO aggregates VALUES (?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT DO UPDATE SET"
-                       " bucket_end_ms=excluded.bucket_end_ms, value=excluded.value, unit=excluded.unit,"
-                       " updated_at=excluded.updated_at",
-                       (user_id, a["type"], a["func"], a["intervalValue"], a["intervalUnit"], a["deviceFilter"],
-                        a["bucketStart"], a["bucketEnd"], a.get("value"), a.get("unit"), ts))
+            db.execute(
+                "INSERT INTO users VALUES (?,?,?,?,?,?) ON CONFLICT (id) DO UPDATE SET name=excluded.name,"
+                " email=excluded.email, date_of_birth_ms=excluded.date_of_birth_ms,"
+                " biological_sex=excluded.biological_sex, updated_at=excluded.updated_at",
+                (
+                    user_id,
+                    p.get("name"),
+                    p.get("email"),
+                    p.get("dateOfBirth"),
+                    p.get("biologicalSex"),
+                    ts,
+                ),
+            )
+        for a in b[
+            "aggregates"
+        ]:  # upsert on the bucket identity; an explicit null clears the value
+            db.execute(
+                "INSERT INTO aggregates VALUES (?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT DO UPDATE SET"
+                " bucket_end_ms=excluded.bucket_end_ms, value=excluded.value, unit=excluded.unit,"
+                " updated_at=excluded.updated_at",
+                (
+                    user_id,
+                    a["type"],
+                    a["func"],
+                    a["intervalValue"],
+                    a["intervalUnit"],
+                    a["deviceFilter"],
+                    a["bucketStart"],
+                    a["bucketEnd"],
+                    a.get("value"),
+                    a.get("unit"),
+                    ts,
+                ),
+            )
             res["aggregateSamples"] += 1
-        for a in b["activitySummaries"]:  # upsert on the local day; every column is overwritten, nulls included
-            db.execute("INSERT INTO activity_summaries VALUES (?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT DO UPDATE SET"
-                       " move_kcal=excluded.move_kcal, move_goal_kcal=excluded.move_goal_kcal,"
-                       " exercise_min=excluded.exercise_min, exercise_goal_min=excluded.exercise_goal_min,"
-                       " stand_hours=excluded.stand_hours, stand_goal_hours=excluded.stand_goal_hours,"
-                       " move_mode=excluded.move_mode, move_time_min=excluded.move_time_min,"
-                       " move_time_goal_min=excluded.move_time_goal_min, updated_at=excluded.updated_at",
-                       (user_id, local_day(a), a.get("moveKcal"), a.get("moveGoalKcal"), a.get("exerciseMin"),
-                        a.get("exerciseGoalMin"), a.get("standHours"), a.get("standGoalHours"), a.get("moveMode"),
-                        a.get("moveTimeMin"), a.get("moveTimeGoalMin"), ts))
+        for a in b[
+            "activitySummaries"
+        ]:  # upsert on the local day; every column is overwritten, nulls included
+            db.execute(
+                "INSERT INTO activity_summaries VALUES (?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT DO UPDATE SET"
+                " move_kcal=excluded.move_kcal, move_goal_kcal=excluded.move_goal_kcal,"
+                " exercise_min=excluded.exercise_min, exercise_goal_min=excluded.exercise_goal_min,"
+                " stand_hours=excluded.stand_hours, stand_goal_hours=excluded.stand_goal_hours,"
+                " move_mode=excluded.move_mode, move_time_min=excluded.move_time_min,"
+                " move_time_goal_min=excluded.move_time_goal_min, updated_at=excluded.updated_at",
+                (
+                    user_id,
+                    local_day(a),
+                    a.get("moveKcal"),
+                    a.get("moveGoalKcal"),
+                    a.get("exerciseMin"),
+                    a.get("exerciseGoalMin"),
+                    a.get("standHours"),
+                    a.get("standGoalHours"),
+                    a.get("moveMode"),
+                    a.get("moveTimeMin"),
+                    a.get("moveTimeGoalMin"),
+                    ts,
+                ),
+            )
             res["activitySummaries"] += 1
-        for d in b["deletions"]:  # an unknown UUID is a no-op; a deleted workout takes its points along
-            res["deleted"] += db.execute("DELETE FROM samples WHERE uuid=? AND user_id=?", (d["uuid"], user_id)).rowcount
-            db.execute("DELETE FROM route_points WHERE workout_uuid=? AND user_id=?", (d["uuid"], user_id))
-            db.execute("DELETE FROM series_points WHERE workout_uuid=? AND user_id=?", (d["uuid"], user_id))
-            db.execute("INSERT OR IGNORE INTO deletions VALUES (?,?,?,?)", (d["uuid"], user_id, d["type"], ts))
+        for d in b[
+            "deletions"
+        ]:  # an unknown UUID is a no-op; a deleted workout takes its points along
+            res["deleted"] += db.execute(
+                "DELETE FROM samples WHERE uuid=? AND user_id=?", (d["uuid"], user_id)
+            ).rowcount
+            db.execute(
+                "DELETE FROM route_points WHERE workout_uuid=? AND user_id=?", (d["uuid"], user_id)
+            )
+            db.execute(
+                "DELETE FROM series_points WHERE workout_uuid=? AND user_id=?", (d["uuid"], user_id)
+            )
+            db.execute(
+                "INSERT OR IGNORE INTO deletions VALUES (?,?,?,?)",
+                (d["uuid"], user_id, d["type"], ts),
+            )
     return res
 
 
 def iso_ms(ms):
     """Epoch ms -> UTC ISO, or None for an empty table."""
-    return None if ms is None else datetime.fromtimestamp(ms / 1000, timezone.utc).isoformat(timespec="seconds")
+    return (
+        None if ms is None else datetime.fromtimestamp(ms / 1000, UTC).isoformat(timespec="seconds")
+    )
 
 
 def stats(db):
     """What /v1/stats answers: how much is stored, how far it reaches, and when it last grew."""
     rows = {t: db.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0] for t in STAT_TABLES}
     first, last = db.execute("SELECT MIN(start_ms), MAX(start_ms) FROM samples").fetchone()
-    batch = db.execute("SELECT received_at, type, reason FROM batches ORDER BY received_at DESC LIMIT 1").fetchone()
+    batch = db.execute(
+        "SELECT received_at, type, reason FROM batches ORDER BY received_at DESC LIMIT 1"
+    ).fetchone()
     return {
         "rows": rows,
         "sampleTypes": db.execute("SELECT COUNT(DISTINCT type) FROM samples").fetchone()[0],
         "sampleSpan": {"first": iso_ms(first), "last": iso_ms(last)},
-        "lastBatch": None if batch is None else {"receivedAt": batch[0], "type": batch[1], "reason": batch[2]},
+        "lastBatch": None
+        if batch is None
+        else {"receivedAt": batch[0], "type": batch[1], "reason": batch[2]},
     }
 
 
@@ -284,7 +450,9 @@ class Handler(BaseHTTPRequestHandler):
         return got.startswith("Bearer ") and hmac.compare_digest(got[7:], self.server.token)
 
     def unsupported_version(self):
-        self.send_json(400, {"error": "unsupported protocol version", "supportedVersions": PROTOCOL_VERSIONS})
+        self.send_json(
+            400, {"error": "unsupported protocol version", "supportedVersions": PROTOCOL_VERSIONS}
+        )
 
     def do_GET(self):
         if self.path == "/healthz":
@@ -292,11 +460,20 @@ class Handler(BaseHTTPRequestHandler):
         if not self.authorized():
             return self.send_json(401, {"error": "unauthorized"})
         if self.path == "/v1/capabilities":
-            return self.send_json(200, {"protocolVersions": PROTOCOL_VERSIONS, "features": ["batches", "profile"],
-                                        "server": "puls-sqlite-receiver", "version": "1"})
+            return self.send_json(
+                200,
+                {
+                    "protocolVersions": PROTOCOL_VERSIONS,
+                    "features": ["batches", "profile"],
+                    "server": "puls-sqlite-receiver",
+                    "version": "1",
+                },
+            )
         if self.path == "/v1/stats":
             try:
-                with self.server.lock:  # the same lock the writes take: no read during a half-applied batch
+                with (
+                    self.server.lock
+                ):  # the same lock the writes take: no read during a half-applied batch
                     return self.send_json(200, stats(self.server.db))
             except sqlite3.Error as e:
                 self.log_error("stats failed: %s", e)

@@ -581,6 +581,32 @@
               "configs/macmini/setup-scripts/.*"
             ];
           };
+          # Python: settings live in the root pyproject.toml, shared with scripts/ci-lint.sh.
+          # Limited to *.py so the hooks gate the same files CI does: `types = [ "python" ]`
+          # alone also matches extensionless scripts by shebang (configs/bin/tenbin, the pi-kvm
+          # hidsend, ...), which CI doesn't lint.
+          # --force-exclude: pre-commit passes file names, and ruff only honors extend-exclude
+          # for named files with it.
+          ruff = {
+            enable = true; # lint, with safe autofixes applied
+            files = "\\.py$";
+            args = [ "--force-exclude" ];
+          };
+          ruff-format = {
+            enable = true; # formatting
+            files = "\\.py$";
+            args = [ "--force-exclude" ];
+          };
+          pyright = {
+            enable = true; # type check, basic mode
+            # Named files are checked even when pyproject.toml excludes them, so the excludes
+            # are repeated here (same list as tool.pyright.exclude).
+            excludes = [
+              "configs/cli/claude/.*"
+              "configs/cli/codex/.*"
+              "configs/macmini/setup-scripts/.*"
+            ];
+          };
           gitleaks = {
             enable = true;
             name = "gitleaks";
@@ -802,6 +828,8 @@
                     systemPkgs.jq
                     systemPkgs.just
                     systemPkgs.python3 # scripts/gen-docs.py (doc generation block)
+                    systemPkgs.ruff # Python lint + format check (config: ruff.toml)
+                    systemPkgs.pyright # Python type check, basic mode (config: pyrightconfig.json)
                     systemPkgs.bun
                     systemPkgs.check-jsonschema
                     systemPkgs.actionlint

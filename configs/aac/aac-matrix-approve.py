@@ -79,14 +79,18 @@ def sync(token: str, since: str | None, timeout_ms: int) -> dict:
     query = {"timeout": str(timeout_ms), "filter": room_filter}
     if since:
         query["since"] = since
-    return call(token, "GET", f"/sync?{urllib.parse.urlencode(query)}", timeout=timeout_ms // 1000 + 30)
+    return call(
+        token, "GET", f"/sync?{urllib.parse.urlencode(query)}", timeout=timeout_ms // 1000 + 30
+    )
 
 
 def answer_in(batch: dict, posted: str, buttons: dict[str, str], choices: int = 0) -> str | None:
     """The approver's answer to `posted`: a reaction mapped through `buttons` (bare key → answer),
     or, when there are `choices`, a number from 1 to `choices` in a reply to it or a plain message
     (one that replies to some other message does not count)."""
-    events = batch.get("rooms", {}).get("join", {}).get(ROOM, {}).get("timeline", {}).get("events", [])
+    events = (
+        batch.get("rooms", {}).get("join", {}).get(ROOM, {}).get("timeline", {}).get("events", [])
+    )
     for event in events:
         if event.get("sender") != APPROVER:
             continue
@@ -103,7 +107,9 @@ def answer_in(batch: dict, posted: str, buttons: dict[str, str], choices: int = 
             if replied not in (None, posted):
                 continue
             # A reply body quotes the original as "> " lines first.
-            text = "\n".join(line for line in content.get("body", "").splitlines() if not line.startswith(">")).strip()
+            text = "\n".join(
+                line for line in content.get("body", "").splitlines() if not line.startswith(">")
+            ).strip()
             if text.isdigit() and 1 <= int(text) <= choices:
                 return text
     return None
@@ -113,7 +119,9 @@ def host(uri: str | None) -> str:
     return urllib.parse.urlsplit(uri or "").hostname or (uri or "?")
 
 
-def question(domain: str, device: str, username: str, candidates: list[dict] | None) -> tuple[str, dict[str, str]]:
+def question(
+    domain: str, device: str, username: str, candidates: list[dict] | None
+) -> tuple[str, dict[str, str]]:
     """Message text and buttons (key → answer, in display order)."""
     if candidates is None:
         who = f" ({username})" if username else ""
@@ -123,11 +131,13 @@ def question(domain: str, device: str, username: str, candidates: list[dict] | N
         f"  {i}. {c.get('name') or '?'} — {c.get('username') or 'no username'} ({host(c.get('uri'))})"
         for i, c in enumerate(candidates, 1)
     ]
-    text = "\n".join([
-        f"[aac] {len(candidates)} credentials match {domain}. Which one goes to {device}?",
-        *lines,
-        f"tap a number, or {NO} to deny",
-    ])
+    text = "\n".join(
+        [
+            f"[aac] {len(candidates)} credentials match {domain}. Which one goes to {device}?",
+            *lines,
+            f"tap a number, or {NO} to deny",
+        ]
+    )
     if len(candidates) > len(KEYCAPS):
         text = text.replace("tap a number", f"tap 1–{len(KEYCAPS)} or send the number")
     buttons = {KEYCAPS[i]: str(i + 1) for i in range(min(len(candidates), len(KEYCAPS)))}
@@ -155,7 +165,11 @@ def main() -> int:
     text, buttons = question(domain, device, username, candidates)
     posted = send(token, "m.room.message", {"msgtype": "m.text", "body": text})
     for key in buttons:
-        send(token, "m.reaction", {"m.relates_to": {"rel_type": "m.annotation", "event_id": posted, "key": key}})
+        send(
+            token,
+            "m.reaction",
+            {"m.relates_to": {"rel_type": "m.annotation", "event_id": posted, "key": key}},
+        )
     log(f"asked {posted} domain={domain} device={device} candidates={len(candidates or [])}")
 
     by_key = {bare(k): v for k, v in buttons.items()}
@@ -176,11 +190,15 @@ def main() -> int:
         outcome = f"approved #{answer} ({candidates[int(answer) - 1].get('name')})"
     log(f"{outcome} {posted}")
     try:
-        send(token, "m.room.message", {
-            "msgtype": "m.notice",
-            "body": f"[aac] {domain}: {outcome}",
-            "m.relates_to": {"m.in_reply_to": {"event_id": posted}},
-        })
+        send(
+            token,
+            "m.room.message",
+            {
+                "msgtype": "m.notice",
+                "body": f"[aac] {domain}: {outcome}",
+                "m.relates_to": {"m.in_reply_to": {"event_id": posted}},
+            },
+        )
     except Exception as exc:  # the answer still stands
         log(f"notice failed: {exc}")
 
