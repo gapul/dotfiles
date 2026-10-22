@@ -16,7 +16,8 @@ return {
         },
         userDictionary = skk_dir .. "/skkeleton-user-dict",
         eggLikeNewline = true,
-        sources = { "skk_dictionary", "skk_server" },
+        -- azooKey skkserv (Zenzai) の候補を先に、SKK-JISYO の候補を後ろに出す。
+        sources = { "skk_server", "skk_dictionary" },
         skkServerHost = "127.0.0.1",
         skkServerPort = 1178,
         skkServerResEnc = "utf-8",
