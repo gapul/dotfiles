@@ -31,6 +31,7 @@ in
     ../modules/home/darwin-apps.nix
     ../modules/home/darwin-ai-client.nix
     ../modules/home/agy.nix
+    ./ghostty.nix
   ];
 
   # Nothing puts an .app under ~/Applications any more: bundles come from environment.systemPackages
@@ -405,11 +406,6 @@ in
       #!/bin/sh
       exec ${lib.getExe pkgs.voicevox-engine} --host 127.0.0.1 --port 50021 "$@"
     '';
-  };
-
-  home.file.".config/ghostty" = {
-    source = ../../configs/terminals/ghostty;
-    recursive = true;
   };
 
   # OmniWM writes its own config back on every UI change, so a store symlink (read-only) breaks
