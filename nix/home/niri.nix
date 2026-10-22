@@ -37,6 +37,44 @@ let
   spawnSh = cmd: "spawn-sh ${str cmd}";
   locked = " allow-when-locked=true";
 
+  # Like vim-anywhere: the focused text field opens in nvim, and :wq types it back. For apps
+  # with no editor of their own, such as T3 Code's prompt box. Ctrl+V and not Shift+Insert,
+  # which Electron's fields don't bind; the sleep lets niri hand focus back before the paste,
+  # and the clipboard keeps the text in case the paste misses. Recipe from
+  # tecosaur/emacs-everywhere#50 (its niri comment) and abdubanna/nvim-wl-anywhere.
+  editField = pkgs.writeShellScript "edit-field" ''
+    set -eu
+    wtype=${pkgs.wtype}/bin/wtype
+    wlcopy=${pkgs.wl-clipboard}/bin/wl-copy
+    wlpaste=${pkgs.wl-clipboard}/bin/wl-paste
+    f=$(mktemp --suffix=.md)
+    trap 'rm -f "$f"' EXIT
+
+    # Take what the field already holds: select all, copy, read it back.
+    $wlcopy --clear
+    $wtype -M ctrl -k a -m ctrl
+    sleep 0.05
+    $wtype -M ctrl -k c -m ctrl
+    sleep 0.1
+    $wlpaste --no-newline >"$f" 2>/dev/null || true
+    before=$(cat "$f")
+
+    ${pkgs.ghostty}/bin/ghostty --class=net.gapul.editfield --title=edit-field \
+      -e nvim +'normal! G$' "$f"
+
+    after=$(cat "$f")
+    [ "$after" = "$before" ] && exit 0
+    sleep 0.15
+    if [ -z "$after" ]; then
+      $wtype -M ctrl -k a -m ctrl
+      $wtype -k BackSpace
+    else
+      $wlcopy <"$f"
+      $wtype -M ctrl -k a -m ctrl
+      $wtype -M ctrl -k v -m ctrl
+    fi
+  '';
+
   binds = [
     (bind {
       key = "${mod}+Return";
@@ -56,6 +94,11 @@ let
         "yazi"
       ];
       title = "Files (yazi)";
+    })
+    (bind {
+      key = "${mod}+W";
+      action = spawn [ "${editField}" ];
+      title = "Edit the focused text field in nvim";
     })
     # Super+Space, and thumb Ctrl+Space through xremap, like Cmd+Space on the mac.
     (bind {
@@ -697,6 +740,13 @@ let
         default-column-width { proportion 0.6; }
         default-window-height { proportion 0.7; }
     }
+    // nvim for the focused text field ($mod+W, editField above).
+    window-rule {
+        match app-id=r#"^net\.gapul\.editfield$"#
+        open-floating true
+        default-column-width { proportion 0.5; }
+        default-window-height { proportion 0.5; }
+    }
     // Blacked out in screen shares and recordings (screenshots still show them):
     // passwords, messages and mail.
     window-rule {
@@ -726,7 +776,7 @@ let
     import time
 
     NIRI = "${pkgs.niri}/bin/niri"
-    TERMINALS = {"com.mitchellh.ghostty"}
+    TERMINALS = {"com.mitchellh.ghostty", "net.gapul.editfield"}
 
 
     def run(*args):
