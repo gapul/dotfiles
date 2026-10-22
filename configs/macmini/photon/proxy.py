@@ -72,7 +72,8 @@ def load_towns(directory=ISJ_DIR):
         with open(path, encoding="cp932", newline="") as f:
             for row in csv.DictReader(f):
                 towns.setdefault(row["都道府県名"], []).append(
-                    (row["大字町丁目名"], row["市区町村名"], float(row["緯度"]), float(row["経度"])))
+                    (row["大字町丁目名"], row["市区町村名"], float(row["緯度"]), float(row["経度"]))
+                )
     return towns
 
 
@@ -95,7 +96,9 @@ def localize(props, coords=None, towns=TOWNS):
     # 東京都/千代田区, 東京都/八王子市, 東京都/東和: city is only the prefecture.
     # 横浜市/西区 already has the municipality in city and stays as it is.
     if city and PREFECTURE.search(city):
-        found = coords and municipality(city, props.get("locality") or district, coords[1], coords[0], towns)
+        found = coords and municipality(
+            city, props.get("locality") or district, coords[1], coords[0], towns
+        )
         if found or district:
             props["state"] = props.get("state") or city
             props["city"] = found or district
@@ -127,8 +130,13 @@ def load_places(directory=GEONAMES_DIR):
             path.with_suffix(".tmp").rename(path)
         return path
 
-    rows = lambda name: (l.split("\t") for l in get(name).read_text(encoding="utf-8").splitlines()
-                         if l and not l.startswith("#"))
+    def rows(name):
+        return (
+            line.split("\t")
+            for line in get(name).read_text(encoding="utf-8").splitlines()
+            if line and not line.startswith("#")
+        )
+
     countries = {f[0]: f[4] for f in rows("countryInfo.txt")}
     states = {f[0]: f[1] for f in rows("admin1CodesASCII.txt")}
     cells = {}
@@ -137,7 +145,8 @@ def load_places(directory=GEONAMES_DIR):
             f = line.rstrip("\n").split("\t")
             lat, lon, cc = float(f[4]), float(f[5]), f[8]
             cells.setdefault((math.floor(lat), math.floor(lon)), []).append(
-                (f[2], states.get(f"{cc}.{f[10]}"), countries.get(cc, cc), cc, lat, lon))
+                (f[2], states.get(f"{cc}.{f[10]}"), countries.get(cc, cc), cc, lat, lon)
+            )
     return cells
 
 
@@ -148,8 +157,12 @@ def in_japan(lat, lon):
 def nearest_place(lat, lon, cells=PLACES):
     # ponytail: 1-degree grid without wrap at ±180 longitude; fine unless you live on the date line.
     for r in (1, 3):
-        near = [p for dy in range(-r, r + 1) for dx in range(-r, r + 1)
-                for p in cells.get((math.floor(lat) + dy, math.floor(lon) + dx), ())]
+        near = [
+            p
+            for dy in range(-r, r + 1)
+            for dx in range(-r, r + 1)
+            for p in cells.get((math.floor(lat) + dy, math.floor(lon) + dx), ())
+        ]
         if near:
             return min(near, key=lambda p: km(lat, lon, p[4], p[5]))
     return None
@@ -161,10 +174,24 @@ def place_features(lat, lon, cells=PLACES):
     if not p:
         return {"type": "FeatureCollection", "features": []}
     name, state, country, cc, plat, plon = p
-    props = {"type": "city", "name": name, "city": name, "state": state, "country": country, "countrycode": cc}
-    return {"type": "FeatureCollection",
-            "features": [{"type": "Feature", "geometry": {"type": "Point", "coordinates": [plon, plat]},
-                          "properties": props}]}
+    props = {
+        "type": "city",
+        "name": name,
+        "city": name,
+        "state": state,
+        "country": country,
+        "countrycode": cc,
+    }
+    return {
+        "type": "FeatureCollection",
+        "features": [
+            {
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": [plon, plat]},
+                "properties": props,
+            }
+        ],
+    }
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -185,7 +212,9 @@ class Handler(BaseHTTPRequestHandler):
                 for f in features:
                     if f["properties"].get("countrycode") == "JP":
                         localize(f["properties"], (f.get("geometry") or {}).get("coordinates"))
-                body = json.dumps({"type": "FeatureCollection", "features": features}, ensure_ascii=False).encode()
+                body = json.dumps(
+                    {"type": "FeatureCollection", "features": features}, ensure_ascii=False
+                ).encode()
             else:
                 status, body = fetch(url.path, query)
         except urllib.error.HTTPError as e:
@@ -207,38 +236,100 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def selftest():
-    tokyo = localize({"name": "東京", "street": "グランスタ東京;地下1階", "locality": "丸の内一丁目",
-                      "district": "千代田区", "city": "東京都", "state": None})
-    assert (tokyo["city"], tokyo["state"], tokyo["street"], tokyo["housenumber"]) == \
-        ("千代田区", "東京都", "丸の内一丁目", None), tokyo
-    skytree = localize({"street": "1", "housenumber": "2", "locality": "押上一丁目",
-                        "district": "墨田区", "city": "墨田区", "state": "東京都"})
-    assert (skytree["city"], skytree["street"], skytree["housenumber"]) == ("墨田区", "押上一丁目", "1-2"), skytree
-    hachioji = localize({"street": "野猿街道", "locality": "旭町", "district": "八王子市", "city": "東京都"})
-    assert (hachioji["city"], hachioji["street"], hachioji["housenumber"]) == ("八王子市", "旭町", None), hachioji
-    yokohama = localize({"street": "横浜西口", "locality": "相鉄ジョイナス地下街", "district": "西区",
-                         "city": "横浜市", "state": "神奈川県"})
+    tokyo = localize(
+        {
+            "name": "東京",
+            "street": "グランスタ東京;地下1階",
+            "locality": "丸の内一丁目",
+            "district": "千代田区",
+            "city": "東京都",
+            "state": None,
+        }
+    )
+    assert (tokyo["city"], tokyo["state"], tokyo["street"], tokyo["housenumber"]) == (
+        "千代田区",
+        "東京都",
+        "丸の内一丁目",
+        None,
+    ), tokyo
+    skytree = localize(
+        {
+            "street": "1",
+            "housenumber": "2",
+            "locality": "押上一丁目",
+            "district": "墨田区",
+            "city": "墨田区",
+            "state": "東京都",
+        }
+    )
+    assert (skytree["city"], skytree["street"], skytree["housenumber"]) == (
+        "墨田区",
+        "押上一丁目",
+        "1-2",
+    ), skytree
+    hachioji = localize(
+        {"street": "野猿街道", "locality": "旭町", "district": "八王子市", "city": "東京都"}
+    )
+    assert (hachioji["city"], hachioji["street"], hachioji["housenumber"]) == (
+        "八王子市",
+        "旭町",
+        None,
+    ), hachioji
+    yokohama = localize(
+        {
+            "street": "横浜西口",
+            "locality": "相鉄ジョイナス地下街",
+            "district": "西区",
+            "city": "横浜市",
+            "state": "神奈川県",
+        }
+    )
     assert yokohama["city"] == "横浜市", yokohama
-    sapporo = localize({"name": "北6条西3丁目", "district": "北区", "city": "札幌市", "state": "北海道"})
+    sapporo = localize(
+        {"name": "北6条西3丁目", "district": "北区", "city": "札幌市", "state": "北海道"}
+    )
     assert "street" not in sapporo and sapporo["city"] == "札幌市", sapporo
-    towns = {"東京都": [("東和四丁目", "足立区", 35.773291, 139.841935), ("谷中一丁目", "葛飾区", 35.7700, 139.8500),
-                       ("丸の内一丁目", "千代田区", 35.6813, 139.7671)]}
-    towa = localize({"street": "蒲原通り", "locality": "東和四丁目", "district": "東和", "city": "東京都"},
-                    [139.8390, 35.7760], towns)
+    towns = {
+        "東京都": [
+            ("東和四丁目", "足立区", 35.773291, 139.841935),
+            ("谷中一丁目", "葛飾区", 35.7700, 139.8500),
+            ("丸の内一丁目", "千代田区", 35.6813, 139.7671),
+        ]
+    }
+    towa = localize(
+        {"street": "蒲原通り", "locality": "東和四丁目", "district": "東和", "city": "東京都"},
+        [139.8390, 35.7760],
+        towns,
+    )
     assert (towa["city"], towa["state"], towa["street"]) == ("足立区", "東京都", "東和四丁目"), towa
     # No 町丁目 of that name: nearest within NEAREST_ONLY_KM, and nothing from across the prefecture.
-    near = localize({"locality": "どこか", "district": "東和", "city": "東京都"}, [139.8420, 35.7735], towns)
+    near = localize(
+        {"locality": "どこか", "district": "東和", "city": "東京都"}, [139.8420, 35.7735], towns
+    )
     assert near["city"] == "足立区", near
-    far = localize({"locality": "どこか", "district": "奥多摩", "city": "東京都"}, [139.1000, 35.8000], towns)
+    far = localize(
+        {"locality": "どこか", "district": "奥多摩", "city": "東京都"}, [139.1000, 35.8000], towns
+    )
     assert far["city"] == "奥多摩", far
     # Abroad: the nearest GeoNames town, never a Japanese one.
-    cells = {(37, -123): [("San Francisco", "California", "United States", "US", 37.77493, -122.41942)],
-             (37, -122): [("Oakland", "California", "United States", "US", 37.80437, -122.27080),
-                          ("Palo Alto", "California", "United States", "US", 37.44188, -122.14302)]}
+    cells = {
+        (37, -123): [("San Francisco", "California", "United States", "US", 37.77493, -122.41942)],
+        (37, -122): [
+            ("Oakland", "California", "United States", "US", 37.80437, -122.27080),
+            ("Palo Alto", "California", "United States", "US", 37.44188, -122.14302),
+        ],
+    }
     sf = place_features(37.7790, -122.4190, cells)["features"][0]["properties"]
-    assert (sf["city"], sf["state"], sf["country"], sf["countrycode"]) == \
-        ("San Francisco", "California", "United States", "US"), sf
-    assert place_features(37.4300, -122.1600, cells)["features"][0]["properties"]["city"] == "Palo Alto"
+    assert (sf["city"], sf["state"], sf["country"], sf["countrycode"]) == (
+        "San Francisco",
+        "California",
+        "United States",
+        "US",
+    ), sf
+    assert (
+        place_features(37.4300, -122.1600, cells)["features"][0]["properties"]["city"]
+        == "Palo Alto"
+    )
     assert place_features(0.0, 0.0, cells)["features"] == []
     assert in_japan(35.68, 139.77) and in_japan(26.21, 127.68) and not in_japan(37.77, -122.42)
     print("ok")
@@ -249,10 +340,16 @@ if __name__ == "__main__":
         selftest()
     else:
         TOWNS.update(load_towns())
-        print(f"isj: {sum(map(len, TOWNS.values()))} 町丁目 in {len(TOWNS)} prefectures", file=sys.stderr, flush=True)
+        print(
+            f"isj: {sum(map(len, TOWNS.values()))} 町丁目 in {len(TOWNS)} prefectures",
+            file=sys.stderr,
+            flush=True,
+        )
         try:
             PLACES.update(load_places())
         except (OSError, zipfile.BadZipFile) as e:
-            print(f"geonames: {e!r}", file=sys.stderr, flush=True)  # abroad stays unnamed until a restart
+            print(
+                f"geonames: {e!r}", file=sys.stderr, flush=True
+            )  # abroad stays unnamed until a restart
         print(f"geonames: {sum(map(len, PLACES.values()))} towns", file=sys.stderr, flush=True)
         ThreadingHTTPServer(("0.0.0.0", 2323), Handler).serve_forever()

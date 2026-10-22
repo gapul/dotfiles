@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from my.core import Json, Paths, Stats, get_files, stat
+from my.core import Json, Stats, get_files, stat
 from my.core.sqlite import sqlite_copy_and_open
 
 

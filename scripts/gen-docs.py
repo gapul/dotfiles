@@ -20,7 +20,9 @@ import json
 import re
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 REPO_ROOT = Path(
     subprocess.run(
@@ -34,12 +36,10 @@ FLAKE = "./nix"
 
 
 def _run(cmd: list[str]) -> str:
-    return subprocess.run(
-        cmd, cwd=REPO_ROOT, check=True, capture_output=True, text=True
-    ).stdout
+    return subprocess.run(cmd, cwd=REPO_ROOT, check=True, capture_output=True, text=True).stdout
 
 
-def _nix_eval_json(attr: str, apply: str | None = None) -> object:
+def _nix_eval_json(attr: str, apply: str | None = None) -> Any:
     cmd = ["nix", "eval", "--json", f"{FLAKE}#{attr}"]
     if apply is not None:
         cmd += ["--apply", apply]
@@ -68,6 +68,9 @@ HOOK_DESCRIPTIONS = {
     "deadnix": "Finds unused code. Module arguments like `{ lib, ... }` are allowed.",
     "shellcheck": "Shell lint, following .shellcheckrc",
     "gitleaks": "Secret detection",
+    "ruff": "Python lint (pyproject.toml), applying safe autofixes",
+    "ruff-format": "Python formatting",
+    "pyright": "Python type check, basic mode (pyproject.toml)",
 }
 
 
@@ -75,6 +78,7 @@ def _files_to_target(files: str) -> str:
     mapping = {
         "": "all staged",
         r"\.nix$": "`*.nix`",
+        r"\.py$": "`*.py`",
     }
     if files in mapping:
         return mapping[files]
@@ -114,9 +118,7 @@ def gen_aliases() -> str:
     後者は shell.nix から抜き出したもので、拾わないと一覧から消えてしまう。
     """
     user = _username()
-    aliases = _nix_eval_json(
-        f"homeConfigurations.{user}.config.programs.zsh.shellAliases"
-    )
+    aliases = _nix_eval_json(f"homeConfigurations.{user}.config.programs.zsh.shellAliases")
     # 共有ファイル側。条件付き (if の中) の alias は字下げしてあるので、
     # 行頭の alias だけを拾えば「常に効くもの」だけが集まる。
     shared = REPO_ROOT / "configs/shell/zshrc.common"
@@ -156,7 +158,7 @@ def main() -> int:
     check = "--check" in sys.argv[1:]
     drifted = []
     # ファイル単位でまとめて処理 (同一ファイルに複数ブロックがあるため)。
-    by_file: dict[str, list[tuple[str, object]]] = {}
+    by_file: dict[str, list[tuple[str, Callable[[], str]]]] = {}
     for rel, name, fn in BLOCKS:
         by_file.setdefault(rel, []).append((name, fn))
 

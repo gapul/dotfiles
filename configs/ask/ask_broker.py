@@ -29,7 +29,7 @@ import time
 import tomllib
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
 
@@ -100,7 +100,7 @@ class Config:
     audit_log: Path = Path.home() / ".local/state/ask/audit.jsonl"
 
     @classmethod
-    def load(cls, path: Path = CONFIG_PATH) -> "Config":
+    def load(cls, path: Path = CONFIG_PATH) -> Config:
         if not path.exists():
             return cls()
         raw = tomllib.loads(path.read_text())
@@ -153,7 +153,7 @@ def audit(event: str, **fields: Any) -> None:
     """Append-only record of what was asked and what came back. Never holds a secret: the whole
     point is that this file can be read freely afterwards."""
     CONFIG.audit_log.parent.mkdir(parents=True, exist_ok=True)
-    line = {"at": datetime.now(timezone.utc).isoformat(), "event": event, **fields}
+    line = {"at": datetime.now(UTC).isoformat(), "event": event, **fields}
     with CONFIG.audit_log.open("a") as f:
         f.write(json.dumps(line, ensure_ascii=False) + "\n")
 
@@ -219,6 +219,7 @@ class Vault:
         them except the person answering and the audit log.
         """
         self.ensure_unlocked()
+        assert self._session is not None  # ensure_unlocked() set it or raised
         # No --search. It reads names and notes rather than URIs, so which accounts appeared
         # depended on what they happened to be called: asking for accounts.google.com returned
         # four Google logins and hid the rest. The URIs are the only honest answer to "is this
@@ -253,6 +254,7 @@ class Vault:
     def get(self, what: str, key: str) -> str:
         """`what` is bw's object name: password, username, totp, uri."""
         self.ensure_unlocked()
+        assert self._session is not None  # ensure_unlocked() set it or raised
         out = subprocess.run(
             [self._bw(), "get", what, key],
             env={**os.environ, "BW_SESSION": self._session},
@@ -317,7 +319,7 @@ class Request:
         return {
             "id": self.id,
             "kind": self.kind,
-            "createdAt": datetime.now(timezone.utc).isoformat(),
+            "createdAt": datetime.now(UTC).isoformat(),
             "prompt": self.prompt,
             "options": self.options,
             "domain": self.domain,
@@ -409,9 +411,9 @@ class Matrix:
                     continue
                 content = event.get("content", {})
                 if content.get("msgtype") == "m.text":
-                    replied = (
-                        (content.get("m.relates_to") or {}).get("m.in_reply_to") or {}
-                    ).get("event_id")
+                    replied = ((content.get("m.relates_to") or {}).get("m.in_reply_to") or {}).get(
+                        "event_id"
+                    )
                     texts.append((content.get("body", ""), replied))
             return data.get("next_batch", ""), texts
 
@@ -500,12 +502,19 @@ async def touch_id(request: Request, prompt: str) -> str | None:
     with tempfile.TemporaryDirectory() as tmp:
         verdict = Path(tmp) / "verdict"
         proc = await asyncio.create_subprocess_exec(
-            "/usr/bin/open", "-W", "-a", str(app), "--args", prompt, str(verdict),
-            stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL,
+            "/usr/bin/open",
+            "-W",
+            "-a",
+            str(app),
+            "--args",
+            prompt,
+            str(verdict),
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.DEVNULL,
         )
         try:
             await asyncio.wait_for(proc.wait(), timeout=CONFIG.local_timeout_seconds)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             proc.kill()
             await proc.wait()
             return None
@@ -555,36 +564,39 @@ async def system_dialog(request: Request, prompt: str) -> str | None:
         # minutes by default, and osascript then dies with a timeout error — which is exactly what
         # was happening at 121 seconds while someone was reading ten accounts and choosing one.
         script = (
-            f"tell application \"System Events\"\n activate\n"
+            f'tell application "System Events"\n activate\n'
             f" with timeout of {timeout} seconds\n"
             f"  set picked to choose from list {{{options}}} with title {title}"
             f" with prompt {body}\n"
             f" end timeout\n"
-            f" if picked is false then return \"\"\n return item 1 of picked\nend tell"
+            f' if picked is false then return ""\n return item 1 of picked\nend tell'
         )
     elif request.kind == "ask_text":
         script = (
-            f"tell application \"System Events\"\n activate\n"
-            f" set r to display dialog {body} default answer \"\" with title {title}"
+            f'tell application "System Events"\n activate\n'
+            f' set r to display dialog {body} default answer "" with title {title}'
             f" giving up after {timeout}\n"
-            f" if gave up of r then return \"\"\n return text returned of r\nend tell"
+            f' if gave up of r then return ""\n return text returned of r\nend tell'
         )
     else:
         script = (
-            f"tell application \"System Events\"\n activate\n"
-            f" set r to display dialog {body} buttons {{\"Deny\", \"Approve\"}}"
-            f" default button \"Approve\" with title {title} with icon caution"
+            f'tell application "System Events"\n activate\n'
+            f' set r to display dialog {body} buttons {{"Deny", "Approve"}}'
+            f' default button "Approve" with title {title} with icon caution'
             f" giving up after {timeout}\n"
-            f" if gave up of r then return \"\"\n return button returned of r\nend tell"
+            f' if gave up of r then return ""\n return button returned of r\nend tell'
         )
 
     proc = await asyncio.create_subprocess_exec(
-        "/usr/bin/osascript", "-e", script,
-        stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+        "/usr/bin/osascript",
+        "-e",
+        script,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
     )
     try:
         out, _ = await asyncio.wait_for(proc.communicate(), timeout=timeout + 10)
-    except asyncio.TimeoutError:
+    except TimeoutError:
         proc.kill()
         await proc.wait()
         return None
@@ -632,8 +644,14 @@ async def ask_human(ctx: Context, request: Request) -> str | None:
 
 async def _ask_channels(ctx: Context, request: Request) -> str | None:
     """The channels themselves, in order. Split out only so the heartbeat above can wrap them."""
-    audit("request", id=request.id, kind=request.kind, domain=request.domain,
-          fields=request.fields, requester=request.requester)
+    audit(
+        "request",
+        id=request.id,
+        kind=request.kind,
+        domain=request.domain,
+        fields=request.fields,
+        requester=request.requester,
+    )
 
     prompt = f"{request.prompt}\n(from {request.requester})"
 
@@ -671,7 +689,7 @@ async def _ask_channels(ctx: Context, request: Request) -> str | None:
             if answer is not None:
                 audit("answered", id=request.id, via="elicitation")
                 return answer
-        except asyncio.TimeoutError:
+        except TimeoutError:
             pass  # nobody at the terminal; the phone gets it
         except Exception as exc:
             # A client that does not implement elicitation is expected; anything else is worth a
@@ -828,8 +846,9 @@ async def fill_via_cdp(cdp_port: int, values: dict[str, str], domain: str) -> No
             await call(
                 "Runtime.evaluate",
                 {
+                    # %-formatting on purpose: the JS is full of braces an f-string would double.
                     "expression": (
-                        "(() => { const el = document.querySelector(%s);"
+                        "(() => { const el = document.querySelector(%s);"  # noqa: UP031
                         " if (!el) return false;"
                         " const setter = Object.getOwnPropertyDescriptor("
                         "   el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype"
@@ -837,8 +856,7 @@ async def fill_via_cdp(cdp_port: int, values: dict[str, str], domain: str) -> No
                         " setter.call(el, %s);"
                         " el.dispatchEvent(new Event('input', {bubbles: true}));"
                         " el.dispatchEvent(new Event('change', {bubbles: true}));"
-                        " return true; })()"
-                        % (json.dumps(selector), json.dumps(value))
+                        " return true; })()" % (json.dumps(selector), json.dumps(value))
                     ),
                     "returnByValue": True,
                 },
@@ -903,6 +921,7 @@ def recent_approval(domain: str) -> tuple[str, str] | None:
 def remember_approval(domain: str, item_id: str, item_name: str) -> None:
     _recent_approvals[domain] = (item_id, item_name, time.time() + APPROVAL_WINDOW_SECONDS)
 
+
 NATIVE_HELPER_ERRORS = {
     "invalid request",
     "native application did not respond",
@@ -957,7 +976,10 @@ def sanitize_native_result(result: Any) -> dict[str, Any]:
 
 
 async def fill_native_target(
-    target: dict[str, Any], bundle_id: str, value: str, input_mode: str,
+    target: dict[str, Any],
+    bundle_id: str,
+    value: str,
+    input_mode: str,
     expected_domain: str,
 ) -> dict[str, Any]:
     """Run the fixed native helper locally or over SSH, sending the secret only on stdin."""
@@ -967,14 +989,21 @@ async def fill_native_target(
         identity = Path(target.get("identity_file", "~/.ssh/id_automation")).expanduser()
         command = [
             "/usr/bin/ssh",
-            "-F", "/dev/null",
-            "-o", "IdentityAgent=none",
-            "-o", "IdentitiesOnly=yes",
-            "-o", "BatchMode=yes",
-            "-o", "ClearAllForwardings=yes",
-            "-i", str(identity),
+            "-F",
+            "/dev/null",
+            "-o",
+            "IdentityAgent=none",
+            "-o",
+            "IdentitiesOnly=yes",
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "ClearAllForwardings=yes",
+            "-i",
+            str(identity),
             ssh_target,
-            "/usr/bin/python3", ".local/bin/ask-native-fill",
+            "/usr/bin/python3",
+            ".local/bin/ask-native-fill",
         ]
     else:
         command = ["/usr/bin/python3", str(helper)]
@@ -995,7 +1024,7 @@ async def fill_native_target(
     ).encode()
     try:
         stdout, _ = await asyncio.wait_for(proc.communicate(payload), timeout=25)
-    except asyncio.TimeoutError:
+    except TimeoutError:
         proc.kill()
         await proc.wait()
         return {"filled": False, "error": "native fill timed out"}
@@ -1024,7 +1053,9 @@ async def approve(ctx: Context, reason: str, requester: str = "unknown") -> dict
 
 
 @mcp.tool()
-async def choose(ctx: Context, prompt: str, options: list[str], requester: str = "unknown") -> dict[str, str | None]:
+async def choose(
+    ctx: Context, prompt: str, options: list[str], requester: str = "unknown"
+) -> dict[str, str | None]:
     """Ask the human to pick one of `options`. Returns {"chosen": str | None}."""
     request = Request(kind="choose", prompt=prompt, options=options, requester=requester)
     answer = await ask_human(ctx, request)
@@ -1091,8 +1122,14 @@ async def login_fill(
             domain=domain,
             fields=wanted,
         )
-        audit("reused", id=request.id, domain=domain, fields=wanted, item=item_name,
-              requester=requester)
+        audit(
+            "reused",
+            id=request.id,
+            domain=domain,
+            fields=wanted,
+            item=item_name,
+            requester=requester,
+        )
         approved = True
     elif len(candidates) == 1:
         item_id, item_name = candidates[0]
@@ -1117,7 +1154,7 @@ async def login_fill(
         )
         answer = await ask_human(ctx, request)
         approved = answer in names
-        if approved:
+        if approved and answer is not None:
             item_id, item_name = candidates[names.index(answer)]
 
     if not approved:
@@ -1134,8 +1171,7 @@ async def login_fill(
     # phone eats most of that.
     try:
         values = {
-            selector: VAULT.get(field_name, item_id)
-            for field_name, selector in selectors.items()
+            selector: VAULT.get(field_name, item_id) for field_name, selector in selectors.items()
         }
     except RuntimeError as exc:
         audit("outcome", id=request.id, approved=True, filled=False, reason=str(exc))
@@ -1146,8 +1182,15 @@ async def login_fill(
     finally:
         values.clear()
 
-    audit("outcome", id=request.id, approved=True, filled=True, domain=domain,
-          fields=wanted, item=item_name)
+    audit(
+        "outcome",
+        id=request.id,
+        approved=True,
+        filled=True,
+        domain=domain,
+        fields=wanted,
+        item=item_name,
+    )
     return {"filled": True}
 
 
@@ -1172,8 +1215,12 @@ async def native_login_fill(
     configured_target = native_target(domain, target, bundle_id)
     if configured_target is None:
         audit(
-            "refused", domain=domain, target=target, bundle_id=bundle_id,
-            reason="native target not in allowlist", requester=requester,
+            "refused",
+            domain=domain,
+            target=target,
+            bundle_id=bundle_id,
+            reason="native target not in allowlist",
+            requester=requester,
         )
         return {"filled": False, "error": "native app/domain target is not in the allowlist"}
     if field not in LOGIN_FIELDS:
@@ -1198,8 +1245,14 @@ async def native_login_fill(
             domain=domain,
             fields=[field],
         )
-        audit("reused", id=request.id, domain=domain, fields=[field], item=item_name,
-              requester=requester)
+        audit(
+            "reused",
+            id=request.id,
+            domain=domain,
+            fields=[field],
+            item=item_name,
+            requester=requester,
+        )
         approved = True
     elif len(candidates) == 1:
         item_id, item_name = candidates[0]
@@ -1223,7 +1276,7 @@ async def native_login_fill(
         )
         answer = await ask_human(ctx, request)
         approved = answer in names
-        if approved:
+        if approved and answer is not None:
             item_id, item_name = candidates[names.index(answer)]
 
     if not approved:
@@ -1248,8 +1301,15 @@ async def native_login_fill(
         value = ""
 
     audit(
-        "outcome", id=request.id, approved=True, filled=result["filled"], domain=domain,
-        fields=[field], item=item_name, target=target, bundle_id=bundle_id,
+        "outcome",
+        id=request.id,
+        approved=True,
+        filled=result["filled"],
+        domain=domain,
+        fields=[field],
+        item=item_name,
+        target=target,
+        bundle_id=bundle_id,
     )
     return result
 
@@ -1265,8 +1325,22 @@ WITHHELD_ENV = {"BW_SESSION", "ASK_BW_PASSWORD"}
 # the caller's own secret — but because these hand it to a loader, a shell or an interpreter that
 # was not what the human approved, and which may print it back in some escaped form scrub misses.
 RESERVED_ENV = {
-    "PATH", "HOME", "SHELL", "USER", "TMPDIR", "IFS", "PS4", "ENV", "BASH_ENV", "ZDOTDIR",
-    "PROMPT_COMMAND", "PYTHONPATH", "PYTHONSTARTUP", "NODE_OPTIONS", "PERL5OPT", "RUBYOPT",
+    "PATH",
+    "HOME",
+    "SHELL",
+    "USER",
+    "TMPDIR",
+    "IFS",
+    "PS4",
+    "ENV",
+    "BASH_ENV",
+    "ZDOTDIR",
+    "PROMPT_COMMAND",
+    "PYTHONPATH",
+    "PYTHONSTARTUP",
+    "NODE_OPTIONS",
+    "PERL5OPT",
+    "RUBYOPT",
 } | WITHHELD_ENV
 RESERVED_ENV_PREFIXES = ("DYLD_", "LD_")
 
@@ -1293,7 +1367,10 @@ def scrub(text: str, secrets: list[str]) -> str:
         forms.add(json.dumps(secret)[1:-1])  # Python / JS JSON
         forms.add(json.dumps(secret, ensure_ascii=False)[1:-1])
         forms.add(  # Go's encoding/json escapes these three
-            json.dumps(secret)[1:-1].replace("&", "\\u0026").replace("<", "\\u003c").replace(">", "\\u003e")
+            json.dumps(secret)[1:-1]
+            .replace("&", "\\u0026")
+            .replace("<", "\\u003c")
+            .replace(">", "\\u003e")
         )
         forms.add(urllib.parse.quote(secret, safe=""))
         forms.add(urllib.parse.quote_plus(secret))
@@ -1362,13 +1439,14 @@ async def run_child(
     limit = CONFIG.run_output_bytes
     keep = limit + 4 * max((len(s.encode()) for s in secrets), default=0)
     out, err = _Drain(keep), _Drain(keep)
+    assert proc.stdout and proc.stderr  # both PIPE above
     readers = asyncio.gather(out(proc.stdout), err(proc.stderr))
 
     timed_out = False
     try:
         await asyncio.wait_for(asyncio.shield(readers), timeout=CONFIG.run_timeout_seconds)
         await asyncio.wait_for(proc.wait(), timeout=5)
-    except asyncio.TimeoutError:
+    except TimeoutError:
         timed_out = True
         try:
             os.killpg(proc.pid, signal.SIGKILL)
@@ -1376,11 +1454,11 @@ async def run_child(
             pass
         try:
             await asyncio.wait_for(asyncio.shield(readers), timeout=5)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             readers.cancel()  # a setsid'd grandchild holds the pipe; stop waiting on it
         try:
             await asyncio.wait_for(proc.wait(), timeout=5)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             pass
 
     def shown(drain: _Drain) -> str:
@@ -1396,16 +1474,18 @@ async def run_child(
     }
 
 
-def check_run_request(
-    domain: str, env: dict[str, str], command: list[str], cwd: str
-) -> str | None:
+def check_run_request(domain: str, env: dict[str, str], command: list[str], cwd: str) -> str | None:
     """Everything about a run that can be refused without a human or the vault."""
     if domain not in CONFIG.allowed_domains:
         return f"{domain} is not in the allowlist"
     if not env:
         return "env is empty: nothing to release"
     for name in env:
-        if not ENV_NAME.fullmatch(name) or name in RESERVED_ENV or name.startswith(RESERVED_ENV_PREFIXES):
+        if (
+            not ENV_NAME.fullmatch(name)
+            or name in RESERVED_ENV
+            or name.startswith(RESERVED_ENV_PREFIXES)
+        ):
             return f"environment variable name not allowed: {visible(name)}"
     if set(env.values()) - LOGIN_FIELDS:
         return "unsupported credential field"
@@ -1446,12 +1526,18 @@ async def run(
     # symlinks resolved, both fixed here rather than looked up again at exec time.
     program = resolve_program(command[0], os.environ.get("PATH", ""))
     if program is None:
-        return {"ran": False, "error": f"{visible(command[0])} is not an executable on the broker's PATH"}
+        return {
+            "ran": False,
+            "error": f"{visible(command[0])} is not an executable on the broker's PATH",
+        }
     command = [program, *command[1:]]
     cwd = os.path.realpath(cwd)
     shown = visible(shlex.join(command))
     if len(shown) > MAX_SHOWN_COMMAND:
-        return {"ran": False, "error": f"command is longer than {MAX_SHOWN_COMMAND} characters to read"}
+        return {
+            "ran": False,
+            "error": f"command is longer than {MAX_SHOWN_COMMAND} characters to read",
+        }
     shown = f"{shown}\nin {visible(cwd)}"
 
     try:
@@ -1491,7 +1577,7 @@ async def run(
         )
         answer = await ask_human(ctx, request)
         approved = answer in names
-        if approved:
+        if approved and answer is not None:
             item_id, item_name = candidates[names.index(answer)]
 
     if not approved:
@@ -1511,9 +1597,18 @@ async def run(
         values.clear()
 
     audit(
-        "outcome", id=request.id, approved=True, ran=result["ran"], domain=domain,
-        fields=fields, env=sorted(env), item=item_name, command=command, cwd=cwd,
-        exit_code=result.get("exit_code"), timed_out=result.get("timed_out"),
+        "outcome",
+        id=request.id,
+        approved=True,
+        ran=result["ran"],
+        domain=domain,
+        fields=fields,
+        env=sorted(env),
+        item=item_name,
+        command=command,
+        cwd=cwd,
+        exit_code=result.get("exit_code"),
+        timed_out=result.get("timed_out"),
     )
     return result
 
@@ -1539,8 +1634,13 @@ class RequireToken:
         presented = headers.get(b"authorization", b"").decode()
         if presented != f"Bearer {self.token}":
             audit("unauthorized", path=scope.get("path"))
-            await send({"type": "http.response.start", "status": 401,
-                        "headers": [(b"content-type", b"text/plain")]})
+            await send(
+                {
+                    "type": "http.response.start",
+                    "status": 401,
+                    "headers": [(b"content-type", b"text/plain")],
+                }
+            )
             await send({"type": "http.response.body", "body": b"unauthorized"})
             return
         await self.app(scope, receive, send)
@@ -1564,8 +1664,13 @@ class Unlock:
             return
 
         async def reply(status: int, body: dict[str, Any]) -> None:
-            await send({"type": "http.response.start", "status": status,
-                        "headers": [(b"content-type", b"application/json")]})
+            await send(
+                {
+                    "type": "http.response.start",
+                    "status": status,
+                    "headers": [(b"content-type", b"application/json")],
+                }
+            )
             await send({"type": "http.response.body", "body": json.dumps(body).encode()})
 
         client = (scope.get("client") or ("", 0))[0]
@@ -1603,9 +1708,13 @@ def main() -> None:
     import uvicorn
 
     if CONFIG.matrix_homeserver and not MATRIX.configured:
-        missing = [k for k in ("room", "token_file", "approver") if not getattr(CONFIG, f"matrix_{k}")]
-        print(f"ask: [matrix] is missing {', '.join(missing)}, so the matrix channel is off",
-              file=sys.stderr)
+        missing = [
+            k for k in ("room", "token_file", "approver") if not getattr(CONFIG, f"matrix_{k}")
+        ]
+        print(
+            f"ask: [matrix] is missing {', '.join(missing)}, so the matrix channel is off",
+            file=sys.stderr,
+        )
 
     token = ""
     if CONFIG.token_file:

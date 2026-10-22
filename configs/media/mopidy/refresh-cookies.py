@@ -27,9 +27,7 @@ import subprocess
 import sys
 import time
 
-PROFILE_DIR = os.path.expanduser(
-    "~/Library/Application Support/Google/Chrome-automation"
-)
+PROFILE_DIR = os.path.expanduser("~/Library/Application Support/Google/Chrome-automation")
 LIVE_PATH = os.path.expanduser("~/.local/state/mopidy/browser.json")
 SEED_PATH = os.path.expanduser("~/.config/mopidy/browser.json")
 CHROME = "/Applications/Google Chrome.app"
@@ -106,9 +104,7 @@ def build_headers(cookie):
 def extract_cookie():
     from yt_dlp.cookies import extract_cookies_from_browser
 
-    jar = extract_cookies_from_browser(
-        "chrome", profile=os.path.join(PROFILE_DIR, "Default")
-    )
+    jar = extract_cookies_from_browser("chrome", profile=os.path.join(PROFILE_DIR, "Default"))
     pairs = {c.name: c.value for c in jar if c.domain.endswith("youtube.com")}
     if "SAPISID" not in pairs:
         raise RuntimeError("SAPISID cookie not found")

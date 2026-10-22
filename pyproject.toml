@@ -1,0 +1,72 @@
+# Lint / format / type-check settings for the repo's standalone Python scripts. Not a package:
+# there is no [project], only tool config. Run by scripts/ci-lint.sh and the pre-commit hooks in
+# nix/flake.nix (ruff, ruff-format, pyright), all from the dev shell (nix develop ./nix).
+
+[tool.ruff]
+# 100 columns: the prose comments here were already wrapped at 100, so 88 would only reflow code.
+line-length = 100
+# What nixpkgs' python3 is (homelab services, launchd agents, mopidy env, scripts/).
+target-version = "py313"
+extend-exclude = [
+  # Symlinks into gapul/ai-agent-state (same reason as the shellcheck excludes in nix/flake.nix):
+  # linted where they live, and absent in CI and in worktrees.
+  "configs/cli/claude",
+  "configs/cli/codex",
+  # One-shot macmini setup scripts kept as a historical record (also outside shellcheck).
+  "configs/macmini/setup-scripts",
+]
+
+# Scripts that are not run by a nix-pinned interpreter. UP fixes for py313 would rewrite them into
+# syntax or stdlib names (datetime.UTC, X | None) their interpreter may lack, so they are held to 3.9.
+[tool.ruff.per-file-target-version]
+# ask_broker runs it as /usr/bin/python3 (macOS system Python, 3.9), locally and over ssh.
+"configs/ask/native_fill.py" = "py39"
+# Hermes runs it with whatever python3 is on hermes' PATH, not one from nix.
+"configs/macmini/hermes/soudan-weekly-collect.py" = "py39"
+# Run from venvs under ~/.local/share/venvs, created by hand with an unpinned Python.
+"configs/macmini/services/*.py" = "py39"
+# HPI is installed with `uv tool install HPI` (nix/home/workstation.nix), on whatever Python uv picks.
+"configs/hpi/*.py" = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+ignore = [
+  # Long lines: the formatter owns code width; what it leaves long is strings, URLs and comments,
+  # and breaking those up is churn rather than a fix.
+  "E501",
+  # try/except/pass -> contextlib.suppress: a matter of taste, and the try form is the house style.
+  "SIM105",
+]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI's parameter markers (configs/macmini/services/ai_panel.py) are meant to be call defaults.
+extend-immutable-calls = ["fastapi.File", "fastapi.Form"]
+
+# basic, not strict: the scripts are unannotated, and strict would be an error per line.
+[tool.pyright]
+typeCheckingMode = "basic"
+pythonVersion = "3.13"
+exclude = [
+  "**/.*",
+  "**/__pycache__",
+  "**/node_modules",
+  # Same as tool.ruff.extend-exclude above.
+  "configs/cli/claude",
+  "configs/cli/codex",
+  "configs/macmini/setup-scripts",
+]
+# Third-party imports can't be resolved here: each script runs on its own interpreter (mopidy env,
+# macmini venvs, homelab withPackages, pyobjc on macOS) and the dev shell's python3 has none of
+# them. Unresolved modules become Unknown, and the rest of each file is still checked.
+reportMissingImports = "none"
+reportMissingModuleSource = "none"
+# The scripts lean on invariants pyright can't see — a regex over input that always carries the
+# field, a buffer that is only non-empty once its label is set, mock.call_args after the call —
+# and a crash there is the intended failure.
+reportOptionalMemberAccess = "none"
+reportOptionalOperand = "none"
+executionEnvironments = [
+  # The server carries token/db/lock as ad-hoc attributes the handler reads back via self.server.
+  { root = "configs/homelab/puls-receiver", reportAttributeAccessIssue = "none" },
+  { root = "." },
+]
