@@ -58,13 +58,19 @@ let
     }
   '';
 
-  mkIpsecConf = pkgs.writeShellScript "mvrx-ipsec-conf" ''
-    set -eu
-    install -d -m 700 /run/mvrx
-    ${pkgs.gnused}/bin/sed "s|@MVRX_PEER@|$(cat /var/lib/secrets/mvrx/peer)|" \
-      ${ipsecConfTemplate} > /run/mvrx/ipsec.conf
-    chmod 600 /run/mvrx/ipsec.conf
-  '';
+  mkIpsecConf = pkgs.writeShellApplication {
+    name = "mvrx-ipsec-conf";
+    bashOptions = [
+      "errexit"
+      "nounset"
+    ];
+    text = ''
+      install -d -m 700 /run/mvrx
+      ${pkgs.gnused}/bin/sed "s|@MVRX_PEER@|$(cat /var/lib/secrets/mvrx/peer)|" \
+        ${ipsecConfTemplate} > /run/mvrx/ipsec.conf
+      chmod 600 /run/mvrx/ipsec.conf
+    '';
+  };
 in
 {
   # What VM105 (mvrx-vpn-relay) did: dial the office over L2TP/IPsec and let the
@@ -110,7 +116,7 @@ in
     # (with the peer filled in) before it starts. ExecStartPre is prefixed with +
     # so it runs privileged enough to read the secret.
     environment.STRONGSWAN_CONF = lib.mkForce "${strongswanConf}";
-    serviceConfig.ExecStartPre = [ "+${mkIpsecConf}" ];
+    serviceConfig.ExecStartPre = [ "+${lib.getExe mkIpsecConf}" ];
   };
 
   # pppd has its chap-secrets path compiled in, so this one has to be in /etc.

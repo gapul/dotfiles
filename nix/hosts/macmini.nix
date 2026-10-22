@@ -141,18 +141,26 @@ let
       # has a cached one that works.
       ++ [ fastPkgs.verilator ];
   };
-  hsoudanShell = pkgs.writeShellScriptBin "hsoudan-shell" ''
-    ulimit -u 256
-    ulimit -t 1200
-    ulimit -f 4194304
-    export PATH=${hsoudanTools}/bin:/usr/bin:/bin:/usr/sbin:/sbin
-    export CHROME_PATH=/Applications/Helium.app/Contents/MacOS/Helium
-    exec ${pkgs.bashInteractive}/bin/bash "$@"
-  '';
-  hsoudanPf = pkgs.writeShellScript "hsoudan-pf" ''
-    /sbin/pfctl -E >/dev/null 2>&1
-    exec /sbin/pfctl -q -a com.apple/hsoudan -f ${../../configs/macmini/hermes/hsoudan.pf}
-  '';
+  hsoudanShell = pkgs.writeShellApplication {
+    name = "hsoudan-shell";
+    bashOptions = [ ];
+    text = ''
+      ulimit -u 256
+      ulimit -t 1200
+      ulimit -f 4194304
+      export PATH=${hsoudanTools}/bin:/usr/bin:/bin:/usr/sbin:/sbin
+      export CHROME_PATH=/Applications/Helium.app/Contents/MacOS/Helium
+      exec ${pkgs.bashInteractive}/bin/bash "$@"
+    '';
+  };
+  hsoudanPf = pkgs.writeShellApplication {
+    name = "hsoudan-pf";
+    bashOptions = [ ];
+    text = ''
+      /sbin/pfctl -E >/dev/null 2>&1
+      exec /sbin/pfctl -q -a com.apple/hsoudan -f ${../../configs/macmini/hermes/hsoudan.pf}
+    '';
+  };
 in
 {
   # Headless AI/render worker (M4 Mac mini / 24GB). GUI casks are limited to software that
@@ -309,11 +317,17 @@ in
           # starts. So after fixing the list, if the server never wakes, players keep getting rejected by the
           # stale list (2026-09-23: fixed a spelling, still couldn't join the next day). Sync it here too before lazymc reads it.
           command = lib.escapeShellArgs [
-            "${pkgs.writeShellScript "lazymc-${name}" ''
-              wl="''${WHITELIST_SRC:-/etc/minecraft/whitelist.json}"
-              [ -f "$wl" ] && /bin/cp -f "$wl" "${inst.dir}/whitelist.json"
-              exec ${pkgs.lazymc}/bin/lazymc -c ${lazymcConfig name inst} start
-            ''}"
+            (lib.getExe (
+              pkgs.writeShellApplication {
+                name = "lazymc-${name}";
+                bashOptions = [ ];
+                text = ''
+                  wl="''${WHITELIST_SRC:-/etc/minecraft/whitelist.json}"
+                  [ -f "$wl" ] && /bin/cp -f "$wl" "${inst.dir}/whitelist.json"
+                  exec ${pkgs.lazymc}/bin/lazymc -c ${lazymcConfig name inst} start
+                '';
+              }
+            ))
           ];
           serviceConfig = {
             EnvironmentVariables = {
@@ -419,15 +433,23 @@ in
     # registered as ACP Registry → Local command with /run/current-system/sw/bin/hermes-acp.
     # Hermes lives under the hermes user, so this only hops users; gapul's sudo to hermes is
     # passwordless, which -n relies on because T3 spawns it with no terminal.
-    (pkgs.writeShellScriptBin "hermes-acp" ''
-      exec /usr/bin/sudo -n -u hermes -H /Users/hermes/.local/bin/hermes acp --accept-hooks
-    '')
+    (pkgs.writeShellApplication {
+      name = "hermes-acp";
+      bashOptions = [ ];
+      text = ''
+        exec /usr/bin/sudo -n -u hermes -H /Users/hermes/.local/bin/hermes acp --accept-hooks
+      '';
+    })
     # dsh: DeepSeek Harness CLI (headless/tui/web profiles). Not in nixpkgs, and upstream ships
     # it as an npm package that moves weekly, so this resolves @latest through npx on each run
     # rather than pinning a version that would go stale. The desktop app is the workstation's.
-    (pkgs.writeShellScriptBin "dsh" ''
-      exec ${pkgs.nodejs_22}/bin/npx -y @deepseek-ai/dsh@latest "$@"
-    '')
+    (pkgs.writeShellApplication {
+      name = "dsh";
+      bashOptions = [ ];
+      text = ''
+        exec ${pkgs.nodejs_22}/bin/npx -y @deepseek-ai/dsh@latest "$@"
+      '';
+    })
   ];
 
   # (An ollama serve LaunchAgent was here, holding ~47G of GGUF weights in ollama's own blob
@@ -558,7 +580,7 @@ in
   # Its network rules, as a sub-anchor of com.apple (which /etc/pf.conf already evaluates). pf
   # forgets anchors at boot, so a daemon reloads them; activation does it too, for the first time.
   launchd.daemons.hsoudan-pf = {
-    command = "${hsoudanPf}";
+    command = lib.getExe hsoudanPf;
     serviceConfig = {
       RunAtLoad = true;
       StandardOutPath = "/var/log/hsoudan-pf.log";
@@ -644,19 +666,26 @@ in
   # Idle cost is one JVM (300-500MB), the only resident addition to a setup that was zero when idle.
   # Main world only. If the day comes to join solo from BE, change the port and add another one.
   launchd.daemons.geyser = {
-    command = "${pkgs.writeShellScript "geyser" ''
-      set -u
-      dir=/Users/mcsrv/geyser
-      /bin/mkdir -p "$dir/logs"
-      cd "$dir"
-      # 設定は宣言が正。Geyser は起動時に config.yml を書き換える (欠けたキーを補う) ので、
-      # 毎回 store から置き直す。
-      /bin/cp -f ${../../configs/macmini/minecraft/geyser-config.yml} config.yml
-      /bin/chmod 644 config.yml
-      /usr/bin/base64 -d < /etc/minecraft/floodgate-key.b64 > key.pem
-      /bin/chmod 600 key.pem
-      exec ${pkgs.temurin-bin-25}/bin/java -Xms128M -Xmx512M -jar ${geyser} --nogui
-    ''}";
+    command = lib.getExe (
+      pkgs.writeShellApplication {
+        name = "geyser";
+        bashOptions = [ "nounset" ];
+        # No errexit: a failed cd carries on from the current directory, as before.
+        excludeShellChecks = [ "SC2164" ];
+        text = ''
+          dir=/Users/mcsrv/geyser
+          /bin/mkdir -p "$dir/logs"
+          cd "$dir"
+          # 設定は宣言が正。Geyser は起動時に config.yml を書き換える (欠けたキーを補う) ので、
+          # 毎回 store から置き直す。
+          /bin/cp -f ${../../configs/macmini/minecraft/geyser-config.yml} config.yml
+          /bin/chmod 644 config.yml
+          /usr/bin/base64 -d < /etc/minecraft/floodgate-key.b64 > key.pem
+          /bin/chmod 600 key.pem
+          exec ${pkgs.temurin-bin-25}/bin/java -Xms128M -Xmx512M -jar ${geyser} --nogui
+        '';
+      }
+    );
     serviceConfig = {
       UserName = "mcsrv";
       WorkingDirectory = "/Users/mcsrv";
@@ -674,25 +703,33 @@ in
   # First start downloads it; to refresh, delete photon_data and restart (nothing auto-updates —
   # place names barely move, and an in-place unpack corrupts the index).
   launchd.daemons.photon = {
-    command = "${pkgs.writeShellScript "photon" ''
-      set -eu
-      dir=/Users/${user.username}/.local/share/photon
-      /bin/mkdir -p "$dir"
-      cd "$dir"
-      if [ ! -d photon_data ]; then
-        /bin/rm -rf download && /bin/mkdir download
-        /usr/bin/curl -fsSL https://download1.graphhopper.com/public/asia/japan/photon-db-japan-1.0-latest.tar.bz2 \
-          | ${pkgs.lbzip2}/bin/lbzip2 -dc | /usr/bin/tar -x -C download
-        /bin/mv download/photon_data photon_data
-        /bin/rm -rf download
-      fi
-      exec ${pkgs.temurin-bin-25}/bin/java -Xmx4G -jar ${
-        pkgs.fetchurl {
-          url = "https://github.com/komoot/photon/releases/download/1.3.0/photon-1.3.0.jar";
-          sha256 = "19biyn0y59lq9g4vcj4zf2cdj271d0p163hql6r0fj2y0k00g5x8";
-        }
-      } serve -listen-ip 127.0.0.1
-    ''}";
+    command = lib.getExe (
+      pkgs.writeShellApplication {
+        name = "photon";
+        bashOptions = [
+          "errexit"
+          "nounset"
+        ];
+        text = ''
+          dir=/Users/${user.username}/.local/share/photon
+          /bin/mkdir -p "$dir"
+          cd "$dir"
+          if [ ! -d photon_data ]; then
+            /bin/rm -rf download && /bin/mkdir download
+            /usr/bin/curl -fsSL https://download1.graphhopper.com/public/asia/japan/photon-db-japan-1.0-latest.tar.bz2 \
+              | ${pkgs.lbzip2}/bin/lbzip2 -dc | /usr/bin/tar -x -C download
+            /bin/mv download/photon_data photon_data
+            /bin/rm -rf download
+          fi
+          exec ${pkgs.temurin-bin-25}/bin/java -Xmx4G -jar ${
+            pkgs.fetchurl {
+              url = "https://github.com/komoot/photon/releases/download/1.3.0/photon-1.3.0.jar";
+              sha256 = "19biyn0y59lq9g4vcj4zf2cdj271d0p163hql6r0fj2y0k00g5x8";
+            }
+          } serve -listen-ip 127.0.0.1
+        '';
+      }
+    );
     serviceConfig = {
       UserName = user.username;
       RunAtLoad = true;
@@ -962,7 +999,7 @@ in
     # The Hermes agent's inference adapter (see configs/macmini/hermes/README.md). It lives in
     # another user's home, which home-manager can't reach, and hermes never rewrites it — so the
     # declaration is the source of truth and gets laid down on every activation.
-    ${hsoudanPf} || true
+    ${lib.getExe hsoudanPf} || true
     if [ -d /Users/hsoudan ]; then
       /bin/chmod 700 /Users/hsoudan
       /usr/bin/install -d -o hsoudan -g hsoudan -m 700 /Users/hsoudan/workspace

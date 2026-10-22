@@ -179,47 +179,50 @@ let
   # push the result to a gatus external endpoint. A group that is broken but
   # unused is noticed within a day; one that fails on a real wake still shows up
   # as a failed proxy unit in journal-alert.
-  lazyHealthReport = pkgs.writeShellScript "lazy-health-report" ''
-    set -u
-    push() { # group success error
-      curl -fsS --max-time 10 -o /dev/null -X POST \
-        -H "Authorization: Bearer $GATUS_PUSH_TOKEN" \
-        "http://127.0.0.1:8084/api/v1/endpoints/lazy_$1/external?success=$2&error=$3" \
-        || echo "lazy-health-report: push for $1 failed" >&2
-    }
-    # Same readiness rule as the proxy's ExecStartPre: any HTTP answer below 500.
-    probe() { # port timeout
-      deadline=$((SECONDS + $2))
-      while [ "$SECONDS" -lt "$deadline" ]; do
-        status="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 5 \
-          "http://127.0.0.1:$1/" 2>/dev/null || true)"
-        if [ "''${status:-000}" -ge 100 ] && [ "''${status:-000}" -lt 500 ]; then
-          return 0
-        fi
-        sleep 1
-      done
-      echo "last status ''${status:-000}"
-      return 1
-    }
-    ${lib.concatStrings (
-      mapAttrsToList (groupName: group: ''
-        err=""
-        ${lib.concatStrings (
-          mapAttrsToList (endpointName: endpoint: ''
-            if ! out=$(probe ${toString endpoint.upstreamPort} ${toString group.startupTimeout}); then
-              err="$err ${endpointName}:${toString endpoint.upstreamPort}($out)"
-            fi
-          '') group.endpoints
-        )}
-        if [ -z "$err" ]; then
-          push ${groupName} true ""
-        else
-          echo "lazy-health-report: ${groupName} not ready:$err" >&2
-          push ${groupName} false "not%20ready"
-        fi
-      '') groups
-    )}
-  '';
+  lazyHealthReport = pkgs.writeShellApplication {
+    name = "lazy-health-report";
+    bashOptions = [ "nounset" ];
+    text = ''
+      push() { # group success error
+        curl -fsS --max-time 10 -o /dev/null -X POST \
+          -H "Authorization: Bearer $GATUS_PUSH_TOKEN" \
+          "http://127.0.0.1:8084/api/v1/endpoints/lazy_$1/external?success=$2&error=$3" \
+          || echo "lazy-health-report: push for $1 failed" >&2
+      }
+      # Same readiness rule as the proxy's ExecStartPre: any HTTP answer below 500.
+      probe() { # port timeout
+        deadline=$((SECONDS + $2))
+        while [ "$SECONDS" -lt "$deadline" ]; do
+          status="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 5 \
+            "http://127.0.0.1:$1/" 2>/dev/null || true)"
+          if [ "''${status:-000}" -ge 100 ] && [ "''${status:-000}" -lt 500 ]; then
+            return 0
+          fi
+          sleep 1
+        done
+        echo "last status ''${status:-000}"
+        return 1
+      }
+      ${lib.concatStrings (
+        mapAttrsToList (groupName: group: ''
+          err=""
+          ${lib.concatStrings (
+            mapAttrsToList (endpointName: endpoint: ''
+              if ! out=$(probe ${toString endpoint.upstreamPort} ${toString group.startupTimeout}); then
+                err="$err ${endpointName}:${toString endpoint.upstreamPort}($out)"
+              fi
+            '') group.endpoints
+          )}
+          if [ -z "$err" ]; then
+            push ${groupName} true ""
+          else
+            echo "lazy-health-report: ${groupName} not ready:$err" >&2
+            push ${groupName} false "not%20ready"
+          fi
+        '') groups
+      )}
+    '';
+  };
 
   mkGroup =
     groupName: group:
@@ -231,23 +234,29 @@ let
         endpointName: endpoint:
         let
           proxyName = "${targetName}-${endpointName}";
-          waitForUpstream = pkgs.writeShellScript "${proxyName}-wait" ''
-            set -eu
-            deadline=$((SECONDS + ${toString group.startupTimeout}))
-            while [ "$SECONDS" -lt "$deadline" ]; do
-              status="$(${pkgs.curl}/bin/curl -sS -o /dev/null -w '%{http_code}' \
-                --max-time 1 http://127.0.0.1:${toString endpoint.upstreamPort}/ 2>/dev/null || true)"
-              # A login redirect, 401 or 404 still proves that the application
-              # is ready. Only connection failures and server errors keep the
-              # first client queued on the systemd socket.
-              if [ "''${status:-000}" -ge 100 ] && [ "''${status:-000}" -lt 500 ]; then
-                exit 0
-              fi
-              ${pkgs.coreutils}/bin/sleep 0.25
-            done
-            echo "${proxyName}: upstream did not become ready within ${toString group.startupTimeout}s" >&2
-            exit 1
-          '';
+          waitForUpstream = pkgs.writeShellApplication {
+            name = "${proxyName}-wait";
+            bashOptions = [
+              "errexit"
+              "nounset"
+            ];
+            text = ''
+              deadline=$((SECONDS + ${toString group.startupTimeout}))
+              while [ "$SECONDS" -lt "$deadline" ]; do
+                status="$(${pkgs.curl}/bin/curl -sS -o /dev/null -w '%{http_code}' \
+                  --max-time 1 http://127.0.0.1:${toString endpoint.upstreamPort}/ 2>/dev/null || true)"
+                # A login redirect, 401 or 404 still proves that the application
+                # is ready. Only connection failures and server errors keep the
+                # first client queued on the systemd socket.
+                if [ "''${status:-000}" -ge 100 ] && [ "''${status:-000}" -lt 500 ]; then
+                  exit 0
+                fi
+                ${pkgs.coreutils}/bin/sleep 0.25
+              done
+              echo "${proxyName}: upstream did not become ready within ${toString group.startupTimeout}s" >&2
+              exit 1
+            '';
+          };
         in
         {
           systemd.sockets.${proxyName} = {
@@ -265,7 +274,7 @@ let
             after = [ "${targetName}.target" ];
             serviceConfig = {
               Type = "simple";
-              ExecStartPre = waitForUpstream;
+              ExecStartPre = lib.getExe waitForUpstream;
               ExecStart = "${pkgs.systemd}/lib/systemd/systemd-socket-proxyd --exit-idle-time=${group.idleTimeout} 127.0.0.1:${toString endpoint.upstreamPort}";
               DynamicUser = true;
               NoNewPrivileges = true;
@@ -354,7 +363,7 @@ in
           ];
           serviceConfig = {
             Type = "oneshot";
-            ExecStart = lazyHealthReport;
+            ExecStart = lib.getExe lazyHealthReport;
             EnvironmentFile = "/var/lib/secrets/gatus.env";
           };
         };

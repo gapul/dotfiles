@@ -165,12 +165,16 @@ let
   # compositor's IPC can name. The unit starts after graphical-session.target, which niri only
   # reaches once NIRI_SOCKET is in the user manager's environment; anything else gets the
   # Hyprland build, as before niri.
-  xremap = pkgs.writeShellScript "xremap-session" ''
-    if ${import ../lib/wm-session.nix { inherit pkgs; }}/bin/wm-session is niri; then
-      exec ${lib.getExe pkgs.xremap.niri} "$@"
-    fi
-    exec ${lib.getExe pkgs.xremap.hyprland} "$@"
-  '';
+  xremap = pkgs.writeShellApplication {
+    name = "xremap-session";
+    bashOptions = [ ];
+    text = ''
+      if ${import ../lib/wm-session.nix { inherit pkgs; }}/bin/wm-session is niri; then
+        exec ${lib.getExe pkgs.xremap.niri} "$@"
+      fi
+      exec ${lib.getExe pkgs.xremap.hyprland} "$@"
+    '';
+  };
 in
 {
   # Needs /dev/input/event* and /dev/uinput: the input and uinput groups (hosts/nixos-laptop.nix).
@@ -184,7 +188,7 @@ in
     Service = {
       # --watch=device picks up keyboards plugged in later.
       ExecStart = lib.escapeShellArgs [
-        xremap
+        (lib.getExe xremap)
         "--watch=device"
         configFile
       ];

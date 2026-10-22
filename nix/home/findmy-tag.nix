@@ -38,17 +38,21 @@ let
 
   # Exits quietly when the repo is absent or nobody has logged in yet, so the
   # agent is harmless on a machine where this project was never set up.
-  poll = pkgs.writeShellScript "findmy-tag-poll" ''
-    [ -d "${repo}" ] || exit 0
-    [ -r "${repo}/auth.json" ] || exit 0
-    cd "${repo}" && exec ${python}/bin/python src/fetch.py
-  '';
+  poll = pkgs.writeShellApplication {
+    name = "findmy-tag-poll";
+    bashOptions = [ ];
+    text = ''
+      [ -d "${repo}" ] || exit 0
+      [ -r "${repo}/auth.json" ] || exit 0
+      cd "${repo}" && exec ${python}/bin/python src/fetch.py
+    '';
+  };
 in
 {
   launchd.agents.findmy-tag = {
     enable = true;
     config = {
-      ProgramArguments = [ "${poll}" ];
+      ProgramArguments = [ "${poll}/bin/findmy-tag-poll" ];
       StartInterval = 600;
       # Nothing backfills a gap, so poll immediately after a reboot rather than
       # waiting out the first interval.

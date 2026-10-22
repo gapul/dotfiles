@@ -50,39 +50,51 @@ let
   # wallpaper-set [MODE] [SECONDS] [OUTPUT]: paints each output (or only OUTPUT) with its
   # active workspace's picture. MODE defaults to darkman's; SECONDS is the fade (niri-events
   # passes a short one, and the output whose workspace changed).
-  setWallpaper = pkgs.writeShellScript "wallpaper-set" ''
-    set -eu
-    mode=''${1:-}
-    [ -n "$mode" ] || mode=$(${pkgs.darkman}/bin/darkman get 2>/dev/null || echo dark)
-    [ "$mode" = light ] || mode=dark
-    duration=''${2:-2}
-    only=''${3:-}
-    # Wait for the daemon's socket (this also runs right after the daemon starts).
-    for _ in $(seq 1 50); do ${awww} query >/dev/null 2>&1 && break; sleep 0.1; done
-    paint() {
-      ${awww} img "$@" --transition-type fade --transition-duration "$duration" --transition-fps 60
-    }
-    if active=$(${pkgs.niri}/bin/niri msg --json workspaces 2>/dev/null); then
-      printf '%s' "$active" | ${pkgs.jq}/bin/jq -r '.[] | select(.is_active) | "\(.output) \(.idx)"' |
-        while read -r output idx; do
-          [ -z "$only" ] || [ "$output" = "$only" ] || continue
-          paint -o "$output" "${wallpaperSet}/$mode-$(( (idx - 1) % 10 + 1 )).png"
-        done
-    else
-      paint "${wallpaperSet}/$mode-1.png"
-    fi
-  '';
-  apply = pkgs.writeShellScript "appearance-apply" ''
-    set -eu
-    case "''${1:-}" in
-      light) scheme=prefer-light ;;
-      dark) scheme=prefer-dark ;;
-      *) echo "usage: appearance-apply light|dark" >&2; exit 2 ;;
-    esac
-    # dconf directly rather than gsettings: no schema lookup, and it is what the portal watches.
-    ${pkgs.dconf}/bin/dconf write /org/gnome/desktop/interface/color-scheme "'$scheme'"
-    ${setWallpaper} "$1" || true
-  '';
+  setWallpaper = pkgs.writeShellApplication {
+    name = "wallpaper-set";
+    bashOptions = [
+      "errexit"
+      "nounset"
+    ];
+    text = ''
+      mode=''${1:-}
+      [ -n "$mode" ] || mode=$(${pkgs.darkman}/bin/darkman get 2>/dev/null || echo dark)
+      [ "$mode" = light ] || mode=dark
+      duration=''${2:-2}
+      only=''${3:-}
+      # Wait for the daemon's socket (this also runs right after the daemon starts).
+      for _ in $(seq 1 50); do ${awww} query >/dev/null 2>&1 && break; sleep 0.1; done
+      paint() {
+        ${awww} img "$@" --transition-type fade --transition-duration "$duration" --transition-fps 60
+      }
+      if active=$(${pkgs.niri}/bin/niri msg --json workspaces 2>/dev/null); then
+        printf '%s' "$active" | ${pkgs.jq}/bin/jq -r '.[] | select(.is_active) | "\(.output) \(.idx)"' |
+          while read -r output idx; do
+            [ -z "$only" ] || [ "$output" = "$only" ] || continue
+            paint -o "$output" "${wallpaperSet}/$mode-$(( (idx - 1) % 10 + 1 )).png"
+          done
+      else
+        paint "${wallpaperSet}/$mode-1.png"
+      fi
+    '';
+  };
+  apply = pkgs.writeShellApplication {
+    name = "appearance-apply";
+    bashOptions = [
+      "errexit"
+      "nounset"
+    ];
+    text = ''
+      case "''${1:-}" in
+        light) scheme=prefer-light ;;
+        dark) scheme=prefer-dark ;;
+        *) echo "usage: appearance-apply light|dark" >&2; exit 2 ;;
+      esac
+      # dconf directly rather than gsettings: no schema lookup, and it is what the portal watches.
+      ${pkgs.dconf}/bin/dconf write /org/gnome/desktop/interface/color-scheme "'$scheme'"
+      ${lib.getExe setWallpaper} "$1" || true
+    '';
+  };
 in
 {
   # For home/niri.nix, whose event daemon repaints on a workspace switch.
@@ -97,7 +109,7 @@ in
     };
     Service = {
       ExecStart = "${pkgs.awww}/bin/awww-daemon";
-      ExecStartPost = "${setWallpaper}";
+      ExecStartPost = lib.getExe setWallpaper;
       Restart = "on-failure";
     };
     Install.WantedBy = [ "graphical-session.target" ];
@@ -112,8 +124,8 @@ in
       dbusserver = true; # `darkman get|set` and the nl.whynothugo.darkman D-Bus API
       portal = false; # the GTK portal already serves color-scheme from dconf; one server is enough
     };
-    lightModeScripts.appearance = "${apply} light";
-    darkModeScripts.appearance = "${apply} dark";
+    lightModeScripts.appearance = "${lib.getExe apply} light";
+    darkModeScripts.appearance = "${lib.getExe apply} dark";
   };
 
   # Start darkman only once the session is up. Without the ordering it came up before niri had
@@ -140,17 +152,25 @@ in
     Service = {
       Type = "oneshot";
       # darkman needs a moment after start before `get` answers over D-Bus.
-      ExecStart = "${pkgs.writeShellScript "darkman-apply" ''
-        set -eu
-        for _ in 1 2 3 4 5 6 7 8 9 10; do
-          if mode=$(${pkgs.darkman}/bin/darkman get 2>/dev/null) && [ -n "$mode" ]; then
-            exec ${apply} "$mode"
-          fi
-          sleep 1
-        done
-        echo "darkman did not answer" >&2
-        exit 1
-      ''}";
+      ExecStart = "${
+        pkgs.writeShellApplication {
+          name = "darkman-apply";
+          bashOptions = [
+            "errexit"
+            "nounset"
+          ];
+          text = ''
+            for _ in 1 2 3 4 5 6 7 8 9 10; do
+              if mode=$(${pkgs.darkman}/bin/darkman get 2>/dev/null) && [ -n "$mode" ]; then
+                exec ${lib.getExe apply} "$mode"
+              fi
+              sleep 1
+            done
+            echo "darkman did not answer" >&2
+            exit 1
+          '';
+        }
+      }/bin/darkman-apply";
     };
     Install.WantedBy = [ "graphical-session.target" ];
   };
