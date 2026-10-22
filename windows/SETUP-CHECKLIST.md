@@ -46,18 +46,14 @@ pwsh -NoProfile -File $env:USERPROFILE\dotfiles\windows\winget\verify.ps1 -Stric
 
 - [ ] `verify.ps1` reports zero MISS and zero ERR.
 
-IDs that used to be listed here as uncertain and have since been confirmed:
+An ID that used to be listed here as uncertain and has since been confirmed:
 
-- sops is `SecretsOPerationS.SOPS`; Mozilla.SOPS is the old one
-- gitleaks is `Gitleaks.Gitleaks`
-- typst is `Typst.Typst`
-- bottom is `Clement.bottom`
-- mpv is `shinchiro.mpv`
 - JetBrainsMono Nerd Font is `DEVCOM.JetBrainsMonoNerdFont`, installed automatically from
-  apps.json because Terminal's `fontFace` assumes it
+  apps.json as WezTerm's fallback font
 
-GUI applications such as Tor Browser, Zen, Beeper and Affinity are added case by case, once you
-decide on the machine whether you want them.
+GUI applications such as Tor Browser, Beeper and Affinity are added case by case, once you
+decide on the machine whether you want them. The browser is already declared, as
+`Mozilla.Firefox.DeveloperEdition`.
 
 ## 3. Run bootstrap, ideally from an administrator PowerShell
 
@@ -107,11 +103,11 @@ git clone https://github.com/gapul/dotfiles.git ~/.dotfiles
 
 ## 6. Checking it works
 
-- [ ] In a new PowerShell, the starship prompt looks the same as on macOS, meaning
-      `$env:STARSHIP_CONFIG` points at `...\dotfiles\configs\shell\starship.toml`.
-- [ ] `v` and `vim` open nvim.
-- [ ] zoxide's `z` works.
-- [ ] WezTerm starts with the JetBrainsMono Nerd Font.
+- [ ] starship, nvim and zoxide are not in `apps.json` or `scoop.json`; the profile only wires
+      them up when they are on PATH. If you installed them by hand: the starship prompt looks
+      the same as on macOS (`$env:STARSHIP_CONFIG` points at
+      `...\dotfiles\configs\shell\starship.toml`), `v` and `vim` open nvim, and zoxide's `z` works.
+- [ ] WezTerm starts with HackGen Console NF (JetBrainsMono Nerd Font is the fallback).
 - [ ] `just win-privacy-verify` ends with `baseline と一致`. Run it again after a feature update;
       Windows sometimes turns a task or service back on.
 - [ ] The git aliases `g`, `gs`, `ga` and friends work.

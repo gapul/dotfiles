@@ -1,6 +1,6 @@
 { pkgs, user, ... }:
 # AMD/Xilinx Vivado 2020.2 for the FPGA coursework (the same version the old Windows side had,
-# see docs/windows-roadmap.md P9-41). Nix only provides the surroundings: the tool itself is
+# kept in the old Windows roadmap as P9-41). Nix only provides the surroundings: the tool itself is
 # installed by hand from AMD's "All OS installer Single-File Download" into installDir, because
 # the download sits behind an AMD login and an export-control form, and at ~40 GB it does not
 # belong in the store anyway.

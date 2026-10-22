@@ -1,5 +1,5 @@
 ﻿# Windows native 0→1 セットアップ (PowerShell 7+ 想定)
-# 想定: Windows 11 fresh install + WSL2 未導入 (or 別途)
+# 想定: Windows 11 fresh install。開発側は NixOS (dual-boot) で、WSL は宣言していない
 #
 # 流れ:
 #   1. winget 確認
@@ -7,12 +7,14 @@
 #   2. winget/apps.json から一括 install (空ファイルなら skip)
 #   2.5 scoop bucket + app の declarative 適用 (MS Store 回避用)
 #   3. PowerShell $PROFILE を dotfiles 内ファイルへ symlink
-#   4.5 configs/ の各ツール config を %APPDATA% / %LOCALAPPDATA% へ symlink
+#   4. configs/ の各ツール config を %APPDATA% / %LOCALAPPDATA% へ symlink
 #   5. (任意) age / SSH 鍵 paste 待ち
 #   5.5 ssh-agent サービスを Auto+Running に
 #   6. git の global config
 #   7. プライバシー / 標準機能の declarative 適用 (-SkipPrivacy で省略可)
 #   8. キーマップ — SharpKeys (Scancode Map) + AHK (Startup 登録) (-SkipKeymap で省略可)
+#   8.4 テーマ palette を zebar / GlazeWM / WezTerm に render
+#   8.5 HackGen NF を user-scope install (-SkipFonts で省略可)
 #   9. ロケール / 言語 — User Language List / System Locale / Home Location (-SkipLocale で省略可)
 #
 # -DryRun で symlink 作成等の副作用を出さず計画だけ表示。
@@ -38,7 +40,7 @@ param(
     [switch]$SkipKeymap,
     # ロケール / 言語 (User Language List / System Locale / Home Location) を skip
     [switch]$SkipLocale,
-    # configs/fonts/ の .ttf/.otf user-scope install を skip
+    # フォント (HackGen NF) の user-scope install を skip
     [switch]$SkipFonts,
     # Bitwarden Desktop の SSH Agent を使う (Windows ssh-agent サービスは Stop + Disable)
     [switch]$UseBitwardenSSH
@@ -251,7 +253,6 @@ foreach ($dst in @($ProfilePwsh7, $ProfilePwsh5)) {
 #     yazi は config dir として "config" サブディレクトリを期待するため階層注意。
 $ConfigLinks = @(
     @{ Label = 'ssh';     Src = (Join-Path $WindowsDir 'ssh\config');                 Dst = (Join-Path $env:USERPROFILE '.ssh\config') },
-    @{ Label = 'zed';     Src = (Join-Path $DotfilesDir 'configs\editors\zed');      Dst = (Join-Path $env:APPDATA      'Zed') },
     # espanso: match/base.yml をファイル単独で symlink。macOS と同じ matches を再利用。
     @{ Label = 'espanso'; Src = (Join-Path $DotfilesDir 'configs\espanso\base.yml'); Dst = (Join-Path $env:APPDATA      'espanso\match\base.yml') },
     # wezterm: ~/.wezterm.lua を symlink (WezTerm は ~/.config/wezterm/ より優先)。
@@ -409,7 +410,7 @@ if (-not $SkipKeymap) {
     Log 'SkipKeymap 指定: just win-keymap で後から適用可'
 }
 
-# 8.4 テーマ palette を各 config に render (zebar/glazewm/WT)
+# 8.4 テーマ palette を各 config に render (zebar/glazewm/wezterm)
 #     palettes.json から hex を読んで template を実 config に置換。
 #     symlink 対象ファイル (configs/wm/zebar/styles.css 等) を上書きするので、
 #     symlink 配置より前に走らせる必要なし (symlink は同じ inode で reload)。
@@ -423,14 +424,14 @@ if (Test-Path $themeApply) {
     }
 }
 
-# 8.5 configs/fonts/ を user-scope install (sketchybar-app-font 等)
+# 8.5 HackGen NF を user-scope install
 if (-not $SkipFonts) {
     $fontsApply = Join-Path $WindowsDir 'fonts\apply.ps1'
     if (Test-Path $fontsApply) {
         if ($DryRun) {
             & $fontsApply -DryRun
         } else {
-            Log 'Fonts 適用 (configs/fonts/*.ttf を %LOCALAPPDATA%\Microsoft\Windows\Fonts へ)'
+            Log 'Fonts 適用 (HackGen NF を %LOCALAPPDATA%\Microsoft\Windows\Fonts へ)'
             try { & $fontsApply }
             catch { Err "Fonts 適用失敗: $($_.Exception.Message)" }
         }
