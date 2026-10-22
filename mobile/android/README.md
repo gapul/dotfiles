@@ -3,7 +3,7 @@
 ```
 android/
 ├── apps.tsv            # which apps to install: packageId plus the route
-├── apps.sh             # status | install | verify | obtainium
+├── apps.ts             # status | install | verify | obtainium
 ├── os-settings.conf    # global settings applied through settings put
 ├── os-apps.tsv         # per-app OS settings: default launcher, permissions, battery
 ├── os-debloat.txt      # preinstalled apps to remove from user 0
@@ -17,25 +17,25 @@ android/
 The declared Obtainium app list is `configs/android/obtainium.json`, synced with
 `droid obtainium pull|push` (`configs/bin/droid`): `pull` copies Obtainium's auto-export back
 into the repository, `push` drops an import file on the device. `apps.tsv` is the older, smaller
-declaration that `apps.sh` and the weekly drift CI still read; it does not list everything the
+declaration that `apps.ts` and the weekly drift CI still read; it does not list everything the
 device has.
 
 Three stores are in use, so the `source` column in `apps.tsv` says which one handles each app.
 
 | source | Distributed by | Installable from the Mac | Updated on the device by |
 |---|---|---|---|
-| `fdroid` | F-Droid | Yes, `apps.sh install` | Obtainium or F-Droid |
+| `fdroid` | F-Droid | Yes, `apps.ts install` | Obtainium or F-Droid |
 | `izzy` | IzzyOnDroid | Yes, the same | Obtainium |
 | `github` | GitHub releases | No | Obtainium |
 | `play` | The Play Store | No | Aurora Store, importing Favourites and installing them in one go |
 
 ```sh
-./apps.sh status      # declaration against the device. Exits 1 if anything is MISSING
-./apps.sh install     # installs the F-Droid ones through fdroidcl, and reports the route for the rest
-./apps.sh verify      # checks all four routes still carry what is declared
-./apps.sh obtainium   # prints the URL list to paste into Obtainium on the device
-./apps.sh adopt       # prints tsv lines for what is on the device but not declared, working out the route
-./apps.sh aurora      # turns the play rows into JSON that Aurora Store can import as Favourites
+./apps.ts status      # declaration against the device. Exits 1 if anything is MISSING
+./apps.ts install     # installs the F-Droid ones through fdroidcl, and reports the route for the rest
+./apps.ts verify      # checks all four routes still carry what is declared
+./apps.ts obtainium   # prints the URL list to paste into Obtainium on the device
+./apps.ts adopt       # prints tsv lines for what is on the device but not declared, working out the route
+./apps.ts aurora      # turns the play rows into JSON that Aurora Store can import as Favourites
 ```
 
 Apps added on the device first, through Aurora Store or otherwise, are collected with `adopt`.
@@ -43,7 +43,7 @@ Doing it by hand means reading package IDs off the screen and copying them, so t
 detection is left to the machine:
 
 ```sh
-./apps.sh adopt >>apps.tsv   # append, then read through and tidy up
+./apps.ts adopt >>apps.tsv   # append, then read through and tidy up
 ```
 
 Fetching the APK and running `adb install` is [fdroidcl](https://github.com/mvdan/fdroidcl)'s
@@ -62,14 +62,14 @@ unauthenticated API allows 60 requests an hour and hits the rate limit as the de
 
 **Updates on the device are Obtainium's job.** Its app list is `configs/android/obtainium.json`:
 `droid obtainium push` puts it on the device for Obtainium's own import, and `droid obtainium
-pull` brings changes made on the device back. `apps.sh obtainium` still prints a URL list
+pull` brings changes made on the device back. `apps.ts obtainium` still prints a URL list
 derived from `apps.tsv` for Import from URL List, but that covers only the `apps.tsv` rows.
 
 Anything distributed only through Play goes to Aurora Store, which since 4.6 can import and
 export Favourites and install them in bulk, so it is also a matter of handing over a file:
 
 ```sh
-./apps.sh aurora >/tmp/aurora-favourites.json
+./apps.ts aurora >/tmp/aurora-favourites.json
 adb push /tmp/aurora-favourites.json /sdcard/Download/
 # on the device: Aurora Store, Favourites, Import, then install them all
 ```

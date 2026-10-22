@@ -1,15 +1,15 @@
-# 端末に入れるアプリの宣言。apps.sh がこれと実機を突き合わせる。
+# 端末に入れるアプリの宣言。apps.ts がこれと実機を突き合わせる。
 # 書式: <packageId>	<source>	<ref>     (タブ区切り、ref が無い行は -)
 #
 # source は「どの経路で入れるか」。3 つのアプリを使い分けている:
-#   fdroid  F-Droid 公式リポジトリ。apps.sh install が adb 経由で入れる
+#   fdroid  F-Droid 公式リポジトリ。apps.ts install が adb 経由で入れる
 #   izzy    IzzyOnDroid (GitHub リリースを追う非公式 F-Droid リポジトリ)。同上
 #   github  どちらのリポジトリにも無く、GitHub Releases が配布元。ref は owner/repo。
 #           端末では Obtainium が追う (母艦からの一括インストールは不可)
 #   play    GitHub にも F-Droid にも無く、Play ストアだけ。端末では Aurora Store。
 #           Obtainium が追えない唯一の経路なので、GitHub 配布があるなら github に寄せる
 #
-# apps.sh verify は 4 経路すべて実在確認できる (F-Droid 索引 / GitHub API /
+# apps.ts verify は 4 経路すべて実在確認できる (F-Droid 索引 / GitHub API /
 # Play のストアページ)。綴り間違いはそこで落ちる。
 
 # ── ストアそのもの (これだけは最初に手で入れる) ──────────────────────
