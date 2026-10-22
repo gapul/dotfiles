@@ -9,10 +9,6 @@ let
   stateDir = "${config.xdg.stateHome}/ai-agent-state-sync";
 in
 {
-  home.activation.agentStateSyncDir = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    run /bin/mkdir -p "${stateDir}"
-  '';
-
   # Session files are mutable, so synchronize them out of band rather than making
   # the live Claude/Codex directories Git worktrees. The script only publishes from
   # a device whose live state changed; idle devices only pull and restore.

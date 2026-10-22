@@ -147,11 +147,7 @@
           /usr/bin/sed -i.bak '/cache\.flakehub\.com/d' "$conf"
           /bin/rm -f "$conf.bak"
         fi
-      # Application Firewall: enable + stealth mode (no response to ping/port scans).
-      # alf defaults barely works on recent macOS, so idempotently invoke the official socketfilterfw.
-      fw=/usr/libexec/ApplicationFirewall/socketfilterfw
-      "$fw" --setglobalstate on >/dev/null 2>&1 || true
-      "$fw" --setstealthmode on >/dev/null 2>&1 || true
+      # (Firewall on + stealth mode is networking.applicationFirewall below.)
       # The firewall and `nix store optimise` cannot coexist. optimise hardlinks every store file
       # into /nix/store/.links, APFS then reports .links/<hash> as the path of store daemons, and
       # socketfilterfw scans that 700k-entry directory on every inbound flow until all inbound
@@ -164,6 +160,14 @@
       fi
       # (automatic security updates moved to system.defaults.CustomSystemPreferences below)
     '';
+
+  # Application Firewall on, plus stealth mode (no response to ping / closed-port probes). Runs
+  # socketfilterfw from the `networking` activation step, i.e. after preActivation, where
+  # hosts/macmini.nix registers its per-app exceptions (those don't depend on the global state).
+  networking.applicationFirewall = {
+    enable = true;
+    enableStealthMode = true;
+  };
 
   system.stateVersion = 5;
   system.primaryUser = user.username;
@@ -263,6 +267,10 @@
         # It sits unused in Application Support at ~4GB, so keep it off the disk.
         GenAILocalFoundationalModelSettings = 1;
       };
+      # Google's updater comes back with every Chrome launch; its agents are booted out and
+      # removed by modules/home/darwin-apps.nix (workstation) and hosts/macmini.nix. This keeps
+      # it from checking in the meantime.
+      "com.google.Keystone.Agent".checkInterval = 0;
     };
   };
 
