@@ -483,10 +483,6 @@ in
     };
   };
 
-  home.activation.mechvibesLogDir = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    /bin/mkdir -p "${config.home.homeDirectory}/Library/Logs/MechvibesDX"
-  '';
-
   # NTKDaemon: Native Access's local daemon (ZeroMQ 5146/5563) that `na` drives.
   # NA launches it on demand as an app (launchctl label `application.…NTKDaemon…`),
   # so removing the GUI would leave nothing to start it. This agent is that starter,
@@ -521,10 +517,6 @@ in
   # and it can no longer replace a read-only store copy. Silencing it belongs upstream in
   # keystats (skip self-update when the bundle is not writable), not in a plist this repo deletes
   # and the app immediately writes back.
-
-  home.activation.ntkdaemonLogDir = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    /bin/mkdir -p "${config.home.homeDirectory}/Library/Logs/NTKDaemon"
-  '';
 
   # TCC pins its rows to the code signature, and what nix builds is ad-hoc
   # signed: the requirement is a bare cdhash, so every rebuild of the package

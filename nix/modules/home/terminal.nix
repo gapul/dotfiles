@@ -14,20 +14,45 @@ let
   mkTmuxTheme =
     p:
     (import ../../lib/tmux-theme.nix).mk p "${config.home.homeDirectory}/.config/tmux/resurrect-status.sh";
+
+  # Ghostty's terminfo, compiled at build time (see xdg.dataFile."terminfo" below). The source is
+  # the vendored infocmp dump, so it builds the same on every platform.
+  ghosttyTerminfo = pkgs.runCommand "ghostty-terminfo" { nativeBuildInputs = [ pkgs.ncurses ]; } ''
+    mkdir -p $out
+    tic -x -o $out ${../../../configs/terminals/ghostty/xterm-ghostty.terminfo}
+  '';
 in
 {
   # Distribute Ghostty's terminfo to all hosts. If TERM=xterm-ghostty is unknown on an
   # ssh target, ZLE misreads terminal capabilities and input breaks (real damage on macmini 2026-07-19).
   # pkgs.ghostty is darwin unsupported, so vendor an infocmp dump and compile it with tic
-  # at activation time.
+  # at build time.
   # Keep the real data under XDG data and maintain the compat path ~/.terminfo as a symlink
   # (XDG-ify while keeping max compat so ssh targets and GUIs can read it even without TERMINFO_DIRS).
-  home.activation.ghosttyTerminfo = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    run ${pkgs.coreutils}/bin/mkdir -p "${config.xdg.dataHome}/terminfo"
-    run ${pkgs.ncurses}/bin/tic -x -o "${config.xdg.dataHome}/terminfo" ${../../../configs/terminals/ghostty/xterm-ghostty.terminfo}
-  '';
+  # recursive: only the compiled entries are links into the store, so ~/.local/share/terminfo
+  # stays a real directory that other tools can still `tic` into.
+  xdg.dataFile."terminfo" = {
+    source = ghosttyTerminfo;
+    recursive = true;
+  };
   home.file.".terminfo".source =
     config.lib.file.mkOutOfStoreSymlink "${config.xdg.dataHome}/terminfo";
+  # One-time migration: the entries used to be compiled into place at every activation, so real
+  # files sit exactly where the store links go, and checkLinkTargets would refuse to replace
+  # them (or, with a backup extension, leave .hm-bak copies). Remove those regular files only;
+  # they are the same tic output of the same source.
+  home.activation.ghosttyTerminfoMigrate = lib.mkIf config.xdg.dataFile."terminfo".enable (
+    lib.hm.dag.entryBefore [ "checkLinkTargets" ] ''
+      if [ -d "${config.xdg.dataHome}/terminfo" ]; then
+        ( cd ${ghosttyTerminfo} && ${pkgs.findutils}/bin/find . -type f ) | while IFS= read -r entry; do
+          target="${config.xdg.dataHome}/terminfo/''${entry#./}"
+          if [ -f "$target" ] && [ ! -L "$target" ]; then
+            run rm -f "$target"
+          fi
+        done
+      fi
+    ''
+  );
 
   # symlink dotfiles/configs/* (OS-independent ones only. Mac-only = sketchybar/karabiner go to home/darwin.nix)
   # tmux: symlink tmux.conf and generate both rose-pine variants so tmux

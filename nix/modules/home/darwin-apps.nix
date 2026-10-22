@@ -109,8 +109,8 @@
           run rm -f "$legacy_plist"
         fi
       done
-      # Keystone re-appears with the next Chrome launch; this keeps it quiet in the meantime.
-      run /usr/bin/defaults write com.google.Keystone.Agent checkInterval 0 2>/dev/null || true
+      # (checkInterval 0, which keeps Keystone quiet until the next Chrome launch reinstalls it,
+      #  is system.defaults.CustomUserPreferences in hosts/darwin-common.nix.)
     '';
 
   # macOS-only SOPS template (espanso's personal is at the Container path)
@@ -164,19 +164,35 @@
   home.file.".config/neru".source =
     config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/.dotfiles/configs/keyboard/neru";
 
-  # Register neru's launchd residency (launch at login + liveness monitoring) via its native service management.
-  # Hand-copying a plist would double-launch alongside the native label com.y3owk1n.neru, so
-  # call `neru services install` idempotently. It launches only after config.toml (the symlink above)
-  # exists, which also prevents the first-run race of "daemon comes up before config, hotkeys unregistered".
-  # Neru.app is a brew cask, so skip until the binary is present (not yet installed).
-  home.activation.neruService = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    NERU=/opt/homebrew/bin/neru
-    # NOTE: match "not loaded" positively. The unloaded message is "Service not loaded",
-    # so a `! grep -qi loaded` test matches both states and never reinstalls.
-    if [ -x "$NERU" ] && "$NERU" services status 2>/dev/null | grep -qi "not loaded"; then
-      "$NERU" services install || true
-    fi
-  '';
+  # neru's resident agent (launch at login + restart on crash). This is the plist
+  # `neru services install` writes (internal/cli/services_darwin.go, v1.59.0), declared instead of
+  # installed by an activation. It keeps neru's own label, com.y3owk1n.neru, so there is one agent
+  # rather than two, and `neru services status/restart/stop` still find it. The plist neru wrote
+  # there itself is simply replaced: home-manager boots out the loaded agent and installs over a
+  # file whose contents differ. setupLaunchAgents runs after writeBoundary, so the config.toml
+  # symlink above exists before the daemon comes up (no "hotkeys unregistered" first-run race).
+  # The binary path is the one neru resolves for itself (the cask's /opt/homebrew/bin/neru
+  # symlink, followed into the app bundle).
+  launchd.agents.neru = {
+    enable = true;
+    config = {
+      Label = "com.y3owk1n.neru";
+      ProgramArguments = [
+        "/Applications/Neru.app/Contents/MacOS/neru"
+        "launch"
+      ];
+      RunAtLoad = true;
+      KeepAlive.SuccessfulExit = false;
+      # Only stderr: neru's logger already writes every line to stdout and to app.log in the
+      # same directory, so a stdout redirect would be an unrotated duplicate of app.log.
+      StandardErrorPath = "${config.home.homeDirectory}/Library/Logs/neru/daemon.err.log";
+      ProcessType = "Interactive";
+      LimitLoadToSessionType = "Aqua";
+      Nice = -10;
+      ThrottleInterval = 10;
+      EnvironmentVariables.PATH = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin";
+    };
+  };
 
   # mpv launcher (AppleScript droplet). The mpv binary itself is a brew formula (homebrew.brews
   # in darwin.nix), CLI-only and emits no .app, so this droplet is layered on top for Finder
@@ -327,8 +343,8 @@
     # Retired login items (apps removed from the declaration): drop stale entries.
     #   Bitwarden  — SSH keys moved to the Secure Enclave, so nothing needs the vault at login
     #                any more; it is opened by hand when the vault is actually wanted.
-    #   Neru       — its own launchd label (com.y3owk1n.neru, installed by `neru services install`
-    #                in home.activation.neruService above) already keeps it resident. Registering
+    #   Neru       — its own launchd label (com.y3owk1n.neru, launchd.agents.neru above) already
+    #                keeps it resident. Registering
     #                the app here as well started a second copy: two `neru` processes, one under
     #                the native label and one under `application.com.y3owk1n.neru…`.
     #   NTKDaemon  — Native Instruments' installer registers it; the daemon is started on demand

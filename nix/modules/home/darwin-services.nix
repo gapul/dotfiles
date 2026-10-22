@@ -67,11 +67,6 @@ in
   # (An ollama serve LaunchAgent was here. This machine never held a single model — inference
   #  runs on the mac mini — so it was a resident daemon with nothing to serve.)
 
-  home.activation.cliServiceLogDirs = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    /bin/mkdir -p \
-      "${config.home.homeDirectory}/Library/Logs/Syncthing"
-  '';
-
   # (A resident Playwright MCP server lived here, on 8932, attached over CDP to Lightpanda on
   #  9223. Removed 2026-09-10, having been broken the whole time and unmissed: the MCP entry in
   #  ~/.config/claude/.claude.json pointed at 8931 while the agent listened on 8932, so nothing
@@ -161,10 +156,8 @@ in
     };
   };
 
-  # Codex launched via GUI/IDE doesn't read shell startup files, so
-  # also distribute the XDG-aligned Codex home to the launchd user session.
-  home.activation.codexLaunchdEnv = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    /bin/launchctl setenv CODEX_HOME "${config.xdg.dataHome}/codex"
-    /bin/launchctl setenv CODEX_SQLITE_HOME "${config.xdg.stateHome}/codex/sqlite"
-  '';
+  # (Codex launched from the GUI/IDE reads no shell startup files. CODEX_HOME / CODEX_SQLITE_HOME
+  #  reach it through session-env above — they are home.sessionVariables in modules/home/agents.nix —
+  #  which runs at every login and whenever its plist changes. A separate activation-time
+  #  `launchctl setenv` for the same two used to sit here.)
 }
