@@ -681,13 +681,11 @@ in
       "ai_panel.py"
       "diarize_merge.py"
       "fish_voicevox_shim.py"
-      "llm_ask.py"
       "rag_server.py"
       "sbv2_tts.py"
     ]
     ++ map aiWrapper [
       "agy"
-      "ask"
       "describe"
       "fish-tts"
       "fish-voicevox"
