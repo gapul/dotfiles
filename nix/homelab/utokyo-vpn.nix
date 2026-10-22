@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ lib, pkgs, ... }:
 let
   # UTNET (AS2501) as announced: the campus network. Only these go through the
   # tunnel; everything else this box does keeps the house's default route.
@@ -29,9 +29,13 @@ let
   python = pkgs.python3.withPackages (ps: [ ps.playwright ]);
 
   # openconnect's --external-browser takes a bare program and passes the URL as $1.
-  browser = pkgs.writeShellScript "utokyo-vpn-browser" ''
-    exec ${python}/bin/python3 ${../../configs/homelab/utokyo-vpn/sso-login.py} "$1"
-  '';
+  browser = pkgs.writeShellApplication {
+    name = "utokyo-vpn-browser";
+    bashOptions = [ ];
+    text = ''
+      exec ${python}/bin/python3 ${../../configs/homelab/utokyo-vpn/sso-login.py} "$1"
+    '';
+  };
 
   # The gateway pushes a full tunnel (default route, its own DNS, IPv6). On the
   # machine that is the house's DNS server and subnet router that would take
@@ -43,21 +47,25 @@ let
   # vpnc-script's wrapper leaves sed off its PATH, and sed is what it uses to pin
   # the gateway's host route outside the tunnel. The gateway sits in 133.11/16, so
   # without that pin the tunnel's own traffic is routed into the tunnel.
-  routeScript = pkgs.writeShellScript "utokyo-vpn-script" ''
-    export PATH=${pkgs.gnused}/bin:$PATH
-    unset CISCO_SPLIT_EXC INTERNAL_IP4_DNS INTERNAL_IP6_DNS CISCO_DEF_DOMAIN CISCO_SPLIT_DNS
-    unset INTERNAL_IP4_NETADDR INTERNAL_IP4_NETMASK INTERNAL_IP4_NETMASKLEN
-    unset INTERNAL_IP6_ADDRESS INTERNAL_IP6_NETMASK CISCO_IPV6_SPLIT_INC
-    export CISCO_SPLIT_INC=${toString (builtins.length utnet)}
-    ${builtins.concatStringsSep "\n" (
-      pkgs.lib.imap0 (i: r: ''
-        export CISCO_SPLIT_INC_${toString i}_ADDR=${builtins.elemAt r 0}
-        export CISCO_SPLIT_INC_${toString i}_MASK=${builtins.elemAt r 1}
-        export CISCO_SPLIT_INC_${toString i}_MASKLEN=${builtins.elemAt r 2}
-      '') utnet
-    )}
-    exec ${pkgs.vpnc-scripts}/bin/vpnc-script
-  '';
+  routeScript = pkgs.writeShellApplication {
+    name = "utokyo-vpn-script";
+    bashOptions = [ ];
+    text = ''
+      export PATH=${pkgs.gnused}/bin:$PATH
+      unset CISCO_SPLIT_EXC INTERNAL_IP4_DNS INTERNAL_IP6_DNS CISCO_DEF_DOMAIN CISCO_SPLIT_DNS
+      unset INTERNAL_IP4_NETADDR INTERNAL_IP4_NETMASK INTERNAL_IP4_NETMASKLEN
+      unset INTERNAL_IP6_ADDRESS INTERNAL_IP6_NETMASK CISCO_IPV6_SPLIT_INC
+      export CISCO_SPLIT_INC=${toString (builtins.length utnet)}
+      ${builtins.concatStringsSep "\n" (
+        pkgs.lib.imap0 (i: r: ''
+          export CISCO_SPLIT_INC_${toString i}_ADDR=${builtins.elemAt r 0}
+          export CISCO_SPLIT_INC_${toString i}_MASK=${builtins.elemAt r 1}
+          export CISCO_SPLIT_INC_${toString i}_MASKLEN=${builtins.elemAt r 2}
+        '') utnet
+      )}
+      exec ${pkgs.vpnc-scripts}/bin/vpnc-script
+    '';
+  };
 in
 {
   # UTokyo VPN, so the tailnet reaches UTNET the way vpn-relay.nix makes it reach
@@ -90,8 +98,8 @@ in
         "--protocol=anyconnect"
         "--non-inter"
         "--interface=utvpn"
-        "--external-browser=${browser}"
-        "--script=${routeScript}"
+        "--external-browser=${lib.getExe browser}"
+        "--script=${lib.getExe routeScript}"
         "vpn1.adm.u-tokyo.ac.jp"
       ];
       LoadCredential = [

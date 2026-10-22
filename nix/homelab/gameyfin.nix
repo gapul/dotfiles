@@ -15,33 +15,39 @@
 }:
 let
   privatePort = 18092;
-  migrateState = pkgs.writeShellScript "gameyfin-state-migrate" ''
-    set -eu
-    state=/var/lib/homelab/gameyfin
-    marker="$state/.v2-state-migrated"
-    [ -e "$marker" ] && exit 0
+  migrateState = pkgs.writeShellApplication {
+    name = "gameyfin-state-migrate";
+    bashOptions = [
+      "errexit"
+      "nounset"
+    ];
+    text = ''
+      state=/var/lib/homelab/gameyfin
+      marker="$state/.v2-state-migrated"
+      [ -e "$marker" ] && exit 0
 
-    install -d -m 0700 "$state"
-    install -d -m 0755 -o 1337 -g 1337 \
-      "$state/db" "$state/data" "$state/plugindata"
-    install -d -m 0755 -o 1337 -g 1337 /var/log/gameyfin
+      install -d -m 0700 "$state"
+      install -d -m 0755 -o 1337 -g 1337 \
+        "$state/db" "$state/data" "$state/plugindata"
+      install -d -m 0755 -o 1337 -g 1337 /var/log/gameyfin
 
-    if ${pkgs.podman}/bin/podman container exists gameyfin; then
-      was_active=false
-      if ${pkgs.systemd}/bin/systemctl is-active --quiet podman-gameyfin.service; then
-        was_active=true
-        ${pkgs.systemd}/bin/systemctl stop podman-gameyfin.service
+      if ${pkgs.podman}/bin/podman container exists gameyfin; then
+        was_active=false
+        if ${pkgs.systemd}/bin/systemctl is-active --quiet podman-gameyfin.service; then
+          was_active=true
+          ${pkgs.systemd}/bin/systemctl stop podman-gameyfin.service
+        fi
+        for dir in db data plugindata; do
+          ${pkgs.podman}/bin/podman cp "gameyfin:/opt/gameyfin/$dir/." "$state/$dir/"
+        done
+        chown -R 1337:1337 "$state/db" "$state/data" "$state/plugindata"
+        if [ "$was_active" = true ]; then
+          ${pkgs.systemd}/bin/systemctl start podman-gameyfin.service
+        fi
       fi
-      for dir in db data plugindata; do
-        ${pkgs.podman}/bin/podman cp "gameyfin:/opt/gameyfin/$dir/." "$state/$dir/"
-      done
-      chown -R 1337:1337 "$state/db" "$state/data" "$state/plugindata"
-      if [ "$was_active" = true ]; then
-        ${pkgs.systemd}/bin/systemctl start podman-gameyfin.service
-      fi
-    fi
-    touch "$marker"
-  '';
+      touch "$marker"
+    '';
+  };
 in
 {
   # v2 keeps its state below /opt/gameyfin.  The old v1-era /app/config mount
@@ -52,13 +58,13 @@ in
   # Activation runs before systemd reconciles the changed podman unit, while
   # the old container is guaranteed to still exist.  The service is a boot-time
   # fallback for machines restored without an activation-time container.
-  system.activationScripts.gameyfinStateMigrate.text = "${migrateState}";
+  system.activationScripts.gameyfinStateMigrate.text = lib.getExe migrateState;
 
   systemd.services.gameyfin-state-migrate = {
     description = "Preserve Gameyfin v2 state before remounting it";
     before = [ "podman-gameyfin.service" ];
     serviceConfig.Type = "oneshot";
-    serviceConfig.ExecStart = migrateState;
+    serviceConfig.ExecStart = lib.getExe migrateState;
   };
 
   virtualisation.oci-containers.containers."gameyfin" = {

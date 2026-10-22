@@ -276,102 +276,114 @@ in
         # refind.log at the ESP root, for reading what it loaded and why after a boot.
         log_level 1
       '';
-      install = pkgs.writeShellScript "refind-install" ''
-        set -eu
-        PATH=${
-          lib.makeBinPath [
-            pkgs.coreutils
-            pkgs.gnused
-            pkgs.gnugrep
-            pkgs.util-linux
-            pkgs.sbctl
-            pkgs.efibootmgr
-          ]
-        }
-        esp=/boot
-        d=$esp/EFI/refind
-        mkdir -p "$d/theme/icons"
-
-        # The binary, signed. Re-signed only when rEFInd's package changes or the signature
-        # is missing, so a normal switch does not touch it.
-        if ! cmp -s ${pkgs.refind}/share/refind/refind_x64.efi "$d/refind_x64.efi.unsigned" 2>/dev/null; then
-          cp ${pkgs.refind}/share/refind/refind_x64.efi "$d/refind_x64.efi.unsigned"
-          cp "$d/refind_x64.efi.unsigned" "$d/refind_x64.efi"
-        fi
-        # (sbctl verify exits 0 either way; its check mark is the answer.)
-        if ! sbctl verify "$d/refind_x64.efi" 2>&1 | grep -q '✓'; then
-          sbctl sign "$d/refind_x64.efi" >/dev/null
-        fi
-
-        # Theme and background.
-        cp ${icons}/selection_big.png ${icons}/selection_small.png "$d/theme/"
-        cp ${icons}/*.png "$d/theme/icons/"
-        rm -f "$d/theme/icons/selection_big.png" "$d/theme/icons/selection_small.png"
-        cp ${background} "$d/theme/background.png"
-        mkdir -p "$d/fonts"
-        cp ${pkgs.refind}/share/refind/fonts/ubuntu-mono-24.png "$d/fonts/"
-
-        # The NixOS entry: the newest generation's UKI, its safe specialisation, the three
-        # generations before it, and systemd-boot (every generation, the old text menu).
-        gen_of() { basename "$1" | sed -n 's/^nixos-generation-\([0-9]*\)-.*/\1/p'; }
-        date_of() { date -d "@$(stat -c %Y "/nix/var/nix/profiles/system-$1-link" 2>/dev/null || echo 0)" '+%Y-%m-%d %H:%M'; }
-        latest=""; latest_n=0
-        for f in "$esp"/EFI/Linux/nixos-generation-*.efi; do
-          case "$f" in *specialisation*) continue ;; esac
-          n=$(gen_of "$f"); [ "$n" -gt "$latest_n" ] && { latest_n=$n; latest=$f; }
-        done
-        [ -n "$latest" ] || { echo "refind: no UKI in $esp/EFI/Linux" >&2; exit 0; }
-        {
-          cat ${conf}
-          echo
-          echo "menuentry \"NixOS\" {"
-          # (a stanza's icon path is relative to the volume root, unlike icons_dir and banner)
-          echo "    icon EFI/refind/theme/icons/os_nixos.png"
-          # use_graphics_for only covers entries rEFInd found itself; a stanza needs these
-          # two, or it drops to a text screen ("Starting nixos-generation-...") before the
-          # kernel. ostype also picks the Linux handling for the entry.
-          echo "    ostype Linux"
-          echo "    graphics on"
-          echo "    loader /EFI/Linux/$(basename "$latest")"
-          safe=$(ls "$esp"/EFI/Linux/nixos-generation-$latest_n-specialisation-safe-*.efi 2>/dev/null | head -n 1)
-          [ -n "$safe" ] && {
-            echo "    submenuentry \"Generation $latest_n, safe mode (no Hyprland, no GPU)\" {"
-            echo "        loader /EFI/Linux/$(basename "$safe")"
-            echo "    }"
+      install = pkgs.writeShellApplication {
+        name = "refind-install";
+        bashOptions = [
+          "errexit"
+          "nounset"
+        ];
+        # The generation listing below relies on ls (sorted, newest first) over the ESP's
+        # nixos-generation-N-*.efi names, which never contain spaces or newlines.
+        excludeShellChecks = [
+          "SC2010"
+          "SC2012"
+        ];
+        text = ''
+          PATH=${
+            lib.makeBinPath [
+              pkgs.coreutils
+              pkgs.gnused
+              pkgs.gnugrep
+              pkgs.util-linux
+              pkgs.sbctl
+              pkgs.efibootmgr
+            ]
           }
-          for f in $(ls "$esp"/EFI/Linux/nixos-generation-*.efi | grep -v specialisation | sort -t- -k3,3nr); do
-            n=$(gen_of "$f"); [ "$n" -lt "$latest_n" ] || continue
-            echo "    submenuentry \"Generation $n, $(date_of "$n")\" {"
-            echo "        loader /EFI/Linux/$(basename "$f")"
-            echo "    }"
-          done | head -n 12
-          echo "    submenuentry \"systemd-boot (every generation)\" {"
-          echo "        loader /EFI/systemd/systemd-bootx64.efi"
-          echo "    }"
-          echo "}"
-        } > "$d/refind.conf.new"
-        mv "$d/refind.conf.new" "$d/refind.conf"
+          esp=/boot
+          d=$esp/EFI/refind
+          mkdir -p "$d/theme/icons"
 
-        # Firmware entry, first in the order. systemd-boot's entry stays as the fallback.
-        dev=$(findmnt -no SOURCE "$esp")
-        disk=/dev/$(lsblk -no PKNAME "$dev")
-        part=$(cat "/sys/class/block/$(basename "$dev")/partition")
-        # (efibootmgr prints "Boot0005* rEFInd<tab>HD(...)": the label ends at a tab.)
-        if ! efibootmgr | grep -q "^Boot[0-9A-F]*\* rEFInd$(printf '\t')"; then
-          efibootmgr -q -c -d "$disk" -p "$part" -L rEFInd -l '\EFI\refind\refind_x64.efi'
-        fi
-        num=$(efibootmgr | sed -n "s/^Boot\([0-9A-F]*\)\* rEFInd$(printf '\t').*/\1/p" | head -n 1)
-        [ -n "$num" ] || { echo "refind: no firmware entry" >&2; exit 0; }
-        order=$(efibootmgr | sed -n 's/^BootOrder: //p')
-        case "$order" in
-          "$num"|"$num,"*) ;;
-          *) efibootmgr -q -o "$num,$(echo "$order" | sed "s/\b$num\b//; s/,,/,/; s/^,//; s/,$//")" ;;
-        esac
-      '';
+          # The binary, signed. Re-signed only when rEFInd's package changes or the signature
+          # is missing, so a normal switch does not touch it.
+          if ! cmp -s ${pkgs.refind}/share/refind/refind_x64.efi "$d/refind_x64.efi.unsigned" 2>/dev/null; then
+            cp ${pkgs.refind}/share/refind/refind_x64.efi "$d/refind_x64.efi.unsigned"
+            cp "$d/refind_x64.efi.unsigned" "$d/refind_x64.efi"
+          fi
+          # (sbctl verify exits 0 either way; its check mark is the answer.)
+          if ! sbctl verify "$d/refind_x64.efi" 2>&1 | grep -q '✓'; then
+            sbctl sign "$d/refind_x64.efi" >/dev/null
+          fi
+
+          # Theme and background.
+          cp ${icons}/selection_big.png ${icons}/selection_small.png "$d/theme/"
+          cp ${icons}/*.png "$d/theme/icons/"
+          rm -f "$d/theme/icons/selection_big.png" "$d/theme/icons/selection_small.png"
+          cp ${background} "$d/theme/background.png"
+          mkdir -p "$d/fonts"
+          cp ${pkgs.refind}/share/refind/fonts/ubuntu-mono-24.png "$d/fonts/"
+
+          # The NixOS entry: the newest generation's UKI, its safe specialisation, the three
+          # generations before it, and systemd-boot (every generation, the old text menu).
+          gen_of() { basename "$1" | sed -n 's/^nixos-generation-\([0-9]*\)-.*/\1/p'; }
+          date_of() { date -d "@$(stat -c %Y "/nix/var/nix/profiles/system-$1-link" 2>/dev/null || echo 0)" '+%Y-%m-%d %H:%M'; }
+          latest=""; latest_n=0
+          for f in "$esp"/EFI/Linux/nixos-generation-*.efi; do
+            case "$f" in *specialisation*) continue ;; esac
+            n=$(gen_of "$f"); [ "$n" -gt "$latest_n" ] && { latest_n=$n; latest=$f; }
+          done
+          [ -n "$latest" ] || { echo "refind: no UKI in $esp/EFI/Linux" >&2; exit 0; }
+          {
+            cat ${conf}
+            echo
+            echo "menuentry \"NixOS\" {"
+            # (a stanza's icon path is relative to the volume root, unlike icons_dir and banner)
+            echo "    icon EFI/refind/theme/icons/os_nixos.png"
+            # use_graphics_for only covers entries rEFInd found itself; a stanza needs these
+            # two, or it drops to a text screen ("Starting nixos-generation-...") before the
+            # kernel. ostype also picks the Linux handling for the entry.
+            echo "    ostype Linux"
+            echo "    graphics on"
+            echo "    loader /EFI/Linux/$(basename "$latest")"
+            safe=$(ls "$esp"/EFI/Linux/nixos-generation-"$latest_n"-specialisation-safe-*.efi 2>/dev/null | head -n 1)
+            [ -n "$safe" ] && {
+              echo "    submenuentry \"Generation $latest_n, safe mode (no Hyprland, no GPU)\" {"
+              echo "        loader /EFI/Linux/$(basename "$safe")"
+              echo "    }"
+            }
+            for f in $(ls "$esp"/EFI/Linux/nixos-generation-*.efi | grep -v specialisation | sort -t- -k3,3nr); do
+              n=$(gen_of "$f"); [ "$n" -lt "$latest_n" ] || continue
+              echo "    submenuentry \"Generation $n, $(date_of "$n")\" {"
+              echo "        loader /EFI/Linux/$(basename "$f")"
+              echo "    }"
+            done | head -n 12
+            echo "    submenuentry \"systemd-boot (every generation)\" {"
+            echo "        loader /EFI/systemd/systemd-bootx64.efi"
+            echo "    }"
+            echo "}"
+          } > "$d/refind.conf.new"
+          mv "$d/refind.conf.new" "$d/refind.conf"
+
+          # Firmware entry, first in the order. systemd-boot's entry stays as the fallback.
+          dev=$(findmnt -no SOURCE "$esp")
+          disk=/dev/$(lsblk -no PKNAME "$dev")
+          part=$(cat "/sys/class/block/$(basename "$dev")/partition")
+          # (efibootmgr prints "Boot0005* rEFInd<tab>HD(...)": the label ends at a tab.)
+          if ! efibootmgr | grep -q "^Boot[0-9A-F]*\* rEFInd$(printf '\t')"; then
+            efibootmgr -q -c -d "$disk" -p "$part" -L rEFInd -l '\EFI\refind\refind_x64.efi'
+          fi
+          num=$(efibootmgr | sed -n "s/^Boot\([0-9A-F]*\)\* rEFInd$(printf '\t').*/\1/p" | head -n 1)
+          [ -n "$num" ] || { echo "refind: no firmware entry" >&2; exit 0; }
+          order=$(efibootmgr | sed -n 's/^BootOrder: //p')
+          case "$order" in
+            "$num"|"$num,"*) ;;
+            *) efibootmgr -q -o "$num,$(echo "$order" | sed "s/\b$num\b//; s/,,/,/; s/^,//; s/,$//")" ;;
+          esac
+        '';
+      };
     in
     {
       deps = [ ];
-      text = "${install}";
+      text = lib.getExe install;
     };
 
   # No kernel text console on the panel once the greeter is up. Every hand-over of the
@@ -391,21 +403,27 @@ in
     serviceConfig = {
       Type = "oneshot";
       RemainAfterExit = true;
-      ExecStart = pkgs.writeShellScript "fbcon-unbind" ''
-        for _ in $(seq 1 150); do
-          grep -qs xedrmfb /sys/class/graphics/fb0/name && break
-          sleep 0.1
-        done
-        # ... and for fbcon's own console entry, registered a moment after the framebuffer.
-        for _ in $(seq 1 100); do
-          grep -qs "frame buffer" /sys/class/vtconsole/vtcon*/name && break
-          sleep 0.1
-        done
-        for v in /sys/class/vtconsole/vtcon*; do
-          grep -qs "frame buffer" "$v/name" && echo 0 > "$v/bind"
-        done
-        exit 0
-      '';
+      ExecStart = lib.getExe (
+        pkgs.writeShellApplication {
+          name = "fbcon-unbind";
+          bashOptions = [ ];
+          text = ''
+            for _ in $(seq 1 150); do
+              grep -qs xedrmfb /sys/class/graphics/fb0/name && break
+              sleep 0.1
+            done
+            # ... and for fbcon's own console entry, registered a moment after the framebuffer.
+            for _ in $(seq 1 100); do
+              grep -qs "frame buffer" /sys/class/vtconsole/vtcon*/name && break
+              sleep 0.1
+            done
+            for v in /sys/class/vtconsole/vtcon*; do
+              grep -qs "frame buffer" "$v/name" && echo 0 > "$v/bind"
+            done
+            exit 0
+          '';
+        }
+      );
       # No ExecStop: re-binding the console when the unit stops at shutdown put the text
       # console on screen for the half second before Plymouth's reboot splash.
     };
@@ -592,11 +610,17 @@ in
   networking.networkmanager.dispatcherScripts = [
     {
       type = "basic";
-      source = pkgs.writeShellScript "captive-portal-revert" ''
-        if [ "$2" = down ]; then
-          ${pkgs.systemd}/bin/resolvectl revert "$1" 2>/dev/null || true
-        fi
-      '';
+      source = lib.getExe (
+        pkgs.writeShellApplication {
+          name = "captive-portal-revert";
+          bashOptions = [ ];
+          text = ''
+            if [ "$2" = down ]; then
+              ${pkgs.systemd}/bin/resolvectl revert "$1" 2>/dev/null || true
+            fi
+          '';
+        }
+      );
     }
   ];
 

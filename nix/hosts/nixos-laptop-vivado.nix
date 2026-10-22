@@ -72,9 +72,15 @@ in
       name = "vivado";
       desktopName = "Vivado ${version}";
       # A script rather than sh -c: Exec= reserves `$` and quotes, so $HOME can't be written there.
-      exec = "${pkgs.writeShellScript "vivado-launch" ''
-        mkdir -p "$HOME/cpuex" && cd "$HOME/cpuex" && exec /run/current-system/sw/bin/vivado "$@"
-      ''}";
+      exec = "${
+        pkgs.writeShellApplication {
+          name = "vivado-launch";
+          bashOptions = [ ];
+          text = ''
+            mkdir -p "$HOME/cpuex" && cd "$HOME/cpuex" && exec /run/current-system/sw/bin/vivado "$@"
+          '';
+        }
+      }/bin/vivado-launch";
       icon = "${installDir}/Vivado/${version}/doc/images/vivado_logo.png";
       categories = [ "Development" ];
     })

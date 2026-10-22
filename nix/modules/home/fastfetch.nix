@@ -86,9 +86,13 @@ let
 in
 {
   home.packages = [
-    (pkgs.writeShellScriptBin "profile" ''
-      exec ${pkgs.fastfetch}/bin/fastfetch --config ${profileConfig} "$@"
-    '')
+    (pkgs.writeShellApplication {
+      name = "profile";
+      bashOptions = [ ];
+      text = ''
+        exec ${pkgs.fastfetch}/bin/fastfetch --config ${profileConfig} "$@"
+      '';
+    })
   ];
 
   programs.fastfetch = {

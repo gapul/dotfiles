@@ -28,12 +28,18 @@ let
   serverToml = (pkgs.formats.toml { }).generate "atticd-server.toml" (
     lib.recursiveUpdate config.services.atticd.settings { database.url = "@DB_URL@"; }
   );
-  mkServerToml = pkgs.writeShellScript "atticd-server-toml" ''
-    set -eu
-    ${pkgs.gnused}/bin/sed "s#@DB_URL@#$ATTIC_SERVER_DATABASE_URL#" \
-      ${serverToml} > /run/atticd/server.toml
-    chmod 600 /run/atticd/server.toml
-  '';
+  mkServerToml = pkgs.writeShellApplication {
+    name = "atticd-server-toml";
+    bashOptions = [
+      "errexit"
+      "nounset"
+    ];
+    text = ''
+      ${pkgs.gnused}/bin/sed "s#@DB_URL@#$ATTIC_SERVER_DATABASE_URL#" \
+        ${serverToml} > /run/atticd/server.toml
+      chmod 600 /run/atticd/server.toml
+    '';
+  };
 in
 {
   services.atticd = {
@@ -78,7 +84,7 @@ in
       DynamicUser = lib.mkForce false;
       RuntimeDirectory = "atticd";
       RuntimeDirectoryMode = "0700";
-      ExecStartPre = [ "${mkServerToml}" ];
+      ExecStartPre = [ (lib.getExe mkServerToml) ];
       ExecStart = lib.mkForce "${lib.getExe config.services.atticd.package} -f /run/atticd/server.toml --mode ${config.services.atticd.mode}";
     };
   };

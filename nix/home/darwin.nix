@@ -226,25 +226,29 @@ in
     # The daemon is not resident: this wrapper starts it, so nothing Native Instruments
     # related runs until Native Access is actually used. `kickstart` on an already-running
     # label is a no-op, so the common case costs one launchctl call.
-    (writeShellScriptBin "na" ''
-      if [ -x "${ntkDaemon}" ]; then
-        /bin/launchctl kickstart "gui/$(/usr/bin/id -u)/org.nix-community.home.ntkdaemon" >/dev/null 2>&1 || true
-        # The daemon binds its ZeroMQ ports a moment after exec. A REQ socket would queue the
-        # request and still make the 5 s receive timeout, but waiting here keeps the failure
-        # mode honest: if the port never opens, na says so instead of timing out mid-command.
-        for _ in {1..50}; do
-          (exec 3<>/dev/tcp/127.0.0.1/5146) 2>/dev/null && break
-          /bin/sleep 0.1
-        done
-      else
-        echo "na: NTKDaemon is not installed (${ntkDaemon})." >&2
-        echo "na: install it from Native Access, then run na again." >&2
-        exit 1
-      fi
-      exec ${
-        python3.withPackages (p: [ p.pyzmq ])
-      }/bin/python3 "$HOME/Developer/github.com/gapul/na-cli/na" "$@"
-    '')
+    (writeShellApplication {
+      name = "na";
+      bashOptions = [ ];
+      text = ''
+        if [ -x "${ntkDaemon}" ]; then
+          /bin/launchctl kickstart "gui/$(/usr/bin/id -u)/org.nix-community.home.ntkdaemon" >/dev/null 2>&1 || true
+          # The daemon binds its ZeroMQ ports a moment after exec. A REQ socket would queue the
+          # request and still make the 5 s receive timeout, but waiting here keeps the failure
+          # mode honest: if the port never opens, na says so instead of timing out mid-command.
+          for _ in {1..50}; do
+            (exec 3<>/dev/tcp/127.0.0.1/5146) 2>/dev/null && break
+            /bin/sleep 0.1
+          done
+        else
+          echo "na: NTKDaemon is not installed (${ntkDaemon})." >&2
+          echo "na: install it from Native Access, then run na again." >&2
+          exit 1
+        fi
+        exec ${
+          python3.withPackages (p: [ p.pyzmq ])
+        }/bin/python3 "$HOME/Developer/github.com/gapul/na-cli/na" "$@"
+      '';
+    })
     # Replaces the secretive cask: same Secure Enclave guarantee (the private key is generated in
     # the enclave and never leaves it), but a CLI handing the identity to macOS' own CryptoTokenKit
     # provider instead of a GUI app plus a resident agent process.

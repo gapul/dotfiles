@@ -14,6 +14,7 @@
 # The deploy key (/var/lib/secrets/vault-deploy.key, "homeserver-vault" on GitHub)
 # needs write access — unlike the ledger key, this one pushes.
 {
+  lib,
   pkgs,
   ...
 }:
@@ -25,10 +26,14 @@ let
   githubKnownHosts = pkgs.writeText "github-known-hosts" ''
     github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl
   '';
-  gitSsh = pkgs.writeShellScript "vault-git-ssh" ''
-    exec ${pkgs.openssh}/bin/ssh -i "$CREDENTIALS_DIRECTORY/deploy-key" \
-      -o IdentitiesOnly=yes -o UserKnownHostsFile=${githubKnownHosts} "$@"
-  '';
+  gitSsh = pkgs.writeShellApplication {
+    name = "vault-git-ssh";
+    bashOptions = [ ];
+    text = ''
+      exec ${pkgs.openssh}/bin/ssh -i "$CREDENTIALS_DIRECTORY/deploy-key" \
+        -o IdentitiesOnly=yes -o UserKnownHostsFile=${githubKnownHosts} "$@"
+    '';
+  };
 
   # Syncthing's own bookkeeping and macOS litter are not part of the vault.
   excludes = pkgs.writeText "vault-git-excludes" ''
@@ -37,38 +42,41 @@ let
     .DS_Store
   '';
 
-  commit = pkgs.writeShellScript "vault-git-commit" ''
-    set -u
-    export GIT_SSH_COMMAND=${gitSsh}
-    git() {
-      ${pkgs.git}/bin/git --git-dir=${gitDir} --work-tree=${workTree} \
-        -c user.name=homeserver -c user.email=vault@gapul.net \
-        -c core.excludesFile=${excludes} "$@"
-    }
+  commit = pkgs.writeShellApplication {
+    name = "vault-git-commit";
+    bashOptions = [ "nounset" ];
+    text = ''
+      export GIT_SSH_COMMAND=${lib.getExe gitSsh}
+      git() {
+        ${pkgs.git}/bin/git --git-dir=${gitDir} --work-tree=${workTree} \
+          -c user.name=homeserver -c user.email=vault@gapul.net \
+          -c core.excludesFile=${excludes} "$@"
+      }
 
-    # Nothing to do until Syncthing has actually placed the vault: an empty or
-    # missing tree would otherwise be committed as "everything deleted".
-    if [ ! -d ${workTree}/.obsidian ]; then
-      echo "vault not synced yet (${workTree}/.obsidian is missing)" >&2
-      exit 1
-    fi
+      # Nothing to do until Syncthing has actually placed the vault: an empty or
+      # missing tree would otherwise be committed as "everything deleted".
+      if [ ! -d ${workTree}/.obsidian ]; then
+        echo "vault not synced yet (${workTree}/.obsidian is missing)" >&2
+        exit 1
+      fi
 
-    if [ ! -d ${gitDir} ]; then
-      # Continue the existing history rather than starting a new one. The clone is
-      # bare-ish: no checkout, because the work tree is the synced directory.
-      ${pkgs.git}/bin/git clone --bare -q git@github.com:gapul/obsidian-vault.git ${gitDir} ||
-        { echo "clone failed" >&2; exit 1; }
-      git config core.bare false
-      git config core.logAllRefUpdates true
-    fi
+      if [ ! -d ${gitDir} ]; then
+        # Continue the existing history rather than starting a new one. The clone is
+        # bare-ish: no checkout, because the work tree is the synced directory.
+        ${pkgs.git}/bin/git clone --bare -q git@github.com:gapul/obsidian-vault.git ${gitDir} ||
+          { echo "clone failed" >&2; exit 1; }
+        git config core.bare false
+        git config core.logAllRefUpdates true
+      fi
 
-    git add -A || exit 1
-    if git diff --cached --quiet HEAD; then
-      exit 0
-    fi
-    git commit -q -m "vault: $(date '+%F %H:%M')" || exit 1
-    git push -q origin HEAD:main
-  '';
+      git add -A || exit 1
+      if git diff --cached --quiet HEAD; then
+        exit 0
+      fi
+      git commit -q -m "vault: $(date '+%F %H:%M')" || exit 1
+      git push -q origin HEAD:main
+    '';
+  };
 in
 {
   users.users.vault-git = {
@@ -92,7 +100,7 @@ in
       Group = "vault-git";
       WorkingDirectory = home;
       LoadCredential = [ "deploy-key:/var/lib/secrets/vault-deploy.key" ];
-      ExecStart = commit;
+      ExecStart = lib.getExe commit;
     };
     onFailure = [ "ntfy-failure@%n.service" ];
   };

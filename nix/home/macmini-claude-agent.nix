@@ -25,9 +25,13 @@ let
   # (which runs on the self-hosted runner on this same machine), and running it by
   # hand. The real files sit in the store, so the only way to change the agent is to
   # edit the repository and rebuild — what is running cannot be edited in place.
-  entry = pkgs.writeShellScript "claude-agent" ''
-    exec ${pkgs.bash}/bin/bash ${runtime}/claude-agent.sh "$@"
-  '';
+  entry = pkgs.writeShellApplication {
+    name = "claude-agent";
+    bashOptions = [ ];
+    text = ''
+      exec ${pkgs.bash}/bin/bash ${runtime}/claude-agent.sh "$@"
+    '';
+  };
 
   # launchd carries almost no shell environment, so hand over what the scripts need.
   # LANG is not optional: with an empty locale, bash swallows the multi-byte character
@@ -68,7 +72,7 @@ let
     };
 in
 {
-  home.file.".local/bin/claude-agent".source = entry;
+  home.file.".local/bin/claude-agent".source = lib.getExe entry;
 
   home.activation.claudeAgentDirs = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     run /bin/mkdir -p "${stateDir}/logs" "${stateDir}/seen" "${stateDir}/repos"

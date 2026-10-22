@@ -39,7 +39,7 @@
 # after an hour, so a PAT would have to live here. Since approval now applies to every external
 # contributor, only my own code runs here, so keeping the store warm by staying resident wins over
 # worrying about leftovers.
-{ pkgs, ... }:
+{ lib, pkgs, ... }:
 let
   # Could not use a dedicated user. macOS does not let a rebuild over SSH create users
   # ("users cannot be create over SSH without Full Disk Access"). This machine runs headless, so
@@ -68,48 +68,50 @@ let
   # tells the second and later runs apart.
   runner = pkgs.github-runner;
 
-  runScript = pkgs.writeShellScript "gh-runner-macmini" ''
-    set -euo pipefail
-    export PATH=${
-      pkgs.lib.makeBinPath [
-        pkgs.git
-        pkgs.curl
-        pkgs.coreutils
-        pkgs.gnutar
-        pkgs.gzip
-        pkgs.bash
-      ]
-    }:/usr/bin:/bin:/nix/var/nix/profiles/default/bin
+  runScript = pkgs.writeShellApplication {
+    name = "gh-runner-macmini";
+    text = ''
+      export PATH=${
+        pkgs.lib.makeBinPath [
+          pkgs.git
+          pkgs.curl
+          pkgs.coreutils
+          pkgs.gnutar
+          pkgs.gzip
+          pkgs.bash
+        ]
+      }:/usr/bin:/bin:/nix/var/nix/profiles/default/bin
 
-    # One-time move of an existing registration. Done here rather than in activation because
-    # launchd has already stopped the old runner by the time this starts, so nothing holds it.
-    if [ ! -e ${stateDir} ] && [ -d ${legacyStateDir} ]; then
-      mkdir -p "$(dirname ${stateDir})"
-      mv ${legacyStateDir} ${stateDir}
-    fi
+      # One-time move of an existing registration. Done here rather than in activation because
+      # launchd has already stopped the old runner by the time this starts, so nothing holds it.
+      if [ ! -e ${stateDir} ] && [ -d ${legacyStateDir} ]; then
+        mkdir -p "$(dirname ${stateDir})"
+        mv ${legacyStateDir} ${stateDir}
+      fi
 
-    # postActivation installs this after launchd has already started the job; KeepAlive retries.
-    cd ${workDir}
+      # postActivation installs this after launchd has already started the job; KeepAlive retries.
+      cd ${workDir}
 
-    # nixpkgs の github-runner は GitHub の配布物と構造が違い、config.sh も run.sh も
-    # bin/ の下にある。トップに置かれているつもりで叩くと何も起きずに終わる。
-    #
-    # さらに、状態 (.runner / .credentials / _work) は実体のある場所ではなく
-    # RUNNER_ROOT (${stateDir}) に書かれる。作業領域を見て「未設定」と判断すると、既に
-    # 登録済みなのに config.sh を叩いて「already configured」で止まる。
-    if [ ! -f ${stateDir}/.runner ]; then
-      token=$(cat /var/lib/secrets/github-runner-token)
-      ./bin/config.sh \
-        --unattended --replace \
-        --url ${repo} \
-        --token "$token" \
-        --name macmini \
-        --labels macmini \
-        --work _work
-    fi
+      # nixpkgs の github-runner は GitHub の配布物と構造が違い、config.sh も run.sh も
+      # bin/ の下にある。トップに置かれているつもりで叩くと何も起きずに終わる。
+      #
+      # さらに、状態 (.runner / .credentials / _work) は実体のある場所ではなく
+      # RUNNER_ROOT (${stateDir}) に書かれる。作業領域を見て「未設定」と判断すると、既に
+      # 登録済みなのに config.sh を叩いて「already configured」で止まる。
+      if [ ! -f ${stateDir}/.runner ]; then
+        token=$(cat /var/lib/secrets/github-runner-token)
+        ./bin/config.sh \
+          --unattended --replace \
+          --url ${repo} \
+          --token "$token" \
+          --name macmini \
+          --labels macmini \
+          --work _work
+      fi
 
-    exec ./bin/run.sh
-  '';
+      exec ./bin/run.sh
+    '';
+  };
 in
 {
   # Unpack the runner itself. GitHub's distribution tries to update itself, so copy it from the
@@ -136,7 +138,7 @@ in
   '';
 
   launchd.daemons.gh-runner = {
-    script = "exec ${runScript}";
+    script = "exec ${lib.getExe runScript}";
     serviceConfig = {
       Label = "org.nixos.gh-runner";
       RunAtLoad = true;

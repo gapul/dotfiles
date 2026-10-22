@@ -14,14 +14,20 @@ let
   whichKey = "${pkgs.wlr-which-key}/bin/wlr-which-key";
   # A layer-shell overlay does not suppress Hyprland's global shortcuts by
   # itself: a still-held Super+L would lock the session while selecting labels.
-  grid = pkgs.writeShellScript "wl-grid" ''
-    set -eu
-    exec 9>"''${XDG_RUNTIME_DIR:?}/wl-grid.lock"
-    ${pkgs.util-linux}/bin/flock -n 9 || exit 0
-    trap '${wm} submap reset' EXIT
-    ${wm} submap wl-pointer
-    ${pointer} -o modes=tile,bisect
-  '';
+  grid = pkgs.writeShellApplication {
+    name = "wl-grid";
+    bashOptions = [
+      "errexit"
+      "nounset"
+    ];
+    text = ''
+      exec 9>"''${XDG_RUNTIME_DIR:?}/wl-grid.lock"
+      ${pkgs.util-linux}/bin/flock -n 9 || exit 0
+      trap '${wm} submap reset' EXIT
+      ${wm} submap wl-pointer
+      ${pointer} -o modes=tile,bisect
+    '';
+  };
   yaml = pkgs.formats.yaml { };
   menu = yaml.generate "wl-keyboard.yaml" {
     font = "JetBrainsMono Nerd Font 12";
@@ -34,7 +40,7 @@ let
       {
         key = "g";
         desc = "Grid / precise position";
-        cmd = grid;
+        cmd = lib.getExe grid;
       }
       {
         key = "m";
@@ -114,7 +120,7 @@ in
   xdg.configFile."wlr-which-key/config.yaml".source = menu;
   # For home/niri.nix, which binds the same two keys.
   _module.args.wlKeyboard = {
-    inherit grid;
+    grid = lib.getExe grid;
     menu = whichKey;
   };
   wayland.windowManager.hyprland.settings.bind =
@@ -125,7 +131,7 @@ in
       {
         _args = [
           (mkLuaInline ''mod .. " + I"'')
-          (mkLuaInline ''hl.dsp.exec_cmd("${grid}")'')
+          (mkLuaInline ''hl.dsp.exec_cmd("${lib.getExe grid}")'')
         ];
       }
       {

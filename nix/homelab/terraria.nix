@@ -28,15 +28,19 @@ let
 
   # Type=forking via tmux reports "started" long before the world is loaded and the port is
   # listening, so hold the first client on the systemd socket until a TCP connect succeeds.
-  waitForUpstream = pkgs.writeShellScript "terraria-proxy-wait" ''
-    deadline=$((SECONDS + ${toString startupTimeout}))
-    while [ "$SECONDS" -lt "$deadline" ]; do
-      (exec 3<>/dev/tcp/127.0.0.1/${toString upstreamPort}) 2>/dev/null && exit 0
-      ${pkgs.coreutils}/bin/sleep 0.5
-    done
-    echo "terraria-proxy: upstream did not become ready within ${toString startupTimeout}s" >&2
-    exit 1
-  '';
+  waitForUpstream = pkgs.writeShellApplication {
+    name = "terraria-proxy-wait";
+    bashOptions = [ ];
+    text = ''
+      deadline=$((SECONDS + ${toString startupTimeout}))
+      while [ "$SECONDS" -lt "$deadline" ]; do
+        (exec 3<>/dev/tcp/127.0.0.1/${toString upstreamPort}) 2>/dev/null && exit 0
+        ${pkgs.coreutils}/bin/sleep 0.5
+      done
+      echo "terraria-proxy: upstream did not become ready within ${toString startupTimeout}s" >&2
+      exit 1
+    '';
+  };
 in
 {
   # terraria-server is unfree (Re-Logic's redistributable binary). It is the only unfree package
@@ -83,7 +87,7 @@ in
       after = [ "terraria.service" ];
       serviceConfig = {
         Type = "simple";
-        ExecStartPre = waitForUpstream;
+        ExecStartPre = lib.getExe waitForUpstream;
         ExecStart = "${pkgs.systemd}/lib/systemd/systemd-socket-proxyd --exit-idle-time=${idleTimeout} 127.0.0.1:${toString upstreamPort}";
         DynamicUser = true;
         NoNewPrivileges = true;

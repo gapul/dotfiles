@@ -142,9 +142,13 @@ let
           libunwind
         ];
     }).run;
-  launcher = pkgs.writeShellScriptBin "touchdesigner" ''
-    exec ${fhs}/bin/steam-run ${inner}/bin/touchdesigner-inner "$@"
-  '';
+  launcher = pkgs.writeShellApplication {
+    name = "touchdesigner";
+    bashOptions = [ ];
+    text = ''
+      exec ${fhs}/bin/steam-run ${inner}/bin/touchdesigner-inner "$@"
+    '';
+  };
 in
 pkgs.symlinkJoin {
   name = "touchdesigner-${version}";

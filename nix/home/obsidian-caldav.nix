@@ -12,11 +12,17 @@
     enable = true;
     config = {
       ProgramArguments = [
-        "${pkgs.writeShellScript "obsidian-caldav" ''
-          src="$HOME/Developer/github.com/gapul/personal-tools/obsidian-caldav/sync.py"
-          [ -f "$src" ] || exit 0
-          exec ${pkgs.python3}/bin/python3 "$src"
-        ''}"
+        "${
+          pkgs.writeShellApplication {
+            name = "obsidian-caldav";
+            bashOptions = [ ];
+            text = ''
+              src="$HOME/Developer/github.com/gapul/personal-tools/obsidian-caldav/sync.py"
+              [ -f "$src" ] || exit 0
+              exec ${pkgs.python3}/bin/python3 "$src"
+            '';
+          }
+        }/bin/obsidian-caldav"
       ];
       StartInterval = 600;
       RunAtLoad = true;

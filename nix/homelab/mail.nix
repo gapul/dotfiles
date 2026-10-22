@@ -27,7 +27,7 @@
 # (trustedInterfaces = tailscale0, so no firewall opening). imapsync also enters the same 993 over
 # loopback. Plaintext 143 is not offered because Stalwart refuses LOGIN ("LOGIN is disabled on
 # the clear-text port").
-{ pkgs, ... }:
+{ lib, pkgs, ... }:
 let
   # Stalwart account name → that Google account's domain (to pick the outbound route by From).
   accounts = {
@@ -49,42 +49,48 @@ let
   # are serialised by flock. The lock is per part, not per account: the hourly pass over the other
   # folders takes about 10 minutes ([Gmail]/All Mail), and a push that waited on it would arrive
   # that late (17:41 → 17:51 on 2026-10-16). INBOX alone takes about a minute.
-  syncAccount = pkgs.writeShellScript "mail-sync-account" ''
-    set -u
-    name=$1
-    part=$2
-    shift 2
-    if [ ! -s "$CREDENTIALS_DIRECTORY/$name.app-password" ]; then
-      echo "$name: Google のアプリパスワードが未設定 (secrets の mail/$name.app-password)、飛ばす"
-      exit 0
-    fi
-    # imapsync は /run/credentials 配下のファイルを「読めない」と拒む (2026-09-23 実測、
-    # exit 66) ので、両方のパスワードを自分の RuntimeDirectory に写してから渡す。
-    work=$(mktemp -d "$RUNTIME_DIRECTORY/$name.XXXXXX")
-    trap 'rm -rf "$work"' EXIT
-    cat "$CREDENTIALS_DIRECTORY/$name.app-password" > "$work/src.password"
-    cat "$CREDENTIALS_DIRECTORY/$name.password" > "$work/dst.password"
-    exec 9> "${lockDir}/$name.$part.lock"
-    ${pkgs.util-linux}/bin/flock 9
-    # --gmail1: imap.gmail.com:993、[Gmail] の親フォルダを除き、ラベルはフォルダのまま、
-    # "All Mail" は最後に回して他フォルダに写した分を重複させない。
-    ${pkgs.imapsync}/bin/imapsync --gmail1 --user1 "$(cat "$CREDENTIALS_DIRECTORY/$name.address")" \
-      --passfile1 "$work/src.password" \
-      --host2 127.0.0.1 --port2 993 --ssl2 \
-      --user2 "$name" --passfile2 "$work/dst.password" \
-      --automap --nofoldersizes --noreleasecheck --nolog --tmpdir "$work" \
-      --pidfile "$work/pid" "$@" || { status=$?; echo "$name: imapsync が $status で終了"; exit 1; }
-  '';
+  syncAccount = pkgs.writeShellApplication {
+    name = "mail-sync-account";
+    bashOptions = [ "nounset" ];
+    text = ''
+      name=$1
+      part=$2
+      shift 2
+      if [ ! -s "$CREDENTIALS_DIRECTORY/$name.app-password" ]; then
+        echo "$name: Google のアプリパスワードが未設定 (secrets の mail/$name.app-password)、飛ばす"
+        exit 0
+      fi
+      # imapsync は /run/credentials 配下のファイルを「読めない」と拒む (2026-09-23 実測、
+      # exit 66) ので、両方のパスワードを自分の RuntimeDirectory に写してから渡す。
+      work=$(mktemp -d "$RUNTIME_DIRECTORY/$name.XXXXXX")
+      trap 'rm -rf "$work"' EXIT
+      cat "$CREDENTIALS_DIRECTORY/$name.app-password" > "$work/src.password"
+      cat "$CREDENTIALS_DIRECTORY/$name.password" > "$work/dst.password"
+      exec 9> "${lockDir}/$name.$part.lock"
+      ${pkgs.util-linux}/bin/flock 9
+      # --gmail1: imap.gmail.com:993、[Gmail] の親フォルダを除き、ラベルはフォルダのまま、
+      # "All Mail" は最後に回して他フォルダに写した分を重複させない。
+      ${pkgs.imapsync}/bin/imapsync --gmail1 --user1 "$(cat "$CREDENTIALS_DIRECTORY/$name.address")" \
+        --passfile1 "$work/src.password" \
+        --host2 127.0.0.1 --port2 993 --ssl2 \
+        --user2 "$name" --passfile2 "$work/dst.password" \
+        --automap --nofoldersizes --noreleasecheck --nolog --tmpdir "$work" \
+        --pidfile "$work/pid" "$@" || { status=$?; echo "$name: imapsync が $status で終了"; exit 1; }
+    '';
+  };
 
-  mirror = pkgs.writeShellScript "mail-mirror" ''
-    set -u
-    status=0
-    for name in ${toString names}; do
-      ${syncAccount} "$name" inbox --folder INBOX || status=1
-      ${syncAccount} "$name" rest --exclude '^INBOX$' || status=1
-    done
-    exit $status
-  '';
+  mirror = pkgs.writeShellApplication {
+    name = "mail-mirror";
+    bashOptions = [ "nounset" ];
+    text = ''
+      status=0
+      for name in ${toString names}; do
+        ${lib.getExe syncAccount} "$name" inbox --folder INBOX || status=1
+        ${lib.getExe syncAccount} "$name" rest --exclude '^INBOX$' || status=1
+      done
+      exit "$status"
+    '';
+  };
 
   # The push watcher for one account. goimapnotify discards its hooks' output, so the hook sends
   # its own to the journal under the unit's name. --maxage keeps the INBOX pass to the last couple
@@ -105,23 +111,26 @@ let
           boxes = [
             {
               mailbox = "INBOX";
-              onNewMail = "systemd-cat -t mail-push-${name} ${syncAccount} ${name} inbox --folder INBOX --maxage 2";
+              onNewMail = "systemd-cat -t mail-push-${name} ${lib.getExe syncAccount} ${name} inbox --folder INBOX --maxage 2";
             }
           ];
         }
       ];
     };
-  push = pkgs.writeShellScript "mail-push" ''
-    set -u
-    name=$1
-    # No app password means no mirror either (see syncAccount). Exit cleanly so the unit stays
-    # inactive instead of restart-looping until one is put in.
-    if [ ! -s "$CREDENTIALS_DIRECTORY/$name.app-password" ]; then
-      echo "$name: Google のアプリパスワードが未設定、IDLE 監視はしない"
-      exit 0
-    fi
-    exec ${pkgs.goimapnotify}/bin/goimapnotify -conf "$2"
-  '';
+  push = pkgs.writeShellApplication {
+    name = "mail-push";
+    bashOptions = [ "nounset" ];
+    text = ''
+      name=$1
+      # No app password means no mirror either (see syncAccount). Exit cleanly so the unit stays
+      # inactive instead of restart-looping until one is put in.
+      if [ ! -s "$CREDENTIALS_DIRECTORY/$name.app-password" ]; then
+        echo "$name: Google のアプリパスワードが未設定、IDLE 監視はしない"
+        exit 0
+      fi
+      exec ${pkgs.goimapnotify}/bin/goimapnotify -conf "$2"
+    '';
+  };
 
   mirrorServiceConfig = {
     User = mirrorUser;
@@ -157,7 +166,7 @@ let
             "address"
             "app-password"
           ];
-          ExecStart = "${push} ${name} ${pushConfig name}";
+          ExecStart = "${lib.getExe push} ${name} ${pushConfig name}";
           # Gmail drops long IDLE sessions and the line drops now and then; goimapnotify
           # reconnects by itself, and this covers it giving up.
           Restart = "on-failure";
@@ -303,7 +312,7 @@ in
         RuntimeDirectory = "mail-mirror";
         WorkingDirectory = "/run/mail-mirror";
         LoadCredential = builtins.attrValues (builtins.mapAttrs (k: v: "${k}:${v}") accountCredentials);
-        ExecStart = mirror;
+        ExecStart = lib.getExe mirror;
       };
       onFailure = [ "ntfy-failure@%n.service" ];
     };
