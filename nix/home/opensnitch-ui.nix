@@ -24,6 +24,25 @@ let
 in
 {
   services.opensnitch-ui.enable = true;
+  # 1.8.0 sets `timeout` only when desktop notifications are on, then uses it in the else branch
+  # too. With notifications off (below) the first tray message raised UnboundLocalError inside a
+  # Qt slot and the UI aborted. Fixed upstream in 6963dc4595 (2026-07-05), not yet released.
+  services.opensnitch-ui.package =
+    if pkgs.opensnitch-ui.version == "1.8.0" then
+      pkgs.opensnitch-ui.overrideAttrs (old: {
+        postPatch = (old.postPatch or "") + ''
+          substituteInPlace opensnitch/service.py \
+            --replace-fail \
+              '        has_ntfs, ntf_type = self._has_desktop_notifications()
+                  if has_ntfs:
+                      timeout = self._cfg.getInt(Config.DEFAULT_TIMEOUT_KEY, 15)' \
+              '        timeout = self._cfg.getInt(Config.DEFAULT_TIMEOUT_KEY, 15)
+                  has_ntfs, ntf_type = self._has_desktop_notifications()
+                  if has_ntfs:'
+        '';
+      })
+    else
+      pkgs.opensnitch-ui;
 
   home.activation.opensnitchUiDefaults = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     run mkdir -p "$(dirname "${settings}")"
