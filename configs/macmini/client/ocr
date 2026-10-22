@@ -1,13 +1,15 @@
-#!/bin/zsh
+#!/bin/bash
 # 母艦→macmini 透過・OCR(Qwen3-VL)。ローカル画像の文字を抽出。
 # 使い方: ocr <画像>
-emulate -L zsh
 img="$1"
 if [[ -z "$img" || ! -f "$img" ]]; then
   echo "使い方: ocr <画像>"; exit 1
 fi
-ext="${img:e}"; tag="ocr_$$"; rf="/tmp/${tag}.${ext}"
-retry() { local i; for i in 1 2 3; do "$@" && return 0; sleep 2; done; return 1; }
+# zsh の ${img:e} 相当: 最後のパス要素に . があればその後ろ、無ければ空
+name="${img##*/}"; ext=""; [[ "$name" == *.* ]] && ext="${name##*.}"
+tag="ocr_$$"; rf="/tmp/${tag}.${ext}"
+retry() { local _; for _ in 1 2 3; do "$@" && return 0; sleep 2; done; return 1; }
 retry scp -q "$img" "macmini:$rf" || { echo "scp失敗"; exit 1; }
+# shellcheck disable=SC2088 # ~ は macmini 側のシェルで展開させる
 retry ssh macmini "~/.local/bin/ocr $rf"
 ssh macmini "rm -f $rf" >/dev/null 2>&1

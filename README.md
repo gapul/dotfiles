@@ -214,7 +214,7 @@ in `nix/flake.nix`; run `just docs` after changing one.
 | `pyright` | `*.py` | `configs/cli/claude/.*`, `configs/cli/codex/.*`, `configs/macmini/setup-scripts/.*` | Python type check, basic mode (pyproject.toml) |
 | `ruff` | `*.py` | — | Python lint (pyproject.toml), applying safe autofixes |
 | `ruff-format` | `*.py` | — | Python formatting |
-| `shellcheck` | all staged | `configs/cli/codex/.*`, `configs/wm/sketchybar/.*`, `\.envrc$`, `\.zsh$`, `configs/macmini/bin/.*`, `configs/macmini/client/.*`, `configs/macmini/setup-scripts/.*` | Shell lint, following .shellcheckrc |
+| `shellcheck` | all staged | `configs/cli/codex/.*`, `configs/wm/sketchybar/.*`, `\.envrc$`, `\.zsh$`, `configs/macmini/setup-scripts/.*` | Shell lint, following .shellcheckrc |
 <!-- END hooks -->
 
 Notes:

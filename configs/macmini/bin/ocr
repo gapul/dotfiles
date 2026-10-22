@@ -1,4 +1,4 @@
-#!/bin/zsh
+#!/bin/bash
 eval "$(/opt/homebrew/bin/brew shellenv)"
 export PATH="$HOME/.local/bin:$PATH"
 img="$1"
