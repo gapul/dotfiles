@@ -143,13 +143,19 @@ in
       # connects to the skkserv once, when fcitx5 starts, and never again, so fcitx5 (its
       # own unit below, ordered after this one) must not start until the port answers:
       # "started" here means "listening".
-      ExecStartPost = pkgs.writeShellScript "wait-for-skkserv" ''
-        for _ in $(seq 1 300); do
-          ${pkgs.bash}/bin/bash -c "exec 3<>/dev/tcp/127.0.0.1/${toString skkservPort}" 2>/dev/null && exit 0
-          sleep 0.1
-        done
-        exit 0
-      '';
+      ExecStartPost = lib.getExe (
+        pkgs.writeShellApplication {
+          name = "wait-for-skkserv";
+          bashOptions = [ ];
+          text = ''
+            for _ in $(seq 1 300); do
+              ${pkgs.bash}/bin/bash -c "exec 3<>/dev/tcp/127.0.0.1/${toString skkservPort}" 2>/dev/null && exit 0
+              sleep 0.1
+            done
+            exit 0
+          '';
+        }
+      );
       Restart = "on-failure";
       RestartSec = 5;
       Nice = 5;

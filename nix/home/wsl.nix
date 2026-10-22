@@ -15,9 +15,13 @@ let
   # The only thing that depended on it was wslview (opens URLs in the Windows default browser).
   # wslpath is provided by WSL itself, and WIN_USER detection hits cmd.exe directly, so all of wslu is unnecessary.
   # -> Replace wslview with a minimal self-made wrapper (cmd.exe /c start launches the default browser).
-  wslview = pkgs.writeShellScriptBin "wslview" ''
-    exec /mnt/c/Windows/System32/cmd.exe /c start "" "$@"
-  '';
+  wslview = pkgs.writeShellApplication {
+    name = "wslview";
+    bashOptions = [ ];
+    text = ''
+      exec /mnt/c/Windows/System32/cmd.exe /c start "" "$@"
+    '';
+  };
 in
 {
   # WSL2-only home-manager config

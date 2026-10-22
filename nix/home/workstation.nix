@@ -36,9 +36,13 @@ in
       # MeshLab's scripting side. meshlabserver was dropped in 2020.x; the filters are driven
       # from Python via pymeshlab instead. Wrapped as its own interpreter so it does not shadow
       # the main python3 on PATH: `pymeshlab-python script.py`.
-      (writeShellScriptBin "pymeshlab-python" ''
-        exec ${python3.withPackages (ps: [ ps.pymeshlab ])}/bin/python3 "$@"
-      '')
+      (writeShellApplication {
+        name = "pymeshlab-python";
+        bashOptions = [ ];
+        text = ''
+          exec ${python3.withPackages (ps: [ ps.pymeshlab ])}/bin/python3 "$@"
+        '';
+      })
       typst # typesetting
       # Circuit simulation. kicad-cli (KiCad 10, /Applications/KiCad) exports a SPICE netlist
       # from a schematic; ngspice -b runs it; gnuplot turns wrdata output into a PNG the agent
@@ -50,9 +54,13 @@ in
       # uv exception (see keychip-case for the per-repo form): uv resolves build123d on demand
       # into its cache and pins Python 3.12, the newest with cadquery-ocp wheels.
       # `build123d-python script.py` / `build123d-python -c '...'`.
-      (writeShellScriptBin "build123d-python" ''
-        exec ${lib.getExe uv} run --quiet --python 3.12 --with build123d python "$@"
-      '')
+      (writeShellApplication {
+        name = "build123d-python";
+        bashOptions = [ ];
+        text = ''
+          exec ${lib.getExe uv} run --quiet --python 3.12 --with build123d python "$@"
+        '';
+      })
       # Compose the TeX Live collections needed for Japanese academic documents via Nix.
       # Avoid scheme-full while covering math, figures/tables, bibliographies, and common
       # extra packages without adding them individually.

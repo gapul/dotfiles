@@ -145,95 +145,113 @@ rec {
       );
     in
     {
-      backup = pkgs.writeShellScript "restic-backup" ''
-        set -uo pipefail
-        ${resticEnv}
-        mkdir -p "$(dirname ${logFile})"
-        exec >>"${logFile}" 2>&1
-        echo "==================== $(date '+%Y-%m-%d %H:%M:%S') backup start ===================="
+      backup = pkgs.writeShellApplication {
+        name = "restic-backup";
+        bashOptions = [
+          "nounset"
+          "pipefail"
+        ];
+        text = ''
+          ${resticEnv}
+          mkdir -p "$(dirname ${logFile})"
+          exec >>"${logFile}" 2>&1
+          echo "==================== $(date '+%Y-%m-%d %H:%M:%S') backup start ===================="
 
-        if ! rclone about google-drive: >/dev/null 2>&1; then
-          echo "SKIP: cannot reach the google-drive remote (rclone authorize may be incomplete)"
-          exit 0
-        fi
+          if ! rclone about google-drive: >/dev/null 2>&1; then
+            echo "SKIP: cannot reach the google-drive remote (rclone authorize may be incomplete)"
+            exit 0
+          fi
 
-        if ! restic snapshots >/dev/null 2>&1; then
-          echo "repository not found, running init"
-          restic init || { echo "ERROR: restic init failed"; exit 1; }
-        fi
+          if ! restic snapshots >/dev/null 2>&1; then
+            echo "repository not found, running init"
+            restic init || { echo "ERROR: restic init failed"; exit 1; }
+          fi
 
-        restic backup \
-          --verbose=1 \
-          --exclude-file=${excludeFile} \
-          ${lib.concatStringsSep " " (map (p: "\"${p}\"") backupPaths)}
-        rc=$?
+          restic backup \
+            --verbose=1 \
+            --exclude-file=${excludeFile} \
+            ${lib.concatStringsSep " " (map (p: "\"${p}\"") backupPaths)}
+          rc=$?
 
-        # --keep-tag archive: exclude cold archives (tagged via just archive with --tag archive) from
-        #   the keep policy and retain them forever. Prune only warm (untagged) ones.
-        #   (restic also refuses to delete the last snapshot in each group, so double protection)
-        ${forgetSnippet}
+          # --keep-tag archive: exclude cold archives (tagged via just archive with --tag archive) from
+          #   the keep policy and retain them forever. Prune only warm (untagged) ones.
+          #   (restic also refuses to delete the last snapshot in each group, so double protection)
+          ${forgetSnippet}
 
-        echo "==================== $(date '+%Y-%m-%d %H:%M:%S') backup done (rc=$rc) ===================="
-        if [ "$rc" -ne 0 ]; then
-          notify "restic ⚠️ backup failed" "restic backup failed with rc=$rc. Please check the log: ${logFile}"
-        fi
-        exit $rc
-      '';
+          echo "==================== $(date '+%Y-%m-%d %H:%M:%S') backup done (rc=$rc) ===================="
+          if [ "$rc" -ne 0 ]; then
+            notify "restic ⚠️ backup failed" "restic backup failed with rc=$rc. Please check the log: ${logFile}"
+          fi
+          exit "$rc"
+        '';
+      };
 
       # Integrity check (weekly). Notify if corruption is detected
-      check = pkgs.writeShellScript "restic-check" ''
-        set -uo pipefail
-        ${resticEnv}
-        exec >>"${logFile}" 2>&1
-        echo "-------------------- $(date '+%Y-%m-%d %H:%M:%S') check start --------------------"
-        if ! rclone about google-drive: >/dev/null 2>&1; then
-          echo "SKIP: remote unreachable"; exit 0
-        fi
-        if restic check; then
-          echo "check OK"
-        else
-          echo "check FAILED"
-          notify "restic ⚠️ possible repository corruption" "restic check failed. Please check the log"
-        fi
-      '';
+      check = pkgs.writeShellApplication {
+        name = "restic-check";
+        bashOptions = [
+          "nounset"
+          "pipefail"
+        ];
+        text = ''
+          ${resticEnv}
+          exec >>"${logFile}" 2>&1
+          echo "-------------------- $(date '+%Y-%m-%d %H:%M:%S') check start --------------------"
+          if ! rclone about google-drive: >/dev/null 2>&1; then
+            echo "SKIP: remote unreachable"; exit 0
+          fi
+          if restic check; then
+            echo "check OK"
+          else
+            echo "check FAILED"
+            notify "restic ⚠️ possible repository corruption" "restic check failed. Please check the log"
+          fi
+        '';
+      };
 
       # Run monitoring (daily). Notify if the last successful snapshot is old/missing
-      monitor = pkgs.writeShellScript "restic-monitor" ''
-        set -uo pipefail
-        ${resticEnv}
-        max_age_days=2
+      monitor = pkgs.writeShellApplication {
+        name = "restic-monitor";
+        bashOptions = [
+          "nounset"
+          "pipefail"
+        ];
+        text = ''
+          ${resticEnv}
+          max_age_days=2
 
-        if ! rclone about google-drive: >/dev/null 2>&1; then
-          notify "restic ⚠️ backup not running" "google-drive not authenticated. Please run rclone authorize drive"
-          exit 0
-        fi
-        snapshots=$(restic snapshots --json 2>/dev/null)
-        if [ -z "$snapshots" ]; then
-          notify "restic ⚠️ repository unreadable" "restic snapshots returned nothing. A stale exclusive lock will do this"
-          exit 0
-        fi
-        now=$(date +%s)
-        # One listing, then per host, because the repository is shared: every host's
-        # snapshots live in it and the newest one overall says nothing about any
-        # particular host.
-        for host in ${lib.concatStringsSep " " monitoredHosts}; do
-          latest=$(printf '%s' "$snapshots" | jq -r --arg h "$host" 'map(select(.hostname == $h) | .time) | max // empty')
-          if [ -z "$latest" ]; then
-            notify "restic ⚠️ no snapshots ($host)" "$host has never backed up to the shared repository"
-            continue
+          if ! rclone about google-drive: >/dev/null 2>&1; then
+            notify "restic ⚠️ backup not running" "google-drive not authenticated. Please run rclone authorize drive"
+            exit 0
           fi
-          last_epoch=${parseSnapshotTime}
-          # 解釈に失敗すると 0 が返る。そのまま引き算すると「20676 日前」という
-          # 嘘の警告になり、本物の遅延と見分けが付かなくなる。別の文言で出す。
-          if [ "$last_epoch" -eq 0 ]; then
-            notify "restic ⚠️ 日付を解釈できない ($host)" "最後のスナップショットの時刻が読めない: $latest"
-            continue
+          snapshots=$(restic snapshots --json 2>/dev/null)
+          if [ -z "$snapshots" ]; then
+            notify "restic ⚠️ repository unreadable" "restic snapshots returned nothing. A stale exclusive lock will do this"
+            exit 0
           fi
-          age_days=$(( (now - last_epoch) / 86400 ))
-          if [ "$age_days" -ge "$max_age_days" ]; then
-            notify "restic ⚠️ backup is stale ($host)" "the last backup of $host was $age_days days ago"
-          fi
-        done
-      '';
+          now=$(date +%s)
+          # One listing, then per host, because the repository is shared: every host's
+          # snapshots live in it and the newest one overall says nothing about any
+          # particular host.
+          for host in ${lib.concatStringsSep " " monitoredHosts}; do
+            latest=$(printf '%s' "$snapshots" | jq -r --arg h "$host" 'map(select(.hostname == $h) | .time) | max // empty')
+            if [ -z "$latest" ]; then
+              notify "restic ⚠️ no snapshots ($host)" "$host has never backed up to the shared repository"
+              continue
+            fi
+            last_epoch=${parseSnapshotTime}
+            # 解釈に失敗すると 0 が返る。そのまま引き算すると「20676 日前」という
+            # 嘘の警告になり、本物の遅延と見分けが付かなくなる。別の文言で出す。
+            if [ "$last_epoch" -eq 0 ]; then
+              notify "restic ⚠️ 日付を解釈できない ($host)" "最後のスナップショットの時刻が読めない: $latest"
+              continue
+            fi
+            age_days=$(( (now - last_epoch) / 86400 ))
+            if [ "$age_days" -ge "$max_age_days" ]; then
+              notify "restic ⚠️ backup is stale ($host)" "the last backup of $host was $age_days days ago"
+            fi
+          done
+        '';
+      };
     };
 }

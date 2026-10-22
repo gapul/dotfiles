@@ -65,15 +65,21 @@ in
       PartOf = [ "graphical-session.target" ];
     };
     Service = {
-      ExecStartPre = pkgs.writeShellScript "wait-for-avahi" ''
-        for attempt in $(${pkgs.coreutils}/bin/seq 1 30); do
-          state=$(${pkgs.systemd}/bin/busctl --system call org.freedesktop.Avahi / org.freedesktop.Avahi.Server GetState 2>/dev/null || true)
-          if [ "$state" = "i 2" ]; then exit 0; fi
-          ${pkgs.coreutils}/bin/sleep 1
-        done
-        echo "Avahi did not reach running state" >&2
-        exit 1
-      '';
+      ExecStartPre = pkgs.lib.getExe (
+        pkgs.writeShellApplication {
+          name = "wait-for-avahi";
+          bashOptions = [ ];
+          text = ''
+            for _ in $(${pkgs.coreutils}/bin/seq 1 30); do
+              state=$(${pkgs.systemd}/bin/busctl --system call org.freedesktop.Avahi / org.freedesktop.Avahi.Server GetState 2>/dev/null || true)
+              if [ "$state" = "i 2" ]; then exit 0; fi
+              ${pkgs.coreutils}/bin/sleep 1
+            done
+            echo "Avahi did not reach running state" >&2
+            exit 1
+          '';
+        }
+      );
       ExecStart = "${pkgs.coreutils}/bin/stdbuf -oL -eL ${uxplay}/bin/uxplay -n nixlaptop -p 7000 -pin";
       Restart = "always";
       RestartSec = 5;
