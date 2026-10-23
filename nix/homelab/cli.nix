@@ -1,22 +1,27 @@
 {
+  lib,
   pkgs,
   ...
 }:
 let
-  hs = pkgs.writeShellApplication {
+  # HTTP goes through Bun's fetch; jq is only used to colour JSON output.
+  hs = import ../lib/bun-script.nix { inherit pkgs; } {
     name = "hs";
+    # Only hs.ts, so editing the rest of configs/homelab does not rebuild the CLI.
+    src = lib.fileset.toSource {
+      root = ../../configs/homelab;
+      fileset = ../../configs/homelab/hs.ts;
+    };
+    main = "hs.ts";
     runtimeInputs = with pkgs; [
-      curl
       jq
       openssh
       podman
       rclone
       restic
       systemd
-      util-linux
       ytdl-sub
     ];
-    text = builtins.readFile ../../configs/homelab/hs.sh;
   };
 in
 {
