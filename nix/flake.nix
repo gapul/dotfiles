@@ -549,12 +549,11 @@
           };
           shellcheck = {
             enable = true; # shell script lint (follows .shellcheckrc)
-            # .shellcheckrc says severity=error, but it has no effect. The shellcheck 0.11 rc
-            # only honors disable= and the like; severity is CLI-only (measured: disable=SC2001
-            # in the same rc works, while severity=error is ignored, style findings still show,
-            # and it exits 1). So the intent "gate on error level only" was never realized.
-            # Pass it again here.
-            args = [ "--severity=error" ];
+            # Severity is CLI-only: the shellcheck 0.11 rc honors disable= and the like but
+            # ignores severity= (measured: disable=SC2001 in the rc works, severity=error is
+            # ignored and style findings still fail the hook). Gate on warning and above, the
+            # same level scripts/ci-lint.sh enforces; info/style stay advisory.
+            args = [ "--severity=warning" ];
             excludes = [
               # Symlinks into another repository (gapul/ai-agent-state). The link is committed,
               # the target is not, so in CI there is nothing behind it and shellcheck stops with
