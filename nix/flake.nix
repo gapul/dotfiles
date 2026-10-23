@@ -829,7 +829,6 @@
                     systemPkgs.yq-go
                     systemPkgs.jq
                     systemPkgs.just
-                    systemPkgs.python3 # scripts/gen-docs.py (doc generation block)
                     systemPkgs.ruff # Python lint + format check (config: ruff.toml)
                     systemPkgs.pyright # Python type check, basic mode (config: pyrightconfig.json)
                     systemPkgs.bun
