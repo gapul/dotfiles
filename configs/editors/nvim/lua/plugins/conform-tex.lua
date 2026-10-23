@@ -7,8 +7,8 @@ return {
     },
     formatters = {
       latexindent = {
-        -- -m: 数式・環境のインデント整形, -l: localSettings.yaml を探す
-        prepend_args = { "-m" },
+        -- -m: 数式・環境のインデント整形, -g /dev/null: indent.log を作らない
+        prepend_args = { "-m", "-g", "/dev/null" },
       },
     },
   },
