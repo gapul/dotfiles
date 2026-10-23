@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# apps.sh status の自己チェック。偽の ideviceinstaller を PATH に置くので実機は要らない。
+# apps.ts status の自己チェック。偽の ideviceinstaller を PATH に置くので実機は要らない。
 # verify は本物の App Store を叩くのでここでは回さない (ネットワークに依存させない)。
 set -euo pipefail
 
@@ -34,7 +34,7 @@ check() {
   fi
 }
 
-out=$(./apps.sh status) && rc=0 || rc=$?
+out=$(./apps.ts status) && rc=0 || rc=$?
 check "MISSING 数" "$((declared_count - 1))" "$(grep -c MISSING <<<"$out" || true)"
 check "EXTRA 数" "1" "$(grep -c EXTRA <<<"$out" || true)"
 check "MISSING があれば exit 1" "1" "$rc"

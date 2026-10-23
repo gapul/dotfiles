@@ -11,6 +11,6 @@
     "noFallthroughCasesInSwitch": true,
     "skipLibCheck": true
   },
-  "include": ["scripts/**/*.ts", "mobile/**/*.ts", "configs/**/*.ts"],
+  "include": ["scripts/**/*.ts", "mobile/**/*.ts", "configs/**/*.ts", "windows/**/*.ts"],
   "exclude": ["node_modules", "configs/keyboard/karabiner"]
 }

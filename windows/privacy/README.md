@@ -14,8 +14,9 @@ windows/privacy/
 ├── verify.ps1                   # read-only check of the machine against baseline.psd1
 ├── baseline.psd1                # registry values, services and scheduled tasks we set ourselves
 ├── upstream.psd1                # the pinned Win11Debloat and WinUtil: version, URL, SHA256
-├── check-upstream.sh            # checks the declarations against the pinned upstream (macOS/Linux, CI)
-├── update-upstream.sh           # re-pins upstream.psd1 to the latest releases
+├── check-upstream.ts            # checks the declarations against the pinned upstream (macOS/Linux, CI)
+├── update-upstream.ts           # re-pins upstream.psd1 to the latest releases
+├── upstream.ts                  # helpers the two scripts above share
 ├── win11debloat-args.txt        # CLI arguments for Raphire/Win11Debloat; blank lines and `#` comments allowed
 ├── win11debloat-customapps.txt  # extra UWP apps to remove, beyond Win11Debloat's standard set
 └── winutil-config.json          # the WinUtil tweak IDs to apply, as a flat JSON array
@@ -70,7 +71,7 @@ execution.
 
 The Win11Debloat pin is a GitHub source archive, which GitHub generates on request. GitHub has
 changed archive bytes once before (January 2023, reverted). If that happens again the hash check
-fails and nothing runs; re-pin with `update-upstream.sh` after checking the upstream commit is
+fails and nothing runs; re-pin with `update-upstream.ts` after checking the upstream commit is
 unchanged.
 
 Win11Debloat's own launcher (`Get.ps1`) is not used, because it fetches the latest source
@@ -84,7 +85,7 @@ just win-privacy-update-upstream   # rewrites upstream.psd1, then runs the check
 just win-privacy-check-upstream    # also runs in CI (.github/workflows/windows.yml)
 ```
 
-`check-upstream.sh` downloads the pinned files, checks their hashes, and checks that every
+`check-upstream.ts` downloads the pinned files, checks their hashes, and checks that every
 argument in `win11debloat-args.txt` is a parameter of that `Win11Debloat.ps1` and every ID in
 `winutil-config.json` exists in that `winutil.ps1`. This matters: a headless WinUtil run applies
 nothing if one ID is unknown, and WinUtil renames IDs between releases. Before October 2026 the
@@ -126,7 +127,7 @@ only the baseline with `just win-privacy -SkipWin11Debloat -SkipCustomApps -Skip
 ### Win11Debloat
 
 Edit `win11debloat-args.txt`, one argument per line. The available arguments are at
-<https://github.com/Raphire/Win11Debloat#options>, and `check-upstream.sh` checks them against
+<https://github.com/Raphire/Win11Debloat#options>, and `check-upstream.ts` checks them against
 the pinned version.
 
 The current fifteen:
@@ -169,7 +170,7 @@ Copilot by Win11Debloat's `-DisableBing` and `-DisableCopilot`. `WPFTweaksWifi` 
 `WPFTweaksDisableLMS1` were removed upstream and are gone.
 
 To pick tweaks in the GUI instead: run the pinned `winutil.ps1`, select, Export, and replace the
-file with the export. Then run `check-upstream.sh`.
+file with the export. Then run `check-upstream.ts`.
 
 ### Custom UWP apps
 

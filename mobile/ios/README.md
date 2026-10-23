@@ -9,8 +9,8 @@ here.
 ios/
 ├── apps.tsv          # which apps to install: bundleId, how to get it, how it syncs
 ├── sources.tsv       # the URLs of the AltStore sources, Classic and PAL
-├── apps.sh           # status | verify
-├── test.sh           # self-check for apps.sh, against a fake ideviceinstaller, no device needed
+├── apps.ts           # status | verify
+├── test.sh           # self-check for apps.ts, against a fake ideviceinstaller, no device needed
 ├── shortcuts.sh      # export | status | build for Shortcuts
 ├── shortcuts/        # exported Shortcuts, as XML plist
 └── profiles/
@@ -23,8 +23,8 @@ The contents of the profiles are in `nix/mobile/ios-profiles.nix`.
 ## Apps
 
 ```sh
-./apps.sh status   # the declaration against a USB-connected iPhone. Exits 1 if anything is MISSING
-./apps.sh verify   # checks each declared bundleId still exists on its route, across all three
+./apps.ts status   # the declaration against a USB-connected iPhone. Exits 1 if anything is MISSING
+./apps.ts verify   # checks each declared bundleId still exists on its route, across all three
 ```
 
 Three routes are in use, so the `source` column in `apps.tsv` says which one handles each app.

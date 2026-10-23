@@ -1,6 +1,6 @@
 # The Fabric server launcher jar, fetched by content hash. Fabric's meta service assembles this jar
 # from (game version, loader, installer), so the URL is the whole pin. Following the newest game
-# version that every declared mod supports is scripts/update-custom-packages.sh's job; it rewrites
+# version that every declared mod supports is scripts/update-custom-packages.ts's job; it rewrites
 # the four values below together with nix/pkgs/fabric-mods.nix.
 { fetchurl }:
 let

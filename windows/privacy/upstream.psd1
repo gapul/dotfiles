@@ -1,6 +1,6 @@
 # The exact external scripts apply.ps1 downloads and runs. apply.ps1 refuses to run either one
-# unless its SHA256 matches. Re-pin with windows/privacy/update-upstream.sh (just
-# win-privacy-update-upstream), which rewrites this file and then runs check-upstream.sh; read
+# unless its SHA256 matches. Re-pin with windows/privacy/update-upstream.ts (just
+# win-privacy-update-upstream), which rewrites this file and then runs check-upstream.ts; read
 # the upstream changes, especially renamed WinUtil tweak IDs, before committing.
 @{
     Win11Debloat = @{
