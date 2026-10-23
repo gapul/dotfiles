@@ -25,7 +25,7 @@ let
   # client mod does not go on these servers; a modpack world is a separate, temporary instance.
   #
   # version/protocol are what lazymc reports while the server sleeps. The protocol number is not
-  # in Fabric's API, so scripts/update-custom-packages.sh looks it up and rewrites both here.
+  # in Fabric's API, so scripts/update-custom-packages.ts looks it up and rewrites both here.
   inherit (fabricServer) mcVersion;
   mcProtocol = 777;
   fabricInstance =
