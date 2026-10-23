@@ -320,8 +320,9 @@ test("candidates: a reply with a fullwidth digit counts; out-of-range and foreig
   const r = await run({ ...BASE_ENV, AAC_CANDIDATES: JSON.stringify(CANDIDATES) });
   expect(r.code).toBe(0);
   // The answer text goes out as typed (Python printed it the same way).
-  expect(r.stdout).toBe("３\n");
-  expect(r.log.at(-1)).toBe("approved #３ () $q1");
+  // aac gets the number in ASCII.
+  expect(r.stdout).toBe("3\n");
+  expect(r.log.at(-1)).toBe("approved #3 () $q1");
 });
 
 test("candidates: a plain (non-reply) number message picks that candidate", async () => {
@@ -360,7 +361,7 @@ test("an empty candidate list is denied too", async () => {
   const r = await run({ ...BASE_ENV, AAC_CANDIDATES: "[]" });
   expect(r.code).toBe(1);
   expect(requests).toEqual([]);
-  expect(r.log).toEqual(["denied: 0 candidates for example.com, more than 30"]);
+  expect(r.log).toEqual(["denied: no candidates for example.com"]);
 });
 
 test("refuses when the bot token belongs to the approver", async () => {

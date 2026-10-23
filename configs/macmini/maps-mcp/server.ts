@@ -784,6 +784,11 @@ async function handle(msg: Json): Promise<Json> {
   } else if (method === "tools/list") {
     result = { tools: toolsList() };
   } else if (method === "tools/call") {
+    // Python raised here and dropped the connection; answer as JSON-RPC says to.
+    const p = G(msg, "params");
+    if (p === null || typeof p !== "object" || Array.isArray(p) || !("name" in p)) {
+      return { jsonrpc: "2.0", id: mid, error: { code: -32602, message: "params.name is required" } };
+    }
     const name = K(K(msg, "params"), "name");
     const raw = G(msg.params, "arguments");
     const args = truthy(raw) ? raw : {};
