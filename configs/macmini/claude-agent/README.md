@@ -11,18 +11,19 @@ the mini's Claude Code was not authenticated, the monitor ran as root so `claude
 
 ## How it is put together
 
-`claude-agent.sh` is the only entry point, reachable as `~/.local/bin/claude-agent`. The files sit
-in the nix store, so the way to change the agent is to edit this repository and rebuild — what is
-running cannot be edited in place.
+`claude-agent.ts` is the only entry point, reachable as `~/.local/bin/claude-agent`; launchd runs it
+as `claude-agent poll` and `claude-agent monitor`. It is TypeScript run by Bun (it was bash until
+2026-10), packaged with `nix/lib/bun-script.nix`. The files sit in the nix store, so the way to
+change the agent is to edit this repository and rebuild — what is running cannot be edited in place.
 
 | File | What it does |
 |---|---|
 | `repos.json` | The allowlist. A repository not listed here is never touched. |
-| `lib.sh` | Environment, auth, locking, the record of what has been handled, working copies. |
-| `run-autofix.sh` | Implements an issue, or repairs a failed Actions run, then opens a PR. |
-| `run-review.sh` | Reviews a pull request with inline comments and suggestions. |
-| `poller.sh` | Walks `repos.json` every five minutes and dispatches to the two above. |
-| `monitor.sh` | Checks once an hour that the agent itself is still working. |
+| `lib.ts` | Environment, auth, locking, the record of what has been handled, working copies. |
+| `run-autofix.ts` | Implements an issue, or repairs a failed Actions run, then opens a PR. |
+| `run-review.ts` | Reviews a pull request with inline comments and suggestions. |
+| `poller.ts` | Walks `repos.json` every five minutes and dispatches to the two above. |
+| `monitor.ts` | Checks once an hour that the agent itself is still working. |
 
 Work reaches the agent two ways. A repository can carry a ten-line caller workflow that calls
 `gapul/dotfiles/.github/workflows/claude-agent.yml`, which runs on the self-hosted runner on this
@@ -32,7 +33,7 @@ of what has been handled, so arriving twice does not mean acting twice.
 ## The boundaries
 
 Reviewing other people's pull requests means putting a fork's code on this machine. Building or
-testing that code is the same thing as executing it, so `run-review.sh` is the one place `claude`
+testing that code is the same thing as executing it, so `run-review.ts` is the one place `claude`
 runs read-only (`--allowedTools "Read,Grep,Glob"`). Reviews never push to someone else's branch and
 never submit `REQUEST_CHANGES` or `APPROVE` — a bot should not be able to block a person's pull
 request. For the same reason review is not triggered from Actions at all: that would need
@@ -55,9 +56,14 @@ agent does not wake up to a backlog of open issues and react to all of them at o
 
 ## Things that catch you out
 
-**`LANG` has to be set.** launchd gives you an empty locale, and bash then swallows the multi-byte
-character following a variable reference into the variable's name: `$ts。` becomes
-`ts。: unbound variable` and the script dies under `set -u`.
+**`LANG` had to be set while this was bash.** launchd gives you an empty locale, and bash then
+swallows the multi-byte character following a variable reference into the variable's name: `$ts。`
+becomes `ts。: unbound variable` and the script dies under `set -u`. It is still set, for the tools
+it runs.
+
+**Signals wait for the running command.** A lock is a directory that is removed on exit and on
+SIGINT/SIGTERM. Commands are spawned asynchronously so that the handler can run at all; a signal
+that arrives during a `claude` run takes effect when that run returns, as bash's trap did.
 
 **These have to be home-manager LaunchAgents, not system ones.** nix-darwin's system-level
 `launchd.agents` land in `/Library/LaunchAgents` and start in a root context on a machine with no
@@ -65,7 +71,7 @@ GUI login, and `claude` refuses `--dangerously-skip-permissions` under root.
 
 **Auth is a file, not the keychain.** `~/.config/claude/oauth-token` is placed by sops from
 `claude_code_oauth_token` in `secrets/common.yaml`. Mint it with `claude setup-token` in an
-interactive session. When it expires everything quietly stops doing anything, so `run_claude` looks
+interactive session. When it expires everything quietly stops doing anything, so `runClaude` looks
 for "Not logged in" in the output and notifies.
 
 **`gh auth token` sometimes returns empty.** An empty `GH_TOKEN` takes precedence over `hosts.yml`,

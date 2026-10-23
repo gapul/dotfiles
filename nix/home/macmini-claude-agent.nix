@@ -25,18 +25,19 @@ let
   # (which runs on the self-hosted runner on this same machine), and running it by
   # hand. The real files sit in the store, so the only way to change the agent is to
   # edit the repository and rebuild — what is running cannot be edited in place.
-  entry = pkgs.writeShellApplication {
+  # The whole directory goes into the store, so lib.ts and repos.json sit next to the
+  # entry point. lib.ts sets PATH itself (gh, git and claude come from the user profile).
+  entry = import ../lib/bun-script.nix { inherit pkgs; } {
     name = "claude-agent";
-    bashOptions = [ ];
-    text = ''
-      exec ${pkgs.bash}/bin/bash ${runtime}/claude-agent.sh "$@"
-    '';
+    src = runtime;
+    main = "claude-agent.ts";
   };
 
   # launchd carries almost no shell environment, so hand over what the scripts need.
-  # LANG is not optional: with an empty locale, bash swallows the multi-byte character
-  # after a variable reference into the variable's name and dies under set -u. The
-  # predecessor of this agent lost a full day to exactly that.
+  # LANG is passed on to git, gh and claude. (When this was bash it was not optional:
+  # with an empty locale bash swallowed the multi-byte character after a variable
+  # reference into the variable's name and died under set -u. The predecessor of this
+  # agent lost a full day to exactly that.)
   agentEnv = {
     HOME = home;
     LANG = "en_US.UTF-8";
@@ -46,7 +47,7 @@ let
 
   mkAgent =
     {
-      script,
+      command,
       interval,
       logName,
     }:
@@ -54,8 +55,8 @@ let
       enable = true;
       config = {
         ProgramArguments = [
-          "${pkgs.bash}/bin/bash"
-          "${runtime}/${script}"
+          (lib.getExe entry)
+          command
         ];
         RunAtLoad = true;
         StartInterval = interval;
@@ -81,7 +82,7 @@ in
   # Walk repos.json every five minutes. Reacting immediately to an event is the
   # caller workflow's job in each repository; this is the net underneath it.
   launchd.agents.claude-agent-poll = mkAgent {
-    script = "poller.sh";
+    command = "poll";
     interval = 300;
     logName = "poller";
   };
@@ -90,7 +91,7 @@ in
   # Actions: monitoring built on top of the watched system goes quiet exactly when
   # that system breaks.
   launchd.agents.claude-agent-monitor = mkAgent {
-    script = "monitor.sh";
+    command = "monitor";
     interval = 3600;
     logName = "monitor";
   };
