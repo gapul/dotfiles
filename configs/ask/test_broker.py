@@ -14,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 # "Google — b@x" appearing in the record of what was actually released. A security log is only
 # worth reading if everything in it happened.
 import dataclasses
+import shutil
 import tempfile
 
 import ask_broker as broker
@@ -634,7 +635,9 @@ def test_run_survives_an_escaped_grandchild():
         broker.CONFIG = dataclasses.replace(original, run_timeout_seconds=0.5)
         script = "use POSIX; if (fork == 0) { POSIX::setsid(); sleep 20; exit } print qq(before\n); sleep 20"
         started = time.time()
-        result = asyncio.run(broker.run_child(["/usr/bin/perl", "-e", script], "/", {}, []))
+        result = asyncio.run(
+            broker.run_child([shutil.which("perl") or "/usr/bin/perl", "-e", script], "/", {}, [])
+        )
         assert result["timed_out"] is True, result
         assert time.time() - started < 15, time.time() - started
     finally:

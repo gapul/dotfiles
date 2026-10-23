@@ -863,6 +863,8 @@
               };
               evalcache = import ./tests/evalcache.nix { pkgs = systemPkgs; };
               prompt = import ./tests/prompt.nix { pkgs = systemPkgs; };
+              # The ask broker runs as a launchd agent here (modules/home/darwin-services.nix).
+              ask-broker = import ./tests/ask-broker.nix { pkgs = systemPkgs; };
             };
           }
           // lib.optionalAttrs (system == "x86_64-linux") {
@@ -881,6 +883,8 @@
                 home-manager = home-manager-nixos;
                 inherit commonSpecialArgs;
               };
+              # The collector runs on the home server (homelab/freebie-collector.nix).
+              freebie-collector = import ./tests/freebie-collector.nix { pkgs = systemPkgs; };
               preservation-smoke = import ./tests/preservation-smoke.nix {
                 inherit preservation user;
                 pkgs = systemPkgs;

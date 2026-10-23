@@ -67,18 +67,10 @@ they become independent vhosts. Same shape as the existing ones: type A, proxied
 
 The repointing is the bigger half, and it can only be done after the migration. Every
 `*.gapul.net` currently points at Caddy's tailnet address, `100.64.125.107` on CT103, and moving
-Caddy to the new host changes that address. Editing twenty-odd records by hand guarantees
-missing one and finding out later that a single service does not connect, so there is a script.
-
-```sh
-export CF_API_TOKEN=...   # Zone:DNS:Edit
-scripts/cf-repoint-records.sh --from 100.64.125.107 --to <the new host's tailnet IP>
-# check the listing, then
-scripts/cf-repoint-records.sh --from 100.64.125.107 --to <the new host's tailnet IP> --apply
-```
-
-It is a dry run by default. `tailscale ip -4` gives the new host's address. The certificate is a
-wildcard, but the DNS records are not, so each one is needed individually.
+Caddy to the new host changes that address. This was done once, with a
+one-off script (`scripts/cf-repoint-records.sh`, removed after the move; it is in git history).
+Today `scripts/check-dns-drift.ts` compares the records with the Caddy vhosts and `--apply`
+creates or fixes them, so a future move only needs the new address in the Nix side.
 
 ### 1.4 Checking restic still works
 
