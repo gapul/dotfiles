@@ -42,6 +42,8 @@ in
       ".envrc.local"
       ".claude/settings.local.json"
       # LaTeX build intermediates (latexmk / lualatex)
+      ".build/" # VimTeX out_dir/aux_dir (see configs/editors/nvim/lua/plugins/latex.lua)
+      "indent.log" # latexindent
       "*.aux"
       "*.fdb_latexmk"
       "*.fls"
