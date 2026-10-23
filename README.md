@@ -229,6 +229,12 @@ Notes:
   for `nix fmt`.
 - `shellcheck` is enforced. The excluded sketchybar configs can still be checked by hand with
   `nix develop ./nix -c shellcheck configs/wm/sketchybar/...`.
+- Which language a script is in: shell for short command sequences (inline in Nix through
+  `writeShellApplication`), TypeScript on Bun for anything with real logic (JSON, HTTP, state,
+  long services), and Python only where a Python library is the point (ML models, ytmusicapi,
+  Mopidy, pyobjc, HPI, FastAPI). Package a Bun script with `nix/lib/bun-script.nix`.
+  `scripts/ci-lint.sh` type-checks every `.ts` against `tsconfig.json` (strict); the compiler
+  versions are pinned in `package.json`.
 - CI runs through `om ci` (omnix). Building the `checks.pre-commit` output from git-hooks.nix
   applies the same hooks to the whole repo. `om.yaml` and the flake outputs are the single source
   of truth; `.github/workflows/ci.yml` is a thin adapter that maps system to runner and calls
