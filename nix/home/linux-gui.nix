@@ -92,6 +92,15 @@ in
         devices = [ "homeserver" ];
         type = "sendreceive";
       };
+      # ROMs and decrypted dumps, homeserver's /srv/games/library (homelab/syncthing.nix).
+      # Receive-only: homeserver holds the originals, and nothing here is meant to be edited.
+      # Saves are written outside it (home/gaming.nix).
+      folders."games-library" = {
+        label = "Games Library";
+        path = "${config.home.homeDirectory}/Games/library";
+        devices = [ "homeserver" ];
+        type = "receiveonly";
+      };
       # Drop a PDF here and Paperless on the homeserver consumes it (same as the Mac).
       folders."paperless-inbox" = {
         label = "Paperless Inbox";
@@ -439,7 +448,7 @@ in
     heroic # Epic / GOG / Amazon — the libraries the homelab free-games claimer fills up
     # One library window for all of them: Cartridges reads Steam, Heroic and Lutris on its own
     # and needs no login. It only finds launchers installed the same way it is (nix here, not
-    # Flatpak). The emulators below are added to it by hand as commands.
+    # Flatpak). The emulators below and Minecraft are declared into it in home/gaming.nix.
     cartridges
     azahar # 3DS (dumps on homeserver /srv/games/3ds)
     melonds # DS
