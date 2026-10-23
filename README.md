@@ -213,7 +213,7 @@ in `nix/flake.nix`; run `just docs` after changing one.
 | `deadnix` | `*.nix` | — | Finds unused code. Module arguments like `{ lib, ... }` are allowed. |
 | `gitleaks` | all staged | — | Secret detection |
 | `nixfmt` | `*.nix` | — | Formatting check. Fails on anything unformatted. |
-| `pyright` | `*.py` | `configs/cli/claude/.*`, `configs/cli/codex/.*` | Python type check, basic mode (pyproject.toml) |
+| `pyright` | `*.py` | `configs/cli/claude/.*`, `configs/cli/codex/.*` | Python type check, strict mode (pyproject.toml) |
 | `ruff` | `*.py` | — | Python lint (pyproject.toml), applying safe autofixes |
 | `ruff-format` | `*.py` | — | Python formatting |
 | `shellcheck` | all staged | `configs/cli/codex/.*`, `configs/wm/sketchybar/.*`, `\.envrc$`, `\.zsh$` | Shell lint, following .shellcheckrc |

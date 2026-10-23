@@ -4,7 +4,7 @@ import os
 import socket
 
 
-def mpd(cmd):
+def mpd(cmd: str) -> str:
     s = socket.create_connection(("127.0.0.1", 6600), timeout=2)
     s.recv(256)
     s.sendall((cmd + "\n").encode())
@@ -19,7 +19,7 @@ def mpd(cmd):
     return b.decode("utf-8", "replace")
 
 
-info = {}
+info: dict[str, str] = {}
 for line in mpd("currentsong").splitlines():
     if ": " in line:
         k, v = line.split(": ", 1)

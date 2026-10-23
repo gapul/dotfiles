@@ -360,7 +360,6 @@ class Matrix:
         return json.loads(urllib.request.urlopen(req, timeout=20).read()).get("user_id", "")
 
     async def ask(self, request: Request, timeout: int) -> str | None:
-        import urllib.error
         import urllib.request
 
         token = self._token()
@@ -1154,8 +1153,10 @@ async def login_fill(
         )
         answer = await ask_human(ctx, request)
         approved = answer in names
-        if approved and answer is not None:
-            item_id, item_name = candidates[names.index(answer)]
+        # The placeholder is never read: "not approved" returns below before item_id is used.
+        item_id, item_name = (
+            candidates[names.index(answer)] if answer is not None and approved else ("", "")
+        )
 
     if not approved:
         audit("outcome", id=request.id, approved=False)
@@ -1276,8 +1277,10 @@ async def native_login_fill(
         )
         answer = await ask_human(ctx, request)
         approved = answer in names
-        if approved and answer is not None:
-            item_id, item_name = candidates[names.index(answer)]
+        # The placeholder is never read: "not approved" returns below before item_id is used.
+        item_id, item_name = (
+            candidates[names.index(answer)] if answer is not None and approved else ("", "")
+        )
 
     if not approved:
         audit("outcome", id=request.id, approved=False)
@@ -1489,7 +1492,12 @@ def check_run_request(domain: str, env: dict[str, str], command: list[str], cwd:
             return f"environment variable name not allowed: {visible(name)}"
     if set(env.values()) - LOGIN_FIELDS:
         return "unsupported credential field"
-    if not command or not all(isinstance(arg, str) and arg for arg in command):
+    # The isinstance stays although the annotation says str: this is the trust boundary, and it
+    # costs nothing if the MCP layer's validation ever lets something else through.
+    if not command or not all(
+        isinstance(arg, str) and arg  # pyright: ignore[reportUnnecessaryIsInstance]
+        for arg in command
+    ):
         return "command must be a non-empty argv list"
     if any("\0" in arg for arg in command) or "\0" in cwd:
         return "NUL in command or cwd"
@@ -1577,8 +1585,10 @@ async def run(
         )
         answer = await ask_human(ctx, request)
         approved = answer in names
-        if approved and answer is not None:
-            item_id, item_name = candidates[names.index(answer)]
+        # The placeholder is never read: "not approved" returns below before item_id is used.
+        item_id, item_name = (
+            candidates[names.index(answer)] if answer is not None and approved else ("", "")
+        )
 
     if not approved:
         audit("outcome", id=request.id, approved=False)

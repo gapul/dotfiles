@@ -6,7 +6,7 @@
 # - statix         : Nix アンチパターン (repeated_keys は誤検出のため .statix.toml で除外)
 # - shellcheck     : 全 .sh と拡張子なしの macmini コマンドを warning 重大度で gate (sketchybar だけ error。Lua 化予定で据え置き)
 # - ruff           : 全 .py の lint + 整形チェック (設定は pyproject.toml)
-# - pyright        : 全 .py の型チェック (basic。third-party import は解決しない前提)
+# - pyright        : 全 .py の型チェック (strict。third-party import は解決しない前提)
 # - tsc            : Bun で動かす .ts の型チェック (strict。設定は tsconfig.json、karabiner は別管理)
 # - stylua         : nvim 配下の lua 整形 (uosc/yazi 等 vendored は対象外)
 # - taplo/jq/yq    : toml/json/yaml の構文検証 (設定破損の即検知)

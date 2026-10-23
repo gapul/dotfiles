@@ -23,6 +23,7 @@ import urllib.request
 import zipfile
 from collections.abc import Mapping
 from pathlib import Path
+from typing import Any
 from xml.etree import ElementTree as ET
 
 UA = "freebie-collector/1.0 (+personal archival)"
@@ -188,7 +189,7 @@ def store_offer(db: sqlite3.Connection, item: Mapping[str, object]) -> bool:
     return not exists
 
 
-def scan(config: dict, db: sqlite3.Connection) -> tuple[int, list[str]]:
+def scan(config: dict[str, Any], db: sqlite3.Connection) -> tuple[int, list[str]]:
     added = 0
     errors: list[str] = []
     excluded = tuple(config.get("excluded_hosts", []))
@@ -327,7 +328,7 @@ def prepare_unmanaged_downloads(inbox: Path) -> None:
     mdls = shutil.which("mdls")
     if not mdls:
         return
-    manifested = set()
+    manifested: set[str] = set()
     for manifest in inbox.glob("*.freebie.json"):
         try:
             manifested.add(json.loads(manifest.read_text()).get("file"))
@@ -346,7 +347,7 @@ def prepare_unmanaged_downloads(inbox: Path) -> None:
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
         )
-        urls = re.findall(r'https?://[^"\s)]+', result.stdout)
+        urls: list[str] = re.findall(r'https?://[^"\s)]+', result.stdout)
         if not urls:
             continue
         source = urls[0].replace("\\U0026", "&")
@@ -365,7 +366,9 @@ def prepare_unmanaged_downloads(inbox: Path) -> None:
         )
 
 
-def download_declared(config: dict, inbox: Path, db: sqlite3.Connection) -> tuple[int, list[str]]:
+def download_declared(
+    config: dict[str, Any], inbox: Path, db: sqlite3.Connection
+) -> tuple[int, list[str]]:
     """Download only explicitly declared URLs; no link following or execution."""
     downloaded = 0
     errors: list[str] = []
