@@ -1,0 +1,7 @@
+{
+  "repos": [
+    { "repo": "gapul/demo", "base": "main", "ignore_workflows": ["Claude Agent"], "verify_hint": "run just test" },
+    { "repo": "gapul/actions-only", "trigger": "actions", "review": false },
+    { "repo": "gapul/off", "enabled": false }
+  ]
+}
