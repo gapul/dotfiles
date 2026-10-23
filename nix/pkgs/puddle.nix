@@ -1,7 +1,7 @@
 # Puddle: self-built MIT fork of Plash (set any web page as the desktop wallpaper).
 #
 # Same shape as pkgs/keebmouse.nix: fetch the signed release artifact instead of building from
-# source, so the Developer ID signature (Yuki Kawashima, S3H296G6Q5) survives. nix-darwin copies
+# source, so the Developer ID signature (team S3H296G6Q5) survives. nix-darwin copies
 # the bundle to a stable /Applications/Nix Apps/Puddle.app, so nothing here depends on a store
 # path that moves per version.
 {

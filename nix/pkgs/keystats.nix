@@ -1,7 +1,7 @@
 # keystats: self-made keystroke analytics (CGEventTap → SQLite, SwiftUI viewer).
 #
 # Same shape as pkgs/keebmouse.nix: the signed release artifact is fetched rather than built, so
-# the Developer ID signature (Yuki Kawashima, S3H296G6Q5) is preserved and the Input Monitoring /
+# the Developer ID signature (team S3H296G6Q5) is preserved and the Input Monitoring /
 # Accessibility grants survive version bumps at the stable /Applications/Nix Apps path.
 #
 # The cask also exposed the daemon as a `keystats` binary, so keep that. What is deliberately NOT
