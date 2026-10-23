@@ -62,7 +62,7 @@ check-jsonschema \
   "$lazygit_config"
 
 echo "Checking Claude Code managed settings against the workstation settings..."
-python3 "$repo_root/scripts/check-claude-settings-drift.py"
+bun "$repo_root/scripts/check-claude-settings-drift.ts"
 
 echo "Checking generated tmux theme for home-manager-less hosts..."
 # Rendered by nix/lib/tmux-theme.nix (same layout as the home-manager theme); committed
@@ -72,6 +72,6 @@ nix eval --raw --file "$repo_root/nix/lib/tmux-theme.nix" remote >"$check_tmp/th
 diff -u "$repo_root/configs/terminals/tmux/theme-remote.conf" "$check_tmp/theme-remote.conf"
 
 echo "Checking generated documentation blocks (README / CHEATSHEET)..."
-python3 "$repo_root/scripts/gen-docs.py" --check
+bun "$repo_root/scripts/gen-docs.ts" --check
 
 echo "Generated configuration checks passed."

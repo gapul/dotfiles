@@ -232,7 +232,9 @@ Notes:
 - Which language a script is in: shell for short command sequences (inline in Nix through
   `writeShellApplication`), TypeScript on Bun for anything with real logic (JSON, HTTP, state,
   long services), and Python only where a Python library is the point (ML models, ytmusicapi,
-  Mopidy, pyobjc, HPI, FastAPI). Package a Bun script with `nix/lib/bun-script.nix`.
+  Mopidy, pyobjc, HPI, FastAPI) or where the script must run on a host that only has python3
+  (`scripts/merge-claude-settings.py`, which `remote-bootstrap` runs on nssh targets without Nix
+  or Bun). Package a Bun script with `nix/lib/bun-script.nix`.
   `scripts/ci-lint.sh` type-checks every `.ts` against `tsconfig.json` (strict); the compiler
   versions are pinned in `package.json`.
 - CI runs through `om ci` (omnix). Building the `checks.pre-commit` output from git-hooks.nix

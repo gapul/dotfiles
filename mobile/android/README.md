@@ -8,7 +8,7 @@ android/
 ├── os-apps.tsv         # per-app OS settings: default launcher, permissions, battery
 ├── os-debloat.txt      # preinstalled apps to remove from user 0
 ├── os.sh               # applies the three above over adb, showing the difference first
-├── launcher-theme.py   # generates Kvaesitso's theme from palettes.json
+├── launcher-theme.ts   # generates Kvaesitso's theme from palettes.json
 └── test.sh             # self-check for the scripts above, against a fake adb, no device needed
 ```
 
@@ -135,7 +135,7 @@ Two things are declared:
 
 - **That it is the default launcher**, through the `home` row in `os-apps.tsv`, which runs
   `cmd package set-home-activity`.
-- **The theme.** `launcher-theme.py` generates a ThemeBundle v2 JSON from
+- **The theme.** `launcher-theme.ts` generates a ThemeBundle v2 JSON from
   `configs/theme/palettes.json`, which is the same single source the Mac, tmux and Windows use,
   so replacing rose-pine changes the launcher along with everything else. Light and dark are
   both in the one theme, so it follows the device's appearance setting.

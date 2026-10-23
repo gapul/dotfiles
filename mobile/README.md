@@ -11,7 +11,7 @@ mobile/
 │   ├── apps.tsv + apps.ts          # older app declaration against the device; F-Droid apps install too
 │   ├── os-settings.conf            # global settings pushed with adb
 │   ├── os-apps.tsv + os.sh         # per-app settings: permissions, battery, default launcher
-│   ├── launcher-theme.py           # generates Kvaesitso's theme from palettes.json
+│   ├── launcher-theme.ts           # generates Kvaesitso's theme from palettes.json
 │   └── test.sh                     # self-check against a fake adb
 └── ios/
     ├── apps.tsv + sources.tsv      # App Store, AltStore Classic, AltStore PAL
@@ -95,7 +95,7 @@ is how this repository works. The ID is a public key, so committing it is fine.
 
 **Home screen and widget layout.** iOS offers no way at all, and Android's Kvaesitso stores it
 in a binary that is not compatible between versions, so putting it in the repository would show
-no meaningful diff. Only the launcher theme is declared, in `android/launcher-theme.py`.
+no meaningful diff. Only the launcher theme is declared, in `android/launcher-theme.ts`.
 
 **Backing up the apps themselves.** A full device backup is iCloud's or Seedvault's job.
 
