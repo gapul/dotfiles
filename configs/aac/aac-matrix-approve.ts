@@ -206,7 +206,8 @@ function answerIn(
         .filter((line) => !line.startsWith(">"))
         .join("\n")
         .trim();
-      if (ISDIGIT.test(text) && 1 <= int(text) && int(text) <= choices) return text;
+      // Normalised to ASCII: the approver may type fullwidth digits, and aac reads stdout as a number.
+      if (ISDIGIT.test(text) && 1 <= int(text) && int(text) <= choices) return String(int(text));
     }
   }
   return null;
@@ -274,7 +275,11 @@ async function main(): Promise<number> {
   const raw = process.env.AAC_CANDIDATES;
   const candidates: Candidate[] | null = raw ? JSON.parse(raw) : null;
   if (candidates !== null && !(candidates.length >= 1 && candidates.length <= MAX_CANDIDATES)) {
-    log(`denied: ${candidates.length} candidates for ${domain}, more than ${MAX_CANDIDATES}`);
+    log(
+      candidates.length === 0
+        ? `denied: no candidates for ${domain}`
+        : `denied: ${candidates.length} candidates for ${domain}, more than ${MAX_CANDIDATES}`,
+    );
     return 1;
   }
   const token = readFileSync(TOKEN_FILE, "utf8").trim();

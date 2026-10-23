@@ -187,6 +187,8 @@ describe("startup", () => {
       });
       expect(p.exitCode).toBe(1);
       expect(p.stderr.toString()).toBe("invalid PULS_PORT: 80x\n");
+      // Rejected before the database is created.
+      expect(existsSync(join(d, "puls.sqlite"))).toBe(false);
     } finally {
       rmSync(d, { recursive: true, force: true });
     }
