@@ -1,4 +1,4 @@
-# AltStore 系の source。apps.sh verify がここを引いて bundleId の実在を確かめる。
+# AltStore 系の source。apps.ts verify がここを引いて bundleId の実在を確かめる。
 # 書式: <名前>	<kind>	<URL>     (タブ区切り)
 #
 # kind:
