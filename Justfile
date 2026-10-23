@@ -561,114 +561,15 @@ _maintain-windows:
     just win-upgrade
     @echo "Windows: gc recipe is not defined; package update completed."
 
-# Update the GitHub pins nothing else updates.
-#
-# flake.lock covers the flake inputs and nixpkgs covers what it packages, but a handful of
-# things are pinned by hand: two yazi packages that are not in nixpkgs, the Rosé Pine
-# tmThemes, and prh's dictionary. They used to be vendored files that `just maintain` never
-# touched either, so this is not a new chore — it is the same chore, now with a hash to check.
-#
-# Run from the macOS lane only (BSD `sed -i ""`), like sketchybar-font. The pins it edits are
-# committed, so whichever machine runs it updates them for all of them.
+# Update the GitHub pins nothing else updates (the yazi plugins, the Rosé Pine tmThemes, prh).
 [private]
 github-pins:
-    #!/usr/bin/env bash
-    set -uo pipefail
-    dir="{{justfile_directory()}}"
-    changed=()
-
-    # file | repo | the line rev/hash follow
-    tarballs='nix/modules/home/cli.nix|h-hg/yamb.yazi|repo = "yamb.yazi";
-    nix/modules/home/cli.nix|Mintass/rose-pine.yazi|repo = "rose-pine.yazi";
-    nix/lib/rose-pine-tm-theme.nix|rose-pine/tm-theme|repo = "tm-theme";'
-
-    while IFS='|' read -r file repo anchor; do
-      file="$dir/${file# }"; anchor="${anchor# }"
-      # An unreachable API is a skip, not a failure — same as the font above: this runs inside
-      # `just maintain`, and a pin being a week old is not worth aborting an upgrade over.
-      sha=$(gh api "repos/$repo/commits?per_page=1" --jq '.[0].sha' 2>/dev/null) || {
-        echo "– $repo: commit lookup failed (offline?); skipped" >&2; continue
-      }
-      cur=$(grep -A1 -F "$anchor" "$file" | sed -n 's/.*rev = "\([^"]*\)".*/\1/p')
-      # The pins were written short; a short rev is a prefix of the long one it names.
-      case "$sha" in "$cur"*) continue ;; esac
-      hash=$(nix store prefetch-file --json --unpack "https://github.com/$repo/archive/$sha.tar.gz" 2>/dev/null | jq -r .hash) || {
-        echo "– $repo: prefetch failed; skipped" >&2; continue
-      }
-      sed -i "" -E "/$(printf '%s' "$anchor" | sed 's/[\/&]/\\&/g')/{n;s|rev = \"[^\"]*\"|rev = \"$sha\"|;n;s|hash = \"[^\"]*\"|hash = \"$hash\"|;}" "$file"
-      # A rewritten rev with a stale hash is the quiet failure here: a fixed-output derivation is
-      # keyed by its hash, so nix would hand out the old contents and never fetch the new ones.
-      if ! grep -qF "$sha" "$file" || ! grep -qF "$hash" "$file"; then
-        echo "– $repo: rewrite did not take; leaving the pin alone" >&2
-        git -C "$dir" checkout -- "$file"
-        continue
-      fi
-      echo "$repo: ${cur:-?} -> ${sha:0:7}"
-      changed+=("$file")
-    done <<< "$tarballs"
-
-    # prh's dictionary is a single file, pinned by the commit in its URL.
-    file="$dir/nix/home/workstation.nix"
-    if sha=$(gh api "repos/prh/rules/commits?per_page=1" --jq '.[0].sha' 2>/dev/null); then
-      cur=$(sed -n 's|.*raw.githubusercontent.com/prh/rules/\([0-9a-f]*\)/.*|\1|p' "$file")
-      if [ "$sha" != "$cur" ]; then
-        url="https://raw.githubusercontent.com/prh/rules/$sha/media/WEB%2BDB_PRESS.yml"
-        if hash=$(nix store prefetch-file --json "$url" 2>/dev/null | jq -r .hash); then
-          sed -i "" -E "s|(raw.githubusercontent.com/prh/rules/)[0-9a-f]+|\\1$sha|" "$file"
-          sed -i "" -E "/raw.githubusercontent.com\/prh\/rules/{n;s|hash = \"[^\"]*\"|hash = \"$hash\"|;}" "$file"
-          if grep -qF "$sha" "$file" && grep -qF "$hash" "$file"; then
-            # Often only the commit moves: the dictionary is one file in a repository of them.
-            echo "prh/rules: ${cur:0:7} -> ${sha:0:7}"
-            changed+=("$file")
-          else
-            echo "– prh/rules: rewrite did not take; leaving the pin alone" >&2
-            git -C "$dir" checkout -- "$file"
-          fi
-        fi
-      fi
-    else
-      echo "– prh/rules: commit lookup failed (offline?); skipped" >&2
-    fi
-
-    if [ ${#changed[@]} -gt 0 ]; then
-      git -C "$dir" add "${changed[@]}"
-      echo "Updated pins. Apply with: just rebuild (automatic when run via upgrade)"
-    fi
+    @nix shell nixpkgs#bun -c scripts/github-pins.ts
 
 # Update sketchybar-app-font assets from the same release.
 [private]
 sketchybar-font:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    repo="kvndrsslr/sketchybar-app-font"
-    dir="{{justfile_directory()}}"
-    map="$dir/configs/wm/sketchybar/plugins/icon_map.sh"
-    # A transient network failure here used to abort `just maintain` entirely and roll back
-    # flake.lock. The font is a nice-to-have, so treat an unreachable API as "skip", like xcodes.
-    tag=$(gh release view --repo "$repo" --json tagName -q .tagName) || {
-      echo "– sketchybar-app-font: release lookup failed (offline?); skipped" >&2
-      exit 0
-    }
-    cur=$(awk '/pname = "sketchybar-app-font"/{getline; if (match($0,/[0-9][0-9.]*/)) print substr($0,RSTART,RLENGTH); exit}' "$dir/nix/hosts/darwin.nix")
-    if [ "$tag" = "v$cur" ]; then
-      exit 0
-    fi
-    echo "sketchybar-app-font: updating $cur -> $tag"
-    gh release download "$tag" --repo "$repo" --pattern icon_map.sh --output "$map" --clobber
-    awk '/^### END-OF-ICON-MAP/{print; print "__icon_map \"$1\""; print "[ -r \"${BASH_SOURCE%/*}/icon_map_local.sh\" ] && source \"${BASH_SOURCE%/*}/icon_map_local.sh\""; print "echo \"$icon_result\""; exit} {print}' "$map" > "$map.tmp" && mv "$map.tmp" "$map"
-    # gh release assets are non-executable, so restore +x; plugins run icon_map.sh
-    # directly ($(...)), and without +x it fails with "permission denied" -> the
-    # workspace app icons silently vanish. `chmod` before `git add` so the staged
-    # mode is recorded as 100755 too.
-    chmod +x "$map"
-    # The font itself is fetched by nix, so what gets updated here is the pin: version, URL,
-    # and hash. Prefetching is what produces the hash — a wrong one fails the build, loudly.
-    hash=$(nix store prefetch-file --json "https://github.com/$repo/releases/download/$tag/sketchybar-app-font.ttf" | jq -r .hash)
-    sed -i "" -E '/pname = "sketchybar-app-font"/{n;s/version = "[0-9.]+"/version = "'"${tag#v}"'"/;}' "$dir/nix/hosts/darwin.nix"
-    sed -i "" -E 's|(sketchybar-app-font/releases/download/)v[0-9.]+|\1'"$tag"'|' "$dir/nix/hosts/darwin.nix"
-    sed -i "" -E '/sketchybar-app-font\/releases\/download/{n;s|hash = "[^"]*"|hash = "'"$hash"'"|;}' "$dir/nix/hosts/darwin.nix"
-    git -C "$dir" add "$map" "$dir/nix/hosts/darwin.nix"
-    echo "Updated ($tag). Apply with: just rebuild (automatic when run via upgrade)"
+    @nix shell nixpkgs#bun -c scripts/sketchybar-font.ts
 
 
 # ─────────────────────────────────────────────
@@ -712,34 +613,7 @@ search query scope="":
 # List what can be updated (preview before upgrade; brew + mas + flake inputs; non-destructive)
 [group('Inspect')]
 outdated:
-    #!/usr/bin/env bash
-    set -u
-    if [ "{{os()}}" = macos ]; then
-      echo "━━━ Homebrew (formula + cask, --greedy) ━━━"
-      o=$(brew outdated --greedy 2>/dev/null); [ -n "$o" ] && echo "$o" || echo "  (up to date)"
-      echo ""
-      echo "━━━ Xcode (xcodes) ━━━"
-      if command -v xcodes >/dev/null; then
-        # auth-free preview: show what's installed. `xcodes update` (Apple login + maybe 2FA)
-        # is intentionally left to `just upgrade` so this stays non-interactive.
-        inst=$(xcodes installed 2>/dev/null | tr -s ' ' | paste -sd', ' - || true)
-        echo "  installed: ${inst:-none}   (just upgrade -> xcodes install --latest)"
-      else
-        echo "  (xcodes not installed)"
-      fi
-      echo ""
-    fi
-    echo "━━━ flake inputs (lock last-modified) ━━━"
-    if command -v jq >/dev/null; then
-      nix flake metadata {{flake}} --json 2>/dev/null \
-        | jq -r '.locks.nodes | to_entries[] | select(.value.locked.lastModified) | "\(.key)\t\(.value.locked.lastModified | strftime("%Y-%m-%d"))"' \
-        | while IFS=$'\t' read -r name day; do printf '  %-22s %s\n' "$name" "$day"; done \
-        | sort -b -k2
-    else
-      echo "  (jq not installed, skip)"
-    fi
-    echo ""
-    echo "-> Update: just upgrade (all) / just update <input> (individual)"
+    @nix shell nixpkgs#bun -c scripts/outdated.ts
 
 # Environment health check (run after e.g. a Determinate upgrade)
 [group('Inspect')]
@@ -1189,51 +1063,10 @@ obsidian-snapshot:
     echo "   After git add, run gitleaks before committing."
 
 # Pull GUI-side preference changes back into the repo (live -> dotfiles).
-# darwin-apps.nix imports these plists wholesale on activation, so anything changed in an app's
-# own UI is silently reverted by the next rebuild unless it is captured here.
-# Only keys the repo file already tracks are updated: these apps also store volatile state
-# (window frames, status item positions, color panel geometry) that would add churn on every run.
-# To start tracking a new key, add it to the repo plist once (`plutil -insert`), then this picks it up.
 [group('Setup')]
 [doc('Sync GUI app preference changes back into dotfiles (live -> repo)')]
 plist-sync:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    dir="{{justfile_directory()}}"
-    # Same set darwin-apps.nix imports. Add a line here when an import is added there.
-    pairs=(
-      "org.p0deje.Maccy configs/clipboard/maccy/Maccy.plist"
-      "net.mtgto.inputmethod.macSKK configs/ime/skk/macSKK.plist"
-      "io.github.gitusp.azoo-key-skkserv configs/ime/skk/azoo-key-skkserv.plist"
-    )
-    changed=0
-    for pair in "${pairs[@]}"; do
-      set -- $pair; domain="$1"; rel="$2"; repo="$dir/$rel"
-      [ -f "$repo" ] || { echo "– $rel: not in repo, skipped"; continue; }
-      live=$(defaults export "$domain" - 2>/dev/null | plutil -convert json -o - - 2>/dev/null) || live=""
-      # An app that was never launched (or a sandbox not yet created) exports an empty dict.
-      # Overwriting from that would quietly wipe the tracked settings, so skip instead.
-      if [ -z "$live" ] || [ "$(jq 'keys|length' <<<"$live")" -eq 0 ]; then
-        echo "– $domain: no live prefs, skipped"; continue
-      fi
-      old=$(plutil -convert json -o - "$repo")
-      # read-loop, not `for`: some keys contain spaces ("NSStatusItem VisibleCC Item-0")
-      while IFS= read -r key; do
-        lv=$(jq -c --arg k "$key" '.[$k]' <<<"$live")
-        rv=$(jq -c --arg k "$key" '.[$k]' <<<"$old")
-        [ "$lv" = "null" ] && continue    # dropped on the live side: keep the tracked value
-        [ "$lv" = "$rv" ] && continue
-        plutil -replace "$key" -json "$lv" "$repo"
-        echo "  $rel  $key: $rv -> $lv"
-        changed=1
-      done < <(jq -r 'keys[]' <<<"$old")
-    done
-    if [ "$changed" -eq 0 ]; then
-      echo "✓ tracked plist keys already match the live prefs"
-    else
-      git -C "$dir" --no-pager diff --stat -- configs
-      echo "Review the diff, then commit on a branch as usual."
-    fi
+    @nix shell nixpkgs#bun -c scripts/plist-sync.ts
 
 
 # ─────────────────────────────────────────────
