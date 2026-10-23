@@ -6,10 +6,12 @@
   username = "gapul";
 
   # git commit author info
-  # The email uses GitHub noreply to avoid exposing a personal address on public repos.
+  # The email is a dedicated public alias on the own domain, not a personal inbox: it can be
+  # verified on GitHub, Codeberg and git.gapul.net alike, so mirrored commits stay attributed,
+  # and it survives leaving any one forge. Mail for it lands via Cloudflare Email Routing.
   # (the real address is encrypted and consolidated under pii: in secrets/common.yaml)
   gitUser = "gapul";
-  gitEmail = "92638132+gapul@users.noreply.github.com";
+  gitEmail = "git@gapul.net";
 
   # The dotfiles' own GitHub URL (used by bootstrap.sh / nssh when cloning)
   dotfilesRepo = "https://github.com/gapul/dotfiles.git";
