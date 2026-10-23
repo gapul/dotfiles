@@ -724,6 +724,11 @@ function unsupportedMethod(method: string, client: string, path: string): Respon
   });
 }
 
+// Validate the port first so a bad one does not leave an empty database behind.
+if (!/^\s*\d+\s*$/.test(process.env.PULS_PORT ?? "8080")) {
+  writeSync(2, `invalid PULS_PORT: ${process.env.PULS_PORT}\n`);
+  process.exit(1);
+}
 const db = new Database(process.env.PULS_DB ?? "puls.sqlite");
 db.exec(SCHEMA);
 // Loopback by default, mirroring the reference stack's INGEST_BIND_ADDR:
@@ -732,10 +737,6 @@ db.exec(SCHEMA);
 // something you get by running it.
 const bind_ = process.env.PULS_BIND ?? "127.0.0.1";
 const port = Number(process.env.PULS_PORT ?? "8080");
-if (!/^\s*\d+\s*$/.test(process.env.PULS_PORT ?? "8080")) {
-  writeSync(2, `invalid PULS_PORT: ${process.env.PULS_PORT}\n`);
-  process.exit(1);
-}
 const server = Bun.serve({
   hostname: bind_,
   port,

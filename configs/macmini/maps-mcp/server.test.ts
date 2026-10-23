@@ -304,9 +304,19 @@ test("unknown tool and bad arguments answer 'bad request' with Python's wording"
   expect(upstream).toEqual(["/api?q=x&limit=2", "/address-search/AddressSearch?q=x"]);
 });
 
-test("tools/call without params is a server error, not a JSON-RPC reply", async () => {
-  const res = await post({ jsonrpc: "2.0", id: 1, method: "tools/call" });
-  expect(res.status).toBe(500);
+test("tools/call without params or name is a JSON-RPC invalid-params error", async () => {
+  for (const msg of [
+    { jsonrpc: "2.0", id: 1, method: "tools/call" },
+    { jsonrpc: "2.0", id: 1, method: "tools/call", params: {} },
+  ]) {
+    const res = await post(msg);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      jsonrpc: "2.0",
+      id: 1,
+      error: { code: -32602, message: "params.name is required" },
+    });
+  }
 });
 
 test("HTTP framing: GET 405, other methods 501, wrong path 404, bad JSON 400, trailing slash ok", async () => {
