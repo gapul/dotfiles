@@ -123,7 +123,10 @@ export async function main(): Promise<number> {
       writeFileSync(bootFile, `${NOW}\n`);
       continue;
     }
-    const BOOT_AT = Number(cat(bootFile) ?? NOW);
+    // `[ "$c" -gt "$BOOT_AT" ]` is false when BOOT_AT is empty or not an integer, so an
+    // unreadable-as-number bootstrap file means no issue counts as new.
+    const bootRaw = cat(bootFile) ?? String(NOW);
+    const BOOT_AT = /^\s*-?[0-9]+\s*$/.test(bootRaw) ? Number(bootRaw) : Number.NaN;
 
     // --- issues ----------------------------------------------------------
     if (isTrue(policy(repo, "autofix_issues", "true"))) {

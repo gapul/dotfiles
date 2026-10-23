@@ -87,6 +87,23 @@ function jqFields(meta: string, pick: (j: Record<string, unknown>) => Record<str
   return out;
 }
 
+// (.ignore_workflows // []) | join("\n"), read back line by line with `IFS= read -r`
+// (so nothing is trimmed). join turns null into "" and numbers/booleans into text;
+// anything else is a jq error, which left the list empty.
+function ignoredWorkflows(v: unknown): string {
+  if (v === undefined || v === null || v === false) return "";
+  const items = Array.isArray(v) ? v : typeof v === "object" ? Object.values(v) : undefined;
+  if (items === undefined) return "";
+  const parts: string[] = [];
+  for (const x of items) {
+    if (x === null) parts.push("");
+    else if (typeof x === "string") parts.push(x);
+    else if (typeof x === "number" || typeof x === "boolean") parts.push(String(x));
+    else return "";
+  }
+  return parts.join("\n");
+}
+
 // [.labels[].name] | join(",")
 function labelNames(labels: unknown): string | undefined {
   if (!Array.isArray(labels)) return undefined;
@@ -374,11 +391,8 @@ async function runCi(): Promise<number> {
   // Never react to claude-agent's own workflows. This is where the loop of trying to
   // fix its own failure forever gets cut.
   const entry = repoEntry(REPO);
-  const ignore = entry && Array.isArray(entry.ignore_workflows) ? (entry.ignore_workflows as unknown[]) : [];
-  for (const w of ignore) {
-    // `read` trimmed the surrounding blanks of each name
-    const name = (typeof w === "string" ? w : JSON.stringify(w)).replace(/^[ \t]+|[ \t]+$/g, "");
-    if (name !== "" && name === wf) {
+  for (const w of ignoredWorkflows(entry?.ignore_workflows).split("\n")) {
+    if (w !== "" && w === wf) {
       log(`own workflow, ignoring: ${wf}`);
       return 0;
     }
