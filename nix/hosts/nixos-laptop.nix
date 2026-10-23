@@ -1054,7 +1054,26 @@ in
     enable = true;
     alsa.enable = true;
     pulse.enable = true;
+    # Bitwig / REAPER / yabridge talk JACK; PipeWire stands in for jackd, so no separate server.
+    jack.enable = true;
   };
+  # Without rtkit PipeWire's audio thread runs at normal priority and the DAW crackles at small
+  # buffers. The audio-group limits let JACK clients (Bitwig's engine) take SCHED_FIFO directly.
+  security.rtkit.enable = true;
+  security.pam.loginLimits = [
+    {
+      domain = "@audio";
+      item = "rtprio";
+      type = "-";
+      value = "95";
+    }
+    {
+      domain = "@audio";
+      item = "memlock";
+      type = "-";
+      value = "unlimited";
+    }
+  ];
 
   # Bluetooth (keyboard/earphones etc.).
   hardware.bluetooth.enable = true;
@@ -1088,6 +1107,7 @@ in
       "wheel"
       "networkmanager"
       "video"
+      "audio" # realtime limits for the DAW, see security.pam.loginLimits
       # Talking to /dev/tpmrm0 needs the tss group. Required by home/ssh-tpm-agent.nix, which
       # asserts on this rather than failing at runtime with a permission error.
       config.security.tpm2.tssGroup
