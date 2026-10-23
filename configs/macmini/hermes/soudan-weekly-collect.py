@@ -6,7 +6,7 @@ gathers what the slides are written from:
 
   1. every message of the last week in the (IS-CPU6) Discord server, read with the bot token;
   2. the meeting minutes: HackMD notes linked in #meeting, fetched through /download (public);
-  3. the GitHub digest that gapul's launchd agent writes (soudan-github-digest.py), since only
+  3. the GitHub digest that gapul's launchd agent writes (soudan-github-digest.ts), since only
      gapul can read the org's private repos.
 
 Installed into $HERMES_HOME/scripts/ by nix-darwin activation (hosts/macmini.nix); Hermes
@@ -27,7 +27,7 @@ MEETING = "1559435621284446338"
 PRESENTATION = "1559134355861803069"
 # The team keeps its second core to itself for now: the slides go to the whole class. Nothing
 # about it should reach the model, so it is cut here, before the prompt — #cpu2 is that core's
-# channel, and anything else that names it is dropped by keyword. soudan-slides-publish.py
+# channel, and anything else that names it is dropped by keyword. soudan-slides-publish.ts
 # checks the finished slides against the same words before they are pushed.
 SECRET_CHANNELS = {"1562094197119393872"}
 SECRET = re.compile(
