@@ -19,6 +19,9 @@
     # (uid 1000, no userns) deletes each file once consumed, so both need write on the directory.
     # Files arrive 0644, readable by paperless; the directory is the only thing opened up.
     "d /var/lib/homelab/paperless/consume 0777 1000 1000 -"
+    # Game library sent to the laptop (folder below). Owned by syncthing so it can keep .stfolder
+    # in it; the files are put there by hand (decrypted 3DS dumps, DS carts) and only read.
+    "d /srv/games/library 0755 syncthing syncthing -"
   ];
 
   services.syncthing = {
@@ -96,6 +99,16 @@
           type = "trashcan";
           params.cleanoutDays = "30";
         };
+      };
+      # ROMs and decrypted dumps for the laptop's emulators (Cartridges entries in home/gaming.nix).
+      # Send-only: this is the original, and the laptop's copy is receive-only. Not on the Macs,
+      # which keep their own Azahar data. Not in restic (backup.nix): every file here can be
+      # rebuilt from /srv/games/3ds, which is backed up.
+      folders."games-library" = {
+        label = "Games Library";
+        path = "/srv/games/library";
+        devices = [ "nixos-laptop" ];
+        type = "sendonly";
       };
       folders."synchub" = {
         label = "SyncHub";
