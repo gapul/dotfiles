@@ -1274,12 +1274,12 @@ win-privacy-verify:
 # Check the privacy declarations against the pinned upstream scripts (runs on macOS/Linux)
 [group('Windows')]
 win-privacy-check-upstream:
-    windows/privacy/check-upstream.sh
+    nix shell nixpkgs#bun -c windows/privacy/check-upstream.ts
 
 # Re-pin Win11Debloat and WinUtil to their latest releases, then run the check above
 [group('Windows')]
 win-privacy-update-upstream:
-    windows/privacy/update-upstream.sh
+    nix shell nixpkgs#bun -c windows/privacy/update-upstream.ts
 
 # Declaratively apply Scoop buckets + apps (for sideloading MS Store-only apps)
 # Pass `-DryRun` `-SkipBuckets` `-SkipApps` via `*flags`
@@ -1555,7 +1555,7 @@ android-launcher-theme:
 # Diff ios/apps.tsv against a USB-connected iPhone (`just ios-apps` / `just ios-apps verify`)
 [group('Mobile')]
 ios-apps cmd="status":
-    @nix shell nixpkgs#ideviceinstaller -c mobile/ios/apps.sh {{cmd}}
+    @nix shell nixpkgs#ideviceinstaller nixpkgs#bun -c mobile/ios/apps.ts {{cmd}}
 
 # Export iCloud-synced Shortcuts into the repo, or compile .cherri sources into signed shortcuts
 [group('Mobile')]
@@ -1575,4 +1575,4 @@ mail-profiles mode="mac" port="8000":
 # Self-check both platforms' scripts with stubbed adb / ideviceinstaller (no device needed)
 [group('Mobile')]
 mobile-test:
-    @nix shell nixpkgs#bun -c mobile/android/test.sh && mobile/ios/test.sh
+    @nix shell nixpkgs#bun -c sh -c 'mobile/android/test.sh && mobile/ios/test.sh'

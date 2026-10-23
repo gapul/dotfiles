@@ -12,7 +12,7 @@ Two Minecraft servers run on the mac mini instead of paying for Realms. They are
 | solo | 25566 | Fabric, tracking latest | Single player. Same build, own whitelist, sleeps after an hour. |
 
 The pinned version lives in `nix/pkgs/fabric-server.nix` and is moved by
-`scripts/update-custom-packages.sh`, so it is deliberately not repeated here.
+`scripts/update-custom-packages.ts`, so it is deliberately not repeated here.
 
 Both run Fabric with server-side mods only (Fabric API plus the Lithium / FerriteCore / Krypton /
 Moonrise performance set), so a plain launcher joins either one. Fabric replaced Paper on

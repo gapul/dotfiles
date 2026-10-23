@@ -39,7 +39,7 @@ jobs:
       - name: self-check (stubbed device)
         run: |
           nix shell nixpkgs#bun -c mobile/android/test.sh
-          mobile/ios/test.sh
+          nix shell nixpkgs#bun -c mobile/ios/test.sh
 
       # 配布元への照会。gh の rate limit を避けるためトークンを渡す
       # (未認証だと 60 回/時で、宣言が増えると落ちる)。
@@ -49,7 +49,7 @@ jobs:
         run: nix shell nixpkgs#fdroidcl nixpkgs#bun -c mobile/android/apps.ts verify
 
       - name: ios — declarations resolve upstream
-        run: mobile/ios/apps.sh verify
+        run: nix shell nixpkgs#bun -c mobile/ios/apps.ts verify
 
       # ESP チップに載る YAML の構文検証。実機も鍵も要らない (雛形の secrets を使う)。
       # DNS / tailnet / NextDNS の差分は資格情報が要るので CI では見ない。

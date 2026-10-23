@@ -1,4 +1,4 @@
-# 端末に入れるアプリの宣言。apps.sh が USB 接続した実機と突き合わせる。
+# 端末に入れるアプリの宣言。apps.ts が USB 接続した実機と突き合わせる。
 # 書式: <bundleId>	<source>	<名前>	<設定の同期経路>   (タブ区切り)
 #
 # source は「どの経路で入れるか」。3 つを使い分けている:
@@ -11,7 +11,7 @@
 #
 # **bundleId は配布元の値で書く**。AltStore は再署名のときに team id を差し込むので
 # 実機では `net.gapul.blink.S3H296G6Q5` や `com.S3H296G6Q5.com.rileytestut.AltStore`
-# になるが、apps.sh が実機側を正規化して突き合わせる。App Store 版の
+# になるが、apps.ts が実機側を正規化して突き合わせる。App Store 版の
 # `com.keepassium.ios` とは別物なので、自ビルドは `net.gapul.*` の方。
 #
 # インストールは自動化できない (App Store も PAL も署名済み ipa を要求する)。
