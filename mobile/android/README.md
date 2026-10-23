@@ -125,6 +125,41 @@ already match the current value are skipped, so running it repeatedly gives the 
 - `os-debloat.txt` — this is `pm uninstall -k --user 0`, so the system partition is untouched
   and `adb shell cmd package install-existing <pkg>` brings anything back.
 
+## Xiaomi Pad 5 (crDroid, KernelSU, microG)
+
+### Charge limit
+
+The tablet lives on the charger, so `ksu-charge-limit/` is a KernelSU module that stops charging
+the battery at 80% and resumes at 75%. It writes `battery_charging_enabled`, which keeps the
+device running on USB power; `input_suspend` would cut that too. `status` keeps reading
+`Charging` while it is off, so judge it by `capacity` staying put.
+
+```sh
+(cd ksu-charge-limit && zip -qr /tmp/charge_limit.zip .)
+adb push /tmp/charge_limit.zip /data/local/tmp/
+adb shell su -c '/data/adb/ksud module install /data/local/tmp/charge_limit.zip'   # then reboot
+```
+
+The KernelSU manager has to match the KernelSU built into the kernel: crDroid 12.12 carries
+KernelSU-Next v3.3.0 (UAPI 2), and the v3.4 manager ships a `ksud` that refuses it with
+`UAPI version mismatch`. Update the manager only when crDroid updates the kernel side.
+
+### microG
+
+Its settings sit behind a content provider that root can write, so they need no tapping:
+
+```sh
+s() { adb shell su -c "content update --uri content://com.google.android.gms.microg.settings/$1 --bind $2"; }
+s check-in checkin_enable_service:b:true          # device registration, needed for push
+s gcm gcm_enable_mcs_service:b:true               # Cloud Messaging
+s gcm gcm_confirm_new_apps:b:true                 # ask before each app registers
+s location location_online_source:s:beacondb      # the tablet has no GPS
+s location location_wifi_mls:b:true
+s location location_cell_mls:b:true
+```
+
+Read them back with `content query` on the same URIs.
+
 ## The launcher, Kvaesitso
 
 Home screen layout and widget placement are not declared. Kvaesitso's backup is a binary with no
