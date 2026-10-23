@@ -570,9 +570,48 @@ in
       MulticastDNS = "false";
     };
   };
-  # Names on the tailnet's MagicDNS (100.100.100.100) are not resolvable with this; everything
-  # here addresses tailnet hosts by IP or by *.gapul.net already.
   services.tailscale.extraSetFlags = [ "--accept-dns=false" ];
+  # MagicDNS names are still needed: SyncClipboard (home/ios-integration.nix) and the other
+  # `tailscale serve` endpoints on macmini are https://macmini.tail079f44.ts.net:<port>, and the
+  # certificate is for that name, so an IP will not do. Route only the tailnet suffix to
+  # Tailscale's resolver on tailscale0, in plain DNS (100.100.100.100 has no DoT; the query never
+  # leaves tailscaled) and with default-route off so nothing else goes there. These are runtime
+  # link settings that tailscaled recreating tailscale0 or resolved restarting (resolved-prefer-home
+  # below) both drop, hence PartOf on both.
+  systemd.services.tailscale-magicdns-route = {
+    description = "Route the tailnet's MagicDNS suffix to 100.100.100.100 on tailscale0";
+    wantedBy = [
+      "tailscaled.service"
+      "systemd-resolved.service"
+    ];
+    after = [
+      "tailscaled.service"
+      "systemd-resolved.service"
+    ];
+    partOf = [
+      "tailscaled.service"
+      "systemd-resolved.service"
+    ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+    };
+    path = [
+      pkgs.systemd
+      pkgs.iproute2
+      pkgs.coreutils
+    ];
+    script = ''
+      for _ in $(seq 30); do
+        ip link show tailscale0 >/dev/null 2>&1 && break
+        sleep 1
+      done
+      resolvectl dns tailscale0 100.100.100.100
+      resolvectl domain tailscale0 '~tail079f44.ts.net'
+      resolvectl dnsovertls tailscale0 no
+      resolvectl default-route tailscale0 false
+    '';
+  };
   # Once resolved has moved to a public server it stays there for as long as that one answers,
   # past the tailnet coming back. Restart it when a home blocky is reachable again, so the
   # blocklists apply again within a few minutes.
