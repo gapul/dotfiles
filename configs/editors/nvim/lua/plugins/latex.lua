@@ -9,7 +9,9 @@ return {
       -- コンパイラ: latexmk を使用（~/.latexmkrc を尊重）
       vim.g.vimtex_compiler_method = "latexmk"
       vim.g.vimtex_compiler_latexmk = {
-        out_dir = "",
+        -- 中間ファイルと PDF を .tex の隣の .build/ にまとめ，作業ディレクトリを散らかさない
+        out_dir = ".build",
+        aux_dir = ".build",
         callback = 1,
         continuous = 0, -- 単発コンパイル（下の autocmd で開いた時・保存時に実行）
         executable = "latexmk",
