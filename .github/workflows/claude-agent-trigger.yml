@@ -44,7 +44,7 @@ concurrency:
 # Only people with write access can start it. This is a public repository, and claude-agent
 # runs with --dangerously-skip-permissions as the mini's login user, so a stranger's issue,
 # comment or fork pull request (through its failure log) would be a prompt that executes.
-# run-autofix.sh checks the same thing again, because the poller does not come through here.
+# run-autofix.ts checks the same thing again, because the poller does not come through here.
 jobs:
   issue:
     if: >-
