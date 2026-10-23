@@ -33,7 +33,7 @@ let
       macminiDarwin.home-manager.users.${user.username}.home.packages;
 
   # Whether Claude Code's settings.remote.json matches the main Mac's settings.json is checked by
-  # scripts/check-claude-settings-drift.py. The main Mac's copy is a symlink into ai-agent-state, which
+  # scripts/check-claude-settings-drift.ts. The main Mac's copy is a symlink into ai-agent-state, which
   # breaks once the flake is copied to the store (unreadable in pure eval, both in CI and locally), so it
   # can't be checked inside nix.
 in

@@ -1,24 +1,27 @@
-#!/usr/bin/env python3
-"""Generate keyball39 keymap.c from the Remap-extracted keymap-export.json.
+#!/usr/bin/env bun
+// Generate keyball39 keymap.c from the Remap-extracted keymap-export.json.
+//
+// Every keycode -> QMK symbol mapping below was pulled from Remap's own
+// authoritative keycode database (keycodeInfo.name / kinds / modifiers), so the
+// decode is exact rather than guessed. Keyball custom codes (QK_KB_n) are mapped
+// to the keyball firmware's own #defined names via lib/keyball keycodes.md.
+//
+// Ported from gen_keymap.py; keymap.c comes out byte-identical apart from the generator's name.
+import { readFileSync, writeFileSync, writeSync } from "node:fs";
+import { join } from "node:path";
 
-Every keycode -> QMK symbol mapping below was pulled from Remap's own
-authoritative keycode database (keycodeInfo.name / kinds / modifiers), so the
-decode is exact rather than guessed. Keyball custom codes (QK_KB_n) are mapped
-to the keyball firmware's own #defined names via lib/keyball keycodes.md.
-"""
+const HERE = import.meta.dir;
+const data = JSON.parse(readFileSync(join(HERE, "keymap-export.json"), "utf8")) as {
+  layerCount: number;
+  layers: Record<string, Record<string, number>>;
+};
 
-import json
-import os
-
-HERE = os.path.dirname(os.path.abspath(__file__))
-with open(os.path.join(HERE, "keymap-export.json")) as f:
-    data = json.load(f)
-
-# code (int) -> final QMK keymap symbol string
-CODE2SYM = {
+// code (int) -> final QMK keymap symbol string
+const CODE2SYM = new Map<number, string>(
+  Object.entries({
     0: "XXXXXXX",
     1: "_______",
-    # basic letters / numbers / symbols / edits / F-keys / arrows
+    // basic letters / numbers / symbols / edits / F-keys / arrows
     5: "KC_B",
     6: "KC_C",
     8: "KC_E",
@@ -84,7 +87,7 @@ CODE2SYM = {
     227: "KC_LGUI",
     230: "KC_RALT",
     231: "KC_RGUI",
-    # shifted basic (LSFT-modified)
+    // shifted basic (LSFT-modified)
     542: "S(KC_1)",
     543: "S(KC_2)",
     544: "S(KC_3)",
@@ -107,7 +110,7 @@ CODE2SYM = {
     568: "S(KC_SLSH)",
     572: "S(KC_F3)",
     574: "S(KC_F5)",
-    # mod-tap (home row mods etc.)
+    // mod-tap (home row mods etc.)
     8470: "LCTL_T(KC_S)",
     8481: "LCTL_T(KC_4)",
     8708: "LSFT_T(KC_A)",
@@ -120,14 +123,14 @@ CODE2SYM = {
     13326: "RALT_T(KC_K)",
     14349: "RGUI_T(KC_J)",
     15627: "MT(MOD_RCTL | MOD_RALT | MOD_RGUI, KC_H)",
-    # layer-tap
+    // layer-tap
     16682: "LT(1,KC_BSPC)",
     16684: "LT(1,KC_SPC)",
     16936: "LT(2,KC_ENT)",
     16937: "LT(2,KC_ESC)",
     17164: "LT(3,KC_I)",
     17195: "LT(3,KC_TAB)",
-    # RGB underglow (RGBLIGHT) -- names used by this keyball QMK tree
+    // RGB underglow (RGBLIGHT) -- names used by this keyball QMK tree
     30752: "RGB_TOG",
     30753: "RGB_MOD",
     30754: "RGB_RMOD",
@@ -147,7 +150,7 @@ CODE2SYM = {
     30770: "RGB_M_G",
     30771: "RGB_M_T",
     30772: "RGB_M_TW",
-    # firmware / keyball custom
+    // firmware / keyball custom
     31744: "QK_BOOT",
     32256: "KBC_RST",
     32257: "KBC_SAVE",
@@ -160,40 +163,40 @@ CODE2SYM = {
     32266: "AML_TO",
     32267: "AML_I50",
     32268: "AML_D50",
+  }).map(([code, sym]) => [Number(code), sym]),
+);
+
+// LAYOUT_universal (= LAYOUT_no_ball) argument order, expressed as matrix "row,col".
+const ORDER = [
+  ["0,0", "0,1", "0,2", "0,3", "0,4", "4,4", "4,3", "4,2", "4,1", "4,0"],
+  ["1,0", "1,1", "1,2", "1,3", "1,4", "5,4", "5,3", "5,2", "5,1", "5,0"],
+  ["2,0", "2,1", "2,2", "2,3", "2,4", "6,4", "6,3", "6,2", "6,1", "6,0"],
+  ["3,0", "3,1", "3,2", "3,3", "3,4", "3,5", "7,5", "7,4", "7,3", "7,2", "7,1", "7,0"],
+];
+
+function sym(layer: number, pos: string): string {
+  const code = data.layers[String(layer)][pos];
+  const name = CODE2SYM.get(code);
+  if (name === undefined) {
+    writeSync(2, `UNKNOWN CODE ${code} at layer ${layer} pos ${pos}\n`);
+    process.exit(1);
+  }
+  return name;
 }
 
-# LAYOUT_universal (= LAYOUT_no_ball) argument order, expressed as matrix "row,col".
-ORDER = [
-    ["0,0", "0,1", "0,2", "0,3", "0,4", "4,4", "4,3", "4,2", "4,1", "4,0"],
-    ["1,0", "1,1", "1,2", "1,3", "1,4", "5,4", "5,3", "5,2", "5,1", "5,0"],
-    ["2,0", "2,1", "2,2", "2,3", "2,4", "6,4", "6,3", "6,2", "6,1", "6,0"],
-    ["3,0", "3,1", "3,2", "3,3", "3,4", "3,5", "7,5", "7,4", "7,3", "7,2", "7,1", "7,0"],
-]
+const fmtRow = (cells: string[]): string => cells.map((c) => c.padStart(14)).join(", ");
 
+const layersOut: string[] = [];
+for (let L = 0; L < data.layerCount; L++) {
+  const rows = ORDER.map((r) => "    " + fmtRow(r.map((p) => sym(L, p))));
+  layersOut.push(`  [${L}] = LAYOUT_universal(\n` + rows.join(" ,\n") + "\n  )");
+}
 
-def sym(layer, pos):
-    code = data["layers"][str(layer)][pos]
-    if code not in CODE2SYM:
-        raise SystemExit(f"UNKNOWN CODE {code} at layer {layer} pos {pos}")
-    return CODE2SYM[code]
+const body = layersOut.join(",\n\n");
 
-
-def fmt_row(cells):
-    return ", ".join(f"{c:>14}" for c in cells)
-
-
-layers_out = []
-for L in range(data["layerCount"]):
-    rows = []
-    for r in ORDER:
-        rows.append("    " + fmt_row([sym(L, p) for p in r]))
-    layers_out.append(f"  [{L}] = LAYOUT_universal(\n" + " ,\n".join(rows) + "\n  )")
-
-body = ",\n\n".join(layers_out)
-
-out = f"""// SPDX-License-Identifier: GPL-2.0-or-later
+const out = `// SPDX-License-Identifier: GPL-2.0-or-later
 // Keyball39 keymap for gapul -- migrated from Remap/VIA to code.
-// Auto-generated by gen_keymap.py from keymap-export.json (extracted from the
+// Auto-generated by gen_keymap.ts from keymap-export.json (extracted from the
 // live keyball via Remap). VIA stays enabled so Remap can still tweak keymap
 // and lighting on top of this base.
 
@@ -201,28 +204,27 @@ out = f"""// SPDX-License-Identifier: GPL-2.0-or-later
 #include "quantum.h"
 
 // clang-format off
-const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {{
-{body}
-}};
+const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
+${body}
+};
 // clang-format on
 
-layer_state_t layer_state_set_user(layer_state_t state) {{
+layer_state_t layer_state_set_user(layer_state_t state) {
     // Auto enable scroll mode when the highest layer is 3 (same as stock via keymap)
     keyball_set_scroll_mode(get_highest_layer(state) == 3);
     return state;
-}}
+}
 
 #ifdef OLED_ENABLE
 #    include "lib/oledkit/oledkit.h"
-void oledkit_render_info_user(void) {{
+void oledkit_render_info_user(void) {
     keyball_oled_render_keyinfo();
     keyball_oled_render_ballinfo();
     keyball_oled_render_layerinfo();
-}}
+}
 #endif
-"""
+`;
 
-with open(os.path.join(HERE, "keymap.c"), "w") as f:
-    f.write(out)
-print("wrote keymap.c")
-print(out)
+writeFileSync(join(HERE, "keymap.c"), out);
+writeSync(1, "wrote keymap.c\n");
+writeSync(1, `${out}\n`);

@@ -96,11 +96,11 @@ check "電池最適化の除外数" \
   "$(grep -c $'^battery\t' os-apps.tsv || true)" \
   "$(grep -c '電池最適化から除外' <<<"$out_os" || true)"
 
-# ── launcher-theme.py: Kvaesitso の形式を満たすか ────────────────────────
-if ./launcher-theme.py --check >/dev/null 2>&1; then
-  echo "ok: launcher-theme.py の形式"
+# ── launcher-theme.ts: Kvaesitso の形式を満たすか ────────────────────────
+if ./launcher-theme.ts --check >/dev/null 2>&1; then
+  echo "ok: launcher-theme.ts の形式"
 else
-  echo "FAIL: launcher-theme.py が Kvaesitso の形式を満たさない" >&2
+  echo "FAIL: launcher-theme.ts が Kvaesitso の形式を満たさない" >&2
   fail=1
 fi
 

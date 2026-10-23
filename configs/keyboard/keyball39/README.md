@@ -2,7 +2,7 @@
 
 The Keyball39 configuration, moved out of Remap and VIA and into a QMK keymap kept in code.
 `keymap-export.json` is the configuration as it was on the keyboard, read out live through
-Remap, and `keymap.c` is that converted mechanically by `gen_keymap.py`. VIA stays enabled, so
+Remap, and `keymap.c` is that converted mechanically by `gen_keymap.ts`. VIA stays enabled, so
 this code is the base but the keymap and lighting can still be tweaked through Remap and VIA.
 
 ## The files
@@ -10,7 +10,7 @@ this code is the base but the keymap and lighting can still be tweaked through R
 - `keymap.c` — the generated result, and fine to edit by hand however you like.
 - `keymap-export.json` — the source data and a backup: every layer's keycodes plus the lighting
   settings, read off the keyboard.
-- `gen_keymap.py` — regenerates `keymap.c` from `keymap-export.json`.
+- `gen_keymap.ts` — regenerates `keymap.c` from `keymap-export.json`.
 - `config.h` and `rules.mk` — equivalent to the stock keyball39 `via` keymap, with VIA_ENABLE,
   RGBLIGHT and OLED.
 
@@ -62,7 +62,7 @@ qmk compile -kb keyball/keyball39 -km gapul
 ```
 
 After editing the keymap, only step 5 needs repeating. To rebuild from
-`keymap-export.json` instead, run `python3 gen_keymap.py` in this directory.
+`keymap-export.json` instead, run `bun gen_keymap.ts` in this directory.
 
 There is also Remap's Firmware Workbench, which builds in the cloud: it compiles the source in
 the browser, gives you a hex, and can flash it, with no local toolchain at all.

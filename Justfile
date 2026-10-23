@@ -1147,14 +1147,14 @@ ssh host:
 
 # A hand-written command list in the README drifts from the Justfile, so treat `just --list` as the single source and
 # regenerate the <!-- BEGIN/END <name> --> blocks in README / CHEATSHEET from config (SSOT).
-# Targets: the just recipe list, the pre-commit hook table, the shell alias table (see scripts/gen-docs.py).
+# Targets: the just recipe list, the pre-commit hook table, the shell alias table (see scripts/gen-docs.ts).
 # Run this after changing a recipe/hook/alias. CI drift detection is handled by check-generated.sh.
 [group('Setup')]
 docs:
     #!/usr/bin/env bash
     set -euo pipefail
     cd "{{justfile_directory()}}"
-    python3 scripts/gen-docs.py
+    nix shell nixpkgs#bun -c bun scripts/gen-docs.ts
 
 # One-way snapshot of Obsidian config into public dotfiles (tracking-only, vault->dotfiles)
 # - Copy only whitelisted safe json. The vault side is authoritative (this is a read-only mirror).
@@ -1548,7 +1548,7 @@ android-launcher-theme:
     #!/usr/bin/env bash
     set -euo pipefail
     out="$(mktemp -d)/kvaesitso-theme.json"
-    mobile/android/launcher-theme.py >"$out"
+    nix shell nixpkgs#bun -c mobile/android/launcher-theme.ts >"$out"
     nix shell nixpkgs#android-tools -c adb push "$out" /sdcard/Download/
     echo "端末で Kvaesitso → 設定 → 外観 → テーマ → インポート から選ぶ"
 
