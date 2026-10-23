@@ -18,7 +18,9 @@
 # To see what has arrived, ask the service instead:
 #   curl -s -H "Authorization: Bearer $PULS_TOKEN" http://127.0.0.1:8105/v1/stats
 { pkgs, ... }:
-
+let
+  bunRun = import ../lib/bun-run.nix { inherit pkgs; };
+in
 {
   systemd.services.puls-receiver = {
     description = "PulsHealth receiver (Apple Health → SQLite)";
@@ -30,7 +32,7 @@
       PULS_PORT = "8105";
     };
     serviceConfig = {
-      ExecStart = "${pkgs.bun}/bin/bun ${../../configs/homelab/puls-receiver/receiver.ts}";
+      ExecStart = "${bunRun.cmd} ${../../configs/homelab/puls-receiver/receiver.ts}";
       EnvironmentFile = "/var/lib/secrets/puls.env";
       DynamicUser = true;
       StateDirectory = "puls";

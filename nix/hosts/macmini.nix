@@ -9,6 +9,7 @@
   ...
 }:
 let
+  bunRun = import ../lib/bun-run.nix { inherit pkgs; };
   fastPkgs = import ../lib/unstable-pkgs.nix {
     inherit nixpkgsUnstable;
     inherit (pkgs.stdenv.hostPlatform) system;
@@ -752,7 +753,7 @@ in
   # What Dawarich actually talks to: photon itself only listens on loopback. The proxy asks for
   # Japanese and moves ward / chome / block into the fields Dawarich reads — see proxy.ts.
   launchd.daemons.photon-proxy = {
-    command = "${pkgs.bun}/bin/bun ${../../configs/macmini/photon/proxy.ts}";
+    command = "${bunRun.cmd} ${../../configs/macmini/photon/proxy.ts}";
     serviceConfig = {
       UserName = user.username;
       RunAtLoad = true;
@@ -769,7 +770,7 @@ in
   # below already covers it. Its two keys come from sops (see sops.secrets above); without them
   # only the apple_* / hotpepper tools fail.
   launchd.daemons.maps-mcp = {
-    command = "${pkgs.bun}/bin/bun ${../../configs/macmini/maps-mcp/server.ts}";
+    command = "${bunRun.cmd} ${../../configs/macmini/maps-mcp/server.ts}";
     serviceConfig = {
       UserName = user.username;
       EnvironmentVariables = {

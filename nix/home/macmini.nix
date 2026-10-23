@@ -6,6 +6,7 @@
   ...
 }:
 let
+  bunRun = import ../lib/bun-run.nix { inherit pkgs; };
   agentPkgs = nixpkgsUnstable.legacyPackages.${pkgs.stdenv.hostPlatform.system};
   dotfiles = "${config.home.homeDirectory}/.dotfiles";
   agentState =
@@ -389,8 +390,7 @@ in
   launchd.agents.t3-pair-page = {
     enable = true;
     config = {
-      ProgramArguments = [
-        "${pkgs.bun}/bin/bun"
+      ProgramArguments = bunRun.argv ++ [
         "${../../configs/macmini/t3-pair-page.ts}"
       ];
       EnvironmentVariables.T3_PAIR_QRENCODE = lib.getExe pkgs.qrencode;
