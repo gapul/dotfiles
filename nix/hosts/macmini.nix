@@ -750,9 +750,9 @@ in
   };
 
   # What Dawarich actually talks to: photon itself only listens on loopback. The proxy asks for
-  # Japanese and moves ward / chome / block into the fields Dawarich reads — see proxy.py.
+  # Japanese and moves ward / chome / block into the fields Dawarich reads — see proxy.ts.
   launchd.daemons.photon-proxy = {
-    command = "${pkgs.python3.interpreter} ${../../configs/macmini/photon/proxy.py}";
+    command = "${pkgs.bun}/bin/bun ${../../configs/macmini/photon/proxy.ts}";
     serviceConfig = {
       UserName = user.username;
       RunAtLoad = true;
@@ -765,11 +765,11 @@ in
 
   # Read-only maps MCP for every Claude on the tailnet (POST http://macmini:2324/mcp): geocoding
   # through photon-proxy above, Overture places, Apple Maps search/routes, Transitous transit,
-  # anonymous Google through SearXNG, weather. Same python as photon-proxy, so the firewall entry
+  # anonymous Google through SearXNG, weather. Same bun as photon-proxy, so the firewall entry
   # below already covers it. Its two keys come from sops (see sops.secrets above); without them
   # only the apple_* / hotpepper tools fail.
   launchd.daemons.maps-mcp = {
-    command = "${pkgs.python3.interpreter} ${../../configs/macmini/maps-mcp/server.py}";
+    command = "${pkgs.bun}/bin/bun ${../../configs/macmini/maps-mcp/server.ts}";
     serviceConfig = {
       UserName = user.username;
       EnvironmentVariables = {
@@ -959,10 +959,11 @@ in
     # Geyser は java そのものが UDP 19132 を持つ (lazymc を介さない)。宣言した JDK の java を許可する。
     /usr/libexec/ApplicationFirewall/socketfilterfw --add ${pkgs.temurin-bin-25}/bin/java >/dev/null 2>&1 || true
     /usr/libexec/ApplicationFirewall/socketfilterfw --unblockapp ${pkgs.temurin-bin-25}/bin/java >/dev/null 2>&1 || true
-    # photon-proxy (TCP 2323, called by Dawarich on the homeserver) and maps-mcp (TCP 2324) run the
-    # same python, so this one pair covers both. Re-registered whenever python's store path changes.
-    /usr/libexec/ApplicationFirewall/socketfilterfw --add ${pkgs.python3.interpreter} >/dev/null 2>&1 || true
-    /usr/libexec/ApplicationFirewall/socketfilterfw --unblockapp ${pkgs.python3.interpreter} >/dev/null 2>&1 || true
+    # photon-proxy (TCP 2323, called by Dawarich on the homeserver), maps-mcp (TCP 2324) and the
+    # t3-pair-page agent (TCP 3774, home/macmini.nix) run the same bun, so this one pair covers all
+    # three. Re-registered whenever bun's store path changes.
+    /usr/libexec/ApplicationFirewall/socketfilterfw --add ${pkgs.bun}/bin/bun >/dev/null 2>&1 || true
+    /usr/libexec/ApplicationFirewall/socketfilterfw --unblockapp ${pkgs.bun}/bin/bun >/dev/null 2>&1 || true
     # AivisSpeech is served to workstation clients over Tailscale.  Like lazymc,
     # every Nix update can give its executable a new store path, so keep the
     # incoming-connection permission tied to the declared package.

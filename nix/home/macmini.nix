@@ -181,9 +181,11 @@ in
 
     # aac-matrix-approve: `aac listen` runs this for each credential request (AAC_APPROVAL_COMMAND,
     # set above) and sends the credential only on the approver's ✅ in the ask approvals room.
-    (pkgs.writers.writePython3Bin "aac-matrix-approve" { flakeIgnore = [ "E501" ]; } (
-      builtins.readFile ../../configs/aac/aac-matrix-approve.py
-    ))
+    (import ../lib/bun-script.nix { inherit pkgs; } {
+      name = "aac-matrix-approve";
+      src = ../../configs/aac;
+      main = "aac-matrix-approve.ts";
+    })
     # The default for bare `claude` lives in claudeRemoteControlDefault in the let block. Putting it in
     # home.packages loses on PATH — on this machine ~/.local/bin (3rd) comes before
     # /etc/profiles/per-user/gapul/bin (7th), so the real ~/.local/bin/claude shadows the wrapper and it
@@ -382,14 +384,14 @@ in
   };
 
   # t3pair.gapul.net: mints a one-time pairing link and its QR on demand. The script only answers the
-  # homeserver's Caddy (Authelia in front). Runs the same python as photon-proxy, which
+  # homeserver's Caddy (Authelia in front). Runs the same bun as photon-proxy, which
   # hosts/macmini.nix already admits through the firewall.
   launchd.agents.t3-pair-page = {
     enable = true;
     config = {
       ProgramArguments = [
-        pkgs.python3.interpreter
-        "${../../configs/macmini/t3-pair-page.py}"
+        "${pkgs.bun}/bin/bun"
+        "${../../configs/macmini/t3-pair-page.ts}"
       ];
       EnvironmentVariables.T3_PAIR_QRENCODE = lib.getExe pkgs.qrencode;
       RunAtLoad = true;
