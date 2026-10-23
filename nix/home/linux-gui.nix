@@ -437,6 +437,13 @@ in
     # ─── Non-Steam game launchers ───
     # Prism Launcher and Lutris are home-manager modules (home/gaming.nix).
     heroic # Epic / GOG / Amazon — the libraries the homelab free-games claimer fills up
+    # One library window for all of them: Cartridges reads Steam, Heroic and Lutris on its own
+    # and needs no login. It only finds launchers installed the same way it is (nix here, not
+    # Flatpak). The emulators below are added to it by hand as commands.
+    cartridges
+    azahar # 3DS (dumps on homeserver /srv/games/3ds)
+    melonds # DS
+    mgba # GBA
   ];
 
 }
