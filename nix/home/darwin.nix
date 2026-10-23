@@ -537,15 +537,20 @@ in
     lib.hm.dag.entryBetween [ "setupLaunchAgents" ] [ "writeBoundary" ]
       ''
         src=${mechvibes-dx}/Applications/MechvibesDX.app
+        # The identity names a person, so it comes from sops (secrets-darwin.nix) rather than
+        # this public file. Missing on the very first activation, before sops-nix has decrypted.
+        identity=$(cat "${config.sops.secrets."codesign_identity".path}" 2>/dev/null || true)
         stamp="${config.xdg.stateHome}/mechvibes-dx-store-path"
-        if [ "$(cat "$stamp" 2>/dev/null)" != "$src" ] || ! /usr/bin/codesign -v "${mechvibesApp}" 2>/dev/null; then
+        if [ -z "$identity" ]; then
+          echo "mechvibes-dx: codesign identity not decrypted yet, skipping signing" >&2
+        elif [ "$(cat "$stamp" 2>/dev/null)" != "$src" ] || ! /usr/bin/codesign -v "${mechvibesApp}" 2>/dev/null; then
           $DRY_RUN_CMD /bin/mkdir -p "${config.xdg.stateHome}"
           $DRY_RUN_CMD /bin/rm -rf "${mechvibesApp}" "$stamp"
           $DRY_RUN_CMD /bin/cp -R "$src" "${mechvibesApp}"
           $DRY_RUN_CMD /bin/chmod -R u+w "${mechvibesApp}"
           # No --options runtime: the hardened runtime blocks the WebView's JIT.
           if $DRY_RUN_CMD /usr/bin/codesign --force \
-            --sign "Developer ID Application: gapul (S3H296G6Q5)" "${mechvibesApp}"; then
+            --sign "$identity" "${mechvibesApp}"; then
             $DRY_RUN_CMD echo "$src" > "$stamp"
           else
             echo "mechvibes-dx: codesign failed, Accessibility will need re-granting" >&2
