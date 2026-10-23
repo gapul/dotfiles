@@ -250,7 +250,7 @@ if (-not $SkipWin11Debloat) {
 
 # ─── 2. WinUtil ───
 # -Config を渡すと WinUtil は GUI を出さずに選択を適用して終了する (headless run)。
-# 知らない ID が 1 つでもあると何も適用せずに失敗するので、版を上げたら check-upstream.sh で確認。
+# 知らない ID が 1 つでもあると何も適用せずに失敗するので、版を上げたら check-upstream.ts で確認。
 if (-not $SkipWinUtil) {
     $configFile = Join-Path $PrivacyDir 'winutil-config.json'
     $pin = $Upstream.WinUtil

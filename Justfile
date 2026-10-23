@@ -1274,12 +1274,12 @@ win-privacy-verify:
 # Check the privacy declarations against the pinned upstream scripts (runs on macOS/Linux)
 [group('Windows')]
 win-privacy-check-upstream:
-    windows/privacy/check-upstream.sh
+    nix shell nixpkgs#bun -c windows/privacy/check-upstream.ts
 
 # Re-pin Win11Debloat and WinUtil to their latest releases, then run the check above
 [group('Windows')]
 win-privacy-update-upstream:
-    windows/privacy/update-upstream.sh
+    nix shell nixpkgs#bun -c windows/privacy/update-upstream.ts
 
 # Declaratively apply Scoop buckets + apps (for sideloading MS Store-only apps)
 # Pass `-DryRun` `-SkipBuckets` `-SkipApps` via `*flags`
