@@ -20,7 +20,6 @@ import json
 import re
 import sys
 import time
-import urllib.error
 import urllib.parse
 import urllib.request
 import wave
@@ -199,9 +198,9 @@ class Handler(BaseHTTPRequestHandler):
 
     protocol_version = "HTTP/1.1"
 
-    def log_message(self, fmt: str, *args: object) -> None:
+    def log_message(self, format: str, *args: object) -> None:
         # 既定は原稿を丸ごと URL で書くので長い。パスだけ残す。
-        sys.stderr.write(f"{urlparse(self.path).path} {fmt % args}\n"[:200])
+        sys.stderr.write(f"{urlparse(self.path).path} {format % args}\n"[:200])
 
     def _send(self, status: int, body: bytes, content_type: str) -> None:
         self.send_response(status)

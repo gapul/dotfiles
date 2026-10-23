@@ -1,4 +1,5 @@
 import os
+from typing import Any
 
 os.environ["HF_HUB_OFFLINE"] = "1"
 os.environ.setdefault("PYTORCH_ENABLE_MPS_FALLBACK", "1")
@@ -56,7 +57,7 @@ def embeddings_query(r: QEmbReq):
 
 class RerankReq(BaseModel):
     query: str
-    documents: list
+    documents: list[Any]  # bare `list` to pydantic: any element type
     top_n: int = 0
 
 

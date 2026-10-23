@@ -5,7 +5,7 @@ from pathlib import Path
 import soundfile as sf
 
 # Unused by name, but kept from the original: torch loaded before style_bert_vits2.
-import torch  # noqa: F401
+import torch  # noqa: F401  # pyright: ignore[reportUnusedImport]
 from style_bert_vits2.constants import Languages
 from style_bert_vits2.nlp import bert_models
 from style_bert_vits2.tts_model import TTSModel

@@ -19,12 +19,12 @@ ENV = dict(
 app = FastAPI(title="macmini AI panel")
 
 
-def run(cmd, timeout=1200):
+def run(cmd: list[str], timeout: int = 1200) -> tuple[str, str, int]:
     r = subprocess.run(cmd, env=ENV, capture_output=True, text=True, timeout=timeout)
     return r.stdout, r.stderr, r.returncode
 
 
-def save(up: UploadFile, d):
+def save(up: UploadFile, d: str) -> str:
     p = os.path.join(d, up.filename.replace("/", "_"))
     with open(p, "wb") as f:
         shutil.copyfileobj(up.file, f)
@@ -50,7 +50,7 @@ async def transcribe(
     p = save(file, d)
     tool = f"{BIN}/transcribe-diarize" if diarize == "yes" else f"{BIN}/transcribe"
     args = [tool, p, "ja", model] if diarize == "yes" else [tool, p, "ja", "txt", model]
-    out, err, rc = run(args)
+    out, err, _ = run(args)
     base = os.path.splitext(p)[0]
     res = ""
     for ext in (".diarized.txt", ".txt"):
@@ -100,7 +100,7 @@ async def vision(
         if mode == "ocr"
         else ([f"{BIN}/describe", p, prompt] if prompt else [f"{BIN}/describe", p])
     )
-    out, err, rc = run(args)
+    out, err, _ = run(args)
     shutil.rmtree(d, ignore_errors=True)
     return out.strip() or err
 

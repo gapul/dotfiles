@@ -16,7 +16,7 @@ AUTH = os.path.expanduser("~/.config/mopidy/browser.json")
 MPD = ("127.0.0.1", 6600)
 
 
-def mpd_currentsong():
+def mpd_currentsong() -> dict[str, str]:
     s = socket.create_connection(MPD, timeout=5)
     s.recv(4096)  # greeting
     s.sendall(b"currentsong\n")
@@ -28,7 +28,7 @@ def mpd_currentsong():
             break
         buf += chunk
     s.close()
-    info = {}
+    info: dict[str, str] = {}
     for line in buf.decode("utf-8", "replace").splitlines():
         if ": " in line:
             k, v = line.split(": ", 1)
@@ -36,11 +36,11 @@ def mpd_currentsong():
     return info
 
 
-def sanitize(name):
+def sanitize(name: str) -> str:
     return re.sub(r"[^\w\- ().]", "_", name)[:80]
 
 
-def lrc_headers(artist, title, album, dur):
+def lrc_headers(artist: str, title: str, album: str, dur: str) -> str:
     h = [f"[ar:{artist}]", f"[ti:{title}]"]
     if album:
         h.append(f"[al:{album}]")
@@ -50,7 +50,7 @@ def lrc_headers(artist, title, album, dur):
     return "\n".join(h) + "\n"
 
 
-def fetch_lrclib(artist, title, album, dur):
+def fetch_lrclib(artist: str, title: str, album: str, dur: str) -> str | None:
     q = urllib.parse.urlencode(
         {
             "artist_name": artist,
@@ -71,7 +71,7 @@ def fetch_lrclib(artist, title, album, dur):
         return None
 
 
-def fetch_ytmusic(file_uri):
+def fetch_ytmusic(file_uri: str) -> str | None:
     if not file_uri.startswith("ytmusic:track:"):
         return None
     vid = file_uri.split(":")[2]

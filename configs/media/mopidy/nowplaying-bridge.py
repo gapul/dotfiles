@@ -14,6 +14,8 @@ GLib のループを回していて、macOS が操作を配達するのに使う
 import logging
 import socket
 import sys
+from collections.abc import Callable
+from typing import Any
 
 import objc
 from AppKit import NSApplication, NSApplicationActivationPolicyAccessory
@@ -64,7 +66,7 @@ K_RATE = "MPNowPlayingInfoPropertyPlaybackRate"
 PS_PLAYING, PS_PAUSED, PS_STOPPED = 1, 2, 3
 
 
-def mpd(*commands):
+def mpd(*commands: str) -> dict[str, str] | None:
     """MPD にコマンドを送って応答を dict で返す。落ちていても例外は投げない。"""
     try:
         s = socket.create_connection(MPD, timeout=5)
@@ -80,7 +82,7 @@ def mpd(*commands):
         s.close()
     except Exception:
         return None
-    out = {}
+    out: dict[str, str] = {}
     for line in buf.decode("utf-8", "replace").splitlines():
         if ": " in line:
             key, value = line.split(": ", 1)
@@ -97,8 +99,8 @@ class Bridge:
     def setup_commands(self):
         cc = _RC.sharedCommandCenter()
 
-        def register(command, action, name):
-            def handler(event):
+        def register(command: Any, action: Callable[[], object], name: str) -> None:
+            def handler(event: object) -> int:
                 try:
                     action()
                     self.update()
