@@ -62,8 +62,3 @@ reportMissingModuleSource = "none"
 # and a crash there is the intended failure.
 reportOptionalMemberAccess = "none"
 reportOptionalOperand = "none"
-executionEnvironments = [
-  # The server carries token/db/lock as ad-hoc attributes the handler reads back via self.server.
-  { root = "configs/homelab/puls-receiver", reportAttributeAccessIssue = "none" },
-  { root = "." },
-]

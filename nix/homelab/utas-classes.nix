@@ -23,7 +23,7 @@
       NoNewPrivileges = true;
     };
     environment.RADICALE_URL = "http://127.0.0.1:5232/gapul/cal-classes/";
-    script = "${pkgs.python3}/bin/python3 ${../../configs/homelab/utas-classes/sync.py}";
+    script = "${pkgs.bun}/bin/bun ${../../configs/homelab/utas-classes/sync.ts}";
   };
 
   systemd.timers.utas-classes = {
