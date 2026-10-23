@@ -16,7 +16,7 @@
 #
 # Nostr key (NIP-05 is gapul.net/.well-known/nostr.json), rotated on 2026-10-22 to a longer vanity npub:
 #   npub1gapulnet42rluh85gpkqfhq465fzqzvtfa6y4sx6wvrx4wvph5rs960ve3
-# The previous key (npub1gapulzvd…p3w6c) is kept as nostr_gapulzvd_old_sk in secrets/vanity-split.yaml.
+# The previous key (npub1gapulzvd…p3w6c) was never used and was deleted on 2026-10-23.
 # The private key exists only in /var/lib/secrets/nostr.env and is used by the posting endpoint.
 _:
 
