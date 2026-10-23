@@ -20,6 +20,10 @@ windows/autohotkey/
 `bootstrap.ps1` symlinks `keymap.ahk` into
 `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\`, so it starts at login.
 
+AutoHotkey itself is not installed by bootstrap: it is in neither `winget/apps.json` nor
+`scoop/scoop.json`. Install AHK v2 by hand first, for example with
+`winget install --exact --id AutoHotkey.AutoHotkey`; until then the Startup link does nothing.
+
 To reload:
 
 ```powershell
@@ -78,18 +82,11 @@ app:
 EmacsExcludeProcesses := "i)^(WezTerm|wt|alacritty|Code|MyApp)\.exe$"
 ```
 
-## Excluding it from Bitdefender
+## If an antivirus blocks it
 
-AHK uses a low-level keyboard hook, `SetWindowsHookEx WH_KEYBOARD_LL`, so Bitdefender's Advanced
-Threat Defense sometimes treats it as a keylogger and blocks it: it starts, disappears a few
-seconds later, and never shows a tray icon.
-
-Under Bitdefender Security Center, Protection, Antivirus, Settings, Manage Exceptions, add both:
-
-```
-C:\Users\<user>\dotfiles\windows\autohotkey\
-C:\Program Files\AutoHotkey\
-```
-
-Advanced Threat Defense sometimes needs its own application exception as well, under Protection,
-Advanced Threat Defense, Settings, Manage Exceptions, for AutoHotkey64.exe.
+AHK uses a low-level keyboard hook, `SetWindowsHookEx WH_KEYBOARD_LL`, so third-party antivirus
+heuristics sometimes treat it as a keylogger and block it: it starts, disappears a few seconds
+later, and never shows a tray icon. No such product is declared here any more (Bitdefender was
+dropped from apps.json); if one is installed by hand, add exceptions for
+`C:\Users\<user>\dotfiles\windows\autohotkey\` and `C:\Program Files\AutoHotkey\`, and an
+application exception for AutoHotkey64.exe if it has a separate behavioural layer.

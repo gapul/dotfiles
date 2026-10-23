@@ -231,19 +231,13 @@ function Test-DotfilesSetup {
     else { Write-Host "  [warn] Scancode Map 未設定 — just win-keymap" -ForegroundColor Yellow }
 
     Write-Host '== セキュリティ (AV / Firewall) ==' -ForegroundColor Cyan
-    # Bitdefender (一次 AV)
-    $bdsvc = Get-Service BDAppSrv -ErrorAction SilentlyContinue
-    if ($bdsvc -and $bdsvc.Status -eq 'Running') {
-        Write-Host "  [ok]   Bitdefender (BDAppSrv) 稼働中" -ForegroundColor Green; $pass++
-    } else { Write-Host "  [warn] Bitdefender 未稼働 — winget install Bitdefender.Bitdefender" -ForegroundColor Yellow }
-
-    # Defender 状態 (Bitdefender が AV Provider 登録 → Passive 期待)
+    # Defender が一次 AV (Bitdefender は宣言から外した、ecfc8186)。Normal + リアルタイム保護を期待
     $mp = Get-MpComputerStatus -ErrorAction SilentlyContinue
     if ($mp) {
-        switch ($mp.AMRunningMode) {
-            'Passive' { Write-Host "  [ok]   Defender: Passive (Bitdefender に主導権)" -ForegroundColor Green; $pass++ }
-            'Normal'  { Write-Host "  [warn] Defender: Normal — Bitdefender が AV Provider 登録できていない" -ForegroundColor Yellow }
-            default   { Write-Host "  [warn] Defender: $($mp.AMRunningMode) — 期待は Passive (Bitdefender uninstall 時に自動復帰しない可能性)" -ForegroundColor Yellow }
+        if ($mp.AMRunningMode -eq 'Normal' -and $mp.RealTimeProtectionEnabled) {
+            Write-Host "  [ok]   Defender: Normal、リアルタイム保護 有効" -ForegroundColor Green; $pass++
+        } else {
+            Write-Host "  [warn] Defender: $($mp.AMRunningMode)、リアルタイム保護 $($mp.RealTimeProtectionEnabled) — 期待は Normal / True" -ForegroundColor Yellow
         }
     } else { Write-Host "  [warn] Get-MpComputerStatus 取得不可 (Defender モジュール無効)" -ForegroundColor Yellow }
 
@@ -296,7 +290,7 @@ if ($extraPath) {
 # ~/Developer/github.com/gapul/* がローカル参照で動くようにする。
 $env:GHQ_ROOT = Join-Path $env:USERPROFILE 'Developer'
 
-# === starship 設定パス (winget で入れる想定) ===
+# === starship 設定パス (starship は宣言していない。手で入れた場合に使う) ===
 # macOS/WSL と同じ prompt にするため共有 configs/shell/starship.toml を参照。
 # starship 未導入でも env だけは先に設定 (Test-DotfilesSetup の判定容易化)。
 $sharedStarship = Join-Path $env:USERPROFILE 'dotfiles\configs\shell\starship.toml'
@@ -314,15 +308,15 @@ if (Get-Command zoxide -ErrorAction SilentlyContinue) {
 # 秘密鍵パスを env で固定。sops は SOPS_AGE_KEY_FILE があれば --age オプション不要。
 $env:SOPS_AGE_KEY_FILE = Join-Path $env:USERPROFILE '.config\sops\age\keys.txt'
 
-# `Get-DotfilesSecret 'github.token'` で secrets.yaml から該当値を復号取得。
-# - dotfiles 配下の secrets/secrets.yaml をデフォルト参照、-File で上書き可
+# `Get-DotfilesSecret 'github.token'` で secrets/common.yaml から該当値を復号取得。
+# - dotfiles 配下の secrets/common.yaml をデフォルト参照、-File で上書き可 (ホスト別の *.yaml)
 # - sops / 秘密鍵 / ファイル不在は明示的にエラー (UI で何が足りないか分かるように)
 # - 復号結果は単純に文字列で返す (Set-Clipboard などへパイプ前提)
 function Get-DotfilesSecret {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory, Position = 0)][string]$Key,
-        [string]$File = (Join-Path $env:USERPROFILE 'dotfiles\secrets\secrets.yaml')
+        [string]$File = (Join-Path $env:USERPROFILE 'dotfiles\secrets\common.yaml')
     )
     if (-not (Get-Command sops -ErrorAction SilentlyContinue)) {
         throw 'sops が PATH に無い。winget install --id SecretsOPerationS.SOPS で導入'

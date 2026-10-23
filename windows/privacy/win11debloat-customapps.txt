@@ -42,3 +42,17 @@ Microsoft.Microsoft3DViewer
 
 # Mixed Reality Portal (使わない)
 Microsoft.MixedReality.Portal
+
+# Xbox / ゲーム関連の残り (ゲームは NixOS 側の Steam。Xbox アカウントでサインインするゲームは動かなくなる)
+Microsoft.XboxIdentityProvider
+Microsoft.XboxSpeechToTextOverlay
+Microsoft.Xbox.TCUI
+Microsoft.Edge.GameAssist
+
+# Phone Link の裏方 (本体の Microsoft.YourPhone は上で削除済、KDE Connect で代替)
+MicrosoftWindows.CrossDevice
+
+# 標準のメディア / 写真 / カメラ (消すと画像・動画の既定アプリが無くなる)
+Microsoft.ZuneMusic
+Microsoft.Windows.Photos
+Microsoft.WindowsCamera
