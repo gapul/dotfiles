@@ -10,9 +10,9 @@
 [
   # modrinth:P7dR8mSH fabric-api
   (fetchurl {
-    name = "fabric-api-0.164.0+26.3.jar";
-    url = "https://cdn.modrinth.com/data/P7dR8mSH/versions/LEklt8GT/fabric-api-0.164.0%2B26.3.jar";
-    hash = "sha512-LOewgm91gBpW6BUOtc7KRnzfi0tE4WC1pTgeVBJWfQJPRqFsZ58pxKk0ayaH+hdA+R7WAmoxsu0fPUtQNZaNaQ==";
+    name = "fabric-api-0.165.0+26.3.jar";
+    url = "https://cdn.modrinth.com/data/P7dR8mSH/versions/EQKgpeKu/fabric-api-0.165.0%2B26.3.jar";
+    hash = "sha512-CkuKFOhHtxVntVe0PZBsIWf6Jj7u7zdFSoIbooaZbj2hYW3C2WR3NtKKJQ1ez0AFQcroCDWbKaYjJKim8q1eMA==";
   })
   # modrinth:gvQqBUqZ lithium
   (fetchurl {
