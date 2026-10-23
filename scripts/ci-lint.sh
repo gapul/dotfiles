@@ -7,6 +7,7 @@
 # - shellcheck     : 全 .sh と拡張子なしの macmini コマンドを error 重大度で gate (warning/info は既存資産が多く除外)
 # - ruff           : 全 .py の lint + 整形チェック (設定は pyproject.toml)
 # - pyright        : 全 .py の型チェック (basic。third-party import は解決しない前提)
+# - tsc            : Bun で動かす .ts の型チェック (strict。設定は tsconfig.json、karabiner は別管理)
 # - stylua         : nvim 配下の lua 整形 (uosc/yazi 等 vendored は対象外)
 # - taplo/jq/yq    : toml/json/yaml の構文検証 (設定破損の即検知)
 # - actionlint     : GitHub Actions workflow の文法/式チェック
@@ -47,6 +48,11 @@ tracked '*.py' | xargs -0 ruff format --check --force-exclude
 # ファイル名で渡すと exclude が効かないので、対象選びは pyproject.toml の tool.pyright に任せる。
 echo "==> pyright (Python 型チェック)"
 pyright
+
+# typescript と @types/bun は package.json で固定。node_modules は .gitignore 済み。
+echo "==> tsc (TypeScript 型チェック)"
+bun install --frozen-lockfile --silent
+bunx tsc -p tsconfig.json
 
 echo "==> stylua --check (nvim lua 整形)"
 stylua --check configs/editors/nvim/
