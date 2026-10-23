@@ -24,7 +24,7 @@ if [[ -z "$text" ]]; then
 fi
 
 model="$HOME/.local/share/models/mlx/fish-s2-pro-8bit"
-[[ -d "$model" ]] || { echo "モデルが無い: $model (setup-scripts/dl_fish_s2.sh)"; exit 1; }
+[[ -d "$model" ]] || { echo "モデルが無い: $model (configs/macmini/models.txt を参照して取得)"; exit 1; }
 
 # 既定の 1024 トークンは約47秒ぶん。タグ込みで1文字あたり2トークン弱なので、
 # 長文でも途中で切れないよう文字数から積もる。
