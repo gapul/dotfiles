@@ -837,8 +837,9 @@ in
           };
           decoration = {
             rounding = 8;
+            # Off while window transparency is set aside (2026-10-23); nothing to blur.
             blur = {
-              enabled = true;
+              enabled = false;
               size = 6;
               passes = 2;
             };
