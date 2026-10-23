@@ -34,8 +34,8 @@ windows/
 ├── sharpkeys/                  # key remapping through the Scancode Map
 ├── autohotkey/                 # the AHK keymap, started from the Startup folder
 ├── locale/                     # language list, system locale, home location
-├── fonts/                      # user-scope install of configs/fonts/
-├── theme/                      # renders the palette into the zebar, GlazeWM and Terminal configs
+├── fonts/                      # user-scope install of HackGen NF
+├── theme/                      # renders the palette into the zebar, GlazeWM and WezTerm configs
 └── tasks/                      # GlazeWM autostart through Task Scheduler
 ```
 
@@ -57,14 +57,14 @@ It is idempotent, and `-DryRun` shows the plan without side effects.
 2. Installs `winget/apps.json` with `winget import`, then applies `scoop/scoop.json`
    (`-SkipScoop`).
 3. Symlinks `$PROFILE`, for both PowerShell 7 and 5.1.
-4. Symlinks tool configs from `configs/`: the SSH config, Zed, espanso, WezTerm, GlazeWM and
-   zebar.
+4. Symlinks tool configs: the SSH config from `ssh/`, then espanso, WezTerm, GlazeWM and zebar
+   from `configs/`.
 5. Restricts the ACL on the age and SSH keys to you alone with icacls, if they exist, and sets
    up the ssh-agent service (or, with `-UseBitwardenSSH`, disables it in favour of Bitwarden's).
 6. Sets the global git configuration.
 7. Applies `privacy/` (`-SkipPrivacy`); see `privacy/README.md`.
 8. Applies the keymap, SharpKeys and AutoHotkey (`-SkipKeymap`), renders the theme, and installs
-   the fonts (`-SkipFonts`).
+   HackGen NF (`-SkipFonts`).
 9. Applies the locale and language settings (`-SkipLocale`).
 
 Each step also has its own `just win-*` recipe for running it alone.

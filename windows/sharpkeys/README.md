@@ -67,16 +67,11 @@ be handled on the AHK side, as `+#F23::RControl`.
 SharpKeys and the Scancode Map only do one-to-one remapping of single keys. The Emacs
 shortcuts, such as Ctrl+A to Home, are implemented in `windows/autohotkey/keymap.ahk`.
 
-## Excluding it from Bitdefender
+## If an antivirus quarantines it
 
 Because `apply.ps1` writes
-`HKLM\SYSTEM\CurrentControlSet\Control\Keyboard Layout\Scancode Map` directly, Bitdefender's
-heuristics sometimes quarantine it. Add the directory under Bitdefender Security Center,
-Protection, Antivirus, Settings, Manage Exceptions:
-
-```
-C:\Users\<user>\dotfiles\windows\sharpkeys\
-```
-
-If it has already been quarantined, restore it from Bitdefender, Notifications, Quarantine, add
-the exception above, and run `just win-keymap` again.
+`HKLM\SYSTEM\CurrentControlSet\Control\Keyboard Layout\Scancode Map` directly, third-party
+antivirus heuristics sometimes quarantine it. No such product is declared here any more
+(Bitdefender was dropped from apps.json); if one is installed by hand and does this, restore the
+file from its quarantine, add an exception for `C:\Users\<user>\dotfiles\windows\sharpkeys\`, and
+run `just win-keymap` again.

@@ -1295,8 +1295,8 @@ win-scoop *flags:
 win-locale *flags:
     pwsh.exe -NoProfile -ExecutionPolicy Bypass -File windows/locale/apply.ps1 {{flags}}
 
-# User-scope install of .ttf / .otf from configs/fonts/ (HKCU registration, no admin required)
-# Pass `-DryRun` `-Force` (overwrite existing too) via `*flags`
+# User-scope install of HackGen NF, downloaded from its GitHub release (HKCU registration, no admin required)
+# Pass `-DryRun` or `-SkipHackGen` via `*flags`
 [group('Windows')]
 win-fonts *flags:
     pwsh.exe -NoProfile -ExecutionPolicy Bypass -File windows/fonts/apply.ps1 {{flags}}
