@@ -23,20 +23,32 @@ return {
       -- 全ファイルで LuaLaTeX を強制（latexmkrc 側と一致）
       vim.g.vimtex_compiler_latexmk_engines = { _ = "-lualatex" }
 
-      -- ビューア: Skim（順方向 SyncTeX。逆方向は Skim 側設定で nvim を呼ぶ）
-      vim.g.vimtex_view_method = "skim"
-      vim.g.vimtex_view_skim_sync = 1
-      -- 自動追従時にSkimへキーボードフォーカスを奪わせない
-      vim.g.vimtex_view_skim_activate = 0
-      vim.g.vimtex_view_skim_reading_bar = 1
+      local is_mac = vim.fn.has("mac") == 1
+
+      if is_mac then
+        -- ビューア: Skim（順方向 SyncTeX。逆方向は Skim 側設定で nvim を呼ぶ）
+        vim.g.vimtex_view_method = "skim"
+        vim.g.vimtex_view_skim_sync = 1
+        -- 自動追従時にSkimへキーボードフォーカスを奪わせない
+        vim.g.vimtex_view_skim_activate = 0
+        vim.g.vimtex_view_skim_reading_bar = 1
+      else
+        -- Linux: Skim は macOS 専用なので zathura を使う。
+        -- Hyprland（Wayland）では xdotool でウィンドウを探せないため simple 版にする。
+        vim.g.vimtex_view_method = "zathura_simple"
+      end
 
       -- カーソル停止から600ms後、Skimを現在行へSyncTeX追従させる。
       -- CursorMovedを直接同期するとAppleScriptを連打するためdebounceする。
+      -- zathura_simple は呼ぶたびに新しいウィンドウを開くので，自動追従は Skim のときだけにする。
       local skim_sync_group = vim.api.nvim_create_augroup("vimtex_skim_auto_sync", { clear = true })
       vim.api.nvim_create_autocmd({ "CursorMoved", "CursorMovedI" }, {
         group = skim_sync_group,
         pattern = "*.tex",
         callback = function(args)
+          if not is_mac then
+            return
+          end
           local generation = (vim.b[args.buf].vimtex_skim_sync_generation or 0) + 1
           vim.b[args.buf].vimtex_skim_sync_generation = generation
           vim.defer_fn(function()
