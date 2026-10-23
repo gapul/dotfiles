@@ -346,7 +346,7 @@ def prepare_unmanaged_downloads(inbox: Path) -> None:
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
         )
-        urls = re.findall(r'https?://[^"\\s)]+', result.stdout)
+        urls = re.findall(r'https?://[^"\s)]+', result.stdout)
         if not urls:
             continue
         source = urls[0].replace("\\U0026", "&")

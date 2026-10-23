@@ -45,7 +45,8 @@ def lrc_headers(artist, title, album, dur):
     if album:
         h.append(f"[al:{album}]")
     if dur:
-        h.append(f"[length:{int(dur) // 60:02d}:{int(dur) % 60:02d}]")
+        secs = int(float(dur))
+        h.append(f"[length:{secs // 60:02d}:{secs % 60:02d}]")
     return "\n".join(h) + "\n"
 
 
@@ -55,7 +56,7 @@ def fetch_lrclib(artist, title, album, dur):
             "artist_name": artist,
             "track_name": title,
             "album_name": album or "",
-            "duration": int(dur) if dur else "",
+            "duration": int(float(dur)) if dur else "",
         }
     )
     try:
@@ -92,6 +93,8 @@ def main():
     artist = info.get("Artist") or info.get("AlbumArtist") or ""
     title = info.get("Title") or ""
     album = info.get("Album") or ""
+    # MPD's duration is fractional seconds ("233.456"), Time whole seconds: int() alone rejects
+    # the former, hence int(float(dur)) where it is used.
     dur = info.get("duration") or info.get("Time") or ""
     file_uri = info.get("file") or ""
     if not (artist and title):
