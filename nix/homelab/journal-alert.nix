@@ -17,16 +17,11 @@
 
   systemd.services.journal-alert = {
     description = "journald の壊れの合図を ntfy に流す";
-    path = with pkgs; [
-      curl
-      gnugrep
-      systemd
-      coreutils
-      gawk
-    ];
+    # journalctl and systemctl only: matching runs inside the script and ntfy is reached with fetch.
+    path = [ pkgs.systemd ];
     serviceConfig = {
       Type = "oneshot";
-      ExecStart = "${pkgs.bash}/bin/bash ${../../configs/homelab/journal-alert.sh} -15min";
+      ExecStart = "${pkgs.bun}/bin/bun ${../../configs/homelab/journal-alert.ts} -15min";
       # Where "the content and time last alerted for this signal" is stored. Used for throttling
       # so a single unfixed issue doesn't keep alerting every 15 minutes (28 messages in 7 hours on 2026-09-13).
       StateDirectory = "journal-alert";
