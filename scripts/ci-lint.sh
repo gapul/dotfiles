@@ -8,6 +8,7 @@
 # - ruff           : 全 .py の lint + 整形チェック (設定は pyproject.toml)
 # - pyright        : 全 .py の型チェック (strict。third-party import は解決しない前提)
 # - tsc            : Bun で動かす .ts の型チェック (strict。設定は tsconfig.json、karabiner は別管理)
+# - bun test       : regression tests for the Bun scripts (*.test.ts; fake external commands, localhost only)
 # - stylua         : nvim 配下の lua 整形 (uosc/yazi 等 vendored は対象外)
 # - taplo/jq/yq    : toml/json/yaml の構文検証 (設定破損の即検知)
 # - actionlint     : GitHub Actions workflow の文法/式チェック
@@ -56,6 +57,16 @@ pyright
 echo "==> tsc (TypeScript 型チェック)"
 bun install --frozen-lockfile --silent
 bunx tsc -p tsconfig.json
+
+# Only tracked test files: a bare `bun test` would also walk symlinks that leave the checkout
+# (configs/cli/claude) and whatever untracked trees sit in a working copy. The leading ./ makes
+# bun treat each argument as a path rather than a name filter. karabiner is its own package.
+echo "==> bun test (Bun スクリプトの回帰テスト)"
+tests=()
+while IFS= read -r -d "" f; do tests+=("./$f"); done < <(tracked '*.test.ts' ':!configs/keyboard/karabiner')
+if [ "${#tests[@]}" -gt 0 ]; then
+  bun test "${tests[@]}"
+fi
 
 echo "==> stylua --check (nvim lua 整形)"
 stylua --check configs/editors/nvim/
