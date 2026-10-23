@@ -389,7 +389,7 @@ just upgrade              # update the whole system
 
 ## Windows: native pwsh plus WSL
 
-The full roadmap is in [windows-roadmap.md](./windows-roadmap.md). The everyday commands, next
+The everyday commands, next
 to their macOS equivalents:
 
 | macOS | Windows, native |
@@ -407,7 +407,7 @@ Functions that only exist in native pwsh, defined in profile.ps1:
 | Function | What it does |
 |---|---|
 | `Find-DotfilesToolOverlap` | Show tools installed through both scoop and winget |
-| `Get-DotfilesSecret <key>` | Decrypt a value out of secrets.yaml through SOPS |
+| `Get-DotfilesSecret <key>` | Decrypt a value out of secrets/common.yaml (the default; `-File` for a per-host file) through SOPS |
 | `Copy-DotfilesSecret <key>` | The same, into the clipboard |
 | `Add-SshKey [path]` | Register a key with the Windows ssh-agent, shared with WSL |
 | `wsl-here` | Enter WSL in the current directory |
