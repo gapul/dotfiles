@@ -12,6 +12,7 @@
 # titles — and the bot's cron pre-run script reads only that file. hermes reaches it because
 # macOS puts every uid >= 500 in staff and ~ is 750 (see the hsoudan note in hosts/macmini.nix).
 let
+  bunRun = import ../lib/bun-run.nix { inherit pkgs; };
   home = config.home.homeDirectory;
   out = "${home}/.local/state/soudan-feed/github.md";
   digest = pkgs.writeShellApplication {
@@ -23,7 +24,7 @@ let
     text = ''
       /bin/mkdir -p "$(dirname "${out}")"
       export PATH=${pkgs.gh}/bin:/usr/bin:/bin
-      exec ${pkgs.bun}/bin/bun ${../../configs/macmini/hermes/soudan-github-digest.ts} "${out}" 8
+      exec ${bunRun.cmd} ${../../configs/macmini/hermes/soudan-github-digest.ts} "${out}" 8
     '';
   };
   # The other direction: the finished draft goes into IS-CPU-6/slides. The org has deploy keys
@@ -33,7 +34,7 @@ let
     bashOptions = [ ];
     text = ''
       export PATH=${pkgs.gh}/bin:${pkgs.git}/bin:${pkgs.poppler-utils}/bin:/usr/bin:/bin
-      exec ${pkgs.bun}/bin/bun ${../../configs/macmini/hermes/soudan-slides-publish.ts} "$@"
+      exec ${bunRun.cmd} ${../../configs/macmini/hermes/soudan-slides-publish.ts} "$@"
     '';
   };
 in

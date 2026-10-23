@@ -6,6 +6,9 @@
 # The UTAS URL and the Radicale credentials are secret: /var/lib/secrets/utas-classes.env
 # (UTAS_ICS_URL, RADICALE_USER, RADICALE_PASSWORD), restored from homelab.yaml by secrets.nix.
 { pkgs, ... }:
+let
+  bunRun = import ../lib/bun-run.nix { inherit pkgs; };
+in
 {
   systemd.services.utas-classes = {
     description = "Mirror the UTAS class calendar into Radicale";
@@ -23,7 +26,7 @@
       NoNewPrivileges = true;
     };
     environment.RADICALE_URL = "http://127.0.0.1:5232/gapul/cal-classes/";
-    script = "${pkgs.bun}/bin/bun ${../../configs/homelab/utas-classes/sync.ts}";
+    script = "${bunRun.cmd} ${../../configs/homelab/utas-classes/sync.ts}";
   };
 
   systemd.timers.utas-classes = {
