@@ -12,8 +12,6 @@ extend-exclude = [
   # linted where they live, and absent in CI and in worktrees.
   "configs/cli/claude",
   "configs/cli/codex",
-  # One-shot macmini setup scripts kept as a historical record (also outside shellcheck).
-  "configs/macmini/setup-scripts",
 ]
 
 # Scripts that are not run by a nix-pinned interpreter. UP fixes for py313 would rewrite them into
@@ -53,7 +51,6 @@ exclude = [
   # Same as tool.ruff.extend-exclude above.
   "configs/cli/claude",
   "configs/cli/codex",
-  "configs/macmini/setup-scripts",
 ]
 # Third-party imports can't be resolved here: each script runs on its own interpreter (mopidy env,
 # macmini venvs, homelab withPackages, pyobjc on macOS) and the dev shell's python3 has none of

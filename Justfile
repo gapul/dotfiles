@@ -1523,11 +1523,6 @@ wsl-tarball flake="github:gapul/dotfiles?dir=nix":
 tailnet cmd="diff":
     @scripts/tailscale-policy.sh {{cmd}}
 
-# Fetch, diff, or apply the NextDNS profile. Needs NEXTDNS_API_KEY / NEXTDNS_PROFILE
-[group('Homelab')]
-nextdns cmd="diff":
-    @scripts/nextdns-profile.sh {{cmd}}
-
 # Validate the ESPHome device configs without hardware
 [group('Homelab')]
 esphome:
