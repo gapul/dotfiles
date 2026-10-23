@@ -69,7 +69,10 @@ a Marp draft, `.md` and `.pdf`, to #presentation for Tuesday's report. Its input
 - `soudan-weekly-collect.py`, the job's pre-run script, run on the host as hermes: the week's
   Discord messages (bot token), the HackMD minutes linked in #meeting, and the GitHub digest.
   Activation copies it into `$HERMES_HOME/scripts/`, the only place Hermes runs scripts from.
-- `soudan-github-digest.py`, run daily at 20:30 as gapul (`home/macmini-soudan-digest.nix`),
+  It stays Python while the rest of this directory's helpers are TypeScript: Hermes picks the
+  interpreter by extension (`.sh` runs under bash, anything else under its own Python) and
+  ignores the shebang.
+- `soudan-github-digest.ts`, run daily at 20:30 as gapul (`home/macmini-soudan-digest.nix`),
   because only gapul's gh login can read the org's private repos. The bot gets commit subjects
   and PR titles, never the token.
 
@@ -78,7 +81,7 @@ collector drops #cpu2, its threads and every message or minutes line that names 
 list), the prompt forbids it, and the publisher refuses to push a draft that still contains one
 of those words.
 
-`soudan-slides-publish.py`, as gapul at Monday 21:45 and again at 23:15 (`--final`, which
+`soudan-slides-publish.ts`, as gapul at Monday 21:45 and again at 23:15 (`--final`, which
 reports a missing draft on ntfy), copies the draft into the private repo IS-CPU-6/slides under
 `progress/<date>/`. The org has deploy keys disabled, so this is gapul's gh too. It reads the
 sandbox's files without following symlinks.

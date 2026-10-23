@@ -23,7 +23,7 @@ let
     text = ''
       /bin/mkdir -p "$(dirname "${out}")"
       export PATH=${pkgs.gh}/bin:/usr/bin:/bin
-      exec ${pkgs.python3}/bin/python3 ${../../configs/macmini/hermes/soudan-github-digest.py} "${out}" 8
+      exec ${pkgs.bun}/bin/bun ${../../configs/macmini/hermes/soudan-github-digest.ts} "${out}" 8
     '';
   };
   # The other direction: the finished draft goes into IS-CPU-6/slides. The org has deploy keys
@@ -33,7 +33,7 @@ let
     bashOptions = [ ];
     text = ''
       export PATH=${pkgs.gh}/bin:${pkgs.git}/bin:${pkgs.poppler-utils}/bin:/usr/bin:/bin
-      exec ${pkgs.python3}/bin/python3 ${../../configs/macmini/hermes/soudan-slides-publish.py} "$@"
+      exec ${pkgs.bun}/bin/bun ${../../configs/macmini/hermes/soudan-slides-publish.ts} "$@"
     '';
   };
 in
