@@ -407,7 +407,11 @@ in
   # this machine is permanent, so declare it. Reinstalling took over 30 seconds, which made setup-nix
   # longer than the actual build (56s of setup vs 18s of build, measured 2026-09-10).
   #
-  # nodejs: runtime for Playwright MCP (pnpm dlx) and claude-login-broker (inject-creds.js).
+  # nodejs: runtime for the mac-control MCP (a plain `node index.js` checkout) and dsh below.
+  # playwright-mcp: the Playwright MCP for Claude on this machine (`claude mcp` points at
+  # /run/current-system/sw/bin/playwright-mcp). It used to be `npx @playwright/mcp@latest`, which
+  # resolved and ran whatever npm served at every session start; unstable tracks npm closely
+  # (0.0.83 on both, 2026-10-23), so declaring it costs no freshness.
   # bitwarden-cli: after approval the broker pulls credentials via bw get. BW_SESSION is unlocked manually.
   # cloudflared: publishes the study agent's OpenAI-compatible API (127.0.0.1:8791) so the
   # dashboard on Cloudflare Pages can reach it. Only the tunnel egresses; nothing is exposed
@@ -421,6 +425,7 @@ in
     (pkgs.callPackage ../pkgs/syncclipboard.nix { })
     pkgs.cachix
     pkgs.nodejs_22
+    fastPkgs.playwright-mcp
     fastPkgs.bitwarden-cli
     pkgs.cloudflared
     pkgs.ffmpeg
@@ -443,11 +448,15 @@ in
     # dsh: DeepSeek Harness CLI (headless/tui/web profiles). Not in nixpkgs, and upstream ships
     # it as an npm package that moves weekly, so this resolves @latest through npx on each run
     # rather than pinning a version that would go stale. The desktop app is the workstation's.
+    # --before holds it to the same 14-day release age as pnpm (home/common.nix): npm resolves
+    # dsh and its whole ~90-package tree as of two weeks ago, so a hijacked publish has to
+    # survive that long before it runs here. Scripts stay on: node-pty and koffi build at install.
     (pkgs.writeShellApplication {
       name = "dsh";
       bashOptions = [ ];
       text = ''
-        exec ${pkgs.nodejs_22}/bin/npx -y @deepseek-ai/dsh@latest "$@"
+        before="$(/bin/date -u -v-14d +%Y-%m-%dT%H:%M:%SZ)"
+        exec ${pkgs.nodejs_22}/bin/npx -y --before="$before" @deepseek-ai/dsh@latest "$@"
       '';
     })
   ];
