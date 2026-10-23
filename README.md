@@ -119,7 +119,6 @@ Generated from `just --list`. Run `just docs` after changing a recipe.
     [Homelab]
     dns *flags                                        # Diff the repo's declarations against Cloudflare DNS: A records, tunnel CNAMEs, and mail (MX/SPF/DKIM)
     esphome                                           # Validate the ESPHome device configs without hardware
-    nextdns cmd="diff"                                # Fetch, diff, or apply the NextDNS profile. Needs NEXTDNS_API_KEY / NEXTDNS_PROFILE
     tailnet cmd="diff"                                # Fetch, diff, or apply the tailnet policy file (ACL / split DNS). Needs TS_API_KEY
     wsl-tarball flake="github:gapul/dotfiles?dir=nix" # Build the NixOS-WSL rootfs tarball on homeserver and bring it back (mac can't build it)
 
@@ -214,10 +213,10 @@ in `nix/flake.nix`; run `just docs` after changing one.
 | `deadnix` | `*.nix` | — | Finds unused code. Module arguments like `{ lib, ... }` are allowed. |
 | `gitleaks` | all staged | — | Secret detection |
 | `nixfmt` | `*.nix` | — | Formatting check. Fails on anything unformatted. |
-| `pyright` | `*.py` | `configs/cli/claude/.*`, `configs/cli/codex/.*`, `configs/macmini/setup-scripts/.*` | Python type check, basic mode (pyproject.toml) |
+| `pyright` | `*.py` | `configs/cli/claude/.*`, `configs/cli/codex/.*` | Python type check, basic mode (pyproject.toml) |
 | `ruff` | `*.py` | — | Python lint (pyproject.toml), applying safe autofixes |
 | `ruff-format` | `*.py` | — | Python formatting |
-| `shellcheck` | all staged | `configs/cli/codex/.*`, `configs/wm/sketchybar/.*`, `\.envrc$`, `\.zsh$`, `configs/macmini/setup-scripts/.*` | Shell lint, following .shellcheckrc |
+| `shellcheck` | all staged | `configs/cli/codex/.*`, `configs/wm/sketchybar/.*`, `\.envrc$`, `\.zsh$` | Shell lint, following .shellcheckrc |
 <!-- END hooks -->
 
 Notes:

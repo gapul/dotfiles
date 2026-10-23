@@ -576,8 +576,6 @@
               # The extensionless macmini AI commands (configs/macmini/bin, configs/macmini/client)
               # used to be zsh and were excluded here; they are bash now and linted like the rest
               # (the default `types = [ "shell" ]` picks them up by shebang).
-              # Archive of one-shot scripts from macmini setup (historical artifacts, not style-refactored)
-              "configs/macmini/setup-scripts/.*"
             ];
           };
           # Python: settings live in the root pyproject.toml, shared with scripts/ci-lint.sh.
@@ -603,7 +601,6 @@
             excludes = [
               "configs/cli/claude/.*"
               "configs/cli/codex/.*"
-              "configs/macmini/setup-scripts/.*"
             ];
           };
           gitleaks = {
