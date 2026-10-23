@@ -1,3 +1,5 @@
+# pyright: reportPrivateUsage=false
+# (white-box tests: they call and patch the broker's private helpers on purpose)
 """Smallest checks that fail if the parts that matter break.
 
     nix shell --impure --expr 'with import <nixpkgs> {}; python3.withPackages (ps: [ ps.mcp ps.websockets ])' \
@@ -7,6 +9,7 @@
 import asyncio
 import sys
 from pathlib import Path
+from typing import Any, TypedDict
 
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -323,7 +326,7 @@ def test_the_account_list_outlives_an_apple_event():
         async def communicate(self):
             return b"Google \xe2\x80\x94 b@x", b""
 
-    async def fake_exec(*args, **kwargs):
+    async def fake_exec(*args: Any, **kwargs: Any) -> FakeProc:
         captured["script"] = args[2]
         return FakeProc()
 
@@ -355,10 +358,10 @@ def test_the_caller_is_told_the_wait_is_deliberate():
     class FakeCtx:
         pings = 0
 
-        async def report_progress(self, **kwargs):
+        async def report_progress(self, **kwargs: Any) -> None:
             FakeCtx.pings += 1
 
-    async def slow_answer(_ctx, _request):
+    async def slow_answer(_ctx: object, _request: object) -> str:
         await asyncio.sleep(0.05)
         return "yes"
 
@@ -380,10 +383,19 @@ def _no_vault():
     """A vault that fails the test if anything reaches it."""
     from unittest.mock import patch
 
-    def touched(*_args, **_kwargs):
+    def touched(*_args: Any, **_kwargs: Any) -> None:
         raise AssertionError("the vault was reached")
 
     return patch.object(broker.VAULT, "candidates", side_effect=touched)
+
+
+class RunCase(TypedDict):
+    """The arguments of broker.run that the refusal test below varies."""
+
+    domain: str
+    env: dict[str, str]
+    command: list[str]
+    cwd: str
 
 
 def test_run_refuses_bad_requests_before_touching_the_vault():
@@ -391,24 +403,28 @@ def test_run_refuses_bad_requests_before_touching_the_vault():
     the vault is unlocked: a malformed request should cost nothing."""
     broker.CONFIG = broker.replace_allowlist(("github.com",))
     cases = [
-        dict(domain="evil.example", env={"T": "password"}, command=["true"], cwd="/"),
-        dict(domain="github.com", env={}, command=["true"], cwd="/"),
-        dict(domain="github.com", env={"BAD-NAME": "password"}, command=["true"], cwd="/"),
-        dict(domain="github.com", env={"BW_SESSION": "password"}, command=["true"], cwd="/"),
-        dict(domain="github.com", env={"T": "notes"}, command=["true"], cwd="/"),
-        dict(domain="github.com", env={"T": "password"}, command=[], cwd="/"),
-        dict(domain="github.com", env={"T": "password"}, command=["true"], cwd="relative"),
-        dict(domain="github.com", env={"T": "password"}, command=["true"], cwd="/does/not/exist"),
-        dict(domain="github.com", env={"PATH": "password"}, command=["true"], cwd="/"),
-        dict(
+        RunCase(domain="evil.example", env={"T": "password"}, command=["true"], cwd="/"),
+        RunCase(domain="github.com", env={}, command=["true"], cwd="/"),
+        RunCase(domain="github.com", env={"BAD-NAME": "password"}, command=["true"], cwd="/"),
+        RunCase(domain="github.com", env={"BW_SESSION": "password"}, command=["true"], cwd="/"),
+        RunCase(domain="github.com", env={"T": "notes"}, command=["true"], cwd="/"),
+        RunCase(domain="github.com", env={"T": "password"}, command=[], cwd="/"),
+        RunCase(domain="github.com", env={"T": "password"}, command=["true"], cwd="relative"),
+        RunCase(
+            domain="github.com", env={"T": "password"}, command=["true"], cwd="/does/not/exist"
+        ),
+        RunCase(domain="github.com", env={"PATH": "password"}, command=["true"], cwd="/"),
+        RunCase(
             domain="github.com",
             env={"DYLD_INSERT_LIBRARIES": "password"},
             command=["true"],
             cwd="/",
         ),
-        dict(domain="github.com", env={"T": "password"}, command=["tr\0ue"], cwd="/"),
-        dict(domain="github.com", env={"T": "password"}, command=["no-such-program-xyz"], cwd="/"),
-        dict(domain="github.com", env={"T": "password"}, command=["echo", "x" * 2000], cwd="/"),
+        RunCase(domain="github.com", env={"T": "password"}, command=["tr\0ue"], cwd="/"),
+        RunCase(
+            domain="github.com", env={"T": "password"}, command=["no-such-program-xyz"], cwd="/"
+        ),
+        RunCase(domain="github.com", env={"T": "password"}, command=["echo", "x" * 2000], cwd="/"),
     ]
     with _no_vault():
         for case in cases:
@@ -683,13 +699,13 @@ def test_scrub_catches_escaped_forms():
 def test_unlock_only_from_loopback():
     from unittest.mock import patch
 
-    async def call(client, body):
-        sent = []
+    async def call(client: str, body: bytes) -> int:
+        sent: list[dict[str, Any]] = []
 
         async def receive():
             return {"type": "http.request", "body": body, "more_body": False}
 
-        async def send(message):
+        async def send(message: dict[str, Any]) -> None:
             sent.append(message)
 
         async def app(*_):

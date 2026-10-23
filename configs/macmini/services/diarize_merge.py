@@ -1,6 +1,7 @@
 import json
 import os
 import sys
+from typing import Optional
 
 import torch
 from pyannote.audio import Pipeline
@@ -34,7 +35,7 @@ dia = getattr(out, "speaker_diarization", out)  # pyannote 4.x compat
 turns = [(t.start, t.end, spk) for t, _, spk in dia.itertracks(yield_label=True)]
 
 
-def speaker_of(a, b):
+def speaker_of(a: float, b: float) -> Optional[str]:
     best, bov = None, 0.0
     for ts, te, spk in turns:
         ov = max(0.0, min(b, te) - max(a, ts))
@@ -46,7 +47,7 @@ def speaker_of(a, b):
 order, label = [], {}
 
 
-def jp(spk):
+def jp(spk: Optional[str]) -> str:
     if spk is None:
         return "話者?"
     if spk not in label:

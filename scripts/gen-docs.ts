@@ -68,7 +68,7 @@ const HOOK_DESCRIPTIONS: Record<string, string> = {
   gitleaks: "Secret detection",
   ruff: "Python lint (pyproject.toml), applying safe autofixes",
   "ruff-format": "Python formatting",
-  pyright: "Python type check, basic mode (pyproject.toml)",
+  pyright: "Python type check, strict mode (pyproject.toml)",
 };
 
 function filesToTarget(files: string): string {

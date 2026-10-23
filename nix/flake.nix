@@ -594,7 +594,7 @@
             args = [ "--force-exclude" ];
           };
           pyright = {
-            enable = true; # type check, basic mode
+            enable = true; # type check, strict mode
             # Named files are checked even when pyproject.toml excludes them, so the excludes
             # are repeated here (same list as tool.pyright.exclude).
             excludes = [
@@ -829,7 +829,7 @@
                     systemPkgs.jq
                     systemPkgs.just
                     systemPkgs.ruff # Python lint + format check (config: ruff.toml)
-                    systemPkgs.pyright # Python type check, basic mode (config: pyrightconfig.json)
+                    systemPkgs.pyright # Python type check, strict mode (config: pyproject.toml)
                     systemPkgs.bun
                     systemPkgs.check-jsonschema
                     systemPkgs.actionlint
