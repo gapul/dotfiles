@@ -153,7 +153,6 @@ in
     themePackages = [ (pkgs.adi1090x-plymouth-themes.override { selected_themes = [ "rings" ]; }) ];
   };
   boot.consoleLogLevel = 3;
-  boot.initrd.verbose = false;
   # The newest stable kernel rather than nixpkgs' LTS default: Lunar Lake is recent hardware,
   # and nothing here builds an out-of-tree module (no ZFS) that would pin the version.
   boot.kernelPackages = pkgs.linuxPackages_latest;
@@ -441,8 +440,8 @@ in
   # For swap, avoid a plaintext partition and use zram (in-memory, on encrypted RAM).
   zramSwap.enable = true;
 
-  # systemd-based initrd (needed for TPM2 auto-unlock + a modern initrd). Works with lanzaboote.
-  boot.initrd.systemd.enable = true;
+  # The initrd is systemd-based (needed for TPM2 auto-unlock); nixpkgs has removed the scripted
+  # one, so there is no option left to set. Works with lanzaboote.
   # Unlock cryptroot with TPM2 + PIN. After enabling Secure Boot, enroll the key into
   #   sudo systemd-cryptenroll --tpm2-device=auto --tpm2-pcrs=7 --tpm2-with-pin=yes <LUKS partition>
   # for PCR 7 (Secure Boot state) (docs Appendix A). If not enrolled, it falls back to the
