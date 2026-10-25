@@ -1,0 +1,6 @@
+id=afwall-bootleak
+name=AFWall+ boot leak protection
+version=1
+versionCode=1
+author=gapul (script from ukanth/afwall res/raw/afwallstart)
+description=Drops all traffic at boot until AFWall+ has applied its rules and reset the policies.

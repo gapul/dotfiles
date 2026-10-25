@@ -137,6 +137,10 @@ let
       zip = zipDir "systemless-hosts" (root + "/modules/systemless-hosts");
     }
     {
+      id = "afwall-bootleak";
+      zip = zipDir "afwall-bootleak" (root + "/modules/afwall-bootleak");
+    }
+    {
       id = "rosepine-bootanimation";
       zip = bootanimation;
     }

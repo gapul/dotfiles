@@ -55,3 +55,11 @@ com.eddyizm.degoogled.tempus	github	eddyizm/tempus
 # 天気。ロック画面の天気は crDroid の OmniJaws が出すので、こちらは見る用
 # (Obtainium では APK を _standard で絞る)。
 org.breezyweather	github	breezy-weather/breezy-weather
+
+# ── 通信 ────────────────────────────────────────────────────────────
+# 自宅サーバー (Navidrome、Radicale) への経路。スマホと同じ tailnet。
+com.tailscale.ipn	fdroid	-
+# iptables のファイアウォール (root)。VPN の枠を使わないので Tailscale と両立する。DNS の
+# フィルタは無いので、AdAway (hosts) とプライベート DNS で補う。起動直後の漏れは root/ の
+# afwall-bootleak が塞ぐ。
+dev.ukanth.ufirewall	github	ukanth/afwall

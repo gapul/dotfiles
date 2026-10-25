@@ -184,6 +184,10 @@ Things learnt on nabu that the declaration encodes:
   missing. The module also sets `global hidden_api_policy 1`, declared in nabu's
   `os-settings.conf`.
 
+- **AFWall+'s boot leak protection is a module** (`afwall-bootleak`, the app's own `afwallstart`
+  script): it drops all traffic at boot until AFWall+ applies its rules and resets the policies.
+  AFWall+ needs root and an enabled firewall before the module is active, or the device boots
+  with no network; disabling the module and rebooting undoes it.
 - **The boot animation is generated** from the active palette in `configs/theme/palettes.json`
   (`rosepine-bootanimation`, three dots in rose, iris and foam on the base colour). Its frames
   must be 8-bit PNGs: bootanimation silently draws nothing from the 16-bit ones ImageMagick
