@@ -112,8 +112,6 @@ let
           -d "$1: $2" \
           "$(cat "${ntfyUrlFile}")" >/dev/null 2>&1 || true
       fi'';
-    # Read only YYYY-MM-DDTHH:MM:SS, regardless of whether fractional seconds are present.
-    parseSnapshotTime = ''$(date -j -f "%Y-%m-%dT%H:%M:%S" "''${latest:0:19}" +%s 2>/dev/null || echo 0)'';
   };
 in
 {
