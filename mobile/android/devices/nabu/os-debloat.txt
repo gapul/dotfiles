@@ -1,0 +1,2 @@
+# Xiaomi Pad 5 (nabu) で外すプリインアプリ。書式は ../../os-debloat.txt と同じ。
+# crDroid はプリインがほぼ無いので空。

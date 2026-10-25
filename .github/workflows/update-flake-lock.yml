@@ -101,7 +101,7 @@ jobs:
           labels: |
             dependencies
             automated
-          body: 'Automated version and hash refresh for slk, Unity CLI, and the Fabric server jar and mods.'
+          body: 'Automated version and hash refresh for slk, Unity CLI, the Fabric server jar and mods, Geyser, and the KernelSU modules of rooted Android devices.'
       - name: Enable auto-merge
         if: steps.pkgs.outputs.pull-request-number != ''
         env:

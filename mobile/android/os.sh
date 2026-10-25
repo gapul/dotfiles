@@ -7,6 +7,9 @@
 #
 # 現在値と一致している行は飛ばすので、何度流しても同じ結果になる。
 #
+# 端末ごとの宣言が devices/<codename>/ にあれば、ro.product.device を見てそちらの 3 ファイルを
+# 読む (無ければ最上位、つまりスマホの宣言)。ANDROID_PROFILE=<codename> で上書きできる。
+#
 # 端末の中から走らせると、ケーブルを繋がずに settings を当てられる (Termux に
 # WRITE_SECURE_SETTINGS を一度 adb で与えておく。README 参照)。ただし debloat と
 # アプリ個別は署名レベルの権限が要るので adb 経由でしか通らない。そこは黙って
@@ -35,10 +38,11 @@ else
   fi
   # 端末が 1 台だけ繋がっていることを確かめる。複数あると adb が
   # どれに流すか決められず、意図しない端末を書き換えかねない。
-  devices=$(adb devices | awk 'NR>1 && $2=="device" {print $1}')
+  # ANDROID_SERIAL で選んであれば adb がそれに流すので、台数は問わない。
+  devices=${ANDROID_SERIAL:-$(adb devices | awk 'NR>1 && $2=="device" {print $1}')}
   count=$(printf '%s' "$devices" | grep -c . || true)
   if [[ $count -ne 1 ]]; then
-    echo "USB デバッグ有効な端末をちょうど 1 台だけ繋いでください (今: ${count} 台)" >&2
+    echo "USB デバッグ有効な端末をちょうど 1 台だけ繋ぐか、ANDROID_SERIAL で選んでください (今: ${count} 台)" >&2
     exit 1
   fi
   # ループ内から呼ばれるので stdin を切る。切らないと adb shell が
@@ -46,6 +50,19 @@ else
   dev() { adb shell "$@" </dev/null; }
   echo "対象: $devices"
 fi
+
+# 端末の中でも getprop は使える。テストの偽 adb や母艦の端末内モードでは何も返らず、
+# 最上位の宣言になる。
+codename=${ANDROID_PROFILE:-$(dev getprop ro.product.device 2>/dev/null | tr -d '\r' || true)}
+decl=.
+if [[ -n $codename && $codename != default && -d devices/$codename ]]; then
+  decl=devices/$codename
+elif [[ -n ${ANDROID_PROFILE:-} && $ANDROID_PROFILE != default ]]; then
+  # 打ち間違いで最上位 (スマホ) の debloat や設定を別の端末に当てないよう、明示した名前は確かめる。
+  echo "ANDROID_PROFILE=${ANDROID_PROFILE} の宣言が無い (devices/${ANDROID_PROFILE})" >&2
+  exit 1
+fi
+echo "宣言: $decl"
 
 changed=0
 
@@ -59,7 +76,7 @@ while read -r ns key val; do
   echo "  $ns.$key: $current -> $val"
   changed=$((changed + 1))
   $dry_run || dev settings put "$ns" "$key" "$val"
-done <os-settings.conf
+done <"$decl/os-settings.conf"
 
 echo "━━━ debloat ━━━"
 if $on_device; then
@@ -77,7 +94,7 @@ else
     echo "  uninstall: $pkg"
     changed=$((changed + 1))
     $dry_run || adb shell pm uninstall -k --user 0 "$pkg" </dev/null || echo "    失敗 (システム必須の可能性): $pkg"
-  done <os-debloat.txt
+  done <"$decl/os-debloat.txt"
 fi
 
 echo "━━━ アプリ個別 ━━━"
@@ -120,7 +137,7 @@ else
       ;;
     esac
     changed=$((changed + 1))
-  done <os-apps.tsv
+  done <"$decl/os-apps.tsv"
 fi
 
 if [[ $changed -eq 0 ]]; then

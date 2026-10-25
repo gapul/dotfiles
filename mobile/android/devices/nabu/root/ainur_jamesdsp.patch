@@ -1,0 +1,23 @@
+--- a/common/install.sh
++++ b/common/install.sh
+@@ -49,7 +49,9 @@
+   ui_print "   Is this a device with 64bit only audio libs (like huawei)?"
+   ui_print "   If unsure, select 'No'"
+   ui_print "   Vol Up = Yes, Vol Down = No"
+-  if chooseport; then
++  # Answered ahead of time: installing through ksud from adb has nobody at the volume keys.
++  # nabu's android.hardware.audio.service, which loads the effects, is 32-bit.
++  if false; then
+     QARCH="huawei"
+     cp_ch $MODPATH/common/files/$QARCH/libjamesdsp.so $MODPATH/system/lib64/soundfx/libjamesdsp.so
+     ui_print "   64 bit libs selected"
+@@ -67,7 +69,8 @@
+ ui_print "- UI installation -"
+ ui_print "   Which UI you want to install?"
+ ui_print "   Vol Up = Original, Vol Down = ThePBone"
+-if chooseport; then
++# Answered ahead of time: the ThePBone slot carries the root-full JamesDSP build.
++if false; then
+   ui_print "   Original version was selected"
+   mv -f $MODPATH/common/files/JamesDSPManager.apk $MODPATH/JamesDSPManager.apk
+   touch $MODPATH/.apkorig

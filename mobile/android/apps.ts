@@ -12,9 +12,13 @@
 // Play は Aurora Store が担う。ここが持つのは「何を入れるか」の宣言と差分の判定で、
 // 入れる仕事は経路ごとの道具に任せている。
 //
+// 端末ごとの宣言が devices/<codename>/apps.tsv にあれば、繋いだ端末の ro.product.device で
+// そちらを読む (無ければ最上位の apps.tsv、つまりスマホの宣言)。ANDROID_PROFILE=<codename>
+// で上書きでき、ANDROID_PROFILE=default で最上位を選ぶ。verify だけは全端末の宣言を見る。
+//
 // 外の道具 (adb / fdroidcl / gh / curl) はコマンドとして呼ぶ。test.sh が偽物を PATH に
 // 置いて実機もネットワークも無しに回すので、fetch に置き換えるとそこが素通りになる。
-import { mkdirSync, readFileSync, writeSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeSync } from "node:fs";
 import { homedir } from "node:os";
 
 process.chdir(import.meta.dir);
@@ -104,9 +108,43 @@ interface Declared {
   ref: string;
 }
 
+// どの宣言を読むか。端末が繋がっていなければ (CI や aurora / obtainium の出力だけのとき)
+// 最上位の宣言になる。
+let profileFile: string | undefined;
+function appsFile(): string {
+  if (profileFile !== undefined) return profileFile;
+  let codename = process.env.ANDROID_PROFILE ?? "";
+  if (codename === "") {
+    codename = run(["adb", "shell", "getprop", "ro.product.device"], {
+      stdin: "ignore",
+      stdout: "pipe",
+      stderr: "ignore",
+    }).stdout.trim();
+  }
+  const file = `devices/${codename}/apps.tsv`;
+  if (codename !== "" && codename !== "default" && existsSync(file)) {
+    profileFile = file;
+  } else if (process.env.ANDROID_PROFILE && codename !== "default") {
+    err(`ANDROID_PROFILE=${codename} の宣言が無い (${file})`);
+    process.exit(2);
+  } else {
+    profileFile = "apps.tsv";
+  }
+  return profileFile;
+}
+
+// 全端末の宣言ファイル。verify はこれを全部見る。
+const allAppsFiles = (): string[] => [
+  "apps.tsv",
+  ...readdirSync("devices", { withFileTypes: true })
+    .filter((d) => d.isDirectory() && existsSync(`devices/${d.name}/apps.tsv`))
+    .map((d) => `devices/${d.name}/apps.tsv`)
+    .sort(),
+];
+
 // packageId / source / ref の 3 列。コメントと空行を落とす。
-function declared(): Declared[] {
-  return readFileSync("apps.tsv", "utf8")
+function declared(file: string = appsFile()): Declared[] {
+  return readFileSync(file, "utf8")
     .split("\n")
     .filter((l) => !/^\s*(#|$)/.test(l))
     .map((line) => {
@@ -143,6 +181,7 @@ function installedOnDevice(): string[] {
 
 function cmdStatus(): number {
   const installed = installedOnDevice();
+  out(`宣言: ${appsFile()}`);
   const installedSet = new Set(installed);
   let missing = 0;
   let extra = 0;
@@ -203,7 +242,17 @@ const playUrl = (pkg: string): string => `https://play.google.com/store/apps/det
 function cmdVerify(): number {
   let unknown = 0;
   let reposUpdated = false;
-  for (const { pkg, source, ref } of declared()) {
+  // 同じアプリを複数の端末が宣言していても、配布元への照会は 1 回にする。
+  const seen = new Set<string>();
+  const rows = allAppsFiles()
+    .flatMap((file) => declared(file))
+    .filter(({ pkg, source, ref }) => {
+      const key = `${pkg}\t${source}\t${ref}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  for (const { pkg, source, ref } of rows) {
     let ok = true;
     switch (source) {
       case "fdroid":

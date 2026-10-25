@@ -1,0 +1,27 @@
+# Xiaomi Pad 5 (nabu) に入れるアプリの宣言。書式は ../../apps.tsv と同じ。
+# 端末は crDroid + KernelSU Next + microG。F-Droid クライアントは入れず、
+# 配布元が F-Droid のものも母艦から apps.ts install で入れる。
+#
+# root の層 (KernelSU モジュールと ksud feature) は root/ にあり、root.sh が扱う。
+# JamesDSP のアプリ (james.dsp) はモジュールが同梱して入れるので、ここには書かない
+# (status では EXTRA に出る)。
+
+# ── ストアと root の管理 ────────────────────────────────────────────
+dev.imranr.obtainium	izzy	-
+com.aurora.store	fdroid	-
+# 端末のカーネルに組み込まれた KernelSU Next の管理アプリ。ksud もこれが入れ替える
+com.rifsxd.ksunext	github	KernelSU-Next/KernelSU-Next
+moe.shizuku.privileged.api	github	RikkaApps/Shizuku
+com.rosan.installer.x.revived	github	wxxsfxyzm/InstallerX-Revived
+
+# ── Google の代わり (microG) ───────────────────────────────────────
+com.google.android.gms	github	microg/GmsCore
+com.android.vending	github	microg/GmsCore
+
+# ── root で使う道具 ─────────────────────────────────────────────────
+com.machiav3lli.backup	github	NeoApplications/Neo-Backup
+org.adaway	github	AdAway/AdAway
+io.github.muntashirakon.AppManager	github	MuntashirAkon/AppManager
+me.zhanghai.android.files	github	zhanghai/MaterialFiles
+# nix-on-droid が載る Termux (nix/hosts/droid.nix)。普通の Termux (com.termux) ではない
+com.termux.nix	fdroid	-
