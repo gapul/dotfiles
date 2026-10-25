@@ -203,9 +203,10 @@ result leans towards iris rather than reproducing rose-pine; Kvaesitso's theme
 Arcticons' dayNight variant on both, applied from the launcher's own settings. On nabu the system
 font, crDroid's bundled San Francisco, sits in the same setting: SystemUI's theme controller owns
 the font overlays and, on every boot, disables any that the setting does not name, so enabling
-one with `cmd overlay` does not survive a reboot. The status bar and quick settings are left to
-crDroid's own settings rather than Iconify, which would overlap them and build a ROM-specific
-module on the device that the declaration cannot hold.
+one with `cmd overlay` does not survive a reboot. Iconify handles the status bar and quick
+settings beyond what crDroid's own settings offer; the two overlap, so a given item is changed
+in one of them only. Iconify builds a ROM-specific module on the device, so that module stays
+outside `root/` and shows up as EXTRA.
 
 ## The launcher, Kvaesitso
 
