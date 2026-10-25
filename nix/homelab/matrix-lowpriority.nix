@@ -10,6 +10,9 @@
 # hand stays removed. A room muted by hand in another network is left alone because only
 # discordgo guild portals (m.bridge has a network) and slackgo portals are tagged.
 #
+# The designing plus nine Slack workspaces (biz, com, fam) are the exception: their
+# channels get m.favourite instead, so they sit with the favourites rather than sink.
+#
 # Runs as @gapul through the double puppeting appservice token (matrix-doublepuppet.nix).
 { pkgs, ... }:
 let
@@ -44,16 +47,20 @@ let
         enc=$(jq -rn --arg r "$room" '$r | @uri')
         # A room we have left still has its push rule; skip it rather than fail the run.
         if state=$(api "$hs/rooms/$enc/state?$q"); then
-          target=$(jq -r '
+          # Slack team IDs of designing plus nine biz, com and fam.
+          tag=$(jq -r '
             [.[] | select(.type == "m.bridge") | .content
               | select(.protocol.id == "slackgo"
-                       or (.protocol.id == "discordgo" and .network != null))]
-            | length > 0' <<<"$state")
-          if [ "$target" = true ]; then
-            has=$(api "$hs/user/$me/rooms/$enc/tags?$q" | jq '.tags | has("m.lowpriority")')
+                       or (.protocol.id == "discordgo" and .network != null))
+              | if .protocol.id == "slackgo"
+                   and (.network.id | IN("T0FT5M4C9", "THVJKNB33", "T40FYCFFB"))
+                then "m.favourite" else "m.lowpriority" end]
+            | first // empty' <<<"$state")
+          if [ -n "$tag" ]; then
+            has=$(api "$hs/user/$me/rooms/$enc/tags?$q" | jq --arg t "$tag" '.tags | has($t)')
             if [ "$has" != true ]; then
               api -X PUT -H 'Content-Type: application/json' -d '{}' \
-                "$hs/user/$me/rooms/$enc/tags/m.lowpriority?$q" >/dev/null
+                "$hs/user/$me/rooms/$enc/tags/$tag?$q" >/dev/null
               tagged=$((tagged + 1))
             fi
           fi
