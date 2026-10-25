@@ -141,6 +141,9 @@ out=$(ANDROID_PROFILE=nabu ./os.sh --dry-run </dev/null)
 check "nabu の設定差分" \
   "$(grep -cvE '^[[:space:]]*(#|$)' "$nabu/os-settings.conf")" \
   "$(grep -cE '^  (global|system|secure)\.' <<<"$out" || true)"
+check "nabu の標準アプリ差分" \
+  "$(grep -c $'^role\t' "$nabu/os-apps.tsv" || true)" \
+  "$(grep -c '^  標準アプリ ' <<<"$out" || true)"
 # JSON の値は端末のシェルで剥がれないよう、単一引用符で包んで渡っているか。
 adb_log="$stub/adb.log"
 ADB_LOG=$adb_log ANDROID_PROFILE=nabu ./os.sh </dev/null >/dev/null

@@ -3,7 +3,7 @@
 //
 //   ./apps.ts status      # 宣言 vs 実機の差分。MISSING があれば exit 1 (既定)
 //   ./apps.ts install     # F-Droid / IzzyOnDroid のものを fdroidcl 経由で adb install
-//   ./apps.ts verify      # 宣言した packageId が配布元に実在するか (4 経路すべて)
+//   ./apps.ts verify      # 宣言した packageId が配布元に実在するか (全経路)
 //   ./apps.ts obtainium   # 端末の Obtainium に貼る URL リストを出す
 //   ./apps.ts adopt       # 端末に在って宣言に無いものを、経路を判定して tsv 行で出す
 //   ./apps.ts aurora      # play 行を Aurora Store の Favourites 用 JSON にする
@@ -231,7 +231,7 @@ function cmdInstall(): number {
   // 残りは端末側の道具の仕事。母艦から入れる手段が無いので報告だけする。
   for (const { pkg, source } of declared()) {
     if (installed.has(pkg)) continue;
-    if (source === "github") out(`端末の Obtainium で入れる: ${pkg}`);
+    if (source === "github" || source === "gitlab") out(`端末の Obtainium で入れる: ${pkg}`);
     else if (source === "play") out(`端末の Aurora Store で入れる: ${pkg}`);
   }
   return 0;
@@ -283,6 +283,16 @@ function cmdVerify(): number {
         ok = assets.includes(".apk");
         break;
       }
+      case "gitlab": {
+        // GitHub と同じく、最新リリースに APK が付いているかまで見る。GitLab は添付を
+        // assets.links に持ち、外部のダウンロード先 (IronFox なら releases.ironfoxoss.org) を指す。
+        const latest = run(
+          ["curl", "-fsSL", `https://gitlab.com/api/v4/projects/${encodeURIComponent(ref)}/releases/permalink/latest`],
+          { stdout: "pipe" },
+        ).stdout;
+        ok = latest.includes(".apk");
+        break;
+      }
       case "play":
         ok = run(["curl", "-fsS", "-o", "/dev/null", playUrl(pkg)]).code === 0;
         break;
@@ -318,6 +328,9 @@ function cmdObtainium(): number {
         break;
       case "github":
         out(`https://github.com/${ref}`);
+        break;
+      case "gitlab":
+        out(`https://gitlab.com/${ref}`);
         break;
       case "play":
         err(`Aurora Store の担当なので Obtainium では追えない: ${pkg}`);

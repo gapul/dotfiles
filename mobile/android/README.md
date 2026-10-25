@@ -47,12 +47,13 @@ Three stores are in use, so the `source` column in `apps.tsv` says which one han
 | `fdroid` | F-Droid | Yes, `apps.ts install` | Obtainium or F-Droid |
 | `izzy` | IzzyOnDroid | Yes, the same | Obtainium |
 | `github` | GitHub releases | No | Obtainium |
+| `gitlab` | GitLab releases | No | Obtainium |
 | `play` | The Play Store | No | Aurora Store, importing Favourites and installing them in one go |
 
 ```sh
 ./apps.ts status      # declaration against the device. Exits 1 if anything is MISSING
 ./apps.ts install     # installs the F-Droid ones through fdroidcl, and reports the route for the rest
-./apps.ts verify      # checks all four routes still carry what is declared
+./apps.ts verify      # checks every route still carries what is declared
 ./apps.ts obtainium   # prints the URL list to paste into Obtainium on the device
 ./apps.ts adopt       # prints tsv lines for what is on the device but not declared, working out the route
 ./apps.ts aurora      # turns the play rows into JSON that Aurora Store can import as Favourites

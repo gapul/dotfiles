@@ -31,3 +31,10 @@ com.termux.nix	fdroid	-
 # (Obtainium では APK を dayNight で絞る)。適用はランチャーの設定から。
 com.donnnno.arcticons.daynight	github	Arcticons-Team/Arcticons
 # システム UI は crDroid 自身の設定で足りるので、Iconify は入れない。
+
+# ── ブラウザ ────────────────────────────────────────────────────────
+# 標準ブラウザ (os-apps.tsv の role)。Vanadium ベースで Chrome 拡張 (MV2 の uBlock Origin) が入る。
+# 旧名 Helium Browser for Android で、パッケージ名はその名残。
+io.github.jqssun.helium	github	jqssun/android-titanium-browser
+# Firefox 系の予備。Mull の後継で arkenfox の設定入り。
+org.ironfoxoss.ironfox	gitlab	ironfox-oss/IronFox

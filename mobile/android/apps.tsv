@@ -6,10 +6,11 @@
 #   izzy    IzzyOnDroid (GitHub リリースを追う非公式 F-Droid リポジトリ)。同上
 #   github  どちらのリポジトリにも無く、GitHub Releases が配布元。ref は owner/repo。
 #           端末では Obtainium が追う (母艦からの一括インストールは不可)
+#   gitlab  github と同じで、配布元が GitLab Releases。ref は group/project
 #   play    GitHub にも F-Droid にも無く、Play ストアだけ。端末では Aurora Store。
 #           Obtainium が追えない唯一の経路なので、GitHub 配布があるなら github に寄せる
 #
-# apps.ts verify は 4 経路すべて実在確認できる (F-Droid 索引 / GitHub API /
+# apps.ts verify は全経路を実在確認できる (F-Droid 索引 / GitHub API / GitLab API /
 # Play のストアページ)。綴り間違いはそこで落ちる。
 
 # ── ストアそのもの (これだけは最初に手で入れる) ──────────────────────

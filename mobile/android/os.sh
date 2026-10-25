@@ -119,6 +119,13 @@ else
       echo "  既定ランチャー: $current_home -> ${pkg}/${arg}"
       $dry_run || adb shell cmd package set-home-activity "${pkg}/${arg}" </dev/null
       ;;
+    role)
+      # 標準アプリ (ブラウザ、SMS など)。ブラウザのような排他ロールは、足すと前の持ち主が外れる。
+      holders=$(adb shell cmd role get-role-holders --user 0 "$arg" </dev/null | tr -d '\r')
+      grep -qx "$pkg" <<<"$holders" && continue
+      echo "  標準アプリ ${arg##*.}: ${holders:-なし} -> $pkg"
+      $dry_run || adb shell cmd role add-role-holder --user 0 "$arg" "$pkg" </dev/null
+      ;;
     battery)
       grep -q ",$pkg," <<<",${idle_whitelist//$'\n'/,}," && continue
       echo "  電池最適化から除外: $pkg"

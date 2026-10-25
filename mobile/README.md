@@ -31,7 +31,7 @@ nix/hosts/droid.nix                 # the CLI environment inside Termux, through
 | Layer | Android | iOS |
 |---|---|---|
 | Apps: declared in | `configs/android/obtainium.json` (Obtainium); `android/apps.tsv` is older and partial | `ios/apps.tsv` |
-| Apps: confirming they exist | `apps.ts verify` (`apps.tsv` rows only), against the F-Droid index, the GitHub API and Play | `apps.ts verify`, against the iTunes API and the AltStore source |
+| Apps: confirming they exist | `apps.ts verify` (`apps.tsv` rows only), against the F-Droid index, the GitHub and GitLab APIs and Play | `apps.ts verify`, against the iTunes API and the AltStore source |
 | Apps: comparing with the device | `apps.ts status`, over adb | `apps.ts status`, through ideviceinstaller over USB |
 | Apps: installing | `droid obtainium push` hands Obtainium its list; `apps.ts install` covers F-Droid rows only | Not possible; it needs a signed ipa |
 | OS settings, global | `os-settings.conf` through `os.sh` | Not possible, beyond what a `.mobileconfig` can reach |

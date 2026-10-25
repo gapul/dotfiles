@@ -3,3 +3,7 @@
 
 # LineageOS の AudioFX。root/ の JamesDSP と音響効果が二重にかかるので外す。
 org.lineageos.audiofx
+
+# LineageOS のブラウザ Jelly。標準ブラウザは Titanium にしたので外す。
+# WebView (com.android.webview) はアプリが中で使うものなので消さない。
+org.lineageos.jelly
