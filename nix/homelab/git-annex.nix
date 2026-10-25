@@ -50,10 +50,13 @@
     "d /srv/annex 0755 gapul users -"
   ];
 
-  # Not in restic. The point of an annex is that every file exists in numcopies
-  # places by construction, and `git annex fsck --from` is the check that says so
-  # — a restic snapshot of the same bytes would double the storage to answer a
-  # question git-annex already answers. The git history (the filenames, which are
-  # the part that is hard to reproduce) lives in /srv/annex/.git and is small;
-  # it is on the Macs too, because that is what a clone is.
+  # In restic (homelab/backup.nix). The first version left it out on the reading that an
+  # annex keeps numcopies copies by construction, so a snapshot would only double the
+  # storage. That held while the Macs kept full copies. Once they dropped their content to
+  # free disk (2026-10-25), this host was the only place holding the bytes. The offsite copy is
+  # the homeserver restic snapshot, and the repository's numcopies is 1. git-annex cannot
+  # count a restic snapshot as a copy, so the Macs' `drop` relies on this backup, not on
+  # numcopies. A git-annex special remote on Drive was tried and dropped: one API call per
+  # file made the initial 38k-file upload take hours, and new files from freebie-collector
+  # would have needed their own copy job.
 }
