@@ -109,7 +109,10 @@
     nix-index-database.url = "github:nix-community/nix-index-database";
     nix-index-database.inputs.nixpkgs.follows = "nixpkgs";
 
-    agent-skills.url = "github:Kyure-A/agent-skills-nix";
+    # Fork until Kyure-A/agent-skills-nix takes the rsync --chmod=Du+w fix: without it the
+    # source copy fails with "mkdir ... Permission denied" on the macmini's Linux builder VM,
+    # which breaks the laptop closure in CI. Point back at upstream once it has merged.
+    agent-skills.url = "github:gapul/agent-skills-nix/fix/rsync-writable-dirs";
     agent-skills.inputs.nixpkgs.follows = "nixpkgs";
 
     sops-nix.url = "github:Mic92/sops-nix";

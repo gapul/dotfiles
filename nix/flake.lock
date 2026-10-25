@@ -7,15 +7,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1792594212,
-        "narHash": "sha256-XWx3R/AIeYdyZ3guuZVNqirEUPPpehICrIRV3VabR+U=",
-        "owner": "Kyure-A",
+        "lastModified": 1792894732,
+        "narHash": "sha256-6IGdb23IO6d6/1G6bced1THXh+y90fW6sXu7FGjbjbI=",
+        "owner": "gapul",
         "repo": "agent-skills-nix",
-        "rev": "f48aa227f3d157ae3abda12cd9c4ab867f400419",
+        "rev": "53ff90dfd6e69b828a0f0d7bc52f4a13443b706c",
         "type": "github"
       },
       "original": {
-        "owner": "Kyure-A",
+        "owner": "gapul",
+        "ref": "fix/rsync-writable-dirs",
         "repo": "agent-skills-nix",
         "type": "github"
       }
