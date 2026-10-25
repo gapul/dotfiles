@@ -7,3 +7,11 @@ org.lineageos.audiofx
 # LineageOS のブラウザ Jelly。標準ブラウザは Titanium にしたので外す。
 # WebView (com.android.webview) はアプリが中で使うものなので消さない。
 org.lineageos.jelly
+
+# 置き換えたプリイン (代わりは apps.tsv)。
+# AOSP キーボード: 日本語が打てない。Sumire を既定の入力方式にしてから外す。
+com.android.inputmethod.latin
+# LineageOS のギャラリー Glimpse: Aves に置き換え。
+org.lineageos.glimpse
+# LineageOS の音楽 Twelve: Tempus に置き換え。
+org.lineageos.twelve

@@ -42,3 +42,16 @@ com.drdisagree.iconify	github	Mahmud0808/Iconify
 io.github.jqssun.helium	github	jqssun/android-titanium-browser
 # Firefox 系の予備。Mull の後継で arkenfox の設定入り。
 org.ironfoxoss.ironfox	gitlab	ironfox-oss/IronFox
+
+# ── プリインの置き換え (外したものは os-debloat.txt) ────────────────
+# 日本語キーボード。AOSP のキーボードは日本語を打てない。スマホと同じもの
+# (Obtainium では APK を fullStandard で絞る)。既定の入力方式は os-settings.conf。
+com.kazumaproject.markdownhelperkeyboard	github	KazumaProject/JapaneseKeyboard
+# ギャラリー (Glimpse の代わり)。Google 依存の無い libre 版 (Obtainium では libre で絞る)。
+deckers.thibault.aves.libre	github	deckerst/aves
+# Navidrome (Subsonic) の音楽プレイヤー (Twelve の代わり)。止まった Tempo の後継フォークで、
+# microG 端末なので degoogled 版。スマホの Tempo もいずれこちらに寄せる。
+com.eddyizm.degoogled.tempus	github	eddyizm/tempus
+# 天気。ロック画面の天気は crDroid の OmniJaws が出すので、こちらは見る用
+# (Obtainium では APK を _standard で絞る)。
+org.breezyweather	github	breezy-weather/breezy-weather
