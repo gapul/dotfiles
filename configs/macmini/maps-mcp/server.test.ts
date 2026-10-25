@@ -59,16 +59,16 @@ beforeAll(async () => {
       if (url.pathname === "/api") {
         if (q.get("q") === "down") return new Response("photon down", { status: 503 });
         return new Response(
-          '{"features":[{"geometry":{"coordinates":[139.8,35.0]},"properties":{"name":"清澄庭園",' +
-            '"osm_key":"leisure","osm_value":"park","state":"東京都","city":"江東区","street":""}}]}',
+          '{"features":[{"geometry":{"coordinates":[139.77,35.0]},"properties":{"name":"日比谷公園",' +
+            '"osm_key":"leisure","osm_value":"park","state":"東京都","city":"千代田区","street":""}}]}',
         );
       }
       if (url.pathname === "/reverse") {
         return Response.json({
           features: [
             {
-              geometry: { coordinates: [139.8, 35.68] },
-              properties: { name: "清澄庭園", state: "東京都", city: "江東区", street: "清澄三丁目", country: "日本", extra: 1 },
+              geometry: { coordinates: [139.77, 35.68] },
+              properties: { name: "日比谷公園", state: "東京都", city: "千代田区", street: "有楽町一丁目", country: "日本", extra: 1 },
             },
           ],
         });
@@ -77,8 +77,8 @@ beforeAll(async () => {
         if (q.get("q") === "nogsi") return new Response("gsi down", { status: 500 });
         return Response.json(
           Array.from({ length: 4 }, (_, i) => ({
-            geometry: { coordinates: [139.8, 35.68 + i / 100] },
-            properties: { title: `東京都江東区清澄${i + 1}丁目` },
+            geometry: { coordinates: [139.77, 35.68 + i / 100] },
+            properties: { title: `東京都千代田区有楽町${i + 1}丁目` },
           })),
         );
       }
@@ -336,16 +336,16 @@ test("HTTP framing: GET 405, other methods 501, wrong path 404, bad JSON 400, tr
 });
 
 test("geocode: photon + GSI requests and the merged, json.dumps-shaped answer", async () => {
-  const r = await call("geocode", { query: "Kiyosumi Garden", near_lat: 35.68, near_lon: 139.8, limit: 2 });
+  const r = await call("geocode", { query: "Hibiya Park", near_lat: 35.68, near_lon: 139.77, limit: 2 });
   expect(r.isError).toBe(false);
   expect(upstream).toEqual([
-    "/api?q=Kiyosumi+Garden&limit=2&lat=35.68&lon=139.8",
-    "/address-search/AddressSearch?q=Kiyosumi+Garden",
+    "/api?q=Hibiya+Park&limit=2&lat=35.68&lon=139.77",
+    "/address-search/AddressSearch?q=Hibiya+Park",
   ]);
   expect(r.text).toBe(
-    '{"photon": [{"name": "清澄庭園", "kind": "leisure=park", "address": "東京都 江東区", "lat": 35.0, "lon": 139.8}], ' +
-      '"gsi": [{"title": "東京都江東区清澄1丁目", "lat": 35.68, "lon": 139.8}, ' +
-      '{"title": "東京都江東区清澄2丁目", "lat": 35.69, "lon": 139.8}]}',
+    '{"photon": [{"name": "日比谷公園", "kind": "leisure=park", "address": "東京都 千代田区", "lat": 35.0, "lon": 139.77}], ' +
+      '"gsi": [{"title": "東京都千代田区有楽町1丁目", "lat": 35.68, "lon": 139.77}, ' +
+      '{"title": "東京都千代田区有楽町2丁目", "lat": 35.69, "lon": 139.77}]}',
   );
 });
 
@@ -358,16 +358,16 @@ test("geocode: a GSI failure is ignored, a photon failure is a tool error", asyn
 });
 
 test("hosts other than the fakes are never reached (the shim's refusal surfaces as a tool error)", async () => {
-  const r = await call("transit_route", { from_lat: 35.68, from_lon: 139.8, to_lat: 35.7, to_lon: 139.76 });
+  const r = await call("transit_route", { from_lat: 35.68, from_lon: 139.77, to_lat: 35.69, to_lon: 139.7 });
   expect(r.isError).toBe(true);
   expect(r.text).toStartWith("transit_route failed: URLError('blocked by test shim: https://api.transitous.org/api/v5/plan?");
-  expect(r.text).toContain("fromPlace=35.68%2C139.8&toPlace=35.7%2C139.76");
+  expect(r.text).toContain("fromPlace=35.68%2C139.77&toPlace=35.69%2C139.7");
 });
 
 test("web_search: SearXNG query and trimmed results", async () => {
-  const r = await call("web_search", { query: "清澄 カフェ", limit: 1 });
+  const r = await call("web_search", { query: "有楽町 カフェ", limit: 1 });
   expect(upstream).toEqual([
-    "/search?q=%E6%B8%85%E6%BE%84+%E3%82%AB%E3%83%95%E3%82%A7&format=json&engines=google%2Cgoogle+cse",
+    "/search?q=%E6%9C%89%E6%A5%BD%E7%94%BA+%E3%82%AB%E3%83%95%E3%82%A7&format=json&engines=google%2Cgoogle+cse",
   ]);
   expect(JSON.parse(r.text)).toEqual({
     results: [{ title: "T1", url: "https://a.example/", snippet: "x".repeat(300), engine: "google cse" }],
@@ -376,7 +376,7 @@ test("web_search: SearXNG query and trimmed results", async () => {
 });
 
 test("hotpepper without a key file fails before any request", async () => {
-  expect(await call("hotpepper", { lat: 35.68, lon: 139.8 })).toEqual({
+  expect(await call("hotpepper", { lat: 35.68, lon: 139.77 })).toEqual({
     text: "hotpepper failed: FileNotFoundError(2, 'No such file or directory') ",
     isError: true,
   });
@@ -384,7 +384,7 @@ test("hotpepper without a key file fails before any request", async () => {
 });
 
 test("nearby_places without the Overture database", async () => {
-  expect(await call("nearby_places", { lat: 35.68, lon: 139.8 })).toEqual({
+  expect(await call("nearby_places", { lat: 35.68, lon: 139.77 })).toEqual({
     text: "nearby_places failed: RuntimeError('Overture database not built yet (~/.local/share/overture/build.sh)') ",
     isError: true,
   });
@@ -400,32 +400,32 @@ test("nearby_places and reverse_geocode read the Overture database", async () =>
   );
   db.run("CREATE TABLE addresses (pref TEXT, city TEXT, street TEXT, number TEXT, lat REAL, lon REAL)");
   const place = db.prepare("INSERT INTO places VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-  place.run("Cafe A", "coffee_shop", "food.cafe", 0.9, "03-0000-0000", null, "江東区1", "A", 35.681, 139.8);
-  place.run("Cafe B", "coffee_shop", "food.cafe", 1, null, null, "江東区2", null, 35.6801, 139.8);
-  place.run("Low", "coffee_shop", "food.cafe", 0.5, null, null, null, null, 35.6802, 139.8);
-  place.run("Bar", "bar", "drink.bar", 0.95, null, null, null, null, 35.6803, 139.8);
-  place.run("Far", "coffee_shop", "food.cafe", 0.99, null, null, null, null, 35.684, 139.8);
-  db.run("INSERT INTO addresses VALUES ('東京都', '江東区', '清澄三丁目', '3', 35.6801, 139.8)");
-  db.run("INSERT INTO addresses VALUES ('東京都', '江東区', '清澄三丁目', '9', 35.6804, 139.8)");
+  place.run("Cafe A", "coffee_shop", "food.cafe", 0.9, "03-0000-0000", null, "千代田区1", "A", 35.681, 139.77);
+  place.run("Cafe B", "coffee_shop", "food.cafe", 1, null, null, "千代田区2", null, 35.6801, 139.77);
+  place.run("Low", "coffee_shop", "food.cafe", 0.5, null, null, null, null, 35.6802, 139.77);
+  place.run("Bar", "bar", "drink.bar", 0.95, null, null, null, null, 35.6803, 139.77);
+  place.run("Far", "coffee_shop", "food.cafe", 0.99, null, null, null, null, 35.684, 139.77);
+  db.run("INSERT INTO addresses VALUES ('東京都', '千代田区', '有楽町一丁目', '3', 35.6801, 139.77)");
+  db.run("INSERT INTO addresses VALUES ('東京都', '千代田区', '有楽町一丁目', '9', 35.6804, 139.77)");
   db.close();
 
-  const near = await call("nearby_places", { lat: 35.68, lon: 139.8, radius_m: 300, category: "coffee" });
+  const near = await call("nearby_places", { lat: 35.68, lon: 139.77, radius_m: 300, category: "coffee" });
   expect(near.isError).toBe(false);
   expect(near.text).toBe(
     '[{"name": "Cafe B", "category": "coffee_shop", "confidence": 1.0, "phone": null, "website": null, ' +
-      '"address": "江東区2", "brand": null, "lat": 35.6801, "lon": 139.8, "distance_m": 11}, ' +
+      '"address": "千代田区2", "brand": null, "lat": 35.6801, "lon": 139.77, "distance_m": 11}, ' +
       '{"name": "Cafe A", "category": "coffee_shop", "confidence": 0.9, "phone": "03-0000-0000", "website": null, ' +
-      '"address": "江東区1", "brand": "A", "lat": 35.681, "lon": 139.8, "distance_m": 111}]',
+      '"address": "千代田区1", "brand": "A", "lat": 35.681, "lon": 139.77, "distance_m": 111}]',
   );
-  const limited = await call("nearby_places", { lat: 35.68, lon: 139.8, keyword: "Cafe", limit: 1 });
+  const limited = await call("nearby_places", { lat: 35.68, lon: 139.77, keyword: "Cafe", limit: 1 });
   expect(JSON.parse(limited.text).map((p: Json) => p.name)).toEqual(["Cafe B"]);
 
-  const rev = await call("reverse_geocode", { lat: 35.68, lon: 139.8 });
-  expect(upstream).toEqual(["/reverse?lat=35.68&lon=139.8"]);
+  const rev = await call("reverse_geocode", { lat: 35.68, lon: 139.77 });
+  expect(upstream).toEqual(["/reverse?lat=35.68&lon=139.77"]);
   expect(rev.text).toBe(
-    '{"photon": {"name": "清澄庭園", "state": "東京都", "city": "江東区", "street": "清澄三丁目", ' +
+    '{"photon": {"name": "日比谷公園", "state": "東京都", "city": "千代田区", "street": "有楽町一丁目", ' +
       '"housenumber": null, "postcode": null, "country": "日本"}, ' +
-      '"nearest_address": {"address": "東京都江東区清澄三丁目3", "distance_m": 11}}',
+      '"nearest_address": {"address": "東京都千代田区有楽町一丁目3", "distance_m": 11}}',
   );
 });
 

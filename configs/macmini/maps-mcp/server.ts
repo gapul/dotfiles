@@ -884,18 +884,18 @@ async function selftest(): Promise<void> {
   const assert = (ok: unknown, what: string) => {
     if (!truthy(ok)) throw new Error(`AssertionError: ${what}`);
   };
-  const k = { lat: 35.6818, lon: 139.7989 }; // 清澄白河
-  const h = { to_lat: 35.7071, to_lon: 139.7606 }; // 本郷三丁目
+  const k = { lat: 35.6751, lon: 139.763 }; // 有楽町
+  const h = { to_lat: 35.6896, to_lon: 139.7006 }; // 新宿
   const from = { from_lat: k.lat, from_lon: k.lon };
-  assert((await geocode({ query: "清澄庭園" })).photon, "geocode");
+  assert((await geocode({ query: "日比谷公園" })).photon, "geocode");
   assert((await reverseGeocode(k)).photon, "reverse_geocode");
   if (existsSync(OVERTURE_DB)) {
     assert(await nearbyPlaces({ ...k, radius_m: 400, category: "cafe" }), "nearby_places");
   }
-  assert(await appleSearch({ query: "清澄庭園", near_lat: k.lat, near_lon: k.lon }), "apple_search");
+  assert(await appleSearch({ query: "日比谷公園", near_lat: k.lat, near_lon: k.lon }), "apple_search");
   assert((await appleRoute({ ...from, ...h }))[0].duration_min > 0, "apple_route");
   assert((await transitRoute({ ...from, ...h })).itineraries, "transit_route");
-  assert((await webSearch({ query: "清澄白河 カフェ" })).results, "web_search");
+  assert((await webSearch({ query: "有楽町 カフェ" })).results, "web_search");
   assert((await weather(k)).hourly.time, "weather");
   if (existsSync(HOTPEPPER_KEY)) assert((await hotpepper(k)).shops, "hotpepper");
   const names = toolsList().map((t) => t.name);
