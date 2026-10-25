@@ -27,6 +27,11 @@ case "\$*" in
     cat >/dev/null
     echo null
     ;;
+  "shell settings put "*)
+    cat >/dev/null
+    # 端末のシェルに渡る文字列そのもの (adb は引数を空白でつなぐ) を記録する。
+    [[ -n \${ADB_LOG:-} ]] && echo "\$*" >>"\$ADB_LOG"
+    ;;
   "shell pm list packages --user 0")
     cat >/dev/null
     echo "package:com.example.absent"
@@ -136,6 +141,11 @@ out=$(ANDROID_PROFILE=nabu ./os.sh --dry-run </dev/null)
 check "nabu の設定差分" \
   "$(grep -cvE '^[[:space:]]*(#|$)' "$nabu/os-settings.conf")" \
   "$(grep -cE '^  (global|system|secure)\.' <<<"$out" || true)"
+# JSON の値は端末のシェルで剥がれないよう、単一引用符で包んで渡っているか。
+adb_log="$stub/adb.log"
+ADB_LOG=$adb_log ANDROID_PROFILE=nabu ./os.sh </dev/null >/dev/null
+check "JSON の値は引用符付きで渡す" "1" \
+  "$(grep -c "theme_customization_overlay_packages '{\"" "$adb_log" || true)"
 check "宣言の無い端末は最上位を読む" "1" \
   "$(./os.sh --dry-run </dev/null | grep -c '^宣言: \.$' || true)"
 if ANDROID_PROFILE=no-such-device ./os.sh --dry-run </dev/null >/dev/null 2>&1; then
@@ -144,6 +154,15 @@ if ANDROID_PROFILE=no-such-device ./os.sh --dry-run </dev/null >/dev/null 2>&1; 
 else
   echo "ok: 宣言の無い ANDROID_PROFILE では止まる"
 fi
+
+# ── Material You の元の色が palettes.json の iris と揃っているか ─────────────
+# 宣言は os-settings.conf に直に書いてある。palettes.json を変えたら、ここで落ちて気付く。
+iris=$(python3 -c 'import json; d=json.load(open("../../configs/theme/palettes.json")); print(d["palettes"][d["active"]]["iris"].upper())')
+for conf in os-settings.conf devices/*/os-settings.conf; do
+  seed=$(sed -n 's/.*"android.theme.customization.system_palette":"\([0-9A-Fa-f]*\)".*/\1/p' "$conf")
+  [[ -z $seed ]] && continue
+  check "Material You の元の色 ($conf)" "$iris" "$seed"
+done
 
 # ── root.sh: モジュールの versionCode と ksud feature の差分 ─────────────────
 # 端末には「同じ版」「古い版」「宣言に無い」の 3 つが入っていて、宣言の 1 つは入っていない

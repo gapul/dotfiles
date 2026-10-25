@@ -30,6 +30,8 @@ fi
 if $on_device; then
   # 端末の中では adb を挟まない。stdin も自分のものなので付け替え不要。
   dev() { "$@"; }
+  # 値をそのまま 1 引数として渡せる。
+  arg() { printf '%s' "$1"; }
   echo "対象: この端末 (Termux)"
 else
   if ! command -v adb >/dev/null; then
@@ -48,6 +50,9 @@ else
   # ループ内から呼ばれるので stdin を切る。切らないと adb shell が
   # ループの stdin (宣言ファイル) を読み尽くして行が飛ぶ。
   dev() { adb shell "$@" </dev/null; }
+  # adb shell は引数を空白でつないで端末のシェルにもう一度読ませるので、JSON の " や空白が
+  # 剥がれる。値は端末のシェル向けに単一引用符で包んで渡す。
+  arg() { printf "'%s'" "${1//\'/\'\\\'\'}"; }
   echo "対象: $devices"
 fi
 
@@ -75,7 +80,7 @@ while read -r ns key val; do
   fi
   echo "  $ns.$key: $current -> $val"
   changed=$((changed + 1))
-  $dry_run || dev settings put "$ns" "$key" "$val"
+  $dry_run || dev settings put "$ns" "$key" "$(arg "$val")"
 done <"$decl/os-settings.conf"
 
 echo "━━━ debloat ━━━"

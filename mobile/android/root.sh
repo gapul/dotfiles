@@ -85,7 +85,7 @@ while IFS=$'\t' read -r id code version file; do
   fi
   changed=$((changed + 1))
   if ! $dry_run; then
-    adb push "${build}/${file}" "/data/local/tmp/${file}" </dev/null >/dev/null
+    adb push -q "${build}/${file}" "/data/local/tmp/${file}" </dev/null
     # インストーラは unzip の行や set -x の跡を大量に吐く。成功したら捨て、失敗したときだけ末尾を見せる。
     if log=$(asu "/data/adb/ksud module install /data/local/tmp/${file} 2>&1"); then
       installed_any=true

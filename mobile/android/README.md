@@ -183,9 +183,28 @@ Things learnt on nabu that the declaration encodes:
   missing. The module also sets `global hidden_api_policy 1`, declared in nabu's
   `os-settings.conf`.
 
+- **The boot animation is generated** from the active palette in `configs/theme/palettes.json`
+  (`rosepine-bootanimation`, three dots in rose, iris and foam on the base colour). Its frames
+  must be 8-bit PNGs: bootanimation silently draws nothing from the 16-bit ones ImageMagick
+  writes by default. Its `versionCode` comes from the content, so a palette change reinstalls it.
+
 The partition images taken before any of this (boot, vendor_boot, dtbo, vbmeta, persist and the
 modem partitions) live outside the repository, in `~/Backups/xiaomi-pad5-nabu/`: they are large
 and carry data unique to the device.
+
+## Theming
+
+Both devices take the Material You seed from the palette: `theme_customization_overlay_packages`
+in `os-settings.conf` fixes it to rose-pine's iris instead of the wallpaper, and `test.sh` fails
+when it drifts from `palettes.json`. Material You derives every tone from that one colour, so the
+result leans towards iris rather than reproducing rose-pine; Kvaesitso's theme
+(`launcher-theme.ts`) is the place where the palette is used colour for colour. The icon pack is
+Arcticons' dayNight variant on both, applied from the launcher's own settings. On nabu the system
+font, crDroid's bundled San Francisco, sits in the same setting: SystemUI's theme controller owns
+the font overlays and, on every boot, disables any that the setting does not name, so enabling
+one with `cmd overlay` does not survive a reboot. Iconify handles the status bar and quick
+settings; it builds a ROM-specific module on the device, so that module stays outside `root/` and
+shows up as EXTRA.
 
 ## The launcher, Kvaesitso
 

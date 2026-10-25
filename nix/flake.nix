@@ -677,6 +677,7 @@
                 pkgs = systemPkgs;
                 device = "nabu";
                 root = ../mobile/android/devices/nabu/root;
+                palettes = ../configs/theme/palettes.json;
               };
 
               # What a pull request has to prove: the machines in daily use still evaluate and

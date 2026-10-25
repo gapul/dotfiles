@@ -19,6 +19,9 @@ com.aurora.store	fdroid	-
 
 # ── ランチャーと端末環境 ────────────────────────────────────────────
 de.mm20.launcher2.release	fdroid	-
+# Kvaesitso に当てるアイコンパック。タブレット (devices/nabu) と同じ Arcticons の dayNight
+# (Obtainium では APK を dayNight で絞る)。
+com.donnnno.arcticons.daynight	github	Arcticons-Team/Arcticons
 com.termux.nix	fdroid	-
 com.tailscale.ipn	fdroid	-
 

@@ -1,2 +1,5 @@
 # Xiaomi Pad 5 (nabu) で外すプリインアプリ。書式は ../../os-debloat.txt と同じ。
-# crDroid はプリインがほぼ無いので空。
+# crDroid はプリインがほぼ無い。
+
+# LineageOS の AudioFX。root/ の JamesDSP と音響効果が二重にかかるので外す。
+org.lineageos.audiofx
