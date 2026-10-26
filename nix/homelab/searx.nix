@@ -185,6 +185,41 @@ _: {
           name = "openalex";
           disabled = false;
         }
+        # Videos. Default-disabled; measured on 2026-10-26 and `!bil` returned 20 results
+        # with the engine name present.
+        {
+          name = "bilibili";
+          disabled = false;
+        }
+        # The bundled niconico engine scrapes the search page HTML, and after the site's
+        # React rewrite its xpath (`//li[@data-video-item]`) matches nothing: HTTP 200,
+        # 0 results, no error. Same name, so this merges into the default entry and keeps
+        # the `!nico` shortcut, but swaps the engine for json_engine over the official
+        # snapshot search API (no key needed).
+        # The snapshot is rebuilt once a day, so videos posted today don't show up.
+        {
+          name = "niconico";
+          engine = "json_engine";
+          disabled = false;
+          categories = [ "videos" ];
+          paging = true;
+          search_url =
+            "https://snapshot.search.nicovideo.jp/api/v2/snapshot/video/contents/search"
+            + "?q={query}&targets=title,description,tags"
+            + "&fields=contentId,title,description,thumbnailUrl"
+            + "&_sort=-viewCounter&_limit=20&_offset={pageno}";
+          # {pageno} becomes (page - 1) * page_size + first_page_num, i.e. the offset.
+          page_size = 20;
+          first_page_num = 0;
+          results_query = "data";
+          url_query = "contentId";
+          url_prefix = "https://www.nicovideo.jp/watch/";
+          title_query = "title";
+          content_query = "description";
+          # description comes with <br /> and other tags left in.
+          content_html_to_text = true;
+          thumbnail_query = "thumbnailUrl";
+        }
         # Cut ones that are enabled by default but failed 100% when measured on 2026-09-26.
         # They contribute no results and only produce timeout waits and error displays.
         #   vimeo ...... The search page is a Cloudflare challenge (403). Same from the main Mac.
