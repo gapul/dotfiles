@@ -27,6 +27,7 @@ let
   # The version is the servers' own pin, so this instance follows them when they update.
   minecraftVersion = (pkgs.callPackage ../pkgs/fabric-server.nix { }).mcVersion;
   minecraftInstance = "server";
+  heroicProton = "GE-Proton-nix";
   cartridgesGames = [
     {
       id = 9001;
@@ -200,6 +201,34 @@ in
       current=$(${jq} -r '.components[]? | select(.uid == "net.minecraft") | .version' "${dir}/mmc-pack.json" 2>/dev/null || true)
       if [ "$current" != ${lib.escapeShellArg minecraftVersion} ]; then
         run install -m 644 ${mmcPack} "${dir}/mmc-pack.json"
+      fi
+    '';
+
+  # Heroic (Epic / GOG / Amazon) runs Windows games through Proton, and on NixOS it finds none of
+  # its own: the Wine it downloads is dynamically linked. GE-Proton from nixpkgs goes where Heroic
+  # looks for Protons it downloaded, under a fixed name so the setting below survives updates.
+  # Store logins, installed games and per-game settings stay Heroic's own (config.json is rewritten
+  # by Heroic itself), so only the default runner is merged in, and only when the one it has does
+  # not exist: a Proton picked in the GUI is left alone.
+  xdg.configFile."heroic/tools/proton/${heroicProton}".source = pkgs.proton-ge-bin.steamcompattool;
+  home.activation.heroicDefaultProton =
+    let
+      bin = "${config.xdg.configHome}/heroic/tools/proton/${heroicProton}/proton";
+      wineVersion = builtins.toJSON {
+        inherit bin;
+        name = "Proton - ${heroicProton}";
+        type = "proton";
+      };
+      jq = lib.getExe pkgs.jq;
+    in
+    lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+      cfg="${config.xdg.configHome}/heroic/config.json"
+      if [ -f "$cfg" ]; then
+        current=$(${jq} -r '.defaultSettings.wineVersion.bin // ""' "$cfg")
+        if [ -z "$current" ] || [ ! -e "$current" ]; then
+          new=$(${jq} --argjson w ${lib.escapeShellArg wineVersion} '.defaultSettings.wineVersion = $w' "$cfg")
+          if [[ ! -v DRY_RUN ]]; then printf '%s\n' "$new" >"$cfg"; fi
+        fi
       fi
     '';
 

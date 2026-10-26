@@ -1159,6 +1159,9 @@ in
     gamescopeSession.enable = true;
     remotePlay.openFirewall = true;
     localNetworkGameTransfers.openFirewall = true;
+    # GE-Proton next to Valve's Protons in each game's compatibility menu. Heroic gets the same
+    # build (home/gaming.nix).
+    extraCompatPackages = [ pkgs.proton-ge-bin ];
   };
   programs.gamescope.enable = true;
   programs.gamemode.enable = true;
