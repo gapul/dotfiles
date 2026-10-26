@@ -43,7 +43,7 @@ in
     ./fcitx5-skk.nix # SKK dictionaries and kana rule for fcitx5-skk
     ./xremap.nix # mac-style Cmd / Ctrl / Hyper
     ./opensnitch-ui.nix # which app connects where, LuLu-style; the daemon is in hosts/nixos-laptop.nix
-    ./gaming.nix # Prism Launcher, Lutris, MangoHud
+    ./gaming.nix # Prism Launcher, MangoHud, the Cartridges library
   ];
 
   # Keep the English UI locale while preferring Japanese CJK fallback glyphs.
@@ -444,9 +444,9 @@ in
     wl-mirror # mirror a region into a window (for screen sharing a slice)
 
     # ─── Non-Steam game launchers ───
-    # Prism Launcher and Lutris are home-manager modules (home/gaming.nix).
+    # Prism Launcher is a home-manager module (home/gaming.nix).
     heroic # Epic / GOG / Amazon — the libraries the homelab free-games claimer fills up
-    # One library window for all of them: Cartridges reads Steam, Heroic and Lutris on its own
+    # One library window for all of them: Cartridges reads Steam and Heroic on its own
     # and needs no login. It only finds launchers installed the same way it is (nix here, not
     # Flatpak). The emulators below and Minecraft are declared into it in home/gaming.nix.
     cartridges
