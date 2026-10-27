@@ -142,16 +142,21 @@ in
       # The server takes a few seconds to load the Zenzai model before it listens. libskk
       # connects to the skkserv once, when fcitx5 starts, and never again, so fcitx5 (its
       # own unit below, ordered after this one) must not start until the port answers:
-      # "started" here means "listening".
+      # "started" here means "listening". For the same reason a restart of this server alone (a
+      # switch that changes its store path) leaves a running fcitx5 with no server dictionary,
+      # so once the port answers, a fcitx5 that is already running is restarted to reconnect.
+      # try-restart does nothing at login, when fcitx5 has not started yet; --no-block because
+      # fcitx5's start is ordered after this unit and would otherwise wait on this very script.
       ExecStartPost = lib.getExe (
         pkgs.writeShellApplication {
           name = "wait-for-skkserv";
           bashOptions = [ ];
           text = ''
             for _ in $(seq 1 300); do
-              ${pkgs.bash}/bin/bash -c "exec 3<>/dev/tcp/127.0.0.1/${toString skkservPort}" 2>/dev/null && exit 0
+              ${pkgs.bash}/bin/bash -c "exec 3<>/dev/tcp/127.0.0.1/${toString skkservPort}" 2>/dev/null && break
               sleep 0.1
             done
+            /run/current-system/sw/bin/systemctl --user --no-block try-restart fcitx5.service || true
             exit 0
           '';
         }
