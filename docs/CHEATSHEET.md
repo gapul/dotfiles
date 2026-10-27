@@ -28,7 +28,7 @@ Those six cover most days.
 | `just rebuild` | `nh darwin switch` and `nh home switch` |
 | `just update` | Update the flake inputs, then rebuild |
 | `just upgrade` | Bring brew, casks with `--greedy`, mas and Nix all up to date |
-| `just gc` | Delete old generations and run the store GC, `nh clean all --keep 1 --keep-since 0h` |
+| `just gc` | Delete old generations and run the store GC, `nh clean all --keep 1 --keep-since 0h` (3 on NixOS) |
 | `just check` | Syntax and type checking, without building |
 | `just check diff` | The difference between the running system and the flake |
 | `just doctor` | Health check, worth running after a reboot or a Determinate upgrade |
