@@ -190,14 +190,21 @@ in
   # choice between NixOS and Windows a graphical menu (icons on the same ASCII wallpaper as
   # the desktop, the rEFInd-minimal theme's flat icons). Nothing in nixpkgs' refind module is
   # used, because that module lays out its own unsigned kernels, which Secure Boot would
-  # refuse. Instead the activation script below copies rEFInd's binary to the ESP, signs it
+  # refuse. Instead the script below copies rEFInd's binary to the ESP, signs it
   # with the sbctl keys (the same db key that signs the UKIs, so PCR 7 and the LUKS TPM
   # binding are unchanged), writes a refind.conf whose NixOS entry points at the newest
   # lanzaboote UKI (with the safe specialisation and older generations in its submenu, and
   # systemd-boot itself as the last resort), and puts rEFInd first in the firmware's boot
   # order. systemd-boot stays installed and second in the order: if the firmware ever
   # refuses rEFInd, the next entry is the old menu.
-  system.activationScripts.refind =
+  #
+  # It runs right after lanzaboote's install, not as an activation script: refind.conf has to
+  # be written from the UKIs lanzaboote has just laid out. `nh os switch` activates first
+  # (switch-to-configuration test) and installs the bootloader after (... boot), so an
+  # activation script always saw the previous generation as the newest; once that generation
+  # was garbage-collected, rEFInd's NixOS entry pointed at a UKI that was gone ("Invalid
+  # loader file!", 2026-10-27).
+  system.build.installBootLoader =
     let
       theme = pkgs.fetchFromGitHub {
         owner = "EvanPurkhiser";
@@ -380,10 +387,13 @@ in
         '';
       };
     in
-    {
-      deps = [ ];
-      text = lib.getExe install;
-    };
+    lib.mkForce (
+      pkgs.writeShellScript "install-bootloader" ''
+        set -e
+        ${config.boot.loader.external.installHook} "$@"
+        ${lib.getExe install}
+      ''
+    );
 
   # No kernel text console on the panel once the greeter is up. Every hand-over of the
   # display (Plymouth to greeter, lock and unlock, suspend and resume, the last second of a
