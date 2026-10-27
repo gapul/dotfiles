@@ -96,6 +96,9 @@ in
       NPM_CONFIG_CACHE = "${config.xdg.cacheHome}/npm";
       NPM_CONFIG_PREFIX = "${config.xdg.dataHome}/npm";
 
+      # Ansible: ~/.ansible (its tmp and ssh control-persist sockets) to XDG data.
+      ANSIBLE_HOME = "${config.xdg.dataHome}/ansible";
+
       # PlatformIO: move the default ~/.platformio (GBs from toolchains etc.) to XDG data.
       PLATFORMIO_CORE_DIR = "${config.xdg.dataHome}/platformio";
 
