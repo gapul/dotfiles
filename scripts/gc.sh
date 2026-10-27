@@ -5,7 +5,11 @@ set -u
 # `just maintain` runs this part itself, alongside everything else (see maintain-macos.sh).
 if [ -z "${DOTFILES_GC_SKIP_NIX:-}" ]; then
   echo "━━━ Nix store (remove old generations) ━━━"
-  nh clean all --keep 1 --keep-since 0h || true
+  # NixOS keeps three system generations: the menu's fallback when a new one does not boot.
+  # With only one, a broken boot entry left nothing to pick (nixos-laptop, 2026-10-27).
+  keep=1
+  [ -e /etc/NIXOS ] && keep=3
+  nh clean all --keep "$keep" --keep-since 0h || true
   # The bootloader was installed by the rebuild, before this removed the older system
   # generations, so their UKIs stay in the menu with no closure behind them. Picking one
   # unlocks the disk and then drops to the initrd's emergency mode (nixos-laptop,
