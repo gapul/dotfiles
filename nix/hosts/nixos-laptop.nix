@@ -1045,6 +1045,11 @@ in
   hardware.bluetooth.enable = true;
   services.blueman.enable = true;
   # LibrePods 0.2.5 ranks SBC above PipeWire's default A2DP (AAC on AirPods).
+  # It also keeps a BLE discovery running with no timeout whenever the AirPods are not
+  # connected, only to show their battery from the case. On this machine that discovery ran
+  # for days, flooding the system bus with device signals until dbus-broker hit UID 1000's
+  # byte quota and dropped every session peer at once (waybar, wireplumber, T3 Code;
+  # 2026-10-27). startScan becomes a no-op; battery still comes over the AAP link once connected.
   nixpkgs.overlays = [
     (_final: prev: {
       librepods = prev.librepods.overrideAttrs (old: {
@@ -1052,6 +1057,8 @@ in
           substituteInPlace media/mediacontroller.cpp \
             --replace-fail 'QStringList profiles = {"a2dp-sink-sbc_xq", "a2dp-sink-sbc", "a2dp-sink"};' \
               'QStringList profiles = {"a2dp-sink", "a2dp-sink-sbc_xq", "a2dp-sink-sbc"};'
+          substituteInPlace ble/blemanager.cpp \
+            --replace-fail 'LOG_DEBUG("Starting BLE scan...");' 'return;'
         '';
       });
     })
