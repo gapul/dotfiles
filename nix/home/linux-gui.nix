@@ -32,6 +32,32 @@ let
       wrapProgram $out/bin/adb --set HOME ${config.xdg.dataHome}/android
     '';
   };
+  # Tor Browser 15 and Zotero are built on Firefox ESR 140, which predates Firefox 147's XDG
+  # support: Tor keeps its profile in ~/.tor project, Zotero in ~/.zotero and ~/Zotero, and
+  # Zotero also leaves an empty ~/.mozilla/extensions. Both run with HOME pointed into the XDG
+  # data dir instead, the same way as adb above. The GTK file dialogs start at that HOME, so
+  # the real folders the app is used with are linked into it: Downloads and Documents for
+  # Zotero (attaching PDFs), none for Tor, whose downloads stay out of the real home.
+  withXdgHome =
+    pkg: bin: dir: links:
+    pkgs.symlinkJoin {
+      name = "${pkg.pname or bin}-xdg-home";
+      paths = [ pkg ];
+      nativeBuildInputs = [ pkgs.makeWrapper ];
+      postBuild = ''
+        wrapProgram $out/bin/${bin} \
+          --set HOME ${config.xdg.dataHome}/${dir} \
+          --run ${
+            pkgs.lib.escapeShellArg (
+              "mkdir -p ${config.xdg.dataHome}/${dir}"
+              + pkgs.lib.concatMapStrings (
+                d:
+                "; [ -e ${config.xdg.dataHome}/${dir}/${d} ] || ln -s ${config.home.homeDirectory}/${d} ${config.xdg.dataHome}/${dir}/${d}"
+              ) links
+            )
+          }
+      '';
+    };
 in
 {
   imports = [
@@ -356,7 +382,7 @@ in
       text = ''exec vncviewer -passwd "${config.xdg.configHome}/tigervnc/macmini.passwd" 100.105.135.49 "$@"'';
     })
     # ─── Browsers ───
-    tor-browser
+    (withXdgHome tor-browser "tor-browser" "tor-browser" [ ])
 
     # ─── Passwords / 2FA ───
     keepassxc # offline vault (the same kdbx the iOS KeePassium build reads)
@@ -421,7 +447,13 @@ in
     godot
     calibre
     # Zotero 10 fails to build against the current Firefox ESR; use the stable input.
-    nixpkgsStable.legacyPackages.${pkgs.stdenv.hostPlatform.system}.zotero
+    (withXdgHome nixpkgsStable.legacyPackages.${pkgs.stdenv.hostPlatform.system}.zotero "zotero"
+      "zotero"
+      [
+        "Downloads"
+        "Documents"
+      ]
+    )
     anki
     retroarch
     moonlight-qt
