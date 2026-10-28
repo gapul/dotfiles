@@ -370,6 +370,13 @@ in
       if [[ ! -v DRY_RUN ]]; then printf '%s\n' "$new" >"$cfg"; fi
     '';
 
+  # xtool keeps the App Store Connect key and the signing certificate's private key under
+  # ~/.config/xtool/data, written world-readable (0644, 2026-10-28). Keep the directory private.
+  home.activation.xtool-private = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    run mkdir -p "${config.xdg.configHome}/xtool/data"
+    run chmod 700 "${config.xdg.configHome}/xtool" "${config.xdg.configHome}/xtool/data"
+  '';
+
   xdg.dataFile."applications/claude-code-url-handler.desktop" = {
     force = true;
     text = ''

@@ -13,6 +13,8 @@
 # -dynamic-linker to the arm64-apple-ios link and ld64.lld rejects it (2026-10-28). So xtool runs
 # in an FHS env with swift.org's own Ubuntu toolchain. The SDK's Swift has to match it: Xcode 26.6
 # ships 6.3.3. Bump `swiftVersion` together with the Xcode the SDK is built from.
+# The toolchain's lldb does not load (it wants Ubuntu's libedit.so.2 and ncurses symbol
+# versions); xtool's build, sign and install do not use it.
 let
   version = "1.24.0";
   swiftVersion = "6.3.3";
@@ -49,27 +51,41 @@ in
 buildFHSEnv {
   pname = "xtool";
   inherit version;
-  # swift.org's list of Ubuntu 24.04 dependencies.
-  targetPkgs = pkgs: [
-    swiftToolchain
-    pkgs.binutils
-    pkgs.curl
-    pkgs.gcc
-    pkgs.git
-    pkgs.glibc.dev
-    pkgs.gnupg
-    pkgs.libedit
-    pkgs.libuuid
-    pkgs.libxml2
-    pkgs.ncurses
-    pkgs.pkg-config
-    pkgs.python3
-    pkgs.sqlite
-    pkgs.tzdata
-    pkgs.unzip
-    pkgs.z3
-    pkgs.zlib
-  ];
+  # The AppImage's usual libraries (what wrapType2 would give xtool), plus swift.org's list of
+  # Ubuntu 24.04 dependencies for the toolchain.
+  inherit (appimageTools.defaultFhsEnvArgs) multiPkgs;
+  targetPkgs =
+    pkgs:
+    appimageTools.defaultFhsEnvArgs.targetPkgs pkgs
+    ++ [
+      swiftToolchain
+      pkgs.binutils
+      pkgs.curl
+      # Unwrapped GCC: swift.org's clang links with crtbeginS.o / libgcc from
+      # /usr/lib64/gcc/<triple>/<version>, the layout Ubuntu's libgcc-13-dev gives it.
+      pkgs.stdenv.cc.cc
+      pkgs.stdenv.cc.cc.lib
+      pkgs.git
+      pkgs.glibc.dev
+      pkgs.gnupg
+      pkgs.libedit
+      pkgs.libuuid
+      pkgs.libxml2_13 # libxml2.so.2, as on Ubuntu 24.04 (2.14+ is .so.16)
+      pkgs.ncurses
+      pkgs.pkg-config
+      pkgs.python312 # lldb links libpython3.12
+      pkgs.sqlite
+      pkgs.tzdata
+      pkgs.unzip
+      pkgs.zip # xtool packs the .ipa with it
+      pkgs.z3
+      pkgs.zlib
+    ];
+  # nixpkgs' libncurses.so.6 / libtinfo.so.6 are symlinks to libncursesw, so ld.so.cache has no
+  # entry under the names the toolchain asks for; let the loader look in the directory itself.
+  profile = ''
+    export LD_LIBRARY_PATH=/usr/lib64''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+  '';
   runScript = "${xtool}/AppRun";
   meta = {
     description = "Cross-platform Xcode replacement for building and installing iOS apps";
