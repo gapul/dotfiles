@@ -115,9 +115,9 @@ in
     };
   };
 
-  # Reverse tunnel to the work machine (sean 127.0.0.1:2222 -> this Mac's 22); the Host
+  # Reverse tunnel to sean (sean 127.0.0.1:2222 -> this Mac's 22); the Host
   # sean-revtunnel entry in ssh_config carries the forward and the keepalives. Its own
-  # connection rather than a RemoteForward on mvrx-nolang-dev: on the shared mux master the -R
+  # connection rather than a RemoteForward on sean: on the shared mux master the -R
   # is tried once when the master starts, a failure is ignored, and nothing retries it
   # (2026-10-02). A dead link makes ssh exit within ~90s and KeepAlive brings it back.
   # ThrottleInterval: off the network ssh exits immediately, so this is the retry pace.

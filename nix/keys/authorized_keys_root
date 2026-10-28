@@ -1,5 +1,5 @@
 # homeserver の root で受け付ける鍵。gapul 用の authorized_keys とは別にしている。
-# root は権限が違うので、会社機械の鍵まで一緒に通したくない。
+# root は権限が違うので、sean の鍵まで一緒に通したくない。
 #
 #   macbook      母艦のクライアント鍵 (Bitwarden の「GitHub」項目)
 #   enclave      母艦の Secure Enclave 鍵。取り出せず利用ごとに Touch ID
@@ -12,4 +12,4 @@
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBLeOb9XOJPsmuTRf708qYoNckWk+/fhuWkpTWtTSu41 macbook-mini
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILZva+I0ui3AGOMb2V7BTLOXXtCJYvCJg9PGmzWOD8Am macmini-outbound macmini
 sk-ecdsa-sha2-nistp256@openssh.com AAAAInNrLWVjZHNhLXNoYTItbmlzdHAyNTZAb3BlbnNzaC5jb20AAAAIbmlzdHAyNTYAAABBBP5Y2DQbhcGpmOGDewcxUuVZ+/XO1I/Zm4M4nZhBMPwygadJY9//NxbVAZs98vMIp1Yy+9wgkQcEuc1CNQdCY2cAAAAEc3NoOg== ssh:
-ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIE6CMmADF4LGvKe7usCqv4axb24SBjplR9j08u7X9Ro0 automation@macbook (homeserver/macmini/mvrx-sync 限定)
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIE6CMmADF4LGvKe7usCqv4axb24SBjplR9j08u7X9Ro0 automation@macbook (homeserver/macmini/sean-sync 限定)

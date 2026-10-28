@@ -116,7 +116,7 @@ let
     };
     homelab-mail = {
       displayName = "Homelab Mail";
-      description = "自宅 Stalwart の IMAP 口座 (gmail / work / school の写し)。パスワードは just mail-profiles 経由なら入っていて、そうでなければ初回に端末が訊く。";
+      description = "自宅 Stalwart の IMAP 口座 (gmail / sean / school の写し)。パスワードは just mail-profiles 経由なら入っていて、そうでなければ初回に端末が訊く。";
       payloads =
         map
           (name: {
@@ -138,7 +138,7 @@ let
           })
           [
             "gmail"
-            "work"
+            "sean"
             "school"
           ];
     };

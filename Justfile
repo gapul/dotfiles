@@ -718,8 +718,8 @@ alias unarchive := restore
 gdrive cmd="status":
     #!/usr/bin/env bash
     set -euo pipefail
-    remotes=(google-drive google-drive-school google-drive-work)
-    mounts=("$HOME/Sync/google-drive" "$HOME/Sync/google-drive-school" "$HOME/Sync/google-drive-work")
+    remotes=(google-drive google-drive-school google-drive-sean)
+    mounts=("$HOME/Sync/google-drive" "$HOME/Sync/google-drive-school" "$HOME/Sync/google-drive-sean")
     case "{{cmd}}" in
       status)
         for mp in "${mounts[@]}"; do

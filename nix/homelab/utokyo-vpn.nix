@@ -69,7 +69,7 @@ let
 in
 {
   # UTokyo VPN, so the tailnet reaches UTNET the way vpn-relay.nix makes it reach
-  # the office. The gateway is a Cisco ASA behind UTokyo Account (Entra ID) SAML
+  # the remote site. The gateway is a Cisco ASA behind UTokyo Account (Entra ID) SAML
   # with mandatory MFA; sso-login.py does that sign-in in a headless browser with
   # the account's TOTP seed, so reconnecting needs nobody.
   #

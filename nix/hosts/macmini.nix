@@ -858,7 +858,7 @@ in
     };
   };
 
-  # popo — the Slack agent for the company workspace, run as its own user.
+  # popo — the Slack agent for a Slack workspace, run as its own user.
   #
   # It reaches the control plane at api.popo.sh with a bootstrap key (config/.env, outside nix) and
   # takes its Slack traffic from there, so no Slack token lives on this machine. The runtime is
