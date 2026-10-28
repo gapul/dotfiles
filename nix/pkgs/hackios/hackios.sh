@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # hackios: iOS 16.5 under QEMU through HackiOS (XNU built from Apple's source, the stock iOS user
 # space on top), as a stand-in for the iOS Simulator on Linux. The scripts come from the Nix store;
 # everything made from Apple's IPSW lives in the working directory and never in the store.
@@ -36,7 +37,7 @@ cmd=${1:-}
 case "$cmd" in
 setup)
   sync_src
-  cd "$dir"
+  cd "$dir" || exit 1
   sysimage/fetch.sh
   tools/mk-jb.sh
   mkdir -p ssh && chmod 700 ssh
@@ -55,7 +56,7 @@ run)
   secs=${1:-3600}
   [ $# -gt 0 ] && shift
   sync_src
-  cd "$dir"
+  cd "$dir" || exit 1
   mkdir -p logs
   echo "hackios: console in $dir/logs/qemu.log; ssh on 127.0.0.1:$port once the network is up"
   QEMU_NET=1 qemu/run-ios.sh "$secs" "${display[@]}" "$@" >logs/qemu.log 2>&1
