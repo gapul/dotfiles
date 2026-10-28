@@ -139,6 +139,22 @@ in
   };
 
   # Use Qt's built-in styles: the session's Kvantum theme lacks its QML module.
+  # Lan Mouse's daemon, so the Mac can cross over without the GUI open. The GUI talks to it and
+  # writes the peers and authorised fingerprints to ~/.config/lan-mouse/config.toml.
+  systemd.user.services.lan-mouse = {
+    Unit = {
+      Description = "Lan Mouse input sharing";
+      After = [ "graphical-session.target" ];
+      PartOf = [ "graphical-session.target" ];
+    };
+    Service = {
+      ExecStart = "${pkgs.lan-mouse}/bin/lan-mouse daemon";
+      Restart = "on-failure";
+      RestartSec = 5;
+    };
+    Install.WantedBy = [ "graphical-session.target" ];
+  };
+
   systemd.user.services.librepods = {
     Unit = {
       Description = "LibrePods AirPods controls";
@@ -510,6 +526,9 @@ in
     # references/dictionaries/; point it at a checkout from Edit > Dictionaries > Sources.
     goldendict-ng
     zathura # Keyboard-driven PDF viewer, also used by Yazi.
+    xournalpp # handwriting on PDFs: fill in, sign, annotate (pressure-aware with Weylus)
+    pdfarranger # reorder, merge and split PDF pages
+    lan-mouse # one mouse and keyboard with the Mac; daemon below, GUI for pairing
     foliate # EPUB reader; its OPDS catalog pulls books from Kavita for offline reading.
     swayimg # Wayland image viewer, also used by Yazi.
 

@@ -1130,7 +1130,16 @@ in
   # Only over the tailnet: every client (macmini, the phone) reaches this box at its
   # 100.111.122.3 address, and a laptop on café Wi-Fi should not answer on 22.
   services.openssh.openFirewall = false;
-  networking.firewall.interfaces.tailscale0.allowedTCPPorts = [ 22 ];
+  networking.firewall.interfaces.tailscale0 = {
+    # 1701 is Weylus' page and 9001 its websocket; both are plain HTTP, so tailnet only.
+    allowedTCPPorts = [
+      22
+      1701
+      9001
+    ];
+    # Lan Mouse (DTLS; peers are authorised by certificate fingerprint).
+    allowedUDPPorts = [ 4242 ];
+  };
   # No "Last login" line on ssh logins. That is what ~/.hushlogin was doing here (home/common.nix
   # writes it for macOS' login(1)); with sshd quiet the file can go from this host's home.
   services.openssh.settings.PrintLastLog = false;
@@ -1198,6 +1207,14 @@ in
   programs.gamemode.enable = true;
   # 32-bit userspace GL for older titles and for Proton's 32-bit prefixes.
   hardware.graphics.enable32Bit = true;
+
+  # --- iPad / phone as pen tablet (Weylus) ---
+  # The browser on the tablet streams this screen and sends pen and touch back through uinput.
+  # Ports are opened on tailscale0 only, next to sshd's; openFirewall would open them everywhere.
+  programs.weylus = {
+    enable = true;
+    users = [ user.username ];
+  };
 
   # --- Android apps (waydroid) ---
   # Runs Android in a LXC container against the Wayland compositor, so Android apps appear
