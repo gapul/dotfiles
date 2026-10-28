@@ -444,6 +444,7 @@
           ./home/macmini-maintenance.nix
           ./home/macmini-backup.nix
           ./home/macmini-watchdog.nix
+          ./home/macmini-hs-console.nix # homeserver's physical console via the capture card + rpi4 HID gadget
           ./home/findmy-tag.nix # periodic Find My tag fetch; lives on this always-on machine, not the laptop
           ./home/macmini-revolut.nix # Revolut fetch for the ledger; needs a headed browser (Cloudflare), so this GUI Mac
           ./home/macmini-sites.nix # Suica / JRE POINT / Bic Camera for the ledger; same headed-browser reason
