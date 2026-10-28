@@ -156,6 +156,11 @@ in
     # next is attempted. xl2tpd is driven through its control socket, the same
     # way the machine being replaced did it.
     script = ''
+      # Clear whatever the last attempt left behind first. preStop is the usual cleanup, but if
+      # it does not run to completion the old IKE SA stays in charon and every later `ipsec up`
+      # times out against it — on 2026-10-28 a clobbered /dev/null broke preStop's redirects and
+      # the tunnel stayed down for two hours, until a reboot cleared charon.
+      ipsec down mvrx || true
       ipsec up mvrx
       sleep 2
       mkdir -p /run/xl2tpd
