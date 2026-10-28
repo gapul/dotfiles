@@ -150,7 +150,9 @@ _upgrade-macos:
 [private]
 _upgrade-nix-runtime-macos:
     @echo "━━━ Nix runtime"
-    @if command -v determinate-nixd >/dev/null; then sudo determinate-nixd upgrade; else echo "– Determinate Nixd not installed"; fi
+    @# Non-fatal: the upgrade is a download that times out on slow networks (os error 60), and a
+    @# runtime that stays one release behind is no reason to skip the package and flake steps.
+    @if command -v determinate-nixd >/dev/null; then sudo determinate-nixd upgrade || echo "⚠ Determinate Nixd upgrade failed; continuing"; else echo "– Determinate Nixd not installed"; fi
 
 [private]
 _brew-trust-taps:
