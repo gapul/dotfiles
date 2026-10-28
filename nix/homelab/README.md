@@ -53,23 +53,23 @@ name that matters now.
 | `gatus.env` | `NTFY_TOPIC`, `NTFY_TOKEN` (the `tk_...` bearer token; gatus substitutes them into its own config), `GATUS_PUSH_TOKEN` (`openssl rand -hex 24`; bearer token for gatus external endpoints, which timers such as duo-remind push to after each run) |
 | `mosquitto-ha.password` | a `mosquitto_passwd` hash, the part after `ha:` — not a plaintext password |
 | `free-games-claimer.env` | `NOTIFY` (an ntfy publish URL, so it embeds a credential) and `PANEL_PASSWORD`, which is also the VNC password |
-| `mail/admin.password`, `mail/gmail.password`, `mail/work.password`, `mail/school.password` | one raw line each (`openssl rand -base64 24`). `admin` is Stalwart's fallback administrator (webadmin at mail.gapul.net); the other three are the mirror mailboxes, read by both Stalwart (memory directory) and imapsync |
-| `mail/<name>.address`, `mail/<name>.app-password` | the Google account behind each mailbox (`gmail` / `work` / `school`): its address, and a Google app password. Both imapsync (copying in) and Stalwart's outbound relay (sending as that identity through smtp.gmail.com) use the same pair. An empty `app-password` skips the copy and leaves that identity unable to send; it is not an error. Google requires 2-step verification before it issues app passwords, and a Workspace admin can disable them entirely |
+| `mail/admin.password`, `mail/gmail.password`, `mail/sean.password`, `mail/school.password` | one raw line each (`openssl rand -base64 24`). `admin` is Stalwart's fallback administrator (webadmin at mail.gapul.net); the other three are the mirror mailboxes, read by both Stalwart (memory directory) and imapsync |
+| `mail/<name>.address`, `mail/<name>.app-password` | the Google account behind each mailbox (`gmail` / `sean` / `school`): its address, and a Google app password. Both imapsync (copying in) and Stalwart's outbound relay (sending as that identity through smtp.gmail.com) use the same pair. An empty `app-password` skips the copy and leaves that identity unable to send; it is not an error. Google requires 2-step verification before it issues app passwords, and a Workspace admin can disable them entirely |
 | `tailscale.key` | a Tailscale auth key. `services.tailscale.authKeyFile` reads it so a reinstall connects itself; revoke and replace it after use |
 
-The office tunnel keeps its own directory, `/var/lib/secrets/mvrx/`, because none
+The L2TP tunnel keeps its own directory, `/var/lib/secrets/l2tp/`, because none
 of it is a credential in the usual sense — it is a third party's infrastructure,
 and this repo is public.
 
 | file | contents |
 | --- | --- |
-| `conn.conf` | the `conn mvrx` block: peer address, IKEv1 transport mode, proposals |
+| `conn.conf` | the `conn l2tp` block: peer address, IKEv1 transport mode, proposals |
 | `ipsec.secrets` | `: PSK <psk>` |
-| `xl2tpd.conf` | `[global]` plus the `[lac mvrx]` block naming the LNS |
+| `xl2tpd.conf` | `[global]` plus the `[lac l2tp]` block naming the LNS |
 | `ppp-options` | pppd options including `name <account>`. Must not contain `defaultroute` — that is what keeps ppp0 from taking over the house's routing |
 | `chap-secrets` | the account's password (symlinked to /etc/ppp/chap-secrets; pppd's path is compiled in) |
 | `probe-host` | `host:port` on the far side for the watchdog, e.g. a machine's ssh port |
-| `peer` | the office concentrator's address on its own line. Everything else about the connection is in `vpn-relay.nix`; only this identifies an employer |
+| `peer` | the concentrator's address on its own line. Everything else about the connection is in `vpn-relay.nix`; only this identifies the far end |
 
 UTokyo VPN (`utokyo-vpn.nix`) reads `/var/lib/secrets/utokyo-vpn/`, root 0600,
 each file the bare value with no trailing newline. All three come from the UTokyo

@@ -1,7 +1,7 @@
 # Mail. Stalwart (IMAP/JMAP, submission endpoint, admin UI) plus imapsync mirroring 3 Google accounts.
 #
 # The home line has OP25B, so port 25 passes neither in nor out (measured 2026-09-23). So inbound (MX)
-# stays on Google for now, and Gmail, work, and university (all Google IMAP) are mirrored hourly
+# stays on Google for now, and Gmail, a second Google account, and university (all Google IMAP) are mirrored hourly
 # with imapsync. Deletions on the Google side are not mirrored (this side is the archive).
 # On top of the hourly pass, mail-push-<name> holds an IMAP IDLE on each Google INBOX and copies
 # just the INBOX the moment something arrives, so new mail reaches the clients (which IDLE on
@@ -29,13 +29,13 @@
 # the clear-text port").
 { lib, pkgs, ... }:
 let
-  # Stalwart account name → that Google account's domain (to pick the outbound route by From).
-  accounts = {
-    gmail = "gmail.com";
-    work = "mvrks.co.jp";
-    school = "g.ecc.u-tokyo.ac.jp";
-  };
-  names = builtins.attrNames accounts;
+  # Stalwart account names, one per Google account. The addresses themselves stay in the secrets
+  # (mail/<name>.address): routing below matches on them, so no domain has to appear in this repo.
+  names = [
+    "gmail"
+    "school"
+    "sean"
+  ];
   secretDir = "/var/lib/secrets/mail";
   cred = name: "%{file:/run/credentials/stalwart.service/${name}}%";
 
@@ -249,14 +249,14 @@ in
       storage.directory = "memory";
       directory.memory = {
         type = "memory";
-        principals = builtins.mapAttrs (name: _: {
+        principals = lib.genAttrs names (name: {
           inherit name;
           class = "individual";
           secret = cred "${name}.password";
           # Use the real address as the identity. must-match-sender (default true) checks this, so once
           # authenticated as this account, From can only be this address.
           email = [ (cred "${name}.address") ];
-        }) accounts;
+        });
       };
       authentication.fallback-admin = {
         user = "admin";
@@ -279,16 +279,16 @@ in
         { "else" = false; }
       ];
 
-      # Pick the exit by From domain. No match falls to mx (unreachable under OP25B = an identity that can't send).
+      # Pick the exit by From address. must-match-sender pins From to the authenticated account's
+      # address, so this is the same as routing by account. No match falls to mx (unreachable under
+      # OP25B = an identity that can't send).
       queue.strategy.route =
-        builtins.attrValues (
-          builtins.mapAttrs (name: domain: {
-            "if" = "sender_domain = '${domain}'";
-            "then" = "'${name}'";
-          }) accounts
-        )
+        map (name: {
+          "if" = "sender = '${cred "${name}.address"}'";
+          "then" = "'${name}'";
+        }) names
         ++ [ { "else" = "'mx'"; } ];
-      queue.route = builtins.mapAttrs (name: _: {
+      queue.route = lib.genAttrs names (name: {
         type = "relay";
         address = "smtp.gmail.com";
         port = 465;
@@ -296,7 +296,7 @@ in
         tls.implicit = true;
         auth.username = cred "${name}.address";
         auth.secret = cred "${name}.app-password";
-      }) accounts;
+      });
     };
   };
   systemd.services = pushUnits // {

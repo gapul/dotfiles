@@ -139,7 +139,7 @@ fi
 
 # 5. 日次の自己更新 (Linux で systemd --user が動くホストだけ)
 #    herdr の machine ブリッジ (`herdr machine add` で登録した接続) は nssh も herdr ラッパーも
-#    通らないので、この下準備が接続で走らない。mvrx-nolang-dev は 2026-09-23 に 187 コミット
+#    通らないので、この下準備が接続で走らない。sean は 2026-09-23 に 187 コミット
 #    取り残されていた。そこでこのスクリプト自身を user timer で毎朝回す。ログアウト中も動くには
 #    linger が要る (`loginctl enable-linger` は root 権限。無ければログイン中だけ動く)。
 if [ "$(uname -s)" = "Linux" ] && systemctl --user show-environment >/dev/null 2>&1; then
@@ -176,9 +176,9 @@ if docker container inspect nix >/dev/null 2>&1; then
 fi
 
 # 7. T3 Code (nightly)。人が `curl -fsSL https://t3.codes/install.sh | T3CODE_CHANNEL=nightly sh`
-#    で ~/.local/bin/t3 を入れたホストだけが対象 (現状は mvrx-nolang-dev のみ。herdr のセッションを
+#    で ~/.local/bin/t3 を入れたホストだけが対象 (現状は sean のみ。herdr のセッションを
 #    T3 へ移した先)。サーバーは自機のループバックだけで待ち受け、macmini の
-#    launchd.agents.t3code-mvrx-tunnel が ssh で引き出し、https://t3-mvrx.gapul.net として公開する。
+#    launchd.agents.t3code-sean-tunnel が ssh で引き出し、https://t3-sean.gapul.net として公開する。
 #    共有機なので 0.0.0.0 では開けない。版はクライアントや macmini と同じ nightly に揃える必要が
 #    あるので、macmini と同じ 05:00 に追従し、版が変わったときだけ再起動する。
 if [ -x ~/.local/bin/t3 ] && [ "$(uname -s)" = "Linux" ] && systemctl --user show-environment >/dev/null 2>&1; then

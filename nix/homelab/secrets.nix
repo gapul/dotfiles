@@ -36,9 +36,9 @@ let
       key = "stalwart/gmail";
     }
     {
-      rel = "mail/work.password";
+      rel = "mail/sean.password";
       sopsFile = ../../secrets/mail.yaml;
-      key = "stalwart/work";
+      key = "stalwart/sean";
     }
     {
       rel = "mail/school.password";
@@ -47,8 +47,8 @@ let
     }
     { rel = "mail/gmail.address"; }
     { rel = "mail/gmail.app-password"; }
-    { rel = "mail/work.address"; }
-    { rel = "mail/work.app-password"; }
+    { rel = "mail/sean.address"; }
+    { rel = "mail/sean.app-password"; }
     { rel = "mail/school.address"; }
     { rel = "mail/school.app-password"; }
     {
@@ -61,13 +61,13 @@ let
       rel = "mullvad-exit.conf";
       restartUnits = [ "container@mullvad-exit.service" ];
     }
-    { rel = "mvrx/chap-secrets"; }
-    { rel = "mvrx/conn.conf"; }
-    { rel = "mvrx/ipsec.secrets"; }
-    { rel = "mvrx/peer"; }
-    { rel = "mvrx/ppp-options"; }
-    { rel = "mvrx/probe-host"; }
-    { rel = "mvrx/xl2tpd.conf"; }
+    { rel = "l2tp/chap-secrets"; }
+    { rel = "l2tp/conn.conf"; }
+    { rel = "l2tp/ipsec.secrets"; }
+    { rel = "l2tp/peer"; }
+    { rel = "l2tp/ppp-options"; }
+    { rel = "l2tp/probe-host"; }
+    { rel = "l2tp/xl2tpd.conf"; }
     { rel = "nostr.env"; }
     { rel = "ntfy-alerts.token"; }
     { rel = "obsidian-couchdb.env"; }
@@ -136,7 +136,7 @@ in
   };
 
   # Preserve the restrictive directory permissions required by Authelia and
-  # the office VPN while sops-nix replaces each file atomically.
+  # the L2TP tunnel while sops-nix replaces each file atomically.
   #
   # The top directory is 0711, not 0700: the files are symlinks into /run/secrets
   # and some are opened by the service's own user (matrix-synapse reads
@@ -153,6 +153,6 @@ in
     "d /var/lib/secrets 0711 root root -"
     "z /var/lib/secrets 0711 root root -"
     "d /var/lib/secrets/authelia 0750 root authelia-main -"
-    "d /var/lib/secrets/mvrx 0700 root root -"
+    "d /var/lib/secrets/l2tp 0700 root root -"
   ];
 }

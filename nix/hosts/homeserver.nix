@@ -82,7 +82,7 @@ in
   #     copied off the box first; the 200GB mount is on the same NVMe and does not count
   #
   # Everything the old box ran is declared: CT101's stacks, the HAOS VM, the four
-  # LXC containers and VM105's office tunnel. The one thing not carried over is
+  # LXC containers and VM105's L2TP tunnel. The one thing not carried over is
   # CT106, and only because there was nothing in it — the mullvad and wg binaries
   # are installed but /etc/wireguard is empty and its default route is the plain
   # LAN one, so it has been a tailscale node doing nothing. If a Mullvad exit node
@@ -190,7 +190,7 @@ in
   # is safe (tailscale picks one as primary), so this can be enabled before CT102 is
   # switched off, and the old one is the fallback while cutting over.
   #
-  # The office subnet is reachable because of homelab/vpn-relay.nix; advertising it
+  # The remote subnet is reachable because of homelab/vpn-relay.nix; advertising it
   # while the tunnel is down simply means those packets go nowhere, same as before.
   #
   services.tailscale = {
@@ -203,7 +203,7 @@ in
     # to run `tailscale up`, which is exactly the step that leaves a headless
     # box unreachable.
     authKeyFile = "/var/lib/secrets/tailscale.key";
-    # The house; the office network reached over the L2TP tunnel in
+    # The house; the remote network reached over the L2TP tunnel in
     # homelab/vpn-relay.nix (once advertised by VM105); and UTNET over
     # homelab/utokyo-vpn.nix. These flags only apply when the node first logs in —
     # on a running box change the routes with `tailscale set --advertise-routes=...`.

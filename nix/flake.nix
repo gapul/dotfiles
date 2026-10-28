@@ -467,7 +467,7 @@
         wsl = linuxBase ++ [ ./home/wsl.nix ] ++ secrets ++ station;
         linuxServer = linuxBase ++ secrets ++ station;
         # Shared hosts where the age key must never exist (other people hold sudo), e.g. the
-        # company GPU box reached through rootless docker. No secrets, no desktop extras.
+        # shared GPU box reached through rootless docker. No secrets, no desktop extras.
         linuxShared = linuxBase;
       };
 
