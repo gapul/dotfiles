@@ -1,0 +1,39 @@
+diff -ruN a/qemu/run-ios.sh b/qemu/run-ios.sh
+--- a/qemu/run-ios.sh
++++ b/qemu/run-ios.sh
+@@ -65,7 +65,7 @@
+ fi
+ NET=()
+ if [ -n "$QEMU_NET" ] && [ "$QEMU_NET" != 0 ]; then
+-	NET=(-netdev user,id=net0 -device virtio-net-device,netdev=net0)
++	NET=(-netdev user,id=net0,hostfwd=tcp:127.0.0.1:${QEMU_SSH_PORT:-2222}-:22 -device virtio-net-device,netdev=net0)
+ 	CMDLINE="virtio_net=1 $CMDLINE"
+ fi
+ # the sound device (QEMU 8.2 or newer has one for this machine): the kernel's sink for /dev/hakios-audio
+diff -ruN a/qemu/run.sh b/qemu/run.sh
+--- a/qemu/run.sh
++++ b/qemu/run.sh
+@@ -11,7 +11,7 @@
+ T=${1:-20}; shift
+ EFI=${QEMU_EFI:-/usr/share/edk2/aarch64/QEMU_EFI.fd}
+ [ -f "$EFI" ] || { echo "run.sh: no UEFI firmware at $EFI (set QEMU_EFI and QEMU_VARS)"; exit 1; }
+-cp "${QEMU_VARS:-/usr/share/edk2/aarch64/QEMU_VARS.fd}" vars.fd 2>/dev/null
++cp "${QEMU_VARS:-/usr/share/edk2/aarch64/QEMU_VARS.fd}" vars.fd 2>/dev/null; chmod u+w vars.fd
+ # the loader is the boot application of the little FAT volume QEMU makes of esp/:
+ # the one built here, or else the one that comes with the repository
+ L=../xnuloader/loader.efi; [ -f $L ] || L=../prebuilt/loader.efi
+diff -ruN a/userland/build.sh b/userland/build.sh
+--- a/userland/build.sh
++++ b/userland/build.sh
+@@ -581,6 +581,11 @@
+ 		mv sysroot/private/var/staged_system_apps/* sysroot/Applications/
+ 		rm -rf sysroot/private/var
+ 	fi
++	# local: apps of our own, as system applications (EXTRA_APPS="path/A.app path/B.app")
++	for app in $EXTRA_APPS; do
++		cp -a "$app" sysroot/Applications/
++		echo "  extra application: ${app##*/}"
++	done
+ 	mv sysroot/sbin/launchd sysroot/sbin/launchd.ios
+ 	cp obj/stage0 sysroot/sbin/launchd
+ 	# the audio DSP's firmware, the phone's own from ../fw-audio (never in the repository), where the kernel reads
