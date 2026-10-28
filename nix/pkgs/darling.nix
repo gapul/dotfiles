@@ -9,6 +9,7 @@
   runCommandWith,
   writeShellScript,
   fetchFromGitHub,
+  fetchurl,
   coreutils,
 
   freetype,
@@ -26,7 +27,6 @@
   fontconfig,
   dbus,
   libGLU,
-  fuse,
   ffmpeg,
   pulseaudio,
 
@@ -51,6 +51,23 @@
 }:
 let
   stdenv = clangStdenv;
+
+  # darling-dmg (hdiutil) is written against the FUSE 2 API, and nixpkgs removed fuse2 on
+  # 2026-10-25 (`fuse` is FUSE 3 now). Only the library is built: mounting goes through the
+  # system's setuid fusermount, so util/ (fusermount, mount.fuse) is left out.
+  fuse2 = stdenv.mkDerivation {
+    pname = "fuse";
+    version = "2.9.9";
+    src = fetchurl {
+      url = "https://github.com/libfuse/libfuse/releases/download/fuse-2.9.9/fuse-2.9.9.tar.gz";
+      hash = "sha256-0OadXWCMwi/0hDeRrQl/VU3TJUDdyb7XY4zG/qfBtLU=";
+    };
+    configureFlags = [
+      "--disable-util"
+      "--disable-example"
+    ];
+    meta.license = lib.licenses.lgpl2Only;
+  };
 
   # The build system invokes clang to compile Darwin executables.
   # In this case, our cc-wrapper must not be used.
@@ -108,7 +125,7 @@ let
     libGLU
 
     # src/external/darling-dmg/CMakeLists.txt
-    fuse
+    fuse2
 
     # src/CoreAudio/CMakeLists.txt
     ffmpeg
