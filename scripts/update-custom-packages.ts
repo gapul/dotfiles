@@ -1,11 +1,11 @@
 #!/usr/bin/env bun
 // Move the pins of the custom packages in nix/pkgs (slk, Unity CLI, the Fabric server and its
-// mods, Geyser) to their newest upstream releases. Run hourly by .github/workflows/
+// mods, Geyser, the ArtCraft apps, Compositor) to their newest upstream releases. Run hourly by .github/workflows/
 // update-flake-lock.yml, which opens a PR with whatever changed.
 //
 // Ported from update-custom-packages.sh. HTTP goes through fetch and hashes are computed
 // in-process (the SRI strings are what `nix hash file` / `nix hash convert` printed), so the only
-// external command left is `gh` for the slk release, which carries the workflow's token.
+// external command left is `gh` for the GitHub release lookups, which carries the workflow's token.
 import { readFileSync, writeFileSync, writeSync } from "node:fs";
 
 const repo = `${import.meta.dir}/..`;
@@ -15,6 +15,9 @@ const fabricFile = `${repo}/nix/pkgs/fabric-server.nix`;
 const geyserFile = `${repo}/nix/pkgs/geyser.nix`;
 const modsFile = `${repo}/nix/pkgs/fabric-mods.nix`;
 const macminiFile = `${repo}/nix/hosts/macmini.nix`;
+const craftAppsFile = `${repo}/nix/pkgs/artcraft-apps.nix`;
+const artcraftFile = `${repo}/nix/pkgs/artcraft.nix`;
+const compositorFile = `${repo}/nix/pkgs/compositor.nix`;
 const protocolMapUrl =
   "https://raw.githubusercontent.com/PrismarineJS/minecraft-data/master/data/pc/common/protocolVersions.json";
 
@@ -59,16 +62,55 @@ function rewrite(file: string, edit: (line: string) => string): void {
 // awk's sub(/"[^"]+"/, "\"" value "\""): replace the first non-empty quoted string.
 const setQuoted = (line: string, value: string): string => line.replace(/"[^"]+"/, () => `"${value}"`);
 
-async function updateSlk(): Promise<void> {
-  const pinnedSlk = pinned(slkFile, "version");
-  const gh = Bun.spawnSync(["gh", "api", "repos/gammons/slk/releases/latest", "--jq", '.tag_name | ltrimstr("v")'], {
+// `gh api <path>`, through gh so the GitHub API sees the workflow's token rather than the
+// runner's shared anonymous rate limit.
+function ghApi(path: string, jq?: string): string {
+  const gh = Bun.spawnSync(["gh", "api", path, ...(jq ? ["--jq", jq] : [])], {
     stdin: "ignore",
     stdout: "pipe",
     stderr: "inherit",
   });
   // gh has already said what went wrong; exit with its code, like set -e did.
   if (gh.exitCode !== 0) process.exit(gh.exitCode ?? 1);
-  const latestSlk = gh.stdout.toString().replace(/\n+$/, "");
+  return gh.stdout.toString().replace(/\n+$/, "");
+}
+
+interface GhRelease {
+  tag_name: string;
+  draft: boolean;
+  prerelease: boolean;
+  assets: { name: string; browser_download_url: string; digest?: string | null }[];
+}
+
+// SRI hashes of release assets without downloading them where possible: the release's
+// SHA256SUMS.txt first, then the sha256 digest GitHub records per asset, and only then the
+// asset itself.
+async function releaseHashes(release: GhRelease, names: string[]): Promise<Record<string, string>> {
+  const sums: Record<string, string> = {};
+  const sumsAsset = release.assets.find((a) => a.name === "SHA256SUMS.txt");
+  if (sumsAsset) {
+    for (const line of (await (await get(sumsAsset.browser_download_url, 30_000)).text()).split("\n")) {
+      const m = /^([0-9a-fA-F]{64})\s+\*?(\S+)$/.exec(line.trim());
+      if (m) sums[m[2]] = m[1];
+    }
+  }
+  const hashes: Record<string, string> = {};
+  for (const name of names) {
+    const asset = release.assets.find((a) => a.name === name);
+    if (!asset) throw new Fatal(`${release.tag_name}: no asset ${name}`);
+    const digest = asset.digest?.startsWith("sha256:") ? asset.digest.slice("sha256:".length) : undefined;
+    const hex = sums[name] ?? digest;
+    hashes[name] = hex ? sriFromHex("sha256", hex) : sriSha256(await getBytes(asset.browser_download_url));
+  }
+  return hashes;
+}
+
+const latestRelease = (repoPath: string): GhRelease =>
+  JSON.parse(ghApi(`repos/${repoPath}/releases/latest`)) as GhRelease;
+
+async function updateSlk(): Promise<void> {
+  const pinnedSlk = pinned(slkFile, "version");
+  const latestSlk = ghApi("repos/gammons/slk/releases/latest", '.tag_name | ltrimstr("v")');
   if (pinnedSlk === latestSlk) return;
 
   const hashes: Record<string, string> = {};
@@ -282,11 +324,93 @@ async function updateGeyser(): Promise<void> {
   out(`geyser: ${pinnedGeyser}-${pinnedBuild} -> ${gv}-${gb}`);
 }
 
+// --- ArtCraft (storytold) and Compositor -----------------------------------------------------
+// The twelve Craft apps share one release layout (github.com/storytold/<name>, tag v<version>,
+// a universal dmg for darwin and an x86_64 tarball for Linux), so they are one list in
+// artcraft-apps.nix; each entry's version, hash and linuxHash move together.
+async function updateCraftApps(): Promise<void> {
+  const text = readFileSync(craftAppsFile, "utf8");
+  const apps = [...text.matchAll(/^\s*name = "([^"]+)";\n\s*version = "([^"]+)";/gm)].map((m) => ({
+    name: m[1],
+    pinned: m[2],
+  }));
+  const bumps: Record<string, { version: string; hash: string; linuxHash: string }> = {};
+  for (const app of apps) {
+    const pname = app.name.toLowerCase();
+    const release = latestRelease(`storytold/${pname}`);
+    const version = release.tag_name.replace(/^v/, "");
+    if (version === app.pinned) continue;
+    const dmg = `${pname}-${version}-macos-universal.dmg`;
+    const tarball = `${pname}-${version}-linux-x86_64.tar.gz`;
+    const hashes = await releaseHashes(release, [dmg, tarball]);
+    bumps[app.name] = { version, hash: hashes[dmg], linuxHash: hashes[tarball] };
+  }
+  if (Object.keys(bumps).length === 0) return;
+
+  let bump: (typeof bumps)[string] | undefined;
+  rewrite(craftAppsFile, (line) => {
+    const name = /^\s*name = "([^"]+)";/.exec(line);
+    if (name) bump = bumps[name[1]];
+    if (!bump) return line;
+    if (/^\s*version = "/.test(line)) line = setQuoted(line, bump.version);
+    if (/^\s*hash = "/.test(line)) line = setQuoted(line, bump.hash);
+    if (/^\s*linuxHash = "/.test(line)) line = setQuoted(line, bump.linuxHash);
+    return line;
+  });
+  for (const app of apps) {
+    if (bumps[app.name]) out(`${app.name.toLowerCase()}: ${app.pinned} -> ${bumps[app.name].version}`);
+  }
+}
+
+// A single-asset release: `version` and the src `hash` in a finalAttrs derivation whose url is
+// `asset(version)` under the release tagged `tag(version)`.
+async function updateReleaseAsset(
+  label: string,
+  file: string,
+  repoPath: string,
+  tag: (version: string) => string,
+  asset: (version: string) => string,
+): Promise<void> {
+  const pinnedVersion = pinned(file, "version");
+  // ArtCraft's tags carry a component prefix (artcraft-v...), so pick the newest release
+  // with this line's prefix rather than trusting releases/latest.
+  const releases = JSON.parse(ghApi(`repos/${repoPath}/releases?per_page=30`)) as GhRelease[];
+  const prefix = tag("");
+  const release = releases.find((r) => !r.draft && !r.prerelease && r.tag_name.startsWith(prefix));
+  if (!release) throw new Fatal(`${repoPath}: no release tagged ${prefix}*`);
+  const version = release.tag_name.slice(prefix.length);
+  if (version === pinnedVersion) return;
+  const hash = (await releaseHashes(release, [asset(version)]))[asset(version)];
+  let v = false;
+  let h = false;
+  rewrite(file, (line) => {
+    if (/^\s*version = "/.test(line) && !v) {
+      line = setQuoted(line, version);
+      v = true;
+    }
+    if (/^\s*hash = "/.test(line) && !h) {
+      line = setQuoted(line, hash);
+      h = true;
+    }
+    return line;
+  });
+  out(`${label}: ${pinnedVersion} -> ${version}`);
+}
+
 try {
   await updateSlk();
   await updateUnity();
   await updateFabric();
   await updateGeyser();
+  await updateCraftApps();
+  await updateReleaseAsset(
+    "artcraft",
+    artcraftFile,
+    "storytold/artcraft",
+    (v) => `artcraft-v${v}`,
+    (v) => `ArtCraft_${v}_universal.dmg`,
+  );
+  await updateReleaseAsset("compositor", compositorFile, "robbietilton/Compositor", (v) => `v${v}`, () => "Compositor.dmg");
 } catch (e) {
   err(`update-custom-packages: ${e instanceof Error ? e.message : String(e)}`);
   process.exit(1);
