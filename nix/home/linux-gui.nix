@@ -435,10 +435,8 @@ in
     )
     libimobiledevice
     uxplay # iPhone AirPlay receiver
-    # iOS apps from Linux: xtool builds with this Swift against an SDK made from the mac's Xcode.
+    # iOS apps from Linux: build, sign and install with an SDK made from the mac's Xcode.
     (callPackage ../pkgs/xtool.nix { })
-    swift
-    swiftpm
     androidTools # adb; USB permissions are provided by systemd
     rquickshare # Quick Share with Android phones; port pinned below
     (scrcpy.override { android-tools = androidTools; }) # Android display and control
