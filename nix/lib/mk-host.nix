@@ -13,6 +13,7 @@
   system,
   commonSpecialArgs,
   mkPkgs,
+  self,
 }:
 {
   darwin =
@@ -38,6 +39,8 @@
           };
         }
         host
+        # Record the dotfiles commit, so darwin-version.json says which commit is running.
+        { system.configurationRevision = self.rev or self.dirtyRev or null; }
       ]
       ++ nixpkgs.lib.optionals (homeModules != [ ]) [
         home-manager.darwinModules.home-manager

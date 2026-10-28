@@ -136,6 +136,8 @@ in
   # rEFInd would have to be signed by hand to keep Secure Boot). "max" draws it at the panel's
   # native resolution instead of the firmware's 80x25 text mode, so it is small and sharp.
   boot.loader.systemd-boot.consoleMode = "max";
+  # No kernel command line editing at the menu (lanzaboote copies this into its loader.conf).
+  boot.loader.systemd-boot.editor = false;
   boot.lanzaboote = {
     enable = true;
     # Where sbctl places keys. Match the `sbctl create-keys` default.
@@ -449,6 +451,9 @@ in
   # Phase 4-5 of docs/NIXOS_DUALBOOT.md.
   # For swap, avoid a plaintext partition and use zram (in-memory, on encrypted RAM).
   zramSwap.enable = true;
+  # With zram as the only swap, swapping costs a compression rather than a disk read, so the
+  # kernel should prefer it to dropping page cache (the value the zram docs and Fedora use).
+  boot.kernel.sysctl."vm.swappiness" = 180;
 
   # The initrd is systemd-based (needed for TPM2 auto-unlock); nixpkgs has removed the scripted
   # one, so there is no option left to set. Works with lanzaboote.
@@ -1114,9 +1119,16 @@ in
   };
   programs.zsh.enable = true;
 
-  # SSH is public-key only (password auth disabled). Keys follow the Bitwarden-managed policy.
+  # SSH is public-key only. Keys follow the Bitwarden-managed policy.
   services.openssh.enable = true;
   services.openssh.settings.PasswordAuthentication = false;
+  # PasswordAuthentication alone left keyboard-interactive (PAM) open: a client without a key
+  # was offered a password prompt (checked 2026-10-28).
+  services.openssh.settings.KbdInteractiveAuthentication = false;
+  # Only over the tailnet: every client (macmini, the phone) reaches this box at its
+  # 100.111.122.3 address, and a laptop on café Wi-Fi should not answer on 22.
+  services.openssh.openFirewall = false;
+  networking.firewall.interfaces.tailscale0.allowedTCPPorts = [ 22 ];
   # No "Last login" line on ssh logins. That is what ~/.hushlogin was doing here (home/common.nix
   # writes it for macOS' login(1)); with sshd quiet the file can go from this host's home.
   services.openssh.settings.PrintLastLog = false;

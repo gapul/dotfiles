@@ -150,6 +150,10 @@ in
         "QT_QUICK_CONTROLS_STYLE=Basic"
         "QT_STYLE_OVERRIDE=Fusion"
         "QT_QPA_PLATFORMTHEME="
+        # Qt writes qDebug straight to journald when it sees JOURNAL_STREAM, bypassing the
+        # null stdout below: the AirPods' MagicAccIRK / MagicAccEncKey ended up in the journal.
+        "QT_FORCE_STDERR_LOGGING=1"
+        "QT_LOGGING_RULES=*.debug=false;*.info=false"
       ];
       Restart = "on-failure";
       RestartSec = 3;

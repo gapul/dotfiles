@@ -305,6 +305,7 @@
           commonSpecialArgs
           mkPkgs
           ;
+        inherit (inputs) self;
       };
 
       darwinWorkstationSpecialArgs = {
@@ -365,6 +366,8 @@
             # Override things like tailscale's wrong vendorHash here.
             { nixpkgs.overlays = [ overlayFixes ]; }
             ./hosts/nixos-laptop.nix
+            # `nixos-version --configuration-revision` then names the running dotfiles commit.
+            { system.configurationRevision = inputs.self.rev or inputs.self.dirtyRev or null; }
             sops-nix.nixosModules.sops # hosts/nixos-laptop-wifi.nix
             lanzaboote.nixosModules.lanzaboote
           ]

@@ -184,6 +184,21 @@ in
             }/bin/rclone-configured-${name}";
             ExecStartPre = [
               "${pkgs.coreutils}/bin/mkdir -p ${mountPoint} ${cacheDir}"
+              # A user unit cannot order itself after the system's network-online.target, so at
+              # login rclone started before DNS was up and failed once on every boot
+              # ("lookup oauth2.googleapis.com: no such host"). Wait up to a minute for the name.
+              "${
+                pkgs.writeShellApplication {
+                  name = "rclone-wait-dns";
+                  runtimeInputs = [ pkgs.getent ];
+                  text = ''
+                    for _ in $(seq 30); do
+                      getent hosts oauth2.googleapis.com >/dev/null && exit 0
+                      sleep 2
+                    done
+                  '';
+                }
+              }/bin/rclone-wait-dns"
               "-${fusermount} -uz ${mountPoint}"
             ];
             # Same flags as the mac's nfsmount, restic repository excluded the same way.
