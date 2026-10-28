@@ -1018,12 +1018,14 @@ in
   systemd.services.avahi-daemon.postStart = ''
     ${pkgs.systemd}/bin/systemctl --user --machine=gapul@.host --no-block try-restart uxplay.service || true
   '';
-  # UxPlay uses fixed ports; accept AirPlay only on the Wi-Fi interface.
+  # UxPlay and RQuickShare use fixed ports; accept them only on the Wi-Fi interface.
+  # 41200 is RQuickShare's, pinned in home/linux-gui.nix.
   networking.firewall.interfaces.wlp0s20f3 = {
     allowedTCPPorts = [
       7000
       7001
       7002
+      41200
     ];
     allowedUDPPorts = [
       7000
