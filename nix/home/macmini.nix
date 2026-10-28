@@ -261,6 +261,13 @@ in
             excludeShellChecks = [ "SC2164" ];
             text = ''
               unset DO_NOT_TRACK DISABLE_TELEMETRY CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC DISABLE_GROWTHBOOK
+              # Remote Control needs the claude.ai (subscription) login, not the setup-token: with
+              # CLAUDE_CODE_OAUTH_TOKEN set it refuses ("only available with claude.ai subscriptions").
+              # That login lives in the Keychain item keyed by CLAUDE_CONFIG_DIR
+              # ("Claude Code-credentials-<hash of the dir>"). Without the variable claude reads the
+              # default-dir item instead, which has been dead since 2026-10-17, and the job crash-looped.
+              unset CLAUDE_CODE_OAUTH_TOKEN
+              export CLAUDE_CONFIG_DIR="${config.xdg.configHome}/claude"
               export PATH="$HOME/.local/bin:${config.home.profileDirectory}/bin:/run/current-system/sw/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
               cd "$HOME"
               exec "$HOME/.local/bin/claude" remote-control \
@@ -274,7 +281,8 @@ in
       ];
       RunAtLoad = true;
       KeepAlive = true;
-      ThrottleInterval = 30;
+      # A login failure exits at once; retrying every 30 s only fills the log (94k lines by 10/28).
+      ThrottleInterval = 300;
       ProcessType = "Standard";
       LowPriorityIO = true;
       Nice = 5;

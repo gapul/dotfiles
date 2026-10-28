@@ -37,8 +37,9 @@
     device = "/dev/disk/by-uuid/4819-2479";
     fsType = "vfat";
     options = [
-      "fmask=0022"
-      "dmask=0022"
+      # Root only: bootctl warns that a world-readable /boot/loader/random-seed is a hole.
+      "fmask=0077"
+      "dmask=0077"
     ];
   };
 
