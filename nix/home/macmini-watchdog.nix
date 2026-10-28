@@ -21,7 +21,9 @@ let
     bashOptions = [ ];
     text = ''
       [ -r "${hcUrlFile}" ] || exit 0
-      if /usr/bin/nc -z -G 4 ${homeserver} 22 2>/dev/null; then
+      # A full key exchange, not just an open port: on 2026-10-28 sshd kept accepting TCP but
+      # reset every connection before the banner for two hours, and `nc -z` called that alive.
+      if /usr/bin/ssh-keyscan -T 8 -t ed25519 ${homeserver} 2>/dev/null | /usr/bin/grep -q ssh-ed25519; then
         /usr/bin/curl -fsS -m 10 "$(cat "${hcUrlFile}")" >/dev/null 2>&1
       fi
     '';
