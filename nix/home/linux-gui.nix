@@ -1,5 +1,6 @@
 {
   config,
+  lib,
   pkgs,
   nixpkgsStable,
   user,
@@ -351,6 +352,24 @@ in
   # claude-cli:// handler. Claude Code's native installer wrote this pointing at its own
   # ~/.local/bin/claude; the CLI now comes only from nixpkgs (hosts/nixos-laptop.nix), so the
   # entry calls whatever `claude` is on PATH. force: Claude Code may rewrite it on its own.
+  # RQuickShare listens on a random port unless .settings.json names one, and the firewall only
+  # opens a fixed one (networking.firewall.interfaces.wlp0s20f3 in hosts/nixos-laptop.nix).
+  # The app rewrites the file itself and fills missing keys with defaults, so only "port" is set.
+  home.activation.rquickshare-port =
+    let
+      jq = lib.getExe pkgs.jq;
+    in
+    lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+      cfg="${config.xdg.dataHome}/dev.mandre.rquickshare/.settings.json"
+      run mkdir -p "$(dirname "$cfg")"
+      if [ -f "$cfg" ]; then
+        new=$(${jq} '.port = 41200' "$cfg")
+      else
+        new='{"port":41200}'
+      fi
+      if [[ ! -v DRY_RUN ]]; then printf '%s\n' "$new" >"$cfg"; fi
+    '';
+
   xdg.dataFile."applications/claude-code-url-handler.desktop" = {
     force = true;
     text = ''
@@ -416,7 +435,12 @@ in
     )
     libimobiledevice
     uxplay # iPhone AirPlay receiver
+    # iOS apps from Linux: xtool builds with this Swift against an SDK made from the mac's Xcode.
+    (callPackage ../pkgs/xtool.nix { })
+    swift
+    swiftpm
     androidTools # adb; USB permissions are provided by systemd
+    rquickshare # Quick Share with Android phones; port pinned below
     (scrcpy.override { android-tools = androidTools; }) # Android display and control
     (callPackage ../pkgs/syncclipboard.nix { })
     kdePackages.kdeconnect-kde
