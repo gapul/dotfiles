@@ -232,6 +232,15 @@ in
     makeWrapperArgs = old.makeWrapperArgs ++ [
       "--add-flags"
       "--profile ${config.home.homeDirectory}/${config.programs.firefox.profilesPath}/dev"
+      # A link opened from T3 Code starts Firefox with T3's environment (home/t3code-desktop.nix),
+      # and GDK_BACKEND=x11 there put the whole browser on XWayland: no kinetic touchpad
+      # scrolling, so pages stuck to the fingers (2026-10-28). The session sets none of these.
+      "--unset"
+      "GDK_BACKEND"
+      "--unset"
+      "GTK_IM_MODULE"
+      "--unset"
+      "GTK_IM_MODULE_FILE"
     ];
   });
 
