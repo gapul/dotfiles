@@ -2,6 +2,13 @@
 let
   resticCommon = import ../lib/restic-common.nix { home = "/root"; };
   mountPoint = "/mnt/restic-view";
+  # restic's FUSE library execs `fusermount` by name, but nixpkgs dropped fuse2 (2026-10-25) and
+  # `fuse` is now fuse3, which only ships `fusermount3`. The protocol is the same, so expose
+  # fusermount3 under the old name (verified on homeserver, 2026-10-28).
+  fusermountCompat = pkgs.runCommand "fusermount-compat" { } ''
+    mkdir -p $out/bin
+    ln -s ${pkgs.fuse3}/bin/fusermount3 $out/bin/fusermount
+  '';
 in
 {
   # files.gapul.net: a read-only window onto the backup repository, for checking
@@ -19,7 +26,7 @@ in
     path = with pkgs; [
       restic
       rclone
-      fuse
+      fusermountCompat
     ];
     environment = {
       RESTIC_REPOSITORY = resticCommon.repository;
@@ -36,9 +43,9 @@ in
       # even just browsing is slow. --no-cache would silence it, but that only hides the symptom
       # and hits Google Drive on every browse.
       CacheDirectory = "restic";
-      ExecStartPre = "-${pkgs.fuse}/bin/fusermount -u ${mountPoint}";
+      ExecStartPre = "-${pkgs.fuse3}/bin/fusermount3 -u ${mountPoint}";
       ExecStart = "${pkgs.restic}/bin/restic mount --no-lock --allow-other --no-default-permissions ${mountPoint}";
-      ExecStop = "-${pkgs.fuse}/bin/fusermount -u ${mountPoint}";
+      ExecStop = "-${pkgs.fuse3}/bin/fusermount3 -u ${mountPoint}";
       Restart = "on-failure";
       RestartSec = "30s";
       # restic mount only ever grows: after five days it held 5.7G anonymous memory (peak 9.3G)
