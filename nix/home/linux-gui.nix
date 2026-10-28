@@ -460,6 +460,8 @@ in
     uxplay # iPhone AirPlay receiver
     # iOS apps from Linux: build, sign and install with an SDK made from the mac's Xcode.
     (callPackage ../pkgs/xtool.nix { })
+    # ... and run them in iOS 16.5 under QEMU (`hackios setup`, `hackios run`, `hackios push`)
+    (callPackage ../pkgs/hackios { })
     androidTools # adb; USB permissions are provided by systemd
     rquickshare # Quick Share with Android phones; port pinned below
     (scrcpy.override { android-tools = androidTools; }) # Android display and control
