@@ -16,9 +16,9 @@
   })
   # modrinth:gvQqBUqZ lithium
   (fetchurl {
-    name = "lithium-fabric-0.26.2+mc26.3.jar";
-    url = "https://cdn.modrinth.com/data/gvQqBUqZ/versions/xS0Q8LSi/lithium-fabric-0.26.2%2Bmc26.3.jar";
-    hash = "sha512-TX/uZhMu7ccf6rk5C5LJXXBY7b2tD+z6wdg2opULl6fKRjr77eYcfvNhzmXh+Sernond5b8uDgzkhq+1xdvuQA==";
+    name = "lithium-fabric-0.26.3+mc26.3.jar";
+    url = "https://cdn.modrinth.com/data/gvQqBUqZ/versions/fWv5bnZk/lithium-fabric-0.26.3%2Bmc26.3.jar";
+    hash = "sha512-LKkvtTATXSut3wukzE+Tl2I0h2o4xKoCtIeyVSQA8AWvz77r9Tc/tDlv4gIFN6QtdZe42lpSuQQ1XvUdX+8HrQ==";
   })
   # modrinth:uXXizFIs ferrite-core
   (fetchurl {
