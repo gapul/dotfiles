@@ -149,7 +149,8 @@ in
       # Cut the rest of the traffic to Mozilla that arkenfox does not already cover (2026-09-26).
       # Still allowed on purpose: AMO (extension installs/updates), remote-settings (OneCRL
       # certificate revocations and the add-on blocklist), the GMP updater (Widevine, the reason
-      # this browser exists) and the push service (Slack's web notifications ride it).
+      # this browser exists), the push service (Slack's web notifications ride it) and Safe
+      # Browsing list updates (see the safebrowsing prefs below).
       DisableTelemetry = true;
       DisableFirefoxStudies = true;
       DisableFeedbackCommands = true;
@@ -345,6 +346,14 @@ in
         # server never answers it, so the call sits on "connecting" for 72 s and gives up.
         # Measured with tcpdump on 2026-09-17; without the PQ key share the handshake completes.
         "media.webrtc.send_mlkem_keyshare" = false;
+
+        # Safe Browsing, arkenfox's way: phishing/malware/download lists on (local lists plus
+        # hash-prefix lookups), only the remote check of each download (0403) off. They had been
+        # switched off in the UI; pinned here so that cannot happen silently again (2026-10-30).
+        "browser.safebrowsing.malware.enabled" = true;
+        "browser.safebrowsing.phishing.enabled" = true;
+        "browser.safebrowsing.blockedURIs.enabled" = true;
+        "browser.safebrowsing.downloads.enabled" = true;
 
         # Developer Edition ships with its dark theme switched on; follow the system appearance
         # instead (Firefox's "System theme — auto").
