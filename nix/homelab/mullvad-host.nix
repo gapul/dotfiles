@@ -20,6 +20,10 @@ let
   #   like a new location. X rejected the bridge's polling with 404 from the
   #   first Mullvad address on (2026-10-30 19:44), and Meta, LinkedIn and Discord
   #   are the services most quick to checkpoint a login that moves.
+  # - searx: Mullvad unblocked none of the engines that refuse the home address
+  #   (openverse, unsplash, brave still fail), and the 110-220 ms it adds per
+  #   round trip pushed DuckDuckGo, Yandex, Flickr, Pexels and others past the
+  #   1.5 s request_timeout, so pages came back half empty (2026-10-31).
   # No dash: systemd reads one as nesting, and "mullvad-bypass.slice" lives at
   # mullvad.slice/mullvad-bypass.slice, which the cgroup match then failed to find.
   bypassSlice = "novpn.slice";
@@ -43,6 +47,7 @@ let
     "mautrix-telegram"
     "mautrix-twitter"
     "mautrix-whatsapp"
+    "searx"
   ];
 
   # Rule preferences sit after Tailscale's (5210-5270), so tailscaled's own packets
