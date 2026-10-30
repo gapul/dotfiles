@@ -16,6 +16,8 @@ in
     RunAtLoad = true;
     KeepAlive = true;
     ThrottleInterval = 10;
+    # ASP.NET logs every request at Information; the launchd log had grown to 743 MB.
+    EnvironmentVariables.Logging__LogLevel__Default = "Warning";
     StandardOutPath = "/Users/gapul/Library/Logs/syncclipboard-launchd.log";
     StandardErrorPath = "/Users/gapul/Library/Logs/syncclipboard-launchd.log";
   };

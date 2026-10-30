@@ -98,8 +98,40 @@ let
       echo "free space change: $((freed / 1024)) MiB"
     '';
   };
+
+  # launchd keeps StandardOutPath open for the life of the job, so a log can only be trimmed
+  # in place: renaming it would leave the writer on the old inode. launchd opens it O_APPEND,
+  # so truncating to 0 is safe and the next write lands at the start. Nothing rotated these
+  # before 2026-10-28, when syncclipboard's log was 743 MB and findmy-tag's 38 MB.
+  logTrimScript = pkgs.writeShellApplication {
+    name = "macmini-log-trim";
+    text = ''
+      exec >>"${home}/Library/Logs/macmini-log-trim.log" 2>&1
+      max=$((20 * 1024 * 1024))
+      keep=$((1024 * 1024))
+      for f in "${home}"/Library/Logs/*.log "${home}"/.local/state/*/*.log /tmp/*.log; do
+        [ -f "$f" ] && [ ! -L "$f" ] && [ -O "$f" ] || continue
+        size=$(/usr/bin/stat -f %z "$f")
+        [ "$size" -gt "$max" ] || continue
+        # Keep the newest 1 MiB beside it, so the lines leading up to a trim are not lost.
+        /usr/bin/tail -c "$keep" "$f" >"$f.1"
+        : >"$f"
+        echo "$(/bin/date '+%F %T') trimmed $f ($((size / 1024 / 1024)) MiB)"
+      done
+    '';
+  };
 in
 {
+  launchd.agents.macmini-log-trim = import ../lib/launchd-agent.nix {
+    program = lib.getExe logTrimScript;
+    schedule = [
+      {
+        Hour = 4;
+        Minute = 20;
+      }
+    ];
+  };
+
   launchd.agents.macmini-storage-cleanup = import ../lib/launchd-agent.nix {
     program = lib.getExe cleanupScript;
     schedule = [

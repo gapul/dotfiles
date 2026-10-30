@@ -2,7 +2,6 @@
   config,
   lib,
   pkgs,
-  osConfig,
   ...
 }:
 let
@@ -14,8 +13,8 @@ let
   library = "${home}/Games/library";
   saves = "${home}/Games/saves";
 
-  # Games Cartridges cannot find on its own: the emulators and Minecraft. Steam, Heroic and Lutris
-  # it imports by itself. Each entry becomes ~/.local/share/cartridges/games/imported_<id>.json,
+  # Games Cartridges cannot find on its own: the emulators and Minecraft. Steam and Heroic it
+  # imports by itself. Each entry becomes ~/.local/share/cartridges/games/imported_<id>.json,
   # the format of a game added by hand in its GUI. The id has to stay a number: Cartridges numbers
   # the next hand-added game as max(imported_N) + 1 and parses every imported_ id as an int.
   # Ids are fixed per game so play time and hidden state survive reordering the list.
@@ -24,6 +23,11 @@ let
   prism = lib.getExe config.programs.prismlauncher.package;
   # Reached over the tailnet (hosts/macmini.nix minecraftServers).
   minecraftHost = "100.105.135.49";
+  # The servers carry server-side mods only, so a plain client of the same game version joins them.
+  # The version is the servers' own pin, so this instance follows them when they update.
+  minecraftVersion = (pkgs.callPackage ../pkgs/fabric-server.nix { }).mcVersion;
+  minecraftInstance = "server";
+  heroicProton = "GE-Proton-nix";
   cartridgesGames = [
     {
       id = 9001;
@@ -90,18 +94,8 @@ let
         "${library}/nds/pokemon-platinum.nds"
       ];
     }
-    # Prism instance "fabric", the same one the mac plays (servers: hosts/macmini.nix). Signing in to
-    # the Microsoft account once in Prism's own window is what makes --launch work unattended.
-    {
-      id = 9201;
-      name = "Minecraft";
-      developer = "Mojang";
-      exec = [
-        prism
-        "--launch"
-        "fabric"
-      ];
-    }
+    # Prism instance "server" (declared below). Signing in to the Microsoft account once in Prism's
+    # own window is what makes --launch work unattended.
     {
       id = 9202;
       name = "Minecraft 本館";
@@ -109,7 +103,7 @@ let
       exec = [
         prism
         "--launch"
-        "fabric"
+        minecraftInstance
         "--server"
         "${minecraftHost}:25565"
       ];
@@ -121,7 +115,7 @@ let
       exec = [
         prism
         "--launch"
-        "fabric"
+        minecraftInstance
         "--server"
         "${minecraftHost}:25566"
       ];
@@ -145,7 +139,7 @@ let
     )
   );
 in
-# Non-Steam game launchers and the overlay they share (nixos-laptop only, via home/linux-gui.nix).
+# Non-Steam game launchers, the Minecraft client and the overlay they share (nixos-laptop only, via home/linux-gui.nix).
 # Steam itself is system-side (programs.steam in hosts/nixos-laptop.nix) because it needs the
 # 32-bit graphics stack. Heroic stays a plain package in linux-gui.nix: home-manager has no module
 # for it, and it rewrites its own config.json, Wine/Proton downloads included (~/.config/heroic/tools).
@@ -171,21 +165,72 @@ in
     };
   };
 
-  # GOG / standalone installers / emulators. Runners declared here are not editable in Lutris'
-  # GUI; game entries and their prefixes stay mutable. steamPackage has to be the system's Steam,
-  # or Lutris starts a second instance that fights the first one.
-  programs.lutris = {
-    enable = true;
-    # mkIf: the "safe" specialisation turns Steam off, and its package cannot be evaluated there.
-    steamPackage = lib.mkIf osConfig.programs.steam.enable osConfig.programs.steam.package;
-    winePackages = [ pkgs.wineWow64Packages.staging ];
-    protonPackages = [ pkgs.proton-ge-bin ];
-    defaultWinePackage = pkgs.proton-ge-bin;
-    extraPackages = with pkgs; [
-      winetricks
-      mangohud
-    ];
-  };
+  # The client instance for the macmini servers: vanilla at the servers' game version. Only the
+  # game version is declared; Prism resolves LWJGL and the rest on first launch. When the servers
+  # move to a new version the whole mmc-pack.json is rewritten, so no component resolved for the
+  # old version is left behind. Worlds, options and anything else in the instance stay mutable.
+  home.activation.prismServerInstance =
+    let
+      dir = "${config.xdg.dataHome}/PrismLauncher/instances/${minecraftInstance}";
+      instanceCfg = pkgs.writeText "instance.cfg" ''
+        [General]
+        ConfigVersion=1.3
+        InstanceType=OneSix
+        iconKey=grass
+        name=Minecraft (macmini)
+      '';
+      mmcPack = pkgs.writeText "mmc-pack.json" (
+        builtins.toJSON {
+          formatVersion = 1;
+          components = [
+            {
+              uid = "net.minecraft";
+              version = minecraftVersion;
+              important = true;
+            }
+          ];
+        }
+      );
+      jq = lib.getExe pkgs.jq;
+    in
+    lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+      run mkdir -p "${dir}"
+      if [ ! -f "${dir}/instance.cfg" ]; then
+        run install -m 644 ${instanceCfg} "${dir}/instance.cfg"
+      fi
+      current=$(${jq} -r '.components[]? | select(.uid == "net.minecraft") | .version' "${dir}/mmc-pack.json" 2>/dev/null || true)
+      if [ "$current" != ${lib.escapeShellArg minecraftVersion} ]; then
+        run install -m 644 ${mmcPack} "${dir}/mmc-pack.json"
+      fi
+    '';
+
+  # Heroic (Epic / GOG / Amazon) runs Windows games through Proton, and on NixOS it finds none of
+  # its own: the Wine it downloads is dynamically linked. GE-Proton from nixpkgs goes where Heroic
+  # looks for Protons it downloaded, under a fixed name so the setting below survives updates.
+  # Store logins, installed games and per-game settings stay Heroic's own (config.json is rewritten
+  # by Heroic itself), so only the default runner is merged in, and only when the one it has does
+  # not exist: a Proton picked in the GUI is left alone.
+  xdg.configFile."heroic/tools/proton/${heroicProton}".source = pkgs.proton-ge-bin.steamcompattool;
+  home.activation.heroicDefaultProton =
+    let
+      bin = "${config.xdg.configHome}/heroic/tools/proton/${heroicProton}/proton";
+      wineVersion = builtins.toJSON {
+        inherit bin;
+        name = "Proton - ${heroicProton}";
+        type = "proton";
+      };
+      jq = lib.getExe pkgs.jq;
+    in
+    lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+      cfg="${config.xdg.configHome}/heroic/config.json"
+      if [ -f "$cfg" ]; then
+        current=$(${jq} -r '.defaultSettings.wineVersion.bin // ""' "$cfg")
+        if [ -z "$current" ] || [ ! -e "$current" ]; then
+          new=$(${jq} --argjson w ${lib.escapeShellArg wineVersion} '.defaultSettings.wineVersion = $w' "$cfg")
+          if [[ ! -v DRY_RUN ]]; then printf '%s\n' "$new" >"$cfg"; fi
+        fi
+      fi
+    '';
 
   # Write the declared games into Cartridges' library. Declared keys overwrite; what Cartridges
   # keeps for itself (added, last_played, hidden) is left alone. Games dropped from the list are
@@ -241,7 +286,7 @@ in
     '';
 
   # FPS / frametime overlay. Not session-wide: enable it per game with `mangohud %command%` in
-  # Steam's launch options, or Lutris' / Heroic's MangoHud toggle.
+  # Steam's launch options, or Heroic's MangoHud toggle.
   programs.mangohud = {
     enable = true;
     settings = {

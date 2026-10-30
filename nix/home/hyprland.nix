@@ -1,5 +1,6 @@
 {
   config,
+  osConfig,
   lib,
   pkgs,
   ...
@@ -44,135 +45,59 @@ let
   # An app icon for the bar: a sketchybar-app-font ligature, in that font (see the workspaces
   # module in programs.waybar below).
   appIcon = name: "<span font_family='sketchybar-app-font' size='large' rise='-3500'>${name}</span>";
-  # Which app gets which icon: a regex on the Hyprland window class / niri app_id, and the
-  # sketchybar-app-font ligature. Shared by both compositors' workspace modules; the first match
-  # wins, anything unmatched gets :default:.
-  appIconRules = [
-    {
-      app = "firefox.*";
-      icon = ":firefox:";
-    }
-    {
-      app = "tor-browser.*";
-      icon = ":tor_browser:";
-    }
-    {
-      app = "google-chrome.*|chromium.*";
-      icon = ":google_chrome:";
-    }
-    {
-      app = "com.mitchellh.ghostty";
-      icon = ":ghostty:";
-    }
-    {
-      app = "kitty";
-      icon = ":kitty:";
-    }
-    {
-      app = "com.t3tools.T3Code";
-      icon = ":t3_code:";
-    }
-    {
-      app = "[Cc]ode.*";
-      icon = ":code:";
-    }
-    {
-      app = "steam.*";
-      icon = ":steam:";
-    }
-    {
-      app = "discord.*";
-      icon = ":discord:";
-    }
-    {
-      app = "obsidian";
-      icon = ":obsidian:";
-    }
-    {
-      app = "Slack";
-      icon = ":slack:";
-    }
-    {
-      app = "org.telegram.desktop";
-      icon = ":telegram:";
-    }
-    {
-      app = "mpv";
-      icon = ":mpv:";
-    }
-    {
-      app = "com.obsproject.Studio";
-      icon = ":obsstudio:";
-    }
-    {
-      app = "Bitwarden";
-      icon = ":bit_warden:";
-    }
-    {
-      app = "org.keepassxc.KeePassXC";
-      icon = ":kee_pass_x_c:";
-    }
-    {
-      app = "org.pwmt.zathura";
-      icon = ":preview:";
-    }
-    {
-      app = "calibre.*";
-      icon = ":calibre:";
-    }
-    {
-      app = "thunar|org.gnome.Nautilus|yazi";
-      icon = ":finder:";
-    }
-    {
-      app = "Bitwig.*";
-      icon = ":bitwig_studio:";
-    }
-    {
-      app = "anki";
-      icon = ":anki:";
-    }
-    {
-      app = "kicad.*";
-      icon = ":kicad:";
-    }
-    {
-      app = "Godot.*";
-      icon = ":godot:";
-    }
-    {
-      app = "mscore|MuseScore.*";
-      icon = ":musescore:";
-    }
-    {
-      app = "zotero|Zotero";
-      icon = ":zotero:";
-    }
-    {
-      app = "blender";
-      icon = ":blender:";
-    }
-    {
-      app = "gimp.*";
-      icon = ":gimp:";
-    }
-    {
-      app = "org.inkscape.Inkscape";
-      icon = ":inkscape:";
-    }
-    {
-      app = "libreoffice.*";
-      icon = ":libreoffice:";
-    }
-    {
-      app = "thunderbird";
-      icon = ":thunderbird:";
-    }
-    {
-      app = "pavucontrol|nm-connection-editor|blueman-manager|nwg-displays|net.gapul.settings";
-      icon = ":gear:";
-    }
-  ];
+  # Which app gets which icon, shared by both compositors' workspace modules: worked out at
+  # build time from the installed .desktop files and the font's own app-name map
+  # (lib/app-icons.nix). These overrides are only what the names cannot settle; anything
+  # unmatched gets :default:.
+  appIcons = import ../lib/app-icons.nix {
+    inherit pkgs;
+    desktopDirs = [
+      "${config.home.path}/share/applications"
+      "${osConfig.system.path}/share/applications"
+    ];
+    span = appIcon "{}";
+    overrides =
+      lib.genAttrs [
+        "writer"
+        "calc"
+        "impress"
+        "draw"
+        "math"
+        "base"
+        "startcenter"
+        "soffice" # the first-run dialog's app_id
+      ] (_: ":libreoffice:")
+      // lib.genAttrs [
+        "org.kicad.kicad"
+        "org.kicad.eeschema"
+        "org.kicad.pcbnew"
+        "org.kicad.gerbview"
+        "org.kicad.pcbcalculator"
+        "org.kicad.bitmap2component"
+        "org.kicad.pleditor"
+      ] (_: ":kicad:")
+      // lib.genAttrs [
+        "calibre-gui"
+        "calibre-ebook-viewer"
+        "calibre-ebook-edit"
+        "calibre-lrfviewer"
+      ] (_: ":calibre:") # the font maps "calibre" to a generic book
+      # The GUI settings tools as one gear, like niri floats them (home/niri.nix).
+      // lib.genAttrs [
+        "org.pulseaudio.pavucontrol"
+        "nm-connection-editor"
+        "blueman-manager"
+        "org.blueman.Manager" # its GtkApplication id, which is its app_id
+        "nwg-displays"
+        "net.gapul.settings"
+      ] (_: ":gear:")
+      // {
+        "com.obsproject.Studio" = ":obsstudio:"; # "OBS Studio"
+        "brave-origin" = ":brave_browser:"; # "Brave Origin"
+        "org.godotengine.Godot4.7" = ":godot:"; # "Godot Engine 4.7"
+        "com.t3tools.T3Code" = ":t3_code:"; # its .desktop file is the app's own, outside Nix
+      };
+  };
 
   # niri's workspace module shows only the number, so under niri each workspace is its own
   # custom module, "N <icons>" like Hyprland's: custom/niri-ws-N runs this with N. It lists the
@@ -183,12 +108,12 @@ let
   niriWorkspace = pkgs.writers.writePython3 "niri-workspace" { flakeIgnore = [ "E501" ]; } ''
     import json
     import os
-    import re
     import subprocess
     import sys
 
-    RULES = json.loads(${builtins.toJSON (builtins.toJSON appIconRules)})
-    SPAN = "<span font_family='sketchybar-app-font' size='large' rise='-3500'>{}</span>"
+    with open("${appIcons}/icons.json") as f:
+        ICONS = json.load(f)
+    SPAN = ${builtins.toJSON (appIcon "{}")}
 
 
     def niri(what):
@@ -197,10 +122,8 @@ let
 
 
     def icon(app_id):
-        for rule in RULES:
-            if re.fullmatch(rule["app"], app_id or ""):
-                return rule["icon"]
-        return ":default:"
+        app_id = app_id or ""
+        return ICONS["exact"].get(app_id) or ICONS["lower"].get(app_id.lower()) or ":default:"
 
 
     n = int(sys.argv[1])
@@ -546,12 +469,11 @@ let
       # Each window on the workspace as its app's icon. The icons are the ligatures of
       # sketchybar-app-font (the font the SketchyBar rices use: ":firefox:" is the Firefox
       # icon), applied with a Pango span to the icon only. The font also carries a few digits
-      # that are parts of ligatures, so it must not be the label's font. Keys are Hyprland
-      # window classes (regex); anything unmatched gets the generic app glyph.
+      # that are parts of ligatures, so it must not be the label's font. The window-rewrite
+      # rules (window class -> icon) are generated (appIcons above) and come in through the
+      # bars' `include`, which waybar merges into this module; anything unmatched gets the
+      # generic app glyph.
       window-rewrite-default = appIcon ":default:";
-      window-rewrite = lib.listToAttrs (
-        map (r: lib.nameValuePair "class<${r.app}>" (appIcon r.icon)) appIconRules
-      );
     };
   }
   // lib.listToAttrs (
@@ -1465,10 +1387,12 @@ in
     enable = true;
     systemd.enable = true;
     settings.mainBar = bar // {
+      include = [ "${appIcons}/waybar.json" ];
       output = [ "eDP-1" ];
       width = 1520;
     };
     settings.extBar = bar // {
+      include = [ "${appIcons}/waybar.json" ];
       output = [
         "!eDP-1"
         "*" # star after the exclusions: every other output

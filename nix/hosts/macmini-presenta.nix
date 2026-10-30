@@ -127,6 +127,13 @@ let
 
         # The private repo is read with gh's token: the login keychain is locked for a daemon, so
         # git's osxkeychain helper cannot answer, and the machine's SSH key is a deploy key for another repo.
+        # Since 2026-10-13 gh keeps its own token in that same keychain, so it had nothing to give
+        # either and every fetch failed. A token file (read access to mugen404/presenta is enough)
+        # goes in through GH_TOKEN, which gh prefers over the keychain.
+        if [ -r ${home}/.config/presenta/github-token ]; then
+          GH_TOKEN=$(cat ${home}/.config/presenta/github-token)
+          export GH_TOKEN
+        fi
         git_() { git -c credential.helper= -c 'credential.helper=!gh auth git-credential' "$@"; }
 
         e2e() (

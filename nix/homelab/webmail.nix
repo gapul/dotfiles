@@ -3,7 +3,7 @@
 #
 # - Twake Mail (webmail.gapul.net, linagora/tmail-web) is a static Flutter web build that
 #   talks JMAP to Stalwart straight from the browser. The container only serves files
-#   (nginx); login is the Stalwart account name (gmail / work / school) and its password,
+#   (nginx); login is the Stalwart account name (gmail / sean / school) and its password,
 #   sent as Basic auth to mail.gapul.net. That is cross-origin, so it depends on
 #   http.permissive-cors and on http.url advertising the public https URL in the JMAP
 #   session (both in homelab/mail.nix). Replaced Roundcube on 2026-10-22 to drop PHP.

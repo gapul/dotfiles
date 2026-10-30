@@ -80,11 +80,11 @@ in
     wants = [ "network-online.target" ];
     path = with pkgs; [
       rclone
-      fuse
+      fuse3
     ];
     serviceConfig = {
       CacheDirectory = "rclone-filestash";
-      ExecStartPre = "-${pkgs.fuse}/bin/fusermount -u ${driveMount}";
+      ExecStartPre = "-${pkgs.fuse3}/bin/fusermount3 -u ${driveMount}";
       ExecStart = ''
         ${pkgs.rclone}/bin/rclone mount google-drive: ${driveMount} \
           --config /var/lib/secrets/rclone.conf \
@@ -98,7 +98,7 @@ in
           --dir-cache-time 5m \
           --poll-interval 1m
       '';
-      ExecStop = "-${pkgs.fuse}/bin/fusermount -u ${driveMount}";
+      ExecStop = "-${pkgs.fuse3}/bin/fusermount3 -u ${driveMount}";
       Restart = "on-failure";
       RestartSec = "30s";
     };

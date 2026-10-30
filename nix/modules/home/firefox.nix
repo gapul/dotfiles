@@ -15,6 +15,7 @@
 # home/linux-gui.nix (nixpkgs' firefox-devedition).
 {
   config,
+  lib,
   pkgs,
   ...
 }:
@@ -31,30 +32,110 @@ let
   };
 in
 {
-  # Restore the checked styles with Stylus's Import button; preserve unrelated styles.
-  # CSS media queries are used because Stylus's background scheme cache can lag behind
-  # darkman on this Firefox profile. Refresh the export deliberately when updating upstream.
-  xdg.dataFile."firefox/stylus-light-themes.json".source =
-    ../../../configs/apps/stylus/light-themes.json;
-  xdg.dataFile."firefox/light-site-themes.json".text = builtins.toJSON {
-    mode = "prefers-color-scheme: light (inside exported CSS)";
-    styles = [
-      {
-        domain = "open.spotify.com";
-        name = "Light Theme Spotify";
-        updateUrl = "https://raw.githubusercontent.com/ThatOneUnoriginal/Spotify-Light/main/LightThemeSpotify.user.css";
-        preferScheme = "none";
-        darkReaderExcluded = true;
-      }
-      {
-        domain = "music.youtube.com";
-        name = "YouTube Music — Google Light + Dark Player";
-        updateUrl = "https://raw.githubusercontent.com/docrepath/youtube-music-google-light-dark-player/main/YouTubeMusic-Google-Light-Dark-Player.user.css";
-        preferScheme = "none";
-        darkReaderExcluded = true;
-      }
-    ];
-  };
+  # What lives inside the extensions that policies cannot reach (no managed storage):
+  # Violentmonkey scripts, Header Editor rules, uBlacklist subscriptions and Stylus styles.
+  # Policies below only install the extensions; this file is the list of what goes into them,
+  # written to ~/.local/share/firefox/extension-sources.json. Every entry is installed from a URL,
+  # so the extension keeps it updated from there; the e-Tax pair lives in this repo for that.
+  # Day to day the profiles are kept in step by each extension's WebDAV sync against
+  # webdav.gapul.net (homelab/webdav.nix); this list is for a fresh profile and for review.
+  xdg.dataFile."firefox/extension-sources.json".text =
+    let
+      raw = "https://raw.githubusercontent.com";
+      repo = "${raw}/gapul/dotfiles/main/configs/apps";
+      ublSubscribe = url: "https://ublacklist.github.io/rulesets/subscribe?url=${lib.escapeURL url}";
+      rosePine = domain: dir: {
+        inherit domain;
+        name = "Rosé Pine";
+        # Light OS mode → Dawn, dark → Rosé Pine (the style's own prefers-color-scheme switch).
+        url = "${raw}/rose-pine/userstyles/main/styles/${dir}/rose-pine.user.less";
+      };
+    in
+    builtins.toJSON {
+      sync = {
+        url = "https://webdav.gapul.net/";
+        credentials = "secrets/homelab.yaml: homeserver_files/webdav.env";
+        violentmonkey = "Settings > Sync > WebDAV; server URL as above (it writes under Violentmonkey/)";
+        stylus = "Options > Sync to cloud > WebDAV";
+        ublacklist = "Options > Sync > WebDAV; sync rules, subscriptions and SERP info";
+        headerEditor = "Options > Import and export > WebDAV (manual backup, no automatic sync)";
+      };
+      violentmonkey = [
+        {
+          name = "Pagetual";
+          # Infinite scroll on paginated sites; rules from wedata. Import its base rules once.
+          url = "https://greasyfork.org/scripts/438684-pagetual/code/pagetual.user.js";
+        }
+        {
+          name = "f*cking e-Tax";
+          url = "${repo}/violentmonkey/etax.user.js";
+        }
+      ];
+      # Extensions that talk to a self-hosted service. None reads managed storage, so the
+      # connection is made by hand once per profile.
+      services = {
+        readeck = "Log in to https://read.gapul.net from the extension (OAuth to the Readeck account)";
+        obsidianWebClipper = "Saves through the local Obsidian app (obsidian:// URI); pick the vault in Settings. Templates: Settings > Import";
+        archivebox = "Config: server https://archive.gapul.net, API key from ArchiveBox (Settings > API keys). /api/* skips Authelia; leave automatic archiving off";
+      };
+      # Options > Download rules, from the URL.
+      headerEditor = [
+        {
+          name = "f*cking e-Tax";
+          url = "${repo}/header-editor/etax.json";
+        }
+      ];
+      uBlacklist = {
+        # Paste into Options > SERPINFO > user; it is what lets uBlacklist act on search.gapul.net.
+        serpInfo = "${repo}/ublacklist/searxng.yml";
+        # From the official Community Rulesets page (ublacklist.github.io/rulesets).
+        # Turn on "enable subscription links" in the options before opening these.
+        subscriptions = map (s: s // { subscribe = ublSubscribe s.url; }) [
+          {
+            name = "ncaq/uBlacklistRule";
+            url = "${raw}/ncaq/uBlacklistRule/master/uBlacklist.txt";
+          }
+          {
+            name = "uBlacklist Stack Overflow Translation";
+            url = "${raw}/arosh/ublacklist-stackoverflow-translation/master/uBlacklist.txt";
+          }
+          {
+            name = "uBlacklist GitHub Translation";
+            url = "${raw}/arosh/ublacklist-github-translation/master/uBlacklist.txt";
+          }
+          {
+            name = "uBlacklist-filter-by-kdroidwin";
+            url = "${raw}/Kdroidwin/uBlacklist-filter-by-kdroidwin/main/uBlacklist.txt";
+          }
+        ];
+      };
+      stylus = [
+        (rosePine "github.com" "github")
+        (rosePine "youtube.com" "youtube")
+        (rosePine "chatgpt.com" "chatgpt")
+        (rosePine "claude.ai" "claude")
+        (rosePine "gemini.google.com" "gemini")
+        (rosePine "search.nixos.org" "nixos-search")
+        (rosePine "docs.rs" "docs.rs")
+        (rosePine "bsky.app" "bluesky")
+        (rosePine "proton.me" "proton")
+        (rosePine "wikiwand.com" "wikiwand")
+        # Dark-only sites given a light style in both OS modes (2026-10-30). Exclude these two
+        # domains in Dark Reader; userContent below carries the Spotify compatibility layer.
+        {
+          domain = "open.spotify.com";
+          name = "Light Theme Spotify";
+          url = "${raw}/ThatOneUnoriginal/Spotify-Light/main/LightThemeSpotify.user.css";
+          darkReaderExcluded = true;
+        }
+        {
+          domain = "music.youtube.com";
+          name = "YouTube Music — Google Light + Dark Player";
+          url = "${raw}/docrepath/youtube-music-google-light-dark-player/main/YouTubeMusic-Google-Light-Dark-Player.user.css";
+          darkReaderExcluded = true;
+        }
+      ];
+    };
 
   programs.firefox = {
     enable = true;
@@ -75,7 +156,8 @@ in
       # Cut the rest of the traffic to Mozilla that arkenfox does not already cover (2026-09-26).
       # Still allowed on purpose: AMO (extension installs/updates), remote-settings (OneCRL
       # certificate revocations and the add-on blocklist), the GMP updater (Widevine, the reason
-      # this browser exists) and the push service (Slack's web notifications ride it).
+      # this browser exists), the push service (Slack's web notifications ride it) and Safe
+      # Browsing list updates (see the safebrowsing prefs below).
       DisableTelemetry = true;
       DisableFirefoxStudies = true;
       DisableFeedbackCommands = true;
@@ -168,15 +250,19 @@ in
         # only know extension login (events.kojira.io). Keys stay in the bunker; the extension holds
         # the session and per-site permissions. MIT, github.com/dsbaars/bunker46-extension.
         "@bunker46-extension" = amo "bunker46"; # Bunker46
+        # Added 2026-10-30: save buttons for the self-hosted services. All three only act when
+        # clicked; their server and login are set once per profile (see extension-sources.json).
+        "readeck@readeck.com" = amo "readeck"; # Readeck (read.gapul.net)
+        "clipper@obsidian.md" = amo "web-clipper-obsidian"; # Obsidian Web Clipper
+        "archivebox@tjhorner.dev" = amo "archivebox-exporter"; # ArchiveBox (archive.gapul.net)
         # Dropping an entry above leaves an already installed extension in place as an ordinary
         # one; only "blocked" makes Firefox uninstall it. These were in the list once.
         "LINEPorted@FoxRefire".installation_mode = "blocked"; # LINE
         "{d07ccf11-c0cd-4938-a265-2a4d6ad01189}".installation_mode = "blocked"; # Web Archives
         # Follow OS dark mode on sites without their own automatic theme. Configure
         # Dark Reader once per profile: automation System/Scheme, detect dark theme on.
-        # Dark-only sites with a dedicated light UserCSS use Stylus instead: install the
-        # ~/.local/share/firefox/stylus-light-themes.json (light-only CSS media queries),
-        # and exclude those domains in Dark Reader. light-site-themes.json records sources.
+        # Dark-only sites with a dedicated light UserCSS use Stylus instead (the stylus list in
+        # ~/.local/share/firefox/extension-sources.json); exclude those domains in Dark Reader.
         # Prefer maintained site-specific styles over reversing Dark Reader's light palette.
         "addon@darkreader.org" =
           if pkgs.stdenv.hostPlatform.isLinux then amo "darkreader" else { installation_mode = "blocked"; };
@@ -272,6 +358,14 @@ in
         # server never answers it, so the call sits on "connecting" for 72 s and gives up.
         # Measured with tcpdump on 2026-09-17; without the PQ key share the handshake completes.
         "media.webrtc.send_mlkem_keyshare" = false;
+
+        # Safe Browsing, arkenfox's way: phishing/malware/download lists on (local lists plus
+        # hash-prefix lookups), only the remote check of each download (0403) off. They had been
+        # switched off in the UI; pinned here so that cannot happen silently again (2026-10-30).
+        "browser.safebrowsing.malware.enabled" = true;
+        "browser.safebrowsing.phishing.enabled" = true;
+        "browser.safebrowsing.blockedURIs.enabled" = true;
+        "browser.safebrowsing.downloads.enabled" = true;
 
         # Developer Edition ships with its dark theme switched on; follow the system appearance
         # instead (Firefox's "System theme — auto").
@@ -432,28 +526,23 @@ in
             /* The upstream Spotify style predates Encore's current text classes.
                Keep this small compatibility layer separate so Stylus can update upstream. */
             @-moz-document domain("open.spotify.com") {
-              @media (prefers-color-scheme: light) {
-                html, body, #main { background-color: transparent !important; }
-                #global-nav-bar, nav, aside {
-                  background-color: rgb(250 244 237 / 72%) !important;
-                }
-                [data-encore-id="text"], h1, h2, h3, a, button, input {
-                  color: #262626 !important;
-                }
-                [data-encore-id="icon"], [data-encore-id="logo"] { fill: currentColor !important; color: #262626 !important; }
-                main > div > div { background-image: none !important; }
-                [data-testid="main-view-container"] { background-color: #edede6 !important; }
+              html, body, #main { background-color: transparent !important; }
+              #global-nav-bar, nav, aside {
+                background-color: rgb(250 244 237 / 72%) !important;
               }
+              [data-encore-id="text"], h1, h2, h3, a, button, input {
+                color: #262626 !important;
+              }
+              [data-encore-id="icon"], [data-encore-id="logo"] { fill: currentColor !important; color: #262626 !important; }
+              main > div > div { background-image: none !important; }
+              [data-testid="main-view-container"] { background-color: #edede6 !important; }
             }
-            /* Frost site navigation panels without fading their text or artwork. */
+            /* Frost site navigation panels without fading their text or artwork. Both sites
+               wear a light style in either OS mode, so the glass is always the light one. */
             @-moz-document domain("music.youtube.com"), domain("open.spotify.com") {
-              :root { --rp-panel-glass: rgb(25 23 36 / 72%); }
-              @media (prefers-color-scheme: light) {
-                :root { --rp-panel-glass: rgb(250 244 237 / 72%); }
-              }
               #guide #contentContainer,
               .Root__nav-bar, .Root__right-sidebar {
-                background: var(--rp-panel-glass) !important;
+                background: rgb(250 244 237 / 72%) !important;
                 backdrop-filter: blur(24px) saturate(115%) !important;
               }
             }

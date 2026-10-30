@@ -305,6 +305,7 @@
           commonSpecialArgs
           mkPkgs
           ;
+        inherit (inputs) self;
       };
 
       darwinWorkstationSpecialArgs = {
@@ -365,6 +366,8 @@
             # Override things like tailscale's wrong vendorHash here.
             { nixpkgs.overlays = [ overlayFixes ]; }
             ./hosts/nixos-laptop.nix
+            # `nixos-version --configuration-revision` then names the running dotfiles commit.
+            { system.configurationRevision = inputs.self.rev or inputs.self.dirtyRev or null; }
             sops-nix.nixosModules.sops # hosts/nixos-laptop-wifi.nix
             lanzaboote.nixosModules.lanzaboote
           ]
@@ -441,6 +444,7 @@
           ./home/macmini-maintenance.nix
           ./home/macmini-backup.nix
           ./home/macmini-watchdog.nix
+          ./home/macmini-hs-console.nix # homeserver's physical console via the capture card + rpi4 HID gadget
           ./home/findmy-tag.nix # periodic Find My tag fetch; lives on this always-on machine, not the laptop
           ./home/macmini-revolut.nix # Revolut fetch for the ledger; needs a headed browser (Cloudflare), so this GUI Mac
           ./home/macmini-sites.nix # Suica / JRE POINT / Bic Camera for the ledger; same headed-browser reason
@@ -463,7 +467,7 @@
         wsl = linuxBase ++ [ ./home/wsl.nix ] ++ secrets ++ station;
         linuxServer = linuxBase ++ secrets ++ station;
         # Shared hosts where the age key must never exist (other people hold sudo), e.g. the
-        # company GPU box reached through rootless docker. No secrets, no desktop extras.
+        # shared GPU box reached through rootless docker. No secrets, no desktop extras.
         linuxShared = linuxBase;
       };
 

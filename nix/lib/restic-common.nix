@@ -42,8 +42,10 @@ rec {
   # keeps the whole alarm quiet. Hence an explicit list: a decommissioned host must
   # be removed from it (pve is gone, folded into homeserver), and a new host that is
   # not added to it can stop backing up unnoticed.
+  # MacBook-Mini is left out while it sits unused (offline since 2026-10-23); its
+  # backup job still runs whenever it is switched on. Add it back once it is a daily
+  # machine again.
   monitoredHosts = [
-    "MacBook-Mini"
     "homeserver"
     "macmini"
   ];

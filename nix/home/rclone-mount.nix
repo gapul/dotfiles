@@ -12,7 +12,7 @@
 # Layout: everything replicated somewhere else lives under ~/Sync (2026-08. ~/Cloud is retired).
 #   ~/Sync/google-drive           <- remote google-drive:           (remote-primary, a mount, personal)
 #   ~/Sync/google-drive-school    <- remote google-drive-school:    (remote-primary, a mount)
-#   ~/Sync/google-drive-work      <- remote google-drive-work:      (remote-primary, a mount, company)
+#   ~/Sync/google-drive-sean      <- remote google-drive-sean:      (remote-primary, a mount)
 #   ~/Sync/syncthing              <- Syncthing share                (local-primary, real files)
 # The mount point name is the remote name, so the two never drift apart.
 #
@@ -45,9 +45,9 @@ let
     # two writers racing to refresh it in a single rclone.conf.
     "google-drive"
     "google-drive-school"
-    # Company Workspace account. My Drive only; the "ISMS Docs" shared drive is not mounted
+    # Workspace account. My Drive only; its shared drives are not mounted
     # (that needs its own section with team_drive set).
-    "google-drive-work"
+    "google-drive-sean"
   ];
 
   # Unprivileged FUSE unmount goes through the setuid wrapper NixOS installs.
@@ -184,6 +184,21 @@ in
             }/bin/rclone-configured-${name}";
             ExecStartPre = [
               "${pkgs.coreutils}/bin/mkdir -p ${mountPoint} ${cacheDir}"
+              # A user unit cannot order itself after the system's network-online.target, so at
+              # login rclone started before DNS was up and failed once on every boot
+              # ("lookup oauth2.googleapis.com: no such host"). Wait up to a minute for the name.
+              "${
+                pkgs.writeShellApplication {
+                  name = "rclone-wait-dns";
+                  runtimeInputs = [ pkgs.getent ];
+                  text = ''
+                    for _ in $(seq 30); do
+                      getent hosts oauth2.googleapis.com >/dev/null && exit 0
+                      sleep 2
+                    done
+                  '';
+                }
+              }/bin/rclone-wait-dns"
               "-${fusermount} -uz ${mountPoint}"
             ];
             # Same flags as the mac's nfsmount, restic repository excluded the same way.

@@ -136,6 +136,8 @@ in
   # rEFInd would have to be signed by hand to keep Secure Boot). "max" draws it at the panel's
   # native resolution instead of the firmware's 80x25 text mode, so it is small and sharp.
   boot.loader.systemd-boot.consoleMode = "max";
+  # No kernel command line editing at the menu (lanzaboote copies this into its loader.conf).
+  boot.loader.systemd-boot.editor = false;
   boot.lanzaboote = {
     enable = true;
     # Where sbctl places keys. Match the `sbctl create-keys` default.
@@ -190,14 +192,21 @@ in
   # choice between NixOS and Windows a graphical menu (icons on the same ASCII wallpaper as
   # the desktop, the rEFInd-minimal theme's flat icons). Nothing in nixpkgs' refind module is
   # used, because that module lays out its own unsigned kernels, which Secure Boot would
-  # refuse. Instead the activation script below copies rEFInd's binary to the ESP, signs it
+  # refuse. Instead the script below copies rEFInd's binary to the ESP, signs it
   # with the sbctl keys (the same db key that signs the UKIs, so PCR 7 and the LUKS TPM
   # binding are unchanged), writes a refind.conf whose NixOS entry points at the newest
   # lanzaboote UKI (with the safe specialisation and older generations in its submenu, and
   # systemd-boot itself as the last resort), and puts rEFInd first in the firmware's boot
   # order. systemd-boot stays installed and second in the order: if the firmware ever
   # refuses rEFInd, the next entry is the old menu.
-  system.activationScripts.refind =
+  #
+  # It runs right after lanzaboote's install, not as an activation script: refind.conf has to
+  # be written from the UKIs lanzaboote has just laid out. `nh os switch` activates first
+  # (switch-to-configuration test) and installs the bootloader after (... boot), so an
+  # activation script always saw the previous generation as the newest; once that generation
+  # was garbage-collected, rEFInd's NixOS entry pointed at a UKI that was gone ("Invalid
+  # loader file!", 2026-10-27).
+  system.build.installBootLoader =
     let
       theme = pkgs.fetchFromGitHub {
         owner = "EvanPurkhiser";
@@ -380,10 +389,13 @@ in
         '';
       };
     in
-    {
-      deps = [ ];
-      text = lib.getExe install;
-    };
+    lib.mkForce (
+      pkgs.writeShellScript "install-bootloader" ''
+        set -e
+        ${config.boot.loader.external.installHook} "$@"
+        ${lib.getExe install}
+      ''
+    );
 
   # No kernel text console on the panel once the greeter is up. Every hand-over of the
   # display (Plymouth to greeter, lock and unlock, suspend and resume, the last second of a
@@ -439,6 +451,9 @@ in
   # Phase 4-5 of docs/NIXOS_DUALBOOT.md.
   # For swap, avoid a plaintext partition and use zram (in-memory, on encrypted RAM).
   zramSwap.enable = true;
+  # With zram as the only swap, swapping costs a compression rather than a disk read, so the
+  # kernel should prefer it to dropping page cache (the value the zram docs and Fedora use).
+  boot.kernel.sysctl."vm.swappiness" = 180;
 
   # The initrd is systemd-based (needed for TPM2 auto-unlock); nixpkgs has removed the scripted
   # one, so there is no option left to set. Works with lanzaboote.
@@ -1003,12 +1018,14 @@ in
   systemd.services.avahi-daemon.postStart = ''
     ${pkgs.systemd}/bin/systemctl --user --machine=gapul@.host --no-block try-restart uxplay.service || true
   '';
-  # UxPlay uses fixed ports; accept AirPlay only on the Wi-Fi interface.
+  # UxPlay and RQuickShare use fixed ports; accept them only on the Wi-Fi interface.
+  # 41200 is RQuickShare's, pinned in home/linux-gui.nix.
   networking.firewall.interfaces.wlp0s20f3 = {
     allowedTCPPorts = [
       7000
       7001
       7002
+      41200
     ];
     allowedUDPPorts = [
       7000
@@ -1045,6 +1062,11 @@ in
   hardware.bluetooth.enable = true;
   services.blueman.enable = true;
   # LibrePods 0.2.5 ranks SBC above PipeWire's default A2DP (AAC on AirPods).
+  # It also keeps a BLE discovery running with no timeout whenever the AirPods are not
+  # connected, only to show their battery from the case. On this machine that discovery ran
+  # for days, flooding the system bus with device signals until dbus-broker hit UID 1000's
+  # byte quota and dropped every session peer at once (waybar, wireplumber, T3 Code;
+  # 2026-10-27). startScan becomes a no-op; battery still comes over the AAP link once connected.
   nixpkgs.overlays = [
     (_final: prev: {
       librepods = prev.librepods.overrideAttrs (old: {
@@ -1052,6 +1074,8 @@ in
           substituteInPlace media/mediacontroller.cpp \
             --replace-fail 'QStringList profiles = {"a2dp-sink-sbc_xq", "a2dp-sink-sbc", "a2dp-sink"};' \
               'QStringList profiles = {"a2dp-sink", "a2dp-sink-sbc_xq", "a2dp-sink-sbc"};'
+          substituteInPlace ble/blemanager.cpp \
+            --replace-fail 'LOG_DEBUG("Starting BLE scan...");' 'return;'
         '';
       });
     })
@@ -1097,9 +1121,25 @@ in
   };
   programs.zsh.enable = true;
 
-  # SSH is public-key only (password auth disabled). Keys follow the Bitwarden-managed policy.
+  # SSH is public-key only. Keys follow the Bitwarden-managed policy.
   services.openssh.enable = true;
   services.openssh.settings.PasswordAuthentication = false;
+  # PasswordAuthentication alone left keyboard-interactive (PAM) open: a client without a key
+  # was offered a password prompt (checked 2026-10-28).
+  services.openssh.settings.KbdInteractiveAuthentication = false;
+  # Only over the tailnet: every client (macmini, the phone) reaches this box at its
+  # 100.111.122.3 address, and a laptop on café Wi-Fi should not answer on 22.
+  services.openssh.openFirewall = false;
+  networking.firewall.interfaces.tailscale0 = {
+    # 1701 is Weylus' page and 9001 its websocket; both are plain HTTP, so tailnet only.
+    allowedTCPPorts = [
+      22
+      1701
+      9001
+    ];
+    # Lan Mouse (DTLS; peers are authorised by certificate fingerprint).
+    allowedUDPPorts = [ 4242 ];
+  };
   # No "Last login" line on ssh logins. That is what ~/.hushlogin was doing here (home/common.nix
   # writes it for macOS' login(1)); with sshd quiet the file can go from this host's home.
   services.openssh.settings.PrintLastLog = false;
@@ -1159,11 +1199,22 @@ in
     gamescopeSession.enable = true;
     remotePlay.openFirewall = true;
     localNetworkGameTransfers.openFirewall = true;
+    # GE-Proton next to Valve's Protons in each game's compatibility menu. Heroic gets the same
+    # build (home/gaming.nix).
+    extraCompatPackages = [ pkgs.proton-ge-bin ];
   };
   programs.gamescope.enable = true;
   programs.gamemode.enable = true;
   # 32-bit userspace GL for older titles and for Proton's 32-bit prefixes.
   hardware.graphics.enable32Bit = true;
+
+  # --- iPad / phone as pen tablet (Weylus) ---
+  # The browser on the tablet streams this screen and sends pen and touch back through uinput.
+  # Ports are opened on tailscale0 only, next to sshd's; openFirewall would open them everywhere.
+  programs.weylus = {
+    enable = true;
+    users = [ user.username ];
+  };
 
   # --- Android apps (waydroid) ---
   # Runs Android in a LXC container against the Wayland compositor, so Android apps appear
@@ -1225,6 +1276,9 @@ in
       hyprshot # screenshot (window/region/screen)
       wlogout # power menu
       wl-gammarelay-rs # control color temperature (night light) via dbus
+
+      # Matrix client that renders custom image reactions and emoji packs (LINE stickers), same as darwin
+      cinny-desktop
     ]
     # ArtCraft's pure-Rust Craft apps, same set as darwin (ArtCraft itself is macOS-only). See pkgs/artcraft-apps.nix.
     ++ pkgs.callPackage ../pkgs/artcraft-apps.nix { };

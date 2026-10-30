@@ -50,7 +50,13 @@ let
 in
 {
   launchd.agents.findmy-tag = {
-    enable = true;
+    # Off since macOS 27 (installed 2026-09-15): adid refuses OTP requests from any client
+    # without the private entitlement com.apple.private.adid (unified log: "CNE! Client
+    # Process Path"), so AOSKit returns {} (-45070), even for Apple-signed osascript, and
+    # AuthKit's anisette XPC refuses us too. Every run failed with a ~120-line traceback.
+    # Re-enable once there is an anisette source; nothing listens on localhost:6969, that is
+    # only upstream FindMy's default fallback.
+    enable = false;
     config = {
       ProgramArguments = [ "${poll}/bin/findmy-tag-poll" ];
       StartInterval = 600;

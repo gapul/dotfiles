@@ -858,7 +858,7 @@ in
     };
   };
 
-  # popo — the Slack agent for the company workspace, run as its own user.
+  # popo — the Slack agent for a Slack workspace, run as its own user.
   #
   # It reaches the control plane at api.popo.sh with a bootstrap key (config/.env, outside nix) and
   # takes its Slack traffic from there, so no Slack token lives on this machine. The runtime is
@@ -887,6 +887,52 @@ in
       ProcessType = "Background";
       StandardOutPath = "/Users/popo/popo-home/logs/popo.stdout.log";
       StandardErrorPath = "/Users/popo/popo-home/logs/popo.stderr.log";
+    };
+  };
+
+  # Restart popo once a night while it is idle. Its local embedder (sentence-transformers on
+  # torch MPS) gets a fresh SentenceTransformer for every index generation, and the daily
+  # 05:18 rebuild leaves the previous model's Metal buffers behind: after 11 days the
+  # orchestrator held 3.1 GB of IOAccelerator memory and 1.7 GB of malloc, mostly in swap.
+  # launchd cannot cap memory on macOS (HardResourceLimits is not enforced for RSS), so a
+  # restart is the lever. "Idle" means no child `claude` process: each Slack turn runs as one
+  # (the other children, cloudflared and multiprocessing's resource_tracker, are always there).
+  # Busy at 04:30 → retried every 10 minutes until 05:00, then left for the next night.
+  launchd.daemons.popo-nightly-restart = {
+    script = ''
+      stamp=/var/run/popo-nightly-restart.$(/bin/date +%F)
+      [ -e "$stamp" ] && exit 0
+      pid=$(/bin/launchctl print system/org.nixos.popo | /usr/bin/awk '$1 == "pid" { print $3 }')
+      [ -n "$pid" ] || exit 0
+      busy=$(/bin/ps -A -o ppid=,command= | /usr/bin/awk -v p="$pid" '$1 == p && $2 ~ /claude$/' | /usr/bin/wc -l)
+      if [ "$busy" -gt 0 ]; then
+        echo "$(/bin/date) popo busy ($busy children), skipping"
+        exit 0
+      fi
+      echo "$(/bin/date) restarting popo (pid $pid)"
+      /bin/launchctl kickstart -k system/org.nixos.popo && /usr/bin/touch "$stamp"
+    '';
+    serviceConfig = {
+      StartCalendarInterval =
+        map
+          (m: {
+            Hour = 4;
+            Minute = m;
+          })
+          [
+            30
+            40
+            50
+          ]
+        ++ [
+          {
+            Hour = 5;
+            Minute = 0;
+          }
+        ];
+      ProcessType = "Background";
+      StandardOutPath = "/var/log/popo-nightly-restart.log";
+      StandardErrorPath = "/var/log/popo-nightly-restart.log";
     };
   };
 
