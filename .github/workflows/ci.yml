@@ -142,10 +142,9 @@ jobs:
     runs-on: ${{ github.event_name != 'pull_request' && matrix.runner || github.event.pull_request.head.repo.full_name == github.repository && matrix.pr_runner || matrix.fork_runner }}
     timeout-minutes: 90
     steps:
-      # GitHub の ubuntu ランナーは root に ~20GB しか空きが無い。main の om ci run は VM
-      # テストや ISO まで全部作るので、上流の故障で途中終了しなくなった 2026-10-04 から
-      # 30 分・63 分でランナーごと落ちた (ログ無し、"The operation was canceled")。使わない
-      # 同梱ツールチェインを消して空きを作る。前後の df は、次に落ちたときの手掛かり。
+      # 使わない同梱ツールチェインを消して空きを作る (main は VM テストや ISO まで全部作る)。
+      # 2026-10-04 からの「ログ無しでランナーごと落ちる」は当初ディスク不足と見てこれを
+      # 足したが、実際はメモリ (下の nix build (each output) を参照)。前後の df は残す。
       - name: Free disk space (GitHub-hosted linux)
         if: runner.environment == 'github-hosted' && runner.os == 'Linux'
         run: |
@@ -191,14 +190,26 @@ jobs:
             --out-link "$roots/pr-gate-${{ matrix.system }}" --print-build-logs
 
       # omnix 本体は om.cachix.org から取得 (--accept-flake-config)。ソースビルドしない。
+      # GitHub の linux ランナーだけは下の ci-build-each.sh に回す。
       - name: om ci run
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && !(runner.environment == 'github-hosted' && runner.os == 'Linux')
         run: |
           nix --accept-flake-config run github:juspay/omnix/v1.3.2 -- \
             ci run \
             --systems "${{ matrix.system }}" \
             --extra-access-tokens ${{ secrets.GITHUB_TOKEN }} \
             -- --accept-flake-config
+
+      # omnix は全出力を 1 つの nix プロセスで評価し、x86_64-linux ではそれが ~25 GB になる。
+      # GitHub のランナーは 16 GB なので評価の途中で OOM になり、ランナーごと落ちていた
+      # (2026-10-27 に計測: 3 分で 15.8 GB + swap に達して "shutdown signal"、ログ無し)。
+      # main は 2026-08-28 から一度も緑になっていなかった。出力ごとに別プロセスで建てて、
+      # ピークを最大の 1 出力 (nixos-laptop の 5.1 GB) に抑える。詳細はスクリプト冒頭。
+      # omnix の flake-check (nix flake check) も同じく全部を 1 プロセスで評価するので外す。
+      # 各出力を実際に建てるので、評価エラーはここで出る。
+      - name: nix build (each output)
+        if: github.event_name != 'pull_request' && runner.environment == 'github-hosted' && runner.os == 'Linux'
+        run: ./scripts/ci-build-each.sh "${{ matrix.system }}" --accept-flake-config
 
       # omnix は checkout 直下に `result` (ビルド結果の JSON) を out-link として書く。自前ランナーの
       # _work は run をまたいで残るので、これが main の全クロージャ (macmini の toplevel と

@@ -9,10 +9,10 @@ in
   # NixOS container so the WireGuard policy routes and kill switch can never
   # rewrite the homeserver's own network namespace.
   containers.mullvad-exit = {
-    # Declared but not running: the Mullvad account expired on 2026-08-03 and is
-    # not being renewed for now. Set to true (and re-register the WireGuard key
-    # via the Mullvad devices API) when the exit node is wanted again.
-    autoStart = false;
+    # If the Mullvad account lapses, the device keys are deleted with it: set this
+    # to false, and on renewal re-register the conf's key via the Mullvad devices
+    # API and put the addresses it returns into the conf.
+    autoStart = true;
     privateNetwork = true;
     hostAddress = "10.233.0.1";
     localAddress = "10.233.0.2";
@@ -54,9 +54,32 @@ in
           };
         };
 
+        # The conf must carry `FwMark = 51820`: wg-quick only sets a fwmark itself
+        # with Table = auto, and without it the PostUp rule `not fwmark 51820`
+        # routes WireGuard's own encapsulated packets back into the tunnel (seen
+        # 2026-10-30: handshakes worked, gigabytes sent, nothing received).
         networking.wg-quick.interfaces.mullvad = {
           autostart = true;
           configFile = "/var/lib/secrets/mullvad-exit.conf";
+        };
+
+        # The conf's `pref 5000 not fwmark 51820` rule comes before Tailscale's
+        # table 52, so this node's own packets to tailnet addresses went into
+        # Mullvad. That broke its MagicDNS (100.100.100.100 forwards to the blocky
+        # resolvers on the tailnet), and with it DNS for every client using this
+        # exit node. Send the tailnet ranges to Tailscale's table first.
+        systemd.services.tailnet-before-mullvad = {
+          wantedBy = [ "multi-user.target" ];
+          before = [ "wg-quick-mullvad.service" ];
+          path = [ pkgs.iproute2 ];
+          serviceConfig = {
+            Type = "oneshot";
+            RemainAfterExit = true;
+          };
+          script = ''
+            ip -4 rule add pref 4990 to 100.64.0.0/10 lookup 52 2>/dev/null || true
+            ip -6 rule add pref 4990 to fd7a:115c:a1e0::/48 lookup 52 2>/dev/null || true
+          '';
         };
 
         services.tailscale = {
