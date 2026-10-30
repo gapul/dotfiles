@@ -18,7 +18,7 @@ pkgs.testers.runNixOSTest {
   node.pkgsReadOnly = false;
 
   nodes.machine =
-    { lib, ... }:
+    { lib, pkgs, ... }:
     {
       imports = [
         ../hosts/nixos-laptop.nix
@@ -41,6 +41,10 @@ pkgs.testers.runNixOSTest {
       ];
 
       boot.lanzaboote.enable = lib.mkForce false;
+      # The laptop's install script chains to Lanzaboote's hook before installing rEFInd
+      # (hosts/nixos-laptop.nix). With Lanzaboote off nothing defines the hook, and the
+      # specialisations, which build their own copy of the script, fail to evaluate.
+      boot.loader.external.installHook = "${pkgs.coreutils}/bin/true";
       # The maint boot (hosts/nixos-laptop-maint.nix) needs the laptop's LUKS device and an initrd
       # secret only Lanzaboote carries; neither exists here, and the script does not use it.
       specialisation.maint = lib.mkForce { configuration = { }; };
