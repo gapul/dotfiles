@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ lib, pkgs, ... }:
 let
   # Policy-routing table for this box's own traffic, and the fwmark WireGuard puts
   # on its encapsulated packets so they skip that table and leave over the LAN.
@@ -8,6 +8,22 @@ let
   ip = "${pkgs.iproute2}/bin/ip";
   wg = "${pkgs.wireguard-tools}/bin/wg";
   l2tpPeer = "/var/lib/secrets/l2tp/peer";
+
+  # Services that keep the plain line, by cgroup: everything they start inherits it.
+  # - mail: Google sign-ins with an app password from a VPN address are what gets an
+  #   account locked, and imapsync timed out against imap.gmail.com once already
+  #   (2026-10-30 23:41). Stalwart relays outgoing mail through smtp.gmail.com.
+  # - utokyo-vpn: an unattended SSO sign-in (Playwright) plus the ASA session; the
+  #   tunnel itself already carries UTNET only.
+  bypassSlice = "mullvad-bypass.slice";
+  bypassUnits = [
+    "mail-mirror"
+    "mail-push-gmail"
+    "mail-push-school"
+    "mail-push-sean"
+    "stalwart"
+    "utokyo-vpn"
+  ];
 
   # Rule preferences sit after Tailscale's (5210-5270), so tailscaled's own packets
   # (fwmark 0x80000 -> main at 5210) still go straight out and keep direct
@@ -98,4 +114,36 @@ in
       ${ip} -4 rule del pref 5291 || true
     '';
   };
+
+  # The cgroup match is resolved when the rule is inserted, so it can only name a
+  # cgroup that exists then. A unit's own cgroup disappears whenever it is stopped
+  # (mail-mirror is a timer), so the units go into a slice that is kept up.
+  systemd.slices.mullvad-bypass = {
+    description = "Services that bypass the Mullvad tunnel";
+    wantedBy = [ "multi-user.target" ];
+  };
+  systemd.services =
+    lib.genAttrs bypassUnits (_: {
+      serviceConfig.Slice = bypassSlice;
+    })
+    // {
+      firewall = {
+        wants = [ bypassSlice ];
+        after = [ bypassSlice ];
+      };
+    };
+
+  # Marked packets skip the `not fwmark` rule and leave by main. Their source
+  # address was already picked from the Mullvad route, so rewrite it on the way out.
+  networking.firewall.extraCommands = ''
+    ip46tables -t mangle -N mullvad-bypass 2>/dev/null || ip46tables -t mangle -F mullvad-bypass
+    ip46tables -t mangle -A mullvad-bypass -m cgroup --path ${bypassSlice} -j MARK --set-mark ${toString table}
+    ip46tables -t mangle -C OUTPUT -j mullvad-bypass 2>/dev/null || ip46tables -t mangle -I OUTPUT 1 -j mullvad-bypass
+    ip46tables -t nat -C POSTROUTING -o enp2s0 -m mark --mark ${toString table} -j MASQUERADE 2>/dev/null \
+      || ip46tables -t nat -A POSTROUTING -o enp2s0 -m mark --mark ${toString table} -j MASQUERADE
+  '';
+  networking.firewall.extraStopCommands = ''
+    ip46tables -t mangle -D OUTPUT -j mullvad-bypass 2>/dev/null || true
+    ip46tables -t nat -D POSTROUTING -o enp2s0 -m mark --mark ${toString table} -j MASQUERADE 2>/dev/null || true
+  '';
 }
