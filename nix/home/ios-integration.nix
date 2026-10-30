@@ -125,7 +125,10 @@ in
           '';
         }
       );
-      ExecStart = "${pkgs.coreutils}/bin/stdbuf -oL -eL ${uxplay}/bin/uxplay -n nixlaptop -p 7000 -pin";
+      # -pin asks a new iPhone for an on-screen PIN. -key keeps the server key in ~/.uxplay.pem and
+      # -reg remembers paired clients in ~/.uxplay.register, so the PIN is entered once rather
+      # than after every restart (a fresh key each start made the iPhone pair again).
+      ExecStart = "${pkgs.coreutils}/bin/stdbuf -oL -eL ${uxplay}/bin/uxplay -n nixlaptop -p 7000 -pin -key -reg";
       Restart = "always";
       RestartSec = 5;
     };
