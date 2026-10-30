@@ -22,12 +22,33 @@ let
   v4Rules = [
     # The mullvad-exit container already tunnels to Mullvad itself; don't wrap it twice.
     "pref 5290 from 10.233.0.0/24 lookup main"
-  ];
+  ]
+  ++ map (r: "${r} lookup main") cloudflareEdge.v4;
+  v6Rules = map (r: "${r} lookup main") cloudflareEdge.v6;
+  # cloudflared's edge (region1/region2.v2.argotunnel.com, port 7844). Through
+  # Mullvad neither QUIC nor TCP reached it (2026-10-30: "Allow outbound QUIC
+  # traffic on port 7844", matrix.gapul.net answered 530), so the tunnel that
+  # carries every public hostname stays on the plain line. Cloudflare sees the
+  # house's address either way: it terminates these hostnames.
+  cloudflareEdge = {
+    v4 = [
+      "pref 5292 to 198.41.192.0/24"
+      "pref 5293 to 198.41.200.0/24"
+    ];
+    v6 = [
+      "pref 5292 to 2606:4700:a0::/44"
+      "pref 5293 to 2606:4700:a8::/44"
+    ];
+  };
 in
 {
   # The homeserver's own outbound traffic goes through Mullvad (a separate device
   # from the mullvad-exit container's). Inbound needs nothing: everything public
   # arrives through outbound tunnels (cloudflared, playit) or the tailnet.
+  #
+  # Connections already open when the routes change keep their LAN source address
+  # and hang once their packets go into the tunnel. After the first switch,
+  # blocky and cloudflared had to be restarted; do the same after changing the rules.
   #
   # Not a kill switch: if this interface is down, its table is empty and traffic
   # falls back to the plain LAN route. A box that also deploys itself and is
@@ -60,6 +81,7 @@ in
       ${builtins.concatStringsSep "\n" (
         map (r: "${ip} -4 rule add ${r}\n${ip} -6 rule add ${r}") rules
         ++ map (r: "${ip} -4 rule add ${r}") v4Rules
+        ++ map (r: "${ip} -6 rule add ${r}") v6Rules
       )}
       # The L2TP/IPsec peer (vpn-relay.nix) stays on the plain line: the far end
       # knows this house by its address. The peer is only known at runtime.
@@ -71,6 +93,7 @@ in
       ${builtins.concatStringsSep "\n" (
         map (r: "${ip} -4 rule del ${r} || true\n${ip} -6 rule del ${r} || true") rules
         ++ map (r: "${ip} -4 rule del ${r} || true") v4Rules
+        ++ map (r: "${ip} -6 rule del ${r} || true") v6Rules
       )}
       ${ip} -4 rule del pref 5291 || true
     '';
