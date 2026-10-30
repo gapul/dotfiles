@@ -15,6 +15,7 @@
 # home/linux-gui.nix (nixpkgs' firefox-devedition).
 {
   config,
+  lib,
   pkgs,
   ...
 }:
@@ -31,27 +32,103 @@ let
   };
 in
 {
-  # Install each style in Stylus from its updateUrl so Stylus keeps it current. They stay light
-  # in both OS modes (2026-10-30: wanted in dark mode too, so the light-only export is gone).
-  xdg.dataFile."firefox/light-site-themes.json".text = builtins.toJSON {
-    mode = "always (both OS color schemes)";
-    styles = [
-      {
-        domain = "open.spotify.com";
-        name = "Light Theme Spotify";
-        updateUrl = "https://raw.githubusercontent.com/ThatOneUnoriginal/Spotify-Light/main/LightThemeSpotify.user.css";
-        preferScheme = "none";
-        darkReaderExcluded = true;
-      }
-      {
-        domain = "music.youtube.com";
-        name = "YouTube Music — Google Light + Dark Player";
-        updateUrl = "https://raw.githubusercontent.com/docrepath/youtube-music-google-light-dark-player/main/YouTubeMusic-Google-Light-Dark-Player.user.css";
-        preferScheme = "none";
-        darkReaderExcluded = true;
-      }
-    ];
-  };
+  # What lives inside the extensions that policies cannot reach (no managed storage):
+  # Violentmonkey scripts, Header Editor rules, uBlacklist subscriptions and Stylus styles.
+  # Policies below only install the extensions; this file is the list of what goes into them,
+  # written to ~/.local/share/firefox/extension-sources.json. Every entry is installed from a URL,
+  # so the extension keeps it updated from there; the e-Tax pair lives in this repo for that.
+  # Day to day the profiles are kept in step by each extension's WebDAV sync against
+  # webdav.gapul.net (homelab/webdav.nix); this list is for a fresh profile and for review.
+  xdg.dataFile."firefox/extension-sources.json".text =
+    let
+      raw = "https://raw.githubusercontent.com";
+      repo = "${raw}/gapul/dotfiles/main/configs/apps";
+      ublSubscribe = url: "https://ublacklist.github.io/rulesets/subscribe?url=${lib.escapeURL url}";
+      rosePine = domain: dir: {
+        inherit domain;
+        name = "Rosé Pine";
+        # Light OS mode → Dawn, dark → Rosé Pine (the style's own prefers-color-scheme switch).
+        url = "${raw}/rose-pine/userstyles/main/styles/${dir}/rose-pine.user.less";
+      };
+    in
+    builtins.toJSON {
+      sync = {
+        url = "https://webdav.gapul.net/";
+        credentials = "secrets/homelab.yaml: homeserver_files/webdav.env";
+        violentmonkey = "Settings > Sync > WebDAV; server URL as above (it writes under Violentmonkey/)";
+        stylus = "Options > Sync to cloud > WebDAV";
+        ublacklist = "Options > Sync > WebDAV; sync rules, subscriptions and SERP info";
+        headerEditor = "Options > Import and export > WebDAV (manual backup, no automatic sync)";
+      };
+      violentmonkey = [
+        {
+          name = "Pagetual";
+          # Infinite scroll on paginated sites; rules from wedata. Import its base rules once.
+          url = "https://greasyfork.org/scripts/438684-pagetual/code/pagetual.user.js";
+        }
+        {
+          name = "f*cking e-Tax";
+          url = "${repo}/violentmonkey/etax.user.js";
+        }
+      ];
+      # Options > Download rules, from the URL.
+      headerEditor = [
+        {
+          name = "f*cking e-Tax";
+          url = "${repo}/header-editor/etax.json";
+        }
+      ];
+      uBlacklist = {
+        # Paste into Options > SERPINFO > user; it is what lets uBlacklist act on search.gapul.net.
+        serpInfo = "${repo}/ublacklist/searxng.yml";
+        # From the official Community Rulesets page (ublacklist.github.io/rulesets).
+        # Turn on "enable subscription links" in the options before opening these.
+        subscriptions = map (s: s // { subscribe = ublSubscribe s.url; }) [
+          {
+            name = "ncaq/uBlacklistRule";
+            url = "${raw}/ncaq/uBlacklistRule/master/uBlacklist.txt";
+          }
+          {
+            name = "uBlacklist Stack Overflow Translation";
+            url = "${raw}/arosh/ublacklist-stackoverflow-translation/master/uBlacklist.txt";
+          }
+          {
+            name = "uBlacklist GitHub Translation";
+            url = "${raw}/arosh/ublacklist-github-translation/master/uBlacklist.txt";
+          }
+          {
+            name = "uBlacklist-filter-by-kdroidwin";
+            url = "${raw}/Kdroidwin/uBlacklist-filter-by-kdroidwin/main/uBlacklist.txt";
+          }
+        ];
+      };
+      stylus = [
+        (rosePine "github.com" "github")
+        (rosePine "youtube.com" "youtube")
+        (rosePine "chatgpt.com" "chatgpt")
+        (rosePine "claude.ai" "claude")
+        (rosePine "gemini.google.com" "gemini")
+        (rosePine "search.nixos.org" "nixos-search")
+        (rosePine "docs.rs" "docs.rs")
+        (rosePine "bsky.app" "bluesky")
+        (rosePine "proton.me" "proton")
+        (rosePine "wikiwand.com" "wikiwand")
+        # Dark-only sites given a light style in both OS modes (2026-10-30). Exclude these two
+        # domains in Dark Reader; userContent below carries the Spotify compatibility layer.
+        {
+          domain = "open.spotify.com";
+          name = "Light Theme Spotify";
+          url = "${raw}/ThatOneUnoriginal/Spotify-Light/main/LightThemeSpotify.user.css";
+          darkReaderExcluded = true;
+        }
+        {
+          domain = "music.youtube.com";
+          name = "YouTube Music — Google Light + Dark Player";
+          url = "${raw}/docrepath/youtube-music-google-light-dark-player/main/YouTubeMusic-Google-Light-Dark-Player.user.css";
+          darkReaderExcluded = true;
+        }
+      ];
+    };
 
   programs.firefox = {
     enable = true;
@@ -171,9 +248,8 @@ in
         "{d07ccf11-c0cd-4938-a265-2a4d6ad01189}".installation_mode = "blocked"; # Web Archives
         # Follow OS dark mode on sites without their own automatic theme. Configure
         # Dark Reader once per profile: automation System/Scheme, detect dark theme on.
-        # Dark-only sites with a dedicated light UserCSS use Stylus instead, installed from
-        # the updateUrls in ~/.local/share/firefox/light-site-themes.json; exclude those
-        # domains in Dark Reader.
+        # Dark-only sites with a dedicated light UserCSS use Stylus instead (the stylus list in
+        # ~/.local/share/firefox/extension-sources.json); exclude those domains in Dark Reader.
         # Prefer maintained site-specific styles over reversing Dark Reader's light palette.
         "addon@darkreader.org" =
           if pkgs.stdenv.hostPlatform.isLinux then amo "darkreader" else { installation_mode = "blocked"; };

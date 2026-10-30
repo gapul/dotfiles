@@ -103,6 +103,10 @@ let
     { rel = "utas-classes.env"; }
     { rel = "vault-deploy.key"; }
     { rel = "vaultwarden.env"; }
+    {
+      rel = "webdav.env";
+      restartUnits = [ "webdav.service" ];
+    }
     { rel = "wger.env"; }
     { rel = "zipline.env"; }
     { rel = "writefreely-admin.password"; }

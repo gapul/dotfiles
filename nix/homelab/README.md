@@ -41,6 +41,7 @@ name that matters now.
 | `spliit.env` | `POSTGRES_PRISMA_URL` and `POSTGRES_URL_NON_POOLING`, both the whole `postgresql://spliit:<pw>@db/spliit`, plus `POSTGRES_PASSWORD` |
 | `paperless.env` | `PAPERLESS_SECRET_KEY`, `PAPERLESS_ADMIN_PASSWORD`, `PAPERLESS_REMOTE_OCR_API_KEY` (the same value as the macmini's `~/.config/vision-ocr/key`) |
 | `vaultwarden.env` | `ADMIN_TOKEN` |
+| `webdav.env` | `WEBDAV_USERNAME`, `WEBDAV_PASSWORD` (`openssl rand -base64 24`) for webdav.gapul.net (`webdav.nix`). The same pair is typed into each browser's Violentmonkey, Stylus, uBlacklist and Header Editor once; changing it means re-entering it there |
 | `zipline.env` | `CORE_SECRET`, from `openssl rand -hex 32` (Zipline refuses anything under 32 characters). It signs sessions, so changing it logs everyone out but loses no files |
 | `nostr.env` | `NOSTR_PRIVATE_KEY` (hex) for npub1gapulnet42…960ve3, the key behind gapul@gapul.net on Nostr. Losing it loses the identity |
 | `writefreely-admin.password` | first-run password for WriteFreely's admin `gapul`; read only while there are no users, changed from the UI afterwards |
