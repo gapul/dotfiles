@@ -48,6 +48,14 @@
   services.searx = {
     enable = true;
 
+    # Without a favicons.toml next to settings.yml SearXNG logs an error on every start and keeps
+    # the icon cache in /tmp, which PrivateTmp throws away on each restart. The module's
+    # CacheDirectory survives restarts. Rest of the schema stays at its defaults.
+    faviconsSettings.favicons = {
+      cfg_schema = 1;
+      cache.db_url = "/var/cache/searx/faviconcache.db";
+    };
+
     # Only secret_key. envsubst puts it into $SEARXNG_SECRET below.
     # Placed by hand like the rest of homelab (see README.md).
     environmentFile = "/var/lib/secrets/searx.env";
@@ -79,6 +87,10 @@
       # 2026-10-30: `!wp 機械学習` gave the infobox with ja and nothing with auto), and English
       # queries still return English results under ja (nix flake: 134 results).
       search.default_lang = "ja";
+      # The site icon next to each result. The icon is fetched by this server (favicon proxy) and
+      # cached, so DuckDuckGo learns the domains shown in results but not the client IP or the
+      # query. DuckDuckGo already receives every query as an engine.
+      search.favicon_resolver = "duckduckgo";
 
       # Unlike every other section, `plugins` is not merged into the defaults: a user
       # `plugins` replaces the whole table (settings_loader.update_settings), and a plugin
