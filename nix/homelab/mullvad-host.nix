@@ -15,6 +15,11 @@ let
   #   (2026-10-30 23:41). Stalwart relays outgoing mail through smtp.gmail.com.
   # - utokyo-vpn: an unattended SSO sign-in (Playwright) plus the ASA session; the
   #   tunnel itself already carries UTNET only.
+  # - the Matrix bridges: each is a session signed in as the user, so the far end
+  #   knows who it is anyway and Mullvad hides nothing; what it does do is look
+  #   like a new location. X rejected the bridge's polling with 404 from the
+  #   first Mullvad address on (2026-10-30 19:44), and Meta, LinkedIn and Discord
+  #   are the services most quick to checkpoint a login that moves.
   # No dash: systemd reads one as nesting, and "mullvad-bypass.slice" lives at
   # mullvad.slice/mullvad-bypass.slice, which the cgroup match then failed to find.
   bypassSlice = "novpn.slice";
@@ -25,6 +30,19 @@ let
     "mail-push-sean"
     "stalwart"
     "utokyo-vpn"
+    "matrix-line"
+    "mautrix-bluesky"
+    "mautrix-discord"
+    "mautrix-gmessages"
+    "mautrix-googlechat"
+    "mautrix-linkedin"
+    "mautrix-meta-instagram"
+    "mautrix-meta-messenger"
+    "mautrix-signal"
+    "mautrix-slack"
+    "mautrix-telegram"
+    "mautrix-twitter"
+    "mautrix-whatsapp"
   ];
 
   # Rule preferences sit after Tailscale's (5210-5270), so tailscaled's own packets
