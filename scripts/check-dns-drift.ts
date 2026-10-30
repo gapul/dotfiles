@@ -146,9 +146,11 @@ const expected = vhosts.filter((host) => host.includes(".") && !published.has(ho
 // ── 秘密 ────────────────────────────────────────────────────────────
 // 秘密は secrets/{common,darwin,homelab}.yaml に割れている。単一の secrets.yaml は
 // もう無いので、そこを見ていた頃のこのスクリプトは token を空のまま先に進んでいた。
+// `nix shell`, not `nix develop`: the devShell's shellHook prints to stdout (the pre-commit
+// install), and that text ended up in front of the token in the Authorization header.
 function sopsGet(key: string): string {
   const r = run(
-    ["nix", "develop", flake, "-c", "sops", "-d", "--extract", `["cloudflare"]["${key}"]`, `${repo}/secrets/homelab.yaml`],
+    ["nix", "shell", "nixpkgs#sops", "-c", "sops", "-d", "--extract", `["cloudflare"]["${key}"]`, `${repo}/secrets/homelab.yaml`],
     { quietStderr: true },
   );
   return chomp(r.stdout);
