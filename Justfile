@@ -784,6 +784,11 @@ android-apps cmd="status":
 android-os *flags:
     @nix shell nixpkgs#android-tools -c mobile/android/os.sh {{flags}}
 
+# Apply the declared KernelSU modules and ksud features to a rooted device (`just android-root` = diff + apply, `--dry-run`)
+[group('Mobile')]
+android-root *flags:
+    @nix shell nixpkgs#android-tools -c mobile/android/root.sh {{flags}}
+
 # Generate the Kvaesitso launcher theme from palettes.json and push it to the device
 [group('Mobile')]
 android-launcher-theme:

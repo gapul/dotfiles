@@ -11,6 +11,8 @@ mobile/
 │   ├── apps.tsv + apps.ts          # older app declaration against the device; F-Droid apps install too
 │   ├── os-settings.conf            # global settings pushed with adb
 │   ├── os-apps.tsv + os.sh         # per-app settings: permissions, battery, default launcher
+│   ├── devices/<codename>/         # a device's own declaration, replacing the four files above
+│   │   └── root/ + root.sh         # KernelSU modules and ksud features, for a rooted device
 │   ├── launcher-theme.ts           # generates Kvaesitso's theme from palettes.json
 │   └── test.sh                     # self-check against a fake adb
 └── ios/
@@ -20,6 +22,7 @@ mobile/
     └── test.sh
 configs/android/obtainium.json      # the Obtainium app list, synced by `droid obtainium pull|push`
 nix/mobile/ios-profiles.nix         # the contents of the .mobileconfig, through pkgs.formats.plist
+nix/mobile/android-root.nix         # a rooted device's KernelSU modules, built into flashable zips
 nix/hosts/droid.nix                 # the CLI environment inside Termux, through nix-on-droid
 ```
 
@@ -28,11 +31,12 @@ nix/hosts/droid.nix                 # the CLI environment inside Termux, through
 | Layer | Android | iOS |
 |---|---|---|
 | Apps: declared in | `configs/android/obtainium.json` (Obtainium); `android/apps.tsv` is older and partial | `ios/apps.tsv` |
-| Apps: confirming they exist | `apps.ts verify` (`apps.tsv` rows only), against the F-Droid index, the GitHub API and Play | `apps.ts verify`, against the iTunes API and the AltStore source |
+| Apps: confirming they exist | `apps.ts verify` (`apps.tsv` rows only), against the F-Droid index, the GitHub and GitLab APIs and Play | `apps.ts verify`, against the iTunes API and the AltStore source |
 | Apps: comparing with the device | `apps.ts status`, over adb | `apps.ts status`, through ideviceinstaller over USB |
 | Apps: installing | `droid obtainium push` hands Obtainium its list; `apps.ts install` covers F-Droid rows only | Not possible; it needs a signed ipa |
 | OS settings, global | `os-settings.conf` through `os.sh` | Not possible, beyond what a `.mobileconfig` can reach |
 | OS settings, per app | `os-apps.tsv` through `os.sh` | Not possible |
+| Root: KernelSU modules and features | `devices/<codename>/root/` through `root.sh`, zips built by nix | — |
 | Launcher | Setting the default, and generating the theme. Layout is not possible | The home screen is untouched |
 | Generating profiles | — | `nix build .#ios-profiles` |
 | CLI environment | `nix/hosts/droid.nix` | Not attempted. ssh to the Mac from Blink |

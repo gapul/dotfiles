@@ -1,0 +1,6 @@
+id=systemless-hosts-KernelSU-module
+name=Systemless hosts
+version=v1.2.2-gapul.2
+versionCode=10204
+author=gapul (after symbuzzer/systemless-hosts-KernelSU-module)
+description=Writable /system/etc/hosts for AdAway, bind-mounted read-write by the module itself.

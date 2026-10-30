@@ -1,12 +1,13 @@
 #!/usr/bin/env bun
 // Move the pins of the custom packages in nix/pkgs (slk, Unity CLI, the Fabric server and its
-// mods, Geyser, the ArtCraft apps, Compositor) to their newest upstream releases. Run hourly by .github/workflows/
+// mods, Geyser, the ArtCraft apps, Compositor), and of the KernelSU modules in
+// mobile/android/devices/*/root/sources.json, to their newest upstream releases. Run hourly by .github/workflows/
 // update-flake-lock.yml, which opens a PR with whatever changed.
 //
 // Ported from update-custom-packages.sh. HTTP goes through fetch and hashes are computed
 // in-process (the SRI strings are what `nix hash file` / `nix hash convert` printed), so the only
 // external command left is `gh` for the GitHub release lookups, which carries the workflow's token.
-import { readFileSync, writeFileSync, writeSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, writeFileSync, writeSync } from "node:fs";
 
 const repo = `${import.meta.dir}/..`;
 const slkFile = `${repo}/nix/pkgs/slk.nix`;
@@ -324,6 +325,84 @@ async function updateGeyser(): Promise<void> {
   out(`geyser: ${pinnedGeyser}-${pinnedBuild} -> ${gv}-${gb}`);
 }
 
+// --- KernelSU modules (mobile/android/devices/*/root/sources.json) ---------------------------
+// nix/mobile/android-root.nix reads url and hash; version is what this compares. Three kinds:
+// a GitHub release asset matched by a regex, the head commit of a branch (a module repository
+// that is itself the flashable tree), and a file listed on a plain HTML index page.
+interface RootSource {
+  type: "github-release" | "github-commit" | "html-index";
+  repo?: string;
+  branch?: string;
+  index?: string;
+  asset?: string;
+  version: string;
+  url: string;
+  hash: string;
+}
+
+// The workflow's token lifts GitHub's 60 requests an hour for unauthenticated calls.
+async function githubJson<T>(path: string): Promise<T> {
+  const token = process.env.GH_TOKEN;
+  const res = await fetch(`https://api.github.com/${path}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    signal: AbortSignal.timeout(30_000),
+  });
+  if (!res.ok) throw new Fatal(`github ${path}: HTTP ${res.status}`);
+  return res.json() as T;
+}
+
+async function latestRootSource(src: RootSource): Promise<{ version: string; url: string }> {
+  switch (src.type) {
+    case "github-release": {
+      const rel = await githubJson<{ tag_name: string; assets: { name: string; browser_download_url: string }[] }>(
+        `repos/${src.repo}/releases/latest`,
+      );
+      const re = new RegExp(src.asset ?? "");
+      const asset = rel.assets.find((a) => re.test(a.name));
+      if (!asset) throw new Fatal(`${src.repo} ${rel.tag_name}: no asset matches ${src.asset}`);
+      return { version: rel.tag_name, url: asset.browser_download_url };
+    }
+    case "github-commit": {
+      const c = await githubJson<{ sha: string }>(`repos/${src.repo}/commits/${src.branch}`);
+      return { version: c.sha, url: `https://github.com/${src.repo}/archive/${c.sha}.tar.gz` };
+    }
+    case "html-index": {
+      // Pick the highest version-looking name among the matching links.
+      const html = await (await get(src.index ?? "", 30_000)).text();
+      const re = new RegExp(src.asset ?? "");
+      const names = [...new Set([...html.matchAll(/href="([^"]+)"/g)].map((m) => m[1]))].filter((n) => re.test(n));
+      const key = (n: string): number[] => (n.match(/\d+/g) ?? []).map(Number);
+      names.sort((a, b) => {
+        const [x, y] = [key(a), key(b)];
+        for (let i = 0; i < Math.max(x.length, y.length); i++) if ((x[i] ?? 0) !== (y[i] ?? 0)) return (x[i] ?? 0) - (y[i] ?? 0);
+        return 0;
+      });
+      const name = names.at(-1);
+      if (!name) throw new Fatal(`${src.index}: no link matches ${src.asset}`);
+      return { version: name, url: new URL(name, src.index).href };
+    }
+  }
+}
+
+async function updateAndroidRoot(): Promise<void> {
+  const devices = `${repo}/mobile/android/devices`;
+  for (const device of readdirSync(devices).sort()) {
+    const file = `${devices}/${device}/root/sources.json`;
+    if (!existsSync(file)) continue;
+    const sources = JSON.parse(readFileSync(file, "utf8")) as Record<string, RootSource>;
+    let changed = false;
+    for (const [name, src] of Object.entries(sources)) {
+      const latest = await latestRootSource(src);
+      if (latest.version === src.version) continue;
+      const hash = sriSha256(await getBytes(latest.url));
+      out(`android-root ${device}/${name}: ${src.version} -> ${latest.version}`);
+      Object.assign(src, latest, { hash });
+      changed = true;
+    }
+    if (changed) writeFileSync(file, `${JSON.stringify(sources, null, 2)}\n`);
+  }
+}
+
 // --- ArtCraft (storytold) and Compositor -----------------------------------------------------
 // The twelve Craft apps share one release layout (github.com/storytold/<name>, tag v<version>,
 // a universal dmg for darwin and an x86_64 tarball for Linux), so they are one list in
@@ -411,6 +490,7 @@ try {
     (v) => `ArtCraft_${v}_universal.dmg`,
   );
   await updateReleaseAsset("compositor", compositorFile, "robbietilton/Compositor", (v) => `v${v}`, () => "Compositor.dmg");
+  await updateAndroidRoot();
 } catch (e) {
   err(`update-custom-packages: ${e instanceof Error ? e.message : String(e)}`);
   process.exit(1);

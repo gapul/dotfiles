@@ -674,6 +674,16 @@
                 pkgs = systemPkgs;
               };
 
+              # KernelSU modules for the rooted Xiaomi Pad 5, as flashable zips. Fetching and
+              # zipping only, so it builds on any system. mobile/android/root.sh installs them.
+              android-root-nabu = import ./mobile/android-root.nix {
+                inherit lib;
+                pkgs = systemPkgs;
+                device = "nabu";
+                root = ../mobile/android/devices/nabu/root;
+                palettes = ../configs/theme/palettes.json;
+              };
+
               # What a pull request has to prove: the machines in daily use still evaluate and
               # build. Everything else this flake produces — the macmini closure, the NixOS
               # hosts, the VM tests — is built on main, which is also where cachix gets filled.
