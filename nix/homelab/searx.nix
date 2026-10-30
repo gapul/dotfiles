@@ -92,6 +92,13 @@
       # query. DuckDuckGo already receives every query as an engine.
       search.favicon_resolver = "duckduckgo";
 
+      # A page waits for its slowest engine up to this limit, so it bounds the worst case.
+      # 3s was the default. The general engines answer well inside 2s (2026-10-30, P95: google
+      # cse 0.8s, duckduckgo web 1.2s, yandex 1.5s, mwmbl 1.2s, wikipedia 1.0s), and an engine
+      # that hangs now costs 2s instead of 3s. Engines with their own `timeout` (crossref,
+      # openalex, the translators) keep it.
+      outgoing.request_timeout = 2.0;
+
       # Unlike every other section, `plugins` is not merged into the defaults: a user
       # `plugins` replaces the whole table (settings_loader.update_settings), and a plugin
       # missing here is not loaded at all. So this lists every bundled plugin; when an
@@ -123,9 +130,8 @@
       # (luxxle / rawweb). Check existence by whether it is listed in `/config`, and
       # check that it works by the engine name appearing in results.
       #
-      # duckduckgo stays enabled as by default. It is sunk by CAPTCHA part of the time
-      # (15-20% on 2026-10-30), but the rest still answers, so leave it to SearXNG's
-      # automatic suspend. brave was kept the same way but never came back; see below.
+      # duckduckgo and brave were kept on and left to SearXNG's automatic suspend. Neither
+      # stayed: brave never came back, and duckduckgo duplicates duckduckgo web; see below.
       #
       # To make them work permanently, there is the route of moving to official APIs.
       # A braveapi engine is bundled and becomes stable once api_key is set (free tier
@@ -158,6 +164,22 @@
         {
           name = "duckduckgo web";
           disabled = false;
+        }
+        # The default duckduckgo returns the same index as duckduckgo web, so each DuckDuckGo
+        # result was counted twice in the score (weight x engines that returned it), tilting
+        # the merge toward Bing's index. It also hit CAPTCHA on 5-15% of queries (2026-10-30),
+        # which duckduckgo web did not. `!ddg` still reaches it.
+        {
+          name = "duckduckgo";
+          disabled = true;
+        }
+        # The slowest engine in the general tab (2026-10-30, alone: median 1.3s, up to 2.5s,
+        # and 35% timeouts in /stats/errors). A page waits for its slowest engine, so it set
+        # the time of most searches: the same queries took ~1.1s with it and ~0.6s without.
+        # Infoboxes still come from wikipedia; `!wd` still reaches it.
+        {
+          name = "wikidata";
+          disabled = true;
         }
         # Enabled as ones not caught in the anti-bot net, but measured on 2026-09-26
         # both return HTTP 403 100% of the time (/stats/errors). It's a change on their
