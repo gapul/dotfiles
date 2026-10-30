@@ -71,6 +71,13 @@ in
           url = "${repo}/violentmonkey/etax.user.js";
         }
       ];
+      # Extensions that talk to a self-hosted service. None reads managed storage, so the
+      # connection is made by hand once per profile.
+      services = {
+        readeck = "Log in to https://read.gapul.net from the extension (OAuth to the Readeck account)";
+        obsidianWebClipper = "Saves through the local Obsidian app (obsidian:// URI); pick the vault in Settings. Templates: Settings > Import";
+        archivebox = "Config: server https://archive.gapul.net, API key from ArchiveBox (Settings > API keys). /api/* skips Authelia; leave automatic archiving off";
+      };
       # Options > Download rules, from the URL.
       headerEditor = [
         {
@@ -243,6 +250,11 @@ in
         # only know extension login (events.kojira.io). Keys stay in the bunker; the extension holds
         # the session and per-site permissions. MIT, github.com/dsbaars/bunker46-extension.
         "@bunker46-extension" = amo "bunker46"; # Bunker46
+        # Added 2026-10-30: save buttons for the self-hosted services. All three only act when
+        # clicked; their server and login are set once per profile (see extension-sources.json).
+        "readeck@readeck.com" = amo "readeck"; # Readeck (read.gapul.net)
+        "clipper@obsidian.md" = amo "web-clipper-obsidian"; # Obsidian Web Clipper
+        "archivebox@tjhorner.dev" = amo "archivebox-exporter"; # ArchiveBox (archive.gapul.net)
         # Dropping an entry above leaves an already installed extension in place as an ordinary
         # one; only "blocked" makes Firefox uninstall it. These were in the list once.
         "LINEPorted@FoxRefire".installation_mode = "blocked"; # LINE
