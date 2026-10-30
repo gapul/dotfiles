@@ -584,7 +584,14 @@ in
       MulticastDNS = "false";
     };
   };
-  services.tailscale.extraSetFlags = [ "--accept-dns=false" ];
+  services.tailscale.extraSetFlags = [
+    "--accept-dns=false"
+    # Everything leaves through Mullvad via the exit node on homeserver
+    # (homelab/mullvad-exit.nix). If that node is down there is no internet at all
+    # until `tailscale set --exit-node=` — that is the kill switch, not a fault.
+    "--exit-node=mullvad-exit"
+    "--exit-node-allow-lan-access"
+  ];
   # MagicDNS names are still needed: SyncClipboard (home/ios-integration.nix) and the other
   # `tailscale serve` endpoints on macmini are https://macmini.tail079f44.ts.net:<port>, and the
   # certificate is for that name, so an IP will not do. A static hosts entry rather than routing
