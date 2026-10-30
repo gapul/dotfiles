@@ -163,10 +163,96 @@ let
       ];
     };
   };
+
+  # Fonts for scripts iOS's built-in fonts cannot render. Checked on 2026-10-30 against the
+  # fonts Apple's system font list (developer.apple.com/fonts/system-fonts) marks as installed
+  # on iOS: hentaigana, Tangut, Khitan Small Script, Nushu and CJK Extensions B–J had no glyphs
+  # at all. Installed fonts are certain to show up in apps with a font picker (Pages and the
+  # like); whether apps without one fall back to them is up to the app.
+  #
+  # Lockdown Mode refuses to install any profile, so turn it off for the install and back on
+  # afterwards.
+  noto = "${pkgs.noto-fonts}/share/fonts/noto";
+  # Supplements CJK Extensions B–J only (P1 = SIP, P2 = TIP); the basic block and Extension A
+  # are left to the system's CJK fonts. Dual-licensed MIT / OFL-1.1.
+  plangothic =
+    part: hash:
+    pkgs.fetchurl {
+      url = "https://github.com/Fitzgerald-Porthmouth-Koenigsegg/Plangothic_Project/releases/download/V2.9.5795/Plangothic${part}-Regular.ttf";
+      inherit hash;
+    };
+  fontProfiles = {
+    font-hentaigana = {
+      displayName = "Noto Serif Hentaigana";
+      description = "変体仮名 (Unicode の Kana Supplement / Extended-A)。";
+      fonts = [
+        "${noto}/NotoSerifHentaigana-Regular.otf"
+        "${noto}/NotoSerifHentaigana-Bold.otf"
+      ];
+    };
+    font-tangut-khitan-nushu = {
+      displayName = "西夏文字・契丹小字・女書 (Noto)";
+      description = "Noto Serif Tangut / Noto Serif Khitan Small Script / Noto Sans Nushu。";
+      fonts = [
+        "${noto}/NotoSerifTangut-Regular.otf"
+        "${noto}/NotoSerifKhitanSmallScript-Regular.otf"
+        "${noto}/NotoSansNushu-Regular.otf"
+      ];
+    };
+    font-plangothic = {
+      displayName = "Plangothic (拡張漢字)";
+      description = "CJK 統合漢字の拡張 B〜J。基本ブロックと拡張 A はシステムのフォントに任せる。";
+      fonts = [
+        (plangothic "P1" "sha256-VQtdB3WxVAWUaxj0hD30OaUeaVCNfmd42UwfelPcWtY=")
+        (plangothic "P2" "sha256-aBkzNwrf4PxyU/d3NSdagv6gn+T4rbqQe960bBENr48=")
+      ];
+    };
+  };
+
+  # A com.apple.font payload carries the font file as <data>, which pkgs.formats.plist has no
+  # way to express (every nix string comes out as <string>). So the boilerplate is still filled
+  # in by mkProfile, and python's plistlib swaps each font path for the file's bytes.
+  generateFontProfile =
+    name:
+    {
+      displayName,
+      description,
+      fonts,
+    }:
+    let
+      spec = pkgs.writeText "${name}.json" (
+        builtins.toJSON (
+          mkProfile name {
+            inherit displayName description;
+            payloads = map (font: {
+              PayloadType = "com.apple.font";
+              # A fetchurl output is named <hash>-<file>; the device shows Name, so drop the hash.
+              Name = lib.last (builtins.match "([0-9a-z]{32}-)?(.*)" (baseNameOf font));
+              Font = "${font}";
+            }) fonts;
+          }
+        )
+      );
+    in
+    pkgs.runCommand "${name}.mobileconfig" { nativeBuildInputs = [ pkgs.python3 ]; } ''
+      python3 -I - ${spec} "$out" <<'EOF'
+      import json, plistlib, sys
+      spec, out = sys.argv[1:]
+      profile = json.load(open(spec))
+      for payload in profile["PayloadContent"]:
+          payload["Font"] = open(payload["Font"], "rb").read()
+      with open(out, "wb") as f:
+          plistlib.dump(profile, f)
+      EOF
+    '';
 in
 pkgs.linkFarm "ios-profiles" (
   lib.mapAttrsToList (name: profile: {
     name = "${name}.mobileconfig";
     path = plist.generate "${name}.mobileconfig" (mkProfile name profile);
   }) profiles
+  ++ lib.mapAttrsToList (name: profile: {
+    name = "${name}.mobileconfig";
+    path = generateFontProfile name profile;
+  }) fontProfiles
 )
