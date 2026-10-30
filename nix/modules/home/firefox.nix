@@ -359,6 +359,20 @@ in
         # Measured with tcpdump on 2026-09-17; without the PQ key share the handshake completes.
         "media.webrtc.send_mlkem_keyshare" = false;
 
+        # DNS over HTTPS to the home blocky (dns2.gapul.net, as on iOS). The system resolver
+        # already reaches blocky inside the tailnet, so the gain is Encrypted Client Hello:
+        # Firefox only uses the ECH configs in HTTPS records that came from its own TRR.
+        # Mode 2 (TRR first, system resolver on failure), not arkenfox's 3: dns2 is a tailnet
+        # address on the homeserver alone, and with Tailscale off or the homeserver down mode 3
+        # resolves nothing. The bootstrap address keeps dns2 itself off the system resolver.
+        # blocky has no MagicDNS names and answers NXDOMAIN for them, which TRR does not retry
+        # natively, so ts.net stays on the system resolver.
+        "network.trr.mode" = 2;
+        "network.trr.uri" = "https://dns2.gapul.net/dns-query";
+        "network.trr.custom_uri" = "https://dns2.gapul.net/dns-query";
+        "network.trr.bootstrapAddr" = "100.127.129.31";
+        "network.trr.excluded-domains" = "ts.net";
+
         # Safe Browsing, arkenfox's way: phishing/malware/download lists on (local lists plus
         # hash-prefix lookups), only the remote check of each download (0403) off. They had been
         # switched off in the UI; pinned here so that cannot happen silently again (2026-10-30).
