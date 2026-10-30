@@ -34,7 +34,13 @@ rec {
       upstream = "127.0.0.1:8087"; # readeck (read later)
       monitor = false; # lazy: lazy-http-services.nix reports it to gatus daily
     };
-    search.upstream = "127.0.0.1:8088"; # searxng
+    search = {
+      upstream = "127.0.0.1:8088"; # searxng
+      # SearXNG sends its pages uncompressed: a results page is ~105KB of HTML, which matters
+      # on the phone away from home. Caddy only compresses text-like types, so the image and
+      # favicon proxies pass through untouched.
+      pre = "encode zstd gzip";
+    };
     obsidian = {
       upstream = "127.0.0.1:5984"; # couchdb (LiveSync)
       # CouchDB uses require_valid_user, so / returns 401. That is the healthy response, and
