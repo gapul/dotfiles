@@ -15,7 +15,9 @@ let
   #   (2026-10-30 23:41). Stalwart relays outgoing mail through smtp.gmail.com.
   # - utokyo-vpn: an unattended SSO sign-in (Playwright) plus the ASA session; the
   #   tunnel itself already carries UTNET only.
-  bypassSlice = "mullvad-bypass.slice";
+  # No dash: systemd reads one as nesting, and "mullvad-bypass.slice" lives at
+  # mullvad.slice/mullvad-bypass.slice, which the cgroup match then failed to find.
+  bypassSlice = "novpn.slice";
   bypassUnits = [
     "mail-mirror"
     "mail-push-gmail"
@@ -118,7 +120,7 @@ in
   # The cgroup match is resolved when the rule is inserted, so it can only name a
   # cgroup that exists then. A unit's own cgroup disappears whenever it is stopped
   # (mail-mirror is a timer), so the units go into a slice that is kept up.
-  systemd.slices.mullvad-bypass = {
+  systemd.slices.novpn = {
     description = "Services that bypass the Mullvad tunnel";
     wantedBy = [ "multi-user.target" ];
   };
