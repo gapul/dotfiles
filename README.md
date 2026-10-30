@@ -133,6 +133,7 @@ Generated from `just --list`. Run `just docs` after changing a recipe.
     android-apps cmd="status"                         # Diff apps.tsv against the device, or converge it (`just android-apps` / `install` / `verify` / `obtainium`)
     android-launcher-theme                            # Generate the Kvaesitso launcher theme from palettes.json and push it to the device
     android-os *flags                                 # Apply the declared Android OS settings over adb (`just android-os` = diff + apply, `just android-os --dry-run`)
+    android-root *flags                               # Apply the declared KernelSU modules and ksud features to a rooted device (`just android-root` = diff + apply, `--dry-run`)
     ios-apps cmd="status"                             # Diff ios/apps.tsv against a USB-connected iPhone (`just ios-apps` / `just ios-apps verify`)
     ios-profiles port="8000"                          # Build the declared .mobileconfig profiles and serve them on the LAN for an iPhone to install
     ios-shortcuts cmd="status"                        # Export iCloud-synced Shortcuts into the repo, or compile .cherri sources into signed shortcuts

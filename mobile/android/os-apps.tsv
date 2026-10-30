@@ -7,6 +7,7 @@
 #   revoke      権限を剥がす。同上
 #   appops      AppOps を設定する。引数は "<op> <mode>" (mode: allow / deny / ignore)
 #   battery     電池最適化から除外する (常駐させたいものだけ)。引数は不要、- を置く
+#   role        標準アプリにする。引数はロール名 (android.app.role.BROWSER など)
 #
 # os-settings.conf がグローバルな設定なのに対し、こちらはアプリ単位。
 # アプリ「内部」の設定 (アカウント、同期先 URL など) はどうやっても外から

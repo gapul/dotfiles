@@ -1,0 +1,5 @@
+# Xiaomi Pad 5 (nabu) のアプリ個別の OS 設定。書式は ../../os-apps.tsv と同じ。
+# システムフォントは os-settings.conf の theme_customization_overlay_packages。
+
+# 標準ブラウザは Titanium (Vanadium ベース。旧名 Helium で、パッケージ名はその名残)。
+role	io.github.jqssun.helium	android.app.role.BROWSER

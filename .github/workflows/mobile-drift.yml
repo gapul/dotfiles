@@ -15,6 +15,7 @@ on:
   pull_request:
     paths:
       - 'mobile/**'
+      - 'nix/mobile/**'
       - 'esphome/**'
       - '.github/workflows/mobile-drift.yml'
   workflow_dispatch:
@@ -47,6 +48,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: nix shell nixpkgs#fdroidcl nixpkgs#bun -c mobile/android/apps.ts verify
+
+      # root 化した端末の KernelSU モジュール。pin した zip が取れること、上流の改変に
+      # パッチが当たること、module.prop の id が宣言と合うことを、組み立ててみて確かめる。
+      # update-custom-packages が pin を動かした PR もここを通る。
+      - name: android — rooted devices' modules build
+        run: nix build ./nix#android-root-nabu --no-link
 
       - name: ios — declarations resolve upstream
         run: nix shell nixpkgs#bun -c mobile/ios/apps.ts verify

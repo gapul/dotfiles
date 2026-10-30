@@ -8,9 +8,29 @@ android/
 ├── os-apps.tsv         # per-app OS settings: default launcher, permissions, battery
 ├── os-debloat.txt      # preinstalled apps to remove from user 0
 ├── os.sh               # applies the three above over adb, showing the difference first
+├── devices/<codename>/ # one device's own apps.tsv and os-* files, replacing the ones above
+│   └── root/           # rooted devices only: KernelSU modules and ksud features
+├── root.sh             # applies root/ over adb, showing the difference first
 ├── launcher-theme.ts   # generates Kvaesitso's theme from palettes.json
 └── test.sh             # self-check for the scripts above, against a fake adb, no device needed
 ```
+
+## Devices
+
+Two Android devices are declared, and they differ enough that one list cannot serve both:
+
+| Device | Declaration | OS |
+|---|---|---|
+| Phone (Pixel) | the files at the top of this directory | GrapheneOS, no root |
+| Xiaomi Pad 5 (`nabu`) | `devices/nabu/` | crDroid, KernelSU Next built into its kernel, microG, no F-Droid client |
+
+`apps.ts`, `os.sh` and `root.sh` read `getprop ro.product.device` from the connected device and
+use `devices/<that codename>/` when it exists, and the top-level files otherwise. A device
+directory replaces the top-level files rather than adding to them, so it carries its own
+`apps.tsv`, `os-settings.conf`, `os-apps.tsv` and `os-debloat.txt`. `ANDROID_PROFILE=<codename>`
+overrides the detection (`ANDROID_PROFILE=default` picks the top-level files), and with both
+devices plugged in, `ANDROID_SERIAL` picks which one adb talks to. `apps.ts verify` checks every
+device's `apps.tsv`.
 
 ## Apps
 
@@ -27,12 +47,13 @@ Three stores are in use, so the `source` column in `apps.tsv` says which one han
 | `fdroid` | F-Droid | Yes, `apps.ts install` | Obtainium or F-Droid |
 | `izzy` | IzzyOnDroid | Yes, the same | Obtainium |
 | `github` | GitHub releases | No | Obtainium |
+| `gitlab` | GitLab releases | No | Obtainium |
 | `play` | The Play Store | No | Aurora Store, importing Favourites and installing them in one go |
 
 ```sh
 ./apps.ts status      # declaration against the device. Exits 1 if anything is MISSING
 ./apps.ts install     # installs the F-Droid ones through fdroidcl, and reports the route for the rest
-./apps.ts verify      # checks all four routes still carry what is declared
+./apps.ts verify      # checks every route still carries what is declared
 ./apps.ts obtainium   # prints the URL list to paste into Obtainium on the device
 ./apps.ts adopt       # prints tsv lines for what is on the device but not declared, working out the route
 ./apps.ts aurora      # turns the play rows into JSON that Aurora Store can import as Favourites
@@ -124,6 +145,72 @@ already match the current value are skipped, so running it repeatedly gives the 
   table in `../README.md`.
 - `os-debloat.txt` — this is `pm uninstall -k --user 0`, so the system partition is untouched
   and `adb shell cmd package install-existing <pkg>` brings anything back.
+
+## Root (KernelSU)
+
+`devices/<codename>/root/` declares the root layer of a rooted device, and `root.sh`
+(`just android-root`, `--dry-run` to only show the difference) applies it. Only nabu has one.
+
+| File | What it holds |
+|---|---|
+| `sources.json` | Upstream module zips (and what goes into them), pinned by URL and hash. `scripts/update-custom-packages.ts` moves the pins with the other custom packages |
+| `modules/<id>/` | Modules written here, zipped as they are |
+| `*.patch` | Changes to an upstream module |
+| `features.conf` | `ksud feature` values, set and then saved so they survive a reboot |
+
+`nix build ./nix#android-root-nabu` (`nix/mobile/android-root.nix`) assembles them into
+`NN-<id>.zip` plus a `manifest.tsv`, numbered in install order. `root.sh` compares each
+module's `versionCode` from its own `module.prop` with `ksud module list` on the device, then
+pushes and `ksud module install`s whatever is missing or different. It does not reboot, which is
+when the modules take effect, and it reports modules the declaration lacks without removing
+them. A module written here is only reinstalled when its `versionCode` changes, so bump it with
+every edit.
+
+It runs `su` over adb, so the device needs KernelSU Next's ADB Root, or Shell allowed root in
+its Superuser list.
+
+Things learnt on nabu that the declaration encodes:
+
+- **KernelSU 3.x (and KernelSU Next 3.x) mounts nothing by itself.** A module's `system/`
+  directory is mounted only by a metamodule, so `meta-mm` (Magic Mount) is declared first.
+- **The metamodule mounts read-only**, and AdAway's root mode has to write `/system/etc/hosts`.
+  The hosts module therefore opts out with `skip_mount` and bind-mounts its file read-write
+  from `post-fs-data.sh`. The upstream module overlays `/system/etc` instead, which overlayfs
+  refuses here because the upper directory would sit on f2fs.
+- **The audio HAL that loads effects is 32-bit**, so JamesDSP's library must be the 32-bit
+  build. Its installer asks for that, and for the UI flavour, with the volume keys, which
+  nobody presses during `ksud module install` from adb; `ainur_jamesdsp.patch` answers both.
+  The UI slot gets the root-full JamesDSP build, which the module installs when the app is
+  missing. The module also sets `global hidden_api_policy 1`, declared in nabu's
+  `os-settings.conf`.
+
+- **AFWall+'s boot leak protection is a module** (`afwall-bootleak`, the app's own `afwallstart`
+  script): it drops all traffic at boot until AFWall+ applies its rules and resets the policies.
+  AFWall+ needs root and an enabled firewall before the module is active, or the device boots
+  with no network; disabling the module and rebooting undoes it.
+- **The boot animation is generated** from the active palette in `configs/theme/palettes.json`
+  (`rosepine-bootanimation`, three dots in rose, iris and foam on the base colour). Its frames
+  must be 8-bit PNGs: bootanimation silently draws nothing from the 16-bit ones ImageMagick
+  writes by default. Its `versionCode` comes from the content, so a palette change reinstalls it.
+
+The partition images taken before any of this (boot, vendor_boot, dtbo, vbmeta, persist and the
+modem partitions) live outside the repository, in `~/Backups/xiaomi-pad5-nabu/`: they are large
+and carry data unique to the device.
+
+## Theming
+
+Both devices take the Material You seed from the palette: `theme_customization_overlay_packages`
+in `os-settings.conf` fixes it to rose-pine's iris instead of the wallpaper, and `test.sh` fails
+when it drifts from `palettes.json`. Material You derives every tone from that one colour, so the
+result leans towards iris rather than reproducing rose-pine; Kvaesitso's theme
+(`launcher-theme.ts`) is the place where the palette is used colour for colour. The icon pack is
+Arcticons' dayNight variant on both, applied from the launcher's own settings. On nabu the system
+font, crDroid's bundled San Francisco, sits in the same setting: SystemUI's theme controller owns
+the font overlays and, on every boot, disables any that the setting does not name, so enabling
+one with `cmd overlay` does not survive a reboot. Iconify handles the status bar and quick
+settings beyond what crDroid's own settings offer; the two overlap, so a given item is changed
+in one of them only. Iconify builds a ROM-specific module on the device, so that module stays
+outside `root/` and shows up as EXTRA.
 
 ## The launcher, Kvaesitso
 

@@ -1,0 +1,42 @@
+{
+  "zygisksu": {
+    "type": "github-release",
+    "repo": "Dr-TSNG/ZygiskNext",
+    "asset": "^Zygisk-Next-.*-release\\.zip$",
+    "version": "v1.5.2",
+    "url": "https://github.com/Dr-TSNG/ZygiskNext/releases/download/v1.5.2/Zygisk-Next-1.5.2-864-a4a72ce-release.zip",
+    "hash": "sha256-zlCxP+y55EVttp7xe3FffPvAlABN2fMPfWNI36thmpY="
+  },
+  "zygisk_vector": {
+    "type": "github-release",
+    "repo": "JingMatrix/Vector",
+    "asset": "^Vector-.*-Release\\.zip$",
+    "version": "v2.2",
+    "url": "https://github.com/JingMatrix/Vector/releases/download/v2.2/Vector-v2.2-3080-Release.zip",
+    "hash": "sha256-nugyNXXWFfez8Qdv9gsqY6STkO8RiBtSYyMRo39vecw="
+  },
+  "meta-mm": {
+    "type": "github-release",
+    "repo": "KernelSU-Modules-Repo/meta-mm",
+    "asset": "^meta-magic_mount-.*-release\\.zip$",
+    "version": "v1.0.1-sprout",
+    "url": "https://github.com/KernelSU-Modules-Repo/meta-mm/releases/download/v1.0.1-sprout/meta-magic_mount-v1.0.1-sprout-release.zip",
+    "hash": "sha256-Tiv7zNgLDXhyI8yP42MV6LJpUUoo9tf/uObh+FXm6Ss="
+  },
+  "ainur_jamesdsp": {
+    "type": "github-commit",
+    "repo": "Magisk-Modules-Repo/ainur_jamesdsp",
+    "branch": "master",
+    "version": "9cc4eaf675198a7571e59579d1764045f03af7cb",
+    "url": "https://github.com/Magisk-Modules-Repo/ainur_jamesdsp/archive/9cc4eaf675198a7571e59579d1764045f03af7cb.tar.gz",
+    "hash": "sha256-N02QefFOORwTc3zXNYb/dZaJ7RjJ47U3Igh83E15Rhw="
+  },
+  "jamesdsp-rootfull-apk": {
+    "type": "html-index",
+    "index": "https://nightly.timschneeberger.me/jamesdsp-rootfull/",
+    "asset": "^JamesDSP-v[0-9.]+-[0-9]+-root-full-universal-release-signed\\.apk$",
+    "version": "JamesDSP-v1.6.14-51-root-full-universal-release-signed.apk",
+    "url": "https://nightly.timschneeberger.me/jamesdsp-rootfull/JamesDSP-v1.6.14-51-root-full-universal-release-signed.apk",
+    "hash": "sha256-UtQcMQ2v6CcJIhr6T46oWoLKN96X6uylr1G5L05axtw="
+  }
+}

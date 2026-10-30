@@ -1,0 +1,65 @@
+# Xiaomi Pad 5 (nabu) に入れるアプリの宣言。書式は ../../apps.tsv と同じ。
+# 端末は crDroid + KernelSU Next + microG。F-Droid クライアントは入れず、
+# 配布元が F-Droid のものも母艦から apps.ts install で入れる。
+#
+# root の層 (KernelSU モジュールと ksud feature) は root/ にあり、root.sh が扱う。
+# JamesDSP のアプリ (james.dsp) はモジュールが同梱して入れるので、ここには書かない
+# (status では EXTRA に出る)。
+
+# ── ストアと root の管理 ────────────────────────────────────────────
+dev.imranr.obtainium	izzy	-
+com.aurora.store	fdroid	-
+# 端末のカーネルに組み込まれた KernelSU Next の管理アプリ。ksud もこれが入れ替える
+com.rifsxd.ksunext	github	KernelSU-Next/KernelSU-Next
+moe.shizuku.privileged.api	github	RikkaApps/Shizuku
+com.rosan.installer.x.revived	github	wxxsfxyzm/InstallerX-Revived
+
+# ── Google の代わり (microG) ───────────────────────────────────────
+com.google.android.gms	github	microg/GmsCore
+com.android.vending	github	microg/GmsCore
+
+# ── root で使う道具 ─────────────────────────────────────────────────
+com.machiav3lli.backup	github	NeoApplications/Neo-Backup
+org.adaway	github	AdAway/AdAway
+# root の領域を見るファイルマネージャもこれが兼ねる (標準の Files は root を扱えない)
+io.github.muntashirakon.AppManager	github	MuntashirAkon/AppManager
+# nix-on-droid が載る Termux (nix/hosts/droid.nix)。普通の Termux (com.termux) ではない
+com.termux.nix	fdroid	-
+
+# ── 見た目 ──────────────────────────────────────────────────────────
+# アイコンパック。リリースに 4 種あり、ライト/ダークで切り替わる dayNight を使う
+# (Obtainium では APK を dayNight で絞る)。適用はランチャーの設定から。
+com.donnnno.arcticons.daynight	github	Arcticons-Team/Arcticons
+# システム UI (ステータスバー、クイック設定、配色) のカスタマイズ。root と Vector を使う。
+# crDroid 自身の設定と重なるので、同じ箇所を両方で変えない。Android 16 QPR1 以降は v8 系。
+# 端末の中で ROM 専用のモジュールを作るので、そのモジュールは root/ の宣言に載らず、
+# root.sh では EXTRA に出る。
+com.drdisagree.iconify	github	Mahmud0808/Iconify
+
+# ── ブラウザ ────────────────────────────────────────────────────────
+# 標準ブラウザ (os-apps.tsv の role)。Vanadium ベースで Chrome 拡張 (MV2 の uBlock Origin) が入る。
+# 旧名 Helium Browser for Android で、パッケージ名はその名残。
+io.github.jqssun.helium	github	jqssun/android-titanium-browser
+# Firefox 系の予備。Mull の後継で arkenfox の設定入り。
+org.ironfoxoss.ironfox	gitlab	ironfox-oss/IronFox
+
+# ── プリインの置き換え (外したものは os-debloat.txt) ────────────────
+# 日本語キーボード。AOSP のキーボードは日本語を打てない。スマホと同じもの
+# (Obtainium では APK を fullStandard で絞る)。既定の入力方式は os-settings.conf。
+com.kazumaproject.markdownhelperkeyboard	github	KazumaProject/JapaneseKeyboard
+# ギャラリー (Glimpse の代わり)。Google 依存の無い libre 版 (Obtainium では libre で絞る)。
+deckers.thibault.aves.libre	github	deckerst/aves
+# Navidrome (Subsonic) の音楽プレイヤー (Twelve の代わり)。止まった Tempo の後継フォークで、
+# microG 端末なので degoogled 版。スマホの Tempo もいずれこちらに寄せる。
+com.eddyizm.degoogled.tempus	github	eddyizm/tempus
+# 天気。ロック画面の天気は crDroid の OmniJaws が出すので、こちらは見る用
+# (Obtainium では APK を _standard で絞る)。
+org.breezyweather	github	breezy-weather/breezy-weather
+
+# ── 通信 ────────────────────────────────────────────────────────────
+# 自宅サーバー (Navidrome、Radicale) への経路。スマホと同じ tailnet。
+com.tailscale.ipn	fdroid	-
+# iptables のファイアウォール (root)。VPN の枠を使わないので Tailscale と両立する。DNS の
+# フィルタは無いので、AdAway (hosts) とプライベート DNS で補う。起動直後の漏れは root/ の
+# afwall-bootleak が塞ぐ。
+dev.ukanth.ufirewall	github	ukanth/afwall
