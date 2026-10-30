@@ -101,6 +101,11 @@
     blockType = "nxDomain";
   };
 
+  # Extended DNS Errors (RFC 8914): a blocked answer carries the reason, so `dig` shows
+  # "BLOCKED (ads)" without opening dns2.gapul.net/check. Off by default in blocky; clients that
+  # don't know EDE ignore the option.
+  ede.enable = true;
+
   caching = {
     minTime = "5m";
     maxTime = "30m";
