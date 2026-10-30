@@ -93,11 +93,11 @@
       search.favicon_resolver = "duckduckgo";
 
       # A page waits for its slowest engine up to this limit, so it bounds the worst case.
-      # 3s was the default. The general engines answer well inside 2s (2026-10-30, P95: google
-      # cse 0.8s, duckduckgo web 1.2s, yandex 1.5s, mwmbl 1.2s, wikipedia 1.0s), and an engine
-      # that hangs now costs 2s instead of 3s. Engines with their own `timeout` (crossref,
-      # openalex, the translators) keep it.
-      outgoing.request_timeout = 2.0;
+      # 3s was the default. The general engines answer well inside it (2026-10-30, P95: google
+      # cse 0.8s, duckduckgo web 1.2s, yandex 1.5s, mwmbl 1.2s, wikipedia 1.0s), so a hanging
+      # engine now costs 1.5s instead of 3s, at the price of yandex's slowest ~5% of answers.
+      # Engines with their own `timeout` (crossref, openalex, the translators) keep it.
+      outgoing.request_timeout = 1.5;
 
       # Unlike every other section, `plugins` is not merged into the defaults: a user
       # `plugins` replaces the whole table (settings_loader.update_settings), and a plugin
