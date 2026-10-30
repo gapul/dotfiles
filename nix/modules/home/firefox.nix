@@ -31,13 +31,10 @@ let
   };
 in
 {
-  # Restore the checked styles with Stylus's Import button; preserve unrelated styles.
-  # CSS media queries are used because Stylus's background scheme cache can lag behind
-  # darkman on this Firefox profile. Refresh the export deliberately when updating upstream.
-  xdg.dataFile."firefox/stylus-light-themes.json".source =
-    ../../../configs/apps/stylus/light-themes.json;
+  # Install each style in Stylus from its updateUrl so Stylus keeps it current. They stay light
+  # in both OS modes (2026-10-30: wanted in dark mode too, so the light-only export is gone).
   xdg.dataFile."firefox/light-site-themes.json".text = builtins.toJSON {
-    mode = "prefers-color-scheme: light (inside exported CSS)";
+    mode = "always (both OS color schemes)";
     styles = [
       {
         domain = "open.spotify.com";
@@ -174,9 +171,9 @@ in
         "{d07ccf11-c0cd-4938-a265-2a4d6ad01189}".installation_mode = "blocked"; # Web Archives
         # Follow OS dark mode on sites without their own automatic theme. Configure
         # Dark Reader once per profile: automation System/Scheme, detect dark theme on.
-        # Dark-only sites with a dedicated light UserCSS use Stylus instead: install the
-        # ~/.local/share/firefox/stylus-light-themes.json (light-only CSS media queries),
-        # and exclude those domains in Dark Reader. light-site-themes.json records sources.
+        # Dark-only sites with a dedicated light UserCSS use Stylus instead, installed from
+        # the updateUrls in ~/.local/share/firefox/light-site-themes.json; exclude those
+        # domains in Dark Reader.
         # Prefer maintained site-specific styles over reversing Dark Reader's light palette.
         "addon@darkreader.org" =
           if pkgs.stdenv.hostPlatform.isLinux then amo "darkreader" else { installation_mode = "blocked"; };
@@ -432,28 +429,23 @@ in
             /* The upstream Spotify style predates Encore's current text classes.
                Keep this small compatibility layer separate so Stylus can update upstream. */
             @-moz-document domain("open.spotify.com") {
-              @media (prefers-color-scheme: light) {
-                html, body, #main { background-color: transparent !important; }
-                #global-nav-bar, nav, aside {
-                  background-color: rgb(250 244 237 / 72%) !important;
-                }
-                [data-encore-id="text"], h1, h2, h3, a, button, input {
-                  color: #262626 !important;
-                }
-                [data-encore-id="icon"], [data-encore-id="logo"] { fill: currentColor !important; color: #262626 !important; }
-                main > div > div { background-image: none !important; }
-                [data-testid="main-view-container"] { background-color: #edede6 !important; }
+              html, body, #main { background-color: transparent !important; }
+              #global-nav-bar, nav, aside {
+                background-color: rgb(250 244 237 / 72%) !important;
               }
+              [data-encore-id="text"], h1, h2, h3, a, button, input {
+                color: #262626 !important;
+              }
+              [data-encore-id="icon"], [data-encore-id="logo"] { fill: currentColor !important; color: #262626 !important; }
+              main > div > div { background-image: none !important; }
+              [data-testid="main-view-container"] { background-color: #edede6 !important; }
             }
-            /* Frost site navigation panels without fading their text or artwork. */
+            /* Frost site navigation panels without fading their text or artwork. Both sites
+               wear a light style in either OS mode, so the glass is always the light one. */
             @-moz-document domain("music.youtube.com"), domain("open.spotify.com") {
-              :root { --rp-panel-glass: rgb(25 23 36 / 72%); }
-              @media (prefers-color-scheme: light) {
-                :root { --rp-panel-glass: rgb(250 244 237 / 72%); }
-              }
               #guide #contentContainer,
               .Root__nav-bar, .Root__right-sidebar {
-                background: var(--rp-panel-glass) !important;
+                background: rgb(250 244 237 / 72%) !important;
                 backdrop-filter: blur(24px) saturate(115%) !important;
               }
             }
