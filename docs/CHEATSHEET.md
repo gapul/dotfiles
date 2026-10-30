@@ -28,7 +28,7 @@ Those six cover most days.
 | `just rebuild` | `nh darwin switch` and `nh home switch` |
 | `just update` | Update the flake inputs, then rebuild |
 | `just upgrade` | Bring brew, casks with `--greedy`, mas and Nix all up to date |
-| `just gc` | Delete old generations and run the store GC, `nh clean all --keep 1 --keep-since 0h` |
+| `just gc` | Delete old generations and run the store GC, `nh clean all --keep 1 --keep-since 0h` (3 on NixOS) |
 | `just check` | Syntax and type checking, without building |
 | `just check diff` | The difference between the running system and the flake |
 | `just doctor` | Health check, worth running after a reboot or a Determinate upgrade |
@@ -187,7 +187,7 @@ Four layers of storage. The reasoning is in the comments in `nix/home/restic-bac
 | GitHub and Forgejo | Code, which is reproducible | git. GitHub is the original, with a Forgejo mirror at home (`nix/homelab/forgejo.nix`) |
 | restic warm | Files still in use, automatically and daily | `google-drive:restic-backup`, encrypted |
 | restic cold | Files no longer in use, kept forever | The same repository, under `--tag archive` |
-| rclone mount | Plaintext cloud storage shared with other people | `~/Sync/google-drive`, `google-drive-school` and `google-drive-work`, no kernel extension needed |
+| rclone mount | Plaintext cloud storage shared with other people | `~/Sync/google-drive`, `google-drive-school` and `google-drive-sean`, no kernel extension needed |
 
 ### Warm, for files in use, daily and on demand
 

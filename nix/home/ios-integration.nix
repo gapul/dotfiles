@@ -55,6 +55,51 @@ let
       fi
     '';
   };
+
+  # SyncClipboard writes downloads to the X11 selection, and xwayland-satellite only hands that
+  # to Wayland while an X11 window has focus, so text from the iPhone often never reached Wayland
+  # apps (2026-10-26). Poll the same server and set the Wayland selection directly.
+  syncclipboardWaylandPull = pkgs.writeShellApplication {
+    name = "syncclipboard-wayland-pull";
+    runtimeInputs = with pkgs; [
+      coreutils
+      curl
+      jq
+      wl-clipboard
+    ];
+    text = ''
+      config="$HOME/.config/SyncClipboard/SyncClipboard.json"
+      account=$(jq -c '.Account.AccountId as $id | .SavedAccounts.SyncClipboard[$id]' "$config")
+      url=$(jq -r '.RemoteURL' <<<"$account")
+      auth=$(jq -r '"\(.UserName):\(.Password)"' <<<"$account")
+      # Shared with syncclipboard-wayland-push so neither side echoes the other.
+      state="''${XDG_RUNTIME_DIR:-/tmp}/syncclipboard-wayland-push.last"
+
+      last=""
+      first=1
+      while sleep 1; do
+        json=$(curl -fsS -m 10 -K <(printf 'user = "%s"\n' "$auth") "$url/SyncClipboard.json" 2>/dev/null) \
+          || continue
+        # The whole response, including syncedAt, so sending the same text again still counts.
+        sum=$(printf %s "$json" | sha256sum | cut -d' ' -f1)
+        [ "$sum" != "$last" ] || continue
+        last=$sum
+        # Do not overwrite the clipboard with whatever was on the server at startup.
+        if [ "$first" = 1 ]; then
+          first=0
+          continue
+        fi
+
+        [ "$(jq -r '.type' <<<"$json")" = Text ] || continue
+        text=$(jq -j '.text // ""' <<<"$json")
+        [ -n "$text" ] || continue
+        [ "$(wl-paste --no-newline --type text 2>/dev/null || true)" != "$text" ] || continue
+
+        printf %s "$text" | sha256sum | cut -d' ' -f1 >"$state"
+        printf %s "$text" | wl-copy
+      done
+    '';
+  };
 in
 {
   # AirPlay requires Avahi publishing and Wi-Fi ports 7000..7002 on the host.
@@ -80,7 +125,10 @@ in
           '';
         }
       );
-      ExecStart = "${pkgs.coreutils}/bin/stdbuf -oL -eL ${uxplay}/bin/uxplay -n nixlaptop -p 7000 -pin";
+      # -pin asks a new iPhone for an on-screen PIN. -key keeps the server key in ~/.uxplay.pem and
+      # -reg remembers paired clients in ~/.uxplay.register, so the PIN is entered once rather
+      # than after every restart (a fresh key each start made the iPhone pair again).
+      ExecStart = "${pkgs.coreutils}/bin/stdbuf -oL -eL ${uxplay}/bin/uxplay -n nixlaptop -p 7000 -pin -key -reg";
       Restart = "always";
       RestartSec = 5;
     };
@@ -107,6 +155,19 @@ in
     };
     Service = {
       ExecStart = "${pkgs.wl-clipboard}/bin/wl-paste --watch ${syncclipboardWaylandPush}/bin/syncclipboard-wayland-push";
+      Restart = "on-failure";
+      RestartSec = 5;
+    };
+    Install.WantedBy = [ "graphical-session.target" ];
+  };
+  systemd.user.services.syncclipboard-wayland-pull = {
+    Unit = {
+      Description = "Copy SyncClipboard server text to the Wayland clipboard";
+      After = [ "graphical-session.target" ];
+      PartOf = [ "graphical-session.target" ];
+    };
+    Service = {
+      ExecStart = "${syncclipboardWaylandPull}/bin/syncclipboard-wayland-pull";
       Restart = "on-failure";
       RestartSec = 5;
     };

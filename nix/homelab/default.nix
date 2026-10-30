@@ -113,6 +113,7 @@
     ./utokyo-vpn.nix
     ./vault-git.nix
     ./vaultwarden.nix
+    ./webdav.nix
     ./vpn-relay.nix
     ./webmail.nix
     ./wger.nix

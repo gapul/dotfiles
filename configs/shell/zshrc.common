@@ -10,7 +10,7 @@
 #   - 母艦固有 (ghq / git-wt / launcher / vpn / codex テーマ / textlint パス) は
 #     shell.nix 側に残す
 #   - 案件固有は ~/.devkits/<案件>/shellrc (private repo)
-#   - このリポジトリは public なので勤務先の内部構成を書かない
+#   - このリポジトリは public なので接続先の内部構成を書かない
 #
 # プラグインを前提にする箇所は必ず存在チェックを挟む。リモートには
 # 母艦と同じものが全部あるとは限らないため。

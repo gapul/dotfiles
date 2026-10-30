@@ -42,8 +42,10 @@ rec {
   # keeps the whole alarm quiet. Hence an explicit list: a decommissioned host must
   # be removed from it (pve is gone, folded into homeserver), and a new host that is
   # not added to it can stop backing up unnoticed.
+  # MacBook-Mini is left out while it sits unused (offline since 2026-10-23); its
+  # backup job still runs whenever it is switched on. Add it back once it is a daily
+  # machine again.
   monitoredHosts = [
-    "MacBook-Mini"
     "homeserver"
     "macmini"
   ];
@@ -83,7 +85,6 @@ rec {
   #   extraExcludes  exclude patterns on top of the shared list
   #   extraPathPkgs  packages the platform's notify needs (libnotify on Linux)
   #   notifyBody     shell body of notify() — takes "$1" title, "$2" message, must never fail
-  #   parseSnapshotTime  shell expression turning an ISO8601 $latest into an epoch (BSD vs GNU date)
   mkScripts =
     {
       pkgs,
@@ -101,7 +102,6 @@ rec {
       # shared repository pass forgetOwnHostOnly.
       forgetSnippet ? forgetInvocation,
       notifyBody,
-      parseSnapshotTime,
     }:
     let
       resticEnv = ''
@@ -239,7 +239,9 @@ rec {
               notify "restic ⚠️ no snapshots ($host)" "$host has never backed up to the shared repository"
               continue
             fi
-            last_epoch=${parseSnapshotTime}
+            # GNU date on every platform: resticEnv puts coreutils ahead of /bin, so a BSD
+            # `date -j -f` here only ever failed. -d reads the fractional seconds and the offset.
+            last_epoch=$(date -d "$latest" +%s 2>/dev/null || echo 0)
             # 解釈に失敗すると 0 が返る。そのまま引き算すると「20676 日前」という
             # 嘘の警告になり、本物の遅延と見分けが付かなくなる。別の文言で出す。
             if [ "$last_epoch" -eq 0 ]; then

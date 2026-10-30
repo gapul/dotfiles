@@ -5,11 +5,11 @@
 # this pin to the newest build without downloading anything.
 { fetchurl }:
 let
-  version = "2.12.0";
-  build = "1270";
+  version = "2.12.1";
+  build = "1277";
 in
 fetchurl {
   name = "geyser-standalone-${version}-${build}.jar";
   url = "https://download.geysermc.org/v2/projects/geyser/versions/${version}/builds/${build}/downloads/standalone";
-  sha256 = "ae06830c47719e29ad34fbfb4692597b60fe22460e4ccb6ba1ab113143102f04";
+  sha256 = "197cbd4aa0c7277bc2d59c290d06c84fec65560ad376407440d34c83e76cef4f";
 }

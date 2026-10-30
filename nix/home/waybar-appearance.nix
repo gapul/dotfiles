@@ -60,5 +60,9 @@ in
   systemd.user.services.waybar.Service = {
     ExecStartPre = [ (lib.getExe apply) ];
     ExecStart = lib.mkForce "${lib.getExe config.programs.waybar.package} --style ${stateDir}/style.css";
+    # When dbus-broker drops its connection, GLib raises SIGTERM on itself, which on-failure
+    # treats as a clean stop and leaves the bar gone. `systemctl stop` still stops it.
+    Restart = lib.mkForce "always";
+    RestartSec = 2;
   };
 }

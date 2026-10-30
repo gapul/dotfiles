@@ -32,6 +32,11 @@ in
       # the console-unique keys needed to decrypt any of it. Cartridges wear out and
       # the eShop re-download service can end, so none of this is re-obtainable.
       "/srv/games/3ds"
+      # The git-annex of fonts and assets (homelab/git-annex.nix). This host is the only
+      # annex repository that keeps every file, so this snapshot is the offsite copy.
+      # Purchased fonts in it cannot be re-downloaded. freebie-collector's daily
+      # additions land here too, so they are covered without a separate copy job.
+      "/srv/annex"
     ];
     exclude = [
       # Container images are re-pullable and would dominate the repository. The
@@ -51,7 +56,7 @@ in
     # The rest of /srv is not backed up. It holds media and the attic cache: large,
     # and either re-obtainable or already content-addressed. /srv/syncthing is a
     # copy of what the Mac holds and is backed up from there. Dawarich,
-    # ArchiveBox and the 3DS dumps are the exceptions listed above. Check this
+    # ArchiveBox, the 3DS dumps and the annex are the exceptions listed above. Check this
     # list again whenever a service is pointed at the big disk — that is how
     # location history went missing.
 

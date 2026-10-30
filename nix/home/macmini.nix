@@ -18,12 +18,12 @@ let
     ".local/share/ai-stack/${name}".source =
       config.lib.file.mkOutOfStoreSymlink "${dotfiles}/configs/macmini/services/${name}";
   };
-  # ssh to the work machine mvrx-nolang-dev (192.168.1.36). This machine does not take the tailnet's
-  # subnet routes, so it jumps through homeserver, which does reach the office. The key is
-  # id_mvrx_t3, made on this machine on 2026-10-04 and registered by hand in the work machine's
-  # authorized_keys. It is not in sops, and it is not the workstation's ssh_mvrx_sync_key: this way
-  # the work machine can revoke either one on its own.
-  mvrxSsh = "/usr/bin/ssh -i ${config.home.homeDirectory}/.ssh/id_mvrx_t3 -o IdentitiesOnly=yes -o BatchMode=yes -J gapul@100.127.129.31 gapul@192.168.1.36";
+  # ssh to sean (192.168.1.36). This machine does not take the tailnet's
+  # subnet routes, so it jumps through homeserver, which does reach sean's network. The key is
+  # id_sean_t3, made on this machine on 2026-10-04 and registered by hand in sean's
+  # authorized_keys. It is not in sops, and it is not the workstation's ssh_sean_sync_key: this way
+  # sean can revoke either one on its own.
+  seanSsh = "/usr/bin/ssh -i ${config.home.homeDirectory}/.ssh/id_sean_t3 -o IdentitiesOnly=yes -o BatchMode=yes -J gapul@100.127.129.31 gapul@192.168.1.36";
   aiWrapper = name: {
     ".local/bin/${name}".source =
       config.lib.file.mkOutOfStoreSymlink "${dotfiles}/configs/macmini/bin/${name}";
@@ -169,14 +169,14 @@ in
         exec "$HOME/.local/bin/t3" auth pairing create --ttl 5m --base-url https://t3.gapul.net "$@"
       '';
     })
-    # The same for the T3 Code server on mvrx-nolang-dev (launchd.agents.t3code-mvrx-tunnel).
+    # The same for the T3 Code server on sean (launchd.agents.t3code-sean-tunnel).
     (pkgs.writeShellApplication {
-      name = "t3-pair-mvrx";
+      name = "t3-pair-sean";
       bashOptions = [ ];
       # The quoted ~ is for the remote shell to expand.
       excludeShellChecks = [ "SC2088" ];
       text = ''
-        exec ${mvrxSsh} '~/.local/bin/t3 auth pairing create --ttl 5m --base-url https://t3-mvrx.gapul.net'
+        exec ${seanSsh} '~/.local/bin/t3 auth pairing create --ttl 5m --base-url https://t3-sean.gapul.net'
       '';
     })
 
@@ -261,6 +261,13 @@ in
             excludeShellChecks = [ "SC2164" ];
             text = ''
               unset DO_NOT_TRACK DISABLE_TELEMETRY CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC DISABLE_GROWTHBOOK
+              # Remote Control needs the claude.ai (subscription) login, not the setup-token: with
+              # CLAUDE_CODE_OAUTH_TOKEN set it refuses ("only available with claude.ai subscriptions").
+              # That login lives in the Keychain item keyed by CLAUDE_CONFIG_DIR
+              # ("Claude Code-credentials-<hash of the dir>"). Without the variable claude reads the
+              # default-dir item instead, which has been dead since 2026-10-17, and the job crash-looped.
+              unset CLAUDE_CODE_OAUTH_TOKEN
+              export CLAUDE_CONFIG_DIR="${config.xdg.configHome}/claude"
               export PATH="$HOME/.local/bin:${config.home.profileDirectory}/bin:/run/current-system/sw/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
               cd "$HOME"
               exec "$HOME/.local/bin/claude" remote-control \
@@ -274,7 +281,8 @@ in
       ];
       RunAtLoad = true;
       KeepAlive = true;
-      ThrottleInterval = 30;
+      # A login failure exits at once; retrying every 30 s only fills the log (94k lines by 10/28).
+      ThrottleInterval = 300;
       ProcessType = "Standard";
       LowPriorityIO = true;
       Nice = 5;
@@ -450,15 +458,15 @@ in
     };
   };
 
-  # T3 Code on the work machine mvrx-nolang-dev, where the herdr sessions there moved to. The server
+  # T3 Code on sean, where the herdr sessions there moved to. The server
   # runs on that machine and listens only on its own loopback (configs/bin/remote-bootstrap installs
   # the units). This tunnel brings it to :3775 here, and clients reach it as
-  # https://t3-mvrx.gapul.net (homeserver Caddy → :3775), the same way as t3.gapul.net. /usr/bin/ssh
+  # https://t3-sean.gapul.net (homeserver Caddy → :3775), the same way as t3.gapul.net. /usr/bin/ssh
   # is Apple-signed, so the firewall admits the listener.
-  launchd.agents.t3code-mvrx-tunnel = {
+  launchd.agents.t3code-sean-tunnel = {
     enable = true;
     config = {
-      ProgramArguments = lib.splitString " " mvrxSsh ++ [
+      ProgramArguments = lib.splitString " " seanSsh ++ [
         "-N"
         "-o"
         "ExitOnForwardFailure=yes"
@@ -473,8 +481,8 @@ in
       KeepAlive = true;
       ThrottleInterval = 30;
       ProcessType = "Background";
-      StandardOutPath = "${config.xdg.stateHome}/t3code/mvrx-tunnel.log";
-      StandardErrorPath = "${config.xdg.stateHome}/t3code/mvrx-tunnel.log";
+      StandardOutPath = "${config.xdg.stateHome}/t3code/sean-tunnel.log";
+      StandardErrorPath = "${config.xdg.stateHome}/t3code/sean-tunnel.log";
     };
   };
 
@@ -734,8 +742,7 @@ in
   xdg.configFile."claude/skills/anki-add".source = agentState "claude/skills/anki-add";
   xdg.configFile."claude/skills/gapul-writing-voice".source =
     agentState "claude/skills/gapul-writing-voice";
-  xdg.configFile."claude/skills/mvrx-weekly-report".source =
-    agentState "claude/skills/mvrx-weekly-report";
+  xdg.configFile."claude/skills/sean-weekly".source = agentState "claude/skills/sean-weekly";
   xdg.configFile."claude/skills/step-by-step-tutor".source =
     agentState "claude/skills/step-by-step-tutor";
 

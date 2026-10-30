@@ -23,7 +23,7 @@ straight into `ai-agent-state`, so the real files live there. `settings.json`, `
 | `claude/CLAUDE.md` | `$CLAUDE_CONFIG_DIR/CLAUDE.md` |
 | `AGENTS.md` | `$CLAUDE_CONFIG_DIR/AGENTS.md` |
 | `claude/hooks/`, `claude/bin/` | The directories of the same name |
-| `claude/skills/{anki-add,gapul-writing-voice,mvrx-weekly-report,step-by-step-tutor}` | Under `skills/` |
+| `claude/skills/{anki-add,gapul-writing-voice,sean-weekly,step-by-step-tutor}` | Under `skills/` |
 
 Keeping the whole `settings.json` works because the Mac runs with
 `defaultMode: bypassPermissions`, so `permissions.allow` never grows. Anything the TUI writes

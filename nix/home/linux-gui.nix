@@ -1,5 +1,6 @@
 {
   config,
+  lib,
   pkgs,
   nixpkgsStable,
   user,
@@ -32,6 +33,32 @@ let
       wrapProgram $out/bin/adb --set HOME ${config.xdg.dataHome}/android
     '';
   };
+  # Tor Browser 15 and Zotero are built on Firefox ESR 140, which predates Firefox 147's XDG
+  # support: Tor keeps its profile in ~/.tor project, Zotero in ~/.zotero and ~/Zotero, and
+  # Zotero also leaves an empty ~/.mozilla/extensions. Both run with HOME pointed into the XDG
+  # data dir instead, the same way as adb above. The GTK file dialogs start at that HOME, so
+  # the real folders the app is used with are linked into it: Downloads and Documents for
+  # Zotero (attaching PDFs), none for Tor, whose downloads stay out of the real home.
+  withXdgHome =
+    pkg: bin: dir: links:
+    pkgs.symlinkJoin {
+      name = "${pkg.pname or bin}-xdg-home";
+      paths = [ pkg ];
+      nativeBuildInputs = [ pkgs.makeWrapper ];
+      postBuild = ''
+        wrapProgram $out/bin/${bin} \
+          --set HOME ${config.xdg.dataHome}/${dir} \
+          --run ${
+            pkgs.lib.escapeShellArg (
+              "mkdir -p ${config.xdg.dataHome}/${dir}"
+              + pkgs.lib.concatMapStrings (
+                d:
+                "; [ -e ${config.xdg.dataHome}/${dir}/${d} ] || ln -s ${config.home.homeDirectory}/${d} ${config.xdg.dataHome}/${dir}/${d}"
+              ) links
+            )
+          }
+      '';
+    };
 in
 {
   imports = [
@@ -43,7 +70,7 @@ in
     ./fcitx5-skk.nix # SKK dictionaries and kana rule for fcitx5-skk
     ./xremap.nix # mac-style Cmd / Ctrl / Hyper
     ./opensnitch-ui.nix # which app connects where, LuLu-style; the daemon is in hosts/nixos-laptop.nix
-    ./gaming.nix # Prism Launcher, Lutris, MangoHud
+    ./gaming.nix # Prism Launcher, MangoHud, the Cartridges library
   ];
 
   # Keep the English UI locale while preferring Japanese CJK fallback glyphs.
@@ -112,6 +139,22 @@ in
   };
 
   # Use Qt's built-in styles: the session's Kvantum theme lacks its QML module.
+  # Lan Mouse's daemon, so the Mac can cross over without the GUI open. The GUI talks to it and
+  # writes the peers and authorised fingerprints to ~/.config/lan-mouse/config.toml.
+  systemd.user.services.lan-mouse = {
+    Unit = {
+      Description = "Lan Mouse input sharing";
+      After = [ "graphical-session.target" ];
+      PartOf = [ "graphical-session.target" ];
+    };
+    Service = {
+      ExecStart = "${pkgs.lan-mouse}/bin/lan-mouse daemon";
+      Restart = "on-failure";
+      RestartSec = 5;
+    };
+    Install.WantedBy = [ "graphical-session.target" ];
+  };
+
   systemd.user.services.librepods = {
     Unit = {
       Description = "LibrePods AirPods controls";
@@ -124,6 +167,10 @@ in
         "QT_QUICK_CONTROLS_STYLE=Basic"
         "QT_STYLE_OVERRIDE=Fusion"
         "QT_QPA_PLATFORMTHEME="
+        # Qt writes qDebug straight to journald when it sees JOURNAL_STREAM, bypassing the
+        # null stdout below: the AirPods' MagicAccIRK / MagicAccEncKey ended up in the journal.
+        "QT_FORCE_STDERR_LOGGING=1"
+        "QT_LOGGING_RULES=*.debug=false;*.info=false"
       ];
       Restart = "on-failure";
       RestartSec = 3;
@@ -206,6 +253,15 @@ in
     makeWrapperArgs = old.makeWrapperArgs ++ [
       "--add-flags"
       "--profile ${config.home.homeDirectory}/${config.programs.firefox.profilesPath}/dev"
+      # A link opened from T3 Code starts Firefox with T3's environment (home/t3code-desktop.nix),
+      # and GDK_BACKEND=x11 there put the whole browser on XWayland: no kinetic touchpad
+      # scrolling, so pages stuck to the fingers (2026-10-28). The session sets none of these.
+      "--unset"
+      "GDK_BACKEND"
+      "--unset"
+      "GTK_IM_MODULE"
+      "--unset"
+      "GTK_IM_MODULE_FILE"
     ];
   });
 
@@ -312,6 +368,31 @@ in
   # claude-cli:// handler. Claude Code's native installer wrote this pointing at its own
   # ~/.local/bin/claude; the CLI now comes only from nixpkgs (hosts/nixos-laptop.nix), so the
   # entry calls whatever `claude` is on PATH. force: Claude Code may rewrite it on its own.
+  # RQuickShare listens on a random port unless .settings.json names one, and the firewall only
+  # opens a fixed one (networking.firewall.interfaces.wlp0s20f3 in hosts/nixos-laptop.nix).
+  # The app rewrites the file itself and fills missing keys with defaults, so only "port" is set.
+  home.activation.rquickshare-port =
+    let
+      jq = lib.getExe pkgs.jq;
+    in
+    lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+      cfg="${config.xdg.dataHome}/dev.mandre.rquickshare/.settings.json"
+      run mkdir -p "$(dirname "$cfg")"
+      if [ -f "$cfg" ]; then
+        new=$(${jq} '.port = 41200' "$cfg")
+      else
+        new='{"port":41200}'
+      fi
+      if [[ ! -v DRY_RUN ]]; then printf '%s\n' "$new" >"$cfg"; fi
+    '';
+
+  # xtool keeps the App Store Connect key and the signing certificate's private key under
+  # ~/.config/xtool/data, written world-readable (0644, 2026-10-28). Keep the directory private.
+  home.activation.xtool-private = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    run mkdir -p "${config.xdg.configHome}/xtool/data"
+    run chmod 700 "${config.xdg.configHome}/xtool" "${config.xdg.configHome}/xtool/data"
+  '';
+
   xdg.dataFile."applications/claude-code-url-handler.desktop" = {
     force = true;
     text = ''
@@ -356,7 +437,7 @@ in
       text = ''exec vncviewer -passwd "${config.xdg.configHome}/tigervnc/macmini.passwd" 100.105.135.49 "$@"'';
     })
     # ─── Browsers ───
-    tor-browser
+    (withXdgHome tor-browser "tor-browser" "tor-browser" [ ])
 
     # ─── Passwords / 2FA ───
     keepassxc # offline vault (the same kdbx the iOS KeePassium build reads)
@@ -377,7 +458,12 @@ in
     )
     libimobiledevice
     uxplay # iPhone AirPlay receiver
+    # iOS apps from Linux: build, sign and install with an SDK made from the mac's Xcode.
+    (callPackage ../pkgs/xtool.nix { })
+    # ... and run them in iOS 16.5 under QEMU (`hackios setup`, `hackios run`, `hackios push`)
+    (callPackage ../pkgs/hackios { })
     androidTools # adb; USB permissions are provided by systemd
+    rquickshare # Quick Share with Android phones; port pinned below
     (scrcpy.override { android-tools = androidTools; }) # Android display and control
     (callPackage ../pkgs/syncclipboard.nix { })
     kdePackages.kdeconnect-kde
@@ -421,7 +507,13 @@ in
     godot
     calibre
     # Zotero 10 fails to build against the current Firefox ESR; use the stable input.
-    nixpkgsStable.legacyPackages.${pkgs.stdenv.hostPlatform.system}.zotero
+    (withXdgHome nixpkgsStable.legacyPackages.${pkgs.stdenv.hostPlatform.system}.zotero "zotero"
+      "zotero"
+      [
+        "Downloads"
+        "Documents"
+      ]
+    )
     anki
     retroarch
     moonlight-qt
@@ -436,6 +528,9 @@ in
     # references/dictionaries/; point it at a checkout from Edit > Dictionaries > Sources.
     goldendict-ng
     zathura # Keyboard-driven PDF viewer, also used by Yazi.
+    xournalpp # handwriting on PDFs: fill in, sign, annotate (pressure-aware with Weylus)
+    pdfarranger # reorder, merge and split PDF pages
+    lan-mouse # one mouse and keyboard with the Mac; daemon below, GUI for pairing
     foliate # EPUB reader; its OPDS catalog pulls books from Kavita for offline reading.
     swayimg # Wayland image viewer, also used by Yazi.
 
@@ -444,9 +539,9 @@ in
     wl-mirror # mirror a region into a window (for screen sharing a slice)
 
     # ─── Non-Steam game launchers ───
-    # Prism Launcher and Lutris are home-manager modules (home/gaming.nix).
+    # Prism Launcher is a home-manager module (home/gaming.nix).
     heroic # Epic / GOG / Amazon — the libraries the homelab free-games claimer fills up
-    # One library window for all of them: Cartridges reads Steam, Heroic and Lutris on its own
+    # One library window for all of them: Cartridges reads Steam and Heroic on its own
     # and needs no login. It only finds launchers installed the same way it is (nix here, not
     # Flatpak). The emulators below and Minecraft are declared into it in home/gaming.nix.
     cartridges

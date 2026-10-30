@@ -84,6 +84,8 @@ in
   # journald rewrites its files in place, which copy-on-write fragments badly (it warns at boot).
   # +C only takes effect on files created afterwards.
   systemd.tmpfiles.rules = [ "h /var/log/journal - - - - +C" ];
+  # The default cap (10% of the filesystem, clamped to 4G) was full: weeks of desktop noise.
+  services.journald.settings.Journal.SystemMaxUse = "1G";
 
   fileSystems."/var/log" = {
     inherit device;

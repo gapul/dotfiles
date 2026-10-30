@@ -98,8 +98,11 @@ in
   sops.secrets."pii/gmail_app_password_mail" = { };
 
   launchd.daemons.homeserver-external-monitor = {
+    # `command` (not ProgramArguments) so nix-darwin wraps it in wait4path: at boot /nix is not
+    # mounted yet, a bare store path fails to spawn (EX_CONFIG) and launchd never retries it
+    # (stopped from the 2026-10-17 reboot until 10-28).
+    command = lib.getExe monitor;
     serviceConfig = {
-      ProgramArguments = [ (lib.getExe monitor) ];
       RunAtLoad = true;
       StartInterval = 60;
       ProcessType = "Background";

@@ -77,6 +77,12 @@ declared.
 | IMAP for the Stalwart at home (three mirror mailboxes, `homelab-mail`) | `nix/mobile/ios-profiles.nix`. `just mail-profiles` (`profiles/mail.sh`) fills both mail profiles' passwords from sops; otherwise the device asks on first use |
 | DNS, DoH to the blocky at home (`homelab-dns`) | `nix/mobile/ios-profiles.nix`. NextDNS is retired |
 | The tailnet at home | The Tailscale app installs its own VPN profile |
+| Fonts for scripts iOS cannot render: hentaigana, Tangut, Khitan Small Script, Nushu, CJK Extensions B–J (`font-*`) | `nix/mobile/ios-profiles.nix`. Noto comes from nixpkgs' `noto-fonts`, Plangothic from a pinned release |
+
+The font profiles embed the font files as `<data>`, which `pkgs.formats.plist` cannot write,
+so those go through plistlib instead. `font-plangothic` is about 45 MB. Lockdown Mode refuses
+every profile install, so it has to be off for the install. A font installed this way is certain
+to work in apps with a font picker, such as Pages. Apps without one may or may not fall back to it.
 
 ## Shortcuts
 

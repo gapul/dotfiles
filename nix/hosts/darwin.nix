@@ -134,6 +134,9 @@ in
     # This lets both taps for self-made things (gapul/puddle, gapul/keystats) be folded.
     (pkgs.callPackage ../pkgs/puddle.nix { })
     (pkgs.callPackage ../pkgs/keystats.nix { })
+    # Lan Mouse: shares this keyboard and trackpad with nixos-laptop. Upstream's release, not a
+    # nixpkgs build, so the Accessibility grant holds between flake.lock bumps.
+    (pkgs.callPackage ../pkgs/lan-mouse-macos.nix { })
     # mocopi: self-made. The source stays a private repo, so the flake input is fetched via git+ssh
     # (mocopi-mac in flake.nix). Putting it here lands it in /Applications/Nix Apps, so the manual
     # `nix build && cp -R result/Applications/mocopi.app ~/Applications/` from the README is not needed.
