@@ -119,7 +119,6 @@ Generated from `just --list`. Run `just docs` after changing a recipe.
     [Homelab]
     dns *flags                                        # Diff the repo's declarations against Cloudflare DNS: A records, tunnel CNAMEs, and mail (MX/SPF/DKIM)
     esphome                                           # Validate the ESPHome device configs without hardware
-    nextdns cmd="diff"                                # Fetch, diff, or apply the NextDNS profile. Needs NEXTDNS_API_KEY / NEXTDNS_PROFILE
     tailnet cmd="diff"                                # Fetch, diff, or apply the tailnet policy file (ACL / split DNS). Needs TS_API_KEY
     wsl-tarball flake="github:gapul/dotfiles?dir=nix" # Build the NixOS-WSL rootfs tarball on homeserver and bring it back (mac can't build it)
 
@@ -158,10 +157,13 @@ Generated from `just --list`. Run `just docs` after changing a recipe.
     win-autostart-glazewm *flags                      # Pass `-Unregister` (delete the task) via `*flags`
     win-bootstrap *flags                              # Run the native Windows bootstrap (`just win-bootstrap` / `just win-bootstrap -DryRun`)
     win-fmt                                           # Lint Windows-related .ps1 with PSScriptAnalyzer (exit 1 on Warning or above)
-    win-fonts *flags                                  # Pass `-DryRun` `-Force` (overwrite existing too) via `*flags`
+    win-fonts *flags                                  # Pass `-DryRun` or `-SkipHackGen` via `*flags`
     win-keymap *flags                                 # Pass `-DryRun` `-Clear` (delete Scancode Map and return to standard) via `*flags`
     win-locale *flags                                 # Pass `-DryRun` `-SkipLanguageList` `-SkipSystemLocale` `-SkipHomeLocation` via `*flags`
-    win-privacy *flags                                # Pass `-DryRun` `-SkipWinUtil` `-SkipWin11Debloat` via `*flags`
+    win-privacy *flags                                # Pass `-DryRun` `-SkipWinUtil` `-SkipWin11Debloat` `-SkipCustomApps` `-SkipBaseline` via `*flags`
+    win-privacy-check-upstream                        # Check the privacy declarations against the pinned upstream scripts (runs on macOS/Linux)
+    win-privacy-update-upstream                       # Re-pin Win11Debloat and WinUtil to their latest releases, then run the check above
+    win-privacy-verify                                # Compare the machine against windows/privacy/baseline.psd1 (read-only, exits 1 on drift)
     win-scoop *flags                                  # Pass `-DryRun` `-SkipBuckets` `-SkipApps` via `*flags`
     win-status *flags                                 # Diff between apps.json (declaration) and winget list (actual install). exit 1 if any MISSING
     win-theme *flags                                  # Pass `-DryRun` `-ActivePalette rose-pine-dawn` etc. via `*flags`
@@ -211,7 +213,10 @@ in `nix/flake.nix`; run `just docs` after changing one.
 | `deadnix` | `*.nix` | — | Finds unused code. Module arguments like `{ lib, ... }` are allowed. |
 | `gitleaks` | all staged | — | Secret detection |
 | `nixfmt` | `*.nix` | — | Formatting check. Fails on anything unformatted. |
-| `shellcheck` | all staged | `configs/cli/codex/.*`, `configs/wm/sketchybar/.*`, `\.envrc$`, `\.zsh$`, `configs/macmini/bin/.*`, `configs/macmini/client/.*`, `configs/macmini/setup-scripts/.*` | Shell lint, following .shellcheckrc |
+| `pyright` | `*.py` | `configs/cli/claude/.*`, `configs/cli/codex/.*` | Python type check, strict mode (pyproject.toml) |
+| `ruff` | `*.py` | — | Python lint (pyproject.toml), applying safe autofixes |
+| `ruff-format` | `*.py` | — | Python formatting |
+| `shellcheck` | all staged | `configs/cli/codex/.*`, `configs/wm/sketchybar/.*`, `\.envrc$`, `\.zsh$` | Shell lint, following .shellcheckrc |
 <!-- END hooks -->
 
 Notes:
@@ -224,6 +229,14 @@ Notes:
   for `nix fmt`.
 - `shellcheck` is enforced. The excluded sketchybar configs can still be checked by hand with
   `nix develop ./nix -c shellcheck configs/wm/sketchybar/...`.
+- Which language a script is in: shell for short command sequences (inline in Nix through
+  `writeShellApplication`), TypeScript on Bun for anything with real logic (JSON, HTTP, state,
+  long services), and Python only where a Python library is the point (ML models, ytmusicapi,
+  Mopidy, pyobjc, HPI, FastAPI) or where the script must run on a host that only has python3
+  (`scripts/merge-claude-settings.py`, which `remote-bootstrap` runs on nssh targets without Nix
+  or Bun). Package a Bun script with `nix/lib/bun-script.nix`.
+  `scripts/ci-lint.sh` type-checks every `.ts` against `tsconfig.json` (strict); the compiler
+  versions are pinned in `package.json`.
 - CI runs through `om ci` (omnix). Building the `checks.pre-commit` output from git-hooks.nix
   applies the same hooks to the whole repo. `om.yaml` and the flake outputs are the single source
   of truth; `.github/workflows/ci.yml` is a thin adapter that maps system to runner and calls

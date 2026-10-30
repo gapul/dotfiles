@@ -109,7 +109,10 @@
     nix-index-database.url = "github:nix-community/nix-index-database";
     nix-index-database.inputs.nixpkgs.follows = "nixpkgs";
 
-    agent-skills.url = "github:Kyure-A/agent-skills-nix";
+    # Fork until Kyure-A/agent-skills-nix takes the rsync --chmod=Du+w fix: without it the
+    # source copy fails with "mkdir ... Permission denied" on the macmini's Linux builder VM,
+    # which breaks the laptop closure in CI. Point back at upstream once it has merged.
+    agent-skills.url = "github:gapul/agent-skills-nix/fix/rsync-writable-dirs";
     agent-skills.inputs.nixpkgs.follows = "nixpkgs";
 
     sops-nix.url = "github:Mic92/sops-nix";
@@ -302,6 +305,7 @@
           commonSpecialArgs
           mkPkgs
           ;
+        inherit (inputs) self;
       };
 
       darwinWorkstationSpecialArgs = {
@@ -362,6 +366,8 @@
             # Override things like tailscale's wrong vendorHash here.
             { nixpkgs.overlays = [ overlayFixes ]; }
             ./hosts/nixos-laptop.nix
+            # `nixos-version --configuration-revision` then names the running dotfiles commit.
+            { system.configurationRevision = inputs.self.rev or inputs.self.dirtyRev or null; }
             sops-nix.nixosModules.sops # hosts/nixos-laptop-wifi.nix
             lanzaboote.nixosModules.lanzaboote
           ]
@@ -438,6 +444,7 @@
           ./home/macmini-maintenance.nix
           ./home/macmini-backup.nix
           ./home/macmini-watchdog.nix
+          ./home/macmini-hs-console.nix # homeserver's physical console via the capture card + rpi4 HID gadget
           ./home/findmy-tag.nix # periodic Find My tag fetch; lives on this always-on machine, not the laptop
           ./home/macmini-revolut.nix # Revolut fetch for the ledger; needs a headed browser (Cloudflare), so this GUI Mac
           ./home/macmini-sites.nix # Suica / JRE POINT / Bic Camera for the ledger; same headed-browser reason
@@ -460,7 +467,7 @@
         wsl = linuxBase ++ [ ./home/wsl.nix ] ++ secrets ++ station;
         linuxServer = linuxBase ++ secrets ++ station;
         # Shared hosts where the age key must never exist (other people hold sudo), e.g. the
-        # company GPU box reached through rootless docker. No secrets, no desktop extras.
+        # shared GPU box reached through rootless docker. No secrets, no desktop extras.
         linuxShared = linuxBase;
       };
 
@@ -549,12 +556,11 @@
           };
           shellcheck = {
             enable = true; # shell script lint (follows .shellcheckrc)
-            # .shellcheckrc says severity=error, but it has no effect. The shellcheck 0.11 rc
-            # only honors disable= and the like; severity is CLI-only (measured: disable=SC2001
-            # in the same rc works, while severity=error is ignored, style findings still show,
-            # and it exits 1). So the intent "gate on error level only" was never realized.
-            # Pass it again here.
-            args = [ "--severity=error" ];
+            # Severity is CLI-only: the shellcheck 0.11 rc honors disable= and the like but
+            # ignores severity= (measured: disable=SC2001 in the rc works, severity=error is
+            # ignored and style findings still fail the hook). Gate on warning and above, the
+            # same level scripts/ci-lint.sh enforces; info/style stay advisory.
+            args = [ "--severity=warning" ];
             excludes = [
               # Symlinks into another repository (gapul/ai-agent-state). The link is committed,
               # the target is not, so in CI there is nothing behind it and shellcheck stops with
@@ -567,18 +573,40 @@
               # direnv files have no shebang and assume the direnv stdlib
               "\\.envrc$"
               # zsh is out of scope for shellcheck (SC1071). Excluded by extension because adding
-              # directories one by one, like macmini below, misses things. configs/shell/*.zsh
+              # directories one by one misses things. configs/shell/*.zsh
               # had in fact slipped through, and `just fmt` failed with SC1072 even on
               # origin/main. Both `f() { x=$y }` in prompt.zsh and `${${x}}` in evalcache.zsh
               # are valid zsh that shellcheck just can't read, so rewriting them to silence it
               # is the wrong fix.
               "\\.zsh$"
-              # Some zsh has no extension. The macmini AI commands are zsh only by shebang
-              "configs/macmini/bin/.*"
-              # Same for their main-Mac-side client wrappers
-              "configs/macmini/client/.*"
-              # Archive of one-shot scripts from macmini setup (historical artifacts, not style-refactored)
-              "configs/macmini/setup-scripts/.*"
+              # The extensionless macmini AI commands (configs/macmini/bin, configs/macmini/client)
+              # used to be zsh and were excluded here; they are bash now and linted like the rest
+              # (the default `types = [ "shell" ]` picks them up by shebang).
+            ];
+          };
+          # Python: settings live in the root pyproject.toml, shared with scripts/ci-lint.sh.
+          # Limited to *.py so the hooks gate the same files CI does: `types = [ "python" ]`
+          # alone also matches extensionless scripts by shebang (configs/bin/tenbin, the pi-kvm
+          # hidsend, ...), which CI doesn't lint.
+          # --force-exclude: pre-commit passes file names, and ruff only honors extend-exclude
+          # for named files with it.
+          ruff = {
+            enable = true; # lint, with safe autofixes applied
+            files = "\\.py$";
+            args = [ "--force-exclude" ];
+          };
+          ruff-format = {
+            enable = true; # formatting
+            files = "\\.py$";
+            args = [ "--force-exclude" ];
+          };
+          pyright = {
+            enable = true; # type check, strict mode
+            # Named files are checked even when pyproject.toml excludes them, so the excludes
+            # are repeated here (same list as tool.pyright.exclude).
+            excludes = [
+              "configs/cli/claude/.*"
+              "configs/cli/codex/.*"
             ];
           };
           gitleaks = {
@@ -588,9 +616,15 @@
             # (it adds --pre-commit and then rejects it), and its replacement `git --pre-commit
             # --staged` failed inside the pre-commit-run check's sandbox ("stat git") while working
             # outside it; feeding the diff in avoids gitleaks starting git at all.
-            entry = "${pkgs.writeShellScript "gitleaks-staged" ''
-              ${pkgs.git}/bin/git diff --cached --no-color | ${pkgs.gitleaks}/bin/gitleaks stdin --no-banner --redact
-            ''}";
+            entry = pkgs.lib.getExe (
+              pkgs.writeShellApplication {
+                name = "gitleaks-staged";
+                bashOptions = [ ];
+                text = ''
+                  ${pkgs.git}/bin/git diff --cached --no-color | ${pkgs.gitleaks}/bin/gitleaks stdin --no-banner --redact
+                '';
+              }
+            );
             pass_filenames = false;
           };
         };
@@ -801,7 +835,8 @@
                     systemPkgs.yq-go
                     systemPkgs.jq
                     systemPkgs.just
-                    systemPkgs.python3 # scripts/gen-docs.py (doc generation block)
+                    systemPkgs.ruff # Python lint + format check (config: ruff.toml)
+                    systemPkgs.pyright # Python type check, strict mode (config: pyproject.toml)
                     systemPkgs.bun
                     systemPkgs.check-jsonschema
                     systemPkgs.actionlint
@@ -833,6 +868,8 @@
               };
               evalcache = import ./tests/evalcache.nix { pkgs = systemPkgs; };
               prompt = import ./tests/prompt.nix { pkgs = systemPkgs; };
+              # The ask broker runs as a launchd agent here (modules/home/darwin-services.nix).
+              ask-broker = import ./tests/ask-broker.nix { pkgs = systemPkgs; };
             };
           }
           // lib.optionalAttrs (system == "x86_64-linux") {
@@ -851,6 +888,8 @@
                 home-manager = home-manager-nixos;
                 inherit commonSpecialArgs;
               };
+              # The collector runs on the home server (homelab/freebie-collector.nix).
+              freebie-collector = import ./tests/freebie-collector.nix { pkgs = systemPkgs; };
               preservation-smoke = import ./tests/preservation-smoke.nix {
                 inherit preservation user;
                 pkgs = systemPkgs;

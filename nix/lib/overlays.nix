@@ -10,10 +10,16 @@ _final: prev: {
   # nom 2.2.0 rejects any type it does not know, so every nh rebuild printed
   # "ParseNixJSONMessageError ... invalid activity type: 10113". The patch is
   # maralorn/nix-output-monitor#321 (fixes #320; merged 2026-10-19, unreleased): unknown types become
-  # Unknown instead of a parse error. Guarded on the version so a nom bump drops it; delete
-  # it once #321 has landed in a release.
+  # Unknown instead of a parse error. Guarded on the version so a nom bump drops it, and on
+  # nixpkgs not carrying #321 already: nixos-unstable added it to its own patches, and applying
+  # it twice fails to build. Delete it once #321 has landed in a release.
   nix-output-monitor =
-    if prev.nix-output-monitor.version == "2.2.0" then
+    if
+      prev.nix-output-monitor.version == "2.2.0"
+      && !builtins.any (p: prev.lib.hasInfix "d48ff7935da72a5a5764ee8c5358d38417b0f337" (p.name or "")) (
+        prev.nix-output-monitor.patches or [ ]
+      )
+    then
       prev.nix-output-monitor.overrideAttrs (o: {
         patches = (o.patches or [ ]) ++ [ ./nom-unknown-activity-type.patch ];
       })

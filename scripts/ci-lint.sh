@@ -4,7 +4,11 @@
 # 全ツールは devShell (nix develop ./nix) の PATH 前提で叩く。
 # - just --summary : Justfile パース検証 (整形は just バージョン依存のため gate にしない)
 # - statix         : Nix アンチパターン (repeated_keys は誤検出のため .statix.toml で除外)
-# - shellcheck     : 全 .sh を error 重大度で gate (warning/info は既存資産が多く除外)
+# - shellcheck     : 全 .sh と拡張子なしの macmini コマンドを warning 重大度で gate (sketchybar だけ error。Lua 化予定で据え置き)
+# - ruff           : 全 .py の lint + 整形チェック (設定は pyproject.toml)
+# - pyright        : 全 .py の型チェック (strict。third-party import は解決しない前提)
+# - tsc            : Bun で動かす .ts の型チェック (strict。設定は tsconfig.json、karabiner は別管理)
+# - bun test       : regression tests for the Bun scripts (*.test.ts; fake external commands, localhost only)
 # - stylua         : nvim 配下の lua 整形 (uosc/yazi 等 vendored は対象外)
 # - taplo/jq/yq    : toml/json/yaml の構文検証 (設定破損の即検知)
 # - actionlint     : GitHub Actions workflow の文法/式チェック
@@ -31,8 +35,38 @@ just --summary
 echo "==> statix check (Nix アンチパターン)"
 statix check -c .statix.toml nix
 
-echo "==> shellcheck (全 .sh の error gate)"
-tracked '*.sh' | xargs -0 shellcheck -S error
+# configs/macmini/{bin,client} は拡張子なしの bash スクリプト (shebang で判別) なので明示的に足す。
+# sketchybar is excluded from the pre-commit hook and will be rewritten in Lua; it intentionally
+# relies on word splitting, so it stays gated at error level only.
+echo "==> shellcheck (全 .sh + macmini コマンドの warning gate、sketchybar は error gate)"
+tracked '*.sh' configs/macmini/bin configs/macmini/client ':!configs/wm/sketchybar' | xargs -0 shellcheck -S warning
+tracked 'configs/wm/sketchybar/*.sh' | xargs -0 shellcheck -S error
+
+# --force-exclude: ファイル名で渡しても pyproject.toml の extend-exclude を効かせる。
+echo "==> ruff check (Python lint)"
+tracked '*.py' | xargs -0 ruff check --force-exclude --no-fix
+
+echo "==> ruff format --check (Python 整形)"
+tracked '*.py' | xargs -0 ruff format --check --force-exclude
+
+# ファイル名で渡すと exclude が効かないので、対象選びは pyproject.toml の tool.pyright に任せる。
+echo "==> pyright (Python 型チェック)"
+pyright
+
+# typescript と @types/bun は package.json で固定。node_modules は .gitignore 済み。
+echo "==> tsc (TypeScript 型チェック)"
+bun install --frozen-lockfile --silent
+bunx tsc -p tsconfig.json
+
+# Only tracked test files: a bare `bun test` would also walk symlinks that leave the checkout
+# (configs/cli/claude) and whatever untracked trees sit in a working copy. The leading ./ makes
+# bun treat each argument as a path rather than a name filter. karabiner is its own package.
+echo "==> bun test (Bun スクリプトの回帰テスト)"
+tests=()
+while IFS= read -r -d "" f; do tests+=("./$f"); done < <(tracked '*.test.ts' ':!configs/keyboard/karabiner')
+if [ "${#tests[@]}" -gt 0 ]; then
+  bun test "${tests[@]}"
+fi
 
 echo "==> stylua --check (nvim lua 整形)"
 stylua --check configs/editors/nvim/

@@ -11,7 +11,7 @@
     };
     Service = {
       Type = "simple";
-      ExecStart = "${pkgs.openssh}/bin/ssh -N -o ControlMaster=no -o ControlPath=none -o BatchMode=yes -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o ConnectTimeout=20 -L 127.0.0.1:8767:127.0.0.1:8767 -L 127.0.0.1:8877:127.0.0.1:8877 mvrx-dev";
+      ExecStart = "${pkgs.openssh}/bin/ssh -N -o ControlMaster=no -o ControlPath=none -o BatchMode=yes -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o ConnectTimeout=20 -L 127.0.0.1:8767:127.0.0.1:8767 -L 127.0.0.1:8877:127.0.0.1:8877 sean-dev";
       Restart = "always";
       RestartSec = 10;
     };

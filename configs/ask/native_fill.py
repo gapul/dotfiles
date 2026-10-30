@@ -14,7 +14,6 @@ import re
 import subprocess
 import sys
 
-
 SCRIPT = r"""
 set expectedBundle to system attribute "ASK_NATIVE_BUNDLE_ID"
 set expectedDomain to system attribute "ASK_NATIVE_DOMAIN"
@@ -83,9 +82,7 @@ def main() -> int:
         expected_domain = payload.get("expected_domain", "")
         input_mode = payload.get("input_mode", "ax_value")
         value = payload["value"]
-        if not isinstance(bundle_id, str) or not re.fullmatch(
-            r"[A-Za-z0-9.-]+", bundle_id
-        ):
+        if not isinstance(bundle_id, str) or not re.fullmatch(r"[A-Za-z0-9.-]+", bundle_id):
             raise ValueError("invalid bundle identifier")
         if input_mode not in {"ax_value", "keystroke"}:
             raise ValueError("invalid input mode")

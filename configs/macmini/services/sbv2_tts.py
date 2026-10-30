@@ -1,12 +1,17 @@
-import sys, os
+import os
+import sys
 from pathlib import Path
-import torch, soundfile as sf
-from style_bert_vits2.nlp import bert_models
+
+import soundfile as sf
+
+# Unused by name, but kept from the original: torch loaded before style_bert_vits2.
+import torch  # noqa: F401  # pyright: ignore[reportUnusedImport]
 from style_bert_vits2.constants import Languages
+from style_bert_vits2.nlp import bert_models
 from style_bert_vits2.tts_model import TTSModel
 
 text = sys.argv[1]
-out  = sys.argv[2] if len(sys.argv) > 2 else "out.wav"
+out = sys.argv[2] if len(sys.argv) > 2 else "out.wav"
 style = sys.argv[3] if len(sys.argv) > 3 else "Neutral"
 
 M = os.path.expanduser("~/.local/share/models/sbv2")

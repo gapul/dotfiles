@@ -12,14 +12,16 @@ gapul.net.
 | Services and scripts, such as ai-stack.sh | This repository | `configs/macmini/services/` linked into `~/.local/share/ai-stack/` by `nix/home/macmini.nix` |
 | The launchd supervisor | Declared in nix | `launchd.agents.ai-stack` in `nix/home/macmini.nix` |
 | Python venvs for ML | Imperative | Rebuilt by `bootstrap.sh` with uv; torch, mlx and pyannote are hard to express in nix |
-| The models, which are large | Imperative | The `models.txt` manifest plus `bootstrap.sh`, downloading from hf-mirror and GitHub |
+| The models, which are large | Imperative | Fetched by hand from hf-mirror and GitHub, following the `models.txt` manifest |
 
 ## Reproducing it from a clean mac mini
 
 1. `darwin-rebuild switch`, which brings in the brew packages and the SSH and sleep settings.
-2. `bash configs/macmini/bootstrap.sh`, which rebuilds the venvs, fetches the models, places the
-   scripts and registers the launchd agents.
-3. Add the tools block to Caddy, which runs on a different host; see `docs/`.
+2. `bash configs/macmini/bootstrap.sh` (same as `--venvs`, its only mode), which rebuilds the venvs.
+   The scripts and the launchd supervisor already came with step 1 (Home Manager; `ai-stack` is
+   RunAtLoad + KeepAlive, so it starts by itself).
+3. Fetch the models listed in `models.txt` (hf-mirror and GitHub, straight to the mac mini).
+4. Add the tools block to Caddy, which runs on a different host; see `docs/`.
 
 ## The services, all on 192.168.116.91
 

@@ -1,78 +1,133 @@
-import os, subprocess, tempfile, glob, shutil
-from fastapi import FastAPI, UploadFile, File, Form
-from fastapi.responses import HTMLResponse, FileResponse, PlainTextResponse
+import glob
+import os
+import shutil
+import subprocess
+import tempfile
+
+from fastapi import FastAPI, File, Form, UploadFile
+from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
 from starlette.background import BackgroundTask
 
 HOME = os.path.expanduser("~")
 BIN = f"{HOME}/.local/bin"
-ENV = dict(os.environ, PATH=f"{BIN}:/opt/homebrew/bin:/run/current-system/sw/bin:/usr/bin:/bin", HOME=HOME, PYTORCH_ENABLE_MPS_FALLBACK="1")
+ENV = dict(
+    os.environ,
+    PATH=f"{BIN}:/opt/homebrew/bin:/run/current-system/sw/bin:/usr/bin:/bin",
+    HOME=HOME,
+    PYTORCH_ENABLE_MPS_FALLBACK="1",
+)
 app = FastAPI(title="macmini AI panel")
 
-def run(cmd, timeout=1200):
+
+def run(cmd: list[str], timeout: int = 1200) -> tuple[str, str, int]:
     r = subprocess.run(cmd, env=ENV, capture_output=True, text=True, timeout=timeout)
     return r.stdout, r.stderr, r.returncode
 
-def save(up: UploadFile, d):
+
+def save(up: UploadFile, d: str) -> str:
     p = os.path.join(d, up.filename.replace("/", "_"))
-    with open(p, "wb") as f: shutil.copyfileobj(up.file, f)
+    with open(p, "wb") as f:
+        shutil.copyfileobj(up.file, f)
     return p
+
 
 @app.get("/", response_class=HTMLResponse)
 def home():
     return HTML
 
+
 @app.get("/status")
 def status():
     disk = shutil.disk_usage(HOME)
-    return {"disk_free_gb": round(disk.free / 1024 ** 3, 1)}
+    return {"disk_free_gb": round(disk.free / 1024**3, 1)}
+
 
 @app.post("/transcribe", response_class=PlainTextResponse)
-async def transcribe(file: UploadFile = File(...), model: str = Form("fast"), diarize: str = Form("no")):
-    d = tempfile.mkdtemp(); p = save(file, d)
+async def transcribe(
+    file: UploadFile = File(...), model: str = Form("fast"), diarize: str = Form("no")
+):
+    d = tempfile.mkdtemp()
+    p = save(file, d)
     tool = f"{BIN}/transcribe-diarize" if diarize == "yes" else f"{BIN}/transcribe"
     args = [tool, p, "ja", model] if diarize == "yes" else [tool, p, "ja", "txt", model]
-    out, err, rc = run(args)
+    out, err, _ = run(args)
     base = os.path.splitext(p)[0]
     res = ""
     for ext in (".diarized.txt", ".txt"):
-        if os.path.exists(base + ext): res = open(base + ext).read(); break
+        if os.path.exists(base + ext):
+            with open(base + ext) as f:
+                res = f.read()
+            break
     shutil.rmtree(d, ignore_errors=True)
     return res or (out + "\n" + err)
 
+
 @app.post("/tts")
 async def tts(text: str = Form(...), style: str = Form("Neutral")):
-    d = tempfile.mkdtemp(); out_wav = os.path.join(d, "tts.wav")
+    d = tempfile.mkdtemp()
+    out_wav = os.path.join(d, "tts.wav")
     run([f"{BIN}/tts", text, out_wav, style])
-    return FileResponse(out_wav, media_type="audio/wav", filename="tts.wav",
-                        background=BackgroundTask(shutil.rmtree, d, True))
+    return FileResponse(
+        out_wav,
+        media_type="audio/wav",
+        filename="tts.wav",
+        background=BackgroundTask(shutil.rmtree, d, True),
+    )
+
 
 @app.post("/clone")
 async def clone(ref: UploadFile = File(...), text: str = Form(...)):
-    d = tempfile.mkdtemp(); rp = save(ref, d); out_wav = os.path.join(d, "cloned.wav")
+    d = tempfile.mkdtemp()
+    rp = save(ref, d)
+    out_wav = os.path.join(d, "cloned.wav")
     run([f"{BIN}/voice-clone", rp, text, out_wav])
-    return FileResponse(out_wav, media_type="audio/wav", filename="cloned.wav",
-                        background=BackgroundTask(shutil.rmtree, d, True))
+    return FileResponse(
+        out_wav,
+        media_type="audio/wav",
+        filename="cloned.wav",
+        background=BackgroundTask(shutil.rmtree, d, True),
+    )
+
 
 @app.post("/vision", response_class=PlainTextResponse)
-async def vision(image: UploadFile = File(...), mode: str = Form("describe"), prompt: str = Form("")):
-    d = tempfile.mkdtemp(); p = save(image, d)
-    args = [f"{BIN}/ocr", p] if mode == "ocr" else ([f"{BIN}/describe", p, prompt] if prompt else [f"{BIN}/describe", p])
-    out, err, rc = run(args)
+async def vision(
+    image: UploadFile = File(...), mode: str = Form("describe"), prompt: str = Form("")
+):
+    d = tempfile.mkdtemp()
+    p = save(image, d)
+    args = (
+        [f"{BIN}/ocr", p]
+        if mode == "ocr"
+        else ([f"{BIN}/describe", p, prompt] if prompt else [f"{BIN}/describe", p])
+    )
+    out, err, _ = run(args)
     shutil.rmtree(d, ignore_errors=True)
     return out.strip() or err
 
+
 @app.post("/separate")
 async def separate(audio: UploadFile = File(...)):
-    d = tempfile.mkdtemp(); p = save(audio, d)
+    d = tempfile.mkdtemp()
+    p = save(audio, d)
     run([f"{BIN}/separate", p, d])
-    stems = [f for f in glob.glob(d + "/*") if f != p and (f.endswith(".flac") or f.endswith(".wav"))]
-    zd = tempfile.mkdtemp(); zp = os.path.join(zd, "stems.zip")
+    stems = [
+        f for f in glob.glob(d + "/*") if f != p and (f.endswith(".flac") or f.endswith(".wav"))
+    ]
+    zd = tempfile.mkdtemp()
+    zp = os.path.join(zd, "stems.zip")
     import zipfile
+
     with zipfile.ZipFile(zp, "w") as z:
-        for s in stems: z.write(s, os.path.basename(s))
+        for s in stems:
+            z.write(s, os.path.basename(s))
     shutil.rmtree(d, ignore_errors=True)
-    return FileResponse(zp, media_type="application/zip", filename="stems.zip",
-                        background=BackgroundTask(shutil.rmtree, zd, True))
+    return FileResponse(
+        zp,
+        media_type="application/zip",
+        filename="stems.zip",
+        background=BackgroundTask(shutil.rmtree, zd, True),
+    )
+
 
 HTML = """<!doctype html><html lang=ja><head><meta charset=utf-8>
 <meta name=viewport content=\"width=device-width,initial-scale=1\">

@@ -1,15 +1,16 @@
-#!/bin/zsh
+#!/bin/bash
 # 母艦→macmini 透過・声クローン。参照音声の声で任意の日本語を喋らせる。
 # 使い方: voice-clone <参照音声> "喋らせる文章" [出力.wav] ["参照文字起こし"]
 # 環境変数 NOPLAY=1 で自動再生オフ
-emulate -L zsh
 ref="$1"; target="$2"; out="${3:-./cloned.wav}"; reftext="$4"
 if [[ -z "$ref" || ! -f "$ref" || -z "$target" ]]; then
   echo "使い方: voice-clone <参照音声> \"文章\" [出力.wav] [\"参照文字起こし\"]"
   exit 1
 fi
-ext="${ref:e}"; tag="vc_$$"; rf="/tmp/${tag}.${ext}"
-retry() { local i; for i in 1 2 3; do "$@" && return 0; sleep 2; done; return 1; }
+# zsh の ${ref:e} 相当: 最後のパス要素に . があればその後ろ、無ければ空
+name="${ref##*/}"; ext=""; [[ "$name" == *.* ]] && ext="${name##*.}"
+tag="vc_$$"; rf="/tmp/${tag}.${ext}"
+retry() { local _; for _ in 1 2 3; do "$@" && return 0; sleep 2; done; return 1; }
 
 echo "[send] 参照音声 → macmini"
 retry scp -q "$ref" "macmini:$rf" || { echo "scp失敗"; exit 1; }

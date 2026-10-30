@@ -6,6 +6,7 @@
   ...
 }:
 let
+  bunRun = import ../lib/bun-run.nix { inherit pkgs; };
   agentPkgs = nixpkgsUnstable.legacyPackages.${pkgs.stdenv.hostPlatform.system};
   dotfiles = "${config.home.homeDirectory}/.dotfiles";
   agentState =
@@ -17,12 +18,12 @@ let
     ".local/share/ai-stack/${name}".source =
       config.lib.file.mkOutOfStoreSymlink "${dotfiles}/configs/macmini/services/${name}";
   };
-  # ssh to the work machine mvrx-nolang-dev (192.168.1.36). This machine does not take the tailnet's
-  # subnet routes, so it jumps through homeserver, which does reach the office. The key is
-  # id_mvrx_t3, made on this machine on 2026-10-04 and registered by hand in the work machine's
-  # authorized_keys. It is not in sops, and it is not the workstation's ssh_mvrx_sync_key: this way
-  # the work machine can revoke either one on its own.
-  mvrxSsh = "/usr/bin/ssh -i ${config.home.homeDirectory}/.ssh/id_mvrx_t3 -o IdentitiesOnly=yes -o BatchMode=yes -J gapul@100.127.129.31 gapul@192.168.1.36";
+  # ssh to sean (192.168.1.36). This machine does not take the tailnet's
+  # subnet routes, so it jumps through homeserver, which does reach sean's network. The key is
+  # id_sean_t3, made on this machine on 2026-10-04 and registered by hand in sean's
+  # authorized_keys. It is not in sops, and it is not the workstation's ssh_sean_sync_key: this way
+  # sean can revoke either one on its own.
+  seanSsh = "/usr/bin/ssh -i ${config.home.homeDirectory}/.ssh/id_sean_t3 -o IdentitiesOnly=yes -o BatchMode=yes -J gapul@100.127.129.31 gapul@192.168.1.36";
   aiWrapper = name: {
     ".local/bin/${name}".source =
       config.lib.file.mkOutOfStoreSymlink "${dotfiles}/configs/macmini/bin/${name}";
@@ -43,13 +44,17 @@ let
   #
   # Escape hatch: CLAUDE_NO_REMOTE_CONTROL=1. The launchd job calls $HOME/.local/bin/claude by
   # absolute path, which is the binary this wrapper wraps, so it is unaffected.
-  claudeRemoteControlDefault = pkgs.writeShellScriptBin "claude" ''
-    if [ $# -eq 0 ] && [ -t 0 ] && [ -t 1 ] && [ "''${CLAUDE_NO_REMOTE_CONTROL:-}" != 1 ]; then
-      unset DO_NOT_TRACK DISABLE_TELEMETRY CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC DISABLE_GROWTHBOOK
-      set -- --remote-control
-    fi
-    exec "$HOME/.local/bin/claude" "$@"
-  '';
+  claudeRemoteControlDefault = pkgs.writeShellApplication {
+    name = "claude";
+    bashOptions = [ ];
+    text = ''
+      if [ $# -eq 0 ] && [ -t 0 ] && [ -t 1 ] && [ "''${CLAUDE_NO_REMOTE_CONTROL:-}" != 1 ]; then
+        unset DO_NOT_TRACK DISABLE_TELEMETRY CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC DISABLE_GROWTHBOOK
+        set -- --remote-control
+      fi
+      exec "$HOME/.local/bin/claude" "$@"
+    '';
+  };
 in
 {
   imports = [
@@ -141,31 +146,47 @@ in
     # of these are set ("Remote Control requires feature-flag evaluation, which is disabled
     # because DO_NOT_TRACK is set"). common.nix exports DO_NOT_TRACK=1 for every shell, so
     # without this line the --remote-control here never worked (found 2026-09-13).
-    (pkgs.writeShellScriptBin "ccm" ''
-      unset DO_NOT_TRACK DISABLE_TELEMETRY CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC DISABLE_GROWTHBOOK
-      exec "$HOME/.local/bin/claude" \
-        --dangerously-skip-permissions \
-        --remote-control dotfiles \
-        --continue \
-        --add-dir "$HOME/.dotfiles" \
-        "$@"
-    '')
+    (pkgs.writeShellApplication {
+      name = "ccm";
+      bashOptions = [ ];
+      text = ''
+        unset DO_NOT_TRACK DISABLE_TELEMETRY CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC DISABLE_GROWTHBOOK
+        exec "$HOME/.local/bin/claude" \
+          --dangerously-skip-permissions \
+          --remote-control dotfiles \
+          --continue \
+          --add-dir "$HOME/.dotfiles" \
+          "$@"
+      '';
+    })
 
     # t3-pair: one-time pairing link for a new phone or browser, from an ssh shell. The usual way is
     # the t3pair.gapul.net page (launchd.agents.t3-pair-page), which also shows the QR.
-    (pkgs.writeShellScriptBin "t3-pair" ''
-      exec "$HOME/.local/bin/t3" auth pairing create --ttl 5m --base-url https://t3.gapul.net "$@"
-    '')
-    # The same for the T3 Code server on mvrx-nolang-dev (launchd.agents.t3code-mvrx-tunnel).
-    (pkgs.writeShellScriptBin "t3-pair-mvrx" ''
-      exec ${mvrxSsh} '~/.local/bin/t3 auth pairing create --ttl 5m --base-url https://t3-mvrx.gapul.net'
-    '')
+    (pkgs.writeShellApplication {
+      name = "t3-pair";
+      bashOptions = [ ];
+      text = ''
+        exec "$HOME/.local/bin/t3" auth pairing create --ttl 5m --base-url https://t3.gapul.net "$@"
+      '';
+    })
+    # The same for the T3 Code server on sean (launchd.agents.t3code-sean-tunnel).
+    (pkgs.writeShellApplication {
+      name = "t3-pair-sean";
+      bashOptions = [ ];
+      # The quoted ~ is for the remote shell to expand.
+      excludeShellChecks = [ "SC2088" ];
+      text = ''
+        exec ${seanSsh} '~/.local/bin/t3 auth pairing create --ttl 5m --base-url https://t3-sean.gapul.net'
+      '';
+    })
 
     # aac-matrix-approve: `aac listen` runs this for each credential request (AAC_APPROVAL_COMMAND,
     # set above) and sends the credential only on the approver's ✅ in the ask approvals room.
-    (pkgs.writers.writePython3Bin "aac-matrix-approve" { flakeIgnore = [ "E501" ]; } (
-      builtins.readFile ../../configs/aac/aac-matrix-approve.py
-    ))
+    (import ../lib/bun-script.nix { inherit pkgs; } {
+      name = "aac-matrix-approve";
+      src = ../../configs/aac;
+      main = "aac-matrix-approve.ts";
+    })
     # The default for bare `claude` lives in claudeRemoteControlDefault in the let block. Putting it in
     # home.packages loses on PATH — on this machine ~/.local/bin (3rd) comes before
     # /etc/profiles/per-user/gapul/bin (7th), so the real ~/.local/bin/claude shadows the wrapper and it
@@ -189,16 +210,9 @@ in
       || echo "warning: Claude settings merge failed; left untouched" >&2
   '';
 
-  # launchd does not create the parent of StandardOutPath, and the dashboard agent's log moved out
-  # of the (now deleted) project directory into XDG state.
-  home.activation.manabiStateDir = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    run /bin/mkdir -p "${config.home.homeDirectory}/.local/state/manabi"
-  '';
-
-  # Same for the t3code agents' logs.
-  home.activation.t3codeStateDir = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    run /bin/mkdir -p "${config.xdg.stateHome}/t3code"
-  '';
+  # (~/.local/state/manabi and ~/.local/state/t3code, the agents' log directories, are created by
+  #  home.activation.launchdLogDirs in home/common.nix like every other agent's log parent.
+  #  hosts/macmini.nix's manabi-daily-review daemon logs into the same manabi directory.)
 
   # glances, the box's own metrics endpoint (the homelab dashboard scrapes it). Was a hand-written
   # plist; same spec, just declared. Bound to 0.0.0.0 because the scrape comes from the homeserver,
@@ -239,20 +253,36 @@ in
     enable = true;
     config = {
       ProgramArguments = [
-        "${pkgs.writeShellScript "claude-remote-control" ''
-          unset DO_NOT_TRACK DISABLE_TELEMETRY CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC DISABLE_GROWTHBOOK
-          export PATH="$HOME/.local/bin:${config.home.profileDirectory}/bin:/run/current-system/sw/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
-          cd "$HOME"
-          exec "$HOME/.local/bin/claude" remote-control \
-            --name "macmini" \
-            --spawn same-dir \
-            --capacity 4 \
-            --permission-mode bypassPermissions
-        ''}"
+        (lib.getExe (
+          pkgs.writeShellApplication {
+            name = "claude-remote-control";
+            bashOptions = [ ];
+            # No errexit: a failed cd carries on from the current directory, as before.
+            excludeShellChecks = [ "SC2164" ];
+            text = ''
+              unset DO_NOT_TRACK DISABLE_TELEMETRY CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC DISABLE_GROWTHBOOK
+              # Remote Control needs the claude.ai (subscription) login, not the setup-token: with
+              # CLAUDE_CODE_OAUTH_TOKEN set it refuses ("only available with claude.ai subscriptions").
+              # That login lives in the Keychain item keyed by CLAUDE_CONFIG_DIR
+              # ("Claude Code-credentials-<hash of the dir>"). Without the variable claude reads the
+              # default-dir item instead, which has been dead since 2026-10-17, and the job crash-looped.
+              unset CLAUDE_CODE_OAUTH_TOKEN
+              export CLAUDE_CONFIG_DIR="${config.xdg.configHome}/claude"
+              export PATH="$HOME/.local/bin:${config.home.profileDirectory}/bin:/run/current-system/sw/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+              cd "$HOME"
+              exec "$HOME/.local/bin/claude" remote-control \
+                --name "macmini" \
+                --spawn same-dir \
+                --capacity 4 \
+                --permission-mode bypassPermissions
+            '';
+          }
+        ))
       ];
       RunAtLoad = true;
       KeepAlive = true;
-      ThrottleInterval = 30;
+      # A login failure exits at once; retrying every 30 s only fills the log (94k lines by 10/28).
+      ThrottleInterval = 300;
       ProcessType = "Standard";
       LowPriorityIO = true;
       Nice = 5;
@@ -277,11 +307,19 @@ in
     enable = true;
     config = {
       ProgramArguments = [
-        "${pkgs.writeShellScript "herdr-server" ''
-          export PATH="${config.home.profileDirectory}/bin:/run/current-system/sw/bin:/usr/bin:/bin:/usr/sbin:/sbin"
-          cd "$HOME"
-          exec herdr server
-        ''}"
+        (lib.getExe (
+          pkgs.writeShellApplication {
+            name = "herdr-server";
+            bashOptions = [ ];
+            # No errexit: a failed cd carries on from the current directory, as before.
+            excludeShellChecks = [ "SC2164" ];
+            text = ''
+              export PATH="${config.home.profileDirectory}/bin:/run/current-system/sw/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+              cd "$HOME"
+              exec herdr server
+            '';
+          }
+        ))
       ];
       RunAtLoad = true;
       KeepAlive = true;
@@ -355,14 +393,13 @@ in
   };
 
   # t3pair.gapul.net: mints a one-time pairing link and its QR on demand. The script only answers the
-  # homeserver's Caddy (Authelia in front). Runs the same python as photon-proxy, which
+  # homeserver's Caddy (Authelia in front). Runs the same bun as photon-proxy, which
   # hosts/macmini.nix already admits through the firewall.
   launchd.agents.t3-pair-page = {
     enable = true;
     config = {
-      ProgramArguments = [
-        pkgs.python3.interpreter
-        "${../../configs/macmini/t3-pair-page.py}"
+      ProgramArguments = bunRun.argv ++ [
+        "${../../configs/macmini/t3-pair-page.ts}"
       ];
       EnvironmentVariables.T3_PAIR_QRENCODE = lib.getExe pkgs.qrencode;
       RunAtLoad = true;
@@ -383,20 +420,28 @@ in
     enable = true;
     config = {
       ProgramArguments = [
-        "${pkgs.writeShellScript "t3code-update" ''
-          set -eu
-          export PATH="/usr/bin:/bin:/usr/sbin:/sbin"
-          t3="$HOME/.local/bin/t3"
-          before="$(/usr/bin/readlink "$t3" 2>/dev/null || true)"
-          if [ -x "$t3" ]; then
-            "$t3" update --channel nightly --yes
-          else
-            /usr/bin/curl -fsSL https://t3.codes/install.sh | T3CODE_CHANNEL=nightly /bin/sh
-          fi
-          if [ "$(/usr/bin/readlink "$t3")" != "$before" ]; then
-            /bin/launchctl kickstart -k "gui/$(/usr/bin/id -u)/org.nix-community.home.t3code"
-          fi
-        ''}"
+        (lib.getExe (
+          pkgs.writeShellApplication {
+            name = "t3code-update";
+            bashOptions = [
+              "errexit"
+              "nounset"
+            ];
+            text = ''
+              export PATH="/usr/bin:/bin:/usr/sbin:/sbin"
+              t3="$HOME/.local/bin/t3"
+              before="$(/usr/bin/readlink "$t3" 2>/dev/null || true)"
+              if [ -x "$t3" ]; then
+                "$t3" update --channel nightly --yes
+              else
+                /usr/bin/curl -fsSL https://t3.codes/install.sh | T3CODE_CHANNEL=nightly /bin/sh
+              fi
+              if [ "$(/usr/bin/readlink "$t3")" != "$before" ]; then
+                /bin/launchctl kickstart -k "gui/$(/usr/bin/id -u)/org.nix-community.home.t3code"
+              fi
+            '';
+          }
+        ))
       ];
       RunAtLoad = true;
       StartCalendarInterval = [
@@ -413,15 +458,15 @@ in
     };
   };
 
-  # T3 Code on the work machine mvrx-nolang-dev, where the herdr sessions there moved to. The server
+  # T3 Code on sean, where the herdr sessions there moved to. The server
   # runs on that machine and listens only on its own loopback (configs/bin/remote-bootstrap installs
   # the units). This tunnel brings it to :3775 here, and clients reach it as
-  # https://t3-mvrx.gapul.net (homeserver Caddy → :3775), the same way as t3.gapul.net. /usr/bin/ssh
+  # https://t3-sean.gapul.net (homeserver Caddy → :3775), the same way as t3.gapul.net. /usr/bin/ssh
   # is Apple-signed, so the firewall admits the listener.
-  launchd.agents.t3code-mvrx-tunnel = {
+  launchd.agents.t3code-sean-tunnel = {
     enable = true;
     config = {
-      ProgramArguments = lib.splitString " " mvrxSsh ++ [
+      ProgramArguments = lib.splitString " " seanSsh ++ [
         "-N"
         "-o"
         "ExitOnForwardFailure=yes"
@@ -436,8 +481,8 @@ in
       KeepAlive = true;
       ThrottleInterval = 30;
       ProcessType = "Background";
-      StandardOutPath = "${config.xdg.stateHome}/t3code/mvrx-tunnel.log";
-      StandardErrorPath = "${config.xdg.stateHome}/t3code/mvrx-tunnel.log";
+      StandardOutPath = "${config.xdg.stateHome}/t3code/sean-tunnel.log";
+      StandardErrorPath = "${config.xdg.stateHome}/t3code/sean-tunnel.log";
     };
   };
 
@@ -449,11 +494,17 @@ in
     enable = true;
     config = {
       ProgramArguments = [
-        "${pkgs.writeShellScript "geekfeed" ''
-          repo="$HOME/Developer/github.com/gapul/geekfeed"
-          [ -x "$repo/publish.sh" ] || exit 0
-          exec "$repo/publish.sh" --research
-        ''}"
+        (lib.getExe (
+          pkgs.writeShellApplication {
+            name = "geekfeed";
+            bashOptions = [ ];
+            text = ''
+              repo="$HOME/Developer/github.com/gapul/geekfeed"
+              [ -x "$repo/publish.sh" ] || exit 0
+              exec "$repo/publish.sh" --research
+            '';
+          }
+        ))
       ];
       StartCalendarInterval = [
         {
@@ -491,26 +542,32 @@ in
     enable = true;
     config = {
       ProgramArguments = [
-        "${pkgs.writeShellScript "vision-ocr" ''
-          src="$HOME/Developer/github.com/gapul/personal-tools/vision-ocr"
-          bin="$HOME/.local/share/vision-ocr/vision-ocr"
-          if [ ! -f "$src/server.py" ]; then
-            sleep 600
-            exit 0
-          fi
-          if [ ! -x "$bin" ] || [ "$src/vision-ocr.swift" -nt "$bin" ]; then
-            mkdir -p "$(dirname "$bin")"
-            /usr/bin/xcrun swiftc -O "$src/vision-ocr.swift" -o "$bin" || {
-              sleep 60
-              exit 1
-            }
-          fi
-          [ -x /opt/homebrew/bin/tailscale ] &&
-            /opt/homebrew/bin/tailscale serve --bg --https=8930 http://127.0.0.1:8930 >/dev/null 2>&1
-          export VISION_OCR_BIN="$bin"
-          export VISION_OCR_PUBLIC_URL=https://macmini.tail079f44.ts.net:8930
-          exec ${pkgs.python3}/bin/python3 "$src/server.py" --port 8930
-        ''}"
+        (lib.getExe (
+          pkgs.writeShellApplication {
+            name = "vision-ocr";
+            bashOptions = [ ];
+            text = ''
+              src="$HOME/Developer/github.com/gapul/personal-tools/vision-ocr"
+              bin="$HOME/.local/share/vision-ocr/vision-ocr"
+              if [ ! -f "$src/server.py" ]; then
+                sleep 600
+                exit 0
+              fi
+              if [ ! -x "$bin" ] || [ "$src/vision-ocr.swift" -nt "$bin" ]; then
+                mkdir -p "$(dirname "$bin")"
+                /usr/bin/xcrun swiftc -O "$src/vision-ocr.swift" -o "$bin" || {
+                  sleep 60
+                  exit 1
+                }
+              fi
+              [ -x /opt/homebrew/bin/tailscale ] &&
+                /opt/homebrew/bin/tailscale serve --bg --https=8930 http://127.0.0.1:8930 >/dev/null 2>&1
+              export VISION_OCR_BIN="$bin"
+              export VISION_OCR_PUBLIC_URL=https://macmini.tail079f44.ts.net:8930
+              exec ${pkgs.python3}/bin/python3 "$src/server.py" --port 8930
+            '';
+          }
+        ))
       ];
       RunAtLoad = true;
       KeepAlive = true;
@@ -539,42 +596,52 @@ in
   launchd.agents.aac-listen =
     let
       path = "${config.home.profileDirectory}/bin:/etc/profiles/per-user/${config.home.username}/bin:/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin:/usr/bin:/bin:/usr/sbin:/sbin";
-      run = pkgs.writeShellScript "aac-listen-run" ''
-        export PATH="${path}"
-        pw="$HOME/.config/aac/bw-master-password"
-        if ! session=$(bw unlock --raw --passwordfile "$pw" 2>/dev/null) || [ -z "$session" ]; then
-          url="$HOME/.config/ntfy/url"
-          tok="$HOME/.config/ntfy/token"
-          if [ -r "$url" ] && [ -r "$tok" ]; then
-            /usr/bin/curl -fsS --max-time 15 \
-              -H "Authorization: Bearer $(cat "$tok")" \
-              -H "Title: aac listen (macmini)" \
-              -H "Tags: warning" \
-              -d "bw unlock に失敗したので aac listen を起動できない" "$(cat "$url")" >/dev/null 2>&1 || true
+      run = pkgs.writeShellApplication {
+        name = "aac-listen-run";
+        bashOptions = [ ];
+        text = ''
+          export PATH="${path}"
+          pw="$HOME/.config/aac/bw-master-password"
+          if ! session=$(bw unlock --raw --passwordfile "$pw" 2>/dev/null) || [ -z "$session" ]; then
+            url="$HOME/.config/ntfy/url"
+            tok="$HOME/.config/ntfy/token"
+            if [ -r "$url" ] && [ -r "$tok" ]; then
+              /usr/bin/curl -fsS --max-time 15 \
+                -H "Authorization: Bearer $(cat "$tok")" \
+                -H "Title: aac listen (macmini)" \
+                -H "Tags: warning" \
+                -d "bw unlock に失敗したので aac listen を起動できない" "$(cat "$url")" >/dev/null 2>&1 || true
+            fi
+            echo "bw unlock failed"
+            sleep 60
+            exit 1
           fi
-          echo "bw unlock failed"
-          sleep 60
-          exit 1
-        fi
-        export BW_SESSION="$session"
-        bw sync >/dev/null 2>&1 || true
-        export AAC_APPROVAL_COMMAND=aac-matrix-approve
-        exec aac listen
-      '';
+          export BW_SESSION="$session"
+          bw sync >/dev/null 2>&1 || true
+          export AAC_APPROVAL_COMMAND=aac-matrix-approve
+          exec aac listen
+        '';
+      };
     in
     {
       enable = true;
       config = {
         ProgramArguments = [
-          "${pkgs.writeShellScript "aac-listen-start" ''
-            export PATH="${path}"
-            [ -r "$HOME/.config/aac/bw-master-password" ] || exit 0
-            # Running, or still unlocking: leave it.
-            pgrep -qf '^aac listen' && exit 0
-            pgrep -qf 'bash .*aac-listen-run' && exit 0
-            tmux -L aac kill-server 2>/dev/null
-            tmux -L aac -f /dev/null new-session -d -s aac -x 200 -y 50 ${run}
-          ''}"
+          (lib.getExe (
+            pkgs.writeShellApplication {
+              name = "aac-listen-start";
+              bashOptions = [ ];
+              text = ''
+                export PATH="${path}"
+                [ -r "$HOME/.config/aac/bw-master-password" ] || exit 0
+                # Running, or still unlocking: leave it.
+                pgrep -qf '^aac listen' && exit 0
+                pgrep -qf 'bash .*aac-listen-run' && exit 0
+                tmux -L aac kill-server 2>/dev/null
+                tmux -L aac -f /dev/null new-session -d -s aac -x 200 -y 50 ${lib.getExe run}
+              '';
+            }
+          ))
         ];
         RunAtLoad = true;
         StartInterval = 300;
@@ -585,39 +652,45 @@ in
     };
 
   launchd.agents.dotfiles-pull = import ../lib/launchd-agent.nix {
-    program = "${pkgs.writeShellScript "dotfiles-pull" ''
-      export PATH="${config.home.profileDirectory}/bin:/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
-      repo="$HOME/.dotfiles"
-      notify() {
-        url="$HOME/.config/ntfy/url"
-        tok="$HOME/.config/ntfy/token"
-        [ -r "$url" ] && [ -r "$tok" ] || return 0
-        /usr/bin/curl -fsS --max-time 15 \
-          -H "Authorization: Bearer $(cat "$tok")" \
-          -H "Title: dotfiles (macmini)" \
-          -H "Priority: high" \
-          -H "Tags: warning" \
-          -d "$1" "$(cat "$url")" >/dev/null 2>&1 || true
+    program = lib.getExe (
+      pkgs.writeShellApplication {
+        name = "dotfiles-pull";
+        bashOptions = [ ];
+        text = ''
+          export PATH="${config.home.profileDirectory}/bin:/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+          repo="$HOME/.dotfiles"
+          notify() {
+            url="$HOME/.config/ntfy/url"
+            tok="$HOME/.config/ntfy/token"
+            [ -r "$url" ] && [ -r "$tok" ] || return 0
+            /usr/bin/curl -fsS --max-time 15 \
+              -H "Authorization: Bearer $(cat "$tok")" \
+              -H "Title: dotfiles (macmini)" \
+              -H "Priority: high" \
+              -H "Tags: warning" \
+              -d "$1" "$(cat "$url")" >/dev/null 2>&1 || true
+          }
+          cd "$repo" || exit 0
+          # lazy.nvim はこの機械でも lazy-lock.json を書き換える (2026-09-26 に rebuild のたびに
+          # 再現)。母艦側の更新と重なると autostash が衝突して作業ツリーが壊れたまま残り、以後の
+          # pull が全部見送りになる。lock の正は母艦なので、ここでは黙って捨てる。
+          git checkout --quiet -- configs/editors/nvim/lazy-lock.json 2>/dev/null || true
+          if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
+            notify "作業ツリーが汚れているので pull を見送った"
+            exit 0
+          fi
+          git fetch --quiet origin main || { notify "fetch に失敗"; exit 1; }
+          if git merge-base --is-ancestor origin/main HEAD; then
+            exit 0
+          fi
+          # pull の中で post-merge フックが just rebuild まで走る。
+          if ! git pull --ff-only --quiet; then
+            notify "pull / rebuild に失敗"
+            exit 1
+          fi
+        '';
       }
-      cd "$repo" || exit 0
-      # lazy.nvim はこの機械でも lazy-lock.json を書き換える (2026-09-26 に rebuild のたびに
-      # 再現)。母艦側の更新と重なると autostash が衝突して作業ツリーが壊れたまま残り、以後の
-      # pull が全部見送りになる。lock の正は母艦なので、ここでは黙って捨てる。
-      git checkout --quiet -- configs/editors/nvim/lazy-lock.json 2>/dev/null || true
-      if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
-        notify "作業ツリーが汚れているので pull を見送った"
-        exit 0
-      fi
-      git fetch --quiet origin main || { notify "fetch に失敗"; exit 1; }
-      if git merge-base --is-ancestor origin/main HEAD; then
-        exit 0
-      fi
-      # pull の中で post-merge フックが just rebuild まで走る。
-      if ! git pull --ff-only --quiet; then
-        notify "pull / rebuild に失敗"
-        exit 1
-      fi
-    ''}";
+    );
     schedule = [
       {
         Hour = 5;
@@ -669,8 +742,7 @@ in
   xdg.configFile."claude/skills/anki-add".source = agentState "claude/skills/anki-add";
   xdg.configFile."claude/skills/gapul-writing-voice".source =
     agentState "claude/skills/gapul-writing-voice";
-  xdg.configFile."claude/skills/mvrx-weekly-report".source =
-    agentState "claude/skills/mvrx-weekly-report";
+  xdg.configFile."claude/skills/sean-weekly".source = agentState "claude/skills/sean-weekly";
   xdg.configFile."claude/skills/step-by-step-tutor".source =
     agentState "claude/skills/step-by-step-tutor";
 

@@ -1,5 +1,6 @@
 {
   config,
+  osConfig,
   lib,
   pkgs,
   ...
@@ -13,160 +14,90 @@
 # Colors are shared via configs/theme/palettes.json (rose-pine) as SSO ([[theme]]).
 let
   # Hold a lock for the lifetime of drun so repeated gestures cannot stack windows.
-  launcher = pkgs.writeShellScript "wofi-launcher" ''
-    set -eu
-    mode="''${1:-open}"
-    pattern='^${pkgs.wofi}/bin/wofi --show drun$'
-    case "$mode" in
-      close)
-        ${pkgs.procps}/bin/pkill -u "$UID" -f "$pattern" || true
-        exit 0
-        ;;
-      toggle)
-        if ${pkgs.procps}/bin/pkill -u "$UID" -f "$pattern"; then
+  launcher = pkgs.writeShellApplication {
+    name = "wofi-launcher";
+    bashOptions = [
+      "errexit"
+      "nounset"
+    ];
+    text = ''
+      mode="''${1:-open}"
+      pattern='^${pkgs.wofi}/bin/wofi --show drun$'
+      case "$mode" in
+        close)
+          ${pkgs.procps}/bin/pkill -u "$UID" -f "$pattern" || true
           exit 0
-        fi
-        ;;
-      open) ;;
-      *) exit 2 ;;
-    esac
-    exec ${pkgs.util-linux}/bin/flock -n -E 0 "$XDG_RUNTIME_DIR/wofi-drun.lock" \
-      ${pkgs.wofi}/bin/wofi --show drun
-  '';
+          ;;
+        toggle)
+          if ${pkgs.procps}/bin/pkill -u "$UID" -f "$pattern"; then
+            exit 0
+          fi
+          ;;
+        open) ;;
+        *) exit 2 ;;
+      esac
+      exec ${pkgs.util-linux}/bin/flock -n -E 0 "$XDG_RUNTIME_DIR/wofi-drun.lock" \
+        ${pkgs.wofi}/bin/wofi --show drun
+    '';
+  };
   c = import ../lib/theme.nix; # c.base / c.text / c.iris ... (hex without leading #)
   wmSession = "${import ../lib/wm-session.nix { inherit pkgs; }}/bin/wm-session";
   # An app icon for the bar: a sketchybar-app-font ligature, in that font (see the workspaces
   # module in programs.waybar below).
   appIcon = name: "<span font_family='sketchybar-app-font' size='large' rise='-3500'>${name}</span>";
-  # Which app gets which icon: a regex on the Hyprland window class / niri app_id, and the
-  # sketchybar-app-font ligature. Shared by both compositors' workspace modules; the first match
-  # wins, anything unmatched gets :default:.
-  appIconRules = [
-    {
-      app = "firefox.*";
-      icon = ":firefox:";
-    }
-    {
-      app = "tor-browser.*";
-      icon = ":tor_browser:";
-    }
-    {
-      app = "google-chrome.*|chromium.*";
-      icon = ":google_chrome:";
-    }
-    {
-      app = "com.mitchellh.ghostty";
-      icon = ":ghostty:";
-    }
-    {
-      app = "kitty";
-      icon = ":kitty:";
-    }
-    {
-      app = "com.t3tools.T3Code";
-      icon = ":t3_code:";
-    }
-    {
-      app = "[Cc]ode.*";
-      icon = ":code:";
-    }
-    {
-      app = "steam.*";
-      icon = ":steam:";
-    }
-    {
-      app = "discord.*";
-      icon = ":discord:";
-    }
-    {
-      app = "obsidian";
-      icon = ":obsidian:";
-    }
-    {
-      app = "Slack";
-      icon = ":slack:";
-    }
-    {
-      app = "org.telegram.desktop";
-      icon = ":telegram:";
-    }
-    {
-      app = "mpv";
-      icon = ":mpv:";
-    }
-    {
-      app = "com.obsproject.Studio";
-      icon = ":obsstudio:";
-    }
-    {
-      app = "Bitwarden";
-      icon = ":bit_warden:";
-    }
-    {
-      app = "org.keepassxc.KeePassXC";
-      icon = ":kee_pass_x_c:";
-    }
-    {
-      app = "org.pwmt.zathura";
-      icon = ":preview:";
-    }
-    {
-      app = "calibre.*";
-      icon = ":calibre:";
-    }
-    {
-      app = "thunar|org.gnome.Nautilus|yazi";
-      icon = ":finder:";
-    }
-    {
-      app = "Bitwig.*";
-      icon = ":bitwig_studio:";
-    }
-    {
-      app = "anki";
-      icon = ":anki:";
-    }
-    {
-      app = "kicad.*";
-      icon = ":kicad:";
-    }
-    {
-      app = "Godot.*";
-      icon = ":godot:";
-    }
-    {
-      app = "mscore|MuseScore.*";
-      icon = ":musescore:";
-    }
-    {
-      app = "zotero|Zotero";
-      icon = ":zotero:";
-    }
-    {
-      app = "blender";
-      icon = ":blender:";
-    }
-    {
-      app = "gimp.*";
-      icon = ":gimp:";
-    }
-    {
-      app = "org.inkscape.Inkscape";
-      icon = ":inkscape:";
-    }
-    {
-      app = "libreoffice.*";
-      icon = ":libreoffice:";
-    }
-    {
-      app = "thunderbird";
-      icon = ":thunderbird:";
-    }
-    {
-      app = "pavucontrol|nm-connection-editor|blueman-manager|nwg-displays|net.gapul.settings";
-      icon = ":gear:";
-    }
-  ];
+  # Which app gets which icon, shared by both compositors' workspace modules: worked out at
+  # build time from the installed .desktop files and the font's own app-name map
+  # (lib/app-icons.nix). These overrides are only what the names cannot settle; anything
+  # unmatched gets :default:.
+  appIcons = import ../lib/app-icons.nix {
+    inherit pkgs;
+    desktopDirs = [
+      "${config.home.path}/share/applications"
+      "${osConfig.system.path}/share/applications"
+    ];
+    span = appIcon "{}";
+    overrides =
+      lib.genAttrs [
+        "writer"
+        "calc"
+        "impress"
+        "draw"
+        "math"
+        "base"
+        "startcenter"
+        "soffice" # the first-run dialog's app_id
+      ] (_: ":libreoffice:")
+      // lib.genAttrs [
+        "org.kicad.kicad"
+        "org.kicad.eeschema"
+        "org.kicad.pcbnew"
+        "org.kicad.gerbview"
+        "org.kicad.pcbcalculator"
+        "org.kicad.bitmap2component"
+        "org.kicad.pleditor"
+      ] (_: ":kicad:")
+      // lib.genAttrs [
+        "calibre-gui"
+        "calibre-ebook-viewer"
+        "calibre-ebook-edit"
+        "calibre-lrfviewer"
+      ] (_: ":calibre:") # the font maps "calibre" to a generic book
+      # The GUI settings tools as one gear, like niri floats them (home/niri.nix).
+      // lib.genAttrs [
+        "org.pulseaudio.pavucontrol"
+        "nm-connection-editor"
+        "blueman-manager"
+        "org.blueman.Manager" # its GtkApplication id, which is its app_id
+        "nwg-displays"
+        "net.gapul.settings"
+      ] (_: ":gear:")
+      // {
+        "com.obsproject.Studio" = ":obsstudio:"; # "OBS Studio"
+        "brave-origin" = ":brave_browser:"; # "Brave Origin"
+        "org.godotengine.Godot4.7" = ":godot:"; # "Godot Engine 4.7"
+        "com.t3tools.T3Code" = ":t3_code:"; # its .desktop file is the app's own, outside Nix
+      };
+  };
 
   # niri's workspace module shows only the number, so under niri each workspace is its own
   # custom module, "N <icons>" like Hyprland's: custom/niri-ws-N runs this with N. It lists the
@@ -177,12 +108,12 @@ let
   niriWorkspace = pkgs.writers.writePython3 "niri-workspace" { flakeIgnore = [ "E501" ]; } ''
     import json
     import os
-    import re
     import subprocess
     import sys
 
-    RULES = json.loads(${builtins.toJSON (builtins.toJSON appIconRules)})
-    SPAN = "<span font_family='sketchybar-app-font' size='large' rise='-3500'>{}</span>"
+    with open("${appIcons}/icons.json") as f:
+        ICONS = json.load(f)
+    SPAN = ${builtins.toJSON (appIcon "{}")}
 
 
     def niri(what):
@@ -191,10 +122,8 @@ let
 
 
     def icon(app_id):
-        for rule in RULES:
-            if re.fullmatch(rule["app"], app_id or ""):
-                return rule["icon"]
-        return ":default:"
+        app_id = app_id or ""
+        return ICONS["exact"].get(app_id) or ICONS["lower"].get(app_id.lower()) or ":default:"
 
 
     n = int(sys.argv[1])
@@ -252,26 +181,30 @@ let
   # Super+/ : every keybind, searchable. Read from Hyprland itself (so it cannot go stale),
   # with the modifier mask turned back into names, plus the few things xremap adds that
   # Hyprland cannot see.
-  cheatsheet = pkgs.writeShellScript "keys-cheatsheet" ''
-    {
-      printf '%s\n' \
-        "left Ctrl / left Alt Super" \
-        "Copilot, then key    Super+key (within 1.5 s)" \
-        "Copilot, G           game mode on/off (left Ctrl back to Ctrl)" \
-        "Caps Lock            Ctrl" \
-        ""
-      ${pkgs.hyprland}/bin/hyprctl binds -j | ${pkgs.jq}/bin/jq -r '
-        def mods: [
-          (if .modmask / 64 % 2 >= 1 then "Super" else empty end),
-          (if .modmask / 4 % 2 >= 1 then "Ctrl" else empty end),
-          (if .modmask / 8 % 2 >= 1 then "Alt" else empty end),
-          (if .modmask / 1 % 2 >= 1 then "Shift" else empty end)
-        ];
-        .[] | select(.key != "") |
-        ((mods + [.key]) | join("+")) + "\t" + .dispatcher + (if .arg != "" then " " + .arg else "" end)
-      ' | ${pkgs.coreutils}/bin/sort | ${pkgs.coreutils}/bin/expand -t 22
-    } | ${pkgs.wofi}/bin/wofi --dmenu --prompt keys --width 760 --height 560 >/dev/null
-  '';
+  cheatsheet = pkgs.writeShellApplication {
+    name = "keys-cheatsheet";
+    bashOptions = [ ];
+    text = ''
+      {
+        printf '%s\n' \
+          "left Ctrl / left Alt Super" \
+          "Copilot, then key    Super+key (within 1.5 s)" \
+          "Copilot, G           game mode on/off (left Ctrl back to Ctrl)" \
+          "Caps Lock            Ctrl" \
+          ""
+        ${pkgs.hyprland}/bin/hyprctl binds -j | ${pkgs.jq}/bin/jq -r '
+          def mods: [
+            (if .modmask / 64 % 2 >= 1 then "Super" else empty end),
+            (if .modmask / 4 % 2 >= 1 then "Ctrl" else empty end),
+            (if .modmask / 8 % 2 >= 1 then "Alt" else empty end),
+            (if .modmask / 1 % 2 >= 1 then "Shift" else empty end)
+          ];
+          .[] | select(.key != "") |
+          ((mods + [.key]) | join("+")) + "\t" + .dispatcher + (if .arg != "" then " " + .arg else "" end)
+        ' | ${pkgs.coreutils}/bin/sort | ${pkgs.coreutils}/bin/expand -t 22
+      } | ${pkgs.wofi}/bin/wofi --dmenu --prompt keys --width 760 --height 560 >/dev/null
+    '';
+  };
 
   # The bar's own scripts (the items ported from the mac's sketchybar, configs/wm/sketchybar).
   # A TUI in a new ghostty window, as the mac's open_tui.sh does.
@@ -285,12 +218,16 @@ let
   # Input source: fcitx5 reports 2 when an input method is active (SKK here), 1 when the
   # keys go through as they are. SKK's own kana/latin mode is not visible from outside, so
   # this shows "▽あ" for SKK on and "A" for off, like the mac's ▽ marker.
-  imeStatus = pkgs.writeShellScript "bar-ime" ''
-    case "$(${pkgs.fcitx5}/bin/fcitx5-remote 2>/dev/null)" in
-      2) printf '{"text":"▽あ","class":"skk","tooltip":"SKK"}\n' ;;
-      *) printf '{"text":"A","class":"latin","tooltip":"direct input"}\n' ;;
-    esac
-  '';
+  imeStatus = pkgs.writeShellApplication {
+    name = "bar-ime";
+    bashOptions = [ ];
+    text = ''
+      case "$(${pkgs.fcitx5}/bin/fcitx5-remote 2>/dev/null)" in
+        2) printf '{"text":"▽あ","class":"skk","tooltip":"SKK"}\n' ;;
+        *) printf '{"text":"A","class":"latin","tooltip":"direct input"}\n' ;;
+      esac
+    '';
+  };
   # Services that should always be running in the session (the mac's app_guard). A green
   # check when they are, a warning with the names when not; a click restarts the stopped ones.
   guardUnits = [
@@ -304,30 +241,34 @@ let
     "hyprpolkitagent"
     "ssh-tpm-agent.socket" # the service is socket-activated and idle between uses
   ];
-  guard = pkgs.writeShellScript "bar-guard" ''
-    units="${lib.concatStringsSep " " guardUnits}"
-    down=""
-    tip=""
-    for u in $units; do
-      state=$(${pkgs.systemd}/bin/systemctl --user is-active "$u" 2>/dev/null)
-      if [ "$state" = active ]; then
-        tip="$tip✓ $u"
+  guard = pkgs.writeShellApplication {
+    name = "bar-guard";
+    bashOptions = [ ];
+    text = ''
+      units="${lib.concatStringsSep " " guardUnits}"
+      down=""
+      tip=""
+      for u in $units; do
+        state=$(${pkgs.systemd}/bin/systemctl --user is-active "$u" 2>/dev/null)
+        if [ "$state" = active ]; then
+          tip="$tip✓ $u"
+        else
+          tip="$tip✗ $u ($state)"
+          down="$down $u"
+          [ "$1" = fix ] && ${pkgs.systemd}/bin/systemctl --user restart "$u" 2>/dev/null
+        fi
+        tip="$tip
+      "
+      done
+      # One line per unit in the tooltip: JSON wants the newlines as the two characters \n.
+      tip=$(printf '%s' "$tip" | ${pkgs.gnused}/bin/sed -z 's/\n *$//; s/\n */\\n/g')
+      if [ -z "$down" ]; then
+        printf '{"text":"󰄬","class":"ok","tooltip":"%s"}\n' "$tip"
       else
-        tip="$tip✗ $u ($state)"
-        down="$down $u"
-        [ "$1" = fix ] && ${pkgs.systemd}/bin/systemctl --user restart "$u" 2>/dev/null
+        printf '{"text":"󰀦%s","class":"down","tooltip":"%s"}\n' "$down" "$tip"
       fi
-      tip="$tip
-    "
-    done
-    # One line per unit in the tooltip: JSON wants the newlines as the two characters \n.
-    tip=$(printf '%s' "$tip" | ${pkgs.gnused}/bin/sed -z 's/\n *$//; s/\n */\\n/g')
-    if [ -z "$down" ]; then
-      printf '{"text":"󰄬","class":"ok","tooltip":"%s"}\n' "$tip"
-    else
-      printf '{"text":"󰀦%s","class":"down","tooltip":"%s"}\n' "$down" "$tip"
-    fi
-  '';
+    '';
+  };
   # Idle actions that only make sense in front of the machine. With the lid shut it is being
   # used over ssh, and locking or suspending there is what made it look dead: the session
   # goes to hyprlock nobody can dismiss, then hypridle suspends it off the network entirely.
@@ -344,13 +285,15 @@ let
   # hyprshot: that path writes a file, and a cancel makes grim fail before anything is saved.
   # The region goes to satty for arrows, boxes and blur; Enter (or the copy button) puts the
   # result on the clipboard and closes it, Ctrl+S also saves it under ~/Pictures/Screenshots.
-  screenshotRegion = pkgs.writeShellScript "screenshot-region" ''
-    set -euo pipefail
-    geometry=$(${pkgs.slurp}/bin/slurp -d) || exit 0
-    ${pkgs.grim}/bin/grim -g "$geometry" - | ${pkgs.satty}/bin/satty --filename - \
-      --copy-command "${pkgs.wl-clipboard}/bin/wl-copy --type image/png" --early-exit \
-      --init-tool arrow --output-filename "$HOME/Pictures/Screenshots/%Y-%m-%d_%H-%M-%S.png"
-  '';
+  screenshotRegion = pkgs.writeShellApplication {
+    name = "screenshot-region";
+    text = ''
+      geometry=$(${pkgs.slurp}/bin/slurp -d) || exit 0
+      ${pkgs.grim}/bin/grim -g "$geometry" - | ${pkgs.satty}/bin/satty --filename - \
+        --copy-command "${pkgs.wl-clipboard}/bin/wl-copy --type image/png" --early-exit \
+        --init-tool arrow --output-filename "$HOME/Pictures/Screenshots/%Y-%m-%d_%H-%M-%S.png"
+    '';
+  };
   # Hyprland has no settings app of its own, so $mod+comma (Cmd+, on the mac) opens a picker
   # over the per-area tools (Wi-Fi and Bluetooth as TUIs, the rest GUIs). What they change
   # lives outside the store (NetworkManager profiles, PipeWire/WirePlumber state, BlueZ
@@ -358,17 +301,23 @@ let
   # Anything under home-manager's control (GTK theme, keybinds, fonts) stays in nix on
   # purpose: a GUI writing there would either hit a read-only symlink or be reverted on the
   # next switch.
-  settingsMenu = pkgs.writeShellScript "settings-menu" ''
-    set -eu
-    choice=$(printf '%s\n' Sound Wi-Fi Bluetooth Displays \
-      | ${pkgs.wofi}/bin/wofi --dmenu --prompt Settings) || exit 0
-    case "$choice" in
-      Sound) exec ${pkgs.pavucontrol}/bin/pavucontrol ;;
-      Wi-Fi) exec ${wifiTui} ;;
-      Bluetooth) exec ${bluetoothTui} ;;
-      Displays) exec ${pkgs.nwg-displays}/bin/nwg-displays ;;
-    esac
-  '';
+  settingsMenu = pkgs.writeShellApplication {
+    name = "settings-menu";
+    bashOptions = [
+      "errexit"
+      "nounset"
+    ];
+    text = ''
+      choice=$(printf '%s\n' Sound Wi-Fi Bluetooth Displays \
+        | ${pkgs.wofi}/bin/wofi --dmenu --prompt Settings) || exit 0
+      case "$choice" in
+        Sound) exec ${pkgs.pavucontrol}/bin/pavucontrol ;;
+        Wi-Fi) exec ${wifiTui} ;;
+        Bluetooth) exec ${bluetoothTui} ;;
+        Displays) exec ${pkgs.nwg-displays}/bin/nwg-displays ;;
+      esac
+    '';
+  };
   # The bar itself (programs.waybar below adds the output and the width).
   bar = {
     layer = "top";
@@ -417,7 +366,7 @@ let
       on-click-right = "${pkgs.systemd}/bin/loginctl lock-session";
     };
     "custom/ime" = {
-      exec = imeStatus;
+      exec = lib.getExe imeStatus;
       return-type = "json";
       interval = 1;
       on-click = "${pkgs.fcitx5}/bin/fcitx5-configtool";
@@ -427,57 +376,87 @@ let
     # /run/tlp/last_pwr starts with the mode as 0 / 1 / 2 and is world-readable; tlp itself needs
     # root, which wheel has without a password (hosts/nixos-laptop.nix).
     "custom/power" = {
-      exec = pkgs.writeShellScript "bar-power" ''
-        read -r mode _ < /run/tlp/last_pwr 2>/dev/null || mode=0
-        manual=""; [ -e /run/tlp/manual_mode ] && manual=" (manual)"
-        case "$mode" in
-          1) printf '{"text":"󰾅","class":"balanced","tooltip":"balanced%s"}\n' "$manual" ;;
-          2) printf '{"text":"󰾆","class":"power-saver","tooltip":"power-saver%s"}\n' "$manual" ;;
-          *) printf '{"text":"󰓅","class":"performance","tooltip":"performance%s"}\n' "$manual" ;;
-        esac
-      '';
+      exec = lib.getExe (
+        pkgs.writeShellApplication {
+          name = "bar-power";
+          bashOptions = [ ];
+          text = ''
+            read -r mode _ < /run/tlp/last_pwr 2>/dev/null || mode=0
+            manual=""; [ -e /run/tlp/manual_mode ] && manual=" (manual)"
+            case "$mode" in
+              1) printf '{"text":"󰾅","class":"balanced","tooltip":"balanced%s"}\n' "$manual" ;;
+              2) printf '{"text":"󰾆","class":"power-saver","tooltip":"power-saver%s"}\n' "$manual" ;;
+              *) printf '{"text":"󰓅","class":"performance","tooltip":"performance%s"}\n' "$manual" ;;
+            esac
+          '';
+        }
+      );
       return-type = "json";
       interval = 10;
       signal = 10;
-      on-click = pkgs.writeShellScript "bar-power-next" ''
-        read -r mode _ < /run/tlp/last_pwr 2>/dev/null || mode=0
-        case "$mode" in 0) next=balanced ;; 1) next=power-saver ;; *) next=performance ;; esac
-        /run/wrappers/bin/sudo ${pkgs.tlp}/bin/tlp "$next" >/dev/null
-        ${pkgs.procps}/bin/pkill -RTMIN+10 -x '\.?waybar(-wrapped)?'
-      '';
-      on-click-right = pkgs.writeShellScript "bar-power-auto" ''
-        /run/wrappers/bin/sudo ${pkgs.tlp}/bin/tlp start >/dev/null
-        ${pkgs.procps}/bin/pkill -RTMIN+10 -x '\.?waybar(-wrapped)?'
-      '';
+      on-click = lib.getExe (
+        pkgs.writeShellApplication {
+          name = "bar-power-next";
+          bashOptions = [ ];
+          text = ''
+            read -r mode _ < /run/tlp/last_pwr 2>/dev/null || mode=0
+            case "$mode" in 0) next=balanced ;; 1) next=power-saver ;; *) next=performance ;; esac
+            /run/wrappers/bin/sudo ${pkgs.tlp}/bin/tlp "$next" >/dev/null
+            ${pkgs.procps}/bin/pkill -RTMIN+10 -x '\.?waybar(-wrapped)?'
+          '';
+        }
+      );
+      on-click-right = lib.getExe (
+        pkgs.writeShellApplication {
+          name = "bar-power-auto";
+          bashOptions = [ ];
+          text = ''
+            /run/wrappers/bin/sudo ${pkgs.tlp}/bin/tlp start >/dev/null
+            ${pkgs.procps}/bin/pkill -RTMIN+10 -x '\.?waybar(-wrapped)?'
+          '';
+        }
+      );
     };
     "custom/guard" = {
-      exec = guard;
+      exec = lib.getExe guard;
       return-type = "json";
       interval = 15;
-      on-click = "${guard} fix";
+      on-click = "${lib.getExe guard} fix";
     };
     # The mac's coffee cup (sketchybar's nosleep): gold while sleep is blocked, grey otherwise.
     # A click toggles keep-awake's `lid` mode (hosts/nixos-laptop.nix): a root inhibitor
     # against sleep, idle and the lid switch, so neither hypridle nor closing the lid
     # suspends. The state is that unit, so `keep-awake on` from ssh shows here too.
     "custom/nosleep" = {
-      exec = pkgs.writeShellScript "bar-nosleep" ''
-        # U+F0176, nf-md-coffee, as UTF-8 bytes: bash's \U escape depends on the locale.
-        cup='\xf3\xb0\x85\xb6'
-        if ${pkgs.systemd}/bin/systemctl is-active --quiet keep-awake; then
-          printf '{"text":"'"$cup"'","class":"on","tooltip":"sleep disabled"}\n'
-        else
-          printf '{"text":"'"$cup"'","class":"off","tooltip":"sleep allowed"}\n'
-        fi
-      '';
+      exec = lib.getExe (
+        pkgs.writeShellApplication {
+          name = "bar-nosleep";
+          bashOptions = [ ];
+          text = ''
+            # U+F0176, nf-md-coffee, as UTF-8 bytes: bash's \U escape depends on the locale.
+            cup='\xf3\xb0\x85\xb6'
+            if ${pkgs.systemd}/bin/systemctl is-active --quiet keep-awake; then
+              printf '{"text":"%b","class":"on","tooltip":"sleep disabled"}\n' "$cup"
+            else
+              printf '{"text":"%b","class":"off","tooltip":"sleep allowed"}\n' "$cup"
+            fi
+          '';
+        }
+      );
       return-type = "json";
       interval = 30;
       signal = 11;
-      on-click = pkgs.writeShellScript "bar-nosleep-toggle" ''
-        export PATH=/run/wrappers/bin:/run/current-system/sw/bin:$PATH
-        if systemctl is-active --quiet keep-awake; then keep-awake off; else keep-awake lid; fi >/dev/null 2>&1
-        ${pkgs.procps}/bin/pkill -RTMIN+11 -x '\.?waybar(-wrapped)?'
-      '';
+      on-click = lib.getExe (
+        pkgs.writeShellApplication {
+          name = "bar-nosleep-toggle";
+          bashOptions = [ ];
+          text = ''
+            export PATH=/run/wrappers/bin:/run/current-system/sw/bin:$PATH
+            if systemctl is-active --quiet keep-awake; then keep-awake off; else keep-awake lid; fi >/dev/null 2>&1
+            ${pkgs.procps}/bin/pkill -RTMIN+11 -x '\.?waybar(-wrapped)?'
+          '';
+        }
+      );
     };
     "hyprland/workspaces" = {
       format = "{id} {windows}";
@@ -490,12 +469,11 @@ let
       # Each window on the workspace as its app's icon. The icons are the ligatures of
       # sketchybar-app-font (the font the SketchyBar rices use: ":firefox:" is the Firefox
       # icon), applied with a Pango span to the icon only. The font also carries a few digits
-      # that are parts of ligatures, so it must not be the label's font. Keys are Hyprland
-      # window classes (regex); anything unmatched gets the generic app glyph.
+      # that are parts of ligatures, so it must not be the label's font. The window-rewrite
+      # rules (window class -> icon) are generated (appIcons above) and come in through the
+      # bars' `include`, which waybar merges into this module; anything unmatched gets the
+      # generic app glyph.
       window-rewrite-default = appIcon ":default:";
-      window-rewrite = lib.listToAttrs (
-        map (r: lib.nameValuePair "class<${r.app}>" (appIcon r.icon)) appIconRules
-      );
     };
   }
   // lib.listToAttrs (
@@ -625,6 +603,7 @@ in
     ./wl-keyboard.nix
     ./waybar-appearance.nix
     ./desktop-appearance.nix
+    ./ghostty.nix # shared with the Mac; initial-window / quit-after-last-window-closed differ per OS
   ];
   # For home/niri.nix, which binds the same scripts.
   _module.args.desktopScripts = { inherit launcher settingsMenu screenshotRegion; };
@@ -661,14 +640,14 @@ in
   # Nerd Font pills and looked out of place, and Wi-Fi was already shown twice. Both are
   # pills in waybar instead (network, bluetooth), which open the full tools on click.
 
-  # nwg-displays writes its result here. The file is created empty on first activation so the
-  # source line never points at nothing (Hyprland shows a config-error banner for that), and is
-  # never overwritten afterwards. Rules for a named output win over the catch-all `monitor`
-  # line in settings, so an empty file simply means "preferred, auto".
-  home.activation.hyprMonitorsConf = config.lib.dag.entryAfter [ "writeBoundary" ] ''
-    run mkdir -p "${config.xdg.configHome}/hypr"
-    [ -e "${config.xdg.configHome}/hypr/monitors.conf" ] || run touch "${config.xdg.configHome}/hypr/monitors.conf"
-  '';
+  # nwg-displays writes its result here. The file is created empty if missing (tmpfiles `f`, run
+  # at activation whenever the rule set changes and at every login) so the source line never
+  # points at nothing (Hyprland shows a config-error banner for that), and is never overwritten
+  # afterwards. Rules for a named output win over the catch-all `monitor` line in settings, so an
+  # empty file simply means "preferred, auto".
+  systemd.user.tmpfiles.rules = [
+    "f ${config.xdg.configHome}/hypr/monitors.conf 0644 - - -"
+  ];
 
   # package = null: use the system Hyprland, HM manages only the config.
   wayland.windowManager.hyprland = {
@@ -717,7 +696,7 @@ in
       {
         mod._var = "SUPER";
         terminal._var = "ghostty";
-        menu._var = "${launcher} toggle";
+        menu._var = "${lib.getExe launcher} toggle";
 
         monitor = [
           {
@@ -780,8 +759,9 @@ in
           };
           decoration = {
             rounding = 8;
+            # Off while window transparency is set aside (2026-10-23); nothing to blur.
             blur = {
-              enabled = true;
+              enabled = false;
               size = 6;
               passes = 2;
             };
@@ -917,14 +897,14 @@ in
           (bind (key "L") (exec "hyprlock")) # manual lock
           (bind (key "C") (exec "cliphist list | wofi --dmenu | cliphist decode | wl-copy")) # paste from history
           (bind (key "period") (exec "wofi-emoji")) # emoji picker, like Cmd+Ctrl+Space on the mac
-          (bind (key "slash") (exec "${cheatsheet}")) # every keybind, searchable
+          (bind (key "slash") (exec (lib.getExe cheatsheet))) # every keybind, searchable
           # Power menu. Three tiles a row with a wide margin, so the tiles are not the whole screen.
           (bind (key "Escape") (
             exec "wlogout --buttons-per-row 3 --margin 240 --column-spacing 16 --row-spacing 16"
           ))
-          (bind (key "comma") (exec "${settingsMenu}")) # settings picker (Cmd+, on the mac)
+          (bind (key "comma") (exec (lib.getExe settingsMenu))) # settings picker (Cmd+, on the mac)
           # screenshot / color picker
-          (bind (key "P") (exec "${screenshotRegion}")) # region -> satty -> clipboard
+          (bind (key "P") (exec (lib.getExe screenshotRegion))) # region -> satty -> clipboard
           (bind (shiftKey "P") (exec "hyprshot -m window -o ${config.xdg.userDirs.pictures}/Screenshots")) # window -> save
           (bind (shiftKey "C") (exec "hyprpicker -a")) # pick a color and copy
           # night light (switch color temperature 4000K / 6500K)
@@ -982,7 +962,7 @@ in
     # nwg-displays writes its result as hyprlang ("monitor=NAME,MODE,POSITION,SCALE[,...]"),
     # which the Lua config cannot `source`; read it here and hand each line to hl.monitor, so
     # a named output still wins over the catch-all above. (The file is created empty on
-    # first activation, see home.activation.hyprMonitorsConf.)
+    # first activation, see systemd.user.tmpfiles.rules above.)
     extraConfig = ''
       do
         local path = (os.getenv("XDG_CONFIG_HOME") or (os.getenv("HOME") .. "/.config")) .. "/hypr/monitors.conf"
@@ -1014,7 +994,7 @@ in
   # lock screen appearance
   # The launcher ($menu, and the cliphist picker). Declared through programs.* rather than
   # home.packages so stylix can write its stylesheet — see home/stylix.nix.
-  xdg.configFile."wofi/launcher".source = launcher;
+  xdg.configFile."wofi/launcher".source = lib.getExe launcher;
   programs.wofi = {
     enable = true;
     settings = {
@@ -1407,10 +1387,12 @@ in
     enable = true;
     systemd.enable = true;
     settings.mainBar = bar // {
+      include = [ "${appIcons}/waybar.json" ];
       output = [ "eDP-1" ];
       width = 1520;
     };
     settings.extBar = bar // {
+      include = [ "${appIcons}/waybar.json" ];
       output = [
         "!eDP-1"
         "*" # star after the exclusions: every other output
@@ -1535,18 +1517,4 @@ in
 
     '';
   };
-
-  # ghostty config from dotfiles (reuses the same configs/terminals/ghostty as darwin).
-  home.file.".config/ghostty".source = ../../configs/terminals/ghostty;
-
-  # The shared config is written for macOS, where ghostty is a login item:
-  # `initial-window = false` plus `quit-after-last-window-closed = false` keep it resident
-  # with no window until one is asked for. On Linux that combination means
-  # `$mod+Return` spawns a process that never maps a window, so the terminal looks broken
-  # while stray ghostty processes pile up. Undo just those two here; the shared config
-  # includes this file last, so these win.
-  home.file.".config/ghostty.local/platform.conf".text = ''
-    initial-window = true
-    quit-after-last-window-closed = true
-  '';
 }

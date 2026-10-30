@@ -112,8 +112,6 @@ let
           -d "$1: $2" \
           "$(cat "${ntfyUrlFile}")" >/dev/null 2>&1 || true
       fi'';
-    # Read only YYYY-MM-DDTHH:MM:SS, regardless of whether fractional seconds are present.
-    parseSnapshotTime = ''$(date -j -f "%Y-%m-%dT%H:%M:%S" "''${latest:0:19}" +%s 2>/dev/null || echo 0)'';
   };
 in
 {
@@ -123,7 +121,7 @@ in
   launchd.agents = {
     # 5:00 backup, followed by the sole repository-wide retention/prune pass.
     restic-backup = import ../lib/launchd-agent.nix {
-      program = "${scripts.backup}";
+      program = lib.getExe scripts.backup;
       schedule = [
         {
           Hour = 5;
@@ -136,7 +134,7 @@ in
 
     # Repository integrity belongs to the always-on control-plane host.
     restic-check = import ../lib/launchd-agent.nix {
-      program = "${scripts.check}";
+      program = lib.getExe scripts.check;
       schedule = [
         {
           Weekday = 0;
@@ -150,7 +148,7 @@ in
 
     # One monitor checks freshness for every host in the shared repository.
     restic-monitor = import ../lib/launchd-agent.nix {
-      program = "${scripts.monitor}";
+      program = lib.getExe scripts.monitor;
       schedule = [
         {
           Hour = 19;

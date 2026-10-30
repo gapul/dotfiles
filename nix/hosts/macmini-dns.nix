@@ -19,6 +19,7 @@
 # is the listen address.
 {
   config,
+  lib,
   pkgs,
   user,
   ...
@@ -53,40 +54,52 @@ let
 
   # Copies what lego issued to a fixed place (its own storage layout is lego's business) and
   # restarts blocky, which reads the files once at start.
-  deployHook = pkgs.writeShellScript "blocky-tls-deploy" ''
-    set -eu
-    install -d -m 0700 ${tlsDir}
-    install -m 0644 "$LEGO_CERT_PATH" ${tlsDir}/cert.pem
-    install -m 0600 "$LEGO_CERT_KEY_PATH" ${tlsDir}/key.pem
-    /bin/launchctl kickstart -k system/org.nixos.blocky
-  '';
+  deployHook = pkgs.writeShellApplication {
+    name = "blocky-tls-deploy";
+    bashOptions = [
+      "errexit"
+      "nounset"
+    ];
+    text = ''
+      install -d -m 0700 ${tlsDir}
+      install -m 0644 "$LEGO_CERT_PATH" ${tlsDir}/cert.pem
+      install -m 0600 "$LEGO_CERT_KEY_PATH" ${tlsDir}/key.pem
+      /bin/launchctl kickstart -k system/org.nixos.blocky
+    '';
+  };
 
   # Gets the cert the first time and renews it from then on, once a day, when under 30 days
   # are left. lego 4 (this nixpkgs) has no command that does both: `run` always orders a new
   # cert, so it only runs while there is none. DNS-01 through Cloudflare, with the token in
   # sops. Propagation is checked against Cloudflare directly: this host's own resolver is the
   # blocky being served.
-  legoRun = pkgs.writeShellScript "lego-dns-cert" ''
-    set -eu
-    CF_DNS_API_TOKEN="$(cat ${config.sops.secrets."cloudflare/api_token".path})"
-    export CF_DNS_API_TOKEN
-    lego=(
-      ${pkgs.lego}/bin/lego
-      --accept-tos --email ${user.gitEmail}
-      --path /var/lib/lego
-      --dns cloudflare --dns.resolvers 1.1.1.1:53
-      --domains dns.gapul.net
-    )
-    issued=/var/lib/lego/certificates/dns.gapul.net
-    if [ -s "$issued.crt" ]; then
-      # A cert lego holds but blocky never got (the hook failed): hand it over now.
-      if [ ! -s ${tlsDir}/cert.pem ]; then
-        LEGO_CERT_PATH="$issued.crt" LEGO_CERT_KEY_PATH="$issued.key" ${deployHook}
+  legoRun = pkgs.writeShellApplication {
+    name = "lego-dns-cert";
+    bashOptions = [
+      "errexit"
+      "nounset"
+    ];
+    text = ''
+      CF_DNS_API_TOKEN="$(cat ${config.sops.secrets."cloudflare/api_token".path})"
+      export CF_DNS_API_TOKEN
+      lego=(
+        ${pkgs.lego}/bin/lego
+        --accept-tos --email ${user.gitEmail}
+        --path /var/lib/lego
+        --dns cloudflare --dns.resolvers 1.1.1.1:53
+        --domains dns.gapul.net
+      )
+      issued=/var/lib/lego/certificates/dns.gapul.net
+      if [ -s "$issued.crt" ]; then
+        # A cert lego holds but blocky never got (the hook failed): hand it over now.
+        if [ ! -s ${tlsDir}/cert.pem ]; then
+          LEGO_CERT_PATH="$issued.crt" LEGO_CERT_KEY_PATH="$issued.key" ${lib.getExe deployHook}
+        fi
+        exec "''${lego[@]}" renew --days 30 --renew-hook ${lib.getExe deployHook}
       fi
-      exec "''${lego[@]}" renew --days 30 --renew-hook ${deployHook}
-    fi
-    exec "''${lego[@]}" run --run-hook ${deployHook}
-  '';
+      exec "''${lego[@]}" run --run-hook ${lib.getExe deployHook}
+    '';
+  };
 
   # The macOS application firewall silently drops incoming connections to binaries it
   # doesn't recognize. Nix binaries are ad-hoc signed, so they hit this every time, and it
@@ -104,26 +117,30 @@ let
   # before the firewall accepts changes, the one-shot `--add` fails silently, and the entry
   # from the previous store path is all that is left: loopback answers, LAN and tailnet do
   # not (found 2026-09-26 after a rebuild had moved blocky to a new store path).
-  launch = pkgs.writeShellScript "blocky-with-firewall" ''
-    fw=/usr/libexec/ApplicationFirewall/socketfilterfw
-    if [ -x "$fw" ]; then
-      (
-        for _ in 1 2 3 4 5 6; do
-          "$fw" --add ${pkgs.blocky}/bin/blocky >/dev/null 2>&1
-          "$fw" --unblockapp ${pkgs.blocky}/bin/blocky >/dev/null 2>&1
-          # ALF keys the rule on the ad-hoc signing identifier, so --listapps keeps showing
-          # the first store path that was ever added, not this one; any blocky entry means
-          # the rule exists.
-          "$fw" --listapps 2>/dev/null | grep -q -- "-blocky-[^/]*/bin/blocky" && exit 0
-          sleep 20
-        done
-      ) &
-    fi
-    if [ -s ${tlsDir}/cert.pem ] && [ -s ${tlsDir}/key.pem ]; then
-      exec ${pkgs.blocky}/bin/blocky --config ${tlsConfigFile}
-    fi
-    exec ${pkgs.blocky}/bin/blocky --config ${configFile}
-  '';
+  launch = pkgs.writeShellApplication {
+    name = "blocky-with-firewall";
+    bashOptions = [ ];
+    text = ''
+      fw=/usr/libexec/ApplicationFirewall/socketfilterfw
+      if [ -x "$fw" ]; then
+        (
+          for _ in 1 2 3 4 5 6; do
+            "$fw" --add ${pkgs.blocky}/bin/blocky >/dev/null 2>&1
+            "$fw" --unblockapp ${pkgs.blocky}/bin/blocky >/dev/null 2>&1
+            # ALF keys the rule on the ad-hoc signing identifier, so --listapps keeps showing
+            # the first store path that was ever added, not this one; any blocky entry means
+            # the rule exists.
+            "$fw" --listapps 2>/dev/null | grep -q -- "-blocky-[^/]*/bin/blocky" && exit 0
+            sleep 20
+          done
+        ) &
+      fi
+      if [ -s ${tlsDir}/cert.pem ] && [ -s ${tlsDir}/key.pem ]; then
+        exec ${pkgs.blocky}/bin/blocky --config ${tlsConfigFile}
+      fi
+      exec ${pkgs.blocky}/bin/blocky --config ${configFile}
+    '';
+  };
 in
 {
   # `command` rather than ProgramArguments: nix-darwin then waits for /nix/store, which macOS 27
@@ -131,7 +148,7 @@ in
   sops.secrets."cloudflare/api_token".sopsFile = ../../secrets/macmini.yaml;
 
   launchd.daemons.lego-dns-cert = {
-    command = "${legoRun}";
+    command = lib.getExe legoRun;
     serviceConfig = {
       RunAtLoad = true;
       StartCalendarInterval = [
@@ -146,7 +163,7 @@ in
   };
 
   launchd.daemons.blocky = {
-    command = "${launch}";
+    command = lib.getExe launch;
     serviceConfig = {
       RunAtLoad = true;
       # Restarts blocky if it exits for any other reason (list download panics, a bad config).

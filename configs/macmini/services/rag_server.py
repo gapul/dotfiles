@@ -1,10 +1,12 @@
 import os
+from typing import Any
+
 os.environ["HF_HUB_OFFLINE"] = "1"
 os.environ.setdefault("PYTORCH_ENABLE_MPS_FALLBACK", "1")
 import torch
 from fastapi import FastAPI
 from pydantic import BaseModel
-from sentence_transformers import SentenceTransformer, CrossEncoder
+from sentence_transformers import CrossEncoder, SentenceTransformer
 
 DEV = "mps" if torch.backends.mps.is_available() else "cpu"
 RURI = os.path.expanduser("~/.local/share/models/rag/ruri-v3-310m")
@@ -14,36 +16,64 @@ emb = SentenceTransformer(RURI, device=DEV)
 rer = CrossEncoder(RERANK, device=DEV)
 app = FastAPI()
 
+
 class EmbReq(BaseModel):
     input: object
     model: str = "ruri-v3-310m"
+
 
 @app.post("/v1/embeddings")
 def embeddings(r: EmbReq):
     texts = r.input if isinstance(r.input, list) else [r.input]
     # Ruri作法: 文書は「文章: 」前置(検索クエリ側はクライアントが「クエリ: 」を付ける想定だが自動判定なしなので文書扱い)
     vecs = emb.encode(texts, normalize_embeddings=True)  # 汎用API=無プレフィックス対称
-    data = [{"object": "embedding", "index": i, "embedding": v.tolist()} for i, v in enumerate(vecs)]
-    return {"object": "list", "data": data, "model": r.model,
-            "usage": {"prompt_tokens": 0, "total_tokens": 0}}
+    data = [
+        {"object": "embedding", "index": i, "embedding": v.tolist()} for i, v in enumerate(vecs)
+    ]
+    return {
+        "object": "list",
+        "data": data,
+        "model": r.model,
+        "usage": {"prompt_tokens": 0, "total_tokens": 0},
+    }
+
 
 class QEmbReq(BaseModel):
     input: object
+
+
 @app.post("/v1/embeddings_query")
 def embeddings_query(r: QEmbReq):
     texts = r.input if isinstance(r.input, list) else [r.input]
-    vecs = emb.encode(["クエリ: " + t for t in texts], normalize_embeddings=True)
-    return {"object": "list", "data": [{"object": "embedding", "index": i, "embedding": v.tolist()} for i, v in enumerate(vecs)]}
+    # input is left as object so pydantic accepts what clients send; in practice str or list[str].
+    vecs = emb.encode(["クエリ: " + t for t in texts], normalize_embeddings=True)  # pyright: ignore[reportOperatorIssue]
+    return {
+        "object": "list",
+        "data": [
+            {"object": "embedding", "index": i, "embedding": v.tolist()} for i, v in enumerate(vecs)
+        ],
+    }
+
 
 class RerankReq(BaseModel):
     query: str
-    documents: list
+    documents: list[Any]  # bare `list` to pydantic: any element type
     top_n: int = 0
+
+
 @app.post("/rerank")
 def rerank(r: RerankReq):
     scores = rer.predict([[r.query, d] for d in r.documents])
-    ranked = sorted([{"index": i, "document": r.documents[i], "relevance_score": float(scores[i])} for i in range(len(r.documents))], key=lambda x: -x["relevance_score"])
-    return {"results": ranked[:r.top_n] if r.top_n else ranked}
+    ranked = sorted(
+        [
+            {"index": i, "document": r.documents[i], "relevance_score": float(scores[i])}
+            for i in range(len(r.documents))
+        ],
+        key=lambda x: -x["relevance_score"],
+    )
+    return {"results": ranked[: r.top_n] if r.top_n else ranked}
+
 
 @app.get("/health")
-def health(): return {"status": "ok", "device": DEV}
+def health():
+    return {"status": "ok", "device": DEV}

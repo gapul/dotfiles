@@ -6,12 +6,14 @@ gathers what the slides are written from:
 
   1. every message of the last week in the (IS-CPU6) Discord server, read with the bot token;
   2. the meeting minutes: HackMD notes linked in #meeting, fetched through /download (public);
-  3. the GitHub digest that gapul's launchd agent writes (soudan-github-digest.py), since only
+  3. the GitHub digest that gapul's launchd agent writes (soudan-github-digest.ts), since only
      gapul can read the org's private repos.
 
 Installed into $HERMES_HOME/scripts/ by nix-darwin activation (hosts/macmini.nix); Hermes
 refuses scripts outside that directory.
 """
+
+from __future__ import annotations
 
 import datetime as dt
 import json
@@ -21,13 +23,14 @@ import time
 import urllib.error
 import urllib.request
 from pathlib import Path
+from typing import Any
 
 GUILD = "1556901980042035340"
 MEETING = "1559435621284446338"
 PRESENTATION = "1559134355861803069"
 # The team keeps its second core to itself for now: the slides go to the whole class. Nothing
 # about it should reach the model, so it is cut here, before the prompt — #cpu2 is that core's
-# channel, and anything else that names it is dropped by keyword. soudan-slides-publish.py
+# channel, and anything else that names it is dropped by keyword. soudan-slides-publish.ts
 # checks the finished slides against the same words before they are pushed.
 SECRET_CHANNELS = {"1562094197119393872"}
 SECRET = re.compile(
@@ -40,9 +43,11 @@ DAYS = 8
 JST = dt.timezone(dt.timedelta(hours=9))
 # 進捗報告3 was presented on Tue 2026-10-20; one report a week after that.
 REPORT_BASE = (dt.date(2026, 10, 20), 3)
+# A Discord API object (channel, message, user) as decoded from JSON.
+ApiObject = dict[str, Any]
 
 
-def bot_token():
+def bot_token() -> str:
     env = Path(os.environ.get("HERMES_HOME", Path.home() / ".hermes")) / ".env"
     m = re.search(r"^DISCORD_BOT_TOKEN=(.*)$", env.read_text(), re.M)
     return m.group(1).strip().strip("\"'")
@@ -51,7 +56,8 @@ def bot_token():
 TOKEN = bot_token()
 
 
-def api(path):
+def api(path: str) -> Any:
+    """GET a Discord API path: the decoded JSON, or None where the bot may not look."""
     req = urllib.request.Request(
         "https://discord.com/api/v10" + path,
         headers={"Authorization": "Bot " + TOKEN, "User-Agent": "DiscordBot (soudan, 1)"},
@@ -70,13 +76,14 @@ def api(path):
     raise RuntimeError("rate limited: " + path)
 
 
-def drop_secret_lines(text):
+def drop_secret_lines(text: str) -> str:
     """Drop every line that names the second core, with the lines nested under it.
 
     Nesting is by indentation for list items and by level for markdown headings, which is how
     the HackMD minutes and the GitHub digest are laid out.
     """
-    out, skip = [], None  # skip = ("indent", n) or ("heading", level)
+    out: list[str] = []
+    skip: tuple[str, int] | None = None  # ("indent", n) or ("heading", level)
     for line in text.splitlines():
         stripped = line.lstrip()
         heading = re.match(r"(#+)\s", stripped)
@@ -95,14 +102,15 @@ def drop_secret_lines(text):
     return "\n".join(out)
 
 
-def snowflake(t):
+def snowflake(t: dt.datetime) -> str:
     return str((int(t.timestamp() * 1000) - 1420070400000) << 22)
 
 
-def messages_since(channel, since):
-    out, after = [], snowflake(since)
+def messages_since(channel: str, since: dt.datetime) -> list[ApiObject]:
+    out: list[ApiObject] = []
+    after = snowflake(since)
     while True:
-        page = api(f"/channels/{channel}/messages?limit=100&after={after}")
+        page: list[ApiObject] | None = api(f"/channels/{channel}/messages?limit=100&after={after}")
         if not page:
             break
         page.sort(key=lambda m: int(m["id"]))
@@ -113,7 +121,7 @@ def messages_since(channel, since):
     return out
 
 
-def fmt(m):
+def fmt(m: ApiObject) -> str:
     when = dt.datetime.fromisoformat(m["timestamp"]).astimezone(JST).strftime("%m/%d %H:%M")
     who = m["author"].get("global_name") or m["author"]["username"]
     text = m["content"]
@@ -124,7 +132,7 @@ def fmt(m):
     return f"- {when} {who}: {text} {att}".rstrip()
 
 
-def main():
+def main() -> None:
     now = dt.datetime.now(JST)
     since = now - dt.timedelta(days=DAYS)
 
@@ -135,12 +143,13 @@ def main():
     print(f"次の発表日(推定): {target:%Y-%m-%d}(火)、回数(推定): 進捗報告{number}")
     print()
 
-    channels = api(f"/guilds/{GUILD}/channels") or []
+    channels: list[ApiObject] = api(f"/guilds/{GUILD}/channels") or []
     by_id = {c["id"]: c for c in channels}
-    threads = (api(f"/guilds/{GUILD}/threads/active") or {}).get("threads", [])
+    active: ApiObject = api(f"/guilds/{GUILD}/threads/active") or {}
+    threads: list[ApiObject] = active.get("threads", [])
 
     print("# Discord (IS-CPU6) の直近の発言")
-    hackmd = []
+    hackmd: list[str] = []
     for c in sorted(channels, key=lambda c: (c.get("parent_id") or "", c["position"])) + threads:
         if c["type"] not in (0, 5, 11, 12):
             continue
@@ -166,7 +175,8 @@ def main():
 
     # Minutes are written ahead of the meeting, so the newest link may be older than the window.
     if not hackmd:
-        for m in api(f"/channels/{MEETING}/messages?limit=50") or []:
+        recent: list[ApiObject] = api(f"/channels/{MEETING}/messages?limit=50") or []
+        for m in recent:
             found = re.findall(r"https://hackmd\.io/[^\s>)]+", m["content"])
             if found:
                 hackmd = found[:1]
@@ -184,7 +194,8 @@ def main():
         print()
 
     print("# 前回までの発表資料 (#presentation の PDF)")
-    for m in api(f"/channels/{PRESENTATION}/messages?limit=50") or []:
+    presented: list[ApiObject] = api(f"/channels/{PRESENTATION}/messages?limit=50") or []
+    for m in presented:
         for a in m.get("attachments", []):
             if a["filename"].lower().endswith(".pdf"):
                 print(f"- {m['timestamp'][:10]} {a['filename']}")

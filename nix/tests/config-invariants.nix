@@ -33,7 +33,7 @@ let
       macminiDarwin.home-manager.users.${user.username}.home.packages;
 
   # Whether Claude Code's settings.remote.json matches the main Mac's settings.json is checked by
-  # scripts/check-claude-settings-drift.py. The main Mac's copy is a symlink into ai-agent-state, which
+  # scripts/check-claude-settings-drift.ts. The main Mac's copy is a symlink into ai-agent-state, which
   # breaks once the flake is copied to the store (unreadable in pure eval, both in CI and locally), so it
   # can't be checked inside nix.
 in
@@ -60,15 +60,6 @@ assert lib.assertMsg (
 assert lib.assertMsg (
   builtins.elem "qview" packageNames && !(builtins.elem "qview" caskNames)
 ) "qView must be managed only by brew-nix, not duplicated in Homebrew";
-assert lib.assertMsg
-  (
-    let
-      inherit ((builtins.fromJSON (builtins.readFile ../../configs/theme/fonts.json))) mono;
-      ghosttyCfg = builtins.readFile ../../configs/terminals/ghostty/config;
-    in
-    lib.hasInfix ''font-family = "${mono}"'' ghosttyCfg
-  )
-  "ghostty font-family must match configs/theme/fonts.json (mono) — static-copy consistency of the font SSO";
 pkgs.runCommand "dotfiles-config-invariants" { } ''
   touch "$out"
 ''

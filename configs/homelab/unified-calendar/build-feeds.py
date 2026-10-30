@@ -25,10 +25,11 @@ import os
 import sys
 import urllib.error
 import urllib.request
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
+from typing import Any
 
 import yaml
-from icalendar import Calendar
+from icalendar import Calendar, Component
 
 USER_AGENT = "unified-calendar/1.0 (+https://gapul.net)"
 TIMEOUT = 30
@@ -40,7 +41,7 @@ def fetch(url: str) -> bytes:
         return response.read()
 
 
-def as_datetime(value) -> datetime | None:
+def as_datetime(value: object) -> datetime | None:
     """Normalise DTSTART to an aware datetime so events can be compared.
 
     All-day events carry a `date`, timed ones a `datetime` that may or may not
@@ -49,13 +50,13 @@ def as_datetime(value) -> datetime | None:
     a few stale ones.
     """
     if isinstance(value, datetime):
-        return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+        return value if value.tzinfo else value.replace(tzinfo=UTC)
     if isinstance(value, date):
-        return datetime(value.year, value.month, value.day, tzinfo=timezone.utc)
+        return datetime(value.year, value.month, value.day, tzinfo=UTC)
     return None
 
 
-def in_window(event, start: datetime, end: datetime) -> bool:
+def in_window(event: Component, start: datetime, end: datetime) -> bool:
     dtstart = event.get("DTSTART")
     if dtstart is None:
         return True
@@ -69,9 +70,11 @@ def in_window(event, start: datetime, end: datetime) -> bool:
     return start <= moment <= end
 
 
-def load_events(config: dict, window_start: datetime, window_end: datetime) -> list:
+def load_events(
+    config: dict[str, Any], window_start: datetime, window_end: datetime
+) -> list[Component]:
     prefix_summaries = bool(config.get("output", {}).get("prefixSummaries"))
-    events = []
+    events: list[Component] = []
     for source in config.get("calendars", []):
         if not source.get("enabled", True):
             continue
@@ -82,7 +85,8 @@ def load_events(config: dict, window_start: datetime, window_end: datetime) -> l
             print(f"warning: {name}: fetch failed: {err}", file=sys.stderr)
             continue
         try:
-            calendar = Calendar.from_ical(raw)
+            # Bytes are what from_ical takes at runtime too; the stub only names str.
+            calendar = Calendar.from_ical(raw)  # pyright: ignore[reportArgumentType]
         except ValueError as err:
             print(f"warning: {name}: parse failed: {err}", file=sys.stderr)
             continue
@@ -103,7 +107,7 @@ def load_events(config: dict, window_start: datetime, window_end: datetime) -> l
     return events
 
 
-def build_feed(events: list, feed: dict, timezone_name: str) -> bytes:
+def build_feed(events: list[Component], feed: dict[str, Any], timezone_name: str) -> bytes:
     calendar = Calendar()
     calendar.add("prodid", "-//gapul//unified-calendar//JA")
     calendar.add("version", "2.0")
@@ -138,7 +142,7 @@ def main() -> int:
         config = yaml.safe_load(handle)
 
     window = config.get("output", {}).get("window", {})
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     window_start = now - timedelta(days=int(window.get("pastDays", 60)))
     window_end = now + timedelta(days=int(window.get("futureDays", 400)))
     timezone_name = config.get("output", {}).get("timezone", "UTC")
@@ -151,7 +155,7 @@ def main() -> int:
         return 1
 
     os.makedirs(out_dir, exist_ok=True)
-    written = set()
+    written: set[str] = set()
     for feed in config.get("feeds", []):
         token = os.environ.get(feed["tokenEnv"], "").strip()
         if not token:

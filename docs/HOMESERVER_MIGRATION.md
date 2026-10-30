@@ -67,18 +67,10 @@ they become independent vhosts. Same shape as the existing ones: type A, proxied
 
 The repointing is the bigger half, and it can only be done after the migration. Every
 `*.gapul.net` currently points at Caddy's tailnet address, `100.64.125.107` on CT103, and moving
-Caddy to the new host changes that address. Editing twenty-odd records by hand guarantees
-missing one and finding out later that a single service does not connect, so there is a script.
-
-```sh
-export CF_API_TOKEN=...   # Zone:DNS:Edit
-scripts/cf-repoint-records.sh --from 100.64.125.107 --to <the new host's tailnet IP>
-# check the listing, then
-scripts/cf-repoint-records.sh --from 100.64.125.107 --to <the new host's tailnet IP> --apply
-```
-
-It is a dry run by default. `tailscale ip -4` gives the new host's address. The certificate is a
-wildcard, but the DNS records are not, so each one is needed individually.
+Caddy to the new host changes that address. This was done once, with a
+one-off script (`scripts/cf-repoint-records.sh`, removed after the move; it is in git history).
+Today `scripts/check-dns-drift.ts` compares the records with the Caddy vhosts and `--apply`
+creates or fixes them, so a future move only needs the new address in the Nix side.
 
 ### 1.4 Checking restic still works
 
@@ -187,8 +179,8 @@ extracting, always confirm with `tar -tzf` that `data/certificates/` is in there
 
 ### 2.3.1 VM105's disk image, as insurance
 
-The company L2TP tunnel is declared in `nix/homelab/vpn-relay.nix`, but CI cannot verify it —
-the sandbox cannot reach the company endpoint. If the native version does not come up first
+The L2TP tunnel is declared in `nix/homelab/vpn-relay.nix`, but CI cannot verify it —
+the sandbox cannot reach the far endpoint. If the native version does not come up first
 time, work stops, so keep the whole old VM disk.
 
 ```sh
@@ -296,7 +288,7 @@ first placement is by hand; once the key exists they move into `secrets/homelab.
 | `/var/lib/secrets/mosquitto-ha.password` | Just the hash part, in mosquitto_passwd format |
 | `/var/lib/secrets/gatus.env` | `NTFY_TOPIC` and `NTFY_TOKEN`. gatus does not start without them |
 | `/var/lib/secrets/<stack>.env`, eight of them | The keys are listed in `nix/homelab/README.md` |
-| `/var/lib/secrets/mvrx/`, six files | The company tunnel, also in `nix/homelab/README.md` |
+| `/var/lib/secrets/l2tp/`, six files | The L2TP tunnel, also in `nix/homelab/README.md` |
 
 Some of the `<stack>.env` key names differ from the old `.env` files. paperless's
 `PAPERLESS_SECRET` is `PAPERLESS_SECRET_KEY` inside the container, and miniflux needs the whole
@@ -399,8 +391,8 @@ journalctl -p err -b --no-pager | tail -40
 - Is Syncthing's device ID still `Y72TVZZ-...`? If it changed, the restore in 2.4 failed.
 - Does `restic snapshots` from the Mac show a new snapshot tagged homeserver?
 - Does `dig @<the new host> example.com` answer? Blocky owns port 53.
-- The company tunnel: `systemctl status mvrx-vpn`, `ip -4 addr show ppp0`, and whether
-  `ssh mvrx-nolang-dev` works over the tailnet. This is the one thing CI could not verify, so
+- The L2TP tunnel: `systemctl status l2tp-vpn`, `ip -4 addr show ppp0`, and whether
+  `ssh sean` works over the tailnet. This is the one thing CI could not verify, so
   if it fails, boot the disk image from 2.3.1 under libvirt and get work moving first.
 - Does Jellyfin's hardware transcoding work? On bare metal `/dev/dri` shows up without effort.
 

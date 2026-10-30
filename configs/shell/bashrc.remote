@@ -7,7 +7,7 @@
 # source 行は configs/bin/nssh が初回接続時に追記する (marker 付き・冪等)。
 #
 # ここに置いてよいのは「どのリモートでも成り立つ汎用設定」だけ。
-# このリポジトリは public なので、勤務先の内部構成 (サービス名・ポート・
+# このリポジトリは public なので、接続先の内部構成 (サービス名・ポート・
 # ビルド戦略など) を書いてはいけない。
 # 案件固有のコマンドは案件ごとの private repo に置き、~/.devkits/<案件>/ に
 # clone する (末尾の devkit ループが拾う)。
@@ -35,7 +35,7 @@ fi
 
 # agent が生きているか。応答しない socket (転送元の agent が固まったまま残った /tmp/ssh-*/agent.*)
 # に当たると ssh-add -l は永久に待ち、ログインシェルごと止まる。T3 Code のサーバーは起動時に
-# `bash -ilc` で PATH を読むので、mvrx-nolang-dev で起動できなくなった (2026-10-04)。
+# `bash -ilc` で PATH を読むので、sean で起動できなくなった (2026-10-04)。
 _dotfiles_agent_alive() {
     if command -v timeout >/dev/null 2>&1; then
         SSH_AUTH_SOCK="$1" timeout 2 ssh-add -l >/dev/null 2>&1

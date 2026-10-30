@@ -136,6 +136,8 @@ in
   # rEFInd would have to be signed by hand to keep Secure Boot). "max" draws it at the panel's
   # native resolution instead of the firmware's 80x25 text mode, so it is small and sharp.
   boot.loader.systemd-boot.consoleMode = "max";
+  # No kernel command line editing at the menu (lanzaboote copies this into its loader.conf).
+  boot.loader.systemd-boot.editor = false;
   boot.lanzaboote = {
     enable = true;
     # Where sbctl places keys. Match the `sbctl create-keys` default.
@@ -153,7 +155,6 @@ in
     themePackages = [ (pkgs.adi1090x-plymouth-themes.override { selected_themes = [ "rings" ]; }) ];
   };
   boot.consoleLogLevel = 3;
-  boot.initrd.verbose = false;
   # The newest stable kernel rather than nixpkgs' LTS default: Lunar Lake is recent hardware,
   # and nothing here builds an out-of-tree module (no ZFS) that would pin the version.
   boot.kernelPackages = pkgs.linuxPackages_latest;
@@ -191,14 +192,21 @@ in
   # choice between NixOS and Windows a graphical menu (icons on the same ASCII wallpaper as
   # the desktop, the rEFInd-minimal theme's flat icons). Nothing in nixpkgs' refind module is
   # used, because that module lays out its own unsigned kernels, which Secure Boot would
-  # refuse. Instead the activation script below copies rEFInd's binary to the ESP, signs it
+  # refuse. Instead the script below copies rEFInd's binary to the ESP, signs it
   # with the sbctl keys (the same db key that signs the UKIs, so PCR 7 and the LUKS TPM
   # binding are unchanged), writes a refind.conf whose NixOS entry points at the newest
   # lanzaboote UKI (with the safe specialisation and older generations in its submenu, and
   # systemd-boot itself as the last resort), and puts rEFInd first in the firmware's boot
   # order. systemd-boot stays installed and second in the order: if the firmware ever
   # refuses rEFInd, the next entry is the old menu.
-  system.activationScripts.refind =
+  #
+  # It runs right after lanzaboote's install, not as an activation script: refind.conf has to
+  # be written from the UKIs lanzaboote has just laid out. `nh os switch` activates first
+  # (switch-to-configuration test) and installs the bootloader after (... boot), so an
+  # activation script always saw the previous generation as the newest; once that generation
+  # was garbage-collected, rEFInd's NixOS entry pointed at a UKI that was gone ("Invalid
+  # loader file!", 2026-10-27).
+  system.build.installBootLoader =
     let
       theme = pkgs.fetchFromGitHub {
         owner = "EvanPurkhiser";
@@ -276,103 +284,118 @@ in
         # refind.log at the ESP root, for reading what it loaded and why after a boot.
         log_level 1
       '';
-      install = pkgs.writeShellScript "refind-install" ''
-        set -eu
-        PATH=${
-          lib.makeBinPath [
-            pkgs.coreutils
-            pkgs.gnused
-            pkgs.gnugrep
-            pkgs.util-linux
-            pkgs.sbctl
-            pkgs.efibootmgr
-          ]
-        }
-        esp=/boot
-        d=$esp/EFI/refind
-        mkdir -p "$d/theme/icons"
-
-        # The binary, signed. Re-signed only when rEFInd's package changes or the signature
-        # is missing, so a normal switch does not touch it.
-        if ! cmp -s ${pkgs.refind}/share/refind/refind_x64.efi "$d/refind_x64.efi.unsigned" 2>/dev/null; then
-          cp ${pkgs.refind}/share/refind/refind_x64.efi "$d/refind_x64.efi.unsigned"
-          cp "$d/refind_x64.efi.unsigned" "$d/refind_x64.efi"
-        fi
-        # (sbctl verify exits 0 either way; its check mark is the answer.)
-        if ! sbctl verify "$d/refind_x64.efi" 2>&1 | grep -q '✓'; then
-          sbctl sign "$d/refind_x64.efi" >/dev/null
-        fi
-
-        # Theme and background.
-        cp ${icons}/selection_big.png ${icons}/selection_small.png "$d/theme/"
-        cp ${icons}/*.png "$d/theme/icons/"
-        rm -f "$d/theme/icons/selection_big.png" "$d/theme/icons/selection_small.png"
-        cp ${background} "$d/theme/background.png"
-        mkdir -p "$d/fonts"
-        cp ${pkgs.refind}/share/refind/fonts/ubuntu-mono-24.png "$d/fonts/"
-
-        # The NixOS entry: the newest generation's UKI, its safe specialisation, the three
-        # generations before it, and systemd-boot (every generation, the old text menu).
-        gen_of() { basename "$1" | sed -n 's/^nixos-generation-\([0-9]*\)-.*/\1/p'; }
-        date_of() { date -d "@$(stat -c %Y "/nix/var/nix/profiles/system-$1-link" 2>/dev/null || echo 0)" '+%Y-%m-%d %H:%M'; }
-        latest=""; latest_n=0
-        for f in "$esp"/EFI/Linux/nixos-generation-*.efi; do
-          case "$f" in *specialisation*) continue ;; esac
-          n=$(gen_of "$f"); [ "$n" -gt "$latest_n" ] && { latest_n=$n; latest=$f; }
-        done
-        [ -n "$latest" ] || { echo "refind: no UKI in $esp/EFI/Linux" >&2; exit 0; }
-        {
-          cat ${conf}
-          echo
-          echo "menuentry \"NixOS\" {"
-          # (a stanza's icon path is relative to the volume root, unlike icons_dir and banner)
-          echo "    icon EFI/refind/theme/icons/os_nixos.png"
-          # use_graphics_for only covers entries rEFInd found itself; a stanza needs these
-          # two, or it drops to a text screen ("Starting nixos-generation-...") before the
-          # kernel. ostype also picks the Linux handling for the entry.
-          echo "    ostype Linux"
-          echo "    graphics on"
-          echo "    loader /EFI/Linux/$(basename "$latest")"
-          safe=$(ls "$esp"/EFI/Linux/nixos-generation-$latest_n-specialisation-safe-*.efi 2>/dev/null | head -n 1)
-          [ -n "$safe" ] && {
-            echo "    submenuentry \"Generation $latest_n, safe mode (no Hyprland, no GPU)\" {"
-            echo "        loader /EFI/Linux/$(basename "$safe")"
-            echo "    }"
+      install = pkgs.writeShellApplication {
+        name = "refind-install";
+        bashOptions = [
+          "errexit"
+          "nounset"
+        ];
+        # The generation listing below relies on ls (sorted, newest first) over the ESP's
+        # nixos-generation-N-*.efi names, which never contain spaces or newlines.
+        excludeShellChecks = [
+          "SC2010"
+          "SC2012"
+        ];
+        text = ''
+          PATH=${
+            lib.makeBinPath [
+              pkgs.coreutils
+              pkgs.gnused
+              pkgs.gnugrep
+              pkgs.util-linux
+              pkgs.sbctl
+              pkgs.efibootmgr
+            ]
           }
-          for f in $(ls "$esp"/EFI/Linux/nixos-generation-*.efi | grep -v specialisation | sort -t- -k3,3nr); do
-            n=$(gen_of "$f"); [ "$n" -lt "$latest_n" ] || continue
-            echo "    submenuentry \"Generation $n, $(date_of "$n")\" {"
-            echo "        loader /EFI/Linux/$(basename "$f")"
-            echo "    }"
-          done | head -n 12
-          echo "    submenuentry \"systemd-boot (every generation)\" {"
-          echo "        loader /EFI/systemd/systemd-bootx64.efi"
-          echo "    }"
-          echo "}"
-        } > "$d/refind.conf.new"
-        mv "$d/refind.conf.new" "$d/refind.conf"
+          esp=/boot
+          d=$esp/EFI/refind
+          mkdir -p "$d/theme/icons"
 
-        # Firmware entry, first in the order. systemd-boot's entry stays as the fallback.
-        dev=$(findmnt -no SOURCE "$esp")
-        disk=/dev/$(lsblk -no PKNAME "$dev")
-        part=$(cat "/sys/class/block/$(basename "$dev")/partition")
-        # (efibootmgr prints "Boot0005* rEFInd<tab>HD(...)": the label ends at a tab.)
-        if ! efibootmgr | grep -q "^Boot[0-9A-F]*\* rEFInd$(printf '\t')"; then
-          efibootmgr -q -c -d "$disk" -p "$part" -L rEFInd -l '\EFI\refind\refind_x64.efi'
-        fi
-        num=$(efibootmgr | sed -n "s/^Boot\([0-9A-F]*\)\* rEFInd$(printf '\t').*/\1/p" | head -n 1)
-        [ -n "$num" ] || { echo "refind: no firmware entry" >&2; exit 0; }
-        order=$(efibootmgr | sed -n 's/^BootOrder: //p')
-        case "$order" in
-          "$num"|"$num,"*) ;;
-          *) efibootmgr -q -o "$num,$(echo "$order" | sed "s/\b$num\b//; s/,,/,/; s/^,//; s/,$//")" ;;
-        esac
-      '';
+          # The binary, signed. Re-signed only when rEFInd's package changes or the signature
+          # is missing, so a normal switch does not touch it.
+          if ! cmp -s ${pkgs.refind}/share/refind/refind_x64.efi "$d/refind_x64.efi.unsigned" 2>/dev/null; then
+            cp ${pkgs.refind}/share/refind/refind_x64.efi "$d/refind_x64.efi.unsigned"
+            cp "$d/refind_x64.efi.unsigned" "$d/refind_x64.efi"
+          fi
+          # (sbctl verify exits 0 either way; its check mark is the answer.)
+          if ! sbctl verify "$d/refind_x64.efi" 2>&1 | grep -q '✓'; then
+            sbctl sign "$d/refind_x64.efi" >/dev/null
+          fi
+
+          # Theme and background.
+          cp ${icons}/selection_big.png ${icons}/selection_small.png "$d/theme/"
+          cp ${icons}/*.png "$d/theme/icons/"
+          rm -f "$d/theme/icons/selection_big.png" "$d/theme/icons/selection_small.png"
+          cp ${background} "$d/theme/background.png"
+          mkdir -p "$d/fonts"
+          cp ${pkgs.refind}/share/refind/fonts/ubuntu-mono-24.png "$d/fonts/"
+
+          # The NixOS entry: the newest generation's UKI, its safe specialisation, the three
+          # generations before it, and systemd-boot (every generation, the old text menu).
+          gen_of() { basename "$1" | sed -n 's/^nixos-generation-\([0-9]*\)-.*/\1/p'; }
+          date_of() { date -d "@$(stat -c %Y "/nix/var/nix/profiles/system-$1-link" 2>/dev/null || echo 0)" '+%Y-%m-%d %H:%M'; }
+          latest=""; latest_n=0
+          for f in "$esp"/EFI/Linux/nixos-generation-*.efi; do
+            case "$f" in *specialisation*) continue ;; esac
+            n=$(gen_of "$f"); [ "$n" -gt "$latest_n" ] && { latest_n=$n; latest=$f; }
+          done
+          [ -n "$latest" ] || { echo "refind: no UKI in $esp/EFI/Linux" >&2; exit 0; }
+          {
+            cat ${conf}
+            echo
+            echo "menuentry \"NixOS\" {"
+            # (a stanza's icon path is relative to the volume root, unlike icons_dir and banner)
+            echo "    icon EFI/refind/theme/icons/os_nixos.png"
+            # use_graphics_for only covers entries rEFInd found itself; a stanza needs these
+            # two, or it drops to a text screen ("Starting nixos-generation-...") before the
+            # kernel. ostype also picks the Linux handling for the entry.
+            echo "    ostype Linux"
+            echo "    graphics on"
+            echo "    loader /EFI/Linux/$(basename "$latest")"
+            safe=$(ls "$esp"/EFI/Linux/nixos-generation-"$latest_n"-specialisation-safe-*.efi 2>/dev/null | head -n 1)
+            [ -n "$safe" ] && {
+              echo "    submenuentry \"Generation $latest_n, safe mode (no Hyprland, no GPU)\" {"
+              echo "        loader /EFI/Linux/$(basename "$safe")"
+              echo "    }"
+            }
+            for f in $(ls "$esp"/EFI/Linux/nixos-generation-*.efi | grep -v specialisation | sort -t- -k3,3nr); do
+              n=$(gen_of "$f"); [ "$n" -lt "$latest_n" ] || continue
+              echo "    submenuentry \"Generation $n, $(date_of "$n")\" {"
+              echo "        loader /EFI/Linux/$(basename "$f")"
+              echo "    }"
+            done | head -n 12
+            echo "    submenuentry \"systemd-boot (every generation)\" {"
+            echo "        loader /EFI/systemd/systemd-bootx64.efi"
+            echo "    }"
+            echo "}"
+          } > "$d/refind.conf.new"
+          mv "$d/refind.conf.new" "$d/refind.conf"
+
+          # Firmware entry, first in the order. systemd-boot's entry stays as the fallback.
+          dev=$(findmnt -no SOURCE "$esp")
+          disk=/dev/$(lsblk -no PKNAME "$dev")
+          part=$(cat "/sys/class/block/$(basename "$dev")/partition")
+          # (efibootmgr prints "Boot0005* rEFInd<tab>HD(...)": the label ends at a tab.)
+          if ! efibootmgr | grep -q "^Boot[0-9A-F]*\* rEFInd$(printf '\t')"; then
+            efibootmgr -q -c -d "$disk" -p "$part" -L rEFInd -l '\EFI\refind\refind_x64.efi'
+          fi
+          num=$(efibootmgr | sed -n "s/^Boot\([0-9A-F]*\)\* rEFInd$(printf '\t').*/\1/p" | head -n 1)
+          [ -n "$num" ] || { echo "refind: no firmware entry" >&2; exit 0; }
+          order=$(efibootmgr | sed -n 's/^BootOrder: //p')
+          case "$order" in
+            "$num"|"$num,"*) ;;
+            *) efibootmgr -q -o "$num,$(echo "$order" | sed "s/\b$num\b//; s/,,/,/; s/^,//; s/,$//")" ;;
+          esac
+        '';
+      };
     in
-    {
-      deps = [ ];
-      text = "${install}";
-    };
+    lib.mkForce (
+      pkgs.writeShellScript "install-bootloader" ''
+        set -e
+        ${config.boot.loader.external.installHook} "$@"
+        ${lib.getExe install}
+      ''
+    );
 
   # No kernel text console on the panel once the greeter is up. Every hand-over of the
   # display (Plymouth to greeter, lock and unlock, suspend and resume, the last second of a
@@ -391,21 +414,27 @@ in
     serviceConfig = {
       Type = "oneshot";
       RemainAfterExit = true;
-      ExecStart = pkgs.writeShellScript "fbcon-unbind" ''
-        for _ in $(seq 1 150); do
-          grep -qs xedrmfb /sys/class/graphics/fb0/name && break
-          sleep 0.1
-        done
-        # ... and for fbcon's own console entry, registered a moment after the framebuffer.
-        for _ in $(seq 1 100); do
-          grep -qs "frame buffer" /sys/class/vtconsole/vtcon*/name && break
-          sleep 0.1
-        done
-        for v in /sys/class/vtconsole/vtcon*; do
-          grep -qs "frame buffer" "$v/name" && echo 0 > "$v/bind"
-        done
-        exit 0
-      '';
+      ExecStart = lib.getExe (
+        pkgs.writeShellApplication {
+          name = "fbcon-unbind";
+          bashOptions = [ ];
+          text = ''
+            for _ in $(seq 1 150); do
+              grep -qs xedrmfb /sys/class/graphics/fb0/name && break
+              sleep 0.1
+            done
+            # ... and for fbcon's own console entry, registered a moment after the framebuffer.
+            for _ in $(seq 1 100); do
+              grep -qs "frame buffer" /sys/class/vtconsole/vtcon*/name && break
+              sleep 0.1
+            done
+            for v in /sys/class/vtconsole/vtcon*; do
+              grep -qs "frame buffer" "$v/name" && echo 0 > "$v/bind"
+            done
+            exit 0
+          '';
+        }
+      );
       # No ExecStop: re-binding the console when the unit stops at shutdown put the text
       # console on screen for the half second before Plymouth's reboot splash.
     };
@@ -422,9 +451,12 @@ in
   # Phase 4-5 of docs/NIXOS_DUALBOOT.md.
   # For swap, avoid a plaintext partition and use zram (in-memory, on encrypted RAM).
   zramSwap.enable = true;
+  # With zram as the only swap, swapping costs a compression rather than a disk read, so the
+  # kernel should prefer it to dropping page cache (the value the zram docs and Fedora use).
+  boot.kernel.sysctl."vm.swappiness" = 180;
 
-  # systemd-based initrd (needed for TPM2 auto-unlock + a modern initrd). Works with lanzaboote.
-  boot.initrd.systemd.enable = true;
+  # The initrd is systemd-based (needed for TPM2 auto-unlock); nixpkgs has removed the scripted
+  # one, so there is no option left to set. Works with lanzaboote.
   # Unlock cryptroot with TPM2 + PIN. After enabling Secure Boot, enroll the key into
   #   sudo systemd-cryptenroll --tpm2-device=auto --tpm2-pcrs=7 --tpm2-with-pin=yes <LUKS partition>
   # for PCR 7 (Secure Boot state) (docs Appendix A). If not enrolled, it falls back to the
@@ -552,9 +584,15 @@ in
       MulticastDNS = "false";
     };
   };
-  # Names on the tailnet's MagicDNS (100.100.100.100) are not resolvable with this; everything
-  # here addresses tailnet hosts by IP or by *.gapul.net already.
   services.tailscale.extraSetFlags = [ "--accept-dns=false" ];
+  # MagicDNS names are still needed: SyncClipboard (home/ios-integration.nix) and the other
+  # `tailscale serve` endpoints on macmini are https://macmini.tail079f44.ts.net:<port>, and the
+  # certificate is for that name, so an IP will not do. A static hosts entry rather than routing
+  # ~tail079f44.ts.net to 100.100.100.100 on tailscale0 (#1255): with --accept-dns=false,
+  # tailscaled still pushes its empty DNS config onto tailscale0 after every major link change
+  # (resume, Wi-Fi switch), which wiped that route within hours (2026-10-23). The tailnet IP is
+  # the same one homeDns already relies on.
+  networking.hosts."100.105.135.49" = [ "macmini.tail079f44.ts.net" ];
   # Once resolved has moved to a public server it stays there for as long as that one answers,
   # past the tailnet coming back. Restart it when a home blocky is reachable again, so the
   # blocklists apply again within a few minutes.
@@ -592,11 +630,17 @@ in
   networking.networkmanager.dispatcherScripts = [
     {
       type = "basic";
-      source = pkgs.writeShellScript "captive-portal-revert" ''
-        if [ "$2" = down ]; then
-          ${pkgs.systemd}/bin/resolvectl revert "$1" 2>/dev/null || true
-        fi
-      '';
+      source = lib.getExe (
+        pkgs.writeShellApplication {
+          name = "captive-portal-revert";
+          bashOptions = [ ];
+          text = ''
+            if [ "$2" = down ]; then
+              ${pkgs.systemd}/bin/resolvectl revert "$1" 2>/dev/null || true
+            fi
+          '';
+        }
+      );
     }
   ];
 
@@ -974,12 +1018,14 @@ in
   systemd.services.avahi-daemon.postStart = ''
     ${pkgs.systemd}/bin/systemctl --user --machine=gapul@.host --no-block try-restart uxplay.service || true
   '';
-  # UxPlay uses fixed ports; accept AirPlay only on the Wi-Fi interface.
+  # UxPlay and RQuickShare use fixed ports; accept them only on the Wi-Fi interface.
+  # 41200 is RQuickShare's, pinned in home/linux-gui.nix.
   networking.firewall.interfaces.wlp0s20f3 = {
     allowedTCPPorts = [
       7000
       7001
       7002
+      41200
     ];
     allowedUDPPorts = [
       7000
@@ -991,12 +1037,36 @@ in
     enable = true;
     alsa.enable = true;
     pulse.enable = true;
+    # Bitwig / REAPER / yabridge talk JACK; PipeWire stands in for jackd, so no separate server.
+    jack.enable = true;
   };
+  # Without rtkit PipeWire's audio thread runs at normal priority and the DAW crackles at small
+  # buffers. The audio-group limits let JACK clients (Bitwig's engine) take SCHED_FIFO directly.
+  security.rtkit.enable = true;
+  security.pam.loginLimits = [
+    {
+      domain = "@audio";
+      item = "rtprio";
+      type = "-";
+      value = "95";
+    }
+    {
+      domain = "@audio";
+      item = "memlock";
+      type = "-";
+      value = "unlimited";
+    }
+  ];
 
   # Bluetooth (keyboard/earphones etc.).
   hardware.bluetooth.enable = true;
   services.blueman.enable = true;
   # LibrePods 0.2.5 ranks SBC above PipeWire's default A2DP (AAC on AirPods).
+  # It also keeps a BLE discovery running with no timeout whenever the AirPods are not
+  # connected, only to show their battery from the case. On this machine that discovery ran
+  # for days, flooding the system bus with device signals until dbus-broker hit UID 1000's
+  # byte quota and dropped every session peer at once (waybar, wireplumber, T3 Code;
+  # 2026-10-27). startScan becomes a no-op; battery still comes over the AAP link once connected.
   nixpkgs.overlays = [
     (_final: prev: {
       librepods = prev.librepods.overrideAttrs (old: {
@@ -1004,6 +1074,8 @@ in
           substituteInPlace media/mediacontroller.cpp \
             --replace-fail 'QStringList profiles = {"a2dp-sink-sbc_xq", "a2dp-sink-sbc", "a2dp-sink"};' \
               'QStringList profiles = {"a2dp-sink", "a2dp-sink-sbc_xq", "a2dp-sink-sbc"};'
+          substituteInPlace ble/blemanager.cpp \
+            --replace-fail 'LOG_DEBUG("Starting BLE scan...");' 'return;'
         '';
       });
     })
@@ -1025,6 +1097,7 @@ in
       "wheel"
       "networkmanager"
       "video"
+      "audio" # realtime limits for the DAW, see security.pam.loginLimits
       # Talking to /dev/tpmrm0 needs the tss group. Required by home/ssh-tpm-agent.nix, which
       # asserts on this rather than failing at runtime with a permission error.
       config.security.tpm2.tssGroup
@@ -1048,9 +1121,25 @@ in
   };
   programs.zsh.enable = true;
 
-  # SSH is public-key only (password auth disabled). Keys follow the Bitwarden-managed policy.
+  # SSH is public-key only. Keys follow the Bitwarden-managed policy.
   services.openssh.enable = true;
   services.openssh.settings.PasswordAuthentication = false;
+  # PasswordAuthentication alone left keyboard-interactive (PAM) open: a client without a key
+  # was offered a password prompt (checked 2026-10-28).
+  services.openssh.settings.KbdInteractiveAuthentication = false;
+  # Only over the tailnet: every client (macmini, the phone) reaches this box at its
+  # 100.111.122.3 address, and a laptop on café Wi-Fi should not answer on 22.
+  services.openssh.openFirewall = false;
+  networking.firewall.interfaces.tailscale0 = {
+    # 1701 is Weylus' page and 9001 its websocket; both are plain HTTP, so tailnet only.
+    allowedTCPPorts = [
+      22
+      1701
+      9001
+    ];
+    # Lan Mouse (DTLS; peers are authorised by certificate fingerprint).
+    allowedUDPPorts = [ 4242 ];
+  };
   # No "Last login" line on ssh logins. That is what ~/.hushlogin was doing here (home/common.nix
   # writes it for macOS' login(1)); with sshd quiet the file can go from this host's home.
   services.openssh.settings.PrintLastLog = false;
@@ -1062,7 +1151,7 @@ in
   #     environment and niri's, and no ~/.claude.json was ever created, so nothing bypasses them.
   #   ~/.terminfo: Ghostty's terminfo for hosts without it. Here ghostty is a system package, so
   #     xterm-ghostty is in /run/current-system/sw/share/terminfo, which TERMINFO_DIRS lists and
-  #     sudo keeps; the compile into ~/.local/share/terminfo is skipped with it.
+  #     sudo keeps; the compiled entries in ~/.local/share/terminfo are skipped with it.
   #   ~/.hushlogin: replaced by PrintLastLog above.
   home-manager.users.${user.username} =
     { lib, ... }:
@@ -1071,7 +1160,7 @@ in
       home.file.".codex".enable = lib.mkForce false;
       home.file.".terminfo".enable = lib.mkForce false;
       home.file.".hushlogin".enable = lib.mkForce false;
-      home.activation.ghosttyTerminfo = lib.mkForce (lib.hm.dag.entryAnywhere "");
+      xdg.dataFile."terminfo".enable = lib.mkForce false;
     };
 
   # sudo without a password for wheel. This box is administered remotely over SSH
@@ -1110,11 +1199,22 @@ in
     gamescopeSession.enable = true;
     remotePlay.openFirewall = true;
     localNetworkGameTransfers.openFirewall = true;
+    # GE-Proton next to Valve's Protons in each game's compatibility menu. Heroic gets the same
+    # build (home/gaming.nix).
+    extraCompatPackages = [ pkgs.proton-ge-bin ];
   };
   programs.gamescope.enable = true;
   programs.gamemode.enable = true;
   # 32-bit userspace GL for older titles and for Proton's 32-bit prefixes.
   hardware.graphics.enable32Bit = true;
+
+  # --- iPad / phone as pen tablet (Weylus) ---
+  # The browser on the tablet streams this screen and sends pen and touch back through uinput.
+  # Ports are opened on tailscale0 only, next to sshd's; openFirewall would open them everywhere.
+  programs.weylus = {
+    enable = true;
+    users = [ user.username ];
+  };
 
   # --- Android apps (waydroid) ---
   # Runs Android in a LXC container against the Wayland compositor, so Android apps appear
@@ -1147,7 +1247,7 @@ in
       # Minimal set to make Hyprland usable from the start.
       # A full rice (keybinds/waybar config/wallpaper) is meant to be moved to home-manager's
       # wayland.windowManager.hyprland and gradually removed from here.
-      ghostty # main terminal (config symlinked in home/hyprland.nix)
+      ghostty # main terminal (config generated by home/ghostty.nix)
       # X11 apps under niri (T3 Code runs on X11, home/t3code-desktop.nix): niri starts it on
       # demand when it finds it on PATH, and sets DISPLAY for its clients.
       xwayland-satellite
@@ -1176,6 +1276,9 @@ in
       hyprshot # screenshot (window/region/screen)
       wlogout # power menu
       wl-gammarelay-rs # control color temperature (night light) via dbus
+
+      # Matrix client that renders custom image reactions and emoji packs (LINE stickers), same as darwin
+      cinny-desktop
     ]
     # ArtCraft's pure-Rust Craft apps, same set as darwin (ArtCraft itself is macOS-only). See pkgs/artcraft-apps.nix.
     ++ pkgs.callPackage ../pkgs/artcraft-apps.nix { };

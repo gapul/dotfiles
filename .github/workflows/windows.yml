@@ -53,3 +53,18 @@ jobs:
         run: |
           Install-Module PSScriptAnalyzer -Force -Scope CurrentUser -SkipPublisherCheck
           Invoke-ScriptAnalyzer -Path windows -Recurse -Severity Warning -EnableExit -Settings windows/PSScriptAnalyzerSettings.psd1
+
+  privacy-upstream:
+    name: windows/privacy declarations vs pinned upstream
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # The check is a Bun script; bun comes from nixpkgs like in the other workflows.
+      - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+        with:
+          diagnostic-endpoint: '' # テレメトリ送信を止める (.github/actions/setup-nix と同じ)
+
+      - name: SHA256 / Win11Debloat args / WinUtil tweak IDs
+        run: nix shell nixpkgs#bun -c windows/privacy/check-upstream.ts

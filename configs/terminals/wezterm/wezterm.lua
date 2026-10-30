@@ -6,7 +6,7 @@
 --
 -- 設計: Ghostty (macOS/Linux のみ) の代わりに Windows native のメインターミナルとして
 -- 採用。クロスプラットフォームなので macOS/Linux でも同じ設定で起動可能。
--- 元 config: configs/terminals/ghostty/config
+-- 元 config: nix/home/ghostty.nix (ghostty の config を生成)
 
 local wezterm = require 'wezterm'
 local config = wezterm.config_builder()

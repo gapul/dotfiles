@@ -9,8 +9,8 @@ here.
 ios/
 ├── apps.tsv          # which apps to install: bundleId, how to get it, how it syncs
 ├── sources.tsv       # the URLs of the AltStore sources, Classic and PAL
-├── apps.sh           # status | verify
-├── test.sh           # self-check for apps.sh, against a fake ideviceinstaller, no device needed
+├── apps.ts           # status | verify
+├── test.sh           # self-check for apps.ts, against a fake ideviceinstaller, no device needed
 ├── shortcuts.sh      # export | status | build for Shortcuts
 ├── shortcuts/        # exported Shortcuts, as XML plist
 └── profiles/
@@ -23,8 +23,8 @@ The contents of the profiles are in `nix/mobile/ios-profiles.nix`.
 ## Apps
 
 ```sh
-./apps.sh status   # the declaration against a USB-connected iPhone. Exits 1 if anything is MISSING
-./apps.sh verify   # checks each declared bundleId still exists on its route, across all three
+./apps.ts status   # the declaration against a USB-connected iPhone. Exits 1 if anything is MISSING
+./apps.ts verify   # checks each declared bundleId still exists on its route, across all three
 ```
 
 Three routes are in use, so the `source` column in `apps.tsv` says which one handles each app.
@@ -77,6 +77,12 @@ declared.
 | IMAP for the Stalwart at home (three mirror mailboxes, `homelab-mail`) | `nix/mobile/ios-profiles.nix`. `just mail-profiles` (`profiles/mail.sh`) fills both mail profiles' passwords from sops; otherwise the device asks on first use |
 | DNS, DoH to the blocky at home (`homelab-dns`) | `nix/mobile/ios-profiles.nix`. NextDNS is retired |
 | The tailnet at home | The Tailscale app installs its own VPN profile |
+| Fonts for scripts iOS cannot render: hentaigana, Tangut, Khitan Small Script, Nushu, CJK Extensions B–J (`font-*`) | `nix/mobile/ios-profiles.nix`. Noto comes from nixpkgs' `noto-fonts`, Plangothic from a pinned release |
+
+The font profiles embed the font files as `<data>`, which `pkgs.formats.plist` cannot write,
+so those go through plistlib instead. `font-plangothic` is about 45 MB. Lockdown Mode refuses
+every profile install, so it has to be off for the install. A font installed this way is certain
+to work in apps with a font picker, such as Pages. Apps without one may or may not fall back to it.
 
 ## Shortcuts
 

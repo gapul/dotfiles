@@ -120,10 +120,6 @@ let
           -d "$1: $2" \
           "$(cat "${ntfyUrlFile}")" >/dev/null 2>&1 || true
       fi'';
-    # The first 19 characters are "YYYY-MM-DDTHH:MM:SS". Timestamps arrive both with and without
-    # fractional seconds, so with `cut -d. -f1` the latter kept its timezone and failed to parse,
-    # and the `|| echo 0` fallback (epoch 0) turned into a bogus "20676 days ago" warning.
-    parseSnapshotTime = ''$(date -j -f "%Y-%m-%dT%H:%M:%S" "''${latest:0:19}" +%s 2>/dev/null || echo 0)'';
   };
 
   # The backup streams the whole set to Drive and must not be reaped mid-flight.
@@ -174,7 +170,7 @@ in
 
   launchd.agents = {
     # daily 13:00 backup
-    restic-backup = agent "${scripts.backup}" [
+    restic-backup = agent (lib.getExe scripts.backup) [
       {
         Hour = 13;
         Minute = 0;

@@ -67,11 +67,6 @@ in
   # (An ollama serve LaunchAgent was here. This machine never held a single model — inference
   #  runs on the mac mini — so it was a resident daemon with nothing to serve.)
 
-  home.activation.cliServiceLogDirs = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    /bin/mkdir -p \
-      "${config.home.homeDirectory}/Library/Logs/Syncthing"
-  '';
-
   # (A resident Playwright MCP server lived here, on 8932, attached over CDP to Lightpanda on
   #  9223. Removed 2026-09-10, having been broken the whole time and unmissed: the MCP entry in
   #  ~/.config/claude/.claude.json pointed at 8931 while the agent listened on 8932, so nothing
@@ -120,9 +115,9 @@ in
     };
   };
 
-  # Reverse tunnel to the work machine (sean 127.0.0.1:2222 -> this Mac's 22); the Host
+  # Reverse tunnel to sean (sean 127.0.0.1:2222 -> this Mac's 22); the Host
   # sean-revtunnel entry in ssh_config carries the forward and the keepalives. Its own
-  # connection rather than a RemoteForward on mvrx-nolang-dev: on the shared mux master the -R
+  # connection rather than a RemoteForward on sean: on the shared mux master the -R
   # is tried once when the master starts, a failure is ignored, and nothing retries it
   # (2026-10-02). A dead link makes ssh exit within ~90s and KeepAlive brings it back.
   # ThrottleInterval: off the network ssh exits immediately, so this is the retry pace.
@@ -161,10 +156,8 @@ in
     };
   };
 
-  # Codex launched via GUI/IDE doesn't read shell startup files, so
-  # also distribute the XDG-aligned Codex home to the launchd user session.
-  home.activation.codexLaunchdEnv = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    /bin/launchctl setenv CODEX_HOME "${config.xdg.dataHome}/codex"
-    /bin/launchctl setenv CODEX_SQLITE_HOME "${config.xdg.stateHome}/codex/sqlite"
-  '';
+  # (Codex launched from the GUI/IDE reads no shell startup files. CODEX_HOME / CODEX_SQLITE_HOME
+  #  reach it through session-env above — they are home.sessionVariables in modules/home/agents.nix —
+  #  which runs at every login and whenever its plist changes. A separate activation-time
+  #  `launchctl setenv` for the same two used to sit here.)
 }

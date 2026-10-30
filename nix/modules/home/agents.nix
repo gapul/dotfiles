@@ -1,6 +1,7 @@
 # AI agents component (ECS: profile). Codex/Claude config, themes, environment variables.
 {
   config,
+  lib,
   pkgs,
   ...
 }:
@@ -37,27 +38,32 @@ in
   # unseen. This PreToolUse hook pushes one through ntfy (~/.config/ntfy/{url,token}, macmini)
   # when an agent starts `aac run`, falling back to agent-notify elsewhere. It never blocks the
   # call. Wired up in the Claude settings (hooks.PreToolUse).
-  home.file.".local/bin/aac-approval-notify".source = pkgs.writeShellScript "aac-approval-notify" ''
-    set -u
-    cmd=$(${pkgs.jq}/bin/jq -r '.tool_input.command // "" | if type == "array" then join(" ") else . end' 2>/dev/null) || exit 0
-    [[ $cmd =~ (^|[[:space:]\;\&\|\(])aac[[:space:]]+run([[:space:]]|$) ]] || exit 0
-    target=$(printf '%s' "$cmd" | ${pkgs.gnugrep}/bin/grep -oE -- '--(domain|id)[= ][^ ]+' | head -n1 | ${pkgs.gnused}/bin/sed -E 's/^--(domain|id)[= ]//')
-    child=""
-    [[ $cmd == *" -- "* ]] && child=''${cmd#* -- }
-    message="''${target:-?} → ''${child:-?}"
-    title="aac: approval pending"
-    ntfy="$HOME/.config/ntfy"
-    if [[ -r $ntfy/url && -r $ntfy/token ]]; then
-      url=$(<"$ntfy/url") token=$(<"$ntfy/token")
-      body=$(${pkgs.jq}/bin/jq -n --arg topic "''${url##*/}" --arg title "$title" --arg message "$message" \
-        '{topic: $topic, title: $title, message: $message, tags: ["key"], priority: 4}')
-      # Detached so the agent's command starts (and reaches `aac listen`) without waiting on the push.
-      (${pkgs.curl}/bin/curl -fsS -m 10 -H "Authorization: Bearer $token" -d "$body" "''${url%/*}" >/dev/null 2>&1 &)
-    elif [[ -x $HOME/.local/bin/agent-notify ]]; then
-      "$HOME/.local/bin/agent-notify" "$title" "$message" </dev/null >/dev/null 2>&1 || true
-    fi
-    exit 0
-  '';
+  home.file.".local/bin/aac-approval-notify".source = lib.getExe (
+    pkgs.writeShellApplication {
+      name = "aac-approval-notify";
+      bashOptions = [ "nounset" ];
+      text = ''
+        cmd=$(${pkgs.jq}/bin/jq -r '.tool_input.command // "" | if type == "array" then join(" ") else . end' 2>/dev/null) || exit 0
+        [[ $cmd =~ (^|[[:space:]\;\&\|\(])aac[[:space:]]+run([[:space:]]|$) ]] || exit 0
+        target=$(printf '%s' "$cmd" | ${pkgs.gnugrep}/bin/grep -oE -- '--(domain|id)[= ][^ ]+' | head -n1 | ${pkgs.gnused}/bin/sed -E 's/^--(domain|id)[= ]//')
+        child=""
+        [[ $cmd == *" -- "* ]] && child=''${cmd#* -- }
+        message="''${target:-?} → ''${child:-?}"
+        title="aac: approval pending"
+        ntfy="$HOME/.config/ntfy"
+        if [[ -r $ntfy/url && -r $ntfy/token ]]; then
+          url=$(<"$ntfy/url") token=$(<"$ntfy/token")
+          body=$(${pkgs.jq}/bin/jq -n --arg topic "''${url##*/}" --arg title "$title" --arg message "$message" \
+            '{topic: $topic, title: $title, message: $message, tags: ["key"], priority: 4}')
+          # Detached so the agent's command starts (and reaches `aac listen`) without waiting on the push.
+          (${pkgs.curl}/bin/curl -fsS -m 10 -H "Authorization: Bearer $token" -d "$body" "''${url%/*}" >/dev/null 2>&1 &)
+        elif [[ -x $HOME/.local/bin/agent-notify ]]; then
+          "$HOME/.local/bin/agent-notify" "$title" "$message" </dev/null >/dev/null 2>&1 || true
+        fi
+        exit 0
+      '';
+    }
+  );
   xdg.dataFile."codex/themes/rose-pine.tmTheme".source = "${rosePineTmThemes}/dist/rose-pine.tmTheme";
   xdg.dataFile."codex/themes/rose-pine-dawn.tmTheme".source =
     "${rosePineTmThemes}/dist/rose-pine-dawn.tmTheme";

@@ -1,6 +1,6 @@
 { pkgs, user, ... }:
 # AMD/Xilinx Vivado 2020.2 for the FPGA coursework (the same version the old Windows side had,
-# see docs/windows-roadmap.md P9-41). Nix only provides the surroundings: the tool itself is
+# kept in the old Windows roadmap as P9-41). Nix only provides the surroundings: the tool itself is
 # installed by hand from AMD's "All OS installer Single-File Download" into installDir, because
 # the download sits behind an AMD login and an export-control form, and at ~40 GB it does not
 # belong in the store anyway.
@@ -72,9 +72,15 @@ in
       name = "vivado";
       desktopName = "Vivado ${version}";
       # A script rather than sh -c: Exec= reserves `$` and quotes, so $HOME can't be written there.
-      exec = "${pkgs.writeShellScript "vivado-launch" ''
-        mkdir -p "$HOME/cpuex" && cd "$HOME/cpuex" && exec /run/current-system/sw/bin/vivado "$@"
-      ''}";
+      exec = "${
+        pkgs.writeShellApplication {
+          name = "vivado-launch";
+          bashOptions = [ ];
+          text = ''
+            mkdir -p "$HOME/cpuex" && cd "$HOME/cpuex" && exec /run/current-system/sw/bin/vivado "$@"
+          '';
+        }
+      }/bin/vivado-launch";
       icon = "${installDir}/Vivado/${version}/doc/images/vivado_logo.png";
       categories = [ "Development" ];
     })

@@ -33,10 +33,10 @@ were dead. gatus and podman both reported them healthy.
   to be paired again.
 - **The tailnet subnet routes had gone unapproved for five days.** homeserver advertised three
   (`192.168.116.0/24`, `192.168.1.0/24`, `10.80.1.0/24`) and none were approved, while
-  `tailscale-router` and `mvrx-relay` — both supposedly gone in the migration — still held
+  `tailscale-router` and `l2tp-relay` — both supposedly gone in the migration — still held
   primary. Deleting the dead nodes has to come before approving, or the traffic is pulled back
   to them anyway. Five machines that no longer physically exist (`caddy`, `pve`,
-  `tailscale-router`, `mvrx-relay`, `mullvad-exit`) were removed, then the three routes were
+  `tailscale-router`, `l2tp-relay`, `mullvad-exit`) were removed, then the three routes were
   approved, and reaching the work development machine directly from the Mac was confirmed on
   both `192.168.1.36:22` and `10.80.1.36:22`. The ProxyJump detour is no longer needed.
 - **homepage could not read services.yaml.** An empty group was left in it, which hit

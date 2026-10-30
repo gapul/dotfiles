@@ -4,9 +4,9 @@
 # 非同期) にフォールバック。rmpc は .lrc の [ar:][ti:][al:][length:] メタで曲にマッチする。
 # MPD を自分で読むので rmpc の env var 名には依存しない。ytmusicapi を使うため mopidy env
 # の python で実行する想定 (auth は ~/.config/mopidy/browser.json)。
+import json
 import os
 import re
-import json
 import socket
 import urllib.parse
 import urllib.request
@@ -16,7 +16,7 @@ AUTH = os.path.expanduser("~/.config/mopidy/browser.json")
 MPD = ("127.0.0.1", 6600)
 
 
-def mpd_currentsong():
+def mpd_currentsong() -> dict[str, str]:
     s = socket.create_connection(MPD, timeout=5)
     s.recv(4096)  # greeting
     s.sendall(b"currentsong\n")
@@ -28,7 +28,7 @@ def mpd_currentsong():
             break
         buf += chunk
     s.close()
-    info = {}
+    info: dict[str, str] = {}
     for line in buf.decode("utf-8", "replace").splitlines():
         if ": " in line:
             k, v = line.split(": ", 1)
@@ -36,23 +36,28 @@ def mpd_currentsong():
     return info
 
 
-def sanitize(name):
+def sanitize(name: str) -> str:
     return re.sub(r"[^\w\- ().]", "_", name)[:80]
 
 
-def lrc_headers(artist, title, album, dur):
+def lrc_headers(artist: str, title: str, album: str, dur: str) -> str:
     h = [f"[ar:{artist}]", f"[ti:{title}]"]
     if album:
         h.append(f"[al:{album}]")
     if dur:
-        h.append(f"[length:{int(dur)//60:02d}:{int(dur)%60:02d}]")
+        secs = int(float(dur))
+        h.append(f"[length:{secs // 60:02d}:{secs % 60:02d}]")
     return "\n".join(h) + "\n"
 
 
-def fetch_lrclib(artist, title, album, dur):
+def fetch_lrclib(artist: str, title: str, album: str, dur: str) -> str | None:
     q = urllib.parse.urlencode(
-        {"artist_name": artist, "track_name": title, "album_name": album or "",
-         "duration": int(dur) if dur else ""}
+        {
+            "artist_name": artist,
+            "track_name": title,
+            "album_name": album or "",
+            "duration": int(float(dur)) if dur else "",
+        }
     )
     try:
         req = urllib.request.Request(
@@ -66,12 +71,13 @@ def fetch_lrclib(artist, title, album, dur):
         return None
 
 
-def fetch_ytmusic(file_uri):
+def fetch_ytmusic(file_uri: str) -> str | None:
     if not file_uri.startswith("ytmusic:track:"):
         return None
     vid = file_uri.split(":")[2]
     try:
         from ytmusicapi import YTMusic
+
         yt = YTMusic(auth=AUTH)
         wp = yt.get_watch_playlist(videoId=vid)
         lid = wp.get("lyrics")
@@ -87,6 +93,8 @@ def main():
     artist = info.get("Artist") or info.get("AlbumArtist") or ""
     title = info.get("Title") or ""
     album = info.get("Album") or ""
+    # MPD's duration is fractional seconds ("233.456"), Time whole seconds: int() alone rejects
+    # the former, hence int(float(dur)) where it is used.
     dur = info.get("duration") or info.get("Time") or ""
     file_uri = info.get("file") or ""
     if not (artist and title):

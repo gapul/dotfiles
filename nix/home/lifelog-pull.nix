@@ -14,15 +14,21 @@ in
     enable = true;
     config = {
       ProgramArguments = [
-        "${pkgs.writeShellScript "lifelog-pull" ''
-          vault="${home}/Documents/notes"
-          [ -d "$vault" ] || exit 0
-          # id_automation, not the Enclave key: no Touch ID for an unattended job, and no agent
-          # (a hung ssh-agent freezes every ssh). No forwards: the macmini Host block has some.
-          exec ${pkgs.rsync}/bin/rsync -a --exclude='*.tmp' \
-            -e "/usr/bin/ssh -o BatchMode=yes -o ConnectTimeout=15 -o IdentityAgent=none -o ClearAllForwardings=yes -i ${home}/.ssh/id_automation" \
-            macmini:.local/share/lifelog/ "$vault/06_lifelog/"
-        ''}"
+        "${
+          pkgs.writeShellApplication {
+            name = "lifelog-pull";
+            bashOptions = [ ];
+            text = ''
+              vault="${home}/Documents/notes"
+              [ -d "$vault" ] || exit 0
+              # id_automation, not the Enclave key: no Touch ID for an unattended job, and no agent
+              # (a hung ssh-agent freezes every ssh). No forwards: the macmini Host block has some.
+              exec ${pkgs.rsync}/bin/rsync -a --exclude='*.tmp' \
+                -e "/usr/bin/ssh -o BatchMode=yes -o ConnectTimeout=15 -o IdentityAgent=none -o ClearAllForwardings=yes -i ${home}/.ssh/id_automation" \
+                macmini:.local/share/lifelog/ "$vault/06_lifelog/"
+            '';
+          }
+        }/bin/lifelog-pull"
       ];
       StartInterval = 900;
       RunAtLoad = true;

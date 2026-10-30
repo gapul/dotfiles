@@ -9,6 +9,7 @@
   ...
 }:
 let
+  bunRun = import ../lib/bun-run.nix { inherit pkgs; };
   fastPkgs = import ../lib/unstable-pkgs.nix {
     inherit nixpkgsUnstable;
     inherit (pkgs.stdenv.hostPlatform) system;
@@ -25,7 +26,7 @@ let
   # client mod does not go on these servers; a modpack world is a separate, temporary instance.
   #
   # version/protocol are what lazymc reports while the server sleeps. The protocol number is not
-  # in Fabric's API, so scripts/update-custom-packages.sh looks it up and rewrites both here.
+  # in Fabric's API, so scripts/update-custom-packages.ts looks it up and rewrites both here.
   inherit (fabricServer) mcVersion;
   mcProtocol = 777;
   fabricInstance =
@@ -141,18 +142,26 @@ let
       # has a cached one that works.
       ++ [ fastPkgs.verilator ];
   };
-  hsoudanShell = pkgs.writeShellScriptBin "hsoudan-shell" ''
-    ulimit -u 256
-    ulimit -t 1200
-    ulimit -f 4194304
-    export PATH=${hsoudanTools}/bin:/usr/bin:/bin:/usr/sbin:/sbin
-    export CHROME_PATH=/Applications/Helium.app/Contents/MacOS/Helium
-    exec ${pkgs.bashInteractive}/bin/bash "$@"
-  '';
-  hsoudanPf = pkgs.writeShellScript "hsoudan-pf" ''
-    /sbin/pfctl -E >/dev/null 2>&1
-    exec /sbin/pfctl -q -a com.apple/hsoudan -f ${../../configs/macmini/hermes/hsoudan.pf}
-  '';
+  hsoudanShell = pkgs.writeShellApplication {
+    name = "hsoudan-shell";
+    bashOptions = [ ];
+    text = ''
+      ulimit -u 256
+      ulimit -t 1200
+      ulimit -f 4194304
+      export PATH=${hsoudanTools}/bin:/usr/bin:/bin:/usr/sbin:/sbin
+      export CHROME_PATH=/Applications/Helium.app/Contents/MacOS/Helium
+      exec ${pkgs.bashInteractive}/bin/bash "$@"
+    '';
+  };
+  hsoudanPf = pkgs.writeShellApplication {
+    name = "hsoudan-pf";
+    bashOptions = [ ];
+    text = ''
+      /sbin/pfctl -E >/dev/null 2>&1
+      exec /sbin/pfctl -q -a com.apple/hsoudan -f ${../../configs/macmini/hermes/hsoudan.pf}
+    '';
+  };
 in
 {
   # Headless AI/render worker (M4 Mac mini / 24GB). GUI casks are limited to software that
@@ -309,11 +318,17 @@ in
           # starts. So after fixing the list, if the server never wakes, players keep getting rejected by the
           # stale list (2026-09-23: fixed a spelling, still couldn't join the next day). Sync it here too before lazymc reads it.
           command = lib.escapeShellArgs [
-            "${pkgs.writeShellScript "lazymc-${name}" ''
-              wl="''${WHITELIST_SRC:-/etc/minecraft/whitelist.json}"
-              [ -f "$wl" ] && /bin/cp -f "$wl" "${inst.dir}/whitelist.json"
-              exec ${pkgs.lazymc}/bin/lazymc -c ${lazymcConfig name inst} start
-            ''}"
+            (lib.getExe (
+              pkgs.writeShellApplication {
+                name = "lazymc-${name}";
+                bashOptions = [ ];
+                text = ''
+                  wl="''${WHITELIST_SRC:-/etc/minecraft/whitelist.json}"
+                  [ -f "$wl" ] && /bin/cp -f "$wl" "${inst.dir}/whitelist.json"
+                  exec ${pkgs.lazymc}/bin/lazymc -c ${lazymcConfig name inst} start
+                '';
+              }
+            ))
           ];
           serviceConfig = {
             EnvironmentVariables = {
@@ -393,7 +408,11 @@ in
   # this machine is permanent, so declare it. Reinstalling took over 30 seconds, which made setup-nix
   # longer than the actual build (56s of setup vs 18s of build, measured 2026-09-10).
   #
-  # nodejs: runtime for Playwright MCP (pnpm dlx) and claude-login-broker (inject-creds.js).
+  # nodejs: runtime for the mac-control MCP (a plain `node index.js` checkout) and dsh below.
+  # playwright-mcp: the Playwright MCP for Claude on this machine (`claude mcp` points at
+  # /run/current-system/sw/bin/playwright-mcp). It used to be `npx @playwright/mcp@latest`, which
+  # resolved and ran whatever npm served at every session start; unstable tracks npm closely
+  # (0.0.83 on both, 2026-10-23), so declaring it costs no freshness.
   # bitwarden-cli: after approval the broker pulls credentials via bw get. BW_SESSION is unlocked manually.
   # cloudflared: publishes the study agent's OpenAI-compatible API (127.0.0.1:8791) so the
   # dashboard on Cloudflare Pages can reach it. Only the tunnel egresses; nothing is exposed
@@ -407,6 +426,7 @@ in
     (pkgs.callPackage ../pkgs/syncclipboard.nix { })
     pkgs.cachix
     pkgs.nodejs_22
+    fastPkgs.playwright-mcp
     fastPkgs.bitwarden-cli
     pkgs.cloudflared
     pkgs.ffmpeg
@@ -419,15 +439,27 @@ in
     # registered as ACP Registry → Local command with /run/current-system/sw/bin/hermes-acp.
     # Hermes lives under the hermes user, so this only hops users; gapul's sudo to hermes is
     # passwordless, which -n relies on because T3 spawns it with no terminal.
-    (pkgs.writeShellScriptBin "hermes-acp" ''
-      exec /usr/bin/sudo -n -u hermes -H /Users/hermes/.local/bin/hermes acp --accept-hooks
-    '')
+    (pkgs.writeShellApplication {
+      name = "hermes-acp";
+      bashOptions = [ ];
+      text = ''
+        exec /usr/bin/sudo -n -u hermes -H /Users/hermes/.local/bin/hermes acp --accept-hooks
+      '';
+    })
     # dsh: DeepSeek Harness CLI (headless/tui/web profiles). Not in nixpkgs, and upstream ships
     # it as an npm package that moves weekly, so this resolves @latest through npx on each run
     # rather than pinning a version that would go stale. The desktop app is the workstation's.
-    (pkgs.writeShellScriptBin "dsh" ''
-      exec ${pkgs.nodejs_22}/bin/npx -y @deepseek-ai/dsh@latest "$@"
-    '')
+    # --before holds it to the same 14-day release age as pnpm (home/common.nix): npm resolves
+    # dsh and its whole ~90-package tree as of two weeks ago, so a hijacked publish has to
+    # survive that long before it runs here. Scripts stay on: node-pty and koffi build at install.
+    (pkgs.writeShellApplication {
+      name = "dsh";
+      bashOptions = [ ];
+      text = ''
+        before="$(/bin/date -u -v-14d +%Y-%m-%dT%H:%M:%SZ)"
+        exec ${pkgs.nodejs_22}/bin/npx -y --before="$before" @deepseek-ai/dsh@latest "$@"
+      '';
+    })
   ];
 
   # (An ollama serve LaunchAgent was here, holding ~47G of GGUF weights in ollama's own blob
@@ -558,7 +590,7 @@ in
   # Its network rules, as a sub-anchor of com.apple (which /etc/pf.conf already evaluates). pf
   # forgets anchors at boot, so a daemon reloads them; activation does it too, for the first time.
   launchd.daemons.hsoudan-pf = {
-    command = "${hsoudanPf}";
+    command = lib.getExe hsoudanPf;
     serviceConfig = {
       RunAtLoad = true;
       StandardOutPath = "/var/log/hsoudan-pf.log";
@@ -644,19 +676,26 @@ in
   # Idle cost is one JVM (300-500MB), the only resident addition to a setup that was zero when idle.
   # Main world only. If the day comes to join solo from BE, change the port and add another one.
   launchd.daemons.geyser = {
-    command = "${pkgs.writeShellScript "geyser" ''
-      set -u
-      dir=/Users/mcsrv/geyser
-      /bin/mkdir -p "$dir/logs"
-      cd "$dir"
-      # 設定は宣言が正。Geyser は起動時に config.yml を書き換える (欠けたキーを補う) ので、
-      # 毎回 store から置き直す。
-      /bin/cp -f ${../../configs/macmini/minecraft/geyser-config.yml} config.yml
-      /bin/chmod 644 config.yml
-      /usr/bin/base64 -d < /etc/minecraft/floodgate-key.b64 > key.pem
-      /bin/chmod 600 key.pem
-      exec ${pkgs.temurin-bin-25}/bin/java -Xms128M -Xmx512M -jar ${geyser} --nogui
-    ''}";
+    command = lib.getExe (
+      pkgs.writeShellApplication {
+        name = "geyser";
+        bashOptions = [ "nounset" ];
+        # No errexit: a failed cd carries on from the current directory, as before.
+        excludeShellChecks = [ "SC2164" ];
+        text = ''
+          dir=/Users/mcsrv/geyser
+          /bin/mkdir -p "$dir/logs"
+          cd "$dir"
+          # 設定は宣言が正。Geyser は起動時に config.yml を書き換える (欠けたキーを補う) ので、
+          # 毎回 store から置き直す。
+          /bin/cp -f ${../../configs/macmini/minecraft/geyser-config.yml} config.yml
+          /bin/chmod 644 config.yml
+          /usr/bin/base64 -d < /etc/minecraft/floodgate-key.b64 > key.pem
+          /bin/chmod 600 key.pem
+          exec ${pkgs.temurin-bin-25}/bin/java -Xms128M -Xmx512M -jar ${geyser} --nogui
+        '';
+      }
+    );
     serviceConfig = {
       UserName = "mcsrv";
       WorkingDirectory = "/Users/mcsrv";
@@ -674,25 +713,33 @@ in
   # First start downloads it; to refresh, delete photon_data and restart (nothing auto-updates —
   # place names barely move, and an in-place unpack corrupts the index).
   launchd.daemons.photon = {
-    command = "${pkgs.writeShellScript "photon" ''
-      set -eu
-      dir=/Users/${user.username}/.local/share/photon
-      /bin/mkdir -p "$dir"
-      cd "$dir"
-      if [ ! -d photon_data ]; then
-        /bin/rm -rf download && /bin/mkdir download
-        /usr/bin/curl -fsSL https://download1.graphhopper.com/public/asia/japan/photon-db-japan-1.0-latest.tar.bz2 \
-          | ${pkgs.lbzip2}/bin/lbzip2 -dc | /usr/bin/tar -x -C download
-        /bin/mv download/photon_data photon_data
-        /bin/rm -rf download
-      fi
-      exec ${pkgs.temurin-bin-25}/bin/java -Xmx4G -jar ${
-        pkgs.fetchurl {
-          url = "https://github.com/komoot/photon/releases/download/1.3.0/photon-1.3.0.jar";
-          sha256 = "19biyn0y59lq9g4vcj4zf2cdj271d0p163hql6r0fj2y0k00g5x8";
-        }
-      } serve -listen-ip 127.0.0.1
-    ''}";
+    command = lib.getExe (
+      pkgs.writeShellApplication {
+        name = "photon";
+        bashOptions = [
+          "errexit"
+          "nounset"
+        ];
+        text = ''
+          dir=/Users/${user.username}/.local/share/photon
+          /bin/mkdir -p "$dir"
+          cd "$dir"
+          if [ ! -d photon_data ]; then
+            /bin/rm -rf download && /bin/mkdir download
+            /usr/bin/curl -fsSL https://download1.graphhopper.com/public/asia/japan/photon-db-japan-1.0-latest.tar.bz2 \
+              | ${pkgs.lbzip2}/bin/lbzip2 -dc | /usr/bin/tar -x -C download
+            /bin/mv download/photon_data photon_data
+            /bin/rm -rf download
+          fi
+          exec ${pkgs.temurin-bin-25}/bin/java -Xmx4G -jar ${
+            pkgs.fetchurl {
+              url = "https://github.com/komoot/photon/releases/download/1.3.0/photon-1.3.0.jar";
+              sha256 = "19biyn0y59lq9g4vcj4zf2cdj271d0p163hql6r0fj2y0k00g5x8";
+            }
+          } serve -listen-ip 127.0.0.1
+        '';
+      }
+    );
     serviceConfig = {
       UserName = user.username;
       RunAtLoad = true;
@@ -704,9 +751,9 @@ in
   };
 
   # What Dawarich actually talks to: photon itself only listens on loopback. The proxy asks for
-  # Japanese and moves ward / chome / block into the fields Dawarich reads — see proxy.py.
+  # Japanese and moves ward / chome / block into the fields Dawarich reads — see proxy.ts.
   launchd.daemons.photon-proxy = {
-    command = "${pkgs.python3.interpreter} ${../../configs/macmini/photon/proxy.py}";
+    command = "${bunRun.cmd} ${../../configs/macmini/photon/proxy.ts}";
     serviceConfig = {
       UserName = user.username;
       RunAtLoad = true;
@@ -719,11 +766,11 @@ in
 
   # Read-only maps MCP for every Claude on the tailnet (POST http://macmini:2324/mcp): geocoding
   # through photon-proxy above, Overture places, Apple Maps search/routes, Transitous transit,
-  # anonymous Google through SearXNG, weather. Same python as photon-proxy, so the firewall entry
+  # anonymous Google through SearXNG, weather. Same bun as photon-proxy, so the firewall entry
   # below already covers it. Its two keys come from sops (see sops.secrets above); without them
   # only the apple_* / hotpepper tools fail.
   launchd.daemons.maps-mcp = {
-    command = "${pkgs.python3.interpreter} ${../../configs/macmini/maps-mcp/server.py}";
+    command = "${bunRun.cmd} ${../../configs/macmini/maps-mcp/server.ts}";
     serviceConfig = {
       UserName = user.username;
       EnvironmentVariables = {
@@ -811,7 +858,7 @@ in
     };
   };
 
-  # popo — the Slack agent for the company workspace, run as its own user.
+  # popo — the Slack agent for a Slack workspace, run as its own user.
   #
   # It reaches the control plane at api.popo.sh with a bootstrap key (config/.env, outside nix) and
   # takes its Slack traffic from there, so no Slack token lives on this machine. The runtime is
@@ -843,6 +890,52 @@ in
     };
   };
 
+  # Restart popo once a night while it is idle. Its local embedder (sentence-transformers on
+  # torch MPS) gets a fresh SentenceTransformer for every index generation, and the daily
+  # 05:18 rebuild leaves the previous model's Metal buffers behind: after 11 days the
+  # orchestrator held 3.1 GB of IOAccelerator memory and 1.7 GB of malloc, mostly in swap.
+  # launchd cannot cap memory on macOS (HardResourceLimits is not enforced for RSS), so a
+  # restart is the lever. "Idle" means no child `claude` process: each Slack turn runs as one
+  # (the other children, cloudflared and multiprocessing's resource_tracker, are always there).
+  # Busy at 04:30 → retried every 10 minutes until 05:00, then left for the next night.
+  launchd.daemons.popo-nightly-restart = {
+    script = ''
+      stamp=/var/run/popo-nightly-restart.$(/bin/date +%F)
+      [ -e "$stamp" ] && exit 0
+      pid=$(/bin/launchctl print system/org.nixos.popo | /usr/bin/awk '$1 == "pid" { print $3 }')
+      [ -n "$pid" ] || exit 0
+      busy=$(/bin/ps -A -o ppid=,command= | /usr/bin/awk -v p="$pid" '$1 == p && $2 ~ /claude$/' | /usr/bin/wc -l)
+      if [ "$busy" -gt 0 ]; then
+        echo "$(/bin/date) popo busy ($busy children), skipping"
+        exit 0
+      fi
+      echo "$(/bin/date) restarting popo (pid $pid)"
+      /bin/launchctl kickstart -k system/org.nixos.popo && /usr/bin/touch "$stamp"
+    '';
+    serviceConfig = {
+      StartCalendarInterval =
+        map
+          (m: {
+            Hour = 4;
+            Minute = m;
+          })
+          [
+            30
+            40
+            50
+          ]
+        ++ [
+          {
+            Hour = 5;
+            Minute = 0;
+          }
+        ];
+      ProcessType = "Background";
+      StandardOutPath = "/var/log/popo-nightly-restart.log";
+      StandardErrorPath = "/var/log/popo-nightly-restart.log";
+    };
+  };
+
   # Keep the tunnel up as a daemon (root) so it survives logout. Reads /usr/local/etc/manabi-tunnel.env for TUNNEL_TOKEN, which
   # is issued per-tunnel in the Cloudflare dashboard and can't live in the nix store.
   launchd.daemons.manabi-tunnel = {
@@ -869,21 +962,32 @@ in
   # reopen; the daemons and agents that matter are declared and start on their own.
   system.defaults.CustomUserPreferences."com.apple.loginwindow".TALLogoutSavesState = false;
 
-  # Prep for headless operation (nix-darwin has no typed option, so an idempotent script).
+  # Never sleep, so it can serve inference unattended. The display stays awake too: that is not
+  # about power but about remote operation. A sleeping display falls through the screensaver
+  # to the lock screen, and past that it takes a human who can type the password (and the HDMI
+  # capture the desk watches goes dark). nix-darwin applies both with `systemsetup
+  # -setComputerSleep/-setDisplaySleep never`, the same settings as `pmset -a sleep 0 /
+  # displaysleep 0`.
+  power.sleep = {
+    computer = "never";
+    display = "never";
+  };
+
+  # Remote Login (SSH); this machine is administered over it. nix-darwin only bootstraps Apple's
+  # com.openssh.sshd when `systemsetup -getremotelogin` reports Off, so an sshd that is already
+  # running is never restarted. Its sshd_config.d files (099-host-keys, 100-nix-darwin) are
+  # written whether or not this is set, so the effective sshd config is unchanged.
+  services.openssh.enable = true;
+
+  # Prep for headless operation (the parts nix-darwin has no typed option for, so an idempotent script).
   # postActivation is used by darwin-common, so put this in preActivation to avoid a collision.
   system.activationScripts.preActivation.text = ''
-    # Prevent sleep: don't let it sleep so it can serve inference unattended.
-    /usr/bin/pmset -a sleep 0          >/dev/null 2>&1 || true
+    # On top of power.sleep.computer (idle sleep): refuse sleep outright.
     /usr/bin/pmset -a disablesleep 1   >/dev/null 2>&1 || true
-    # Enable Remote Login (SSH). Key auth reuses the existing setup (Bitwarden agent etc.) as-is.
-    /usr/sbin/systemsetup -setremotelogin on >/dev/null 2>&1 || true
     # Power Nap wakes the machine for background work it does not need to do; this one never
     # sleeps in the first place.
     /usr/bin/pmset -a powernap 0 >/dev/null 2>&1 || true
-    # 画面を消させない。ここは省電力の話ではなく、遠隔操作の前提。ディスプレイが寝ると
-    # スクリーンセーバ経由でロック画面に戻り、そこから先はパスワードを打てる人間が要る。
-    # (キャプチャは HDMI に繋いだ側で見ているので、消えると何も見えなくもなる)
-    /usr/bin/pmset -a displaysleep 0 >/dev/null 2>&1 || true
+    # 画面を消させない (power.sleep.display = "never" と同じ理由)。スクリーンセーバも止める。
     /usr/bin/sudo -u ${user.username} /usr/bin/defaults -currentHost write com.apple.screensaver idleTime -int 0 >/dev/null 2>&1 || true
     # ロックそのものの有効/無効は sysadminctl -screenLock にあり、変更にアカウントの
     # パスワードが要るので宣言できない。無効にしてあるが、OS の更新で戻ったら手で戻す:
@@ -902,10 +1006,11 @@ in
     # Geyser は java そのものが UDP 19132 を持つ (lazymc を介さない)。宣言した JDK の java を許可する。
     /usr/libexec/ApplicationFirewall/socketfilterfw --add ${pkgs.temurin-bin-25}/bin/java >/dev/null 2>&1 || true
     /usr/libexec/ApplicationFirewall/socketfilterfw --unblockapp ${pkgs.temurin-bin-25}/bin/java >/dev/null 2>&1 || true
-    # photon-proxy (TCP 2323, called by Dawarich on the homeserver) and maps-mcp (TCP 2324) run the
-    # same python, so this one pair covers both. Re-registered whenever python's store path changes.
-    /usr/libexec/ApplicationFirewall/socketfilterfw --add ${pkgs.python3.interpreter} >/dev/null 2>&1 || true
-    /usr/libexec/ApplicationFirewall/socketfilterfw --unblockapp ${pkgs.python3.interpreter} >/dev/null 2>&1 || true
+    # photon-proxy (TCP 2323, called by Dawarich on the homeserver), maps-mcp (TCP 2324) and the
+    # t3-pair-page agent (TCP 3774, home/macmini.nix) run the same bun, so this one pair covers all
+    # three. Re-registered whenever bun's store path changes.
+    /usr/libexec/ApplicationFirewall/socketfilterfw --add ${pkgs.bun}/bin/bun >/dev/null 2>&1 || true
+    /usr/libexec/ApplicationFirewall/socketfilterfw --unblockapp ${pkgs.bun}/bin/bun >/dev/null 2>&1 || true
     # AivisSpeech is served to workstation clients over Tailscale.  Like lazymc,
     # every Nix update can give its executable a new store path, so keep the
     # incoming-connection permission tied to the declared package.
@@ -943,9 +1048,9 @@ in
     # Google's updater, removed. Chrome here is an automation target that gets upgraded by hand
     # with the rest of the declaration, so a resident agent waking up to check for versions is
     # noise. Chrome re-installs Keystone whenever it is launched, so this runs every activation
-    # rather than once; checkInterval 0 keeps it quiet in between.
+    # rather than once; checkInterval 0 (system.defaults.CustomUserPreferences in
+    # darwin-common.nix) keeps it quiet in between.
     guiuid=$(/usr/bin/id -u ${user.username})
-    /usr/bin/sudo -u ${user.username} /usr/bin/defaults write com.google.Keystone.Agent checkInterval 0 >/dev/null 2>&1 || true
     for label in com.google.GoogleUpdater.wake com.google.keystone.agent com.google.keystone.xpcservice; do
       /bin/launchctl bootout "gui/$guiuid/$label" >/dev/null 2>&1 || true
       /bin/rm -f "/Users/${user.username}/Library/LaunchAgents/$label.plist" || true
@@ -962,7 +1067,7 @@ in
     # The Hermes agent's inference adapter (see configs/macmini/hermes/README.md). It lives in
     # another user's home, which home-manager can't reach, and hermes never rewrites it — so the
     # declaration is the source of truth and gets laid down on every activation.
-    ${hsoudanPf} || true
+    ${lib.getExe hsoudanPf} || true
     if [ -d /Users/hsoudan ]; then
       /bin/chmod 700 /Users/hsoudan
       /usr/bin/install -d -o hsoudan -g hsoudan -m 700 /Users/hsoudan/workspace

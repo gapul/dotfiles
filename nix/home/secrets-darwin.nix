@@ -35,5 +35,12 @@
       sopsFile = ../../secrets/darwin.yaml;
       path = "${config.home.homeDirectory}/.config/keystats/signing.p12.b64";
     };
+
+    # Developer ID codesign identity ("Developer ID Application: <name> (<team>)"), read by
+    # home.activation.mechvibesSign in darwin.nix. Kept here because it carries the legal name.
+    "codesign_identity" = {
+      sopsFile = ../../secrets/darwin.yaml;
+      path = "${config.home.homeDirectory}/.config/codesign/identity";
+    };
   };
 }

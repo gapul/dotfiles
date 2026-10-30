@@ -24,6 +24,7 @@
 # failing every hour until fixed, so consecutive failures for the same reason exit 0 from the
 # second one on, keeping it to one notification (same as in the macmini days).
 {
+  lib,
   pkgs,
   ...
 }:
@@ -38,15 +39,18 @@ let
   githubKnownHosts = pkgs.writeText "github-known-hosts" ''
     github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl
   '';
-  gitSsh = pkgs.writeShellScript "ledger-git-ssh" ''
-    exec ${pkgs.openssh}/bin/ssh -i "$CREDENTIALS_DIRECTORY/deploy-key" \
-      -o IdentitiesOnly=yes -o UserKnownHostsFile=${githubKnownHosts} "$@"
-  '';
+  gitSsh = pkgs.writeShellApplication {
+    name = "ledger-git-ssh";
+    bashOptions = [ ];
+    text = ''
+      exec ${pkgs.openssh}/bin/ssh -i "$CREDENTIALS_DIRECTORY/deploy-key" \
+        -o IdentitiesOnly=yes -o UserKnownHostsFile=${githubKnownHosts} "$@"
+    '';
+  };
 
   # Shared part of each job: update personal-tools, and notify each failure reason only once.
   prelude = name: ''
-    set -u
-    export GIT_SSH_COMMAND=${gitSsh}
+    export GIT_SSH_COMMAND=${lib.getExe gitSsh}
     git() { ${pkgs.git}/bin/git -c user.name=ledger -c user.email=ledger@homeserver "$@"; }
     state="${home}/.${name}.failed"
     fail() {
@@ -72,118 +76,146 @@ let
     }
   '';
 
-  zaimSync = pkgs.writeShellScript "zaim-sync" ''
-    ${prelude "zaim-sync"}
-    out=$(${py} ${tools}/zaim/zaim_web.py sync --db ${book}/zaim.db 2>&1) ||
-      fail "Zaim の同期に失敗: $out (Cookie 切れなら母艦で zaim_web.py login → scp ~/.cache/zaim/cookie homeserver:/var/lib/secrets/zaim.cookie)"
-    out=$(${py} ${tools}/zaim/zaim_beancount.py --db ${book}/zaim.db --rules ${book}/rules.toml \
-      --out ${book}/zaim.beancount 2>&1) || fail "帳簿の生成に失敗: $out"
-    # Account balances (balance assertions against the linked banks) and point balances with
-    # expiry lots, read from Zaim's account pages. Prints lots expiring within 30 days; those
-    # go to ntfy as a notice, not a failure.
-    expiring=$(${py} ${tools}/zaim/zaim_balances.py --rules ${book}/rules.toml \
-      --balances ${book}/zaim-balances.beancount --points ${book}/zaim-points.beancount --expiring 30 2>/dev/null) ||
-      fail "残高とポイントの取得に失敗 (Zaim の口座ページ)"
-    out=$(${beanCheck} ${book}/main.beancount 2>&1) || fail "bean-check: $out"
-    rm -f "$state"
-    commit "zaim sync"
-    if [ -n "$expiring" ] && [ "$(date +%H)" = "07" ]; then
-      ${notify} "ポイントの失効が近い" "$expiring"
-    fi
-  '';
+  zaimSync = pkgs.writeShellApplication {
+    name = "zaim-sync";
+    bashOptions = [ "nounset" ];
+    text = ''
+      ${prelude "zaim-sync"}
+      out=$(${py} ${tools}/zaim/zaim_web.py sync --db ${book}/zaim.db 2>&1) ||
+        fail "Zaim の同期に失敗: $out (Cookie 切れなら母艦で zaim_web.py login → scp ~/.cache/zaim/cookie homeserver:/var/lib/secrets/zaim.cookie)"
+      out=$(${py} ${tools}/zaim/zaim_beancount.py --db ${book}/zaim.db --rules ${book}/rules.toml \
+        --out ${book}/zaim.beancount 2>&1) || fail "帳簿の生成に失敗: $out"
+      # Account balances (balance assertions against the linked banks) and point balances with
+      # expiry lots, read from Zaim's account pages. Prints lots expiring within 30 days; those
+      # go to ntfy as a notice, not a failure.
+      expiring=$(${py} ${tools}/zaim/zaim_balances.py --rules ${book}/rules.toml \
+        --balances ${book}/zaim-balances.beancount --points ${book}/zaim-points.beancount --expiring 30 2>/dev/null) ||
+        fail "残高とポイントの取得に失敗 (Zaim の口座ページ)"
+      out=$(${beanCheck} ${book}/main.beancount 2>&1) || fail "bean-check: $out"
+      rm -f "$state"
+      commit "zaim sync"
+      if [ -n "$expiring" ] && [ "$(date +%H)" = "07" ]; then
+        ${lib.getExe notify} "ポイントの失効が近い" "$expiring"
+      fi
+    '';
+  };
 
-  cryptoSync = pkgs.writeShellScript "crypto-sync" ''
-    ${prelude "crypto-sync"}
-    [ -f ${book}/wallets.toml ] || exit 0
-    out=$(${py} ${tools}/crypto/crypto_beancount.py --wallets ${book}/wallets.toml \
-      --balances ${book}/crypto-balances.beancount --prices ${book}/crypto-prices.beancount 2>&1) ||
-      fail "残高の取得に失敗: $out"
-    out=$(${beanCheck} ${book}/main.beancount 2>&1) ||
-      fail "bean-check: $out (送金やガスを crypto.beancount に書き漏れていないか)"
-    rm -f "$state"
-    commit "crypto sync"
-  '';
+  cryptoSync = pkgs.writeShellApplication {
+    name = "crypto-sync";
+    bashOptions = [ "nounset" ];
+    text = ''
+      ${prelude "crypto-sync"}
+      [ -f ${book}/wallets.toml ] || exit 0
+      out=$(${py} ${tools}/crypto/crypto_beancount.py --wallets ${book}/wallets.toml \
+        --balances ${book}/crypto-balances.beancount --prices ${book}/crypto-prices.beancount 2>&1) ||
+        fail "残高の取得に失敗: $out"
+      out=$(${beanCheck} ${book}/main.beancount 2>&1) ||
+        fail "bean-check: $out (送金やガスを crypto.beancount に書き漏れていないか)"
+      rm -f "$state"
+      commit "crypto sync"
+    '';
+  };
 
-  wiseSync = pkgs.writeShellScript "wise-sync" ''
-    ${prelude "wise-sync"}
-    out=$(${py} ${tools}/wise/wise_beancount.py --token-file "$CREDENTIALS_DIRECTORY/wise-token" \
-      --rules ${book}/rules.toml --out ${book}/wise.beancount 2>&1) ||
-      fail "Wise の取り込みに失敗: $out"
-    out=$(${beanCheck} ${book}/main.beancount 2>&1) || fail "bean-check: $out"
-    rm -f "$state"
-    commit "wise sync"
-  '';
+  wiseSync = pkgs.writeShellApplication {
+    name = "wise-sync";
+    bashOptions = [ "nounset" ];
+    text = ''
+      ${prelude "wise-sync"}
+      out=$(${py} ${tools}/wise/wise_beancount.py --token-file "$CREDENTIALS_DIRECTORY/wise-token" \
+        --rules ${book}/rules.toml --out ${book}/wise.beancount 2>&1) ||
+        fail "Wise の取り込みに失敗: $out"
+      out=$(${beanCheck} ${book}/main.beancount 2>&1) || fail "bean-check: $out"
+      rm -f "$state"
+      commit "wise sync"
+    '';
+  };
 
   # Revolut has no personal API and app.revolut.com sits behind Cloudflare's bot check, so the
   # fetch happens on macmini (home/macmini-revolut.nix: a headed Helium with a logged-in
   # profile, driven over CDP), which scp's the JSON here. This side only renders it; the path
   # unit below runs it whenever the file lands.
-  revolutSync = pkgs.writeShellScript "revolut-sync" ''
-    ${prelude "revolut-sync"}
-    [ -s ${incoming}/revolut.json ] || exit 0
-    out=$(${py} ${tools}/revolut/revolut_beancount.py --dump ${incoming}/revolut.json \
-      --rules ${book}/rules.toml --out ${book}/revolut.beancount 2>&1) ||
-      fail "Revolut の帳簿生成に失敗: $out"
-    out=$(${beanCheck} ${book}/main.beancount 2>&1) || fail "bean-check: $out"
-    rm -f "$state"
-    commit "revolut sync"
-  '';
+  revolutSync = pkgs.writeShellApplication {
+    name = "revolut-sync";
+    bashOptions = [ "nounset" ];
+    text = ''
+      ${prelude "revolut-sync"}
+      [ -s ${incoming}/revolut.json ] || exit 0
+      out=$(${py} ${tools}/revolut/revolut_beancount.py --dump ${incoming}/revolut.json \
+        --rules ${book}/rules.toml --out ${book}/revolut.beancount 2>&1) ||
+        fail "Revolut の帳簿生成に失敗: $out"
+      out=$(${beanCheck} ${book}/main.beancount 2>&1) || fail "bean-check: $out"
+      rm -f "$state"
+      commit "revolut sync"
+    '';
+  };
 
   # Member sites read by macmini (home/macmini-sites.nix): Mobile Suica's SF history, and the
   # JRE POINT / Bic Camera point balances. Each lands in incoming/ as JSON; this renders them.
-  sitesSync = pkgs.writeShellScript "sites-sync" ''
-    ${prelude "sites-sync"}
-    if [ -s ${incoming}/suica.json ]; then
-      out=$(${py} ${tools}/suica/suica_beancount.py --dump ${incoming}/suica.json --store ${book}/suica-rows.json \
-        --rules ${book}/rules.toml --out ${book}/suica.beancount 2>&1) || fail "Suica の帳簿生成に失敗: $out"
-    fi
-    dumps=""
-    for s in jrepoint biccamera; do [ -s ${incoming}/$s.json ] && dumps="$dumps ${incoming}/$s.json"; done
-    if [ -n "$dumps" ]; then
-      expiring=$(${py} ${tools}/points/sites_points.py --points ${book}/sites-points.beancount --expiring 30 $dumps 2>/dev/null) ||
-        fail "会員サイトのポイントの帳簿生成に失敗"
-    fi
-    out=$(${beanCheck} ${book}/main.beancount 2>&1) || fail "bean-check: $out"
-    rm -f "$state"
-    commit "sites sync"
-    [ -z "''${expiring:-}" ] || ${notify} "ポイントの失効が近い (会員サイト)" "$expiring"
-  '';
+  sitesSync = pkgs.writeShellApplication {
+    name = "sites-sync";
+    bashOptions = [ "nounset" ];
+    # $dumps is a space-separated list of paths, split on purpose into separate arguments.
+    excludeShellChecks = [ "SC2086" ];
+    text = ''
+      ${prelude "sites-sync"}
+      if [ -s ${incoming}/suica.json ]; then
+        out=$(${py} ${tools}/suica/suica_beancount.py --dump ${incoming}/suica.json --store ${book}/suica-rows.json \
+          --rules ${book}/rules.toml --out ${book}/suica.beancount 2>&1) || fail "Suica の帳簿生成に失敗: $out"
+      fi
+      dumps=""
+      for s in jrepoint biccamera; do [ -s ${incoming}/$s.json ] && dumps="$dumps ${incoming}/$s.json"; done
+      if [ -n "$dumps" ]; then
+        expiring=$(${py} ${tools}/points/sites_points.py --points ${book}/sites-points.beancount --expiring 30 $dumps 2>/dev/null) ||
+          fail "会員サイトのポイントの帳簿生成に失敗"
+      fi
+      out=$(${beanCheck} ${book}/main.beancount 2>&1) || fail "bean-check: $out"
+      rm -f "$state"
+      commit "sites sync"
+      [ -z "''${expiring:-}" ] || ${lib.getExe notify} "ポイントの失効が近い (会員サイト)" "$expiring"
+    '';
+  };
 
   # Send one line to ntfy (same topic and token as ntfy-failure@). Not for failures, but for
   # notices that need a human to act.
-  notify = pkgs.writeShellScript "ledger-notify" ''
-    set -u
-    ${pkgs.curl}/bin/curl -fsS --max-time 15 -H "Authorization: Bearer $NTFY_TOKEN" \
-      -H "Title: $1" -H "Tags: ledger" -d "$2" "http://127.0.0.1:8082/$NTFY_TOPIC" >/dev/null
-  '';
+  notify = pkgs.writeShellApplication {
+    name = "ledger-notify";
+    bashOptions = [ "nounset" ];
+    text = ''
+      ${pkgs.curl}/bin/curl -fsS --max-time 15 -H "Authorization: Bearer $NTFY_TOKEN" \
+        -H "Title: $1" -H "Tags: ledger" -d "$2" "http://127.0.0.1:8082/$NTFY_TOPIC" >/dev/null
+    '';
+  };
 
   # When a Zaim account link stops fetching, Zaim says nothing (in 2026-09 we missed that
   # SBI Sumishin Net Bank, PayPay Bank and Rakuten Bank had stopped over the summer). Notify
   # when an account's latest date is old.
-  zaimStale = pkgs.writeShellScript "zaim-stale-check" ''
-    set -u
-    stale=$(${py} - ${book}/zaim.db <<'PY'
-    import sqlite3, sys, datetime
-    db = sqlite3.connect(sys.argv[1])
-    limit = (datetime.date.today() - datetime.timedelta(days=21)).isoformat()
-    rows = db.execute("""
-      SELECT acct, MAX(date) FROM (
-        SELECT from_account AS acct, date FROM transactions WHERE deleted_at IS NULL AND from_account IS NOT NULL
-        UNION ALL
-        SELECT to_account, date FROM transactions WHERE deleted_at IS NULL AND to_account IS NOT NULL)
-      GROUP BY acct HAVING MAX(date) < ?
-      ORDER BY 2""", (limit,)).fetchall()
-    for acct, last in rows:
-        print(f"{acct}: 最終 {last}")
-    PY
-    )
-    [ -z "$stale" ] || ${notify} "Zaim の連携が止まっている口座" "$stale"
-    # The Revolut dump comes from macmini. Its own failures notify from there, but if macmini
-    # is down or the agent is gone, nothing arrives and nothing says so.
-    if [ -z "$(find ${incoming} -maxdepth 1 -name revolut.json -mtime -3 2>/dev/null)" ]; then
-      ${notify} "Revolut の取り込みが 3 日以上届いていない" "macmini の revolut-dump (launchd) か、Revolut のセッション (母艦で revolut_web.py login → プロファイルを rsync) を見る"
-    fi
-  '';
+  zaimStale = pkgs.writeShellApplication {
+    name = "zaim-stale-check";
+    bashOptions = [ "nounset" ];
+    text = ''
+      stale=$(${py} - ${book}/zaim.db <<'PY'
+      import sqlite3, sys, datetime
+      db = sqlite3.connect(sys.argv[1])
+      limit = (datetime.date.today() - datetime.timedelta(days=21)).isoformat()
+      rows = db.execute("""
+        SELECT acct, MAX(date) FROM (
+          SELECT from_account AS acct, date FROM transactions WHERE deleted_at IS NULL AND from_account IS NOT NULL
+          UNION ALL
+          SELECT to_account, date FROM transactions WHERE deleted_at IS NULL AND to_account IS NOT NULL)
+        GROUP BY acct HAVING MAX(date) < ?
+        ORDER BY 2""", (limit,)).fetchall()
+      for acct, last in rows:
+          print(f"{acct}: 最終 {last}")
+      PY
+      )
+      [ -z "$stale" ] || ${lib.getExe notify} "Zaim の連携が止まっている口座" "$stale"
+      # The Revolut dump comes from macmini. Its own failures notify from there, but if macmini
+      # is down or the agent is gone, nothing arrives and nothing says so.
+      if [ -z "$(find ${incoming} -maxdepth 1 -name revolut.json -mtime -3 2>/dev/null)" ]; then
+        ${lib.getExe notify} "Revolut の取り込みが 3 日以上届いていない" "macmini の revolut-dump (launchd) か、Revolut のセッション (母艦で revolut_web.py login → プロファイルを rsync) を見る"
+      fi
+    '';
+  };
 
   common = {
     User = "ledger";
@@ -214,7 +246,7 @@ in
       Type = "oneshot";
       LoadCredential = common.LoadCredential ++ [ "zaim-cookie:/var/lib/secrets/zaim.cookie" ];
       EnvironmentFile = "/var/lib/secrets/gatus.env"; # ntfy token for the point-expiry notice
-      ExecStart = zaimSync;
+      ExecStart = lib.getExe zaimSync;
     };
     onFailure = [ "ntfy-failure@%n.service" ];
   };
@@ -231,7 +263,7 @@ in
     description = "暗号資産の残高と円価格 → Beancount (毎日)";
     serviceConfig = common // {
       Type = "oneshot";
-      ExecStart = cryptoSync;
+      ExecStart = lib.getExe cryptoSync;
     };
     onFailure = [ "ntfy-failure@%n.service" ];
   };
@@ -251,7 +283,7 @@ in
     serviceConfig = common // {
       Type = "oneshot";
       LoadCredential = common.LoadCredential ++ [ "wise-token:/var/lib/secrets/wise.token" ];
-      ExecStart = wiseSync;
+      ExecStart = lib.getExe wiseSync;
     };
     onFailure = [ "ntfy-failure@%n.service" ];
   };
@@ -271,7 +303,7 @@ in
     description = "Revolut の dump (macmini から) → Beancount";
     serviceConfig = common // {
       Type = "oneshot";
-      ExecStart = revolutSync;
+      ExecStart = lib.getExe revolutSync;
     };
     onFailure = [ "ntfy-failure@%n.service" ];
   };
@@ -287,7 +319,7 @@ in
     serviceConfig = common // {
       Type = "oneshot";
       EnvironmentFile = "/var/lib/secrets/gatus.env"; # ntfy token for the expiry notice
-      ExecStart = sitesSync;
+      ExecStart = lib.getExe sitesSync;
     };
     onFailure = [ "ntfy-failure@%n.service" ];
   };
@@ -306,7 +338,7 @@ in
     serviceConfig = common // {
       Type = "oneshot";
       EnvironmentFile = "/var/lib/secrets/gatus.env";
-      ExecStart = zaimStale;
+      ExecStart = lib.getExe zaimStale;
     };
     onFailure = [ "ntfy-failure@%n.service" ];
   };

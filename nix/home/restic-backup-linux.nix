@@ -50,7 +50,6 @@ let
     forgetSnippet = common.forgetOwnHostOnly;
     extraPathPkgs = [ pkgs.libnotify ];
     notifyBody = ''notify-send "$1" "$2" 2>/dev/null || true'';
-    parseSnapshotTime = ''$(date -d "$latest" +%s 2>/dev/null || echo 0)'';
   };
 
   # helpers to generate systemd user service + timer
@@ -58,7 +57,7 @@ let
     Unit.Description = desc;
     Service = {
       Type = "oneshot";
-      ExecStart = "${script}";
+      ExecStart = lib.getExe script;
       Nice = 5;
       IOSchedulingClass = "idle";
     };

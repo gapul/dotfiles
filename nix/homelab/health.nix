@@ -7,7 +7,8 @@
 #
 # The receiver is not the heavy official stack (TimescaleDB + Go + Grafana) but the bundled
 # Python + SQLite example brought into configs/homelab/puls-receiver, with a cap on decompressed
-# size and a GET /v1/stats added. It runs on the standard library alone and the DB is a single file.
+# size and a GET /v1/stats added, and since ported to TypeScript on Bun (receiver.ts; same wire
+# contract and schema). It needs nothing beyond Bun and the DB is a single file.
 #
 # Auth is the bearer token held by the app (PULS_TOKEN in /var/lib/secrets/puls.env), so
 # Authelia is not put in front of the vhost. The app's URL validation does not allow plain http
@@ -17,7 +18,9 @@
 # To see what has arrived, ask the service instead:
 #   curl -s -H "Authorization: Bearer $PULS_TOKEN" http://127.0.0.1:8105/v1/stats
 { pkgs, ... }:
-
+let
+  bunRun = import ../lib/bun-run.nix { inherit pkgs; };
+in
 {
   systemd.services.puls-receiver = {
     description = "PulsHealth receiver (Apple Health → SQLite)";
@@ -29,7 +32,7 @@
       PULS_PORT = "8105";
     };
     serviceConfig = {
-      ExecStart = "${pkgs.python3}/bin/python3 ${../../configs/homelab/puls-receiver/receiver.py}";
+      ExecStart = "${bunRun.cmd} ${../../configs/homelab/puls-receiver/receiver.ts}";
       EnvironmentFile = "/var/lib/secrets/puls.env";
       DynamicUser = true;
       StateDirectory = "puls";

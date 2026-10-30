@@ -1,4 +1,9 @@
-{ config, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 # gapul's half of the soudan bot's weekly progress slides (configs/macmini/hermes/README.md).
 #
 # The slides are written from the IS-CPU-6 org's activity, and its repos are mostly private.
@@ -7,26 +12,37 @@
 # titles — and the bot's cron pre-run script reads only that file. hermes reaches it because
 # macOS puts every uid >= 500 in staff and ~ is 750 (see the hsoudan note in hosts/macmini.nix).
 let
+  bunRun = import ../lib/bun-run.nix { inherit pkgs; };
   home = config.home.homeDirectory;
   out = "${home}/.local/state/soudan-feed/github.md";
-  digest = pkgs.writeShellScript "soudan-github-digest" ''
-    set -eu
-    /bin/mkdir -p "$(dirname "${out}")"
-    export PATH=${pkgs.gh}/bin:/usr/bin:/bin
-    exec ${pkgs.python3}/bin/python3 ${../../configs/macmini/hermes/soudan-github-digest.py} "${out}" 8
-  '';
+  digest = pkgs.writeShellApplication {
+    name = "soudan-github-digest";
+    bashOptions = [
+      "errexit"
+      "nounset"
+    ];
+    text = ''
+      /bin/mkdir -p "$(dirname "${out}")"
+      export PATH=${pkgs.gh}/bin:/usr/bin:/bin
+      exec ${bunRun.cmd} ${../../configs/macmini/hermes/soudan-github-digest.ts} "${out}" 8
+    '';
+  };
   # The other direction: the finished draft goes into IS-CPU-6/slides. The org has deploy keys
   # disabled, so this too is gapul's gh rather than a key the bot could hold.
-  publish = pkgs.writeShellScript "soudan-slides-publish" ''
-    export PATH=${pkgs.gh}/bin:${pkgs.git}/bin:${pkgs.poppler-utils}/bin:/usr/bin:/bin
-    exec ${pkgs.python3}/bin/python3 ${../../configs/macmini/hermes/soudan-slides-publish.py} "$@"
-  '';
+  publish = pkgs.writeShellApplication {
+    name = "soudan-slides-publish";
+    bashOptions = [ ];
+    text = ''
+      export PATH=${pkgs.gh}/bin:${pkgs.git}/bin:${pkgs.poppler-utils}/bin:/usr/bin:/bin
+      exec ${bunRun.cmd} ${../../configs/macmini/hermes/soudan-slides-publish.ts} "$@"
+    '';
+  };
 in
 {
   launchd.agents.soudan-github-digest = {
     enable = true;
     config = {
-      ProgramArguments = [ "${digest}" ];
+      ProgramArguments = [ (lib.getExe digest) ];
       # Daily, so a broken login shows up long before Monday; the slides job runs Monday 21:00.
       StartCalendarInterval = [
         {
@@ -44,7 +60,7 @@ in
   launchd.agents.soudan-slides-publish = {
     enable = true;
     config = {
-      ProgramArguments = [ "${publish}" ];
+      ProgramArguments = [ (lib.getExe publish) ];
       # The bot's job starts Monday 21:00 and takes a few minutes; try twice that evening.
       StartCalendarInterval = [
         {
@@ -63,7 +79,7 @@ in
     enable = true;
     config = {
       ProgramArguments = [
-        "${publish}"
+        (lib.getExe publish)
         "--final"
       ];
       StartCalendarInterval = [

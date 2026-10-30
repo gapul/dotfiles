@@ -1,6 +1,10 @@
 { pkgs }:
 let
   version = "2025.33230";
+  # Wine and DXVK follow TouchDesigner-Linux's pins (td_lib/wine.py, docs/runners.md,
+  # docs/compatibility.md), not the newest releases: Soda 11 (Wine 11) loops forever in DWrite
+  # at the splash screen, and DXVK 3.x crashes the Spout/Syphon Out TOP under Wine 9.0.
+  # Re-check those docs before bumping either.
   wine = pkgs.runCommand "soda-9.0-1" { } ''
     mkdir -p "$out"
     tar -xf ${
@@ -27,8 +31,8 @@ let
   fixes = pkgs.fetchFromGitHub {
     owner = "ismail-bahloul";
     repo = "TouchDesigner-Linux";
-    rev = "cc3aac1070164842a6ead5df7dfc9e9156d77ba2";
-    hash = "sha256-sgrET1QSh+kruvMwgFjQZkw2NudLKBhZyVVSohMb/X4=";
+    rev = "4b6249b28db6e45ad50422ab9ac0fec53cfe91f4";
+    hash = "sha256-42Gb5EuGHd5kKhDKruJJ4IPUJlc/0ThxrCPC0yhGHM0=";
   };
   app =
     pkgs.runCommand "touchdesigner-files-${version}"
@@ -138,9 +142,13 @@ let
           libunwind
         ];
     }).run;
-  launcher = pkgs.writeShellScriptBin "touchdesigner" ''
-    exec ${fhs}/bin/steam-run ${inner}/bin/touchdesigner-inner "$@"
-  '';
+  launcher = pkgs.writeShellApplication {
+    name = "touchdesigner";
+    bashOptions = [ ];
+    text = ''
+      exec ${fhs}/bin/steam-run ${inner}/bin/touchdesigner-inner "$@"
+    '';
+  };
 in
 pkgs.symlinkJoin {
   name = "touchdesigner-${version}";

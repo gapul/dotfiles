@@ -170,7 +170,7 @@ sketchybar --default "${defaults[@]}"
 
 
 # Left
-source "$ITEM_DIR/apple.sh"  # Apple ロゴ (左端。ワークスペースと同じ left_bracket の島に入る。popup: Preferences/Activity/Lock。zen.sh の状態判定も参照)
+source "$ITEM_DIR/apple.sh"  # Apple ロゴ (左端。ワークスペースと同じ left_bracket の島に入る。popup: Preferences/Activity/Lock)
 source "$ITEM_DIR/spaces.sh"
 
 # Right

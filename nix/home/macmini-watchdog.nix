@@ -1,4 +1,9 @@
-{ config, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 # Dead man's switch for the homelab, moved here from the retired Raspberry Pi
 # (2026-08-24). The mini pings Healthchecks only while homeserver answers on
 # SSH; silence — homeserver down, this Mac down, or the whole house offline —
@@ -11,12 +16,18 @@ let
   hcUrlFile = "${config.home.homeDirectory}/.config/healthchecks/homelab-url";
   homeserver = "100.127.129.31";
 
-  watchdog = pkgs.writeShellScript "homelab-watchdog" ''
-    [ -r "${hcUrlFile}" ] || exit 0
-    if /usr/bin/nc -z -G 4 ${homeserver} 22 2>/dev/null; then
-      /usr/bin/curl -fsS -m 10 "$(cat "${hcUrlFile}")" >/dev/null 2>&1
-    fi
-  '';
+  watchdog = pkgs.writeShellApplication {
+    name = "homelab-watchdog";
+    bashOptions = [ ];
+    text = ''
+      [ -r "${hcUrlFile}" ] || exit 0
+      # A full key exchange, not just an open port: on 2026-10-28 sshd kept accepting TCP but
+      # reset every connection before the banner for two hours, and `nc -z` called that alive.
+      if /usr/bin/ssh-keyscan -T 8 -t ed25519 ${homeserver} 2>/dev/null | /usr/bin/grep -q ssh-ed25519; then
+        /usr/bin/curl -fsS -m 10 "$(cat "${hcUrlFile}")" >/dev/null 2>&1
+      fi
+    '';
+  };
 in
 {
   # Not lib/launchd-agent.nix: that helper is shaped for calendar jobs, and a
@@ -25,7 +36,7 @@ in
   launchd.agents.homelab-watchdog = {
     enable = true;
     config = {
-      ProgramArguments = [ "${watchdog}" ];
+      ProgramArguments = [ (lib.getExe watchdog) ];
       StartInterval = 120;
       RunAtLoad = true;
       ProcessType = "Background";

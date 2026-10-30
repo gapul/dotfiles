@@ -145,9 +145,15 @@ in
           wc = "${pkgs.coreutils}/bin/wc";
           # `unlock` at the console (Alt+F2): the TPM key wants the PIN, which is typed there
           # rather than carried over ssh.
-          unlock = "${pkgs.writeShellScript "unlock" ''
-            exec systemd-cryptsetup attach cryptroot ${config.boot.initrd.luks.devices.cryptroot.device} - tpm2-device=auto,tpm2-pin=yes
-          ''}";
+          unlock = lib.getExe (
+            pkgs.writeShellApplication {
+              name = "unlock";
+              bashOptions = [ ];
+              text = ''
+                exec systemd-cryptsetup attach cryptroot ${config.boot.initrd.luks.devices.cryptroot.device} - tpm2-device=auto,tpm2-pin=yes
+              '';
+            }
+          );
         };
       };
     };

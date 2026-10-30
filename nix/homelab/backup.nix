@@ -32,6 +32,11 @@ in
       # the console-unique keys needed to decrypt any of it. Cartridges wear out and
       # the eShop re-download service can end, so none of this is re-obtainable.
       "/srv/games/3ds"
+      # The git-annex of fonts and assets (homelab/git-annex.nix). This host is the only
+      # annex repository that keeps every file, so this snapshot is the offsite copy.
+      # Purchased fonts in it cannot be re-downloaded. freebie-collector's daily
+      # additions land here too, so they are covered without a separate copy job.
+      "/srv/annex"
     ];
     exclude = [
       # Container images are re-pullable and would dominate the repository. The
@@ -51,7 +56,7 @@ in
     # The rest of /srv is not backed up. It holds media and the attic cache: large,
     # and either re-obtainable or already content-addressed. /srv/syncthing is a
     # copy of what the Mac holds and is backed up from there. Dawarich,
-    # ArchiveBox and the 3DS dumps are the exceptions listed above. Check this
+    # ArchiveBox, the 3DS dumps and the annex are the exceptions listed above. Check this
     # list again whenever a service is pointed at the big disk — that is how
     # location history went missing.
 
@@ -287,29 +292,34 @@ in
       Type = "oneshot";
       EnvironmentFile = "/var/lib/secrets/gatus.env";
       # %i is the name of the failed unit. The OnFailure side passes it as %n.
-      ExecStart = "${pkgs.writeShellScript "ntfy-failure" ''
-        set -u
-        unit="$1"
-        # 本文に直近のログを入れる。通知だけ来ても結局 ssh する羽目になるため。
-        #
-        # 素の末尾 20 行だと podman の health_status / exec イベント (restic の
-        # pre-start が DB コンテナを起こすたびに数十行出る) で埋まり、肝心の
-        # 「paperless did not become healthy before backup」が入らなかった上に、
-        # 4KB を超えて添付ファイル (attachment.txt) になり iPhone から読めなかった
-        # (2026-10-01)。イベント行と systemd の会計行を落として、本文に収まる量だけ送る。
-        body="$(${pkgs.systemd}/bin/journalctl -u "$unit" -n 300 --no-pager -o cat 2>&1 \
-          | ${pkgs.gnugrep}/bin/grep -Ev 'container (exec|exec_died|health_status|cleanup|init|start|died|remove|create|attach) |^\s*$|: Consumed [0-9]' \
-          | ${pkgs.coreutils}/bin/tail -n 25 \
-          | ${pkgs.coreutils}/bin/cut -c1-240 \
-          | ${pkgs.coreutils}/bin/head -c 3500 || true)"
-        ${pkgs.curl}/bin/curl -fsS --max-time 15 \
-          -H "Authorization: Bearer $NTFY_TOKEN" \
-          -H "Title: $unit failed on homeserver" \
-          -H "Priority: high" \
-          -H "Tags: rotating_light" \
-          -d "$body" \
-          "http://127.0.0.1:8082/$NTFY_TOPIC" >/dev/null
-      ''} %i";
+      ExecStart = "${
+        pkgs.writeShellApplication {
+          name = "ntfy-failure";
+          bashOptions = [ "nounset" ];
+          text = ''
+            unit="$1"
+            # 本文に直近のログを入れる。通知だけ来ても結局 ssh する羽目になるため。
+            #
+            # 素の末尾 20 行だと podman の health_status / exec イベント (restic の
+            # pre-start が DB コンテナを起こすたびに数十行出る) で埋まり、肝心の
+            # 「paperless did not become healthy before backup」が入らなかった上に、
+            # 4KB を超えて添付ファイル (attachment.txt) になり iPhone から読めなかった
+            # (2026-10-01)。イベント行と systemd の会計行を落として、本文に収まる量だけ送る。
+            body="$(${pkgs.systemd}/bin/journalctl -u "$unit" -n 300 --no-pager -o cat 2>&1 \
+              | ${pkgs.gnugrep}/bin/grep -Ev 'container (exec|exec_died|health_status|cleanup|init|start|died|remove|create|attach) |^\s*$|: Consumed [0-9]' \
+              | ${pkgs.coreutils}/bin/tail -n 25 \
+              | ${pkgs.coreutils}/bin/cut -c1-240 \
+              | ${pkgs.coreutils}/bin/head -c 3500 || true)"
+            ${pkgs.curl}/bin/curl -fsS --max-time 15 \
+              -H "Authorization: Bearer $NTFY_TOKEN" \
+              -H "Title: $unit failed on homeserver" \
+              -H "Priority: high" \
+              -H "Tags: rotating_light" \
+              -d "$body" \
+              "http://127.0.0.1:8082/$NTFY_TOPIC" >/dev/null
+          '';
+        }
+      }/bin/ntfy-failure %i";
     };
   };
 

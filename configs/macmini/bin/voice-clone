@@ -1,4 +1,4 @@
-#!/bin/zsh
+#!/bin/bash
 # 声クローン: 参照音声の声で任意の日本語を喋らせる(GPT-SoVITS v2)
 # voice-clone <参照音声> <喋らせる文章> [出力.wav] [参照文字起こし(省略時Whisper自動)]
 eval "$(/opt/homebrew/bin/brew shellenv)"
@@ -23,7 +23,7 @@ echo "[参照文: $reftext]" >&2
 if ! curl -s -o /dev/null --max-time 3 http://127.0.0.1:9880/ 2>/dev/null; then
   echo "[GPT-SoVITS APIを起動中...(初回ロード30-60秒)]" >&2
   (cd ~/Developer/github.com/RVC-Boss/GPT-SoVITS && nohup ~/.local/share/venvs/gsv-venv/bin/python api_v2.py -a 127.0.0.1 -p 9880 -c GPT_SoVITS/configs/tts_infer.yaml > /tmp/gsv_api.log 2>&1 &)
-  for i in $(seq 1 40); do sleep 3; grep -q "Application startup complete" /tmp/gsv_api.log 2>/dev/null && break; done
+  for _ in $(seq 1 40); do sleep 3; grep -q "Application startup complete" /tmp/gsv_api.log 2>/dev/null && break; done
 fi
 
 python3 - "$target" "$refwav" "$reftext" "$out" << "PYEOF"

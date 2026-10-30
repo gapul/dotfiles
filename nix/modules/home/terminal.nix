@@ -8,57 +8,51 @@
 let
   c = import ../../lib/theme.nix; # active theme's palette (switch via active in nix/lib/theme.nix)
 
-  # Generate tmux's rose-pine status bar from the active palette c.
+  # tmux's rose-pine status bar from the active palette c (layout shared with the committed
+  # configs/terminals/tmux/theme-remote.conf, see lib/tmux-theme.nix).
   # Switch active in palettes.json -> just rebuild follows it, same as the other themed tools.
-  mkTmuxTheme = p: ''
-    # rose-pine (generated from configs/theme/palettes.json — do not edit by hand)
-    set -g status-position top
-    set -g status-interval 5
-    set -g status-justify left
+  mkTmuxTheme =
+    p:
+    (import ../../lib/tmux-theme.nix).mk p "${config.home.homeDirectory}/.config/tmux/resurrect-status.sh";
 
-    set -g status-style               "bg=#${p.base},fg=#${p.subtle}"
-    set -g status-left-length 40
-    set -g status-right-length 80
-    set -g status-left  "#[bg=#${p.pine},fg=#${p.base},bold] #S #[bg=#${p.base},fg=#${p.pine}]#[default] "
-    # status-right, left to right:
-    #   - PREFIX badge while the prefix key is armed (client_prefix). tmux redraws the status
-    #     on client_prefix change, so it appears/disappears in real time (independent of interval).
-    #   - 💾 HH:MM = last tmux-resurrect save time, so you can always see it saved without
-    #     pressing anything. Read via a script because tmux would strftime-expand %-tokens in
-    #     an inline #(); the script keeps the % inside itself. (continuum here has no
-    #     #{continuum_status}, so this is the reliable way to surface the last save.)
-    set -g status-right "#{?client_prefix,#[bg=#${p.love}#,fg=#${p.base}#,bold] PREFIX #[default] ,}#[fg=#${p.muted}]#(${config.home.homeDirectory}/.config/tmux/resurrect-status.sh) #[fg=#${p.muted}]%Y-%m-%d #[fg=#${p.foam}]%H:%M "
-
-    # inactive / active windows (tabs)
-    set -g window-status-format         "#[fg=#${p.muted}] #I #W "
-    set -g window-status-current-format "#[bg=#${p.overlay},fg=#${p.iris},bold] #I #W "
-    set -g window-status-separator ""
-    set -g window-status-activity-style "fg=#${p.gold}"
-
-    # pane border / message / copy mode
-    set -g pane-border-style        "fg=#${p.overlay}"
-    set -g pane-active-border-style "fg=#${p.pine}"
-    set -g message-style            "bg=#${p.overlay},fg=#${p.text}"
-    set -g message-command-style    "bg=#${p.overlay},fg=#${p.text}"
-    set -g mode-style               "bg=#${p.hlMed},fg=#${p.text}"
-    set -g display-panes-active-colour "#${p.iris}"
-    set -g display-panes-colour        "#${p.muted}"
-    set -g clock-mode-colour           "#${p.foam}"
+  # Ghostty's terminfo, compiled at build time (see xdg.dataFile."terminfo" below). The source is
+  # the vendored infocmp dump, so it builds the same on every platform.
+  ghosttyTerminfo = pkgs.runCommand "ghostty-terminfo" { nativeBuildInputs = [ pkgs.ncurses ]; } ''
+    mkdir -p $out
+    tic -x -o $out ${../../../configs/terminals/ghostty/xterm-ghostty.terminfo}
   '';
 in
 {
   # Distribute Ghostty's terminfo to all hosts. If TERM=xterm-ghostty is unknown on an
   # ssh target, ZLE misreads terminal capabilities and input breaks (real damage on macmini 2026-07-19).
   # pkgs.ghostty is darwin unsupported, so vendor an infocmp dump and compile it with tic
-  # at activation time.
+  # at build time.
   # Keep the real data under XDG data and maintain the compat path ~/.terminfo as a symlink
   # (XDG-ify while keeping max compat so ssh targets and GUIs can read it even without TERMINFO_DIRS).
-  home.activation.ghosttyTerminfo = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    run ${pkgs.coreutils}/bin/mkdir -p "${config.xdg.dataHome}/terminfo"
-    run ${pkgs.ncurses}/bin/tic -x -o "${config.xdg.dataHome}/terminfo" ${../../../configs/terminals/ghostty/xterm-ghostty.terminfo}
-  '';
+  # recursive: only the compiled entries are links into the store, so ~/.local/share/terminfo
+  # stays a real directory that other tools can still `tic` into.
+  xdg.dataFile."terminfo" = {
+    source = ghosttyTerminfo;
+    recursive = true;
+  };
   home.file.".terminfo".source =
     config.lib.file.mkOutOfStoreSymlink "${config.xdg.dataHome}/terminfo";
+  # One-time migration: the entries used to be compiled into place at every activation, so real
+  # files sit exactly where the store links go, and checkLinkTargets would refuse to replace
+  # them (or, with a backup extension, leave .hm-bak copies). Remove those regular files only;
+  # they are the same tic output of the same source.
+  home.activation.ghosttyTerminfoMigrate = lib.mkIf config.xdg.dataFile."terminfo".enable (
+    lib.hm.dag.entryBefore [ "checkLinkTargets" ] ''
+      if [ -d "${config.xdg.dataHome}/terminfo" ]; then
+        ( cd ${ghosttyTerminfo} && ${pkgs.findutils}/bin/find . -type f ) | while IFS= read -r entry; do
+          target="${config.xdg.dataHome}/terminfo/''${entry#./}"
+          if [ -f "$target" ] && [ ! -L "$target" ]; then
+            run rm -f "$target"
+          fi
+        done
+      fi
+    ''
+  );
 
   # symlink dotfiles/configs/* (OS-independent ones only. Mac-only = sketchybar/karabiner go to home/darwin.nix)
   # tmux: symlink tmux.conf and generate both rose-pine variants so tmux

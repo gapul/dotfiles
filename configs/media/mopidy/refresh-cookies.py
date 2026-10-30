@@ -26,10 +26,9 @@ import socket
 import subprocess
 import sys
 import time
+from typing import Any
 
-PROFILE_DIR = os.path.expanduser(
-    "~/Library/Application Support/Google/Chrome-automation"
-)
+PROFILE_DIR = os.path.expanduser("~/Library/Application Support/Google/Chrome-automation")
 LIVE_PATH = os.path.expanduser("~/.local/state/mopidy/browser.json")
 SEED_PATH = os.path.expanduser("~/.config/mopidy/browser.json")
 CHROME = "/Applications/Google Chrome.app"
@@ -39,7 +38,7 @@ DRY_RUN = "--dry-run" in sys.argv
 LAUNCH_CHROME = "--launch-chrome" in sys.argv
 
 
-def log(msg):
+def log(msg: str) -> None:
     print(f"[refresh-cookies] {msg}", flush=True)
 
 
@@ -75,10 +74,10 @@ def stop_chrome():
     subprocess.run(["/usr/bin/pkill", "-f", "Chrome-automation"], capture_output=True)
 
 
-def build_headers(cookie):
+def build_headers(cookie: str) -> dict[str, str]:
     from ytmusicapi.helpers import get_authorization, sapisid_from_cookie
 
-    base = {}
+    base: dict[str, Any] = {}
     for path in (LIVE_PATH, SEED_PATH):
         try:
             with open(path) as f:
@@ -106,16 +105,14 @@ def build_headers(cookie):
 def extract_cookie():
     from yt_dlp.cookies import extract_cookies_from_browser
 
-    jar = extract_cookies_from_browser(
-        "chrome", profile=os.path.join(PROFILE_DIR, "Default")
-    )
+    jar = extract_cookies_from_browser("chrome", profile=os.path.join(PROFILE_DIR, "Default"))
     pairs = {c.name: c.value for c in jar if c.domain.endswith("youtube.com")}
     if "SAPISID" not in pairs:
         raise RuntimeError("SAPISID cookie not found")
     return "; ".join(f"{k}={v}" for k, v in pairs.items())
 
 
-def is_authenticated(headers):
+def is_authenticated(headers: dict[str, str]) -> bool:
     from ytmusicapi import YTMusic
 
     yt = YTMusic(json.dumps(headers))
@@ -151,7 +148,7 @@ def mpd_state():
     return None
 
 
-def age_of(path):
+def age_of(path: str) -> tuple[float | None, str]:
     try:
         secs = time.time() - os.path.getmtime(path)
     except OSError:

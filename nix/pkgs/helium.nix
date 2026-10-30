@@ -6,10 +6,10 @@
 }:
 let
   pname = "helium";
-  version = "0.19.2.1";
+  version = "0.20.1.1";
   src = fetchurl {
     url = "https://github.com/imputnet/helium-linux/releases/download/${version}/helium-${version}-x86_64.AppImage";
-    sha256 = "a04550a3c7c70bdad3acd3a4430eda8d2afc0bf7173a9c58a403feab9517087f";
+    hash = "sha256-1LeJsl0KmuEsdmceRE6Khe3Pgo4EGcZ40YxB+xrDAw4=";
   };
   desktop = makeDesktopItem {
     name = "helium";

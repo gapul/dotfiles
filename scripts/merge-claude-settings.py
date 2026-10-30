@@ -31,12 +31,21 @@ import os
 import pathlib
 import sys
 import tempfile
+from typing import Any, TypeGuard
 
 SCRIPTS = pathlib.Path(__file__).resolve().parent
 DEFAULT_MANAGED = SCRIPTS.parent / "configs/cli/claude/settings.remote.json"
 
+# A parsed JSON object: string keys, values of whatever JSON holds.
+JsonObject = dict[str, Any]
 
-def load_json(path: pathlib.Path) -> dict:
+
+def is_object(value: object) -> TypeGuard[JsonObject]:
+    """isinstance(value, dict), with the key type JSON guarantees."""
+    return isinstance(value, dict)
+
+
+def load_json(path: pathlib.Path) -> JsonObject:
     """Read a JSON object. A missing or empty file is an empty object."""
     try:
         raw = path.read_text(encoding="utf-8").strip()
@@ -45,12 +54,12 @@ def load_json(path: pathlib.Path) -> dict:
     if not raw:
         return {}
     data = json.loads(raw)
-    if not isinstance(data, dict):
+    if not is_object(data):
         raise ValueError(f"{path}: JSON object ではない ({type(data).__name__})")
     return data
 
 
-def deep_merge(target: dict, managed: dict) -> dict:
+def deep_merge(target: JsonObject, managed: JsonObject) -> JsonObject:
     """Overlay the managed keys onto the target, recursing into nested objects.
 
     両側が object のキーだけ再帰する。これが要るのは permissions で、管理したいのは
@@ -61,14 +70,14 @@ def deep_merge(target: dict, managed: dict) -> dict:
     out = dict(target)
     for key, value in managed.items():
         current = out.get(key)
-        if isinstance(value, dict) and isinstance(current, dict):
+        if is_object(value) and is_object(current):
             out[key] = deep_merge(current, value)
         else:
             out[key] = value
     return out
 
 
-def merged(target: dict, managed: dict) -> dict:
+def merged(target: JsonObject, managed: JsonObject) -> JsonObject:
     """deep_merge に $schema の並べ替えを足したもの (トップレベル専用)。
 
     $schema は Claude Code が読む値ではなくエディタ補完用なので、既存ファイルが
@@ -80,7 +89,7 @@ def merged(target: dict, managed: dict) -> dict:
     return out
 
 
-def stale_paths(target: dict, managed: dict, prefix: str = "") -> list[str]:
+def stale_paths(target: JsonObject, managed: JsonObject, prefix: str = "") -> list[str]:
     """反映漏れしている管理キーを a.b.c 形式で並べる (--check の表示用)。
 
     トップレベルの比較だけだと、permissions のように一部のサブキーだけ管理している
@@ -91,15 +100,15 @@ def stale_paths(target: dict, managed: dict, prefix: str = "") -> list[str]:
         if key == "$schema":
             continue
         path = f"{prefix}{key}"
-        current = target.get(key) if isinstance(target, dict) else None
-        if isinstance(value, dict) and isinstance(current, dict):
+        current = target.get(key)
+        if is_object(value) and is_object(current):
             out.extend(stale_paths(current, value, f"{path}."))
         elif current != value:
             out.append(path)
     return out
 
 
-def write_atomic(path: pathlib.Path, data: dict) -> None:
+def write_atomic(path: pathlib.Path, data: JsonObject) -> None:
     """Replace the file in one rename so a crash never leaves a half-written config."""
     path.parent.mkdir(parents=True, exist_ok=True)
     body = json.dumps(data, indent=2, ensure_ascii=False) + "\n"
@@ -114,8 +123,8 @@ def write_atomic(path: pathlib.Path, data: dict) -> None:
 
 
 def adopt_tree(
-    managed: dict, current: dict, prefix: str = ""
-) -> tuple[dict, list[str], list[str]]:
+    managed: JsonObject, current: JsonObject, prefix: str = ""
+) -> tuple[JsonObject, list[str], list[str]]:
     """管理ファイルの構造をなぞって、ホスト側の現在値へ差し替えた木を返す。
 
     管理キーの集合は増やさない。managed に無いキーは見に行かないので、
@@ -129,11 +138,11 @@ def adopt_tree(
         if key == "$schema":
             continue
         path = f"{prefix}{key}"
-        if not isinstance(current, dict) or key not in current:
+        if key not in current:
             missing.append(path)
             continue
         source_value = current[key]
-        if isinstance(value, dict) and isinstance(source_value, dict):
+        if is_object(value) and is_object(source_value):
             sub, sub_changed, sub_missing = adopt_tree(value, source_value, f"{path}.")
             updated[key] = sub
             changed.extend(sub_changed)
@@ -161,9 +170,7 @@ def adopt(source: pathlib.Path, managed_path: pathlib.Path) -> int:
     updated, changed, missing = adopt_tree(managed, current)
 
     for key in missing:
-        print(
-            f"[claude-settings] {source} に {key} が無いので据え置き", file=sys.stderr
-        )
+        print(f"[claude-settings] {source} に {key} が無いので据え置き", file=sys.stderr)
     if not changed:
         print(f"[claude-settings] {managed_path} は {source} と一致しています")
         return 0

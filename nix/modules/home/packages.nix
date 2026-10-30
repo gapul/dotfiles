@@ -168,4 +168,16 @@ in
     package = llmAgents.packages.${pkgs.stdenv.hostPlatform.system}.opencode;
     settings.autoupdate = false;
   };
+
+  # iamb (Matrix TUI, in home.packages above): same homeserver as Element. Every host that has
+  # the binary gets the profile, so the laptop does not need a hand-written login.
+  # Session state and E2EE keys go to ~/.local/share/iamb on first login, not declared here.
+  # Plain text rather than pkgs.formats.toml: see the lazygit note in home/darwin.nix (CI platform mismatch).
+  xdg.configFile."iamb/config.toml".text = ''
+    default_profile = "gapul"
+
+    [profiles.gapul]
+    user_id = "@gapul:gapul.net"
+    url = "https://matrix.gapul.net"
+  '';
 }

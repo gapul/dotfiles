@@ -1,0 +1,34 @@
+# Package a Bun TypeScript script as a command. The script is copied into the store with the
+# directory it sits in (`src`), so relative imports between files of the same tool keep working;
+# `main` is the entry point inside it. Type checking happens in CI (scripts/ci-lint.sh, tsc over
+# tsconfig.json), not here: the build only needs bun, not node_modules. Started through
+# bun-run.nix, which keeps the caller's working directory from configuring Bun. Tests
+# (`*.test.ts`, `testdata/`) are left out of a path `src`, so editing them does not rebuild.
+{ pkgs }:
+let
+  bunRun = import ./bun-run.nix { inherit pkgs; };
+  withoutTests =
+    src:
+    if builtins.isPath src then
+      builtins.path {
+        path = src;
+        name = "source";
+        filter =
+          path: _type: !(pkgs.lib.hasSuffix ".test.ts" path) && builtins.baseNameOf path != "testdata";
+      }
+    else
+      src;
+in
+{
+  name,
+  src,
+  main,
+  runtimeInputs ? [ ],
+}:
+pkgs.writeShellApplication {
+  inherit name;
+  runtimeInputs = [ pkgs.bun ] ++ runtimeInputs;
+  text = ''
+    exec ${bunRun.cmd} ${withoutTests src}/${main} "$@"
+  '';
+}

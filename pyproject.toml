@@ -1,0 +1,143 @@
+# Lint / format / type-check settings for the repo's standalone Python scripts. Not a package:
+# there is no [project], only tool config. Run by scripts/ci-lint.sh and the pre-commit hooks in
+# nix/flake.nix (ruff, ruff-format, pyright), all from the dev shell (nix develop ./nix).
+
+[tool.ruff]
+# 100 columns: the prose comments here were already wrapped at 100, so 88 would only reflow code.
+line-length = 100
+# What nixpkgs' python3 is (homelab services, launchd agents, mopidy env, scripts/).
+target-version = "py313"
+extend-exclude = [
+  # Symlinks into gapul/ai-agent-state (same reason as the shellcheck excludes in nix/flake.nix):
+  # linted where they live, and absent in CI and in worktrees.
+  "configs/cli/claude",
+  "configs/cli/codex",
+]
+
+# Scripts that are not run by a nix-pinned interpreter. UP fixes for py313 would rewrite them into
+# syntax or stdlib names (datetime.UTC, X | None) their interpreter may lack, so they are held to 3.9.
+[tool.ruff.per-file-target-version]
+# ask_broker runs it as /usr/bin/python3 (macOS system Python, 3.9), locally and over ssh.
+"configs/ask/native_fill.py" = "py39"
+# Hermes runs it with whatever python3 is on hermes' PATH, not one from nix.
+"configs/macmini/hermes/soudan-weekly-collect.py" = "py39"
+# Run from venvs under ~/.local/share/venvs, created by hand with an unpinned Python.
+"configs/macmini/services/*.py" = "py39"
+# HPI is installed with `uv tool install HPI` (nix/home/workstation.nix), on whatever Python uv picks.
+"configs/hpi/*.py" = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+ignore = [
+  # Long lines: the formatter owns code width; what it leaves long is strings, URLs and comments,
+  # and breaking those up is churn rather than a fix.
+  "E501",
+  # try/except/pass -> contextlib.suppress: a matter of taste, and the try form is the house style.
+  "SIM105",
+]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI's parameter markers (configs/macmini/services/ai_panel.py) are meant to be call defaults.
+extend-immutable-calls = ["fastapi.File", "fastapi.Form"]
+
+# strict for every script. One that would need disproportionate churn can opt back down with a
+# `# pyright: basic` comment at its top saying why; none does today.
+[tool.pyright]
+typeCheckingMode = "strict"
+pythonVersion = "3.13"
+exclude = [
+  "**/.*",
+  "**/__pycache__",
+  "**/node_modules",
+  # Same as tool.ruff.extend-exclude above.
+  "configs/cli/claude",
+  "configs/cli/codex",
+]
+# Third-party imports can't be resolved here: each script runs on its own interpreter (mopidy env,
+# macmini venvs, homelab withPackages, pyobjc on macOS) and the dev shell's python3 has none of
+# them. Unresolved modules become Unknown, and the rest of each file is still checked. (Libraries
+# with stubs bundled in pyright's typeshed copy — PyYAML, icalendar, yt-dlp — do resolve, which is
+# why unified-calendar needs no entry below.)
+reportMissingImports = "none"
+reportMissingModuleSource = "none"
+# The scripts lean on invariants pyright can't see — a regex over input that always carries the
+# field, a buffer that is only non-empty once its label is set, mock.call_args after the call —
+# and a crash there is the intended failure.
+reportOptionalMemberAccess = "none"
+reportOptionalOperand = "none"
+
+# Directories whose scripts are built on a third-party library (listed in each entry). Everything
+# reached through an unresolved import is Unknown, so strict's reportUnknown*/reportUntyped* rules
+# would flag every line that touches the library, and silencing them needs either stubs (a second,
+# unchecked copy of an API that drifts from the real one) or a cast per call. They are off here
+# only; the rest of strict stays on, so the scripts' own functions must still be annotated
+# (reportMissingParameterType) and their own generics spelled out (reportMissingTypeArgument).
+# Directory roots, not file roots: a file root stops pyright from resolving sibling modules, which
+# test_broker.py's `import ask_broker` needs. The stdlib-only files that share a directory
+# (configs/ask/native_fill.py, configs/hpi/config.py) pass full strict as of this writing.
+
+# mcp, pydantic, websockets, uvicorn
+[[tool.pyright.executionEnvironments]]
+root = "configs/ask"
+reportUnknownMemberType = "none"
+reportUnknownArgumentType = "none"
+reportUnknownVariableType = "none"
+reportUnknownLambdaType = "none"
+reportUnknownParameterType = "none"
+reportUntypedFunctionDecorator = "none"
+reportUntypedBaseClass = "none"
+
+# playwright
+[[tool.pyright.executionEnvironments]]
+root = "configs/homelab/utokyo-vpn"
+reportUnknownMemberType = "none"
+reportUnknownArgumentType = "none"
+reportUnknownVariableType = "none"
+reportUnknownLambdaType = "none"
+reportUnknownParameterType = "none"
+reportUntypedFunctionDecorator = "none"
+reportUntypedBaseClass = "none"
+
+# HPI (my.core)
+[[tool.pyright.executionEnvironments]]
+root = "configs/hpi"
+reportUnknownMemberType = "none"
+reportUnknownArgumentType = "none"
+reportUnknownVariableType = "none"
+reportUnknownLambdaType = "none"
+reportUnknownParameterType = "none"
+reportUntypedFunctionDecorator = "none"
+reportUntypedBaseClass = "none"
+
+# fastapi, torch, numpy, sentence-transformers, pyannote, style-bert-vits2, mlx
+[[tool.pyright.executionEnvironments]]
+root = "configs/macmini/services"
+reportUnknownMemberType = "none"
+reportUnknownArgumentType = "none"
+reportUnknownVariableType = "none"
+reportUnknownLambdaType = "none"
+reportUnknownParameterType = "none"
+reportUntypedFunctionDecorator = "none"
+reportUntypedBaseClass = "none"
+
+# pyobjc, ytmusicapi
+[[tool.pyright.executionEnvironments]]
+root = "configs/media"
+reportUnknownMemberType = "none"
+reportUnknownArgumentType = "none"
+reportUnknownVariableType = "none"
+reportUnknownLambdaType = "none"
+reportUnknownParameterType = "none"
+reportUntypedFunctionDecorator = "none"
+reportUntypedBaseClass = "none"
+
+# ytmusicapi
+[[tool.pyright.executionEnvironments]]
+root = "configs/wm/sketchybar/plugins"
+reportUnknownMemberType = "none"
+reportUnknownArgumentType = "none"
+reportUnknownVariableType = "none"
+reportUnknownLambdaType = "none"
+reportUnknownParameterType = "none"
+reportUntypedFunctionDecorator = "none"
+reportUntypedBaseClass = "none"

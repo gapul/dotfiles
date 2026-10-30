@@ -1,3 +1,5 @@
+# pyright: reportPrivateUsage=false
+# (white-box tests: they call and patch the broker's private helpers on purpose)
 """Smallest checks that fail if the parts that matter break.
 
     nix shell --impure --expr 'with import <nixpkgs> {}; python3.withPackages (ps: [ ps.mcp ps.websockets ])' \
@@ -7,16 +9,18 @@
 import asyncio
 import sys
 from pathlib import Path
+from typing import Any, TypedDict
 
 sys.path.insert(0, str(Path(__file__).parent))
-
-import ask_broker as broker
 
 # The tests exercise code paths that write audit lines, and those were landing in the real log —
 # "Google — b@x" appearing in the record of what was actually released. A security log is only
 # worth reading if everything in it happened.
 import dataclasses
+import shutil
 import tempfile
+
+import ask_broker as broker
 
 broker.CONFIG = dataclasses.replace(
     broker.CONFIG, audit_log=Path(tempfile.mkdtemp(prefix="ask-test-")) / "audit.jsonl"
@@ -119,8 +123,16 @@ def test_target_is_picked_by_domain():
     with a SlimeVR GUI. Typing a password into the wrong page is the failure worth preventing."""
     targets = [
         {"type": "page", "url": "http://127.0.0.1:21112/#/", "webSocketDebuggerUrl": "ws://a"},
-        {"type": "page", "url": "https://accounts.google.com/v3/signin", "webSocketDebuggerUrl": "ws://b"},
-        {"type": "iframe", "url": "https://accounts.google.com/x", "webSocketDebuggerUrl": "ws://c"},
+        {
+            "type": "page",
+            "url": "https://accounts.google.com/v3/signin",
+            "webSocketDebuggerUrl": "ws://b",
+        },
+        {
+            "type": "iframe",
+            "url": "https://accounts.google.com/x",
+            "webSocketDebuggerUrl": "ws://c",
+        },
     ]
     assert broker.pick_target(targets, "accounts.google.com")["webSocketDebuggerUrl"] == "ws://b"
     # a subdomain of the requested domain counts; an unrelated host does not
@@ -142,35 +154,26 @@ def test_native_target_requires_exact_app_and_domain():
         broker.CONFIG = dataclasses.replace(
             original,
             native_targets={
-                "macmini": {
-                    "apps": {"com.adobe.acc.AdobeCreativeCloud": ["adobe.com"]}
-                }
+                "macmini": {"apps": {"com.adobe.acc.AdobeCreativeCloud": ["adobe.com"]}}
             },
         )
-        assert broker.native_target(
-            "adobe.com", "macmini", "com.adobe.acc.AdobeCreativeCloud"
-        )
-        assert broker.native_target(
-            "evil.example", "macmini", "com.adobe.acc.AdobeCreativeCloud"
-        ) is None
-        assert broker.native_target("adobe.com", "macmini", "com.example.fake") is None
-        assert broker.native_target(
-            "adobe.com", "workstation", "com.adobe.acc.AdobeCreativeCloud"
-        ) is None
-        target = {
-            "keystroke_bundles": ["com.adobe.acc.AdobeCreativeCloud"]
-        }
+        assert broker.native_target("adobe.com", "macmini", "com.adobe.acc.AdobeCreativeCloud")
         assert (
-            broker.native_input_mode(target, "com.adobe.acc.AdobeCreativeCloud")
-            == "keystroke"
+            broker.native_target("evil.example", "macmini", "com.adobe.acc.AdobeCreativeCloud")
+            is None
         )
+        assert broker.native_target("adobe.com", "macmini", "com.example.fake") is None
+        assert (
+            broker.native_target("adobe.com", "workstation", "com.adobe.acc.AdobeCreativeCloud")
+            is None
+        )
+        target = {"keystroke_bundles": ["com.adobe.acc.AdobeCreativeCloud"]}
+        assert broker.native_input_mode(target, "com.adobe.acc.AdobeCreativeCloud") == "keystroke"
         assert broker.native_input_mode(target, "com.example.other") == "ax_value"
         assert broker.native_input_mode({}, "com.adobe.acc.AdobeCreativeCloud") == "ax_value"
         browser_target = {"url_check_bundles": ["com.apple.Safari"]}
         assert (
-            broker.native_url_domain(
-                browser_target, "com.apple.Safari", "accounts.google.com"
-            )
+            broker.native_url_domain(browser_target, "com.apple.Safari", "accounts.google.com")
             == "accounts.google.com"
         )
         assert (
@@ -208,9 +211,7 @@ def test_native_refuses_unknown_target_before_touching_vault():
 
 
 def test_native_helper_response_cannot_return_a_secret():
-    assert broker.sanitize_native_result({"filled": True, "password": "secret"}) == {
-        "filled": True
-    }
+    assert broker.sanitize_native_result({"filled": True, "password": "secret"}) == {"filled": True}
     assert broker.sanitize_native_result({"filled": False, "error": "secret"}) == {
         "filled": False,
         "error": "native helper failed",
@@ -252,9 +253,10 @@ def test_cdp_lookup_asks_for_every_browser():
     from unittest.mock import patch
 
     reply = SimpleNamespace(stdout='{"self": null, "browsers": [{"cdpPort": 4242}]}')
-    with patch.object(broker.shutil, "which", return_value="/bin/terminal-browser"), patch.object(
-        broker.subprocess, "run", return_value=reply
-    ) as run:
+    with (
+        patch.object(broker.shutil, "which", return_value="/bin/terminal-browser"),
+        patch.object(broker.subprocess, "run", return_value=reply) as run,
+    ):
         assert broker.terminal_browser_cdp_port() == 4242
     assert "--all" in run.call_args.args[0], run.call_args
 
@@ -276,20 +278,23 @@ def test_one_sign_in_asks_once():
             for field in ("username", "password")
         ]
 
-    with patch.object(broker.VAULT, "candidates", return_value=candidates), patch.object(
-        broker.VAULT, "get", return_value="secret"
-    ), patch.object(broker, "terminal_browser_cdp_port", return_value=1), patch.object(
-        broker, "fill_via_cdp", AsyncMock(return_value=None)
-    ), patch.object(broker, "ask_human", AsyncMock(return_value="Google — b@x")) as asked:
+    with (
+        patch.object(broker.VAULT, "candidates", return_value=candidates),
+        patch.object(broker.VAULT, "get", return_value="secret"),
+        patch.object(broker, "terminal_browser_cdp_port", return_value=1),
+        patch.object(broker, "fill_via_cdp", AsyncMock(return_value=None)),
+        patch.object(broker, "ask_human", AsyncMock(return_value="Google — b@x")) as asked,
+    ):
         assert asyncio.run(run()) == [{"filled": True}, {"filled": True}]
 
     assert asked.await_count == 1, asked.await_count
 
     # A different site is a different decision, and gets its own question.
     broker.CONFIG = broker.replace_allowlist(("accounts.google.com", "github.com"))
-    with patch.object(broker.VAULT, "candidates", return_value=candidates), patch.object(
-        broker, "ask_human", AsyncMock(return_value="no")
-    ) as asked:
+    with (
+        patch.object(broker.VAULT, "candidates", return_value=candidates),
+        patch.object(broker, "ask_human", AsyncMock(return_value="no")) as asked,
+    ):
         asyncio.run(
             broker.login_fill(
                 ctx=None, domain="github.com", selectors={"password": "#s"}, requester="test"
@@ -321,7 +326,7 @@ def test_the_account_list_outlives_an_apple_event():
         async def communicate(self):
             return b"Google \xe2\x80\x94 b@x", b""
 
-    async def fake_exec(*args, **kwargs):
+    async def fake_exec(*args: Any, **kwargs: Any) -> FakeProc:
         captured["script"] = args[2]
         return FakeProc()
 
@@ -353,17 +358,22 @@ def test_the_caller_is_told_the_wait_is_deliberate():
     class FakeCtx:
         pings = 0
 
-        async def report_progress(self, **kwargs):
+        async def report_progress(self, **kwargs: Any) -> None:
             FakeCtx.pings += 1
 
-    async def slow_answer(_ctx, _request):
+    async def slow_answer(_ctx: object, _request: object) -> str:
         await asyncio.sleep(0.05)
         return "yes"
 
-    with patch.object(broker, "HEARTBEAT_SECONDS", 0.01), patch.object(
-        broker, "_ask_channels", slow_answer
+    with (
+        patch.object(broker, "HEARTBEAT_SECONDS", 0.01),
+        patch.object(broker, "_ask_channels", slow_answer),
     ):
-        answer = asyncio.run(broker.ask_human(FakeCtx(), broker.Request(kind="approve", prompt="?", requester="test")))
+        answer = asyncio.run(
+            broker.ask_human(
+                FakeCtx(), broker.Request(kind="approve", prompt="?", requester="test")
+            )
+        )
 
     assert answer == "yes"
     assert FakeCtx.pings >= 1, FakeCtx.pings
@@ -373,10 +383,19 @@ def _no_vault():
     """A vault that fails the test if anything reaches it."""
     from unittest.mock import patch
 
-    def touched(*_args, **_kwargs):
+    def touched(*_args: Any, **_kwargs: Any) -> None:
         raise AssertionError("the vault was reached")
 
     return patch.object(broker.VAULT, "candidates", side_effect=touched)
+
+
+class RunCase(TypedDict):
+    """The arguments of broker.run that the refusal test below varies."""
+
+    domain: str
+    env: dict[str, str]
+    command: list[str]
+    cwd: str
 
 
 def test_run_refuses_bad_requests_before_touching_the_vault():
@@ -384,19 +403,28 @@ def test_run_refuses_bad_requests_before_touching_the_vault():
     the vault is unlocked: a malformed request should cost nothing."""
     broker.CONFIG = broker.replace_allowlist(("github.com",))
     cases = [
-        dict(domain="evil.example", env={"T": "password"}, command=["true"], cwd="/"),
-        dict(domain="github.com", env={}, command=["true"], cwd="/"),
-        dict(domain="github.com", env={"BAD-NAME": "password"}, command=["true"], cwd="/"),
-        dict(domain="github.com", env={"BW_SESSION": "password"}, command=["true"], cwd="/"),
-        dict(domain="github.com", env={"T": "notes"}, command=["true"], cwd="/"),
-        dict(domain="github.com", env={"T": "password"}, command=[], cwd="/"),
-        dict(domain="github.com", env={"T": "password"}, command=["true"], cwd="relative"),
-        dict(domain="github.com", env={"T": "password"}, command=["true"], cwd="/does/not/exist"),
-        dict(domain="github.com", env={"PATH": "password"}, command=["true"], cwd="/"),
-        dict(domain="github.com", env={"DYLD_INSERT_LIBRARIES": "password"}, command=["true"], cwd="/"),
-        dict(domain="github.com", env={"T": "password"}, command=["tr\0ue"], cwd="/"),
-        dict(domain="github.com", env={"T": "password"}, command=["no-such-program-xyz"], cwd="/"),
-        dict(domain="github.com", env={"T": "password"}, command=["echo", "x" * 2000], cwd="/"),
+        RunCase(domain="evil.example", env={"T": "password"}, command=["true"], cwd="/"),
+        RunCase(domain="github.com", env={}, command=["true"], cwd="/"),
+        RunCase(domain="github.com", env={"BAD-NAME": "password"}, command=["true"], cwd="/"),
+        RunCase(domain="github.com", env={"BW_SESSION": "password"}, command=["true"], cwd="/"),
+        RunCase(domain="github.com", env={"T": "notes"}, command=["true"], cwd="/"),
+        RunCase(domain="github.com", env={"T": "password"}, command=[], cwd="/"),
+        RunCase(domain="github.com", env={"T": "password"}, command=["true"], cwd="relative"),
+        RunCase(
+            domain="github.com", env={"T": "password"}, command=["true"], cwd="/does/not/exist"
+        ),
+        RunCase(domain="github.com", env={"PATH": "password"}, command=["true"], cwd="/"),
+        RunCase(
+            domain="github.com",
+            env={"DYLD_INSERT_LIBRARIES": "password"},
+            command=["true"],
+            cwd="/",
+        ),
+        RunCase(domain="github.com", env={"T": "password"}, command=["tr\0ue"], cwd="/"),
+        RunCase(
+            domain="github.com", env={"T": "password"}, command=["no-such-program-xyz"], cwd="/"
+        ),
+        RunCase(domain="github.com", env={"T": "password"}, command=["echo", "x" * 2000], cwd="/"),
     ]
     with _no_vault():
         for case in cases:
@@ -413,15 +441,24 @@ def test_run_puts_the_secret_in_the_env_and_not_in_the_answer():
     broker.CONFIG = broker.replace_allowlist(("github.com",))
     secret = "ghp_s3cr3t-value"
     script = 'echo "token=$GH_TOKEN"; echo "user=$GH_USER" >&2; echo "session=${BW_SESSION:-none}"'
-    with patch.dict(os.environ, {"BW_SESSION": "leaked-session"}), patch.object(
-        broker.VAULT, "candidates", return_value=[("item-a", "GitHub — me")]
-    ), patch.object(
-        broker.VAULT, "get", side_effect=lambda field, _item: {"password": secret, "username": "me"}[field]
-    ), patch.object(broker, "ask_human", AsyncMock(return_value="yes")) as asked:
+    with (
+        patch.dict(os.environ, {"BW_SESSION": "leaked-session"}),
+        patch.object(broker.VAULT, "candidates", return_value=[("item-a", "GitHub — me")]),
+        patch.object(
+            broker.VAULT,
+            "get",
+            side_effect=lambda field, _item: {"password": secret, "username": "me"}[field],
+        ),
+        patch.object(broker, "ask_human", AsyncMock(return_value="yes")) as asked,
+    ):
         result = asyncio.run(
             broker.run(
-                ctx=None, domain="github.com", env={"GH_TOKEN": "password", "GH_USER": "username"},
-                command=["/bin/sh", "-c", script], cwd="/", requester="test",
+                ctx=None,
+                domain="github.com",
+                env={"GH_TOKEN": "password", "GH_USER": "username"},
+                command=["/bin/sh", "-c", script],
+                cwd="/",
+                requester="test",
             )
         )
 
@@ -441,14 +478,21 @@ def test_run_denied_releases_nothing():
     from unittest.mock import AsyncMock, patch
 
     broker.CONFIG = broker.replace_allowlist(("github.com",))
-    with patch.object(
-        broker.VAULT, "candidates", return_value=[("item-a", "GitHub — me")]
-    ), patch.object(broker.VAULT, "get", side_effect=AssertionError("released")), patch.object(
-        broker, "ask_human", AsyncMock(return_value="no")
-    ), patch.object(broker, "run_child", AsyncMock(side_effect=AssertionError("ran"))):
+    with (
+        patch.object(broker.VAULT, "candidates", return_value=[("item-a", "GitHub — me")]),
+        patch.object(broker.VAULT, "get", side_effect=AssertionError("released")),
+        patch.object(broker, "ask_human", AsyncMock(return_value="no")),
+        patch.object(broker, "run_child", AsyncMock(side_effect=AssertionError("ran"))),
+    ):
         result = asyncio.run(
-            broker.run(ctx=None, domain="github.com", env={"T": "password"},
-                       command=["true"], cwd="/", requester="test")
+            broker.run(
+                ctx=None,
+                domain="github.com",
+                env={"T": "password"},
+                command=["true"],
+                cwd="/",
+                requester="test",
+            )
         )
     assert result == {"ran": False, "error": "not approved"}, result
 
@@ -458,14 +502,22 @@ def test_run_asks_every_time():
     from unittest.mock import AsyncMock, patch
 
     broker.CONFIG = broker.replace_allowlist(("github.com",))
-    with patch.object(
-        broker.VAULT, "candidates", return_value=[("item-a", "GitHub — me")]
-    ), patch.object(broker.VAULT, "get", return_value="s3cr3t"), patch.object(
-        broker, "ask_human", AsyncMock(return_value="yes")
-    ) as asked:
+    with (
+        patch.object(broker.VAULT, "candidates", return_value=[("item-a", "GitHub — me")]),
+        patch.object(broker.VAULT, "get", return_value="s3cr3t"),
+        patch.object(broker, "ask_human", AsyncMock(return_value="yes")) as asked,
+    ):
         for _ in range(2):
-            asyncio.run(broker.run(ctx=None, domain="github.com", env={"T": "password"},
-                                   command=["true"], cwd="/", requester="test"))
+            asyncio.run(
+                broker.run(
+                    ctx=None,
+                    domain="github.com",
+                    env={"T": "password"},
+                    command=["true"],
+                    cwd="/",
+                    requester="test",
+                )
+            )
     assert asked.await_count == 2, asked.await_count
 
 
@@ -479,7 +531,9 @@ def test_run_times_out_and_kills_what_it_started():
         started = time.time()
         # The grandchild holds the pipe open; killing only the shell would leave communicate()
         # waiting for it.
-        result = asyncio.run(broker.run_child(["/bin/sh", "-c", "sleep 30 & sleep 30"], "/", {}, []))
+        result = asyncio.run(
+            broker.run_child(["/bin/sh", "-c", "sleep 30 & sleep 30"], "/", {}, [])
+        )
         assert result["timed_out"] is True, result
         assert time.time() - started < 10
     finally:
@@ -523,10 +577,12 @@ def test_channels_follow_config():
     original = broker.CONFIG
     try:
         broker.CONFIG = dataclasses.replace(original, channels=("matrix",))
-        with patch.object(broker, "touch_id", AsyncMock(side_effect=AssertionError("touch id"))), \
-                patch.object(broker, "system_dialog", AsyncMock(side_effect=AssertionError("dialog"))), \
-                patch.object(broker.MATRIX, "ask", AsyncMock(return_value="yes")), \
-                patch.object(broker.Matrix, "configured", True):
+        with (
+            patch.object(broker, "touch_id", AsyncMock(side_effect=AssertionError("touch id"))),
+            patch.object(broker, "system_dialog", AsyncMock(side_effect=AssertionError("dialog"))),
+            patch.object(broker.MATRIX, "ask", AsyncMock(return_value="yes")),
+            patch.object(broker.Matrix, "configured", True),
+        ):
             request = broker.Request(kind="run", prompt="?", requester="test")
             assert asyncio.run(broker._ask_channels(None, request)) == "yes"
     finally:
@@ -545,7 +601,6 @@ def test_the_human_sees_what_will_run():
 def test_run_is_never_answered_by_the_caller():
     """Elicitation is answered by the client that asked, which for run is the one being held back."""
     import dataclasses
-    from unittest.mock import AsyncMock, patch
 
     class Ctx:
         async def elicit(self, **_):
@@ -564,13 +619,22 @@ def test_run_shows_and_runs_the_resolved_program():
     from unittest.mock import AsyncMock, patch
 
     broker.CONFIG = broker.replace_allowlist(("github.com",))
-    with patch.object(
-        broker.VAULT, "candidates", return_value=[("item-a", "GitHub — me")]
-    ), patch.object(broker.VAULT, "get", return_value="s3cr3t"), patch.object(
-        broker, "ask_human", AsyncMock(return_value="yes")
-    ) as asked, patch.object(broker, "run_child", AsyncMock(return_value={"ran": True})) as ran:
-        asyncio.run(broker.run(ctx=None, domain="github.com", env={"T": "password"},
-                               command=["true"], cwd="/tmp", requester="t"))
+    with (
+        patch.object(broker.VAULT, "candidates", return_value=[("item-a", "GitHub — me")]),
+        patch.object(broker.VAULT, "get", return_value="s3cr3t"),
+        patch.object(broker, "ask_human", AsyncMock(return_value="yes")) as asked,
+        patch.object(broker, "run_child", AsyncMock(return_value={"ran": True})) as ran,
+    ):
+        asyncio.run(
+            broker.run(
+                ctx=None,
+                domain="github.com",
+                env={"T": "password"},
+                command=["true"],
+                cwd="/tmp",
+                requester="t",
+            )
+        )
     program = ran.await_args.args[0][0]
     assert program.startswith("/") and program in asked.await_args.args[1].prompt, program
     assert ran.await_args.args[1] == str(Path("/tmp").resolve())
@@ -587,7 +651,9 @@ def test_run_survives_an_escaped_grandchild():
         broker.CONFIG = dataclasses.replace(original, run_timeout_seconds=0.5)
         script = "use POSIX; if (fork == 0) { POSIX::setsid(); sleep 20; exit } print qq(before\n); sleep 20"
         started = time.time()
-        result = asyncio.run(broker.run_child(["/usr/bin/perl", "-e", script], "/", {}, []))
+        result = asyncio.run(
+            broker.run_child([shutil.which("perl") or "/usr/bin/perl", "-e", script], "/", {}, [])
+        )
         assert result["timed_out"] is True, result
         assert time.time() - started < 15, time.time() - started
     finally:
@@ -601,9 +667,14 @@ def test_run_output_is_bounded_while_read():
     try:
         broker.CONFIG = dataclasses.replace(original, run_output_bytes=1000)
         result = asyncio.run(
-            broker.run_child(["/bin/sh", "-c", "head -c 5000000 /dev/zero | tr '\\0' a"], "/", {}, [])
+            broker.run_child(
+                ["/bin/sh", "-c", "head -c 5000000 /dev/zero | tr '\\0' a"], "/", {}, []
+            )
         )
-        assert len(result["stdout"]) == 1000 and result["truncated"], (len(result["stdout"]), result["truncated"])
+        assert len(result["stdout"]) == 1000 and result["truncated"], (
+            len(result["stdout"]),
+            result["truncated"],
+        )
     finally:
         broker.CONFIG = original
 
@@ -615,7 +686,10 @@ def test_scrub_catches_escaped_forms():
 
     for form in (
         _json.dumps(secret)[1:-1],
-        _json.dumps(secret)[1:-1].replace("&", "\\u0026").replace("<", "\\u003c").replace(">", "\\u003e"),
+        _json.dumps(secret)[1:-1]
+        .replace("&", "\\u0026")
+        .replace("<", "\\u003c")
+        .replace(">", "\\u003e"),
         urllib.parse.quote(secret, safe=""),
         urllib.parse.quote_plus(secret),
     ):
@@ -625,13 +699,13 @@ def test_scrub_catches_escaped_forms():
 def test_unlock_only_from_loopback():
     from unittest.mock import patch
 
-    async def call(client, body):
-        sent = []
+    async def call(client: str, body: bytes) -> int:
+        sent: list[dict[str, Any]] = []
 
         async def receive():
             return {"type": "http.request", "body": body, "more_body": False}
 
-        async def send(message):
+        async def send(message: dict[str, Any]) -> None:
             sent.append(message)
 
         async def app(*_):
@@ -663,7 +737,9 @@ def test_a_string_is_not_a_channel_list():
 
 def test_tools_registered():
     names = {t.name for t in asyncio.run(broker.mcp.list_tools())}
-    assert names == {"approve", "choose", "ask_text", "login_fill", "native_login_fill", "run"}, names
+    assert names == {"approve", "choose", "ask_text", "login_fill", "native_login_fill", "run"}, (
+        names
+    )
 
 
 def test_no_tool_returns_a_credential():

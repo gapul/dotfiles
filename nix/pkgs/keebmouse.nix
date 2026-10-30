@@ -3,7 +3,7 @@
 # The source repo is private, so this fetches the same signed release artifact the cask used
 # rather than building from source. That distinction is the whole reason this can be a nix
 # package at all: what breaks TCC is an ad-hoc signature whose cdhash changes on every rebuild,
-# not nix itself. Here the bundle keeps its Developer ID signature (gapul, S3H296G6Q5)
+# not nix itself. Here the bundle keeps its Developer ID signature (team S3H296G6Q5)
 # untouched, and nix-darwin copies it to a stable /Applications/Nix Apps/keebmouse.app, so
 # Accessibility survives version bumps. It has to be re-granted once, for the move off
 # /Applications.

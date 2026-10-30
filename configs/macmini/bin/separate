@@ -1,6 +1,6 @@
-#!/bin/zsh
+#!/bin/bash
 set -e
-setopt pipefail
+set -o pipefail
 # 音声分離(MelBand RoFormer): 曲/音声をボーカルとBGMに分ける
 # 使い方: separate <音声/曲ファイル> [出力ディレクトリ]
 eval "$(/opt/homebrew/bin/brew shellenv)"

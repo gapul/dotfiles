@@ -80,22 +80,30 @@ in
     # This is the agent's default path — it represents a page in 200-400 tokens, an order of magnitude
     # cheaper than piling the accessibility tree into context every turn over MCP (upstream measured
     # 114k vs 27k). Its version always matches terminal-browser itself.
-    (pkgs.writeShellScriptBin "agent-browser" ''
-      exec ${terminalBrowser}/libexec/terminal-browser/agent-browser/bin/agent-browser "$@"
-    '')
+    (pkgs.writeShellApplication {
+      name = "agent-browser";
+      bashOptions = [ ];
+      text = ''
+        exec ${terminalBrowser}/libexec/terminal-browser/agent-browser/bin/agent-browser "$@"
+      '';
+    })
     # playwright-test: a wrapper started only when cross-browser checks are needed. Only Playwright can
     # test on Firefox and WebKit, which agent-browser cannot, so it stays. But it no longer runs
     # resident (history in modules/home/darwin-services.nix). The old resident one hung off an existing
     # Chromium via --cdp-endpoint, so it never reached Firefox or WebKit in the first place.
-    (pkgs.writeShellScriptBin "playwright-test" ''
-      browser="''${1:-chromium}"
-      port="''${2:-8932}"
-      echo "playwright-mcp: $browser on http://localhost:$port/mcp (Ctrl-C to stop)" >&2
-      export PLAYWRIGHT_BROWSERS_PATH=${pkgs.playwright-driver.browsers}
-      exec ${lib.getExe unstablePkgs.playwright-mcp} \
-        --browser "$browser" --port "$port" \
-        --output-dir /tmp/playwright-test
-    '')
+    (pkgs.writeShellApplication {
+      name = "playwright-test";
+      bashOptions = [ ];
+      text = ''
+        browser="''${1:-chromium}"
+        port="''${2:-8932}"
+        echo "playwright-mcp: $browser on http://localhost:$port/mcp (Ctrl-C to stop)" >&2
+        export PLAYWRIGHT_BROWSERS_PATH=${pkgs.playwright-driver.browsers}
+        exec ${lib.getExe unstablePkgs.playwright-mcp} \
+          --browser "$browser" --port "$port" \
+          --output-dir /tmp/playwright-test
+      '';
+    })
     # node: needed to run playwright-mcp. The node held by pnpm's global store had become a broken
     # link (~/Library/pnpm/bin/node → a store path that was gone), which is why the former playwright
     # agent died with "exec: node: not found". The runtime is taken out of pnpm's hands and held
@@ -126,6 +134,9 @@ in
     # This lets both taps for self-made things (gapul/puddle, gapul/keystats) be folded.
     (pkgs.callPackage ../pkgs/puddle.nix { })
     (pkgs.callPackage ../pkgs/keystats.nix { })
+    # Lan Mouse: shares this keyboard and trackpad with nixos-laptop. Upstream's release, not a
+    # nixpkgs build, so the Accessibility grant holds between flake.lock bumps.
+    (pkgs.callPackage ../pkgs/lan-mouse-macos.nix { })
     # mocopi: self-made. The source stays a private repo, so the flake input is fetched via git+ssh
     # (mocopi-mac in flake.nix). Putting it here lands it in /Applications/Nix Apps, so the manual
     # `nix build && cp -R result/Applications/mocopi.app ~/Applications/` from the README is not needed.
@@ -173,7 +184,11 @@ in
     # nixos-unstable: 26.05's snapshot wants manifold built from source, unstable's is cached.
     unstablePkgs.openscad-unstable
     # (not lib.getExe: nixpkgs' meta.mainProgram says "openscad" but the file is openscad-unstable)
-    (pkgs.writeShellScriptBin "openscad" ''exec ${unstablePkgs.openscad-unstable}/bin/openscad-unstable "$@"'')
+    (pkgs.writeShellApplication {
+      name = "openscad";
+      bashOptions = [ ];
+      text = ''exec ${unstablePkgs.openscad-unstable}/bin/openscad-unstable "$@"'';
+    })
     pkgs.brewCasks.trex # Screen OCR. Screen Recording TCC must be re-granted
     # ─── Emulation ───
     # The Pokémon RNG/breeding work runs here rather than on hardware: frame-level control and a
@@ -457,10 +472,10 @@ in
     # Fetched rather than committed: the ttf is 280KB of someone else's build.
     (stdenvNoCC.mkDerivation {
       pname = "sketchybar-app-font";
-      version = "3.0.10";
+      version = "3.0.12";
       src = fetchurl {
-        url = "https://github.com/kvndrsslr/sketchybar-app-font/releases/download/v3.0.10/sketchybar-app-font.ttf";
-        hash = "sha256-5hEgf1CmVIXUrru6A9wxX9ofBo+fblH5/gX6dcvkwpk=";
+        url = "https://github.com/kvndrsslr/sketchybar-app-font/releases/download/v3.0.12/sketchybar-app-font.ttf";
+        hash = "sha256-NGH5a8sFwPscPEKr+xT2+FoPy8Ph3ZpxNonimqQaQQ0=";
       };
       dontUnpack = true;
       installPhase = ''

@@ -108,8 +108,9 @@ let
             text = pathlib.Path(source).read_text()
             text = pattern.sub(lambda m: mapping[m.group().lower()], text)
             # Kvantum paints only the window background with alpha; glyphs stay opaque.
+            # Window transparency is set aside for now (2026-10-23): opaque, no blur.
             if name == "Kvantum/Base16Kvantum/Base16Kvantum.kvconfig":
-                for key, value in {"translucent_windows": "true", "reduce_window_opacity": "16", "blurring": "true"}.items():
+                for key, value in {"translucent_windows": "false", "reduce_window_opacity": "0", "blurring": "false"}.items():
                     text, count = re.subn(r"(?m)^" + key + r"=.*$", key + "=" + value, text)
                     assert count == 1, (name, key, count)
             if name == "wlogout/style.css":

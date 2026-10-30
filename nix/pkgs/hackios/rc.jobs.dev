@@ -1,0 +1,7 @@
+# Commands run by the launchd job com.hakios.demo (see com.hakios.demo.plist), for a development
+# session (RC_JOBS=rc.jobs.dev, under QEMU with QEMU_NET=1): en0 over DHCP, then sshd from the
+# package manager's prefix with the key in ../ssh, so apps can be pushed into the running system
+# (`hackios push`) instead of being baked into a rebuilt image and a seven-minute boot.
+/redwood/bin/net_test dhcp en0 waitaddr en0 60
+/var/jb/usr/sbin/sshd -D -e -h /var/root/.ssh/ssh_host_ed25519_key -o UsePAM=no -o PasswordAuthentication=no -o PermitRootLogin=prohibit-password -o AuthorizedKeysFile=/var/root/.ssh/authorized_keys &
+/redwood/bin/net_test show

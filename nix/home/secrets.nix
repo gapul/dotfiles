@@ -33,18 +33,18 @@
         path = "${config.home.homeDirectory}/.ssh/id_automation";
         mode = "0600";
       };
-      # The work machine alone gets a separate key. The work machine's authorized_keys is owned by
+      # sean alone gets a separate key. sean's authorized_keys is owned by
       # us and writable (confirmed 2026-08-30; "cannot re-register" was an outdated note). The key
-      # was made for mutagen sync; after mutagen was retired, ssh_config's mvrx-nolang-dev uses it.
-      # Of the keys the main Mac holds, the work machine accepts this one and the enclave key, and
+      # was made for mutagen sync; after mutagen was retired, ssh_config's sean uses it.
+      # Of the keys the main Mac holds, sean accepts this one and the enclave key, and
       # id_automation is not on it (confirmed 2026-09-16 by fingerprint and -F /dev/null tests).
-      # The work machine's own list has 4 keys. Details in the notes in nix/keys/authorized_keys.
+      # sean's own list has 4 keys. Details in the notes in nix/keys/authorized_keys.
       #
       # Do not reuse ssh_automation_key. If home and work privileges are mixed into one key,
       # revoking either takes both down. Wanting to cut only the work side is the likelier case,
       # so the boundary is drawn here.
-      "ssh_mvrx_sync_key" = {
-        path = "${config.home.homeDirectory}/.ssh/id_mvrx_sync";
+      "ssh_sean_sync_key" = {
+        path = "${config.home.homeDirectory}/.ssh/id_sean_sync";
         mode = "0600";
       };
       # "ssh_authorized_keys" is no longer placed here: modules/authorized-keys.nix declares the
@@ -87,7 +87,7 @@
       "pii/name" = { };
       "pii/email_personal" = { };
       "pii/email_school" = { };
-      "pii/email_work" = { };
+      "pii/email_sean" = { };
       "pii/birthday" = { };
       "pii/gmail_app_password_caldav" = { };
 

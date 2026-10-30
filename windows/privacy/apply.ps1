@@ -1,19 +1,21 @@
 ﻿# Windows プライバシー / 標準機能を declarative に適用する orchestrator。
-# - Win11Debloat:   win11debloat-args.txt の引数で自動実行 (CLI 完結)
+# - Win11Debloat:   upstream.psd1 で固定した版を SHA256 照合して、win11debloat-args.txt の引数で実行
 # - CustomApps:     win11debloat-customapps.txt 列挙の UWP を Remove-AppxPackage 直接実行
-# - ExtraRegistry:  Windows Backup UI など、宣言的な追加レジストリ tweak
-# - WinUtil:        winutil-config.json を引数で渡して GUI 起動 (ユーザーが Apply)
+# - OneDrive:       公式 uninstaller
+# - WinUtil:        upstream.psd1 で固定した版を SHA256 照合して、winutil-config.json を headless 適用
+# - Baseline:       baseline.psd1 のレジストリ / サービス / タスク (ツールの版に依存しない部分、最後に適用)
 #
-# 管理者 PowerShell で実行推奨 (UWP 削除 / レジストリ HKLM / Set-Service / 等)。
-# -DryRun で副作用なしの計画表示。
+# 管理者 PowerShell で実行 (UWP 削除 / レジストリ HKLM / Set-Service 等)。PowerShell 5.1 / 7 どちらでも動く。
+# -DryRun で副作用なしの計画表示。適用後の確認は verify.ps1 (just win-privacy-verify)。
 #
 # 関連: windows/privacy/README.md
 [CmdletBinding()]
 param(
     [switch]$DryRun,
-    [switch]$SkipWinUtil,        # WinUtil GUI 起動を skip
-    [switch]$SkipWin11Debloat,   # Win11Debloat 実行 + ExtraRegistry を skip
-    [switch]$SkipCustomApps      # カスタム UWP 削除 (customapps.txt) を skip
+    [switch]$SkipWinUtil,        # WinUtil の headless 適用を skip
+    [switch]$SkipWin11Debloat,   # Win11Debloat 実行 + OneDrive uninstall を skip
+    [switch]$SkipCustomApps,     # カスタム UWP 削除 (customapps.txt) を skip
+    [switch]$SkipBaseline        # baseline.psd1 の適用を skip
 )
 
 $ErrorActionPreference = 'Stop'
@@ -24,27 +26,101 @@ if (-not $PrivacyDir) {
 
 function Log($msg) { Write-Host "[privacy] $msg"      -ForegroundColor Blue }
 function Dry($msg) { Write-Host "[privacy][dry] $msg" -ForegroundColor DarkYellow }
-function Err($msg) { Write-Host "[privacy] $msg"      -ForegroundColor Red }
+# Err は失敗として数え、最後に 1 件でもあれば exit 1 にする
+$script:Failures = 0
+function Err($msg)  { Write-Host "[privacy] $msg"      -ForegroundColor Red; $script:Failures++ }
+function Warn($msg) { Write-Host "[privacy] $msg"      -ForegroundColor Yellow }
+
+# 外部スクリプトは Windows PowerShell 5.1 で動かす (Win11Debloat の公式 launcher も powershell.exe を使う)
+$WinPS = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
+
+$Upstream = Import-PowerShellDataFile (Join-Path $PrivacyDir 'upstream.psd1')
+$Baseline = Import-PowerShellDataFile (Join-Path $PrivacyDir 'baseline.psd1')
 
 # ─── 0. 管理者チェック (DryRun は除外) ───
 # レジストリ HKLM 書込 / UWP Provisioned 削除 / OneDrive uninstall は全部管理者要。
 # 非管理者で起動された場合は UAC 起こして elevate した子プロセスに引き継ぐ。
+# 子は今と同じ PowerShell (5.1 なら powershell.exe、7 なら pwsh.exe) で起動する。
 if (-not $DryRun) {
     $principal = New-Object Security.Principal.WindowsPrincipal(
         [Security.Principal.WindowsIdentity]::GetCurrent())
     if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
         Log '管理者権限が必要です。UAC promptで再起動します...'
-        # 元の switch を再構成して子プロセスに渡す
         $childArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$PSCommandPath`"")
         if ($SkipWinUtil)      { $childArgs += '-SkipWinUtil' }
         if ($SkipWin11Debloat) { $childArgs += '-SkipWin11Debloat' }
         if ($SkipCustomApps)   { $childArgs += '-SkipCustomApps' }
-        Start-Process pwsh -Verb RunAs -ArgumentList $childArgs
-        exit
+        if ($SkipBaseline)     { $childArgs += '-SkipBaseline' }
+        # 子の終了を待って exit code を引き継ぐ (just / bootstrap が失敗を検知できるように)
+        $child = Start-Process (Get-Process -Id $PID).Path -Verb RunAs -ArgumentList $childArgs -Wait -PassThru
+        exit $child.ExitCode
+    }
+    # 昇格したウィンドウは終了時に閉じるので、出力はログにも残す
+    $logDir = Join-Path $env:LOCALAPPDATA 'dotfiles'
+    New-Item -ItemType Directory -Path $logDir -Force | Out-Null
+    $logFile = Join-Path $logDir "privacy-apply-$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
+    Start-Transcript -Path $logFile | Out-Null
+}
+
+# 追加機能の名前 (Hello.Face.20134~~~~0.0.1.0) が baseline の名前 (Hello.Face) に当たるか。
+# ~~~~ より前が一致するか、その後ろに .<枝番> が付いたものを同じ機能とみなす
+function Test-CapabilityName([string]$Name, [string]$Base) {
+    $head = ($Name -split '~')[0]
+    return ($head -eq $Base) -or ($head -like "$Base.*")
+}
+
+# 取得物の置き場。%TEMP% は昇格前のユーザー権限でも書けるので、SHA256 照合の後に
+# 中身を差し替えられうる (照合したものと実行するものが一致しない)。
+# Administrators と SYSTEM だけが書ける ACL を作成時点で付けたディレクトリを使う。
+function New-PrivateWorkDir {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '', Justification = 'Only called outside -DryRun; the script-level -DryRun mode replaces ShouldProcess.')]
+    param([string]$Prefix)
+    $dir = Join-Path $env:SystemRoot "Temp\$Prefix-$([guid]::NewGuid().ToString('N'))"
+    $acl = New-Object System.Security.AccessControl.DirectorySecurity
+    $acl.SetAccessRuleProtection($true, $false)
+    foreach ($sid in 'S-1-5-32-544', 'S-1-5-18') {   # BUILTIN\Administrators, SYSTEM
+        $rule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+            (New-Object System.Security.Principal.SecurityIdentifier($sid)),
+            'FullControl', 'ContainerInherit,ObjectInherit', 'None', 'Allow')
+        $acl.AddAccessRule($rule)
+    }
+    if ($PSVersionTable.PSVersion.Major -ge 6) {
+        [System.IO.FileSystemAclExtensions]::Create([System.IO.DirectoryInfo]::new($dir), $acl)
+    } else {
+        [System.IO.Directory]::CreateDirectory($dir, $acl) | Out-Null
+    }
+    return $dir
+}
+
+# 固定版を取得して SHA256 を照合する。一致しなければ消して throw (実行はしない)
+function Get-PinnedFile($Name, $Pin, $OutFile) {
+    Log "$Name $($Pin.Version) を取得: $($Pin.Url)"
+    # PS 5.1 の既定は TLS 1.0 のことがあり GitHub に弾かれる
+    [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+    Invoke-WebRequest -Uri $Pin.Url -OutFile $OutFile -UseBasicParsing
+    $actual = (Get-FileHash -Path $OutFile -Algorithm SHA256).Hash.ToLowerInvariant()
+    if ($actual -ne $Pin.Sha256.ToLowerInvariant()) {
+        Remove-Item $OutFile -Force -ErrorAction SilentlyContinue
+        throw "$Name の SHA256 が upstream.psd1 と不一致 (取得 $actual / 固定 $($Pin.Sha256))。実行を中止"
+    }
+    Unblock-File -Path $OutFile
+    Log "$Name の SHA256 一致"
+}
+
+# 子の powershell.exe に PS 7 のモジュールパスを継がせない (Win11Debloat の launcher と同じ対処)
+function Invoke-WinPS([string[]]$ArgumentList) {
+    $savedModulePath = $env:PSModulePath
+    try {
+        $env:PSModulePath = ($env:PSModulePath -split ';' | Where-Object { $_ -like '*WindowsPowerShell*' }) -join ';'
+        # 出力は画面へ流す (戻り値に混ざると exit code が読めなくなる)
+        & $WinPS @ArgumentList | Out-Host
+        return $LASTEXITCODE
+    } finally {
+        $env:PSModulePath = $savedModulePath
     }
 }
 
-# ─── 0.5 Appx モジュールを Windows PowerShell 5.1 互換モードで load (PS 7 必須) ───
+# ─── 0.5 Appx モジュールを Windows PowerShell 5.1 互換モードで load (PS 7 のみ) ───
 # PS 7 の Appx モジュールは部分対応で、Get-AppxProvisionedPackage が
 # 「クラスが登録されていません」(Class not registered) で死ぬ。
 # -UseWindowsPowerShell で WinPS 5.1 経由でモジュールを取得して proxy 経由で使う。
@@ -59,42 +135,34 @@ if (-not $DryRun -and $PSVersionTable.PSVersion.Major -ge 7) {
 # ─── 1. Win11Debloat ───
 if (-not $SkipWin11Debloat) {
     $argsFile = Join-Path $PrivacyDir 'win11debloat-args.txt'
-    if (-not (Test-Path $argsFile)) {
-        Err "win11debloat-args.txt が無い: $argsFile"
+    # 空行と `#` コメントを除外 (5.1 の Get-Content default は ANSI のため -Encoding UTF8 明示)
+    $debloatArgs = @(Get-Content $argsFile -Encoding UTF8 |
+        ForEach-Object { $_.Trim() } |
+        Where-Object { $_ -and -not $_.StartsWith('#') })
+    $pin = $Upstream.Win11Debloat
+    Log "Win11Debloat $($pin.Version) 引数 ($($debloatArgs.Count) 個): $($debloatArgs -join ' ')"
+    if ($DryRun) {
+        Dry "取得 $($pin.Url) (sha256 $($pin.Sha256)) → 展開 → powershell.exe -File Win11Debloat.ps1 $($debloatArgs -join ' ')"
     } else {
-        # 空行と `#` コメントを除外 (5.1 の Get-Content default は ANSI のため -Encoding UTF8 明示)
-        # BOM 由来の空要素や CR 残りを完全除外するため $_ -notmatch '^\s*$' でガード
-        $debloatArgs = Get-Content $argsFile -Encoding UTF8 |
-            ForEach-Object { $_.Trim() } |
-            Where-Object { $_ -and -not $_.StartsWith('#') -and $_ -notmatch '^\s*$' }
-        Log "Win11Debloat 引数 ($($debloatArgs.Count) 個): $($debloatArgs -join ' ')"
-        if ($DryRun) {
-            Dry "irm https://win11debloat.raphi.re/ | iex (引数 -> $($debloatArgs -join ' '))"
-        } else {
-            # Win11Debloat は multi-file プロジェクト (Lib/Modules/Resources が必要)。
-            # 公式の入口は GitHub Release の `Get.ps1` (launcher)。
-            # Get.ps1 が内部でフル repo を取得して Win11Debloat.ps1 を呼ぶ。
-            #
-            # 設計判断:
-            # ・URL は GitHub Release の Get.ps1 を直叩き
-            #   (Win11Debloat.ps1 を単体取得すると "unable to find required files" で死ぬ)
-            # ・取得は `Invoke-WebRequest -OutFile` で binary 直書き
-            #   (.Content は PS 7 で byte[] を返すので、WriteAllText で string 化すると
-            #    "112 97 114 97 109" のように byte 値の数字列になり parse 不能)
-            # ・実行は別 pwsh プロセスで `-File` 呼び出し
-            #   (同一プロセスの splatting だと CmdletBinding と switch 引数の bind 衝突)
-            Log "Win11Debloat 実行 (Get.ps1 launcher 経由)..."
-            $debloatUrl = 'https://github.com/Raphire/Win11Debloat/releases/latest/download/Get.ps1'
-            $tmpDebloat = Join-Path $env:TEMP "Win11Debloat-Get-$(Get-Random).ps1"
-            try {
-                Invoke-WebRequest -Uri $debloatUrl -OutFile $tmpDebloat -UseBasicParsing
-                $psArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $tmpDebloat) + $debloatArgs
-                & pwsh @psArgs
-                if ($LASTEXITCODE -ne 0) { Err "Win11Debloat exit code: $LASTEXITCODE" }
-                Log "Win11Debloat 完了"
-            } finally {
-                Remove-Item $tmpDebloat -ErrorAction SilentlyContinue
-            }
+        # Win11Debloat は multi-file プロジェクト (Scripts / Config / Assets が必要) なので
+        # repo の zip を commit 固定で取得して展開し、Win11Debloat.ps1 を直接呼ぶ。
+        # 公式 launcher の Get.ps1 は中で最新版を取りに行くため固定にならない。
+        $work = $null
+        try {
+            $work = New-PrivateWorkDir 'Win11Debloat'
+            $zip = Join-Path $work 'src.zip'
+            Get-PinnedFile 'Win11Debloat' $pin $zip
+            Expand-Archive -Path $zip -DestinationPath $work
+            $script = Get-ChildItem -Path $work -Filter 'Win11Debloat.ps1' -Recurse | Select-Object -First 1
+            if (-not $script) { throw 'zip に Win11Debloat.ps1 が無い' }
+            Get-ChildItem -Path $script.DirectoryName -Recurse -File | Unblock-File
+            Log 'Win11Debloat 実行...'
+            $code = Invoke-WinPS (@('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $script.FullName) + $debloatArgs)
+            if ($code -ne 0) { Err "Win11Debloat exit code: $code" } else { Log 'Win11Debloat 完了' }
+        } catch {
+            Err "Win11Debloat 失敗: $($_.Exception.Message)"
+        } finally {
+            if ($work) { Remove-Item $work -Recurse -Force -ErrorAction SilentlyContinue }
         }
     }
 } else {
@@ -142,6 +210,9 @@ if (-not $SkipCustomApps) {
                 # Get-AppxProvisionedPackage は管理者要。非管理者なら静かに skip
                 if ($_.Exception.Message -match 'elevation') {
                     Log "Skip (provisioned): $app (管理者要)"
+                } elseif ($_.Exception.Message -match 'not found') {
+                    # user 側の削除と一緒に provisioned も消えていた (Edge.GameAssist など)
+                    Log "Skip (provisioned): $app (既に無い)"
                 } else {
                     Err "Provisioned 削除失敗: $app - $($_.Exception.Message)"
                 }
@@ -177,58 +248,108 @@ if (-not $SkipWin11Debloat) {
     }
 }
 
-# ─── 1.7 追加レジストリ tweak (Win11Debloat / WinUtil でカバーされない宣言的 OFF) ───
-# Windows Backup (UWP 本体は CBS で削除不可、機能のみ無効化)
-if (-not $SkipWin11Debloat) {
-    $regPath = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsBackup'
-    if ($DryRun) {
-        Dry "Set $regPath\DisableWindowsBackupUI = 1 (Windows Backup UI を無効化)"
-    } else {
-        try {
-            if (-not (Test-Path $regPath)) { New-Item -Path $regPath -Force | Out-Null }
-            Set-ItemProperty -Path $regPath -Name 'DisableWindowsBackupUI' -Value 1 -Type DWord -Force
-            Log "Windows Backup UI 無効化 (registry: $regPath)"
-        } catch {
-            Err "Windows Backup registry 設定失敗 (管理者要): $($_.Exception.Message)"
-        }
-    }
-}
-
 # ─── 2. WinUtil ───
+# -Config を渡すと WinUtil は GUI を出さずに選択を適用して終了する (headless run)。
+# 知らない ID が 1 つでもあると何も適用せずに失敗するので、版を上げたら check-upstream.ts で確認。
 if (-not $SkipWinUtil) {
     $configFile = Join-Path $PrivacyDir 'winutil-config.json'
-    if (-not (Test-Path $configFile)) {
-        Err "winutil-config.json が無い: $configFile"
+    $pin = $Upstream.WinUtil
+    # 5.1 の ConvertFrom-Json は配列を 1 オブジェクトのまま流すので ForEach-Object で展開する
+    $ids = @(Get-Content $configFile -Raw -Encoding UTF8 | ConvertFrom-Json | ForEach-Object { $_ })
+    Log "WinUtil $($pin.Version) の適用対象 ($($ids.Count) 個): $($ids -join ', ')"
+    if ($DryRun) {
+        Dry "取得 $($pin.Url) (sha256 $($pin.Sha256)) → powershell.exe -File winutil.ps1 -Config $configFile"
     } else {
-        # JSON 構文検証 (5.1 の Get-Content default は ANSI のため -Encoding UTF8 明示)
-        try { Get-Content $configFile -Raw -Encoding UTF8 | ConvertFrom-Json | Out-Null }
-        catch {
-            Err "winutil-config.json が不正 JSON: $($_.Exception.Message)"
-            return
-        }
-        if ($DryRun) {
-            Dry "irm https://christitus.com/win | iex -Args '-Config $configFile'"
-            Dry "(GUI 起動 → Settings → Import Config で $configFile を選択 → Apply)"
-        } else {
-            # Win11Debloat と同じパターン: GitHub Release → UTF-8 BOM temp file → `& $file -Config`
-            Log "WinUtil 実行 (GitHub Releases → UTF-8 BOM temp file, GUI 起動)..."
-            $winutilUrl = 'https://github.com/ChrisTitusTech/winutil/releases/latest/download/winutil.ps1'
-            $winutilContent = (Invoke-WebRequest -Uri $winutilUrl -UseBasicParsing).Content
-            $tmpWinUtil = Join-Path $env:TEMP "winutil-$(Get-Random).ps1"
-            try {
-                [System.IO.File]::WriteAllText($tmpWinUtil, $winutilContent, [System.Text.UTF8Encoding]::new($true))
-                # WinUtil は -Config 引数で起動時 import に対応。version 差で動かない時は
-                # GUI で手動 Import → Apply してください。
-                & $tmpWinUtil -Config $configFile
-                Log "WinUtil 終了"
-            } finally {
-                Remove-Item $tmpWinUtil -ErrorAction SilentlyContinue
-            }
+        $work = $null
+        try {
+            $work = New-PrivateWorkDir 'winutil'
+            $tmpWinUtil = Join-Path $work 'winutil.ps1'
+            Get-PinnedFile 'WinUtil' $pin $tmpWinUtil
+            Log 'WinUtil 実行 (headless)...'
+            $code = Invoke-WinPS @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $tmpWinUtil, '-Config', $configFile)
+            # 26.10.07 は存在しない wermgr サービスを止めようとして、全 tweak 適用後も exit 1 になる
+            # 失敗としては数えない (数えると apply が毎回 exit 1 になる)
+            if ($code -ne 0) { Warn "WinUtil exit code: $code (上の [ERROR] 行を確認)" } else { Log 'WinUtil 完了' }
+        } catch {
+            Err "WinUtil 失敗: $($_.Exception.Message)"
+        } finally {
+            if ($work) { Remove-Item $work -Recurse -Force -ErrorAction SilentlyContinue }
         }
     }
 } else {
     Log 'SkipWinUtil: WinUtil を skip'
 }
 
+# ─── 3. Baseline (baseline.psd1) ───
+# 上の 2 ツールの実装が版で変わっても、ここに書いたものは必ず入る。
+# 最後に置くのは、ツールが同じキーを別の値にした場合にこちらを勝たせるため。
+if (-not $SkipBaseline) {
+    Log "Baseline: レジストリ $($Baseline.Registry.Count) / サービス $($Baseline.Services.Count) / タスク $($Baseline.Tasks.Count) / 追加機能 $($Baseline.Capabilities.Count)"
+    foreach ($r in $Baseline.Registry) {
+        if ($DryRun) { Dry "Set $($r.Path)\$($r.Name) = $($r.Value)"; continue }
+        try {
+            if (-not (Test-Path $r.Path)) { New-Item -Path $r.Path -Force | Out-Null }
+            New-ItemProperty -Path $r.Path -Name $r.Name -Value $r.Value -PropertyType DWord -Force | Out-Null
+        } catch {
+            Err "レジストリ設定失敗: $($r.Path)\$($r.Name) - $($_.Exception.Message)"
+        }
+    }
+    foreach ($s in $Baseline.Services) {
+        if ($DryRun) { Dry "Stop-Service $s; Set-Service $s -StartupType Disabled"; continue }
+        if (-not (Get-Service -Name $s -ErrorAction SilentlyContinue)) { Log "Skip (service): $s (存在しない)"; continue }
+        try {
+            Stop-Service -Name $s -Force -ErrorAction SilentlyContinue
+            Set-Service -Name $s -StartupType Disabled
+            Log "Disabled (service): $s"
+        } catch {
+            Err "サービス無効化失敗: $s - $($_.Exception.Message)"
+        }
+    }
+    foreach ($t in $Baseline.Tasks) {
+        $taskPath = $t.Substring(0, $t.LastIndexOf('\') + 1)
+        $taskName = $t.Substring($t.LastIndexOf('\') + 1)
+        if ($DryRun) { Dry "Disable-ScheduledTask $t"; continue }
+        $task = Get-ScheduledTask -TaskPath $taskPath -TaskName $taskName -ErrorAction SilentlyContinue
+        if (-not $task) { Log "Skip (task): $t (この build に無い)"; continue }
+        try {
+            $task | Disable-ScheduledTask | Out-Null
+            Log "Disabled (task): $t"
+        } catch {
+            Err "タスク無効化失敗: $t - $($_.Exception.Message)"
+        }
+    }
+    if ($Baseline.Capabilities) {
+        if ($DryRun) {
+            foreach ($c in $Baseline.Capabilities) { Dry "Remove-WindowsCapability -Online -Name $c (~~~~ より前で照合)" }
+        } else {
+            $installed = @(Get-WindowsCapability -Online | Where-Object State -eq 'Installed')
+            foreach ($c in $Baseline.Capabilities) {
+                $caps = @($installed | Where-Object { Test-CapabilityName $_.Name $c })
+                if (-not $caps) { Log "Skip (capability): $c (未 install)"; continue }
+                foreach ($cap in $caps) {
+                    try {
+                        Remove-WindowsCapability -Online -Name $cap.Name | Out-Null
+                        Log "Removed (capability): $($cap.Name)"
+                    } catch {
+                        Err "追加機能削除失敗: $($cap.Name) - $($_.Exception.Message)"
+                    }
+                }
+            }
+        }
+    }
+} else {
+    Log 'SkipBaseline: baseline.psd1 の適用を skip'
+}
+
 Log ''
-Log '完了。設定の変更を反映するには再ログイン or 再起動が必要なものがあります。'
+if ($script:Failures -gt 0) {
+    Write-Host "[privacy] 失敗 $($script:Failures) 件 (赤い行)。" -ForegroundColor Red
+} else {
+    Log '完了。設定の変更を反映するには再ログイン or 再起動が必要なものがあります。'
+}
+Log '状態の確認: just win-privacy-verify (windows/privacy/verify.ps1)'
+if (-not $DryRun) {
+    Log "ログ: $logFile"
+    Stop-Transcript | Out-Null
+}
+if ($script:Failures -gt 0) { exit 1 }

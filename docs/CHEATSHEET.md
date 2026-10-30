@@ -28,7 +28,7 @@ Those six cover most days.
 | `just rebuild` | `nh darwin switch` and `nh home switch` |
 | `just update` | Update the flake inputs, then rebuild |
 | `just upgrade` | Bring brew, casks with `--greedy`, mas and Nix all up to date |
-| `just gc` | Delete old generations and run the store GC, `nh clean all --keep 1 --keep-since 0h` |
+| `just gc` | Delete old generations and run the store GC, `nh clean all --keep 1 --keep-since 0h` (3 on NixOS) |
 | `just check` | Syntax and type checking, without building |
 | `just check diff` | The difference between the running system and the flake |
 | `just doctor` | Health check, worth running after a reboot or a Determinate upgrade |
@@ -187,7 +187,7 @@ Four layers of storage. The reasoning is in the comments in `nix/home/restic-bac
 | GitHub and Forgejo | Code, which is reproducible | git. GitHub is the original, with a Forgejo mirror at home (`nix/homelab/forgejo.nix`) |
 | restic warm | Files still in use, automatically and daily | `google-drive:restic-backup`, encrypted |
 | restic cold | Files no longer in use, kept forever | The same repository, under `--tag archive` |
-| rclone mount | Plaintext cloud storage shared with other people | `~/Sync/google-drive`, `google-drive-school` and `google-drive-work`, no kernel extension needed |
+| rclone mount | Plaintext cloud storage shared with other people | `~/Sync/google-drive`, `google-drive-school` and `google-drive-sean`, no kernel extension needed |
 
 ### Warm, for files in use, daily and on demand
 
@@ -389,7 +389,7 @@ just upgrade              # update the whole system
 
 ## Windows: native pwsh plus WSL
 
-The full roadmap is in [windows-roadmap.md](./windows-roadmap.md). The everyday commands, next
+The everyday commands, next
 to their macOS equivalents:
 
 | macOS | Windows, native |
@@ -407,7 +407,7 @@ Functions that only exist in native pwsh, defined in profile.ps1:
 | Function | What it does |
 |---|---|
 | `Find-DotfilesToolOverlap` | Show tools installed through both scoop and winget |
-| `Get-DotfilesSecret <key>` | Decrypt a value out of secrets.yaml through SOPS |
+| `Get-DotfilesSecret <key>` | Decrypt a value out of secrets/common.yaml (the default; `-File` for a per-host file) through SOPS |
 | `Copy-DotfilesSecret <key>` | The same, into the clipboard |
 | `Add-SshKey [path]` | Register a key with the Windows ssh-agent, shared with WSL |
 | `wsl-here` | Enter WSL in the current directory |

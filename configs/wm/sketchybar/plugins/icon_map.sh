@@ -120,6 +120,9 @@ function __icon_map() {
    "Arduino" | "Arduino IDE")
         icon_result=":arduino:"
         ;;
+   "Armbian Imager")
+        icon_result=":armbian_imager:"
+        ;;
    "Aseprite")
         icon_result=":aseprite:"
         ;;
@@ -297,6 +300,9 @@ function __icon_map() {
    "Claude")
         icon_result=":claude:"
         ;;
+   "CleanMyMac" | "CleanMyMac X" | "CleanMyMac 3")
+        icon_result=":cleanmymac:"
+        ;;
    "ClickUp")
         icon_result=":click_up:"
         ;;
@@ -470,6 +476,9 @@ function __icon_map() {
         ;;
    "DSM")
         icon_result=":dsm:"
+        ;;
+   "DuckDuckGo")
+        icon_result=":duckduckgo:"
         ;;
    "DVD Player")
         icon_result=":dvd_player:"
@@ -947,6 +956,12 @@ function __icon_map() {
         ;;
    "MEGA")
         icon_result=":mega:"
+        ;;
+   "Melvor Idle")
+        icon_result=":melvor_idle:"
+        ;;
+   "Melvor Idle 2" | "Melvor2")
+        icon_result=":melvor_idle_2:"
         ;;
    "Messages" | "信息" | "Nachrichten" | "メッセージ" | "Повідомлення" | "Сообщения")
         icon_result=":messages:"

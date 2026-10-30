@@ -31,6 +31,7 @@ in
     ../modules/home/darwin-apps.nix
     ../modules/home/darwin-ai-client.nix
     ../modules/home/agy.nix
+    ./ghostty.nix
   ];
 
   # Nothing puts an .app under ~/Applications any more: bundles come from environment.systemPackages
@@ -226,25 +227,29 @@ in
     # The daemon is not resident: this wrapper starts it, so nothing Native Instruments
     # related runs until Native Access is actually used. `kickstart` on an already-running
     # label is a no-op, so the common case costs one launchctl call.
-    (writeShellScriptBin "na" ''
-      if [ -x "${ntkDaemon}" ]; then
-        /bin/launchctl kickstart "gui/$(/usr/bin/id -u)/org.nix-community.home.ntkdaemon" >/dev/null 2>&1 || true
-        # The daemon binds its ZeroMQ ports a moment after exec. A REQ socket would queue the
-        # request and still make the 5 s receive timeout, but waiting here keeps the failure
-        # mode honest: if the port never opens, na says so instead of timing out mid-command.
-        for _ in {1..50}; do
-          (exec 3<>/dev/tcp/127.0.0.1/5146) 2>/dev/null && break
-          /bin/sleep 0.1
-        done
-      else
-        echo "na: NTKDaemon is not installed (${ntkDaemon})." >&2
-        echo "na: install it from Native Access, then run na again." >&2
-        exit 1
-      fi
-      exec ${
-        python3.withPackages (p: [ p.pyzmq ])
-      }/bin/python3 "$HOME/Developer/github.com/gapul/na-cli/na" "$@"
-    '')
+    (writeShellApplication {
+      name = "na";
+      bashOptions = [ ];
+      text = ''
+        if [ -x "${ntkDaemon}" ]; then
+          /bin/launchctl kickstart "gui/$(/usr/bin/id -u)/org.nix-community.home.ntkdaemon" >/dev/null 2>&1 || true
+          # The daemon binds its ZeroMQ ports a moment after exec. A REQ socket would queue the
+          # request and still make the 5 s receive timeout, but waiting here keeps the failure
+          # mode honest: if the port never opens, na says so instead of timing out mid-command.
+          for _ in {1..50}; do
+            (exec 3<>/dev/tcp/127.0.0.1/5146) 2>/dev/null && break
+            /bin/sleep 0.1
+          done
+        else
+          echo "na: NTKDaemon is not installed (${ntkDaemon})." >&2
+          echo "na: install it from Native Access, then run na again." >&2
+          exit 1
+        fi
+        exec ${
+          python3.withPackages (p: [ p.pyzmq ])
+        }/bin/python3 "$HOME/Developer/github.com/gapul/na-cli/na" "$@"
+      '';
+    })
     # Replaces the secretive cask: same Secure Enclave guarantee (the private key is generated in
     # the enclave and never leaves it), but a CLI handing the identity to macOS' own CryptoTokenKit
     # provider instead of a GUI app plus a resident agent process.
@@ -403,11 +408,6 @@ in
     '';
   };
 
-  home.file.".config/ghostty" = {
-    source = ../../configs/terminals/ghostty;
-    recursive = true;
-  };
-
   # OmniWM writes its own config back on every UI change, so a store symlink (read-only) breaks
   # saving. An out-of-store symlink instead — the app writes straight into the repo, which
   # replaces the old `just app-snapshot` one-way mirror (removed 2026-08-13).
@@ -447,17 +447,6 @@ in
     default_country_code = "JP";
   };
 
-  # iamb (Matrix TUI, package in modules/home/packages.nix): same homeserver as Element.
-  # Session state and E2EE keys go to ~/.local/share/iamb on first login, not declared here.
-  # Plain text rather than pkgs.formats.toml: see the lazygit note above (CI platform mismatch).
-  xdg.configFile."iamb/config.toml".text = ''
-    default_profile = "gapul"
-
-    [profiles.gapul]
-    user_id = "@gapul:gapul.net"
-    url = "https://matrix.gapul.net"
-  '';
-
   # MechvibesDX at login, in place of a System Settings login item. Lives here
   # rather than in darwin-services.nix because it needs the package path from
   # the let block above.
@@ -482,10 +471,6 @@ in
       StandardErrorPath = "${config.home.homeDirectory}/Library/Logs/MechvibesDX/mechvibes-dx.log";
     };
   };
-
-  home.activation.mechvibesLogDir = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    /bin/mkdir -p "${config.home.homeDirectory}/Library/Logs/MechvibesDX"
-  '';
 
   # NTKDaemon: Native Access's local daemon (ZeroMQ 5146/5563) that `na` drives.
   # NA launches it on demand as an app (launchctl label `application.…NTKDaemon…`),
@@ -522,10 +507,6 @@ in
   # keystats (skip self-update when the bundle is not writable), not in a plist this repo deletes
   # and the app immediately writes back.
 
-  home.activation.ntkdaemonLogDir = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    /bin/mkdir -p "${config.home.homeDirectory}/Library/Logs/NTKDaemon"
-  '';
-
   # TCC pins its rows to the code signature, and what nix builds is ad-hoc
   # signed: the requirement is a bare cdhash, so every rebuild of the package
   # silently revokes Accessibility and the app goes quiet (twice so far,
@@ -545,15 +526,20 @@ in
     lib.hm.dag.entryBetween [ "setupLaunchAgents" ] [ "writeBoundary" ]
       ''
         src=${mechvibes-dx}/Applications/MechvibesDX.app
+        # The identity names a person, so it comes from sops (secrets-darwin.nix) rather than
+        # this public file. Missing on the very first activation, before sops-nix has decrypted.
+        identity=$(cat "${config.sops.secrets."codesign_identity".path}" 2>/dev/null || true)
         stamp="${config.xdg.stateHome}/mechvibes-dx-store-path"
-        if [ "$(cat "$stamp" 2>/dev/null)" != "$src" ] || ! /usr/bin/codesign -v "${mechvibesApp}" 2>/dev/null; then
+        if [ -z "$identity" ]; then
+          echo "mechvibes-dx: codesign identity not decrypted yet, skipping signing" >&2
+        elif [ "$(cat "$stamp" 2>/dev/null)" != "$src" ] || ! /usr/bin/codesign -v "${mechvibesApp}" 2>/dev/null; then
           $DRY_RUN_CMD /bin/mkdir -p "${config.xdg.stateHome}"
           $DRY_RUN_CMD /bin/rm -rf "${mechvibesApp}" "$stamp"
           $DRY_RUN_CMD /bin/cp -R "$src" "${mechvibesApp}"
           $DRY_RUN_CMD /bin/chmod -R u+w "${mechvibesApp}"
           # No --options runtime: the hardened runtime blocks the WebView's JIT.
           if $DRY_RUN_CMD /usr/bin/codesign --force \
-            --sign "Developer ID Application: gapul (S3H296G6Q5)" "${mechvibesApp}"; then
+            --sign "$identity" "${mechvibesApp}"; then
             $DRY_RUN_CMD echo "$src" > "$stamp"
           else
             echo "mechvibes-dx: codesign failed, Accessibility will need re-granting" >&2
