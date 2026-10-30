@@ -54,6 +54,10 @@ in
           };
         };
 
+        # The conf must carry `FwMark = 51820`: wg-quick only sets a fwmark itself
+        # with Table = auto, and without it the PostUp rule `not fwmark 51820`
+        # routes WireGuard's own encapsulated packets back into the tunnel (seen
+        # 2026-10-30: handshakes worked, gigabytes sent, nothing received).
         networking.wg-quick.interfaces.mullvad = {
           autostart = true;
           configFile = "/var/lib/secrets/mullvad-exit.conf";

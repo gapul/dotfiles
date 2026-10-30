@@ -61,6 +61,10 @@ let
       rel = "mullvad-exit.conf";
       restartUnits = [ "container@mullvad-exit.service" ];
     }
+    {
+      rel = "mullvad-host.key";
+      restartUnits = [ "wg-quick-mullvad.service" ];
+    }
     { rel = "l2tp/chap-secrets"; }
     { rel = "l2tp/conn.conf"; }
     { rel = "l2tp/ipsec.secrets"; }

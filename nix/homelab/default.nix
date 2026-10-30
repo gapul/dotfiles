@@ -85,6 +85,7 @@
     ./matrix-bridge-secrets.nix
     ./memory-pressure-alert.nix
     ./mullvad-exit.nix
+    ./mullvad-host.nix
     ./site-watch.nix # site change monitoring (urlwatch → ntfy); targets are the jobs list in the file
     ./miniflux.nix
     ./navidrome.nix
