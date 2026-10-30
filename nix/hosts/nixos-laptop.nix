@@ -1276,6 +1276,9 @@ in
       hyprshot # screenshot (window/region/screen)
       wlogout # power menu
       wl-gammarelay-rs # control color temperature (night light) via dbus
+
+      # Matrix client that renders custom image reactions and emoji packs (LINE stickers), same as darwin
+      cinny-desktop
     ]
     # ArtCraft's pure-Rust Craft apps, same set as darwin (ArtCraft itself is macOS-only). See pkgs/artcraft-apps.nix.
     ++ pkgs.callPackage ../pkgs/artcraft-apps.nix { };
