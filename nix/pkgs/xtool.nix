@@ -19,7 +19,7 @@ let
   version = "1.24.0";
   swiftVersion = "6.3.3";
 
-  xtool = appimageTools.extractType2 {
+  xtool = appimageTools.extract {
     pname = "xtool";
     inherit version;
     src = fetchurl {
