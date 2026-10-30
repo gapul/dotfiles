@@ -41,6 +41,11 @@ rec {
       # the default `< 400` was always red. The 401 itself is used as the liveness check.
       expect = [ "[STATUS] == 401" ];
     };
+    # Sync target for the Firefox extensions (homelab/webdav.nix). Basic auth, so / is 401.
+    webdav = {
+      upstream = "127.0.0.1:8115";
+      expect = [ "[STATUS] == 401" ];
+    };
     dav.upstream = "127.0.0.1:5232"; # radicale (homelab/webmail.nix adds InfCloud under /infcloud/)
     # Twake Mail (homelab/webmail.nix). Login is a Stalwart account, so no Authelia in front.
     webmail = {
