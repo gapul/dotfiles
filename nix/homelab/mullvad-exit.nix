@@ -63,6 +63,25 @@ in
           configFile = "/var/lib/secrets/mullvad-exit.conf";
         };
 
+        # The conf's `pref 5000 not fwmark 51820` rule comes before Tailscale's
+        # table 52, so this node's own packets to tailnet addresses went into
+        # Mullvad. That broke its MagicDNS (100.100.100.100 forwards to the blocky
+        # resolvers on the tailnet), and with it DNS for every client using this
+        # exit node. Send the tailnet ranges to Tailscale's table first.
+        systemd.services.tailnet-before-mullvad = {
+          wantedBy = [ "multi-user.target" ];
+          before = [ "wg-quick-mullvad.service" ];
+          path = [ pkgs.iproute2 ];
+          serviceConfig = {
+            Type = "oneshot";
+            RemainAfterExit = true;
+          };
+          script = ''
+            ip -4 rule add pref 4990 to 100.64.0.0/10 lookup 52 2>/dev/null || true
+            ip -6 rule add pref 4990 to fd7a:115c:a1e0::/48 lookup 52 2>/dev/null || true
+          '';
+        };
+
         services.tailscale = {
           enable = true;
           openFirewall = true;
