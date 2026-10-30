@@ -34,7 +34,8 @@
 # Instead, mojeek and qwant, disabled by default, are enabled. mojeek is an independent
 # index with its own crawler, so it doesn't get caught in Google's anti-bot net. It is
 # the one that stays standing.
-_: {
+{ config, lib, ... }:
+{
   # This used to be escaped to unstable here. searxng in the 26.05 series was stuck at
   # the 2026-05-16 release and couldn't keep up with search engine changes, so brave /
   # duckduckgo / qwant / mojeek / startpage all returned CAPTCHA or access denied at once
@@ -61,6 +62,10 @@ _: {
         # Not public, so neither is needed (limiter = true would need valkey).
         limiter = false;
         public_instance = false;
+        # Result thumbnails and images are fetched by this server, not the browser, so the
+        # sites behind them (pinterest, bing, the CDNs) do not see the client IP or a
+        # search.gapul.net Referer. Costs homeserver bandwidth only.
+        image_proxy = true;
       };
 
       # Also return JSON. The default is html only, and format=json gives 403. It's inside
@@ -70,6 +75,35 @@ _: {
         "html"
         "json"
       ];
+      # "auto" missed the Japanese Wikipedia infobox for a Japanese query (measured
+      # 2026-10-30: `!wp 機械学習` gave the infobox with ja and nothing with auto), and English
+      # queries still return English results under ja (nix flake: 134 results).
+      search.default_lang = "ja";
+
+      # Unlike every other section, `plugins` is not merged into the defaults: a user
+      # `plugins` replaces the whole table (settings_loader.update_settings), and a plugin
+      # missing here is not loaded at all. So this lists every bundled plugin; when an
+      # upgrade adds one to searx/settings.yml, add it here too or it silently stays out.
+      plugins =
+        lib.mapAttrs'
+          (name: active: lib.nameValuePair "searx.plugins.${name}.SXNGPlugin" { inherit active; })
+          {
+            calculator = true;
+            hash_plugin = true;
+            self_info = true;
+            unit_converter = true;
+            ahmia_filter = true;
+            hostnames = true;
+            time_zone = true;
+            tracker_url_remover = true;
+            # Off by default upstream. DOI links go to an open-access copy when one exists
+            # (pairs with crossref / openalex).
+            oa_doi_rewrite = true;
+            # Off by default upstream. The next page loads on scroll instead of a pager.
+            infinite_scroll = true;
+            # Only meaningful when the instance is reached over Tor.
+            tor_check = false;
+          };
 
       # When adding an engine, always confirm that **the engine name appears** in results.
       # SearXNG treats unknown shortcuts as search terms, so `!foo` returning results
@@ -77,11 +111,9 @@ _: {
       # (luxxle / rawweb). Check existence by whether it is listed in `/config`, and
       # check that it works by the engine name appearing in results.
       #
-      # duckduckgo / startpage / brave stay enabled as by default. As of 2026-08 all
-      # of them are sunk by CAPTCHA or rate limits, but the endpoints themselves are
-      # alive (returning 202 / 302 / 200); they just can't get past the anti-bot
-      # challenge. They sometimes come back depending on the other side's mood, so
-      # leave it to SearXNG's automatic suspend.
+      # duckduckgo stays enabled as by default. It is sunk by CAPTCHA part of the time
+      # (15-20% on 2026-10-30), but the rest still answers, so leave it to SearXNG's
+      # automatic suspend. brave was kept the same way but never came back; see below.
       #
       # To make them work permanently, there is the route of moving to official APIs.
       # A braveapi engine is bundled and becomes stable once api_key is set (free tier
@@ -238,7 +270,74 @@ _: {
           name = "unsplash";
           disabled = true;
         }
+        # All four brave engines failed every query when measured on 2026-10-30: web 100%
+        # TooManyRequests in /stats/errors, videos and news suspended for too many requests,
+        # images crashing. The home IP gets a CAPTCHA page from search.brave.com, so this is
+        # not going to clear on its own. The braveapi engine (needs a key) is the way back.
+        {
+          name = "brave";
+          disabled = true;
+        }
+        {
+          name = "brave.images";
+          disabled = true;
+        }
+        {
+          name = "brave.videos";
+          disabled = true;
+        }
+        {
+          name = "brave.news";
+          disabled = true;
+        }
+        # Torrent indexes, enabled by default under "files". Not used here, and every files
+        # search would otherwise fan out to them.
+        {
+          name = "kickass";
+          disabled = true;
+        }
+        {
+          name = "piratebay";
+          disabled = true;
+        }
+        {
+          name = "solidtorrents";
+          disabled = true;
+        }
+        {
+          name = "bt4g";
+          disabled = true;
+        }
+        # Images for design reference. Default-disabled; measured on 2026-10-30 with the
+        # engine name present in results: flickr 25, artic (Art Institute of Chicago
+        # collection) 19, pexels 20. 1x timed out and openverse never answers from the
+        # home IP, so neither is added.
+        {
+          name = "flickr";
+          disabled = false;
+        }
+        {
+          name = "artic";
+          disabled = false;
+        }
+        {
+          name = "pexels";
+          disabled = false;
+        }
       ];
     };
   };
+
+  # Caddy's access log for this vhost would otherwise hold every query in plain text
+  # (/search?q=..., /autocompleter?q=..., and the Referer of every asset the results page
+  # loads). Drop both; the rest of the line (time, path, status, latency) stays for debugging.
+  services.caddy.virtualHosts."search.gapul.net".logFormat = ''
+    output file ${config.services.caddy.logDir}/access-search.gapul.net.log
+    format filter {
+      request>uri query {
+        delete q
+      }
+      request>headers>Referer delete
+    }
+  '';
 }
