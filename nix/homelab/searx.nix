@@ -186,9 +186,15 @@
         }
         # Also its own crawler. Needs no key and returned 53 results when measured (same
         # role as mojeek: thickens the side that survives when Google-family engines die).
+        # Half weight (2026-10-31): a result only one engine returns scores weight / position,
+        # so every engine's #1 ties for the top of the page. mwmbl is good on English tech
+        # queries (55-98 results: discourse.nixos.org, users.rust-lang.org) but returns 0-1
+        # results for Japanese ones, and that one is often junk (an ow.ly short link at #1 for
+        # "引っ越し 手続き 一覧"). At 0.5 its #1 sits level with the other engines' #2.
         {
           name = "mwmbl";
           disabled = false;
+          weight = 0.5;
         }
         # An alternate duckduckgo implementation. The default duckduckgo is sunk by
         # CAPTCHA, but this one gets through. Results come back for Japanese queries too,
@@ -269,10 +275,14 @@
           name = "boardreader";
           disabled = true;
         }
-        # Old, plain pages only. Picks up what falls out of the big indexes.
+        # Old, plain pages only. Enabled to pick up what falls out of the big indexes, but
+        # measured on 2026-10-31 it returned nothing for Japanese queries and off-topic pages
+        # for English ones, which took the top spots of the merged list (lwn.net's front page
+        # at #1 for "nix flake", a Tarzan review for "best mechanical keyboard").
+        # `!wib` still reaches it.
         {
           name = "wiby";
-          disabled = false;
+          disabled = true;
         }
         # The IT category is thin (44 registered, 11 enabled, 17 results). Only add ones
         # that worked when measured. nixos wiki / crates.io / hex / codeberg / alpine
