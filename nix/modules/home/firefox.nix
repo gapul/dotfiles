@@ -32,11 +32,22 @@ let
   };
 in
 {
+  # Spotify and YouTube Music are dark-only sites given a light UserCSS. It follows the OS:
+  # light style in light mode, the site's own dark UI in dark mode (2026-10-31; 10-30 had made
+  # it light in both modes, and dark mode stopped being followed). The gate is a CSS media query
+  # inside this export rather than Stylus's per-style colour scheme, because Stylus's background
+  # scheme cache can lag behind darkman. The price is that Stylus cannot auto-update an export:
+  # import it with Stylus's Import button (preserving other styles, deleting the updateUrl copies
+  # of the same two styles first) and refresh it from upstream deliberately.
+  xdg.dataFile."firefox/stylus-light-themes.json".source =
+    ../../../configs/apps/stylus/light-themes.json;
+
   # What lives inside the extensions that policies cannot reach (no managed storage):
   # Violentmonkey scripts, Header Editor rules, uBlacklist subscriptions and Stylus styles.
   # Policies below only install the extensions; this file is the list of what goes into them,
   # written to ~/.local/share/firefox/extension-sources.json. Every entry is installed from a URL,
   # so the extension keeps it updated from there; the e-Tax pair lives in this repo for that.
+  # The exception is the two Stylus entries marked `import`, which come from the export above.
   # Day to day the profiles are kept in step by each extension's WebDAV sync against
   # webdav.gapul.net (homelab/webdav.nix); this list is for a fresh profile and for review.
   xdg.dataFile."firefox/extension-sources.json".text =
@@ -120,18 +131,22 @@ in
         (rosePine "bsky.app" "bluesky")
         (rosePine "proton.me" "proton")
         (rosePine "wikiwand.com" "wikiwand")
-        # Dark-only sites given a light style in both OS modes (2026-10-30). Exclude these two
-        # domains in Dark Reader; userContent below carries the Spotify compatibility layer.
+        # Dark-only sites with a light style in OS light mode only. Not installed from these
+        # URLs: they are the upstreams of ~/.local/share/firefox/stylus-light-themes.json (see the
+        # top of this file). Exclude both domains in Dark Reader; userContent below carries the
+        # Spotify compatibility layer.
         {
           domain = "open.spotify.com";
-          name = "Light Theme Spotify";
-          url = "${raw}/ThatOneUnoriginal/Spotify-Light/main/LightThemeSpotify.user.css";
+          name = "Light Theme Spotify (OS light)";
+          upstream = "${raw}/ThatOneUnoriginal/Spotify-Light/main/LightThemeSpotify.user.css";
+          import = "stylus-light-themes.json";
           darkReaderExcluded = true;
         }
         {
           domain = "music.youtube.com";
-          name = "YouTube Music — Google Light + Dark Player";
-          url = "${raw}/docrepath/youtube-music-google-light-dark-player/main/YouTubeMusic-Google-Light-Dark-Player.user.css";
+          name = "YouTube Music — Google Light + Dark Player (OS light)";
+          upstream = "${raw}/docrepath/youtube-music-google-light-dark-player/main/YouTubeMusic-Google-Light-Dark-Player.user.css";
+          import = "stylus-light-themes.json";
           darkReaderExcluded = true;
         }
       ];
@@ -578,23 +593,29 @@ in
             /* The upstream Spotify style predates Encore's current text classes.
                Keep this small compatibility layer separate so Stylus can update upstream. */
             @-moz-document domain("open.spotify.com") {
-              html, body, #main { background-color: transparent !important; }
-              #global-nav-bar, nav, aside {
-                background-color: rgb(250 244 237 / 72%) !important;
+              @media (prefers-color-scheme: light) {
+                html, body, #main { background-color: transparent !important; }
+                #global-nav-bar, nav, aside {
+                  background-color: rgb(250 244 237 / 72%) !important;
+                }
+                [data-encore-id="text"], h1, h2, h3, a, button, input {
+                  color: #262626 !important;
+                }
+                [data-encore-id="icon"], [data-encore-id="logo"] { fill: currentColor !important; color: #262626 !important; }
+                main > div > div { background-image: none !important; }
+                [data-testid="main-view-container"] { background-color: #edede6 !important; }
               }
-              [data-encore-id="text"], h1, h2, h3, a, button, input {
-                color: #262626 !important;
-              }
-              [data-encore-id="icon"], [data-encore-id="logo"] { fill: currentColor !important; color: #262626 !important; }
-              main > div > div { background-image: none !important; }
-              [data-testid="main-view-container"] { background-color: #edede6 !important; }
             }
-            /* Frost site navigation panels without fading their text or artwork. Both sites
-               wear a light style in either OS mode, so the glass is always the light one. */
+            /* Frost site navigation panels without fading their text or artwork. The glass
+               follows the OS mode like the light styles do. */
             @-moz-document domain("music.youtube.com"), domain("open.spotify.com") {
+              :root { --rp-panel-glass: rgb(25 23 36 / 72%); }
+              @media (prefers-color-scheme: light) {
+                :root { --rp-panel-glass: rgb(250 244 237 / 72%); }
+              }
               #guide #contentContainer,
               .Root__nav-bar, .Root__right-sidebar {
-                background: rgb(250 244 237 / 72%) !important;
+                background: var(--rp-panel-glass) !important;
                 backdrop-filter: blur(24px) saturate(115%) !important;
               }
             }
