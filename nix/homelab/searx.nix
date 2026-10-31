@@ -123,6 +123,8 @@
       # Off upstream because browser history then records the query; that history is local
       # and already holds the query in the URL.
       ui.query_in_title = true;
+      # Results in a centred column instead of hugging the left edge of a wide window.
+      ui.center_alignment = true;
 
       # A page waits for its slowest engine up to this limit, so it bounds the worst case.
       # 3s was the default. The general engines answer well inside it (2026-10-30, P95: google
