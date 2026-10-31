@@ -20,10 +20,6 @@ let
   #   like a new location. X rejected the bridge's polling with 404 from the
   #   first Mullvad address on (2026-10-30 19:44), and Meta, LinkedIn and Discord
   #   are the services most quick to checkpoint a login that moves.
-  # - searx: Mullvad unblocked none of the engines that refuse the home address
-  #   (openverse, unsplash, brave still fail), and the 110-220 ms it adds per
-  #   round trip pushed DuckDuckGo, Yandex, Flickr, Pexels and others past the
-  #   1.5 s request_timeout, so pages came back half empty (2026-10-31).
   # No dash: systemd reads one as nesting, and "mullvad-bypass.slice" lives at
   # mullvad.slice/mullvad-bypass.slice, which the cgroup match then failed to find.
   bypassSlice = "novpn.slice";
@@ -47,7 +43,6 @@ let
     "mautrix-telegram"
     "mautrix-twitter"
     "mautrix-whatsapp"
-    "searx"
   ];
 
   # Rule preferences sit after Tailscale's (5210-5270), so tailscaled's own packets
@@ -107,9 +102,12 @@ in
     table = toString table;
     peers = [
       {
-        # jp-tyo-wg-201; the container uses jp-tyo-wg-001.
-        publicKey = "5YlME8hOnWqvZ7iSampvPW5bG/dJ+PYpaBFV5kfp9UA=";
-        endpoint = "146.70.201.2:51820";
+        # jp-tyo-wg-001 (DataPacket), the same relay as the container. The M247
+        # Tokyo relays (jp-tyo-wg-201..203) are about 112 ms from this line against
+        # 5 ms here (2026-10-31), and that delay pushed SearXNG's engines past
+        # its 1.5 s request_timeout. Measure before moving to another relay.
+        publicKey = "AUo2zhQ0wCDy3/jmZgOe4QMncWWqrdME7BbY2UlkgyI=";
+        endpoint = "138.199.21.239:51820";
         allowedIPs = [
           "0.0.0.0/0"
           "::/0"
