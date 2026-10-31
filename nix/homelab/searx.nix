@@ -111,7 +111,9 @@
       # "auto" missed the Japanese Wikipedia infobox for a Japanese query (measured
       # 2026-10-30: `!wp 機械学習` gave the infobox with ja and nothing with auto), and English
       # queries still return English results under ja (nix flake: 134 results).
-      search.default_lang = "ja";
+      # ja-JP rather than bare ja so engines that take a region (duckduckgo, yandex, bing)
+      # get Japan instead of picking one themselves.
+      search.default_lang = "ja-JP";
       # The site icon next to each result. The icon is fetched by this server (favicon proxy) and
       # cached, so DuckDuckGo learns the domains shown in results but not the client IP or the
       # query. DuckDuckGo already receives every query as an engine.
