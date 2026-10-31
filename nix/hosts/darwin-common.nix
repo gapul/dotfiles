@@ -158,14 +158,6 @@
         /bin/rm -rf /nix/store/.links
         /usr/bin/pkill -x socketfilterfw || true
       fi
-      # Time from homeserver's chrony over the tailnet rather than time.apple.com. macOS cannot
-      # speak NTS, and plain NTP across the internet can be shifted by anyone on the path;
-      # inside WireGuard the answer is authenticated (homeserver gets its own time over NTS,
-      # modules/nts-time.nix). Off the tailnet the Mac keeps its own clock until it is back.
-      if [ "$(/usr/sbin/systemsetup -getnetworktimeserver 2>/dev/null)" != "Network Time Server: 100.127.129.31" ]; then
-        /usr/sbin/systemsetup -setnetworktimeserver 100.127.129.31 >/dev/null
-      fi
-      /usr/sbin/systemsetup -setusingnetworktime on >/dev/null
       # (automatic security updates moved to system.defaults.CustomSystemPreferences below)
     '';
 

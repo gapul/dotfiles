@@ -2,8 +2,8 @@ _: {
   # Time over NTS (Network Time Security) instead of timesyncd. timesyncd asked the NixOS pool
   # in plain NTP, so anyone on the path could shift the clock, and a shifted clock breaks TLS
   # certificate checks and TOTP. NTS authenticates every answer with a key from a TLS handshake.
-  # Shared by the NixOS hosts; the Macs cannot speak NTS and take their time from homeserver
-  # over the tailnet instead (hosts/darwin-common.nix).
+  # Shared by the NixOS hosts. The Macs stay on time.apple.com: macOS's timed cannot speak NTS,
+  # and the only ways round it are replacing timed or relaying through a Linux host.
   #
   # No public NTS server is in Japan. Cloudflare is anycast with a Tokyo site; Netnod and PTB
   # are national time labs (Sweden, Germany), so one provider going away leaves three others.
