@@ -64,12 +64,31 @@
     # gitlab crashed on every query ("unexpected crash", TypeError: expected string, got
     # NoneType): projects without a description come back as null, and the result container
     # needs a string. Still unfixed upstream on 2026-10-31.
+    #
+    # crossref crashed the same way on about half the queries: a record with neither title
+    # nor container-title leaves title as None (2026-11-01).
+    #
+    # bing news showed a parsing error whenever a query had no news: Bing answers that with
+    # an empty 200 body (0 bytes, measured 2026-11-01), and lxml refuses an empty document.
+    #
+    # Wikidata's SPARQL endpoint answers 429 to curl_cffi's default Chrome TLS fingerprint
+    # sent with the Firefox User-Agent gen_useragent() picks, and 200 once the handshake is
+    # Firefox's too (2026-11-01, same box, same route). Every SPARQL call goes through this
+    # one helper: the openstreetmap engine (which failed every query with "too many
+    # requests"), wikidata and the infoboxes.
     package = pkgs.searxng.overrideAttrs (old: {
       postPatch = (old.postPatch or "") + ''
         substituteInPlace searx/engines/duckduckgo_extra.py \
           --replace-fail 'headers["User-Agent"] = _HTTP_User_Agent' 'headers["User-Agent"] = ""'
         substituteInPlace searx/engines/gitlab.py \
           --replace-fail "'content': item.get('description')," "'content': item.get('description') or ''',"
+        substituteInPlace searx/engines/crossref.py \
+          --replace-fail 'title=title,' 'title=title or "",' \
+          --replace-fail 'journal=journal,' 'journal=journal or "",'
+        substituteInPlace searx/engines/bing_news.py \
+          --replace-fail '    dom = resp.html()' $'    if not resp.text.strip():\n        return results\n    dom = resp.html()'
+        substituteInPlace searx/wikidata.py \
+          --replace-fail 'headers=get_wikidata_headers(), **kwargs' 'headers=get_wikidata_headers(), impersonate="firefox", **kwargs'
       '';
     });
 
@@ -401,17 +420,50 @@
         # engine name present in results: flickr 25, artic (Art Institute of Chicago
         # collection) 19, pexels 20. 1x timed out and openverse never answers from the
         # home IP, so neither is added.
+        #
+        # Since the move to the Mullvad relay (2026-10-31) flickr's search page takes 2.8-3.3s,
+        # past the 1.5s request_timeout, so it timed out on half the queries. Only the images
+        # tab waits for it.
         {
           name = "flickr";
           disabled = false;
+          timeout = 4.0;
         }
+        # The Art Institute's API answers 403 to the relay's IPv4 address and 200 to its IPv6
+        # one (2026-11-01), so it failed every query until pinned to IPv6.
         {
           name = "artic";
           disabled = false;
+          network = "ipv6";
         }
         {
           name = "pexels";
           disabled = false;
+        }
+        # The reverse of artic: Google answers the relay's IPv6 address with "unusual traffic
+        # from your network" (SearXNG: too many requests) and its IPv4 one normally, 20 results
+        # per query (2026-11-01). Both google cse engines failed every query, which left the
+        # general tab without the Google index.
+        {
+          name = "google cse";
+          network = "ipv4";
+        }
+        {
+          name = "google cse images";
+          network = "ipv4";
+        }
+        # PeerTube's federated index. 1.8-1.9s per answer from the relay (2026-11-01), so it
+        # timed out on two thirds of the queries. Only the videos tab waits for it.
+        {
+          name = "sepiasearch";
+          timeout = 4.0;
+        }
+        # Lyrics. genius.com answers 403 to the Mullvad relay on IPv4 and IPv6 alike and 200
+        # to the home line (2026-11-01). searx deliberately leaves through the relay, and
+        # lyrics aren't worth an exception, so off. `!gen` still reaches it.
+        {
+          name = "genius";
+          disabled = true;
         }
         # Default engines that failed every query on 2026-10-31, from the Mullvad relays
         # and from the home line alike, so no route change brings them back:
