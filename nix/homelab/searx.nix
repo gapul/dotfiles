@@ -143,7 +143,9 @@
             hash_plugin = true;
             self_info = true;
             unit_converter = true;
-            ahmia_filter = true;
+            # Only loads when SearXNG itself goes out through Tor (outgoing.using_tor_proxy),
+            # which it does not here, so `true` did nothing. Off to say so.
+            ahmia_filter = false;
             hostnames = true;
             time_zone = true;
             tracker_url_remover = true;
