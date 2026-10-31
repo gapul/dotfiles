@@ -102,9 +102,12 @@ in
     table = toString table;
     peers = [
       {
-        # jp-tyo-wg-201; the container uses jp-tyo-wg-001.
-        publicKey = "5YlME8hOnWqvZ7iSampvPW5bG/dJ+PYpaBFV5kfp9UA=";
-        endpoint = "146.70.201.2:51820";
+        # jp-tyo-wg-001 (DataPacket), the same relay as the container. The M247
+        # Tokyo relays (jp-tyo-wg-201..203) are about 112 ms from this line against
+        # 5 ms here (2026-10-31), and that delay pushed SearXNG's engines past
+        # its 1.5 s request_timeout. Measure before moving to another relay.
+        publicKey = "AUo2zhQ0wCDy3/jmZgOe4QMncWWqrdME7BbY2UlkgyI=";
+        endpoint = "138.199.21.239:51820";
         allowedIPs = [
           "0.0.0.0/0"
           "::/0"

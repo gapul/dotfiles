@@ -1,5 +1,5 @@
 # All of this host's outbound traffic goes through Mullvad (device "mellow panda",
-# jp-tyo-wg-202), except a short list of destinations that keep the house's address.
+# jp-osa-wg-101), except a short list of destinations that keep the house's address.
 #
 # Not the Tailscale exit node on homeserver (homelab/mullvad-exit.nix): this host's
 # tailscaled is the open-source daemon, which on macOS accepts --exit-node but never
@@ -10,6 +10,9 @@
 # route, every one of those binds failed ("network is unreachable"): no UDP, DERP
 # only, peers relayed. Adding `-ifscope en0 default` keeps tailscaled on the plain
 # line with direct connections, and everything else in the tunnel (2026-10-31).
+#
+# Relay: jp-osa-wg-101, owned by Mullvad, about 13 ms from this line. The M247 Tokyo
+# relays (jp-tyo-wg-201..203, first used here) are about 112 ms away (2026-10-31).
 #
 # IPv4 only: this host has never had an IPv6 default route (macmini-dns.nix), and
 # carrying ::/0 would give it IPv6 through Mullvad alone, which the exceptions
@@ -66,8 +69,8 @@ let
     Address = 10.164.248.237/32
 
     [Peer]
-    PublicKey = 3NykAEXAdeaT0qFstBkJorW3PDsBRUHHbBUc6YoIzAs=
-    Endpoint = 146.70.201.130:51820
+    PublicKey = qdFG9butVjZdtGFeQHuNftvf6ZmISf2J+v167rcPDU4=
+    Endpoint = 194.127.166.2:51820
     AllowedIPs = 0.0.0.0/0
     PersistentKeepalive = 25
     EOF

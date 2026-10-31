@@ -35,12 +35,24 @@ homes=$(names "legacyPackages.$system.homeConfigurations" "$all" .activationPack
 hosts=$(names nixosConfigurations "$same_system" .config.system.build.toplevel)
 mapfile -t attrs < <(printf '%s\n' "$packages" "$checks" "$shells" "$homes" "$hosts" | grep .)
 
+# The laptop's system closure is 80.7 GiB (measured on the machine 2026-10-31: DaVinci Resolve,
+# the Swift toolchain, VOICEVOX models, ...), and the runner has about 20 GB of disk after
+# "Free disk space". It filled the disk on 2026-10-31 and, in a run where it got that far, kept
+# the job busy until the 90-minute timeout. These are only evaluated here (derivation path,
+# which still catches evaluation errors); the laptop builds them itself when it switches.
+eval_only=" nixosConfigurations.nixos-laptop.config.system.build.toplevel nixosConfigurations.nixos-laptop-ci.config.system.build.toplevel "
+
 # Keep going past a failure so one red output doesn't hide the state of the rest, but fail the
 # job at the end.
 failed=()
 for a in "${attrs[@]}"; do
   echo "::group::$a"
-  if ! nix build "$flake#$a" --no-link --print-build-logs "$@"; then
+  if [[ $eval_only == *" $a "* ]]; then
+    if ! nix eval --raw "$flake#$a.drvPath" "$@"; then
+      failed+=("$a")
+    fi
+    echo
+  elif ! nix build "$flake#$a" --no-link --print-build-logs "$@"; then
     failed+=("$a")
   fi
   echo "::endgroup::"
