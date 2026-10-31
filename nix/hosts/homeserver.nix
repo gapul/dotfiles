@@ -420,6 +420,22 @@ in
     5540
   ];
 
+  # Published container ports never reach the INPUT chain this firewall filters: podman DNATs
+  # them in PREROUTING and they leave through FORWARD, so every `"8080:80"`-style port was
+  # served to the whole LAN in plain HTTP whatever trustedInterfaces said (measured 2026-10-31
+  # from macmini: Vaultwarden, CouchDB, Radicale, Forgejo, ntfy and others answered on the LAN
+  # address). Drop anything that came in on the LAN side and was DNATed. tailnet and loopback
+  # clients are untouched, and so are host-network containers (Home Assistant / Matter).
+  # The mangle table, because netavark rewrites its own chains in filter and nat whenever a
+  # container starts, and a DROP in an earlier hook holds regardless of their order.
+  networking.firewall.extraCommands = ''
+    ip46tables -t mangle -C FORWARD -i enp2s0 -m conntrack --ctstate DNAT -j DROP 2>/dev/null \
+      || ip46tables -t mangle -A FORWARD -i enp2s0 -m conntrack --ctstate DNAT -j DROP
+  '';
+  networking.firewall.extraStopCommands = ''
+    ip46tables -t mangle -D FORWARD -i enp2s0 -m conntrack --ctstate DNAT -j DROP 2>/dev/null || true
+  '';
+
   # --- Containers ---
   # podman rather than docker: no daemon, and conmon costs ~1-2MB per container
   # where the containerd-shim it replaces measured ~13MB across 34 containers.
