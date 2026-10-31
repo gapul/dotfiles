@@ -93,7 +93,6 @@ let
       ] (_: ":gear:")
       // {
         "com.obsproject.Studio" = ":obsstudio:"; # "OBS Studio"
-        "brave-origin" = ":brave_browser:"; # "Brave Origin"
         "org.godotengine.Godot4.7" = ":godot:"; # "Godot Engine 4.7"
         "com.t3tools.T3Code" = ":t3_code:"; # its .desktop file is the app's own, outside Nix
       };

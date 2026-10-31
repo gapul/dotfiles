@@ -1067,6 +1067,9 @@ in
 
   # Bluetooth (keyboard/earphones etc.).
   hardware.bluetooth.enable = true;
+  # Discoverable mode ends on its own after three minutes (BlueZ's stock value). It had been
+  # left on with no timeout, which broadcast the fixed public address and name everywhere.
+  hardware.bluetooth.settings.General.DiscoverableTimeout = 180;
   services.blueman.enable = true;
   # LibrePods 0.2.5 ranks SBC above PipeWire's default A2DP (AAC on AirPods).
   # It also keeps a BLE discovery running with no timeout whenever the AirPods are not
