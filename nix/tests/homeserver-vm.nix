@@ -50,13 +50,16 @@ pkgs.testers.runNixOSTest {
       # No tailnet to join, and nothing under test needs it.
       services.tailscale.enable = lib.mkForce false;
 
-      # gatus reads the ntfy topic and token from a file placed by hand at install
-      # time. systemd refuses to start a unit whose EnvironmentFile is missing, so
+      # gatus reads the ntfy topic and token, and the push token its external endpoints
+      # require, from a file placed by hand at install time. systemd refuses to start a
+      # unit whose EnvironmentFile is missing, and gatus panics on an external endpoint
+      # with an empty token (2026-10-31: the test sat 15 min on port 8084), so
       # stand in for it — which also exercises the ${VAR} substitution.
       systemd.services.gatus.serviceConfig.EnvironmentFile = lib.mkForce (
         pkgs.writeText "gatus-test.env" ''
           NTFY_TOPIC=test
           NTFY_TOKEN=test
+          GATUS_PUSH_TOKEN=test
         ''
       );
 
