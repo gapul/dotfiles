@@ -590,7 +590,10 @@ in
     # Everything leaves through Mullvad via the exit node on homeserver
     # (homelab/mullvad-exit.nix). If that node is down there is no internet at all
     # until `tailscale set --exit-node=` — that is the kill switch, not a fault.
-    "--exit-node=mullvad-exit"
+    # By Tailscale IP (mullvad-exit), not name: tailscaled-set runs right after a tailscaled
+    # restart, and `tailscale set` refuses to resolve a hostname while tailscaled is still
+    # starting, which failed the switch (2026-11-01).
+    "--exit-node=100.123.87.1"
     "--exit-node-allow-lan-access"
   ];
   # MagicDNS names are still needed: SyncClipboard (home/ios-integration.nix) and the other
