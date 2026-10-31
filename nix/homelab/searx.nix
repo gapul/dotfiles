@@ -124,11 +124,6 @@
       # and already holds the query in the URL.
       ui.query_in_title = true;
 
-      # Yahoo! Chiebukuro Q&A pages filled the top 10 of everyday Japanese queries (4 of 10
-      # for "パソコン 重い 原因", 2026-10-31). low_priority gives them a score of 0, so they
-      # sink below every other result but stay reachable instead of being removed.
-      hostnames.low_priority = [ ''(^|\.)chiebukuro\.yahoo\.co\.jp$'' ];
-
       # A page waits for its slowest engine up to this limit, so it bounds the worst case.
       # 3s was the default. The general engines answer well inside it (2026-10-30, P95: google
       # cse 0.8s, duckduckgo web 1.2s, yandex 1.5s, mwmbl 1.2s, wikipedia 1.0s), so a hanging
@@ -265,10 +260,14 @@
           name = "startpage";
           disabled = true;
         }
-        # Forums only. A different character, so it adds breadth.
+        # Forums only. Enabled for breadth, but under the ja-JP default language it returns
+        # nothing except Yahoo! Chiebukuro Q&A pages (2026-10-31: 8-9 results per Japanese
+        # query, all detail.chiebukuro.yahoo.co.jp), and they took 3-4 of the top 10. English
+        # queries get nothing at all unless the language is switched to en, where the forum
+        # results (github, fedora discourse, hotukdeals...) do show up. `!boa` still reaches it.
         {
           name = "boardreader";
-          disabled = false;
+          disabled = true;
         }
         # Old, plain pages only. Picks up what falls out of the big indexes.
         {
