@@ -60,10 +60,16 @@
     # Mullvad relay and from the home line alike (2026-10-31). The value is still set,
     # empty, because the vqd cache key reads headers["User-Agent"]. --replace-fail makes
     # an upstream rewrite of that line break the build instead of silently dropping this.
+    #
+    # gitlab crashed on every query ("unexpected crash", TypeError: expected string, got
+    # NoneType): projects without a description come back as null, and the result container
+    # needs a string. Still unfixed upstream on 2026-10-31.
     package = pkgs.searxng.overrideAttrs (old: {
       postPatch = (old.postPatch or "") + ''
         substituteInPlace searx/engines/duckduckgo_extra.py \
           --replace-fail 'headers["User-Agent"] = _HTTP_User_Agent' 'headers["User-Agent"] = ""'
+        substituteInPlace searx/engines/gitlab.py \
+          --replace-fail "'content': item.get('description')," "'content': item.get('description') or ''',"
       '';
     });
 
@@ -384,7 +390,30 @@
           name = "pexels";
           disabled = false;
         }
-      ];
+        # Default engines that failed every query on 2026-10-31, from the Mullvad relays
+        # and from the home line alike, so no route change brings them back:
+        #   google news, google videos ... 302 to Google's bot wall
+        #   semantic scholar ............. 202 challenge page instead of JSON
+        #   picjumbo ..................... 403
+        #   dictzone ..................... Cloudflare "Just a moment..."
+        #   pypi, bandcamp ............... "Client Challenge" JS page, so 0 results
+        #   lingva ....................... lingva.ml answers 503 DEPLOYMENT_PAUSED
+      ]
+      ++ map
+        (name: {
+          inherit name;
+          disabled = true;
+        })
+        [
+          "google news"
+          "google videos"
+          "semantic scholar"
+          "picjumbo"
+          "dictzone"
+          "pypi"
+          "bandcamp"
+          "lingva"
+        ];
     };
   };
 
