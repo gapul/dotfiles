@@ -655,6 +655,31 @@ in
   # The home homelab is on Tailscale (*.gapul.net). Join this machine too.
   # Authenticate with `sudo tailscale up` on first run only.
   services.tailscale.enable = true;
+  # Anthropic (api.anthropic.com, claude.ai, platform.claude.com all sit in these ranges) never
+  # goes out through the exit node. With the Mullvad exit node on, claude.ai answered every
+  # request with a Cloudflare challenge (403, cf-mitigated: challenge), which Claude Code cannot
+  # pass (2026-10-31). tailscaled sends everything to table 52 at priority 5270 and only
+  # manages its own 52xx rules, so a rule just ahead of it survives tailscaled restarts.
+  systemd.services.anthropic-skip-exit-node = {
+    description = "Route Anthropic around the Tailscale exit node";
+    after = [ "tailscaled.service" ];
+    wantedBy = [ "multi-user.target" ];
+    path = [ pkgs.iproute2 ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+    };
+    script = ''
+      ip -4 rule del priority 5200 2>/dev/null || true
+      ip -6 rule del priority 5200 2>/dev/null || true
+      ip -4 rule add priority 5200 to 160.79.104.0/23 lookup main
+      ip -6 rule add priority 5200 to 2607:6bc0::/48 lookup main
+    '';
+    preStop = ''
+      ip -4 rule del priority 5200 || true
+      ip -6 rule del priority 5200 || true
+    '';
+  };
 
   services.espanso = {
     enable = true;
