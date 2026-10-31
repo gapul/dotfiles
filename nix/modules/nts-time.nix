@@ -1,5 +1,4 @@
-{ ... }:
-{
+_: {
   # Time over NTS (Network Time Security) instead of timesyncd. timesyncd asked the NixOS pool
   # in plain NTP, so anyone on the path could shift the clock, and a shifted clock breaks TLS
   # certificate checks and TOTP. NTS authenticates every answer with a key from a TLS handshake.
