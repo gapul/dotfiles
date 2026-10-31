@@ -399,21 +399,22 @@
         #   pypi, bandcamp ............... "Client Challenge" JS page, so 0 results
         #   lingva ....................... lingva.ml answers 503 DEPLOYMENT_PAUSED
       ]
-      ++ map
-        (name: {
-          inherit name;
-          disabled = true;
-        })
-        [
-          "google news"
-          "google videos"
-          "semantic scholar"
-          "picjumbo"
-          "dictzone"
-          "pypi"
-          "bandcamp"
-          "lingva"
-        ];
+      ++
+        map
+          (name: {
+            inherit name;
+            disabled = true;
+          })
+          [
+            "google news"
+            "google videos"
+            "semantic scholar"
+            "picjumbo"
+            "dictzone"
+            "pypi"
+            "bandcamp"
+            "lingva"
+          ];
     };
   };
 
