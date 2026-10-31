@@ -34,7 +34,12 @@
 # Instead, mojeek and qwant, disabled by default, are enabled. mojeek is an independent
 # index with its own crawler, so it doesn't get caught in Google's anti-bot net. It is
 # the one that stays standing.
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 {
   # This used to be escaped to unstable here. searxng in the 26.05 series was stuck at
   # the 2026-05-16 release and couldn't keep up with search engine changes, so brave /
