@@ -148,74 +148,74 @@ in
 map mkCraft [
   {
     name = "PhotoCraft";
-    version = "0.17.0";
-    hash = "sha256-bgkDFyp0QM5OcQAvVYW6Tv9Yj6P8mbeM2YERgMq9W4A=";
-    linuxHash = "sha256-Uln5xCjI7jR4w1UA7OmHE1Ycr8BQ5MnrNUpQUPNusrg=";
+    version = "0.18.0";
+    hash = "sha256-IDNdqr7az+2R+leed6KsGNJhpzUFd4K4dJKCeHbLD5E=";
+    linuxHash = "sha256-S4rI4RRqyal+e/3vFrJn1Tlqd4Cf1OIym4Pa14CGV08=";
   }
   {
     name = "VectorCraft";
-    version = "0.18.0";
-    hash = "sha256-boc/s56usujsXqgrrTZnB9buTzCAthV6YlxS73RjOHQ=";
-    linuxHash = "sha256-dpSLUO943Ugqbs4G8QtwR5N7vAwF9c9rxD2IsH902CY=";
+    version = "0.19.0";
+    hash = "sha256-YOA/hF0wUnP4j6MYkKZ3Y4F8GykcMD7wtSkBhJAvx30=";
+    linuxHash = "sha256-rlN4iPSWkZqosxk+om8F/SWEvgDv+G2AoH4mRPEGHpI=";
   }
   {
     name = "FilmCraft";
-    version = "0.14.0";
-    hash = "sha256-n4dWT4P1XZ3qMs7rc6o8t0sVrsBTR90+Fj/Qpqvvayc=";
-    linuxHash = "sha256-0qohPMCKvSHgWrURp4zDjxV8ryImmS8/yKXgSWo/fn0=";
+    version = "0.15.0";
+    hash = "sha256-o4pAUW62DWokdBsJ8ewsdju0DgHsoa8R/W3gvFOji/Q=";
+    linuxHash = "sha256-IrEGtMpilNmz6aSvQLQKZToYl0NzZIBQRqAd26pLIsE=";
   }
   {
     name = "LightCraft";
-    version = "0.15.0";
-    hash = "sha256-F1weaBh9kc+QAzqTAV+0y0UEVXVbePQeOUqeoJ53zek=";
-    linuxHash = "sha256-CxrN78CFurszS5rdKQ3RpptQ6W772tLsFdRL1tZL/T0=";
+    version = "0.16.0";
+    hash = "sha256-j/Ghw9GphZVcvGVx0fuojjdUuwzM6IPoMtws0+c6UXU=";
+    linuxHash = "sha256-0i7fWsQBACkdjD2N3ovxyRyuIaC1bUypzAAm2zE5qSY=";
   }
   {
     name = "PdfCraft";
-    version = "0.15.0";
-    hash = "sha256-wST8LtUSdllD+y6OdkvBTAedxbfXpUOczbNAHfeP1HI=";
-    linuxHash = "sha256-sWehjGCnsynwWlu/l+Mtxniq0/jVhm2OQ3j/JCc/gxM=";
+    version = "0.16.1";
+    hash = "sha256-E1fm8c3B0Gq07MJT6cezG3HkAYl7XHgVg8yu/RlBZC8=";
+    linuxHash = "sha256-uzbgcdEKFK9RISmaDu2NfF245cdYC2y+vsCFxB0b/go=";
   }
   {
     name = "EffectCraft";
-    version = "0.18.0";
-    hash = "sha256-eaDCSmRAGOs5tyLt21oVo0KAyGhWFx9qZBWjVBsYIAQ=";
-    linuxHash = "sha256-lNHYVpHVS6V/qG4Ehy+8xCbDPRvTZPH8l2sfYHNEiAs=";
+    version = "0.19.0";
+    hash = "sha256-K3W8pTKgb2awQVC4NYU/QQKIIddLa641fyIyU1wL5FA=";
+    linuxHash = "sha256-fsk5Ha53X3zn5ykSaPexIzIowbreg87YhAMDU1yVGXA=";
   }
   {
     name = "DesignCraft";
-    version = "0.14.0";
-    hash = "sha256-k5L7Vj3gbaLspIeRpA+BL3IRA2lzYgFWWbP/dXfnsIE=";
-    linuxHash = "sha256-Jch751nTWoHKROH2Je1DBLFuWqtqA6EFG8pJioG/xUc=";
+    version = "0.15.2";
+    hash = "sha256-79MKZLNr8Cz/hoeqI0VpIXvwk2GH3IFxfiLwTKXCS50=";
+    linuxHash = "sha256-57eC90ZJd+/pNa1o48kIsJOfO2ZgcMiN8gRhmNxuiUQ=";
   }
   {
     name = "WordCraft";
-    version = "0.12.0";
-    hash = "sha256-JETrnKJ1X0ZVxV6X2d5jh28zihWIqzXpEqx284zqdwk=";
-    linuxHash = "sha256-zZq9DuehG5ha8cFXFlMzLJYHfl3MSLXhh7VcgvR1oz4=";
+    version = "0.13.2";
+    hash = "sha256-axQrjwBUJEmjJYH4MuKTjHzXYovguWn8WC9XH33uJtA=";
+    linuxHash = "sha256-bPT8wDCi1PuvM0+dbGDXPCof3uKmlRwGfl+hFf4Qc48=";
   }
   {
     name = "GridCraft";
-    version = "0.13.0";
-    hash = "sha256-Z7agI7Rl7fhe9aMJ1JprAKCF4+o9yd3cAGCZazhRUWg=";
-    linuxHash = "sha256-IMbFbsH/1rvP/ubN7ljPa1yt0vSgSkNg3XzGTVOtl+U=";
+    version = "0.14.2";
+    hash = "sha256-eALyq/LEjgD9pEdaSPfPGcCZ0ABK6bEbEeKF3c8BxLQ=";
+    linuxHash = "sha256-nIFTt2MK373vgCGqm5guHvGHts8nzSIzKAz68LpqGEI=";
   }
   {
     name = "DeckCraft";
-    version = "0.12.0";
-    hash = "sha256-/rflRUPBNrNJR5dGtgd5zFvz5diz0Vg4FW7RYAXSU9U=";
-    linuxHash = "sha256-SkENPKpCPoc9Dcq1HJjgZYj1W9/PA+nB6RQJqGwI3j4=";
+    version = "0.13.1";
+    hash = "sha256-nkJs6kfXj9Nx3/9Mmle/7x3f5ZLDh26G158ovKrpDMc=";
+    linuxHash = "sha256-cR7AlbWQ+8uqq8jFklqDUN6pjukxq3tE1Ir2iy5h9RQ=";
   }
   {
     name = "SoundCraft";
-    version = "0.14.0";
-    hash = "sha256-k3fhZGcOy3akYQhorCT3gEQV2CzwAWwn8kzDzFuqQd8=";
-    linuxHash = "sha256-L4NQP+2mqiyNS8EsRPVxQixDifxmSpK77QktK/HVAK0=";
+    version = "0.15.0";
+    hash = "sha256-9qZOB33erzk96S5OcQk6kfmM2KAvL0wgyzGMNsgXYYU=";
+    linuxHash = "sha256-Fu8j72LsIPX8xT4Eq6r/UnCV5QX1YItHqxtyscjp7SA=";
   }
   {
     name = "CADCraft";
-    version = "0.14.0";
-    hash = "sha256-BarhzDN0XAzUFx504Flx1iWymIS7SeAHAxpCrhrcAtI=";
-    linuxHash = "sha256-lQZ8hJ+CMFZIJJKZu4bmRbcwJ1qoxfGZZdgZkPg66ps=";
+    version = "0.15.1";
+    hash = "sha256-Q5PmSSj4p95lvoW15wmA+WvAN2NmH9DjVHEiHnMiuY4=";
+    linuxHash = "sha256-0ETw+KdVxrab3GtFNh2rzDQsFOOxkZw59UBp/80cT4A=";
   }
 ]
