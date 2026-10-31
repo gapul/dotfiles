@@ -91,6 +91,7 @@ in
   imports = [
     ./homeserver-hardware.nix
     ../modules/authorized-keys.nix
+    ../modules/nts-time.nix # chrony over NTS; also the time source for the Macs
     ../homelab # the Docker stacks that used to live on CT101 under dockge
     ./homeserver-fpga.nix # the CPU-experiment FPGA board on USB (openFPGALoader + UART)
   ];
@@ -183,6 +184,13 @@ in
   ];
 
   time.timeZone = "Asia/Tokyo";
+  # Serve time to the tailnet only. The Macs cannot speak NTS (modules/nts-time.nix), so they
+  # ask here, and WireGuard is what authenticates the answer. tailscale0 is a trusted interface,
+  # and 123 is not opened on the LAN.
+  services.chrony.extraConfig = ''
+    allow 100.64.0.0/10
+    allow fd7a:115c:a1e0::/48
+  '';
   i18n.defaultLocale = "ja_JP.UTF-8";
 
   # --- Tailscale ---
