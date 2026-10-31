@@ -34,7 +34,12 @@
 # Instead, mojeek and qwant, disabled by default, are enabled. mojeek is an independent
 # index with its own crawler, so it doesn't get caught in Google's anti-bot net. It is
 # the one that stays standing.
-{ config, lib, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 {
   # This used to be escaped to unstable here. searxng in the 26.05 series was stuck at
   # the 2026-05-16 release and couldn't keep up with search engine changes, so brave /
@@ -47,6 +52,20 @@
 
   services.searx = {
     enable = true;
+
+    # duckduckgo images (and videos/news, same module) send a Firefox User-Agent over a
+    # non-browser TLS handshake (`impersonate = "none"`). DuckDuckGo answers about half of
+    # those with a 202 "botnet" image captcha, which SearXNG reports as access denied or a
+    # parsing error. The same requests with no User-Agent got 12 of 12 through, from the
+    # Mullvad relay and from the home line alike (2026-10-31). The value is still set,
+    # empty, because the vqd cache key reads headers["User-Agent"]. --replace-fail makes
+    # an upstream rewrite of that line break the build instead of silently dropping this.
+    package = pkgs.searxng.overrideAttrs (old: {
+      postPatch = (old.postPatch or "") + ''
+        substituteInPlace searx/engines/duckduckgo_extra.py \
+          --replace-fail 'headers["User-Agent"] = _HTTP_User_Agent' 'headers["User-Agent"] = ""'
+      '';
+    });
 
     # Without a favicons.toml next to settings.yml SearXNG logs an error on every start and keeps
     # the icon cache in /tmp, which PrivateTmp throws away on each restart. The module's
@@ -217,6 +236,13 @@
         # browser. As long as it's used routinely from the home IP it structurally can't
         # work. Calling it every time only fails and makes you wait, so only call it when
         # `!sp` is written.
+        #
+        # 2026-10-31: still dead, through Mullvad too, so `!sp` answers nothing either.
+        # Upstream now marks it `inactive` and solves Startpage's Anubis proof of work, but
+        # only up to difficulty 4; Startpage serves 6 to every address tried (home line,
+        # two Mullvad relays). In Python on this box that is ~31 s per solve, and the pass
+        # is cached for 4 minutes, so it cannot fit a 1.5 s request_timeout. google cse
+        # already covers the Google index Startpage resells.
         {
           name = "startpage";
           disabled = true;
