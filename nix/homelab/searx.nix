@@ -260,10 +260,14 @@
           name = "startpage";
           disabled = true;
         }
-        # Forums only. A different character, so it adds breadth.
+        # Forums only. Enabled for breadth, but under the ja-JP default language it returns
+        # nothing except Yahoo! Chiebukuro Q&A pages (2026-10-31: 8-9 results per Japanese
+        # query, all detail.chiebukuro.yahoo.co.jp), and they took 3-4 of the top 10. English
+        # queries get nothing at all unless the language is switched to en, where the forum
+        # results (github, fedora discourse, hotukdeals...) do show up. `!boa` still reaches it.
         {
           name = "boardreader";
-          disabled = false;
+          disabled = true;
         }
         # Old, plain pages only. Picks up what falls out of the big indexes.
         {
