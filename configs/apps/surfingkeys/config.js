@@ -28,6 +28,11 @@ mapkey("=", "Video: reset speed", () => rate(1 - document.querySelector("video")
 // forces prefers-color-scheme inside its iframe to light, regardless of Firefox.
 // Opt this host into both schemes when it is lazily attached (or reattached).
 // Only touch Surfingkeys' extension iframe; leave the page's colour scheme alone.
+// The frame's own document must then opt in too (`color-scheme: light dark` at the top of
+// settings.theme): Firefox paints an iframe opaque when the scheme of its document differs
+// from the scheme of the <iframe> element. With only the host opted in, a dark browser gave a
+// dark element over a light document, and the full-viewport UI frame turned the whole page
+// white whenever it showed (the "Copied" banner after yy, the omnibar, ...).
 if (window === window.top && !window.__surfingkeysColorSchemeObserver) {
   const followSystemScheme = (element) => {
     if (!(element instanceof Element)) return;
@@ -52,6 +57,7 @@ settings.omnibarPosition = "middle"; // float the omnibar in the upper third ins
 settings.omnibarMaxResults = 8;
 settings.hintAlign = "left";
 settings.theme = `
+:root { color-scheme: light dark; }
 :root {
   --sk-bg: rgba(250, 244, 237, 0.86); --sk-panel: #fffaf3; --sk-raised: #f2e9e1;
   --sk-line: rgba(87, 82, 121, 0.14); --sk-fg: #575279; --sk-dim: #797593; --sk-muted: #9893a5;
