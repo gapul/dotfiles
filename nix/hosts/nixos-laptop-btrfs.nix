@@ -49,14 +49,15 @@ in
   # and @log stays out so rolling the system back does not roll its logs back too.
   # snapper wants each config's .snapshots to be a subvolume; they were made by hand with
   # `btrfs subvolume create /.snapshots /home/.snapshots`.
+  # Only the last 24 hourly snapshots are kept, so a deletion frees its space within a day.
   services.snapper.configs = {
     root = {
       SUBVOLUME = "/";
       TIMELINE_CREATE = true;
       TIMELINE_CLEANUP = true;
-      TIMELINE_LIMIT_HOURLY = 6;
-      TIMELINE_LIMIT_DAILY = 7;
-      TIMELINE_LIMIT_WEEKLY = 2;
+      TIMELINE_LIMIT_HOURLY = 24;
+      TIMELINE_LIMIT_DAILY = 0;
+      TIMELINE_LIMIT_WEEKLY = 0;
       TIMELINE_LIMIT_MONTHLY = 0;
       TIMELINE_LIMIT_YEARLY = 0;
     };
@@ -65,10 +66,10 @@ in
       ALLOW_USERS = [ "gapul" ];
       TIMELINE_CREATE = true;
       TIMELINE_CLEANUP = true;
-      TIMELINE_LIMIT_HOURLY = 12;
-      TIMELINE_LIMIT_DAILY = 7;
-      TIMELINE_LIMIT_WEEKLY = 4;
-      TIMELINE_LIMIT_MONTHLY = 2;
+      TIMELINE_LIMIT_HOURLY = 24;
+      TIMELINE_LIMIT_DAILY = 0;
+      TIMELINE_LIMIT_WEEKLY = 0;
+      TIMELINE_LIMIT_MONTHLY = 0;
       TIMELINE_LIMIT_YEARLY = 0;
     };
   };

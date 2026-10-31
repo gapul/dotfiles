@@ -297,6 +297,7 @@ in
     ./macmini-ci-runner.nix
     ./macmini-dns.nix
     ./macmini-homeserver-monitor.nix
+    ./macmini-anthropic-route.nix # Anthropic skips the Mullvad exit node (Cloudflare challenges it)
     ./macmini-imessage.nix # iMessage bridge daemon and config (split with the home side; reason at the top of the file)
     ./macmini-mail.nix # aerc accounts, rendered by the system sops (host key)
     ./macmini-mullvad.nix # all outbound through Mullvad, with a few exceptions
