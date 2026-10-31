@@ -36,17 +36,32 @@ hosts=$(names nixosConfigurations "$same_system" .config.system.build.toplevel)
 mapfile -t attrs < <(printf '%s\n' "$packages" "$checks" "$shells" "$homes" "$hosts" | grep .)
 
 # The laptop's system closure is 80.7 GiB (measured on the machine 2026-10-31: DaVinci Resolve,
-# the Swift toolchain, VOICEVOX models, ...), and the runner has about 20 GB of disk after
-# "Free disk space". It filled the disk on 2026-10-31 and, in a run where it got that far, kept
-# the job busy until the 90-minute timeout. These are only evaluated here (derivation path,
-# which still catches evaluation errors); the laptop builds them itself when it switches.
+# the Swift toolchain, VOICEVOX models, ...), and the runner has 34 to 107 GB of disk after
+# "Free disk space", depending on which image it lands on. It filled the disk on 2026-10-31
+# and, in a run where it got that far, kept the job busy until the 90-minute timeout. These are
+# only evaluated here (derivation path, which still catches evaluation errors); the laptop
+# builds them itself when it switches.
 eval_only=" nixosConfigurations.nixos-laptop.config.system.build.toplevel nixosConfigurations.nixos-laptop-ci.config.system.build.toplevel "
+
+# Nothing roots the outputs built here (--no-link), so once one is built and pushed it is
+# garbage. On the 72 GB runner image (34 GB free) the outputs together still overflow: the run
+# for #1265 on 2026-10-31 died in homeserver-vm with "No space left on device" while the same
+# outputs passed on a 145 GB runner. Collect before an output when free space runs low. cachix
+# pushes each path as it is built, so a path collected before its push finishes is only a
+# cache miss next time.
+min_free_gb=20
+free_gb() { df --output=avail -BG /nix | tail -1 | tr -dc 0-9; }
 
 # Keep going past a failure so one red output doesn't hide the state of the rest, but fail the
 # job at the end.
 failed=()
 for a in "${attrs[@]}"; do
   echo "::group::$a"
+  if [ "$(free_gb)" -lt "$min_free_gb" ]; then
+    echo "$(free_gb) GB free, collecting garbage"
+    nix store gc --quiet
+    echo "$(free_gb) GB free after gc"
+  fi
   if [[ $eval_only == *" $a "* ]]; then
     if ! nix eval --raw "$flake#$a.drvPath" "$@"; then
       failed+=("$a")
