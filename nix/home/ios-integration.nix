@@ -103,6 +103,8 @@ let
 in
 {
   # AirPlay requires Avahi publishing and Wi-Fi ports 7000..7002 on the host.
+  # Started by hand (`systemctl --user start uxplay`, `stop` when done), not with the session:
+  # while it runs the receiver is announced to everyone on whatever Wi-Fi the laptop is on.
   systemd.user.services.uxplay = {
     Unit = {
       Description = "iPhone AirPlay receiver";
@@ -132,7 +134,6 @@ in
       Restart = "always";
       RestartSec = 5;
     };
-    Install.WantedBy = [ "graphical-session.target" ];
   };
   systemd.user.services.syncclipboard = {
     Unit = {
