@@ -119,6 +119,11 @@
       # query. DuckDuckGo already receives every query as an engine.
       search.favicon_resolver = "duckduckgo";
 
+      # Show the query in the tab title ("query - SearXNG") so result tabs can be told apart.
+      # Off upstream because browser history then records the query; that history is local
+      # and already holds the query in the URL.
+      ui.query_in_title = true;
+
       # A page waits for its slowest engine up to this limit, so it bounds the worst case.
       # 3s was the default. The general engines answer well inside it (2026-10-30, P95: google
       # cse 0.8s, duckduckgo web 1.2s, yandex 1.5s, mwmbl 1.2s, wikipedia 1.0s), so a hanging
