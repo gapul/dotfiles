@@ -210,6 +210,10 @@ in
     extraUpFlags = [
       "--advertise-routes=192.168.116.0/24,192.168.1.0/24,10.80.1.0/24,130.69.0.0/16,133.11.0.0/16,157.82.0.0/16,192.51.208.0/20"
     ];
+    # The host resolves through its own blocky (homelab/blocky.nix), not MagicDNS. With
+    # MagicDNS, 100.100.100.100 forwarded every lookup in plaintext over the tailnet to macmini's
+    # blocky (seen with tcpdump, 2026-10-31); the tailnet is not trusted to keep DNS private.
+    extraSetFlags = [ "--accept-dns=false" ];
   };
 
   # --- TLS ---
