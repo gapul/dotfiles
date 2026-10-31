@@ -373,6 +373,44 @@ in
         "network.trr.bootstrapAddr" = "100.127.129.31";
         "network.trr.excluded-domains" = "ts.net";
 
+        # Fingerprinting: RFP stays off (arkenfox 4500 is opt-in) and Firefox's FPP, which ETP
+        # strict turns on, gets the RFP targets added one by one on top of its defaults
+        # (toolkit/components/resistfingerprinting/RFPTargets.inc). Left out on purpose
+        # (2026-10-31): time zone and every screen/window size target, by choice; prefers-color-
+        # scheme (darkman), KeyboardEvents (SKK/IME, Surfingkeys), MediaDevices and the video/
+        # codec spoofs (Slack huddles, the DRM services), the font visibility levels (the Kyuji
+        # default fonts), WebGL capability limits (three.js work), FrameRate and site zoom.
+        "privacy.fingerprintingProtection.overrides" = lib.concatMapStringsSep "," (t: "+${t}") [
+          "NavigatorUserAgent"
+          "HttpUserAgent"
+          "NavigatorAppVersion"
+          "NavigatorBuildID"
+          "NavigatorOscpu"
+          "NavigatorPlatform"
+          "WebGLRendererConstant"
+          "WebGLVendorSanitize"
+          "WebGPULimits"
+          "WebGPUIsFallbackAdapter"
+          "WebGPUSubgroupSizes"
+          "AudioContext"
+          "AudioSampleRate"
+          "SpeechSynthesis"
+          "CSSPrefersContrast"
+          "CSSPrefersReducedMotion"
+          "CSSPrefersReducedTransparency"
+          "CSSInvertedColors"
+          "CSSColorInfo"
+          "CSSVideoDynamicRange"
+          "CSSPointerCapabilities"
+          "PointerEvents"
+          "Gamepad"
+          "DeviceSensors"
+          "NetworkConnection"
+          "DiskStorageLimit"
+          "ReduceTimerPrecision"
+          "DOMStyleOsxFontSmoothing"
+        ];
+
         # Safe Browsing, arkenfox's way: phishing/malware/download lists on (local lists plus
         # hash-prefix lookups), only the remote check of each download (0403) off. They had been
         # switched off in the UI; pinned here so that cannot happen silently again (2026-10-30).
