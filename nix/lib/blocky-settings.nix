@@ -20,13 +20,12 @@
   }
   // (if tls == null then { } else { tls = tls.listen; });
 
-  # Two providers so one provider dropping us doesn't take the tailnet's DNS down. Quad9
-  # answered 429 and then nothing to the home IP for ~20 min after a burst of ~6000 queries
-  # (2026-10-06), and both blocky failed every query. Both upstreams are unfiltered; blocking
-  # stays in the lists below.
+  # Quad9 only, by choice (2026-10-31): every query goes to one provider instead of being split
+  # with Cloudflare. The cost is redundancy. Quad9 answered 429 and then nothing for ~20 min
+  # after a burst of ~6000 queries (2026-10-06), and with no second provider both blocky fail
+  # every query while that lasts. Unfiltered; blocking stays in the lists below.
   upstreams.groups.default = [
     "https://dns10.quad9.net/dns-query"
-    "https://cloudflare-dns.com/dns-query"
   ];
   # IPv4 only for outgoing connections (upstream and list downloads). macmini has no IPv6
   # route, and the downloader dials the AAAA answer first and does not fall back inside an
@@ -37,8 +36,6 @@
   bootstrapDns = [
     { upstream = "9.9.9.10"; }
     { upstream = "149.112.112.10"; }
-    { upstream = "1.1.1.1"; }
-    { upstream = "1.0.0.1"; }
   ];
 
   blocking = {
