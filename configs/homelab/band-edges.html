@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>周波数帯ごとの境界</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: var(--secondary, #f0f0ee); --fg: var(--foreground, #1d1d1f); --mut: var(--muted-foreground, #6b6b72); --cardbg: var(--card, #fff); --line: var(--border, #dcdcdc); --acc: var(--primary, #3466d6);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #141416; --fg: #ececef; --mut: #9b9ba3; --cardbg: #1e1e22; --line: #34343a; --acc: #7ea4ff; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.6 system-ui, -apple-system, "Hiragino Sans", sans-serif; color: var(--fg); }
+  header { padding: 20px 24px 4px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  header p { margin: 0; color: var(--mut); max-width: 70em; }
+  .wrap { display: grid; grid-template-columns: 290px 1fr; gap: 16px; padding: 16px 24px 32px; }
+  @media (max-width: 860px) { .wrap { grid-template-columns: 1fr; } aside { position: static !important; } }
+  aside { background: var(--cardbg); border: 1px solid var(--line); border-radius: 10px; padding: 14px; align-self: start; position: sticky; top: 12px; }
+  aside h2 { font-size: 12px; letter-spacing: .04em; color: var(--mut); margin: 14px 0 6px; font-weight: 600; }
+  aside h2:first-child { margin-top: 0; }
+  label.row { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; align-items: center; margin: 6px 0; }
+  label.row input[type=range] { grid-column: 1 / -1; width: 100%; }
+  label.chk { display: flex; gap: 6px; align-items: center; margin: 4px 0; }
+  select, button, input[type=file] { font: inherit; color: inherit; }
+  select { width: 100%; padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); }
+  button { padding: 5px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); cursor: pointer; }
+  button:hover { border-color: var(--acc); }
+  .val { font-variant-numeric: tabular-nums; color: var(--mut); }
+  .note { font-size: 12.5px; color: var(--mut); background: var(--bg); border-radius: 6px; padding: 8px 10px; margin-top: 8px; }
+  main { min-width: 0; }
+  .viewer { background: var(--cardbg); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+  .bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+  .bar .label { flex: 1; min-width: 12em; }
+  .bar .label b { font-size: 15px; }
+  .bar .label span { color: var(--mut); margin-left: 8px; }
+  #view { display: block; width: 100%; height: auto; max-height: 640px; object-fit: contain; border-radius: 6px; background: repeating-conic-gradient(#8881 0 25%, transparent 0 50%) 0 0 / 16px 16px; }
+  .legend { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; font-size: 12.5px; color: var(--mut); }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+  #thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-top: 14px; }
+  .thumb { background: var(--cardbg); border: 2px solid var(--line); border-radius: 8px; padding: 6px; cursor: pointer; }
+  .thumb.on { border-color: var(--acc); }
+  .thumb canvas { display: block; width: 100%; height: auto; border-radius: 4px; }
+  .thumb div { font-size: 12px; margin-top: 4px; color: var(--mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .thumb div i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 4px; }
+  #busy { color: var(--acc); }
+  body.drag::after { content: "ここに画像をドロップ"; position: fixed; inset: 12px; border: 3px dashed var(--acc); border-radius: 16px; display: grid; place-items: center; font-size: 22px; background: #0004; color: #fff; pointer-events: none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>周波数帯ごとの境界</h1>
+  <p>画像をいくつかの周波数帯（ぼかし幅 σ の区間）に分け、帯域ごとに境界だけを取り出して並べます。処理はすべてブラウザ内で行い、画像はどこにも送りません。画像はドラッグ＆ドロップでも読み込めます。</p>
+</header>
+
+<div class="wrap">
+  <aside>
+    <h2>画像</h2>
+    <input type="file" id="file" accept="image/*">
+    <div style="margin-top:6px"><button id="sample">サンプル画像</button> <span id="busy"></span></div>
+
+    <h2>方式</h2>
+    <select id="mode">
+      <option value="scale">固有スケールで振り分け（Lindeberg）</option>
+      <option value="zc">ゼロ交差の線画（Marr–Hildreth）</option>
+      <option value="dog">帯域通過の強さ（DoG）</option>
+    </select>
+    <div class="note" id="modeNote"></div>
+
+    <h2>帯域</h2>
+    <label class="row">最小の σ <span class="val" id="s0v"></span><input type="range" id="s0" min="0.5" max="4" step="0.5" value="1"></label>
+    <label class="row">隣の帯域との σ の比
+      <select id="ratio" style="width:auto"><option value="1.414">√2</option><option value="2" selected>2</option><option value="3">3</option></select>
+    </label>
+    <label class="row">帯域の数 <span class="val" id="nv"></span><input type="range" id="n" min="2" max="8" step="1" value="6"></label>
+    <label class="row">処理する解像度（長辺）
+      <select id="res" style="width:auto"><option>256</option><option selected>512</option><option>768</option><option>1024</option></select>
+    </label>
+
+    <h2>表示</h2>
+    <label class="row">しきい値 <span class="val" id="thrv"></span><input type="range" id="thr" min="0" max="0.9" step="0.01" value="0.12"></label>
+    <label class="row" id="gammaRow">γ（スケール正規化） <span class="val" id="gammav"></span><input type="range" id="gamma" min="0.25" max="0.75" step="0.05" value="0.5"></label>
+    <label class="chk"><input type="checkbox" id="perBand" checked> 帯域ごとに明るさをそろえる</label>
+    <label class="chk"><input type="checkbox" id="overlay"> 原画を薄く重ねる</label>
+    <label class="chk"><input type="checkbox" id="dark"> 黒地に白い線</label>
+    <div class="note">← → キーで帯域を移動できます。<span id="time"></span></div>
+  </aside>
+
+  <main>
+    <div class="viewer">
+      <div class="bar">
+        <button id="prev">←</button><button id="next">→</button>
+        <div class="label"><b id="title"></b><span id="sub"></span></div>
+        <button id="dl">PNG で保存</button>
+      </div>
+      <canvas id="view"></canvas>
+      <div class="legend" id="legend"></div>
+    </div>
+    <div id="thumbs"></div>
+  </main>
+</div>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const COLORS = ["#d1495b", "#ee8a2a", "#c9a227", "#5a9e5a", "#1f9e9e", "#3a6fc4", "#7a52b8", "#b84d93"];
+const NOTES = {
+  scale: "各境界を、正規化した勾配 σ<sup>γ</sup>|∇L| が最大になる帯域<b>ひとつだけ</b>に割り当てます。鋭い段差は最も細かい帯域に、ぼけた輪郭はぼけ幅に合う帯域に入ります。γ=0.5 で、ぼけ幅 σ₀ の輪郭が σ=σ₀ の帯域に入ります。",
+  zc: "隣り合う2つのぼかしの差（DoG）の符号が変わる位置を線にしたものです。帯域ごとの境界の線画になります。鋭い段差は、どの帯域にも線として現れます。",
+  dog: "隣り合う2つのぼかしの差（DoG）の大きさです。その帯域にどれだけ変化があるかを示します。鋭い段差は全帯域に写ります。帯域で分けるだけでは境界は分かれない、という例です。",
+};
+const state = { el: null, src: null, pyr: null, sel: 1 };
+
+// ---------- blur ----------
+function gaussSep(src, w, h, s) {
+  const r = Math.ceil(3 * s), K = new Float32Array(2 * r + 1);
+  let sum = 0;
+  for (let i = -r; i <= r; i++) { K[i + r] = Math.exp(-i * i / (2 * s * s)); sum += K[i + r]; }
+  for (let i = 0; i < K.length; i++) K[i] /= sum;
+  const tmp = new Float32Array(w * h), out = new Float32Array(w * h);
+  for (let y = 0; y < h; y++) {
+    const row = y * w;
+    for (let x = 0; x < w; x++) {
+      let a = 0;
+      for (let i = -r; i <= r; i++) { let xx = x + i; if (xx < 0) xx = 0; else if (xx >= w) xx = w - 1; a += K[i + r] * src[row + xx]; }
+      tmp[row + x] = a;
+    }
+  }
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let a = 0;
+      for (let i = -r; i <= r; i++) { let yy = y + i; if (yy < 0) yy = 0; else if (yy >= h) yy = h - 1; a += K[i + r] * tmp[yy * w + x]; }
+      out[y * w + x] = a;
+    }
+  }
+  return out;
+}
+function boxesForGauss(sigma, n) {
+  const wIdeal = Math.sqrt(12 * sigma * sigma / n + 1);
+  let wl = Math.floor(wIdeal); if (wl % 2 === 0) wl--;
+  const wu = wl + 2;
+  const m = Math.round((12 * sigma * sigma - n * wl * wl - 4 * n * wl - 3 * n) / (-4 * wl - 4));
+  return Array.from({ length: n }, (_, i) => (i < m ? wl : wu));
+}
+function boxH(src, dst, w, h, r) {
+  const ia = 1 / (2 * r + 1);
+  for (let y = 0; y < h; y++) {
+    const row = y * w; let acc = 0;
+    for (let i = -r; i <= r; i++) acc += src[row + Math.min(w - 1, Math.max(0, i))];
+    for (let x = 0; x < w; x++) {
+      dst[row + x] = acc * ia;
+      acc += src[row + Math.min(w - 1, x + r + 1)] - src[row + Math.max(0, x - r)];
+    }
+  }
+}
+function boxV(src, dst, w, h, r) {
+  const ia = 1 / (2 * r + 1);
+  for (let x = 0; x < w; x++) {
+    let acc = 0;
+    for (let i = -r; i <= r; i++) acc += src[Math.min(h - 1, Math.max(0, i)) * w + x];
+    for (let y = 0; y < h; y++) {
+      dst[y * w + x] = acc * ia;
+      acc += src[Math.min(h - 1, y + r + 1) * w + x] - src[Math.max(0, y - r) * w + x];
+    }
+  }
+}
+// Exact kernel for small sigma; three box passes (O(1) per pixel) for large sigma.
+function blur(src, w, h, s) {
+  if (s < 0.3) return Float32Array.from(src);
+  if (s <= 4) return gaussSep(src, w, h, s);
+  let a = Float32Array.from(src); const b = new Float32Array(w * h);
+  for (const sz of boxesForGauss(s, 3)) { const r = (sz - 1) / 2; boxH(a, b, w, h, r); boxV(b, a, w, h, r); }
+  return a;
+}
+
+// ---------- analysis ----------
+function percentile(arrs, q, linesOnly) {
+  let mx = 0;
+  for (const a of arrs) for (let i = 0; i < a.length; i++) if (a[i] > mx) mx = a[i];
+  if (mx === 0) return 1;
+  const cut = linesOnly ? mx * 1e-3 : 0, s = [];
+  const total = arrs.reduce((t, a) => t + a.length, 0), step = Math.max(1, Math.floor(total / 60000));
+  for (const a of arrs) for (let i = 0; i < a.length; i += step) if (a[i] > cut) s.push(a[i]);
+  if (!s.length) return mx;
+  s.sort((x, y) => x - y);
+  return s[Math.min(s.length - 1, Math.floor(q * s.length))] || mx;
+}
+function zeroCross(d, w, h) {
+  const z = new Float32Array(w * h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = y * w + x, v = d[i];
+    if (x + 1 < w) { const u = d[i + 1]; if ((v > 0) !== (u > 0)) { const s = Math.abs(v - u), j = Math.abs(v) < Math.abs(u) ? i : i + 1; if (s > z[j]) z[j] = s; } }
+    if (y + 1 < h) { const u = d[i + w]; if ((v > 0) !== (u > 0)) { const s = Math.abs(v - u), j = Math.abs(v) < Math.abs(u) ? i : i + w; if (s > z[j]) z[j] = s; } }
+  }
+  return z;
+}
+function gradNms(M, w, h, f) {
+  const mag = new Float32Array(w * h), gxA = new Float32Array(w * h), gyA = new Float32Array(w * h);
+  for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+    const i = y * w + x, gx = (M[i + 1] - M[i - 1]) / 2, gy = (M[i + w] - M[i - w]) / 2;
+    gxA[i] = gx; gyA[i] = gy; mag[i] = f * Math.hypot(gx, gy);
+  }
+  const nms = new Uint8Array(w * h);
+  for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+    const i = y * w + x, m = mag[i]; if (m === 0) continue;
+    const gx = gxA[i], gy = gyA[i], ax = Math.abs(gx), ay = Math.abs(gy);
+    let a, b;
+    if (ay <= ax * 0.4142) { a = mag[i - 1]; b = mag[i + 1]; }
+    else if (ay >= ax * 2.4142) { a = mag[i - w]; b = mag[i + w]; }
+    else if (gx * gy > 0) { a = mag[i - w - 1]; b = mag[i + w + 1]; }
+    else { a = mag[i - w + 1]; b = mag[i + w - 1]; }
+    if (m >= a && m > b) nms[i] = 1;
+  }
+  return { mag, nms };
+}
+
+function buildPyr() {
+  const { gray, w, h } = state.src;
+  const s0 = +$("s0").value, r = +$("ratio").value, n = +$("n").value;
+  const sig = Array.from({ length: n + 1 }, (_, k) => s0 * Math.pow(r, k));
+  const L = sig.map((s) => blur(gray, w, h, s));
+  const D = [];
+  for (let k = 0; k < n; k++) { const d = new Float32Array(w * h); for (let i = 0; i < d.length; i++) d[i] = L[k][i] - L[k + 1][i]; D.push(d); }
+  const mid = Array.from({ length: n }, (_, k) => Math.sqrt(sig[k] * sig[k + 1]));
+  state.pyr = { n, sig, mid, D };
+}
+
+function modeData() {
+  const P = state.pyr, { gray, w, h } = state.src, mode = $("mode").value;
+  if (mode === "dog") {
+    if (!P.dog) {
+      P.dog = P.D.map((d) => { const a = new Float32Array(d.length); for (let i = 0; i < d.length; i++) a[i] = Math.abs(d[i]); return a; });
+      P.dogP = P.dog.map((a) => percentile([a], 0.995, false));
+    }
+    return { maps: P.dog, p: P.dogP, soft: true, global: false };
+  }
+  if (mode === "zc") {
+    if (!P.zc) { P.zc = P.D.map((d) => zeroCross(d, w, h)); P.zcP = P.zc.map((a) => percentile([a], 0.99, true)); }
+    return { maps: P.zc, p: P.zcP, soft: false, global: false };
+  }
+  const g = +$("gamma").value;
+  if (!P.M) P.M = P.mid.map((s) => blur(gray, w, h, s));
+  if (P.scaleG !== g) {
+    const G = P.M.map((M, k) => gradNms(M, w, h, Math.pow(P.mid[k], g)));
+    // Decide the scale on slightly smoothed responses so one edge is not split pixel by pixel between neighbouring bands.
+    const S = G.map(({ mag }) => blur(mag, w, h, 1.5));
+    P.scale = G.map(({ mag, nms }, k) => {
+      const out = new Float32Array(w * h);
+      for (let i = 0; i < out.length; i++) {
+        if (!nms[i]) continue;
+        const m = S[k][i];
+        if (k > 0 && S[k - 1][i] > m) continue;
+        if (k < G.length - 1 && S[k + 1][i] >= m) continue;
+        out[i] = mag[i];
+      }
+      return out;
+    });
+    const gp = percentile(P.scale, 0.99, true);
+    P.scaleP = P.scale.map(() => gp);
+    P.scaleG = g;
+  }
+  return { maps: P.scale, p: P.scaleP, soft: false, global: true };
+}
+
+function bandValues(md, k) {
+  const m = md.maps[k], t = Math.min(+$("thr").value, 0.95);
+  const p = md.global || $("perBand").checked ? md.p[k] : Math.max(...md.p);
+  const v = new Float32Array(m.length);
+  let count = 0;
+  for (let i = 0; i < m.length; i++) {
+    const x = m[i] / p;
+    if (x <= t) continue;
+    v[i] = md.soft ? Math.min(1, (x - t) / (1 - t)) : Math.min(1, 0.3 + 0.7 * x);
+    count++;
+  }
+  return { v, frac: count / m.length };
+}
+
+// ---------- drawing ----------
+const hex = (c) => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16) / 255);
+function paint(canvas, layers) {
+  const { w, h, rgba } = state.src, dark = $("dark").checked, over = $("overlay").checked;
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext("2d"), img = ctx.createImageData(w, h), o = img.data;
+  for (let i = 0, j = 0; i < w * h; i++, j += 4) {
+    for (let c = 0; c < 3; c++) {
+      const orig = rgba[j + c] / 255;
+      let base = dark ? (over ? 0.28 * orig : 0) : (over ? 0.72 + 0.28 * orig : 1);
+      if (dark) { let keep = 1 - base; for (const L of layers) keep *= 1 - L.v[i] * L.c[c]; base = 1 - keep; }
+      else { for (const L of layers) base *= 1 - L.v[i] * (1 - L.c[c]); }
+      o[j + c] = base * 255;
+    }
+    o[j + 3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+}
+function paintOrig(canvas) {
+  const { w, h, rgba } = state.src;
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext("2d"), img = ctx.createImageData(w, h);
+  img.data.set(rgba); ctx.putImageData(img, 0, 0);
+}
+function ink() { return $("dark").checked ? [1, 1, 1] : [0.07, 0.07, 0.09]; }
+function bandLabel(k) {
+  const P = state.pyr, a = P.sig[k], b = P.sig[k + 1];
+  const omega = Math.sqrt(2 * Math.log(b / a) / (b * b - a * a));
+  return { a, b, mid: P.mid[k], period: (2 * Math.PI) / omega };
+}
+const fmt = (x) => (x < 10 ? x.toFixed(1) : Math.round(x).toString());
+
+function items() { return ["orig", ...Array.from({ length: state.pyr.n }, (_, k) => k), "comp"]; }
+
+function redraw() {
+  if (!state.pyr) return;
+  const md = modeData(), n = state.pyr.n, list = items();
+  state.sel = Math.max(0, Math.min(list.length - 1, state.sel));
+  const bands = Array.from({ length: n }, (_, k) => bandValues(md, k));
+  const draw = (canvas, it) => {
+    if (it === "orig") paintOrig(canvas);
+    else if (it === "comp") paint(canvas, bands.map((b, k) => ({ v: b.v, c: hex(COLORS[k % COLORS.length]) })));
+    else paint(canvas, [{ v: bands[it].v, c: ink() }]);
+  };
+  const title = (it) => {
+    if (it === "orig") return ["原画", "グレースケールにしてから処理します"];
+    if (it === "comp") return ["全帯域を重ねた画像", "帯域ごとに色を分けて重ねています"];
+    const L = bandLabel(it);
+    const extra = $("mode").value === "scale" ? `固有スケール σ≈${fmt(L.mid)}px` : `σ ${fmt(L.a)}–${fmt(L.b)}px`;
+    return [`帯域 ${it + 1}`, `${extra} ・代表周期 ≈ ${fmt(L.period)}px ・境界画素 ${(bands[it].frac * 100).toFixed(1)}%`];
+  };
+
+  const it = list[state.sel];
+  draw($("view"), it);
+  const [t, s] = title(it);
+  $("title").textContent = t; $("sub").textContent = s;
+  $("legend").innerHTML = it === "comp"
+    ? bands.map((_, k) => `<span><i style="background:${COLORS[k % COLORS.length]}"></i>帯域 ${k + 1}（周期 ≈ ${fmt(bandLabel(k).period)}px）</span>`).join("")
+    : "";
+
+  const th = $("thumbs"); th.innerHTML = "";
+  list.forEach((x, idx) => {
+    const d = document.createElement("div"); d.className = "thumb" + (idx === state.sel ? " on" : "");
+    const c = document.createElement("canvas"); draw(c, x);
+    const cap = document.createElement("div");
+    const chip = typeof x === "number" && $("mode").value !== "dog" ? `<i style="background:${COLORS[x % COLORS.length]}"></i>` : "";
+    cap.innerHTML = chip + (typeof x === "number" ? `帯域 ${x + 1}・周期≈${fmt(bandLabel(x).period)}px` : title(x)[0]);
+    d.append(c, cap);
+    d.onclick = () => { state.sel = idx; redraw(); };
+    th.append(d);
+  });
+}
+
+// ---------- input ----------
+function prepare() {
+  const el = state.el, max = +$("res").value;
+  const W0 = el.naturalWidth || el.width, H0 = el.naturalHeight || el.height;
+  const sc = Math.min(1, max / Math.max(W0, H0));
+  const w = Math.max(8, Math.round(W0 * sc)), h = Math.max(8, Math.round(H0 * sc));
+  const c = document.createElement("canvas"); c.width = w; c.height = h;
+  const ctx = c.getContext("2d"); ctx.drawImage(el, 0, 0, w, h);
+  const rgba = ctx.getImageData(0, 0, w, h).data, gray = new Float32Array(w * h);
+  for (let i = 0, j = 0; i < w * h; i++, j += 4) gray[i] = (0.299 * rgba[j] + 0.587 * rgba[j + 1] + 0.114 * rgba[j + 2]) / 255;
+  state.src = { w, h, rgba, gray };
+}
+function run(fn) {
+  $("busy").textContent = "計算中…";
+  setTimeout(() => {
+    const t0 = performance.now();
+    try { fn(); $("time").textContent = ` 直近の計算 ${Math.round(performance.now() - t0)} ms`; }
+    catch (e) { console.error(e); alert("処理に失敗しました: " + e.message); }
+    $("busy").textContent = "";
+  }, 20);
+}
+const rebuild = () => { if (state.el) run(() => { prepare(); buildPyr(); redraw(); }); };
+const repyr = () => { if (state.src) run(() => { buildPyr(); redraw(); }); };
+const refresh = () => { if (state.pyr) run(redraw); };
+
+function makeSample() {
+  const W = 1024, H = 768, f = new Float32Array(W * H);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) f[y * W + x] = 0.5 + 0.08 * Math.sin(x / 160) + 0.06 * Math.cos(y / 120);
+  const layer = (fn, s, amp) => {
+    const m = new Float32Array(W * H);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) m[y * W + x] = fn(x, y);
+    const b = blur(m, W, H, s);
+    for (let i = 0; i < f.length; i++) f[i] += amp * b[i];
+  };
+  layer((x, y) => ((x - 270) ** 2 + (y - 250) ** 2 < 170 ** 2 ? 1 : 0), 22, 0.32);            // very blurred disc
+  layer((x, y) => (x >= 600 && x < 930 && y >= 70 && y < 330 ? 1 : 0), 0, -0.32);              // sharp rectangle
+  layer((x, y) => (x >= 70 && x < 440 && y >= 470 && y < 710 ? (Math.floor(x / 7) % 2 ? 1 : -1) : 0), 0, 0.17); // fine stripes
+  layer((x, y) => (x >= 470 && x < 530 && y >= 440 && y < 730 ? 1 : 0), 8, -0.3);              // medium-blurred bar
+  layer((x, y) => (x >= 570 && x < 990 && y >= 420 && y < 730 ? ((Math.floor((x - 570) / 35) + Math.floor((y - 420) / 35)) % 2 ? 1 : -1) : 0), 3, 0.18); // soft checker
+  const tc = document.createElement("canvas"); tc.width = W; tc.height = H;
+  const g = tc.getContext("2d"); g.fillStyle = "#fff"; g.font = "bold 46px system-ui, sans-serif"; g.fillText("BOUNDARY", 640, 215);
+  const td = g.getImageData(0, 0, W, H).data;
+  for (let i = 0; i < f.length; i++) f[i] += 0.42 * td[i * 4 + 3] / 255;
+  const c = document.createElement("canvas"); c.width = W; c.height = H;
+  const ctx = c.getContext("2d"), img = ctx.createImageData(W, H);
+  for (let i = 0; i < f.length; i++) { const v = Math.max(0, Math.min(1, f[i])) * 255; img.data[i * 4] = v; img.data[i * 4 + 1] = v; img.data[i * 4 + 2] = v; img.data[i * 4 + 3] = 255; }
+  ctx.putImageData(img, 0, 0);
+  return c;
+}
+
+function loadFile(file) {
+  if (!file || !file.type.startsWith("image/")) return;
+  const url = URL.createObjectURL(file), img = new Image();
+  img.onload = () => { state.el = img; rebuild(); };
+  img.onerror = () => alert("画像を読み込めませんでした");
+  img.src = url;
+}
+
+function syncLabels() {
+  $("s0v").textContent = $("s0").value + "px";
+  $("nv").textContent = $("n").value;
+  $("thrv").textContent = (+$("thr").value).toFixed(2);
+  $("gammav").textContent = (+$("gamma").value).toFixed(2);
+  const mode = $("mode").value;
+  $("modeNote").innerHTML = NOTES[mode];
+  $("gammaRow").style.display = mode === "scale" ? "" : "none";
+  $("perBand").disabled = mode === "scale";
+}
+
+$("file").onchange = (e) => loadFile(e.target.files[0]);
+$("sample").onclick = () => run(() => { state.el = makeSample(); prepare(); buildPyr(); redraw(); });
+["s0", "n"].forEach((id) => $(id).addEventListener("change", repyr));
+$("ratio").onchange = repyr;
+$("res").onchange = rebuild;
+["mode", "thr", "gamma", "perBand", "overlay", "dark"].forEach((id) => $(id).addEventListener("change", refresh));
+document.querySelectorAll("input,select").forEach((e) => e.addEventListener("input", syncLabels));
+$("mode").addEventListener("change", syncLabels);
+$("prev").onclick = () => { state.sel--; refresh(); };
+$("next").onclick = () => { state.sel++; refresh(); };
+document.addEventListener("keydown", (e) => {
+  if (e.target.tagName === "SELECT" || (e.target.tagName === "INPUT" && e.target.type !== "checkbox")) return;
+  if (e.key === "ArrowLeft") { state.sel--; refresh(); }
+  if (e.key === "ArrowRight") { state.sel++; refresh(); }
+});
+$("dl").onclick = () => {
+  $("view").toBlob((b) => {
+    const a = document.createElement("a"); a.href = URL.createObjectURL(b);
+    a.download = `boundary-${$("mode").value}-${$("title").textContent.replace(/\s+/g, "")}.png`; a.click();
+  });
+};
+document.addEventListener("dragover", (e) => { e.preventDefault(); document.body.classList.add("drag"); });
+document.addEventListener("dragleave", (e) => { if (!e.relatedTarget) document.body.classList.remove("drag"); });
+document.addEventListener("drop", (e) => { e.preventDefault(); document.body.classList.remove("drag"); loadFile(e.dataTransfer.files[0]); });
+
+syncLabels();
+$("sample").click();
+</script>
+</body>
+</html>

@@ -27,6 +27,15 @@ rec {
     dash = {
       upstream = "127.0.0.1:3000"; # homepage
       monitor = false; # lazy: lazy-http-services.nix reports it to gatus daily
+      # /band-edges/ is a standalone page (configs/homelab/band-edges.html) that splits an image's
+      # boundaries by frequency band in the browser. It sits under dash rather than on its own name
+      # so it needs no new Cloudflare record.
+      pre = ''
+        handle_path /band-edges* {
+          root * ${pkgs.writeTextDir "index.html" (builtins.readFile ../../configs/homelab/band-edges.html)}
+          file_server
+        }
+      '';
     };
     vault.upstream = "127.0.0.1:8080"; # vaultwarden
     rss.upstream = "127.0.0.1:8081"; # miniflux
