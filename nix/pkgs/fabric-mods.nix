@@ -34,9 +34,9 @@
   })
   # modrinth:KOHu7RCS moonrise-opt optional
   (fetchurl {
-    name = "Moonrise-Fabric-1.2.1+e53de7f.jar";
-    url = "https://cdn.modrinth.com/data/KOHu7RCS/versions/1z5ctm95/Moonrise-Fabric-1.2.1%2Be53de7f.jar";
-    hash = "sha512-b8oH98X/8x8hBk2UhvOpzs45SNJyeVJMIGFzBZN/0S7x5MuKeKL4w/QBS9LM2UVOIZaPicw6xk0q1aE/ET48Vw==";
+    name = "Moonrise-Fabric-1.2.2+35bacce.jar";
+    url = "https://cdn.modrinth.com/data/KOHu7RCS/versions/RBT6pK8I/Moonrise-Fabric-1.2.2%2B35bacce.jar";
+    hash = "sha512-tDIo4MA+k3PaOTgpVrC/1av/D0JaUymvLXidAPVAfWklTLfaXJhHO7hK0kfsen72JdEmlaxNwSmlwFnjCJtgnQ==";
   })
   # modrinth:bWrNNfkb floodgate optional
   (fetchurl {
