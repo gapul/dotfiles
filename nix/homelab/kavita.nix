@@ -15,7 +15,10 @@ in
 {
   services.kavita = {
     enable = true;
-    inherit tokenKeyFile;
+    # tokenKeyFile is now a rename of settings.TokenKey, so the file path itself became the
+    # key (29 bytes, below the 512 bits HS512 needs) and every login returned 500 (2026-11-02).
+    # Pass the file as a credential; preStart substitutes it for the @token_key@ default.
+    credentials.token_key = tokenKeyFile;
     settings = {
       IpAddresses = "127.0.0.1";
       Port = 8108;
