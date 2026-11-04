@@ -172,9 +172,9 @@ map mkCraft [
   }
   {
     name = "PdfCraft";
-    version = "0.18.0";
-    hash = "sha256-LHvg6DAOO62TzNOQ6uFuw0K82TWxLcKC/aPwWJvHznI=";
-    linuxHash = "sha256-yzZlzEXMeqa6AchouffGncTYAL71LUHP/qi/UDfE620=";
+    version = "0.18.1";
+    hash = "sha256-VfhL5WOI1p8k3yJSL21CT42OaVKdtmnOCOoZhFXgjOs=";
+    linuxHash = "sha256-Qaa5+xaXDNNhDQXZhZlwAuQZv1J4+Gr2q0gHg/ib8fw=";
   }
   {
     name = "EffectCraft";
@@ -190,9 +190,9 @@ map mkCraft [
   }
   {
     name = "WordCraft";
-    version = "0.15.0";
-    hash = "sha256-4Hw/WDg+0eNFWwuB6V9NEktr05U2UHQoBoaRjQRHiBU=";
-    linuxHash = "sha256-uqzxgVgSSrw9RdxEhb/Hel1xf4CsULgGk7ZQHCZpjl0=";
+    version = "0.15.1";
+    hash = "sha256-juWUNjKOJFGDhsbPFAf3xsCB/KynA85eUxCTivfasS8=";
+    linuxHash = "sha256-jG/KOAnqGsgWjE19k5LK3oSlD1QBi+H4gSG6TswEpVI=";
   }
   {
     name = "GridCraft";
