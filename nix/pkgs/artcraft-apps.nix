@@ -184,9 +184,9 @@ map mkCraft [
   }
   {
     name = "DesignCraft";
-    version = "0.17.0";
-    hash = "sha256-2J0bsQG0d8tSH9E1Ufe6wqkGYu2D5cz0VXHpZ4NOQyc=";
-    linuxHash = "sha256-u2+c7EBGVTUCZumO4Q2bWhVFB+2ZitevR7JTNa+tGHI=";
+    version = "0.17.1";
+    hash = "sha256-Tl9Yz77tcOVczg7DD3gQYJL1BdIMp9xyGhyu+BlAjIY=";
+    linuxHash = "sha256-o9cXIQJaGx7HLz3c70CQT22+TYJQNYbQNGXMWvH8uYY=";
   }
   {
     name = "WordCraft";
