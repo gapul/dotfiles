@@ -63,6 +63,11 @@ let
     };
 in
 {
+  # nixpkgs marks gtk2 broken ahead of its removal (NixOS/nixpkgs#410814), which aborts the whole
+  # system eval. The 2020.2 runtime still dlopens libgtk-x11-2.0, so downgrade just that package to
+  # a warning; drop this together with gtk2 above once Vivado moves to a release on gtk3.
+  nixpkgs.config.problems.handlers."gtk+".broken = "warn";
+
   environment.systemPackages = [
     (fhs "vivado" "${installDir}/Vivado/${version}/bin/vivado")
     (fhs "xilinx-shell" "bash") # for the installer, and for anything else under installDir
