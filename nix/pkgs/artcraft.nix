@@ -13,11 +13,11 @@
 }:
 stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "artcraft";
-  version = "0.41.0";
+  version = "0.41.1";
 
   src = fetchurl {
     url = "https://github.com/storytold/artcraft/releases/download/artcraft-v${finalAttrs.version}/ArtCraft_${finalAttrs.version}_universal.dmg";
-    hash = "sha256-PPHfLlY0XmA8XQGA5bVj3V7KJdnjw5WdlVQBL1EJFsE=";
+    hash = "sha256-iQCbiYPYiRlIGsk24q2gQJ3/Dg/HP0h8zj5zJGmYZqY=";
   };
 
   nativeBuildInputs = [ _7zz ];
