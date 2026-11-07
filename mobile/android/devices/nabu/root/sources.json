@@ -3,9 +3,9 @@
     "type": "github-release",
     "repo": "Dr-TSNG/ZygiskNext",
     "asset": "^Zygisk-Next-.*-release\\.zip$",
-    "version": "v1.5.2",
-    "url": "https://github.com/Dr-TSNG/ZygiskNext/releases/download/v1.5.2/Zygisk-Next-1.5.2-864-a4a72ce-release.zip",
-    "hash": "sha256-zlCxP+y55EVttp7xe3FffPvAlABN2fMPfWNI36thmpY="
+    "version": "v1.5.3",
+    "url": "https://github.com/Dr-TSNG/ZygiskNext/releases/download/v1.5.3/Zygisk-Next-1.5.3-880-22a1bf5-release.zip",
+    "hash": "sha256-GGoKJsn8uJWvGVS0LegxQzwj1y0b0HWLmGBpFUNZ22c="
   },
   "zygisk_vector": {
     "type": "github-release",
