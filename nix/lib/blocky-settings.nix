@@ -20,13 +20,23 @@
   }
   // (if tls == null then { } else { tls = tls.listen; });
 
-  # Quad9 only, by choice (2026-10-31): every query goes to one provider instead of being split
-  # with Cloudflare. The cost is redundancy. Quad9 answered 429 and then nothing for ~20 min
-  # after a burst of ~6000 queries (2026-10-06), and with no second provider both blocky fail
-  # every query while that lasts. Unfiltered; blocking stays in the lists below.
-  upstreams.groups.default = [
-    "https://dns10.quad9.net/dns-query"
-  ];
+  # Quad9 first, Cloudflare only when Quad9 fails. `strict` asks the upstreams in list order and
+  # moves to the next one only on error or timeout, so normally every query still goes to one
+  # provider (the reason for going Quad9-only on 2026-10-31). Quad9-only had no redundancy:
+  # Quad9 answered 429 and then nothing for ~20 min after a burst of ~6000 queries (2026-10-06),
+  # and on 2026-11-09 17:22-17:27 both blocky failed every query on connection resets to Quad9,
+  # which tailnet clients saw as "DNS unavailable". Cloudflare is given by address so it needs
+  # no bootstrap lookup, which goes to Quad9. Both are unfiltered; blocking stays in the lists
+  # below. The timeout is per attempt and blocky tries an upstream 3 times before moving on, so
+  # the default 2s made a fallback answer take 6s, past most clients' own timeout; 1s gives 3s.
+  upstreams = {
+    strategy = "strict";
+    timeout = "1s";
+    groups.default = [
+      "https://dns10.quad9.net/dns-query"
+      "https://1.1.1.1/dns-query"
+    ];
+  };
   # IPv4 only for outgoing connections (upstream and list downloads). macmini has no IPv6
   # route, and the downloader dials the AAAA answer first and does not fall back inside an
   # attempt, so raw.githubusercontent.com failed 3/3 and two of three lists were missing
