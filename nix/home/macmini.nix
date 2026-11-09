@@ -739,6 +739,7 @@ in
   # Same out-of-store links into ai-agent-state, which darwin-agent-state-sync keeps current here
   # too, so sessions on this machine get the notion-private MCP script and the same skills.
   xdg.configFile."claude/bin".source = agentState "claude/bin";
+  xdg.configFile."claude/skills/aac".source = agentState "claude/skills/aac";
   xdg.configFile."claude/skills/anki-add".source = agentState "claude/skills/anki-add";
   xdg.configFile."claude/skills/gapul-writing-voice".source =
     agentState "claude/skills/gapul-writing-voice";
