@@ -178,9 +178,9 @@ map mkCraft [
   }
   {
     name = "EffectCraft";
-    version = "0.23.0";
-    hash = "sha256-Q0tdZG2HTzdD692SLNNUD/anWLryfsyeGrNFXY9kdow=";
-    linuxHash = "sha256-E9mrI7db57inF3XMlALg+DIoCxZhR0ZyglV+nGoh09I=";
+    version = "0.23.1";
+    hash = "sha256-EHA64LiyeSQeeoe2m/pa4CE8whpnoE6peOhDCfbo4vg=";
+    linuxHash = "sha256-ozDRQG/ecdB6xVrTf+gfXeN+x+p8p8O5+gKqzQRQLbE=";
   }
   {
     name = "DesignCraft";
