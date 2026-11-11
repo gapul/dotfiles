@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        fx-embed: embedded tweets via fxtwitter
 // @namespace   https://github.com/gapul/dotfiles
-// @version     0.8.0
+// @version     0.9.0
 // @description Renders embedded tweets from api.fxtwitter.com instead of X, laid out like X's own embed, without cookies or Referer.
 // @match       *://*/*
 // @exclude     *://x.com/*
@@ -94,7 +94,7 @@
     heart:
       'M20.884 13.19c-1.351 2.48-4.001 5.12-8.379 7.67l-.503.3-.504-.3c-4.379-2.55-7.029-5.19-8.382-7.67-1.36-2.5-1.41-4.86-.514-6.67.887-1.79 2.647-2.91 4.601-3.01 1.651-.09 3.368.56 4.798 2.01 1.429-1.45 3.146-2.1 4.796-2.01 1.954.1 3.714 1.22 4.601 3.01.896 1.81.846 4.17-.514 6.67z',
     reply:
-      'M1.751 10c0-4.42 3.584-8 8.005-8h4.366c4.49 0 8.129 3.64 8.129 8.13 0 2.96-1.607 5.68-4.196 7.11l-8.054 4.46v-3.69h-.067c-4.49.1-8.183-3.51-8.183-8.01zm8.005-6c-3.317 0-6.005 2.69-6.005 6 0 3.37 2.77 6.08 6.138 6.01l.351-.01h1.761v2.3l5.087-2.81c1.951-1.08 3.163-3.13 3.163-5.36 0-3.39-2.744-6.13-6.129-6.13H9.756z',
+      'M1.751 10c0-4.42 3.584-8 8.005-8h4.366c4.49 0 8.129 3.64 8.129 8.13 0 2.96-1.607 5.68-4.196 7.11l-8.054 4.46v-3.69h-.067c-4.49.1-8.183-3.51-8.183-8.01z',
     link: 'M18.36 5.64c-1.95-1.96-5.11-1.96-7.07 0L9.88 7.05 8.46 5.64l1.42-1.42c2.73-2.73 7.16-2.73 9.9 0 2.73 2.74 2.73 7.17 0 9.9l-1.42 1.42-1.41-1.42 1.41-1.41c1.96-1.96 1.96-5.12 0-7.07zm-2.12 3.53l-7.07 7.07-1.41-1.41 7.07-7.07 1.41 1.41zm-12.02.71l1.42-1.42 1.41 1.42-1.41 1.41c-1.96 1.96-1.96 5.12 0 7.07 1.95 1.96 5.11 1.96 7.07 0l1.41-1.41 1.42 1.41-1.42 1.42c-2.73 2.73-7.16 2.73-9.9 0-2.73-2.74-2.73-7.17 0-9.9z',
     play: 'M8 5v14l11-7z',
     repost:
@@ -112,10 +112,11 @@
   const STYLE = `
     :host { all: initial; display: block; margin: 10px 0; max-width: 550px;
       --bg: #fff; --fg: #0f1419; --muted: #536471; --border: #cfd9de; --hover: #f7f9f9;
-      --blue: #1d9bf0; --red: #f91880; }
-    :host([data-theme="dark"]) { --bg: #000; --fg: #e7e9ea; --muted: #71767b; --border: #2f3336; --hover: #080808; }
+      --blue: #1d9bf0; --link: #006fd6; --red: #f91880; --poll: #cfd9de; --poll-win: #8ecdf8; }
+    :host([data-theme="dark"]) { --bg: #000; --fg: #e7e9ea; --muted: #71767b; --border: #2f3336; --hover: #080808;
+      --link: #1d9bf0; --poll: #333639; --poll-win: #1a5f8e; }
     * { box-sizing: border-box; }
-    a { color: var(--blue); text-decoration: none; }
+    a { color: var(--link); text-decoration: none; }
     a:hover { text-decoration: underline; }
     .icon { display: inline-flex; }
     .icon svg { width: 100%; height: 100%; fill: currentColor; }
@@ -150,7 +151,7 @@
     .media.n4 { grid-template-rows: 1fr 1fr; }
     .media .fallback { padding: 12px; }
     .playwrap { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
-    .play { width: 56px; height: 56px; padding: 12px; border-radius: 50%; color: #fff; background: var(--blue);
+    .play { width: 64px; height: 64px; padding: 12px; border-radius: 50%; color: #fff; background: var(--blue);
       border: 4px solid #fff; }
     .quote { border: 1px solid var(--border); border-radius: 16px; padding: 12px; margin: 12px 0; }
     .quote .head { gap: 4px; flex-wrap: wrap; }
@@ -160,9 +161,12 @@
     .quote .media { margin-bottom: 0; }
     .note { border: 1px solid var(--border); border-radius: 16px; padding: 12px; margin: 12px 0; }
     .note b { display: block; margin-bottom: 4px; }
-    .poll { margin: 12px 0; display: grid; gap: 6px; }
-    .poll .bar { position: relative; padding: 4px 8px; border-radius: 4px; display: flex; justify-content: space-between; }
-    .poll .fill { position: absolute; inset: 0 auto 0 0; background: var(--border); border-radius: 4px; z-index: 0; }
+    .poll { margin: 12px 0; display: grid; gap: 4px; }
+    .poll .bar { position: relative; min-height: 32px; padding: 0 12px; display: flex; align-items: center; justify-content: space-between; }
+    .poll .fill { position: absolute; inset: 0 auto 0 0; background: var(--poll); border-radius: 4px; z-index: 0; }
+    .poll .win .fill { background: var(--poll-win); }
+    .poll .win span { font-weight: 700; }
+    .poll .muted { margin-top: 8px; }
     .poll span { position: relative; }
     .time { color: var(--muted); display: block; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
     .actions { display: flex; flex-wrap: wrap; column-gap: 18px; padding: 4px 0; color: var(--muted); font-size: 14px; font-weight: 700; }
@@ -173,6 +177,7 @@
       background: none; border: 0; font: inherit; cursor: pointer; }
     .actions .icon { width: 20px; height: 20px; }
     .actions .heart { color: var(--red); }
+    .actions .reply { color: var(--blue); }
     .more { display: block; text-align: center; font-weight: 700; border: 1px solid var(--border); border-radius: 999px;
       padding: 6px 16px; margin: 4px 0 12px; }
     .more:hover { background: var(--hover); text-decoration: none; }
@@ -188,6 +193,9 @@
     .alt { position: absolute; left: 8px; bottom: 8px; font: 700 12px/1 system-ui, sans-serif; color: #fff;
       background: rgba(0, 0, 0, 0.75); border-radius: 4px; padding: 3px 5px; cursor: help; }
     .video { cursor: pointer; background: #000; }
+    .video .status:empty { display: none; }
+    .watch { position: absolute; top: 12px; right: 12px; z-index: 1; font: 700 14px/1 system-ui, sans-serif; color: #fff !important;
+      background: rgba(15, 20, 25, 0.75); border-radius: 999px; padding: 8px 16px; text-decoration: none !important; }
     .video .status { position: absolute; left: 8px; bottom: 8px; font: 700 12px system-ui, sans-serif; color: #fff;
       background: rgba(0, 0, 0, 0.75); border-radius: 4px; padding: 2px 6px; }
     .media video { display: block; width: 100%; height: 100%; max-height: 510px; background: #000; object-fit: contain; }
@@ -226,6 +234,8 @@
       show: '表示する',
       viewOnX: 'X で見る',
       votes: (n) => `${n}票`,
+      finalResults: '最終結果',
+      watchOnX: 'X で見る',
       copyLink: 'リンクをコピー',
       copied: 'コピーしました',
       replyingTo: '返信先: ',
@@ -252,6 +262,8 @@
       show: 'Show',
       viewOnX: 'View on X',
       votes: (n) => `${n} votes`,
+      finalResults: 'Final results',
+      watchOnX: 'Watch on X',
       copyLink: 'Copy link',
       copied: 'Copied',
       replyingTo: 'Replying to ',
@@ -326,15 +338,17 @@
 
   // Videos and GIFs show their poster and play in place on click. The file comes through
   // GM_xmlhttpRequest like images do (no cookies, no Referer), downloaded whole before playing.
-  const video = (m) => {
+  const video = (m, tweetUrl) => {
     const gif = m.type === 'gif';
-    const status = el('span', { class: 'status', text: gif ? 'GIF' : m.duration ? duration(m.duration) : S().video });
+    // Like X's embed: no duration on the poster, a GIF label for GIFs, progress while loading.
+    const status = el('span', { class: 'status', text: gif ? 'GIF' : '' });
     const box = el(
       'div',
       { class: 'video', role: 'button', tabindex: '0', title: S().play },
       m.thumbnail_url ? image(m.thumbnail_url) : null,
       el('span', { class: 'playwrap' }, icon('play')),
       status,
+      tweetUrl ? link(tweetUrl, { class: 'watch', text: S().watchOnX }) : null,
     );
     const play = async () => {
       if (box.dataset.busy) return;
@@ -355,18 +369,16 @@
         box.replaceWith(link(m.url, { class: 'fallback', text: S().videoFailed(e.message) }));
       }
     };
-    box.addEventListener('click', play);
+    box.addEventListener('click', (e) => e.target.closest('.watch') || play());
     box.addEventListener('keydown', (e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), play()));
     return box;
   };
 
-  const duration = (sec) => `${Math.floor(sec / 60)}:${String(Math.round(sec % 60)).padStart(2, '0')}`;
-
-  const renderMedia = (media, sensitive) => {
+  const renderMedia = (media, sensitive, tweetUrl) => {
     const items = (media?.all ?? []).slice(0, 4);
     if (!items.length) return null;
     const box = el('div', { class: `media n${items.length}` });
-    for (const m of items) box.append(m.type === 'photo' ? photo(m) : video(m));
+    for (const m of items) box.append(m.type === 'photo' ? photo(m) : video(m, tweetUrl));
     if (sensitive) {
       box.classList.add('sensitive');
       const reveal = el(
@@ -402,23 +414,25 @@
     );
   };
 
-  const renderPoll = (poll) =>
-    poll?.choices?.length
-      ? el(
+  const renderPoll = (poll) => {
+    if (!poll?.choices?.length) return null;
+    const top = Math.max(...poll.choices.map((c) => Number(c.percentage) || 0));
+    const ended = Date.parse(poll.ends_at) < Date.now();
+    return el(
+      'div',
+      { class: 'poll' },
+      ...poll.choices.map((c) =>
+        el(
           'div',
-          { class: 'poll' },
-          ...poll.choices.map((c) =>
-            el(
-              'div',
-              { class: 'bar' },
-              el('div', { class: 'fill', style: `width:${Number(c.percentage) || 0}%` }),
-              el('span', { text: c.label }),
-              el('span', { text: `${c.percentage}%` }),
-            ),
-          ),
-          el('div', { class: 'muted', text: S().votes(compact(poll.total_votes ?? 0)) }),
-        )
-      : null;
+          { class: (Number(c.percentage) || 0) === top ? 'bar win' : 'bar' },
+          el('div', { class: 'fill', style: `width:${Number(c.percentage) || 0}%` }),
+          el('span', { text: c.label }),
+          el('span', { text: `${c.percentage}%` }),
+        ),
+      ),
+      el('div', { class: 'muted', text: [S().votes(number(poll.total_votes ?? 0)), ended ? S().finalResults : null].filter(Boolean).join(' · ') }),
+    );
+  };
 
   // A block that opens `url` when clicked anywhere but on its own links and media controls.
   // (An <a> around it would swallow clicks on the video player and the reveal button.)
@@ -436,7 +450,7 @@
       { class: 'quote' },
       author(q, true),
       richText(displayText(q), Boolean(q.media?.all?.length)),
-      renderMedia(q.media, q.possibly_sensitive),
+      renderMedia(q.media, q.possibly_sensitive, q.url),
     );
 
   // The tweet being replied to, drawn above the main one with a thread line, as on x.com.
@@ -466,7 +480,7 @@
           ),
         ),
         richText(displayText(p), Boolean(p.media?.all?.length)),
-        renderMedia(p.media, p.possibly_sensitive),
+        renderMedia(p.media, p.possibly_sensitive, p.url),
       ),
     );
   };
@@ -513,7 +527,7 @@
       replyTo,
       richText(displayText(t), Boolean(t.media?.all?.length)),
       renderPoll(t.poll),
-      renderMedia(t.media, t.possibly_sensitive),
+      renderMedia(t.media, t.possibly_sensitive, t.url),
       t.quote ? renderQuote(t.quote) : null,
       note ? el('div', { class: 'note' }, el('b', { text: S().note }), el('span', { text: note })) : null,
       link(t.url, { class: 'time', text: when }),
