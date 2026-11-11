@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        fx-embed: embedded tweets via fxtwitter
 // @namespace   https://github.com/gapul/dotfiles
-// @version     0.7.1
+// @version     0.8.0
 // @description Renders embedded tweets from api.fxtwitter.com instead of X, laid out like X's own embed, without cookies or Referer.
 // @match       *://*/*
 // @exclude     *://x.com/*
@@ -211,8 +211,9 @@
     return img;
   };
 
-  // UI language follows the page, like X's own embed: Japanese when <html lang> says so (or,
-  // without a lang attribute, when the browser is Japanese), English otherwise.
+  // UI language follows the reader, not the site: Japanese when the browser's language is
+  // Japanese, English otherwise. (X's embed follows the page instead; a Japanese site read in
+  // an English browser should still label things in English.)
   const STRINGS = {
     ja: {
       openImage: '画像を開く',
@@ -267,7 +268,7 @@
       wayback: 'Search the Wayback Machine',
     },
   };
-  const lang = () => (/^ja\b/i.test(document.documentElement?.lang || navigator.language) ? 'ja' : 'en');
+  const lang = () => (/^ja\b/i.test(navigator.language) ? 'ja' : 'en');
   const S = () => STRINGS[lang()];
   const locale = () => (lang() === 'ja' ? 'ja-JP' : 'en-US');
   const formats = {};
