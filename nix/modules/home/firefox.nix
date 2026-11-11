@@ -81,6 +81,11 @@ in
           name = "f*cking e-Tax";
           url = "${repo}/violentmonkey/etax.user.js";
         }
+        {
+          name = "fx-embed: embedded tweets via fxtwitter";
+          # Renders embedded tweets from api.fxtwitter.com while X's widgets.js stays blocked.
+          url = "${repo}/violentmonkey/fx-embed.user.js";
+        }
       ];
       # Extensions that talk to a self-hosted service. None reads managed storage, so the
       # connection is made by hand once per profile.
