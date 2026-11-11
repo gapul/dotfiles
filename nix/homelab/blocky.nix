@@ -66,12 +66,13 @@ in
   # Port 53 belongs to Blocky. Nothing else gets it on this host.
   services.resolved.enable = false;
   # The host's own resolver (MagicDNS is off, see services.tailscale in hosts/homeserver.nix).
-  # The LAN address rather than 127.0.0.1: podman drops loopback servers when it hands
-  # resolv.conf to containers and falls back to a public resolver, while this address is
-  # reachable from them and still never leaves the box. macmini's blocky only on timeout, in
+  # The stable tailnet address rather than 127.0.0.1: podman drops loopback servers when it
+  # hands resolv.conf to containers. The old LAN address became stale after a DHCP change
+  # (2026-11-08), causing every SearXNG engine to time out on DNS. This address is reachable
+  # from containers and still never leaves the box. macmini's blocky only on timeout, in
   # plaintext over the tailnet, so that a dead local blocky doesn't cut off self-deploy.
   networking.nameservers = [
-    "192.168.116.98"
+    "100.127.129.31"
     "100.105.135.49"
   ];
   # The one MagicDNS name used here (paperless's OCR endpoint): its certificate is for that name,
