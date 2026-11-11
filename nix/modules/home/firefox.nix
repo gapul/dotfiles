@@ -255,11 +255,7 @@ in
         "uBlock0@raymondhill.net" = amo "ublock-origin"; # uBlock Origin
         "{aecec67f-0d10-4fa7-b7c7-609a2db280cf}" = amo "violentmonkey"; # Violentmonkey
         "{799c0914-748b-41df-a25c-22d008f9e83f}" = amo "web-scrobbler"; # Web Scrobbler
-        # Added 2026-09-26 on request, both FOSS:
-        # Allow temporarily disabling DeArrow without uninstalling its saved settings.
-        "deArrow@ajay.app" = (amo "dearrow") // {
-          installation_mode = "normal_installed";
-        };
+        # Added 2026-09-26 on request, FOSS:
         "{c607c8df-14a7-4f28-894f-29e8722976af}" = amo "temporary-containers"; # Temporary Containers
         # Added 2026-10-11: NIP-07 (window.nostr) bridge to a NIP-46 remote signer, for sites that
         # only know extension login (events.kojira.io). Keys stay in the bunker; the extension holds
@@ -274,6 +270,7 @@ in
         # one; only "blocked" makes Firefox uninstall it. These were in the list once.
         "LINEPorted@FoxRefire".installation_mode = "blocked"; # LINE
         "{d07ccf11-c0cd-4938-a265-2a4d6ad01189}".installation_mode = "blocked"; # Web Archives
+        "deArrow@ajay.app".installation_mode = "blocked"; # DeArrow (dropped 2026-11-11, unused)
         # Follow OS dark mode on sites without their own automatic theme. Configure
         # Dark Reader once per profile: automation System/Scheme, detect dark theme on.
         # Dark-only sites with a dedicated light UserCSS use Stylus instead (the stylus list in
