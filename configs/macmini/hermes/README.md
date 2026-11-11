@@ -61,35 +61,6 @@ someone will try to break out:
   `MEDIA:/some/path` uploads any file hermes can read that is not on a short credential
   denylist, which here includes the other two instances' homes and, through staff, gapul's.
 
-### Weekly progress slides
-
-A Hermes cron job in the soudan home (`hermes cron list` there) runs Monday 21:00 JST and posts
-a Marp draft, `.md` and `.pdf`, to #presentation for Tuesday's report. Its inputs:
-
-- `soudan-weekly-collect.py`, the job's pre-run script, run on the host as hermes: the week's
-  Discord messages (bot token), the HackMD minutes linked in #meeting, and the GitHub digest.
-  Activation copies it into `$HERMES_HOME/scripts/`, the only place Hermes runs scripts from.
-  It stays Python while the rest of this directory's helpers are TypeScript: Hermes picks the
-  interpreter by extension (`.sh` runs under bash, anything else under its own Python) and
-  ignores the shebang.
-- `soudan-github-digest.ts`, run daily at 20:30 as gapul (`home/macmini-soudan-digest.nix`),
-  because only gapul's gh login can read the org's private repos. The bot gets commit subjects
-  and PR titles, never the token.
-
-Nothing about the team's second core may appear: the slides go to the whole class. The
-collector drops #cpu2, its threads and every message or minutes line that names it (a keyword
-list), the prompt forbids it, and the publisher refuses to push a draft that still contains one
-of those words.
-
-`soudan-slides-publish.ts`, as gapul at Monday 21:45 and again at 23:15 (`--final`, which
-reports a missing draft on ntfy), copies the draft into the private repo IS-CPU-6/slides under
-`progress/<date>/`. The org has deploy keys disabled, so this is gapul's gh too. It reads the
-sandbox's files without following symlinks.
-
-The agent writes the slides inside the sandbox and runs `marp` there (Helium as the Chromium);
-the PDF is attached from `/Users/hsoudan/workspace/progress/`. `config.yaml` sets
-`platform_toolsets.cron` to the same tools as Discord, minus `clarify`.
-
 ## What is deliberately not here
 
 `config.yaml`, in `/Users/hermes/.hermes/` and `/Users/hermes/manabi-home/.hermes/`, is
