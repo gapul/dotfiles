@@ -449,6 +449,7 @@ in
 
     # ─── Messaging ───
     simplex-chat-desktop
+    (callPackage ../pkgs/flare.nix { }) # Fediverse/Bluesky/X client; App Store build on mac and iPhone
 
     # ─── Devices / Remote ───
     # pymobiledevice3 7.7 needs qh3 < 2; unstable currently supplies qh3 2.x.
