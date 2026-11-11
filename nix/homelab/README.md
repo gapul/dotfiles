@@ -42,7 +42,7 @@ name that matters now.
 | `paperless.env` | `PAPERLESS_SECRET_KEY`, `PAPERLESS_ADMIN_PASSWORD`, `PAPERLESS_REMOTE_OCR_API_KEY` (the same value as the macmini's `~/.config/vision-ocr/key`) |
 | `vaultwarden.env` | `ADMIN_TOKEN` |
 | `webdav.env` | `WEBDAV_USERNAME`, `WEBDAV_PASSWORD` (`openssl rand -base64 24`) for webdav.gapul.net (`webdav.nix`). The same pair is typed into each browser's Violentmonkey, Stylus, uBlacklist and Header Editor once; changing it means re-entering it there |
-| `zipline.env` | `CORE_SECRET`, from `openssl rand -hex 32` (Zipline refuses anything under 32 characters). It signs sessions, so changing it logs everyone out but loses no files |
+| `zipline.env` | `CORE_SECRET`, from `openssl rand -hex 32` (keep the existing value); for R2 add `DATASOURCE_TYPE=s3`, `DATASOURCE_S3_BUCKET`, `DATASOURCE_S3_ENDPOINT`, `DATASOURCE_S3_ACCESS_KEY_ID`, and `DATASOURCE_S3_SECRET_ACCESS_KEY`. See the R2 procedure below |
 | `nostr.env` | `NOSTR_PRIVATE_KEY` (hex) for npub1gapulnet42…960ve3, the key behind gapul@gapul.net on Nostr. Losing it loses the identity |
 | `writefreely-admin.password` | first-run password for WriteFreely's admin `gapul`; read only while there are no users, changed from the UI afterwards |
 | `puls.env` | `PULS_TOKEN`, a random bearer token the PulsHealth app sends (it is also in the pairing QR). Changing it means re-pairing the iPhone |
@@ -57,6 +57,52 @@ name that matters now.
 | `mail/admin.password`, `mail/gmail.password`, `mail/sean.password`, `mail/school.password` | one raw line each (`openssl rand -base64 24`). `admin` is Stalwart's fallback administrator (webadmin at mail.gapul.net); the other three are the mirror mailboxes, read by both Stalwart (memory directory) and imapsync |
 | `mail/<name>.address`, `mail/<name>.app-password` | the Google account behind each mailbox (`gmail` / `sean` / `school`): its address, and a Google app password. Both imapsync (copying in) and Stalwart's outbound relay (sending as that identity through smtp.gmail.com) use the same pair. An empty `app-password` skips the copy and leaves that identity unable to send; it is not an error. Google requires 2-step verification before it issues app passwords, and a Workspace admin can disable them entirely |
 | `tailscale.key` | a Tailscale auth key. `services.tailscale.authKeyFile` reads it so a reinstall connects itself; revoke and replace it after use |
+
+## Zipline with Cloudflare R2
+
+`snap.gapul.net` serves the dashboard and shared files through the homeserver's
+Zipline service. R2 is its private S3 datasource, not a second public image host:
+leave both R2 public access and `r2.dev` disabled. Zipline fetches objects from R2
+and enforces its sharing rules, so shared links still depend on the homeserver.
+
+The Nix module sets R2's region (`auto`) and path-style requests. Connection
+details belong in the existing sops `zipline.env` value, preserving `CORE_SECRET`:
+
+```dotenv
+CORE_SECRET=<existing value, unchanged>
+DATASOURCE_TYPE=s3
+DATASOURCE_S3_BUCKET=<dedicated Zipline bucket>
+DATASOURCE_S3_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
+DATASOURCE_S3_ACCESS_KEY_ID=<bucket-scoped R2 access key>
+DATASOURCE_S3_SECRET_ACCESS_KEY=<R2 secret access key>
+```
+
+Use the endpoint shown by Cloudflare for that bucket (jurisdiction-specific
+buckets can have a different endpoint). Grant object read/write access only to
+the dedicated bucket; Zipline needs listing, reads, writes and deletes. Do not
+put credentials in Nix settings, plaintext tracked files or shell history.
+
+Switch procedure:
+
+1. Inventory the existing Zipline uploads and take a fresh database dump. Pause
+   uploads during the final copy so the database and objects stay consistent.
+2. Copy the contents of `/var/lib/private/zipline/uploads/` to the bucket root,
+   preserving object keys. Exclude `.tmp/`; do not add an extra `uploads/` prefix.
+   Compare object counts, sizes and checksums before switching. Retain the local
+   copy; changing datasource settings does not move any existing files.
+3. Add the R2 settings to the encrypted env value and apply the configuration.
+   The default remains local until `DATASOURCE_TYPE=s3` is supplied via the env file.
+4. Verify an old shared link and a new upload, download, and deletion through
+   Zipline. Confirm that the R2 bucket itself remains private.
+
+`backup.nix` already dumps the Zipline database, but its `/var/lib` backup only
+covers local files. Before removing the retained local uploads, arrange an
+independent backup of R2 objects and test restoring them together with the DB.
+To roll back, pause uploads and copy any newly added R2 objects back to local
+storage before removing the S3 settings; switching back alone loses access to
+objects uploaded after the cutover.
+
+## Other service credentials
 
 The L2TP tunnel keeps its own directory, `/var/lib/secrets/l2tp/`, because none
 of it is a credential in the usual sense — it is a third party's infrastructure,
