@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        fx-embed: embedded tweets via fxtwitter
 // @namespace   https://github.com/gapul/dotfiles
-// @version     0.13.1
+// @version     0.13.2
 // @description Renders embedded tweets from api.fxtwitter.com instead of X, laid out like X's own embed, without cookies or Referer.
 // @match       *://*/*
 // @exclude     *://x.com/*
@@ -777,6 +777,28 @@
     );
   };
 
+  // A community note's text with its links made clickable. fxtwitter gives the link ranges as
+  // `entities` (fromIndex/toIndex, v1) or `facets` (indices, v2), in UTF-16 offsets; the target is
+  // X's t.co redirect, the only full URL it carries (the text shows an abbreviated form).
+  const renderNote = (n) => {
+    const text = n.text;
+    const ranges = [
+      ...(n.entities ?? []).map((e) => [e.fromIndex, e.toIndex, e.ref?.url]),
+      ...(n.facets ?? []).filter((f) => f.type === 'url').map((f) => [f.indices?.[0], f.indices?.[1], f.replacement ?? f.original]),
+    ]
+      .filter(([a, b, url]) => Number.isInteger(a) && Number.isInteger(b) && a >= 0 && a < b && b <= text.length && typeof url === 'string')
+      .sort((x, y) => x[0] - y[0]);
+    const out = el('span');
+    let last = 0;
+    for (const [a, b, url] of ranges) {
+      if (a < last) continue;
+      out.append(text.slice(last, a), link(url, { text: text.slice(a, b) }));
+      last = b;
+    }
+    out.append(text.slice(last));
+    return out;
+  };
+
   // In a timeline (`inTimeline`), parents are not fetched (the reply line stands in) and the
   // per-tweet "Read replies" button is left out.
   const renderTweet = (t, inTimeline = false) => {
@@ -784,7 +806,7 @@
     const url = tweetUrl(t);
     const d = new Date(t.created_timestamp * 1000);
     const when = `${d.toLocaleTimeString(locale(), { hour: 'numeric', minute: '2-digit', hour12: true })} · ${d.toLocaleDateString(locale(), { year: 'numeric', month: lang() === 'ja' ? 'long' : 'short', day: 'numeric' })}`;
-    const note = typeof t.community_note?.text === 'string' ? t.community_note.text : null;
+    const note = typeof t.community_note?.text === 'string' ? renderNote(t.community_note) : null;
     const copy = el('button', {
       type: 'button',
       class: 'share',
@@ -829,7 +851,7 @@
       renderMedia(t.media, t.possibly_sensitive),
       attachment(t),
       t.quote ? renderQuote(t.quote) : null,
-      note ? el('div', { class: 'note' }, el('b', { text: S().note }), el('span', { text: note })) : null,
+      note ? el('div', { class: 'note' }, el('b', { text: S().note }), note) : null,
       link(url, { class: 'time', text: when }),
       el(
         'div',
