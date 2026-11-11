@@ -1,16 +1,17 @@
 // ==UserScript==
 // @name        fx-embed: embedded tweets via fxtwitter
 // @namespace   https://github.com/gapul/dotfiles
-// @version     0.11.1
+// @version     0.12.0
 // @description Renders embedded tweets from api.fxtwitter.com instead of X, laid out like X's own embed, without cookies or Referer.
 // @match       *://*/*
 // @exclude     *://x.com/*
 // @exclude     *://twitter.com/*
 // @grant       GM_xmlhttpRequest
+// @grant       GM_getValue
+// @grant       GM_setValue
 // @connect     api.fxtwitter.com
 // @connect     pbs.twimg.com
 // @connect     video.twimg.com
-// @connect     *
 // @run-at      document-start
 // @noframes
 // @downloadURL https://raw.githubusercontent.com/gapul/dotfiles/main/configs/apps/violentmonkey/fx-embed.user.js
@@ -28,7 +29,7 @@
   // Rewrites a media URL before it is fetched. Point it at a relay you run (a Cloudflare Worker,
   // the homeserver) so X sees the relay's IP instead of yours, e.g.
   //   (url) => 'https://img-relay.example.net/?u=' + encodeURIComponent(url)
-  // Add the relay's host to @connect above if you narrow the wildcard.
+  // and add the relay's host to @connect above.
   const MEDIA_URL = (url) => url;
 
   const API = 'https://api.fxtwitter.com/x/status/';
@@ -39,6 +40,31 @@
     'iframe[src*="platform.x.com/embed/"]',
   ].join(', ');
   const STATE = 'data-fx-embed'; // pending → done | skip
+
+  // Everything fxtwitter returns is untrusted. link() only ever writes http(s) hrefs, links that
+  // stand for a tweet or profile must point at x.com/twitter.com, and media must come from X's
+  // CDNs; anything else is dropped. A compromised API therefore cannot plant javascript: links
+  // on the page or aim requests at the local network.
+  const X_HOSTS = /^(?:[\w-]+\.)?(?:x|twitter)\.com$/;
+  const MEDIA_HOSTS = new Set(['pbs.twimg.com', 'video.twimg.com']);
+  const parseUrl = (url) => {
+    try {
+      return new URL(url);
+    } catch {
+      return null;
+    }
+  };
+  const isId = (id) => /^\d{1,20}$/.test(String(id ?? ''));
+  const xLink = (url, fallback) => {
+    const u = parseUrl(url);
+    return u?.protocol === 'https:' && X_HOSTS.test(u.hostname) ? u.href : fallback;
+  };
+  const tweetUrl = (t) => xLink(t?.url, isId(t?.id) ? `https://x.com/i/status/${t.id}` : 'https://x.com/');
+  const profileUrl = (a) => xLink(a?.url, `https://x.com/${encodeURIComponent(a?.screen_name ?? '')}`);
+  const mediaUrl = (url) => {
+    const u = parseUrl(url);
+    return u?.protocol === 'https:' && MEDIA_HOSTS.has(u.hostname) ? MEDIA_URL(u.href) : null;
+  };
 
   // GM_xmlhttpRequest runs outside the page: no page Referer, no page CSP, and `anonymous`
   // drops cookies.
@@ -59,6 +85,45 @@
         ontimeout: () => reject(new Error('timeout')),
       });
     });
+
+  // fxtwitter responses are kept for a while in the script's own storage (never the page's), so
+  // reloading a page or meeting the same tweet twice asks fxtwitter again only after TTL, and
+  // concurrent requests for one tweet share a single fetch. Counts can be up to TTL old.
+  const TTL = 30 * 60 * 1000;
+  const MAX_CACHED = 100;
+  const inflight = new Map();
+  const readCache = () => {
+    try {
+      return GM_getValue('tweets', {}) ?? {};
+    } catch {
+      return {};
+    }
+  };
+  const fetchTweet = (id) => {
+    if (!isId(id)) return Promise.reject(new Error('bad id'));
+    if (inflight.has(id)) return inflight.get(id);
+    const hit = readCache()[id];
+    if (hit && Date.now() - hit.at < TTL) return Promise.resolve(hit.data);
+    const req = request(API + id, 'json')
+      .then((data) => {
+        if (data?.tweet) {
+          const now = Date.now();
+          const kept = Object.entries({ ...readCache(), [id]: { at: now, data } })
+            .filter(([, v]) => now - v.at < TTL)
+            .sort((a, b) => b[1].at - a[1].at)
+            .slice(0, MAX_CACHED);
+          try {
+            GM_setValue('tweets', Object.fromEntries(kept));
+          } catch {
+            // Storage full or unavailable: carry on uncached.
+          }
+        }
+        return data;
+      })
+      .finally(() => inflight.delete(id));
+    inflight.set(id, req);
+    return req;
+  };
 
   const statusId = (node) => {
     const direct = node.dataset?.tweetId ?? node.getAttribute('data-tweetid');
@@ -83,8 +148,27 @@
     return node;
   };
 
-  const link = (href, props = {}, ...children) =>
-    el('a', { href, target: '_blank', rel: 'noopener noreferrer', referrerpolicy: 'no-referrer', ...props }, ...children);
+  const link = (href, props = {}, ...children) => {
+    const u = parseUrl(href);
+    if (!u || (u.protocol !== 'https:' && u.protocol !== 'http:')) return el('span', props, ...children);
+    return el('a', { href: u.href, target: '_blank', rel: 'noopener noreferrer', referrerpolicy: 'no-referrer', ...props }, ...children);
+  };
+
+  // One parsed stylesheet shared by every shadow root; a <style> per root where constructable
+  // stylesheets are unavailable or refused across the userscript/page boundary.
+  const sheets = new Map();
+  const styleShadow = (root, css) => {
+    try {
+      if (!sheets.has(css)) {
+        const sheet = new CSSStyleSheet();
+        sheet.replaceSync(css);
+        sheets.set(css, sheet);
+      }
+      root.adoptedStyleSheets = [sheets.get(css)];
+    } catch {
+      root.append(el('style', { text: css }));
+    }
+  };
 
   // Constant markup only; nothing fetched ever goes through innerHTML.
   const PATHS = {
@@ -211,15 +295,32 @@
     .gone ::slotted(*) { margin: 8px 0 !important; color: var(--fg) !important; }
   `;
 
-  // Returns the <img> at once and fills it when the fetch lands. A blob: URL keeps the image off
-  // the network from the page's side; some page CSPs refuse blob: in img-src, and then (or when
-  // the fetch fails) `fallback` replaces the image, or the image is dropped.
+  // Images load straight from X's CDN like any <img>: no Referer (referrerpolicy), cookies
+  // partitioned by the browser, lazy and async-decoded, and cached by the browser. Where the
+  // page's CSP or tracking protection refuses that, the image is fetched once more through
+  // GM_xmlhttpRequest into a blob: URL; if that fails too, `fallback` replaces it or it is dropped.
   const image = (url, cls, fallback) => {
-    const img = el('img', { alt: '', class: cls ?? '' });
+    const src = mediaUrl(url);
+    if (!src) return fallback ? fallback() : el('span');
+    const img = el('img', { alt: '', class: cls ?? '', referrerpolicy: 'no-referrer', loading: 'lazy', decoding: 'async' });
     const fail = () => (fallback ? img.replaceWith(fallback()) : img.remove());
-    img.onerror = fail;
-    request(MEDIA_URL(url), 'blob').then((blob) => (img.src = URL.createObjectURL(blob)), fail);
+    let retried = false;
+    img.onerror = () => {
+      if (retried) return fail();
+      retried = true;
+      request(src, 'blob').then((blob) => (img.src = URL.createObjectURL(blob)), fail);
+    };
+    img.src = src;
     return img;
+  };
+
+  // X serves each photo in several sizes (?name=small|medium|large|orig). Cards take the
+  // smallest that stays sharp at their width; the viewer takes the original.
+  const sized = (url, name) => {
+    const u = parseUrl(url);
+    if (u?.hostname !== 'pbs.twimg.com' || !u.pathname.startsWith('/media/')) return url;
+    u.searchParams.set('name', name);
+    return u.href;
   };
 
   // UI language follows the reader, not the site: Japanese when the browser's language is
@@ -347,16 +448,17 @@
     return short;
   };
 
-  const photo = (m) => {
-    const img = image(m.url, 'photo', () => link(m.url, { class: 'fallback', text: S().openImage }));
+  const photo = (m, size) => {
+    const img = image(sized(m.url, size), 'photo', () => link(mediaUrl(m.url), { class: 'fallback', text: S().openImage }));
     img.alt = m.altText ?? '';
+    img.dataset.full = mediaUrl(sized(m.url, 'orig')) ?? '';
     if (!m.altText) return img;
     return el('div', { class: 'ph' }, img, el('span', { class: 'alt', text: 'ALT', title: m.altText }));
   };
 
-  // Full-screen viewer for a card's photos. It reuses the blob URLs the card already holds, so
-  // opening it costs no request. Its own host on <body> keeps it clear of the page's stacking
-  // and overflow rules. Click outside the image or press Esc to close; arrows step through.
+  // Full-screen viewer for a card's photos, at original size (falling back to the card's copy).
+  // Its own host on <body> keeps it clear of the page's stacking and overflow rules. Click
+  // outside the image or press Esc to close; arrows step through.
   const LIGHTBOX_STYLE = `
     :host { all: initial; }
     .lb { position: fixed; inset: 0; z-index: 2147483647; display: grid; place-items: center;
@@ -375,10 +477,11 @@
     let i = start;
     const host = el('div');
     const root = host.attachShadow({ mode: 'closed' });
-    const big = el('img', { alt: '' });
+    const big = el('img', { alt: '', referrerpolicy: 'no-referrer', decoding: 'async' });
     const cap = el('div', { class: 'cap' });
     const show = () => {
-      big.src = imgs[i].src;
+      big.onerror = () => big.src !== imgs[i].src && (big.src = imgs[i].src);
+      big.src = imgs[i].full || imgs[i].src;
       big.alt = imgs[i].alt;
       cap.textContent = imgs[i].alt;
       cap.hidden = !imgs[i].alt;
@@ -403,7 +506,8 @@
       many ? el('button', { type: 'button', class: 'prev', title: S().previous, text: '‹', onclick: () => step(-1) }) : null,
       many ? el('button', { type: 'button', class: 'next', title: S().next, text: '›', onclick: () => step(1) }) : null,
     );
-    root.append(el('style', { text: LIGHTBOX_STYLE }), lb);
+    styleShadow(root, LIGHTBOX_STYLE);
+    root.append(lb);
     document.addEventListener('keydown', onKey, true);
     show();
     (document.body ?? document.documentElement).append(host);
@@ -431,7 +535,8 @@
       el('span', { class: 'playwrap' }, icon('play')),
       status,
     );
-    const src = MEDIA_URL(pickVideo(m));
+    const src = mediaUrl(pickVideo(m));
+    const openVideo = (text) => link(mediaUrl(m.url), { class: 'fallback', text });
 
     const download = async (slot) => {
       try {
@@ -443,11 +548,11 @@
         );
         const v = el('video', { playsinline: '' });
         Object.assign(v, gif ? { loop: true, muted: true, autoplay: true } : { controls: true, autoplay: true });
-        v.onerror = () => v.replaceWith(link(m.url, { class: 'fallback', text: S().openVideo }));
+        v.onerror = () => v.replaceWith(openVideo(S().openVideo));
         v.src = URL.createObjectURL(blob);
         slot.replaceWith(v);
       } catch (e) {
-        slot.replaceWith(link(m.url, { class: 'fallback', text: S().videoFailed(e.message) }));
+        slot.replaceWith(openVideo(S().videoFailed(e.message)));
       }
     };
 
@@ -478,7 +583,8 @@
     const play = () => {
       if (box.dataset.busy) return;
       box.dataset.busy = '1';
-      stream();
+      if (src) stream();
+      else box.replaceWith(openVideo(S().videoFailed('unsupported source')));
     };
     box.addEventListener('click', play);
     box.addEventListener('keydown', (e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), play()));
@@ -489,11 +595,14 @@
     const items = (media?.all ?? []).slice(0, 4);
     if (!items.length) return null;
     const box = el('div', { class: `media n${items.length}` });
-    for (const m of items) box.append(m.type === 'photo' ? photo(m) : video(m));
+    const size = items.length === 1 ? 'medium' : 'small';
+    for (const m of items) box.append(m.type === 'photo' ? photo(m, size) : video(m));
     box.addEventListener('click', (e) => {
       const img = e.target.closest('img.photo');
       if (!img?.src || box.classList.contains('sensitive')) return;
-      const imgs = [...box.querySelectorAll('img.photo')].filter((p) => p.src).map((p) => ({ src: p.src, alt: p.alt }));
+      const imgs = [...box.querySelectorAll('img.photo')]
+        .filter((p) => p.src)
+        .map((p) => ({ src: p.src, full: p.dataset.full, alt: p.alt }));
       lightbox(imgs, Math.max(0, imgs.findIndex((p) => p.src === img.src)));
     });
     if (sensitive) {
@@ -514,7 +623,7 @@
 
   const author = (t, small) => {
     const a = t.author ?? {};
-    const profile = a.url ?? `https://x.com/${a.screen_name}`;
+    const profile = profileUrl(a);
     const v = badge(a);
     return el(
       'div',
@@ -527,7 +636,7 @@
         link(profile, { class: 'handle', text: `@${a.screen_name ?? '?'}` }),
         small ? el('span', { class: 'muted', text: `· ${shortDate(t.created_timestamp)}` }) : null,
       ),
-      small ? null : link(t.url, { class: 'x', title: S().viewOnX }, icon('x')),
+      small ? null : link(tweetUrl(t), { class: 'x', title: S().viewOnX }, icon('x')),
     );
   };
 
@@ -563,7 +672,7 @@
 
   const renderQuote = (q) =>
     clickable(
-      q.url,
+      tweetUrl(q),
       { class: 'quote' },
       author(q, true),
       tweetText(q),
@@ -574,7 +683,7 @@
   const renderParent = (p) => {
     const a = p.author ?? {};
     return clickable(
-      p.url,
+      tweetUrl(p),
       { class: 'parent' },
       el('div', { class: 'rail' }, a.avatar_url ? image(a.avatar_url, 'avatar') : null, el('div', { class: 'line' })),
       el(
@@ -603,6 +712,7 @@
   };
 
   const renderTweet = (t) => {
+    const url = tweetUrl(t);
     const d = new Date(t.created_timestamp * 1000);
     const when = `${d.toLocaleTimeString(locale(), { hour: 'numeric', minute: '2-digit', hour12: true })} · ${d.toLocaleDateString(locale(), { year: 'numeric', month: lang() === 'ja' ? 'long' : 'short', day: 'numeric' })}`;
     const note = typeof t.community_note?.text === 'string' ? t.community_note.text : null;
@@ -611,7 +721,7 @@
       class: 'share',
       title: S().copyLink,
       onclick: () =>
-        navigator.clipboard.writeText(t.url).then(() => {
+        navigator.clipboard.writeText(url).then(() => {
           copy.lastChild.textContent = S().copied;
         }),
     });
@@ -620,7 +730,7 @@
     // x.com's order: replies, reposts, likes, views, bookmarks. A count fxtwitter does not
     // return (views on old tweets) is left out rather than shown as 0.
     const stat = (name, n, label, cls = '') =>
-      typeof n === 'number' ? link(t.url, { class: cls, title: `${number(n)} ${label}` }, icon(name), el('span', { text: compact(n) })) : null;
+      typeof n === 'number' ? link(url, { class: cls, title: `${number(n)} ${label}` }, icon(name), el('span', { text: compact(n) })) : null;
     const reposts = (t.retweets ?? 0) + (t.quotes ?? 0);
     const parent = el('div');
     // X's embed shows the parent tweet and no "Replying to @x" line. The line appears only when
@@ -629,10 +739,10 @@
     const showReplyTo = () =>
       t.replying_to &&
       replyTo.replaceChildren(
-        el('div', { class: 'reply-to' }, S().replyingTo, link(`https://x.com/${t.replying_to}`, { text: `@${t.replying_to}` })),
+        el('div', { class: 'reply-to' }, S().replyingTo, link(`https://x.com/${encodeURIComponent(t.replying_to)}`, { text: `@${t.replying_to}` })),
       );
-    if (t.replying_to_status) {
-      request(API + t.replying_to_status, 'json')
+    if (isId(t.replying_to_status)) {
+      fetchTweet(String(t.replying_to_status))
         .then((data) => (data?.tweet ? parent.replaceChildren(renderParent(data.tweet)) : showReplyTo()))
         .catch(showReplyTo);
     } else {
@@ -649,7 +759,7 @@
       renderMedia(t.media, t.possibly_sensitive),
       t.quote ? renderQuote(t.quote) : null,
       note ? el('div', { class: 'note' }, el('b', { text: S().note }), el('span', { text: note })) : null,
-      link(t.url, { class: 'time', text: when }),
+      link(url, { class: 'time', text: when }),
       el(
         'div',
         { class: 'actions' },
@@ -660,7 +770,7 @@
         stat('bookmark', t.bookmarks, S().bookmarks, 'bm'),
         copy,
       ),
-      link(t.url, {
+      link(url, {
         class: 'more',
         text: t.replies ? S().readReplies(compact(t.replies)) : S().viewOnX,
       }),
@@ -699,10 +809,12 @@
 
   // Takes the embed out of reach of widgets.js and SmartBlock right away; the tweet id is read
   // later, once the parser has filled the element in.
+  const pending = new Set();
   const claim = (node) => {
     if (node.hasAttribute(STATE)) return;
     node.setAttribute(STATE, 'pending');
     node.classList.remove(...MARKERS);
+    pending.add(node);
   };
 
   const attach = (node) => {
@@ -715,7 +827,8 @@
     const host = el('div');
     const shadow = host.attachShadow({ mode: 'closed' });
     const out = el('div', {}, el('slot'));
-    shadow.append(el('style', { text: STYLE }), out);
+    styleShadow(shadow, STYLE);
+    shadow.append(out);
     // The original blockquote stays inside the host as light DOM and shows through the slot
     // until the card replaces it, and again if fetching fails. An iframe has nothing to show.
     const iframe = node.tagName === 'IFRAME';
@@ -726,7 +839,7 @@
     // Fetch only once the tweet is about to scroll into view, so unread embeds cost no request.
     visible.set(host, async () => {
       try {
-        const data = await request(API + id, 'json');
+        const data = await fetchTweet(id);
         if (!data?.tweet) throw new Error(data?.message ?? 'no tweet');
         applyTheme(host);
         out.replaceChildren(renderTweet(data.tweet));
@@ -747,7 +860,7 @@
       .map((a) => a.href)
       .reverse()
       .find((h) => h.includes(`/status/${id}`) || h.includes(`/statuses/${id}`));
-    const user = href?.match(/\.com\/([^/]+)\/status/)?.[1] ?? 'i';
+    const user = encodeURIComponent(href?.match(/\.com\/([^/]+)\/status/)?.[1] ?? 'i');
     return el(
       'div',
       { class: 'card gone' },
@@ -758,19 +871,26 @@
   };
 
   const parsing = () => document.readyState === 'loading';
-  const attachPending = () => document.querySelectorAll(`[${STATE}="pending"]`).forEach(attach);
+  const attachPending = () => {
+    for (const node of pending) {
+      pending.delete(node);
+      if (node.isConnected) attach(node);
+    }
+  };
 
+  // Only the subtrees that were just added are searched, and only when they have children, so
+  // pages that keep appending content (infinite scroll, chat) stay cheap.
   const scan = (root) => {
     if (root.nodeType !== Node.ELEMENT_NODE) return;
     if (root.matches(SELECTOR)) claim(root);
-    root.querySelectorAll(SELECTOR).forEach(claim);
+    if (root.firstElementChild) root.querySelectorAll(SELECTOR).forEach(claim);
   };
 
   // At document-start even <html> may not exist yet, so watch the document itself.
   if (document.documentElement) scan(document.documentElement);
   new MutationObserver((records) => {
     for (const r of records) r.addedNodes.forEach(scan);
-    if (!parsing()) attachPending();
+    if (pending.size && !parsing()) attachPending();
   }).observe(document, { childList: true, subtree: true });
 
   const ready = () => {
