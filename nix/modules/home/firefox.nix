@@ -87,6 +87,12 @@ in
           url = "${repo}/violentmonkey/fx-embed.user.js";
         }
         {
+          name = "g-embed: YouTube and Google Maps embeds without Google";
+          # Cards for the YouTube/Maps iframes strict tracking protection blocks: noembed.com and
+          # OpenStreetMap instead of Google; a click opens the video or the place.
+          url = "${repo}/violentmonkey/g-embed.user.js";
+        }
+        {
           name = "video-default-speed: per-site default playback speed";
           # YouTube starts at 2x per video; Surfingkeys < > = or the site menu still change it.
           url = "${repo}/violentmonkey/video-default-speed.user.js";
