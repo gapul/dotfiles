@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        fx-embed: embedded tweets via fxtwitter
 // @namespace   https://github.com/gapul/dotfiles
-// @version     0.12.1
+// @version     0.13.0
 // @description Renders embedded tweets from api.fxtwitter.com instead of X, laid out like X's own embed, without cookies or Referer.
 // @match       *://*/*
 // @exclude     *://x.com/*
@@ -32,7 +32,8 @@
   const MEDIA_URL = (url) => url;
 
   const API = 'https://api.fxtwitter.com/x/status/';
-  const MARKERS = ['twitter-tweet', 'twitter-video', 'tweet-embed'];
+  const PROFILE = 'https://api.fxtwitter.com/2/profile/';
+  const MARKERS = ['twitter-tweet', 'twitter-video', 'tweet-embed', 'twitter-timeline'];
   const SELECTOR = [
     ...MARKERS.map((c) => `.${c}`),
     'iframe[src*="platform.twitter.com/embed/"]',
@@ -190,7 +191,7 @@
     .name { font-weight: 700; display: inline-flex; align-items: center; gap: 2px; overflow: hidden;
       white-space: nowrap; text-overflow: ellipsis; }
     .verified { width: 18px; height: 18px; color: var(--blue); flex: none; }
-    .verified.business { color: #e2b719; }
+    .verified.business, .verified.organization { color: #e2b719; }
     .verified.government { color: #829aab; }
     /* .who a would otherwise give the handle link the text colour; X shows it grey. */
     .handle, .muted, .who a.handle { color: var(--muted); }
@@ -218,9 +219,32 @@
     .quote .avatar { width: 20px; height: 20px; }
     .quote .who { flex-direction: row; gap: 4px; flex: initial; }
     .quote .text { font-size: 15px; line-height: 20px; margin: 4px 0 0; }
-    .quote .media { margin-bottom: 0; }
+    .quote { overflow: hidden; }
+    .quote .media { margin: 12px -12px -12px; border: 0; border-radius: 0; }
     .note { border: 1px solid var(--border); border-radius: 16px; padding: 12px; margin: 12px 0; }
     .note b { display: block; margin-bottom: 4px; }
+    .lcard { display: block; border: 1px solid var(--border); border-radius: 16px; overflow: hidden; margin: 12px 0;
+      color: var(--fg) !important; text-decoration: none !important; }
+    .lcard:hover { background: var(--hover); }
+    .lcard img { display: block; width: 100%; object-fit: cover; border-bottom: 1px solid var(--border); }
+    .lmeta { padding: 12px; display: grid; gap: 2px; }
+    .ltitle { font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .article .ltitle { font-weight: 700; font-size: 17px; white-space: normal; }
+    .ldesc { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .media:not(.n1) .vframe { aspect-ratio: auto !important; height: 100%; }
+    .reposted { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; font-weight: 700; margin: 0 0 4px 32px; }
+    .reposted .icon { width: 16px; height: 16px; }
+    .timeline { font: 15px/20px "TwitterChirp", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+        "Hiragino Sans", "Noto Sans CJK JP", sans-serif;
+      color: var(--fg); background: var(--bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+    .tl-head { position: relative; display: flex; align-items: center; gap: 8px; padding: 12px 48px 12px 16px;
+      border-bottom: 1px solid var(--border); }
+    .tl-list { overflow-y: auto; }
+    .tl-list .card { border: 0; border-radius: 0; border-bottom: 1px solid var(--border); }
+    .tl-list a.x { display: none; }
+    .tl-list .card > .head { padding-right: 0; }
+    .tl-list .time { border-bottom: 0; padding-bottom: 4px; }
+    .timeline > .more { margin: 12px 16px; }
     .poll { margin: 12px 0; display: grid; gap: 4px; }
     .poll .bar { position: relative; min-height: 32px; padding: 0 12px; display: flex; align-items: center; justify-content: space-between; }
     .poll .fill { position: absolute; inset: 0 auto 0 0; background: var(--poll); border-radius: 4px; z-index: 0; }
@@ -321,7 +345,9 @@
       copyLink: 'リンクをコピー',
       copied: 'コピーしました',
       replyingTo: '返信先: ',
-      note: 'コミュニティノート',
+      note: '読者が追加した背景情報',
+      reposted: (name) => `${name}さんがリポスト`,
+      viewMore: 'X でもっと見る',
       replies: '件の返信',
       reposts: (quotes) => `件のリポスト（うち引用 ${quotes}）`,
       likes: '件のいいね',
@@ -352,7 +378,9 @@
       copyLink: 'Copy link',
       copied: 'Copied',
       replyingTo: 'Replying to ',
-      note: 'Community Notes',
+      note: 'Readers added context',
+      reposted: (name) => `${name} reposted`,
+      viewMore: 'View more on X',
       replies: 'replies',
       reposts: (quotes) => `reposts (${quotes} quotes)`,
       likes: 'likes',
@@ -387,7 +415,7 @@
   };
 
   // URLs, @mentions and #hashtags become links; everything else stays text.
-  const richText = (text, hasMedia) => {
+  const richText = (text, hasMedia, display = new Map()) => {
     // Old tweets still carry the t.co link of their own attached media at the end.
     const body = hasMedia ? text.replace(/\s*https?:\/\/t\.co\/\w+\s*$/, '') : text;
     const out = el('div', { class: 'text' });
@@ -400,7 +428,8 @@
         : t.startsWith('#')
           ? `https://x.com/hashtag/${encodeURIComponent(t.slice(1))}`
           : t;
-      out.append(link(href, { text: t.startsWith('http') ? t.replace(/^https?:\/\/(www\.)?/, '') : t }));
+      const shown = display.get(t) ?? (t.startsWith('http') ? t.replace(/^https?:\/\/(www\.)?/, '') : t);
+      out.append(link(href, { text: shown }));
       last = m.index + t.length;
     }
     out.append(body.slice(last));
@@ -411,14 +440,26 @@
   // characters, followed by "Show more". Here it expands in place instead of opening x.com.
   const LONG = 280;
   const tweetText = (t) => {
-    const text = displayText(t);
-    const full = richText(text, Boolean(t.media?.all?.length));
+    let text = displayText(t);
+    // The link that a card or article already shows is dropped from the text, as X does.
+    if (t.article) text = text.replace(/\s*https:\/\/x\.com\/i\/article\/\d+\s*$/, '');
+    else if (t.card?.url && !t.media?.all?.length && !t.quote) {
+      const tail = text.match(/\s*(https?:\/\/\S+)\s*$/);
+      if (tail && tail[1].replace(/\/$/, '') === t.card.url.replace(/\/$/, '')) text = text.slice(0, tail.index);
+    }
+    // X shortens long links (example.com/some/long/pa…); its display form rides in raw_text.
+    const display = new Map(
+      (t.raw_text?.facets ?? [])
+        .filter((f) => f.type === 'url' && typeof f.replacement === 'string' && typeof f.display === 'string')
+        .map((f) => [f.replacement, f.display]),
+    );
+    const full = richText(text, Boolean(t.media?.all?.length), display);
     const chars = Array.from(text);
     if (!t.is_note_tweet || chars.length <= LONG) return full;
     let cut = chars.slice(0, LONG).join('');
     const space = cut.search(/\s\S*$/);
     if (space > LONG / 2) cut = cut.slice(0, space);
-    const short = richText(cut, false);
+    const short = richText(cut, false, display);
     short.append(' ', el('button', { type: 'button', class: 'show-more', text: S().showMore, onclick: () => short.replaceWith(full) }));
     return short;
   };
@@ -593,7 +634,50 @@
     return box;
   };
 
-  // Blue for individuals, gold for businesses, grey for government accounts.
+  // Link preview (summary / summary_large_image): image, domain, title, description.
+  const renderCard = (card) => {
+    if (!card?.url || !card.title) return null;
+    const img = card.image?.url ? image(card.image.url) : null;
+    if (img && card.image.width && card.image.height) img.style.aspectRatio = `${card.image.width} / ${card.image.height}`;
+    return link(
+      card.url,
+      { class: 'lcard' },
+      img,
+      el(
+        'div',
+        { class: 'lmeta' },
+        card.domain ? el('div', { class: 'muted', text: card.domain.replace(/^www\./, '') }) : null,
+        el('div', { class: 'ltitle', text: card.title }),
+        card.description ? el('div', { class: 'muted ldesc', text: card.description }) : null,
+      ),
+    );
+  };
+
+  // X Articles (long-form posts): cover, title and preview, opening the article on x.com.
+  const renderArticle = (t) => {
+    const a = t.article;
+    if (!a?.title) return null;
+    const info = a.cover_media?.media_info;
+    const img = info?.original_img_url ? image(sized(info.original_img_url, 'medium')) : null;
+    if (img && info.original_img_width && info.original_img_height) img.style.aspectRatio = `${info.original_img_width} / ${info.original_img_height}`;
+    return link(
+      isId(a.id) ? `https://x.com/i/article/${a.id}` : tweetUrl(t),
+      { class: 'lcard article' },
+      img,
+      el('div', { class: 'lmeta' }, el('div', { class: 'ltitle', text: a.title }), a.preview_text ? el('div', { class: 'muted ldesc', text: a.preview_text }) : null),
+    );
+  };
+
+  // An article, or else a link card when nothing else (media, quote) is attached.
+  const attachment = (t) => (t.article ? renderArticle(t) : !t.media?.all?.length && !t.quote ? renderCard(t.card) : null);
+
+  // Timelines come from fxtwitter's v2 API, which names a few fields differently.
+  const normalise = (t) => {
+    if (t && t.retweets === undefined && typeof t.reposts === 'number') t.retweets = t.reposts;
+    return t;
+  };
+
+  // Blue for individuals, gold for organisations, grey for government accounts.
   const badge = (a) => (a.verification?.verified ? icon('verified', `verified ${a.verification.type ?? ''}`) : null);
 
   const author = (t, small) => {
@@ -609,7 +693,6 @@
         { class: 'who' },
         link(profile, { class: 'name' }, el('span', { text: a.name ?? '' }), v),
         link(profile, { class: 'handle', text: `@${a.screen_name ?? '?'}` }),
-        small ? el('span', { class: 'muted', text: `· ${shortDate(t.created_timestamp)}` }) : null,
       ),
       small ? null : link(tweetUrl(t), { class: 'x', title: S().viewOnX }, icon('x')),
     );
@@ -646,6 +729,7 @@
   };
 
   const renderQuote = (q) =>
+    normalise(q) &&
     clickable(
       tweetUrl(q),
       { class: 'quote' },
@@ -682,11 +766,15 @@
         ),
         tweetText(p),
         renderMedia(p.media, p.possibly_sensitive),
+        attachment(p),
       ),
     );
   };
 
-  const renderTweet = (t) => {
+  // In a timeline (`inTimeline`), parents are not fetched (the reply line stands in) and the
+  // per-tweet "Read replies" button is left out.
+  const renderTweet = (t, inTimeline = false) => {
+    normalise(t);
     const url = tweetUrl(t);
     const d = new Date(t.created_timestamp * 1000);
     const when = `${d.toLocaleTimeString(locale(), { hour: 'numeric', minute: '2-digit', hour12: true })} · ${d.toLocaleDateString(locale(), { year: 'numeric', month: lang() === 'ja' ? 'long' : 'short', day: 'numeric' })}`;
@@ -716,7 +804,7 @@
       replyTo.replaceChildren(
         el('div', { class: 'reply-to' }, S().replyingTo, link(`https://x.com/${encodeURIComponent(t.replying_to)}`, { text: `@${t.replying_to}` })),
       );
-    if (isId(t.replying_to_status)) {
+    if (!inTimeline && isId(t.replying_to_status)) {
       fetchTweet(String(t.replying_to_status))
         .then((data) => (data?.tweet ? parent.replaceChildren(renderParent(data.tweet)) : showReplyTo()))
         .catch(showReplyTo);
@@ -726,12 +814,14 @@
     return el(
       'div',
       { class: 'card' },
+      t.reposted_by?.name ? el('div', { class: 'reposted' }, icon('repost'), S().reposted(t.reposted_by.name)) : null,
       parent,
       author(t, false),
       replyTo,
       tweetText(t),
       renderPoll(t.poll),
       renderMedia(t.media, t.possibly_sensitive),
+      attachment(t),
       t.quote ? renderQuote(t.quote) : null,
       note ? el('div', { class: 'note' }, el('b', { text: S().note }), el('span', { text: note })) : null,
       link(url, { class: 'time', text: when }),
@@ -745,12 +835,37 @@
         stat('bookmark', t.bookmarks, S().bookmarks, 'bm'),
         copy,
       ),
-      link(url, {
-        class: 'more',
-        text: t.replies ? S().readReplies(compact(t.replies)) : S().viewOnX,
-      }),
+      inTimeline
+        ? null
+        : link(url, {
+            class: 'more',
+            text: t.replies ? S().readReplies(compact(t.replies)) : S().viewOnX,
+          }),
     );
   };
+
+  // A profile timeline (<a class="twitter-timeline" href="https://twitter.com/NASA">): the
+  // account header and its latest posts in a scrolling list, honouring data-tweet-limit and
+  // data-height like X's widget.
+  const renderTimeline = (user, items, height) =>
+    el(
+      'div',
+      { class: 'timeline' },
+      el(
+        'div',
+        { class: 'tl-head' },
+        user.avatar_url ? link(profileUrl(user), {}, image(user.avatar_url.replace(/_normal(\.\w+)$/, '_200x200$1'), 'avatar')) : null,
+        el(
+          'div',
+          { class: 'who' },
+          link(profileUrl(user), { class: 'name' }, el('span', { text: user.name ?? '' }), badge(user)),
+          link(profileUrl(user), { class: 'handle', text: `@${user.screen_name ?? ''}` }),
+        ),
+        link(profileUrl(user), { class: 'x', title: S().viewOnX }, icon('x')),
+      ),
+      el('div', { class: 'tl-list', style: `max-height:${height}px` }, ...items.map((t) => renderTweet(t, true))),
+      link(profileUrl(user), { class: 'more', text: S().viewMore }),
+    );
 
   // Follow the page's own light/dark look rather than the OS setting: take the first opaque
   // background behind the card and judge it by luminance. The OS setting decides only when
@@ -788,29 +903,66 @@
   const claim = (node) => {
     if (node.hasAttribute(STATE)) return;
     node.setAttribute(STATE, 'pending');
+    if (node.classList.contains('twitter-timeline')) node.dataset.fxKind = 'timeline';
     node.classList.remove(...MARKERS);
     pending.add(node);
   };
 
+  const RESERVED = new Set(['i', 'intent', 'home', 'search', 'hashtag', 'share', 'explore', 'settings']);
+  const timelineHandle = (node) => {
+    const h = node.getAttribute('data-screen-name') || node.href?.match(/(?:twitter|x)\.com\/([A-Za-z0-9_]{1,15})(?:[/?#]|$)/)?.[1];
+    return h && /^[A-Za-z0-9_]{1,15}$/.test(h) && !RESERVED.has(h.toLowerCase()) ? h : null;
+  };
+
+  // Builds the shadow host that replaces an embed. The original element stays inside as light
+  // DOM and shows through the slot until the card replaces it, and again if fetching fails.
+  const mount = (node) => {
+    const host = el('div');
+    const shadow = host.attachShadow({ mode: 'closed' });
+    const out = el('div', {}, el('slot'));
+    styleShadow(shadow, STYLE);
+    shadow.append(out);
+    node.replaceWith(host);
+    if (node.tagName !== 'IFRAME') host.append(node);
+    themed.add(host);
+    applyTheme(host);
+    return { host, out };
+  };
+
+  const attachTimeline = (node) => {
+    const handle = timelineHandle(node);
+    if (!handle) {
+      node.setAttribute(STATE, 'skip');
+      return;
+    }
+    node.setAttribute(STATE, 'done');
+    const limit = Math.min(Math.max(Number(node.getAttribute('data-tweet-limit')) || 5, 1), 20);
+    const height = Math.min(Math.max(Number(node.getAttribute('data-height')) || 600, 200), 2000);
+    const { host, out } = mount(node);
+    visible.set(host, async () => {
+      try {
+        const h = encodeURIComponent(handle);
+        const [profile, statuses] = await Promise.all([request(PROFILE + h, 'json'), request(`${PROFILE}${h}/statuses`, 'json')]);
+        if (!profile?.user) throw new Error(profile?.message ?? 'no user');
+        applyTheme(host);
+        out.replaceChildren(renderTimeline(profile.user, (statuses?.results ?? []).slice(0, limit), height));
+      } catch (e) {
+        out.replaceChildren(el('div', { class: 'err', text: S().fetchFailed(e.message) }), el('slot'));
+      }
+    });
+    observer.observe(host);
+  };
+
   const attach = (node) => {
+    if (node.dataset.fxKind === 'timeline') return attachTimeline(node);
     const id = statusId(node);
     if (!id) {
       node.setAttribute(STATE, 'skip');
       return;
     }
     node.setAttribute(STATE, 'done');
-    const host = el('div');
-    const shadow = host.attachShadow({ mode: 'closed' });
-    const out = el('div', {}, el('slot'));
-    styleShadow(shadow, STYLE);
-    shadow.append(out);
-    // The original blockquote stays inside the host as light DOM and shows through the slot
-    // until the card replaces it, and again if fetching fails. An iframe has nothing to show.
     const iframe = node.tagName === 'IFRAME';
-    node.replaceWith(host);
-    if (!iframe) host.append(node);
-    themed.add(host);
-    applyTheme(host);
+    const { host, out } = mount(node);
     // Fetch only once the tweet is about to scroll into view, so unread embeds cost no request.
     visible.set(host, async () => {
       try {
