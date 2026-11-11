@@ -18,6 +18,17 @@
         "server string" = "homeserver";
         "security" = "user";
         "map to guest" = "never";
+        # Apple SMB extensions. Without them the iOS Files app greys out every folder in the
+        # save/copy picker and refuses to write (OSStatus -61), even where gapul can write.
+        # streams_xattr keeps Finder/iOS metadata in xattrs (rpool has xattr=sa) instead of ._ files.
+        "vfs objects" = "catia fruit streams_xattr";
+        "fruit:metadata" = "stream";
+        "fruit:model" = "MacSamba";
+        "fruit:posix_rename" = "yes";
+        "fruit:veto_appledouble" = "no";
+        "fruit:nfs_aces" = "no";
+        "fruit:wipe_intentionally_left_blank_rfork" = "yes";
+        "fruit:delete_empty_adfiles" = "yes";
       };
       # Paperless' stored files, read-only, so the archive can be browsed in Finder. Paperless
       # tracks every file's path and checksum in its database: adding or moving files here would
