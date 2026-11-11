@@ -228,6 +228,14 @@ in
       # Per-extension settings, for the extensions that read browser.storage.managed. This is a
       # lock, not a seed: re-asserted on every start, so dashboard edits revert. uBlock Origin
       # caches it and applies one restart late (uAssets discussion 16939).
+      "3rdparty".Extensions."uBlock0@raymondhill.net".advancedSettings = [
+        # urlskip= filters only run from trusted lists. Trust uBO's own lists (the default
+        # "ublock-") plus exactly this repo's urlskip list, not a whole host or repo path.
+        [
+          "trustedListPrefixes"
+          "ublock- https://raw.githubusercontent.com/gapul/dotfiles/main/configs/apps/ublock/urlskip.txt"
+        ]
+      ];
       "3rdparty".Extensions."uBlock0@raymondhill.net".toOverwrite = {
         # uBO's default lists plus the Japanese one. Ids are the keys of assets/assets.json.
         filterLists = [
@@ -250,6 +258,9 @@ in
           "ublock-annoyances"
           "easylist-newsletters"
           "easylist-notifications"
+          # Skip click-tracking redirect wrappers (Google, Facebook, Reddit, Steam, …); see the
+          # file. Imported by URL so "My filters" stays the user's own.
+          "https://raw.githubusercontent.com/gapul/dotfiles/main/configs/apps/ublock/urlskip.txt"
         ];
       };
       # Surfingkeys reads no managed storage; its settings live in configs/apps/surfingkeys/config.js,
