@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        fx-embed: embedded tweets via fxtwitter
 // @namespace   https://github.com/gapul/dotfiles
-// @version     0.9.0
+// @version     0.10.0
 // @description Renders embedded tweets from api.fxtwitter.com instead of X, laid out like X's own embed, without cookies or Referer.
 // @match       *://*/*
 // @exclude     *://x.com/*
@@ -182,6 +182,8 @@
       padding: 6px 16px; margin: 4px 0 12px; }
     .more:hover { background: var(--hover); text-decoration: none; }
     .err { font: 14px system-ui, sans-serif; color: #f4212e; }
+    .show-more { font: inherit; color: var(--link); background: none; border: 0; padding: 0; cursor: pointer; }
+    .show-more:hover { text-decoration: underline; }
     .parent { display: flex; gap: 8px; color: inherit; text-decoration: none !important; }
     .rail { display: flex; flex-direction: column; align-items: center; width: 48px; flex: none; }
     .rail .avatar { width: 48px; height: 48px; }
@@ -235,6 +237,7 @@
       viewOnX: 'X で見る',
       votes: (n) => `${n}票`,
       finalResults: '最終結果',
+      showMore: 'さらに表示',
       watchOnX: 'X で見る',
       copyLink: 'リンクをコピー',
       copied: 'コピーしました',
@@ -263,6 +266,7 @@
       viewOnX: 'View on X',
       votes: (n) => `${n} votes`,
       finalResults: 'Final results',
+      showMore: 'Show more',
       watchOnX: 'Watch on X',
       copyLink: 'Copy link',
       copied: 'Copied',
@@ -320,6 +324,22 @@
     }
     out.append(body.slice(last));
     return out;
+  };
+
+  // Long posts are cut like X's embed cuts them: at the last word boundary within 280
+  // characters, followed by "Show more". Here it expands in place instead of opening x.com.
+  const LONG = 280;
+  const tweetText = (t) => {
+    const text = displayText(t);
+    const full = richText(text, Boolean(t.media?.all?.length));
+    const chars = Array.from(text);
+    if (!t.is_note_tweet || chars.length <= LONG) return full;
+    let cut = chars.slice(0, LONG).join('');
+    const space = cut.search(/\s\S*$/);
+    if (space > LONG / 2) cut = cut.slice(0, space);
+    const short = richText(cut, false);
+    short.append(' ', el('button', { type: 'button', class: 'show-more', text: S().showMore, onclick: () => short.replaceWith(full) }));
+    return short;
   };
 
   const photo = (m) => {
@@ -449,7 +469,7 @@
       q.url,
       { class: 'quote' },
       author(q, true),
-      richText(displayText(q), Boolean(q.media?.all?.length)),
+      tweetText(q),
       renderMedia(q.media, q.possibly_sensitive, q.url),
     );
 
@@ -479,7 +499,7 @@
             el('span', { class: 'handle', text: `@${a.screen_name ?? '?'}` }),
           ),
         ),
-        richText(displayText(p), Boolean(p.media?.all?.length)),
+        tweetText(p),
         renderMedia(p.media, p.possibly_sensitive, p.url),
       ),
     );
@@ -525,7 +545,7 @@
       parent,
       author(t, false),
       replyTo,
-      richText(displayText(t), Boolean(t.media?.all?.length)),
+      tweetText(t),
       renderPoll(t.poll),
       renderMedia(t.media, t.possibly_sensitive, t.url),
       t.quote ? renderQuote(t.quote) : null,
