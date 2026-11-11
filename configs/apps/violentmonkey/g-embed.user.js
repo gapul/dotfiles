@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name        g-embed: YouTube and Google Maps embeds without Google
 // @namespace   https://github.com/gapul/dotfiles
-// @version     0.2.0
-// @description Replaces embedded YouTube players and Google Maps with cards drawn from noembed.com and OpenStreetMap; YouTube videos play in place on click.
+// @version     0.3.0
+// @description Replaces blocked YouTube and Google Maps embeds: YouTube videos play in place, maps are draggable Google Maps tiles, all without cookies or Referer.
 // @match       *://*/*
 // @exclude     *://*.youtube.com/*
 // @exclude     *://youtube.com/*
@@ -11,7 +11,10 @@
 // @grant       GM_xmlhttpRequest
 // @connect     noembed.com
 // @connect     i.ytimg.com
-// @connect     tile.openstreetmap.org
+// @connect     mt0.google.com
+// @connect     mt1.google.com
+// @connect     mt2.google.com
+// @connect     mt3.google.com
 // @connect     www.youtube.com
 // @connect     googlevideo.com
 // @run-at      document-start
@@ -29,9 +32,10 @@
 //     stream URLs come from YouTube's player API and the segments are fetched through
 //     GM_xmlhttpRequest into a MediaSource. YouTube learns what was played only when Play is
 //     pressed, and gets no cookies or Referer.
-//   Google Maps: coordinates and place name read from the embed URL, map drawn from
-//     OpenStreetMap tiles; Google is never contacted. Buttons open the place in Apple Maps,
-//     Google Maps or OpenStreetMap.
+//   Google Maps: coordinates and place name read from the embed URL, map drawn from Google
+//     Maps tiles fetched through GM_xmlhttpRequest (Google sees the area viewed, but no cookies
+//     and not the page), draggable, ⌘/Ctrl+wheel or +/− to zoom, as Google's embed does.
+//     Buttons open the place in Google Maps, Apple Maps or OpenStreetMap.
 // The iframes are swapped out as soon as the parser inserts them, so the blocked request is
 // never made.
 
@@ -105,6 +109,10 @@
       apple: 'Apple マップ',
       google: 'Google マップ',
       osm: 'OpenStreetMap',
+      zoomIn: '拡大',
+      zoomOut: '縮小',
+      zoomHint: '地図を拡大・縮小するには ⌘ / Ctrl を押しながらスクロール',
+      mapData: '地図データ ©Google',
     },
     en: {
       watch: 'Watch on YouTube',
@@ -116,6 +124,10 @@
       apple: 'Apple Maps',
       google: 'Google Maps',
       osm: 'OpenStreetMap',
+      zoomIn: 'Zoom in',
+      zoomOut: 'Zoom out',
+      zoomHint: 'Use ⌘ / Ctrl + scroll to zoom the map',
+      mapData: 'Map data ©Google',
     },
   };
   const S = () => STRINGS[/^ja\b/i.test(navigator.language) ? 'ja' : 'en'];
@@ -161,10 +173,20 @@
       background: var(--tile); font: 14px/1.4 Roboto, -apple-system, "Segoe UI", "Hiragino Sans", "Noto Sans CJK JP", sans-serif;
       color: var(--fg); --fg: #202124; --muted: #5f6368; --border: #dadce0; --panel: #fff; --tile: #e8eaed; }
     :host([data-theme="dark"]) .map { --fg: #e8eaed; --muted: #9aa0a6; --border: #3c4043; --panel: #202124; --tile: #2b2c2f; }
-    .tiles { position: absolute; inset: 0; }
-    .tiles img { position: absolute; width: 256px; height: 256px; }
-    .pin { position: absolute; left: 50%; top: 50%; width: 36px; height: 36px; transform: translate(-50%, -100%); color: #ea4335;
+    .tiles { position: absolute; inset: 0; cursor: grab; touch-action: none; user-select: none; }
+    .tiles.dragging { cursor: grabbing; }
+    .tiles img { position: absolute; left: 0; top: 0; width: 256px; height: 256px; pointer-events: none; }
+    .pin { position: absolute; left: 0; top: 0; width: 36px; height: 36px; color: #ea4335; pointer-events: none;
       filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.4)); }
+    .zoom { position: absolute; right: 10px; bottom: 28px; display: grid; border-radius: 8px; overflow: hidden;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3); }
+    .zoom button { width: 32px; height: 32px; border: 0; background: var(--panel); color: var(--muted); font: 20px/1 sans-serif;
+      cursor: pointer; }
+    .zoom button + button { border-top: 1px solid var(--border); }
+    .zoom button:hover { color: var(--fg); }
+    .hint { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(0, 0, 0, 0.45); color: #fff;
+      font-size: 16px; pointer-events: none; opacity: 0; transition: opacity 0.2s; text-align: center; padding: 16px; }
+    .hint.show { opacity: 1; }
     .panel { position: absolute; left: 10px; top: 10px; max-width: calc(100% - 20px); padding: 10px 12px; border-radius: 8px;
       background: var(--panel); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3); }
     .place { font-weight: 500; font-size: 15px; }
@@ -174,8 +196,7 @@
       padding: 3px 10px; background: var(--panel); }
     .buttons a:hover { background: rgba(26, 115, 232, 0.08); }
     .attrib { position: absolute; right: 0; bottom: 0; padding: 1px 6px; font-size: 11px; color: #333;
-      background: rgba(255, 255, 255, 0.8); }
-    .attrib a { color: inherit; }
+      background: rgba(255, 255, 255, 0.8); pointer-events: none; }
   `;
 
   // One parsed stylesheet shared by every shadow root; a <style> where that is refused.
@@ -438,26 +459,118 @@
     return Math.min(18, Math.max(3, Math.round(z)));
   };
 
-  // OSM tiles around the point, positioned so the point sits in the middle of the card.
-  const tiles = (lat, lon, z, w, h) => {
-    const n = 2 ** z;
+  // Google Maps tiles (the same ones maps.google.com draws, at 2× for sharpness), placed in a
+  // draggable, zoomable view. Tiles are fetched through GM_xmlhttpRequest, so the page's
+  // tracking protection does not block them and Google gets neither cookies nor the page.
+  const TILE = 256;
+  const project = (lat, lon, z) => {
+    const n = TILE * 2 ** z;
     const rad = (lat * Math.PI) / 180;
-    const cx = ((lon + 180) / 360) * n * 256;
-    const cy = ((1 - Math.log(Math.tan(rad) + 1 / Math.cos(rad)) / Math.PI) / 2) * n * 256;
-    const left = cx - w / 2;
-    const top = cy - h / 2;
+    return [((lon + 180) / 360) * n, ((1 - Math.log(Math.tan(rad) + 1 / Math.cos(rad)) / Math.PI) / 2) * n];
+  };
+  const tileUrl = (x, y, z) =>
+    `https://mt${(x + y) % 4}.google.com/vt/lyrs=m&hl=${/^ja\b/i.test(navigator.language) ? 'ja' : 'en'}&x=${x}&y=${y}&z=${z}&scale=2`;
+
+  const slippyMap = (lat, lon, z0, hint) => {
     const box = el('div', { class: 'tiles' });
-    for (let ty = Math.floor(top / 256); ty <= Math.floor((top + h) / 256); ty++) {
-      if (ty < 0 || ty >= n) continue;
-      for (let tx = Math.floor(left / 256); tx <= Math.floor((left + w) / 256); tx++) {
-        const x = ((tx % n) + n) % n;
-        const img = blobImage(`https://tile.openstreetmap.org/${z}/${x}/${ty}.png`);
-        img.style.left = `${Math.round(tx * 256 - left)}px`;
-        img.style.top = `${Math.round(ty * 256 - top)}px`;
-        box.append(img);
+    const pin = icon('pin');
+    const cache = new Map(); // "z/x/y" → <img>, oldest first
+    let z = z0;
+    let [cx, cy] = project(lat, lon, z);
+    let frame = 0;
+    const render = () => {
+      frame = 0;
+      const w = box.clientWidth;
+      const h = box.clientHeight;
+      if (!w || !h) return;
+      const n = 2 ** z;
+      cy = Math.min(Math.max(cy, h / 2), n * TILE - h / 2);
+      const left = cx - w / 2;
+      const top = cy - h / 2;
+      const keep = new Set();
+      for (let ty = Math.floor(top / TILE); ty <= Math.floor((top + h) / TILE); ty++) {
+        if (ty < 0 || ty >= n) continue;
+        for (let tx = Math.floor(left / TILE); tx <= Math.floor((left + w) / TILE); tx++) {
+          const x = ((tx % n) + n) % n;
+          const key = `${z}/${x}/${ty}`;
+          keep.add(key);
+          let img = cache.get(key);
+          if (img) cache.delete(key);
+          else img = blobImage(tileUrl(x, ty, z));
+          cache.set(key, img);
+          if (img.parentNode !== box) box.insertBefore(img, pin);
+          img.style.transform = `translate(${Math.round(tx * TILE - left)}px, ${Math.round(ty * TILE - top)}px)`;
+        }
       }
-    }
-    return box;
+      for (const [key, img] of cache) if (!keep.has(key)) img.remove();
+      // Keep recently seen tiles for panning back; drop the oldest beyond that.
+      while (cache.size > 160) {
+        const [key, img] = cache.entries().next().value;
+        cache.delete(key);
+        img.remove();
+        if (img.src.startsWith('blob:')) URL.revokeObjectURL(img.src);
+      }
+      const [px, py] = project(lat, lon, z);
+      pin.style.transform = `translate(${px - left - 18}px, ${py - top - 36}px)`;
+    };
+    const schedule = () => (frame ||= requestAnimationFrame(render));
+    // Zoom by one step keeping the point under (mx, my) where it is.
+    const zoom = (dz, mx = box.clientWidth / 2, my = box.clientHeight / 2) => {
+      const nz = Math.min(20, Math.max(2, z + dz));
+      if (nz === z) return;
+      const f = 2 ** (nz - z);
+      cx = (cx - box.clientWidth / 2 + mx) * f - mx + box.clientWidth / 2;
+      cy = (cy - box.clientHeight / 2 + my) * f - my + box.clientHeight / 2;
+      z = nz;
+      schedule();
+    };
+    let drag = null;
+    box.addEventListener('pointerdown', (e) => {
+      drag = { x: e.clientX, y: e.clientY };
+      box.setPointerCapture(e.pointerId);
+      box.classList.add('dragging');
+    });
+    box.addEventListener('pointermove', (e) => {
+      if (!drag) return;
+      cx -= e.clientX - drag.x;
+      cy -= e.clientY - drag.y;
+      drag = { x: e.clientX, y: e.clientY };
+      schedule();
+    });
+    const stop = () => {
+      drag = null;
+      box.classList.remove('dragging');
+    };
+    box.addEventListener('pointerup', stop);
+    box.addEventListener('pointercancel', stop);
+    box.addEventListener('dblclick', (e) => {
+      const r = box.getBoundingClientRect();
+      zoom(1, e.clientX - r.left, e.clientY - r.top);
+    });
+    // Plain scrolling keeps scrolling the page; ⌘/Ctrl + scroll zooms, as Google's embed does.
+    let acc = 0;
+    let hintTimer = 0;
+    box.addEventListener(
+      'wheel',
+      (e) => {
+        if (!e.ctrlKey && !e.metaKey) {
+          hint.classList.add('show');
+          clearTimeout(hintTimer);
+          hintTimer = setTimeout(() => hint.classList.remove('show'), 1200);
+          return;
+        }
+        e.preventDefault();
+        acc += e.deltaY;
+        if (Math.abs(acc) < 40) return;
+        const r = box.getBoundingClientRect();
+        zoom(acc < 0 ? 1 : -1, e.clientX - r.left, e.clientY - r.top);
+        acc = 0;
+      },
+      { passive: false },
+    );
+    box.append(pin);
+    new ResizeObserver(schedule).observe(box);
+    return { box, zoom };
   };
 
   const mapCard = (info, { w, h }) => {
@@ -465,16 +578,23 @@
     const has = lat !== null && lon !== null;
     const label = name || (has ? `${lat.toFixed(5)}, ${lon.toFixed(5)}` : S().map);
     const query = encodeURIComponent(name || `${lat},${lon}`);
+    const z = has ? zoomFor(lat, info.metres, w) : 15;
+    // A named place opens as that place, centred where the embed was; otherwise the point.
+    const google = has
+      ? name
+        ? `https://www.google.com/maps/place/${encodeURIComponent(name)}/@${lat},${lon},${z}z`
+        : `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`
+      : `https://www.google.com/maps/search/?api=1&query=${query}`;
     const apple = has
       ? `https://maps.apple.com/?ll=${lat},${lon}${name ? `&q=${encodeURIComponent(name)}` : ''}`
       : `https://maps.apple.com/?q=${query}`;
-    const google = has ? `https://www.google.com/maps/search/?api=1&query=${lat},${lon}` : `https://www.google.com/maps/search/?api=1&query=${query}`;
-    const osm = has ? `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=${zoomFor(lat, info.metres, w)}/${lat}/${lon}` : `https://www.openstreetmap.org/search?query=${query}`;
+    const osm = has ? `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=${z}/${lat}/${lon}` : `https://www.openstreetmap.org/search?query=${query}`;
+    const hint = el('div', { class: 'hint', text: S().zoomHint });
+    const map = has ? slippyMap(lat, lon, z, hint) : null;
     return el(
       'div',
       { class: 'map', style: `aspect-ratio:${w} / ${h}` },
-      has ? tiles(lat, lon, zoomFor(lat, info.metres, w), w, h) : null,
-      has ? icon('pin') : null,
+      map?.box,
       el(
         'div',
         { class: 'panel' },
@@ -483,12 +603,21 @@
         el(
           'div',
           { class: 'buttons' },
-          link(apple, { text: S().apple }),
           link(google, { text: S().google }),
+          link(apple, { text: S().apple }),
           link(osm, { text: S().osm }),
         ),
       ),
-      has ? el('div', { class: 'attrib' }, '© ', link('https://www.openstreetmap.org/copyright', { text: 'OpenStreetMap' })) : null,
+      map
+        ? el(
+            'div',
+            { class: 'zoom' },
+            el('button', { type: 'button', title: S().zoomIn, 'aria-label': S().zoomIn, text: '+', onclick: () => map.zoom(1) }),
+            el('button', { type: 'button', title: S().zoomOut, 'aria-label': S().zoomOut, text: '−', onclick: () => map.zoom(-1) }),
+          )
+        : null,
+      map ? hint : null,
+      map ? el('div', { class: 'attrib', text: S().mapData }) : null,
     );
   };
 
