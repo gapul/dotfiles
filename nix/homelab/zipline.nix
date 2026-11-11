@@ -6,8 +6,10 @@
 #
 # Native module rather than a container: nixpkgs carries Zipline with a hardened unit, and
 # its database is one more DB in the native PostgreSQL that atuin and synapse already use
-# (database.createLocally). The uploads stay on local disk under /var/lib/private/zipline,
-# which restic already covers via /var/lib.
+# (database.createLocally). R2 credentials and the datasource switch live in the encrypted
+# zipline.env. Until that file selects s3, uploads stay on local disk under
+# /var/lib/private/zipline, which restic already covers via /var/lib. Copy existing objects
+# before switching; selecting a datasource does not migrate them (see README.md).
 #
 # Goes through the tunnel, like send / booking. A shared link is only useful if the
 # recipient outside the tailnet can open it, so DNS for snap.gapul.net is the tunnel's CNAME.
@@ -24,8 +26,12 @@
       CORE_DEFAULT_DOMAIN = "snap.gapul.net";
       # Already the default; pinned so the public dashboard never grows a sign-up form.
       FEATURES_USER_REGISTRATION = "false";
+      # Cloudflare R2's S3-compatible API. Bucket, endpoint and credentials come from
+      # zipline.env, together with DATASOURCE_TYPE=s3 after existing uploads are copied.
+      DATASOURCE_S3_REGION = "auto";
+      DATASOURCE_S3_FORCE_PATH_STYLE = "true";
     };
-    # CORE_SECRET (at least 32 characters). See README.md.
+    # CORE_SECRET and R2 connection settings. See README.md.
     environmentFiles = [ "/var/lib/secrets/zipline.env" ];
   };
 }
