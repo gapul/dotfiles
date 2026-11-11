@@ -453,6 +453,10 @@ in
         # Ctrl+Tab goes to the tab used last (and on through recent ones while Ctrl is held),
         # like Alt+Tab between windows, instead of the next tab in the strip.
         "browser.ctrlTab.sortByRecentlyUsed" = true;
+        # Pages do not put the cursor in a text box on load (the autofocus attribute is ignored), so
+        # Surfingkeys keys work from the start instead of being typed into a search field.
+        # Script-driven focus() is caught by Surfingkeys (enableAutoFocus in its config.js).
+        "browser.autofocus" = false;
         # Minimal chrome, the pref half (the CSS half is in userChrome below). No bookmarks
         # toolbar. No tool buttons at the bottom of the tab strip: the pref lists the enabled
         # tools, but an empty list is treated as "first run" and refilled with the defaults, so
