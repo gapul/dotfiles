@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        fx-embed: embedded tweets via fxtwitter
 // @namespace   https://github.com/gapul/dotfiles
-// @version     0.7.0
+// @version     0.7.1
 // @description Renders embedded tweets from api.fxtwitter.com instead of X, laid out like X's own embed, without cookies or Referer.
 // @match       *://*/*
 // @exclude     *://x.com/*
@@ -119,7 +119,7 @@
     a:hover { text-decoration: underline; }
     .icon { display: inline-flex; }
     .icon svg { width: 100%; height: 100%; fill: currentColor; }
-    .card { font: 15px/20px "TwitterChirp", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    .card { position: relative; font: 15px/20px "TwitterChirp", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
         "Hiragino Sans", "Noto Sans CJK JP", sans-serif;
       color: var(--fg); background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
       padding: 12px 16px 4px; }
@@ -133,9 +133,14 @@
     .verified.business { color: #e2b719; }
     .verified.government { color: #829aab; }
     .handle, .muted { color: var(--muted); }
-    .x { width: 24px; height: 24px; color: var(--fg); align-self: flex-start; }
+    /* Pinned to the card's corner, as X does, so it sits on the first row whether that is the
+       author or the parent tweet. */
+    a.x { position: absolute; top: 12px; right: 16px; display: block; width: 24px; height: 24px; color: var(--fg); }
+    .icon.x { width: 100%; height: 100%; }
+    .card > .head, .pbody > .head { padding-right: 32px; }
+    .date { font-weight: 400; color: var(--muted); margin-left: 4px; }
     .reply-to { color: var(--muted); margin-top: 4px; }
-    .text { font-size: 17px; line-height: 24px; white-space: pre-wrap; overflow-wrap: anywhere; margin: 12px 0; }
+    .text { font-size: 20px; line-height: 24px; white-space: pre-wrap; overflow-wrap: anywhere; margin: 8px 0; }
     .media { display: grid; gap: 2px; border: 1px solid var(--border); border-radius: 16px; overflow: hidden; margin: 12px 0; }
     .media > * { position: relative; display: block; min-height: 0; }
     .media img { display: block; width: 100%; height: 100%; object-fit: cover; }
@@ -174,10 +179,10 @@
     .err { font: 14px system-ui, sans-serif; color: #f4212e; }
     .parent { display: flex; gap: 8px; color: inherit; text-decoration: none !important; }
     .rail { display: flex; flex-direction: column; align-items: center; width: 48px; flex: none; }
-    .rail .avatar { width: 40px; height: 40px; }
+    .rail .avatar { width: 48px; height: 48px; }
     .line { flex: 1; width: 2px; margin-top: 4px; background: var(--border); }
-    .pbody { min-width: 0; flex: 1; padding-bottom: 12px; }
-    .pbody .text { font-size: 15px; line-height: 20px; margin: 2px 0 0; }
+    .pbody { min-width: 0; flex: 1; padding-bottom: 8px; }
+    .pbody .text { font-size: 15px; line-height: 20px; margin: 4px 0 0; }
     .pbody .media { margin-bottom: 0; }
     .ph { position: relative; }
     .alt { position: absolute; left: 8px; bottom: 8px; font: 700 12px/1 system-ui, sans-serif; color: #fff;
@@ -229,7 +234,7 @@
       likes: '件のいいね',
       views: '件の表示',
       bookmarks: '件のブックマーク',
-      readReplies: (n) => `X で${n}件の返信を読む`,
+      readReplies: (n) => `${n}件の返信を読む`,
       fetchFailed: (msg) => `fxtwitter から取得できませんでした: ${msg}`,
       deleted: 'このツイートは削除されたか、見つかりません',
       restricted: '非公開アカウントか、表示が制限されたツイートです',
@@ -269,9 +274,19 @@
   const compact = (n) =>
     (formats[locale()] ??= new Intl.NumberFormat(locale(), { notation: 'compact', maximumFractionDigits: 1 })).format(n);
   const number = (n) => n.toLocaleString(locale());
-  // 2022/11/2 in Japanese, Nov 2, 2022 in English, as X writes them.
+  // 2022年11月2日 in Japanese, Nov 2, 2022 in English, as X writes them.
   const shortDate = (sec) =>
-    new Date(sec * 1000).toLocaleDateString(locale(), lang() === 'ja' ? {} : { month: 'short', day: 'numeric', year: 'numeric' });
+    new Date(sec * 1000).toLocaleDateString(locale(), { year: 'numeric', month: lang() === 'ja' ? 'long' : 'short', day: 'numeric' });
+
+  // The text without the leading @mentions of the accounts being replied to, which X keeps out
+  // of the displayed range (raw_text.display_text_range, counted in code points).
+  const displayText = (t) => {
+    const text = t.text ?? '';
+    const start = t.raw_text?.display_text_range?.[0];
+    if (!start) return text;
+    const prefix = Array.from(t.raw_text.text ?? '').slice(0, start).join('');
+    return prefix && text.startsWith(prefix) ? text.slice(prefix.length) : text;
+  };
 
   // URLs, @mentions and #hashtags become links; everything else stays text.
   const richText = (text, hasMedia) => {
@@ -419,7 +434,7 @@
       q.url,
       { class: 'quote' },
       author(q, true),
-      richText(q.text ?? '', Boolean(q.media?.all?.length)),
+      richText(displayText(q), Boolean(q.media?.all?.length)),
       renderMedia(q.media, q.possibly_sensitive),
     );
 
@@ -436,10 +451,20 @@
         el(
           'div',
           { class: 'head' },
-          el('span', { class: 'name' }, el('span', { text: a.name ?? '' }), badge(a)),
-          el('span', { class: 'muted', text: `@${a.screen_name ?? '?'} · ${shortDate(p.created_timestamp)}` }),
+          el(
+            'div',
+            { class: 'who' },
+            el(
+              'span',
+              { class: 'name' },
+              el('span', { text: a.name ?? '' }),
+              badge(a),
+              el('span', { class: 'date', text: `· ${shortDate(p.created_timestamp)}` }),
+            ),
+            el('span', { class: 'handle', text: `@${a.screen_name ?? '?'}` }),
+          ),
         ),
-        richText(p.text ?? '', Boolean(p.media?.all?.length)),
+        richText(displayText(p), Boolean(p.media?.all?.length)),
         renderMedia(p.media, p.possibly_sensitive),
       ),
     );
@@ -466,9 +491,17 @@
       typeof n === 'number' ? link(t.url, { class: cls, title: `${number(n)} ${label}` }, icon(name), el('span', { text: compact(n) })) : null;
     const reposts = (t.retweets ?? 0) + (t.quotes ?? 0);
     const parent = el('div');
+    // "Replying to @x" stands in for the parent tweet only until (unless) it loads.
+    const replyTo = t.replying_to
+      ? el('div', { class: 'reply-to' }, S().replyingTo, link(`https://x.com/${t.replying_to}`, { text: `@${t.replying_to}` }))
+      : null;
     if (t.replying_to_status) {
       request(API + t.replying_to_status, 'json')
-        .then((data) => data?.tweet && parent.replaceChildren(renderParent(data.tweet)))
+        .then((data) => {
+          if (!data?.tweet) return;
+          parent.replaceChildren(renderParent(data.tweet));
+          replyTo?.remove();
+        })
         .catch(() => {});
     }
     return el(
@@ -476,8 +509,8 @@
       { class: 'card' },
       parent,
       author(t, false),
-      t.replying_to ? el('div', { class: 'reply-to' }, S().replyingTo, link(`https://x.com/${t.replying_to}`, { text: `@${t.replying_to}` })) : null,
-      richText(t.text ?? '', Boolean(t.media?.all?.length)),
+      replyTo,
+      richText(displayText(t), Boolean(t.media?.all?.length)),
       renderPoll(t.poll),
       renderMedia(t.media, t.possibly_sensitive),
       t.quote ? renderQuote(t.quote) : null,
