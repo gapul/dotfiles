@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        fx-embed: embedded tweets via fxtwitter
 // @namespace   https://github.com/gapul/dotfiles
-// @version     0.4.0
+// @version     0.5.0
 // @description Renders embedded tweets from api.fxtwitter.com instead of X, laid out like X's own embed, without cookies or Referer.
 // @match       *://*/*
 // @exclude     *://x.com/*
@@ -42,15 +42,19 @@
 
   // GM_xmlhttpRequest runs outside the page: no page Referer, no page CSP, and `anonymous`
   // drops cookies.
-  const request = (url, responseType) =>
+  const request = (url, responseType, onprogress, timeout = 15000) =>
     new Promise((resolve, reject) => {
       GM_xmlhttpRequest({
         url,
         method: 'GET',
         anonymous: true,
         responseType,
-        timeout: 15000,
-        onload: (r) => (r.status >= 200 && r.status < 300 ? resolve(r.response) : reject(new Error(`HTTP ${r.status}`))),
+        timeout,
+        onprogress,
+        onload: (r) =>
+          r.status >= 200 && r.status < 300
+            ? resolve(r.response)
+            : reject(Object.assign(new Error(`HTTP ${r.status}`), { status: r.status })),
         onerror: () => reject(new Error('network error')),
         ontimeout: () => reject(new Error('timeout')),
       });
@@ -93,6 +97,8 @@
       'M1.751 10c0-4.42 3.584-8 8.005-8h4.366c4.49 0 8.129 3.64 8.129 8.13 0 2.96-1.607 5.68-4.196 7.11l-8.054 4.46v-3.69h-.067c-4.49.1-8.183-3.51-8.183-8.01zm8.005-6c-3.317 0-6.005 2.69-6.005 6 0 3.37 2.77 6.08 6.138 6.01l.351-.01h1.761v2.3l5.087-2.81c1.951-1.08 3.163-3.13 3.163-5.36 0-3.39-2.744-6.13-6.129-6.13H9.756z',
     link: 'M18.36 5.64c-1.95-1.96-5.11-1.96-7.07 0L9.88 7.05 8.46 5.64l1.42-1.42c2.73-2.73 7.16-2.73 9.9 0 2.73 2.74 2.73 7.17 0 9.9l-1.42 1.42-1.41-1.42 1.41-1.41c1.96-1.96 1.96-5.12 0-7.07zm-2.12 3.53l-7.07 7.07-1.41-1.41 7.07-7.07 1.41 1.41zm-12.02.71l1.42-1.42 1.41 1.42-1.41 1.41c-1.96 1.96-1.96 5.12 0 7.07 1.95 1.96 5.11 1.96 7.07 0l1.41-1.41 1.42 1.41-1.42 1.42c-2.73 2.73-7.16 2.73-9.9 0-2.73-2.74-2.73-7.17 0-9.9z',
     play: 'M8 5v14l11-7z',
+    bookmark:
+      'M4 4.5C4 3.12 5.119 2 6.5 2h11C18.881 2 20 3.12 20 4.5v18.44l-8-5.71-8 5.71V4.5zM6.5 4c-.276 0-.5.22-.5.5v14.56l6-4.29 6 4.29V4.5c0-.28-.224-.5-.5-.5h-11z',
   };
   const icon = (name, cls) => {
     const span = el('span', { class: `icon ${cls ?? name}` });
@@ -160,6 +166,27 @@
       padding: 6px 16px; margin: 4px 0 12px; }
     .more:hover { background: var(--hover); text-decoration: none; }
     .err { font: 14px system-ui, sans-serif; color: #f4212e; }
+    .parent { display: flex; gap: 8px; color: inherit; text-decoration: none !important; }
+    .rail { display: flex; flex-direction: column; align-items: center; width: 48px; flex: none; }
+    .rail .avatar { width: 40px; height: 40px; }
+    .line { flex: 1; width: 2px; margin-top: 4px; background: var(--border); }
+    .pbody { min-width: 0; flex: 1; padding-bottom: 12px; }
+    .pbody .text { font-size: 15px; line-height: 20px; margin: 2px 0 0; }
+    .pbody .media { margin-bottom: 0; }
+    .ph { position: relative; }
+    .alt { position: absolute; left: 8px; bottom: 8px; font: 700 12px/1 system-ui, sans-serif; color: #fff;
+      background: rgba(0, 0, 0, 0.75); border-radius: 4px; padding: 3px 5px; cursor: help; }
+    .video { cursor: pointer; background: #000; }
+    .video .status { position: absolute; left: 8px; bottom: 8px; font: 700 12px system-ui, sans-serif; color: #fff;
+      background: rgba(0, 0, 0, 0.75); border-radius: 4px; padding: 2px 6px; }
+    .media video { display: block; width: 100%; height: 100%; max-height: 510px; background: #000; object-fit: contain; }
+    .media.sensitive > :not(.reveal) { filter: blur(28px); }
+    .reveal { position: absolute; inset: 0; z-index: 1; display: grid; place-content: center; gap: 8px; text-align: center;
+      color: #fff; background: rgba(0, 0, 0, 0.35); border: 0; font: 700 15px system-ui, sans-serif; cursor: pointer; }
+    .media { position: relative; }
+    .gone { padding-bottom: 12px; }
+    .gone .why { font-weight: 700; margin-bottom: 8px; }
+    .gone ::slotted(*) { margin: 8px 0 !important; color: var(--fg) !important; }
   `;
 
   // Returns the <img> at once and fills it when the fetch lands. A blob: URL keeps the image off
@@ -196,25 +223,72 @@
     return out;
   };
 
-  const renderMedia = (media) => {
+  const photo = (m) => {
+    const img = image(m.url, '', () => link(m.url, { class: 'fallback', text: '画像を開く' }));
+    if (!m.altText) return img;
+    img.alt = m.altText;
+    return el('div', { class: 'ph' }, img, el('span', { class: 'alt', text: 'ALT', title: m.altText }));
+  };
+
+  // The largest MP4 up to 720p-ish bitrate: enough on a card, and a short clip stays a few MB.
+  const pickVideo = (m) => {
+    const mp4 = (m.variants ?? []).filter((v) => v.content_type === 'video/mp4' && v.url);
+    const fit = mp4.filter((v) => v.bitrate <= 2500000).sort((a, b) => b.bitrate - a.bitrate)[0];
+    return fit?.url ?? mp4.sort((a, b) => a.bitrate - b.bitrate)[0]?.url ?? m.url;
+  };
+
+  // Videos and GIFs show their poster and play in place on click. The file comes through
+  // GM_xmlhttpRequest like images do (no cookies, no Referer), downloaded whole before playing.
+  const video = (m) => {
+    const gif = m.type === 'gif';
+    const status = el('span', { class: 'status', text: gif ? 'GIF' : m.duration ? duration(m.duration) : '動画' });
+    const box = el(
+      'div',
+      { class: 'video', role: 'button', tabindex: '0', title: '再生' },
+      m.thumbnail_url ? image(m.thumbnail_url) : null,
+      el('span', { class: 'playwrap' }, icon('play')),
+      status,
+    );
+    const play = async () => {
+      if (box.dataset.busy) return;
+      box.dataset.busy = '1';
+      try {
+        const blob = await request(
+          MEDIA_URL(pickVideo(m)),
+          'blob',
+          (e) => e.total && (status.textContent = `読み込み中 ${Math.round((e.loaded / e.total) * 100)}%`),
+          120000,
+        );
+        const v = el('video', { playsinline: '' });
+        Object.assign(v, gif ? { loop: true, muted: true, autoplay: true } : { controls: true, autoplay: true });
+        v.onerror = () => v.replaceWith(link(m.url, { class: 'fallback', text: '動画を開く' }));
+        v.src = URL.createObjectURL(blob);
+        box.replaceWith(v);
+      } catch (e) {
+        box.replaceWith(link(m.url, { class: 'fallback', text: `動画を開く（読み込み失敗: ${e.message}）` }));
+      }
+    };
+    box.addEventListener('click', play);
+    box.addEventListener('keydown', (e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), play()));
+    return box;
+  };
+
+  const duration = (sec) => `${Math.floor(sec / 60)}:${String(Math.round(sec % 60)).padStart(2, '0')}`;
+
+  const renderMedia = (media, sensitive) => {
     const items = (media?.all ?? []).slice(0, 4);
     if (!items.length) return null;
     const box = el('div', { class: `media n${items.length}` });
-    for (const m of items) {
-      if (m.type === 'photo') {
-        box.append(image(m.url, '', () => link(m.url, { class: 'fallback', text: '画像を開く' })));
-      } else {
-        // Videos and GIFs show their poster; playing one is an explicit visit to video.twimg.com.
-        const label = m.type === 'gif' ? 'GIF を開く' : '動画を開く';
-        box.append(
-          link(
-            m.url,
-            { title: label },
-            m.thumbnail_url ? image(m.thumbnail_url) : el('span', { class: 'fallback', text: label }),
-            el('span', { class: 'playwrap' }, icon('play')),
-          ),
-        );
-      }
+    for (const m of items) box.append(m.type === 'photo' ? photo(m) : video(m));
+    if (sensitive) {
+      box.classList.add('sensitive');
+      const reveal = el(
+        'button',
+        { type: 'button', class: 'reveal', onclick: () => (box.classList.remove('sensitive'), reveal.remove()) },
+        el('span', { text: 'センシティブな内容の可能性があります' }),
+        el('span', { text: '表示する' }),
+      );
+      box.append(reveal);
     }
     return box;
   };
@@ -256,14 +330,46 @@
         )
       : null;
 
+  // A block that opens `url` when clicked anywhere but on its own links and media controls.
+  // (An <a> around it would swallow clicks on the video player and the reveal button.)
+  const clickable = (url, props, ...children) => {
+    const box = el('div', { ...props, style: 'cursor:pointer' }, ...children);
+    box.addEventListener('click', (e) => {
+      if (!e.target.closest('a, button, video, .video, .reveal')) window.open(url, '_blank', 'noopener,noreferrer');
+    });
+    return box;
+  };
+
   const renderQuote = (q) =>
-    link(
+    clickable(
       q.url,
-      { class: 'quote', style: 'display:block;color:inherit;text-decoration:none' },
+      { class: 'quote' },
       author(q, true),
       richText(q.text ?? '', Boolean(q.media?.all?.length)),
-      renderMedia(q.media),
+      renderMedia(q.media, q.possibly_sensitive),
     );
+
+  // The tweet being replied to, drawn above the main one with a thread line, as on x.com.
+  const renderParent = (p) => {
+    const a = p.author ?? {};
+    return clickable(
+      p.url,
+      { class: 'parent' },
+      el('div', { class: 'rail' }, a.avatar_url ? image(a.avatar_url, 'avatar') : null, el('div', { class: 'line' })),
+      el(
+        'div',
+        { class: 'pbody' },
+        el(
+          'div',
+          { class: 'head' },
+          el('span', { class: 'name', text: a.name ?? '' }),
+          el('span', { class: 'muted', text: `@${a.screen_name ?? '?'} · ${new Date(p.created_timestamp * 1000).toLocaleDateString('ja-JP')}` }),
+        ),
+        richText(p.text ?? '', Boolean(p.media?.all?.length)),
+        renderMedia(p.media, p.possibly_sensitive),
+      ),
+    );
+  };
 
   const renderTweet = (t) => {
     const d = new Date(t.created_timestamp * 1000);
@@ -277,22 +383,31 @@
         }),
     });
     copy.append(icon('link', 'link'), el('span', { text: 'リンクをコピー' }));
+    const views = t.views ? ` · ${compact.format(t.views)}件の表示` : '';
+    const parent = el('div');
+    if (t.replying_to_status) {
+      request(API + t.replying_to_status, 'json')
+        .then((data) => data?.tweet && parent.replaceChildren(renderParent(data.tweet)))
+        .catch(() => {});
+    }
     return el(
       'div',
       { class: 'card' },
+      parent,
       author(t, false),
       t.replying_to ? el('div', { class: 'reply-to' }, '返信先: ', link(`https://x.com/${t.replying_to}`, { text: `@${t.replying_to}` })) : null,
       richText(t.text ?? '', Boolean(t.media?.all?.length)),
       renderPoll(t.poll),
-      renderMedia(t.media),
+      renderMedia(t.media, t.possibly_sensitive),
       t.quote ? renderQuote(t.quote) : null,
       note ? el('div', { class: 'note' }, el('b', { text: 'コミュニティノート' }), el('span', { text: note })) : null,
-      link(t.url, { class: 'time', text: when }),
+      link(t.url, { class: 'time', text: when + views }),
       el(
         'div',
         { class: 'actions' },
         link(t.url, {}, icon('heart'), el('span', { text: compact.format(t.likes ?? 0) })),
         link(t.url, {}, icon('reply'), el('span', { text: '返信' })),
+        t.bookmarks ? link(t.url, {}, icon('bookmark'), el('span', { text: compact.format(t.bookmarks) })) : null,
         copy,
       ),
       link(t.url, {
@@ -366,11 +481,30 @@
         applyTheme(host);
         out.replaceChildren(renderTweet(data.tweet));
       } catch (e) {
-        if (iframe) host.replaceWith(node);
+        applyTheme(host);
+        if ([401, 403, 404].includes(e.status)) out.replaceChildren(renderGone(node, id, e.status));
+        else if (iframe) host.replaceWith(node);
         else out.replaceChildren(el('div', { class: 'err', text: `fxtwitter から取得できませんでした: ${e.message}` }), el('slot'));
       }
     });
     observer.observe(host);
+  };
+
+  // Deleted, protected or suspended: say so, keep the page's own copy of the text visible, and
+  // point at the Wayback Machine's captures of the tweet.
+  const renderGone = (node, id, status) => {
+    const href = [...(node.querySelectorAll?.('a[href]') ?? [])]
+      .map((a) => a.href)
+      .reverse()
+      .find((h) => h.includes(`/status/${id}`) || h.includes(`/statuses/${id}`));
+    const user = href?.match(/\.com\/([^/]+)\/status/)?.[1] ?? 'i';
+    return el(
+      'div',
+      { class: 'card gone' },
+      el('div', { class: 'why', text: status === 404 ? 'このツイートは削除されたか、見つかりません' : '非公開アカウントか、表示が制限されたツイートです' }),
+      el('slot'),
+      link(`https://web.archive.org/web/*/https://twitter.com/${user}/status/${id}*`, { text: 'Wayback Machine で探す' }),
+    );
   };
 
   const parsing = () => document.readyState === 'loading';
