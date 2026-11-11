@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name        g-embed: YouTube and Google Maps embeds without Google
 // @namespace   https://github.com/gapul/dotfiles
-// @version     0.1.0
-// @description Replaces embedded YouTube players and Google Maps with cards drawn from noembed.com and OpenStreetMap; opening one is a click away.
+// @version     0.2.0
+// @description Replaces embedded YouTube players and Google Maps with cards drawn from noembed.com and OpenStreetMap; YouTube videos play in place on click.
 // @match       *://*/*
 // @exclude     *://*.youtube.com/*
 // @exclude     *://youtube.com/*
@@ -12,6 +12,8 @@
 // @connect     noembed.com
 // @connect     i.ytimg.com
 // @connect     tile.openstreetmap.org
+// @connect     www.youtube.com
+// @connect     googlevideo.com
 // @run-at      document-start
 // @noframes
 // @downloadURL https://raw.githubusercontent.com/gapul/dotfiles/main/configs/apps/violentmonkey/g-embed.user.js
@@ -22,8 +24,11 @@
 // google.com/maps iframes outright, leaving blank boxes. This puts a card in their place, the way
 // fx-embed does for tweets:
 //   YouTube: title and channel from noembed.com (a third-party oEmbed proxy, so Google is not
-//     asked), thumbnail from i.ytimg.com without cookies or Referer; a click opens the video on
-//     youtube.com. Playing in place is not possible: the player itself is what gets blocked.
+//     asked), thumbnail from i.ytimg.com without cookies or Referer. Play streams the video in
+//     the card: strict mode blocks both the player and googlevideo.com in the page, so the
+//     stream URLs come from YouTube's player API and the segments are fetched through
+//     GM_xmlhttpRequest into a MediaSource. YouTube learns what was played only when Play is
+//     pressed, and gets no cookies or Referer.
 //   Google Maps: coordinates and place name read from the embed URL, map drawn from
 //     OpenStreetMap tiles; Google is never contacted. Buttons open the place in Apple Maps,
 //     Google Maps or OpenStreetMap.
@@ -39,14 +44,16 @@
 
   // GM_xmlhttpRequest runs outside the page: no page Referer, no page CSP, and `anonymous`
   // drops cookies.
-  const request = (url, responseType) =>
+  const request = (url, responseType, { method = 'GET', headers, data, timeout = 15000 } = {}) =>
     new Promise((resolve, reject) => {
       GM_xmlhttpRequest({
         url,
-        method: 'GET',
+        method,
+        headers,
+        data,
         anonymous: true,
         responseType,
-        timeout: 15000,
+        timeout,
         onload: (r) => (r.status >= 200 && r.status < 300 ? resolve(r.response) : reject(new Error(`HTTP ${r.status}`))),
         onerror: () => reject(new Error('network error')),
         ontimeout: () => reject(new Error('timeout')),
@@ -76,8 +83,6 @@
   const link = (href, props = {}, ...children) =>
     el('a', { href, target: '_blank', rel: 'noopener noreferrer', referrerpolicy: 'no-referrer', ...props }, ...children);
 
-  const open = (url) => window.open(url, '_blank', 'noopener,noreferrer');
-
   // Fetched images go through GM_xmlhttpRequest into blob: URLs: i.ytimg.com is on the tracking
   // list strict mode blocks, and OSM tiles should not carry the page's address either.
   // Tries each URL in turn until one loads; drops the image if none does.
@@ -93,7 +98,9 @@
     ja: {
       watch: 'YouTube で見る',
       video: 'YouTube 動画',
-      play: '再生（YouTube で開く）',
+      play: '再生',
+      loading: '読み込み中…',
+      cannotPlay: (why) => `ここでは再生できません（${why}）。YouTube で見る`,
       map: '地図',
       apple: 'Apple マップ',
       google: 'Google マップ',
@@ -102,7 +109,9 @@
     en: {
       watch: 'Watch on YouTube',
       video: 'YouTube video',
-      play: 'Play (opens YouTube)',
+      play: 'Play',
+      loading: 'Loading…',
+      cannotPlay: (why) => `Can't play here (${why}). Watch on YouTube`,
       map: 'Map',
       apple: 'Apple Maps',
       google: 'Google Maps',
@@ -138,7 +147,13 @@
       display: grid; place-items: center; border: 0; border-radius: 14px; background: rgba(33, 33, 33, 0.8); cursor: pointer; }
     .yt:hover .play, .yt .play:focus-visible { background: #f00; }
     .yt .play .tri { width: 30px; height: 30px; color: #fff; }
-    .yt .bottom { position: absolute; left: 12px; bottom: 12px; display: inline-flex; align-items: center; gap: 6px;
+    .yt.playing { cursor: default; }
+    .yt video { position: absolute; inset: 0; width: 100%; height: 100%; background: #000; }
+    .yt .status { position: absolute; left: 50%; top: calc(50% + 40px); transform: translateX(-50%); font-size: 13px;
+      padding: 2px 8px; border-radius: 4px; background: rgba(0, 0, 0, 0.7); }
+    .yt .fail { position: absolute; inset: auto 12px 12px; padding: 8px 12px; border-radius: 8px; background: rgba(0, 0, 0, 0.8);
+      color: #fff; text-decoration: none; }
+    .yt .bottom { text-decoration: none; color: #fff; position: absolute; left: 12px; bottom: 12px; display: inline-flex; align-items: center; gap: 6px;
       padding: 6px 12px; border-radius: 999px; background: rgba(0, 0, 0, 0.75); font-weight: 500; }
     .yt .logo { width: 22px; height: 16px; border-radius: 4px; background: #f00; display: grid; place-items: center; }
     .yt .logo .tri { width: 12px; height: 12px; color: #fff; }
@@ -197,6 +212,160 @@
 
   // ---- YouTube --------------------------------------------------------------------------
 
+  // ---- In-place playback ------------------------------------------------------------------
+
+  // YouTube's player API, asked as its iOS app (the client that currently returns plain stream
+  // URLs without signing). If YouTube changes this, Play falls back to a link.
+  const INNERTUBE = 'https://www.youtube.com/youtubei/v1/player?prettyPrint=false';
+  const CLIENT = { clientName: 'IOS', clientVersion: '20.10.4', hl: 'en' };
+  const isStream = (url) => {
+    const u = parseUrl(url);
+    return u?.protocol === 'https:' && u.hostname.endsWith('.googlevideo.com');
+  };
+
+  // The best MP4 video up to 720p and the best MP4 audio this browser can play through MSE.
+  const streams = async (id) => {
+    const body = { videoId: id, context: { client: CLIENT }, contentCheckOk: true, racyCheckOk: true };
+    const d = await request(INNERTUBE, 'json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, data: JSON.stringify(body) });
+    if (d?.playabilityStatus?.status !== 'OK') throw new Error(d?.playabilityStatus?.reason || 'unavailable');
+    const usable = (d.streamingData?.adaptiveFormats ?? []).filter(
+      (f) => isStream(f.url) && f.initRange && f.indexRange && window.MediaSource?.isTypeSupported(f.mimeType),
+    );
+    const video = usable
+      .filter((f) => f.mimeType.startsWith('video/mp4') && (f.height ?? 0) <= 720)
+      .sort((a, b) => (b.height ?? 0) - (a.height ?? 0) || b.bitrate - a.bitrate)[0];
+    const audio = usable.filter((f) => f.mimeType.startsWith('audio/mp4')).sort((a, b) => b.bitrate - a.bitrate)[0];
+    if (!video || !audio) throw new Error('no playable format');
+    return { video, audio, duration: Number(d.videoDetails?.lengthSeconds) || Number(video.approxDurationMs) / 1000 };
+  };
+
+  // Segment table from the stream's sidx box: byte ranges and start times, so playback can
+  // fetch ahead a little at a time and jump on seek.
+  const parseSidx = (buf, anchor) => {
+    const v = new DataView(buf);
+    let p = 0;
+    while (p + 8 <= v.byteLength && String.fromCharCode(...new Uint8Array(buf, p + 4, 4)) !== 'sidx') p += v.getUint32(p) || v.byteLength;
+    if (p + 8 > v.byteLength) throw new Error('no index');
+    const version = v.getUint8(p + 8);
+    let q = p + 16;
+    const timescale = v.getUint32(q);
+    q += 4;
+    let t;
+    let first;
+    if (version === 0) {
+      t = v.getUint32(q);
+      first = v.getUint32(q + 4);
+      q += 8;
+    } else {
+      t = Number(v.getBigUint64(q));
+      first = Number(v.getBigUint64(q + 8));
+      q += 16;
+    }
+    const count = v.getUint16(q + 2);
+    q += 4;
+    let offset = anchor + first;
+    const segs = [];
+    for (let i = 0; i < count; i++, q += 12) {
+      const size = v.getUint32(q) & 0x7fffffff;
+      const dur = v.getUint32(q + 4);
+      segs.push({ start: offset, end: offset + size - 1, time: t / timescale, end_time: (t + dur) / timescale });
+      offset += size;
+      t += dur;
+    }
+    return segs;
+  };
+
+  const AHEAD = 30; // seconds kept buffered ahead of the playhead
+  const BEHIND = 30; // seconds kept behind it before old data is dropped
+
+  // One SourceBuffer fed from one stream: init segment first, then media segments on demand.
+  const openTrack = async (ms, fmt) => {
+    const sb = ms.addSourceBuffer(fmt.mimeType);
+    const range = (a, b) => request(`${fmt.url}&range=${a}-${b}`, 'arraybuffer', { timeout: 30000 });
+    const [init, index] = await Promise.all([range(fmt.initRange.start, fmt.initRange.end), range(fmt.indexRange.start, fmt.indexRange.end)]);
+    const segs = parseSidx(index, Number(fmt.indexRange.end) + 1);
+    const done = () => new Promise((res, rej) => {
+      sb.addEventListener('updateend', res, { once: true });
+      sb.addEventListener('error', rej, { once: true });
+    });
+    const append = async (buf) => {
+      sb.appendBuffer(buf);
+      await done();
+    };
+    await append(init);
+    return { sb, segs, range, append, done, next: 0, busy: false };
+  };
+
+  const bufferedAhead = (sb, t) => {
+    for (let i = 0; i < sb.buffered.length; i++) {
+      if (sb.buffered.start(i) <= t + 0.5 && t < sb.buffered.end(i)) return sb.buffered.end(i) - t;
+    }
+    return 0;
+  };
+
+  const playInPlace = (card, id, start, watch) => {
+    const status = el('div', { class: 'status', text: S().loading });
+    card.append(status);
+    const fail = (e) => {
+      card.classList.remove('playing');
+      card.replaceChildren(card.firstChild ?? '', link(watch, { class: 'fail', text: S().cannotPlay(e.message || 'error') }));
+    };
+    streams(id)
+      .then(({ video: vf, audio: af, duration }) => {
+        const ms = new MediaSource();
+        const video = el('video', { controls: '', autoplay: '', playsinline: '' });
+        video.src = URL.createObjectURL(ms);
+        ms.addEventListener(
+          'sourceopen',
+          async () => {
+            try {
+              ms.duration = duration;
+              const tracks = await Promise.all([openTrack(ms, vf), openTrack(ms, af)]);
+              const pump = async (tr) => {
+                if (tr.busy || ms.readyState !== 'open') return;
+                const t = video.currentTime;
+                if (bufferedAhead(tr.sb, t) >= AHEAD) return;
+                // After a seek past the buffer, continue from the segment holding the playhead.
+                if (bufferedAhead(tr.sb, t) === 0) {
+                  const at = tr.segs.findIndex((sg) => sg.end_time > t);
+                  if (at !== -1) tr.next = at;
+                }
+                if (tr.next >= tr.segs.length) return finish();
+                tr.busy = true;
+                try {
+                  const sg = tr.segs[tr.next];
+                  const buf = await tr.range(sg.start, sg.end);
+                  if (t - BEHIND > 0 && tr.sb.buffered.length && tr.sb.buffered.start(0) < t - BEHIND) {
+                    tr.sb.remove(0, t - BEHIND);
+                    await tr.done();
+                  }
+                  await tr.append(buf);
+                  tr.next++;
+                } finally {
+                  tr.busy = false;
+                }
+                pump(tr);
+              };
+              const finish = () => {
+                if (tracks.every((tr) => tr.next >= tr.segs.length && !tr.busy && !tr.sb.updating) && ms.readyState === 'open') ms.endOfStream();
+              };
+              const pumpAll = () => tracks.forEach((tr) => pump(tr).catch(fail));
+              for (const ev of ['timeupdate', 'seeking', 'waiting', 'play']) video.addEventListener(ev, pumpAll);
+              if (start) video.currentTime = start;
+              pumpAll();
+            } catch (e) {
+              fail(e);
+            }
+          },
+          { once: true },
+        );
+        video.addEventListener('error', () => fail(new Error('media error')));
+        card.classList.add('playing');
+        card.replaceChildren(video);
+      })
+      .catch(fail);
+  };
+
   const youtubeCard = (id, start, { w, h }) => {
     const watch = `https://www.youtube.com/watch?v=${id}${start ? `&t=${start}s` : ''}`;
     // maxresdefault exists only for HD uploads (404 otherwise); hqdefault always does.
@@ -205,11 +374,19 @@
     const channel = el('div', { class: 'channel' });
     const card = el(
       'div',
-      { class: 'yt', style: `aspect-ratio:${w} / ${h}`, onclick: () => open(watch) },
+      {
+        class: 'yt',
+        style: `aspect-ratio:${w} / ${h}`,
+        onclick: (e) => {
+          if (card.classList.contains('playing') || card.dataset.started || e.target.closest('a')) return;
+          card.dataset.started = '1';
+          playInPlace(card, id, start, watch);
+        },
+      },
       thumb,
       el('div', { class: 'top' }, title, channel),
       el('button', { type: 'button', class: 'play', title: S().play, 'aria-label': S().play }, icon('play', 'tri')),
-      el('div', { class: 'bottom' }, el('span', { class: 'logo' }, icon('play', 'tri')), S().watch),
+      link(watch, { class: 'bottom' }, el('span', { class: 'logo' }, icon('play', 'tri')), S().watch),
     );
     request(`https://noembed.com/embed?url=${encodeURIComponent(`https://www.youtube.com/watch?v=${id}`)}`, 'json')
       .then((d) => {
