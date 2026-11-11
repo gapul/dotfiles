@@ -768,9 +768,9 @@ in
   # A sched_ext scheduler on top of the stock kernel: scx_lavd aims at interactive latency and
   # battery on laptops. It is a userspace service, so stopping it falls back to EEVDF at once,
   # with no reboot.
-  services.scx = {
+  services.scx-loader = {
     enable = true;
-    scheduler = "scx_lavd";
+    config.default_sched = "scx_lavd";
   };
 
   # Per-application outbound connection log, the mac's LuLu. Allow is the default: this is for
