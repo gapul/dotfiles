@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        fx-embed: embedded tweets via fxtwitter
 // @namespace   https://github.com/gapul/dotfiles
-// @version     0.2.0
+// @version     0.3.0
 // @description Renders embedded tweets (blockquote.twitter-tweet) from api.fxtwitter.com instead of X, without cookies or Referer.
 // @match       *://*/*
 // @exclude     *://x.com/*
@@ -78,11 +78,12 @@
     * { box-sizing: border-box; }
     .card { font: 14px/1.5 system-ui, sans-serif; color: #0f1419; background: #fff;
       border: 1px solid #cfd9de; border-radius: 12px; padding: 12px 14px; max-width: 550px; }
-    @media (prefers-color-scheme: dark) {
-      .card { color: #e7e9ea; background: #16181c; border-color: #2f3336; }
-      .muted { color: #8b98a5 !important; }
-    }
-    .head { display: flex; gap: 0.4em; flex-wrap: wrap; align-items: baseline; }
+    :host([data-theme="dark"]) .card { color: #e7e9ea; background: #16181c; border-color: #2f3336; }
+    :host([data-theme="dark"]) .muted { color: #8b98a5; }
+    .head { display: flex; gap: 0.4em; flex-wrap: wrap; align-items: center; }
+    .avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; flex: none; }
+    .quote .avatar { width: 20px; height: 20px; }
+    .avatar:not([src]) { visibility: hidden; }
     .name { font-weight: 700; }
     .muted { color: #536471; font-size: 13px; }
     .text { white-space: pre-wrap; overflow-wrap: anywhere; margin: 6px 0; }
@@ -96,14 +97,15 @@
     .err { color: #f4212e; }
   `;
 
-  const loadImage = async (url, box) => {
-    const blob = await request(MEDIA_URL(url), 'blob');
-    // A blob: URL keeps the image off the network from the page's side; some page CSPs refuse
-    // blob: in img-src, so fall back to a link.
-    const img = el('img', { alt: '' });
-    img.onerror = () => img.replaceWith(link(url, url));
-    img.src = URL.createObjectURL(blob);
-    box.append(img);
+  // Returns the <img> at once and fills it when the fetch lands. A blob: URL keeps the image off
+  // the network from the page's side; some page CSPs refuse blob: in img-src, and then (or when
+  // the fetch fails) `fallback` replaces the image, or the image is dropped.
+  const image = (url, cls, fallback) => {
+    const img = el('img', { alt: '', class: cls });
+    const fail = () => (fallback ? img.replaceWith(fallback()) : img.remove());
+    img.onerror = fail;
+    request(MEDIA_URL(url), 'blob').then((blob) => (img.src = URL.createObjectURL(blob)), fail);
+    return img;
   };
 
   const renderMedia = (media) => {
@@ -112,9 +114,7 @@
     const box = el('div', { class: 'media' });
     const photos = items.filter((m) => m.type === 'photo');
     const others = items.filter((m) => m.type !== 'photo');
-    for (const p of photos) {
-      loadImage(p.url, box).catch(() => box.append(link(p.url, '画像を開く')));
-    }
+    for (const p of photos) box.append(image(p.url, '', () => link(p.url, '画像を開く')));
     // Videos and GIFs stay as links: opening one is an explicit request to video.twimg.com.
     for (const v of others) box.append(link(v.url, v.type === 'gif' ? 'GIF を開く' : '動画を開く'));
     return box;
@@ -132,6 +132,7 @@
       el(
         'div',
         { class: 'head' },
+        t.author?.avatar_url ? image(t.author.avatar_url, 'avatar') : null,
         el('span', { class: 'name', text: t.author?.name ?? '' }),
         el('span', { class: 'muted', text: `@${t.author?.screen_name ?? '?'}` }),
         el('span', { class: 'muted', text: `· ${date}` }),
@@ -164,6 +165,8 @@
     const out = el('div');
     shadow.append(el('style', { text: STYLE }), out);
     bq.after(host);
+    themed.add(host);
+    applyTheme(host);
     // Fetch only once the tweet is about to scroll into view, so unread embeds cost no request.
     visible.set(host, async () => {
       try {
@@ -177,6 +180,31 @@
     });
     observer.observe(host);
   };
+
+  // Follow the page's own light/dark look rather than the OS setting: take the first opaque
+  // background behind the card and judge it by luminance. The OS setting decides only when
+  // nothing behind it paints a background.
+  const pageIsDark = (node) => {
+    for (let n = node.parentElement; n; n = n.parentElement) {
+      const m = getComputedStyle(n).backgroundColor.match(/[\d.]+/g);
+      if (!m || (m.length > 3 && Number(m[3]) < 0.5)) continue;
+      const [r, g, b] = m.slice(0, 3).map((c) => (Number(c) / 255) ** 2.2);
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b < 0.18;
+    }
+    return matchMedia('(prefers-color-scheme: dark)').matches;
+  };
+  const themed = new Set();
+  const applyTheme = (host) => host.setAttribute('data-theme', pageIsDark(host) ? 'dark' : 'light');
+  const reapplyThemes = () => {
+    for (const host of themed) host.isConnected ? applyTheme(host) : themed.delete(host);
+  };
+  // Sites switch themes by flipping a class or attribute on <html> or <body>, or by following
+  // the OS setting through CSS.
+  const themeWatch = new MutationObserver(reapplyThemes);
+  for (const n of [document.documentElement, document.body]) {
+    themeWatch.observe(n, { attributes: true, attributeFilter: ['class', 'style', 'data-theme', 'data-color-mode', 'data-mode'] });
+  }
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => requestAnimationFrame(reapplyThemes));
 
   const visible = new WeakMap();
   const observer = new IntersectionObserver(
