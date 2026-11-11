@@ -94,11 +94,14 @@ echo "━━━ Dev caches (__pycache__/*.pyc/.pytest_cache etc., excl Library, 
 # One expression instead of two passes: --prune stops fd inside a matched cache dir (so the
 # .pyc under one is not listed separately — it goes with the dir), and the \.pyc$ alternative
 # still catches strays lying outside a cache dir.
+# ~/.local/share/containers is rootless podman's image store: the .pyc there are part of image
+# layers (the nix store a nix-built image carries is read-only, so rm printed thousands of
+# "Permission denied" on nixos-laptop; writable layers were silently modified instead).
 pc=0; py=0
 while IFS= read -r p; do
   if [ -d "$p" ]; then rm -rf "$p" && pc=$((pc+1)); else rm -f "$p" && py=$((py+1)); fi
 done < <(fd --hidden --no-ignore --one-file-system --prune \
-  --exclude Library --exclude .Trash \
+  --exclude Library --exclude .Trash --exclude .local/share/containers \
   '^(__pycache__|\.pytest_cache|\.mypy_cache|\.ruff_cache|\.ipynb_checkpoints)$|\.pyc$' \
   "$HOME" 2>/dev/null)
 echo "  cache dirs: $pc, *.pyc: $py removed"
