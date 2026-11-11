@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        fx-embed: embedded tweets via fxtwitter
 // @namespace   https://github.com/gapul/dotfiles
-// @version     0.5.0
+// @version     0.5.1
 // @description Renders embedded tweets from api.fxtwitter.com instead of X, laid out like X's own embed, without cookies or Referer.
 // @match       *://*/*
 // @exclude     *://x.com/*
@@ -293,10 +293,13 @@
     return box;
   };
 
+  // Blue for individuals, gold for businesses, grey for government accounts.
+  const badge = (a) => (a.verification?.verified ? icon('verified', `verified ${a.verification.type ?? ''}`) : null);
+
   const author = (t, small) => {
     const a = t.author ?? {};
     const profile = a.url ?? `https://x.com/${a.screen_name}`;
-    const v = a.verification?.verified ? icon('verified', `verified ${a.verification.type ?? ''}`) : null;
+    const v = badge(a);
     return el(
       'div',
       { class: 'head' },
@@ -362,7 +365,7 @@
         el(
           'div',
           { class: 'head' },
-          el('span', { class: 'name', text: a.name ?? '' }),
+          el('span', { class: 'name' }, el('span', { text: a.name ?? '' }), badge(a)),
           el('span', { class: 'muted', text: `@${a.screen_name ?? '?'} · ${new Date(p.created_timestamp * 1000).toLocaleDateString('ja-JP')}` }),
         ),
         richText(p.text ?? '', Boolean(p.media?.all?.length)),
