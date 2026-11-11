@@ -111,6 +111,7 @@ in
   # real machine into this same hosts/ dir and enable the import below (it need not be committed to the repo).
   imports = [
     hardwareConfig
+    ./nixos-laptop-affiliate-browser.nix # isolated stock Chromium for point-site applications
     ./nixos-laptop-virtualisation.nix # virt-manager, KVM and virtual TPM
     ./nixos-laptop-darling.nix # Darling (macOS CLI binaries), package revived in pkgs/darling.nix
     ./nixos-laptop-vivado.nix # FPGA coursework (Vivado 2020.2, installed by hand into /opt/Xilinx)
