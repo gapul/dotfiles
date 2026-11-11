@@ -193,4 +193,51 @@ in
     Install.WantedBy = [ "graphical-session.target" ];
   };
 
+  # libskk never reconnects a lost skkserv connection: lookup() just returns nothing from then on,
+  # and neither `fcitx5-remote -r` nor anything else short of a restart opens a new one. On
+  # 2026-11-11 fcitx5 had been running for days with the socket gone (the cause was lost with the
+  # rotated journal), so conversion quietly fell back to the SKK-JISYO files. This checks each
+  # minute that fcitx5 still holds an established connection to the server, and restarts fcitx5
+  # when it does not but the server answers (if the server is down, a restart would not help, and
+  # its own ExecStartPost restarts fcitx5 once it is back).
+  systemd.user.services.skkserv-watchdog = {
+    Unit.Description = "Restart fcitx5 when its skkserv connection is gone";
+    Service = {
+      Type = "oneshot";
+      ExecStart = lib.getExe (
+        pkgs.writeShellApplication {
+          name = "skkserv-watchdog";
+          runtimeInputs = with pkgs; [
+            bash
+            coreutils
+            gnugrep
+            iproute2
+          ];
+          text = ''
+            systemctl=/run/current-system/sw/bin/systemctl
+            pid=$($systemctl --user show -p MainPID --value fcitx5.service)
+            [ "$pid" != 0 ] || exit 0
+            # Leave a fcitx5 that has only just started alone: libskk connects a moment in.
+            since=$($systemctl --user show --timestamp=unix -p ActiveEnterTimestamp --value fcitx5.service)
+            [ $(($(date +%s) - ''${since#@})) -ge 30 ] || exit 0
+            if ss -Htnp state established "( dport = :${toString skkservPort} )" | grep -q "pid=$pid,"; then
+              exit 0
+            fi
+            bash -c "exec 3<>/dev/tcp/127.0.0.1/${toString skkservPort}" 2>/dev/null || exit 0
+            echo "fcitx5 (pid $pid) has no skkserv connection; restarting it"
+            $systemctl --user try-restart fcitx5.service
+          '';
+        }
+      );
+    };
+  };
+  systemd.user.timers.skkserv-watchdog = {
+    Unit.Description = "Check fcitx5's skkserv connection every minute";
+    Timer = {
+      OnActiveSec = "1min";
+      OnUnitActiveSec = "1min";
+    };
+    Install.WantedBy = [ "timers.target" ];
+  };
+
 }
