@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        fx-embed: embedded tweets via fxtwitter
 // @namespace   https://github.com/gapul/dotfiles
-// @version     0.11.0
+// @version     0.11.1
 // @description Renders embedded tweets from api.fxtwitter.com instead of X, laid out like X's own embed, without cookies or Referer.
 // @match       *://*/*
 // @exclude     *://x.com/*
@@ -92,9 +92,9 @@
     verified:
       'M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81c-.66-1.31-1.91-2.19-3.34-2.19s-2.67.88-3.33 2.19c-1.4-.46-2.91-.2-3.92.81s-1.26 2.52-.8 3.91c-1.31.67-2.2 1.91-2.2 3.34s.89 2.67 2.2 3.34c-.46 1.39-.21 2.9.8 3.91s2.52 1.26 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.68-.88 3.34-2.19c1.39.45 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z',
     heart:
-      'M20.884 13.19c-1.351 2.48-4.001 5.12-8.379 7.67l-.503.3-.504-.3c-4.379-2.55-7.029-5.19-8.382-7.67-1.36-2.5-1.41-4.86-.514-6.67.887-1.79 2.647-2.91 4.601-3.01 1.651-.09 3.368.56 4.798 2.01 1.429-1.45 3.146-2.1 4.796-2.01 1.954.1 3.714 1.22 4.601 3.01.896 1.81.846 4.17-.514 6.67z',
+      'M16.697 5.5c-1.222-.06-2.679.51-3.89 2.16l-.805 1.09-.806-1.09C9.984 6.01 8.526 5.44 7.304 5.5c-1.243.07-2.349.78-2.91 1.91-.552 1.12-.633 2.78.479 4.82 1.074 1.97 3.257 4.27 7.129 6.61 3.87-2.34 6.052-4.64 7.126-6.61 1.111-2.04 1.03-3.7.477-4.82-.561-1.13-1.666-1.84-2.908-1.91zm4.187 7.69c-1.351 2.48-4.001 5.12-8.379 7.67l-.503.3-.504-.3c-4.379-2.55-7.029-5.19-8.382-7.67-1.36-2.5-1.41-4.86-.514-6.67.887-1.79 2.647-2.91 4.601-3.01 1.651-.09 3.368.56 4.798 2.01 1.429-1.45 3.146-2.1 4.796-2.01 1.954.1 3.714 1.22 4.601 3.01.896 1.81.846 4.17-.514 6.67z',
     reply:
-      'M1.751 10c0-4.42 3.584-8 8.005-8h4.366c4.49 0 8.129 3.64 8.129 8.13 0 2.96-1.607 5.68-4.196 7.11l-8.054 4.46v-3.69h-.067c-4.49.1-8.183-3.51-8.183-8.01z',
+      'M1.751 10c0-4.42 3.584-8 8.005-8h4.366c4.49 0 8.129 3.64 8.129 8.13 0 2.96-1.607 5.68-4.196 7.11l-8.054 4.46v-3.69h-.067c-4.49.1-8.183-3.51-8.183-8.01zm8.005-6c-3.317 0-6.005 2.69-6.005 6 0 3.37 2.77 6.08 6.138 6.01l.351-.01h1.761v2.3l5.087-2.81c1.951-1.08 3.163-3.13 3.163-5.36 0-3.39-2.744-6.13-6.129-6.13H9.756z',
     link: 'M18.36 5.64c-1.95-1.96-5.11-1.96-7.07 0L9.88 7.05 8.46 5.64l1.42-1.42c2.73-2.73 7.16-2.73 9.9 0 2.73 2.74 2.73 7.17 0 9.9l-1.42 1.42-1.41-1.42 1.41-1.41c1.96-1.96 1.96-5.12 0-7.07zm-2.12 3.53l-7.07 7.07-1.41-1.41 7.07-7.07 1.41 1.41zm-12.02.71l1.42-1.42 1.41 1.42-1.41 1.41c-1.96 1.96-1.96 5.12 0 7.07 1.95 1.96 5.11 1.96 7.07 0l1.41-1.41 1.42 1.41-1.42 1.42c-2.73 2.73-7.16 2.73-9.9 0-2.73-2.74-2.73-7.17 0-9.9z',
     play: 'M8 5v14l11-7z',
     repost:
@@ -172,13 +172,13 @@
     .time { color: var(--muted); display: block; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
     .actions { display: flex; flex-wrap: wrap; column-gap: 18px; padding: 4px 0; color: var(--muted); font-size: 14px; font-weight: 700; }
     .actions .share { margin-left: auto; }
-    .actions .r:hover { color: var(--blue); }
+    /* Grey at rest; each count takes x.com's colour only on hover. */
+    .actions .r:hover, .actions .vw:hover, .actions .bm:hover { color: var(--blue); }
     .actions .rp:hover { color: #00ba7c; }
+    .actions .lk:hover { color: var(--red); }
     .actions a, .actions button { display: inline-flex; align-items: center; gap: 4px; color: inherit; padding: 6px 0;
       background: none; border: 0; font: inherit; cursor: pointer; }
     .actions .icon { width: 20px; height: 20px; }
-    .actions .heart { color: var(--red); }
-    .actions .reply { color: var(--blue); }
     .more { display: block; text-align: center; font-weight: 700; border: 1px solid var(--border); border-radius: 999px;
       padding: 6px 16px; margin: 4px 0 12px; }
     .more:hover { background: var(--hover); text-decoration: none; }
@@ -655,9 +655,9 @@
         { class: 'actions' },
         stat('reply', t.replies, S().replies, 'r'),
         stat('repost', typeof t.retweets === 'number' ? reposts : undefined, S().reposts(number(t.quotes ?? 0)), 'rp'),
-        stat('heart', t.likes, S().likes),
-        stat('views', t.views, S().views),
-        stat('bookmark', t.bookmarks, S().bookmarks),
+        stat('heart', t.likes, S().likes, 'lk'),
+        stat('views', t.views, S().views, 'vw'),
+        stat('bookmark', t.bookmarks, S().bookmarks, 'bm'),
         copy,
       ),
       link(t.url, {
