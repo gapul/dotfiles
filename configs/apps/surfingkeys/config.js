@@ -56,6 +56,11 @@ if (window === window.top && !window.__surfingkeysColorSchemeObserver) {
 settings.omnibarPosition = "middle"; // float the omnibar in the upper third instead of pinning it to the top edge
 settings.omnibarMaxResults = 8;
 settings.hintAlign = "left";
+// Keep pages from taking keyboard focus by themselves: on load (stealFocusOnLoad, the default made
+// explicit) and later through script focus() calls (enableAutoFocus). A click or `i` / `gi` still
+// focuses a field. The autofocus attribute is also off in Firefox itself (browser.autofocus).
+settings.stealFocusOnLoad = true;
+settings.enableAutoFocus = false;
 settings.theme = `
 :root { color-scheme: light dark; }
 :root {
