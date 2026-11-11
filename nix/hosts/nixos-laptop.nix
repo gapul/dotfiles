@@ -1317,7 +1317,7 @@ in
       wl-gammarelay-rs # control color temperature (night light) via dbus
 
       # Matrix client that renders custom image reactions and emoji packs (LINE stickers), same as darwin
-      cinny-desktop
+      (pkgs.callPackage ../pkgs/cinny-desktop.nix { })
     ]
     # ArtCraft's pure-Rust Craft apps, same set as darwin (ArtCraft itself is macOS-only). See pkgs/artcraft-apps.nix.
     ++ pkgs.callPackage ../pkgs/artcraft-apps.nix { };
