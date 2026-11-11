@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        fx-embed: embedded tweets via fxtwitter
 // @namespace   https://github.com/gapul/dotfiles
-// @version     0.10.1
+// @version     0.10.2
 // @description Renders embedded tweets from api.fxtwitter.com instead of X, laid out like X's own embed, without cookies or Referer.
 // @match       *://*/*
 // @exclude     *://x.com/*
@@ -133,7 +133,8 @@
     .verified { width: 18px; height: 18px; color: var(--blue); flex: none; }
     .verified.business { color: #e2b719; }
     .verified.government { color: #829aab; }
-    .handle, .muted { color: var(--muted); }
+    /* .who a would otherwise give the handle link the text colour; X shows it grey. */
+    .handle, .muted, .who a.handle { color: var(--muted); }
     /* Pinned to the card's corner, as X does, so it sits on the first row whether that is the
        author or the parent tweet. */
     a.x { position: absolute; top: 12px; right: 16px; display: block; width: 24px; height: 24px; color: var(--fg); }
