@@ -86,6 +86,22 @@ in
           # Renders embedded tweets from api.fxtwitter.com while X's widgets.js stays blocked.
           url = "${repo}/violentmonkey/fx-embed.user.js";
         }
+        {
+          name = "h5player";
+          # Speed, seek, frame step, PiP and screenshots for any HTML5 video. Its single-key
+          # shortcuts (C/X/Z speed) collide with some players' own, e.g. YouTube's C for captions.
+          url = "https://greasyfork.org/scripts/381682-h5player/code/h5player.user.js";
+        }
+        {
+          name = "Magic Userscript+";
+          # Lists userscripts for the current site. Queries Greasy Fork and friends only when
+          # opened ("Fetch on load" is off by default).
+          url = "https://greasyfork.org/scripts/421603-magic-userscript-show-site-all-userjs/code/magic-userscript.user.js";
+        }
+        {
+          name = "Linkify Plus Plus";
+          url = "https://greasyfork.org/scripts/4255-linkify-plus-plus/code/linkify-plus-plus.user.js";
+        }
       ];
       # Extensions that talk to a self-hosted service. None reads managed storage, so the
       # connection is made by hand once per profile.
