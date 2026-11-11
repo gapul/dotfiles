@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        fx-embed: embedded tweets via fxtwitter
 // @namespace   https://github.com/gapul/dotfiles
-// @version     0.10.0
+// @version     0.10.1
 // @description Renders embedded tweets from api.fxtwitter.com instead of X, laid out like X's own embed, without cookies or Referer.
 // @match       *://*/*
 // @exclude     *://x.com/*
@@ -526,18 +526,20 @@
       typeof n === 'number' ? link(t.url, { class: cls, title: `${number(n)} ${label}` }, icon(name), el('span', { text: compact(n) })) : null;
     const reposts = (t.retweets ?? 0) + (t.quotes ?? 0);
     const parent = el('div');
-    // "Replying to @x" stands in for the parent tweet only until (unless) it loads.
-    const replyTo = t.replying_to
-      ? el('div', { class: 'reply-to' }, S().replyingTo, link(`https://x.com/${t.replying_to}`, { text: `@${t.replying_to}` }))
-      : null;
+    // X's embed shows the parent tweet and no "Replying to @x" line. The line appears only when
+    // the parent cannot be fetched (deleted, protected), so the reply still says what it answers.
+    const replyTo = el('div');
+    const showReplyTo = () =>
+      t.replying_to &&
+      replyTo.replaceChildren(
+        el('div', { class: 'reply-to' }, S().replyingTo, link(`https://x.com/${t.replying_to}`, { text: `@${t.replying_to}` })),
+      );
     if (t.replying_to_status) {
       request(API + t.replying_to_status, 'json')
-        .then((data) => {
-          if (!data?.tweet) return;
-          parent.replaceChildren(renderParent(data.tweet));
-          replyTo?.remove();
-        })
-        .catch(() => {});
+        .then((data) => (data?.tweet ? parent.replaceChildren(renderParent(data.tweet)) : showReplyTo()))
+        .catch(showReplyTo);
+    } else {
+      showReplyTo();
     }
     return el(
       'div',
