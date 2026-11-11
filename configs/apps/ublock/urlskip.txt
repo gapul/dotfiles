@@ -1,0 +1,50 @@
+! Title: gapul urlskip
+! Description: Skip click-tracking redirect wrappers: navigate straight to the destination
+!   instead of through the wrapping site. uBO only honours urlskip= in trusted lists; this
+!   list's raw URL is trusted by trustedListPrefixes in nix/modules/home/firefox.nix.
+! Expires: 1 day
+! Homepage: https://github.com/gapul/dotfiles/tree/main/configs/apps/ublock
+!
+! Syntax: https://github.com/gorhill/uBlock/wiki/Static-filter-syntax#urlskip
+! `doc` is required: without a type, a filter does not apply to the top-level navigation that a
+! clicked link makes. A filter applies only when every step succeeds, so links without the
+! parameter are left as they are. Some of these overlap uBO's own lists; keeping them here
+! makes the coverage explicit and independent of upstream changes.
+
+! Google search results and Gmail (?q= or ?url=)
+||google.com/url?$doc,urlskip=/[?&](?:q|url)=([^&]+)/ -uricomponent
+||google.co.jp/url?$doc,urlskip=/[?&](?:q|url)=([^&]+)/ -uricomponent
+
+! Bing (u=a1<base64url>)
+||bing.com/ck/a?$doc,urlskip=?u /^a1(.+)$/ -safebase64
+
+! DuckDuckGo
+||duckduckgo.com/l/?$doc,urlskip=?uddg
+
+! Yahoo! JAPAN search (…/RU=<encoded>/RK=…)
+||search.yahoo.co.jp/r/$doc,urlskip=/\/RU=([^/]+)\// -uricomponent
+
+! YouTube descriptions and comments
+||youtube.com/redirect?$doc,urlskip=?q
+
+! Facebook / Messenger / Instagram outbound links
+||l.facebook.com/l.php?$doc,urlskip=?u
+||lm.facebook.com/l.php?$doc,urlskip=?u
+||l.messenger.com/l.php?$doc,urlskip=?u
+||l.instagram.com/?$doc,urlskip=?u
+
+! Reddit outbound links
+||out.reddit.com^$doc,urlskip=?url
+
+! LinkedIn
+||linkedin.com/redir/redirect?$doc,urlskip=?url
+||linkedin.com/safety/go?$doc,urlskip=?url
+
+! Slack
+||slack-redir.net/link?$doc,urlskip=?url
+
+! Steam (?u= or ?url=)
+||steamcommunity.com/linkfilter/$doc,urlskip=/[?&](?:u|url)=([^&]+)/ -uricomponent
+
+! pixiv
+||pixiv.net/jump.php?$doc,urlskip=?url
