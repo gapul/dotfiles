@@ -12,54 +12,8 @@
 #   { shellpipe = "${pkgs.jq}/bin/jq -r ..."; } JSON endpoints
 # Pages that only render in a browser need `browser` jobs (playwright); not enabled here.
 let
-  jobs = [
-    # --- RISC-V Day Tokyo 2026 Autumn (2026-11-11). Track A (digital tutorial) is announced
-    # but has no ticket yet. Drop these three after the event.
-    {
-      name = "RISC-V Day 2026 Autumn: event page";
-      url = "https://riscv.or.jp/risc-v-day-tokyo-2026-autumn/";
-      headers.User-Agent = "Mozilla/5.0";
-      filter = [
-        { grep = "article:modified_time"; }
-        {
-          "re.sub" = {
-            pattern = ''^.*(article:modified_time" content="[^"]*").*$'';
-            repl = ''\1'';
-          };
-        }
-      ];
-    }
-    {
-      name = "RISC-V Day 2026 Autumn: tutorial page";
-      url = "https://riscv.or.jp/risc-v-day-tokyo-2026-autumn-tutorials-2/";
-      headers.User-Agent = "Mozilla/5.0";
-      filter = [
-        { grep = "article:modified_time"; }
-        {
-          "re.sub" = {
-            pattern = ''^.*(article:modified_time" content="[^"]*").*$'';
-            repl = ''\1'';
-          };
-        }
-      ];
-    }
-    {
-      name = "RISC-V Day 2026 Autumn: Peatix tickets";
-      url = "https://peatix.com/event/5190001/get_view_data";
-      headers = {
-        User-Agent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36";
-        Accept = "application/json";
-        Referer = "https://peatix.com/event/5190001";
-      };
-      # seatsSold/seatsAvailable are not reliable while a ticket is closed for sale, so the list
-      # is reported as-is rather than interpreted.
-      filter = [
-        {
-          shellpipe = ''${pkgs.jq}/bin/jq -r '.json_data.event.tickets[] | "\(.name) | status \(.status) | \(.seatsAvailable)/\(.seatsMax)"' '';
-        }
-      ];
-    }
-  ];
+  # Nothing watched right now; the service and timer only exist while this list is non-empty.
+  jobs = [ ];
 
   # One YAML document per job; JSON is a YAML subset so toJSON needs no escaping rules of its own.
   urls = pkgs.writeText "site-watch-urls.yaml" (
@@ -93,7 +47,7 @@ let
     job_defaults: {all: {}, shell: {}, url: {}, browser: {}}
   '';
 in
-{
+lib.mkIf (jobs != [ ]) {
   systemd.services.site-watch = {
     description = "urlwatch: watched pages → ntfy";
     after = [ "network-online.target" ];
