@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        fx-embed: embedded tweets via fxtwitter
 // @namespace   https://github.com/gapul/dotfiles
-// @version     0.10.2
+// @version     0.11.0
 // @description Renders embedded tweets from api.fxtwitter.com instead of X, laid out like X's own embed, without cookies or Referer.
 // @match       *://*/*
 // @exclude     *://x.com/*
@@ -197,8 +197,8 @@
       background: rgba(0, 0, 0, 0.75); border-radius: 4px; padding: 3px 5px; cursor: help; }
     .video { cursor: pointer; background: #000; }
     .video .status:empty { display: none; }
-    .watch { position: absolute; top: 12px; right: 12px; z-index: 1; font: 700 14px/1 system-ui, sans-serif; color: #fff !important;
-      background: rgba(15, 20, 25, 0.75); border-radius: 999px; padding: 8px 16px; text-decoration: none !important; }
+    .photo { cursor: zoom-in; }
+    .vframe { display: block; width: 100%; max-height: 510px; border: 0; background: #000; }
     .video .status { position: absolute; left: 8px; bottom: 8px; font: 700 12px system-ui, sans-serif; color: #fff;
       background: rgba(0, 0, 0, 0.75); border-radius: 4px; padding: 2px 6px; }
     .media video { display: block; width: 100%; height: 100%; max-height: 510px; background: #000; object-fit: contain; }
@@ -239,7 +239,9 @@
       votes: (n) => `${n}票`,
       finalResults: '最終結果',
       showMore: 'さらに表示',
-      watchOnX: 'X で見る',
+      close: '閉じる',
+      previous: '前へ',
+      next: '次へ',
       copyLink: 'リンクをコピー',
       copied: 'コピーしました',
       replyingTo: '返信先: ',
@@ -268,7 +270,9 @@
       votes: (n) => `${n} votes`,
       finalResults: 'Final results',
       showMore: 'Show more',
-      watchOnX: 'Watch on X',
+      close: 'Close',
+      previous: 'Previous',
+      next: 'Next',
       copyLink: 'Copy link',
       copied: 'Copied',
       replyingTo: 'Replying to ',
@@ -344,24 +348,81 @@
   };
 
   const photo = (m) => {
-    const img = image(m.url, '', () => link(m.url, { class: 'fallback', text: S().openImage }));
+    const img = image(m.url, 'photo', () => link(m.url, { class: 'fallback', text: S().openImage }));
+    img.alt = m.altText ?? '';
     if (!m.altText) return img;
-    img.alt = m.altText;
     return el('div', { class: 'ph' }, img, el('span', { class: 'alt', text: 'ALT', title: m.altText }));
   };
 
-  // The largest MP4 up to 720p-ish bitrate: enough on a card, and a short clip stays a few MB.
+  // Full-screen viewer for a card's photos. It reuses the blob URLs the card already holds, so
+  // opening it costs no request. Its own host on <body> keeps it clear of the page's stacking
+  // and overflow rules. Click outside the image or press Esc to close; arrows step through.
+  const LIGHTBOX_STYLE = `
+    :host { all: initial; }
+    .lb { position: fixed; inset: 0; z-index: 2147483647; display: grid; place-items: center;
+      background: rgba(0, 0, 0, 0.9); font: 15px system-ui, sans-serif; color: #fff; }
+    img { max-width: 94vw; max-height: 88vh; object-fit: contain; display: block; }
+    .cap { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); max-width: 80vw;
+      background: rgba(0, 0, 0, 0.6); padding: 6px 10px; border-radius: 6px; text-align: center; }
+    button { position: fixed; width: 44px; height: 44px; border: 0; border-radius: 50%; cursor: pointer;
+      color: #fff; background: rgba(39, 44, 48, 0.75); font: 24px/1 system-ui, sans-serif; }
+    button:hover { background: rgba(39, 44, 48, 0.95); }
+    .x { top: 12px; left: 12px; }
+    .prev { left: 12px; top: 50%; transform: translateY(-50%); }
+    .next { right: 12px; top: 50%; transform: translateY(-50%); }
+  `;
+  const lightbox = (imgs, start) => {
+    let i = start;
+    const host = el('div');
+    const root = host.attachShadow({ mode: 'closed' });
+    const big = el('img', { alt: '' });
+    const cap = el('div', { class: 'cap' });
+    const show = () => {
+      big.src = imgs[i].src;
+      big.alt = imgs[i].alt;
+      cap.textContent = imgs[i].alt;
+      cap.hidden = !imgs[i].alt;
+    };
+    const step = (d) => ((i = (i + d + imgs.length) % imgs.length), show());
+    const close = () => (host.remove(), document.removeEventListener('keydown', onKey, true));
+    const onKey = (e) => {
+      if (e.key === 'Escape') close();
+      else if (e.key === 'ArrowLeft' && imgs.length > 1) step(-1);
+      else if (e.key === 'ArrowRight' && imgs.length > 1) step(1);
+      else return;
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    const many = imgs.length > 1;
+    const lb = el(
+      'div',
+      { class: 'lb', onclick: (e) => e.target === lb && close() },
+      big,
+      cap,
+      el('button', { type: 'button', class: 'x', title: S().close, text: '×', onclick: close }),
+      many ? el('button', { type: 'button', class: 'prev', title: S().previous, text: '‹', onclick: () => step(-1) }) : null,
+      many ? el('button', { type: 'button', class: 'next', title: S().next, text: '›', onclick: () => step(1) }) : null,
+    );
+    root.append(el('style', { text: LIGHTBOX_STYLE }), lb);
+    document.addEventListener('keydown', onKey, true);
+    show();
+    (document.body ?? document.documentElement).append(host);
+  };
+
+  // The largest MP4 up to 720p-ish bitrate: enough on a card, and it streams fine.
   const pickVideo = (m) => {
     const mp4 = (m.variants ?? []).filter((v) => v.content_type === 'video/mp4' && v.url);
     const fit = mp4.filter((v) => v.bitrate <= 2500000).sort((a, b) => b.bitrate - a.bitrate)[0];
     return fit?.url ?? mp4.sort((a, b) => a.bitrate - b.bitrate)[0]?.url ?? m.url;
   };
 
-  // Videos and GIFs show their poster and play in place on click. The file comes through
-  // GM_xmlhttpRequest like images do (no cookies, no Referer), downloaded whole before playing.
-  const video = (m, tweetUrl) => {
+  // Videos and GIFs show their poster and start playing the moment they are clicked: the
+  // browser streams the MP4 straight from video.twimg.com inside a srcdoc iframe whose
+  // <meta name="referrer"> keeps the page's address out of the request (cookies for that host
+  // are partitioned by the browser anyway). Where the page's CSP or tracking protection blocks
+  // that, the file is fetched whole through GM_xmlhttpRequest instead, as images are.
+  const video = (m) => {
     const gif = m.type === 'gif';
-    // Like X's embed: no duration on the poster, a GIF label for GIFs, progress while loading.
     const status = el('span', { class: 'status', text: gif ? 'GIF' : '' });
     const box = el(
       'div',
@@ -369,14 +430,13 @@
       m.thumbnail_url ? image(m.thumbnail_url) : null,
       el('span', { class: 'playwrap' }, icon('play')),
       status,
-      tweetUrl ? link(tweetUrl, { class: 'watch', text: S().watchOnX }) : null,
     );
-    const play = async () => {
-      if (box.dataset.busy) return;
-      box.dataset.busy = '1';
+    const src = MEDIA_URL(pickVideo(m));
+
+    const download = async (slot) => {
       try {
         const blob = await request(
-          MEDIA_URL(pickVideo(m)),
+          src,
           'blob',
           (e) => e.total && (status.textContent = S().loading(Math.round((e.loaded / e.total) * 100))),
           120000,
@@ -385,21 +445,57 @@
         Object.assign(v, gif ? { loop: true, muted: true, autoplay: true } : { controls: true, autoplay: true });
         v.onerror = () => v.replaceWith(link(m.url, { class: 'fallback', text: S().openVideo }));
         v.src = URL.createObjectURL(blob);
-        box.replaceWith(v);
+        slot.replaceWith(v);
       } catch (e) {
-        box.replaceWith(link(m.url, { class: 'fallback', text: S().videoFailed(e.message) }));
+        slot.replaceWith(link(m.url, { class: 'fallback', text: S().videoFailed(e.message) }));
       }
     };
-    box.addEventListener('click', (e) => e.target.closest('.watch') || play());
+
+    const stream = () => {
+      const frame = el('iframe', { class: 'vframe', allow: 'autoplay; fullscreen', allowfullscreen: '' });
+      if (m.width && m.height) frame.style.aspectRatio = `${m.width} / ${m.height}`;
+      frame.srcdoc =
+        '<!doctype html><meta name="referrer" content="no-referrer"><style>html,body{margin:0;height:100%;background:#000}' +
+        'video{display:block;width:100%;height:100%;object-fit:contain}</style>' +
+        `<video playsinline ${gif ? 'loop muted autoplay' : 'controls autoplay'}></video>`;
+      let fellBack = false;
+      const fallBack = () => {
+        if (fellBack) return;
+        fellBack = true;
+        frame.replaceWith(box);
+        download(box);
+      };
+      frame.addEventListener('load', () => {
+        const v = frame.contentDocument?.querySelector('video');
+        if (!v) return fallBack();
+        v.addEventListener('error', fallBack);
+        v.src = src;
+        v.play?.().catch(() => {});
+      });
+      box.replaceWith(frame);
+    };
+
+    const play = () => {
+      if (box.dataset.busy) return;
+      box.dataset.busy = '1';
+      stream();
+    };
+    box.addEventListener('click', play);
     box.addEventListener('keydown', (e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), play()));
     return box;
   };
 
-  const renderMedia = (media, sensitive, tweetUrl) => {
+  const renderMedia = (media, sensitive) => {
     const items = (media?.all ?? []).slice(0, 4);
     if (!items.length) return null;
     const box = el('div', { class: `media n${items.length}` });
-    for (const m of items) box.append(m.type === 'photo' ? photo(m) : video(m, tweetUrl));
+    for (const m of items) box.append(m.type === 'photo' ? photo(m) : video(m));
+    box.addEventListener('click', (e) => {
+      const img = e.target.closest('img.photo');
+      if (!img?.src || box.classList.contains('sensitive')) return;
+      const imgs = [...box.querySelectorAll('img.photo')].filter((p) => p.src).map((p) => ({ src: p.src, alt: p.alt }));
+      lightbox(imgs, Math.max(0, imgs.findIndex((p) => p.src === img.src)));
+    });
     if (sensitive) {
       box.classList.add('sensitive');
       const reveal = el(
@@ -460,7 +556,7 @@
   const clickable = (url, props, ...children) => {
     const box = el('div', { ...props, style: 'cursor:pointer' }, ...children);
     box.addEventListener('click', (e) => {
-      if (!e.target.closest('a, button, video, .video, .reveal')) window.open(url, '_blank', 'noopener,noreferrer');
+      if (!e.target.closest('a, button, video, iframe, .video, .reveal, img.photo')) window.open(url, '_blank', 'noopener,noreferrer');
     });
     return box;
   };
@@ -471,7 +567,7 @@
       { class: 'quote' },
       author(q, true),
       tweetText(q),
-      renderMedia(q.media, q.possibly_sensitive, q.url),
+      renderMedia(q.media, q.possibly_sensitive),
     );
 
   // The tweet being replied to, drawn above the main one with a thread line, as on x.com.
@@ -501,7 +597,7 @@
           ),
         ),
         tweetText(p),
-        renderMedia(p.media, p.possibly_sensitive, p.url),
+        renderMedia(p.media, p.possibly_sensitive),
       ),
     );
   };
@@ -550,7 +646,7 @@
       replyTo,
       tweetText(t),
       renderPoll(t.poll),
-      renderMedia(t.media, t.possibly_sensitive, t.url),
+      renderMedia(t.media, t.possibly_sensitive),
       t.quote ? renderQuote(t.quote) : null,
       note ? el('div', { class: 'note' }, el('b', { text: S().note }), el('span', { text: note })) : null,
       link(t.url, { class: 'time', text: when }),
