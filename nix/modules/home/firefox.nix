@@ -87,6 +87,11 @@ in
           url = "${repo}/violentmonkey/fx-embed.user.js";
         }
         {
+          name = "video-default-speed: per-site default playback speed";
+          # YouTube starts at 2x per video; Surfingkeys < > = or the site menu still change it.
+          url = "${repo}/violentmonkey/video-default-speed.user.js";
+        }
+        {
           name = "h5player";
           # Speed, seek, frame step, PiP and screenshots for any HTML5 video. Its single-key
           # shortcuts (C/X/Z speed) collide with some players' own, e.g. YouTube's C for captions.
