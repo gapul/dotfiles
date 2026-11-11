@@ -15,5 +15,5 @@ symlinkJoin {
     wrapProgram "$out/bin/cinny" \
       --prefix GST_PLUGIN_SYSTEM_PATH_1_0 : "${gst_all_1.gst-plugins-good}/lib/gstreamer-1.0"
   '';
-  meta = cinny-desktop.meta;
+  inherit (cinny-desktop) meta;
 }
