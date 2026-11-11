@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        fx-embed: embedded tweets via fxtwitter
 // @namespace   https://github.com/gapul/dotfiles
-// @version     0.13.2
+// @version     0.14.0
 // @description Renders embedded tweets from api.fxtwitter.com instead of X, laid out like X's own embed, without cookies or Referer.
 // @match       *://*/*
 // @exclude     *://x.com/*
@@ -160,6 +160,8 @@
     repost:
       'M4.5 3.88l4.432 4.14-1.364 1.46L5.5 7.55V16c0 1.1.896 2 2 2H13v2H7.5c-2.209 0-4-1.79-4-4V7.55L1.432 9.48.068 8.02 4.5 3.88zM16.5 6H11V4h5.5c2.209 0 4 1.79 4 4v8.45l2.068-1.93 1.364 1.46-4.432 4.14-4.432-4.14 1.364-1.46 2.068 1.93V8c0-1.1-.896-2-2-2z',
     views: 'M8.75 21V3h2v18h-2zM18 21V8.5h2V21h-2zM4 21l.004-10h2L6 21H4zm9.248 0v-7h2v7h-2z',
+    people:
+      'M7.501 19.917L7.471 21H.472l.029-1.027c.184-6.618 3.736-8.977 7-8.977.963 0 1.95.212 2.87.672-.444.478-.851 1.03-1.212 1.656-.507-.204-1.054-.329-1.658-.329-2.767 0-4.57 2.223-4.938 6.004H7.56c-.023.302-.05.599-.059.917zm15.998.056L23.528 21H9.472l.029-1.027c.184-6.618 3.736-8.977 7-8.977s6.816 2.358 7 8.977zM21.437 19c-.367-3.781-2.17-6.004-4.938-6.004s-4.57 2.223-4.938 6.004h9.875zm-4.938-9c-.799 0-1.527-.279-2.116-.73-.836-.64-1.384-1.638-1.384-2.77 0-1.93 1.567-3.5 3.5-3.5s3.5 1.57 3.5 3.5c0 1.132-.548 2.13-1.384 2.77-.589.451-1.317.73-2.116.73zm-1.5-3.5c0 .827.673 1.5 1.5 1.5s1.5-.673 1.5-1.5-.673-1.5-1.5-1.5-1.5.673-1.5 1.5zM7.5 3C9.433 3 11 4.57 11 6.5S9.433 10 7.5 10 4 8.43 4 6.5 5.567 3 7.5 3zm0 2C6.673 5 6 5.673 6 6.5S6.673 8 7.5 8 9 7.327 9 6.5 8.327 5 7.5 5z',
     bookmark:
       'M4 4.5C4 3.12 5.119 2 6.5 2h11C18.881 2 20 3.12 20 4.5v18.44l-8-5.71-8 5.71V4.5zM6.5 4c-.276 0-.5.22-.5.5v14.56l6-4.29 6 4.29V4.5c0-.28-.224-.5-.5-.5h-11z',
   };
@@ -221,8 +223,13 @@
     .quote .text { font-size: 15px; line-height: 20px; margin: 4px 0 0; }
     .quote { overflow: hidden; }
     .quote .media { margin: 12px -12px -12px; border: 0; border-radius: 0; }
-    .note { border: 1px solid var(--border); border-radius: 16px; padding: 12px; margin: 12px 0; }
-    .note b { display: block; margin-bottom: 4px; }
+    /* Laid out like x.com's community note: bordered box, people icon and heading, the note,
+       then the grey line saying who writes notes. */
+    .note { border: 1px solid var(--border); border-radius: 16px; margin: 12px 0; overflow: hidden; }
+    .note-head { display: flex; align-items: flex-start; gap: 6px; padding: 12px 12px 0; font-weight: 700; }
+    .note-head .icon { width: 20px; height: 20px; flex: none; }
+    .note-body { padding: 4px 12px 12px; overflow-wrap: anywhere; }
+    .note-foot { padding: 12px; border-top: 1px solid var(--border); color: var(--muted); font-size: 13px; line-height: 16px; }
     .lcard { display: block; border: 1px solid var(--border); border-radius: 16px; overflow: hidden; margin: 12px 0;
       color: var(--fg) !important; text-decoration: none !important; }
     .lcard:hover { background: var(--hover); }
@@ -350,7 +357,9 @@
       copyLink: 'リンクをコピー',
       copied: 'コピーしました',
       replyingTo: '返信先: ',
-      note: '読者が追加した背景情報',
+      note: '閲覧者が追加した背景情報',
+      noteFoot: '背景情報は X の利用者が書いたもので、他の利用者から役に立つと評価されると表示されます。',
+      noteMore: '詳細',
       reposted: (name) => `${name}さんがリポスト`,
       viewMore: 'X でもっと見る',
       replies: '件の返信',
@@ -383,7 +392,9 @@
       copyLink: 'Copy link',
       copied: 'Copied',
       replyingTo: 'Replying to ',
-      note: 'Readers added context',
+      note: 'Readers added context they thought people might want to know',
+      noteFoot: 'Context is written by people who use X, and appears when rated helpful by others.',
+      noteMore: 'Find out more',
       reposted: (name) => `${name} reposted`,
       viewMore: 'View more on X',
       replies: 'replies',
@@ -851,7 +862,20 @@
       renderMedia(t.media, t.possibly_sensitive),
       attachment(t),
       t.quote ? renderQuote(t.quote) : null,
-      note ? el('div', { class: 'note' }, el('b', { text: S().note }), note) : null,
+      note
+        ? el(
+            'div',
+            { class: 'note' },
+            el('div', { class: 'note-head' }, icon('people'), el('span', { text: S().note })),
+            el('div', { class: 'note-body' }, note),
+            el(
+              'div',
+              { class: 'note-foot' },
+              `${S().noteFoot} `,
+              link(`https://communitynotes.x.com/guide/${lang()}/about/introduction`, { text: S().noteMore }),
+            ),
+          )
+        : null,
       link(url, { class: 'time', text: when }),
       el(
         'div',
