@@ -1,14 +1,13 @@
 // ==UserScript==
 // @name        fx-embed: embedded tweets via fxtwitter
 // @namespace   https://github.com/gapul/dotfiles
-// @version     0.12.0
+// @version     0.12.1
 // @description Renders embedded tweets from api.fxtwitter.com instead of X, laid out like X's own embed, without cookies or Referer.
 // @match       *://*/*
 // @exclude     *://x.com/*
 // @exclude     *://twitter.com/*
 // @grant       GM_xmlhttpRequest
-// @grant       GM_getValue
-// @grant       GM_setValue
+// @grant       GM_deleteValue
 // @connect     api.fxtwitter.com
 // @connect     pbs.twimg.com
 // @connect     video.twimg.com
@@ -86,44 +85,20 @@
       });
     });
 
-  // fxtwitter responses are kept for a while in the script's own storage (never the page's), so
-  // reloading a page or meeting the same tweet twice asks fxtwitter again only after TTL, and
-  // concurrent requests for one tweet share a single fetch. Counts can be up to TTL old.
-  const TTL = 30 * 60 * 1000;
-  const MAX_CACHED = 100;
+  // Nothing is stored between page loads; concurrent requests for one tweet (the same tweet
+  // embedded twice, or a parent that is also embedded) share a single fetch.
   const inflight = new Map();
-  const readCache = () => {
-    try {
-      return GM_getValue('tweets', {}) ?? {};
-    } catch {
-      return {};
-    }
-  };
   const fetchTweet = (id) => {
     if (!isId(id)) return Promise.reject(new Error('bad id'));
-    if (inflight.has(id)) return inflight.get(id);
-    const hit = readCache()[id];
-    if (hit && Date.now() - hit.at < TTL) return Promise.resolve(hit.data);
-    const req = request(API + id, 'json')
-      .then((data) => {
-        if (data?.tweet) {
-          const now = Date.now();
-          const kept = Object.entries({ ...readCache(), [id]: { at: now, data } })
-            .filter(([, v]) => now - v.at < TTL)
-            .sort((a, b) => b[1].at - a[1].at)
-            .slice(0, MAX_CACHED);
-          try {
-            GM_setValue('tweets', Object.fromEntries(kept));
-          } catch {
-            // Storage full or unavailable: carry on uncached.
-          }
-        }
-        return data;
-      })
-      .finally(() => inflight.delete(id));
-    inflight.set(id, req);
-    return req;
+    if (!inflight.has(id)) inflight.set(id, request(API + id, 'json').finally(() => inflight.delete(id)));
+    return inflight.get(id);
   };
+  // 0.12.0 kept a 30-minute response cache in GM storage; drop whatever it left behind.
+  try {
+    GM_deleteValue('tweets');
+  } catch {
+    // Not granted or unavailable: nothing to clean up.
+  }
 
   const statusId = (node) => {
     const direct = node.dataset?.tweetId ?? node.getAttribute('data-tweetid');
