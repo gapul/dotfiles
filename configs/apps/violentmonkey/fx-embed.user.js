@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        fx-embed: embedded tweets via fxtwitter
 // @namespace   https://github.com/gapul/dotfiles
-// @version     0.6.0
+// @version     0.7.0
 // @description Renders embedded tweets from api.fxtwitter.com instead of X, laid out like X's own embed, without cookies or Referer.
 // @match       *://*/*
 // @exclude     *://x.com/*
@@ -206,7 +206,72 @@
     return img;
   };
 
-  const compact = new Intl.NumberFormat('ja-JP', { notation: 'compact', maximumFractionDigits: 1 });
+  // UI language follows the page, like X's own embed: Japanese when <html lang> says so (or,
+  // without a lang attribute, when the browser is Japanese), English otherwise.
+  const STRINGS = {
+    ja: {
+      openImage: '画像を開く',
+      video: '動画',
+      play: '再生',
+      loading: (pct) => `読み込み中 ${pct}%`,
+      openVideo: '動画を開く',
+      videoFailed: (msg) => `動画を開く（読み込み失敗: ${msg}）`,
+      sensitive: 'センシティブな内容の可能性があります',
+      show: '表示する',
+      viewOnX: 'X で見る',
+      votes: (n) => `${n}票`,
+      copyLink: 'リンクをコピー',
+      copied: 'コピーしました',
+      replyingTo: '返信先: ',
+      note: 'コミュニティノート',
+      replies: '件の返信',
+      reposts: (quotes) => `件のリポスト（うち引用 ${quotes}）`,
+      likes: '件のいいね',
+      views: '件の表示',
+      bookmarks: '件のブックマーク',
+      readReplies: (n) => `X で${n}件の返信を読む`,
+      fetchFailed: (msg) => `fxtwitter から取得できませんでした: ${msg}`,
+      deleted: 'このツイートは削除されたか、見つかりません',
+      restricted: '非公開アカウントか、表示が制限されたツイートです',
+      wayback: 'Wayback Machine で探す',
+    },
+    en: {
+      openImage: 'Open image',
+      video: 'Video',
+      play: 'Play',
+      loading: (pct) => `Loading ${pct}%`,
+      openVideo: 'Open video',
+      videoFailed: (msg) => `Open video (failed to load: ${msg})`,
+      sensitive: 'This media may contain sensitive content',
+      show: 'Show',
+      viewOnX: 'View on X',
+      votes: (n) => `${n} votes`,
+      copyLink: 'Copy link',
+      copied: 'Copied',
+      replyingTo: 'Replying to ',
+      note: 'Community Notes',
+      replies: 'replies',
+      reposts: (quotes) => `reposts (${quotes} quotes)`,
+      likes: 'likes',
+      views: 'views',
+      bookmarks: 'bookmarks',
+      readReplies: (n) => `Read ${n} replies`,
+      fetchFailed: (msg) => `Couldn't load from fxtwitter: ${msg}`,
+      deleted: "This post was deleted or can't be found",
+      restricted: 'This post is from a protected account or is unavailable',
+      wayback: 'Search the Wayback Machine',
+    },
+  };
+  const lang = () => (/^ja\b/i.test(document.documentElement?.lang || navigator.language) ? 'ja' : 'en');
+  const S = () => STRINGS[lang()];
+  const locale = () => (lang() === 'ja' ? 'ja-JP' : 'en-US');
+  const formats = {};
+  const compact = (n) =>
+    (formats[locale()] ??= new Intl.NumberFormat(locale(), { notation: 'compact', maximumFractionDigits: 1 })).format(n);
+  const number = (n) => n.toLocaleString(locale());
+  // 2022/11/2 in Japanese, Nov 2, 2022 in English, as X writes them.
+  const shortDate = (sec) =>
+    new Date(sec * 1000).toLocaleDateString(locale(), lang() === 'ja' ? {} : { month: 'short', day: 'numeric', year: 'numeric' });
 
   // URLs, @mentions and #hashtags become links; everything else stays text.
   const richText = (text, hasMedia) => {
@@ -230,7 +295,7 @@
   };
 
   const photo = (m) => {
-    const img = image(m.url, '', () => link(m.url, { class: 'fallback', text: '画像を開く' }));
+    const img = image(m.url, '', () => link(m.url, { class: 'fallback', text: S().openImage }));
     if (!m.altText) return img;
     img.alt = m.altText;
     return el('div', { class: 'ph' }, img, el('span', { class: 'alt', text: 'ALT', title: m.altText }));
@@ -247,10 +312,10 @@
   // GM_xmlhttpRequest like images do (no cookies, no Referer), downloaded whole before playing.
   const video = (m) => {
     const gif = m.type === 'gif';
-    const status = el('span', { class: 'status', text: gif ? 'GIF' : m.duration ? duration(m.duration) : '動画' });
+    const status = el('span', { class: 'status', text: gif ? 'GIF' : m.duration ? duration(m.duration) : S().video });
     const box = el(
       'div',
-      { class: 'video', role: 'button', tabindex: '0', title: '再生' },
+      { class: 'video', role: 'button', tabindex: '0', title: S().play },
       m.thumbnail_url ? image(m.thumbnail_url) : null,
       el('span', { class: 'playwrap' }, icon('play')),
       status,
@@ -262,16 +327,16 @@
         const blob = await request(
           MEDIA_URL(pickVideo(m)),
           'blob',
-          (e) => e.total && (status.textContent = `読み込み中 ${Math.round((e.loaded / e.total) * 100)}%`),
+          (e) => e.total && (status.textContent = S().loading(Math.round((e.loaded / e.total) * 100))),
           120000,
         );
         const v = el('video', { playsinline: '' });
         Object.assign(v, gif ? { loop: true, muted: true, autoplay: true } : { controls: true, autoplay: true });
-        v.onerror = () => v.replaceWith(link(m.url, { class: 'fallback', text: '動画を開く' }));
+        v.onerror = () => v.replaceWith(link(m.url, { class: 'fallback', text: S().openVideo }));
         v.src = URL.createObjectURL(blob);
         box.replaceWith(v);
       } catch (e) {
-        box.replaceWith(link(m.url, { class: 'fallback', text: `動画を開く（読み込み失敗: ${e.message}）` }));
+        box.replaceWith(link(m.url, { class: 'fallback', text: S().videoFailed(e.message) }));
       }
     };
     box.addEventListener('click', play);
@@ -291,8 +356,8 @@
       const reveal = el(
         'button',
         { type: 'button', class: 'reveal', onclick: () => (box.classList.remove('sensitive'), reveal.remove()) },
-        el('span', { text: 'センシティブな内容の可能性があります' }),
-        el('span', { text: '表示する' }),
+        el('span', { text: S().sensitive }),
+        el('span', { text: S().show }),
       );
       box.append(reveal);
     }
@@ -315,9 +380,9 @@
         { class: 'who' },
         link(profile, { class: 'name' }, el('span', { text: a.name ?? '' }), v),
         link(profile, { class: 'handle', text: `@${a.screen_name ?? '?'}` }),
-        small ? el('span', { class: 'muted', text: `· ${new Date(t.created_timestamp * 1000).toLocaleDateString('ja-JP')}` }) : null,
+        small ? el('span', { class: 'muted', text: `· ${shortDate(t.created_timestamp)}` }) : null,
       ),
-      small ? null : link(t.url, { class: 'x', title: 'X で見る' }, icon('x')),
+      small ? null : link(t.url, { class: 'x', title: S().viewOnX }, icon('x')),
     );
   };
 
@@ -335,7 +400,7 @@
               el('span', { text: `${c.percentage}%` }),
             ),
           ),
-          el('div', { class: 'muted', text: `${compact.format(poll.total_votes ?? 0)}票` }),
+          el('div', { class: 'muted', text: S().votes(compact(poll.total_votes ?? 0)) }),
         )
       : null;
 
@@ -372,7 +437,7 @@
           'div',
           { class: 'head' },
           el('span', { class: 'name' }, el('span', { text: a.name ?? '' }), badge(a)),
-          el('span', { class: 'muted', text: `@${a.screen_name ?? '?'} · ${new Date(p.created_timestamp * 1000).toLocaleDateString('ja-JP')}` }),
+          el('span', { class: 'muted', text: `@${a.screen_name ?? '?'} · ${shortDate(p.created_timestamp)}` }),
         ),
         richText(p.text ?? '', Boolean(p.media?.all?.length)),
         renderMedia(p.media, p.possibly_sensitive),
@@ -382,15 +447,15 @@
 
   const renderTweet = (t) => {
     const d = new Date(t.created_timestamp * 1000);
-    const when = `${d.toLocaleTimeString('ja-JP', { hour: 'numeric', minute: '2-digit', hour12: true })} · ${d.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' })}`;
+    const when = `${d.toLocaleTimeString(locale(), { hour: 'numeric', minute: '2-digit', hour12: true })} · ${d.toLocaleDateString(locale(), { year: 'numeric', month: lang() === 'ja' ? 'long' : 'short', day: 'numeric' })}`;
     const note = typeof t.community_note?.text === 'string' ? t.community_note.text : null;
     const copy = el('button', {
       type: 'button',
       class: 'share',
-      title: 'リンクをコピー',
+      title: S().copyLink,
       onclick: () =>
         navigator.clipboard.writeText(t.url).then(() => {
-          copy.lastChild.textContent = 'コピーしました';
+          copy.lastChild.textContent = S().copied;
         }),
     });
     // Icon only, so the counts fit on one line; the label shows after copying.
@@ -398,7 +463,7 @@
     // x.com's order: replies, reposts, likes, views, bookmarks. A count fxtwitter does not
     // return (views on old tweets) is left out rather than shown as 0.
     const stat = (name, n, label, cls = '') =>
-      typeof n === 'number' ? link(t.url, { class: cls, title: `${n.toLocaleString('ja-JP')} ${label}` }, icon(name), el('span', { text: compact.format(n) })) : null;
+      typeof n === 'number' ? link(t.url, { class: cls, title: `${number(n)} ${label}` }, icon(name), el('span', { text: compact(n) })) : null;
     const reposts = (t.retweets ?? 0) + (t.quotes ?? 0);
     const parent = el('div');
     if (t.replying_to_status) {
@@ -411,26 +476,26 @@
       { class: 'card' },
       parent,
       author(t, false),
-      t.replying_to ? el('div', { class: 'reply-to' }, '返信先: ', link(`https://x.com/${t.replying_to}`, { text: `@${t.replying_to}` })) : null,
+      t.replying_to ? el('div', { class: 'reply-to' }, S().replyingTo, link(`https://x.com/${t.replying_to}`, { text: `@${t.replying_to}` })) : null,
       richText(t.text ?? '', Boolean(t.media?.all?.length)),
       renderPoll(t.poll),
       renderMedia(t.media, t.possibly_sensitive),
       t.quote ? renderQuote(t.quote) : null,
-      note ? el('div', { class: 'note' }, el('b', { text: 'コミュニティノート' }), el('span', { text: note })) : null,
+      note ? el('div', { class: 'note' }, el('b', { text: S().note }), el('span', { text: note })) : null,
       link(t.url, { class: 'time', text: when }),
       el(
         'div',
         { class: 'actions' },
-        stat('reply', t.replies, '件の返信', 'r'),
-        stat('repost', typeof t.retweets === 'number' ? reposts : undefined, `件のリポスト（うち引用 ${(t.quotes ?? 0).toLocaleString('ja-JP')}）`, 'rp'),
-        stat('heart', t.likes, '件のいいね'),
-        stat('views', t.views, '件の表示'),
-        stat('bookmark', t.bookmarks, '件のブックマーク'),
+        stat('reply', t.replies, S().replies, 'r'),
+        stat('repost', typeof t.retweets === 'number' ? reposts : undefined, S().reposts(number(t.quotes ?? 0)), 'rp'),
+        stat('heart', t.likes, S().likes),
+        stat('views', t.views, S().views),
+        stat('bookmark', t.bookmarks, S().bookmarks),
         copy,
       ),
       link(t.url, {
         class: 'more',
-        text: t.replies ? `X で${compact.format(t.replies)}件の返信を読む` : 'X で見る',
+        text: t.replies ? S().readReplies(compact(t.replies)) : S().viewOnX,
       }),
     );
   };
@@ -502,7 +567,7 @@
         applyTheme(host);
         if ([401, 403, 404].includes(e.status)) out.replaceChildren(renderGone(node, id, e.status));
         else if (iframe) host.replaceWith(node);
-        else out.replaceChildren(el('div', { class: 'err', text: `fxtwitter から取得できませんでした: ${e.message}` }), el('slot'));
+        else out.replaceChildren(el('div', { class: 'err', text: S().fetchFailed(e.message) }), el('slot'));
       }
     });
     observer.observe(host);
@@ -519,9 +584,9 @@
     return el(
       'div',
       { class: 'card gone' },
-      el('div', { class: 'why', text: status === 404 ? 'このツイートは削除されたか、見つかりません' : '非公開アカウントか、表示が制限されたツイートです' }),
+      el('div', { class: 'why', text: status === 404 ? S().deleted : S().restricted }),
       el('slot'),
-      link(`https://web.archive.org/web/*/https://twitter.com/${user}/status/${id}*`, { text: 'Wayback Machine で探す' }),
+      link(`https://web.archive.org/web/*/https://twitter.com/${user}/status/${id}*`, { text: S().wayback }),
     );
   };
 
