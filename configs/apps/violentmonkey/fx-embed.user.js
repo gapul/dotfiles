@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        fx-embed: embedded tweets via fxtwitter
 // @namespace   https://github.com/gapul/dotfiles
-// @version     0.13.0
+// @version     0.13.1
 // @description Renders embedded tweets from api.fxtwitter.com instead of X, laid out like X's own embed, without cookies or Referer.
 // @match       *://*/*
 // @exclude     *://x.com/*
@@ -243,6 +243,11 @@
     .tl-list .card { border: 0; border-radius: 0; border-bottom: 1px solid var(--border); }
     .tl-list a.x { display: none; }
     .tl-list .card > .head { padding-right: 0; }
+    /* Timeline posts read at x.com's timeline size, so a list shows more than one post. */
+    .tl-list .text { font-size: 15px; line-height: 20px; margin: 4px 0; }
+    .tl-list .media.n1 img, .tl-list .vframe { max-height: 300px; }
+    .tl-list .media.n2, .tl-list .media.n3, .tl-list .media.n4 { height: 200px; }
+    .gplay { width: 10px; height: 10px; }
     .tl-list .time { border-bottom: 0; padding-bottom: 4px; }
     .timeline > .more { margin: 12px 16px; }
     .poll { margin: 12px 0; display: grid; gap: 4px; }
@@ -282,7 +287,7 @@
     .video .status:empty { display: none; }
     .photo { cursor: zoom-in; }
     .vframe { display: block; width: 100%; max-height: 510px; border: 0; background: #000; }
-    .video .status { position: absolute; left: 8px; bottom: 8px; font: 700 12px system-ui, sans-serif; color: #fff;
+    .video .status { display: inline-flex; align-items: center; gap: 3px; position: absolute; left: 8px; bottom: 8px; font: 700 12px system-ui, sans-serif; color: #fff;
       background: rgba(0, 0, 0, 0.75); border-radius: 4px; padding: 2px 6px; }
     .media video { display: block; width: 100%; height: 100%; max-height: 510px; background: #000; object-fit: contain; }
     .media.sensitive > :not(.reveal) { filter: blur(28px); }
@@ -543,7 +548,8 @@
   // that, the file is fetched whole through GM_xmlhttpRequest instead, as images are.
   const video = (m) => {
     const gif = m.type === 'gif';
-    const status = el('span', { class: 'status', text: gif ? 'GIF' : '' });
+    // "▶ GIF" on GIF posters, as X labels them.
+    const status = el('span', { class: 'status' }, ...(gif ? [icon('play', 'gplay'), 'GIF'] : []));
     const box = el(
       'div',
       { class: 'video', role: 'button', tabindex: '0', title: S().play },
@@ -845,8 +851,8 @@
   };
 
   // A profile timeline (<a class="twitter-timeline" href="https://twitter.com/NASA">): the
-  // account header and its latest posts in a scrolling list, honouring data-tweet-limit and
-  // data-height like X's widget.
+  // account header and its latest posts, honouring data-tweet-limit and data-height like X's
+  // widget.
   const renderTimeline = (user, items, height) =>
     el(
       'div',
@@ -863,7 +869,7 @@
         ),
         link(profileUrl(user), { class: 'x', title: S().viewOnX }, icon('x')),
       ),
-      el('div', { class: 'tl-list', style: `max-height:${height}px` }, ...items.map((t) => renderTweet(t, true))),
+      el('div', { class: 'tl-list', style: height ? `max-height:${height}px` : '' }, ...items.map((t) => renderTweet(t, true))),
       link(profileUrl(user), { class: 'more', text: S().viewMore }),
     );
 
@@ -937,7 +943,9 @@
     }
     node.setAttribute(STATE, 'done');
     const limit = Math.min(Math.max(Number(node.getAttribute('data-tweet-limit')) || 5, 1), 20);
-    const height = Math.min(Math.max(Number(node.getAttribute('data-height')) || 600, 200), 2000);
+    // Like X's widget: a scrolling box only when the page asks for a height, else the full list.
+    const asked = Number(node.getAttribute('data-height'));
+    const height = asked ? Math.min(Math.max(asked, 200), 2000) : null;
     const { host, out } = mount(node);
     visible.set(host, async () => {
       try {
