@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        fx-embed: embedded tweets via fxtwitter
 // @namespace   https://github.com/gapul/dotfiles
-// @version     0.5.1
+// @version     0.6.0
 // @description Renders embedded tweets from api.fxtwitter.com instead of X, laid out like X's own embed, without cookies or Referer.
 // @match       *://*/*
 // @exclude     *://x.com/*
@@ -97,6 +97,9 @@
       'M1.751 10c0-4.42 3.584-8 8.005-8h4.366c4.49 0 8.129 3.64 8.129 8.13 0 2.96-1.607 5.68-4.196 7.11l-8.054 4.46v-3.69h-.067c-4.49.1-8.183-3.51-8.183-8.01zm8.005-6c-3.317 0-6.005 2.69-6.005 6 0 3.37 2.77 6.08 6.138 6.01l.351-.01h1.761v2.3l5.087-2.81c1.951-1.08 3.163-3.13 3.163-5.36 0-3.39-2.744-6.13-6.129-6.13H9.756z',
     link: 'M18.36 5.64c-1.95-1.96-5.11-1.96-7.07 0L9.88 7.05 8.46 5.64l1.42-1.42c2.73-2.73 7.16-2.73 9.9 0 2.73 2.74 2.73 7.17 0 9.9l-1.42 1.42-1.41-1.42 1.41-1.41c1.96-1.96 1.96-5.12 0-7.07zm-2.12 3.53l-7.07 7.07-1.41-1.41 7.07-7.07 1.41 1.41zm-12.02.71l1.42-1.42 1.41 1.42-1.41 1.41c-1.96 1.96-1.96 5.12 0 7.07 1.95 1.96 5.11 1.96 7.07 0l1.41-1.41 1.42 1.41-1.42 1.42c-2.73 2.73-7.16 2.73-9.9 0-2.73-2.74-2.73-7.17 0-9.9z',
     play: 'M8 5v14l11-7z',
+    repost:
+      'M4.5 3.88l4.432 4.14-1.364 1.46L5.5 7.55V16c0 1.1.896 2 2 2H13v2H7.5c-2.209 0-4-1.79-4-4V7.55L1.432 9.48.068 8.02 4.5 3.88zM16.5 6H11V4h5.5c2.209 0 4 1.79 4 4v8.45l2.068-1.93 1.364 1.46-4.432 4.14-4.432-4.14 1.364-1.46 2.068 1.93V8c0-1.1-.896-2-2-2z',
+    views: 'M8.75 21V3h2v18h-2zM18 21V8.5h2V21h-2zM4 21l.004-10h2L6 21H4zm9.248 0v-7h2v7h-2z',
     bookmark:
       'M4 4.5C4 3.12 5.119 2 6.5 2h11C18.881 2 20 3.12 20 4.5v18.44l-8-5.71-8 5.71V4.5zM6.5 4c-.276 0-.5.22-.5.5v14.56l6-4.29 6 4.29V4.5c0-.28-.224-.5-.5-.5h-11z',
   };
@@ -157,7 +160,10 @@
     .poll .fill { position: absolute; inset: 0 auto 0 0; background: var(--border); border-radius: 4px; z-index: 0; }
     .poll span { position: relative; }
     .time { color: var(--muted); display: block; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
-    .actions { display: flex; gap: 20px; padding: 4px 0; color: var(--muted); font-size: 14px; font-weight: 700; }
+    .actions { display: flex; flex-wrap: wrap; column-gap: 18px; padding: 4px 0; color: var(--muted); font-size: 14px; font-weight: 700; }
+    .actions .share { margin-left: auto; }
+    .actions .r:hover { color: var(--blue); }
+    .actions .rp:hover { color: #00ba7c; }
     .actions a, .actions button { display: inline-flex; align-items: center; gap: 4px; color: inherit; padding: 6px 0;
       background: none; border: 0; font: inherit; cursor: pointer; }
     .actions .icon { width: 20px; height: 20px; }
@@ -380,13 +386,20 @@
     const note = typeof t.community_note?.text === 'string' ? t.community_note.text : null;
     const copy = el('button', {
       type: 'button',
+      class: 'share',
+      title: 'リンクをコピー',
       onclick: () =>
         navigator.clipboard.writeText(t.url).then(() => {
           copy.lastChild.textContent = 'コピーしました';
         }),
     });
-    copy.append(icon('link', 'link'), el('span', { text: 'リンクをコピー' }));
-    const views = t.views ? ` · ${compact.format(t.views)}件の表示` : '';
+    // Icon only, so the counts fit on one line; the label shows after copying.
+    copy.append(icon('link', 'link'), el('span'));
+    // x.com's order: replies, reposts, likes, views, bookmarks. A count fxtwitter does not
+    // return (views on old tweets) is left out rather than shown as 0.
+    const stat = (name, n, label, cls = '') =>
+      typeof n === 'number' ? link(t.url, { class: cls, title: `${n.toLocaleString('ja-JP')} ${label}` }, icon(name), el('span', { text: compact.format(n) })) : null;
+    const reposts = (t.retweets ?? 0) + (t.quotes ?? 0);
     const parent = el('div');
     if (t.replying_to_status) {
       request(API + t.replying_to_status, 'json')
@@ -404,13 +417,15 @@
       renderMedia(t.media, t.possibly_sensitive),
       t.quote ? renderQuote(t.quote) : null,
       note ? el('div', { class: 'note' }, el('b', { text: 'コミュニティノート' }), el('span', { text: note })) : null,
-      link(t.url, { class: 'time', text: when + views }),
+      link(t.url, { class: 'time', text: when }),
       el(
         'div',
         { class: 'actions' },
-        link(t.url, {}, icon('heart'), el('span', { text: compact.format(t.likes ?? 0) })),
-        link(t.url, {}, icon('reply'), el('span', { text: '返信' })),
-        t.bookmarks ? link(t.url, {}, icon('bookmark'), el('span', { text: compact.format(t.bookmarks) })) : null,
+        stat('reply', t.replies, '件の返信', 'r'),
+        stat('repost', typeof t.retweets === 'number' ? reposts : undefined, `件のリポスト（うち引用 ${(t.quotes ?? 0).toLocaleString('ja-JP')}）`, 'rp'),
+        stat('heart', t.likes, '件のいいね'),
+        stat('views', t.views, '件の表示'),
+        stat('bookmark', t.bookmarks, '件のブックマーク'),
         copy,
       ),
       link(t.url, {
