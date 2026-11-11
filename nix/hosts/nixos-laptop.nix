@@ -989,7 +989,8 @@ in
 
   # Japanese input: fcitx5 with SKK, set up after macSKK on the mac (configs/ime/skk/README.md).
   # Mozc stays installed but out of the group; add it back from fcitx5-configtool if it is ever wanted.
-  # macSKK's skkserv (azooKey skkserv on localhost:1178) has no counterpart here: it is a mac app.
+  # macSKK's skkserv (azooKey skkserv on localhost:1178) runs here too, as a user service in
+  # home/fcitx5-skk.nix (the Linux build of the same server).
   # The dictionaries and the kana rule are user-side, in home/fcitx5-skk.nix.
   # Hyprland runs no XDG autostart, so the daemon is started from its exec-once (home/hyprland.nix);
   # before that, nothing ever started fcitx5 and neither IM worked.
