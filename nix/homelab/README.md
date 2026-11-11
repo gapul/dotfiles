@@ -42,7 +42,7 @@ name that matters now.
 | `paperless.env` | `PAPERLESS_SECRET_KEY`, `PAPERLESS_ADMIN_PASSWORD`, `PAPERLESS_REMOTE_OCR_API_KEY` (the same value as the macmini's `~/.config/vision-ocr/key`) |
 | `vaultwarden.env` | `ADMIN_TOKEN` |
 | `webdav.env` | `WEBDAV_USERNAME`, `WEBDAV_PASSWORD` (`openssl rand -base64 24`) for webdav.gapul.net (`webdav.nix`). The same pair is typed into each browser's Violentmonkey, Stylus, uBlacklist and Header Editor once; changing it means re-entering it there |
-| `zipline.env` | `CORE_SECRET`, from `openssl rand -hex 32` (keep the existing value); for R2 add `DATASOURCE_TYPE=s3`, `DATASOURCE_S3_BUCKET`, `DATASOURCE_S3_ENDPOINT`, `DATASOURCE_S3_ACCESS_KEY_ID`, and `DATASOURCE_S3_SECRET_ACCESS_KEY`. See the R2 procedure below |
+| `zipline.env` | `CORE_SECRET`, from `openssl rand -hex 32` (keep the existing value); for R2 add `DATASOURCE_TYPE=s3`, `DATASOURCE_S3_BUCKET`, `DATASOURCE_S3_ENDPOINT`, `DATASOURCE_S3_ACCESS_KEY_ID`, `DATASOURCE_S3_SECRET_ACCESS_KEY`, `DATASOURCE_S3_REGION=auto`, and `DATASOURCE_S3_FORCE_PATH_STYLE=true`. See the R2 procedure below |
 | `nostr.env` | `NOSTR_PRIVATE_KEY` (hex) for npub1gapulnet42…960ve3, the key behind gapul@gapul.net on Nostr. Losing it loses the identity |
 | `writefreely-admin.password` | first-run password for WriteFreely's admin `gapul`; read only while there are no users, changed from the UI afterwards |
 | `puls.env` | `PULS_TOKEN`, a random bearer token the PulsHealth app sends (it is also in the pairing QR). Changing it means re-pairing the iPhone |
@@ -65,8 +65,10 @@ Zipline service. R2 is its private S3 datasource, not a second public image host
 leave both R2 public access and `r2.dev` disabled. Zipline fetches objects from R2
 and enforces its sharing rules, so shared links still depend on the homeserver.
 
-The Nix module sets R2's region (`auto`) and path-style requests. Connection
-details belong in the existing sops `zipline.env` value, preserving `CORE_SECRET`:
+All R2 settings belong in the existing sops `zipline.env` value, preserving
+`CORE_SECRET`. Keep them out of the Nix module: Zipline validates the S3 settings
+as soon as any `DATASOURCE_S3_*` variable is set, even with `DATASOURCE_TYPE=local`,
+and refuses to start without the bucket and keys.
 
 ```dotenv
 CORE_SECRET=<existing value, unchanged>
@@ -75,6 +77,8 @@ DATASOURCE_S3_BUCKET=<dedicated Zipline bucket>
 DATASOURCE_S3_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
 DATASOURCE_S3_ACCESS_KEY_ID=<bucket-scoped R2 access key>
 DATASOURCE_S3_SECRET_ACCESS_KEY=<R2 secret access key>
+DATASOURCE_S3_REGION=auto
+DATASOURCE_S3_FORCE_PATH_STYLE=true
 ```
 
 Use the endpoint shown by Cloudflare for that bucket (jurisdiction-specific
