@@ -112,7 +112,23 @@ in
     overrideDevices = false;
     overrideFolders = false;
     settings = {
-      devices."homeserver".id = "Y72TVZZ-IE3MUPY-3YI6D63-HON47QT-2UYVWHN-5C5N5RY-T2H4ID7-T776ZQF";
+      # Peers are reached over the tailnet only (homelab/syncthing.nix): homeserver at its tailnet
+      # address, no discovery, relays or UPnP.
+      options = {
+        localAnnounceEnabled = false;
+        globalAnnounceEnabled = false;
+        relaysEnabled = false;
+        natEnabled = false;
+        urAccepted = -1;
+        crashReportingEnabled = false;
+      };
+      devices."homeserver" = {
+        id = "Y72TVZZ-IE3MUPY-3YI6D63-HON47QT-2UYVWHN-5C5N5RY-T2H4ID7-T776ZQF";
+        addresses = [
+          "tcp://100.127.129.31:22000"
+          "quic://100.127.129.31:22000"
+        ];
+      };
       folders."synchub" = {
         label = "SyncHub";
         path = "${config.home.homeDirectory}/Sync/syncthing";

@@ -30,19 +30,28 @@
     # sync.gapul.net; keep the numbers so the caddy vhost and the Mac's configured
     # address both still fit.
     guiAddress = "127.0.0.1:8384";
-    openDefaultPorts = true;
+    # Every peer reaches this node over the tailnet (2026-11-12): no firewall opening (the host
+    # trusts tailscale0, hosts/homeserver.nix), no LAN or global discovery, no relays, no UPnP.
+    # The peers dial this node's tailnet address, set on their side (home/linux-gui.nix,
+    # modules/home/darwin-services.nix; by hand in Synctrain on the iPhone).
+    openDefaultPorts = false;
     settings = {
+      options = {
+        localAnnounceEnabled = false;
+        globalAnnounceEnabled = false;
+        relaysEnabled = false;
+        natEnabled = false;
+        urAccepted = -1; # no usage reporting
+        crashReportingEnabled = false;
+      };
       devices."macbook-mini".id = "3YUCLFD-KVCQOP4-KF4CPIA-MA5EDJH-QO6NQ7V-CHH3LVZ-GQTNFQZ-A4LEWQ2";
       # The iPhone runs Synctrain (an iOS Syncthing client). The ID was read from
       # "This device's identifier" on the app's Start screen. It's a public key, so it's safe to commit.
       devices."iphone" = {
         id = "R3V5V7Y-ZRBHIHY-F35M3PX-4H3I73G-4UA7UHT-CH523JH-O37RSW3-PNLJPAX";
-        # Keep it reachable via relays even on mobile data. Inside the tailnet it connects directly.
+        # On mobile data too it connects over the tailnet; there are no relays.
         introducer = false;
       };
-      # Xiaomi Pad 5 running Syncthing-Fork (com.github.catfriend1.syncthingfork, managed
-      # by Obtainium, see configs/android/obtainium.json). ID from the app's "Show device ID".
-      devices."xiaomi-pad5".id = "M6ORNMD-BGMQFH5-7EXMWNZ-2MTSGYD-62HWC6H-UCCB3R3-QUSGIV5-T7PDVAH";
       # The NixOS laptop (home/linux-gui.nix). Its identity was generated with `syncthing generate`
       # into ~/.local/state/syncthing before the first switch.
       devices."nixos-laptop".id = "ZXOFKEO-I2FVEKF-3ULLNRS-MYU2KOE-O3XSEPQ-RD2Q2R4-KTUIHWB-4CZWRAP";
@@ -84,21 +93,6 @@
         # "open(.gitignore): Permission denied". Not carrying permissions makes them 0644 via
         # syncthing's own umask. The sending side has the same setting.
         ignorePerms = true;
-      };
-      # The tablet's whole internal storage (/storage/emulated/0), so its files can be read and
-      # edited from here. Android/, trash and device logs are excluded by /sdcard/.stignore (configs/android/stignore) on
-      # the tablet. Deletions on the tablet propagate, so removed or overwritten files are kept
-      # in .stversions for 30 days. Not in the restic set (backup.nix): this is the second copy
-      # of the tablet, not the only one.
-      folders."android-pad5" = {
-        label = "Xiaomi Pad 5";
-        path = "/srv/syncthing/android-pad5";
-        devices = [ "xiaomi-pad5" ];
-        type = "sendreceive";
-        versioning = {
-          type = "trashcan";
-          params.cleanoutDays = "30";
-        };
       };
       # ROMs and decrypted dumps for the laptop's emulators (Cartridges entries in home/gaming.nix).
       # Send-only: this is the original, and the laptop's copy is receive-only. Not on the Macs,
