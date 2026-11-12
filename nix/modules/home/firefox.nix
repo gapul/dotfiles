@@ -248,7 +248,7 @@ in
         ]
       ];
       "3rdparty".Extensions."uBlock0@raymondhill.net".toOverwrite = {
-        # uBO's default lists plus the Japanese one. Ids are the keys of assets/assets.json.
+        # uBO's default lists plus the Japanese ones. Ids are the keys of assets/assets.json.
         filterLists = [
           "user-filters"
           "ublock-filters"
@@ -269,6 +269,17 @@ in
           "ublock-annoyances"
           "easylist-newsletters"
           "easylist-notifications"
+          # Added 2026-11-12: phishing URLs (curbengh's malware-filter project, sources other
+          # than Safe Browsing's), chat/AI/social widgets (third-party scripts and clutter),
+          # and AdGuard Japanese filter Plus, Yuki2718's uBO-oriented complement to JPN-1
+          # (circumvention ads, anti-adblock, popups on Japanese sites). The Plus list is not
+          # trusted: trusted-only scriptlets in it stay off.
+          "curben-phishing"
+          "easylist-chat"
+          "fanboy-ai-suggestions"
+          "adguard-social"
+          "fanboy-social"
+          "https://raw.githubusercontent.com/Yuki2718/adblock2/main/japanese/jpf-plus.txt"
           # Skip click-tracking redirect wrappers (Google, Facebook, Reddit, Steam, …); see the
           # file. Imported by URL so "My filters" stays the user's own.
           "https://raw.githubusercontent.com/gapul/dotfiles/main/configs/apps/ublock/urlskip.txt"
