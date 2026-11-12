@@ -1,0 +1,22 @@
+! Title: gapul embeds
+! Description: Google Maps embeds load only when clicked. Firefox's tracking protection would
+!   block them outright, so nix/modules/home/firefox.nix exempts the Maps hosts from it
+!   (urlclassifier.trackingSkipURLs) and this list takes over the blocking: every Maps embed
+!   and Maps API load is refused, except the embed g-embed loads when its "Load Google Maps"
+!   button is clicked (configs/apps/violentmonkey/g-embed.user.js marks it with gembed=1)
+!   and what that embed loads in turn.
+! Expires: 1 day
+! Homepage: https://github.com/gapul/dotfiles/tree/main/configs/apps/ublock
+
+! The embed itself, unless g-embed's click marked it.
+||google.com/maps/embed?$subdocument
+||google.com/maps?$subdocument
+@@||www.google.com/maps/embed?*gembed=1$subdocument
+@@||www.google.com/maps?*gembed=1$subdocument
+
+! The Maps scripts, API calls and tiles, anywhere but inside a google.com frame (that is, the
+! clicked embed). Pages that use the Maps JavaScript API directly stay blocked.
+||maps.googleapis.com^$domain=~google.com
+||maps.gstatic.com^$domain=~google.com
+||places.googleapis.com^$domain=~google.com
+||www.google.com/maps/vt$domain=~google.com

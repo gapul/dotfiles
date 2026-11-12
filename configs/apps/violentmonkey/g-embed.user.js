@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name        g-embed: YouTube and Google Maps embeds without Google
 // @namespace   https://github.com/gapul/dotfiles
-// @version     0.3.0
-// @description Replaces blocked YouTube and Google Maps embeds: YouTube videos play in place, maps are draggable Google Maps tiles, all without cookies or Referer.
+// @version     0.4.0
+// @description Replaces blocked YouTube and Google Maps embeds: YouTube videos play in place without cookies or Referer; Google Maps loads only when clicked.
 // @match       *://*/*
 // @exclude     *://*.youtube.com/*
 // @exclude     *://youtube.com/*
@@ -11,11 +11,8 @@
 // @grant       GM_xmlhttpRequest
 // @connect     noembed.com
 // @connect     i.ytimg.com
-// @connect     mt0.google.com
-// @connect     mt1.google.com
-// @connect     mt2.google.com
-// @connect     mt3.google.com
 // @connect     www.youtube.com
+// @connect     www.google.com
 // @connect     googlevideo.com
 // @run-at      document-start
 // @noframes
@@ -32,10 +29,12 @@
 //     stream URLs come from YouTube's player API and the segments are fetched through
 //     GM_xmlhttpRequest into a MediaSource. YouTube learns what was played only when Play is
 //     pressed, and gets no cookies or Referer.
-//   Google Maps: coordinates and place name read from the embed URL, map drawn from Google
-//     Maps tiles fetched through GM_xmlhttpRequest (Google sees the area viewed, but no cookies
-//     and not the page), draggable, ⌘/Ctrl+wheel or +/− to zoom, as Google's embed does.
-//     Buttons open the place in Google Maps, Apple Maps or OpenStreetMap.
+//   Google Maps: click to load, the way Firefox's click-to-load placeholders work. Until then
+//     the card shows the place name read from the embed URL and links to Google Maps, Apple Maps
+//     and OpenStreetMap, and nothing is sent to Google. The click loads Google's own embed,
+//     without Referer and with cookies partitioned to the page. Strict mode would block it, so
+//     firefox.nix exempts the Maps hosts from tracking protection and configs/apps/ublock/embeds.txt
+//     blocks every Maps embed and API load except the one this click makes (marked gembed=1).
 // The iframes are swapped out as soon as the parser inserts them, so the blocked request is
 // never made.
 
@@ -88,7 +87,7 @@
     el('a', { href, target: '_blank', rel: 'noopener noreferrer', referrerpolicy: 'no-referrer', ...props }, ...children);
 
   // Fetched images go through GM_xmlhttpRequest into blob: URLs: i.ytimg.com is on the tracking
-  // list strict mode blocks, and OSM tiles should not carry the page's address either.
+  // list strict mode blocks.
   // Tries each URL in turn until one loads; drops the image if none does.
   const blobImage = (urls, cls) => {
     const img = el('img', { alt: '', class: cls ?? '', decoding: 'async' });
@@ -109,10 +108,8 @@
       apple: 'Apple マップ',
       google: 'Google マップ',
       osm: 'OpenStreetMap',
-      zoomIn: '拡大',
-      zoomOut: '縮小',
-      zoomHint: '地図を拡大・縮小するには ⌘ / Ctrl を押しながらスクロール',
-      mapData: '地図データ ©Google',
+      loadMap: 'Google マップを読み込む',
+      loadNote: '読み込むと Google に接続します',
     },
     en: {
       watch: 'Watch on YouTube',
@@ -124,10 +121,8 @@
       apple: 'Apple Maps',
       google: 'Google Maps',
       osm: 'OpenStreetMap',
-      zoomIn: 'Zoom in',
-      zoomOut: 'Zoom out',
-      zoomHint: 'Use ⌘ / Ctrl + scroll to zoom the map',
-      mapData: 'Map data ©Google',
+      loadMap: 'Load Google Maps',
+      loadNote: 'Loading connects to Google',
     },
   };
   const S = () => STRINGS[/^ja\b/i.test(navigator.language) ? 'ja' : 'en'];
@@ -173,20 +168,6 @@
       background: var(--tile); font: 14px/1.4 Roboto, -apple-system, "Segoe UI", "Hiragino Sans", "Noto Sans CJK JP", sans-serif;
       color: var(--fg); --fg: #202124; --muted: #5f6368; --border: #dadce0; --panel: #fff; --tile: #e8eaed; }
     :host([data-theme="dark"]) .map { --fg: #e8eaed; --muted: #9aa0a6; --border: #3c4043; --panel: #202124; --tile: #2b2c2f; }
-    .tiles { position: absolute; inset: 0; cursor: grab; touch-action: none; user-select: none; }
-    .tiles.dragging { cursor: grabbing; }
-    .tiles img { position: absolute; left: 0; top: 0; width: 256px; height: 256px; pointer-events: none; }
-    .pin { position: absolute; left: 0; top: 0; width: 36px; height: 36px; color: #ea4335; pointer-events: none;
-      filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.4)); }
-    .zoom { position: absolute; right: 10px; bottom: 28px; display: grid; border-radius: 8px; overflow: hidden;
-      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3); }
-    .zoom button { width: 32px; height: 32px; border: 0; background: var(--panel); color: var(--muted); font: 20px/1 sans-serif;
-      cursor: pointer; }
-    .zoom button + button { border-top: 1px solid var(--border); }
-    .zoom button:hover { color: var(--fg); }
-    .hint { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(0, 0, 0, 0.45); color: #fff;
-      font-size: 16px; pointer-events: none; opacity: 0; transition: opacity 0.2s; text-align: center; padding: 16px; }
-    .hint.show { opacity: 1; }
     .panel { position: absolute; left: 10px; top: 10px; max-width: calc(100% - 20px); padding: 10px 12px; border-radius: 8px;
       background: var(--panel); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3); }
     .place { font-weight: 500; font-size: 15px; }
@@ -195,8 +176,14 @@
     .buttons a { font-size: 13px; color: #1a73e8; text-decoration: none; border: 1px solid var(--border); border-radius: 999px;
       padding: 3px 10px; background: var(--panel); }
     .buttons a:hover { background: rgba(26, 115, 232, 0.08); }
-    .attrib { position: absolute; right: 0; bottom: 0; padding: 1px 6px; font-size: 11px; color: #333;
-      background: rgba(255, 255, 255, 0.8); pointer-events: none; }
+    .gate { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 8px;
+      text-align: center; padding: 96px 16px 16px; }
+    .gate .pin { width: 40px; height: 40px; color: #ea4335; }
+    .gate button { font: inherit; font-weight: 500; color: #fff; background: #1a73e8; border: 0; border-radius: 999px;
+      padding: 8px 18px; cursor: pointer; }
+    .gate button:hover { background: #1765cc; }
+    .gate .note { color: var(--muted); font-size: 12px; }
+    .map iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
   `;
 
   // One parsed stylesheet shared by every shadow root; a <style> where that is refused.
@@ -459,126 +446,40 @@
     return Math.min(18, Math.max(3, Math.round(z)));
   };
 
-  // Google Maps tiles (the same ones maps.google.com draws, at 2× for sharpness), placed in a
-  // draggable, zoomable view. Tiles are fetched through GM_xmlhttpRequest, so the page's
-  // tracking protection does not block them and Google gets neither cookies nor the page.
-  const TILE = 256;
-  const project = (lat, lon, z) => {
-    const n = TILE * 2 ** z;
-    const rad = (lat * Math.PI) / 180;
-    return [((lon + 180) / 360) * n, ((1 - Math.log(Math.tan(rad) + 1 / Math.cos(rad)) / Math.PI) / 2) * n];
+  // The embed URL Google is given on click: same parameters, on www.google.com (the host the
+  // tracking-protection exemption covers), marked so embeds.txt lets it through. The legacy
+  // /maps?q=…&output=embed form redirects to /maps/embed?origin=mfe&pb=…, which would lose the
+  // mark, so it is resolved first through GM_xmlhttpRequest (anonymous, no Referer; Google answers
+  // HEAD with 404, hence a GET).
+  const mark = (url) => {
+    const u = parseUrl(url);
+    u.searchParams.set('gembed', '1');
+    return u.href;
   };
-  const tileUrl = (x, y, z) =>
-    `https://mt${(x + y) % 4}.google.com/vt/lyrs=m&hl=${/^ja\b/i.test(navigator.language) ? 'ja' : 'en'}&x=${x}&y=${y}&z=${z}&scale=2`;
-
-  const slippyMap = (lat, lon, z0, hint) => {
-    const box = el('div', { class: 'tiles' });
-    const pin = icon('pin');
-    const cache = new Map(); // "z/x/y" → <img>, oldest first
-    let z = z0;
-    let [cx, cy] = project(lat, lon, z);
-    let frame = 0;
-    const render = () => {
-      frame = 0;
-      const w = box.clientWidth;
-      const h = box.clientHeight;
-      if (!w || !h) return;
-      const n = 2 ** z;
-      cy = Math.min(Math.max(cy, h / 2), n * TILE - h / 2);
-      const left = cx - w / 2;
-      const top = cy - h / 2;
-      const keep = new Set();
-      for (let ty = Math.floor(top / TILE); ty <= Math.floor((top + h) / TILE); ty++) {
-        if (ty < 0 || ty >= n) continue;
-        for (let tx = Math.floor(left / TILE); tx <= Math.floor((left + w) / TILE); tx++) {
-          const x = ((tx % n) + n) % n;
-          const key = `${z}/${x}/${ty}`;
-          keep.add(key);
-          let img = cache.get(key);
-          if (img) cache.delete(key);
-          else img = blobImage(tileUrl(x, ty, z));
-          cache.set(key, img);
-          if (img.parentNode !== box) box.insertBefore(img, pin);
-          img.style.transform = `translate(${Math.round(tx * TILE - left)}px, ${Math.round(ty * TILE - top)}px)`;
-        }
-      }
-      for (const [key, img] of cache) if (!keep.has(key)) img.remove();
-      // Keep recently seen tiles for panning back; drop the oldest beyond that.
-      while (cache.size > 160) {
-        const [key, img] = cache.entries().next().value;
-        cache.delete(key);
-        img.remove();
-        if (img.src.startsWith('blob:')) URL.revokeObjectURL(img.src);
-      }
-      const [px, py] = project(lat, lon, z);
-      pin.style.transform = `translate(${px - left - 18}px, ${py - top - 36}px)`;
-    };
-    const schedule = () => (frame ||= requestAnimationFrame(render));
-    // Zoom by one step keeping the point under (mx, my) where it is.
-    const zoom = (dz, mx = box.clientWidth / 2, my = box.clientHeight / 2) => {
-      const nz = Math.min(20, Math.max(2, z + dz));
-      if (nz === z) return;
-      const f = 2 ** (nz - z);
-      cx = (cx - box.clientWidth / 2 + mx) * f - mx + box.clientWidth / 2;
-      cy = (cy - box.clientHeight / 2 + my) * f - my + box.clientHeight / 2;
-      z = nz;
-      schedule();
-    };
-    let drag = null;
-    box.addEventListener('pointerdown', (e) => {
-      drag = { x: e.clientX, y: e.clientY };
-      box.setPointerCapture(e.pointerId);
-      box.classList.add('dragging');
+  const officialUrl = (src) => {
+    const u = parseUrl(src);
+    u.protocol = 'https:';
+    u.hostname = 'www.google.com';
+    if (u.pathname.startsWith('/maps/embed')) return Promise.resolve(mark(u.href));
+    return new Promise((resolve) => {
+      const fallback = () => resolve(mark(u.href));
+      GM_xmlhttpRequest({
+        url: u.href,
+        anonymous: true,
+        timeout: 10000,
+        onload: (r) => (/^https:\/\/www\.google\.com\/maps\/embed\?/.test(r.finalUrl ?? '') ? resolve(mark(r.finalUrl)) : fallback()),
+        onerror: fallback,
+        ontimeout: fallback,
+      });
     });
-    box.addEventListener('pointermove', (e) => {
-      if (!drag) return;
-      cx -= e.clientX - drag.x;
-      cy -= e.clientY - drag.y;
-      drag = { x: e.clientX, y: e.clientY };
-      schedule();
-    });
-    const stop = () => {
-      drag = null;
-      box.classList.remove('dragging');
-    };
-    box.addEventListener('pointerup', stop);
-    box.addEventListener('pointercancel', stop);
-    box.addEventListener('dblclick', (e) => {
-      const r = box.getBoundingClientRect();
-      zoom(1, e.clientX - r.left, e.clientY - r.top);
-    });
-    // Plain scrolling keeps scrolling the page; ⌘/Ctrl + scroll zooms, as Google's embed does.
-    let acc = 0;
-    let hintTimer = 0;
-    box.addEventListener(
-      'wheel',
-      (e) => {
-        if (!e.ctrlKey && !e.metaKey) {
-          hint.classList.add('show');
-          clearTimeout(hintTimer);
-          hintTimer = setTimeout(() => hint.classList.remove('show'), 1200);
-          return;
-        }
-        e.preventDefault();
-        acc += e.deltaY;
-        if (Math.abs(acc) < 40) return;
-        const r = box.getBoundingClientRect();
-        zoom(acc < 0 ? 1 : -1, e.clientX - r.left, e.clientY - r.top);
-        acc = 0;
-      },
-      { passive: false },
-    );
-    box.append(pin);
-    new ResizeObserver(schedule).observe(box);
-    return { box, zoom };
   };
 
-  const mapCard = (info, { w, h }) => {
-    const { lat, lon, name } = info;
-    const has = lat !== null && lon !== null;
+  const mapCard = (src, { w, h }) => {
+    const { lat, lon, name, metres } = readMap(src) ?? {};
+    const has = lat != null && lon != null;
     const label = name || (has ? `${lat.toFixed(5)}, ${lon.toFixed(5)}` : S().map);
     const query = encodeURIComponent(name || `${lat},${lon}`);
-    const z = has ? zoomFor(lat, info.metres, w) : 15;
+    const z = has ? zoomFor(lat, metres, w) : 15;
     // A named place opens as that place, centred where the embed was; otherwise the point.
     const google = has
       ? name
@@ -589,36 +490,38 @@
       ? `https://maps.apple.com/?ll=${lat},${lon}${name ? `&q=${encodeURIComponent(name)}` : ''}`
       : `https://maps.apple.com/?q=${query}`;
     const osm = has ? `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=${z}/${lat}/${lon}` : `https://www.openstreetmap.org/search?query=${query}`;
-    const hint = el('div', { class: 'hint', text: S().zoomHint });
-    const map = has ? slippyMap(lat, lon, z, hint) : null;
-    return el(
+    const panel = el(
       'div',
-      { class: 'map', style: `aspect-ratio:${w} / ${h}` },
-      map?.box,
+      { class: 'panel' },
+      el('div', { class: 'place', text: label }),
+      has && name ? el('div', { class: 'coords', text: `${lat.toFixed(5)}, ${lon.toFixed(5)}` }) : null,
       el(
         'div',
-        { class: 'panel' },
-        el('div', { class: 'place', text: label }),
-        has && name ? el('div', { class: 'coords', text: `${lat.toFixed(5)}, ${lon.toFixed(5)}` }) : null,
-        el(
-          'div',
-          { class: 'buttons' },
-          link(google, { text: S().google }),
-          link(apple, { text: S().apple }),
-          link(osm, { text: S().osm }),
-        ),
+        { class: 'buttons' },
+        link(google, { text: S().google }),
+        link(apple, { text: S().apple }),
+        link(osm, { text: S().osm }),
       ),
-      map
-        ? el(
-            'div',
-            { class: 'zoom' },
-            el('button', { type: 'button', title: S().zoomIn, 'aria-label': S().zoomIn, text: '+', onclick: () => map.zoom(1) }),
-            el('button', { type: 'button', title: S().zoomOut, 'aria-label': S().zoomOut, text: '−', onclick: () => map.zoom(-1) }),
-          )
-        : null,
-      map ? hint : null,
-      map ? el('div', { class: 'attrib', text: S().mapData }) : null,
     );
+    const card = el('div', { class: 'map', style: `aspect-ratio:${w} / ${h}` });
+    const gate = el(
+      'div',
+      { class: 'gate' },
+      icon('pin'),
+      el('button', {
+        type: 'button',
+        text: S().loadMap,
+        onclick: (e) => {
+          e.currentTarget.disabled = true;
+          officialUrl(src).then((url) =>
+            card.replaceChildren(el('iframe', { src: url, referrerpolicy: 'no-referrer', allowfullscreen: '', title: label, [STATE]: 'done' })),
+          );
+        },
+      }),
+      el('div', { class: 'note', text: S().loadNote }),
+    );
+    card.append(gate, panel);
+    return card;
   };
 
   // ---- Replacing the iframes ------------------------------------------------------------
@@ -649,14 +552,14 @@
     const root = host.attachShadow({ mode: 'closed' });
     styleShadow(root);
     frame.replaceWith(host);
-    // Network requests (noembed, thumbnail, tiles) wait until the card nears the viewport.
+    // Network requests (noembed, thumbnail) wait until the card nears the viewport.
     visible.set(host, () => {
       host.setAttribute('data-theme', pageIsDark(host) ? 'dark' : 'light');
       if (yt) {
         const start = Number(parseUrl(src)?.searchParams.get('start')) || 0;
         root.append(youtubeCard(yt[1], start, dims));
       } else {
-        root.append(mapCard(readMap(src), dims));
+        root.append(mapCard(src, dims));
       }
     });
     observer.observe(host);
