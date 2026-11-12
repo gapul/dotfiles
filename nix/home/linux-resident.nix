@@ -8,13 +8,6 @@
     Hidden=true
   '';
   xdg.configFile."autostart/librepods.desktop".force = true;
-  xdg.configFile."autostart/org.kde.kdeconnect.daemon.desktop".text = ''
-    [Desktop Entry]
-    Type=Application
-    Name=KDE Connect
-    Hidden=true
-  '';
-  services.kdeconnect.enable = true;
   services.activitywatch = {
     enable = true;
     # The service only runs aw-server, so the Rust server alone is enough. The default

@@ -44,7 +44,6 @@ co.candyhouse.sesame2	appstore	Sesame	Home Assistant
 net.mullvad.MullvadVPN	appstore	Mullvad VPN	-
 com.wireguard.ios	appstore	WireGuard	-
 com.carriez.flutterHbb	appstore	RustDesk	-
-org.kde.kdeconnect	appstore	KDE Connect	-
 org.localsend.localsendApp	appstore	LocalSend	-
 
 # 自ビルド / サイドロード
