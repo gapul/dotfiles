@@ -1,7 +1,13 @@
 { pkgs, ... }:
 let
   hostPkgs = pkgs;
-  mullvadEndpoint = "138.199.21.239";
+  # jp-osa-wg-103 (owned by Mullvad), the relay in /var/lib/secrets/mullvad-exit.conf.
+  # Measured 2026-11-12 from nixos-laptop through this node: Cloudflare's managed
+  # challenge passed by itself here (also in a private window) but asked for a click on
+  # jp-tyo-wg-001 (DataPacket, where antcpt.com refused connections outright) and on the
+  # M247 relays jp-tyo-wg-202/203, which also added 300+ ms. Latency 35-75 ms against
+  # 19 ms on 001. hCaptcha challenged on every relay and from the home line alike.
+  mullvadEndpoint = "194.127.166.161";
   mullvadPort = 51820;
 in
 {
