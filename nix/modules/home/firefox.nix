@@ -267,6 +267,9 @@ in
           # Skip click-tracking redirect wrappers (Google, Facebook, Reddit, Steam, …); see the
           # file. Imported by URL so "My filters" stays the user's own.
           "https://raw.githubusercontent.com/gapul/dotfiles/main/configs/apps/ublock/urlskip.txt"
+          # Google Maps embeds load only when g-embed's button is clicked; pairs with
+          # urlclassifier.trackingSkipURLs below.
+          "https://raw.githubusercontent.com/gapul/dotfiles/main/configs/apps/ublock/embeds.txt"
         ];
       };
       # Surfingkeys reads no managed storage; its settings live in configs/apps/surfingkeys/config.js,
@@ -427,6 +430,20 @@ in
         "network.trr.custom_uri" = "https://dns2.gapul.net/dns-query";
         "network.trr.bootstrapAddr" = "100.127.129.31";
         "network.trr.excluded-domains" = "ts.net";
+
+        # Google Maps embeds, click to load (2026-11-12). Strict tracking protection blocks
+        # google.com, gstatic.com and googleapis.com as "Content" trackers, so a Maps embed never
+        # loads. These exemptions (WebExtension match patterns; bare host names are ignored) cover
+        # what Google's embed loads and nothing more. uBO's configs/apps/ublock/embeds.txt keeps
+        # it blocked until g-embed's "Load Google Maps" button is clicked, and keeps pages from
+        # using the Maps API directly. Measured with the embed under strict mode: the place card
+        # also needs places.googleapis.com; fonts.googleapis.com stays blocked (fallback fonts).
+        "urlclassifier.trackingSkipURLs" = lib.concatStringsSep "," [
+          "*://www.google.com/maps/*"
+          "*://maps.googleapis.com/*"
+          "*://maps.gstatic.com/*"
+          "*://places.googleapis.com/*"
+        ];
 
         # Fingerprinting: RFP stays off (arkenfox 4500 is opt-in) and Firefox's FPP, which ETP
         # strict turns on, gets the RFP targets added one by one on top of its defaults
