@@ -148,15 +148,15 @@ in
 map mkCraft [
   {
     name = "PhotoCraft";
-    version = "0.23.0";
-    hash = "sha256-jKdh8+mvTZMsxu/dbsv6IhKBU7owzOlVVHymJW5hUW0=";
-    linuxHash = "sha256-mFjuI0hU98OQ8+q0c0rqUxAMyRLCyNzqoClCe3XdIvg=";
+    version = "0.23.1";
+    hash = "sha256-YGpSkXGIxl3HFwl4EYCg4yRODzt/QLL1uAFw6HNkQg0=";
+    linuxHash = "sha256-Q4Ou9noHzDcK0lCm7WABUgXT5sRj+vP/Sw9nuBeMz8g=";
   }
   {
     name = "VectorCraft";
-    version = "0.24.0";
-    hash = "sha256-8aBHEnN0La0NTTeTS1pgzXWuFj2OXhuM83OaRxl7rxI=";
-    linuxHash = "sha256-nGFxygB6b4NcNotZL+nukMmF1lBX7cnc0rxMTvxQrSs=";
+    version = "0.24.1";
+    hash = "sha256-je5ZlrDZX8CovIudlcrCSDSmI8sIA2oM6ou2wOl0yq0=";
+    linuxHash = "sha256-oJBRQlL94UVJWsb8Zdb/ExHWmJmOV7pDTV0IlsPR+/o=";
   }
   {
     name = "FilmCraft";
@@ -166,15 +166,15 @@ map mkCraft [
   }
   {
     name = "LightCraft";
-    version = "0.21.0";
-    hash = "sha256-3TzVtU3w19ekV+APP61+VQgT1N+KjNqhpr3PcCH7Kz0=";
-    linuxHash = "sha256-fn2lU96hACaKBY8TXHxK0fT7drTYJC4U9w8W7YkllYA=";
+    version = "0.21.1";
+    hash = "sha256-tw9GysATkBVMmt+gaCLmaRuV/CcMUHsO0iCgDcWIux4=";
+    linuxHash = "sha256-sSPeFpFYCaeeZLpO467p4c3tbvI7c3wG+Bzcfi8obWI=";
   }
   {
     name = "PdfCraft";
-    version = "0.21.0";
-    hash = "sha256-wYwT6k7a79vzzyMfhRIxqK5RzxUHdy7aaTtZF0y6pq8=";
-    linuxHash = "sha256-eajHbiOtbmcd47hWpHaTavwAD4qn/v/xkNQ95i+jW6E=";
+    version = "0.21.1";
+    hash = "sha256-Gtyb89MZ5wfpJHAE2wWjKgWWNONxD+ebwU+S9onKTUo=";
+    linuxHash = "sha256-wpGekETv/eMY5mgHrSohu7dKlVWzwLmfmtDEDPYc4l4=";
   }
   {
     name = "EffectCraft";
