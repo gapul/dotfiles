@@ -88,9 +88,14 @@ in
         }
         {
           name = "g-embed: YouTube and Google Maps embeds without Google";
-          # Cards for the YouTube/Maps iframes strict tracking protection blocks: noembed.com and
-          # OpenStreetMap instead of Google; a click opens the video or the place.
+          # Cards for the YouTube/Maps iframes strict tracking protection blocks: YouTube plays in
+          # the card without cookies or Referer; Google Maps loads Google's embed on click.
           url = "${repo}/violentmonkey/g-embed.user.js";
+        }
+        {
+          name = "amp-canonical: leave AMP pages for the normal page";
+          # Pairs with the AMP rules in configs/apps/ublock/urlskip.txt (Google's AMP cache).
+          url = "${repo}/violentmonkey/amp-canonical.user.js";
         }
         {
           name = "video-default-speed: per-site default playback speed";
