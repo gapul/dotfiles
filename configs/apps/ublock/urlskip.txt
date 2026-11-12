@@ -48,3 +48,12 @@
 
 ! pixiv
 ||pixiv.net/jump.php?$doc,urlskip=?url
+
+! AMP: Google's AMP viewer (google.com/amp/s/<page>) and the AMP cache
+! (<site>.cdn.ampproject.org/c/s/<page>) serve the publisher's page from Google. Go to the
+! publisher instead; configs/apps/violentmonkey/amp-canonical.user.js then leaves the
+! publisher's AMP page for its normal one. The /s/ marks https; without it the page is
+! http, upgraded here all the same.
+||google.com/amp/$doc,urlskip=/\/amp\/(?:s\/)?(.+)$/ +https
+||google.co.jp/amp/$doc,urlskip=/\/amp\/(?:s\/)?(.+)$/ +https
+||cdn.ampproject.org/$doc,urlskip=/\.cdn\.ampproject\.org\/[cv]\/(?:s\/)?(.+)$/ +https
