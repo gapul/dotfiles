@@ -148,27 +148,27 @@ in
 map mkCraft [
   {
     name = "PhotoCraft";
-    version = "0.22.0";
-    hash = "sha256-AnWW3LE9sMDXSTFcBSSTv1h4hunQga+lfLxldaTN5uk=";
-    linuxHash = "sha256-7t6vpGdd+9HyNR5r+kuC9URTaU6zbaG71cqLv19U8gI=";
+    version = "0.23.0";
+    hash = "sha256-jKdh8+mvTZMsxu/dbsv6IhKBU7owzOlVVHymJW5hUW0=";
+    linuxHash = "sha256-mFjuI0hU98OQ8+q0c0rqUxAMyRLCyNzqoClCe3XdIvg=";
   }
   {
     name = "VectorCraft";
-    version = "0.23.0";
-    hash = "sha256-i+48VClIfnCPlUacZWj3UMcA+XuGSDpvbL/Qdpslvhs=";
-    linuxHash = "sha256-B8JKYJT7RXxmW5WEjVW/vQVGA1S8DqybTsn5RnqLHjE=";
+    version = "0.24.0";
+    hash = "sha256-8aBHEnN0La0NTTeTS1pgzXWuFj2OXhuM83OaRxl7rxI=";
+    linuxHash = "sha256-nGFxygB6b4NcNotZL+nukMmF1lBX7cnc0rxMTvxQrSs=";
   }
   {
     name = "FilmCraft";
-    version = "0.20.0";
-    hash = "sha256-bM6qDmpfemhIwSixO+G2abwOWmn0rrNi2XEgx8yizIg=";
-    linuxHash = "sha256-NUZdcb3hifUMrK8+T9icTKY3f6+OtI6qLwZbjlRZMjY=";
+    version = "0.20.1";
+    hash = "sha256-VyLw8hypZYPuJ9/Yi64j4KSmq4eGKmwACCyIxcdZ514=";
+    linuxHash = "sha256-Pk/qPLjUc+aPGJoKh5K6RhYPq1B62rOriSAHP9QfJPo=";
   }
   {
     name = "LightCraft";
-    version = "0.20.0";
-    hash = "sha256-3bNMjIe7Ba0sKVBS4wJjY2hteZWwi8/lDmzZimtnppc=";
-    linuxHash = "sha256-jLXu2CWy3Z4PpCaAEp0+WqcY8HGW1nzF0FdB8OapzCU=";
+    version = "0.21.0";
+    hash = "sha256-3TzVtU3w19ekV+APP61+VQgT1N+KjNqhpr3PcCH7Kz0=";
+    linuxHash = "sha256-fn2lU96hACaKBY8TXHxK0fT7drTYJC4U9w8W7YkllYA=";
   }
   {
     name = "PdfCraft";
@@ -178,44 +178,44 @@ map mkCraft [
   }
   {
     name = "EffectCraft";
-    version = "0.24.0";
-    hash = "sha256-fkqmIrHTZ8vmNp01g5DJA+4Q7/Ee6DBk70IWQCihUi4=";
-    linuxHash = "sha256-l7Ws6bjL44qF/k7dAuR+vfQnKTML0oC6IHTAiblrUCI=";
+    version = "0.24.1";
+    hash = "sha256-ItARHR2qpxQu5iZqK4F00vTTdcTBLg38QKBNs9+zWFE=";
+    linuxHash = "sha256-XOA5NpAUQif6kYboIwitY4pu9tn5dsmW5tA7W1G2Wns=";
   }
   {
     name = "DesignCraft";
-    version = "0.20.0";
-    hash = "sha256-r69Rb9c4Eo2OVXBmSs+wLyYG/0m6AgO1nf3qvRscDUM=";
-    linuxHash = "sha256-b3IQO2+iPct3vteUt6MBGJoqd6SMtjBadtvTMWmm6N4=";
+    version = "0.20.1";
+    hash = "sha256-9Fsr9VQ8HYw30JqXHplCDW7z2XtuvjPjGzbSo8OesMI=";
+    linuxHash = "sha256-6RYw1M31eMyx4vOfiOJOhSDxSC1RrkcUZX7kceIjf0Q=";
   }
   {
     name = "WordCraft";
-    version = "0.17.0";
-    hash = "sha256-vl2JojkFw6kd9NWPAPgnrAaqjFDL60Hm59n337hkpYo=";
-    linuxHash = "sha256-nHRMDDGjziXfgmgPx15kXWgoRvrMvhA/T5GnWLGfNoc=";
+    version = "0.18.1";
+    hash = "sha256-ifbgqRD4rVqBXYAkx5Mk0gW1b80uBd7tAQ6QFvWBPew=";
+    linuxHash = "sha256-MSoFfUbdgFl8EtzP0Ql84l7epAuqrrULy28BrBrrrbU=";
   }
   {
     name = "GridCraft";
-    version = "0.19.0";
-    hash = "sha256-riZg+7Ioy5oZo/5fcQ02uoIWFZF3sNJZ7qoIWdq+FGI=";
-    linuxHash = "sha256-47HPSpJuKvp+isIukIt833uvYQO7RE+Za/oLw9iJrbY=";
+    version = "0.19.1";
+    hash = "sha256-1QFl54uONau+aKp8bzbCkAI97GUNiqeXrCNHqTD2wZc=";
+    linuxHash = "sha256-jZe7otW7AP1p7VUGSFLB/ZFN5A1ezVXKAcjfgbgolG0=";
   }
   {
     name = "DeckCraft";
-    version = "0.18.0";
-    hash = "sha256-55CVUSbsV7u6ZElYklhvXByUSJv8Zkk4EpK0tQB308k=";
-    linuxHash = "sha256-0fEpr4wS8SULzBfbzbqsOAkAyROByEpK2m7ntICk2wY=";
+    version = "0.18.1";
+    hash = "sha256-MyHRH2NTs/+d4yjyFAfXUn8fkCnIPatOOrc09RbToFU=";
+    linuxHash = "sha256-W659VWZjhiRBHvlo8lMqszWNwoCIQURYPkl8VjHbiiY=";
   }
   {
     name = "SoundCraft";
-    version = "0.19.0";
-    hash = "sha256-lLZJUDtoxwsEjxLleOhZvuUcp9cY2wsC+VWgayipaW8=";
-    linuxHash = "sha256-iaKb9Iwpnu5ZPXzWhLIchIPKKHq8GWZXrj+Vmh68GK0=";
+    version = "0.20.1";
+    hash = "sha256-6x3TktfDhntWmqngjAFkJwloAAFv8z+PTgGS5D2ebAs=";
+    linuxHash = "sha256-yu/PhcTxE4cX1ZLTHOW+B/L8phbsNtY/rGdgze++KKk=";
   }
   {
     name = "CADCraft";
-    version = "0.20.0";
-    hash = "sha256-1VkMQJ5zyL7HK0XJfihQ4ntIHrUDg/ksfWw3nXCYy40=";
-    linuxHash = "sha256-UAWDN6wl9UL87yyDQxg1dtDEIKocfdYjEQvtiZ4sSOk=";
+    version = "0.20.1";
+    hash = "sha256-ye8c8CI05qXoVCh6ZP4xStbVMieRXDxmZPpBYeKh/nA=";
+    linuxHash = "sha256-V7bxtBtPPFQqgvEDIC7Rp3lEDl/40lwI72ar2hqMsbk=";
   }
 ]
