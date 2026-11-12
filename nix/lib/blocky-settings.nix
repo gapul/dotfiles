@@ -92,10 +92,28 @@
         *.media-akam.licdn.com
       ''
     ];
-    clientGroupsBlock.default = [
-      "ads"
-      "threats"
-    ];
+    # Personal devices get both groups. The two servers themselves and their containers get
+    # threats only (2026-11-12): nothing on them browses, and the ad lists only ever broke
+    # things there (the Matrix bridges' avatars, see the allowlist). The ad lists stay as strong
+    # as they are for devices, because the iPhone's apps have nothing but this resolver; inside
+    # Firefox, uBO does the finer, per-page work (nix/modules/home/firefox.nix).
+    #
+    # Matched by source address. A host querying its own tailnet address, or the other
+    # resolver, shows up as its tailnet address; podman containers as their bridge address
+    # (resolv.conf points them at 100.127.129.31, delivered locally without NAT). Devices using
+    # the mullvad-exit node have their DNS forwarded by that node's own tailnet address, which
+    # is deliberately not listed, so they stay in default.
+    clientGroupsBlock = {
+      default = [
+        "ads"
+        "threats"
+      ];
+      "127.0.0.1" = [ "threats" ];
+      "100.127.129.31" = [ "threats" ]; # homeserver
+      "100.105.135.49" = [ "threats" ]; # macmini
+      "10.88.0.0/16" = [ "threats" ]; # homeserver podman (default network)
+      "10.89.0.0/16" = [ "threats" ]; # homeserver podman (named networks)
+    };
     # The lists are 5-18MB each; the 5s default timeout is for small ones. Retry with a real
     # pause so a flaky first fetch does not leave a group empty until the 4h refresh.
     loading.downloads = {
