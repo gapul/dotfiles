@@ -102,9 +102,10 @@ let
   };
 in
 {
-  # AirPlay requires Avahi publishing and Wi-Fi ports 7000..7002 on the host.
   # Started by hand (`systemctl --user start uxplay`, `stop` when done), not with the session:
   # while it runs the receiver is announced to everyone on whatever Wi-Fi the laptop is on.
+  # Starting it starts the system's airplay-publish (hosts/nixos-laptop-airplay.nix), which turns
+  # on Avahi publishing and opens ports 7000..7002 on Wi-Fi; stopping it closes both again.
   systemd.user.services.uxplay = {
     Unit = {
       Description = "iPhone AirPlay receiver";
@@ -112,21 +113,25 @@ in
       PartOf = [ "graphical-session.target" ];
     };
     Service = {
-      ExecStartPre = pkgs.lib.getExe (
-        pkgs.writeShellApplication {
-          name = "wait-for-avahi";
-          bashOptions = [ ];
-          text = ''
-            for _ in $(${pkgs.coreutils}/bin/seq 1 30); do
-              state=$(${pkgs.systemd}/bin/busctl --system call org.freedesktop.Avahi / org.freedesktop.Avahi.Server GetState 2>/dev/null || true)
-              if [ "$state" = "i 2" ]; then exit 0; fi
-              ${pkgs.coreutils}/bin/sleep 1
-            done
-            echo "Avahi did not reach running state" >&2
-            exit 1
-          '';
-        }
-      );
+      ExecStartPre = [
+        "${pkgs.systemd}/bin/systemctl start airplay-publish.service"
+        (pkgs.lib.getExe (
+          pkgs.writeShellApplication {
+            name = "wait-for-avahi";
+            bashOptions = [ ];
+            text = ''
+              for _ in $(${pkgs.coreutils}/bin/seq 1 30); do
+                state=$(${pkgs.systemd}/bin/busctl --system call org.freedesktop.Avahi / org.freedesktop.Avahi.Server GetState 2>/dev/null || true)
+                if [ "$state" = "i 2" ]; then exit 0; fi
+                ${pkgs.coreutils}/bin/sleep 1
+              done
+              echo "Avahi did not reach running state" >&2
+              exit 1
+            '';
+          }
+        ))
+      ];
+      ExecStopPost = "${pkgs.systemd}/bin/systemctl stop airplay-publish.service";
       # -pin asks a new iPhone for an on-screen PIN. -key keeps the server key in ~/.uxplay.pem and
       # -reg remembers paired clients in ~/.uxplay.register, so the PIN is entered once rather
       # than after every restart (a fresh key each start made the iPhone pair again).

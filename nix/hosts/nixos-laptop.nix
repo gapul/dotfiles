@@ -119,6 +119,7 @@ in
     ./nixos-laptop-maint.nix # initrd-only maintenance boot with ssh, for work on an unmounted root
     ./nixos-laptop-wifi.nix # eduroam + 0000UTokyo + iPhone hotspot, credentials from secrets/nixos-laptop.yaml
     ./nixos-laptop-zsh.nix # ZDOTDIR from the system zshenv, so no ~/.zshenv
+    ./nixos-laptop-airplay.nix # mDNS publishing and AirPlay ports only while UxPlay runs
     ../modules/nts-time.nix # chrony over NTS instead of plaintext timesyncd
   ];
 
@@ -1039,38 +1040,11 @@ in
   services.printing.enable = true;
   # USB transport for iPhone tools. Android USB access uses systemd uaccess rules.
   services.usbmuxd.enable = true;
-  # mDNS (.local name resolution / network printer auto-discovery).
-  services.avahi = {
-    enable = true;
-    nssmdns4 = true;
-    openFirewall = true;
-    # Allow UxPlay to announce its AirPlay service.
-    settings.publish = {
-      disable-publishing = false;
-      disable-user-service-publishing = false;
-      publish-addresses = true;
-    };
-    settings.server.allow-interfaces = [ "wlp0s20f3" ]; # Do not advertise the USB tethering address.
-  };
-  # Re-register the receiver after Avahi restarts during a system switch.
-  systemd.services.avahi-daemon.postStart = ''
-    ${pkgs.systemd}/bin/systemctl --user --machine=gapul@.host --no-block try-restart uxplay.service || true
-  '';
-  # UxPlay and RQuickShare use fixed ports; accept them only on the Wi-Fi interface.
-  # 41200 is RQuickShare's, pinned in home/linux-gui.nix.
-  networking.firewall.interfaces.wlp0s20f3 = {
-    allowedTCPPorts = [
-      7000
-      7001
-      7002
-      41200
-    ];
-    allowedUDPPorts = [
-      7000
-      7001
-      7002
-    ];
-  };
+  # mDNS (.local name resolution / network printer auto-discovery) and AirPlay's announcement
+  # while UxPlay runs: nixos-laptop-airplay.nix.
+  # RQuickShare's fixed port (pinned in home/linux-gui.nix), accepted only on the Wi-Fi
+  # interface. Nothing listens there unless the app is open.
+  networking.firewall.interfaces.wlp0s20f3.allowedTCPPorts = [ 41200 ];
   services.pipewire = {
     enable = true;
     alsa.enable = true;
