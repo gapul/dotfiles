@@ -467,7 +467,6 @@ in
     rquickshare # Quick Share with Android phones; port pinned below
     (scrcpy.override { android-tools = androidTools; }) # Android display and control
     (callPackage ../pkgs/syncclipboard.nix { })
-    kdePackages.kdeconnect-kde
 
     # ─── Network ───
     mullvad-vpn

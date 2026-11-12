@@ -704,7 +704,6 @@ in
   security.wrappers.espanso.source = lib.mkForce "${
     pkgs.espanso-wayland.override { securityWrapperPath = config.security.wrapperDir; }
   }/bin/.espanso-wrapped";
-  programs.kdeconnect.enable = true;
 
   time.timeZone = "Asia/Tokyo";
   i18n.defaultLocale = "en_US.UTF-8";

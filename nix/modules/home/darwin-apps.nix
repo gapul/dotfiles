@@ -303,7 +303,6 @@
       "/Applications/Ghostty.app"
       "/Applications/azooKey skkserv.app"     # SKK conversion server for macSKK
       "/Applications/Maccy.app"               # clipboard history
-      "/Applications/Nix Apps/KDE Connect.app" # phone integration (nix パッケージ化したので Nix Apps 側)
       "/Applications/ActivityWatch.app"       # time tracking
       "/Applications/Obsidian.app"            # notes (LiveSync keeps running in the background)
       "/Applications/Firefox Developer Edition.app" # browser (took over from Zen 2026-09-26)

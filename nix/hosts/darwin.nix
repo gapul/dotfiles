@@ -67,10 +67,6 @@ in
     # pkgs/omniwm.nix). It is in systemPackages for where omniwmctl lands — /run/current-system/sw/bin,
     # a fixed path independent of version and username, so scripts in configs can hardcode it.
     (pkgs.callPackage ../pkgs/omniwm.nix { })
-    # KDE Connect: phone integration. Dropped the cask from my own tap and pulls in the signed dmg
-    # (history in pkgs/kdeconnect.nix). The cask used `sha256 :no_check` and so verified nothing, and
-    # the pinned CI build had vanished from the CDN, so a new machine got a 404.
-    (pkgs.callPackage ../pkgs/kdeconnect.nix { })
     # terminal-browser: a real browser that runs inside the terminal. The point is the agent side more
     # than browsing: `terminal-browser action` is an agent-facing CLI against the open browser.
     # It lets an agent touch the web without the Claude in Chrome extension and without a real window.
