@@ -2,6 +2,9 @@
 let
   hostPkgs = pkgs;
   # jp-osa-wg-103 (owned by Mullvad), the relay in /var/lib/secrets/mullvad-exit.conf.
+  # That file is the sops secret homeserver_files."mullvad-exit.conf" in
+  # secrets/homelab.yaml: change its peer together with mullvadEndpoint, or the kill
+  # switch below drops every packet to the old relay.
   # Measured 2026-11-12 from nixos-laptop through this node: Cloudflare's managed
   # challenge passed by itself here (also in a private window) but asked for a click on
   # jp-tyo-wg-001 (DataPacket, where antcpt.com refused connections outright) and on the
