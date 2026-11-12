@@ -76,6 +76,15 @@
     # Firefox's too (2026-11-01, same box, same route). Every SPARQL call goes through this
     # one helper: the openstreetmap engine (which failed every query with "too many
     # requests"), wikidata and the infoboxes.
+    #
+    # yandex split unquoted Japanese (katakana especially) into fragments and matched those
+    # loosely, so an unrelated query came back as Japan's most visited sites, adult video
+    # sites among them (2026-11-12, the engine's own URL via curl: `ダライ・ラマ` gave
+    # jable.tv, missav, yahoo.co.jp, mercari; the snippets matched "アラマンダ", "イラスト";
+    # `ディレイラマ` matched the slang `イラマ`). lang=ja made no difference. The same words
+    # in quotes gave on-topic results (nikkei, Tibet pages, recipe sites for `寿司 レシピ`).
+    # So a query with kana or kanji and no quotes of its own goes out with each word quoted.
+    # The price is fewer results and no fuzzy matching on Japanese queries; images too.
     package = pkgs.searxng.overrideAttrs (old: {
       postPatch = (old.postPatch or "") + ''
         substituteInPlace searx/engines/duckduckgo_extra.py \
@@ -89,6 +98,9 @@
           --replace-fail '    dom = resp.html()' $'    if not resp.text.strip():\n        return results\n    dom = resp.html()'
         substituteInPlace searx/wikidata.py \
           --replace-fail 'headers=get_wikidata_headers(), **kwargs' 'headers=get_wikidata_headers(), impersonate="firefox", **kwargs'
+        substituteInPlace searx/engines/yandex.py \
+          --replace-fail '"text": query,' \
+            '"text": (" ".join(f"\"{w}\"" for w in query.split()) if "\"" not in query and any("\u3040" <= c <= "\u9fff" or "\uff66" <= c <= "\uff9f" for c in query) else query),'
       '';
     });
 
