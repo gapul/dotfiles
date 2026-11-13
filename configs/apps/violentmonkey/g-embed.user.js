@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name        g-embed: YouTube and Google Maps embeds without Google
 // @namespace   https://github.com/gapul/dotfiles
-// @version     0.4.0
-// @description Replaces blocked YouTube and Google Maps embeds: YouTube videos play in place without cookies or Referer; Google Maps loads only when clicked.
+// @version     0.5.0
+// @description Replaces blocked YouTube and Google Maps embeds: YouTube videos play in place without cookies or Referer; Google Maps embeds show OpenStreetMap, and Google's own map loads only when clicked.
 // @match       *://*/*
 // @exclude     *://*.youtube.com/*
 // @exclude     *://youtube.com/*
@@ -13,6 +13,7 @@
 // @connect     i.ytimg.com
 // @connect     www.youtube.com
 // @connect     www.google.com
+// @connect     nominatim.openstreetmap.org
 // @connect     googlevideo.com
 // @run-at      document-start
 // @noframes
@@ -29,9 +30,12 @@
 //     stream URLs come from YouTube's player API and the segments are fetched through
 //     GM_xmlhttpRequest into a MediaSource. YouTube learns what was played only when Play is
 //     pressed, and gets no cookies or Referer.
-//   Google Maps: click to load, the way Firefox's click-to-load placeholders work. Until then
-//     the card shows the place name read from the embed URL and links to Google Maps, Apple Maps
-//     and OpenStreetMap, and nothing is sent to Google. The click loads Google's own embed,
+//   Google Maps: OpenStreetMap's embed shows the same spot at once, with the place name read
+//     from the embed URL and links to Google Maps, Apple Maps and OpenStreetMap. An embed that
+//     names a place without coordinates is looked up on OSM's Nominatim first (the name only,
+//     anonymously); if that finds nothing the card stays a placeholder. Nothing is sent to
+//     Google until "Load Google Maps" is clicked, the way Firefox's click-to-load placeholders
+//     work. The click loads Google's own embed,
 //     without Referer and with cookies partitioned to the page. Strict mode would block it, so
 //     firefox.nix exempts the Maps hosts from tracking protection and configs/apps/ublock/embeds.txt
 //     blocks every Maps embed and API load except the one this click makes (marked gembed=1).
@@ -184,6 +188,11 @@
     .gate button:hover { background: #1765cc; }
     .gate .note { color: var(--muted); font-size: 12px; }
     .map iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+    .map.osm .panel { left: auto; right: 10px; max-width: calc(100% - 64px); }
+    .load { position: absolute; left: 10px; bottom: 28px; font: inherit; font-size: 13px; font-weight: 500; color: #fff;
+      background: #1a73e8; border: 0; border-radius: 999px; padding: 5px 12px; cursor: pointer;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3); }
+    .load:hover { background: #1765cc; }
   `;
 
   // One parsed stylesheet shared by every shadow root; a <style> where that is refused.
@@ -474,6 +483,23 @@
     });
   };
 
+  // OSM's embed page, framed to the same view: the bounding box of a w×h viewport at zoom z.
+  const osmEmbed = (lat, lon, z, w, h) => {
+    const deg = 360 / (256 * 2 ** z);
+    const dx = (w / 2) * deg;
+    const dy = (h / 2) * deg * Math.cos((lat * Math.PI) / 180);
+    const bbox = [lon - dx, lat - dy, lon + dx, lat + dy].map((n) => n.toFixed(6)).join(',');
+    return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${lat},${lon}`;
+  };
+
+  const geocode = (name) =>
+    request(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(name)}`, 'json').then((d) => {
+      const lat = Number(d?.[0]?.lat);
+      const lon = Number(d?.[0]?.lon);
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) throw new Error('not found');
+      return { lat, lon };
+    });
+
   const mapCard = (src, { w, h }) => {
     const { lat, lon, name, metres } = readMap(src) ?? {};
     const has = lat != null && lon != null;
@@ -504,23 +530,29 @@
       ),
     );
     const card = el('div', { class: 'map', style: `aspect-ratio:${w} / ${h}` });
+    const loadGoogle = (e) => {
+      e.currentTarget.disabled = true;
+      officialUrl(src).then((url) =>
+        card.replaceChildren(el('iframe', { src: url, referrerpolicy: 'no-referrer', allowfullscreen: '', title: label, [STATE]: 'done' })),
+      );
+    };
     const gate = el(
       'div',
       { class: 'gate' },
       icon('pin'),
-      el('button', {
-        type: 'button',
-        text: S().loadMap,
-        onclick: (e) => {
-          e.currentTarget.disabled = true;
-          officialUrl(src).then((url) =>
-            card.replaceChildren(el('iframe', { src: url, referrerpolicy: 'no-referrer', allowfullscreen: '', title: label, [STATE]: 'done' })),
-          );
-        },
-      }),
+      el('button', { type: 'button', text: S().loadMap, onclick: loadGoogle }),
       el('div', { class: 'note', text: S().loadNote }),
     );
+    const showOsm = (la, lo, zoom) => {
+      card.classList.add('osm');
+      gate.replaceWith(
+        el('iframe', { src: osmEmbed(la, lo, zoom, w, h), referrerpolicy: 'no-referrer', title: label, [STATE]: 'done' }),
+        el('button', { type: 'button', class: 'load', text: S().loadMap, title: S().loadNote, onclick: loadGoogle }),
+      );
+    };
     card.append(gate, panel);
+    if (has) showOsm(lat, lon, z);
+    else if (name) geocode(name).then(({ lat: la, lon: lo }) => gate.isConnected && showOsm(la, lo, 16), () => {});
     return card;
   };
 
