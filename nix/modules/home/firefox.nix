@@ -89,7 +89,8 @@ in
         {
           name = "g-embed: YouTube and Google Maps embeds without Google";
           # Cards for the YouTube/Maps iframes strict tracking protection blocks: YouTube plays in
-          # the card without cookies or Referer; Google Maps loads Google's embed on click.
+          # the card without cookies or Referer; Google Maps shows OpenStreetMap and loads Google's
+          # embed on click.
           url = "${repo}/violentmonkey/g-embed.user.js";
         }
         {
