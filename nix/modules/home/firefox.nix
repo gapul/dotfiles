@@ -42,6 +42,11 @@ in
   xdg.dataFile."firefox/stylus-light-themes.json".source =
     ../../../configs/apps/stylus/light-themes.json;
 
+  # Multi-Account Containers only reads storage.local, not managed policies. Run this
+  # in its options page's console once per profile; see docs/firefox-containers.md.
+  xdg.dataFile."firefox/container-shortcuts.js".source =
+    ../../../configs/apps/firefox/container-shortcuts.js;
+
   # What lives inside the extensions that policies cannot reach (no managed storage):
   # Violentmonkey scripts, Header Editor rules, uBlacklist subscriptions and Stylus styles.
   # Policies below only install the extensions; this file is the list of what goes into them,
@@ -237,8 +242,25 @@ in
         Pocket = false;
         SponsoredPocket = false;
       };
-      # Per-extension settings, for the extensions that read browser.storage.managed. This is a
-      # lock, not a seed: re-asserted on every start, so dashboard edits revert. uBlock Origin
+      # Temporary Containers 1.9.2 reads managed preferences at extension startup and fills
+      # missing fields with its defaults. It preserves the container registry and counters.
+      # A brand-new installation skips managed storage once: restart Firefox after installation.
+      # UI edits last until the next extension startup; this is not a continuous settings lock.
+      "3rdparty".Extensions."{c607c8df-14a7-4f28-894f-29e8722976af}" = {
+        version = "1.9.2";
+        preferences = {
+          automaticMode = {
+            active = true;
+            newTab = "created";
+          };
+          container.removal = 0;
+          # Keep permanent login containers; don't move their navigation into temporary ones.
+          isolation.mac.action = "disabled";
+        };
+      };
+
+      # Per-extension settings, for the extensions that read browser.storage.managed. These are
+      # re-asserted on startup, so dashboard edits revert. uBlock Origin
       # caches it and applies one restart late (uAssets discussion 16939).
       "3rdparty".Extensions."uBlock0@raymondhill.net".advancedSettings = [
         # urlskip= filters only run from trusted lists. Trust uBO's own lists (the default
