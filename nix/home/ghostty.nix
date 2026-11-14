@@ -36,7 +36,7 @@ in
         confirm-close-surface = false;
 
         # Translucent background on both macOS and Linux.
-        background-opacity = "0.5"; # a string: Nix floats print as 0.500000
+        background-opacity = if pkgs.stdenv.hostPlatform.isDarwin then "0.5" else "0.7";
 
         # Treat Option as Alt/Meta (both sides). Unset, Option+l types special characters (ø …)
         # and nvim's <M-l> style Meta mappings never arrive.
