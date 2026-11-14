@@ -71,6 +71,9 @@ in
       (lib.mkIf (!pkgs.stdenv.hostPlatform.isDarwin) {
         # Match the compositor's sRGB alpha blending; the overlay fixes the native framebuffer.
         alpha-blending = "native";
+        # Launch the installed binary instead of forwarding new windows to a stale process
+        # that may still hold SSH sessions across a package upgrade.
+        gtk-single-instance = false;
         # On Linux that pair means `$mod+Return` spawns a process that never maps a window,
         # so the terminal looks broken while stray ghostty processes pile up.
         initial-window = true;
