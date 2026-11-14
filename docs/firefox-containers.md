@@ -36,5 +36,21 @@ These open blank tabs in permanent containers. `Ctrl+T` continues to open tempor
 tabs. For two Google accounts, sign in separately in Personal and Work and leave
 Google's "Always open in this container" assignment unset.
 
+## Site assignments (once per profile)
+
+"Always open in this container" assignments live in the same storage, so they are
+set the same way: run `~/.local/share/firefox/container-sites.js` in the options
+page's Web Console (steps 1–3 above). The list is at the top of the script:
+university sites to Univ, Amazon to Shopping, and the banks and SBI Securities
+to Banking. Each assignment matches one exact hostname and is saved with "never
+ask", because every new tab starts in a temporary container and would otherwise stop
+at the confirmation page on each visit. Previous values are kept
+under `dotfilesContainerSitesBackup`; the script can be run again safely.
+
+This is what puts bookmarks in the right container: floccus syncs only URLs, and a
+bookmark opens in a temporary container like any new tab. Google, Slack and Notion
+stay unassigned because one hostname serves more than one account.
+
 Sources: [Temporary Containers storage initialization](https://github.com/stoically/temporary-containers/blob/master/src/background/storage.ts),
-[Multi-Account Containers shortcut storage](https://github.com/mozilla/multi-account-containers/blob/main/src/js/background/identityState.js).
+[Multi-Account Containers shortcut storage](https://github.com/mozilla/multi-account-containers/blob/main/src/js/background/identityState.js),
+[Multi-Account Containers site assignments](https://github.com/mozilla/multi-account-containers/blob/main/src/js/background/assignManager.js).

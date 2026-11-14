@@ -46,6 +46,8 @@ in
   # in its options page's console once per profile; see docs/firefox-containers.md.
   xdg.dataFile."firefox/container-shortcuts.js".source =
     ../../../configs/apps/firefox/container-shortcuts.js;
+  # Same for the "Always open in" site assignments.
+  xdg.dataFile."firefox/container-sites.js".source = ../../../configs/apps/firefox/container-sites.js;
 
   # What lives inside the extensions that policies cannot reach (no managed storage):
   # Violentmonkey scripts, Header Editor rules, uBlacklist subscriptions and Stylus styles.
