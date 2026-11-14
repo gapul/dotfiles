@@ -6,6 +6,17 @@
 # (on a version or hash) where it can be, so an upstream bump turns it into a no-op rather
 # than a stale override. Delete entries once the guard stops matching.
 _final: prev: {
+  # Ghostty 1.4.0 always uses an sRGB framebuffer, even for native blending. That
+  # gamma-encodes native output twice and makes translucent light backgrounds white.
+  # Keep native output in RGBA8; remove once upstream fixes native framebuffer selection.
+  ghostty =
+    if prev.stdenv.hostPlatform.isLinux && prev.ghostty.version == "1.4.0" then
+      prev.ghostty.overrideAttrs (o: {
+        patches = (o.patches or [ ]) ++ [ ./ghostty-native-framebuffer.patch ];
+      })
+    else
+      prev.ghostty;
+
   # Determinate Nix 3.23 emits activity type 10113 (EvaluateFlakeDerivationOutput etc.), and
   # nom 2.2.0 rejects any type it does not know, so every nh rebuild printed
   # "ParseNixJSONMessageError ... invalid activity type: 10113". The patch is

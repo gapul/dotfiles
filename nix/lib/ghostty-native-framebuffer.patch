@@ -1,0 +1,32 @@
+diff --git a/src/renderer/OpenGL.zig b/src/renderer/OpenGL.zig
+--- a/src/renderer/OpenGL.zig
++++ b/src/renderer/OpenGL.zig
+@@ -270,8 +270,8 @@
+ /// Initialize a new render target which can be presented by this API.
+ pub fn initTarget(self: *const OpenGL, width: usize, height: usize) !Target {
+-    _ = self;
+     return Target.init(.{
+         .width = width,
+         .height = height,
++        .srgb = self.blending.isLinear(),
+     });
+ }
+diff --git a/src/renderer/opengl/Target.zig b/src/renderer/opengl/Target.zig
+--- a/src/renderer/opengl/Target.zig
++++ b/src/renderer/opengl/Target.zig
+@@ -33,4 +33,6 @@
+     width: usize,
+     /// Desired height
+     height: usize,
++    /// Native blending already produces gamma-encoded, premultiplied colors.
++    srgb: bool = true,
+ };
+@@ -64,7 +66,7 @@
+         try bound_tex.parameter(.wrap_t, .clamp_to_edge);
+         try bound_tex.image2D(
+             0,
+-            .srgba,
++            if (opts.srgb) .srgba else .rgba,
+             @intCast(opts.width),
+             @intCast(opts.height),
+             .rgba,

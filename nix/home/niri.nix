@@ -726,6 +726,12 @@ let
         geometry-corner-radius 8
         clip-to-geometry true
     }
+    // GTK terminals must not reveal a solid border rectangle behind their transparent surface.
+    window-rule {
+        match app-id=r#"^com\.mitchellh\.ghostty$"#
+        match app-id=r#"^net\.gapul\.(editfield|termfilechooser)$"#
+        draw-border-with-background false
+    }
     // The settings tools ($mod+comma) are small dialogs, not columns.
     window-rule {
         match app-id=r#"^(org\.pulseaudio\.)?pavucontrol$"#
