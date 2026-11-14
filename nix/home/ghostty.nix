@@ -35,6 +35,9 @@ in
         # No confirmation dialog when closing a window/tab.
         confirm-close-surface = false;
 
+        # Translucent background on both macOS and Linux.
+        background-opacity = "0.5"; # a string: Nix floats print as 0.500000
+
         # Treat Option as Alt/Meta (both sides). Unset, Option+l types special characters (ø …)
         # and nvim's <M-l> style Meta mappings never arrive.
         macos-option-as-alt = true;
@@ -63,9 +66,6 @@ in
         # the hotkey: no window at launch, and closing the last one does not quit.
         initial-window = false;
         quit-after-last-window-closed = false;
-        # Translucent background. Mac only for now: nixos-laptop runs opaque while its
-        # window transparency is set aside (2026-10-23).
-        background-opacity = "0.5"; # a string: Nix floats print as 0.500000
         background-blur-radius = 30;
       })
       (lib.mkIf (!pkgs.stdenv.hostPlatform.isDarwin) {
