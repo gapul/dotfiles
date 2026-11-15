@@ -135,8 +135,9 @@ app.mihon	github	mihonapp/mihon
 com.ichi2.anki	github	ankidroid/Anki-Android
 # 複数端末の個人データの同期 (docs/HOST_ROLES.md の決まり)。公式の Android 版は終了。
 com.github.catfriend1.syncthingfork	github	researchxxl/syncthing-android
-# Jellyfin (nix/homelab/jellyfin.nix)。Google 無しの libre 版。
-org.jellyfin.mobile	github	jellyfin/jellyfin-android
+# Jellyfin (nix/homelab/jellyfin.nix) のクライアント。公式アプリではなく、ネイティブ UI の Findroid
+# (libre 版、arm64)。パッケージ名は dev.jdtech.jellyfin。
+dev.jdtech.jellyfin	github	jarnedemeulemeester/findroid
 # Audiobookshelf (nix/homelab/audiobookshelf.nix)。リリースが beta しか無いのでプレリリースを追う。
 com.audiobookshelf.app	github	advplyr/audiobookshelf-app
 # Home Assistant (nix/homelab/homeassistant.nix)。Google 無しの minimal 版。
