@@ -4,12 +4,15 @@
 # aria2 で各ファイルをローカルに落とし HF_HUB_OFFLINE=1 で読む (HF_ENDPOINT=https://hf-mirror.com の
 # huggingface_hub 経由は 308 リダイレクトを扱えない場合がある)。venv だけは bootstrap.sh が再構築する。
 
-# --- 文字起こし (mlx_whisper: uv tool install mlx-whisper) ---
-~/.local/share/models/mlx/whisper-large-v3-mlx        hfmirror  mlx-community/whisper-large-v3-mlx        精度用 large-v3 (weights.npz)
-~/.local/share/models/mlx/whisper-large-v3-turbo-mlx  hfmirror  mlx-community/whisper-large-v3-turbo      速度用 turbo (weights.safetensors, 既定fast)
+# --- 文字起こし (sherpa-onnx, ~/.local/share/venvs/asr-venv。transcribe / transcribe-diarize) ---
+# tar.bz2 を展開してディレクトリ名を左の名前に変える。比較の経緯は services/asr.py の冒頭。
+# Whisper (large-v3/turbo/kotoba) は 2026-11 に撤去: 長い録音で同じ文を繰り返すか区間を落とす。
+~/.local/share/models/asr/parakeet-ja-int8    github  k2-fsa/sherpa-onnx asr-models/sherpa-onnx-nemo-parakeet-tdt_ctc-0.6b-ja-35000-int8.tar.bz2  既定(fast) 628MB
+~/.local/share/models/asr/cohere-14lang-int8  github  k2-fsa/sherpa-onnx asr-models/sherpa-onnx-cohere-transcribe-14-lang-int8-2026-04-01.tar.bz2  accurate/日本語以外 2.7GB
+~/.local/share/models/asr/silero_vad.onnx     github  k2-fsa/sherpa-onnx asr-models/silero_vad.onnx  VAD 632KB
 
-# --- 話者分離 (pyannote 4.x, HFゲート: speaker-diarization-3.1 + segmentation-3.0 + community-1 に規約同意+HF_TOKEN) ---
-# (pyannoteはHF_TOKENでオンライン取得。~/diarize-venv)
+# --- 話者分離 (pyannote/wespeaker-voxceleb-resnet34-LM の埋め込みだけ使う。~/.local/share/venvs/diarize-venv) ---
+# 初回に HF から ~/.cache/huggingface へ取得 (25MB)。speaker-diarization-3.1 パイプラインは使わない。
 
 # --- TTS 日本語 (Style-Bert-VITS2, ~/sbv2-venv, numpy==1.26.4 / setuptools<81 必須) ---
 ~/.local/share/models/sbv2/deberta-v2-large-japanese-char-wwm  hfmirror  ku-nlp/deberta-v2-large-japanese-char-wwm  日本語BERT 1.3GB

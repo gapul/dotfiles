@@ -154,7 +154,7 @@ button{background:#286983;color:#fffaf3}
 
 <div class=card><h2>文字起こし</h2>
 <input type=file id=trf accept=\"audio/*,video/*\">
-<select id=trm><option value=fast>fast(turbo)</option><option value=accurate>accurate(large-v3)</option></select>
+<select id=trm><option value=fast>fast(Parakeet)</option><option value=accurate>accurate(Cohere)</option></select>
 <label><input type=checkbox id=trd style=\"width:auto\"> 話者分離</label>
 <button onclick=transcribe()>実行</button><div class=out id=tro></div></div>
 

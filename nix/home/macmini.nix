@@ -752,7 +752,8 @@ in
     map aiService [
       "ai-stack.sh"
       "ai_panel.py"
-      "diarize_merge.py"
+      "asr.py"
+      "diarize_cluster.py"
       "fish_voicevox_shim.py"
       "rag_server.py"
       "sbv2_tts.py"

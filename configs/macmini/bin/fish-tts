@@ -8,7 +8,7 @@
 # 指定も通る。日本語は上流で Tier 1 扱い。
 #
 # 参照音声を渡すとその声でクローンする(10-30秒程度が目安)。参照文字起こしを
-# 省略すると voice-clone と同じく mlx_whisper で自動で取る。
+# 省略すると voice-clone と同じく transcribe で自動で取る。
 #
 # 速いものではない。実測 RTF 3-4、つまり10秒喋らせるのに30-40秒かかる。
 # ピークで 17GB 使うので、24GB の本機では他の重い処理と重ねないこと。
@@ -39,9 +39,8 @@ if [[ -n "$ref" ]]; then
   ffmpeg -y -i "$ref" -ar 44100 -ac 1 "$refwav" >/dev/null 2>&1
   if [[ -z "$reftext" ]]; then
     echo "[参照音声を自動文字起こし中...]" >&2
-    mlx_whisper "$refwav" --model "$HOME/.local/share/models/mlx/whisper-large-v3-turbo-mlx" \
-      --language ja --output-dir /tmp --output-format txt >/dev/null 2>&1
-    reftext="$(tr -d '\n' < "/tmp/fish_ref_$$.txt" 2>/dev/null)"
+    transcribe "$refwav" ja txt >/dev/null 2>&1
+    reftext="$(sed 's/^\[[0-9:]*\] //' "/tmp/fish_ref_$$.txt" 2>/dev/null | tr -d '\n')"
   fi
   echo "[参照文: $reftext]" >&2
   args+=(--reference-audio "$refwav" --reference-text "$reftext")
