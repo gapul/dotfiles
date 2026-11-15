@@ -114,6 +114,9 @@ com.perol.asdpl.play.pixivez	github	ultranity/Pix-EzViewer
 ru.tech.imageresizershrinker	github	T8RIN/ImageToolbox
 # 動画プレイヤー (mpv の Android 版)。versionName が日付で、ObtainX では版の照合を切っている。
 is.xyz.mpv	github	mpv-android/mpv-android
+# mpv ベースの多機能プレイヤー (mpvEx の派生)。1 日に何度も出る experimental は追わず、
+# 正式版の arm64 版にする (ObtainX では experimental の名前を除く絞り込み)。
+app.gyrolet.mpvrx	github	Riteshp2001/mpvRx
 
 # ── SNS のクライアント ──────────────────────────────────────────────
 # X を Nitter / Teapot 経由で見る。アカウント不要で、購読とグループは端末内だけ。
