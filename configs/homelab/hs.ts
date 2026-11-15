@@ -607,11 +607,12 @@ switch (command) {
       case "formera":
         showJson(await mustHttp(`${baseUrl("formera")}/swagger/doc.json`, {}));
         break;
-      // Rallly publishes the private schema even on self-hosted installations.
+      // Rallly removed /api/private (410 Gone since 2026-11); self-hosted serves
+      // the public v1 schema at /api/v1/openapi without an API key.
       // API-key creation is intentionally not bypassed here when upstream's
       // licence/feature gate disables it.
       case "rallly":
-        await api(app, "GET", "/api/private/openapi");
+        await api(app, "GET", "/api/v1/openapi");
         break;
       default:
         die(`OpenAPI location is not registered for: ${app}`, 2);

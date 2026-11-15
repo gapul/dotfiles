@@ -552,7 +552,7 @@ describe.skipIf(HAS_SECRETS)("HTTP", () => {
     const f = await hs(["openapi", "formera"]);
     expect(f.http).toEqual([hit("GET", "http://127.0.0.1:8100/swagger/doc.json")]);
     expect(f.stdout).toBe('jq -C .\n{"swagger":"2.0"}');
-    expect((await hs(["openapi", "rallly"])).http.map((h) => h.url)).toEqual(["http://127.0.0.1:8089/api/private/openapi"]);
+    expect((await hs(["openapi", "rallly"])).http.map((h) => h.url)).toEqual(["http://127.0.0.1:8089/api/v1/openapi"]);
     expect((await hs(["openapi", "bambuddy"])).http.map((h) => h.url)).toEqual(["http://127.0.0.1:8010/openapi.json"]);
     const bogus = await hs(["openapi", "bogus"]);
     expect(bogus).toMatchObject({ code: 2, stderr: "OpenAPI location is not registered for: bogus\n", http: [] });
