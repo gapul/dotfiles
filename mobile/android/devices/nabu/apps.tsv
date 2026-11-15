@@ -93,6 +93,13 @@ com.perol.asdpl.play.pixivez	github	ultranity/Pix-EzViewer
 # 画像編集 (OCR、PDF、SVG 化)。microG 端末なので foss 版。ベータを追う。
 ru.tech.imageresizershrinker	github	T8RIN/ImageToolbox
 
+# ── SNS のクライアント ──────────────────────────────────────────────
+# X を Nitter / Teapot 経由で見る。アカウント不要で、購読とグループは端末内だけ。
+com.kaleedtc.nitterium	github	kaleedtc/Nitterium
+# Reddit クライアント。Google Play 開発者サービス無しで動く Patreon 版
+# (Infinity-Patreon-*.apk) を使う。
+ml.docilealligator.infinityforreddit.patreon	github	Docile-Alligator/Infinity-For-Reddit
+
 # ── 自宅サーバーのクライアント ──────────────────────────────────────
 # Radicale (nix/homelab/radicale.nix) のカレンダーと連絡先を ROM の Etar / 連絡先に同期する。
 at.bitfire.davdroid	github	bitfireAT/davx5-ose
