@@ -746,7 +746,7 @@ dns *flags:
 
 # Build the NixOS-WSL rootfs tarball on homeserver and bring it back (mac can't build it)
 [group('Homelab')]
-wsl-tarball flake="github:gapul/dotfiles?dir=nix":
+wsl-tarball flake="git+https://git.gapul.net/gapul/dotfiles?dir=nix":
     #!/usr/bin/env bash
     set -euo pipefail
     # root と Linux が要るので homeserver で作る。母艦は Mach-O なので nix でも作れない。

@@ -57,7 +57,7 @@ After that it updates from the inside like any NixOS. Re-importing is only for r
 rootfs itself:
 
 ```sh
-sudo nixos-rebuild switch --flake github:gapul/dotfiles?dir=nix#wsl
+sudo nixos-rebuild switch --flake git+https://git.gapul.net/gapul/dotfiles?dir=nix#wsl
 ```
 
 ## Making it the default distro

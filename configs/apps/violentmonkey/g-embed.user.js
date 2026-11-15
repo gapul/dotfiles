@@ -17,8 +17,8 @@
 // @connect     googlevideo.com
 // @run-at      document-start
 // @noframes
-// @downloadURL https://raw.githubusercontent.com/gapul/dotfiles/main/configs/apps/violentmonkey/g-embed.user.js
-// @updateURL   https://raw.githubusercontent.com/gapul/dotfiles/main/configs/apps/violentmonkey/g-embed.user.js
+// @downloadURL https://git.gapul.net/gapul/dotfiles/raw/branch/main/configs/apps/violentmonkey/g-embed.user.js
+// @updateURL   https://git.gapul.net/gapul/dotfiles/raw/branch/main/configs/apps/violentmonkey/g-embed.user.js
 // ==/UserScript==
 
 // Firefox's strict tracking protection (arkenfox) blocks youtube.com, youtube-nocookie.com and

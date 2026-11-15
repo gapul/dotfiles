@@ -6,8 +6,8 @@
 # actually stopped on 2026-08-30 when the window expired). Rather than work around it by
 # adding keys, use a shape where the pushing side needs no credentials.
 #
-# homeserver only reads a public flake, so nobody's key is needed. Merged config gets
-# applied even if the main Mac is broken or away.
+# homeserver only reads a public flake (its own Forgejo mirror, GitHub as the fallback), so
+# nobody's key is needed. Merged config gets applied even if the main Mac is broken or away.
 { pkgs, ... }:
 {
   systemd.services.self-deploy = {
@@ -42,7 +42,7 @@
       OnBootSec = "15min";
       OnUnitActiveSec = "1h";
       Persistent = true;
-      # Don't hit GitHub exactly on the hour.
+      # Don't hit the remote exactly on the hour.
       RandomizedDelaySec = "10min";
     };
   };

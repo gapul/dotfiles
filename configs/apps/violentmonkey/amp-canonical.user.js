@@ -7,8 +7,8 @@
 // @grant       none
 // @run-at      document-start
 // @noframes
-// @downloadURL https://raw.githubusercontent.com/gapul/dotfiles/main/configs/apps/violentmonkey/amp-canonical.user.js
-// @updateURL   https://raw.githubusercontent.com/gapul/dotfiles/main/configs/apps/violentmonkey/amp-canonical.user.js
+// @downloadURL https://git.gapul.net/gapul/dotfiles/raw/branch/main/configs/apps/violentmonkey/amp-canonical.user.js
+// @updateURL   https://git.gapul.net/gapul/dotfiles/raw/branch/main/configs/apps/violentmonkey/amp-canonical.user.js
 // ==/UserScript==
 
 // AMP pages mark themselves with <html amp> (or <html ⚡>) and name the normal page in

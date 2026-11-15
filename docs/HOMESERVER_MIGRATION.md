@@ -236,7 +236,7 @@ Nothing after this is reversible. Before running it, confirm once more that ever
 section 2 is outside the box.
 
 ```sh
-sudo disko --mode destroy,format,mount --flake github:gapul/dotfiles?dir=nix#homeserver
+sudo disko --mode destroy,format,mount --flake git+https://git.gapul.net/gapul/dotfiles?dir=nix#homeserver
 ```
 
 This lays down a fresh GPT with a 1 GB ESP and gives the rest to a zpool called `rpool`. The
@@ -245,7 +245,7 @@ datasets are root, nix, var-lib, srv and home; only srv is excluded from snapsho
 ### 3.3 Installing
 
 ```sh
-sudo nixos-install --flake github:gapul/dotfiles?dir=nix#homeserver
+sudo nixos-install --flake git+https://git.gapul.net/gapul/dotfiles?dir=nix#homeserver
 sudo nixos-enter --root /mnt -c 'passwd gapul'
 
 # place the key, the only way in after the reboot. /home is its own dataset,

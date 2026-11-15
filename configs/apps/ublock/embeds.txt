@@ -6,7 +6,7 @@
 !   button is clicked (configs/apps/violentmonkey/g-embed.user.js marks it with gembed=1)
 !   and what that embed loads in turn.
 ! Expires: 1 day
-! Homepage: https://github.com/gapul/dotfiles/tree/main/configs/apps/ublock
+! Homepage: https://git.gapul.net/gapul/dotfiles/src/branch/main/configs/apps/ublock
 
 ! The embed itself, unless g-embed's click marked it.
 ||google.com/maps/embed?$subdocument

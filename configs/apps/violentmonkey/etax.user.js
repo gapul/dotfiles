@@ -6,8 +6,8 @@
 // @match        *://*.e-tax.nta.go.jp/*
 // @run-at       document-start
 // @grant        none
-// @downloadURL  https://raw.githubusercontent.com/gapul/dotfiles/main/configs/apps/violentmonkey/etax.user.js
-// @updateURL    https://raw.githubusercontent.com/gapul/dotfiles/main/configs/apps/violentmonkey/etax.user.js
+// @downloadURL  https://git.gapul.net/gapul/dotfiles/raw/branch/main/configs/apps/violentmonkey/etax.user.js
+// @updateURL    https://git.gapul.net/gapul/dotfiles/raw/branch/main/configs/apps/violentmonkey/etax.user.js
 // ==/UserScript==
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36';
