@@ -127,8 +127,6 @@ net.thunderbird.android	github	thunderbird/thunderbird-android
 # ── 自宅サーバーのクライアント ──────────────────────────────────────
 # Radicale (nix/homelab/radicale.nix) のカレンダーと連絡先を ROM の Etar / 連絡先に同期する。
 at.bitfire.davdroid	github	bitfireAT/davx5-ose
-# Kavita (nix/homelab/kavita.nix) の本を OPDS で読む。タブレットを読む端末にする。
-org.koreader.launcher	github	koreader/koreader
 # Kavita の漫画を拡張機能で読む。スマホと同じもの。
 app.mihon	github	mihonapp/mihon
 # Anki 同期サーバー (nix/homelab/anki.nix) のカードを学習する。alpha は追わない。
@@ -146,7 +144,7 @@ io.homeassistant.companion.android.minimal	github	home-assistant/android
 com.capyreader.app	github	jocmp/capyreader
 # PC のゲームや画面のストリーミング。root を使わない nonRoot 版。
 com.limelight	github	moonlight-stream/moonlight-android
-# 電子書籍リーダー。KOReader の代わりの候補。
+# 電子書籍リーダー (EPUB / PDF)。KOReader の代わりに使う。
 com.bilingify.readest	github	readest/readest
 # ノート。Self-hosted LiveSync で nix/homelab/obsidian-couchdb.nix と同期する。プロプライエタリ
 # なので AxSandbox で隔離する (ストレージを止めるので、Vault は共有ストレージに置かず
