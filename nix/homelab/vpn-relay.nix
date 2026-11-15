@@ -160,6 +160,11 @@ in
     serviceConfig = {
       Type = "oneshot";
       RemainAfterExit = true;
+      # A oneshot has no start timeout by default, and with keyingtries=%forever
+      # `ipsec up` never returns while the far end is silent. On 2026-11-15 that
+      # held a switch-to-configuration (and with it self-deploy) for 1h45m until
+      # the job was stopped by hand. Fail instead; the watchdog retries.
+      TimeoutStartSec = "3min";
     };
     environment.STRONGSWAN_CONF = "${strongswanConf}";
     # No `ipsec restart` here. strongswan is a service of its own now; restarting
