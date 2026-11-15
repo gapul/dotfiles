@@ -353,6 +353,10 @@ in
         "readeck@readeck.com" = amo "readeck"; # Readeck (read.gapul.net)
         "clipper@obsidian.md" = amo "web-clipper-obsidian"; # Obsidian Web Clipper
         "archivebox@tjhorner.dev" = amo "archivebox-exporter"; # ArchiveBox (archive.gapul.net)
+        # Added 2026-11-15: sends YouTube, X, Reddit and similar links to alternative frontends
+        # (Invidious, Nitter/teapawt, Redlib, ...). Services and instances are chosen in its own
+        # settings page; it reads no managed storage. GPL-3.0, github.com/libredirect/browser_extension.
+        "7esoorv3@alefvanoon.anonaddy.me" = amo "libredirect"; # LibRedirect
         # Dropping an entry above leaves an already installed extension in place as an ordinary
         # one; only "blocked" makes Firefox uninstall it. These were in the list once.
         "LINEPorted@FoxRefire".installation_mode = "blocked"; # LINE
@@ -588,6 +592,7 @@ in
               "_e58d3966-3d76-4cd9-8552-1582fbc800c1_-browser-action"
               "floccus_handmadeideas_org-browser-action"
               "_446900e4-71c2-419f-a6a7-df9c091e268b_-browser-action"
+              "7esoorv3_alefvanoon_anonaddy_me-browser-action"
             ];
             nav-bar = [
               "back-button"
@@ -625,6 +630,7 @@ in
             "_e58d3966-3d76-4cd9-8552-1582fbc800c1_-browser-action"
             "floccus_handmadeideas_org-browser-action"
             "_446900e4-71c2-419f-a6a7-df9c091e268b_-browser-action"
+            "7esoorv3_alefvanoon_anonaddy_me-browser-action"
           ];
           dirtyAreaCache = [
             "nav-bar"
