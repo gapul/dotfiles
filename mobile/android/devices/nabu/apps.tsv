@@ -19,6 +19,8 @@
 # - com.google.android.youtube / com.instagram.android: Aurora Store で Morphe (Piko) の
 #   対応版を手動ダウンロードし、Morphe Manager の root mount でパッチを重ねる。自動更新は
 #   しない (元のアプリが上がると mount が外れる)。どちらも AxSandbox で隔離する。
+# - com.stremio.one: stremio.com/downloads の arm64 版 (プロプライエタリ)。ObtainX は HTML ソースで
+#   dl.strem.io の /vX.Y.Z-android/ のリンクを読む。AxSandbox で隔離する。
 # - com.aurora.store.nightly: auroraoss.com の nightly。ObtainX は
 #   Feeds/nightly_feed.json を HTML ソースで読み、version_name を版にする。
 # - nodomain.freeyourgadget.gadgetbridge.nightly: Codeberg の公式 nightly リポジトリ
@@ -91,6 +93,9 @@ com.eddyizm.degoogled.tempus	github	eddyizm/tempus
 # 天気。ロック画面の天気は ROM の OmniJaws が出すので、こちらは見る用
 # (Obtainium では APK を _standard で絞る)。
 org.breezyweather	github	breezy-weather/breezy-weather
+# 英語などのキーボード。日本語は Sumire のまま既定にし、こちらは切り替えて使う
+# (os-settings.conf の enabled_input_methods)。
+helium314.keyboard	github	Helium314/HeliBoard
 
 # ── 動画・音楽・画像 ────────────────────────────────────────────────
 # YouTube を API に頼らず見る / 落とす (ニコニコ、BiliBili も)。ベータを追う。
@@ -101,6 +106,8 @@ com.metrolist.music	github	MetrolistGroup/Metrolist
 com.perol.asdpl.play.pixivez	github	ultranity/Pix-EzViewer
 # 画像編集 (OCR、PDF、SVG 化)。microG 端末なので foss 版。ベータを追う。
 ru.tech.imageresizershrinker	github	T8RIN/ImageToolbox
+# 動画プレイヤー (mpv の Android 版)。versionName が日付で、ObtainX では版の照合を切っている。
+is.xyz.mpv	github	mpv-android/mpv-android
 
 # ── SNS のクライアント ──────────────────────────────────────────────
 # X を Nitter / Teapot 経由で見る。アカウント不要で、購読とグループは端末内だけ。
@@ -108,6 +115,14 @@ com.kaleedtc.nitterium	github	kaleedtc/Nitterium
 # Reddit クライアント。Google Play 開発者サービス無しで動く Patreon 版
 # (Infinity-Patreon-*.apk) を使う。配布物はソースの公開されていないビルドなので AxSandbox で隔離する。
 ml.docilealligator.infinityforreddit.patreon	github	Docile-Alligator/Infinity-For-Reddit
+# Mastodon / Bluesky / Misskey / X / Nostr / RSS をまとめて読む。F-Droid 版。
+dev.dimension.flare	fdroid	-
+# Matrix (nix/homelab/matrix.nix とブリッジ) のクライアント。Google 無しの fdroid 版。
+io.element.android.x	github	element-hq/element-x-android
+# 端末同士のメッセンジャー。arm64 版。
+chat.simplex.app	github	simplex-chat/simplex-chat
+# メール。スマホと同じもの (nix/homelab/mail.nix)。
+net.thunderbird.android	github	thunderbird/thunderbird-android
 
 # ── 自宅サーバーのクライアント ──────────────────────────────────────
 # Radicale (nix/homelab/radicale.nix) のカレンダーと連絡先を ROM の Etar / 連絡先に同期する。
@@ -120,6 +135,22 @@ app.mihon	github	mihonapp/mihon
 com.ichi2.anki	github	ankidroid/Anki-Android
 # 複数端末の個人データの同期 (docs/HOST_ROLES.md の決まり)。公式の Android 版は終了。
 com.github.catfriend1.syncthingfork	github	researchxxl/syncthing-android
+# Jellyfin (nix/homelab/jellyfin.nix)。Google 無しの libre 版。
+org.jellyfin.mobile	github	jellyfin/jellyfin-android
+# Audiobookshelf (nix/homelab/audiobookshelf.nix)。リリースが beta しか無いのでプレリリースを追う。
+com.audiobookshelf.app	github	advplyr/audiobookshelf-app
+# Home Assistant (nix/homelab/homeassistant.nix)。Google 無しの minimal 版。
+io.homeassistant.companion.android.minimal	github	home-assistant/android
+# Miniflux (nix/homelab/miniflux.nix) の RSS リーダー。
+com.capyreader.app	github	jocmp/capyreader
+# PC のゲームや画面のストリーミング。root を使わない nonRoot 版。
+com.limelight	github	moonlight-stream/moonlight-android
+# 電子書籍リーダー。KOReader の代わりの候補。
+com.bilingify.readest	github	readest/readest
+# ノート。Self-hosted LiveSync で nix/homelab/obsidian-couchdb.nix と同期する。プロプライエタリ
+# なので AxSandbox で隔離する (ストレージを止めるので、Vault は共有ストレージに置かず
+# アプリ内に作る)。
+md.obsidian	github	obsidianmd/obsidian-releases
 
 # ── パスワード ──────────────────────────────────────────────────────
 # Bitwarden / Vaultwarden の非公式クライアント。GitHub の none 版
