@@ -4,7 +4,7 @@
   lib,
   ...
 }:
-# Periodically run restic encrypted backup + integrity check + run monitoring via systemd user timers (for Linux).
+# Periodically run restic encrypted backup + run monitoring via systemd user timers (for Linux).
 # Linux port of the darwin version (home/restic-backup.nix, launchd). Backend, excludes and retention policy are identical.
 # Notifications via notify-send (mako), dates via GNU date, targets are Linux XDG directories.
 #
@@ -94,12 +94,13 @@ in
       restic-backup = lib.recursiveUpdate (mkService "restic encrypted backup" scripts.backup) {
         Service.ExecStartPre = "${pkgs.systemd}/bin/systemd-tmpfiles --user --create";
       };
-      restic-check = mkService "restic integrity check" scripts.check;
       restic-monitor = mkService "restic run monitoring" scripts.monitor;
     };
+    # No restic-check here: the repository-wide check is control-plane work on the Mac mini
+    # (macmini-backup.nix, Sun 14:00). Running it here at the same time took the exclusive lock
+    # first and failed the Mac mini's check as "possible repository corruption" (2026-11-15).
     timers = {
       restic-backup = mkTimer "daily restic backup" "*-*-* 13:00:00";
-      restic-check = mkTimer "weekly restic integrity check" "Sun *-*-* 14:00:00";
       restic-monitor = mkTimer "daily restic run monitoring" "*-*-* 19:00:00";
     };
   };
