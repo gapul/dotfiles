@@ -32,7 +32,7 @@ probe() {
 # this health check.
 probe bambuddy http://127.0.0.1:8010/openapi.json '^200$'
 probe romm http://127.0.0.1:8091/openapi.json '^200$'
-probe rallly http://127.0.0.1:8089/api/private/openapi '^200$'
+probe rallly http://127.0.0.1:8089/api/v1/openapi '^200$'
 probe pingvin-share http://127.0.0.1:8094/api/configs '^200$'
 probe formera http://127.0.0.1:8100/health '^200$'
 probe calnode http://127.0.0.1:8086/mcp '^(400|401|405)$'
