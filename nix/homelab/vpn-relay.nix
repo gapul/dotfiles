@@ -17,13 +17,13 @@ let
         keyexchange=ikev1
         authby=secret
         type=transport
-        # Not %defaultroute. starter resolves that to the address of the default
-        # route, and since mullvad-host.nix that is the Mullvad interface: a
-        # strongswan restart after it came up sent every IKE packet from
-        # 10.131.152.193 and the far end never answered (2026-11-15). %any lets
-        # charon pick the source from the route to the peer, which pref 5291
-        # keeps on the LAN.
-        left=%any
+        # Neither %defaultroute nor %any. Since mullvad-host.nix the default
+        # route is the Mullvad interface, and both made charon send every IKE
+        # packet from 10.131.152.193, which the far end never answers
+        # (2026-11-15). charon's own route lookup ignores the pref 5291 rule
+        # that keeps the peer on the LAN; `ip route get` honours it, so the
+        # address comes from there (mkIpsecConf).
+        left=@LEFT@
         # Not 17/1701. NAT-T rewrites the source port, so pinning it made the
         # far end drop quick mode without a word — five retransmits and
         # nothing back. With %any it answers.
@@ -70,9 +70,17 @@ let
       "errexit"
       "nounset"
     ];
+    runtimeInputs = [
+      pkgs.gnused
+      pkgs.iproute2
+    ];
     text = ''
+      peer="$(cat /var/lib/secrets/l2tp/peer)"
+      # The LAN address is DHCP, so it is looked up each time. With no route yet
+      # (early boot) fall back to %any rather than fail.
+      left="$(ip -4 route get "$peer" | sed -n 's/.* src \([0-9.]*\).*/\1/p')"
       install -d -m 700 /run/l2tp
-      ${pkgs.gnused}/bin/sed "s|@PEER@|$(cat /var/lib/secrets/l2tp/peer)|" \
+      sed -e "s|@PEER@|$peer|" -e "s|@LEFT@|''${left:-%any}|" \
         ${ipsecConfTemplate} > /run/l2tp/ipsec.conf
       chmod 600 /run/l2tp/ipsec.conf
     '';
@@ -167,6 +175,11 @@ in
       # times out against it — on 2026-10-28 a clobbered /dev/null broke preStop's redirects and
       # the tunnel stayed down for two hours, until a reboot cleared charon.
       ipsec down l2tp || true
+      # Re-resolve the source address: the watchdog restarts this unit, not
+      # strongswan, so a new DHCP lease would otherwise never reach the conn.
+      ${lib.getExe mkIpsecConf}
+      ipsec reload
+      sleep 1
       ipsec up l2tp
       sleep 2
       mkdir -p /run/xl2tpd
