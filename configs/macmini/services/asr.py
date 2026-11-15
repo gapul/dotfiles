@@ -60,7 +60,7 @@ vad = so.VoiceActivityDetector(cfg, buffer_size_in_seconds=60)
 segs = []
 
 
-def drain():
+def drain() -> None:
     while not vad.empty():
         s = vad.front
         st = rec.create_stream()
@@ -82,17 +82,17 @@ vad.flush()
 drain()
 
 
-def hms(t):
+def hms(t: float) -> str:
     t = int(t)
     return f"{t // 3600}:{t // 60 % 60:02d}:{t % 60:02d}"
 
 
-def stamp(t, sep):
+def stamp(t: float, sep: str) -> str:
     ms = round(t * 1000)
     return f"{ms // 3600000:02d}:{ms // 60000 % 60:02d}:{ms // 1000 % 60:02d}{sep}{ms % 1000:03d}"
 
 
-def cues(sep):
+def cues(sep: str) -> str:
     return "".join(
         f"{i}\n{stamp(s['start'], sep)} --> {stamp(s['end'], sep)}\n{s['text']}\n\n"
         for i, s in enumerate(segs, 1)

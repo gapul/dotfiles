@@ -42,12 +42,12 @@ for s in segs:
     a = int(s["start"] * sr)
     b = max(int(s["end"] * sr), a + int(1.5 * sr))
     embs.append(inf({"waveform": torch.from_numpy(audio[a:b]).unsqueeze(0), "sample_rate": sr}))
-X = np.stack(embs)
-X /= np.linalg.norm(X, axis=1, keepdims=True)
+emb = np.stack(embs)
+emb /= np.linalg.norm(emb, axis=1, keepdims=True)
 if len(segs) > 1:
     lab = AgglomerativeClustering(
         n_clusters=None, distance_threshold=thr, metric="cosine", linkage="average"
-    ).fit_predict(X)
+    ).fit_predict(emb)
 else:
     lab = [0]
 
@@ -56,7 +56,7 @@ order = [c for c, _ in Counter(lab).most_common()]
 name = {c: "話者" + (chr(ord("A") + i) if i < 26 else str(i + 1)) for i, c in enumerate(order)}
 
 
-def hms(t):
+def hms(t: float) -> str:
     t = int(t)
     return f"{t // 3600}:{t // 60 % 60:02d}:{t % 60:02d}"
 
