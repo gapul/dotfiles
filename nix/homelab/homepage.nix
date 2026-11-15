@@ -250,6 +250,11 @@ let
           description = "Music";
           icon = "navidrome.png";
         })
+        (site "scrobble" {
+          name = "multi-scrobbler";
+          description = "Listening history to ListenBrainz";
+          icon = "multi-scrobbler.png";
+        })
         (site "roms" {
           name = "RomM";
           description = "ROM library";

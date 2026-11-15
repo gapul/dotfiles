@@ -89,6 +89,7 @@
     ./site-watch.nix # site change monitoring (urlwatch → ntfy); targets are the jobs list in the file
     ./miniflux.nix
     ./navidrome.nix
+    ./multi-scrobbler.nix
     ./nostr-bunker.nix
     ./ntfy.nix
     ./obsidian-couchdb.nix
