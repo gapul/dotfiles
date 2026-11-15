@@ -45,8 +45,14 @@ com.android.vending	github	microg/GmsCore
 # ── root で使う道具 ─────────────────────────────────────────────────
 com.machiav3lli.backup	github	NeoApplications/Neo-Backup
 org.adaway	github	AdAway/AdAway
-# root の領域を見るファイルマネージャもこれが兼ねる (標準の Files は root を扱えない)
+# アプリの管理 (権限、コンポーネント、バックアップ)。
 io.github.muntashirakon.AppManager	github	MuntashirAkon/AppManager
+# 普段のファイルマネージャ。root の領域、SMB / SFTP / WebDAV (nix/homelab/samba.nix、webdav.nix)、
+# 圧縮ファイルを扱う。標準の Files (DocumentsUI) はアプリのファイル選択画面を兼ねるので残す。
+me.zhanghai.android.files	github	zhanghai/MaterialFiles
+# T3 Code のクライアント。Android の APK は nightly にしか付かないのでプレリリースを追う
+# (リリース名と versionName が違うので、ObtainX では版の照合を切っている)。
+com.t3tools.t3code	github	pingdotgg/t3code
 # nix-on-droid が載る Termux (nix/hosts/droid.nix)。普通の Termux (com.termux) ではない
 com.termux.nix	fdroid	-
 # 改造アプリのパッチ管理 (YouTube、Instagram Piko)。root の上書き方式で使う。
