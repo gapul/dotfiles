@@ -1,20 +1,42 @@
 # Xiaomi Pad 5 (nabu) に入れるアプリの宣言。書式は ../../apps.tsv と同じ。
-# 端末は crDroid + KernelSU Next + microG。F-Droid クライアントは入れず、
+# 端末は AxionAOSP (Android 16) + KernelSU Next + microG。F-Droid クライアントは入れず、
 # 配布元が F-Droid のものも母艦から apps.ts install で入れる。
+# 端末での更新はスマホの Obtainium ではなく、そのフォークの ObtainX が受け持つ。
 #
 # root の層 (KernelSU モジュールと ksud feature) は root/ にあり、root.sh が扱う。
 # JamesDSP のアプリ (james.dsp) はモジュールが同梱して入れるので、ここには書かない
-# (status では EXTRA に出る)。
+# (status では EXTRA に出る)。Vector の管理アプリ (org.matrix.vector.manager) も
+# zygisk_vector モジュールの manager.apk を入れたもので、モジュールと版を揃える必要が
+# あるため同じ扱い。モジュールを上げたら manager.apk を入れ直す。
+#
+# プロプライエタリなアプリは基本 AxSandbox (ROM の com.android.axion.sandbox) で隔離する。
+# Isolate でストレージを止め、データを強制分離し、開発者向けオプションと ADB の状態を偽装して、
+# 鍵付きのプライベートアプリに入れる。インターネットは残す。プライベートスペースや Shelter に
+# しないのは、Morphe の root mount がメインのユーザーでしか効かないため。設定は端末側にあり、
+# AxSandbox の JSON バックアップでしか持ち出せない。
+#
+# apps.ts の route に無い配布元のものは行にせず、コメントで残す (status では EXTRA)。
+# - com.google.android.youtube / com.instagram.android: Aurora Store で Morphe (Piko) の
+#   対応版を手動ダウンロードし、Morphe Manager の root mount でパッチを重ねる。自動更新は
+#   しない (元のアプリが上がると mount が外れる)。どちらも AxSandbox で隔離する。
+# - com.aurora.store.nightly: auroraoss.com の nightly。ObtainX は
+#   Feeds/nightly_feed.json を HTML ソースで読み、version_name を版にする。
+# - nodomain.freeyourgadget.gadgetbridge.nightly: Codeberg の公式 nightly リポジトリ
+#   (freeyourgadget.codeberg.page/fdroid/repo)。stable とは provider が衝突して並べられない。
 
 # ── ストアと root の管理 ────────────────────────────────────────────
-dev.imranr.obtainium	izzy	-
-com.aurora.store	fdroid	-
-# 端末のカーネルに組み込まれた KernelSU Next の管理アプリ。ksud もこれが入れ替える
+# Obtainium のフォーク。端末の更新はこれが受け持つ (APK は arm64 の非 fdroid 版で絞る)。
+dev.bikram.obtainx	github	bikram-agarwal/ObtainX
+# 端末のカーネルに組み込まれた KernelSU Next の管理アプリ。ksud もこれが入れ替える。
+# 管理アプリだけ先に上げるとカーネル側とずれるので、カーネルと一緒に上げる
+# (ObtainX では spoofed 版を除いて絞る)。
 com.rifsxd.ksunext	github	KernelSU-Next/KernelSU-Next
 moe.shizuku.privileged.api	github	RikkaApps/Shizuku
 com.rosan.installer.x.revived	github	wxxsfxyzm/InstallerX-Revived
 
 # ── Google の代わり (microG) ───────────────────────────────────────
+# システム全体の GmsCore。Morphe の改造アプリは root の上書き方式で作り、これを使わせる
+# (通常インストールなら別パッケージの MicroG-RE が要る)。
 com.google.android.gms	github	microg/GmsCore
 com.android.vending	github	microg/GmsCore
 
@@ -25,22 +47,35 @@ org.adaway	github	AdAway/AdAway
 io.github.muntashirakon.AppManager	github	MuntashirAkon/AppManager
 # nix-on-droid が載る Termux (nix/hosts/droid.nix)。普通の Termux (com.termux) ではない
 com.termux.nix	fdroid	-
+# 改造アプリのパッチ管理 (YouTube、Instagram Piko)。root の上書き方式で使う。
+# 開発版のパッチを使うので、ObtainX でもプレリリースを追う。
+app.morphe.manager	github	MorpheApp/morphe-manager
+
+# ── Vector (Xposed) のモジュール ────────────────────────────────────
+# どのアプリに効かせるか (scope) は宣言する場所がまだ無く、端末で
+# /data/adb/modules/zygisk_vector/cli scope set <module> <pkg>/0 で設定している。
+# AirPods の独自機能。Android 16 の Bluetooth の不具合を Xposed で回避する。
+# scope: com.android.bluetooth, com.android.settings
+me.kavishdevar.librepods	github	kavishdevar/librepods
+# SyncClipboard の Xposed クライアント。macmini のサーバー (Tailscale Serve の 5033) と
+# 両方向に自動同期する。scope: com.android.systemui
+io.github.erenche.syncclipboard	github	shaklow/syncclipboard-xposed
 
 # ── 見た目 ──────────────────────────────────────────────────────────
 # アイコンパック。リリースに 4 種あり、ライト/ダークで切り替わる dayNight を使う
 # (Obtainium では APK を dayNight で絞る)。適用はランチャーの設定から。
 com.donnnno.arcticons.daynight	github	Arcticons-Team/Arcticons
 # システム UI (ステータスバー、クイック設定、配色) のカスタマイズ。root と Vector を使う。
-# crDroid 自身の設定と重なるので、同じ箇所を両方で変えない。Android 16 QPR1 以降は v8 系。
+# ROM 自身の設定と重なるので、同じ箇所を両方で変えない。Android 16 QPR1 以降は v8 系。
 # 端末の中で ROM 専用のモジュールを作るので、そのモジュールは root/ の宣言に載らず、
 # root.sh では EXTRA に出る。
 com.drdisagree.iconify	github	Mahmud0808/Iconify
 
 # ── ブラウザ ────────────────────────────────────────────────────────
-# 標準ブラウザ (os-apps.tsv の role)。Vanadium ベースで Chrome 拡張 (MV2 の uBlock Origin) が入る。
+# Chromium 系の予備。Vanadium ベースで Chrome 拡張 (MV2 の uBlock Origin) が入る。
 # 旧名 Helium Browser for Android で、パッケージ名はその名残。
 io.github.jqssun.helium	github	jqssun/android-titanium-browser
-# Firefox 系の予備。Mull の後継で arkenfox の設定入り。
+# 標準ブラウザ (os-apps.tsv の role)。Firefox 系で、Mull の後継の arkenfox の設定入り。
 org.ironfoxoss.ironfox	gitlab	ironfox-oss/IronFox
 
 # ── プリインの置き換え (外したものは os-debloat.txt) ────────────────
@@ -51,13 +86,51 @@ com.kazumaproject.markdownhelperkeyboard	github	KazumaProject/JapaneseKeyboard
 deckers.thibault.aves.libre	github	deckerst/aves
 # Navidrome (Subsonic) の音楽プレイヤー (Twelve の代わり)。止まった Tempo の後継フォークで、
 # microG 端末なので degoogled 版。スマホの Tempo もいずれこちらに寄せる。
+# dev 版はデバッグ署名なので追わない。
 com.eddyizm.degoogled.tempus	github	eddyizm/tempus
-# 天気。ロック画面の天気は crDroid の OmniJaws が出すので、こちらは見る用
+# 天気。ロック画面の天気は ROM の OmniJaws が出すので、こちらは見る用
 # (Obtainium では APK を _standard で絞る)。
 org.breezyweather	github	breezy-weather/breezy-weather
 
+# ── 動画・音楽・画像 ────────────────────────────────────────────────
+# YouTube を API に頼らず見る / 落とす (ニコニコ、BiliBili も)。ベータを追う。
+InfinityLoop1309.NewPipeEnhanced	github	InfinityLoop1308/PipePipe
+# YouTube Music のフロントエンド。microG 端末なので Google Cast なしの Metrolist.apk。
+com.metrolist.music	github	MetrolistGroup/Metrolist
+# Pixiv ビューワー
+com.perol.asdpl.play.pixivez	github	ultranity/Pix-EzViewer
+# 画像編集 (OCR、PDF、SVG 化)。microG 端末なので foss 版。ベータを追う。
+ru.tech.imageresizershrinker	github	T8RIN/ImageToolbox
+
+# ── SNS のクライアント ──────────────────────────────────────────────
+# X を Nitter / Teapot 経由で見る。アカウント不要で、購読とグループは端末内だけ。
+com.kaleedtc.nitterium	github	kaleedtc/Nitterium
+# Reddit クライアント。Google Play 開発者サービス無しで動く Patreon 版
+# (Infinity-Patreon-*.apk) を使う。配布物はソースの公開されていないビルドなので AxSandbox で隔離する。
+ml.docilealligator.infinityforreddit.patreon	github	Docile-Alligator/Infinity-For-Reddit
+
+# ── 自宅サーバーのクライアント ──────────────────────────────────────
+# Radicale (nix/homelab/radicale.nix) のカレンダーと連絡先を ROM の Etar / 連絡先に同期する。
+at.bitfire.davdroid	github	bitfireAT/davx5-ose
+# Kavita (nix/homelab/kavita.nix) の本を OPDS で読む。タブレットを読む端末にする。
+org.koreader.launcher	github	koreader/koreader
+# Kavita の漫画を拡張機能で読む。スマホと同じもの。
+app.mihon	github	mihonapp/mihon
+# Anki 同期サーバー (nix/homelab/anki.nix) のカードを学習する。alpha は追わない。
+com.ichi2.anki	github	ankidroid/Anki-Android
+# 複数端末の個人データの同期 (docs/HOST_ROLES.md の決まり)。公式の Android 版は終了。
+com.github.catfriend1.syncthingfork	github	researchxxl/syncthing-android
+
+# ── パスワード ──────────────────────────────────────────────────────
+# Bitwarden / Vaultwarden の非公式クライアント。GitHub の none 版
+# (androidApp-none-release.apk) は FlavorConfig.isFreeAsBeer で有料機能が最初から入る。
+# 自動入力サービスもこれ。リリース名 (rYYYYMMDD) と versionName が違うので、
+# ObtainX では版の照合を切っている。
+com.artemchep.keyguard	github	AChep/keyguard-app
+
 # ── 通信 ────────────────────────────────────────────────────────────
-# 自宅サーバー (Navidrome、Radicale) への経路。スマホと同じ tailnet。
+# 自宅サーバー (Navidrome、Radicale、SyncClipboard) への経路。スマホと同じ tailnet。
+# 出口ノードは mullvad-exit (nix/homelab/mullvad-exit.nix)。常時接続は os-settings.conf。
 com.tailscale.ipn	fdroid	-
 # iptables のファイアウォール (root)。VPN の枠を使わないので Tailscale と両立する。DNS の
 # フィルタは無いので、AdAway (hosts) とプライベート DNS で補う。起動直後の漏れは root/ の

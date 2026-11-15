@@ -22,7 +22,7 @@ Two Android devices are declared, and they differ enough that one list cannot se
 | Device | Declaration | OS |
 |---|---|---|
 | Phone (Pixel) | the files at the top of this directory | GrapheneOS, no root |
-| Xiaomi Pad 5 (`nabu`) | `devices/nabu/` | crDroid, KernelSU Next built into its kernel, microG, no F-Droid client |
+| Xiaomi Pad 5 (`nabu`) | `devices/nabu/` | AxionAOSP (Android 16), KernelSU Next built into its kernel, microG, no F-Droid client; ObtainX instead of Obtainium |
 
 `apps.ts`, `os.sh` and `root.sh` read `getprop ro.product.device` from the connected device and
 use `devices/<that codename>/` when it exists, and the top-level files otherwise. A device
@@ -85,6 +85,12 @@ unauthenticated API allows 60 requests an hour and hits the rate limit as the de
 `droid obtainium push` puts it on the device for Obtainium's own import, and `droid obtainium
 pull` brings changes made on the device back. `apps.ts obtainium` still prints a URL list
 derived from `apps.tsv` for Import from URL List, but that covers only the `apps.tsv` rows.
+
+nabu is the exception: it runs ObtainX (`dev.bikram.obtainx`), a fork of Obtainium that reads
+the same import format, and `obtainium.json` is the phone's list, not the tablet's. `droid
+obtainium` targets Obtainium's export directory, so it does not reach ObtainX either. ObtainX
+keeps one JSON per app in `Android/data/dev.bikram.obtainx/files/app_data/`, and its GitHub
+token lives in its own settings and is left out of exports.
 
 Anything distributed only through Play goes to Aurora Store, which since 4.6 can import and
 export Favourites and install them in bulk, so it is also a matter of handing over a file:
@@ -205,10 +211,10 @@ when it drifts from `palettes.json`. Material You derives every tone from that o
 result leans towards iris rather than reproducing rose-pine; Kvaesitso's theme
 (`launcher-theme.ts`) is the place where the palette is used colour for colour. The icon pack is
 Arcticons' dayNight variant on both, applied from the launcher's own settings. On nabu the system
-font, crDroid's bundled San Francisco, sits in the same setting: SystemUI's theme controller owns
+font, the ROM's bundled San Francisco, sits in the same setting: SystemUI's theme controller owns
 the font overlays and, on every boot, disables any that the setting does not name, so enabling
 one with `cmd overlay` does not survive a reboot. Iconify handles the status bar and quick
-settings beyond what crDroid's own settings offer; the two overlap, so a given item is changed
+settings beyond what the ROM's own settings offer; the two overlap, so a given item is changed
 in one of them only. Iconify builds a ROM-specific module on the device, so that module stays
 outside `root/` and shows up as EXTRA.
 
