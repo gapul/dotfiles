@@ -17,7 +17,13 @@ let
         keyexchange=ikev1
         authby=secret
         type=transport
-        left=%defaultroute
+        # Not %defaultroute. starter resolves that to the address of the default
+        # route, and since mullvad-host.nix that is the Mullvad interface: a
+        # strongswan restart after it came up sent every IKE packet from
+        # 10.131.152.193 and the far end never answered (2026-11-15). %any lets
+        # charon pick the source from the route to the peer, which pref 5291
+        # keeps on the LAN.
+        left=%any
         # Not 17/1701. NAT-T rewrites the source port, so pinning it made the
         # far end drop quick mode without a word — five retransmits and
         # nothing back. With %any it answers.
