@@ -125,12 +125,19 @@ let
       if [ -x "$fw" ]; then
         (
           for _ in 1 2 3 4 5 6; do
+            # Drop the entries left by earlier store paths first. While one is there, --add
+            # for this path leaves --listapps showing the old one, and on 2026-11-15 that old
+            # entry did not cover this binary: --getappblocked reported it permitted, yet LAN
+            # and tailnet queries were dropped while loopback answered. The previous check
+            # here took any blocky entry as success, so it never noticed.
+            "$fw" --listapps 2>/dev/null |
+              grep -o -- "/nix/store/[^ ]*-blocky-[^/]*/bin/blocky" |
+              grep -v -x -F ${pkgs.blocky}/bin/blocky |
+              while read -r old; do "$fw" --remove "$old" >/dev/null 2>&1; done
             "$fw" --add ${pkgs.blocky}/bin/blocky >/dev/null 2>&1
             "$fw" --unblockapp ${pkgs.blocky}/bin/blocky >/dev/null 2>&1
-            # ALF keys the rule on the ad-hoc signing identifier, so --listapps keeps showing
-            # the first store path that was ever added, not this one; any blocky entry means
-            # the rule exists.
-            "$fw" --listapps 2>/dev/null | grep -q -- "-blocky-[^/]*/bin/blocky" && exit 0
+            # Success only when the entry is this very path.
+            "$fw" --listapps 2>/dev/null | grep -q -F -- ${pkgs.blocky}/bin/blocky && exit 0
             sleep 20
           done
         ) &
