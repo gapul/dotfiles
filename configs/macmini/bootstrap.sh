@@ -22,14 +22,16 @@ case " $* " in
 esac
 
 say "venv再構築(uv)"
-$UV tool install mlx-whisper
 $UV tool install mlx-vlm
 # RAG(埋め込み+リランク+サーバー+パネル)
 $UV venv --python 3.12 "$H/rag-venv"
 $UV pip install --python "$H/rag-venv/bin/python" sentence-transformers torch sentencepiece fastapi "uvicorn[standard]" python-multipart
-# 話者分離(pyannote 4.x, HF_TOKEN要)
+# 文字起こし(sherpa-onnx。transcribe が使う)
+$UV venv --python 3.13 "$H/.local/share/venvs/asr-venv"
+$UV pip install --python "$H/.local/share/venvs/asr-venv/bin/python" sherpa-onnx soundfile numpy
+# 話者分離(pyannote 4.x の wespeaker 埋め込み + scikit-learn。transcribe-diarize が使う)
 $UV venv --python 3.12 "$H/diarize-venv"
-$UV pip install --python "$H/diarize-venv/bin/python" "pyannote.audio>=3.3" torch torchaudio soundfile
+$UV pip install --python "$H/diarize-venv/bin/python" "pyannote.audio>=3.3" torch torchaudio soundfile scikit-learn
 # TTS(Style-Bert-VITS2, numpy/setuptoolsピン重要)
 $UV venv --python 3.12 "$H/sbv2-venv"
 $UV pip install --python "$H/sbv2-venv/bin/python" style-bert-vits2 torch torchaudio soundfile "setuptools<81" "numpy==1.26.4"

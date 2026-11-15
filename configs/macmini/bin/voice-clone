@@ -1,6 +1,6 @@
 #!/bin/bash
 # 声クローン: 参照音声の声で任意の日本語を喋らせる(GPT-SoVITS v2)
-# voice-clone <参照音声> <喋らせる文章> [出力.wav] [参照文字起こし(省略時Whisper自動)]
+# voice-clone <参照音声> <喋らせる文章> [出力.wav] [参照文字起こし(省略時 transcribe で自動)]
 eval "$(/opt/homebrew/bin/brew shellenv)"
 export PATH="$HOME/.local/bin:$PATH"
 export PYTORCH_ENABLE_MPS_FALLBACK=1
@@ -15,8 +15,8 @@ ffmpeg -y -i "$ref" -ar 32000 -ac 1 "$refwav" >/dev/null 2>&1
 
 if [[ -z "$reftext" ]]; then
   echo "[参照音声を自動文字起こし中...]" >&2
-  mlx_whisper "$refwav" --model "$HOME/.local/share/models/mlx/whisper-large-v3-turbo-mlx" --language ja --output-dir /tmp --output-format txt >/dev/null 2>&1
-  reftext="$(cat /tmp/vc_ref_$$.txt 2>/dev/null | tr -d "\n")"
+  transcribe "$refwav" ja txt >/dev/null 2>&1
+  reftext="$(sed 's/^\[[0-9:]*\] //' /tmp/vc_ref_$$.txt 2>/dev/null | tr -d "\n")"
 fi
 echo "[参照文: $reftext]" >&2
 

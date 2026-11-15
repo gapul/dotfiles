@@ -1,28 +1,29 @@
 #!/bin/bash
-# Whisper (MLX) 文字起こし — 速度/精度を選択可
+# 文字起こし (sherpa-onnx: silero VAD + Parakeet ja / Cohere Transcribe)
 # 使い方: transcribe <ファイル> [言語 ja/en/auto] [形式 txt/srt/vtt/json/all] [モデル fast|accurate]
-#   fast     = large-v3-turbo (速い・日本語も上位精度) ※既定
-#   accurate = large-v3        (最高精度・やや遅い)
+#   fast     = Parakeet ja (日本語で最も正確・既定)
+#   accurate = Cohere Transcribe (句読点が読みやすいが区間を落とすことがある。日本語以外はこちら)
+# 出力は入力と同じ場所の <名前>.<形式>。モデルと選定の経緯は ~/.local/share/ai-stack/asr.py。
 eval "$(/opt/homebrew/bin/brew shellenv)"
-export PATH="$HOME/.local/bin:$PATH"
-
 file="$1"; lang="${2:-ja}"; fmt="${3:-txt}"; model="${4:-fast}"
-
-if [[ -z "$file" ]]; then
+if [[ -z "$file" || ! -f "$file" ]]; then
   echo "使い方: transcribe <ファイル> [ja/en/auto] [txt/srt/vtt/json/all] [fast|accurate]"
   exit 1
 fi
-
 case "$model" in
-  fast|turbo)            mpath="$HOME/.local/share/models/mlx/whisper-large-v3-turbo-mlx" ;;
-  accurate|large|large-v3) mpath="$HOME/.local/share/models/mlx/whisper-large-v3-mlx" ;;
+  fast|parakeet)    model=parakeet ;;
+  accurate|cohere)  model=cohere ;;
   *) echo "モデルは fast か accurate を指定"; exit 1 ;;
 esac
-if [[ ! -f "$mpath/config.json" ]]; then echo "モデル未導入: $mpath"; exit 1; fi
-
-outdir="$(dirname "$file")"
-langopt=(--language "$lang"); [[ "$lang" == "auto" ]] && langopt=()
-
+# Parakeet は日本語専用。Cohere は言語の自動判定を持たないので auto は ja として扱う。
+[[ "$lang" == "auto" ]] && lang=ja
+[[ "$lang" != "ja" ]] && model=cohere
+py="$HOME/.local/share/venvs/asr-venv/bin/python"
+[[ -x "$py" ]] || { echo "asr-venv が無い (configs/macmini/bootstrap.sh)"; exit 1; }
+base="${file%.*}"
+wav="$(mktemp -t transcribe).wav"
+trap 'rm -f "$wav"' EXIT
+ffmpeg -nostdin -y -i "$file" -ar 16000 -ac 1 "$wav" >/dev/null 2>&1 || { echo "音声を読めない: $file"; exit 1; }
 echo "[model=$model  lang=$lang  fmt=$fmt]"
-mlx_whisper "$file" --model "$mpath" "${langopt[@]}" --output-dir "$outdir" --output-format "$fmt"
-echo "→ 出力先: $outdir"
+"$py" ~/.local/share/ai-stack/asr.py "$wav" "$base" "$model" "$lang" "$fmt" || exit 1
+echo "→ 出力先: $(dirname "$file")"
