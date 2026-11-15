@@ -83,8 +83,11 @@ com.drdisagree.iconify	github	Mahmud0808/Iconify
 # Chromium 系の予備。Vanadium ベースで Chrome 拡張 (MV2 の uBlock Origin) が入る。
 # 旧名 Helium Browser for Android で、パッケージ名はその名残。
 io.github.jqssun.helium	github	jqssun/android-titanium-browser
-# 標準ブラウザ (os-apps.tsv の role)。Firefox 系で、Mull の後継の arkenfox の設定入り。
+# Web ページの開き先 (標準ブラウザの LinkSheet から渡す)。Firefox 系で、Mull の後継の arkenfox の設定入り。
 org.ironfoxoss.ironfox	gitlab	ironfox-oss/IronFox
+# 標準ブラウザ (os-apps.tsv の role)。リンクを受けてどのアプリで開くか選ばせる。正式版は
+# 2024 年で止まり nightly だけが更新されるので、nightly を使う (スマホと同じ)。
+fe.linksheet.nightly	github	LinkSheet/nightly
 
 # ── プリインの置き換え (外したものは os-debloat.txt) ────────────────
 # 日本語キーボード。AOSP のキーボードは日本語を打てない。スマホと同じもの
