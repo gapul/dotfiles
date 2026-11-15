@@ -197,6 +197,10 @@ The partition images taken before any of this (boot, vendor_boot, dtbo, vbmeta, 
 modem partitions) live outside the repository, in `~/Backups/xiaomi-pad5-nabu/`: they are large
 and carry data unique to the device.
 
+The KernelSU manager app has to match the KernelSU built into the kernel: crDroid 12.12 carries
+KernelSU-Next v3.3.0 (UAPI 2), and the v3.4 manager ships a `ksud` that refuses it with
+`UAPI version mismatch`. Update the manager only when crDroid updates the kernel side.
+
 ## Theming
 
 Both devices take the Material You seed from the palette: `theme_customization_overlay_packages`
@@ -211,6 +215,22 @@ one with `cmd overlay` does not survive a reboot. Iconify handles the status bar
 settings beyond what crDroid's own settings offer; the two overlap, so a given item is changed
 in one of them only. Iconify builds a ROM-specific module on the device, so that module stays
 outside `root/` and shows up as EXTRA.
+
+## microG (nabu)
+
+Its settings sit behind a content provider that root can write, so they need no tapping:
+
+```sh
+s() { adb shell su -c "content update --uri content://com.google.android.gms.microg.settings/$1 --bind $2"; }
+s check-in checkin_enable_service:b:true          # device registration, needed for push
+s gcm gcm_enable_mcs_service:b:true               # Cloud Messaging
+s gcm gcm_confirm_new_apps:b:true                 # ask before each app registers
+s location location_online_source:s:beacondb      # the tablet has no GPS
+s location location_wifi_mls:b:true
+s location location_cell_mls:b:true
+```
+
+Read them back with `content query` on the same URIs.
 
 ## The launcher, Kvaesitso
 
