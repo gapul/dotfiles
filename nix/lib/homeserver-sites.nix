@@ -96,6 +96,13 @@ rec {
       upstream = "127.0.0.1:4533";
       monitor = false; # lazy: lazy-http-services.nix reports it to gatus daily
     };
+    # multi-scrobbler's dashboard (homelab/multi-scrobbler.nix). It runs with its own login
+    # disabled, so Authelia is the gate. Navidrome reaches its scrobble endpoint over a podman
+    # network, not through here.
+    scrobble = {
+      upstream = "127.0.0.1:8122";
+      auth = true;
+    };
     # 3D printer control panel (Bambuddy). Putting the printer in LAN Only + Developer Mode made
     # Bambu Handy unusable, so this is where the phone goes instead. See homelab/bambuddy.nix.
     bambu.upstream = "127.0.0.1:8010";

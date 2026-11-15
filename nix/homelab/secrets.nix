@@ -52,6 +52,10 @@ let
     { rel = "mail/school.address"; }
     { rel = "mail/school.app-password"; }
     {
+      rel = "multi-scrobbler.env";
+      restartUnits = [ "podman-multi-scrobbler.service" ];
+    }
+    {
       rel = "ledger-deploy.key.pub";
       mode = "0444";
     }
