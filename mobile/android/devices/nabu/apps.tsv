@@ -108,6 +108,9 @@ helium314.keyboard	github	Helium314/HeliBoard
 InfinityLoop1309.NewPipeEnhanced	github	InfinityLoop1308/PipePipe
 # YouTube Music のフロントエンド。microG 端末なので Google Cast なしの Metrolist.apk。
 com.metrolist.music	github	MetrolistGroup/Metrolist
+# 再生した曲を Last.fm / ListenBrainz などに記録する (通知から拾うので、Metrolist や Tempus の
+# 再生も対象)。リリース名が versionCode だけなので、ObtainX では版の照合を切っている。
+com.arn.scrobble	github	kawaiiDango/pano-scrobbler
 # Pixiv ビューワー
 com.perol.asdpl.play.pixivez	github	ultranity/Pix-EzViewer
 # 画像編集 (OCR、PDF、SVG 化)。microG 端末なので foss 版。ベータを追う。
