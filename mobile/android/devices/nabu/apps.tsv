@@ -9,7 +9,16 @@
 # zygisk_vector モジュールの manager.apk を入れたもので、モジュールと版を揃える必要が
 # あるため同じ扱い。モジュールを上げたら manager.apk を入れ直す。
 #
+# プロプライエタリなアプリは基本 AxSandbox (ROM の com.android.axion.sandbox) で隔離する。
+# Isolate でストレージを止め、データを強制分離し、開発者向けオプションと ADB の状態を偽装して、
+# 鍵付きのプライベートアプリに入れる。インターネットは残す。プライベートスペースや Shelter に
+# しないのは、Morphe の root mount がメインのユーザーでしか効かないため。設定は端末側にあり、
+# AxSandbox の JSON バックアップでしか持ち出せない。
+#
 # apps.ts の route に無い配布元のものは行にせず、コメントで残す (status では EXTRA)。
+# - com.google.android.youtube / com.instagram.android: Aurora Store で Morphe (Piko) の
+#   対応版を手動ダウンロードし、Morphe Manager の root mount でパッチを重ねる。自動更新は
+#   しない (元のアプリが上がると mount が外れる)。どちらも AxSandbox で隔離する。
 # - com.aurora.store.nightly: auroraoss.com の nightly。ObtainX は
 #   Feeds/nightly_feed.json を HTML ソースで読み、version_name を版にする。
 # - nodomain.freeyourgadget.gadgetbridge.nightly: Codeberg の公式 nightly リポジトリ
@@ -97,7 +106,7 @@ ru.tech.imageresizershrinker	github	T8RIN/ImageToolbox
 # X を Nitter / Teapot 経由で見る。アカウント不要で、購読とグループは端末内だけ。
 com.kaleedtc.nitterium	github	kaleedtc/Nitterium
 # Reddit クライアント。Google Play 開発者サービス無しで動く Patreon 版
-# (Infinity-Patreon-*.apk) を使う。
+# (Infinity-Patreon-*.apk) を使う。配布物はソースの公開されていないビルドなので AxSandbox で隔離する。
 ml.docilealligator.infinityforreddit.patreon	github	Docile-Alligator/Infinity-For-Reddit
 
 # ── 自宅サーバーのクライアント ──────────────────────────────────────
