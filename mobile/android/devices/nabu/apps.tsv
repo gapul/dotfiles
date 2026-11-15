@@ -142,6 +142,10 @@ app.mihon	github	mihonapp/mihon
 com.ichi2.anki	github	ankidroid/Anki-Android
 # 複数端末の個人データの同期 (docs/HOST_ROLES.md の決まり)。公式の Android 版は終了。
 com.github.catfriend1.syncthingfork	github	researchxxl/syncthing-android
+# 壁紙の入れ替え。nixos-laptop の生成した壁紙 (home/darkman.nix) を Syncthing-Fork が
+# Pictures/Wallpapers/{light,dark} に受け取り (受信のみ、tailnet 越しに laptop と直接)、
+# これがそこから回す。Syncthing-Fork 側の設定は端末にしか無い。
+com.anthonyla.paperize	github	Anthonyy232/Paperize
 # Jellyfin (nix/homelab/jellyfin.nix) のクライアント。公式アプリではなく、ネイティブ UI の Findroid
 # (libre 版、arm64)。パッケージ名は dev.jdtech.jellyfin。
 dev.jdtech.jellyfin	github	jarnedemeulemeester/findroid

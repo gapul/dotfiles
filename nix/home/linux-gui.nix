@@ -129,6 +129,23 @@ in
           "quic://100.127.129.31:22000"
         ];
       };
+      # The Xiaomi Pad 5, direct over the tailnet (not through homeserver). Its Syncthing-Fork
+      # config lives on the tablet and is not declared anywhere (mobile/android/devices/nabu).
+      devices."xiaomi-pad-5" = {
+        id = "D44EUOP-CCPKZAA-LZGBVLN-P55WLPR-VBK47CC-OEMMXVZ-WSCB4IO-CWMSMQ3";
+        addresses = [
+          "tcp://100.103.244.30:22000"
+          "quic://100.103.244.30:22000"
+        ];
+      };
+      # The generated wallpapers (home/darkman.nix copies them here) for Paperize on the tablet.
+      # Send-only: the files are rebuilt from Nix, and the tablet keeps a receive-only copy.
+      folders."wallpapers" = {
+        label = "Wallpapers";
+        path = "${config.home.homeDirectory}/Sync/wallpapers";
+        devices = [ "xiaomi-pad-5" ];
+        type = "sendonly";
+      };
       folders."synchub" = {
         label = "SyncHub";
         path = "${config.home.homeDirectory}/Sync/syncthing";

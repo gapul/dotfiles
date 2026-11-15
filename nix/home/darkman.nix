@@ -128,6 +128,19 @@ in
     darkModeScripts.appearance = "${lib.getExe apply} dark";
   };
 
+  # The same pictures, as real files under ~/Sync/wallpapers/{light,dark}, for the tablet:
+  # Syncthing sends that folder to xiaomi-pad-5 (home/linux-gui.nix) and Paperize rotates
+  # them there. Copied rather than linked because Syncthing syncs a symlink as a symlink,
+  # and the target in /nix/store does not exist on the tablet.
+  home.activation.wallpapersForTablet = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    dst=${config.home.homeDirectory}/Sync/wallpapers
+    run mkdir -p "$dst/light" "$dst/dark"
+    for f in ${wallpaperSet}/*.png; do
+      b=$(basename "$f")
+      run cp -L --no-preserve=mode "$f" "$dst/''${b%%-*}/$b"
+    done
+  '';
+
   # Start darkman only once the session is up. Without the ordering it came up before niri had
   # imported WAYLAND_DISPLAY into the user manager, kept that environment for days, and every
   # sunrise/sundown the wallpaper switch failed ("WAYLAND_DISPLAY variable not set ... awww-daemon
