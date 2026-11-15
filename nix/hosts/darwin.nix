@@ -142,7 +142,23 @@ in
     mocopiMac.packages.${pkgs.stdenv.hostPlatform.system}.default
     # Compiles Shortcuts from code (see cherri in flake.nix). The source is
     # personal-tools/shortcuts; the output is signed and imported onto the device.
-    cherri.packages.${pkgs.stdenv.hostPlatform.system}.default
+    # Upstream's flake builds with the default Go, but its go.mod requires 1.27 since 2026-11 and
+    # neither 26.05-darwin nor nixos-unstable defaults to that yet, so rebuild it with Go 1.27.
+    (
+      let
+        upstream = cherri.packages.${pkgs.stdenv.hostPlatform.system}.default;
+      in
+      pkgs.buildGo127Module {
+        inherit (upstream)
+          pname
+          version
+          src
+          vendorHash
+          checkFlags
+          meta
+          ;
+      }
+    )
     # VOICEVOX: was the reason a fork of the upstream Homebrew tap existed at all — upstream is
     # stuck at 0.25.1 with a dead autobump, so the fork carried 0.25.2 by hand. nixpkgs packages
     # the same 0.25.2 and builds on aarch64-darwin, so the fork, the tap and the "switch back once
