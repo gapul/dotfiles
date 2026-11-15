@@ -120,8 +120,7 @@ Generated from `just --list`. Run `just docs` after changing a recipe.
     dns *flags                           # Diff the repo's declarations against Cloudflare DNS: A records, tunnel CNAMEs, and mail (MX/SPF/DKIM)
     esphome                              # Validate the ESPHome device configs without hardware
     tailnet cmd="diff"                   # Fetch, diff, or apply the tailnet policy file (ACL / split DNS). Needs TS_API_KEY
-    # Build the NixOS-WSL rootfs tarball on homeserver and bring it back (mac can't build it)
-    wsl-tarball flake="git+https://git.gapul.net/gapul/dotfiles?dir=nix"
+    wsl-tarball flake="git+https://git.gapul.net/gapul/dotfiles?dir=nix" # Build the NixOS-WSL rootfs tarball on homeserver and bring it back (mac can't build it)
 
     [Inspect]
     check what=""                        # Type-check / show diff  (`just check` = syntax/type-check, `just check diff` = diff build)
