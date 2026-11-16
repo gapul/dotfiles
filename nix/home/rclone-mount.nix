@@ -4,15 +4,17 @@
   lib,
   ...
 }:
-# Mount Google Drive as plaintext under ~/Sync via rclone: launchd agents on macOS, systemd user
+# Mount Google Drive as plaintext under ~/mnt via rclone: launchd agents on macOS, systemd user
 # services on Linux (nixos-laptop).
 # The purpose is "sharing/collaboration with others", not a cold archive. It is unencrypted
 # because it should be plainly visible from the Web UI and to those you share with.
 #
-# Layout: everything replicated somewhere else lives under ~/Sync (2026-08. ~/Cloud is retired).
-#   ~/Sync/google-drive           <- remote google-drive:           (remote-primary, a mount, personal)
-#   ~/Sync/google-drive-school    <- remote google-drive-school:    (remote-primary, a mount)
-#   ~/Sync/google-drive-sean      <- remote google-drive-sean:      (remote-primary, a mount)
+# Layout (2026-11-16): mounts live under ~/mnt, apart from real local files under ~/Sync. The two
+# used to share ~/Sync, which hid the one difference that matters: nothing under ~/mnt exists on
+# this disk or in restic, while ~/Sync/syncthing does. Same path on macOS and Linux.
+#   ~/mnt/google-drive            <- remote google-drive:           (remote-primary, a mount, personal)
+#   ~/mnt/google-drive-school     <- remote google-drive-school:    (remote-primary, a mount)
+#   ~/mnt/google-drive-sean       <- remote google-drive-sean:      (remote-primary, a mount)
 #   ~/Sync/syncthing              <- Syncthing share                (local-primary, real files)
 # The mount point name is the remote name, so the two never drift apart.
 #
@@ -37,8 +39,13 @@ let
   rcloneConf = "${home}/.config/rclone/rclone.conf";
   cacheDir = "${home}/.cache/rclone";
   logDir = "${home}/Library/Logs/rclone";
+  mountRoot = "${home}/mnt";
+  # Where the mounts lived until 2026-11-16. Only read by the cleanup in home.activation below.
+  oldMountRoot = "${home}/Sync";
+  mountBin =
+    if pkgs.stdenv.hostPlatform.isDarwin then "/sbin/mount" else "${pkgs.util-linux}/bin/mount";
 
-  # remote name == mount point name under ~/Sync
+  # remote name == mount point name under ~/mnt
   remotes = [
     # The personal account is the existing "google-drive" remote (also the restic backend).
     # Do not duplicate it as google-drive-personal: two sections sharing one OAuth token means
@@ -61,7 +68,7 @@ let
   mountScript =
     name:
     let
-      mountPoint = "${home}/Sync/${name}";
+      mountPoint = "${mountRoot}/${name}";
       logFile = "${logDir}/${name}.log";
     in
     pkgs.writeShellApplication {
@@ -155,6 +162,24 @@ in
 {
   home.packages = [ pkgs.rclone ];
 
+  # Remove the empty mount points left at the old ~/Sync location. Reloading the agents unmounts
+  # them first (the mount script releases its mount on TERM); anything still mounted or non-empty
+  # is left alone, so this never touches a live or stale mount. Drop once every host has switched.
+  home.activation.rcloneMoveMountsOutOfSync =
+    lib.hm.dag.entryAfter
+      [
+        "setupLaunchAgents"
+        "reloadSystemd"
+      ]
+      ''
+        for name in ${lib.escapeShellArgs remotes}; do
+          old="${oldMountRoot}/$name"
+          if [ -d "$old" ] && ! ${mountBin} | ${pkgs.gnugrep}/bin/grep -q " $old "; then
+            run rmdir "$old" 2>/dev/null || true
+          fi
+        done
+      '';
+
   # One systemd user service per mount. Type=notify: rclone reports ready once the FUSE mount is
   # up. A remote missing from rclone.conf skips the unit (ExecCondition) instead of failing
   # it, matching the mac's "not configured yet" exit. Stale mounts left by a crashed rclone are
@@ -164,7 +189,7 @@ in
       map (
         name:
         let
-          mountPoint = "${home}/Sync/${name}";
+          mountPoint = "${mountRoot}/${name}";
         in
         lib.nameValuePair "rclone-${name}" {
           Unit = {

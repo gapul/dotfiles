@@ -158,8 +158,8 @@ in
   # Location for sync/cloud data the user handles directly.
   # XDG is for app config/cache/state, so user data like Google Drive mounts or Syncthing
   # shared folders is grouped into categories directly under HOME.
-  # On the workstation that category is ~/Sync (see home/workstation.nix), which holds both the
-  # rclone mounts and the Syncthing share — anything whose data also exists somewhere else.
+  # On the workstation those categories are ~/Sync for real files whose data also exists somewhere
+  # else (the Syncthing share) and ~/mnt for rclone mounts (see home/workstation.nix).
   home.activation.userDataDirs = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     ${pkgs.coreutils}/bin/mkdir -p \
       "${config.xdg.dataHome}/codex" \

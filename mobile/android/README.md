@@ -200,7 +200,7 @@ Things learnt on nabu that the declaration encodes:
   writes by default. Its `versionCode` comes from the content, so a palette change reinstalls it.
 
 The partition images taken before any of this (boot, vendor_boot, dtbo, vbmeta, persist and the
-modem partitions) live outside the repository, in `~/Backups/xiaomi-pad5-nabu/`: they are large
+modem partitions) live outside the repository, in macmini's `~/Documents/Backups/xiaomi-pad5-nabu/`: they are large
 and carry data unique to the device.
 
 ## Theming

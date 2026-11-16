@@ -55,9 +55,9 @@ let
       "${home}/Downloads"
       "${home}/Movies"
       "${home}/Music"
-      # Only the Syncthing share, never ~/Sync itself: its siblings are rclone mounts of Google
-      # Drive, and the restic repository lives on that same Drive, so backing up the mount would
-      # feed the repository into itself.
+      # Only the Syncthing share. Never the rclone mounts of Google Drive under ~/mnt: the restic
+      # repository lives on that same Drive, so backing up the mount would feed the repository
+      # into itself.
       "${home}/Sync/syncthing" # Syncthing share (local-primary replicated data)
       # No official-launcher data any more: the launcher itself was gone and its two throwaway
       # single-player worlds were archived (restic --tag archive, snapshot 7e944f25, 2026-09-26)

@@ -120,9 +120,9 @@ in
     # nvim-treesitter's main branch compiles its parsers with it and stops without one.
     ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [ pkgs.gcc ];
 
-  # User data location: everything that also lives somewhere else sits under ~/Sync (2026-08).
-  # google-drive-* are rclone mounts (remote-primary, see home/rclone-mount.nix), syncthing holds
-  # real local files (local-primary, the only one restic backs up).
+  # User data location: real local files that also live somewhere else sit under ~/Sync (2026-08;
+  # syncthing, local-primary, the only one restic backs up). The rclone mounts of Google Drive
+  # (remote-primary) moved out to ~/mnt on 2026-11-16 (see home/rclone-mount.nix).
   #
   # Work is kept per project, not per file type (2026-10-18): one folder per piece of work under
   # ~/Documents/Projects, whatever tools it needs (art/, rig/, 3d/, audio/, video/, exports/ as
@@ -134,9 +134,9 @@ in
   home.activation.workstationDataDirs = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     ${pkgs.coreutils}/bin/mkdir -p \
       "${config.home.homeDirectory}/Documents/Projects" \
-      "${config.home.homeDirectory}/Sync/google-drive" \
-      "${config.home.homeDirectory}/Sync/google-drive-school" \
-      "${config.home.homeDirectory}/Sync/google-drive-sean" \
+      "${config.home.homeDirectory}/mnt/google-drive" \
+      "${config.home.homeDirectory}/mnt/google-drive-school" \
+      "${config.home.homeDirectory}/mnt/google-drive-sean" \
       "${config.home.homeDirectory}/Sync/syncthing"
   '';
 

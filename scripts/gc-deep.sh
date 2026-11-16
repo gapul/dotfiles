@@ -16,7 +16,7 @@ echo "━━━ OS/editor junk across HOME (with confirmation) ━━━"
 read -rp "  Delete .DS_Store/AppleDouble/swap/orig/rej/backup files? [y/N] " ans
 if [[ "$ans" == [yY] ]]; then
   # -x for the same reason as the Dev caches sweep above: without it this walks the two
-  # rclone Google Drive mounts under ~/Sync, which is both endless and the last place we
+  # rclone Google Drive mounts under ~/mnt, which is both endless and the last place we
   # want to be deleting ._* and .DS_Store.
   d=$(find -x "$HOME" \( -path "$HOME/.Trash" -o -path "$HOME/Library" \) -prune -o -type f \( -name '.DS_Store' -o -name '._*' -o -name '*.swp' -o -name '*.swo' -o -name '*.orig' -o -name '*.rej' -o -name '*~' \) -print -delete 2>/dev/null | wc -l | tr -d ' ')
   echo "  $d removed"
