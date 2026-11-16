@@ -61,6 +61,7 @@
     ./ledger.nix
     ./mail.nix
     ./terraria.nix
+    ./ujp-archive.nix # uploader.jp archive volunteer client; remove after 2026-11-25
     ./health.nix
     ./homebox.nix
     ./homeassistant.nix
