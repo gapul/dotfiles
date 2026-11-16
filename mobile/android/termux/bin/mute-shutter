@@ -1,4 +1,4 @@
 #!/data/data/com.termux/files/usr/bin/sh
-# 純正カメラの強制シャッター音 (この端末では音量グループ 5) を消す。boot/10-pixel が起動時に
+# 純正カメラの強制シャッター音 (この端末では音量グループ 5) を消す。boot/20-mute-shutter が起動時に
 # 呼ぶほか、手でかけ直すときにも使う。rish は Shizuku 経由で shell の権限を持つ。
 exec "$HOME/bin/rish" -c 'cmd audio set-group-volume 5 0; cmd audio adj-group-volume 5 MUTE'

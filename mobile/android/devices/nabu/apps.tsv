@@ -34,6 +34,10 @@ dev.bikram.obtainx	github	bikram-agarwal/ObtainX
 # (ObtainX では spoofed 版を除いて絞る)。
 com.rifsxd.ksunext	github	KernelSU-Next/KernelSU-Next
 moe.shizuku.privileged.api	github	RikkaApps/Shizuku
+# Termux。Termux:Boot が起動のたびに ../../termux/boot/10-sshd を走らせ、tailnet のアドレスで
+# SSH を受ける (root の操作は su)。2 つは同じ署名が要るので、どちらも F-Droid 版にする。
+com.termux	fdroid	-
+com.termux.boot	fdroid	-
 com.rosan.installer.x.revived	github	wxxsfxyzm/InstallerX-Revived
 
 # ── Google の代わり (microG) ───────────────────────────────────────

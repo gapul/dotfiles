@@ -1,6 +1,5 @@
 #!/data/data/com.termux/files/usr/bin/sh
-# スマホの Termux:Boot が起動のたびに走らせる (~/.termux/boot/10-pixel に置く)。
-# Termux のデータは最初のロック解除まで暗号化されているので、走るのはその後になる。
+# スマホの Termux:Boot が起動のたびに走らせる (~/.termux/boot/ に置く。タブレットには置かない)。
 
 # 日本向けの Pixel は純正カメラのシャッター音を ENFORCED_AUDIBLE の音量グループで強制し、
 # そのミュートは再起動で戻る。グループの番号は端末ごとに違い、この Pixel 7a では 5
@@ -9,10 +8,4 @@
 (
   until "$HOME/bin/rish" -c true >/dev/null 2>&1; do sleep 15; done
   "$HOME/bin/mute-shutter"
-) &
-
-# SSH は tailnet のアドレスでだけ受ける (鍵のみ。sshd_config は README)。Tailscale が
-# アドレスを上げるまでは bind に失敗するので、通るまで繰り返す。
-(
-  until sshd -o ListenAddress=100.76.47.30; do sleep 15; done
 ) &

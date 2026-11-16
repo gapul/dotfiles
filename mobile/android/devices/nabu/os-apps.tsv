@@ -4,3 +4,9 @@
 # 標準ブラウザは LinkSheet。リンクを受けて開き先を選ばせ、Web ページは IronFox (Firefox 系、
 # arkenfox の設定入り) に渡す。Titanium は Chrome 拡張用の予備。
 role	fe.linksheet.nightly	android.app.role.BROWSER
+
+# Termux:Boot の起動時スクリプトと常駐の sshd を、電池最適化と裏での実行制限に止めさせない。
+battery	com.termux	-
+battery	com.termux.boot	-
+appops	com.termux	RUN_ANY_IN_BACKGROUND allow
+appops	com.termux.boot	RUN_ANY_IN_BACKGROUND allow
