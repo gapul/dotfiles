@@ -35,8 +35,8 @@ in
       StateDirectory = "ujp-archive";
       WorkingDirectory = "/var/lib/ujp-archive";
       # Downloads arbitrary third-party files and talks to a stranger's server: keep it off the
-      # LAN and tailnet entirely. DNS still works through nscd's socket. Egress stays on Mullvad
-      # (jp-tyo), which satisfies the client's Japan-only check.
+      # LAN and tailnet entirely. DNS still works through nscd's socket. Egress bypasses Mullvad
+      # (bypassUnits in mullvad-host.nix): Cloudflare blocked its shared address immediately.
       IPAddressDeny = [
         "localhost"
         "link-local"
