@@ -292,6 +292,7 @@ in
     ./macmini-ci-runner.nix
     ./macmini-dns.nix
     ./macmini-homeserver-monitor.nix
+    ./macmini-inbound-watchdog.nix # reboots the mini when the network can no longer reach it (2026-11-15/16)
     ./macmini-anthropic-route.nix # Anthropic skips the Mullvad exit node (Cloudflare challenges it)
     ./macmini-imessage.nix # iMessage bridge daemon and config (split with the home side; reason at the top of the file)
     ./macmini-mail.nix # aerc accounts, rendered by the system sops (host key)
