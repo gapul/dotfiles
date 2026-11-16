@@ -554,6 +554,11 @@ in
     orca-slicer # Bambu A1 mini, same profile set as the mac
     voicevox # same as the mac (hosts/darwin.nix); bundles voicevox-engine
 
+    # ─── Maps / Medical imaging ───
+    qgis # GIS: Dawarich exports, GSI and other open data layers
+    weasis # DICOM viewer for MRI/CT slices
+    paraview # 3D meshes and volumes, e.g. the brain-pipeline surfaces
+
     # ─── Utilities ───
     # Dictionary lookup. Reads the StarDict (and slob) sets kept in the assets annex under
     # references/dictionaries/; point it at a checkout from Edit > Dictionaries > Sources.
