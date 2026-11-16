@@ -109,23 +109,27 @@ in
 
   # The dictionaries are the copies modules/home/editor.nix already puts in ~/.local/share/skk for
   # skkeleton, so the editor and the IM convert from one set, in the order of macSKK's
-  # dictionaries[]. Without this file fcitx5-skk reads the package's list, which has SKK-JISYO.L
+  # dictionaries[], except that the skkserv comes right after the user dictionary (see below).
+  # Without this file fcitx5-skk reads the package's list, which has SKK-JISYO.L
   # alone. $FCITX_CONFIG_DIR is fcitx5's data dir, so the user dictionary, where conversions are
   # learned, ends up at ~/.local/share/fcitx5/skk/user.dict; it is not shared with skkeleton-user-dict.
   xdg.dataFile."fcitx5/skk/dictionary_list".text = ''
     type=file,file=$FCITX_CONFIG_DIR/skk/user.dict,mode=readwrite
+    type=server,host=127.0.0.1,port=${toString skkservPort},encoding=UTF-8,context=true
     type=file,file=${skkDir}/SKK-JISYO.L,mode=readonly
     type=file,file=${skkDir}/SKK-JISYO.geo,mode=readonly
     type=file,file=${skkDir}/SKK-JISYO.jinmei,mode=readonly
     type=file,file=${skkDir}/SKK-JISYO.propernoun,mode=readonly
     type=file,file=${skkDir}/SKK-JISYO.station,mode=readonly
-    type=server,host=127.0.0.1,port=${toString skkservPort},encoding=UTF-8,context=true
   '';
 
   # azoo-key-skkserv, the skkserv macSKK and skkeleton use on the mac (azooKey skkserv.app there):
   # AzooKeyKanaKanjiConverter with the Zenzai model, so compounds and whole phrases the SKK-JISYO
-  # files lack still convert (はいたつぎょうしゃ → 配達業者). It is queried after the files above, so
-  # their candidates come first. The server always answers in UTF-8, and libskk uses one encoding
+  # files lack still convert (はいたつぎょうしゃ → 配達業者). libskk lists the candidates of each
+  # dictionary in turn and drops the later duplicates, so the server comes before the SKK-JISYO
+  # files: after them, its context order (below) would show only for readings the files lack, as
+  # they have most homophones (いこう: 以降 移行 意向 行こう). The user dictionary stays first, so what
+  # was picked last still leads. The server always answers in UTF-8, and libskk uses one encoding
   # for both directions, so requests are UTF-8 too; the Linux build does not answer EUC-JP
   # requests at all (nix/pkgs/azoo-key-skkserv.nix). skkeleton on Linux sends UTF-8 for the same
   # reason (configs/editors/nvim/lua/plugins/skkeleton.lua).
