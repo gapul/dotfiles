@@ -65,7 +65,7 @@ com.ai.assistance.operit	github	AAswordman/Operit
 # 日本語キーボード。既定の入力方式は os-settings.conf。
 com.kazumaproject.markdownhelperkeyboard	github	KazumaProject/JapaneseKeyboard
 # 英語などのキーボード。FUTO Keyboard の代わり (FUTO はソース公開だが FOSS ではない)。
-helium314.keyboard	github	Helium314/HeliBoard
+helium314.keyboard	github	HeliBorg/HeliBoard
 
 # ── ブラウザ ────────────────────────────────────────────────────────
 # 標準ブラウザ (os-apps.tsv の role)。リンクを受けてどのアプリで開くか選ばせる。正式版は
@@ -100,7 +100,7 @@ InfinityLoop1309.NewPipeEnhanced	github	InfinityLoop1308/PipePipe
 # YouTube Music のフロントエンド (YouTube Music の代わり)。
 com.metrolist.music	github	MetrolistGroup/Metrolist
 # 流れている曲の認識 (Pixel の「この曲なに」の代わり)。認識そのものは AudD / ACRCloud の API。
-com.mrsep.musicrecognizer	github	aleksey-saenko/MusicRecognizer
+com.mrsep.musicrecognizer	github	AudileTeam/Audile
 # 再生した曲を Last.fm / ListenBrainz などに記録する。
 com.arn.scrobble	github	kawaiiDango/pano-scrobbler
 # 画像編集 (OCR、PDF、SVG 化)。
@@ -159,4 +159,4 @@ com.artemchep.keyguard	github	AChep/keyguard-app
 # 選ぶ)。常時接続は os-settings.conf。
 com.tailscale.ipn	fdroid	-
 # AirPods の独自機能。Android 17 では Bluetooth の不具合が直っていて、root も Xposed も要らない。
-me.kavishdevar.librepods	github	kavishdevar/librepods
+me.kavishdevar.librepods	github	librepods-org/librepods

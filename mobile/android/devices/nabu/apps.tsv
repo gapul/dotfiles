@@ -66,7 +66,7 @@ app.morphe.manager	github	MorpheApp/morphe-manager
 # /data/adb/modules/zygisk_vector/cli scope set <module> <pkg>/0 で設定している。
 # AirPods の独自機能。Android 16 の Bluetooth の不具合を Xposed で回避する。
 # scope: com.android.bluetooth, com.android.settings
-me.kavishdevar.librepods	github	kavishdevar/librepods
+me.kavishdevar.librepods	github	librepods-org/librepods
 # SyncClipboard の Xposed クライアント。macmini のサーバー (Tailscale Serve の 5033) と
 # 両方向に自動同期する。scope: com.android.systemui
 io.github.erenche.syncclipboard	github	shaklow/syncclipboard-xposed
@@ -106,7 +106,7 @@ com.eddyizm.degoogled.tempus	github	eddyizm/tempus
 org.breezyweather	github	breezy-weather/breezy-weather
 # 英語などのキーボード。日本語は Sumire のまま既定にし、こちらは切り替えて使う
 # (os-settings.conf の enabled_input_methods)。
-helium314.keyboard	github	Helium314/HeliBoard
+helium314.keyboard	github	HeliBorg/HeliBoard
 
 # ── 動画・音楽・画像 ────────────────────────────────────────────────
 # YouTube を API に頼らず見る / 落とす (ニコニコ、BiliBili も)。ベータを追う。
