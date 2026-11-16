@@ -98,7 +98,7 @@ com.kazumaproject.markdownhelperkeyboard	github	KazumaProject/JapaneseKeyboard
 # ギャラリー (Glimpse の代わり)。Google 依存の無い libre 版 (Obtainium では libre で絞る)。
 deckers.thibault.aves.libre	github	deckerst/aves
 # Navidrome (Subsonic) の音楽プレイヤー (Twelve の代わり)。止まった Tempo の後継フォークで、
-# microG 端末なので degoogled 版。スマホの Tempo もいずれこちらに寄せる。
+# microG 端末なので degoogled 版 (スマホも同じ)。
 # dev 版はデバッグ署名なので追わない。
 com.eddyizm.degoogled.tempus	github	eddyizm/tempus
 # 天気。ロック画面の天気は ROM の OmniJaws が出すので、こちらは見る用
