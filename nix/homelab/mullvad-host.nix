@@ -20,6 +20,9 @@ let
   #   like a new location. X rejected the bridge's polling with 404 from the
   #   first Mullvad address on (2026-10-30 19:44), and Meta, LinkedIn and Discord
   #   are the services most quick to checkpoint a login that moves.
+  # - ujp-archive: Cloudflare in front of uploader.jp blocked the Mullvad address
+  #   on the first request every time (2026-11-16). Remove with the module after
+  #   2026-11-25.
   # No dash: systemd reads one as nesting, and "mullvad-bypass.slice" lives at
   # mullvad.slice/mullvad-bypass.slice, which the cgroup match then failed to find.
   bypassSlice = "novpn.slice";
@@ -43,6 +46,7 @@ let
     "mautrix-telegram"
     "mautrix-twitter"
     "mautrix-whatsapp"
+    "ujp-archive"
   ];
 
   # Rule preferences sit after Tailscale's (5210-5270), so tailscaled's own packets
