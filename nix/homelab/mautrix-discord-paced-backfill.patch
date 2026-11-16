@@ -1,0 +1,74 @@
+diff --git a/backfill.go b/backfill.go
+index c4966bd..f660633 100644
+--- a/backfill.go
++++ b/backfill.go
+@@ -6,6 +6,8 @@ import (
+ 	"encoding/base64"
+ 	"fmt"
+ 	"sort"
++	"sync"
++	"time"
+ 
+ 	"github.com/bwmarrin/discordgo"
+ 	"github.com/rs/zerolog"
+@@ -107,6 +109,20 @@ func (portal *Portal) ForwardBackfillMissed(source *User, serverLastMessageID st
+ 
+ const messageFetchChunkSize = 50
+ 
++// backfillRequestDelay paces message history fetches so that catching up after a long outage
++// does not fire thousands of requests back to back, which no first-party client would do.
++const backfillRequestDelay = 3 * time.Second
++
++// missedBackfillDone holds back live message handling until the first READY's missed message
++// backfill has finished. Otherwise a live message that arrives in a channel before its turn
++// becomes the last bridged message, and the backfill sees nothing to catch up.
++var missedBackfillDone = make(chan struct{})
++var missedBackfillDoneOnce sync.Once
++
++func finishMissedBackfill() {
++	missedBackfillDoneOnce.Do(func() { close(missedBackfillDone) })
++}
++
+ func (portal *Portal) collectBackfillMessages(log zerolog.Logger, source *User, limit int, until string, thread *Thread) ([]*discordgo.Message, bool, error) {
+ 	var messages []*discordgo.Message
+ 	var before string
+@@ -117,6 +133,7 @@ func (portal *Portal) collectBackfillMessages(log zerolog.Logger, source *User,
+ 	}
+ 	for {
+ 		log.Debug().Str("before_id", before).Msg("Fetching messages for backfill")
++		time.Sleep(backfillRequestDelay)
+ 		newMessages, err := source.Session.ChannelMessages(protoChannelID, messageFetchChunkSize, before, "", "", portal.RefererOptIfUser(source.Session, protoChannelID)...)
+ 		if err != nil {
+ 			return nil, false, err
+@@ -183,6 +200,7 @@ func (portal *Portal) backfillUnlimitedMissed(log zerolog.Logger, source *User,
+ 	}
+ 	for {
+ 		log.Debug().Str("after_id", after).Msg("Fetching chunk of messages to backfill")
++		time.Sleep(backfillRequestDelay)
+ 		messages, err := source.Session.ChannelMessages(protoChannelID, messageFetchChunkSize, "", after, "", portal.RefererOptIfUser(source.Session, protoChannelID)...)
+ 		if err != nil {
+ 			log.Err(err).Msg("Error fetching chunk of messages to forward backfill")
+diff --git a/portal.go b/portal.go
+index db26a0e..abc7aa4 100644
+--- a/portal.go
++++ b/portal.go
+@@ -578,6 +578,7 @@ func (portal *Portal) handleDiscordMessages(msg portalDiscordMessage) {
+ 			return
+ 		}
+ 	}
++	<-missedBackfillDone
+ 	portal.forwardBackfillLock.Lock()
+ 	defer portal.forwardBackfillLock.Unlock()
+ 
+diff --git a/user.go b/user.go
+index 8c0d6ec..e931258 100644
+--- a/user.go
++++ b/user.go
+@@ -775,6 +775,7 @@ func (s ChannelSlice) Swap(i, j int) {
+ }
+ 
+ func (user *User) readyHandler(r *discordgo.Ready) {
++	defer finishMissedBackfill()
+ 	user.log.Debug().Msg("Discord connection ready")
+ 	user.bridgeStateLock.Lock()
+ 	user.wasLoggedOut = false

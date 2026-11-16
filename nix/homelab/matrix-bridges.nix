@@ -139,6 +139,24 @@ in
   services.mautrix-discord = {
     enable = true;
     registerToSynapse = true;
+    # Catching up after a long outage (mautrix-discord-paced-backfill.patch, against v0.7.7):
+    #   1. Each history fetch (50 messages) waits 3 s first. Upstream fires them back to back,
+    #      and a ~27-day gap over ~470 active channels is thousands of requests in a burst on an
+    #      account that already carries a spam warning (2026-10-20).
+    #   2. Live Discord messages are held until the first READY's missed-message backfill is
+    #      done. The backfill walks the portals one by one, and a live message that lands in a
+    #      channel before its turn becomes the last bridged message, so the gap is skipped.
+    #      Threads are caught up later (thread list sync), so a thread that gets a message right
+    #      after READY can still lose its gap.
+    # Temporary: drop it once the catch-up is done. Pinned to 0.7.7 so a bump fails loudly
+    # instead of silently building without it.
+    package =
+      assert lib.assertMsg (
+        pkgs.mautrix-discord.version == "0.7.7"
+      ) "mautrix-discord is no longer 0.7.7: drop or rebase mautrix-discord-paced-backfill.patch";
+      pkgs.mautrix-discord.overrideAttrs (old: {
+        patches = (old.patches or [ ]) ++ [ ./mautrix-discord-paced-backfill.patch ];
+      });
     environmentFile = "/var/lib/matrix-bridge-secrets/discord.env";
     settings = {
       inherit homeserver;
@@ -191,12 +209,15 @@ in
               channel = 1000;
               thread = 500;
             };
-            # -1 means "everything since the last bridged message". DMs must not miss anything,
-            # so unlimited; channels get a cap.
+            # -1 means "everything since the last bridged message". Nothing may be missed:
+            # the catch-up after an outage runs once, at the first READY, and whatever a cap cuts
+            # off is gone for good, because the next live message becomes the last bridged one.
+            # Channels and threads used to be capped at 1000 / 500; lifted for the catch-up of
+            # the 2026-10-20 to 2026-11 outage (~130k messages), see the patch at the top of this block.
             missed = {
               dm = -1;
-              channel = 1000;
-              thread = 500;
+              channel = -1;
+              thread = -1;
             };
           };
         };
