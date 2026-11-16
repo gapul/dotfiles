@@ -20,7 +20,7 @@ mobile/
     ├── apps.ts                     # declaration against the device through ideviceinstaller; cannot install
     ├── profiles/serve.sh           # serves the .mobileconfig files nix generated
     └── test.sh
-configs/android/obtainium.json      # the Obtainium app list, synced by `droid obtainium pull|push`
+configs/android/obtainium.json      # the old Obtainium list from the phone's GrapheneOS days; unused
 nix/mobile/ios-profiles.nix         # the contents of the .mobileconfig, through pkgs.formats.plist
 nix/mobile/android-root.nix         # a rooted device's KernelSU modules, built into flashable zips
 nix/hosts/droid.nix                 # the CLI environment inside Termux, through nix-on-droid
@@ -30,10 +30,10 @@ nix/hosts/droid.nix                 # the CLI environment inside Termux, through
 
 | Layer | Android | iOS |
 |---|---|---|
-| Apps: declared in | `configs/android/obtainium.json` (Obtainium); `android/apps.tsv` is older and partial | `ios/apps.tsv` |
-| Apps: confirming they exist | `apps.ts verify` (`apps.tsv` rows only), against the F-Droid index, the GitHub and GitLab APIs and Play | `apps.ts verify`, against the iTunes API and the AltStore source |
+| Apps: declared in | `android/apps.tsv`, and `android/devices/<codename>/apps.tsv` per device | `ios/apps.tsv` |
+| Apps: confirming they exist | `apps.ts verify`, against the F-Droid index, the GitHub and GitLab APIs and Play | `apps.ts verify`, against the iTunes API and the AltStore source |
 | Apps: comparing with the device | `apps.ts status`, over adb | `apps.ts status`, through ideviceinstaller over USB |
-| Apps: installing | `droid obtainium push` hands Obtainium its list; `apps.ts install` covers F-Droid rows only | Not possible; it needs a signed ipa |
+| Apps: installing | ObtainX on the device, fed `apps.ts obtainium`'s URL list; `apps.ts install` covers F-Droid rows only | Not possible; it needs a signed ipa |
 | OS settings, global | `os-settings.conf` through `os.sh` | Not possible, beyond what a `.mobileconfig` can reach |
 | OS settings, per app | `os-apps.tsv` through `os.sh` | Not possible |
 | Root: KernelSU modules and features | `devices/<codename>/root/` through `root.sh`, zips built by nix | — |
@@ -58,16 +58,18 @@ not fail.
 | Comparing with the device, `status` | By hand, only when a device is plugged in |
 | The `settings` part of the OS settings | Can be applied from the device itself. Once Termux has the permission, it can run from cron |
 | Debloating and per-app OS settings | By hand. They need signature-level permissions, so adb only |
-| Installing apps | Hand the device a file and it does the rest: Obtainium imports `configs/android/obtainium.json` (`droid obtainium push`), Aurora Store takes Favourites |
+| Installing apps | Hand the device a list and it does the rest: ObtainX imports `apps.ts obtainium`'s URLs, Aurora Store takes Favourites |
 
 Installing and `settings` have reached the point where handing the device a file is enough —
-Obtainium's import file, Aurora Store's favourites, and `os.sh` run from Termux. What still needs
+ObtainX's URL list, Aurora Store's favourites, and `os.sh` run from Termux. What still needs
 the Mac and a cable is debloating and the per-app settings, which need signature-level
 permissions, plus `status`, which counts the difference against the device.
 
 Leaving wireless debugging permanently available over the tailnet would automate the rest, but
 that would create a state where the declaration moves on while nothing is connected and it
-looks applied when it is not. So those stay explicit.
+looks applied when it is not. So those stay explicit. The phone does accept SSH over the tailnet
+now, with `rish` giving adb's rights (`android/README.md`), but that is for reaching it by hand,
+not for applying the declaration behind anyone's back.
 
 What was automated instead is the opposite: the things you cannot notice at the moment they
 happen. A source being renamed or deleted goes by silently, so it gets checked weekly — which

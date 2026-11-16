@@ -1,50 +1,158 @@
-# 端末に入れるアプリの宣言。apps.ts がこれと実機を突き合わせる。
+# スマホ (Pixel 7a, lynx) に入れるアプリの宣言。apps.ts がこれと実機を突き合わせる。
 # 書式: <packageId>	<source>	<ref>     (タブ区切り、ref が無い行は -)
 #
-# source は「どの経路で入れるか」。3 つのアプリを使い分けている:
+# 端末は純正の Android 17 で root なし、SIM なし (通信は Wi-Fi とテザリングだけ)。
+# 端末での更新は Obtainium のフォークの ObtainX が受け持つ (タブレットと同じ)。
+#
+# source は「どの経路で入れるか」:
 #   fdroid  F-Droid 公式リポジトリ。apps.ts install が adb 経由で入れる
 #   izzy    IzzyOnDroid (GitHub リリースを追う非公式 F-Droid リポジトリ)。同上
-#   github  どちらのリポジトリにも無く、GitHub Releases が配布元。ref は owner/repo。
-#           端末では Obtainium が追う (母艦からの一括インストールは不可)
+#   github  GitHub Releases が配布元。ref は owner/repo。端末では ObtainX が追う
+#           (母艦からの一括インストールは不可)
 #   gitlab  github と同じで、配布元が GitLab Releases。ref は group/project
 #   play    GitHub にも F-Droid にも無く、Play ストアだけ。端末では Aurora Store。
-#           Obtainium が追えない唯一の経路なので、GitHub 配布があるなら github に寄せる
+#           ObtainX が追えない唯一の経路なので、GitHub 配布があるなら github に寄せる
 #
 # apps.ts verify は全経路を実在確認できる (F-Droid 索引 / GitHub API / GitLab API /
 # Play のストアページ)。綴り間違いはそこで落ちる。
+#
+# プロプライエタリなアプリはプライベートスペース (user 10、Google アカウントなし) に隔離する。
+# apps.ts は user 0 しか見ないので、そこに入れるものは行にせずコメントで残す。更新は
+# プライベートスペース側の Aurora Store (Play にあるもの) と ObtainX (それ以外) が受け持つ。
+# - md.obsidian、com.stremio.one、com.kddi.kdla.jp (povo2.0)、jp.naver.line.android (LINE)、
+#   com.epicgames.portal (Epic Games。Play に無く、アプリ自身が更新する)
+# - 同じくプライベートスペースに Aurora Store nightly、ObtainX、IronFox (Chrome の代わり)
+#
+# apps.ts の route に無い配布元のもの、Play ストア自身が入れて更新するものも行にせず、
+# コメントで残す (status では EXTRA)。
+# - com.aurora.store.nightly: auroraoss.com の nightly。ObtainX は
+#   Feeds/nightly_feed.json を読み、version_name を版にする。
+# - nodomain.freeyourgadget.gadgetbridge.nightly: Codeberg の公式 nightly リポジトリ
+#   (freeyourgadget.codeberg.page/fdroid/repo)。
+# - おサイフケータイ (com.felicanetworks.*)、Google ウォレット (com.google.android.apps.walletnfcrel、
+#   com.google.android.gms.pay.sidecar): モバイル Suica などの支払い。タッチ決済がメインの
+#   ユーザーでしか動かないので隔離できない。Play ストアが入れて更新する。
+# - com.sega.pjsekai: ゲーム。データが端末にしか無いので、引き継ぎの準備をしてから
+#   プライベートスペースへ移す。
+# - eu.darken.capod: AirPods の電池表示。LibrePods を試して問題なければ外す。
+# - dev.dp9.tofu_pos: 何のアプリか未確認。
 
-# ── ストアそのもの (これだけは最初に手で入れる) ──────────────────────
-org.fdroid.fdroid	fdroid	-
-dev.imranr.obtainium	izzy	-
-com.aurora.store	fdroid	-
+# ── ストアと端末の権限 ──────────────────────────────────────────────
+# Obtainium のフォーク。端末の更新はこれが受け持つ (APK は fdroid 版で絞る)。
+dev.bikram.obtainx	github	bikram-agarwal/ObtainX
+# thedjchi のフォーク。公式版と違い、再起動後に Wi-Fi に繋がるとワイヤレスデバッグで
+# 自分で起動し、落ちても立ち上げ直す (os-apps.tsv で WRITE_SECURE_SETTINGS を与える)。
+# 公式版とはパッケージ名が同じで署名が違うので、入れ替えには一度アンインストールが要る。
+moe.shizuku.privileged.api	github	thedjchi/Shizuku
 
 # ── ランチャーと端末環境 ────────────────────────────────────────────
-de.mm20.launcher2.release	fdroid	-
+de.mm20.launcher2.release	github	MM2-0/Kvaesitso
 # Kvaesitso に当てるアイコンパック。タブレット (devices/nabu) と同じ Arcticons の dayNight
-# (Obtainium では APK を dayNight で絞る)。
+# (ObtainX では APK を dayNight で絞る)。
 com.donnnno.arcticons.daynight	github	Arcticons-Team/Arcticons
-com.termux.nix	fdroid	-
+# 普通の Termux (nix-on-droid の com.termux.nix ではない)。Termux:Boot が動くのはこちらだけで、
+# termux/ の起動時スクリプト (シャッター音のミュートと SSH) を載せる。2 つは同じ署名が
+# 要るので、どちらも F-Droid 版にする。
+com.termux	fdroid	-
+com.termux.boot	fdroid	-
+# 標準のアシスタント (os-apps.tsv の role)。自分の API キーで Claude などを使う AI エージェント。
+# Shizuku で端末を操作できるので、ツールの許可は「毎回確認」のまま使う。
+com.ai.assistance.operit	github	AAswordman/Operit
+
+# ── キーボード ──────────────────────────────────────────────────────
+# 日本語キーボード。既定の入力方式は os-settings.conf。
+com.kazumaproject.markdownhelperkeyboard	github	KazumaProject/JapaneseKeyboard
+# 英語などのキーボード。FUTO Keyboard の代わり (FUTO はソース公開だが FOSS ではない)。
+helium314.keyboard	github	Helium314/HeliBoard
+
+# ── ブラウザ ────────────────────────────────────────────────────────
+# 標準ブラウザ (os-apps.tsv の role)。リンクを受けてどのアプリで開くか選ばせる。正式版は
+# 2024 年で止まり nightly だけが更新されるので、nightly を使う (タブレットと同じ)。
+fe.linksheet.nightly	github	LinkSheet/nightly
+# Web ページの開き先 (LinkSheet から渡す)。Chrome の代わり。
+org.ironfoxoss.ironfox	gitlab	ironfox-oss/IronFox
+
+# ── プリインの置き換え (外したものは os-debloat.txt) ────────────────
+# ギャラリー (フォトの代わり)。Google 依存の無い libre 版の arm64。
+deckers.thibault.aves.libre	github	deckerst/aves
+# 天気 (天気の代わり)。arm64 の _standard 版。
+org.breezyweather	github	breezy-weather/breezy-weather
+# 時計 (時計の代わり)。
+com.bnyro.clock	github	you-apps/ClockYou
+# 連絡先 (連絡先の代わり)。Google の連絡先の同期は Play 開発者サービスが続ける。
+com.bnyro.contacts	github	you-apps/ConnectYou
+# 電卓 (電卓の代わり)。
+com.darkempire78.opencalculator	github	clementwzk/OpenCalc
+# ボイスレコーダー (レコーダーの代わり)。
+org.fossify.voicerecorder	github	FossifyOrg/Voice-Recorder
+# カレンダー (Google カレンダーの代わり)。DAVx5 で同期した Radicale の予定を見る。
+ws.xsoh.etar	fdroid	-
+# ファイルマネージャ (Files の代わり)。
+me.zhanghai.android.files	github	zhanghai/MaterialFiles
+# 地図 (マップの代わり)。OpenStreetMap のオフライン地図。
+app.comaps	fdroid	-
+
+# ── 動画・音楽・画像 ────────────────────────────────────────────────
+# YouTube を API に頼らず見る / 落とす (YouTube の代わり)。
+InfinityLoop1309.NewPipeEnhanced	github	InfinityLoop1308/PipePipe
+# YouTube Music のフロントエンド (YouTube Music の代わり)。
+com.metrolist.music	github	MetrolistGroup/Metrolist
+# 再生した曲を Last.fm / ListenBrainz などに記録する。
+com.arn.scrobble	github	kawaiiDango/pano-scrobbler
+# 画像編集 (OCR、PDF、SVG 化)。
+ru.tech.imageresizershrinker	github	T8RIN/ImageToolbox
+# 動画プレイヤー。正式版の arm64 版にする (ObtainX では experimental の名前を除く絞り込み)。
+app.gyrolet.mpvrx	github	Riteshp2001/mpvRx
+
+# ── SNS とメッセージ ────────────────────────────────────────────────
+# X を Nitter / Teapot 経由で見る。
+com.kaleedtc.nitterium	github	kaleedtc/Nitterium
+# Mastodon / Bluesky / Misskey / X / Nostr / RSS をまとめて読む。
+dev.dimension.flare	fdroid	-
+# Matrix (nix/homelab/matrix.nix とブリッジ) のクライアント。
+io.element.android.x	github	element-hq/element-x-android
+# 端末同士のメッセンジャー。
+chat.simplex.app	github	simplex-chat/simplex-chat
+# メール (Gmail の代わり、nix/homelab/mail.nix)。
+net.thunderbird.android	github	thunderbird/thunderbird-android
+
+# ── 自宅サーバーのクライアント ──────────────────────────────────────
+# Radicale (nix/homelab/radicale.nix) のカレンダー・連絡先・ToDo を同期する。
+at.bitfire.davdroid	github	bitfireAT/davx5-ose
+# DAVx5 で同期した ToDo とメモ。
+at.techbee.jtx	fdroid	-
+# Kavita の漫画を拡張機能で読む。
+app.mihon	github	mihonapp/mihon
+# Anki 同期サーバー (nix/homelab/anki.nix) のカードを学習する。
+com.ichi2.anki	github	ankidroid/Anki-Android
+# 複数端末の個人データの同期 (docs/HOST_ROLES.md の決まり)。公式の Android 版は終了。
+com.github.catfriend1.syncthingfork	github	researchxxl/syncthing-android
+# Jellyfin (nix/homelab/jellyfin.nix) のクライアント。libre 版の arm64。
+dev.jdtech.jellyfin	github	jarnedemeulemeester/findroid
+# Audiobookshelf (nix/homelab/audiobookshelf.nix)。
+com.audiobookshelf.app	github	advplyr/audiobookshelf-app
+# Home Assistant (nix/homelab/homeassistant.nix)。Play 開発者サービスのある端末なので full 版。
+io.homeassistant.companion.android	github	home-assistant/android
+# Miniflux (nix/homelab/miniflux.nix) の RSS リーダー。
+com.capyreader.app	github	jocmp/capyreader
+# PC のゲームや画面のストリーミング。root を使わない nonRoot 版。
+com.limelight	github	moonlight-stream/moonlight-android
+# 電子書籍リーダー (EPUB / PDF)。
+com.bilingify.readest	github	readest/readest
+# macmini の SyncClipboard サーバー (Tailscale Serve の 5033) とクリップボードを同期する。
+# 裏で読むのに Shizuku を使う。サーバーの名前は MagicDNS でしか引けないので、
+# os-settings.conf でプライベート DNS を切っている。
+com.jericx.syncclipboardmobile	github	Jeric-X/syncclipboard-mobile
+# T3 Code のクライアント。Android の APK は nightly にしか付かないのでプレリリースを追う。
+com.t3tools.t3code	github	pingdotgg/t3code
+
+# ── パスワード ──────────────────────────────────────────────────────
+# Bitwarden / Vaultwarden の非公式クライアント。自動入力サービスもこれ。
+com.artemchep.keyguard	github	AChep/keyguard-app
+
+# ── 通信と周辺機器 ──────────────────────────────────────────────────
+# 自宅サーバーへの経路。出口ノードは mullvad-exit (nix/homelab/mullvad-exit.nix、アプリの中で
+# 選ぶ)。常時接続は os-settings.conf。
 com.tailscale.ipn	fdroid	-
-
-# ── 自宅サーバのクライアント ────────────────────────────────────────
-# repo は researchxxl/ に改名済み (Catfriend1/ は 301)。v2 の APK 名は
-# syncthingfork だが Play に居るのは syncthingandroid のままなので、実機の
-# status で MISSING が出たら applicationId を確かめて直す。
-com.github.catfriend1.syncthingandroid	github	researchxxl/syncthing-android
-io.heckel.ntfy	fdroid	-
-org.owntracks.android	fdroid	-
-io.homeassistant.companion.android.minimal	fdroid	-
-org.jellyfin.mobile	fdroid	-
-dev.jdtech.jellyfin	fdroid	-
-com.cappielloantonio.tempo	github	CappielloAntonio/tempo
-com.nononsenseapps.feeder	fdroid	-
-de.astubenbord.paperless_mobile	fdroid	-
-at.bitfire.davdroid	fdroid	-
-im.vector.app	fdroid	-
-
-# ── その他 ──────────────────────────────────────────────────────────
-com.kunzisoft.keepass.libre	fdroid	-
-com.x8bit.bitwarden	github	bitwarden/android
-com.ichi2.anki	fdroid	-
-spam.blocker	fdroid	-
-org.schabi.newpipe	fdroid	-
+# AirPods の独自機能。Android 17 では Bluetooth の不具合が直っていて、root も Xposed も要らない。
+me.kavishdevar.librepods	github	kavishdevar/librepods

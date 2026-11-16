@@ -20,10 +20,25 @@
 
 home	de.mm20.launcher2.release	de.mm20.launcher2.ui.launcher.LauncherActivity
 
-# 常駐して初めて意味があるもの。電池最適化に入れると同期も通知も止まる。
-battery	com.github.catfriend1.syncthingandroid	-
-battery	io.heckel.ntfy	-
-battery	org.owntracks.android	-
+# 標準アプリ。ブラウザは LinkSheet が受けて開き先を選ばせ、Web ページは IronFox に渡す。
+# アシスタント (電源ボタンの長押し) は Google アプリの代わりの Operit。
+role	fe.linksheet.nightly	android.app.role.BROWSER
+role	com.ai.assistance.operit	android.app.role.ASSISTANT
 
-# 位置ログはバックグラウンドで取れないと意味が無い。
-grant	org.owntracks.android	android.permission.ACCESS_BACKGROUND_LOCATION
+# 常駐して初めて意味があるもの。電池最適化に入れると止まる。
+# Termux と Termux:Boot は起動時スクリプトと SSH、Shizuku は rish と SyncClipboard の土台、
+# ObtainX と Aurora Store は裏での更新。
+battery	com.termux	-
+battery	com.termux.boot	-
+battery	moe.shizuku.privileged.api	-
+battery	dev.bikram.obtainx	-
+battery	com.aurora.store.nightly	-
+appops	com.termux	RUN_ANY_IN_BACKGROUND allow
+appops	com.termux.boot	RUN_ANY_IN_BACKGROUND allow
+appops	moe.shizuku.privileged.api	RUN_ANY_IN_BACKGROUND allow
+
+# Shizuku (thedjchi のフォーク) が再起動後に自分で起動するのに要る。ワイヤレスデバッグを
+# 入れるのに WRITE_SECURE_SETTINGS、その接続先を mDNS で探すのに NEARBY_WIFI_DEVICES。
+# 加えて端末で一度、Shizuku の「Pairing」からワイヤレスデバッグとペア設定する。
+grant	moe.shizuku.privileged.api	android.permission.WRITE_SECURE_SETTINGS
+grant	moe.shizuku.privileged.api	android.permission.NEARBY_WIFI_DEVICES

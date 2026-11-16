@@ -12,6 +12,7 @@ android/
 │   └── root/           # rooted devices only: KernelSU modules and ksud features
 ├── root.sh             # applies root/ over adb, showing the difference first
 ├── launcher-theme.ts   # generates Kvaesitso's theme from palettes.json
+├── termux/             # the phone's Termux:Boot script and helpers (re-mute the shutter, SSH)
 └── test.sh             # self-check for the scripts above, against a fake adb, no device needed
 ```
 
@@ -21,7 +22,7 @@ Two Android devices are declared, and they differ enough that one list cannot se
 
 | Device | Declaration | OS |
 |---|---|---|
-| Phone (Pixel) | the files at the top of this directory | GrapheneOS, no root |
+| Phone (Pixel 7a, `lynx`) | the files at the top of this directory | Stock Android 17, no root, no SIM; ObtainX; proprietary apps in the private space |
 | Xiaomi Pad 5 (`nabu`) | `devices/nabu/` | AxionAOSP (Android 16), KernelSU Next built into its kernel, microG, no F-Droid client; ObtainX instead of Obtainium |
 
 `apps.ts`, `os.sh` and `root.sh` read `getprop ro.product.device` from the connected device and
@@ -34,20 +35,20 @@ device's `apps.tsv`.
 
 ## Apps
 
-The declared Obtainium app list is `configs/android/obtainium.json`, synced with
-`droid obtainium pull|push` (`configs/bin/droid`): `pull` copies Obtainium's auto-export back
-into the repository, `push` drops an import file on the device. `apps.tsv` is the older, smaller
-declaration that `apps.ts` and the weekly drift CI still read; it does not list everything the
-device has.
+Each device's `apps.tsv` is the declaration that `apps.ts` and the weekly drift CI read. Both
+devices update their apps with ObtainX (`dev.bikram.obtainx`), a fork of Obtainium.
+`configs/android/obtainium.json` is the list from when the phone ran Obtainium on GrapheneOS;
+no device reads it any more, and `droid obtainium pull|push` (`configs/bin/droid`), which
+syncs it with Obtainium's export directory, does not reach ObtainX.
 
 Three stores are in use, so the `source` column in `apps.tsv` says which one handles each app.
 
 | source | Distributed by | Installable from the Mac | Updated on the device by |
 |---|---|---|---|
-| `fdroid` | F-Droid | Yes, `apps.ts install` | Obtainium or F-Droid |
-| `izzy` | IzzyOnDroid | Yes, the same | Obtainium |
-| `github` | GitHub releases | No | Obtainium |
-| `gitlab` | GitLab releases | No | Obtainium |
+| `fdroid` | F-Droid | Yes, `apps.ts install` | ObtainX |
+| `izzy` | IzzyOnDroid | Yes, the same | ObtainX |
+| `github` | GitHub releases | No | ObtainX |
+| `gitlab` | GitLab releases | No | ObtainX |
 | `play` | The Play Store | No | Aurora Store, importing Favourites and installing them in one go |
 
 ```sh
@@ -81,16 +82,18 @@ sources that have moved. That is how `Catfriend1/syncthing-android` was found to
 renamed to `researchxxl/`. GitHub is queried through `gh` if it is available, because the
 unauthenticated API allows 60 requests an hour and hits the rate limit as the declaration grows.
 
-**Updates on the device are Obtainium's job.** Its app list is `configs/android/obtainium.json`:
-`droid obtainium push` puts it on the device for Obtainium's own import, and `droid obtainium
-pull` brings changes made on the device back. `apps.ts obtainium` still prints a URL list
-derived from `apps.tsv` for Import from URL List, but that covers only the `apps.tsv` rows.
+**Updates on the device are ObtainX's job.** `apps.ts obtainium` prints a URL list derived from
+`apps.tsv` for its Import from URL List. ObtainX keeps one JSON per app in
+`Android/data/dev.bikram.obtainx/files/app_data/`, which adb's shell user can write (force-stop
+ObtainX first); the APK filter for each app lives there, not in `apps.tsv`. Its GitHub token lives
+in its own settings and is left out of exports.
 
-nabu is the exception: it runs ObtainX (`dev.bikram.obtainx`), a fork of Obtainium that reads
-the same import format, and `obtainium.json` is the phone's list, not the tablet's. `droid
-obtainium` targets Obtainium's export directory, so it does not reach ObtainX either. ObtainX
-keeps one JSON per app in `Android/data/dev.bikram.obtainx/files/app_data/`, and its GitHub
-token lives in its own settings and is left out of exports.
+**The phone keeps proprietary apps in its private space** (user 10, no Google account): Obsidian,
+Stremio, povo2.0, LINE and Epic Games, with their own Aurora Store, ObtainX and IronFox there.
+`apps.ts` only looks at user 0, so they are listed as comments in `apps.tsv`. `adb install`
+without `--user 0` installs into every user, private space included, and `adb install --user 10`
+works only while the private space is unlocked. The exceptions that stay in user 0 are the
+payment apps (FeliCa and Google Wallet), because tap-to-pay works only there.
 
 Anything distributed only through Play goes to Aurora Store, which since 4.6 can import and
 export Favourites and install them in bulk, so it is also a matter of handing over a file:
@@ -106,8 +109,8 @@ The format matches Aurora Store's `data/room/favourite/{ImportExport,Favourite}.
 mean one Play lookup per app, which is not worth it.
 
 There are currently no `play` rows, which means every declared app arrives on the device through
-a single Obtainium import. Even the `github` rows, which cannot be installed from the Mac, are
-tracked and updated the same way once Obtainium has them. Only something available exclusively
+ObtainX. Even the `github` rows, which cannot be installed from the Mac, are tracked and updated
+the same way once ObtainX has them. Only something available exclusively
 on Play needs manual work, so when a GitHub distribution exists, prefer `github` over `play` —
 Bitwarden was moved for exactly that reason, since its APK is on GitHub releases.
 
@@ -129,7 +132,7 @@ from Termux:Boot or cron.
 
 ```sh
 # once from the Mac. This is the only time a cable is needed.
-adb shell pm grant com.termux.nix android.permission.WRITE_SECURE_SETTINGS
+adb shell pm grant com.termux android.permission.WRITE_SECURE_SETTINGS   # com.termux.nix on nabu
 
 # afterwards, in Termux on the device
 cd ~/.dotfiles/mobile/android && ./os.sh
@@ -150,7 +153,12 @@ already match the current value are skipped, so running it repeatedly gives the 
   cannot be touched from outside by any means, so they are left to the app's own sync; see the
   table in `../README.md`.
 - `os-debloat.txt` — this is `pm uninstall -k --user 0`, so the system partition is untouched
-  and `adb shell cmd package install-existing <pkg>` brings anything back.
+  and `adb shell cmd package install-existing <pkg>` brings anything back. Stock Android 17
+  refuses that for system apps without root ("only root can delete system app for a particular
+  user"), so `os.sh` then falls back to `pm disable-user --user 0` plus
+  `pm uninstall-system-updates`, which drops the Play-installed update; on the phone every row
+  ends up disabled. Disabled packages still show in `pm list packages`, so `os.sh` reads
+  `pm list packages -d` to skip them.
 
 ## Root (KernelSU)
 
@@ -218,6 +226,47 @@ settings beyond what the ROM's own settings offer; the two overlap, so a given i
 in one of them only. Iconify builds a ROM-specific module on the device, so that module stays
 outside `root/` and shows up as EXTRA.
 
+## Termux on the phone: re-muting the shutter, and SSH over the tailnet
+
+The phone has no root, so anything that needs the shell user after a reboot runs from
+Termux:Boot through `rish`, Shizuku's shell. `termux/boot/10-pixel` waits for Shizuku and SSH:
+
+- **The shutter sound.** Japanese Pixels force the stock camera's shutter through the
+  ENFORCED_AUDIBLE volume group, and muting it does not survive a reboot. The group's ID
+  differs per device: 5 on this Pixel 7a, where 7 is notifications, so tools that hard-code 7
+  (SilentPixel) mute the wrong thing. `termux/bin/mute-shutter` does it by hand.
+- **SSH on the tailnet address only**, key-only, so the Mac and nixos-laptop can run
+  `ssh -p 8022 100.76.47.30` and then `~/bin/rish -c '…'` with the same rights as adb, screen
+  locked or not. Before the first unlock after a reboot nothing runs, because Termux's data is
+  still encrypted.
+
+Shizuku has to start by itself for this, which the official build cannot do without a computer.
+thedjchi's fork (`apps.tsv`) starts on boot through Wireless debugging once Wi-Fi is up, given
+`WRITE_SECURE_SETTINGS` and `NEARBY_WIFI_DEVICES` (`os-apps.tsv`) and one pairing from its
+Pairing screen. Its TCP mode is left off, because it would leave adb listening on port 5555 on
+whatever network the phone is on.
+
+Setting it up on a fresh phone, after installing Termux, Termux:Boot and the fork and opening
+Termux:Boot once:
+
+```sh
+# on the Mac: rish ships inside the Shizuku APK
+unzip -j shizuku.apk assets/rish assets/rish_shizuku.dex -d rish
+sed -i '' -e 's/"PKG"/"com.termux"/' -e 's/"MANAGER_PKG"/"moe.shizuku.privileged.api"/' rish/rish
+adb push rish/rish rish/rish_shizuku.dex termux/boot/10-pixel termux/bin/mute-shutter /sdcard/Download/
+# in Termux (Shizuku asks once whether Termux may use it)
+pkg install openssh
+mkdir -p ~/bin ~/.termux/boot ~/.ssh
+install -m 700 /sdcard/Download/rish /sdcard/Download/mute-shutter ~/bin/
+install -m 400 /sdcard/Download/rish_shizuku.dex ~/bin/   # Android 14+ refuses a writable dex
+install -m 700 /sdcard/Download/10-pixel ~/.termux/boot/
+# add the Mac's and nixos-laptop's public keys to ~/.ssh/authorized_keys, then
+printf 'PasswordAuthentication no\nKbdInteractiveAuthentication no\n' >>"$PREFIX/etc/ssh/sshd_config"
+```
+
+The phone has no SIM, so it is off the tailnet whenever it has no Wi-Fi. In Tailscale that
+shows as "Out of sync", which then means no network at all rather than a DNS problem.
+
 ## The launcher, Kvaesitso
 
 Home screen layout and widget placement are not declared. Kvaesitso's backup is a binary with no
@@ -240,7 +289,8 @@ just android-launcher-theme   # generates it and pushes it to /sdcard/Download/
 
 ## The CLI on the device, through nix-on-droid
 
-The same zsh, git, tmux and CLI tools as the Mac, running on top of Termux. The configuration is
+The same zsh, git, tmux and CLI tools as the Mac, running on top of Termux. Only nabu has it
+now: the phone runs plain Termux instead, because Termux:Boot only works with that build. The configuration is
 `nix/hosts/droid.nix`, sharing the git, cli, shell and terminal components in
 `nix/modules/home/` unchanged. Components that assume a GUI, and components that depend on
 modules from flake inputs such as nix-index and agent-skills, are not loaded.

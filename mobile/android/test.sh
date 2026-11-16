@@ -131,9 +131,13 @@ check "権限の要る節は飛ばす" "2" "$(grep -c 'スキップ' <<<"$out_lo
 check "端末内では adb を呼ばない" "0" "$(grep -c '既定ランチャー' <<<"$out_local" || true)"
 
 # ── 端末ごとの宣言: ANDROID_PROFILE で devices/nabu/ に切り替わるか ──────────
-# 偽 adb が返す宣言済みの 1 件は最上位の宣言のもので、nabu の宣言には無い。
+# 偽 adb が返す宣言済みの 1 件は最上位の宣言の 1 行目。nabu も同じアプリを宣言していれば
+# そちらでも入っている扱いになるので、MISSING から 1 つ引く。
 nabu=devices/nabu
 nabu_count=$(grep -cvE '^[[:space:]]*(#|$)' "$nabu/apps.tsv")
+if grep -q "^${kept}"$'\t' "$nabu/apps.tsv"; then
+  nabu_count=$((nabu_count - 1))
+fi
 out=$(ANDROID_PROFILE=nabu ./apps.ts status </dev/null) || true
 check "nabu の宣言を読む" "1" "$(grep -c "宣言: $nabu/apps.tsv" <<<"$out" || true)"
 check "nabu の MISSING 数" "$nabu_count" "$(grep -c MISSING <<<"$out" || true)"
@@ -158,6 +162,32 @@ else
   echo "ok: 宣言の無い ANDROID_PROFILE では止まる"
 fi
 
+# ── os.sh の debloat: アンインストールを断られたら無効化し、無効化済みは飛ばすか ──
+# 純正の Android 17 は root なしだとシステムアプリの user 0 からのアンインストールを断る。
+# 宣言の 1 つ目は入っていて断られる体、2 つ目はもう無効化済みの体にする。
+debloat_first=$(awk '$0 !~ /^[[:space:]]*(#|$)/ { print $1; exit }' os-debloat.txt)
+debloat_second=$(awk '$0 !~ /^[[:space:]]*(#|$)/ { n++; if (n == 2) { print $1; exit } }' os-debloat.txt)
+debloatstub=$(mktemp -d)
+trap 'rm -rf "$stub" "$debloatstub"' EXIT
+cat >"$debloatstub/adb" <<EOF
+#!/usr/bin/env bash
+cat >/dev/null
+echo "\$*" >>"$debloatstub/log"
+case "\$*" in
+  devices) printf 'List of devices attached\nemulator-5554\tdevice\n' ;;
+  "shell pm list packages --user 0") printf 'package:%s\npackage:%s\n' "$debloat_first" "$debloat_second" ;;
+  "shell pm list packages -d --user 0") echo "package:$debloat_second" ;;
+  "shell pm uninstall -k --user 0 "*) echo "Failure [only root can delete system app for a particular user]" ;;
+  "shell pm disable-user --user 0 "*) echo "Package \${*: -1} new state: disabled-user" ;;
+  "shell settings get "*) echo null ;;
+esac
+EOF
+chmod +x "$debloatstub/adb"
+out=$(PATH="$debloatstub:$PATH" ./os.sh </dev/null)
+check "debloat: 無効化済みは飛ばす" "0" "$(grep -c "uninstall: $debloat_second\$" <<<"$out" || true)"
+check "debloat: 断られたら無効化する" "1" "$(grep -c "shell pm disable-user --user 0 $debloat_first\$" "$debloatstub/log" || true)"
+check "debloat: 無効化したら更新分を消す" "1" "$(grep -c "shell pm uninstall-system-updates $debloat_first\$" "$debloatstub/log" || true)"
+
 # ── Material You の元の色が palettes.json の iris と揃っているか ─────────────
 # 宣言は os-settings.conf に直に書いてある。palettes.json を変えたら、ここで落ちて気付く。
 iris=$(python3 -c 'import json; d=json.load(open("../../configs/theme/palettes.json")); print(d["palettes"][d["active"]]["iris"].upper())')
@@ -172,7 +202,7 @@ done
 # 体にする。feature は宣言の 1 行目だけ値を外す。
 rootstub=$(mktemp -d)
 build=$(mktemp -d)
-trap 'rm -rf "$stub" "$rootstub" "$build"' EXIT
+trap 'rm -rf "$stub" "$debloatstub" "$rootstub" "$build"' EXIT
 printf 'same\t5\tv5\t01-same.zip\nold\t3\tv3\t02-old.zip\nabsent\t1\tv1\t03-absent.zip\n' >"$build/manifest.tsv"
 first_feature=$(awk '$0 !~ /^[[:space:]]*(#|$)/ { print $1; exit }' "$nabu/root/features.conf")
 first_value=$(awk '$0 !~ /^[[:space:]]*(#|$)/ { print $2; exit }' "$nabu/root/features.conf")
