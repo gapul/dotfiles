@@ -24,8 +24,10 @@
 }:
 
 {
+  # The image runs as the distroless nonroot user (65532) and exits at startup when /config
+  # isn't writable, so the bind-mounted directory has to belong to that user.
   systemd.tmpfiles.rules = [
-    "d /var/lib/homelab/multi-scrobbler 0700 root root -"
+    "d /var/lib/homelab/multi-scrobbler 0700 65532 65532 -"
   ];
 
   virtualisation.oci-containers.containers."multi-scrobbler" = {
