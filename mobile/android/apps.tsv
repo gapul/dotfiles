@@ -79,14 +79,14 @@ org.ironfoxoss.ironfox	gitlab	ironfox-oss/IronFox
 deckers.thibault.aves.libre	github	deckerst/aves
 # 天気 (天気の代わり)。arm64 の _standard 版。
 org.breezyweather	github	breezy-weather/breezy-weather
-# 時計 (時計の代わり)。アラーム、タイマー、ストップウォッチ、世界時計。更新は 2025-01 で止まっている。
-com.vicolo.chrono	github	vicolo-dev/chrono
+# 時計 (時計の代わり)。AOSP の時計が元で、ネットの権限を持たない。
+com.best.deskclock	github	BlackyHawky/Clock
 # 連絡先 (連絡先の代わり)。Google の連絡先の同期は Play 開発者サービスが続ける。
 com.bnyro.contacts	github	you-apps/ConnectYou
 # 電卓 (電卓の代わり)。
 com.darkempire78.opencalculator	github	clementwzk/OpenCalc
-# ボイスレコーダー (レコーダーの代わり)。
-org.fossify.voicerecorder	github	FossifyOrg/Voice-Recorder
+# ボイスレコーダー (レコーダーの代わり)。文字起こしと要約も端末の中でやる。
+cz.mod42.diktafon	github	jaromiru/diktafon
 # カレンダー (Google カレンダーの代わり)。DAVx5 で同期した Radicale の予定を見る。
 ws.xsoh.etar	fdroid	-
 # ファイルマネージャ (Files の代わり)。

@@ -34,7 +34,7 @@ battery	moe.shizuku.privileged.api	-
 battery	dev.bikram.obtainx	-
 battery	com.aurora.store.nightly	-
 # アラームが Doze で遅れないよう、時計も外す。
-battery	com.vicolo.chrono	-
+battery	com.best.deskclock	-
 appops	com.termux	RUN_ANY_IN_BACKGROUND allow
 appops	com.termux.boot	RUN_ANY_IN_BACKGROUND allow
 appops	moe.shizuku.privileged.api	RUN_ANY_IN_BACKGROUND allow
