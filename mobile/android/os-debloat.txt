@@ -19,7 +19,7 @@
 #   初期設定ウィザード: プライベートスペースを作るときに使う
 #   Play ストア / Play 開発者サービス: ウォレットとおサイフケータイが依存する
 #   電話: SIM が無くても緊急通報に要る
-#   メッセージ、緊急情報サービス、Android Auto、Digital Wellbeing: 置き換えると機能が減るので保留
+#   メッセージ、緊急情報サービス、Android Auto、Digital Wellbeing: 置き換えると機能が減るので残す
 
 # ── 代わりを apps.tsv に入れたもの ──────────────────────────────────
 # Chrome → IronFox。アプリ内の Web 表示 (WebView) は別パッケージなので残る。
@@ -41,7 +41,7 @@ com.google.android.apps.weather
 com.google.android.apps.recorder
 # 電卓 → OpenCalc
 com.google.android.calculator
-# 時計 → Clock You
+# 時計 → Chrono
 com.google.android.deskclock
 # 連絡先 → Connect You
 com.google.android.contacts

@@ -21,7 +21,10 @@
 # プライベートスペース側の Aurora Store (Play にあるもの) と ObtainX (それ以外) が受け持つ。
 # - md.obsidian、com.stremio.one、com.kddi.kdla.jp (povo2.0)、jp.naver.line.android (LINE)、
 #   com.epicgames.portal (Epic Games。Play に無く、アプリ自身が更新する)
-# - 同じくプライベートスペースに Aurora Store nightly、ObtainX、IronFox (Chrome の代わり)
+# - 同じくプライベートスペースに Aurora Store nightly、ObtainX、IronFox (Chrome の代わり、
+#   プライベートスペースの既定ブラウザ)。キーボードの Sumire と HeliBoard は
+#   `pm install-existing --user 10` で user 0 のものを共有し、入力方式は
+#   `settings put --user 10 secure enabled_input_methods` で有効にしてある。
 #
 # apps.ts の route に無い配布元のもの、Play ストア自身が入れて更新するものも行にせず、
 # コメントで残す (status では EXTRA)。
@@ -34,8 +37,7 @@
 #   ユーザーでしか動かないので隔離できない。Play ストアが入れて更新する。
 # - com.sega.pjsekai: ゲーム。データが端末にしか無いので、引き継ぎの準備をしてから
 #   プライベートスペースへ移す。
-# - eu.darken.capod: AirPods の電池表示。LibrePods を試して問題なければ外す。
-# - dev.dp9.tofu_pos: 何のアプリか未確認。
+# - dev.dp9.tofu_pos: 残す。
 
 # ── ストアと端末の権限 ──────────────────────────────────────────────
 # Obtainium のフォーク。端末の更新はこれが受け持つ (APK は fdroid 版で絞る)。
@@ -77,8 +79,8 @@ org.ironfoxoss.ironfox	gitlab	ironfox-oss/IronFox
 deckers.thibault.aves.libre	github	deckerst/aves
 # 天気 (天気の代わり)。arm64 の _standard 版。
 org.breezyweather	github	breezy-weather/breezy-weather
-# 時計 (時計の代わり)。
-com.bnyro.clock	github	you-apps/ClockYou
+# 時計 (時計の代わり)。アラーム、タイマー、ストップウォッチ、世界時計。更新は 2025-01 で止まっている。
+com.vicolo.chrono	github	vicolo-dev/chrono
 # 連絡先 (連絡先の代わり)。Google の連絡先の同期は Play 開発者サービスが続ける。
 com.bnyro.contacts	github	you-apps/ConnectYou
 # 電卓 (電卓の代わり)。
@@ -97,6 +99,8 @@ app.comaps	fdroid	-
 InfinityLoop1309.NewPipeEnhanced	github	InfinityLoop1308/PipePipe
 # YouTube Music のフロントエンド (YouTube Music の代わり)。
 com.metrolist.music	github	MetrolistGroup/Metrolist
+# 流れている曲の認識 (Pixel の「この曲なに」の代わり)。認識そのものは AudD / ACRCloud の API。
+com.mrsep.musicrecognizer	github	aleksey-saenko/MusicRecognizer
 # 再生した曲を Last.fm / ListenBrainz などに記録する。
 com.arn.scrobble	github	kawaiiDango/pano-scrobbler
 # 画像編集 (OCR、PDF、SVG 化)。
