@@ -13,5 +13,7 @@ org.lineageos.jelly
 com.android.inputmethod.latin
 # LineageOS のギャラリー Glimpse: Aves に置き換え。
 org.lineageos.glimpse
+# AOSP のギャラリー Gallery2 (AxionAOSP が /product に同梱): 同じく Aves に置き換え。
+com.android.gallery3d
 # LineageOS の音楽 Twelve: Tempus に置き換え。
 org.lineageos.twelve

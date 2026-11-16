@@ -19,6 +19,8 @@
 # - com.google.android.youtube / com.instagram.android: Aurora Store で Morphe (Piko) の
 #   対応版を手動ダウンロードし、Morphe Manager の root mount でパッチを重ねる。自動更新は
 #   しない (元のアプリが上がると mount が外れる)。どちらも AxSandbox で隔離する。
+# - com.stremio.one: stremio.com/downloads の arm64 版 (プロプライエタリ)。ObtainX は HTML ソースで
+#   dl.strem.io の /vX.Y.Z-android/ のリンクを読む。AxSandbox で隔離する。
 # - com.aurora.store.nightly: auroraoss.com の nightly。ObtainX は
 #   Feeds/nightly_feed.json を HTML ソースで読み、version_name を版にする。
 # - nodomain.freeyourgadget.gadgetbridge.nightly: Codeberg の公式 nightly リポジトリ
@@ -43,8 +45,14 @@ com.android.vending	github	microg/GmsCore
 # ── root で使う道具 ─────────────────────────────────────────────────
 com.machiav3lli.backup	github	NeoApplications/Neo-Backup
 org.adaway	github	AdAway/AdAway
-# root の領域を見るファイルマネージャもこれが兼ねる (標準の Files は root を扱えない)
+# アプリの管理 (権限、コンポーネント、バックアップ)。
 io.github.muntashirakon.AppManager	github	MuntashirAkon/AppManager
+# 普段のファイルマネージャ。root の領域、SMB / SFTP / WebDAV (nix/homelab/samba.nix、webdav.nix)、
+# 圧縮ファイルを扱う。標準の Files (DocumentsUI) はアプリのファイル選択画面を兼ねるので残す。
+me.zhanghai.android.files	github	zhanghai/MaterialFiles
+# T3 Code のクライアント。Android の APK は nightly にしか付かないのでプレリリースを追う
+# (リリース名と versionName が違うので、ObtainX では版の照合を切っている)。
+com.t3tools.t3code	github	pingdotgg/t3code
 # nix-on-droid が載る Termux (nix/hosts/droid.nix)。普通の Termux (com.termux) ではない
 com.termux.nix	fdroid	-
 # 改造アプリのパッチ管理 (YouTube、Instagram Piko)。root の上書き方式で使う。
@@ -75,8 +83,11 @@ com.drdisagree.iconify	github	Mahmud0808/Iconify
 # Chromium 系の予備。Vanadium ベースで Chrome 拡張 (MV2 の uBlock Origin) が入る。
 # 旧名 Helium Browser for Android で、パッケージ名はその名残。
 io.github.jqssun.helium	github	jqssun/android-titanium-browser
-# 標準ブラウザ (os-apps.tsv の role)。Firefox 系で、Mull の後継の arkenfox の設定入り。
+# Web ページの開き先 (標準ブラウザの LinkSheet から渡す)。Firefox 系で、Mull の後継の arkenfox の設定入り。
 org.ironfoxoss.ironfox	gitlab	ironfox-oss/IronFox
+# 標準ブラウザ (os-apps.tsv の role)。リンクを受けてどのアプリで開くか選ばせる。正式版は
+# 2024 年で止まり nightly だけが更新されるので、nightly を使う (スマホと同じ)。
+fe.linksheet.nightly	github	LinkSheet/nightly
 
 # ── プリインの置き換え (外したものは os-debloat.txt) ────────────────
 # 日本語キーボード。AOSP のキーボードは日本語を打てない。スマホと同じもの
@@ -91,16 +102,25 @@ com.eddyizm.degoogled.tempus	github	eddyizm/tempus
 # 天気。ロック画面の天気は ROM の OmniJaws が出すので、こちらは見る用
 # (Obtainium では APK を _standard で絞る)。
 org.breezyweather	github	breezy-weather/breezy-weather
+# 英語などのキーボード。日本語は Sumire のまま既定にし、こちらは切り替えて使う
+# (os-settings.conf の enabled_input_methods)。
+helium314.keyboard	github	Helium314/HeliBoard
 
 # ── 動画・音楽・画像 ────────────────────────────────────────────────
 # YouTube を API に頼らず見る / 落とす (ニコニコ、BiliBili も)。ベータを追う。
 InfinityLoop1309.NewPipeEnhanced	github	InfinityLoop1308/PipePipe
 # YouTube Music のフロントエンド。microG 端末なので Google Cast なしの Metrolist.apk。
 com.metrolist.music	github	MetrolistGroup/Metrolist
+# 再生した曲を Last.fm / ListenBrainz などに記録する (通知から拾うので、Metrolist や Tempus の
+# 再生も対象)。リリース名が versionCode だけなので、ObtainX では版の照合を切っている。
+com.arn.scrobble	github	kawaiiDango/pano-scrobbler
 # Pixiv ビューワー
 com.perol.asdpl.play.pixivez	github	ultranity/Pix-EzViewer
 # 画像編集 (OCR、PDF、SVG 化)。microG 端末なので foss 版。ベータを追う。
 ru.tech.imageresizershrinker	github	T8RIN/ImageToolbox
+# 動画プレイヤー。mpv ベースの多機能版 (mpvEx の派生) で、公式の mpv-android の代わりに使う。1 日に何度も出る experimental は追わず、
+# 正式版の arm64 版にする (ObtainX では experimental の名前を除く絞り込み)。
+app.gyrolet.mpvrx	github	Riteshp2001/mpvRx
 
 # ── SNS のクライアント ──────────────────────────────────────────────
 # X を Nitter / Teapot 経由で見る。アカウント不要で、購読とグループは端末内だけ。
@@ -108,18 +128,45 @@ com.kaleedtc.nitterium	github	kaleedtc/Nitterium
 # Reddit クライアント。Google Play 開発者サービス無しで動く Patreon 版
 # (Infinity-Patreon-*.apk) を使う。配布物はソースの公開されていないビルドなので AxSandbox で隔離する。
 ml.docilealligator.infinityforreddit.patreon	github	Docile-Alligator/Infinity-For-Reddit
+# Mastodon / Bluesky / Misskey / X / Nostr / RSS をまとめて読む。F-Droid 版。
+dev.dimension.flare	fdroid	-
+# Matrix (nix/homelab/matrix.nix とブリッジ) のクライアント。Google 無しの fdroid 版。
+io.element.android.x	github	element-hq/element-x-android
+# 端末同士のメッセンジャー。arm64 版。
+chat.simplex.app	github	simplex-chat/simplex-chat
+# メール。スマホと同じもの (nix/homelab/mail.nix)。
+net.thunderbird.android	github	thunderbird/thunderbird-android
 
 # ── 自宅サーバーのクライアント ──────────────────────────────────────
 # Radicale (nix/homelab/radicale.nix) のカレンダーと連絡先を ROM の Etar / 連絡先に同期する。
 at.bitfire.davdroid	github	bitfireAT/davx5-ose
-# Kavita (nix/homelab/kavita.nix) の本を OPDS で読む。タブレットを読む端末にする。
-org.koreader.launcher	github	koreader/koreader
 # Kavita の漫画を拡張機能で読む。スマホと同じもの。
 app.mihon	github	mihonapp/mihon
 # Anki 同期サーバー (nix/homelab/anki.nix) のカードを学習する。alpha は追わない。
 com.ichi2.anki	github	ankidroid/Anki-Android
 # 複数端末の個人データの同期 (docs/HOST_ROLES.md の決まり)。公式の Android 版は終了。
 com.github.catfriend1.syncthingfork	github	researchxxl/syncthing-android
+# 壁紙の入れ替え。nixos-laptop の生成した壁紙 (home/darkman.nix) を Syncthing-Fork が
+# Pictures/Wallpapers/{light,dark} に受け取り (受信のみ、tailnet 越しに laptop と直接)、
+# これがそこから回す。Syncthing-Fork 側の設定は端末にしか無い。
+com.anthonyla.paperize	github	Anthonyy232/Paperize
+# Jellyfin (nix/homelab/jellyfin.nix) のクライアント。公式アプリではなく、ネイティブ UI の Findroid
+# (libre 版、arm64)。パッケージ名は dev.jdtech.jellyfin。
+dev.jdtech.jellyfin	github	jarnedemeulemeester/findroid
+# Audiobookshelf (nix/homelab/audiobookshelf.nix)。リリースが beta しか無いのでプレリリースを追う。
+com.audiobookshelf.app	github	advplyr/audiobookshelf-app
+# Home Assistant (nix/homelab/homeassistant.nix)。Google 無しの minimal 版。
+io.homeassistant.companion.android.minimal	github	home-assistant/android
+# Miniflux (nix/homelab/miniflux.nix) の RSS リーダー。
+com.capyreader.app	github	jocmp/capyreader
+# PC のゲームや画面のストリーミング。root を使わない nonRoot 版。
+com.limelight	github	moonlight-stream/moonlight-android
+# 電子書籍リーダー (EPUB / PDF)。KOReader の代わりに使う。
+com.bilingify.readest	github	readest/readest
+# ノート。Self-hosted LiveSync で nix/homelab/obsidian-couchdb.nix と同期する。プロプライエタリ
+# なので AxSandbox で隔離する (ストレージを止めるので、Vault は共有ストレージに置かず
+# アプリ内に作る)。
+md.obsidian	github	obsidianmd/obsidian-releases
 
 # ── パスワード ──────────────────────────────────────────────────────
 # Bitwarden / Vaultwarden の非公式クライアント。GitHub の none 版

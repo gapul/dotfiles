@@ -274,12 +274,16 @@ function cmdVerify(): number {
         // 増えると verify が rate limit で落ちる (認証済みなら 5000 回/時)。
         // curl 側に -L が要るのは、repo が改名されると API が 301 を返すため
         // (実際 Catfriend1/syncthing-android は researchxxl/ に移っていた)。
-        const assets = Bun.which("gh")
-          ? run(["gh", "api", `repos/${ref}/releases/latest`, "--jq", "[.assets[].name]"], {
-              stdout: "pipe",
-              stderr: "ignore",
-            }).stdout
-          : run(["curl", "-fsSL", `https://api.github.com/repos/${ref}/releases/latest`], { stdout: "pipe" }).stdout;
+        //
+        // releases/latest はプレリリースを返さない。正式版を一度も出していないもの
+        // (Audiobookshelf はリリースが全部 beta) はそこで 404 になるので、そのときだけ
+        // 最新のリリース (プレリリースを含む) を見る。Obtainium 側もプレリリースを追う設定にしている。
+        const fetchAssets = (path: string, jq: string) =>
+          Bun.which("gh")
+            ? run(["gh", "api", `repos/${ref}/${path}`, "--jq", jq], { stdout: "pipe", stderr: "ignore" }).stdout
+            : run(["curl", "-fsSL", `https://api.github.com/repos/${ref}/${path}`], { stdout: "pipe" }).stdout;
+        let assets = fetchAssets("releases/latest", "[.assets[].name]");
+        if (!assets.includes(".apk")) assets = fetchAssets("releases?per_page=1", "[.[0].assets[].name]");
         ok = assets.includes(".apk");
         break;
       }
