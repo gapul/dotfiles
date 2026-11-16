@@ -89,16 +89,30 @@ if $on_device; then
   # 通るのであって、アプリの uid には与えられない。
   echo "  スキップ (端末内からは権限が無い。母艦から adb 経由で流す)"
 else
-  # インストール済みパッケージを 1 回だけ引いて、消す対象が残っているかを見る。
-  installed=$(adb shell pm list packages --user 0 | tr -d '\r' | sed 's/^package://')
+  # インストール済みと無効化済みを 1 回だけ引いて、外す対象が残っているかを見る。
+  # 無効化したものも list packages には出続けるので、無効化済みは外れた扱いにする。
+  installed=$(adb shell pm list packages --user 0 </dev/null | tr -d '\r' | sed 's/^package://')
+  disabled=$(adb shell pm list packages -d --user 0 </dev/null | tr -d '\r' | sed 's/^package://')
   while read -r pkg _; do
     [[ -z ${pkg:-} || $pkg == \#* ]] && continue
-    if ! grep -qx "$pkg" <<<"$installed"; then
+    if ! grep -qx "$pkg" <<<"$installed" || grep -qx "$pkg" <<<"$disabled"; then
       continue
     fi
     echo "  uninstall: $pkg"
     changed=$((changed + 1))
-    $dry_run || adb shell pm uninstall -k --user 0 "$pkg" </dev/null || echo "    失敗 (システム必須の可能性): $pkg"
+    $dry_run && continue
+    # adb shell は端末側の失敗でも 0 を返すことがあるので、出力の Success で判定する。
+    if adb shell pm uninstall -k --user 0 "$pkg" </dev/null | grep -q '^Success'; then
+      continue
+    fi
+    # 純正の Android 17 は root なしだとシステムアプリの user 0 からのアンインストールを断る。
+    # そのときは無効化し、Play ストアが入れた更新分を消して出荷時の版に戻す (容量が空く)。
+    if adb shell pm disable-user --user 0 "$pkg" </dev/null | grep -q 'disabled-user'; then
+      echo "    アンインストールを断られたので無効化した"
+      adb shell pm uninstall-system-updates "$pkg" </dev/null >/dev/null || true
+    else
+      echo "    失敗 (システム必須の可能性): $pkg"
+    fi
   done <"$decl/os-debloat.txt"
 fi
 

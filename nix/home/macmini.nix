@@ -817,6 +817,14 @@ in
             IdentityFile ~/.ssh/id_ed25519
             IdentitiesOnly yes
 
+          # The phone's Termux sshd (mobile/android/README.md). It listens only on the tailnet
+          # address and ignores the user name.
+          Host pixel
+            HostName 100.76.47.30
+            Port 8022
+            IdentityFile ~/.ssh/id_ed25519
+            IdentitiesOnly yes
+
           Host github.com
             IdentityFile ~/.ssh/mocopi_ci
             IdentitiesOnly yes

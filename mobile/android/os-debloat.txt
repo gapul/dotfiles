@@ -1,12 +1,86 @@
-# 現在のユーザーから外すプリインアプリ。`apply.sh` が
+# 現在のユーザーから外すプリインアプリ。os.sh がまず
 #   adb shell pm uninstall -k --user 0 <pkg>
-# を流す。システムパーティションは触らないので root は要らず、
-#   adb shell cmd package install-existing <pkg>
-# でいつでも戻せる。
+# を試し、断られたら
+#   adb shell pm disable-user --user 0 <pkg>
+#   adb shell pm uninstall-system-updates <pkg>
+# で無効化して、Play ストアが入れた更新分を消す。純正の Android 17 は root なしだと
+# システムアプリの user 0 からのアンインストールを断る ("only root can delete system app
+# for a particular user") ので、このスマホでは全部が無効化になる。どちらもシステムパーティションは
+# 触らないので、無効化は設定のアプリ画面か `pm enable`、アンインストールは
+# `cmd package install-existing <pkg>` でいつでも戻せる。
 #
-# 中身が機種依存なので初期値は空。候補の探し方:
+# 候補の探し方:
 #   adb shell pm list packages -s | sed 's/^package://' | sort   # プリイン一覧
 #   adb shell pm list packages -d                                # すでに無効なもの
 #
 # 消していいか怪しいものは消さない。ダイヤラ / IMS / carrier 系を外すと
-# 電話が着信しなくなる類の壊れ方をする。
+# 電話が着信しなくなる類の壊れ方をする。ほかに残すもの:
+#   Pixel ランチャー (com.google.android.apps.nexuslauncher): アプリ切り替えの画面を持つ
+#   初期設定ウィザード: プライベートスペースを作るときに使う
+#   Play ストア / Play 開発者サービス: ウォレットとおサイフケータイが依存する
+#   電話: SIM が無くても緊急通報に要る
+#   メッセージ、緊急情報サービス、Android Auto、Digital Wellbeing: 置き換えると機能が減るので残す
+
+# ── 代わりを apps.tsv に入れたもの ──────────────────────────────────
+# Chrome → IronFox。アプリ内の Web 表示 (WebView) は別パッケージなので残る。
+com.android.chrome
+# Gmail → Thunderbird
+com.google.android.gm
+# マップ → CoMaps
+com.google.android.apps.maps
+# YouTube → PipePipe、YouTube Music → Metrolist
+com.google.android.youtube
+com.google.android.apps.youtube.music
+# Files → Material Files。ファイル選択画面 (DocumentsUI) は別パッケージなので残る。
+com.google.android.apps.nbu.files
+# フォト → Aves
+com.google.android.apps.photos
+# 天気 → Breezy Weather
+com.google.android.apps.weather
+# レコーダー → Fossify Voice Recorder (文字起こしは無くなる)
+com.google.android.apps.recorder
+# 電卓 → OpenCalc
+com.google.android.calculator
+# 時計 → Chrono
+com.google.android.deskclock
+# 連絡先 → Connect You
+com.google.android.contacts
+# Google カレンダー → Etar。Google アカウントの予定は同期されなくなる (使っていない)。
+com.google.android.calendar
+# Gboard → 日本語は Sumire、英語は HeliBoard
+com.google.android.inputmethod.latin
+# Google アプリ → Operit (標準のアシスタントは os-apps.tsv)。「OK Google」の登録も一緒に外す。
+com.google.android.googlequicksearchbox
+com.android.hotwordenrollment.okgoogle
+com.android.hotwordenrollment.xgoogle
+
+# ── 使わないもの ────────────────────────────────────────────────────
+com.google.android.videos
+com.google.android.apps.docs
+com.google.android.apps.pixel.nowplaying
+com.google.android.apps.tips
+com.google.android.apps.pixel.support
+com.google.android.apps.internal.betterbug
+com.google.android.apps.work.clouddpc
+com.google.android.apps.restore
+com.google.android.apps.pixel.creativeassistant
+com.google.android.apps.magicportrait
+com.google.android.apps.emojiwallpaper
+com.google.pixel.livewallpaper
+com.google.android.apps.dreamliner
+com.google.android.dreamlinerupdater
+com.google.android.printservice.recommendation
+com.google.ar.core
+com.google.android.marvin.talkback
+com.google.android.accessibility.soundamplifier
+com.google.android.accessibility.switchaccess
+com.google.android.apps.accessibility.voiceaccess
+com.google.audio.hearing.visualization.accessibility.scribe
+
+# ── 最初から無効になっていたもの (戻らないよう宣言しておく) ────────
+com.google.android.retaildemo
+com.google.android.glasses.core
+com.google.android.gms.supervision
+com.android.virtualization.terminal
+com.verizon.services
+com.verizon.mips.services

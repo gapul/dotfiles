@@ -82,14 +82,6 @@
       inputs.nixpkgs.follows = "nixpkgs-nixos";
     };
 
-    # Nix environment on Android (Termux). The release branch is stuck at 24.05, so
-    # use master with nixpkgs follows (the usual nix-on-droid approach). aarch64-linux.
-    nix-on-droid = {
-      url = "github:nix-community/nix-on-droid/master";
-      inputs.nixpkgs.follows = "nixpkgs";
-      inputs.home-manager.follows = "home-manager";
-    };
-
     # The Mopidy build-time patch set is split into a separate repo (trims 336 files from dotfiles).
     # Pulled in as a flake=false source and passed to patchDir in nix/lib/mopidy-env.nix.
     mopidy-patches = {
@@ -227,7 +219,6 @@
       nix-darwin,
       home-manager,
       home-manager-nixos,
-      nix-on-droid,
       nixos-wsl,
       mopidy-patches,
       nix-index-database,
@@ -639,10 +630,6 @@
         # the path a future ARM box would come up on, and it is a parameterisation of the same
         # home config rather than anything to maintain separately. Put "aarch64-linux" back here
         # and in scripts/ci-plan-systems.sh when such a machine exists.
-        #
-        # nix-on-droid is aarch64-linux too but is unaffected: it is a top-level output built
-        # through its own app with --impure and the nix-on-droid substituter, never through this
-        # matrix.
         systems = [
           system
           "x86_64-linux"
@@ -774,36 +761,6 @@
                         --systems ${system} \
                         --no-link \
                         "$@"
-                    '';
-                  }
-                );
-              };
-            }
-            // lib.optionalAttrs (system == "aarch64-linux") {
-              # nix-on-droid is outside omnix's standard build targets and requires --impure
-              # via builtins.storePath, so make it a dedicated app called from om ci's custom step.
-              ci-nixondroid = {
-                type = "app";
-                meta.description = "Build the nix-on-droid activation package (impure)";
-                program = lib.getExe (
-                  systemPkgs.writeShellApplication {
-                    name = "ci-nixondroid";
-                    runtimeInputs = [
-                      systemPkgs.nix
-                      systemPkgs.git
-                    ];
-                    text = ''
-                      flake_ref="''${DOTFILES_FLAKE:-./nix}"
-                      if [[ -f flake.nix ]]; then
-                        flake_ref=.
-                      fi
-                      # Prebuilds like proot-termux are only available from the official cachix.
-                      # Don't rewrite nix.conf with sudo; assume a trusted user and pass CLI flags.
-                      exec nix build --impure \
-                        --extra-substituters https://nix-on-droid.cachix.org \
-                        --extra-trusted-public-keys nix-on-droid.cachix.org-1:56snoMJTXmDRC1Ei24CmKoUqvHJ9XCp+nidK7qkMQrU= \
-                        "$flake_ref#nixOnDroidConfigurations.default.activationPackage" \
-                        --no-link --show-trace "$@"
                     '';
                   }
                 );
@@ -970,15 +927,6 @@
             cores = "4";
           };
         };
-      };
-
-      # Android (Termux): nix-on-droid switch --flake .#default
-      # A lightweight config loading only terminal-oriented components (git/cli/shell/terminal) (hosts/droid.nix).
-      nixOnDroidConfigurations.default = nix-on-droid.lib.nixOnDroidConfiguration {
-        pkgs = import nixpkgs { system = "aarch64-linux"; };
-        # modules/home/cli.nix takes it; without it this output did not evaluate at all.
-        extraSpecialArgs = { inherit (commonSpecialArgs) nixpkgsUnstable; };
-        modules = [ ./hosts/droid.nix ];
       };
 
       # Real NixOS machine (Windows dual-boot): sudo nixos-rebuild switch --flake .#nixos-laptop

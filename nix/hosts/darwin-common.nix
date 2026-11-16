@@ -69,9 +69,6 @@
         # nix-community: for the flake inputs that publish there
         "https://nix-community.cachix.org" =
           "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs=";
-        # nix-on-droid: prebuilts like proot-termux come only from the official cachix
-        "https://nix-on-droid.cachix.org" =
-          "nix-on-droid.cachix.org-1:56snoMJTXmDRC1Ei24CmKoUqvHJ9XCp+nidK7qkMQrU=";
         # numtide/llm-agents.nix: daily prebuilt agent CLIs (OpenCode)
         "https://cache.numtide.com" = "niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g=";
         # this config's own outputs, pushed by CI, so `just rebuild` doesn't rebuild them locally
