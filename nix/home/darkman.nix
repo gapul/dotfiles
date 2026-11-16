@@ -11,9 +11,10 @@
 # What follows the switch is the desktop-wide color-scheme the xdg portal serves from dconf
 # (org.freedesktop.appearance color-scheme, via xdg-desktop-portal-gtk): Firefox
 # (browser.theme.* = 2 in modules/home/firefox.nix), ghostty (theme = light:…,dark:…),
-# libadwaita/GTK4 and Electron apps. waybar-appearance.nix and desktop-appearance.nix
-# also switch the bar, Hyprland borders, notifications, lock screen, menus, and GTK/Qt
-# palettes. Application-specific themes such as nvim remain independently configured.
+# libadwaita/GTK4 and most Electron apps (Obsidian needs the plugin installed below).
+# waybar-appearance.nix and desktop-appearance.nix also switch the bar, Hyprland borders,
+# notifications, lock screen, menus, and GTK/Qt palettes. Application-specific themes such
+# as nvim remain independently configured.
 #
 # home/stylix.nix used to pin the same dconf key from the palette's `variant`; that line is
 # gone, because two writers for one key means the rebuild undoes the sun. The oneshot below
@@ -139,6 +140,23 @@ in
       b=$(basename "$f")
       run cp -L --no-preserve=mode "$f" "$dst/''${b%%-*}/$b"
     done
+  '';
+
+  # Obsidian (Electron 43) reads light/dark from the GTK colors once at startup and ignores later
+  # portal color-scheme changes, so "Adapt to system" stayed in whatever mode the app was opened
+  # in. configs/apps/obsidian-plugins/portal-theme-sync watches the portal over gdbus and flips
+  # the theme class itself. Copied, not linked, like the mac's nix-theme.css: the vault is the
+  # source of truth and LiveSync carries real files. Enable it once in Obsidian; the setting then
+  # syncs. Not under configs/apps/obsidian, which `just obsidian-snapshot` rsyncs with --delete.
+  home.activation.obsidianPortalThemeSync = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    obsidian_dir=${config.home.homeDirectory}/Documents/notes/.obsidian
+    if [ -d "$obsidian_dir" ]; then
+      dst="$obsidian_dir/plugins/portal-theme-sync"
+      run mkdir -p "$dst"
+      for f in ${../../configs/apps/obsidian-plugins/portal-theme-sync}/*; do
+        run install -m 644 "$f" "$dst/"
+      done
+    fi
   '';
 
   # Start darkman only once the session is up. Without the ordering it came up before niri had

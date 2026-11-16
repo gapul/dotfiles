@@ -1,0 +1,9 @@
+{
+  "id": "portal-theme-sync",
+  "name": "Portal Theme Sync",
+  "version": "1.0.0",
+  "minAppVersion": "1.0.0",
+  "description": "Follow the freedesktop portal color-scheme live on Linux (Electron does not pick up runtime changes).",
+  "author": "local",
+  "isDesktopOnly": true
+}
