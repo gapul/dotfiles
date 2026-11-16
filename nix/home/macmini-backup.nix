@@ -35,6 +35,10 @@ let
   ntfyUrlFile = "${home}/.config/ntfy/url";
   ntfyTokenFile = "${home}/.config/ntfy/token";
 
+  # Same stable, self-signed restic as the main Mac (restic-backup.nix), so the Full Disk Access
+  # grant that lets it read ~/Documents survives restic upgrades.
+  tccBinDir = "${home}/.local/libexec/tcc";
+
   scripts = common.mkScripts {
     inherit
       pkgs
@@ -42,12 +46,15 @@ let
       passwordFile
       logFile
       ;
+    pathPrefix = tccBinDir;
     backupPaths = [
-      # The whole working tree. The only target the old script covered; documents that
-      # were scattered directly under home have also been gathered under projects/
-      # (~/Documents isn't used on this machine because macOS TCC refuses scans from ssh
-      # and launchd).
+      # The whole working tree. The only target the old script covered.
       "${home}/Developer"
+      # Projects, account exports and archives (2026-11-16). Left out until then because TCC
+      # refuses launchd agents under ~/Documents, while the data kept landing there anyway
+      # (41GiB, none of it backed up). Needs Full Disk Access on ~/.local/libexec/tcc/restic;
+      # without it restic warns on every file and the run fails loudly through ntfy.
+      "${home}/Documents"
       # Minecraft worlds. The real data lives in mcsrv's home (unreadable from this agent),
       # so pick up what the 4:40 minecraft-backup packs up. This is the only offsite path.
       "/Users/Shared/minecraft-backups"
@@ -94,6 +101,9 @@ let
       "**/.next"
       "**/.expo"
       "**/.git/objects"
+      # git-annex content. ~/Documents/assets carries 22GiB of it, every key also on the
+      # homeserver remote (checked 2026-11-16: `git annex find --not --in homeserver` is empty).
+      "**/.git/annex"
       # Don't put the key that opens this repository inside this repository. Same policy
       # as stated at the top of the main Mac's module: the key lives in the password manager.
       "**/.config/restic"
@@ -116,6 +126,13 @@ let
 in
 {
   home.packages = [ pkgs.restic ];
+
+  # See tccStableRestic in restic-backup.nix. Grant once over ssh (System Settings >
+  # Privacy & Security > Full Disk Access, add ~/.local/libexec/tcc/restic).
+  home.activation.tccStableRestic = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    $DRY_RUN_CMD ${../../configs/bin/tcc-stable-binary} \
+      ${pkgs.restic}/bin/restic restic || true
+  '';
 
   # 5:00, same as the old script. The main Mac runs at 13:00, so shared-repository locks don't overlap.
   launchd.agents = {
