@@ -3,21 +3,23 @@
   pkgs,
   ...
 }:
-# The mini went deaf twice: 2026-11-15 from 20:13 and 2026-11-16 from 00:00, each until someone
-# held the power button. The box itself kept running (logs flowing, outbound fine, local ssh from
-# hermes to hsandbox working), but nothing from the network reached a socket: TCP to 22/3773/5900
-# completed the handshake and then hung, and only tailscaled's own :8080 answered. In the unified
-# log the application firewall's "Incoming flow identified as launchd" lines stop dead at the
-# start of each outage, so inbound flows were held before the socketfilterfw content filter
-# ever gave a verdict. The 11-16 one began 5 s after nix-linux-builder booted a VM and
-# InternetSharing created its vmnet interfaces; the 11-15 one had no VM, so that is not the
-# whole story.
+# The mini went deaf twice: 2026-11-15 from 20:13:56 and 2026-11-16 from 00:00, each until someone
+# held the power button. The box kept running (logs, outbound, local ssh from hermes to hsandbox),
+# but every non-loopback listener completed the TCP handshake and went silent; only tailscaled's
+# own :8080 answered, and the application firewall's "Incoming flow identified as launchd" lines
+# stopped dead. It was the 2026-09-26 failure again (see the end of darwin-common.nix): at 20:13:56
+# an agent ran `sudo nix store optimise` on the mini to free disk, the hardlinks put blocky's
+# binary at /nix/store/.links/<hash> (socketfilterfw logged that path from 20:17), and the
+# firewall's serial per-flow queue drowned walking the 700k-entry directory. The reboot at 22:23
+# left .links in place, so it stalled again overnight. The linux builder VM that booted at
+# 00:00:20 was a coincidence: six parallel builds on 2026-11-16 did not reproduce it.
 #
-# Outbound still works in that state, so the mini can ask homeserver to look back at it. Three
-# misses in a row (homeserver reachable, the mini's sshd not) toggle the firewall off and on,
-# which also tells us whether the firewall was the culprit; three more and it reboots. A miss
-# where homeserver itself does not answer counts for nothing, so a homeserver or house outage
-# never reboots this machine.
+# So every run first clears a populated .links (killing a running optimise) and restarts
+# socketfilterfw, the documented recovery, before inbound ever stalls. Then it asks homeserver to
+# key-scan the mini over the tailnet, since outbound keeps working in that state. Three misses
+# (homeserver reachable, the mini's sshd not) repeat the recovery and toggle the firewall; three
+# more reboot. A miss where homeserver itself does not answer counts for nothing, so a homeserver
+# or house outage never reboots this machine.
 let
   stateDir = "/var/db/macmini-inbound-watchdog";
   logFile = "/var/log/macmini-inbound-watchdog.log";
@@ -55,6 +57,22 @@ let
 
       read_num() { local v=0; [ -r "$1" ] && v=$(<"$1"); [[ "$v" =~ ^[0-9]+$ ]] || v=0; echo "$v"; }
 
+      # .links is only nix's dedup index; nix recreates it empty, which is harmless.
+      clear_links() {
+        /usr/bin/find /nix/store/.links -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null | /usr/bin/grep -q . || return 1
+        /usr/bin/pkill -f 'nix store optimise' || true
+        /usr/bin/pkill -f 'nix-store --optimise' || true
+        /bin/rm -rf /nix/store/.links
+        /usr/bin/pkill -x socketfilterfw || true
+        return 0
+      }
+
+      if clear_links; then
+        log "cleared a populated /nix/store/.links and restarted socketfilterfw"
+        notify "/nix/store/.links had entries (someone ran nix store optimise?); cleared it and restarted the firewall"
+        sleep 5
+      fi
+
       probe
       rc=$?
       failures=$(read_num "$state_dir/failures")
@@ -79,18 +97,20 @@ let
         last_in=$(/usr/bin/log show --style compact --info --debug --last 30m \
           --predicate 'process == "socketfilterfw" AND eventMessage CONTAINS "Incoming flow"' \
           2>/dev/null | /usr/bin/grep '^20' | /usr/bin/tail -1 | /usr/bin/cut -c1-23)
-        log "last ALF inbound flow in 30m: ''${last_in:-none}; toggling the application firewall"
+        log "last ALF inbound flow in 30m: ''${last_in:-none}; restarting socketfilterfw and toggling the firewall"
+        clear_links || /usr/bin/pkill -x socketfilterfw || true
+        sleep 3
         "$fw" --setglobalstate off >/dev/null 2>&1
         sleep 3
         "$fw" --setglobalstate on >/dev/null 2>&1
         sleep 5
         if probe; then
-          log "ALF toggle restored inbound"
-          notify "inbound was dead; toggling the application firewall restored it (last ALF inbound: ''${last_in:-none})"
+          log "firewall restart restored inbound"
+          notify "inbound was dead; restarting the application firewall restored it (last ALF inbound: ''${last_in:-none})"
           echo 0 > "$state_dir/failures"
         else
-          log "ALF toggle did not help"
-          notify "inbound is dead and the ALF toggle did not help; rebooting after 3 more misses"
+          log "firewall restart did not help"
+          notify "inbound is dead and the firewall restart did not help; rebooting after 3 more misses"
         fi
         exit 0
       fi
