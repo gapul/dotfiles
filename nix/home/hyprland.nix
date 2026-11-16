@@ -871,8 +871,7 @@ in
 
         # Only things that have no systemd user unit of their own: hypridle / waybar / mako /
         # awww / fcitx5 are started by their home-manager services (fcitx5's unit is in
-        # home/fcitx5-skk.nix, ordered after the skkserv); listing them here as well would
-        # launch a second copy of each.
+        # home/fcitx5-skk.nix); listing them here as well would launch a second copy of each.
         on = {
           _args = [
             "hyprland.start"
