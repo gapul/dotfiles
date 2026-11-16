@@ -817,10 +817,16 @@ in
             IdentityFile ~/.ssh/id_ed25519
             IdentitiesOnly yes
 
-          # The phone's Termux sshd (mobile/android/README.md). It listens only on the tailnet
-          # address and ignores the user name.
+          # The phone's and the tablet's Termux sshd (mobile/android/README.md). It listens only
+          # on the tailnet address and ignores the user name. On the tablet, `su -c` gives root.
           Host pixel
             HostName 100.76.47.30
+            Port 8022
+            IdentityFile ~/.ssh/id_ed25519
+            IdentitiesOnly yes
+
+          Host nabu
+            HostName 100.103.244.30
             Port 8022
             IdentityFile ~/.ssh/id_ed25519
             IdentitiesOnly yes
