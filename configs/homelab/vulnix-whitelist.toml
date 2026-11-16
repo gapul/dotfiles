@@ -1,0 +1,53 @@
+# vulnix matches Nix package names to NVD products by name alone, so these are CVEs for a
+# different product that happens to share the name, or long-fixed ones still attached to an
+# open-ended version range. Each was checked against the CVE record on 2026-11-16.
+#
+# A rule only hides a package while every CVE vulnix finds for it is listed here, so a new
+# CVE against the same name still gets reported.
+
+["git"]
+cve = [
+  "CVE-2021-21684",
+  "CVE-2022-30947",
+  "CVE-2022-36882",
+  "CVE-2022-36883",
+  "CVE-2022-36884",
+  "CVE-2022-38663",
+]
+comment = "Jenkins Git Plugin"
+
+["snappy"]
+cve = ["CVE-2023-28115", "CVE-2023-41330"]
+comment = "KnpLabs snappy, a PHP library"
+
+["ninja"]
+cve = ["CVE-2021-4336"]
+comment = "ITRS Group monitor-ninja"
+
+["orc"]
+cve = ["CVE-2025-47436"]
+comment = "Apache ORC, not GStreamer's orc"
+
+["ada"]
+cve = ["CVE-2024-9410"]
+comment = "Ada.cx Sentry component, not the ada URL parser"
+
+["dbus"]
+cve = ["CVE-2022-42010", "CVE-2022-42011", "CVE-2022-42012"]
+comment = "fixed in D-Bus 1.14.4"
+
+["gcc"]
+cve = ["CVE-2023-4039"]
+comment = "AArch64 targets only; homeserver is x86_64"
+
+["avahi"]
+cve = ["CVE-2021-26720"]
+comment = "avahi-daemon-check-dns.sh in Debian's packaging"
+
+["cups"]
+cve = ["CVE-2022-26691"]
+comment = "fixed in CUPS 2.4.2"
+
+["zlib"]
+cve = ["CVE-2023-6992"]
+comment = "Cloudflare's zlib fork"

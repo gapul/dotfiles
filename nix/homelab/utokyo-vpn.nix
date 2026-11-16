@@ -84,7 +84,13 @@ in
     wants = [ "network-online.target" ];
     wantedBy = [ "multi-user.target" ];
     environment = {
-      PLAYWRIGHT_BROWSERS_PATH = "${pkgs.playwright-driver.browsers}";
+      # sso-login.py only launches headless chromium. The full set also pulls in webkit, whose
+      # bundled libxml2 2.13 and libjxl 0.8 vulnix reports with known CVEs.
+      # Not browsers-chromium: that drops chromium-headless-shell, which headless launch uses.
+      PLAYWRIGHT_BROWSERS_PATH = "${pkgs.playwright-driver.selectBrowsers {
+        withFirefox = false;
+        withWebkit = false;
+      }}";
       PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS = "true";
     };
     # Every start is a real sign-in. If it keeps failing (password changed, seed

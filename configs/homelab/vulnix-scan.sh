@@ -28,8 +28,9 @@ mkdir -p "$(dirname "$STATE")"
 # 稼働中の世代の実行時クロージャだけを見る (-C)。--system だとビルド時の依存
 # (gcc-4.6.4 のブートストラップ、go-bootstrap、Haskell/Rust/NuGet のライブラリ等) まで
 # 照合し、名前が同じだけの誤検知が 102 件中 70 件を占めて通知が読まれなくなっていた
-# (2026-10-04 実測、-C で 32 件)。-w で whitelist が無くても動く。
-out=$(vulnix -C /run/current-system 2>/dev/null)
+# (2026-10-04 実測、-C で 32 件)。
+# 名前が同じだけの別製品の CVE は whitelist で落とす (vulnix-whitelist.toml)。
+out=$(vulnix -C /run/current-system ${VULNIX_WHITELIST:+-w "$VULNIX_WHITELIST"} 2>/dev/null)
 rc=$?
 
 # vulnix は「見つかった」ときに非ゼロで終わる。0 なら何も無い。

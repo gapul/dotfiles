@@ -17,6 +17,7 @@
       gnugrep
       coreutils
     ];
+    environment.VULNIX_WHITELIST = "${../../configs/homelab/vulnix-whitelist.toml}";
     serviceConfig = {
       Type = "oneshot";
       ExecStart = "${pkgs.bash}/bin/bash ${../../configs/homelab/vulnix-scan.sh}";
