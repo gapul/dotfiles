@@ -59,6 +59,9 @@ in
       DJANGO_COLLECTSTATIC_ON_STARTUP = "True";
       # Caddy serves static files, so use the plain storage: neither S3 nor whitenoise.
       DJANGO_STORAGES_STATICFILES_BACKEND = "django.contrib.staticfiles.storage.StaticFilesStorage";
+      # Without this the image entrypoint falls back to `manage.py runserver`, whose autoreloader
+      # stats every source file each second (about 40% CPU around the clock on 2026-11-16).
+      WGER_USE_GUNICORN = "True";
       USE_CELERY = "False";
       SYNC_EXERCISES_CELERY = "False";
       SYNC_INGREDIENTS_CELERY = "False";
