@@ -249,7 +249,7 @@ The first time, install [Termux:Nix](https://f-droid.org/packages/com.termux.nix
 nix-capable build, not ordinary Termux — and inside it run:
 
 ```sh
-nix-on-droid switch --flake github:gapul/dotfiles?dir=nix#default
+nix-on-droid switch --flake git+https://git.gapul.net/gapul/dotfiles?dir=nix#default
 ```
 
 Updates use the same command. In CI, `nix run .#ci-nixondroid` on aarch64-linux builds the

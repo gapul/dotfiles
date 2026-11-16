@@ -9,13 +9,18 @@
 # homeserver は公開 flake を読むだけでよく、誰の鍵も要らない。母艦が壊れていても
 # 出かけていても、マージされた設定は反映される。
 #
-# 安全性は main の側で担保する。github: の参照は main を指し、main は CI を
-# 通ったものしか入らない。切り替えに失敗すれば nixos-rebuild が失敗して古い世代の
-# まま残る。起動はしたが中身が壊れている型は journal-alert の再起動ループ検知が拾う。
+# 安全性は main の側で担保する。参照は main を指し、main は CI を通ったものしか
+# 入らない。切り替えに失敗すれば nixos-rebuild が失敗して古い世代のまま残る。
+# 起動はしたが中身が壊れている型は journal-alert の再起動ループ検知が拾う。
+#
+# 読む先はこの箱の Forgejo (homelab/forgejo.nix) にある GitHub の pull mirror。
+# GitHub に頼らず、tunnel も通らない。mirror は 15 分ごとに追いつくので、マージから
+# 反映までの遅れはその分だけ増える。Forgejo が落ちていると直す手段まで失うので、
+# 取れないときは GitHub に戻る。取った rev を flake 参照に固定するので、どちらから
+# 取っても ls-remote で見たものと同じ revision に切り替わる。
 set -uo pipefail
 
-FLAKE="github:gapul/dotfiles?dir=nix#homeserver"
-REPO=https://github.com/gapul/dotfiles
+SOURCES=(http://127.0.0.1:3003/gapul/dotfiles https://github.com/gapul/dotfiles)
 STATE=/var/lib/self-deploy/deployed-rev
 ALERTED=/var/lib/self-deploy/alerted-rev
 
@@ -32,7 +37,11 @@ notify() {
 
 mkdir -p "$(dirname "$STATE")"
 
-remote=$(git ls-remote "$REPO" HEAD 2>/dev/null | awk '{print $1}')
+remote="" repo=""
+for repo in "${SOURCES[@]}"; do
+  remote=$(git ls-remote "$repo" refs/heads/main 2>/dev/null | awk '{print $1}')
+  [ -n "$remote" ] && break
+done
 if [ -z "$remote" ]; then
   # 取れないのは大抵ネットワークの一時的な問題。次の周回で拾えるので黙る。
   exit 0
@@ -40,9 +49,9 @@ fi
 
 [ "$remote" = "$(cat "$STATE" 2>/dev/null)" ] && exit 0
 
-# --refresh が要る。github: の flake 参照はキャッシュされるので、付けないと
-# マージ直後に古い revision へ切り替わる (実害を出したことがある)。
-out=$(nixos-rebuild switch --refresh --flake "$FLAKE" 2>&1)
+# rev を固定するので古い revision を掴むことは無いが、--refresh も残す
+# (github: 参照のキャッシュで、マージ直後に古い revision へ切り替わった実害がある)。
+out=$(nixos-rebuild switch --refresh --flake "git+$repo?rev=$remote&dir=nix#homeserver" 2>&1)
 rc=$?
 
 # podman はヘルスチェックのたびに transient なユニットを作る。コンテナが起動直後で

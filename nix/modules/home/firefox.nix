@@ -60,7 +60,7 @@ in
   xdg.dataFile."firefox/extension-sources.json".text =
     let
       raw = "https://raw.githubusercontent.com";
-      repo = "${raw}/gapul/dotfiles/main/configs/apps";
+      repo = "https://git.gapul.net/gapul/dotfiles/raw/branch/main/configs/apps";
       ublSubscribe = url: "https://ublacklist.github.io/rulesets/subscribe?url=${lib.escapeURL url}";
       rosePine = domain: dir: {
         inherit domain;
@@ -269,7 +269,7 @@ in
         # "ublock-") plus exactly this repo's urlskip list, not a whole host or repo path.
         [
           "trustedListPrefixes"
-          "ublock- https://raw.githubusercontent.com/gapul/dotfiles/main/configs/apps/ublock/urlskip.txt"
+          "ublock- https://git.gapul.net/gapul/dotfiles/raw/branch/main/configs/apps/ublock/urlskip.txt"
         ]
       ];
       "3rdparty".Extensions."uBlock0@raymondhill.net".toOverwrite = {
@@ -307,16 +307,16 @@ in
           "https://raw.githubusercontent.com/Yuki2718/adblock2/main/japanese/jpf-plus.txt"
           # Skip click-tracking redirect wrappers (Google, Facebook, Reddit, Steam, …); see the
           # file. Imported by URL so "My filters" stays the user's own.
-          "https://raw.githubusercontent.com/gapul/dotfiles/main/configs/apps/ublock/urlskip.txt"
+          "https://git.gapul.net/gapul/dotfiles/raw/branch/main/configs/apps/ublock/urlskip.txt"
           # Google Maps embeds load only when g-embed's button is clicked; pairs with
           # urlclassifier.trackingSkipURLs below.
-          "https://raw.githubusercontent.com/gapul/dotfiles/main/configs/apps/ublock/embeds.txt"
+          "https://git.gapul.net/gapul/dotfiles/raw/branch/main/configs/apps/ublock/embeds.txt"
         ];
       };
       # Surfingkeys reads no managed storage; its settings live in configs/apps/surfingkeys/config.js,
       # fetched by the extension from this repo's raw URL ("Load settings from" in advanced
       # mode; set once per profile, the file:// scheme is refused by Firefox extensions):
-      #   https://raw.githubusercontent.com/gapul/dotfiles/main/configs/apps/surfingkeys/config.js
+      #   https://git.gapul.net/gapul/dotfiles/raw/branch/main/configs/apps/surfingkeys/config.js
 
       # Extensions come from AMO and keep updating there. The list is Zen's set as of
       # 2026-09-17 (Zen Internet is enabled on Linux for transparent pages; DuckDuckGo

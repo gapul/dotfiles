@@ -519,12 +519,16 @@ in
   # Pull the merged declaration in every night. The weekly flake.lock PR auto-merges once CI is
   # green, so without this the box would just sit on whatever generation was last switched by hand.
   #
-  # `--refresh` is not optional: nix caches `github:` flake references, and a switch run right
+  # `--refresh` is not optional: nix caches remote flake references, and a switch run right
   # after a merge will happily rebuild the *previous* revision — that is how two containers got
   # removed on 2026-08-12. A failed build leaves the running generation alone.
+  #
+  # Read from this box's own Forgejo pull mirror of GitHub (homelab/forgejo.nix), so the nightly
+  # run needs neither GitHub nor the tunnel. If Forgejo is down this run just fails;
+  # self-deploy.sh, which runs hourly, falls back to GitHub in that case.
   system.autoUpgrade = {
     enable = true;
-    flake = "github:gapul/dotfiles?dir=nix#homeserver";
+    flake = "git+http://127.0.0.1:3003/gapul/dotfiles?dir=nix#homeserver";
     flags = [ "--refresh" ];
     dates = "04:00";
     randomizedDelaySec = "30min";

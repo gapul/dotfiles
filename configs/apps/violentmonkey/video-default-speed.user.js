@@ -7,8 +7,8 @@
 // @match       *://*.youtube-nocookie.com/*
 // @grant       none
 // @run-at      document-start
-// @downloadURL https://raw.githubusercontent.com/gapul/dotfiles/main/configs/apps/violentmonkey/video-default-speed.user.js
-// @updateURL   https://raw.githubusercontent.com/gapul/dotfiles/main/configs/apps/violentmonkey/video-default-speed.user.js
+// @downloadURL https://git.gapul.net/gapul/dotfiles/raw/branch/main/configs/apps/violentmonkey/video-default-speed.user.js
+// @updateURL   https://git.gapul.net/gapul/dotfiles/raw/branch/main/configs/apps/violentmonkey/video-default-speed.user.js
 // ==/UserScript==
 
 // Plain DOM and @grant none, so it runs the same under Violentmonkey in Firefox and in Orion.

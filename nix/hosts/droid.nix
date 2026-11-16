@@ -1,6 +1,6 @@
 # nix-on-droid environment on Android (Termux).
 #   First time: from the app at https://f-droid.org/packages/com.termux.nix/
-#     nix-on-droid switch --flake github:gapul/dotfiles?dir=nix#default
+#     nix-on-droid switch --flake git+https://git.gapul.net/gapul/dotfiles?dir=nix#default
 # ECS: this Entity composes the modules/home components (git/cli/shell/terminal)
 # as-is. It does not load components that assume flake input modules like
 # nix-index/agent-skills, nor GUI/workstation roles.

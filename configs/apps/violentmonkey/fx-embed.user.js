@@ -13,8 +13,8 @@
 // @connect     video.twimg.com
 // @run-at      document-start
 // @noframes
-// @downloadURL https://raw.githubusercontent.com/gapul/dotfiles/main/configs/apps/violentmonkey/fx-embed.user.js
-// @updateURL   https://raw.githubusercontent.com/gapul/dotfiles/main/configs/apps/violentmonkey/fx-embed.user.js
+// @downloadURL https://git.gapul.net/gapul/dotfiles/raw/branch/main/configs/apps/violentmonkey/fx-embed.user.js
+// @updateURL   https://git.gapul.net/gapul/dotfiles/raw/branch/main/configs/apps/violentmonkey/fx-embed.user.js
 // ==/UserScript==
 
 // Embeds are claimed as soon as the parser inserts them: their marker classes are swapped for

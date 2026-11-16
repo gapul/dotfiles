@@ -3,7 +3,7 @@
 !   instead of through the wrapping site. uBO only honours urlskip= in trusted lists; this
 !   list's raw URL is trusted by trustedListPrefixes in nix/modules/home/firefox.nix.
 ! Expires: 1 day
-! Homepage: https://github.com/gapul/dotfiles/tree/main/configs/apps/ublock
+! Homepage: https://git.gapul.net/gapul/dotfiles/src/branch/main/configs/apps/ublock
 !
 ! Syntax: https://github.com/gorhill/uBlock/wiki/Static-filter-syntax#urlskip
 ! `doc` is required: without a type, a filter does not apply to the top-level navigation that a

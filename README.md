@@ -76,7 +76,7 @@ Justfile             the commands used day to day
 On a new Mac:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/gapul/dotfiles/main/scripts/bootstrap.sh | bash
+curl -fsSL https://git.gapul.net/gapul/dotfiles/raw/branch/main/scripts/bootstrap.sh | bash
 ```
 
 ## Commands
@@ -90,89 +90,89 @@ Generated from `just --list`. Run `just docs` after changing a recipe.
     default
 
     [Backup]
-    archive path                                      # Example: `just archive ~/Downloads/old-project`
-    archive-find pattern                              # Example: `just archive-find "*.psd"` / `just archive-find old-project`
-    archive-ls                                        # List archive (--tag archive) snapshots (ID / date / original path)
-    archive-stats                                     # Total size and file count of the archive
-    backup                                            # Run the warm backup now (kickstart launchd) -> follow the log (Ctrl-C ends following; backup continues)
-    backup-check                                      # Verify repository integrity (restic check)
-    backup-ls                                         # List all snapshots (distinguish warm / archive by the Tags column)
-    gdrive cmd="status"                               # ~/Library/LaunchAgents/com.gapul.rclone.* plists are retired), so remount is just a kickstart.
-    restore snapshot dest="/"                         # `just restore a81c9de1 ~/Restore`  to the specified target (expanded preserving structure) [alias: unarchive]
+    archive path                         # Example: `just archive ~/Downloads/old-project`
+    archive-find pattern                 # Example: `just archive-find "*.psd"` / `just archive-find old-project`
+    archive-ls                           # List archive (--tag archive) snapshots (ID / date / original path)
+    archive-stats                        # Total size and file count of the archive
+    backup                               # Run the warm backup now (kickstart launchd) -> follow the log (Ctrl-C ends following; backup continues)
+    backup-check                         # Verify repository integrity (restic check)
+    backup-ls                            # List all snapshots (distinguish warm / archive by the Tags column)
+    gdrive cmd="status"                  # ~/Library/LaunchAgents/com.gapul.rclone.* plists are retired), so remount is just a kickstart.
+    restore snapshot dest="/"            # `just restore a81c9de1 ~/Restore`  to the specified target (expanded preserving structure) [alias: unarchive]
 
     [Build]
-    build-all *args                                   # Build every flake package available on this architecture
-    check-all *args                                   # Build every flake check available on this architecture
-    gen action="" a="" b=""                           # List or compare system generations.
-    maintain                                          # Update, upgrade, rebuild, and garbage-collect
-    rebuild force=""                                  # Rebuild the system and user configuration. `just rebuild force` activates even when nothing changed
-    recovery-iso                                      # Build the non-destructive NixOS recovery ISO (Linux builder required)
-    rollback gen=""                                   # Roll back to the previous or selected system generation.
-    update *inputs                                    # Update flake inputs, then rebuild.
-    upgrade                                           # Upgrade all package layers.
+    build-all *args                      # Build every flake package available on this architecture
+    check-all *args                      # Build every flake check available on this architecture
+    gen action="" a="" b=""              # List or compare system generations.
+    maintain                             # Update, upgrade, rebuild, and garbage-collect
+    rebuild force=""                     # Rebuild the system and user configuration. `just rebuild force` activates even when nothing changed
+    recovery-iso                         # Build the non-destructive NixOS recovery ISO (Linux builder required)
+    rollback gen=""                      # Roll back to the previous or selected system generation.
+    update *inputs                       # Update flake inputs, then rebuild.
+    upgrade                              # Upgrade all package layers.
 
     [Clean]
-    gc                                                # GC all layers at once (only regenerable caches; Trash and whole-home deletion are in gc-deep)
-    gc-deep                                           # Interactively delete heavy regenerable data (Trash / zap of retired casks / CoreSimulator cache / podman / old build artifacts)
-    tidy-apps                                         # Hide backstage apps (Adobe helpers, Karabiner's driver manager) from the Applications launcher
+    gc                                   # GC all layers at once (only regenerable caches; Trash and whole-home deletion are in gc-deep)
+    gc-deep                              # Interactively delete heavy regenerable data (Trash / zap of retired casks / CoreSimulator cache / podman / old build artifacts)
+    tidy-apps                            # Hide backstage apps (Adobe helpers, Karabiner's driver manager) from the Applications launcher
 
     [Homelab]
-    dns *flags                                        # Diff the repo's declarations against Cloudflare DNS: A records, tunnel CNAMEs, and mail (MX/SPF/DKIM)
-    esphome                                           # Validate the ESPHome device configs without hardware
-    tailnet cmd="diff"                                # Fetch, diff, or apply the tailnet policy file (ACL / split DNS). Needs TS_API_KEY
-    wsl-tarball flake="github:gapul/dotfiles?dir=nix" # Build the NixOS-WSL rootfs tarball on homeserver and bring it back (mac can't build it)
+    dns *flags                           # Diff the repo's declarations against Cloudflare DNS: A records, tunnel CNAMEs, and mail (MX/SPF/DKIM)
+    esphome                              # Validate the ESPHome device configs without hardware
+    tailnet cmd="diff"                   # Fetch, diff, or apply the tailnet policy file (ACL / split DNS). Needs TS_API_KEY
+    wsl-tarball flake="git+https://git.gapul.net/gapul/dotfiles?dir=nix" # Build the NixOS-WSL rootfs tarball on homeserver and bring it back (mac can't build it)
 
     [Inspect]
-    check what=""                                     # Type-check / show diff  (`just check` = syntax/type-check, `just check diff` = diff build)
-    doctor format=""                                  # Environment health check (run after e.g. a Determinate upgrade)
-    fmt                                               # Format code + lint across all tracked files (OS auto-detected: Mac/Linux=pre-commit, Win=PSScriptAnalyzer)
-    outdated                                          # List what can be updated (preview before upgrade; brew + mas + flake inputs; non-destructive)
-    search query scope=""                             # Package search (`just search <q>` = brew+nixpkgs, `just search <q> all` = + cargo)
+    check what=""                        # Type-check / show diff  (`just check` = syntax/type-check, `just check diff` = diff build)
+    doctor format=""                     # Environment health check (run after e.g. a Determinate upgrade)
+    fmt                                  # Format code + lint across all tracked files (OS auto-detected: Mac/Linux=pre-commit, Win=PSScriptAnalyzer)
+    outdated                             # List what can be updated (preview before upgrade; brew + mas + flake inputs; non-destructive)
+    search query scope=""                # Package search (`just search <q>` = brew+nixpkgs, `just search <q> all` = + cargo)
 
     [Mobile]
-    android-apps cmd="status"                         # Diff apps.tsv against the device, or converge it (`just android-apps` / `install` / `verify` / `obtainium`)
-    android-launcher-theme                            # Generate the Kvaesitso launcher theme from palettes.json and push it to the device
-    android-os *flags                                 # Apply the declared Android OS settings over adb (`just android-os` = diff + apply, `just android-os --dry-run`)
-    android-root *flags                               # Apply the declared KernelSU modules and ksud features to a rooted device (`just android-root` = diff + apply, `--dry-run`)
-    ios-apps cmd="status"                             # Diff ios/apps.tsv against a USB-connected iPhone (`just ios-apps` / `just ios-apps verify`)
-    ios-profiles port="8000"                          # Build the declared .mobileconfig profiles and serve them on the LAN for an iPhone to install
-    ios-shortcuts cmd="status"                        # Export iCloud-synced Shortcuts into the repo, or compile .cherri sources into signed shortcuts
-    mail-profiles mode="mac" port="8000"              # Mail profiles with their passwords filled in from sops (`mac` = open here for Mail.app, `serve` = iPhone over the tailnet)
-    mobile-test                                       # Self-check both platforms' scripts with stubbed adb / ideviceinstaller (no device needed)
+    android-apps cmd="status"            # Diff apps.tsv against the device, or converge it (`just android-apps` / `install` / `verify` / `obtainium`)
+    android-launcher-theme               # Generate the Kvaesitso launcher theme from palettes.json and push it to the device
+    android-os *flags                    # Apply the declared Android OS settings over adb (`just android-os` = diff + apply, `just android-os --dry-run`)
+    android-root *flags                  # Apply the declared KernelSU modules and ksud features to a rooted device (`just android-root` = diff + apply, `--dry-run`)
+    ios-apps cmd="status"                # Diff ios/apps.tsv against a USB-connected iPhone (`just ios-apps` / `just ios-apps verify`)
+    ios-profiles port="8000"             # Build the declared .mobileconfig profiles and serve them on the LAN for an iPhone to install
+    ios-shortcuts cmd="status"           # Export iCloud-synced Shortcuts into the repo, or compile .cherri sources into signed shortcuts
+    mail-profiles mode="mac" port="8000" # Mail profiles with their passwords filled in from sops (`mac` = open here for Mail.app, `serve` = iPhone over the tailnet)
+    mobile-test                          # Self-check both platforms' scripts with stubbed adb / ideviceinstaller (no device needed)
 
     [Service]
-    restart what="bar"                                # Restart the menu-bar/WM stack (`just restart`=bar-related / individual: sketchybar|omniwm / all=everything)
+    restart what="bar"                   # Restart the menu-bar/WM stack (`just restart`=bar-related / individual: sketchybar|omniwm / all=everything)
 
     [Setup]
-    claude-settings-adopt                             # Adopt this machine's Claude Code settings into the remote-managed keys (client wins)
-    dev what=""                                       # devShell (`just dev`=enter [shellcheck/statix available] / `just dev install`=install hooks only [non-interactive])
-    docs                                              # Run this after changing a recipe/hook/alias. CI drift detection is handled by check-generated.sh.
-    obsidian-snapshot                                 # One-way snapshot of Obsidian config into public dotfiles (tracking-only, vault->dotfiles)
-    plist-sync                                        # Sync GUI app preference changes back into dotfiles (live -> repo)
-    ssh host                                          # Use remote-env on another host
+    claude-settings-adopt                # Adopt this machine's Claude Code settings into the remote-managed keys (client wins)
+    dev what=""                          # devShell (`just dev`=enter [shellcheck/statix available] / `just dev install`=install hooks only [non-interactive])
+    docs                                 # Run this after changing a recipe/hook/alias. CI drift detection is handled by check-generated.sh.
+    obsidian-snapshot                    # One-way snapshot of Obsidian config into public dotfiles (tracking-only, vault->dotfiles)
+    plist-sync                           # Sync GUI app preference changes back into dotfiles (live -> repo)
+    ssh host                             # Use remote-env on another host
 
     [Theme]
-    theme name=""                                     # Render all environments with the current active in palettes.json (`just theme rose-pine-dawn` also switches active)
+    theme name=""                        # Render all environments with the current active in palettes.json (`just theme rose-pine-dawn` also switches active)
 
     [Windows]
-    win-autostart-glazewm *flags                      # Pass `-Unregister` (delete the task) via `*flags`
-    win-bootstrap *flags                              # Run the native Windows bootstrap (`just win-bootstrap` / `just win-bootstrap -DryRun`)
-    win-fmt                                           # Lint Windows-related .ps1 with PSScriptAnalyzer (exit 1 on Warning or above)
-    win-fonts *flags                                  # Pass `-DryRun` or `-SkipHackGen` via `*flags`
-    win-keymap *flags                                 # Pass `-DryRun` `-Clear` (delete Scancode Map and return to standard) via `*flags`
-    win-locale *flags                                 # Pass `-DryRun` `-SkipLanguageList` `-SkipSystemLocale` `-SkipHomeLocation` via `*flags`
-    win-privacy *flags                                # Pass `-DryRun` `-SkipWinUtil` `-SkipWin11Debloat` `-SkipCustomApps` `-SkipBaseline` via `*flags`
-    win-privacy-check-upstream                        # Check the privacy declarations against the pinned upstream scripts (runs on macOS/Linux)
-    win-privacy-update-upstream                       # Re-pin Win11Debloat and WinUtil to their latest releases, then run the check above
-    win-privacy-verify                                # Compare the machine against windows/privacy/baseline.psd1 (read-only, exits 1 on drift)
-    win-scoop *flags                                  # Pass `-DryRun` `-SkipBuckets` `-SkipApps` via `*flags`
-    win-status *flags                                 # Diff between apps.json (declaration) and winget list (actual install). exit 1 if any MISSING
-    win-theme *flags                                  # Pass `-DryRun` `-ActivePalette rose-pine-dawn` etc. via `*flags`
-    win-upgrade                                       # Upgrade every app installed via winget (--silent --accept-*)
-    win-verify *flags                                 # Verify every PackageIdentifier in winget/apps.json exists (`just win-verify` / `just win-verify -Strict`)
+    win-autostart-glazewm *flags         # Pass `-Unregister` (delete the task) via `*flags`
+    win-bootstrap *flags                 # Run the native Windows bootstrap (`just win-bootstrap` / `just win-bootstrap -DryRun`)
+    win-fmt                              # Lint Windows-related .ps1 with PSScriptAnalyzer (exit 1 on Warning or above)
+    win-fonts *flags                     # Pass `-DryRun` or `-SkipHackGen` via `*flags`
+    win-keymap *flags                    # Pass `-DryRun` `-Clear` (delete Scancode Map and return to standard) via `*flags`
+    win-locale *flags                    # Pass `-DryRun` `-SkipLanguageList` `-SkipSystemLocale` `-SkipHomeLocation` via `*flags`
+    win-privacy *flags                   # Pass `-DryRun` `-SkipWinUtil` `-SkipWin11Debloat` `-SkipCustomApps` `-SkipBaseline` via `*flags`
+    win-privacy-check-upstream           # Check the privacy declarations against the pinned upstream scripts (runs on macOS/Linux)
+    win-privacy-update-upstream          # Re-pin Win11Debloat and WinUtil to their latest releases, then run the check above
+    win-privacy-verify                   # Compare the machine against windows/privacy/baseline.psd1 (read-only, exits 1 on drift)
+    win-scoop *flags                     # Pass `-DryRun` `-SkipBuckets` `-SkipApps` via `*flags`
+    win-status *flags                    # Diff between apps.json (declaration) and winget list (actual install). exit 1 if any MISSING
+    win-theme *flags                     # Pass `-DryRun` `-ActivePalette rose-pine-dawn` etc. via `*flags`
+    win-upgrade                          # Upgrade every app installed via winget (--silent --accept-*)
+    win-verify *flags                    # Verify every PackageIdentifier in winget/apps.json exists (`just win-verify` / `just win-verify -Strict`)
 
     [secrets]
-    secrets cmd="edit" file="common"                  # Files are split per host since #393: common / darwin / homelab, each with its own recipients.
+    secrets cmd="edit" file="common"     # Files are split per host since #393: common / darwin / homelab, each with its own recipients.
 ```
 <!-- END just-list -->
 
