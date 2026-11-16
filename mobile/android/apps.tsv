@@ -42,10 +42,11 @@
 # ── ストアと端末の権限 ──────────────────────────────────────────────
 # Obtainium のフォーク。端末の更新はこれが受け持つ (APK は fdroid 版で絞る)。
 dev.bikram.obtainx	github	bikram-agarwal/ObtainX
-# thedjchi のフォーク。公式版と違い、再起動後に Wi-Fi に繋がるとワイヤレスデバッグで
-# 自分で起動し、落ちても立ち上げ直す (os-apps.tsv で WRITE_SECURE_SETTINGS を与える)。
-# 公式版とはパッケージ名が同じで署名が違うので、入れ替えには一度アンインストールが要る。
-moe.shizuku.privileged.api	github	thedjchi/Shizuku
+# Shizuku-Next。開発の止まった thedjchi のフォークの後継で、公式版と違い、再起動後に
+# Wi-Fi に繋がるとワイヤレスデバッグで自分で起動し、落ちても立ち上げ直す (os-apps.tsv で
+# WRITE_SECURE_SETTINGS を与える)。公式版や thedjchi 版とはパッケージ名が同じで署名が違うので、
+# 入れ替えには一度アンインストールが要る。
+moe.shizuku.privileged.api	github	rushiranpise/Shizuku-Next
 
 # ── ランチャーと端末環境 ────────────────────────────────────────────
 de.mm20.launcher2.release	github	MM2-0/Kvaesitso

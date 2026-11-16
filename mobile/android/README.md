@@ -249,7 +249,7 @@ encrypted and nothing runs.
   `termux/bin/mute-shutter`, which also works by hand.
 
 On the phone, Shizuku has to start by itself for this, which the official build cannot do
-without a computer. thedjchi's fork (`apps.tsv`) starts on boot through Wireless debugging once
+without a computer. Shizuku-Next (`apps.tsv`), the successor to thedjchi's paused fork, starts on boot through Wireless debugging once
 Wi-Fi is up, given `WRITE_SECURE_SETTINGS` and `NEARBY_WIFI_DEVICES` (`os-apps.tsv`) and one
 pairing from its Pairing screen. Its TCP mode is left off, because it would leave adb listening
 on port 5555 on whatever network the phone is on.
@@ -267,7 +267,7 @@ install -m 700 /sdcard/Download/10-sshd ~/.termux/boot/
 printf 'PasswordAuthentication no\nKbdInteractiveAuthentication no\n' >>"$PREFIX/etc/ssh/sshd_config"
 ```
 
-On the phone, also install rish and the shutter script (after installing thedjchi's Shizuku):
+On the phone, also install rish and the shutter script (after installing Shizuku-Next):
 
 ```sh
 # on the Mac: rish ships inside the Shizuku APK
