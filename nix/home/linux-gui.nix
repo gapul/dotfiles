@@ -3,6 +3,7 @@
   lib,
   pkgs,
   nixpkgsStable,
+  nixpkgsBrowsers,
   user,
   ...
 }:
@@ -20,6 +21,8 @@
 let
   browser = "firefox-devedition.desktop"; # nixpkgs' wrapper names it after the binary
   creativeWineApps = import ../pkgs/creative-wine-apps.nix { inherit pkgs; };
+  # From the commit-pinned nixpkgs-browsers input (flake.nix); see home.packages.
+  servo = nixpkgsBrowsers.legacyPackages.${pkgs.stdenv.hostPlatform.system}.servo;
   niji = pkgs.callPackage ../pkgs/nijigenerate.nix { };
   # adb ignores ANDROID_USER_HOME and always keeps its key and server state in $HOME/.android,
   # so it runs with HOME pointed into the XDG data dir; the state lands in
@@ -440,6 +443,19 @@ in
   };
 
   # These synth packages ship standalone binaries without desktop entries.
+  # servo ships its .desktop only as a template under resources/ (Exec=SERVO_SRC_PATH/...), so
+  # the launcher never sees it. No MimeType: it should not compete for http(s) with ${browser}.
+  xdg.desktopEntries.servo = {
+    name = "Servo";
+    genericName = "Web Browser";
+    exec = "${servo}/bin/servoshell %u";
+    icon = "${servo}/resources/servo.svg";
+    terminal = false;
+    categories = [
+      "Network"
+      "WebBrowser"
+    ];
+  };
   xdg.desktopEntries.cardinal = {
     name = "Cardinal";
     exec = "Cardinal";
@@ -471,6 +487,10 @@ in
     })
     # ─── Browsers ───
     (withXdgHome tor-browser "tor-browser" "tor-browser" [ ])
+    # Experimental engines, from the commit-pinned nixpkgs-browsers input (flake.nix) so their
+    # near-daily snapshot bumps don't ride along with every lock update.
+    servo
+    nixpkgsBrowsers.legacyPackages.${pkgs.stdenv.hostPlatform.system}.ladybird
 
     # ─── Passwords / 2FA ───
     keepassxc # offline vault (the same kdbx the iOS KeePassium build reads)

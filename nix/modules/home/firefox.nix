@@ -48,6 +48,7 @@ in
     ../../../configs/apps/firefox/container-shortcuts.js;
   # Same for the "Always open in" site assignments.
   xdg.dataFile."firefox/container-sites.js".source = ../../../configs/apps/firefox/container-sites.js;
+  xdg.dataFile."firefox/website-glass.js".source = ../../../configs/apps/firefox/website-glass.js;
 
   # What lives inside the extensions that policies cannot reach (no managed storage):
   # Violentmonkey scripts, Header Editor rules, uBlacklist subscriptions and Stylus styles.
@@ -74,11 +75,28 @@ in
         url = "https://webdav.gapul.net/";
         credentials = "secrets/homelab.yaml: homeserver_files/webdav.env";
         violentmonkey = "Settings > Sync > WebDAV; server URL as above (it writes under Violentmonkey/)";
-        stylus = "Options > Sync to cloud > WebDAV";
+        stylus = "Options > Sync to cloud > WebDAV; URL https://webdav.gapul.net/Stylus/";
         ublacklist = "Options > Sync > WebDAV; sync rules, subscriptions and SERP info";
         headerEditor = "Options > Import and export > WebDAV (manual backup, no automatic sync)";
+        websiteGlass = "Apply ~/.local/share/firefox/website-glass.js in the Zen Internet and Dark Reader popup consoles; preserves site exceptions";
       };
       violentmonkey = [
+        {
+          name = "Selection and Copying Restorer (Universal)";
+          url = "https://update.greasyfork.org/scripts/427575/selection-and-copying-restorer-universal.user.js";
+        }
+        {
+          name = "Amazon.co.jpの商品ページに各種リンク追加";
+          url = "https://update.greasyfork.org/scripts/440936/amazon-links.user.js";
+        }
+        {
+          name = "Web Archive Helper";
+          url = "https://update.greasyfork.org/scripts/527818/web-archive-helper.user.js";
+        }
+        {
+          name = "KISS Translator";
+          url = "https://update.greasyfork.org/scripts/472840/kiss-translator.user.js";
+        }
         {
           name = "Pagetual";
           # Infinite scroll on paginated sites; rules from wedata. Import its base rules once.
@@ -99,11 +117,6 @@ in
           # the card without cookies or Referer; Google Maps shows OpenStreetMap and loads Google's
           # embed on click.
           url = "${repo}/violentmonkey/g-embed.user.js";
-        }
-        {
-          name = "amp-canonical: leave AMP pages for the normal page";
-          # Pairs with the AMP rules in configs/apps/ublock/urlskip.txt (Google's AMP cache).
-          url = "${repo}/violentmonkey/amp-canonical.user.js";
         }
         {
           name = "video-default-speed: per-site default playback speed";
@@ -208,6 +221,8 @@ in
       # firefoxdeveloperedition`, Linux through xdg.mimeApps). Without this a profile that is not
       # yet the default parks a "make Firefox your primary browser" panel over the page.
       DontCheckDefaultBrowser = true;
+      # Bitwarden handles logins; suppress Firefox save prompts through managed policy.
+      OfferToSaveLogins = false;
       # No page translation (the offer bar and the feature itself).
       TranslateEnabled = false;
       # No Mozilla account: bookmarks ride floccus and there is nothing else to sync, so the
@@ -363,7 +378,8 @@ in
         "{d07ccf11-c0cd-4938-a265-2a4d6ad01189}".installation_mode = "blocked"; # Web Archives
         "deArrow@ajay.app".installation_mode = "blocked"; # DeArrow (dropped 2026-11-11, unused)
         # Follow OS dark mode on sites without their own automatic theme. Configure
-        # Dark Reader once per profile: automation System/Scheme, detect dark theme on.
+        # Apply website-glass.js once per profile: System/Scheme in both modes, with
+        # dark-theme detection off so native dark pages can also become light.
         # Dark-only sites with a dedicated light UserCSS use Stylus instead (the stylus list in
         # ~/.local/share/firefox/extension-sources.json); exclude those domains in Dark Reader.
         # Prefer maintained site-specific styles over reversing Dark Reader's light palette.
@@ -447,6 +463,13 @@ in
         };
       };
       settings = {
+        # Bitwarden owns password storage; avoid competing Firefox save prompts.
+        "signon.rememberSignons" = false;
+        "signon.autofillForms" = false;
+
+        # Keep new bookmarks alongside the consolidated bookmark folders.
+        "browser.bookmarks.defaultLocation" = "toolbar_____";
+
         "toolkit.legacyUserProfileCustomizations.stylesheets" = true; # load userChrome.css
         # GTK/Wayland must allocate an alpha-capable window at startup. The tab pref lets
         # Zen Internet's transparent website backgrounds reach that window (Linux only).
@@ -690,11 +713,11 @@ in
                 backdrop-filter: blur(24px) !important;
               }
             }
-            /* Dark Reader's document fallback must not cover Zen Internet's transparent canvas.
-               Restrict this to pages styled by both extensions; ordinary sites retain their background. */
+            /* Dark Reader supplies text colors in both system schemes; the browser chrome
+               supplies the glass tint. Only clear pages currently styled by both extensions. */
             @-moz-document url-prefix("https://"), url-prefix("http://") {
-              html[data-darkreader-scheme]:has(style#zeninternet-styles),
-              html[data-darkreader-scheme]:has(style#zeninternet-styles) body {
+              html[data-darkreader-scheme]:has(style#zeninternet-styles:not(:empty)),
+              html[data-darkreader-scheme]:has(style#zeninternet-styles:not(:empty)) body {
                 background-color: transparent !important;
               }
             }

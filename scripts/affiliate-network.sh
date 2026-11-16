@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# NixOS laptop only. Temporarily use the local uplink and unfiltered Quad9 DoT.
+# NixOS laptop only. Temporarily use the local uplink and uplink DNS (without encryption).
 # Run with sudo; `off` restores the saved Tailscale exit node and DNS timer.
 set -euo pipefail
 # jq is installed by Home Manager rather than in root's default sudo PATH.
@@ -28,6 +28,10 @@ case "${1:-status}" in
       echo 'Already enabled. Run off to restore first.' >&2
       exit 1
     fi
+    uplink=$(ip -4 route show default | awk '/^default/ { print $5; exit }')
+    [[ -n "$uplink" ]] || { echo 'Cannot identify the local uplink.' >&2; exit 1; }
+    mapfile -t dns_servers < <(nmcli -g IP4.DNS device show "$uplink")
+    [[ -n "${dns_servers[*]}" ]] || { echo 'The uplink has no DHCP DNS servers.' >&2; exit 1; }
     prefs=$(tailscale debug prefs)
     exit_ip=$(jq -r '.ExitNodeIP // ""' <<<"$prefs")
     exit_id=$(jq -r '.ExitNodeID // ""' <<<"$prefs")
@@ -48,18 +52,18 @@ case "${1:-status}" in
     systemctl stop resolved-prefer-home.timer resolved-prefer-home.service
     mkdir -p /run/systemd/resolved.conf.d
     chmod 755 /run/systemd/resolved.conf.d
-    cat > "$override" <<'EOF'
+    cat > "$override" <<EOF
 [Resolve]
 DNS=
-DNS=9.9.9.10#dns10.quad9.net 149.112.112.10#dns10.quad9.net
+DNS=${dns_servers[*]}
 FallbackDNS=
-DNSOverTLS=true
+DNSOverTLS=false
 EOF
     chmod 644 "$override"
     tailscale set --exit-node=
     systemctl restart systemd-resolved
     trap - EXIT INT TERM
-    echo 'Local uplink + unfiltered Quad9 DoT enabled for this boot. Run off after applying.'
+    echo 'Local uplink + uplink DNS (without encryption) enabled for this boot. Run off after applying.'
     ;;
   off) restore ;;
   status)

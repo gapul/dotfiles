@@ -54,6 +54,12 @@
     # updates leave it alone; drop it once fritzing builds on nixpkgs-nixos again.
     nixpkgs-fritzing.url = "github:NixOS/nixpkgs/fe13242281a67641c0102cdb1087f0ebe586c7df";
 
+    # Servo and Ladybird (nixos-laptop only) are git snapshots that nixpkgs bumps almost daily,
+    # so following nixpkgs-nixos would re-download both on nearly every `just update`. Pinned to
+    # a commit for the same reason as above: lock updates leave it alone. Move it by hand
+    # (to a cached nixos-unstable commit) when a newer build is actually wanted.
+    nixpkgs-browsers.url = "github:NixOS/nixpkgs/f9a75f41be3a74eab55d3a7679d34ad6cc0da977";
+
     nix-darwin.url = "github:nix-darwin/nix-darwin/nix-darwin-26.05";
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
     # FOSS Linux builder on the macmini (hosts/macmini-linux-builder.nix): a Virtualization.framework
@@ -368,7 +374,9 @@
             {
               home-manager.useGlobalPkgs = true;
               home-manager.useUserPackages = true;
-              home-manager.extraSpecialArgs = commonSpecialArgs;
+              home-manager.extraSpecialArgs = commonSpecialArgs // {
+                nixpkgsBrowsers = inputs.nixpkgs-browsers; # servo / ladybird (home/linux-gui.nix)
+              };
               home-manager.users.${user.username}.imports = [
                 ./home/common.nix
                 ./home/linux.nix

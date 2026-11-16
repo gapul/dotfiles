@@ -9,6 +9,10 @@
   }
 
   const sites = {
+    Work: [
+      "app.studio.design",
+      "no-lang.com",
+    ],
     Univ: [
       "utol.ecc.u-tokyo.ac.jp",
       "utas.adm.u-tokyo.ac.jp",
