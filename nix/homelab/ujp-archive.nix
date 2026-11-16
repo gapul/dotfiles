@@ -9,7 +9,7 @@ let
   # pinning. If the hub starts refusing this version, read the new source before bumping the hash.
   src = pkgs.fetchzip {
     url = "https://uploaderjp-full-archive.activetk.jp/dl/ujp-client-win-v1-source.zip";
-    hash = "sha256-F48aMyKYeqiPkqj5ef1IwyAhFRNRfzz19bPS+4EQFj4=";
+    hash = "sha256-F6RNcdyRLqC1uuAE8tWa1U5MTx3h2oqVzQowr4gZ3js=";
     stripRoot = false;
   };
 in
