@@ -50,7 +50,7 @@ de.mm20.launcher2.release	github	MM2-0/Kvaesitso
 # Kvaesitso に当てるアイコンパック。タブレット (devices/nabu) と同じ Arcticons の dayNight
 # (ObtainX では APK を dayNight で絞る)。
 com.donnnno.arcticons.daynight	github	Arcticons-Team/Arcticons
-# 普通の Termux (nix-on-droid の com.termux.nix ではない)。Termux:Boot が動くのはこちらだけで、
+# Termux。Termux:Boot が動くのは普通の Termux だけで (nix-on-droid の Termux:Nix では動かない)、
 # termux/ の起動時スクリプト (シャッター音のミュートと SSH) を載せる。2 つは同じ署名が
 # 要るので、どちらも F-Droid 版にする。
 com.termux	fdroid	-

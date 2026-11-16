@@ -15,13 +15,6 @@ ci:
   default:
     root:
       dir: nix
-      steps:
-        custom:
-          nix-on-droid:
-            type: app
-            name: ci-nixondroid
-            systems:
-              - aarch64-linux
 
   # リポジトリ全体のリンタ・秘密検出・生成物ドリフト。system に依らないので、どの
   # ビルドジョブにも混ぜず専用ジョブ (ci.yml の checks) から `om ci run .#checks` で回す。

@@ -23,7 +23,6 @@ mobile/
 configs/android/obtainium.json      # the old Obtainium list from the phone's GrapheneOS days; unused
 nix/mobile/ios-profiles.nix         # the contents of the .mobileconfig, through pkgs.formats.plist
 nix/mobile/android-root.nix         # a rooted device's KernelSU modules, built into flashable zips
-nix/hosts/droid.nix                 # the CLI environment inside Termux, through nix-on-droid
 ```
 
 ## How far the machine gets
@@ -39,7 +38,7 @@ nix/hosts/droid.nix                 # the CLI environment inside Termux, through
 | Root: KernelSU modules and features | `devices/<codename>/root/` through `root.sh`, zips built by nix | — |
 | Launcher | Setting the default, and generating the theme. Layout is not possible | The home screen is untouched |
 | Generating profiles | — | `nix build .#ios-profiles` |
-| CLI environment | `nix/hosts/droid.nix` | Not attempted. ssh to the Mac from Blink |
+| CLI environment | Not declared; ssh to the Mac (nix-on-droid was removed, see `android/README.md`) | Not attempted. ssh to the Mac from Blink |
 
 Everything marked as not possible has no API behind it. Standing up an MDM would let iOS be
 pushed around too, but running a server and putting two devices into supervised mode is not

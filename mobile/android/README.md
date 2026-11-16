@@ -132,7 +132,7 @@ from Termux:Boot or cron.
 
 ```sh
 # once from the Mac. This is the only time a cable is needed.
-adb shell pm grant com.termux android.permission.WRITE_SECURE_SETTINGS   # com.termux.nix on nabu
+adb shell pm grant com.termux android.permission.WRITE_SECURE_SETTINGS
 
 # afterwards, in Termux on the device
 cd ~/.dotfiles/mobile/android && ./os.sh
@@ -287,20 +287,11 @@ just android-launcher-theme   # generates it and pushes it to /sdcard/Download/
 # on the device: Kvaesitso, Settings, Appearance, Theme, Import
 ```
 
-## The CLI on the device, through nix-on-droid
+## No Nix on the devices
 
-The same zsh, git, tmux and CLI tools as the Mac, running on top of Termux. Only nabu has it
-now: the phone runs plain Termux instead, because Termux:Boot only works with that build. The configuration is
-`nix/hosts/droid.nix`, sharing the git, cli, shell and terminal components in
-`nix/modules/home/` unchanged. Components that assume a GUI, and components that depend on
-modules from flake inputs such as nix-index and agent-skills, are not loaded.
-
-The first time, install [Termux:Nix](https://f-droid.org/packages/com.termux.nix/) — the
-nix-capable build, not ordinary Termux — and inside it run:
-
-```sh
-nix-on-droid switch --flake git+https://git.gapul.net/gapul/dotfiles?dir=nix#default
-```
-
-Updates use the same command. In CI, `nix run .#ci-nixondroid` on aarch64-linux builds the
-activation package and no more.
+There used to be a nix-on-droid configuration (`nix/hosts/droid.nix`) that put the Mac's zsh,
+git and tmux on top of Termux. It was removed in 2026-11. Its app, Termux:Nix
+(`com.termux.nix`), is an old Termux fork with a different package and shared user ID, so
+Termux add-ons such as Termux:Boot do not work with it, and its upstream does not plan to fix
+that. The phone needs Termux:Boot, and both devices are reached from the Mac over SSH or adb,
+where the full environment already is.

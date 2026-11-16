@@ -21,7 +21,7 @@ classify() {
       nix/home/workstation.nix | nix/modules/home/darwin-*.nix) echo darwin ;;
     # Linux-only entities, plus the VM tests, which only ever run there
     nix/hosts/nixos-*.nix | nix/hosts/homeserver*.nix | nix/hosts/recovery-iso.nix | \
-      nix/hosts/droid.nix | nix/home/linux.nix | nix/home/wsl.nix | nix/home/hyprland.nix | \
+      nix/home/linux.nix | nix/home/wsl.nix | nix/home/hyprland.nix | \
       nix/home/restic-backup-linux.nix | nix/tests/*) echo linux ;;
     # Documentation cannot change a build; it must not be the reason a system is skipped either,
     # so it votes for nothing and a docs-only diff falls through to the default.
