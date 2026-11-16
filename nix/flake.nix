@@ -456,7 +456,7 @@
           ./home/macmini-render.nix
           # Voice models and synthesis. Clients use the API over the tailnet.
           ./home/macmini-aivisspeech.nix
-          ./home/rclone-mount.nix # Google Drive under ~/Sync, same remotes as the main Mac (rclone_conf from hosts/macmini.nix)
+          ./home/rclone-mount.nix # Google Drive under ~/mnt, same remotes as the main Mac (rclone_conf from hosts/macmini.nix)
           ./home/nix-gc-tcc.nix # stable copy of signed nix used by the root GC daemon (hosts/darwin-common.nix)
           # dotfiles-pull (home/macmini.nix) relies on the post-merge hook to rebuild, but this role
           # had no module installing the hook, so .git/hooks still held an old copy placed by hand on
@@ -1006,7 +1006,7 @@
             ];
             extraHome = [
               ./home/restic-backup-linux.nix # restic (systemd user timer)
-              ./home/rclone-mount.nix # Google Drive under ~/Sync, same remotes as the mac (systemd user services)
+              ./home/rclone-mount.nix # Google Drive under ~/mnt, same remotes as the mac (systemd user services)
               ./home/laptop-remote.nix # SSH tunnel to the avatar viewers (systemd user service)
               sops-nix.homeManagerModules.sops
               ./home/secrets.nix

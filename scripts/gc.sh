@@ -86,7 +86,7 @@ echo ""
 echo "━━━ Dev caches (__pycache__/*.pyc/.pytest_cache etc., excl Library, regenerated) ━━━"
 # This was two `find $HOME` passes and it was the slowest thing in `just gc` by a wide margin.
 # Two reasons, both fixed here:
-#   - ~/Sync holds two rclone NFS mounts of Google Drive (780Ti and 816Gi as mounted), and
+#   - ~/mnt holds the rclone NFS mounts of Google Drive (780Ti and 816Gi as mounted), and
 #     plain `find` happily descended into them, so the sweep went out over the network and
 #     the API. Measured: it had not printed a single result after 35s. --one-file-system
 #     keeps it on the local volume, which is the only place these caches can be anyway.
