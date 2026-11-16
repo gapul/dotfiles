@@ -14,7 +14,6 @@
 # this disk or in restic, while ~/Sync/syncthing does. Same path on macOS and Linux.
 #   ~/mnt/google-drive            <- remote google-drive:           (remote-primary, a mount, personal)
 #   ~/mnt/google-drive-school     <- remote google-drive-school:    (remote-primary, a mount)
-#   ~/mnt/google-drive-sean       <- remote google-drive-sean:      (remote-primary, a mount)
 #   ~/Sync/syncthing              <- Syncthing share                (local-primary, real files)
 # The mount point name is the remote name, so the two never drift apart.
 #
@@ -52,9 +51,6 @@ let
     # two writers racing to refresh it in a single rclone.conf.
     "google-drive"
     "google-drive-school"
-    # Workspace account. My Drive only; its shared drives are not mounted
-    # (that needs its own section with team_drive set).
-    "google-drive-sean"
   ];
 
   # Unprivileged FUSE unmount goes through the setuid wrapper NixOS installs.

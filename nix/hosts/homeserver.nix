@@ -82,7 +82,7 @@ in
   #     copied off the box first; the 200GB mount is on the same NVMe and does not count
   #
   # Everything the old box ran is declared: CT101's stacks, the HAOS VM, the four
-  # LXC containers and VM105's L2TP tunnel. The one thing not carried over is
+  # LXC containers. The one thing not carried over is
   # CT106, and only because there was nothing in it — the mullvad and wg binaries
   # are installed but /etc/wireguard is empty and its default route is the plain
   # LAN one, so it has been a tailscale node doing nothing. If a Mullvad exit node
@@ -191,9 +191,6 @@ in
   # is safe (tailscale picks one as primary), so this can be enabled before CT102 is
   # switched off, and the old one is the fallback while cutting over.
   #
-  # The remote subnet is reachable because of homelab/vpn-relay.nix; advertising it
-  # while the tunnel is down simply means those packets go nowhere, same as before.
-  #
   services.tailscale = {
     enable = true;
     # This used to be pulled from unstable here (the 26.05 series was stuck at 1.98.10 while
@@ -204,17 +201,14 @@ in
     # to run `tailscale up`, which is exactly the step that leaves a headless
     # box unreachable.
     authKeyFile = "/var/lib/secrets/tailscale.key";
-    # The house; the remote network reached over the L2TP tunnel in
-    # homelab/vpn-relay.nix (once advertised by VM105); and UTNET over
-    # homelab/utokyo-vpn.nix. These flags only apply when the node first logs in —
-    # on a running box change the routes with `tailscale set --advertise-routes=...`.
-    extraUpFlags = [
-      "--advertise-routes=192.168.116.0/24,192.168.1.0/24,10.80.1.0/24,130.69.0.0/16,133.11.0.0/16,157.82.0.0/16,192.51.208.0/20"
-    ];
     # The host resolves through its own blocky (homelab/blocky.nix), not MagicDNS. With
     # MagicDNS, 100.100.100.100 forwarded every lookup in plaintext over the tailnet to macmini's
     # blocky (seen with tcpdump, 2026-10-31); the tailnet is not trusted to keep DNS private.
-    extraSetFlags = [ "--accept-dns=false" ];
+    extraSetFlags = [
+      "--accept-dns=false"
+      # Keep the house and UTNET routes in sync on existing nodes as well as first login.
+      "--advertise-routes=192.168.116.0/24,130.69.0.0/16,133.11.0.0/16,157.82.0.0/16,192.51.208.0/20"
+    ];
   };
 
   # --- TLS ---

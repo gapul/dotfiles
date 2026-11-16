@@ -9,21 +9,17 @@ stay with the machine that owns the workload.
 | MacBook | GUI editing, Simulator/device testing, interactive debugging, current small working files | Long-running services, bulk asset libraries, unattended batch jobs |
 | Mac mini | Personal macOS builds, Nix distributed builds, Blender/ffmpeg batch jobs, AI inference and audio processing | Primary documents, general storage |
 | homeserver | Stateful services, databases, backups, CI orchestration, Linux/container jobs and long-term storage | Interactive desktop work, macOS-only builds |
-| sean | Repositories that live there, VRM source assets and their build/render outputs | Personal data and a workstation-wide mirror |
 
 ## Routing rules
 
 - Build on the target platform: macOS release work and Nix derivations go to the Mac mini;
-  Linux/container work goes to the homeserver; builds and renders for that work stay on
-  `sean`.
+  Linux/container work goes to the homeserver.
 - Keep Simulator, hardware-device deployment, signing prompts and GUI authoring on the MacBook.
 - Use Git for source code. Clone on the execution host instead of synchronizing a working tree.
 - Use `~/Sync/macmini` only as an ephemeral job inbox/outbox. It must never become the primary
   copy of a project.
 - Use Syncthing for intentionally multi-device personal data and rclone mounts for remote-primary
   Drive data.
-- Do not automatically mirror `sean`. Access its assets over SSH and copy only the
-  small result needed for local review.
 
 ## Remote build and render
 
@@ -42,15 +38,14 @@ stay with the machine that owns the workload.
 - Build checkouts and render uploads are execution caches, not primary data. Render uploads are
   deleted after each job; inactive build checkouts are deleted by the weekly storage cleanup
   after 30 days.
-- Simulator tests and GUI editing remain on the MacBook. Those repositories and
-  their VRM assets continue to build and render on `sean`, not on the personal Mac mini.
+- Simulator tests and GUI editing remain on the MacBook.
 
 ## VRM assets
 
-The primary VRM collection is `sean:~/Sync/MacBook-Mini/vrm-assets`. The old
-MacBook mirror at `~/Sync/sean` was retired on 2026-09-10. Before retirement, its ten
-conflicting local versions and ignored `fbx_to_vrm` Git metadata were preserved on the server at
-`~/vrm-asset-local-archive-20260910`.
+The retained asset snapshot is on the Mac mini under `~/Documents/Archives/`.
+Its `source-manifest.json` records file hashes and `verification.json` records the completed
+SHA-256 comparison. Keep these records with the snapshot. The Mac mini's scheduled backup
+does not currently include this directory; saving the snapshot there is not an off-site backup.
 
 Repositories may contain small committed fixtures required by tests. Bulk models, converted
 variants, previews and render output do not belong in a workstation clone.

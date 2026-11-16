@@ -125,15 +125,6 @@
         - trigger: ":umail"
           label: "UTokyo Email"
           replace: "${config.sops.placeholder."pii/email_school"}"
-        - trigger: ":wmail"
-          label: "Email (sean)"
-          replace: "${config.sops.placeholder."pii/email_sean"}"
-        - trigger: ":sig"
-          label: "Signature"
-          replace: |
-            ----
-            ${config.sops.placeholder."pii/name"}
-            ${config.sops.placeholder."pii/email_sean"}
     '';
   };
 

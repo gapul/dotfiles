@@ -196,7 +196,7 @@ in
         # Was ~/.config/restic/password, placed by hand. restic-common.nix's default path is the
         # same location, so the module below keeps reading it without knowing it moved.
         "restic_password" = forUser "/Users/${user.username}/.config/restic/password";
-        # Same rclone.conf as the main Mac (home/secrets.nix): the three Drive remotes behind the
+        # Same rclone.conf as the main Mac (home/secrets.nix): the personal and school Drive remotes behind the
         # ~/mnt mounts (home/rclone-mount.nix) and the restic backend. Was a hand-placed file
         # holding google-drive only.
         "rclone_conf" = forUser "/Users/${user.username}/.config/rclone/rclone.conf";

@@ -7,7 +7,6 @@ let
   table = 51821;
   ip = "${pkgs.iproute2}/bin/ip";
   wg = "${pkgs.wireguard-tools}/bin/wg";
-  l2tpPeer = "/var/lib/secrets/l2tp/peer";
 
   # Services that keep the plain line, by cgroup: everything they start inherits it.
   # - mail: Google sign-ins with an app password from a VPN address are what gets an
@@ -30,7 +29,6 @@ let
     "mail-mirror"
     "mail-push-gmail"
     "mail-push-school"
-    "mail-push-sean"
     "stalwart"
     "utokyo-vpn"
     "matrix-line"
@@ -54,7 +52,7 @@ let
   # connections, and tailnet addresses still resolve through its table 52.
   rules = [
     # Anything main has a more specific route for: the LAN, the container veth,
-    # podman bridges, ppp0 (L2TP), utvpn (UTNET).
+    # podman bridges, utvpn (UTNET).
     "pref 5300 lookup main suppress_prefixlength 0"
     # Everything else, except WireGuard's own encapsulated packets.
     "pref 5310 not fwmark ${toString table} lookup ${toString table}"
@@ -126,11 +124,6 @@ in
         ++ map (r: "${ip} -4 rule add ${r}") v4Rules
         ++ map (r: "${ip} -6 rule add ${r}") v6Rules
       )}
-      # The L2TP/IPsec peer (vpn-relay.nix) stays on the plain line: the far end
-      # knows this house by its address. The peer is only known at runtime.
-      if [ -s ${l2tpPeer} ]; then
-        ${ip} -4 rule add pref 5291 to "$(cat ${l2tpPeer})" lookup main
-      fi
     '';
     preDown = ''
       ${builtins.concatStringsSep "\n" (
@@ -138,7 +131,6 @@ in
         ++ map (r: "${ip} -4 rule del ${r} || true") v4Rules
         ++ map (r: "${ip} -6 rule del ${r} || true") v6Rules
       )}
-      ${ip} -4 rule del pref 5291 || true
     '';
   };
 

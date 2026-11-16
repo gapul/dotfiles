@@ -955,7 +955,6 @@
             extraHome = [
               ./home/restic-backup-linux.nix # restic (systemd user timer)
               ./home/rclone-mount.nix # Google Drive under ~/mnt, same remotes as the mac (systemd user services)
-              ./home/laptop-remote.nix # SSH tunnel to the avatar viewers (systemd user service)
               sops-nix.homeManagerModules.sops
               ./home/secrets.nix
               ./home/thunderbird.nix # mail accounts as a sops template (needs secrets.nix)
