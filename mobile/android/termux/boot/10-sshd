@@ -4,11 +4,14 @@
 
 # SSH は tailnet のアドレスでだけ受ける (鍵のみ。sshd_config は README)。アドレスは Tailscale の
 # 範囲 (100.64.0.0/10) のものを ifconfig から拾うので、端末ごとに書き換えなくてよい。Tailscale が
-# アドレスを上げるまでは見つからないので、上がって sshd が bind できるまで繰り返す。
-(
-  while :; do
-    addr=$(ifconfig 2>/dev/null | awk '$1 == "inet" && $2 ~ /^100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\./ { print $2; exit }')
-    [ -n "$addr" ] && sshd -o ListenAddress="$addr" && break
-    sleep 15
-  done
-) &
+# アドレスを上げるまでは見つからないので、上がるまで待つ。
+#
+# sshd は裏に回さず (-D)、このスクリプトごと Termux の実行中のタスクとして残す。タスクがある間は
+# Termux が前面サービスになる。裏に回すと Termux がキャッシュ扱いになり、Android のアプリ凍結
+# (cached apps freezer) が同じ cgroup の sshd ごと止めて、接続しても応答が返らなくなる。
+# sshd が落ちたり、アドレスが変わって bind できなくなったりしたら、拾い直して上げ直す。
+while :; do
+  addr=$(ifconfig 2>/dev/null | awk '$1 == "inet" && $2 ~ /^100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\./ { print $2; exit }')
+  [ -n "$addr" ] && sshd -D -o ListenAddress="$addr"
+  sleep 15
+done

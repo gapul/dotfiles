@@ -4,8 +4,7 @@
 # 日本向けの Pixel は純正カメラのシャッター音を ENFORCED_AUDIBLE の音量グループで強制し、
 # そのミュートは再起動で戻る。グループの番号は端末ごとに違い、この Pixel 7a では 5
 # (7 は通知。dumpsys audio の "Legacy Stream Type 7 Volume Group Id" で確かめる)。
-# Shizuku (Shizuku-Next) は Wi-Fi に繋がってから自分で起動するので、上がるのを待つ。
-(
-  until "$HOME/bin/rish" -c true >/dev/null 2>&1; do sleep 15; done
-  "$HOME/bin/mute-shutter"
-) &
+# Shizuku (Shizuku-Next) は Wi-Fi に繋がってから自分で起動するので、上がるのを待つ。待つ間も
+# 裏に回さないのは 10-sshd と同じ理由 (裏に回すと Termux ごと凍結されて待ちが進まない)。
+until "$HOME/bin/rish" -c true >/dev/null 2>&1; do sleep 15; done
+exec "$HOME/bin/mute-shutter"
