@@ -97,6 +97,10 @@ let
     }
     { rel = "tailscale.key"; }
     {
+      rel = "ujp-archive.env";
+      restartUnits = [ "ujp-archive.service" ];
+    }
+    {
       rel = "unified-calendar.env";
       owner = "unified-calendar";
     }
