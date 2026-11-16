@@ -12,6 +12,15 @@ let
   installDir = "/opt/Xilinx";
   version = "2020.2";
 
+  # Vivado 2020.2 still loads libgtk-x11-2.0. Accept the known GTK2 retirement
+  # problem only for this runtime; other GTK2 users keep nixpkgs' default checks.
+  # This is a compatibility exception, not a GTK2 migration or a security fix.
+  gtk2ForVivado = pkgs.gtk2.overrideAttrs (old: {
+    meta = old.meta // {
+      problems = builtins.removeAttrs (old.meta.problems or { }) [ "broken" ];
+    };
+  });
+
   fhs =
     name: runScript:
     pkgs.buildFHSEnv {
@@ -31,7 +40,7 @@ let
           libuuid
           libusb1 # hw_server, for the JTAG cables
           glib
-          gtk2
+          gtk2ForVivado
           gtk3
           fontconfig
           freetype
@@ -63,11 +72,6 @@ let
     };
 in
 {
-  # nixpkgs marks gtk2 broken ahead of its removal (NixOS/nixpkgs#410814), which aborts the whole
-  # system eval. The 2020.2 runtime still dlopens libgtk-x11-2.0, so downgrade just that package to
-  # a warning; drop this together with gtk2 above once Vivado moves to a release on gtk3.
-  nixpkgs.config.problems.handlers."gtk+".broken = "warn";
-
   environment.systemPackages = [
     (fhs "vivado" "${installDir}/Vivado/${version}/bin/vivado")
     (fhs "xilinx-shell" "bash") # for the installer, and for anything else under installDir
