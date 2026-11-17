@@ -109,7 +109,7 @@ in
 
   # The dictionaries are the copies modules/home/editor.nix already puts in ~/.local/share/skk for
   # skkeleton, so the editor and the IM convert from one set, in the order of macSKK's
-  # dictionaries[], except that the skkserv comes first (see below).
+  # dictionaries[], except that the skkserv comes first, and once more last (see below).
   # Without this file fcitx5-skk reads the package's list, which has SKK-JISYO.L
   # alone. $FCITX_CONFIG_DIR is fcitx5's data dir, so the user dictionary, where conversions are
   # learned, ends up at ~/.local/share/fcitx5/skk/user.dict; it is not shared with skkeleton-user-dict.
@@ -121,6 +121,7 @@ in
     type=file,file=${skkDir}/SKK-JISYO.jinmei,mode=readonly
     type=file,file=${skkDir}/SKK-JISYO.propernoun,mode=readonly
     type=file,file=${skkDir}/SKK-JISYO.station,mode=readonly
+    type=server,host=127.0.0.1,port=${toString skkservPort},encoding=UTF-8,context=true,okuri=ari
   '';
 
   # azoo-key-skkserv, the skkserv macSKK and skkeleton use on the mac (azooKey skkserv.app there):
@@ -131,10 +132,14 @@ in
   # most homophones (いこう: 以降 移行 意向 行こう), and after the user dictionary, which holds some
   # 2300 learned readings (かがく /科学/), only for readings never picked before. The cost is that
   # what was picked last no longer leads for readings the server knows, which is nearly all of
-  # them; the user dictionary still records picks. The server always answers in UTF-8, and libskk
-  # uses one encoding for both directions, so requests are UTF-8 too; the Linux build does not
-  # answer EUC-JP requests at all (nix/pkgs/azoo-key-skkserv.nix). skkeleton on Linux sends UTF-8
-  # for the same reason (configs/editors/nvim/lua/plugins/skkeleton.lua).
+  # them; the user dictionary still records picks. The first entry answers okuri-nasi readings only
+  # (okuri=nasi, the default): the server converts okuri-ari ones from the bare consonant poorly
+  # (つかt: 束/付か/着か, no 使; むすb: 蒸す, which became 蒸すぶ), so those come from the files first,
+  # and the last entry (okuri=ari) adds the server's for readings the files lack (いれt for IreTe:
+  # 入れ), as the server did when it was last in the list. The server always answers in UTF-8, and
+  # libskk uses one encoding for both directions, so requests are UTF-8 too; the Linux build does
+  # not answer EUC-JP requests at all (nix/pkgs/azoo-key-skkserv.nix). skkeleton on Linux sends
+  # UTF-8 for the same reason (configs/editors/nvim/lua/plugins/skkeleton.lua).
   #
   # context=true makes this entry the fork's FcitxSkkContextServ (pkgs/fcitx5-skk-context.nix),
   # not libskk's SkkServ: each lookup also sends up to 30 characters around the cursor, which
