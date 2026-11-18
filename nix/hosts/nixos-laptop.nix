@@ -991,7 +991,8 @@ in
   # Japanese input: fcitx5 with SKK, set up after macSKK on the mac (configs/ime/skk/README.md).
   # Mozc stays installed but out of the group; add it back from fcitx5-configtool if it is ever wanted.
   # macSKK's skkserv (azooKey skkserv on localhost:1178) runs here too, as a user service in
-  # home/fcitx5-skk.nix (the Linux build of the same server).
+  # home/fcitx5-skk.nix (the Linux build of the same server). fcitx5-skk is the fork that sends the
+  # text around the cursor to that server (pkgs/fcitx5-skk-context.nix).
   # The dictionaries and the kana rule are user-side, in home/fcitx5-skk.nix.
   # Hyprland runs no XDG autostart, so the daemon is started from its exec-once (home/hyprland.nix);
   # before that, nothing ever started fcitx5 and neither IM worked.
@@ -1000,7 +1001,7 @@ in
     type = "fcitx5";
     fcitx5 = {
       addons = with pkgs; [
-        fcitx5-skk
+        (callPackage ../pkgs/fcitx5-skk-context.nix { })
         fcitx5-mozc
       ];
       # Apps talk to fcitx5 over Wayland's text-input protocol instead of the GTK/Qt IM modules

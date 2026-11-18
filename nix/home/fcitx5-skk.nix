@@ -109,26 +109,44 @@ in
 
   # The dictionaries are the copies modules/home/editor.nix already puts in ~/.local/share/skk for
   # skkeleton, so the editor and the IM convert from one set, in the order of macSKK's
-  # dictionaries[]. Without this file fcitx5-skk reads the package's list, which has SKK-JISYO.L
+  # dictionaries[], except that the skkserv comes first, and once more last (see below).
+  # Without this file fcitx5-skk reads the package's list, which has SKK-JISYO.L
   # alone. $FCITX_CONFIG_DIR is fcitx5's data dir, so the user dictionary, where conversions are
   # learned, ends up at ~/.local/share/fcitx5/skk/user.dict; it is not shared with skkeleton-user-dict.
   xdg.dataFile."fcitx5/skk/dictionary_list".text = ''
+    type=server,host=127.0.0.1,port=${toString skkservPort},encoding=UTF-8,context=true
     type=file,file=$FCITX_CONFIG_DIR/skk/user.dict,mode=readwrite
     type=file,file=${skkDir}/SKK-JISYO.L,mode=readonly
     type=file,file=${skkDir}/SKK-JISYO.geo,mode=readonly
     type=file,file=${skkDir}/SKK-JISYO.jinmei,mode=readonly
     type=file,file=${skkDir}/SKK-JISYO.propernoun,mode=readonly
     type=file,file=${skkDir}/SKK-JISYO.station,mode=readonly
-    type=server,host=127.0.0.1,port=${toString skkservPort},encoding=UTF-8
+    type=server,host=127.0.0.1,port=${toString skkservPort},encoding=UTF-8,context=true,okuri=ari
   '';
 
   # azoo-key-skkserv, the skkserv macSKK and skkeleton use on the mac (azooKey skkserv.app there):
   # AzooKeyKanaKanjiConverter with the Zenzai model, so compounds and whole phrases the SKK-JISYO
-  # files lack still convert (はいたつぎょうしゃ → 配達業者). It is queried after the files above, so
-  # their candidates come first. The server always answers in UTF-8, and libskk uses one encoding
-  # for both directions, so requests are UTF-8 too; the Linux build does not answer EUC-JP
-  # requests at all (nix/pkgs/azoo-key-skkserv.nix). skkeleton on Linux sends UTF-8 for the same
-  # reason (configs/editors/nvim/lua/plugins/skkeleton.lua).
+  # files lack still convert (はいたつぎょうしゃ → 配達業者). libskk lists the candidates of each
+  # dictionary in turn and drops the later duplicates, so the server comes first: after the
+  # SKK-JISYO files its context order (below) would show only for readings they lack, as they have
+  # most homophones (いこう: 以降 移行 意向 行こう), and after the user dictionary, which holds some
+  # 2300 learned readings (かがく /科学/), only for readings never picked before. The cost is that
+  # what was picked last no longer leads for readings the server knows, which is nearly all of
+  # them; the user dictionary still records picks. The first entry answers okuri-nasi readings only
+  # (okuri=nasi, the default): the server converts okuri-ari ones from the bare consonant poorly
+  # (つかt: 束/付か/着か, no 使; むすb: 蒸す, which became 蒸すぶ), so those come from the files first,
+  # and the last entry (okuri=ari) adds the server's for readings the files lack (いれt for IreTe:
+  # 入れ), as the server did when it was last in the list. The server always answers in UTF-8, and
+  # libskk uses one encoding for both directions, so requests are UTF-8 too; the Linux build does
+  # not answer EUC-JP requests at all (nix/pkgs/azoo-key-skkserv.nix). skkeleton on Linux sends
+  # UTF-8 for the same reason (configs/editors/nvim/lua/plugins/skkeleton.lua).
+  #
+  # context=true makes this entry the fork's FcitxSkkContextServ (pkgs/fcitx5-skk-context.nix),
+  # not libskk's SkkServ: each lookup also sends up to 30 characters around the cursor, which
+  # Zenzai uses to order the candidates. It connects on the first lookup and opens the connection
+  # again after the server restarts, so neither fcitx5's start nor a restart of this server needs
+  # to be coordinated with the other. (libskk's SkkServ connected once, at fcitx5's start, and
+  # never again, which took a wait in this unit, a restart of fcitx5 after it, and a watchdog.)
   systemd.user.services.azoo-key-skkserv = {
     Unit.Description = "azoo-key-skkserv (skkserv on 127.0.0.1:${toString skkservPort})";
     Service = {
@@ -139,28 +157,6 @@ in
         "--incoming-charset"
         "UTF-8"
       ];
-      # The server takes a few seconds to load the Zenzai model before it listens. libskk
-      # connects to the skkserv once, when fcitx5 starts, and never again, so fcitx5 (its
-      # own unit below, ordered after this one) must not start until the port answers:
-      # "started" here means "listening". For the same reason a restart of this server alone (a
-      # switch that changes its store path) leaves a running fcitx5 with no server dictionary,
-      # so once the port answers, a fcitx5 that is already running is restarted to reconnect.
-      # try-restart does nothing at login, when fcitx5 has not started yet; --no-block because
-      # fcitx5's start is ordered after this unit and would otherwise wait on this very script.
-      ExecStartPost = lib.getExe (
-        pkgs.writeShellApplication {
-          name = "wait-for-skkserv";
-          bashOptions = [ ];
-          text = ''
-            for _ in $(seq 1 300); do
-              ${pkgs.bash}/bin/bash -c "exec 3<>/dev/tcp/127.0.0.1/${toString skkservPort}" 2>/dev/null && break
-              sleep 0.1
-            done
-            /run/current-system/sw/bin/systemctl --user --no-block try-restart fcitx5.service || true
-            exit 0
-          '';
-        }
-      );
       Restart = "on-failure";
       RestartSec = 5;
       Nice = 5;
@@ -171,18 +167,15 @@ in
     Install.WantedBy = [ "default.target" ];
   };
 
-  # fcitx5 itself, as a unit after the skkserv rather than an exec-once in Hyprland, so SKK's
-  # server dictionary is reachable the moment libskk connects (see above). The session's
-  # Wayland variables reach it through graphical-session.target. --replace: takes over any
-  # instance that something else started.
+  # fcitx5 itself, as a unit rather than an exec-once in Hyprland. It wants the skkserv, so
+  # conversion through Zenzai is there in the session; their order no longer matters (see above).
+  # The session's Wayland variables reach it through graphical-session.target. --replace: takes
+  # over any instance that something else started.
   systemd.user.services.fcitx5 = {
     Unit = {
       Description = "fcitx5 input method (SKK)";
       PartOf = [ "graphical-session.target" ];
-      After = [
-        "graphical-session.target"
-        "azoo-key-skkserv.service"
-      ];
+      After = [ "graphical-session.target" ];
       Wants = [ "azoo-key-skkserv.service" ];
     };
     Service = {
@@ -191,53 +184,6 @@ in
       RestartSec = 2;
     };
     Install.WantedBy = [ "graphical-session.target" ];
-  };
-
-  # libskk never reconnects a lost skkserv connection: lookup() just returns nothing from then on,
-  # and neither `fcitx5-remote -r` nor anything else short of a restart opens a new one. On
-  # 2026-11-11 fcitx5 had been running for days with the socket gone (the cause was lost with the
-  # rotated journal), so conversion quietly fell back to the SKK-JISYO files. This checks each
-  # minute that fcitx5 still holds an established connection to the server, and restarts fcitx5
-  # when it does not but the server answers (if the server is down, a restart would not help, and
-  # its own ExecStartPost restarts fcitx5 once it is back).
-  systemd.user.services.skkserv-watchdog = {
-    Unit.Description = "Restart fcitx5 when its skkserv connection is gone";
-    Service = {
-      Type = "oneshot";
-      ExecStart = lib.getExe (
-        pkgs.writeShellApplication {
-          name = "skkserv-watchdog";
-          runtimeInputs = with pkgs; [
-            bash
-            coreutils
-            gnugrep
-            iproute2
-          ];
-          text = ''
-            systemctl=/run/current-system/sw/bin/systemctl
-            pid=$($systemctl --user show -p MainPID --value fcitx5.service)
-            [ "$pid" != 0 ] || exit 0
-            # Leave a fcitx5 that has only just started alone: libskk connects a moment in.
-            since=$($systemctl --user show --timestamp=unix -p ActiveEnterTimestamp --value fcitx5.service)
-            [ $(($(date +%s) - ''${since#@})) -ge 30 ] || exit 0
-            if ss -Htnp state established "( dport = :${toString skkservPort} )" | grep -q "pid=$pid,"; then
-              exit 0
-            fi
-            bash -c "exec 3<>/dev/tcp/127.0.0.1/${toString skkservPort}" 2>/dev/null || exit 0
-            echo "fcitx5 (pid $pid) has no skkserv connection; restarting it"
-            $systemctl --user try-restart fcitx5.service
-          '';
-        }
-      );
-    };
-  };
-  systemd.user.timers.skkserv-watchdog = {
-    Unit.Description = "Check fcitx5's skkserv connection every minute";
-    Timer = {
-      OnActiveSec = "1min";
-      OnUnitActiveSec = "1min";
-    };
-    Install.WantedBy = [ "timers.target" ];
   };
 
 }
