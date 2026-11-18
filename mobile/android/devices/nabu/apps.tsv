@@ -30,10 +30,16 @@
 # Obtainium のフォーク。端末の更新はこれが受け持つ (APK は arm64 の非 fdroid 版で絞る)。
 dev.bikram.obtainx	github	bikram-agarwal/ObtainX
 # 端末のカーネルに組み込まれた KernelSU Next の管理アプリ。ksud もこれが入れ替える。
-# 管理アプリだけ先に上げるとカーネル側とずれるので、カーネルと一緒に上げる
-# (ObtainX では spoofed 版を除いて絞る)。
+# 管理アプリだけ先に上げるとカーネル側とずれる (画面に "Kernel update required" と出て、
+# Superusers やモジュールを触れなくなる) ので、カーネルと一緒に上げる。ObtainX では spoofed 版を
+# 除いて絞り、裏での自動更新から外してある (2026-11-16 に勝手に v3.4.2 へ上がり、v3.3.0 に戻した)。
 com.rifsxd.ksunext	github	KernelSU-Next/KernelSU-Next
-moe.shizuku.privileged.api	github	RikkaApps/Shizuku
+# Shizuku-Next (スマホと同じ)。root (KernelSU で Superuser を許可) で起動し、起動時に自分で上がる。
+moe.shizuku.privileged.api	github	rushiranpise/Shizuku-Next
+# Termux。Termux:Boot が起動のたびに ../../termux/boot/10-sshd を走らせ、tailnet のアドレスで
+# SSH を受ける (root の操作は su)。2 つは同じ署名が要るので、どちらも F-Droid 版にする。
+com.termux	fdroid	-
+com.termux.boot	fdroid	-
 com.rosan.installer.x.revived	github	wxxsfxyzm/InstallerX-Revived
 
 # ── Google の代わり (microG) ───────────────────────────────────────
@@ -62,7 +68,7 @@ app.morphe.manager	github	MorpheApp/morphe-manager
 # /data/adb/modules/zygisk_vector/cli scope set <module> <pkg>/0 で設定している。
 # AirPods の独自機能。Android 16 の Bluetooth の不具合を Xposed で回避する。
 # scope: com.android.bluetooth, com.android.settings
-me.kavishdevar.librepods	github	kavishdevar/librepods
+me.kavishdevar.librepods	github	librepods-org/librepods
 # SyncClipboard の Xposed クライアント。macmini のサーバー (Tailscale Serve の 5033) と
 # 両方向に自動同期する。scope: com.android.systemui
 io.github.erenche.syncclipboard	github	shaklow/syncclipboard-xposed
@@ -94,7 +100,7 @@ com.kazumaproject.markdownhelperkeyboard	github	KazumaProject/JapaneseKeyboard
 # ギャラリー (Glimpse の代わり)。Google 依存の無い libre 版 (Obtainium では libre で絞る)。
 deckers.thibault.aves.libre	github	deckerst/aves
 # Navidrome (Subsonic) の音楽プレイヤー (Twelve の代わり)。止まった Tempo の後継フォークで、
-# microG 端末なので degoogled 版。スマホの Tempo もいずれこちらに寄せる。
+# microG 端末なので degoogled 版 (スマホも同じ)。
 # dev 版はデバッグ署名なので追わない。
 com.eddyizm.degoogled.tempus	github	eddyizm/tempus
 # 天気。ロック画面の天気は ROM の OmniJaws が出すので、こちらは見る用
@@ -102,7 +108,7 @@ com.eddyizm.degoogled.tempus	github	eddyizm/tempus
 org.breezyweather	github	breezy-weather/breezy-weather
 # 英語などのキーボード。日本語は Sumire のまま既定にし、こちらは切り替えて使う
 # (os-settings.conf の enabled_input_methods)。
-helium314.keyboard	github	Helium314/HeliBoard
+helium314.keyboard	github	HeliBorg/HeliBoard
 
 # ── 動画・音楽・画像 ────────────────────────────────────────────────
 # YouTube を API に頼らず見る / 落とす (ニコニコ、BiliBili も)。ベータを追う。

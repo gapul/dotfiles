@@ -66,8 +66,9 @@ permissions, plus `status`, which counts the difference against the device.
 
 Leaving wireless debugging permanently available over the tailnet would automate the rest, but
 that would create a state where the declaration moves on while nothing is connected and it
-looks applied when it is not. So those stay explicit. The phone does accept SSH over the tailnet
-now, with `rish` giving adb's rights (`android/README.md`), but that is for reaching it by hand,
+looks applied when it is not. So those stay explicit. Both devices do accept SSH over the tailnet
+now, with `rish` (phone) or `su` (tablet) for privileged commands (`android/README.md`), but that
+is for reaching them by hand,
 not for applying the declaration behind anyone's back.
 
 What was automated instead is the opposite: the things you cannot notice at the moment they

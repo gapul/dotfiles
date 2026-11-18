@@ -42,10 +42,11 @@
 # ── ストアと端末の権限 ──────────────────────────────────────────────
 # Obtainium のフォーク。端末の更新はこれが受け持つ (APK は fdroid 版で絞る)。
 dev.bikram.obtainx	github	bikram-agarwal/ObtainX
-# thedjchi のフォーク。公式版と違い、再起動後に Wi-Fi に繋がるとワイヤレスデバッグで
-# 自分で起動し、落ちても立ち上げ直す (os-apps.tsv で WRITE_SECURE_SETTINGS を与える)。
-# 公式版とはパッケージ名が同じで署名が違うので、入れ替えには一度アンインストールが要る。
-moe.shizuku.privileged.api	github	thedjchi/Shizuku
+# Shizuku-Next。開発の止まった thedjchi のフォークの後継で、公式版と違い、再起動後に
+# Wi-Fi に繋がるとワイヤレスデバッグで自分で起動し、落ちても立ち上げ直す (os-apps.tsv で
+# WRITE_SECURE_SETTINGS を与える)。公式版や thedjchi 版とはパッケージ名が同じで署名が違うので、
+# 入れ替えには一度アンインストールが要る。
+moe.shizuku.privileged.api	github	rushiranpise/Shizuku-Next
 
 # ── ランチャーと端末環境 ────────────────────────────────────────────
 de.mm20.launcher2.release	github	MM2-0/Kvaesitso
@@ -65,7 +66,7 @@ com.ai.assistance.operit	github	AAswordman/Operit
 # 日本語キーボード。既定の入力方式は os-settings.conf。
 com.kazumaproject.markdownhelperkeyboard	github	KazumaProject/JapaneseKeyboard
 # 英語などのキーボード。FUTO Keyboard の代わり (FUTO はソース公開だが FOSS ではない)。
-helium314.keyboard	github	Helium314/HeliBoard
+helium314.keyboard	github	HeliBorg/HeliBoard
 
 # ── ブラウザ ────────────────────────────────────────────────────────
 # 標準ブラウザ (os-apps.tsv の role)。リンクを受けてどのアプリで開くか選ばせる。正式版は
@@ -79,14 +80,14 @@ org.ironfoxoss.ironfox	gitlab	ironfox-oss/IronFox
 deckers.thibault.aves.libre	github	deckerst/aves
 # 天気 (天気の代わり)。arm64 の _standard 版。
 org.breezyweather	github	breezy-weather/breezy-weather
-# 時計 (時計の代わり)。アラーム、タイマー、ストップウォッチ、世界時計。更新は 2025-01 で止まっている。
-com.vicolo.chrono	github	vicolo-dev/chrono
+# 時計 (時計の代わり)。AOSP の時計が元で、ネットの権限を持たない。
+com.best.deskclock	github	BlackyHawky/Clock
 # 連絡先 (連絡先の代わり)。Google の連絡先の同期は Play 開発者サービスが続ける。
 com.bnyro.contacts	github	you-apps/ConnectYou
 # 電卓 (電卓の代わり)。
 com.darkempire78.opencalculator	github	clementwzk/OpenCalc
-# ボイスレコーダー (レコーダーの代わり)。
-org.fossify.voicerecorder	github	FossifyOrg/Voice-Recorder
+# ボイスレコーダー (レコーダーの代わり)。文字起こしと要約も端末の中でやる。
+cz.mod42.diktafon	github	jaromiru/diktafon
 # カレンダー (Google カレンダーの代わり)。DAVx5 で同期した Radicale の予定を見る。
 ws.xsoh.etar	fdroid	-
 # ファイルマネージャ (Files の代わり)。
@@ -100,7 +101,10 @@ InfinityLoop1309.NewPipeEnhanced	github	InfinityLoop1308/PipePipe
 # YouTube Music のフロントエンド (YouTube Music の代わり)。
 com.metrolist.music	github	MetrolistGroup/Metrolist
 # 流れている曲の認識 (Pixel の「この曲なに」の代わり)。認識そのものは AudD / ACRCloud の API。
-com.mrsep.musicrecognizer	github	aleksey-saenko/MusicRecognizer
+com.mrsep.musicrecognizer	github	AudileTeam/Audile
+# 自宅の Navidrome (nix/homelab/navidrome.nix) を聴く Subsonic クライアント。タブレットと同じ
+# degoogled 版 (Google Cast の部品が入らない)。
+com.eddyizm.degoogled.tempus	github	eddyizm/tempus
 # 再生した曲を Last.fm / ListenBrainz などに記録する。
 com.arn.scrobble	github	kawaiiDango/pano-scrobbler
 # 画像編集 (OCR、PDF、SVG 化)。
@@ -159,4 +163,4 @@ com.artemchep.keyguard	github	AChep/keyguard-app
 # 選ぶ)。常時接続は os-settings.conf。
 com.tailscale.ipn	fdroid	-
 # AirPods の独自機能。Android 17 では Bluetooth の不具合が直っていて、root も Xposed も要らない。
-me.kavishdevar.librepods	github	kavishdevar/librepods
+me.kavishdevar.librepods	github	librepods-org/librepods

@@ -12,7 +12,7 @@ android/
 │   └── root/           # rooted devices only: KernelSU modules and ksud features
 ├── root.sh             # applies root/ over adb, showing the difference first
 ├── launcher-theme.ts   # generates Kvaesitso's theme from palettes.json
-├── termux/             # the phone's Termux:Boot script and helpers (re-mute the shutter, SSH)
+├── termux/             # Termux:Boot scripts: SSH on both devices, the phone's shutter mute
 └── test.sh             # self-check for the scripts above, against a fake adb, no device needed
 ```
 
@@ -226,42 +226,59 @@ settings beyond what the ROM's own settings offer; the two overlap, so a given i
 in one of them only. Iconify builds a ROM-specific module on the device, so that module stays
 outside `root/` and shows up as EXTRA.
 
-## Termux on the phone: re-muting the shutter, and SSH over the tailnet
+## Termux on both devices: SSH over the tailnet, and the phone's shutter
 
-The phone has no root, so anything that needs the shell user after a reboot runs from
-Termux:Boot through `rish`, Shizuku's shell. `termux/boot/10-pixel` waits for Shizuku and SSH:
+Both devices run plain Termux with Termux:Boot (F-Droid builds, since the two must share a
+signature). Termux:Boot runs every script in `~/.termux/boot/` in name order after each boot,
+once the screen has been unlocked for the first time: before that Termux's data is still
+encrypted and nothing runs.
 
-- **The shutter sound.** Japanese Pixels force the stock camera's shutter through the
-  ENFORCED_AUDIBLE volume group, and muting it does not survive a reboot. The group's ID
-  differs per device: 5 on this Pixel 7a, where 7 is notifications, so tools that hard-code 7
-  (SilentPixel) mute the wrong thing. `termux/bin/mute-shutter` does it by hand.
-- **SSH on the tailnet address only**, key-only, so the Mac and nixos-laptop can run
-  `ssh -p 8022 100.76.47.30` and then `~/bin/rish -c '…'` with the same rights as adb, screen
-  locked or not. Before the first unlock after a reboot nothing runs, because Termux's data is
-  still encrypted.
+- **`termux/boot/10-sshd`, on both.** sshd listens on the device's tailnet address only,
+  key-only, so the Mac (`ssh pixel`) and nixos-laptop can log in, screen locked or not. The
+  script picks the address in Tailscale's range (100.64.0.0/10) from `ifconfig` and retries until
+  Tailscale has brought it up, so the same file works on either device.
+- **Privileged commands.** The phone has no root, so it uses `~/bin/rish -c '…'`, Shizuku's
+  shell, with the same rights as adb. The tablet has root (KernelSU Next), so `su -c '…'` there,
+  once Termux has been granted root in the KernelSU manager. AFWall (`devices/nabu/apps.tsv`)
+  filters by app, so Termux also needs the VPN column ticked there, or sshd's replies on the
+  tailnet are dropped.
+- **`termux/boot/20-mute-shutter`, on the phone only.** Japanese Pixels force the stock camera's
+  shutter through the ENFORCED_AUDIBLE volume group, and muting it does not survive a reboot.
+  The group's ID differs per device: 5 on this Pixel 7a, where 7 is notifications, so tools that
+  hard-code 7 (SilentPixel) mute the wrong thing. The script waits for Shizuku, then runs
+  `termux/bin/mute-shutter`, which also works by hand.
 
-Shizuku has to start by itself for this, which the official build cannot do without a computer.
-thedjchi's fork (`apps.tsv`) starts on boot through Wireless debugging once Wi-Fi is up, given
-`WRITE_SECURE_SETTINGS` and `NEARBY_WIFI_DEVICES` (`os-apps.tsv`) and one pairing from its
-Pairing screen. Its TCP mode is left off, because it would leave adb listening on port 5555 on
-whatever network the phone is on.
+On the phone, Shizuku has to start by itself for this, which the official build cannot do
+without a computer. Shizuku-Next (`apps.tsv`), the successor to thedjchi's paused fork, starts on boot through Wireless debugging once
+Wi-Fi is up, given `WRITE_SECURE_SETTINGS` and `NEARBY_WIFI_DEVICES` (`os-apps.tsv`) and one
+pairing from its Pairing screen. Its TCP mode is left off, because it would leave adb listening
+on port 5555 on whatever network the phone is on.
 
-Setting it up on a fresh phone, after installing Termux, Termux:Boot and the fork and opening
-Termux:Boot once:
+Setting it up, after installing Termux and Termux:Boot and opening Termux:Boot once:
+
+```sh
+# on the Mac
+adb push termux/boot/10-sshd /sdcard/Download/
+# in Termux
+pkg install openssh
+mkdir -p ~/.termux/boot ~/.ssh
+install -m 700 /sdcard/Download/10-sshd ~/.termux/boot/
+# add the Mac's and nixos-laptop's public keys to ~/.ssh/authorized_keys, then
+printf 'PasswordAuthentication no\nKbdInteractiveAuthentication no\n' >>"$PREFIX/etc/ssh/sshd_config"
+```
+
+On the phone, also install rish and the shutter script (after installing Shizuku-Next):
 
 ```sh
 # on the Mac: rish ships inside the Shizuku APK
 unzip -j shizuku.apk assets/rish assets/rish_shizuku.dex -d rish
 sed -i '' -e 's/"PKG"/"com.termux"/' -e 's/"MANAGER_PKG"/"moe.shizuku.privileged.api"/' rish/rish
-adb push rish/rish rish/rish_shizuku.dex termux/boot/10-pixel termux/bin/mute-shutter /sdcard/Download/
+adb push rish/rish rish/rish_shizuku.dex termux/boot/20-mute-shutter termux/bin/mute-shutter /sdcard/Download/
 # in Termux (Shizuku asks once whether Termux may use it)
-pkg install openssh
-mkdir -p ~/bin ~/.termux/boot ~/.ssh
+mkdir -p ~/bin
 install -m 700 /sdcard/Download/rish /sdcard/Download/mute-shutter ~/bin/
 install -m 400 /sdcard/Download/rish_shizuku.dex ~/bin/   # Android 14+ refuses a writable dex
-install -m 700 /sdcard/Download/10-pixel ~/.termux/boot/
-# add the Mac's and nixos-laptop's public keys to ~/.ssh/authorized_keys, then
-printf 'PasswordAuthentication no\nKbdInteractiveAuthentication no\n' >>"$PREFIX/etc/ssh/sshd_config"
+install -m 700 /sdcard/Download/20-mute-shutter ~/.termux/boot/
 ```
 
 The phone has no SIM, so it is off the tailnet whenever it has no Wi-Fi. In Tailscale that

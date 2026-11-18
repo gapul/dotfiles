@@ -1,0 +1,28 @@
+#!/data/data/com.termux/files/usr/bin/sh
+# Termux:Boot が起動のたびに走らせる (~/.termux/boot/ に置く)。スマホとタブレットの両方で使う。
+# Termux のデータは最初のロック解除まで暗号化されているので、走るのはその後になる。
+
+# SSH は tailnet のアドレスでだけ受ける (鍵のみ。sshd_config は README)。アドレスは Tailscale の
+# 範囲 (100.64.0.0/10) のものを ifconfig から拾うので、端末ごとに書き換えなくてよい。Tailscale が
+# アドレスを上げるまでは見つからないので、上がるまで待つ。
+#
+# sshd は裏に回さず (-D)、このスクリプトごと Termux の実行中のタスクとして残す。タスクがある間は
+# Termux が前面サービスになる。裏に回すと Termux がキャッシュ扱いになり、Android のアプリ凍結
+# (cached apps freezer) が同じ cgroup の sshd ごと止めて、接続しても応答が返らなくなる。
+# sshd が落ちたり、アドレスが変わって bind できなくなったりしたら、拾い直して上げ直す。
+#
+# 起動直後にネットが無いと (スマホは SIM が無く、テザリング待ちになる)、Tailscale は管理サーバーに
+# 繋がらないまま止まり、後で Wi-Fi が来ても繋ぎ直さないことがある。アドレスが 1 分出てこなければ、
+# Tailscale の CONNECT_VPN (Tasker などに向けた公開の intent) で繋ぎ直させる。繋がっていれば何もしない。
+waited=0
+while :; do
+  addr=$(ifconfig 2>/dev/null | awk '$1 == "inet" && $2 ~ /^100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\./ { print $2; exit }')
+  if [ -n "$addr" ]; then
+    waited=0
+    sshd -D -o ListenAddress="$addr"
+  elif [ $((waited += 15)) -ge 60 ]; then
+    waited=0
+    am broadcast -a com.tailscale.ipn.CONNECT_VPN -n com.tailscale.ipn/.IPNReceiver >/dev/null 2>&1
+  fi
+  sleep 15
+done
