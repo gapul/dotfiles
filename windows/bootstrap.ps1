@@ -29,7 +29,7 @@ param(
     [string]$WslDistro = 'Ubuntu',    # WSL ディストリ名
     # git author (macOS/WSL は nix/user.nix が正。Windows は nix eval 不可のため引数で渡す)
     [string]$GitUser   = 'gapul',
-    [string]$GitEmail  = '92638132+gapul@users.noreply.github.com',
+    [string]$GitEmail  = 'git@gapul.net',
     # 実害なしでステップを表示するだけ (configs symlink 検証等)
     [switch]$DryRun,
     # プライバシー適用 (Win11Debloat + WinUtil) を skip

@@ -28,7 +28,7 @@ NIX_INSTALLER_URL="${NIX_INSTALLER_URL:-https://install.determinate.systems/nix/
 NIX_INSTALLER_SHA="${NIX_INSTALLER_SHA:-efda20b2cc3a012ea750d670e74670c155da3c291bc1021c5951a2310cbf2647}"
 
 # git 署名メールの最終 fallback (通常は nix/user.nix gitEmail が優先される)
-DEFAULT_GIT_EMAIL="${DEFAULT_GIT_EMAIL:-92638132+gapul@users.noreply.github.com}"
+DEFAULT_GIT_EMAIL="${DEFAULT_GIT_EMAIL:-git@gapul.net}"
 
 # ── ログ ─────────────────────────────────────────────────
 : "${COMMON_LOG_LABEL:=bootstrap}"
