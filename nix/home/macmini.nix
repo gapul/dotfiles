@@ -111,6 +111,11 @@ in
     # up under /nix/store). Declared here so a garbage collection can't take it away.
     pkgs.typst
 
+    # Full Xcode for iOS app builds, so the build -> sign -> USB install to the iPhone wired to
+    # this machine works without the MacBook. Same xcodes flow as the workstation
+    # (`just upgrade`); aria2 for the parallel download is in hosts/macmini.nix systemPackages.
+    pkgs.xcodes
+
     # Hermes's sandbox file-sync needs GNU tar (--no-overwrite-dir), and search
     # needs ripgrep. The sandbox symlinks ~/.local/bin/{tar,rg} at the stable
     # /etc/profiles path; without a declaration a GC severs them and the tutor

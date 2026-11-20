@@ -30,9 +30,10 @@ stay with the machine that owns the workload.
 - `macmini-build -- COMMAND ...` builds the current clean, pushed Git commit in a disposable
   Mac mini checkout. A repository flake is used automatically; Ladybird and Servo use the
   dedicated toolchain shells. `--get RELATIVE_PATH` copies a selected artifact back.
-- Native Rust/CMake, Node, Flutter/Dart, Android API 36, unsigned Xcode/Swift, CocoaPods and
-  WebAssembly toolchains live on the Mac mini. Android emulators, Apple signing/export and device
-  installation remain on the MacBook.
+- Native Rust/CMake, Node, Flutter/Dart, Android API 36, full Xcode (via xcodes), CocoaPods and
+  WebAssembly toolchains live on the Mac mini. Android emulators and Apple export remain on the
+  MacBook. iOS apps can be built, signed with the development identity on this machine and
+  installed over USB to an iPhone attached to it.
 - `macmini-render ffmpeg INPUT OUTPUT -- OPTIONS...` transcodes on the Mac mini and returns the
   output file. `macmini-render blender PACKED_SCENE.blend OUTPUT_DIR [FRAME]` renders a packed
   Blender scene and returns the rendered files. `macmini-render after-effects COLLECTED_DIR
@@ -41,7 +42,7 @@ stay with the machine that owns the workload.
 - Build checkouts and render uploads are execution caches, not primary data. Render uploads are
   deleted after each job; inactive build checkouts are deleted by the weekly storage cleanup
   after 30 days.
-- Signing, Simulator/device tests and GUI editing remain on the MacBook. Those repositories and
+- Simulator tests and GUI editing remain on the MacBook. Those repositories and
   their VRM assets continue to build and render on `sean`, not on the personal Mac mini.
 
 ## VRM assets

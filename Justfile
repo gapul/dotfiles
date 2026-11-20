@@ -205,6 +205,12 @@ _xcode-upgrade:
     if [ -r "$aid" ] && [ -r "$pw" ]; then
       export XCODES_USERNAME XCODES_PASSWORD
       XCODES_USERNAME=$(cat "$aid"); XCODES_PASSWORD=$(cat "$pw")
+    elif command -v sops >/dev/null && [ -r "${XDG_CONFIG_HOME:-$HOME/.config}/sops/age/keys.txt" ] \
+      && XCODES_USERNAME=$(sops -d --extract '["xcodes"]["apple_id"]' "{{justfile_directory()}}/secrets/darwin.yaml" 2>/dev/null) \
+      && XCODES_PASSWORD=$(sops -d --extract '["xcodes"]["password"]' "{{justfile_directory()}}/secrets/darwin.yaml" 2>/dev/null); then
+      # macmini: darwin.yaml is not encrypted to its host key, so nothing renders the files above.
+      # The hand-placed human age key can still open it.
+      export XCODES_USERNAME XCODES_PASSWORD
     else
       echo "– Apple ID not set in sops (xcodes/apple_id, xcodes/password); will prompt if needed"
     fi
