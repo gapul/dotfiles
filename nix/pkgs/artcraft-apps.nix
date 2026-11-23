@@ -172,9 +172,9 @@ map mkCraft [
   }
   {
     name = "PdfCraft";
-    version = "0.21.1";
-    hash = "sha256-Gtyb89MZ5wfpJHAE2wWjKgWWNONxD+ebwU+S9onKTUo=";
-    linuxHash = "sha256-wpGekETv/eMY5mgHrSohu7dKlVWzwLmfmtDEDPYc4l4=";
+    version = "0.22.0";
+    hash = "sha256-rUXKUqeTx82huuGstnV7XuEvB7+uwizkNE5eVGA0BjQ=";
+    linuxHash = "sha256-qJk/nuluh6zOz5CvQib/YKhLnheHrp/Y+kj/4Tlrw14=";
   }
   {
     name = "EffectCraft";
