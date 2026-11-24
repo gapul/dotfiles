@@ -178,15 +178,15 @@ map mkCraft [
   }
   {
     name = "EffectCraft";
-    version = "0.24.1";
-    hash = "sha256-ItARHR2qpxQu5iZqK4F00vTTdcTBLg38QKBNs9+zWFE=";
-    linuxHash = "sha256-XOA5NpAUQif6kYboIwitY4pu9tn5dsmW5tA7W1G2Wns=";
+    version = "0.25.1";
+    hash = "sha256-xUV5Mypm2LDzueAdinEgOVFu7Z9iS96c7+bRNLPK7Cg=";
+    linuxHash = "sha256-byn/fgNZkJ/h2/b9PP2EMKA2I0m2EsXrLPyP7nueJ2A=";
   }
   {
     name = "DesignCraft";
-    version = "0.20.1";
-    hash = "sha256-9Fsr9VQ8HYw30JqXHplCDW7z2XtuvjPjGzbSo8OesMI=";
-    linuxHash = "sha256-6RYw1M31eMyx4vOfiOJOhSDxSC1RrkcUZX7kceIjf0Q=";
+    version = "0.21.1";
+    hash = "sha256-mWTRNVbH4PA6v29Ksgveip1snbdE1NPMbGd1OGIGTwA=";
+    linuxHash = "sha256-IR50ufXO5b/DzbRpg9C9sf29CRZL/YB/T/cHBpNdQK4=";
   }
   {
     name = "WordCraft";
