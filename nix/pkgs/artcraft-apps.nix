@@ -190,9 +190,9 @@ map mkCraft [
   }
   {
     name = "WordCraft";
-    version = "0.18.1";
-    hash = "sha256-ifbgqRD4rVqBXYAkx5Mk0gW1b80uBd7tAQ6QFvWBPew=";
-    linuxHash = "sha256-MSoFfUbdgFl8EtzP0Ql84l7epAuqrrULy28BrBrrrbU=";
+    version = "0.19.1";
+    hash = "sha256-3xPKv2O7JZEEXr9ngsF0QOfs7pVWVQ1t0q/+zZg4JbI=";
+    linuxHash = "sha256-7I2MwrkgSsA9E4DOyRDe/fLohQ2T6bh9YYTq/vYZaLQ=";
   }
   {
     name = "GridCraft";
@@ -202,9 +202,9 @@ map mkCraft [
   }
   {
     name = "DeckCraft";
-    version = "0.18.1";
-    hash = "sha256-MyHRH2NTs/+d4yjyFAfXUn8fkCnIPatOOrc09RbToFU=";
-    linuxHash = "sha256-W659VWZjhiRBHvlo8lMqszWNwoCIQURYPkl8VjHbiiY=";
+    version = "0.19.1";
+    hash = "sha256-pSM/KLAxt07cSgffKgBo1DuCzK39rIZfFFdl0oss50Y=";
+    linuxHash = "sha256-7HWqrvEKbcSBP36/D3/Y+YBSDFs9BRuj12IEyeXXb+o=";
   }
   {
     name = "SoundCraft";
