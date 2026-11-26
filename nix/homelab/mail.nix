@@ -1,4 +1,4 @@
-# Mail. Stalwart (IMAP/JMAP, submission endpoint, admin UI) plus imapsync mirroring 3 Google accounts.
+# Mail. Stalwart (IMAP/JMAP, submission endpoint, admin UI) plus imapsync mirroring 2 Google accounts.
 #
 # The home line has OP25B, so port 25 passes neither in nor out (measured 2026-09-23). So inbound (MX)
 # stays on Google for now, and Gmail, a second Google account, and university (all Google IMAP) are mirrored hourly
@@ -34,7 +34,6 @@ let
   names = [
     "gmail"
     "school"
-    "sean"
   ];
   secretDir = "/var/lib/secrets/mail";
   cred = name: "%{file:/run/credentials/stalwart.service/${name}}%";
@@ -199,6 +198,17 @@ let
   );
 in
 {
+  system.activationScripts.retireWorkOverrides.text = ''
+    ${pkgs.coreutils}/bin/rm -f \
+      /etc/systemd/system.control/stalwart.service.d/90-retired-work.conf \
+      /etc/systemd/system.control/mail-mirror.service.d/90-retired-work.conf \
+      /etc/systemd/system.control/l2tp-vpn-watchdog.timer \
+      /etc/systemd/system.control/l2tp-vpn-watchdog.service \
+      /etc/systemd/system.control/l2tp-vpn.service \
+      /etc/systemd/system.control/strongswan.service \
+      /etc/systemd/system.control/mail-push-sean.service
+  '';
+
   services.stalwart = {
     enable = true;
     stateVersion = "26.05";

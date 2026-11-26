@@ -9,6 +9,10 @@ let
   );
   launcher = pkgs.writeShellApplication {
     name = "chromium-affiliate";
+    runtimeInputs = [
+      pkgs.jq
+      pkgs.util-linux
+    ];
     text = ''
       umask 077
       profile="''${XDG_DATA_HOME:-$HOME/.local/share}/chromium-affiliate"
@@ -18,6 +22,32 @@ let
         cp ${initialPreferences} "$profile/Default/Preferences"
         chmod 600 "$profile/Default/Preferences"
       fi
+      # Preferences are read at startup. Do not edit an active Chromium profile.
+      mkdir -p "$profile"
+      exec 9>"$profile/affiliate-launch.lock"
+      flock -n 9 || { echo "The application browser is already running." >&2; exit 1; }
+      if [ -L "$profile/SingletonLock" ]; then
+        owner=$(readlink "$profile/SingletonLock")
+        pid="''${owner##*-}"
+        if kill -0 "$pid" 2>/dev/null; then
+          echo "Close Chromium (申込用) before changing its DNS settings." >&2
+          exit 1
+        fi
+      fi
+      preferences="$profile/Default/Preferences"
+      temporary=$(mktemp "$preferences.XXXXXX")
+      trap 'rm -f "$temporary"' EXIT
+      jq 'del(.dns_over_https) | .profile.block_third_party_cookies = false' "$preferences" > "$temporary"
+      mv "$temporary" "$preferences"
+      trap - EXIT
+      # Secure DNS is a browser-wide preference stored in Local State, not Preferences.
+      local_state="$profile/Local State"
+      if [ ! -f "$local_state" ]; then printf '{}\n' > "$local_state"; fi
+      temporary=$(mktemp "$local_state.XXXXXX")
+      trap 'rm -f "$temporary"' EXIT
+      jq '.dns_over_https.mode = "secure" | .dns_over_https.templates = "https://cloudflare-dns.com/dns-query"' "$local_state" > "$temporary"
+      mv "$temporary" "$local_state"
+      trap - EXIT
       exec ${pkgs.chromium}/bin/chromium \
         --user-data-dir="$profile" \
         --disable-extensions \

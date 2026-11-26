@@ -35,7 +35,7 @@ fi
 
 # agent が生きているか。応答しない socket (転送元の agent が固まったまま残った /tmp/ssh-*/agent.*)
 # に当たると ssh-add -l は永久に待ち、ログインシェルごと止まる。T3 Code のサーバーは起動時に
-# `bash -ilc` で PATH を読むので、sean で起動できなくなった (2026-10-04)。
+# `bash -ilc` で PATH を読むので、起動が止まる。
 _dotfiles_agent_alive() {
     if command -v timeout >/dev/null 2>&1; then
         SSH_AUTH_SOCK="$1" timeout 2 ssh-add -l >/dev/null 2>&1

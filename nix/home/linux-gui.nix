@@ -3,6 +3,7 @@
   lib,
   pkgs,
   nixpkgsStable,
+  nixpkgsBrowsers,
   user,
   ...
 }:
@@ -20,7 +21,28 @@
 let
   browser = "firefox-devedition.desktop"; # nixpkgs' wrapper names it after the binary
   creativeWineApps = import ../pkgs/creative-wine-apps.nix { inherit pkgs; };
+  # From the commit-pinned nixpkgs-browsers input (flake.nix); see home.packages.
+  servo = nixpkgsBrowsers.legacyPackages.${pkgs.stdenv.hostPlatform.system}.servo;
   niji = pkgs.callPackage ../pkgs/nijigenerate.nix { };
+  # Limit PipeWire's JACK libraries to audio clients and their plugin subprocesses.
+  # A session-wide LD_LIBRARY_PATH (pipewire.jack.enable) is deprecated.
+  withPipeWireJack =
+    pkg:
+    pkgs.symlinkJoin {
+      name = "${pkg.pname}-pipewire-jack";
+      paths = [ pkg ];
+      nativeBuildInputs = [ pkgs.makeWrapper ];
+      postBuild = ''
+        for executable in "$out"/bin/*; do
+          [ -f "$executable" ] && [ -x "$executable" ] || continue
+          name=$(basename "$executable")
+          rm "$executable"
+          makeWrapper ${pkgs.pipewire.jack}/bin/pw-jack "$executable" \
+            --add-flag "${pkg}/bin/$name"
+        done
+      '';
+    };
+
   # adb ignores ANDROID_USER_HOME and always keeps its key and server state in $HOME/.android,
   # so it runs with HOME pointed into the XDG data dir; the state lands in
   # ~/.local/share/android/.android. scrcpy puts its own android-tools first on PATH, so it is
@@ -440,6 +462,19 @@ in
   };
 
   # These synth packages ship standalone binaries without desktop entries.
+  # servo ships its .desktop only as a template under resources/ (Exec=SERVO_SRC_PATH/...), so
+  # the launcher never sees it. No MimeType: it should not compete for http(s) with ${browser}.
+  xdg.desktopEntries.servo = {
+    name = "Servo";
+    genericName = "Web Browser";
+    exec = "${servo}/bin/servoshell %u";
+    icon = "${servo}/resources/servo.svg";
+    terminal = false;
+    categories = [
+      "Network"
+      "WebBrowser"
+    ];
+  };
   xdg.desktopEntries.cardinal = {
     name = "Cardinal";
     exec = "Cardinal";
@@ -471,6 +506,10 @@ in
     })
     # ─── Browsers ───
     (withXdgHome tor-browser "tor-browser" "tor-browser" [ ])
+    # Experimental engines, from the commit-pinned nixpkgs-browsers input (flake.nix) so their
+    # near-daily snapshot bumps don't ride along with every lock update.
+    servo
+    nixpkgsBrowsers.legacyPackages.${pkgs.stdenv.hostPlatform.system}.ladybird
 
     # ─── Passwords / 2FA ───
     keepassxc # offline vault (the same kdbx the iOS KeePassium build reads)
@@ -509,13 +548,14 @@ in
     # From stable: unstable's freecad 1.1.4 is uncached and its vtk fails to configure (PEGTL
     # not found, 2026-10-12). Drop back to `freecad` once Hydra builds it again.
     nixpkgsStable.legacyPackages.${pkgs.stdenv.hostPlatform.system}.freecad
-    bitwig-studio
-    reaper
+    (withPipeWireJack bitwig-studio)
+    (withPipeWireJack reaper)
     # Interactive audio/video sequencing and show control. From stable: unstable's 3.8.2 does
     # not compile against fmt 12 (is_container_adaptor_like, 2026-10-13). Drop back to
     # `ossia-score` once Hydra builds it again.
-    nixpkgsStable.legacyPackages.${pkgs.stdenv.hostPlatform.system}.ossia-score
+    (withPipeWireJack nixpkgsStable.legacyPackages.${pkgs.stdenv.hostPlatform.system}.ossia-score)
     easyeffects # PipeWire audio processing; launch manually when needed.
+    pipewire.jack # pw-jack for additional JACK clients launched from the terminal.
     qpwgraph # PipeWire routing and patchbay.
     yabridge
     yabridgectl
@@ -530,12 +570,12 @@ in
     niji.nijiexpose # Inochi2D streaming runtime
     (import ../pkgs/touchdesigner.nix { inherit pkgs; })
     # musescore: dropped 2026-10-22 while 4.7.5 fails with Qt 6.12 (NixOS/nixpkgs#576580); re-add once that is fixed
-    cardinal
-    surge-xt
-    vcv-rack
-    puredata
-    supercollider
-    sonic-pi
+    (withPipeWireJack cardinal)
+    (withPipeWireJack surge-xt)
+    (withPipeWireJack vcv-rack)
+    (withPipeWireJack puredata)
+    (withPipeWireJack supercollider)
+    (withPipeWireJack sonic-pi)
     kicad
     godot
     calibre

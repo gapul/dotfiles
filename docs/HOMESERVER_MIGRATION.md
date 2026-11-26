@@ -177,20 +177,6 @@ the add-on's tar finds nothing, which is confusing.
 Losing the Matter fabric means factory-resetting and re-pairing every Matter device. After
 extracting, always confirm with `tar -tzf` that `data/certificates/` is in there.
 
-### 2.3.1 VM105's disk image, as insurance
-
-The L2TP tunnel is declared in `nix/homelab/vpn-relay.nix`, but CI cannot verify it —
-the sandbox cannot reach the far endpoint. If the native version does not come up first
-time, work stops, so keep the whole old VM disk.
-
-```sh
-ssh pve 'qm stop 105; dd if=/dev/pve/vm-105-disk-0 bs=4M status=progress | zstd -T0' > ~/migration/vm105.img.zst
-```
-
-Only a little of the 10 GB is actually used, so it compresses well. Feeding it to `libvirt` on
-the new host brings the old relay back in minutes. Once the tunnel has come up even once in the
-new environment, it can be thrown away.
-
 ### 2.4 Syncthing's identity
 
 cert.pem and key.pem in `/opt/stacks/syncthing/config/config/`. They are the device ID;
@@ -288,7 +274,6 @@ first placement is by hand; once the key exists they move into `secrets/homelab.
 | `/var/lib/secrets/mosquitto-ha.password` | Just the hash part, in mosquitto_passwd format |
 | `/var/lib/secrets/gatus.env` | `NTFY_TOPIC` and `NTFY_TOKEN`. gatus does not start without them |
 | `/var/lib/secrets/<stack>.env`, eight of them | The keys are listed in `nix/homelab/README.md` |
-| `/var/lib/secrets/l2tp/`, six files | The L2TP tunnel, also in `nix/homelab/README.md` |
 
 Some of the `<stack>.env` key names differ from the old `.env` files. paperless's
 `PAPERLESS_SECRET` is `PAPERLESS_SECRET_KEY` inside the container, and miniflux needs the whole
@@ -391,9 +376,6 @@ journalctl -p err -b --no-pager | tail -40
 - Is Syncthing's device ID still `Y72TVZZ-...`? If it changed, the restore in 2.4 failed.
 - Does `restic snapshots` from the Mac show a new snapshot tagged homeserver?
 - Does `dig @<the new host> example.com` answer? Blocky owns port 53.
-- The L2TP tunnel: `systemctl status l2tp-vpn`, `ip -4 addr show ppp0`, and whether
-  `ssh sean` works over the tailnet. This is the one thing CI could not verify, so
-  if it fails, boot the disk image from 2.3.1 under libvirt and get work moving first.
 - Does Jellyfin's hardware transcoding work? On bare metal `/dev/dri` shows up without effort.
 
 Containers take a while the first time, pulling images. docker.io is already declared to go

@@ -136,7 +136,6 @@ in
       "${config.home.homeDirectory}/Documents/Projects" \
       "${config.home.homeDirectory}/mnt/google-drive" \
       "${config.home.homeDirectory}/mnt/google-drive-school" \
-      "${config.home.homeDirectory}/mnt/google-drive-sean" \
       "${config.home.homeDirectory}/Sync/syncthing"
   '';
 
@@ -163,7 +162,6 @@ in
     "claude/bin".source = claudeConfig "bin";
     "claude/skills/anki-add".source = claudeConfig "skills/anki-add";
     "claude/skills/gapul-writing-voice".source = claudeConfig "skills/gapul-writing-voice";
-    "claude/skills/sean-weekly".source = claudeConfig "skills/sean-weekly";
     "claude/skills/step-by-step-tutor".source = claudeConfig "skills/step-by-step-tutor";
   };
 

@@ -1050,8 +1050,8 @@ in
     enable = true;
     alsa.enable = true;
     pulse.enable = true;
-    # Bitwig / REAPER / yabridge talk JACK; PipeWire stands in for jackd, so no separate server.
-    jack.enable = true;
+    # JACK clients are wrapped with pw-jack in home/linux-gui.nix; avoid a global
+    # LD_LIBRARY_PATH for the entire desktop session. No separate jackd is needed.
   };
   # Without rtkit PipeWire's audio thread runs at normal priority and the DAW crackles at small
   # buffers. The audio-group limits let JACK clients (Bitwig's engine) take SCHED_FIFO directly.

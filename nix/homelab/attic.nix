@@ -23,8 +23,7 @@ let
   # connection pool.
   #
   # But the URL is connection credentials in itself, and the store is world-readable. Keep the
-  # declaration as is and inject only the URL from an environment variable at startup. Same trick
-  # as vpn-relay.nix.
+  # declaration as is and inject only the URL from an environment variable at startup.
   serverToml = (pkgs.formats.toml { }).generate "atticd-server.toml" (
     lib.recursiveUpdate config.services.atticd.settings { database.url = "@DB_URL@"; }
   );
