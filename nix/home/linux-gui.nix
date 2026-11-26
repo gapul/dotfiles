@@ -551,6 +551,9 @@ in
     retroarch
     moonlight-qt
     (pkgs.callPackage ../pkgs/helium.nix { })
+    # GNOME Web: the WebKit seat next to Helium (Blink) and Firefox (Gecko), for checking how a
+    # page renders in Safari's engine without booting the macOS VM.
+    epiphany
     orca-slicer # Bambu A1 mini, same profile set as the mac
     voicevox # same as the mac (hosts/darwin.nix); bundles voicevox-engine
 

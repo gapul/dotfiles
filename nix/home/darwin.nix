@@ -275,6 +275,10 @@ in
     # darktable: the cask was disabled on 2026-09-01 (fails Gatekeeper). nixpkgs builds it for
     # darwin without a .app bundle, so it starts from the `darktable` command.
     nixpkgsUnstable.legacyPackages.${pkgs.stdenv.hostPlatform.system}.darktable
+    # servo: nixpkgs tracks the tagged monthly releases (0.8.0 = upstream latest on 2026-11-24) and
+    # caches them for darwin. No .app bundle, so it starts from `servoshell`. The cask is no
+    # alternative: it follows servo-nightly-builds and had been stuck on 2026-08-30.
+    nixpkgsUnstable.legacyPackages.${pkgs.stdenv.hostPlatform.system}.servo
     # ardour / aseprite / fritzing / qview used to sit here. They ship .app
     # bundles, and home-manager can only surface those under ~/Applications, so they moved to
     # environment.systemPackages in hosts/darwin.nix where nix-darwin puts them in

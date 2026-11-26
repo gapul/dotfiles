@@ -242,6 +242,11 @@ in
     # Element Desktop still shows as raw mxc URLs. Used to view LINE reaction icons / stickers that
     # Element can't. Ships Cinny.app, so nix-darwin surfaces it under /Applications/Nix Apps.
     pkgs.cinny-desktop
+    # Ladybird: independent engine, first alpha 2026.47.7 on 2026-11-23. Taken from nixpkgs, not
+    # brewCasks: the cask is `auto_updates true` (the official dmg updates itself), which fails the
+    # rule above. nixpkgs builds Ladybird.app from git snapshots, cached for aarch64-darwin, so
+    # it tracks nixos-unstable and lands in /Applications/Nix Apps. 26.05-darwin is months behind.
+    unstablePkgs.ladybird
     # ─── Creative: official is paid but nixpkgs source builds give a free full version ───
     # Unavailable/broken on 26.05-darwin, so from unstablePkgs (nixos-unstable, with allowUnfree).
     # PCB/circuit design CAD (official DL is paid. for the ESP32 project). Pinned, see the
